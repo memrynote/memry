@@ -40,6 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             commands::notes::notes_create,
             commands::notes::notes_get,
             commands::notes::notes_get_by_path,
+            commands::notes::notes_update,
             // M4: auth + sync_auth + sync_setup
             commands::auth::auth_status,
             commands::auth::auth_unlock,
@@ -148,6 +149,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .typ::<commands::notes::NoteListResponse>()
         .typ::<commands::notes::NoteCreateInput>()
         .typ::<commands::notes::NoteCreateResponse>()
+        .typ::<commands::notes::NoteUpdateInput>()
+        .typ::<commands::notes::NoteUpdateResponse>()
         // Domain DB structs (registered for stable export across migrations)
         .typ::<db::bookmarks::Bookmark>()
         .typ::<db::calendar_bindings::CalendarBinding>()

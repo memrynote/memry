@@ -68,6 +68,25 @@ pub struct NoteCreateResponse {
     pub error: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteUpdateInput {
+    pub id: String,
+    pub title: Option<String>,
+    pub content: Option<String>,
+    pub tags: Option<Vec<String>>,
+    pub frontmatter: Option<serde_json::Value>,
+    pub emoji: Option<Option<String>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteUpdateResponse {
+    pub success: bool,
+    pub note: Option<NoteDto>,
+    pub error: Option<String>,
+}
+
 pub(crate) fn into_dto(row: &NoteMetadata, body: &str, frontmatter: &NoteFrontmatter) -> NoteDto {
     NoteDto {
         id: row.id.clone(),
@@ -147,6 +166,18 @@ pub async fn notes_get_by_path_inner(
     read_note_dto(vault, row).await.map(Some)
 }
 
+pub async fn notes_update_inner(
+    conn: &Connection,
+    vault: &VaultRuntime,
+    input: NoteUpdateInput,
+) -> AppResult<NoteUpdateResponse> {
+    let row = crate::db::note_metadata::get_by_id(conn, &input.id)?
+        .ok_or_else(|| AppError::NotFound(format!("note {}", input.id)))?;
+    let updated = apply_update_to_vault(vault, row, input).await?;
+
+    finish_update(conn, updated)
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn notes_create(
@@ -217,6 +248,37 @@ pub async fn notes_get_by_path(
     read_note_dto(&state.vault, row).await.map(Some)
 }
 
+#[tauri::command]
+#[specta::specta]
+pub async fn notes_update(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    input: NoteUpdateInput,
+) -> AppResult<NoteUpdateResponse> {
+    let row = {
+        let conn = state.db.conn()?;
+        crate::db::note_metadata::get_by_id(&conn, &input.id)?
+    }
+    .ok_or_else(|| AppError::NotFound(format!("note {}", input.id)))?;
+
+    let updated = apply_update_to_vault(&state.vault, row, input).await?;
+    let conn = state.db.conn()?;
+    let resp = finish_update(&conn, updated)?;
+    drop(conn);
+
+    if let Some(note) = &resp.note {
+        let _ = app.emit(
+            "note-updated",
+            serde_json::json!({
+                "id": note.id,
+                "changes": { "title": note.title },
+                "source": "internal"
+            }),
+        );
+    }
+    Ok(resp)
+}
+
 async fn read_note_dto(vault: &VaultRuntime, row: NoteMetadata) -> AppResult<NoteDto> {
     let root = vault.require_current()?;
     let read = notes_io::read_note_from_disk(&root, &row.path)
@@ -228,6 +290,73 @@ async fn read_note_dto(vault: &VaultRuntime, row: NoteMetadata) -> AppResult<Not
         &read.parsed.content,
         &read.parsed.frontmatter,
     ))
+}
+
+struct PreparedUpdate {
+    row: NoteMetadata,
+    body: String,
+    frontmatter: NoteFrontmatter,
+}
+
+async fn apply_update_to_vault(
+    vault: &VaultRuntime,
+    mut row: NoteMetadata,
+    input: NoteUpdateInput,
+) -> AppResult<PreparedUpdate> {
+    let root = vault.require_current()?;
+    let read = notes_io::read_note_from_disk(&root, &row.path)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("note file {}", row.path)))?;
+    let mut frontmatter = read.parsed.frontmatter;
+    let mut body = read.parsed.content;
+
+    if let Some(title) = input.title {
+        let title = title.trim().to_string();
+        if title.is_empty() {
+            return Err(AppError::Validation("title is empty".into()));
+        }
+        row.title = title.clone();
+        frontmatter.title = Some(title);
+    }
+    if let Some(content) = input.content {
+        row.file_size = Some(content.len() as i64);
+        body = content;
+    }
+    if let Some(tags) = input.tags {
+        frontmatter.tags = tags;
+    }
+    if let Some(emoji) = input.emoji {
+        row.emoji = emoji.clone();
+        frontmatter.emoji = emoji;
+    }
+
+    row.modified_at = now_iso();
+    frontmatter.modified = row.modified_at.clone();
+    notes_io::write_note_to_disk(&root, &row.path, &frontmatter, &body).await?;
+
+    Ok(PreparedUpdate {
+        row,
+        body,
+        frontmatter,
+    })
+}
+
+fn finish_update(conn: &Connection, updated: PreparedUpdate) -> AppResult<NoteUpdateResponse> {
+    use crate::db::{note_metadata, notes_cache};
+
+    let row = metadata_to_upsert_row(&updated.row);
+    note_metadata::upsert(conn, &row)?;
+    notes_cache::refresh_for(conn, &updated.row, &updated.body, &updated.frontmatter.tags)?;
+
+    Ok(NoteUpdateResponse {
+        success: true,
+        note: Some(into_dto(
+            &updated.row,
+            &updated.body,
+            &updated.frontmatter,
+        )),
+        error: None,
+    })
 }
 
 struct PreparedCreate {
@@ -310,6 +439,28 @@ fn finish_create(
         note: Some(into_dto(&metadata, body, frontmatter)),
         error: None,
     })
+}
+
+fn metadata_to_upsert_row(row: &NoteMetadata) -> NoteMetadataRow {
+    NoteMetadataRow {
+        id: row.id.clone(),
+        path: row.path.clone(),
+        title: row.title.clone(),
+        emoji: row.emoji.clone(),
+        file_type: row.file_type.clone(),
+        mime_type: row.mime_type.clone(),
+        file_size: row.file_size,
+        attachment_id: row.attachment_id.clone(),
+        attachment_references: row.attachment_references.clone(),
+        local_only: row.local_only,
+        sync_policy: row.sync_policy.clone(),
+        journal_date: row.journal_date.clone(),
+        property_definition_names: row.property_definition_names.clone(),
+        clock: row.clock.clone(),
+        synced_at: row.synced_at.clone(),
+        created_at: row.created_at.clone(),
+        modified_at: row.modified_at.clone(),
+    }
 }
 
 fn slug_for(title: &str) -> String {
