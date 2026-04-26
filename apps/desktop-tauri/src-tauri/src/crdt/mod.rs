@@ -14,7 +14,10 @@ pub use snapshot::{encode_diff_since_v1, encode_snapshot_v1};
 pub use state_vector::encode_state_vector_v1;
 
 use once_cell::sync::Lazy;
+use crate::error::{AppError, AppResult};
+use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::sync::Mutex;
 
 /// Per-process origin tag. Used to stamp `crdt-update` events so the renderer
 /// can drop echoes from its own writes.
@@ -39,12 +42,20 @@ pub fn origin_tag() -> u32 {
 
 pub struct CrdtRuntime {
     docs: DocStore,
+    chunks: Mutex<HashMap<String, ChunkedUpdate>>,
+}
+
+struct ChunkedUpdate {
+    note_id: String,
+    total_bytes: usize,
+    bytes: Vec<u8>,
 }
 
 impl CrdtRuntime {
     pub fn new() -> Self {
         Self {
             docs: DocStore::new(),
+            chunks: Mutex::new(HashMap::new()),
         }
     }
 
@@ -54,6 +65,81 @@ impl CrdtRuntime {
 
     pub async fn open_doc_count(&self) -> usize {
         self.docs.open_count().await
+    }
+
+    pub async fn start_update_chunk(
+        &self,
+        note_id: &str,
+        transfer_id: &str,
+        total_bytes: usize,
+    ) -> AppResult<()> {
+        if transfer_id.trim().is_empty() {
+            return Err(AppError::Validation("transfer_id is empty".into()));
+        }
+
+        let mut chunks = self.chunks.lock().await;
+        chunks.insert(
+            transfer_id.to_string(),
+            ChunkedUpdate {
+                note_id: note_id.to_string(),
+                total_bytes,
+                bytes: Vec::with_capacity(total_bytes),
+            },
+        );
+        Ok(())
+    }
+
+    pub async fn append_update_chunk(
+        &self,
+        transfer_id: &str,
+        offset: usize,
+        bytes: Vec<u8>,
+    ) -> AppResult<()> {
+        let mut chunks = self.chunks.lock().await;
+        let chunk = chunks
+            .get_mut(transfer_id)
+            .ok_or_else(|| AppError::NotFound(format!("crdt transfer {transfer_id}")))?;
+        if offset != chunk.bytes.len() {
+            return Err(AppError::Validation(format!(
+                "chunk offset {offset} does not match expected {}",
+                chunk.bytes.len()
+            )));
+        }
+        let total_bytes = chunk.total_bytes;
+        if chunk.bytes.len() + bytes.len() > total_bytes {
+            chunks.remove(transfer_id);
+            return Err(AppError::Validation(format!(
+                "chunk transfer {transfer_id} exceeds declared size {}",
+                total_bytes
+            )));
+        }
+        chunk.bytes.extend(bytes);
+        Ok(())
+    }
+
+    pub async fn finish_update_chunk(
+        &self,
+        note_id: &str,
+        transfer_id: &str,
+    ) -> AppResult<Vec<u8>> {
+        let mut chunks = self.chunks.lock().await;
+        let chunk = chunks
+            .remove(transfer_id)
+            .ok_or_else(|| AppError::NotFound(format!("crdt transfer {transfer_id}")))?;
+        if chunk.note_id != note_id {
+            return Err(AppError::Validation(format!(
+                "chunk transfer {transfer_id} belongs to note {}",
+                chunk.note_id
+            )));
+        }
+        if chunk.bytes.len() != chunk.total_bytes {
+            return Err(AppError::Validation(format!(
+                "chunk transfer {transfer_id} received {} of {} bytes",
+                chunk.bytes.len(),
+                chunk.total_bytes
+            )));
+        }
+        Ok(chunk.bytes)
     }
 }
 
