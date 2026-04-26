@@ -91,4 +91,10 @@ impl From<yrs::encoding::read::Error> for AppError {
     }
 }
 
+impl From<yrs::error::UpdateError> for AppError {
+    fn from(err: yrs::error::UpdateError) -> Self {
+        AppError::Crdt(format!("apply: {err}"))
+    }
+}
+
 pub type AppResult<T> = Result<T, AppError>;

@@ -1,7 +1,9 @@
 //! CRDT runtime — yrs-backed authoritative Y.Docs keyed by note id.
 
+pub mod apply;
 mod docstore;
 
+pub use apply::apply_update_v1;
 pub use docstore::{DocHandle, DocStore, NoteId};
 
 use once_cell::sync::Lazy;
