@@ -30,11 +30,24 @@ beforeEach(() => {
 })
 
 describe('invoke', () => {
-  it('routes to mock router by default (M1 behavior: realCommands set is empty)', async () => {
-    const result = await invoke('notes_create', { title: 'test' })
-    expect(mockRouter).toHaveBeenCalledWith('notes_create', { title: 'test' })
+  it('routes commands without a real backend to mock router by default', async () => {
+    const result = await invoke('notes_get_folders')
+    expect(mockRouter).toHaveBeenCalledWith('notes_get_folders', undefined)
     expect(tauriInvoke).not.toHaveBeenCalled()
-    expect(result).toEqual({ mock: true, cmd: 'notes_create', args: { title: 'test' } })
+    expect(result).toEqual({ mock: true, cmd: 'notes_get_folders', args: undefined })
+  })
+
+  it('routes shipped notes CRUD commands to Tauri by default', async () => {
+    await invoke('notes_create', { title: 'test' })
+    await invoke('notes_get', { args: ['note-1'] })
+    await invoke('notes_get_by_path', { args: ['Inbox/test.md'] })
+    await invoke('notes_update', { id: 'note-1', title: 'Renamed' })
+    await invoke('notes_delete', { args: ['note-1'] })
+    await invoke('notes_list', { limit: 10 })
+    await invoke('notes_list_by_folder', { args: ['Inbox'] })
+
+    expect(mockRouter).not.toHaveBeenCalled()
+    expect(tauriInvoke).toHaveBeenCalledTimes(7)
   })
 
   it('propagates descriptive error when mock router has no handler', async () => {
@@ -58,7 +71,7 @@ describe('invoke', () => {
   })
 
   it('passes args through untouched to mock router (no default empty object)', async () => {
-    await invoke('notes_list')
-    expect(mockRouter).toHaveBeenCalledWith('notes_list', undefined)
+    await invoke('notes_get_tags')
+    expect(mockRouter).toHaveBeenCalledWith('notes_get_tags', undefined)
   })
 })

@@ -164,6 +164,30 @@ pub fn get_by_path(conn: &Connection, path: &str) -> AppResult<Option<NoteMetada
     ))
 }
 
+pub fn get_active_by_id(conn: &Connection, id: &str) -> AppResult<Option<NoteMetadata>> {
+    optional_row(conn.query_row(
+        &format!(
+            "SELECT {SELECT_COLS} FROM note_metadata
+             WHERE id = ?1
+               AND coalesce(json_extract(clock, '$.deleted_at'), '') = ''"
+        ),
+        [id],
+        map_row,
+    ))
+}
+
+pub fn get_active_by_path(conn: &Connection, path: &str) -> AppResult<Option<NoteMetadata>> {
+    optional_row(conn.query_row(
+        &format!(
+            "SELECT {SELECT_COLS} FROM note_metadata
+             WHERE path = ?1
+               AND coalesce(json_extract(clock, '$.deleted_at'), '') = ''"
+        ),
+        [path],
+        map_row,
+    ))
+}
+
 pub fn list_active(conn: &Connection) -> AppResult<Vec<NoteMetadata>> {
     let mut stmt = conn.prepare(&format!(
         "SELECT {SELECT_COLS} FROM note_metadata
