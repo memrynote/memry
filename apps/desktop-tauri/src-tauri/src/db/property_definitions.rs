@@ -130,32 +130,59 @@ pub fn add_option(
     option_name: &str,
     color: Option<&str>,
 ) -> AppResult<()> {
-    let mut options = read_options_array(conn, name)?;
+    let row = get(conn, name)?.ok_or_else(|| AppError::NotFound(format!("property {name}")))?;
+    let mut options = read_options_array(&row)?;
     if options
         .iter()
-        .any(|option| option.get("name").and_then(Value::as_str) == Some(option_name))
+        .any(|option| option_value(option) == Some(option_name))
     {
         return Ok(());
     }
 
     options.push(json!({
-        "name": option_name,
+        "value": option_name,
         "color": color,
     }));
     write_options_array(conn, name, &options)
 }
 
 pub fn remove_option(conn: &Connection, name: &str, option_name: &str) -> AppResult<()> {
-    let mut options = read_options_array(conn, name)?;
-    options.retain(|option| option.get("name").and_then(Value::as_str) != Some(option_name));
+    let row = get(conn, name)?.ok_or_else(|| AppError::NotFound(format!("property {name}")))?;
+    if row.ty == "status" {
+        let mut options = read_status_options(&row)?;
+        for category in status_categories_mut(&mut options)?.values_mut() {
+            if let Some(items) = category.get_mut("options").and_then(Value::as_array_mut) {
+                items.retain(|option| option_value(option) != Some(option_name));
+            }
+        }
+        return write_options_value(conn, name, &options);
+    }
+
+    let mut options = read_options_array(&row)?;
+    options.retain(|option| option_value(option) != Some(option_name));
     write_options_array(conn, name, &options)
 }
 
 pub fn rename_option(conn: &Connection, name: &str, old: &str, new: &str) -> AppResult<()> {
-    let mut options = read_options_array(conn, name)?;
+    let row = get(conn, name)?.ok_or_else(|| AppError::NotFound(format!("property {name}")))?;
+    if row.ty == "status" {
+        let mut options = read_status_options(&row)?;
+        for category in status_categories_mut(&mut options)?.values_mut() {
+            if let Some(items) = category.get_mut("options").and_then(Value::as_array_mut) {
+                for option in items {
+                    if option_value(option) == Some(old) {
+                        set_option_value(option, new);
+                    }
+                }
+            }
+        }
+        return write_options_value(conn, name, &options);
+    }
+
+    let mut options = read_options_array(&row)?;
     for option in &mut options {
-        if option.get("name").and_then(Value::as_str) == Some(old) {
-            option["name"] = json!(new);
+        if option_value(option) == Some(old) {
+            set_option_value(option, new);
         }
     }
     write_options_array(conn, name, &options)
@@ -167,9 +194,24 @@ pub fn update_option_color(
     option_name: &str,
     color: &str,
 ) -> AppResult<()> {
-    let mut options = read_options_array(conn, name)?;
+    let row = get(conn, name)?.ok_or_else(|| AppError::NotFound(format!("property {name}")))?;
+    if row.ty == "status" {
+        let mut options = read_status_options(&row)?;
+        for category in status_categories_mut(&mut options)?.values_mut() {
+            if let Some(items) = category.get_mut("options").and_then(Value::as_array_mut) {
+                for option in items {
+                    if option_value(option) == Some(option_name) {
+                        option["color"] = json!(color);
+                    }
+                }
+            }
+        }
+        return write_options_value(conn, name, &options);
+    }
+
+    let mut options = read_options_array(&row)?;
     for option in &mut options {
-        if option.get("name").and_then(Value::as_str) == Some(option_name) {
+        if option_value(option) == Some(option_name) {
             option["color"] = json!(color);
         }
     }
@@ -183,20 +225,21 @@ pub fn add_status_option(
     option_name: &str,
     color: Option<&str>,
 ) -> AppResult<()> {
-    let mut options = read_options_array(conn, name)?;
-    if options.iter().any(|option| {
-        option.get("name").and_then(Value::as_str) == Some(option_name)
-            && option.get("category").and_then(Value::as_str) == Some(category)
-    }) {
+    let row = get(conn, name)?.ok_or_else(|| AppError::NotFound(format!("property {name}")))?;
+    let mut options = read_status_options(&row)?;
+    let category_options = status_category_options_mut(&mut options, category)?;
+    if category_options
+        .iter()
+        .any(|option| option_value(option) == Some(option_name))
+    {
         return Ok(());
     }
 
-    options.push(json!({
-        "name": option_name,
+    category_options.push(json!({
+        "value": option_name,
         "color": color,
-        "category": category,
     }));
-    write_options_array(conn, name, &options)
+    write_options_value(conn, name, &options)
 }
 
 pub fn delete(conn: &Connection, name: &str) -> AppResult<()> {
@@ -204,21 +247,26 @@ pub fn delete(conn: &Connection, name: &str) -> AppResult<()> {
     Ok(())
 }
 
-fn read_options_array(conn: &Connection, name: &str) -> AppResult<Vec<Value>> {
-    let row = get(conn, name)?.ok_or_else(|| AppError::NotFound(format!("property {name}")))?;
-    let Some(options) = row.options else {
+fn read_options_array(row: &PropertyDefinitionRow) -> AppResult<Vec<Value>> {
+    let Some(options) = row.options.as_deref() else {
         return Ok(Vec::new());
     };
 
-    match serde_json::from_str::<Value>(&options)? {
+    match serde_json::from_str::<Value>(options)? {
         Value::Array(items) => Ok(items),
         _ => Err(AppError::Validation(format!(
-            "property {name} options must be a JSON array"
+            "property {} options must be a JSON array",
+            row.name
         ))),
     }
 }
 
 fn write_options_array(conn: &Connection, name: &str, options: &[Value]) -> AppResult<()> {
+    let value = Value::Array(options.to_vec());
+    write_options_value(conn, name, &value)
+}
+
+fn write_options_value(conn: &Connection, name: &str, options: &Value) -> AppResult<()> {
     let options = serde_json::to_string(options)?;
     let changed = conn.execute(
         "UPDATE property_definitions SET options = ?1 WHERE name = ?2",
@@ -228,6 +276,66 @@ fn write_options_array(conn: &Connection, name: &str, options: &[Value]) -> AppR
         return Err(AppError::NotFound(format!("property {name}")));
     }
     Ok(())
+}
+
+fn read_status_options(row: &PropertyDefinitionRow) -> AppResult<Value> {
+    let Some(options) = row.options.as_deref() else {
+        return Ok(default_status_options());
+    };
+    let options = serde_json::from_str::<Value>(options)?;
+    if options
+        .get("categories")
+        .and_then(Value::as_object)
+        .is_none()
+    {
+        return Err(AppError::Validation(format!(
+            "property {} status options must contain categories",
+            row.name
+        )));
+    }
+    Ok(options)
+}
+
+fn default_status_options() -> Value {
+    json!({
+        "categories": {
+            "todo": { "label": "To-do", "options": [] },
+            "in_progress": { "label": "In progress", "options": [] },
+            "done": { "label": "Complete", "options": [] }
+        }
+    })
+}
+
+fn status_categories_mut(options: &mut Value) -> AppResult<&mut serde_json::Map<String, Value>> {
+    options
+        .get_mut("categories")
+        .and_then(Value::as_object_mut)
+        .ok_or_else(|| AppError::Validation("status options must contain categories".into()))
+}
+
+fn status_category_options_mut<'a>(
+    options: &'a mut Value,
+    category: &str,
+) -> AppResult<&'a mut Vec<Value>> {
+    status_categories_mut(options)?
+        .get_mut(category)
+        .and_then(|category| category.get_mut("options"))
+        .and_then(Value::as_array_mut)
+        .ok_or_else(|| AppError::Validation(format!("status category {category} options missing")))
+}
+
+fn option_value(option: &Value) -> Option<&str> {
+    option
+        .get("value")
+        .or_else(|| option.get("name"))
+        .and_then(Value::as_str)
+}
+
+fn set_option_value(option: &mut Value, value: &str) {
+    if let Some(object) = option.as_object_mut() {
+        object.remove("name");
+        object.insert("value".into(), json!(value));
+    }
 }
 
 fn map_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<PropertyDefinitionRow> {

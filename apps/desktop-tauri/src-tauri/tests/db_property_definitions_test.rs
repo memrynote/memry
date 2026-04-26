@@ -15,12 +15,27 @@ fn def(name: &str, ty: &str) -> PropertyDefinitionRow {
     }
 }
 
-fn option_names(options: Option<String>) -> Vec<String> {
+fn option_values(options: Option<String>) -> Vec<String> {
     serde_json::from_str::<Vec<serde_json::Value>>(&options.unwrap())
         .unwrap()
         .into_iter()
-        .map(|option| option["name"].as_str().unwrap().to_string())
+        .map(|option| option["value"].as_str().unwrap().to_string())
         .collect()
+}
+
+fn status_def() -> PropertyDefinitionRow {
+    let mut row = def("status", "status");
+    row.options = Some(
+        serde_json::json!({
+            "categories": {
+                "todo": { "label": "To-do", "options": [] },
+                "in_progress": { "label": "In progress", "options": [] },
+                "done": { "label": "Complete", "options": [] }
+            }
+        })
+        .to_string(),
+    );
+    row
 }
 
 #[test]
@@ -62,7 +77,7 @@ fn update_and_ensure_definition() {
     assert_eq!(get(&conn, "status").unwrap().unwrap().ty, "status");
 
     let mut updated = def("status", "multi_select");
-    updated.options = Some(r##"[{"name":"active","color":"#10b981"}]"##.into());
+    updated.options = Some(r##"[{"value":"active","color":"#10b981"}]"##.into());
     updated.default_value = Some("active".into());
     updated.color = Some("#111827".into());
     update(&conn, &updated).unwrap();
@@ -71,7 +86,7 @@ fn update_and_ensure_definition() {
     assert_eq!(row.ty, "multi_select");
     assert_eq!(row.default_value.as_deref(), Some("active"));
     assert_eq!(row.color.as_deref(), Some("#111827"));
-    assert_eq!(option_names(row.options), vec!["active"]);
+    assert_eq!(option_values(row.options), vec!["active"]);
 }
 
 #[test]
@@ -89,25 +104,30 @@ fn add_remove_rename_and_recolor_option() {
     let row = get(&conn, "status").unwrap().unwrap();
     let opts: serde_json::Value = serde_json::from_str(&row.options.unwrap()).unwrap();
     assert_eq!(opts.as_array().unwrap().len(), 1);
-    assert_eq!(opts[0]["name"], "in-progress");
+    assert_eq!(opts[0]["value"], "in-progress");
     assert_eq!(opts[0]["color"], "#3b82f6");
 }
 
 #[test]
-fn status_options_are_category_scoped() {
+fn status_options_use_category_shape_and_shared_mutations() {
     let conn = open_in_memory_with_migrations();
-    create(&conn, &def("status", "status")).unwrap();
+    create(&conn, &status_def()).unwrap();
 
     add_status_option(&conn, "status", "todo", "queued", Some("#94a3b8")).unwrap();
     add_status_option(&conn, "status", "todo", "queued", Some("#ef4444")).unwrap();
     add_status_option(&conn, "status", "done", "queued", Some("#22c55e")).unwrap();
+    update_option_color(&conn, "status", "queued", "#3b82f6").unwrap();
+    rename_option(&conn, "status", "queued", "ready").unwrap();
+    remove_option(&conn, "status", "ready").unwrap();
+    add_status_option(&conn, "status", "todo", "queued", Some("#94a3b8")).unwrap();
 
     let row = get(&conn, "status").unwrap().unwrap();
     let opts: serde_json::Value = serde_json::from_str(&row.options.unwrap()).unwrap();
-    assert_eq!(opts.as_array().unwrap().len(), 2);
-    assert_eq!(opts[0]["category"], "todo");
-    assert_eq!(opts[0]["color"], "#94a3b8");
-    assert_eq!(opts[1]["category"], "done");
+    let categories = &opts["categories"];
+    assert_eq!(categories["todo"]["options"].as_array().unwrap().len(), 1);
+    assert_eq!(categories["todo"]["options"][0]["value"], "queued");
+    assert_eq!(categories["todo"]["options"][0]["color"], "#94a3b8");
+    assert!(categories["done"]["options"].as_array().unwrap().is_empty());
 }
 
 #[test]
