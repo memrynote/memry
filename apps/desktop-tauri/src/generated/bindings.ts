@@ -93,6 +93,9 @@ export const commands = {
 } | null, AppError>(__TAURI_INVOKE("notes_get_folder_config", { args })),
 	notesSetFolderConfig: (input: SetFolderConfigInput) => typedError<FolderSimpleSuccess, AppError>(__TAURI_INVOKE("notes_set_folder_config", { input })),
 	notesGetFolderTemplate: (args: string[]) => typedError<string | null, AppError>(__TAURI_INVOKE("notes_get_folder_template", { args })),
+	notesGetPositions: (args: string[]) => typedError<PositionsResponse, AppError>(__TAURI_INVOKE("notes_get_positions", { args })),
+	notesGetAllPositions: () => typedError<PositionsResponse, AppError>(__TAURI_INVOKE("notes_get_all_positions")),
+	notesReorder: (input: ReorderInput) => typedError<FolderSimpleSuccess, AppError>(__TAURI_INVOKE("notes_reorder", { input })),
 	authStatus: () => typedError<AuthStatus, AppError>(__TAURI_INVOKE("auth_status")),
 	authUnlock: (input: AuthUnlockInput) => typedError<AuthStatus, AppError>(__TAURI_INVOKE("auth_unlock", { input })),
 	authLock: () => typedError<null, AppError>(__TAURI_INVOKE("auth_lock")),
@@ -618,6 +621,11 @@ export type OtpVerifyView = {
 	needsSetup: boolean,
 };
 
+export type PositionsResponse = {
+	success: boolean,
+	positions: { [key in string]: number },
+};
+
 export type Project = {
 	id: string,
 	name: string,
@@ -685,6 +693,11 @@ export type Reminder = {
 	snoozedUntil: string | null,
 	createdAt: string,
 	modifiedAt: string,
+};
+
+export type ReorderInput = {
+	folderPath: string,
+	notePaths: string[],
 };
 
 export type SavedFilter = {
