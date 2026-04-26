@@ -13,13 +13,11 @@
 use serde::{Deserialize, Serialize};
 
 use crate::app_state::AppState;
-use crate::auth::account::KEYCHAIN_ACCESS_TOKEN;
+use crate::auth::account::{self, LinkingDeviceMetadata, KEYCHAIN_ACCESS_TOKEN};
 use crate::auth::linking::{self, ScanDeviceMetadata};
 use crate::error::{AppError, AppResult};
 use crate::keychain::SERVICE_VAULT;
 use crate::sync::auth_client;
-
-const KEYCHAIN_MASTER_KEY: &str = "master-key";
 
 /// Sentinel error message returned by `complete_linking_with_base` when
 /// the new device polls before the approver has acted. The renderer
@@ -39,6 +37,13 @@ pub struct SyncLinkingLinkViaQrInput {
 #[serde(rename_all = "camelCase")]
 pub struct SyncLinkingCompleteLinkingQrInput {
     pub session_id: String,
+    /// Device metadata the renderer collected during the wizard.
+    /// Required so this command can finish device registration via
+    /// `/auth/devices` after the master key has been recovered.
+    pub device_name: String,
+    pub platform: String,
+    pub os_version: Option<String>,
+    pub app_version: String,
 }
 
 #[derive(Debug, Clone, Deserialize, specta::Type)]
@@ -148,18 +153,41 @@ pub async fn sync_linking_complete_linking_qr(
     let base = crate::sync::http::resolve_base_url()?;
     match linking::complete_linking_with_base(&base, &state.linking, &input.session_id).await {
         Ok(result) => {
-            // Persist the recovered master key under the canonical
-            // keychain account; the renderer never sees the bytes.
-            state.auth.keychain().set_item(
-                SERVICE_VAULT,
-                KEYCHAIN_MASTER_KEY,
-                &result.master_key,
-            )?;
-            Ok(LinkingCompleteView {
-                success: true,
-                error: None,
-                device_id: Some(result.device_id),
-            })
+            // Hand the recovered master key off to `finalize_linking`,
+            // which (mirroring Electron's `finalizeLinking`):
+            //  - fetches `/auth/recovery-info` and persists kdfSalt +
+            //    keyVerifier so password unlock works on this device,
+            //  - registers this device via `/auth/devices` (consuming
+            //    the setup token),
+            //  - persists access/refresh tokens,
+            //  - persists the master key under
+            //    `SERVICE_VAULT/master-key` and unlocks the auth
+            //    runtime so subsequent crypto commands work without
+            //    another password prompt.
+            //
+            // Without this step the renderer would mark the user
+            // authenticated while every device-scoped API call (and
+            // `crypto_encrypt_item` / `crypto_decrypt_item`) failed.
+            let metadata = LinkingDeviceMetadata {
+                device_name: input.device_name,
+                platform: input.platform,
+                os_version: input.os_version,
+                app_version: input.app_version,
+            };
+            match account::finalize_linking_with_base(&base, &state, result.master_key, metadata)
+                .await
+            {
+                Ok(finalize) => Ok(LinkingCompleteView {
+                    success: true,
+                    error: None,
+                    device_id: Some(finalize.device_id),
+                }),
+                Err(err) => Ok(LinkingCompleteView {
+                    success: false,
+                    error: Some(redact(&err)),
+                    device_id: None,
+                }),
+            }
         }
         Err(err) => Ok(LinkingCompleteView {
             success: false,
@@ -208,15 +236,23 @@ pub async fn sync_linking_approve_linking(
         .peek(&input.session_id)
         .ok_or_else(|| AppError::NotFound(format!("linking session: {}", input.session_id)))?;
 
-    // Fetch the new device's public key from the server (recorded by
-    // `/auth/linking/scan` on the new-device side). The renderer never
-    // sees this value directly, so we cannot accept it as input — that
-    // would let an attacker who controls the renderer swap the public
-    // key and seal the master key for themselves.
+    // Fetch the new device's public key + new-device-confirm from the
+    // server (recorded by `/auth/linking/scan` on the new-device side).
+    // The renderer never sees these values directly, so we cannot
+    // accept them as input — that would let an attacker who controls
+    // the renderer swap the public key and seal the master key for
+    // themselves. `approve_linking_with_base` re-verifies the
+    // newDeviceConfirm HMAC against the locally derived macKey before
+    // sealing.
     let base = crate::sync::http::resolve_base_url()?;
     let session_info: ServerLinkingSession =
         auth_client::get_linking_session_with_base(&base, &input.session_id, &access_token).await?;
     let new_device_public_key = linking::decode_b64(&session_info.new_device_public_key)?;
+    let new_device_confirm_b64 = session_info.new_device_confirm.ok_or_else(|| {
+        AppError::Auth(
+            "linking session is missing new-device-confirm; new device hasn't scanned yet".into(),
+        )
+    })?;
 
     match linking::approve_linking_with_base(
         &base,
@@ -224,6 +260,7 @@ pub async fn sync_linking_approve_linking(
         &initiator_session.ephemeral_secret_key,
         &master_key,
         &new_device_public_key,
+        &new_device_confirm_b64,
         &access_token,
     )
     .await
@@ -240,13 +277,17 @@ pub async fn sync_linking_approve_linking(
 }
 
 /// Subset of the `/auth/linking/session/:id` response we need on the
-/// approver side. The server returns more fields (status, newDeviceConfirm,
-/// expiresAt) but the approve flow only needs the new device's public
-/// key to derive the X25519 shared secret.
+/// approver side. The server returns more fields (status, expiresAt)
+/// but the approve flow only needs the new device's public key (to
+/// derive the X25519 shared secret) and the new-device-confirm HMAC
+/// (so the approver can verify the public key was actually signed by
+/// the device that claims to have scanned the QR).
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ServerLinkingSession {
     new_device_public_key: String,
+    #[serde(default)]
+    new_device_confirm: Option<String>,
 }
 
 #[tauri::command]
@@ -255,12 +296,22 @@ pub async fn sync_linking_get_linking_sas(
     state: tauri::State<'_, AppState>,
     input: SyncLinkingGetLinkingSasInput,
 ) -> AppResult<LinkingSasView> {
-    // Look up the local pending session; the SAS is computed from the
-    // QR-side `linking_secret` so both ends derive the same six digits.
-    // We do NOT consume the registry entry here — `complete_linking_qr`
-    // is the only consumer.
+    // The SAS must be derived from the X25519 shared secret (matches
+    // Electron's `computeVerificationCode(sharedSecret)`). The approver
+    // does not have the new device's public key locally, so fetch it
+    // from the server, compute the shared secret with the locally
+    // stored ephemeral secret key, and derive the six digits from the
+    // result. We do NOT consume the registry entry here — the same
+    // session is reused for the subsequent `approve_linking` call.
     let session = peek_session(&state, &input.session_id)?;
-    let sas_code = linking::generate_sas_code(&session.linking_secret)?;
+    let access_token = read_access_token(&state)?;
+    let base = crate::sync::http::resolve_base_url()?;
+    let session_info: ServerLinkingSession =
+        auth_client::get_linking_session_with_base(&base, &input.session_id, &access_token).await?;
+    let new_device_public_key = linking::decode_b64(&session_info.new_device_public_key)?;
+    let shared_secret =
+        linking::derive_shared_secret(&session.ephemeral_secret_key, &new_device_public_key)?;
+    let sas_code = linking::generate_sas_code(&shared_secret)?;
     Ok(LinkingSasView { sas_code })
 }
 

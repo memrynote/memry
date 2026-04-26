@@ -9,7 +9,10 @@ use memry_desktop_tauri_lib::error::AppError;
 fn hex_decode(s: &str) -> Vec<u8> {
     let cleaned: String = s.chars().filter(|c| !c.is_whitespace()).collect();
     let bytes = cleaned.as_bytes();
-    assert!(bytes.len() % 2 == 0, "hex string must have even length");
+    assert!(
+        bytes.len().is_multiple_of(2),
+        "hex string must have even length"
+    );
     let mut out = Vec::with_capacity(bytes.len() / 2);
     for pair in bytes.chunks(2) {
         out.push((nibble(pair[0]) << 4) | nibble(pair[1]));

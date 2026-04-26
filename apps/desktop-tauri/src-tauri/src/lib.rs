@@ -34,7 +34,19 @@ fn init_app_state() -> AppResult<AppState> {
         std::sync::Arc::new(crate::keychain::MacosKeychain::new());
     let auth = std::sync::Arc::new(crate::auth::AuthRuntime::new(keychain));
     let linking = std::sync::Arc::new(crate::auth::linking::PendingLinkingRegistry::new());
-    Ok(AppState::new(db, vault, auth, linking))
+    let state = AppState::new(db, vault, auth, linking);
+
+    // Restore the vault key from the keychain when the user previously
+    // opted in to "remember this device". A failure here is logged and
+    // swallowed so a corrupt keychain entry cannot block boot — the user
+    // will simply see the password prompt instead.
+    match crate::auth::vault_keys::try_unlock_from_keychain(&state) {
+        Ok(Some(_)) => tracing::info!("auth runtime unlocked from keychain at boot"),
+        Ok(None) => {}
+        Err(err) => tracing::warn!(error = %err, "remember-device unlock failed at boot"),
+    }
+
+    Ok(state)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

@@ -18,6 +18,10 @@ const STEP_MAP: Record<WizardStep, number> = {
   idle: 0,
   'sign-in': 0,
   'otp-verification': 1,
+  // Password collection for new accounts: still part of the
+  // verification phase from the user's perspective — they're proving
+  // who they are to set up the vault.
+  'password-setup': 1,
   'recovery-display': 1,
   'recovery-confirm': 1,
   'recovery-input': 1,

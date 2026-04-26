@@ -164,7 +164,10 @@ fn decrypts_known_xchacha20_rfc8439_draft_vector() {
 fn hex_decode(s: &str) -> Vec<u8> {
     let cleaned: String = s.chars().filter(|c| !c.is_whitespace()).collect();
     let bytes = cleaned.as_bytes();
-    assert!(bytes.len() % 2 == 0, "hex string must have even length");
+    assert!(
+        bytes.len().is_multiple_of(2),
+        "hex string must have even length"
+    );
     let mut out = Vec::with_capacity(bytes.len() / 2);
     for pair in bytes.chunks(2) {
         let hi = hex_nibble(pair[0]);

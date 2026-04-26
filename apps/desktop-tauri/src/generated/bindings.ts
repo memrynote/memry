@@ -616,6 +616,15 @@ export type SyncLinkingApproveLinkingInput = {
 
 export type SyncLinkingCompleteLinkingQrInput = {
 	sessionId: string,
+	/**
+	 *  Device metadata the renderer collected during the wizard.
+	 *  Required so this command can finish device registration via
+	 *  `/auth/devices` after the master key has been recovered.
+	 */
+	deviceName: string,
+	platform: string,
+	osVersion: string | null,
+	appVersion: string,
 };
 
 export type SyncLinkingGetLinkingSasInput = {

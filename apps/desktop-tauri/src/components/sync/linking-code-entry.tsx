@@ -5,31 +5,12 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { ArrowLeft, Loader2, CheckCircle, AlertCircle } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { invoke } from '@/lib/ipc/invoke'
+import { localDeviceName, localDevicePlatform } from '@/lib/device-metadata'
 
 interface LinkingCodeEntryProps {
   onLinked: (sessionId: string, verificationCode?: string) => void
   onError: (error: string) => void
   onBack: () => void
-}
-
-function localDeviceName(): string {
-  // Browser/WebView API only — falls back to a generic label when the
-  // platform doesn't expose the hostname.
-  const fallback = 'Memry Desktop'
-  if (typeof navigator !== 'undefined' && typeof navigator.userAgent === 'string') {
-    const match = navigator.userAgent.match(/\(([^)]+)\)/)
-    if (match?.[1]) return match[1].split(';')[0]?.trim() || fallback
-  }
-  return fallback
-}
-
-function localDevicePlatform(): string {
-  if (typeof navigator === 'undefined') return 'desktop'
-  const ua = navigator.userAgent.toLowerCase()
-  if (ua.includes('mac os')) return 'macos'
-  if (ua.includes('windows')) return 'windows'
-  if (ua.includes('linux')) return 'linux'
-  return 'desktop'
 }
 
 function parseQrData(raw: string): { sessionId: string; ephemeralPublicKey: string } | null {

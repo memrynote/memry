@@ -397,6 +397,7 @@ fn generate_sas_code_returns_six_digits_stable_for_a_shared_secret() {
         code_a.chars().all(|c| c.is_ascii_digit()),
         "SAS code must contain only ASCII digits, got {code_a}",
     );
+    assert_eq!(code_a, "043283", "SAS code must match Electron parity");
 }
 
 #[test]
@@ -625,6 +626,16 @@ async fn approve_linking_posts_sealed_master_key_to_server() {
     let initiator = linking::generate_ephemeral_keypair();
     let new_device = linking::generate_ephemeral_keypair();
     let approver_master_key = vec![0x42u8; 32];
+    let shared_secret =
+        linking::derive_shared_secret(&new_device.secret_key, &initiator.public_key)
+            .expect("linking shared secret must derive");
+    let (_enc_key, mac_key) =
+        linking::derive_linking_keys(&shared_secret).expect("linking keys must derive");
+    let new_device_public_key_b64 = B64.encode(&new_device.public_key);
+    let new_device_confirm =
+        linking::compute_linking_proof(&mac_key, "sid-9", &new_device_public_key_b64)
+            .expect("new-device confirm must derive");
+    let new_device_confirm_b64 = B64.encode(new_device_confirm);
 
     let server = MockServer::start_async().await;
     let mock = server
@@ -651,6 +662,7 @@ async fn approve_linking_posts_sealed_master_key_to_server() {
         &initiator.secret_key,
         &approver_master_key,
         &new_device.public_key,
+        &new_device_confirm_b64,
         "access-token",
     )
     .await

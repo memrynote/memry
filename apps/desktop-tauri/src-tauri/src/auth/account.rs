@@ -173,6 +173,29 @@ pub struct SetupAccountResult {
     pub recovery_phrase: String,
 }
 
+/// Device metadata supplied by the renderer when finishing the QR
+/// linking flow. Mirrors the fields `/auth/devices` requires.
+#[derive(Debug, Clone)]
+pub struct LinkingDeviceMetadata {
+    pub device_name: String,
+    pub platform: String,
+    pub os_version: Option<String>,
+    pub app_version: String,
+}
+
+/// Result returned to the caller after `finalize_linking` succeeds.
+#[derive(Debug, Clone)]
+pub struct FinalizeLinkingResult {
+    pub device_id: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RecoveryInfoResponse {
+    kdf_salt: String,
+    key_verifier: String,
+}
+
 /// Internal HTTP request bodies and response shapes. Kept private to
 /// this module: the public API uses the typed structs above so future
 /// changes to the wire format do not leak into renderer code.
@@ -496,6 +519,147 @@ pub async fn setup_new_account_with_base(
         device_id,
         recovery_phrase,
     })
+}
+
+// ---------------------------------------------------------------------
+// Public API: QR-link finalization
+// ---------------------------------------------------------------------
+
+/// Completes the new-device side of QR linking once the approver has
+/// sealed the master key. The caller (`sync_linking_complete_linking_qr`)
+/// has already recovered `master_key`; this function does the rest of
+/// what Electron's `finalizeLinking` does:
+///
+/// 1. GET `/auth/recovery-info` (auth: setup token) to fetch this
+///    account's canonical `kdfSalt` + `keyVerifier`. Persist them
+///    locally so future password-unlock attempts on this device work.
+/// 2. Get-or-create the device signing keypair.
+/// 3. POST `/auth/devices` (auth: setup token) with the device metadata
+///    + a fresh challenge signature.
+/// 4. Persist access/refresh tokens, clear the setup token.
+/// 5. Persist the master key in the keychain, derive the vault key,
+///    and unlock the auth runtime so subsequent crypto commands work
+///    without an extra password prompt.
+/// 6. Cache account info (best-effort: email is left blank so the
+///    renderer's existing `getDevices()` round-trip can populate it).
+/// 7. Upsert the local `sync_devices` row marked as the current device.
+///
+/// Returns the server-issued device id for the renderer to record.
+pub async fn finalize_linking(
+    state: &AppState,
+    master_key: Vec<u8>,
+    metadata: LinkingDeviceMetadata,
+) -> AppResult<FinalizeLinkingResult> {
+    let base = crate::sync::http::resolve_base_url()?;
+    finalize_linking_with_base(&base, state, master_key, metadata).await
+}
+
+pub async fn finalize_linking_with_base(
+    base_url: &str,
+    state: &AppState,
+    master_key: Vec<u8>,
+    metadata: LinkingDeviceMetadata,
+) -> AppResult<FinalizeLinkingResult> {
+    let kc = state.auth.keychain();
+    let setup_token_bytes = kc
+        .get_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN)?
+        .ok_or_else(|| AppError::Auth("missing setup token; verify OTP first".into()))?;
+    let setup_token = String::from_utf8(setup_token_bytes)
+        .map_err(|err| AppError::Auth(format!("setup token is not valid utf-8: {err}")))?;
+    let setup_jti = extract_jwt_jti(&setup_token)?;
+
+    // 1. Fetch recovery info so the local password-unlock path works.
+    let recovery: RecoveryInfoResponse =
+        auth_client::get_recovery_info_with_base(base_url, &setup_token).await?;
+    crate::auth::vault_keys::persist_vault_setup_material(
+        state,
+        &recovery.kdf_salt,
+        &recovery.key_verifier,
+    )?;
+
+    // 2. Device signing keypair + challenge signature.
+    let kp = device::get_or_create_device_signing_key(state)?;
+    let signing_public_key_b64 = encode_public_key_b64(&kp.public_key);
+    let challenge_nonce = generate_challenge_nonce();
+    let challenge_payload = format!("{challenge_nonce}:{setup_jti}");
+    let challenge_signature = sign_device_challenge(&kp.secret_key, &challenge_payload)?;
+
+    // 3. Register the device with the auth server.
+    let body = RegisterDeviceBody {
+        name: &metadata.device_name,
+        platform: &metadata.platform,
+        os_version: metadata.os_version.as_deref(),
+        app_version: &metadata.app_version,
+        auth_public_key: &signing_public_key_b64,
+        challenge_signature: &challenge_signature,
+        challenge_nonce: &challenge_nonce,
+    };
+    let resp: RegisterDeviceResponse =
+        auth_client::register_device_with_base(base_url, &body, &setup_token).await?;
+    if !resp.success {
+        return Err(AppError::Auth(format!(
+            "device registration failed: {}",
+            resp.error.as_deref().unwrap_or("unknown error"),
+        )));
+    }
+    let device_id = resp
+        .device_id
+        .ok_or_else(|| AppError::Auth("server did not return a deviceId".into()))?;
+    let access_token = resp
+        .access_token
+        .ok_or_else(|| AppError::Auth("server did not return an access token".into()))?;
+    let refresh_token = resp
+        .refresh_token
+        .ok_or_else(|| AppError::Auth("server did not return a refresh token".into()))?;
+
+    // 4. Persist tokens, clear the setup token.
+    kc.set_item(
+        SERVICE_VAULT,
+        KEYCHAIN_ACCESS_TOKEN,
+        access_token.as_bytes(),
+    )?;
+    kc.set_item(
+        SERVICE_VAULT,
+        KEYCHAIN_REFRESH_TOKEN,
+        refresh_token.as_bytes(),
+    )?;
+    kc.delete_item(SERVICE_VAULT, KEYCHAIN_SETUP_TOKEN)?;
+
+    // 5. Unlock the local vault with the imported master key (also
+    //    persists it under the canonical keychain account so the
+    //    boot-time `try_unlock_from_keychain` path works on next launch).
+    crate::auth::vault_keys::unlock_with_imported_master_key(state, master_key, true)?;
+
+    // 6. Cache account info. We do not have the email locally during
+    //    QR linking (the renderer collected it before OTP but the
+    //    linking flow doesn't carry it across), so leave it blank — the
+    //    renderer's existing `getDevices()` round-trip on mount
+    //    populates it from the server response.
+    let user_id = extract_jwt_sub(&access_token).unwrap_or_default();
+    set_account_info(
+        state,
+        &AccountInfo {
+            user_id,
+            email: String::new(),
+            auth_provider: "otp".to_string(),
+        },
+    )?;
+
+    // 7. Upsert the current device row.
+    device::upsert_current_device(
+        state,
+        CurrentDeviceRecord {
+            id: device_id.clone(),
+            name: metadata.device_name,
+            platform: metadata.platform,
+            os_version: metadata.os_version,
+            app_version: metadata.app_version,
+            linked_at: now_secs(),
+            signing_public_key: signing_public_key_b64,
+        },
+    )?;
+
+    Ok(FinalizeLinkingResult { device_id })
 }
 
 // ---------------------------------------------------------------------
