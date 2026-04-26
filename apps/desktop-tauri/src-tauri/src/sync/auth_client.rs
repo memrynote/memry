@@ -267,23 +267,27 @@ where
     http::post_json_with_base(base_url, "/auth/linking/initiate", body, Some(access_token)).await
 }
 
-pub async fn scan_linking<TReq, TResp>(body: &TReq) -> AppResult<TResp>
-where
-    TReq: Serialize + ?Sized,
-    TResp: DeserializeOwned,
-{
-    http::post_json("/auth/linking/scan", body, None).await
-}
-
-pub async fn scan_linking_with_base<TReq, TResp>(
-    base_url: &str,
+pub async fn scan_linking<TReq, TResp>(
     body: &TReq,
+    access_token: Option<&str>,
 ) -> AppResult<TResp>
 where
     TReq: Serialize + ?Sized,
     TResp: DeserializeOwned,
 {
-    http::post_json_with_base(base_url, "/auth/linking/scan", body, None).await
+    http::post_json("/auth/linking/scan", body, access_token).await
+}
+
+pub async fn scan_linking_with_base<TReq, TResp>(
+    base_url: &str,
+    body: &TReq,
+    access_token: Option<&str>,
+) -> AppResult<TResp>
+where
+    TReq: Serialize + ?Sized,
+    TResp: DeserializeOwned,
+{
+    http::post_json_with_base(base_url, "/auth/linking/scan", body, access_token).await
 }
 
 pub async fn get_linking_session<TResp>(
