@@ -1,5 +1,9 @@
 import type { MockRouteMap } from './types'
 import { notesRoutes } from './notes'
+import { attachmentsRoutes } from './stubs/attachments'
+import { exportRoutes } from './stubs/export'
+import { importRoutes } from './stubs/import'
+import { versionsRoutes } from './stubs/versions'
 import { tasksRoutes } from './tasks'
 import { foldersRoutes } from './folders'
 import { calendarRoutes } from './calendar'
@@ -33,6 +37,10 @@ import { aiInlineRoutes } from './ai-inline'
  */
 const routes: MockRouteMap = {
   ...notesRoutes,
+  ...attachmentsRoutes,
+  ...exportRoutes,
+  ...importRoutes,
+  ...versionsRoutes,
   ...tasksRoutes,
   ...foldersRoutes,
   ...calendarRoutes,

@@ -35,7 +35,7 @@
  *   - No literal renderer invoke can be unclassified.
  */
 import { readFileSync, readdirSync, statSync, globSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { basename, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -81,8 +81,6 @@ const DEFERRED: Record<string, string> = {
   graph_get_data: 'M3',
   graph_get_local: 'M3',
   notes_create_folder: 'M3',
-  notes_open_external: 'M3',
-  notes_reveal_in_finder: 'M3',
   reminders_bulk_dismiss: 'M3',
   reminders_count_pending: 'M3',
   reminders_dismiss: 'M3',
@@ -135,12 +133,27 @@ const DEFERRED: Record<string, string> = {
   sync_crdt_sync_step1: 'M5',
   sync_crdt_sync_step2: 'M5',
 
+  // M6 — attachment sync/blob handling.
+  notes_upload_attachment: 'M6',
+  notes_list_attachments: 'M6',
+  notes_delete_attachment: 'M6',
+
   // M6 — sync ops orchestration.
   sync_ops_get_history: 'M6',
   sync_ops_get_storage_breakdown: 'M6',
   sync_ops_pause: 'M6',
   sync_ops_resume: 'M6',
   sync_ops_trigger_sync: 'M6',
+
+  // M8 — export, versions, and bulk import.
+  notes_export_pdf: 'M8',
+  notes_export_html: 'M8',
+  notes_get_versions: 'M8',
+  notes_get_version: 'M8',
+  notes_restore_version: 'M8',
+  notes_delete_version: 'M8',
+  notes_import_files: 'M8',
+  notes_show_import_dialog: 'M8',
 
   // M8.0 — lifecycle / native quick-capture window.
   quick_capture_close: 'M8.0',
@@ -355,9 +368,12 @@ function gatherRendererSurfaces(): {
 
 function gatherMockCommands(): Set<string> {
   const out = new Set<string>()
-  const files = readdirSync(MOCKS_DIR)
-    .filter((f) => f.endsWith('.ts') && !/\.test\.ts$/.test(f) && f !== 'types.ts' && f !== 'index.ts')
-    .map((f) => resolve(MOCKS_DIR, f))
+  const files = listFilesRec(MOCKS_DIR, ['.ts'])
+    .filter(isProductionFile)
+    .filter((f) => {
+      const name = basename(f)
+      return name !== 'types.ts' && name !== 'index.ts'
+    })
   for (const f of files) {
     const src = readUtf8(f)
     for (const k of extractMockRouteKeys(src)) out.add(k)
@@ -403,6 +419,10 @@ function classify(input: {
   // but not failing.
   for (const cmd of input.mocked) {
     if (out.has(cmd)) continue
+    if (DEFERRED[cmd]) {
+      out.set(cmd, { kind: 'deferred', milestone: DEFERRED[cmd] })
+      continue
+    }
     out.set(cmd, { kind: 'mocked' })
   }
   // Deferred entries that may not be called by renderer yet (e.g. logging_forward).
