@@ -128,18 +128,6 @@ const DEFERRED: Record<string, string> = {
   settings_set_voice_transcription_open_ai_key: 'M3',
   settings_set_voice_transcription_settings: 'M3',
 
-  // M4 — auth + crypto + linking lifecycle.
-  account_get_recovery_key: 'M4',
-  crypto_rotate_keys: 'M4',
-  sync_auth_logout: 'M4',
-  sync_linking_approve_linking: 'M4',
-  sync_linking_complete_linking_qr: 'M4',
-  sync_linking_generate_linking_qr: 'M4',
-  sync_linking_get_linking_sas: 'M4',
-  sync_linking_link_via_qr: 'M4',
-  sync_linking_link_via_recovery: 'M4',
-  sync_setup_get_recovery_phrase: 'M4',
-
   // M5 — CRDT engine.
   sync_crdt_apply_update: 'M5',
   sync_crdt_close_doc: 'M5',
@@ -165,8 +153,50 @@ const DEFERRED: Record<string, string> = {
 /** Forbid these legacy renderer/mock names — Phase G rename enforcement. */
 const FORBIDDEN_NAMES = new Set<string>(['updater_check', 'updater_download', 'updater_install'])
 
+/**
+ * M4 retired/replacement ledger. These Electron crypto channel names existed
+ * in the legacy preload surface but have NO live Tauri renderer call site —
+ * the M4 plan splits each into a more specific replacement command. Listing
+ * them here makes the audit fail loudly if a future change reintroduces the
+ * old name as a renderer literal invoke.
+ */
+const RETIRED: Record<string, string> = {
+  crypto_encrypt: 'crypto_encrypt_item',
+  crypto_decrypt: 'crypto_decrypt_item',
+  crypto_sign: 'internal Rust signing (no renderer-facing replacement); use crypto_verify_signature for verification',
+  crypto_verify: 'crypto_verify_signature',
+}
+
 /** M2 hard requirements: these MUST resolve to `real`. */
-const REQUIRED_REAL = new Set<string>(['settings_get', 'settings_set', 'settings_list'])
+const REQUIRED_REAL = new Set<string>([
+  // M2 — settings KV slice
+  'settings_get',
+  'settings_set',
+  'settings_list',
+
+  // M4 — every renderer-facing auth/crypto/linking command must be backed by Rust.
+  'sync_auth_request_otp',
+  'sync_auth_verify_otp',
+  'sync_auth_resend_otp',
+  'sync_auth_init_o_auth',
+  'sync_auth_refresh_token',
+  'sync_auth_logout',
+  'sync_setup_setup_first_device',
+  'sync_setup_setup_new_account',
+  'sync_setup_confirm_recovery_phrase',
+  'sync_setup_get_recovery_phrase',
+  'sync_devices_get_devices',
+  'sync_devices_remove_device',
+  'sync_devices_rename_device',
+  'sync_linking_generate_linking_qr',
+  'sync_linking_link_via_qr',
+  'sync_linking_complete_linking_qr',
+  'sync_linking_link_via_recovery',
+  'sync_linking_get_linking_sas',
+  'sync_linking_approve_linking',
+  'account_get_recovery_key',
+  'crypto_rotate_keys',
+])
 
 /** M2 shell-neutral wrappers: real or deferred-with-classification. */
 const SHELL_NEUTRAL_REAL_OR_DEFERRED = new Set<string>(['notify_flush_done'])
@@ -380,6 +410,12 @@ function classify(input: {
     if (out.has(cmd)) continue
     out.set(cmd, { kind: 'deferred', milestone: DEFERRED[cmd] })
   }
+  // Retired entries surface as `retired` in the summary even when there is
+  // no live renderer call (the expected steady state).
+  for (const cmd of Object.keys(RETIRED)) {
+    if (out.has(cmd)) continue
+    out.set(cmd, { kind: 'retired' })
+  }
   return out
 }
 
@@ -434,6 +470,19 @@ export function runAudit(): AuditResult {
     }
     if (invokes.has(cmd)) {
       errors.push(`forbidden legacy command "${cmd}" still invoked from renderer`)
+    }
+  }
+
+  for (const [cmd, replacement] of Object.entries(RETIRED)) {
+    if (invokes.has(cmd)) {
+      errors.push(
+        `retired command "${cmd}" reappeared as a renderer literal invoke — use "${replacement}" instead`,
+      )
+    }
+    if (mocked.has(cmd)) {
+      errors.push(
+        `retired command "${cmd}" still registered as a mock route — use "${replacement}" instead`,
+      )
     }
   }
 
