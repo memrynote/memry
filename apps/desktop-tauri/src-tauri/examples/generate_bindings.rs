@@ -148,7 +148,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .typ::<db::inbox::InboxItem>()
         .typ::<db::note_metadata::NoteMetadata>()
         .typ::<db::note_positions::NotePosition>()
-        .typ::<db::notes_cache::PropertyDefinition>()
+        .typ::<db::property_definitions::PropertyDefinition>()
         .typ::<db::projects::Project>()
         .typ::<db::reminders::Reminder>()
         .typ::<db::saved_filters::SavedFilter>()
