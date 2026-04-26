@@ -1,11 +1,11 @@
 //! CRDT IPC commands for renderer-backed Yjs providers.
 
 use crate::app_state::AppState;
-use crate::crdt::{
-    apply_update_v1, encode_snapshot_v1, encode_state_vector_v1, origin_tag, CrdtRuntime,
-    DocHandle,
-};
 use crate::crdt::wire::{CrdtUpdateEvent, CRDT_UPDATE_EVENT};
+use crate::crdt::{
+    apply_update_v1, encode_diff_since_v1, encode_snapshot_v1, encode_state_vector_v1, origin_tag,
+    CrdtRuntime, DocHandle,
+};
 use crate::error::{AppError, AppResult};
 use crate::vault::{VaultRuntime, frontmatter, paths as vault_paths};
 use std::sync::Arc;
@@ -63,6 +63,13 @@ pub struct CrdtChunkFinishInput {
     pub note_id: String,
     pub transfer_id: String,
     pub origin: Option<u32>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncStep1Result {
+    pub diff: Vec<u8>,
+    pub state_vector: Vec<u8>,
 }
 
 pub async fn crdt_apply_update_inner(
@@ -136,6 +143,33 @@ pub async fn crdt_get_state_vector_bytes(
         .await
         .ok_or_else(|| AppError::NotFound(format!("crdt doc {note_id}")))?;
     encode_state_vector_v1(&handle)
+}
+
+pub async fn crdt_sync_step_1_inner(
+    crdt: Arc<CrdtRuntime>,
+    note_id: &str,
+    state_vector: &[u8],
+) -> AppResult<SyncStep1Result> {
+    let handle = crdt
+        .docs()
+        .get(note_id)
+        .await
+        .ok_or_else(|| AppError::NotFound(format!("crdt doc {note_id}")))?;
+    let diff = encode_diff_since_v1(&handle, state_vector)?;
+    let sv = encode_state_vector_v1(&handle)?;
+    Ok(SyncStep1Result {
+        diff,
+        state_vector: sv,
+    })
+}
+
+pub async fn crdt_sync_step_2_inner(
+    conn: &rusqlite::Connection,
+    crdt: Arc<CrdtRuntime>,
+    note_id: &str,
+    diff: &[u8],
+) -> AppResult<i64> {
+    crdt_apply_update_inner(conn, crdt, note_id, diff, origin_tag()).await
 }
 
 #[tauri::command]
@@ -277,6 +311,41 @@ pub async fn crdt_get_state_vector(
 ) -> AppResult<Response> {
     let bytes = crdt_get_state_vector_bytes(state.crdt.clone(), &note_id).await?;
     Ok(Response::new(bytes))
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn crdt_sync_step_1(
+    state: State<'_, AppState>,
+    note_id: String,
+    state_vector: Vec<u8>,
+) -> AppResult<SyncStep1Result> {
+    crdt_sync_step_1_inner(state.crdt.clone(), &note_id, &state_vector).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn crdt_sync_step_2(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    note_id: String,
+    diff: Vec<u8>,
+) -> AppResult<()> {
+    let incoming_origin = origin_tag();
+    let handle =
+        apply_update_to_runtime(state.crdt.clone(), &note_id, &diff, incoming_origin, true).await?;
+    {
+        let conn = state.db.conn()?;
+        persist_applied_update(&conn, &handle, &note_id, &diff, incoming_origin)?;
+    }
+
+    let payload = CrdtUpdateEvent {
+        note_id,
+        update: diff,
+        origin: incoming_origin,
+    };
+    let _ = app.emit(CRDT_UPDATE_EVENT, payload);
+    Ok(())
 }
 
 struct OpenDocState {

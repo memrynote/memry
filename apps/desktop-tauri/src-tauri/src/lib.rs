@@ -131,6 +131,8 @@ pub fn run() {
             commands::crdt::crdt_apply_update_chunk_finish,
             commands::crdt::crdt_get_snapshot,
             commands::crdt::crdt_get_state_vector,
+            commands::crdt::crdt_sync_step_1,
+            commands::crdt::crdt_sync_step_2,
             commands::shell::shell_open_url,
             commands::shell::shell_open_path,
             commands::shell::shell_reveal_in_finder,
