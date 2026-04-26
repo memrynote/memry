@@ -25,6 +25,12 @@ pub enum AppError {
     PathEscape(String),
     #[error("io error: {0}")]
     Io(String),
+    #[error("keychain error: {0}")]
+    Keychain(String),
+    #[error("auth error: {0}")]
+    Auth(String),
+    #[error("rate limited: retry after {0:?} seconds")]
+    RateLimited(Option<u64>),
     #[error("internal error: {0}")]
     Internal(String),
 }
@@ -62,6 +68,12 @@ impl From<notify::Error> for AppError {
 impl<T> From<std::sync::PoisonError<T>> for AppError {
     fn from(err: std::sync::PoisonError<T>) -> Self {
         AppError::Internal(err.to_string())
+    }
+}
+
+impl From<reqwest::Error> for AppError {
+    fn from(err: reqwest::Error) -> Self {
+        AppError::Network(err.to_string())
     }
 }
 

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { Loader2, X, CheckCircle, AlertCircle } from '@/lib/icons'
 import { invoke } from '@/lib/ipc/invoke'
+import { localAppVersion, localDeviceName, localDevicePlatform } from '@/lib/device-metadata'
 
 const POLL_INTERVAL_MS = 3000
 
@@ -36,7 +37,21 @@ export function LinkingPending({
     try {
       const result = await invoke<{ success: boolean; deviceId?: string; error?: string }>(
         'sync_linking_complete_linking_qr',
-        { sessionId }
+        {
+          input: {
+            sessionId,
+            // The Rust command finishes device registration via
+            // `/auth/devices` once the master key has been recovered.
+            // The renderer is the only place that can collect device
+            // metadata synchronously, so pass it through with every
+            // poll. The server only stores these for the device list,
+            // so re-sending them on a retry is harmless.
+            deviceName: localDeviceName(),
+            platform: localDevicePlatform(),
+            osVersion: null,
+            appVersion: localAppVersion()
+          }
+        }
       )
 
       if (cancelledRef.current) return
@@ -48,7 +63,15 @@ export function LinkingPending({
         return
       }
 
-      if (result.error && result.error !== 'Session not yet approved') {
+      // The Rust command preserves the lowercase sentinel "session not
+      // yet approved" verbatim (other AppErrors are redacted). Keep the
+      // legacy capitalized form as a fallback so a server tweak doesn't
+      // bring the loop down silently.
+      if (
+        result.error &&
+        result.error !== 'session not yet approved' &&
+        result.error !== 'Session not yet approved'
+      ) {
         if (result.error.includes('Too many requests')) return
         setStatus('error')
         setError(result.error)

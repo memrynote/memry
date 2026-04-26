@@ -13,6 +13,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { deviceService, setupService } from '@/services/device-service'
 import { invoke } from '@/lib/ipc/invoke'
 import { subscribeEvent } from '@/lib/ipc/forwarder'
+import { localAppVersion, localDeviceName, localDevicePlatform } from '@/lib/device-metadata'
 
 type AuthStatus =
   | 'idle'
@@ -26,6 +27,7 @@ export type WizardStep =
   | 'idle'
   | 'sign-in'
   | 'otp-verification'
+  | 'password-setup'
   | 'recovery-display'
   | 'recovery-confirm'
   | 'recovery-input'
@@ -195,10 +197,12 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 
 export interface SetupFirstDeviceResult {
   success: boolean
-  deviceId?: string
-  needsRecoverySetup?: boolean
+  deviceId?: string | null
+  email?: string | null
+  recoveryPhrase?: string[] | null
+  needsRecoverySetup?: boolean | null
   needsRecoveryInput?: boolean
-  error?: string
+  error?: string | null
 }
 
 interface AuthContextValue {
@@ -212,6 +216,10 @@ interface AuthContextValue {
     oauthToken: string
     state: string
   }) => Promise<SetupFirstDeviceResult | null>
+  setupNewAccount: (
+    password: string,
+    rememberDevice: boolean
+  ) => Promise<{ deviceId: string; recoveryPhrase: string[] }>
   confirmRecoveryPhrase: () => Promise<void>
   linkViaRecovery: (phrase: string) => Promise<{ deviceId?: string }>
   linkingCompleted: (deviceId?: string) => void
@@ -350,7 +358,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
         throw new Error(extractErrorMessage(result.error, 'Failed to send verification code'))
       }
       dispatch({ type: 'OTP_REQUESTED', email })
-      return { expiresIn: result.expiresIn }
+      return { expiresIn: result.expiresIn ?? undefined }
     } catch (err) {
       const message = extractErrorMessage(err, 'Failed to send verification code')
       dispatch({ type: 'SET_ERROR', error: message })
@@ -368,20 +376,18 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
         }
 
         if (result.needsSetup) {
-          const setupResult = await authService.setupNewAccount()
-          if (!setupResult.success) {
-            throw new Error(extractErrorMessage(setupResult.error, 'Account setup failed'))
-          }
+          // New-account flow: the Rust `sync_setup_setup_new_account`
+          // command requires a `SetupNewAccountInput` (email, password,
+          // rememberDevice, device metadata). We can't synthesise the
+          // password here, so transition the wizard to a dedicated
+          // step and let the password-setup screen call
+          // `setupNewAccount(input)` once it has the user's choice.
           const otpResult: VerifyOtpResult = {
-            deviceId: setupResult.deviceId ?? '',
+            deviceId: '',
             needsRecoverySetup: true,
             needsRecoveryInput: false
           }
-          dispatch({
-            type: 'OTP_VERIFIED',
-            deviceId: otpResult.deviceId,
-            needsRecoverySetup: true
-          })
+          dispatch({ type: 'WIZARD_SET_STEP', step: 'password-setup' })
           return otpResult
         }
 
@@ -405,6 +411,39 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     [state.email]
   )
 
+  const setupNewAccount = useCallback(
+    async (
+      password: string,
+      rememberDevice: boolean
+    ): Promise<{ deviceId: string; recoveryPhrase: string[] }> => {
+      if (!state.email) throw new Error('No email set')
+      try {
+        const result = await authService.setupNewAccount({
+          email: state.email,
+          password,
+          rememberDevice,
+          deviceName: localDeviceName(),
+          platform: localDevicePlatform(),
+          osVersion: null,
+          appVersion: localAppVersion()
+        })
+        if (!result.success) {
+          throw new Error(extractErrorMessage(result.error, 'Account setup failed'))
+        }
+        const deviceId = result.deviceId ?? ''
+        const recoveryPhrase = result.recoveryPhrase ?? []
+        dispatch({ type: 'OTP_VERIFIED', deviceId, needsRecoverySetup: true })
+        dispatch({ type: 'WIZARD_SET_STEP', step: 'recovery-display' })
+        return { deviceId, recoveryPhrase }
+      } catch (err) {
+        const message = extractErrorMessage(err, 'Account setup failed')
+        dispatch({ type: 'SET_ERROR', error: message })
+        throw new Error(message)
+      }
+    },
+    [state.email]
+  )
+
   const resendOtp = useCallback(async (): Promise<{ expiresIn?: number }> => {
     if (!state.email) throw new Error('No email set')
     try {
@@ -412,7 +451,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       if (!result.success) {
         throw new Error(extractErrorMessage(result.error, 'Failed to resend code'))
       }
-      return { expiresIn: result.expiresIn }
+      return { expiresIn: result.expiresIn ?? undefined }
     } catch (err) {
       const message = extractErrorMessage(err, 'Failed to resend code')
       dispatch({ type: 'SET_ERROR', error: message })
@@ -481,7 +520,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     try {
       const result = await invoke<{ success: boolean; deviceId?: string; error?: string }>(
         'sync_linking_link_via_recovery',
-        { recoveryPhrase: phrase }
+        { input: { recoveryPhrase: phrase } }
       )
       if (!result.success) {
         throw new Error(extractErrorMessage(result.error, 'Recovery failed'))
@@ -537,6 +576,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       resendOtp,
       initOAuth,
       setupFirstDevice,
+      setupNewAccount,
       confirmRecoveryPhrase,
       linkViaRecovery,
       linkingCompleted,
@@ -555,6 +595,7 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       resendOtp,
       initOAuth,
       setupFirstDevice,
+      setupNewAccount,
       confirmRecoveryPhrase,
       linkViaRecovery,
       linkingCompleted,

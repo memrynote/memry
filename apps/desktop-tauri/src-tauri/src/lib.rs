@@ -1,7 +1,11 @@
 pub mod app_state;
+pub mod auth;
 pub mod commands;
+pub mod crypto;
 pub mod db;
 pub mod error;
+pub mod keychain;
+pub mod sync;
 pub mod vault;
 
 use app_state::AppState;
@@ -26,7 +30,23 @@ fn init_app_state() -> AppResult<AppState> {
     let db_path = resolve_db_path()?;
     let db = Db::open(db_path)?;
     let vault = std::sync::Arc::new(crate::vault::VaultRuntime::boot()?);
-    Ok(AppState::new(db, vault))
+    let keychain: std::sync::Arc<dyn crate::keychain::KeychainStore> =
+        std::sync::Arc::new(crate::keychain::MacosKeychain::new());
+    let auth = std::sync::Arc::new(crate::auth::AuthRuntime::new(keychain));
+    let linking = std::sync::Arc::new(crate::auth::linking::PendingLinkingRegistry::new());
+    let state = AppState::new(db, vault, auth, linking);
+
+    // Restore the vault key from the keychain when the user previously
+    // opted in to "remember this device". A failure here is logged and
+    // swallowed so a corrupt keychain entry cannot block boot — the user
+    // will simply see the password prompt instead.
+    match crate::auth::vault_keys::try_unlock_from_keychain(&state) {
+        Ok(Some(_)) => tracing::info!("auth runtime unlocked from keychain at boot"),
+        Ok(None) => {}
+        Err(err) => tracing::warn!(error = %err, "remember-device unlock failed at boot"),
+    }
+
+    Ok(state)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -64,6 +84,50 @@ pub fn run() {
             commands::shell::shell_reveal_in_finder,
             commands::dialog::dialog_choose_folder,
             commands::dialog::dialog_choose_files,
+            commands::lifecycle::notify_flush_done,
+            // M4: auth + sync_auth + sync_setup
+            commands::auth::auth_status,
+            commands::auth::auth_unlock,
+            commands::auth::auth_lock,
+            commands::auth::auth_register_device,
+            commands::auth::auth_request_otp,
+            commands::auth::auth_submit_otp,
+            commands::auth::auth_enable_biometric,
+            commands::auth::sync_auth_request_otp,
+            commands::auth::sync_auth_verify_otp,
+            commands::auth::sync_auth_resend_otp,
+            commands::auth::sync_auth_init_o_auth,
+            commands::auth::sync_auth_refresh_token,
+            commands::auth::sync_auth_logout,
+            commands::auth::sync_setup_setup_first_device,
+            commands::auth::sync_setup_setup_new_account,
+            commands::auth::sync_setup_confirm_recovery_phrase,
+            commands::auth::sync_setup_get_recovery_phrase,
+            // M4: account
+            commands::account::account_get_info,
+            commands::account::account_sign_out,
+            commands::account::account_get_recovery_key,
+            // M4: devices
+            commands::devices::sync_devices_get_devices,
+            commands::devices::sync_devices_remove_device,
+            commands::devices::sync_devices_rename_device,
+            // M4: linking
+            commands::linking::sync_linking_generate_linking_qr,
+            commands::linking::sync_linking_link_via_qr,
+            commands::linking::sync_linking_complete_linking_qr,
+            commands::linking::sync_linking_link_via_recovery,
+            commands::linking::sync_linking_approve_linking,
+            commands::linking::sync_linking_get_linking_sas,
+            // M4: crypto
+            commands::crypto::crypto_encrypt_item,
+            commands::crypto::crypto_decrypt_item,
+            commands::crypto::crypto_verify_signature,
+            commands::crypto::crypto_rotate_keys,
+            commands::crypto::crypto_get_rotation_progress,
+            // M4: secrets
+            commands::secrets::secrets_set_provider_key,
+            commands::secrets::secrets_get_provider_key_status,
+            commands::secrets::secrets_delete_provider_key,
         ])
         .setup(|app| {
             tracing_subscriber::fmt()

@@ -15,7 +15,7 @@
 //!   5. Sort, report p50/p95, assert p50 < 20_000µs.
 //!
 //! Run:
-//!   cargo run --release --bin bench_m2 --features test-helpers
+//!   cargo run --release --example bench_m2 --features test-helpers
 
 use memry_desktop_tauri_lib::db::Db;
 use std::time::Instant;
@@ -44,13 +44,7 @@ fn main() {
             tx.execute(
                 "INSERT INTO tasks (id, project_id, title, priority, position)
                  VALUES (?1, ?2, ?3, ?4, ?5)",
-                rusqlite::params![
-                    format!("t{i}"),
-                    "bench-p",
-                    format!("Task {i}"),
-                    0,
-                    i as i64
-                ],
+                rusqlite::params![format!("t{i}"), "bench-p", format!("Task {i}"), 0, i as i64],
             )
             .expect("seed task");
         }

@@ -42,9 +42,23 @@ sha2 = "0.10"
 dunce = "1.0"
 nanoid = "0.4"
 urlencoding = "2.1"
+hmac = "0.12"
+blake2 = "0.10"
 
 # Native dialog + shell plugins (M3)
 tauri-plugin-dialog = "2"
+
+# Crypto + auth + keychain (M4)
+base64 = "0.22"
+hex = "0.4"
+zeroize = { version = "1.8", features = ["derive"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+security-framework = "3"
+# Task 1 spike (M4 Phase A) confirmed dryoc 0.7.2 ships only the secretstream
+# XChaCha20-Poly1305 variant; the one-shot AEAD API is missing. Use the
+# RustCrypto crate for encrypt_blob/decrypt_blob and keep dryoc for Argon2id,
+# crypto_kdf, Ed25519, and BLAKE2b.
+chacha20poly1305 = { version = "0.10", features = ["std"] }
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
@@ -52,14 +66,15 @@ test-helpers = []
 
 [dev-dependencies]
 tempfile = "3"
+httpmock = "0.7"
 
-[[bin]]
+[[example]]
 name = "generate_bindings"
-path = "src/bin/generate_bindings.rs"
+path = "examples/generate_bindings.rs"
 
-[[bin]]
+[[example]]
 name = "bench_m2"
-path = "src/bin/bench_m2.rs"
+path = "examples/bench_m2.rs"
 required-features = ["test-helpers"]
 
 [[test]]
@@ -96,4 +111,48 @@ required-features = ["test-helpers"]
 
 [[test]]
 name = "vault_watcher_test"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "crypto_primitives_test"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "crypto_kdf_test"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "crypto_sign_verify_test"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "keychain_memory_test"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "auth_state_test"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "auth_vault_keys_test"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "auth_secrets_test"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "auth_redaction_test"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "sync_auth_client_test"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "auth_device_test"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "commands_auth_test"
 required-features = ["test-helpers"]

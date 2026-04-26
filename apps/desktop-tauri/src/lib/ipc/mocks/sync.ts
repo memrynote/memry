@@ -24,6 +24,8 @@ function currentState(): SyncState {
   return status.state
 }
 
+const mockRecoveryPhrase = Array(12).fill('mock')
+
 export const syncRoutes: MockRouteMap = {
   sync_status: async () => ({ ...status, state: currentState() }),
   sync_trigger: async () => {
@@ -66,28 +68,34 @@ export const syncRoutes: MockRouteMap = {
     return { ok: true }
   },
 
-  // Device management (sync_devices_*) — consumed by settings sync tab
+  // Device management (sync_devices_*) — consumed by settings sync tab.
   sync_devices_get_devices: async () => ({
+    // `createdAt` is a unix-epoch seconds number to mirror the D1
+    // `devices.created_at INTEGER` column the server returns.
     devices: [
       {
         id: 'device-this',
         name: 'This Mac',
         platform: 'macos',
+        osVersion: '15.0',
+        appVersion: '2.0.0-alpha.1',
         isCurrentDevice: true,
         linkedAt: mockTimestamp(30),
         lastActiveAt: new Date().toISOString(),
         lastSyncAt: Date.now(),
-        createdAt: new Date(mockTimestamp(30)).toISOString()
+        createdAt: Math.floor(mockTimestamp(30) / 1000)
       },
       {
         id: 'device-phone',
         name: 'iPhone',
         platform: 'ios',
+        osVersion: '18.0',
+        appVersion: '2.0.0-alpha.1',
         isCurrentDevice: false,
         linkedAt: mockTimestamp(14),
         lastActiveAt: new Date(mockTimestamp(1)).toISOString(),
         lastSyncAt: mockTimestamp(1),
-        createdAt: new Date(mockTimestamp(14)).toISOString()
+        createdAt: Math.floor(mockTimestamp(14) / 1000)
       }
     ],
     email: 'mock@memry.local'
@@ -95,32 +103,110 @@ export const syncRoutes: MockRouteMap = {
   sync_devices_remove_device: async () => ({ success: true }),
   sync_devices_rename_device: async () => ({ success: true }),
 
-  // Sync setup (sync_setup_*) — consumed by onboarding flow
+  // Sync setup (sync_setup_*) — consumed by onboarding flow.
   sync_setup_setup_first_device: async () => ({
+    success: false,
+    error:
+      'OAuth-based first-device setup is deferred to post-M4; use the OTP flow',
+    deviceId: null,
+    email: null,
+    recoveryPhrase: null,
+    needsRecoverySetup: null
+  }),
+  sync_setup_setup_new_account: async (_args?: unknown) => ({
     success: true,
+    error: null,
     deviceId: 'device-this',
     email: 'mock@memry.local',
-    recoveryPhrase: Array(12).fill('mock'),
-    needsRecoverySetup: false
+    recoveryPhrase: mockRecoveryPhrase,
+    needsRecoverySetup: true
   }),
-  sync_setup_setup_new_account: async () => ({
-    success: true,
-    recoveryPhrase: Array(12).fill('mock')
-  }),
-  sync_setup_confirm_recovery_phrase: async () => ({ success: true }),
+  sync_setup_confirm_recovery_phrase: async () => ({ success: true, error: null }),
+  sync_setup_get_recovery_phrase: async () => ({ phrase: mockRecoveryPhrase.join(' ') }),
 
-  // Sync auth (sync_auth_*) — OTP login + OAuth + token refresh
+  // Sync auth (sync_auth_*) — OTP login + OAuth + token + logout.
   sync_auth_request_otp: async () => ({ success: true, expiresIn: 300 }),
-  sync_auth_verify_otp: async () => ({
-    success: true,
-    deviceId: 'device-this',
-    email: 'mock@memry.local'
-  }),
+  sync_auth_verify_otp: async () => ({ success: true, needsSetup: false }),
   sync_auth_resend_otp: async () => ({ success: true, expiresIn: 300 }),
-  sync_auth_init_o_auth: async () => ({ state: 'mock-oauth-state' }),
-  sync_auth_refresh_token: async () => ({ success: true }),
+  sync_auth_init_o_auth: async () => ({
+    state: 'mock-oauth-state',
+    authorizeUrl: 'https://accounts.google.com/o/oauth2/auth?state=mock-oauth-state'
+  }),
+  sync_auth_refresh_token: async () => ({ success: true, error: null }),
+  sync_auth_logout: async () => ({ success: true, error: null }),
 
-  // Sync ops status — consumed by SyncContext on mount
+  // Linking (sync_linking_*) — QR + recovery flows.
+  // Shapes mirror the rust LinkingQrView / LinkingScanView / LinkingSasView /
+  // LinkingMutationResult / LinkingCompleteView contracts (see
+  // src-tauri/src/commands/linking.rs).
+  sync_linking_generate_linking_qr: async () => ({
+    sessionId: 'mock-linking-session',
+    qrPayload: JSON.stringify({
+      sessionId: 'mock-linking-session',
+      linkingSecret: 'mock-linking-secret',
+      ephemeralPublicKey: 'mock-ephemeral-pubkey'
+    }),
+    // Server returns unix-epoch seconds.
+    expiresAt: Math.floor(Date.now() / 1000) + 300
+  }),
+  sync_linking_link_via_qr: async () => ({
+    sessionId: 'mock-linking-session',
+    sasCode: '123456'
+  }),
+  sync_linking_complete_linking_qr: async () => ({
+    success: true,
+    error: null,
+    deviceId: 'device-this'
+  }),
+  sync_linking_link_via_recovery: async () => ({
+    success: true,
+    error: null,
+    deviceId: 'device-this'
+  }),
+  sync_linking_approve_linking: async () => ({ success: true, error: null }),
+  sync_linking_get_linking_sas: async () => ({ sasCode: '123456' }),
+
+  // Account (account_*) — local profile + recovery key reveal.
+  account_get_info: async () => ({
+    email: 'mock@memry.local',
+    deviceId: 'device-this',
+    rememberDevice: true
+  }),
+  account_sign_out: async () => ({ success: true, error: null }),
+  account_get_recovery_key: async () => mockRecoveryPhrase.join(' '),
+
+  // Crypto (crypto_*) — payload + key rotation.
+  crypto_rotate_keys: async () => ({ success: true, rotationId: 'mock-rotation' }),
+  crypto_get_rotation_progress: async () => ({
+    inProgress: false,
+    completedItems: 0,
+    totalItems: 0
+  }),
+
+  // Secrets (secrets_*) — provider key status only.
+  secrets_set_provider_key: async (args) => {
+    const { provider } = (args as { provider?: string }) ?? {}
+    return {
+      provider: provider ?? 'openai',
+      configured: true,
+      label: 'Mock key',
+      last4: 'mock',
+      updatedAt: new Date().toISOString()
+    }
+  },
+  secrets_get_provider_key_status: async (args) => {
+    const { provider } = (args as { provider?: string }) ?? {}
+    return {
+      provider: provider ?? 'openai',
+      configured: false,
+      label: null,
+      last4: null,
+      updatedAt: null
+    }
+  },
+  secrets_delete_provider_key: async () => null,
+
+  // Sync ops status — consumed by SyncContext on mount.
   sync_ops_get_status: async () => ({
     status: 'idle' as const,
     lastSyncAt: undefined,

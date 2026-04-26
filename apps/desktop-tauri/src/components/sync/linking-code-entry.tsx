@@ -5,6 +5,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { ArrowLeft, Loader2, CheckCircle, AlertCircle } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { invoke } from '@/lib/ipc/invoke'
+import { localDeviceName, localDevicePlatform } from '@/lib/device-metadata'
 
 interface LinkingCodeEntryProps {
   onLinked: (sessionId: string, verificationCode?: string) => void
@@ -52,18 +53,18 @@ export function LinkingCodeEntry({
       setIsLoading(true)
       setError(null)
 
-      invoke<{ success: boolean; verificationCode?: string; error?: string }>(
-        'sync_linking_link_via_qr',
-        { qrData: code.trim() }
-      )
+      invoke<{ sessionId: string; sasCode: string }>('sync_linking_link_via_qr', {
+        input: {
+          qrJson: code.trim(),
+          deviceName: localDeviceName(),
+          devicePlatform: localDevicePlatform()
+        }
+      })
         .then((result) => {
-          if (!result.success) {
-            const msg = result.error ?? 'Linking failed'
-            setError(msg)
-            onError(msg)
-            return
-          }
-          onLinked(parsed.sessionId, result.verificationCode)
+          // Rust returns `LinkingScanView` only on success — Err is
+          // surfaced via the .catch path below — so receiving a value
+          // here implies the scan was accepted.
+          onLinked(result.sessionId, result.sasCode)
         })
         .catch((err: unknown) => {
           const msg = extractErrorMessage(err, 'Failed to link device')

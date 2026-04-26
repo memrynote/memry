@@ -40,7 +40,7 @@ The following areas are in scope:
 - Sync protocol and server communication
 - Authentication and session handling
 - Local data storage and IPC boundaries
-- Electron security (CSP, preload, context isolation)
+- Desktop shell security for Electron and Tauri (CSP, preload/webview boundaries, command capabilities)
 
 ## Out of Scope
 
