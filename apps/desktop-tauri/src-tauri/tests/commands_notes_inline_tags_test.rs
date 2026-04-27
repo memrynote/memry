@@ -4,7 +4,7 @@
 //! what the user actually wrote.
 
 use memry_desktop_tauri_lib::commands::notes::{
-    NoteCreateInput, NoteUpdateInput, notes_create_inner, notes_update_inner,
+    notes_create_inner, notes_update_inner, NoteCreateInput, NoteUpdateInput,
 };
 use memry_desktop_tauri_lib::db::notes_cache;
 use memry_desktop_tauri_lib::test_helpers::{open_in_memory_with_migrations, test_vault_runtime};
