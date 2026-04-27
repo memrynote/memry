@@ -47,11 +47,17 @@ export interface RuntimeDriverSession {
 }
 
 export function assertRuntimeDriverSupported(): void {
-  if (process.platform === 'darwin') {
-    throw new Error(
-      'Tauri WebDriver runtime e2e is not supported on macOS: tauri-driver requires a desktop WebDriver backend, and Tauri documents desktop support for Linux/Windows only.'
-    )
+  const unsupported = runtimeDriverUnsupportedMessage()
+  if (unsupported) {
+    throw new Error(unsupported)
   }
+}
+
+export function runtimeDriverUnsupportedMessage(): string | null {
+  if (process.platform === 'darwin') {
+    return 'Tauri WebDriver runtime e2e is not supported on macOS because WKWebView has no desktop WebDriver backend; run this lane on Linux or Windows.'
+  }
+  return null
 }
 
 export async function buildRuntimeApp(): Promise<string> {
@@ -101,35 +107,43 @@ async function startRuntimeDriver(options: RuntimeDriverOptions): Promise<Runtim
   })
 
   pipeProcessOutput(driver, 'tauri-driver')
-  await waitForPort(runtimeConfig.driverHost, runtimeConfig.driverPort, 15_000)
+  let browser: RuntimeBrowser | null = null
 
-  const browser = await remote({
-    hostname: runtimeConfig.driverHost,
-    port: runtimeConfig.driverPort,
-    path: '/',
-    logLevel: 'error',
-    capabilities: {
-      browserName: 'wry',
-      'tauri:options': {
-        application: options.appPath
+  try {
+    await waitForPort(runtimeConfig.driverHost, runtimeConfig.driverPort, 15_000)
+
+    browser = await remote({
+      hostname: runtimeConfig.driverHost,
+      port: runtimeConfig.driverPort,
+      path: '/',
+      logLevel: 'error',
+      capabilities: {
+        browserName: 'wry',
+        'tauri:options': {
+          application: options.appPath
+        }
+      }
+    })
+
+    await browser.waitUntil(async () => (await browser!.$('body')).isExisting(), {
+      timeout: 15_000,
+      timeoutMsg: 'Tauri main window did not expose a body element'
+    })
+
+    return {
+      browser,
+      appPath: options.appPath,
+      device: options.device,
+      originTag: options.originTag,
+      stop: async () => {
+        await browser?.deleteSession().catch(() => undefined)
+        await stopProcess(driver)
       }
     }
-  })
-
-  await browser.waitUntil(async () => (await browser.$('body')).isExisting(), {
-    timeout: 15_000,
-    timeoutMsg: 'Tauri main window did not expose a body element'
-  })
-
-  return {
-    browser,
-    appPath: options.appPath,
-    device: options.device,
-    originTag: options.originTag,
-    stop: async () => {
-      await browser.deleteSession().catch(() => undefined)
-      await stopProcess(driver)
-    }
+  } catch (err) {
+    await browser?.deleteSession().catch(() => undefined)
+    await stopProcess(driver)
+    throw err
   }
 }
 
