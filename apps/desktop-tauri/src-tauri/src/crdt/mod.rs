@@ -4,6 +4,7 @@ pub mod apply;
 pub mod compaction;
 mod docstore;
 pub mod md_to_yjs;
+pub mod seed;
 pub mod snapshot;
 pub mod state_vector;
 pub mod wire;
