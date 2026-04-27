@@ -1059,6 +1059,11 @@ Prototype B), renderer shadow Y.Doc, BlockNote binding.
 **Scope:** HTTP push/pull, WebSocket, queue, retry, per-type handlers,
 field-level vector-clock merge, CRDT sync endpoint.
 
+**Implementation plan:** `docs/superpowers/plans/2026-04-27-m6-sync-engine.md`
+is the binding M6 task plan. It covers the live M5 repo state, sync command
+parity, Rust runtime architecture, attachment/blob sync, CRDT network sync,
+capability/bindings closure, runtime e2e, and staging smoke gates.
+
 **Deliverables:**
 
 - `sync/engine.rs` — tokio task with pull → apply → push → listen loop.
