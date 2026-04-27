@@ -158,7 +158,7 @@ describe('notes-service', () => {
     const folderConfigHandler = vi.fn()
 
     expect(onNoteCreated(createdHandler)).toBe(unsubscribe)
-    expect(api.onNoteCreated).toHaveBeenCalledWith(createdHandler)
+    expect(api.onNoteCreated).toHaveBeenCalledTimes(1)
 
     expect(onNoteUpdated(updatedHandler)).toBe(unsubscribe)
     expect(api.onNoteUpdated).toHaveBeenCalledWith(updatedHandler)
@@ -178,7 +178,7 @@ describe('notes-service', () => {
     onTagsChanged(tagsHandler)
     onFolderConfigUpdated(folderConfigHandler)
 
-    expect(subscribe).toHaveBeenCalledWith('note-created', createdHandler)
+    expect(subscribe).toHaveBeenCalledWith('note-created', expect.any(Function))
     expect(subscribe).toHaveBeenCalledWith('note-updated', updatedHandler)
     expect(subscribe).toHaveBeenCalledWith('note-deleted', deletedHandler)
     expect(subscribe).toHaveBeenCalledWith('note-renamed', renamedHandler)
@@ -186,6 +186,46 @@ describe('notes-service', () => {
     expect(subscribe).toHaveBeenCalledWith('note-external-change', externalHandler)
     expect(subscribe).toHaveBeenCalledWith('tags-changed', tagsHandler)
     expect(subscribe).toHaveBeenCalledWith('folder-config-updated', folderConfigHandler)
+  })
+
+  it('revives created note event dates while preserving list-item shape', () => {
+    api.onNoteCreated = vi.fn((handler) => {
+      handler({
+        note: {
+          id: 'note-1',
+          path: 'notes/Inbox/example.md',
+          title: 'Example',
+          created: '2026-04-27T00:00:00.000Z',
+          modified: '2026-04-27T00:00:01.000Z',
+          tags: ['next'],
+          wordCount: 1,
+          snippet: 'body',
+          emoji: 'note',
+          localOnly: false
+        },
+        source: 'internal'
+      })
+      return () => {}
+    })
+
+    const handler = vi.fn()
+    onNoteCreated(handler)
+
+    expect(handler).toHaveBeenCalledWith({
+      note: {
+        id: 'note-1',
+        path: 'notes/Inbox/example.md',
+        title: 'Example',
+        created: new Date('2026-04-27T00:00:00.000Z'),
+        modified: new Date('2026-04-27T00:00:01.000Z'),
+        tags: ['next'],
+        wordCount: 1,
+        snippet: 'body',
+        emoji: 'note',
+        localOnly: false
+      },
+      source: 'internal'
+    })
   })
 
   describe('position operations', () => {
