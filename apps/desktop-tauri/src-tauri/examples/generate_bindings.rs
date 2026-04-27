@@ -53,6 +53,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             commands::notes::notes_get_links,
             commands::notes::notes_resolve_by_title,
             commands::notes::notes_preview_by_title,
+            commands::stubs_m6_m7_m8::notes_get_file,
+            commands::stubs_m6_m7_m8::notes_open_external,
+            commands::stubs_m6_m7_m8::notes_reveal_in_finder,
             // M5: folders
             commands::folders::notes_get_folders,
             commands::folders::notes_create_folder,
@@ -204,6 +207,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .typ::<commands::notes::NoteLinkContext>()
         .typ::<commands::notes::NoteLinksResponse>()
         .typ::<commands::notes::NotePreview>()
+        .typ::<commands::stubs_m6_m7_m8::FileMetadata>()
         // M5 folders
         .typ::<commands::folders::FolderInfo>()
         .typ::<commands::folders::FolderSimpleSuccess>()
