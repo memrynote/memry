@@ -75,6 +75,21 @@ describe('invoke', () => {
     expect(mockRouter).toHaveBeenCalledWith('notes_export_pdf', undefined)
   })
 
+  it('allows deferred mock routes in production builds', async () => {
+    vi.stubEnv('PROD', true)
+    await invoke('notes_export_pdf')
+    expect(mockRouter).toHaveBeenCalledWith('notes_export_pdf', undefined)
+    expect(tauriInvoke).not.toHaveBeenCalled()
+  })
+
+  it('blocks non-deferred mock routes in production builds', async () => {
+    vi.stubEnv('PROD', true)
+    await expect(invoke('unknown_command')).rejects.toThrow(
+      /Production build attempted to use mock IPC for unknown_command/
+    )
+    expect(mockRouter).not.toHaveBeenCalled()
+  })
+
   it('routes Phase E rename/move/exists/local-only/tags/links commands to Tauri', async () => {
     await invoke('notes_rename', { args: ['note-1', 'New Title'] })
     await invoke('notes_move', { args: ['note-1', 'Archive'] })

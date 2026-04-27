@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { checkCapabilities, type TauriConfig, type Capability } from './capability-sanity-check'
+import {
+  checkCapabilities,
+  parseRegisteredAppCommands,
+  type TauriConfig,
+  type Capability
+} from './capability-sanity-check'
 
 describe('checkCapabilities', () => {
   it('returns no missing plugins when conf has no plugins section', () => {
@@ -138,5 +143,23 @@ describe('checkCapabilities', () => {
     // #then
     expect(result.missingAppManifestCommands).toEqual(['auth_status'])
     expect(result.missingAppPermissions).toEqual(['auth_status'])
+  })
+
+  it('parses production commands after cfg-gated debug commands', () => {
+    // #given a handler list with devtools compiled only for debug/test helpers
+    const src = [
+      'invoke_handler(tauri::generate_handler![',
+      '  commands::settings::settings_get,',
+      '  #[cfg(any(debug_assertions, feature = "test-helpers"))]',
+      '  commands::devtools::devtools_reset_db,',
+      '  commands::auth::auth_status,',
+      '])',
+    ].join('\n')
+
+    // #when extracting registered production app commands
+    const commands = parseRegisteredAppCommands(src)
+
+    // #then the cfg-gated helper is skipped and parsing continues
+    expect(commands).toEqual(['settings_get', 'auth_status'])
   })
 })
