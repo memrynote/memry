@@ -128,7 +128,19 @@ const realCommands = new Set<string>([
   'notes_remove_property_option',
   'notes_rename_property_option',
   'notes_update_option_color',
-  'notes_delete_property_definition'
+  'notes_delete_property_definition',
+  // M5 — CRDT command surface
+  'crdt_open_doc',
+  'crdt_close_doc',
+  'crdt_apply_update',
+  'crdt_apply_update_chunk_start',
+  'crdt_apply_update_chunk_append',
+  'crdt_apply_update_chunk_finish',
+  'crdt_get_snapshot',
+  'crdt_get_state_vector',
+  'crdt_sync_step_1',
+  'crdt_sync_step_2',
+  'crdt_get_or_init_doc'
 ])
 
 function shouldUseMock(cmd: string): boolean {

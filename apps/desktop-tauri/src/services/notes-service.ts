@@ -120,7 +120,7 @@ function getRealM5Method(property: string): ((...args: unknown[]) => Promise<unk
     case 'deleteFolder':
       return async (path) =>
         invoke('notes_delete_folder', {
-          input: { path: String(path), recursive: false }
+          input: { path: String(path), recursive: true }
         })
     case 'getFolderConfig':
       return async (folderPath) =>
@@ -130,10 +130,21 @@ function getRealM5Method(property: string): ((...args: unknown[]) => Promise<unk
           })
         )
     case 'setFolderConfig':
-      return async (folderPath, config) =>
-        invoke('notes_set_folder_config', {
-          input: toFolderConfigInput(String(folderPath), config)
+      return async (folderPath, config) => {
+        const path = String(folderPath)
+        let nextConfig = config
+        if (isRecord(config) && !hasOwn(config, 'icon')) {
+          const existing = normalizeFolderConfigResponse(
+            await invoke<FolderConfigRecord | null>('notes_get_folder_config', {
+              args: [path]
+            })
+          )
+          nextConfig = { ...existing, ...config }
+        }
+        return invoke('notes_set_folder_config', {
+          input: toFolderConfigInput(path, nextConfig)
         })
+      }
     case 'reorder':
       return async (folderPath, notePaths) =>
         invoke('notes_reorder', {
@@ -146,10 +157,12 @@ function getRealM5Method(property: string): ((...args: unknown[]) => Promise<unk
       return async (input) =>
         invoke<CreatePropertyDefinitionResponse>('notes_update_property_definition', { input })
     case 'ensurePropertyDefinition':
-      return async (name, type) =>
-        invoke('notes_ensure_property_definition', {
+      return async (name, type) => {
+        await invoke('notes_ensure_property_definition', {
           input: { name, type }
         })
+        return { success: true }
+      }
     case 'addPropertyOption':
       return async (propertyName, option) =>
         invoke('notes_add_property_option', {
@@ -234,6 +247,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
+function hasOwn(value: Record<string, unknown>, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(value, key)
+}
+
 export function onNoteCreated(callback: (event: NoteCreatedEvent) => void): () => void {
   return subscribeEvent<NoteCreatedEvent>('note-created', callback)
 }
@@ -266,4 +283,22 @@ export function onTagsChanged(callback: () => void): () => void {
 
 export function onFolderConfigUpdated(callback: (event: { path: string }) => void): () => void {
   return subscribeEvent<{ path: string }>('folder-config-updated', callback)
+}
+
+export function onFolderRenamed(
+  callback: (event: { oldPath: string; newPath: string; source?: string }) => void
+): () => void {
+  return subscribeEvent<{ oldPath: string; newPath: string; source?: string }>(
+    'notes:folder-renamed',
+    callback
+  )
+}
+
+export function onFolderDeleted(
+  callback: (event: { path: string; recursive: boolean; source?: string }) => void
+): () => void {
+  return subscribeEvent<{ path: string; recursive: boolean; source?: string }>(
+    'notes:folder-deleted',
+    callback
+  )
 }

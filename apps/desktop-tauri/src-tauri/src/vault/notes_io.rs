@@ -13,12 +13,13 @@
 //!   sync queue can detect no-op rewrites cheaply.
 //! - All paths are vault-relative and forward-slashed.
 
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 use crate::vault::frontmatter::{self, NoteFrontmatter, ParsedNote};
 use crate::vault::fs as vfs;
 use crate::vault::paths;
 use std::path::Path;
 use tokio::fs;
+use tokio::io::AsyncWriteExt;
 
 #[derive(Debug, Clone, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
@@ -89,6 +90,46 @@ pub async fn write_note_to_disk(
     }
 
     vfs::atomic_write(&abs, &serialized).await?;
+    Ok(NoteOnDisk {
+        relative_path: relative_path.to_string(),
+        content_hash: new_hash,
+    })
+}
+
+pub async fn write_new_note_to_disk(
+    vault_root: &Path,
+    relative_path: &str,
+    frontmatter_in: &NoteFrontmatter,
+    content: &str,
+) -> AppResult<NoteOnDisk> {
+    let abs = paths::resolve_supported(vault_root, relative_path)?;
+    let serialized = frontmatter::serialize_note(frontmatter_in, content)?;
+    let new_hash = vfs::content_hash(&serialized);
+    let parent = abs
+        .parent()
+        .ok_or_else(|| AppError::Vault(format!("path has no parent: {}", abs.display())))?;
+    fs::create_dir_all(parent).await?;
+
+    let mut file = match fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&abs)
+        .await
+    {
+        Ok(file) => file,
+        Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => {
+            return Err(AppError::Conflict(format!(
+                "note file already exists: {relative_path}"
+            )));
+        }
+        Err(err) => return Err(err.into()),
+    };
+
+    if let Err(err) = file.write_all(serialized.as_bytes()).await {
+        let _ = fs::remove_file(&abs).await;
+        return Err(err.into());
+    }
+
     Ok(NoteOnDisk {
         relative_path: relative_path.to_string(),
         content_hash: new_hash,
@@ -216,6 +257,12 @@ pub async fn rename_folder(
     let from = paths::resolve_in_vault(vault_root, old_relative)?;
     let to = paths::resolve_in_vault(vault_root, new_relative)?;
 
+    if to == from || to.starts_with(&from) {
+        return Err(AppError::Validation(
+            "folder cannot be renamed into itself or a descendant".into(),
+        ));
+    }
+
     if !fs::try_exists(&from).await? {
         return Err(crate::error::AppError::NotFound(format!(
             "folder not found: {old_relative}"
@@ -238,11 +285,10 @@ pub async fn rename_folder(
 /// the call when the directory is non-empty, surfaced here as a generic
 /// IO error. The caller is expected to have already enforced the
 /// emptiness rule against the metadata DB.
-pub async fn delete_folder(
-    vault_root: &Path,
-    relative: &str,
-    recursive: bool,
-) -> AppResult<()> {
+pub async fn delete_folder(vault_root: &Path, relative: &str, recursive: bool) -> AppResult<()> {
+    if relative.trim().trim_matches('/').is_empty() {
+        return Err(AppError::Validation("folder path cannot be root".into()));
+    }
     let abs = paths::resolve_in_vault(vault_root, relative)?;
     if !fs::try_exists(&abs).await? {
         return Ok(());

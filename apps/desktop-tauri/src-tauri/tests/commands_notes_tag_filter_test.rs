@@ -136,3 +136,52 @@ async fn list_with_empty_tag_filter_returns_all_active_notes() {
     let listing = notes_list_inner(&conn, Some(options_with_tags(vec![]))).unwrap();
     assert_eq!(listing.total, 1);
 }
+
+#[tokio::test]
+async fn list_with_tag_filter_includes_inline_only_hashtags() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+    notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Inline".into(),
+            content: Some("plan #work today".into()),
+            folder: Some("Inbox".into()),
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    let listing = notes_list_inner(&conn, Some(options_with_tags(vec!["work".into()]))).unwrap();
+
+    assert_eq!(listing.total, 1);
+    assert_eq!(listing.notes[0].title, "Inline");
+}
+
+#[tokio::test]
+async fn list_with_tag_filter_includes_inline_hashtags_after_preview_snippet() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+    let long_prefix = "x ".repeat(120);
+    notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Late inline".into(),
+            content: Some(format!("{long_prefix}then #client")),
+            folder: Some("Inbox".into()),
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    let listing = notes_list_inner(&conn, Some(options_with_tags(vec!["client".into()]))).unwrap();
+
+    assert_eq!(listing.total, 1);
+    assert_eq!(listing.notes[0].title, "Late inline");
+}

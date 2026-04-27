@@ -6,9 +6,15 @@ import {
   type NoteListItem
 } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
-import { buildTreeFromNotes, type TreeStructure } from '@/components/notes-tree-utils'
+import {
+  buildTreeFromNotes,
+  extractFolderFromPath,
+  normalizeNotesRoot,
+  type TreeStructure
+} from '@/components/notes-tree-utils'
 import { createLogger } from '@/lib/logger'
 import { invoke } from '@/lib/ipc/invoke'
+import { useVault } from '@/hooks/use-vault'
 
 const log = createLogger('Hook:NoteTreeData')
 
@@ -25,6 +31,7 @@ export interface NoteTreeData {
   noteMap: Map<string, NoteListItem>
   notePositions: Record<string, number>
   setNotePositions: React.Dispatch<React.SetStateAction<Record<string, number>>>
+  notesRoot: string
   folderTemplateNames: Map<string, string>
   setFolderTemplateNames: React.Dispatch<React.SetStateAction<Map<string, string>>>
   computeTargetFolder: (selectedIds: string[]) => string
@@ -34,6 +41,8 @@ export function useNoteTreeData(): NoteTreeData {
   const { notes, isLoading, error } = useNotesList({ limit: 10000 })
   const mutations = useNoteMutations()
   const { folders, createFolder, setFolderIcon, refetch: refreshFolders } = useNoteFoldersQuery()
+  const { config } = useVault()
+  const notesRoot = normalizeNotesRoot(config?.defaultNoteFolder)
 
   const [folderTemplateNames, setFolderTemplateNames] = useState<Map<string, string>>(new Map())
   const [notePositions, setNotePositions] = useState<Record<string, number>>({})
@@ -89,8 +98,8 @@ export function useNoteTreeData(): NoteTreeData {
   }, [notes])
 
   const tree = useMemo(() => {
-    return buildTreeFromNotes(notes, folders, notePositions)
-  }, [notes, folders, notePositions])
+    return buildTreeFromNotes(notes, folders, notePositions, notesRoot)
+  }, [notes, folders, notePositions, notesRoot])
 
   const noteMap = useMemo(() => {
     const map = new Map<string, NoteListItem>()
@@ -110,17 +119,12 @@ export function useNoteTreeData(): NoteTreeData {
 
       const note = noteMap.get(selectedId)
       if (note) {
-        const parts = note.path.split('/')
-        parts.pop()
-        if (parts.length > 1 && parts[0] === 'notes') {
-          return parts.slice(1).join('/')
-        }
-        return ''
+        return extractFolderFromPath(note.path, notesRoot)
       }
 
       return ''
     }
-  }, [noteMap])
+  }, [noteMap, notesRoot])
 
   return {
     notes,
@@ -135,6 +139,7 @@ export function useNoteTreeData(): NoteTreeData {
     noteMap,
     notePositions,
     setNotePositions,
+    notesRoot,
     folderTemplateNames,
     setFolderTemplateNames,
     computeTargetFolder

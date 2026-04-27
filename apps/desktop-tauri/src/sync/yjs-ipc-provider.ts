@@ -5,6 +5,8 @@ import { invoke } from '@/lib/ipc/invoke'
 import { subscribeEvent } from '@/lib/ipc/forwarder'
 
 const log = createLogger('YjsIpcProvider')
+const MAX_INLINE_UPDATE_BYTES = 8 * 1024
+const CHUNK_SIZE_BYTES = 4 * 1024
 
 export interface YjsIpcProviderConfig {
   noteId: string
@@ -32,8 +34,8 @@ export class YjsIpcProvider extends Observable<string> {
     }
     this.doc.on('update', this.updateHandler)
 
-    this.ipcCleanup = subscribeEvent<{ noteId: string; update: number[]; origin: string }>(
-      'crdt-state-changed',
+    this.ipcCleanup = subscribeEvent<{ noteId: string; update: number[]; origin: number }>(
+      'crdt-update',
       (data) => {
         if (data.noteId !== this.noteId) return
         const update = new Uint8Array(data.update)
@@ -58,7 +60,7 @@ export class YjsIpcProvider extends Observable<string> {
       this.ipcCleanup = null
     }
 
-    invoke('sync_crdt_close_doc', { noteId: this.noteId }).catch((err: unknown) => {
+    invoke('crdt_close_doc', { noteId: this.noteId }).catch((err: unknown) => {
       log.debug('closeDoc IPC failed (expected during teardown)', {
         noteId: this.noteId,
         error: err
@@ -80,7 +82,7 @@ export class YjsIpcProvider extends Observable<string> {
 
   private async openDoc(): Promise<void> {
     try {
-      await invoke('sync_crdt_open_doc', { noteId: this.noteId })
+      await invoke('crdt_open_doc', { noteId: this.noteId })
     } catch {
       log.error('Failed to open doc', { noteId: this.noteId })
     }
@@ -91,26 +93,22 @@ export class YjsIpcProvider extends Observable<string> {
 
     const stateVector = Y.encodeStateVector(this.doc)
 
-    const result = await invoke<{ diff: number[]; stateVector: number[] } | null>(
-      'sync_crdt_sync_step1',
-      {
-        noteId: this.noteId,
-        stateVector: Array.from(stateVector)
-      }
-    )
+    const result = await invoke<{ diff: number[]; stateVector: number[] }>('crdt_sync_step_1', {
+      noteId: this.noteId,
+      stateVector: Array.from(stateVector)
+    })
 
     if (this.destroyed) return
 
     if (result) {
       const diff = new Uint8Array(result.diff)
-      Y.applyUpdate(this.doc, diff, 'ipc-provider')
+      if (diff.byteLength > 0) {
+        Y.applyUpdate(this.doc, diff, 'ipc-provider')
+      }
 
       const localDiff = Y.encodeStateAsUpdate(this.doc, new Uint8Array(result.stateVector))
       if (localDiff.byteLength > 0) {
-        await invoke('sync_crdt_sync_step2', {
-          noteId: this.noteId,
-          diff: Array.from(localDiff)
-        })
+        await this.sendHandshakeDiff(localDiff)
       }
     }
 
@@ -123,9 +121,70 @@ export class YjsIpcProvider extends Observable<string> {
   }
 
   private sendUpdate(update: Uint8Array): void {
-    void invoke('sync_crdt_apply_update', {
-      noteId: this.noteId,
-      update: Array.from(update)
+    void this.persistUpdate(update).catch((err: unknown) => {
+      log.error('Failed to persist CRDT update', { noteId: this.noteId, error: err })
     })
+  }
+
+  private async sendHandshakeDiff(diff: Uint8Array): Promise<void> {
+    if (diff.byteLength <= MAX_INLINE_UPDATE_BYTES) {
+      await invoke('crdt_sync_step_2', {
+        noteId: this.noteId,
+        diff: Array.from(diff)
+      })
+      return
+    }
+
+    await this.persistChunkedUpdate(diff)
+  }
+
+  private async persistUpdate(update: Uint8Array): Promise<void> {
+    if (update.byteLength <= MAX_INLINE_UPDATE_BYTES) {
+      await invoke('crdt_apply_update', {
+        input: {
+          noteId: this.noteId,
+          update: Array.from(update),
+          origin: null
+        }
+      })
+      return
+    }
+
+    await this.persistChunkedUpdate(update)
+  }
+
+  private async persistChunkedUpdate(update: Uint8Array): Promise<void> {
+    const transferId = this.nextTransferId()
+    await invoke('crdt_apply_update_chunk_start', {
+      input: {
+        noteId: this.noteId,
+        transferId,
+        totalBytes: update.byteLength
+      }
+    })
+
+    for (let offset = 0; offset < update.byteLength; offset += CHUNK_SIZE_BYTES) {
+      const bytes = update.slice(offset, offset + CHUNK_SIZE_BYTES)
+      await invoke('crdt_apply_update_chunk_append', {
+        input: {
+          transferId,
+          offset,
+          bytes: Array.from(bytes)
+        }
+      })
+    }
+
+    await invoke('crdt_apply_update_chunk_finish', {
+      input: {
+        noteId: this.noteId,
+        transferId,
+        origin: null
+      }
+    })
+  }
+
+  private nextTransferId(): string {
+    const suffix = Math.random().toString(36).slice(2)
+    return `${this.noteId}-${Date.now()}-${suffix}`
   }
 }

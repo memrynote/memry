@@ -7,20 +7,19 @@ use crate::crdt::{
     CrdtRuntime, DocHandle,
 };
 use crate::error::{AppError, AppResult};
-use crate::vault::{VaultRuntime, frontmatter, paths as vault_paths};
+use crate::vault::VaultRuntime;
 use std::sync::Arc;
-use tauri::{AppHandle, Emitter, State, ipc::Response};
-use yrs::{Text, WriteTxn};
+use tauri::{ipc::Response, AppHandle, Emitter, State};
 
 pub const MAX_INLINE_UPDATE_BYTES: usize = 8 * 1024;
 
 pub async fn crdt_open_doc_inner(
     conn: &rusqlite::Connection,
-    vault: &VaultRuntime,
+    _vault: &VaultRuntime,
     crdt: Arc<CrdtRuntime>,
     note_id: &str,
 ) -> AppResult<()> {
-    let open_state = load_open_doc_state(conn, vault, note_id)?;
+    let open_state = load_open_doc_state(conn, note_id)?;
     let seed = apply_open_doc_state(crdt, note_id, open_state).await?;
     if let Some(seed) = seed {
         crate::db::crdt_updates::append(conn, note_id, &seed, origin_tag() as i64)?;
@@ -30,7 +29,7 @@ pub async fn crdt_open_doc_inner(
 }
 
 pub async fn crdt_close_doc_inner(crdt: Arc<CrdtRuntime>, note_id: &str) {
-    crdt.docs().drop_doc(note_id).await;
+    crdt.docs().close_doc(note_id).await;
 }
 
 #[derive(Debug, Clone, serde::Deserialize, specta::Type)]
@@ -72,6 +71,25 @@ pub struct SyncStep1Result {
     pub state_vector: Vec<u8>,
 }
 
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CrdtSimpleSuccess {
+    pub success: bool,
+}
+
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CrdtApplyUpdateResult {
+    pub seq: i64,
+}
+
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CrdtGetOrInitDocResult {
+    pub note_id: String,
+    pub ready: bool,
+}
+
 pub async fn crdt_apply_update_inner(
     conn: &rusqlite::Connection,
     crdt: Arc<CrdtRuntime>,
@@ -97,7 +115,8 @@ pub async fn crdt_apply_update_chunk_start_inner(
             crate::db::crdt_updates::MAX_BLOB_BYTES
         )));
     }
-    crdt.start_update_chunk(note_id, transfer_id, total_bytes).await
+    crdt.start_update_chunk(note_id, transfer_id, total_bytes)
+        .await
 }
 
 pub async fn crdt_apply_update_chunk_append_inner(
@@ -121,10 +140,7 @@ pub async fn crdt_apply_update_chunk_finish_inner(
     persist_applied_update(conn, &handle, note_id, &update, incoming_origin)
 }
 
-pub async fn crdt_get_snapshot_bytes(
-    crdt: Arc<CrdtRuntime>,
-    note_id: &str,
-) -> AppResult<Vec<u8>> {
+pub async fn crdt_get_snapshot_bytes(crdt: Arc<CrdtRuntime>, note_id: &str) -> AppResult<Vec<u8>> {
     let handle = crdt
         .docs()
         .get(note_id)
@@ -186,17 +202,17 @@ pub async fn crdt_get_or_init_doc_inner(
 pub async fn crdt_open_doc(
     state: State<'_, AppState>,
     note_id: String,
-) -> AppResult<serde_json::Value> {
+) -> AppResult<CrdtSimpleSuccess> {
     let open_state = {
         let conn = state.db.conn()?;
-        load_open_doc_state(&conn, &state.vault, &note_id)?
+        load_open_doc_state(&conn, &note_id)?
     };
     let seed = apply_open_doc_state(state.crdt.clone(), &note_id, open_state).await?;
     if let Some(seed) = seed {
         let conn = state.db.conn()?;
         crate::db::crdt_updates::append(&conn, &note_id, &seed, origin_tag() as i64)?;
     }
-    Ok(serde_json::json!({ "success": true }))
+    Ok(CrdtSimpleSuccess { success: true })
 }
 
 #[tauri::command]
@@ -212,7 +228,7 @@ pub async fn crdt_apply_update(
     state: State<'_, AppState>,
     app: AppHandle,
     input: CrdtApplyUpdateInput,
-) -> AppResult<serde_json::Value> {
+) -> AppResult<CrdtApplyUpdateResult> {
     let incoming_origin = input.origin.unwrap_or_else(origin_tag);
     let handle = apply_update_to_runtime(
         state.crdt.clone(),
@@ -224,7 +240,13 @@ pub async fn crdt_apply_update(
     .await?;
     let seq = {
         let conn = state.db.conn()?;
-        persist_applied_update(&conn, &handle, &input.note_id, &input.update, incoming_origin)?
+        persist_applied_update(
+            &conn,
+            &handle,
+            &input.note_id,
+            &input.update,
+            incoming_origin,
+        )?
     };
 
     let payload = CrdtUpdateEvent {
@@ -234,7 +256,7 @@ pub async fn crdt_apply_update(
     };
     let _ = app.emit(CRDT_UPDATE_EVENT, payload);
 
-    Ok(serde_json::json!({ "seq": seq }))
+    Ok(CrdtApplyUpdateResult { seq })
 }
 
 #[tauri::command]
@@ -273,7 +295,7 @@ pub async fn crdt_apply_update_chunk_finish(
     state: State<'_, AppState>,
     app: AppHandle,
     input: CrdtChunkFinishInput,
-) -> AppResult<serde_json::Value> {
+) -> AppResult<CrdtApplyUpdateResult> {
     let incoming_origin = input.origin.unwrap_or_else(origin_tag);
     let update = state
         .crdt
@@ -299,15 +321,12 @@ pub async fn crdt_apply_update_chunk_finish(
     };
     let _ = app.emit(CRDT_UPDATE_EVENT, payload);
 
-    Ok(serde_json::json!({ "seq": seq }))
+    Ok(CrdtApplyUpdateResult { seq })
 }
 
 #[tauri::command]
 #[specta::specta]
-pub async fn crdt_get_snapshot(
-    state: State<'_, AppState>,
-    note_id: String,
-) -> AppResult<Response> {
+pub async fn crdt_get_snapshot(state: State<'_, AppState>, note_id: String) -> AppResult<Response> {
     let bytes = crdt_get_snapshot_bytes(state.crdt.clone(), &note_id).await?;
     Ok(Response::new(bytes))
 }
@@ -362,23 +381,25 @@ pub async fn crdt_sync_step_2(
 pub async fn crdt_get_or_init_doc(
     state: State<'_, AppState>,
     note_id: String,
-) -> AppResult<serde_json::Value> {
+) -> AppResult<CrdtGetOrInitDocResult> {
     let open_state = {
         let conn = state.db.conn()?;
-        load_open_doc_state(&conn, &state.vault, &note_id)?
+        load_open_doc_state(&conn, &note_id)?
     };
     let seed = apply_open_doc_state(state.crdt.clone(), &note_id, open_state).await?;
     if let Some(seed) = seed {
         let conn = state.db.conn()?;
         crate::db::crdt_updates::append(&conn, &note_id, &seed, origin_tag() as i64)?;
     }
-    Ok(serde_json::json!({ "noteId": note_id, "ready": true }))
+    Ok(CrdtGetOrInitDocResult {
+        note_id,
+        ready: true,
+    })
 }
 
 struct OpenDocState {
     snapshot: Option<Vec<u8>>,
     updates: Vec<PersistedUpdate>,
-    seed_body: Option<String>,
 }
 
 struct PersistedUpdate {
@@ -386,11 +407,7 @@ struct PersistedUpdate {
     origin: u32,
 }
 
-fn load_open_doc_state(
-    conn: &rusqlite::Connection,
-    vault: &VaultRuntime,
-    note_id: &str,
-) -> AppResult<OpenDocState> {
+fn load_open_doc_state(conn: &rusqlite::Connection, note_id: &str) -> AppResult<OpenDocState> {
     use crate::db::{crdt_snapshots, crdt_updates};
 
     let snapshot = crdt_snapshots::get_latest(conn, note_id)?.map(|row| row.snapshot_bytes);
@@ -401,19 +418,8 @@ fn load_open_doc_state(
             origin: row.origin as u32,
         })
         .collect::<Vec<_>>();
-    let seed_body = if snapshot.is_none() && updates.is_empty() {
-        crate::db::note_metadata::get_by_id(conn, note_id)?
-            .map(|row| read_note_body(vault, &row.path))
-            .transpose()?
-    } else {
-        None
-    };
 
-    Ok(OpenDocState {
-        snapshot,
-        updates,
-        seed_body,
-    })
+    Ok(OpenDocState { snapshot, updates })
 }
 
 async fn apply_open_doc_state(
@@ -421,7 +427,7 @@ async fn apply_open_doc_state(
     note_id: &str,
     open_state: OpenDocState,
 ) -> AppResult<Option<Vec<u8>>> {
-    let (handle, created) = crdt.docs().get_or_init_with_created(note_id).await;
+    let (handle, created) = crdt.docs().open_or_init_with_created(note_id).await;
     if !created {
         return Ok(None);
     }
@@ -429,13 +435,6 @@ async fn apply_open_doc_state(
     let seed = if let Some(snapshot) = open_state.snapshot {
         apply_update_v1(&handle, &snapshot, origin_tag())?;
         None
-    } else if let Some(body) = open_state.seed_body {
-        if !body.is_empty() {
-            handle.with_write(|txn| {
-                txn.get_or_insert_text("body").insert(txn, 0, &body);
-            });
-        }
-        Some(encode_snapshot_v1(&handle)?)
     } else {
         None
     };
@@ -445,18 +444,6 @@ async fn apply_open_doc_state(
     }
 
     Ok(seed)
-}
-
-fn read_note_body(vault: &VaultRuntime, relative_path: &str) -> AppResult<String> {
-    let root = vault.require_current()?;
-    let abs = vault_paths::resolve_supported(&root, relative_path)?;
-    let raw = match std::fs::read_to_string(abs) {
-        Ok(raw) => raw,
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(String::new()),
-        Err(err) => return Err(err.into()),
-    };
-    let parsed = frontmatter::parse_note(&raw, Some(relative_path))?;
-    Ok(parsed.content)
 }
 
 async fn apply_update_to_runtime(
@@ -489,7 +476,10 @@ fn persist_applied_update(
     use crate::db::{crdt_snapshots, crdt_updates};
 
     let seq = crdt_updates::append(conn, note_id, update_bytes, incoming_origin as i64)?;
-    if seq >= crate::crdt::COMPACT_THRESHOLD {
+    let replaced_through_seq = crdt_snapshots::get_latest(conn, note_id)?
+        .map(|snapshot| snapshot.replaced_through_seq)
+        .unwrap_or(0);
+    if seq - replaced_through_seq >= crate::crdt::COMPACT_THRESHOLD {
         let result = crate::crdt::compact_doc(handle, seq)?;
         let sv = encode_state_vector_v1(handle)?;
         crdt_snapshots::upsert_with_compaction(

@@ -1,5 +1,7 @@
 use memry_desktop_tauri_lib::db::note_metadata::{upsert as upsert_note, NoteMetadataRow};
-use memry_desktop_tauri_lib::db::tag_definitions::{count, list, list_with_counts, rename, upsert};
+use memry_desktop_tauri_lib::db::tag_definitions::{
+    count, inline_tags, list, list_with_counts, rename, upsert,
+};
 use memry_desktop_tauri_lib::test_helpers::open_in_memory_with_migrations;
 
 fn note(id: &str) -> NoteMetadataRow {
@@ -31,17 +33,19 @@ fn insert_cache(
     snippet: &str,
     tags_json: &str,
 ) {
+    let inline_tags_json = serde_json::to_string(&inline_tags(snippet)).unwrap();
     conn.execute(
         "INSERT INTO notes_cache (
-            id, title, path, snippet, word_count, tags_json,
+            id, title, path, snippet, word_count, tags_json, inline_tags_json,
             modified_at, created_at, local_only
-         ) VALUES (?1, ?2, ?3, ?4, 0, ?5, ?6, ?6, 0)",
+         ) VALUES (?1, ?2, ?3, ?4, 0, ?5, ?6, ?7, ?7, 0)",
         rusqlite::params![
             id,
             title,
             format!("notes/{id}.md"),
             snippet,
             tags_json,
+            inline_tags_json,
             "2026-04-26T00:00:00.000Z",
         ],
     )
@@ -97,10 +101,19 @@ fn list_with_counts_aggregates_frontmatter_tags_json_and_inline_snippets() {
     let project = rows.iter().find(|row| row.name == "project").unwrap();
     let idea = rows.iter().find(|row| row.name == "idea").unwrap();
 
-    assert_eq!(work.count, 2);
+    assert_eq!(work.count, 1);
     assert_eq!(work.color.as_deref(), Some("#ef4444"));
     assert_eq!(project.count, 1);
     assert_eq!(idea.count, 1);
+}
+
+#[test]
+fn inline_tags_match_renderer_scanner_rules() {
+    let tags = inline_tags(
+        "start #work foo#notag `#code` #work\n```md\n#fenced\n```\n#area/sub-area #bad/",
+    );
+
+    assert_eq!(tags, vec!["work", "area/sub-area", "bad"]);
 }
 
 #[test]

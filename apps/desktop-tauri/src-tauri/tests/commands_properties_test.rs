@@ -6,12 +6,11 @@
 
 use memry_desktop_tauri_lib::commands::properties::{
     notes_add_property_option_inner, notes_add_status_option_inner,
-    notes_create_property_definition_inner, notes_delete_property_definition_inner,
-    notes_ensure_property_definition_inner, notes_get_property_definitions_inner,
-    notes_remove_property_option_inner, notes_rename_property_option_inner,
-    notes_update_option_color_inner, notes_update_property_definition_inner,
-    notes_create_property_definition_response_inner,
-    notes_update_property_definition_response_inner,
+    notes_create_property_definition_inner, notes_create_property_definition_response_inner,
+    notes_delete_property_definition_inner, notes_ensure_property_definition_inner,
+    notes_get_property_definitions_inner, notes_remove_property_option_inner,
+    notes_rename_property_option_inner, notes_update_option_color_inner,
+    notes_update_property_definition_inner, notes_update_property_definition_response_inner,
     CreatePropertyDefinitionInput,
 };
 use memry_desktop_tauri_lib::error::AppError;
@@ -62,7 +61,7 @@ fn create_round_trips_options_default_color_and_stamps_created_at() {
             name: "priority".into(),
             ty: "select".into(),
             options: Some(json!([{"value": "low", "color": "#94a3b8"}]).into()),
-            default_value: Some("low".into()),
+            default_value: Some(json!("low").into()),
             color: Some("#111827".into()),
         },
     )
@@ -76,6 +75,40 @@ fn create_round_trips_options_default_color_and_stamps_created_at() {
     let opts = options_array(row.options.as_deref());
     assert_eq!(opts.len(), 1);
     assert_eq!(opts[0]["value"], "low");
+}
+
+#[test]
+fn create_accepts_json_default_values() {
+    let conn = open_in_memory_with_migrations();
+
+    let number = notes_create_property_definition_inner(
+        &conn,
+        CreatePropertyDefinitionInput {
+            name: "estimate".into(),
+            ty: "number".into(),
+            options: None,
+            default_value: Some(json!(3).into()),
+            color: None,
+        },
+    )
+    .unwrap();
+    assert_eq!(number.default_value.as_deref(), Some("3"));
+
+    let object = notes_create_property_definition_inner(
+        &conn,
+        CreatePropertyDefinitionInput {
+            name: "metadata".into(),
+            ty: "text".into(),
+            options: None,
+            default_value: Some(json!({ "source": "import" }).into()),
+            color: None,
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        object.default_value.as_deref(),
+        Some(r#"{"source":"import"}"#)
+    );
 }
 
 #[test]
@@ -150,6 +183,29 @@ fn ensure_inserts_on_miss_and_no_ops_on_hit() {
 }
 
 #[test]
+fn ensure_status_persists_default_status_categories() {
+    let conn = open_in_memory_with_migrations();
+
+    let inserted = notes_ensure_property_definition_inner(
+        &conn,
+        &json!({ "name": "status", "type": "status" }),
+    )
+    .unwrap();
+    let options: Value = serde_json::from_str(inserted.options.as_deref().unwrap()).unwrap();
+
+    assert_eq!(
+        options["categories"]["todo"]["options"][0]["value"],
+        "Not started"
+    );
+    assert_eq!(options["categories"]["todo"]["options"][0]["default"], true);
+    assert_eq!(
+        options["categories"]["in_progress"]["options"][0]["value"],
+        "In Progress"
+    );
+    assert_eq!(options["categories"]["done"]["options"][0]["value"], "Done");
+}
+
+#[test]
 fn ensure_validates_name_field() {
     let conn = open_in_memory_with_migrations();
 
@@ -220,12 +276,17 @@ fn add_status_option_fills_named_category_bucket() {
     let rows = notes_get_property_definitions_inner(&conn).unwrap();
     let status = rows.into_iter().find(|r| r.name == "status").unwrap();
     let opts: Value = serde_json::from_str(status.options.as_deref().unwrap()).unwrap();
-    assert_eq!(opts["categories"]["todo"]["options"][0]["value"], "queued");
-    assert_eq!(opts["categories"]["done"]["options"][0]["value"], "shipped");
-    assert!(opts["categories"]["in_progress"]["options"]
-        .as_array()
-        .unwrap()
-        .is_empty());
+    assert_eq!(
+        opts["categories"]["todo"]["options"][0]["value"],
+        "Not started"
+    );
+    assert_eq!(opts["categories"]["todo"]["options"][1]["value"], "queued");
+    assert_eq!(opts["categories"]["done"]["options"][0]["value"], "Done");
+    assert_eq!(opts["categories"]["done"]["options"][2]["value"], "shipped");
+    assert_eq!(
+        opts["categories"]["in_progress"]["options"][0]["value"],
+        "In Progress"
+    );
 }
 
 #[test]
@@ -280,7 +341,9 @@ fn rename_property_option_renames_in_status_shape() {
     let rows = notes_get_property_definitions_inner(&conn).unwrap();
     let status = rows.into_iter().find(|r| r.name == "status").unwrap();
     let opts: Value = serde_json::from_str(status.options.as_deref().unwrap()).unwrap();
-    assert_eq!(opts["categories"]["todo"]["options"][0]["value"], "ready");
+    let todo_options = opts["categories"]["todo"]["options"].as_array().unwrap();
+    assert_eq!(todo_options[0]["value"], "Not started");
+    assert!(todo_options.iter().any(|option| option["value"] == "ready"));
 }
 
 #[test]
@@ -312,7 +375,9 @@ fn delete_property_definition_removes_row() {
 
     notes_delete_property_definition_inner(&conn, &json!({ "name": "status" })).unwrap();
 
-    assert!(notes_get_property_definitions_inner(&conn).unwrap().is_empty());
+    assert!(notes_get_property_definitions_inner(&conn)
+        .unwrap()
+        .is_empty());
 }
 
 #[test]

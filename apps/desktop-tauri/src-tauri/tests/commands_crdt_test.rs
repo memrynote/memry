@@ -6,8 +6,8 @@ use memry_desktop_tauri_lib::commands::crdt::{
 };
 use memry_desktop_tauri_lib::commands::notes::{notes_create_inner, NoteCreateInput};
 use memry_desktop_tauri_lib::crdt::{
-    apply_update_v1, encode_diff_since_v1, encode_snapshot_v1, encode_state_vector_v1,
-    CrdtRuntime, COMPACT_THRESHOLD,
+    apply_update_v1, encode_diff_since_v1, encode_snapshot_v1, encode_state_vector_v1, CrdtRuntime,
+    COMPACT_THRESHOLD,
 };
 use memry_desktop_tauri_lib::db::{crdt_snapshots, crdt_updates};
 use memry_desktop_tauri_lib::error::AppError;
@@ -39,6 +39,26 @@ async fn close_doc_drops_runtime_entry() {
         .unwrap();
     crdt_close_doc_inner(crdt.clone(), "n1").await;
 
+    assert_eq!(crdt.open_doc_count().await, 0);
+}
+
+#[tokio::test]
+async fn close_doc_keeps_runtime_entry_until_last_open_handle_closes() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+    let crdt = Arc::new(CrdtRuntime::new());
+
+    crdt_open_doc_inner(&conn, &vault, crdt.clone(), "n1")
+        .await
+        .unwrap();
+    crdt_open_doc_inner(&conn, &vault, crdt.clone(), "n1")
+        .await
+        .unwrap();
+
+    crdt_close_doc_inner(crdt.clone(), "n1").await;
+    assert_eq!(crdt.open_doc_count().await, 1);
+
+    crdt_close_doc_inner(crdt.clone(), "n1").await;
     assert_eq!(crdt.open_doc_count().await, 0);
 }
 
@@ -97,14 +117,9 @@ async fn oversized_update_uses_chunked_transport_and_persists_once() {
         .unwrap_err();
     assert!(matches!(err, AppError::Validation(message) if message.contains("chunked")));
 
-    crdt_apply_update_chunk_start_inner(
-        crdt.clone(),
-        "large",
-        "transfer-1",
-        update.len(),
-    )
-    .await
-    .unwrap();
+    crdt_apply_update_chunk_start_inner(crdt.clone(), "large", "transfer-1", update.len())
+        .await
+        .unwrap();
     for (offset, chunk) in update.chunks(4096).enumerate() {
         crdt_apply_update_chunk_append_inner(
             crdt.clone(),
@@ -115,15 +130,9 @@ async fn oversized_update_uses_chunked_transport_and_persists_once() {
         .await
         .unwrap();
     }
-    let seq = crdt_apply_update_chunk_finish_inner(
-        &conn,
-        crdt.clone(),
-        "large",
-        "transfer-1",
-        303,
-    )
-    .await
-    .unwrap();
+    let seq = crdt_apply_update_chunk_finish_inner(&conn, crdt.clone(), "large", "transfer-1", 303)
+        .await
+        .unwrap();
 
     assert_eq!(seq, 1);
     let rows = crdt_updates::list_for_note(&conn, "large").unwrap();
@@ -143,7 +152,8 @@ async fn snapshot_and_state_vector_bytes_round_trip() {
     let source = Arc::new(CrdtRuntime::new());
     let source_doc = source.docs().get_or_init("snap").await;
     source_doc.with_write(|txn| {
-        txn.get_or_insert_text("body").insert(txn, 0, "snapshot body");
+        txn.get_or_insert_text("body")
+            .insert(txn, 0, "snapshot body");
     });
     let update = encode_snapshot_v1(&source_doc).unwrap();
     crdt_apply_update_inner(&conn, crdt.clone(), "snap", &update, 404)
@@ -334,4 +344,54 @@ async fn compaction_snapshot_drops_persisted_update_rows() {
     apply_update_v1(&restored_doc, &snapshot.snapshot_bytes, 1).unwrap();
     let restored_body = restored_doc.with_read(|txn| txn.get_text("body").unwrap().get_string(txn));
     assert_eq!(restored_body, expected);
+}
+
+#[tokio::test]
+async fn compaction_waits_for_another_threshold_after_snapshot() {
+    let conn = open_in_memory_with_migrations();
+    let crdt = Arc::new(CrdtRuntime::new());
+    let source = Arc::new(CrdtRuntime::new());
+    let source_doc = source.docs().get_or_init("compact-next").await;
+    let mut expected = String::new();
+
+    for _ in 0..COMPACT_THRESHOLD {
+        let before = encode_state_vector_v1(&source_doc).unwrap();
+        source_doc.with_write(|txn| {
+            let text = txn.get_or_insert_text("body");
+            text.insert(txn, expected.len() as u32, "x");
+        });
+        expected.push('x');
+        let diff = encode_diff_since_v1(&source_doc, &before).unwrap();
+        crdt_apply_update_inner(&conn, crdt.clone(), "compact-next", &diff, 606)
+            .await
+            .unwrap();
+    }
+    assert_eq!(
+        crdt_snapshots::get_latest(&conn, "compact-next")
+            .unwrap()
+            .expect("initial compaction")
+            .replaced_through_seq,
+        COMPACT_THRESHOLD
+    );
+    assert!(crdt_updates::list_for_note(&conn, "compact-next")
+        .unwrap()
+        .is_empty());
+
+    let before = encode_state_vector_v1(&source_doc).unwrap();
+    source_doc.with_write(|txn| {
+        let text = txn.get_or_insert_text("body");
+        text.insert(txn, expected.len() as u32, "y");
+    });
+    let diff = encode_diff_since_v1(&source_doc, &before).unwrap();
+    crdt_apply_update_inner(&conn, crdt.clone(), "compact-next", &diff, 606)
+        .await
+        .unwrap();
+
+    let snapshot = crdt_snapshots::get_latest(&conn, "compact-next")
+        .unwrap()
+        .expect("snapshot remains");
+    assert_eq!(snapshot.replaced_through_seq, COMPACT_THRESHOLD);
+    let rows = crdt_updates::list_for_note(&conn, "compact-next").unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].seq, COMPACT_THRESHOLD + 1);
 }
