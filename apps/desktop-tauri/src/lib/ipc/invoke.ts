@@ -143,9 +143,33 @@ const realCommands = new Set<string>([
   'crdt_get_or_init_doc'
 ])
 
+const DEFERRED_COMMANDS = new Set<string>([
+  'notes_upload_attachment',
+  'notes_list_attachments',
+  'notes_delete_attachment',
+  'notes_export_pdf',
+  'notes_export_html',
+  'notes_get_versions',
+  'notes_get_version',
+  'notes_restore_version',
+  'notes_delete_version',
+  'notes_import_files',
+  'notes_show_import_dialog'
+])
+
 function shouldUseMock(cmd: string): boolean {
   if (import.meta.env.VITE_MOCK_IPC === 'false') {
     return false
   }
-  return !realCommands.has(cmd)
+  const useMock = !realCommands.has(cmd)
+  if (useMock) {
+    assertMockAllowedInThisBuild(cmd)
+  }
+  return useMock
+}
+
+function assertMockAllowedInThisBuild(cmd: string): void {
+  if (import.meta.env.PROD && !DEFERRED_COMMANDS.has(cmd)) {
+    throw new Error(`Production build attempted to use mock IPC for ${cmd}`)
+  }
 }

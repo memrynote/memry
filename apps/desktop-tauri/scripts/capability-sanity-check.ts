@@ -89,13 +89,35 @@ export function parseAppManifestCommands(source: string): string[] {
 }
 
 export function parseRegisteredAppCommands(source: string): string[] {
-  const match = source.match(/invoke_handler\(tauri::generate_handler!\[(?<body>[\s\S]*?)\]\)/m)
-  const body = match?.groups?.body
+  const body = extractGenerateHandlerBody(source)
   if (!body) return []
+  const withoutCfgCommands = body.replace(
+    /#\[cfg\([^\]]*\)\]\s*commands::[A-Za-z0-9_:]+::[a-zA-Z0-9_]+\s*,?/g,
+    ''
+  )
   return Array.from(
-    body.matchAll(/commands::[A-Za-z0-9_:]+::([a-zA-Z0-9_]+)/g),
+    withoutCfgCommands.matchAll(/commands::[A-Za-z0-9_:]+::([a-zA-Z0-9_]+)/g),
     (item) => item[1]
   )
+}
+
+function extractGenerateHandlerBody(source: string): string | null {
+  const marker = 'generate_handler!['
+  const start = source.indexOf(marker)
+  if (start === -1) return null
+  const bodyStart = start + marker.length
+  let depth = 1
+  for (let i = bodyStart; i < source.length; i += 1) {
+    const ch = source[i]
+    if (ch === '[') {
+      depth += 1
+      continue
+    }
+    if (ch !== ']') continue
+    depth -= 1
+    if (depth === 0) return source.slice(bodyStart, i)
+  }
+  return null
 }
 
 function runCli(): void {
