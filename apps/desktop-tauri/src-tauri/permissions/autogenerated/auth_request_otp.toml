@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-auth-request-otp"
+description = "Enables the auth_request_otp command without any pre-configured scope."
+commands.allow = ["auth_request_otp"]
+
+[[permission]]
+identifier = "deny-auth-request-otp"
+description = "Denies the auth_request_otp command without any pre-configured scope."
+commands.deny = ["auth_request_otp"]

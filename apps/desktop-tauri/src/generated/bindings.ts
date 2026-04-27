@@ -22,6 +22,110 @@ export const commands = {
 	shellRevealInFinder: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("shell_reveal_in_finder", { path })),
 	dialogChooseFolder: (title: string | null) => typedError<string | null, AppError>(__TAURI_INVOKE("dialog_choose_folder", { title })),
 	dialogChooseFiles: (title: string | null, filters: string[] | null) => typedError<string[], AppError>(__TAURI_INVOKE("dialog_choose_files", { title, filters })),
+	notesCreate: (title: string, content: string | null, folder: string | null, tags: string[] | null, template: string | null) => typedError<NoteCreateResponse, AppError>(__TAURI_INVOKE("notes_create", { title, content, folder, tags, template })),
+	notesGet: (args: string[]) => typedError<{
+	id: string,
+	path: string,
+	title: string,
+	content: string,
+	frontmatter: unknown,
+	properties: unknown,
+	created: string,
+	modified: string,
+	tags: string[],
+	aliases: string[],
+	wordCount: number,
+	emoji: string | null,
+} | null, AppError>(__TAURI_INVOKE("notes_get", { args })),
+	notesGetByPath: (args: string[]) => typedError<{
+	id: string,
+	path: string,
+	title: string,
+	content: string,
+	frontmatter: unknown,
+	properties: unknown,
+	created: string,
+	modified: string,
+	tags: string[],
+	aliases: string[],
+	wordCount: number,
+	emoji: string | null,
+} | null, AppError>(__TAURI_INVOKE("notes_get_by_path", { args })),
+	notesUpdate: (id: string, title: string | null, content: string | null, tags: string[] | null, frontmatter: unknown | null, emoji: string | null) => typedError<NoteUpdateResponse, AppError>(__TAURI_INVOKE("notes_update", { id, title, content, tags, frontmatter, emoji })),
+	notesDelete: (args: string[]) => typedError<NoteDeleteResponse, AppError>(__TAURI_INVOKE("notes_delete", { args })),
+	notesList: (folder: string | null, tags: string[] | null, sortBy: string | null, sortOrder: string | null, limit: number | null, offset: number | null) => typedError<NoteListResponse, AppError>(__TAURI_INVOKE("notes_list", { folder, tags, sortBy, sortOrder, limit, offset })),
+	notesListByFolder: (args: string[]) => typedError<NoteListResponse, AppError>(__TAURI_INVOKE("notes_list_by_folder", { args })),
+	notesRename: (args: string[]) => typedError<NoteUpdateResponse, AppError>(__TAURI_INVOKE("notes_rename", { args })),
+	notesMove: (args: string[]) => typedError<NoteUpdateResponse, AppError>(__TAURI_INVOKE("notes_move", { args })),
+	notesExists: (args: string[]) => typedError<boolean, AppError>(__TAURI_INVOKE("notes_exists", { args })),
+	notesSetLocalOnly: (args: unknown[]) => typedError<NoteSimpleSuccess, AppError>(__TAURI_INVOKE("notes_set_local_only", { args })),
+	notesGetLocalOnlyCount: () => typedError<NoteLocalOnlyCount, AppError>(__TAURI_INVOKE("notes_get_local_only_count")),
+	notesGetTags: () => typedError<NoteTagInfo[], AppError>(__TAURI_INVOKE("notes_get_tags")),
+	notesGetLinks: (args: string[]) => typedError<NoteLinksResponse, AppError>(__TAURI_INVOKE("notes_get_links", { args })),
+	notesResolveByTitle: (args: string[]) => typedError<{
+	id: string,
+	path: string,
+	title: string,
+	fileType: string,
+} | null, AppError>(__TAURI_INVOKE("notes_resolve_by_title", { args })),
+	notesPreviewByTitle: (args: string[]) => typedError<{
+	id: string,
+	title: string,
+	path: string,
+	snippet: string,
+	emoji: string | null,
+	tags: NotePreviewTag[],
+	createdAt: string,
+} | null, AppError>(__TAURI_INVOKE("notes_preview_by_title", { args })),
+	notesGetFile: (args: string[]) => typedError<{
+	id: string,
+	path: string,
+	absolutePath: string,
+	title: string,
+	fileType: string,
+	mimeType: string | null,
+	fileSize: number | null,
+	created: string,
+	modified: string,
+} | null, AppError>(__TAURI_INVOKE("notes_get_file", { args })),
+	notesOpenExternal: (args: string[]) => typedError<null, AppError>(__TAURI_INVOKE("notes_open_external", { args })),
+	notesRevealInFinder: (args: string[]) => typedError<null, AppError>(__TAURI_INVOKE("notes_reveal_in_finder", { args })),
+	notesGetFolders: () => typedError<FolderInfo[], AppError>(__TAURI_INVOKE("notes_get_folders")),
+	notesCreateFolder: (args: string[]) => typedError<FolderSimpleSuccess, AppError>(__TAURI_INVOKE("notes_create_folder", { args })),
+	notesRenameFolder: (args: string[]) => typedError<FolderSimpleSuccess, AppError>(__TAURI_INVOKE("notes_rename_folder", { args })),
+	notesDeleteFolder: (input: DeleteFolderInput) => typedError<FolderSimpleSuccess, AppError>(__TAURI_INVOKE("notes_delete_folder", { input })),
+	notesGetFolderConfig: (args: string[]) => typedError<{
+	path: string,
+	icon: string | null,
+	templateJson: string | null,
+	clock: string | null,
+	createdAt: string,
+	modifiedAt: string,
+} | null, AppError>(__TAURI_INVOKE("notes_get_folder_config", { args })),
+	notesSetFolderConfig: (input: SetFolderConfigInput) => typedError<FolderSimpleSuccess, AppError>(__TAURI_INVOKE("notes_set_folder_config", { input })),
+	notesGetFolderTemplate: (args: string[]) => typedError<string | null, AppError>(__TAURI_INVOKE("notes_get_folder_template", { args })),
+	notesGetPositions: (args: string[]) => typedError<PositionsResponse, AppError>(__TAURI_INVOKE("notes_get_positions", { args })),
+	notesGetAllPositions: () => typedError<PositionsResponse, AppError>(__TAURI_INVOKE("notes_get_all_positions")),
+	notesReorder: (input: ReorderInput) => typedError<FolderSimpleSuccess, AppError>(__TAURI_INVOKE("notes_reorder", { input })),
+	notesGetPropertyDefinitions: () => typedError<PropertyDefinitionRow[], AppError>(__TAURI_INVOKE("notes_get_property_definitions")),
+	notesCreatePropertyDefinition: (input: CreatePropertyDefinitionInput) => typedError<CreatePropertyDefinitionResponse, AppError>(__TAURI_INVOKE("notes_create_property_definition", { input })),
+	notesUpdatePropertyDefinition: (input: unknown) => typedError<CreatePropertyDefinitionResponse, AppError>(__TAURI_INVOKE("notes_update_property_definition", { input })),
+	notesEnsurePropertyDefinition: (input: unknown) => typedError<PropertyDefinitionRow, AppError>(__TAURI_INVOKE("notes_ensure_property_definition", { input })),
+	notesAddPropertyOption: (input: unknown) => typedError<PropertySimpleSuccess, AppError>(__TAURI_INVOKE("notes_add_property_option", { input })),
+	notesAddStatusOption: (input: unknown) => typedError<PropertySimpleSuccess, AppError>(__TAURI_INVOKE("notes_add_status_option", { input })),
+	notesRemovePropertyOption: (input: unknown) => typedError<PropertySimpleSuccess, AppError>(__TAURI_INVOKE("notes_remove_property_option", { input })),
+	notesRenamePropertyOption: (input: unknown) => typedError<PropertySimpleSuccess, AppError>(__TAURI_INVOKE("notes_rename_property_option", { input })),
+	notesUpdateOptionColor: (input: unknown) => typedError<PropertySimpleSuccess, AppError>(__TAURI_INVOKE("notes_update_option_color", { input })),
+	notesDeletePropertyDefinition: (input: unknown) => typedError<PropertySimpleSuccess, AppError>(__TAURI_INVOKE("notes_delete_property_definition", { input })),
+	crdtOpenDoc: (noteId: string) => typedError<CrdtSimpleSuccess, AppError>(__TAURI_INVOKE("crdt_open_doc", { noteId })),
+	crdtCloseDoc: (noteId: string) => typedError<null, AppError>(__TAURI_INVOKE("crdt_close_doc", { noteId })),
+	crdtApplyUpdate: (input: CrdtApplyUpdateInput) => typedError<CrdtApplyUpdateResult, AppError>(__TAURI_INVOKE("crdt_apply_update", { input })),
+	crdtApplyUpdateChunkStart: (input: CrdtChunkStartInput) => typedError<null, AppError>(__TAURI_INVOKE("crdt_apply_update_chunk_start", { input })),
+	crdtApplyUpdateChunkAppend: (input: CrdtChunkAppendInput) => typedError<null, AppError>(__TAURI_INVOKE("crdt_apply_update_chunk_append", { input })),
+	crdtApplyUpdateChunkFinish: (input: CrdtChunkFinishInput) => typedError<CrdtApplyUpdateResult, AppError>(__TAURI_INVOKE("crdt_apply_update_chunk_finish", { input })),
+	crdtSyncStep1: (noteId: string, stateVector: number[]) => typedError<SyncStep1Result, AppError>(__TAURI_INVOKE("crdt_sync_step_1", { noteId, stateVector })),
+	crdtSyncStep2: (noteId: string, diff: number[]) => typedError<null, AppError>(__TAURI_INVOKE("crdt_sync_step_2", { noteId, diff })),
+	crdtGetOrInitDoc: (noteId: string) => typedError<CrdtGetOrInitDocResult, AppError>(__TAURI_INVOKE("crdt_get_or_init_doc", { noteId })),
 	authStatus: () => typedError<AuthStatus, AppError>(__TAURI_INVOKE("auth_status")),
 	authUnlock: (input: AuthUnlockInput) => typedError<AuthStatus, AppError>(__TAURI_INVOKE("auth_unlock", { input })),
 	authLock: () => typedError<null, AppError>(__TAURI_INVOKE("auth_lock")),
@@ -63,6 +167,8 @@ export const commands = {
 	secretsSetProviderKey: (input: SecretsSetProviderKeyInput) => typedError<ProviderKeyStatus, AppError>(__TAURI_INVOKE("secrets_set_provider_key", { input })),
 	secretsGetProviderKeyStatus: (input: SecretsGetProviderKeyStatusInput) => typedError<ProviderKeyStatus, AppError>(__TAURI_INVOKE("secrets_get_provider_key_status", { input })),
 	secretsDeleteProviderKey: (input: SecretsDeleteProviderKeyInput) => typedError<null, AppError>(__TAURI_INVOKE("secrets_delete_provider_key", { input })),
+	crdtGetSnapshot: (noteId: string) => typedError<Uint8Array, AppError>(__TAURI_INVOKE("crdt_get_snapshot", { noteId })),
+	crdtGetStateVector: (noteId: string) => typedError<Uint8Array, AppError>(__TAURI_INVOKE("crdt_get_state_vector", { noteId })),
 };
 
 /* Types */
@@ -77,7 +183,7 @@ export type AccountSignOutResult = {
 	error: string | null,
 };
 
-export type AppError = { kind: "Database"; message: string } | { kind: "Crypto"; message: string } | { kind: "VaultLocked" } | { kind: "InvalidPassword" } | { kind: "NotFound"; message: string } | { kind: "Network"; message: string } | { kind: "Conflict"; message: string } | { kind: "Validation"; message: string } | { kind: "Vault"; message: string } | { kind: "PathEscape"; message: string } | { kind: "Io"; message: string } | { kind: "Keychain"; message: string } | { kind: "Auth"; message: string } | { kind: "RateLimited"; message: number | null } | { kind: "Internal"; message: string };
+export type AppError = { kind: "Database"; message: string } | { kind: "Crypto"; message: string } | { kind: "VaultLocked" } | { kind: "InvalidPassword" } | { kind: "NotFound"; message: string } | { kind: "Network"; message: string } | { kind: "Conflict"; message: string } | { kind: "Validation"; message: string } | { kind: "Vault"; message: string } | { kind: "PathEscape"; message: string } | { kind: "Io"; message: string } | { kind: "Keychain"; message: string } | { kind: "Auth"; message: string } | { kind: "RateLimited"; message: number | null } | { kind: "Crdt"; message: string } | { kind: "Internal"; message: string };
 
 export type AuthRegisterDeviceInput = {
 	name: string,
@@ -224,6 +330,57 @@ export type ConfirmRecoveryPhraseInput = {
 	confirmed: boolean,
 };
 
+export type CrdtApplyUpdateInput = {
+	noteId: string,
+	update: number[],
+	origin: number | null,
+};
+
+export type CrdtApplyUpdateResult = {
+	seq: number,
+};
+
+export type CrdtChunkAppendInput = {
+	transferId: string,
+	offset: number,
+	bytes: number[],
+};
+
+export type CrdtChunkFinishInput = {
+	noteId: string,
+	transferId: string,
+	origin: number | null,
+};
+
+export type CrdtChunkStartInput = {
+	noteId: string,
+	transferId: string,
+	totalBytes: number,
+};
+
+export type CrdtGetOrInitDocResult = {
+	noteId: string,
+	ready: boolean,
+};
+
+export type CrdtSimpleSuccess = {
+	success: boolean,
+};
+
+export type CreatePropertyDefinitionInput = {
+	name: string,
+	type: string,
+	options: unknown | null,
+	defaultValue: unknown | null,
+	color: string | null,
+};
+
+export type CreatePropertyDefinitionResponse = {
+	success: boolean,
+	definition: PropertyDefinitionRow | null,
+	error: string | null,
+};
+
 export type CryptoDecryptItemInput = {
 	ciphertextB64: string,
 	nonceB64: string,
@@ -265,6 +422,11 @@ export type CryptoVerifySignatureResult = {
 	valid: boolean,
 };
 
+export type DeleteFolderInput = {
+	path: string,
+	recursive?: boolean,
+};
+
 export type DeviceView = {
 	id: string,
 	name: string,
@@ -282,12 +444,34 @@ export type DeviceView = {
 	createdAt: number | null,
 };
 
+export type FileMetadata = {
+	id: string,
+	path: string,
+	absolutePath: string,
+	title: string,
+	fileType: string,
+	mimeType: string | null,
+	fileSize: number | null,
+	created: string,
+	modified: string,
+};
+
 export type FolderConfig = {
 	path: string,
 	icon: string | null,
+	templateJson: string | null,
 	clock: string | null,
 	createdAt: string,
 	modifiedAt: string,
+};
+
+export type FolderInfo = {
+	path: string,
+	icon: string | null,
+};
+
+export type FolderSimpleSuccess = {
+	success: boolean,
 };
 
 export type InboxItem = {
@@ -369,6 +553,96 @@ export type LogoutView = {
 	error: string | null,
 };
 
+export type NoteCreateInput = {
+	title: string,
+	content: string | null,
+	folder: string | null,
+	tags: string[] | null,
+	template: string | null,
+};
+
+export type NoteCreateResponse = {
+	success: boolean,
+	note: NoteDto | null,
+	error: string | null,
+};
+
+export type NoteDeleteResponse = {
+	success: boolean,
+};
+
+// Renderer-shape note used by the local notes contract.
+export type NoteDto = {
+	id: string,
+	path: string,
+	title: string,
+	content: string,
+	frontmatter: unknown,
+	properties: unknown,
+	created: string,
+	modified: string,
+	tags: string[],
+	aliases: string[],
+	wordCount: number,
+	emoji: string | null,
+};
+
+export type NoteIncomingLink = {
+	sourceId: string,
+	sourcePath: string,
+	sourceTitle: string,
+	contexts: NoteLinkContext[],
+};
+
+export type NoteLink = {
+	sourceId: string,
+	targetId: string | null,
+	targetTitle: string,
+};
+
+export type NoteLinkContext = {
+	snippet: string,
+	linkStart: number,
+	linkEnd: number,
+};
+
+export type NoteLinksResponse = {
+	outgoing: NoteLink[],
+	incoming: NoteIncomingLink[],
+};
+
+export type NoteListItem = {
+	id: string,
+	path: string,
+	title: string,
+	created: string,
+	modified: string,
+	tags: string[],
+	wordCount: number,
+	snippet: string,
+	emoji: string | null,
+	localOnly: boolean,
+};
+
+export type NoteListOptions = {
+	folder: string | null,
+	tags: string[] | null,
+	sortBy: string | null,
+	sortOrder: string | null,
+	limit: number | null,
+	offset: number | null,
+};
+
+export type NoteListResponse = {
+	notes: NoteListItem[],
+	total: number,
+	hasMore: boolean,
+};
+
+export type NoteLocalOnlyCount = {
+	count: number,
+};
+
 export type NoteMetadata = {
 	id: string,
 	path: string,
@@ -396,6 +670,46 @@ export type NotePosition = {
 	position: number,
 };
 
+export type NotePreview = {
+	id: string,
+	title: string,
+	path: string,
+	snippet: string,
+	emoji: string | null,
+	tags: NotePreviewTag[],
+	createdAt: string,
+};
+
+export type NotePreviewTag = {
+	name: string,
+	color: string,
+};
+
+export type NoteSimpleSuccess = {
+	success: boolean,
+};
+
+export type NoteTagInfo = {
+	tag: string,
+	count: number,
+	color: string | null,
+};
+
+export type NoteUpdateInput = {
+	id: string,
+	title: string | null,
+	content: string | null,
+	tags: string[] | null,
+	frontmatter: unknown | null,
+	emoji: string | null,
+};
+
+export type NoteUpdateResponse = {
+	success: boolean,
+	note: NoteDto | null,
+	error: string | null,
+};
+
 export type OtpRequestView = {
 	success: boolean,
 	/**
@@ -408,6 +722,11 @@ export type OtpRequestView = {
 export type OtpVerifyView = {
 	success: boolean,
 	needsSetup: boolean,
+};
+
+export type PositionsResponse = {
+	success: boolean,
+	positions: { [key in string]: number },
 };
 
 export type Project = {
@@ -433,6 +752,19 @@ export type PropertyDefinition = {
 	defaultValue: string | null,
 	color: string | null,
 	createdAt: string,
+};
+
+export type PropertyDefinitionRow = {
+	name: string,
+	type: string,
+	options: string | null,
+	defaultValue: string | null,
+	color: string | null,
+	createdAt: string,
+};
+
+export type PropertySimpleSuccess = {
+	success: boolean,
 };
 
 /**
@@ -479,6 +811,11 @@ export type Reminder = {
 	modifiedAt: string,
 };
 
+export type ReorderInput = {
+	folderPath: string,
+	notePaths: string[],
+};
+
 export type SavedFilter = {
 	id: string,
 	name: string,
@@ -511,6 +848,12 @@ export type SecretsSetProviderKeyInput = {
 	provider: string,
 	rawKey: string,
 	label: string | null,
+};
+
+export type SetFolderConfigInput = {
+	path: string,
+	icon: string | null,
+	templateJson: string | null,
 };
 
 export type Setting = {
@@ -660,6 +1003,11 @@ export type SyncState = {
 	updatedAt: number,
 };
 
+export type SyncStep1Result = {
+	diff: number[],
+	stateVector: number[],
+};
+
 export type TagDefinition = {
 	name: string,
 	color: string,
@@ -689,6 +1037,13 @@ export type Task = {
 	syncedAt: string | null,
 	createdAt: string,
 	modifiedAt: string,
+};
+
+export type WikiLinkResolution = {
+	id: string,
+	path: string,
+	title: string,
+	fileType: string,
 };
 
 /* Tauri Specta runtime */

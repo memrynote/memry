@@ -103,7 +103,7 @@ fn full_migration_produces_expected_table_set() {
         .collect();
 
     // Required tables traced to the migration that creates them (final state
-    // after all 29 ports apply). Any absence indicates a missing or wrongly
+    // after all embedded migrations apply). Any absence indicates a missing or wrongly
     // ordered port. Update this list only if a port faithfully removed the
     // table — never soften the assertion.
     let required: &[&str] = &[
@@ -151,6 +151,12 @@ fn full_migration_produces_expected_table_set() {
         "calendar_sources",
         "calendar_external_events",
         "calendar_bindings",
+        // 0029
+        "crdt_updates",
+        // 0030
+        "crdt_snapshots",
+        // 0031
+        "notes_cache",
     ];
     for name in required {
         assert!(
@@ -165,6 +171,79 @@ fn full_migration_produces_expected_table_set() {
         !tables.contains(&"recent_searches".to_string()),
         "recent_searches should have been dropped by 0020; present tables: {tables:?}"
     );
+}
+
+#[test]
+fn migration_0029_crdt_updates_creates_table() {
+    let mut conn = Connection::open_in_memory().unwrap();
+    migrations::apply_pending(&mut conn).unwrap();
+
+    let exists: i64 = conn
+        .query_row(
+            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='crdt_updates'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(exists, 1);
+}
+
+#[test]
+fn migration_0030_crdt_snapshots_creates_table() {
+    let mut conn = Connection::open_in_memory().unwrap();
+    migrations::apply_pending(&mut conn).unwrap();
+
+    let exists: i64 = conn
+        .query_row(
+            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='crdt_snapshots'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(exists, 1);
+}
+
+#[test]
+fn migration_0031_notes_cache_creates_table() {
+    let mut conn = Connection::open_in_memory().unwrap();
+    migrations::apply_pending(&mut conn).unwrap();
+
+    let exists: i64 = conn
+        .query_row(
+            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='notes_cache'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(exists, 1);
+}
+
+#[test]
+fn migration_0032_folder_configs_adds_template_json() {
+    let mut conn = Connection::open_in_memory().unwrap();
+    migrations::apply_pending(&mut conn).unwrap();
+
+    let mut stmt = conn.prepare("PRAGMA table_info(folder_configs)").unwrap();
+    let cols: Vec<String> = stmt
+        .query_map([], |row| row.get::<_, String>(1))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
+    assert!(cols.contains(&"template_json".to_string()));
+}
+
+#[test]
+fn migration_0033_notes_cache_adds_inline_tags_json() {
+    let mut conn = Connection::open_in_memory().unwrap();
+    migrations::apply_pending(&mut conn).unwrap();
+
+    let mut stmt = conn.prepare("PRAGMA table_info(notes_cache)").unwrap();
+    let cols: Vec<String> = stmt
+        .query_map([], |row| row.get::<_, String>(1))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
+    assert!(cols.contains(&"inline_tags_json".to_string()));
 }
 
 #[test]
@@ -397,7 +476,7 @@ fn property_definitions_roundtrip() {
         .query_row(
             "SELECT * FROM property_definitions WHERE name = 'status'",
             [],
-            memry_desktop_tauri_lib::db::notes_cache::PropertyDefinition::from_row,
+            memry_desktop_tauri_lib::db::property_definitions::PropertyDefinition::from_row,
         )
         .unwrap();
     assert_eq!(prop.name, "status");

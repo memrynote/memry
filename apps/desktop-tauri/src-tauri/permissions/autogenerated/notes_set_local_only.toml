@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-notes-set-local-only"
+description = "Enables the notes_set_local_only command without any pre-configured scope."
+commands.allow = ["notes_set_local_only"]
+
+[[permission]]
+identifier = "deny-notes-set-local-only"
+description = "Denies the notes_set_local_only command without any pre-configured scope."
+commands.deny = ["notes_set_local_only"]

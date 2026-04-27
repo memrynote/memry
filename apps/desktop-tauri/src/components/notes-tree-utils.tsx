@@ -16,13 +16,26 @@ export function getDisplayName(notePath: string): string {
   return lastDot > 0 ? filename.slice(0, lastDot) : filename
 }
 
-export function extractFolderFromPath(notePath: string): string {
+export function normalizeNotesRoot(notesRoot?: string | null): string {
+  const trimmed = (notesRoot ?? 'notes').trim().replace(/^\/+|\/+$/g, '')
+  return trimmed || 'notes'
+}
+
+export function extractFolderFromPath(notePath: string, notesRoot: string = 'notes'): string {
   const parts = notePath.split('/')
   parts.pop()
-  if (parts.length > 0 && parts[0] === 'notes') {
-    return parts.slice(1).join('/')
+  const folder = parts.join('/')
+  const root = normalizeNotesRoot(notesRoot)
+  if (folder === root || folder === 'notes') {
+    return ''
   }
-  return parts.join('/')
+  if (folder.startsWith(`${root}/`)) {
+    return folder.slice(root.length + 1)
+  }
+  if (folder.startsWith('notes/')) {
+    return folder.slice('notes/'.length)
+  }
+  return folder
 }
 
 export function getParentFolder(folderPath: string): string {
@@ -82,7 +95,8 @@ export function getFoldersInParent(tree: TreeStructure, parentPath: string): str
 export function buildTreeFromNotes(
   notes: NoteListItem[],
   folders: FolderInfo[],
-  positions: Record<string, number>
+  positions: Record<string, number>,
+  notesRoot: string = 'notes'
 ): TreeStructure {
   const folderMap = new Map<string, FolderNode>()
   const rootNotes: NoteListItem[] = []
@@ -134,19 +148,11 @@ export function buildTreeFromNotes(
   })
 
   notes.forEach((note) => {
-    const pathParts = note.path.split('/')
-    pathParts.pop()
-
-    if (pathParts.length === 0 || pathParts[0] === 'notes') {
-      if (pathParts.length <= 1) {
-        rootNotes.push(note)
-      } else {
-        const folderPath = pathParts.slice(1).join('/')
-        ensureFolderInMap(folderPath).notes.push(note)
-      }
-    } else {
-      const folderPath = pathParts.join('/')
+    const folderPath = extractFolderFromPath(note.path, notesRoot)
+    if (folderPath) {
       ensureFolderInMap(folderPath).notes.push(note)
+    } else {
+      rootNotes.push(note)
     }
   })
 

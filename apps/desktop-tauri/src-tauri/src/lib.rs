@@ -1,12 +1,16 @@
 pub mod app_state;
 pub mod auth;
 pub mod commands;
+pub mod crdt;
 pub mod crypto;
 pub mod db;
 pub mod error;
 pub mod keychain;
 pub mod sync;
 pub mod vault;
+
+#[cfg(any(debug_assertions, feature = "test-helpers"))]
+pub mod test_helpers;
 
 use app_state::AppState;
 use db::Db;
@@ -34,7 +38,8 @@ fn init_app_state() -> AppResult<AppState> {
         std::sync::Arc::new(crate::keychain::MacosKeychain::new());
     let auth = std::sync::Arc::new(crate::auth::AuthRuntime::new(keychain));
     let linking = std::sync::Arc::new(crate::auth::linking::PendingLinkingRegistry::new());
-    let state = AppState::new(db, vault, auth, linking);
+    let crdt = std::sync::Arc::new(crate::crdt::CrdtRuntime::new());
+    let state = AppState::new(db, vault, auth, linking, crdt);
 
     // Restore the vault key from the keychain when the user previously
     // opted in to "remember this device". A failure here is logged and
@@ -79,6 +84,62 @@ pub fn run() {
             commands::vault::vault_delete_note,
             commands::vault::vault_reveal,
             commands::vault::vault_reindex,
+            commands::notes::notes_create,
+            commands::notes::notes_get,
+            commands::notes::notes_get_by_path,
+            commands::notes::notes_update,
+            commands::notes::notes_delete,
+            commands::notes::notes_list,
+            commands::notes::notes_list_by_folder,
+            commands::notes::notes_rename,
+            commands::notes::notes_move,
+            commands::notes::notes_exists,
+            commands::notes::notes_set_local_only,
+            commands::notes::notes_get_local_only_count,
+            commands::notes::notes_get_tags,
+            commands::notes::notes_get_links,
+            commands::notes::notes_resolve_by_title,
+            commands::notes::notes_preview_by_title,
+            commands::stubs_m6_m7_m8::notes_get_file,
+            commands::stubs_m6_m7_m8::notes_open_external,
+            commands::stubs_m6_m7_m8::notes_reveal_in_finder,
+            commands::folders::notes_get_folders,
+            commands::folders::notes_create_folder,
+            commands::folders::notes_rename_folder,
+            commands::folders::notes_delete_folder,
+            commands::folders::notes_get_folder_config,
+            commands::folders::notes_set_folder_config,
+            commands::folders::notes_get_folder_template,
+            commands::folders::notes_get_positions,
+            commands::folders::notes_get_all_positions,
+            commands::folders::notes_reorder,
+            commands::properties::notes_get_property_definitions,
+            commands::properties::notes_create_property_definition,
+            commands::properties::notes_update_property_definition,
+            commands::properties::notes_ensure_property_definition,
+            commands::properties::notes_add_property_option,
+            commands::properties::notes_add_status_option,
+            commands::properties::notes_remove_property_option,
+            commands::properties::notes_rename_property_option,
+            commands::properties::notes_update_option_color,
+            commands::properties::notes_delete_property_definition,
+            commands::crdt::crdt_open_doc,
+            commands::crdt::crdt_close_doc,
+            commands::crdt::crdt_apply_update,
+            commands::crdt::crdt_apply_update_chunk_start,
+            commands::crdt::crdt_apply_update_chunk_append,
+            commands::crdt::crdt_apply_update_chunk_finish,
+            commands::crdt::crdt_get_snapshot,
+            commands::crdt::crdt_get_state_vector,
+            commands::crdt::crdt_sync_step_1,
+            commands::crdt::crdt_sync_step_2,
+            commands::crdt::crdt_get_or_init_doc,
+            #[cfg(any(debug_assertions, feature = "test-helpers"))]
+            commands::devtools::devtools_reset_db,
+            #[cfg(any(debug_assertions, feature = "test-helpers"))]
+            commands::devtools::devtools_seed_vault,
+            #[cfg(any(debug_assertions, feature = "test-helpers"))]
+            commands::devtools::devtools_open_test_vault,
             commands::shell::shell_open_url,
             commands::shell::shell_open_path,
             commands::shell::shell_reveal_in_finder,

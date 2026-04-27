@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-notes-open-external"
+description = "Enables the notes_open_external command without any pre-configured scope."
+commands.allow = ["notes_open_external"]
+
+[[permission]]
+identifier = "deny-notes-open-external"
+description = "Denies the notes_open_external command without any pre-configured scope."
+commands.deny = ["notes_open_external"]

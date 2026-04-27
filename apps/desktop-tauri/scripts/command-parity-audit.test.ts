@@ -93,6 +93,24 @@ describe('extractGenerateHandlerCommands', () => {
     // #then we get the bare command names
     expect(found.sort()).toEqual(['notify_flush_done', 'settings_get', 'settings_set'])
   })
+
+  it('handles cfg-gated entries without truncating the handler list', () => {
+    // #given a Tauri lib.rs handler list with debug-only commands
+    const src = [
+      'tauri::generate_handler![',
+      '  commands::settings::settings_get,',
+      '  #[cfg(any(debug_assertions, feature = "test-helpers"))]',
+      '  commands::devtools::devtools_reset_db,',
+      '  commands::auth::auth_status,',
+      ']',
+    ].join('\n')
+
+    // #when parsing the macro body
+    const found = extractGenerateHandlerCommands(src)
+
+    // #then the cfg attribute does not stop parsing later production commands
+    expect(found.sort()).toEqual(['auth_status', 'devtools_reset_db', 'settings_get'])
+  })
 })
 
 describe('extractBindingsCommands', () => {

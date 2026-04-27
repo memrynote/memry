@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { SIDEBAR_REVEAL_FOLDER_EVENT } from '@/components/note/note-breadcrumb'
 import { useTree } from '@/components/kibo-ui/tree'
 import { FolderIconButton } from '@/components/folder-icon-button'
+import { extractFolderFromPath } from '@/components/notes-tree-utils'
 
 // ============================================================================
 // TreeFolderIcon — reads expand state from TreeProvider context
@@ -34,6 +35,7 @@ export function TreeFolderIcon({
 interface RevealHandlerProps {
   pendingRevealNoteId: string | null
   noteMap: Map<string, { path: string }>
+  notesRoot: string
   onReveal: (noteId: string) => void
   onClear: () => void
 }
@@ -41,6 +43,7 @@ interface RevealHandlerProps {
 export function RevealHandler({
   pendingRevealNoteId,
   noteMap,
+  notesRoot,
   onReveal,
   onClear
 }: RevealHandlerProps) {
@@ -55,11 +58,9 @@ export function RevealHandler({
       return
     }
 
-    const pathParts = note.path.split('/')
-    pathParts.pop()
-
-    if (pathParts.length > 1) {
-      const folderParts = pathParts.slice(1)
+    const folderPath = extractFolderFromPath(note.path, notesRoot)
+    if (folderPath) {
+      const folderParts = folderPath.split('/')
       let currentPath = ''
       for (const part of folderParts) {
         currentPath = currentPath ? `${currentPath}/${part}` : part
@@ -70,7 +71,7 @@ export function RevealHandler({
     setTimeout(() => {
       onReveal(pendingRevealNoteId)
     }, 50)
-  }, [pendingRevealNoteId, noteMap, expandNode, onReveal, onClear])
+  }, [pendingRevealNoteId, noteMap, notesRoot, expandNode, onReveal, onClear])
 
   return null
 }

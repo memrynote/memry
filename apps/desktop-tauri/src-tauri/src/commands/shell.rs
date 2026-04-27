@@ -27,14 +27,20 @@ pub async fn shell_open_url(app: AppHandle, url: String) -> AppResult<()> {
 #[specta::specta]
 pub async fn shell_open_path(app: AppHandle, path: String) -> AppResult<()> {
     let p = Path::new(&path);
+    open_path_inner(&app, p)
+}
+
+pub(crate) fn open_path_inner(app: &AppHandle, p: &Path) -> AppResult<()> {
     if !p.is_absolute() {
         return Err(AppError::Validation(format!(
-            "path must be absolute: {path}"
+            "path must be absolute: {}",
+            p.display()
         )));
     }
     if !p.exists() {
-        return Err(AppError::NotFound(path.clone()));
+        return Err(AppError::NotFound(p.display().to_string()));
     }
+    let path = p.to_string_lossy().into_owned();
     #[allow(deprecated)]
     let result = app.shell().open(path, None);
     result.map_err(|e| AppError::Vault(format!("shell open failed: {e}")))
@@ -44,9 +50,14 @@ pub async fn shell_open_path(app: AppHandle, path: String) -> AppResult<()> {
 #[specta::specta]
 pub async fn shell_reveal_in_finder(path: String) -> AppResult<()> {
     let p = Path::new(&path);
+    reveal_path_inner(p)
+}
+
+pub(crate) fn reveal_path_inner(p: &Path) -> AppResult<()> {
     if !p.is_absolute() {
         return Err(AppError::Validation(format!(
-            "path must be absolute: {path}"
+            "path must be absolute: {}",
+            p.display()
         )));
     }
     reveal_in_finder_inner(p)
