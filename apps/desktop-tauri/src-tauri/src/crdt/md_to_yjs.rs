@@ -33,16 +33,15 @@ pub fn md_to_blocknote_blocks(input: &str) -> Vec<BlockNoteBlock> {
     for event in Parser::new(input) {
         match event {
             Event::Start(tag) => match tag {
-                Tag::Paragraph => {
-                    if active.is_none() {
-                        start_block(
-                            &mut active,
-                            list_stack.last().copied().unwrap_or("paragraph"),
-                            None,
-                            None,
-                        );
-                    }
+                Tag::Paragraph if active.is_none() => {
+                    start_block(
+                        &mut active,
+                        list_stack.last().copied().unwrap_or("paragraph"),
+                        None,
+                        None,
+                    );
                 }
+                Tag::Paragraph => {}
                 Tag::Heading { level, .. } => {
                     start_block(&mut active, "heading", Some(heading_level(level)), None);
                 }
