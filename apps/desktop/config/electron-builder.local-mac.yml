@@ -1,4 +1,6 @@
 extends: config/electron-builder.yml
+mac:
+  forceCodeSigning: true
 extraResources:
   - from: .env.staging
     to: .env
