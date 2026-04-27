@@ -139,7 +139,8 @@ const realCommands = new Set<string>([
   'crdt_get_snapshot',
   'crdt_get_state_vector',
   'crdt_sync_step_1',
-  'crdt_sync_step_2'
+  'crdt_sync_step_2',
+  'crdt_get_or_init_doc'
 ])
 
 const DEFERRED_COMMANDS = new Set<string>([
