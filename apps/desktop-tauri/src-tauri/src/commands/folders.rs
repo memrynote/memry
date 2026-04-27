@@ -7,6 +7,7 @@
 //! when Tauri's runtime ships work between threads.
 
 use crate::app_state::AppState;
+use crate::commands::notes::{note_deleted_event_payload, NOTE_DELETED_EVENT, TAGS_CHANGED_EVENT};
 use crate::db::folder_configs;
 use crate::db::note_positions;
 use crate::error::{AppError, AppResult};
@@ -284,12 +285,12 @@ pub async fn notes_delete_folder(
 
     for note in &deleted_notes {
         let _ = app.emit(
-            "note-deleted",
-            serde_json::json!({ "id": note.id, "path": note.path, "source": "internal" }),
+            NOTE_DELETED_EVENT,
+            note_deleted_event_payload(&note.id, &note.path),
         );
     }
     if !deleted_notes.is_empty() {
-        let _ = app.emit("tags-changed", serde_json::json!({}));
+        let _ = app.emit(TAGS_CHANGED_EVENT, serde_json::json!({}));
     }
 
     let _ = app.emit(

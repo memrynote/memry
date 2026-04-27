@@ -8,8 +8,11 @@ import {
   onNoteDeleted,
   onNoteRenamed,
   onNoteMoved,
-  onNoteExternalChange
+  onNoteExternalChange,
+  onTagsChanged,
+  onFolderConfigUpdated
 } from './notes-service'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 
 describe('notes-service', () => {
   let api: ReturnType<typeof createMockApi>
@@ -136,12 +139,14 @@ describe('notes-service', () => {
 
   it('registers note event subscriptions', () => {
     const unsubscribe = vi.fn()
+    const subscribe = vi.mocked(subscribeEvent)
     api.onNoteCreated = vi.fn(() => unsubscribe)
     api.onNoteUpdated = vi.fn(() => unsubscribe)
     api.onNoteDeleted = vi.fn(() => unsubscribe)
     api.onNoteRenamed = vi.fn(() => unsubscribe)
     api.onNoteMoved = vi.fn(() => unsubscribe)
     api.onNoteExternalChange = vi.fn(() => unsubscribe)
+    api.onTagsChanged = vi.fn(() => unsubscribe)
 
     const createdHandler = vi.fn()
     const updatedHandler = vi.fn()
@@ -149,6 +154,8 @@ describe('notes-service', () => {
     const renamedHandler = vi.fn()
     const movedHandler = vi.fn()
     const externalHandler = vi.fn()
+    const tagsHandler = vi.fn()
+    const folderConfigHandler = vi.fn()
 
     expect(onNoteCreated(createdHandler)).toBe(unsubscribe)
     expect(api.onNoteCreated).toHaveBeenCalledWith(createdHandler)
@@ -167,6 +174,18 @@ describe('notes-service', () => {
 
     expect(onNoteExternalChange(externalHandler)).toBe(unsubscribe)
     expect(api.onNoteExternalChange).toHaveBeenCalledWith(externalHandler)
+
+    onTagsChanged(tagsHandler)
+    onFolderConfigUpdated(folderConfigHandler)
+
+    expect(subscribe).toHaveBeenCalledWith('note-created', createdHandler)
+    expect(subscribe).toHaveBeenCalledWith('note-updated', updatedHandler)
+    expect(subscribe).toHaveBeenCalledWith('note-deleted', deletedHandler)
+    expect(subscribe).toHaveBeenCalledWith('note-renamed', renamedHandler)
+    expect(subscribe).toHaveBeenCalledWith('note-moved', movedHandler)
+    expect(subscribe).toHaveBeenCalledWith('note-external-change', externalHandler)
+    expect(subscribe).toHaveBeenCalledWith('tags-changed', tagsHandler)
+    expect(subscribe).toHaveBeenCalledWith('folder-config-updated', folderConfigHandler)
   })
 
   describe('position operations', () => {
