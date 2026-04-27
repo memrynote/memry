@@ -13,7 +13,7 @@ import type {
   NoteLinksResponse,
   NoteListItem,
   NoteListResponse
-} from '@memry/rpc/notes'
+} from '@/contracts/notes'
 
 // Types are re-exported at the end of this file
 import {

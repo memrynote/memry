@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, type RefObject } from 'react'
 import * as Y from 'yjs'
-import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import { CRDT_FRAGMENT_NAME } from '@/contracts/crdt'
 import { YjsTauriProvider } from '@/lib/crdt/yjs-tauri-provider'
 import { createLogger } from '@/lib/logger'
 

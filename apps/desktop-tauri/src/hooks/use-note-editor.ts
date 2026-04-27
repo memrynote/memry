@@ -11,7 +11,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import type { Note } from '@memry/rpc/notes'
+import type { Note } from '@/contracts/notes'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { notesService, onNoteDeleted, onNoteExternalChange } from '@/services/notes-service'
 import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
