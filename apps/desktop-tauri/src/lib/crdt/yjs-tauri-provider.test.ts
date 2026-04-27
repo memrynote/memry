@@ -54,7 +54,7 @@ describe('YjsTauriProvider', () => {
 
     await provider.connect()
 
-    expect(mockInvoke).toHaveBeenCalledWith('crdt_get_or_init_doc', { noteId: 'note-open' })
+    expect(mockInvoke).toHaveBeenCalledWith('crdt_open_doc', { noteId: 'note-open' })
     expect(mockInvoke).toHaveBeenCalledWith(
       'crdt_sync_step_1',
       expect.objectContaining({ noteId: 'note-open', stateVector: expect.any(Array) })

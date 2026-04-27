@@ -107,7 +107,7 @@ export class YjsTauriProvider extends Observable<string> {
 
   private async openDoc(): Promise<void> {
     try {
-      await this.invoke('crdt_get_or_init_doc', { noteId: this.noteId })
+      await this.invoke('crdt_open_doc', { noteId: this.noteId })
     } catch {
       log.error('Failed to open doc', { noteId: this.noteId })
       throw new Error(`Failed to open CRDT doc ${this.noteId}`)
