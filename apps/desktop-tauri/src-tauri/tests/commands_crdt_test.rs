@@ -13,7 +13,7 @@ use memry_desktop_tauri_lib::db::{crdt_snapshots, crdt_updates};
 use memry_desktop_tauri_lib::error::AppError;
 use memry_desktop_tauri_lib::test_helpers::{open_in_memory_with_migrations, test_vault_runtime};
 use std::sync::Arc;
-use yrs::{GetString, ReadTxn, Text, WriteTxn};
+use yrs::{GetString, ReadTxn, Text, WriteTxn, XmlFragment, XmlOut};
 
 #[tokio::test]
 async fn open_doc_creates_runtime_entry() {
@@ -254,6 +254,45 @@ async fn get_or_init_doc_is_idempotent_for_same_note() {
 }
 
 #[tokio::test]
+async fn get_or_init_doc_seeds_markdown_body_into_blocknote_fragment() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+    let crdt = Arc::new(CrdtRuntime::new());
+    let created = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Seeded".into(),
+            content: Some("# Seeded title\n\nhello world\n\n- one".into()),
+            folder: None,
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+
+    crdt_get_or_init_doc_inner(&conn, &vault, crdt.clone(), &created.id)
+        .await
+        .unwrap();
+
+    let handle = crdt.docs().get(&created.id).await.unwrap();
+    let (snapshot, tags) = handle.with_read(|txn| {
+        let fragment = txn.get_xml_fragment("prosemirror").expect("fragment");
+        (fragment.get_string(txn), block_content_tags(&fragment, txn))
+    });
+    let rows = crdt_updates::list_for_note(&conn, &created.id).unwrap();
+
+    assert_eq!(rows.len(), 1);
+    assert_eq!(tags, vec!["heading", "paragraph", "bulletListItem"]);
+    assert!(snapshot.contains("Seeded title"));
+    assert!(snapshot.contains("hello world"));
+    assert!(snapshot.contains("one"));
+}
+
+#[tokio::test]
 async fn get_or_init_doc_does_not_reseed_existing_runtime_doc() {
     let conn = open_in_memory_with_migrations();
     let vault = test_vault_runtime();
@@ -287,6 +326,31 @@ async fn get_or_init_doc_does_not_reseed_existing_runtime_doc() {
     assert!(crdt_updates::list_for_note(&conn, &created.id)
         .unwrap()
         .is_empty());
+}
+
+fn block_content_tags<T>(fragment: &impl XmlFragment, txn: &T) -> Vec<String>
+where
+    T: yrs::ReadTxn,
+{
+    let block_group = match fragment.get(txn, 0).expect("block group") {
+        XmlOut::Element(element) => element,
+        _ => panic!("expected block group"),
+    };
+    assert_eq!(block_group.tag().as_ref(), "blockGroup");
+
+    block_group
+        .children(txn)
+        .map(|child| match child {
+            XmlOut::Element(container) => {
+                let content = match container.get(txn, 0).expect("block content") {
+                    XmlOut::Element(element) => element,
+                    _ => panic!("expected block content"),
+                };
+                content.tag().to_string()
+            }
+            _ => panic!("expected block container"),
+        })
+        .collect()
 }
 
 #[tokio::test]
