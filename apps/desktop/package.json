@@ -65,6 +65,7 @@
     "build:unpack": "pnpm build && electron-builder --config config/electron-builder.yml --dir",
     "build:win": "pnpm build && electron-builder --config config/electron-builder.yml --win",
     "build:mac": "pnpm build && electron-builder --config config/electron-builder.yml --mac",
+    "build:mac:signed:local": "node scripts/build-mac-signed-local.mjs",
     "build:linux": "pnpm build && electron-builder --config config/electron-builder.yml --linux",
     "test": "pnpm exec vitest run --config config/vitest.config.ts",
     "test:watch": "pnpm exec vitest watch --config config/vitest.config.ts",
