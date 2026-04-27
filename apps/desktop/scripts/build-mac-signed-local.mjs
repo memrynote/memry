@@ -26,7 +26,8 @@ const parsedEnv = parse(readFileSync(envPath, 'utf8'))
 const buildEnv = {
   ...process.env,
   ...parsedEnv,
-  CSC_IDENTITY_AUTO_DISCOVERY: parsedEnv.CSC_IDENTITY_AUTO_DISCOVERY ?? 'false',
+  CSC_IDENTITY_AUTO_DISCOVERY:
+    parsedEnv.CSC_IDENTITY_AUTO_DISCOVERY ?? process.env.CSC_IDENTITY_AUTO_DISCOVERY ?? 'true',
   SYNC_SERVER_URL: parsedEnv.SYNC_SERVER_URL || process.env.SYNC_SERVER_URL || defaultSyncServerUrl
 }
 
@@ -52,6 +53,13 @@ const placeholderEnv = requiredEnv.filter((key) =>
 if (placeholderEnv.length > 0) {
   console.error(`Placeholder build secret(s) still present: ${placeholderEnv.join(', ')}`)
   console.error('Replace example values in apps/desktop/electron-builder.env and rerun.')
+  process.exit(1)
+}
+
+if (buildEnv.CSC_IDENTITY_AUTO_DISCOVERY === 'false' && !buildEnv.CSC_NAME?.trim()) {
+  console.error('CSC_IDENTITY_AUTO_DISCOVERY=false requires CSC_NAME for signed mac builds.')
+  console.error('Without CSC_NAME, electron-builder falls back to ad-hoc signing on arm64.')
+  console.error('Set CSC_IDENTITY_AUTO_DISCOVERY=true or add CSC_NAME in apps/desktop/electron-builder.env.')
   process.exit(1)
 }
 
