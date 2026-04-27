@@ -6,6 +6,7 @@ const runtimeDir = dirname(fileURLToPath(import.meta.url))
 const packageRoot = resolve(runtimeDir, '../..')
 
 export const runtimeConfig = {
+  runtimeDir,
   packageRoot,
   srcTauriRoot: resolve(packageRoot, 'src-tauri'),
   tmpRootPrefix: resolve(tmpdir(), 'memry-e2e-'),
