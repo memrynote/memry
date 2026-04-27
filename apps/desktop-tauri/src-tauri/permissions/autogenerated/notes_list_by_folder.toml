@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-notes-list-by-folder"
+description = "Enables the notes_list_by_folder command without any pre-configured scope."
+commands.allow = ["notes_list_by_folder"]
+
+[[permission]]
+identifier = "deny-notes-list-by-folder"
+description = "Denies the notes_list_by_folder command without any pre-configured scope."
+commands.deny = ["notes_list_by_folder"]

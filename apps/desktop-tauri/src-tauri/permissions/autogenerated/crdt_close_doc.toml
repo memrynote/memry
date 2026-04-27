@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-crdt-close-doc"
+description = "Enables the crdt_close_doc command without any pre-configured scope."
+commands.allow = ["crdt_close_doc"]
+
+[[permission]]
+identifier = "deny-crdt-close-doc"
+description = "Denies the crdt_close_doc command without any pre-configured scope."
+commands.deny = ["crdt_close_doc"]

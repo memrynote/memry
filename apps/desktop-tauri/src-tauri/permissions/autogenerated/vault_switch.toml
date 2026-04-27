@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-vault-switch"
+description = "Enables the vault_switch command without any pre-configured scope."
+commands.allow = ["vault_switch"]
+
+[[permission]]
+identifier = "deny-vault-switch"
+description = "Denies the vault_switch command without any pre-configured scope."
+commands.deny = ["vault_switch"]

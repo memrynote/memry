@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-sync-setup-setup-first-device"
+description = "Enables the sync_setup_setup_first_device command without any pre-configured scope."
+commands.allow = ["sync_setup_setup_first_device"]
+
+[[permission]]
+identifier = "deny-sync-setup-setup-first-device"
+description = "Denies the sync_setup_setup_first_device command without any pre-configured scope."
+commands.deny = ["sync_setup_setup_first_device"]

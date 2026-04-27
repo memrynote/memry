@@ -13,7 +13,7 @@
 use crate::error::{AppError, AppResult};
 use crate::vault::registry::{registry_path, VaultInfo, VaultRegistry};
 use crate::vault::watcher::WatcherHandle;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize, specta::Type)]
@@ -55,6 +55,28 @@ impl VaultRuntime {
             }),
             watcher_slot: Mutex::new(None),
             registry_path,
+        })
+    }
+
+    #[cfg(any(debug_assertions, feature = "test-helpers"))]
+    pub fn open_for_test(vault_root: impl AsRef<Path>) -> AppResult<Self> {
+        let root = vault_root.as_ref().to_path_buf();
+        std::fs::create_dir_all(&root)?;
+        let current = Some(root.to_string_lossy().into_owned());
+
+        Ok(Self {
+            inner: Mutex::new(RuntimeInner {
+                current: Some(root.clone()),
+                is_indexing: false,
+                index_progress: 0,
+                error: None,
+                registry: VaultRegistry {
+                    vaults: Vec::new(),
+                    current,
+                },
+            }),
+            watcher_slot: Mutex::new(None),
+            registry_path: root.join(".memry-test-vaults.json"),
         })
     }
 

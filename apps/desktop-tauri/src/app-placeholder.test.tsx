@@ -11,7 +11,6 @@ describe('AppPlaceholder', () => {
 
   it('invokes the mock IPC to prove the mock pipeline is reachable', async () => {
     render(<AppPlaceholder />)
-    // notes_list returns 12 non-deleted fixtures (see src/lib/ipc/mocks/notes.ts).
     await waitFor(() => {
       expect(screen.getByTestId('mock-notes-count')).toHaveTextContent(/\d+ mock note/)
     })

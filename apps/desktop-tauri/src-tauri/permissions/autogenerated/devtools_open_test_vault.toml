@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-devtools-open-test-vault"
+description = "Enables the devtools_open_test_vault command without any pre-configured scope."
+commands.allow = ["devtools_open_test_vault"]
+
+[[permission]]
+identifier = "deny-devtools-open-test-vault"
+description = "Denies the devtools_open_test_vault command without any pre-configured scope."
+commands.deny = ["devtools_open_test_vault"]

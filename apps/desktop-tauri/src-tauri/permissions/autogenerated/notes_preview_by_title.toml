@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-notes-preview-by-title"
+description = "Enables the notes_preview_by_title command without any pre-configured scope."
+commands.allow = ["notes_preview_by_title"]
+
+[[permission]]
+identifier = "deny-notes-preview-by-title"
+description = "Denies the notes_preview_by_title command without any pre-configured scope."
+commands.deny = ["notes_preview_by_title"]

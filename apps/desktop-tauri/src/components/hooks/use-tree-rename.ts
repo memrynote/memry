@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import type { QueryClient } from '@tanstack/react-query'
-import type { Note } from '@memry/contracts/notes-api'
+import type { Note } from '@/contracts/notes'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import { notesKeys } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'

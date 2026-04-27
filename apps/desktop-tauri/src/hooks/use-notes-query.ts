@@ -13,7 +13,7 @@ import type {
   NoteLinksResponse,
   NoteListItem,
   NoteListResponse
-} from '@memry/rpc/notes'
+} from '@/contracts/notes'
 
 // Types are re-exported at the end of this file
 import {
@@ -25,9 +25,10 @@ import {
   onNoteMoved,
   onNoteExternalChange,
   onTagsChanged,
-  onFolderConfigUpdated
+  onFolderConfigUpdated,
+  onFolderRenamed,
+  onFolderDeleted
 } from '@/services/notes-service'
-import { tagsService } from '@/services/tags-service'
 
 // =============================================================================
 // Query Keys
@@ -172,11 +173,16 @@ export function useNote(id: string | null, options: UseNoteOptions = {}): UseNot
       }
     })
 
+    const unsubFolderRenamed = onFolderRenamed(() => {
+      void queryClient.invalidateQueries({ queryKey: notesKeys.note(id) })
+    })
+
     return () => {
       unsubUpdated()
       unsubRenamed()
       unsubDeleted()
       unsubExternal()
+      unsubFolderRenamed()
     }
   }, [id, queryClient])
 
@@ -233,12 +239,22 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
       void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
     })
 
+    const unsubFolderRenamed = onFolderRenamed(() => {
+      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
+    })
+
+    const unsubFolderDeleted = onFolderDeleted(() => {
+      void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
+    })
+
     return () => {
       unsubCreated()
       unsubUpdated()
       unsubDeleted()
       unsubRenamed()
       unsubMoved()
+      unsubFolderRenamed()
+      unsubFolderDeleted()
     }
   }, [queryClient])
 
@@ -269,10 +285,7 @@ export function useNoteTagsQuery(options: { enabled?: boolean } = {}) {
 
   const query = useQuery({
     queryKey: notesKeys.tags(),
-    queryFn: async () => {
-      const { tags } = await tagsService.getAllWithCounts()
-      return tags.map((t) => ({ tag: t.name, color: t.color ?? '', count: t.count }))
-    },
+    queryFn: () => notesService.getTags(),
     enabled,
     staleTime: METADATA_STALE_TIME,
     gcTime: NOTE_GC_TIME
@@ -282,11 +295,21 @@ export function useNoteTagsQuery(options: { enabled?: boolean } = {}) {
   const tags = useMemo(() => query.data ?? EMPTY_TAGS, [query.data])
 
   useEffect(() => {
-    const unsubscribe = onTagsChanged(() => {
+    const invalidate = () => {
       void queryClient.invalidateQueries({ queryKey: notesKeys.tags() })
-    })
+    }
 
-    return unsubscribe
+    const unsubCreated = onNoteCreated(invalidate)
+    const unsubUpdated = onNoteUpdated(invalidate)
+    const unsubDeleted = onNoteDeleted(invalidate)
+    const unsubTagsChanged = onTagsChanged(invalidate)
+
+    return () => {
+      unsubCreated()
+      unsubUpdated()
+      unsubDeleted()
+      unsubTagsChanged()
+    }
   }, [queryClient])
 
   return {
@@ -326,6 +349,8 @@ export function useNoteFoldersQuery(options: { enabled?: boolean } = {}) {
     const unsubMoved = onNoteMoved(invalidate)
     const unsubRenamed = onNoteRenamed(invalidate)
     const unsubFolderConfig = onFolderConfigUpdated(invalidate)
+    const unsubFolderRenamed = onFolderRenamed(invalidate)
+    const unsubFolderDeleted = onFolderDeleted(invalidate)
 
     return () => {
       unsubCreated()
@@ -333,6 +358,8 @@ export function useNoteFoldersQuery(options: { enabled?: boolean } = {}) {
       unsubMoved()
       unsubRenamed()
       unsubFolderConfig()
+      unsubFolderRenamed()
+      unsubFolderDeleted()
     }
   }, [queryClient])
 

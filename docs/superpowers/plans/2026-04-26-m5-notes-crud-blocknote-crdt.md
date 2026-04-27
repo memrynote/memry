@@ -5733,9 +5733,13 @@ Expected: existing M1 mock-lane remains green.
 
 Goal: finish M5 with proof that the design acceptance gate is met and every remaining mock/deferred surface has an owner milestone. Acceptance proof: all commands below pass, plan checklist is complete, and the PR body includes the ledger diff from M4 baseline to M5.
 
+2026-04-27 status: automated local gates are recorded, but Chunk 13 is not fully
+complete. Runtime E2E execution is blocked on macOS platform support, and manual
+dogfood is blocked by pending Codex Computer Use permissions.
+
 ### Task 72: Full local verification
 
-- [ ] **Step 72.1: Rust**
+- [x] **Step 72.1: Rust**
 
 ```bash
 pnpm --filter @memry/desktop-tauri cargo:fmt -- --check
@@ -5744,7 +5748,7 @@ pnpm --filter @memry/desktop-tauri cargo:clippy -- -D warnings
 pnpm --filter @memry/desktop-tauri cargo:test
 ```
 
-- [ ] **Step 72.2: Renderer + audits**
+- [x] **Step 72.2: Renderer + audits**
 
 ```bash
 pnpm --filter @memry/desktop-tauri lint
@@ -5755,18 +5759,46 @@ pnpm --filter @memry/desktop-tauri capability:check
 pnpm --filter @memry/desktop-tauri command:parity
 ```
 
-- [ ] **Step 72.3: E2E**
+- [x] **Step 72.3a: Browser mock E2E**
 
 ```bash
 pnpm --filter @memry/desktop-tauri test:e2e
+```
+
+- [ ] **Step 72.3b: Runtime E2E execution**
+
+```bash
 pnpm --filter @memry/desktop-tauri test:e2e:runtime
 ```
+
+Verification recorded on 2026-04-27:
+
+- Rust: `cargo:fmt -- --check`, `cargo:check`, `cargo:clippy -- -D warnings`, and
+  `cargo:test` passed after applying final rustfmt.
+- Renderer/audits: `lint` exited 0 with existing warnings; `typecheck`, `test`,
+  `bindings:check`, `capability:check`, and `command:parity` passed.
+- Unit coverage: `test` reported 174 files and 3627 tests passed.
+- Browser E2E: `test:e2e` reported 34/34 passed.
+- Runtime E2E command: `test:e2e:runtime -- --list` enumerated 7 scenarios.
+  `test:e2e:runtime` itself exited 0 on macOS with the documented platform skip
+  because `tauri-driver v2.0.5` has no macOS WKWebView backend; this does not
+  count as runtime scenario execution.
 
 ---
 
 ### Task 73: Manual dogfood checklist
 
 Run against a fresh vault with `VITE_MOCK_IPC=false`:
+
+2026-04-27 retry status: still blocked locally. `/Applications/Memry.app` was
+removed so Computer Use would attach to the debug bundle. A fresh
+`MEMRY_DEVICE=phaseo-manual-cu` vault launched with `VITE_MOCK_IPC=false`; note
+creation reached the real Rust path and wrote the vault file + `note_metadata`
+row. Editor typing could be made visible in the app, but the vault file and CRDT
+tables did not show the typed content before Computer Use failed again with a
+ScreenCaptureKit stream error. A second probe run could launch and create a note,
+but could not reliably focus/type into the editor after the capture failure.
+Leave these boxes unchecked until the manual pass is actually completed.
 
 - [ ] create note, type 500+ chars, restart, content remains
 - [ ] rename note, move folder, reorder within folder
@@ -5788,20 +5820,31 @@ Update the PR body with:
 ## M5 Carry-Forward Ledger
 
 - M4 baseline command audit: `/tmp/m4-parity-baseline.txt`
-- M5 final command audit: attach output from `pnpm --filter @memry/desktop-tauri command:parity`
+- M5 final command audit: `Renderer literal invokes 155`, `Forwarder domains 9`,
+  `Mock routes 198`, `Rust real commands 114`, `Generated bindings 96`,
+  `Electron channels 279`; classifications `real=53`, `mocked=163`,
+  `deferred=80`, `renderer-only=0`, `retired=9`; command exited `OK`.
 - Real in M5: notes CRUD, folders, properties, positions, local-only, wiki-link helpers, note file open/reveal, CRDT open/apply/snapshot/state-vector/sync-step/chunk helpers
 - Deferred M6: attachment upload/list/delete if not fully local metadata-backed; cloud blob upload/download
 - Deferred M7: FTS-backed wiki-link/search ranking
 - Deferred M8: import/export/pdf/html/version history and any remaining editor-adjacent non-CRUD chrome
 - Retired aliases: `sync_crdt_*` -> `crdt_*`
-- Production mock guard: enabled and tested
-- Runtime e2e evidence: typing p95, persistence, slash, undo/redo, concurrent edit, state coverage
-- Known warnings carried forward: list exact warning, owner milestone, and why it is non-blocking
+- Production mock guard: enabled and covered by `src/lib/ipc/invoke.test.ts`;
+  browser mock E2E also passed with 34/34 tests.
+- Runtime e2e evidence: runtime scenarios exist for typing p95, persistence,
+  slash, undo/redo, concurrent edit, and state coverage; `test:e2e:runtime
+  -- --list` enumerates them, while macOS execution is a platform skip. Run the
+  lane on Linux or Windows before treating runtime automation as exercised.
+- Known warnings carried forward: `lint` emits existing warning debt and exits 0;
+  owner milestone is repo-wide lint cleanup, non-blocking because Phase O added
+  no new lint errors. Runtime e2e execution on macOS is skipped because
+  `tauri-driver v2.0.5` is unsupported there; owner milestone is CI runner
+  coverage on Linux/Windows.
 ```
 
-- [ ] **Step 74.1: Commit docs/ledger updates**
+- [x] **Step 74.1: Commit docs/ledger updates**
 
 ```bash
 git add docs/superpowers/plans/2026-04-26-m5-notes-crud-blocknote-crdt.md
-git commit -m "m5(plan): close runtime e2e and parity planning gaps"
+git commit -m "m5(plan): close final verification ledger"
 ```

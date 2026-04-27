@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 pub static EMBEDDED: &[(&str, &str)] = &MIGRATIONS;
 
-static MIGRATIONS: [(&str, &str); 29] = [
+static MIGRATIONS: [(&str, &str); 35] = [
     (
         "0000_thankful_luke_cage.sql",
         include_str!("../../migrations/0000_thankful_luke_cage.sql"),
@@ -120,6 +120,30 @@ static MIGRATIONS: [(&str, &str); 29] = [
     (
         "0028_calendar_source_last_error.sql",
         include_str!("../../migrations/0028_calendar_source_last_error.sql"),
+    ),
+    (
+        "0029_crdt_updates.sql",
+        include_str!("../../migrations/0029_crdt_updates.sql"),
+    ),
+    (
+        "0030_crdt_snapshots.sql",
+        include_str!("../../migrations/0030_crdt_snapshots.sql"),
+    ),
+    (
+        "0031_notes_cache.sql",
+        include_str!("../../migrations/0031_notes_cache.sql"),
+    ),
+    (
+        "0032_folder_config_templates.sql",
+        include_str!("../../migrations/0032_folder_config_templates.sql"),
+    ),
+    (
+        "0033_notes_cache_inline_tags.sql",
+        include_str!("../../migrations/0033_notes_cache_inline_tags.sql"),
+    ),
+    (
+        "0034_notes_cache_inline_tags_backfill_marker.sql",
+        include_str!("../../migrations/0034_notes_cache_inline_tags_backfill_marker.sql"),
     ),
 ];
 

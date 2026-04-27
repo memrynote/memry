@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef, type RefObject } from 'react'
 import * as Y from 'yjs'
-import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
-import { YjsIpcProvider } from './yjs-ipc-provider'
+import { CRDT_FRAGMENT_NAME } from '@/contracts/crdt'
+import { YjsTauriProvider } from '@/lib/crdt/yjs-tauri-provider'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('useYjsCollaboration')
 
 export interface YjsCollaborationState {
   fragment: Y.XmlFragment | null
-  provider: YjsIpcProvider | null
+  provider: YjsTauriProvider | null
   isReady: boolean
 }
 
@@ -50,7 +50,7 @@ export function useYjsCollaboration(
       isRemoteUpdateRef.current = false
     })
 
-    const provider = new YjsIpcProvider({ noteId, doc })
+    const provider = new YjsTauriProvider({ noteId, doc })
 
     provider
       .connect()

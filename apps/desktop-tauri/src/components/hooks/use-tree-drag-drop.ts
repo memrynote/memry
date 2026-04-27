@@ -17,6 +17,7 @@ const log = createLogger('Hook:useTreeDragDrop')
 interface UseTreeDragDropOptions {
   tree: TreeStructure
   noteMap: Map<string, NoteListItem>
+  notesRoot?: string
   selectedIds: string[]
   setSelectedIds: (ids: string[]) => void
   setNotePositions: (positions: Record<string, number>) => void
@@ -27,6 +28,7 @@ interface UseTreeDragDropOptions {
 export function useTreeDragDrop({
   tree,
   noteMap,
+  notesRoot = 'notes',
   selectedIds,
   setSelectedIds,
   setNotePositions,
@@ -52,12 +54,12 @@ export function useTreeDragDrop({
 
       const targetNote = noteMap.get(targetId)
       if (targetNote) {
-        return extractFolderFromPath(targetNote.path)
+        return extractFolderFromPath(targetNote.path, notesRoot)
       }
 
       return ''
     },
-    [noteMap]
+    [noteMap, notesRoot]
   )
 
   const handleNoteMove = useCallback(
@@ -65,7 +67,7 @@ export function useTreeDragDrop({
       const note = noteMap.get(noteId)
       if (!note) return false
 
-      const currentFolder = extractFolderFromPath(note.path)
+      const currentFolder = extractFolderFromPath(note.path, notesRoot)
       if (currentFolder === targetFolder) {
         return false
       }
@@ -78,7 +80,7 @@ export function useTreeDragDrop({
         return false
       }
     },
-    [noteMap, moveNoteMutateAsync]
+    [noteMap, notesRoot, moveNoteMutateAsync]
   )
 
   const handleFolderMove = useCallback(
@@ -110,7 +112,7 @@ export function useTreeDragDrop({
       } else {
         const targetNote = noteMap.get(targetId)
         if (targetNote) {
-          const targetFolder = extractFolderFromPath(targetNote.path)
+          const targetFolder = extractFolderFromPath(targetNote.path, notesRoot)
           newPath = targetFolder ? `${targetFolder}/${sourceFolderName}` : sourceFolderName
         } else {
           newPath = sourceFolderName
@@ -130,7 +132,7 @@ export function useTreeDragDrop({
         return false
       }
     },
-    [noteMap, refreshFolders]
+    [noteMap, notesRoot, refreshFolders]
   )
 
   const handleReorderInFolder = useCallback(
@@ -302,8 +304,8 @@ export function useTreeDragDrop({
           const targetNote = noteMap.get(targetId)
 
           if (draggedNote && targetNote) {
-            const draggedFolder = extractFolderFromPath(draggedNote.path)
-            const dropFolder = extractFolderFromPath(targetNote.path)
+            const draggedFolder = extractFolderFromPath(draggedNote.path, notesRoot)
+            const dropFolder = extractFolderFromPath(targetNote.path, notesRoot)
 
             if (draggedFolder === dropFolder) {
               const reordered = await handleReorderInFolder(
@@ -339,6 +341,7 @@ export function useTreeDragDrop({
       handleReorderInFolder,
       handleReorderFoldersInParent,
       noteMap,
+      notesRoot,
       setSelectedIds
     ]
   )

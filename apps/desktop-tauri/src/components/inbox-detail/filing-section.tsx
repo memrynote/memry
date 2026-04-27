@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils'
 import type { InboxItem, InboxItemListItem, Folder as FolderType, LinkedNote } from '@/types'
 import { createLogger } from '@/lib/logger'
 import { invoke } from '@/lib/ipc/invoke'
-import type { FolderInfo, NoteListItem } from '@memry/rpc/notes'
+import type { FolderInfo, NoteListItem } from '@/contracts/notes'
 
 const log = createLogger('Component:FilingSection')
 

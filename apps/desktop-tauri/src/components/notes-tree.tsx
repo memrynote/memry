@@ -121,6 +121,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     folders: data.folders,
     notePositions: data.notePositions,
     setNotePositions: data.setNotePositions,
+    notesRoot: data.notesRoot,
     folderTemplateNames: data.folderTemplateNames,
     setFolderTemplateNames: data.setFolderTemplateNames,
     createFolderMutation: data.createFolder,
@@ -511,6 +512,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           <RevealHandler
             pendingRevealNoteId={pendingRevealNoteId}
             noteMap={data.noteMap}
+            notesRoot={data.notesRoot}
             onReveal={handleRevealComplete}
             onClear={() => setPendingRevealNoteId(null)}
           />

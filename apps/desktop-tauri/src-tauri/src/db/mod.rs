@@ -14,12 +14,15 @@ pub mod calendar_bindings;
 pub mod calendar_events;
 pub mod calendar_external_events;
 pub mod calendar_sources;
+pub mod crdt_snapshots;
+pub mod crdt_updates;
 pub mod folder_configs;
 pub mod inbox;
 pub mod note_metadata;
 pub mod note_positions;
 pub mod notes_cache;
 pub mod projects;
+pub mod property_definitions;
 pub mod reminders;
 pub mod saved_filters;
 pub mod search_reasons;
@@ -59,7 +62,7 @@ impl Db {
         Ok(db)
     }
 
-    #[cfg(any(test, feature = "test-helpers"))]
+    #[cfg(any(debug_assertions, feature = "test-helpers"))]
     pub fn open_memory() -> AppResult<Self> {
         let db = Self::with_init(Connection::open_in_memory()?, |conn| {
             conn.execute_batch(
