@@ -23,7 +23,7 @@ pub struct CreatePropertyDefinitionInput {
     #[serde(rename = "type")]
     pub ty: String,
     pub options: Option<JsonUnknown>,
-    pub default_value: Option<String>,
+    pub default_value: Option<JsonUnknown>,
     pub color: Option<String>,
 }
 
@@ -57,7 +57,12 @@ pub fn notes_create_property_definition_inner(
         name: input.name.clone(),
         ty: input.ty,
         options: input.options.map(|value| value.deref().to_string()),
-        default_value: input.default_value,
+        default_value: input
+            .default_value
+            .as_deref()
+            .map(json_field_to_db_string)
+            .transpose()?
+            .flatten(),
         color: input.color,
         created_at: now_iso(),
     };
@@ -314,7 +319,10 @@ fn require_object<'a>(value: &'a Value, field: &str) -> AppResult<&'a Value> {
 }
 
 fn require_field_str<'a>(value: &'a Value, field: &str) -> AppResult<&'a str> {
-    let leaf = field.rsplit_once('.').map(|(_, leaf)| leaf).unwrap_or(field);
+    let leaf = field
+        .rsplit_once('.')
+        .map(|(_, leaf)| leaf)
+        .unwrap_or(field);
     value
         .get(leaf)
         .and_then(Value::as_str)

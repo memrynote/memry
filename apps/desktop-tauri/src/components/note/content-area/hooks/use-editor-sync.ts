@@ -114,15 +114,6 @@ export function useEditorSync({
     }
     initialContentLoadedRef.current = true
 
-    if (yjsFragment) {
-      isContentReadyRef.current = true
-      if (onHeadingsChange) {
-        const headings = extractHeadings(editor.document as Block[])
-        onHeadingsChange(headings)
-      }
-      return
-    }
-
     async function loadContent(): Promise<void> {
       try {
         if (typeof initialContent === 'string' && initialContent.trim()) {
@@ -205,6 +196,25 @@ export function useEditorSync({
         }
       }
     }
+
+    const hasInitialContent =
+      (typeof initialContent === 'string' && !!initialContent.trim()) ||
+      (Array.isArray(initialContent) && initialContent.length > 0)
+
+    if (yjsFragment && (!hasInitialContent || yjsFragment.length > 0)) {
+      isContentReadyRef.current = true
+      if (onHeadingsChange) {
+        const headings = extractHeadings(editor.document as Block[])
+        onHeadingsChange(headings)
+      }
+      if (onInlineTagsChange) {
+        const tags = extractInlineTags(editor.document as Block[])
+        prevInlineTagsRef.current = tags
+        onInlineTagsChange(tags)
+      }
+      return
+    }
+
     void loadContent()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor])
@@ -223,10 +233,9 @@ export function useEditorSync({
 
     if (isRemoteUpdateRef?.current) return
 
-    // When Yjs collaboration is active, the main-process CRDT doc owns body
-    // persistence and writes merged markdown back to disk. Avoid racing that
-    // writeback with a separate renderer-triggered markdown save.
-    if (!yjsFragment && onMarkdownChange && isContentReadyRef.current) {
+    // Keep the markdown autosave active under Yjs so the vault file and note
+    // cache stay fresh while the provider persists the CRDT update stream.
+    if (onMarkdownChange && isContentReadyRef.current) {
       if (markdownDebounceRef.current) {
         clearTimeout(markdownDebounceRef.current)
       }

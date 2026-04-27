@@ -11,10 +11,10 @@
 //! e2e lane in Chunk 12.
 
 use memry_desktop_tauri_lib::commands::notes::{
-    NoteCreateInput, NoteDto, NoteListOptions, NoteUpdateInput, note_update_event_changes,
-    notes_create_inner, notes_delete_inner, notes_exists_inner, notes_get_local_only_count_inner,
-    notes_list_by_folder_inner, notes_list_inner, notes_move_inner, notes_rename_inner,
-    notes_set_local_only_inner,
+    note_update_event_changes, notes_create_inner, notes_delete_inner, notes_exists_inner,
+    notes_get_local_only_count_inner, notes_list_by_folder_inner, notes_list_inner,
+    notes_move_inner, notes_rename_inner, notes_set_local_only_inner, notes_update_inner,
+    NoteCreateInput, NoteDto, NoteListOptions, NoteUpdateInput,
 };
 use memry_desktop_tauri_lib::db::note_metadata;
 use memry_desktop_tauri_lib::test_helpers::{open_in_memory_with_migrations, test_vault_runtime};
@@ -74,7 +74,7 @@ async fn rename_round_trip_keeps_id_updates_path_and_title() {
         .unwrap();
     assert_eq!(renamed.id, created.id);
     assert_eq!(renamed.title, "Renamed Doc");
-    assert_eq!(renamed.path, "Inbox/renamed-doc.md");
+    assert_eq!(renamed.path, "notes/Inbox/renamed-doc.md");
 
     assert!(
         notes_io::read_note_from_disk(&vault.require_current().unwrap(), &created.path)
@@ -117,11 +117,11 @@ async fn move_round_trip_changes_only_folder_segment() {
         .unwrap();
     assert_eq!(moved.id, created.id);
     assert_eq!(moved.title, "Drop");
-    assert_eq!(moved.path, "Archive/drop.md");
+    assert_eq!(moved.path, "notes/Archive/drop.md");
 
     let listing = notes_list_by_folder_inner(&conn, "Archive").unwrap();
     assert_eq!(listing.total, 1);
-    assert_eq!(listing.notes[0].path, "Archive/drop.md");
+    assert_eq!(listing.notes[0].path, "notes/Archive/drop.md");
 
     let inbox = notes_list_by_folder_inner(&conn, "Inbox").unwrap();
     assert_eq!(inbox.total, 0);
@@ -159,6 +159,69 @@ async fn soft_delete_removes_note_from_list_but_keeps_metadata_row() {
         .unwrap()
         .expect("metadata row preserved for tombstone");
     assert_eq!(raw.id, created.id);
+    assert!(raw.path.starts_with(".trash/"));
+
+    let recreated = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Discard".into(),
+            content: Some("again".into()),
+            folder: Some("Inbox".into()),
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+    assert_eq!(recreated.path, created.path);
+}
+
+#[tokio::test]
+async fn update_after_soft_delete_returns_not_found_and_keeps_note_hidden() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+    let created = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Discard".into(),
+            content: Some("bye".into()),
+            folder: Some("Inbox".into()),
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+
+    notes_delete_inner(&conn, &vault, &created.id)
+        .await
+        .unwrap();
+
+    let err = notes_update_inner(
+        &conn,
+        &vault,
+        NoteUpdateInput {
+            id: created.id.clone(),
+            title: Some("Resurface".into()),
+            content: Some("stale autosave".into()),
+            tags: None,
+            frontmatter: None,
+            emoji: None,
+        },
+    )
+    .await
+    .unwrap_err();
+
+    assert!(err.to_string().contains("not found"));
+    let listing = notes_list_inner(&conn, None).unwrap();
+    assert_eq!(listing.total, 0);
+    assert!(listing.notes.is_empty());
 }
 
 #[tokio::test]
@@ -255,6 +318,44 @@ async fn list_with_pagination_and_folder_filter() {
 }
 
 #[test]
+fn list_honors_contract_limit_above_one_thousand() {
+    let conn = open_in_memory_with_migrations();
+    for index in 0..1001 {
+        let id = format!("note-{index:04}");
+        conn.execute(
+            "INSERT INTO notes_cache (
+                id, title, path, snippet, word_count, tags_json, inline_tags_json,
+                modified_at, created_at, local_only
+             ) VALUES (?1, ?2, ?3, '', 0, '[]', '[]', ?4, ?4, 0)",
+            rusqlite::params![
+                id,
+                format!("Doc {index:04}"),
+                format!("notes/doc-{index:04}.md"),
+                "2026-04-27T00:00:00.000Z",
+            ],
+        )
+        .unwrap();
+    }
+
+    let page = notes_list_inner(
+        &conn,
+        Some(NoteListOptions {
+            folder: None,
+            tags: None,
+            sort_by: Some("title".into()),
+            sort_order: Some("asc".into()),
+            limit: Some(1001),
+            offset: Some(0),
+        }),
+    )
+    .unwrap();
+
+    assert_eq!(page.total, 1001);
+    assert_eq!(page.notes.len(), 1001);
+    assert!(!page.has_more);
+}
+
+#[test]
 fn update_event_changes_includes_content_for_content_saves() {
     let input = NoteUpdateInput {
         id: "note-1".into(),
@@ -266,10 +367,11 @@ fn update_event_changes_includes_content_for_content_saves() {
     };
     let note = NoteDto {
         id: "note-1".into(),
-        path: "Inbox/doc.md".into(),
+        path: "notes/Inbox/doc.md".into(),
         title: "Doc".into(),
         content: "new [[Target]] body".into(),
         frontmatter: serde_json::json!({}).into(),
+        properties: serde_json::json!({}).into(),
         created: "2026-04-27T00:00:00Z".into(),
         modified: "2026-04-27T00:00:01Z".into(),
         tags: vec![],

@@ -1,11 +1,13 @@
 use memry_desktop_tauri_lib::commands::notes::{
-    notes_create_inner, notes_delete_inner, notes_list_by_folder_inner, notes_list_inner,
-    notes_update_inner, NoteCreateInput, NoteListOptions, NoteUpdateInput,
+    notes_create_inner, notes_delete_inner, notes_delete_with_db_inner, notes_list_by_folder_inner,
+    notes_list_inner, notes_list_with_backfill_inner, notes_move_inner, notes_update_inner,
+    notes_update_with_db_inner, NoteCreateInput, NoteListOptions, NoteUpdateInput,
 };
-use memry_desktop_tauri_lib::db::{note_metadata, note_positions, notes_cache};
+use memry_desktop_tauri_lib::db::{folder_configs, note_metadata, note_positions, notes_cache, Db};
 use memry_desktop_tauri_lib::error::AppError;
 use memry_desktop_tauri_lib::test_helpers::{open_in_memory_with_migrations, test_vault_runtime};
 use memry_desktop_tauri_lib::vault::notes_io;
+use memry_desktop_tauri_lib::vault::preferences::{read_config, update_config};
 use std::time::Duration;
 
 #[tokio::test]
@@ -32,7 +34,7 @@ async fn create_note_writes_metadata_vault_file_cache_and_returns_dto() {
     assert_eq!(note.title, "Hello");
     assert_eq!(note.content, "# Body");
     assert_eq!(note.tags, vec!["work"]);
-    assert!(note.path.starts_with("Inbox/"));
+    assert!(note.path.starts_with("notes/Inbox/"));
     assert!(note.path.ends_with(".md"));
 
     let metadata = note_metadata::get_by_id(&conn, &note.id)
@@ -54,6 +56,55 @@ async fn create_note_writes_metadata_vault_file_cache_and_returns_dto() {
     assert_eq!(cached.len(), 1);
     assert_eq!(cached[0].id, note.id);
     assert_eq!(cached[0].snippet, "# Body");
+}
+
+#[tokio::test]
+async fn create_note_rejects_parent_segments_in_folder() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+
+    let err = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Escape".into(),
+            content: Some("body".into()),
+            folder: Some("../archive".into()),
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .expect_err("create should reject parent traversal");
+
+    assert!(matches!(err, AppError::Validation(ref message) if message.contains("..")));
+}
+
+#[tokio::test]
+async fn create_note_treats_notes_prefixed_folder_as_logical_child() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+
+    let created = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Child".into(),
+            content: Some("body".into()),
+            folder: Some("notes/Child".into()),
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+
+    assert_eq!(created.path, "notes/notes/Child/child.md");
+    let listed = notes_list_by_folder_inner(&conn, "notes/Child").unwrap();
+    assert_eq!(listed.notes.len(), 1);
+    assert_eq!(listed.notes[0].id, created.id);
 }
 
 #[tokio::test]
@@ -100,10 +151,99 @@ Agenda
     assert_eq!(created.content, "# Weekly Sync\n\nAgenda");
     assert_eq!(created.tags, vec!["meetings", "work"]);
     assert_eq!(created.frontmatter["properties"]["Status"], "Planned");
+    assert_eq!(created.properties["Status"], "Planned");
 }
 
 #[tokio::test]
-async fn create_note_rejects_duplicate_path_without_overwriting_existing_file() {
+async fn create_note_applies_folder_template_json_payload() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+
+    let created = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Weekly Sync".into(),
+            content: None,
+            folder: Some("Inbox".into()),
+            tags: Some(vec!["work".into()]),
+            template: Some(
+                serde_json::json!({
+                    "content": "# {{title}}\n\nAgenda",
+                    "frontmatter": {
+                        "tags": ["meetings"],
+                        "status": "active",
+                        "properties": {
+                            "priority": "high"
+                        }
+                    }
+                })
+                .to_string(),
+            ),
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+
+    assert_eq!(created.content, "# Weekly Sync\n\nAgenda");
+    assert_eq!(created.tags, vec!["meetings", "work"]);
+    assert_eq!(created.frontmatter["properties"]["status"], "active");
+    assert_eq!(created.frontmatter["properties"]["priority"], "high");
+    assert_eq!(created.properties["status"], "active");
+    assert_eq!(created.properties["priority"], "high");
+}
+
+#[tokio::test]
+async fn create_note_inherits_folder_template_when_template_omitted() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+
+    folder_configs::set(
+        &conn,
+        &folder_configs::FolderConfigRow {
+            path: "Inbox".into(),
+            icon: None,
+            template_json: Some(
+                serde_json::json!({
+                    "content": "# {{title}}\n\nAgenda",
+                    "frontmatter": {
+                        "tags": ["meetings"],
+                        "properties": {
+                            "priority": "high"
+                        }
+                    }
+                })
+                .to_string(),
+            ),
+        },
+    )
+    .unwrap();
+
+    let created = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Inherited".into(),
+            content: None,
+            folder: Some("Inbox".into()),
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+
+    assert_eq!(created.content, "# Inherited\n\nAgenda");
+    assert_eq!(created.tags, vec!["meetings"]);
+    assert_eq!(created.properties["priority"], "high");
+}
+
+#[tokio::test]
+async fn create_note_generates_unique_path_without_overwriting_existing_file() {
     let conn = open_in_memory_with_migrations();
     let vault = test_vault_runtime();
 
@@ -123,7 +263,7 @@ async fn create_note_rejects_duplicate_path_without_overwriting_existing_file() 
     .note
     .unwrap();
 
-    let err = notes_create_inner(
+    let second = notes_create_inner(
         &conn,
         &vault,
         NoteCreateInput {
@@ -135,9 +275,13 @@ async fn create_note_rejects_duplicate_path_without_overwriting_existing_file() 
         },
     )
     .await
-    .unwrap_err();
+    .unwrap()
+    .note
+    .unwrap();
 
-    assert!(matches!(err, AppError::Conflict(message) if message.contains(&first.path)));
+    assert_ne!(second.path, first.path);
+    assert!(second.path.starts_with("notes/Inbox/same-title "));
+    assert!(second.path.ends_with(".md"));
 
     let root = vault.require_current().unwrap();
     let on_disk = notes_io::read_note_from_disk(&root, &first.path)
@@ -150,6 +294,47 @@ async fn create_note_rejects_duplicate_path_without_overwriting_existing_file() 
         .unwrap()
         .expect("original metadata remains");
     assert_eq!(metadata.title, "Same Title");
+
+    let second_disk = notes_io::read_note_from_disk(&root, &second.path)
+        .await
+        .unwrap()
+        .expect("second note is written to unique path");
+    assert_eq!(second_disk.parsed.content, "new body");
+}
+
+#[tokio::test]
+async fn create_note_retries_suffix_when_disk_file_appears_before_metadata() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+    let root = vault.require_current().unwrap();
+    std::fs::create_dir_all(root.join("notes").join("Inbox")).unwrap();
+    std::fs::write(
+        root.join("notes").join("Inbox").join("race.md"),
+        "pre-existing body",
+    )
+    .unwrap();
+
+    let created = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Race".into(),
+            content: Some("new body".into()),
+            folder: Some("Inbox".into()),
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+
+    assert_eq!(created.path, "notes/Inbox/race 1.md");
+    assert_eq!(
+        std::fs::read_to_string(root.join("notes").join("Inbox").join("race.md")).unwrap(),
+        "pre-existing body"
+    );
 }
 
 #[tokio::test]
@@ -418,5 +603,321 @@ async fn list_notes_supports_pagination_modified_sort_and_folder_position_order(
     assert!(inbox
         .notes
         .iter()
-        .all(|note| note.path.starts_with("Inbox/")));
+        .all(|note| note.path.starts_with("notes/Inbox/")));
+}
+
+#[tokio::test]
+async fn list_notes_backfills_empty_cache_from_metadata() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+    let created = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Backfill".into(),
+            content: Some("cached later".into()),
+            folder: Some("Inbox".into()),
+            tags: Some(vec!["work".into()]),
+            template: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+    notes_cache::delete(&conn, &created.id).unwrap();
+    assert_eq!(notes_cache::count_active(&conn).unwrap(), 0);
+
+    let listing = notes_list_with_backfill_inner(&conn, &vault, None)
+        .await
+        .unwrap();
+
+    assert_eq!(listing.total, 1);
+    assert_eq!(listing.notes[0].id, created.id);
+    assert_eq!(listing.notes[0].snippet, "cached later");
+    assert_eq!(notes_cache::count_active(&conn).unwrap(), 1);
+}
+
+#[tokio::test]
+async fn list_notes_uses_configured_default_note_folder() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+    let root = vault.require_current().unwrap();
+    let mut config = read_config(&root).unwrap();
+    config.default_note_folder = "Custom".into();
+    update_config(&root, &config).unwrap();
+
+    let created = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Custom Root".into(),
+            content: Some("custom body".into()),
+            folder: None,
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+
+    let listing = notes_list_with_backfill_inner(&conn, &vault, None)
+        .await
+        .unwrap();
+
+    assert_eq!(created.path, "Custom/custom-root.md");
+    assert_eq!(listing.total, 1);
+    assert_eq!(listing.notes[0].id, created.id);
+}
+
+#[tokio::test]
+async fn list_backfill_skips_when_custom_root_cache_is_current() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+    let root = vault.require_current().unwrap();
+    let mut config = read_config(&root).unwrap();
+    config.default_note_folder = "Custom".into();
+    update_config(&root, &config).unwrap();
+
+    let created = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Cached".into(),
+            content: Some("keep cached snippet".into()),
+            folder: None,
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+    assert_eq!(notes_cache::count_active(&conn).unwrap(), 0);
+    assert_eq!(notes_cache::count_all_active(&conn).unwrap(), 1);
+
+    tokio::fs::remove_file(root.join(&created.path))
+        .await
+        .unwrap();
+    let listing = notes_list_with_backfill_inner(&conn, &vault, None)
+        .await
+        .unwrap();
+
+    assert_eq!(listing.total, 1);
+    assert_eq!(listing.notes[0].snippet, "keep cached snippet");
+}
+
+#[tokio::test]
+async fn concurrent_updates_to_same_note_preserve_partial_changes() {
+    let db = Db::open_memory().unwrap();
+    let vault = test_vault_runtime();
+    let created = {
+        let conn = db.conn().unwrap();
+        notes_create_inner(
+            &conn,
+            &vault,
+            NoteCreateInput {
+                title: "Concurrent".into(),
+                content: Some("old body".into()),
+                folder: None,
+                tags: None,
+                template: None,
+            },
+        )
+        .await
+        .unwrap()
+        .note
+        .unwrap()
+    };
+
+    let content_db = db.clone();
+    let content_vault = vault.clone();
+    let content_id = created.id.clone();
+    let content_update = tokio::spawn(async move {
+        notes_update_with_db_inner(
+            &content_db,
+            &content_vault,
+            NoteUpdateInput {
+                id: content_id,
+                title: None,
+                content: Some("new body".into()),
+                tags: None,
+                frontmatter: None,
+                emoji: None,
+            },
+        )
+        .await
+        .unwrap();
+    });
+
+    let tags_db = db.clone();
+    let tags_vault = vault.clone();
+    let tags_id = created.id.clone();
+    let tags_update = tokio::spawn(async move {
+        notes_update_with_db_inner(
+            &tags_db,
+            &tags_vault,
+            NoteUpdateInput {
+                id: tags_id,
+                title: None,
+                content: None,
+                tags: Some(vec!["manual".into()]),
+                frontmatter: None,
+                emoji: None,
+            },
+        )
+        .await
+        .unwrap();
+    });
+
+    content_update.await.unwrap();
+    tags_update.await.unwrap();
+
+    let final_note = {
+        let conn = db.conn().unwrap();
+        memry_desktop_tauri_lib::commands::notes::notes_get_inner(&conn, &vault, &created.id)
+            .await
+            .unwrap()
+            .unwrap()
+    };
+    assert_eq!(final_note.content, "new body");
+    assert_eq!(final_note.tags, vec!["manual"]);
+}
+
+#[tokio::test]
+async fn concurrent_update_and_delete_do_not_resurrect_note() {
+    let db = Db::open_memory().unwrap();
+    let vault = test_vault_runtime();
+    let created = {
+        let conn = db.conn().unwrap();
+        notes_create_inner(
+            &conn,
+            &vault,
+            NoteCreateInput {
+                title: "Delete Race".into(),
+                content: Some("old body".into()),
+                folder: None,
+                tags: None,
+                template: None,
+            },
+        )
+        .await
+        .unwrap()
+        .note
+        .unwrap()
+    };
+
+    let update_db = db.clone();
+    let update_vault = vault.clone();
+    let update_id = created.id.clone();
+    let update = tokio::spawn(async move {
+        notes_update_with_db_inner(
+            &update_db,
+            &update_vault,
+            NoteUpdateInput {
+                id: update_id,
+                title: None,
+                content: Some("new body".repeat(512)),
+                tags: None,
+                frontmatter: None,
+                emoji: None,
+            },
+        )
+        .await
+    });
+
+    tokio::task::yield_now().await;
+
+    let delete_db = db.clone();
+    let delete_vault = vault.clone();
+    let delete_id = created.id.clone();
+    let delete = tokio::spawn(async move {
+        notes_delete_with_db_inner(&delete_db, &delete_vault, &delete_id)
+            .await
+            .map(|mutation| mutation.response)
+    });
+
+    update.await.unwrap().unwrap();
+    delete.await.unwrap().unwrap();
+
+    let conn = db.conn().unwrap();
+    assert!(note_metadata::get_active_by_id(&conn, &created.id)
+        .unwrap()
+        .is_none());
+    assert_eq!(notes_cache::count_all_active(&conn).unwrap(), 0);
+    assert!(
+        notes_io::read_note_from_disk(&vault.require_current().unwrap(), &created.path)
+            .await
+            .unwrap()
+            .is_none()
+    );
+}
+
+#[tokio::test]
+async fn move_note_keeps_positions_logical_under_configured_default_note_folder() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+    let root = vault.require_current().unwrap();
+    let mut config = read_config(&root).unwrap();
+    config.default_note_folder = "Custom".into();
+    update_config(&root, &config).unwrap();
+
+    let created = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Ordered".into(),
+            content: Some("body".into()),
+            folder: Some("Inbox".into()),
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+    note_positions::reorder(&conn, "Inbox", std::slice::from_ref(&created.path)).unwrap();
+
+    let moved = notes_move_inner(&conn, &vault, &created.id, "Archive")
+        .await
+        .unwrap()
+        .note
+        .unwrap();
+
+    assert!(note_positions::get_for_folder(&conn, "Inbox")
+        .unwrap()
+        .is_empty());
+    let archive = note_positions::get_for_folder(&conn, "Archive").unwrap();
+    assert_eq!(archive.get(&moved.path).copied(), Some(0));
+}
+
+#[tokio::test]
+async fn move_note_rejects_parent_segments_in_folder() {
+    let conn = open_in_memory_with_migrations();
+    let vault = test_vault_runtime();
+    let created = notes_create_inner(
+        &conn,
+        &vault,
+        NoteCreateInput {
+            title: "Move Escape".into(),
+            content: Some("body".into()),
+            folder: Some("Inbox".into()),
+            tags: None,
+            template: None,
+        },
+    )
+    .await
+    .unwrap()
+    .note
+    .unwrap();
+
+    let err = notes_move_inner(&conn, &vault, &created.id, "Inbox/../../archive")
+        .await
+        .expect_err("move should reject parent traversal");
+
+    assert!(matches!(err, AppError::Validation(ref message) if message.contains("..")));
 }

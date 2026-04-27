@@ -46,8 +46,13 @@ impl DocHandle {
     }
 }
 
+struct StoredDoc {
+    doc: Arc<Doc>,
+    open_handles: usize,
+}
+
 pub struct DocStore {
-    docs: Mutex<HashMap<NoteId, Arc<Doc>>>,
+    docs: Mutex<HashMap<NoteId, StoredDoc>>,
 }
 
 impl DocStore {
@@ -70,13 +75,40 @@ impl DocStore {
         match docs.entry(id.to_string()) {
             Entry::Occupied(entry) => (
                 DocHandle {
-                    doc: entry.get().clone(),
+                    doc: entry.get().doc.clone(),
                 },
                 false,
             ),
             Entry::Vacant(entry) => {
                 let doc = Arc::new(Doc::new());
-                entry.insert(doc.clone());
+                entry.insert(StoredDoc {
+                    doc: doc.clone(),
+                    open_handles: 0,
+                });
+                (DocHandle { doc }, true)
+            }
+        }
+    }
+
+    pub async fn open_or_init_with_created(&self, id: &str) -> (DocHandle, bool) {
+        let mut docs = self.docs.lock().await;
+        match docs.entry(id.to_string()) {
+            Entry::Occupied(mut entry) => {
+                let stored = entry.get_mut();
+                stored.open_handles += 1;
+                (
+                    DocHandle {
+                        doc: stored.doc.clone(),
+                    },
+                    false,
+                )
+            }
+            Entry::Vacant(entry) => {
+                let doc = Arc::new(Doc::new());
+                entry.insert(StoredDoc {
+                    doc: doc.clone(),
+                    open_handles: 1,
+                });
                 (DocHandle { doc }, true)
             }
         }
@@ -84,11 +116,20 @@ impl DocStore {
 
     pub async fn get(&self, id: &str) -> Option<DocHandle> {
         let docs = self.docs.lock().await;
-        docs.get(id).cloned().map(|doc| DocHandle { doc })
+        docs.get(id).map(|stored| DocHandle {
+            doc: stored.doc.clone(),
+        })
     }
 
-    pub async fn drop_doc(&self, id: &str) {
+    pub async fn close_doc(&self, id: &str) {
         let mut docs = self.docs.lock().await;
+        let Some(stored) = docs.get_mut(id) else {
+            return;
+        };
+        if stored.open_handles > 1 {
+            stored.open_handles -= 1;
+            return;
+        }
         docs.remove(id);
     }
 

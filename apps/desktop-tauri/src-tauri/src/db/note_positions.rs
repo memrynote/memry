@@ -23,10 +23,6 @@ impl NotePosition {
 
 pub fn reorder(conn: &Connection, folder_path: &str, note_paths: &[String]) -> AppResult<()> {
     let tx = conn.unchecked_transaction()?;
-    tx.execute(
-        "DELETE FROM note_positions WHERE folder_path = ?1",
-        [folder_path],
-    )?;
 
     for (position, path) in note_paths.iter().enumerate() {
         tx.execute(
@@ -64,6 +60,47 @@ pub fn get_all(conn: &Connection) -> AppResult<HashMap<String, i64>> {
 pub fn drop_for_note(conn: &Connection, path: &str) -> AppResult<()> {
     conn.execute("DELETE FROM note_positions WHERE path = ?1", [path])?;
     Ok(())
+}
+
+pub fn move_for_note(
+    conn: &Connection,
+    old_path: &str,
+    new_path: &str,
+    notes_root: &str,
+) -> AppResult<()> {
+    let folder_path = folder_path_for(new_path, notes_root);
+    conn.execute(
+        "UPDATE note_positions
+            SET path = ?1, folder_path = ?2
+          WHERE path = ?3",
+        params![new_path, folder_path, old_path],
+    )?;
+    Ok(())
+}
+
+fn folder_path_for(path: &str, notes_root: &str) -> String {
+    let folder = path
+        .rsplit_once('/')
+        .map(|(folder, _)| folder.to_string())
+        .unwrap_or_default();
+    let root = normalized_notes_root(notes_root);
+    if folder == root {
+        String::new()
+    } else {
+        folder
+            .strip_prefix(&format!("{root}/"))
+            .unwrap_or(&folder)
+            .to_string()
+    }
+}
+
+fn normalized_notes_root(notes_root: &str) -> String {
+    let trimmed = notes_root.trim().trim_matches('/');
+    if trimmed.is_empty() {
+        "notes".into()
+    } else {
+        trimmed.to_string()
+    }
 }
 
 fn collect_positions(

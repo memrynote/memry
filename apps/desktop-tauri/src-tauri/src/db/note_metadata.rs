@@ -227,13 +227,19 @@ pub fn rename_path(
     Ok(())
 }
 
-pub fn delete_soft(conn: &Connection, id: &str, deleted_at: &str) -> AppResult<()> {
+pub fn delete_soft(
+    conn: &Connection,
+    id: &str,
+    trash_path: &str,
+    deleted_at: &str,
+) -> AppResult<()> {
     conn.execute(
         "UPDATE note_metadata
-            SET clock = json_set(coalesce(clock, '{}'), '$.deleted_at', ?1),
-                modified_at = ?1
-          WHERE id = ?2",
-        params![deleted_at, id],
+            SET path = ?1,
+                clock = json_set(coalesce(clock, '{}'), '$.deleted_at', ?2),
+                modified_at = ?2
+          WHERE id = ?3",
+        params![trash_path, deleted_at, id],
     )?;
     Ok(())
 }

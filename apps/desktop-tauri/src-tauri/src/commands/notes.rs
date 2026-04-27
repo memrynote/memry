@@ -3,14 +3,21 @@
 use crate::app_state::AppState;
 use crate::db::note_metadata::NoteMetadata;
 use crate::db::note_metadata::NoteMetadataRow;
+use crate::db::Db;
 use crate::error::{AppError, AppResult};
 use crate::vault::frontmatter::NoteFrontmatter;
-use crate::vault::{VaultRuntime, fs as vault_fs, notes_io, paths as vault_paths};
+use crate::vault::{fs as vault_fs, notes_io, paths as vault_paths, VaultRuntime};
+use once_cell::sync::Lazy;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::ops::Deref;
+use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, State};
+use tokio::sync::Mutex as AsyncMutex;
+
+static NOTE_UPDATE_LOCKS: Lazy<Mutex<HashMap<String, Arc<AsyncMutex<()>>>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -51,6 +58,7 @@ pub struct NoteDto {
     pub title: String,
     pub content: String,
     pub frontmatter: JsonUnknown,
+    pub properties: JsonUnknown,
     pub created: String,
     pub modified: String,
     pub tags: Vec<String>,
@@ -134,6 +142,13 @@ pub struct NoteUpdateResponse {
 #[serde(rename_all = "camelCase")]
 pub struct NoteDeleteResponse {
     pub success: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct NoteDeleteMutation {
+    pub response: NoteDeleteResponse,
+    pub id: String,
+    pub path: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -227,6 +242,7 @@ pub(crate) fn into_dto(
         title: row.title.clone(),
         content: body.to_string(),
         frontmatter: JsonUnknown::from(serde_json::to_value(frontmatter)?),
+        properties: JsonUnknown::from(serde_json::to_value(frontmatter.extract_properties())?),
         created: row.created_at.clone(),
         modified: row.modified_at.clone(),
         tags: frontmatter.tags.clone(),
@@ -258,18 +274,10 @@ pub async fn notes_create_inner(
     vault: &VaultRuntime,
     input: NoteCreateInput,
 ) -> AppResult<NoteCreateResponse> {
+    let input = apply_inherited_template(conn, vault, input)?;
     let prepared = prepare_create(vault, input).await?;
     let root = vault.require_current()?;
-
-    ensure_db_path_available(conn, &prepared.relative)?;
-    ensure_vault_path_available(&root, &prepared.relative).await?;
-    notes_io::write_note_to_disk(
-        &root,
-        &prepared.relative,
-        &prepared.frontmatter,
-        &prepared.body,
-    )
-    .await?;
+    let prepared = write_new_note_with_unique_path(conn, &root, prepared).await?;
     let read = notes_io::read_note_from_disk(&root, &prepared.relative)
         .await?
         .ok_or_else(|| AppError::NotFound(format!("note file {}", prepared.relative)))?;
@@ -311,11 +319,31 @@ pub async fn notes_update_inner(
     vault: &VaultRuntime,
     input: NoteUpdateInput,
 ) -> AppResult<NoteUpdateResponse> {
-    let row = crate::db::note_metadata::get_by_id(conn, &input.id)?
+    let update_lock = note_update_lock(&input.id)?;
+    let _guard = update_lock.lock().await;
+    let row = crate::db::note_metadata::get_active_by_id(conn, &input.id)?
         .ok_or_else(|| AppError::NotFound(format!("note {}", input.id)))?;
     let updated = apply_update_to_vault(vault, row, input).await?;
+    let notes_root = notes_root_for(vault)?;
 
-    finish_update(conn, updated)
+    finish_update(conn, updated, &notes_root)
+}
+
+pub async fn notes_update_with_db_inner(
+    db: &Db,
+    vault: &VaultRuntime,
+    input: NoteUpdateInput,
+) -> AppResult<NoteUpdateResponse> {
+    let update_lock = note_update_lock(&input.id)?;
+    let _guard = update_lock.lock().await;
+    let row = db.with_conn(|conn| {
+        crate::db::note_metadata::get_active_by_id(conn, &input.id)?
+            .ok_or_else(|| AppError::NotFound(format!("note {}", input.id)))
+    })?;
+    let updated = apply_update_to_vault(vault, row, input).await?;
+    let notes_root = notes_root_for(vault)?;
+
+    db.with_conn(|conn| finish_update(conn, updated, &notes_root))
 }
 
 pub async fn notes_delete_inner(
@@ -323,13 +351,38 @@ pub async fn notes_delete_inner(
     vault: &VaultRuntime,
     id: &str,
 ) -> AppResult<NoteDeleteResponse> {
-    let row = crate::db::note_metadata::get_by_id(conn, id)?
+    let update_lock = note_update_lock(id)?;
+    let _guard = update_lock.lock().await;
+    let row = crate::db::note_metadata::get_active_by_id(conn, id)?
         .ok_or_else(|| AppError::NotFound(format!("note {id}")))?;
     let root = vault.require_current()?;
-    notes_io::move_note_to_trash(&root, &row.path, &row.id).await?;
+    let trash_path = notes_io::move_note_to_trash(&root, &row.path, &row.id).await?;
     let deleted_at = now_iso();
 
-    finish_delete(conn, &row, &deleted_at)
+    finish_delete(conn, &row, &trash_path, &deleted_at)
+}
+
+pub async fn notes_delete_with_db_inner(
+    db: &Db,
+    vault: &VaultRuntime,
+    id: &str,
+) -> AppResult<NoteDeleteMutation> {
+    let update_lock = note_update_lock(id)?;
+    let _guard = update_lock.lock().await;
+    let row = db.with_conn(|conn| {
+        crate::db::note_metadata::get_active_by_id(conn, id)?
+            .ok_or_else(|| AppError::NotFound(format!("note {id}")))
+    })?;
+    let root = vault.require_current()?;
+    let trash_path = notes_io::move_note_to_trash(&root, &row.path, &row.id).await?;
+    let deleted_at = now_iso();
+    let response = db.with_conn(|conn| finish_delete(conn, &row, &trash_path, &deleted_at))?;
+
+    Ok(NoteDeleteMutation {
+        response,
+        id: row.id,
+        path: row.path,
+    })
 }
 
 pub async fn notes_rename_inner(
@@ -342,25 +395,16 @@ pub async fn notes_rename_inner(
     if trimmed.is_empty() {
         return Err(AppError::Validation("title is empty".into()));
     }
-    let row = crate::db::note_metadata::get_by_id(conn, id)?
+    let update_lock = note_update_lock(id)?;
+    let _guard = update_lock.lock().await;
+    let row = crate::db::note_metadata::get_active_by_id(conn, id)?
         .ok_or_else(|| AppError::NotFound(format!("note {id}")))?;
-    let folder = row
-        .path
-        .rsplit_once('/')
-        .map(|(prefix, _)| prefix.to_string())
-        .unwrap_or_default();
-    let slug = slug_for(trimmed);
-    let new_path = if folder.is_empty() {
-        format!("{slug}.md")
-    } else {
-        format!("{folder}/{slug}.md")
-    };
-    if new_path != row.path {
-        ensure_db_path_available(conn, &new_path)?;
-    }
+    let root = vault.require_current()?;
+    let new_path = unique_rename_path(conn, &root, &row, trimmed).await?;
 
     let prepared = relocate_note_on_disk(vault, &row, &new_path, Some(trimmed.to_string())).await?;
-    finish_update(conn, prepared)
+    let notes_root = notes_root_for(vault)?;
+    finish_update(conn, prepared, &notes_root)
 }
 
 pub async fn notes_move_inner(
@@ -369,21 +413,19 @@ pub async fn notes_move_inner(
     id: &str,
     new_folder: &str,
 ) -> AppResult<NoteUpdateResponse> {
-    let folder = new_folder.trim().trim_matches('/');
-    let row = crate::db::note_metadata::get_by_id(conn, id)?
+    let update_lock = note_update_lock(id)?;
+    let _guard = update_lock.lock().await;
+    let row = crate::db::note_metadata::get_active_by_id(conn, id)?
         .ok_or_else(|| AppError::NotFound(format!("note {id}")))?;
     let basename = row.path.rsplit('/').next().unwrap_or(&row.path).to_string();
-    let new_path = if folder.is_empty() {
-        basename
-    } else {
-        format!("{folder}/{basename}")
-    };
+    let notes_root = notes_root_for(vault)?;
+    let new_path = note_path_for(&notes_root, new_folder, &basename)?;
     if new_path != row.path {
         ensure_db_path_available(conn, &new_path)?;
     }
 
     let prepared = relocate_note_on_disk(vault, &row, &new_path, None).await?;
-    finish_update(conn, prepared)
+    finish_update(conn, prepared, &notes_root)
 }
 
 pub fn notes_exists_inner(conn: &Connection, title_or_path: &str) -> AppResult<bool> {
@@ -406,7 +448,9 @@ pub async fn notes_set_local_only_inner(
     id: &str,
     local_only: bool,
 ) -> AppResult<NoteSimpleSuccess> {
-    let mut row = crate::db::note_metadata::get_by_id(conn, id)?
+    let update_lock = note_update_lock(id)?;
+    let _guard = update_lock.lock().await;
+    let mut row = crate::db::note_metadata::get_active_by_id(conn, id)?
         .ok_or_else(|| AppError::NotFound(format!("note {id}")))?;
     let root = vault.require_current()?;
     let read = notes_io::read_note_from_disk(&root, &row.path)
@@ -429,7 +473,7 @@ pub async fn notes_set_local_only_inner(
     row.modified_at = modified_at.clone();
     let upsert_row = metadata_to_upsert_row(&row);
     crate::db::note_metadata::upsert(conn, &upsert_row)?;
-    crate::db::notes_cache::set_local_only(conn, id, local_only)?;
+    crate::db::notes_cache::set_local_only(conn, id, local_only, &modified_at)?;
     Ok(NoteSimpleSuccess { success: true })
 }
 
@@ -450,6 +494,14 @@ pub fn notes_get_tags_inner(conn: &Connection) -> AppResult<Vec<NoteTagInfo>> {
         .collect())
 }
 
+pub async fn notes_get_tags_backfilled_inner(
+    conn: &Connection,
+    vault: &VaultRuntime,
+) -> AppResult<Vec<NoteTagInfo>> {
+    backfill_notes_cache_if_needed(conn, vault).await?;
+    notes_get_tags_inner(conn)
+}
+
 pub async fn notes_get_links_inner(
     conn: &Connection,
     vault: &VaultRuntime,
@@ -463,14 +515,7 @@ pub async fn notes_get_links_inner(
         .await?
         .map(|read| read.parsed.content)
         .unwrap_or_default();
-    let outgoing = extract_wikilinks(&body)
-        .into_iter()
-        .map(|target| NoteLink {
-            source_id: row.id.clone(),
-            target_id: None,
-            target_title: target,
-        })
-        .collect();
+    let outgoing = outgoing_links_for_body(conn, &row.id, &body)?;
 
     // TODO(M7): replace LIKE-scan with FTS5 backlink index. M5 stays on
     // SQLite LIKE because the corpus is small enough that an O(N) scan is
@@ -520,6 +565,38 @@ pub async fn notes_get_links_inner(
     Ok(NoteLinksResponse { outgoing, incoming })
 }
 
+fn resolve_link_target_id(conn: &Connection, title: &str) -> AppResult<Option<String>> {
+    match conn.query_row(
+        "SELECT id FROM note_metadata
+          WHERE title = ?1 COLLATE NOCASE
+            AND coalesce(json_extract(clock, '$.deleted_at'), '') = ''
+          ORDER BY modified_at DESC
+          LIMIT 1",
+        [title],
+        |row| row.get(0),
+    ) {
+        Ok(id) => Ok(Some(id)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(err) => Err(err.into()),
+    }
+}
+
+fn outgoing_links_for_body(
+    conn: &Connection,
+    source_id: &str,
+    body: &str,
+) -> AppResult<Vec<NoteLink>> {
+    let mut outgoing = Vec::new();
+    for target in extract_wikilinks(body) {
+        outgoing.push(NoteLink {
+            source_id: source_id.to_string(),
+            target_id: resolve_link_target_id(conn, &target)?,
+            target_title: target,
+        });
+    }
+    Ok(outgoing)
+}
+
 pub fn notes_resolve_by_title_inner(
     conn: &Connection,
     title: &str,
@@ -529,7 +606,8 @@ pub fn notes_resolve_by_title_inner(
         "SELECT c.id, c.title, c.path, coalesce(m.file_type, 'markdown')
            FROM notes_cache c
            LEFT JOIN note_metadata m ON m.id = c.id
-          WHERE c.title = ?1 COLLATE NOCASE
+         WHERE c.title = ?1 COLLATE NOCASE
+          ORDER BY c.modified_at DESC, c.id ASC
           LIMIT 1",
         [title],
         |r| {
@@ -571,8 +649,9 @@ fn note_list_item_by_title(conn: &Connection, title: &str) -> AppResult<Option<N
     let row = conn.query_row(
         "SELECT id, title, path, snippet, word_count, tags_json, emoji,
                 modified_at, created_at, local_only
-           FROM notes_cache
+          FROM notes_cache
           WHERE title = ?1 COLLATE NOCASE
+          ORDER BY modified_at DESC, id ASC
           LIMIT 1",
         [title],
         |r| {
@@ -650,8 +729,16 @@ pub fn notes_list_inner(
     conn: &Connection,
     options: Option<NoteListOptions>,
 ) -> AppResult<NoteListResponse> {
+    notes_list_inner_with_root(conn, "notes", options)
+}
+
+fn notes_list_inner_with_root(
+    conn: &Connection,
+    notes_root: &str,
+    options: Option<NoteListOptions>,
+) -> AppResult<NoteListResponse> {
     let opts = options.unwrap_or_else(default_list_options);
-    let limit = opts.limit.unwrap_or(100).clamp(0, 1000);
+    let limit = opts.limit.unwrap_or(100).clamp(0, 10_000);
     let offset = opts.offset.unwrap_or(0).max(0);
     let sort_by = opts.sort_by.as_deref().unwrap_or("modified");
     let sort_order = opts.sort_order.as_deref().unwrap_or("desc");
@@ -659,9 +746,10 @@ pub fn notes_list_inner(
     let tag_filter: Option<&[String]> = opts.tags.as_deref();
 
     let rows = crate::db::notes_cache::list_active_filtered(
-        conn, folder, tag_filter, limit, offset, sort_by, sort_order,
+        conn, notes_root, folder, tag_filter, limit, offset, sort_by, sort_order,
     )?;
-    let total = crate::db::notes_cache::count_active_filtered(conn, folder, tag_filter)?;
+    let total =
+        crate::db::notes_cache::count_active_filtered(conn, notes_root, folder, tag_filter)?;
     let has_more = offset + (rows.len() as i64) < total;
 
     Ok(NoteListResponse {
@@ -669,6 +757,16 @@ pub fn notes_list_inner(
         total,
         has_more,
     })
+}
+
+pub async fn notes_list_with_backfill_inner(
+    conn: &Connection,
+    vault: &VaultRuntime,
+    options: Option<NoteListOptions>,
+) -> AppResult<NoteListResponse> {
+    backfill_notes_cache_if_needed(conn, vault).await?;
+    let notes_root = notes_root_for(vault)?;
+    notes_list_inner_with_root(conn, &notes_root, options)
 }
 
 pub fn notes_list_by_folder_inner(
@@ -706,21 +804,13 @@ pub async fn notes_create(
         tags,
         template,
     };
+    let input = {
+        let conn = state.db.conn()?;
+        apply_inherited_template(&conn, &state.vault, input)?
+    };
     let prepared = prepare_create(&state.vault, input).await?;
     let root = state.vault.require_current()?;
-
-    {
-        let conn = state.db.conn()?;
-        ensure_db_path_available(&conn, &prepared.relative)?;
-    }
-    ensure_vault_path_available(&root, &prepared.relative).await?;
-    notes_io::write_note_to_disk(
-        &root,
-        &prepared.relative,
-        &prepared.frontmatter,
-        &prepared.body,
-    )
-    .await?;
+    let prepared = write_new_note_with_unique_path_for_db(&state.db, &root, prepared).await?;
     let read = notes_io::read_note_from_disk(&root, &prepared.relative)
         .await?
         .ok_or_else(|| AppError::NotFound(format!("note file {}", prepared.relative)))?;
@@ -739,6 +829,9 @@ pub async fn notes_create(
             "note-created",
             serde_json::json!({ "note": note, "source": "internal" }),
         );
+        if !note.tags.is_empty() {
+            let _ = app.emit("tags-changed", serde_json::json!({}));
+        }
     }
     Ok(resp)
 }
@@ -801,16 +894,7 @@ pub async fn notes_update(
         emoji,
     };
     let event_input = input.clone();
-    let row = {
-        let conn = state.db.conn()?;
-        crate::db::note_metadata::get_by_id(&conn, &input.id)?
-    }
-    .ok_or_else(|| AppError::NotFound(format!("note {}", input.id)))?;
-
-    let updated = apply_update_to_vault(&state.vault, row, input).await?;
-    let conn = state.db.conn()?;
-    let resp = finish_update(&conn, updated)?;
-    drop(conn);
+    let resp = notes_update_with_db_inner(&state.db, &state.vault, input).await?;
 
     if let Some(note) = &resp.note {
         let _ = app.emit(
@@ -821,6 +905,9 @@ pub async fn notes_update(
                 "source": "internal"
             }),
         );
+        if note_update_may_change_tags(&event_input) {
+            let _ = app.emit("tags-changed", serde_json::json!({}));
+        }
     }
     Ok(resp)
 }
@@ -833,30 +920,19 @@ pub async fn notes_delete(
     args: Vec<String>,
 ) -> AppResult<NoteDeleteResponse> {
     let id = single_string_arg(args, "id")?;
-    let row = {
-        let conn = state.db.conn()?;
-        crate::db::note_metadata::get_by_id(&conn, &id)?
-    }
-    .ok_or_else(|| AppError::NotFound(format!("note {id}")))?;
-
-    let root = state.vault.require_current()?;
-    notes_io::move_note_to_trash(&root, &row.path, &row.id).await?;
-    let deleted_at = now_iso();
-
-    let conn = state.db.conn()?;
-    let resp = finish_delete(&conn, &row, &deleted_at)?;
-    drop(conn);
+    let mutation = notes_delete_with_db_inner(&state.db, &state.vault, &id).await?;
 
     let _ = app.emit(
         "note-deleted",
-        serde_json::json!({ "id": id, "path": row.path, "source": "internal" }),
+        serde_json::json!({ "id": mutation.id, "path": mutation.path, "source": "internal" }),
     );
-    Ok(resp)
+    let _ = app.emit("tags-changed", serde_json::json!({}));
+    Ok(mutation.response)
 }
 
 #[tauri::command]
 #[specta::specta]
-pub fn notes_list(
+pub async fn notes_list(
     state: State<'_, AppState>,
     folder: Option<String>,
     tags: Option<Vec<String>>,
@@ -874,18 +950,35 @@ pub fn notes_list(
         limit,
         offset,
     });
-    notes_list_inner(&conn, options)
+    drop(conn);
+    backfill_notes_cache_for_db(&state.db, &state.vault).await?;
+    let notes_root = notes_root_for(&state.vault)?;
+    let conn = state.db.conn()?;
+    notes_list_inner_with_root(&conn, &notes_root, options)
 }
 
 #[tauri::command]
 #[specta::specta]
-pub fn notes_list_by_folder(
+pub async fn notes_list_by_folder(
     state: State<'_, AppState>,
     args: Vec<String>,
 ) -> AppResult<NoteListResponse> {
     let folder_id = single_string_arg(args, "folder_id")?;
+    backfill_notes_cache_for_db(&state.db, &state.vault).await?;
+    let notes_root = notes_root_for(&state.vault)?;
     let conn = state.db.conn()?;
-    notes_list_by_folder_inner(&conn, &folder_id)
+    notes_list_inner_with_root(
+        &conn,
+        &notes_root,
+        Some(NoteListOptions {
+            folder: Some(folder_id),
+            tags: None,
+            sort_by: Some("position".into()),
+            sort_order: Some("asc".into()),
+            limit: Some(1000),
+            offset: Some(0),
+        }),
+    )
 }
 
 #[tauri::command]
@@ -903,28 +996,16 @@ pub async fn notes_rename(
     if trimmed.is_empty() {
         return Err(AppError::Validation("title is empty".into()));
     }
+    let update_lock = note_update_lock(&id)?;
+    let _guard = update_lock.lock().await;
     let row = {
         let conn = state.db.conn()?;
-        crate::db::note_metadata::get_by_id(&conn, &id)?
+        crate::db::note_metadata::get_active_by_id(&conn, &id)?
     }
     .ok_or_else(|| AppError::NotFound(format!("note {id}")))?;
 
-    let folder = row
-        .path
-        .rsplit_once('/')
-        .map(|(prefix, _)| prefix.to_string())
-        .unwrap_or_default();
-    let slug = slug_for(trimmed);
-    let new_path = if folder.is_empty() {
-        format!("{slug}.md")
-    } else {
-        format!("{folder}/{slug}.md")
-    };
-
-    if new_path != row.path {
-        let conn = state.db.conn()?;
-        ensure_db_path_available(&conn, &new_path)?;
-    }
+    let root = state.vault.require_current()?;
+    let new_path = unique_rename_path_for_db(&state.db, &root, &row, trimmed).await?;
 
     let old_path = row.path.clone();
     let old_title = row.title.clone();
@@ -932,7 +1013,8 @@ pub async fn notes_rename(
         relocate_note_on_disk(&state.vault, &row, &new_path, Some(trimmed.to_string())).await?;
 
     let conn = state.db.conn()?;
-    let resp = finish_update(&conn, prepared)?;
+    let notes_root = notes_root_for(&state.vault)?;
+    let resp = finish_update(&conn, prepared, &notes_root)?;
     drop(conn);
 
     if let Some(note) = &resp.note {
@@ -960,19 +1042,17 @@ pub async fn notes_move(
 ) -> AppResult<NoteUpdateResponse> {
     // Renderer calls `notesService.move(id, newFolder)` → `{ args: [id, newFolder] }`.
     let (id, new_folder) = two_string_args(args, "notes_move", "id", "new_folder")?;
-    let folder = new_folder.trim().trim_matches('/');
+    let update_lock = note_update_lock(&id)?;
+    let _guard = update_lock.lock().await;
     let row = {
         let conn = state.db.conn()?;
-        crate::db::note_metadata::get_by_id(&conn, &id)?
+        crate::db::note_metadata::get_active_by_id(&conn, &id)?
     }
     .ok_or_else(|| AppError::NotFound(format!("note {id}")))?;
 
     let basename = row.path.rsplit('/').next().unwrap_or(&row.path).to_string();
-    let new_path = if folder.is_empty() {
-        basename
-    } else {
-        format!("{folder}/{basename}")
-    };
+    let notes_root = notes_root_for(&state.vault)?;
+    let new_path = note_path_for(&notes_root, &new_folder, &basename)?;
 
     if new_path != row.path {
         let conn = state.db.conn()?;
@@ -983,7 +1063,7 @@ pub async fn notes_move(
     let prepared = relocate_note_on_disk(&state.vault, &row, &new_path, None).await?;
 
     let conn = state.db.conn()?;
-    let resp = finish_update(&conn, prepared)?;
+    let resp = finish_update(&conn, prepared, &notes_root)?;
     drop(conn);
 
     if let Some(note) = &resp.note {
@@ -1012,6 +1092,7 @@ pub fn notes_exists(state: State<'_, AppState>, args: Vec<String>) -> AppResult<
 #[specta::specta]
 pub async fn notes_set_local_only(
     state: State<'_, AppState>,
+    app: AppHandle,
     args: Vec<JsonUnknown>,
 ) -> AppResult<NoteSimpleSuccess> {
     // Renderer calls `notesService.setLocalOnly(id, value)` → `{ args: [id, true] }`.
@@ -1036,12 +1117,14 @@ pub async fn notes_set_local_only(
             ));
         }
     };
-    // Snapshot the row, then drop the guard before any disk I/O — the
-    // MutexGuard is !Send so it cannot live across `.await` when Tauri runs
-    // commands on the multi-threaded runtime. Mirrors `notes_update`.
+    let update_lock = note_update_lock(&id)?;
+    let _guard = update_lock.lock().await;
+    // Snapshot the row, then drop the DB guard before any disk I/O. Keep the
+    // per-note async lock held so autosave/delete/rename/move/local-only mutate
+    // the same note serially.
     let row = {
         let conn = state.db.conn()?;
-        crate::db::note_metadata::get_by_id(&conn, &id)?
+        crate::db::note_metadata::get_active_by_id(&conn, &id)?
     }
     .ok_or_else(|| AppError::NotFound(format!("note {id}")))?;
 
@@ -1068,7 +1151,20 @@ pub async fn notes_set_local_only(
 
     let conn = state.db.conn()?;
     crate::db::note_metadata::upsert(&conn, &metadata_to_upsert_row(&updated))?;
-    crate::db::notes_cache::set_local_only(&conn, &id, local_only)?;
+    crate::db::notes_cache::set_local_only(&conn, &id, local_only, &updated.modified_at)?;
+    drop(conn);
+
+    let _ = app.emit(
+        "note-updated",
+        serde_json::json!({
+            "id": id,
+            "changes": {
+                "frontmatter": { "localOnly": local_only },
+                "localOnly": local_only
+            },
+            "source": "internal"
+        }),
+    );
 
     Ok(NoteSimpleSuccess { success: true })
 }
@@ -1082,7 +1178,8 @@ pub fn notes_get_local_only_count(state: State<'_, AppState>) -> AppResult<NoteL
 
 #[tauri::command]
 #[specta::specta]
-pub fn notes_get_tags(state: State<'_, AppState>) -> AppResult<Vec<NoteTagInfo>> {
+pub async fn notes_get_tags(state: State<'_, AppState>) -> AppResult<Vec<NoteTagInfo>> {
+    backfill_notes_cache_for_db(&state.db, &state.vault).await?;
     let conn = state.db.conn()?;
     notes_get_tags_inner(&conn)
 }
@@ -1104,14 +1201,10 @@ pub async fn notes_get_links(
         .await?
         .map(|read| read.parsed.content)
         .unwrap_or_default();
-    let outgoing = extract_wikilinks(&body)
-        .into_iter()
-        .map(|target| NoteLink {
-            source_id: row.id.clone(),
-            target_id: None,
-            target_title: target,
-        })
-        .collect();
+    let outgoing = {
+        let conn = state.db.conn()?;
+        outgoing_links_for_body(&conn, &row.id, &body)?
+    };
 
     let candidates: Vec<(String, String, String)> = {
         let conn = state.db.conn()?;
@@ -1161,22 +1254,24 @@ pub async fn notes_get_links(
 
 #[tauri::command]
 #[specta::specta]
-pub fn notes_resolve_by_title(
+pub async fn notes_resolve_by_title(
     state: State<'_, AppState>,
     args: Vec<String>,
 ) -> AppResult<Option<WikiLinkResolution>> {
     let title = single_string_arg(args, "title")?;
+    backfill_notes_cache_for_db(&state.db, &state.vault).await?;
     let conn = state.db.conn()?;
     notes_resolve_by_title_inner(&conn, &title)
 }
 
 #[tauri::command]
 #[specta::specta]
-pub fn notes_preview_by_title(
+pub async fn notes_preview_by_title(
     state: State<'_, AppState>,
     args: Vec<String>,
 ) -> AppResult<Option<NotePreview>> {
     let title = single_string_arg(args, "title")?;
+    backfill_notes_cache_for_db(&state.db, &state.vault).await?;
     let conn = state.db.conn()?;
     notes_preview_by_title_inner(&conn, &title)
 }
@@ -1223,6 +1318,314 @@ async fn ensure_vault_path_available(root: &std::path::Path, relative: &str) -> 
     Ok(())
 }
 
+fn notes_root_for(vault: &VaultRuntime) -> AppResult<String> {
+    let root = vault.require_current()?;
+    let configured = crate::vault::preferences::read_config(&root)?.default_note_folder;
+    let trimmed = configured.trim().trim_matches('/');
+    if trimmed.is_empty() {
+        Ok("notes".into())
+    } else {
+        Ok(trimmed.to_string())
+    }
+}
+
+fn normalize_notes_folder(folder: &str, notes_root: &str) -> AppResult<String> {
+    let normalized = folder.replace('\\', "/");
+    let cleaned = normalized.trim().trim_matches('/');
+    validate_note_folder_path(cleaned)?;
+    validate_note_folder_path(notes_root.trim().trim_matches('/'))?;
+    if cleaned.is_empty() {
+        return Ok(String::new());
+    }
+    Ok(cleaned.to_string())
+}
+
+fn note_path_for(notes_root: &str, folder: &str, filename: &str) -> AppResult<String> {
+    let root = notes_root.trim().trim_matches('/');
+    validate_note_folder_path(root)?;
+    let folder = normalize_notes_folder(folder, root)?;
+    if folder.is_empty() {
+        Ok(format!("{root}/{filename}"))
+    } else {
+        Ok(format!("{root}/{folder}/{filename}"))
+    }
+}
+
+fn validate_note_folder_path(path: &str) -> AppResult<()> {
+    if path.split('/').any(|segment| segment == "..") {
+        return Err(AppError::Validation(
+            "folder path cannot contain .. segments".into(),
+        ));
+    }
+    Ok(())
+}
+
+fn apply_inherited_template(
+    conn: &Connection,
+    vault: &VaultRuntime,
+    mut input: NoteCreateInput,
+) -> AppResult<NoteCreateInput> {
+    if input.template.is_none() {
+        let notes_root = notes_root_for(vault)?;
+        let folder = match input.folder.as_deref() {
+            Some(folder) => normalize_notes_folder(folder, &notes_root)?,
+            None => String::new(),
+        };
+        input.template = crate::db::folder_configs::get_template_inherited(conn, &folder)?;
+    }
+    Ok(input)
+}
+
+async fn write_new_note_with_unique_path(
+    conn: &Connection,
+    root: &std::path::Path,
+    mut prepared: PreparedCreate,
+) -> AppResult<PreparedCreate> {
+    let base_relative = prepared.relative.clone();
+    for suffix in 0..1000 {
+        let candidate = if suffix == 0 {
+            base_relative.clone()
+        } else {
+            add_numeric_suffix(&base_relative, suffix)
+        };
+        if crate::db::note_metadata::get_active_by_path(conn, &candidate)?.is_some() {
+            continue;
+        }
+        prepared.relative = candidate.clone();
+        prepared.row.path = candidate.clone();
+        match notes_io::write_new_note_to_disk(
+            root,
+            &candidate,
+            &prepared.frontmatter,
+            &prepared.body,
+        )
+        .await
+        {
+            Ok(_) => return Ok(prepared),
+            Err(AppError::Conflict(_)) => continue,
+            Err(err) => return Err(err),
+        }
+    }
+    Err(AppError::Conflict(format!(
+        "could not generate unique note path for {base_relative}"
+    )))
+}
+
+async fn write_new_note_with_unique_path_for_db(
+    db: &crate::db::Db,
+    root: &std::path::Path,
+    mut prepared: PreparedCreate,
+) -> AppResult<PreparedCreate> {
+    let base_relative = prepared.relative.clone();
+    for suffix in 0..1000 {
+        let candidate = if suffix == 0 {
+            base_relative.clone()
+        } else {
+            add_numeric_suffix(&base_relative, suffix)
+        };
+        let db_taken = db.with_conn(|conn| {
+            Ok(crate::db::note_metadata::get_active_by_path(conn, &candidate)?.is_some())
+        })?;
+        if db_taken {
+            continue;
+        }
+        prepared.relative = candidate.clone();
+        prepared.row.path = candidate.clone();
+        match notes_io::write_new_note_to_disk(
+            root,
+            &candidate,
+            &prepared.frontmatter,
+            &prepared.body,
+        )
+        .await
+        {
+            Ok(_) => return Ok(prepared),
+            Err(AppError::Conflict(_)) => continue,
+            Err(err) => return Err(err),
+        }
+    }
+    Err(AppError::Conflict(format!(
+        "could not generate unique note path for {base_relative}"
+    )))
+}
+
+async fn unique_rename_path(
+    conn: &Connection,
+    root: &std::path::Path,
+    row: &NoteMetadata,
+    new_title: &str,
+) -> AppResult<String> {
+    let folder = row
+        .path
+        .rsplit_once('/')
+        .map(|(prefix, _)| prefix.to_string())
+        .unwrap_or_default();
+    let slug = slug_for(new_title);
+    let base = if folder.is_empty() {
+        format!("{slug}.md")
+    } else {
+        format!("{folder}/{slug}.md")
+    };
+    next_available_note_path(conn, root, &base, Some(&row.path)).await
+}
+
+async fn unique_rename_path_for_db(
+    db: &crate::db::Db,
+    root: &std::path::Path,
+    row: &NoteMetadata,
+    new_title: &str,
+) -> AppResult<String> {
+    let folder = row
+        .path
+        .rsplit_once('/')
+        .map(|(prefix, _)| prefix.to_string())
+        .unwrap_or_default();
+    let slug = slug_for(new_title);
+    let base = if folder.is_empty() {
+        format!("{slug}.md")
+    } else {
+        format!("{folder}/{slug}.md")
+    };
+    next_available_note_path_for_db(db, root, &base, Some(&row.path)).await
+}
+
+async fn next_available_note_path(
+    conn: &Connection,
+    root: &std::path::Path,
+    base_relative: &str,
+    current_path: Option<&str>,
+) -> AppResult<String> {
+    for suffix in 0..1000 {
+        let candidate = if suffix == 0 {
+            base_relative.to_string()
+        } else {
+            add_numeric_suffix(base_relative, suffix)
+        };
+        if !note_path_taken(conn, root, &candidate, current_path).await? {
+            return Ok(candidate);
+        }
+    }
+    Err(AppError::Conflict(format!(
+        "could not generate unique note path for {base_relative}"
+    )))
+}
+
+async fn next_available_note_path_for_db(
+    db: &crate::db::Db,
+    root: &std::path::Path,
+    base_relative: &str,
+    current_path: Option<&str>,
+) -> AppResult<String> {
+    for suffix in 0..1000 {
+        let candidate = if suffix == 0 {
+            base_relative.to_string()
+        } else {
+            add_numeric_suffix(base_relative, suffix)
+        };
+        if !note_path_taken_for_db(db, root, &candidate, current_path).await? {
+            return Ok(candidate);
+        }
+    }
+    Err(AppError::Conflict(format!(
+        "could not generate unique note path for {base_relative}"
+    )))
+}
+
+fn add_numeric_suffix(path: &str, suffix: usize) -> String {
+    if let Some(stem) = path.strip_suffix(".md") {
+        format!("{stem} {suffix}.md")
+    } else {
+        format!("{path} {suffix}")
+    }
+}
+
+async fn note_path_taken(
+    conn: &Connection,
+    root: &std::path::Path,
+    candidate: &str,
+    current_path: Option<&str>,
+) -> AppResult<bool> {
+    if current_path == Some(candidate) {
+        return Ok(false);
+    }
+    if crate::db::note_metadata::get_active_by_path(conn, candidate)?.is_some() {
+        return Ok(true);
+    }
+    let abs = vault_paths::resolve_supported(root, candidate)?;
+    Ok(vault_fs::safe_read(&abs).await?.is_some())
+}
+
+async fn note_path_taken_for_db(
+    db: &crate::db::Db,
+    root: &std::path::Path,
+    candidate: &str,
+    current_path: Option<&str>,
+) -> AppResult<bool> {
+    if current_path == Some(candidate) {
+        return Ok(false);
+    }
+    let db_taken = db.with_conn(|conn| {
+        Ok(crate::db::note_metadata::get_active_by_path(conn, candidate)?.is_some())
+    })?;
+    if db_taken {
+        return Ok(true);
+    }
+    let abs = vault_paths::resolve_supported(root, candidate)?;
+    Ok(vault_fs::safe_read(&abs).await?.is_some())
+}
+
+async fn backfill_notes_cache_if_needed(conn: &Connection, vault: &VaultRuntime) -> AppResult<()> {
+    let rows = crate::db::note_metadata::list_active(conn)?;
+    let cache_count = crate::db::notes_cache::count_all_active(conn)?;
+    let stale_inline_count = crate::db::notes_cache::count_stale_inline_tags(conn)?;
+    if cache_count as usize >= rows.len() && stale_inline_count == 0 {
+        return Ok(());
+    }
+
+    let root = vault.require_current()?;
+    for row in rows {
+        crate::db::notes_cache::refresh_from_metadata(conn, &root, &row).await?;
+    }
+    Ok(())
+}
+
+async fn backfill_notes_cache_for_db(db: &crate::db::Db, vault: &VaultRuntime) -> AppResult<()> {
+    let (rows, cache_count, stale_inline_count) = db.with_conn(|conn| {
+        Ok((
+            crate::db::note_metadata::list_active(conn)?,
+            crate::db::notes_cache::count_all_active(conn)?,
+            crate::db::notes_cache::count_stale_inline_tags(conn)?,
+        ))
+    })?;
+    if cache_count as usize >= rows.len() && stale_inline_count == 0 {
+        return Ok(());
+    }
+
+    let root = vault.require_current()?;
+    let mut refreshed = Vec::with_capacity(rows.len());
+    for row in rows {
+        let read = notes_io::read_note_from_disk(&root, &row.path)
+            .await?
+            .map(|read| read.parsed);
+        let body = read
+            .as_ref()
+            .map(|parsed| parsed.content.clone())
+            .unwrap_or_default();
+        let tags = read
+            .as_ref()
+            .map(|parsed| parsed.frontmatter.tags.clone())
+            .unwrap_or_default();
+        refreshed.push((row, body, tags));
+    }
+
+    db.with_conn(|conn| {
+        for (row, body, tags) in refreshed {
+            crate::db::notes_cache::refresh_for(conn, &row, &body, &tags)?;
+        }
+        Ok(())
+    })
+}
+
 async fn read_note_dto(vault: &VaultRuntime, row: NoteMetadata) -> AppResult<NoteDto> {
     let root = vault.require_current()?;
     let read = notes_io::read_note_from_disk(&root, &row.path)
@@ -1233,6 +1636,7 @@ async fn read_note_dto(vault: &VaultRuntime, row: NoteMetadata) -> AppResult<Not
 }
 
 struct PreparedUpdate {
+    old_path: String,
     row: NoteMetadata,
     body: String,
     frontmatter: NoteFrontmatter,
@@ -1245,6 +1649,7 @@ async fn relocate_note_on_disk(
     new_title: Option<String>,
 ) -> AppResult<PreparedUpdate> {
     let root = vault.require_current()?;
+    let old_path = row.path.clone();
     let read = notes_io::read_note_from_disk(&root, &row.path)
         .await?
         .ok_or_else(|| AppError::NotFound(format!("note file {}", row.path)))?;
@@ -1269,6 +1674,7 @@ async fn relocate_note_on_disk(
     }
 
     Ok(PreparedUpdate {
+        old_path,
         row: updated,
         body,
         frontmatter,
@@ -1281,6 +1687,7 @@ async fn apply_update_to_vault(
     input: NoteUpdateInput,
 ) -> AppResult<PreparedUpdate> {
     let root = vault.require_current()?;
+    let old_path = row.path.clone();
     let read = notes_io::read_note_from_disk(&root, &row.path)
         .await?
         .ok_or_else(|| AppError::NotFound(format!("note file {}", row.path)))?;
@@ -1323,6 +1730,7 @@ async fn apply_update_to_vault(
     notes_io::write_note_to_disk(&root, &row.path, &frontmatter, &body).await?;
 
     Ok(PreparedUpdate {
+        old_path,
         row,
         body,
         frontmatter,
@@ -1332,17 +1740,27 @@ async fn apply_update_to_vault(
 fn reconcile_inline_tags(existing: &mut Vec<String>, old_body: &str, new_body: &str) {
     let old_inline = crate::db::tag_definitions::inline_tags(old_body);
     let new_inline = crate::db::tag_definitions::inline_tags(new_body);
+    let removed_inline = old_inline
+        .iter()
+        .filter(|old_tag| !new_inline.iter().any(|new_tag| new_tag == *old_tag))
+        .cloned()
+        .collect::<Vec<_>>();
 
-    existing.retain(|tag| {
-        !old_inline.iter().any(|old_tag| old_tag == tag)
-            || new_inline.iter().any(|new_tag| new_tag == tag)
-    });
+    existing.retain(|tag| !removed_inline.iter().any(|removed_tag| removed_tag == tag));
 
     for tag in new_inline {
         if !existing.iter().any(|t| t == &tag) {
             existing.push(tag);
         }
     }
+}
+
+fn note_update_lock(note_id: &str) -> AppResult<Arc<AsyncMutex<()>>> {
+    let mut locks = NOTE_UPDATE_LOCKS.lock()?;
+    Ok(locks
+        .entry(note_id.to_string())
+        .or_insert_with(|| Arc::new(AsyncMutex::new(())))
+        .clone())
 }
 
 fn merge_frontmatter_patch(
@@ -1459,6 +1877,15 @@ pub fn note_update_event_changes(input: &NoteUpdateInput, note: &NoteDto) -> ser
     serde_json::Value::Object(changes)
 }
 
+fn note_update_may_change_tags(input: &NoteUpdateInput) -> bool {
+    input.tags.is_some()
+        || input.content.is_some()
+        || input
+            .frontmatter
+            .as_ref()
+            .is_some_and(|frontmatter| frontmatter.get("tags").is_some())
+}
+
 fn json_object_to_yaml_map(
     value: &serde_json::Value,
     field: &str,
@@ -1473,12 +1900,19 @@ fn json_object_to_yaml_map(
     Ok(out)
 }
 
-fn finish_update(conn: &Connection, updated: PreparedUpdate) -> AppResult<NoteUpdateResponse> {
-    use crate::db::{note_metadata, notes_cache};
+fn finish_update(
+    conn: &Connection,
+    updated: PreparedUpdate,
+    notes_root: &str,
+) -> AppResult<NoteUpdateResponse> {
+    use crate::db::{note_metadata, note_positions, notes_cache};
 
     let row = metadata_to_upsert_row(&updated.row);
     note_metadata::upsert(conn, &row)?;
     notes_cache::refresh_for(conn, &updated.row, &updated.body, &updated.frontmatter.tags)?;
+    if updated.old_path != updated.row.path {
+        note_positions::move_for_note(conn, &updated.old_path, &updated.row.path, notes_root)?;
+    }
 
     Ok(NoteUpdateResponse {
         success: true,
@@ -1490,11 +1924,12 @@ fn finish_update(conn: &Connection, updated: PreparedUpdate) -> AppResult<NoteUp
 fn finish_delete(
     conn: &Connection,
     row: &NoteMetadata,
+    trash_path: &str,
     deleted_at: &str,
 ) -> AppResult<NoteDeleteResponse> {
     use crate::db::{note_metadata, note_positions, notes_cache};
 
-    note_metadata::delete_soft(conn, &row.id, deleted_at)?;
+    note_metadata::delete_soft(conn, &row.id, trash_path, deleted_at)?;
     notes_cache::delete(conn, &row.id)?;
     note_positions::drop_for_note(conn, &row.path)?;
 
@@ -1551,11 +1986,8 @@ async fn prepare_create(vault: &VaultRuntime, input: NoteCreateInput) -> AppResu
 
     let folder = input.folder.unwrap_or_default();
     let slug = slug_for(&title);
-    let relative = if folder.trim().is_empty() {
-        format!("{slug}.md")
-    } else {
-        format!("{}/{slug}.md", folder.trim().trim_matches('/'))
-    };
+    let notes_root = notes_root_for(vault)?;
+    let relative = note_path_for(&notes_root, &folder, &format!("{slug}.md"))?;
     let applied_template = match input.template.as_deref() {
         Some(template_id) => load_template(vault, template_id, &title).await?,
         None => None,
@@ -1627,6 +2059,10 @@ async fn load_template(
     title: &str,
 ) -> AppResult<Option<AppliedTemplate>> {
     let template_id = template_id.trim();
+    if template_id.starts_with('{') {
+        return Ok(Some(apply_template_json(template_id, title)?));
+    }
+
     if template_id.is_empty()
         || template_id.contains('/')
         || template_id.contains('\\')
@@ -1645,6 +2081,104 @@ async fn load_template(
     };
 
     Ok(Some(apply_template_markdown(&raw, title)?))
+}
+
+fn apply_template_json(raw: &str, title: &str) -> AppResult<AppliedTemplate> {
+    let value: serde_json::Value = serde_json::from_str(raw)?;
+    let object = value
+        .as_object()
+        .ok_or_else(|| AppError::Validation("template JSON must be an object".into()))?;
+
+    let body = object
+        .get("content")
+        .or_else(|| object.get("body"))
+        .and_then(|value| value.as_str())
+        .unwrap_or_default()
+        .trim()
+        .replace("{{title}}", title);
+    let mut tags = Vec::new();
+    let mut properties = BTreeMap::new();
+
+    if let Some(frontmatter) = object
+        .get("frontmatter")
+        .and_then(|value| value.as_object())
+    {
+        for (key, value) in frontmatter {
+            match key.as_str() {
+                "tags" => extend_json_tags(&mut tags, value, "template frontmatter tags")?,
+                "properties" => extend_json_properties(
+                    &mut properties,
+                    value,
+                    "template frontmatter properties",
+                )?,
+                "id" | "title" | "created" | "modified" | "aliases" | "emoji" | "localOnly" => {}
+                _ => {
+                    properties.insert(key.clone(), serde_yaml_ng::to_value(value)?);
+                }
+            }
+        }
+    }
+
+    if let Some(value) = object.get("tags") {
+        extend_json_tags(&mut tags, value, "template tags")?;
+    }
+    if let Some(value) = object.get("properties") {
+        extend_json_properties(&mut properties, value, "template properties")?;
+    }
+
+    Ok(AppliedTemplate {
+        body,
+        tags,
+        properties,
+    })
+}
+
+fn extend_json_tags(
+    tags: &mut Vec<String>,
+    value: &serde_json::Value,
+    field: &str,
+) -> AppResult<()> {
+    for tag in json_string_array(value, field)? {
+        if !tags.iter().any(|existing| existing == &tag) {
+            tags.push(tag);
+        }
+    }
+    Ok(())
+}
+
+fn extend_json_properties(
+    out: &mut BTreeMap<String, serde_yaml_ng::Value>,
+    value: &serde_json::Value,
+    field: &str,
+) -> AppResult<()> {
+    match value {
+        serde_json::Value::Object(map) => {
+            for (key, value) in map {
+                out.insert(key.clone(), serde_yaml_ng::to_value(value)?);
+            }
+        }
+        serde_json::Value::Array(items) => {
+            for item in items {
+                let Some(item) = item.as_object() else {
+                    continue;
+                };
+                let Some(name) = item.get("name").and_then(|value| value.as_str()) else {
+                    continue;
+                };
+                let value = item
+                    .get("value")
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null);
+                out.insert(name.to_string(), serde_yaml_ng::to_value(value)?);
+            }
+        }
+        _ => {
+            return Err(AppError::Validation(format!(
+                "{field} must be an object or array"
+            )))
+        }
+    }
+    Ok(())
 }
 
 fn apply_template_markdown(raw: &str, title: &str) -> AppResult<AppliedTemplate> {

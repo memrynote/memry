@@ -108,6 +108,32 @@ describe('notes-service', () => {
     expect(api.notes.restoreVersion).toHaveBeenCalledWith('snapshot-1')
   })
 
+  it('preserves existing folder icon when setting only a template', async () => {
+    api.notes.getFolderConfig = vi.fn().mockResolvedValue({
+      icon: 'folder-star',
+      template: 'old-template'
+    })
+    api.notes.setFolderConfig = vi.fn().mockResolvedValue({ success: true })
+
+    await notesService.setFolderConfig('projects', {
+      template: 'new-template',
+      inherit: true
+    })
+
+    expect(invoke).toHaveBeenCalledWith('notes_set_folder_config', {
+      input: { path: 'projects', icon: 'folder-star', templateJson: 'new-template' }
+    })
+  })
+
+  it('wraps ensurePropertyDefinition in the shared success response', async () => {
+    const result = await notesService.ensurePropertyDefinition('status', 'status')
+
+    expect(invoke).toHaveBeenCalledWith('notes_ensure_property_definition', {
+      input: { name: 'status', type: 'status' }
+    })
+    expect(result).toEqual({ success: true })
+  })
+
   it('registers note event subscriptions', () => {
     const unsubscribe = vi.fn()
     api.onNoteCreated = vi.fn(() => unsubscribe)
@@ -238,7 +264,7 @@ describe('notes-service', () => {
   it('uses Tauri input envelopes for folder/property mutations', async () => {
     await notesService.deleteFolder('projects')
     expect(invoke).toHaveBeenCalledWith('notes_delete_folder', {
-      input: { path: 'projects', recursive: false }
+      input: { path: 'projects', recursive: true }
     })
 
     await notesService.ensurePropertyDefinition('status', 'status')

@@ -2,7 +2,7 @@ use crate::error::{AppError, AppResult};
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
@@ -97,32 +97,23 @@ pub fn list_with_counts(conn: &Connection) -> AppResult<Vec<TagWithCount>> {
         })
         .collect();
 
-    // Frontmatter tags live in notes_cache.tags_json. Skip rows whose
-    // metadata row is tombstoned so deleted notes do not poison counts.
-    let mut frontmatter_stmt = conn.prepare(
-        "SELECT c.tags_json
+    // Count each tag once per live note even when it appears in both
+    // frontmatter and inline body text.
+    let mut stmt = conn.prepare(
+        "SELECT c.tags_json, c.inline_tags_json
            FROM notes_cache c
            JOIN note_metadata m ON m.id = c.id
           WHERE coalesce(json_extract(m.clock, '$.deleted_at'), '') = ''",
     )?;
-    let frontmatter_rows = frontmatter_stmt.query_map([], |row| row.get::<_, String>(0))?;
-    for row in frontmatter_rows {
-        for tag in tags_from_json(&row?) {
-            increment(&mut counts, &tag);
-        }
-    }
-
-    // Inline `#hashtags` come from the cached body snippet. Apply the same
-    // tombstone filter so the live note set drives the count.
-    let mut snippet_stmt = conn.prepare(
-        "SELECT c.snippet
-           FROM notes_cache c
-           JOIN note_metadata m ON m.id = c.id
-          WHERE coalesce(json_extract(m.clock, '$.deleted_at'), '') = ''",
-    )?;
-    let snippet_rows = snippet_stmt.query_map([], |row| row.get::<_, String>(0))?;
-    for row in snippet_rows {
-        for tag in inline_tags(&row?) {
+    let rows = stmt.query_map([], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+    })?;
+    for row in rows {
+        let (frontmatter_json, inline_json) = row?;
+        let mut note_tags = HashSet::new();
+        note_tags.extend(tags_from_json(&frontmatter_json));
+        note_tags.extend(tags_from_json(&inline_json));
+        for tag in note_tags {
             increment(&mut counts, &tag);
         }
     }
@@ -179,21 +170,101 @@ fn tags_from_json(json: &str) -> Vec<String> {
 /// to match how `list_with_counts` aggregates them, so callers can use the
 /// returned values directly when reconciling `frontmatter.tags`.
 pub fn inline_tags(snippet: &str) -> Vec<String> {
+    let snippet = strip_markdown_code(snippet);
     let mut tags = Vec::new();
-    for token in snippet.split_whitespace() {
-        let Some(hash_index) = token.find('#') else {
+    let mut seen = HashSet::new();
+    let mut iter = snippet.char_indices().peekable();
+
+    while let Some((index, ch)) = iter.next() {
+        if ch != '#' {
             continue;
-        };
-        let tag: String = token[hash_index + 1..]
-            .chars()
-            .take_while(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '/'))
-            .collect();
+        }
+
+        if index > 0 {
+            let preceding = snippet[..index].chars().next_back();
+            if preceding.is_some_and(|c| !c.is_whitespace()) {
+                continue;
+            }
+        }
+
+        let tag = take_inline_tag(&mut iter);
         let normalized = normalize_lossy(&tag);
-        if !normalized.is_empty() {
+        if !normalized.is_empty() && seen.insert(normalized.clone()) {
             tags.push(normalized);
         }
     }
+
     tags
+}
+
+fn strip_markdown_code(snippet: &str) -> String {
+    let mut without_fences = String::with_capacity(snippet.len());
+    let mut rest = snippet;
+    while let Some(start) = rest.find("```") {
+        without_fences.push_str(&rest[..start]);
+        let after_start = &rest[start + 3..];
+        let Some(end) = after_start.find("```") else {
+            without_fences.push_str(&rest[start..]);
+            rest = "";
+            break;
+        };
+        rest = &after_start[end + 3..];
+    }
+    without_fences.push_str(rest);
+
+    let mut out = String::with_capacity(without_fences.len());
+    let mut rest = without_fences.as_str();
+    while let Some(start) = rest.find('`') {
+        out.push_str(&rest[..start]);
+        let after_start = &rest[start + 1..];
+        let Some(end) = after_start.find('`') else {
+            out.push_str(&rest[start..]);
+            rest = "";
+            break;
+        };
+        rest = &after_start[end + 1..];
+    }
+    out.push_str(rest);
+    out
+}
+
+fn take_inline_tag(iter: &mut std::iter::Peekable<std::str::CharIndices<'_>>) -> String {
+    let mut tag = String::new();
+    let Some((_, first)) = iter.peek().copied() else {
+        return tag;
+    };
+    if !first.is_ascii_alphanumeric() {
+        return tag;
+    }
+    tag.push(first);
+    iter.next();
+
+    while let Some((_, ch)) = iter.peek().copied() {
+        if ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_') {
+            tag.push(ch);
+            iter.next();
+            continue;
+        }
+
+        if ch == '/' && slash_starts_segment(iter) {
+            tag.push(ch);
+            iter.next();
+            continue;
+        }
+
+        break;
+    }
+
+    tag
+}
+
+fn slash_starts_segment(iter: &std::iter::Peekable<std::str::CharIndices<'_>>) -> bool {
+    let mut clone = iter.clone();
+    clone.next();
+    clone
+        .peek()
+        .map(|(_, ch)| ch.is_ascii_alphanumeric())
+        .unwrap_or(false)
 }
 
 fn increment(counts: &mut BTreeMap<String, TagWithCount>, raw: &str) {

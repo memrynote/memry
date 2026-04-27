@@ -1,5 +1,5 @@
 use memry_desktop_tauri_lib::db::note_positions::{
-    drop_for_note, get_all, get_for_folder, reorder,
+    drop_for_note, get_all, get_for_folder, move_for_note, reorder,
 };
 use memry_desktop_tauri_lib::test_helpers::open_in_memory_with_migrations;
 
@@ -38,6 +38,18 @@ fn reorder_replaces_previous_state_for_folder() {
 }
 
 #[test]
+fn reorder_preserves_other_position_rows_in_same_parent() {
+    let conn = open_in_memory_with_migrations();
+    reorder(&conn, "", &["notes/root.md".into()]).unwrap();
+    reorder(&conn, "", &["Projects".into(), "Archive".into()]).unwrap();
+
+    let pos = get_for_folder(&conn, "").unwrap();
+    assert_eq!(pos.get("notes/root.md").copied(), Some(0));
+    assert_eq!(pos.get("Projects").copied(), Some(0));
+    assert_eq!(pos.get("Archive").copied(), Some(1));
+}
+
+#[test]
 fn get_all_returns_flat_map_keyed_by_path() {
     let conn = open_in_memory_with_migrations();
     reorder(&conn, "Inbox", &["a.md".into(), "b.md".into()]).unwrap();
@@ -58,4 +70,28 @@ fn drop_for_note_removes_position() {
     let pos = get_for_folder(&conn, "Inbox").unwrap();
     assert!(!pos.contains_key("a.md"));
     assert_eq!(pos.get("b.md").copied(), Some(1));
+}
+
+#[test]
+fn move_for_note_updates_path_and_folder() {
+    let conn = open_in_memory_with_migrations();
+    reorder(&conn, "Inbox", &["Inbox/a.md".into()]).unwrap();
+
+    move_for_note(&conn, "Inbox/a.md", "Archive/a.md", "notes").unwrap();
+
+    assert!(get_for_folder(&conn, "Inbox").unwrap().is_empty());
+    let archive = get_for_folder(&conn, "Archive").unwrap();
+    assert_eq!(archive.get("Archive/a.md").copied(), Some(0));
+}
+
+#[test]
+fn move_for_note_strips_custom_notes_root_from_folder_path() {
+    let conn = open_in_memory_with_migrations();
+    reorder(&conn, "Inbox", &["Custom/Inbox/a.md".into()]).unwrap();
+
+    move_for_note(&conn, "Custom/Inbox/a.md", "Custom/Archive/a.md", "Custom").unwrap();
+
+    assert!(get_for_folder(&conn, "Inbox").unwrap().is_empty());
+    let archive = get_for_folder(&conn, "Archive").unwrap();
+    assert_eq!(archive.get("Custom/Archive/a.md").copied(), Some(0));
 }

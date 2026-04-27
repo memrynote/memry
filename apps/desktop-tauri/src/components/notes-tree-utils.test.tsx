@@ -97,6 +97,11 @@ describe('extractFolderFromPath', () => {
   it('handles non-notes-prefixed path', () => {
     expect(extractFolderFromPath('Projects/hello.md')).toBe('Projects')
   })
+
+  it('strips configured note root from custom-root path', () => {
+    expect(extractFolderFromPath('Custom/Projects/hello.md', 'Custom')).toBe('Projects')
+    expect(extractFolderFromPath('Custom/hello.md', 'Custom')).toBe('')
+  })
 })
 
 // ============================================================================
@@ -254,6 +259,20 @@ describe('buildTreeFromNotes', () => {
 
     const tree = buildTreeFromNotes(notes, folders, {})
     expect(tree.folders[0].icon).toBe('📦')
+  })
+
+  it('uses configured note root when grouping custom-root notes', () => {
+    const notes = [
+      createNote({ id: 'a', path: 'Custom/root.md', modified: baseDate }),
+      createNote({ id: 'b', path: 'Custom/Projects/alpha.md', modified: baseDate })
+    ]
+    const folders = [{ path: 'Projects', icon: null }]
+
+    const tree = buildTreeFromNotes(notes, folders, {}, 'Custom')
+    expect(tree.rootNotes.map((n) => n.id)).toEqual(['a'])
+    expect(tree.folders).toHaveLength(1)
+    expect(tree.folders[0].path).toBe('Projects')
+    expect(tree.folders[0].notes.map((n) => n.id)).toEqual(['b'])
   })
 })
 
