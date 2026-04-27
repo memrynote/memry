@@ -49,11 +49,25 @@ describe('vaultRoutes', () => {
     expect(result.vault.path).toBe('/mock/path/new-vault')
   })
 
+  it('vault_open accepts the real Tauri input envelope', async () => {
+    const result = (await vaultRoutes.vault_open!({
+      input: { path: '/mock/path/opened-vault' }
+    })) as { success: boolean; vault: { path: string } }
+    expect(result.success).toBe(true)
+    expect(result.vault.path).toBe('/mock/path/opened-vault')
+  })
+
+  it('dialog_choose_folder returns the current mock vault path', async () => {
+    const result = (await vaultRoutes.dialog_choose_folder!(undefined)) as string
+    expect(result).toBeTruthy()
+  })
+
   it('vault_switch returns success', async () => {
     const result = (await vaultRoutes.vault_switch!({
-      path: '/mock/path/secondary'
-    })) as { success: boolean }
+      input: { path: '/mock/path/secondary' }
+    })) as { success: boolean; vault: { path: string } }
     expect(result.success).toBe(true)
+    expect(result.vault.path).toBe('/mock/path/secondary')
   })
 
   it('vault_close returns success', async () => {
