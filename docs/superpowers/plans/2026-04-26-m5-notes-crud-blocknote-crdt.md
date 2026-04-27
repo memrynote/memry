@@ -5733,6 +5733,10 @@ Expected: existing M1 mock-lane remains green.
 
 Goal: finish M5 with proof that the design acceptance gate is met and every remaining mock/deferred surface has an owner milestone. Acceptance proof: all commands below pass, plan checklist is complete, and the PR body includes the ledger diff from M4 baseline to M5.
 
+2026-04-27 status: automated local gates are recorded, but Chunk 13 is not fully
+complete. Runtime E2E execution is blocked on macOS platform support, and manual
+dogfood is blocked by pending Codex Computer Use permissions.
+
 ### Task 72: Full local verification
 
 - [x] **Step 72.1: Rust**
@@ -5755,10 +5759,15 @@ pnpm --filter @memry/desktop-tauri capability:check
 pnpm --filter @memry/desktop-tauri command:parity
 ```
 
-- [x] **Step 72.3: E2E**
+- [x] **Step 72.3a: Browser mock E2E**
 
 ```bash
 pnpm --filter @memry/desktop-tauri test:e2e
+```
+
+- [ ] **Step 72.3b: Runtime E2E execution**
+
+```bash
 pnpm --filter @memry/desktop-tauri test:e2e:runtime
 ```
 
@@ -5770,8 +5779,10 @@ Verification recorded on 2026-04-27:
   `bindings:check`, `capability:check`, and `command:parity` passed.
 - Unit coverage: `test` reported 174 files and 3627 tests passed.
 - Browser E2E: `test:e2e` reported 34/34 passed.
-- Runtime E2E command: `test:e2e:runtime` exited 0 on macOS with the documented
-  platform skip because `tauri-driver v2.0.5` has no macOS WKWebView backend.
+- Runtime E2E command: `test:e2e:runtime -- --list` enumerated 7 scenarios.
+  `test:e2e:runtime` itself exited 0 on macOS with the documented platform skip
+  because `tauri-driver v2.0.5` has no macOS WKWebView backend; this does not
+  count as runtime scenario execution.
 
 ---
 
