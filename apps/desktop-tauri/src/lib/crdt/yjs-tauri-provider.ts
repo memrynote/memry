@@ -3,6 +3,7 @@ import { Observable } from 'lib0/observable'
 import { createLogger } from '@/lib/logger'
 import { invoke as defaultInvoke } from '@/lib/ipc/invoke'
 import { subscribeEvent as defaultSubscribeEvent } from '@/lib/ipc/forwarder'
+import type { CrdtUpdateEvent, SyncStep1Result } from '@/contracts/crdt'
 import { createRendererOrigin, isRendererOrigin } from './origin-tags'
 
 const log = createLogger('YjsTauriProvider')
@@ -16,17 +17,6 @@ type InvokeFn = <TResponse = unknown>(
   args?: Record<string, unknown>
 ) => Promise<TResponse>
 type SubscribeEventFn = <T>(eventName: string, callback: (payload: T) => void) => () => void
-
-interface CrdtUpdatePayload {
-  noteId: string
-  update: number[]
-  origin: number
-}
-
-interface SyncStep1Result {
-  diff: number[]
-  stateVector: number[]
-}
 
 export interface YjsTauriProviderConfig {
   noteId: string
@@ -61,7 +51,7 @@ export class YjsTauriProvider extends Observable<string> {
     }
     this.doc.on('update', this.updateHandler)
 
-    this.eventCleanup = this.subscribeEvent<CrdtUpdatePayload>('crdt-update', (data) => {
+    this.eventCleanup = this.subscribeEvent<CrdtUpdateEvent>('crdt-update', (data) => {
       if (data.noteId !== this.noteId) return
       if (isRendererOrigin(data.origin)) return
       const update = new Uint8Array(data.update)
