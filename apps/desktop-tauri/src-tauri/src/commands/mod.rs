@@ -5,6 +5,8 @@ pub mod auth;
 pub mod crdt;
 pub mod crypto;
 pub mod devices;
+#[cfg(any(debug_assertions, feature = "test-helpers"))]
+pub mod devtools;
 pub mod dialog;
 pub mod folders;
 pub mod lifecycle;
