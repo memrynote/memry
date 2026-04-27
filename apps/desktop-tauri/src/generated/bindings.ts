@@ -77,6 +77,19 @@ export const commands = {
 	tags: NotePreviewTag[],
 	createdAt: string,
 } | null, AppError>(__TAURI_INVOKE("notes_preview_by_title", { args })),
+	notesGetFile: (args: string[]) => typedError<{
+	id: string,
+	path: string,
+	absolutePath: string,
+	title: string,
+	fileType: string,
+	mimeType: string | null,
+	fileSize: number | null,
+	created: string,
+	modified: string,
+} | null, AppError>(__TAURI_INVOKE("notes_get_file", { args })),
+	notesOpenExternal: (args: string[]) => typedError<null, AppError>(__TAURI_INVOKE("notes_open_external", { args })),
+	notesRevealInFinder: (args: string[]) => typedError<null, AppError>(__TAURI_INVOKE("notes_reveal_in_finder", { args })),
 	notesGetFolders: () => typedError<FolderInfo[], AppError>(__TAURI_INVOKE("notes_get_folders")),
 	notesCreateFolder: (args: string[]) => typedError<FolderSimpleSuccess, AppError>(__TAURI_INVOKE("notes_create_folder", { args })),
 	notesRenameFolder: (args: string[]) => typedError<FolderSimpleSuccess, AppError>(__TAURI_INVOKE("notes_rename_folder", { args })),
@@ -429,6 +442,18 @@ export type DeviceView = {
 	 *  renderer formats this as a relative time string.
 	 */
 	createdAt: number | null,
+};
+
+export type FileMetadata = {
+	id: string,
+	path: string,
+	absolutePath: string,
+	title: string,
+	fileType: string,
+	mimeType: string | null,
+	fileSize: number | null,
+	created: string,
+	modified: string,
 };
 
 export type FolderConfig = {
