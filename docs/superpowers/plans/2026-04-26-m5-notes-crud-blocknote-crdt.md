@@ -5790,10 +5790,14 @@ Verification recorded on 2026-04-27:
 
 Run against a fresh vault with `VITE_MOCK_IPC=false`:
 
-2026-04-27 status: blocked locally. A fresh `MEMRY_DEVICE=phaseo-dogfood`
-registry and vault were prepared and the real Tauri app was launched with
-`VITE_MOCK_IPC=false`, but Codex Computer Use could not access the Memry window
-because macOS Accessibility/Screen Recording permissions were still pending.
+2026-04-27 retry status: still blocked locally. `/Applications/Memry.app` was
+removed so Computer Use would attach to the debug bundle. A fresh
+`MEMRY_DEVICE=phaseo-manual-cu` vault launched with `VITE_MOCK_IPC=false`; note
+creation reached the real Rust path and wrote the vault file + `note_metadata`
+row. Editor typing could be made visible in the app, but the vault file and CRDT
+tables did not show the typed content before Computer Use failed again with a
+ScreenCaptureKit stream error. A second probe run could launch and create a note,
+but could not reliably focus/type into the editor after the capture failure.
 Leave these boxes unchecked until the manual pass is actually completed.
 
 - [ ] create note, type 500+ chars, restart, content remains
