@@ -4,7 +4,7 @@
 // and @/lib/ipc/events, not a preload bridge.
 import type { GeneratedRpcApi } from '@memry/rpc'
 import type * as InboxRpc from '@memry/rpc/inbox'
-import type * as NotesRpc from '@memry/rpc/notes'
+import type * as NotesRpc from '@/contracts/notes'
 import type * as TasksRpc from '@memry/rpc/tasks'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import type {

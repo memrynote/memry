@@ -35,7 +35,7 @@ import type {
   UpdatePropertyDefinitionInput,
   WikiLinkPreview,
   WikiLinkResolution
-} from '@memry/rpc/notes'
+} from '@/contracts/notes'
 import { createInvokeForwarder, subscribeEvent } from '@/lib/ipc/forwarder'
 import { invoke } from '@/lib/ipc/invoke'
 import { NOTE_METHODS_WITH_DATES, reviveNoteDates } from './notes-response-adapter'
