@@ -28,6 +28,9 @@ export const scenarios: RuntimeScenario[] = [
 
       await insertLink(browser, 'Memry runtime link', 'https://example.com/runtime')
       await invokeRuntimeCommand(browser, 'notify_flush_done')
+      await browser.refresh()
+      await browser.$('body').waitForExist({ timeout: 15_000 })
+      await invokeRuntimeCommand(browser, 'devtools_open_test_vault', { root: vault.root })
       await openSeededNote(browser, note.title)
 
       const persisted = await browser.execute(() => ({
@@ -74,12 +77,24 @@ async function insertLink(browser: RuntimeBrowser, label: string, href: string):
       const editor = document.querySelector<HTMLElement>('.bn-editor')
       if (!editor) return false
       editor.focus()
-      const anchor = document.createElement('a')
-      anchor.href = url
-      anchor.textContent = text
-      editor.append(document.createTextNode(' '))
-      editor.append(anchor)
-      return true
+      document.execCommand('insertText', false, text)
+      const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT)
+      let node = walker.nextNode()
+      while (node) {
+        const value = node.textContent ?? ''
+        const start = value.lastIndexOf(text)
+        if (start >= 0) {
+          const range = document.createRange()
+          range.setStart(node, start)
+          range.setEnd(node, start + text.length)
+          const selection = window.getSelection()
+          selection?.removeAllRanges()
+          selection?.addRange(range)
+          return document.execCommand('createLink', false, url)
+        }
+        node = walker.nextNode()
+      }
+      return false
     },
     label,
     href

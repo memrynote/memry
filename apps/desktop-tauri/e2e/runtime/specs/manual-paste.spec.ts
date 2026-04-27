@@ -37,10 +37,6 @@ async function dispatchPaste(browser: RuntimeBrowser, text: string): Promise<boo
     })
     editor.dispatchEvent(event)
 
-    if (!document.body.textContent?.includes(payload)) {
-      document.execCommand('insertText', false, payload)
-    }
-
     return document.body.textContent?.includes(payload) ?? false
   }, text)
 }

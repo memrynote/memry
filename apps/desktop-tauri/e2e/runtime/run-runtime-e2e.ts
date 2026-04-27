@@ -5,6 +5,7 @@ import { runtimeConfig } from './runtime.config'
 import {
   assertRuntimeDriverSupported,
   buildRuntimeApp,
+  runtimeDriverUnsupportedMessage,
   withRuntimeDriver,
   type RuntimeScenario
 } from './helpers/driver'
@@ -45,6 +46,12 @@ async function main(): Promise<void> {
 
   if (process.argv.includes('--list')) {
     for (const scenario of scenarios) console.log(scenario.name)
+    return
+  }
+
+  const unsupported = runtimeDriverUnsupportedMessage()
+  if (unsupported) {
+    console.log(`runtime:e2e skipped: ${unsupported}`)
     return
   }
 

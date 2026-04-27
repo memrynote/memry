@@ -19,6 +19,9 @@ export const scenarios: RuntimeScenario[] = [
         await browser.keys(modifierCombo('z'))
       }
 
+      const afterUndo = await editor.getText()
+      assert.ok(!afterUndo.includes(edits.join('')), 'undo did not remove the edit sequence')
+
       for (let i = 0; i < edits.length; i += 1) {
         await browser.keys(modifierCombo('z', true))
       }
