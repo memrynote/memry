@@ -40,6 +40,7 @@ interface RuntimeDriverOptions {
 
 export interface RuntimeDriverSession {
   browser: RuntimeBrowser
+  appPath: string
   device: string
   originTag: string
   stop: () => Promise<void>
@@ -122,6 +123,7 @@ async function startRuntimeDriver(options: RuntimeDriverOptions): Promise<Runtim
 
   return {
     browser,
+    appPath: options.appPath,
     device: options.device,
     originTag: options.originTag,
     stop: async () => {
