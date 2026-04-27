@@ -39,7 +39,9 @@ async function assertEmptyState(browser: RuntimeBrowser): Promise<void> {
 async function assertLoadingState(browser: RuntimeBrowser, title: string): Promise<void> {
   await patchInvoke(browser, 'crdt_open_doc', { delayMs: 750 })
   await clickText(browser, title)
-  const sawLoading = await waitForUiState(browser, /loading|opening|syncing/i)
+  const sawLoading = await waitForUiState(browser, /loading|opening|syncing/i, {
+    includeSkeleton: true
+  })
   assert.equal(sawLoading, true, 'delayed crdt_open_doc did not surface a loading state')
   await browser.$('.bn-editor').waitForDisplayed({ timeout: 15_000 })
   await restoreInvoke(browser)
@@ -128,12 +130,17 @@ async function restoreInvoke(browser: RuntimeBrowser): Promise<void> {
   })
 }
 
-async function waitForUiState(browser: RuntimeBrowser, pattern: RegExp): Promise<boolean> {
-  return browser.executeAsync((source, flags, done) => {
+async function waitForUiState(
+  browser: RuntimeBrowser,
+  pattern: RegExp,
+  options: { includeSkeleton?: boolean } = {}
+): Promise<boolean> {
+  return browser.executeAsync((source, flags, includeSkeleton, done) => {
     const pattern = new RegExp(source, flags)
     const started = Date.now()
     const timer = window.setInterval(() => {
-      const hasSkeleton = document.querySelector('[class*="animate-pulse"]') !== null
+      const hasSkeleton =
+        includeSkeleton && document.querySelector('[class*="animate-pulse"]') !== null
       const text = document.body.textContent ?? ''
       if (pattern.test(text) || hasSkeleton) {
         clearInterval(timer)
@@ -143,7 +150,7 @@ async function waitForUiState(browser: RuntimeBrowser, pattern: RegExp): Promise
         done(false)
       }
     }, 50)
-  }, pattern.source, pattern.flags)
+  }, pattern.source, pattern.flags, options.includeSkeleton ?? false)
 }
 
 async function clickText(browser: RuntimeBrowser, text: string): Promise<void> {

@@ -18,9 +18,13 @@ export async function invokeRuntimeCommand<T>(
           invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown>
         }
       }
+      const invoke = tauriWindow.__TAURI_INTERNALS__?.invoke
+      if (!invoke) {
+        done({ ok: false, error: 'window.__TAURI_INTERNALS__.invoke is unavailable' })
+        return
+      }
 
-      tauriWindow.__TAURI_INTERNALS__
-        ?.invoke(cmd as string, payload as Record<string, unknown>)
+      invoke(cmd as string, payload as Record<string, unknown>)
         .then((value) => done({ ok: true, value: value as T }))
         .catch((err) => done({ ok: false, error: String(err) }))
     },
