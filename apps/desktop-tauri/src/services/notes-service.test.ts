@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createMockApi } from '@tests/setup-dom'
+import { invoke } from '@/lib/ipc/invoke'
 import {
   notesService,
   onNoteCreated,
@@ -7,13 +8,17 @@ import {
   onNoteDeleted,
   onNoteRenamed,
   onNoteMoved,
-  onNoteExternalChange
+  onNoteExternalChange,
+  onTagsChanged,
+  onFolderConfigUpdated
 } from './notes-service'
+import { subscribeEvent } from '@/lib/ipc/forwarder'
 
 describe('notes-service', () => {
   let api: ReturnType<typeof createMockApi>
 
   beforeEach(() => {
+    vi.clearAllMocks()
     api = createMockApi()
     ;(window as Window & { api: unknown }).api = api
   })
@@ -28,7 +33,7 @@ describe('notes-service', () => {
     expect(typeof notesService.reorder).toBe('function')
   })
 
-  it('forwards core note operations to window.api.notes', async () => {
+  it('forwards core note operations through real Tauri payloads', async () => {
     const createResponse = { success: true, note: { id: 'note-1' } }
     api.notes.create = vi.fn().mockResolvedValue(createResponse)
     api.notes.get = vi.fn().mockResolvedValue({ id: 'note-1' })
@@ -38,7 +43,13 @@ describe('notes-service', () => {
 
     const createInput = { title: 'New note', content: 'Hello' }
     const createResult = await notesService.create(createInput)
-    expect(api.notes.create).toHaveBeenCalledWith(createInput)
+    expect(invoke).toHaveBeenCalledWith('notes_create', {
+      title: 'New note',
+      content: 'Hello',
+      folder: null,
+      tags: null,
+      template: null
+    })
     expect(createResult).toEqual(createResponse)
 
     const getResult = await notesService.get('note-1')
@@ -47,13 +58,39 @@ describe('notes-service', () => {
 
     const updateInput = { id: 'note-1', title: 'Updated' }
     await notesService.update(updateInput)
-    expect(api.notes.update).toHaveBeenCalledWith(updateInput)
+    expect(invoke).toHaveBeenCalledWith('notes_update', {
+      id: 'note-1',
+      title: 'Updated',
+      content: null,
+      tags: null,
+      frontmatter: null,
+      emoji: null
+    })
 
     await notesService.rename('note-1', 'Renamed')
     expect(api.notes.rename).toHaveBeenCalledWith('note-1', 'Renamed')
 
     await notesService.list({ folder: 'projects', limit: 5 })
     expect(api.notes.list).toHaveBeenCalledWith({ folder: 'projects', limit: 5 })
+  })
+
+  it('forwards explicit emoji clears through frontmatter patch', async () => {
+    api.notes.update = vi.fn().mockResolvedValue({ success: true })
+
+    await notesService.update({
+      id: 'note-1',
+      emoji: null,
+      frontmatter: { fullWidth: true }
+    })
+
+    expect(invoke).toHaveBeenCalledWith('notes_update', {
+      id: 'note-1',
+      title: null,
+      content: null,
+      tags: null,
+      frontmatter: { fullWidth: true, emoji: null },
+      emoji: null
+    })
   })
 
   it('forwards attachments, export, and version helpers', async () => {
@@ -77,7 +114,9 @@ describe('notes-service', () => {
 
     const config = { template: 'default', inherit: true }
     await notesService.setFolderConfig('projects', config)
-    expect(api.notes.setFolderConfig).toHaveBeenCalledWith('projects', config)
+    expect(invoke).toHaveBeenCalledWith('notes_set_folder_config', {
+      input: { path: 'projects', icon: null, templateJson: 'default' }
+    })
 
     await notesService.getFolderTemplate('projects')
     expect(api.notes.getFolderTemplate).toHaveBeenCalledWith('projects')
@@ -89,14 +128,42 @@ describe('notes-service', () => {
     expect(api.notes.restoreVersion).toHaveBeenCalledWith('snapshot-1')
   })
 
+  it('preserves existing folder icon when setting only a template', async () => {
+    api.notes.getFolderConfig = vi.fn().mockResolvedValue({
+      icon: 'folder-star',
+      template: 'old-template'
+    })
+    api.notes.setFolderConfig = vi.fn().mockResolvedValue({ success: true })
+
+    await notesService.setFolderConfig('projects', {
+      template: 'new-template',
+      inherit: true
+    })
+
+    expect(invoke).toHaveBeenCalledWith('notes_set_folder_config', {
+      input: { path: 'projects', icon: 'folder-star', templateJson: 'new-template' }
+    })
+  })
+
+  it('wraps ensurePropertyDefinition in the shared success response', async () => {
+    const result = await notesService.ensurePropertyDefinition('status', 'status')
+
+    expect(invoke).toHaveBeenCalledWith('notes_ensure_property_definition', {
+      input: { name: 'status', type: 'status' }
+    })
+    expect(result).toEqual({ success: true })
+  })
+
   it('registers note event subscriptions', () => {
     const unsubscribe = vi.fn()
+    const subscribe = vi.mocked(subscribeEvent)
     api.onNoteCreated = vi.fn(() => unsubscribe)
     api.onNoteUpdated = vi.fn(() => unsubscribe)
     api.onNoteDeleted = vi.fn(() => unsubscribe)
     api.onNoteRenamed = vi.fn(() => unsubscribe)
     api.onNoteMoved = vi.fn(() => unsubscribe)
     api.onNoteExternalChange = vi.fn(() => unsubscribe)
+    api.onTagsChanged = vi.fn(() => unsubscribe)
 
     const createdHandler = vi.fn()
     const updatedHandler = vi.fn()
@@ -104,9 +171,11 @@ describe('notes-service', () => {
     const renamedHandler = vi.fn()
     const movedHandler = vi.fn()
     const externalHandler = vi.fn()
+    const tagsHandler = vi.fn()
+    const folderConfigHandler = vi.fn()
 
     expect(onNoteCreated(createdHandler)).toBe(unsubscribe)
-    expect(api.onNoteCreated).toHaveBeenCalledWith(createdHandler)
+    expect(api.onNoteCreated).toHaveBeenCalledTimes(1)
 
     expect(onNoteUpdated(updatedHandler)).toBe(unsubscribe)
     expect(api.onNoteUpdated).toHaveBeenCalledWith(updatedHandler)
@@ -122,6 +191,58 @@ describe('notes-service', () => {
 
     expect(onNoteExternalChange(externalHandler)).toBe(unsubscribe)
     expect(api.onNoteExternalChange).toHaveBeenCalledWith(externalHandler)
+
+    onTagsChanged(tagsHandler)
+    onFolderConfigUpdated(folderConfigHandler)
+
+    expect(subscribe).toHaveBeenCalledWith('note-created', expect.any(Function))
+    expect(subscribe).toHaveBeenCalledWith('note-updated', updatedHandler)
+    expect(subscribe).toHaveBeenCalledWith('note-deleted', deletedHandler)
+    expect(subscribe).toHaveBeenCalledWith('note-renamed', renamedHandler)
+    expect(subscribe).toHaveBeenCalledWith('note-moved', movedHandler)
+    expect(subscribe).toHaveBeenCalledWith('note-external-change', externalHandler)
+    expect(subscribe).toHaveBeenCalledWith('tags-changed', tagsHandler)
+    expect(subscribe).toHaveBeenCalledWith('folder-config-updated', folderConfigHandler)
+  })
+
+  it('revives created note event dates while preserving list-item shape', () => {
+    api.onNoteCreated = vi.fn((handler) => {
+      handler({
+        note: {
+          id: 'note-1',
+          path: 'notes/Inbox/example.md',
+          title: 'Example',
+          created: '2026-04-27T00:00:00.000Z',
+          modified: '2026-04-27T00:00:01.000Z',
+          tags: ['next'],
+          wordCount: 1,
+          snippet: 'body',
+          emoji: 'note',
+          localOnly: false
+        },
+        source: 'internal'
+      })
+      return () => {}
+    })
+
+    const handler = vi.fn()
+    onNoteCreated(handler)
+
+    expect(handler).toHaveBeenCalledWith({
+      note: {
+        id: 'note-1',
+        path: 'notes/Inbox/example.md',
+        title: 'Example',
+        created: new Date('2026-04-27T00:00:00.000Z'),
+        modified: new Date('2026-04-27T00:00:01.000Z'),
+        tags: ['next'],
+        wordCount: 1,
+        snippet: 'body',
+        emoji: 'note',
+        localOnly: false
+      },
+      source: 'internal'
+    })
   })
 
   describe('position operations', () => {
@@ -196,11 +317,12 @@ describe('notes-service', () => {
         'projects/note3.md'
       ])
 
-      expect(api.notes.reorder).toHaveBeenCalledWith('projects', [
-        'projects/note2.md',
-        'projects/note1.md',
-        'projects/note3.md'
-      ])
+      expect(invoke).toHaveBeenCalledWith('notes_reorder', {
+        input: {
+          folderPath: 'projects',
+          notePaths: ['projects/note2.md', 'projects/note1.md', 'projects/note3.md']
+        }
+      })
       expect(result).toEqual({ success: true })
     })
 
@@ -212,6 +334,28 @@ describe('notes-service', () => {
 
       expect(result.success).toBe(false)
       expect(result.error).toBe('Reorder failed')
+    })
+  })
+
+  it('uses Tauri input envelopes for folder/property mutations', async () => {
+    await notesService.deleteFolder('projects')
+    expect(invoke).toHaveBeenCalledWith('notes_delete_folder', {
+      input: { path: 'projects', recursive: true }
+    })
+
+    await notesService.ensurePropertyDefinition('status', 'status')
+    expect(invoke).toHaveBeenCalledWith('notes_ensure_property_definition', {
+      input: { name: 'status', type: 'status' }
+    })
+
+    await notesService.addPropertyOption('priority', { value: 'high', color: 'red' })
+    expect(invoke).toHaveBeenCalledWith('notes_add_property_option', {
+      input: { propertyName: 'priority', option: { value: 'high', color: 'red' } }
+    })
+
+    await notesService.deletePropertyDefinition('priority')
+    expect(invoke).toHaveBeenCalledWith('notes_delete_property_definition', {
+      input: { name: 'priority' }
     })
   })
 })

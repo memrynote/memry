@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-notes-get-property-definitions"
+description = "Enables the notes_get_property_definitions command without any pre-configured scope."
+commands.allow = ["notes_get_property_definitions"]
+
+[[permission]]
+identifier = "deny-notes-get-property-definitions"
+description = "Denies the notes_get_property_definitions command without any pre-configured scope."
+commands.deny = ["notes_get_property_definitions"]

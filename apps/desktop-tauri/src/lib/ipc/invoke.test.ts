@@ -30,11 +30,24 @@ beforeEach(() => {
 })
 
 describe('invoke', () => {
-  it('routes to mock router by default (M1 behavior: realCommands set is empty)', async () => {
-    const result = await invoke('notes_create', { title: 'test' })
-    expect(mockRouter).toHaveBeenCalledWith('notes_create', { title: 'test' })
+  it('routes commands without a real backend to mock router by default', async () => {
+    const result = await invoke('notes_export_pdf')
+    expect(mockRouter).toHaveBeenCalledWith('notes_export_pdf', undefined)
     expect(tauriInvoke).not.toHaveBeenCalled()
-    expect(result).toEqual({ mock: true, cmd: 'notes_create', args: { title: 'test' } })
+    expect(result).toEqual({ mock: true, cmd: 'notes_export_pdf', args: undefined })
+  })
+
+  it('routes shipped notes CRUD commands to Tauri by default', async () => {
+    await invoke('notes_create', { title: 'test' })
+    await invoke('notes_get', { args: ['note-1'] })
+    await invoke('notes_get_by_path', { args: ['Inbox/test.md'] })
+    await invoke('notes_update', { id: 'note-1', title: 'Renamed' })
+    await invoke('notes_delete', { args: ['note-1'] })
+    await invoke('notes_list', { limit: 10 })
+    await invoke('notes_list_by_folder', { args: ['Inbox'] })
+
+    expect(mockRouter).not.toHaveBeenCalled()
+    expect(tauriInvoke).toHaveBeenCalledTimes(7)
   })
 
   it('propagates descriptive error when mock router has no handler', async () => {
@@ -58,7 +71,92 @@ describe('invoke', () => {
   })
 
   it('passes args through untouched to mock router (no default empty object)', async () => {
-    await invoke('notes_list')
-    expect(mockRouter).toHaveBeenCalledWith('notes_list', undefined)
+    await invoke('notes_export_pdf')
+    expect(mockRouter).toHaveBeenCalledWith('notes_export_pdf', undefined)
+  })
+
+  it('allows deferred mock routes in production builds', async () => {
+    vi.stubEnv('PROD', true)
+    await invoke('notes_export_pdf')
+    expect(mockRouter).toHaveBeenCalledWith('notes_export_pdf', undefined)
+    expect(tauriInvoke).not.toHaveBeenCalled()
+  })
+
+  it('blocks non-deferred mock routes in production builds', async () => {
+    vi.stubEnv('PROD', true)
+    await expect(invoke('unknown_command')).rejects.toThrow(
+      /Production build attempted to use mock IPC for unknown_command/
+    )
+    expect(mockRouter).not.toHaveBeenCalled()
+  })
+
+  it('routes Phase E rename/move/exists/local-only/tags/links commands to Tauri', async () => {
+    await invoke('notes_rename', { args: ['note-1', 'New Title'] })
+    await invoke('notes_move', { args: ['note-1', 'Archive'] })
+    await invoke('notes_exists', { args: ['Inbox/foo.md'] })
+    await invoke('notes_set_local_only', { args: ['note-1', true] })
+    await invoke('notes_get_local_only_count')
+    await invoke('notes_get_tags')
+    await invoke('notes_get_links', { args: ['note-1'] })
+    await invoke('notes_resolve_by_title', { args: ['Title'] })
+    await invoke('notes_preview_by_title', { args: ['Title'] })
+
+    expect(mockRouter).not.toHaveBeenCalled()
+    expect(tauriInvoke).toHaveBeenCalledTimes(9)
+  })
+
+  it('routes graduated folder/property/position commands to Tauri by default', async () => {
+    const commands = [
+      'notes_get_folders',
+      'notes_create_folder',
+      'notes_rename_folder',
+      'notes_delete_folder',
+      'notes_get_folder_config',
+      'notes_set_folder_config',
+      'notes_get_folder_template',
+      'notes_get_positions',
+      'notes_get_all_positions',
+      'notes_reorder',
+      'notes_get_property_definitions',
+      'notes_create_property_definition',
+      'notes_update_property_definition',
+      'notes_ensure_property_definition',
+      'notes_add_property_option',
+      'notes_add_status_option',
+      'notes_remove_property_option',
+      'notes_rename_property_option',
+      'notes_update_option_color',
+      'notes_delete_property_definition'
+    ]
+
+    for (const command of commands) {
+      await invoke(command, { input: {} })
+    }
+
+    expect(mockRouter).not.toHaveBeenCalled()
+    expect(tauriInvoke).toHaveBeenCalledTimes(commands.length)
+  })
+
+  it('routes CRDT commands to Tauri by default', async () => {
+    const commands = [
+      'crdt_open_doc',
+      'crdt_close_doc',
+      'crdt_apply_update',
+      'crdt_apply_update_chunk_start',
+      'crdt_apply_update_chunk_append',
+      'crdt_apply_update_chunk_finish',
+      'crdt_get_snapshot',
+      'crdt_get_state_vector',
+      'crdt_sync_step_1',
+      'crdt_sync_step_2',
+      'crdt_get_or_init_doc'
+    ]
+
+    for (const command of commands) {
+      await invoke(command, { input: {} })
+    }
+
+    expect(mockRouter).not.toHaveBeenCalled()
+    expect(tauriInvoke).toHaveBeenCalledTimes(commands.length)
   })
 })

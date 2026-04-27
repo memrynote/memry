@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import type { LinkedNote } from '@/types'
 import { invoke } from '@/lib/ipc/invoke'
-import type { NoteListResponse } from '@memry/rpc/notes'
+import type { NoteListResponse } from '@/contracts/notes'
 
 // =============================================================================
 // Debounce Hook

@@ -27,7 +27,13 @@ fn fresh_state() -> AppState {
     let keychain: Arc<dyn KeychainStore> = Arc::new(MemoryKeychain::new());
     let auth = Arc::new(AuthRuntime::new(keychain));
     let linking = Arc::new(PendingLinkingRegistry::new());
-    AppState::new(db, vault, auth, linking)
+    AppState::new(
+        db,
+        vault,
+        auth,
+        linking,
+        Arc::new(memry_desktop_tauri_lib::crdt::CrdtRuntime::new()),
+    )
 }
 
 #[tokio::test]

@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "devtools",
+  "description": "Debug/test-only helpers for runtime e2e",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "allow-devtools-reset-db",
+    "allow-devtools-seed-vault",
+    "allow-devtools-open-test-vault"
+  ]
+}

@@ -17,7 +17,7 @@ import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import { type DisplayDensity, DENSITY_CONFIG } from '@/hooks/use-display-density'
 import type { InboxItemListItem, Folder } from '@/types'
 import { invoke } from '@/lib/ipc/invoke'
-import type { FolderInfo } from '@memry/rpc/notes'
+import type { FolderInfo } from '@/contracts/notes'
 
 type InboxItem = InboxItemListItem
 

@@ -14,8 +14,17 @@ export interface Capability {
 
 export interface CapabilityCheckResult {
   missing: string[]
+  missingAppManifestCommands: string[]
+  missingAppPermissions: string[]
   pluginCount: number
   permissionCount: number
+  registeredCommandCount: number
+  appManifestCommandCount: number
+}
+
+export interface AppAclCommandSet {
+  registeredCommands?: string[]
+  manifestCommands?: string[]
 }
 
 /**
@@ -32,12 +41,17 @@ export interface CapabilityCheckResult {
  */
 export function checkCapabilities(
   conf: TauriConfig,
-  cap: Capability
+  cap: Capability,
+  appAcl: AppAclCommandSet = {}
 ): CapabilityCheckResult {
   const pluginsInConf = Object.keys(conf.plugins ?? {})
   const permissions = cap.permissions.map((p) =>
     typeof p === 'string' ? p : p.identifier
   )
+  const registeredCommands = appAcl.registeredCommands ?? []
+  const manifestCommands = appAcl.manifestCommands ?? []
+  const manifestSet = new Set(manifestCommands)
+  const permissionSet = new Set(permissions)
 
   const missing: string[] = []
   for (const plugin of pluginsInConf) {
@@ -45,11 +59,65 @@ export function checkCapabilities(
     if (!hasGrant) missing.push(plugin)
   }
 
+  const missingAppManifestCommands = registeredCommands.filter(
+    (command) => !manifestSet.has(command)
+  )
+  const missingAppPermissions = registeredCommands.filter(
+    (command) => !permissionSet.has(permissionForCommand(command))
+  )
+
   return {
     missing,
+    missingAppManifestCommands,
+    missingAppPermissions,
     pluginCount: pluginsInConf.length,
-    permissionCount: permissions.length
+    permissionCount: permissions.length,
+    registeredCommandCount: registeredCommands.length,
+    appManifestCommandCount: manifestCommands.length
   }
+}
+
+export function permissionForCommand(command: string): string {
+  return `allow-${command.replaceAll('_', '-')}`
+}
+
+export function parseAppManifestCommands(source: string): string[] {
+  const match = source.match(/AppManifest::new\(\)\.commands\(&\[(?<body>[\s\S]*?)\]\)/m)
+  const body = match?.groups?.body
+  if (!body) return []
+  return Array.from(body.matchAll(/"([^"]+)"/g), (item) => item[1])
+}
+
+export function parseRegisteredAppCommands(source: string): string[] {
+  const body = extractGenerateHandlerBody(source)
+  if (!body) return []
+  const withoutCfgCommands = body.replace(
+    /#\[cfg\([^\]]*\)\]\s*commands::[A-Za-z0-9_:]+::[a-zA-Z0-9_]+\s*,?/g,
+    ''
+  )
+  return Array.from(
+    withoutCfgCommands.matchAll(/commands::[A-Za-z0-9_:]+::([a-zA-Z0-9_]+)/g),
+    (item) => item[1]
+  )
+}
+
+function extractGenerateHandlerBody(source: string): string | null {
+  const marker = 'generate_handler!['
+  const start = source.indexOf(marker)
+  if (start === -1) return null
+  const bodyStart = start + marker.length
+  let depth = 1
+  for (let i = bodyStart; i < source.length; i += 1) {
+    const ch = source[i]
+    if (ch === '[') {
+      depth += 1
+      continue
+    }
+    if (ch !== ']') continue
+    depth -= 1
+    if (depth === 0) return source.slice(bodyStart, i)
+  }
+  return null
 }
 
 function runCli(): void {
@@ -61,8 +129,13 @@ function runCli(): void {
   const cap = JSON.parse(
     readFileSync(resolve(appRoot, 'src-tauri/capabilities/default.json'), 'utf-8')
   ) as Capability
+  const buildRs = readFileSync(resolve(appRoot, 'src-tauri/build.rs'), 'utf-8')
+  const libRs = readFileSync(resolve(appRoot, 'src-tauri/src/lib.rs'), 'utf-8')
 
-  const result = checkCapabilities(conf, cap)
+  const result = checkCapabilities(conf, cap, {
+    registeredCommands: parseRegisteredAppCommands(libRs),
+    manifestCommands: parseAppManifestCommands(buildRs)
+  })
 
   if (result.missing.length > 0) {
     process.stderr.write('❌ Capability sanity check failed.\n')
@@ -70,9 +143,23 @@ function runCli(): void {
     for (const m of result.missing) process.stderr.write(`  - ${m}\n`)
     process.exit(1)
   }
+  if (result.missingAppManifestCommands.length > 0) {
+    process.stderr.write('❌ Capability sanity check failed.\n')
+    process.stderr.write('Registered app commands missing from build.rs AppManifest:\n')
+    for (const m of result.missingAppManifestCommands) process.stderr.write(`  - ${m}\n`)
+    process.exit(1)
+  }
+  if (result.missingAppPermissions.length > 0) {
+    process.stderr.write('❌ Capability sanity check failed.\n')
+    process.stderr.write('Registered app commands missing allow-* grants in capabilities/default.json:\n')
+    for (const m of result.missingAppPermissions) {
+      process.stderr.write(`  - ${m} (${permissionForCommand(m)})\n`)
+    }
+    process.exit(1)
+  }
 
   process.stdout.write(
-    `✅ Capability sanity check passed (${result.pluginCount} plugins, ${result.permissionCount} grants)\n`
+    `✅ Capability sanity check passed (${result.pluginCount} plugins, ${result.permissionCount} grants, ${result.registeredCommandCount} app commands)\n`
   )
 }
 

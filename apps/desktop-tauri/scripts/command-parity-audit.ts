@@ -35,7 +35,7 @@
  *   - No literal renderer invoke can be unclassified.
  */
 import { readFileSync, readdirSync, statSync, globSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { basename, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -80,9 +80,6 @@ const DEFERRED: Record<string, string> = {
   folder_view_set_view: 'M3',
   graph_get_data: 'M3',
   graph_get_local: 'M3',
-  notes_create_folder: 'M3',
-  notes_open_external: 'M3',
-  notes_reveal_in_finder: 'M3',
   reminders_bulk_dismiss: 'M3',
   reminders_count_pending: 'M3',
   reminders_dismiss: 'M3',
@@ -128,12 +125,10 @@ const DEFERRED: Record<string, string> = {
   settings_set_voice_transcription_open_ai_key: 'M3',
   settings_set_voice_transcription_settings: 'M3',
 
-  // M5 — CRDT engine.
-  sync_crdt_apply_update: 'M5',
-  sync_crdt_close_doc: 'M5',
-  sync_crdt_open_doc: 'M5',
-  sync_crdt_sync_step1: 'M5',
-  sync_crdt_sync_step2: 'M5',
+  // M6 — attachment sync/blob handling.
+  notes_upload_attachment: 'M6',
+  notes_list_attachments: 'M6',
+  notes_delete_attachment: 'M6',
 
   // M6 — sync ops orchestration.
   sync_ops_get_history: 'M6',
@@ -141,6 +136,16 @@ const DEFERRED: Record<string, string> = {
   sync_ops_pause: 'M6',
   sync_ops_resume: 'M6',
   sync_ops_trigger_sync: 'M6',
+
+  // M8 — export, versions, and bulk import.
+  notes_export_pdf: 'M8',
+  notes_export_html: 'M8',
+  notes_get_versions: 'M8',
+  notes_get_version: 'M8',
+  notes_restore_version: 'M8',
+  notes_delete_version: 'M8',
+  notes_import_files: 'M8',
+  notes_show_import_dialog: 'M8',
 
   // M8.0 — lifecycle / native quick-capture window.
   quick_capture_close: 'M8.0',
@@ -165,6 +170,11 @@ const RETIRED: Record<string, string> = {
   crypto_decrypt: 'crypto_decrypt_item',
   crypto_sign: 'internal Rust signing (no renderer-facing replacement); use crypto_verify_signature for verification',
   crypto_verify: 'crypto_verify_signature',
+  sync_crdt_open_doc: 'crdt_open_doc',
+  sync_crdt_close_doc: 'crdt_close_doc',
+  sync_crdt_apply_update: 'crdt_apply_update',
+  sync_crdt_sync_step1: 'crdt_sync_step_1',
+  sync_crdt_sync_step2: 'crdt_sync_step_2',
 }
 
 /** M2 hard requirements: these MUST resolve to `real`. */
@@ -196,6 +206,58 @@ const REQUIRED_REAL = new Set<string>([
   'sync_linking_approve_linking',
   'account_get_recovery_key',
   'crypto_rotate_keys',
+
+  // M5 — notes, folders, properties, and CRDT command surface.
+  'notes_create',
+  'notes_get',
+  'notes_get_by_path',
+  'notes_get_file',
+  'notes_update',
+  'notes_delete',
+  'notes_list',
+  'notes_list_by_folder',
+  'notes_rename',
+  'notes_move',
+  'notes_exists',
+  'notes_open_external',
+  'notes_reveal_in_finder',
+  'notes_get_folders',
+  'notes_create_folder',
+  'notes_rename_folder',
+  'notes_delete_folder',
+  'notes_get_folder_config',
+  'notes_set_folder_config',
+  'notes_get_folder_template',
+  'notes_get_positions',
+  'notes_get_all_positions',
+  'notes_reorder',
+  'notes_get_tags',
+  'notes_get_links',
+  'notes_resolve_by_title',
+  'notes_preview_by_title',
+  'notes_set_local_only',
+  'notes_get_local_only_count',
+  'notes_get_property_definitions',
+  'notes_create_property_definition',
+  'notes_update_property_definition',
+  'notes_ensure_property_definition',
+  'notes_add_property_option',
+  'notes_add_status_option',
+  'notes_remove_property_option',
+  'notes_rename_property_option',
+  'notes_update_option_color',
+  'notes_delete_property_definition',
+  'crdt_open_doc',
+  'crdt_close_doc',
+  'crdt_apply_update',
+  'crdt_apply_update_chunk_start',
+  'crdt_apply_update_chunk_append',
+  'crdt_apply_update_chunk_finish',
+  'crdt_get_snapshot',
+  'crdt_get_state_vector',
+  'crdt_get_or_init_doc',
+  'crdt_sync_step_1',
+  'crdt_sync_step_2',
 ])
 
 /** M2 shell-neutral wrappers: real or deferred-with-classification. */
@@ -310,16 +372,35 @@ export function extractMockRouteKeys(source: string): string[] {
 /** Parse `tauri::generate_handler![path::name, ...]` into command names. */
 export function extractGenerateHandlerCommands(source: string): string[] {
   const out = new Set<string>()
-  const macroMatch = source.match(/generate_handler!\s*\[([\s\S]*?)\]/)
-  if (!macroMatch) return []
-  const body = macroMatch[1]
-  for (const tok of body.split(',')) {
+  const body = extractBracketedMacroBody(source, 'generate_handler!')
+  if (!body) return []
+  const bodyWithoutAttrs = body.replace(/#\[[^\]]*\]\s*/g, '')
+  for (const tok of bodyWithoutAttrs.split(',')) {
     const trimmed = tok.trim().replace(/[\s;]+$/, '')
     if (!trimmed) continue
     const last = trimmed.split('::').pop()!
     if (/^[a-z][a-z0-9_]+$/.test(last)) out.add(last)
   }
   return [...out]
+}
+
+function extractBracketedMacroBody(source: string, macroName: string): string | null {
+  const marker = `${macroName}[`
+  const start = source.indexOf(marker)
+  if (start === -1) return null
+  const bodyStart = start + marker.length
+  let depth = 1
+  for (let i = bodyStart; i < source.length; i += 1) {
+    const ch = source[i]
+    if (ch === '[') {
+      depth += 1
+      continue
+    }
+    if (ch !== ']') continue
+    depth -= 1
+    if (depth === 0) return source.slice(bodyStart, i)
+  }
+  return null
 }
 
 /** Parse `__TAURI_INVOKE("name"` from the specta-generated bindings file. */
@@ -355,9 +436,12 @@ function gatherRendererSurfaces(): {
 
 function gatherMockCommands(): Set<string> {
   const out = new Set<string>()
-  const files = readdirSync(MOCKS_DIR)
-    .filter((f) => f.endsWith('.ts') && !/\.test\.ts$/.test(f) && f !== 'types.ts' && f !== 'index.ts')
-    .map((f) => resolve(MOCKS_DIR, f))
+  const files = listFilesRec(MOCKS_DIR, ['.ts'])
+    .filter(isProductionFile)
+    .filter((f) => {
+      const name = basename(f)
+      return name !== 'types.ts' && name !== 'index.ts'
+    })
   for (const f of files) {
     const src = readUtf8(f)
     for (const k of extractMockRouteKeys(src)) out.add(k)
@@ -403,6 +487,10 @@ function classify(input: {
   // but not failing.
   for (const cmd of input.mocked) {
     if (out.has(cmd)) continue
+    if (DEFERRED[cmd]) {
+      out.set(cmd, { kind: 'deferred', milestone: DEFERRED[cmd] })
+      continue
+    }
     out.set(cmd, { kind: 'mocked' })
   }
   // Deferred entries that may not be called by renderer yet (e.g. logging_forward).
@@ -436,9 +524,8 @@ export function runAudit(): AuditResult {
   const warnings: string[] = []
 
   for (const cmd of REQUIRED_REAL) {
-    const c = classifications.get(cmd)
-    if (!c || c.kind !== 'real') {
-      errors.push(`required-real "${cmd}" is ${c?.kind ?? 'absent'} (M2 invariant)`)
+    if (!real.has(cmd)) {
+      errors.push(`required-real "${cmd}" missing from generate_handler`)
     }
     if (!bindings.has(cmd)) {
       errors.push(`required-real "${cmd}" missing from generated bindings`)

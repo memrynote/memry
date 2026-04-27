@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-shell-reveal-in-finder"
+description = "Enables the shell_reveal_in_finder command without any pre-configured scope."
+commands.allow = ["shell_reveal_in_finder"]
+
+[[permission]]
+identifier = "deny-shell-reveal-in-finder"
+description = "Denies the shell_reveal_in_finder command without any pre-configured scope."
+commands.deny = ["shell_reveal_in_finder"]

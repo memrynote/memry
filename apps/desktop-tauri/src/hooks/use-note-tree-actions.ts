@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useTabActions } from '@/contexts/tabs'
 import { notesKeys, useNoteMutations } from '@/hooks/use-notes-query'
-import type { Note } from '@memry/contracts/notes-api'
+import type { Note } from '@/contracts/notes'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import type { FolderInfo } from '@/types/preload-types'
 import { notesService } from '@/services/notes-service'
@@ -33,6 +33,7 @@ export interface NoteTreeActionsDeps {
   folders: FolderInfo[]
   notePositions: Record<string, number>
   setNotePositions: React.Dispatch<React.SetStateAction<Record<string, number>>>
+  notesRoot: string
   folderTemplateNames: Map<string, string>
   setFolderTemplateNames: React.Dispatch<React.SetStateAction<Map<string, string>>>
   createFolderMutation: (path: string) => Promise<boolean>
@@ -581,11 +582,11 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       }
 
       const targetNote = deps.noteMap.get(targetId)
-      if (targetNote) return extractFolderFromPath(targetNote.path)
+      if (targetNote) return extractFolderFromPath(targetNote.path, deps.notesRoot)
 
       return ''
     },
-    [deps.noteMap]
+    [deps.noteMap, deps.notesRoot]
   )
 
   const handleNoteMove = useCallback(
@@ -593,7 +594,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       const note = deps.noteMap.get(noteId)
       if (!note) return false
 
-      const currentFolder = extractFolderFromPath(note.path)
+      const currentFolder = extractFolderFromPath(note.path, deps.notesRoot)
       if (currentFolder === targetFolder) return false
 
       try {
@@ -604,7 +605,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         return false
       }
     },
-    [deps.noteMap, deps.mutations.moveNote.mutateAsync]
+    [deps.noteMap, deps.notesRoot, deps.mutations.moveNote.mutateAsync]
   )
 
   const handleFolderMove = useCallback(
@@ -636,7 +637,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       } else {
         const targetNote = deps.noteMap.get(targetId)
         if (targetNote) {
-          const targetFolder = extractFolderFromPath(targetNote.path)
+          const targetFolder = extractFolderFromPath(targetNote.path, deps.notesRoot)
           newPath = targetFolder ? `${targetFolder}/${sourceFolderName}` : sourceFolderName
         } else {
           newPath = sourceFolderName
@@ -654,7 +655,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         return false
       }
     },
-    [deps.noteMap, deps.refreshFolders]
+    [deps.noteMap, deps.notesRoot, deps.refreshFolders]
   )
 
   const handleReorderInFolder = useCallback(
@@ -812,8 +813,8 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
           const targetNoteObj = deps.noteMap.get(targetId)
 
           if (draggedNote && targetNoteObj) {
-            const draggedFolder = extractFolderFromPath(draggedNote.path)
-            const dropFolder = extractFolderFromPath(targetNoteObj.path)
+            const draggedFolder = extractFolderFromPath(draggedNote.path, deps.notesRoot)
+            const dropFolder = extractFolderFromPath(targetNoteObj.path, deps.notesRoot)
 
             if (draggedFolder === dropFolder) {
               const reordered = await handleReorderInFolder(
@@ -842,6 +843,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       isMoving,
       deps.selectedIds,
       deps.noteMap,
+      deps.notesRoot,
       deps.setSelectedIds,
       calculateTargetFolder,
       handleNoteMove,

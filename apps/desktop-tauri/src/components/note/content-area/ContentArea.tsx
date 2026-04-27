@@ -866,8 +866,9 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
     noteId: props.noteId,
     enabled: syncActive
   })
+  const yjsFragment = syncActive && props.noteId && isReady && fragment ? fragment : undefined
 
-  if (syncActive && props.noteId && !isReady) {
+  if (syncActive && props.noteId && !yjsFragment) {
     return (
       <div className={cn('content-area h-full flex flex-col', props.className)}>
         <div className="flex-1 animate-pulse bg-muted/10 rounded-md" />
@@ -878,7 +879,7 @@ export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
   return (
     <ContentAreaEditor
       {...props}
-      yjsFragment={isReady && fragment ? fragment : undefined}
+      yjsFragment={yjsFragment}
       isRemoteUpdateRef={isRemoteUpdateRef}
     />
   )

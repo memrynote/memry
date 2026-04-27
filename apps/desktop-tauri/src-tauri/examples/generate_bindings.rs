@@ -36,6 +36,58 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             commands::shell::shell_reveal_in_finder,
             commands::dialog::dialog_choose_folder,
             commands::dialog::dialog_choose_files,
+            // M5: notes CRUD
+            commands::notes::notes_create,
+            commands::notes::notes_get,
+            commands::notes::notes_get_by_path,
+            commands::notes::notes_update,
+            commands::notes::notes_delete,
+            commands::notes::notes_list,
+            commands::notes::notes_list_by_folder,
+            commands::notes::notes_rename,
+            commands::notes::notes_move,
+            commands::notes::notes_exists,
+            commands::notes::notes_set_local_only,
+            commands::notes::notes_get_local_only_count,
+            commands::notes::notes_get_tags,
+            commands::notes::notes_get_links,
+            commands::notes::notes_resolve_by_title,
+            commands::notes::notes_preview_by_title,
+            commands::stubs_m6_m7_m8::notes_get_file,
+            commands::stubs_m6_m7_m8::notes_open_external,
+            commands::stubs_m6_m7_m8::notes_reveal_in_finder,
+            // M5: folders
+            commands::folders::notes_get_folders,
+            commands::folders::notes_create_folder,
+            commands::folders::notes_rename_folder,
+            commands::folders::notes_delete_folder,
+            commands::folders::notes_get_folder_config,
+            commands::folders::notes_set_folder_config,
+            commands::folders::notes_get_folder_template,
+            commands::folders::notes_get_positions,
+            commands::folders::notes_get_all_positions,
+            commands::folders::notes_reorder,
+            // M5: property definitions
+            commands::properties::notes_get_property_definitions,
+            commands::properties::notes_create_property_definition,
+            commands::properties::notes_update_property_definition,
+            commands::properties::notes_ensure_property_definition,
+            commands::properties::notes_add_property_option,
+            commands::properties::notes_add_status_option,
+            commands::properties::notes_remove_property_option,
+            commands::properties::notes_rename_property_option,
+            commands::properties::notes_update_option_color,
+            commands::properties::notes_delete_property_definition,
+            // M5: CRDT provider bridge
+            commands::crdt::crdt_open_doc,
+            commands::crdt::crdt_close_doc,
+            commands::crdt::crdt_apply_update,
+            commands::crdt::crdt_apply_update_chunk_start,
+            commands::crdt::crdt_apply_update_chunk_append,
+            commands::crdt::crdt_apply_update_chunk_finish,
+            commands::crdt::crdt_sync_step_1,
+            commands::crdt::crdt_sync_step_2,
+            commands::crdt::crdt_get_or_init_doc,
             // M4: auth + sync_auth + sync_setup
             commands::auth::auth_status,
             commands::auth::auth_unlock,
@@ -138,6 +190,43 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .typ::<commands::secrets::SecretsSetProviderKeyInput>()
         .typ::<commands::secrets::SecretsGetProviderKeyStatusInput>()
         .typ::<commands::secrets::SecretsDeleteProviderKeyInput>()
+        // M5 notes
+        .typ::<commands::notes::NoteDto>()
+        .typ::<commands::notes::NoteListItem>()
+        .typ::<commands::notes::NoteListResponse>()
+        .typ::<commands::notes::NoteCreateInput>()
+        .typ::<commands::notes::NoteCreateResponse>()
+        .typ::<commands::notes::NoteUpdateInput>()
+        .typ::<commands::notes::NoteUpdateResponse>()
+        .typ::<commands::notes::NoteListOptions>()
+        .typ::<commands::notes::NoteSimpleSuccess>()
+        .typ::<commands::notes::NoteLocalOnlyCount>()
+        .typ::<commands::notes::NoteTagInfo>()
+        .typ::<commands::notes::NoteLink>()
+        .typ::<commands::notes::NoteIncomingLink>()
+        .typ::<commands::notes::NoteLinkContext>()
+        .typ::<commands::notes::NoteLinksResponse>()
+        .typ::<commands::notes::NotePreview>()
+        .typ::<commands::stubs_m6_m7_m8::FileMetadata>()
+        // M5 folders
+        .typ::<commands::folders::FolderInfo>()
+        .typ::<commands::folders::FolderSimpleSuccess>()
+        .typ::<commands::folders::DeleteFolderInput>()
+        .typ::<commands::folders::SetFolderConfigInput>()
+        .typ::<commands::folders::ReorderInput>()
+        .typ::<commands::folders::PositionsResponse>()
+        // M5 properties
+        .typ::<commands::properties::CreatePropertyDefinitionInput>()
+        .typ::<commands::properties::PropertySimpleSuccess>()
+        // M5 CRDT
+        .typ::<commands::crdt::CrdtApplyUpdateInput>()
+        .typ::<commands::crdt::CrdtChunkStartInput>()
+        .typ::<commands::crdt::CrdtChunkAppendInput>()
+        .typ::<commands::crdt::CrdtChunkFinishInput>()
+        .typ::<commands::crdt::SyncStep1Result>()
+        .typ::<commands::crdt::CrdtSimpleSuccess>()
+        .typ::<commands::crdt::CrdtApplyUpdateResult>()
+        .typ::<commands::crdt::CrdtGetOrInitDocResult>()
         // Domain DB structs (registered for stable export across migrations)
         .typ::<db::bookmarks::Bookmark>()
         .typ::<db::calendar_bindings::CalendarBinding>()
@@ -148,7 +237,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .typ::<db::inbox::InboxItem>()
         .typ::<db::note_metadata::NoteMetadata>()
         .typ::<db::note_positions::NotePosition>()
-        .typ::<db::notes_cache::PropertyDefinition>()
+        .typ::<db::property_definitions::PropertyDefinition>()
         .typ::<db::projects::Project>()
         .typ::<db::reminders::Reminder>()
         .typ::<db::saved_filters::SavedFilter>()
@@ -163,6 +252,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .typ::<db::tasks::Task>();
 
     builder.export(Typescript::default(), "../src/generated/bindings.ts")?;
+    append_binary_crdt_bindings("../src/generated/bindings.ts")?;
 
+    Ok(())
+}
+
+fn append_binary_crdt_bindings(path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let contents = std::fs::read_to_string(path)?;
+    let marker = "\n};\n\n/* Types */";
+    let insertion = "\tcrdtGetSnapshot: (noteId: string) => typedError<Uint8Array, AppError>(__TAURI_INVOKE(\"crdt_get_snapshot\", { noteId })),\n\tcrdtGetStateVector: (noteId: string) => typedError<Uint8Array, AppError>(__TAURI_INVOKE(\"crdt_get_state_vector\", { noteId })),";
+    let updated = contents.replacen(marker, &format!("\n{insertion}{marker}"), 1);
+    if updated == contents {
+        return Err("could not find commands object marker in bindings.ts".into());
+    }
+    std::fs::write(path, updated)?;
     Ok(())
 }

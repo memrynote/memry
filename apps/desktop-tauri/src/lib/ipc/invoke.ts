@@ -85,12 +85,91 @@ const realCommands = new Set<string>([
   // M4 — provider secret status (no raw key egress)
   'secrets_set_provider_key',
   'secrets_get_provider_key_status',
-  'secrets_delete_provider_key'
+  'secrets_delete_provider_key',
+
+  // M5 — notes CRUD lifecycle
+  'notes_create',
+  'notes_get',
+  'notes_get_by_path',
+  'notes_update',
+  'notes_delete',
+  'notes_list',
+  'notes_list_by_folder',
+  // M5 — Phase E rename/move/exists + local-only + tags/links/wiki
+  'notes_rename',
+  'notes_move',
+  'notes_exists',
+  'notes_set_local_only',
+  'notes_get_local_only_count',
+  'notes_get_tags',
+  'notes_get_links',
+  'notes_resolve_by_title',
+  'notes_preview_by_title',
+  'notes_get_file',
+  'notes_open_external',
+  'notes_reveal_in_finder',
+  // M5 — folders, positions, and property definitions
+  'notes_get_folders',
+  'notes_create_folder',
+  'notes_rename_folder',
+  'notes_delete_folder',
+  'notes_get_folder_config',
+  'notes_set_folder_config',
+  'notes_get_folder_template',
+  'notes_get_positions',
+  'notes_get_all_positions',
+  'notes_reorder',
+  'notes_get_property_definitions',
+  'notes_create_property_definition',
+  'notes_update_property_definition',
+  'notes_ensure_property_definition',
+  'notes_add_property_option',
+  'notes_add_status_option',
+  'notes_remove_property_option',
+  'notes_rename_property_option',
+  'notes_update_option_color',
+  'notes_delete_property_definition',
+  // M5 — CRDT command surface
+  'crdt_open_doc',
+  'crdt_close_doc',
+  'crdt_apply_update',
+  'crdt_apply_update_chunk_start',
+  'crdt_apply_update_chunk_append',
+  'crdt_apply_update_chunk_finish',
+  'crdt_get_snapshot',
+  'crdt_get_state_vector',
+  'crdt_sync_step_1',
+  'crdt_sync_step_2',
+  'crdt_get_or_init_doc'
+])
+
+const DEFERRED_COMMANDS = new Set<string>([
+  'notes_upload_attachment',
+  'notes_list_attachments',
+  'notes_delete_attachment',
+  'notes_export_pdf',
+  'notes_export_html',
+  'notes_get_versions',
+  'notes_get_version',
+  'notes_restore_version',
+  'notes_delete_version',
+  'notes_import_files',
+  'notes_show_import_dialog'
 ])
 
 function shouldUseMock(cmd: string): boolean {
   if (import.meta.env.VITE_MOCK_IPC === 'false') {
     return false
   }
-  return !realCommands.has(cmd)
+  const useMock = !realCommands.has(cmd)
+  if (useMock) {
+    assertMockAllowedInThisBuild(cmd)
+  }
+  return useMock
+}
+
+function assertMockAllowedInThisBuild(cmd: string): void {
+  if (import.meta.env.PROD && !DEFERRED_COMMANDS.has(cmd)) {
+    throw new Error(`Production build attempted to use mock IPC for ${cmd}`)
+  }
 }

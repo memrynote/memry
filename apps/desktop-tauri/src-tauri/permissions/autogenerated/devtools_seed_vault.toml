@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-devtools-seed-vault"
+description = "Enables the devtools_seed_vault command without any pre-configured scope."
+commands.allow = ["devtools_seed_vault"]
+
+[[permission]]
+identifier = "deny-devtools-seed-vault"
+description = "Denies the devtools_seed_vault command without any pre-configured scope."
+commands.deny = ["devtools_seed_vault"]
