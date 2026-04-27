@@ -33,7 +33,7 @@ describe('notes-service', () => {
     expect(typeof notesService.reorder).toBe('function')
   })
 
-  it('forwards core note operations to window.api.notes', async () => {
+  it('forwards core note operations through real Tauri payloads', async () => {
     const createResponse = { success: true, note: { id: 'note-1' } }
     api.notes.create = vi.fn().mockResolvedValue(createResponse)
     api.notes.get = vi.fn().mockResolvedValue({ id: 'note-1' })
@@ -43,7 +43,13 @@ describe('notes-service', () => {
 
     const createInput = { title: 'New note', content: 'Hello' }
     const createResult = await notesService.create(createInput)
-    expect(api.notes.create).toHaveBeenCalledWith(createInput)
+    expect(invoke).toHaveBeenCalledWith('notes_create', {
+      title: 'New note',
+      content: 'Hello',
+      folder: null,
+      tags: null,
+      template: null
+    })
     expect(createResult).toEqual(createResponse)
 
     const getResult = await notesService.get('note-1')
@@ -52,7 +58,14 @@ describe('notes-service', () => {
 
     const updateInput = { id: 'note-1', title: 'Updated' }
     await notesService.update(updateInput)
-    expect(api.notes.update).toHaveBeenCalledWith(updateInput)
+    expect(invoke).toHaveBeenCalledWith('notes_update', {
+      id: 'note-1',
+      title: 'Updated',
+      content: null,
+      tags: null,
+      frontmatter: null,
+      emoji: null
+    })
 
     await notesService.rename('note-1', 'Renamed')
     expect(api.notes.rename).toHaveBeenCalledWith('note-1', 'Renamed')
@@ -70,9 +83,13 @@ describe('notes-service', () => {
       frontmatter: { fullWidth: true }
     })
 
-    expect(api.notes.update).toHaveBeenCalledWith({
+    expect(invoke).toHaveBeenCalledWith('notes_update', {
       id: 'note-1',
-      frontmatter: { fullWidth: true, emoji: null }
+      title: null,
+      content: null,
+      tags: null,
+      frontmatter: { fullWidth: true, emoji: null },
+      emoji: null
     })
   })
 
