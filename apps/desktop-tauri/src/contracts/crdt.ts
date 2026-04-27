@@ -1,40 +1,49 @@
+import type {
+  CrdtApplyUpdateInput,
+  CrdtApplyUpdateResult,
+  CrdtChunkAppendInput,
+  CrdtChunkFinishInput,
+  CrdtChunkStartInput,
+  CrdtGetOrInitDocResult,
+  CrdtSimpleSuccess,
+  SyncStep1Result
+} from '@/generated/bindings'
+
 export const CRDT_FRAGMENT_NAME = 'prosemirror' as const
 
 export interface CrdtOpenDocInput {
   noteId: string
 }
 
-export interface CrdtOpenDocResult {
-  success: boolean
-  error?: string
-}
+export type CrdtOpenDocResult = CrdtSimpleSuccess
 
 export interface CrdtCloseDocInput {
   noteId: string
 }
 
-export interface CrdtApplyUpdateInput {
-  noteId: string
-  update: Uint8Array
-}
-
 export interface CrdtSyncStep1Input {
   noteId: string
-  stateVector: Uint8Array
-}
-
-export interface CrdtSyncStep1Result {
-  diff: Uint8Array
-  stateVector: Uint8Array
+  stateVector: number[]
 }
 
 export interface CrdtSyncStep2Input {
   noteId: string
-  diff: Uint8Array
+  diff: number[]
 }
 
-export interface CrdtStateChangedEvent {
+export interface CrdtUpdateEvent {
   noteId: string
-  update: Uint8Array
-  origin: 'local' | 'ipc' | 'network'
+  update: number[]
+  origin: number
+}
+
+export type {
+  CrdtApplyUpdateInput,
+  CrdtApplyUpdateResult,
+  CrdtChunkAppendInput,
+  CrdtChunkFinishInput,
+  CrdtChunkStartInput,
+  CrdtGetOrInitDocResult,
+  CrdtSimpleSuccess,
+  SyncStep1Result
 }

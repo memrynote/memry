@@ -148,7 +148,8 @@ describe('invoke', () => {
       'crdt_get_snapshot',
       'crdt_get_state_vector',
       'crdt_sync_step_1',
-      'crdt_sync_step_2'
+      'crdt_sync_step_2',
+      'crdt_get_or_init_doc'
     ]
 
     for (const command of commands) {
@@ -157,17 +158,5 @@ describe('invoke', () => {
 
     expect(mockRouter).not.toHaveBeenCalled()
     expect(tauriInvoke).toHaveBeenCalledTimes(commands.length)
-  })
-
-  it('does not keep the legacy CRDT get-or-init alias in the renderer real-command allowlist', async () => {
-    const result = await invoke('crdt_get_or_init_doc', { noteId: 'note-legacy' })
-
-    expect(mockRouter).toHaveBeenCalledWith('crdt_get_or_init_doc', { noteId: 'note-legacy' })
-    expect(tauriInvoke).not.toHaveBeenCalled()
-    expect(result).toEqual({
-      mock: true,
-      cmd: 'crdt_get_or_init_doc',
-      args: { noteId: 'note-legacy' }
-    })
   })
 })
