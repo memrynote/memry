@@ -20,6 +20,7 @@ files:
   - '!node_modules/**/{coverage,doc,docs,example,examples,test,tests,__tests__}/**'
 asarUnpack:
   - resources/**
+afterPack: scripts/prune-packaged-app.mjs
 win:
   executableName: memry
 nsis:
