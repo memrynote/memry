@@ -115,11 +115,16 @@ pub fn ensure(
     ty: &str,
     default_value: Option<&str>,
 ) -> AppResult<()> {
+    let options = if ty == "status" {
+        Some(serde_json::to_string(&default_status_options())?)
+    } else {
+        None
+    };
     conn.execute(
-        "INSERT INTO property_definitions (name, type, default_value)
-         VALUES (?1, ?2, ?3)
+        "INSERT INTO property_definitions (name, type, options, default_value)
+         VALUES (?1, ?2, ?3, ?4)
          ON CONFLICT(name) DO NOTHING",
-        params![name, ty, default_value],
+        params![name, ty, options, default_value],
     )?;
     Ok(())
 }
@@ -299,9 +304,21 @@ fn read_status_options(row: &PropertyDefinitionRow) -> AppResult<Value> {
 fn default_status_options() -> Value {
     json!({
         "categories": {
-            "todo": { "label": "To-do", "options": [] },
-            "in_progress": { "label": "In progress", "options": [] },
-            "done": { "label": "Complete", "options": [] }
+            "todo": {
+                "label": "To-do",
+                "options": [{ "value": "Not started", "color": "stone", "default": true }]
+            },
+            "in_progress": {
+                "label": "In progress",
+                "options": [{ "value": "In Progress", "color": "amber" }]
+            },
+            "done": {
+                "label": "Complete",
+                "options": [
+                    { "value": "Done", "color": "emerald" },
+                    { "value": "Abandoned", "color": "rose" }
+                ]
+            }
         }
     })
 }

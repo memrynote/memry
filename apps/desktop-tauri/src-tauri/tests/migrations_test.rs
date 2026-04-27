@@ -233,6 +233,20 @@ fn migration_0032_folder_configs_adds_template_json() {
 }
 
 #[test]
+fn migration_0033_notes_cache_adds_inline_tags_json() {
+    let mut conn = Connection::open_in_memory().unwrap();
+    migrations::apply_pending(&mut conn).unwrap();
+
+    let mut stmt = conn.prepare("PRAGMA table_info(notes_cache)").unwrap();
+    let cols: Vec<String> = stmt
+        .query_map([], |row| row.get::<_, String>(1))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
+    assert!(cols.contains(&"inline_tags_json".to_string()));
+}
+
+#[test]
 fn tasks_and_projects_have_field_clocks_column() {
     let mut conn = Connection::open_in_memory().unwrap();
     migrations::apply_pending(&mut conn).unwrap();

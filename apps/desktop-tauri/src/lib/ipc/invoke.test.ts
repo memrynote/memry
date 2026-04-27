@@ -121,4 +121,27 @@ describe('invoke', () => {
     expect(mockRouter).not.toHaveBeenCalled()
     expect(tauriInvoke).toHaveBeenCalledTimes(commands.length)
   })
+
+  it('routes CRDT commands to Tauri by default', async () => {
+    const commands = [
+      'crdt_open_doc',
+      'crdt_close_doc',
+      'crdt_apply_update',
+      'crdt_apply_update_chunk_start',
+      'crdt_apply_update_chunk_append',
+      'crdt_apply_update_chunk_finish',
+      'crdt_get_snapshot',
+      'crdt_get_state_vector',
+      'crdt_sync_step_1',
+      'crdt_sync_step_2',
+      'crdt_get_or_init_doc'
+    ]
+
+    for (const command of commands) {
+      await invoke(command, { input: {} })
+    }
+
+    expect(mockRouter).not.toHaveBeenCalled()
+    expect(tauriInvoke).toHaveBeenCalledTimes(commands.length)
+  })
 })

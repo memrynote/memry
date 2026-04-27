@@ -46,7 +46,7 @@ fn list_helpers_exclude_soft_deleted_rows() {
     upsert(&conn, &row("a", "Inbox/a.md", "A")).unwrap();
     upsert(&conn, &row("b", "Inbox/b.md", "B")).unwrap();
     upsert(&conn, &row("c", "Projects/c.md", "C")).unwrap();
-    delete_soft(&conn, "a", "2026-04-26T01:00:00.000Z").unwrap();
+    delete_soft(&conn, "a", ".trash/a.md", "2026-04-26T01:00:00.000Z").unwrap();
 
     let active = list_active(&conn).unwrap();
     assert_eq!(
@@ -58,6 +58,20 @@ fn list_helpers_exclude_soft_deleted_rows() {
     let inbox = list_in_folder(&conn, "Inbox").unwrap();
     assert_eq!(inbox.len(), 1);
     assert_eq!(inbox[0].id, "b");
+}
+
+#[test]
+fn delete_soft_moves_tombstone_path_so_original_path_can_be_reused() {
+    let conn = open_in_memory_with_migrations();
+    upsert(&conn, &row("a", "Inbox/a.md", "A")).unwrap();
+
+    delete_soft(&conn, "a", ".trash/a.md", "2026-04-26T01:00:00.000Z").unwrap();
+    upsert(&conn, &row("b", "Inbox/a.md", "A Again")).unwrap();
+
+    assert!(get_by_path(&conn, "Inbox/a.md").unwrap().is_some());
+    let tombstone = get_by_id(&conn, "a").unwrap().expect("tombstone row");
+    assert_eq!(tombstone.path, ".trash/a.md");
+    assert!(!exists_path(&conn, ".trash/a.md").unwrap());
 }
 
 #[test]
@@ -104,7 +118,7 @@ fn local_only_helpers_count_active_rows() {
     upsert(&conn, &row("b", "b.md", "B")).unwrap();
     set_local_only(&conn, "a", true, "2026-04-26T03:00:00.000Z").unwrap();
     set_local_only(&conn, "b", true, "2026-04-26T03:00:00.000Z").unwrap();
-    delete_soft(&conn, "b", "2026-04-26T04:00:00.000Z").unwrap();
+    delete_soft(&conn, "b", ".trash/b.md", "2026-04-26T04:00:00.000Z").unwrap();
 
     assert_eq!(count_local_only(&conn).unwrap(), 1);
 }

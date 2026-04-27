@@ -2,9 +2,10 @@ use memry_desktop_tauri_lib::commands::notes::{
     notes_create_inner, notes_delete_inner, notes_get_local_only_count_inner,
     notes_set_local_only_inner, NoteCreateInput,
 };
-use memry_desktop_tauri_lib::db::note_metadata;
+use memry_desktop_tauri_lib::db::{note_metadata, notes_cache};
 use memry_desktop_tauri_lib::test_helpers::{open_in_memory_with_migrations, test_vault_runtime};
 use memry_desktop_tauri_lib::vault::notes_io;
+use std::time::Duration;
 
 #[tokio::test]
 async fn set_local_only_flips_metadata_sync_policy_frontmatter_and_count() {
@@ -28,6 +29,7 @@ async fn set_local_only_flips_metadata_sync_policy_frontmatter_and_count() {
 
     assert_eq!(notes_get_local_only_count_inner(&conn).unwrap().count, 0);
 
+    tokio::time::sleep(Duration::from_millis(2)).await;
     let response = notes_set_local_only_inner(&vault, &conn, &created.id, true)
         .await
         .unwrap();
@@ -39,6 +41,10 @@ async fn set_local_only_flips_metadata_sync_policy_frontmatter_and_count() {
     assert!(row.local_only);
     assert_eq!(row.sync_policy, "local-only");
     assert_eq!(notes_get_local_only_count_inner(&conn).unwrap().count, 1);
+    let cached = notes_cache::list_active(&conn, 10, 0, "modified").unwrap();
+    assert_eq!(cached[0].id, created.id);
+    assert!(cached[0].local_only);
+    assert_eq!(cached[0].modified_at, row.modified_at);
 
     let on_disk = notes_io::read_note_from_disk(&vault.require_current().unwrap(), &created.path)
         .await
@@ -46,6 +52,7 @@ async fn set_local_only_flips_metadata_sync_policy_frontmatter_and_count() {
         .unwrap();
     assert_eq!(on_disk.parsed.frontmatter.local_only, Some(true));
 
+    tokio::time::sleep(Duration::from_millis(2)).await;
     let response = notes_set_local_only_inner(&vault, &conn, &created.id, false)
         .await
         .unwrap();
@@ -56,6 +63,10 @@ async fn set_local_only_flips_metadata_sync_policy_frontmatter_and_count() {
     assert!(!row.local_only);
     assert_eq!(row.sync_policy, "sync");
     assert_eq!(notes_get_local_only_count_inner(&conn).unwrap().count, 0);
+    let cached = notes_cache::list_active(&conn, 10, 0, "modified").unwrap();
+    assert_eq!(cached[0].id, created.id);
+    assert!(!cached[0].local_only);
+    assert_eq!(cached[0].modified_at, row.modified_at);
 
     let on_disk = notes_io::read_note_from_disk(&vault.require_current().unwrap(), &created.path)
         .await

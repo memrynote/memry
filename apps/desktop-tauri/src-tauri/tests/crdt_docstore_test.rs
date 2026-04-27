@@ -20,13 +20,13 @@ async fn get_or_init_returns_same_doc_for_same_id() {
 }
 
 #[tokio::test]
-async fn drop_doc_removes_entry() {
+async fn close_doc_removes_entry_without_open_handles() {
     let store = DocStore::new();
     let id = "note-beta".to_string();
     let _h = store.get_or_init(&id).await;
     assert_eq!(store.open_count().await, 1);
 
-    store.drop_doc(&id).await;
+    store.close_doc(&id).await;
     assert_eq!(store.open_count().await, 0);
 }
 

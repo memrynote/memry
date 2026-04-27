@@ -5,6 +5,7 @@ describe('reviveNoteDates', () => {
   it('converts ISO `created` and `modified` strings on a single note', () => {
     const dto = {
       id: 'note-1',
+      path: 'notes/hi.md',
       title: 'Hi',
       created: '2026-04-26T10:00:00.000Z',
       modified: '2026-04-26T11:00:00.000Z',
@@ -23,11 +24,13 @@ describe('reviveNoteDates', () => {
       notes: [
         {
           id: 'a',
+          path: 'notes/a.md',
           created: '2026-01-01T00:00:00.000Z',
           modified: '2026-01-02T00:00:00.000Z'
         },
         {
           id: 'b',
+          path: 'notes/b.md',
           created: '2026-02-01T00:00:00.000Z',
           modified: '2026-02-02T00:00:00.000Z'
         }
@@ -66,11 +69,31 @@ describe('reviveNoteDates', () => {
 
   it('preserves already-Date values without double-wrapping', () => {
     const original = new Date('2026-04-26T00:00:00.000Z')
-    const dto = { id: 'x', created: original, modified: original }
+    const dto = { id: 'x', path: 'notes/x.md', created: original, modified: original }
 
     const revived = reviveNoteDates(dto) as typeof dto
 
     expect(revived.created).toBe(original)
     expect(revived.modified).toBe(original)
+  })
+
+  it('does not convert user properties named created or modified', () => {
+    const dto = {
+      id: 'x',
+      path: 'notes/x.md',
+      created: '2026-04-26T00:00:00.000Z',
+      modified: '2026-04-26T00:00:00.000Z',
+      properties: {
+        created: 'draft',
+        modified: 'later'
+      }
+    }
+
+    const revived = reviveNoteDates(dto)
+
+    expect(revived.created).toBeInstanceOf(Date)
+    expect(revived.modified).toBeInstanceOf(Date)
+    expect(revived.properties.created).toBe('draft')
+    expect(revived.properties.modified).toBe('later')
   })
 })
