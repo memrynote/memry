@@ -134,6 +134,12 @@ pub fn run() {
             commands::crdt::crdt_sync_step_1,
             commands::crdt::crdt_sync_step_2,
             commands::crdt::crdt_get_or_init_doc,
+            #[cfg(any(debug_assertions, feature = "test-helpers"))]
+            commands::devtools::devtools_reset_db,
+            #[cfg(any(debug_assertions, feature = "test-helpers"))]
+            commands::devtools::devtools_seed_vault,
+            #[cfg(any(debug_assertions, feature = "test-helpers"))]
+            commands::devtools::devtools_open_test_vault,
             commands::shell::shell_open_url,
             commands::shell::shell_open_path,
             commands::shell::shell_reveal_in_finder,
