@@ -571,7 +571,7 @@ export type NoteDeleteResponse = {
 	success: boolean,
 };
 
-// Renderer-shape note (matches `@memry/contracts/notes-api.ts::Note`).
+// Renderer-shape note used by the local notes contract.
 export type NoteDto = {
 	id: string,
 	path: string,

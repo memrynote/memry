@@ -13,7 +13,7 @@ import { PdfViewer, ImageViewer, AudioPlayer, VideoPlayer } from '@/components/v
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { invoke } from '@/lib/ipc/invoke'
-import type { FileMetadata } from '@memry/rpc/notes'
+import type { FileMetadata } from '@/contracts/notes'
 
 // ============================================================================
 // Types

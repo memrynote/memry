@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import type { LinkedNote } from '@/types'
 import { createLogger } from '@/lib/logger'
 import { invoke } from '@/lib/ipc/invoke'
-import type { NoteListResponse } from '@memry/rpc/notes'
+import type { NoteListResponse } from '@/contracts/notes'
 
 const log = createLogger('Component:LinkSearch')
 

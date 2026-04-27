@@ -56,7 +56,7 @@ impl specta::Type for JsonUnknown {
     }
 }
 
-/// Renderer-shape note (matches `@memry/contracts/notes-api.ts::Note`).
+/// Renderer-shape note used by the local notes contract.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct NoteDto {

@@ -10,7 +10,7 @@ import { FolderSelector } from '@/components/filing/folder-selector'
 import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
 import type { InboxItem, InboxItemListItem, InboxItemType, Folder } from '@/types'
 import { invoke } from '@/lib/ipc/invoke'
-import type { FolderInfo } from '@memry/rpc/notes'
+import type { FolderInfo } from '@/contracts/notes'
 
 // Bulk file panel can work with either full or list item types
 type BulkItem = InboxItem | InboxItemListItem
