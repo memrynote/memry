@@ -261,8 +261,7 @@ fn append_binary_crdt_bindings(path: &str) -> Result<(), Box<dyn std::error::Err
     let contents = std::fs::read_to_string(path)?;
     let marker = "\n};\n\n/* Types */";
     let insertion = "\tcrdtGetSnapshot: (noteId: string) => typedError<Uint8Array, AppError>(__TAURI_INVOKE(\"crdt_get_snapshot\", { noteId })),\n\tcrdtGetStateVector: (noteId: string) => typedError<Uint8Array, AppError>(__TAURI_INVOKE(\"crdt_get_state_vector\", { noteId })),";
-    let updated = contents
-        .replacen(marker, &format!("\n{insertion}{marker}"), 1);
+    let updated = contents.replacen(marker, &format!("\n{insertion}{marker}"), 1);
     if updated == contents {
         return Err("could not find commands object marker in bindings.ts".into());
     }
