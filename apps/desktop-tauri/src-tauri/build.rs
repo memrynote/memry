@@ -112,6 +112,9 @@ fn main() {
             "secrets_set_provider_key",
             "secrets_get_provider_key_status",
             "secrets_delete_provider_key",
+            "devtools_reset_db",
+            "devtools_seed_vault",
+            "devtools_open_test_vault",
         ]),
     ))
     .expect("failed to run tauri build script")
