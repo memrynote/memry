@@ -7,7 +7,7 @@ use crate::crdt::{
     CrdtRuntime, DocHandle,
 };
 use crate::error::{AppError, AppResult};
-use crate::vault::VaultRuntime;
+use crate::vault::{notes_io, VaultRuntime};
 use std::sync::Arc;
 use tauri::{ipc::Response, AppHandle, Emitter, State};
 
@@ -15,11 +15,12 @@ pub const MAX_INLINE_UPDATE_BYTES: usize = 8 * 1024;
 
 pub async fn crdt_open_doc_inner(
     conn: &rusqlite::Connection,
-    _vault: &VaultRuntime,
+    vault: &VaultRuntime,
     crdt: Arc<CrdtRuntime>,
     note_id: &str,
 ) -> AppResult<()> {
-    let open_state = load_open_doc_state(conn, note_id)?;
+    let mut open_state = load_open_doc_state(conn, note_id)?;
+    hydrate_open_doc_seed(vault, &mut open_state).await?;
     let seed = apply_open_doc_state(crdt, note_id, open_state).await?;
     if let Some(seed) = seed {
         crate::db::crdt_updates::append(conn, note_id, &seed, origin_tag() as i64)?;
@@ -203,10 +204,11 @@ pub async fn crdt_open_doc(
     state: State<'_, AppState>,
     note_id: String,
 ) -> AppResult<CrdtSimpleSuccess> {
-    let open_state = {
+    let mut open_state = {
         let conn = state.db.conn()?;
         load_open_doc_state(&conn, &note_id)?
     };
+    hydrate_open_doc_seed(&state.vault, &mut open_state).await?;
     let seed = apply_open_doc_state(state.crdt.clone(), &note_id, open_state).await?;
     if let Some(seed) = seed {
         let conn = state.db.conn()?;
@@ -382,10 +384,11 @@ pub async fn crdt_get_or_init_doc(
     state: State<'_, AppState>,
     note_id: String,
 ) -> AppResult<CrdtGetOrInitDocResult> {
-    let open_state = {
+    let mut open_state = {
         let conn = state.db.conn()?;
         load_open_doc_state(&conn, &note_id)?
     };
+    hydrate_open_doc_seed(&state.vault, &mut open_state).await?;
     let seed = apply_open_doc_state(state.crdt.clone(), &note_id, open_state).await?;
     if let Some(seed) = seed {
         let conn = state.db.conn()?;
@@ -400,6 +403,8 @@ pub async fn crdt_get_or_init_doc(
 struct OpenDocState {
     snapshot: Option<Vec<u8>>,
     updates: Vec<PersistedUpdate>,
+    seed_path: Option<String>,
+    seed_markdown: Option<String>,
 }
 
 struct PersistedUpdate {
@@ -419,7 +424,37 @@ fn load_open_doc_state(conn: &rusqlite::Connection, note_id: &str) -> AppResult<
         })
         .collect::<Vec<_>>();
 
-    Ok(OpenDocState { snapshot, updates })
+    let seed_path = if snapshot.is_none() && updates.is_empty() {
+        crate::db::note_metadata::get_active_by_id(conn, note_id)?.map(|row| row.path)
+    } else {
+        None
+    };
+
+    Ok(OpenDocState {
+        snapshot,
+        updates,
+        seed_path,
+        seed_markdown: None,
+    })
+}
+
+async fn hydrate_open_doc_seed(
+    vault: &VaultRuntime,
+    open_state: &mut OpenDocState,
+) -> AppResult<()> {
+    let Some(path) = open_state.seed_path.take() else {
+        return Ok(());
+    };
+    open_state.seed_markdown = load_seed_markdown(vault, &path).await?;
+    Ok(())
+}
+
+async fn load_seed_markdown(vault: &VaultRuntime, path: &str) -> AppResult<Option<String>> {
+    let root = vault.require_current()?;
+    let Some(read) = notes_io::read_note_from_disk(&root, path).await? else {
+        return Ok(None);
+    };
+    Ok(Some(read.parsed.content))
 }
 
 async fn apply_open_doc_state(
@@ -435,6 +470,13 @@ async fn apply_open_doc_state(
     let seed = if let Some(snapshot) = open_state.snapshot {
         apply_update_v1(&handle, &snapshot, origin_tag())?;
         None
+    } else if open_state.updates.is_empty() {
+        if let Some(markdown) = open_state.seed_markdown {
+            crate::crdt::seed::seed_from_markdown(&handle, &markdown)?;
+            Some(encode_snapshot_v1(&handle)?)
+        } else {
+            None
+        }
     } else {
         None
     };

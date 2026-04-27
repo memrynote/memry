@@ -31,29 +31,46 @@ fn insert_block(
     txn: &mut yrs::TransactionMut<'_>,
     block: &BlockNoteBlock,
 ) {
-    let element = fragment.push_back(txn, XmlElementPrelim::empty(tag_for_block(block)));
+    let block_group = match fragment.first_child() {
+        Some(yrs::XmlOut::Element(element)) if element.tag().as_ref() == "blockGroup" => element,
+        _ => fragment.push_back(txn, XmlElementPrelim::empty("blockGroup")),
+    };
+    let block_container = block_group.push_back(txn, XmlElementPrelim::empty("blockContainer"));
+    block_container.insert_attribute(txn, "id", format!("seed-{}", block_group.len(txn) - 1));
+
+    let element =
+        block_container.push_back(txn, XmlElementPrelim::empty(node_name_for_block(block)));
+    insert_default_block_attrs(&element, txn, block);
     if let Some(level) = block.level {
-        element.insert_attribute(txn, "data-level", level.to_string());
+        element.insert_attribute(txn, "level", level.to_string());
     }
     if let Some(language) = block.language.as_ref() {
-        element.insert_attribute(txn, "data-language", language);
+        element.insert_attribute(txn, "language", language);
     }
     element.push_back(txn, XmlTextPrelim::new(block.text.as_str()));
 }
 
-fn tag_for_block(block: &BlockNoteBlock) -> &'static str {
+fn node_name_for_block(block: &BlockNoteBlock) -> &'static str {
     match block.kind.as_str() {
-        "heading" => match block.level {
-            Some(1) => "h1",
-            Some(2) => "h2",
-            Some(3) => "h3",
-            Some(4) => "h4",
-            Some(5) => "h5",
-            Some(6) => "h6",
-            _ => "h1",
-        },
-        "bulletListItem" | "numberedListItem" => "li",
-        "codeBlock" => "pre",
-        _ => "p",
+        "heading" => "heading",
+        "bulletListItem" => "bulletListItem",
+        "numberedListItem" => "numberedListItem",
+        "codeBlock" => "codeBlock",
+        _ => "paragraph",
+    }
+}
+
+fn insert_default_block_attrs(
+    element: &yrs::XmlElementRef,
+    txn: &mut yrs::TransactionMut<'_>,
+    block: &BlockNoteBlock,
+) {
+    if block.kind != "codeBlock" {
+        element.insert_attribute(txn, "backgroundColor", "default");
+        element.insert_attribute(txn, "textAlignment", "left");
+        element.insert_attribute(txn, "textColor", "default");
+    }
+    if block.kind == "heading" {
+        element.insert_attribute(txn, "isToggleable", "false");
     }
 }
