@@ -1833,7 +1833,7 @@ fn json_optional_string(value: &serde_json::Value, field: &str) -> AppResult<Opt
 }
 
 pub fn note_created_event_payload(note: &NoteDto) -> serde_json::Value {
-    serde_json::json!({ "note": note, "source": "internal" })
+    serde_json::json!({ "note": note_list_item_from_dto(note), "source": "internal" })
 }
 
 pub fn note_updated_event_payload(input: &NoteUpdateInput, note: &NoteDto) -> serde_json::Value {
@@ -1881,6 +1881,21 @@ pub fn note_local_only_event_payload(id: &str, local_only: bool) -> serde_json::
         },
         "source": "internal"
     })
+}
+
+pub fn note_list_item_from_dto(note: &NoteDto) -> NoteListItem {
+    NoteListItem {
+        id: note.id.clone(),
+        path: note.path.clone(),
+        title: note.title.clone(),
+        created: note.created.clone(),
+        modified: note.modified.clone(),
+        tags: note.tags.clone(),
+        word_count: note.word_count,
+        snippet: snippet_of(&note.content),
+        emoji: note.emoji.clone(),
+        local_only: false,
+    }
 }
 
 pub fn note_update_event_changes(input: &NoteUpdateInput, note: &NoteDto) -> serde_json::Value {
