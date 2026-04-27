@@ -99,10 +99,6 @@ export const notesService: NotesClientAPI = new Proxy(rawNotesService, {
     if (realMethod) {
       return realMethod
     }
-    if (property === 'update') {
-      return async (...args: unknown[]) =>
-        reviveNoteDates(await original(...normalizeUpdateArgs(args)))
-    }
     if (!NOTE_METHODS_WITH_DATES.has(property)) {
       return original
     }
@@ -117,6 +113,16 @@ type FolderConfigRecord = FolderConfig & {
 
 function getRealM5Method(property: string): ((...args: unknown[]) => Promise<unknown>) | null {
   switch (property) {
+    case 'create':
+      return async (input) =>
+        reviveNoteDates(
+          await invoke<NoteCreateResponse>('notes_create', toNoteCreateCommandArgs(input))
+        )
+    case 'update':
+      return async (input) =>
+        reviveNoteDates(
+          await invoke<NoteUpdateResponse>('notes_update', toNoteUpdateCommandArgs(input))
+        )
     case 'deleteFolder':
       return async (path) =>
         invoke('notes_delete_folder', {
@@ -198,6 +204,44 @@ function getRealM5Method(property: string): ((...args: unknown[]) => Promise<unk
   }
 }
 
+function toNoteCreateCommandArgs(input: unknown): Record<string, unknown> {
+  const record = input as NoteCreateInput
+  return {
+    title: record.title,
+    content: record.content ?? null,
+    folder: record.folder ?? null,
+    tags: record.tags ?? null,
+    template: record.template ?? null
+  }
+}
+
+function toNoteUpdateCommandArgs(input: unknown): Record<string, unknown> {
+  const normalized = normalizeNoteUpdateInput(input as NoteUpdateInput)
+  return {
+    id: normalized.id,
+    title: normalized.title ?? null,
+    content: normalized.content ?? null,
+    tags: normalized.tags ?? null,
+    frontmatter: normalized.frontmatter ?? null,
+    emoji: normalized.emoji ?? null
+  }
+}
+
+function normalizeNoteUpdateInput(input: NoteUpdateInput): NoteUpdateInput {
+  if (input.emoji !== null) {
+    return input
+  }
+  const normalized = { ...input }
+  delete normalized.emoji
+  return {
+    ...normalized,
+    frontmatter: {
+      ...(isRecord(input.frontmatter) ? input.frontmatter : {}),
+      emoji: null
+    }
+  }
+}
+
 function toFolderConfigInput(
   path: string,
   config: unknown
@@ -222,25 +266,6 @@ function normalizeFolderConfigResponse(config: FolderConfigRecord | null): Folde
     template: config.template ?? config.templateJson ?? undefined,
     inherit: config.inherit
   }
-}
-
-function normalizeUpdateArgs(args: unknown[]): unknown[] {
-  const [input] = args
-  if (args.length !== 1 || !isRecord(input) || input.emoji !== null) {
-    return args
-  }
-  const normalized = { ...input }
-  delete normalized.emoji
-  const { frontmatter } = normalized
-  return [
-    {
-      ...normalized,
-      frontmatter: {
-        ...(isRecord(frontmatter) ? frontmatter : {}),
-        emoji: null
-      }
-    }
-  ]
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

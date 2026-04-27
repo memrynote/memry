@@ -7,6 +7,7 @@ import {
   onVaultError,
   onVaultIndexRecovered
 } from './vault-service'
+import { invoke } from '@/lib/ipc/invoke'
 
 describe('vault-service', () => {
   let api: ReturnType<typeof createMockApi>
@@ -31,9 +32,13 @@ describe('vault-service', () => {
     ;(window as Window & { api: unknown }).api = api
   })
 
-  it('forwards vault operations to window.api.vault', async () => {
+  it('forwards vault operations through real Tauri payloads', async () => {
+    Object.assign(api.vault, {
+      open: vi.fn().mockResolvedValue({ success: true, path: '/vault' })
+    })
+
     await vaultService.select('/path')
-    expect(api.vault.select).toHaveBeenCalledWith('/path')
+    expect(invoke).toHaveBeenCalledWith('vault_open', { input: { path: '/path' } })
 
     await vaultService.create('/path', 'Name')
     expect(api.vault.create).toHaveBeenCalledWith('/path', 'Name')
@@ -54,13 +59,29 @@ describe('vault-service', () => {
     expect(api.vault.close).toHaveBeenCalled()
 
     await vaultService.switch('/other')
-    expect(api.vault.switch).toHaveBeenCalledWith('/other')
+    expect(invoke).toHaveBeenCalledWith('vault_switch', { input: { path: '/other' } })
 
     await vaultService.remove('/old')
     expect(api.vault.remove).toHaveBeenCalledWith('/old')
 
     await vaultService.reindex()
     expect(api.vault.reindex).toHaveBeenCalled()
+  })
+
+  it('chooses a folder before opening a vault when no path is provided', async () => {
+    Object.assign(api, {
+      dialogChooseFolder: vi.fn().mockResolvedValue('/chosen/vault')
+    })
+    Object.assign(api.vault, {
+      open: vi.fn().mockResolvedValue({ success: true, path: '/chosen/vault' })
+    })
+
+    await vaultService.select()
+
+    expect(invoke).toHaveBeenCalledWith('dialog_choose_folder', {
+      title: 'Select Vault Folder'
+    })
+    expect(invoke).toHaveBeenCalledWith('vault_open', { input: { path: '/chosen/vault' } })
   })
 
   it('registers vault event subscriptions', () => {

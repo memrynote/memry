@@ -74,7 +74,13 @@ function vaultByPath(path: string): MockVault | undefined {
   return vaults.find((v) => v.path === path)
 }
 
+function pathFromPayload(args: unknown): string | undefined {
+  const payload = args as { path?: string; input?: { path?: string } } | undefined
+  return payload?.input?.path ?? payload?.path
+}
+
 export const vaultRoutes: MockRouteMap = {
+  dialog_choose_folder: async () => currentVault ?? '/mock/path/primary',
   vault_get_all: async () => ({ vaults, currentVault }),
   vault_get_status: async () => status,
   vault_get_config: async () => config,
@@ -84,7 +90,7 @@ export const vaultRoutes: MockRouteMap = {
     return config
   },
   vault_select: async (args) => {
-    const { path } = (args ?? {}) as { path?: string }
+    const path = pathFromPayload(args)
     const resolved = path ?? '/mock/path/primary'
     const existing = vaultByPath(resolved)
     const vault: MockVault = existing ?? {
@@ -99,6 +105,7 @@ export const vaultRoutes: MockRouteMap = {
     currentVault = resolved
     return { success: true, vault }
   },
+  vault_open: async (args) => vaultRoutes.vault_select?.(args),
   vault_create: async (args) => {
     const { path, name } = args as { path: string; name: string }
     const vault: MockVault = {
@@ -114,10 +121,10 @@ export const vaultRoutes: MockRouteMap = {
     return { success: true, vault }
   },
   vault_switch: async (args) => {
-    const { path } = args as { path: string }
+    const path = pathFromPayload(args) ?? '/mock/path/primary'
     currentVault = path
     status = { ...status, path, isOpen: true }
-    return { success: true }
+    return { success: true, vault: vaultByPath(path) ?? null }
   },
   vault_remove: async (args) => {
     const { path } = args as { path: string }
