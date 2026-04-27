@@ -17,6 +17,7 @@ test-index.db
 
 # Environment & secrets
 .env*
+electron-builder.env
 .dev.vars
 private.pem
 public.pem
