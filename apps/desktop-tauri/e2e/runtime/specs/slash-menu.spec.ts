@@ -74,10 +74,11 @@ async function insertLink(browser: RuntimeBrowser, label: string, href: string):
       const editor = document.querySelector<HTMLElement>('.bn-editor')
       if (!editor) return false
       editor.focus()
-      document.execCommand('insertText', false, text)
-      const selection = window.getSelection()
-      if (!selection || selection.rangeCount === 0) return false
-      document.execCommand('createLink', false, url)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.textContent = text
+      editor.append(document.createTextNode(' '))
+      editor.append(anchor)
       return true
     },
     label,
