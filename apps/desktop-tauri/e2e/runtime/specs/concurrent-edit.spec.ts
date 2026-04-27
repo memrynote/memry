@@ -14,8 +14,10 @@ export const scenarios: RuntimeScenario[] = [
     originTag: '1001',
     run: async ({ browser: browserA, appPath, vault }) => {
       const noteId = vault.seed.notes[0]!.id
-      const updateA = makeTextUpdate('device-a')
-      const updateB = makeTextUpdate('device-b')
+      const textA = 'device-a-visible'
+      const textB = 'device-b-visible'
+      const updateA = makeProsemirrorUpdate(textA)
+      const updateB = makeProsemirrorUpdate(textB)
 
       await invokeRuntimeCommand(browserA, 'crdt_open_doc', { noteId })
       await invokeRuntimeCommand(browserA, 'crdt_apply_update', {
@@ -49,15 +51,22 @@ export const scenarios: RuntimeScenario[] = [
             visibleEditorText(browserB, vault.seed.notes[0]!.title)
           ])
           assert.equal(visibleA, visibleB, 'visible editor text diverged')
+          assert.ok(visibleA.includes(textA), `editor text is missing ${textA}`)
+          assert.ok(visibleA.includes(textB), `editor text is missing ${textB}`)
         }
       )
     }
   }
 ]
 
-function makeTextUpdate(text: string): number[] {
+function makeProsemirrorUpdate(text: string): number[] {
   const doc = new Y.Doc()
-  doc.getText('runtime-convergence').insert(0, text)
+  const fragment = doc.getXmlFragment('prosemirror')
+  const paragraph = new Y.XmlElement('paragraph')
+  const content = new Y.XmlText()
+  content.insert(0, text)
+  paragraph.insert(0, [content])
+  fragment.insert(0, [paragraph])
   return Array.from(Y.encodeStateAsUpdate(doc))
 }
 
