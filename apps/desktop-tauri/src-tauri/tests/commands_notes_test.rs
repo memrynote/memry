@@ -11,14 +11,19 @@
 //! e2e lane in Chunk 12.
 
 use memry_desktop_tauri_lib::commands::notes::{
-    note_update_event_changes, notes_create_inner, notes_delete_inner, notes_exists_inner,
+    note_created_event_payload, note_deleted_event_payload, note_local_only_event_payload,
+    note_moved_event_payload, note_renamed_event_payload, note_update_event_changes,
+    note_updated_event_payload, notes_create_inner, notes_delete_inner, notes_exists_inner,
     notes_get_local_only_count_inner, notes_list_by_folder_inner, notes_list_inner,
     notes_move_inner, notes_rename_inner, notes_set_local_only_inner, notes_update_inner,
-    NoteCreateInput, NoteDto, NoteListOptions, NoteUpdateInput,
+    JsonUnknown, NoteCreateInput, NoteDto, NoteListOptions, NoteUpdateInput, NOTE_CREATED_EVENT,
+    NOTE_DELETED_EVENT, NOTE_MOVED_EVENT, NOTE_RENAMED_EVENT, NOTE_UPDATED_EVENT,
+    TAGS_CHANGED_EVENT,
 };
 use memry_desktop_tauri_lib::db::note_metadata;
 use memry_desktop_tauri_lib::test_helpers::{open_in_memory_with_migrations, test_vault_runtime};
 use memry_desktop_tauri_lib::vault::notes_io;
+use serde_json::json;
 
 #[tokio::test]
 async fn create_then_list_returns_single_active_note() {
@@ -383,4 +388,97 @@ fn update_event_changes_includes_content_for_content_saves() {
     let changes = note_update_event_changes(&input, &note);
     assert_eq!(changes["content"], "new [[Target]] body");
     assert!(changes.get("title").is_none());
+}
+
+#[test]
+fn note_event_names_match_renderer_subscriptions() {
+    assert_eq!(NOTE_CREATED_EVENT, "note-created");
+    assert_eq!(NOTE_UPDATED_EVENT, "note-updated");
+    assert_eq!(NOTE_DELETED_EVENT, "note-deleted");
+    assert_eq!(NOTE_RENAMED_EVENT, "note-renamed");
+    assert_eq!(NOTE_MOVED_EVENT, "note-moved");
+    assert_eq!(TAGS_CHANGED_EVENT, "tags-changed");
+}
+
+#[test]
+fn note_event_payloads_match_renderer_shapes() {
+    let note = sample_note();
+    let update = NoteUpdateInput {
+        id: note.id.clone(),
+        title: Some("New title".into()),
+        content: None,
+        tags: Some(vec!["next".into()]),
+        frontmatter: Some(JsonUnknown::from(json!({ "emoji": "note" }))),
+        emoji: None,
+    };
+
+    assert_eq!(
+        note_created_event_payload(&note),
+        json!({ "note": note, "source": "internal" })
+    );
+    assert_eq!(
+        note_updated_event_payload(&update, &note),
+        json!({
+            "id": "note-1",
+            "changes": {
+                "title": "Example",
+                "tags": ["next"],
+                "frontmatter": {},
+                "emoji": "note"
+            },
+            "source": "internal"
+        })
+    );
+    assert_eq!(
+        note_deleted_event_payload("note-1", "notes/Inbox/example.md"),
+        json!({ "id": "note-1", "path": "notes/Inbox/example.md", "source": "internal" })
+    );
+    assert_eq!(
+        note_renamed_event_payload(&note, "notes/Inbox/old.md", "Old"),
+        json!({
+            "id": "note-1",
+            "oldPath": "notes/Inbox/old.md",
+            "newPath": "notes/Inbox/example.md",
+            "oldTitle": "Old",
+            "newTitle": "Example",
+            "source": "internal"
+        })
+    );
+    assert_eq!(
+        note_moved_event_payload(&note, "notes/Archive/example.md"),
+        json!({
+            "id": "note-1",
+            "oldPath": "notes/Archive/example.md",
+            "newPath": "notes/Inbox/example.md",
+            "source": "internal"
+        })
+    );
+    assert_eq!(
+        note_local_only_event_payload("note-1", true),
+        json!({
+            "id": "note-1",
+            "changes": {
+                "frontmatter": { "localOnly": true },
+                "localOnly": true
+            },
+            "source": "internal"
+        })
+    );
+}
+
+fn sample_note() -> NoteDto {
+    NoteDto {
+        id: "note-1".into(),
+        path: "notes/Inbox/example.md".into(),
+        title: "Example".into(),
+        content: "body".into(),
+        frontmatter: JsonUnknown::from(json!({})),
+        properties: JsonUnknown::from(json!({})),
+        created: "2026-04-27T00:00:00.000Z".into(),
+        modified: "2026-04-27T00:00:00.000Z".into(),
+        tags: vec!["next".into()],
+        aliases: Vec::new(),
+        word_count: 1,
+        emoji: Some("note".into()),
+    }
 }

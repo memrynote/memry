@@ -19,6 +19,13 @@ use tokio::sync::Mutex as AsyncMutex;
 static NOTE_UPDATE_LOCKS: Lazy<Mutex<HashMap<String, Arc<AsyncMutex<()>>>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
+pub const NOTE_CREATED_EVENT: &str = "note-created";
+pub const NOTE_UPDATED_EVENT: &str = "note-updated";
+pub const NOTE_DELETED_EVENT: &str = "note-deleted";
+pub const NOTE_RENAMED_EVENT: &str = "note-renamed";
+pub const NOTE_MOVED_EVENT: &str = "note-moved";
+pub const TAGS_CHANGED_EVENT: &str = "tags-changed";
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct JsonUnknown(serde_json::Value);
@@ -825,12 +832,9 @@ pub async fn notes_create(
     drop(conn);
 
     if let Some(note) = &resp.note {
-        let _ = app.emit(
-            "note-created",
-            serde_json::json!({ "note": note, "source": "internal" }),
-        );
+        let _ = app.emit(NOTE_CREATED_EVENT, note_created_event_payload(note));
         if !note.tags.is_empty() {
-            let _ = app.emit("tags-changed", serde_json::json!({}));
+            let _ = app.emit(TAGS_CHANGED_EVENT, serde_json::json!({}));
         }
     }
     Ok(resp)
@@ -898,15 +902,11 @@ pub async fn notes_update(
 
     if let Some(note) = &resp.note {
         let _ = app.emit(
-            "note-updated",
-            serde_json::json!({
-                "id": note.id,
-                "changes": note_update_event_changes(&event_input, note),
-                "source": "internal"
-            }),
+            NOTE_UPDATED_EVENT,
+            note_updated_event_payload(&event_input, note),
         );
         if note_update_may_change_tags(&event_input) {
-            let _ = app.emit("tags-changed", serde_json::json!({}));
+            let _ = app.emit(TAGS_CHANGED_EVENT, serde_json::json!({}));
         }
     }
     Ok(resp)
@@ -923,10 +923,10 @@ pub async fn notes_delete(
     let mutation = notes_delete_with_db_inner(&state.db, &state.vault, &id).await?;
 
     let _ = app.emit(
-        "note-deleted",
-        serde_json::json!({ "id": mutation.id, "path": mutation.path, "source": "internal" }),
+        NOTE_DELETED_EVENT,
+        note_deleted_event_payload(&mutation.id, &mutation.path),
     );
-    let _ = app.emit("tags-changed", serde_json::json!({}));
+    let _ = app.emit(TAGS_CHANGED_EVENT, serde_json::json!({}));
     Ok(mutation.response)
 }
 
@@ -1019,15 +1019,8 @@ pub async fn notes_rename(
 
     if let Some(note) = &resp.note {
         let _ = app.emit(
-            "note-renamed",
-            serde_json::json!({
-                "id": note.id,
-                "oldPath": old_path,
-                "newPath": note.path,
-                "oldTitle": old_title,
-                "newTitle": note.title,
-                "source": "internal"
-            }),
+            NOTE_RENAMED_EVENT,
+            note_renamed_event_payload(note, &old_path, &old_title),
         );
     }
     Ok(resp)
@@ -1067,15 +1060,7 @@ pub async fn notes_move(
     drop(conn);
 
     if let Some(note) = &resp.note {
-        let _ = app.emit(
-            "note-moved",
-            serde_json::json!({
-                "id": note.id,
-                "oldPath": old_path,
-                "newPath": note.path,
-                "source": "internal"
-            }),
-        );
+        let _ = app.emit(NOTE_MOVED_EVENT, note_moved_event_payload(note, &old_path));
     }
     Ok(resp)
 }
@@ -1155,15 +1140,8 @@ pub async fn notes_set_local_only(
     drop(conn);
 
     let _ = app.emit(
-        "note-updated",
-        serde_json::json!({
-            "id": id,
-            "changes": {
-                "frontmatter": { "localOnly": local_only },
-                "localOnly": local_only
-            },
-            "source": "internal"
-        }),
+        NOTE_UPDATED_EVENT,
+        note_local_only_event_payload(&id, local_only),
     );
 
     Ok(NoteSimpleSuccess { success: true })
@@ -1852,6 +1830,57 @@ fn json_optional_string(value: &serde_json::Value, field: &str) -> AppResult<Opt
         .as_str()
         .map(|s| Some(s.to_string()))
         .ok_or_else(|| AppError::Validation(format!("{field} must be a string or null")))
+}
+
+pub fn note_created_event_payload(note: &NoteDto) -> serde_json::Value {
+    serde_json::json!({ "note": note, "source": "internal" })
+}
+
+pub fn note_updated_event_payload(input: &NoteUpdateInput, note: &NoteDto) -> serde_json::Value {
+    serde_json::json!({
+        "id": note.id,
+        "changes": note_update_event_changes(input, note),
+        "source": "internal"
+    })
+}
+
+pub fn note_deleted_event_payload(id: &str, path: &str) -> serde_json::Value {
+    serde_json::json!({ "id": id, "path": path, "source": "internal" })
+}
+
+pub fn note_renamed_event_payload(
+    note: &NoteDto,
+    old_path: &str,
+    old_title: &str,
+) -> serde_json::Value {
+    serde_json::json!({
+        "id": note.id,
+        "oldPath": old_path,
+        "newPath": note.path,
+        "oldTitle": old_title,
+        "newTitle": note.title,
+        "source": "internal"
+    })
+}
+
+pub fn note_moved_event_payload(note: &NoteDto, old_path: &str) -> serde_json::Value {
+    serde_json::json!({
+        "id": note.id,
+        "oldPath": old_path,
+        "newPath": note.path,
+        "source": "internal"
+    })
+}
+
+pub fn note_local_only_event_payload(id: &str, local_only: bool) -> serde_json::Value {
+    serde_json::json!({
+        "id": id,
+        "changes": {
+            "frontmatter": { "localOnly": local_only },
+            "localOnly": local_only
+        },
+        "source": "internal"
+    })
 }
 
 pub fn note_update_event_changes(input: &NoteUpdateInput, note: &NoteDto) -> serde_json::Value {
