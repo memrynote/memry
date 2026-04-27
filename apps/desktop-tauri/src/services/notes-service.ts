@@ -252,7 +252,9 @@ function hasOwn(value: Record<string, unknown>, key: string): boolean {
 }
 
 export function onNoteCreated(callback: (event: NoteCreatedEvent) => void): () => void {
-  return subscribeEvent<NoteCreatedEvent>('note-created', callback)
+  return subscribeEvent<NoteCreatedEvent>('note-created', (event) => {
+    callback(reviveNoteDates(event))
+  })
 }
 
 export function onNoteUpdated(callback: (event: NoteUpdatedEvent) => void): () => void {

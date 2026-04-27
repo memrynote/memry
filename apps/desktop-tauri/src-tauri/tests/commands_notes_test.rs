@@ -414,7 +414,21 @@ fn note_event_payloads_match_renderer_shapes() {
 
     assert_eq!(
         note_created_event_payload(&note),
-        json!({ "note": note, "source": "internal" })
+        json!({
+            "note": {
+                "id": "note-1",
+                "path": "notes/Inbox/example.md",
+                "title": "Example",
+                "created": "2026-04-27T00:00:00.000Z",
+                "modified": "2026-04-27T00:00:00.000Z",
+                "tags": ["next"],
+                "wordCount": 1,
+                "snippet": "body",
+                "emoji": "note",
+                "localOnly": false
+            },
+            "source": "internal"
+        })
     );
     assert_eq!(
         note_updated_event_payload(&update, &note),
