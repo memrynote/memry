@@ -10,10 +10,10 @@ async fn seeds_markdown_into_prosemirror_xml_fragment() {
 
     let (snapshot, children) = handle.with_read(|txn| {
         let fragment = txn.get_xml_fragment("prosemirror").expect("fragment");
-        (fragment.get_string(txn), child_tags(&fragment, txn))
+        (fragment.get_string(txn), block_content_tags(&fragment, txn))
     });
 
-    assert_eq!(children, vec!["h1", "p", "li"]);
+    assert_eq!(children, vec!["heading", "paragraph", "bulletListItem"]);
     assert!(snapshot.contains("Title"));
     assert!(snapshot.contains("hello world"));
     assert!(snapshot.contains("one"));
@@ -46,31 +46,65 @@ async fn seed_preserves_code_block_language_attribute() {
 
     let (tag, language, text) = handle.with_read(|txn| {
         let fragment = txn.get_xml_fragment("prosemirror").expect("fragment");
-        let element = match fragment.get(txn, 0).expect("first child") {
-            XmlOut::Element(element) => element,
-            _ => panic!("expected element"),
-        };
+        let element = first_block_content_from_root(&fragment, txn);
         (
             element.tag().to_string(),
-            element.get_attribute(txn, "data-language"),
+            element.get_attribute(txn, "language"),
             element.get_string(txn),
         )
     });
 
-    assert_eq!(tag, "pre");
+    assert_eq!(tag, "codeBlock");
     assert_eq!(language.as_deref(), Some("rust"));
     assert!(text.contains("let value = 1;"));
 }
 
-fn child_tags<T>(fragment: &impl XmlFragment, txn: &T) -> Vec<String>
+fn block_content_tags<T>(fragment: &impl XmlFragment, txn: &T) -> Vec<String>
 where
     T: yrs::ReadTxn,
 {
-    fragment
+    let block_group = match fragment.get(txn, 0).expect("block group") {
+        XmlOut::Element(element) => element,
+        _ => panic!("expected block group"),
+    };
+    assert_eq!(block_group.tag().as_ref(), "blockGroup");
+
+    block_group
         .children(txn)
         .map(|child| match child {
-            XmlOut::Element(element) => element.tag().to_string(),
+            XmlOut::Element(container) => block_content_from_container(&container, txn)
+                .tag()
+                .to_string(),
             _ => panic!("expected element"),
         })
         .collect()
+}
+
+fn first_block_content_from_root<T>(fragment: &impl XmlFragment, txn: &T) -> yrs::XmlElementRef
+where
+    T: yrs::ReadTxn,
+{
+    let block_group = match fragment.get(txn, 0).expect("block group") {
+        XmlOut::Element(element) => element,
+        _ => panic!("expected block group"),
+    };
+    assert_eq!(block_group.tag().as_ref(), "blockGroup");
+
+    let container = match block_group.get(txn, 0).expect("block container") {
+        XmlOut::Element(element) => element,
+        _ => panic!("expected block container"),
+    };
+    block_content_from_container(&container, txn)
+}
+
+fn block_content_from_container<T>(container: &yrs::XmlElementRef, txn: &T) -> yrs::XmlElementRef
+where
+    T: yrs::ReadTxn,
+{
+    assert_eq!(container.tag().as_ref(), "blockContainer");
+
+    match container.get(txn, 0).expect("block content") {
+        XmlOut::Element(element) => element,
+        _ => panic!("expected block content"),
+    }
 }
