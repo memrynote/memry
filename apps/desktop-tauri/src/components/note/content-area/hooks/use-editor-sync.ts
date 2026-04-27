@@ -201,7 +201,7 @@ export function useEditorSync({
       (typeof initialContent === 'string' && !!initialContent.trim()) ||
       (Array.isArray(initialContent) && initialContent.length > 0)
 
-    if (yjsFragment && (!hasInitialContent || yjsFragment.length > 0)) {
+    if (yjsFragment) {
       isContentReadyRef.current = true
       if (onHeadingsChange) {
         const headings = extractHeadings(editor.document as Block[])
