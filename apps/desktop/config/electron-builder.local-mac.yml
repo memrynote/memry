@@ -1,0 +1,4 @@
+extends: config/electron-builder.yml
+extraResources:
+  - from: .env.staging
+    to: .env

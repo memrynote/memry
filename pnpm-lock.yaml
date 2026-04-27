@@ -18,7 +18,7 @@ overrides:
   undici: '>=7.24.0'
   flatted: '>=3.4.2'
   lodash: '>=4.18.1'
-  '@xmldom/xmldom': '>=0.8.12'
+  '@xmldom/xmldom': 0.8.12
   path-to-regexp: '>=8.4.0'
   picomatch: '>=4.0.4'
   vite: ^7.3.2
@@ -4732,9 +4732,10 @@ packages:
     resolution: {integrity: sha512-sumk8m5wzOPMs8TizfQkWG0MTqe0p1yfu77ouz+xy1hNW+gaSf99uiU3lvz4rSghloM1esKfqRCFQibJI4+d/w==}
     engines: {node: '>=18'}
 
-  '@xmldom/xmldom@0.9.9':
-    resolution: {integrity: sha512-qycIHAucxy/LXAYIjmLmtQ8q9GPnMbnjG1KXhWm9o5sCr6pOYDATkMPiTNa6/v8eELyqOQ2FsEqeoFYmgv/gJg==}
-    engines: {node: '>=14.6'}
+  '@xmldom/xmldom@0.8.12':
+    resolution: {integrity: sha512-9k/gHF6n/pAi/9tqr3m3aqkuiNosYTurLLUtc7xQ9sxB/wm7WPygCv8GYa6mS0fLJEHhqMC1ATYhz++U/lRHqg==}
+    engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@zip.js/zip.js@2.8.26':
     resolution: {integrity: sha512-RQ4h9F6DOiHxpdocUDrOl6xBM+yOtz+LkUol47AVWcfebGBDpZ7w7Xvz9PS24JgXvLGiXXzSAfdCdVy1tPlaFA==}
@@ -13998,7 +13999,7 @@ snapshots:
     dependencies:
       '@wdio/logger': 9.18.0
 
-  '@xmldom/xmldom@0.9.9': {}
+  '@xmldom/xmldom@0.8.12': {}
 
   '@zip.js/zip.js@2.8.26': {}
 
@@ -18258,7 +18259,7 @@ snapshots:
 
   plist@3.1.0:
     dependencies:
-      '@xmldom/xmldom': 0.9.9
+      '@xmldom/xmldom': 0.8.12
       base64-js: 1.5.1
       xmlbuilder: 15.1.1
 
