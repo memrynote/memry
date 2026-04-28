@@ -4,7 +4,7 @@ import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
 import type * as TasksRpc from '@memry/rpc/tasks'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
-import type { Locale } from '@memry/contracts/locale-api'
+import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
 import type {
   SyncStatusChangedEvent,
   ItemSyncedEvent,
@@ -1605,6 +1605,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   graph: GraphClientAPI
   quickCapture: QuickCaptureClientAPI
   folderView: FolderViewClientAPI
+  locale: LocaleApi
   syncAuth: SyncAuthClientAPI
   syncSetup: SyncSetupClientAPI
   syncLinking: SyncLinkingClientAPI
@@ -1707,6 +1708,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onSecurityWarning: (callback: (event: SecurityWarningEvent) => void) => () => void
   onCertificatePinFailed: (callback: (event: CertificatePinFailedEvent) => void) => () => void
   onUpdaterStateChanged: (callback: (state: AppUpdateState) => void) => () => void
+  onLocaleChanged: (callback: (locale: Locale) => void) => () => void
   onCrdtStateChanged: (
     callback: (data: { noteId: string; update: number[]; origin: string }) => void
   ) => () => void
