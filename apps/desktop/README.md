@@ -1,14 +1,15 @@
-# ⚠️ FROZEN — Electron desktop app (being migrated to Tauri)
+# Electron desktop app
 
-**Status:** Frozen as of 2026-04-24. No new commits to `apps/desktop/**` until deletion.
+**Status:** Active. New desktop work targets this Electron app.
 
-**Migration target:** `apps/desktop-tauri/`
+## Development
 
-**Why frozen:** Memry is migrating from Electron to Tauri 2.x as a complete
-greenfield rewrite. This directory is preserved only so the Tauri build can
-reference the Electron renderer for source parity during M1 (see migration
-spec: `docs/superpowers/specs/2026-04-24-electron-to-tauri-full-migration-design.md`).
+```bash
+pnpm --filter @memry/desktop dev
+pnpm --filter @memry/desktop build
+```
 
-**For emergency bug fixes to Electron:** contact Kaan. Do not push directly.
+## Release Builds
 
-**Scheduled deletion:** At M10 of the Tauri migration.
+Release packaging is handled through the desktop release workflow and
+`apps/desktop/scripts/build-packaged-app.js`.
