@@ -92,6 +92,19 @@ export function resolveReleaseMetadata({ date, existingTags }) {
   }
 }
 
+export function resolveReleaseMetadataFromTag(tag) {
+  const parsed = parseReleaseTag(tag)
+  const appVersion = formatAppVersion(parsed.date, parsed.index)
+
+  return {
+    appVersion,
+    releaseDate: parsed.date,
+    releaseIndex: parsed.index,
+    releaseName: `Memry ${parsed.tag}`,
+    releaseTag: parsed.tag
+  }
+}
+
 function formatReleaseTag(date, index) {
   if (index === 1) {
     return `v${date}`
@@ -133,6 +146,17 @@ function parseArgs(argv) {
 
     if (arg === '--resolve') {
       options.mode = 'resolve'
+      continue
+    }
+
+    if (arg === '--from-tag') {
+      options.mode = 'from-tag'
+      continue
+    }
+
+    if (arg === '--tag') {
+      options.tag = readRequiredValue(argv, index, arg)
+      index += 1
       continue
     }
 
@@ -222,8 +246,19 @@ function main() {
     return
   }
 
+  if (options.mode === 'from-tag') {
+    const metadata = resolveReleaseMetadataFromTag(options.tag)
+
+    if (options.githubOutput) {
+      writeGitHubOutputs(options.githubOutput, metadata)
+    }
+
+    console.log(JSON.stringify(metadata, null, 2))
+    return
+  }
+
   throw new Error(
-    'Usage: node scripts/desktop-release-metadata.mjs --resolve --date <YYYY.M.D> [--existing-tags-file path] [--github-output path]'
+    'Usage: node scripts/desktop-release-metadata.mjs --resolve --date <YYYY.M.D> [--existing-tags-file path] [--github-output path] OR --from-tag --tag <vYYYY.M.D[-NNN]>'
   )
 }
 
