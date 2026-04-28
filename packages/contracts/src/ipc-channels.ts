@@ -701,3 +701,10 @@ export const GraphChannels = {
 } as const
 
 export type GraphInvokeChannel = (typeof GraphChannels.invoke)[keyof typeof GraphChannels.invoke]
+
+export const LocaleChannels = {
+  Get: 'locale:get',
+  Set: 'locale:set',
+  List: 'locale:list',
+  Changed: 'locale:changed'
+} as const
