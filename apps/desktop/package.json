@@ -24,7 +24,7 @@
     "typecheck:web": "pnpm exec tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "pnpm typecheck:node && pnpm typecheck:web",
     "start": "electron-vite preview",
-    "dev": "electron-vite dev --mode=dev",
+    "dev": "MEMRY_DEVICE=dev electron-vite dev --mode=dev",
     "dev:staging": "electron-vite dev --mode=staging",
     "dev:a": "bash scripts/ensure-native.sh electron && MEMRY_DEVICE=A electron-vite dev --mode=dev",
     "dev:b": "bash scripts/ensure-native.sh electron && MEMRY_DEVICE=B electron-vite dev --mode=dev",
