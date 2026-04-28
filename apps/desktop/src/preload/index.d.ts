@@ -4,6 +4,7 @@ import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
 import type * as TasksRpc from '@memry/rpc/tasks'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
+import type { Locale } from '@memry/contracts/locale-api'
 import type {
   SyncStatusChangedEvent,
   ItemSyncedEvent,
@@ -1185,7 +1186,7 @@ export interface GeneralSettingsDTO {
   fontFamily: 'system' | 'serif' | 'sans-serif' | 'monospace' | 'gelasio' | 'geist' | 'inter'
   accentColor: string
   startOnBoot: boolean
-  language: string
+  language: Locale
   onboardingCompleted: boolean
   createInSelectedFolder: boolean
   clockFormat: '12h' | '24h'
