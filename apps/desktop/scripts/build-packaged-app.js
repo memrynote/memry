@@ -15,6 +15,7 @@ const stageDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-desktop-package-')
 const distDir = path.join(appRoot, 'dist')
 const defaultConfigPath = 'config/electron-builder.staged.yml'
 const nativeModules = ['better-sqlite3', 'classic-level', 'keytar']
+const generateIconsScript = path.join(appRoot, 'scripts', 'generate-icons.mjs')
 
 function removePath(targetPath) {
   const stat = fs.lstatSync(targetPath, { throwIfNoEntry: false })
@@ -109,6 +110,12 @@ function relativizeInternalSymlinks(rootPath) {
   }
 }
 
+function ensureBuildResources() {
+  run(process.execPath, [generateIconsScript], {
+    cwd: appRoot
+  })
+}
+
 function main() {
   const { args, configPath } = parseElectronBuilderArgs(process.argv.slice(2))
 
@@ -126,6 +133,7 @@ function main() {
     }
   })
 
+  ensureBuildResources()
   syncIntoStage('build')
   syncIntoStage('config')
   syncIntoStage('out')
