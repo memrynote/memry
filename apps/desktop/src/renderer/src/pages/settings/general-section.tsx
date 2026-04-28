@@ -219,7 +219,7 @@ export function GeneralSettings() {
             onValueChange={(value) => void handleLocaleChange(value as Locale)}
             disabled={isChangingLocale}
           >
-            <SelectTrigger className={COMPACT_SELECT}>
+            <SelectTrigger id="language-select" className={COMPACT_SELECT}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
