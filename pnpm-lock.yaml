@@ -61,6 +61,9 @@ importers:
       '@huggingface/transformers':
         specifier: ^3.8.1
         version: 3.8.1
+      '@memry/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@tiptap/extension-link':
         specifier: ^3.14.0
         version: 3.19.0(@tiptap/core@3.19.0(@tiptap/pm@3.19.0))(@tiptap/pm@3.19.0)
