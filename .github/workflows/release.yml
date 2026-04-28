@@ -128,7 +128,7 @@ jobs:
         env:
           CSC_LINK: ${{ matrix.platform == 'mac' && secrets.MACOS_CERTIFICATE_P12 || '' }}
           CSC_KEY_PASSWORD: ${{ matrix.platform == 'mac' && secrets.MACOS_CERTIFICATE_PASSWORD || '' }}
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.platform == 'mac' && 'false' || '' }}
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.platform == 'mac' && 'true' || '' }}
           APPLE_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_ID || '' }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'mac' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
           APPLE_TEAM_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_TEAM_ID || '' }}
