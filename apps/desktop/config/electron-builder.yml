@@ -31,7 +31,7 @@ nsis:
   createDesktopShortcut: always
 mac:
   artifactName: memry-${version}-${arch}.${ext}
-  entitlementsInherit: build/entitlements.mac.plist
+  entitlementsInherit: config/entitlements.mac.plist
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
