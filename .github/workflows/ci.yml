@@ -98,6 +98,8 @@ jobs:
     name: Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      SKIP_ELECTRON_REBUILD: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
