@@ -12,7 +12,6 @@ Be respectful and constructive. We're building something together.
 
 - [Node.js](https://nodejs.org/) (v24.x; use `.nvmrc`)
 - [pnpm](https://pnpm.io/) (v10.30+)
-- [Rust](https://www.rust-lang.org/tools/install) (1.95+ for the Tauri app)
 - Git
 
 ### Setup
@@ -30,8 +29,7 @@ Memry is a pnpm monorepo:
 
 | Package | Description |
 | --- | --- |
-| `apps/desktop` | Electron + React desktop app (frozen during the Tauri migration) |
-| `apps/desktop-tauri` | Tauri + React migration desktop app |
+| `apps/desktop` | Electron + React desktop app |
 | `apps/sync-server` | Cloudflare Workers sync server |
 | `packages/contracts` | Shared TypeScript contracts |
 | `packages/db-schema` | Drizzle ORM schema definitions |
@@ -69,8 +67,6 @@ pnpm test              # run all tests
 pnpm test:desktop      # desktop tests only
 pnpm test:sync-server  # sync server tests only
 pnpm test:e2e          # end-to-end tests
-pnpm --filter @memry/desktop-tauri cargo:test
-pnpm --filter @memry/desktop-tauri bindings:check
 ```
 
 - Write tests first, then implementation

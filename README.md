@@ -194,7 +194,7 @@ Want to shape what comes next? [Join the conversation →](#community)
 
 memry is built with:
 
-- **Electron** legacy desktop app plus the in-progress **Tauri** + **React** + **TypeScript** migration app
+- **Electron** + **React** + **TypeScript** desktop app
 - **Yjs** CRDTs for conflict-free real-time collaboration
 - **libsodium/RustCrypto** for cryptographic operations
 - **SQLite** (via better-sqlite3 + Drizzle ORM) for local storage
@@ -208,11 +208,8 @@ cd memry
 nvm use
 pnpm install
 
-# Run the legacy Electron desktop app
+# Run the desktop app
 pnpm dev:desktop
-
-# Run the Tauri migration app
-pnpm --filter @memry/desktop-tauri dev
 
 # Run the sync server
 pnpm dev:sync-server
