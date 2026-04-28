@@ -50,6 +50,7 @@
     "note": "{count, plural, one {# note} other {# notes}}",
     "folder": "{count, plural, one {# folder} other {# folders}}",
     "task": "{count, plural, one {# task} other {# tasks}}",
-    "project": "{count, plural, one {# project} other {# projects}}"
+    "project": "{count, plural, one {# project} other {# projects}}",
+    "itemDelete": "{count, plural, one {Delete # item} other {Delete # items}}"
   }
 }
