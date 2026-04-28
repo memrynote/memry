@@ -4,12 +4,18 @@ on:
   release:
     types:
       - published
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing release tag to build and attach assets for, e.g. v2026.4.28.
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 concurrency:
-  group: desktop-release-assets-${{ github.event.release.tag_name }}
+  group: desktop-release-assets-${{ github.event.release.tag_name || inputs.release_tag }}
   cancel-in-progress: false
 
 env:
@@ -21,6 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       app_version: ${{ steps.metadata.outputs.app_version }}
+      checkout_ref: ${{ steps.refs.outputs.checkout_ref }}
       release_date: ${{ steps.metadata.outputs.release_date }}
       release_name: ${{ steps.metadata.outputs.release_name }}
       release_tag: ${{ steps.metadata.outputs.release_tag }}
@@ -28,7 +35,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.release.tag_name }}
+
+      - name: Resolve checkout ref
+        id: refs
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "checkout_ref=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "checkout_ref=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -40,7 +57,7 @@ jobs:
         run: |
           node scripts/desktop-release-metadata.mjs \
             --from-tag \
-            --tag "${{ github.event.release.tag_name }}" \
+            --tag "${{ github.event.release.tag_name || inputs.release_tag }}" \
             --github-output "$GITHUB_OUTPUT"
 
   build:
@@ -80,7 +97,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.prepare.outputs.release_tag }}
+          ref: ${{ needs.prepare.outputs.checkout_ref }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -102,7 +119,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build desktop bundle
-        run: pnpm --filter @memry/desktop build
+        run: |
+          pnpm --filter @memry/desktop repair:links
+          pnpm --filter @memry/desktop exec electron-vite build
 
       - name: Package desktop artifacts
         run: ${{ matrix.build_command }}
