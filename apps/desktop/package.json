@@ -94,6 +94,7 @@
     "@electron-toolkit/utils": "^4.0.0",
     "@emoji-mart/data": "^1.2.1",
     "@huggingface/transformers": "^3.8.1",
+    "@memry/i18n": "workspace:*",
     "@tiptap/extension-link": "^3.14.0",
     "@tiptap/react": "^3.14.0",
     "ai": "^6.0.116",
