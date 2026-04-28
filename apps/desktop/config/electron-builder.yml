@@ -46,6 +46,8 @@ linux:
   category: Utility
 appImage:
   artifactName: memry-${version}.${ext}
+deb:
+  artifactName: memry-${version}-${arch}.${ext}
 npmRebuild: false
 publish:
   provider: github
