@@ -16,7 +16,7 @@ const distDir = path.join(appRoot, 'dist')
 const defaultConfigPath = 'config/electron-builder.staged.yml'
 const nativeModules = ['better-sqlite3', 'classic-level', 'keytar']
 const generateIconsScript = path.join(appRoot, 'scripts', 'generate-icons.mjs')
-const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
+const osxSignWalkPatchScript = path.join(appRoot, 'scripts', 'patch-osx-sign-walk.js')
 
 function removePath(targetPath) {
   const stat = fs.lstatSync(targetPath, { throwIfNoEntry: false })
@@ -34,6 +34,15 @@ function removePath(targetPath) {
 
 function run(command, args, options = {}) {
   execFileSync(command, args, { stdio: 'inherit', ...options })
+}
+
+function runPnpm(args, options = {}) {
+  if (process.platform !== 'win32') {
+    run('pnpm', args, options)
+    return
+  }
+
+  run('cmd.exe', ['/d', '/c', 'pnpm.cmd', ...args], options)
 }
 
 function parseElectronBuilderArgs(argv) {
@@ -123,6 +132,10 @@ function runElectronBuilder(args, options = {}) {
     return
   }
 
+  const nodeOptions = [options.env?.NODE_OPTIONS, `--require=${osxSignWalkPatchScript}`]
+    .filter(Boolean)
+    .join(' ')
+
   run(
     '/bin/bash',
     [
@@ -133,7 +146,13 @@ function runElectronBuilder(args, options = {}) {
       electronBuilderCli,
       ...args
     ],
-    options
+    {
+      ...options,
+      env: {
+        ...options.env,
+        NODE_OPTIONS: nodeOptions
+      }
+    }
   )
 }
 
@@ -146,7 +165,7 @@ function main() {
     )
   }
 
-  run(pnpmCommand, ['--filter', '@memry/desktop', 'deploy', '--legacy', '--prod', stageDir], {
+  runPnpm(['--filter', '@memry/desktop', 'deploy', '--legacy', '--prod', stageDir], {
     cwd: repoRoot,
     env: {
       ...process.env,
@@ -162,8 +181,7 @@ function main() {
   syncIntoStage('.env.staging', { optional: true })
   removePath(path.join(stageDir, 'node_modules', '@memry', 'desktop'))
   removePath(path.join(stageDir, 'electron-builder.env'))
-  run(
-    pnpmCommand,
+  runPnpm(
     [
       '--dir',
       appRoot,
