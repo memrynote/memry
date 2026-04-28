@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react'
 import { AlertTriangle } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
 
 import {
   AlertDialog,
@@ -25,6 +26,8 @@ const DeleteConfirmationDialog = ({
   onConfirm,
   onCancel
 }: DeleteConfirmationDialogProps): React.JSX.Element => {
+  const { t } = useT('common')
+
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
@@ -62,9 +65,9 @@ const DeleteConfirmationDialog = ({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={onCancel}>{t('button.cancel')}</AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm} className="bg-red-500 text-white hover:bg-red-600">
-            Delete {itemCount} item{itemCount !== 1 ? 's' : ''}
+            {t('count.itemDelete', { count: itemCount })}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
