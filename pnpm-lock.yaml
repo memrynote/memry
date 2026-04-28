@@ -158,6 +158,9 @@ importers:
       react-dom:
         specifier: ^19.2.3
         version: 19.2.4(react@19.2.4)
+      safe-buffer:
+        specifier: ^5.2.1
+        version: 5.2.1
       sharp:
         specifier: 0.34.5
         version: 0.34.5

@@ -3,17 +3,18 @@ name: Desktop Release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: Calendar version in YYYY.M.D format. Leave blank to use the UTC date.
+      release_date:
+        description: Release date in YYYY.M.D format. Leave blank to use the UTC date.
         required: false
         type: string
       release_notes:
         description: Markdown release notes prepended to GitHub-generated release notes.
-        required: true
+        required: false
         type: string
 
 permissions:
   contents: write
+  pull-requests: read
 
 concurrency:
   group: release-${{ github.workflow }}-${{ github.ref }}
@@ -27,11 +28,15 @@ jobs:
     name: Prepare release metadata
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.version.outputs.version }}
-      release_name: ${{ steps.version.outputs.release_name }}
+      app_version: ${{ steps.metadata.outputs.app_version }}
+      release_date: ${{ steps.metadata.outputs.release_date }}
+      release_name: ${{ steps.metadata.outputs.release_name }}
+      release_tag: ${{ steps.metadata.outputs.release_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Require main branch
         if: github.ref_name != 'main'
@@ -44,17 +49,28 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      - name: Resolve version
-        id: version
+      - name: Resolve release metadata
+        id: metadata
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${{ inputs.version }}"
-          if [ -z "$VERSION" ]; then
-            VERSION="$(date -u '+%Y.%-m.%-d')"
+          RELEASE_DATE="${{ inputs.release_date }}"
+          if [ -z "$RELEASE_DATE" ]; then
+            RELEASE_DATE="$(date -u '+%Y.%-m.%-d')"
           fi
-          node scripts/set-desktop-version.mjs --validate-only "$VERSION"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "release_name=Memry $VERSION" >> "$GITHUB_OUTPUT"
+
+          git fetch --tags --force
+          {
+            git tag -l 'v*'
+            gh release list --limit 200 --json tagName --jq '.[].tagName'
+          } | sort -u > "$RUNNER_TEMP/desktop-release-tags.txt"
+
+          node scripts/desktop-release-metadata.mjs \
+            --resolve \
+            --date "$RELEASE_DATE" \
+            --existing-tags-file "$RUNNER_TEMP/desktop-release-tags.txt" \
+            --github-output "$GITHUB_OUTPUT"
 
   build:
     name: Build ${{ matrix.label }}
@@ -70,25 +86,25 @@ jobs:
             arch: x64
             os: macos-15-intel
             artifact_name: release-mac-x64
-            build_command: pnpm --filter @memry/desktop exec electron-builder --config config/electron-builder.yml --mac --x64 --publish never
+            build_command: node apps/desktop/scripts/build-packaged-app.js --mac --x64 --publish never
           - label: mac arm64
             platform: mac
             arch: arm64
             os: macos-15
             artifact_name: release-mac-arm64
-            build_command: pnpm --filter @memry/desktop exec electron-builder --config config/electron-builder.yml --mac --arm64 --publish never
+            build_command: node apps/desktop/scripts/build-packaged-app.js --mac --arm64 --publish never
           - label: win x64
             platform: win
             arch: x64
             os: windows-latest
             artifact_name: release-win
-            build_command: pnpm --filter @memry/desktop exec electron-builder --config config/electron-builder.yml --win --x64 --publish never
+            build_command: node apps/desktop/scripts/build-packaged-app.js --win --x64 --publish never
           - label: linux x64
             platform: linux
             arch: x64
             os: ubuntu-latest
             artifact_name: release-linux
-            build_command: pnpm --filter @memry/desktop exec electron-builder --config config/electron-builder.yml --linux AppImage deb --x64 --publish never
+            build_command: node apps/desktop/scripts/build-packaged-app.js --linux AppImage deb --x64 --publish never
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -102,7 +118,7 @@ jobs:
           cache: pnpm
 
       - name: Set release version
-        run: node scripts/set-desktop-version.mjs "${{ needs.prepare.outputs.version }}"
+        run: node scripts/set-desktop-version.mjs "${{ needs.prepare.outputs.app_version }}"
 
       - name: Install Linux system dependencies
         if: matrix.platform == 'linux'
@@ -124,6 +140,10 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'mac' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
           APPLE_TEAM_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_TEAM_ID || '' }}
 
+      - name: Check packaged runtime
+        if: matrix.platform == 'mac'
+        run: pnpm --filter @memry/desktop check:packaged-runtime
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -132,7 +152,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    name: Publish GitHub Release
+    name: Create draft GitHub Release
     runs-on: ubuntu-latest
     needs:
       - prepare
@@ -183,13 +203,49 @@ jobs:
           File.write(root.join('latest-mac.yml'), YAML.dump(base))
           RUBY
 
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+      - name: Collect release assets
+        shell: bash
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f \
+            \( \
+              -name '*.AppImage' \
+              -o -name '*.blockmap' \
+              -o -name '*.deb' \
+              -o -name '*.dmg' \
+              -o -name '*.exe' \
+              -o -name '*.yml' \
+              -o -name '*.zip' \
+            \) \
+            -print0 | while IFS= read -r -d '' file; do
+              cp "$file" "release-assets/$(basename "$file")"
+            done
+
+          asset_count="$(find release-assets -maxdepth 1 -type f | wc -l | tr -d ' ')"
+          if [ "$asset_count" -eq 0 ]; then
+            echo "No release assets collected"
+            exit 1
+          fi
+
+          find release-assets -maxdepth 1 -type f -print | sort
+
+      - name: Draft GitHub release
+        id: release_drafter
+        uses: release-drafter/release-drafter@v7
         with:
-          tag_name: ${{ needs.prepare.outputs.version }}
+          tag: ${{ needs.prepare.outputs.release_tag }}
           name: ${{ needs.prepare.outputs.release_name }}
-          target_commitish: ${{ github.sha }}
-          files: artifacts/**/*
-          body: ${{ inputs.release_notes }}
-          generate_release_notes: true
-          fail_on_unmatched_files: false
+          version: ${{ needs.prepare.outputs.app_version }}
+          publish: false
+          latest: false
+          commitish: ${{ github.sha }}
+          header: ${{ inputs.release_notes }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Upload release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ steps.release_drafter.outputs.tag_name }}" release-assets/* --clobber
