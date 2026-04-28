@@ -16,48 +16,44 @@ async function getFilePathIfBinary(filePath) {
 }
 
 async function walkAsync(dirPath) {
-  const signedPaths = []
-
   async function walk(currentDir) {
     const entries = await fs.readdir(currentDir)
 
-    for (const entry of entries) {
+    return Promise.all(entries.map(async (entry) => {
       const filePath = path.resolve(currentDir, entry)
       const stat = await fs.lstat(filePath)
 
       if (stat.isSymbolicLink()) {
-        continue
+        return null
       }
 
       if (stat.isFile()) {
         if (path.extname(filePath) === '.cstemp') {
           await fs.rm(filePath, { force: true })
-          continue
+          return null
         }
 
-        const binaryPath = await getFilePathIfBinary(filePath)
-        if (binaryPath) {
-          signedPaths.push(binaryPath)
-        }
-
-        continue
+        return getFilePathIfBinary(filePath)
       }
 
       if (stat.isDirectory()) {
-        await walk(filePath)
+        const childPaths = await walk(filePath)
 
         switch (path.extname(filePath)) {
           case '.app':
           case '.framework':
-            signedPaths.push(filePath)
+            childPaths.push(filePath)
             break
         }
+
+        return childPaths
       }
-    }
+
+      return null
+    }))
   }
 
-  await walk(dirPath)
-  return signedPaths
+  return osxSignUtil.compactFlattenedList(await walk(dirPath))
 }
 
 osxSignUtil.walkAsync = walkAsync
