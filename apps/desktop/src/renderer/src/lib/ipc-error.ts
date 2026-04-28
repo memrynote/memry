@@ -1,3 +1,7 @@
+import { getI18n } from 'react-i18next'
+
+const I18N_KEY_PREFIX = 'errors:'
+
 const IPC_PREFIX_PATTERNS = [
   /^Error occurred in handler for ['"][^'"]+['"]:\s*(?:Error:\s*)?/i,
   /^Error invoking remote method ['"][^'"]+['"]:\s*(?:Error:\s*)?/i,
@@ -27,5 +31,12 @@ export function extractErrorMessage(error: unknown, fallback = 'Something went w
   if (!raw) return fallback
 
   const message = stripKnownPrefixes(raw)
-  return message || fallback
+  if (!message) return fallback
+
+  if (message.startsWith(I18N_KEY_PREFIX)) {
+    const translated = getI18n()?.t(message)
+    if (typeof translated === 'string' && translated !== message) return translated
+  }
+
+  return message
 }
