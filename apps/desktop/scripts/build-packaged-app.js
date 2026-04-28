@@ -11,7 +11,10 @@ const repoRoot = path.resolve(appRoot, '..', '..')
 const appRequire = createRequire(path.join(appRoot, 'package.json'))
 const electronBuilderCli = appRequire.resolve('electron-builder/cli.js')
 const electronVersion = appRequire('electron/package.json').version
-const stageDir = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-desktop-package-'))
+const stageRoot =
+  process.platform === 'win32' ? path.join(repoRoot, '.memry-desktop-package.tmp') : os.tmpdir()
+fs.mkdirSync(stageRoot, { recursive: true })
+const stageDir = fs.mkdtempSync(path.join(stageRoot, 'memry-desktop-package-'))
 const distDir = path.join(appRoot, 'dist')
 const defaultConfigPath = 'config/electron-builder.staged.yml'
 const nativeModules = ['better-sqlite3', 'classic-level', 'keytar']
@@ -34,6 +37,14 @@ function removePath(targetPath) {
 
 function run(command, args, options = {}) {
   execFileSync(command, args, { stdio: 'inherit', ...options })
+}
+
+function getPnpmDeployTarget() {
+  if (process.platform === 'win32') {
+    return path.relative(repoRoot, stageDir)
+  }
+
+  return stageDir
 }
 
 function runPnpm(args, options = {}) {
@@ -165,7 +176,7 @@ function main() {
     )
   }
 
-  runPnpm(['--filter', '@memry/desktop', 'deploy', '--legacy', '--prod', stageDir], {
+  runPnpm(['--filter', '@memry/desktop', 'deploy', '--legacy', '--prod', getPnpmDeployTarget()], {
     cwd: repoRoot,
     env: {
       ...process.env,
@@ -225,5 +236,12 @@ try {
     console.error(`Kept staged package dir: ${stageDir}`)
   } else {
     removePath(stageDir)
+    if (process.platform === 'win32') {
+      try {
+        fs.rmdirSync(stageRoot)
+      } catch {
+        // Ignore leftover staged sibling directories.
+      }
+    }
   }
 }
