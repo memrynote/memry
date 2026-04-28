@@ -19,9 +19,12 @@ import { existsSync, readdirSync, statSync, createReadStream } from 'node:fs'
 import { lookup as mimeLookup } from 'mime-types'
 import { config } from 'dotenv'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import { LocaleSchema, FALLBACK_LOCALE, type Locale } from '@memry/contracts/locale-api'
+import { createMainI18n, type I18nInstance } from '@memry/i18n/main'
 import { registerAllHandlers } from './ipc'
 import { applyGlobalCaptureShortcut } from './ipc/settings-handlers'
 import { autoOpenLastVault, closeVault } from './vault'
+import { readPreferences } from './vault/vault-preferences'
 import { getCurrentVaultPath } from './store'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { stopVoiceModel } from './inbox/voice-model'
@@ -47,6 +50,7 @@ import { safeRead } from './vault/file-ops'
 import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import { initializeUpdater } from './updater'
+import { buildAppMenu } from './menu'
 
 if (process.type === 'browser') {
   log.initialize()
@@ -64,6 +68,28 @@ const configLog = createLogger('Config')
 const quickCaptureLog = createLogger('QuickCapture')
 const shutdownLog = createLogger('Shutdown')
 const deepLinkLog = createLogger('DeepLink')
+
+let mainI18n: I18nInstance
+
+async function bootI18n(): Promise<I18nInstance> {
+  let initialLocale: Locale = FALLBACK_LOCALE
+
+  try {
+    const vaultPath = getCurrentVaultPath()
+    if (vaultPath) {
+      const parsed = LocaleSchema.safeParse(readPreferences(vaultPath).language)
+      if (parsed.success) initialLocale = parsed.data
+    }
+  } catch {
+    // First launch or corrupt settings: fall back to English.
+  }
+
+  return createMainI18n({ locale: initialLocale })
+}
+
+function rebuildMenu(_locale: Locale): void {
+  Menu.setApplicationMenu(buildAppMenu(mainI18n))
+}
 
 registerTestHooks()
 
@@ -499,6 +525,10 @@ void app.whenReady().then(async () => {
     }
   })
 
+  mainI18n = await bootI18n()
+  Menu.setApplicationMenu(buildAppMenu(mainI18n))
+  registerAllHandlers({ i18n: mainI18n, rebuildMenu })
+
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
   // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
@@ -626,9 +656,6 @@ void app.whenReady().then(async () => {
       })
     }
   )
-
-  // Register all IPC handlers (vault, notes, tasks, search)
-  registerAllHandlers()
 
   // Initialize CRDT persistence early so offline-created notes survive app restarts.
   // Sync callbacks (queue, snapshot push) attach later when auth is ready.

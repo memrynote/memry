@@ -14,6 +14,7 @@ const workspaceAliases = {
   '@memry/domain-inbox': resolve(workspaceRoot, 'packages/domain-inbox/src'),
   '@memry/domain-notes': resolve(workspaceRoot, 'packages/domain-notes/src'),
   '@memry/domain-tasks': resolve(workspaceRoot, 'packages/domain-tasks/src'),
+  '@memry/i18n': resolve(workspaceRoot, 'packages/i18n/src'),
   '@memry/rpc': resolve(workspaceRoot, 'packages/rpc/src'),
   '@memry/shared': resolve(workspaceRoot, 'packages/shared/src'),
   '@memry/storage-data': resolve(workspaceRoot, 'packages/storage-data/src'),
