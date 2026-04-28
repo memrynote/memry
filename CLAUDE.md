@@ -62,6 +62,7 @@ Prettier: single quotes, no semicolons, 100 char width, no trailing commas.
 - **Logging**: Always `createLogger('Scope')` from `electron-log`, never raw `console.*`
 - **User-facing errors**: Always `extractErrorMessage(err, fallback)` from `@/lib/ipc-error`
 - **IPC boundary**: All renderer↔main communication goes through `packages/contracts`. Run `pnpm ipc:check` after editing contract types.
+- **Tailwind logical properties (RTL safety)**: New code uses logical classes that flip automatically in RTL. Reject `ml-*` / `mr-*` (use `ms-*` / `me-*`), `pl-*` / `pr-*` (use `ps-*` / `pe-*`), `left-*` / `right-*` (use `start-*` / `end-*`), `text-left` / `text-right` (use `text-start` / `text-end`), `border-l` / `border-r` (use `border-s` / `border-e`), `rounded-l-*` / `rounded-r-*` (use `rounded-s-*` / `rounded-e-*`). Pre-existing files using physical classes are exempt (codemod is a future enhancement).
 
 ## Architecture
 
