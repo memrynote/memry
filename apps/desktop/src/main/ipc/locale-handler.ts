@@ -6,6 +6,8 @@ import type { I18nInstance } from '@memry/i18n/main'
 import { getDatabase } from '../database'
 import { createLogger } from '../lib/logger'
 import { getSetting, setSetting } from '../settings/settings-store'
+import { getCurrentVaultPath } from '../store'
+import { writePreferences } from '../vault/vault-preferences'
 
 const logger = createLogger('Locale')
 const GENERAL_SETTINGS_KEY = 'general'
@@ -33,6 +35,15 @@ function readGeneralSettings(): GeneralSettings {
 function persistLocale(locale: Locale): void {
   const settings = readGeneralSettings()
   setSetting(getDatabase(), GENERAL_SETTINGS_KEY, JSON.stringify({ ...settings, language: locale }))
+
+  const vaultPath = getCurrentVaultPath()
+  if (!vaultPath) return
+
+  try {
+    writePreferences(vaultPath, { language: locale })
+  } catch (err) {
+    logger.warn('Failed to write locale to vault preferences', { locale, error: err })
+  }
 }
 
 export function registerLocaleHandlers(i18n: I18nInstance, rebuildMenu: RebuildMenuFn): void {
