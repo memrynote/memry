@@ -4,6 +4,7 @@ import { describe, it } from 'node:test'
 import {
   parseReleaseTag,
   resolveReleaseMetadata,
+  resolveReleaseMetadataFromTag,
   validateAppVersion,
   validateReleaseDate
 } from './desktop-release-metadata.mjs'
@@ -44,6 +45,16 @@ describe('desktop release metadata', () => {
     assert.equal(metadata.releaseTag, 'v2026.4.27-003')
     assert.equal(metadata.appVersion, '2026.427.3')
     assert.equal(metadata.releaseIndex, 3)
+  })
+
+  it('derives app metadata from a published release tag', () => {
+    assert.deepEqual(resolveReleaseMetadataFromTag('v2026.4.27-002'), {
+      appVersion: '2026.427.2',
+      releaseDate: '2026.4.27',
+      releaseIndex: 2,
+      releaseName: 'Memry v2026.4.27-002',
+      releaseTag: 'v2026.4.27-002'
+    })
   })
 
   it('parses supported release tag formats', () => {
