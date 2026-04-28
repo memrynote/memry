@@ -43,4 +43,7 @@ export async function createRendererI18n(
   return instance
 }
 
+export { I18nProvider } from './provider'
+export { useT } from './use-t'
+export { useDirection } from './use-direction'
 export type { I18nInstance }
