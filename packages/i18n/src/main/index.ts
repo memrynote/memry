@@ -1,5 +1,5 @@
 import i18next, { type i18n as I18nInstance } from 'i18next'
-import ICU from 'i18next-icu'
+import { IcuFormatter } from '../shared/icu-formatter'
 import {
   type Locale,
   FALLBACK_LOCALE,
@@ -23,7 +23,7 @@ export async function createMainI18n(
   options: CreateMainI18nOptions
 ): Promise<I18nInstance> {
   const instance = i18next.createInstance()
-  await instance.use(ICU).init({
+  await instance.use(IcuFormatter).init({
     lng: options.locale,
     fallbackLng: FALLBACK_LOCALE,
     ns: I18N_NAMESPACES,
