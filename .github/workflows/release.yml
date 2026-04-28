@@ -64,7 +64,7 @@ jobs:
     name: Build ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
     needs: prepare
-    timeout-minutes: 75
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
@@ -132,6 +132,7 @@ jobs:
           APPLE_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_ID || '' }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'mac' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
           APPLE_TEAM_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_TEAM_ID || '' }}
+          DEBUG: ${{ matrix.platform == 'mac' && 'electron-builder,electron-builder:*,electron-osx-sign*,electron-notarize*' || '' }}
 
       - name: Check packaged runtime
         if: matrix.platform == 'mac'
