@@ -4,6 +4,7 @@ import {
   EDITOR_SETTINGS_DEFAULTS
 } from '@memry/contracts/settings-schemas'
 import type { GeneralSettings, EditorSettings } from '@memry/contracts/settings-schemas'
+import { LocaleSchema } from '@memry/contracts/locale-api'
 import {
   readPreferences,
   writePreferences,
@@ -88,12 +89,13 @@ export function migrateSettingsToConfig(db: DataDb, vaultPath: string): void {
 }
 
 export function writeCacheFromPreferences(db: DataDb, prefs: VaultPreferences): void {
+  const language = LocaleSchema.safeParse(prefs.language)
   const portableFields: Partial<GeneralSettings> = {
     theme: prefs.theme,
     fontSize: prefs.fontSize,
     fontFamily: prefs.fontFamily,
     accentColor: prefs.accentColor,
-    language: prefs.language,
+    language: language.success ? language.data : GENERAL_SETTINGS_DEFAULTS.language,
     createInSelectedFolder: prefs.createInSelectedFolder
   }
 
