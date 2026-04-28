@@ -50,6 +50,7 @@
     "note": "{count, plural, one {# not} other {# not}}",
     "folder": "{count, plural, one {# klasör} other {# klasör}}",
     "task": "{count, plural, one {# görev} other {# görev}}",
-    "project": "{count, plural, one {# proje} other {# proje}}"
+    "project": "{count, plural, one {# proje} other {# proje}}",
+    "itemDelete": "{count, plural, one {# öğeyi sil} other {# öğeyi sil}}"
   }
 }
