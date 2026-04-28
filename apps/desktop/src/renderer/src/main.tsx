@@ -19,6 +19,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
+import { createRendererI18n, I18nProvider, applyLocaleToDocument } from '@memry/i18n/renderer'
 import App from './App'
 import QuickCapture from './components/quick-capture'
 import { AuthProvider } from './contexts/auth-context'
@@ -66,31 +67,47 @@ const isQuickCaptureWindow =
   window.location.hash === '#/quick-capture' || window.location.hash === '#quick-capture'
 const startupTheme = getStartupTheme()
 
-// Render appropriate component based on route
-const RootComponent = isQuickCaptureWindow ? (
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme={startupTheme}
-        enableSystem
-        themes={['light', 'dark', 'white', 'system']}
-        storageKey={THEME_STORAGE_KEY}
-      >
-        <QuickCapture />
-      </ThemeProvider>
-    </QueryClientProvider>
-  </StrictMode>
-) : (
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <SyncProvider>
-          <App />
-        </SyncProvider>
-      </AuthProvider>
-    </QueryClientProvider>
-  </StrictMode>
-)
+async function boot(): Promise<void> {
+  const initialLocale = await window.api.locale.get()
+  const i18n = await createRendererI18n({ locale: initialLocale })
+  applyLocaleToDocument(initialLocale)
 
-createRoot(document.getElementById('root')!).render(RootComponent)
+  window.api.onLocaleChanged(async (locale) => {
+    await i18n.changeLanguage(locale)
+    applyLocaleToDocument(locale)
+  })
+
+  const rootComponent = isQuickCaptureWindow ? (
+    <StrictMode>
+      <I18nProvider i18n={i18n}>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme={startupTheme}
+            enableSystem
+            themes={['light', 'dark', 'white', 'system']}
+            storageKey={THEME_STORAGE_KEY}
+          >
+            <QuickCapture />
+          </ThemeProvider>
+        </QueryClientProvider>
+      </I18nProvider>
+    </StrictMode>
+  ) : (
+    <StrictMode>
+      <I18nProvider i18n={i18n}>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <SyncProvider>
+              <App />
+            </SyncProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </I18nProvider>
+    </StrictMode>
+  )
+
+  createRoot(document.getElementById('root')!).render(rootComponent)
+}
+
+void boot()
