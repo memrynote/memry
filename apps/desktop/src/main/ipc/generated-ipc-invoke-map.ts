@@ -117,6 +117,9 @@ export interface MainIpcInvokeHandlers {
   "journal:getStreak": (...args: []) => Awaited<Promise<{ currentStreak: number; longestStreak: number; lastEntryDate: string | null; }>>
   "journal:getYearStats": (...args: [{ year: number; }]) => Awaited<Promise<{ year: number; month: number; entryCount: number; totalWordCount: number; totalCharacterCount: number; averageLevel: number; }[]>>
   "journal:updateEntry": (...args: [{ date: string; content?: string | undefined; tags?: string[] | undefined; properties?: Record<string, unknown> | undefined; }]) => Awaited<Promise<{ id: string; date: string; content: string; wordCount: number; characterCount: number; tags: string[]; createdAt: string; modifiedAt: string; properties?: Record<string, unknown> | undefined; }>>
+  "locale:get": (...args: []) => Awaited<"en" | "tr" | "ar">
+  "locale:list": (...args: []) => Awaited<("en" | "tr" | "ar")[]>
+  "locale:set": (...args: [unknown]) => Awaited<Promise<void>>
   "notes:add-property-option": (...args: [{ propertyName: string; option: { value: string; color: string; }; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:add-status-option": (...args: [{ propertyName: string; categoryKey: "todo" | "in_progress" | "done"; option: { value: string; color: string; }; }]) => Awaited<Promise<{ success: boolean; }>>
   "notes:create": (...args: [{ title: string; content?: string | undefined; folder?: string | undefined; tags?: string[] | undefined; template?: string | undefined; }]) => Awaited<Promise<{ success: true; note: import("../vault/notes-crud").Note; }> | { success: false; error: string }>
