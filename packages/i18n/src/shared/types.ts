@@ -9,6 +9,8 @@
  *   t('triage.does-not-exist')  // ❌ TS error
  */
 
+import 'i18next'
+
 import type common from '../locales/en/common.json'
 import type inbox from '../locales/en/inbox.json'
 import type notes from '../locales/en/notes.json'

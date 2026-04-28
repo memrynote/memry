@@ -1,0 +1,9 @@
+{
+  "general": {
+    "language": {
+      "label": "Dil",
+      "helper": "Uygulamanın çoğu hemen güncellenir. Bazı sistem düzeyindeki metinler — gösterilmiş bildirimler, dock etiketi, pencere başlığı — bir sonraki başlatmadan sonra yenilenir.",
+      "changed": "Dil {{nativeName}} olarak değiştirildi"
+    }
+  }
+}
