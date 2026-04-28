@@ -2,6 +2,53 @@
   "button": {
     "save": "حفظ",
     "cancel": "إلغاء",
+    "close": "إغلاق",
+    "ok": "موافق",
+    "yes": "نعم",
+    "no": "لا",
+    "delete": "حذف",
+    "confirm": "تأكيد",
+    "apply": "تطبيق",
+    "done": "تم",
+    "discard": "تجاهل",
+    "edit": "تعديل",
+    "add": "إضافة",
+    "remove": "إزالة",
+    "retry": "إعادة المحاولة",
+    "submit": "إرسال",
+    "back": "رجوع",
+    "next": "التالي",
+    "continue": "متابعة",
+    "reset": "إعادة تعيين",
+    "copy": "نسخ",
+    "paste": "لصق",
+    "create": "إنشاء",
+    "open": "فتح"
+  },
+  "state": {
+    "loading": "جارٍ التحميل…",
+    "saving": "جارٍ الحفظ…",
+    "deleting": "جارٍ الحذف…",
+    "searching": "جارٍ البحث…",
+    "error": "خطأ",
+    "success": "نجح"
+  },
+  "empty": {
+    "noResults": "لا توجد نتائج",
+    "noItems": "لا توجد عناصر",
+    "noMatch": "لا توجد مطابقات"
+  },
+  "action": {
+    "search": "بحث",
+    "edit": "تعديل",
+    "delete": "حذف",
     "close": "إغلاق"
+  },
+  "count": {
+    "item": "{count, plural, zero {لا توجد عناصر} one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصراً} other {# عنصر}}",
+    "note": "{count, plural, zero {لا توجد ملاحظات} one {ملاحظة واحدة} two {ملاحظتان} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}",
+    "folder": "{count, plural, zero {لا توجد مجلدات} one {مجلد واحد} two {مجلدان} few {# مجلدات} many {# مجلداً} other {# مجلد}}",
+    "task": "{count, plural, zero {لا توجد مهام} one {مهمة واحدة} two {مهمتان} few {# مهام} many {# مهمة} other {# مهمة}}",
+    "project": "{count, plural, zero {لا توجد مشاريع} one {مشروع واحد} two {مشروعان} few {# مشاريع} many {# مشروعاً} other {# مشروع}}"
   }
 }

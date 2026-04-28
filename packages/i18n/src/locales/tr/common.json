@@ -2,6 +2,53 @@
   "button": {
     "save": "Kaydet",
     "cancel": "İptal",
+    "close": "Kapat",
+    "ok": "Tamam",
+    "yes": "Evet",
+    "no": "Hayır",
+    "delete": "Sil",
+    "confirm": "Onayla",
+    "apply": "Uygula",
+    "done": "Tamam",
+    "discard": "Vazgeç",
+    "edit": "Düzenle",
+    "add": "Ekle",
+    "remove": "Kaldır",
+    "retry": "Yeniden dene",
+    "submit": "Gönder",
+    "back": "Geri",
+    "next": "İleri",
+    "continue": "Devam et",
+    "reset": "Sıfırla",
+    "copy": "Kopyala",
+    "paste": "Yapıştır",
+    "create": "Oluştur",
+    "open": "Aç"
+  },
+  "state": {
+    "loading": "Yükleniyor…",
+    "saving": "Kaydediliyor…",
+    "deleting": "Siliniyor…",
+    "searching": "Aranıyor…",
+    "error": "Hata",
+    "success": "Başarılı"
+  },
+  "empty": {
+    "noResults": "Sonuç bulunamadı",
+    "noItems": "Öğe yok",
+    "noMatch": "Eşleşme bulunamadı"
+  },
+  "action": {
+    "search": "Ara",
+    "edit": "Düzenle",
+    "delete": "Sil",
     "close": "Kapat"
+  },
+  "count": {
+    "item": "{count, plural, one {# öğe} other {# öğe}}",
+    "note": "{count, plural, one {# not} other {# not}}",
+    "folder": "{count, plural, one {# klasör} other {# klasör}}",
+    "task": "{count, plural, one {# görev} other {# görev}}",
+    "project": "{count, plural, one {# proje} other {# proje}}"
   }
 }

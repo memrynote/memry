@@ -2,6 +2,53 @@
   "button": {
     "save": "Save",
     "cancel": "Cancel",
+    "close": "Close",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "apply": "Apply",
+    "done": "Done",
+    "discard": "Discard",
+    "edit": "Edit",
+    "add": "Add",
+    "remove": "Remove",
+    "retry": "Retry",
+    "submit": "Submit",
+    "back": "Back",
+    "next": "Next",
+    "continue": "Continue",
+    "reset": "Reset",
+    "copy": "Copy",
+    "paste": "Paste",
+    "create": "Create",
+    "open": "Open"
+  },
+  "state": {
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "deleting": "Deleting…",
+    "searching": "Searching…",
+    "error": "Error",
+    "success": "Success"
+  },
+  "empty": {
+    "noResults": "No results",
+    "noItems": "No items",
+    "noMatch": "No matches"
+  },
+  "action": {
+    "search": "Search",
+    "edit": "Edit",
+    "delete": "Delete",
     "close": "Close"
+  },
+  "count": {
+    "item": "{count, plural, one {# item} other {# items}}",
+    "note": "{count, plural, one {# note} other {# notes}}",
+    "folder": "{count, plural, one {# folder} other {# folders}}",
+    "task": "{count, plural, one {# task} other {# tasks}}",
+    "project": "{count, plural, one {# project} other {# projects}}"
   }
 }
