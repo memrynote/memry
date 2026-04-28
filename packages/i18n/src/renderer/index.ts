@@ -46,4 +46,5 @@ export async function createRendererI18n(
 export { I18nProvider } from './provider'
 export { useT } from './use-t'
 export { useDirection } from './use-direction'
+export { applyLocaleToDocument } from './apply-document-attrs'
 export type { I18nInstance }
