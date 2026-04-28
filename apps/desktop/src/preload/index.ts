@@ -1,5 +1,7 @@
 import { contextBridge } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import { LocaleChannels } from '@memry/contracts/ipc-channels'
+import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
 import { createLogger } from './lib/logger'
 import { invoke, invokeSync, subscribe } from './lib/ipc'
 import { applyStartupTheme, getStartupThemeSync, THEME_STORAGE_KEY } from './lib/startup-theme'
@@ -36,6 +38,12 @@ const generatedRpcApi = createGeneratedRpcApi({
   subscribe
 })
 
+const localeApi: LocaleApi = {
+  get: () => invoke(LocaleChannels.Get),
+  set: (locale: Locale) => invoke(LocaleChannels.Set, locale),
+  list: () => invoke(LocaleChannels.List)
+}
+
 export const api = {
   ...windowApi,
   getFileDropPaths,
@@ -59,6 +67,7 @@ export const api = {
   tags: tagsApi,
   reminders: remindersApi,
   folderView: folderViewApi,
+  locale: localeApi,
 
   ...vaultEvents,
   ...contentEvents,
@@ -83,7 +92,10 @@ export const api = {
   onCrdtStateChanged,
   ...syncEvents,
   ...updaterEvents,
-  ...flushApi
+  ...flushApi,
+
+  onLocaleChanged: (callback: (locale: Locale) => void) =>
+    subscribe<Locale>(LocaleChannels.Changed, callback)
 }
 
 if (process.contextIsolated) {
