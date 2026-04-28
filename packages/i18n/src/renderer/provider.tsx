@@ -1,0 +1,12 @@
+import { I18nextProvider } from 'react-i18next'
+import type { ReactNode } from 'react'
+import type { I18nInstance } from './index'
+
+interface I18nProviderProps {
+  i18n: I18nInstance
+  children: ReactNode
+}
+
+export function I18nProvider({ i18n, children }: I18nProviderProps): React.JSX.Element {
+  return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
+}
