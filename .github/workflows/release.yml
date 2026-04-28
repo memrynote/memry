@@ -99,6 +99,69 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.checkout_ref }}
 
+      - name: Verify mac signing certificate
+        if: matrix.platform == 'mac'
+        env:
+          CSC_LINK: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          if [ -z "${CSC_LINK:-}" ]; then
+            echo "::error::MACOS_CERTIFICATE_P12 secret is empty"
+            exit 1
+          fi
+          if [ -z "${CSC_KEY_PASSWORD:-}" ]; then
+            echo "::error::MACOS_CERTIFICATE_PASSWORD secret is empty"
+            exit 1
+          fi
+
+          echo "CSC_LINK base64 length: ${#CSC_LINK}"
+
+          tmp_p12="$(mktemp).p12"
+          tmp_pem="$(mktemp).pem"
+          err_log="$(mktemp).log"
+
+          if ! printf '%s' "$CSC_LINK" | base64 -d > "$tmp_p12" 2>/dev/null; then
+            echo "::error::CSC_LINK is not valid base64. Re-encode the .p12 with: base64 -i Cert.p12 | pbcopy"
+            exit 1
+          fi
+
+          decoded_size="$(wc -c < "$tmp_p12" | tr -d ' ')"
+          echo "Decoded P12 size: ${decoded_size} bytes"
+          if [ "$decoded_size" -lt 100 ]; then
+            echo "::error::Decoded P12 is suspiciously small. Likely corrupt base64."
+            exit 1
+          fi
+
+          if ! openssl pkcs12 -in "$tmp_p12" -clcerts -nokeys -nodes \
+              -passin "env:CSC_KEY_PASSWORD" -out "$tmp_pem" 2>"$err_log"; then
+            if ! openssl pkcs12 -in "$tmp_p12" -clcerts -nokeys -nodes -legacy \
+                -passin "env:CSC_KEY_PASSWORD" -out "$tmp_pem" 2>>"$err_log"; then
+              echo "::error::Failed to decrypt P12 with CSC_KEY_PASSWORD. Likely wrong password or corrupt P12."
+              cat "$err_log"
+              exit 1
+            fi
+            echo "::notice::P12 decrypted via -legacy provider (RC2-40 PBE). Modern Keychain re-export recommended."
+          fi
+
+          subject="$(openssl x509 -in "$tmp_pem" -noout -subject)"
+          echo "Cert subject: $subject"
+          openssl x509 -in "$tmp_pem" -noout -dates
+          openssl x509 -in "$tmp_pem" -noout -issuer
+
+          if echo "$subject" | grep -q "Developer ID Application"; then
+            echo "::notice::Cert is Developer ID Application. Correct for DMG distribution + notarization."
+          else
+            echo "::error::Cert is NOT Developer ID Application."
+            echo "::error::Found: $subject"
+            echo "::error::Notarization will reject. Re-export 'Developer ID Application' from Keychain Access (right-click → Export → .p12)."
+            exit 1
+          fi
+
+          rm -f "$tmp_p12" "$tmp_pem" "$err_log"
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
 
