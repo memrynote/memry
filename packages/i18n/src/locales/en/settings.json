@@ -3,7 +3,7 @@
     "language": {
       "label": "Language",
       "helper": "Most of the app updates immediately. Some system-level text — already-shown notifications, dock label, window title bar — refreshes after the next launch.",
-      "changed": "Language changed to {{nativeName}}"
+      "changed": "Language changed to {nativeName}"
     }
   }
 }
