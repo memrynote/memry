@@ -16,6 +16,7 @@ const distDir = path.join(appRoot, 'dist')
 const defaultConfigPath = 'config/electron-builder.staged.yml'
 const nativeModules = ['better-sqlite3', 'classic-level', 'keytar']
 const generateIconsScript = path.join(appRoot, 'scripts', 'generate-icons.mjs')
+const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
 
 function removePath(targetPath) {
   const stat = fs.lstatSync(targetPath, { throwIfNoEntry: false })
@@ -116,6 +117,26 @@ function ensureBuildResources() {
   })
 }
 
+function runElectronBuilder(args, options = {}) {
+  if (process.platform !== 'darwin') {
+    run(process.execPath, [electronBuilderCli, ...args], options)
+    return
+  }
+
+  run(
+    '/bin/bash',
+    [
+      '-lc',
+      'ulimit -n 65536 2>/dev/null || ulimit -n 10240 2>/dev/null || true; exec "$@"',
+      'electron-builder',
+      process.execPath,
+      electronBuilderCli,
+      ...args
+    ],
+    options
+  )
+}
+
 function main() {
   const { args, configPath } = parseElectronBuilderArgs(process.argv.slice(2))
 
@@ -125,7 +146,7 @@ function main() {
     )
   }
 
-  run('pnpm', ['--filter', '@memry/desktop', 'deploy', '--legacy', '--prod', stageDir], {
+  run(pnpmCommand, ['--filter', '@memry/desktop', 'deploy', '--legacy', '--prod', stageDir], {
     cwd: repoRoot,
     env: {
       ...process.env,
@@ -142,7 +163,7 @@ function main() {
   removePath(path.join(stageDir, 'node_modules', '@memry', 'desktop'))
   removePath(path.join(stageDir, 'electron-builder.env'))
   run(
-    'pnpm',
+    pnpmCommand,
     [
       '--dir',
       appRoot,
@@ -162,7 +183,7 @@ function main() {
   )
   relativizeInternalSymlinks(path.join(stageDir, 'node_modules'))
 
-  run(process.execPath, [electronBuilderCli, '--config', configPath, ...args], {
+  runElectronBuilder(['--config', configPath, ...args], {
     cwd: stageDir,
     env: {
       ...process.env,
