@@ -1,5 +1,13 @@
-import { existsSync, rmSync } from 'node:fs'
-import { join } from 'node:path'
+import {
+  existsSync,
+  lstatSync,
+  readdirSync,
+  readlinkSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync
+} from 'node:fs'
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 
 const ARCH_NAMES = new Map([
   [0, 'ia32'],
@@ -67,16 +75,46 @@ function pruneBetterSqliteBuildArtifacts(nodeModulesDir) {
   removePath(join(betterSqliteRoot, 'build', 'Release', 'test_extension.node'))
 }
 
-export default async function prunePackagedApp(context) {
-  const resourcesDir = getResourcesDir(context)
-  const nodeModulesDir = join(resourcesDir, 'app.asar.unpacked', 'node_modules')
+function relativizeInternalSymlinks(rootPath) {
+  for (const entry of readdirSync(rootPath, { withFileTypes: true })) {
+    const entryPath = join(rootPath, entry.name)
 
-  if (!existsSync(nodeModulesDir)) {
-    return
+    if (entry.isSymbolicLink()) {
+      const targetPath = readlinkSync(entryPath)
+      if (!isAbsolute(targetPath) || !targetPath.startsWith(rootPath)) {
+        continue
+      }
+
+      unlinkSync(entryPath)
+      symlinkSync(relative(dirname(entryPath), targetPath) || '.', entryPath)
+      continue
+    }
+
+    if (entry.isDirectory()) {
+      relativizeInternalSymlinks(entryPath)
+    }
   }
+}
 
+export default async function prunePackagedApp(context) {
+  const resourcesDir = resolve(getResourcesDir(context))
   const archName = resolveArchName(context.arch)
+  const nodeModulesDirs = [
+    join(resourcesDir, 'app.asar.unpacked', 'node_modules'),
+    join(resourcesDir, 'node_modules')
+  ]
 
-  pruneOnnxRuntime(nodeModulesDir, context.electronPlatformName, archName)
-  pruneBetterSqliteBuildArtifacts(nodeModulesDir)
+  for (const nodeModulesDir of nodeModulesDirs) {
+    if (!existsSync(nodeModulesDir)) {
+      continue
+    }
+
+    const stat = lstatSync(nodeModulesDir)
+    if (stat.isDirectory()) {
+      relativizeInternalSymlinks(nodeModulesDir)
+    }
+
+    pruneOnnxRuntime(nodeModulesDir, context.electronPlatformName, archName)
+    pruneBetterSqliteBuildArtifacts(nodeModulesDir)
+  }
 }
