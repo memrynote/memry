@@ -1,0 +1,20 @@
+extends: file:config/electron-builder.yml
+beforeBuild: ./scripts/before-build-external-node-modules.cjs
+npmRebuild: true
+dmg:
+  size: 3g
+extraResources:
+  - from: node_modules
+    to: node_modules
+    filter:
+      - '**/*'
+      - '.pnpm'
+      - '.pnpm/**/*'
+      - '.modules.yaml'
+      - '!**/*.map'
+      - '!**/{coverage,doc,docs,example,examples,test,tests,__tests__}/**'
+      - '!**/re2/vendor/**'
+      - '!electron'
+      - '!electron/**/*'
+      - '!**/node_modules/electron'
+      - '!**/node_modules/electron/**/*'
