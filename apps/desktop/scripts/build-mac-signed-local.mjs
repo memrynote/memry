@@ -12,7 +12,9 @@ const defaultSyncServerUrl = 'https://sync-staging.memrynote.com'
 
 if (!existsSync(envPath)) {
   console.error('Missing apps/desktop/electron-builder.env')
-  console.error('Create it from apps/desktop/electron-builder.env.example and fill in local secrets.')
+  console.error(
+    'Create it from apps/desktop/electron-builder.env.example and fill in local secrets.'
+  )
   process.exit(1)
 }
 
@@ -59,7 +61,9 @@ if (placeholderEnv.length > 0) {
 if (buildEnv.CSC_IDENTITY_AUTO_DISCOVERY === 'false' && !buildEnv.CSC_NAME?.trim()) {
   console.error('CSC_IDENTITY_AUTO_DISCOVERY=false requires CSC_NAME for signed mac builds.')
   console.error('Without CSC_NAME, electron-builder falls back to ad-hoc signing on arm64.')
-  console.error('Set CSC_IDENTITY_AUTO_DISCOVERY=true or add CSC_NAME in apps/desktop/electron-builder.env.')
+  console.error(
+    'Set CSC_IDENTITY_AUTO_DISCOVERY=true or add CSC_NAME in apps/desktop/electron-builder.env.'
+  )
   process.exit(1)
 }
 
@@ -103,11 +107,10 @@ function run(command, args) {
 }
 
 run('pnpm', ['build'])
-run('pnpm', [
-  'exec',
-  'electron-builder',
+run(process.execPath, [
+  'scripts/build-packaged-app.js',
   '--config',
-  'config/electron-builder.local-mac.yml',
+  'config/electron-builder.staged-local-mac.yml',
   '--mac',
   '--arm64',
   '--publish',

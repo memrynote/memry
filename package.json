@@ -68,7 +68,10 @@
       "picomatch": ">=4.0.4",
       "vite": "^7.3.2",
       "markdown-it": ">=14.1.1",
-      "qs": ">=6.14.2"
+      "qs": ">=6.14.2",
+      "protobufjs": "7.5.5",
+      "serialize-javascript": "7.0.5",
+      "@xmldom/xmldom": "0.8.13"
     }
   }
 }
