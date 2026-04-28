@@ -12,6 +12,7 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { TemplateSelector } from '@/components/note/template-selector'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // Delete Confirmation Dialog
@@ -34,6 +35,7 @@ export function NoteTreeDeleteDialog({
   isDeleting,
   onConfirm
 }: NoteTreeDeleteDialogProps) {
+  const { t } = useT('common')
   const totalItems = notesToDelete.length + foldersToDelete.length
 
   return (
@@ -54,7 +56,7 @@ export function NoteTreeDeleteDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{t('button.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             disabled={isDeleting}
