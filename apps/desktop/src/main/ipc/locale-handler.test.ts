@@ -4,7 +4,9 @@ const hoisted = vi.hoisted(() => ({
   windows: [] as Array<{ webContents: { send: ReturnType<typeof vi.fn> } }>,
   getDatabase: vi.fn(() => ({})),
   getSetting: vi.fn(() => null),
-  setSetting: vi.fn()
+  setSetting: vi.fn(),
+  getCurrentVaultPath: vi.fn(() => '/vault'),
+  writePreferences: vi.fn()
 }))
 
 vi.mock('electron', () => ({
@@ -26,6 +28,14 @@ vi.mock('../settings/settings-store', () => ({
   setSetting: hoisted.setSetting
 }))
 
+vi.mock('../store', () => ({
+  getCurrentVaultPath: hoisted.getCurrentVaultPath
+}))
+
+vi.mock('../vault/vault-preferences', () => ({
+  writePreferences: hoisted.writePreferences
+}))
+
 import { ipcMain } from 'electron'
 import { registerLocaleHandlers } from './locale-handler'
 
@@ -35,6 +45,7 @@ describe('locale handler', () => {
     hoisted.windows = []
     hoisted.getDatabase.mockReturnValue({})
     hoisted.getSetting.mockReturnValue(null)
+    hoisted.getCurrentVaultPath.mockReturnValue('/vault')
   })
 
   it('registers get, set, list channels', () => {
@@ -80,6 +91,7 @@ describe('locale handler', () => {
       theme: 'dark',
       language: 'tr'
     })
+    expect(hoisted.writePreferences).toHaveBeenCalledWith('/vault', { language: 'tr' })
     expect(mockI18n.changeLanguage).toHaveBeenCalledWith('tr')
     expect(rebuildMenu).toHaveBeenCalledWith('tr')
     expect(send).toHaveBeenCalledWith('locale:changed', 'tr')

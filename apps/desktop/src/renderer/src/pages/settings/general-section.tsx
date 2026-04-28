@@ -1,5 +1,8 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
+import { type Locale } from '@memry/contracts/locale-api'
+import { useT } from '@memry/i18n/renderer'
+import { LOCALE_DISPLAY_NAMES, SUPPORTED_LOCALES } from '@memry/i18n/shared'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -24,6 +27,8 @@ import {
 } from '@/components/settings/settings-primitives'
 
 export function GeneralSettings() {
+  const { t, i18n } = useT('settings')
+  const [isChangingLocale, setIsChangingLocale] = useState(false)
   const {
     settings: tabSettings,
     isLoading: tabLoading,
@@ -92,6 +97,26 @@ export function GeneralSettings() {
       if (!success) toast.error('Failed to update time format')
     },
     [updateGeneralSettings]
+  )
+
+  const handleLocaleChange = useCallback(
+    async (locale: Locale) => {
+      setIsChangingLocale(true)
+      try {
+        await window.api.locale.set(locale)
+        await i18n.changeLanguage(locale)
+        toast.success(
+          i18n.getFixedT(locale, 'settings')('general.language.changed', {
+            nativeName: LOCALE_DISPLAY_NAMES[locale]
+          })
+        )
+      } catch {
+        toast.error('Failed to change language. Please try again.')
+      } finally {
+        setIsChangingLocale(false)
+      }
+    },
+    [i18n]
   )
 
   const handleCloseButtonChange = useCallback(
@@ -187,7 +212,26 @@ export function GeneralSettings() {
         </SettingRowTall>
       </SettingsGroup>
 
-      <SettingsGroup label="Date &amp; Time">
+      <SettingsGroup label="Language &amp; Region">
+        <SettingRow label={t('general.language.label')} description={t('general.language.helper')}>
+          <Select
+            value={i18n.language as Locale}
+            onValueChange={(value) => void handleLocaleChange(value as Locale)}
+            disabled={isChangingLocale}
+          >
+            <SelectTrigger className={COMPACT_SELECT}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SUPPORTED_LOCALES.map((locale) => (
+                <SelectItem key={locale} value={locale}>
+                  {LOCALE_DISPLAY_NAMES[locale]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingRow>
+
         <SettingRow label="Time Format" description="12-hour or 24-hour clock">
           <Select value={generalSettings.clockFormat} onValueChange={handleClockFormatChange}>
             <SelectTrigger className={COMPACT_SELECT}>
