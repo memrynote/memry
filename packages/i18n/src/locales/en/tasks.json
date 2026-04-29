@@ -110,7 +110,19 @@
     "filtersCleared": "Filters cleared",
     "filterSaved": "Filter saved",
     "filterDeleted": "Filter deleted",
-    "filterApplied": "Applied \"{name}\""
+    "filterApplied": "Applied \"{name}\"",
+    "deleted": "Task deleted",
+    "deletedSeries": "Series complete!",
+    "deletedNext": "Next occurrence",
+    "completed": "Task completed!",
+    "archived": "Task archived",
+    "undoNotAvailableForDelete": "Undo not available for delete",
+    "alreadyAllComplete": "All selected tasks are already complete",
+    "noCompletedSelected": "No completed tasks selected",
+    "completeFailed": "Failed to complete tasks",
+    "reopenFailed": "Failed to reopen tasks",
+    "deleteFailed": "Failed to delete tasks",
+    "moveFailed": "Failed to move tasks"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
