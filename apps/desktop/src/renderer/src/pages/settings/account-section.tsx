@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,6 +47,7 @@ const STORAGE_COLORS: Record<string, string> = {
 }
 
 export function AccountSettings() {
+  const { t } = useT('common')
   const { state, logout } = useAuth()
   const { linkingRequest, clearLinkingRequest } = useSync()
   const syncStatus = useSyncStatus()
@@ -90,7 +92,7 @@ export function AccountSettings() {
   if (state.status === 'checking') {
     return (
       <div className="flex flex-col">
-        <SettingsHeader title="Account" subtitle="Loading..." />
+        <SettingsHeader title="Account" subtitle={t('state.loading')} />
       </div>
     )
   }
