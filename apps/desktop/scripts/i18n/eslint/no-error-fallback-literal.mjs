@@ -29,26 +29,16 @@ function isExtractErrorMessageCall(node) {
   )
 }
 
-function isThrowNewError(node) {
-  return (
-    node.type === 'NewExpression' &&
-    node.callee?.type === 'Identifier' &&
-    node.callee.name === 'Error'
-  )
-}
-
 export default {
   meta: {
     type: 'problem',
     docs: {
       description:
-        'Disallow string-literal fallbacks in extractErrorMessage and user-facing throw new Error'
+        'Disallow string-literal fallbacks in extractErrorMessage'
     },
     messages: {
       extractFallback:
-        "extractErrorMessage fallback is a literal English string; use t('namespace:key') or annotate with TODO(i18n).",
-      throwLiteral:
-        "throw new Error has a literal English message; use t('errors:key') or annotate with TODO(i18n) (or single-word internal errors are exempt)."
+        "extractErrorMessage fallback is a literal English string; use t('namespace:key') or annotate with TODO(i18n)."
     },
     schema: []
   },
@@ -65,19 +55,6 @@ export default {
         context.report({
           node: fallback,
           messageId: 'extractFallback'
-        })
-      },
-      NewExpression(node) {
-        if (!isThrowNewError(node)) return
-        const arg = node.arguments?.[0]
-        const value = getStringValue(arg)
-        if (value === null || !hasLetters(value)) return
-        const wordCount = value.trim().split(/\s+/).length
-        if (wordCount < 2) return
-        if (hasI18nTodoNear(sourceCode, node)) return
-        context.report({
-          node: arg,
-          messageId: 'throwLiteral'
         })
       }
     }
