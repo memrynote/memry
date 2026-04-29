@@ -140,6 +140,21 @@ describe('reminders service', () => {
         error: null
       }))
     }))
+    vi.doMock('./main-i18n', () => {
+      const translations: Record<string, string> = {
+        'system:notification.reminder.note': 'Note reminder',
+        'system:notification.reminder.journal': 'Journal reminder',
+        'system:notification.reminder.highlight': 'Highlight reminder',
+        'system:notification.reminder.fallback': 'Reminder due',
+        'system:notification.reminder.default': 'Reminder',
+        'system:error.reminderTimeMustBeFuture': 'Reminder time must be in the future'
+      }
+      return {
+        getMainI18n: () => ({
+          t: (key: string) => translations[key] ?? key
+        })
+      }
+    })
 
     const databaseModule = await import('../database')
     getDatabase = databaseModule.getDatabase
@@ -504,5 +519,31 @@ describe('reminders service', () => {
       expect(reminder?.targetExists).toBe(false)
       expect(reminder?.highlightExists).toBe(false)
     })
+  })
+})
+
+describe('reminder notification labels (i18n)', () => {
+  it('English: note reminder body label', async () => {
+    const { createMainI18n } = await import('@memry/i18n/main')
+    const i18n = await createMainI18n({ locale: 'en' })
+    expect(i18n.t('system:notification.reminder.note')).toBe('Note reminder')
+    expect(i18n.t('system:notification.reminder.journal')).toBe('Journal reminder')
+    expect(i18n.t('system:notification.reminder.highlight')).toBe('Highlight reminder')
+    expect(i18n.t('system:notification.reminder.fallback')).toBe('Reminder due')
+    expect(i18n.t('system:notification.reminder.default')).toBe('Reminder')
+  })
+
+  it('English: reminder validation error', async () => {
+    const { createMainI18n } = await import('@memry/i18n/main')
+    const i18n = await createMainI18n({ locale: 'en' })
+    expect(i18n.t('system:error.reminderTimeMustBeFuture')).toBe(
+      'Reminder time must be in the future'
+    )
+  })
+
+  it('Turkish: falls back to English (tr/system.json is empty)', async () => {
+    const { createMainI18n } = await import('@memry/i18n/main')
+    const i18n = await createMainI18n({ locale: 'tr' })
+    expect(i18n.t('system:notification.reminder.note')).toBe('Note reminder')
   })
 })
