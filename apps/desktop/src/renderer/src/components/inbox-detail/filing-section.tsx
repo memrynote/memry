@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Folder, Sparkles, Loader2, ChevronDown, Check, FileText, Search, Plus } from '@/lib/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useT } from '@memry/i18n/renderer'
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Input } from '@/components/ui/input'
@@ -58,6 +59,7 @@ export const FilingSection = ({
   onLinkedNotesChange,
   className
 }: FilingSectionProps): React.JSX.Element => {
+  const { t } = useT('inbox')
   const queryClient = useQueryClient()
   const [showAllFolders, setShowAllFolders] = useState(false)
   const [folderSearch, setFolderSearch] = useState('')
@@ -68,7 +70,7 @@ export const FilingSection = ({
     queryKey: ['vault', 'folders'],
     queryFn: async () => {
       const folderInfos = await window.api.notes.getFolders()
-      const folders: FolderType[] = [{ id: '', name: 'Notes (root)', path: '' }]
+      const folders: FolderType[] = [{ id: '', name: t('detail.notesRootLabel'), path: '' }]
       for (const fi of folderInfos) {
         const normalizedPath = normalizeFolderPath(fi.path)
         if (normalizedPath) {
@@ -116,7 +118,7 @@ export const FilingSection = ({
           const vaultMatch = vaultFolders.find((f) => f.path === path)
           return {
             id: path,
-            name: path.split('/').pop() || path || 'Notes',
+            name: path.split('/').pop() || path || t('detail.notesRoot'),
             path: path,
             icon: vaultMatch?.icon ?? null,
             aiConfidence: s.confidence,
@@ -125,7 +127,7 @@ export const FilingSection = ({
         })
     }
     return vaultFolders.slice(0, 3).map((f) => ({ ...f }))
-  }, [aiSuggestions, vaultFolders])
+  }, [aiSuggestions, vaultFolders, t])
 
   const noteSuggestions = useMemo(() => {
     return aiSuggestions
@@ -171,7 +173,7 @@ export const FilingSection = ({
     : (suggestedFolders[0] ?? null)
   const displayPath = displayFolder?.path
     ? displayFolder.path.replace(/\//g, ' / ')
-    : displayFolder?.name || 'Select folder'
+    : displayFolder?.name || t('detail.selectFolder')
 
   const handleLinkSuggestedNote = useCallback(
     (note: { id: string; title: string }) => {
@@ -218,7 +220,7 @@ export const FilingSection = ({
 
       queryClient.setQueryData<FolderType[]>(['vault', 'folders'], (current = []) => {
         const baseFolders =
-          current.length > 0 ? current : [{ id: '', name: 'Notes (root)', path: '' }]
+          current.length > 0 ? current : [{ id: '', name: t('detail.notesRootLabel'), path: '' }]
         if (baseFolders.some((folder) => folder.path === createdFolder.path)) {
           return baseFolders
         }
@@ -240,7 +242,7 @@ export const FilingSection = ({
     } finally {
       setIsCreatingFolder(false)
     }
-  }, [trimmedSearch, isCreatingFolder, queryClient, onFolderSelect])
+  }, [trimmedSearch, isCreatingFolder, queryClient, onFolderSelect, t])
 
   return (
     <div className={cn(className)}>
@@ -250,7 +252,7 @@ export const FilingSection = ({
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
-              File to
+              {t('detail.fileTo')}
             </span>
             {isLoadingAISuggestions ? (
               <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -259,7 +261,7 @@ export const FilingSection = ({
             ) : hasAISuggestions ? (
               <div className="flex items-center gap-1 text-[11px] text-[var(--tint)]">
                 <Sparkles className="size-3" />
-                <span>AI</span>
+                <span>{t('detail.ai')}</span>
               </div>
             ) : null}
           </div>
@@ -308,7 +310,7 @@ export const FilingSection = ({
               <div className="flex items-center py-2 px-3 gap-2 border-b border-border/40">
                 <Search className="size-3.5 text-muted-foreground/40 shrink-0" />
                 <Input
-                  placeholder="Search or create with /..."
+                  placeholder={t('detail.searchOrCreateFolder')}
                   value={folderSearch}
                   onChange={(e) => setFolderSearch(e.target.value)}
                   onKeyDown={(e) => {
@@ -327,7 +329,7 @@ export const FilingSection = ({
                 {suggestedFolders.length > 0 && !folderSearch.trim() && (
                   <div className="flex flex-col py-1">
                     <span className="text-[10px] [letter-spacing:0.05em] uppercase text-muted-foreground/40 px-3 py-1">
-                      Suggested
+                      {t('detail.suggested')}
                     </span>
                     {suggestedFolders.map((folder) => {
                       const isSelected = selectedFolder?.id === folder.id
@@ -349,7 +351,9 @@ export const FilingSection = ({
                             <Folder className="size-3.5 shrink-0 text-[var(--tint)]" />
                           )}
                           <span className="text-[13px] leading-4 text-foreground truncate grow">
-                            {folder.path ? folder.path.replace(/\//g, ' / ') : 'Notes'}
+                            {folder.path
+                              ? folder.path.replace(/\//g, ' / ')
+                              : t('detail.notesRoot')}
                           </span>
                           {isSelected && <Check className="size-3 shrink-0 text-[var(--tint)]" />}
                         </button>
@@ -379,13 +383,13 @@ export const FilingSection = ({
                         <Plus className="size-3.5 shrink-0 text-[var(--tint)]" />
                       )}
                       <span className="text-[13px] leading-4 text-[var(--tint)]">
-                        Create &ldquo;{trimmedSearch}&rdquo;
+                        {t('detail.createFolder', { name: trimmedSearch })}
                       </span>
                     </button>
                   )}
                   {filteredFolders.length === 0 && !canCreateFolder ? (
                     <p className="text-xs text-muted-foreground text-center py-3">
-                      No folders found
+                      {t('empty.noFolders')}
                     </p>
                   ) : filteredFolders.length === 0 ? null : (
                     filteredFolders.map((folder) => {
@@ -427,7 +431,7 @@ export const FilingSection = ({
         <TagAutocomplete
           tags={tags}
           onTagsChange={onTagsChange}
-          placeholder="Add tags..."
+          placeholder={t('detail.addTags')}
           showSections={false}
           maxSuggestions={5}
           aiSuggestedTags={aiSuggestedTags}
@@ -439,12 +443,12 @@ export const FilingSection = ({
       <div className="flex flex-col gap-2 py-4 px-5 border-b border-border">
         <div className="flex items-center justify-between">
           <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
-            Link to note
+            {t('detail.linkToNote')}
           </span>
           {noteSuggestions.length > 0 && (
             <div className="flex items-center gap-1 text-[11px] text-[var(--tint)]">
               <Sparkles className="size-3" />
-              <span>AI</span>
+              <span>{t('detail.ai')}</span>
             </div>
           )}
         </div>
