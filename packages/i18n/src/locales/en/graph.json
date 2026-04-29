@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Loading graph...",
+    "load-failed": "Failed to load graph data",
+    "try-again": "Try again",
+    "aria-label": "Knowledge graph with {nodeCount, plural, one {# node} other {# nodes}} and {edgeCount, plural, one {# connection} other {# connections}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Graph nodes",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Your knowledge graph",
+    "description": "Connections between your notes, tasks, and projects will appear here as an interactive graph.",
+    "link-title": "Link your notes",
+    "link-description": "Use [[wikilinks]] to connect ideas across notes",
+    "discover-title": "Discover patterns",
+    "discover-description": "As connections grow, clusters and themes will emerge naturally"
+  },
+  "entity": {
+    "note": "note",
+    "notes": "notes",
+    "journal": "journal",
+    "journals": "journals",
+    "task": "task",
+    "tasks": "tasks",
+    "project": "project",
+    "projects": "projects",
+    "tag": "tag",
+    "tags": "tags",
+    "orphan": "orphan",
+    "orphans": "orphans",
+    "unresolved": "unresolved"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Graph settings",
+    "hide-settings": "Hide settings",
+    "reset-filters": "Reset filters",
+    "filters": "Filters",
+    "display": "Display",
+    "show-labels": "Show labels",
+    "focus-depth": "depth {depth}",
+    "clear-focus": "Clear focused node"
+  },
+  "filter": {
+    "notes": "Notes",
+    "journals": "Journals",
+    "tasks": "Tasks",
+    "projects": "Projects",
+    "tags": "Tags",
+    "orphans": "Orphans",
+    "toggle-entity": "Toggle {label}",
+    "toggle-orphans": "Toggle orphan nodes"
+  },
+  "search": {
+    "placeholder": "Search nodes...",
+    "clear": "Clear graph search"
+  },
+  "context-menu": {
+    "untitled": "Untitled",
+    "focus-node": "Focus on this node",
+    "open-new-tab": "Open in new tab",
+    "create-note": "Create note",
+    "copy-title": "Copy title"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {# connection} other {# connections}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Loading graph...",
+    "empty": "No connections found",
+    "open-full": "Open full graph",
+    "close": "Close graph"
+  }
+}
