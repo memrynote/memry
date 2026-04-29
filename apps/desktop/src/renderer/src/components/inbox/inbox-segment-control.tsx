@@ -1,12 +1,7 @@
 import { ToolbarSegment, ToolbarSegmentTab } from '@/components/ui/page-toolbar'
+import { useT } from '@memry/i18n/renderer'
 
 export type InboxView = 'inbox' | 'archived' | 'insights'
-
-const TABS: { id: InboxView; label: string }[] = [
-  { id: 'inbox', label: 'Inbox' },
-  { id: 'archived', label: 'Archived' },
-  { id: 'insights', label: 'Insights' }
-]
 
 export interface InboxSegmentControlProps {
   value: InboxView
@@ -19,9 +14,16 @@ export function InboxSegmentControl({
   onChange,
   className
 }: InboxSegmentControlProps): React.JSX.Element {
+  const { t } = useT('inbox')
+  const tabs = [
+    { id: 'inbox', label: t('view.tabs.inbox') },
+    { id: 'archived', label: t('view.tabs.archived') },
+    { id: 'insights', label: t('view.tabs.insights') }
+  ] as const
+
   return (
-    <ToolbarSegment label="Inbox View Selection" className={className}>
-      {TABS.map((tab, index) => (
+    <ToolbarSegment label={t('view.tabs.ariaLabel')} className={className}>
+      {tabs.map((tab, index) => (
         <ToolbarSegmentTab
           key={tab.id}
           isActive={value === tab.id}
