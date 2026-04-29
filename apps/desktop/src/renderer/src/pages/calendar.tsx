@@ -8,6 +8,7 @@ import {
 } from '@/components/calendar'
 import { VISUAL_TYPE_ORDER } from '@/components/calendar/visual-type-meta'
 import { PromoteExternalDialog } from '@/components/calendar/promote-external-dialog'
+import { CalendarTaskPopover } from '@/components/calendar/calendar-task-popover'
 import {
   addLocalDays,
   addLocalMonths,
@@ -191,6 +192,10 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     anchorRect: AnchorRect
     readOnlyMetadata?: import('@/components/calendar/calendar-event-popover').CalendarEventReadOnlyMetadata
   } | null>(null)
+  const [taskPopoverState, setTaskPopoverState] = useState<{
+    item: CalendarProjectionItem
+    anchorRect: AnchorRect
+  } | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [pendingPromote, setPendingPromote] = useState<{
     item: CalendarProjectionItem
@@ -361,7 +366,14 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   }
 
   const handleSelectItem = async (item: CalendarProjectionItem, rect: AnchorRect) => {
+    if (item.sourceType === 'task') {
+      setPopoverState(null)
+      setTaskPopoverState({ item, anchorRect: rect })
+      return
+    }
+
     if (item.sourceType === 'event') {
+      setTaskPopoverState(null)
       const record = await calendarService.getEvent(item.sourceId).catch(() => null)
       setPopoverState({
         mode: 'edit',
@@ -476,7 +488,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     })
   }
 
-  const selectedItemId = popoverState?.eventId ?? null
+  const selectedItemId = popoverState?.eventId ?? taskPopoverState?.item.sourceId ?? null
 
   return (
     <>
@@ -558,6 +570,13 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         onQuickSave={handleQuickSave}
         onCreateEventWithRange={handleCreateEventWithRange}
       />
+      {taskPopoverState && (
+        <CalendarTaskPopover
+          item={taskPopoverState.item}
+          anchorRect={taskPopoverState.anchorRect}
+          onDismiss={() => setTaskPopoverState(null)}
+        />
+      )}
       <DeleteCalendarEventDialog
         open={pendingDelete !== null}
         title={pendingDelete?.title ?? ''}
