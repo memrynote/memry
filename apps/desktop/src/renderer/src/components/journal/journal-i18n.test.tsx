@@ -112,19 +112,16 @@ describe('journal i18n', () => {
   })
 
   it('renders journal namespace AI empty state copy', async () => {
-    await renderWithI18n(
-      <AIConnectionsPanel connections={[]} isNewUser={false} />,
-      {
-        journalOverrides: {
-          ai: {
-            empty: {
-              noneYet: 'No related journal history',
-              keepWriting: 'Keep writing for matches'
-            }
+    await renderWithI18n(<AIConnectionsPanel connections={[]} isNewUser={false} />, {
+      journalOverrides: {
+        ai: {
+          empty: {
+            noneYet: 'No related journal history',
+            keepWriting: 'Keep writing for matches'
           }
         }
       }
-    )
+    })
 
     expect(screen.getByText('No related journal history')).toBeInTheDocument()
     expect(screen.getByText('Keep writing for matches')).toBeInTheDocument()

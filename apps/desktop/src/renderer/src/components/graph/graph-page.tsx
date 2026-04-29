@@ -135,9 +135,7 @@ function GraphEmptyState(): React.JSX.Element {
 
         <div className="space-y-2">
           <h2 className="text-lg font-medium text-foreground">{t('empty.title')}</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {t('empty.description')}
-          </p>
+          <p className="text-sm text-muted-foreground leading-relaxed">{t('empty.description')}</p>
         </div>
 
         <div className="space-y-3 text-left">

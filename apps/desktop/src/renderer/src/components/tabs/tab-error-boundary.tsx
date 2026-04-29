@@ -17,6 +17,12 @@ interface TabErrorBoundaryProps {
   onError?: (error: Error, errorInfo: ErrorInfo) => void
 }
 
+interface TabErrorBoundaryLabels {
+  somethingWentWrong: string
+  errorOccurred: string
+  tryAgain: string
+}
+
 interface TabErrorBoundaryState {
   hasError: boolean
   error: Error | null
@@ -26,8 +32,11 @@ interface TabErrorBoundaryState {
  * Error boundary for tab content
  * Shows fallback UI when content crashes
  */
-export class TabErrorBoundary extends Component<TabErrorBoundaryProps, TabErrorBoundaryState> {
-  constructor(props: TabErrorBoundaryProps) {
+class TabErrorBoundaryImpl extends Component<
+  TabErrorBoundaryProps & { labels: TabErrorBoundaryLabels },
+  TabErrorBoundaryState
+> {
+  constructor(props: TabErrorBoundaryProps & { labels: TabErrorBoundaryLabels }) {
     super(props)
     this.state = { hasError: false, error: null }
   }
@@ -46,20 +55,14 @@ export class TabErrorBoundary extends Component<TabErrorBoundaryProps, TabErrorB
   }
 
   render(): ReactNode {
-    const { t: tPhaseF } = useT('common')
     if (this.state.hasError) {
+      const { labels } = this.props
       return (
         <div className="h-full flex items-center justify-center p-8">
           <div className="flex flex-col items-center gap-4 text-center max-w-md">
             <AlertTriangle className="w-12 h-12 text-amber-500" />
-            <h2 className="text-lg font-medium text-foreground">
-              {tPhaseF('phaseF.componentsTabsTabErrorBoundary.somethingWentWrong')}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {tPhaseF(
-                'phaseF.componentsTabsTabErrorBoundary.anErrorOccurredWhileRenderingThisTabContent'
-              )}
-            </p>
+            <h2 className="text-lg font-medium text-foreground">{labels.somethingWentWrong}</h2>
+            <p className="text-sm text-muted-foreground">{labels.errorOccurred}</p>
             {this.state.error && (
               <code className="text-xs bg-muted p-2 rounded text-red-500 max-w-full overflow-auto">
                 {this.state.error.message}
@@ -70,8 +73,7 @@ export class TabErrorBoundary extends Component<TabErrorBoundaryProps, TabErrorB
               className="flex items-center gap-2 px-4 py-2 bg-tint text-tint-foreground rounded-md hover:bg-tint-hover transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
-
-              {tPhaseF('phaseF.componentsTabsTabErrorBoundary.tryAgain')}
+              {labels.tryAgain}
             </button>
           </div>
         </div>
@@ -80,6 +82,22 @@ export class TabErrorBoundary extends Component<TabErrorBoundaryProps, TabErrorB
 
     return this.props.children
   }
+}
+
+export function TabErrorBoundary(props: TabErrorBoundaryProps): ReactNode {
+  const { t } = useT('common')
+  return (
+    <TabErrorBoundaryImpl
+      {...props}
+      labels={{
+        somethingWentWrong: t('phaseF.componentsTabsTabErrorBoundary.somethingWentWrong'),
+        errorOccurred: t(
+          'phaseF.componentsTabsTabErrorBoundary.anErrorOccurredWhileRenderingThisTabContent'
+        ),
+        tryAgain: t('phaseF.componentsTabsTabErrorBoundary.tryAgain')
+      }}
+    />
+  )
 }
 
 export default TabErrorBoundary

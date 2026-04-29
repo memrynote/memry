@@ -6,10 +6,7 @@ import { defaultWorkspaceRoot, loadLocaleResources } from './resources.mjs'
 import { scanSourceFiles } from './scan-source.mjs'
 
 const workspaceRoot = defaultWorkspaceRoot()
-const fixtureRoot = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  'fixtures/check'
-)
+const fixtureRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/check')
 const resources = loadLocaleResources(workspaceRoot)
 
 function scanFixture(name) {

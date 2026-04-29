@@ -35,11 +35,9 @@ export function isPinningDisabled(): boolean {
 
 export function computeSpkiHash(cert: tls.PeerCertificate): string {
   if (!cert.raw || cert.raw.length === 0) {
-    throw new CertificatePinningError(
-      'Certificate missing raw DER data',
-      '',
-      [...getConfiguredPinnedCertificateHashes()]
-    )
+    throw new CertificatePinningError('Certificate missing raw DER data', '', [
+      ...getConfiguredPinnedCertificateHashes()
+    ])
   }
   const x509 = new crypto.X509Certificate(cert.raw)
   const spkiDer = x509.publicKey.export({ type: 'spki', format: 'der' })

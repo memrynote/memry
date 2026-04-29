@@ -23,7 +23,9 @@ export function loadNamespaces(workspaceRoot = defaultWorkspaceRoot()) {
   const match = configText.match(CONFIG_ARRAY_RE)
 
   if (!match) {
-    throw new Error(`Could not read I18N_NAMESPACES from ${path.relative(workspaceRoot, configPath)}`)
+    throw new Error(
+      `Could not read I18N_NAMESPACES from ${path.relative(workspaceRoot, configPath)}`
+    )
   }
 
   const namespaces = []

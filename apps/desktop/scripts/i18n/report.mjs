@@ -87,7 +87,9 @@ export function formatTextReport(result) {
   }
 
   if (result.resources.errors.length > 0) {
-    lines.push(`error: ${result.resources.errors.length} locale resource ${plural(result.resources.errors.length, 'error')}`)
+    lines.push(
+      `error: ${result.resources.errors.length} locale resource ${plural(result.resources.errors.length, 'error')}`
+    )
     for (const error of result.resources.errors) {
       lines.push(`  ${error.file}: ${error.message}`)
     }
