@@ -941,3 +941,29 @@ describe('notes-handlers', () => {
     })
   })
 })
+
+describe('notes-handlers system strings (i18n)', () => {
+  it('export dialog titles resolve in English', async () => {
+    const { createMainI18n } = await import('@memry/i18n/main')
+    const i18n = await createMainI18n({ locale: 'en' })
+    expect(i18n.t('system:dialog.exportPdf.title')).toBe('Export as PDF')
+    expect(i18n.t('system:dialog.exportPdf.filterName')).toBe('PDF Document')
+    expect(i18n.t('system:dialog.exportHtml.title')).toBe('Export as HTML')
+    expect(i18n.t('system:dialog.exportHtml.filterName')).toBe('HTML Document')
+    expect(i18n.t('system:dialog.exportCancelled')).toBe('Export cancelled')
+  })
+
+  it('import file filter labels resolve in English', async () => {
+    const { createMainI18n } = await import('@memry/i18n/main')
+    const i18n = await createMainI18n({ locale: 'en' })
+    expect(i18n.t('system:dialog.import.filterSupported')).toBe('Supported Files')
+    expect(i18n.t('system:dialog.import.filterAll')).toBe('All Files')
+  })
+
+  it('IPC error strings resolve in English', async () => {
+    const { createMainI18n } = await import('@memry/i18n/main')
+    const i18n = await createMainI18n({ locale: 'en' })
+    expect(i18n.t('system:error.noteNotFound')).toBe('Note not found')
+    expect(i18n.t('system:error.definitionNotFound')).toBe('Definition not found')
+  })
+})
