@@ -16,7 +16,8 @@
       "willSync": "Note will sync to cloud",
       "saveFailed": "Failed to save note",
       "renameFailed": "Failed to rename note"
-    }
+    },
+    "deleteDialogTitle": "{count, plural, one {Delete Note} other {Delete # Notes}}"
   },
   "tree": {
     "aria": {
