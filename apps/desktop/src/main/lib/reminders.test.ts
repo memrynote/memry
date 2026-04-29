@@ -155,8 +155,7 @@ describe('reminders service', () => {
             key.startsWith('system:')
               ? (systemTranslations[key.slice('system:'.length)] ?? key)
               : key,
-          getFixedT: (_lng: unknown, _ns: string) => (key: string) =>
-            systemTranslations[key] ?? key
+          getFixedT: (_lng: unknown, _ns: string) => (key: string) => systemTranslations[key] ?? key
         })
       }
     })
@@ -546,9 +545,9 @@ describe('reminder notification labels (i18n)', () => {
     )
   })
 
-  it('Turkish: falls back to English (tr/system.json is empty)', async () => {
+  it('Turkish: note reminder body label', async () => {
     const { createMainI18n } = await import('@memry/i18n/main')
     const i18n = await createMainI18n({ locale: 'tr' })
-    expect(i18n.t('system:notification.reminder.note')).toBe('Note reminder')
+    expect(i18n.t('system:notification.reminder.note')).toBe('Not hatırlatıcısı')
   })
 })

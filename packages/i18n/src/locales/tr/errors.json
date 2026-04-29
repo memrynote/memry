@@ -1,1 +1,80 @@
-{}
+{
+  "generic": {
+    "somethingWentWrong": "Bir şeyler ters gitti. Lütfen tekrar deneyin.",
+    "operationFailed": "İşlem başarısız oldu",
+    "unknown": "Bilinmeyen bir hata oluştu",
+    "validationFailed": "Doğrulama başarısız oldu",
+    "actionFailed": "İşlem başarısız oldu"
+  },
+  "ipc": {
+    "noVaultOpen": "Hiçbir kasa açık değil. Lütfen önce bir kasa açın."
+  },
+  "vault": {
+    "notFound": "Kasa bulunamadı. Taşınmış veya silinmiş olabilir.",
+    "notInitialized": "Hiçbir kasa açık değil. Devam etmek için bir kasa açın veya oluşturun.",
+    "invalidPath": "Seçilen yol geçerli bir kasa konumu değil.",
+    "permissionDenied": "İzin reddedildi. Bu klasöre erişiminizin olup olmadığını kontrol edin.",
+    "alreadyExists": "Bu konumda zaten bir kasa mevcut.",
+    "corrupted": "Bu kasa bozulmuş gibi görünüyor. Yedekten geri yüklemeyi deneyin."
+  },
+  "note": {
+    "notFound": "Bu not bulunamadı. Silinmiş olabilir.",
+    "invalidFrontmatter": "Bu notta geçersiz meta veriler var ve okunamıyor.",
+    "duplicateId": "Bu kimliği içeren bir not zaten mevcut.",
+    "writeFailed": "Bu not kaydedilemedi. Disk alanını ve izinlerini kontrol edin.",
+    "readFailed": "Bu not okunamadı. Dosya kilitli veya bozuk olabilir.",
+    "deleteFailed": "Bu not silinemedi. Dosya izinlerini kontrol edin.",
+    "invalidPath": "Not yolu geçersiz."
+  },
+  "database": {
+    "connectionFailed": "Yerel veritabanına bağlanılamadı. Uygulamayı yeniden başlatmayı deneyin.",
+    "migrationFailed": "Veritabanı yükseltmesi başarısız oldu. Uygulamayı yeniden başlatmayı deneyin.",
+    "queryFailed": "Bir veritabanı işlemi başarısız oldu. Tekrar deneyin.",
+    "notInitialized": "Veritabanı hazır değil. Uygulamayı yeniden başlatmayı deneyin.",
+    "constraintViolation": "Bir veri çakışması oluştu. Tekrar deneyin.",
+    "corrupted": "Yerel veritabanı bozuk. Sıfırlamanız gerekebilir."
+  },
+  "watcher": {
+    "startFailed": "Dosya değişikliklerini izlemeye başlanamadı.",
+    "stopFailed": "Dosya izleyici durdurulamadı.",
+    "eventError": "Dosya değişiklikleri izlenirken bir hata oluştu."
+  },
+  "attachment": {
+    "fileTooLarge": "Bu dosya eklenemeyecek kadar büyük.",
+    "unsupportedType": "Bu dosya türü desteklenmiyor.",
+    "writeFailed": "Ek kaydedilemedi. Disk alanını kontrol edin.",
+    "deleteFailed": "Ek silinemedi."
+  },
+  "encryption": {
+    "failed": "Veriler şifrelenemedi. Anahtarlarınızın yeniden oluşturulması gerekebilir.",
+    "decryptionFailed": "Verilerin şifresi çözülemedi. Şifreleme anahtarlarınız güncelliğini kaybetmiş olabilir.",
+    "invalidKeyLength": "Geçersiz şifreleme anahtarı. Oturumu kapatıp tekrar açmayı deneyin.",
+    "invalidNonceLength": "Şifreleme hatası. İşlemi tekrar deneyin."
+  },
+  "inboxAttachment": {
+    "writeFailed": "Gelen kutusu eki kaydedilemedi.",
+    "deleteFailed": "Gelen kutusu eki silinemedi."
+  },
+  "sync": {
+    "networkOffline": "Çevrimdışısınız. Yeniden bağlandığınızda değişiklikler senkronize edilecek.",
+    "networkTimeout": "Senkronizasyon sunucusunun yanıt vermesi çok uzun sürdü. Kısa süre sonra yeniden denenecek.",
+    "serverError": "Senkronizasyon sunucusu bir hatayla karşılaştı. Otomatik olarak yeniden deneyecektir.",
+    "authExpired": "Oturumunuzun süresi doldu. Senkronizasyona devam etmek için tekrar oturum açın.",
+    "deviceRevoked": "Bu cihaz hesabınızdan kaldırıldı.",
+    "rateLimited": "Çok fazla istek var. Senkronizasyon kısa süre içinde devam edecek.",
+    "cryptoFailure": "Senkronizasyon verileri şifrelenemedi veya şifreleri çözülemedi. Oturumu kapatıp tekrar açmayı deneyin.",
+    "versionIncompatible": "Memry'in bu sürümü artık desteklenmiyor. Lütfen güncelleyin.",
+    "storageQuotaExceeded": "Senkronizasyon depolama alanınız dolu. Yer açın veya planınızı yükseltin.",
+    "certificatePinFailed": "Güvenli bağlantı başarısız oldu. Ağ bağlantınızı kontrol edin.",
+    "unknown": "Beklenmeyen bir senkronizasyon hatası oluştu. Otomatik olarak yeniden deneyecektir.",
+    "statusFetchFailed": "Senkronizasyon durumu getirilemedi",
+    "engineNotInitialized": "Senkronizasyon motoru başlatılmadı. Senkronizasyonu başlatmak için bir kasa açın.",
+    "triggerFailed": "Senkronizasyon başarısız oldu",
+    "pauseFailed": "Senkronizasyon duraklatılamadı",
+    "resumeFailed": "Senkronizasyon devam ettirilemedi",
+    "settingsNotInitialized": "Ayarlar senkronizasyonu başlatılmadı",
+    "securityQuarantinePermanent": "Bir senkronizasyon öğesi doğrulanamadı ve güvenlik nedeniyle karantinaya alındı.",
+    "securityQuarantineRetry": "Bir senkronizasyon öğesi imza doğrulamasında başarısız oldu ve yeniden denenecek.",
+    "certificatePinPaused": "Senkronizasyon sunucusuna güvenli bağlantı doğrulanamadı. Güvenliğiniz için senkronizasyon duraklatıldı."
+  }
+}

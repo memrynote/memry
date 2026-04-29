@@ -254,10 +254,7 @@ export const calculateNextOccurrences = (
 // GET REPEAT DISPLAY TEXT
 // ============================================================================
 
-export const getRepeatDisplayText = (
-  config: RepeatConfig,
-  t: RepeatLabelTranslator
-): string => {
+export const getRepeatDisplayText = (config: RepeatConfig, t: RepeatLabelTranslator): string => {
   const {
     frequency,
     interval,
