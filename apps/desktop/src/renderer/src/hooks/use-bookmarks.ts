@@ -1,3 +1,4 @@
+import { getI18n } from 'react-i18next'
 /**
  * useBookmarks Hook
  * Manages bookmarks data with real IPC calls to the main process.
@@ -167,7 +168,13 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
         setHasMore(result.hasMore)
         return result
       } catch (err) {
-        const message = extractErrorMessage(err, 'Failed to load bookmarks')
+        const message = extractErrorMessage(
+          err,
+          getI18n().getFixedT(
+            null,
+            'notes'
+          )('phaseF.componentsSidebarSidebarBookmarkList.failedToLoadBookmarks')
+        )
         setError(message)
         return { bookmarks: [], total: 0, hasMore: false }
       } finally {
@@ -197,7 +204,10 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
       setTotal(result.total)
       setHasMore(result.hasMore)
     } catch (err) {
-      const message = extractErrorMessage(err, 'Failed to load more bookmarks')
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToLoadMoreBookmarks')
+      )
       setError(message)
     } finally {
       setIsLoading(false)
@@ -222,7 +232,12 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
         const result = await bookmarksService.toggle({ itemType, itemId })
 
         if (!result.success) {
-          setError(extractErrorMessage(result.error, 'Failed to toggle bookmark'))
+          setError(
+            extractErrorMessage(
+              result.error,
+              getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToToggleBookmark')
+            )
+          )
           return result
         }
 
@@ -237,7 +252,10 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
 
         return result
       } catch (err) {
-        const message = extractErrorMessage(err, 'Failed to toggle bookmark')
+        const message = extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToToggleBookmark')
+        )
         setError(message)
         return { success: false, isBookmarked: false, bookmark: null, error: message }
       }
@@ -255,7 +273,12 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
       const result = await bookmarksService.delete(id)
 
       if (!result.success) {
-        setError(extractErrorMessage(result.error, 'Failed to remove bookmark'))
+        setError(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToRemoveBookmark')
+          )
+        )
         return false
       }
 
@@ -265,7 +288,10 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
 
       return true
     } catch (err) {
-      const message = extractErrorMessage(err, 'Failed to remove bookmark')
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToRemoveBookmark')
+      )
       setError(message)
       return false
     }
@@ -295,7 +321,12 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
       const result = await bookmarksService.reorder(bookmarkIds)
 
       if (!result.success) {
-        setError(extractErrorMessage(result.error, 'Failed to reorder bookmarks'))
+        setError(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToReorderBookmarks')
+          )
+        )
         return false
       }
 
@@ -307,7 +338,10 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
 
       return true
     } catch (err) {
-      const message = extractErrorMessage(err, 'Failed to reorder bookmarks')
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToReorderBookmarks')
+      )
       setError(message)
       return false
     }

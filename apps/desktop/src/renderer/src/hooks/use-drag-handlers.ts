@@ -9,6 +9,7 @@ import { formatDateShort, startOfDay, getDefaultTodoStatus } from '@/lib/task-ut
 import { resolveColumnDrop } from '@/lib/kanban-drop-resolver'
 import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
+import { getI18n } from 'react-i18next'
 
 // ============================================================================
 // TYPES
@@ -252,7 +253,7 @@ export const useDragHandlers = ({
     }
 
     setUndoStack((prev) => prev.slice(0, -1))
-    toast.success('Undone')
+    toast.success(getI18n().getFixedT(null, 'common')('phaseI.toasts.undone'))
   }, [undoStack, tasks, projects, onUpdateTask, onReorder])
 
   // Handle dropping on a section (reschedule)

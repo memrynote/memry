@@ -35,6 +35,7 @@ import { createLogger } from '@/lib/logger'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { useCalendarView } from '@/contexts/calendar-view-context'
 import { DeleteCalendarEventDialog } from '@/components/calendar/delete-calendar-event-dialog'
+import { getI18n } from 'react-i18next'
 
 const log = createLogger('CalendarPage')
 
@@ -348,7 +349,12 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       await openEditPopoverAfterPromote(result.eventId, item, rect)
       setPendingPromote(null)
     } catch (err) {
-      setPromoteError(extractErrorMessage(err, 'Could not edit this event. Try again.'))
+      setPromoteError(
+        extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'calendar')('phaseI.errors.couldNotEditThisEventTryAgain')
+        )
+      )
     } finally {
       setIsPromoting(false)
     }
@@ -431,7 +437,10 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     } catch (err) {
       log.error('Failed to delete calendar event', {
         eventId: target.sourceId,
-        error: extractErrorMessage(err, 'Failed to delete event')
+        error: extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'calendar')('phaseI.errors.failedToDeleteEvent')
+        )
       })
       setPendingDelete(null)
     }

@@ -42,11 +42,11 @@ describe('NoteTitle - title editing', () => {
     expect(textarea).toHaveAttribute('placeholder', 'Untitled')
   })
 
-  it('falls back to English placeholder for Turkish notes namespace', () => {
+  it('renders Turkish placeholder for Turkish notes namespace', () => {
     renderWithI18n(<NoteTitle {...defaultProps} title="" />, i18nTr)
 
-    const textarea = screen.getByRole('textbox', { name: /note title/i })
-    expect(textarea).toHaveAttribute('placeholder', 'Untitled')
+    const textarea = screen.getByRole('textbox', { name: 'Not başlığı' })
+    expect(textarea).toHaveAttribute('placeholder', 'İsimsiz')
   })
 
   it('should use custom placeholder', () => {

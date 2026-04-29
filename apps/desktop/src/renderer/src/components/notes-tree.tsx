@@ -9,6 +9,7 @@ import {
   useImperativeHandle,
   type ReactNode
 } from 'react'
+import { getI18n } from 'react-i18next'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import {
   TreeIcon,
@@ -241,7 +242,14 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
   if (data.isLoading) return <NotesTreeSkeleton />
 
   if (data.error) {
-    return <NotesTreeError error={extractErrorMessage(data.error, 'Failed to load notes')} />
+    return (
+      <NotesTreeError
+        error={extractErrorMessage(
+          data.error,
+          getI18n().getFixedT(null, 'notes')('tree.loadingError')
+        )}
+      />
+    )
   }
 
   if (data.notes.length === 0 && data.folders.length === 0) {

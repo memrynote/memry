@@ -292,5 +292,12 @@
     "componentsJournalJournalYearView": {
       "k": "k"
     }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToLoadJournalSettings": "Günlük ayarları yüklenemedi",
+      "failedToSaveJournalEntry": "Günlük girişi kaydedilemedi",
+      "failedToUpdateSettings": "Ayarlar güncellenemedi"
+    }
   }
 }

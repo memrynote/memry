@@ -1,3 +1,4 @@
+import { getI18n } from 'react-i18next'
 /**
  * PDF Viewer Component
  * Full-page PDF viewer with navigation, zoom, and thumbnail sidebar.
@@ -62,7 +63,12 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
   }, [])
 
   const handleLoadError = useCallback((err: Error) => {
-    setError(extractErrorMessage(err, 'Failed to load PDF'))
+    setError(
+      extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'notes')('phaseF.componentsViewersPdfViewer.failedToLoadPdf')
+      )
+    )
     setLoading(false)
   }, [])
 

@@ -341,5 +341,15 @@
       "browserForward": "Tarayıcı ileri",
       "forward": "İleri"
     }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToAccessMicrophone": "Mikrofona erişilemedi",
+      "failedToCreateNote": "Not oluşturulamadı",
+      "failedToImportFiles": "Dosyalar içe aktarılamadı"
+    },
+    "toasts": {
+      "undone": "Geri alındı"
+    }
   }
 }

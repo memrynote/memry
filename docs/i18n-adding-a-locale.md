@@ -50,7 +50,18 @@ pnpm typecheck:desktop
 pnpm --filter @memry/desktop exec playwright test --config config/playwright.config.ts ../tests/e2e/i18n.e2e.ts
 ```
 
-## 7. Commit
+## 7. Lint Rules
+
+The desktop ESLint plugin prevents new user-facing English from landing in source. It enforces:
+
+- `i18n/no-jsx-text-literals`: JSX text content in renderer `.tsx` files.
+- `i18n/no-string-attribute-literals`: user-facing JSX attributes such as `placeholder`, `aria-label`, `title`, `label`, `description`, `message`, and `summary`.
+- `i18n/no-toast-string-literal`: literal first arguments to `toast` and `toast.success/error/info/warning/loading/message/promise`.
+- `i18n/no-error-fallback-literal`: literal fallback strings passed to `extractErrorMessage`.
+
+Use `t()` or `getI18n().getFixedT(...)(...)` with keys in the right namespace. Phase I keeps the merge gate strict: do not add i18n deferral comments in production code, because `pnpm i18n:check` runs with zero allowed deferrals.
+
+## 8. Commit
 
 ```bash
 git commit -m "feat(i18n): add Spanish locale"

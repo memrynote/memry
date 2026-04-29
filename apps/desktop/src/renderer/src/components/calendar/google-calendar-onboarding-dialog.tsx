@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { setDefaultGoogleCalendar } from '@/services/calendar-service'
 import { useGoogleCalendars } from '@/hooks/use-google-calendars'
+import { getI18n } from 'react-i18next'
 
 export interface GoogleCalendarOnboardingDialogProps {
   open: boolean
@@ -39,7 +40,12 @@ export function GoogleCalendarOnboardingDialog({
       await onCompleted()
       onOpenChange(false)
     } catch (err) {
-      setError(extractErrorMessage(err, 'Could not save default calendar. Try again.'))
+      setError(
+        extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'calendar')('phaseI.errors.couldNotSaveDefaultCalendarTryAgain')
+        )
+      )
     } finally {
       setIsSaving(false)
     }

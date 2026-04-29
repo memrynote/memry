@@ -1,3 +1,4 @@
+import { getI18n } from 'react-i18next'
 /**
  * FileBlock - Custom BlockNote block for file attachments with inline PDF preview.
  * Uses react-pdf for PDF rendering.
@@ -86,7 +87,12 @@ function PdfPreview({ url, name }: PdfPreviewProps) {
   }
 
   const handleLoadError = (err: Error) => {
-    setError(extractErrorMessage(err, 'Failed to load file'))
+    setError(
+      extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'notes')('phaseF.pagesFile.failedToLoadFile')
+      )
+    )
     setLoading(false)
   }
 
