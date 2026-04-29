@@ -28,6 +28,7 @@ export function TagRenameDialog({
   onSubmit
 }: TagRenameDialogProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
+  const { t } = useT('common')
   const [value, setValue] = useState(tag)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -115,7 +116,7 @@ export function TagRenameDialog({
             {tPhaseF('phaseF.componentsSidebarTagRenameDialog.cancel')}
           </Button>
           <Button onClick={() => void handleSave()} disabled={submitting}>
-            {submitting ? 'Saving...' : 'Save'}
+            {submitting ? t('state.saving') : t('button.save')}
           </Button>
         </DialogFooter>
       </DialogContent>

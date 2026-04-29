@@ -85,6 +85,7 @@ function TagTreeItem({
   onToggle,
   onTagClick
 }: TagTreeItemProps): React.JSX.Element {
+  const { t } = useT('common')
   const hasChildren = node.children.length > 0
   const isExpanded = expanded.has(node.fullPath)
   const colors = node.color ? getTagColors(node.color) : null
@@ -108,7 +109,7 @@ function TagTreeItem({
             type="button"
             onClick={handleChevronClick}
             className="shrink-0 size-4 flex items-center justify-center rounded-sm hover:bg-foreground/5 transition-colors"
-            aria-label={isExpanded ? 'Collapse' : 'Expand'}
+            aria-label={isExpanded ? t('action.collapse') : t('action.expand')}
           >
             {isExpanded ? (
               <ChevronDown className="size-2.5 text-muted-foreground" />
@@ -190,6 +191,7 @@ export function SidebarTagList({
   onActionsReady
 }: SidebarTagListProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
+  const { t } = useT('common')
   const { tags, isLoading, error } = useNoteTagsQuery()
   const [showAll, setShowAll] = React.useState(false)
   const [searchOpen, setSearchOpen] = React.useState(false)
@@ -399,7 +401,9 @@ export function SidebarTagList({
             onClick={() => setShowAll(!showAll)}
             className="rounded-sm py-0.5 px-2 ml-6 text-[11px] font-medium leading-3.5 text-sidebar-muted hover:text-sidebar-foreground transition-colors text-left"
           >
-            {showAll ? 'Show less' : `+${tree.length - maxVisible} more`}
+            {showAll
+              ? t('action.showLess')
+              : t('action.showMore', { count: tree.length - maxVisible })}
           </button>
         )}
       </div>
