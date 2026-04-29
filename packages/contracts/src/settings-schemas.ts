@@ -8,6 +8,7 @@
  */
 
 import { z } from 'zod'
+import { LocaleSchema } from './locale-api'
 
 // ============================================================================
 // General Settings
@@ -19,7 +20,7 @@ export const GeneralSettingsSchema = z.object({
   fontFamily: z.enum(['system', 'serif', 'sans-serif', 'monospace', 'gelasio', 'geist', 'inter']),
   accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   startOnBoot: z.boolean(),
-  language: z.string().min(2).max(5),
+  language: LocaleSchema,
   onboardingCompleted: z.boolean(),
   createInSelectedFolder: z.boolean(),
   clockFormat: z.enum(['12h', '24h'])
