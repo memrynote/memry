@@ -67,6 +67,7 @@ import {
   syncFolderConfigDelete
 } from '../notes/folder-config-effects'
 import { renderNoteAsHtml, sanitizeFilename } from '../lib/export-utils'
+import { getMainI18n } from '../lib/main-i18n'
 import { SetFolderConfigSchema } from '@memry/contracts/templates-api'
 import {
   deleteNoteSnapshot,
@@ -432,7 +433,11 @@ export function registerNotesHandlers(): void {
         const service = PropertyDefinitionsService.get()
         const existing = service.get(input.name)
         if (!existing)
-          return { success: false as const, definition: null, error: 'Definition not found' }
+          return {
+            success: false as const,
+            definition: null,
+            error: getMainI18n().t('system:error.definitionNotFound')
+          }
 
         await service.upsert({
           ...existing,
@@ -681,20 +686,21 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.EXPORT_PDF,
     ExportNoteSchema,
     async (input) => {
+      const t = getMainI18n().t
       const note = await getNoteById(input.noteId)
       if (!note) {
-        return { success: false as const, error: 'Note not found' }
+        return { success: false as const, error: t('system:error.noteNotFound') }
       }
 
       const defaultFilename = `${sanitizeFilename(note.title)}.pdf`
       const result = await dialog.showSaveDialog({
-        title: 'Export as PDF',
+        title: t('system:dialog.exportPdf.title'),
         defaultPath: defaultFilename,
-        filters: [{ name: 'PDF Document', extensions: ['pdf'] }]
+        filters: [{ name: t('system:dialog.exportPdf.filterName'), extensions: ['pdf'] }]
       })
 
       if (result.canceled || !result.filePath) {
-        return { success: false as const, error: 'Export cancelled' }
+        return { success: false as const, error: t('system:dialog.exportCancelled') }
       }
 
       const html = renderNoteAsHtml(
@@ -755,20 +761,21 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.EXPORT_HTML,
     ExportNoteSchema,
     async (input) => {
+      const t = getMainI18n().t
       const note = await getNoteById(input.noteId)
       if (!note) {
-        return { success: false as const, error: 'Note not found' }
+        return { success: false as const, error: t('system:error.noteNotFound') }
       }
 
       const defaultFilename = `${sanitizeFilename(note.title)}.html`
       const result = await dialog.showSaveDialog({
-        title: 'Export as HTML',
+        title: t('system:dialog.exportHtml.title'),
         defaultPath: defaultFilename,
-        filters: [{ name: 'HTML Document', extensions: ['html', 'htm'] }]
+        filters: [{ name: t('system:dialog.exportHtml.filterName'), extensions: ['html', 'htm'] }]
       })
 
       if (result.canceled || !result.filePath) {
-        return { success: false as const, error: 'Export cancelled' }
+        return { success: false as const, error: t('system:dialog.exportCancelled') }
       }
 
       const html = renderNoteAsHtml(
@@ -894,12 +901,13 @@ export function registerNotesHandlers(): void {
   ipcMain.handle(
     NotesChannels.invoke.SHOW_IMPORT_DIALOG,
     createHandler(async () => {
+      const t = getMainI18n().t
       const extensions = getAllSupportedExtensions()
       const result = await dialog.showOpenDialog({
         properties: ['openFile', 'multiSelections'],
         filters: [
-          { name: 'Supported Files', extensions },
-          { name: 'All Files', extensions: ['*'] }
+          { name: t('system:dialog.import.filterSupported'), extensions },
+          { name: t('system:dialog.import.filterAll'), extensions: ['*'] }
         ]
       })
 
