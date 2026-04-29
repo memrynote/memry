@@ -1,3 +1,4 @@
+import { useT } from '@memry/i18n/renderer'
 import { MoreHorizontal } from '@/lib/icons'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
@@ -23,16 +24,14 @@ export function CalendarTaskPopoverHeader({
   onToggleComplete,
   onOverflow
 }: CalendarTaskPopoverHeaderProps): React.JSX.Element {
+  const { t } = useT('calendar')
   const isDone = !!task.completedAt
 
   return (
     <div className="flex items-start gap-2 ps-3 pe-2 py-2 border-b">
       <div className="flex-1 min-w-0">
         {task.parentId && parentTitle && (
-          <div
-            data-testid="parent-breadcrumb"
-            className="text-xs text-muted-foreground truncate"
-          >
+          <div data-testid="parent-breadcrumb" className="text-xs text-muted-foreground truncate">
             ↳ {parentTitle}
           </div>
         )}
@@ -40,7 +39,7 @@ export function CalendarTaskPopoverHeader({
           <Checkbox
             checked={isDone}
             onCheckedChange={onToggleComplete}
-            aria-label={isDone ? 'Mark not done' : 'Mark done'}
+            aria-label={isDone ? t('task-popover.mark-not-done') : t('task-popover.mark-done')}
             className="mt-1"
           />
           <span
@@ -56,7 +55,7 @@ export function CalendarTaskPopoverHeader({
       <Button
         variant="ghost"
         size="icon"
-        aria-label="More actions"
+        aria-label={t('task-popover.more-actions')}
         onClick={(e) => onOverflow(e.currentTarget)}
       >
         <MoreHorizontal className="h-4 w-4" />

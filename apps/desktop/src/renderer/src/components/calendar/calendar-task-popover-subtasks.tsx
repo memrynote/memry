@@ -1,3 +1,4 @@
+import { useT } from '@memry/i18n/renderer'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 
@@ -16,6 +17,7 @@ export function CalendarTaskPopoverSubtasks({
   subtasks,
   onToggleSubtask
 }: CalendarTaskPopoverSubtasksProps): React.JSX.Element | null {
+  const { t } = useT('calendar')
   if (subtasks.length === 0) return null
 
   const doneCount = subtasks.filter((s) => !!s.completedAt).length
@@ -23,9 +25,9 @@ export function CalendarTaskPopoverSubtasks({
   return (
     <div className="px-3 py-2 border-t">
       <div className="text-xs text-muted-foreground mb-1.5">
-        Subtasks ·{' '}
+        {t('task-popover.subtasks-prefix')} ·{' '}
         <span>
-          {doneCount} of {subtasks.length} done
+          {t('task-popover.subtasks-counter', { done: doneCount, total: subtasks.length })}
         </span>
       </div>
       <ul className="space-y-1">
@@ -36,11 +38,9 @@ export function CalendarTaskPopoverSubtasks({
               <Checkbox
                 checked={done}
                 onCheckedChange={() => onToggleSubtask(s.id)}
-                aria-label={done ? 'Mark not done' : 'Mark done'}
+                aria-label={done ? t('task-popover.mark-not-done') : t('task-popover.mark-done')}
               />
-              <span
-                className={cn('text-sm', done && 'line-through text-muted-foreground')}
-              >
+              <span className={cn('text-sm', done && 'line-through text-muted-foreground')}>
                 {s.title}
               </span>
             </li>
