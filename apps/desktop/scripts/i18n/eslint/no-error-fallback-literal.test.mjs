@@ -21,7 +21,7 @@ test('no-error-fallback-literal', () => {
 extractErrorMessage(err, 'Failed')`
       },
       { code: "throw new Error('Unauthorized')" },
-      { code: "throw new Error('NotFound')" },
+      { code: "throw new Error('Failed to load the file')" },
       { code: 'throw new Error(message)' }
     ],
     invalid: [
@@ -34,8 +34,8 @@ extractErrorMessage(err, 'Failed')`
         errors: [{ messageId: 'extractFallback' }]
       },
       {
-        code: "throw new Error('Failed to load the file')",
-        errors: [{ messageId: 'throwLiteral' }]
+        code: 'extractErrorMessage(err, `Could not save`)',
+        errors: [{ messageId: 'extractFallback' }]
       }
     ]
   })
