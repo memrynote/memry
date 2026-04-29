@@ -125,8 +125,9 @@ vi.mock('libsodium-wrappers-sumo', () => ({
   }
 }))
 
+const mockGetSettingsSyncManager = vi.fn().mockReturnValue(null)
 vi.mock('../sync/settings-sync', () => ({
-  getSettingsSyncManager: vi.fn().mockReturnValue(null)
+  getSettingsSyncManager: () => mockGetSettingsSyncManager()
 }))
 
 vi.mock('../sync/runtime', () => ({
@@ -228,6 +229,7 @@ describe('sync IPC handlers', () => {
     mockStoreToken.mockResolvedValue(undefined)
     mockGetValidAccessToken.mockResolvedValue('mock-access-token')
     mockRefreshAccessToken.mockResolvedValue(true)
+    mockGetSettingsSyncManager.mockReturnValue(null)
   })
 
   afterEach(() => {
@@ -261,7 +263,21 @@ describe('sync IPC handlers', () => {
     const result = await invokeHandler(SYNC_CHANNELS.TRIGGER_SYNC)
     expect(result).toEqual({
       success: false,
-      error: 'Sync engine not initialized. Open a vault to start sync.'
+      error: 'errors:sync.engineNotInitialized'
+    })
+  })
+
+  it('returns the settings sync error key when settings sync is not initialized', async () => {
+    registerSyncHandlers()
+
+    const result = await invokeHandler(SYNC_CHANNELS.UPDATE_SYNCED_SETTING, {
+      fieldPath: 'general.locale',
+      value: 'en'
+    })
+
+    expect(result).toEqual({
+      success: false,
+      error: 'errors:sync.settingsNotInitialized'
     })
   })
 

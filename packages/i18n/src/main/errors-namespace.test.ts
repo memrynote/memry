@@ -11,6 +11,9 @@ describe('errors namespace', () => {
     expect(i18n.t('errors:sync.networkOffline')).toBe(
       'You are offline. Changes will sync when you reconnect.'
     )
+    expect(i18n.t('errors:sync.engineNotInitialized')).toBe(
+      'Sync engine not initialized. Open a vault to start sync.'
+    )
   })
 
   it('falls back to English for Turkish and Arabic error stubs', async () => {

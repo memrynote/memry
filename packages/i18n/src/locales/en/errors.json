@@ -68,9 +68,11 @@
     "certificatePinFailed": "Secure connection failed. Check your network connection.",
     "unknown": "An unexpected sync error occurred. Will retry automatically.",
     "statusFetchFailed": "Failed to fetch sync status",
+    "engineNotInitialized": "Sync engine not initialized. Open a vault to start sync.",
     "triggerFailed": "Sync failed",
     "pauseFailed": "Failed to pause sync",
     "resumeFailed": "Failed to resume sync",
+    "settingsNotInitialized": "Settings sync not initialized",
     "securityQuarantinePermanent": "A sync item could not be verified and has been quarantined for security.",
     "securityQuarantineRetry": "A sync item failed signature verification and will be retried.",
     "certificatePinPaused": "Secure connection to sync server could not be verified. Syncing has been paused for your protection."
