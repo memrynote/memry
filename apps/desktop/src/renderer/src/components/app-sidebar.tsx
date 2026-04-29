@@ -247,7 +247,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
         {/* COLLECTIONS Section */}
         <SidebarSection
           id="collections"
-          label="Collections"
+          label={'Collections' /* TODO(i18n): wrap label in t() */}
           defaultExpanded={false}
           actions={
             <>
@@ -283,12 +283,13 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
                     type="button"
                     onClick={() => notesActionsRef.current?.createNote()}
                     className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
-                    aria-label="New note"
+                    aria-label={'New note' /* TODO(i18n): wrap aria-label in t() */}
                   >
                     <FilePlus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">
+                  {/* TODO(i18n): wrap in t() */}
                   New note
                 </TooltipContent>
               </Tooltip>
@@ -298,12 +299,13 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
                     type="button"
                     onClick={() => notesActionsRef.current?.createFolder()}
                     className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
-                    aria-label="New folder"
+                    aria-label={'New folder' /* TODO(i18n): wrap aria-label in t() */}
                   >
                     <FolderPlus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">
+                  {/* TODO(i18n): wrap in t() */}
                   New folder
                 </TooltipContent>
               </Tooltip>
@@ -318,12 +320,21 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
         </SidebarSection>
 
         {/* BOOKMARKS Section */}
-        <SidebarSection id="bookmarks" label="Bookmarks" defaultExpanded={false}>
+        <SidebarSection
+          id="bookmarks"
+          label={'Bookmarks' /* TODO(i18n): wrap label in t() */}
+          defaultExpanded={false}
+        >
           <SidebarBookmarkList maxVisible={6} onBookmarkClick={handleBookmarkClick} />
         </SidebarSection>
 
         {/* TAGS Section */}
-        <SidebarSection id="tags" label="Tags" defaultExpanded={false} actions={tagsActions}>
+        <SidebarSection
+          id="tags"
+          label={'Tags' /* TODO(i18n): wrap label in t() */}
+          defaultExpanded={false}
+          actions={tagsActions}
+        >
           <SidebarTagList
             maxVisible={6}
             onTagClick={handleTagClick}
@@ -340,7 +351,9 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
         >
           <div className="flex flex-col items-center gap-2 rounded-md border-2 border-dashed border-primary/50 px-6 py-4">
             <Upload className="size-6 text-primary" />
-            <span className="text-sm font-medium">Drop files to import</span>
+            <span className="text-sm font-medium">
+              {/* TODO(i18n): wrap in t() */}Drop files to import
+            </span>
             <span className="text-xs text-muted-foreground">
               {getAllSupportedExtensions().join(', ')}
             </span>
@@ -367,10 +380,12 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
             type="button"
             onClick={handleNewNote}
             className="flex flex-1 items-center justify-center gap-2 h-[30px] rounded-[5px] bg-sidebar-surface hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
-            title="New note (⌘N)"
+            title={'New note (⌘N)' /* TODO(i18n): wrap title in t() */}
           >
             <Plus className="size-[15px] text-muted-foreground/70" />
-            <span className="text-[13px] text-muted-foreground/70 font-normal">New</span>
+            <span className="text-[13px] text-muted-foreground/70 font-normal">
+              {/* TODO(i18n): wrap in t() */}New
+            </span>
           </button>
         </div>
         <SidebarNav
@@ -392,8 +407,8 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
             <button
               type="button"
               onClick={handleSyncClick}
-              aria-label="Sync disabled"
-              title="Sync disabled"
+              aria-label={'Sync disabled' /* TODO(i18n): wrap aria-label in t() */}
+              title={'Sync disabled' /* TODO(i18n): wrap title in t() */}
               className="shrink-0 size-7 rounded flex items-center justify-center hover:bg-sidebar-accent text-muted-foreground transition-colors"
             >
               <CloudOff className="size-4" />

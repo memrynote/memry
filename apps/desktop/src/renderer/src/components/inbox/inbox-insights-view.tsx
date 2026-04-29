@@ -23,7 +23,9 @@ export function InboxInsightsView({ className }: InboxInsightsViewProps): React.
       <div className={cn('flex items-center justify-center h-64', className)}>
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="size-8 text-muted-foreground animate-spin" />
-          <p className="text-sm text-muted-foreground font-serif">Loading insights...</p>
+          <p className="text-sm text-muted-foreground font-serif">
+            {/* TODO(i18n): wrap in t() */}Loading insights...
+          </p>
         </div>
       </div>
     )

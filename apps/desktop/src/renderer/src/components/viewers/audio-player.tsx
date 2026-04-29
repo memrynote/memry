@@ -133,8 +133,12 @@ export function AudioPlayer({ src, fileName = 'Audio', className }: AudioPlayerP
         className={cn('flex h-full items-center justify-center bg-muted/30 rounded-md', className)}
       >
         <div className="text-center p-8">
-          <p className="text-destructive font-medium mb-2">Failed to load audio</p>
-          <p className="text-sm text-muted-foreground">The audio file could not be played.</p>
+          <p className="text-destructive font-medium mb-2">
+            {/* TODO(i18n): wrap in t() */}Failed to load audio
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {/* TODO(i18n): wrap in t() */}The audio file could not be played.
+          </p>
         </div>
       </div>
     )
@@ -179,7 +183,7 @@ export function AudioPlayer({ src, fileName = 'Audio', className }: AudioPlayerP
               size="lg"
               onClick={skipBackward}
               className="h-12 w-12 p-0"
-              title="Skip back 10s"
+              title={'Skip back 10s' /* TODO(i18n): wrap title in t() */}
             >
               <SkipBack className="h-6 w-6" />
             </Button>
@@ -198,7 +202,7 @@ export function AudioPlayer({ src, fileName = 'Audio', className }: AudioPlayerP
               size="lg"
               onClick={skipForward}
               className="h-12 w-12 p-0"
-              title="Skip forward 10s"
+              title={'Skip forward 10s' /* TODO(i18n): wrap title in t() */}
             >
               <SkipForward className="h-6 w-6" />
             </Button>

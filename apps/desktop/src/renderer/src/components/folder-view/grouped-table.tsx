@@ -1028,7 +1028,7 @@ export function GroupedTable({
       <div
         ref={tableContainerRef}
         role="grid"
-        aria-label="Grouped notes table"
+        aria-label={'Grouped notes table' /* TODO(i18n): wrap aria-label in t() */}
         className={cn('w-full max-w-full overflow-auto outline-none', className)}
         tabIndex={0}
         onKeyDown={handleKeyDown}
@@ -1338,7 +1338,9 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
                 )
               })}
             {Object.keys(groupSummaries).length > 3 && (
-              <span className="opacity-60">+{Object.keys(groupSummaries).length - 3} more</span>
+              <span className="opacity-60">
+                +{Object.keys(groupSummaries).length - 3} {/* TODO(i18n): wrap in t() */}more
+              </span>
             )}
           </div>
         )}

@@ -169,7 +169,7 @@ export const TabBarWithOverflow = ({
             'hover:from-surface-active',
             'transition-colors'
           )}
-          aria-label="Scroll tabs left"
+          aria-label={'Scroll tabs left' /* TODO(i18n): wrap aria-label in t() */}
         >
           <ChevronLeft className="w-4 h-4 text-text-tertiary" />
         </button>
@@ -196,7 +196,7 @@ export const TabBarWithOverflow = ({
             'hover:from-surface-active',
             'transition-colors'
           )}
-          aria-label="Scroll tabs right"
+          aria-label={'Scroll tabs right' /* TODO(i18n): wrap aria-label in t() */}
         >
           <ChevronRight className="w-4 h-4 text-text-tertiary" />
         </button>

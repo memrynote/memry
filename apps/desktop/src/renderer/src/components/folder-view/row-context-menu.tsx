@@ -144,13 +144,15 @@ export function RowContextMenu({
           <>
             <ContextMenuItem onClick={handleBulkMoveToFolder}>
               <FolderInput className="mr-2 h-4 w-4" />
-              Move {selectedCount} Notes to Folder...
-              <ContextMenuShortcut>⇧⌘M</ContextMenuShortcut>
+              {/* TODO(i18n): wrap in t() */}
+              Move {selectedCount} {/* TODO(i18n): wrap in t() */}Notes to Folder...
+              <ContextMenuShortcut>⇧⌘{/* TODO(i18n): wrap in t() */}M</ContextMenuShortcut>
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem variant="destructive" onClick={handleBulkDelete}>
               <Trash2 className="mr-2 h-4 w-4" />
-              Delete {selectedCount} Notes
+              {/* TODO(i18n): wrap in t() */}
+              Delete {selectedCount} {/* TODO(i18n): wrap in t() */}Notes
             </ContextMenuItem>
           </>
         ) : (
@@ -159,10 +161,12 @@ export function RowContextMenu({
             {/* Open actions */}
             <ContextMenuItem onClick={handleOpen}>
               <FileText className="mr-2 h-4 w-4" />
+              {/* TODO(i18n): wrap in t() */}
               Open
             </ContextMenuItem>
             <ContextMenuItem onClick={handleOpenInNewTab}>
               <FileText className="mr-2 h-4 w-4" />
+              {/* TODO(i18n): wrap in t() */}
               Open in New Tab
               <ContextMenuShortcut>⌘↵</ContextMenuShortcut>
             </ContextMenuItem>
@@ -172,14 +176,17 @@ export function RowContextMenu({
             {/* External actions */}
             <ContextMenuItem onClick={() => void handleOpenExternal()}>
               <ExternalLink className="mr-2 h-4 w-4" />
+              {/* TODO(i18n): wrap in t() */}
               Open in External Editor
             </ContextMenuItem>
             <ContextMenuItem onClick={handleRevealInFinder}>
               <FolderOpen className="mr-2 h-4 w-4" />
+              {/* TODO(i18n): wrap in t() */}
               Reveal in Finder
             </ContextMenuItem>
             <ContextMenuItem onClick={handleRevealInSidebar}>
               <PanelLeft className="mr-2 h-4 w-4" />
+              {/* TODO(i18n): wrap in t() */}
               Reveal in Sidebar
             </ContextMenuItem>
 
@@ -188,12 +195,14 @@ export function RowContextMenu({
             {/* Utility actions */}
             <ContextMenuItem onClick={handleCopyLink}>
               <Link className="mr-2 h-4 w-4" />
+              {/* TODO(i18n): wrap in t() */}
               Copy Link
             </ContextMenuItem>
             <ContextMenuItem onClick={handleMoveToFolder}>
               <FolderInput className="mr-2 h-4 w-4" />
+              {/* TODO(i18n): wrap in t() */}
               Move to Folder...
-              <ContextMenuShortcut>⇧⌘M</ContextMenuShortcut>
+              <ContextMenuShortcut>⇧⌘{/* TODO(i18n): wrap in t() */}M</ContextMenuShortcut>
             </ContextMenuItem>
 
             <ContextMenuSeparator />
@@ -201,6 +210,7 @@ export function RowContextMenu({
             {/* Destructive actions */}
             <ContextMenuItem variant="destructive" onClick={handleDelete}>
               <Trash2 className="mr-2 h-4 w-4" />
+              {/* TODO(i18n): wrap in t() */}
               Delete
             </ContextMenuItem>
           </>

@@ -99,6 +99,7 @@ export const ActiveFiltersBar = ({
           <span
             className={`text-[11px] text-text-secondary leading-3.5 shrink-0 whitespace-nowrap`}
           >
+            {/* TODO(i18n): wrap in t() */}
             Priority is
           </span>
           <span
@@ -106,7 +107,10 @@ export const ActiveFiltersBar = ({
           >
             {values}
           </span>
-          <RemoveButton label="priority" onClick={() => onUpdateFilters({ priorities: [] })} />
+          <RemoveButton
+            label={'priority' /* TODO(i18n): wrap label in t() */}
+            onClick={() => onUpdateFilters({ priorities: [] })}
+          />
         </PillWrapper>
       )
     }
@@ -133,6 +137,7 @@ export const ActiveFiltersBar = ({
           <span
             className={`text-[11px] text-text-secondary leading-3.5 shrink-0 whitespace-nowrap`}
           >
+            {/* TODO(i18n): wrap in t() */}
             Status is
           </span>
           <span
@@ -140,7 +145,10 @@ export const ActiveFiltersBar = ({
           >
             {statusNames.join(', ')}
           </span>
-          <RemoveButton label="status" onClick={() => onUpdateFilters({ statusIds: [] })} />
+          <RemoveButton
+            label={'status' /* TODO(i18n): wrap label in t() */}
+            onClick={() => onUpdateFilters({ statusIds: [] })}
+          />
         </PillWrapper>
       )
     }
@@ -162,6 +170,7 @@ export const ActiveFiltersBar = ({
           <span
             className={`text-[11px] text-text-secondary leading-3.5 shrink-0 whitespace-nowrap`}
           >
+            {/* TODO(i18n): wrap in t() */}
             Project is
           </span>
           <span
@@ -169,7 +178,10 @@ export const ActiveFiltersBar = ({
           >
             {names || 'Unknown'}
           </span>
-          <RemoveButton label="project" onClick={() => onUpdateFilters({ projectIds: [] })} />
+          <RemoveButton
+            label={'project' /* TODO(i18n): wrap label in t() */}
+            onClick={() => onUpdateFilters({ projectIds: [] })}
+          />
         </PillWrapper>
       )
     }
@@ -211,6 +223,7 @@ export const ActiveFiltersBar = ({
           <span
             className={`text-[11px] text-text-secondary leading-3.5 shrink-0 whitespace-nowrap`}
           >
+            {/* TODO(i18n): wrap in t() */}
             Due
           </span>
           <span
@@ -219,7 +232,7 @@ export const ActiveFiltersBar = ({
             {label}
           </span>
           <RemoveButton
-            label="due date"
+            label={'due date' /* TODO(i18n): wrap label in t() */}
             onClick={() =>
               onUpdateFilters({ dueDate: { type: 'any', customStart: null, customEnd: null } })
             }
@@ -246,7 +259,10 @@ export const ActiveFiltersBar = ({
           >
             "{filters.search}"
           </span>
-          <RemoveButton label="search" onClick={() => onUpdateFilters({ search: '' })} />
+          <RemoveButton
+            label={'search' /* TODO(i18n): wrap label in t() */}
+            onClick={() => onUpdateFilters({ search: '' })}
+          />
         </PillWrapper>
       )
     }
@@ -282,6 +298,7 @@ export const ActiveFiltersBar = ({
           onClick={onClearAll}
           className="text-[11px] shrink-0 whitespace-nowrap text-destructive leading-3.5 hover:text-destructive/70 transition-colors"
         >
+          {/* TODO(i18n): wrap in t() */}
           Clear all
         </button>
       </div>

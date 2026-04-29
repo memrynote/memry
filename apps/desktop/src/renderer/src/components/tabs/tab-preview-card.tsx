@@ -43,7 +43,7 @@ export const TabPreviewCard = memo(function TabPreviewCard({
           <FileText
             className="size-3.5 shrink-0"
             style={{ color: 'var(--text-tertiary)' }}
-            aria-label="Note icon"
+            aria-label={'Note icon' /* TODO(i18n): wrap aria-label in t() */}
           />
         )}
         <span className="font-semibold text-[13px]/4 truncate text-text-bright">

@@ -25,10 +25,14 @@ export function VaultOnboarding() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-500 text-white mb-4 shadow-lg shadow-indigo-500/30">
             <Sparkles className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-semibold text-gray-900 mb-2">Welcome to Memry</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">
+            {/* TODO(i18n): wrap in t() */}Welcome to Memry
+          </h1>
           <p className="text-gray-600">
+            {/* TODO(i18n): wrap in t() */}
             Your personal knowledge management system.
             <br />
+            {/* TODO(i18n): wrap in t() */}
             Select a folder to store your notes and tasks.
           </p>
         </div>
@@ -43,11 +47,13 @@ export function VaultOnboarding() {
             {isLoading ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                {/* TODO(i18n): wrap in t() */}
                 Opening...
               </>
             ) : (
               <>
                 <FolderOpen className="w-5 h-5 mr-2" />
+                {/* TODO(i18n): wrap in t() */}
                 Select Vault Folder
               </>
             )}
@@ -60,15 +66,23 @@ export function VaultOnboarding() {
             <div className="flex items-start gap-3 p-3 rounded-md bg-gray-50">
               <FileText className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-gray-900">Plain Markdown</p>
-                <p className="text-xs text-gray-500">Your notes stay portable</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {/* TODO(i18n): wrap in t() */}Plain Markdown
+                </p>
+                <p className="text-xs text-gray-500">
+                  {/* TODO(i18n): wrap in t() */}Your notes stay portable
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3 p-3 rounded-md bg-gray-50">
               <Clock className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-gray-900">Sync Anywhere</p>
-                <p className="text-xs text-gray-500">Use Dropbox, iCloud, Git</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {/* TODO(i18n): wrap in t() */}Sync Anywhere
+                </p>
+                <p className="text-xs text-gray-500">
+                  {/* TODO(i18n): wrap in t() */}Use Dropbox, iCloud, Git
+                </p>
               </div>
             </div>
           </div>
@@ -77,7 +91,9 @@ export function VaultOnboarding() {
         {/* Recent vaults */}
         {vaults.length > 0 && (
           <div className="bg-white rounded-2xl shadow-lg border border-gray-200/50 p-4">
-            <h3 className="text-sm font-medium text-gray-500 mb-3 px-2">Recent Vaults</h3>
+            <h3 className="text-sm font-medium text-gray-500 mb-3 px-2">
+              {/* TODO(i18n): wrap in t() */}Recent Vaults
+            </h3>
             <div className="space-y-1">
               {vaults.slice(0, 3).map((vault) => (
                 <button
@@ -92,7 +108,8 @@ export function VaultOnboarding() {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-900 truncate">{vault.name}</p>
                     <p className="text-xs text-gray-500 truncate">
-                      {vault.noteCount} notes · Last opened {formatRelativeTime(vault.lastOpened)}
+                      {vault.noteCount} {/* TODO(i18n): wrap in t() */}notes · Last opened{' '}
+                      {formatRelativeTime(vault.lastOpened)}
                     </p>
                   </div>
                 </button>

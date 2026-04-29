@@ -75,11 +75,11 @@ function DayPanelResizeRail() {
 
   return (
     <button
-      aria-label="Resize Day Panel"
+      aria-label={'Resize Day Panel' /* TODO(i18n): wrap aria-label in t() */}
       tabIndex={-1}
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
-      title="Drag to resize · Double-click to reset"
+      title={'Drag to resize · Double-click to reset' /* TODO(i18n): wrap title in t() */}
       className="absolute inset-y-0 left-0 z-20 w-4 -translate-x-1/2 cursor-col-resize after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border"
     />
   )

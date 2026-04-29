@@ -480,11 +480,11 @@ export const QuickAddInput = ({
             {compact ? (
               <span className="rounded-[3px] px-1 bg-foreground/5 border border-border">
                 <span className="text-[9px] text-text-tertiary font-[family-name:var(--font-mono)] font-medium leading-3">
-                  Q
+                  {/* TODO(i18n): wrap in t() */}Q
                 </span>
               </span>
             ) : (
-              <Kbd className="px-1.5 py-px text-xs leading-4">Q</Kbd>
+              <Kbd className="px-1.5 py-px text-xs leading-4">{/* TODO(i18n): wrap in t() */}Q</Kbd>
             )}
           </div>
         </div>

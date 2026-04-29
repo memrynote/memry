@@ -185,6 +185,7 @@ export function TemplatesPage() {
             <div className="absolute inset-0 rounded-xl border border-border/50" />
           </div>
           <p className="font-serif text-sm text-muted-foreground/60 italic">
+            {/* TODO(i18n): wrap in t() */}
             Loading collection...
           </p>
         </div>
@@ -220,6 +221,7 @@ export function TemplatesPage() {
           <div className="flex items-center gap-2 mb-3">
             <LayoutTemplate className="w-3.5 h-3.5 text-amber-600/70 dark:text-amber-400/70" />
             <span className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground/60">
+              {/* TODO(i18n): wrap in t() */}
               Template Collection
             </span>
           </div>
@@ -231,11 +233,13 @@ export function TemplatesPage() {
               'text-foreground/90 mb-2'
             )}
           >
+            {/* TODO(i18n): wrap in t() */}
             Templates
           </h1>
 
           {/* Subtitle */}
           <p className={cn('font-serif text-base text-muted-foreground/70', 'max-w-md')}>
+            {/* TODO(i18n): wrap in t() */}
             Curated structures for your notes.{' '}
             <span className="text-muted-foreground/50">
               {customTemplates.length === 0
@@ -257,7 +261,7 @@ export function TemplatesPage() {
               )}
             >
               <Plus className="w-4 h-4" />
-              <span>New Template</span>
+              <span>{/* TODO(i18n): wrap in t() */}New Template</span>
             </Button>
           </div>
         </div>
@@ -273,6 +277,7 @@ export function TemplatesPage() {
               <div className="flex items-center gap-2">
                 <Sparkles className="w-3.5 h-3.5 text-amber-600/60 dark:text-amber-400/60" />
                 <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground/50">
+                  {/* TODO(i18n): wrap in t() */}
                   My Templates
                 </h2>
               </div>
@@ -309,6 +314,7 @@ export function TemplatesPage() {
                 <div className="flex items-center gap-2">
                   <Lock className="w-3.5 h-3.5 text-muted-foreground/40" />
                   <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground/50">
+                    {/* TODO(i18n): wrap in t() */}
                     Built-in
                   </h2>
                 </div>
@@ -335,16 +341,21 @@ export function TemplatesPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-display text-xl">Delete Template</AlertDialogTitle>
+            <AlertDialogTitle className="font-display text-xl">
+              {/* TODO(i18n): wrap in t() */}Delete Template
+            </AlertDialogTitle>
             <AlertDialogDescription className="font-serif">
+              {/* TODO(i18n): wrap in t() */}
               Are you sure you want to delete "{templateToDelete?.name}"?
               <span className="block mt-2 text-muted-foreground/60 text-sm">
+                {/* TODO(i18n): wrap in t() */}
                 Notes created from this template will not be affected.
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
             <AlertDialogCancel disabled={isDeleting} className="font-medium">
+              {/* TODO(i18n): wrap in t() */}
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -429,6 +440,7 @@ function TemplateListRow({ template, onEdit, onDuplicate, onDelete }: TemplateLi
               )}
             >
               <Lock className="w-2.5 h-2.5" />
+              {/* TODO(i18n): wrap in t() */}
               Built-in
             </span>
           )}
@@ -466,7 +478,7 @@ function TemplateListRow({ template, onEdit, onDuplicate, onDelete }: TemplateLi
           size="icon"
           className="h-8 w-8 text-muted-foreground hover:text-foreground"
           onClick={() => onDuplicate(template)}
-          title="Duplicate"
+          title={'Duplicate' /* TODO(i18n): wrap title in t() */}
         >
           <Copy className="w-4 h-4" />
         </Button>
@@ -477,7 +489,7 @@ function TemplateListRow({ template, onEdit, onDuplicate, onDelete }: TemplateLi
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-destructive"
             onClick={() => onDelete(template)}
-            title="Delete"
+            title={'Delete' /* TODO(i18n): wrap title in t() */}
           >
             <Trash2 className="w-4 h-4" />
           </Button>
@@ -558,8 +570,11 @@ function EmptyTemplatesState({ onCreateTemplate }: EmptyTemplatesStateProps) {
 
       {/* Content */}
       <div className="relative z-10 max-w-xs">
-        <h3 className="font-display text-lg text-foreground/80 mb-1.5">Start Your Collection</h3>
+        <h3 className="font-display text-lg text-foreground/80 mb-1.5">
+          {/* TODO(i18n): wrap in t() */}Start Your Collection
+        </h3>
         <p className="font-serif text-sm text-muted-foreground/60 mb-5 leading-relaxed">
+          {/* TODO(i18n): wrap in t() */}
           Templates help you create notes with consistent structure.
         </p>
         <Button
@@ -574,6 +589,7 @@ function EmptyTemplatesState({ onCreateTemplate }: EmptyTemplatesStateProps) {
           )}
         >
           <Plus className="w-4 h-4" />
+          {/* TODO(i18n): wrap in t() */}
           Create Template
         </Button>
       </div>

@@ -143,7 +143,8 @@ export function JournalYearView({
         <div className="w-px h-8 bg-border/40" />
         <div className="text-center">
           <p className="text-2xl font-medium text-foreground">
-            {Math.round(monthStats.reduce((sum, s) => sum + s.totalChars, 0) / 1000)}k
+            {Math.round(monthStats.reduce((sum, s) => sum + s.totalChars, 0) / 1000)}
+            {/* TODO(i18n): wrap in t() */}k
           </p>
           <p className="text-xs text-muted-foreground">{t('count.charactersWritten')}</p>
         </div>

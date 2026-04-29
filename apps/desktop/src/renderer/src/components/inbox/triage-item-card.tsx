@@ -43,6 +43,7 @@ export const TriageItemCard = memo(function TriageItemCard({
           )}
           {showTimestamp && (
             <span className="text-[11px]/3.5 text-text-tertiary">
+              {/* TODO(i18n): wrap in t() */}
               Captured {formatTimeAgo(item.createdAt)}
             </span>
           )}

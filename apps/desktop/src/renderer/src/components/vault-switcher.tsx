@@ -174,19 +174,19 @@ export function VaultSwitcher() {
                   )
                 })
               ) : (
-                <Picker.Empty message="No vaults yet" />
+                <Picker.Empty message={'No vaults yet' /* TODO(i18n): wrap message in t() */} />
               )}
 
               <Picker.Separator />
 
               <Picker.Item
                 value="open-vault"
-                label="Open vault"
+                label={'Open vault' /* TODO(i18n): wrap label in t() */}
                 icon={<Plus className="size-3.5" />}
               />
               <Picker.Item
                 value="settings"
-                label="Settings"
+                label={'Settings' /* TODO(i18n): wrap label in t() */}
                 icon={<Settings className="size-3.5" />}
               />
 
@@ -195,7 +195,7 @@ export function VaultSwitcher() {
               {isAuthenticated ? (
                 <Picker.Item
                   value="logout"
-                  label="Log out"
+                  label={'Log out' /* TODO(i18n): wrap label in t() */}
                   icon={<LogOut className="size-3.5" />}
                 />
               ) : (
@@ -205,7 +205,9 @@ export function VaultSwitcher() {
                   className="flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 hover:bg-accent transition-colors cursor-pointer"
                 >
                   <Cloud className="size-3.5 text-sidebar-terracotta" />
-                  <span className="text-sidebar-terracotta font-medium">Sign in to sync</span>
+                  <span className="text-sidebar-terracotta font-medium">
+                    {/* TODO(i18n): wrap in t() */}Sign in to sync
+                  </span>
                 </button>
               )}
             </Picker.List>
@@ -217,18 +219,22 @@ export function VaultSwitcher() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Remove &ldquo;{vaultToRemove?.name}&rdquo; from list?
+              {/* TODO(i18n): wrap in t() */}
+              Remove &ldquo;{vaultToRemove?.name}&{/* TODO(i18n): wrap in t() */}rdquo; from list?
             </AlertDialogTitle>
             <AlertDialogDescription>
+              {/* TODO(i18n): wrap in t() */}
               This vault will be removed from the app, but your files will remain on disk. You can
               always re-add it later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <Button variant="outline" onClick={() => setVaultToRemove(null)}>
+              {/* TODO(i18n): wrap in t() */}
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleConfirmRemove}>
+              {/* TODO(i18n): wrap in t() */}
               Remove
             </Button>
           </AlertDialogFooter>

@@ -54,21 +54,29 @@ export const AllSubtasksCompleteDialog = ({
             <div className="p-2 rounded-full bg-task-complete/15">
               <CheckCircle2 className="size-5 text-task-complete" />
             </div>
-            <AlertDialogTitle>All subtasks complete!</AlertDialogTitle>
+            <AlertDialogTitle>
+              {/* TODO(i18n): wrap in t() */}All subtasks complete!
+            </AlertDialogTitle>
           </div>
           <AlertDialogDescription className="space-y-2">
             <p>
-              &ldquo;{parentTitle}&rdquo; has all {subtaskCount} subtask
-              {subtaskCount !== 1 ? 's' : ''} done.
+              &{/* TODO(i18n): wrap in t() */}ldquo;{parentTitle}&{/* TODO(i18n): wrap in t() */}
+              rdquo; has all {subtaskCount} {/* TODO(i18n): wrap in t() */}subtask
+              {subtaskCount !== 1 ? 's' : ''} {/* TODO(i18n): wrap in t() */}done.
             </p>
             <p className="text-muted-foreground">
+              {/* TODO(i18n): wrap in t() */}
               Would you like to mark the parent task as complete too?
             </p>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={handleKeepOpen}>Keep task open</AlertDialogCancel>
-          <AlertDialogAction onClick={handleComplete}>Complete task ✓</AlertDialogAction>
+          <AlertDialogCancel onClick={handleKeepOpen}>
+            {/* TODO(i18n): wrap in t() */}Keep task open
+          </AlertDialogCancel>
+          <AlertDialogAction onClick={handleComplete}>
+            {/* TODO(i18n): wrap in t() */}Complete task ✓
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

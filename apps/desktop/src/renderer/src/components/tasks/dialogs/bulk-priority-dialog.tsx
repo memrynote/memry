@@ -78,11 +78,13 @@ export const BulkPriorityDialog = ({
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Flag className="size-5 text-muted-foreground" />
-            <DialogTitle>Set priority for all subtasks</DialogTitle>
+            <DialogTitle>{/* TODO(i18n): wrap in t() */}Set priority for all subtasks</DialogTitle>
           </div>
           <DialogDescription>
-            Set priority for {affectedCount} subtask{affectedCount !== 1 ? 's' : ''} in &ldquo;
-            {parentTitle}&rdquo;
+            {/* TODO(i18n): wrap in t() */}
+            Set priority for {affectedCount} {/* TODO(i18n): wrap in t() */}subtask
+            {affectedCount !== 1 ? 's' : ''} {/* TODO(i18n): wrap in t() */}in &ldquo;
+            {parentTitle}&{/* TODO(i18n): wrap in t() */}rdquo;
           </DialogDescription>
         </DialogHeader>
 
@@ -129,6 +131,7 @@ export const BulkPriorityDialog = ({
                 htmlFor="include-completed-priority"
                 className="text-sm text-muted-foreground cursor-pointer"
               >
+                {/* TODO(i18n): wrap in t() */}
                 Also apply to completed subtasks ({completedCount})
               </Label>
             </div>
@@ -137,9 +140,10 @@ export const BulkPriorityDialog = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose}>
+            {/* TODO(i18n): wrap in t() */}
             Cancel
           </Button>
-          <Button onClick={handleApply}>Apply</Button>
+          <Button onClick={handleApply}>{/* TODO(i18n): wrap in t() */}Apply</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

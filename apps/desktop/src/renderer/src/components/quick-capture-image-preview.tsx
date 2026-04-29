@@ -84,7 +84,7 @@ export function FilePreviewCard({
       <button
         onClick={onClear}
         className="shrink-0 rounded p-0.5 text-muted-foreground/30 hover:text-foreground/60 transition-colors"
-        aria-label="Remove attachment"
+        aria-label={'Remove attachment' /* TODO(i18n): wrap aria-label in t() */}
       >
         <X className="size-3" />
       </button>

@@ -495,7 +495,9 @@ export function QuickCapture(): React.JSX.Element {
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[14px] bg-background/80">
           <div className="flex flex-col items-center gap-2 text-muted-foreground">
             <Image className="size-8" />
-            <span className="text-sm font-medium">Drop to capture</span>
+            <span className="text-sm font-medium">
+              {/* TODO(i18n): wrap in t() */}Drop to capture
+            </span>
           </div>
         </div>
       )}
@@ -505,7 +507,9 @@ export function QuickCapture(): React.JSX.Element {
       ) : captureState === 'capturing' && !value.trim() && hasAttachment ? (
         <div className="flex items-center gap-2.5 px-4 py-3.5">
           <Loader2 className="size-4 animate-spin text-accent-orange" />
-          <span className="text-sm text-muted-foreground">Capturing...</span>
+          <span className="text-sm text-muted-foreground">
+            {/* TODO(i18n): wrap in t() */}Capturing...
+          </span>
         </div>
       ) : (
         <>

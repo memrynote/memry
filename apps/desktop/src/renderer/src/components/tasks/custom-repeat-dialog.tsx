@@ -69,6 +69,7 @@ const DayOfWeekPicker = ({ selectedDays, onChange }: DayOfWeekPickerProps): Reac
   return (
     <div className="flex flex-col gap-2">
       <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {/* TODO(i18n): wrap in t() */}
         On these days
       </Label>
       <div className="flex gap-1">
@@ -122,6 +123,7 @@ const MonthlyRepeatOptions = ({
   return (
     <div className="flex flex-col gap-3">
       <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {/* TODO(i18n): wrap in t() */}
         Repeat on
       </Label>
 
@@ -134,7 +136,7 @@ const MonthlyRepeatOptions = ({
           onChange={() => onChange({ monthlyType: 'dayOfMonth' })}
           className="size-4 accent-primary"
         />
-        <span className="text-sm">Day</span>
+        <span className="text-sm">{/* TODO(i18n): wrap in t() */}Day</span>
         <Select
           value={dayOfMonth.toString()}
           onValueChange={(val) => onChange({ dayOfMonth: parseInt(val, 10) })}
@@ -151,7 +153,9 @@ const MonthlyRepeatOptions = ({
             ))}
           </SelectContent>
         </Select>
-        <span className="text-sm text-muted-foreground">of the month</span>
+        <span className="text-sm text-muted-foreground">
+          {/* TODO(i18n): wrap in t() */}of the month
+        </span>
       </label>
 
       {/* Week pattern option */}
@@ -163,7 +167,7 @@ const MonthlyRepeatOptions = ({
           onChange={() => onChange({ monthlyType: 'weekPattern' })}
           className="size-4 accent-primary"
         />
-        <span className="text-sm">The</span>
+        <span className="text-sm">{/* TODO(i18n): wrap in t() */}The</span>
         <Select
           value={weekOfMonth.toString()}
           onValueChange={(val) => onChange({ weekOfMonth: parseInt(val, 10) })}
@@ -196,7 +200,9 @@ const MonthlyRepeatOptions = ({
             ))}
           </SelectContent>
         </Select>
-        <span className="text-sm text-muted-foreground">of the month</span>
+        <span className="text-sm text-muted-foreground">
+          {/* TODO(i18n): wrap in t() */}of the month
+        </span>
       </label>
     </div>
   )
@@ -224,6 +230,7 @@ const RepeatEndOptions = ({
   return (
     <div className="flex flex-col gap-3">
       <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {/* TODO(i18n): wrap in t() */}
         Ends
       </Label>
 
@@ -236,7 +243,7 @@ const RepeatEndOptions = ({
           onChange={() => onChange({ endType: 'never' })}
           className="size-4 accent-primary"
         />
-        <span className="text-sm">Never</span>
+        <span className="text-sm">{/* TODO(i18n): wrap in t() */}Never</span>
       </label>
 
       {/* On date */}
@@ -248,7 +255,7 @@ const RepeatEndOptions = ({
           onChange={() => onChange({ endType: 'date' })}
           className="size-4 accent-primary"
         />
-        <span className="text-sm">On date</span>
+        <span className="text-sm">{/* TODO(i18n): wrap in t() */}On date</span>
         <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -286,7 +293,7 @@ const RepeatEndOptions = ({
           onChange={() => onChange({ endType: 'count' })}
           className="size-4 accent-primary"
         />
-        <span className="text-sm">After</span>
+        <span className="text-sm">{/* TODO(i18n): wrap in t() */}After</span>
         <Input
           type="number"
           min={1}
@@ -296,7 +303,9 @@ const RepeatEndOptions = ({
           disabled={endType !== 'count'}
           className="w-[70px] h-8"
         />
-        <span className="text-sm text-muted-foreground">occurrences</span>
+        <span className="text-sm text-muted-foreground">
+          {/* TODO(i18n): wrap in t() */}occurrences
+        </span>
       </label>
     </div>
   )
@@ -329,6 +338,7 @@ const RepeatPreview = ({ config, startDate }: RepeatPreviewProps): React.JSX.Ele
   return (
     <div className="flex flex-col gap-2">
       <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {/* TODO(i18n): wrap in t() */}
         Preview
       </Label>
       <p className="text-xs text-muted-foreground">{previewHeader}</p>
@@ -340,14 +350,16 @@ const RepeatPreview = ({ config, startDate }: RepeatPreviewProps): React.JSX.Ele
               {format(date, 'EEE, MMM d, yyyy')}
               {config.endType === 'count' && config.endCount && (
                 <span className="text-muted-foreground ml-2">
-                  ({index + 1} of {config.endCount})
+                  ({index + 1} {/* TODO(i18n): wrap in t() */}of {config.endCount})
                 </span>
               )}
             </span>
           </li>
         ))}
         {occurrences.length >= 5 && config.endType === 'never' && (
-          <li className="text-muted-foreground text-xs">... and more</li>
+          <li className="text-muted-foreground text-xs">
+            ... {/* TODO(i18n): wrap in t() */}and more
+          </li>
         )}
       </ul>
     </div>
@@ -483,10 +495,11 @@ const CustomRepeatDialogInner = ({
       {/* Frequency selector */}
       <div className="flex flex-col gap-2">
         <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {/* TODO(i18n): wrap in t() */}
           Frequency
         </Label>
         <div className="flex items-center gap-2">
-          <span className="text-sm">Repeat every</span>
+          <span className="text-sm">{/* TODO(i18n): wrap in t() */}Repeat every</span>
           <Input
             type="number"
             min={1}
@@ -500,10 +513,18 @@ const CustomRepeatDialogInner = ({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="daily">day{interval > 1 ? 's' : ''}</SelectItem>
-              <SelectItem value="weekly">week{interval > 1 ? 's' : ''}</SelectItem>
-              <SelectItem value="monthly">month{interval > 1 ? 's' : ''}</SelectItem>
-              <SelectItem value="yearly">year{interval > 1 ? 's' : ''}</SelectItem>
+              <SelectItem value="daily">
+                {/* TODO(i18n): wrap in t() */}day{interval > 1 ? 's' : ''}
+              </SelectItem>
+              <SelectItem value="weekly">
+                {/* TODO(i18n): wrap in t() */}week{interval > 1 ? 's' : ''}
+              </SelectItem>
+              <SelectItem value="monthly">
+                {/* TODO(i18n): wrap in t() */}month{interval > 1 ? 's' : ''}
+              </SelectItem>
+              <SelectItem value="yearly">
+                {/* TODO(i18n): wrap in t() */}year{interval > 1 ? 's' : ''}
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -542,9 +563,10 @@ const CustomRepeatDialogInner = ({
       {/* Footer buttons */}
       <DialogFooter>
         <Button variant="outline" onClick={onClose}>
+          {/* TODO(i18n): wrap in t() */}
           Cancel
         </Button>
-        <Button onClick={handleSave}>Save</Button>
+        <Button onClick={handleSave}>{/* TODO(i18n): wrap in t() */}Save</Button>
       </DialogFooter>
     </div>
   )
@@ -573,7 +595,7 @@ export const CustomRepeatDialog = ({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Custom Repeat</DialogTitle>
+          <DialogTitle>{/* TODO(i18n): wrap in t() */}Custom Repeat</DialogTitle>
         </DialogHeader>
         {isOpen && (
           <CustomRepeatDialogInner

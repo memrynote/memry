@@ -118,7 +118,7 @@ export function ReminderPicker({
             className={cn(sizeClasses[size], 'gap-1.5', className)}
           >
             <Bell className="h-4 w-4" />
-            <span>Remind</span>
+            <span>{/* TODO(i18n): wrap in t() */}Remind</span>
           </Button>
         )}
       </Picker.Trigger>
@@ -127,7 +127,7 @@ export function ReminderPicker({
         {mode === 'presets' ? (
           <>
             <Picker.List>
-              <Picker.Section label="Remind me">
+              <Picker.Section label={'Remind me' /* TODO(i18n): wrap label in t() */}>
                 {presets.map((preset) => (
                   <Picker.Item
                     key={preset.id}
@@ -146,7 +146,7 @@ export function ReminderPicker({
               <Picker.Separator />
               <Picker.Item
                 value="pick-custom"
-                label="Pick date & time"
+                label={'Pick date & time' /* TODO(i18n): wrap label in t() */}
                 icon={<Calendar className="size-4" />}
                 trailing={<ChevronRight className="size-4 text-muted-foreground" />}
               />
@@ -157,7 +157,7 @@ export function ReminderPicker({
                 <Picker.Separator />
                 <div className="px-3 py-2">
                   <Textarea
-                    placeholder="Add a note (optional)"
+                    placeholder={'Add a note (optional)' /* TODO(i18n): wrap placeholder in t() */}
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     className="h-16 resize-none text-sm"
@@ -173,6 +173,7 @@ export function ReminderPicker({
               className="mb-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
               <ChevronRight className="h-3 w-3 rotate-180" />
+              {/* TODO(i18n): wrap in t() */}
               Back to presets
             </button>
 
@@ -187,6 +188,7 @@ export function ReminderPicker({
               <div className="flex items-center gap-2">
                 <Label htmlFor="reminder-time" className="flex items-center gap-1.5 text-sm">
                   <Clock className="h-4 w-4" />
+                  {/* TODO(i18n): wrap in t() */}
                   Time
                 </Label>
                 <Input
@@ -201,11 +203,14 @@ export function ReminderPicker({
               {shouldShowNote && (
                 <div>
                   <Label htmlFor="reminder-note" className="text-sm">
+                    {/* TODO(i18n): wrap in t() */}
                     Note (optional)
                   </Label>
                   <Textarea
                     id="reminder-note"
-                    placeholder="Why are you setting this reminder?"
+                    placeholder={
+                      'Why are you setting this reminder?' /* TODO(i18n): wrap placeholder in t() */
+                    }
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     className="mt-1.5 h-16 resize-none text-sm"

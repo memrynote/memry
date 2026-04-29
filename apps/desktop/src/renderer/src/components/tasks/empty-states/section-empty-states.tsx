@@ -93,7 +93,9 @@ export const SimpleEmptyState = ({
   return (
     <div className={cn('py-4 text-center', className)}>
       {/* Message */}
-      <p className="text-sm text-text-tertiary mb-2">No tasks scheduled</p>
+      <p className="text-sm text-text-tertiary mb-2">
+        {/* TODO(i18n): wrap in t() */}No tasks scheduled
+      </p>
 
       {/* Add task link */}
       <button
@@ -107,6 +109,7 @@ export const SimpleEmptyState = ({
         aria-label={`Add task for ${label.toLowerCase()}`}
       >
         <Plus className="size-4" aria-hidden="true" />
+        {/* TODO(i18n): wrap in t() */}
         Add task for {label.toLowerCase()}
       </button>
     </div>
@@ -134,21 +137,27 @@ export const PlanningEmptyState = ({
       </div>
 
       {/* Title */}
-      <h3 className="font-medium text-text-primary mb-1">Nothing scheduled</h3>
+      <h3 className="font-medium text-text-primary mb-1">
+        {/* TODO(i18n): wrap in t() */}Nothing scheduled
+      </h3>
 
       {/* Description */}
-      <p className="text-sm text-text-tertiary mb-5">Add tasks with due dates to plan your week.</p>
+      <p className="text-sm text-text-tertiary mb-5">
+        {/* TODO(i18n): wrap in t() */}Add tasks with due dates to plan your week.
+      </p>
 
       {/* Action buttons */}
       <div className="flex items-center justify-center gap-3">
         <Button onClick={onAddTask} size="sm" className="gap-2">
           <Plus className="size-4" aria-hidden="true" />
+          {/* TODO(i18n): wrap in t() */}
           Add task
         </Button>
 
         {onViewCalendar && (
           <Button onClick={onViewCalendar} variant="outline" size="sm" className="gap-2">
             <Calendar className="size-4" aria-hidden="true" />
+            {/* TODO(i18n): wrap in t() */}
             View calendar
           </Button>
         )}

@@ -130,8 +130,9 @@ export const SaveFilterDialog = ({
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Save Filter</DialogTitle>
+          <DialogTitle>{/* TODO(i18n): wrap in t() */}Save Filter</DialogTitle>
           <DialogDescription>
+            {/* TODO(i18n): wrap in t() */}
             Save your current filter settings for quick access later.
           </DialogDescription>
         </DialogHeader>
@@ -139,7 +140,7 @@ export const SaveFilterDialog = ({
         <div className="space-y-4 py-4">
           {/* Filter name input */}
           <div className="space-y-2">
-            <Label htmlFor="filter-name">Filter Name</Label>
+            <Label htmlFor="filter-name">{/* TODO(i18n): wrap in t() */}Filter Name</Label>
             <Input
               id="filter-name"
               value={name}
@@ -148,7 +149,9 @@ export const SaveFilterDialog = ({
                 setError('')
               }}
               onKeyDown={handleKeyDown}
-              placeholder="e.g., High priority this week"
+              placeholder={
+                'e.g., High priority this week' /* TODO(i18n): wrap placeholder in t() */
+              }
               autoFocus
             />
             {error && <p className="text-sm text-destructive">{error}</p>}
@@ -156,7 +159,9 @@ export const SaveFilterDialog = ({
 
           {/* Current filters summary */}
           <div className="space-y-2">
-            <Label className="text-muted-foreground">Current filters:</Label>
+            <Label className="text-muted-foreground">
+              {/* TODO(i18n): wrap in t() */}Current filters:
+            </Label>
             <ul className="text-sm space-y-1">
               {filterSummary.length > 0 ? (
                 filterSummary.map((item, index) => (
@@ -165,7 +170,9 @@ export const SaveFilterDialog = ({
                   </li>
                 ))
               ) : (
-                <li className="text-muted-foreground italic">No filters applied</li>
+                <li className="text-muted-foreground italic">
+                  {/* TODO(i18n): wrap in t() */}No filters applied
+                </li>
               )}
             </ul>
           </div>
@@ -173,9 +180,11 @@ export const SaveFilterDialog = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose}>
+            {/* TODO(i18n): wrap in t() */}
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={filterSummary.length === 0}>
+            {/* TODO(i18n): wrap in t() */}
             Save Filter
           </Button>
         </DialogFooter>

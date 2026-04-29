@@ -97,6 +97,7 @@ export const SortableProjectItem = ({
       {/* Drop indicator when hovering */}
       {isOver && (
         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-primary font-medium z-10">
+          {/* TODO(i18n): wrap in t() */}
           Drop here
         </span>
       )}
@@ -131,7 +132,7 @@ export const SortableProjectItem = ({
           }}
         >
           <Settings className="size-4 text-muted-foreground" />
-          <span className="sr-only">Edit project</span>
+          <span className="sr-only">{/* TODO(i18n): wrap in t() */}Edit project</span>
         </SidebarMenuAction>
       )}
     </SidebarMenuItem>

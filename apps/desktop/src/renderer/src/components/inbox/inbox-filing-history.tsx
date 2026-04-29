@@ -39,7 +39,9 @@ export function InboxFilingHistoryList({ items }: InboxFilingHistoryListProps): 
         <div className="size-12 rounded-full bg-muted/50 flex items-center justify-center mb-3">
           <Folder className="size-5 text-muted-foreground" />
         </div>
-        <p className="text-muted-foreground font-serif italic">No items filed yet</p>
+        <p className="text-muted-foreground font-serif italic">
+          {/* TODO(i18n): wrap in t() */}No items filed yet
+        </p>
       </div>
     )
   }
@@ -49,8 +51,12 @@ export function InboxFilingHistoryList({ items }: InboxFilingHistoryListProps): 
   return (
     <div className="p-6 rounded-xl border border-border/50 bg-card flex flex-col h-full">
       <div className="mb-6">
-        <h3 className="text-lg font-serif font-medium text-foreground">Recently Filed</h3>
-        <p className="text-sm text-muted-foreground mt-1">Latest actions on your inbox</p>
+        <h3 className="text-lg font-serif font-medium text-foreground">
+          {/* TODO(i18n): wrap in t() */}Recently Filed
+        </h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          {/* TODO(i18n): wrap in t() */}Latest actions on your inbox
+        </p>
       </div>
 
       <div className="flex-1 overflow-auto -mx-2 px-2">
@@ -92,6 +98,7 @@ export function InboxFilingHistoryList({ items }: InboxFilingHistoryListProps): 
                     </span>
                     {item.filedAction === 'linked' && (
                       <span className="text-[10px] uppercase tracking-wider font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-sm">
+                        {/* TODO(i18n): wrap in t() */}
                         Linked
                       </span>
                     )}

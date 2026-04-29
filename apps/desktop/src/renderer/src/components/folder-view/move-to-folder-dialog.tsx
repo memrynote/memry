@@ -349,7 +349,7 @@ function MoveToFolderDialogSession({
         <Input
           ref={inputRef}
           autoFocus
-          placeholder="Search folders..."
+          placeholder={'Search folders...' /* TODO(i18n): wrap placeholder in t() */}
           value={searchQuery}
           onChange={(e) => {
             setSearchQuery(e.target.value)
@@ -364,6 +364,7 @@ function MoveToFolderDialogSession({
         <div ref={listRef} className="px-2 space-y-1">
           {isLoading ? (
             <div className="flex items-center justify-center h-20 text-muted-foreground">
+              {/* TODO(i18n): wrap in t() */}
               Loading folders...
             </div>
           ) : (
@@ -373,6 +374,7 @@ function MoveToFolderDialogSession({
                 <div className="mb-2">
                   <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-muted-foreground">
                     <Sparkles className="h-3 w-3" />
+                    {/* TODO(i18n): wrap in t() */}
                     SUGGESTED
                   </div>
                   {folderItems
@@ -401,10 +403,14 @@ function MoveToFolderDialogSession({
                           <Folder className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                           <span className="flex-1 truncate">{item.displayName}</span>
                           {item.confidence && item.confidence > 0.7 && (
-                            <span className="text-xs text-amber-500">Best match</span>
+                            <span className="text-xs text-amber-500">
+                              {/* TODO(i18n): wrap in t() */}Best match
+                            </span>
                           )}
                           {isCurrent && (
-                            <span className="text-xs text-muted-foreground">(current)</span>
+                            <span className="text-xs text-muted-foreground">
+                              ({/* TODO(i18n): wrap in t() */}current)
+                            </span>
                           )}
                         </button>
                       )
@@ -416,6 +422,7 @@ function MoveToFolderDialogSession({
               <div>
                 {!searchQuery && (
                   <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                    {/* TODO(i18n): wrap in t() */}
                     ALL FOLDERS
                   </div>
                 )}
@@ -447,7 +454,9 @@ function MoveToFolderDialogSession({
                             : item.displayName}
                         </span>
                         {isCurrent && (
-                          <span className="text-xs text-muted-foreground">(current)</span>
+                          <span className="text-xs text-muted-foreground">
+                            ({/* TODO(i18n): wrap in t() */}current)
+                          </span>
                         )}
                       </button>
                     )
@@ -457,7 +466,8 @@ function MoveToFolderDialogSession({
                 {folderItems.filter((item) => !item.isSuggestion).length === 0 &&
                   !canCreateFolder && (
                     <div className="flex items-center justify-center h-20 text-muted-foreground text-sm">
-                      No folders match &quot;{searchQuery}&quot;
+                      {/* TODO(i18n): wrap in t() */}
+                      No folders match &quot;{searchQuery}&{/* TODO(i18n): wrap in t() */}quot;
                     </div>
                   )}
               </div>
@@ -476,7 +486,10 @@ function MoveToFolderDialogSession({
                     )}
                   >
                     <Plus className="h-4 w-4 flex-shrink-0" />
-                    <span className="flex-1 truncate">Create &quot;{searchQuery.trim()}&quot;</span>
+                    <span className="flex-1 truncate">
+                      {/* TODO(i18n): wrap in t() */}Create &quot;{searchQuery.trim()}&
+                      {/* TODO(i18n): wrap in t() */}quot;
+                    </span>
                   </button>
                 </div>
               )}
@@ -487,6 +500,7 @@ function MoveToFolderDialogSession({
 
       <DialogFooter>
         <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isMoving}>
+          {/* TODO(i18n): wrap in t() */}
           Cancel
         </Button>
         <Button

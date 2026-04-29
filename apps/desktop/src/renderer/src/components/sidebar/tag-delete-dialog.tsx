@@ -50,13 +50,17 @@ export function TagDeleteDialog({
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete tag #{tag}?</AlertDialogTitle>
+          <AlertDialogTitle>
+            {/* TODO(i18n): wrap in t() */}Delete tag #{tag}?
+          </AlertDialogTitle>
           <AlertDialogDescription>
+            {/* TODO(i18n): wrap in t() */}
             Notes with this tag won&apos;t be deleted, just untagged.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isPending}>
+            {/* TODO(i18n): wrap in t() */}
             Cancel
           </Button>
           <Button variant="destructive" onClick={handleConfirm} disabled={isPending}>

@@ -140,7 +140,7 @@ const RegularTabComponent = ({
               'transition-transform duration-150',
               'animate-pulse'
             )}
-            aria-label="Unsaved changes"
+            aria-label={'Unsaved changes' /* TODO(i18n): wrap aria-label in t() */}
           />
         ) : showCloseButton ? (
           // Close button with refined hover state

@@ -120,7 +120,7 @@ export function FolderIconButton({
         type="button"
         onClick={handleIconClick}
         className="flex h-5 w-5 items-center justify-center rounded"
-        aria-label="Set folder icon"
+        aria-label={'Set folder icon' /* TODO(i18n): wrap aria-label in t() */}
       >
         {folderIcon}
       </button>

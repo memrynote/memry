@@ -110,7 +110,7 @@ export function SidebarBookmarkList({
       <div className={cn('px-2 py-1.5', className)}>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Star className="size-3 animate-pulse" />
-          <span>Loading bookmarks...</span>
+          <span>{/* TODO(i18n): wrap in t() */}Loading bookmarks...</span>
         </div>
       </div>
     )
@@ -119,7 +119,9 @@ export function SidebarBookmarkList({
   if (error) {
     return (
       <div className={cn('px-2 py-1.5', className)}>
-        <span className="text-xs text-destructive">Failed to load bookmarks</span>
+        <span className="text-xs text-destructive">
+          {/* TODO(i18n): wrap in t() */}Failed to load bookmarks
+        </span>
       </div>
     )
   }
@@ -127,7 +129,9 @@ export function SidebarBookmarkList({
   if (validBookmarks.length === 0) {
     return (
       <div className={cn('px-2 py-1.5', className)}>
-        <span className="text-xs text-muted-foreground">No bookmarks yet</span>
+        <span className="text-xs text-muted-foreground">
+          {/* TODO(i18n): wrap in t() */}No bookmarks yet
+        </span>
       </div>
     )
   }
@@ -180,7 +184,7 @@ export function SidebarBookmarkList({
                   showOnHover
                 >
                   <MoreHorizontal className="size-4" />
-                  <span className="sr-only">More options</span>
+                  <span className="sr-only">{/* TODO(i18n): wrap in t() */}More options</span>
                 </SidebarMenuAction>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
@@ -189,6 +193,7 @@ export function SidebarBookmarkList({
                   className="text-destructive focus:text-destructive"
                 >
                   <Trash2 className="size-4 mr-2" />
+                  {/* TODO(i18n): wrap in t() */}
                   Remove
                 </DropdownMenuItem>
               </DropdownMenuContent>

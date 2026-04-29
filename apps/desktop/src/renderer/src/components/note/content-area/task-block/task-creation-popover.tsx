@@ -131,7 +131,9 @@ const TaskCreationPopoverForm: FC<TaskCreationPopoverFormProps> = ({
       <div className="truncate text-sm font-medium">{title}</div>
 
       <div className="space-y-1.5">
-        <label className="text-xs text-muted-foreground">Project</label>
+        <label className="text-xs text-muted-foreground">
+          {/* TODO(i18n): wrap in t() */}Project
+        </label>
         <select
           value={projectId}
           onChange={(e) => setProjectId(e.target.value)}
@@ -149,7 +151,9 @@ const TaskCreationPopoverForm: FC<TaskCreationPopoverFormProps> = ({
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-xs text-muted-foreground">Priority</label>
+        <label className="text-xs text-muted-foreground">
+          {/* TODO(i18n): wrap in t() */}Priority
+        </label>
         <div className="flex items-center gap-1.5">
           {PRIORITY_OPTIONS.map((opt) => (
             <button
@@ -170,7 +174,9 @@ const TaskCreationPopoverForm: FC<TaskCreationPopoverFormProps> = ({
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-xs text-muted-foreground">Due date</label>
+        <label className="text-xs text-muted-foreground">
+          {/* TODO(i18n): wrap in t() */}Due date
+        </label>
         <input
           type="date"
           value={dueDate}
@@ -186,6 +192,7 @@ const TaskCreationPopoverForm: FC<TaskCreationPopoverFormProps> = ({
 
       <div className="flex items-center justify-end gap-2 pt-1">
         <Button variant="ghost" size="sm" onClick={onCancel} disabled={isSubmitting}>
+          {/* TODO(i18n): wrap in t() */}
           Cancel
         </Button>
         <Button

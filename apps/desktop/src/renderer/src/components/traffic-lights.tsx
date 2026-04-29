@@ -43,7 +43,7 @@ export function TrafficLights({ className, compact = false }: TrafficLightsProps
           'group relative rounded-full bg-[#FF5F57] hover:bg-[#FF5F57] transition-colors focus:outline-none',
           buttonSize
         )}
-        aria-label="Close window"
+        aria-label={'Close window' /* TODO(i18n): wrap aria-label in t() */}
       >
         {isHovered && (
           <svg
@@ -65,7 +65,7 @@ export function TrafficLights({ className, compact = false }: TrafficLightsProps
           'group relative rounded-full bg-[#FEBC2E] hover:bg-[#FEBC2E] transition-colors focus:outline-none',
           buttonSize
         )}
-        aria-label="Minimize window"
+        aria-label={'Minimize window' /* TODO(i18n): wrap aria-label in t() */}
       >
         {isHovered && (
           <svg
@@ -87,7 +87,7 @@ export function TrafficLights({ className, compact = false }: TrafficLightsProps
           'group relative rounded-full bg-[#28C840] hover:bg-[#28C840] transition-colors focus:outline-none',
           buttonSize
         )}
-        aria-label="Maximize window"
+        aria-label={'Maximize window' /* TODO(i18n): wrap aria-label in t() */}
       >
         {isHovered && (
           <svg

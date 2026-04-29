@@ -43,7 +43,7 @@ export const QuickAddHelp = ({ className }: QuickAddHelpProps): React.JSX.Elemen
             'text-muted-foreground hover:text-foreground',
             className
           )}
-          aria-label="Quick add shortcuts help"
+          aria-label={'Quick add shortcuts help' /* TODO(i18n): wrap aria-label in t() */}
           tabIndex={-1}
         >
           <HelpCircle className="w-4 h-4" />
@@ -55,7 +55,9 @@ export const QuickAddHelp = ({ className }: QuickAddHelpProps): React.JSX.Elemen
         align="end"
         className="w-72 p-3 bg-popover text-popover-foreground"
       >
-        <h4 className="font-medium mb-2 text-sm">Quick Add Shortcuts</h4>
+        <h4 className="font-medium mb-2 text-sm">
+          {/* TODO(i18n): wrap in t() */}Quick Add Shortcuts
+        </h4>
 
         <div className="space-y-1.5">
           {shortcuts.map((shortcut) => (
@@ -69,6 +71,7 @@ export const QuickAddHelp = ({ className }: QuickAddHelpProps): React.JSX.Elemen
         </div>
 
         <p className="text-xs text-muted-foreground mt-3 pt-2 border-t border-border">
+          {/* TODO(i18n): wrap in t() */}
           Example: "Buy milk !tomorrow !!high #personal"
         </p>
       </TooltipContent>

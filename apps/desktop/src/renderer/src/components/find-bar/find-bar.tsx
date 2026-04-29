@@ -64,7 +64,7 @@ export const FindBar = memo(function FindBar({
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Find, replace, ask..."
+          placeholder={'Find, replace, ask...' /* TODO(i18n): wrap placeholder in t() */}
           tabIndex={isOpen ? 0 : -1}
           className={cn(
             'w-52 h-7 text-sm bg-transparent',

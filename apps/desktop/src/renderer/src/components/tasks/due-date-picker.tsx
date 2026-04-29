@@ -322,7 +322,7 @@ export const DueDatePicker = ({
           variant="outline"
           role="combobox"
           aria-expanded={isOpen}
-          aria-label="Select due date"
+          aria-label={'Select due date' /* TODO(i18n): wrap aria-label in t() */}
           className={cn(
             'w-full justify-start text-left font-normal',
             !date && 'text-muted-foreground',
@@ -336,11 +336,13 @@ export const DueDatePicker = ({
               {dateDisplay?.text}
               {time && <span className="ml-1 text-muted-foreground">· {formatTime(time)}</span>}
               {dateDisplay?.status === 'overdue' && (
-                <span className="ml-1 text-xs opacity-80">· Overdue</span>
+                <span className="ml-1 text-xs opacity-80">
+                  · {/* TODO(i18n): wrap in t() */}Overdue
+                </span>
               )}
             </span>
           ) : (
-            <span>Set due date</span>
+            <span>{/* TODO(i18n): wrap in t() */}Set due date</span>
           )}
         </Button>
       </PopoverTrigger>
@@ -362,6 +364,7 @@ export const DueDatePicker = ({
             {/* Quick Options */}
             <div className="p-1">
               <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                {/* TODO(i18n): wrap in t() */}
                 Suggestions
               </div>
               {quickOptions.map((option) => (
@@ -404,7 +407,7 @@ export const DueDatePicker = ({
                 )}
               >
                 <CalendarIcon className="size-4 text-muted-foreground" />
-                <span>Pick a date...</span>
+                <span>{/* TODO(i18n): wrap in t() */}Pick a date...</span>
               </button>
             </div>
 
@@ -438,13 +441,13 @@ export const DueDatePicker = ({
                       )}
                     >
                       <Plus className="size-4" />
-                      <span>Add time</span>
+                      <span>{/* TODO(i18n): wrap in t() */}Add time</span>
                     </button>
                   ) : (
                     <div className="mt-2">
                       <div className="mb-1 flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         <Clock className="size-3" />
-                        <span>Time</span>
+                        <span>{/* TODO(i18n): wrap in t() */}Time</span>
                       </div>
                       <TimePicker value={time} onChange={onTimeChange} />
                     </div>
@@ -465,7 +468,7 @@ export const DueDatePicker = ({
                   >
                     <span className="flex items-center gap-2">
                       <X className="size-4" />
-                      <span>Clear date</span>
+                      <span>{/* TODO(i18n): wrap in t() */}Clear date</span>
                     </span>
                     {/* Number hint for clear - only show when input is empty */}
                     {inputIsEmpty && (
@@ -490,7 +493,7 @@ export const DueDatePicker = ({
               )}
             >
               <span className="text-muted-foreground">←</span>
-              <span>Back to options</span>
+              <span>{/* TODO(i18n): wrap in t() */}Back to options</span>
             </button>
 
             {/* Calendar */}

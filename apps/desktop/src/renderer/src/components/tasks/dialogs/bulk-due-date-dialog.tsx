@@ -71,11 +71,13 @@ export const BulkDueDateDialog = ({
         <DialogHeader>
           <div className="flex items-center gap-2">
             <CalendarIcon className="size-5 text-muted-foreground" />
-            <DialogTitle>Set due date for all subtasks</DialogTitle>
+            <DialogTitle>{/* TODO(i18n): wrap in t() */}Set due date for all subtasks</DialogTitle>
           </div>
           <DialogDescription>
-            Set due date for {affectedCount} subtask{affectedCount !== 1 ? 's' : ''} in &ldquo;
-            {parentTitle}&rdquo;
+            {/* TODO(i18n): wrap in t() */}
+            Set due date for {affectedCount} {/* TODO(i18n): wrap in t() */}subtask
+            {affectedCount !== 1 ? 's' : ''} {/* TODO(i18n): wrap in t() */}in &ldquo;
+            {parentTitle}&{/* TODO(i18n): wrap in t() */}rdquo;
           </DialogDescription>
         </DialogHeader>
 
@@ -97,6 +99,7 @@ export const BulkDueDateDialog = ({
                 htmlFor="include-completed"
                 className="text-sm text-muted-foreground cursor-pointer"
               >
+                {/* TODO(i18n): wrap in t() */}
                 Also apply to completed subtasks ({completedCount})
               </Label>
             </div>
@@ -105,12 +108,15 @@ export const BulkDueDateDialog = ({
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="ghost" onClick={handleClearDate}>
+            {/* TODO(i18n): wrap in t() */}
             Clear date
           </Button>
           <Button variant="outline" onClick={handleClose}>
+            {/* TODO(i18n): wrap in t() */}
             Cancel
           </Button>
           <Button onClick={handleApply} disabled={!selectedDate}>
+            {/* TODO(i18n): wrap in t() */}
             Apply
           </Button>
         </DialogFooter>

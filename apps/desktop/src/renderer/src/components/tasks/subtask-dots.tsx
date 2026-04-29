@@ -78,10 +78,13 @@ export const SubtaskDots = ({
           <TooltipTrigger asChild>{content}</TooltipTrigger>
           <TooltipContent side="top" className="text-xs">
             <p>
-              {completed} of {total} subtasks complete ({percentage}%)
+              {completed} {/* TODO(i18n): wrap in t() */}of {total} {/* TODO(i18n): wrap in t() */}
+              subtasks complete ({percentage}%)
             </p>
             {onClick && (
-              <p className="text-muted-foreground">Click to {isExpanded ? 'collapse' : 'expand'}</p>
+              <p className="text-muted-foreground">
+                {/* TODO(i18n): wrap in t() */}Click to {isExpanded ? 'collapse' : 'expand'}
+              </p>
             )}
           </TooltipContent>
         </Tooltip>
@@ -132,11 +135,14 @@ export const SubtaskDots = ({
         <TooltipTrigger asChild>{content}</TooltipTrigger>
         <TooltipContent side="top" className="text-xs">
           <p>
-            {completed} of {total} subtasks complete
+            {completed} {/* TODO(i18n): wrap in t() */}of {total} {/* TODO(i18n): wrap in t() */}
+            subtasks complete
             {completed < total && ` (${percentage}%)`}
           </p>
           {onClick && (
-            <p className="text-muted-foreground">Click to {isExpanded ? 'collapse' : 'expand'}</p>
+            <p className="text-muted-foreground">
+              {/* TODO(i18n): wrap in t() */}Click to {isExpanded ? 'collapse' : 'expand'}
+            </p>
           )}
         </TooltipContent>
       </Tooltip>

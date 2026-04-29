@@ -93,7 +93,9 @@ export const QuickFilters = ({
 
   return (
     <div className={cn('flex items-center gap-2 px-4 py-2 bg-muted/30 border-b', className)}>
-      <span className="text-xs text-muted-foreground shrink-0">Quick filters:</span>
+      <span className="text-xs text-muted-foreground shrink-0">
+        {/* TODO(i18n): wrap in t() */}Quick filters:
+      </span>
 
       <div className="flex flex-wrap gap-1.5">
         {quickFilterPresets.map((preset) => {

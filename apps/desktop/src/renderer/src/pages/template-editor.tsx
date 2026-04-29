@@ -96,7 +96,7 @@ function EditorLoadingState() {
     <div className="flex items-center justify-center h-full min-h-[400px]">
       <div className="flex flex-col items-center gap-3 text-muted-foreground">
         <Loader2 className="h-8 w-8 animate-spin" />
-        <p className="text-sm">Loading template...</p>
+        <p className="text-sm">{/* TODO(i18n): wrap in t() */}Loading template...</p>
       </div>
     </div>
   )
@@ -425,6 +425,7 @@ function TemplateEditorForm({
             {isBuiltIn && (
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <Lock className="w-3 h-3" />
+                {/* TODO(i18n): wrap in t() */}
                 Built-in templates cannot be modified
               </p>
             )}
@@ -448,12 +449,14 @@ function TemplateEditorForm({
           {/* Template metadata */}
           <div className="space-y-4">
             <div>
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">{/* TODO(i18n): wrap in t() */}Description</Label>
               <textarea
                 id="description"
                 value={description}
                 onChange={(e) => !isBuiltIn && setDescription(e.target.value)}
-                placeholder="Brief description of this template..."
+                placeholder={
+                  'Brief description of this template...' /* TODO(i18n): wrap placeholder in t() */
+                }
                 className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                 rows={2}
                 disabled={isBuiltIn}
@@ -465,10 +468,13 @@ function TemplateEditorForm({
 
           {/* Note preview section */}
           <div>
-            <h3 className="text-sm font-medium text-muted-foreground mb-4">Template Content</h3>
+            <h3 className="text-sm font-medium text-muted-foreground mb-4">
+              {/* TODO(i18n): wrap in t() */}Template Content
+            </h3>
             <p className="text-xs text-muted-foreground mb-4">
-              Use <code className="bg-muted px-1 rounded">{'{{title}}'}</code> to insert the note
-              title when creating a note.
+              {/* TODO(i18n): wrap in t() */}
+              Use <code className="bg-muted px-1 rounded">{'{{title}}'}</code>{' '}
+              {/* TODO(i18n): wrap in t() */}to insert the note title when creating a note.
             </p>
 
             {/* Title with emoji */}
@@ -476,7 +482,7 @@ function TemplateEditorForm({
               <NoteTitle
                 emoji={icon}
                 title={name}
-                placeholder="Template Name"
+                placeholder={'Template Name' /* TODO(i18n): wrap placeholder in t() */}
                 onTitleChange={handleNameChange}
                 disabled={isBuiltIn}
               />
@@ -512,7 +518,9 @@ function TemplateEditorForm({
                 key={templateId || 'new'}
                 initialContent={content}
                 contentType="markdown"
-                placeholder="Default content for notes created from this template..."
+                placeholder={
+                  'Default content for notes created from this template...' /* TODO(i18n): wrap placeholder in t() */
+                }
                 stickyToolbar={isStickyToolbar}
                 onMarkdownChange={handleContentChange}
                 editable={!isBuiltIn}

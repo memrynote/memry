@@ -61,7 +61,9 @@ function HistoryRow({ entry }: { entry: SyncHistoryEntry }): React.JSX.Element {
           {entrySummary(entry)}
         </span>
         {duration && (
-          <span className="text-xs text-muted-foreground ml-1.5">&middot; {duration}</span>
+          <span className="text-xs text-muted-foreground ml-1.5">
+            &{/* TODO(i18n): wrap in t() */}middot; {duration}
+          </span>
         )}
       </div>
       <span className="text-xs text-muted-foreground shrink-0">
@@ -102,34 +104,40 @@ export function SyncHistoryPanel(): React.JSX.Element {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h4 className="text-sm font-medium">Activity</h4>
+        <h4 className="text-sm font-medium">{/* TODO(i18n): wrap in t() */}Activity</h4>
         <div className="flex items-center gap-2">
           <Select
             value={filter.type}
             onValueChange={(v) => setFilter({ type: v as HistoryTypeFilter })}
           >
-            <SelectTrigger className="h-7 w-[120px] text-xs" aria-label="Filter by sync type">
+            <SelectTrigger
+              className="h-7 w-[120px] text-xs"
+              aria-label={'Filter by sync type' /* TODO(i18n): wrap aria-label in t() */}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All types</SelectItem>
-              <SelectItem value="push">Pushed</SelectItem>
-              <SelectItem value="pull">Pulled</SelectItem>
-              <SelectItem value="error">Errors</SelectItem>
+              <SelectItem value="all">{/* TODO(i18n): wrap in t() */}All types</SelectItem>
+              <SelectItem value="push">{/* TODO(i18n): wrap in t() */}Pushed</SelectItem>
+              <SelectItem value="pull">{/* TODO(i18n): wrap in t() */}Pulled</SelectItem>
+              <SelectItem value="error">{/* TODO(i18n): wrap in t() */}Errors</SelectItem>
             </SelectContent>
           </Select>
           <Select
             value={filter.period}
             onValueChange={(v) => setFilter({ period: v as HistoryPeriodFilter })}
           >
-            <SelectTrigger className="h-7 w-[110px] text-xs" aria-label="Filter by time period">
+            <SelectTrigger
+              className="h-7 w-[110px] text-xs"
+              aria-label={'Filter by time period' /* TODO(i18n): wrap aria-label in t() */}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All time</SelectItem>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
+              <SelectItem value="all">{/* TODO(i18n): wrap in t() */}All time</SelectItem>
+              <SelectItem value="today">{/* TODO(i18n): wrap in t() */}Today</SelectItem>
+              <SelectItem value="7d">{/* TODO(i18n): wrap in t() */}Last 7 days</SelectItem>
+              <SelectItem value="30d">{/* TODO(i18n): wrap in t() */}Last 30 days</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -139,12 +147,14 @@ export function SyncHistoryPanel(): React.JSX.Element {
         <div
           className="flex items-center justify-center py-8"
           role="status"
-          aria-label="Loading sync history"
+          aria-label={'Loading sync history' /* TODO(i18n): wrap aria-label in t() */}
         >
           <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" aria-hidden="true" />
         </div>
       ) : entries.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-8">No sync activity yet</p>
+        <p className="text-sm text-muted-foreground text-center py-8">
+          {/* TODO(i18n): wrap in t() */}No sync activity yet
+        </p>
       ) : (
         <div className="space-y-0.5">
           {entries.map((entry) => (
@@ -157,6 +167,7 @@ export function SyncHistoryPanel(): React.JSX.Element {
         <div className="flex justify-center">
           <Button variant="ghost" size="sm" onClick={loadMore} disabled={isLoading}>
             {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+            {/* TODO(i18n): wrap in t() */}
             Load more
           </Button>
         </div>

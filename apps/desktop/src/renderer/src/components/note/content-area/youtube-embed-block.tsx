@@ -56,6 +56,7 @@ export const createYoutubeEmbedBlock = createReactBlockSpec(
       if (!videoId) {
         return (
           <div ref={contentRef} className="p-2 text-muted-foreground text-sm">
+            {/* TODO(i18n): wrap in t() */}
             No video URL
           </div>
         )

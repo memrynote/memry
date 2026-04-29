@@ -121,7 +121,11 @@ export const DroppableProjectItem = ({
       <span className="flex-1 truncate text-left text-text-secondary">{project.name}</span>
 
       {/* Drop indicator */}
-      {isOver && <span className="text-xs text-primary font-medium shrink-0">Drop here</span>}
+      {isOver && (
+        <span className="text-xs text-primary font-medium shrink-0">
+          {/* TODO(i18n): wrap in t() */}Drop here
+        </span>
+      )}
 
       {/* Settings Icon (visible on hover, hidden when dropping) */}
       {!isOver && onEdit && (

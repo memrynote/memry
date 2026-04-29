@@ -330,6 +330,7 @@ const TaskRowComponent = ({
 
       {!isOverlay && droppedPriority && (
         <div className="flex items-center shrink-0 gap-1 px-2 py-0.5 bg-primary/10 rounded text-[10px] font-medium text-primary animate-fade-out">
+          {/* TODO(i18n): wrap in t() */}
           priority: {PRIORITY_LABELS[droppedPriority] ?? droppedPriority}
         </div>
       )}
