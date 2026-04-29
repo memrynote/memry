@@ -9,7 +9,7 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
       ? [
           {
             label: app.name,
-            submenu: [{ role: 'quit' as const }]
+            submenu: [{ label: t('app.quit'), role: 'quit' as const }]
           }
         ]
       : []),
@@ -21,27 +21,27 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
           accelerator: 'CmdOrCtrl+N'
         },
         { type: 'separator' },
-        { role: 'close' }
+        { label: t('file.close'), role: 'close' }
       ]
     },
     {
       label: t('edit.label'),
       submenu: [
-        { role: 'undo' },
-        { role: 'redo' },
+        { label: t('edit.undo'), role: 'undo' },
+        { label: t('edit.redo'), role: 'redo' },
         { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' }
+        { label: t('edit.cut'), role: 'cut' },
+        { label: t('edit.copy'), role: 'copy' },
+        { label: t('edit.paste'), role: 'paste' }
       ]
     },
     {
       label: t('view.label'),
       submenu: [
-        { role: 'reload' },
-        { role: 'toggleDevTools' },
+        { label: t('view.reload'), role: 'reload' },
+        { label: t('view.toggleDevTools'), role: 'toggleDevTools' },
         { type: 'separator' },
-        { role: 'togglefullscreen' }
+        { label: t('view.toggleFullscreen'), role: 'togglefullscreen' }
       ]
     }
   ]
