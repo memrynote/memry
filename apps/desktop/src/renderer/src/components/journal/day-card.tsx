@@ -155,9 +155,7 @@ export const DayCard = memo(
                 icon={<Calendar className="size-4 text-accent-blue" />}
                 title={t('section.calendarEvents')}
                 count={calendarEvents.length}
-                countLabel={
-                  calendarEvents.length === 1 ? t('count.meeting') : t('count.meetings')
-                }
+                countLabel={calendarEvents.length === 1 ? t('count.meeting') : t('count.meetings')}
               >
                 <div className="flex flex-col gap-2 mt-2">
                   {calendarEvents.map((event) => (

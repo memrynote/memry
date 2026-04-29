@@ -99,5 +99,4 @@ describe('graph controls i18n', () => {
     expect(screen.getByLabelText('Toggle orphan nodes')).toBeInTheDocument()
     expect(screen.getByLabelText('Reset filters')).toBeInTheDocument()
   })
-
 })

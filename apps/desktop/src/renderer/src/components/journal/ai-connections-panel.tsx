@@ -294,9 +294,7 @@ function EmptyState({ isNewUser }: { isNewUser: boolean }): React.JSX.Element {
         {isNewUser ? t('ai.empty.willAppear') : t('ai.empty.noneYet')}
       </p>
       <p className="text-xs text-muted-foreground/70">
-        {isNewUser
-          ? t('ai.empty.moreJournaling')
-          : t('ai.empty.keepWriting')}
+        {isNewUser ? t('ai.empty.moreJournaling') : t('ai.empty.keepWriting')}
       </p>
     </div>
   )

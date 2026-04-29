@@ -26,8 +26,14 @@ test('classifies missing tr/ar feature keys as warnings', () => {
   const trKeys = flattenLocale(resources.resources.tr)
   const arKeys = flattenLocale(resources.resources.ar)
 
-  assert.equal(compareLocaleCompleteness({ englishKeys, localeKeys: trKeys }).missing.length > 0, true)
-  assert.equal(compareLocaleCompleteness({ englishKeys, localeKeys: arKeys }).missing.length > 0, true)
+  assert.equal(
+    compareLocaleCompleteness({ englishKeys, localeKeys: trKeys }).missing.length > 0,
+    true
+  )
+  assert.equal(
+    compareLocaleCompleteness({ englishKeys, localeKeys: arKeys }).missing.length > 0,
+    true
+  )
 })
 
 test('accepts empty Phase C namespace resources', () => {
