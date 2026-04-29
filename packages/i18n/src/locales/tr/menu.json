@@ -1,12 +1,24 @@
 {
+  "app": {
+    "quit": "Çık"
+  },
   "file": {
     "label": "Dosya",
-    "newNote": "Yeni Not"
+    "newNote": "Yeni Not",
+    "close": "Pencereyi Kapat"
   },
   "edit": {
-    "label": "Düzenle"
+    "label": "Düzenle",
+    "undo": "Geri al",
+    "redo": "Yinele",
+    "cut": "Kes",
+    "copy": "Kopyala",
+    "paste": "Yapıştır"
   },
   "view": {
-    "label": "Görünüm"
+    "label": "Görünüm",
+    "reload": "Yeniden yükle",
+    "toggleDevTools": "Geliştirici Araçlarını Aç/Kapat",
+    "toggleFullscreen": "Tam Ekrana Geçiş Yap"
   }
 }

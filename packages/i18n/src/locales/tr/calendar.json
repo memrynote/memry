@@ -1,1 +1,124 @@
-{}
+{
+  "view": {
+    "day": "Gün",
+    "week": "Hafta",
+    "month": "Ay",
+    "year": "Yıl"
+  },
+  "toolbar": {
+    "create-event": "Etkinlik oluştur",
+    "previous-period": "Önceki dönem",
+    "next-period": "Sonraki dönem",
+    "previous-month": "Önceki ay",
+    "next-month": "Gelecek ay",
+    "today": "Bugün"
+  },
+  "filter": {
+    "filter-calendars": "Takvimleri filtrele",
+    "sources": "Kaynaklar",
+    "memry-items": "Memry öğeleri",
+    "imported-calendars": "İçe aktarılan takvimler",
+    "event-types": "Etkinlik türleri",
+    "google-calendars": "Google takvimleri",
+    "refresh-google-calendars": "Google takvimlerini yenile"
+  },
+  "visual-type": {
+    "event": "Etkinlik",
+    "imported-event": "İçe aktarılan etkinlik",
+    "task": "Görev",
+    "reminder": "Hatırlatma",
+    "snooze": "Ertele"
+  },
+  "state": {
+    "loading-calendar": "Takvim yükleniyor…",
+    "loading-calendars": "Takvimler yükleniyor…",
+    "preparing": "Hazırlanıyor…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "Henüz içe aktarılan takvim yok.",
+    "no-events": "Etkinlik yok"
+  },
+  "time": {
+    "all-day": "Bütün gün",
+    "all-day-lower": "tüm gün",
+    "pick-a-date": "Bir tarih seçin",
+    "new-event": "Yeni Etkinlik",
+    "more-events": "{count, plural, one {# etkinlik daha} other {# etkinlik daha}}"
+  },
+  "form": {
+    "create-calendar-event": "Takvim etkinliği oluştur",
+    "edit-calendar-event": "Takvim etkinliğini düzenle",
+    "quick-create-description": "Bir başlık girin ve seçilen zaman aralığında etkinlik oluşturmak için kaydedin.",
+    "event-editor-description": "Bu etkinliğe ilişkin başlığı, konumu, tarihi, saati ve notları güncelleyin.",
+    "new-event-placeholder": "Yeni Etkinlik",
+    "location-placeholder": "Konum ekle",
+    "notes-url-placeholder": "Not veya URL ekleyin",
+    "start": "Başlat",
+    "end": "Bitiş",
+    "add-details": "Ayrıntıları ekle",
+    "google-calendar": "Google takvimi",
+    "target-calendar": "Hedef takvim",
+    "use-default-calendar": "Varsayılan takvimi kullan",
+    "use-default-calendar-with-name": "Varsayılanı kullan ({calendar})",
+    "use-memry-calendar-default": "Memry takvimini kullan (varsayılan)",
+    "use-memry-managed-calendar": "Memry tarafından yönetilen takvimi kullan",
+    "primary-suffix": "birincil"
+  },
+  "delete-dialog": {
+    "title": "Etkinlik silinsin mi?",
+    "local-description": "\"{title}\" kalıcı olarak silinecek. Bu işlem geri alınamaz.",
+    "google-bound-description": "\"{title}\" Memry ve Google Calendar'dan kaldırılacak. Bu eylem geri alınamaz.",
+    "context-menu-delete-label": "Etkinliği sil"
+  },
+  "promote-dialog": {
+    "aria": "Harici takvim etkinliğini düzenle",
+    "title": "Bu etkinlik Memry'te düzenlensin mi?",
+    "body": "Bu etkinliği düzenlemek Memry'de bağlantılı bir kopya oluşturur; değişiklikler iki yönde de senkronize edilir. Devam edilsin mi?",
+    "do-not-ask-again": "Bir daha sorma",
+    "confirm-label": "Memry'de düzenle"
+  },
+  "onboarding-dialog": {
+    "aria": "Varsayılan Google takviminizi seçin",
+    "title": "Yeni Memry etkinlikleri hangi takvime gitmeli?",
+    "body": "Memry'nin varsayılan olarak kullanacağı Google takvimini seçin. Bunu etkinlik bazında yine de geçersiz kılabilirsiniz.",
+    "default-calendar-label": "Memry tarafından yönetilen takvimi kullan",
+    "skip": "Atla",
+    "use-this-calendar": "Bu takvimi kullan"
+  },
+  "metadata": {
+    "attendees": "Katılımcılar",
+    "attendees-count": "Katılımcılar ({count})",
+    "reminders": "Hatırlatıcılar",
+    "default-reminders": "Varsayılan hatırlatıcılar",
+    "visibility": "Görünürlük:",
+    "optional": "İsteğe bağlı",
+    "join-meeting": "Toplantıya katıl",
+    "response": {
+      "accepted": "Kabul edildi",
+      "declined": "Reddedildi",
+      "tentative": "Geçici",
+      "needs-action": "Beklemede"
+    },
+    "visibility-value": {
+      "private": "Özel",
+      "public": "Herkese açık",
+      "confidential": "Gizli"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "dk · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotCreateEventTryAgain": "Etkinlik oluşturulamadı. Lütfen tekrar deneyin.",
+      "couldNotEditThisEventTryAgain": "Bu etkinlik düzenlenemedi. Lütfen tekrar deneyin.",
+      "couldNotSaveDefaultCalendarTryAgain": "Varsayılan takvim kaydedilemedi. Lütfen tekrar deneyin.",
+      "couldNotSaveEventTryAgain": "Etkinlik kaydedilemedi. Lütfen tekrar deneyin.",
+      "failedToDeleteEvent": "Etkinlik silinemedi",
+      "failedToLoadCalendarPreferences": "Takvim tercihleri yüklenemedi",
+      "failedToUpdateCalendarPreferences": "Takvim tercihleri güncellenemedi"
+    }
+  }
+}

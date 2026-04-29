@@ -8,10 +8,10 @@ describe('notes namespace', () => {
     expect(i18n.t('notes:page.empty.title')).toBe('No note selected')
   })
 
-  it('falls back to English for Turkish notes keys', async () => {
+  it('translates Turkish notes keys', async () => {
     const i18n = await createMainI18n({ locale: 'tr' })
 
-    expect(i18n.t('notes:page.empty.title')).toBe('No note selected')
+    expect(i18n.t('notes:page.empty.title')).toBe('Not seçilmedi')
   })
 
   it('falls back to English for Arabic notes keys', async () => {
