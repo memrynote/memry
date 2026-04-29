@@ -11,6 +11,7 @@ import type { GraphFilterState } from '@/hooks/use-graph-filters'
 import type { GraphSettings } from '@memry/contracts/graph-api'
 import { useTabActions } from '@/contexts/tabs'
 import { useNoteMutations } from '@/hooks/use-notes-query'
+import { useT } from '@memry/i18n/renderer'
 import { GraphEvents } from './graph-events'
 import { GraphTooltip } from './graph-tooltip'
 import { GraphContextMenu, type ContextMenuState } from './graph-context-menu'
@@ -298,6 +299,7 @@ function ContextMenuWithTabAction({
 }): React.JSX.Element {
   const { openTab } = useTabActions()
   const { createNote } = useNoteMutations()
+  const { t } = useT('graph')
 
   const handleOpenInTab = useCallback(
     (nodeId: string) => {
@@ -314,7 +316,7 @@ function ContextMenuWithTabAction({
       if (!tabType) return
       openTab({
         type: tabType as 'note' | 'journal' | 'tasks' | 'project',
-        title: (attrs.label as string) || 'Untitled',
+        title: (attrs.label as string) || t('context-menu.untitled'),
         icon:
           tabType === 'note'
             ? 'file-text'
@@ -331,7 +333,7 @@ function ContextMenuWithTabAction({
         isDeleted: false
       })
     },
-    [graph, openTab]
+    [graph, openTab, t]
   )
 
   const handleCreateNote = useCallback(
