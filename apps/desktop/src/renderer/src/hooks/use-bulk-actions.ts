@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Hook:BulkActions')
 
@@ -54,6 +55,7 @@ export const useBulkActions = ({
 }: UseBulkActionsOptions): UseBulkActionsReturn => {
   const { status } = useVault()
   const isVaultOpen = status?.isOpen ?? false
+  const { t } = useT('tasks')
 
   // ========== HELPERS ==========
 
@@ -73,7 +75,7 @@ export const useBulkActions = ({
     })
 
     if (tasksToComplete.length === 0) {
-      toast.info('All selected tasks are already complete')
+      toast.info(t('toasts.alreadyAllComplete'))
       return
     }
 
@@ -89,12 +91,12 @@ export const useBulkActions = ({
       try {
         const result = await tasksService.bulkComplete(taskIds)
         if (!result.success) {
-          toast.error(extractErrorMessage(result.error, 'Failed to complete tasks'))
+          toast.error(extractErrorMessage(result.error, t('toasts.completeFailed')))
           return
         }
       } catch (error) {
         log.error('bulkComplete backend error:', error)
-        toast.error('Failed to complete tasks')
+        toast.error(t('toasts.completeFailed'))
         return
       }
     } else {
@@ -141,7 +143,7 @@ export const useBulkActions = ({
     })
 
     onComplete()
-  }, [getSelectedTasks, projects, onUpdateTask, onComplete, isVaultOpen, registerUndo])
+  }, [getSelectedTasks, projects, onUpdateTask, onComplete, isVaultOpen, registerUndo, t])
 
   const bulkUncomplete = useCallback((): void => {
     const selectedTasks = getSelectedTasks()
@@ -153,7 +155,7 @@ export const useBulkActions = ({
     })
 
     if (tasksToUncomplete.length === 0) {
-      toast.info('No completed tasks selected')
+      toast.info(t('toasts.noCompletedSelected'))
       return
     }
 
@@ -191,7 +193,7 @@ export const useBulkActions = ({
 
     toast.success(`${count} task${count !== 1 ? 's' : ''} restored`)
     onComplete()
-  }, [getSelectedTasks, projects, onUpdateTask, onComplete, registerUndo])
+  }, [getSelectedTasks, projects, onUpdateTask, onComplete, registerUndo, t])
 
   const bulkChangePriority = useCallback(
     (priority: Priority): void => {
@@ -280,12 +282,12 @@ export const useBulkActions = ({
         try {
           const result = await tasksService.bulkMove(selectedIds, projectId)
           if (!result.success) {
-            toast.error(extractErrorMessage(result.error, 'Failed to move tasks'))
+            toast.error(extractErrorMessage(result.error, t('toasts.moveFailed')))
             return
           }
         } catch (error) {
           log.error('bulkMoveToProject backend error:', error)
-          toast.error('Failed to move tasks')
+          toast.error(t('toasts.moveFailed'))
           return
         }
       } else {
@@ -334,7 +336,7 @@ export const useBulkActions = ({
       toast.success(`${count} task${count !== 1 ? 's' : ''} moved to ${targetProject.name}`)
       onComplete()
     },
-    [selectedIds, tasks, projects, onUpdateTask, onComplete, isVaultOpen, registerUndo]
+    [selectedIds, tasks, projects, onUpdateTask, onComplete, isVaultOpen, registerUndo, t]
   )
 
   const bulkChangeStatus = useCallback(
@@ -461,12 +463,12 @@ export const useBulkActions = ({
       try {
         const result = await tasksService.bulkDelete(selectedIds)
         if (!result.success) {
-          toast.error(extractErrorMessage(result.error, 'Failed to delete tasks'))
+          toast.error(extractErrorMessage(result.error, t('toasts.deleteFailed')))
           return
         }
       } catch (error) {
         log.error('bulkDelete backend error:', error)
-        toast.error('Failed to delete tasks')
+        toast.error(t('toasts.deleteFailed'))
         return
       }
     } else {
@@ -488,7 +490,7 @@ export const useBulkActions = ({
     })
 
     onComplete()
-  }, [selectedIds, tasks, onDeleteTask, onComplete, isVaultOpen, registerUndo, onAddTask])
+  }, [selectedIds, tasks, onDeleteTask, onComplete, isVaultOpen, registerUndo, onAddTask, t])
 
   return {
     bulkComplete,
