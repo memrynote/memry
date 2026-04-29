@@ -1,3 +1,4 @@
+import { getI18n } from 'react-i18next'
 /**
  * useTabPreferences Hook
  *
@@ -61,7 +62,12 @@ export function useTabPreferences(): UseTabPreferencesReturn {
         }
       } catch (err) {
         if (mounted) {
-          setError(extractErrorMessage(err, 'Failed to load tab settings'))
+          setError(
+            extractErrorMessage(
+              err,
+              getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToLoadTabSettings')
+            )
+          )
         }
       } finally {
         if (mounted) {
@@ -101,10 +107,20 @@ export function useTabPreferences(): UseTabPreferencesReturn {
         setSettings((prev) => ({ ...prev, ...updates }))
         return true
       }
-      setError(extractErrorMessage(result.error, 'Failed to update settings'))
+      setError(
+        extractErrorMessage(
+          result.error,
+          getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToUpdateSettings')
+        )
+      )
       return false
     } catch (err) {
-      setError(extractErrorMessage(err, 'Failed to update settings'))
+      setError(
+        extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToUpdateSettings')
+        )
+      )
       return false
     }
   }, [])

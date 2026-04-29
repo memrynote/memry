@@ -6,6 +6,7 @@ import { tasksService, type TaskCreateInput } from '@/services/tasks-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
+import { getI18n } from 'react-i18next'
 
 interface TaskCreationPopoverProps {
   isOpen: boolean
@@ -108,7 +109,12 @@ const TaskCreationPopoverForm: FC<TaskCreationPopoverFormProps> = ({
           setIsSubmitting(false)
         }
       } catch (err) {
-        setError(extractErrorMessage(err, 'Failed to create task'))
+        setError(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToCreateTask')
+          )
+        )
         setIsSubmitting(false)
       }
     })()

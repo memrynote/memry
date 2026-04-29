@@ -292,5 +292,12 @@
     "componentsJournalJournalYearView": {
       "k": "k"
     }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveJournalEntry": "Failed to save journal entry",
+      "failedToLoadJournalSettings": "Failed to load journal settings",
+      "failedToUpdateSettings": "Failed to update settings"
+    }
   }
 }

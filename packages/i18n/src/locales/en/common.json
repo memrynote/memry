@@ -341,5 +341,15 @@
       "browserForward": "Browser forward",
       "forward": "Forward"
     }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Failed to import files",
+      "failedToCreateNote": "Failed to create note",
+      "failedToAccessMicrophone": "Failed to access microphone"
+    },
+    "toasts": {
+      "undone": "Undone"
+    }
   }
 }

@@ -19,6 +19,7 @@ import {
   AUTO_SAVE_DELAY_MS,
   PREFETCH_DAYS
 } from './journal-query-keys'
+import { getI18n } from 'react-i18next'
 
 const log = createLogger('Hook:JournalEntry')
 
@@ -175,7 +176,10 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       }
     } catch (err) {
       log.error('Failed to save journal entry:', err)
-      const errorMessage = extractErrorMessage(err, 'Failed to save journal entry')
+      const errorMessage = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'journal')('phaseI.errors.failedToSaveJournalEntry')
+      )
       const isDiskError =
         errorMessage.includes('ENOSPC') ||
         errorMessage.includes('disk') ||

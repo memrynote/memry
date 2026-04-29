@@ -22,6 +22,6 @@ describe('main-i18n accessor', () => {
     setMainI18n(instance)
     expect(getMainI18n().t('system:dialog.vault.title')).toBe('Select Vault Folder')
     await getMainI18n().changeLanguage('tr')
-    expect(getMainI18n().t('system:dialog.vault.title')).toBe('Select Vault Folder')
+    expect(getMainI18n().t('system:dialog.vault.title')).toBe('Kasa Klasörünü Seçin')
   })
 })

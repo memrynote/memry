@@ -1,3 +1,4 @@
+import { getI18n } from 'react-i18next'
 /**
  * NotePage Component
  *
@@ -534,7 +535,9 @@ export function NotePage({ noteId }: NotePageProps) {
       if (!noteId || !note) return
 
       if (isDeleted) {
-        toast.error('Cannot add tag - this note was deleted')
+        toast.error(
+          getI18n().getFixedT(null, 'notes')('phaseI.toasts.cannotAddTagThisNoteWasDeleted')
+        )
         return
       }
 
@@ -557,7 +560,9 @@ export function NotePage({ noteId }: NotePageProps) {
       if (!noteId || !note) return
 
       if (isDeleted) {
-        toast.error('Cannot add tag - this note was deleted')
+        toast.error(
+          getI18n().getFixedT(null, 'notes')('phaseI.toasts.cannotAddTagThisNoteWasDeleted')
+        )
         return
       }
 
@@ -580,7 +585,9 @@ export function NotePage({ noteId }: NotePageProps) {
       if (!noteId || !note) return
 
       if (isDeleted) {
-        toast.error('Cannot remove tag - this note was deleted')
+        toast.error(
+          getI18n().getFixedT(null, 'notes')('phaseI.toasts.cannotRemoveTagThisNoteWasDeleted')
+        )
         return
       }
 
@@ -645,7 +652,12 @@ export function NotePage({ noteId }: NotePageProps) {
     async (value: boolean) => {
       if (!noteId) return
       if (isDeleted) {
-        toast.error('Cannot change local-only — this note was deleted')
+        toast.error(
+          getI18n().getFixedT(
+            null,
+            'notes'
+          )('phaseI.toasts.cannotChangeLocalOnlyThisNoteWasDeleted')
+        )
         return
       }
       try {

@@ -247,12 +247,12 @@ describe('T521: NotesTree - folder tree display', () => {
     expect(screen.getByText(/no notes yet/i)).toBeInTheDocument()
   })
 
-  it('falls back to English notes copy for Turkish', () => {
+  it('renders Turkish notes copy for Turkish', () => {
     setupMocks([], [])
     renderWithProviders(<NotesTree />, i18nTr)
 
-    expect(screen.getByText('No notes yet')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'New Note' })).toBeInTheDocument()
+    expect(screen.getByText('Henüz not yok')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Yeni Not' })).toBeInTheDocument()
   })
 
   it('should render notes in tree structure', () => {

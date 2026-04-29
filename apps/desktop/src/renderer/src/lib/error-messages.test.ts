@@ -16,11 +16,11 @@ describe('getUserErrorMessage', () => {
     )
   })
 
-  it('falls back to English namespace resources for empty Turkish error stubs', async () => {
+  it('returns Turkish namespace resources for Turkish errors', async () => {
     await createRendererI18n({ locale: 'tr' })
 
     expect(getUserErrorMessage(ERROR_CODES.NOTE_WRITE_FAILED)).toBe(
-      'Failed to save this note. Check disk space and permissions.'
+      'Bu not kaydedilemedi. Disk alanını ve izinlerini kontrol edin.'
     )
   })
 

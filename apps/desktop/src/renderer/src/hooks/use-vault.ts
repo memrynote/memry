@@ -14,6 +14,7 @@ import {
   onVaultError,
   onVaultIndexRecovered
 } from '../services/vault-service'
+import { getI18n } from 'react-i18next'
 
 /**
  * Hook for vault state management.
@@ -54,7 +55,10 @@ export function useVault() {
         setConfig(vaultConfig)
         setError(extractErrorMessage(vaultStatus.error, ''))
       } catch (err) {
-        const message = extractErrorMessage(err, 'Failed to load vault status')
+        const message = extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToLoadVaultStatus')
+        )
         setError(message)
       } finally {
         setIsLoading(false)
@@ -107,7 +111,12 @@ export function useVault() {
       const result = await vaultService.select(path)
 
       if (!result.success) {
-        setError(extractErrorMessage(result.error, 'Failed to select vault'))
+        setError(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToSelectVault')
+          )
+        )
       } else {
         // Refresh config after vault selection
         const newConfig = await vaultService.getConfig()
@@ -116,7 +125,10 @@ export function useVault() {
 
       return result
     } catch (err) {
-      const message = extractErrorMessage(err, 'Failed to select vault')
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToSelectVault')
+      )
       setError(message)
       return { success: false, vault: null, error: message }
     } finally {
@@ -135,7 +147,10 @@ export function useVault() {
       await vaultService.close()
       setConfig(null)
     } catch (err) {
-      const message = extractErrorMessage(err, 'Failed to close vault')
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToCloseVault')
+      )
       setError(message)
     } finally {
       setIsLoading(false)
@@ -153,7 +168,12 @@ export function useVault() {
       const result = await vaultService.switch(vaultPath)
 
       if (!result.success) {
-        setError(extractErrorMessage(result.error, 'Failed to switch vault'))
+        setError(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToSwitchVault')
+          )
+        )
       } else {
         const newConfig = await vaultService.getConfig()
         setConfig(newConfig)
@@ -161,7 +181,10 @@ export function useVault() {
 
       return result
     } catch (err) {
-      const message = extractErrorMessage(err, 'Failed to switch vault')
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToSwitchVault')
+      )
       setError(message)
       return { success: false, vault: null, error: message }
     } finally {
@@ -177,7 +200,10 @@ export function useVault() {
       const newConfig = await vaultService.updateConfig(updates)
       setConfig(newConfig)
     } catch (err) {
-      const message = extractErrorMessage(err, 'Failed to update config')
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToUpdateConfig')
+      )
       setError(message)
     }
   }, [])
@@ -191,7 +217,10 @@ export function useVault() {
     try {
       await vaultService.reindex()
     } catch (err) {
-      const message = extractErrorMessage(err, 'Failed to reindex')
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToReindex')
+      )
       setError(message)
     }
   }, [])

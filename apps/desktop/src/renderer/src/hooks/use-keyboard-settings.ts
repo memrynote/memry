@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import type { KeyboardShortcutsDTO } from '../../../preload/index.d'
+import { getI18n } from 'react-i18next'
 
 const DEFAULTS: KeyboardShortcutsDTO = {
   overrides: {},
@@ -27,7 +28,13 @@ export function useKeyboardSettings(): UseKeyboardSettingsReturn {
         const result = await window.api.settings.getKeyboardSettings()
         if (mounted) setSettings(result)
       } catch (err) {
-        if (mounted) setError(extractErrorMessage(err, 'Failed to load keyboard settings'))
+        if (mounted)
+          setError(
+            extractErrorMessage(
+              err,
+              getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToLoadKeyboardSettings')
+            )
+          )
       } finally {
         if (mounted) setIsLoading(false)
       }
@@ -58,7 +65,12 @@ export function useKeyboardSettings(): UseKeyboardSettingsReturn {
         setError(result.error ?? 'Update failed')
         return false
       } catch (err) {
-        setError(extractErrorMessage(err, 'Failed to update keyboard settings'))
+        setError(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToUpdateKeyboardSettings')
+          )
+        )
         return false
       }
     },
@@ -75,7 +87,12 @@ export function useKeyboardSettings(): UseKeyboardSettingsReturn {
       setError(result.error ?? 'Reset failed')
       return false
     } catch (err) {
-      setError(extractErrorMessage(err, 'Failed to reset keyboard settings'))
+      setError(
+        extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToResetKeyboardSettings')
+        )
+      )
       return false
     }
   }, [])

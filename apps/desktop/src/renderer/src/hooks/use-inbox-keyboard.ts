@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import type { InboxItemListItem } from '@memry/rpc/inbox'
 import { toast } from 'sonner'
 import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
+import { getI18n } from 'react-i18next'
 
 export interface UseInboxKeyboardOptions {
   enabled: boolean
@@ -51,7 +52,7 @@ export function useInboxKeyboard(options: UseInboxKeyboardOptions): void {
       if (e.key.toLowerCase() === 'r' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault()
         onRefresh()
-        toast.success('Inbox refreshed')
+        toast.success(getI18n().getFixedT(null, 'inbox')('phaseI.toasts.inboxRefreshed'))
         return
       }
 

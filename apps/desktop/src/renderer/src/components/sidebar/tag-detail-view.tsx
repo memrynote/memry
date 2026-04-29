@@ -1,3 +1,4 @@
+import { getI18n } from 'react-i18next'
 /**
  * TagDetailView Component
  *
@@ -113,7 +114,10 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
         goBack()
       } catch (err) {
         log.error('Failed to rename tag', err)
-        const message = extractErrorMessage(err, 'Failed to rename tag')
+        const message = extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'settings')('tags.toasts.renameFailed')
+        )
         toast.error(message)
         throw err instanceof Error ? err : new Error(message)
       }
@@ -131,7 +135,9 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
       goBack()
     } catch (err) {
       log.error('Failed to delete tag', err)
-      toast.error(extractErrorMessage(err, 'Failed to delete tag'))
+      toast.error(
+        extractErrorMessage(err, getI18n().getFixedT(null, 'settings')('tags.toasts.deleteFailed'))
+      )
     }
   }, [goBack, tag])
 
@@ -423,7 +429,12 @@ function TagOverflowMenu({
       }
     } catch (error) {
       log.error('Failed to update tag color', error)
-      toast.error(extractErrorMessage(error, 'Failed to update tag color'))
+      toast.error(
+        extractErrorMessage(
+          error,
+          getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToUpdateTagColor')
+        )
+      )
     } finally {
       setIsUpdatingColor(false)
     }

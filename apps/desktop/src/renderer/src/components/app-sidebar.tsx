@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { useMemo, useState, useCallback, useRef } from 'react'
+import { getI18n } from 'react-i18next'
 import {
   Calendar2,
   CloudOff,
@@ -104,7 +105,12 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
       }
     } catch (err) {
       log.error('Failed to import dropped files', err)
-      toast.error(extractErrorMessage(err, 'Failed to import files'))
+      toast.error(
+        extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'common')('phaseI.errors.failedToImportFiles')
+        )
+      )
     }
   }, [])
 
@@ -170,7 +176,12 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
       }
     } catch (error) {
       log.error('Failed to create new note', error)
-      toast.error(extractErrorMessage(error, 'Failed to create note'))
+      toast.error(
+        extractErrorMessage(
+          error,
+          getI18n().getFixedT(null, 'common')('phaseI.errors.failedToCreateNote')
+        )
+      )
     }
   }, [openTab, generalSettings.createInSelectedFolder])
 

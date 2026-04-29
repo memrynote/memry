@@ -109,5 +109,16 @@
     "componentsCalendarCalendarEventMetadata": {
       "min": "dk · "
     }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotCreateEventTryAgain": "Etkinlik oluşturulamadı. Lütfen tekrar deneyin.",
+      "couldNotEditThisEventTryAgain": "Bu etkinlik düzenlenemedi. Lütfen tekrar deneyin.",
+      "couldNotSaveDefaultCalendarTryAgain": "Varsayılan takvim kaydedilemedi. Lütfen tekrar deneyin.",
+      "couldNotSaveEventTryAgain": "Etkinlik kaydedilemedi. Lütfen tekrar deneyin.",
+      "failedToDeleteEvent": "Etkinlik silinemedi",
+      "failedToLoadCalendarPreferences": "Takvim tercihleri yüklenemedi",
+      "failedToUpdateCalendarPreferences": "Takvim tercihleri güncellenemedi"
+    }
   }
 }

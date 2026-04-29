@@ -29,7 +29,7 @@ async function renderWithI18n(
 }
 
 describe('journal i18n', () => {
-  it('falls back to English when the active locale journal namespace is empty', async () => {
+  it('renders Turkish when the active locale is Turkish', async () => {
     await renderWithI18n(
       <JournalEntryListItem
         day={14}
@@ -42,7 +42,7 @@ describe('journal i18n', () => {
       { locale: 'tr' }
     )
 
-    expect(screen.getByText('Future')).toBeInTheDocument()
+    expect(screen.getByText('Gelecek')).toBeInTheDocument()
   })
 
   it('renders journal namespace overrides in list item empty copy', async () => {

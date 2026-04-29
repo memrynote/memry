@@ -1,3 +1,4 @@
+import { getI18n } from 'react-i18next'
 /**
  * T023: Property Definitions Hook
  *
@@ -92,7 +93,10 @@ export function usePropertyDefinitions(): UsePropertyDefinitionsReturn {
       const result = await notesService.getPropertyDefinitions()
       setDefinitions(result)
     } catch (err) {
-      const message = extractErrorMessage(err, 'Failed to load property definitions')
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToLoadPropertyDefinitions')
+      )
       setError(message)
       log.error('Error fetching definitions:', err)
     } finally {

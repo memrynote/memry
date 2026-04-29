@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import type { EditorSettingsDTO } from '../../../preload/index.d'
+import { getI18n } from 'react-i18next'
 
 const DEFAULTS: EditorSettingsDTO = {
   width: 'medium',
@@ -29,7 +30,13 @@ export function useEditorSettings(): UseEditorSettingsReturn {
         const result = await window.api.settings.getEditorSettings()
         if (mounted) setSettings(result)
       } catch (err) {
-        if (mounted) setError(extractErrorMessage(err, 'Failed to load editor settings'))
+        if (mounted)
+          setError(
+            extractErrorMessage(
+              err,
+              getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToLoadEditorSettings')
+            )
+          )
       } finally {
         if (mounted) setIsLoading(false)
       }
@@ -60,7 +67,12 @@ export function useEditorSettings(): UseEditorSettingsReturn {
         setError(result.error ?? 'Update failed')
         return false
       } catch (err) {
-        setError(extractErrorMessage(err, 'Failed to update editor settings'))
+        setError(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToUpdateEditorSettings')
+          )
+        )
         return false
       }
     },
