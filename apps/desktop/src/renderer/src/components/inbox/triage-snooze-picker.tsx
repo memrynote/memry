@@ -1,4 +1,5 @@
 import { NotificationSnooze, Calendar } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
 import { quickSnoozePresets, type SnoozePreset } from '@/components/snooze/snooze-presets'
 
 interface TriageSnoozPickerProps {
@@ -10,6 +11,7 @@ export function TriageSnoozePicker({
   onSelect,
   onCancel
 }: TriageSnoozPickerProps): React.JSX.Element {
+  const { t } = useT('inbox')
   const presets = quickSnoozePresets
 
   const handlePresetClick = (preset: SnoozePreset): void => {
@@ -20,7 +22,7 @@ export function TriageSnoozePicker({
     <div className="flex flex-col gap-2 rounded-xl border border-foreground/[0.08] bg-card p-4">
       <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
         <NotificationSnooze className="size-3.5" />
-        <span>Snooze until…</span>
+        <span>{t('triage.snoozeUntil')}</span>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -42,7 +44,7 @@ export function TriageSnoozePicker({
         onClick={onCancel}
         className="text-xs text-muted-foreground transition-colors hover:text-foreground"
       >
-        Cancel
+        {t('triage.action.cancel')}
       </button>
     </div>
   )
