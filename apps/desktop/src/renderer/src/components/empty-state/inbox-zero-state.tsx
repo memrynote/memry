@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface InboxZeroStateProps {
   itemsProcessedToday: number
@@ -11,6 +12,7 @@ const InboxZeroState = ({
   processedThisWeek,
   currentStreak
 }: InboxZeroStateProps): React.JSX.Element => {
+  const { t } = useT('inbox')
   const showStats = processedThisWeek > 0 || currentStreak > 0
 
   return (
@@ -25,7 +27,7 @@ const InboxZeroState = ({
           backgroundImage:
             'radial-gradient(circle farthest-corner at 50% 50%, color-mix(in srgb, var(--accent-orange) 12%, transparent) 0%, color-mix(in srgb, var(--accent-orange) 0%, transparent) 70%)'
         }}
-        aria-label="Success, inbox is empty"
+        aria-label={t('empty.successAria')}
       >
         <div className="flex items-center justify-center rounded-[28px] bg-accent-orange/5 border border-accent-orange/20 shrink-0 size-14">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -48,7 +50,7 @@ const InboxZeroState = ({
           'empty-state-entrance stagger-delay-2 motion-reduce:animate-none'
         )}
       >
-        Inbox Zero
+        {t('empty.title')}
       </h2>
 
       {/* Subtitle */}
@@ -58,8 +60,7 @@ const InboxZeroState = ({
           'empty-state-entrance stagger-delay-3 motion-reduce:animate-none'
         )}
       >
-        Everything&apos;s processed. Capture something new with the input above, or paste a link to
-        get started.
+        {t('empty.body')}
       </p>
 
       {/* Stats: filed this week | streak */}
@@ -73,9 +74,8 @@ const InboxZeroState = ({
           {processedThisWeek > 0 && (
             <div className="flex items-center gap-1.5">
               <span className="text-accent-green font-medium text-xs/4 tabular-nums">
-                {processedThisWeek}
+                {t('empty.filedThisWeek', { count: processedThisWeek })}
               </span>
-              <span className="text-muted-foreground/60 text-xs/4">filed this week</span>
             </div>
           )}
 
@@ -86,9 +86,8 @@ const InboxZeroState = ({
           {currentStreak > 0 && (
             <div className="flex items-center gap-1.5">
               <span className="text-accent-orange font-medium text-xs/4 tabular-nums">
-                {currentStreak}
+                {t('empty.dayStreak', { count: currentStreak })}
               </span>
-              <span className="text-muted-foreground/60 text-xs/4">day streak</span>
             </div>
           )}
         </div>
@@ -101,13 +100,11 @@ const InboxZeroState = ({
           'empty-state-entrance stagger-delay-5 motion-reduce:animate-none'
         )}
       >
-        <span className="text-muted-foreground/60 text-[11px]/3.5">Tip: use</span>
+        <span className="text-muted-foreground/60 text-[11px]/3.5">{t('empty.tipPrefix')}</span>
         <kbd className="inline-flex items-center rounded-sm py-px px-1.5 bg-foreground/[4%] border border-foreground/10 text-muted-foreground font-medium text-[10px]/3.5">
           ⌘V
         </kbd>
-        <span className="text-muted-foreground/60 text-[11px]/3.5">
-          to quick-capture from clipboard
-        </span>
+        <span className="text-muted-foreground/60 text-[11px]/3.5">{t('empty.tipSuffix')}</span>
       </div>
     </div>
   )
