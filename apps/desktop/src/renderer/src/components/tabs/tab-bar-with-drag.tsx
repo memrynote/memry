@@ -18,6 +18,7 @@ import { NewTabMenu } from './new-tab-menu'
 import { TabBarContextMenu } from './tab-bar-context-menu'
 import { TabContextMenu } from './tab-context-menu'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface TabBarWithDragProps {
   /** ID of the tab group to display */
@@ -37,6 +38,7 @@ export const TabBarWithDrag = ({
   showSidebarToggle = true,
   className
 }: TabBarWithDragProps): React.JSX.Element | null => {
+  const { t: tPhaseF } = useT('common')
   const group = useTabGroup(groupId)
   const { toggle: toggleDayPanel, isOpen: isDayPanelOpen } = useDayPanel()
   const { openTab, getActiveTab } = useTabs()
@@ -120,7 +122,7 @@ export const TabBarWithDrag = ({
           className
         )}
         role="tablist"
-        aria-label="Open tabs"
+        aria-label={tPhaseF('phaseF.componentsTabsTabBarWithDrag.openTabs')}
         aria-orientation="horizontal"
         data-group-id={groupId}
       >
@@ -153,7 +155,7 @@ export const TabBarWithDrag = ({
               'transition-all duration-150 ease-out z-20',
               'absolute left-0 bottom-px'
             )}
-            aria-label="Scroll tabs left"
+            aria-label={tPhaseF('phaseF.componentsTabsTabBarWithDrag.scrollTabsLeft')}
           >
             <ChevronLeft className="w-3.5 h-3.5 text-text-tertiary hover:text-foreground transition-colors" />
           </button>
@@ -206,7 +208,7 @@ export const TabBarWithDrag = ({
               'transition-all duration-150 ease-out z-20',
               'absolute right-[72px] bottom-px'
             )}
-            aria-label="Scroll tabs right"
+            aria-label={tPhaseF('phaseF.componentsTabsTabBarWithDrag.scrollTabsRight')}
           >
             <ChevronRight className="w-3.5 h-3.5 text-text-tertiary hover:text-foreground transition-colors" />
           </button>
@@ -230,7 +232,7 @@ export const TabBarWithDrag = ({
                 )}
               />
             }
-            tooltip="Graph (⌘G)"
+            tooltip={tPhaseF('phaseF.componentsTabsTabBarWithDrag.graphG')}
             onClick={handleGraphClick}
           />
           <TabBarAction
@@ -242,7 +244,7 @@ export const TabBarWithDrag = ({
                 )}
               />
             }
-            tooltip="Day Panel"
+            tooltip={tPhaseF('phaseF.componentsTabsTabBarWithDrag.dayPanel')}
             onClick={toggleDayPanel}
             isActive={isDayPanelOpen}
           />

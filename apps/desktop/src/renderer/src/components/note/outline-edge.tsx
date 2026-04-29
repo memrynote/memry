@@ -10,6 +10,7 @@
 
 import { useState, useCallback, useRef, useEffect, memo } from 'react'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface HeadingItem {
   id: string
@@ -47,6 +48,7 @@ export const OutlineEdge = memo(function OutlineEdge({
   className,
   activeHeadingId
 }: OutlineEdgeProps) {
+  const { t } = useT('notes')
   const [isHovered, setIsHovered] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const popupRef = useRef<HTMLDivElement>(null)
@@ -168,7 +170,7 @@ export const OutlineEdge = memo(function OutlineEdge({
             'animate-in fade-in-0 zoom-in-95 duration-150'
           )}
         >
-          <nav aria-label="Document outline">
+          <nav aria-label={t('outline.aria')}>
             {headings.map((heading) => {
               const isActive = heading.id === activeHeadingId
 

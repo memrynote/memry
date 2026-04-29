@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { CalendarItemChip } from './calendar-item-chip'
 import { isToday, toLocalDateKey } from './date-utils'
 import { assignLanes } from './overlap-layout'
@@ -51,6 +52,7 @@ export function CalendarDayView({
   const {
     settings: { clockFormat }
   } = useGeneralSettings()
+  const { t } = useT('calendar')
   const gridRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const dateForColumn = useCallback(() => anchorDate, [anchorDate])
@@ -77,7 +79,7 @@ export function CalendarDayView({
           className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2"
         >
           <span className="w-[48px] shrink-0 text-xs font-medium text-muted-foreground @xl:w-[72px] pr-3 text-right">
-            All day
+            {t('time.all-day')}
           </span>
           <div className="flex flex-1 flex-wrap gap-1.5">
             {allDayItems.map((item) => (

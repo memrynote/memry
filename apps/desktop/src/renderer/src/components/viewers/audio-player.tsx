@@ -10,6 +10,7 @@ import { Play, Pause, Volume2, VolumeX, Volume1, SkipBack, SkipForward, Music } 
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // Types
@@ -40,6 +41,7 @@ function formatTime(seconds: number): string {
 // ============================================================================
 
 export function AudioPlayer({ src, fileName = 'Audio', className }: AudioPlayerProps) {
+  const { t: tPhaseF } = useT('notes')
   const audioRef = useRef<HTMLAudioElement>(null)
 
   const [isPlaying, setIsPlaying] = useState(false)
@@ -133,8 +135,12 @@ export function AudioPlayer({ src, fileName = 'Audio', className }: AudioPlayerP
         className={cn('flex h-full items-center justify-center bg-muted/30 rounded-md', className)}
       >
         <div className="text-center p-8">
-          <p className="text-destructive font-medium mb-2">Failed to load audio</p>
-          <p className="text-sm text-muted-foreground">The audio file could not be played.</p>
+          <p className="text-destructive font-medium mb-2">
+            {tPhaseF('phaseF.componentsViewersAudioPlayer.failedToLoadAudio')}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {tPhaseF('phaseF.componentsViewersAudioPlayer.theAudioFileCouldNotBePlayed')}
+          </p>
         </div>
       </div>
     )
@@ -179,7 +185,7 @@ export function AudioPlayer({ src, fileName = 'Audio', className }: AudioPlayerP
               size="lg"
               onClick={skipBackward}
               className="h-12 w-12 p-0"
-              title="Skip back 10s"
+              title={tPhaseF('phaseF.componentsViewersAudioPlayer.skipBack10s')}
             >
               <SkipBack className="h-6 w-6" />
             </Button>
@@ -198,7 +204,7 @@ export function AudioPlayer({ src, fileName = 'Audio', className }: AudioPlayerP
               size="lg"
               onClick={skipForward}
               className="h-12 w-12 p-0"
-              title="Skip forward 10s"
+              title={tPhaseF('phaseF.componentsViewersAudioPlayer.skipForward10s')}
             >
               <SkipForward className="h-6 w-6" />
             </Button>

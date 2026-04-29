@@ -15,6 +15,7 @@ import { TaskCheckbox } from '@/components/tasks/task-badges'
 import { getPotentialParents } from '@/lib/subtask-utils'
 import type { Task } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -41,6 +42,7 @@ export const ParentPickerDialog = ({
   projects,
   onSelect
 }: ParentPickerDialogProps): React.JSX.Element | null => {
+  const { t: tPhaseF } = useT('tasks')
   const [searchQuery, setSearchQuery] = useState('')
 
   // Get potential parents
@@ -135,15 +137,20 @@ export const ParentPickerDialog = ({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Make subtask of...</DialogTitle>
-          <DialogDescription>Select a task to make "{task.title}" a subtask of.</DialogDescription>
+          <DialogTitle>
+            {tPhaseF('phaseF.componentsTasksDialogsParentPickerDialog.makeSubtaskOf')}
+          </DialogTitle>
+          <DialogDescription>
+            {tPhaseF('phaseF.componentsTasksDialogsParentPickerDialog.selectATaskToMake')}
+            {task.title}" {tPhaseF('phaseF.componentsTasksDialogsParentPickerDialog.aSubtaskOf')}
+          </DialogDescription>
         </DialogHeader>
 
         {/* Search input */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search tasks..."
+            placeholder={tPhaseF('phaseF.componentsTasksDialogsParentPickerDialog.searchTasks')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -168,7 +175,8 @@ export const ParentPickerDialog = ({
               {hasSameProject && (
                 <div>
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-3 py-2">
-                    Same Project{currentProject ? ` (${currentProject.name})` : ''}
+                    {tPhaseF('phaseF.componentsTasksDialogsParentPickerDialog.sameProject')}
+                    {currentProject ? ` (${currentProject.name})` : ''}
                   </h4>
                   <div className="space-y-0.5">
                     {groupedParents.sameProject.map(renderTaskItem)}
@@ -180,7 +188,7 @@ export const ParentPickerDialog = ({
               {hasOtherProjects && (
                 <div>
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-3 py-2">
-                    Other Projects
+                    {tPhaseF('phaseF.componentsTasksDialogsParentPickerDialog.otherProjects')}
                   </h4>
                   <div className="space-y-0.5">
                     {groupedParents.otherProjects.map(renderTaskItem)}

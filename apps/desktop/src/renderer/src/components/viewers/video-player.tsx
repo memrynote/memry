@@ -9,6 +9,7 @@ import { useState, useCallback, useEffect, forwardRef } from 'react'
 import ReactPlayer from 'react-player'
 import { cn } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Component:VideoPlayer')
 
@@ -173,6 +174,7 @@ function ensureCustomPlayerRegistered() {
 // ============================================================================
 
 export function VideoPlayer({ src, className }: VideoPlayerProps) {
+  const { t: tPhaseF } = useT('notes')
   const [error, setError] = useState(false)
 
   // Register custom player on mount
@@ -191,8 +193,12 @@ export function VideoPlayer({ src, className }: VideoPlayerProps) {
         className={cn('flex h-full items-center justify-center bg-muted/30 rounded-md', className)}
       >
         <div className="text-center p-8">
-          <p className="text-destructive font-medium mb-2">Failed to load video</p>
-          <p className="text-sm text-muted-foreground">The video file could not be played.</p>
+          <p className="text-destructive font-medium mb-2">
+            {tPhaseF('phaseF.componentsViewersVideoPlayer.failedToLoadVideo')}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {tPhaseF('phaseF.componentsViewersVideoPlayer.theVideoFileCouldNotBePlayed')}
+          </p>
         </div>
       </div>
     )

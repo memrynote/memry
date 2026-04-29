@@ -18,6 +18,7 @@ import {
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import type { Note } from './notes-section'
+import { useT } from '@memry/i18n/renderer'
 
 // =============================================================================
 // TYPES
@@ -51,6 +52,7 @@ export const NoteDrawer = memo(function NoteDrawer({
   onOpenFullPage,
   className
 }: NoteDrawerProps): React.JSX.Element | null {
+  const { t } = useT('journal')
   const drawerRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
 
@@ -130,7 +132,7 @@ export const NoteDrawer = memo(function NoteDrawer({
                   size="icon"
                   className="size-8"
                   onClick={handleOpenFullPage}
-                  aria-label="Open note in full page"
+                  aria-label={t('action.openNoteFullPage')}
                 >
                   <ExternalLink className="size-4" />
                 </Button>
@@ -140,7 +142,7 @@ export const NoteDrawer = memo(function NoteDrawer({
                   size="icon"
                   className="size-8"
                   onClick={onClose}
-                  aria-label="Close note drawer"
+                  aria-label={t('action.closeNoteDrawer')}
                 >
                   <X className="size-4" />
                 </Button>
@@ -154,7 +156,7 @@ export const NoteDrawer = memo(function NoteDrawer({
                   <div dangerouslySetInnerHTML={{ __html: note.content }} />
                 ) : (
                   <p className="text-muted-foreground italic">
-                    {note.preview || 'Start writing...'}
+                    {note.preview || t('editor.placeholder.default')}
                   </p>
                 )}
               </div>
@@ -163,28 +165,28 @@ export const NoteDrawer = memo(function NoteDrawer({
             {/* Toolbar */}
             <div className="px-4 py-2 border-t border-border shrink-0 flex items-center justify-between">
               <div className="flex items-center gap-1">
-                <ToolbarButton title="Bold">
+                <ToolbarButton title={t('editor.toolbar.bold')}>
                   <Bold className="size-3.5" />
                 </ToolbarButton>
-                <ToolbarButton title="Italic">
+                <ToolbarButton title={t('editor.toolbar.italic')}>
                   <Italic className="size-3.5" />
                 </ToolbarButton>
-                <ToolbarButton title="Underline">
+                <ToolbarButton title={t('editor.toolbar.underline')}>
                   <Underline className="size-3.5" />
                 </ToolbarButton>
-                <ToolbarButton title="Strikethrough">
+                <ToolbarButton title={t('editor.toolbar.strikethrough')}>
                   <Strikethrough className="size-3.5" />
                 </ToolbarButton>
                 <span className="w-px h-4 bg-border mx-1" />
-                <ToolbarButton title="Link">
+                <ToolbarButton title={t('editor.toolbar.link')}>
                   <Link className="size-3.5" />
                 </ToolbarButton>
-                <ToolbarButton title="Image">
+                <ToolbarButton title={t('editor.toolbar.image')}>
                   <Image className="size-3.5" />
                 </ToolbarButton>
               </div>
               <div className="flex items-center gap-1">
-                <ToolbarButton title="More options">⋮</ToolbarButton>
+                <ToolbarButton title={t('editor.toolbar.moreOptions')}>⋮</ToolbarButton>
               </div>
             </div>
           </>

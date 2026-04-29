@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils'
 import { TAG_COLORS, COLOR_ROWS, getTagColors, withAlpha } from './tag-colors'
 import { Check } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
 
 interface ColorPickerProps {
   selectedColor: string
@@ -17,20 +18,24 @@ export function ColorPicker({
   onCancel,
   onConfirm
 }: ColorPickerProps) {
+  const { t } = useT('notes')
+  const { t: tCommon } = useT('common')
   const previewColors = getTagColors(selectedColor)
 
   return (
     <div className="p-3">
       {/* Header */}
       <div className="mb-3 text-sm font-medium text-foreground">
-        Create tag: &ldquo;{tagName}&rdquo;
+        {t('tagsRow.createTag', { tag: tagName })}
       </div>
 
       {/* Divider */}
       <div className="mb-3 border-t border-border" />
 
       {/* Color label */}
-      <div className="mb-2 text-xs font-medium text-muted-foreground">Choose color:</div>
+      <div className="mb-2 text-xs font-medium text-muted-foreground">
+        {t('tagsRow.chooseColor')}
+      </div>
 
       {/* Color grid */}
       <div className="mb-4 space-y-2">
@@ -45,7 +50,7 @@ export function ColorPicker({
                   key={colorName}
                   type="button"
                   onClick={() => onSelectColor(colorName)}
-                  aria-label={`Select ${colorName} color`}
+                  aria-label={t('tagsRow.colorAria', { color: colorName })}
                   aria-pressed={isSelected}
                   className={cn(
                     'flex h-6 w-6 items-center justify-center rounded-full',
@@ -66,7 +71,7 @@ export function ColorPicker({
 
       {/* Preview */}
       <div className="mb-4">
-        <div className="mb-1 text-xs font-medium text-muted-foreground">Preview:</div>
+        <div className="mb-1 text-xs font-medium text-muted-foreground">{t('tagsRow.preview')}</div>
         <span
           className="inline-flex items-center rounded-[10px] px-2 py-0.5 text-[11px]/3.5 font-medium [font-synthesis:none]"
           style={{
@@ -90,7 +95,7 @@ export function ColorPicker({
             'hover:bg-muted'
           )}
         >
-          Cancel
+          {tCommon('button.cancel')}
         </button>
         <button
           type="button"
@@ -103,7 +108,7 @@ export function ColorPicker({
             'hover:bg-foreground/90'
           )}
         >
-          Create
+          {tCommon('button.create')}
         </button>
       </div>
     </div>

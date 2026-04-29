@@ -7,6 +7,7 @@
  */
 
 import { useState, createContext, useContext } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import {
   ChevronRight,
   Link2,
@@ -155,6 +156,8 @@ const TranscriptionStatus = ({
   item,
   onRetry
 }: TranscriptionStatusProps): React.JSX.Element | null => {
+  const { t } = useT('inbox')
+
   if (item.type !== 'voice') return null
 
   const status = item.transcriptionStatus
@@ -175,7 +178,7 @@ const TranscriptionStatus = ({
     return (
       <span className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-500">
         <Loader2 className="w-3 h-3 animate-spin" />
-        <span>Transcribing...</span>
+        <span>{t('list.transcribing')}</span>
       </span>
     )
   }
@@ -184,7 +187,7 @@ const TranscriptionStatus = ({
     return (
       <span className="flex items-center gap-1.5 text-xs text-destructive/70">
         <AlertCircle className="w-3 h-3" />
-        <span>Transcription failed</span>
+        <span>{t('list.transcriptionFailed')}</span>
         {onRetry && (
           <Button
             variant="ghost"
@@ -196,7 +199,7 @@ const TranscriptionStatus = ({
             }}
           >
             <RotateCcw className="w-3 h-3 mr-1" />
-            Retry
+            {t('list.retryTranscription')}
           </Button>
         )}
       </span>
@@ -285,7 +288,7 @@ export function InboxListSection({
   const isInBulkMode = selectedIds.size > 0
   const densityConfig = DENSITY_CONFIG[density]
 
-  const formattedTitle = title.charAt(0).toUpperCase() + title.slice(1).toLowerCase()
+  const formattedTitle = title
 
   return (
     <InboxListContext.Provider
@@ -389,6 +392,7 @@ export function InboxListItem({
   onRetryTranscription,
   className
 }: InboxListItemProps) {
+  const { t } = useT('inbox')
   const { selectedIds, focusedId, isInBulkMode, densityConfig, onSelect, onFocus } = useInboxList()
   const isSelected = selectedIds.has(item.id)
   const isFocused = focusedId === item.id
@@ -399,10 +403,22 @@ export function InboxListItem({
   const reminderMetadata = item.type === 'reminder' ? (item.metadata as ReminderMetadata) : null
   const isReminderViewed = item.type === 'reminder' && !!item.viewedAt
 
-  const displayTitle =
+  const rawDisplayTitle =
     item.type === 'reminder' && reminderMetadata?.targetTitle
       ? reminderMetadata.targetTitle
       : item.title
+  const displayTitle = rawDisplayTitle || t('list.untitledItem')
+  const typeLabels: Record<InboxItemType, string> = {
+    link: t('type.link'),
+    note: t('type.note'),
+    image: t('type.image'),
+    voice: t('type.voice'),
+    video: t('type.video'),
+    clip: t('type.clip'),
+    pdf: t('type.pdf'),
+    social: t('type.social'),
+    reminder: t('type.reminder')
+  }
 
   const handleClick = (): void => {
     onFocus(item.id)
@@ -438,7 +454,7 @@ export function InboxListItem({
       )}
       role="listitem"
       tabIndex={isFocused ? 0 : -1}
-      aria-label={`${item.type}: ${displayTitle}`}
+      aria-label={t('list.itemAria', { type: typeLabels[item.type], title: displayTitle })}
       aria-selected={isSelected}
       onClick={handleClick}
       data-item-id={item.id}
@@ -463,7 +479,7 @@ export function InboxListItem({
             'transition-colors',
             densityConfig.checkboxSize
           )}
-          aria-label={`Select ${displayTitle}`}
+          aria-label={t('list.selectItem', { title: displayTitle })}
           onClick={handleCheckboxClick}
         />
       </div>
@@ -529,17 +545,18 @@ export function InboxListItem({
           {/* PDF page count pill */}
           {item.type === 'pdf' && item.pageCount != null && (
             <Pill variant="bordered" color="red">
-              {item.pageCount} page{item.pageCount !== 1 ? 's' : ''}
+              {t('list.pageCount', { count: item.pageCount })}
             </Pill>
           )}
 
           {/* Snooze pill */}
           {item.snoozedUntil && (
             <Pill variant="filled" color="gray">
-              snoozed til{' '}
-              {new Date(item.snoozedUntil).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric'
+              {t('list.snoozedUntilShort', {
+                date: new Date(item.snoozedUntil).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric'
+                })
               })}
             </Pill>
           )}

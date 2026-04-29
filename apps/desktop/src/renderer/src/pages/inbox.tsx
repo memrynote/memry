@@ -16,6 +16,7 @@ import {
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { useT } from '@memry/i18n/renderer'
 import { SRAnnouncer } from '@/components/sr-announcer'
 import { PageToolbar } from '@/components/ui/page-toolbar'
 import { InboxSegmentControl, type InboxView } from '@/components/inbox/inbox-segment-control'
@@ -41,18 +42,6 @@ const INBOX_ITEM_TYPES: InboxItemType[] = [
   'reminder'
 ]
 
-const INBOX_TYPE_LABELS: Record<InboxItemType, string> = {
-  link: 'Links',
-  note: 'Notes',
-  image: 'Images',
-  voice: 'Voice',
-  video: 'Video',
-  clip: 'Clips',
-  pdf: 'PDFs',
-  social: 'Social',
-  reminder: 'Reminders'
-}
-
 const INBOX_TYPE_ICONS: Record<InboxItemType, React.ComponentType<{ className?: string }>> = {
   link: Link2,
   note: FileText,
@@ -70,6 +59,7 @@ interface InboxPageProps {
 }
 
 export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
+  const { t } = useT('inbox')
   const [currentView, setCurrentView] = useState<InboxView>('inbox')
   const [isTriageMode, setIsTriageMode] = useState(false)
   const [selectedTypes, setSelectedTypes] = useState<Set<InboxItemType>>(new Set())
@@ -106,6 +96,20 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
 
   const hasActiveFilters = selectedTypes.size > 0
   const selectedTypesArray = useMemo(() => Array.from(selectedTypes), [selectedTypes])
+  const typeLabels = useMemo(
+    () => ({
+      link: t('type.links'),
+      note: t('type.notes'),
+      image: t('type.images'),
+      voice: t('type.voice'),
+      video: t('type.video'),
+      clip: t('type.clips'),
+      pdf: t('type.pdfs'),
+      social: t('type.social'),
+      reminder: t('type.reminders')
+    }),
+    [t]
+  )
 
   const handleTypeToggle = useCallback((value: string) => {
     const type = value as InboxItemType
@@ -178,7 +182,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
               <CaptureInput
                 compact
                 density="compact"
-                onCaptureSuccess={() => toast.success('Item captured')}
+                onCaptureSuccess={() => toast.success(t('view.itemCaptured'))}
                 onCaptureError={(errorMsg) => toast.error(errorMsg)}
               />
             )}
@@ -187,11 +191,11 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
               <button
                 type="button"
                 onClick={enterTriage}
-                title="Process inbox (Cmd+P)"
+                title={t('view.processInboxTitle')}
                 className="flex items-center shrink-0 rounded-[5px] py-1 px-2.5 gap-1.5 bg-amber-500/[0.08] border border-amber-500/20 text-amber-500 transition-colors hover:bg-amber-500/[0.12]"
               >
                 <Check className="size-3" />
-                <span className="text-[12px] leading-4 font-medium">Triage</span>
+                <span className="text-[12px] leading-4 font-medium">{t('view.triageButton')}</span>
                 <span className="flex items-center justify-center rounded-[10px] py-px px-1.5 bg-amber-500/15 text-[11px] leading-3.5 font-semibold">
                   {items.length}
                 </span>
@@ -212,7 +216,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                 }}
                 role={!isArchivedSearchOpen ? 'button' : undefined}
                 tabIndex={!isArchivedSearchOpen ? 0 : undefined}
-                title={!isArchivedSearchOpen ? 'Search archived items' : undefined}
+                title={!isArchivedSearchOpen ? t('view.searchArchivedTitle') : undefined}
                 onKeyDown={(e) => {
                   if (!isArchivedSearchOpen && (e.key === 'Enter' || e.key === ' ')) {
                     e.preventDefault()
@@ -229,7 +233,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                   onKeyDown={(e) => {
                     if (e.key === 'Escape') closeArchivedSearch()
                   }}
-                  placeholder="Search..."
+                  placeholder={t('view.searchPlaceholder')}
                   className={cn(
                     'min-w-0 bg-transparent text-[12px] leading-4 outline-none border-none ring-0 shadow-none text-foreground placeholder:text-muted-foreground/40',
                     isArchivedSearchOpen ? 'flex-1' : 'w-0 opacity-0'
@@ -259,8 +263,10 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                   onClick={() => setShowSnoozedItems(!showSnoozedItems)}
                   title={
                     showSnoozedItems
-                      ? 'Hide snoozed items'
-                      : `Show snoozed items${snoozedCount > 0 ? ` (${snoozedCount})` : ''}`
+                      ? t('view.snoozed.hide')
+                      : snoozedCount > 0
+                        ? t('view.snoozed.showWithCount', { count: snoozedCount })
+                        : t('view.snoozed.show')
                   }
                   className={cn(
                     'flex items-center shrink-0 rounded-[5px] py-1 px-2 gap-1 border transition-colors',
@@ -296,8 +302,8 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                       type="button"
                       title={
                         hasActiveFilters
-                          ? `Filtering by ${selectedTypes.size} type${selectedTypes.size > 1 ? 's' : ''}`
-                          : 'Filter by type'
+                          ? t('view.filter.active', { count: selectedTypes.size })
+                          : t('view.filter.byType')
                       }
                       className={cn(
                         'flex items-center shrink-0 rounded-[5px] py-1 px-2 gap-1 border transition-colors',
@@ -314,7 +320,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                           strokeLinecap="round"
                         />
                       </svg>
-                      <span className="text-[12px] font-medium">Filter</span>
+                      <span className="text-[12px] font-medium">{t('view.filter.button')}</span>
                       {hasActiveFilters && (
                         <span className="flex items-center justify-center size-[14px] rounded-full bg-foreground text-background text-[9px] font-bold">
                           {selectedTypes.size}
@@ -331,7 +337,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                           <Picker.Item
                             key={type}
                             value={type}
-                            label={INBOX_TYPE_LABELS[type]}
+                            label={typeLabels[type]}
                             indicator="checkbox"
                             icon={<Icon className="size-3.5" />}
                             disabled={count === 0}
@@ -352,7 +358,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                           onClick={() => setSelectedTypes(new Set())}
                           className="flex w-full items-center rounded-[5px] py-1.5 px-2 text-[13px] text-muted-foreground/60 hover:bg-accent hover:text-foreground transition-colors"
                         >
-                          Clear all
+                          {t('view.filter.clearAll')}
                         </button>
                       </Picker.Footer>
                     )}
@@ -367,13 +373,13 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
               {activeJobCount > 0 && (
                 <span className="flex items-center gap-1.5 text-text-secondary">
                   <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  {activeJobCount} background job{activeJobCount === 1 ? '' : 's'} running
+                  {t('view.jobs.running', { count: activeJobCount })}
                 </span>
               )}
               {failedJobCount > 0 && (
                 <span className="flex items-center gap-1.5 text-rose-500">
                   <span className="size-1.5 rounded-full bg-current" />
-                  {failedJobCount} failed
+                  {t('view.jobs.failed', { count: failedJobCount })}
                 </span>
               )}
             </div>

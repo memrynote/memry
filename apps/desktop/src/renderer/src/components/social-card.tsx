@@ -11,6 +11,7 @@ import { ExternalLink, AlertCircle, Loader2 } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import type { SocialMetadata, InboxMetadata } from '@/types'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // Types
@@ -212,6 +213,7 @@ const SocialCardCompact = ({
   sourceUrl,
   processingStatus
 }: SocialCardContentProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('inbox')
   const platform = detectPlatformFromUrl(sourceUrl)
   const handle = extractHandleFromUrl(sourceUrl)
   const isLoading = processingStatus === 'pending' || processingStatus === 'processing'
@@ -244,12 +246,12 @@ const SocialCardCompact = ({
         {isLoading ? (
           <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
             <Loader2 className="size-3 animate-spin" />
-            <span>Loading post...</span>
+            <span>{tPhaseF('phaseF.componentsSocialCard.loadingPost')}</span>
           </div>
         ) : hasFailed ? (
           <div className="flex items-center gap-2 text-xs text-[var(--destructive)]">
             <AlertCircle className="size-3" />
-            <span>Failed to load</span>
+            <span>{tPhaseF('phaseF.componentsSocialCard.failedToLoad')}</span>
           </div>
         ) : (
           <p className="text-xs text-[var(--muted-foreground)] leading-relaxed line-clamp-3">
@@ -328,6 +330,7 @@ const SocialPreview = ({
   processingStatus,
   metadata
 }: SocialPreviewProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('inbox')
   // Try to get social metadata
   const socialMeta = metadata as SocialMetadata | null
   const platform = socialMeta?.platform || detectPlatformFromUrl(sourceUrl)
@@ -377,12 +380,16 @@ const SocialPreview = ({
         {isLoading ? (
           <div className="flex items-center gap-2 py-4 text-[var(--muted-foreground)]">
             <Loader2 className="size-5 animate-spin" />
-            <span>Loading post content...</span>
+            <span>{tPhaseF('phaseF.componentsSocialCard.loadingPostContent')}</span>
           </div>
         ) : hasFailed ? (
           <div className="flex items-center gap-2 py-4 text-[var(--destructive)]">
             <AlertCircle className="size-5" />
-            <span>Failed to load post content. The post may be private or deleted.</span>
+            <span>
+              {tPhaseF(
+                'phaseF.componentsSocialCard.failedToLoadPostContentThePostMayBePrivateOrDeleted'
+              )}
+            </span>
           </div>
         ) : (
           <p className="text-sm text-[var(--foreground)] whitespace-pre-wrap leading-relaxed">
@@ -420,7 +427,9 @@ const SocialPreview = ({
           onClick={(e) => e.stopPropagation()}
         >
           <ExternalLink className="size-4" />
-          View on {getPlatformName(platform)}
+
+          {tPhaseF('phaseF.componentsSocialCard.viewOn')}
+          {getPlatformName(platform)}
         </a>
       )}
     </div>

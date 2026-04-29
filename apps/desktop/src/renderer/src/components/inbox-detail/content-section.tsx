@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { TweetCard } from './tweet-card'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { useT } from '@memry/i18n/renderer'
 import {
   Image,
   Mic,
@@ -69,7 +70,15 @@ const formatDuration = (seconds: number): string => {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
-const formatDate = (date: Date | string, clockFormat: ClockFormat = '12h'): string => {
+type FormattedDateParts =
+  | { kind: 'today'; time: string }
+  | { kind: 'yesterday'; time: string }
+  | { kind: 'date'; date: string; time: string }
+
+const formatDateParts = (
+  date: Date | string,
+  clockFormat: ClockFormat = '12h'
+): FormattedDateParts => {
   const d = date instanceof Date ? date : new Date(date)
   const now = new Date()
   const isToday = d.toDateString() === now.toDateString()
@@ -81,18 +90,20 @@ const formatDate = (date: Date | string, clockFormat: ClockFormat = '12h'): stri
   const timeStr = formatTimeOfDay(d, clockFormat)
 
   if (isToday) {
-    return `today at ${timeStr}`
+    return { kind: 'today', time: timeStr }
   }
   if (isYesterday) {
-    return `yesterday at ${timeStr}`
+    return { kind: 'yesterday', time: timeStr }
   }
-  return (
-    d.toLocaleDateString('en-US', {
+  return {
+    kind: 'date',
+    date: d.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
-    }) + ` at ${timeStr}`
-  )
+    }),
+    time: timeStr
+  }
 }
 
 const PLAYBACK_BAR_COUNT = 60
@@ -160,6 +171,7 @@ interface ContentMetadataProps {
 }
 
 export const ContentMetadata = ({ item }: ContentMetadataProps): React.JSX.Element => {
+  const { t } = useT('inbox')
   const {
     settings: { clockFormat }
   } = useGeneralSettings()
@@ -177,13 +189,20 @@ export const ContentMetadata = ({ item }: ContentMetadataProps): React.JSX.Eleme
   // Get link metadata
   const linkMetadata =
     item.type === 'link' && 'metadata' in item ? (item.metadata as LinkMetadata | null) : null
+  const capturedDate = formatDateParts(item.createdAt, clockFormat)
+  const capturedAt =
+    capturedDate.kind === 'today'
+      ? t('content.todayAt', { time: capturedDate.time })
+      : capturedDate.kind === 'yesterday'
+        ? t('content.yesterdayAt', { time: capturedDate.time })
+        : t('content.dateAt', { date: capturedDate.date, time: capturedDate.time })
 
   return (
     <div className="px-6 py-3 bg-[var(--muted)]/30 space-y-1 border-b border-[var(--border)]">
       {/* Common: Capture date */}
       <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
         <Calendar className="size-4" aria-hidden="true" />
-        <span>Captured {formatDate(item.createdAt, clockFormat)}</span>
+        <span>{t('content.capturedAt', { date: capturedAt })}</span>
       </div>
 
       {/* Link: Show URL and site info */}
@@ -213,7 +232,9 @@ export const ContentMetadata = ({ item }: ContentMetadataProps): React.JSX.Eleme
       {item.type === 'note' && item.content && (
         <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
           <FileText className="size-4" aria-hidden="true" />
-          <span>{item.content.split(/\s+/).filter(Boolean).length} words</span>
+          <span>
+            {t('content.words', { count: item.content.split(/\s+/).filter(Boolean).length })}
+          </span>
         </div>
       )}
 
@@ -221,7 +242,7 @@ export const ContentMetadata = ({ item }: ContentMetadataProps): React.JSX.Eleme
       {item.type === 'voice' && duration !== null && (
         <div className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]">
           <Clock className="size-4" aria-hidden="true" />
-          <span>Duration: {formatDuration(duration)}</span>
+          <span>{t('content.duration', { duration: formatDuration(duration) })}</span>
         </div>
       )}
     </div>
@@ -237,6 +258,8 @@ interface ImagePreviewProps {
 }
 
 const ImagePreview = ({ item }: ImagePreviewProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('inbox')
+  const { t } = useT('inbox')
   const metadata = 'metadata' in item ? (item.metadata as ImageMetadata | null) : null
   const imageUrl = ('attachmentUrl' in item && item.attachmentUrl) || item.thumbnailUrl
 
@@ -265,15 +288,20 @@ const ImagePreview = ({ item }: ImagePreviewProps): React.JSX.Element => {
         <div className="flex items-center gap-4">
           {metadata.width && metadata.height && (
             <div className="flex items-center gap-1">
-              <span className="text-[11px] leading-3.5 text-text-tertiary">Dimensions</span>
+              <span className="text-[11px] leading-3.5 text-text-tertiary">
+                {t('content.dimensions')}
+              </span>
               <span className="text-[11px] leading-3.5 text-muted-foreground">
-                {metadata.width} x {metadata.height}
+                {metadata.width} {tPhaseF('phaseF.componentsInboxDetailContentSection.x')}
+                {metadata.height}
               </span>
             </div>
           )}
           {metadata.format && (
             <div className="flex items-center gap-1">
-              <span className="text-[11px] leading-3.5 text-text-tertiary">Format</span>
+              <span className="text-[11px] leading-3.5 text-text-tertiary">
+                {t('content.format')}
+              </span>
               <span className="text-[11px] leading-3.5 text-muted-foreground uppercase">
                 {metadata.format}
               </span>
@@ -281,7 +309,9 @@ const ImagePreview = ({ item }: ImagePreviewProps): React.JSX.Element => {
           )}
           {metadata.fileSize && (
             <div className="flex items-center gap-1">
-              <span className="text-[11px] leading-3.5 text-text-tertiary">Size</span>
+              <span className="text-[11px] leading-3.5 text-text-tertiary">
+                {t('content.size')}
+              </span>
               <span className="text-[11px] leading-3.5 text-muted-foreground">
                 {formatFileSize(metadata.fileSize)}
               </span>
@@ -308,6 +338,7 @@ const VoicePreview = ({
   onRetryTranscription,
   isRetrying
 }: VoicePreviewProps): React.JSX.Element => {
+  const { t } = useT('inbox')
   const audioRef = useRef<HTMLAudioElement>(null)
   const waveformRef = useRef<HTMLDivElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -389,7 +420,7 @@ const VoicePreview = ({
         await audioRef.current.play()
       } catch (err) {
         log.error('Play error', err)
-        setAudioError(extractErrorMessage(err, 'Failed to play audio'))
+        setAudioError(extractErrorMessage(err, t('content.failedPlayAudio')))
       }
     }
   }
@@ -398,7 +429,7 @@ const VoicePreview = ({
     const audio = e.currentTarget
     const error = audio.error
     log.error('Audio error', error?.code, error?.message)
-    setAudioError(error?.message || 'Failed to load audio')
+    setAudioError(error?.message || t('content.failedLoadAudio'))
   }
 
   const handleTimeUpdate = (): void => {
@@ -466,7 +497,7 @@ const VoicePreview = ({
           <button
             onClick={() => void handlePlayPause()}
             className="flex items-center justify-center rounded-full bg-muted-foreground shrink-0 size-8 hover:opacity-90 transition-opacity"
-            aria-label={isPlaying ? 'Pause' : 'Play'}
+            aria-label={isPlaying ? t('content.pause') : t('content.play')}
           >
             {isPlaying ? (
               <Pause className="size-3.5 text-background" />
@@ -480,7 +511,7 @@ const VoicePreview = ({
             className="flex items-center grow h-8 gap-0.5 cursor-pointer"
             onClick={handleWaveformClick}
             role="slider"
-            aria-label="Audio position"
+            aria-label={t('content.audioPosition')}
             aria-valuemin={0}
             aria-valuemax={displayDuration || 100}
             aria-valuenow={currentTime}
@@ -516,7 +547,7 @@ const VoicePreview = ({
           <div className="flex-1">
             <p className="font-medium text-sm">{item.title}</p>
             <p className="text-xs text-muted-foreground">
-              {displayDuration > 0 ? formatDuration(displayDuration) : 'Voice memo'}
+              {displayDuration > 0 ? formatDuration(displayDuration) : t('content.voiceMemo')}
             </p>
           </div>
         </div>
@@ -525,29 +556,31 @@ const VoicePreview = ({
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center gap-1.5">
           <span className="uppercase tracking-[0.04em] text-text-tertiary font-medium text-[11px]/3.5">
-            Transcription
+            {t('content.transcription')}
           </span>
           {transcriptionStatus === 'processing' && (
             <div className="flex items-center gap-1 rounded-[10px] py-px px-1.5 bg-muted-foreground/10">
               <Loader2 className="size-2.5 animate-spin text-muted-foreground" />
-              <span className="text-muted-foreground text-[10px]/3.5">processing</span>
+              <span className="text-muted-foreground text-[10px]/3.5">
+                {t('content.processing')}
+              </span>
             </div>
           )}
           {transcriptionStatus === 'pending' && (
             <div className="flex items-center rounded-[10px] py-px px-1.5 bg-muted-foreground/10">
-              <span className="text-muted-foreground text-[10px]/3.5">pending</span>
+              <span className="text-muted-foreground text-[10px]/3.5">{t('content.pending')}</span>
             </div>
           )}
           {transcriptionStatus === 'failed' && (
             <div className="flex items-center rounded-[10px] py-px px-1.5 bg-destructive/10">
-              <span className="text-destructive text-[10px]/3.5">failed</span>
+              <span className="text-destructive text-[10px]/3.5">{t('content.failed')}</span>
             </div>
           )}
           {transcription && (
             <button
               onClick={handleCopyTranscription}
               className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Copy transcription"
+              aria-label={t('content.copyTranscription')}
             >
               {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
             </button>
@@ -559,12 +592,12 @@ const VoicePreview = ({
         ) : transcriptionStatus === 'processing' || transcriptionStatus === 'pending' ? (
           <p className="text-muted-foreground text-xs italic">
             {transcriptionStatus === 'processing'
-              ? 'Transcribing audio...'
-              : 'Awaiting transcription...'}
+              ? t('content.transcribingAudio')
+              : t('content.awaitingTranscription')}
           </p>
         ) : transcriptionStatus === 'failed' ? (
           <div className="flex items-center gap-2">
-            <span className="text-destructive text-xs">Transcription failed</span>
+            <span className="text-destructive text-xs">{t('list.transcriptionFailed')}</span>
             {onRetryTranscription && (
               <button
                 onClick={onRetryTranscription}
@@ -576,12 +609,12 @@ const VoicePreview = ({
                 ) : (
                   <RefreshCw className="size-3" />
                 )}
-                Retry
+                {t('list.retryTranscription')}
               </button>
             )}
           </div>
         ) : (
-          <p className="text-muted-foreground text-xs italic">No transcription available</p>
+          <p className="text-muted-foreground text-xs italic">{t('content.noTranscription')}</p>
         )}
       </div>
 
@@ -601,10 +634,11 @@ interface PdfPreviewProps {
 }
 
 const PdfPreview = ({ item }: PdfPreviewProps): React.JSX.Element => {
+  const { t } = useT('inbox')
   const metadata = 'metadata' in item ? (item.metadata as PdfMetadata | null) : null
 
   const metaParts: string[] = []
-  if (metadata?.pageCount) metaParts.push(`${metadata.pageCount} pages`)
+  if (metadata?.pageCount) metaParts.push(t('list.pageCount', { count: metadata.pageCount }))
   if (metadata?.fileSize) metaParts.push(formatFileSize(metadata.fileSize))
 
   return (
@@ -639,6 +673,7 @@ interface VideoPreviewProps {
 }
 
 const VideoPreview = ({ item }: VideoPreviewProps): React.JSX.Element => {
+  const { t } = useT('inbox')
   const videoUrl = 'attachmentUrl' in item ? item.attachmentUrl : null
   const metadata = 'metadata' in item ? (item.metadata as Record<string, unknown> | null) : null
 
@@ -647,7 +682,7 @@ const VideoPreview = ({ item }: VideoPreviewProps): React.JSX.Element => {
       {videoUrl ? (
         <div className="relative overflow-hidden rounded-md bg-black">
           <video src={videoUrl} controls className="w-full max-h-[400px]" preload="metadata">
-            Your browser does not support the video tag.
+            {t('content.unsupportedVideo')}
           </video>
         </div>
       ) : (
@@ -662,7 +697,7 @@ const VideoPreview = ({ item }: VideoPreviewProps): React.JSX.Element => {
         const originalFilename = metadata?.originalFilename
         return (
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-[var(--muted-foreground)] px-1">
-            <span className="uppercase font-medium">Video</span>
+            <span className="uppercase font-medium">{t('content.video')}</span>
             {typeof fileSize === 'number' && <span>{formatFileSize(fileSize)}</span>}
             {typeof originalFilename === 'string' && (
               <span className="truncate max-w-[200px]" title={originalFilename}>
@@ -686,12 +721,14 @@ interface SimpleContentProps {
 }
 
 const SimpleContent = ({ item, onContentChange }: SimpleContentProps): React.JSX.Element => {
+  const { t } = useT('inbox')
+
   return (
     <InboxContentEditor
       initialContent={item.content}
       onContentChange={onContentChange}
       editable={true}
-      placeholder="Edit your captured text..."
+      placeholder={t('detail.textPlaceholder')}
     />
   )
 }

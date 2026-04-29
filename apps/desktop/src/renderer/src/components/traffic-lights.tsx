@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface TrafficLightsProps {
   className?: string
@@ -9,6 +10,7 @@ interface TrafficLightsProps {
 }
 
 export function TrafficLights({ className, compact = false }: TrafficLightsProps) {
+  const { t: tPhaseF } = useT('common')
   const [isHovered, setIsHovered] = React.useState(false)
 
   const handleClose = () => {
@@ -43,7 +45,7 @@ export function TrafficLights({ className, compact = false }: TrafficLightsProps
           'group relative rounded-full bg-[#FF5F57] hover:bg-[#FF5F57] transition-colors focus:outline-none',
           buttonSize
         )}
-        aria-label="Close window"
+        aria-label={tPhaseF('phaseF.componentsTrafficLights.closeWindow')}
       >
         {isHovered && (
           <svg
@@ -65,7 +67,7 @@ export function TrafficLights({ className, compact = false }: TrafficLightsProps
           'group relative rounded-full bg-[#FEBC2E] hover:bg-[#FEBC2E] transition-colors focus:outline-none',
           buttonSize
         )}
-        aria-label="Minimize window"
+        aria-label={tPhaseF('phaseF.componentsTrafficLights.minimizeWindow')}
       >
         {isHovered && (
           <svg
@@ -87,7 +89,7 @@ export function TrafficLights({ className, compact = false }: TrafficLightsProps
           'group relative rounded-full bg-[#28C840] hover:bg-[#28C840] transition-colors focus:outline-none',
           buttonSize
         )}
-        aria-label="Maximize window"
+        aria-label={tPhaseF('phaseF.componentsTrafficLights.maximizeWindow')}
       >
         {isHovered && (
           <svg

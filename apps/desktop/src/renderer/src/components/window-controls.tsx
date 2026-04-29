@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { ChevronLeft, ChevronRight, Search } from '@/lib/icons'
 import { TrafficLights } from '@/components/traffic-lights'
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
@@ -12,6 +13,8 @@ interface WindowControlsProps {
 }
 
 export function WindowControls({ className }: WindowControlsProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('common')
+  const { t } = useT('common')
   const { state } = useSidebar()
   const sidebarTooltip = state === 'expanded' ? 'Collapse sidebar' : 'Expand sidebar'
 
@@ -36,14 +39,14 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
             <button
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent('memry:open-search'))}
-              aria-label="Search"
+              aria-label={t('action.search')}
               className="flex items-center justify-center size-7 rounded text-text-tertiary hover:text-foreground hover:bg-sidebar-accent transition-colors duration-150"
             >
               <Search className="size-4" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs">
-            Search (⌘K)
+            {tPhaseF('phaseF.componentsWindowControls.searchK')}
           </TooltipContent>
         </Tooltip>
 
@@ -51,9 +54,9 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
           type="button"
           disabled
           aria-disabled="true"
-          aria-label="Browser back"
+          aria-label={tPhaseF('phaseF.componentsWindowControls.browserBack')}
           className="flex items-center justify-center size-7 rounded text-text-tertiary/40 cursor-default"
-          title="Back"
+          title={tPhaseF('phaseF.componentsWindowControls.back')}
         >
           <ChevronLeft className="size-4" />
         </button>
@@ -62,9 +65,9 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
           type="button"
           disabled
           aria-disabled="true"
-          aria-label="Browser forward"
+          aria-label={tPhaseF('phaseF.componentsWindowControls.browserForward')}
           className="flex items-center justify-center size-7 rounded text-text-tertiary/40 cursor-default"
-          title="Forward"
+          title={tPhaseF('phaseF.componentsWindowControls.forward')}
         >
           <ChevronRight className="size-4" />
         </button>

@@ -11,6 +11,7 @@ import type { SuggestionOptions } from '@tiptap/suggestion'
 export interface WikiLinkOptions {
   HTMLAttributes: Record<string, unknown>
   suggestion: Omit<SuggestionOptions, 'editor'>
+  getAriaLabel?: (title: string) => string
 }
 
 export interface WikiLinkAttributes {
@@ -37,6 +38,7 @@ export const WikiLink = Node.create<WikiLinkOptions>({
   addOptions() {
     return {
       HTMLAttributes: {},
+      getAriaLabel: (title: string) => `Link to ${title}`,
       suggestion: {
         char: '[[',
         pluginKey: new PluginKey('wikiLinkSuggestion'),
@@ -118,7 +120,7 @@ export const WikiLink = Node.create<WikiLinkOptions>({
         class: classes.join(' '),
         role: 'link',
         tabindex: '0',
-        'aria-label': `Link to ${HTMLAttributes.title}`
+        'aria-label': this.options.getAriaLabel?.(String(HTMLAttributes.title ?? '')) ?? ''
       }),
       HTMLAttributes.title || ''
     ]

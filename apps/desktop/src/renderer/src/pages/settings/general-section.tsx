@@ -26,6 +26,8 @@ import {
   COMPACT_SELECT
 } from '@/components/settings/settings-primitives'
 
+type SettingsT = ReturnType<typeof useT>['t']
+
 export function GeneralSettings() {
   const { t, i18n } = useT('settings')
   const [isChangingLocale, setIsChangingLocale] = useState(false)
@@ -54,9 +56,9 @@ export function GeneralSettings() {
   const handleStartOnBootChange = useCallback(
     async (enabled: boolean) => {
       const success = await updateGeneralSettings({ startOnBoot: enabled })
-      if (!success) toast.error('Failed to update start on boot')
+      if (!success) toast.error(t('general.startup.launchAtLogin.error'))
     },
-    [updateGeneralSettings]
+    [t, updateGeneralSettings]
   )
 
   const handlePreviewModeChange = useCallback(
@@ -65,10 +67,10 @@ export function GeneralSettings() {
       if (success) {
         updateContextSettings({ previewMode: enabled })
       } else {
-        toast.error('Failed to update setting')
+        toast.error(t('general.tabs.error'))
       }
     },
-    [updateTabSettings, updateContextSettings]
+    [t, updateTabSettings, updateContextSettings]
   )
 
   const handleRestoreSessionChange = useCallback(
@@ -77,26 +79,26 @@ export function GeneralSettings() {
       if (success) {
         updateContextSettings({ restoreSessionOnStart: enabled })
       } else {
-        toast.error('Failed to update setting')
+        toast.error(t('general.tabs.error'))
       }
     },
-    [updateTabSettings, updateContextSettings]
+    [t, updateTabSettings, updateContextSettings]
   )
 
   const handleCreateInSelectedFolderChange = useCallback(
     async (enabled: boolean) => {
       const success = await updateGeneralSettings({ createInSelectedFolder: enabled })
-      if (!success) toast.error('Failed to update setting')
+      if (!success) toast.error(t('general.tabs.error'))
     },
-    [updateGeneralSettings]
+    [t, updateGeneralSettings]
   )
 
   const handleClockFormatChange = useCallback(
     async (value: '12h' | '24h') => {
       const success = await updateGeneralSettings({ clockFormat: value })
-      if (!success) toast.error('Failed to update time format')
+      if (!success) toast.error(t('general.clockFormat.error'))
     },
-    [updateGeneralSettings]
+    [t, updateGeneralSettings]
   )
 
   const handleLocaleChange = useCallback(
@@ -111,12 +113,12 @@ export function GeneralSettings() {
           })
         )
       } catch {
-        toast.error('Failed to change language. Please try again.')
+        toast.error(t('general.language.failed'))
       } finally {
         setIsChangingLocale(false)
       }
     },
-    [i18n]
+    [i18n, t]
   )
 
   const handleCloseButtonChange = useCallback(
@@ -125,16 +127,16 @@ export function GeneralSettings() {
       if (success) {
         updateContextSettings({ tabCloseButton: value })
       } else {
-        toast.error('Failed to update setting')
+        toast.error(t('general.tabs.error'))
       }
     },
-    [updateTabSettings, updateContextSettings]
+    [t, updateTabSettings, updateContextSettings]
   )
 
   const handleUpdateAction = useCallback(async () => {
     try {
       if (!updateState.updateSupported) {
-        toast.info('Auto-updates are available in packaged releases only')
+        toast.info(t('general.updates.unsupportedToast'))
         return
       }
 
@@ -150,38 +152,42 @@ export function GeneralSettings() {
 
       const nextState = await checkForUpdates()
       if (nextState.status === 'up-to-date') {
-        toast.success(`Memry ${nextState.currentVersion} is up to date`)
+        toast.success(t('general.updates.upToDateToast', { version: nextState.currentVersion }))
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Update action failed')
+      toast.error(error instanceof Error ? error.message : t('general.updates.actionFailed'))
     }
   }, [
     checkForUpdates,
     downloadUpdate,
     quitAndInstall,
+    t,
     updateState.status,
     updateState.updateSupported
   ])
 
-  const updateDescription = getUpdateDescription(updateState, updaterError)
-  const updateActionLabel = getUpdateActionLabel(updateState)
+  const updateDescription = getUpdateDescription(updateState, updaterError, t)
+  const updateActionLabel = getUpdateActionLabel(updateState, t)
   const isUpdateActionDisabled =
     updaterLoading || updateState.status === 'checking' || updateState.status === 'downloading'
 
   if (isLoading) {
     return (
       <div className="flex flex-col">
-        <SettingsHeader title="General" subtitle="Loading settings..." />
+        <SettingsHeader title={t('general.header.title')} subtitle={t('general.header.loading')} />
       </div>
     )
   }
 
   return (
     <div className="flex flex-col text-xs/4">
-      <SettingsHeader title="General" subtitle="Application startup and tab behavior" />
+      <SettingsHeader title={t('general.header.title')} subtitle={t('general.header.subtitle')} />
 
-      <SettingsGroup label="Startup">
-        <SettingRow label="Launch at Login" description="Start Memry when you log in">
+      <SettingsGroup label={t('general.groups.startup')}>
+        <SettingRow
+          label={t('general.startup.launchAtLogin.label')}
+          description={t('general.startup.launchAtLogin.description')}
+        >
           <Switch
             checked={generalSettings.startOnBoot}
             onCheckedChange={handleStartOnBootChange}
@@ -190,13 +196,19 @@ export function GeneralSettings() {
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup label="Updates">
-        <SettingRowTall label="App Updates" description={updateDescription}>
+      <SettingsGroup label={t('general.groups.updates')}>
+        <SettingRowTall label={t('general.updates.appUpdates')} description={updateDescription}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex flex-col gap-1 text-xs/4 text-muted-foreground">
-              <span>Installed version {updateState.currentVersion}</span>
+              <span>
+                {t('general.updates.installedVersion', { version: updateState.currentVersion })}
+              </span>
               {updateState.availableVersion && (
-                <span>Available version {updateState.availableVersion}</span>
+                <span>
+                  {t('general.updates.availableVersion', {
+                    version: updateState.availableVersion
+                  })}
+                </span>
               )}
             </div>
             <Button
@@ -212,7 +224,7 @@ export function GeneralSettings() {
         </SettingRowTall>
       </SettingsGroup>
 
-      <SettingsGroup label="Language &amp; Region">
+      <SettingsGroup label={t('general.groups.languageRegion')}>
         <SettingRow label={t('general.language.label')} description={t('general.language.helper')}>
           <Select
             value={i18n.language as Locale}
@@ -232,23 +244,26 @@ export function GeneralSettings() {
           </Select>
         </SettingRow>
 
-        <SettingRow label="Time Format" description="12-hour or 24-hour clock">
+        <SettingRow
+          label={t('general.clockFormat.label')}
+          description={t('general.clockFormat.description')}
+        >
           <Select value={generalSettings.clockFormat} onValueChange={handleClockFormatChange}>
             <SelectTrigger className={COMPACT_SELECT}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="12h">12-hour</SelectItem>
-              <SelectItem value="24h">24-hour</SelectItem>
+              <SelectItem value="12h">{t('general.clockFormat.options.12h')}</SelectItem>
+              <SelectItem value="24h">{t('general.clockFormat.options.24h')}</SelectItem>
             </SelectContent>
           </Select>
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup label="Tab Behavior">
+      <SettingsGroup label={t('general.groups.tabBehavior')}>
         <SettingRow
-          label="Preview Mode"
-          description="Single-click opens preview, double-click keeps open"
+          label={t('general.tabs.previewMode.label')}
+          description={t('general.tabs.previewMode.description')}
         >
           <Switch
             checked={tabSettings.previewMode}
@@ -258,8 +273,8 @@ export function GeneralSettings() {
         </SettingRow>
 
         <SettingRow
-          label="Restore Session on Start"
-          description="Reopen tabs from your last session"
+          label={t('general.tabs.restoreSession.label')}
+          description={t('general.tabs.restoreSession.description')}
         >
           <Switch
             checked={tabSettings.restoreSessionOnStart}
@@ -268,24 +283,27 @@ export function GeneralSettings() {
           />
         </SettingRow>
 
-        <SettingRow label="Tab Close Button" description="When to show the close button">
+        <SettingRow
+          label={t('general.tabs.closeButton.label')}
+          description={t('general.tabs.closeButton.description')}
+        >
           <Select value={tabSettings.tabCloseButton} onValueChange={handleCloseButtonChange}>
             <SelectTrigger className={COMPACT_SELECT}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="always">Always visible</SelectItem>
-              <SelectItem value="hover">Show on hover</SelectItem>
-              <SelectItem value="active">Only on active tab</SelectItem>
+              <SelectItem value="always">{t('general.tabs.closeButton.options.always')}</SelectItem>
+              <SelectItem value="hover">{t('general.tabs.closeButton.options.hover')}</SelectItem>
+              <SelectItem value="active">{t('general.tabs.closeButton.options.active')}</SelectItem>
             </SelectContent>
           </Select>
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup label="File Creation">
+      <SettingsGroup label={t('general.groups.fileCreation')}>
         <SettingRow
-          label="Create in Selected Folder"
-          description="New notes and folders are created inside the currently selected folder. When off, items are always created at root."
+          label={t('general.fileCreation.createInSelectedFolder.label')}
+          description={t('general.fileCreation.createInSelectedFolder.description')}
         >
           <Switch
             checked={generalSettings.createInSelectedFolder}
@@ -298,26 +316,32 @@ export function GeneralSettings() {
   )
 }
 
-function getUpdateActionLabel(state: AppUpdateState): string {
+function getUpdateActionLabel(state: AppUpdateState, t: SettingsT): string {
   switch (state.status) {
     case 'checking':
-      return 'Checking...'
+      return t('general.updates.actions.checking')
     case 'available':
-      return 'Download Update'
+      return t('general.updates.actions.available')
     case 'downloading':
       return state.downloadProgressPercent == null
-        ? 'Downloading...'
-        : `Downloading ${state.downloadProgressPercent}%`
+        ? t('general.updates.actions.downloading')
+        : t('general.updates.actions.downloadingPercent', {
+            percent: state.downloadProgressPercent
+          })
     case 'downloaded':
-      return 'Restart to Install'
+      return t('general.updates.actions.downloaded')
     default:
-      return 'Check for Updates'
+      return t('general.updates.actions.idle')
   }
 }
 
-function getUpdateDescription(state: AppUpdateState, updaterError: string | null): string {
+function getUpdateDescription(
+  state: AppUpdateState,
+  updaterError: string | null,
+  t: SettingsT
+): string {
   if (!state.updateSupported) {
-    return 'Packaged builds can check, download, and install updates from GitHub Releases'
+    return t('general.updates.unsupported')
   }
 
   if (updaterError) {
@@ -330,18 +354,20 @@ function getUpdateDescription(state: AppUpdateState, updaterError: string | null
 
   switch (state.status) {
     case 'available':
-      return `Memry ${state.availableVersion ?? ''} is available to download`
+      return t('general.updates.available', { version: state.availableVersion ?? '' })
     case 'downloading':
       return state.downloadProgressPercent == null
-        ? 'Downloading the latest release'
-        : `Downloading the latest release (${state.downloadProgressPercent}%)`
+        ? t('general.updates.downloadingLatest')
+        : t('general.updates.downloadingLatestPercent', {
+            percent: state.downloadProgressPercent
+          })
     case 'downloaded':
-      return `Memry ${state.availableVersion ?? ''} is ready to install`
+      return t('general.updates.downloaded', { version: state.availableVersion ?? '' })
     case 'up-to-date':
-      return 'This installation is on the latest published release'
+      return t('general.updates.upToDate')
     case 'checking':
-      return 'Checking GitHub Releases for a newer version'
+      return t('general.updates.checking')
     default:
-      return 'Check for new releases and install them without leaving the app'
+      return t('general.updates.idle')
   }
 }

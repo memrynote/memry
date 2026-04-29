@@ -40,6 +40,7 @@ import {
 import { deviceService } from '@/services/device-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { toast } from 'sonner'
+import { useT } from '@memry/i18n/renderer'
 
 interface Device {
   id: string
@@ -76,6 +77,9 @@ const platformLabel = (platform: string): string => {
 const COLLAPSED_LIMIT = 3
 
 export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('settings')
+  const { t } = useT('settings')
+  const { t: tCommon } = useT('common')
   const [devices, setDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState(false)
@@ -89,11 +93,11 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
       const result = await deviceService.getDevices()
       setDevices(result.devices)
     } catch {
-      toast.error('Failed to load devices')
+      toast.error(t('devices.toasts.loadFailed'))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     void fetchDevices()
@@ -105,18 +109,18 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
     try {
       const result = await deviceService.removeDevice({ deviceId: removeTarget.id })
       if (result.success) {
-        toast.success(`Removed "${removeTarget.name}"`)
+        toast.success(t('devices.toasts.removed', { name: removeTarget.name }))
         setRemoveTarget(null)
         void fetchDevices()
       } else {
-        toast.error(result.error ?? 'Failed to remove device')
+        toast.error(result.error ?? t('devices.toasts.removeFailed'))
       }
     } catch (error: unknown) {
-      toast.error(extractErrorMessage(error, 'Failed to remove device'))
+      toast.error(extractErrorMessage(error, t('devices.toasts.removeFailed')))
     } finally {
       setBusy(false)
     }
-  }, [removeTarget, fetchDevices])
+  }, [removeTarget, fetchDevices, t])
 
   const handleRename = useCallback(async () => {
     if (!renameTarget || !newName.trim()) return
@@ -127,19 +131,19 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
         newName: newName.trim()
       })
       if (result.success) {
-        toast.success(`Renamed to "${newName.trim()}"`)
+        toast.success(t('devices.toasts.renamed', { name: newName.trim() }))
         setRenameTarget(null)
         setNewName('')
         void fetchDevices()
       } else {
-        toast.error(result.error ?? 'Failed to rename device')
+        toast.error(result.error ?? t('devices.toasts.renameFailed'))
       }
     } catch (error: unknown) {
-      toast.error(extractErrorMessage(error, 'Failed to rename device'))
+      toast.error(extractErrorMessage(error, t('devices.toasts.renameFailed')))
     } finally {
       setBusy(false)
     }
-  }, [renameTarget, newName, fetchDevices])
+  }, [renameTarget, newName, fetchDevices, t])
 
   const openRenameDialog = (device: Device): void => {
     setRenameTarget(device)
@@ -158,10 +162,10 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
       <div
         className="flex items-center gap-2 py-4 text-xs text-muted-foreground"
         role="status"
-        aria-label="Loading devices"
+        aria-label={t('devices.loadingAria')}
       >
         <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-        Loading devices...
+        {t('devices.loading')}
       </div>
     )
   }
@@ -170,7 +174,7 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
     return (
       <div className="flex flex-col rounded-lg border border-border overflow-clip">
         <div className="flex items-center justify-center h-12 px-4 text-xs text-muted-foreground">
-          No devices linked yet
+          {t('devices.none')}
         </div>
         {onLinkDevice && (
           <>
@@ -180,7 +184,7 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
               className="flex items-center gap-2.5 h-12 px-4 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               <QrCode className="w-4 h-4" />
-              Link new device
+              {t('devices.linkNew')}
             </button>
           </>
         )}
@@ -194,8 +198,12 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
         {visibleDevices.map((device, i) => {
           const Icon = PLATFORM_ICONS[device.platform] ?? Monitor
           const syncLabel = device.lastSyncAt
-            ? `Last seen ${formatDistanceToNow(device.lastSyncAt, { addSuffix: false })} ago`
-            : `Linked ${formatDistanceToNow(device.linkedAt, { addSuffix: false })} ago`
+            ? t('devices.lastSeen', {
+                time: formatDistanceToNow(device.lastSyncAt, { addSuffix: false })
+              })
+            : t('devices.linked', {
+                time: formatDistanceToNow(device.linkedAt, { addSuffix: false })
+              })
 
           return (
             <Fragment key={device.id}>
@@ -210,12 +218,13 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
                       </span>
                       {device.isCurrentDevice && (
                         <span className="rounded-[10px] px-1.5 py-px text-[10px]/3.5 font-medium bg-green-500/15 text-green-600 dark:text-green-400">
-                          This device
+                          {t('devices.thisDevice')}
                         </span>
                       )}
                     </div>
                     <span className="text-[11px]/3.5 text-muted-foreground">
-                      {platformLabel(device.platform)} &middot; {syncLabel}
+                      {platformLabel(device.platform)} &
+                      {tPhaseF('phaseF.componentsSyncDeviceList.middot')} {syncLabel}
                     </span>
                   </div>
                 </div>
@@ -228,15 +237,15 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                          aria-label={`Rename ${device.name}`}
+                          aria-label={t('devices.renameAria', { name: device.name })}
                         >
                           <MoreHorizontal className="w-3.5 h-3.5" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => openRenameDialog(device)}>
-                          <Pencil className="w-4 h-4 mr-2" />
-                          Rename
+                          <Pencil className="w-4 h-4 me-2" />
+                          {t('devices.rename')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -244,7 +253,7 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
                       onClick={() => setRemoveTarget(device)}
                       className="text-xs text-destructive hover:text-destructive/80 transition-colors"
                     >
-                      Revoke
+                      {t('devices.revoke')}
                     </button>
                   </div>
                 )}
@@ -261,20 +270,18 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
               onClick={() => setExpanded((prev) => !prev)}
               aria-expanded={expanded}
               aria-label={
-                expanded
-                  ? 'Show fewer devices'
-                  : `Show ${hiddenCount} more ${hiddenCount === 1 ? 'device' : 'devices'}`
+                expanded ? t('devices.showLess') : t('devices.showMoreAria', { count: hiddenCount })
               }
             >
               {expanded ? (
                 <>
                   <ChevronUp className="w-3.5 h-3.5" />
-                  Show less
+                  {t('devices.showLess')}
                 </>
               ) : (
                 <>
                   <ChevronDown className="w-3.5 h-3.5" />
-                  {hiddenCount} more {hiddenCount === 1 ? 'device' : 'devices'}
+                  {t('devices.showMore', { count: hiddenCount })}
                 </>
               )}
             </button>
@@ -289,7 +296,7 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
               className="flex items-center gap-2.5 h-12 px-4 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               <QrCode className="w-4 h-4" />
-              Link new device
+              {t('devices.linkNew')}
             </button>
           </>
         )}
@@ -298,20 +305,21 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
       <AlertDialog open={!!removeTarget} onOpenChange={(open) => !open && setRemoveTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Revoke &ldquo;{removeTarget?.name}&rdquo;?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t('devices.dialogs.revokeTitle', { name: removeTarget?.name ?? '' })}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This device will lose access to your synced data. It will need to be linked again to
-              restore sync. Local data on that device will remain.
+              {t('devices.dialogs.revokeDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={busy}>{tCommon('button.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleRemove}
               disabled={busy}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {busy ? 'Revoking...' : 'Revoke device'}
+              {busy ? t('devices.dialogs.revoking') : t('devices.dialogs.revokeDevice')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -320,14 +328,14 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
       <Dialog open={!!renameTarget} onOpenChange={(open) => !open && setRenameTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Rename device</DialogTitle>
-            <DialogDescription>Choose a name to identify this device.</DialogDescription>
+            <DialogTitle>{t('devices.dialogs.renameTitle')}</DialogTitle>
+            <DialogDescription>{t('devices.dialogs.renameDescription')}</DialogDescription>
           </DialogHeader>
           <Input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             maxLength={100}
-            placeholder="Device name"
+            placeholder={t('devices.dialogs.namePlaceholder')}
             autoFocus
             onKeyDown={(e) => {
               if (e.key === 'Enter' && newName.trim()) void handleRename()
@@ -335,10 +343,10 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setRenameTarget(null)} disabled={busy}>
-              Cancel
+              {tCommon('button.cancel')}
             </Button>
             <Button onClick={() => void handleRename()} disabled={busy || !newName.trim()}>
-              {busy ? 'Renaming...' : 'Save'}
+              {busy ? t('devices.dialogs.renaming') : tCommon('button.save')}
             </Button>
           </DialogFooter>
         </DialogContent>

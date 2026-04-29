@@ -1,5 +1,6 @@
 import { CheckCircle2 } from '@/lib/icons'
 
+import { useT } from '@memry/i18n/renderer'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +37,7 @@ export const AllSubtasksCompleteDialog = ({
   onKeepOpen,
   onCompleteParent
 }: AllSubtasksCompleteDialogProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const handleKeepOpen = (): void => {
     onKeepOpen()
     onClose()
@@ -54,21 +56,36 @@ export const AllSubtasksCompleteDialog = ({
             <div className="p-2 rounded-full bg-task-complete/15">
               <CheckCircle2 className="size-5 text-task-complete" />
             </div>
-            <AlertDialogTitle>All subtasks complete!</AlertDialogTitle>
+            <AlertDialogTitle>
+              {tPhaseF(
+                'phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.allSubtasksComplete'
+              )}
+            </AlertDialogTitle>
           </div>
           <AlertDialogDescription className="space-y-2">
             <p>
-              &ldquo;{parentTitle}&rdquo; has all {subtaskCount} subtask
-              {subtaskCount !== 1 ? 's' : ''} done.
+              &{tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.ldquo')}
+              {parentTitle}&
+              {tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.rdquoHasAll')}
+              {subtaskCount}{' '}
+              {tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.subtask')}
+              {subtaskCount !== 1 ? 's' : ''}{' '}
+              {tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.done')}
             </p>
             <p className="text-muted-foreground">
-              Would you like to mark the parent task as complete too?
+              {tPhaseF(
+                'phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.wouldYouLikeToMarkTheParentTaskAsCompleteToo'
+              )}
             </p>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={handleKeepOpen}>Keep task open</AlertDialogCancel>
-          <AlertDialogAction onClick={handleComplete}>Complete task ✓</AlertDialogAction>
+          <AlertDialogCancel onClick={handleKeepOpen}>
+            {tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.keepTaskOpen')}
+          </AlertDialogCancel>
+          <AlertDialogAction onClick={handleComplete}>
+            {tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.completeTask')}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

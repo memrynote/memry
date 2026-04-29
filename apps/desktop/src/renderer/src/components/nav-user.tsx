@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import { useT } from '@memry/i18n/renderer'
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -26,6 +27,7 @@ export function NavUser({
     avatar: string
   }
 }) {
+  const { t: tPhaseF } = useT('common')
   const { isMobile } = useSidebar()
 
   return (
@@ -39,7 +41,9 @@ export function NavUser({
             >
               <Avatar className="h-8 w-8 rounded-full">
                 <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-full">CN</AvatarFallback>
+                <AvatarFallback className="rounded-full">
+                  {tPhaseF('phaseF.componentsNavUser.cn')}
+                </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">{user.name}</span>
@@ -58,7 +62,9 @@ export function NavUser({
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-md">
                   <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-md">CN</AvatarFallback>
+                  <AvatarFallback className="rounded-md">
+                    {tPhaseF('phaseF.componentsNavUser.cn2')}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">{user.name}</span>
@@ -70,28 +76,33 @@ export function NavUser({
             <DropdownMenuGroup>
               <DropdownMenuItem>
                 <Sparkles />
-                Upgrade to Pro
+
+                {tPhaseF('phaseF.componentsNavUser.upgradeToPro')}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem>
                 <BadgeCheck />
-                Account
+
+                {tPhaseF('phaseF.componentsNavUser.account')}
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <CreditCard />
-                Billing
+
+                {tPhaseF('phaseF.componentsNavUser.billing')}
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <Bell />
-                Notifications
+
+                {tPhaseF('phaseF.componentsNavUser.notifications')}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
               <LogOut />
-              Log out
+
+              {tPhaseF('phaseF.componentsNavUser.logOut')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

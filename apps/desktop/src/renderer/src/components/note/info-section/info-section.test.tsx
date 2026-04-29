@@ -4,11 +4,25 @@
  * Tests for the InfoSection component with property editors.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { I18nextProvider } from 'react-i18next'
+import type { i18n as I18nInstance } from 'i18next'
+import { createRendererI18n } from '@memry/i18n/renderer'
 import { InfoSection } from './InfoSection'
 import type { Property, PropertyTemplate } from './types'
+
+let i18nEn: I18nInstance
+let i18nTr: I18nInstance
+
+beforeAll(async () => {
+  i18nEn = await createRendererI18n({ locale: 'en' })
+  i18nTr = await createRendererI18n({ locale: 'tr' })
+})
+
+const renderWithI18n = (ui: React.ReactElement, i18n = i18nEn) =>
+  render(<I18nextProvider i18n={i18n}>{ui}</I18nextProvider>)
 
 // ============================================================================
 // Test Data
@@ -61,7 +75,7 @@ describe('T513: InfoSection - basic display', () => {
   })
 
   it('should render with properties when expanded', () => {
-    render(<InfoSection {...defaultProps} />)
+    renderWithI18n(<InfoSection {...defaultProps} />)
 
     expect(screen.getByText('Status')).toBeInTheDocument()
     expect(screen.getByText('Priority')).toBeInTheDocument()
@@ -69,7 +83,7 @@ describe('T513: InfoSection - basic display', () => {
   })
 
   it('should not show properties when collapsed', () => {
-    render(<InfoSection {...defaultProps} isExpanded={false} />)
+    renderWithI18n(<InfoSection {...defaultProps} isExpanded={false} />)
 
     // Properties should not be visible
     expect(screen.queryByText('Status')).not.toBeInTheDocument()
@@ -77,7 +91,7 @@ describe('T513: InfoSection - basic display', () => {
 
   it('should call onToggleExpand when header is clicked', async () => {
     const user = userEvent.setup()
-    render(<InfoSection {...defaultProps} />)
+    renderWithI18n(<InfoSection {...defaultProps} />)
 
     const header = screen.getByRole('button', { name: /^properties/i })
     await user.click(header)
@@ -86,13 +100,19 @@ describe('T513: InfoSection - basic display', () => {
   })
 
   it('should have proper ARIA region', () => {
-    render(<InfoSection {...defaultProps} />)
+    renderWithI18n(<InfoSection {...defaultProps} />)
+
+    expect(screen.getByRole('region', { name: /note properties/i })).toBeInTheDocument()
+  })
+
+  it('falls back to English property aria for Turkish notes namespace', () => {
+    renderWithI18n(<InfoSection {...defaultProps} />, i18nTr)
 
     expect(screen.getByRole('region', { name: /note properties/i })).toBeInTheDocument()
   })
 
   it('should show all properties without truncation', () => {
-    render(<InfoSection {...defaultProps} />)
+    renderWithI18n(<InfoSection {...defaultProps} />)
 
     expect(screen.getByText('Status')).toBeInTheDocument()
     expect(screen.getByText('Priority')).toBeInTheDocument()
@@ -103,19 +123,19 @@ describe('T513: InfoSection - basic display', () => {
   })
 
   it('should show workspace properties label when folder properties exist', () => {
-    render(<InfoSection {...defaultProps} folderProperties={mockFolderProperties} />)
+    renderWithI18n(<InfoSection {...defaultProps} folderProperties={mockFolderProperties} />)
 
     expect(screen.getByText(/workspace properties/i)).toBeInTheDocument()
   })
 
   it('should show add property button when expanded', () => {
-    render(<InfoSection {...defaultProps} />)
+    renderWithI18n(<InfoSection {...defaultProps} />)
 
     expect(screen.getByRole('button', { name: /add.*property/i })).toBeInTheDocument()
   })
 
   it('should disable add property button when disabled', () => {
-    render(<InfoSection {...defaultProps} disabled />)
+    renderWithI18n(<InfoSection {...defaultProps} disabled />)
 
     expect(screen.getByRole('button', { name: /add.*property/i })).toBeDisabled()
   })
@@ -141,14 +161,14 @@ describe('T514: InfoSection - property editors', () => {
 
   describe('text editor', () => {
     it('should display text value', () => {
-      render(<InfoSection {...defaultProps} />)
+      renderWithI18n(<InfoSection {...defaultProps} />)
 
       expect(screen.getByText('Some notes')).toBeInTheDocument()
     })
 
     it('should enter edit mode on click', async () => {
       const user = userEvent.setup()
-      render(<InfoSection {...defaultProps} />)
+      renderWithI18n(<InfoSection {...defaultProps} />)
 
       const textValue = screen.getByText('Some notes')
       await user.click(textValue)
@@ -160,7 +180,7 @@ describe('T514: InfoSection - property editors', () => {
 
   describe('number editor', () => {
     it('should display number value', () => {
-      render(<InfoSection {...defaultProps} />)
+      renderWithI18n(<InfoSection {...defaultProps} />)
 
       expect(screen.getByText('3')).toBeInTheDocument()
     })
@@ -168,7 +188,7 @@ describe('T514: InfoSection - property editors', () => {
 
   describe('date editor', () => {
     it('should display formatted date', () => {
-      render(<InfoSection {...defaultProps} />)
+      renderWithI18n(<InfoSection {...defaultProps} />)
 
       expect(screen.getByText('15.01.2026')).toBeInTheDocument()
     })
@@ -176,7 +196,7 @@ describe('T514: InfoSection - property editors', () => {
 
   describe('checkbox editor', () => {
     it('should display checkbox state', () => {
-      render(<InfoSection {...defaultProps} />)
+      renderWithI18n(<InfoSection {...defaultProps} />)
 
       const checkbox = screen.getByRole('checkbox')
       expect(checkbox).not.toBeChecked()
@@ -184,7 +204,7 @@ describe('T514: InfoSection - property editors', () => {
 
     it('should toggle checkbox on click', async () => {
       const user = userEvent.setup()
-      render(<InfoSection {...defaultProps} />)
+      renderWithI18n(<InfoSection {...defaultProps} />)
 
       const checkbox = screen.getByRole('checkbox')
       await user.click(checkbox)
@@ -195,7 +215,7 @@ describe('T514: InfoSection - property editors', () => {
 
   describe('url editor', () => {
     it('should display URL value', () => {
-      render(<InfoSection {...defaultProps} />)
+      renderWithI18n(<InfoSection {...defaultProps} />)
 
       expect(screen.getByText('https://example.com')).toBeInTheDocument()
     })
@@ -203,7 +223,7 @@ describe('T514: InfoSection - property editors', () => {
 
   describe('select editor', () => {
     it('should display selected value', () => {
-      render(<InfoSection {...defaultProps} />)
+      renderWithI18n(<InfoSection {...defaultProps} />)
 
       expect(screen.getByText('In Progress')).toBeInTheDocument()
     })
@@ -216,7 +236,7 @@ describe('T514: InfoSection - property editors', () => {
         ...defaultProps,
         properties: [createProperty('test-prop', 'Test', 'text', 'Old Value', false)]
       }
-      render(<InfoSection {...props} />)
+      renderWithI18n(<InfoSection {...props} />)
 
       const textValue = screen.getByText('Old Value')
       await user.click(textValue)
@@ -232,7 +252,7 @@ describe('T514: InfoSection - property editors', () => {
 
   describe('custom property deletion', () => {
     it('should pass isCustom property correctly for custom properties', () => {
-      render(<InfoSection {...defaultProps} />)
+      renderWithI18n(<InfoSection {...defaultProps} />)
 
       // Notes is a custom property (prop-6)
       expect(screen.getByText('Notes')).toBeInTheDocument()
@@ -244,7 +264,7 @@ describe('T514: InfoSection - property editors', () => {
       // The component passes onDelete only for custom properties
       // This is verified by the fact that the component receives onDeleteProperty
       // and passes it conditionally
-      render(<InfoSection {...defaultProps} />)
+      renderWithI18n(<InfoSection {...defaultProps} />)
 
       // Just verify the component renders without errors with the delete handler
       expect(screen.getByText('Notes')).toBeInTheDocument()
@@ -272,7 +292,7 @@ describe('InfoSection - add property', () => {
 
   it('should open add property popup on button click', async () => {
     const user = userEvent.setup()
-    render(<InfoSection {...defaultProps} />)
+    renderWithI18n(<InfoSection {...defaultProps} />)
 
     const addButton = screen.getByRole('button', { name: /add.*property/i })
     await user.click(addButton)
@@ -282,7 +302,7 @@ describe('InfoSection - add property', () => {
 
   it('should show property type options in popup', async () => {
     const user = userEvent.setup()
-    render(<InfoSection {...defaultProps} />)
+    renderWithI18n(<InfoSection {...defaultProps} />)
 
     const addButton = screen.getByRole('button', { name: /add.*property/i })
     await user.click(addButton)
@@ -293,7 +313,7 @@ describe('InfoSection - add property', () => {
 
   it('should call onAddProperty when type is selected', async () => {
     const user = userEvent.setup()
-    render(<InfoSection {...defaultProps} />)
+    renderWithI18n(<InfoSection {...defaultProps} />)
 
     const addButton = screen.getByRole('button', { name: /add.*property/i })
     await user.click(addButton)
@@ -312,7 +332,7 @@ describe('InfoSection - add property', () => {
 
   it('should close popup after selecting a type', async () => {
     const user = userEvent.setup()
-    render(<InfoSection {...defaultProps} />)
+    renderWithI18n(<InfoSection {...defaultProps} />)
 
     const addButton = screen.getByRole('button', { name: /add.*property/i })
     await user.click(addButton)
@@ -339,25 +359,25 @@ describe('InfoSection - accessibility', () => {
   }
 
   it('should have proper region role', () => {
-    render(<InfoSection {...defaultProps} />)
+    renderWithI18n(<InfoSection {...defaultProps} />)
 
     expect(screen.getByRole('region', { name: /note properties/i })).toBeInTheDocument()
   })
 
   it('should have properties list role', () => {
-    render(<InfoSection {...defaultProps} />)
+    renderWithI18n(<InfoSection {...defaultProps} />)
 
     expect(screen.getByRole('list', { name: /properties list/i })).toBeInTheDocument()
   })
 
   it('should have proper aria-label on add button', () => {
-    render(<InfoSection {...defaultProps} />)
+    renderWithI18n(<InfoSection {...defaultProps} />)
 
     expect(screen.getByRole('button', { name: /add.*property/i })).toBeInTheDocument()
   })
 
   it('should have aria-expanded on toggle header', () => {
-    render(<InfoSection {...defaultProps} />)
+    renderWithI18n(<InfoSection {...defaultProps} />)
 
     const header = screen.getByRole('button', { name: /^properties/i })
     expect(header).toHaveAttribute('aria-expanded', 'true')

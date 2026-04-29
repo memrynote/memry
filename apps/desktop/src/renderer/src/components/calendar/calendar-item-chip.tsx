@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { AlarmClock, Calendar2, CheckSquare3, NotificationSnooze } from '@/lib/icons'
 import { getEventBaseColor, getEventBgColor, getEventTextColor } from '@/lib/event-type-colors'
 import { formatTimeOfDay } from '@/lib/time-format'
@@ -37,7 +38,11 @@ export function CalendarItemChip({
   onClick,
   onDeleteItem
 }: CalendarItemChipProps): React.JSX.Element {
-  const timeLabel = item.isAllDay ? 'All day' : formatTimeOfDay(new Date(item.startAt), clockFormat)
+  const { t } = useT('calendar')
+  const deleteLabel = t('delete-dialog.context-menu-delete-label')
+  const timeLabel = item.isAllDay
+    ? t('time.all-day')
+    : formatTimeOfDay(new Date(item.startAt), clockFormat)
   const VisualIcon = VISUAL_TYPE_ICONS[item.visualType]
   const deletable = Boolean(onDeleteItem) && canDeleteEvent(item)
   const cls = cn(
@@ -63,7 +68,7 @@ export function CalendarItemChip({
       if (!deletable || !onDeleteItem) return
       e.preventDefault()
 
-      const menuItems = [{ id: 'delete', label: 'Delete event', accelerator: 'Backspace' }]
+      const menuItems = [{ id: 'delete', label: deleteLabel, accelerator: 'Backspace' }]
 
       void window.api.showContextMenu(menuItems).then((selectedId) => {
         if (selectedId === 'delete') {
@@ -71,7 +76,7 @@ export function CalendarItemChip({
         }
       })
     },
-    [item, onDeleteItem, deletable]
+    [item, onDeleteItem, deletable, deleteLabel]
   )
 
   const content = (

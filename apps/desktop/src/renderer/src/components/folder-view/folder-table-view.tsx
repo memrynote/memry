@@ -48,6 +48,7 @@ import {
   sortableKeyboardCoordinates
 } from '@dnd-kit/sortable'
 import { restrictToHorizontalAxis } from '@dnd-kit/modifiers'
+import { useT } from '@memry/i18n/renderer'
 import {
   AlignLeft,
   Calendar,
@@ -287,6 +288,9 @@ export function FolderTableView({
   exitingRowIds = new Set<string>(),
   className
 }: FolderTableViewProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
+  const { t } = useT('common')
+
   // Convert initial sorting from OrderConfig[] to SortingState
   const [sorting, setSorting] = useState<SortingState>(() =>
     orderConfigToSortingState(initialSorting)
@@ -968,7 +972,7 @@ export function FolderTableView({
   if (isLoading) {
     return (
       <div className={cn('flex items-center justify-center h-64', className)}>
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-muted-foreground">{t('state.loading')}</div>
       </div>
     )
   }
@@ -1008,7 +1012,7 @@ export function FolderTableView({
       <div
         ref={tableContainerRef}
         role="grid"
-        aria-label="Notes table"
+        aria-label={tPhaseF('phaseF.componentsFolderViewFolderTableView.notesTable')}
         className={cn('w-full max-w-full overflow-auto outline-none', className)}
         tabIndex={0}
         onKeyDown={handleKeyDown}

@@ -33,6 +33,7 @@ import {
 import { cn } from '@/lib/utils'
 import { SettingsHeader } from '@/components/settings/settings-primitives'
 import { PROPERTY_TYPE_CONFIG } from '@/components/note/info-section/types'
+import { useT } from '@memry/i18n/renderer'
 import type {
   SelectOption,
   StatusCategories,
@@ -64,15 +65,22 @@ function parseCategories(optionsJson: string | null): StatusCategories | null {
 }
 
 export function PropertiesSettings() {
+  const { t } = useT('settings')
+
   return (
     <div className="flex flex-col text-xs/4">
-      <SettingsHeader title="Properties" subtitle="Manage property definitions across all notes" />
+      <SettingsHeader
+        title={t('properties.header.title')}
+        subtitle={t('properties.header.subtitle')}
+      />
       <PropertyManager />
     </div>
   )
 }
 
 function PropertyManager() {
+  const { t } = useT('settings')
+  const { t: tCommon } = useT('common')
   const { definitions, isLoading, error, refresh } = usePropertyDefinitions()
   const [search, setSearch] = useState('')
   const [expandedDef, setExpandedDef] = useState<string | null>(null)
@@ -126,27 +134,27 @@ function PropertyManager() {
       }
       try {
         await notesService.renamePropertyOption(propertyName, oldValue, newValue.trim())
-        toast.success(`Renamed "${oldValue}" to "${newValue.trim()}"`)
+        toast.success(t('properties.toasts.renamed', { oldValue, newValue: newValue.trim() }))
         await refresh()
       } catch (err) {
-        toast.error(extractErrorMessage(err, 'Failed to rename option'))
+        toast.error(extractErrorMessage(err, t('properties.toasts.renameFailed')))
       }
       setEditingOption(null)
     },
-    [refresh]
+    [refresh, t]
   )
 
   const handleRemoveOption = useCallback(
     async (propertyName: string, optionValue: string) => {
       try {
         await notesService.removePropertyOption(propertyName, optionValue)
-        toast.success(`Removed "${optionValue}"`)
+        toast.success(t('properties.toasts.removed', { value: optionValue }))
         await refresh()
       } catch (err) {
-        toast.error(extractErrorMessage(err, 'Failed to remove option'))
+        toast.error(extractErrorMessage(err, t('properties.toasts.removeFailed')))
       }
     },
-    [refresh]
+    [refresh, t]
   )
 
   const handleColorChange = useCallback(
@@ -160,24 +168,24 @@ function PropertyManager() {
         )
         await refresh()
       } catch (err) {
-        toast.error(extractErrorMessage(err, 'Failed to update color'))
+        toast.error(extractErrorMessage(err, t('properties.toasts.colorFailed')))
       }
       setColorEdit(null)
     },
-    [colorEdit, refresh]
+    [colorEdit, refresh, t]
   )
 
   const handleDeleteDefinition = useCallback(async () => {
     if (!deleteTarget) return
     try {
       await notesService.deletePropertyDefinition(deleteTarget)
-      toast.success(`Deleted property "${deleteTarget}"`)
+      toast.success(t('properties.toasts.deleted', { name: deleteTarget }))
       await refresh()
     } catch (err) {
-      toast.error(extractErrorMessage(err, 'Failed to delete property'))
+      toast.error(extractErrorMessage(err, t('properties.toasts.deleteFailed')))
     }
     setDeleteTarget(null)
-  }, [deleteTarget, refresh])
+  }, [deleteTarget, refresh, t])
 
   const handleAddOption = useCallback(
     async (propertyName: string) => {
@@ -191,11 +199,11 @@ function PropertyManager() {
         await refresh()
         setNewOptionName('')
       } catch (err) {
-        toast.error(extractErrorMessage(err, 'Failed to add option'))
+        toast.error(extractErrorMessage(err, t('properties.toasts.addFailed')))
       }
       setAddingOption(null)
     },
-    [newOptionName, selectDefs.length, refresh]
+    [newOptionName, selectDefs.length, refresh, t]
   )
 
   const handleAddStatusOption = useCallback(
@@ -210,15 +218,15 @@ function PropertyManager() {
         await refresh()
         setNewOptionName('')
       } catch (err) {
-        toast.error(extractErrorMessage(err, 'Failed to add option'))
+        toast.error(extractErrorMessage(err, t('properties.toasts.addFailed')))
       }
       setAddingStatusOption(null)
     },
-    [newOptionName, selectDefs.length, refresh]
+    [newOptionName, selectDefs.length, refresh, t]
   )
 
   if (isLoading) {
-    return <p className="text-xs/4 text-muted-foreground">Loading properties...</p>
+    return <p className="text-xs/4 text-muted-foreground">{t('properties.loading')}</p>
   }
 
   if (error) {
@@ -226,30 +234,25 @@ function PropertyManager() {
   }
 
   if (definitions.length === 0) {
-    return (
-      <p className="text-xs/4 text-muted-foreground">
-        No property definitions yet. Add a Status, Select, or Multiselect property to any note to
-        get started.
-      </p>
-    )
+    return <p className="text-xs/4 text-muted-foreground">{t('properties.empty')}</p>
   }
 
   return (
     <div className="flex flex-col">
       <div className="relative pb-6">
-        <Search className="absolute left-3 top-2 w-3.5 h-3.5 text-muted-foreground" />
+        <Search className="absolute start-3 top-2 w-3.5 h-3.5 text-muted-foreground" />
         <Input
-          placeholder="Filter properties..."
+          placeholder={t('properties.filterPlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-8 h-8 text-xs/4 rounded-lg border-border bg-transparent"
+          className="ps-8 h-8 text-xs/4 rounded-lg border-border bg-transparent"
         />
       </div>
 
       <div className="flex flex-col rounded-lg overflow-y-auto max-h-[60vh] border border-border">
         {selectDefs.length === 0 && (
           <p className="text-xs/4 text-muted-foreground py-4 text-center">
-            No properties matching &ldquo;{search}&rdquo;
+            {t('properties.noMatch', { query: search })}
           </p>
         )}
         {selectDefs.map((def, i) => {
@@ -281,12 +284,14 @@ function PropertyManager() {
                     {def.name}
                   </span>
                   <span className="text-[10px]/3 font-medium text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded shrink-0">
-                    {config?.label ?? def.type}
+                    {t(`properties.types.${def.type}`, {
+                      defaultValue: config?.label ?? def.type
+                    })}
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0 ml-4">
+                <div className="flex items-center gap-1.5 shrink-0 ms-4">
                   <span className="text-[11px] text-muted-foreground tabular-nums">
-                    {optionCount} option{optionCount !== 1 ? 's' : ''}
+                    {t('properties.optionCount', { count: optionCount })}
                   </span>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -302,8 +307,8 @@ function PropertyManager() {
                         onClick={() => setDeleteTarget(def.name)}
                         className="text-destructive focus:text-destructive"
                       >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete property
+                        <Trash2 className="w-4 h-4 me-2" />
+                        {t('properties.actions.deleteProperty')}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -369,7 +374,7 @@ function PropertyManager() {
                             ))}
                             {addingStatusOption?.propertyName === def.name &&
                               addingStatusOption.categoryKey === catKey && (
-                                <div className="flex items-center gap-2 pl-5 py-1">
+                                <div className="flex items-center gap-2 ps-5 py-1">
                                   <Input
                                     ref={addInputRef}
                                     value={newOptionName}
@@ -382,7 +387,7 @@ function PropertyManager() {
                                     onBlur={() => {
                                       if (!newOptionName.trim()) setAddingStatusOption(null)
                                     }}
-                                    placeholder="Option name"
+                                    placeholder={t('properties.optionNamePlaceholder')}
                                     className="h-6 text-[13px]/4 px-1.5 flex-1"
                                   />
                                 </div>
@@ -417,7 +422,7 @@ function PropertyManager() {
                   {def.type !== 'status' && (
                     <>
                       {addingOption === def.name ? (
-                        <div className="flex items-center gap-2 pl-5 py-1">
+                        <div className="flex items-center gap-2 ps-5 py-1">
                           <Input
                             ref={addInputRef}
                             value={newOptionName}
@@ -429,7 +434,7 @@ function PropertyManager() {
                             onBlur={() => {
                               if (!newOptionName.trim()) setAddingOption(null)
                             }}
-                            placeholder="Option name"
+                            placeholder={t('properties.optionNamePlaceholder')}
                             className="h-6 text-[13px]/4 px-1.5 flex-1"
                           />
                         </div>
@@ -439,10 +444,10 @@ function PropertyManager() {
                             setAddingOption(def.name)
                             setNewOptionName('')
                           }}
-                          className="flex items-center gap-1.5 pl-5 py-1 text-[11px] text-muted-foreground/60 hover:text-muted-foreground"
+                          className="flex items-center gap-1.5 ps-5 py-1 text-[11px] text-muted-foreground/60 hover:text-muted-foreground"
                         >
                           <Plus className="w-3 h-3" />
-                          Add option
+                          {t('properties.addOption')}
                         </button>
                       )}
                     </>
@@ -455,25 +460,24 @@ function PropertyManager() {
       </div>
 
       <p className="text-xs/4 text-muted-foreground pt-3">
-        {selectDefs.length} property definition{selectDefs.length !== 1 ? 's' : ''}
+        {t('properties.summary', { count: selectDefs.length })}
       </p>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete property</AlertDialogTitle>
+            <AlertDialogTitle>{t('properties.dialogs.deleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Remove the &ldquo;{deleteTarget}&rdquo; property definition? Notes using this property
-              will keep their values as plain text.
+              {t('properties.dialogs.deleteDescription', { name: deleteTarget ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{tCommon('button.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => void handleDeleteDefinition()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {tCommon('button.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -482,7 +486,9 @@ function PropertyManager() {
       <Dialog open={!!colorEdit} onOpenChange={(open) => !open && setColorEdit(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Change color for &ldquo;{colorEdit?.optionValue}&rdquo;</DialogTitle>
+            <DialogTitle>
+              {t('properties.dialogs.colorTitle', { name: colorEdit?.optionValue ?? '' })}
+            </DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-2">
             {COLOR_ROWS.map((row, rowIndex) => (
@@ -537,16 +543,17 @@ function OptionRow({
   onRemove: () => void
   onColorClick: () => void
 }) {
+  const { t } = useT('settings')
   const colors = getTagColors(option.color)
 
   return (
-    <div className="flex items-center gap-2 pl-5 py-1 group/option">
+    <div className="flex items-center gap-2 ps-5 py-1 group/option">
       <button
         type="button"
         onClick={onColorClick}
         className="w-2.5 h-2.5 rounded-full shrink-0 hover:scale-125 transition-transform"
         style={{ backgroundColor: colors.text }}
-        title="Change color"
+        title={t('properties.changeColorTitle')}
       />
       {isEditing ? (
         <Input
@@ -575,14 +582,14 @@ function OptionRow({
         <button
           onClick={onStartEdit}
           className="p-0.5 rounded text-muted-foreground/50 hover:text-foreground"
-          title="Rename"
+          title={t('properties.renameTitle')}
         >
           <Pencil className="w-3 h-3" />
         </button>
         <button
           onClick={onRemove}
           className="p-0.5 rounded text-muted-foreground/50 hover:text-destructive"
-          title="Remove"
+          title={t('properties.removeTitle')}
         >
           <Trash2 className="w-3 h-3" />
         </button>

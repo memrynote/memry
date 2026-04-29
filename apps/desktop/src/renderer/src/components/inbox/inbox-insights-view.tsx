@@ -5,12 +5,14 @@ import { InboxStatsCards } from './inbox-stats-cards'
 import { InboxCaptureHeatmap } from './inbox-capture-heatmap'
 import { InboxTypeDistribution } from './inbox-type-distribution'
 import { InboxFilingHistoryList } from './inbox-filing-history'
+import { useT } from '@memry/i18n/renderer'
 
 export interface InboxInsightsViewProps {
   className?: string
 }
 
 export function InboxInsightsView({ className }: InboxInsightsViewProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('inbox')
   const { stats, isLoading: statsLoading } = useInboxStats()
   const { data: patterns, isLoading: patternsLoading } = useInboxPatterns()
   const { data: historyData, isLoading: historyLoading } = useInboxFilingHistory()
@@ -23,7 +25,9 @@ export function InboxInsightsView({ className }: InboxInsightsViewProps): React.
       <div className={cn('flex items-center justify-center h-64', className)}>
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="size-8 text-muted-foreground animate-spin" />
-          <p className="text-sm text-muted-foreground font-serif">Loading insights...</p>
+          <p className="text-sm text-muted-foreground font-serif">
+            {tPhaseF('phaseF.componentsInboxInboxInsightsView.loadingInsights')}
+          </p>
         </div>
       </div>
     )

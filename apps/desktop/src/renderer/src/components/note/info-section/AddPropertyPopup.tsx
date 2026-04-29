@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Picker } from '@/components/ui/picker'
 import { type PropertyType, PROPERTY_TYPE_CONFIG, PROPERTY_TYPES, type NewProperty } from './types'
+import { useT } from '@memry/i18n/renderer'
 
 interface AddPropertyPopupProps {
   onAdd: (property: NewProperty) => void
@@ -17,6 +18,7 @@ export function AddPropertyPopup({
   disabled = false,
   children
 }: AddPropertyPopupProps): React.JSX.Element {
+  const { t } = useT('notes')
   const [propertyName, setPropertyName] = useState('')
   const [internalOpen, setInternalOpen] = useState(false)
   const open = controlledOpen ?? internalOpen
@@ -49,6 +51,17 @@ export function AddPropertyPopup({
     }
   }, [])
 
+  const propertyTypeLabels: Record<PropertyType, string> = {
+    text: t('properties.types.text'),
+    number: t('properties.types.number'),
+    date: t('properties.types.date'),
+    checkbox: t('properties.types.checkbox'),
+    url: t('properties.types.url'),
+    status: t('properties.types.status'),
+    select: t('properties.types.select'),
+    multiselect: t('properties.types.multiselect')
+  }
+
   return (
     <Picker open={open} onOpenChange={handleOpenChange} onValueChange={handleTypeSelect}>
       <Picker.Trigger asChild disabled={disabled}>
@@ -63,13 +76,13 @@ export function AddPropertyPopup({
               onChange={(e) => setPropertyName(e.target.value)}
               onKeyDown={handleInputKeyDown}
               onClick={(e) => e.stopPropagation()}
-              placeholder="Property name"
+              placeholder={t('properties.namePlaceholder')}
               className="flex-1 min-w-0 bg-transparent text-[13px] leading-4 text-foreground placeholder:text-muted-foreground/40 outline-none"
-              aria-label="Property name"
+              aria-label={t('properties.nameAria')}
             />
           </div>
         </div>
-        <Picker.Section label="Type">
+        <Picker.Section label={t('properties.typeSection')}>
           <Picker.List>
             {PROPERTY_TYPES.map((propType) => {
               const config = PROPERTY_TYPE_CONFIG[propType]
@@ -78,7 +91,7 @@ export function AddPropertyPopup({
                 <Picker.Item
                   key={propType}
                   value={propType}
-                  label={config.label}
+                  label={propertyTypeLabels[propType]}
                   icon={
                     <span className="text-muted-foreground">
                       <IconComponent className="size-4" />

@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { notesService } from '@/services/notes-service'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // Types
@@ -125,6 +126,7 @@ function MoveToFolderDialogSession({
   onMove,
   noteTitle
 }: MoveToFolderDialogSessionProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   // State
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -349,7 +351,7 @@ function MoveToFolderDialogSession({
         <Input
           ref={inputRef}
           autoFocus
-          placeholder="Search folders..."
+          placeholder={tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.searchFolders')}
           value={searchQuery}
           onChange={(e) => {
             setSearchQuery(e.target.value)
@@ -364,7 +366,7 @@ function MoveToFolderDialogSession({
         <div ref={listRef} className="px-2 space-y-1">
           {isLoading ? (
             <div className="flex items-center justify-center h-20 text-muted-foreground">
-              Loading folders...
+              {tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.loadingFolders')}
             </div>
           ) : (
             <>
@@ -373,7 +375,8 @@ function MoveToFolderDialogSession({
                 <div className="mb-2">
                   <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-muted-foreground">
                     <Sparkles className="h-3 w-3" />
-                    SUGGESTED
+
+                    {tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.suggested')}
                   </div>
                   {folderItems
                     .filter((item) => item.isSuggestion)
@@ -401,10 +404,14 @@ function MoveToFolderDialogSession({
                           <Folder className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                           <span className="flex-1 truncate">{item.displayName}</span>
                           {item.confidence && item.confidence > 0.7 && (
-                            <span className="text-xs text-amber-500">Best match</span>
+                            <span className="text-xs text-amber-500">
+                              {tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.bestMatch')}
+                            </span>
                           )}
                           {isCurrent && (
-                            <span className="text-xs text-muted-foreground">(current)</span>
+                            <span className="text-xs text-muted-foreground">
+                              ({tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.current')}
+                            </span>
                           )}
                         </button>
                       )
@@ -416,7 +423,7 @@ function MoveToFolderDialogSession({
               <div>
                 {!searchQuery && (
                   <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
-                    ALL FOLDERS
+                    {tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.allFolders')}
                   </div>
                 )}
                 {folderItems
@@ -447,7 +454,9 @@ function MoveToFolderDialogSession({
                             : item.displayName}
                         </span>
                         {isCurrent && (
-                          <span className="text-xs text-muted-foreground">(current)</span>
+                          <span className="text-xs text-muted-foreground">
+                            ({tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.current2')}
+                          </span>
                         )}
                       </button>
                     )
@@ -457,7 +466,8 @@ function MoveToFolderDialogSession({
                 {folderItems.filter((item) => !item.isSuggestion).length === 0 &&
                   !canCreateFolder && (
                     <div className="flex items-center justify-center h-20 text-muted-foreground text-sm">
-                      No folders match &quot;{searchQuery}&quot;
+                      {tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.noFoldersMatch')}
+                      {searchQuery}&{tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.quot')}
                     </div>
                   )}
               </div>
@@ -476,7 +486,11 @@ function MoveToFolderDialogSession({
                     )}
                   >
                     <Plus className="h-4 w-4 flex-shrink-0" />
-                    <span className="flex-1 truncate">Create &quot;{searchQuery.trim()}&quot;</span>
+                    <span className="flex-1 truncate">
+                      {tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.create')}
+                      {searchQuery.trim()}&
+                      {tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.quot2')}
+                    </span>
                   </button>
                 </div>
               )}
@@ -487,7 +501,7 @@ function MoveToFolderDialogSession({
 
       <DialogFooter>
         <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isMoving}>
-          Cancel
+          {tPhaseF('phaseF.componentsFolderViewMoveToFolderDialog.cancel')}
         </Button>
         <Button
           onClick={() => {

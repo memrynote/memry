@@ -5,6 +5,7 @@ import { TagInputPopup } from './tags-row/TagInputPopup'
 import { AddPropertyPopup } from './info-section/AddPropertyPopup'
 import type { Tag } from './tags-row/TagChip'
 import type { NewProperty } from './info-section/types'
+import { useT } from '@memry/i18n/renderer'
 
 export interface GhostAffordanceRowProps {
   availableTags: Tag[]
@@ -27,6 +28,7 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
   hasTags = false,
   disabled = false
 }: GhostAffordanceRowProps) {
+  const { t } = useT('notes')
   const [isTagPopupOpen, setIsTagPopupOpen] = useState(false)
   const [isPropertyPopupOpen, setIsPropertyPopupOpen] = useState(false)
 
@@ -66,7 +68,7 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
           )}
         >
           <Plus className="h-3 w-3" strokeWidth={2} />
-          Add property
+          {t('properties.add')}
         </button>
       </AddPropertyPopup>
 
@@ -95,7 +97,7 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
             )}
           >
             <Plus className="h-3 w-3" strokeWidth={2} />
-            Add tag
+            {t('tagsRow.add')}
           </button>
         </TagInputPopup>
       )}

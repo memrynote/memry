@@ -3,6 +3,7 @@ import { X } from '@/lib/icons'
 import { AlertDialog, AlertDialogContent } from '@/components/ui/alert-dialog'
 import { getKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface KeyboardShortcutsModalProps {
   isOpen: boolean
@@ -13,6 +14,7 @@ const KeyboardShortcutsModal = ({
   isOpen,
   onClose
 }: KeyboardShortcutsModalProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('common')
   const shortcuts = getKeyboardShortcuts()
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
@@ -36,7 +38,9 @@ const KeyboardShortcutsModal = ({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">Keyboard Shortcuts</h2>
+          <h2 className="text-lg font-semibold text-foreground">
+            {tPhaseF('phaseF.componentsKeyboardShortcutsModal.keyboardShortcuts')}
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -46,7 +50,7 @@ const KeyboardShortcutsModal = ({
               'transition-colors duration-[var(--duration-instant)]',
               'focus-visible:outline-none'
             )}
-            aria-label="Close shortcuts help"
+            aria-label={tPhaseF('phaseF.componentsKeyboardShortcutsModal.closeShortcutsHelp')}
           >
             <X className="size-4" aria-hidden="true" />
           </button>
@@ -89,11 +93,11 @@ const KeyboardShortcutsModal = ({
         {/* Footer */}
         <div className="flex items-center justify-center px-6 py-4 border-t border-border bg-muted/30">
           <p className="text-xs text-muted-foreground">
-            Press{' '}
+            {tPhaseF('phaseF.componentsKeyboardShortcutsModal.press')}{' '}
             <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border font-mono text-xs">
               Esc
             </kbd>{' '}
-            to close
+            {tPhaseF('phaseF.componentsKeyboardShortcutsModal.toClose')}
           </p>
         </div>
       </AlertDialogContent>

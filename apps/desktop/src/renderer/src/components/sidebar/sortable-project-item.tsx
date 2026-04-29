@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/sidebar'
 import { useDragContext } from '@/contexts/drag-context'
 import type { Project } from '@/data/tasks-data'
+import { useT } from '@memry/i18n/renderer'
 
 interface SortableProjectItemProps {
   project: Project
@@ -35,6 +36,7 @@ export const SortableProjectItem = ({
   onArchive,
   onDelete
 }: SortableProjectItemProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('notes')
   const { isMobile } = useSidebar()
 
   // Try to get drag context - may not be available if not wrapped in DragProvider
@@ -97,7 +99,7 @@ export const SortableProjectItem = ({
       {/* Drop indicator when hovering */}
       {isOver && (
         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-primary font-medium z-10">
-          Drop here
+          {tPhaseF('phaseF.componentsSidebarSortableProjectItem.dropHere')}
         </span>
       )}
 
@@ -131,7 +133,9 @@ export const SortableProjectItem = ({
           }}
         >
           <Settings className="size-4 text-muted-foreground" />
-          <span className="sr-only">Edit project</span>
+          <span className="sr-only">
+            {tPhaseF('phaseF.componentsSidebarSortableProjectItem.editProject')}
+          </span>
         </SidebarMenuAction>
       )}
     </SidebarMenuItem>

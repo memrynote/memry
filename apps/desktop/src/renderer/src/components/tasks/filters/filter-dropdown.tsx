@@ -12,6 +12,7 @@ import { StatusProjectPickerPanel } from './filter-panels/status-project-picker-
 import { DueDatePanel } from './filter-panels/due-date-panel'
 import { ProjectPanel } from './filter-panels/project-panel'
 import { SavedFiltersSection } from './saved-filters-section'
+import { useT } from '@memry/i18n/renderer'
 
 interface FilterDropdownProps {
   open: boolean
@@ -90,6 +91,7 @@ export const FilterDropdown = ({
   statuses: statusesProp = [],
   children
 }: FilterDropdownProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [activePanel, setActivePanel] = useState<ActivePanel>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilterProjectId, setStatusFilterProjectId] = useState<string | null>(null)
@@ -202,7 +204,9 @@ export const FilterDropdown = ({
       >
         {activePanel === null && (
           <>
-            <Picker.Search placeholder="Filter by..." />
+            <Picker.Search
+              placeholder={tPhaseF('phaseF.componentsTasksFiltersFilterDropdown.filterBy')}
+            />
             <Picker.List>
               {filteredCategories.map((cat) => (
                 <button

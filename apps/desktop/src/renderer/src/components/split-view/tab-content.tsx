@@ -24,6 +24,7 @@ import { FolderViewPage } from '@/pages/folder-view'
 import { TemplateEditorPage } from '@/pages/template-editor'
 import { TemplatesPage } from '@/pages/templates'
 import { GraphPage } from '@/components/graph/graph-page'
+import { useT } from '@memry/i18n/renderer'
 
 // =============================================================================
 // MEMOIZED PAGE COMPONENTS
@@ -55,6 +56,7 @@ interface TabContentProps {
  * PERFORMANCE: Uses useTabActions instead of useTabs to avoid re-renders on state changes
  */
 export const TabContent = ({ tab, groupId, className }: TabContentProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('common')
   const scrollRef = useRef<HTMLDivElement>(null)
   // PERFORMANCE: useTabActions returns stable references - doesn't cause re-renders
   const { dispatch } = useTabActions()
@@ -129,7 +131,9 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
         return (
           <div className="h-full p-4 text-gray-500">
             <div className="text-lg font-medium mb-2">{tab.title}</div>
-            <p className="text-sm text-gray-400">TasksContext not available</p>
+            <p className="text-sm text-gray-400">
+              {tPhaseF('phaseF.componentsSplitViewTabContent.taskscontextNotAvailable')}
+            </p>
           </div>
         )
       }
@@ -149,7 +153,7 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
       case 'search':
         return (
           <PlaceholderView
-            title="Search Results"
+            title={tPhaseF('phaseF.componentsSplitViewTabContent.searchResults')}
             icon="search"
             subtitle={`Query: ${tab.viewState?.query ?? ''}`}
           />
@@ -174,7 +178,12 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
         )
 
       default:
-        return <div className="p-4 text-gray-500">Unknown tab type: {tab.type}</div>
+        return (
+          <div className="p-4 text-gray-500">
+            {tPhaseF('phaseF.componentsSplitViewTabContent.unknownTabType')}
+            {tab.type}
+          </div>
+        )
     }
     // Dependencies: tab identity fields and tasksContext for TasksPage props
     // eslint-disable-next-line react-hooks/exhaustive-deps

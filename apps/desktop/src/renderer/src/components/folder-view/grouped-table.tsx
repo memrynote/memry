@@ -46,6 +46,7 @@ import {
   sortableKeyboardCoordinates
 } from '@dnd-kit/sortable'
 import { restrictToHorizontalAxis } from '@dnd-kit/modifiers'
+import { useT } from '@memry/i18n/renderer'
 import {
   AlignLeft,
   Calendar,
@@ -327,6 +328,9 @@ export function GroupedTable({
   exitingRowIds = new Set<string>(),
   className
 }: GroupedTableProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
+  const { t } = useT('common')
+
   // ============================================================================
   // State
   // ============================================================================
@@ -989,7 +993,7 @@ export function GroupedTable({
   if (isLoading) {
     return (
       <div className={cn('flex items-center justify-center h-64', className)}>
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-muted-foreground">{t('state.loading')}</div>
       </div>
     )
   }
@@ -1025,7 +1029,7 @@ export function GroupedTable({
       <div
         ref={tableContainerRef}
         role="grid"
-        aria-label="Grouped notes table"
+        aria-label={tPhaseF('phaseF.componentsFolderViewGroupedTable.groupedNotesTable')}
         className={cn('w-full max-w-full overflow-auto outline-none', className)}
         tabIndex={0}
         onKeyDown={handleKeyDown}
@@ -1240,6 +1244,7 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
   formulas,
   columns
 }: GroupHeaderRowProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   const isExpanded = row.getIsExpanded()
   const groupValue = row.groupingValue
   const subRows = row.subRows
@@ -1335,7 +1340,10 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
                 )
               })}
             {Object.keys(groupSummaries).length > 3 && (
-              <span className="opacity-60">+{Object.keys(groupSummaries).length - 3} more</span>
+              <span className="opacity-60">
+                +{Object.keys(groupSummaries).length - 3}{' '}
+                {tPhaseF('phaseF.componentsFolderViewGroupedTable.more')}
+              </span>
             )}
           </div>
         )}

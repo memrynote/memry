@@ -28,6 +28,7 @@ import {
 } from '@/lib/filter-evaluator'
 import { FilterRow, type FilterCondition, type PropertyInfo } from './filter-row'
 import type { FilterExpression } from '@memry/contracts/folder-view-api'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // Types
@@ -215,6 +216,7 @@ export function FilterBuilder({
   onFiltersChange,
   className
 }: FilterBuilderProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   const [isOpen, setIsOpen] = useState(false)
   const [state, setState] = useState<FilterUIState>(() => filterExpressionToUIState(filters))
 
@@ -460,13 +462,17 @@ export function FilterBuilder({
               </Button>
             </PopoverTrigger>
           </TooltipTrigger>
-          <TooltipContent side="bottom">Filter</TooltipContent>
+          <TooltipContent side="bottom">
+            {tPhaseF('phaseF.componentsFolderViewFilterBuilder.filter')}
+          </TooltipContent>
         </Tooltip>
 
         <PopoverContent align="start" className="w-[480px] p-0">
           {/* Header */}
           <div className="flex items-center justify-between px-3 py-2 border-b">
-            <span className="text-sm font-medium">Filters</span>
+            <span className="text-sm font-medium">
+              {tPhaseF('phaseF.componentsFolderViewFilterBuilder.filters')}
+            </span>
             {hasFilters && (
               <Button
                 variant="ghost"
@@ -475,7 +481,8 @@ export function FilterBuilder({
                 onClick={handleClearAll}
               >
                 <Trash2 className="h-3.5 w-3.5 mr-1" />
-                Clear all
+
+                {tPhaseF('phaseF.componentsFolderViewFilterBuilder.clearAll')}
               </Button>
             )}
           </div>
@@ -486,28 +493,36 @@ export function FilterBuilder({
               /* Empty state */
               <div className="text-center py-6 text-sm text-muted-foreground">
                 <Filter className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>No filters applied</p>
-                <p className="text-xs mt-1">Add filters to narrow down your notes</p>
+                <p>{tPhaseF('phaseF.componentsFolderViewFilterBuilder.noFiltersApplied')}</p>
+                <p className="text-xs mt-1">
+                  {tPhaseF(
+                    'phaseF.componentsFolderViewFilterBuilder.addFiltersToNarrowDownYourNotes'
+                  )}
+                </p>
               </div>
             ) : (
               <>
                 {/* Logic selector */}
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="text-xs text-muted-foreground">Match</span>
+                  <span className="text-xs text-muted-foreground">
+                    {tPhaseF('phaseF.componentsFolderViewFilterBuilder.match')}
+                  </span>
                   <Select value={state.logic} onValueChange={handleLogicChange}>
                     <SelectTrigger className="w-[100px] h-7 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="and" className="text-xs">
-                        All (AND)
+                        {tPhaseF('phaseF.componentsFolderViewFilterBuilder.allAnd')}
                       </SelectItem>
                       <SelectItem value="or" className="text-xs">
-                        Any (OR)
+                        {tPhaseF('phaseF.componentsFolderViewFilterBuilder.anyOr')}
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                  <span className="text-xs text-muted-foreground">of the following:</span>
+                  <span className="text-xs text-muted-foreground">
+                    {tPhaseF('phaseF.componentsFolderViewFilterBuilder.ofTheFollowing')}
+                  </span>
                 </div>
 
                 {/* Top-level conditions */}
@@ -525,7 +540,9 @@ export function FilterBuilder({
                 {state.groups.map((group) => (
                   <div key={group.id} className="mt-2 pl-3 border-l-2 border-muted-foreground/20">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs text-muted-foreground">Match</span>
+                      <span className="text-xs text-muted-foreground">
+                        {tPhaseF('phaseF.componentsFolderViewFilterBuilder.match2')}
+                      </span>
                       <Select
                         value={group.logic}
                         onValueChange={(v) => handleGroupLogicChange(group.id, v as 'and' | 'or')}
@@ -535,14 +552,16 @@ export function FilterBuilder({
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="and" className="text-xs">
-                            All
+                            {tPhaseF('phaseF.componentsFolderViewFilterBuilder.all')}
                           </SelectItem>
                           <SelectItem value="or" className="text-xs">
-                            Any
+                            {tPhaseF('phaseF.componentsFolderViewFilterBuilder.any')}
                           </SelectItem>
                         </SelectContent>
                       </Select>
-                      <span className="text-xs text-muted-foreground flex-1">of:</span>
+                      <span className="text-xs text-muted-foreground flex-1">
+                        {tPhaseF('phaseF.componentsFolderViewFilterBuilder.of')}
+                      </span>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -573,7 +592,8 @@ export function FilterBuilder({
                       onClick={() => handleAddGroupCondition(group.id)}
                     >
                       <Plus className="h-3 w-3 mr-1" />
-                      Add condition
+
+                      {tPhaseF('phaseF.componentsFolderViewFilterBuilder.addCondition')}
                     </Button>
                   </div>
                 ))}
@@ -586,7 +606,8 @@ export function FilterBuilder({
           <div className="flex items-center gap-2 p-2">
             <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleAddCondition}>
               <Plus className="h-3.5 w-3.5 mr-1" />
-              Add filter
+
+              {tPhaseF('phaseF.componentsFolderViewFilterBuilder.addFilter')}
             </Button>
             {state.groups.length < 3 && (
               <Button
@@ -596,7 +617,8 @@ export function FilterBuilder({
                 onClick={handleAddGroup}
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
-                Add group
+
+                {tPhaseF('phaseF.componentsFolderViewFilterBuilder.addGroup')}
               </Button>
             )}
           </div>

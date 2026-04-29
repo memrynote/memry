@@ -4,6 +4,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils'
 import { getRepeatDisplayText, getRepeatProgress } from '@/lib/repeat-utils'
 import type { RepeatConfig } from '@/data/sample-tasks'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -26,6 +27,7 @@ export const RepeatIndicator = ({
   size = 'sm',
   className
 }: RepeatIndicatorProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const displayText = getRepeatDisplayText(config)
   const progress = getRepeatProgress(config)
 
@@ -53,7 +55,8 @@ export const RepeatIndicator = ({
             <span className="font-medium">{displayText}</span>
             {progress && (
               <span className="text-xs text-muted-foreground">
-                {progress.current} of {progress.total} completed
+                {progress.current} {tPhaseF('phaseF.componentsTasksRepeatIndicator.of')}
+                {progress.total} {tPhaseF('phaseF.componentsTasksRepeatIndicator.completed')}
               </span>
             )}
           </div>

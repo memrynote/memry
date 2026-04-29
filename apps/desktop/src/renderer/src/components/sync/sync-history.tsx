@@ -16,6 +16,7 @@ import {
   type HistoryPeriodFilter
 } from '@/hooks/use-sync-history'
 import type { SyncHistoryEntry } from '@memry/contracts/ipc-sync-ops'
+import { useT } from '@memry/i18n/renderer'
 
 function formatDuration(ms: number | undefined): string | null {
   if (ms == null) return null
@@ -45,6 +46,7 @@ const TYPE_ICON = {
 } as const
 
 function HistoryRow({ entry }: { entry: SyncHistoryEntry }): React.JSX.Element {
+  const { t: tPhaseF } = useT('settings')
   const [open, setOpen] = useState(false)
   const Icon = TYPE_ICON[entry.type]
   const duration = formatDuration(entry.durationMs)
@@ -61,7 +63,10 @@ function HistoryRow({ entry }: { entry: SyncHistoryEntry }): React.JSX.Element {
           {entrySummary(entry)}
         </span>
         {duration && (
-          <span className="text-xs text-muted-foreground ml-1.5">&middot; {duration}</span>
+          <span className="text-xs text-muted-foreground ml-1.5">
+            &{tPhaseF('phaseF.componentsSyncSyncHistory.middot')}
+            {duration}
+          </span>
         )}
       </div>
       <span className="text-xs text-muted-foreground shrink-0">
@@ -97,39 +102,64 @@ function HistoryRow({ entry }: { entry: SyncHistoryEntry }): React.JSX.Element {
 }
 
 export function SyncHistoryPanel(): React.JSX.Element {
+  const { t: tPhaseF } = useT('settings')
   const { entries, isLoading, hasMore, filter, setFilter, loadMore } = useSyncHistory()
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h4 className="text-sm font-medium">Activity</h4>
+        <h4 className="text-sm font-medium">
+          {tPhaseF('phaseF.componentsSyncSyncHistory.activity')}
+        </h4>
         <div className="flex items-center gap-2">
           <Select
             value={filter.type}
             onValueChange={(v) => setFilter({ type: v as HistoryTypeFilter })}
           >
-            <SelectTrigger className="h-7 w-[120px] text-xs" aria-label="Filter by sync type">
+            <SelectTrigger
+              className="h-7 w-[120px] text-xs"
+              aria-label={tPhaseF('phaseF.componentsSyncSyncHistory.filterBySyncType')}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All types</SelectItem>
-              <SelectItem value="push">Pushed</SelectItem>
-              <SelectItem value="pull">Pulled</SelectItem>
-              <SelectItem value="error">Errors</SelectItem>
+              <SelectItem value="all">
+                {tPhaseF('phaseF.componentsSyncSyncHistory.allTypes')}
+              </SelectItem>
+              <SelectItem value="push">
+                {tPhaseF('phaseF.componentsSyncSyncHistory.pushed')}
+              </SelectItem>
+              <SelectItem value="pull">
+                {tPhaseF('phaseF.componentsSyncSyncHistory.pulled')}
+              </SelectItem>
+              <SelectItem value="error">
+                {tPhaseF('phaseF.componentsSyncSyncHistory.errors')}
+              </SelectItem>
             </SelectContent>
           </Select>
           <Select
             value={filter.period}
             onValueChange={(v) => setFilter({ period: v as HistoryPeriodFilter })}
           >
-            <SelectTrigger className="h-7 w-[110px] text-xs" aria-label="Filter by time period">
+            <SelectTrigger
+              className="h-7 w-[110px] text-xs"
+              aria-label={tPhaseF('phaseF.componentsSyncSyncHistory.filterByTimePeriod')}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All time</SelectItem>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
+              <SelectItem value="all">
+                {tPhaseF('phaseF.componentsSyncSyncHistory.allTime')}
+              </SelectItem>
+              <SelectItem value="today">
+                {tPhaseF('phaseF.componentsSyncSyncHistory.today')}
+              </SelectItem>
+              <SelectItem value="7d">
+                {tPhaseF('phaseF.componentsSyncSyncHistory.last7Days')}
+              </SelectItem>
+              <SelectItem value="30d">
+                {tPhaseF('phaseF.componentsSyncSyncHistory.last30Days')}
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -139,12 +169,14 @@ export function SyncHistoryPanel(): React.JSX.Element {
         <div
           className="flex items-center justify-center py-8"
           role="status"
-          aria-label="Loading sync history"
+          aria-label={tPhaseF('phaseF.componentsSyncSyncHistory.loadingSyncHistory')}
         >
           <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" aria-hidden="true" />
         </div>
       ) : entries.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-8">No sync activity yet</p>
+        <p className="text-sm text-muted-foreground text-center py-8">
+          {tPhaseF('phaseF.componentsSyncSyncHistory.noSyncActivityYet')}
+        </p>
       ) : (
         <div className="space-y-0.5">
           {entries.map((entry) => (
@@ -157,7 +189,8 @@ export function SyncHistoryPanel(): React.JSX.Element {
         <div className="flex justify-center">
           <Button variant="ghost" size="sm" onClick={loadMore} disabled={isLoading}>
             {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
-            Load more
+
+            {tPhaseF('phaseF.componentsSyncSyncHistory.loadMore')}
           </Button>
         </div>
       )}

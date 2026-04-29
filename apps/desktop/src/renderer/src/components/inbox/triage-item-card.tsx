@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { ContentSection } from '@/components/inbox-detail/content-section'
 import { formatTimeAgo } from '@/services/inbox-service'
 import type { InboxItemListItem } from '@/types'
+import { useT } from '@memry/i18n/renderer'
 
 interface TriageItemCardProps {
   item: InboxItemListItem
@@ -14,6 +15,7 @@ const TYPES_WITHOUT_PADDING = new Set(['reminder', 'social'])
 export const TriageItemCard = memo(function TriageItemCard({
   item
 }: TriageItemCardProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('inbox')
   const showTitle = !TYPES_WITH_OWN_TITLE.has(item.type)
   const showTimestamp = !TYPES_WITH_OWN_TIMESTAMP.has(item.type)
   const hasPadding = !TYPES_WITHOUT_PADDING.has(item.type)
@@ -43,7 +45,8 @@ export const TriageItemCard = memo(function TriageItemCard({
           )}
           {showTimestamp && (
             <span className="text-[11px]/3.5 text-text-tertiary">
-              Captured {formatTimeAgo(item.createdAt)}
+              {tPhaseF('phaseF.componentsInboxTriageItemCard.captured')}
+              {formatTimeAgo(item.createdAt)}
             </span>
           )}
         </div>

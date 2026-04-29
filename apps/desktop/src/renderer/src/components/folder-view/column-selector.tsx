@@ -12,6 +12,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { SlidersHorizontal, Search, Plus, Pencil, Trash2 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -137,6 +138,8 @@ export function ColumnSelector({
   onSummaryChange,
   className
 }: ColumnSelectorProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
+  const { t } = useT('common')
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -204,13 +207,13 @@ export function ColumnSelector({
       items.push({
         id: prop.name,
         label: prop.name,
-        subtitle: `${prop.usageCount} note${prop.usageCount !== 1 ? 's' : ''}`,
+        subtitle: t('count.note', { count: prop.usageCount }),
         type: prop.type
       })
     })
 
     return items
-  }, [filteredBuiltIn, filteredProperties])
+  }, [filteredBuiltIn, filteredProperties, t])
 
   // Check if there are any search results
   const hasResults = allColumns.length > 0 || filteredFormulas.length > 0
@@ -317,7 +320,9 @@ export function ColumnSelector({
               </Button>
             </PopoverTrigger>
           </TooltipTrigger>
-          <TooltipContent side="bottom">Properties</TooltipContent>
+          <TooltipContent side="bottom">
+            {tPhaseF('phaseF.componentsFolderViewColumnSelector.properties')}
+          </TooltipContent>
         </Tooltip>
 
         <PopoverContent align="start" className="w-72 p-0">
@@ -326,7 +331,7 @@ export function ColumnSelector({
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search columns..."
+                placeholder={tPhaseF('phaseF.componentsFolderViewColumnSelector.searchColumns')}
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 className="h-8 pl-8 text-sm"
@@ -338,7 +343,7 @@ export function ColumnSelector({
           <div className="max-h-80 overflow-y-auto">
             {!hasResults && !showFormulasSection ? (
               <div className="p-4 text-center text-sm text-muted-foreground">
-                No matching columns
+                {tPhaseF('phaseF.componentsFolderViewColumnSelector.noMatchingColumns')}
               </div>
             ) : (
               <>
@@ -365,7 +370,9 @@ export function ColumnSelector({
 
                 {/* Formulas section - keep separate since they have edit/delete actions */}
                 {showFormulasSection && (
-                  <ColumnGroup title="FORMULAS">
+                  <ColumnGroup
+                    title={tPhaseF('phaseF.componentsFolderViewColumnSelector.formulas')}
+                  >
                     {filteredFormulas.length > 0 ? (
                       filteredFormulas.map((formula) => (
                         <FormulaItem
@@ -383,7 +390,7 @@ export function ColumnSelector({
                       ))
                     ) : (
                       <div className="px-3 py-2 text-xs text-muted-foreground italic">
-                        No formulas defined
+                        {tPhaseF('phaseF.componentsFolderViewColumnSelector.noFormulasDefined')}
                       </div>
                     )}
                     {/* Add formula button */}
@@ -398,7 +405,9 @@ export function ColumnSelector({
                         )}
                       >
                         <Plus className="h-4 w-4" />
-                        <span>Add Formula</span>
+                        <span>
+                          {tPhaseF('phaseF.componentsFolderViewColumnSelector.addFormula')}
+                        </span>
                       </button>
                     )}
                   </ColumnGroup>
@@ -429,19 +438,26 @@ export function ColumnSelector({
       <AlertDialog open={Boolean(formulaToDelete)} onOpenChange={() => setFormulaToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Formula</AlertDialogTitle>
+            <AlertDialogTitle>
+              {tPhaseF('phaseF.componentsFolderViewColumnSelector.deleteFormula')}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the formula &quot;{formulaToDelete}&quot;? This action
-              cannot be undone.
+              {tPhaseF(
+                'phaseF.componentsFolderViewColumnSelector.areYouSureYouWantToDeleteTheFormula'
+              )}
+              {formulaToDelete}&
+              {tPhaseF('phaseF.componentsFolderViewColumnSelector.quotThisActionCannotBeUndone')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>
+              {tPhaseF('phaseF.componentsFolderViewColumnSelector.cancel')}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => void handleConfirmDelete()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {tPhaseF('phaseF.componentsFolderViewColumnSelector.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -539,6 +555,7 @@ function SummarySelect({
   value?: SummaryConfig
   onChange: (config: SummaryConfig | undefined) => void
 }): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   const availableTypes = getSummaryTypesForColumn(columnType)
 
   const handleChange = useCallback(
@@ -555,11 +572,11 @@ function SummarySelect({
   return (
     <Select value={value?.type ?? 'none'} onValueChange={handleChange}>
       <SelectTrigger className="h-6 w-[72px] text-xs px-2">
-        <SelectValue placeholder="None" />
+        <SelectValue placeholder={'None'} />
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="none" className="text-xs">
-          None
+          {tPhaseF('phaseF.componentsFolderViewColumnSelector.none')}
         </SelectItem>
         {availableTypes.map((type) => (
           <SelectItem key={type} value={type} className="text-xs">
@@ -587,6 +604,7 @@ function FormulaItem({
   onEdit?: () => void
   onDelete?: () => void
 }): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   return (
     <div
       className={cn(
@@ -629,7 +647,9 @@ function FormulaItem({
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top">Edit</TooltipContent>
+                <TooltipContent side="top">
+                  {tPhaseF('phaseF.componentsFolderViewColumnSelector.edit')}
+                </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
@@ -649,7 +669,9 @@ function FormulaItem({
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top">Delete</TooltipContent>
+                <TooltipContent side="top">
+                  {tPhaseF('phaseF.componentsFolderViewColumnSelector.delete2')}
+                </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}

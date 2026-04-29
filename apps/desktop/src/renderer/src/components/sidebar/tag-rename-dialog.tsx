@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useT } from '@memry/i18n/renderer'
 
 export interface TagRenameDialogProps {
   tag: string
@@ -26,6 +27,7 @@ export function TagRenameDialog({
   onOpenChange,
   onSubmit
 }: TagRenameDialogProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   const [value, setValue] = useState(tag)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -76,14 +78,18 @@ export function TagRenameDialog({
     <Dialog open={open} onOpenChange={(next) => (!next ? close() : onOpenChange(next))}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Rename tag</DialogTitle>
+          <DialogTitle>{tPhaseF('phaseF.componentsSidebarTagRenameDialog.renameTag')}</DialogTitle>
           <DialogDescription>
-            Rename <span className="font-mono">#{tag}</span> across every note that uses it.
+            {tPhaseF('phaseF.componentsSidebarTagRenameDialog.rename')}
+            <span className="font-mono">#{tag}</span>{' '}
+            {tPhaseF('phaseF.componentsSidebarTagRenameDialog.acrossEveryNoteThatUsesIt')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2 py-2">
-          <Label htmlFor="tag-rename-input">New name</Label>
+          <Label htmlFor="tag-rename-input">
+            {tPhaseF('phaseF.componentsSidebarTagRenameDialog.newName')}
+          </Label>
           <Input
             id="tag-rename-input"
             value={value}
@@ -106,7 +112,7 @@ export function TagRenameDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={close} disabled={submitting}>
-            Cancel
+            {tPhaseF('phaseF.componentsSidebarTagRenameDialog.cancel')}
           </Button>
           <Button onClick={() => void handleSave()} disabled={submitting}>
             {submitting ? 'Saving...' : 'Save'}

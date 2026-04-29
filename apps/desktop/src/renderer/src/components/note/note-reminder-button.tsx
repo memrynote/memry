@@ -16,6 +16,7 @@ import { ReminderPicker } from '@/components/reminder'
 import { formatReminderDate } from '@/components/reminder/reminder-presets'
 import { useNoteReminders } from '@/hooks/use-note-reminders'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // Types
@@ -36,6 +37,7 @@ export function NoteReminderButton({
   disabled = false,
   className
 }: NoteReminderButtonProps): React.ReactElement {
+  const { t } = useT('notes')
   const {
     settings: { clockFormat }
   } = useGeneralSettings()
@@ -48,11 +50,16 @@ export function NoteReminderButton({
   // Format tooltip content
   const tooltipContent = hasActiveReminder
     ? nextReminder
-      ? `Reminder: ${formatReminderDate(new Date(nextReminder.remindAt), clockFormat)}${
-          activeReminderCount > 1 ? ` (+${activeReminderCount - 1} more)` : ''
-        }`
-      : 'Has reminders'
-    : 'Set reminder'
+      ? activeReminderCount > 1
+        ? t('reminders.summaryWithMore', {
+            date: formatReminderDate(new Date(nextReminder.remindAt), clockFormat),
+            count: activeReminderCount - 1
+          })
+        : t('reminders.summary', {
+            date: formatReminderDate(new Date(nextReminder.remindAt), clockFormat)
+          })
+      : t('reminders.hasReminders')
+    : t('reminders.setReminder')
 
   return (
     <Tooltip>

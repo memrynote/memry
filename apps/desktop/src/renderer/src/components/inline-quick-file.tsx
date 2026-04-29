@@ -3,6 +3,7 @@ import { Folder, CornerDownLeft } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import type { Folder as FolderType } from '@/types'
+import { useT } from '@memry/i18n/renderer'
 
 interface InlineQuickFileProps {
   query: string
@@ -27,6 +28,7 @@ const InlineQuickFile = ({
   onFolderSelect,
   className
 }: InlineQuickFileProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('inbox')
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Auto-focus input when mounted
@@ -91,9 +93,9 @@ const InlineQuickFile = ({
         value={query}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        placeholder="Type folder name..."
+        placeholder={tPhaseF('phaseF.componentsInlineQuickFile.typeFolderName')}
         className="flex-1 min-w-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 outline-none border-none"
-        aria-label="Quick file folder search"
+        aria-label={tPhaseF('phaseF.componentsInlineQuickFile.quickFileFolderSearch')}
         autoComplete="off"
         spellCheck={false}
       />

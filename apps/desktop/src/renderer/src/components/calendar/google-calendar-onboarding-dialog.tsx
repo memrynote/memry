@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { useT } from '@memry/i18n/renderer'
 import { Button } from '@/components/ui/button'
 import { CalendarPicker } from './calendar-picker'
 import { cn } from '@/lib/utils'
@@ -19,6 +20,8 @@ export function GoogleCalendarOnboardingDialog({
   onCompleted
 }: GoogleCalendarOnboardingDialogProps): React.JSX.Element | null {
   const { data, isLoading } = useGoogleCalendars(open)
+  const { t } = useT('calendar')
+  const { t: tCommon } = useT('common')
   // User's pick (null = stay with whatever primary resolves to). When the
   // user hasn't touched the picker, we fall back to data.primary at render
   // time so the button reflects the preselected primary without an effect.
@@ -50,18 +53,17 @@ export function GoogleCalendarOnboardingDialog({
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm" />
         <DialogPrimitive.Content
           data-testid="google-calendar-onboarding-dialog"
-          aria-label="Pick your default Google calendar"
+          aria-label={t('onboarding-dialog.aria')}
           className={cn(
             'fixed left-1/2 top-1/2 z-50 w-[420px] -translate-x-1/2 -translate-y-1/2',
             'rounded-md border bg-popover p-6 text-popover-foreground shadow-lg outline-none'
           )}
         >
           <DialogPrimitive.Title className="mb-1 text-lg font-semibold">
-            Which calendar should new Memry events go to?
+            {t('onboarding-dialog.title')}
           </DialogPrimitive.Title>
           <DialogPrimitive.Description className="mb-4 text-sm text-muted-foreground">
-            Pick the Google calendar Memry should use by default. You can still override it per
-            event.
+            {t('onboarding-dialog.body')}
           </DialogPrimitive.Description>
 
           <CalendarPicker
@@ -70,7 +72,7 @@ export function GoogleCalendarOnboardingDialog({
             onChange={setOverride}
             isLoading={isLoading}
             disabled={isSaving}
-            defaultOptionLabel="Use the Memry-managed calendar"
+            defaultOptionLabel={t('onboarding-dialog.default-calendar-label')}
           />
 
           {error && (
@@ -87,7 +89,7 @@ export function GoogleCalendarOnboardingDialog({
               onClick={() => void persist(null)}
               disabled={isSaving}
             >
-              Skip
+              {t('onboarding-dialog.skip')}
             </Button>
             <Button
               type="button"
@@ -95,7 +97,7 @@ export function GoogleCalendarOnboardingDialog({
               onClick={() => void persist(selected)}
               disabled={isSaving || isLoading}
             >
-              {isSaving ? 'Saving…' : 'Use this calendar'}
+              {isSaving ? tCommon('state.saving') : t('onboarding-dialog.use-this-calendar')}
             </Button>
           </div>
         </DialogPrimitive.Content>

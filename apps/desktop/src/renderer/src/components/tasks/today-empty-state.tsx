@@ -2,6 +2,7 @@ import { CalendarDays, Plus, Check } from '@/lib/icons'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -22,6 +23,7 @@ export const TodayEmptyState = ({
   onAddTask,
   className
 }: TodayEmptyStateProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   // If there are overdue tasks but nothing for today
   if (hasOverdue) {
     return (
@@ -29,13 +31,18 @@ export const TodayEmptyState = ({
         <div className="mb-4 mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
           <CalendarDays className="size-5 text-text-tertiary" aria-hidden="true" />
         </div>
-        <h3 className="text-lg font-medium text-text-primary mb-2">Nothing scheduled for today</h3>
+        <h3 className="text-lg font-medium text-text-primary mb-2">
+          {tPhaseF('phaseF.componentsTasksTodayEmptyState.nothingScheduledForToday')}
+        </h3>
         <p className="text-sm text-text-tertiary mb-6 max-w-xs mx-auto">
-          You have overdue tasks above. Add some tasks for today or check your upcoming list.
+          {tPhaseF(
+            'phaseF.componentsTasksTodayEmptyState.youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU'
+          )}
         </p>
         <Button onClick={onAddTask} size="sm" variant="outline">
           <Plus className="size-4" aria-hidden="true" />
-          Add task for today
+
+          {tPhaseF('phaseF.componentsTasksTodayEmptyState.addTaskForToday')}
         </Button>
       </div>
     )
@@ -50,18 +57,21 @@ export const TodayEmptyState = ({
       </div>
 
       {/* Title */}
-      <h3 className="text-lg font-medium text-text-primary mb-2">All caught up for today</h3>
+      <h3 className="text-lg font-medium text-text-primary mb-2">
+        {tPhaseF('phaseF.componentsTasksTodayEmptyState.allCaughtUpForToday')}
+      </h3>
 
       {/* Subtitle */}
       <p className="text-sm text-text-tertiary mb-8 max-w-xs mx-auto">
-        You have nothing scheduled. Enjoy the clarity.
+        {tPhaseF('phaseF.componentsTasksTodayEmptyState.youHaveNothingScheduledEnjoyTheClarity')}
       </p>
 
       {/* Action buttons */}
       <div className="flex flex-col items-center gap-3">
         <Button onClick={onAddTask} variant="outline" size="sm">
           <Plus className="size-4" aria-hidden="true" />
-          Add task for today
+
+          {tPhaseF('phaseF.componentsTasksTodayEmptyState.addTaskForToday2')}
         </Button>
       </div>
     </div>

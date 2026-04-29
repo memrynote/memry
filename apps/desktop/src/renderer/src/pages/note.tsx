@@ -58,6 +58,7 @@ import { NoteBreadcrumb } from '@/components/note/note-breadcrumb'
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
 import { ContentDivider } from '@renderer/components/note/content-area'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Page:Note')
 
@@ -74,14 +75,17 @@ interface NotePageProps {
 // ============================================================================
 
 function NoteErrorState({ error, onRetry }: { error: string; onRetry?: () => void }) {
+  const { t } = useT('notes')
+  const { t: tCommon } = useT('common')
+
   return (
     <div className="flex items-center justify-center h-full min-h-[400px]">
       <div className="flex flex-col items-center gap-3 text-center">
-        <p className="text-destructive font-medium">Failed to load note</p>
+        <p className="text-destructive font-medium">{t('page.error.title')}</p>
         <p className="text-sm text-muted-foreground">{error}</p>
         {onRetry && (
           <button onClick={onRetry} className="text-sm text-primary hover:underline">
-            Try again
+            {tCommon('button.retry')}
           </button>
         )}
       </div>
@@ -94,11 +98,13 @@ function NoteErrorState({ error, onRetry }: { error: string; onRetry?: () => voi
 // ============================================================================
 
 function NoteEmptyState() {
+  const { t } = useT('notes')
+
   return (
     <div className="flex items-center justify-center h-full min-h-[400px]">
       <div className="flex flex-col items-center gap-3 text-center text-muted-foreground">
-        <p className="text-sm">No note selected</p>
-        <p className="text-xs">Select a note from the sidebar to view it</p>
+        <p className="text-sm">{t('page.empty.title')}</p>
+        <p className="text-xs">{t('page.empty.body')}</p>
       </div>
     </div>
   )
@@ -109,6 +115,7 @@ function NoteEmptyState() {
 // ============================================================================
 
 export function NotePage({ noteId }: NotePageProps) {
+  const { t } = useT('notes')
   // TanStack Query hooks for data fetching with caching
   const { note, isLoading, error: noteError, refetch: refetchNote } = useNote(noteId ?? null)
   const { createNote, updateNote, renameNote } = useNoteMutations()
@@ -825,7 +832,9 @@ export function NotePage({ noteId }: NotePageProps) {
             size="icon"
             className="size-7 hover:bg-surface-active"
             disabled={isDeleted}
-            title={hasActiveReminder ? 'Reminder set' : 'Set reminder'}
+            title={
+              hasActiveReminder ? t('editor.toolbar.reminderSet') : t('editor.toolbar.setReminder')
+            }
           >
             <AlarmClock
               className={cn(
@@ -843,7 +852,7 @@ export function NotePage({ noteId }: NotePageProps) {
         className="size-7 hover:bg-surface-active"
         onClick={toggleBookmark}
         disabled={isDeleted}
-        title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
+        title={isBookmarked ? t('editor.toolbar.removeBookmark') : t('editor.toolbar.addBookmark')}
       >
         <Bookmark2
           className={cn(
@@ -884,18 +893,26 @@ export function NotePage({ noteId }: NotePageProps) {
           <Picker.List>
             <Picker.Item
               value="local-graph"
-              label={isLocalGraphOpen ? 'Hide local graph' : 'Show local graph'}
+              label={
+                isLocalGraphOpen
+                  ? t('editor.toolbar.hideLocalGraph')
+                  : t('editor.toolbar.showLocalGraph')
+              }
               icon={<SidebarGraph className="size-4" />}
             />
             <Picker.Item
               value="version-history"
-              label="Version history"
+              label={t('editor.toolbar.versionHistory')}
               icon={<FilePaste className="size-4" />}
             />
-            <Picker.Item value="export" label="Export" icon={<Download className="size-4" />} />
+            <Picker.Item
+              value="export"
+              label={t('editor.toolbar.export')}
+              icon={<Download className="size-4" />}
+            />
             <Picker.Item
               value="full-width"
-              label="Full width"
+              label={t('editor.toolbar.fullWidth')}
               icon={<Maximize className="size-4" />}
               trailing={
                 <Switch
@@ -908,7 +925,11 @@ export function NotePage({ noteId }: NotePageProps) {
             <Picker.Separator />
             <Picker.Item
               value="local-only"
-              label={note.frontmatter.localOnly ? 'Disable local only' : 'Set local only'}
+              label={
+                note.frontmatter.localOnly
+                  ? t('editor.toolbar.disableLocalOnly')
+                  : t('editor.toolbar.setLocalOnly')
+              }
               icon={<Monitor className="size-4" />}
             />
           </Picker.List>
@@ -951,7 +972,7 @@ export function NotePage({ noteId }: NotePageProps) {
             emoji={null}
             title={note.title}
             onTitleChange={handleTitleChange}
-            placeholder="Untitled"
+            placeholder={t('editor.title.untitled')}
           />
 
           {/* Tags: visible when tags exist */}
@@ -1013,7 +1034,7 @@ export function NotePage({ noteId }: NotePageProps) {
               noteId={noteId}
               initialContent={note.content}
               contentType="markdown"
-              placeholder="Start writing, or press '/' for commands..."
+              placeholder={t('editor.content.placeholder')}
               stickyToolbar={editorSettings.toolbarMode === 'sticky'}
               spellCheck={editorSettings.spellCheck}
               onContentChange={handleContentChange}

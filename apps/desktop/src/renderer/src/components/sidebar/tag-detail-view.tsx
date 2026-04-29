@@ -54,6 +54,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { TagRenameDialog } from './tag-rename-dialog'
 import { TagDeleteDialog } from './tag-delete-dialog'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Component:TagDetailView')
 
@@ -64,6 +65,7 @@ interface TagDetailViewProps {
 }
 
 export function TagDetailView({ tag, color, className }: TagDetailViewProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   const { goBack } = useSidebarDrillDown()
   const { openSidebarItem } = useSidebarNavigation()
   const {
@@ -161,7 +163,7 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
           size="icon"
           className="h-7 w-7 shrink-0"
           onClick={goBack}
-          aria-label="Go back"
+          aria-label={tPhaseF('phaseF.componentsSidebarTagDetailView.goBack')}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -192,7 +194,9 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
               )}
             </span>
           </div>
-          <p className="text-xs text-muted-foreground">{count} notes</p>
+          <p className="text-xs text-muted-foreground">
+            {count} {tPhaseF('phaseF.componentsSidebarTagDetailView.notes')}
+          </p>
         </div>
 
         {/* Overflow menu */}
@@ -221,14 +225,16 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
       <ScrollArea className="flex-1">
         {isLoading ? (
           <div className="px-3 py-8 text-center text-sm text-muted-foreground">
-            Loading notes...
+            {tPhaseF('phaseF.componentsSidebarTagDetailView.loadingNotes')}
           </div>
         ) : error ? (
           <div className="px-3 py-8 text-center text-sm text-destructive">{error}</div>
         ) : count === 0 ? (
           <div className="px-3 py-8 text-center text-sm text-muted-foreground">
-            <p>No notes with this tag</p>
-            <p className="mt-1 text-xs">Add this tag to a note to see it here</p>
+            <p>{tPhaseF('phaseF.componentsSidebarTagDetailView.noNotesWithThisTag')}</p>
+            <p className="mt-1 text-xs">
+              {tPhaseF('phaseF.componentsSidebarTagDetailView.addThisTagToANoteToSeeItHere')}
+            </p>
           </div>
         ) : (
           <div className="py-2">
@@ -237,7 +243,8 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
               <>
                 <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                   <Pin className="h-3 w-3" />
-                  PINNED
+
+                  {tPhaseF('phaseF.componentsSidebarTagDetailView.pinned')}
                 </div>
                 {pinnedNotes.map((note) => (
                   <NoteItem
@@ -255,7 +262,7 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
 
             {/* All notes section */}
             <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground flex items-center justify-between">
-              <span>ALL NOTES</span>
+              <span>{tPhaseF('phaseF.componentsSidebarTagDetailView.allNotes')}</span>
               <SortDropdown sortBy={sortBy} onSortChange={setSortBy} />
             </div>
             {unpinnedNotes.map((note) => (
@@ -272,7 +279,7 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
             {/* Empty state for unpinned when all are pinned */}
             {unpinnedNotes.length === 0 && pinnedNotes.length > 0 && (
               <div className="px-3 py-4 text-center text-xs text-muted-foreground">
-                All notes are pinned
+                {tPhaseF('phaseF.componentsSidebarTagDetailView.allNotesArePinned')}
               </div>
             )}
           </div>
@@ -295,6 +302,7 @@ interface NoteItemProps {
 }
 
 function NoteItem({ note, isPinned, onClick, onPin, onUnpin }: NoteItemProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   // Format date
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
@@ -353,13 +361,13 @@ function NoteItem({ note, isPinned, onClick, onPin, onUnpin }: NoteItemProps): R
                 <button
                   onClick={handlePinClick}
                   className="shrink-0 mt-0.5 p-1 rounded-sm transition-colors hover:bg-accent text-primary"
-                  aria-label="Unpin from tag"
+                  aria-label={tPhaseF('phaseF.componentsSidebarTagDetailView.unpinFromTag')}
                 >
                   <Pin className="h-3.5 w-3.5 fill-current" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="left" className="text-xs">
-                Unpin
+                {tPhaseF('phaseF.componentsSidebarTagDetailView.unpin')}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -370,13 +378,13 @@ function NoteItem({ note, isPinned, onClick, onPin, onUnpin }: NoteItemProps): R
                 <button
                   onClick={handlePinClick}
                   className="shrink-0 mt-0.5 p-1 rounded-sm transition-all hover:bg-accent text-muted-foreground hover:text-foreground opacity-0 group-hover/noteitem:opacity-100"
-                  aria-label="Pin to tag"
+                  aria-label={tPhaseF('phaseF.componentsSidebarTagDetailView.pinToTag')}
                 >
                   <Pin className="h-3.5 w-3.5" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="left" className="text-xs">
-                Pin
+                {tPhaseF('phaseF.componentsSidebarTagDetailView.pin')}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -399,6 +407,7 @@ function TagOverflowMenu({
   onRequestRename,
   onRequestDelete
 }: TagOverflowMenuProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   const [isUpdatingColor, setIsUpdatingColor] = React.useState(false)
 
   const handleColorChange = async (newColor: string) => {
@@ -425,19 +434,26 @@ function TagOverflowMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Tag actions">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          aria-label={tPhaseF('phaseF.componentsSidebarTagDetailView.tagActions')}
+        >
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
         <DropdownMenuItem onClick={onRequestRename}>
           <Pencil className="h-4 w-4 mr-2" />
-          Edit tag name
+
+          {tPhaseF('phaseF.componentsSidebarTagDetailView.editTagName')}
         </DropdownMenuItem>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <Palette className="h-4 w-4 mr-2" />
-            Change color
+
+            {tPhaseF('phaseF.componentsSidebarTagDetailView.changeColor')}
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-48 p-2">
             <div className="grid grid-cols-6 gap-1">
@@ -466,7 +482,8 @@ function TagOverflowMenu({
           className="text-destructive focus:text-destructive"
         >
           <Trash2 className="h-4 w-4 mr-2" />
-          Delete tag
+
+          {tPhaseF('phaseF.componentsSidebarTagDetailView.deleteTag')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -479,6 +496,7 @@ interface SortDropdownProps {
 }
 
 function SortDropdown({ sortBy, onSortChange }: SortDropdownProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -490,15 +508,18 @@ function SortDropdown({ sortBy, onSortChange }: SortDropdownProps): React.JSX.El
         <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => onSortChange(v as TagSortBy)}>
           <DropdownMenuRadioItem value="modified">
             <Clock className="h-4 w-4 mr-2" />
-            Recent
+
+            {tPhaseF('phaseF.componentsSidebarTagDetailView.recent')}
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="created">
             <Calendar className="h-4 w-4 mr-2" />
-            Created
+
+            {tPhaseF('phaseF.componentsSidebarTagDetailView.created')}
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="title">
             <SortAsc className="h-4 w-4 mr-2" />
-            Alphabetical
+
+            {tPhaseF('phaseF.componentsSidebarTagDetailView.alphabetical')}
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>

@@ -12,6 +12,7 @@ import {
   File
 } from '@/lib/icons'
 import type { InboxStats } from '@memry/rpc/inbox'
+import { useT } from '@memry/i18n/renderer'
 
 export interface InboxTypeDistributionProps {
   stats: InboxStats | null
@@ -35,10 +36,13 @@ const DEFAULT_CONFIG = {
 }
 
 export function InboxTypeDistribution({ stats }: InboxTypeDistributionProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('inbox')
   if (!stats?.itemsByType || Object.keys(stats.itemsByType).length === 0) {
     return (
       <div className="p-6 rounded-xl border border-border/50 bg-card h-full flex flex-col items-center justify-center min-h-[200px]">
-        <span className="text-muted-foreground font-serif italic">No item types to display</span>
+        <span className="text-muted-foreground font-serif italic">
+          {tPhaseF('phaseF.componentsInboxInboxTypeDistribution.noItemTypesToDisplay')}
+        </span>
       </div>
     )
   }
@@ -52,8 +56,12 @@ export function InboxTypeDistribution({ stats }: InboxTypeDistributionProps): Re
   return (
     <div className="p-6 rounded-xl border border-border/50 bg-card flex flex-col h-full">
       <div className="mb-6">
-        <h3 className="text-lg font-serif font-medium text-foreground">Item Types</h3>
-        <p className="text-sm text-muted-foreground mt-1">Distribution of content formats</p>
+        <h3 className="text-lg font-serif font-medium text-foreground">
+          {tPhaseF('phaseF.componentsInboxInboxTypeDistribution.itemTypes')}
+        </h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          {tPhaseF('phaseF.componentsInboxInboxTypeDistribution.distributionOfContentFormats')}
+        </p>
       </div>
 
       <div className="space-y-4">

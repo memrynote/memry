@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, Loader2 } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
 
 interface DeviceRevokedDialogProps {
   open: boolean
@@ -23,6 +24,7 @@ export function DeviceRevokedDialog({
   onExport,
   onSignOut
 }: DeviceRevokedDialogProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('settings')
   const [exporting, setExporting] = useState(false)
   const [exported, setExported] = useState(false)
 
@@ -50,7 +52,7 @@ export function DeviceRevokedDialog({
               />
             </div>
             <AlertDialogTitle className="font-display text-xl tracking-tight">
-              This device has been removed
+              {tPhaseF('phaseF.componentsSyncDeviceRevokedDialog.thisDeviceHasBeenRemoved')}
             </AlertDialogTitle>
           </div>
           <AlertDialogDescription className="font-serif text-[15px] leading-relaxed">
@@ -70,7 +72,8 @@ export function DeviceRevokedDialog({
               {exporting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Exporting...
+
+                  {tPhaseF('phaseF.componentsSyncDeviceRevokedDialog.exporting')}
                 </>
               ) : exported ? (
                 'Exported'
@@ -79,7 +82,9 @@ export function DeviceRevokedDialog({
               )}
             </Button>
           )}
-          <Button onClick={onSignOut}>Sign Out</Button>
+          <Button onClick={onSignOut}>
+            {tPhaseF('phaseF.componentsSyncDeviceRevokedDialog.signOut')}
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

@@ -8,6 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -30,6 +31,9 @@ export const DeleteTaskDialog = ({
   onConfirm,
   taskTitle
 }: DeleteTaskDialogProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
+  const { t } = useT('common')
+
   const handleConfirm = (): void => {
     onConfirm()
     onClose()
@@ -39,18 +43,24 @@ export const DeleteTaskDialog = ({
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete task?</AlertDialogTitle>
+          <AlertDialogTitle>
+            {tPhaseF('phaseF.componentsTasksDeleteTaskDialog.deleteTask')}
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            &ldquo;{taskTitle}&rdquo; will be permanently deleted. This action cannot be undone.
+            &{tPhaseF('phaseF.componentsTasksDeleteTaskDialog.ldquo')}
+            {taskTitle}&
+            {tPhaseF(
+              'phaseF.componentsTasksDeleteTaskDialog.rdquoWillBePermanentlyDeletedThisActionCannotBeUndone'
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={onClose}>{t('button.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            Delete Task
+            {tPhaseF('phaseF.componentsTasksDeleteTaskDialog.deleteTask2')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -1,1 +1,467 @@
-{}
+{
+  "view": {
+    "tabs": {
+      "inbox": "Inbox",
+      "archived": "Archived",
+      "insights": "Insights",
+      "ariaLabel": "Inbox view selection"
+    },
+    "triageButton": "Triage",
+    "processInboxTitle": "Process inbox (Cmd+P)",
+    "itemCaptured": "Item captured",
+    "searchArchivedTitle": "Search archived items",
+    "searchPlaceholder": "Search...",
+    "archivedItemsAria": "Archived items",
+    "snoozed": {
+      "show": "Show snoozed items",
+      "showWithCount": "Show snoozed items ({count})",
+      "hide": "Hide snoozed items"
+    },
+    "filter": {
+      "button": "Filter",
+      "byType": "Filter by type",
+      "active": "{count, plural, one {Filtering by # type} other {Filtering by # types}}",
+      "clearAll": "Clear all"
+    },
+    "jobs": {
+      "running": "{count, plural, one {# background job running} other {# background jobs running}}",
+      "failed": "{count} failed"
+    }
+  },
+  "type": {
+    "link": "Link",
+    "links": "Links",
+    "note": "Note",
+    "notes": "Notes",
+    "image": "Image",
+    "images": "Images",
+    "voice": "Voice",
+    "video": "Video",
+    "clip": "Clip",
+    "clips": "Clips",
+    "pdf": "PDF",
+    "pdfs": "PDFs",
+    "social": "Social",
+    "reminder": "Reminder",
+    "reminders": "Reminders",
+    "text": "Text",
+    "other": "Other"
+  },
+  "empty": {
+    "successAria": "Success, inbox is empty",
+    "title": "Inbox Zero",
+    "body": "Everything's processed. Capture something new with the input above, or paste a link to get started.",
+    "filedThisWeek": "{count, plural, one {# filed this week} other {# filed this week}}",
+    "dayStreak": "{count, plural, one {# day streak} other {# day streak}}",
+    "tipPrefix": "Tip: use",
+    "tipSuffix": "to quick-capture from clipboard",
+    "archivedNone": "No archived items",
+    "archivedNoMatches": "No matching archived items",
+    "noItemsYet": "No items yet",
+    "noItemsFiled": "No items filed yet",
+    "noItemTypes": "No item types to display",
+    "noFolders": "No folders found",
+    "noFolderMatch": "No folders match \"{query}\"",
+    "noNotes": "No notes found",
+    "allMatchesLinked": "All matches already linked"
+  },
+  "list": {
+    "ariaLabel": "Inbox items",
+    "section": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "older": "Older"
+    },
+    "selectItem": "Select {title}",
+    "itemAria": "{type}: {title}",
+    "untitled": "Untitled",
+    "untitledItem": "Untitled Item",
+    "transcribing": "Transcribing...",
+    "transcriptionFailed": "Transcription failed",
+    "retryTranscription": "Retry",
+    "pageCount": "{count, plural, one {# page} other {# pages}}",
+    "snoozedUntilShort": "snoozed til {date}",
+    "capturedAgo": "Captured {time}"
+  },
+  "loading": {
+    "inbox": "Loading inbox...",
+    "failed": "Failed to load inbox",
+    "tryAgain": "Try again",
+    "capturingImage": "Capturing image...",
+    "dropImageTitle": "Drop image to capture",
+    "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
+    "unsupportedImageType": "Unsupported image type: {type}",
+    "imageTooLarge": "Image too large (max 50MB)"
+  },
+  "toast": {
+    "failedArchiveItem": "Failed to archive item",
+    "failedArchiveItems": "Failed to archive items",
+    "failedFile": "Failed to file",
+    "failedFileItem": "Failed to file item",
+    "failedFileItems": "Failed to file items",
+    "failedSnooze": "Failed to snooze",
+    "failedSnoozeItem": "Failed to snooze item",
+    "failedApplyTags": "Failed to apply tags",
+    "failedCaptureImage": "Failed to capture image",
+    "linkedToNote": "Linked to note",
+    "linkedToNotes": "Linked to {count} notes",
+    "filedTo": "Filed to {folder}",
+    "filedItemsTo": "Filed {count} items to {folder}",
+    "filedPartial": "Filed {processed} of {total} items",
+    "appliedTags": "{tagCount, plural, one {Applied # tag} other {Applied # tags}} to {itemCount, plural, one {# item} other {# items}}",
+    "archivedItems": "{count, plural, one {Archived # item} other {Archived # items}}",
+    "snoozedUntil": "Snoozed until {time}",
+    "snoozedItemsUntil": "{count, plural, one {Snoozed # item until {time}} other {Snoozed # items until {time}}}"
+  },
+  "triage": {
+    "modeTitle": "Triage Mode",
+    "exitHint": "Esc to exit",
+    "exitAria": "Exit triage mode",
+    "position": "{current} of {total}",
+    "action": {
+      "discard": "Discard",
+      "archive": "Archive",
+      "open": "Open",
+      "toTask": "To Task",
+      "toNote": "To Note",
+      "file": "File",
+      "snooze": "Snooze",
+      "cancel": "Cancel"
+    },
+    "snoozeUntil": "Snooze until...",
+    "complete": {
+      "title": "Inbox Zero",
+      "processed": "{count, plural, one {# item processed} other {# items processed}}",
+      "streak": "streak",
+      "streakCount": "{count} streak",
+      "dayProcessingStreak": "{count, plural, one {# day processing streak} other {# day processing streak}}",
+      "back": "Back to Inbox",
+      "motivation0": "Your future self thanks you.",
+      "motivation1": "Everything in its place.",
+      "motivation2": "Clear inbox, clear mind.",
+      "motivation3": "Decision debt: paid in full.",
+      "motivation4": "That felt good, didn't it?"
+    }
+  },
+  "bulk": {
+    "selected": "{count} selected",
+    "deselectAll": "Deselect all",
+    "ariaLabel": "Bulk actions for {count} selected items",
+    "file": "File",
+    "tag": "Tag",
+    "snooze": "Snooze",
+    "archive": "Archive",
+    "add": "Add",
+    "dismissSuggestion": "Dismiss suggestion",
+    "hint": {
+      "file": "file",
+      "tag": "tag",
+      "snooze": "snooze",
+      "archive": "archive",
+      "deselect": "deselect"
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {Archive # item?} other {Archive # items?}}",
+      "description": "These items will be archived. You can view archived items later.",
+      "confirm": "{count, plural, one {Archive # item} other {Archive # items}}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {File # Item} other {File # Items}}",
+      "itemsToFile": "Items to file",
+      "multipleNoteLinksUnavailable": "Note: Links to other notes cannot be added when filing multiple items.",
+      "filing": "Filing...",
+      "submit": "{count, plural, one {File # item} other {File # items}}",
+      "macHint": "⌘⏎ to file · Esc to close",
+      "ctrlHint": "Ctrl+Enter to file · Esc to close"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {Tag # Item} other {Tag # Items}}",
+      "placeholder": "Type to search tags...",
+      "applying": "Applying...",
+      "apply": "{count, plural, one {Apply to # item} other {Apply to # items}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "Quick actions",
+    "archiveItem": "Archive item",
+    "archive": "Archive",
+    "snooze": "Snooze"
+  },
+  "detail": {
+    "ariaLabel": "Item details",
+    "closePanel": "Close panel",
+    "resizeFiling": "Resize filing section",
+    "restore": "Restore",
+    "restoreToInbox": "Restore to inbox",
+    "delete": "Delete",
+    "deletePermanently": "Delete permanently",
+    "archive": "Archive",
+    "file": "File",
+    "keyboardHint": "{modifier}⏎ file · 1-5 folder · Esc close",
+    "voiceTitlePlaceholder": "Name this voice memo...",
+    "fileTo": "File to",
+    "ai": "AI",
+    "selectFolder": "Select folder",
+    "searchOrCreateFolder": "Search or create with /...",
+    "suggested": "Suggested",
+    "notesRoot": "Notes",
+    "notesRootLabel": "Notes (root)",
+    "createFolder": "Create \"{name}\"",
+    "addTags": "Add tags...",
+    "linkToNote": "Link to note",
+    "linkNotesPlaceholder": "Link notes...",
+    "searchNotesAria": "Search notes to link",
+    "linkedNotesAria": "Linked notes",
+    "removeLinkTo": "Remove link to {title}",
+    "contentEditorAria": "Content editor",
+    "notePlaceholder": "Write your note...",
+    "textPlaceholder": "Edit your captured text..."
+  },
+  "content": {
+    "capturedAt": "Captured {date}",
+    "todayAt": "today at {time}",
+    "yesterdayAt": "yesterday at {time}",
+    "dateAt": "{date} at {time}",
+    "words": "{count, plural, one {# word} other {# words}}",
+    "duration": "Duration: {duration}",
+    "dimensions": "Dimensions",
+    "format": "Format",
+    "size": "Size",
+    "voiceMemo": "Voice memo",
+    "play": "Play",
+    "pause": "Pause",
+    "audioPosition": "Audio position",
+    "transcription": "Transcription",
+    "processing": "processing",
+    "pending": "pending",
+    "failed": "failed",
+    "copyTranscription": "Copy transcription",
+    "transcribingAudio": "Transcribing audio...",
+    "awaitingTranscription": "Awaiting transcription...",
+    "noTranscription": "No transcription available",
+    "failedPlayAudio": "Failed to play audio",
+    "failedLoadAudio": "Failed to load audio",
+    "video": "Video",
+    "unsupportedVideo": "Your browser does not support the video tag."
+  },
+  "reminder": {
+    "dataUnavailable": "Reminder data unavailable.",
+    "triggered": "Reminder triggered",
+    "noteLabel": "Reminder Note",
+    "source": "Source",
+    "journalTitle": "Journal — {date}",
+    "noteFallback": "Note",
+    "journalFallback": "Journal",
+    "highlighted": "Highlighted: \"{text}\"",
+    "viewed": "Viewed",
+    "markViewed": "Mark as viewed",
+    "notYetViewed": "Not yet viewed",
+    "snooze": "Snooze",
+    "presetInOneHour": "1 hour",
+    "presetTomorrow": "Tomorrow",
+    "presetNextWeek": "Next week",
+    "custom": "Custom..."
+  },
+  "insights": {
+    "loading": "Loading insights...",
+    "captureActivity": "Capture Activity",
+    "byType": "By Type",
+    "itemTypes": "Item Types",
+    "itemTypesDescription": "Distribution of content formats",
+    "recentFilings": "Recent Filings",
+    "recentlyFiled": "Recently Filed",
+    "recentlyFiledDescription": "Latest actions on your inbox",
+    "captured": "Captured",
+    "capturedThisWeek": "+{count} this week",
+    "processed": "Processed",
+    "processRate": "{rate}% rate",
+    "stale": "Stale",
+    "needsAttention": "needs attention",
+    "allClear": "all clear",
+    "avgTimeToFile": "Avg Time to File",
+    "noCapturesYet": "No captures yet",
+    "captures": "{count, plural, one {# capture} other {# captures}}",
+    "peak": "Peak: {day} {start}–{end}",
+    "convertedToTask": "Converted to task",
+    "linked": "Linked",
+    "now": "now",
+    "timeAgoMinutes": "{count}m ago",
+    "timeAgoHours": "{count}h ago",
+    "timeAgoDays": "{count}d ago"
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "AI detected: \"",
+      "addToSelection": "Add to selection",
+      "dismiss": "Dismiss"
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "Delete ",
+      "item": "item",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "These items will be removed from your inbox. You can undo this action immediately after."
+    },
+    "componentsCaptureInput": {
+      "captureInput": "Capture input",
+      "attachFile": "Attach file",
+      "attachFileImagesAudioVideoPdf": "Attach file (Images, Audio, Video, PDF)",
+      "recordVoiceMemo": "Record voice memo",
+      "recordVoiceMemo2": "Record voice memo",
+      "alreadyCaptured": "Already captured: “",
+      "rdquo": "rdquo;",
+      "captureAnyway": "Capture Anyway"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "Choose folder",
+      "searchFolders": "Search folders...",
+      "searchFolders2": "Search folders",
+      "searchResults": "Search results",
+      "create": "Create \"",
+      "suggested": "Suggested",
+      "recent": "Recent",
+      "allFolders": "All folders",
+      "allFolders2": "All folders"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "Link to",
+      "optional": "optional)",
+      "searchNotesToLink": "Search notes to link...",
+      "searchNotesToLink2": "Search notes to link",
+      "searching": "Searching...",
+      "noNotesFound": "No notes found",
+      "linkedNotes": "Linked notes",
+      "noLinksAdded": "No links added"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "Suggested",
+      "ai": "AI",
+      "create": "Create",
+      "tags": "Tags",
+      "selectedTags": "Selected tags",
+      "addTags": "Add tags",
+      "tagSuggestions": "Tag suggestions"
+    },
+    "componentsFilingTagInput": {
+      "tags": "Tags",
+      "optional": "optional)",
+      "addTags": "Add tags...",
+      "addTags2": "Add tags",
+      "selectedTags": "Selected tags",
+      "suggested": "Suggested"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "Capture Activity"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "No items filed yet",
+      "recentlyFiled": "Recently Filed",
+      "latestActionsOnYourInbox": "Latest actions on your inbox",
+      "linked": "Linked"
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "Loading insights..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "No item types to display",
+      "itemTypes": "Item Types",
+      "distributionOfContentFormats": "Distribution of content formats"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "Captured "
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "x "
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "Content editor"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "middot; "
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "Tweet unavailable",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "This tweet may have been deleted or is from a private account.",
+      "openOnXCom": "Open on x.com",
+      "views": "views",
+      "xCom": "x.com",
+      "viewOnX": "View on X"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "Type folder name...",
+      "quickFileFolderSearch": "Quick file folder search"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "close",
+      "capture": "capture"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "Remove attachment"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "Quick capture input",
+      "recordVoiceMemo": "Record voice memo",
+      "attachFile": "Attach file"
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "LINK"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "Captured",
+      "dismissError": "Dismiss error",
+      "alreadyCaptured": "Already captured",
+      "ldquo": "ldquo;",
+      "rdquoMiddot": "rdquo; &middot; ",
+      "captureAnyway": "Capture Anyway",
+      "close": "Close"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "Drop to capture",
+      "capturing": "Capturing..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "Folder suggestions",
+      "noFoldersMatch": "No folders match \""
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "Set reminder for this text",
+      "remindMeAboutThis": "Remind me about this",
+      "selectedText": "Selected text:"
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "Remind",
+      "remindMe": "Remind me",
+      "pickDateTime": "Pick date & time",
+      "addANoteOptional": "Add a note (optional)",
+      "backToPresets": "Back to presets",
+      "time": "Time",
+      "noteOptional": "Note (optional)",
+      "whyAreYouSettingThisReminder": "Why are you setting this reminder?"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "Snooze",
+      "snooze2": "Snooze",
+      "pickDateTime": "Pick Date & Time",
+      "pickDateTime2": "Pick Date & Time",
+      "selectWhenToBeRemindedAboutThisItem": "Select when to be reminded about this item",
+      "snooze3": "Snooze",
+      "snooze4": "Snooze",
+      "snooze5": "Snooze"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "Loading post...",
+      "failedToLoad": "Failed to load",
+      "loadingPostContent": "Loading post content...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Failed to load post content. The post may be private or deleted.",
+      "viewOn": "View on "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "Start voice recording",
+      "requestingMicrophoneAccess": "Requesting microphone access...",
+      "settings": "Settings",
+      "processing": "Processing...",
+      "cancelRecording": "Cancel recording",
+      "cancel": "Cancel",
+      "stopRecording": "Stop recording",
+      "stop": "Stop"
+    }
+  }
+}

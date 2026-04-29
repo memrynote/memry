@@ -8,6 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
+import { useT } from '@memry/i18n/renderer'
 
 interface DeleteCalendarEventDialogProps {
   open: boolean
@@ -24,24 +25,26 @@ export function DeleteCalendarEventDialog({
   onCancel,
   onConfirm
 }: DeleteCalendarEventDialogProps): React.JSX.Element {
+  const { t } = useT('calendar')
+  const { t: tCommon } = useT('common')
   const description = hasGoogleBinding
-    ? `"${title}" will be removed from Memry and Google Calendar. This action cannot be undone.`
-    : `"${title}" will be permanently deleted. This action cannot be undone.`
+    ? t('delete-dialog.google-bound-description', { title })
+    : t('delete-dialog.local-description', { title })
 
   return (
     <AlertDialog open={open} onOpenChange={(next) => !next && onCancel()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete event?</AlertDialogTitle>
+          <AlertDialogTitle>{t('delete-dialog.title')}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={onCancel}>{tCommon('button.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            Delete
+            {tCommon('button.delete')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

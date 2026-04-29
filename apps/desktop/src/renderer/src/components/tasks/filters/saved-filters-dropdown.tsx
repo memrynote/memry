@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import type { SavedFilter } from '@/data/tasks-data'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -28,6 +29,7 @@ export const SavedFiltersDropdown = ({
   onSaveCurrent,
   className
 }: SavedFiltersDropdownProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -35,10 +37,12 @@ export const SavedFiltersDropdown = ({
           variant="outline"
           size="sm"
           className={cn('h-9 gap-2', className)}
-          aria-label="Saved filters"
+          aria-label={tPhaseF('phaseF.componentsTasksFiltersSavedFiltersDropdown.savedFilters')}
         >
           <Star className="size-4" />
-          <span className="hidden sm:inline">Saved</span>
+          <span className="hidden sm:inline">
+            {tPhaseF('phaseF.componentsTasksFiltersSavedFiltersDropdown.saved')}
+          </span>
           <ChevronDown className="size-4 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -91,7 +95,9 @@ export const SavedFiltersDropdown = ({
               </div>
             ))
           ) : (
-            <div className="px-4 py-3 text-[13px] text-text-tertiary">No saved filters yet</div>
+            <div className="px-4 py-3 text-[13px] text-text-tertiary">
+              {tPhaseF('phaseF.componentsTasksFiltersSavedFiltersDropdown.noSavedFiltersYet')}
+            </div>
           )}
         </div>
 
@@ -105,14 +111,14 @@ export const SavedFiltersDropdown = ({
             >
               <Plus className="size-3.5 text-text-tertiary" />
               <span className="text-[13px] text-text-tertiary font-medium leading-4">
-                Save current filters
+                {tPhaseF('phaseF.componentsTasksFiltersSavedFiltersDropdown.saveCurrentFilters')}
               </span>
             </button>
           ) : (
             <div className="flex items-center py-2.5 px-4 gap-2 opacity-50">
               <Plus className="size-3.5 text-text-tertiary" />
               <span className="text-[13px] text-text-tertiary font-medium leading-4">
-                Save current filters
+                {tPhaseF('phaseF.componentsTasksFiltersSavedFiltersDropdown.saveCurrentFilters2')}
               </span>
             </div>
           )}

@@ -11,6 +11,7 @@ import type { SuggestionOptions } from '@tiptap/suggestion'
 export interface TagOptions {
   HTMLAttributes: Record<string, unknown>
   suggestion: Omit<SuggestionOptions, 'editor'>
+  getAriaLabel?: (tag: string) => string
 }
 
 export interface TagAttributes {
@@ -35,6 +36,7 @@ export const Tag = Node.create<TagOptions>({
   addOptions() {
     return {
       HTMLAttributes: {},
+      getAriaLabel: (tag: string) => `Tag: ${tag}, click to filter`,
       suggestion: {
         char: '#',
         allowSpaces: false, // Tags cannot contain spaces
@@ -89,7 +91,7 @@ export const Tag = Node.create<TagOptions>({
         class: 'tag',
         role: 'button',
         tabindex: '0',
-        'aria-label': `Tag: ${HTMLAttributes.tag}, click to filter`
+        'aria-label': this.options.getAriaLabel?.(String(HTMLAttributes.tag ?? '')) ?? ''
       }),
       `#${HTMLAttributes.tag}`
     ]

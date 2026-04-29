@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -36,6 +37,7 @@ export const DuplicateWithSubtasksDialog = ({
   onClose,
   onDuplicate
 }: DuplicateWithSubtasksDialogProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [includeSubtasks, setIncludeSubtasks] = useState(true)
 
   const handleDuplicate = (): void => {
@@ -55,9 +57,14 @@ export const DuplicateWithSubtasksDialog = ({
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Copy className="size-5 text-muted-foreground" />
-            <DialogTitle>Duplicate task</DialogTitle>
+            <DialogTitle>
+              {tPhaseF('phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.duplicateTask')}
+            </DialogTitle>
           </div>
-          <DialogDescription>Create a copy of &ldquo;{taskTitle}&rdquo;</DialogDescription>
+          <DialogDescription>
+            {tPhaseF('phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.createACopyOf')}
+            {taskTitle}&{tPhaseF('phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.rdquo')}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="py-4">
@@ -69,7 +76,10 @@ export const DuplicateWithSubtasksDialog = ({
             />
             <div className="space-y-1">
               <Label htmlFor="include-subtasks" className="cursor-pointer font-medium">
-                Also duplicate subtasks ({subtaskCount})
+                {tPhaseF(
+                  'phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.alsoDuplicateSubtasks'
+                )}
+                {subtaskCount})
               </Label>
               <p className="text-sm text-muted-foreground">
                 {includeSubtasks
@@ -82,10 +92,11 @@ export const DuplicateWithSubtasksDialog = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose}>
-            Cancel
+            {tPhaseF('phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.cancel')}
           </Button>
           <Button onClick={handleDuplicate}>
-            Duplicate {includeSubtasks ? `(${subtaskCount + 1} items)` : 'task'}
+            {tPhaseF('phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.duplicate')}
+            {includeSubtasks ? `(${subtaskCount + 1} items)` : 'task'}
           </Button>
         </DialogFooter>
       </DialogContent>

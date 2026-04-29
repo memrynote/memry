@@ -3,6 +3,7 @@ import { Search, X } from '@/lib/icons'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import type { GraphFilterState, GraphFilterAction } from '@/hooks/use-graph-filters'
+import { useT } from '@memry/i18n/renderer'
 
 interface GraphSearchProps {
   filterState: GraphFilterState
@@ -10,6 +11,7 @@ interface GraphSearchProps {
 }
 
 export function GraphSearch({ filterState, dispatch }: GraphSearchProps): React.JSX.Element {
+  const { t } = useT('graph')
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -33,7 +35,7 @@ export function GraphSearch({ filterState, dispatch }: GraphSearchProps): React.
         <Search className="absolute left-2.5 size-3.5 text-muted-foreground pointer-events-none" />
         <Input
           ref={inputRef}
-          placeholder="Search nodes..."
+          placeholder={t('search.placeholder')}
           className="h-8 w-48 pl-8 pr-8 text-xs bg-popover/95 backdrop-blur-sm border-border"
           value={filterState.searchQuery}
           onChange={(e) => dispatch({ type: 'SET_SEARCH_QUERY', query: e.target.value })}
@@ -44,6 +46,7 @@ export function GraphSearch({ filterState, dispatch }: GraphSearchProps): React.
             size="sm"
             className="absolute right-1 h-5 w-5 p-0"
             onClick={() => dispatch({ type: 'SET_SEARCH_QUERY', query: '' })}
+            aria-label={t('search.clear')}
           >
             <X className="size-3 text-muted-foreground" />
           </Button>

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { parseNaturalDate, type ParsedDateResult } from '@/lib/natural-date-parser'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -33,6 +34,7 @@ export const NaturalDateInput = forwardRef<NaturalDateInputRef, NaturalDateInput
     { onSelect, onInputChange, placeholder = 'Type a date... "next friday", "dec 25"', className },
     ref
   ): React.JSX.Element => {
+    const { t: tPhaseF } = useT('tasks')
     const [value, setValue] = useState('')
     const [parseResult, setParseResult] = useState<ReturnType<typeof parseNaturalDate> | null>(null)
     const inputRef = useRef<HTMLInputElement>(null)
@@ -106,7 +108,9 @@ export const NaturalDateInput = forwardRef<NaturalDateInputRef, NaturalDateInput
               isValid && 'border-task-complete',
               isInvalid && 'border-task-due-today'
             )}
-            aria-label="Type a date in natural language"
+            aria-label={tPhaseF(
+              'phaseF.componentsTasksNaturalDateInput.typeADateInNaturalLanguage'
+            )}
             autoComplete="off"
           />
         </div>
@@ -133,7 +137,7 @@ export const NaturalDateInput = forwardRef<NaturalDateInputRef, NaturalDateInput
                   onClick={handleSelect}
                   className="h-7 px-2 text-task-complete hover:bg-task-complete/10"
                 >
-                  Select
+                  {tPhaseF('phaseF.componentsTasksNaturalDateInput.select')}
                 </Button>
               </>
             ) : (

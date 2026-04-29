@@ -4,6 +4,7 @@ import { Picker } from '@/components/ui/picker'
 import { getTagColors, COLOR_NAMES } from '../../tags-row/tag-colors'
 import { SelectChip } from './SelectChip'
 import type { SelectOption } from '@memry/contracts/property-types'
+import { useT } from '@memry/i18n/renderer'
 
 interface MultiselectEditorProps {
   value: string[]
@@ -22,6 +23,7 @@ export function MultiselectEditor({
   onAddOption,
   onRemoveOption
 }: MultiselectEditorProps) {
+  const { t } = useT('notes')
   const [isOpen, setIsOpen] = useState(defaultOpen ?? false)
   const [newOptionName, setNewOptionName] = useState('')
   const [isCreating, setIsCreating] = useState(false)
@@ -67,14 +69,18 @@ export function MultiselectEditor({
               ))}
             </span>
           ) : (
-            <span className="text-[13px] text-text-tertiary font-sans">Empty</span>
+            <span className="text-[13px] text-text-tertiary font-sans">
+              {t('properties.empty')}
+            </span>
           )}
         </span>
       </Picker.Trigger>
       <Picker.Content width={220} align="start">
-        <Picker.Search placeholder="Search options..." />
+        <Picker.Search placeholder={t('properties.searchOptions')} />
         <Picker.List>
-          {options.length === 0 && !isCreating && <Picker.Empty message="No options yet" />}
+          {options.length === 0 && !isCreating && (
+            <Picker.Empty message={t('properties.noOptions')} />
+          )}
           {options.map((opt) => (
             <Picker.Item
               key={opt.value}
@@ -126,7 +132,7 @@ export function MultiselectEditor({
               onBlur={() => {
                 if (!newOptionName.trim()) setIsCreating(false)
               }}
-              placeholder="Option name"
+              placeholder={t('properties.optionName')}
               className="flex-1 bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-foreground/50"
             />
           </div>
@@ -138,7 +144,7 @@ export function MultiselectEditor({
               className="flex items-center gap-2 w-full px-2 py-1.5 text-[13px] text-muted-foreground hover:bg-accent rounded-[5px]"
             >
               <Plus className="size-3.5" />
-              New option
+              {t('properties.newOption')}
             </button>
           </Picker.Footer>
         )}

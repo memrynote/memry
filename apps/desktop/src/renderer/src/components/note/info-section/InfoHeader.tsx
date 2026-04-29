@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronRight } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface InfoHeaderProps {
   isExpanded: boolean
@@ -14,6 +15,8 @@ export function InfoHeader({
   variant = 'default',
   propertyCount = 0
 }: InfoHeaderProps) {
+  const { t } = useT('notes')
+
   if (variant === 'embedded') {
     return (
       <button
@@ -45,7 +48,7 @@ export function InfoHeader({
             isExpanded ? 'text-sidebar-terracotta font-medium' : 'text-text-secondary'
           )}
         >
-          Properties
+          {t('properties.title')}
         </span>
         {propertyCount > 0 && (
           <span
@@ -91,7 +94,7 @@ export function InfoHeader({
           isExpanded ? 'text-sidebar-terracotta font-medium' : 'text-text-secondary'
         )}
       >
-        Properties
+        {t('properties.title')}
       </span>
       {propertyCount > 0 && (
         <span

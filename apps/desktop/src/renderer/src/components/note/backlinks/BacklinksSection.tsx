@@ -11,14 +11,9 @@ import { BacklinkCard } from './BacklinkCard'
 import { BacklinksLoadingState } from './BacklinksLoadingState'
 import type { BacklinksSectionProps, BacklinkSortOption, Mention } from './types'
 import { createLogger } from '@/lib/logger'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Component:BacklinksSection')
-
-const SORT_LABELS: Record<BacklinkSortOption, string> = {
-  recent: 'Recent',
-  alphabetical: 'A-Z',
-  mentions: 'Most mentions'
-}
 
 function BacklinksIcon({ className }: { className?: string }) {
   return (
@@ -67,6 +62,7 @@ export function BacklinksSection({
   onBacklinkClick: propOnBacklinkClick,
   onShowMore: propOnShowMore
 }: Partial<BacklinksSectionProps>) {
+  const { t } = useT('notes')
   const [internalSortBy, setInternalSortBy] = useState<BacklinkSortOption>('recent')
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
   const [visibleCount, setVisibleCount] = useState(initialCount)
@@ -100,6 +96,11 @@ export function BacklinksSection({
   const visibleBacklinks = sortedBacklinks.slice(0, visibleCount)
   const hasMore = visibleCount < sortedBacklinks.length
   const remainingCount = sortedBacklinks.length - visibleCount
+  const sortLabels: Record<BacklinkSortOption, string> = {
+    recent: t('backlinks.sortRecent'),
+    alphabetical: t('backlinks.sortAlpha'),
+    mentions: t('backlinks.sortMentions')
+  }
 
   const handleSortChange = (sort: BacklinkSortOption) => {
     if (propOnSortChange) {
@@ -133,7 +134,7 @@ export function BacklinksSection({
     <section
       className="flex flex-col gap-1"
       role="region"
-      aria-label={`Backlinks section with ${backlinks.length} ${backlinks.length === 1 ? 'link' : 'links'}`}
+      aria-label={t('backlinks.sectionAria')}
       aria-busy={isLoading}
     >
       <div className="flex items-center justify-between">
@@ -145,7 +146,7 @@ export function BacklinksSection({
           )}
           aria-expanded={!isCollapsed}
           aria-controls="backlinks-content"
-          aria-label={isCollapsed ? 'Expand backlinks section' : 'Collapse backlinks section'}
+          aria-label={isCollapsed ? t('backlinks.expandSection') : t('backlinks.collapseSection')}
           disabled={!collapsible}
         >
           {collapsible && (
@@ -159,11 +160,7 @@ export function BacklinksSection({
           )}
           <BacklinksIcon className="text-text-tertiary" />
           <span className="text-xs/4 font-medium text-text-tertiary">
-            {backlinks.length} {backlinks.length === 1 ? 'note' : 'notes'}
-            <span className="text-text-tertiary/50">
-              {' '}
-              &middot; {totalReferences} {totalReferences === 1 ? 'reference' : 'references'}
-            </span>
+            {t('backlinks.summary', { notes: backlinks.length, references: totalReferences })}
           </span>
         </button>
 
@@ -177,20 +174,20 @@ export function BacklinksSection({
                   'hover:text-muted-foreground hover:bg-surface-active/40 rounded',
                   'transition-colors duration-150'
                 )}
-                aria-label={`Sort backlinks by ${SORT_LABELS[sortBy]}`}
+                aria-label={t('backlinks.sortBy', { sort: sortLabels[sortBy] })}
               >
-                {SORT_LABELS[sortBy]}
+                {sortLabels[sortBy]}
                 <ChevronDown className="h-3 w-3" aria-hidden="true" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[140px]">
-              {(Object.keys(SORT_LABELS) as BacklinkSortOption[]).map((option) => (
+              {(Object.keys(sortLabels) as BacklinkSortOption[]).map((option) => (
                 <DropdownMenuItem
                   key={option}
                   onClick={() => handleSortChange(option)}
                   className={cn(sortBy === option && 'bg-surface-active')}
                 >
-                  {SORT_LABELS[option]}
+                  {sortLabels[option]}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
@@ -199,7 +196,12 @@ export function BacklinksSection({
       </div>
 
       {!isCollapsed && (
-        <div id="backlinks-content" aria-live="polite" role="list" aria-label="Backlinks list">
+        <div
+          id="backlinks-content"
+          aria-live="polite"
+          role="list"
+          aria-label={t('backlinks.listAria')}
+        >
           {isLoading ? (
             <BacklinksLoadingState />
           ) : (
@@ -225,9 +227,9 @@ export function BacklinksSection({
                     'transition-colors duration-150',
                     'cursor-pointer'
                   )}
-                  aria-label={`Show ${remainingCount} more backlink${remainingCount > 1 ? 's' : ''}`}
+                  aria-label={t('backlinks.showMore', { count: remainingCount })}
                 >
-                  {remainingCount} more
+                  {t('backlinks.more', { count: remainingCount })}
                 </button>
               )}
             </>

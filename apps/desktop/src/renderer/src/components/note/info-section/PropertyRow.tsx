@@ -22,6 +22,7 @@ import {
   type StatusCategories,
   type StatusCategoryKey
 } from '@memry/contracts/property-types'
+import { useT } from '@memry/i18n/renderer'
 
 interface PropertyValueRendererProps {
   property: Property
@@ -32,10 +33,11 @@ interface PropertyValueRendererProps {
 }
 
 function PropertyValueDisplay({ property }: { property: Property }) {
+  const { t } = useT('notes')
   const value = property.value
 
   if (value === null || value === undefined || value === '') {
-    return <span className="text-[13px] text-text-tertiary font-sans">Empty</span>
+    return <span className="text-[13px] text-text-tertiary font-sans">{t('properties.empty')}</span>
   }
 
   switch (property.type) {
@@ -273,6 +275,7 @@ export function PropertyRow({
   autoFocus = false,
   isSortable = false
 }: PropertyRowProps) {
+  const { t } = useT('notes')
   const [isEditing, setIsEditing] = useState(
     autoFocus && property.type !== 'checkbox' && !SELECT_TYPES.has(property.type)
   )
@@ -375,7 +378,7 @@ export function PropertyRow({
               {...attributes}
               {...listeners}
               data-drag-handle
-              aria-label={`Drag to reorder property: ${property.name}`}
+              aria-label={`${t('properties.dragAria')}: ${property.name}`}
               className={cn(
                 'flex items-center justify-center',
                 'cursor-grab text-text-tertiary',
@@ -407,7 +410,7 @@ export function PropertyRow({
               'focus:outline-none focus:border-muted-foreground',
               'px-0 py-0'
             )}
-            aria-label="Edit property name"
+            aria-label={t('properties.editName')}
           />
         ) : (
           <span
@@ -467,7 +470,7 @@ export function PropertyRow({
         <button
           type="button"
           onClick={onDelete}
-          aria-label={`Delete property: ${property.name}`}
+          aria-label={`${t('properties.delete')}: ${property.name}`}
           className={cn(
             'ml-2 flex h-6 w-6 items-center justify-center',
             'rounded text-text-tertiary',

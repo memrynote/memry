@@ -7,9 +7,19 @@ describe('createRendererI18n', () => {
     expect(i18n.language).toBe('tr')
   })
 
-  it('translates a settings string', async () => {
+  it('falls back to English for empty Turkish settings namespace', async () => {
     const i18n = await createRendererI18n({ locale: 'tr' })
-    expect(i18n.t('settings:general.language.label')).toBe('Dil')
+    expect(i18n.t('settings:general.language.label')).toBe('Language')
+  })
+
+  it('translates a tasks namespace string', async () => {
+    const i18n = await createRendererI18n({ locale: 'en' })
+    expect(i18n.t('tasks:task.add')).toBe('Add Task')
+  })
+
+  it('falls back to English for empty Turkish tasks namespace', async () => {
+    const i18n = await createRendererI18n({ locale: 'tr' })
+    expect(i18n.t('tasks:task.add')).toBe('Add Task')
   })
 
   it('changeLanguage works', async () => {

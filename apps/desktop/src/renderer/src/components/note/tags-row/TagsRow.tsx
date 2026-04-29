@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 import { TagChip, Tag } from './TagChip'
 import { AddTagButton } from './AddTagButton'
 import { TagInputPopup } from './TagInputPopup'
+import { useT } from '@memry/i18n/renderer'
 
 export interface TagsRowProps {
   tags: Tag[]
@@ -29,6 +30,7 @@ export const TagsRow = memo(function TagsRow({
   className,
   hideWhenEmpty = false
 }: TagsRowProps) {
+  const { t } = useT('notes')
   const currentTagIds = tags.map((t) => t.id)
 
   if (hideWhenEmpty && tags.length === 0) return null
@@ -36,7 +38,7 @@ export const TagsRow = memo(function TagsRow({
   return (
     <div
       role="list"
-      aria-label="Tags"
+      aria-label={t('tagsRow.aria')}
       className={cn('flex min-h-8 flex-wrap items-center gap-2', className)}
     >
       {tags.map((tag) => (
@@ -61,7 +63,7 @@ export const TagsRow = memo(function TagsRow({
       </TagInputPopup>
 
       {tags.length === 0 && !hideWhenEmpty && (
-        <span className="text-[13px] text-stone-400">Add tags</span>
+        <span className="text-[13px] text-stone-400">{t('tagsRow.empty')}</span>
       )}
     </div>
   )

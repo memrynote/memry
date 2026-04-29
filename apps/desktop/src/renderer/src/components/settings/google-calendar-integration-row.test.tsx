@@ -1,8 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, userEvent } from '@tests/utils/render'
 import { IntegrationList } from './integration-list'
 import type { CalendarProviderStatus, CalendarSourceRecord } from '@/services/calendar-service'
+import { I18nextProvider } from 'react-i18next'
+import type { i18n as I18nInstance } from 'i18next'
+import { createRendererI18n } from '@memry/i18n/renderer'
 
 const {
   mockGetGoogleCalendarStatus,
@@ -200,7 +203,21 @@ const CONNECTED_SOURCES: CalendarSourceRecord[] = [
   }
 ]
 
+let i18nEn: I18nInstance
+
+function renderIntegrationList() {
+  return renderWithProviders(
+    <I18nextProvider i18n={i18nEn}>
+      <IntegrationList />
+    </I18nextProvider>
+  )
+}
+
 describe('Google Calendar integration row', () => {
+  beforeAll(async () => {
+    i18nEn = await createRendererI18n({ locale: 'en' })
+  })
+
   beforeEach(() => {
     mockGetGoogleCalendarStatus.mockReset()
     mockConnectGoogleCalendarProvider.mockReset()
@@ -221,7 +238,7 @@ describe('Google Calendar integration row', () => {
       status: CONNECTED_STATUS
     })
 
-    renderWithProviders(<IntegrationList />)
+    renderIntegrationList()
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Connect' })).toBeInTheDocument())
 
@@ -244,7 +261,7 @@ describe('Google Calendar integration row', () => {
       source: { ...CONNECTED_SOURCES[3], isSelected: true }
     })
 
-    renderWithProviders(<IntegrationList />)
+    renderIntegrationList()
 
     await waitFor(() => expect(screen.getByText('Connected')).toBeInTheDocument())
 
@@ -267,7 +284,7 @@ describe('Google Calendar integration row', () => {
       promoteConfirmDismissed: false
     })
 
-    renderWithProviders(<IntegrationList />)
+    renderIntegrationList()
 
     await waitFor(() => {
       expect(
@@ -290,7 +307,7 @@ describe('Google Calendar integration row', () => {
       source: { ...erroredSources[2], syncStatus: 'ok', lastError: null }
     })
 
-    renderWithProviders(<IntegrationList />)
+    renderIntegrationList()
 
     await waitFor(() => expect(screen.getByText('Work')).toBeInTheDocument())
 
@@ -320,7 +337,7 @@ describe('Google Calendar integration row', () => {
       promoteConfirmDismissed: false
     })
 
-    renderWithProviders(<IntegrationList />)
+    renderIntegrationList()
 
     await waitFor(() => expect(screen.getByText('alice@example.com')).toBeInTheDocument())
     expect(screen.getByText('bob@example.com')).toBeInTheDocument()
@@ -347,7 +364,7 @@ describe('Google Calendar integration row', () => {
       promoteConfirmDismissed: false
     })
 
-    renderWithProviders(<IntegrationList />)
+    renderIntegrationList()
 
     await waitFor(() => expect(screen.getByText('Reconnect Required')).toBeInTheDocument())
 
@@ -368,7 +385,7 @@ describe('Google Calendar integration row', () => {
       promoteConfirmDismissed: false
     })
 
-    renderWithProviders(<IntegrationList />)
+    renderIntegrationList()
 
     // Wait for the connected row to render, then confirm no dialog appeared
     await waitFor(() => expect(screen.getByText('Connected')).toBeInTheDocument())

@@ -5,6 +5,7 @@ import { FilterFooter } from '@/components/ui/filter-footer'
 import { Picker } from '@/components/ui/picker'
 import { cn } from '@/lib/utils'
 import { type Priority } from '@/data/sample-tasks'
+import { useT } from '@memry/i18n/renderer'
 
 interface PriorityFilterProps {
   selectedPriorities: Priority[]
@@ -62,6 +63,7 @@ export const PriorityFilter = ({
   taskCountByPriority = {} as Record<Priority, number>,
   className
 }: PriorityFilterProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const hasSelection = selectedPriorities.length > 0
 
   const handleToggle = (value: string): void => {
@@ -79,9 +81,9 @@ export const PriorityFilter = ({
           variant="outline"
           size="sm"
           className={cn('h-9 gap-2', hasSelection && 'border-primary bg-primary/5', className)}
-          aria-label="Filter by priority"
+          aria-label={tPhaseF('phaseF.componentsTasksFiltersPriorityFilter.filterByPriority')}
         >
-          <span>Priority</span>
+          <span>{tPhaseF('phaseF.componentsTasksFiltersPriorityFilter.priority')}</span>
           {hasSelection && (
             <span className="bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded-full min-w-5 text-center">
               {selectedPriorities.length}

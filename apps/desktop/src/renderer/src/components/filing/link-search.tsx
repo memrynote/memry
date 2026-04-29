@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { LinkedNote } from '@/types'
 import { createLogger } from '@/lib/logger'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Component:LinkSearch')
 
@@ -79,6 +80,7 @@ interface LinkSearchProps {
 }
 
 const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('inbox')
   const [searchQuery, setSearchQuery] = useState('')
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [requestedHighlightedIndex, setRequestedHighlightedIndex] = useState(0)
@@ -213,8 +215,12 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
     <div className="space-y-3">
       {/* Section Label */}
       <div className="flex items-center gap-2">
-        <h3 className="text-sm font-medium text-[var(--foreground)]">Link to</h3>
-        <span className="text-xs text-[var(--muted-foreground)]">(optional)</span>
+        <h3 className="text-sm font-medium text-[var(--foreground)]">
+          {tPhaseF('phaseF.componentsFilingLinkSearch.linkTo')}
+        </h3>
+        <span className="text-xs text-[var(--muted-foreground)]">
+          ({tPhaseF('phaseF.componentsFilingLinkSearch.optional')}
+        </span>
       </div>
 
       {/* Search Input */}
@@ -226,13 +232,13 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
         <Input
           ref={inputRef}
           type="text"
-          placeholder="Search notes to link..."
+          placeholder={tPhaseF('phaseF.componentsFilingLinkSearch.searchNotesToLink')}
           value={searchQuery}
           onChange={handleInputChange}
           onFocus={handleInputFocus}
           onKeyDown={handleKeyDown}
           className="pl-9"
-          aria-label="Search notes to link"
+          aria-label={tPhaseF('phaseF.componentsFilingLinkSearch.searchNotesToLink2')}
           aria-expanded={isDropdownOpen}
           aria-haspopup="listbox"
         />
@@ -259,27 +265,37 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
         {isDropdownOpen && isSearching && (
           <div className="absolute top-full left-0 right-0 mt-1 py-2 px-3 bg-[var(--background)] border border-[var(--border)] rounded-md shadow-lg z-10 flex items-center gap-2">
             <Loader2 className="size-4 animate-spin text-[var(--muted-foreground)]" />
-            <p className="text-sm text-[var(--muted-foreground)]">Searching...</p>
+            <p className="text-sm text-[var(--muted-foreground)]">
+              {tPhaseF('phaseF.componentsFilingLinkSearch.searching')}
+            </p>
           </div>
         )}
 
         {/* No results message */}
         {isDropdownOpen && searchQuery.trim() && !isSearching && filteredNotes.length === 0 && (
           <div className="absolute top-full left-0 right-0 mt-1 py-2 px-3 bg-[var(--background)] border border-[var(--border)] rounded-md shadow-lg z-10">
-            <p className="text-sm text-[var(--muted-foreground)]">No notes found</p>
+            <p className="text-sm text-[var(--muted-foreground)]">
+              {tPhaseF('phaseF.componentsFilingLinkSearch.noNotesFound')}
+            </p>
           </div>
         )}
       </div>
 
       {/* Linked Notes List */}
       {linkedNotes.length > 0 ? (
-        <div className="space-y-1" role="list" aria-label="Linked notes">
+        <div
+          className="space-y-1"
+          role="list"
+          aria-label={tPhaseF('phaseF.componentsFilingLinkSearch.linkedNotes')}
+        >
           {linkedNotes.map((note) => (
             <LinkedItem key={note.id} note={note} onRemove={handleRemoveNote} />
           ))}
         </div>
       ) : (
-        <p className="text-sm text-[var(--muted-foreground)]/70 italic">No links added</p>
+        <p className="text-sm text-[var(--muted-foreground)]/70 italic">
+          {tPhaseF('phaseF.componentsFilingLinkSearch.noLinksAdded')}
+        </p>
       )}
     </div>
   )

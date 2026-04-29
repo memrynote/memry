@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react'
 import { Archive } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
 
 import {
   AlertDialog,
@@ -25,6 +26,9 @@ const ArchiveConfirmationDialog = ({
   onConfirm,
   onCancel
 }: ArchiveConfirmationDialogProps): React.JSX.Element => {
+  const { t } = useT('inbox')
+  const { t: tCommon } = useT('common')
+
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
@@ -55,16 +59,14 @@ const ArchiveConfirmationDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <Archive className="size-5 text-muted-foreground" aria-hidden="true" />
-            Archive {itemCount} item{itemCount !== 1 ? 's' : ''}?
+            {t('bulk.archiveDialog.title', { count: itemCount })}
           </AlertDialogTitle>
-          <AlertDialogDescription>
-            These items will be archived. You can view archived items later.
-          </AlertDialogDescription>
+          <AlertDialogDescription>{t('bulk.archiveDialog.description')}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={onCancel}>{tCommon('button.cancel')}</AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm}>
-            Archive {itemCount} item{itemCount !== 1 ? 's' : ''}
+            {t('bulk.archiveDialog.confirm', { count: itemCount })}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

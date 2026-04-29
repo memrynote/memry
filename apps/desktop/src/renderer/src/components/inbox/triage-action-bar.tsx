@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import {
   Trash2,
@@ -54,6 +55,7 @@ export function TriageActionBar({
   onOpenTarget,
   disabled = false
 }: TriageActionBarProps): React.JSX.Element {
+  const { t } = useT('inbox')
   const isReminder = itemType === 'reminder'
 
   const actions: ActionDef[] = useMemo(() => {
@@ -61,14 +63,14 @@ export function TriageActionBar({
       return [
         {
           key: 'D',
-          label: 'Archive',
+          label: t('triage.action.archive'),
           icon: <Archive03 className="size-5" />,
           colorVar: ACTION_STYLES.archive,
           action: onDiscard
         },
         {
           key: 'O',
-          label: 'Open',
+          label: t('triage.action.open'),
           icon: <ExternalLink className="size-5" />,
           colorVar: ACTION_STYLES.open,
           action: onOpenTarget
@@ -79,41 +81,41 @@ export function TriageActionBar({
     return [
       {
         key: 'D',
-        label: 'Discard',
+        label: t('triage.action.discard'),
         icon: <Trash2 className="size-5" />,
         colorVar: ACTION_STYLES.discard,
         action: onDiscard
       },
       {
         key: 'T',
-        label: 'To Task',
+        label: t('triage.action.toTask'),
         icon: <CheckSquare className="size-5" />,
         colorVar: ACTION_STYLES.task,
         action: onConvertToTask
       },
       {
         key: 'N',
-        label: 'To Note',
+        label: t('triage.action.toNote'),
         icon: <FileText className="size-5" />,
         colorVar: ACTION_STYLES.note,
         action: onExpandToNote
       },
       {
         key: 'F',
-        label: 'File',
+        label: t('triage.action.file'),
         icon: <FolderOpen className="size-5" />,
         colorVar: ACTION_STYLES.file,
         picker: 'file' as ActivePicker
       },
       {
         key: 'S',
-        label: 'Snooze',
+        label: t('triage.action.snooze'),
         icon: <Clock className="size-5" />,
         colorVar: ACTION_STYLES.snooze,
         picker: 'snooze' as ActivePicker
       }
     ]
-  }, [isReminder, onDiscard, onConvertToTask, onExpandToNote, onOpenTarget])
+  }, [isReminder, onDiscard, onConvertToTask, onExpandToNote, onOpenTarget, t])
 
   useEffect(() => {
     if (disabled) return
