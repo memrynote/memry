@@ -17,6 +17,7 @@ import {
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { PRIORITY_TEXT_CLASSES, type Priority } from '@/data/sample-tasks'
+import { useT } from '@memry/i18n/renderer'
 
 // =============================================================================
 // TYPES
@@ -85,6 +86,7 @@ export const DayContextSidebar = memo(function DayContextSidebar({
   showTasks = true,
   className
 }: DayContextSidebarProps): React.JSX.Element | null {
+  const { t } = useT('journal')
   // dateLabel reserved for future use (e.g., showing selected date label)
   void _dateLabel
   const [eventsExpanded, setEventsExpanded] = useState(true)
@@ -100,36 +102,36 @@ export const DayContextSidebar = memo(function DayContextSidebar({
 
   // Contextual empty messages based on date context
   const getEventsEmptyMessage = () => {
-    if (isPast) return 'No events were scheduled'
-    if (isToday) return 'No events scheduled today'
-    return 'No events scheduled'
+    if (isPast) return t('empty.noEventsWereScheduled')
+    if (isToday) return t('empty.noEventsScheduledToday')
+    return t('empty.noEventsScheduled')
   }
 
   const getTasksEmptyMessage = () => {
-    if (isPast) return 'No tasks were due'
-    if (isToday) return 'No tasks due today'
-    return 'No tasks due'
+    if (isPast) return t('empty.noTasksWereDue')
+    if (isToday) return t('empty.noTasksDueToday')
+    return t('empty.noTasksDue')
   }
 
   return (
     <div
       className={cn('flex flex-col gap-4', className)}
       role="complementary"
-      aria-label="Day context: tasks and schedule"
+      aria-label={t('aria.dayContext')}
     >
       {/* Schedule Section */}
       {showSchedule && (
         <ContextSection
           icon={<Calendar className="size-4" aria-hidden="true" />}
-          title={isToday ? "Today's Schedule" : 'Schedule'}
+          title={isToday ? t('section.todaysSchedule') : t('section.schedule')}
           count={events.length}
-          countLabel={events.length === 1 ? 'event' : 'events'}
+          countLabel={events.length === 1 ? t('count.event') : t('count.events')}
           isExpanded={eventsExpanded}
           onToggle={() => setEventsExpanded(!eventsExpanded)}
           isEmpty={events.length === 0}
           emptyMessage={getEventsEmptyMessage()}
         >
-          <div className="flex flex-col" role="list" aria-label="Schedule events">
+          <div className="flex flex-col" role="list" aria-label={t('aria.scheduleEvents')}>
             {events.map((event, index) => (
               <EventItem
                 key={event.id}
@@ -146,16 +148,16 @@ export const DayContextSidebar = memo(function DayContextSidebar({
       {showTasks && (
         <ContextSection
           icon={<CheckCircle2 className="size-4" aria-hidden="true" />}
-          title={isToday ? "Today's Tasks" : 'Tasks'}
+          title={isToday ? t('section.todaysTasks') : t('section.tasks')}
           count={pendingTasks}
-          countLabel="to do"
+          countLabel={t('count.todo')}
           badge={overdueCount > 0 ? { count: overdueCount, type: 'warning' } : undefined}
           isExpanded={tasksExpanded}
           onToggle={() => setTasksExpanded(!tasksExpanded)}
           isEmpty={tasks.length === 0}
           emptyMessage={getTasksEmptyMessage()}
         >
-          <div className="flex flex-col gap-0.5" role="list" aria-label="Tasks">
+          <div className="flex flex-col gap-0.5" role="list" aria-label={t('aria.tasks')}>
             {tasks.map((task) => (
               <TaskItem
                 key={task.id}
@@ -168,7 +170,9 @@ export const DayContextSidebar = memo(function DayContextSidebar({
             {/* Completed summary if any */}
             {completedTasks > 0 && (
               <div className="mt-2 pt-2 border-t border-border/30">
-                <span className="text-xs text-muted-foreground">{completedTasks} completed</span>
+                <span className="text-xs text-muted-foreground">
+                  {t('count.completed', { count: completedTasks })}
+                </span>
               </div>
             )}
           </div>
@@ -207,6 +211,7 @@ function ContextSection({
   emptyMessage,
   children
 }: ContextSectionProps): React.JSX.Element {
+  const { t } = useT('journal')
   const sectionId = `section-${title.replace(/\s+/g, '-').toLowerCase()}`
   const contentId = `${sectionId}-content`
 
@@ -247,7 +252,7 @@ function ContextSection({
               )}
             >
               <AlertCircle className="size-3" />
-              {badge.count} overdue
+              {t('count.overdue', { count: badge.count })}
             </span>
           )}
         </div>
@@ -285,6 +290,7 @@ interface EventItemProps {
 }
 
 function EventItem({ event, onClick, isLast }: EventItemProps): React.JSX.Element {
+  const { t } = useT('journal')
   const getEventColor = (type?: string) => {
     switch (type) {
       case 'meeting':
@@ -318,7 +324,7 @@ function EventItem({ event, onClick, isLast }: EventItemProps): React.JSX.Elemen
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline justify-between gap-2">
           <span className="text-xs text-muted-foreground tabular-nums">
-            {event.isAllDay ? 'All day' : event.time}
+            {event.isAllDay ? t('date.allDay') : event.time}
           </span>
           {event.attendeeCount && event.attendeeCount > 1 && (
             <span className="flex items-center gap-1 text-xs text-muted-foreground/70">
@@ -344,16 +350,17 @@ interface TaskItemProps {
 }
 
 function TaskItem({ task, onClick, onToggle }: TaskItemProps): React.JSX.Element {
+  const { t } = useT('journal')
   const getPriorityColor = (priority?: string) =>
     PRIORITY_TEXT_CLASSES[(priority ?? 'none') as Priority] ?? PRIORITY_TEXT_CLASSES.none
 
   const getPriorityLabel = (priority?: string) => {
     if (!priority || priority === 'none') return ''
-    return `, ${priority} priority`
+    return `, ${t('task.priority', { priority })}`
   }
 
-  const statusLabel = task.completed ? 'Completed' : 'Not completed'
-  const overdueLabel = task.isOverdue && !task.completed ? ', overdue' : ''
+  const statusLabel = task.completed ? t('task.completed') : t('task.notCompleted')
+  const overdueLabel = task.isOverdue && !task.completed ? `, ${t('task.overdue')}` : ''
   const ariaLabel = `${task.title}. ${statusLabel}${getPriorityLabel(task.priority)}${overdueLabel}`
 
   return (
@@ -372,7 +379,11 @@ function TaskItem({ task, onClick, onToggle }: TaskItemProps): React.JSX.Element
           onToggle?.()
         }}
         className="flex-shrink-0 p-0.5"
-        aria-label={`Mark "${task.title}" as ${task.completed ? 'not completed' : 'completed'}`}
+        aria-label={
+          task.completed
+            ? t('task.markNotComplete', { title: task.title })
+            : t('task.markComplete', { title: task.title })
+        }
         aria-pressed={task.completed}
       >
         {task.completed ? (

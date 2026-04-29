@@ -11,6 +11,7 @@ import { useCallback, useState, useEffect } from 'react'
 import { FileText, RefreshCw, X } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface DefaultTemplateIndicatorProps {
   /** Name of the current default template */
@@ -39,6 +40,7 @@ export function DefaultTemplateIndicator({
   onStartBlank,
   className
 }: DefaultTemplateIndicatorProps): React.JSX.Element {
+  const { t } = useT('journal')
   const [isVisible, setIsVisible] = useState(true)
   const [isFading, setIsFading] = useState(false)
 
@@ -94,7 +96,7 @@ export function DefaultTemplateIndicator({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
-              Using "{templateName}"
+              {t('template.using', { templateName })}
             </span>
             {isCreating && (
               <RefreshCw className="w-3 h-3 text-amber-600 dark:text-amber-400 animate-spin" />
@@ -112,7 +114,7 @@ export function DefaultTemplateIndicator({
                 'transition-colors duration-150'
               )}
             >
-              Change template
+              {t('action.changeTemplate')}
             </button>
             <span className="text-amber-400/60 dark:text-amber-600/60">·</span>
             <button
@@ -124,7 +126,7 @@ export function DefaultTemplateIndicator({
                 'transition-colors duration-150'
               )}
             >
-              Start blank instead
+              {t('action.startBlank')}
             </button>
           </div>
         </div>
@@ -140,7 +142,7 @@ export function DefaultTemplateIndicator({
             'hover:bg-amber-100/50 dark:hover:bg-amber-900/30'
           )}
           onClick={handleDismiss}
-          aria-label="Dismiss indicator"
+          aria-label={t('action.dismissIndicator')}
         >
           <X className="w-3.5 h-3.5" />
         </Button>

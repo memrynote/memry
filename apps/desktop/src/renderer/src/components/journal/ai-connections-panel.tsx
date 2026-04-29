@@ -15,6 +15,7 @@ import {
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { useT } from '@memry/i18n/renderer'
 
 // =============================================================================
 // TYPES
@@ -67,6 +68,7 @@ export const AIConnectionsPanel = memo(function AIConnectionsPanel({
   onRefresh,
   maxItems = 3
 }: AIConnectionsPanelProps): React.JSX.Element {
+  const { t } = useT('journal')
   const [isExpanded, setIsExpanded] = useState(false)
 
   const visibleConnections = isExpanded ? connections : connections.slice(0, maxItems)
@@ -76,7 +78,7 @@ export const AIConnectionsPanel = memo(function AIConnectionsPanel({
   return (
     <div
       role="region"
-      aria-label="AI Connections"
+      aria-label={t('section.aiConnections')}
       aria-live="polite"
       className="rounded-md border border-border/40 bg-card overflow-hidden"
     >
@@ -123,10 +125,12 @@ export const AIConnectionsPanel = memo(function AIConnectionsPanel({
                 )}
               >
                 {isExpanded ? (
-                  <>Show less</>
+                  <>{t('action.showLess')}</>
                 ) : (
                   <>
-                    + {hiddenCount} more connection{hiddenCount > 1 ? 's' : ''}
+                    {hiddenCount === 1
+                      ? t('count.moreConnections', { count: hiddenCount })
+                      : t('count.moreConnections_plural', { count: hiddenCount })}
                   </>
                 )}
               </button>
@@ -155,11 +159,13 @@ function PanelHeader({
   hasError,
   onRefresh
 }: PanelHeaderProps): React.JSX.Element {
+  const { t } = useT('journal')
+
   return (
     <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between">
       <div className="flex items-center gap-2">
         <Zap className="size-4 text-accent-purple" />
-        <span className="text-sm font-medium">AI Connections</span>
+        <span className="text-sm font-medium">{t('section.aiConnections')}</span>
 
         {/* Loading spinner in header */}
         {isLoading && <RefreshCw className="size-3.5 text-muted-foreground animate-spin" />}
@@ -176,7 +182,7 @@ function PanelHeader({
             size="icon"
             className="size-6"
             onClick={onRefresh}
-            title="Refresh connections"
+            title={t('action.refreshConnections')}
           >
             <RefreshCw className="size-3.5" />
           </Button>
@@ -199,6 +205,7 @@ interface ConnectionItemProps {
 }
 
 function ConnectionItem({ connection, onClick }: ConnectionItemProps): React.JSX.Element {
+  const { t } = useT('journal')
   const Icon = connection.type === 'journal' ? BookOpen : FileText
   const label = connection.type === 'journal' ? connection.date : connection.title
 
@@ -223,7 +230,7 @@ function ConnectionItem({ connection, onClick }: ConnectionItemProps): React.JSX
         'transition-all duration-150',
         'group cursor-pointer'
       )}
-      aria-label={`Connection to ${label}, ${scorePercent}% match`}
+      aria-label={t('ai.connectionAria', { label, scorePercent })}
     >
       {/* Top row: Icon + Label + Percentage */}
       <div className="flex items-start justify-between gap-2 mb-1">
@@ -254,6 +261,8 @@ function ConnectionItem({ connection, onClick }: ConnectionItemProps): React.JSX
 // =============================================================================
 
 function LoadingState(): React.JSX.Element {
+  const { t } = useT('journal')
+
   return (
     <div className="py-8 flex flex-col items-center justify-center text-center">
       <div className="flex gap-1 mb-3">
@@ -270,22 +279,24 @@ function LoadingState(): React.JSX.Element {
           style={{ animationDelay: '300ms' }}
         />
       </div>
-      <p className="text-sm text-muted-foreground">Analyzing your entry...</p>
+      <p className="text-sm text-muted-foreground">{t('ai.loading')}</p>
     </div>
   )
 }
 
 function EmptyState({ isNewUser }: { isNewUser: boolean }): React.JSX.Element {
+  const { t } = useT('journal')
+
   return (
     <div className="py-8 flex flex-col items-center justify-center text-center">
       <Sparkles className="size-8 text-muted-foreground/40 mb-3" />
       <p className="text-sm font-medium text-muted-foreground mb-1">
-        {isNewUser ? 'Your connections will appear here' : 'No connections found yet'}
+        {isNewUser ? t('ai.empty.willAppear') : t('ai.empty.noneYet')}
       </p>
       <p className="text-xs text-muted-foreground/70">
         {isNewUser
-          ? 'As you journal more, AI will find related entries'
-          : 'Keep writing to discover related entries'}
+          ? t('ai.empty.moreJournaling')
+          : t('ai.empty.keepWriting')}
       </p>
     </div>
   )
@@ -297,13 +308,16 @@ interface ErrorStateProps {
 }
 
 function ErrorState({ message, onRetry }: ErrorStateProps): React.JSX.Element {
+  const { t: commonT } = useT('common')
+  const { t } = useT('journal')
+
   return (
     <div className="py-6 flex flex-col items-center justify-center text-center">
       <AlertCircle className="size-8 text-destructive/60 mb-3" />
-      <p className="text-sm text-muted-foreground mb-3">{message || "Couldn't load connections"}</p>
+      <p className="text-sm text-muted-foreground mb-3">{message || t('ai.error.loadFailed')}</p>
       {onRetry && (
         <Button variant="outline" size="sm" onClick={onRetry}>
-          Try Again
+          {commonT('button.retry')}
         </Button>
       )}
     </div>

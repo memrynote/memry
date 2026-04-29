@@ -4,6 +4,9 @@
  */
 
 import { cn } from '@/lib/utils'
+import { createJournalDateLabels, parseISODate } from '@/lib/journal-utils'
+import { useT } from '@memry/i18n/renderer'
+import { useMemo } from 'react'
 
 // =============================================================================
 // TYPES
@@ -48,7 +51,8 @@ const HEATMAP_COLORS = {
 
 export function JournalEntryListItem({
   day,
-  dayName,
+  dayName: _dayName,
+  date,
   preview,
   heatmapLevel,
   isToday = false,
@@ -56,7 +60,10 @@ export function JournalEntryListItem({
   onClick,
   className
 }: JournalEntryListItemProps): React.JSX.Element {
+  const { t, i18n } = useT('journal')
+  const dateLabels = useMemo(() => createJournalDateLabels(t), [t, i18n.language])
   const hasEntry = heatmapLevel > 0
+  const weekdayShort = dateLabels.weekdaysShort[parseISODate(date).getDay()]
 
   return (
     <button
@@ -101,7 +108,7 @@ export function JournalEntryListItem({
         >
           {day}
         </span>
-        <span className="text-sm text-muted-foreground truncate">{dayName.slice(0, 3)}</span>
+        <span className="text-sm text-muted-foreground truncate">{weekdayShort}</span>
       </div>
 
       {/* Preview Text */}
@@ -109,16 +116,16 @@ export function JournalEntryListItem({
         {hasEntry && preview ? (
           <p className="text-sm text-muted-foreground truncate">{preview}</p>
         ) : isFuture ? (
-          <p className="text-sm text-muted-foreground/60 italic">Future</p>
+          <p className="text-sm text-muted-foreground/60 italic">{t('date.relative.future')}</p>
         ) : (
-          <p className="text-sm text-muted-foreground/60 italic">No entry</p>
+          <p className="text-sm text-muted-foreground/60 italic">{t('empty.noEntry')}</p>
         )}
       </div>
 
       {/* Today Badge */}
       {isToday && (
         <span className="flex-shrink-0 text-xs font-medium text-accent-purple px-2 py-0.5 rounded-full bg-accent-purple/10">
-          Today
+          {t('date.relative.today')}
         </span>
       )}
     </button>

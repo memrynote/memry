@@ -4,7 +4,9 @@
  */
 
 import { cn } from '@/lib/utils'
-import type { MonthStat } from '@/lib/journal-utils'
+import { createJournalDateLabels, type MonthStat } from '@/lib/journal-utils'
+import { useT } from '@memry/i18n/renderer'
+import { useMemo } from 'react'
 
 // =============================================================================
 // TYPES
@@ -43,9 +45,11 @@ interface MonthCardProps {
   stat: MonthStat
   isCurrent: boolean
   onClick: () => void
+  monthShort: string
+  dayLabel: string
 }
 
-function MonthCard({ stat, isCurrent, onClick }: MonthCardProps) {
+function MonthCard({ stat, isCurrent, onClick, monthShort, dayLabel }: MonthCardProps) {
   return (
     <button
       type="button"
@@ -72,12 +76,12 @@ function MonthCard({ stat, isCurrent, onClick }: MonthCardProps) {
           isCurrent ? 'text-accent-purple' : 'text-foreground'
         )}
       >
-        {stat.monthName.slice(0, 3)}
+        {monthShort}
       </span>
 
       {/* Entry Count */}
       <span className="text-xs text-muted-foreground">
-        {stat.entryCount} {stat.entryCount === 1 ? 'day' : 'days'}
+        {stat.entryCount} {dayLabel}
       </span>
 
       {/* Activity Dots */}
@@ -105,6 +109,8 @@ export function JournalYearView({
   onMonthClick,
   className
 }: JournalYearViewProps): React.JSX.Element {
+  const { t, i18n } = useT('journal')
+  const dateLabels = useMemo(() => createJournalDateLabels(t), [t, i18n.language])
   // Get current month from date if not provided
   const currentMonthIndex = currentMonth ?? new Date().getMonth()
   const currentYear = new Date().getFullYear()
@@ -120,6 +126,8 @@ export function JournalYearView({
             stat={stat}
             isCurrent={isCurrentYear && stat.month === currentMonthIndex}
             onClick={() => onMonthClick(stat.month)}
+            monthShort={dateLabels.monthsShort[stat.month]}
+            dayLabel={stat.entryCount === 1 ? t('count.day') : t('count.days')}
           />
         ))}
       </div>
@@ -130,14 +138,14 @@ export function JournalYearView({
           <p className="text-2xl font-medium text-foreground">
             {monthStats.reduce((sum, s) => sum + s.entryCount, 0)}
           </p>
-          <p className="text-xs text-muted-foreground">days with entries</p>
+          <p className="text-xs text-muted-foreground">{t('count.daysWithEntries')}</p>
         </div>
         <div className="w-px h-8 bg-border/40" />
         <div className="text-center">
           <p className="text-2xl font-medium text-foreground">
             {Math.round(monthStats.reduce((sum, s) => sum + s.totalChars, 0) / 1000)}k
           </p>
-          <p className="text-xs text-muted-foreground">characters written</p>
+          <p className="text-xs text-muted-foreground">{t('count.charactersWritten')}</p>
         </div>
       </div>
     </div>
