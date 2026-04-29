@@ -189,11 +189,11 @@ function VersionHistorySession({
       const detail = await notesService.getVersion(snapshotId)
       setPreviewContent(detail)
     } catch {
-      toast.error('Failed to load version preview')
+      toast.error(t('versionHistory.toast.loadPreviewFailed'))
     } finally {
       setPreviewLoading(false)
     }
-  }, [])
+  }, [t])
 
   /**
    * Restore a version.
@@ -206,7 +206,7 @@ function VersionHistorySession({
     try {
       const result = await notesService.restoreVersion(selectedVersion)
       if (result.success) {
-        toast.success('Note restored to previous version')
+        toast.success(t('versionHistory.toast.restored'))
         onOpenChange(false)
         onRestore?.()
       } else {
@@ -218,7 +218,7 @@ function VersionHistorySession({
       setRestoring(false)
       setRestoreDialogOpen(false)
     }
-  }, [selectedVersion, onOpenChange, onRestore])
+  }, [selectedVersion, onOpenChange, onRestore, t])
 
   /**
    * Delete a version.
@@ -229,7 +229,7 @@ function VersionHistorySession({
     try {
       const result = await notesService.deleteVersion(versionToDelete)
       if (result.success) {
-        toast.success('Version deleted')
+        toast.success(t('versionHistory.toast.deleted'))
         void queryClient.invalidateQueries({ queryKey: ['notes', 'versions', noteId] })
         if (selectedVersion === versionToDelete) {
           setSelectedVersion(null)
@@ -244,7 +244,7 @@ function VersionHistorySession({
       setDeleteDialogOpen(false)
       setVersionToDelete(null)
     }
-  }, [noteId, queryClient, versionToDelete, selectedVersion])
+  }, [noteId, queryClient, versionToDelete, selectedVersion, t])
 
   return (
     <>
