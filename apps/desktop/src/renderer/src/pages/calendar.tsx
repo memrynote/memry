@@ -418,33 +418,35 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   }
 
   const handleInboxSnoozeUnsnooze = async (itemId: string) => {
+    const tCalendar = getI18n().getFixedT(null, 'calendar')
     try {
       const result = await inboxService.unsnooze(itemId)
       if (!result.success) {
-        throw new Error(result.error ?? 'Unsnooze failed.')
+        throw new Error(result.error ?? tCalendar('phaseI.errors.couldNotUnsnoozeInboxItem'))
       }
       await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
       setInboxSnoozePopoverState(null)
     } catch (err) {
       log.error('Failed to unsnooze inbox item', {
         itemId,
-        error: extractErrorMessage(err, 'Could not unsnooze.')
+        error: extractErrorMessage(err, tCalendar('phaseI.errors.couldNotUnsnoozeInboxItem'))
       })
     }
   }
 
   const handleInboxSnoozeReschedule = async (itemId: string, snoozeUntil: string) => {
+    const tCalendar = getI18n().getFixedT(null, 'calendar')
     try {
       const result = await inboxService.snooze({ itemId, snoozeUntil })
       if (!result.success) {
-        throw new Error(result.error ?? 'Reschedule failed.')
+        throw new Error(result.error ?? tCalendar('phaseI.errors.couldNotRescheduleInboxItem'))
       }
       await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
       setInboxSnoozePopoverState(null)
     } catch (err) {
       log.error('Failed to reschedule inbox item', {
         itemId,
-        error: extractErrorMessage(err, 'Could not reschedule.')
+        error: extractErrorMessage(err, tCalendar('phaseI.errors.couldNotRescheduleInboxItem'))
       })
     }
   }
