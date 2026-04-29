@@ -16,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import { getI18n } from 'react-i18next'
 
 const log = createLogger('NewTabMenu')
 
@@ -70,7 +71,12 @@ export function NewTabMenu({ groupId }: NewTabMenuProps): React.JSX.Element {
       }
     } catch (error) {
       log.error('Failed to create new note', error)
-      toast.error(extractErrorMessage(error, 'Failed to create note'))
+      toast.error(
+        extractErrorMessage(
+          error,
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToCreateNote')
+        )
+      )
     }
   }, [openTab, groupId, selectedFolder, generalSettings.createInSelectedFolder])
 

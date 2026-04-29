@@ -1,3 +1,4 @@
+import { getI18n } from 'react-i18next'
 /**
  * Folder View Hook
  *
@@ -763,7 +764,7 @@ export function useFolderView({
         }
       } catch (err) {
         log.error('Failed to update property:', err)
-        toast.error('Failed to update property')
+        toast.error(getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToUpdateProperty'))
         if (previousData) {
           queryClient.setQueryData(folderViewKeys.notes(folderPath), previousData)
         }
@@ -802,7 +803,7 @@ export function useFolderView({
         }
       } catch (err) {
         log.error('Failed to update tags:', err)
-        toast.error('Failed to update tags')
+        toast.error(getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToUpdateTags'))
         if (previousData) {
           queryClient.setQueryData(folderViewKeys.notes(folderPath), previousData)
         }

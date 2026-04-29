@@ -572,7 +572,7 @@ function SummarySelect({
   return (
     <Select value={value?.type ?? 'none'} onValueChange={handleChange}>
       <SelectTrigger className="h-6 w-[72px] text-xs px-2">
-        <SelectValue placeholder={'None'} />
+        <SelectValue placeholder={tPhaseF('phaseF.componentsFolderViewColumnSelector.none')} />
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="none" className="text-xs">

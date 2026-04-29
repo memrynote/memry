@@ -338,7 +338,10 @@
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Built-in",
-      "properties": "Properties"
+      "properties": "Properties",
+      "placeholderProperty": "Property",
+      "placeholderOperator": "Operator",
+      "placeholderValue": "Value"
     },
     "componentsFolderViewFolderTableView": {
       "notesTable": "Notes table"
@@ -356,7 +359,9 @@
       "fixExpressionErrorsToSeePreview": "Fix expression errors to see preview",
       "usingNote": "Using note: \"",
       "quot": "quot;",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "namePlaceholder": "days_until_due",
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Clear grouping",
@@ -607,6 +612,52 @@
       "startYourCollection": "Start Your Collection",
       "templatesHelpYouCreateNotesWithConsistentStructure": "Templates help you create notes with consistent structure.",
       "createTemplate": "Create Template"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveFormula": "Failed to save formula",
+      "failedToOpenInExternalEditor": "Failed to open in external editor",
+      "failedToRevealInFinder": "Failed to reveal in Finder",
+      "failedToCopyLink": "Failed to copy link",
+      "failedToCreateView": "Failed to create view",
+      "failedToRenameFolder": "Failed to rename folder",
+      "failedToCreateTask": "Failed to create task",
+      "failedToLoadVersionHistory": "Failed to load version history",
+      "failedToRestoreVersion": "Failed to restore version",
+      "failedToDeleteVersion": "Failed to delete version",
+      "failedToCreateNote": "Failed to create note",
+      "failedToLoadMoreBookmarks": "Failed to load more bookmarks",
+      "failedToToggleBookmark": "Failed to toggle bookmark",
+      "failedToRemoveBookmark": "Failed to remove bookmark",
+      "failedToReorderBookmarks": "Failed to reorder bookmarks",
+      "failedToSave": "Failed to save",
+      "failedToRename": "Failed to rename",
+      "failedToUpdateEmoji": "Failed to update emoji",
+      "failedToUpdateTags": "Failed to update tags",
+      "failedToSnoozeReminder": "Failed to snooze reminder",
+      "failedToCreateFolder": "Failed to create folder",
+      "failedToLoadProperties": "Failed to load properties",
+      "failedToLoadPropertyDefinitions": "Failed to load property definitions",
+      "failedToLoadTemplates": "Failed to load templates"
+    },
+    "toasts": {
+      "noteExportedSuccessfully": "Note exported successfully",
+      "failedToUpdateProperty": "Failed to update property",
+      "failedToUpdateTags": "Failed to update tags",
+      "reminderSnoozed": "Reminder snoozed",
+      "failedToSnoozeReminder": "Failed to snooze reminder",
+      "defaultTemplateSet": "Default template set",
+      "failedToSetDefaultTemplate": "Failed to set default template",
+      "defaultTemplateCleared": "Default template cleared",
+      "failedToClearDefaultTemplate": "Failed to clear default template",
+      "failedToAddProperty": "Failed to add property",
+      "failedToDeleteProperty": "Failed to delete property",
+      "failedToRenameProperty": "Failed to rename property",
+      "failedToReorderProperties": "Failed to reorder properties",
+      "cannotAddTagThisNoteWasDeleted": "Cannot add tag - this note was deleted",
+      "cannotRemoveTagThisNoteWasDeleted": "Cannot remove tag - this note was deleted",
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "Cannot change local-only — this note was deleted"
     }
   }
 }

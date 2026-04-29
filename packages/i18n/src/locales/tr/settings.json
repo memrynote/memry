@@ -1,1 +1,10 @@
-{}
+{
+  "general": {
+    "language": {
+      "label": "Dil",
+      "helper": "Uygulamanın çoğu hemen güncellenir. Bazı sistem düzeyindeki metinler bir sonraki başlatmadan sonra yenilenir.",
+      "changed": "Dil {nativeName} olarak değiştirildi",
+      "failed": "Dil değiştirilemedi. Lütfen tekrar deneyin."
+    }
+  }
+}

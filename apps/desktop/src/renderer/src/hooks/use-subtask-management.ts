@@ -29,6 +29,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { useTaskSettings } from './use-task-settings'
 import type { Task, Priority } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
+import { getI18n } from 'react-i18next'
 
 // ============================================================================
 // TYPES
@@ -178,9 +179,14 @@ export const useSubtaskManagement = ({
         } else {
           onTasksChange(result.updatedTasks)
         }
-        toast.success('Subtask added')
+        toast.success(getI18n().getFixedT(null, 'tasks')('phaseI.toasts.subtaskAdded'))
       } else {
-        toast.error(extractErrorMessage(result.error, 'Failed to add subtask'))
+        toast.error(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'tasks')('phaseI.errors.failedToAddSubtask')
+          )
+        )
       }
     },
     [tasks, onTasksChange, onAddTask]
@@ -205,7 +211,12 @@ export const useSubtaskManagement = ({
         }
         toast.success(`${titles.length} subtask${titles.length > 1 ? 's' : ''} added`)
       } else {
-        toast.error(extractErrorMessage(result.error, 'Failed to add subtasks'))
+        toast.error(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'tasks')('phaseI.errors.failedToAddSubtasks')
+          )
+        )
       }
     },
     [tasks, onTasksChange, onAddTask]
@@ -230,7 +241,12 @@ export const useSubtaskManagement = ({
           onTasksChange(result.updatedTasks)
         }
       } else {
-        toast.error(extractErrorMessage(result.error, 'Failed to reorder subtasks'))
+        toast.error(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'tasks')('phaseI.errors.failedToReorderSubtasks')
+          )
+        )
       }
     },
     [tasks, onTasksChange, onReorderTasks]
@@ -254,7 +270,12 @@ export const useSubtaskManagement = ({
         }
         toast.success(`"${subtask?.title}" promoted to task`)
       } else {
-        toast.error(extractErrorMessage(result.error, 'Failed to promote subtask'))
+        toast.error(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'tasks')('phaseI.errors.failedToPromoteSubtask')
+          )
+        )
       }
     },
     [tasks, onTasksChange, onUpdateTask]
@@ -275,11 +296,16 @@ export const useSubtaskManagement = ({
         } else {
           onTasksChange(result.updatedTasks)
         }
-        toast.success('Subtask deleted', {
+        toast.success(getI18n().getFixedT(null, 'tasks')('phaseI.toasts.subtaskDeleted'), {
           description: 'The subtask has been removed'
         })
       } else {
-        toast.error(extractErrorMessage(result.error, 'Failed to delete subtask'))
+        toast.error(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'tasks')('phaseI.errors.failedToDeleteSubtask')
+          )
+        )
       }
     },
     [tasks, onTasksChange, onDeleteTask]
@@ -313,7 +339,12 @@ export const useSubtaskManagement = ({
           keepSubtasks ? 'Task deleted, subtasks converted to tasks' : 'Task and subtasks deleted'
         )
       } else {
-        toast.error(extractErrorMessage(result.error, 'Failed to delete task'))
+        toast.error(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'tasks')('phaseI.errors.failedToDeleteTask')
+          )
+        )
       }
 
       closeDeleteParentDialog()
@@ -351,7 +382,12 @@ export const useSubtaskManagement = ({
         onTasksChange(result.updatedTasks)
         toast.success(completeSubtasks ? 'Task and subtasks completed' : 'Task completed')
       } else {
-        toast.error(extractErrorMessage(result.error, 'Failed to complete task'))
+        toast.error(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'tasks')('phaseI.errors.failedToCompleteTask')
+          )
+        )
       }
 
       closeCompleteParentDialog()
@@ -389,7 +425,12 @@ export const useSubtaskManagement = ({
         }
         toast.success(`Moved under "${parent?.title}"`)
       } else {
-        toast.error(extractErrorMessage(result.error, 'Failed to make subtask'))
+        toast.error(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'tasks')('phaseI.errors.failedToMakeSubtask')
+          )
+        )
       }
 
       closeParentPickerDialog()
@@ -421,7 +462,7 @@ export const useSubtaskManagement = ({
       // Simple delete for task without subtasks
       const updatedTasks = tasks.filter((t) => t.id !== taskId)
       onTasksChange(updatedTasks)
-      toast.success('Task deleted')
+      toast.success(getI18n().getFixedT(null, 'tasks')('toasts.deleted'))
     },
     [tasks, onTasksChange, handleDeleteSubtask, openDeleteParentDialog]
   )
@@ -453,7 +494,7 @@ export const useSubtaskManagement = ({
         t.id === taskId ? { ...t, completedAt: new Date() } : t
       )
       onTasksChange(updatedTasks)
-      toast.success('Task completed')
+      toast.success(getI18n().getFixedT(null, 'tasks')('phaseI.toasts.taskCompleted'))
     },
     [tasks, onTasksChange, openCompleteParentDialog]
   )
@@ -511,21 +552,34 @@ export const useSubtaskManagement = ({
             // Use database-aware callback if available
             if (onUpdateTask) {
               onUpdateTask(parentId, { completedAt: new Date() })
-              toast.success('🎉 All subtasks complete! Task marked as done.', {
-                duration: 10000, // T052: 10-second timeout for undo per spec
-                action: {
-                  label: 'Undo',
-                  onClick: () => {
-                    onUpdateTask(parentId, { completedAt: null })
-                    toast.success('Task reopened')
+              toast.success(
+                getI18n().getFixedT(
+                  null,
+                  'tasks'
+                )('phaseI.toasts.allSubtasksCompleteTaskMarkedAsDone'),
+                {
+                  duration: 10000, // T052: 10-second timeout for undo per spec
+                  action: {
+                    label: 'Undo',
+                    onClick: () => {
+                      onUpdateTask(parentId, { completedAt: null })
+                      toast.success(
+                        getI18n().getFixedT(null, 'tasks')('phaseI.toasts.taskReopened')
+                      )
+                    }
                   }
                 }
-              })
+              )
             } else {
               const result = completeParentTask(parentId, updatedTasks)
               if (result.success && result.updatedTasks) {
                 onTasksChange(result.updatedTasks)
-                toast.success('🎉 All subtasks complete! Task marked as done.')
+                toast.success(
+                  getI18n().getFixedT(
+                    null,
+                    'tasks'
+                  )('phaseI.toasts.allSubtasksCompleteTaskMarkedAsDone')
+                )
               }
             }
           }, 200) // Wait 0.2 seconds for celebration animation
@@ -552,7 +606,7 @@ export const useSubtaskManagement = ({
 
   const keepParentOpen = useCallback((): void => {
     closeAllSubtasksCompleteDialog()
-    toast.success('Task kept open')
+    toast.success(getI18n().getFixedT(null, 'tasks')('phaseI.toasts.taskKeptOpen'))
   }, [closeAllSubtasksCompleteDialog])
 
   const autoCompleteParent = useCallback((): void => {
@@ -561,12 +615,12 @@ export const useSubtaskManagement = ({
     // Use database-aware callback if available
     if (onUpdateTask) {
       onUpdateTask(pendingAutoCompleteParent.id, { completedAt: new Date() })
-      toast.success('Task completed')
+      toast.success(getI18n().getFixedT(null, 'tasks')('phaseI.toasts.taskCompleted'))
     } else {
       const result = completeParentTask(pendingAutoCompleteParent.id, tasks)
       if (result.success && result.updatedTasks) {
         onTasksChange(result.updatedTasks)
-        toast.success('Task completed')
+        toast.success(getI18n().getFixedT(null, 'tasks')('phaseI.toasts.taskCompleted'))
       }
     }
 
@@ -609,18 +663,23 @@ export const useSubtaskManagement = ({
           setTimeout(() => {
             if (onUpdateTask) {
               onUpdateTask(parentId, { completedAt: new Date() })
-              toast.success('🎉 Task marked as done!')
+              toast.success(getI18n().getFixedT(null, 'tasks')('phaseI.toasts.taskMarkedAsDone'))
             } else {
               const completeResult = completeParentTask(parentId, updatedTasks)
               if (completeResult.success && completeResult.updatedTasks) {
                 onTasksChange(completeResult.updatedTasks)
-                toast.success('🎉 Task marked as done!')
+                toast.success(getI18n().getFixedT(null, 'tasks')('phaseI.toasts.taskMarkedAsDone'))
               }
             }
           }, 1500) // Wait 1.5 seconds for celebration animation
         }
       } else {
-        toast.error(extractErrorMessage(result.error, 'Failed to complete subtasks'))
+        toast.error(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'tasks')('phaseI.errors.failedToCompleteSubtasks')
+          )
+        )
       }
     },
     [tasks, onTasksChange, onUpdateTask, subtaskSettings.autoCompleteParent]
@@ -647,7 +706,12 @@ export const useSubtaskManagement = ({
         }
         toast.success(`${affectedCount} subtask${affectedCount !== 1 ? 's' : ''} marked incomplete`)
       } else {
-        toast.error(extractErrorMessage(result.error, 'Failed to mark subtasks incomplete'))
+        toast.error(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'tasks')('phaseI.errors.failedToMarkSubtasksIncomplete')
+          )
+        )
       }
     },
     [tasks, onTasksChange, onUpdateTask]
@@ -695,7 +759,12 @@ export const useSubtaskManagement = ({
             : `Due date cleared for ${result.affectedCount} subtask${result.affectedCount !== 1 ? 's' : ''}`
         )
       } else {
-        toast.error(extractErrorMessage(result.error, 'Failed to set due date'))
+        toast.error(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'tasks')('phaseI.errors.failedToSetDueDate')
+          )
+        )
       }
 
       closeBulkDueDateDialog()
@@ -743,7 +812,12 @@ export const useSubtaskManagement = ({
           `Priority set for ${result.affectedCount} subtask${result.affectedCount !== 1 ? 's' : ''}`
         )
       } else {
-        toast.error(extractErrorMessage(result.error, 'Failed to set priority'))
+        toast.error(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'tasks')('phaseI.errors.failedToSetPriority')
+          )
+        )
       }
 
       closeBulkPriorityDialog()
@@ -785,7 +859,12 @@ export const useSubtaskManagement = ({
         `${result.affectedCount} subtask${result.affectedCount !== 1 ? 's' : ''} deleted`
       )
     } else {
-      toast.error(extractErrorMessage(result.error, 'Failed to delete subtasks'))
+      toast.error(
+        extractErrorMessage(
+          result.error,
+          getI18n().getFixedT(null, 'tasks')('phaseI.errors.failedToDeleteSubtasks')
+        )
+      )
     }
 
     closeDeleteAllSubtasksDialog()

@@ -25,6 +25,7 @@ import type {
   CalendarReminders,
   CalendarVisibility
 } from '@memry/db-schema/schema/calendar-events'
+import { getI18n } from 'react-i18next'
 
 export interface CalendarEventReadOnlyMetadata {
   attendees: CalendarAttendee[] | null
@@ -179,7 +180,12 @@ export function CalendarEventPopover({
     try {
       await onSave()
     } catch (error) {
-      setErrorMessage(extractErrorMessage(error, 'Could not save event. Try again.'))
+      setErrorMessage(
+        extractErrorMessage(
+          error,
+          getI18n().getFixedT(null, 'calendar')('phaseI.errors.couldNotSaveEventTryAgain')
+        )
+      )
     }
   }
 

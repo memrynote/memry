@@ -1,3 +1,4 @@
+import { getI18n } from 'react-i18next'
 /**
  * Hook for managing tag detail view state and operations.
  * Used in the sidebar drill-down for viewing notes in a tag.
@@ -80,7 +81,10 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
       })
       setData(response)
     } catch (err) {
-      const message = extractErrorMessage(err, 'Failed to load notes')
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToLoadNotes')
+      )
       setError(message)
       log.error('Error fetching notes:', err)
     } finally {

@@ -1,3 +1,4 @@
+import { getI18n } from 'react-i18next'
 /**
  * useNoteEditorSettings Hook
  *
@@ -55,7 +56,12 @@ export function useNoteEditorSettings(): UseNoteEditorSettingsReturn {
         }
       } catch (err) {
         if (mounted) {
-          setError(extractErrorMessage(err, 'Failed to load note editor settings'))
+          setError(
+            extractErrorMessage(
+              err,
+              getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToLoadNoteEditorSettings')
+            )
+          )
         }
       } finally {
         if (mounted) {
@@ -95,10 +101,20 @@ export function useNoteEditorSettings(): UseNoteEditorSettingsReturn {
           setSettings((prev) => ({ ...prev, ...updates }))
           return true
         }
-        setError(extractErrorMessage(result.error, 'Failed to update settings'))
+        setError(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToUpdateSettings')
+          )
+        )
         return false
       } catch (err) {
-        setError(extractErrorMessage(err, 'Failed to update settings'))
+        setError(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToUpdateSettings')
+          )
+        )
         return false
       }
     },

@@ -15,8 +15,11 @@ import { createLogger } from '@/lib/logger'
 import { ensureVoiceRecordingReady } from '@/lib/voice-recording-readiness'
 import { prepareVoiceMemoAudio } from '@/lib/voice-memo-audio'
 import { useT } from '@memry/i18n/renderer'
+import { getI18n } from 'react-i18next'
 
 const log = createLogger('Component:QuickCapture')
+
+const SOCIAL_DOMAIN_LABEL = 'x.com'
 
 type CaptureState = 'idle' | 'capturing' | 'success' | 'error' | 'duplicate'
 type DetectedType = 'note' | 'link' | 'image' | 'voice' | 'pdf' | 'social'
@@ -222,7 +225,12 @@ export function QuickCapture(): React.JSX.Element {
               setCaptureState('success')
               return
             }
-            setErrorMessage(extractErrorMessage(result.error, 'Failed to capture image'))
+            setErrorMessage(
+              extractErrorMessage(
+                result.error,
+                getI18n().getFixedT(null, 'inbox')('toast.failedCaptureImage')
+              )
+            )
             setCaptureState('error')
             return
           }
@@ -250,7 +258,12 @@ export function QuickCapture(): React.JSX.Element {
                 setCaptureState('success')
                 return
               }
-              setErrorMessage(extractErrorMessage(result.error, 'Failed to capture audio'))
+              setErrorMessage(
+                extractErrorMessage(
+                  result.error,
+                  getI18n().getFixedT(null, 'inbox')('phaseI.errors.failedToCaptureAudio')
+                )
+              )
               setCaptureState('error')
               return
             }
@@ -265,7 +278,12 @@ export function QuickCapture(): React.JSX.Element {
               setCaptureState('success')
               return
             }
-            setErrorMessage(extractErrorMessage(result.error, 'Failed to capture file'))
+            setErrorMessage(
+              extractErrorMessage(
+                result.error,
+                getI18n().getFixedT(null, 'inbox')('phaseI.errors.failedToCaptureFile')
+              )
+            )
             setCaptureState('error')
             return
           }
@@ -287,7 +305,12 @@ export function QuickCapture(): React.JSX.Element {
             if (result.success) {
               setCaptureState('success')
             } else {
-              setErrorMessage(extractErrorMessage(result.error, 'Failed to capture link'))
+              setErrorMessage(
+                extractErrorMessage(
+                  result.error,
+                  getI18n().getFixedT(null, 'inbox')('phaseI.errors.failedToCaptureLink')
+                )
+              )
               setCaptureState('error')
             }
           } else {
@@ -307,12 +330,22 @@ export function QuickCapture(): React.JSX.Element {
             if (result.success) {
               setCaptureState('success')
             } else {
-              setErrorMessage(extractErrorMessage(result.error, 'Failed to capture note'))
+              setErrorMessage(
+                extractErrorMessage(
+                  result.error,
+                  getI18n().getFixedT(null, 'inbox')('phaseI.errors.failedToCaptureNote')
+                )
+              )
               setCaptureState('error')
             }
           }
         } catch (err) {
-          setErrorMessage(extractErrorMessage(err, 'Capture failed'))
+          setErrorMessage(
+            extractErrorMessage(
+              err,
+              getI18n().getFixedT(null, 'inbox')('phaseI.errors.captureFailed')
+            )
+          )
           setCaptureState('error')
         }
       })()
@@ -406,11 +439,21 @@ export function QuickCapture(): React.JSX.Element {
           if (result.success) {
             setCaptureState('success')
           } else {
-            setErrorMessage(extractErrorMessage(result.error, 'Failed to capture voice'))
+            setErrorMessage(
+              extractErrorMessage(
+                result.error,
+                getI18n().getFixedT(null, 'inbox')('phaseI.errors.failedToCaptureVoice')
+              )
+            )
             setCaptureState('error')
           }
         } catch (err) {
-          setErrorMessage(extractErrorMessage(err, 'Voice capture failed'))
+          setErrorMessage(
+            extractErrorMessage(
+              err,
+              getI18n().getFixedT(null, 'inbox')('phaseI.errors.voiceCaptureFailed')
+            )
+          )
           setCaptureState('error')
         }
       })()
@@ -584,7 +627,7 @@ export function QuickCapture(): React.JSX.Element {
             <FilePreviewCard
               variant="social"
               title={extractHandleFromUrl(normalizeUrl(value.trim())) || 'Social post'}
-              subtitle="x.com"
+              subtitle={SOCIAL_DOMAIN_LABEL}
               onClear={() => {}}
             />
           )}
