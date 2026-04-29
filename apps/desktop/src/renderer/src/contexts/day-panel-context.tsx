@@ -19,6 +19,7 @@ export const DAY_PANEL_WIDTH_MAX_PX = 600
 export interface DayPanelContextValue {
   isOpen: boolean
   selectedDate: string
+  selectedTaskId: string | null
   width: number
   isResizing: boolean
   toggle: () => void
@@ -26,6 +27,7 @@ export interface DayPanelContextValue {
   close: () => void
   openForDayView: (date: string) => void
   closeForDayView: () => void
+  openForTask: (taskId: string) => void
   setDate: (date: string) => void
   setWidth: React.Dispatch<React.SetStateAction<number>>
   setIsResizing: React.Dispatch<React.SetStateAction<boolean>>
@@ -71,6 +73,7 @@ export const DayPanelProvider = ({
 
   const [isResizing, setIsResizing] = useState(false)
   const [selectedDate, setSelectedDate] = useState(getTodayString)
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const autoModeRef = useRef(false)
 
   useEffect(() => {
@@ -103,16 +106,24 @@ export const DayPanelProvider = ({
 
   const close = useCallback(() => {
     autoModeRef.current = false
+    setSelectedTaskId(null)
     setIsOpen(false)
   }, [])
 
   const openForDayView = useCallback((date: string) => {
+    setSelectedTaskId(null)
     setSelectedDate(date)
     setIsOpen((prev) => {
       if (prev) return prev
       autoModeRef.current = true
       return true
     })
+  }, [])
+
+  const openForTask = useCallback((taskId: string) => {
+    autoModeRef.current = false
+    setSelectedTaskId(taskId)
+    setIsOpen(true)
   }, [])
 
   const closeForDayView = useCallback(() => {
@@ -132,6 +143,7 @@ export const DayPanelProvider = ({
     () => ({
       isOpen,
       selectedDate,
+      selectedTaskId,
       width,
       isResizing,
       toggle,
@@ -139,6 +151,7 @@ export const DayPanelProvider = ({
       close,
       openForDayView,
       closeForDayView,
+      openForTask,
       setDate,
       setWidth,
       setIsResizing
@@ -146,6 +159,7 @@ export const DayPanelProvider = ({
     [
       isOpen,
       selectedDate,
+      selectedTaskId,
       width,
       isResizing,
       toggle,
@@ -153,6 +167,7 @@ export const DayPanelProvider = ({
       close,
       openForDayView,
       closeForDayView,
+      openForTask,
       setDate
     ]
   )
