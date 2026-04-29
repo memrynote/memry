@@ -686,21 +686,21 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.EXPORT_PDF,
     ExportNoteSchema,
     async (input) => {
-      const t = getMainI18n().t
+      const t = getMainI18n().getFixedT(null, 'system')
       const note = await getNoteById(input.noteId)
       if (!note) {
-        return { success: false as const, error: t('system:error.noteNotFound') }
+        return { success: false as const, error: t('error.noteNotFound') }
       }
 
       const defaultFilename = `${sanitizeFilename(note.title)}.pdf`
       const result = await dialog.showSaveDialog({
-        title: t('system:dialog.exportPdf.title'),
+        title: t('dialog.exportPdf.title'),
         defaultPath: defaultFilename,
-        filters: [{ name: t('system:dialog.exportPdf.filterName'), extensions: ['pdf'] }]
+        filters: [{ name: t('dialog.exportPdf.filterName'), extensions: ['pdf'] }]
       })
 
       if (result.canceled || !result.filePath) {
-        return { success: false as const, error: t('system:dialog.exportCancelled') }
+        return { success: false as const, error: t('dialog.exportCancelled') }
       }
 
       const html = renderNoteAsHtml(
@@ -761,21 +761,21 @@ export function registerNotesHandlers(): void {
     NotesChannels.invoke.EXPORT_HTML,
     ExportNoteSchema,
     async (input) => {
-      const t = getMainI18n().t
+      const t = getMainI18n().getFixedT(null, 'system')
       const note = await getNoteById(input.noteId)
       if (!note) {
-        return { success: false as const, error: t('system:error.noteNotFound') }
+        return { success: false as const, error: t('error.noteNotFound') }
       }
 
       const defaultFilename = `${sanitizeFilename(note.title)}.html`
       const result = await dialog.showSaveDialog({
-        title: t('system:dialog.exportHtml.title'),
+        title: t('dialog.exportHtml.title'),
         defaultPath: defaultFilename,
-        filters: [{ name: t('system:dialog.exportHtml.filterName'), extensions: ['html', 'htm'] }]
+        filters: [{ name: t('dialog.exportHtml.filterName'), extensions: ['html', 'htm'] }]
       })
 
       if (result.canceled || !result.filePath) {
-        return { success: false as const, error: t('system:dialog.exportCancelled') }
+        return { success: false as const, error: t('dialog.exportCancelled') }
       }
 
       const html = renderNoteAsHtml(
@@ -901,13 +901,13 @@ export function registerNotesHandlers(): void {
   ipcMain.handle(
     NotesChannels.invoke.SHOW_IMPORT_DIALOG,
     createHandler(async () => {
-      const t = getMainI18n().t
+      const t = getMainI18n().getFixedT(null, 'system')
       const extensions = getAllSupportedExtensions()
       const result = await dialog.showOpenDialog({
         properties: ['openFile', 'multiSelections'],
         filters: [
-          { name: t('system:dialog.import.filterSupported'), extensions },
-          { name: t('system:dialog.import.filterAll'), extensions: ['*'] }
+          { name: t('dialog.import.filterSupported'), extensions },
+          { name: t('dialog.import.filterAll'), extensions: ['*'] }
         ]
       })
 
