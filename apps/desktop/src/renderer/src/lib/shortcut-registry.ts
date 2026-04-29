@@ -9,6 +9,7 @@ import type { ShortcutBinding } from '@memry/contracts/settings-schemas'
 
 export interface ShortcutEntry {
   id: string
+  i18nKey: string
   label: string
   description: string
   category: string
@@ -35,6 +36,7 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
   // Navigation
   {
     id: 'nav.newNote',
+    i18nKey: 'nav.newNote',
     label: 'New Note',
     description: 'Create a new note',
     category: 'Navigation',
@@ -42,6 +44,7 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
   },
   {
     id: 'nav.newTask',
+    i18nKey: 'nav.newTask',
     label: 'New Task',
     description: 'Create a new task',
     category: 'Navigation',
@@ -49,6 +52,7 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
   },
   {
     id: 'nav.goToInbox',
+    i18nKey: 'nav.inbox',
     label: 'Go to Inbox',
     description: 'Navigate to the inbox',
     category: 'Navigation',
@@ -56,6 +60,7 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
   },
   {
     id: 'nav.goToNotes',
+    i18nKey: 'nav.notes',
     label: 'Go to Notes',
     description: 'Navigate to notes',
     category: 'Navigation',
@@ -63,6 +68,7 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
   },
   {
     id: 'nav.goToTasks',
+    i18nKey: 'nav.tasks',
     label: 'Go to Tasks',
     description: 'Navigate to tasks',
     category: 'Navigation',
@@ -70,6 +76,7 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
   },
   {
     id: 'nav.search',
+    i18nKey: 'nav.search',
     label: 'Search',
     description: 'Open global search',
     category: 'Navigation',
@@ -77,6 +84,7 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
   },
   {
     id: 'nav.settings',
+    i18nKey: 'nav.settings',
     label: 'Open Settings',
     description: 'Open the settings panel',
     category: 'Navigation',
@@ -86,6 +94,7 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
   // Tabs
   {
     id: 'tabs.closeTab',
+    i18nKey: 'tabs.close',
     label: 'Close Tab',
     description: 'Close the current tab',
     category: 'Tabs',
@@ -93,6 +102,7 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
   },
   {
     id: 'tabs.nextTab',
+    i18nKey: 'tabs.next',
     label: 'Next Tab',
     description: 'Switch to the next tab',
     category: 'Tabs',
@@ -100,6 +110,7 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
   },
   {
     id: 'tabs.prevTab',
+    i18nKey: 'tabs.previous',
     label: 'Previous Tab',
     description: 'Switch to the previous tab',
     category: 'Tabs',
@@ -107,6 +118,7 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
   },
   {
     id: 'tabs.reopenTab',
+    i18nKey: 'tabs.reopen',
     label: 'Reopen Last Tab',
     description: 'Reopen the most recently closed tab',
     category: 'Tabs',
@@ -116,6 +128,7 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
   // Editor
   {
     id: 'editor.save',
+    i18nKey: 'editor.save',
     label: 'Save',
     description: 'Save the current note',
     category: 'Editor',
@@ -123,6 +136,7 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
   },
   {
     id: 'editor.bold',
+    i18nKey: 'editor.bold',
     label: 'Bold',
     description: 'Toggle bold formatting',
     category: 'Editor',
@@ -130,6 +144,7 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
   },
   {
     id: 'editor.italic',
+    i18nKey: 'editor.italic',
     label: 'Italic',
     description: 'Toggle italic formatting',
     category: 'Editor',
@@ -137,6 +152,7 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
   },
   {
     id: 'editor.underline',
+    i18nKey: 'editor.underline',
     label: 'Underline',
     description: 'Toggle underline formatting',
     category: 'Editor',
@@ -146,6 +162,7 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
   // View
   {
     id: 'view.toggleSidebar',
+    i18nKey: 'view.toggleSidebar',
     label: 'Toggle Sidebar',
     description: 'Show or hide the sidebar',
     category: 'View',
@@ -153,6 +170,7 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
   },
   {
     id: 'view.shortcuts',
+    i18nKey: 'view.shortcuts',
     label: 'Keyboard Shortcuts Help',
     description: 'Show keyboard shortcuts reference',
     category: 'View',

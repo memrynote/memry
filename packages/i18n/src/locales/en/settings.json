@@ -671,6 +671,7 @@
       "disabled": "AI features disabled",
       "error": "Failed to update setting"
     },
+    "unknownError": "Unknown error",
     "groups": {
       "voice": "Voice Transcription",
       "embeddingModel": "Local Embedding Model",
@@ -736,6 +737,11 @@
       "disabled": "Inline AI editing disabled",
       "provider": "Provider",
       "providerDescription": "AI service for text operations",
+      "providers": {
+        "ollama": "Ollama (Local)",
+        "openai": "OpenAI",
+        "anthropic": "Anthropic"
+      },
       "model": "Model",
       "modelDescription": "Language model for rewrite and summarize",
       "selectModel": "Select a model",
@@ -800,6 +806,10 @@
       "retryNow": "Retry now"
     },
     "registry": {
+      "googleCalendar": {
+        "name": "Google Calendar",
+        "description": "Two-way sync for Memry events, tasks, reminders, and imported calendars"
+      },
       "appleCalendar": {
         "name": "Apple Calendar",
         "description": "Local calendar integration via system APIs"
@@ -830,7 +840,23 @@
     "loadingStorage": "Loading storage info...",
     "signInStorage": "Sign in to view storage usage",
     "vaultPath": "Vault Path",
-    "reveal": "Reveal"
+    "reveal": "Reveal",
+    "storage": {
+      "title": "Storage",
+      "used": "{used} of {limit} used",
+      "ratio": "{used} / {limit}",
+      "refreshAria": "Refresh storage usage",
+      "usageAria": "Storage usage: {used} of {limit}",
+      "available": "Available {available}",
+      "categories": {
+        "notes": "Notes",
+        "attachments": "Attachments",
+        "crdt": "CRDT",
+        "other": "Other"
+      },
+      "warningTitle": "Storage almost full",
+      "warningDescription": "Free up space or upgrade your plan to avoid sync issues."
+    }
   },
   "tags": {
     "header": {
@@ -846,6 +872,7 @@
       "rename": "Rename",
       "changeColor": "Change color",
       "mergeInto": "Merge into...",
+      "merge": "Merge",
       "delete": "Delete"
     },
     "dialogs": {
@@ -950,73 +977,81 @@
       "view": "View"
     },
     "entries": {
-      "nav.newNote": {
-        "label": "New Note",
-        "description": "Create a new note"
+      "nav": {
+        "newNote": {
+          "label": "New Note",
+          "description": "Create a new note"
+        },
+        "newTask": {
+          "label": "New Task",
+          "description": "Create a new task"
+        },
+        "inbox": {
+          "label": "Go to Inbox",
+          "description": "Navigate to the inbox"
+        },
+        "notes": {
+          "label": "Go to Notes",
+          "description": "Navigate to notes"
+        },
+        "tasks": {
+          "label": "Go to Tasks",
+          "description": "Navigate to tasks"
+        },
+        "search": {
+          "label": "Search",
+          "description": "Open global search"
+        },
+        "settings": {
+          "label": "Open Settings",
+          "description": "Open the settings panel"
+        }
       },
-      "nav.newTask": {
-        "label": "New Task",
-        "description": "Create a new task"
+      "tabs": {
+        "close": {
+          "label": "Close Tab",
+          "description": "Close the current tab"
+        },
+        "next": {
+          "label": "Next Tab",
+          "description": "Switch to the next tab"
+        },
+        "previous": {
+          "label": "Previous Tab",
+          "description": "Switch to the previous tab"
+        },
+        "reopen": {
+          "label": "Reopen Last Tab",
+          "description": "Reopen the most recently closed tab"
+        }
       },
-      "nav.inbox": {
-        "label": "Go to Inbox",
-        "description": "Navigate to the inbox"
+      "editor": {
+        "save": {
+          "label": "Save",
+          "description": "Save the current note"
+        },
+        "bold": {
+          "label": "Bold",
+          "description": "Toggle bold formatting"
+        },
+        "italic": {
+          "label": "Italic",
+          "description": "Toggle italic formatting"
+        },
+        "underline": {
+          "label": "Underline",
+          "description": "Toggle underline formatting"
+        }
       },
-      "nav.notes": {
-        "label": "Go to Notes",
-        "description": "Navigate to notes"
-      },
-      "nav.tasks": {
-        "label": "Go to Tasks",
-        "description": "Navigate to tasks"
-      },
-      "nav.search": {
-        "label": "Search",
-        "description": "Open global search"
-      },
-      "nav.settings": {
-        "label": "Open Settings",
-        "description": "Open the settings panel"
-      },
-      "tabs.close": {
-        "label": "Close Tab",
-        "description": "Close the current tab"
-      },
-      "tabs.next": {
-        "label": "Next Tab",
-        "description": "Switch to the next tab"
-      },
-      "tabs.previous": {
-        "label": "Previous Tab",
-        "description": "Switch to the previous tab"
-      },
-      "tabs.reopen": {
-        "label": "Reopen Last Tab",
-        "description": "Reopen the most recently closed tab"
-      },
-      "editor.save": {
-        "label": "Save",
-        "description": "Save the current note"
-      },
-      "editor.bold": {
-        "label": "Bold",
-        "description": "Toggle bold formatting"
-      },
-      "editor.italic": {
-        "label": "Italic",
-        "description": "Toggle italic formatting"
-      },
-      "editor.underline": {
-        "label": "Underline",
-        "description": "Toggle underline formatting"
-      },
-      "view.toggleSidebar": {
-        "label": "Toggle Sidebar",
-        "description": "Show or hide the sidebar"
-      },
-      "view.shortcuts": {
-        "label": "Keyboard Shortcuts Help",
-        "description": "Show keyboard shortcuts reference"
+      "view": {
+        "toggleSidebar": {
+          "label": "Toggle Sidebar",
+          "description": "Show or hide the sidebar"
+        },
+        "shortcuts": {
+          "label": "Keyboard Shortcuts Help",
+          "description": "Show keyboard shortcuts reference"
+        }
       }
     }
   }
