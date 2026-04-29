@@ -19,6 +19,7 @@ import { WikiLink, wikiLinkStyles, WikiLinkAutocomplete } from './extensions/wik
 import { Tag, tagStyles, TagAutocomplete } from './extensions/tag'
 import { usePages } from '@/hooks/use-pages'
 import { useTags } from '@/hooks/use-tags'
+import { useT } from '@memry/i18n/renderer'
 
 // =============================================================================
 // TYPES
@@ -54,7 +55,7 @@ export interface JournalEditorProps {
  */
 export const JournalEditor = memo(function JournalEditor({
   content = '',
-  placeholder = 'Start writing...',
+  placeholder,
   isActive = false,
   onContentChange,
   className,
@@ -63,6 +64,8 @@ export const JournalEditor = memo(function JournalEditor({
   isFocusMode = false,
   onFocusToggle
 }: JournalEditorProps): React.JSX.Element {
+  const { t } = useT('journal')
+  const editorPlaceholder = placeholder ?? t('editor.placeholder.default')
   // Hooks for pages and tags
   const { searchPages } = usePages()
   const { searchTags } = useTags()
@@ -99,11 +102,12 @@ export const JournalEditor = memo(function JournalEditor({
           }
         }),
         Placeholder.configure({
-          placeholder,
+          placeholder: editorPlaceholder,
           emptyEditorClass: 'is-editor-empty'
         }),
         // WikiLink extension with autocomplete
         WikiLink.configure({
+          getAriaLabel: (title) => t('wiki.ariaLabel', { title }),
           suggestion: {
             items: ({ query }) => {
               return searchPages(query)
@@ -158,6 +162,7 @@ export const JournalEditor = memo(function JournalEditor({
         }),
         // Tag extension with autocomplete
         Tag.configure({
+          getAriaLabel: (tag) => t('tag.ariaLabel', { tag }),
           suggestion: {
             items: ({ query }) => {
               return searchTags(query)
@@ -239,7 +244,7 @@ export const JournalEditor = memo(function JournalEditor({
         }
       }
     },
-    [placeholder, readOnly]
+    [editorPlaceholder, readOnly]
   )
 
   // Update content when prop changes

@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { JournalReminderButton } from './journal-reminder-button'
 import type { JournalViewState } from './date-breadcrumb'
+import { useT } from '@memry/i18n/renderer'
 
 interface JournalHeaderActionsProps {
   viewState: JournalViewState
@@ -52,6 +53,11 @@ export function JournalHeaderActions({
   onExport,
   onOpenSettings
 }: JournalHeaderActionsProps) {
+  const { t } = useT('journal')
+  const previousLabel =
+    viewState.type === 'month' ? t('nav.previousMonth') : t('nav.previousYear')
+  const nextLabel = viewState.type === 'month' ? t('nav.nextMonth') : t('nav.nextYear')
+
   if (viewState.type === 'month' || viewState.type === 'year') {
     return (
       <div className="flex items-center gap-0.5">
@@ -60,7 +66,7 @@ export function JournalHeaderActions({
           size="icon"
           className={ACTION_BTN}
           onClick={onPrevious}
-          aria-label={`Previous ${viewState.type}`}
+          aria-label={previousLabel}
         >
           <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" />
         </Button>
@@ -69,7 +75,7 @@ export function JournalHeaderActions({
           size="icon"
           className={ACTION_BTN}
           onClick={onNext}
-          aria-label={`Next ${viewState.type}`}
+          aria-label={nextLabel}
         >
           <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
         </Button>
@@ -89,7 +95,7 @@ export function JournalHeaderActions({
           size="icon"
           className={ACTION_BTN}
           onClick={onBookmarkToggle}
-          title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
+          title={isBookmarked ? t('action.removeBookmark') : t('action.addBookmark')}
         >
           <Bookmark
             className={cn(
@@ -104,7 +110,7 @@ export function JournalHeaderActions({
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className={ACTION_BTN}>
             <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="sr-only">More options</span>
+            <span className="sr-only">{t('aria.moreOptions')}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
@@ -112,23 +118,23 @@ export function JournalHeaderActions({
             <>
               <DropdownMenuItem onClick={onVersionHistory}>
                 <History className="mr-2 size-4" />
-                Version History
+                {t('action.versionHistory')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onExport}>
                 <Download className="mr-2 size-4" />
-                Export
+                {t('action.export')}
               </DropdownMenuItem>
             </>
           )}
           <DropdownMenuItem onClick={onToggleFullWidth}>
             <Maximize className="mr-2 size-4" />
-            <span className="flex-1">Full width</span>
+            <span className="flex-1">{t('action.fullWidth')}</span>
             <Switch checked={isFullWidth} className="pointer-events-none h-4 w-7" tabIndex={-1} />
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={onOpenSettings}>
             <Settings className="mr-2 size-4" />
-            Journal Settings
+            {t('action.journalSettings')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

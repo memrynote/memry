@@ -36,6 +36,7 @@ import { toast } from 'sonner'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
 import {
+  createJournalDateLabels,
   formatDateToISO,
   formatDateParts,
   getTodayString,
@@ -56,6 +57,7 @@ import { createLogger } from '@/lib/logger'
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Page:Journal')
 
@@ -72,9 +74,12 @@ interface JournalPageProps {
 }
 
 export function JournalPage({ className }: JournalPageProps): React.JSX.Element {
+  const { t, i18n } = useT('journal')
+  const { t: commonT } = useT('common')
   const activeTab = useActiveTab()
   const { openTab } = useTabs()
   const today = getTodayString()
+  const dateLabels = useMemo(() => createJournalDateLabels(t), [t, i18n.language])
   const tabDate = activeTab?.viewState?.date as string | undefined
 
   // Get initial date from tab viewState or default to today
@@ -121,9 +126,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     if (!saveError) return
 
     const toastId = toast.error(saveError, {
-      description: 'Your content is still in memory. Click to retry saving.',
+      description: t('toast.unsavedRetry'),
       action: {
-        label: 'Retry',
+        label: commonT('button.retry'),
         onClick: () => {
           void retrySave()
         }
@@ -135,7 +140,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     return () => {
       toast.dismiss(toastId)
     }
-  }, [saveError, retrySave, dismissSaveError])
+  }, [saveError, retrySave, dismissSaveError, commonT, t])
 
   // Backlinks hook
   const { incoming: rawBacklinks, isLoading: backlinksLoading } = useNoteLinksQuery(
@@ -204,7 +209,19 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   // Date parts and heatmap
   const isToday = selectedDate === today
   const selectedDateObj = parseISODate(selectedDate)
-  const dateParts = useMemo(() => formatDateParts(selectedDate), [selectedDate])
+  const dateParts = useMemo(
+    () => formatDateParts(selectedDate, dateLabels),
+    [selectedDate, dateLabels]
+  )
+  const journalNoteTitle = useMemo(
+    () =>
+      t('export.noteTitle', {
+        month: dateParts.month,
+        day: dateParts.day,
+        year: dateParts.year
+      }),
+    [dateParts.day, dateParts.month, dateParts.year, t]
+  )
 
   const currentYear = dateParts.year
   const { data: heatmapData } = useJournalHeatmap(currentYear)
@@ -237,7 +254,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
       for (let month = 0; month < 12; month++) {
         const backendStats = statsMap.get(month + 1)
-        const monthName = getMonthName(month)
+        const monthName = getMonthName(month, dateLabels)
 
         if (backendStats) {
           const avgLevel = Math.round(backendStats.averageLevel) as 0 | 1 | 2 | 3 | 4
@@ -266,8 +283,8 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     }
 
     const year = currentViewState.type === 'year' ? currentViewState.year : dateParts.year
-    return getMonthStats(year, heatmapData)
-  }, [yearStatsData, currentViewState, dateParts.year, heatmapData])
+    return getMonthStats(year, heatmapData, dateLabels)
+  }, [yearStatsData, currentViewState, dateParts.year, heatmapData, dateLabels])
 
   const journalScrollRef = useRef<HTMLDivElement>(null)
   const [marqueeZoneEl, setMarqueeZoneEl] = useState<HTMLDivElement | null>(null)
@@ -372,7 +389,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
       setViewState({ type: 'day', date })
       openTab({
         type: 'journal',
-        title: 'Journal',
+        title: t('title'),
         icon: 'book-open',
         path: '/journal',
         isPinned: false,
@@ -382,7 +399,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
         viewState: { date }
       })
     },
-    [openTab]
+    [openTab, t]
   )
 
   const navigateBack = useCallback(() => {
@@ -508,18 +525,18 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             })
             break
           case 'create':
-            toast.info(`Note "${target}" not found`)
+            toast.info(t('toast.noteNotFound', { target }))
             break
           case 'not-found':
-            toast.error(`File not found: ${target}`)
+            toast.error(t('toast.fileNotFound', { target }))
             break
         }
       } catch (err) {
         log.error('Failed to resolve wiki link:', err)
-        toast.error('Failed to open linked item')
+        toast.error(t('toast.openLinkedItemFailed'))
       }
     },
-    [openTab]
+    [openTab, t]
   )
 
   const handleHeadingClick = useCallback((headingId: string) => {
@@ -709,7 +726,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                 >
                   {entryError && (
                     <div className="mb-4 px-4 py-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-                      <span className="font-medium">Error:</span> {entryError}
+                      <span className="font-medium">{t('toast.errorPrefix')}</span> {entryError}
                     </div>
                   )}
 
@@ -771,10 +788,10 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                             contentType="markdown"
                             placeholder={
                               selectedDate > today
-                                ? 'What are you planning...'
+                                ? t('editor.placeholder.future')
                                 : isToday
-                                  ? "What's on your mind today..."
-                                  : 'Reflect on this day...'
+                                  ? t('editor.placeholder.today')
+                                  : t('editor.placeholder.past')
                             }
                             stickyToolbar={editorSettings.toolbarMode === 'sticky'}
                             onContentChange={handleContentChange}
@@ -868,7 +885,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             open={isExportDialogOpen}
             onOpenChange={setIsExportDialogOpen}
             noteId={entry.id}
-            noteTitle={`Journal - ${formatDateParts(selectedDate).month} ${formatDateParts(selectedDate).day}, ${formatDateParts(selectedDate).year}`}
+            noteTitle={journalNoteTitle}
           />
         )}
         {entry && (
@@ -876,7 +893,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             open={isVersionHistoryOpen}
             onOpenChange={setIsVersionHistoryOpen}
             noteId={entry.id}
-            noteTitle={`Journal - ${formatDateParts(selectedDate).month} ${formatDateParts(selectedDate).day}, ${formatDateParts(selectedDate).year}`}
+            noteTitle={journalNoteTitle}
             onRestore={() => {
               void (async () => {
                 await forceReload()

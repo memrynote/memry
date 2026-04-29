@@ -29,6 +29,116 @@ export interface DayHeader {
   isFuture: boolean
 }
 
+export type JournalDateLabels = {
+  weekdays: readonly string[]
+  weekdaysShort: readonly string[]
+  months: readonly string[]
+  monthsShort: readonly string[]
+  relative: {
+    today: string
+    yesterday: string
+    tomorrow: string
+    future: string
+  }
+  greetings: {
+    morning: string
+    afternoon: string
+    evening: string
+    night: string
+  }
+}
+
+export const ENGLISH_JOURNAL_DATE_LABELS: JournalDateLabels = {
+  weekdays: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+  weekdaysShort: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+  months: [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December'
+  ],
+  monthsShort: [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec'
+  ],
+  relative: {
+    today: 'Today',
+    yesterday: 'Yesterday',
+    tomorrow: 'Tomorrow',
+    future: 'Future'
+  },
+  greetings: {
+    morning: 'Good morning',
+    afternoon: 'Good afternoon',
+    evening: 'Good evening',
+    night: 'Good night'
+  }
+}
+
+export const JOURNAL_WEEKDAY_KEYS = [
+  'sunday',
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday'
+] as const
+
+export const JOURNAL_MONTH_KEYS = [
+  'january',
+  'february',
+  'march',
+  'april',
+  'may',
+  'june',
+  'july',
+  'august',
+  'september',
+  'october',
+  'november',
+  'december'
+] as const
+
+export function createJournalDateLabels(t: (key: string) => string): JournalDateLabels {
+  return {
+    weekdays: JOURNAL_WEEKDAY_KEYS.map((key) => t(`date.weekday.${key}`)),
+    weekdaysShort: JOURNAL_WEEKDAY_KEYS.map((key) => t(`date.weekdayShort.${key}`)),
+    months: JOURNAL_MONTH_KEYS.map((key) => t(`date.month.${key}`)),
+    monthsShort: JOURNAL_MONTH_KEYS.map((key) => t(`date.monthShort.${key}`)),
+    relative: {
+      today: t('date.relative.today'),
+      yesterday: t('date.relative.yesterday'),
+      tomorrow: t('date.relative.tomorrow'),
+      future: t('date.relative.future')
+    },
+    greetings: {
+      morning: t('date.greeting.morning'),
+      afternoon: t('date.greeting.afternoon'),
+      evening: t('date.greeting.evening'),
+      night: t('date.greeting.night')
+    }
+  }
+}
+
 // =============================================================================
 // DATE GENERATION
 // =============================================================================
@@ -160,31 +270,18 @@ export function generateMoreFutureDays(newestDate: string, count: number = 14): 
 // DATE FORMATTING
 // =============================================================================
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December'
-]
-
 /**
  * Format a date for day card header
  */
-export function formatDayHeader(dateStr: string): DayHeader {
+export function formatDayHeader(
+  dateStr: string,
+  labels: JournalDateLabels = ENGLISH_JOURNAL_DATE_LABELS
+): DayHeader {
   const date = parseISODate(dateStr)
   const today = formatDateToISO(new Date())
 
-  const dayName = DAY_NAMES[date.getDay()]
-  const monthName = MONTH_NAMES[date.getMonth()]
+  const dayName = labels.weekdays[date.getDay()]
+  const monthName = labels.months[date.getMonth()]
   const dayNum = date.getDate()
   const year = date.getFullYear()
 
@@ -242,17 +339,19 @@ export interface TimeGreeting {
  * Get time-based greeting for today's day card
  * @returns Greeting text and icon based on current hour
  */
-export function getTimeBasedGreeting(): TimeGreeting {
+export function getTimeBasedGreeting(
+  labels: JournalDateLabels = ENGLISH_JOURNAL_DATE_LABELS
+): TimeGreeting {
   const hour = new Date().getHours()
 
   if (hour >= 5 && hour < 12) {
-    return { greeting: 'Good morning', icon: '🌅' }
+    return { greeting: labels.greetings.morning, icon: '🌅' }
   } else if (hour >= 12 && hour < 17) {
-    return { greeting: 'Good afternoon', icon: '☀️' }
+    return { greeting: labels.greetings.afternoon, icon: '☀️' }
   } else if (hour >= 17 && hour < 21) {
-    return { greeting: 'Good evening', icon: '🌆' }
+    return { greeting: labels.greetings.evening, icon: '🌆' }
   } else {
-    return { greeting: 'Good night', icon: '🌙' }
+    return { greeting: labels.greetings.night, icon: '🌙' }
   }
 }
 
@@ -277,12 +376,15 @@ export function isTomorrow(dateStr: string): boolean {
 /**
  * Get special day label (Today, Yesterday, Tomorrow) or null
  */
-export function getSpecialDayLabel(dateStr: string): string | null {
+export function getSpecialDayLabel(
+  dateStr: string,
+  labels: JournalDateLabels = ENGLISH_JOURNAL_DATE_LABELS
+): string | null {
   const today = formatDateToISO(new Date())
 
-  if (dateStr === today) return 'Today'
-  if (isYesterday(dateStr)) return 'Yesterday'
-  if (isTomorrow(dateStr)) return 'Tomorrow'
+  if (dateStr === today) return labels.relative.today
+  if (isYesterday(dateStr)) return labels.relative.yesterday
+  if (isTomorrow(dateStr)) return labels.relative.tomorrow
   return null
 }
 
@@ -306,14 +408,17 @@ export interface DateParts {
 /**
  * Parse a date string into its clickable parts for breadcrumb navigation
  */
-export function formatDateParts(dateStr: string): DateParts {
+export function formatDateParts(
+  dateStr: string,
+  labels: JournalDateLabels = ENGLISH_JOURNAL_DATE_LABELS
+): DateParts {
   const date = parseISODate(dateStr)
   return {
     day: date.getDate(),
-    month: MONTH_NAMES[date.getMonth()],
+    month: labels.months[date.getMonth()],
     monthIndex: date.getMonth(),
     year: date.getFullYear(),
-    dayName: DAY_NAMES[date.getDay()]
+    dayName: labels.weekdays[date.getDay()]
   }
 }
 
@@ -358,12 +463,13 @@ export interface MonthStat {
  */
 export function getMonthStats(
   year: number,
-  heatmapData: Array<{ date: string; characterCount: number; level: 0 | 1 | 2 | 3 | 4 }>
+  heatmapData: Array<{ date: string; characterCount: number; level: 0 | 1 | 2 | 3 | 4 }>,
+  labels: JournalDateLabels = ENGLISH_JOURNAL_DATE_LABELS
 ): MonthStat[] {
   const stats: MonthStat[] = []
 
   for (let month = 0; month < 12; month++) {
-    const monthName = MONTH_NAMES[month]
+    const monthName = labels.months[month]
 
     // Filter heatmap data for this month
     const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`
@@ -410,6 +516,9 @@ export function getMonthStats(
 /**
  * Get month name from month index
  */
-export function getMonthName(monthIndex: number): string {
-  return MONTH_NAMES[monthIndex]
+export function getMonthName(
+  monthIndex: number,
+  labels: JournalDateLabels = ENGLISH_JOURNAL_DATE_LABELS
+): string {
+  return labels.months[monthIndex]
 }
