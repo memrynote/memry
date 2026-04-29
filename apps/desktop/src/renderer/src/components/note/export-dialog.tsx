@@ -134,18 +134,18 @@ export function ExportDialog({
       } else if (result.error === 'Export cancelled') {
         // User cancelled - do nothing
       } else {
-        toast.error('Export failed', {
+        toast.error(t('exportDialog.toast.failed'), {
           description: extractErrorMessage(result.error, 'An unknown error occurred')
         })
       }
     } catch (error) {
-      toast.error('Export failed', {
+      toast.error(t('exportDialog.toast.failed'), {
         description: extractErrorMessage(error, 'An unknown error occurred')
       })
     } finally {
       setIsExporting(false)
     }
-  }, [format, noteId, includeMetadata, pageSize, onOpenChange])
+  }, [format, noteId, includeMetadata, pageSize, onOpenChange, t])
 
   /**
    * Handle dialog close - reset state
