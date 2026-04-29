@@ -207,6 +207,7 @@ interface SyncProviderProps {
 export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element {
   const { state: authState, logout } = useAuth()
   const { t } = useT('errors')
+  const { t: tSettings } = useT('settings')
   const [state, dispatch] = useReducer(syncReducer, initialState)
   const [linkingRequest, setLinkingRequest] = useState<LinkingRequestEvent | null>(null)
   const sessionExpiredRef = useRef(state.sessionExpired)
@@ -478,8 +479,8 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   )
 
   const handleDeviceRevokedExport = useCallback(async () => {
-    toast.info('Local data export is not yet implemented', { duration: 5000 })
-  }, [])
+    toast.info(tSettings('toast.exportNotImplemented'), { duration: 5000 })
+  }, [tSettings])
 
   const handleDeviceRevokedSignOut = useCallback(() => {
     void logout()
