@@ -12,6 +12,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { SlidersHorizontal, Search, Plus, Pencil, Trash2 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -137,6 +138,7 @@ export function ColumnSelector({
   onSummaryChange,
   className
 }: ColumnSelectorProps): React.JSX.Element {
+  const { t } = useT('common')
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -204,13 +206,13 @@ export function ColumnSelector({
       items.push({
         id: prop.name,
         label: prop.name,
-        subtitle: `${prop.usageCount} note${prop.usageCount !== 1 ? 's' : ''}`,
+        subtitle: t('count.note', { count: prop.usageCount }),
         type: prop.type
       })
     })
 
     return items
-  }, [filteredBuiltIn, filteredProperties])
+  }, [filteredBuiltIn, filteredProperties, t])
 
   // Check if there are any search results
   const hasResults = allColumns.length > 0 || filteredFormulas.length > 0
