@@ -105,10 +105,10 @@ describe('T513: InfoSection - basic display', () => {
     expect(screen.getByRole('region', { name: /note properties/i })).toBeInTheDocument()
   })
 
-  it('falls back to English property aria for Turkish notes namespace', () => {
+  it('renders Turkish property aria for Turkish notes namespace', () => {
     renderWithI18n(<InfoSection {...defaultProps} />, i18nTr)
 
-    expect(screen.getByRole('region', { name: /note properties/i })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Not özellikleri' })).toBeInTheDocument()
   })
 
   it('should show all properties without truncation', () => {

@@ -93,10 +93,10 @@ describe('T511: TagsRow - tag display and remove', () => {
     expect(screen.getByText('Add tags')).toBeInTheDocument()
   })
 
-  it('falls back to English empty label for Turkish notes namespace', () => {
+  it('renders Turkish empty label for Turkish notes namespace', () => {
     renderWithI18n(<TagsRow {...defaultProps} tags={[]} />, i18nTr)
 
-    expect(screen.getByText('Add tags')).toBeInTheDocument()
+    expect(screen.getByText('Etiket ekle')).toBeInTheDocument()
   })
 
   it('should pass onRemoveTag prop correctly', () => {

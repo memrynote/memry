@@ -18,12 +18,12 @@ describe('menu namespace', () => {
     expect(i18n.t('menu:view.toggleFullscreen')).toBe('Toggle Full Screen')
   })
 
-  it('preserves Phase A Turkish seed labels and falls back for new keys', async () => {
+  it('translates current Turkish app-menu labels', async () => {
     const i18n = await createMainI18n({ locale: 'tr' })
 
     expect(i18n.t('menu:file.label')).toBe('Dosya')
     expect(i18n.t('menu:file.newNote')).toBe('Yeni Not')
-    expect(i18n.t('menu:view.reload')).toBe('Reload')
+    expect(i18n.t('menu:view.reload')).toBe('Yeniden yükle')
   })
 
   it('preserves Phase A Arabic seed labels and falls back for new keys', async () => {
