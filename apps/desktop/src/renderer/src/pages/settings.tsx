@@ -31,110 +31,112 @@ import { CalendarSettingsSection } from './settings/calendar-section'
 import { ShortcutsSettings } from './settings/shortcuts-section'
 import { AccountSettings } from './settings/account-section'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
+import { useT } from '@memry/i18n/renderer'
 
 export function SettingsPage() {
   const { activeSection, setActiveSection } = useSettingsModal()
+  const { t } = useT('settings')
 
   return (
     <div className="flex-1 min-h-0 flex">
-      <div className="w-60 shrink-0 pt-5 pb-4 overflow-y-auto min-h-0 bg-sidebar border-r border-border text-xs/4 font-[family-name:var(--font-sans)]">
+      <div className="w-60 shrink-0 pt-5 pb-4 overflow-y-auto min-h-0 bg-sidebar border-e border-border text-xs/4 font-[family-name:var(--font-sans)]">
         <div className="flex items-center pb-4 px-5">
           <span className="text-sm/4.5 font-semibold text-foreground tracking-[-0.01em]">
-            Settings
+            {t('page.title')}
           </span>
         </div>
 
-        <SettingsNavGroup label="Workspace">
+        <SettingsNavGroup label={t('page.nav.groups.workspace')}>
           <SettingsNavItem
             icon={<User className="w-3.5 h-3.5" />}
-            label="Account"
+            label={t('page.nav.items.account')}
             isActive={activeSection === 'account'}
             onClick={() => setActiveSection('account')}
           />
           <SettingsNavItem
             icon={<SettingsIcon className="w-3.5 h-3.5" />}
-            label="General"
+            label={t('page.nav.items.general')}
             isActive={activeSection === 'general'}
             onClick={() => setActiveSection('general')}
           />
           <SettingsNavItem
             icon={<FileText className="w-3.5 h-3.5" />}
-            label="Templates"
+            label={t('page.nav.items.templates')}
             isActive={activeSection === 'templates'}
             onClick={() => setActiveSection('templates')}
           />
           <SettingsNavItem
             icon={<PenLine className="w-3.5 h-3.5" />}
-            label="Editor"
+            label={t('page.nav.items.editor')}
             isActive={activeSection === 'editor'}
             onClick={() => setActiveSection('editor')}
           />
           <SettingsNavItem
             icon={<BookOpen className="w-3.5 h-3.5" />}
-            label="Journal"
+            label={t('page.nav.items.journal')}
             isActive={activeSection === 'journal'}
             onClick={() => setActiveSection('journal')}
           />
           <SettingsNavItem
             icon={<ListChecks className="w-3.5 h-3.5" />}
-            label="Tasks"
+            label={t('page.nav.items.tasks')}
             isActive={activeSection === 'tasks'}
             onClick={() => setActiveSection('tasks')}
           />
           <SettingsNavItem
             icon={<CalendarDays className="w-3.5 h-3.5" />}
-            label="Calendar"
+            label={t('page.nav.items.calendar')}
             isActive={activeSection === 'calendar'}
             onClick={() => setActiveSection('calendar')}
           />
         </SettingsNavGroup>
 
-        <SettingsNavGroup label="Preferences">
+        <SettingsNavGroup label={t('page.nav.groups.preferences')}>
           <SettingsNavItem
             icon={<Palette className="w-3.5 h-3.5" />}
-            label="Appearance"
+            label={t('page.nav.items.appearance')}
             isActive={activeSection === 'appearance'}
             onClick={() => setActiveSection('appearance')}
           />
           <SettingsNavItem
             icon={<Key className="w-3.5 h-3.5" />}
-            label="Shortcuts"
+            label={t('page.nav.items.shortcuts')}
             isActive={activeSection === 'shortcuts'}
             onClick={() => setActiveSection('shortcuts')}
           />
         </SettingsNavGroup>
 
-        <SettingsNavGroup label="Services">
+        <SettingsNavGroup label={t('page.nav.groups.services')}>
           <SettingsNavItem
             icon={<Brain className="w-3.5 h-3.5" />}
-            label="AI Assistant"
+            label={t('page.nav.items.ai')}
             isActive={activeSection === 'ai'}
             onClick={() => setActiveSection('ai')}
           />
           <SettingsNavItem
             icon={<Plug className="w-3.5 h-3.5" />}
-            label="Integrations"
+            label={t('page.nav.items.integrations')}
             isActive={activeSection === 'integrations'}
             onClick={() => setActiveSection('integrations')}
           />
         </SettingsNavGroup>
 
-        <SettingsNavGroup label="Data">
+        <SettingsNavGroup label={t('page.nav.groups.data')}>
           <SettingsNavItem
             icon={<FolderOpen className="w-3.5 h-3.5" />}
-            label="Vault"
+            label={t('page.nav.items.vault')}
             isActive={activeSection === 'vault'}
             onClick={() => setActiveSection('vault')}
           />
           <SettingsNavItem
             icon={<Tags className="w-3.5 h-3.5" />}
-            label="Tags"
+            label={t('page.nav.items.tags')}
             isActive={activeSection === 'tags'}
             onClick={() => setActiveSection('tags')}
           />
           <SettingsNavItem
             icon={<List className="w-3.5 h-3.5" />}
-            label="Properties"
+            label={t('page.nav.items.properties')}
             isActive={activeSection === 'properties'}
             onClick={() => setActiveSection('properties')}
           />
@@ -196,9 +198,9 @@ function SettingsNavItem({ icon, label, isActive, onClick }: SettingsNavItemProp
       )}
     >
       <span className="shrink-0 text-muted-foreground">{icon}</span>
-      <span className="pl-2 text-[13px]/4 font-medium">{label}</span>
+      <span className="ps-2 text-[13px]/4 font-medium">{label}</span>
       {isActive && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-[var(--tint)] rounded-r-sm" />
+        <span className="absolute start-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-[var(--tint)] rounded-e-sm" />
       )}
     </button>
   )
