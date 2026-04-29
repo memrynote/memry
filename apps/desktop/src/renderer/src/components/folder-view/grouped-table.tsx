@@ -46,6 +46,7 @@ import {
   sortableKeyboardCoordinates
 } from '@dnd-kit/sortable'
 import { restrictToHorizontalAxis } from '@dnd-kit/modifiers'
+import { useT } from '@memry/i18n/renderer'
 import {
   AlignLeft,
   Calendar,
@@ -327,6 +328,8 @@ export function GroupedTable({
   exitingRowIds = new Set<string>(),
   className
 }: GroupedTableProps): React.JSX.Element {
+  const { t } = useT('common')
+
   // ============================================================================
   // State
   // ============================================================================
@@ -989,7 +992,7 @@ export function GroupedTable({
   if (isLoading) {
     return (
       <div className={cn('flex items-center justify-center h-64', className)}>
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-muted-foreground">{t('state.loading')}</div>
       </div>
     )
   }
