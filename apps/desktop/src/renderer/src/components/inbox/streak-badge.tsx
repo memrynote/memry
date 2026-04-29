@@ -1,4 +1,5 @@
 import { Star } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
 
 interface StreakBadgeProps {
@@ -12,6 +13,8 @@ export function StreakBadge({
   size = 'sm',
   className
 }: StreakBadgeProps): React.JSX.Element | null {
+  const { t } = useT('inbox')
+
   if (streak <= 0) return null
 
   return (
@@ -23,10 +26,10 @@ export function StreakBadge({
         'bg-tint/10 text-tint',
         className
       )}
-      title={`${streak} day processing streak`}
+      title={t('triage.complete.dayProcessingStreak', { count: streak })}
     >
       <Star className={cn(size === 'sm' ? 'size-3' : 'size-3.5')} />
-      <span>{streak} streak</span>
+      <span>{t('triage.complete.streakCount', { count: streak })}</span>
     </div>
   )
 }

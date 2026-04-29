@@ -130,6 +130,8 @@
       "title": "Inbox Zero",
       "processed": "{count, plural, one {# item processed} other {# items processed}}",
       "streak": "streak",
+      "streakCount": "{count} streak",
+      "dayProcessingStreak": "{count, plural, one {# day processing streak} other {# day processing streak}}",
       "back": "Back to Inbox",
       "motivation0": "Your future self thanks you.",
       "motivation1": "Everything in its place.",
