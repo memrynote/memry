@@ -1,5 +1,6 @@
 import type Graph from 'graphology'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { useT } from '@memry/i18n/renderer'
 
 const TYPE_COLORS: Record<string, string> = {
   note: 'bg-accent-cyan/15 text-accent-cyan',
@@ -9,6 +10,14 @@ const TYPE_COLORS: Record<string, string> = {
   tag: 'bg-[var(--graph-node-tag)]/15 text-[var(--graph-node-tag)]'
 }
 
+const TYPE_LABEL_KEYS = {
+  note: 'entity.note',
+  journal: 'entity.journal',
+  task: 'entity.task',
+  project: 'entity.project',
+  tag: 'entity.tag'
+} as const
+
 interface GraphTooltipProps {
   nodeId: string
   graph: Graph
@@ -17,6 +26,8 @@ interface GraphTooltipProps {
 }
 
 export function GraphTooltip({ nodeId, graph, x, y }: GraphTooltipProps): React.JSX.Element | null {
+  const { t } = useT('graph')
+
   if (!graph.hasNode(nodeId)) return null
 
   const attrs = graph.getNodeAttributes(nodeId)
@@ -26,6 +37,11 @@ export function GraphTooltip({ nodeId, graph, x, y }: GraphTooltipProps): React.
   const connectionCount = (attrs.connectionCount as number) ?? 0
   const emoji = attrs.emoji as string | null
   const isUnresolved = attrs.isUnresolved as boolean
+  const nodeTypeLabel = isUnresolved
+    ? t('entity.unresolved')
+    : TYPE_LABEL_KEYS[nodeType as keyof typeof TYPE_LABEL_KEYS]
+      ? t(TYPE_LABEL_KEYS[nodeType as keyof typeof TYPE_LABEL_KEYS])
+      : nodeType
 
   return (
     <div
@@ -44,10 +60,10 @@ export function GraphTooltip({ nodeId, graph, x, y }: GraphTooltipProps): React.
         <span
           className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${TYPE_COLORS[nodeType] ?? 'bg-muted text-muted-foreground'}`}
         >
-          {isUnresolved ? 'unresolved' : nodeType}
+          {nodeTypeLabel}
         </span>
         <span className="text-[10px] text-muted-foreground">
-          {connectionCount} connection{connectionCount !== 1 ? 's' : ''}
+          {t('tooltip.connection-count', { count: connectionCount })}
         </span>
       </div>
 
@@ -62,7 +78,9 @@ export function GraphTooltip({ nodeId, graph, x, y }: GraphTooltipProps): React.
             </span>
           ))}
           {tags.length > 5 && (
-            <span className="text-[10px] text-muted-foreground">+{tags.length - 5}</span>
+            <span className="text-[10px] text-muted-foreground">
+              {t('tooltip.more-tags', { count: tags.length - 5 })}
+            </span>
           )}
         </div>
       )}
