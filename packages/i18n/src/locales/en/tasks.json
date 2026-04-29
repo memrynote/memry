@@ -1,0 +1,114 @@
+{
+  "page": {
+    "tabs": {
+      "today": "Today",
+      "all": "All"
+    },
+    "viewMode": {
+      "label": "View mode",
+      "list": "List view",
+      "kanban": "Kanban view"
+    },
+    "projectScope": {
+      "allProjects": "All projects",
+      "searchProjects": "Search projects…",
+      "editProject": "Edit {name}",
+      "unstarSavedFilter": "Unstar {name}"
+    }
+  },
+  "task": {
+    "add": "Add Task",
+    "title": "Title",
+    "titleRequired": "Title is required",
+    "titlePlaceholder": "What needs to be done?",
+    "namePlaceholder": "Task name",
+    "description": "Description",
+    "descriptionPlaceholder": "Add a description…",
+    "details": "Task details",
+    "status": "Status",
+    "priority": "Priority",
+    "dueDate": "Due Date",
+    "project": "Project",
+    "repeat": "Repeat",
+    "createAnother": "Create another",
+    "delete": "Delete task",
+    "created": "Created {date}"
+  },
+  "project": {
+    "create": "Create Project",
+    "edit": "Edit Project",
+    "delete": "Delete Project",
+    "iconAndName": "Icon & Name",
+    "namePlaceholder": "Project name",
+    "select": "Select project",
+    "selectIcon": "Select icon",
+    "clickIconToChange": "Click icon to change",
+    "color": "Color",
+    "descriptionOptional": "Description (optional)",
+    "descriptionPlaceholder": "Brief description of this project…",
+    "statuses": "Statuses",
+    "statusesHelp": "Configure the workflow stages for this project.",
+    "createDescription": "Create a new project with a name, icon, color, and workflow statuses.",
+    "editDescription": "Edit the project name, icon, color, and workflow statuses."
+  },
+  "status": {
+    "select": "Select status",
+    "todo": "To Do",
+    "inProgress": "In Progress",
+    "done": "Done"
+  },
+  "priority": {
+    "select": "Select priority",
+    "none": "No Priority",
+    "noneShort": "None",
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "urgent": "Urgent"
+  },
+  "filters": {
+    "filter": "Filter",
+    "emptyTitle": "No tasks match your filters",
+    "emptyHelp": "Try adjusting your filters or",
+    "groupBy": "Group by",
+    "groupByOptions": "Group by options",
+    "sortAscending": "Sort ascending",
+    "sortDescending": "Sort descending"
+  },
+  "quickAdd": {
+    "label": "Quick add task",
+    "focusDescription": "Focus quick add input"
+  },
+  "drawer": {
+    "close": "Close task details",
+    "subIssues": "Sub-issues",
+    "addSubIssue": "Add sub-issue",
+    "subIssuePlaceholder": "Add sub-issue…",
+    "noSubIssues": "No sub-issues yet",
+    "linkedNotes": "Linked Notes",
+    "linkNote": "Link a note",
+    "loading": "Loading…",
+    "searchNotes": "Search notes…",
+    "noMatchingNotes": "No matching notes",
+    "noNotesAvailable": "No notes available",
+    "noLinkedNotes": "No linked notes yet",
+    "removeLinkTo": "Remove link to {title}",
+    "removeLinkFallback": "note"
+  },
+  "kanban": {
+    "board": "Kanban board"
+  },
+  "toasts": {
+    "projectUpdated": "Project updated",
+    "projectCreated": "Project created",
+    "projectSaveError": "Failed to save project",
+    "projectArchived": "Project archived",
+    "projectArchiveError": "Failed to archive project",
+    "projectDeleted": "Project deleted",
+    "projectDeleteError": "Failed to delete project",
+    "filtersCleared": "Filters cleared",
+    "filterSaved": "Filter saved",
+    "filterDeleted": "Filter deleted",
+    "filterApplied": "Applied \"{name}\""
+  }
+}
