@@ -1,3 +1,4 @@
+import { useT } from '@memry/i18n/renderer'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -32,12 +33,13 @@ export function CalendarTaskPopoverActions({
   onPickDateTime,
   now
 }: CalendarTaskPopoverActionsProps): React.JSX.Element {
+  const { t } = useT('calendar')
   const opts = computeSnoozeOptions({ now: now ?? new Date(), isAllDay })
 
   return (
     <div className="flex items-center gap-1.5 px-2 py-2 border-t">
       <Button variant="secondary" size="sm" onClick={onOpenTask}>
-        Open task
+        {t('task-popover.open-task')}
       </Button>
 
       {sourceNoteId && (
@@ -45,10 +47,10 @@ export function CalendarTaskPopoverActions({
           variant="ghost"
           size="sm"
           onClick={onOpenSourceNote}
-          aria-label="Source note"
+          aria-label={t('task-popover.source-note')}
         >
           <FileText className="h-3.5 w-3.5 me-1" />
-          Source note
+          {t('task-popover.source-note')}
           <ExternalLink className="h-3 w-3 ms-1" />
         </Button>
       )}
@@ -56,29 +58,33 @@ export function CalendarTaskPopoverActions({
       {!isCompleted && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" aria-label="Snooze">
+            <Button variant="ghost" size="sm" aria-label={t('task-popover.snooze')}>
               <Clock className="h-3.5 w-3.5 me-1" />
-              Snooze
+              {t('task-popover.snooze')}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {opts.laterToday && (
               <DropdownMenuItem onClick={() => onSnooze(opts.laterToday!)}>
-                Later today
+                {t('task-popover.later-today')}
                 {opts.laterToday.dueTime ? ` · ${formatHHMM(opts.laterToday.dueTime)}` : ''}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={() => onSnooze(opts.tomorrow)}>
-              Tomorrow
+              {t('task-popover.tomorrow')}
               {opts.tomorrow.dueTime ? ` · ${formatHHMM(opts.tomorrow.dueTime)}` : ''}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onSnooze(opts.nextWeek)}>
-              Next week · Mon
+              {t('task-popover.next-week-mon')}
               {opts.nextWeek.dueTime ? ` ${formatHHMM(opts.nextWeek.dueTime)}` : ''}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onPickDateTime}>Pick date &amp; time…</DropdownMenuItem>
-            <DropdownMenuItem onClick={onRemoveDueDate}>Remove due date</DropdownMenuItem>
+            <DropdownMenuItem onClick={onPickDateTime}>
+              {t('task-popover.pick-date-time')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onRemoveDueDate}>
+              {t('task-popover.remove-due-date')}
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}

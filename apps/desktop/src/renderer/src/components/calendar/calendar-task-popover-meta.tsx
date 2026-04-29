@@ -1,3 +1,4 @@
+import { useT } from '@memry/i18n/renderer'
 import { Calendar, Repeat, Folder, Flag, AlertTriangle } from '@/lib/icons'
 import { formatTaskDue } from '@/lib/format-task-due'
 import { cn } from '@/lib/utils'
@@ -33,6 +34,7 @@ export function CalendarTaskPopoverMeta({
   now,
   isCompleted
 }: CalendarTaskPopoverMetaProps): React.JSX.Element | null {
+  const { t } = useT('calendar')
   if (!task.dueDate) return null
 
   const due = formatTaskDue({
@@ -76,10 +78,7 @@ export function CalendarTaskPopoverMeta({
           {projectName}
         </span>
         {statusLabel && (
-          <span
-            data-testid="status-pill"
-            className="rounded-full px-2 py-0.5 text-xs bg-muted"
-          >
+          <span data-testid="status-pill" className="rounded-full px-2 py-0.5 text-xs bg-muted">
             {statusLabel}
           </span>
         )}
@@ -90,7 +89,7 @@ export function CalendarTaskPopoverMeta({
           {task.priority > 0 && (
             <span className="flex items-center gap-1 text-muted-foreground">
               <Flag className="h-3.5 w-3.5" />
-              {priorityLabel(task.priority)}
+              {priorityLabel(task.priority, t)}
             </span>
           )}
           {tags.length > 0 && (
@@ -117,8 +116,8 @@ export function CalendarTaskPopoverMeta({
   )
 }
 
-function priorityLabel(p: number): string {
-  if (p >= 3) return 'Urgent'
-  if (p === 2) return 'High'
-  return 'Medium'
+function priorityLabel(p: number, t: (key: string) => string): string {
+  if (p >= 3) return t('task-popover.priority-urgent')
+  if (p === 2) return t('task-popover.priority-high')
+  return t('task-popover.priority-medium')
 }
