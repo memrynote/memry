@@ -119,6 +119,12 @@
       "failedToUpdateCalendarPreferences": "Failed to update calendar preferences",
       "couldNotEditThisEventTryAgain": "Could not edit this event. Try again.",
       "failedToDeleteEvent": "Failed to delete event"
+    },
+    "inboxSnoozePopover": {
+      "title": "Snoozed inbox item",
+      "openInInbox": "Open in inbox",
+      "unsnoozeNow": "Unsnooze now",
+      "reschedule": "Reschedule"
     }
   }
 }
