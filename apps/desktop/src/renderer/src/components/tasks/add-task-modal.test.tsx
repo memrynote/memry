@@ -1,15 +1,31 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { I18nextProvider } from 'react-i18next'
+import type { i18n as I18nInstance } from 'i18next'
+import type { ReactElement, ReactNode } from 'react'
+import { createRendererI18n } from '@memry/i18n/renderer'
 import { AddTaskModal } from './add-task-modal'
 import type { Project, Status } from '@/data/tasks-data'
 import type { Task } from '@/data/sample-tasks'
 
-beforeAll(() => {
+let i18nEn: I18nInstance
+let i18nTr: I18nInstance
+
+function renderWithI18n(ui: ReactElement, i18n = i18nEn) {
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
+  )
+  return render(ui, { wrapper: Wrapper })
+}
+
+beforeAll(async () => {
   Element.prototype.hasPointerCapture = vi.fn().mockReturnValue(false)
   Element.prototype.setPointerCapture = vi.fn()
   Element.prototype.releasePointerCapture = vi.fn()
   Element.prototype.scrollIntoView = vi.fn()
+  i18nEn = await createRendererI18n({ locale: 'en' })
+  i18nTr = await createRendererI18n({ locale: 'tr' })
 })
 
 const P_TODO: Status = { id: 'p-todo', name: 'To Do', color: '#666', type: 'todo', order: 0 }
@@ -71,7 +87,7 @@ describe('AddTaskModal', () => {
     it('submits task with the provided defaultProjectId', async () => {
       // #given — settings set default project to "work"
       const user = userEvent.setup()
-      render(
+      renderWithI18n(
         <AddTaskModal
           isOpen={true}
           onClose={onClose}
@@ -96,7 +112,7 @@ describe('AddTaskModal', () => {
     it('uses work project default todo status when defaultProjectId is work', async () => {
       // #given
       const user = userEvent.setup()
-      render(
+      renderWithI18n(
         <AddTaskModal
           isOpen={true}
           onClose={onClose}
@@ -118,7 +134,7 @@ describe('AddTaskModal', () => {
     it('falls back to personal when defaultProjectId is omitted', async () => {
       // #given — no defaultProjectId passed (defaults to 'personal')
       const user = userEvent.setup()
-      render(
+      renderWithI18n(
         <AddTaskModal isOpen={true} onClose={onClose} onAddTask={onAddTask} projects={PROJECTS} />
       )
 
@@ -135,7 +151,7 @@ describe('AddTaskModal', () => {
     it('handles non-existent defaultProjectId gracefully', async () => {
       // #given — settings point to a deleted project
       const user = userEvent.setup()
-      render(
+      renderWithI18n(
         <AddTaskModal
           isOpen={true}
           onClose={onClose}
@@ -158,7 +174,7 @@ describe('AddTaskModal', () => {
     it('resets to defaultProjectId when modal reopens', async () => {
       // #given — submit once, close, then reopen
       const user = userEvent.setup()
-      const { rerender } = render(
+      const { rerender } = renderWithI18n(
         <AddTaskModal
           isOpen={true}
           onClose={onClose}
@@ -208,7 +224,7 @@ describe('AddTaskModal', () => {
     it('shows error when submitting without title', async () => {
       // #given
       const user = userEvent.setup()
-      render(
+      renderWithI18n(
         <AddTaskModal isOpen={true} onClose={onClose} onAddTask={onAddTask} projects={PROJECTS} />
       )
 
@@ -218,6 +234,15 @@ describe('AddTaskModal', () => {
       // #then
       expect(screen.getByText('Title is required')).toBeInTheDocument()
       expect(onAddTask).not.toHaveBeenCalled()
+    })
+
+    it('falls back to English task strings for Turkish', () => {
+      renderWithI18n(
+        <AddTaskModal isOpen={true} onClose={onClose} onAddTask={onAddTask} projects={PROJECTS} />,
+        i18nTr
+      )
+
+      expect(screen.getAllByText('Add Task').length).toBeGreaterThanOrEqual(1)
     })
   })
 })

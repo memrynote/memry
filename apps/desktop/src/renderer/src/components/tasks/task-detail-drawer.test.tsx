@@ -1,6 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { I18nextProvider } from 'react-i18next'
+import type { i18n as I18nInstance } from 'i18next'
+import type { ReactElement, ReactNode } from 'react'
+import { createRendererI18n } from '@memry/i18n/renderer'
 import { TaskDetailDrawer, type TaskDetailDrawerProps } from './task-detail-drawer'
 import type { Task, Priority, RepeatConfig } from '@/data/sample-tasks'
 import type { Project, Status } from '@/data/tasks-data'
@@ -17,6 +21,19 @@ vi.mock('@/services/notes-service', () => ({
 vi.mock('@/contexts/day-panel-context', () => ({
   useDayPanel: () => ({ isOpen: false, width: 320 })
 }))
+
+let i18nEn: I18nInstance
+
+function renderWithI18n(ui: ReactElement) {
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <I18nextProvider i18n={i18nEn}>{children}</I18nextProvider>
+  )
+  return render(ui, { wrapper: Wrapper })
+}
+
+beforeAll(async () => {
+  i18nEn = await createRendererI18n({ locale: 'en' })
+})
 
 const statuses: Status[] = [
   { id: 'todo', name: 'To Do', color: '#6B7280', type: 'todo', order: 0 },
@@ -82,7 +99,7 @@ describe('TaskDetailDrawer — editable properties', () => {
 
   describe('status editing', () => {
     it('renders InteractiveStatusBadge with current status', () => {
-      render(<TaskDetailDrawer {...defaultProps} />)
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} />)
 
       const statusBtn = screen.getByRole('button', { name: /status:.*click to change/i })
       expect(statusBtn).toBeInTheDocument()
@@ -90,7 +107,7 @@ describe('TaskDetailDrawer — editable properties', () => {
 
     it('calls onUpdateTask with new statusId when status changed', async () => {
       const user = userEvent.setup()
-      render(<TaskDetailDrawer {...defaultProps} />)
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} />)
 
       const statusBtn = screen.getByRole('button', { name: /status:.*click to change/i })
       await user.click(statusBtn)
@@ -106,14 +123,14 @@ describe('TaskDetailDrawer — editable properties', () => {
 
   describe('priority editing', () => {
     it('renders InteractivePriorityBadge with current priority', () => {
-      render(<TaskDetailDrawer {...defaultProps} />)
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} />)
 
       const priorityBtn = screen.getByRole('button', { name: /priority:.*click to change/i })
       expect(priorityBtn).toBeInTheDocument()
     })
 
     it('renders priority badge even when priority is none', () => {
-      render(
+      renderWithI18n(
         <TaskDetailDrawer {...defaultProps} task={createTask({ priority: 'none' as Priority })} />
       )
 
@@ -123,7 +140,7 @@ describe('TaskDetailDrawer — editable properties', () => {
 
     it('calls onUpdateTask with new priority when changed', async () => {
       const user = userEvent.setup()
-      render(<TaskDetailDrawer {...defaultProps} />)
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} />)
 
       const priorityBtn = screen.getByRole('button', { name: /priority:.*click to change/i })
       await user.click(priorityBtn)
@@ -139,14 +156,14 @@ describe('TaskDetailDrawer — editable properties', () => {
 
   describe('due date editing', () => {
     it('renders InteractiveDueDateBadge with current date', () => {
-      render(<TaskDetailDrawer {...defaultProps} />)
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} />)
 
       const dueDateBtn = screen.getByRole('button', { name: /due:.*click to change/i })
       expect(dueDateBtn).toBeInTheDocument()
     })
 
     it('renders due date badge even when no due date set', () => {
-      render(<TaskDetailDrawer {...defaultProps} task={createTask({ dueDate: null })} />)
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} task={createTask({ dueDate: null })} />)
 
       const dueDateBtn = screen.getByRole('button', { name: /due:.*click to change/i })
       expect(dueDateBtn).toBeInTheDocument()
@@ -155,7 +172,7 @@ describe('TaskDetailDrawer — editable properties', () => {
 
   describe('title editing', () => {
     it('renders editable input with task title', () => {
-      render(<TaskDetailDrawer {...defaultProps} />)
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} />)
 
       const titleInput = screen.getByPlaceholderText('Task name')
       expect(titleInput).toBeInTheDocument()
@@ -165,7 +182,7 @@ describe('TaskDetailDrawer — editable properties', () => {
     it('calls onUpdateTask with title update on typing', async () => {
       const user = userEvent.setup()
       const onUpdateTask = vi.fn()
-      render(<TaskDetailDrawer {...defaultProps} onUpdateTask={onUpdateTask} />)
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} onUpdateTask={onUpdateTask} />)
 
       const titleInput = screen.getByPlaceholderText('Task name')
       await user.type(titleInput, 'X')
@@ -179,28 +196,28 @@ describe('TaskDetailDrawer — editable properties', () => {
 
   describe('description editing', () => {
     it('renders textarea even when description is empty', () => {
-      render(<TaskDetailDrawer {...defaultProps} task={createTask({ description: '' })} />)
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} task={createTask({ description: '' })} />)
 
-      const textarea = screen.getByPlaceholderText('Add a description...')
+      const textarea = screen.getByPlaceholderText('Add a description…')
       expect(textarea).toBeInTheDocument()
       expect(textarea).toHaveValue('')
     })
 
     it('renders textarea with existing description', () => {
-      render(
+      renderWithI18n(
         <TaskDetailDrawer {...defaultProps} task={createTask({ description: 'Some notes here' })} />
       )
 
-      const textarea = screen.getByPlaceholderText('Add a description...')
+      const textarea = screen.getByPlaceholderText('Add a description…')
       expect(textarea).toHaveValue('Some notes here')
     })
 
     it('calls onUpdateTask with description update on typing', async () => {
       const user = userEvent.setup()
       const onUpdateTask = vi.fn()
-      render(<TaskDetailDrawer {...defaultProps} onUpdateTask={onUpdateTask} />)
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} onUpdateTask={onUpdateTask} />)
 
-      const textarea = screen.getByPlaceholderText('Add a description...')
+      const textarea = screen.getByPlaceholderText('Add a description…')
       await user.type(textarea, 'H')
 
       expect(onUpdateTask).toHaveBeenCalledWith(
@@ -212,14 +229,14 @@ describe('TaskDetailDrawer — editable properties', () => {
 
   describe('project editing', () => {
     it('renders interactive project badge in properties grid', () => {
-      render(<TaskDetailDrawer {...defaultProps} />)
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} />)
 
       const projectBtn = screen.getByRole('button', { name: /project:.*click to change/i })
       expect(projectBtn).toBeInTheDocument()
     })
 
     it('shows project name and color indicator', () => {
-      render(<TaskDetailDrawer {...defaultProps} />)
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} />)
 
       const projectBtn = screen.getByRole('button', { name: /project:.*click to change/i })
       expect(projectBtn).toBeInTheDocument()
@@ -229,7 +246,7 @@ describe('TaskDetailDrawer — editable properties', () => {
     it('calls onUpdateTask with new projectId when project changed', async () => {
       const user = userEvent.setup()
       const onUpdateTask = vi.fn()
-      render(<TaskDetailDrawer {...defaultProps} onUpdateTask={onUpdateTask} />)
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} onUpdateTask={onUpdateTask} />)
 
       const projectBtn = screen.getByRole('button', { name: /project:.*click to change/i })
       await user.click(projectBtn)
@@ -241,7 +258,7 @@ describe('TaskDetailDrawer — editable properties', () => {
     })
 
     it('shows Project label in properties grid row', () => {
-      render(<TaskDetailDrawer {...defaultProps} />)
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} />)
 
       expect(screen.getByText('Project')).toBeInTheDocument()
     })
@@ -249,7 +266,7 @@ describe('TaskDetailDrawer — editable properties', () => {
 
   describe('repeat section', () => {
     it('renders repeat section with add button for non-repeating task', () => {
-      render(<TaskDetailDrawer {...defaultProps} />)
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} />)
 
       expect(screen.getByText('Repeat')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /add repeat/i })).toBeInTheDocument()
@@ -264,7 +281,7 @@ describe('TaskDetailDrawer — editable properties', () => {
         completedCount: 2,
         createdAt: new Date('2026-01-01')
       }
-      render(
+      renderWithI18n(
         <TaskDetailDrawer
           {...defaultProps}
           task={createTask({ isRepeating: true, repeatConfig })}
@@ -276,7 +293,7 @@ describe('TaskDetailDrawer — editable properties', () => {
     })
 
     it('appears after sub-issues in DOM order', () => {
-      render(<TaskDetailDrawer {...defaultProps} />)
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} />)
 
       const subIssuesLabel = screen.getByText('Sub-issues')
       const repeatLabel = screen.getByText('Repeat')
@@ -289,21 +306,21 @@ describe('TaskDetailDrawer — editable properties', () => {
 
   describe('delete task', () => {
     it('renders delete button when onDeleteTask is provided', () => {
-      render(<TaskDetailDrawer {...defaultProps} onDeleteTask={vi.fn()} />)
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} onDeleteTask={vi.fn()} />)
 
       const deleteBtn = screen.getByRole('button', { name: /delete task/i })
       expect(deleteBtn).toBeInTheDocument()
     })
 
     it('does not render delete button when onDeleteTask is not provided', () => {
-      render(<TaskDetailDrawer {...defaultProps} />)
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} />)
 
       expect(screen.queryByRole('button', { name: /delete task/i })).not.toBeInTheDocument()
     })
 
     it('shows confirmation dialog when delete button clicked', async () => {
       const user = userEvent.setup()
-      render(<TaskDetailDrawer {...defaultProps} onDeleteTask={vi.fn()} />)
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} onDeleteTask={vi.fn()} />)
 
       await user.click(screen.getByRole('button', { name: /delete task/i }))
 
@@ -314,7 +331,7 @@ describe('TaskDetailDrawer — editable properties', () => {
     it('calls onDeleteTask with task id when deletion confirmed', async () => {
       const user = userEvent.setup()
       const onDeleteTask = vi.fn()
-      render(<TaskDetailDrawer {...defaultProps} onDeleteTask={onDeleteTask} />)
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} onDeleteTask={onDeleteTask} />)
 
       await user.click(screen.getByRole('button', { name: /delete task/i }))
       await user.click(screen.getByRole('button', { name: /^delete task$/i }))
@@ -325,7 +342,7 @@ describe('TaskDetailDrawer — editable properties', () => {
     it('does not call onDeleteTask when cancel is clicked', async () => {
       const user = userEvent.setup()
       const onDeleteTask = vi.fn()
-      render(<TaskDetailDrawer {...defaultProps} onDeleteTask={onDeleteTask} />)
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} onDeleteTask={onDeleteTask} />)
 
       await user.click(screen.getByRole('button', { name: /delete task/i }))
       await user.click(screen.getByRole('button', { name: /cancel/i }))
@@ -350,7 +367,7 @@ describe('TaskDetailDrawer — editable properties', () => {
     it('shows emoji instead of NoteIcon when note has emoji', async () => {
       vi.mocked(notesService.get).mockResolvedValueOnce(mockNoteData)
 
-      render(
+      renderWithI18n(
         <TaskDetailDrawer {...defaultProps} task={createTask({ linkedNoteIds: ['note-1'] })} />
       )
 
@@ -363,7 +380,7 @@ describe('TaskDetailDrawer — editable properties', () => {
       const onUpdateTask = vi.fn()
       vi.mocked(notesService.get).mockResolvedValueOnce(mockNoteData)
 
-      render(
+      renderWithI18n(
         <TaskDetailDrawer
           {...defaultProps}
           onUpdateTask={onUpdateTask}
@@ -384,7 +401,7 @@ describe('TaskDetailDrawer — editable properties', () => {
       const onNoteClick = vi.fn()
       vi.mocked(notesService.get).mockResolvedValueOnce(mockNoteData)
 
-      render(
+      renderWithI18n(
         <TaskDetailDrawer
           {...defaultProps}
           onNoteClick={onNoteClick}
