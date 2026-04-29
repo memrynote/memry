@@ -1,0 +1,12 @@
+{
+  "file": {
+    "label": "Dosya",
+    "newNote": "Yeni Not"
+  },
+  "edit": {
+    "label": "Düzenle"
+  },
+  "view": {
+    "label": "Görünüm"
+  }
+}

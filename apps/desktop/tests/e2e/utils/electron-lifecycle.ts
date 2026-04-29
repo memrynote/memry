@@ -76,6 +76,7 @@ async function launchOnce(opts: LaunchOptions): Promise<LaunchedElectron> {
     ...(isCI && { ELECTRON_DISABLE_SANDBOX: '1' }),
     ...(opts.extraEnv ?? {})
   }
+  delete env.ELECTRON_RUN_AS_NODE
 
   const app = await electron.launch({
     args: [
