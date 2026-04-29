@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { RefreshCw, SlidersHorizontal } from '@/lib/icons'
@@ -99,6 +100,7 @@ export function CalendarShell({
   const viewProps = { anchorDate, items, selectedItemId, onSelectItem }
   const chipViewProps = { ...viewProps, onDeleteItem }
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const { t } = useT('calendar')
   const hasGoogleCalendars = importedSources.length > 0
 
   const handleRefreshGoogle = async (): Promise<void> => {
@@ -121,7 +123,7 @@ export function CalendarShell({
       variant="ghost"
       size="icon"
       className="size-9 rounded-lg"
-      aria-label="Refresh Google calendars"
+      aria-label={t('filter.refresh-google-calendars')}
       disabled={isRefreshing}
       onClick={() => {
         void handleRefreshGoogle()
@@ -138,7 +140,7 @@ export function CalendarShell({
           variant="ghost"
           size="icon"
           className="size-9 rounded-lg"
-          aria-label="Filter calendars"
+          aria-label={t('filter.filter-calendars')}
         >
           <SlidersHorizontal className="size-5" />
         </Button>
@@ -147,22 +149,22 @@ export function CalendarShell({
         <div className="space-y-5">
           <div className="space-y-3">
             <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Sources
+              {t('filter.sources')}
             </h2>
             <label className="flex items-center justify-between gap-3 text-sm text-foreground">
-              <span>Memry items</span>
+              <span>{t('filter.memry-items')}</span>
               <input
                 type="checkbox"
-                aria-label="Memry items"
+                aria-label={t('filter.memry-items')}
                 checked={showMemryItems}
                 onChange={onToggleMemryItems}
               />
             </label>
             <label className="flex items-center justify-between gap-3 text-sm text-foreground">
-              <span>Imported calendars</span>
+              <span>{t('filter.imported-calendars')}</span>
               <input
                 type="checkbox"
-                aria-label="Imported calendars"
+                aria-label={t('filter.imported-calendars')}
                 checked={showImportedCalendars}
                 onChange={onToggleImportedCalendars}
               />
@@ -171,10 +173,11 @@ export function CalendarShell({
 
           <div className="space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Event types
+              {t('filter.event-types')}
             </h3>
             {VISUAL_TYPE_ORDER.map((visualType) => {
               const meta = VISUAL_TYPE_META[visualType]
+              const label = t(meta.labelKey)
               return (
                 <label
                   key={visualType}
@@ -186,11 +189,11 @@ export function CalendarShell({
                       className="size-3 rounded-full ring-1 ring-border"
                       style={{ backgroundColor: meta.swatchColor }}
                     />
-                    {meta.label}
+                    {label}
                   </span>
                   <input
                     type="checkbox"
-                    aria-label={meta.label}
+                    aria-label={label}
                     checked={selectedVisualTypes.includes(visualType)}
                     onChange={() => onToggleVisualType(visualType)}
                   />
@@ -202,7 +205,7 @@ export function CalendarShell({
           {importedSources.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Google calendars
+                {t('filter.google-calendars')}
               </h3>
               {importedSources.map((source) => (
                 <label
@@ -250,7 +253,7 @@ export function CalendarShell({
       <div className="min-h-0 flex-1">
         {isLoading ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            Loading calendar...
+            {t('state.loading-calendar')}
           </div>
         ) : view === 'day' ? (
           <CalendarDayView
