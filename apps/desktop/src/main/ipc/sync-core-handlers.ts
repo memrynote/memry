@@ -150,7 +150,7 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
   ipcMain.handle(SYNC_CHANNELS.TRIGGER_SYNC, async () => {
     const engine = resolveSyncEngine()
     if (!engine) {
-      return { success: false, error: 'Sync engine not initialized. Open a vault to start sync.' }
+      return { success: false, error: 'errors:sync.engineNotInitialized' }
     }
     return withErrorHandler(async () => {
       await engine.fullSync()
@@ -219,7 +219,7 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     UpdateSyncedSettingSchema,
     (input) => {
       const manager = getSettingsSyncManager()
-      if (!manager) return { success: false, error: 'Settings sync not initialized' }
+      if (!manager) return { success: false, error: 'errors:sync.settingsNotInitialized' }
 
       manager.updateField(input.fieldPath, input.value, 'local')
       return { success: true }
