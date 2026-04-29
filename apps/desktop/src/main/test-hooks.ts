@@ -19,6 +19,7 @@ import {
 } from './calendar/google/sync-service'
 import { listCalendarExternalEventsBySource } from './calendar/repositories/calendar-external-events-repository'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
+import { getMainI18n } from './lib/main-i18n'
 
 export interface SyncTestBootstrapInput {
   email: string
@@ -140,6 +141,7 @@ interface MemryTestHooks {
   ): Promise<CreateMemryEventForWriteBackResult>
   pushMemryEventToGoogleForE2E(input: { sourceId: string }): Promise<PushMemryEventToGoogleResult>
   fetchGoogleEventForE2E(input: FetchGoogleEventInput): Promise<GoogleEventProbe>
+  translateInMain(key: string): Promise<string>
 }
 
 interface GoogleTestCredentials {
@@ -777,6 +779,10 @@ export function registerTestHooks(): void {
         start: json.start ?? null,
         end: json.end ?? null
       }
+    },
+
+    async translateInMain(key: string): Promise<string> {
+      return getMainI18n().t(key)
     }
   }
 }

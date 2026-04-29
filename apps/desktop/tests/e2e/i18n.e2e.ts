@@ -99,6 +99,39 @@ test.describe('i18n', () => {
     await expect(page.getByRole('button', { name: 'Search', exact: true })).toHaveCount(0)
   })
 
+  test('main-process system namespace renders in English by default', async ({
+    electronApp,
+    page
+  }) => {
+    await waitForAppReady(page)
+    await waitForVaultReady(page)
+    await dismissFirstRunOnboarding(page)
+
+    const reminderLabel = await electronApp.evaluate(async ({}, key: string) => {
+      const hooks = (
+        globalThis as typeof globalThis & {
+          __memryTestHooks?: { translateInMain(k: string): Promise<string> }
+        }
+      ).__memryTestHooks
+      if (!hooks) throw new Error('Memry test hooks are not registered')
+      return hooks.translateInMain(key)
+    }, 'system:notification.reminder.note')
+
+    expect(reminderLabel).toBe('Note reminder')
+
+    const exportTitle = await electronApp.evaluate(async ({}, key: string) => {
+      const hooks = (
+        globalThis as typeof globalThis & {
+          __memryTestHooks?: { translateInMain(k: string): Promise<string> }
+        }
+      ).__memryTestHooks
+      if (!hooks) throw new Error('Memry test hooks are not registered')
+      return hooks.translateInMain(key)
+    }, 'system:dialog.exportPdf.title')
+
+    expect(exportTitle).toBe('Export as PDF')
+  })
+
   test('toasts surface renders post locale switch (Phase G burn-down)', async ({
     electronApp,
     page
