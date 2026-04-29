@@ -117,7 +117,7 @@ export function CalendarTaskPopoverMeta({
   )
 }
 
-function priorityLabel(p: 1 | 2 | 3 | 4): string {
+function priorityLabel(p: number): string {
   if (p >= 3) return 'Urgent'
   if (p === 2) return 'High'
   return 'Medium'
