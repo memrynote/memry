@@ -18,6 +18,7 @@ import {
 } from './use-reminders'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Hook:NoteReminders')
 
@@ -64,6 +65,8 @@ export interface UseNoteRemindersResult {
 // ============================================================================
 
 export function useNoteReminders(noteId: string | null): UseNoteRemindersResult {
+  const { t } = useT('notes')
+
   // Fetch reminders for this note (includes both note and highlight reminders)
   const { reminders: noteReminders, isLoading: noteRemindersLoading } = useRemindersForTarget(
     'note',
@@ -111,19 +114,19 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
         })
 
         if (result.success) {
-          toast.success('Reminder set')
+          toast.success(t('reminders.toast.set'))
           return true
         } else {
-          toast.error(extractErrorMessage(result.error, 'Failed to set reminder'))
+          toast.error(extractErrorMessage(result.error, t('reminders.toast.setFailed')))
           return false
         }
       } catch (err) {
         log.error('Failed to set reminder:', err)
-        toast.error('Failed to set reminder')
+        toast.error(t('reminders.toast.setFailed'))
         return false
       }
     },
-    [noteId, createReminderMutation]
+    [noteId, createReminderMutation, t]
   )
 
   const setHighlightReminder = useCallback(
@@ -148,19 +151,19 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
         })
 
         if (result.success) {
-          toast.success('Reminder set for highlighted text')
+          toast.success(t('reminders.toast.setForHighlight'))
           return true
         } else {
-          toast.error(extractErrorMessage(result.error, 'Failed to set reminder'))
+          toast.error(extractErrorMessage(result.error, t('reminders.toast.setFailed')))
           return false
         }
       } catch (err) {
         log.error('Failed to set highlight reminder:', err)
-        toast.error('Failed to set reminder')
+        toast.error(t('reminders.toast.setFailed'))
         return false
       }
     },
-    [noteId, createReminderMutation]
+    [noteId, createReminderMutation, t]
   )
 
   const deleteReminderAction = useCallback(
@@ -169,19 +172,19 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
         const result = await deleteReminderMutation.mutateAsync(reminderId)
 
         if (result.success) {
-          toast.success('Reminder deleted')
+          toast.success(t('reminders.toast.deleted'))
           return true
         } else {
-          toast.error(extractErrorMessage(result.error, 'Failed to delete reminder'))
+          toast.error(extractErrorMessage(result.error, t('reminders.toast.deleteFailed')))
           return false
         }
       } catch (err) {
         log.error('Failed to delete reminder:', err)
-        toast.error('Failed to delete reminder')
+        toast.error(t('reminders.toast.deleteFailed'))
         return false
       }
     },
-    [deleteReminderMutation]
+    [deleteReminderMutation, t]
   )
 
   const dismissReminderAction = useCallback(
@@ -190,19 +193,19 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
         const result = await dismissReminderMutation.mutateAsync(reminderId)
 
         if (result.success) {
-          toast.success('Reminder dismissed')
+          toast.success(t('reminders.toast.dismissed'))
           return true
         } else {
-          toast.error(extractErrorMessage(result.error, 'Failed to dismiss reminder'))
+          toast.error(extractErrorMessage(result.error, t('reminders.toast.dismissFailed')))
           return false
         }
       } catch (err) {
         log.error('Failed to dismiss reminder:', err)
-        toast.error('Failed to dismiss reminder')
+        toast.error(t('reminders.toast.dismissFailed'))
         return false
       }
     },
-    [dismissReminderMutation]
+    [dismissReminderMutation, t]
   )
 
   const snoozeReminderAction = useCallback(
