@@ -232,7 +232,10 @@
     "includeMetadata": "Include metadata (tags, dates)",
     "exporting": "Exporting...",
     "exported": "Exported!",
-    "export": "Export"
+    "export": "Export",
+    "toast": {
+      "failed": "Export failed"
+    }
   },
   "versionHistory": {
     "title": "Version History",
@@ -250,7 +253,28 @@
     "deleteDescription": "This action cannot be undone. This version will be permanently deleted.",
     "restoreTitle": "Restore this version?",
     "restoreDescription": "This will replace the current note content with this version. A snapshot of the current state will be saved first, so you can undo this action.",
-    "restoring": "Restoring..."
+    "restoring": "Restoring...",
+    "toast": {
+      "loadPreviewFailed": "Failed to load version preview",
+      "restored": "Note restored to previous version",
+      "deleted": "Version deleted"
+    }
+  },
+  "templateEditor": {
+    "title": {
+      "new": "New Template",
+      "view": "View Template",
+      "edit": "Edit Template"
+    },
+    "toast": {
+      "nameRequired": "Template name is required",
+      "created": "Template created",
+      "createFailed": "Failed to create template",
+      "saved": "Template saved",
+      "saveFailed": "Failed to save template",
+      "duplicateFailed": "Failed to duplicate template",
+      "deleteFailed": "Failed to delete template"
+    }
   },
   "reminders": {
     "summary": "Reminder: {date}",
