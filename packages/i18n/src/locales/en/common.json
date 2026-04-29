@@ -53,6 +53,35 @@
     "project": "{count, plural, one {# project} other {# projects}}",
     "itemDelete": "{count, plural, one {Delete # item} other {Delete # items}}"
   },
+  "toast": {
+    "actionFailed": "Action failed",
+    "nothingToUndo": "Nothing to undo",
+    "undone": "Undone: {description}",
+    "undoFailed": "Failed to undo action",
+    "copied": "Copied",
+    "copyFailed": "Failed to copy"
+  },
+  "recurrence": {
+    "everyDay": "Every day",
+    "everyNDays": "{count, plural, one {Every day} other {Every # days}}",
+    "everyWeek": "Every week",
+    "everyNWeeks": "{count, plural, one {Every week} other {Every # weeks}}",
+    "everyWeekday": "Every weekday",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Every weekday} other {Every # weeks on weekdays}}",
+    "everyWeekend": "Every weekend",
+    "everyNWeeksOnWeekends": "{count, plural, one {Every weekend} other {Every # weeks on weekends}}",
+    "everyWeekOnDays": "Every week on {days}",
+    "everyNWeeksOnDays": "{count, plural, one {Every week on {days}} other {Every # weeks on {days}}}",
+    "everyMonth": "Every month",
+    "everyNMonths": "{count, plural, one {Every month} other {Every # months}}",
+    "everyMonthOnDay": "Every month on the {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {Every month on the {day}{suffix}} other {Every # months on the {day}{suffix}}}",
+    "everyMonthOnWeekDay": "Every month on the {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Every month on the {week} {day}} other {Every # months on the {week} {day}}}",
+    "everyYear": "Every year",
+    "everyNYears": "{count, plural, one {Every year} other {Every # years}}",
+    "repeats": "Repeats"
+  },
   "phaseF": {
     "componentsAppSidebar": {
       "collections": "Collections",
