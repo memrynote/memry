@@ -65,6 +65,7 @@ export function HighlightReminderPopover({
   containerRef: _containerRef
 }: HighlightReminderPopoverProps): React.ReactElement | null {
   const { t: tPhaseF } = useT('inbox')
+  const { t } = useT('notes')
   const [open, setOpen] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const createReminder = useCreateReminder()
@@ -94,16 +95,16 @@ export function HighlightReminderPopover({
           highlightEnd: selection.endOffset
         })
 
-        toast.success('Reminder set for highlight')
+        toast.success(t('reminders.toast.setForHighlight'))
         setOpen(false)
         onClose()
         onReminderCreated?.()
       } catch (error) {
         log.error('Failed to create reminder', error)
-        toast.error('Failed to set reminder')
+        toast.error(t('reminders.toast.setFailed'))
       }
     },
-    [selection, noteId, createReminder, onClose, onReminderCreated]
+    [selection, noteId, createReminder, onClose, onReminderCreated, t]
   )
 
   const handleClose = useCallback(() => {
