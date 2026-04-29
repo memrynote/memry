@@ -1,13 +1,12 @@
 import { useState, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useGeneralSettings } from '@/hooks/use-general-settings'
-import { formatTimeOfDay } from '@/lib/time-format'
+import { useT } from '@memry/i18n/renderer'
 
 import { cn } from '@/lib/utils'
 import { BellRing, FileText, Calendar, Clock, ChevronRight } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { SnoozePicker } from '@/components/snooze/snooze-picker'
-import { inOneHour, tomorrow, nextWeek, formatSnoozeTime } from '@/components/snooze/snooze-presets'
+import { inOneHour, tomorrow, nextWeek } from '@/components/snooze/snooze-presets'
 import { inboxService } from '@/services/inbox-service'
 import { inboxKeys } from '@/hooks/use-inbox'
 import { useTabs } from '@/contexts/tabs'
@@ -24,9 +23,9 @@ interface ReminderDetailProps {
 }
 
 const SNOOZE_PRESETS = [
-  { id: 'in-1-hour', label: '1 hour', getTime: inOneHour },
-  { id: 'tomorrow', label: 'Tomorrow', getTime: tomorrow },
-  { id: 'next-week', label: 'Next week', getTime: nextWeek }
+  { id: 'in-1-hour', getTime: inOneHour },
+  { id: 'tomorrow', getTime: tomorrow },
+  { id: 'next-week', getTime: nextWeek }
 ] as const
 
 function formatTriggerDate(isoString: string): string {
@@ -50,6 +49,7 @@ function getTargetIcon(targetType: string) {
 }
 
 export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element {
+  const { t } = useT('inbox')
   const metadata = item.metadata as ReminderMetadata | undefined
   const queryClient = useQueryClient()
   const { openTab } = useTabs()
@@ -107,7 +107,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
       case 'highlight':
         openTab({
           type: 'note',
-          title: metadata.targetTitle || 'Note',
+          title: metadata.targetTitle || t('reminder.noteFallback'),
           icon: 'file-text',
           path: `/notes/${metadata.targetId}`,
           entityId: metadata.targetId,
@@ -128,7 +128,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
       case 'journal':
         openTab({
           type: 'journal',
-          title: 'Journal',
+          title: t('reminder.journalFallback'),
           icon: 'book-open',
           path: '/journal',
           isPinned: false,
@@ -139,14 +139,19 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
         })
         break
     }
-  }, [metadata, item.id, openTab])
+  }, [metadata, item.id, openTab, t])
 
   if (!metadata) {
-    return <div className="p-5 text-muted-foreground text-sm">Reminder data unavailable.</div>
+    return <div className="p-5 text-muted-foreground text-sm">{t('reminder.dataUnavailable')}</div>
   }
 
   const TargetIcon = getTargetIcon(metadata.targetType)
   const isViewed = localViewedAt !== null
+  const presetLabels = {
+    'in-1-hour': t('reminder.presetInOneHour'),
+    tomorrow: t('reminder.presetTomorrow'),
+    'next-week': t('reminder.presetNextWeek')
+  }
 
   return (
     <div className="flex flex-col gap-3.5 p-5 text-xs/4">
@@ -158,7 +163,9 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
         )}
       >
         <BellRing className="size-4 text-[var(--accent-orange)]" aria-hidden="true" />
-        <span className="text-[var(--accent-orange)] font-medium text-xs">Reminder triggered</span>
+        <span className="text-[var(--accent-orange)] font-medium text-xs">
+          {t('reminder.triggered')}
+        </span>
         <span className="ml-auto text-text-tertiary text-[11px]">
           {formatTriggerDate(metadata.remindAt)}
         </span>
@@ -168,7 +175,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
       {metadata.reminderNote && (
         <div className="flex flex-col gap-1">
           <span className="uppercase tracking-[0.04em] text-text-tertiary font-medium text-[11px]">
-            Reminder Note
+            {t('reminder.noteLabel')}
           </span>
           <p className="text-muted-foreground text-[13px] leading-5">{metadata.reminderNote}</p>
         </div>
@@ -177,7 +184,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
       {/* Source card */}
       <div className="flex flex-col gap-1">
         <span className="uppercase tracking-[0.04em] text-text-tertiary font-medium text-[11px]">
-          Source
+          {t('reminder.source')}
         </span>
         <button
           type="button"
@@ -192,12 +199,18 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
           <div className="flex flex-col gap-0.5 min-w-0 flex-1">
             <span className="text-foreground text-xs truncate">
               {metadata.targetType === 'journal'
-                ? `Journal \u2014 ${new Date(metadata.targetId).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
-                : metadata.targetTitle || 'Note'}
+                ? t('reminder.journalTitle', {
+                    date: new Date(metadata.targetId).toLocaleDateString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })
+                  })
+                : metadata.targetTitle || t('reminder.noteFallback')}
             </span>
             {metadata.highlightText && (
               <span className="text-text-tertiary text-[11px] truncate">
-                Highlighted: &ldquo;{metadata.highlightText}&rdquo;
+                {t('reminder.highlighted', { text: metadata.highlightText })}
               </span>
             )}
           </div>
@@ -208,7 +221,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
       {/* Mark as viewed */}
       <div className="flex items-center gap-2">
         {isViewed ? (
-          <span className="text-text-tertiary text-[11px]">Viewed</span>
+          <span className="text-text-tertiary text-[11px]">{t('reminder.viewed')}</span>
         ) : (
           <Button
             variant="outline"
@@ -217,11 +230,13 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
             disabled={isMarkingViewed}
             className="h-auto py-0.5 px-2 text-[11px] text-muted-foreground border-border"
           >
-            Mark as viewed
+            {t('reminder.markViewed')}
           </Button>
         )}
         {!isViewed && (
-          <span className="text-text-tertiary text-[11px]">&middot; Not yet viewed</span>
+          <span className="text-text-tertiary text-[11px]">
+            &middot; {t('reminder.notYetViewed')}
+          </span>
         )}
       </div>
 
@@ -230,7 +245,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
         <div className="flex items-center gap-1.5">
           <Clock className="size-3.5 text-muted-foreground/60" aria-hidden="true" />
           <span className="uppercase tracking-[0.04em] text-muted-foreground/60 text-xs font-medium">
-            Snooze
+            {t('reminder.snooze')}
           </span>
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -247,7 +262,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
                 'disabled:opacity-50 disabled:cursor-not-allowed'
               )}
             >
-              {preset.label}
+              {presetLabels[preset.id]}
             </button>
           ))}
           <SnoozePicker
@@ -265,7 +280,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
                 )}
               >
                 <Calendar className="size-3" aria-hidden="true" />
-                Custom...
+                {t('reminder.custom')}
               </button>
             }
           />
