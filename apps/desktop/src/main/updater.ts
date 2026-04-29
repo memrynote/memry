@@ -3,6 +3,7 @@ import { autoUpdater, type UpdateInfo } from 'electron-updater'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import { UpdaterChannels } from '@memry/contracts/ipc-updater'
 import { createLogger } from './lib/logger'
+import { getMainI18n } from './lib/main-i18n'
 
 const logger = createLogger('Updater')
 
@@ -93,7 +94,8 @@ export function initializeUpdater(): void {
   })
 
   autoUpdater.on('error', (error) => {
-    const message = error instanceof Error ? error.message : 'Update failed'
+    const message =
+      error instanceof Error ? error.message : getMainI18n().t('system:error.updateFailed')
     logger.error('updater error', error)
     setState({
       status: 'error',
