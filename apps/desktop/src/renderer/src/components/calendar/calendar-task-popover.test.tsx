@@ -37,11 +37,6 @@ vi.mock('@/hooks/use-project', () => ({
   useProject: () => ({ data: { id: 'p1', name: 'Memry' } })
 }))
 
-const openForTaskMock = vi.fn()
-vi.mock('@/contexts/day-panel-context', () => ({
-  useDayPanel: () => ({ openForTask: openForTaskMock })
-}))
-
 const openTabMock = vi.fn()
 vi.mock('@/contexts/tabs', () => ({
   useTabs: () => ({ openTab: openTabMock })
@@ -101,7 +96,6 @@ describe('CalendarTaskPopover', () => {
     completeMock.mockClear()
     uncompleteMock.mockClear()
     updateMock.mockClear()
-    openForTaskMock.mockClear()
     openTabMock.mockClear()
   })
 
@@ -121,12 +115,17 @@ describe('CalendarTaskPopover', () => {
     expect(completeMock).toHaveBeenCalledWith({ id: 't1' })
   })
 
-  it('Open task calls openForTask with the task id', async () => {
+  it('Open task opens the tasks tab focused on the task id', async () => {
     render(
       <CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={vi.fn()} />
     )
     await userEvent.click(screen.getByRole('button', { name: /open task/i }))
-    expect(openForTaskMock).toHaveBeenCalledWith('t1')
+    expect(openTabMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'tasks',
+        viewState: { openTaskId: 't1' }
+      })
+    )
   })
 
   it('Escape calls onDismiss', async () => {
