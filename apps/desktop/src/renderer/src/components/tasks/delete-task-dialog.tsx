@@ -8,6 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -30,6 +31,8 @@ export const DeleteTaskDialog = ({
   onConfirm,
   taskTitle
 }: DeleteTaskDialogProps): React.JSX.Element => {
+  const { t } = useT('common')
+
   const handleConfirm = (): void => {
     onConfirm()
     onClose()
@@ -45,7 +48,7 @@ export const DeleteTaskDialog = ({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={onClose}>{t('button.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
