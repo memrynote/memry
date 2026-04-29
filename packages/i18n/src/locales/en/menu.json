@@ -1,0 +1,12 @@
+{
+  "file": {
+    "label": "File",
+    "newNote": "New Note"
+  },
+  "edit": {
+    "label": "Edit"
+  },
+  "view": {
+    "label": "View"
+  }
+}

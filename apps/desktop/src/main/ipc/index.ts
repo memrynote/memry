@@ -27,6 +27,8 @@ import { registerAIInlineHandlers, unregisterAIInlineHandlers } from './ai-inlin
 import { registerAccountHandlers, unregisterAccountHandlers } from './account-handlers'
 import { registerCrdtIpcHandlers } from './crdt-handlers'
 import { registerUpdaterHandlers, unregisterUpdaterHandlers } from './updater-handlers'
+import { registerLocaleHandlers, type RebuildMenuFn } from './locale-handler'
+import type { I18nInstance } from '@memry/i18n/main'
 import { createLogger } from '../lib/logger'
 
 const ipcLog = createLogger('IPC')
@@ -35,6 +37,11 @@ const ipcLog = createLogger('IPC')
  * Flag to prevent duplicate handler registration
  */
 let handlersRegistered = false
+
+interface IpcDeps {
+  i18n: I18nInstance
+  rebuildMenu: RebuildMenuFn
+}
 
 /**
  * Register all IPC handlers.
@@ -48,7 +55,7 @@ let handlersRegistered = false
  * })
  * ```
  */
-export function registerAllHandlers(): void {
+export function registerAllHandlers(deps?: IpcDeps): void {
   if (handlersRegistered) {
     ipcLog.warn('handlers already registered, skipping')
     return
@@ -74,6 +81,11 @@ export function registerAllHandlers(): void {
 
   // Register settings handlers
   registerSettingsHandlers()
+
+  // Register locale handlers once main-process i18n is wired in
+  if (deps) {
+    registerLocaleHandlers(deps.i18n, deps.rebuildMenu)
+  }
 
   // Register bookmarks handlers
   registerBookmarksHandlers()
@@ -190,3 +202,4 @@ export { registerSearchHandlers, unregisterSearchHandlers } from './search-handl
 export { registerGraphHandlers, unregisterGraphHandlers } from './graph-handlers'
 export { registerAIInlineHandlers, unregisterAIInlineHandlers } from './ai-inline-handlers'
 export { registerUpdaterHandlers, unregisterUpdaterHandlers } from './updater-handlers'
+export { registerLocaleHandlers, type RebuildMenuFn } from './locale-handler'

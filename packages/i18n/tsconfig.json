@@ -1,0 +1,13 @@
+{
+  "extends": "@memry/typescript-config/node.json",
+  "include": ["src/**/*"],
+  "exclude": ["**/*.test.ts", "**/*.test.tsx"],
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "baseUrl": ".",
+    "resolveJsonModule": true,
+    "esModuleInterop": true
+  }
+}

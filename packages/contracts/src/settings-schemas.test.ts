@@ -84,20 +84,23 @@ describe('GeneralSettingsSchema', () => {
     }
   })
 
-  it('rejects language shorter than 2 chars', () => {
+  it('accepts a supported non-default locale', () => {
     const result = GeneralSettingsSchema.safeParse({
       ...GENERAL_SETTINGS_DEFAULTS,
-      language: 'e'
+      language: 'tr'
     })
-    expect(result.success).toBe(false)
+    expect(result.success).toBe(true)
   })
 
-  it('rejects language longer than 5 chars', () => {
+  it('rejects unsupported locale', () => {
     const result = GeneralSettingsSchema.safeParse({
       ...GENERAL_SETTINGS_DEFAULTS,
-      language: 'en-US-x'
+      language: 'de'
     })
     expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0].path).toContain('language')
+    }
   })
 
   it('rejects invalid clockFormat enum', () => {
