@@ -1,0 +1,36 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "Select Vault Folder",
+      "button": "Select Vault"
+    },
+    "exportPdf": {
+      "title": "Export as PDF",
+      "filterName": "PDF Document"
+    },
+    "exportHtml": {
+      "title": "Export as HTML",
+      "filterName": "HTML Document"
+    },
+    "import": {
+      "filterSupported": "Supported Files",
+      "filterAll": "All Files"
+    },
+    "exportCancelled": "Export cancelled"
+  },
+  "notification": {
+    "reminder": {
+      "note": "Note reminder",
+      "journal": "Journal reminder",
+      "highlight": "Highlight reminder",
+      "fallback": "Reminder due",
+      "default": "Reminder"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "Reminder time must be in the future",
+    "definitionNotFound": "Definition not found",
+    "noteNotFound": "Note not found",
+    "updateFailed": "Update failed"
+  }
+}

@@ -35,7 +35,8 @@ export const I18N_NAMESPACES = [
   'graph',
   'settings',
   'errors',
-  'menu'
+  'menu',
+  'system'
 ] as const
 
 export type I18nNamespace = (typeof I18N_NAMESPACES)[number]

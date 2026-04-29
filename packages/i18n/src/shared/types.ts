@@ -21,6 +21,7 @@ import type graph from '../locales/en/graph.json'
 import type settings from '../locales/en/settings.json'
 import type errors from '../locales/en/errors.json'
 import type menu from '../locales/en/menu.json'
+import type system from '../locales/en/system.json'
 
 export interface Resources {
   common: typeof common
@@ -33,6 +34,7 @@ export interface Resources {
   settings: typeof settings
   errors: typeof errors
   menu: typeof menu
+  system: typeof system
 }
 
 declare module 'i18next' {
