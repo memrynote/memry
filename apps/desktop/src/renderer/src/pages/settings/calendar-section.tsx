@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/select'
 import { useCalendarPreferences } from '@/hooks/use-calendar-preferences'
 import { toast } from 'sonner'
+import { useT } from '@memry/i18n/renderer'
 import {
   SettingsHeader,
   SettingsGroup,
@@ -17,53 +18,57 @@ import {
 import type { CalendarSettings } from '@memry/contracts/settings-schemas'
 
 const GLOBAL_CLICK_OPTIONS = [
-  { value: 'journal', label: 'Open Journal' },
-  { value: 'calendar', label: 'Open Calendar' }
+  { value: 'journal', labelKey: 'calendar.options.openJournal' },
+  { value: 'calendar', labelKey: 'calendar.options.openCalendar' }
 ] as const
 
 const OVERRIDE_OPTIONS = [
-  { value: 'inherit', label: 'Use global setting' },
-  { value: 'calendar', label: 'Open Calendar' },
-  { value: 'journal', label: 'Open Journal' }
+  { value: 'inherit', labelKey: 'calendar.options.useGlobal' },
+  { value: 'calendar', labelKey: 'calendar.options.openCalendar' },
+  { value: 'journal', labelKey: 'calendar.options.openJournal' }
 ] as const
 
 export function CalendarSettingsSection() {
+  const { t } = useT('settings')
   const { settings, isLoading, updateSettings } = useCalendarPreferences()
 
   const handleGlobalChange = useCallback(
     async (value: string) => {
       const next = value as CalendarSettings['dayCellClickBehavior']
       const success = await updateSettings({ dayCellClickBehavior: next })
-      if (!success) toast.error('Failed to update day click behavior')
+      if (!success) toast.error(t('calendar.defaultBehavior.error'))
     },
-    [updateSettings]
+    [t, updateSettings]
   )
 
   const handleOverrideChange = useCallback(
     async (value: string) => {
       const next = value as CalendarSettings['calendarPageClickOverride']
       const success = await updateSettings({ calendarPageClickOverride: next })
-      if (!success) toast.error('Failed to update calendar page override')
+      if (!success) toast.error(t('calendar.pageOverride.error'))
     },
-    [updateSettings]
+    [t, updateSettings]
   )
 
   if (isLoading) {
     return (
       <div className="flex flex-col">
-        <SettingsHeader title="Calendar" subtitle="Loading settings..." />
+        <SettingsHeader
+          title={t('calendar.header.title')}
+          subtitle={t('calendar.header.loading')}
+        />
       </div>
     )
   }
 
   return (
     <div className="flex flex-col text-xs/4">
-      <SettingsHeader title="Calendar" subtitle="Configure day-cell behavior in the Day Panel" />
+      <SettingsHeader title={t('calendar.header.title')} subtitle={t('calendar.header.subtitle')} />
 
-      <SettingsGroup label="Day Cell Click">
+      <SettingsGroup label={t('calendar.groups.dayCellClick')}>
         <SettingRow
-          label="Default behavior"
-          description="When clicking a day in the Day Panel calendar from any non-calendar tab"
+          label={t('calendar.defaultBehavior.label')}
+          description={t('calendar.defaultBehavior.description')}
         >
           <Select value={settings.dayCellClickBehavior} onValueChange={handleGlobalChange}>
             <SelectTrigger className={COMPACT_SELECT}>
@@ -72,7 +77,7 @@ export function CalendarSettingsSection() {
             <SelectContent>
               {GLOBAL_CLICK_OPTIONS.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
+                  {t(opt.labelKey)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -80,8 +85,8 @@ export function CalendarSettingsSection() {
         </SettingRow>
 
         <SettingRow
-          label="Calendar page override"
-          description="Behavior when the Calendar tab is active (defaults to Open Calendar)"
+          label={t('calendar.pageOverride.label')}
+          description={t('calendar.pageOverride.description')}
         >
           <Select value={settings.calendarPageClickOverride} onValueChange={handleOverrideChange}>
             <SelectTrigger className={COMPACT_SELECT}>
@@ -90,7 +95,7 @@ export function CalendarSettingsSection() {
             <SelectContent>
               {OVERRIDE_OPTIONS.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
+                  {t(opt.labelKey)}
                 </SelectItem>
               ))}
             </SelectContent>

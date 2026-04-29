@@ -11,6 +11,7 @@ import { Lock } from '@/lib/icons'
 import { useTemplates } from '@/hooks/use-templates'
 import { useJournalSettings } from '@/hooks/use-journal-settings'
 import { toast } from 'sonner'
+import { useT } from '@memry/i18n/renderer'
 import {
   SettingsHeader,
   SettingsGroup,
@@ -20,6 +21,8 @@ import {
 } from '@/components/settings/settings-primitives'
 
 export function JournalSettings() {
+  const { t } = useT('settings')
+  const { t: tCommon } = useT('common')
   const { templates, isLoading: isLoadingTemplates } = useTemplates()
   const {
     settings,
@@ -33,44 +36,44 @@ export function JournalSettings() {
       const templateId = value === 'none' ? null : value
       const success = await setDefaultTemplate(templateId)
       if (success) {
-        toast.success(templateId ? 'Default template updated' : 'Default template cleared')
+        toast.success(templateId ? t('journal.template.updated') : t('journal.template.cleared'))
       } else {
-        toast.error('Failed to update default template')
+        toast.error(t('journal.template.error'))
       }
     },
-    [setDefaultTemplate]
+    [setDefaultTemplate, t]
   )
 
   const handleShowScheduleChange = useCallback(
     async (checked: boolean) => {
       const success = await updateSettings({ showSchedule: checked })
-      if (!success) toast.error('Failed to update setting')
+      if (!success) toast.error(t('journal.updateError'))
     },
-    [updateSettings]
+    [t, updateSettings]
   )
 
   const handleShowTasksChange = useCallback(
     async (checked: boolean) => {
       const success = await updateSettings({ showTasks: checked })
-      if (!success) toast.error('Failed to update setting')
+      if (!success) toast.error(t('journal.updateError'))
     },
-    [updateSettings]
+    [t, updateSettings]
   )
 
   const handleShowAIConnectionsChange = useCallback(
     async (checked: boolean) => {
       const success = await updateSettings({ showAIConnections: checked })
-      if (!success) toast.error('Failed to update setting')
+      if (!success) toast.error(t('journal.updateError'))
     },
-    [updateSettings]
+    [t, updateSettings]
   )
 
   const handleShowStatsFooterChange = useCallback(
     async (checked: boolean) => {
       const success = await updateSettings({ showStatsFooter: checked })
-      if (!success) toast.error('Failed to update setting')
+      if (!success) toast.error(t('journal.updateError'))
     },
-    [updateSettings]
+    [t, updateSettings]
   )
 
   const defaultTemplateName = settings.defaultTemplate
@@ -80,39 +83,42 @@ export function JournalSettings() {
   if (isLoadingSettings) {
     return (
       <div className="flex flex-col">
-        <SettingsHeader title="Journal" subtitle="Loading settings..." />
+        <SettingsHeader title={t('journal.header.title')} subtitle={t('journal.header.loading')} />
       </div>
     )
   }
 
   return (
     <div className="flex flex-col text-xs/4">
-      <SettingsHeader title="Journal" subtitle="Journal settings and preferences" />
+      <SettingsHeader title={t('journal.header.title')} subtitle={t('journal.header.subtitle')} />
 
-      <SettingsGroup label="Default Template">
-        <SettingRow label="Template" description="New entries start with this template">
+      <SettingsGroup label={t('journal.groups.defaultTemplate')}>
+        <SettingRow
+          label={t('journal.template.label')}
+          description={t('journal.template.description')}
+        >
           <Select
             value={settings.defaultTemplate ?? 'none'}
             onValueChange={handleTemplateChange}
             disabled={isLoadingTemplates || isLoadingSettings}
           >
             <SelectTrigger className={COMPACT_SELECT}>
-              <SelectValue placeholder="Select a template">
+              <SelectValue placeholder={t('journal.template.placeholder')}>
                 {isLoadingSettings
-                  ? 'Loading...'
+                  ? tCommon('state.loading')
                   : settings.defaultTemplate
-                    ? (defaultTemplateName ?? 'Unknown template')
-                    : 'None'}
+                    ? (defaultTemplateName ?? t('journal.template.unknown'))
+                    : t('journal.template.none')}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">None (ask each time)</SelectItem>
+              <SelectItem value="none">{t('journal.template.noneAsk')}</SelectItem>
               {templates.map((template) => (
                 <SelectItem key={template.id} value={template.id}>
                   <span className="flex items-center gap-2">
                     {template.icon && <span>{template.icon}</span>}
                     {template.name}
-                    {template.isBuiltIn && <Lock className="w-3 h-3 text-muted-foreground ml-1" />}
+                    {template.isBuiltIn && <Lock className="w-3 h-3 text-muted-foreground ms-1" />}
                   </span>
                 </SelectItem>
               ))}
@@ -121,8 +127,11 @@ export function JournalSettings() {
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup label="Sidebar Visibility">
-        <SettingRow label="Show Schedule" description="Display today's events and calendar">
+      <SettingsGroup label={t('journal.groups.sidebarVisibility')}>
+        <SettingRow
+          label={t('journal.showSchedule.label')}
+          description={t('journal.showSchedule.description')}
+        >
           <Switch
             checked={settings.showSchedule}
             onCheckedChange={handleShowScheduleChange}
@@ -130,7 +139,10 @@ export function JournalSettings() {
           />
         </SettingRow>
 
-        <SettingRow label="Show Tasks" description="Display tasks due on the selected day">
+        <SettingRow
+          label={t('journal.showTasks.label')}
+          description={t('journal.showTasks.description')}
+        >
           <Switch
             checked={settings.showTasks}
             onCheckedChange={handleShowTasksChange}
@@ -139,8 +151,8 @@ export function JournalSettings() {
         </SettingRow>
 
         <SettingRow
-          label="Show AI Connections"
-          description="Display AI-powered connections to related entries"
+          label={t('journal.showAIConnections.label')}
+          description={t('journal.showAIConnections.description')}
         >
           <Switch
             checked={settings.showAIConnections}
@@ -150,8 +162,11 @@ export function JournalSettings() {
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup label="Footer">
-        <SettingRow label="Show Stats Footer" description="Word count, reading time, timestamps">
+      <SettingsGroup label={t('journal.groups.footer')}>
+        <SettingRow
+          label={t('journal.showStatsFooter.label')}
+          description={t('journal.showStatsFooter.description')}
+        >
           <Switch
             checked={settings.showStatsFooter}
             onCheckedChange={handleShowStatsFooterChange}
