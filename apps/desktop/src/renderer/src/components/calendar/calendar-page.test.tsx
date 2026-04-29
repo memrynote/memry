@@ -8,17 +8,28 @@ import type {
   CalendarSourceRecord
 } from '@/services/calendar-service'
 
-const { mockUseCalendarRange, mockListSources, mockCreateEvent, mockUpdateEvent, mockDeleteEvent } =
-  vi.hoisted(() => ({
-    mockUseCalendarRange: vi.fn(),
-    mockListSources: vi.fn(),
-    mockCreateEvent: vi.fn(),
-    mockUpdateEvent: vi.fn(),
-    mockDeleteEvent: vi.fn()
-  }))
+const {
+  mockUseCalendarRange,
+  mockListSources,
+  mockCreateEvent,
+  mockUpdateEvent,
+  mockDeleteEvent,
+  mockOpenTab
+} = vi.hoisted(() => ({
+  mockUseCalendarRange: vi.fn(),
+  mockListSources: vi.fn(),
+  mockCreateEvent: vi.fn(),
+  mockUpdateEvent: vi.fn(),
+  mockDeleteEvent: vi.fn(),
+  mockOpenTab: vi.fn()
+}))
 
 vi.mock('@/hooks/use-calendar-range', () => ({
   useCalendarRange: mockUseCalendarRange
+}))
+
+vi.mock('@/contexts/tabs', () => ({
+  useTabActions: () => ({ openTab: mockOpenTab })
 }))
 
 vi.mock('@/services/calendar-service', () => {

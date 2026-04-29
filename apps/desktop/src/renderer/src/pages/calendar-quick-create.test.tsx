@@ -12,18 +12,24 @@ const {
   mockCreateEvent,
   mockUpdateEvent,
   mockUseTimeGridMarquee,
-  mockClearSelection
+  mockClearSelection,
+  mockOpenTab
 } = vi.hoisted(() => ({
   mockUseCalendarRange: vi.fn(),
   mockListSources: vi.fn(),
   mockCreateEvent: vi.fn(),
   mockUpdateEvent: vi.fn(),
   mockUseTimeGridMarquee: vi.fn(),
-  mockClearSelection: vi.fn()
+  mockClearSelection: vi.fn(),
+  mockOpenTab: vi.fn()
 }))
 
 vi.mock('@/hooks/use-calendar-range', () => ({
   useCalendarRange: mockUseCalendarRange
+}))
+
+vi.mock('@/contexts/tabs', () => ({
+  useTabActions: () => ({ openTab: mockOpenTab })
 }))
 
 vi.mock('@/services/calendar-service', () => ({
