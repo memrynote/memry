@@ -35,6 +35,7 @@ export const RepeatPicker = ({
   className
 }: RepeatPickerProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('tasks')
+  const { t } = useT('common')
   const [isOpen, setIsOpen] = useState(false)
 
   // Generate presets based on due date
@@ -43,18 +44,18 @@ export const RepeatPicker = ({
   // Get current display text
   const displayText = useMemo(() => {
     if (!value) return 'Does not repeat'
-    return getRepeatDisplayText(value)
-  }, [value])
+    return getRepeatDisplayText(value, t)
+  }, [value, t])
 
   // Check if current value matches a preset
   const matchingPresetId = useMemo(() => {
     if (!value) return null
 
     // Simple matching based on display text
-    const currentText = getRepeatDisplayText(value)
-    const matchingPreset = presets.find((p) => getRepeatDisplayText(p.config) === currentText)
+    const currentText = getRepeatDisplayText(value, t)
+    const matchingPreset = presets.find((p) => getRepeatDisplayText(p.config, t) === currentText)
     return matchingPreset?.id || null
-  }, [value, presets])
+  }, [value, presets, t])
 
   const handleSelectPreset = useCallback(
     (preset: RepeatPreset | null): void => {

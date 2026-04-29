@@ -42,10 +42,11 @@ export const StopRepeatingDialog = ({
   repeatConfig
 }: StopRepeatingDialogProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('tasks')
+  const { t } = useT('common')
   const [selectedOption, setSelectedOption] = useState<StopRepeatOption>('keep')
 
   const repeatText = repeatConfig
-    ? getRepeatDisplayText(repeatConfig).toLowerCase()
+    ? getRepeatDisplayText(repeatConfig, t).toLowerCase()
     : 'on a schedule'
 
   const handleConfirm = useCallback((): void => {
