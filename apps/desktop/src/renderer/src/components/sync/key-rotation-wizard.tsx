@@ -21,6 +21,7 @@ import {
 import { RecoveryPhraseDisplay } from '@/components/sync/recovery-phrase-display'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import type { KeyRotationProgressEvent } from '@memry/contracts/ipc-events'
+import { useT } from '@memry/i18n/renderer'
 
 type WizardStep = 'confirm' | 'rotating' | 'phrase' | 'complete' | 'error'
 
@@ -45,6 +46,7 @@ export function KeyRotationWizard({
 function KeyRotationWizardSession({
   onOpenChange
 }: KeyRotationWizardSessionProps): React.JSX.Element {
+  const { t } = useT('settings')
   const [step, setStep] = useState<WizardStep>('confirm')
   const [progress, setProgress] = useState({ total: 0, processed: 0, phase: '' })
   const [newPhrase, setNewPhrase] = useState<string | null>(null)
@@ -83,14 +85,14 @@ function KeyRotationWizardSession({
         setNewPhrase(result.newRecoveryPhrase)
         setStep('phrase')
       } else {
-        setError(result.error ?? 'Key rotation failed')
+        setError(result.error ?? t('keyRotation.failed'))
         setStep('error')
       }
     } catch (err) {
-      setError(extractErrorMessage(err, 'Key rotation failed'))
+      setError(extractErrorMessage(err, t('keyRotation.failed')))
       setStep('error')
     }
-  }, [])
+  }, [t])
 
   const handleClose = useCallback(
     (forceClose = false) => {
@@ -131,14 +133,14 @@ function KeyRotationWizardSession({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RotateCw className="w-5 h-5" />
-              Rotate Encryption Keys
+              {t('keyRotation.title')}
             </DialogTitle>
             <DialogDescription>
-              {step === 'confirm' && 'Generate new encryption keys for your vault.'}
-              {step === 'rotating' && 'Re-encrypting your data with new keys...'}
-              {step === 'phrase' && 'Save your new recovery phrase.'}
-              {step === 'complete' && 'Key rotation complete.'}
-              {step === 'error' && 'Key rotation encountered an error.'}
+              {step === 'confirm' && t('keyRotation.descriptions.confirm')}
+              {step === 'rotating' && t('keyRotation.descriptions.rotating')}
+              {step === 'phrase' && t('keyRotation.descriptions.phrase')}
+              {step === 'complete' && t('keyRotation.descriptions.complete')}
+              {step === 'error' && t('keyRotation.descriptions.error')}
             </DialogDescription>
           </DialogHeader>
 
@@ -172,15 +174,16 @@ function KeyRotationWizardSession({
       <AlertDialog open={showConfirmClose} onOpenChange={setShowConfirmClose}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Rotation in progress</AlertDialogTitle>
+            <AlertDialogTitle>{t('keyRotation.closeConfirm.title')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Key rotation is still running. Closing this dialog will not stop the process, but you
-              won&apos;t see your new recovery phrase until it completes.
+              {t('keyRotation.closeConfirm.description')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Stay</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleClose(true)}>Close anyway</AlertDialogAction>
+            <AlertDialogCancel>{t('keyRotation.closeConfirm.stay')}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleClose(true)}>
+              {t('keyRotation.closeConfirm.closeAnyway')}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -189,6 +192,7 @@ function KeyRotationWizardSession({
 }
 
 function ConfirmStep({ onStart }: { onStart: () => void }): React.JSX.Element {
+  const { t } = useT('settings')
   const [starting, setStarting] = useState(false)
 
   return (
@@ -196,20 +200,17 @@ function ConfirmStep({ onStart }: { onStart: () => void }): React.JSX.Element {
       <div className="flex items-start gap-3 p-3.5 rounded-md border border-amber-500/20 bg-amber-500/[0.07]">
         <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
         <div className="text-[13px] leading-relaxed text-amber-800 dark:text-amber-300/90 space-y-1.5">
-          <p className="font-medium">This action will:</p>
-          <ul className="list-disc pl-4 space-y-0.5">
-            <li>Generate a new encryption key pair</li>
-            <li>Re-wrap all synced items with the new key</li>
-            <li>Produce a new recovery phrase (old one becomes invalid)</li>
-            <li>Temporarily pause sync during the process</li>
+          <p className="font-medium">{t('keyRotation.warningTitle')}</p>
+          <ul className="list-disc ps-4 space-y-0.5">
+            <li>{t('keyRotation.warningItems.keyPair')}</li>
+            <li>{t('keyRotation.warningItems.rewrap')}</li>
+            <li>{t('keyRotation.warningItems.phrase')}</li>
+            <li>{t('keyRotation.warningItems.pause')}</li>
           </ul>
         </div>
       </div>
 
-      <p className="text-sm text-muted-foreground">
-        Your data content is never re-encrypted — only the key envelopes change. This is a fast,
-        safe operation.
-      </p>
+      <p className="text-sm text-muted-foreground">{t('keyRotation.explanation')}</p>
 
       <Button
         onClick={() => {
@@ -219,7 +220,7 @@ function ConfirmStep({ onStart }: { onStart: () => void }): React.JSX.Element {
         disabled={starting}
         className="w-full h-11"
       >
-        {starting ? 'Starting...' : 'Start Key Rotation'}
+        {starting ? t('keyRotation.starting') : t('keyRotation.start')}
       </Button>
     </div>
   )
@@ -236,21 +237,22 @@ function RotatingStep({
   processed: number
   total: number
 }): React.JSX.Element {
+  const { t } = useT('settings')
   const phaseLabel =
     phase === 'preparing'
-      ? 'Preparing...'
+      ? t('keyRotation.phases.preparing')
       : phase === 're-encrypting'
-        ? `Re-wrapping keys (${processed}/${total})`
+        ? t('keyRotation.phases.reencrypting', { processed, total })
         : phase === 'finalizing'
-          ? 'Finalizing...'
-          : 'Working...'
+          ? t('keyRotation.phases.finalizing')
+          : t('keyRotation.phases.working')
 
   return (
     <div
       className="space-y-5 pt-1"
       role="status"
       aria-live="polite"
-      aria-label={`Key rotation: ${phaseLabel} ${pct}%`}
+      aria-label={t('keyRotation.progressAria', { phaseLabel, pct })}
     >
       <div className="space-y-3">
         <div
@@ -259,7 +261,7 @@ function RotatingStep({
           aria-valuenow={pct}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label="Key rotation progress"
+          aria-label={t('keyRotation.progressLabel')}
         >
           <div
             className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
@@ -272,14 +274,15 @@ function RotatingStep({
         </div>
       </div>
 
-      <p className="text-xs text-muted-foreground/70 text-center">
-        Do not close the application during this process.
-      </p>
+      <p className="text-xs text-muted-foreground/70 text-center">{t('keyRotation.doNotClose')}</p>
     </div>
   )
 }
 
 function CompleteStep({ onClose }: { onClose: () => void }): React.JSX.Element {
+  const { t } = useT('settings')
+  const { t: tCommon } = useT('common')
+
   return (
     <div className="space-y-5 pt-1">
       <div className="flex items-center justify-center py-4">
@@ -287,12 +290,9 @@ function CompleteStep({ onClose }: { onClose: () => void }): React.JSX.Element {
           <Check className="w-6 h-6 text-green-600 dark:text-green-400" />
         </div>
       </div>
-      <p className="text-sm text-center text-muted-foreground">
-        All encryption keys have been rotated. Your new recovery phrase has been saved. Sync will
-        resume automatically.
-      </p>
+      <p className="text-sm text-center text-muted-foreground">{t('keyRotation.complete')}</p>
       <Button onClick={onClose} className="w-full h-11">
-        Done
+        {tCommon('button.done')}
       </Button>
     </div>
   )
@@ -307,6 +307,9 @@ function ErrorStep({
   onRetry: () => void
   onClose: () => void
 }): React.JSX.Element {
+  const { t } = useT('settings')
+  const { t: tCommon } = useT('common')
+
   return (
     <div className="space-y-5 pt-1">
       <div
@@ -318,18 +321,16 @@ function ErrorStep({
           aria-hidden="true"
         />
         <p className="text-[13px] leading-relaxed text-red-800 dark:text-red-300/90">
-          {error ?? 'An unknown error occurred during key rotation.'}
+          {error ?? t('keyRotation.unknownError')}
         </p>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Your existing keys remain valid. Sync has been resumed. You can retry at any time.
-      </p>
+      <p className="text-sm text-muted-foreground">{t('keyRotation.errorHint')}</p>
       <div className="flex gap-3">
         <Button variant="outline" onClick={onClose} className="flex-1 h-11">
-          Close
+          {tCommon('button.close')}
         </Button>
         <Button onClick={onRetry} className="flex-1 h-11">
-          Retry
+          {tCommon('button.retry')}
         </Button>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Check, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface RecoveryPhraseConfirmProps {
   phrase: string
@@ -31,6 +32,8 @@ export function RecoveryPhraseConfirm({
   onConfirmed,
   onBack
 }: RecoveryPhraseConfirmProps): React.JSX.Element {
+  const { t } = useT('settings')
+  const { t: tCommon } = useT('common')
   const words = useMemo(() => phrase.split(' '), [phrase])
   const indices = useMemo(() => pickRandomIndices(words.length), [words.length])
 
@@ -69,10 +72,10 @@ export function RecoveryPhraseConfirm({
     <div className="[font-synthesis:none] flex flex-col text-xs/4">
       <div className="wizard-step-enter flex flex-col pb-7 gap-1.5">
         <div className="tracking-[-0.02em] font-semibold text-xl/6.5 text-foreground">
-          Confirm your recovery phrase
+          {t('setup.recovery.confirmTitle')}
         </div>
         <div className="text-[13px]/4.5 text-muted-foreground">
-          Enter the requested words to verify you&apos;ve saved it correctly.
+          {t('setup.recovery.confirmDescription')}
         </div>
       </div>
 
@@ -88,7 +91,7 @@ export function RecoveryPhraseConfirm({
                 value={inputs[slotIndex]}
                 onChange={(e) => handleChange(slotIndex, e.target.value)}
                 onBlur={() => handleBlur(slotIndex)}
-                placeholder={`Enter word #${wordIndex + 1}`}
+                placeholder={t('setup.recovery.wordPlaceholder', { index: wordIndex + 1 })}
                 autoFocus={slotIndex === 0}
                 className={cn(
                   'flex-1 h-9 rounded-lg px-3.5 font-mono text-sm/4.5 bg-foreground/[0.03] border outline-none transition-colors',
@@ -115,19 +118,17 @@ export function RecoveryPhraseConfirm({
 
       <div className="flex items-center gap-2.5 wizard-step-enter wiz-delay-3">
         <Button variant="outline" onClick={onBack} className="h-9 px-5">
-          Back
+          {tCommon('button.back')}
         </Button>
         <Button
           onClick={onConfirmed}
           disabled={!allCorrect}
           className="flex-1 h-9 bg-[var(--tint)] text-tint-foreground hover:bg-[var(--tint)]/90"
         >
-          Verify
+          {t('setup.recovery.verify')}
         </Button>
       </div>
-      <p className="pt-2.5 text-[13px] text-muted-foreground/70">
-        All 3 words must match to continue
-      </p>
+      <p className="pt-2.5 text-[13px] text-muted-foreground/70">{t('setup.recovery.mustMatch')}</p>
     </div>
   )
 }

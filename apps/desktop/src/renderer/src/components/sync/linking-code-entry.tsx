@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { ArrowLeft, Loader2, CheckCircle, AlertCircle } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface LinkingCodeEntryProps {
   onLinked: (sessionId: string, verificationCode?: string) => void
@@ -36,6 +37,8 @@ export function LinkingCodeEntry({
   onError,
   onBack
 }: LinkingCodeEntryProps): React.JSX.Element {
+  const { t } = useT('settings')
+  const { t: tCommon } = useT('common')
   const [code, setCode] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -55,7 +58,7 @@ export function LinkingCodeEntry({
         .linkViaQr({ qrData: code.trim() })
         .then((result) => {
           if (!result.success) {
-            const msg = result.error ?? 'Linking failed'
+            const msg = result.error ?? t('setup.linking.failed')
             setError(msg)
             onError(msg)
             return
@@ -63,23 +66,23 @@ export function LinkingCodeEntry({
           onLinked(parsed.sessionId, result.verificationCode)
         })
         .catch((err: unknown) => {
-          const msg = extractErrorMessage(err, 'Failed to link device')
+          const msg = extractErrorMessage(err, t('setup.linking.deviceFailed'))
           setError(msg)
           onError(msg)
         })
         .finally(() => setIsLoading(false))
     },
-    [code, parsed, onLinked, onError]
+    [code, parsed, onLinked, onError, t]
   )
 
   return (
     <div className="wizard-step-enter space-y-6">
       <div className="flex flex-col pb-1 gap-1.5">
         <div className="tracking-[-0.02em] font-semibold text-xl/6.5 text-foreground">
-          Enter linking code
+          {t('setup.linking.codeTitle')}
         </div>
         <div className="text-[13px]/4.5 text-muted-foreground">
-          Paste the linking code from your other device to securely transfer your encryption keys.
+          {t('setup.linking.codeDescription')}
         </div>
       </div>
 
@@ -90,7 +93,7 @@ export function LinkingCodeEntry({
               htmlFor="linking-code"
               className="text-[11px] font-semibold tracking-widest uppercase text-muted-foreground"
             >
-              Linking code
+              {t('setup.linking.codeLabel')}
             </Label>
             {code.trim() && (
               <span
@@ -101,11 +104,11 @@ export function LinkingCodeEntry({
               >
                 {isValid ? (
                   <>
-                    <CheckCircle className="w-3 h-3" /> Valid
+                    <CheckCircle className="w-3 h-3" /> {t('setup.linking.valid')}
                   </>
                 ) : (
                   <>
-                    <AlertCircle className="w-3 h-3" /> Invalid format
+                    <AlertCircle className="w-3 h-3" /> {t('setup.linking.invalid')}
                   </>
                 )}
               </span>
@@ -119,7 +122,7 @@ export function LinkingCodeEntry({
               setError(null)
             }}
             disabled={isLoading}
-            placeholder="Paste the code from your other device..."
+            placeholder={t('setup.linking.codePlaceholder')}
             rows={4}
             autoFocus
             aria-describedby={error ? 'linking-error' : undefined}
@@ -137,9 +140,7 @@ export function LinkingCodeEntry({
             </p>
           )}
           {code.trim() && !isValid && !error && (
-            <p className="text-[13px] text-muted-foreground/70">
-              Paste the JSON linking code from your other device
-            </p>
+            <p className="text-[13px] text-muted-foreground/70">{t('setup.linking.formatHint')}</p>
           )}
         </div>
 
@@ -153,7 +154,7 @@ export function LinkingCodeEntry({
             className="gap-1.5"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            Back
+            {tCommon('button.back')}
           </Button>
           <Button
             type="submit"
@@ -163,10 +164,10 @@ export function LinkingCodeEntry({
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Linking...
+                {t('setup.linking.linking')}
               </>
             ) : (
-              'Link device'
+              t('setup.linking.linkDevice')
             )}
           </Button>
         </div>
