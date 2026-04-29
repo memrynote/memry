@@ -1,4 +1,5 @@
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { CalendarItemChip } from './calendar-item-chip'
 import { CalendarQuickCreateDialog } from './calendar-quick-create-dialog'
 import { getMonthGridDays, isToday, isSameMonth, isWeekend, toLocalDateKey } from './date-utils'
@@ -8,7 +9,10 @@ import { useContainerWidth } from '@/hooks/use-container-width'
 import type { AnchorRect, CalendarEventDraft } from './types'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+function getWeekdayLabels(locale: string): string[] {
+  const formatter = new Intl.DateTimeFormat(locale, { weekday: 'short' })
+  return Array.from({ length: 7 }, (_, i) => formatter.format(new Date(2020, 5, 7 + i)))
+}
 
 interface CalendarMonthViewProps {
   anchorDate: string
@@ -34,10 +38,12 @@ export function CalendarMonthView({
   onQuickSave,
   onCreateEventWithRange
 }: CalendarMonthViewProps): React.JSX.Element {
+  const { t, i18n } = useT('calendar')
   const gridDays = getMonthGridDays(anchorDate)
   const [containerWidth, containerRef] = useContainerWidth()
   const columnWidth = containerWidth / 7
   const maxVisibleEvents = columnWidth < 80 ? 1 : columnWidth < 120 ? 2 : 3
+  const dayNames = useMemo(() => getWeekdayLabels(i18n.language), [i18n.language])
 
   const gridRef = useRef<HTMLDivElement>(null)
   const { selection, isDragging, handlers, clearSelection } = useMonthGridMarquee({ gridRef })
@@ -45,7 +51,7 @@ export function CalendarMonthView({
   return (
     <div className="flex h-full flex-col" data-testid="calendar-view" data-view="month">
       <div className="grid grid-cols-7 border-b border-border">
-        {DAY_NAMES.map((name) => (
+        {dayNames.map((name) => (
           <div
             key={name}
             className="bg-background px-2 py-2 text-center text-xs font-medium text-muted-foreground"
@@ -114,7 +120,7 @@ export function CalendarMonthView({
                 ))}
                 {dayItems.length > maxVisibleEvents && (
                   <span className="text-xs font-semibold text-muted-foreground">
-                    {dayItems.length - maxVisibleEvents} more...
+                    {t('time.more-events', { count: dayItems.length - maxVisibleEvents })}
                   </span>
                 )}
               </div>

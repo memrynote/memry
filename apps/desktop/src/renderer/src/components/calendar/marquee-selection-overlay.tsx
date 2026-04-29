@@ -1,4 +1,5 @@
 import { Clock } from 'lucide-react'
+import { useT } from '@memry/i18n/renderer'
 import { formatTimeOfDay, type ClockFormat } from '@/lib/time-format'
 import { cn } from '@/lib/utils'
 
@@ -23,6 +24,7 @@ export function MarqueeSelectionOverlay({
   endAt,
   clockFormat = '24h'
 }: MarqueeSelectionOverlayProps): React.JSX.Element {
+  const { t } = useT('calendar')
   const showTimes = Boolean(startAt && endAt)
   const compact = height < 32
   const timeLabel = showTimes
@@ -42,7 +44,9 @@ export function MarqueeSelectionOverlay({
       data-testid="marquee-selection-overlay"
     >
       {showTimes && !compact && (
-        <div className="truncate text-[11px] font-semibold leading-tight">New Event</div>
+        <div className="truncate text-[11px] font-semibold leading-tight">
+          {t('time.new-event')}
+        </div>
       )}
       {showTimes && (
         <div className="flex items-center gap-1 text-[11px] leading-tight opacity-90">
