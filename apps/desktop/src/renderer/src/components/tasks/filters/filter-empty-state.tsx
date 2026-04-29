@@ -1,4 +1,5 @@
 import { Search } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -26,6 +27,9 @@ export const FilterEmptyState = ({
   onClearFilters,
   className
 }: FilterEmptyStateProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
+  const { t } = useT('tasks')
+
   // Generate a summary of active filters
   const getFilterSummary = (): string => {
     const parts: string[] = []
@@ -75,18 +79,19 @@ export const FilterEmptyState = ({
         <Search className="size-8 text-muted-foreground" />
       </div>
 
-      <h3 className="text-lg font-medium text-foreground mb-2">No tasks match your filters</h3>
+      <h3 className="text-lg font-medium text-foreground mb-2">{t('filters.emptyTitle')}</h3>
 
       {filterSummary && (
         <p className="text-sm text-muted-foreground mb-6 text-center max-w-md">
-          Active filters: {filterSummary}
+          {tPhaseF('phaseF.componentsTasksFiltersFilterEmptyState.activeFilters')}
+          {filterSummary}
         </p>
       )}
 
-      <p className="text-sm text-muted-foreground mb-4">Try adjusting your filters or</p>
+      <p className="text-sm text-muted-foreground mb-4">{t('filters.emptyHelp')}</p>
 
       <Button variant="outline" onClick={onClearFilters} className="text-primary">
-        Clear all filters
+        {tPhaseF('phaseF.componentsTasksFiltersFilterEmptyState.clearAllFilters')}
       </Button>
     </div>
   )

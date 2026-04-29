@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { useDragContext } from '@/contexts/drag-context'
 import { getIconByName } from '@/components/icon-picker'
 import type { Project } from '@/data/tasks-data'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -43,6 +44,7 @@ export const DroppableProjectItem = ({
   onClick,
   onEdit
 }: DroppableProjectItemProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const { dragState } = useDragContext()
 
   const { setNodeRef, isOver } = useDroppable({
@@ -121,7 +123,11 @@ export const DroppableProjectItem = ({
       <span className="flex-1 truncate text-left text-text-secondary">{project.name}</span>
 
       {/* Drop indicator */}
-      {isOver && <span className="text-xs text-primary font-medium shrink-0">Drop here</span>}
+      {isOver && (
+        <span className="text-xs text-primary font-medium shrink-0">
+          {tPhaseF('phaseF.componentsTasksDragDropSidebarDropZones.dropHere')}
+        </span>
+      )}
 
       {/* Settings Icon (visible on hover, hidden when dropping) */}
       {!isOver && onEdit && (

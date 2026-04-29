@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils'
 import { priorityConfig, type Priority } from '@/data/sample-tasks'
+import { useT } from '@memry/i18n/renderer'
 
 interface PriorityBarsProps {
   priority: Priority
@@ -7,6 +8,7 @@ interface PriorityBarsProps {
 }
 
 export const PriorityBars = ({ priority, className }: PriorityBarsProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   if (priority === 'none') {
     return (
       <svg
@@ -15,7 +17,7 @@ export const PriorityBars = ({ priority, className }: PriorityBarsProps): React.
         viewBox="0 0 14 14"
         fill="none"
         className={cn('shrink-0', className)}
-        aria-label="no priority"
+        aria-label={tPhaseF('phaseF.componentsTasksTaskIcons.noPriority')}
       >
         <line
           x1="2"

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { useT } from '@memry/i18n/renderer'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
@@ -20,6 +21,8 @@ export function PromoteExternalDialog({
   errorMessage = null
 }: PromoteExternalDialogProps): React.JSX.Element | null {
   const [dontAskAgain, setDontAskAgain] = useState(false)
+  const { t } = useT('calendar')
+  const { t: tCommon } = useT('common')
 
   if (!open) return null
 
@@ -29,18 +32,17 @@ export function PromoteExternalDialog({
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm" />
         <DialogPrimitive.Content
           data-testid="promote-external-dialog"
-          aria-label="Edit external calendar event"
+          aria-label={t('promote-dialog.aria')}
           className={cn(
             'fixed left-1/2 top-1/2 z-50 w-[420px] -translate-x-1/2 -translate-y-1/2',
             'rounded-md border bg-popover p-6 text-popover-foreground shadow-lg outline-none'
           )}
         >
           <DialogPrimitive.Title className="mb-1 text-lg font-semibold">
-            Edit this event in Memry?
+            {t('promote-dialog.title')}
           </DialogPrimitive.Title>
           <DialogPrimitive.Description className="mb-4 text-sm text-muted-foreground">
-            Editing this event will create a linked copy in Memry so changes sync both ways.
-            Continue?
+            {t('promote-dialog.body')}
           </DialogPrimitive.Description>
 
           <label className="flex items-center gap-2 text-sm">
@@ -48,9 +50,9 @@ export function PromoteExternalDialog({
               checked={dontAskAgain}
               onCheckedChange={(value) => setDontAskAgain(value === true)}
               disabled={isWorking}
-              aria-label="Don't ask again"
+              aria-label={t('promote-dialog.do-not-ask-again')}
             />
-            <span className="text-muted-foreground">Don&apos;t ask again</span>
+            <span className="text-muted-foreground">{t('promote-dialog.do-not-ask-again')}</span>
           </label>
 
           {errorMessage && (
@@ -67,7 +69,7 @@ export function PromoteExternalDialog({
               onClick={() => onOpenChange(false)}
               disabled={isWorking}
             >
-              Cancel
+              {tCommon('button.cancel')}
             </Button>
             <Button
               type="button"
@@ -75,7 +77,7 @@ export function PromoteExternalDialog({
               onClick={() => void onConfirm(dontAskAgain)}
               disabled={isWorking}
             >
-              {isWorking ? 'Preparing…' : 'Edit in Memry'}
+              {isWorking ? t('state.preparing') : t('promote-dialog.confirm-label')}
             </Button>
           </div>
         </DialogPrimitive.Content>

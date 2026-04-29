@@ -9,6 +9,7 @@ import { tasksService } from '@/services/tasks-service'
 import type { Task as DisplayTask } from '@/data/sample-tasks'
 import { defaultStatuses, type Status } from '@/data/tasks-data'
 import { TaskRow } from '@/components/tasks/task-row'
+import { useT } from '@memry/i18n/renderer'
 
 interface TaskBlockRendererProps {
   block: {
@@ -40,6 +41,7 @@ const BLOCKNOTE_OVERRIDES = `
 `
 
 export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, contentRef }) => {
+  const { t: tPhaseF } = useT('notes')
   const { taskId, title, checked, parentTaskId } = block.props
   const { task, isLoading, isDeleted } = useTaskBlockData(taskId)
   const tasksCtx = useTasksOptional()
@@ -439,7 +441,9 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
           })
         }}
         className="shrink-0 rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent/80"
-        title="Open in task panel"
+        title={tPhaseF(
+          'phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.openInTaskPanel'
+        )}
       >
         <ArrowUpRight className="size-3 text-muted-foreground" />
       </button>
@@ -457,7 +461,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
         onBlur={handleTitleBlur}
         onKeyDown={handleTitleKeyDown}
         className="grow shrink min-w-0 bg-transparent text-[13px] font-medium outline-none text-foreground/90 placeholder:text-muted-foreground"
-        placeholder="Task name..."
+        placeholder={tPhaseF('phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.taskName')}
       />
     ),
     [editTitle, handleTitleChange, handleTitleBlur, handleTitleKeyDown]
@@ -511,7 +515,9 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
       >
         <AlertTriangle className="size-4 text-amber-500" />
         <span className="line-through">{task?.title ?? title}</span>
-        <span className="text-xs">Task deleted</span>
+        <span className="text-xs">
+          {tPhaseF('phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.taskDeleted')}
+        </span>
         <button
           type="button"
           onClick={handleRemoveGhost}
@@ -538,7 +544,8 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
         )}
       >
         <Loader2 className="size-4 animate-spin" />
-        Loading...
+
+        {tPhaseF('phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.loading')}
       </div>
     )
   }

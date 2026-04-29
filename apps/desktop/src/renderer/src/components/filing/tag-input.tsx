@@ -3,6 +3,7 @@ import { X } from '@/lib/icons'
 
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface TagPillProps {
   tag: string
@@ -98,6 +99,7 @@ interface TagInputProps {
 }
 
 const TagInput = ({ tags, suggestedTags, onTagsChange }: TagInputProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('inbox')
   const [inputValue, setInputValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -150,8 +152,12 @@ const TagInput = ({ tags, suggestedTags, onTagsChange }: TagInputProps): React.J
     <div className="space-y-3">
       {/* Section Label */}
       <div className="flex items-center gap-2">
-        <h3 className="text-sm font-medium text-foreground">Tags</h3>
-        <span className="text-xs text-muted-foreground">(optional)</span>
+        <h3 className="text-sm font-medium text-foreground">
+          {tPhaseF('phaseF.componentsFilingTagInput.tags')}
+        </h3>
+        <span className="text-xs text-muted-foreground">
+          ({tPhaseF('phaseF.componentsFilingTagInput.optional')}
+        </span>
       </div>
 
       {/* Input with tags */}
@@ -159,16 +165,20 @@ const TagInput = ({ tags, suggestedTags, onTagsChange }: TagInputProps): React.J
         <Input
           ref={inputRef}
           type="text"
-          placeholder="Add tags..."
+          placeholder={tPhaseF('phaseF.componentsFilingTagInput.addTags')}
           value={inputValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          aria-label="Add tags"
+          aria-label={tPhaseF('phaseF.componentsFilingTagInput.addTags2')}
         />
 
         {/* Current Tags */}
         {tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5" role="list" aria-label="Selected tags">
+          <div
+            className="flex flex-wrap gap-1.5"
+            role="list"
+            aria-label={tPhaseF('phaseF.componentsFilingTagInput.selectedTags')}
+          >
             {tags.map((tag) => (
               <TagPill key={tag} tag={tag} onRemove={removeTag} variant="selected" />
             ))}
@@ -179,7 +189,9 @@ const TagInput = ({ tags, suggestedTags, onTagsChange }: TagInputProps): React.J
       {/* Suggested Tags */}
       {availableSuggestedTags.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Suggested</p>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+            {tPhaseF('phaseF.componentsFilingTagInput.suggested')}
+          </p>
           <div className="flex flex-wrap gap-1.5">
             {availableSuggestedTags.map((tag) => (
               <SuggestedTag key={tag} tag={tag} onAdd={handleSuggestedTagClick} />

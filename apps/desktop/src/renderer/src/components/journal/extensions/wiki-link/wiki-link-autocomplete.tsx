@@ -16,6 +16,7 @@ import { FileText, Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { formatRelativeTime } from '@/lib/wiki-link-utils'
 import type { Page } from '@/hooks/use-pages'
+import { useT } from '@memry/i18n/renderer'
 
 export interface WikiLinkAutocompleteProps {
   items: Page[]
@@ -34,6 +35,7 @@ export const WikiLinkAutocomplete = forwardRef<
   WikiLinkAutocompleteRef,
   WikiLinkAutocompleteProps & Partial<SuggestionProps>
 >(({ items, command }, ref) => {
+  const { t } = useT('journal')
   const [requestedSelectedIndex, setRequestedSelectedIndex] = useState(0)
   const selectedIndex = Math.min(Math.max(requestedSelectedIndex, 0), items.length)
 
@@ -112,20 +114,22 @@ export const WikiLinkAutocomplete = forwardRef<
         'shadow-md animate-in fade-in-0 zoom-in-95'
       )}
       role="listbox"
-      aria-label="Page suggestions"
+      aria-label={t('wiki.suggestionsAria')}
     >
       {items.length === 0 ? (
         // Empty state
         <div className="px-3 py-6 text-center text-sm text-muted-foreground">
           <FileText className="mx-auto mb-2 h-8 w-8 opacity-50" />
-          <p>No pages found</p>
+          <p>{t('wiki.empty.title')}</p>
         </div>
       ) : (
         <>
           {/* Recent Pages Section */}
           {recentPages.length > 0 && (
             <div className="mb-1">
-              <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">Recent</div>
+              <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">
+                {t('wiki.groupRecent')}
+              </div>
               {recentPages.map((item, index) => (
                 <button
                   key={item.id}
@@ -155,7 +159,9 @@ export const WikiLinkAutocomplete = forwardRef<
           {/* All Pages Section (if more than recent) */}
           {hasMorePages && (
             <div>
-              <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">All Pages</div>
+              <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">
+                {t('wiki.groupAllPages')}
+              </div>
               {items.slice(3).map((item, index) => {
                 const actualIndex = index + 3
                 return (
@@ -201,7 +207,7 @@ export const WikiLinkAutocomplete = forwardRef<
           aria-selected={selectedIndex === items.length}
         >
           <Plus className="h-4 w-4 shrink-0" />
-          <span className="font-medium">Create new page</span>
+          <span className="font-medium">{t('wiki.createNewPage')}</span>
         </button>
       </div>
     </div>

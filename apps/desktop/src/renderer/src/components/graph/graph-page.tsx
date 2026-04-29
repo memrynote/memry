@@ -4,10 +4,21 @@ import { Button } from '@/components/ui/button'
 import { useGraphData, useGraphReactivity } from '@/hooks/use-graph-data'
 import { useGraphFilters } from '@/hooks/use-graph-filters'
 import { useGraphSettings } from '@/hooks/use-graph-settings'
+import { useT } from '@memry/i18n/renderer'
 import { GraphCanvas } from './graph-canvas'
 import { GraphControlPanel } from './graph-control-panel'
 
+const ENTITY_LABEL_KEYS = {
+  note: { one: 'entity.note', other: 'entity.notes' },
+  journal: { one: 'entity.journal', other: 'entity.journals' },
+  task: { one: 'entity.task', other: 'entity.tasks' },
+  project: { one: 'entity.project', other: 'entity.projects' },
+  tag: { one: 'entity.tag', other: 'entity.tags' },
+  orphan: { one: 'entity.orphan', other: 'entity.orphans' }
+} as const
+
 export function GraphPage(): React.JSX.Element {
+  const { t } = useT('graph')
   const { data, isLoading, error, refetch } = useGraphData()
   useGraphReactivity()
   const { filterState, dispatch, isFiltered } = useGraphFilters()
@@ -33,15 +44,23 @@ export function GraphPage(): React.JSX.Element {
       counts[n.type] = (counts[n.type] ?? 0) + 1
     })
     return Object.entries(counts)
-      .map(([type, count]) => `${count} ${type}${count !== 1 ? 's' : ''}`)
+      .map(([type, count]) => {
+        const labelKeys = ENTITY_LABEL_KEYS[type as keyof typeof ENTITY_LABEL_KEYS]
+        const label = labelKeys
+          ? t(count === 1 ? labelKeys.one : labelKeys.other)
+          : count === 1
+            ? type
+            : `${type}s`
+        return t('summary.node-type-count', { count, label })
+      })
       .join(', ')
-  }, [data?.nodes])
+  }, [data?.nodes, t])
 
   if (isLoading) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
         <Loader2 className="size-8 text-muted-foreground/50 animate-spin" />
-        <p className="text-sm text-muted-foreground/60 font-serif">Loading graph...</p>
+        <p className="text-sm text-muted-foreground/60 font-serif">{t('page.loading')}</p>
       </div>
     )
   }
@@ -50,9 +69,9 @@ export function GraphPage(): React.JSX.Element {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
         <AlertCircle className="size-8 text-destructive/60" />
-        <p className="text-sm text-destructive/80 font-serif">Failed to load graph data</p>
+        <p className="text-sm text-destructive/80 font-serif">{t('page.load-failed')}</p>
         <Button variant="outline" size="sm" onClick={() => refetch()}>
-          Try again
+          {t('page.try-again')}
         </Button>
       </div>
     )
@@ -64,7 +83,11 @@ export function GraphPage(): React.JSX.Element {
 
   const nodeCount = data.nodes.length
   const edgeCount = data.edges.length
-  const graphAriaLabel = `Knowledge graph with ${nodeCount} node${nodeCount !== 1 ? 's' : ''} and ${edgeCount} connection${edgeCount !== 1 ? 's' : ''}${nodeSummary ? `: ${nodeSummary}` : ''}.`
+  const graphAriaLabel = t('page.aria-label', {
+    nodeCount,
+    edgeCount,
+    summary: nodeSummary || 'none'
+  })
 
   return (
     <div className="relative h-full w-full">
@@ -76,12 +99,12 @@ export function GraphPage(): React.JSX.Element {
           onFocusNode={handleFocusNode}
         />
         {/* Visually-hidden node list for screen readers */}
-        <ul className="sr-only" aria-label="Graph nodes">
-          {data.nodes.map((node) => (
-            <li key={node.id}>
-              {node.label} ({node.type})
-            </li>
-          ))}
+        <ul className="sr-only" aria-label={t('page.nodes-list-label')}>
+          {data.nodes.map((node) => {
+            const labelKeys = ENTITY_LABEL_KEYS[node.type as keyof typeof ENTITY_LABEL_KEYS]
+            const type = labelKeys ? t(labelKeys.one) : node.type
+            return <li key={node.id}>{t('page.node-list-item', { label: node.label, type })}</li>
+          })}
         </ul>
       </div>
       <GraphControlPanel
@@ -97,6 +120,8 @@ export function GraphPage(): React.JSX.Element {
 }
 
 function GraphEmptyState(): React.JSX.Element {
+  const { t } = useT('graph')
+
   return (
     <div
       className="flex h-full flex-col items-center justify-center"
@@ -109,10 +134,9 @@ function GraphEmptyState(): React.JSX.Element {
         </div>
 
         <div className="space-y-2">
-          <h2 className="text-lg font-medium text-foreground">Your knowledge graph</h2>
+          <h2 className="text-lg font-medium text-foreground">{t('empty.title')}</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Connections between your notes, tasks, and projects will appear here as an interactive
-            graph.
+            {t('empty.description')}
           </p>
         </div>
 
@@ -120,18 +144,16 @@ function GraphEmptyState(): React.JSX.Element {
           <div className="flex items-start gap-3 rounded-md border border-border/50 p-3">
             <Link2 className="size-4 mt-0.5 text-accent-cyan shrink-0" />
             <div>
-              <p className="text-xs font-medium text-foreground">Link your notes</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Use [[wikilinks]] to connect ideas across notes
-              </p>
+              <p className="text-xs font-medium text-foreground">{t('empty.link-title')}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t('empty.link-description')}</p>
             </div>
           </div>
           <div className="flex items-start gap-3 rounded-md border border-border/50 p-3">
             <Lightbulb className="size-4 mt-0.5 text-accent-orange shrink-0" />
             <div>
-              <p className="text-xs font-medium text-foreground">Discover patterns</p>
+              <p className="text-xs font-medium text-foreground">{t('empty.discover-title')}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                As connections grow, clusters and themes will emerge naturally
+                {t('empty.discover-description')}
               </p>
             </div>
           </div>

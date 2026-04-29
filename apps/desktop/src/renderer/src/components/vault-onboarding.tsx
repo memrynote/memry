@@ -4,8 +4,10 @@ import * as React from 'react'
 import { FolderOpen, Sparkles, FileText, Clock, Loader2 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { useVault, useVaultList } from '@/hooks/use-vault'
+import { useT } from '@memry/i18n/renderer'
 
 export function VaultOnboarding() {
+  const { t: tPhaseF } = useT('common')
   const { selectVault, isLoading, error, switchVault } = useVault()
   const { vaults } = useVaultList()
 
@@ -25,11 +27,14 @@ export function VaultOnboarding() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-500 text-white mb-4 shadow-lg shadow-indigo-500/30">
             <Sparkles className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-semibold text-gray-900 mb-2">Welcome to Memry</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">
+            {tPhaseF('phaseF.componentsVaultOnboarding.welcomeToMemry')}
+          </h1>
           <p className="text-gray-600">
-            Your personal knowledge management system.
+            {tPhaseF('phaseF.componentsVaultOnboarding.yourPersonalKnowledgeManagementSystem')}
             <br />
-            Select a folder to store your notes and tasks.
+
+            {tPhaseF('phaseF.componentsVaultOnboarding.selectAFolderToStoreYourNotesAndTasks')}
           </p>
         </div>
 
@@ -43,12 +48,14 @@ export function VaultOnboarding() {
             {isLoading ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Opening...
+
+                {tPhaseF('phaseF.componentsVaultOnboarding.opening')}
               </>
             ) : (
               <>
                 <FolderOpen className="w-5 h-5 mr-2" />
-                Select Vault Folder
+
+                {tPhaseF('phaseF.componentsVaultOnboarding.selectVaultFolder')}
               </>
             )}
           </Button>
@@ -60,15 +67,23 @@ export function VaultOnboarding() {
             <div className="flex items-start gap-3 p-3 rounded-md bg-gray-50">
               <FileText className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-gray-900">Plain Markdown</p>
-                <p className="text-xs text-gray-500">Your notes stay portable</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {tPhaseF('phaseF.componentsVaultOnboarding.plainMarkdown')}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {tPhaseF('phaseF.componentsVaultOnboarding.yourNotesStayPortable')}
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3 p-3 rounded-md bg-gray-50">
               <Clock className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-gray-900">Sync Anywhere</p>
-                <p className="text-xs text-gray-500">Use Dropbox, iCloud, Git</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {tPhaseF('phaseF.componentsVaultOnboarding.syncAnywhere')}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {tPhaseF('phaseF.componentsVaultOnboarding.useDropboxIcloudGit')}
+                </p>
               </div>
             </div>
           </div>
@@ -77,7 +92,9 @@ export function VaultOnboarding() {
         {/* Recent vaults */}
         {vaults.length > 0 && (
           <div className="bg-white rounded-2xl shadow-lg border border-gray-200/50 p-4">
-            <h3 className="text-sm font-medium text-gray-500 mb-3 px-2">Recent Vaults</h3>
+            <h3 className="text-sm font-medium text-gray-500 mb-3 px-2">
+              {tPhaseF('phaseF.componentsVaultOnboarding.recentVaults')}
+            </h3>
             <div className="space-y-1">
               {vaults.slice(0, 3).map((vault) => (
                 <button
@@ -92,7 +109,9 @@ export function VaultOnboarding() {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-900 truncate">{vault.name}</p>
                     <p className="text-xs text-gray-500 truncate">
-                      {vault.noteCount} notes · Last opened {formatRelativeTime(vault.lastOpened)}
+                      {vault.noteCount}{' '}
+                      {tPhaseF('phaseF.componentsVaultOnboarding.notesLastOpened')}{' '}
+                      {formatRelativeTime(vault.lastOpened)}
                     </p>
                   </div>
                 </button>

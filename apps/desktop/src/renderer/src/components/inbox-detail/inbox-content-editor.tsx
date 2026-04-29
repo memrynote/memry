@@ -16,6 +16,7 @@ import '@blocknote/shadcn/style.css'
 import { cn } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'
 import { extractTitleFromBlocks } from '@/lib/blocknote-title'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Component:InboxContentEditor')
 
@@ -51,6 +52,7 @@ export const InboxContentEditor = memo(function InboxContentEditor({
   placeholder = 'Edit your captured text...',
   className
 }: InboxContentEditorProps) {
+  const { t: tPhaseF } = useT('inbox')
   // Get current theme for dark mode support
   const { resolvedTheme } = useTheme()
   const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
@@ -167,7 +169,7 @@ export const InboxContentEditor = memo(function InboxContentEditor({
         className
       )}
       role="region"
-      aria-label="Content editor"
+      aria-label={tPhaseF('phaseF.componentsInboxDetailInboxContentEditor.contentEditor')}
       onMouseDown={handleContainerMouseDown}
     >
       <BlockNoteView

@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { TitleInput } from './TitleInput'
+import { useT } from '@memry/i18n/renderer'
 
 export interface NoteTitleProps {
   emoji: string | null
@@ -14,11 +15,13 @@ export interface NoteTitleProps {
 export function NoteTitle({
   emoji,
   title,
-  placeholder = 'Untitled',
+  placeholder,
   onTitleChange,
   autoFocus = false,
   disabled = false
 }: NoteTitleProps) {
+  const { t } = useT('notes')
+
   return (
     <div className={cn('relative flex items-center gap-3')}>
       {emoji && (
@@ -30,7 +33,7 @@ export function NoteTitle({
       <div className="min-w-0 flex-1">
         <TitleInput
           value={title}
-          placeholder={placeholder}
+          placeholder={placeholder ?? t('editor.title.untitled')}
           onChange={onTitleChange}
           autoFocus={autoFocus}
           disabled={disabled}

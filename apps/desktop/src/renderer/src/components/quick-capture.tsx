@@ -14,6 +14,7 @@ import { detectPlatformFromUrl, extractHandleFromUrl } from './social-card'
 import { createLogger } from '@/lib/logger'
 import { ensureVoiceRecordingReady } from '@/lib/voice-recording-readiness'
 import { prepareVoiceMemoAudio } from '@/lib/voice-memo-audio'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Component:QuickCapture')
 
@@ -51,6 +52,7 @@ const DROPPABLE_TYPES = new Set([
 ])
 
 export function QuickCapture(): React.JSX.Element {
+  const { t: tPhaseF } = useT('inbox')
   const [value, setValue] = useState('')
   const [captureState, setCaptureState] = useState<CaptureState>('idle')
   const [errorMessage, setErrorMessage] = useState('')
@@ -495,7 +497,9 @@ export function QuickCapture(): React.JSX.Element {
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[14px] bg-background/80">
           <div className="flex flex-col items-center gap-2 text-muted-foreground">
             <Image className="size-8" />
-            <span className="text-sm font-medium">Drop to capture</span>
+            <span className="text-sm font-medium">
+              {tPhaseF('phaseF.componentsQuickCapture.dropToCapture')}
+            </span>
           </div>
         </div>
       )}
@@ -505,7 +509,9 @@ export function QuickCapture(): React.JSX.Element {
       ) : captureState === 'capturing' && !value.trim() && hasAttachment ? (
         <div className="flex items-center gap-2.5 px-4 py-3.5">
           <Loader2 className="size-4 animate-spin text-accent-orange" />
-          <span className="text-sm text-muted-foreground">Capturing...</span>
+          <span className="text-sm text-muted-foreground">
+            {tPhaseF('phaseF.componentsQuickCapture.capturing')}
+          </span>
         </div>
       ) : (
         <>

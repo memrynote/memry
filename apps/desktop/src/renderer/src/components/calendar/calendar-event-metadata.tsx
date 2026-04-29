@@ -4,6 +4,7 @@ import type {
   CalendarReminders,
   CalendarVisibility
 } from '@memry/db-schema/schema/calendar-events'
+import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
 
 export interface CalendarEventMetadataProps {
@@ -14,11 +15,17 @@ export interface CalendarEventMetadataProps {
   className?: string
 }
 
-const RESPONSE_LABELS: Record<string, string> = {
-  accepted: 'Accepted',
-  declined: 'Declined',
-  tentative: 'Tentative',
-  needsAction: 'Pending'
+const RESPONSE_LABEL_KEYS: Record<string, string> = {
+  accepted: 'metadata.response.accepted',
+  declined: 'metadata.response.declined',
+  tentative: 'metadata.response.tentative',
+  needsAction: 'metadata.response.needs-action'
+}
+
+const VISIBILITY_LABEL_KEYS: Record<Exclude<CalendarVisibility, 'default'>, string> = {
+  public: 'metadata.visibility-value.public',
+  private: 'metadata.visibility-value.private',
+  confidential: 'metadata.visibility-value.confidential'
 }
 
 const RESPONSE_STYLES: Record<string, string> = {
@@ -43,6 +50,8 @@ function hasAnyMetadata(props: CalendarEventMetadataProps): boolean {
 }
 
 export function CalendarEventMetadata(props: CalendarEventMetadataProps): React.JSX.Element | null {
+  const { t: tPhaseF } = useT('calendar')
+  const { t } = useT('calendar')
   if (!hasAnyMetadata(props)) return null
   const { attendees, reminders, visibility, conferenceData, className } = props
   const meetLink = findMeetLink(conferenceData)
@@ -56,18 +65,20 @@ export function CalendarEventMetadata(props: CalendarEventMetadataProps): React.
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
         >
-          Join meeting
+          {t('metadata.join-meeting')}
         </a>
       )}
 
       {attendees && attendees.length > 0 && (
-        <section aria-label="Attendees" className="space-y-1">
+        <section aria-label={t('metadata.attendees')} className="space-y-1">
           <h3 className="text-xs font-semibold text-muted-foreground">
-            Attendees ({attendees.length})
+            {t('metadata.attendees-count', { count: attendees.length })}
           </h3>
           <ul className="space-y-1">
             {attendees.map((attendee) => {
-              const label = RESPONSE_LABELS[attendee.responseStatus ?? 'needsAction'] ?? 'Pending'
+              const labelKey =
+                RESPONSE_LABEL_KEYS[attendee.responseStatus ?? 'needsAction'] ??
+                'metadata.response.needs-action'
               const badgeStyle =
                 RESPONSE_STYLES[attendee.responseStatus ?? 'needsAction'] ??
                 RESPONSE_STYLES.needsAction
@@ -88,13 +99,13 @@ export function CalendarEventMetadata(props: CalendarEventMetadataProps): React.
                   </div>
                   {attendee.optional && (
                     <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                      Optional
+                      {t('metadata.optional')}
                     </span>
                   )}
                   <span
                     className={cn('rounded-full px-2 py-0.5 text-[10px] font-medium', badgeStyle)}
                   >
-                    {label}
+                    {t(labelKey)}
                   </span>
                 </li>
               )
@@ -104,10 +115,10 @@ export function CalendarEventMetadata(props: CalendarEventMetadataProps): React.
       )}
 
       {reminders && (
-        <section aria-label="Reminders" className="space-y-1">
-          <h3 className="text-xs font-semibold text-muted-foreground">Reminders</h3>
+        <section aria-label={t('metadata.reminders')} className="space-y-1">
+          <h3 className="text-xs font-semibold text-muted-foreground">{t('metadata.reminders')}</h3>
           {reminders.useDefault && reminders.overrides.length === 0 ? (
-            <p className="text-xs text-muted-foreground">Default reminders</p>
+            <p className="text-xs text-muted-foreground">{t('metadata.default-reminders')}</p>
           ) : (
             <ul className="flex flex-wrap gap-1">
               {reminders.overrides.map((o, idx) => (
@@ -115,7 +126,8 @@ export function CalendarEventMetadata(props: CalendarEventMetadataProps): React.
                   key={`${o.method}-${o.minutes}-${idx}`}
                   className="rounded-md bg-muted px-2 py-0.5 text-xs"
                 >
-                  {o.minutes} min · {o.method}
+                  {o.minutes} {tPhaseF('phaseF.componentsCalendarCalendarEventMetadata.min')}
+                  {o.method}
                 </li>
               ))}
             </ul>
@@ -124,10 +136,10 @@ export function CalendarEventMetadata(props: CalendarEventMetadataProps): React.
       )}
 
       {visibility && visibility !== 'default' && (
-        <section aria-label="Visibility">
+        <section aria-label={t('metadata.visibility')}>
           <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs">
-            <span className="text-muted-foreground">Visibility:</span>
-            <span className="font-medium capitalize">{visibility}</span>
+            <span className="text-muted-foreground">{t('metadata.visibility')}</span>
+            <span className="font-medium">{t(VISIBILITY_LABEL_KEYS[visibility])}</span>
           </span>
         </section>
       )}

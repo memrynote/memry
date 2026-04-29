@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 import { Picker } from '@/components/ui/picker'
 import { StatusIcon } from '@/components/tasks/status-icon'
 import type { Status } from '@/data/tasks-data'
+import { useT } from '@memry/i18n/renderer'
 
 interface StatusSelectProps {
   value: string
@@ -19,6 +20,7 @@ export const StatusSelect = ({
   className,
   compact = false
 }: StatusSelectProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const sortedStatuses = useMemo(() => [...statuses].sort((a, b) => a.order - b.order), [statuses])
   const currentStatus = sortedStatuses.find((s) => s.id === value)
 
@@ -28,7 +30,7 @@ export const StatusSelect = ({
         variant="button"
         chevron
         className={cn('w-full', compact && 'h-9 text-sm', className)}
-        aria-label="Select status"
+        aria-label={tPhaseF('phaseF.componentsTasksStatusSelect.selectStatus')}
       >
         {currentStatus ? (
           <span className="flex items-center gap-2 min-w-0">
@@ -40,7 +42,9 @@ export const StatusSelect = ({
             <span className="truncate">{currentStatus.name}</span>
           </span>
         ) : (
-          <span className="text-muted-foreground">Select status</span>
+          <span className="text-muted-foreground">
+            {tPhaseF('phaseF.componentsTasksStatusSelect.selectStatus2')}
+          </span>
         )}
       </Picker.Trigger>
       <Picker.Content width="trigger" align="start">

@@ -6,6 +6,7 @@ import type { Status } from '@/data/tasks-data'
 import type { Task } from '@/data/sample-tasks'
 import { StatusIcon } from '@/components/tasks/status-icon'
 import { BackButton } from './priority-panel'
+import { useT } from '@memry/i18n/renderer'
 
 interface StatusPanelProps {
   statuses: Status[]
@@ -22,6 +23,7 @@ export function StatusPanel({
   onGoBack,
   tasks
 }: StatusPanelProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('tasks')
   const countsByStatus = useMemo(() => {
     const counts: Record<string, number> = {}
     for (const task of tasks) {
@@ -35,7 +37,9 @@ export function StatusPanel({
       <div className="flex items-center py-2 px-3 gap-1.5 border-b border-border">
         <BackButton onClick={onGoBack} />
         <StatusIcon type="todo" color="var(--muted-foreground)" size="md" />
-        <span className="text-[13px] text-foreground font-medium leading-4">Status</span>
+        <span className="text-[13px] text-foreground font-medium leading-4">
+          {tPhaseF('phaseF.componentsTasksFiltersFilterPanelsStatusPanel.status')}
+        </span>
       </div>
       <div className="flex flex-col p-1">
         {statuses.map((status) => {

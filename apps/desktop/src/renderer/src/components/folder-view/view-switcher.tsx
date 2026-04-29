@@ -45,6 +45,7 @@ import type { ViewConfig } from '@/hooks/use-folder-view'
 import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Component:ViewSwitcher')
 
@@ -88,6 +89,7 @@ export function ViewSwitcher({
   onDeleteView,
   className
 }: ViewSwitcherProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   // Dropdown open state
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
@@ -315,7 +317,7 @@ export function ViewSwitcher({
                           variant="secondary"
                           className="h-5 px-1.5 text-[10px] font-normal flex-shrink-0"
                         >
-                          default
+                          {tPhaseF('phaseF.componentsFolderViewViewSwitcher.default')}
                         </Badge>
                       )}
                     </div>
@@ -331,7 +333,8 @@ export function ViewSwitcher({
                 <DropdownMenuSubContent sideOffset={2} className="w-44">
                   <DropdownMenuItem onSelect={() => openRenameDialog(index, view)}>
                     <Pencil className="mr-2 h-4 w-4" />
-                    Rename
+
+                    {tPhaseF('phaseF.componentsFolderViewViewSwitcher.rename')}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onSelect={() => {
@@ -340,7 +343,8 @@ export function ViewSwitcher({
                     }}
                   >
                     <Copy className="mr-2 h-4 w-4" />
-                    Duplicate
+
+                    {tPhaseF('phaseF.componentsFolderViewViewSwitcher.duplicate')}
                   </DropdownMenuItem>
                   {!isDefault && (
                     <DropdownMenuItem
@@ -350,7 +354,8 @@ export function ViewSwitcher({
                       }}
                     >
                       <Star className="mr-2 h-4 w-4" />
-                      Set as Default
+
+                      {tPhaseF('phaseF.componentsFolderViewViewSwitcher.setAsDefault')}
                     </DropdownMenuItem>
                   )}
                   {canDelete && (
@@ -361,7 +366,8 @@ export function ViewSwitcher({
                         onSelect={() => openDeleteDialog(index, view)}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
+
+                        {tPhaseF('phaseF.componentsFolderViewViewSwitcher.delete')}
                       </DropdownMenuItem>
                     </>
                   )}
@@ -375,7 +381,8 @@ export function ViewSwitcher({
           {/* Create New View */}
           <DropdownMenuItem onSelect={openNewViewDialog}>
             <Plus className="mr-2 h-4 w-4" />
-            Create New View
+
+            {tPhaseF('phaseF.componentsFolderViewViewSwitcher.createNewView')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -384,19 +391,25 @@ export function ViewSwitcher({
       <Dialog open={isNewViewDialogOpen} onOpenChange={setIsNewViewDialogOpen}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle>Create New View</DialogTitle>
+            <DialogTitle>
+              {tPhaseF('phaseF.componentsFolderViewViewSwitcher.createNewView2')}
+            </DialogTitle>
             <DialogDescription>
-              Create a new view with custom columns, filters, and sorting.
+              {tPhaseF(
+                'phaseF.componentsFolderViewViewSwitcher.createANewViewWithCustomColumnsFiltersAndSorting'
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="view-name">View Name</Label>
+              <Label htmlFor="view-name">
+                {tPhaseF('phaseF.componentsFolderViewViewSwitcher.viewName')}
+              </Label>
               <Input
                 id="view-name"
                 value={newViewName}
                 onChange={(e) => setNewViewName(e.target.value)}
-                placeholder="My Custom View"
+                placeholder={tPhaseF('phaseF.componentsFolderViewViewSwitcher.myCustomView')}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && newViewName.trim()) {
                     handleCreateView()
@@ -405,7 +418,7 @@ export function ViewSwitcher({
               />
             </div>
             <div className="grid gap-2">
-              <Label>Base Configuration</Label>
+              <Label>{tPhaseF('phaseF.componentsFolderViewViewSwitcher.baseConfiguration')}</Label>
               <div className="flex flex-col gap-2">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -415,7 +428,9 @@ export function ViewSwitcher({
                     onChange={() => setCopyFromCurrent(true)}
                     className="h-4 w-4"
                   />
-                  <span className="text-sm">Copy from current view</span>
+                  <span className="text-sm">
+                    {tPhaseF('phaseF.componentsFolderViewViewSwitcher.copyFromCurrentView')}
+                  </span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -425,14 +440,16 @@ export function ViewSwitcher({
                     onChange={() => setCopyFromCurrent(false)}
                     className="h-4 w-4"
                   />
-                  <span className="text-sm">Start fresh (default columns)</span>
+                  <span className="text-sm">
+                    {tPhaseF('phaseF.componentsFolderViewViewSwitcher.startFreshDefaultColumns')}
+                  </span>
                 </label>
               </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsNewViewDialogOpen(false)}>
-              Cancel
+              {tPhaseF('phaseF.componentsFolderViewViewSwitcher.cancel')}
             </Button>
             <Button onClick={handleCreateView} disabled={!newViewName.trim() || isSubmitting}>
               {isSubmitting ? 'Creating...' : 'Create'}
@@ -445,17 +462,23 @@ export function ViewSwitcher({
       <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle>Rename View</DialogTitle>
-            <DialogDescription>Enter a new name for this view.</DialogDescription>
+            <DialogTitle>
+              {tPhaseF('phaseF.componentsFolderViewViewSwitcher.renameView')}
+            </DialogTitle>
+            <DialogDescription>
+              {tPhaseF('phaseF.componentsFolderViewViewSwitcher.enterANewNameForThisView')}
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="rename-view">View Name</Label>
+              <Label htmlFor="rename-view">
+                {tPhaseF('phaseF.componentsFolderViewViewSwitcher.viewName2')}
+              </Label>
               <Input
                 id="rename-view"
                 value={renameValue}
                 onChange={(e) => setRenameValue(e.target.value)}
-                placeholder="View name"
+                placeholder={tPhaseF('phaseF.componentsFolderViewViewSwitcher.viewName3')}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && renameValue.trim()) {
                     handleRenameView()
@@ -466,7 +489,7 @@ export function ViewSwitcher({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsRenameDialogOpen(false)}>
-              Cancel
+              {tPhaseF('phaseF.componentsFolderViewViewSwitcher.cancel2')}
             </Button>
             <Button onClick={handleRenameView} disabled={!renameValue.trim() || isSubmitting}>
               {isSubmitting ? 'Saving...' : 'Save'}
@@ -479,14 +502,19 @@ export function ViewSwitcher({
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete View</AlertDialogTitle>
+            <AlertDialogTitle>
+              {tPhaseF('phaseF.componentsFolderViewViewSwitcher.deleteView')}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{selectedViewForAction?.view.name}"? This action
-              cannot be undone.
+              {tPhaseF('phaseF.componentsFolderViewViewSwitcher.areYouSureYouWantToDelete')}
+              {selectedViewForAction?.view.name}"?{' '}
+              {tPhaseF('phaseF.componentsFolderViewViewSwitcher.thisActionCannotBeUndone')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>
+              {tPhaseF('phaseF.componentsFolderViewViewSwitcher.cancel3')}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteView}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"

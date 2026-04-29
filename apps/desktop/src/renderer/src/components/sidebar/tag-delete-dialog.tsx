@@ -11,6 +11,7 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('TagDeleteDialog')
 
@@ -27,6 +28,7 @@ export function TagDeleteDialog({
   onOpenChange,
   onConfirm
 }: TagDeleteDialogProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   const [, deleteAction, isPending] = useActionState<null, void>(async () => {
     try {
       await onConfirm()
@@ -50,14 +52,19 @@ export function TagDeleteDialog({
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete tag #{tag}?</AlertDialogTitle>
+          <AlertDialogTitle>
+            {tPhaseF('phaseF.componentsSidebarTagDeleteDialog.deleteTag')}
+            {tag}?
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            Notes with this tag won&apos;t be deleted, just untagged.
+            {tPhaseF(
+              'phaseF.componentsSidebarTagDeleteDialog.notesWithThisTagWonTBeDeletedJustUntagged'
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isPending}>
-            Cancel
+            {tPhaseF('phaseF.componentsSidebarTagDeleteDialog.cancel')}
           </Button>
           <Button variant="destructive" onClick={handleConfirm} disabled={isPending}>
             {isPending ? 'Deleting...' : 'Delete tag'}

@@ -8,6 +8,7 @@ import {
   SettingsGroup,
   SettingRow
 } from '@/components/settings/settings-primitives'
+import { useT } from '@memry/i18n/renderer'
 
 const STORAGE_COLORS: Record<string, string> = {
   notes: '#6366f1',
@@ -16,14 +17,8 @@ const STORAGE_COLORS: Record<string, string> = {
   other: '#8c8c8c'
 }
 
-const STORAGE_LABELS: Record<string, string> = {
-  notes: 'Notes',
-  attachments: 'Attachments',
-  crdt: 'CRDT',
-  other: 'Other'
-}
-
 export function VaultSettings() {
+  const { t } = useT('settings')
   const { data, loading, refresh } = useStorageUsage()
   const [vaultPath, setVaultPath] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -50,18 +45,21 @@ export function VaultSettings() {
 
   return (
     <div className="flex flex-col text-xs/4">
-      <SettingsHeader title="Vault" subtitle="Vault configuration and storage" />
+      <SettingsHeader title={t('vault.header.title')} subtitle={t('vault.header.subtitle')} />
 
-      <SettingsGroup label="Storage Usage">
+      <SettingsGroup label={t('vault.groups.storageUsage')}>
         {loading ? (
           <div className="py-3 px-4">
-            <p className="text-xs/4 text-muted-foreground">Loading storage info...</p>
+            <p className="text-xs/4 text-muted-foreground">{t('vault.loadingStorage')}</p>
           </div>
         ) : data ? (
           <div className="py-3 px-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-[13px]/4 text-foreground">
-                {formatBytes(data.used)} of {formatBytes(data.limit)} used
+                {t('vault.storage.used', {
+                  used: formatBytes(data.used),
+                  limit: formatBytes(data.limit)
+                })}
               </span>
               <Button
                 variant="ghost"
@@ -81,7 +79,7 @@ export function VaultSettings() {
                 return (
                   <div
                     key={key}
-                    className="h-full first:rounded-l-full last:rounded-r-full"
+                    className="h-full first:rounded-s-full last:rounded-e-full"
                     style={{
                       width: `${pct}%`,
                       backgroundColor: STORAGE_COLORS[key] ?? '#8c8c8c'
@@ -99,7 +97,7 @@ export function VaultSettings() {
                     style={{ backgroundColor: STORAGE_COLORS[key] ?? '#8c8c8c' }}
                   />
                   <span className="text-xs/4 text-muted-foreground">
-                    {STORAGE_LABELS[key] ?? key}
+                    {t(`vault.storage.categories.${key}`, { defaultValue: key })}
                   </span>
                 </div>
                 <span className="text-xs/4 text-muted-foreground tabular-nums">
@@ -110,13 +108,13 @@ export function VaultSettings() {
           </div>
         ) : (
           <div className="py-3 px-4">
-            <p className="text-xs/4 text-muted-foreground">Sign in to view storage usage</p>
+            <p className="text-xs/4 text-muted-foreground">{t('vault.signInStorage')}</p>
           </div>
         )}
       </SettingsGroup>
 
-      <SettingsGroup label="Location">
-        <SettingRow label="Vault Path" description={vaultPath ?? '~/Documents/memry'}>
+      <SettingsGroup label={t('vault.groups.location')}>
+        <SettingRow label={t('vault.vaultPath')} description={vaultPath ?? '~/Documents/memry'}>
           <Button
             variant="outline"
             size="sm"
@@ -124,7 +122,7 @@ export function VaultSettings() {
             disabled={!vaultPath}
             className="h-7 px-3 text-xs/4"
           >
-            Reveal
+            {t('vault.reveal')}
           </Button>
         </SettingRow>
       </SettingsGroup>

@@ -3,6 +3,7 @@ import { CheckSquare, ChevronDown, ChevronRight, Loader2 } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import type { Task } from '@/services/tasks-service'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -62,6 +63,7 @@ export const LinkedTasksSection = ({
   onTaskClick,
   className
 }: LinkedTasksSectionProps): React.JSX.Element | null => {
+  const { t } = useT('notes')
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   // Show loading state
@@ -73,7 +75,7 @@ export const LinkedTasksSection = ({
         <div className="flex items-center gap-2">
           <Loader2 className="size-4 animate-spin text-stone-400" aria-hidden="true" />
           <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">
-            Loading linked tasks...
+            {t('linkedTasks.loading')}
           </span>
         </div>
       </section>
@@ -110,7 +112,7 @@ export const LinkedTasksSection = ({
         )}
         <CheckSquare className="size-4 text-tint" aria-hidden="true" />
         <span className="text-xs font-semibold uppercase tracking-wide text-stone-500">
-          Linked Tasks
+          {t('linkedTasks.title')}
         </span>
         <span className="text-xs text-stone-400">({tasks.length})</span>
       </button>

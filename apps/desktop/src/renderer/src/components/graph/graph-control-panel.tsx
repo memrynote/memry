@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label'
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
 import type { GraphFilterState, GraphFilterAction } from '@/hooks/use-graph-filters'
 import type { GraphSettings } from '@memry/contracts/graph-api'
+import { useT } from '@memry/i18n/renderer'
 
 interface GraphControlPanelProps {
   filterState: GraphFilterState
@@ -31,22 +32,32 @@ interface GraphControlPanelProps {
 }
 
 const ENTITY_FILTERS = [
-  { key: 'showNotes' as const, label: 'Notes', icon: FileText, colorVar: '--graph-node-note' },
+  {
+    key: 'showNotes' as const,
+    labelKey: 'filter.notes',
+    icon: FileText,
+    colorVar: '--graph-node-note'
+  },
   {
     key: 'showJournals' as const,
-    label: 'Journals',
+    labelKey: 'filter.journals',
     icon: BookOpen,
     colorVar: '--graph-node-journal'
   },
-  { key: 'showTasks' as const, label: 'Tasks', icon: ListChecks, colorVar: '--graph-node-task' },
+  {
+    key: 'showTasks' as const,
+    labelKey: 'filter.tasks',
+    icon: ListChecks,
+    colorVar: '--graph-node-task'
+  },
   {
     key: 'showProjects' as const,
-    label: 'Projects',
+    labelKey: 'filter.projects',
     icon: FolderOpen,
     colorVar: '--graph-node-project'
   },
-  { key: 'showTags' as const, label: 'Tags', icon: Tag, colorVar: '--graph-node-tag' },
-  { key: 'showOrphans' as const, label: 'Orphans', icon: Unlink, colorVar: null }
+  { key: 'showTags' as const, labelKey: 'filter.tags', icon: Tag, colorVar: '--graph-node-tag' },
+  { key: 'showOrphans' as const, labelKey: 'filter.orphans', icon: Unlink, colorVar: null }
 ] as const
 
 const KEY_TO_ENTITY: Record<string, 'note' | 'task' | 'journal' | 'project' | 'tag'> = {
@@ -65,6 +76,7 @@ export function GraphControlPanel({
   settings,
   updateSettings
 }: GraphControlPanelProps): React.JSX.Element {
+  const { t } = useT('graph')
   const [isOpen, setIsOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -90,7 +102,7 @@ export function GraphControlPanel({
       <button
         onClick={() => setIsOpen((v) => !v)}
         className="absolute right-3 top-3 z-50 flex size-8 items-center justify-center rounded-md border border-border bg-popover/95 backdrop-blur-sm shadow-card transition-colors hover:bg-accent"
-        title={isOpen ? 'Hide settings' : 'Graph settings'}
+        title={isOpen ? t('control.hide-settings') : t('control.show-settings')}
       >
         <Settings
           className={`size-4 text-muted-foreground transition-transform duration-300 ${isOpen ? 'rotate-90' : ''}`}
@@ -109,7 +121,8 @@ export function GraphControlPanel({
                 size="sm"
                 className="h-6 w-6 p-0"
                 onClick={() => dispatch({ type: 'RESET_FILTERS' })}
-                title="Reset filters"
+                title={t('control.reset-filters')}
+                aria-label={t('control.reset-filters')}
               >
                 <RotateCcw className="size-3 text-muted-foreground" />
               </Button>
@@ -122,13 +135,14 @@ export function GraphControlPanel({
               <Focus className="size-3.5 text-accent-cyan shrink-0" />
               <span className="text-xs text-foreground truncate">{focusLabel}</span>
               <span className="text-[10px] text-muted-foreground shrink-0">
-                depth {filterState.focusDepth}
+                {t('control.focus-depth', { depth: filterState.focusDepth })}
               </span>
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-5 w-5 p-0 ml-auto shrink-0"
                 onClick={() => dispatch({ type: 'CLEAR_FOCUS' })}
+                aria-label={t('control.clear-focus')}
               >
                 <X className="size-3 text-muted-foreground" />
               </Button>
@@ -136,13 +150,13 @@ export function GraphControlPanel({
           )}
 
           {/* Filters section */}
-          <PanelSection title="Filters" defaultOpen>
+          <PanelSection title={t('control.filters')} defaultOpen>
             <div className="space-y-2.5">
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
                 <Input
                   ref={inputRef}
-                  placeholder="Search nodes..."
+                  placeholder={t('search.placeholder')}
                   className="h-8 pl-8 pr-8 text-xs bg-background border-border"
                   value={filterState.searchQuery}
                   onChange={(e) => dispatch({ type: 'SET_SEARCH_QUERY', query: e.target.value })}
@@ -153,15 +167,17 @@ export function GraphControlPanel({
                     size="sm"
                     className="absolute right-1 top-1/2 -translate-y-1/2 h-5 w-5 p-0"
                     onClick={() => dispatch({ type: 'SET_SEARCH_QUERY', query: '' })}
+                    aria-label={t('search.clear')}
                   >
                     <X className="size-3 text-muted-foreground" />
                   </Button>
                 )}
               </div>
 
-              {ENTITY_FILTERS.map(({ key, label, icon: Icon, colorVar }) => {
+              {ENTITY_FILTERS.map(({ key, labelKey, icon: Icon, colorVar }) => {
                 const isOrphan = key === 'showOrphans'
                 const checked = isOrphan ? filterState.showOrphans : (filterState[key] as boolean)
+                const label = t(labelKey)
                 return (
                   <div key={key} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -188,10 +204,10 @@ export function GraphControlPanel({
           </PanelSection>
 
           {/* Display section */}
-          <PanelSection title="Display" defaultOpen>
+          <PanelSection title={t('control.display')} defaultOpen>
             <div className="space-y-3">
               <FilterSwitch
-                label="Show labels"
+                label={t('control.show-labels')}
                 checked={settings.showLabels}
                 onCheckedChange={(v) => updateSettings({ showLabels: v })}
               />

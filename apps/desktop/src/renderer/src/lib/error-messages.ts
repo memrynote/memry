@@ -1,4 +1,6 @@
 import type { SyncErrorCategory } from '@memry/contracts/ipc-sync-ops'
+import { RESOURCES } from '@memry/i18n/locales'
+import { getI18n } from 'react-i18next'
 
 export const ERROR_CODES = {
   VAULT_NOT_FOUND: 'VAULT_NOT_FOUND',
@@ -41,73 +43,83 @@ export const ERROR_CODES = {
   INBOX_ATTACHMENT_DELETE_FAILED: 'INBOX_ATTACHMENT_DELETE_FAILED'
 } as const
 
-const ERROR_MESSAGES: Record<string, string> = {
-  [ERROR_CODES.VAULT_NOT_FOUND]: 'Vault not found. It may have been moved or deleted.',
-  [ERROR_CODES.VAULT_NOT_INITIALIZED]: 'No vault is open. Open or create a vault to continue.',
-  [ERROR_CODES.VAULT_INVALID_PATH]: 'The selected path is not a valid vault location.',
-  [ERROR_CODES.VAULT_PERMISSION_DENIED]:
-    'Permission denied. Check that you have access to this folder.',
-  [ERROR_CODES.VAULT_ALREADY_EXISTS]: 'A vault already exists at this location.',
-  [ERROR_CODES.VAULT_CORRUPTED]: 'This vault appears to be corrupted. Try restoring from a backup.',
+const ERROR_MESSAGE_KEYS: Record<string, string> = {
+  [ERROR_CODES.VAULT_NOT_FOUND]: 'vault.notFound',
+  [ERROR_CODES.VAULT_NOT_INITIALIZED]: 'vault.notInitialized',
+  [ERROR_CODES.VAULT_INVALID_PATH]: 'vault.invalidPath',
+  [ERROR_CODES.VAULT_PERMISSION_DENIED]: 'vault.permissionDenied',
+  [ERROR_CODES.VAULT_ALREADY_EXISTS]: 'vault.alreadyExists',
+  [ERROR_CODES.VAULT_CORRUPTED]: 'vault.corrupted',
 
-  [ERROR_CODES.NOTE_NOT_FOUND]: 'This note could not be found. It may have been deleted.',
-  [ERROR_CODES.NOTE_INVALID_FRONTMATTER]: 'This note has invalid metadata and cannot be read.',
-  [ERROR_CODES.NOTE_DUPLICATE_ID]: 'A note with this ID already exists.',
-  [ERROR_CODES.NOTE_WRITE_FAILED]: 'Failed to save this note. Check disk space and permissions.',
-  [ERROR_CODES.NOTE_READ_FAILED]: 'Failed to read this note. The file may be locked or corrupted.',
-  [ERROR_CODES.NOTE_DELETE_FAILED]: 'Failed to delete this note. Check file permissions.',
-  [ERROR_CODES.NOTE_INVALID_PATH]: 'The note path is invalid.',
+  [ERROR_CODES.NOTE_NOT_FOUND]: 'note.notFound',
+  [ERROR_CODES.NOTE_INVALID_FRONTMATTER]: 'note.invalidFrontmatter',
+  [ERROR_CODES.NOTE_DUPLICATE_ID]: 'note.duplicateId',
+  [ERROR_CODES.NOTE_WRITE_FAILED]: 'note.writeFailed',
+  [ERROR_CODES.NOTE_READ_FAILED]: 'note.readFailed',
+  [ERROR_CODES.NOTE_DELETE_FAILED]: 'note.deleteFailed',
+  [ERROR_CODES.NOTE_INVALID_PATH]: 'note.invalidPath',
 
-  [ERROR_CODES.DB_CONNECTION_FAILED]:
-    'Could not connect to the local database. Try restarting the app.',
-  [ERROR_CODES.DB_MIGRATION_FAILED]: 'Database upgrade failed. Try restarting the app.',
-  [ERROR_CODES.DB_QUERY_FAILED]: 'A database operation failed. Try again.',
-  [ERROR_CODES.DB_NOT_INITIALIZED]: 'Database not ready. Try restarting the app.',
-  [ERROR_CODES.DB_CONSTRAINT_VIOLATION]: 'A data conflict occurred. Try again.',
-  [ERROR_CODES.DB_CORRUPTED]: 'The local database is corrupted. You may need to reset it.',
+  [ERROR_CODES.DB_CONNECTION_FAILED]: 'database.connectionFailed',
+  [ERROR_CODES.DB_MIGRATION_FAILED]: 'database.migrationFailed',
+  [ERROR_CODES.DB_QUERY_FAILED]: 'database.queryFailed',
+  [ERROR_CODES.DB_NOT_INITIALIZED]: 'database.notInitialized',
+  [ERROR_CODES.DB_CONSTRAINT_VIOLATION]: 'database.constraintViolation',
+  [ERROR_CODES.DB_CORRUPTED]: 'database.corrupted',
 
-  [ERROR_CODES.WATCHER_START_FAILED]: 'Could not start watching for file changes.',
-  [ERROR_CODES.WATCHER_STOP_FAILED]: 'Could not stop the file watcher.',
-  [ERROR_CODES.WATCHER_EVENT_ERROR]: 'An error occurred while watching for file changes.',
+  [ERROR_CODES.WATCHER_START_FAILED]: 'watcher.startFailed',
+  [ERROR_CODES.WATCHER_STOP_FAILED]: 'watcher.stopFailed',
+  [ERROR_CODES.WATCHER_EVENT_ERROR]: 'watcher.eventError',
 
-  [ERROR_CODES.ATTACHMENT_FILE_TOO_LARGE]: 'This file is too large to attach.',
-  [ERROR_CODES.ATTACHMENT_UNSUPPORTED_TYPE]: 'This file type is not supported.',
-  [ERROR_CODES.ATTACHMENT_WRITE_FAILED]: 'Failed to save the attachment. Check disk space.',
-  [ERROR_CODES.ATTACHMENT_DELETE_FAILED]: 'Failed to delete the attachment.',
+  [ERROR_CODES.ATTACHMENT_FILE_TOO_LARGE]: 'attachment.fileTooLarge',
+  [ERROR_CODES.ATTACHMENT_UNSUPPORTED_TYPE]: 'attachment.unsupportedType',
+  [ERROR_CODES.ATTACHMENT_WRITE_FAILED]: 'attachment.writeFailed',
+  [ERROR_CODES.ATTACHMENT_DELETE_FAILED]: 'attachment.deleteFailed',
 
-  [ERROR_CODES.ENCRYPTION_FAILED]: 'Failed to encrypt data. Your keys may need to be regenerated.',
-  [ERROR_CODES.DECRYPTION_FAILED]:
-    'Failed to decrypt data. Your encryption keys may be out of date.',
-  [ERROR_CODES.INVALID_KEY_LENGTH]: 'Invalid encryption key. Try signing out and back in.',
-  [ERROR_CODES.INVALID_NONCE_LENGTH]: 'Encryption error. Try the operation again.',
+  [ERROR_CODES.ENCRYPTION_FAILED]: 'encryption.failed',
+  [ERROR_CODES.DECRYPTION_FAILED]: 'encryption.decryptionFailed',
+  [ERROR_CODES.INVALID_KEY_LENGTH]: 'encryption.invalidKeyLength',
+  [ERROR_CODES.INVALID_NONCE_LENGTH]: 'encryption.invalidNonceLength',
 
-  [ERROR_CODES.INBOX_ATTACHMENT_WRITE_FAILED]: 'Failed to save the inbox attachment.',
-  [ERROR_CODES.INBOX_ATTACHMENT_DELETE_FAILED]: 'Failed to delete the inbox attachment.'
+  [ERROR_CODES.INBOX_ATTACHMENT_WRITE_FAILED]: 'inboxAttachment.writeFailed',
+  [ERROR_CODES.INBOX_ATTACHMENT_DELETE_FAILED]: 'inboxAttachment.deleteFailed'
 }
 
-const SYNC_ERROR_MESSAGES: Record<SyncErrorCategory, string> = {
-  network_offline: 'You are offline. Changes will sync when you reconnect.',
-  network_timeout: 'The sync server took too long to respond. Will retry shortly.',
-  server_error: 'The sync server encountered an error. Will retry automatically.',
-  auth_expired: 'Your session has expired. Sign in again to continue syncing.',
-  device_revoked: 'This device has been removed from your account.',
-  rate_limited: 'Too many requests. Syncing will resume shortly.',
-  crypto_failure: 'Failed to encrypt or decrypt sync data. Try signing out and back in.',
-  version_incompatible: 'This version of Memry is no longer supported. Please update.',
-  storage_quota_exceeded: 'Your sync storage is full. Free up space or upgrade your plan.',
-  certificate_pin_failed: 'Secure connection failed. Check your network connection.',
-  unknown: 'An unexpected sync error occurred. Will retry automatically.'
+const SYNC_ERROR_KEYS: Record<SyncErrorCategory, string> = {
+  network_offline: 'sync.networkOffline',
+  network_timeout: 'sync.networkTimeout',
+  server_error: 'sync.serverError',
+  auth_expired: 'sync.authExpired',
+  device_revoked: 'sync.deviceRevoked',
+  rate_limited: 'sync.rateLimited',
+  crypto_failure: 'sync.cryptoFailure',
+  version_incompatible: 'sync.versionIncompatible',
+  storage_quota_exceeded: 'sync.storageQuotaExceeded',
+  certificate_pin_failed: 'sync.certificatePinFailed',
+  unknown: 'sync.unknown'
+}
+
+function getEnglishErrorResource(key: string): string | undefined {
+  let current: unknown = RESOURCES.en.errors
+  for (const segment of key.split('.')) {
+    if (!current || typeof current !== 'object' || !(segment in current)) return undefined
+    current = (current as Record<string, unknown>)[segment]
+  }
+  return typeof current === 'string' ? current : undefined
+}
+
+function resolveErrorKey(key: string): string {
+  const namespacedKey = `errors:${key}`
+  const translated = getI18n()?.t(namespacedKey)
+  if (typeof translated === 'string' && translated !== namespacedKey) return translated
+  return getEnglishErrorResource(key) ?? namespacedKey
 }
 
 export function getUserErrorMessage(code: string, fallback?: string): string {
-  return (
-    ERROR_MESSAGES[code] ??
-    SYNC_ERROR_MESSAGES[code as SyncErrorCategory] ??
-    fallback ??
-    'Something went wrong. Please try again.'
-  )
+  const key = ERROR_MESSAGE_KEYS[code] ?? SYNC_ERROR_KEYS[code as SyncErrorCategory]
+  if (key) return resolveErrorKey(key)
+  return fallback ?? resolveErrorKey('generic.somethingWentWrong')
 }
 
 export function getSyncErrorMessage(category: SyncErrorCategory): string {
-  return SYNC_ERROR_MESSAGES[category]
+  return resolveErrorKey(SYNC_ERROR_KEYS[category] ?? 'sync.unknown')
 }

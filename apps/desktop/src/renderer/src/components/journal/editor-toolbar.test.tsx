@@ -6,9 +6,13 @@
  * thread `journalId` / `onFocusToggle` through.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import type { Editor } from '@tiptap/react'
+import { I18nextProvider } from 'react-i18next'
+import type { i18n as I18nInstance } from 'i18next'
+import type { ReactElement } from 'react'
+import { createRendererI18n } from '@memry/i18n/renderer'
 
 import { EditorToolbar } from './editor-toolbar'
 
@@ -84,7 +88,17 @@ function makeEditor(): { editor: Editor; chain: ChainMock } {
   return { editor, chain }
 }
 
+let i18nInstance: I18nInstance
+
+function renderToolbar(ui: ReactElement) {
+  return render(<I18nextProvider i18n={i18nInstance}>{ui}</I18nextProvider>)
+}
+
 describe('EditorToolbar', () => {
+  beforeAll(async () => {
+    i18nInstance = await createRendererI18n({ locale: 'en' })
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -99,7 +113,7 @@ describe('EditorToolbar', () => {
       const { editor } = makeEditor()
 
       // #when
-      render(<EditorToolbar editor={editor} />)
+      renderToolbar(<EditorToolbar editor={editor} />)
 
       // #then
       expect(screen.getByRole('button', { name: 'Image' })).toBeDisabled()
@@ -115,7 +129,7 @@ describe('EditorToolbar', () => {
         name: 'foo.png'
       })
 
-      render(<EditorToolbar editor={editor} journalId="2026-04-16" />)
+      renderToolbar(<EditorToolbar editor={editor} journalId="2026-04-16" />)
 
       const fileInput = screen.getByTestId('journal-image-input') as HTMLInputElement
       const file = new File(['hello'], 'foo.png', { type: 'image/png' })
@@ -143,7 +157,7 @@ describe('EditorToolbar', () => {
         error: 'Quota exceeded'
       })
 
-      render(<EditorToolbar editor={editor} journalId="2026-04-16" />)
+      renderToolbar(<EditorToolbar editor={editor} journalId="2026-04-16" />)
 
       const fileInput = screen.getByTestId('journal-image-input') as HTMLInputElement
       const file = new File(['data'], 'bar.png', { type: 'image/png' })
@@ -164,7 +178,7 @@ describe('EditorToolbar', () => {
       const { editor } = makeEditor()
 
       // #when
-      render(<EditorToolbar editor={editor} />)
+      renderToolbar(<EditorToolbar editor={editor} />)
 
       // #then
       expect(screen.getByRole('button', { name: 'Focus Mode' })).toBeDisabled()
@@ -175,7 +189,7 @@ describe('EditorToolbar', () => {
       const { editor } = makeEditor()
       const onFocusToggle = vi.fn()
 
-      render(<EditorToolbar editor={editor} onFocusToggle={onFocusToggle} />)
+      renderToolbar(<EditorToolbar editor={editor} onFocusToggle={onFocusToggle} />)
 
       // #when
       fireEvent.click(screen.getByRole('button', { name: 'Focus Mode' }))
@@ -189,7 +203,7 @@ describe('EditorToolbar', () => {
       const { editor } = makeEditor()
 
       // #when
-      render(<EditorToolbar editor={editor} isFocusMode onFocusToggle={() => {}} />)
+      renderToolbar(<EditorToolbar editor={editor} isFocusMode onFocusToggle={() => {}} />)
 
       // #then
       const button = screen.getByRole('button', { name: 'Exit Focus Mode' })

@@ -6,8 +6,14 @@
 import { forwardRef, memo, useMemo } from 'react'
 import { Calendar, Clock, Sun, Sunrise, Sunset, Moon, Square } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { formatDayHeader, getTimeBasedGreeting, getSpecialDayLabel } from '@/lib/journal-utils'
+import {
+  createJournalDateLabels,
+  formatDayHeader,
+  getTimeBasedGreeting,
+  getSpecialDayLabel
+} from '@/lib/journal-utils'
 import { CollapsibleSection, JournalSection } from './collapsible-section'
+import { useT } from '@memry/i18n/renderer'
 
 // =============================================================================
 // TYPES
@@ -97,9 +103,14 @@ export const DayCard = memo(
       },
       ref
     ) => {
-      const header = formatDayHeader(date)
-      const greeting = useMemo(() => (isToday ? getTimeBasedGreeting() : null), [isToday])
-      const specialLabel = getSpecialDayLabel(date)
+      const { t, i18n } = useT('journal')
+      const dateLabels = useMemo(() => createJournalDateLabels(t), [t, i18n.language])
+      const header = formatDayHeader(date, dateLabels)
+      const greeting = useMemo(
+        () => (isToday ? getTimeBasedGreeting(dateLabels) : null),
+        [dateLabels, isToday]
+      )
+      const specialLabel = getSpecialDayLabel(date, dateLabels)
       const isFocusMode = viewMode === 'focus'
 
       return (
@@ -128,6 +139,7 @@ export const DayCard = memo(
             dateStr={header.dateStr}
             dayName={header.dayName}
             specialLabel={specialLabel}
+            todayLabel={dateLabels.relative.today}
             greeting={isFocusMode ? null : greeting}
             isActive={isActive}
             isFuture={isFuture}
@@ -141,9 +153,11 @@ export const DayCard = memo(
             {!isFocusMode && calendarEvents.length > 0 && (
               <CollapsibleSection
                 icon={<Calendar className="size-4 text-accent-blue" />}
-                title="Calendar Events"
+                title={t('section.calendarEvents')}
                 count={calendarEvents.length}
-                countLabel={calendarEvents.length === 1 ? 'meeting' : 'meetings'}
+                countLabel={
+                  calendarEvents.length === 1 ? t('count.meeting') : t('count.meetings')
+                }
               >
                 <div className="flex flex-col gap-2 mt-2">
                   {calendarEvents.map((event) => (
@@ -157,7 +171,7 @@ export const DayCard = memo(
                       </div>
                       {event.attendeeCount && (
                         <span className="text-xs text-muted-foreground">
-                          ({event.attendeeCount} people)
+                          ({t('count.people', { count: event.attendeeCount })})
                         </span>
                       )}
                     </div>
@@ -170,9 +184,9 @@ export const DayCard = memo(
             {!isFocusMode && !isFuture && overdueTasks.length > 0 && (
               <CollapsibleSection
                 icon={<Clock className="size-4 text-accent-orange" />}
-                title="Overdue Tasks"
+                title={t('section.overdueTasks')}
                 count={overdueTasks.length}
-                countLabel={overdueTasks.length === 1 ? 'task' : 'tasks'}
+                countLabel={overdueTasks.length === 1 ? t('count.task') : t('count.tasks')}
               >
                 <div className="flex flex-col gap-1 mt-2">
                   {overdueTasks.map((task) => (
@@ -191,7 +205,9 @@ export const DayCard = memo(
             {/* Journal Section - always visible */}
             <JournalSection
               isActive={isActive}
-              placeholder={isFuture ? 'Plan your day...' : 'Start writing...'}
+              placeholder={
+                isFuture ? t('editor.placeholder.future') : t('editor.placeholder.default')
+              }
               journalId={date}
               isFocusMode={isFocusMode}
               onFocusToggle={onToggleFocusMode}
@@ -216,6 +232,7 @@ interface DayCardHeaderProps {
   dateStr: string
   dayName: string
   specialLabel: string | null
+  todayLabel: string
   greeting: { greeting: string; icon: string } | null
   isActive: boolean
   isFuture: boolean
@@ -227,12 +244,15 @@ function DayCardHeader({
   dateStr,
   dayName,
   specialLabel,
+  todayLabel,
   greeting,
   isActive,
   isFuture,
   isFocusMode = false,
   onToggleFocusMode
 }: DayCardHeaderProps): React.JSX.Element {
+  const { t } = useT('journal')
+
   return (
     <header
       className={cn('px-6 py-4', 'border-b border-border/30', 'flex items-start justify-between')}
@@ -278,7 +298,7 @@ function DayCardHeader({
                   <span
                     className={cn(
                       'text-xs font-medium',
-                      specialLabel === 'Today' ? 'text-primary' : 'text-muted-foreground'
+                      specialLabel === todayLabel ? 'text-primary' : 'text-muted-foreground'
                     )}
                   >
                     {specialLabel}
@@ -307,8 +327,12 @@ function DayCardHeader({
             size="icon"
             className={cn('size-7', isFocusMode && 'bg-muted')}
             onClick={onToggleFocusMode}
-            title={isFocusMode ? 'Exit Focus Mode (Esc)' : 'Enter Focus Mode (⌘\\)'}
-            aria-label={isFocusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'}
+            title={
+              isFocusMode
+                ? `${t('action.exitFocusMode')} (Esc)`
+                : `${t('action.enterFocusMode')} (⌘\\)`
+            }
+            aria-label={isFocusMode ? t('action.exitFocusMode') : t('action.enterFocusMode')}
             aria-pressed={isFocusMode}
           >
             {isFocusMode ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}

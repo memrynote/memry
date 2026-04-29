@@ -35,6 +35,7 @@ import {
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Page:Templates')
 
@@ -87,6 +88,7 @@ function TemplateIcon({
 // ============================================================================
 
 export function TemplatesPage() {
+  const { t: tPhaseF } = useT('notes')
   const { templates, isLoading, deleteTemplate, duplicateTemplate } = useTemplates()
   const { openTab } = useTabs()
 
@@ -185,7 +187,7 @@ export function TemplatesPage() {
             <div className="absolute inset-0 rounded-xl border border-border/50" />
           </div>
           <p className="font-serif text-sm text-muted-foreground/60 italic">
-            Loading collection...
+            {tPhaseF('phaseF.pagesTemplates.loadingCollection')}
           </p>
         </div>
       </div>
@@ -220,7 +222,7 @@ export function TemplatesPage() {
           <div className="flex items-center gap-2 mb-3">
             <LayoutTemplate className="w-3.5 h-3.5 text-amber-600/70 dark:text-amber-400/70" />
             <span className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground/60">
-              Template Collection
+              {tPhaseF('phaseF.pagesTemplates.templateCollection')}
             </span>
           </div>
 
@@ -231,12 +233,12 @@ export function TemplatesPage() {
               'text-foreground/90 mb-2'
             )}
           >
-            Templates
+            {tPhaseF('phaseF.pagesTemplates.templates')}
           </h1>
 
           {/* Subtitle */}
           <p className={cn('font-serif text-base text-muted-foreground/70', 'max-w-md')}>
-            Curated structures for your notes.{' '}
+            {tPhaseF('phaseF.pagesTemplates.curatedStructuresForYourNotes')}{' '}
             <span className="text-muted-foreground/50">
               {customTemplates.length === 0
                 ? 'Create your first template to get started.'
@@ -257,7 +259,7 @@ export function TemplatesPage() {
               )}
             >
               <Plus className="w-4 h-4" />
-              <span>New Template</span>
+              <span>{tPhaseF('phaseF.pagesTemplates.newTemplate')}</span>
             </Button>
           </div>
         </div>
@@ -273,7 +275,7 @@ export function TemplatesPage() {
               <div className="flex items-center gap-2">
                 <Sparkles className="w-3.5 h-3.5 text-amber-600/60 dark:text-amber-400/60" />
                 <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground/50">
-                  My Templates
+                  {tPhaseF('phaseF.pagesTemplates.myTemplates')}
                 </h2>
               </div>
               <div className="flex-1 h-px bg-gradient-to-r from-border/40 to-transparent" />
@@ -309,7 +311,7 @@ export function TemplatesPage() {
                 <div className="flex items-center gap-2">
                   <Lock className="w-3.5 h-3.5 text-muted-foreground/40" />
                   <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground/50">
-                    Built-in
+                    {tPhaseF('phaseF.pagesTemplates.builtIn')}
                   </h2>
                 </div>
                 <div className="flex-1 h-px bg-gradient-to-r from-border/40 to-transparent" />
@@ -335,17 +337,20 @@ export function TemplatesPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-display text-xl">Delete Template</AlertDialogTitle>
+            <AlertDialogTitle className="font-display text-xl">
+              {tPhaseF('phaseF.pagesTemplates.deleteTemplate')}
+            </AlertDialogTitle>
             <AlertDialogDescription className="font-serif">
-              Are you sure you want to delete "{templateToDelete?.name}"?
+              {tPhaseF('phaseF.pagesTemplates.areYouSureYouWantToDelete')}
+              {templateToDelete?.name}"?
               <span className="block mt-2 text-muted-foreground/60 text-sm">
-                Notes created from this template will not be affected.
+                {tPhaseF('phaseF.pagesTemplates.notesCreatedFromThisTemplateWillNotBeAffected')}
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
             <AlertDialogCancel disabled={isDeleting} className="font-medium">
-              Cancel
+              {tPhaseF('phaseF.pagesTemplates.cancel')}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
@@ -376,6 +381,7 @@ interface TemplateListRowProps {
 }
 
 function TemplateListRow({ template, onEdit, onDuplicate, onDelete }: TemplateListRowProps) {
+  const { t: tPhaseF } = useT('notes')
   return (
     <div
       className={cn(
@@ -429,7 +435,8 @@ function TemplateListRow({ template, onEdit, onDuplicate, onDelete }: TemplateLi
               )}
             >
               <Lock className="w-2.5 h-2.5" />
-              Built-in
+
+              {tPhaseF('phaseF.pagesTemplates.builtIn2')}
             </span>
           )}
         </div>
@@ -466,7 +473,7 @@ function TemplateListRow({ template, onEdit, onDuplicate, onDelete }: TemplateLi
           size="icon"
           className="h-8 w-8 text-muted-foreground hover:text-foreground"
           onClick={() => onDuplicate(template)}
-          title="Duplicate"
+          title={tPhaseF('phaseF.pagesTemplates.duplicate')}
         >
           <Copy className="w-4 h-4" />
         </Button>
@@ -477,7 +484,7 @@ function TemplateListRow({ template, onEdit, onDuplicate, onDelete }: TemplateLi
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-destructive"
             onClick={() => onDelete(template)}
-            title="Delete"
+            title={tPhaseF('phaseF.pagesTemplates.delete')}
           >
             <Trash2 className="w-4 h-4" />
           </Button>
@@ -505,6 +512,7 @@ interface EmptyTemplatesStateProps {
 }
 
 function EmptyTemplatesState({ onCreateTemplate }: EmptyTemplatesStateProps) {
+  const { t: tPhaseF } = useT('notes')
   return (
     <div
       className={cn(
@@ -558,9 +566,11 @@ function EmptyTemplatesState({ onCreateTemplate }: EmptyTemplatesStateProps) {
 
       {/* Content */}
       <div className="relative z-10 max-w-xs">
-        <h3 className="font-display text-lg text-foreground/80 mb-1.5">Start Your Collection</h3>
+        <h3 className="font-display text-lg text-foreground/80 mb-1.5">
+          {tPhaseF('phaseF.pagesTemplates.startYourCollection')}
+        </h3>
         <p className="font-serif text-sm text-muted-foreground/60 mb-5 leading-relaxed">
-          Templates help you create notes with consistent structure.
+          {tPhaseF('phaseF.pagesTemplates.templatesHelpYouCreateNotesWithConsistentStructure')}
         </p>
         <Button
           onClick={onCreateTemplate}
@@ -574,7 +584,8 @@ function EmptyTemplatesState({ onCreateTemplate }: EmptyTemplatesStateProps) {
           )}
         >
           <Plus className="w-4 h-4" />
-          Create Template
+
+          {tPhaseF('phaseF.pagesTemplates.createTemplate')}
         </Button>
       </div>
     </div>

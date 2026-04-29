@@ -13,6 +13,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Archive, Check, Loader2, GripHorizontal, RotateCcw, Trash2 } from '@/lib/icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useT } from '@memry/i18n/renderer'
 
 import { cn } from '@/lib/utils'
 import { useDayPanel } from '@/contexts/day-panel-context'
@@ -64,6 +65,7 @@ export const InboxDetailPanel = ({
   onRestore,
   onDelete
 }: InboxDetailPanelProps): React.JSX.Element => {
+  const { t } = useT('inbox')
   const { isOpen: isDayPanelOpen, width: dayPanelWidth } = useDayPanel()
   const queryClient = useQueryClient()
 
@@ -103,13 +105,13 @@ export const InboxDetailPanel = ({
           const path = s.destination.path || ''
           return {
             id: path,
-            name: path.split('/').pop() || path || 'Notes',
+            name: path.split('/').pop() || path || t('detail.notesRoot'),
             path: path
           } as Folder
         })
     }
     return []
-  }, [aiSuggestions])
+  }, [aiSuggestions, t])
 
   // Loading state for filing
   const [isFilingLoading, setIsFilingLoading] = useState(false)
@@ -319,12 +321,12 @@ export const InboxDetailPanel = ({
   )
 
   const modifierKeyDisplay = isMac ? '⌘' : 'Ctrl+'
-  const keyboardHint = `${modifierKeyDisplay}⏎ file · 1-5 folder · Esc close`
+  const keyboardHint = t('detail.keyboardHint', { modifier: modifierKeyDisplay })
 
   return (
     <div
       role="complementary"
-      aria-label="Item details"
+      aria-label={t('detail.ariaLabel')}
       aria-hidden={!isOpen}
       className={cn(
         'fixed top-[37px] bottom-0 z-10 border-l bg-surface overflow-hidden',
@@ -380,7 +382,7 @@ export const InboxDetailPanel = ({
                           }
                         }}
                         className="text-[15px] leading-5 font-medium text-foreground mb-3.5 w-full bg-transparent focus:outline-none border-b border-transparent focus:border-muted-foreground/20 transition-colors"
-                        placeholder="Name this voice memo..."
+                        placeholder={t('detail.voiceTitlePlaceholder')}
                       />
                     ) : (
                       item.type !== 'link' &&
@@ -416,7 +418,7 @@ export const InboxDetailPanel = ({
                     )}
                     role="separator"
                     aria-orientation="horizontal"
-                    aria-label="Resize filing section"
+                    aria-label={t('detail.resizeFiling')}
                     tabIndex={0}
                   >
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -456,7 +458,7 @@ export const InboxDetailPanel = ({
                     className="flex-1 text-muted-foreground border-border"
                   >
                     <RotateCcw className="size-4 mr-1.5" aria-hidden="true" />
-                    Restore
+                    {t('detail.restore')}
                   </Button>
                   <Button
                     variant="outline"
@@ -464,7 +466,7 @@ export const InboxDetailPanel = ({
                     className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10"
                   >
                     <Trash2 className="size-4 mr-1.5" aria-hidden="true" />
-                    Delete
+                    {t('detail.delete')}
                   </Button>
                 </div>
               ) : item?.type === 'reminder' ? (
@@ -474,7 +476,7 @@ export const InboxDetailPanel = ({
                   className="w-full text-muted-foreground border-border"
                 >
                   <Archive className="size-4 mr-1.5" aria-hidden="true" />
-                  Archive
+                  {t('detail.archive')}
                 </Button>
               ) : (
                 <>
@@ -485,7 +487,7 @@ export const InboxDetailPanel = ({
                       className="flex-1 text-muted-foreground border-border"
                     >
                       <Archive className="size-4 mr-1.5" aria-hidden="true" />
-                      Archive
+                      {t('detail.archive')}
                     </Button>
                     <Button
                       onClick={handleFileItem}
@@ -497,7 +499,7 @@ export const InboxDetailPanel = ({
                       ) : (
                         <Check className="size-4 mr-1.5" aria-hidden="true" />
                       )}
-                      File
+                      {t('detail.file')}
                       <kbd className="ml-2 text-[11px] opacity-60">{modifierKeyDisplay}⏎</kbd>
                     </Button>
                   </div>

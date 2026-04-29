@@ -32,6 +32,7 @@ import { FileText, FileCode, Loader2, CheckCircle } from '@/lib/icons'
 import { notesService, type ExportNoteResponse } from '@/services/notes-service'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // Types
@@ -61,6 +62,9 @@ export function ExportDialog({
   noteId,
   noteTitle
 }: ExportDialogProps): React.ReactElement {
+  const { t: tPhaseF } = useT('notes')
+  const { t } = useT('notes')
+  const { t: tCommon } = useT('common')
   // Form state
   const [format, setFormat] = useState<ExportFormat>('pdf')
   const [pageSize, setPageSize] = useState<PageSize>('A4')
@@ -174,15 +178,17 @@ export function ExportDialog({
             ) : (
               <FileCode className="h-5 w-5 text-blue-500" />
             )}
-            Export Note
+            {t('exportDialog.title')}
           </DialogTitle>
-          <DialogDescription>Export &quot;{noteTitle}&quot; to a file</DialogDescription>
+          <DialogDescription>
+            {t('exportDialog.description', { title: noteTitle })}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
           {/* Format Selection */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Format</Label>
+            <Label className="text-sm font-medium">{t('exportDialog.format')}</Label>
             <RadioGroup
               value={format}
               onValueChange={(value) => setFormat(value as ExportFormat)}
@@ -206,8 +212,12 @@ export function ExportDialog({
                   )}
                 />
                 <div>
-                  <div className="font-medium text-sm">PDF</div>
-                  <div className="text-xs text-muted-foreground">Print-ready document</div>
+                  <div className="font-medium text-sm">
+                    {tPhaseF('phaseF.componentsNoteExportDialog.pdf')}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {t('exportDialog.pdfDescription')}
+                  </div>
                 </div>
               </Label>
 
@@ -228,8 +238,12 @@ export function ExportDialog({
                   )}
                 />
                 <div>
-                  <div className="font-medium text-sm">HTML</div>
-                  <div className="text-xs text-muted-foreground">Web-ready file</div>
+                  <div className="font-medium text-sm">
+                    {tPhaseF('phaseF.componentsNoteExportDialog.html')}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {t('exportDialog.htmlDescription')}
+                  </div>
                 </div>
               </Label>
             </RadioGroup>
@@ -239,7 +253,7 @@ export function ExportDialog({
           {format === 'pdf' && (
             <div className="space-y-3">
               <Label htmlFor="page-size" className="text-sm font-medium">
-                Page Size
+                {t('exportDialog.pageSize')}
               </Label>
               <Select
                 value={pageSize}
@@ -247,12 +261,18 @@ export function ExportDialog({
                 disabled={isExporting}
               >
                 <SelectTrigger id="page-size" className="w-full">
-                  <SelectValue placeholder="Select page size" />
+                  <SelectValue placeholder={t('exportDialog.selectPageSize')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="A4">A4 (210 x 297 mm)</SelectItem>
-                  <SelectItem value="Letter">Letter (8.5 x 11 in)</SelectItem>
-                  <SelectItem value="Legal">Legal (8.5 x 14 in)</SelectItem>
+                  <SelectItem value="A4">
+                    {tPhaseF('phaseF.componentsNoteExportDialog.a4210X297Mm')}
+                  </SelectItem>
+                  <SelectItem value="Letter">
+                    {tPhaseF('phaseF.componentsNoteExportDialog.letter85X11In')}
+                  </SelectItem>
+                  <SelectItem value="Legal">
+                    {tPhaseF('phaseF.componentsNoteExportDialog.legal85X14In')}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -260,7 +280,7 @@ export function ExportDialog({
 
           {/* Options */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Options</Label>
+            <Label className="text-sm font-medium">{t('exportDialog.options')}</Label>
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="include-metadata"
@@ -272,7 +292,7 @@ export function ExportDialog({
                 htmlFor="include-metadata"
                 className="text-sm text-muted-foreground cursor-pointer"
               >
-                Include metadata (tags, dates)
+                {t('exportDialog.includeMetadata')}
               </Label>
             </div>
           </div>
@@ -280,21 +300,21 @@ export function ExportDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isExporting}>
-            Cancel
+            {tCommon('button.cancel')}
           </Button>
           <Button onClick={handleExport} disabled={isExporting || exportSuccess}>
             {isExporting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Exporting...
+                {t('exportDialog.exporting')}
               </>
             ) : exportSuccess ? (
               <>
                 <CheckCircle className="mr-2 h-4 w-4" />
-                Exported!
+                {t('exportDialog.exported')}
               </>
             ) : (
-              'Export'
+              t('exportDialog.export')
             )}
           </Button>
         </DialogFooter>

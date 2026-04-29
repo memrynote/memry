@@ -24,8 +24,10 @@ import { useVault, useVaultList } from '@/hooks/use-vault'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { useAuth } from '@/contexts/auth-context'
 import type { VaultInfo } from '../../../preload/index.d'
+import { useT } from '@memry/i18n/renderer'
 
 export function VaultSwitcher() {
+  const { t: tPhaseF } = useT('common')
   const { isMobile } = useSidebar()
   const { status, isLoading, selectVault, switchVault } = useVault()
   const { vaults, removeVault } = useVaultList()
@@ -174,19 +176,19 @@ export function VaultSwitcher() {
                   )
                 })
               ) : (
-                <Picker.Empty message="No vaults yet" />
+                <Picker.Empty message={tPhaseF('phaseF.componentsVaultSwitcher.noVaultsYet')} />
               )}
 
               <Picker.Separator />
 
               <Picker.Item
                 value="open-vault"
-                label="Open vault"
+                label={tPhaseF('phaseF.componentsVaultSwitcher.openVault')}
                 icon={<Plus className="size-3.5" />}
               />
               <Picker.Item
                 value="settings"
-                label="Settings"
+                label={tPhaseF('phaseF.componentsVaultSwitcher.settings')}
                 icon={<Settings className="size-3.5" />}
               />
 
@@ -195,7 +197,7 @@ export function VaultSwitcher() {
               {isAuthenticated ? (
                 <Picker.Item
                   value="logout"
-                  label="Log out"
+                  label={tPhaseF('phaseF.componentsVaultSwitcher.logOut')}
                   icon={<LogOut className="size-3.5" />}
                 />
               ) : (
@@ -205,7 +207,9 @@ export function VaultSwitcher() {
                   className="flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 hover:bg-accent transition-colors cursor-pointer"
                 >
                   <Cloud className="size-3.5 text-sidebar-terracotta" />
-                  <span className="text-sidebar-terracotta font-medium">Sign in to sync</span>
+                  <span className="text-sidebar-terracotta font-medium">
+                    {tPhaseF('phaseF.componentsVaultSwitcher.signInToSync')}
+                  </span>
                 </button>
               )}
             </Picker.List>
@@ -217,19 +221,21 @@ export function VaultSwitcher() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Remove &ldquo;{vaultToRemove?.name}&rdquo; from list?
+              {tPhaseF('phaseF.componentsVaultSwitcher.remove')}
+              {vaultToRemove?.name}&{tPhaseF('phaseF.componentsVaultSwitcher.rdquoFromList')}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This vault will be removed from the app, but your files will remain on disk. You can
-              always re-add it later.
+              {tPhaseF(
+                'phaseF.componentsVaultSwitcher.thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn'
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <Button variant="outline" onClick={() => setVaultToRemove(null)}>
-              Cancel
+              {tPhaseF('phaseF.componentsVaultSwitcher.cancel')}
             </Button>
             <Button variant="destructive" onClick={handleConfirmRemove}>
-              Remove
+              {tPhaseF('phaseF.componentsVaultSwitcher.remove2')}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

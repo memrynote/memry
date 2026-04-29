@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -33,6 +34,7 @@ export const SubtaskDots = ({
   isExpanded,
   className
 }: SubtaskDotsProps): React.JSX.Element | null => {
+  const { t: tPhaseF } = useT('tasks')
   // Don't render if no subtasks
   if (total === 0) return null
 
@@ -78,10 +80,16 @@ export const SubtaskDots = ({
           <TooltipTrigger asChild>{content}</TooltipTrigger>
           <TooltipContent side="top" className="text-xs">
             <p>
-              {completed} of {total} subtasks complete ({percentage}%)
+              {completed} {tPhaseF('phaseF.componentsTasksSubtaskDots.of')}
+              {total}
+              {tPhaseF('phaseF.componentsTasksSubtaskDots.subtasksComplete')}
+              {percentage}%)
             </p>
             {onClick && (
-              <p className="text-muted-foreground">Click to {isExpanded ? 'collapse' : 'expand'}</p>
+              <p className="text-muted-foreground">
+                {tPhaseF('phaseF.componentsTasksSubtaskDots.clickTo')}
+                {isExpanded ? 'collapse' : 'expand'}
+              </p>
             )}
           </TooltipContent>
         </Tooltip>
@@ -132,11 +140,16 @@ export const SubtaskDots = ({
         <TooltipTrigger asChild>{content}</TooltipTrigger>
         <TooltipContent side="top" className="text-xs">
           <p>
-            {completed} of {total} subtasks complete
+            {completed} {tPhaseF('phaseF.componentsTasksSubtaskDots.of2')}
+            {total}
+            {tPhaseF('phaseF.componentsTasksSubtaskDots.subtasksComplete2')}
             {completed < total && ` (${percentage}%)`}
           </p>
           {onClick && (
-            <p className="text-muted-foreground">Click to {isExpanded ? 'collapse' : 'expand'}</p>
+            <p className="text-muted-foreground">
+              {tPhaseF('phaseF.componentsTasksSubtaskDots.clickTo2')}
+              {isExpanded ? 'collapse' : 'expand'}
+            </p>
           )}
         </TooltipContent>
       </Tooltip>

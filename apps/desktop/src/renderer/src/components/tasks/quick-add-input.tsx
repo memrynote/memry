@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useMemo } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { Calendar, Folder, Flag } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
@@ -145,6 +146,8 @@ export const QuickAddInput = ({
   compact = false,
   projectColor = '#6B7280'
 }: QuickAddInputProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
+  const { t } = useT('tasks')
   const [value, setValue] = useState('')
   const [isFocused, setIsFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -154,7 +157,7 @@ export const QuickAddInput = ({
     {
       key: 'q',
       action: () => inputRef.current?.focus(),
-      description: 'Focus quick add input'
+      description: t('quickAdd.focusDescription')
     }
   ])
 
@@ -465,7 +468,7 @@ export const QuickAddInput = ({
                     ? 'text-foreground/90 placeholder:text-muted-foreground/40'
                     : 'text-muted-foreground placeholder:text-muted-foreground/40'
               )}
-              aria-label="Quick add task"
+              aria-label={t('quickAdd.label')}
             />
           </div>
 
@@ -478,11 +481,13 @@ export const QuickAddInput = ({
             {compact ? (
               <span className="rounded-[3px] px-1 bg-foreground/5 border border-border">
                 <span className="text-[9px] text-text-tertiary font-[family-name:var(--font-mono)] font-medium leading-3">
-                  Q
+                  {tPhaseF('phaseF.componentsTasksQuickAddInput.q')}
                 </span>
               </span>
             ) : (
-              <Kbd className="px-1.5 py-px text-xs leading-4">Q</Kbd>
+              <Kbd className="px-1.5 py-px text-xs leading-4">
+                {tPhaseF('phaseF.componentsTasksQuickAddInput.q2')}
+              </Kbd>
             )}
           </div>
         </div>

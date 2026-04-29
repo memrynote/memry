@@ -1,5 +1,6 @@
 import { memo, useCallback } from 'react'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface HeadingItem {
   id: string
@@ -19,6 +20,7 @@ export const NoteOutlineSidebar = memo(function NoteOutlineSidebar({
   activeHeadingId,
   onHeadingClick
 }: NoteOutlineSidebarProps) {
+  const { t } = useT('notes')
   const handleClick = useCallback(
     (headingId: string) => {
       onHeadingClick?.(headingId)
@@ -31,13 +33,13 @@ export const NoteOutlineSidebar = memo(function NoteOutlineSidebar({
       {/* Header */}
       <div className="flex items-center pb-3 gap-1.5 border-b border-[var(--border)]">
         <span className="text-[11px] tracking-[0.06em] uppercase text-text-tertiary font-sans font-semibold leading-3.5">
-          Outline
+          {t('outline.title')}
         </span>
       </div>
 
       {/* Heading List */}
       {headings.length > 0 ? (
-        <nav aria-label="Document outline" className="flex flex-col gap-1">
+        <nav aria-label={t('outline.aria')} className="flex flex-col gap-1">
           {headings.map((heading) => {
             const isActive = heading.id === activeHeadingId
             const isSubHeading = heading.level >= 3
@@ -78,7 +80,7 @@ export const NoteOutlineSidebar = memo(function NoteOutlineSidebar({
           })}
         </nav>
       ) : (
-        <span className="text-[12px] text-text-tertiary font-sans">No headings yet</span>
+        <span className="text-[12px] text-text-tertiary font-sans">{t('outline.emptyYet')}</span>
       )}
     </div>
   )

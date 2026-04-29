@@ -14,6 +14,7 @@ import {
 import { cn } from '@/lib/utils'
 import { getRepeatDisplayText } from '@/lib/repeat-utils'
 import type { RepeatConfig } from '@/data/sample-tasks'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -40,6 +41,7 @@ export const StopRepeatingDialog = ({
   taskTitle,
   repeatConfig
 }: StopRepeatingDialogProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [selectedOption, setSelectedOption] = useState<StopRepeatOption>('keep')
 
   const repeatText = repeatConfig
@@ -57,10 +59,13 @@ export const StopRepeatingDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <RefreshCw className="size-5 text-muted-foreground" />
-            Stop Repeating
+
+            {tPhaseF('phaseF.componentsTasksStopRepeatingDialog.stopRepeating')}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            "{taskTitle}" is set to repeat {repeatText}. What would you like to do?
+            "{taskTitle}" {tPhaseF('phaseF.componentsTasksStopRepeatingDialog.isSetToRepeat')}
+            {repeatText}.{' '}
+            {tPhaseF('phaseF.componentsTasksStopRepeatingDialog.whatWouldYouLikeToDo')}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -82,9 +87,13 @@ export const StopRepeatingDialog = ({
               className="mt-0.5 size-4 accent-primary"
             />
             <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium">Keep this task, stop future occurrences</span>
+              <span className="text-sm font-medium">
+                {tPhaseF(
+                  'phaseF.componentsTasksStopRepeatingDialog.keepThisTaskStopFutureOccurrences'
+                )}
+              </span>
               <span className="text-xs text-muted-foreground">
-                Task will become a one-time task
+                {tPhaseF('phaseF.componentsTasksStopRepeatingDialog.taskWillBecomeAOneTimeTask')}
               </span>
             </div>
           </label>
@@ -107,15 +116,21 @@ export const StopRepeatingDialog = ({
             />
             <div className="flex flex-col gap-0.5">
               <span className="text-sm font-medium text-destructive">
-                Delete this and all future occurrences
+                {tPhaseF(
+                  'phaseF.componentsTasksStopRepeatingDialog.deleteThisAndAllFutureOccurrences'
+                )}
               </span>
-              <span className="text-xs text-muted-foreground">Task will be removed entirely</span>
+              <span className="text-xs text-muted-foreground">
+                {tPhaseF('phaseF.componentsTasksStopRepeatingDialog.taskWillBeRemovedEntirely')}
+              </span>
             </div>
           </label>
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>
+            {tPhaseF('phaseF.componentsTasksStopRepeatingDialog.cancel')}
+          </AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
             className={cn(
@@ -123,7 +138,7 @@ export const StopRepeatingDialog = ({
                 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
             )}
           >
-            Confirm
+            {tPhaseF('phaseF.componentsTasksStopRepeatingDialog.confirm')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

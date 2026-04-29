@@ -15,6 +15,7 @@ import {
 } from '@/lib/icons'
 import type { InboxFilingHistoryEntry } from '@memry/rpc/inbox'
 import { formatCompactDate } from '@/services/inbox-service'
+import { useT } from '@memry/i18n/renderer'
 
 export interface InboxFilingHistoryListProps {
   items: InboxFilingHistoryEntry[]
@@ -33,13 +34,16 @@ const TYPE_ICONS: Record<string, AppIcon> = {
 }
 
 export function InboxFilingHistoryList({ items }: InboxFilingHistoryListProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('inbox')
   if (!items || items.length === 0) {
     return (
       <div className="p-6 rounded-xl border border-border/50 bg-card h-full min-h-[400px] flex flex-col items-center justify-center">
         <div className="size-12 rounded-full bg-muted/50 flex items-center justify-center mb-3">
           <Folder className="size-5 text-muted-foreground" />
         </div>
-        <p className="text-muted-foreground font-serif italic">No items filed yet</p>
+        <p className="text-muted-foreground font-serif italic">
+          {tPhaseF('phaseF.componentsInboxInboxFilingHistory.noItemsFiledYet')}
+        </p>
       </div>
     )
   }
@@ -49,8 +53,12 @@ export function InboxFilingHistoryList({ items }: InboxFilingHistoryListProps): 
   return (
     <div className="p-6 rounded-xl border border-border/50 bg-card flex flex-col h-full">
       <div className="mb-6">
-        <h3 className="text-lg font-serif font-medium text-foreground">Recently Filed</h3>
-        <p className="text-sm text-muted-foreground mt-1">Latest actions on your inbox</p>
+        <h3 className="text-lg font-serif font-medium text-foreground">
+          {tPhaseF('phaseF.componentsInboxInboxFilingHistory.recentlyFiled')}
+        </h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          {tPhaseF('phaseF.componentsInboxInboxFilingHistory.latestActionsOnYourInbox')}
+        </p>
       </div>
 
       <div className="flex-1 overflow-auto -mx-2 px-2">
@@ -92,7 +100,7 @@ export function InboxFilingHistoryList({ items }: InboxFilingHistoryListProps): 
                     </span>
                     {item.filedAction === 'linked' && (
                       <span className="text-[10px] uppercase tracking-wider font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-sm">
-                        Linked
+                        {tPhaseF('phaseF.componentsInboxInboxFilingHistory.linked')}
                       </span>
                     )}
                   </div>

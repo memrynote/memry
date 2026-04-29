@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import {
   ArrowRight,
   Link2,
@@ -21,8 +22,8 @@ export interface InboxHealthViewProps {
   className?: string
 }
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
 const HEATMAP_HOURS = [6, 8, 10, 12, 14, 16, 18, 20, 22] as const
+const MONDAY_UTC = Date.UTC(2024, 0, 1)
 
 const TYPE_ICONS: Record<string, AppIcon> = {
   link: Link2,
@@ -64,19 +65,26 @@ function formatAvgTime(minutes: number): string {
   return `${(minutes / 1440).toFixed(1)}d`
 }
 
-function timeAgo(date: Date): string {
+type RelativeTimeParts =
+  | { kind: 'now' }
+  | { kind: 'minutes'; count: number }
+  | { kind: 'hours'; count: number }
+  | { kind: 'days'; count: number }
+
+function timeAgoParts(date: Date): RelativeTimeParts {
   const ms = Date.now() - date.getTime()
   const mins = Math.floor(ms / 60_000)
-  if (mins < 1) return 'now'
-  if (mins < 60) return `${mins}m ago`
+  if (mins < 1) return { kind: 'now' }
+  if (mins < 60) return { kind: 'minutes', count: mins }
   const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
+  if (hrs < 24) return { kind: 'hours', count: hrs }
   const days = Math.floor(hrs / 24)
-  return `${days}d ago`
+  return { kind: 'days', count: days }
 }
 
-function computePeakInfo(heatmap: number[][]): string {
-  const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+type PeakInfo = { hasCaptures: false } | { hasCaptures: true; peakDay: number; peakHour: number }
+
+function computePeakInfo(heatmap: number[][]): PeakInfo {
   let maxVal = 0
   let peakHour = 0
   let peakDay = 0
@@ -91,16 +99,24 @@ function computePeakInfo(heatmap: number[][]): string {
     })
   })
 
-  if (maxVal === 0) return 'No captures yet'
+  if (maxVal === 0) return { hasCaptures: false }
 
-  const fmtH = (h: number) => {
-    if (h === 0 || h === 24) return '12 AM'
-    if (h < 12) return `${h} AM`
-    if (h === 12) return '12 PM'
-    return `${h - 12} PM`
-  }
+  return { hasCaptures: true, peakDay, peakHour }
+}
 
-  return `Peak: ${dayNames[peakDay]} ${fmtH(peakHour)}\u2013${fmtH(Math.min(peakHour + 2, 24))}`
+function getWeekdayNames(locale: string, weekday: 'short' | 'long'): string[] {
+  const formatter = new Intl.DateTimeFormat(locale, { weekday, timeZone: 'UTC' })
+  return Array.from({ length: 7 }, (_, day) =>
+    formatter.format(new Date(MONDAY_UTC + day * 24 * 60 * 60 * 1000))
+  )
+}
+
+function formatPeakHour(hour: number, locale: string): string {
+  const formatter = new Intl.DateTimeFormat(locale, {
+    hour: 'numeric',
+    timeZone: 'UTC'
+  })
+  return formatter.format(new Date(Date.UTC(2024, 0, 1, hour % 24)))
 }
 
 // ---------------------------------------------------------------------------
@@ -160,11 +176,13 @@ function CaptureHeatmap({
 }: {
   patterns: InboxCapturePattern | undefined
 }): React.JSX.Element {
+  const { t, i18n } = useT('inbox')
   const heatmap = patterns?.timeHeatmap
   const hasData = Array.isArray(heatmap) && heatmap.length > 0
+  const dayNames = useMemo(() => getWeekdayNames(i18n.language, 'short'), [i18n.language])
 
   const { maxCount, peakText } = useMemo(() => {
-    if (!hasData) return { maxCount: 0, peakText: 'No captures yet' }
+    if (!hasData) return { maxCount: 0, peakText: t('insights.noCapturesYet') }
 
     let max = 0
     for (let day = 0; day < 7; day++) {
@@ -174,15 +192,30 @@ function CaptureHeatmap({
       }
     }
 
-    return { maxCount: max, peakText: computePeakInfo(heatmap!) }
-  }, [heatmap, hasData])
+    const peakInfo = computePeakInfo(heatmap!)
+    if (!peakInfo.hasCaptures) {
+      return { maxCount: max, peakText: t('insights.noCapturesYet') }
+    }
+
+    const longDayNames = getWeekdayNames(i18n.language, 'long')
+    return {
+      maxCount: max,
+      peakText: t('insights.peak', {
+        day: longDayNames[peakInfo.peakDay],
+        start: formatPeakHour(peakInfo.peakHour, i18n.language),
+        end: formatPeakHour(Math.min(peakInfo.peakHour + 2, 24), i18n.language)
+      })
+    }
+  }, [heatmap, hasData, i18n.language, t])
 
   return (
     <div className="flex flex-col grow basis-0 rounded-[10px] gap-3.5 border border-border/50 p-4">
-      <div className="text-muted-foreground font-sans font-medium text-xs/4">Capture Activity</div>
+      <div className="text-muted-foreground font-sans font-medium text-xs/4">
+        {t('insights.captureActivity')}
+      </div>
       <div className="[font-synthesis:none] flex gap-1.5 text-xs/4">
         <div className="flex flex-col pt-4 gap-0.75">
-          {DAYS.map((day) => (
+          {dayNames.map((day) => (
             <div
               key={day}
               className="h-3 inline-block text-[#50505A] font-sans shrink-0 text-[9px]/3"
@@ -202,7 +235,7 @@ function CaptureHeatmap({
               </div>
             ))}
           </div>
-          {DAYS.map((_, dayIdx) => (
+          {dayNames.map((_, dayIdx) => (
             <div key={dayIdx} className="flex gap-0.75">
               {HEATMAP_HOURS.map((hour) => {
                 const val = (heatmap?.[hour]?.[dayIdx] ?? 0) + (heatmap?.[hour + 1]?.[dayIdx] ?? 0)
@@ -212,7 +245,7 @@ function CaptureHeatmap({
                     key={hour}
                     className="rounded-xs shrink-0 size-3"
                     style={{ backgroundColor: `#E8A44A${intensityToAlpha(intensity)}` }}
-                    title={`${val} captures`}
+                    title={t('insights.captures', { count: val })}
                   />
                 )
               })}
@@ -234,6 +267,7 @@ function TypeDistribution({
 }: {
   itemsByType: Record<string, number>
 }): React.JSX.Element {
+  const { t } = useT('inbox')
   const sortedTypes = useMemo(
     () =>
       Object.entries(itemsByType)
@@ -247,19 +281,35 @@ function TypeDistribution({
   if (sortedTypes.length === 0) {
     return (
       <div className="flex flex-col grow basis-0 rounded-[10px] border border-border/50 p-4 items-center justify-center min-h-[180px]">
-        <span className="text-muted-foreground font-serif text-sm italic">No items yet</span>
+        <span className="text-muted-foreground font-serif text-sm italic">
+          {t('empty.noItemsYet')}
+        </span>
       </div>
     )
   }
 
+  const typeLabels: Record<string, string> = {
+    link: t('type.link'),
+    note: t('type.note'),
+    image: t('type.image'),
+    voice: t('type.voice'),
+    video: t('type.video'),
+    clip: t('type.clip'),
+    pdf: t('type.pdf'),
+    social: t('type.social'),
+    reminder: t('type.reminder')
+  }
+
   return (
     <div className="flex flex-col grow basis-0 rounded-[10px] gap-3.5 border border-border/50 p-4">
-      <div className="text-muted-foreground font-sans font-medium text-xs/4">By Type</div>
+      <div className="text-muted-foreground font-sans font-medium text-xs/4">
+        {t('insights.byType')}
+      </div>
       <div className="flex flex-col gap-2.5">
         {sortedTypes.map(([type, count]) => {
           const pct = maxCount > 0 ? (count / maxCount) * 100 : 0
           const barColor = TYPE_BAR_COLORS[type] ?? 'bg-muted-foreground/40'
-          const label = type.charAt(0).toUpperCase() + type.slice(1)
+          const label = typeLabels[type] ?? type.charAt(0).toUpperCase() + type.slice(1)
 
           return (
             <div key={type} className="flex items-center gap-2.5">
@@ -288,26 +338,36 @@ function TypeDistribution({
 // ---------------------------------------------------------------------------
 
 function FilingRow({ item }: { item: InboxFilingHistoryEntry }): React.JSX.Element {
+  const { t } = useT('inbox')
   const isLinked = item.filedAction === 'linked'
   const Icon = isLinked ? CheckCircle : (TYPE_ICONS[item.itemType] ?? HelpCircle)
   const iconColor = isLinked
     ? 'text-indigo-500 dark:text-indigo-400'
     : (TYPE_ICON_COLORS[item.itemType] ?? 'text-muted-foreground')
+  const relativeTime = timeAgoParts(new Date(item.filedAt))
+  const relativeText =
+    relativeTime.kind === 'now'
+      ? t('insights.now')
+      : relativeTime.kind === 'minutes'
+        ? t('insights.timeAgoMinutes', { count: relativeTime.count })
+        : relativeTime.kind === 'hours'
+          ? t('insights.timeAgoHours', { count: relativeTime.count })
+          : t('insights.timeAgoDays', { count: relativeTime.count })
 
   return (
     <div className="flex items-center rounded-md py-1.5 px-3 gap-2.5 hover:bg-surface-active/50 transition-colors">
       <Icon className={cn('size-3 shrink-0', iconColor)} />
       <div className="grow overflow-clip min-w-0">
         <span className="text-foreground font-sans text-xs/4 line-clamp-1">
-          {item.itemTitle || 'Untitled'}
+          {item.itemTitle || t('list.untitled')}
         </span>
       </div>
       <ArrowRight className="size-2.5 shrink-0 text-text-tertiary" />
       <span className="shrink-0 text-text-tertiary font-sans text-[11px]/3.5 truncate max-w-[160px]">
-        {isLinked ? 'Converted to task' : item.filedTo}
+        {isLinked ? t('insights.convertedToTask') : item.filedTo}
       </span>
       <span className="shrink-0 text-text-tertiary font-sans text-[11px]/3.5 tabular-nums">
-        {timeAgo(new Date(item.filedAt))}
+        {relativeText}
       </span>
     </div>
   )
@@ -318,6 +378,7 @@ function FilingRow({ item }: { item: InboxFilingHistoryEntry }): React.JSX.Eleme
 // ---------------------------------------------------------------------------
 
 export function InboxHealthView({ className }: InboxHealthViewProps): React.JSX.Element {
+  const { t } = useT('inbox')
   const { stats, isLoading } = useInboxStats()
   const { data: historyData } = useInboxFilingHistory()
   const { data: patterns } = useInboxPatterns()
@@ -340,25 +401,25 @@ export function InboxHealthView({ className }: InboxHealthViewProps): React.JSX.
     <div className={cn('flex flex-col grow overflow-y-auto', className)}>
       <div className="fade-in-up stagger-1 flex shrink-0 pt-6 gap-3 px-6">
         <StatCard
-          label="Captured"
+          label={t('insights.captured')}
           value={stats.totalItems}
-          subValue={`+${stats.capturedThisWeek} this week`}
+          subValue={t('insights.capturedThisWeek', { count: stats.capturedThisWeek })}
           subColor="text-accent-green"
         />
         <StatCard
-          label="Processed"
+          label={t('insights.processed')}
           value={stats.processedThisWeek}
-          subValue={`${processRate}% rate`}
+          subValue={t('insights.processRate', { rate: processRate })}
         />
         <StatCard
-          label="Stale"
+          label={t('insights.stale')}
           value={stats.staleCount}
-          subValue={stats.staleCount > 0 ? 'needs attention' : 'all clear'}
+          subValue={stats.staleCount > 0 ? t('insights.needsAttention') : t('insights.allClear')}
           subColor={stats.staleCount > 0 ? 'text-destructive' : 'text-accent-green'}
           borderColor={stats.staleCount > 0 ? 'border-destructive/15' : 'border-border/50'}
         />
         <StatCard
-          label="Avg Time to File"
+          label={t('insights.avgTimeToFile')}
           value={formatAvgTime(stats.avgTimeToProcess)}
           subValue=""
         />
@@ -370,7 +431,9 @@ export function InboxHealthView({ className }: InboxHealthViewProps): React.JSX.
       </div>
 
       <div className="fade-in-up stagger-3 flex flex-col shrink-0 pt-4 gap-3 px-6 pb-6">
-        <div className="text-muted-foreground font-sans font-medium text-xs/4">Recent Filings</div>
+        <div className="text-muted-foreground font-sans font-medium text-xs/4">
+          {t('insights.recentFilings')}
+        </div>
         {filingHistory.length > 0 ? (
           <div className="flex flex-col gap-0.5">
             {filingHistory.map((item) => (
@@ -379,7 +442,7 @@ export function InboxHealthView({ className }: InboxHealthViewProps): React.JSX.
           </div>
         ) : (
           <div className="py-6 text-center text-muted-foreground font-serif text-sm italic">
-            No items filed yet
+            {t('empty.noItemsFiled')}
           </div>
         )}
       </div>

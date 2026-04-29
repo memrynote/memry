@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Focus, ExternalLink, Copy, FilePlus } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
 import type Graph from 'graphology'
 
 export interface ContextMenuState {
@@ -25,6 +26,7 @@ export function GraphContextMenu({
   onCreateNote,
   onClose
 }: GraphContextMenuProps): React.JSX.Element {
+  const { t } = useT('graph')
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -47,7 +49,7 @@ export function GraphContextMenu({
   if (!graph.hasNode(menu.nodeId)) return <></>
 
   const attrs = graph.getNodeAttributes(menu.nodeId)
-  const label = (attrs.label as string) || 'Untitled'
+  const label = (attrs.label as string) || t('context-menu.untitled')
   const isUnresolved = attrs.isUnresolved as boolean
 
   return (
@@ -70,7 +72,7 @@ export function GraphContextMenu({
         }}
       >
         <Focus className="size-3.5 text-muted-foreground" />
-        Focus on this node
+        {t('context-menu.focus-node')}
       </button>
 
       {!isUnresolved && (
@@ -82,7 +84,7 @@ export function GraphContextMenu({
           }}
         >
           <ExternalLink className="size-3.5 text-muted-foreground" />
-          Open in new tab
+          {t('context-menu.open-new-tab')}
         </button>
       )}
 
@@ -95,7 +97,7 @@ export function GraphContextMenu({
           }}
         >
           <FilePlus className="size-3.5 text-muted-foreground" />
-          Create note
+          {t('context-menu.create-note')}
         </button>
       )}
 
@@ -107,7 +109,7 @@ export function GraphContextMenu({
         }}
       >
         <Copy className="size-3.5 text-muted-foreground" />
-        Copy title
+        {t('context-menu.copy-title')}
       </button>
     </div>
   )

@@ -39,8 +39,11 @@ import { useTags } from '@/hooks/use-tags'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { getTagColors, COLOR_ROWS, TAG_COLORS } from '@/components/note/tags-row/tag-colors'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 export function TagManager() {
+  const { t } = useT('settings')
+  const { t: tCommon } = useT('common')
   const { tags, isLoading, error, renameTag, mergeTag, deleteTag } = useTags()
   const [search, setSearch] = useState('')
   const [editingTag, setEditingTag] = useState<string | null>(null)
@@ -77,15 +80,15 @@ export function TagManager() {
     try {
       const result = await renameTag(editingTag, newName)
       if (result.success) {
-        toast.success(`Renamed "${editingTag}" to "${newName}"`)
+        toast.success(t('tags.toasts.renamed', { oldName: editingTag, newName }))
       } else {
-        toast.error(result.error ?? 'Rename failed')
+        toast.error(result.error ?? t('tags.toasts.renameFailed'))
       }
     } catch (err) {
-      toast.error(extractErrorMessage(err, 'Failed to rename tag'))
+      toast.error(extractErrorMessage(err, t('tags.toasts.renameFailed')))
     }
     setEditingTag(null)
-  }, [editingTag, editValue, renameTag])
+  }, [editingTag, editValue, renameTag, t])
 
   const handleCancelRename = useCallback(() => {
     setEditingTag(null)
@@ -96,15 +99,20 @@ export function TagManager() {
     try {
       const result = await deleteTag(deleteTarget.name)
       if (result.success) {
-        toast.success(`Deleted "${deleteTarget.name}" from ${result.affectedNotes ?? 0} items`)
+        toast.success(
+          t('tags.toasts.deleted', {
+            name: deleteTarget.name,
+            count: result.affectedNotes ?? 0
+          })
+        )
       } else {
-        toast.error(result.error ?? 'Delete failed')
+        toast.error(result.error ?? t('tags.toasts.deleteFailed'))
       }
     } catch (err) {
-      toast.error(extractErrorMessage(err, 'Failed to delete tag'))
+      toast.error(extractErrorMessage(err, t('tags.toasts.deleteFailed')))
     }
     setDeleteTarget(null)
-  }, [deleteTarget, deleteTag])
+  }, [deleteTarget, deleteTag, t])
 
   const handleConfirmMerge = useCallback(async () => {
     if (!mergeSource || !mergeTarget) return
@@ -112,34 +120,38 @@ export function TagManager() {
       const result = await mergeTag(mergeSource, mergeTarget)
       if (result.success) {
         toast.success(
-          `Merged "${mergeSource}" into "${mergeTarget}" (${result.affectedItems ?? 0} items)`
+          t('tags.toasts.merged', {
+            source: mergeSource,
+            target: mergeTarget,
+            count: result.affectedItems ?? 0
+          })
         )
       } else {
-        toast.error(result.error ?? 'Merge failed')
+        toast.error(result.error ?? t('tags.toasts.mergeFailed'))
       }
     } catch (err) {
-      toast.error(extractErrorMessage(err, 'Failed to merge tags'))
+      toast.error(extractErrorMessage(err, t('tags.toasts.mergeFailed')))
     }
     setMergeSource(null)
     setMergeTarget('')
-  }, [mergeSource, mergeTarget, mergeTag])
+  }, [mergeSource, mergeTarget, mergeTag, t])
 
   const handleColorChange = useCallback(
     async (colorName: string) => {
       if (!colorTarget) return
       try {
         await window.api.tags.updateTagColor({ tag: colorTarget, color: colorName })
-        toast.success(`Updated color for "${colorTarget}"`)
+        toast.success(t('tags.toasts.colorUpdated', { name: colorTarget }))
       } catch (err) {
-        toast.error(extractErrorMessage(err, 'Failed to update color'))
+        toast.error(extractErrorMessage(err, t('tags.toasts.colorFailed')))
       }
       setColorTarget(null)
     },
-    [colorTarget]
+    [colorTarget, t]
   )
 
   if (isLoading) {
-    return <p className="text-xs/4 text-muted-foreground">Loading tags...</p>
+    return <p className="text-xs/4 text-muted-foreground">{t('tags.loading')}</p>
   }
 
   if (error) {
@@ -147,29 +159,25 @@ export function TagManager() {
   }
 
   if (tags.length === 0) {
-    return (
-      <p className="text-xs/4 text-muted-foreground">
-        No tags yet. Tags will appear here as you add them to notes and tasks.
-      </p>
-    )
+    return <p className="text-xs/4 text-muted-foreground">{t('tags.empty')}</p>
   }
 
   return (
     <div className="flex flex-col">
       <div className="relative pb-6">
-        <Search className="absolute left-3 top-2 w-3.5 h-3.5 text-muted-foreground" />
+        <Search className="absolute start-3 top-2 w-3.5 h-3.5 text-muted-foreground" />
         <Input
-          placeholder="Filter tags..."
+          placeholder={t('tags.filterPlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-8 h-8 text-xs/4 rounded-lg border-border bg-transparent"
+          className="ps-8 h-8 text-xs/4 rounded-lg border-border bg-transparent"
         />
       </div>
 
       <div className="flex flex-col rounded-lg overflow-y-auto max-h-[60vh] border border-border">
         {filteredTags.length === 0 && (
           <p className="text-xs/4 text-muted-foreground py-4 text-center">
-            No tags matching &ldquo;{search}&rdquo;
+            {t('tags.noMatch', { query: search })}
           </p>
         )}
         {filteredTags.map((tag, i) => {
@@ -205,7 +213,7 @@ export function TagManager() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0 ml-4">
+                <div className="flex items-center gap-1.5 shrink-0 ms-4">
                   <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-muted text-[10px]/3 font-medium text-muted-foreground tabular-nums">
                     {tag.count}
                   </span>
@@ -217,24 +225,24 @@ export function TagManager() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => handleStartRename(tag.name)}>
-                        <Pencil className="w-4 h-4 mr-2" />
-                        Rename
+                        <Pencil className="w-4 h-4 me-2" />
+                        {t('tags.actions.rename')}
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setColorTarget(tag.name)}>
-                        <Palette className="w-4 h-4 mr-2" />
-                        Change color
+                        <Palette className="w-4 h-4 me-2" />
+                        {t('tags.actions.changeColor')}
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setMergeSource(tag.name)}>
-                        <Merge className="w-4 h-4 mr-2" />
-                        Merge into...
+                        <Merge className="w-4 h-4 me-2" />
+                        {t('tags.actions.mergeInto')}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() => setDeleteTarget({ name: tag.name, count: tag.count })}
                         className="text-destructive focus:text-destructive"
                       >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete
+                        <Trash2 className="w-4 h-4 me-2" />
+                        {t('tags.actions.delete')}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -246,25 +254,27 @@ export function TagManager() {
       </div>
 
       <p className="text-xs/4 text-muted-foreground pt-3">
-        {tags.length} tag{tags.length !== 1 ? 's' : ''} across notes and tasks
+        {t('tags.summary', { count: tags.length })}
       </p>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete tag</AlertDialogTitle>
+            <AlertDialogTitle>{t('tags.dialogs.deleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Remove &ldquo;{deleteTarget?.name}&rdquo; from {deleteTarget?.count ?? 0} item
-              {deleteTarget?.count !== 1 ? 's' : ''}? This cannot be undone.
+              {t('tags.dialogs.deleteDescription', {
+                name: deleteTarget?.name ?? '',
+                count: deleteTarget?.count ?? 0
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{tCommon('button.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => void handleConfirmDelete()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {t('tags.actions.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -273,10 +283,9 @@ export function TagManager() {
       <Dialog open={!!mergeSource} onOpenChange={(open) => !open && setMergeSource(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Merge tag</DialogTitle>
+            <DialogTitle>{t('tags.dialogs.mergeTitle')}</DialogTitle>
             <DialogDescription>
-              All items tagged with &ldquo;{mergeSource}&rdquo; will be re-tagged with the target
-              tag. The source tag will be deleted.
+              {t('tags.dialogs.mergeDescription', { source: mergeSource ?? '' })}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-3">
@@ -287,7 +296,7 @@ export function TagManager() {
             </div>
             <Select value={mergeTarget} onValueChange={setMergeTarget}>
               <SelectTrigger>
-                <SelectValue placeholder="Select target tag..." />
+                <SelectValue placeholder={t('tags.dialogs.targetPlaceholder')} />
               </SelectTrigger>
               <SelectContent className="max-h-60">
                 {tags
@@ -302,10 +311,10 @@ export function TagManager() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setMergeSource(null)}>
-              Cancel
+              {tCommon('button.cancel')}
             </Button>
             <Button onClick={() => void handleConfirmMerge()} disabled={!mergeTarget}>
-              Merge
+              {t('tags.actions.merge')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -314,7 +323,7 @@ export function TagManager() {
       <Dialog open={!!colorTarget} onOpenChange={(open) => !open && setColorTarget(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Change color for &ldquo;{colorTarget}&rdquo;</DialogTitle>
+            <DialogTitle>{t('tags.dialogs.colorTitle', { name: colorTarget ?? '' })}</DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-2">
             {COLOR_ROWS.map((row, rowIndex) => (

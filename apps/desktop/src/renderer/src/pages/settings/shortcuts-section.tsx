@@ -19,6 +19,29 @@ import {
   type ShortcutEntry
 } from '@/lib/shortcut-registry'
 import { SettingsHeader, SettingsGroup } from '@/components/settings/settings-primitives'
+import { useT } from '@memry/i18n/renderer'
+
+type SettingsT = ReturnType<typeof useT>['t']
+
+const CATEGORY_I18N_KEYS: Record<string, string> = {
+  Navigation: 'navigation',
+  Tabs: 'tabs',
+  Editor: 'editor',
+  View: 'view'
+}
+
+function shortcutLabel(t: SettingsT, entry: ShortcutEntry): string {
+  return t(`shortcuts.entries.${entry.i18nKey}.label`)
+}
+
+function shortcutDescription(t: SettingsT, entry: ShortcutEntry): string {
+  return t(`shortcuts.entries.${entry.i18nKey}.description`)
+}
+
+function shortcutCategoryLabel(t: SettingsT, category: string): string {
+  const key = CATEGORY_I18N_KEYS[category]
+  return key ? t(`shortcuts.categories.${key}`) : category
+}
 
 interface ShortcutRowProps {
   entry: ShortcutEntry
@@ -37,6 +60,7 @@ function ShortcutRow({
   onRebind,
   onClearOverride
 }: ShortcutRowProps) {
+  const { t } = useT('settings')
   const [isCapturing, setIsCapturing] = useState(false)
   const [conflict, setConflict] = useState<string | null>(null)
   const captureRef = useRef<HTMLDivElement>(null)
@@ -76,7 +100,11 @@ function ShortcutRow({
 
       const conflicts = findConflicts(entry.id, newBinding, overrides)
       if (conflicts.length > 0) {
-        setConflict(`Conflicts with: ${conflicts.map((c) => c.conflictingLabel).join(', ')}`)
+        const labels = conflicts.map((conflict) => {
+          const conflictingEntry = SHORTCUT_REGISTRY.find((e) => e.id === conflict.conflictingId)
+          return conflictingEntry ? shortcutLabel(t, conflictingEntry) : conflict.conflictingLabel
+        })
+        setConflict(t('shortcuts.conflict', { labels: labels.join(', ') }))
         return
       }
 
@@ -87,7 +115,9 @@ function ShortcutRow({
 
     window.addEventListener('keydown', handleKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
-  }, [isCapturing, entry.id, overrides, onRebind, stopCapture])
+  }, [isCapturing, entry.id, overrides, onRebind, stopCapture, t])
+
+  const label = shortcutLabel(t, entry)
 
   useEffect(() => {
     if (!isCapturing) return
@@ -104,29 +134,29 @@ function ShortcutRow({
     <>
       <div className="flex items-center justify-between h-11 py-3 px-4 shrink-0 group">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="font-medium text-[13px]/4 text-foreground">{entry.label}</span>
+          <span className="font-medium text-[13px]/4 text-foreground">{label}</span>
           {!isDefault && (
             <Badge
               variant="secondary"
               className="text-[10px]/3 px-1.5 py-0 h-4 bg-[var(--tint)]/15 text-[var(--tint)] border-0"
             >
-              Custom
+              {t('shortcuts.custom')}
             </Badge>
           )}
         </div>
 
-        <div ref={captureRef} className="flex items-center gap-2 ml-4 shrink-0">
+        <div ref={captureRef} className="flex items-center gap-2 ms-4 shrink-0">
           {isCapturing ? (
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 px-2 py-1 rounded border border-[var(--tint)] bg-[var(--tint)]/5 text-xs text-[var(--tint)] animate-pulse">
-                Press shortcut…
+                {t('shortcuts.pressShortcut')}
               </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={stopCapture}
                 className="h-7 w-7 p-0"
-                title="Cancel"
+                title={t('shortcuts.cancelTitle')}
               >
                 <X className="w-3 h-3" />
               </Button>
@@ -136,7 +166,7 @@ function ShortcutRow({
               <button
                 onClick={startCapture}
                 className="flex items-center gap-0.5 hover:opacity-70 transition-opacity"
-                title="Click to rebind"
+                title={t('shortcuts.rebindTitle')}
               >
                 <KbdGroup>
                   {formatBinding(effectiveBinding)
@@ -152,7 +182,7 @@ function ShortcutRow({
                   size="sm"
                   onClick={() => onClearOverride(entry.id)}
                   className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Reset to default"
+                  title={t('shortcuts.resetTitle')}
                 >
                   <RotateCcw className="w-3 h-3" />
                 </Button>
@@ -187,6 +217,7 @@ function GlobalCaptureRow({
   binding: ShortcutBindingDTO | null
   onSave: (binding: ShortcutBindingDTO | null) => Promise<void>
 }): React.JSX.Element {
+  const { t } = useT('settings')
   const [isCapturing, setIsCapturing] = useState(false)
   const [permissionStatus, setPermissionStatus] = useState<'unknown' | 'granted' | 'required'>(
     'unknown'
@@ -249,11 +280,13 @@ function GlobalCaptureRow({
     <>
       <div className="flex items-center justify-between h-11 py-3 px-4 shrink-0 group">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="font-medium text-[13px]/4 text-foreground">Global Capture</span>
+          <span className="font-medium text-[13px]/4 text-foreground">
+            {t('shortcuts.globalCapture.title')}
+          </span>
           {permissionStatus === 'required' && (
             <Badge variant="destructive" className="text-[10px]/3 px-1.5 py-0 h-4 gap-1">
               <AlertTriangle className="w-3 h-3" />
-              Permission needed
+              {t('shortcuts.globalCapture.permissionNeeded')}
             </Badge>
           )}
           {permissionStatus === 'granted' && binding && (
@@ -261,24 +294,26 @@ function GlobalCaptureRow({
               variant="secondary"
               className="text-[10px]/3 px-1.5 py-0 h-4 bg-green-500/15 text-green-600 border-0"
             >
-              Active
+              {t('shortcuts.globalCapture.active')}
             </Badge>
           )}
-          <span className="text-xs/4 text-muted-foreground">Capture a note from anywhere</span>
+          <span className="text-xs/4 text-muted-foreground">
+            {t('shortcuts.globalCapture.description')}
+          </span>
         </div>
 
-        <div ref={captureRef} className="flex items-center gap-2 ml-4 shrink-0">
+        <div ref={captureRef} className="flex items-center gap-2 ms-4 shrink-0">
           {isCapturing ? (
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 px-2 py-1 rounded border border-[var(--tint)] bg-[var(--tint)]/5 text-xs text-[var(--tint)] animate-pulse">
-                Press shortcut…
+                {t('shortcuts.pressShortcut')}
               </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={stopCapture}
                 className="h-7 w-7 p-0"
-                title="Cancel"
+                title={t('shortcuts.cancelTitle')}
               >
                 <X className="w-3 h-3" />
               </Button>
@@ -289,7 +324,7 @@ function GlobalCaptureRow({
                 <button
                   onClick={startCapture}
                   className="flex items-center gap-0.5 hover:opacity-70 transition-opacity"
-                  title="Click to rebind"
+                  title={t('shortcuts.rebindTitle')}
                 >
                   <KbdGroup>
                     {getGlobalCaptureParts(binding).map((part, i) => (
@@ -302,7 +337,7 @@ function GlobalCaptureRow({
                   onClick={startCapture}
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded border border-dashed border-border"
                 >
-                  Click to set
+                  {t('shortcuts.clickToSet')}
                 </button>
               )}
               {binding && (
@@ -311,7 +346,7 @@ function GlobalCaptureRow({
                   size="sm"
                   onClick={() => void onSave(null)}
                   className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Clear shortcut"
+                  title={t('shortcuts.clearTitle')}
                 >
                   <X className="w-3 h-3" />
                 </Button>
@@ -323,10 +358,7 @@ function GlobalCaptureRow({
       {permissionStatus === 'required' && IS_MACOS && (
         <div className="flex items-start gap-2 mx-4 mb-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2 text-[10px]/3 text-amber-800 dark:text-amber-300">
           <Info className="w-3 h-3 mt-0.5 shrink-0" />
-          <span>
-            Global shortcuts require Accessibility permission. Go to{' '}
-            <strong>System Settings → Privacy → Accessibility</strong> and enable memry.
-          </span>
+          <span>{t('shortcuts.globalCapture.permissionHint')}</span>
         </div>
       )}
     </>
@@ -334,6 +366,7 @@ function GlobalCaptureRow({
 }
 
 export function ShortcutsSettings() {
+  const { t } = useT('settings')
   const { settings, isLoading, updateSettings, resetToDefaults } = useKeyboardSettings()
   const [query, setQuery] = useState('')
 
@@ -343,9 +376,9 @@ export function ShortcutsSettings() {
   const handleGlobalCaptureSave = useCallback(
     async (binding: ShortcutBindingDTO | null): Promise<void> => {
       const success = await updateSettings({ globalCapture: binding })
-      if (!success) toast.error('Failed to save global capture shortcut')
+      if (!success) toast.error(t('shortcuts.toasts.saveGlobalFailed'))
     },
-    [updateSettings]
+    [updateSettings, t]
   )
 
   const handleRebind = useCallback(
@@ -357,14 +390,14 @@ export function ShortcutsSettings() {
         const newOverrides = { ...overrides }
         delete newOverrides[id]
         const success = await updateSettings({ overrides: newOverrides })
-        if (!success) toast.error('Failed to save shortcut')
+        if (!success) toast.error(t('shortcuts.toasts.saveFailed'))
         return
       }
 
       const success = await updateSettings({ overrides: { ...overrides, [id]: binding } })
-      if (!success) toast.error('Failed to save shortcut')
+      if (!success) toast.error(t('shortcuts.toasts.saveFailed'))
     },
-    [overrides, updateSettings]
+    [overrides, updateSettings, t]
   )
 
   const handleClearOverride = useCallback(
@@ -372,16 +405,16 @@ export function ShortcutsSettings() {
       const newOverrides = { ...overrides }
       delete newOverrides[id]
       const success = await updateSettings({ overrides: newOverrides })
-      if (!success) toast.error('Failed to reset shortcut')
+      if (!success) toast.error(t('shortcuts.toasts.resetFailed'))
     },
-    [overrides, updateSettings]
+    [overrides, updateSettings, t]
   )
 
   const handleResetAll = useCallback(async () => {
     const success = await resetToDefaults()
-    if (success) toast.success('All shortcuts reset to defaults')
-    else toast.error('Failed to reset shortcuts')
-  }, [resetToDefaults])
+    if (success) toast.success(t('shortcuts.toasts.resetAllSuccess'))
+    else toast.error(t('shortcuts.toasts.resetAllFailed'))
+  }, [resetToDefaults, t])
 
   const lowerQuery = query.toLowerCase()
   const grouped = getGroupedShortcuts()
@@ -391,8 +424,8 @@ export function ShortcutsSettings() {
     const filtered = query
       ? entries.filter(
           (e) =>
-            e.label.toLowerCase().includes(lowerQuery) ||
-            e.description.toLowerCase().includes(lowerQuery)
+            shortcutLabel(t, e).toLowerCase().includes(lowerQuery) ||
+            shortcutDescription(t, e).toLowerCase().includes(lowerQuery)
         )
       : entries
     return filtered.length > 0 ? [[cat, filtered] as [string, ShortcutEntry[]]] : []
@@ -403,7 +436,10 @@ export function ShortcutsSettings() {
   if (isLoading) {
     return (
       <div className="flex flex-col">
-        <SettingsHeader title="Keyboard Shortcuts" subtitle="Loading settings..." />
+        <SettingsHeader
+          title={t('shortcuts.header.title')}
+          subtitle={t('shortcuts.header.loading')}
+        />
       </div>
     )
   }
@@ -411,40 +447,38 @@ export function ShortcutsSettings() {
   return (
     <div className="flex flex-col text-xs/4">
       <SettingsHeader
-        title="Keyboard Shortcuts"
-        subtitle="Click any shortcut to rebind it"
+        title={t('shortcuts.header.title')}
+        subtitle={t('shortcuts.header.subtitle')}
         action={
           hasCustomBindings ? (
             <Button variant="outline" size="sm" onClick={handleResetAll} className="gap-1.5">
               <RotateCcw className="w-3.5 h-3.5" />
-              Reset All
+              {t('shortcuts.resetAll')}
             </Button>
           ) : undefined
         }
       />
 
       <div className="relative pb-6">
-        <Search className="absolute left-3 top-2 w-3.5 h-3.5 text-muted-foreground" />
+        <Search className="absolute start-3 top-2 w-3.5 h-3.5 text-muted-foreground" />
         <Input
-          placeholder="Search shortcuts..."
+          placeholder={t('shortcuts.searchPlaceholder')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="pl-8 h-8 text-xs/4 rounded-lg border-border bg-transparent"
+          className="ps-8 h-8 text-xs/4 rounded-lg border-border bg-transparent"
         />
       </div>
 
-      <SettingsGroup label="Global Capture">
+      <SettingsGroup label={t('shortcuts.globalCapture.title')}>
         <GlobalCaptureRow binding={globalCapture} onSave={handleGlobalCaptureSave} />
       </SettingsGroup>
 
       {filteredGroups.length === 0 && (
-        <p className="text-xs/4 text-muted-foreground text-center py-4">
-          No shortcuts match your search
-        </p>
+        <p className="text-xs/4 text-muted-foreground text-center py-4">{t('shortcuts.noMatch')}</p>
       )}
 
       {filteredGroups.map(([category, entries]) => (
-        <SettingsGroup key={category} label={category}>
+        <SettingsGroup key={category} label={shortcutCategoryLabel(t, category)}>
           {entries.map((entry) => {
             const effectiveBinding = resolveBinding(entry, overrides)
             const isDefault = !overrides[entry.id]

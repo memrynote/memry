@@ -26,6 +26,7 @@ import { getIconByName } from '@/components/icon-picker'
 import { addDays, startOfDay } from '@/lib/task-utils'
 import type { Project, Status } from '@/data/tasks-data'
 import type { Task } from '@/data/sample-tasks'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -80,6 +81,7 @@ export const MoveMenu = ({
   className,
   iconOnly = false
 }: MoveMenuProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [open, setOpen] = useState(false)
 
   // Get current project
@@ -130,10 +132,10 @@ export const MoveMenu = ({
           variant="ghost"
           size="sm"
           className={cn('h-8 gap-1.5', iconOnly && 'w-8 p-0', className)}
-          aria-label="Move task"
+          aria-label={tPhaseF('phaseF.componentsTasksDragDropMoveMenu.moveTask')}
         >
           <MoveVertical className="size-4" />
-          {!iconOnly && <span>Move</span>}
+          {!iconOnly && <span>{tPhaseF('phaseF.componentsTasksDragDropMoveMenu.move')}</span>}
         </Button>
       </DropdownMenuTrigger>
 
@@ -143,15 +145,22 @@ export const MoveMenu = ({
           <>
             <DropdownMenuLabel className="flex items-center gap-2 text-muted-foreground">
               <Calendar className="size-4" />
-              Reschedule
+
+              {tPhaseF('phaseF.componentsTasksDragDropMoveMenu.reschedule')}
             </DropdownMenuLabel>
 
-            <DropdownMenuItem onClick={() => handleDateChange(today)}>Today</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDateChange(tomorrow)}>Tomorrow</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDateChange(nextWeek)}>
-              Next week
+            <DropdownMenuItem onClick={() => handleDateChange(today)}>
+              {tPhaseF('phaseF.componentsTasksDragDropMoveMenu.today')}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDateChange(null)}>Remove date</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleDateChange(tomorrow)}>
+              {tPhaseF('phaseF.componentsTasksDragDropMoveMenu.tomorrow')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleDateChange(nextWeek)}>
+              {tPhaseF('phaseF.componentsTasksDragDropMoveMenu.nextWeek')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleDateChange(null)}>
+              {tPhaseF('phaseF.componentsTasksDragDropMoveMenu.removeDate')}
+            </DropdownMenuItem>
 
             <DropdownMenuSeparator />
           </>
@@ -163,7 +172,8 @@ export const MoveMenu = ({
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <FolderOpen className="size-4 mr-2" />
-                Move to project
+
+                {tPhaseF('phaseF.componentsTasksDragDropMoveMenu.moveToProject')}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
                 {projects
@@ -188,7 +198,9 @@ export const MoveMenu = ({
                         )}
                         {project.name}
                         {isCurrent && (
-                          <span className="ml-auto text-muted-foreground text-xs">Current</span>
+                          <span className="ml-auto text-muted-foreground text-xs">
+                            {tPhaseF('phaseF.componentsTasksDragDropMoveMenu.current')}
+                          </span>
                         )}
                       </DropdownMenuItem>
                     )
@@ -211,7 +223,8 @@ export const MoveMenu = ({
                     backgroundColor: statuses.find((s) => s.id === task.statusId)?.color || '#888'
                   }}
                 />
-                Change status
+
+                {tPhaseF('phaseF.componentsTasksDragDropMoveMenu.changeStatus')}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
                 {statuses.map((status) => {
@@ -229,7 +242,9 @@ export const MoveMenu = ({
                       />
                       {status.name}
                       {isCurrent && (
-                        <span className="ml-auto text-muted-foreground text-xs">Current</span>
+                        <span className="ml-auto text-muted-foreground text-xs">
+                          {tPhaseF('phaseF.componentsTasksDragDropMoveMenu.current2')}
+                        </span>
                       )}
                     </DropdownMenuItem>
                   )
@@ -246,7 +261,8 @@ export const MoveMenu = ({
           <>
             <DropdownMenuLabel className="flex items-center gap-2 text-muted-foreground">
               <MoveVertical className="size-4" />
-              Reorder
+
+              {tPhaseF('phaseF.componentsTasksDragDropMoveMenu.reorder')}
             </DropdownMenuLabel>
 
             {onMoveUp && (

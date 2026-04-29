@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { Archive, ArrowTurnBackward, Loader2, Trash2 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import {
@@ -41,6 +42,20 @@ function ArchivedListItem({
   isUnarchiving: boolean
   isDeleting: boolean
 }): React.JSX.Element {
+  const { t } = useT('inbox')
+  const displayTitle = item.title || t('list.untitled')
+  const typeLabels = {
+    link: t('type.link'),
+    note: t('type.note'),
+    image: t('type.image'),
+    voice: t('type.voice'),
+    video: t('type.video'),
+    clip: t('type.clip'),
+    pdf: t('type.pdf'),
+    social: t('type.social'),
+    reminder: t('type.reminder')
+  }
+
   return (
     <div
       className={cn(
@@ -55,7 +70,7 @@ function ArchivedListItem({
         isFocused && 'bg-muted'
       )}
       role="listitem"
-      aria-label={`${item.type}: ${item.title}`}
+      aria-label={t('list.itemAria', { type: typeLabels[item.type], title: displayTitle })}
       onClick={() => onPreview(item.id)}
       data-item-id={item.id}
     >
@@ -70,7 +85,7 @@ function ArchivedListItem({
           'text-foreground/90'
         )}
       >
-        {item.title || 'Untitled'}
+        {displayTitle}
       </span>
 
       {item.sourceUrl &&
@@ -109,8 +124,8 @@ function ArchivedListItem({
             'text-muted-foreground/50 hover:text-foreground hover:bg-muted',
             isUnarchiving && 'animate-spin'
           )}
-          title="Restore to inbox"
-          aria-label="Restore to inbox"
+          title={t('detail.restoreToInbox')}
+          aria-label={t('detail.restoreToInbox')}
         >
           {isUnarchiving ? (
             <Loader2 className="size-3.5" />
@@ -130,8 +145,8 @@ function ArchivedListItem({
             'text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10',
             isDeleting && 'animate-spin'
           )}
-          title="Delete permanently"
-          aria-label="Delete permanently"
+          title={t('detail.deletePermanently')}
+          aria-label={t('detail.deletePermanently')}
         >
           {isDeleting ? <Loader2 className="size-3.5" /> : <Trash2 className="size-3.5" />}
         </button>
@@ -144,6 +159,7 @@ export function InboxArchivedView({
   className,
   searchQuery = ''
 }: InboxArchivedViewProps): React.JSX.Element {
+  const { t } = useT('inbox')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [activeDetailItemId, setActiveDetailItemId] = useState<string | null>(null)
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null)
@@ -256,39 +272,48 @@ export function InboxArchivedView({
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Archive className="size-6 text-muted-foreground/30 mb-3" strokeWidth={1.5} />
             <p className="text-sm text-muted-foreground/50">
-              {searchQuery ? 'No matching archived items' : 'No archived items'}
+              {searchQuery ? t('empty.archivedNoMatches') : t('empty.archivedNone')}
             </p>
           </div>
         ) : (
-          <div className="space-y-1" role="list" aria-label="Archived items">
-            {groupedItems.map((group) => (
-              <InboxListSection
-                key={group.period}
-                title={group.period}
-                count={group.items.length}
-                collapsible
-                selectedIds={new Set<string>()}
-                focusedId={focusedItemId}
-                density="compact"
-                onSelect={() => {}}
-                onFocus={setFocusedItemId}
-              >
-                {group.items.map((item) => (
-                  <ArchivedListItem
-                    key={item.id}
-                    item={item}
-                    onPreview={handlePreview}
-                    onUnarchive={handleUnarchive}
-                    onDelete={handleDelete}
-                    isFocused={focusedItemId === item.id}
-                    isUnarchiving={
-                      unarchiveMutation.isPending && unarchiveMutation.variables === item.id
-                    }
-                    isDeleting={deleteMutation.isPending && deleteMutation.variables === item.id}
-                  />
-                ))}
-              </InboxListSection>
-            ))}
+          <div className="space-y-1" role="list" aria-label={t('view.archivedItemsAria')}>
+            {groupedItems.map((group) => {
+              const sectionTitle =
+                group.period === 'TODAY'
+                  ? t('list.section.today')
+                  : group.period === 'YESTERDAY'
+                    ? t('list.section.yesterday')
+                    : t('list.section.older')
+
+              return (
+                <InboxListSection
+                  key={group.period}
+                  title={sectionTitle}
+                  count={group.items.length}
+                  collapsible
+                  selectedIds={new Set<string>()}
+                  focusedId={focusedItemId}
+                  density="compact"
+                  onSelect={() => {}}
+                  onFocus={setFocusedItemId}
+                >
+                  {group.items.map((item) => (
+                    <ArchivedListItem
+                      key={item.id}
+                      item={item}
+                      onPreview={handlePreview}
+                      onUnarchive={handleUnarchive}
+                      onDelete={handleDelete}
+                      isFocused={focusedItemId === item.id}
+                      isUnarchiving={
+                        unarchiveMutation.isPending && unarchiveMutation.variables === item.id
+                      }
+                      isDeleting={deleteMutation.isPending && deleteMutation.variables === item.id}
+                    />
+                  ))}
+                </InboxListSection>
+              )
+            })}
           </div>
         )}
 

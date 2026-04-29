@@ -5,6 +5,7 @@
 
 import { useState, useCallback } from 'react'
 import { useTabs } from '@/contexts/tabs'
+import { useT } from '@memry/i18n/renderer'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -113,21 +114,29 @@ export const UnsavedChangesDialog = ({
   onDiscard,
   onCancel
 }: UnsavedChangesDialogProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('common')
+  const { t } = useT('common')
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+          <AlertDialogTitle>
+            {tPhaseF('phaseF.componentsTabsUnsavedChangesDialog.unsavedChanges')}
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            &quot;{tabTitle}&quot; has unsaved changes. What would you like to do?
+            &{tPhaseF('phaseF.componentsTabsUnsavedChangesDialog.quot')}
+            {tabTitle}&
+            {tPhaseF(
+              'phaseF.componentsTabsUnsavedChangesDialog.quotHasUnsavedChangesWhatWouldYouLikeToDo'
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={onCancel}>{t('button.cancel')}</AlertDialogCancel>
           <AlertDialogAction onClick={onDiscard} className="bg-red-500 hover:bg-red-600">
-            Don&apos;t Save
+            {t('button.dontSave')}
           </AlertDialogAction>
-          {onSave && <AlertDialogAction onClick={onSave}>Save</AlertDialogAction>}
+          {onSave && <AlertDialogAction onClick={onSave}>{t('button.save')}</AlertDialogAction>}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

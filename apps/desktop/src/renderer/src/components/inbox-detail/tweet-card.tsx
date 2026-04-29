@@ -3,6 +3,7 @@ import { useTweet } from 'react-tweet'
 import { ExternalLink } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { SocialMetadata } from '@/types'
+import { useT } from '@memry/i18n/renderer'
 
 interface TweetCardItem {
   id: string
@@ -66,11 +67,16 @@ function TweetSkeleton(): React.JSX.Element {
 // ============================================================================
 
 function TweetUnavailable({ url }: { url: string | null }): React.JSX.Element {
+  const { t: tPhaseF } = useT('inbox')
   return (
     <div className="flex flex-col items-center justify-center gap-3 p-8 text-center">
-      <div className="text-sm font-medium text-[var(--foreground)]">Tweet unavailable</div>
+      <div className="text-sm font-medium text-[var(--foreground)]">
+        {tPhaseF('phaseF.componentsInboxDetailTweetCard.tweetUnavailable')}
+      </div>
       <div className="text-xs text-[var(--muted-foreground)]">
-        This tweet may have been deleted or is from a private account.
+        {tPhaseF(
+          'phaseF.componentsInboxDetailTweetCard.thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount'
+        )}
       </div>
       {url && (
         <a
@@ -81,7 +87,8 @@ function TweetUnavailable({ url }: { url: string | null }): React.JSX.Element {
           onClick={(e) => e.stopPropagation()}
         >
           <ExternalLink className="size-3" />
-          Open on x.com
+
+          {tPhaseF('phaseF.componentsInboxDetailTweetCard.openOnXCom')}
         </a>
       )}
     </div>
@@ -128,6 +135,7 @@ function TweetMetrics({
   retweets?: number
   views?: number
 }): React.JSX.Element {
+  const { t: tPhaseF } = useT('inbox')
   return (
     <div className="flex items-center gap-5 text-[11px]/3.5 text-[var(--muted-foreground)]">
       <div className="flex items-center gap-1.5">
@@ -165,7 +173,9 @@ function TweetMetrics({
             />
             <circle cx="6" cy="6" r="1.5" stroke="currentColor" strokeWidth="1" fill="none" />
           </svg>
-          <span>{formatCount(views)} views</span>
+          <span>
+            {formatCount(views)} {tPhaseF('phaseF.componentsInboxDetailTweetCard.views')}
+          </span>
         </div>
       )}
     </div>
@@ -177,6 +187,7 @@ function TweetMetrics({
 // ============================================================================
 
 export function TweetCard({ item }: TweetCardProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('inbox')
   const meta = item.metadata as SocialMetadata | null
   const tweetId = meta?.tweetId || extractTweetId(item.sourceUrl)
 
@@ -215,7 +226,9 @@ export function TweetCard({ item }: TweetCardProps): React.JSX.Element {
           </span>
         </div>
         <div className="flex items-center ml-auto rounded-[10px] py-0.5 px-2 bg-[var(--accent-cyan)]/10">
-          <span className="text-[10px]/3.5 font-medium text-[var(--accent-cyan)]">x.com</span>
+          <span className="text-[10px]/3.5 font-medium text-[var(--accent-cyan)]">
+            {tPhaseF('phaseF.componentsInboxDetailTweetCard.xCom')}
+          </span>
         </div>
       </div>
 
@@ -263,7 +276,8 @@ export function TweetCard({ item }: TweetCardProps): React.JSX.Element {
           onClick={(e) => e.stopPropagation()}
         >
           <ExternalLink className="size-3" />
-          View on X
+
+          {tPhaseF('phaseF.componentsInboxDetailTweetCard.viewOnX')}
         </a>
       )}
     </div>

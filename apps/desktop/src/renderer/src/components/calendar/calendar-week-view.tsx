@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { CalendarItemChip } from './calendar-item-chip'
 import {
   dateFromDayIndex,
@@ -27,10 +28,9 @@ const ALL_DAY_CHIP_HEIGHT = 22
 const ALL_DAY_CHIP_GAP = 2
 const ALL_DAY_ROW_PADDING = 8
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const DAY_NAMES_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 const GRID_LINE_BG =
   'repeating-linear-gradient(to bottom, transparent, transparent 47px, var(--grid-line-color) 47px, var(--grid-line-color) 48px)'
+const SUNDAY_START = new Date(2020, 5, 7)
 
 function getEventPosition(item: CalendarProjectionItem): { top: number; height: number } {
   const start = new Date(item.startAt)
@@ -38,6 +38,13 @@ function getEventPosition(item: CalendarProjectionItem): { top: number; height: 
   const endMs = item.endAt ? new Date(item.endAt).getTime() : start.getTime() + 3600000
   const durationMinutes = (endMs - start.getTime()) / 60000
   return { top, height: Math.max(durationMinutes * (HOUR_HEIGHT / 60), 24) }
+}
+
+function getWeekdayLabels(locale: string, weekday: 'short' | 'narrow'): string[] {
+  const formatter = new Intl.DateTimeFormat(locale, { weekday })
+  return Array.from({ length: 7 }, (_, i) =>
+    formatter.format(new Date(SUNDAY_START.getFullYear(), SUNDAY_START.getMonth(), 7 + i))
+  )
 }
 
 interface CalendarWeekViewProps {
@@ -69,6 +76,7 @@ export function CalendarWeekView({
   const {
     settings: { clockFormat }
   } = useGeneralSettings()
+  const { t, i18n } = useT('calendar')
 
   const gridRef = useRef<HTMLDivElement>(null)
   const timeColumnRef = useRef<HTMLDivElement>(null)
@@ -120,6 +128,8 @@ export function CalendarWeekView({
 
   const virtualItems = virtualizer.getVirtualItems()
   const totalSize = virtualizer.getTotalSize()
+  const dayNames = useMemo(() => getWeekdayLabels(i18n.language, 'short'), [i18n.language])
+  const dayNamesShort = useMemo(() => getWeekdayLabels(i18n.language, 'narrow'), [i18n.language])
 
   const getColumnElement = useCallback((dayIndex: number): HTMLElement | null => {
     const grid = gridRef.current
@@ -221,8 +231,8 @@ export function CalendarWeekView({
                   }}
                 >
                   <span className="text-xs font-medium text-muted-foreground">
-                    <span className="hidden @xl:inline">{DAY_NAMES[dayOfWeek]}</span>
-                    <span className="@xl:hidden">{DAY_NAMES_SHORT[dayOfWeek]}</span>
+                    <span className="hidden @xl:inline">{dayNames[dayOfWeek]}</span>
+                    <span className="@xl:hidden">{dayNamesShort[dayOfWeek]}</span>
                   </span>
                   {isCurrent ? (
                     <span className="inline-flex size-6 items-center justify-center rounded-full bg-tint text-xs font-semibold text-tint-foreground">
@@ -248,7 +258,7 @@ export function CalendarWeekView({
             className="flex shrink-0 items-center justify-end border-b border-border pr-1 text-xs font-medium text-muted-foreground"
             style={{ width: GUTTER_WIDTH, height: allDayRowHeight }}
           >
-            all-day
+            {t('time.all-day-lower')}
           </div>
           <div
             ref={allDayScrollRef}

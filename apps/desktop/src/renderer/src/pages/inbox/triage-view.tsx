@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { useTriageQueue } from '@/hooks/use-triage-queue'
 import { useInboxStats } from '@/hooks/use-inbox'
 import { useUndoableAction } from '@/hooks/use-undoable-action'
@@ -28,6 +29,7 @@ interface TriageViewProps {
 }
 
 export function TriageView({ onExit }: TriageViewProps): React.JSX.Element | null {
+  const { t } = useT('inbox')
   const { state, actions } = useTriageQueue()
   const { stats } = useInboxStats()
   const { archiveWithUndo } = useUndoableAction()
@@ -142,7 +144,7 @@ export function TriageView({ onExit }: TriageViewProps): React.JSX.Element | nul
       case 'highlight':
         openTab({
           type: 'note',
-          title: meta.targetTitle || 'Note',
+          title: meta.targetTitle || t('reminder.noteFallback'),
           icon: 'file-text',
           path: `/notes/${meta.targetId}`,
           entityId: meta.targetId,
@@ -163,7 +165,7 @@ export function TriageView({ onExit }: TriageViewProps): React.JSX.Element | nul
       case 'journal':
         openTab({
           type: 'journal',
-          title: 'Journal',
+          title: t('reminder.journalFallback'),
           icon: 'book-open',
           path: '/journal',
           isPinned: false,
@@ -174,7 +176,7 @@ export function TriageView({ onExit }: TriageViewProps): React.JSX.Element | nul
         })
         break
     }
-  }, [state.currentItem, openTab])
+  }, [state.currentItem, openTab, t])
 
   if (state.isLoading) {
     return (
@@ -208,17 +210,17 @@ export function TriageView({ onExit }: TriageViewProps): React.JSX.Element | nul
             type="button"
             onClick={onExit}
             className="text-muted-foreground transition-colors hover:text-foreground"
-            aria-label="Exit triage mode"
+            aria-label={t('triage.exitAria')}
           >
             <X className="size-4" />
           </button>
-          <span className="text-sm font-medium text-foreground">Triage Mode</span>
-          <span className="text-xs text-text-tertiary">Esc to exit</span>
+          <span className="text-sm font-medium text-foreground">{t('triage.modeTitle')}</span>
+          <span className="text-xs text-text-tertiary">{t('triage.exitHint')}</span>
         </div>
         <div className="flex items-center gap-3">
           {streak > 0 && <StreakBadge streak={streak} />}
           <span className="text-xs tabular-nums text-muted-foreground">
-            {state.currentIndex + 1} of {state.totalItems}
+            {t('triage.position', { current: state.currentIndex + 1, total: state.totalItems })}
           </span>
         </div>
       </header>
@@ -261,7 +263,7 @@ export function TriageView({ onExit }: TriageViewProps): React.JSX.Element | nul
                     className="flex-1 border-0 bg-tint text-tint-foreground hover:bg-tint-hover"
                   >
                     <Check className="mr-1.5 size-4" aria-hidden="true" />
-                    File
+                    {t('triage.action.file')}
                   </Button>
                   <Button
                     variant="ghost"
@@ -269,7 +271,7 @@ export function TriageView({ onExit }: TriageViewProps): React.JSX.Element | nul
                     onClick={closePicker}
                     className="text-muted-foreground"
                   >
-                    Cancel
+                    {t('triage.action.cancel')}
                   </Button>
                 </div>
               </div>

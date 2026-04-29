@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
 import type { Project } from '@/data/tasks-data'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -36,6 +37,7 @@ export const DeleteProjectDialog = ({
   onConfirm,
   project
 }: DeleteProjectDialogProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [selectedOption, setSelectedOption] = useState<DeleteTasksOption>('move')
 
   const taskCount = project?.taskCount || 0
@@ -66,15 +68,20 @@ export const DeleteProjectDialog = ({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            Delete "{project.name}"?
+            {tPhaseF('phaseF.componentsTasksDeleteProjectDialog.delete')}
+            {project.name}"?
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-4">
               {hasTasks ? (
                 <>
                   <p>
-                    This project has {taskCount} task{taskCount !== 1 ? 's' : ''}. What would you
-                    like to do with them?
+                    {tPhaseF('phaseF.componentsTasksDeleteProjectDialog.thisProjectHas')}
+                    {taskCount} {tPhaseF('phaseF.componentsTasksDeleteProjectDialog.task')}
+                    {taskCount !== 1 ? 's' : ''}.{' '}
+                    {tPhaseF(
+                      'phaseF.componentsTasksDeleteProjectDialog.whatWouldYouLikeToDoWithThem'
+                    )}
                   </p>
 
                   {/* Radio Options */}
@@ -106,7 +113,9 @@ export const DeleteProjectDialog = ({
                         )}
                       </div>
                       <span className="text-sm text-foreground">
-                        Move tasks to Personal project
+                        {tPhaseF(
+                          'phaseF.componentsTasksDeleteProjectDialog.moveTasksToPersonalProject'
+                        )}
                       </span>
                     </label>
 
@@ -136,18 +145,28 @@ export const DeleteProjectDialog = ({
                           <div className="m-0.5 size-2 rounded-full bg-primary-foreground" />
                         )}
                       </div>
-                      <span className="text-sm text-foreground">Delete all tasks permanently</span>
+                      <span className="text-sm text-foreground">
+                        {tPhaseF(
+                          'phaseF.componentsTasksDeleteProjectDialog.deleteAllTasksPermanently'
+                        )}
+                      </span>
                     </label>
                   </div>
                 </>
               ) : (
-                <p>This project has no tasks and will be permanently deleted.</p>
+                <p>
+                  {tPhaseF(
+                    'phaseF.componentsTasksDeleteProjectDialog.thisProjectHasNoTasksAndWillBePermanentlyDeleted'
+                  )}
+                </p>
               )}
 
               {/* Warning */}
               <div className="flex items-center gap-2 rounded-sm bg-destructive/10 p-3 text-sm text-destructive">
                 <AlertTriangle className="size-4 shrink-0" />
-                <span>This action cannot be undone.</span>
+                <span>
+                  {tPhaseF('phaseF.componentsTasksDeleteProjectDialog.thisActionCannotBeUndone')}
+                </span>
               </div>
             </div>
           </AlertDialogDescription>
@@ -155,10 +174,10 @@ export const DeleteProjectDialog = ({
 
         <AlertDialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            {tPhaseF('phaseF.componentsTasksDeleteProjectDialog.cancel')}
           </Button>
           <Button variant="destructive" onClick={handleConfirm}>
-            Delete Project
+            {tPhaseF('phaseF.componentsTasksDeleteProjectDialog.deleteProject')}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

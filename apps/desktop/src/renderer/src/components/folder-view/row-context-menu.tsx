@@ -27,6 +27,7 @@ import { notesService } from '@/services/notes-service'
 import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Component:RowContextMenu')
 
@@ -65,6 +66,7 @@ export function RowContextMenu({
   onMoveToFolder,
   onDelete
 }: RowContextMenuProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   // Determine if we should show bulk actions
   const showBulkActions = isPartOfSelection && selectedCount > 1
 
@@ -150,7 +152,8 @@ export function RowContextMenu({
             <ContextMenuSeparator />
             <ContextMenuItem variant="destructive" onClick={handleBulkDelete}>
               <Trash2 className="mr-2 h-4 w-4" />
-              Delete {selectedCount} Notes
+              {tPhaseF('phaseF.componentsFolderViewRowContextMenu.delete')}
+              {selectedCount} {tPhaseF('phaseF.componentsFolderViewRowContextMenu.notes')}
             </ContextMenuItem>
           </>
         ) : (
@@ -159,7 +162,8 @@ export function RowContextMenu({
             {/* Open actions */}
             <ContextMenuItem onClick={handleOpen}>
               <FileText className="mr-2 h-4 w-4" />
-              Open
+
+              {tPhaseF('phaseF.componentsFolderViewRowContextMenu.open')}
             </ContextMenuItem>
             <ContextMenuItem onClick={handleOpenInNewTab}>
               <FileText className="mr-2 h-4 w-4" />
@@ -172,15 +176,18 @@ export function RowContextMenu({
             {/* External actions */}
             <ContextMenuItem onClick={() => void handleOpenExternal()}>
               <ExternalLink className="mr-2 h-4 w-4" />
-              Open in External Editor
+
+              {tPhaseF('phaseF.componentsFolderViewRowContextMenu.openInExternalEditor')}
             </ContextMenuItem>
             <ContextMenuItem onClick={handleRevealInFinder}>
               <FolderOpen className="mr-2 h-4 w-4" />
-              Reveal in Finder
+
+              {tPhaseF('phaseF.componentsFolderViewRowContextMenu.revealInFinder')}
             </ContextMenuItem>
             <ContextMenuItem onClick={handleRevealInSidebar}>
               <PanelLeft className="mr-2 h-4 w-4" />
-              Reveal in Sidebar
+
+              {tPhaseF('phaseF.componentsFolderViewRowContextMenu.revealInSidebar')}
             </ContextMenuItem>
 
             <ContextMenuSeparator />
@@ -188,7 +195,8 @@ export function RowContextMenu({
             {/* Utility actions */}
             <ContextMenuItem onClick={handleCopyLink}>
               <Link className="mr-2 h-4 w-4" />
-              Copy Link
+
+              {tPhaseF('phaseF.componentsFolderViewRowContextMenu.copyLink')}
             </ContextMenuItem>
             <ContextMenuItem onClick={handleMoveToFolder}>
               <FolderInput className="mr-2 h-4 w-4" />
@@ -201,7 +209,8 @@ export function RowContextMenu({
             {/* Destructive actions */}
             <ContextMenuItem variant="destructive" onClick={handleDelete}>
               <Trash2 className="mr-2 h-4 w-4" />
-              Delete
+
+              {tPhaseF('phaseF.componentsFolderViewRowContextMenu.delete2')}
             </ContextMenuItem>
           </>
         )}

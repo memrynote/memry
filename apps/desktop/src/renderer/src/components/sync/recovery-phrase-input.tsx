@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { ArrowLeft, Loader2 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface RecoveryPhraseInputProps {
   onSubmit: (phrase: string) => void
@@ -12,9 +13,9 @@ interface RecoveryPhraseInputProps {
 }
 
 const PROGRESS_STEPS = [
-  'Deriving encryption keys...',
-  'Validating recovery phrase...',
-  'Registering device...'
+  'setup.recovery.progress.deriving',
+  'setup.recovery.progress.validating',
+  'setup.recovery.progress.registering'
 ] as const
 
 const STEP_INTERVAL_MS = 2000
@@ -27,6 +28,8 @@ export function RecoveryPhraseInput({
   error,
   onBack
 }: RecoveryPhraseInputProps): React.JSX.Element {
+  const { t } = useT('settings')
+  const { t: tCommon } = useT('common')
   const [phrase, setPhrase] = useState('')
   const [progressStep, setProgressStep] = useState(0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -63,10 +66,10 @@ export function RecoveryPhraseInput({
     <div className="wizard-step-enter space-y-6">
       <div className="flex flex-col pb-1 gap-1.5">
         <div className="tracking-[-0.02em] font-semibold text-xl/6.5 text-foreground">
-          Enter recovery phrase
+          {t('setup.recovery.inputTitle')}
         </div>
         <div className="text-[13px]/4.5 text-muted-foreground">
-          Enter your 24-word recovery phrase to restore access to your encrypted data.
+          {t('setup.recovery.inputDescription')}
         </div>
       </div>
 
@@ -77,10 +80,10 @@ export function RecoveryPhraseInput({
               htmlFor="recovery-phrase"
               className="text-[11px] font-semibold tracking-widest uppercase text-muted-foreground"
             >
-              Recovery phrase
+              {t('setup.recovery.inputLabel')}
             </Label>
             <span className="text-[11px] font-mono tabular-nums text-muted-foreground/70">
-              {wordCount} / {EXPECTED_WORD_COUNT} words
+              {t('setup.recovery.count', { count: wordCount, total: EXPECTED_WORD_COUNT })}
             </span>
           </div>
           <textarea
@@ -88,7 +91,7 @@ export function RecoveryPhraseInput({
             value={phrase}
             onChange={(e) => setPhrase(e.target.value)}
             disabled={isLoading}
-            placeholder="Enter your 24-word recovery phrase separated by spaces..."
+            placeholder={t('setup.recovery.inputPlaceholder')}
             rows={4}
             autoFocus
             aria-describedby={error ? 'recovery-error' : undefined}
@@ -106,9 +109,7 @@ export function RecoveryPhraseInput({
             </p>
           )}
           {wordCount > 0 && !isValidLength && !error && (
-            <p className="text-[13px] text-muted-foreground/70">
-              Enter all 24 words to enable the restore button
-            </p>
+            <p className="text-[13px] text-muted-foreground/70">{t('setup.recovery.lengthHint')}</p>
           )}
         </div>
 
@@ -122,7 +123,7 @@ export function RecoveryPhraseInput({
             className="gap-1.5"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            Back
+            {tCommon('button.back')}
           </Button>
           <Button
             type="submit"
@@ -132,10 +133,10 @@ export function RecoveryPhraseInput({
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                {PROGRESS_STEPS[progressStep]}
+                {t(PROGRESS_STEPS[progressStep] ?? PROGRESS_STEPS[0])}
               </>
             ) : (
-              'Restore access'
+              t('setup.recovery.restore')
             )}
           </Button>
         </div>

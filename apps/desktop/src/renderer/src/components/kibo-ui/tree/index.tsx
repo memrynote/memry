@@ -23,6 +23,7 @@ import {
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
 import { IconPicker, getIconByName } from '@/components/icon-picker'
+import { useT } from '@memry/i18n/renderer'
 
 type NodeInfo = {
   nodeId: string
@@ -589,6 +590,7 @@ export const TreeNodeTrigger = ({
   expandOnly = false,
   ...props
 }: TreeNodeTriggerProps) => {
+  const { t: tPhaseF } = useT('common')
   const {
     selectedIds,
     toggleExpanded,
@@ -873,7 +875,8 @@ export const TreeNodeTrigger = ({
             <>
               <ContextMenuItem onClick={handleSetIconClick}>
                 <Palette className="mr-2 h-4 w-4" />
-                Set Icon
+
+                {tPhaseF('phaseF.componentsKiboUiTreeIndex.setIcon')}
               </ContextMenuItem>
               {effectiveIcon && (
                 <>
@@ -882,7 +885,7 @@ export const TreeNodeTrigger = ({
                     onClick={() => setNodeIcon(nodeId, null)}
                     className="text-destructive focus:text-destructive"
                   >
-                    Clear Icon
+                    {tPhaseF('phaseF.componentsKiboUiTreeIndex.clearIcon')}
                   </ContextMenuItem>
                 </>
               )}

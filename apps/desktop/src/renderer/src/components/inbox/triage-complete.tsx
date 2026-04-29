@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { Check, ArrowLeft } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { StreakBadge } from './streak-badge'
@@ -9,16 +10,16 @@ interface TriageCompleteProps {
   onReturnToInbox: () => void
 }
 
-const MOTIVATIONAL_COPY = [
-  'Your future self thanks you.',
-  'Everything in its place.',
-  'Clear inbox, clear mind.',
-  'Decision debt: paid in full.',
-  "That felt good, didn't it?"
-]
+const MOTIVATION_KEYS = [
+  'triage.complete.motivation0',
+  'triage.complete.motivation1',
+  'triage.complete.motivation2',
+  'triage.complete.motivation3',
+  'triage.complete.motivation4'
+] as const
 
-function pickMotivation(count: number): string {
-  return MOTIVATIONAL_COPY[count % MOTIVATIONAL_COPY.length]
+function pickMotivationKey(count: number): (typeof MOTIVATION_KEYS)[number] {
+  return MOTIVATION_KEYS[count % MOTIVATION_KEYS.length]
 }
 
 export function TriageComplete({
@@ -26,6 +27,7 @@ export function TriageComplete({
   streak,
   onReturnToInbox
 }: TriageCompleteProps): React.JSX.Element {
+  const { t } = useT('inbox')
   const [showCheck, setShowCheck] = useState(false)
   const [showStats, setShowStats] = useState(false)
   const [showButton, setShowButton] = useState(false)
@@ -76,15 +78,14 @@ export function TriageComplete({
           showStats ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
         )}
       >
-        <h2 className="text-3xl font-semibold tracking-tight text-foreground">Inbox Zero</h2>
+        <h2 className="text-3xl font-semibold tracking-tight text-foreground">
+          {t('triage.complete.title')}
+        </h2>
 
         <div className="mt-4 flex items-center justify-center gap-4">
           <div className="text-center">
-            <div className="text-2xl font-semibold tabular-nums text-foreground">
-              {processedCount}
-            </div>
             <div className="text-[11px] text-muted-foreground">
-              {processedCount === 1 ? 'item' : 'items'} processed
+              {t('triage.complete.processed', { count: processedCount })}
             </div>
           </div>
 
@@ -93,14 +94,16 @@ export function TriageComplete({
               <div className="h-8 w-px bg-border" />
               <div className="flex flex-col items-center gap-1">
                 <StreakBadge streak={streak} size="md" />
-                <div className="text-[11px] text-muted-foreground">streak</div>
+                <div className="text-[11px] text-muted-foreground">
+                  {t('triage.complete.streak')}
+                </div>
               </div>
             </>
           )}
         </div>
 
         <p className="mt-4 text-sm italic text-muted-foreground">
-          {pickMotivation(processedCount)}
+          {t(pickMotivationKey(processedCount))}
         </p>
       </div>
 
@@ -115,7 +118,7 @@ export function TriageComplete({
         )}
       >
         <ArrowLeft className="size-4" />
-        Back to Inbox
+        {t('triage.complete.back')}
       </button>
     </div>
   )

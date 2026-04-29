@@ -1,5 +1,6 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { useEffect, useRef, useState } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -17,21 +18,6 @@ interface CalendarQuickCreateDialogProps {
   onOpenFullEditor: (draft: CalendarEventDraft) => void
 }
 
-const MONTH_NAMES = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec'
-]
-
 function formatTime(value: string): string {
   const date = new Date(value)
   const h = String(date.getHours()).padStart(2, '0')
@@ -39,25 +25,35 @@ function formatTime(value: string): string {
   return `${h}:${m}`
 }
 
-function formatDateShort(value: string): string {
-  const parts = value.split('T')[0].split('-')
-  const month = MONTH_NAMES[parseInt(parts[1], 10) - 1]
-  const day = parseInt(parts[2], 10)
-  return `${month} ${day}`
+function parseDateValue(value: string): Date | null {
+  const [year, month, day] = value.split('T')[0].split('-').map(Number)
+  if (!year || !month || !day) return null
+  return new Date(year, month - 1, day)
 }
 
-function formatDatetimeDisplay(startAt: string, endAt: string, isAllDay: boolean): string {
+function formatDateShort(value: string, locale: string): string {
+  const date = parseDateValue(value)
+  if (!date) return value
+  return new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' }).format(date)
+}
+
+function formatDatetimeDisplay(
+  startAt: string,
+  endAt: string,
+  isAllDay: boolean,
+  locale: string
+): string {
   const startDate = startAt.split('T')[0]
   const endDate = endAt.split('T')[0]
 
   if (isAllDay) {
-    const startLabel = formatDateShort(startAt)
+    const startLabel = formatDateShort(startAt, locale)
     if (startDate === endDate) return startLabel
-    return `${startLabel} – ${formatDateShort(endAt)}`
+    return `${startLabel} – ${formatDateShort(endAt, locale)}`
   }
 
   const year = startAt.split('-')[0]
-  const startMonthDay = formatDateShort(startAt)
+  const startMonthDay = formatDateShort(startAt, locale)
   return `${startMonthDay}, ${year}  ${formatTime(startAt)} – ${formatTime(endAt)}`
 }
 
@@ -75,6 +71,8 @@ export function CalendarQuickCreateDialog({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const titleRef = useRef<HTMLInputElement>(null)
+  const { t, i18n } = useT('calendar')
+  const { t: tCommon } = useT('common')
 
   useEffect(() => {
     titleRef.current?.focus()
@@ -110,7 +108,7 @@ export function CalendarQuickCreateDialog({
     }
   }
 
-  const datetimeLabel = formatDatetimeDisplay(startAt, endAt, isAllDay)
+  const datetimeLabel = formatDatetimeDisplay(startAt, endAt, isAllDay, i18n.language)
   const { top, left } = computePopoverPosition(anchorRect)
 
   return (
@@ -124,7 +122,7 @@ export function CalendarQuickCreateDialog({
       <DialogPrimitive.Portal>
         <DialogPrimitive.Content
           data-testid="quick-create-popover"
-          aria-label="Create calendar event"
+          aria-label={t('form.create-calendar-event')}
           onOpenAutoFocus={(e) => {
             e.preventDefault()
             titleRef.current?.focus()
@@ -134,15 +132,17 @@ export function CalendarQuickCreateDialog({
           )}
           style={{ top, left, width: POPOVER_WIDTH }}
         >
-          <DialogPrimitive.Title className="sr-only">Create calendar event</DialogPrimitive.Title>
+          <DialogPrimitive.Title className="sr-only">
+            {t('form.create-calendar-event')}
+          </DialogPrimitive.Title>
           <DialogPrimitive.Description className="sr-only">
-            Enter a title and save to create an event at the selected time range.
+            {t('form.quick-create-description')}
           </DialogPrimitive.Description>
           <p className="mb-3 text-xs text-muted-foreground">{datetimeLabel}</p>
 
           <Input
             ref={titleRef}
-            placeholder="New Event"
+            placeholder={t('form.new-event-placeholder')}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={handleTitleKeyDown}
@@ -151,7 +151,7 @@ export function CalendarQuickCreateDialog({
           />
 
           <Input
-            placeholder="Add location"
+            placeholder={t('form.location-placeholder')}
             value={location}
             onChange={(e) => setLocation(e.target.value)}
             disabled={isSubmitting}
@@ -174,7 +174,7 @@ export function CalendarQuickCreateDialog({
               className="text-xs text-primary underline-offset-2 hover:underline"
               onClick={() => onOpenFullEditor(buildDraft())}
             >
-              Add details
+              {t('form.add-details')}
             </button>
 
             <div className="flex items-center gap-2">
@@ -185,7 +185,7 @@ export function CalendarQuickCreateDialog({
                 onClick={onDismiss}
                 disabled={isSubmitting}
               >
-                Cancel
+                {tCommon('button.cancel')}
               </Button>
               <Button
                 type="button"
@@ -199,7 +199,7 @@ export function CalendarQuickCreateDialog({
                 }}
                 onClick={() => void submit()}
               >
-                {isSubmitting ? 'Saving…' : 'Save'}
+                {isSubmitting ? tCommon('state.saving') : tCommon('button.save')}
               </Button>
             </div>
           </div>

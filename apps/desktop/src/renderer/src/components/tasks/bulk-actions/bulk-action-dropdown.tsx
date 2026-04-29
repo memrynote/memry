@@ -1,6 +1,7 @@
 import { ChevronDown } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,6 +61,7 @@ export const BulkActionDropdown = <T extends string | number = string>({
   disabled = false,
   className
 }: BulkActionDropdownProps<T>): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -80,7 +82,10 @@ export const BulkActionDropdown = <T extends string | number = string>({
 
       <DropdownMenuContent align="start" className="min-w-[200px]">
         <DropdownMenuLabel className="text-xs text-muted-foreground">
-          {label} for {selectedCount} task{selectedCount !== 1 ? 's' : ''}
+          {label} {tPhaseF('phaseF.componentsTasksBulkActionsBulkActionDropdown.for')}
+          {selectedCount}
+          {tPhaseF('phaseF.componentsTasksBulkActionsBulkActionDropdown.task')}
+          {selectedCount !== 1 ? 's' : ''}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 

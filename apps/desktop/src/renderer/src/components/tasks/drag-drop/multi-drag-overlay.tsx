@@ -5,6 +5,7 @@ import { ParentTaskRow } from '@/components/tasks/parent-task-row'
 import type { SubtaskProgress } from '@/lib/subtask-utils'
 import type { Task } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
+import { useT } from '@memry/i18n/renderer'
 
 export type OverlayRowVariant = 'task' | 'parent'
 
@@ -126,6 +127,7 @@ export const MultiDragOverlay = ({
   overlayParentProgress,
   overlayParentExpanded = false
 }: MultiDragOverlayProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const visibleTasks = tasks.slice(0, maxPreview)
   const totalCount = tasks.length
 
@@ -211,7 +213,9 @@ export const MultiDragOverlay = ({
                 </div>
                 {totalCount > 1 && (
                   <div className="text-sm text-primary mt-1">
-                    +{totalCount - 1} more task{totalCount > 2 ? 's' : ''}
+                    +{totalCount - 1}{' '}
+                    {tPhaseF('phaseF.componentsTasksDragDropMultiDragOverlay.moreTask')}
+                    {totalCount > 2 ? 's' : ''}
                   </div>
                 )}
               </>
@@ -292,6 +296,7 @@ export const SingleTaskPreview = ({
 }
 
 export const MultiTaskBadge = ({ count, className }: MultiTaskBadgeProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   return (
     <span
       className={cn(
@@ -301,7 +306,8 @@ export const MultiTaskBadge = ({ count, className }: MultiTaskBadgeProps): React
         className
       )}
     >
-      {count} task{count !== 1 ? 's' : ''}
+      {count} {tPhaseF('phaseF.componentsTasksDragDropMultiDragOverlay.task')}
+      {count !== 1 ? 's' : ''}
     </span>
   )
 }

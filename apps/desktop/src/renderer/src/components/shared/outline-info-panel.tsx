@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect, memo } from 'react'
 import { cn } from '@/lib/utils'
 import { format, parseISO, isValid } from 'date-fns'
+import { useT } from '@memry/i18n/renderer'
 
 export interface HeadingItem {
   id: string
@@ -47,10 +48,10 @@ function formatStatsDate(date: string | Date | null): string {
   }
 }
 
-function formatReadingTime(wordCount: number): string {
-  if (wordCount === 0) return '0 min read'
+function formatReadingTime(wordCount: number, readTimeLabel: (count: number) => string): string {
+  if (wordCount === 0) return readTimeLabel(0)
   const minutes = Math.ceil(wordCount / 200)
-  return minutes === 1 ? '1 min read' : `${minutes} min read`
+  return readTimeLabel(minutes)
 }
 
 const FADE_DURATION = 100
@@ -64,6 +65,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
   activeHeadingId,
   stats
 }: OutlineInfoPanelProps) {
+  const { t } = useT('notes')
   const [isExpanded, setIsExpanded] = useState(false)
   const [isPinned, setIsPinned] = useState(false)
   const [isFadingOut, setIsFadingOut] = useState(false)
@@ -208,13 +210,13 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
           <div className="py-3 px-3.5 flex flex-col gap-2">
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] tracking-[0.05em] uppercase text-text-tertiary font-medium leading-3.5">
-                Outline
+                {t('outline.title')}
               </span>
             </div>
 
             {hasOutline ? (
               <nav
-                aria-label="Document outline"
+                aria-label={t('outline.aria')}
                 className="flex flex-col gap-0.5 max-h-[50vh] overflow-y-auto"
               >
                 {headings.map((heading) => {
@@ -256,7 +258,7 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
                 })}
               </nav>
             ) : (
-              <span className="text-xs text-text-tertiary">No headings</span>
+              <span className="text-xs text-text-tertiary">{t('outline.empty')}</span>
             )}
 
             {stats && (
@@ -264,17 +266,21 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
                 <div className="h-px bg-border/50" />
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-text-tertiary leading-3.5">
-                    {stats.wordCount.toLocaleString()} words
+                    {t('outline.words', { count: stats.wordCount })}
                   </span>
                   <span className="text-[11px] text-text-tertiary leading-3.5">
-                    {formatReadingTime(stats.wordCount)}
+                    {formatReadingTime(stats.wordCount, (count) =>
+                      t('outline.readTime', { count })
+                    )}
                   </span>
                 </div>
                 {(stats.createdAt || stats.modifiedAt) && (
                   <div className="flex flex-col gap-0.5">
                     {stats.createdAt && (
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] text-text-tertiary leading-3.5">Created</span>
+                        <span className="text-[11px] text-text-tertiary leading-3.5">
+                          {t('outline.created')}
+                        </span>
                         <span className="text-[11px] text-text-tertiary leading-3.5">
                           {formatStatsDate(stats.createdAt)}
                         </span>
@@ -282,7 +288,9 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
                     )}
                     {stats.modifiedAt && (
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] text-text-tertiary leading-3.5">Modified</span>
+                        <span className="text-[11px] text-text-tertiary leading-3.5">
+                          {t('outline.modified')}
+                        </span>
                         <span className="text-[11px] text-text-tertiary leading-3.5">
                           {formatStatsDate(stats.modifiedAt)}
                         </span>

@@ -1,4 +1,5 @@
 import { Folder, Tag, Archive, Clock, Star, Plus, X } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
 
 import { SnoozePicker } from '@/components/snooze'
 import { cn } from '@/lib/utils'
@@ -20,14 +21,6 @@ interface BulkActionBarProps {
   onDismissSuggestion: () => void
 }
 
-const KEYBOARD_HINTS = [
-  { key: 'F', label: 'file' },
-  { key: 'T', label: 'tag' },
-  { key: 'S', label: 'snooze' },
-  { key: 'E', label: 'archive' },
-  { key: 'Esc', label: 'deselect' }
-] as const
-
 const BulkActionBar = ({
   selectedCount,
   onFileAll,
@@ -38,9 +31,18 @@ const BulkActionBar = ({
   onAddSuggestionToSelection,
   onDismissSuggestion
 }: BulkActionBarProps): React.JSX.Element | null => {
+  const { t } = useT('inbox')
+
   if (selectedCount === 0) return null
 
   const hasSuggestion = aiSuggestion && aiSuggestion.items.length > 0
+  const keyboardHints = [
+    { key: 'F', label: t('bulk.hint.file') },
+    { key: 'T', label: t('bulk.hint.tag') },
+    { key: 'S', label: t('bulk.hint.snooze') },
+    { key: 'E', label: t('bulk.hint.archive') },
+    { key: 'Esc', label: t('bulk.hint.deselect') }
+  ] as const
 
   return (
     <div
@@ -55,7 +57,7 @@ const BulkActionBar = ({
         'slide-up-enter motion-reduce:animate-none'
       )}
       role="toolbar"
-      aria-label={`Bulk actions for ${selectedCount} selected items`}
+      aria-label={t('bulk.ariaLabel', { count: selectedCount })}
     >
       {/* Count badge — floating on bar edge */}
       <div
@@ -67,7 +69,7 @@ const BulkActionBar = ({
         )}
       >
         <span className="text-[11px]/3.5 font-bold text-white dark:text-background">
-          {selectedCount} selected
+          {t('bulk.selected', { count: selectedCount })}
         </span>
       </div>
 
@@ -75,12 +77,12 @@ const BulkActionBar = ({
       <div className="flex items-center w-full gap-0.5 p-2">
         <ActionButton onClick={onFileAll} active>
           <Folder className="size-[15px]" aria-hidden="true" />
-          File
+          {t('bulk.file')}
         </ActionButton>
 
         <ActionButton onClick={onTagAll}>
           <Tag className="size-[15px]" aria-hidden="true" />
-          Tag
+          {t('bulk.tag')}
         </ActionButton>
 
         {onSnoozeAll ? (
@@ -99,14 +101,14 @@ const BulkActionBar = ({
                 )}
               >
                 <Clock className="size-[15px]" aria-hidden="true" />
-                Snooze
+                {t('bulk.snooze')}
               </button>
             }
           />
         ) : (
           <ActionButton disabled>
             <Clock className="size-[15px]" aria-hidden="true" />
-            Snooze
+            {t('bulk.snooze')}
           </ActionButton>
         )}
 
@@ -115,7 +117,7 @@ const BulkActionBar = ({
 
         <ActionButton onClick={onArchiveAll} variant="destructive">
           <Archive className="size-[15px]" aria-hidden="true" />
-          Archive
+          {t('bulk.archive')}
         </ActionButton>
       </div>
 
@@ -140,13 +142,13 @@ const BulkActionBar = ({
               )}
             >
               <Plus className="size-2.5" aria-hidden="true" />
-              <span className="text-[11px]/3.5 font-medium">Add</span>
+              <span className="text-[11px]/3.5 font-medium">{t('bulk.add')}</span>
             </button>
             <button
               type="button"
               onClick={onDismissSuggestion}
               className="p-1 text-muted-foreground/20 hover:text-muted-foreground/50 transition-colors"
-              aria-label="Dismiss suggestion"
+              aria-label={t('bulk.dismissSuggestion')}
             >
               <X className="size-3" aria-hidden="true" />
             </button>
@@ -156,7 +158,7 @@ const BulkActionBar = ({
 
       {/* Keyboard hints */}
       <div className="flex items-center justify-center w-full gap-4 px-4 pt-1 pb-2">
-        {KEYBOARD_HINTS.map(({ key, label }) => (
+        {keyboardHints.map(({ key, label }) => (
           <div key={key} className="flex items-center gap-1">
             <kbd
               className={cn(

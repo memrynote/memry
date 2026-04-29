@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2 } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
 
-const emailSchema = z.string().email('Please enter a valid email address')
+const emailSchema = z.string().email()
 
 interface EmailEntryFormProps {
   onSubmit: (email: string) => void
@@ -20,6 +21,8 @@ export function EmailEntryForm({
   error,
   defaultEmail
 }: EmailEntryFormProps): React.JSX.Element {
+  const { t } = useT('settings')
+  const { t: tCommon } = useT('common')
   const [email, setEmail] = useState(defaultEmail ?? '')
   const [validationError, setValidationError] = useState<string | null>(null)
 
@@ -31,12 +34,12 @@ export function EmailEntryForm({
       setValidationError(null)
       const result = emailSchema.safeParse(email.trim())
       if (!result.success) {
-        setValidationError(result.error.issues[0].message)
+        setValidationError(t('setup.email.invalid'))
         return
       }
       onSubmit(result.data)
     },
-    [email, onSubmit]
+    [email, onSubmit, t]
   )
 
   return (
@@ -46,12 +49,12 @@ export function EmailEntryForm({
           htmlFor="email"
           className="uppercase tracking-[0.05em] text-[11px]/3.5 font-medium text-muted-foreground"
         >
-          Email address
+          {t('setup.email.label')}
         </Label>
         <Input
           id="email"
           type="email"
-          placeholder="Enter your email address..."
+          placeholder={t('setup.email.placeholder')}
           value={email}
           onChange={(e) => {
             setEmail(e.target.value)
@@ -77,10 +80,10 @@ export function EmailEntryForm({
         {isLoading ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            Sending code...
+            {t('setup.email.sending')}
           </>
         ) : (
-          'Continue'
+          tCommon('button.continue')
         )}
       </Button>
     </form>

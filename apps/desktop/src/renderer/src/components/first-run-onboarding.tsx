@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { notesService } from '@/services/notes-service'
 import { tasksService } from '@/services/tasks-service'
 import { createLogger } from '@/lib/logger'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('FirstRunOnboarding')
 
@@ -17,6 +18,7 @@ type Step = 'welcome' | 'note' | 'task' | 'sync'
 const STEPS: Step[] = ['welcome', 'note', 'task', 'sync']
 
 export function FirstRunOnboarding({ onComplete }: FirstRunOnboardingProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('common')
   const [step, setStep] = useState<Step>('welcome')
   const [noteTitle, setNoteTitle] = useState('')
   const [taskTitle, setTaskTitle] = useState('')
@@ -86,7 +88,7 @@ export function FirstRunOnboarding({ onComplete }: FirstRunOnboardingProps): Rea
         <button
           onClick={onComplete}
           className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Skip onboarding"
+          aria-label={tPhaseF('phaseF.componentsFirstRunOnboarding.skipOnboarding')}
         >
           <X className="w-4 h-4" />
         </button>
@@ -135,19 +137,25 @@ export function FirstRunOnboarding({ onComplete }: FirstRunOnboardingProps): Rea
 }
 
 function WelcomeStep({ onNext }: { onNext: () => void }): React.JSX.Element {
+  const { t: tPhaseF } = useT('common')
   return (
     <div className="text-center space-y-6">
       <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-500/10 text-indigo-500">
         <Sparkles className="w-7 h-7" />
       </div>
       <div className="space-y-2">
-        <h2 className="text-xl font-semibold tracking-tight">Welcome to Memry</h2>
+        <h2 className="text-xl font-semibold tracking-tight">
+          {tPhaseF('phaseF.componentsFirstRunOnboarding.welcomeToMemry')}
+        </h2>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Your personal knowledge base. Let's take 2 minutes to get you started.
+          {tPhaseF(
+            'phaseF.componentsFirstRunOnboarding.yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted'
+          )}
         </p>
       </div>
       <Button onClick={onNext} className="w-full bg-indigo-500 hover:bg-indigo-600 text-white">
-        Get started <ArrowRight className="w-4 h-4 ml-2" />
+        {tPhaseF('phaseF.componentsFirstRunOnboarding.getStarted')}
+        <ArrowRight className="w-4 h-4 ml-2" />
       </Button>
     </div>
   )
@@ -166,6 +174,7 @@ function NoteStep({
   onSkip: () => void
   isSubmitting: boolean
 }): React.JSX.Element {
+  const { t: tPhaseF } = useT('common')
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -173,14 +182,16 @@ function NoteStep({
           <FileText className="w-5 h-5" />
         </div>
         <div>
-          <h2 className="text-base font-semibold">Create your first note</h2>
+          <h2 className="text-base font-semibold">
+            {tPhaseF('phaseF.componentsFirstRunOnboarding.createYourFirstNote')}
+          </h2>
           <p className="text-xs text-muted-foreground">
-            Markdown-based, stored locally as plain files.
+            {tPhaseF('phaseF.componentsFirstRunOnboarding.markdownBasedStoredLocallyAsPlainFiles')}
           </p>
         </div>
       </div>
       <Input
-        placeholder="e.g. Meeting notes, ideas, anything..."
+        placeholder={tPhaseF('phaseF.componentsFirstRunOnboarding.eGMeetingNotesIdeasAnything')}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
@@ -190,14 +201,15 @@ function NoteStep({
       />
       <div className="flex gap-2">
         <Button variant="ghost" size="sm" onClick={onSkip} className="text-muted-foreground">
-          Skip
+          {tPhaseF('phaseF.componentsFirstRunOnboarding.skip')}
         </Button>
         <Button
           onClick={() => void onNext()}
           disabled={isSubmitting}
           className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white"
         >
-          Create note <ArrowRight className="w-4 h-4 ml-2" />
+          {tPhaseF('phaseF.componentsFirstRunOnboarding.createNote')}
+          <ArrowRight className="w-4 h-4 ml-2" />
         </Button>
       </div>
     </div>
@@ -217,6 +229,7 @@ function TaskStep({
   onSkip: () => void
   isSubmitting: boolean
 }): React.JSX.Element {
+  const { t: tPhaseF } = useT('common')
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -224,14 +237,18 @@ function TaskStep({
           <CheckSquare className="w-5 h-5" />
         </div>
         <div>
-          <h2 className="text-base font-semibold">Add your first task</h2>
+          <h2 className="text-base font-semibold">
+            {tPhaseF('phaseF.componentsFirstRunOnboarding.addYourFirstTask')}
+          </h2>
           <p className="text-xs text-muted-foreground">
-            Tasks link to your notes, with priorities and due dates.
+            {tPhaseF(
+              'phaseF.componentsFirstRunOnboarding.tasksLinkToYourNotesWithPrioritiesAndDueDates'
+            )}
           </p>
         </div>
       </div>
       <Input
-        placeholder="e.g. Review project proposal..."
+        placeholder={tPhaseF('phaseF.componentsFirstRunOnboarding.eGReviewProjectProposal')}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
@@ -241,14 +258,15 @@ function TaskStep({
       />
       <div className="flex gap-2">
         <Button variant="ghost" size="sm" onClick={onSkip} className="text-muted-foreground">
-          Skip
+          {tPhaseF('phaseF.componentsFirstRunOnboarding.skip2')}
         </Button>
         <Button
           onClick={() => void onNext()}
           disabled={isSubmitting}
           className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white"
         >
-          Create task <ArrowRight className="w-4 h-4 ml-2" />
+          {tPhaseF('phaseF.componentsFirstRunOnboarding.createTask')}
+          <ArrowRight className="w-4 h-4 ml-2" />
         </Button>
       </div>
     </div>
@@ -262,6 +280,7 @@ function SyncStep({
   onNext: () => void
   onSkip: () => void
 }): React.JSX.Element {
+  const { t: tPhaseF } = useT('common')
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -269,21 +288,26 @@ function SyncStep({
           <RefreshCw className="w-5 h-5" />
         </div>
         <div>
-          <h2 className="text-base font-semibold">Sync across devices</h2>
+          <h2 className="text-base font-semibold">
+            {tPhaseF('phaseF.componentsFirstRunOnboarding.syncAcrossDevices')}
+          </h2>
           <p className="text-xs text-muted-foreground">
             End-to-end encrypted. Set up later in Settings → Sync.
           </p>
         </div>
       </div>
       <p className="text-sm text-muted-foreground">
-        Keep your notes and tasks in sync across all your devices. You can always set this up later.
+        {tPhaseF(
+          'phaseF.componentsFirstRunOnboarding.keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw'
+        )}
       </p>
       <div className="flex gap-2">
         <Button variant="ghost" size="sm" onClick={onSkip} className="text-muted-foreground">
-          Skip for now
+          {tPhaseF('phaseF.componentsFirstRunOnboarding.skipForNow')}
         </Button>
         <Button onClick={onNext} className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white">
-          Done — let's go! <Sparkles className="w-4 h-4 ml-2" />
+          {tPhaseF('phaseF.componentsFirstRunOnboarding.doneLetSGo')}
+          <Sparkles className="w-4 h-4 ml-2" />
         </Button>
       </div>
     </div>

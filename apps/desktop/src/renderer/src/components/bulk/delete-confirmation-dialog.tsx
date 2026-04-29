@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react'
 import { AlertTriangle } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
 
 import {
   AlertDialog,
@@ -25,6 +26,9 @@ const DeleteConfirmationDialog = ({
   onConfirm,
   onCancel
 }: DeleteConfirmationDialogProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('inbox')
+  const { t } = useT('common')
+
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
@@ -55,16 +59,20 @@ const DeleteConfirmationDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <AlertTriangle className="size-5 text-red-500" aria-hidden="true" />
-            Delete {itemCount} item{itemCount !== 1 ? 's' : ''}?
+            {tPhaseF('phaseF.componentsBulkDeleteConfirmationDialog.delete')}
+            {itemCount} {tPhaseF('phaseF.componentsBulkDeleteConfirmationDialog.item')}
+            {itemCount !== 1 ? 's' : ''}?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            These items will be removed from your inbox. You can undo this action immediately after.
+            {tPhaseF(
+              'phaseF.componentsBulkDeleteConfirmationDialog.theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction'
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={onCancel}>{t('button.cancel')}</AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm} className="bg-red-500 text-white hover:bg-red-600">
-            Delete {itemCount} item{itemCount !== 1 ? 's' : ''}
+            {t('count.itemDelete', { count: itemCount })}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

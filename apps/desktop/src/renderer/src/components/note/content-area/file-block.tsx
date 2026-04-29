@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { useSync } from '@/contexts/sync-context'
+import { useT } from '@memry/i18n/renderer'
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -72,6 +73,7 @@ interface PdfPreviewProps {
 }
 
 function PdfPreview({ url, name }: PdfPreviewProps) {
+  const { t: tPhaseF } = useT('notes')
   const [numPages, setNumPages] = useState<number>(0)
   const [currentPage, setCurrentPage] = useState(1)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -112,7 +114,10 @@ function PdfPreview({ url, name }: PdfPreviewProps) {
           <FileText className="h-5 w-5" />
           <span className="font-medium">{name}</span>
         </div>
-        <p className="mt-2 text-sm text-red-500">Failed to load PDF: {error}</p>
+        <p className="mt-2 text-sm text-red-500">
+          {tPhaseF('phaseF.componentsNoteContentAreaFileBlock.failedToLoadPdf')}
+          {error}
+        </p>
       </div>
     )
   }
@@ -149,7 +154,8 @@ function PdfPreview({ url, name }: PdfPreviewProps) {
           <Button variant="ghost" size="sm" asChild className="h-7 text-xs">
             <a href={url} download={name}>
               <Download className="mr-1 h-3 w-3" />
-              Download
+
+              {tPhaseF('phaseF.componentsNoteContentAreaFileBlock.download')}
             </a>
           </Button>
         </div>
@@ -305,6 +311,7 @@ interface FilePreviewProps {
 }
 
 function FilePreview({ url, name, size, mimeType }: FilePreviewProps) {
+  const { t: tPhaseF } = useT('notes')
   const { state } = useSync()
 
   const uploadEntry = state.uploadProgress
@@ -328,7 +335,8 @@ function FilePreview({ url, name, size, mimeType }: FilePreviewProps) {
       <Button variant="ghost" size="sm" asChild className="h-8">
         <a href={url} download={name}>
           <Download className="mr-1 h-4 w-4" />
-          Download
+
+          {tPhaseF('phaseF.componentsNoteContentAreaFileBlock.download2')}
         </a>
       </Button>
       {activeTransfer && activeTransfer.status !== 'completed' && (
@@ -364,6 +372,7 @@ export const createFileBlock = createReactBlockSpec(
   },
   {
     render: ({ block, contentRef }) => {
+      const { t: tPhaseF } = useT('notes')
       const { url, name, size, mimeType } = block.props
       const isPdf = mimeType === 'application/pdf'
 
@@ -371,7 +380,7 @@ export const createFileBlock = createReactBlockSpec(
       if (!url) {
         return (
           <div ref={contentRef} className="file-block-empty p-2 text-muted-foreground text-sm">
-            No file attached
+            {tPhaseF('phaseF.componentsNoteContentAreaFileBlock.noFileAttached')}
           </div>
         )
       }

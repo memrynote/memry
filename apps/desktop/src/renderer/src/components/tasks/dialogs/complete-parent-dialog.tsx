@@ -14,6 +14,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 import type { Task } from '@/data/sample-tasks'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -40,6 +41,7 @@ export const CompleteParentDialog = ({
   incompleteSubtasks,
   onConfirm
 }: CompleteParentDialogProps): React.JSX.Element | null => {
+  const { t: tPhaseF } = useT('tasks')
   const [option, setOption] = useState<CompleteOption>('complete-all')
 
   if (!parent) return null
@@ -62,13 +64,18 @@ export const CompleteParentDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-primary" />
-            Complete task with incomplete subtasks?
+
+            {tPhaseF(
+              'phaseF.componentsTasksDialogsCompleteParentDialog.completeTaskWithIncompleteSubtasks'
+            )}
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-3">
               <p>
-                <span className="font-medium text-foreground">"{parent.title}"</span> has{' '}
-                {incompleteSubtasks.length} incomplete subtask
+                <span className="font-medium text-foreground">"{parent.title}"</span>{' '}
+                {tPhaseF('phaseF.componentsTasksDialogsCompleteParentDialog.has')}
+                {incompleteSubtasks.length}{' '}
+                {tPhaseF('phaseF.componentsTasksDialogsCompleteParentDialog.incompleteSubtask')}
                 {incompleteSubtasks.length !== 1 ? 's' : ''}:
               </p>
               <ul className="space-y-1 text-sm">
@@ -80,11 +87,15 @@ export const CompleteParentDialog = ({
                 ))}
                 {incompleteSubtasks.length > 5 && (
                   <li className="text-muted-foreground">
-                    ...and {incompleteSubtasks.length - 5} more
+                    ...{tPhaseF('phaseF.componentsTasksDialogsCompleteParentDialog.and')}
+                    {incompleteSubtasks.length - 5}{' '}
+                    {tPhaseF('phaseF.componentsTasksDialogsCompleteParentDialog.more')}
                   </li>
                 )}
               </ul>
-              <p>What would you like to do?</p>
+              <p>
+                {tPhaseF('phaseF.componentsTasksDialogsCompleteParentDialog.whatWouldYouLikeToDo')}
+              </p>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -98,9 +109,15 @@ export const CompleteParentDialog = ({
             <div className="flex items-start space-x-3 rounded-sm border p-4 cursor-pointer hover:bg-accent/50 transition-colors">
               <RadioGroupItem value="complete-all" id="complete-all" className="mt-0.5" />
               <Label htmlFor="complete-all" className="cursor-pointer flex-1">
-                <div className="font-medium">Complete all (parent + subtasks)</div>
+                <div className="font-medium">
+                  {tPhaseF(
+                    'phaseF.componentsTasksDialogsCompleteParentDialog.completeAllParentSubtasks'
+                  )}
+                </div>
                 <div className="text-sm text-muted-foreground mt-1">
-                  Mark the parent and all subtasks as complete
+                  {tPhaseF(
+                    'phaseF.componentsTasksDialogsCompleteParentDialog.markTheParentAndAllSubtasksAsComplete'
+                  )}
                 </div>
               </Label>
             </div>
@@ -112,9 +129,15 @@ export const CompleteParentDialog = ({
                 className="mt-0.5"
               />
               <Label htmlFor="complete-parent-only" className="cursor-pointer flex-1">
-                <div className="font-medium">Complete parent only, keep subtasks incomplete</div>
+                <div className="font-medium">
+                  {tPhaseF(
+                    'phaseF.componentsTasksDialogsCompleteParentDialog.completeParentOnlyKeepSubtasksIncomplete'
+                  )}
+                </div>
                 <div className="text-sm text-muted-foreground mt-1">
-                  Only mark the parent task as complete
+                  {tPhaseF(
+                    'phaseF.componentsTasksDialogsCompleteParentDialog.onlyMarkTheParentTaskAsComplete'
+                  )}
                 </div>
               </Label>
             </div>
@@ -122,8 +145,12 @@ export const CompleteParentDialog = ({
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={handleCancel}>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleConfirm}>Complete</AlertDialogAction>
+          <AlertDialogCancel onClick={handleCancel}>
+            {tPhaseF('phaseF.componentsTasksDialogsCompleteParentDialog.cancel')}
+          </AlertDialogCancel>
+          <AlertDialogAction onClick={handleConfirm}>
+            {tPhaseF('phaseF.componentsTasksDialogsCompleteParentDialog.complete')}
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

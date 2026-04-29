@@ -1,7 +1,29 @@
-import { describe, it, expect } from 'vitest'
+import { beforeEach, describe, it, expect } from 'vitest'
+import { createRendererI18n } from '@memry/i18n/renderer'
 import { getUserErrorMessage, getSyncErrorMessage, ERROR_CODES } from './error-messages'
 
 describe('getUserErrorMessage', () => {
+  beforeEach(async () => {
+    await createRendererI18n({ locale: 'en' })
+  })
+
+  it('returns English messages from the errors namespace for representative codes', () => {
+    expect(getUserErrorMessage(ERROR_CODES.VAULT_NOT_FOUND)).toBe(
+      'Vault not found. It may have been moved or deleted.'
+    )
+    expect(getUserErrorMessage('network_offline')).toBe(
+      'You are offline. Changes will sync when you reconnect.'
+    )
+  })
+
+  it('falls back to English namespace resources for empty Turkish error stubs', async () => {
+    await createRendererI18n({ locale: 'tr' })
+
+    expect(getUserErrorMessage(ERROR_CODES.NOTE_WRITE_FAILED)).toBe(
+      'Failed to save this note. Check disk space and permissions.'
+    )
+  })
+
   it('returns user-friendly message for known vault error codes', () => {
     expect(getUserErrorMessage(ERROR_CODES.VAULT_NOT_FOUND)).toContain('Vault not found')
     expect(getUserErrorMessage(ERROR_CODES.VAULT_NOT_INITIALIZED)).toContain('No vault is open')
@@ -45,6 +67,10 @@ describe('getUserErrorMessage', () => {
 })
 
 describe('getSyncErrorMessage', () => {
+  beforeEach(async () => {
+    await createRendererI18n({ locale: 'en' })
+  })
+
   it('returns messages for all sync error categories', () => {
     expect(getSyncErrorMessage('network_offline')).toBeTruthy()
     expect(getSyncErrorMessage('network_timeout')).toBeTruthy()
@@ -57,6 +83,12 @@ describe('getSyncErrorMessage', () => {
     expect(getSyncErrorMessage('storage_quota_exceeded')).toBeTruthy()
     expect(getSyncErrorMessage('certificate_pin_failed')).toBeTruthy()
     expect(getSyncErrorMessage('unknown')).toBeTruthy()
+  })
+
+  it('returns sync messages from the errors namespace', () => {
+    expect(getSyncErrorMessage('certificate_pin_failed')).toBe(
+      'Secure connection failed. Check your network connection.'
+    )
   })
 })
 

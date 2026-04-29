@@ -8,6 +8,7 @@ import { useState, useRef, useEffect, memo, useId } from 'react'
 import { ChevronDown, Pencil } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { JournalEditor } from './journal-editor'
+import { useT } from '@memry/i18n/renderer'
 
 export interface CollapsibleSectionProps {
   /** Section icon */
@@ -39,6 +40,7 @@ export const CollapsibleSection = memo(function CollapsibleSection({
   children,
   className
 }: CollapsibleSectionProps): React.JSX.Element {
+  const { t } = useT('journal')
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
   const contentRef = useRef<HTMLDivElement>(null)
   const [contentHeight, setContentHeight] = useState<number>(0)
@@ -79,7 +81,7 @@ export const CollapsibleSection = memo(function CollapsibleSection({
         <div className="flex items-center gap-2">
           {count !== undefined && count > 0 && (
             <span className="text-xs text-muted-foreground">
-              {count} {countLabel || 'items'}
+              {count} {countLabel || t('count.items')}
             </span>
           )}
           <ChevronDown
@@ -137,20 +139,22 @@ export interface JournalSectionProps {
 
 export const JournalSection = memo(function JournalSection({
   isActive = false,
-  placeholder = 'Start writing...',
+  placeholder,
   content = '',
   onContentChange,
   journalId,
   isFocusMode = false,
   onFocusToggle
 }: JournalSectionProps): React.JSX.Element {
+  const { t } = useT('journal')
+
   return (
     <div className="rounded-md border border-border/40 bg-muted/20">
       {/* Header */}
       <div className="px-4 py-3 border-b border-border/30">
         <div className="flex items-center gap-2">
           <Pencil className="size-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground">Journal</span>
+          <span className="text-sm font-medium text-foreground">{t('section.journal')}</span>
         </div>
       </div>
 
@@ -158,7 +162,7 @@ export const JournalSection = memo(function JournalSection({
       <div className="p-4">
         <JournalEditor
           content={content}
-          placeholder={placeholder}
+          placeholder={placeholder ?? t('editor.placeholder.default')}
           isActive={isActive}
           onContentChange={onContentChange}
           journalId={journalId}

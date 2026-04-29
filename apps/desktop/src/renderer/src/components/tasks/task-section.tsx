@@ -7,6 +7,7 @@ import { SectionDivider, type SectionDividerVariant } from '@/components/tasks/s
 import { createLookupContext, isTaskCompletedFast } from '@/lib/lookup-utils'
 import type { Task } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
+import { useT } from '@memry/i18n/renderer'
 
 type TaskSectionVariant = 'overdue' | 'today' | 'default'
 
@@ -55,6 +56,7 @@ export const TaskSection = ({
   isDropTarget = false,
   isDragSource = false
 }: TaskSectionProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const sectionId = `section-${id}`
   const dividerVariant = toDividerVariant(variant)
   const lookupContext = useMemo(() => createLookupContext(projects), [projects])
@@ -115,7 +117,7 @@ export const TaskSection = ({
                   'focus-visible:outline-none'
                 )}
               >
-                + Add task
+                + {tPhaseF('phaseF.componentsTasksTaskSection.addTask')}
               </button>
             )}
           </div>

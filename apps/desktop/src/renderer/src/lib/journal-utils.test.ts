@@ -11,6 +11,7 @@ import {
   DateParts,
   TimeGreeting,
   MonthStat,
+  type JournalDateLabels,
   // Date Generation Functions (T111)
   getTodayString,
   formatDateToISO,
@@ -39,6 +40,46 @@ import {
 // =============================================================================
 // TEST SETUP
 // =============================================================================
+
+const CUSTOM_DATE_LABELS: JournalDateLabels = {
+  weekdays: [
+    'Weekday-0',
+    'Weekday-1',
+    'Weekday-2',
+    'Weekday-3',
+    'Weekday-4',
+    'Weekday-5',
+    'Weekday-6'
+  ],
+  weekdaysShort: ['W0', 'W1', 'W2', 'W3', 'W4', 'W5', 'W6'],
+  months: [
+    'Month-0',
+    'Month-1',
+    'Month-2',
+    'Month-3',
+    'Month-4',
+    'Month-5',
+    'Month-6',
+    'Month-7',
+    'Month-8',
+    'Month-9',
+    'Month-10',
+    'Month-11'
+  ],
+  monthsShort: ['M0', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M11'],
+  relative: {
+    today: 'Custom today',
+    yesterday: 'Custom yesterday',
+    tomorrow: 'Custom tomorrow',
+    future: 'Custom future'
+  },
+  greetings: {
+    morning: 'Custom morning',
+    afternoon: 'Custom afternoon',
+    evening: 'Custom evening',
+    night: 'Custom night'
+  }
+}
 
 describe('journal-utils', () => {
   beforeEach(() => {
@@ -441,6 +482,14 @@ describe('journal-utils', () => {
         expect(result.monthYear).toBe('January 2026')
       })
 
+      it('uses provided date labels for formatted strings', () => {
+        const result = formatDayHeader('2026-04-15', CUSTOM_DATE_LABELS)
+
+        expect(result.dayName).toBe('Weekday-3')
+        expect(result.dateStr).toBe('Month-3 15, 2026')
+        expect(result.monthYear).toBe('Month-3 2026')
+      })
+
       it('sets isToday=true for current date', () => {
         const result = formatDayHeader('2026-01-15')
         expect(result.isToday).toBe(true)
@@ -517,6 +566,13 @@ describe('journal-utils', () => {
         expect(result.dayName).toBe('Thursday')
       })
 
+      it('uses provided labels for month and weekday names', () => {
+        const result = formatDateParts('2026-04-15', CUSTOM_DATE_LABELS)
+
+        expect(result.month).toBe('Month-3')
+        expect(result.dayName).toBe('Weekday-3')
+      })
+
       it('handles all months correctly', () => {
         const months = [
           { date: '2026-01-15', month: 'January', monthIndex: 0 },
@@ -551,6 +607,10 @@ describe('journal-utils', () => {
 
       it('returns December for index 11', () => {
         expect(getMonthName(11)).toBe('December')
+      })
+
+      it('uses provided labels for month names', () => {
+        expect(getMonthName(3, CUSTOM_DATE_LABELS)).toBe('Month-3')
       })
 
       it('returns correct names for all months', () => {
@@ -686,6 +746,15 @@ describe('journal-utils', () => {
 
         vi.setSystemTime(new Date(2026, 0, 15, 11, 59, 59))
         expect(getTimeBasedGreeting()).toEqual({ greeting: 'Good morning', icon: '🌅' })
+      })
+
+      it('uses provided greeting labels', () => {
+        vi.setSystemTime(new Date(2026, 0, 15, 8, 0, 0))
+
+        expect(getTimeBasedGreeting(CUSTOM_DATE_LABELS)).toEqual({
+          greeting: 'Custom morning',
+          icon: '🌅'
+        })
       })
 
       it('returns "Good afternoon" with sun emoji for 12-16', () => {
@@ -832,6 +901,12 @@ describe('journal-utils', () => {
         expect(getSpecialDayLabel('2026-01-01')).toBeNull()
       })
 
+      it('uses provided relative labels', () => {
+        expect(getSpecialDayLabel('2026-01-15', CUSTOM_DATE_LABELS)).toBe('Custom today')
+        expect(getSpecialDayLabel('2026-01-14', CUSTOM_DATE_LABELS)).toBe('Custom yesterday')
+        expect(getSpecialDayLabel('2026-01-16', CUSTOM_DATE_LABELS)).toBe('Custom tomorrow')
+      })
+
       it('handles month boundaries correctly', () => {
         vi.setSystemTime(new Date(2026, 1, 1, 10, 0, 0)) // Feb 1
         expect(getSpecialDayLabel('2026-02-01')).toBe('Today')
@@ -957,6 +1032,13 @@ describe('journal-utils', () => {
         result.forEach((stat, index) => {
           expect(stat.monthName).toBe(expected[index])
         })
+      })
+
+      it('uses provided labels for month names', () => {
+        const result = getMonthStats(2026, [], CUSTOM_DATE_LABELS)
+
+        expect(result[0].monthName).toBe('Month-0')
+        expect(result[3].monthName).toBe('Month-3')
       })
 
       it('calculates entryCount correctly', () => {

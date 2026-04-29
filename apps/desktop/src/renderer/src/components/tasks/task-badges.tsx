@@ -14,6 +14,7 @@ import {
 import { priorityConfig, type Priority } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useT } from '@memry/i18n/renderer'
 
 export type PriorityBadgeVariant = 'dot' | 'label' | 'full'
 
@@ -78,6 +79,7 @@ export const PriorityBadge = ({
   fixedWidth = false,
   className
 }: PriorityBadgeProps): React.JSX.Element | null => {
+  const { t: tPhaseF } = useT('tasks')
   const config = priorityConfig[priority]
 
   if (priority === 'none' || !config.color) {
@@ -120,7 +122,7 @@ export const PriorityBadge = ({
         <Tooltip>
           <TooltipTrigger asChild>{content}</TooltipTrigger>
           <TooltipContent side="top" className="text-xs">
-            {config.label} priority
+            {config.label} {tPhaseF('phaseF.componentsTasksTaskBadges.priority')}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -169,6 +171,7 @@ export const DueDateBadge = ({
   fixedWidth = false,
   className
 }: DueDateBadgeProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const formatted = formatDueDate(dueDate, dueTime)
 
   if (!formatted) {
@@ -203,7 +206,12 @@ export const DueDateBadge = ({
           cn('rounded-sm px-1.5 py-0.5', dueDateBackgroundStyles[formatted.status])
       )}
     >
-      {isRepeating && <Repeat className="size-3 shrink-0" aria-label="Repeating task" />}
+      {isRepeating && (
+        <Repeat
+          className="size-3 shrink-0"
+          aria-label={tPhaseF('phaseF.componentsTasksTaskBadges.repeatingTask')}
+        />
+      )}
       <span className="truncate">{formatted.label}</span>
       {isOverdue && variant === 'default' && tierStyle && (
         <span
@@ -212,7 +220,8 @@ export const DueDateBadge = ({
             tierStyle.chipBg
           )}
         >
-          {daysOver}d
+          {daysOver}
+          {tPhaseF('phaseF.componentsTasksTaskBadges.d')}
         </span>
       )}
     </span>

@@ -5,6 +5,7 @@ import { useTasksOptional } from '@/contexts/tasks'
 import { tasksService, type TaskCreateInput } from '@/services/tasks-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface TaskCreationPopoverProps {
   isOpen: boolean
@@ -76,6 +77,7 @@ const TaskCreationPopoverForm: FC<TaskCreationPopoverFormProps> = ({
   onCreated,
   onCancel
 }) => {
+  const { t: tPhaseF } = useT('notes')
   const [projectId, setProjectId] = useState(defaultProjectId)
   const [priority, setPriority] = useState(0)
   const [dueDate, setDueDate] = useState('')
@@ -131,7 +133,9 @@ const TaskCreationPopoverForm: FC<TaskCreationPopoverFormProps> = ({
       <div className="truncate text-sm font-medium">{title}</div>
 
       <div className="space-y-1.5">
-        <label className="text-xs text-muted-foreground">Project</label>
+        <label className="text-xs text-muted-foreground">
+          {tPhaseF('phaseF.componentsNoteContentAreaTaskBlockTaskCreationPopover.project')}
+        </label>
         <select
           value={projectId}
           onChange={(e) => setProjectId(e.target.value)}
@@ -149,7 +153,9 @@ const TaskCreationPopoverForm: FC<TaskCreationPopoverFormProps> = ({
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-xs text-muted-foreground">Priority</label>
+        <label className="text-xs text-muted-foreground">
+          {tPhaseF('phaseF.componentsNoteContentAreaTaskBlockTaskCreationPopover.priority')}
+        </label>
         <div className="flex items-center gap-1.5">
           {PRIORITY_OPTIONS.map((opt) => (
             <button
@@ -170,7 +176,9 @@ const TaskCreationPopoverForm: FC<TaskCreationPopoverFormProps> = ({
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-xs text-muted-foreground">Due date</label>
+        <label className="text-xs text-muted-foreground">
+          {tPhaseF('phaseF.componentsNoteContentAreaTaskBlockTaskCreationPopover.dueDate')}
+        </label>
         <input
           type="date"
           value={dueDate}
@@ -186,7 +194,7 @@ const TaskCreationPopoverForm: FC<TaskCreationPopoverFormProps> = ({
 
       <div className="flex items-center justify-end gap-2 pt-1">
         <Button variant="ghost" size="sm" onClick={onCancel} disabled={isSubmitting}>
-          Cancel
+          {tPhaseF('phaseF.componentsNoteContentAreaTaskBlockTaskCreationPopover.cancel')}
         </Button>
         <Button
           ref={createBtnRef}

@@ -2,6 +2,7 @@ import { Calendar, Plus } from '@/lib/icons'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -22,6 +23,7 @@ export const UpcomingEmptyState = ({
   onAddTask,
   className
 }: UpcomingEmptyStateProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   // If there are overdue tasks but nothing upcoming
   if (hasOverdue) {
     return (
@@ -30,14 +32,17 @@ export const UpcomingEmptyState = ({
           <Calendar className="size-8 text-text-tertiary" aria-hidden="true" />
         </div>
         <h3 className="text-lg font-medium text-text-primary mb-2">
-          Nothing scheduled for the next 7 days
+          {tPhaseF('phaseF.componentsTasksUpcomingEmptyState.nothingScheduledForTheNext7Days')}
         </h3>
         <p className="text-sm text-text-tertiary mb-6 max-w-xs mx-auto">
-          You have overdue tasks above. Plan ahead by adding tasks for the coming week.
+          {tPhaseF(
+            'phaseF.componentsTasksUpcomingEmptyState.youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi'
+          )}
         </p>
         <Button onClick={onAddTask} size="sm">
           <Plus className="size-4" aria-hidden="true" />
-          Add task
+
+          {tPhaseF('phaseF.componentsTasksUpcomingEmptyState.addTask')}
         </Button>
       </div>
     )
@@ -52,17 +57,22 @@ export const UpcomingEmptyState = ({
       </div>
 
       {/* Title */}
-      <h3 className="text-lg font-medium text-text-primary mb-2">No upcoming tasks</h3>
+      <h3 className="text-lg font-medium text-text-primary mb-2">
+        {tPhaseF('phaseF.componentsTasksUpcomingEmptyState.noUpcomingTasks')}
+      </h3>
 
       {/* Description */}
       <p className="text-sm text-text-tertiary mb-6 max-w-sm mx-auto">
-        Tasks due in the next 7 days will appear here. Plan your week by adding some tasks.
+        {tPhaseF(
+          'phaseF.componentsTasksUpcomingEmptyState.tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding'
+        )}
       </p>
 
       {/* Action button */}
       <Button onClick={onAddTask} size="default">
         <Plus className="size-4" aria-hidden="true" />
-        Add task
+
+        {tPhaseF('phaseF.componentsTasksUpcomingEmptyState.addTask2')}
       </Button>
     </div>
   )

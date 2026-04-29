@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 
+import { useT } from '@memry/i18n/renderer'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -80,6 +81,8 @@ function AddTaskModalSession({
   onAddTask,
   projects
 }: AddTaskModalSessionProps): React.JSX.Element {
+  const { t } = useT('tasks')
+  const { t: tCommon } = useT('common')
   const titleInputRef = useRef<HTMLInputElement>(null)
   const [formData, setFormData] = useState<TaskFormData>(initialFormData)
   const [errors, setErrors] = useState<FormErrors>({})
@@ -141,7 +144,7 @@ function AddTaskModalSession({
     const newErrors: FormErrors = {}
 
     if (!formData.title.trim()) {
-      newErrors.title = 'Title is required'
+      newErrors.title = t('task.titleRequired')
     }
 
     setErrors(newErrors)
@@ -202,7 +205,7 @@ function AddTaskModalSession({
     <>
       <DialogContent className="max-w-lg" onKeyDown={handleKeyDown}>
         <DialogHeader>
-          <DialogTitle>Add Task</DialogTitle>
+          <DialogTitle>{t('task.add')}</DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col gap-6 py-4">
@@ -211,7 +214,7 @@ function AddTaskModalSession({
               htmlFor="task-title"
               className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
             >
-              Title <span className="text-destructive">*</span>
+              {t('task.title')} <span className="text-destructive">*</span>
             </label>
             <Input
               ref={titleInputRef}
@@ -219,7 +222,7 @@ function AddTaskModalSession({
               autoFocus
               value={formData.title}
               onChange={handleTitleChange}
-              placeholder="What needs to be done?"
+              placeholder={t('task.titlePlaceholder')}
               className={cn(errors.title && 'border-destructive')}
               aria-invalid={!!errors.title}
               aria-describedby={errors.title ? 'title-error' : undefined}
@@ -236,13 +239,13 @@ function AddTaskModalSession({
               htmlFor="task-description"
               className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
             >
-              Description
+              {t('task.description')}
             </label>
             <textarea
               id="task-description"
               value={formData.description}
               onChange={handleDescriptionChange}
-              placeholder="Add details, notes, or links..."
+              placeholder={t('task.descriptionPlaceholder')}
               rows={3}
               className={cn(
                 'flex min-h-[80px] w-full rounded-sm border border-input bg-transparent px-3 py-2 text-sm shadow-sm',
@@ -255,7 +258,7 @@ function AddTaskModalSession({
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
               <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Project
+                {t('task.project')}
               </label>
               <ProjectSelect
                 value={formData.projectId}
@@ -265,7 +268,7 @@ function AddTaskModalSession({
             </div>
             <div className="flex flex-col gap-2">
               <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Status
+                {t('task.status')}
               </label>
               <StatusSelect
                 value={formData.statusId}
@@ -278,7 +281,7 @@ function AddTaskModalSession({
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
               <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Due Date
+                {t('task.dueDate')}
               </label>
               <DueDatePicker
                 date={formData.dueDate}
@@ -289,7 +292,7 @@ function AddTaskModalSession({
             </div>
             <div className="flex flex-col gap-2">
               <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Priority
+                {t('task.priority')}
               </label>
               <PrioritySelect value={formData.priority} onChange={handlePriorityChange} />
             </div>
@@ -297,7 +300,7 @@ function AddTaskModalSession({
 
           <div className="flex flex-col gap-2">
             <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Repeat
+              {t('task.repeat')}
             </label>
             <RepeatPicker
               value={formData.repeatConfig}
@@ -319,15 +322,15 @@ function AddTaskModalSession({
               htmlFor="create-another"
               className="text-sm text-muted-foreground cursor-pointer"
             >
-              Create another
+              {t('task.createAnother')}
             </label>
           </div>
 
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={onClose}>
-              Cancel
+              {tCommon('button.cancel')}
             </Button>
-            <Button onClick={handleSubmit}>Add Task</Button>
+            <Button onClick={handleSubmit}>{t('task.add')}</Button>
           </div>
         </div>
       </DialogContent>

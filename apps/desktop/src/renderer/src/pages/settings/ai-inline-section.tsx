@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -26,9 +27,9 @@ import {
 const log = createLogger('Page:Settings:AIInline')
 
 const PROVIDER_OPTIONS = [
-  { value: 'ollama', label: 'Ollama (Local)' },
-  { value: 'openai', label: 'OpenAI' },
-  { value: 'anthropic', label: 'Anthropic' }
+  { value: 'ollama', labelKey: 'ai.inline.providers.ollama' },
+  { value: 'openai', labelKey: 'ai.inline.providers.openai' },
+  { value: 'anthropic', labelKey: 'ai.inline.providers.anthropic' }
 ] as const
 
 const MODEL_PRESETS: Record<string, string[]> = {
@@ -44,6 +45,8 @@ const BASE_URL_DEFAULTS: Record<string, string> = {
 }
 
 export function AIInlineSettings(): React.JSX.Element {
+  const { t: tPhaseF } = useT('settings')
+  const { t } = useT('settings')
   const [settings, setSettings] = useState<AIInlineSettings>(AI_INLINE_SETTINGS_DEFAULTS)
   const [isLoading, setIsLoading] = useState(true)
   const [isTesting, setIsTesting] = useState(false)
@@ -68,31 +71,34 @@ export function AIInlineSettings(): React.JSX.Element {
     void load()
   }, [])
 
-  const updateSetting = useCallback(async (updates: Partial<AIInlineSettings>) => {
-    try {
-      const result = (await window.electron.ipcRenderer.invoke(
-        'ai-inline:set-settings',
-        updates
-      )) as {
-        success: boolean
-        error?: string
+  const updateSetting = useCallback(
+    async (updates: Partial<AIInlineSettings>) => {
+      try {
+        const result = (await window.electron.ipcRenderer.invoke(
+          'ai-inline:set-settings',
+          updates
+        )) as {
+          success: boolean
+          error?: string
+        }
+        if (result.success) {
+          setSettings((prev) => ({ ...prev, ...updates }))
+        } else {
+          toast.error(extractErrorMessage(result.error, t('ai.inline.updateFailed')))
+        }
+      } catch (error) {
+        toast.error(extractErrorMessage(error, t('ai.inline.updateFailed')))
       }
-      if (result.success) {
-        setSettings((prev) => ({ ...prev, ...updates }))
-      } else {
-        toast.error(extractErrorMessage(result.error, 'Failed to update setting'))
-      }
-    } catch (error) {
-      toast.error(extractErrorMessage(error, 'Failed to update setting'))
-    }
-  }, [])
+    },
+    [t]
+  )
 
   const handleToggleEnabled = useCallback(
     async (enabled: boolean) => {
       await updateSetting({ enabled })
-      toast.success(enabled ? 'Inline AI editing enabled' : 'Inline AI editing disabled')
+      toast.success(enabled ? t('ai.inline.enabled') : t('ai.inline.disabled'))
     },
-    [updateSetting]
+    [updateSetting, t]
   )
 
   const handleProviderChange = useCallback(
@@ -111,7 +117,7 @@ export function AIInlineSettings(): React.JSX.Element {
         success: boolean
       }
       if (!stopResult.success) {
-        toast.error('Failed to stop existing server')
+        toast.error(t('ai.inline.stopFailed'))
         return
       }
 
@@ -123,25 +129,25 @@ export function AIInlineSettings(): React.JSX.Element {
 
       if (startResult.success && startResult.port) {
         setServerPort(startResult.port)
-        toast.success(`Connected! Server running on port ${startResult.port}`)
+        toast.success(t('ai.inline.connected', { port: startResult.port }))
       } else {
         setServerPort(null)
-        toast.error(startResult.error ?? 'Failed to connect')
+        toast.error(startResult.error ?? t('ai.inline.connectFailed'))
       }
     } catch (error) {
-      toast.error(extractErrorMessage(error, 'Connection test failed'))
+      toast.error(extractErrorMessage(error, t('ai.inline.testFailed')))
     } finally {
       setIsTesting(false)
     }
-  }, [])
+  }, [t])
 
   if (isLoading) {
     return (
       <div className="pb-6">
         <h4 className="uppercase pb-2 text-muted-foreground font-medium text-[11px]/3.5 tracking-[0.05em]">
-          Inline AI Editing
+          {t('ai.inline.title')}
         </h4>
-        <p className="text-xs/4 text-muted-foreground">Loading...</p>
+        <p className="text-xs/4 text-muted-foreground">{t('ai.inline.loading')}</p>
       </div>
     )
   }
@@ -150,8 +156,8 @@ export function AIInlineSettings(): React.JSX.Element {
   const models = MODEL_PRESETS[settings.provider] ?? []
 
   return (
-    <SettingsGroup label="Inline AI Editing">
-      <SettingRow label="Enable Inline AI" description="Show AI menu when editing notes">
+    <SettingsGroup label={t('ai.groups.inline')}>
+      <SettingRow label={t('ai.inline.enable')} description={t('ai.inline.enableDescription')}>
         <Switch
           checked={settings.enabled}
           onCheckedChange={handleToggleEnabled}
@@ -161,7 +167,10 @@ export function AIInlineSettings(): React.JSX.Element {
 
       {settings.enabled && (
         <>
-          <SettingRow label="Provider" description="AI service for text operations">
+          <SettingRow
+            label={t('ai.inline.provider')}
+            description={t('ai.inline.providerDescription')}
+          >
             <Select value={settings.provider} onValueChange={handleProviderChange}>
               <SelectTrigger className={COMPACT_SELECT}>
                 <SelectValue />
@@ -169,17 +178,17 @@ export function AIInlineSettings(): React.JSX.Element {
               <SelectContent>
                 {PROVIDER_OPTIONS.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
+                    {t(opt.labelKey)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </SettingRow>
 
-          <SettingRow label="Model" description="Language model for rewrite and summarize">
+          <SettingRow label={t('ai.inline.model')} description={t('ai.inline.modelDescription')}>
             <Select value={settings.model} onValueChange={(model) => void updateSetting({ model })}>
               <SelectTrigger className={COMPACT_SELECT}>
-                <SelectValue placeholder="Select a model" />
+                <SelectValue placeholder={t('ai.inline.selectModel')} />
               </SelectTrigger>
               <SelectContent>
                 {models.map((model) => (
@@ -192,14 +201,22 @@ export function AIInlineSettings(): React.JSX.Element {
           </SettingRow>
 
           {needsApiKey && (
-            <SettingRowTall label="API Key" description="Stored locally, sent only to the provider">
+            <SettingRowTall
+              label={t('ai.inline.apiKey')}
+              description={t('ai.inline.apiKeyDescription')}
+            >
               <div className="flex gap-2">
                 <Input
                   type={showApiKey ? 'text' : 'password'}
                   value={settings.apiKey}
                   onChange={(e) => setSettings((prev) => ({ ...prev, apiKey: e.target.value }))}
                   onBlur={() => void updateSetting({ apiKey: settings.apiKey })}
-                  placeholder={`Enter ${settings.provider === 'openai' ? 'OpenAI' : 'Anthropic'} API key`}
+                  placeholder={t('ai.inline.apiKeyPlaceholder', {
+                    provider:
+                      settings.provider === 'openai'
+                        ? t('ai.inline.providers.openai')
+                        : t('ai.inline.providers.anthropic')
+                  })}
                   className="flex-1 h-7 text-xs/4"
                 />
                 <Button
@@ -220,12 +237,15 @@ export function AIInlineSettings(): React.JSX.Element {
           )}
 
           {settings.provider === 'ollama' && (
-            <SettingRowTall label="Ollama URL" description="Local server address">
+            <SettingRowTall
+              label={t('ai.inline.ollamaUrl')}
+              description={t('ai.inline.ollamaUrlDescription')}
+            >
               <Input
                 value={settings.baseUrl}
                 onChange={(e) => setSettings((prev) => ({ ...prev, baseUrl: e.target.value }))}
                 onBlur={() => void updateSetting({ baseUrl: settings.baseUrl })}
-                placeholder="http://localhost:11434/v1"
+                placeholder={tPhaseF('phaseF.pagesSettingsAiInlineSection.httpLocalhost11434V1')}
                 className="h-7 text-xs/4"
               />
             </SettingRowTall>
@@ -236,16 +256,22 @@ export function AIInlineSettings(): React.JSX.Element {
               {serverPort ? (
                 <>
                   <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
-                  <span className="text-[13px]/4 font-medium text-foreground">Connection</span>
+                  <span className="text-[13px]/4 font-medium text-foreground">
+                    {t('ai.inline.connection')}
+                  </span>
                   <span className="text-xs/4 text-muted-foreground">
-                    Active on port {serverPort}
+                    {t('ai.inline.activePort', { port: serverPort })}
                   </span>
                 </>
               ) : (
                 <>
                   <span className="w-2 h-2 rounded-full bg-muted-foreground/40 shrink-0" />
-                  <span className="text-[13px]/4 font-medium text-foreground">Connection</span>
-                  <span className="text-xs/4 text-muted-foreground">Not connected</span>
+                  <span className="text-[13px]/4 font-medium text-foreground">
+                    {t('ai.inline.connection')}
+                  </span>
+                  <span className="text-xs/4 text-muted-foreground">
+                    {t('ai.inline.notConnected')}
+                  </span>
                 </>
               )}
             </div>
@@ -256,7 +282,7 @@ export function AIInlineSettings(): React.JSX.Element {
               disabled={isTesting || (needsApiKey && !settings.apiKey)}
               className="h-7 px-3 text-xs/4"
             >
-              {isTesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Test'}
+              {isTesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : t('ai.inline.test')}
             </Button>
           </div>
         </>

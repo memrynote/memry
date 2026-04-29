@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,6 +47,8 @@ const STORAGE_COLORS: Record<string, string> = {
 }
 
 export function AccountSettings() {
+  const { t } = useT('settings')
+  const { t: tCommon } = useT('common')
   const { state, logout } = useAuth()
   const { linkingRequest, clearLinkingRequest } = useSync()
   const syncStatus = useSyncStatus()
@@ -78,19 +81,19 @@ export function AccountSettings() {
     setSigningOut(true)
     try {
       await logout()
-      toast.success('Signed out successfully')
+      toast.success(t('account.toasts.signedOut'))
     } catch (error: unknown) {
-      toast.error(extractErrorMessage(error, 'Failed to sign out'))
+      toast.error(extractErrorMessage(error, t('account.toasts.signOutFailed')))
     } finally {
       setSigningOut(false)
       setShowSignOutDialog(false)
     }
-  }, [logout])
+  }, [logout, t])
 
   if (state.status === 'checking') {
     return (
       <div className="flex flex-col">
-        <SettingsHeader title="Account" subtitle="Loading..." />
+        <SettingsHeader title={t('account.header.title')} subtitle={t('account.header.loading')} />
       </div>
     )
   }
@@ -109,12 +112,18 @@ export function AccountSettings() {
   const initial = (email ?? 'U').charAt(0).toUpperCase()
   const isSyncActive = syncStatus.status !== 'paused'
   const isToggleDisabled = syncStatus.status === 'syncing' || syncStatus.status === 'offline'
+  const storageCategoryLabels: Record<string, string> = {
+    notes: t('account.storage.categories.notes'),
+    attachments: t('account.storage.categories.attachments'),
+    crdt: t('account.storage.categories.crdt'),
+    other: t('account.storage.categories.other')
+  }
 
   return (
     <div className="flex flex-col text-xs/4">
-      <SettingsHeader title="Account" subtitle="Your account, sync, and security" />
+      <SettingsHeader title={t('account.header.title')} subtitle={t('account.header.subtitle')} />
 
-      <SettingsGroup label="Identity">
+      <SettingsGroup label={t('account.groups.identity')}>
         <div className="flex items-center gap-3 h-14 py-3 px-4">
           <div
             className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-white text-sm font-semibold"
@@ -124,22 +133,23 @@ export function AccountSettings() {
           </div>
           <div className="flex flex-col gap-px min-w-0">
             <span className="font-medium text-[13px]/4 text-foreground truncate">
-              {email ?? 'Unknown'}
+              {email ?? t('account.identity.unknown')}
             </span>
-            <span className="text-xs/4 text-muted-foreground">Pro plan</span>
+            <span className="text-xs/4 text-muted-foreground">{t('account.identity.plan')}</span>
           </div>
         </div>
       </SettingsGroup>
 
-      <SettingsGroup label="Sync">
+      <SettingsGroup label={t('account.groups.sync')}>
         <div className="flex items-center justify-between h-11 px-4 shrink-0">
           <div className="flex items-center gap-2">
             <div className={`shrink-0 rounded-sm size-2 ${syncStatus.dotColor}`} />
             <div className="flex flex-col gap-px">
               <span className="font-medium text-[13px]/4 text-foreground">{syncStatus.label}</span>
               <span className="text-xs/4 text-muted-foreground">
-                Last synced {syncStatus.lastSyncLabel}
-                {syncStatus.pendingCount > 0 && ` · ${syncStatus.pendingCount} pending`}
+                {t('account.sync.lastSynced', { time: syncStatus.lastSyncLabel })}
+                {syncStatus.pendingCount > 0 &&
+                  ` · ${t('account.sync.pending', { count: syncStatus.pendingCount })}`}
               </span>
             </div>
           </div>
@@ -153,11 +163,14 @@ export function AccountSettings() {
       </SettingsGroup>
 
       {storage && (
-        <SettingsGroup label="Storage">
+        <SettingsGroup label={t('account.groups.storage')}>
           <div className="py-3 px-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-[13px]/4 text-foreground">
-                {formatBytes(storage.used)} of {formatBytes(storage.limit)} used
+                {t('account.storage.used', {
+                  used: formatBytes(storage.used),
+                  limit: formatBytes(storage.limit)
+                })}
               </span>
               <Button
                 variant="ghost"
@@ -176,7 +189,7 @@ export function AccountSettings() {
                 return (
                   <div
                     key={key}
-                    className="h-full first:rounded-l-full last:rounded-r-full"
+                    className="h-full first:rounded-s-full last:rounded-e-full"
                     style={{
                       width: `${pct}%`,
                       backgroundColor: STORAGE_COLORS[key] ?? '#8c8c8c'
@@ -193,7 +206,9 @@ export function AccountSettings() {
                     className="w-2 h-2 rounded-full shrink-0"
                     style={{ backgroundColor: STORAGE_COLORS[key] ?? '#8c8c8c' }}
                   />
-                  <span className="text-xs/4 text-muted-foreground capitalize">{key}</span>
+                  <span className="text-xs/4 text-muted-foreground">
+                    {storageCategoryLabels[key] ?? key}
+                  </span>
                 </div>
               ))}
             </div>
@@ -201,25 +216,28 @@ export function AccountSettings() {
         </SettingsGroup>
       )}
 
-      <SettingsGroup label="Devices">
+      <SettingsGroup label={t('account.groups.devices')}>
         <DeviceList onLinkDevice={() => setShowLinkingQr(true)} />
       </SettingsGroup>
 
-      <SettingsGroup label="Security">
-        <SettingRow label="Recovery Key" description="View your recovery key for data access">
+      <SettingsGroup label={t('account.groups.security')}>
+        <SettingRow
+          label={t('account.security.recoveryKey.label')}
+          description={t('account.security.recoveryKey.description')}
+        >
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowRecoveryKey(true)}
             className="h-7 px-3 text-xs/4"
           >
-            View Key
+            {t('account.security.recoveryKey.action')}
           </Button>
         </SettingRow>
 
         <SettingRow
-          label="Rotate Encryption Keys"
-          description="Generate new keys and re-encrypt all data"
+          label={t('account.security.rotateKeys.label')}
+          description={t('account.security.rotateKeys.description')}
         >
           <Button
             variant="outline"
@@ -227,20 +245,23 @@ export function AccountSettings() {
             onClick={() => setShowRotationWizard(true)}
             className="h-7 px-3 text-xs/4"
           >
-            Rotate
+            {t('account.security.rotateKeys.action')}
           </Button>
         </SettingRow>
       </SettingsGroup>
 
       <SettingsGroup>
-        <SettingRow label="Sign Out" description="Disconnect this device from sync">
+        <SettingRow
+          label={t('account.security.signOut.label')}
+          description={t('account.security.signOut.description')}
+        >
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowSignOutDialog(true)}
             className="h-7 px-3 text-xs/4 text-destructive border-destructive/30 hover:bg-destructive/10"
           >
-            Sign Out
+            {t('account.security.signOut.action')}
           </Button>
         </SettingRow>
       </SettingsGroup>
@@ -248,20 +269,21 @@ export function AccountSettings() {
       <AlertDialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Sign out of sync?</AlertDialogTitle>
+            <AlertDialogTitle>{t('account.signOutDialog.title')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Sync will stop and encryption keys will be removed from this device. Your notes will
-              remain on this device. You&apos;ll need your recovery phrase to set up sync again.
+              {t('account.signOutDialog.description')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={signingOut}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={signingOut}>{tCommon('button.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleSignOut}
               disabled={signingOut}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {signingOut ? 'Signing out...' : 'Sign out'}
+              {signingOut
+                ? t('account.signOutDialog.signingOut')
+                : t('account.signOutDialog.confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -281,7 +303,7 @@ export function AccountSettings() {
         event={linkingRequest}
         onApprove={() => {
           clearLinkingRequest()
-          toast.success('Device linked successfully')
+          toast.success(t('account.toasts.deviceLinked'))
         }}
         onReject={clearLinkingRequest}
       />

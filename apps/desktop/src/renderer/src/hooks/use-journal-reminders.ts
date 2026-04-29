@@ -18,6 +18,7 @@ import {
 } from './use-reminders'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Hook:JournalReminders')
 
@@ -60,6 +61,7 @@ export interface UseJournalRemindersResult {
  * @param journalDate - Journal date in YYYY-MM-DD format
  */
 export function useJournalReminders(journalDate: string | null): UseJournalRemindersResult {
+  const { t } = useT('journal')
   // Fetch reminders for this journal entry
   const {
     reminders,
@@ -102,19 +104,19 @@ export function useJournalReminders(journalDate: string | null): UseJournalRemin
         })
 
         if (result.success) {
-          toast.success('Reminder set for this journal entry')
+          toast.success(t('reminder.success.set'))
           return true
         } else {
-          toast.error(extractErrorMessage(result.error, 'Failed to set reminder'))
+          toast.error(extractErrorMessage(result.error, t('reminder.error.set')))
           return false
         }
       } catch (err) {
         log.error('Failed to set journal reminder:', err)
-        toast.error('Failed to set reminder')
+        toast.error(t('reminder.error.set'))
         return false
       }
     },
-    [journalDate, createReminderMutation]
+    [journalDate, createReminderMutation, t]
   )
 
   const deleteReminderAction = useCallback(
@@ -123,19 +125,19 @@ export function useJournalReminders(journalDate: string | null): UseJournalRemin
         const result = await deleteReminderMutation.mutateAsync(reminderId)
 
         if (result.success) {
-          toast.success('Reminder deleted')
+          toast.success(t('reminder.success.deleted'))
           return true
         } else {
-          toast.error(extractErrorMessage(result.error, 'Failed to delete reminder'))
+          toast.error(extractErrorMessage(result.error, t('reminder.error.delete')))
           return false
         }
       } catch (err) {
         log.error('Failed to delete reminder:', err)
-        toast.error('Failed to delete reminder')
+        toast.error(t('reminder.error.delete'))
         return false
       }
     },
-    [deleteReminderMutation]
+    [deleteReminderMutation, t]
   )
 
   const dismissReminderAction = useCallback(
@@ -144,19 +146,19 @@ export function useJournalReminders(journalDate: string | null): UseJournalRemin
         const result = await dismissReminderMutation.mutateAsync(reminderId)
 
         if (result.success) {
-          toast.success('Reminder dismissed')
+          toast.success(t('reminder.success.dismissed'))
           return true
         } else {
-          toast.error(extractErrorMessage(result.error, 'Failed to dismiss reminder'))
+          toast.error(extractErrorMessage(result.error, t('reminder.error.dismiss')))
           return false
         }
       } catch (err) {
         log.error('Failed to dismiss reminder:', err)
-        toast.error('Failed to dismiss reminder')
+        toast.error(t('reminder.error.dismiss'))
         return false
       }
     },
-    [dismissReminderMutation]
+    [dismissReminderMutation, t]
   )
 
   const snoozeReminderAction = useCallback(
@@ -168,19 +170,19 @@ export function useJournalReminders(journalDate: string | null): UseJournalRemin
         })
 
         if (result.success) {
-          toast.success('Reminder snoozed')
+          toast.success(t('reminder.success.snoozed'))
           return true
         } else {
-          toast.error(extractErrorMessage(result.error, 'Failed to snooze reminder'))
+          toast.error(extractErrorMessage(result.error, t('reminder.error.snooze')))
           return false
         }
       } catch (err) {
         log.error('Failed to snooze reminder:', err)
-        toast.error('Failed to snooze reminder')
+        toast.error(t('reminder.error.snooze'))
         return false
       }
     },
-    [snoozeReminderMutation]
+    [snoozeReminderMutation, t]
   )
 
   const actions: JournalReminderActions = useMemo(

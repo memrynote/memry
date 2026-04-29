@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useRegisterEvents, useSigma } from '@react-sigma/core'
 import { useTabActions } from '@/contexts/tabs'
+import { useT } from '@memry/i18n/renderer'
 
 interface GraphEventsProps {
   onHoverNode: (nodeId: string | null) => void
@@ -18,6 +19,7 @@ export function GraphEvents({
   const sigma = useSigma()
   const registerEvents = useRegisterEvents()
   const { openTab } = useTabActions()
+  const { t } = useT('graph')
 
   useEffect(() => {
     registerEvents({
@@ -33,7 +35,7 @@ export function GraphEvents({
       },
       clickNode: ({ node }) => {
         onContextMenu?.(null)
-        openNodeInTab(sigma, openTab, node)
+        openNodeInTab(sigma, openTab, node, t('context-menu.untitled'))
       },
       rightClickNode: ({ node, event }) => {
         event.preventSigmaDefault()
@@ -43,7 +45,7 @@ export function GraphEvents({
         onContextMenu?.(null)
       }
     })
-  }, [sigma, registerEvents, openTab, onHoverNode, onTooltipMove, onFocusNode, onContextMenu])
+  }, [sigma, registerEvents, openTab, onHoverNode, onTooltipMove, onFocusNode, onContextMenu, t])
 
   return null
 }
@@ -51,7 +53,8 @@ export function GraphEvents({
 function openNodeInTab(
   sigma: ReturnType<typeof useSigma>,
   openTab: ReturnType<typeof useTabActions>['openTab'],
-  node: string
+  node: string,
+  untitledLabel: string
 ): void {
   const graph = sigma.getGraph()
   if (!graph.hasNode(node)) return
@@ -74,7 +77,7 @@ function openNodeInTab(
 
   openTab({
     type: tabType as 'note' | 'journal' | 'tasks' | 'project',
-    title: (attrs.label as string) || 'Untitled',
+    title: (attrs.label as string) || untitledLabel,
     icon:
       tabType === 'note'
         ? 'file-text'

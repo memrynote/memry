@@ -8,6 +8,7 @@
 import { memo } from 'react'
 import { FileText, Type, Clock, Calendar } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 export interface JournalStatsFooterProps {
   /** Word count of the entry */
@@ -26,20 +27,16 @@ export interface JournalStatsFooterProps {
  * Calculate estimated reading time in minutes
  * Average reading speed is ~200-250 words per minute
  */
-const calculateReadingTime = (wordCount: number): string => {
-  const minutes = Math.ceil(wordCount / 200)
-  if (minutes < 1) return '< 1 min'
-  return `${minutes} min`
-}
+const calculateReadingMinutes = (wordCount: number): number => Math.ceil(wordCount / 200)
 
 /**
  * Format date for display
  */
-const formatDate = (dateStr: string | null): string => {
+const formatDate = (dateStr: string | null, locale: string): string => {
   if (!dateStr) return '—'
   try {
     const date = new Date(dateStr)
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString(locale, {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
@@ -56,8 +53,13 @@ export const JournalStatsFooter = memo(function JournalStatsFooter({
   modifiedAt,
   className
 }: JournalStatsFooterProps): React.JSX.Element {
-  const readingTime = calculateReadingTime(wordCount)
-  const modifiedDate = formatDate(modifiedAt || createdAt)
+  const { t, i18n } = useT('journal')
+  const readingMinutes = calculateReadingMinutes(wordCount)
+  const readingTime =
+    readingMinutes < 1
+      ? t('stats.lessThanOneMinute')
+      : t('stats.minutes', { minutes: readingMinutes })
+  const modifiedDate = formatDate(modifiedAt || createdAt, i18n.language)
 
   return (
     <div
@@ -71,12 +73,12 @@ export const JournalStatsFooter = memo(function JournalStatsFooter({
         className
       )}
       role="contentinfo"
-      aria-label="Document statistics"
+      aria-label={t('aria.documentStatistics')}
     >
       {/* Word Count */}
-      <div className="flex items-center gap-1.5" title="Word count">
+      <div className="flex items-center gap-1.5" title={t('stats.wordCount')}>
         <FileText className="size-3.5" aria-hidden="true" />
-        <span>{wordCount.toLocaleString()} words</span>
+        <span>{t('count.words', { count: wordCount })}</span>
       </div>
 
       <span className="text-border" aria-hidden="true">
@@ -84,9 +86,9 @@ export const JournalStatsFooter = memo(function JournalStatsFooter({
       </span>
 
       {/* Character Count */}
-      <div className="flex items-center gap-1.5" title="Character count">
+      <div className="flex items-center gap-1.5" title={t('stats.characterCount')}>
         <Type className="size-3.5" aria-hidden="true" />
-        <span>{characterCount.toLocaleString()} chars</span>
+        <span>{t('count.characters', { count: characterCount })}</span>
       </div>
 
       <span className="text-border" aria-hidden="true">
@@ -94,9 +96,9 @@ export const JournalStatsFooter = memo(function JournalStatsFooter({
       </span>
 
       {/* Reading Time */}
-      <div className="flex items-center gap-1.5" title="Estimated reading time">
+      <div className="flex items-center gap-1.5" title={t('stats.readingTime')}>
         <Clock className="size-3.5" aria-hidden="true" />
-        <span>{readingTime} read</span>
+        <span>{t('stats.read', { readingTime })}</span>
       </div>
 
       <span className="text-border" aria-hidden="true">
@@ -104,9 +106,9 @@ export const JournalStatsFooter = memo(function JournalStatsFooter({
       </span>
 
       {/* Modified Date */}
-      <div className="flex items-center gap-1.5" title="Last modified">
+      <div className="flex items-center gap-1.5" title={t('stats.lastModified')}>
         <Calendar className="size-3.5" aria-hidden="true" />
-        <span>Modified {modifiedDate}</span>
+        <span>{t('stats.modified', { date: modifiedDate })}</span>
       </div>
     </div>
   )
