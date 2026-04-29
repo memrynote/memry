@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import type { DragEndEvent, DragStartEvent, DragOverEvent } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import { toast } from 'sonner'
+import { useT } from '@memry/i18n/renderer'
 
 import { resolveTaskEdgeFromDndEvent, type DragState } from '@/contexts/drag-context'
 import { formatDateShort, startOfDay, getDefaultTodoStatus } from '@/lib/task-utils'
@@ -151,6 +152,7 @@ export const useDragHandlers = ({
   onReorder,
   getOrder
 }: UseDragHandlersProps): UseDragHandlersReturn => {
+  const { t } = useT('tasks')
   const [undoStack, setUndoStack] = useState<UndoAction[]>([])
   const [lastActionDescription, setLastActionDescription] = useState<string | null>(null)
   const [droppedPriorities, setDroppedPriorities] = useState<Map<string, Priority>>(new Map())
@@ -722,18 +724,21 @@ export const useDragHandlers = ({
         onDeleteTask(id)
       })
 
-      toast.success(taskIds.length === 1 ? 'Task deleted' : `${taskIds.length} tasks deleted`, {
-        action: {
-          label: 'Undo',
-          onClick: () => {
-            // Note: This is a simplified undo - actual implementation would
-            // need to re-create the tasks
-            toast.info('Undo not available for delete')
+      toast.success(
+        taskIds.length === 1 ? t('toasts.deleted') : `${taskIds.length} tasks deleted`,
+        {
+          action: {
+            label: 'Undo',
+            onClick: () => {
+              // Note: This is a simplified undo - actual implementation would
+              // need to re-create the tasks
+              toast.info(t('toasts.undoNotAvailableForDelete'))
+            }
           }
         }
-      })
+      )
     },
-    [tasks, onDeleteTask]
+    [tasks, onDeleteTask, t]
   )
 
   // Handle dropping on archive
@@ -752,15 +757,18 @@ export const useDragHandlers = ({
         `Archived ${taskIds.length} task${taskIds.length !== 1 ? 's' : ''}`
       )
 
-      toast.success(taskIds.length === 1 ? 'Task archived' : `${taskIds.length} tasks archived`, {
-        duration: 10000, // T052: 10-second timeout for undo per spec
-        action: {
-          label: 'Undo',
-          onClick: undo
+      toast.success(
+        taskIds.length === 1 ? t('toasts.archived') : `${taskIds.length} tasks archived`,
+        {
+          duration: 10000, // T052: 10-second timeout for undo per spec
+          action: {
+            label: 'Undo',
+            onClick: undo
+          }
         }
-      })
+      )
     },
-    [onUpdateTask, recordAction, undo]
+    [onUpdateTask, recordAction, undo, t]
   )
 
   // Main drag end handler
