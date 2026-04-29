@@ -30,6 +30,7 @@ interface TriageViewProps {
 
 export function TriageView({ onExit }: TriageViewProps): React.JSX.Element | null {
   const { t } = useT('inbox')
+  const { t: tCommon } = useT('common')
   const { state, actions } = useTriageQueue()
   const { stats } = useInboxStats()
   const { archiveWithUndo } = useUndoableAction()
@@ -75,14 +76,14 @@ export function TriageView({ onExit }: TriageViewProps): React.JSX.Element | nul
           await action()
         } catch (err) {
           log.error('Triage action failed:', err)
-          toast.error(extractErrorMessage(err, 'Action failed'))
+          toast.error(extractErrorMessage(err, tCommon('toast.actionFailed')))
         } finally {
           setSlideDir(null)
           setIsAnimating(false)
         }
       }, 250)
     },
-    [isAnimating]
+    [isAnimating, tCommon]
   )
 
   const handleDiscard = useCallback(() => {
