@@ -13,6 +13,7 @@ import {
 } from '@/lib/icons'
 import { useSync } from '@/contexts/sync-context'
 import { notesService } from '@/services/notes-service'
+import { useT } from '@memry/i18n/renderer'
 
 type SyncStatusType = 'idle' | 'syncing' | 'paused' | 'error' | 'offline' | 'unknown'
 
@@ -47,43 +48,49 @@ interface SyncStatusResult extends SyncStatusDisplay {
   clearError: () => void
 }
 
-const STATUS_MAP: Record<string, SyncStatusDisplay> = {
+const STATUS_MAP: Record<string, Omit<SyncStatusDisplay, 'label'> & { labelKey: string }> = {
   idle: {
-    label: 'Synced',
+    labelKey: 'account.sync.statuses.synced',
     dotColor: 'bg-green-500',
     IconComponent: CloudSavingDone,
     isAnimating: false
   },
   syncing: {
-    label: 'Syncing...',
+    labelKey: 'account.sync.statuses.syncing',
     dotColor: 'bg-blue-500',
     IconComponent: Loader2,
     isAnimating: true
   },
-  paused: { label: 'Paused', dotColor: 'bg-yellow-500', IconComponent: Pause, isAnimating: false },
+  paused: {
+    labelKey: 'account.sync.statuses.paused',
+    dotColor: 'bg-yellow-500',
+    IconComponent: Pause,
+    isAnimating: false
+  },
   error: {
-    label: 'Sync Error',
+    labelKey: 'account.sync.statuses.syncError',
     dotColor: 'bg-red-500',
     IconComponent: AlertCircle,
     isAnimating: false
   },
   offline: {
-    label: 'Offline',
+    labelKey: 'account.sync.statuses.offline',
     dotColor: 'bg-gray-400',
     IconComponent: CloudOff,
     isAnimating: false
   },
   unknown: {
-    label: 'Connecting...',
+    labelKey: 'account.sync.statuses.connecting',
     dotColor: 'bg-gray-400',
     IconComponent: Cloud,
     isAnimating: false
   }
 }
 
-const FALLBACK_DISPLAY: SyncStatusDisplay = STATUS_MAP.unknown
+const FALLBACK_DISPLAY = STATUS_MAP.unknown
 
 export function useSyncStatus(): SyncStatusResult {
+  const { t } = useT('settings')
   const { state, triggerSync, pause, resume, clearError } = useSync()
   const {
     status,
@@ -110,11 +117,13 @@ export function useSyncStatus(): SyncStatusResult {
       const { pushCount, pullCount } = syncActivity
       const hasActivity = pushCount > 0 || pullCount > 0
       const parts: string[] = []
-      if (pushCount > 0) parts.push(`${pushCount} pushed`)
-      if (pullCount > 0) parts.push(`${pullCount} pulled`)
+      if (pushCount > 0) parts.push(t('account.sync.statuses.pushed', { count: pushCount }))
+      if (pullCount > 0) parts.push(t('account.sync.statuses.pulled', { count: pullCount }))
 
       return {
-        label: hasActivity ? parts.join(', ') : 'Syncing...',
+        label: hasActivity
+          ? t('account.sync.statuses.pushedPulled', { parts: parts.join(', ') })
+          : t('account.sync.statuses.syncing'),
         dotColor: 'bg-blue-500',
         IconComponent: Loader2,
         isAnimating: true
@@ -123,7 +132,7 @@ export function useSyncStatus(): SyncStatusResult {
 
     if (status === 'idle' && pendingCount > 0) {
       return {
-        label: `${pendingCount} ${pendingCount === 1 ? 'change' : 'changes'} pending`,
+        label: t('account.sync.statuses.changesPending', { count: pendingCount }),
         dotColor: 'bg-amber-500',
         IconComponent: ArrowUpFromLine,
         isAnimating: false
@@ -132,19 +141,26 @@ export function useSyncStatus(): SyncStatusResult {
 
     if (status === 'offline' && pendingCount > 0) {
       return {
-        label: `Offline (${pendingCount} ${pendingCount === 1 ? 'change' : 'changes'} pending)`,
+        label: t('account.sync.statuses.offlinePending', { count: pendingCount }),
         dotColor: 'bg-gray-400',
         IconComponent: CloudOff,
         isAnimating: false
       }
     }
 
-    return STATUS_MAP[status] ?? FALLBACK_DISPLAY
-  }, [status, pendingCount, syncActivity])
+    const nextDisplay = STATUS_MAP[status] ?? FALLBACK_DISPLAY
+    return {
+      ...nextDisplay,
+      label: t(nextDisplay.labelKey)
+    }
+  }, [status, pendingCount, syncActivity, t])
 
   const lastSyncLabel = useMemo(
-    () => (lastSyncAt ? formatDistanceToNow(lastSyncAt, { addSuffix: true }) : 'Never'),
-    [lastSyncAt]
+    () =>
+      lastSyncAt
+        ? formatDistanceToNow(lastSyncAt, { addSuffix: true })
+        : t('account.sync.statuses.never'),
+    [lastSyncAt, t]
   )
 
   const hasIssues = useMemo(

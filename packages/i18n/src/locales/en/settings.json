@@ -399,6 +399,8 @@
         "syncError": "Sync Error",
         "offline": "Offline",
         "connecting": "Connecting...",
+        "pushed": "{count, plural, one {# pushed} other {# pushed}}",
+        "pulled": "{count, plural, one {# pulled} other {# pulled}}",
         "pushedPulled": "{parts}",
         "changesPending": "{count, plural, one {# change pending} other {# changes pending}}",
         "offlinePending": "Offline ({count, plural, one {# change pending} other {# changes pending}})",

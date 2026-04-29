@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { Loader2 } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
 
 interface OAuthButtonsProps {
   onGoogleClick: () => void
@@ -35,6 +36,8 @@ export function OAuthButtons({
   isLoading,
   error
 }: OAuthButtonsProps): React.JSX.Element {
+  const { t } = useT('settings')
+
   return (
     <div className="space-y-3">
       <Button
@@ -44,7 +47,7 @@ export function OAuthButtons({
         disabled={isLoading}
       >
         {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <GoogleIcon />}
-        Continue with Google
+        {t('setup.oauth.google')}
       </Button>
 
       {error && (
