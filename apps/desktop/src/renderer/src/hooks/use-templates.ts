@@ -1,3 +1,4 @@
+import { getI18n } from 'react-i18next'
 /**
  * useTemplates Hook
  *
@@ -60,7 +61,12 @@ export function useTemplates(options: UseTemplatesOptions = {}): UseTemplatesRet
       const response = await templatesService.list()
       setTemplates(response.templates)
     } catch (err) {
-      setError(extractErrorMessage(err, 'Failed to load templates'))
+      setError(
+        extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToLoadTemplates')
+        )
+      )
     } finally {
       setIsLoading(false)
     }

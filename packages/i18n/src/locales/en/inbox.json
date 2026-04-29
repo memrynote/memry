@@ -463,5 +463,21 @@
       "stopRecording": "Stop recording",
       "stop": "Stop"
     }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCaptureLink": "Failed to capture link",
+      "failedToCaptureNote": "Failed to capture note",
+      "captureFailed": "Capture failed",
+      "failedToCaptureVoiceMemo": "Failed to capture voice memo",
+      "voiceCaptureFailed": "Voice capture failed",
+      "failedToCaptureFile": "Failed to capture file",
+      "fileCaptureFailed": "File capture failed",
+      "failedToCaptureAudio": "Failed to capture audio",
+      "failedToCaptureVoice": "Failed to capture voice"
+    },
+    "toasts": {
+      "inboxRefreshed": "Inbox refreshed"
+    }
   }
 }

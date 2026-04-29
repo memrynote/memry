@@ -7,6 +7,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { cn } from '@/lib/utils'
 import { POPOVER_WIDTH, computePopoverPosition } from './popover-position'
 import type { AnchorRect, CalendarEventDraft } from './types'
+import { getI18n } from 'react-i18next'
 
 interface CalendarQuickCreateDialogProps {
   anchorRect: AnchorRect
@@ -97,7 +98,12 @@ export function CalendarQuickCreateDialog({
     try {
       await onSave(buildDraft())
     } catch (error) {
-      setErrorMessage(extractErrorMessage(error, 'Could not create event. Try again.'))
+      setErrorMessage(
+        extractErrorMessage(
+          error,
+          getI18n().getFixedT(null, 'calendar')('phaseI.errors.couldNotCreateEventTryAgain')
+        )
+      )
       setIsSubmitting(false)
     }
   }

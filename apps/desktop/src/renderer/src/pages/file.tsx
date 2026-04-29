@@ -1,3 +1,4 @@
+import { getI18n } from 'react-i18next'
 /**
  * FilePage Component
  *
@@ -202,7 +203,10 @@ export function FilePage({ fileId }: FilePageProps) {
   if (error) {
     return (
       <FileErrorState
-        error={extractErrorMessage(error, 'Failed to load file')}
+        error={extractErrorMessage(
+          error,
+          getI18n().getFixedT(null, 'notes')('phaseF.pagesFile.failedToLoadFile')
+        )}
         onRetry={() => refetch()}
       />
     )

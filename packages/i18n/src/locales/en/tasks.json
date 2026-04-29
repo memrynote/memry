@@ -613,5 +613,39 @@
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Tasks due in the next 7 days will appear here. Plan your week by adding some tasks.",
       "addTask2": "Add task"
     }
+  },
+  "phaseI": {
+    "toasts": {
+      "changesUndone": "Changes undone",
+      "projectNotFound": "Project not found",
+      "failedToArchiveTasks": "Failed to archive tasks",
+      "tasksRestoredFromArchive": "Tasks restored from archive",
+      "subtaskAdded": "Subtask added",
+      "subtaskDeleted": "Subtask deleted",
+      "taskCompleted": "Task completed",
+      "allSubtasksCompleteTaskMarkedAsDone": "🎉 All subtasks complete! Task marked as done.",
+      "taskReopened": "Task reopened",
+      "taskKeptOpen": "Task kept open",
+      "taskMarkedAsDone": "🎉 Task marked as done!"
+    },
+    "errors": {
+      "failedToArchiveTasks": "Failed to archive tasks",
+      "failedToAddSubtask": "Failed to add subtask",
+      "failedToAddSubtasks": "Failed to add subtasks",
+      "failedToReorderSubtasks": "Failed to reorder subtasks",
+      "failedToPromoteSubtask": "Failed to promote subtask",
+      "failedToDeleteSubtask": "Failed to delete subtask",
+      "failedToDeleteTask": "Failed to delete task",
+      "failedToCompleteTask": "Failed to complete task",
+      "failedToMakeSubtask": "Failed to make subtask",
+      "failedToCompleteSubtasks": "Failed to complete subtasks",
+      "failedToMarkSubtasksIncomplete": "Failed to mark subtasks incomplete",
+      "failedToSetDueDate": "Failed to set due date",
+      "failedToSetPriority": "Failed to set priority",
+      "failedToDeleteSubtasks": "Failed to delete subtasks",
+      "failedToLoadTaskPreferences": "Failed to load task preferences",
+      "failedToUpdateTaskPreferences": "Failed to update task preferences",
+      "failedToLoadLinkedTasks": "Failed to load linked tasks"
+    }
   }
 }

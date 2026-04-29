@@ -1,3 +1,4 @@
+import { getI18n } from 'react-i18next'
 /**
  * useJournalSettings Hook
  *
@@ -64,7 +65,12 @@ export function useJournalSettings(): UseJournalSettingsReturn {
         }
       } catch (err) {
         if (mounted) {
-          setError(extractErrorMessage(err, 'Failed to load journal settings'))
+          setError(
+            extractErrorMessage(
+              err,
+              getI18n().getFixedT(null, 'journal')('phaseI.errors.failedToLoadJournalSettings')
+            )
+          )
         }
       } finally {
         if (mounted) {
@@ -105,10 +111,20 @@ export function useJournalSettings(): UseJournalSettingsReturn {
           setSettings((prev) => ({ ...prev, ...updates }))
           return true
         }
-        setError(extractErrorMessage(result.error, 'Failed to update settings'))
+        setError(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'journal')('phaseI.errors.failedToUpdateSettings')
+          )
+        )
         return false
       } catch (err) {
-        setError(extractErrorMessage(err, 'Failed to update settings'))
+        setError(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'journal')('phaseI.errors.failedToUpdateSettings')
+          )
+        )
         return false
       }
     },

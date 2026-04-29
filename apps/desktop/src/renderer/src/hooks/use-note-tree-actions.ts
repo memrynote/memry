@@ -21,6 +21,7 @@ import {
   type TreeStructure
 } from '@/components/notes-tree-utils'
 import type { MoveOperation, DropPosition } from '@/components/kibo-ui/tree'
+import { getI18n } from 'react-i18next'
 
 const log = createLogger('Hook:NoteTreeActions')
 
@@ -166,7 +167,12 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       }
     } catch (err) {
       log.error('Failed to create note', err)
-      toast.error(extractErrorMessage(err, 'Failed to create note'))
+      toast.error(
+        extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToCreateNote')
+        )
+      )
     } finally {
       setIsCreating(false)
     }
@@ -211,7 +217,12 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         }
       } catch (err) {
         log.error('Failed to create note', err)
-        toast.error(extractErrorMessage(err, 'Failed to create note'))
+        toast.error(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToCreateNote')
+          )
+        )
       } finally {
         setIsCreating(false)
       }
@@ -250,7 +261,12 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       }
     } catch (err) {
       log.error('Failed to create folder', err)
-      toast.error(extractErrorMessage(err, 'Failed to create folder'))
+      toast.error(
+        extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToCreateFolder')
+        )
+      )
     } finally {
       setIsCreatingFolder(false)
     }
@@ -288,7 +304,12 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         }
       } catch (err) {
         log.error('Failed to create folder', err)
-        toast.error(extractErrorMessage(err, 'Failed to create folder'))
+        toast.error(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToCreateFolder')
+          )
+        )
       } finally {
         setIsCreatingFolder(false)
       }
@@ -349,7 +370,9 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       } catch (err) {
         log.error('Failed to rename note', err)
         revertOptimisticTitle(noteId)
-        toast.error(extractErrorMessage(err, 'Failed to rename note'))
+        toast.error(
+          extractErrorMessage(err, getI18n().getFixedT(null, 'notes')('page.toast.renameFailed'))
+        )
       } finally {
         setIsRenaming(false)
         setRenamingNoteId(null)
@@ -403,7 +426,12 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         await deps.refreshFolders()
       } catch (err) {
         log.error('Failed to rename folder', err)
-        toast.error(extractErrorMessage(err, 'Failed to rename folder'))
+        toast.error(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToRenameFolder')
+          )
+        )
       } finally {
         setIsFolderRenaming(false)
         setRenamingFolderPath(null)
@@ -533,10 +561,12 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
               return next
             })
           }
-          toast.success('Default template set')
+          toast.success(getI18n().getFixedT(null, 'notes')('phaseI.toasts.defaultTemplateSet'))
         } catch (err) {
           log.error('Failed to set folder template', err)
-          toast.error('Failed to set default template')
+          toast.error(
+            getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToSetDefaultTemplate')
+          )
         }
       }
       setFolderToConfigureTemplate(null)
@@ -556,10 +586,12 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
           next.delete(folderPath)
           return next
         })
-        toast.success('Default template cleared')
+        toast.success(getI18n().getFixedT(null, 'notes')('phaseI.toasts.defaultTemplateCleared'))
       } catch (err) {
         log.error('Failed to clear folder template', err)
-        toast.error('Failed to clear default template')
+        toast.error(
+          getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToClearDefaultTemplate')
+        )
       }
     },
     [deps.setFolderTemplateNames]

@@ -4,6 +4,7 @@ import {
   CALENDAR_SETTINGS_DEFAULTS,
   type CalendarSettings
 } from '@memry/contracts/settings-schemas'
+import { getI18n } from 'react-i18next'
 
 export type DayCellClickBehavior = 'journal' | 'calendar'
 
@@ -26,7 +27,13 @@ export function useCalendarPreferences(): UseCalendarPreferencesReturn {
         const result = await window.api.settings.getCalendarSettings()
         if (mounted) setSettings(result)
       } catch (err) {
-        if (mounted) setError(extractErrorMessage(err, 'Failed to load calendar preferences'))
+        if (mounted)
+          setError(
+            extractErrorMessage(
+              err,
+              getI18n().getFixedT(null, 'calendar')('phaseI.errors.failedToLoadCalendarPreferences')
+            )
+          )
       } finally {
         if (mounted) setIsLoading(false)
       }
@@ -57,7 +64,12 @@ export function useCalendarPreferences(): UseCalendarPreferencesReturn {
         setError(result.error ?? 'Update failed')
         return false
       } catch (err) {
-        setError(extractErrorMessage(err, 'Failed to update calendar preferences'))
+        setError(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'calendar')('phaseI.errors.failedToUpdateCalendarPreferences')
+          )
+        )
         return false
       }
     },

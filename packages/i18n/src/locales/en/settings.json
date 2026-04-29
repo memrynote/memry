@@ -1105,5 +1105,40 @@
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"
     }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToUpdateTagColor": "Failed to update tag color",
+      "googleSignInFailed": "Google sign-in failed",
+      "failedToSendVerificationCode": "Failed to send verification code",
+      "invalidVerificationCode": "Invalid verification code",
+      "accountSetupFailed": "Account setup failed",
+      "failedToResendCode": "Failed to resend code",
+      "failedToSetUpDevice": "Failed to set up device",
+      "failedToConfirmRecoveryPhrase": "Failed to confirm recovery phrase",
+      "failedToAnalyzeContent": "Failed to analyze content",
+      "failedToLoadUpdaterState": "Failed to load updater state",
+      "failedToCheckForUpdates": "Failed to check for updates",
+      "failedToDownloadUpdate": "Failed to download update",
+      "failedToInstallUpdate": "Failed to install update",
+      "failedToLoadEditorSettings": "Failed to load editor settings",
+      "failedToUpdateEditorSettings": "Failed to update editor settings",
+      "failedToLoadGeneralSettings": "Failed to load general settings",
+      "failedToUpdateGeneralSettings": "Failed to update general settings",
+      "failedToLoadKeyboardSettings": "Failed to load keyboard settings",
+      "failedToUpdateKeyboardSettings": "Failed to update keyboard settings",
+      "failedToResetKeyboardSettings": "Failed to reset keyboard settings",
+      "failedToLoadNoteEditorSettings": "Failed to load note editor settings",
+      "failedToUpdateSettings": "Failed to update settings",
+      "failedToLoadTabSettings": "Failed to load tab settings",
+      "failedToLoadNotes": "Failed to load notes",
+      "failedToLoadTags": "Failed to load tags",
+      "failedToLoadVaultStatus": "Failed to load vault status",
+      "failedToSelectVault": "Failed to select vault",
+      "failedToCloseVault": "Failed to close vault",
+      "failedToSwitchVault": "Failed to switch vault",
+      "failedToUpdateConfig": "Failed to update config",
+      "failedToReindex": "Failed to reindex"
+    }
   }
 }

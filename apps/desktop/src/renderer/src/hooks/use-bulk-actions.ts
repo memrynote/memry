@@ -3,6 +3,7 @@ import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useT } from '@memry/i18n/renderer'
+import { getI18n } from 'react-i18next'
 
 const log = createLogger('Hook:BulkActions')
 
@@ -137,7 +138,7 @@ export const useBulkActions = ({
         label: 'Undo',
         onClick: () => {
           undoRestore()
-          toast.success('Changes undone')
+          toast.success(getI18n().getFixedT(null, 'tasks')('phaseI.toasts.changesUndone'))
         }
       }
     })
@@ -264,7 +265,7 @@ export const useBulkActions = ({
 
       const targetProject = projects.find((p) => p.id === projectId)
       if (!targetProject) {
-        toast.error('Project not found')
+        toast.error(getI18n().getFixedT(null, 'tasks')('phaseI.toasts.projectNotFound'))
         return
       }
 
@@ -407,12 +408,17 @@ export const useBulkActions = ({
       try {
         const result = await tasksService.bulkArchive(selectedIds)
         if (!result.success) {
-          toast.error(extractErrorMessage(result.error, 'Failed to archive tasks'))
+          toast.error(
+            extractErrorMessage(
+              result.error,
+              getI18n().getFixedT(null, 'tasks')('phaseI.errors.failedToArchiveTasks')
+            )
+          )
           return
         }
       } catch (error) {
         log.error('bulkArchive backend error:', error)
-        toast.error('Failed to archive tasks')
+        toast.error(getI18n().getFixedT(null, 'tasks')('phaseI.toasts.failedToArchiveTasks'))
         return
       }
     } else {
@@ -440,7 +446,9 @@ export const useBulkActions = ({
         label: 'Undo',
         onClick: () => {
           undoRestore()
-          toast.success('Tasks restored from archive')
+          toast.success(
+            getI18n().getFixedT(null, 'tasks')('phaseI.toasts.tasksRestoredFromArchive')
+          )
         }
       }
     })

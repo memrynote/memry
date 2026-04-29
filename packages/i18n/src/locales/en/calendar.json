@@ -109,5 +109,16 @@
     "componentsCalendarCalendarEventMetadata": {
       "min": "min · "
     }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "Could not save event. Try again.",
+      "couldNotCreateEventTryAgain": "Could not create event. Try again.",
+      "couldNotSaveDefaultCalendarTryAgain": "Could not save default calendar. Try again.",
+      "failedToLoadCalendarPreferences": "Failed to load calendar preferences",
+      "failedToUpdateCalendarPreferences": "Failed to update calendar preferences",
+      "couldNotEditThisEventTryAgain": "Could not edit this event. Try again.",
+      "failedToDeleteEvent": "Failed to delete event"
+    }
   }
 }

@@ -4,6 +4,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { propertiesService, type PropertyValue } from '@/services/properties-service'
 import { inferType, getUniquePropertyName } from '@/lib/property-utils'
 import { toast } from 'sonner'
+import { getI18n } from 'react-i18next'
 
 const log = createLogger('Hook:Properties')
 
@@ -44,7 +45,10 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
       const result = await propertiesService.get(entityId)
       setProperties(result)
     } catch (err) {
-      const message = extractErrorMessage(err, 'Failed to load properties')
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToLoadProperties')
+      )
       setError(message)
       log.error('Error fetching:', err)
     } finally {
@@ -85,7 +89,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
         }
       } catch (err) {
         log.error('Error updating:', err)
-        toast.error('Failed to update property')
+        toast.error(getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToUpdateProperty'))
         await fetchProperties()
         throw err
       }
@@ -114,7 +118,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
         }
       } catch (err) {
         log.error('Error adding:', err)
-        toast.error('Failed to add property')
+        toast.error(getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToAddProperty'))
         await fetchProperties()
         throw err
       }
@@ -140,7 +144,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
         }
       } catch (err) {
         log.error('Error removing:', err)
-        toast.error('Failed to delete property')
+        toast.error(getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToDeleteProperty'))
         await fetchProperties()
         throw err
       }
@@ -162,7 +166,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
         }
       } catch (err) {
         log.error('Error renaming:', err)
-        toast.error('Failed to rename property')
+        toast.error(getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToRenameProperty'))
         await fetchProperties()
         throw err
       }
@@ -205,7 +209,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
         }
       } catch (err) {
         log.error('Error reordering:', err)
-        toast.error('Failed to reorder properties')
+        toast.error(getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToReorderProperties'))
         await fetchProperties()
         throw err
       }

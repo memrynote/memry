@@ -1,3 +1,4 @@
+import { getI18n } from 'react-i18next'
 /**
  * Formula Editor Modal Component
  *
@@ -330,7 +331,12 @@ export function FormulaEditorModal({
       handleOpenChange(false)
     } catch (err) {
       log.error('Failed to save formula', err)
-      toast.error(extractErrorMessage(err, 'Failed to save formula'))
+      toast.error(
+        extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToSaveFormula')
+        )
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -376,7 +382,7 @@ export function FormulaEditorModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={handleNameKeyDown}
-              placeholder={'days_until_due'}
+              placeholder={tPhaseF('phaseF.componentsFolderViewFormulaEditorModal.namePlaceholder')}
               className={cn(nameError && name && 'border-destructive')}
               disabled={isEditing} // Can't rename existing formula
             />
@@ -441,7 +447,9 @@ export function FormulaEditorModal({
                   // Delay close to allow click on dropdown
                   setTimeout(closeAutocomplete, 150)
                 }}
-                placeholder={'dateDiff(due_date, today(), "days")'}
+                placeholder={tPhaseF(
+                  'phaseF.componentsFolderViewFormulaEditorModal.expressionPlaceholder'
+                )}
                 className={cn(
                   'font-mono text-sm min-h-[80px]',
                   !expressionValidation.valid && expression && 'border-destructive'

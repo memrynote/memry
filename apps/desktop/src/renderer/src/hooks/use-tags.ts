@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { createLogger } from '@/lib/logger'
 import { fuzzySearch } from '@/lib/fuzzy-search'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { getI18n } from 'react-i18next'
 
 const log = createLogger('Hook:Tags')
 
@@ -25,7 +26,10 @@ export function useTags() {
       setError(null)
     } catch (err) {
       if (!mountedRef.current) return
-      const message = extractErrorMessage(err, 'Failed to load tags')
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToLoadTags')
+      )
       log.error('Failed to fetch tags:', err)
       setError(message)
     } finally {
