@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { CalendarSourceRecord } from '@/services/calendar-service'
+import { useT } from '@memry/i18n/renderer'
 
 interface GoogleCalendarSourcePickerProps {
   sources: CalendarSourceRecord[]
@@ -23,16 +24,16 @@ function statusDotClass(status: CalendarSourceRecord['syncStatus']): string {
   }
 }
 
-function statusLabel(status: CalendarSourceRecord['syncStatus']): string {
+function statusLabelKey(status: CalendarSourceRecord['syncStatus']): string {
   switch (status) {
     case 'ok':
-      return 'Synced'
+      return 'integrations.sourcePicker.statuses.synced'
     case 'error':
-      return 'Error'
+      return 'integrations.sourcePicker.statuses.error'
     case 'pending':
-      return 'Pending'
+      return 'integrations.sourcePicker.statuses.pending'
     default:
-      return 'Idle'
+      return 'integrations.sourcePicker.statuses.idle'
   }
 }
 
@@ -43,12 +44,10 @@ export function GoogleCalendarSourcePicker({
   onRetrySource,
   retryingSourceId
 }: GoogleCalendarSourcePickerProps): React.JSX.Element {
+  const { t } = useT('settings')
+
   if (sources.length === 0) {
-    return (
-      <p className="text-xs text-muted-foreground">
-        No imported Google calendars are available on this device yet.
-      </p>
-    )
+    return <p className="text-xs text-muted-foreground">{t('integrations.sourcePicker.empty')}</p>
   }
 
   return (
@@ -80,7 +79,7 @@ export function GoogleCalendarSourcePicker({
                   className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
                 >
                   <span className={`size-1.5 rounded-full ${statusDotClass(source.syncStatus)}`} />
-                  {statusLabel(source.syncStatus)}
+                  {t(statusLabelKey(source.syncStatus))}
                 </span>
                 {isError && onRetrySource && (
                   <Button
@@ -100,7 +99,9 @@ export function GoogleCalendarSourcePicker({
                     }}
                     data-testid={`calendar-source-retry-${source.id}`}
                   >
-                    {isRetrying ? 'Retrying…' : 'Retry now'}
+                    {isRetrying
+                      ? t('integrations.sourcePicker.retrying')
+                      : t('integrations.sourcePicker.retryNow')}
                   </Button>
                 )}
                 <Checkbox

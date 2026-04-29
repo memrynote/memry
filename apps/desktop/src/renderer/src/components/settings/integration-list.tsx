@@ -2,11 +2,12 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { getAvailableIntegrations, type AuthFlowType } from '@/lib/integration-registry'
 import { GoogleCalendarIntegrationRow } from './google-calendar-integration-row'
+import { useT } from '@memry/i18n/renderer'
 
 const AUTH_LABELS: Record<AuthFlowType, string> = {
-  oauth2: 'OAuth 2.0',
-  api_key: 'API Key',
-  none: 'System'
+  oauth2: 'integrations.auth.oauth2',
+  api_key: 'integrations.auth.apiKey',
+  none: 'integrations.auth.none'
 }
 
 function GenericIntegrationRow({
@@ -14,6 +15,7 @@ function GenericIntegrationRow({
 }: {
   integration: ReturnType<typeof getAvailableIntegrations>[number]
 }): React.JSX.Element {
+  const { t } = useT('settings')
   const Icon = integration.icon
 
   return (
@@ -23,27 +25,29 @@ function GenericIntegrationRow({
           <Icon className="w-3.5 h-3.5 text-muted-foreground" />
         </div>
         <div className="flex flex-col gap-px min-w-0">
-          <span className="font-medium text-[13px]/4 text-foreground">{integration.name}</span>
+          <span className="font-medium text-[13px]/4 text-foreground">
+            {t(`integrations.registry.${integration.i18nKey}.name`)}
+          </span>
           <span className="text-xs/4 text-muted-foreground truncate">
-            {integration.description}
+            {t(`integrations.registry.${integration.i18nKey}.description`)}
           </span>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0 ml-4">
+      <div className="flex items-center gap-2 shrink-0 ms-4">
         <Badge variant="secondary" className="text-[10px]/3 px-1.5 py-0 h-4 border-0">
-          {AUTH_LABELS[integration.authFlow]}
+          {t(AUTH_LABELS[integration.authFlow])}
         </Badge>
         {integration.comingSoon ? (
           <Badge
             variant="secondary"
             className="text-[10px]/3 px-1.5 py-0 h-4 border-0 text-muted-foreground"
           >
-            Coming Soon
+            {t('integrations.comingSoon')}
           </Badge>
         ) : (
           <Button variant="outline" size="sm" className="h-7 px-3 text-xs/4">
-            Connect
+            {t('integrations.connect')}
           </Button>
         )}
       </div>

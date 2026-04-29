@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { AIInlineSettings as AIInlineSettingsPanel } from './ai-inline-section'
+import { useT } from '@memry/i18n/renderer'
 import {
   Select,
   SelectContent,
@@ -47,6 +48,7 @@ interface VoiceModelStatus {
 }
 
 export function AISettings() {
+  const { t } = useT('settings')
   const [settings, setSettings] = useState<{ enabled: boolean }>({ enabled: false })
   const [modelStatus, setModelStatus] = useState<AIModelStatus | null>(null)
   const [voiceSettings, setVoiceSettings] = useState<VoiceTranscriptionSettings>({
@@ -112,7 +114,7 @@ export function AISettings() {
         setIsLoadingModel(false)
         setReindexProgress(null)
         setModelStatus((prev) =>
-          prev ? { ...prev, error: event.status ?? 'Unknown error' } : null
+          prev ? { ...prev, error: event.status ?? t('ai.unknownError') } : null
         )
       } else {
         setReindexProgress(event)
@@ -126,7 +128,7 @@ export function AISettings() {
       }
     })
     return unsubscribe
-  }, [])
+  }, [t])
 
   useEffect(() => {
     const unsubscribe = window.api.onVoiceModelProgress((event) => {
@@ -151,45 +153,48 @@ export function AISettings() {
         setIsDownloadingVoiceModel(false)
         setVoiceModelProgress(null)
         setVoiceModelStatus((prev) =>
-          prev ? { ...prev, error: event.status ?? 'Unknown error' } : null
+          prev ? { ...prev, error: event.status ?? t('ai.unknownError') } : null
         )
       }
     })
 
     return unsubscribe
-  }, [])
+  }, [t])
 
-  const handleToggleEnabled = useCallback(async (enabled: boolean) => {
-    try {
-      const result = await window.api.settings.setAISettings({ enabled })
-      if (result.success) {
-        setSettings((prev) => ({ ...prev, enabled }))
-        toast.success(enabled ? 'AI features enabled' : 'AI features disabled')
-      } else {
-        toast.error(extractErrorMessage(result.error, 'Failed to update setting'))
+  const handleToggleEnabled = useCallback(
+    async (enabled: boolean) => {
+      try {
+        const result = await window.api.settings.setAISettings({ enabled })
+        if (result.success) {
+          setSettings((prev) => ({ ...prev, enabled }))
+          toast.success(enabled ? t('ai.enable.enabled') : t('ai.enable.disabled'))
+        } else {
+          toast.error(extractErrorMessage(result.error, t('ai.enable.error')))
+        }
+      } catch (error) {
+        toast.error(extractErrorMessage(error, t('ai.enable.error')))
       }
-    } catch (error) {
-      toast.error(extractErrorMessage(error, 'Failed to update setting'))
-    }
-  }, [])
+    },
+    [t]
+  )
 
   const handleLoadModel = useCallback(async () => {
     setIsLoadingModel(true)
     try {
       const result = await window.api.settings.loadAIModel()
       if (result.success) {
-        toast.success(result.message || 'Model loaded successfully')
+        toast.success(result.message || t('ai.embedding.loadSuccess'))
         const status = await window.api.settings.getAIModelStatus()
         setModelStatus(status)
       } else {
-        toast.error(extractErrorMessage(result.error, 'Failed to load model'))
+        toast.error(extractErrorMessage(result.error, t('ai.embedding.loadFailed')))
       }
     } catch (error) {
-      toast.error(extractErrorMessage(error, 'Failed to load model'))
+      toast.error(extractErrorMessage(error, t('ai.embedding.loadFailed')))
     } finally {
       setIsLoadingModel(false)
     }
-  }, [])
+  }, [t])
 
   const handleReindexEmbeddings = useCallback(async () => {
     setIsReindexing(true)
@@ -198,51 +203,57 @@ export function AISettings() {
       const result = await window.api.settings.reindexEmbeddings()
       if (result.success) {
         toast.success(
-          `Embeddings reindexed: ${result.computed ?? 0} computed, ${result.skipped ?? 0} skipped`
+          t('ai.embedding.reindexed', {
+            computed: result.computed ?? 0,
+            skipped: result.skipped ?? 0
+          })
         )
         setIsReindexing(false)
       } else {
-        toast.error(extractErrorMessage(result.error, 'Failed to reindex embeddings'))
+        toast.error(extractErrorMessage(result.error, t('ai.embedding.reindexFailed')))
         setIsReindexing(false)
         setReindexProgress(null)
       }
     } catch (error) {
-      toast.error(extractErrorMessage(error, 'Failed to reindex embeddings'))
+      toast.error(extractErrorMessage(error, t('ai.embedding.reindexFailed')))
       setIsReindexing(false)
       setReindexProgress(null)
     }
-  }, [])
+  }, [t])
 
-  const handleVoiceProviderChange = useCallback(async (provider: 'local' | 'openai') => {
-    try {
-      const result = await window.api.settings.setVoiceTranscriptionSettings({ provider })
-      if (result.success) {
-        setVoiceSettings({ provider })
-      } else {
-        toast.error(extractErrorMessage(result.error, 'Failed to update voice provider'))
+  const handleVoiceProviderChange = useCallback(
+    async (provider: 'local' | 'openai') => {
+      try {
+        const result = await window.api.settings.setVoiceTranscriptionSettings({ provider })
+        if (result.success) {
+          setVoiceSettings({ provider })
+        } else {
+          toast.error(extractErrorMessage(result.error, t('ai.voice.providerError')))
+        }
+      } catch (error) {
+        toast.error(extractErrorMessage(error, t('ai.voice.providerError')))
       }
-    } catch (error) {
-      toast.error(extractErrorMessage(error, 'Failed to update voice provider'))
-    }
-  }, [])
+    },
+    [t]
+  )
 
   const handleDownloadVoiceModel = useCallback(async () => {
     setIsDownloadingVoiceModel(true)
     try {
       const result = await window.api.settings.downloadVoiceModel()
       if (result.success) {
-        toast.success('Whisper Small downloaded')
+        toast.success(t('ai.voice.downloadedToast'))
         const status = await window.api.settings.getVoiceModelStatus()
         setVoiceModelStatus(status)
       } else {
-        toast.error(extractErrorMessage(result.error, 'Failed to download Whisper Small'))
+        toast.error(extractErrorMessage(result.error, t('ai.voice.downloadError')))
       }
     } catch (error) {
-      toast.error(extractErrorMessage(error, 'Failed to download Whisper Small'))
+      toast.error(extractErrorMessage(error, t('ai.voice.downloadError')))
     } finally {
       setIsDownloadingVoiceModel(false)
     }
-  }, [])
+  }, [t])
 
   const handleSaveVoiceApiKey = useCallback(async () => {
     if (!voiceApiKey.trim()) {
@@ -254,35 +265,29 @@ export function AISettings() {
       if (result.success) {
         setVoiceApiKey('')
         setHasVoiceApiKey(true)
-        toast.success('OpenAI key saved')
+        toast.success(t('ai.voice.keySavedToast'))
       } else {
-        toast.error(extractErrorMessage(result.error, 'Failed to save OpenAI key'))
+        toast.error(extractErrorMessage(result.error, t('ai.voice.keySaveError')))
       }
     } catch (error) {
-      toast.error(extractErrorMessage(error, 'Failed to save OpenAI key'))
+      toast.error(extractErrorMessage(error, t('ai.voice.keySaveError')))
     }
-  }, [voiceApiKey])
+  }, [voiceApiKey, t])
 
   if (isLoading) {
     return (
       <div className="flex flex-col">
-        <SettingsHeader title="AI Assistant" subtitle="Loading settings..." />
+        <SettingsHeader title={t('ai.header.title')} subtitle={t('ai.header.loading')} />
       </div>
     )
   }
 
   return (
     <div className="flex flex-col text-xs/4">
-      <SettingsHeader
-        title="AI Assistant"
-        subtitle="Embeddings run locally. Voice memos can use Whisper Small or your OpenAI key."
-      />
+      <SettingsHeader title={t('ai.header.title')} subtitle={t('ai.header.subtitle')} />
 
       <SettingsGroup>
-        <SettingRow
-          label="Enable AI Features"
-          description="Smart filing suggestions and note connections"
-        >
+        <SettingRow label={t('ai.enable.label')} description={t('ai.enable.description')}>
           <Switch
             checked={settings.enabled}
             onCheckedChange={handleToggleEnabled}
@@ -291,22 +296,22 @@ export function AISettings() {
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup label="Voice Transcription">
-        <SettingRow label="Provider" description="Speech-to-text provider for voice memos">
+      <SettingsGroup label={t('ai.groups.voice')}>
+        <SettingRow label={t('ai.voice.provider')} description={t('ai.voice.providerDescription')}>
           <Select value={voiceSettings.provider} onValueChange={handleVoiceProviderChange}>
             <SelectTrigger className={COMPACT_SELECT}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="local">Local (default)</SelectItem>
-              <SelectItem value="openai">OpenAI (BYOK)</SelectItem>
+              <SelectItem value="local">{t('ai.voice.providers.local')}</SelectItem>
+              <SelectItem value="openai">{t('ai.voice.providers.openai')}</SelectItem>
             </SelectContent>
           </Select>
         </SettingRow>
 
         <SettingRowTall
-          label="Local Model"
-          description="Whisper Small downloads on demand and stays cached locally"
+          label={t('ai.voice.localModel')}
+          description={t('ai.voice.localModelDescription')}
         >
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -317,28 +322,26 @@ export function AISettings() {
                 </span>
                 {voiceModelStatus?.loaded ? (
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-green-500/15 text-green-600">
-                    Ready
+                    {t('ai.voice.status.ready')}
                   </span>
                 ) : isDownloadingVoiceModel || voiceModelStatus?.loading ? (
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-amber-500/15 text-amber-600">
                     <Loader2 className="w-3 h-3 animate-spin" />
-                    Downloading
+                    {t('ai.voice.status.downloading')}
                   </span>
                 ) : voiceModelStatus?.downloaded ? (
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-emerald-500/15 text-emerald-600">
-                    Downloaded
+                    {t('ai.voice.status.downloaded')}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-muted text-muted-foreground">
-                    Not downloaded
+                    {t('ai.voice.status.notDownloaded')}
                   </span>
                 )}
               </div>
             </div>
 
-            <div className="text-xs/4 text-muted-foreground">
-              Not bundled with the app · Downloaded from Settings · Cached on this device
-            </div>
+            <div className="text-xs/4 text-muted-foreground">{t('ai.voice.cacheHint')}</div>
 
             {voiceModelStatus?.error && (
               <div className="text-xs text-destructive flex items-center gap-1">
@@ -350,7 +353,7 @@ export function AISettings() {
             {voiceModelProgress && (
               <div className="space-y-1.5">
                 <div className="flex justify-between text-[10px]/3 text-muted-foreground">
-                  <span>{voiceModelProgress.status || 'Preparing Whisper Small...'}</span>
+                  <span>{voiceModelProgress.status || t('ai.voice.preparing')}</span>
                   <span>{Math.round(voiceModelProgress.progress)}%</span>
                 </div>
                 <div className="h-1.5 bg-muted rounded-full overflow-hidden">
@@ -364,7 +367,7 @@ export function AISettings() {
 
             {!voiceModelStatus?.downloaded && !isDownloadingVoiceModel && (
               <Button onClick={handleDownloadVoiceModel} size="sm" className="w-full">
-                Download Whisper Small
+                {t('ai.voice.download')}
               </Button>
             )}
           </div>
@@ -372,8 +375,8 @@ export function AISettings() {
 
         {voiceSettings.provider === 'openai' && (
           <SettingRowTall
-            label="OpenAI API Key"
-            description="Stored in your OS keychain and used only for voice transcription"
+            label={t('ai.voice.apiKey')}
+            description={t('ai.voice.apiKeyDescription')}
           >
             <div className="space-y-2">
               <div className="flex gap-2">
@@ -381,7 +384,7 @@ export function AISettings() {
                   type={showVoiceApiKey ? 'text' : 'password'}
                   value={voiceApiKey}
                   onChange={(event) => setVoiceApiKey(event.target.value)}
-                  placeholder={hasVoiceApiKey ? 'Replace saved OpenAI key' : 'Enter OpenAI API key'}
+                  placeholder={hasVoiceApiKey ? t('ai.voice.replaceKey') : t('ai.voice.enterKey')}
                   className="flex-1 h-7 text-xs/4"
                 />
                 <Button
@@ -403,14 +406,14 @@ export function AISettings() {
                   disabled={!voiceApiKey.trim()}
                   className="h-7 px-3"
                 >
-                  Save Key
+                  {t('ai.voice.saveKey')}
                 </Button>
               </div>
 
               {hasVoiceApiKey && (
                 <div className="text-xs/4 text-muted-foreground flex items-center gap-1.5">
                   <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                  API key saved in keychain
+                  {t('ai.voice.keySaved')}
                 </div>
               )}
             </div>
@@ -418,7 +421,7 @@ export function AISettings() {
         )}
       </SettingsGroup>
 
-      <SettingsGroup label="Local Embedding Model">
+      <SettingsGroup label={t('ai.groups.embeddingModel')}>
         <div className="py-3 px-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -428,25 +431,23 @@ export function AISettings() {
               </span>
               {modelStatus?.loaded ? (
                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-green-500/15 text-green-600">
-                  Loaded
+                  {t('ai.embedding.loaded')}
                 </span>
               ) : modelStatus?.loading || isLoadingModel ? (
                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-amber-500/15 text-amber-600">
                   <Loader2 className="w-3 h-3 animate-spin" />
-                  Loading
+                  {t('ai.embedding.loading')}
                 </span>
               ) : null}
             </div>
           </div>
 
-          <div className="text-xs/4 text-muted-foreground">
-            ~23MB · Cached locally · All on-device
-          </div>
+          <div className="text-xs/4 text-muted-foreground">{t('ai.embedding.cacheHint')}</div>
 
           <div className="flex gap-6">
             <div>
               <span className="uppercase text-[10px]/3 font-medium tracking-[0.05em] text-muted-foreground">
-                Dimensions
+                {t('ai.embedding.dimensions')}
               </span>
               <p className="text-[13px]/4 font-semibold text-foreground">
                 {modelStatus?.dimension || 384}
@@ -454,7 +455,7 @@ export function AISettings() {
             </div>
             <div>
               <span className="uppercase text-[10px]/3 font-medium tracking-[0.05em] text-muted-foreground">
-                Embeddings
+                {t('ai.embedding.embeddings')}
               </span>
               <p className="text-[13px]/4 font-semibold text-foreground">
                 {(modelStatus?.embeddingCount ?? 0).toLocaleString()}
@@ -471,7 +472,7 @@ export function AISettings() {
 
           {!modelStatus?.loaded && !isLoadingModel && (
             <Button onClick={handleLoadModel} size="sm" className="w-full">
-              Download & Load Model
+              {t('ai.embedding.downloadLoad')}
             </Button>
           )}
 
@@ -480,8 +481,8 @@ export function AISettings() {
               <div className="flex justify-between text-[10px]/3 text-muted-foreground">
                 <span>
                   {reindexProgress.phase === 'downloading'
-                    ? 'Downloading model...'
-                    : 'Loading model...'}
+                    ? t('ai.embedding.downloadingModel')
+                    : t('ai.embedding.loadingModel')}
                 </span>
                 <span>{Math.round(reindexProgress.current)}%</span>
               </div>
@@ -496,8 +497,11 @@ export function AISettings() {
         </div>
       </SettingsGroup>
 
-      <SettingsGroup label="Embedding Index">
-        <SettingRow label="Rebuild Index" description="Regenerate embeddings for all notes">
+      <SettingsGroup label={t('ai.groups.embeddingIndex')}>
+        <SettingRow
+          label={t('ai.embedding.rebuildIndex')}
+          description={t('ai.embedding.rebuildDescription')}
+        >
           <Button
             variant="outline"
             size="sm"
@@ -510,7 +514,7 @@ export function AISettings() {
             ) : (
               <RefreshCw className="w-3.5 h-3.5" />
             )}
-            Rebuild
+            {t('ai.embedding.rebuild')}
           </Button>
         </SettingRow>
         {isReindexing &&
@@ -521,10 +525,10 @@ export function AISettings() {
               <div className="flex justify-between text-[10px]/3 text-muted-foreground">
                 <span>
                   {reindexProgress.phase === 'scanning'
-                    ? 'Scanning notes...'
+                    ? t('ai.embedding.scanning')
                     : reindexProgress.phase === 'embedding'
-                      ? 'Generating embeddings...'
-                      : 'Complete!'}
+                      ? t('ai.embedding.generating')
+                      : t('ai.embedding.complete')}
                 </span>
                 <span>
                   {reindexProgress.current} / {reindexProgress.total}

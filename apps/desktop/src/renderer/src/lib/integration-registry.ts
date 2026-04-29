@@ -5,6 +5,7 @@ export type AuthFlowType = 'oauth2' | 'api_key' | 'none'
 
 export interface IntegrationDefinition {
   id: string
+  i18nKey: string
   name: string
   description: string
   icon: AppIcon
@@ -15,6 +16,7 @@ export interface IntegrationDefinition {
 const INTEGRATIONS = [
   {
     id: 'google-calendar',
+    i18nKey: 'googleCalendar',
     name: 'Google Calendar',
     description: 'Two-way sync for Memry events, tasks, reminders, and imported calendars',
     icon: Calendar,
@@ -23,6 +25,7 @@ const INTEGRATIONS = [
   },
   {
     id: 'apple-calendar',
+    i18nKey: 'appleCalendar',
     name: 'Apple Calendar',
     description: 'Local calendar integration via system APIs',
     icon: CalendarDays,
@@ -31,6 +34,7 @@ const INTEGRATIONS = [
   },
   {
     id: 'notion',
+    i18nKey: 'notion',
     name: 'Notion',
     description: 'One-time page import into your vault',
     icon: FileInput,
@@ -39,6 +43,7 @@ const INTEGRATIONS = [
   },
   {
     id: 'readwise',
+    i18nKey: 'readwise',
     name: 'Readwise',
     description: 'Sync highlights into your vault',
     icon: BookMarked,
@@ -47,6 +52,7 @@ const INTEGRATIONS = [
   },
   {
     id: 'todoist',
+    i18nKey: 'todoist',
     name: 'Todoist',
     description: 'Two-way task sync',
     icon: ListTodo,
