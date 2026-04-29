@@ -654,7 +654,7 @@ export function NotePage({ noteId }: NotePageProps) {
         queryClient.invalidateQueries({ queryKey: ['notes', 'localOnlyCount'] })
         toast.success(value ? t('page.toast.localOnly') : t('page.toast.willSync'))
       } catch (err) {
-        toast.error(extractErrorMessage(err, 'Failed to toggle local only'))
+        toast.error(extractErrorMessage(err, t('page.toast.toggleLocalOnlyFailed')))
       }
     },
     [noteId, isDeleted, refetchNote, queryClient, t]
@@ -667,10 +667,10 @@ export function NotePage({ noteId }: NotePageProps) {
         await notesService.update({ id: noteId, frontmatter: { fullWidth: value } })
         refetchNote()
       } catch (err) {
-        toast.error(extractErrorMessage(err, 'Failed to toggle full width'))
+        toast.error(extractErrorMessage(err, t('page.toast.toggleFullWidthFailed')))
       }
     },
-    [noteId, isDeleted, refetchNote]
+    [noteId, isDeleted, refetchNote, t]
   )
 
   // Link handlers
