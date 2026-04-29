@@ -1,8 +1,18 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeAll } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { I18nextProvider } from 'react-i18next'
+import type { i18n as I18nInstance } from 'i18next'
+import type { ReactNode } from 'react'
+import { createRendererI18n } from '@memry/i18n/renderer'
 
 import { TasksTabBar, type TasksInternalTab } from './tasks-tab-bar'
 import type { SavedFilter } from '@/data/tasks-data'
+
+let i18nEn: I18nInstance
+
+beforeAll(async () => {
+  i18nEn = await createRendererI18n({ locale: 'en' })
+})
 
 const defaultCounts = { today: 3, all: 15 }
 
@@ -41,7 +51,12 @@ const renderTabBar = (overrides: Partial<Parameters<typeof TasksTabBar>[0]> = {}
         onApplySavedFilter={onApplySavedFilter}
         onUnstarSavedFilter={onUnstarSavedFilter}
         {...overrides}
-      />
+      />,
+      {
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <I18nextProvider i18n={i18nEn}>{children}</I18nextProvider>
+        )
+      }
     )
   }
 }

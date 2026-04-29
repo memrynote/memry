@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo, memo, useCallback } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { type Task, type Priority, type RepeatConfig } from '@/data/sample-tasks'
@@ -35,23 +36,12 @@ export interface TaskDetailDrawerProps {
 // HELPERS
 // ============================================================================
 
-const MONTHS = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec'
-] as const
-
-const formatCreated = (date: Date): string =>
-  `Created ${MONTHS[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`
+const formatCreatedDate = (date: Date, language: string): string =>
+  new Intl.DateTimeFormat(language, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  }).format(date)
 
 // ============================================================================
 // SMALL DISPLAY COMPONENTS
@@ -93,6 +83,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
   onNoteClick,
   onDeleteTask
 }: TaskDetailDrawerProps): React.JSX.Element {
+  const { t, i18n } = useT('tasks')
   const { isOpen: isDayPanelOpen, width: dayPanelWidth } = useDayPanel()
   const [noteNames, setNoteNames] = useState<
     Record<string, { title: string; emoji?: string | null }>
@@ -237,7 +228,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
   return (
     <div
       role="complementary"
-      aria-label="Task details"
+      aria-label={t('task.details')}
       aria-hidden={!isOpen}
       className={cn(
         'fixed top-[37px] bottom-0 z-10 border-l bg-surface overflow-hidden',
@@ -256,13 +247,13 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                 value={task.title}
                 onChange={(e) => onUpdateTask?.(task.id, { title: e.target.value })}
                 className="flex-1 min-w-0 text-[14px] font-medium text-text-primary bg-transparent outline-none truncate"
-                placeholder="Task name"
+                placeholder={t('task.namePlaceholder')}
               />
               <button
                 type="button"
                 onClick={onClose}
                 className="shrink-0 rounded-sm p-0.5 text-text-tertiary hover:text-text-secondary transition-colors focus-visible:outline-none"
-                aria-label="Close task details"
+                aria-label={t('drawer.close')}
               >
                 <X size={16} />
               </button>
@@ -272,7 +263,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
             <div className="flex flex-col pt-3 pb-4 border-b border-border px-5">
               <div className="flex items-center py-1.5">
                 <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
-                  Status
+                  {t('task.status')}
                 </span>
                 <InteractiveStatusBadge
                   statusId={task.statusId}
@@ -283,7 +274,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
 
               <div className="flex items-center py-1.5">
                 <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
-                  Priority
+                  {t('task.priority')}
                 </span>
                 <InteractivePriorityBadge
                   priority={task.priority}
@@ -294,7 +285,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
 
               <div className="flex items-center py-1.5">
                 <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
-                  Due date
+                  {t('task.dueDate')}
                 </span>
                 <InteractiveDueDateBadge
                   dueDate={task.dueDate}
@@ -307,7 +298,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
 
               <div className="flex items-center py-1.5">
                 <span className="text-[12px] w-[90px] shrink-0 text-text-tertiary leading-4">
-                  Project
+                  {t('task.project')}
                 </span>
                 <InteractiveProjectBadge
                   projectId={task.projectId}
@@ -319,11 +310,11 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
 
             {/* ── Description ── */}
             <div className="flex flex-col py-4 px-5 gap-2 border-b border-border">
-              <SectionLabel>Description</SectionLabel>
+              <SectionLabel>{t('task.description')}</SectionLabel>
               <textarea
                 value={task.description ?? ''}
                 onChange={(e) => onUpdateTask?.(task.id, { description: e.target.value })}
-                placeholder="Add a description..."
+                placeholder={t('task.descriptionPlaceholder')}
                 rows={3}
                 className="text-[13px] leading-5 text-text-secondary bg-transparent outline-none resize-none placeholder:text-text-tertiary"
               />
@@ -332,7 +323,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
             {/* ── Sub-issues ── */}
             <div className="flex flex-col py-4 px-5 gap-2 border-b border-border">
               <div className="flex items-center justify-between">
-                <SectionLabel>Sub-issues</SectionLabel>
+                <SectionLabel>{t('drawer.subIssues')}</SectionLabel>
                 <div className="flex items-center gap-1.5">
                   {subtasks.length > 0 && (
                     <span className="text-[11px] text-text-tertiary leading-3.5">
@@ -344,7 +335,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                       type="button"
                       onClick={handleStartAddSubtask}
                       className="text-text-tertiary hover:text-text-secondary transition-colors"
-                      aria-label="Add sub-issue"
+                      aria-label={t('drawer.addSubIssue')}
                     >
                       <Plus size={14} />
                     </button>
@@ -407,14 +398,14 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                         setNewSubtaskTitle('')
                       }
                     }}
-                    placeholder="Add sub-issue…"
+                    placeholder={t('drawer.subIssuePlaceholder')}
                     className="flex-1 text-[12px] leading-4 text-text-primary placeholder:text-text-tertiary bg-transparent outline-none"
                   />
                 </div>
               )}
               {subtasks.length === 0 && !isAddingSubtask && (
                 <span className="text-[11px] text-text-tertiary leading-3.5">
-                  No sub-issues yet
+                  {t('drawer.noSubIssues')}
                 </span>
               )}
             </div>
@@ -432,12 +423,12 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
             {/* ── Linked Notes ── */}
             <div className="flex flex-col py-4 px-5 gap-2 border-b border-border">
               <div className="flex items-center justify-between">
-                <SectionLabel>Linked Notes</SectionLabel>
+                <SectionLabel>{t('drawer.linkedNotes')}</SectionLabel>
                 <button
                   type="button"
                   onClick={handleStartLinkNote}
                   className="text-text-tertiary hover:text-text-secondary transition-colors"
-                  aria-label="Link a note"
+                  aria-label={t('drawer.linkNote')}
                 >
                   <Plus size={14} />
                 </button>
@@ -466,7 +457,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                       <NoteIcon color={project.color} />
                     )}
                     <span className="flex-1 min-w-0 text-[12px] text-text-secondary leading-4 truncate">
-                      {info?.title ?? 'Loading…'}
+                      {info?.title ?? t('drawer.loading')}
                     </span>
                     <button
                       type="button"
@@ -482,7 +473,9 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                         })
                       }}
                       className="shrink-0 rounded-sm p-0.5 text-text-tertiary opacity-0 group-hover:opacity-100 hover:text-text-secondary transition-all"
-                      aria-label={`Remove link to ${info?.title ?? 'note'}`}
+                      aria-label={t('drawer.removeLinkTo', {
+                        title: info?.title ?? t('drawer.removeLinkFallback')
+                      })}
                     >
                       <X size={12} />
                     </button>
@@ -502,7 +495,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                         setNoteSearchQuery('')
                       }
                     }}
-                    placeholder="Search notes…"
+                    placeholder={t('drawer.searchNotes')}
                     className="text-[12px] leading-4 text-text-primary placeholder:text-text-tertiary bg-foreground/[0.03] rounded-md py-1.5 px-2.5 outline-none border border-border focus:border-ring"
                   />
                   <div className="max-h-[160px] overflow-y-auto scrollbar-thin flex flex-col gap-0.5">
@@ -537,7 +530,9 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                     ))}
                     {filteredSearchNotes.length === 0 && (
                       <span className="text-[11px] text-text-tertiary leading-3.5 py-1.5 px-2.5">
-                        {noteSearchQuery ? 'No matching notes' : 'No notes available'}
+                        {noteSearchQuery
+                          ? t('drawer.noMatchingNotes')
+                          : t('drawer.noNotesAvailable')}
                       </span>
                     )}
                   </div>
@@ -545,7 +540,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
               )}
               {task.linkedNoteIds.length === 0 && !isLinkingNote && (
                 <span className="text-[11px] text-text-tertiary leading-3.5">
-                  No linked notes yet
+                  {t('drawer.noLinkedNotes')}
                 </span>
               )}
             </div>
@@ -557,14 +552,14 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                   type="button"
                   onClick={() => setIsDeleteDialogOpen(true)}
                   className="flex items-center gap-2 py-1.5 px-2.5 rounded-md text-[12px] leading-4 text-destructive hover:bg-destructive/10 transition-colors w-full"
-                  aria-label="Delete task"
+                  aria-label={t('task.delete')}
                 >
                   <Trash size={14} />
-                  Delete task
+                  {t('task.delete')}
                 </button>
               )}
               <span className="text-[11px] text-text-tertiary/60 leading-3.5">
-                {formatCreated(task.createdAt)}
+                {t('task.created', { date: formatCreatedDate(task.createdAt, i18n.language) })}
               </span>
             </div>
 

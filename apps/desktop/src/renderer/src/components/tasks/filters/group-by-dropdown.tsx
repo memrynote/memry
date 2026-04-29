@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 
+import { useT } from '@memry/i18n/renderer'
 import { Layers, ArrowUp, ArrowDown } from '@/lib/icons'
 import { Picker } from '@/components/ui/picker'
 import { cn } from '@/lib/utils'
@@ -41,6 +42,7 @@ export const GroupByDropdown = ({
   onChange,
   className
 }: GroupByDropdownProps): React.JSX.Element => {
+  const { t } = useT('tasks')
   const isNonDefault = sort.field !== defaultSort.field || sort.direction !== defaultSort.direction
 
   const handleSelectField = useCallback(
@@ -62,7 +64,7 @@ export const GroupByDropdown = ({
       <Picker.Trigger asChild>
         <button
           type="button"
-          aria-label="Group by options"
+          aria-label={t('filters.groupByOptions')}
           className={cn(
             'flex items-center shrink-0 rounded-[5px] py-1 px-2 gap-1 border transition-colors',
             isNonDefault
@@ -72,7 +74,7 @@ export const GroupByDropdown = ({
           )}
         >
           <Layers size={13} />
-          <span className="text-[12px]">Group by</span>
+          <span className="text-[12px]">{t('filters.groupBy')}</span>
         </button>
       </Picker.Trigger>
       <Picker.Content width="auto" align="end" sideOffset={8}>
@@ -96,7 +98,7 @@ export const GroupByDropdown = ({
               <div className="flex items-center rounded-sm overflow-clip border border-border">
                 <button
                   type="button"
-                  aria-label="Sort ascending"
+                  aria-label={t('filters.sortAscending')}
                   onClick={() => handleSetDirection('asc')}
                   className={cn(
                     'flex items-center justify-center w-[22px] h-5 shrink-0 transition-colors',
@@ -112,7 +114,7 @@ export const GroupByDropdown = ({
                 </button>
                 <button
                   type="button"
-                  aria-label="Sort descending"
+                  aria-label={t('filters.sortDescending')}
                   onClick={() => handleSetDirection('desc')}
                   className={cn(
                     'flex items-center justify-center w-[22px] h-5 shrink-0 transition-colors',
