@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { toast } from 'sonner'
+import { useT } from '@memry/i18n/renderer'
 import type { Task } from '@/data/sample-tasks'
 import type { Project } from '@/data/tasks-data'
 import { getDefaultTodoStatus, getDefaultDoneStatus } from '@/lib/task-utils'
@@ -48,6 +49,8 @@ export const useUndoableTaskActions = ({
   registerUndo,
   removeUndoEntry
 }: UseUndoableTaskActionsOptions): UseUndoableTaskActionsReturn => {
+  const { t } = useT('tasks')
+
   const findTask = useCallback(
     (taskId: string): Task | undefined => tasks.find((t) => t.id === taskId),
     [tasks]
@@ -84,7 +87,7 @@ export const useUndoableTaskActions = ({
         addTask(snapshot)
       })
 
-      toast.success('Task deleted', {
+      toast.success(t('toasts.deleted'), {
         description: `"${task.title}" has been deleted.`,
         duration: 10000,
         action: {
@@ -96,7 +99,7 @@ export const useUndoableTaskActions = ({
         }
       })
     },
-    [findTask, deleteTask, addTask, registerUndo, removeUndoEntry]
+    [findTask, deleteTask, addTask, registerUndo, removeUndoEntry, t]
   )
 
   // ========== COMPLETE ==========
@@ -168,11 +171,11 @@ export const useUndoableTaskActions = ({
           }
           nextOccurrenceId = newTask.id
           addTask(newTask)
-          toast.success('Task completed!', {
+          toast.success(t('toasts.completed'), {
             description: `Next occurrence: ${formatDateShort(nextDate)}`
           })
         } else {
-          toast.success('Series complete!', {
+          toast.success(t('toasts.deletedSeries'), {
             description: 'This was the final occurrence.'
           })
         }
@@ -207,7 +210,7 @@ export const useUndoableTaskActions = ({
         })
 
         if (incompleteSubtasks.length > 0) {
-          toast.success('Task completed!', {
+          toast.success(t('toasts.completed'), {
             description: `Also marked ${incompleteSubtasks.length} subtask(s) as done.`
           })
         }
@@ -223,7 +226,7 @@ export const useUndoableTaskActions = ({
         })
       }
     },
-    [findTask, findProject, tasks, updateTask, addTask, deleteTask, registerUndo]
+    [findTask, findProject, tasks, updateTask, addTask, deleteTask, registerUndo, t]
   )
 
   // ========== UNCOMPLETE ==========
