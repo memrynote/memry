@@ -18,7 +18,8 @@ interface RecoveryKeyDialogProps {
 }
 
 export function RecoveryKeyDialog({ open, onOpenChange }: RecoveryKeyDialogProps) {
-  const { t } = useT('common')
+  const { t } = useT('settings')
+  const { t: tCommon } = useT('common')
   const [recoveryKey, setRecoveryKey] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [revealed, setRevealed] = useState(false)
@@ -36,30 +37,30 @@ export function RecoveryKeyDialog({ open, onOpenChange }: RecoveryKeyDialogProps
       try {
         const result = await window.api.account.getRecoveryKey()
         if (!result.success || !result.key) {
-          toast.error(result.error ?? 'Failed to retrieve recovery key')
+          toast.error(result.error ?? t('recoveryKey.retrieveFailed'))
           onOpenChange(false)
           return
         }
         setRecoveryKey(result.key)
       } catch (err) {
-        toast.error(extractErrorMessage(err, 'Failed to retrieve recovery key'))
+        toast.error(extractErrorMessage(err, t('recoveryKey.retrieveFailed')))
         onOpenChange(false)
       } finally {
         setIsLoading(false)
       }
     },
-    [onOpenChange]
+    [onOpenChange, t]
   )
 
   const handleCopy = useCallback(async () => {
     if (!recoveryKey) return
     try {
       await navigator.clipboard.writeText(recoveryKey)
-      toast.success('Recovery key copied to clipboard')
+      toast.success(t('recoveryKey.copied'))
     } catch {
-      toast.error('Failed to copy to clipboard')
+      toast.error(t('recoveryKey.copyFailed'))
     }
-  }, [recoveryKey])
+  }, [recoveryKey, t])
 
   return (
     <Dialog open={open} onOpenChange={(next) => void handleOpen(next)}>
@@ -67,17 +68,15 @@ export function RecoveryKeyDialog({ open, onOpenChange }: RecoveryKeyDialogProps
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Key className="w-5 h-5 text-primary" />
-            <DialogTitle>Recovery Key</DialogTitle>
+            <DialogTitle>{t('recoveryKey.title')}</DialogTitle>
           </div>
-          <DialogDescription>
-            Store this key securely. It can restore your vault if you lose access to all devices.
-          </DialogDescription>
+          <DialogDescription>{t('recoveryKey.description')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           {isLoading ? (
             <div className="flex items-center justify-center h-20">
-              <p className="text-sm text-muted-foreground">{t('state.loading')}</p>
+              <p className="text-sm text-muted-foreground">{tCommon('state.loading')}</p>
             </div>
           ) : recoveryKey ? (
             <div className="space-y-3">
@@ -97,7 +96,7 @@ export function RecoveryKeyDialog({ open, onOpenChange }: RecoveryKeyDialogProps
                   <div className="absolute inset-0 flex items-center justify-center rounded-md">
                     <div className="flex items-center gap-2 bg-background/90 px-3 py-1.5 rounded-md text-xs text-muted-foreground border">
                       <EyeOff className="w-3.5 h-3.5" />
-                      Click to reveal
+                      {t('recoveryKey.clickToReveal')}
                     </div>
                   </div>
                 )}
@@ -113,12 +112,12 @@ export function RecoveryKeyDialog({ open, onOpenChange }: RecoveryKeyDialogProps
                   {revealed ? (
                     <>
                       <EyeOff className="w-4 h-4" />
-                      Hide
+                      {t('recoveryKey.hide')}
                     </>
                   ) : (
                     <>
                       <Eye className="w-4 h-4" />
-                      Reveal
+                      {t('recoveryKey.reveal')}
                     </>
                   )}
                 </Button>
@@ -129,13 +128,11 @@ export function RecoveryKeyDialog({ open, onOpenChange }: RecoveryKeyDialogProps
                   onClick={() => void handleCopy()}
                 >
                   <Copy className="w-4 h-4" />
-                  Copy
+                  {tCommon('button.copy')}
                 </Button>
               </div>
 
-              <p className="text-xs text-muted-foreground">
-                This key is shown once per session. Close this dialog to clear it from memory.
-              </p>
+              <p className="text-xs text-muted-foreground">{t('recoveryKey.sessionHint')}</p>
             </div>
           ) : null}
         </div>
