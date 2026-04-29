@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import type { Task } from '@/data/sample-tasks'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -39,6 +40,7 @@ export const BulkDeleteDialog = ({
   tasks,
   onConfirm
 }: BulkDeleteDialogProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const visibleTasks = tasks.slice(0, MAX_VISIBLE_TASKS)
   const remainingCount = tasks.length - MAX_VISIBLE_TASKS
 
@@ -52,13 +54,13 @@ export const BulkDeleteDialog = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {/* TODO(i18n): wrap in t() */}
-            Delete {tasks.length} {/* TODO(i18n): wrap in t() */}task{tasks.length !== 1 ? 's' : ''}
-            ?
+            {tPhaseF('phaseF.componentsTasksBulkActionsBulkDeleteDialog.delete')}
+            {tasks.length} {tPhaseF('phaseF.componentsTasksBulkActionsBulkDeleteDialog.task')}
+            {tasks.length !== 1 ? 's' : ''}?
           </DialogTitle>
           <DialogDescription>
-            {/* TODO(i18n): wrap in t() */}
-            You&apos;re about to delete {tasks.length} {/* TODO(i18n): wrap in t() */}task
+            {tPhaseF('phaseF.componentsTasksBulkActionsBulkDeleteDialog.youReAboutToDelete')}
+            {tasks.length} {tPhaseF('phaseF.componentsTasksBulkActionsBulkDeleteDialog.task2')}
             {tasks.length !== 1 ? 's' : ''}:
           </DialogDescription>
         </DialogHeader>
@@ -73,26 +75,29 @@ export const BulkDeleteDialog = ({
             ))}
             {remainingCount > 0 && (
               <li className="text-muted-foreground">
-                ... {/* TODO(i18n): wrap in t() */}and {remainingCount}{' '}
-                {/* TODO(i18n): wrap in t() */}more task{remainingCount !== 1 ? 's' : ''}
+                ... {tPhaseF('phaseF.componentsTasksBulkActionsBulkDeleteDialog.and')}
+                {remainingCount}{' '}
+                {tPhaseF('phaseF.componentsTasksBulkActionsBulkDeleteDialog.moreTask')}
+                {remainingCount !== 1 ? 's' : ''}
               </li>
             )}
           </ul>
 
           <p className="mt-4 text-sm text-muted-foreground">
-            {/* TODO(i18n): wrap in t() */}
-            This action can be undone for a short time after deletion.
+            {tPhaseF(
+              'phaseF.componentsTasksBulkActionsBulkDeleteDialog.thisActionCanBeUndoneForAShortTimeAfterDeletion'
+            )}
           </p>
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={onClose}>
-            {/* TODO(i18n): wrap in t() */}
-            Cancel
+            {tPhaseF('phaseF.componentsTasksBulkActionsBulkDeleteDialog.cancel')}
           </Button>
           <Button variant="destructive" onClick={handleConfirm}>
-            {/* TODO(i18n): wrap in t() */}
-            Delete {tasks.length} {/* TODO(i18n): wrap in t() */}task{tasks.length !== 1 ? 's' : ''}
+            {tPhaseF('phaseF.componentsTasksBulkActionsBulkDeleteDialog.delete2')}
+            {tasks.length} {tPhaseF('phaseF.componentsTasksBulkActionsBulkDeleteDialog.task3')}
+            {tasks.length !== 1 ? 's' : ''}
           </Button>
         </DialogFooter>
       </DialogContent>

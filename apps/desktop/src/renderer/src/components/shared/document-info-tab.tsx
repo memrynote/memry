@@ -9,6 +9,7 @@ import { memo, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import { FileText, Type, Clock, Calendar, Pencil } from '@/lib/icons'
 import { format, parseISO, isValid } from 'date-fns'
+import { useT } from '@memry/i18n/renderer'
 
 export interface DocumentStats {
   wordCount: number
@@ -87,6 +88,7 @@ export const DocumentInfoTab = memo(function DocumentInfoTab({
   stats,
   className
 }: DocumentInfoTabProps) {
+  const { t: tPhaseF } = useT('notes')
   const readingTime = useMemo(() => calculateReadingTime(stats.wordCount), [stats.wordCount])
 
   const formattedCreatedAt = useMemo(() => formatDate(stats.createdAt), [stats.createdAt])
@@ -100,17 +102,17 @@ export const DocumentInfoTab = memo(function DocumentInfoTab({
       <div className="space-y-0.5">
         <StatRow
           icon={<FileText className={iconClass} />}
-          label={'Words' /* TODO(i18n): wrap label in t() */}
+          label={tPhaseF('phaseF.componentsSharedDocumentInfoTab.words')}
           value={formatNumber(stats.wordCount)}
         />
         <StatRow
           icon={<Type className={iconClass} />}
-          label={'Characters' /* TODO(i18n): wrap label in t() */}
+          label={tPhaseF('phaseF.componentsSharedDocumentInfoTab.characters')}
           value={formatNumber(stats.characterCount)}
         />
         <StatRow
           icon={<Clock className={iconClass} />}
-          label={'Reading time' /* TODO(i18n): wrap label in t() */}
+          label={tPhaseF('phaseF.componentsSharedDocumentInfoTab.readingTime')}
           value={readingTime}
         />
       </div>
@@ -122,12 +124,12 @@ export const DocumentInfoTab = memo(function DocumentInfoTab({
       <div className="space-y-0.5">
         <StatRow
           icon={<Calendar className={iconClass} />}
-          label={'Created' /* TODO(i18n): wrap label in t() */}
+          label={tPhaseF('phaseF.componentsSharedDocumentInfoTab.created')}
           value={formattedCreatedAt}
         />
         <StatRow
           icon={<Pencil className={iconClass} />}
-          label={'Modified' /* TODO(i18n): wrap label in t() */}
+          label={tPhaseF('phaseF.componentsSharedDocumentInfoTab.modified')}
           value={formattedModifiedAt}
         />
       </div>

@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { SidebarMenuButton } from '@/components/ui/sidebar'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('SyncStatus')
 
@@ -16,6 +17,7 @@ interface SyncStatusProps {
 }
 
 export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('settings')
   const {
     status,
     label,
@@ -85,7 +87,8 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium">{label}</p>
             <p className="text-muted-foreground text-xs">
-              {/* TODO(i18n): wrap in t() */}Last synced {lastSyncLabel}
+              {tPhaseF('phaseF.componentsSyncSyncStatus.lastSynced')}
+              {lastSyncLabel}
             </p>
           </div>
         </div>
@@ -113,35 +116,35 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
               {pendingCount > 0 && (
                 <p className="text-muted-foreground text-xs">
                   {pendingCount} {pendingCount === 1 ? 'change' : 'changes'}{' '}
-                  {/* TODO(i18n): wrap in t() */}pending
+                  {tPhaseF('phaseF.componentsSyncSyncStatus.pending')}
                 </p>
               )}
               {localOnlyCount > 0 && (
                 <p className="text-muted-foreground text-xs">
-                  {localOnlyCount} {/* TODO(i18n): wrap in t() */}local-only{' '}
+                  {localOnlyCount} {tPhaseF('phaseF.componentsSyncSyncStatus.localOnly')}{' '}
                   {localOnlyCount === 1 ? 'note' : 'notes'}
                 </p>
               )}
               {conflicts.length > 0 && (
                 <p className="text-xs text-yellow-600 dark:text-yellow-400">
                   {conflicts.length} {conflicts.length === 1 ? 'conflict' : 'conflicts'}{' '}
-                  {/* TODO(i18n): wrap in t() */}detected
+                  {tPhaseF('phaseF.componentsSyncSyncStatus.detected')}
                 </p>
               )}
               {clockSkewDetected && (
                 <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                  {/* TODO(i18n): wrap in t() */}Clock skew detected
+                  {tPhaseF('phaseF.componentsSyncSyncStatus.clockSkewDetected')}
                 </p>
               )}
               {isSyncing && initialSyncProgress && (
                 <p className="text-muted-foreground text-xs">
                   {initialSyncProgress.current}/{initialSyncProgress.total}{' '}
-                  {/* TODO(i18n): wrap in t() */}items
+                  {tPhaseF('phaseF.componentsSyncSyncStatus.items')}
                 </p>
               )}
               {isOffline && pendingCount > 0 && (
                 <p className="text-muted-foreground text-xs">
-                  {/* TODO(i18n): wrap in t() */}Will sync when back online
+                  {tPhaseF('phaseF.componentsSyncSyncStatus.willSyncWhenBackOnline')}
                 </p>
               )}
             </div>
@@ -194,7 +197,7 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
             size="icon-sm"
             onClick={onOpenSettings}
             className="size-7"
-            aria-label={'Open sync settings' /* TODO(i18n): wrap aria-label in t() */}
+            aria-label={tPhaseF('phaseF.componentsSyncSyncStatus.openSyncSettings')}
           >
             <Settings className="size-3.5" aria-hidden="true" />
           </Button>

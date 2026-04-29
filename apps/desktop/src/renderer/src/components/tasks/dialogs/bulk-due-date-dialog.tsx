@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -39,6 +40,7 @@ export const BulkDueDateDialog = ({
   onClose,
   onApply
 }: BulkDueDateDialogProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [includeCompleted, setIncludeCompleted] = useState(false)
 
@@ -71,13 +73,16 @@ export const BulkDueDateDialog = ({
         <DialogHeader>
           <div className="flex items-center gap-2">
             <CalendarIcon className="size-5 text-muted-foreground" />
-            <DialogTitle>{/* TODO(i18n): wrap in t() */}Set due date for all subtasks</DialogTitle>
+            <DialogTitle>
+              {tPhaseF('phaseF.componentsTasksDialogsBulkDueDateDialog.setDueDateForAllSubtasks')}
+            </DialogTitle>
           </div>
           <DialogDescription>
-            {/* TODO(i18n): wrap in t() */}
-            Set due date for {affectedCount} {/* TODO(i18n): wrap in t() */}subtask
-            {affectedCount !== 1 ? 's' : ''} {/* TODO(i18n): wrap in t() */}in &ldquo;
-            {parentTitle}&{/* TODO(i18n): wrap in t() */}rdquo;
+            {tPhaseF('phaseF.componentsTasksDialogsBulkDueDateDialog.setDueDateFor')}
+            {affectedCount} {tPhaseF('phaseF.componentsTasksDialogsBulkDueDateDialog.subtask')}
+            {affectedCount !== 1 ? 's' : ''}{' '}
+            {tPhaseF('phaseF.componentsTasksDialogsBulkDueDateDialog.in')}
+            {parentTitle}&{tPhaseF('phaseF.componentsTasksDialogsBulkDueDateDialog.rdquo')}
           </DialogDescription>
         </DialogHeader>
 
@@ -99,8 +104,10 @@ export const BulkDueDateDialog = ({
                 htmlFor="include-completed"
                 className="text-sm text-muted-foreground cursor-pointer"
               >
-                {/* TODO(i18n): wrap in t() */}
-                Also apply to completed subtasks ({completedCount})
+                {tPhaseF(
+                  'phaseF.componentsTasksDialogsBulkDueDateDialog.alsoApplyToCompletedSubtasks'
+                )}
+                {completedCount})
               </Label>
             </div>
           )}
@@ -108,16 +115,13 @@ export const BulkDueDateDialog = ({
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="ghost" onClick={handleClearDate}>
-            {/* TODO(i18n): wrap in t() */}
-            Clear date
+            {tPhaseF('phaseF.componentsTasksDialogsBulkDueDateDialog.clearDate')}
           </Button>
           <Button variant="outline" onClick={handleClose}>
-            {/* TODO(i18n): wrap in t() */}
-            Cancel
+            {tPhaseF('phaseF.componentsTasksDialogsBulkDueDateDialog.cancel')}
           </Button>
           <Button onClick={handleApply} disabled={!selectedDate}>
-            {/* TODO(i18n): wrap in t() */}
-            Apply
+            {tPhaseF('phaseF.componentsTasksDialogsBulkDueDateDialog.apply')}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -70,6 +70,7 @@ import {
   type GroupByConfig
 } from '@memry/contracts/folder-view-api'
 import { createLogger } from '@/lib/logger'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Page:FolderView')
 
@@ -82,6 +83,7 @@ interface FolderViewPageProps {
  * Folder View Page Component
  */
 export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   const { openTab, closeTab, getActiveTab } = useTabs()
   const { openTag } = useSidebarDrillDown()
   const { tags: allTags } = useNoteTagsQuery()
@@ -532,7 +534,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
           size="icon"
           className="h-8 w-8"
           onClick={handleCreateNote}
-          title={'Create new note' /* TODO(i18n): wrap title in t() */}
+          title={tPhaseF('phaseF.pagesFolderView.createNewNote')}
         >
           <Plus className="h-4 w-4" />
         </Button>
@@ -569,34 +571,33 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              title={'View settings' /* TODO(i18n): wrap title in t() */}
+              title={tPhaseF('phaseF.pagesFolderView.viewSettings')}
             >
               <Settings2 className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>{/* TODO(i18n): wrap in t() */}Display Density</DropdownMenuLabel>
+            <DropdownMenuLabel>
+              {tPhaseF('phaseF.pagesFolderView.displayDensity')}
+            </DropdownMenuLabel>
             <DropdownMenuCheckboxItem
               checked={density === 'comfortable'}
               onCheckedChange={() => setDensity('comfortable')}
             >
-              {/* TODO(i18n): wrap in t() */}
-              Comfortable
+              {tPhaseF('phaseF.pagesFolderView.comfortable')}
             </DropdownMenuCheckboxItem>
             <DropdownMenuCheckboxItem
               checked={density === 'compact'}
               onCheckedChange={() => setDensity('compact')}
             >
-              {/* TODO(i18n): wrap in t() */}
-              Compact
+              {tPhaseF('phaseF.pagesFolderView.compact')}
             </DropdownMenuCheckboxItem>
             <DropdownMenuSeparator />
             <DropdownMenuCheckboxItem
               checked={activeView?.showSummaries ?? false}
               onCheckedChange={() => toggleShowSummaries()}
             >
-              {/* TODO(i18n): wrap in t() */}
-              Show summaries
+              {tPhaseF('phaseF.pagesFolderView.showSummaries')}
             </DropdownMenuCheckboxItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -736,7 +737,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>
-              {/* TODO(i18n): wrap in t() */}Cancel
+              {tPhaseF('phaseF.pagesFolderView.cancel')}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}

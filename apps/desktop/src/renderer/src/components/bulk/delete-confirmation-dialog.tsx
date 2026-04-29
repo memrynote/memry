@@ -26,6 +26,7 @@ const DeleteConfirmationDialog = ({
   onConfirm,
   onCancel
 }: DeleteConfirmationDialogProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('inbox')
   const { t } = useT('common')
 
   // Handle keyboard shortcuts
@@ -58,12 +59,14 @@ const DeleteConfirmationDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <AlertTriangle className="size-5 text-red-500" aria-hidden="true" />
-            {/* TODO(i18n): wrap in t() */}
-            Delete {itemCount} {/* TODO(i18n): wrap in t() */}item{itemCount !== 1 ? 's' : ''}?
+            {tPhaseF('phaseF.componentsBulkDeleteConfirmationDialog.delete')}
+            {itemCount} {tPhaseF('phaseF.componentsBulkDeleteConfirmationDialog.item')}
+            {itemCount !== 1 ? 's' : ''}?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            {/* TODO(i18n): wrap in t() */}
-            These items will be removed from your inbox. You can undo this action immediately after.
+            {tPhaseF(
+              'phaseF.componentsBulkDeleteConfirmationDialog.theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction'
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

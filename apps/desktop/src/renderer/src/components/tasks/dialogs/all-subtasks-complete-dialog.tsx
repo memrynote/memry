@@ -1,5 +1,6 @@
 import { CheckCircle2 } from '@/lib/icons'
 
+import { useT } from '@memry/i18n/renderer'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +37,7 @@ export const AllSubtasksCompleteDialog = ({
   onKeepOpen,
   onCompleteParent
 }: AllSubtasksCompleteDialogProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const handleKeepOpen = (): void => {
     onKeepOpen()
     onClose()
@@ -55,27 +57,34 @@ export const AllSubtasksCompleteDialog = ({
               <CheckCircle2 className="size-5 text-task-complete" />
             </div>
             <AlertDialogTitle>
-              {/* TODO(i18n): wrap in t() */}All subtasks complete!
+              {tPhaseF(
+                'phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.allSubtasksComplete'
+              )}
             </AlertDialogTitle>
           </div>
           <AlertDialogDescription className="space-y-2">
             <p>
-              &{/* TODO(i18n): wrap in t() */}ldquo;{parentTitle}&{/* TODO(i18n): wrap in t() */}
-              rdquo; has all {subtaskCount} {/* TODO(i18n): wrap in t() */}subtask
-              {subtaskCount !== 1 ? 's' : ''} {/* TODO(i18n): wrap in t() */}done.
+              &{tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.ldquo')}
+              {parentTitle}&
+              {tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.rdquoHasAll')}
+              {subtaskCount}{' '}
+              {tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.subtask')}
+              {subtaskCount !== 1 ? 's' : ''}{' '}
+              {tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.done')}
             </p>
             <p className="text-muted-foreground">
-              {/* TODO(i18n): wrap in t() */}
-              Would you like to mark the parent task as complete too?
+              {tPhaseF(
+                'phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.wouldYouLikeToMarkTheParentTaskAsCompleteToo'
+              )}
             </p>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={handleKeepOpen}>
-            {/* TODO(i18n): wrap in t() */}Keep task open
+            {tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.keepTaskOpen')}
           </AlertDialogCancel>
           <AlertDialogAction onClick={handleComplete}>
-            {/* TODO(i18n): wrap in t() */}Complete task ✓
+            {tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.completeTask')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils'
 import type { Project } from '@/data/tasks-data'
 import { getIconByName } from '@/components/icon-picker'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -30,6 +31,7 @@ export const ProjectFilter = ({
   taskCountByProject = {},
   className
 }: ProjectFilterProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [isOpen, setIsOpen] = useState(false)
 
   const visibleProjects = useMemo(() => projects.filter((p) => !p.isArchived), [projects])
@@ -63,9 +65,9 @@ export const ProjectFilter = ({
           variant="outline"
           size="sm"
           className={cn('h-9 gap-2', hasSelection && 'border-primary bg-primary/5', className)}
-          aria-label={'Filter by project' /* TODO(i18n): wrap aria-label in t() */}
+          aria-label={tPhaseF('phaseF.componentsTasksFiltersProjectFilter.filterByProject')}
         >
-          <span>{/* TODO(i18n): wrap in t() */}Project</span>
+          <span>{tPhaseF('phaseF.componentsTasksFiltersProjectFilter.project')}</span>
           {hasSelection && (
             <span className="bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded-full min-w-5 text-center">
               {selectedIds.length}
@@ -90,7 +92,7 @@ export const ProjectFilter = ({
             <span className="flex items-center justify-center size-4">
               {allSelected && <Check className="size-4 text-primary" />}
             </span>
-            <span>{/* TODO(i18n): wrap in t() */}All Projects</span>
+            <span>{tPhaseF('phaseF.componentsTasksFiltersProjectFilter.allProjects')}</span>
           </button>
 
           <div className="my-2 h-px bg-border" />
@@ -143,8 +145,7 @@ export const ProjectFilter = ({
               onClick={handleClear}
               className="h-7 text-xs text-muted-foreground hover:text-foreground"
             >
-              {/* TODO(i18n): wrap in t() */}
-              Clear
+              {tPhaseF('phaseF.componentsTasksFiltersProjectFilter.clear')}
             </Button>
           </div>
         </div>

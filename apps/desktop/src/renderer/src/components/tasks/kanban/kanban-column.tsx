@@ -12,6 +12,7 @@ import type { Project } from '@/data/tasks-data'
 import { SortableKanbanCard } from './kanban-card'
 import { KanbanEmptyColumn } from './kanban-empty-column'
 import type { KanbanColumnDef } from './kanban-columns'
+import { useT } from '@memry/i18n/renderer'
 
 interface KanbanColumnProps {
   column: KanbanColumnDef
@@ -31,18 +32,20 @@ interface KanbanColumnProps {
 
 const MAX_VISIBLE_DONE = 5
 
-const DropPlaceholder = (): React.JSX.Element => (
-  <div className="flex flex-col items-center justify-center rounded-md py-8 px-4 gap-1.5 bg-primary/[0.03] border-[1.5px] border-dashed border-primary/40">
-    <Download size={20} className="text-primary/50" />
-    <span className="text-[12px] text-primary/60 leading-4">
-      {/* TODO(i18n): wrap in t() */}Drop here
-    </span>
-    <span className="text-[11px] text-center text-primary/35 leading-3.5">
-      {/* TODO(i18n): wrap in t() */}
-      Release to move task to this column
-    </span>
-  </div>
-)
+const DropPlaceholder = (): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
+  return (
+    <div className="flex flex-col items-center justify-center rounded-md py-8 px-4 gap-1.5 bg-primary/[0.03] border-[1.5px] border-dashed border-primary/40">
+      <Download size={20} className="text-primary/50" />
+      <span className="text-[12px] text-primary/60 leading-4">
+        {tPhaseF('phaseF.componentsTasksKanbanKanbanColumn.dropHere')}
+      </span>
+      <span className="text-[11px] text-center text-primary/35 leading-3.5">
+        {tPhaseF('phaseF.componentsTasksKanbanKanbanColumn.releaseToMoveTaskToThisColumn')}
+      </span>
+    </div>
+  )
+}
 
 const KanbanGhostCard = ({ title }: { title: string }): React.JSX.Element => (
   <div
@@ -68,6 +71,7 @@ export const KanbanColumn = ({
   onQuickAdd,
   showProjectBadge
 }: KanbanColumnProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [showAllDone, setShowAllDone] = useState(false)
   const [isAddingTask, setIsAddingTask] = useState(false)
   const [newTaskTitle, setNewTaskTitle] = useState('')
@@ -224,7 +228,7 @@ export const KanbanColumn = ({
             onClick={() => setShowAllDone(true)}
             className="mt-1 py-1.5 text-[11px] text-text-tertiary hover:text-foreground transition-colors text-center"
           >
-            {hiddenCount} {/* TODO(i18n): wrap in t() */}more completed
+            {hiddenCount} {tPhaseF('phaseF.componentsTasksKanbanKanbanColumn.moreCompleted')}
           </button>
         )}
 
@@ -234,8 +238,7 @@ export const KanbanColumn = ({
             onClick={() => setShowAllDone(false)}
             className="mt-0.5 py-1 text-[11px] text-text-tertiary hover:text-foreground transition-colors text-center"
           >
-            {/* TODO(i18n): wrap in t() */}
-            Show fewer
+            {tPhaseF('phaseF.componentsTasksKanbanKanbanColumn.showFewer')}
           </button>
         )}
 
@@ -247,7 +250,7 @@ export const KanbanColumn = ({
               onChange={(e) => setNewTaskTitle(e.target.value)}
               onKeyDown={handleAddKeyDown}
               onBlur={handleAddSubmit}
-              placeholder={'Task title...' /* TODO(i18n): wrap placeholder in t() */}
+              placeholder={tPhaseF('phaseF.componentsTasksKanbanKanbanColumn.taskTitle')}
               autoFocus
               className="w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-[13px] text-foreground placeholder:text-text-tertiary outline-none"
             />

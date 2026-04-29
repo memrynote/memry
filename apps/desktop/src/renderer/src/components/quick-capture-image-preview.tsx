@@ -1,4 +1,5 @@
 import { Check, X } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
 
 export type PreviewVariant = 'image' | 'pdf' | 'social'
 
@@ -56,6 +57,7 @@ export function FilePreviewCard({
   onClear,
   initial
 }: FilePreviewCardProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('inbox')
   const config = VARIANT_CONFIG[variant]
   const displayInitial = initial ?? config.defaultInitial
 
@@ -84,7 +86,7 @@ export function FilePreviewCard({
       <button
         onClick={onClear}
         className="shrink-0 rounded p-0.5 text-muted-foreground/30 hover:text-foreground/60 transition-colors"
-        aria-label={'Remove attachment' /* TODO(i18n): wrap aria-label in t() */}
+        aria-label={tPhaseF('phaseF.componentsQuickCaptureImagePreview.removeAttachment')}
       >
         <X className="size-3" />
       </button>

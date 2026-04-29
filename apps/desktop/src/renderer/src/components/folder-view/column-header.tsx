@@ -12,6 +12,7 @@ import type { Header } from '@tanstack/react-table'
 import type { NoteWithProperties, ColumnConfig } from '@memry/contracts/folder-view-api'
 import { GripVertical } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // Types
@@ -83,6 +84,7 @@ export function ColumnHeader({
   isDragging = false,
   className
 }: ColumnHeaderProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState('')
@@ -289,7 +291,7 @@ export function ColumnHeader({
               'text-muted-foreground/50 hover:text-muted-foreground',
               '-ml-1 mr-0.5'
             )}
-            title={'Drag to reorder column' /* TODO(i18n): wrap title in t() */}
+            title={tPhaseF('phaseF.componentsFolderViewColumnHeader.dragToReorderColumn')}
           >
             <GripVertical className="h-4 w-4" />
           </div>

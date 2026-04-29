@@ -251,5 +251,316 @@
   "linkedTasks": {
     "title": "Linked Tasks",
     "loading": "Loading linked tasks..."
+  },
+  "phaseF": {
+    "componentsFolderViewColumnHeader": {
+      "dragToReorderColumn": "Drag to reorder column"
+    },
+    "componentsFolderViewColumnSelector": {
+      "properties": "Properties",
+      "searchColumns": "Search columns...",
+      "noMatchingColumns": "No matching columns",
+      "formulas": "FORMULAS",
+      "noFormulasDefined": "No formulas defined",
+      "addFormula": "Add Formula",
+      "deleteFormula": "Delete Formula",
+      "areYouSureYouWantToDeleteTheFormula": "Are you sure you want to delete the formula \"",
+      "quotThisActionCannotBeUndone": "quot;? This action cannot be undone.",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "none": "None",
+      "edit": "Edit",
+      "delete2": "Delete"
+    },
+    "componentsFolderViewFilterBuilder": {
+      "filter": "Filter",
+      "filters": "Filters",
+      "clearAll": "Clear all",
+      "noFiltersApplied": "No filters applied",
+      "addFiltersToNarrowDownYourNotes": "Add filters to narrow down your notes",
+      "match": "Match",
+      "allAnd": "All (AND)",
+      "anyOr": "Any (OR)",
+      "ofTheFollowing": "of the following:",
+      "match2": "Match",
+      "all": "All",
+      "any": "Any",
+      "of": "of:",
+      "addCondition": "Add condition",
+      "addFilter": "Add filter",
+      "addGroup": "Add group"
+    },
+    "componentsFolderViewFilterRow": {
+      "builtIn": "Built-in",
+      "properties": "Properties"
+    },
+    "componentsFolderViewFolderTableView": {
+      "notesTable": "Notes table"
+    },
+    "componentsFolderViewFolderViewToolbar": {
+      "searchNotes": "Search notes...",
+      "clearSearch": "Clear search"
+    },
+    "componentsFolderViewFormulaEditorModal": {
+      "defineAComputedColumnUsingAnExpression": "Define a computed column using an expression.",
+      "name": "Name",
+      "expression": "Expression",
+      "available": "Available: ",
+      "preview": "Preview",
+      "fixExpressionErrorsToSeePreview": "Fix expression errors to see preview",
+      "usingNote": "Using note: \"",
+      "quot": "quot;",
+      "cancel": "Cancel"
+    },
+    "componentsFolderViewGroupBySelector": {
+      "clearGrouping": "Clear grouping",
+      "searchProperties": "Search properties...",
+      "builtIn": "Built-in",
+      "properties": "Properties",
+      "noGroupablePropertiesFound": "No groupable properties found",
+      "sortDirection": "Sort direction",
+      "collapseGroupsByDefault": "Collapse groups by default",
+      "showGroupSummaries": "Show group summaries",
+      "clearGrouping2": "Clear grouping"
+    },
+    "componentsFolderViewGroupedTable": {
+      "groupedNotesTable": "Grouped notes table",
+      "more": "more"
+    },
+    "componentsFolderViewMoveToFolderDialog": {
+      "searchFolders": "Search folders...",
+      "loadingFolders": "Loading folders...",
+      "suggested": "SUGGESTED",
+      "bestMatch": "Best match",
+      "current": "current)",
+      "allFolders": "ALL FOLDERS",
+      "current2": "current)",
+      "noFoldersMatch": "No folders match \"",
+      "quot": "quot;",
+      "create": "Create \"",
+      "quot2": "quot;",
+      "cancel": "Cancel"
+    },
+    "componentsFolderViewRowContextMenu": {
+      "delete": "Delete ",
+      "notes": "Notes",
+      "open": "Open",
+      "openInExternalEditor": "Open in External Editor",
+      "revealInFinder": "Reveal in Finder",
+      "revealInSidebar": "Reveal in Sidebar",
+      "copyLink": "Copy Link",
+      "delete2": "Delete"
+    },
+    "componentsFolderViewSortableColumnHeader": {
+      "dragToReorderColumn": "Drag to reorder column",
+      "resizeColumn": "Resize column"
+    },
+    "componentsFolderViewViewSwitcher": {
+      "default": "default",
+      "rename": "Rename",
+      "duplicate": "Duplicate",
+      "setAsDefault": "Set as Default",
+      "delete": "Delete",
+      "createNewView": "Create New View",
+      "createNewView2": "Create New View",
+      "createANewViewWithCustomColumnsFiltersAndSorting": "Create a new view with custom columns, filters, and sorting.",
+      "viewName": "View Name",
+      "myCustomView": "My Custom View",
+      "baseConfiguration": "Base Configuration",
+      "copyFromCurrentView": "Copy from current view",
+      "startFreshDefaultColumns": "Start fresh (default columns)",
+      "cancel": "Cancel",
+      "renameView": "Rename View",
+      "enterANewNameForThisView": "Enter a new name for this view.",
+      "viewName2": "View Name",
+      "viewName3": "View name",
+      "cancel2": "Cancel",
+      "deleteView": "Delete View",
+      "areYouSureYouWantToDelete": "Are you sure you want to delete \"",
+      "thisActionCannotBeUndone": "This action cannot be undone.",
+      "cancel3": "Cancel"
+    },
+    "componentsNoteContentAreaFileBlock": {
+      "failedToLoadPdf": "Failed to load PDF: ",
+      "download": "Download",
+      "download2": "Download",
+      "noFileAttached": "No file attached"
+    },
+    "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
+      "openInTaskPanel": "Open in task panel",
+      "taskName": "Task name...",
+      "taskDeleted": "Task deleted",
+      "loading": "Loading..."
+    },
+    "componentsNoteContentAreaTaskBlockTaskCreationPopover": {
+      "project": "Project",
+      "priority": "Priority",
+      "dueDate": "Due date",
+      "cancel": "Cancel"
+    },
+    "componentsNoteContentAreaYoutubeEmbedBlock": {
+      "noVideoUrl": "No video URL"
+    },
+    "componentsNoteExportDialog": {
+      "pdf": "PDF",
+      "html": "HTML",
+      "a4210X297Mm": "A4 (210 x 297 mm)",
+      "letter85X11In": "Letter (8.5 x 11 in)",
+      "legal85X14In": "Legal (8.5 x 14 in)"
+    },
+    "componentsNoteInfoSectionEditorsDateeditor": {
+      "ddMmYyyy": "dd.mm.yyyy"
+    },
+    "componentsNoteNoteHeader": {
+      "synced": "Synced"
+    },
+    "componentsSharedDocumentInfoTab": {
+      "words": "Words",
+      "characters": "Characters",
+      "readingTime": "Reading time",
+      "created": "Created",
+      "modified": "Modified"
+    },
+    "componentsSidebarProjectsEmptyState": {
+      "noProjectsYet": "No projects yet",
+      "createYourFirstProject": "Create your first project",
+      "createYourFirstProject2": "Create your first project"
+    },
+    "componentsSidebarSidebarBookmarkList": {
+      "loadingBookmarks": "Loading bookmarks...",
+      "failedToLoadBookmarks": "Failed to load bookmarks",
+      "noBookmarksYet": "No bookmarks yet",
+      "moreOptions": "More options",
+      "remove": "Remove"
+    },
+    "componentsSidebarSidebarItemContextMenu": {
+      "open": "Open",
+      "openToTheSide": "Open to the Side",
+      "pinToTabs": "Pin to Tabs",
+      "edit": "Edit",
+      "delete": "Delete",
+      "copyLink": "Copy Link"
+    },
+    "componentsSidebarSidebarTagList": {
+      "loadingTags": "Loading tags...",
+      "failedToLoadTags": "Failed to load tags",
+      "noTagsYet": "No tags yet",
+      "filterTags": "Filter tags...",
+      "noMatchingTags": "No matching tags"
+    },
+    "componentsSidebarSortableProjectItem": {
+      "dropHere": "Drop here",
+      "editProject": "Edit project"
+    },
+    "componentsSidebarTagDeleteDialog": {
+      "deleteTag": "Delete tag #",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "Notes with this tag won't be deleted, just untagged.",
+      "cancel": "Cancel"
+    },
+    "componentsSidebarTagDetailView": {
+      "goBack": "Go back",
+      "notes": "notes",
+      "loadingNotes": "Loading notes...",
+      "noNotesWithThisTag": "No notes with this tag",
+      "addThisTagToANoteToSeeItHere": "Add this tag to a note to see it here",
+      "pinned": "PINNED",
+      "allNotes": "ALL NOTES",
+      "allNotesArePinned": "All notes are pinned",
+      "unpinFromTag": "Unpin from tag",
+      "unpin": "Unpin",
+      "pinToTag": "Pin to tag",
+      "pin": "Pin",
+      "tagActions": "Tag actions",
+      "editTagName": "Edit tag name",
+      "changeColor": "Change color",
+      "deleteTag": "Delete tag",
+      "recent": "Recent",
+      "created": "Created",
+      "alphabetical": "Alphabetical"
+    },
+    "componentsSidebarTagRenameDialog": {
+      "renameTag": "Rename tag",
+      "rename": "Rename ",
+      "acrossEveryNoteThatUsesIt": "across every note that uses it.",
+      "newName": "New name",
+      "cancel": "Cancel"
+    },
+    "componentsViewersAudioPlayer": {
+      "failedToLoadAudio": "Failed to load audio",
+      "theAudioFileCouldNotBePlayed": "The audio file could not be played.",
+      "skipBack10s": "Skip back 10s",
+      "skipForward10s": "Skip forward 10s"
+    },
+    "componentsViewersImageViewer": {
+      "failedToLoadImage": "Failed to load image",
+      "theImageCouldNotBeDisplayed": "The image could not be displayed.",
+      "resetZoom": "Reset zoom",
+      "rotate": "Rotate",
+      "dragToPan": "Drag to pan"
+    },
+    "componentsViewersPdfViewer": {
+      "failedToLoadPdf": "Failed to load PDF",
+      "previousPage": "Previous page",
+      "nextPage": "Next page",
+      "zoomOut": "Zoom out",
+      "zoomIn": "Zoom in",
+      "fitToWidth": "Fit to width",
+      "rotate": "Rotate"
+    },
+    "componentsViewersVideoPlayer": {
+      "failedToLoadVideo": "Failed to load video",
+      "theVideoFileCouldNotBePlayed": "The video file could not be played."
+    },
+    "pagesFile": {
+      "failedToLoadFile": "Failed to load file",
+      "tryAgain": "Try again",
+      "noFileSelected": "No file selected",
+      "selectAFileFromTheSidebarToViewIt": "Select a file from the sidebar to view it",
+      "loadingFile": "Loading file...",
+      "openInDefaultApp": "Open in default app",
+      "open": "Open",
+      "revealInFinder": "Reveal in Finder",
+      "reveal": "Reveal",
+      "unsupportedFileType": "Unsupported file type"
+    },
+    "pagesFolderView": {
+      "createNewNote": "Create new note",
+      "viewSettings": "View settings",
+      "displayDensity": "Display Density",
+      "comfortable": "Comfortable",
+      "compact": "Compact",
+      "showSummaries": "Show summaries",
+      "cancel": "Cancel"
+    },
+    "pagesTemplateEditor": {
+      "loadingTemplate": "Loading template...",
+      "builtInTemplatesCannotBeModified": "Built-in templates cannot be modified",
+      "description": "Description",
+      "briefDescriptionOfThisTemplate": "Brief description of this template...",
+      "templateContent": "Template Content",
+      "use": "Use ",
+      "toInsertTheNoteTitleWhenCreatingANote": "to insert the note title when creating a note.",
+      "templateName": "Template Name",
+      "defaultContentForNotesCreatedFromThisTemplate": "Default content for notes created from this template..."
+    },
+    "pagesTemplates": {
+      "loadingCollection": "Loading collection...",
+      "templateCollection": "Template Collection",
+      "templates": "Templates",
+      "curatedStructuresForYourNotes": "Curated structures for your notes.",
+      "newTemplate": "New Template",
+      "myTemplates": "My Templates",
+      "builtIn": "Built-in",
+      "deleteTemplate": "Delete Template",
+      "areYouSureYouWantToDelete": "Are you sure you want to delete \"",
+      "notesCreatedFromThisTemplateWillNotBeAffected": "Notes created from this template will not be affected.",
+      "cancel": "Cancel",
+      "builtIn2": "Built-in",
+      "duplicate": "Duplicate",
+      "delete": "Delete",
+      "startYourCollection": "Start Your Collection",
+      "templatesHelpYouCreateNotesWithConsistentStructure": "Templates help you create notes with consistent structure.",
+      "createTemplate": "Create Template"
+    }
   }
 }

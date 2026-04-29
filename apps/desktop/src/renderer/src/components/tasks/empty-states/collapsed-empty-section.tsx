@@ -2,6 +2,7 @@ import { Star, Calendar, AlertTriangle } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import type { SectionType } from '@/lib/section-visibility'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -61,6 +62,7 @@ export const CollapsedEmptySection = ({
   onAddTask,
   className
 }: CollapsedEmptySectionProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const Icon = sectionIcons[type]
   const iconColor = sectionIconColors[type]
 
@@ -104,7 +106,7 @@ export const CollapsedEmptySection = ({
         )}
         aria-label={`Add task for ${label.toLowerCase()}`}
       >
-        + {/* TODO(i18n): wrap in t() */}Add
+        + {tPhaseF('phaseF.componentsTasksEmptyStatesCollapsedEmptySection.add')}
       </button>
     </div>
   )

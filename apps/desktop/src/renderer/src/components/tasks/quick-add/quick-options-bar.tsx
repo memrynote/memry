@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -34,6 +35,7 @@ export const QuickOptionsBar = ({
   onInsert,
   className
 }: QuickOptionsBarProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const handleClick = (label: string): void => {
     onInsert(label)
   }
@@ -48,7 +50,7 @@ export const QuickOptionsBar = ({
   return (
     <div className={cn('flex items-center gap-2 mt-2 text-xs', className)}>
       <span className="text-muted-foreground shrink-0">
-        {/* TODO(i18n): wrap in t() */}Quick options:
+        {tPhaseF('phaseF.componentsTasksQuickAddQuickOptionsBar.quickOptions')}
       </span>
       <div className="flex items-center gap-1.5 flex-wrap">
         {quickOptions.map((option) => (

@@ -9,6 +9,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { ZoomIn, ZoomOut, RotateCw, Maximize2, Move } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // Types
@@ -28,6 +29,7 @@ interface ImageViewerProps {
 // ============================================================================
 
 export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps) {
+  const { t: tPhaseF } = useT('notes')
   const containerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
 
@@ -140,10 +142,10 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
       >
         <div className="text-center p-8">
           <p className="text-destructive font-medium mb-2">
-            {/* TODO(i18n): wrap in t() */}Failed to load image
+            {tPhaseF('phaseF.componentsViewersImageViewer.failedToLoadImage')}
           </p>
           <p className="text-sm text-muted-foreground">
-            {/* TODO(i18n): wrap in t() */}The image could not be displayed.
+            {tPhaseF('phaseF.componentsViewersImageViewer.theImageCouldNotBeDisplayed')}
           </p>
         </div>
       </div>
@@ -171,7 +173,7 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
             size="sm"
             onClick={resetZoom}
             className="h-8 w-8 p-0"
-            title={'Reset zoom' /* TODO(i18n): wrap title in t() */}
+            title={tPhaseF('phaseF.componentsViewersImageViewer.resetZoom')}
           >
             <Maximize2 className="h-4 w-4" />
           </Button>
@@ -184,7 +186,7 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
             size="sm"
             onClick={rotate}
             className="h-8 w-8 p-0"
-            title={'Rotate' /* TODO(i18n): wrap title in t() */}
+            title={tPhaseF('phaseF.componentsViewersImageViewer.rotate')}
           >
             <RotateCw className="h-4 w-4" />
           </Button>
@@ -194,7 +196,7 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
               <div className="w-px h-5 bg-border" />
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Move className="h-3 w-3" />
-                <span>{/* TODO(i18n): wrap in t() */}Drag to pan</span>
+                <span>{tPhaseF('phaseF.componentsViewersImageViewer.dragToPan')}</span>
               </div>
             </>
           )}

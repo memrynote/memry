@@ -3,6 +3,7 @@ import { Folder } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import type { Folder as FolderType } from '@/types'
+import { useT } from '@memry/i18n/renderer'
 
 // Highlight matching text in folder name
 const HighlightedText = ({
@@ -110,6 +111,7 @@ const QuickFileDropdown = ({
   onSelect,
   maxResults = 5
 }: QuickFileDropdownProps): React.JSX.Element | null => {
+  const { t: tPhaseF } = useT('inbox')
   // Filter folders based on query
   const filteredFolders = useMemo(() => {
     if (!query.trim()) return []
@@ -136,7 +138,7 @@ const QuickFileDropdown = ({
         'animate-in fade-in-0 slide-in-from-top-2 duration-[var(--duration-fast)]'
       )}
       role="listbox"
-      aria-label={'Folder suggestions' /* TODO(i18n): wrap aria-label in t() */}
+      aria-label={tPhaseF('phaseF.componentsQuickFileDropdown.folderSuggestions')}
     >
       {filteredFolders.length > 0 ? (
         filteredFolders.map((folder, index) => (
@@ -150,8 +152,8 @@ const QuickFileDropdown = ({
         ))
       ) : (
         <div className="px-3 py-3 text-sm text-[var(--muted-foreground)]">
-          {/* TODO(i18n): wrap in t() */}
-          No folders match "{query}"
+          {tPhaseF('phaseF.componentsQuickFileDropdown.noFoldersMatch')}
+          {query}"
         </div>
       )}
     </div>

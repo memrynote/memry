@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { formatTime } from '@/lib/task-utils'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { DatePickerCalendar } from './date-picker-calendar'
+import { useT } from '@memry/i18n/renderer'
 
 interface DatePickerContentProps {
   selected?: Date | null
@@ -50,6 +51,7 @@ export function DatePickerContent({
   onTimeChange,
   className
 }: DatePickerContentProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('tasks')
   const [editing, setEditing] = useState(false)
   const {
     settings: { clockFormat }
@@ -132,7 +134,7 @@ export function DatePickerContent({
             className="flex items-center rounded-[5px] py-1.5 px-2 gap-2 hover:bg-accent transition-colors"
           >
             <span className="text-[12px] text-destructive leading-4">
-              {/* TODO(i18n): wrap in t() */}Remove date
+              {tPhaseF('phaseF.componentsTasksDatePickerContent.removeDate')}
             </span>
           </button>
         )}
@@ -168,7 +170,7 @@ export function DatePickerContent({
                 type="button"
                 onClick={handleClearTime}
                 className="rounded-[5px] p-1.5 text-text-tertiary hover:text-destructive hover:bg-accent transition-colors"
-                aria-label={'Clear time' /* TODO(i18n): wrap aria-label in t() */}
+                aria-label={tPhaseF('phaseF.componentsTasksDatePickerContent.clearTime')}
               >
                 <X size={10} />
               </button>
@@ -181,7 +183,7 @@ export function DatePickerContent({
             >
               <ClockIcon />
               <span className="text-[12px] text-text-tertiary leading-4">
-                {/* TODO(i18n): wrap in t() */}Add time
+                {tPhaseF('phaseF.componentsTasksDatePickerContent.addTime')}
               </span>
             </button>
           )}

@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/context-menu'
 import type { SidebarItem } from '@/contexts/tabs/types'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
+import { useT } from '@memry/i18n/renderer'
 
 interface SidebarItemContextMenuProps {
   /** Sidebar item data */
@@ -34,6 +35,7 @@ export const SidebarItemContextMenu = ({
   onEdit,
   onDelete
 }: SidebarItemContextMenuProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('notes')
   const { openSidebarItem, openAsPin, copyItemLink } = useSidebarNavigation()
 
   // Determine if this item is editable
@@ -73,21 +75,22 @@ export const SidebarItemContextMenu = ({
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent className="w-48">
         {/* Open actions */}
-        <ContextMenuItem onClick={handleOpen}>{/* TODO(i18n): wrap in t() */}Open</ContextMenuItem>
+        <ContextMenuItem onClick={handleOpen}>
+          {tPhaseF('phaseF.componentsSidebarSidebarItemContextMenu.open')}
+        </ContextMenuItem>
         <ContextMenuItem onClick={handleOpenInNewTab}>
-          {/* TODO(i18n): wrap in t() */}
           Open in New Tab
           <ContextMenuShortcut>⌘↵</ContextMenuShortcut>
         </ContextMenuItem>
         <ContextMenuItem onClick={handleOpenToTheSide}>
-          {/* TODO(i18n): wrap in t() */}Open to the Side
+          {tPhaseF('phaseF.componentsSidebarSidebarItemContextMenu.openToTheSide')}
         </ContextMenuItem>
 
         <ContextMenuSeparator />
 
         {/* Tab actions */}
         <ContextMenuItem onClick={handlePinToTabs}>
-          {/* TODO(i18n): wrap in t() */}Pin to Tabs
+          {tPhaseF('phaseF.componentsSidebarSidebarItemContextMenu.pinToTabs')}
         </ContextMenuItem>
 
         {/* Edit/Delete for editable items */}
@@ -96,7 +99,7 @@ export const SidebarItemContextMenu = ({
             <ContextMenuSeparator />
             {onEdit && (
               <ContextMenuItem onClick={handleEdit}>
-                {/* TODO(i18n): wrap in t() */}Edit
+                {tPhaseF('phaseF.componentsSidebarSidebarItemContextMenu.edit')}
               </ContextMenuItem>
             )}
             {onDelete && (
@@ -104,8 +107,7 @@ export const SidebarItemContextMenu = ({
                 onClick={handleDelete}
                 className="text-red-600 focus:text-red-600 focus:bg-red-50"
               >
-                {/* TODO(i18n): wrap in t() */}
-                Delete
+                {tPhaseF('phaseF.componentsSidebarSidebarItemContextMenu.delete')}
               </ContextMenuItem>
             )}
           </>
@@ -115,7 +117,7 @@ export const SidebarItemContextMenu = ({
 
         {/* Utility actions */}
         <ContextMenuItem onClick={handleCopyLink}>
-          {/* TODO(i18n): wrap in t() */}Copy Link
+          {tPhaseF('phaseF.componentsSidebarSidebarItemContextMenu.copyLink')}
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

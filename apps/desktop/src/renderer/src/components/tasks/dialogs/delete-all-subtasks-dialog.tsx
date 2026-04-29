@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import type { Task } from '@/data/sample-tasks'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -36,6 +37,7 @@ export const DeleteAllSubtasksDialog = ({
   onClose,
   onConfirm
 }: DeleteAllSubtasksDialogProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const handleConfirm = (): void => {
     onConfirm()
     onClose()
@@ -49,15 +51,20 @@ export const DeleteAllSubtasksDialog = ({
             <div className="p-2 rounded-full bg-destructive/10">
               <Trash2 className="size-5 text-destructive" />
             </div>
-            <AlertDialogTitle>{/* TODO(i18n): wrap in t() */}Delete all subtasks?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {tPhaseF('phaseF.componentsTasksDialogsDeleteAllSubtasksDialog.deleteAllSubtasks')}
+            </AlertDialogTitle>
           </div>
           <AlertDialogDescription asChild>
             <div className="space-y-3">
               <p>
-                {/* TODO(i18n): wrap in t() */}
-                This will delete {subtasks.length} {/* TODO(i18n): wrap in t() */}subtask
-                {subtasks.length !== 1 ? 's' : ''} {/* TODO(i18n): wrap in t() */}from &ldquo;
-                {parentTitle}&{/* TODO(i18n): wrap in t() */}rdquo;.
+                {tPhaseF('phaseF.componentsTasksDialogsDeleteAllSubtasksDialog.thisWillDelete')}
+                {subtasks.length}{' '}
+                {tPhaseF('phaseF.componentsTasksDialogsDeleteAllSubtasksDialog.subtask')}
+                {subtasks.length !== 1 ? 's' : ''}{' '}
+                {tPhaseF('phaseF.componentsTasksDialogsDeleteAllSubtasksDialog.from')}
+                {parentTitle}&
+                {tPhaseF('phaseF.componentsTasksDialogsDeleteAllSubtasksDialog.rdquo')}
               </p>
 
               {/* Subtask list */}
@@ -74,19 +81,22 @@ export const DeleteAllSubtasksDialog = ({
               </ScrollArea>
 
               <p className="text-destructive text-sm font-medium">
-                {/* TODO(i18n): wrap in t() */}This action cannot be undone.
+                {tPhaseF(
+                  'phaseF.componentsTasksDialogsDeleteAllSubtasksDialog.thisActionCannotBeUndone'
+                )}
               </p>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>{/* TODO(i18n): wrap in t() */}Cancel</AlertDialogCancel>
+          <AlertDialogCancel>
+            {tPhaseF('phaseF.componentsTasksDialogsDeleteAllSubtasksDialog.cancel')}
+          </AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {/* TODO(i18n): wrap in t() */}
-            Delete All
+            {tPhaseF('phaseF.componentsTasksDialogsDeleteAllSubtasksDialog.deleteAll')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

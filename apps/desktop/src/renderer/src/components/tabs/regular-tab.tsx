@@ -9,6 +9,7 @@ import type { Tab } from '@/contexts/tabs/types'
 import { useTabs, useTabSettings } from '@/contexts/tabs'
 import { TabIcon } from './tab-icon'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface RegularTabProps {
   /** Tab data */
@@ -31,6 +32,7 @@ const RegularTabComponent = ({
   isActive,
   className
 }: RegularTabProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('common')
   const { setActiveTab, closeTab, promotePreviewTab } = useTabs()
   const settings = useTabSettings()
   const [isHovered, setIsHovered] = useState(false)
@@ -140,7 +142,7 @@ const RegularTabComponent = ({
               'transition-transform duration-150',
               'animate-pulse'
             )}
-            aria-label={'Unsaved changes' /* TODO(i18n): wrap aria-label in t() */}
+            aria-label={tPhaseF('phaseF.componentsTabsRegularTab.unsavedChanges')}
           />
         ) : showCloseButton ? (
           // Close button with refined hover state

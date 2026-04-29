@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useRef } from 'react'
 import { Plus, Link, Mic, Image, FileIcon, Paperclip, Globe } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 type DetectedType = 'note' | 'link' | 'image' | 'voice' | 'pdf' | 'social'
 
@@ -38,6 +39,7 @@ export function QuickCaptureInput({
   hasAttachment,
   textareaRef
 }: QuickCaptureInputProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('inbox')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const TypeIcon = TYPE_ICONS[detectedType]
@@ -98,7 +100,7 @@ export function QuickCaptureInput({
           'focus:outline-none',
           'disabled:cursor-not-allowed disabled:opacity-50'
         )}
-        aria-label={'Quick capture input' /* TODO(i18n): wrap aria-label in t() */}
+        aria-label={tPhaseF('phaseF.componentsQuickCaptureInput.quickCaptureInput')}
       />
 
       <div className="flex items-center gap-0.5 mt-[2px]">
@@ -112,7 +114,7 @@ export function QuickCaptureInput({
             'hover:text-foreground/60 hover:bg-foreground/[0.07]',
             'disabled:cursor-not-allowed disabled:opacity-30'
           )}
-          aria-label={'Record voice memo' /* TODO(i18n): wrap aria-label in t() */}
+          aria-label={tPhaseF('phaseF.componentsQuickCaptureInput.recordVoiceMemo')}
         >
           <Mic className="size-[15px]" />
         </button>
@@ -127,7 +129,7 @@ export function QuickCaptureInput({
             'hover:text-foreground/60 hover:bg-foreground/[0.07]',
             'disabled:cursor-not-allowed disabled:opacity-30'
           )}
-          aria-label={'Attach file' /* TODO(i18n): wrap aria-label in t() */}
+          aria-label={tPhaseF('phaseF.componentsQuickCaptureInput.attachFile')}
         >
           <Paperclip className="size-[15px]" />
         </button>

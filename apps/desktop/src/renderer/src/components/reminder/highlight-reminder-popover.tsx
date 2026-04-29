@@ -21,6 +21,7 @@ import { ReminderPicker } from './reminder-picker'
 import { useCreateReminder } from '@/hooks/use-reminders'
 import { toast } from 'sonner'
 import { createLogger } from '@/lib/logger'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Component:HighlightReminderPopover')
 
@@ -63,6 +64,7 @@ export function HighlightReminderPopover({
   onReminderCreated,
   containerRef: _containerRef
 }: HighlightReminderPopoverProps): React.ReactElement | null {
+  const { t: tPhaseF } = useT('inbox')
   const [open, setOpen] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const createReminder = useCreateReminder()
@@ -142,7 +144,9 @@ export function HighlightReminderPopover({
               'bg-amber-500 hover:bg-amber-600 text-white',
               'animate-in fade-in zoom-in duration-200'
             )}
-            title={'Set reminder for this text' /* TODO(i18n): wrap title in t() */}
+            title={tPhaseF(
+              'phaseF.componentsReminderHighlightReminderPopover.setReminderForThisText'
+            )}
           >
             <Bell className="h-4 w-4" />
           </Button>
@@ -153,7 +157,7 @@ export function HighlightReminderPopover({
             {/* Header */}
             <div className="flex items-center justify-between">
               <h4 className="font-medium text-sm">
-                {/* TODO(i18n): wrap in t() */}Remind me about this
+                {tPhaseF('phaseF.componentsReminderHighlightReminderPopover.remindMeAboutThis')}
               </h4>
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleClose}>
                 <X className="h-4 w-4" />
@@ -163,7 +167,7 @@ export function HighlightReminderPopover({
             {/* Selected text preview */}
             <div className="rounded-md bg-muted p-3">
               <p className="text-xs text-muted-foreground mb-1">
-                {/* TODO(i18n): wrap in t() */}Selected text:
+                {tPhaseF('phaseF.componentsReminderHighlightReminderPopover.selectedText')}
               </p>
               <p className="text-sm italic line-clamp-3 border-l-2 border-amber-500 pl-2">
                 "{selection.text}"

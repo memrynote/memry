@@ -288,5 +288,180 @@
     "timeAgoMinutes": "{count}m ago",
     "timeAgoHours": "{count}h ago",
     "timeAgoDays": "{count}d ago"
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "AI detected: \"",
+      "addToSelection": "Add to selection",
+      "dismiss": "Dismiss"
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "Delete ",
+      "item": "item",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "These items will be removed from your inbox. You can undo this action immediately after."
+    },
+    "componentsCaptureInput": {
+      "captureInput": "Capture input",
+      "attachFile": "Attach file",
+      "attachFileImagesAudioVideoPdf": "Attach file (Images, Audio, Video, PDF)",
+      "recordVoiceMemo": "Record voice memo",
+      "recordVoiceMemo2": "Record voice memo",
+      "alreadyCaptured": "Already captured: “",
+      "rdquo": "rdquo;",
+      "captureAnyway": "Capture Anyway"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "Choose folder",
+      "searchFolders": "Search folders...",
+      "searchFolders2": "Search folders",
+      "searchResults": "Search results",
+      "create": "Create \"",
+      "suggested": "Suggested",
+      "recent": "Recent",
+      "allFolders": "All folders",
+      "allFolders2": "All folders"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "Link to",
+      "optional": "optional)",
+      "searchNotesToLink": "Search notes to link...",
+      "searchNotesToLink2": "Search notes to link",
+      "searching": "Searching...",
+      "noNotesFound": "No notes found",
+      "linkedNotes": "Linked notes",
+      "noLinksAdded": "No links added"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "Suggested",
+      "ai": "AI",
+      "create": "Create",
+      "tags": "Tags",
+      "selectedTags": "Selected tags",
+      "addTags": "Add tags",
+      "tagSuggestions": "Tag suggestions"
+    },
+    "componentsFilingTagInput": {
+      "tags": "Tags",
+      "optional": "optional)",
+      "addTags": "Add tags...",
+      "addTags2": "Add tags",
+      "selectedTags": "Selected tags",
+      "suggested": "Suggested"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "Capture Activity"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "No items filed yet",
+      "recentlyFiled": "Recently Filed",
+      "latestActionsOnYourInbox": "Latest actions on your inbox",
+      "linked": "Linked"
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "Loading insights..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "No item types to display",
+      "itemTypes": "Item Types",
+      "distributionOfContentFormats": "Distribution of content formats"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "Captured "
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "x "
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "Content editor"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "middot; "
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "Tweet unavailable",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "This tweet may have been deleted or is from a private account.",
+      "openOnXCom": "Open on x.com",
+      "views": "views",
+      "xCom": "x.com",
+      "viewOnX": "View on X"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "Type folder name...",
+      "quickFileFolderSearch": "Quick file folder search"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "close",
+      "capture": "capture"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "Remove attachment"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "Quick capture input",
+      "recordVoiceMemo": "Record voice memo",
+      "attachFile": "Attach file"
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "LINK"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "Captured",
+      "dismissError": "Dismiss error",
+      "alreadyCaptured": "Already captured",
+      "ldquo": "ldquo;",
+      "rdquoMiddot": "rdquo; &middot; ",
+      "captureAnyway": "Capture Anyway",
+      "close": "Close"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "Drop to capture",
+      "capturing": "Capturing..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "Folder suggestions",
+      "noFoldersMatch": "No folders match \""
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "Set reminder for this text",
+      "remindMeAboutThis": "Remind me about this",
+      "selectedText": "Selected text:"
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "Remind",
+      "remindMe": "Remind me",
+      "pickDateTime": "Pick date & time",
+      "addANoteOptional": "Add a note (optional)",
+      "backToPresets": "Back to presets",
+      "time": "Time",
+      "noteOptional": "Note (optional)",
+      "whyAreYouSettingThisReminder": "Why are you setting this reminder?"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "Snooze",
+      "snooze2": "Snooze",
+      "pickDateTime": "Pick Date & Time",
+      "pickDateTime2": "Pick Date & Time",
+      "selectWhenToBeRemindedAboutThisItem": "Select when to be reminded about this item",
+      "snooze3": "Snooze",
+      "snooze4": "Snooze",
+      "snooze5": "Snooze"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "Loading post...",
+      "failedToLoad": "Failed to load",
+      "loadingPostContent": "Loading post content...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Failed to load post content. The post may be private or deleted.",
+      "viewOn": "View on "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "Start voice recording",
+      "requestingMicrophoneAccess": "Requesting microphone access...",
+      "settings": "Settings",
+      "processing": "Processing...",
+      "cancelRecording": "Cancel recording",
+      "cancel": "Cancel",
+      "stopRecording": "Stop recording",
+      "stop": "Stop"
+    }
   }
 }

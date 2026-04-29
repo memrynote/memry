@@ -13,6 +13,7 @@ import { searchService } from '@/services/search-service'
 import { SearchResultGroup } from './search-result-group'
 import { SearchFilters } from './search-filters'
 import { RecentReasons } from './recent-reasons'
+import { useT } from '@memry/i18n/renderer'
 
 interface CommandPaletteProps {
   open: boolean
@@ -27,6 +28,7 @@ const TYPE_SHORTCUT_MAP: Record<string, ContentType> = {
 }
 
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('common')
   const { openTab } = useTabs()
   const {
     query,
@@ -242,7 +244,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
         if (!v) handleClose()
         else onOpenChange(true)
       }}
-      label={'Search' /* TODO(i18n): wrap label in t() */}
+      label={tPhaseF('phaseF.componentsSearchCommandPalette.search')}
       shouldFilter={false}
       loop
       className="fixed inset-0 z-50"
@@ -266,9 +268,9 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
             <Command.Input
               value={query}
               onValueChange={setQuery}
-              placeholder={
-                'Search notes, tasks, journal, inbox...' /* TODO(i18n): wrap placeholder in t() */
-              }
+              placeholder={tPhaseF(
+                'phaseF.componentsSearchCommandPalette.searchNotesTasksJournalInbox'
+              )}
               autoFocus
               className="flex-1 h-12 bg-transparent border-0 text-sm text-foreground
                 placeholder:text-text-tertiary focus:outline-none focus:ring-0"
@@ -299,8 +301,8 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
           >
             {hasQuery && !loading && !hasResults && !error && (
               <Command.Empty className="py-12 text-center text-sm text-text-tertiary">
-                {/* TODO(i18n): wrap in t() */}
-                No results for &ldquo;{query}&{/* TODO(i18n): wrap in t() */}rdquo;
+                {tPhaseF('phaseF.componentsSearchCommandPalette.noResultsFor')}
+                {query}&{tPhaseF('phaseF.componentsSearchCommandPalette.rdquo')}
               </Command.Empty>
             )}
 
@@ -328,7 +330,8 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
 
             {hasQuery && hasResults && (
               <div className="px-3 py-2 text-xs text-text-tertiary text-right tabular-nums border-t border-border mt-1">
-                {totalCount} {/* TODO(i18n): wrap in t() */}result{totalCount !== 1 ? 's' : ''}
+                {totalCount} {tPhaseF('phaseF.componentsSearchCommandPalette.result')}
+                {totalCount !== 1 ? 's' : ''}
               </div>
             )}
           </Command.List>

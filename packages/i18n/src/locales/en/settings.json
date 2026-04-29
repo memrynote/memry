@@ -1054,5 +1054,53 @@
         }
       }
     }
+  },
+  "phaseF": {
+    "componentsKeyboardChordIndicator": {
+      "pressedWaitingForSecondKey": "pressed — waiting for second key..."
+    },
+    "componentsKeyboardKeyboardShortcutsDialog": {
+      "keyboardShortcuts": "Keyboard Shortcuts",
+      "press": "Press ",
+      "toToggleThisDialog": "to toggle this dialog"
+    },
+    "componentsSyncDeviceList": {
+      "middot": "middot;"
+    },
+    "componentsSyncDeviceRevokedDialog": {
+      "thisDeviceHasBeenRemoved": "This device has been removed",
+      "exporting": "Exporting...",
+      "signOut": "Sign Out"
+    },
+    "componentsSyncSyncHistory": {
+      "middot": "middot; ",
+      "activity": "Activity",
+      "filterBySyncType": "Filter by sync type",
+      "allTypes": "All types",
+      "pushed": "Pushed",
+      "pulled": "Pulled",
+      "errors": "Errors",
+      "filterByTimePeriod": "Filter by time period",
+      "allTime": "All time",
+      "today": "Today",
+      "last7Days": "Last 7 days",
+      "last30Days": "Last 30 days",
+      "loadingSyncHistory": "Loading sync history",
+      "noSyncActivityYet": "No sync activity yet",
+      "loadMore": "Load more"
+    },
+    "componentsSyncSyncStatus": {
+      "lastSynced": "Last synced ",
+      "pending": "pending",
+      "localOnly": "local-only",
+      "detected": "detected",
+      "clockSkewDetected": "Clock skew detected",
+      "items": "items",
+      "willSyncWhenBackOnline": "Will sync when back online",
+      "openSyncSettings": "Open sync settings"
+    },
+    "pagesSettingsAiInlineSection": {
+      "httpLocalhost11434V1": "http://localhost:11434/v1"
+    }
   }
 }

@@ -5,6 +5,7 @@
 
 import { cn } from '@/lib/utils'
 import { isMac } from '@/hooks/use-keyboard-shortcuts-base'
+import { useT } from '@memry/i18n/renderer'
 
 interface ChordIndicatorProps {
   /** Whether chord mode is active */
@@ -20,6 +21,7 @@ export const ChordIndicator = ({
   isActive,
   className
 }: ChordIndicatorProps): React.JSX.Element | null => {
+  const { t: tPhaseF } = useT('settings')
   if (!isActive) return null
 
   const modKey = isMac ? '⌘' : 'Ctrl'
@@ -40,7 +42,7 @@ export const ChordIndicator = ({
           {modKey}K
         </kbd>
         <span className="text-primary-foreground/60">
-          {/* TODO(i18n): wrap in t() */}pressed — waiting for second key...
+          {tPhaseF('phaseF.componentsKeyboardChordIndicator.pressedWaitingForSecondKey')}
         </span>
       </div>
     </div>

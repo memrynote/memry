@@ -45,6 +45,7 @@ const BASE_URL_DEFAULTS: Record<string, string> = {
 }
 
 export function AIInlineSettings(): React.JSX.Element {
+  const { t: tPhaseF } = useT('settings')
   const { t } = useT('settings')
   const [settings, setSettings] = useState<AIInlineSettings>(AI_INLINE_SETTINGS_DEFAULTS)
   const [isLoading, setIsLoading] = useState(true)
@@ -244,7 +245,7 @@ export function AIInlineSettings(): React.JSX.Element {
                 value={settings.baseUrl}
                 onChange={(e) => setSettings((prev) => ({ ...prev, baseUrl: e.target.value }))}
                 onBlur={() => void updateSetting({ baseUrl: settings.baseUrl })}
-                placeholder={'http://localhost:11434/v1' /* TODO(i18n): wrap placeholder in t() */}
+                placeholder={tPhaseF('phaseF.pagesSettingsAiInlineSection.httpLocalhost11434V1')}
                 className="h-7 text-xs/4"
               />
             </SettingRowTall>

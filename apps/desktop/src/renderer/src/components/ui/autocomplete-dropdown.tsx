@@ -10,6 +10,7 @@
 import { useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import type { AutocompleteSuggestion } from '@/hooks/use-autocomplete'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // Types
@@ -48,6 +49,7 @@ export function AutocompleteDropdown({
   visible,
   className
 }: AutocompleteDropdownProps): React.JSX.Element | null {
+  const { t: tPhaseF } = useT('common')
   const listRef = useRef<HTMLUListElement>(null)
   const selectedRef = useRef<HTMLLIElement>(null)
 
@@ -78,7 +80,7 @@ export function AutocompleteDropdown({
         ref={listRef}
         className="max-h-48 overflow-y-auto py-1"
         role="listbox"
-        aria-label={'Suggestions' /* TODO(i18n): wrap aria-label in t() */}
+        aria-label={tPhaseF('phaseF.componentsUiAutocompleteDropdown.suggestions')}
       >
         {suggestions.map((suggestion, index) => {
           const isSelected = index === selectedIndex
@@ -130,9 +132,11 @@ export function AutocompleteDropdown({
       {/* Hint footer */}
       <div className="px-3 py-1 text-[10px] text-muted-foreground border-t bg-muted/30">
         <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">Tab</kbd>{' '}
-        {/* TODO(i18n): wrap in t() */}or{' '}
-        <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">Enter</kbd>{' '}
-        {/* TODO(i18n): wrap in t() */}to insert
+        {tPhaseF('phaseF.componentsUiAutocompleteDropdown.or')}{' '}
+        <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">
+          {tPhaseF('phaseF.componentsUiAutocompleteDropdown.enter')}
+        </kbd>{' '}
+        {tPhaseF('phaseF.componentsUiAutocompleteDropdown.toInsert')}
       </div>
     </div>
   )

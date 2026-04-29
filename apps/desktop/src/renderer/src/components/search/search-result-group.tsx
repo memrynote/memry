@@ -6,6 +6,7 @@ import type {
   ContentType
 } from '@memry/contracts/search-api'
 import { SearchResultItem } from './search-result-item'
+import { useT } from '@memry/i18n/renderer'
 
 interface SearchResultGroupProps {
   group: SearchResultGroupType
@@ -27,6 +28,7 @@ export function SearchResultGroup({
   onSelect,
   initialLimit = 5
 }: SearchResultGroupProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('common')
   const [expanded, setExpanded] = useState(false)
 
   const visibleResults = expanded ? group.results : group.results.slice(0, initialLimit)
@@ -52,8 +54,8 @@ export function SearchResultGroup({
           onClick={() => setExpanded(true)}
           className="w-full px-3 py-1.5 text-xs text-center text-text-tertiary hover:text-foreground transition-colors"
         >
-          {/* TODO(i18n): wrap in t() */}
-          View all {group.totalInGroup} {/* TODO(i18n): wrap in t() */}results
+          {tPhaseF('phaseF.componentsSearchSearchResultGroup.viewAll')}
+          {group.totalInGroup} {tPhaseF('phaseF.componentsSearchSearchResultGroup.results')}
         </button>
       )}
     </Command.Group>

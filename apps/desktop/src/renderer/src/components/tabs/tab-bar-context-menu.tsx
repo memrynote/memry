@@ -12,6 +12,7 @@ import {
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
 import { useTabs } from '@/contexts/tabs'
+import { useT } from '@memry/i18n/renderer'
 
 interface TabBarContextMenuProps {
   /** Group ID for this tab bar */
@@ -27,6 +28,7 @@ export const TabBarContextMenu = ({
   groupId,
   children
 }: TabBarContextMenuProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('common')
   const { openTab, closeAllTabs } = useTabs()
 
   // Handlers
@@ -55,15 +57,14 @@ export const TabBarContextMenu = ({
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent className="w-48">
         <ContextMenuItem onClick={handleNewTab}>
-          {/* TODO(i18n): wrap in t() */}
           New Tab
-          <ContextMenuShortcut>⌘{/* TODO(i18n): wrap in t() */}T</ContextMenuShortcut>
+          <ContextMenuShortcut>⌘T</ContextMenuShortcut>
         </ContextMenuItem>
 
         <ContextMenuSeparator />
 
         <ContextMenuItem onClick={handleCloseAll}>
-          {/* TODO(i18n): wrap in t() */}Close All Tabs
+          {tPhaseF('phaseF.componentsTabsTabBarContextMenu.closeAllTabs')}
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

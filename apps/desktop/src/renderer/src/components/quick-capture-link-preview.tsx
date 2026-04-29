@@ -1,5 +1,6 @@
 import { Check } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface LinkPreviewCardProps {
   title: string
@@ -14,6 +15,7 @@ export function LinkPreviewCard({
   favicon,
   loading
 }: LinkPreviewCardProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('inbox')
   const initial = domain.charAt(0).toUpperCase()
 
   if (loading) {
@@ -59,7 +61,7 @@ export function LinkPreviewCard({
       <div className="flex items-center gap-1 rounded-full py-0.5 px-2 bg-accent-green/10 shrink-0">
         <Check className="size-2.5 text-accent-green" />
         <span className="text-[10px]/3 font-semibold tracking-wide text-accent-green">
-          {/* TODO(i18n): wrap in t() */}LINK
+          {tPhaseF('phaseF.componentsQuickCaptureLinkPreview.link')}
         </span>
       </div>
     </div>

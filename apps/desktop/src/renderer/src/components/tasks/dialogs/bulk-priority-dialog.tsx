@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { cn } from '@/lib/utils'
 import { priorityConfig, type Priority } from '@/data/sample-tasks'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -53,6 +54,7 @@ export const BulkPriorityDialog = ({
   onClose,
   onApply
 }: BulkPriorityDialogProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [selectedPriority, setSelectedPriority] = useState<Priority>('none')
   const [includeCompleted, setIncludeCompleted] = useState(false)
 
@@ -78,13 +80,16 @@ export const BulkPriorityDialog = ({
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Flag className="size-5 text-muted-foreground" />
-            <DialogTitle>{/* TODO(i18n): wrap in t() */}Set priority for all subtasks</DialogTitle>
+            <DialogTitle>
+              {tPhaseF('phaseF.componentsTasksDialogsBulkPriorityDialog.setPriorityForAllSubtasks')}
+            </DialogTitle>
           </div>
           <DialogDescription>
-            {/* TODO(i18n): wrap in t() */}
-            Set priority for {affectedCount} {/* TODO(i18n): wrap in t() */}subtask
-            {affectedCount !== 1 ? 's' : ''} {/* TODO(i18n): wrap in t() */}in &ldquo;
-            {parentTitle}&{/* TODO(i18n): wrap in t() */}rdquo;
+            {tPhaseF('phaseF.componentsTasksDialogsBulkPriorityDialog.setPriorityFor')}
+            {affectedCount} {tPhaseF('phaseF.componentsTasksDialogsBulkPriorityDialog.subtask')}
+            {affectedCount !== 1 ? 's' : ''}{' '}
+            {tPhaseF('phaseF.componentsTasksDialogsBulkPriorityDialog.in')}
+            {parentTitle}&{tPhaseF('phaseF.componentsTasksDialogsBulkPriorityDialog.rdquo')}
           </DialogDescription>
         </DialogHeader>
 
@@ -131,8 +136,10 @@ export const BulkPriorityDialog = ({
                 htmlFor="include-completed-priority"
                 className="text-sm text-muted-foreground cursor-pointer"
               >
-                {/* TODO(i18n): wrap in t() */}
-                Also apply to completed subtasks ({completedCount})
+                {tPhaseF(
+                  'phaseF.componentsTasksDialogsBulkPriorityDialog.alsoApplyToCompletedSubtasks'
+                )}
+                {completedCount})
               </Label>
             </div>
           )}
@@ -140,10 +147,11 @@ export const BulkPriorityDialog = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose}>
-            {/* TODO(i18n): wrap in t() */}
-            Cancel
+            {tPhaseF('phaseF.componentsTasksDialogsBulkPriorityDialog.cancel')}
           </Button>
-          <Button onClick={handleApply}>{/* TODO(i18n): wrap in t() */}Apply</Button>
+          <Button onClick={handleApply}>
+            {tPhaseF('phaseF.componentsTasksDialogsBulkPriorityDialog.apply')}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

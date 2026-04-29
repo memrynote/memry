@@ -9,6 +9,7 @@ import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useT } from '@memry/i18n/renderer'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +24,7 @@ interface NewTabMenuProps {
 }
 
 export function NewTabMenu({ groupId }: NewTabMenuProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('common')
   const { openTab } = useTabs()
   const { selectedFolder } = useSelectedFolder()
   const { settings: generalSettings } = useGeneralSettings()
@@ -150,7 +152,7 @@ export function NewTabMenu({ groupId }: NewTabMenuProps): React.JSX.Element {
                 'transition-all duration-150 ease-out',
                 'active:scale-95 active:bg-surface-active/70'
               )}
-              aria-label={'New Tab' /* TODO(i18n): wrap aria-label in t() */}
+              aria-label={tPhaseF('phaseF.componentsTabsNewTabMenu.newTab')}
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -160,30 +162,29 @@ export function NewTabMenu({ groupId }: NewTabMenuProps): React.JSX.Element {
           side="bottom"
           className="text-xs px-2.5 py-1.5 font-medium bg-primary text-primary-foreground border-0"
         >
-          {/* TODO(i18n): wrap in t() */}
-          New Tab
+          {tPhaseF('phaseF.componentsTabsNewTabMenu.newTab2')}
         </TooltipContent>
       </Tooltip>
       <DropdownMenuContent side="bottom" align="start" className="min-w-[180px]">
         <DropdownMenuItem onClick={handleNewNote}>
           <FileText className="size-4" />
-          <span>{/* TODO(i18n): wrap in t() */}New Note</span>
+          <span>{tPhaseF('phaseF.componentsTabsNewTabMenu.newNote')}</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleNewJournal}>
           <BookOpen className="size-4" />
-          <span>{/* TODO(i18n): wrap in t() */}Journal</span>
+          <span>{tPhaseF('phaseF.componentsTabsNewTabMenu.journal')}</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleOpenCalendar}>
           <Calendar className="size-4" />
-          <span>{/* TODO(i18n): wrap in t() */}Calendar</span>
+          <span>{tPhaseF('phaseF.componentsTabsNewTabMenu.calendar')}</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleOpenInbox}>
           <Inbox className="size-4" />
-          <span>{/* TODO(i18n): wrap in t() */}Inbox Capture</span>
+          <span>{tPhaseF('phaseF.componentsTabsNewTabMenu.inboxCapture')}</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleNewTask}>
           <ListTodo className="size-4" />
-          <span>{/* TODO(i18n): wrap in t() */}Tasks</span>
+          <span>{tPhaseF('phaseF.componentsTabsNewTabMenu.tasks')}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

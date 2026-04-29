@@ -27,6 +27,7 @@ import { notesService } from '@/services/notes-service'
 import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Component:RowContextMenu')
 
@@ -65,6 +66,7 @@ export function RowContextMenu({
   onMoveToFolder,
   onDelete
 }: RowContextMenuProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   // Determine if we should show bulk actions
   const showBulkActions = isPartOfSelection && selectedCount > 1
 
@@ -144,15 +146,14 @@ export function RowContextMenu({
           <>
             <ContextMenuItem onClick={handleBulkMoveToFolder}>
               <FolderInput className="mr-2 h-4 w-4" />
-              {/* TODO(i18n): wrap in t() */}
-              Move {selectedCount} {/* TODO(i18n): wrap in t() */}Notes to Folder...
-              <ContextMenuShortcut>⇧⌘{/* TODO(i18n): wrap in t() */}M</ContextMenuShortcut>
+              Move {selectedCount} Notes to Folder...
+              <ContextMenuShortcut>⇧⌘M</ContextMenuShortcut>
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem variant="destructive" onClick={handleBulkDelete}>
               <Trash2 className="mr-2 h-4 w-4" />
-              {/* TODO(i18n): wrap in t() */}
-              Delete {selectedCount} {/* TODO(i18n): wrap in t() */}Notes
+              {tPhaseF('phaseF.componentsFolderViewRowContextMenu.delete')}
+              {selectedCount} {tPhaseF('phaseF.componentsFolderViewRowContextMenu.notes')}
             </ContextMenuItem>
           </>
         ) : (
@@ -161,12 +162,11 @@ export function RowContextMenu({
             {/* Open actions */}
             <ContextMenuItem onClick={handleOpen}>
               <FileText className="mr-2 h-4 w-4" />
-              {/* TODO(i18n): wrap in t() */}
-              Open
+
+              {tPhaseF('phaseF.componentsFolderViewRowContextMenu.open')}
             </ContextMenuItem>
             <ContextMenuItem onClick={handleOpenInNewTab}>
               <FileText className="mr-2 h-4 w-4" />
-              {/* TODO(i18n): wrap in t() */}
               Open in New Tab
               <ContextMenuShortcut>⌘↵</ContextMenuShortcut>
             </ContextMenuItem>
@@ -176,18 +176,18 @@ export function RowContextMenu({
             {/* External actions */}
             <ContextMenuItem onClick={() => void handleOpenExternal()}>
               <ExternalLink className="mr-2 h-4 w-4" />
-              {/* TODO(i18n): wrap in t() */}
-              Open in External Editor
+
+              {tPhaseF('phaseF.componentsFolderViewRowContextMenu.openInExternalEditor')}
             </ContextMenuItem>
             <ContextMenuItem onClick={handleRevealInFinder}>
               <FolderOpen className="mr-2 h-4 w-4" />
-              {/* TODO(i18n): wrap in t() */}
-              Reveal in Finder
+
+              {tPhaseF('phaseF.componentsFolderViewRowContextMenu.revealInFinder')}
             </ContextMenuItem>
             <ContextMenuItem onClick={handleRevealInSidebar}>
               <PanelLeft className="mr-2 h-4 w-4" />
-              {/* TODO(i18n): wrap in t() */}
-              Reveal in Sidebar
+
+              {tPhaseF('phaseF.componentsFolderViewRowContextMenu.revealInSidebar')}
             </ContextMenuItem>
 
             <ContextMenuSeparator />
@@ -195,14 +195,13 @@ export function RowContextMenu({
             {/* Utility actions */}
             <ContextMenuItem onClick={handleCopyLink}>
               <Link className="mr-2 h-4 w-4" />
-              {/* TODO(i18n): wrap in t() */}
-              Copy Link
+
+              {tPhaseF('phaseF.componentsFolderViewRowContextMenu.copyLink')}
             </ContextMenuItem>
             <ContextMenuItem onClick={handleMoveToFolder}>
               <FolderInput className="mr-2 h-4 w-4" />
-              {/* TODO(i18n): wrap in t() */}
               Move to Folder...
-              <ContextMenuShortcut>⇧⌘{/* TODO(i18n): wrap in t() */}M</ContextMenuShortcut>
+              <ContextMenuShortcut>⇧⌘M</ContextMenuShortcut>
             </ContextMenuItem>
 
             <ContextMenuSeparator />
@@ -210,8 +209,8 @@ export function RowContextMenu({
             {/* Destructive actions */}
             <ContextMenuItem variant="destructive" onClick={handleDelete}>
               <Trash2 className="mr-2 h-4 w-4" />
-              {/* TODO(i18n): wrap in t() */}
-              Delete
+
+              {tPhaseF('phaseF.componentsFolderViewRowContextMenu.delete2')}
             </ContextMenuItem>
           </>
         )}

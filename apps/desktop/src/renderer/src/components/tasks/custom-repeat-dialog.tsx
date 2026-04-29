@@ -32,6 +32,7 @@ import {
 } from '@/lib/repeat-utils'
 import { formatDateShort } from '@/lib/task-utils'
 import type { RepeatConfig, RepeatFrequency, RepeatEndType, MonthlyType } from '@/data/sample-tasks'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -55,6 +56,7 @@ interface DayOfWeekPickerProps {
 }
 
 const DayOfWeekPicker = ({ selectedDays, onChange }: DayOfWeekPickerProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const handleToggleDay = (day: number): void => {
     if (selectedDays.includes(day)) {
       // Don't allow deselecting the last day
@@ -69,8 +71,7 @@ const DayOfWeekPicker = ({ selectedDays, onChange }: DayOfWeekPickerProps): Reac
   return (
     <div className="flex flex-col gap-2">
       <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {/* TODO(i18n): wrap in t() */}
-        On these days
+        {tPhaseF('phaseF.componentsTasksCustomRepeatDialog.onTheseDays')}
       </Label>
       <div className="flex gap-1">
         {SHORT_DAY_NAMES.map((name, index) => (
@@ -120,11 +121,11 @@ const MonthlyRepeatOptions = ({
   dayOfWeekForMonth,
   onChange
 }: MonthlyRepeatOptionsProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   return (
     <div className="flex flex-col gap-3">
       <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {/* TODO(i18n): wrap in t() */}
-        Repeat on
+        {tPhaseF('phaseF.componentsTasksCustomRepeatDialog.repeatOn')}
       </Label>
 
       {/* Day of month option */}
@@ -136,7 +137,7 @@ const MonthlyRepeatOptions = ({
           onChange={() => onChange({ monthlyType: 'dayOfMonth' })}
           className="size-4 accent-primary"
         />
-        <span className="text-sm">{/* TODO(i18n): wrap in t() */}Day</span>
+        <span className="text-sm">{tPhaseF('phaseF.componentsTasksCustomRepeatDialog.day')}</span>
         <Select
           value={dayOfMonth.toString()}
           onValueChange={(val) => onChange({ dayOfMonth: parseInt(val, 10) })}
@@ -154,7 +155,7 @@ const MonthlyRepeatOptions = ({
           </SelectContent>
         </Select>
         <span className="text-sm text-muted-foreground">
-          {/* TODO(i18n): wrap in t() */}of the month
+          {tPhaseF('phaseF.componentsTasksCustomRepeatDialog.ofTheMonth')}
         </span>
       </label>
 
@@ -167,7 +168,7 @@ const MonthlyRepeatOptions = ({
           onChange={() => onChange({ monthlyType: 'weekPattern' })}
           className="size-4 accent-primary"
         />
-        <span className="text-sm">{/* TODO(i18n): wrap in t() */}The</span>
+        <span className="text-sm">{tPhaseF('phaseF.componentsTasksCustomRepeatDialog.the')}</span>
         <Select
           value={weekOfMonth.toString()}
           onValueChange={(val) => onChange({ weekOfMonth: parseInt(val, 10) })}
@@ -201,7 +202,7 @@ const MonthlyRepeatOptions = ({
           </SelectContent>
         </Select>
         <span className="text-sm text-muted-foreground">
-          {/* TODO(i18n): wrap in t() */}of the month
+          {tPhaseF('phaseF.componentsTasksCustomRepeatDialog.ofTheMonth2')}
         </span>
       </label>
     </div>
@@ -225,13 +226,13 @@ const RepeatEndOptions = ({
   endCount,
   onChange
 }: RepeatEndOptionsProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
 
   return (
     <div className="flex flex-col gap-3">
       <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {/* TODO(i18n): wrap in t() */}
-        Ends
+        {tPhaseF('phaseF.componentsTasksCustomRepeatDialog.ends')}
       </Label>
 
       {/* Never */}
@@ -243,7 +244,7 @@ const RepeatEndOptions = ({
           onChange={() => onChange({ endType: 'never' })}
           className="size-4 accent-primary"
         />
-        <span className="text-sm">{/* TODO(i18n): wrap in t() */}Never</span>
+        <span className="text-sm">{tPhaseF('phaseF.componentsTasksCustomRepeatDialog.never')}</span>
       </label>
 
       {/* On date */}
@@ -255,7 +256,9 @@ const RepeatEndOptions = ({
           onChange={() => onChange({ endType: 'date' })}
           className="size-4 accent-primary"
         />
-        <span className="text-sm">{/* TODO(i18n): wrap in t() */}On date</span>
+        <span className="text-sm">
+          {tPhaseF('phaseF.componentsTasksCustomRepeatDialog.onDate')}
+        </span>
         <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -293,7 +296,7 @@ const RepeatEndOptions = ({
           onChange={() => onChange({ endType: 'count' })}
           className="size-4 accent-primary"
         />
-        <span className="text-sm">{/* TODO(i18n): wrap in t() */}After</span>
+        <span className="text-sm">{tPhaseF('phaseF.componentsTasksCustomRepeatDialog.after')}</span>
         <Input
           type="number"
           min={1}
@@ -304,7 +307,7 @@ const RepeatEndOptions = ({
           className="w-[70px] h-8"
         />
         <span className="text-sm text-muted-foreground">
-          {/* TODO(i18n): wrap in t() */}occurrences
+          {tPhaseF('phaseF.componentsTasksCustomRepeatDialog.occurrences')}
         </span>
       </label>
     </div>
@@ -321,6 +324,7 @@ interface RepeatPreviewProps {
 }
 
 const RepeatPreview = ({ config, startDate }: RepeatPreviewProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const occurrences = useMemo(() => {
     return calculateNextOccurrences(startDate, config, 5)
   }, [config, startDate])
@@ -338,8 +342,7 @@ const RepeatPreview = ({ config, startDate }: RepeatPreviewProps): React.JSX.Ele
   return (
     <div className="flex flex-col gap-2">
       <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {/* TODO(i18n): wrap in t() */}
-        Preview
+        {tPhaseF('phaseF.componentsTasksCustomRepeatDialog.preview')}
       </Label>
       <p className="text-xs text-muted-foreground">{previewHeader}</p>
       <ul className="flex flex-col gap-1 text-sm">
@@ -350,7 +353,8 @@ const RepeatPreview = ({ config, startDate }: RepeatPreviewProps): React.JSX.Ele
               {format(date, 'EEE, MMM d, yyyy')}
               {config.endType === 'count' && config.endCount && (
                 <span className="text-muted-foreground ml-2">
-                  ({index + 1} {/* TODO(i18n): wrap in t() */}of {config.endCount})
+                  ({index + 1} {tPhaseF('phaseF.componentsTasksCustomRepeatDialog.of')}
+                  {config.endCount})
                 </span>
               )}
             </span>
@@ -358,7 +362,7 @@ const RepeatPreview = ({ config, startDate }: RepeatPreviewProps): React.JSX.Ele
         ))}
         {occurrences.length >= 5 && config.endType === 'never' && (
           <li className="text-muted-foreground text-xs">
-            ... {/* TODO(i18n): wrap in t() */}and more
+            ... {tPhaseF('phaseF.componentsTasksCustomRepeatDialog.andMore')}
           </li>
         )}
       </ul>
@@ -382,6 +386,7 @@ const CustomRepeatDialogInner = ({
   initialConfig?: RepeatConfig | null
   effectiveDueDate: Date
 }): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   // Compute initial state from props - no useEffect needed!
   const getInitialState = useCallback(() => {
     if (initialConfig) {
@@ -495,11 +500,12 @@ const CustomRepeatDialogInner = ({
       {/* Frequency selector */}
       <div className="flex flex-col gap-2">
         <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {/* TODO(i18n): wrap in t() */}
-          Frequency
+          {tPhaseF('phaseF.componentsTasksCustomRepeatDialog.frequency')}
         </Label>
         <div className="flex items-center gap-2">
-          <span className="text-sm">{/* TODO(i18n): wrap in t() */}Repeat every</span>
+          <span className="text-sm">
+            {tPhaseF('phaseF.componentsTasksCustomRepeatDialog.repeatEvery')}
+          </span>
           <Input
             type="number"
             min={1}
@@ -514,16 +520,20 @@ const CustomRepeatDialogInner = ({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="daily">
-                {/* TODO(i18n): wrap in t() */}day{interval > 1 ? 's' : ''}
+                {tPhaseF('phaseF.componentsTasksCustomRepeatDialog.day2')}
+                {interval > 1 ? 's' : ''}
               </SelectItem>
               <SelectItem value="weekly">
-                {/* TODO(i18n): wrap in t() */}week{interval > 1 ? 's' : ''}
+                {tPhaseF('phaseF.componentsTasksCustomRepeatDialog.week')}
+                {interval > 1 ? 's' : ''}
               </SelectItem>
               <SelectItem value="monthly">
-                {/* TODO(i18n): wrap in t() */}month{interval > 1 ? 's' : ''}
+                {tPhaseF('phaseF.componentsTasksCustomRepeatDialog.month')}
+                {interval > 1 ? 's' : ''}
               </SelectItem>
               <SelectItem value="yearly">
-                {/* TODO(i18n): wrap in t() */}year{interval > 1 ? 's' : ''}
+                {tPhaseF('phaseF.componentsTasksCustomRepeatDialog.year')}
+                {interval > 1 ? 's' : ''}
               </SelectItem>
             </SelectContent>
           </Select>
@@ -563,10 +573,11 @@ const CustomRepeatDialogInner = ({
       {/* Footer buttons */}
       <DialogFooter>
         <Button variant="outline" onClick={onClose}>
-          {/* TODO(i18n): wrap in t() */}
-          Cancel
+          {tPhaseF('phaseF.componentsTasksCustomRepeatDialog.cancel')}
         </Button>
-        <Button onClick={handleSave}>{/* TODO(i18n): wrap in t() */}Save</Button>
+        <Button onClick={handleSave}>
+          {tPhaseF('phaseF.componentsTasksCustomRepeatDialog.save')}
+        </Button>
       </DialogFooter>
     </div>
   )
@@ -580,6 +591,7 @@ export const CustomRepeatDialog = ({
   initialConfig,
   dueDate
 }: CustomRepeatDialogProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const effectiveDueDate = dueDate || new Date()
 
   // Create a stable key that changes when dialog opens/closes or config changes
@@ -595,7 +607,9 @@ export const CustomRepeatDialog = ({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{/* TODO(i18n): wrap in t() */}Custom Repeat</DialogTitle>
+          <DialogTitle>
+            {tPhaseF('phaseF.componentsTasksCustomRepeatDialog.customRepeat')}
+          </DialogTitle>
         </DialogHeader>
         {isOpen && (
           <CustomRepeatDialogInner

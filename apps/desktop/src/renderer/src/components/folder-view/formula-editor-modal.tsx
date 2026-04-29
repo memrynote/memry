@@ -31,6 +31,7 @@ import type { NoteWithProperties } from '@memry/contracts/folder-view-api'
 import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Component:FormulaEditorModal')
 
@@ -212,6 +213,7 @@ export function FormulaEditorModal({
   existingNames = EMPTY_NAMES,
   availableProperties = EMPTY_PROPERTIES
 }: FormulaEditorModalProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   // Form state
   const [name, setName] = useState(initialName)
   const [expression, setExpression] = useState(initialExpression)
@@ -357,20 +359,24 @@ export function FormulaEditorModal({
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit Formula' : 'Create Formula'}</DialogTitle>
           <DialogDescription>
-            {/* TODO(i18n): wrap in t() */}Define a computed column using an expression.
+            {tPhaseF(
+              'phaseF.componentsFolderViewFormulaEditorModal.defineAComputedColumnUsingAnExpression'
+            )}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
           {/* Name Input */}
           <div className="grid gap-2">
-            <Label htmlFor="formula-name">{/* TODO(i18n): wrap in t() */}Name</Label>
+            <Label htmlFor="formula-name">
+              {tPhaseF('phaseF.componentsFolderViewFormulaEditorModal.name')}
+            </Label>
             <Input
               id="formula-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={handleNameKeyDown}
-              placeholder={'days_until_due' /* TODO(i18n): wrap placeholder in t() */}
+              placeholder={'days_until_due'}
               className={cn(nameError && name && 'border-destructive')}
               disabled={isEditing} // Can't rename existing formula
             />
@@ -385,7 +391,9 @@ export function FormulaEditorModal({
           {/* Expression Input with Autocomplete */}
           <div className="grid gap-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="formula-expression">{/* TODO(i18n): wrap in t() */}Expression</Label>
+              <Label htmlFor="formula-expression">
+                {tPhaseF('phaseF.componentsFolderViewFormulaEditorModal.expression')}
+              </Label>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -433,9 +441,7 @@ export function FormulaEditorModal({
                   // Delay close to allow click on dropdown
                   setTimeout(closeAutocomplete, 150)
                 }}
-                placeholder={
-                  'dateDiff(due_date, today(), "days")' /* TODO(i18n): wrap placeholder in t() */
-                }
+                placeholder={'dateDiff(due_date, today(), "days")'}
                 className={cn(
                   'font-mono text-sm min-h-[80px]',
                   !expressionValidation.valid && expression && 'border-destructive'
@@ -468,14 +474,16 @@ export function FormulaEditorModal({
 
           {/* Function Hints */}
           <div className="text-xs text-muted-foreground">
-            <span className="font-medium">{/* TODO(i18n): wrap in t() */}Available: </span>
+            <span className="font-medium">
+              {tPhaseF('phaseF.componentsFolderViewFormulaEditorModal.available')}
+            </span>
             {functions.slice(0, 8).join(', ')}
             {functions.length > 8 && `, +${functions.length - 8} more`}
           </div>
 
           {/* Preview */}
           <div className="grid gap-2">
-            <Label>{/* TODO(i18n): wrap in t() */}Preview</Label>
+            <Label>{tPhaseF('phaseF.componentsFolderViewFormulaEditorModal.preview')}</Label>
             <div
               className={cn(
                 'rounded-md border p-3 text-sm font-mono bg-muted/50',
@@ -486,8 +494,9 @@ export function FormulaEditorModal({
                 'No notes available for preview'
               ) : !expressionValidation.valid ? (
                 <span className="text-muted-foreground italic">
-                  {/* TODO(i18n): wrap in t() */}
-                  Fix expression errors to see preview
+                  {tPhaseF(
+                    'phaseF.componentsFolderViewFormulaEditorModal.fixExpressionErrorsToSeePreview'
+                  )}
                 </span>
               ) : previewResult?.success ? (
                 <span>{formatPreviewValue(previewResult.value)}</span>
@@ -497,8 +506,8 @@ export function FormulaEditorModal({
             </div>
             {sampleNote && (
               <p className="text-xs text-muted-foreground">
-                {/* TODO(i18n): wrap in t() */}
-                Using note: &quot;{sampleNote.title}&{/* TODO(i18n): wrap in t() */}quot;
+                {tPhaseF('phaseF.componentsFolderViewFormulaEditorModal.usingNote')}
+                {sampleNote.title}&{tPhaseF('phaseF.componentsFolderViewFormulaEditorModal.quot')}
               </p>
             )}
           </div>
@@ -506,8 +515,7 @@ export function FormulaEditorModal({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
-            {/* TODO(i18n): wrap in t() */}
-            Cancel
+            {tPhaseF('phaseF.componentsFolderViewFormulaEditorModal.cancel')}
           </Button>
           <Button onClick={handleSave} disabled={!canSave}>
             {isSubmitting ? 'Saving...' : isEditing ? 'Update' : 'Create'}

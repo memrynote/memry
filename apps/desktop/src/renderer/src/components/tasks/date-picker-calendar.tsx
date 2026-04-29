@@ -4,6 +4,7 @@ import { getISOWeek } from 'date-fns'
 import { ChevronLeft, ChevronRight } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { withAlpha } from '@/lib/color'
+import { useT } from '@memry/i18n/renderer'
 
 interface ActivityData {
   [dateISO: string]: number
@@ -115,6 +116,7 @@ export function DatePickerCalendar({
   showWeekNumbers = false,
   onTodayClick
 }: DatePickerCalendarProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('tasks')
   const today = useMemo(() => {
     const d = new Date()
     d.setHours(0, 0, 0, 0)
@@ -193,7 +195,7 @@ export function DatePickerCalendar({
           type="button"
           onClick={goToPrevMonth}
           className="text-text-tertiary hover:text-text-secondary transition-colors focus-visible:outline-none rounded-sm"
-          aria-label={'Previous month' /* TODO(i18n): wrap aria-label in t() */}
+          aria-label={tPhaseF('phaseF.componentsTasksDatePickerCalendar.previousMonth')}
         >
           <ChevronLeftIcon />
         </button>
@@ -205,7 +207,7 @@ export function DatePickerCalendar({
             type="button"
             onClick={goToNextMonth}
             className="text-text-tertiary hover:text-text-secondary transition-colors focus-visible:outline-none rounded-sm"
-            aria-label={'Next month' /* TODO(i18n): wrap aria-label in t() */}
+            aria-label={tPhaseF('phaseF.componentsTasksDatePickerCalendar.nextMonth')}
           >
             <ChevronRightIcon />
           </button>
@@ -214,10 +216,9 @@ export function DatePickerCalendar({
               type="button"
               onClick={goToToday}
               className="text-[10px] text-text-tertiary hover:text-text-secondary hover:bg-surface-active/50 transition-colors focus-visible:outline-none rounded-md px-1.5 py-0.5 font-medium select-none border border-border/60"
-              aria-label={'Go to today' /* TODO(i18n): wrap aria-label in t() */}
+              aria-label={tPhaseF('phaseF.componentsTasksDatePickerCalendar.goToToday')}
             >
-              {/* TODO(i18n): wrap in t() */}
-              Today
+              {tPhaseF('phaseF.componentsTasksDatePickerCalendar.today')}
             </button>
           )}
         </div>
@@ -227,7 +228,7 @@ export function DatePickerCalendar({
       <div className="flex items-center">
         {showWeekNumbers && (
           <div className="w-6 shrink-0 text-[10px] text-center text-text-tertiary/40 font-medium leading-3 select-none">
-            {/* TODO(i18n): wrap in t() */}W
+            {tPhaseF('phaseF.componentsTasksDatePickerCalendar.w')}
           </div>
         )}
         {weekdays.map((day) => (

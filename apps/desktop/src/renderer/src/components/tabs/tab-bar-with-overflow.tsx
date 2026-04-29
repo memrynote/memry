@@ -7,6 +7,7 @@ import { useRef, useState, useCallback, useEffect, useLayoutEffect } from 'react
 import { ChevronLeft, ChevronRight } from '@/lib/icons'
 import { useTabGroup } from '@/contexts/tabs'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface TabBarWithOverflowProps {
   /** Group ID */
@@ -37,6 +38,7 @@ export const TabBarWithOverflow = ({
   children,
   className
 }: TabBarWithOverflowProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('common')
   const group = useTabGroup(groupId)
   const containerRef = useRef<HTMLDivElement>(null)
   const tabsRef = useRef<HTMLDivElement>(null)
@@ -169,7 +171,7 @@ export const TabBarWithOverflow = ({
             'hover:from-surface-active',
             'transition-colors'
           )}
-          aria-label={'Scroll tabs left' /* TODO(i18n): wrap aria-label in t() */}
+          aria-label={tPhaseF('phaseF.componentsTabsTabBarWithOverflow.scrollTabsLeft')}
         >
           <ChevronLeft className="w-4 h-4 text-text-tertiary" />
         </button>
@@ -196,7 +198,7 @@ export const TabBarWithOverflow = ({
             'hover:from-surface-active',
             'transition-colors'
           )}
-          aria-label={'Scroll tabs right' /* TODO(i18n): wrap aria-label in t() */}
+          aria-label={tPhaseF('phaseF.componentsTabsTabBarWithOverflow.scrollTabsRight')}
         >
           <ChevronRight className="w-4 h-4 text-text-tertiary" />
         </button>
