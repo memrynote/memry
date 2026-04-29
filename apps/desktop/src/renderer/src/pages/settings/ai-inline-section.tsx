@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
@@ -44,6 +45,7 @@ const BASE_URL_DEFAULTS: Record<string, string> = {
 }
 
 export function AIInlineSettings(): React.JSX.Element {
+  const { t } = useT('common')
   const [settings, setSettings] = useState<AIInlineSettings>(AI_INLINE_SETTINGS_DEFAULTS)
   const [isLoading, setIsLoading] = useState(true)
   const [isTesting, setIsTesting] = useState(false)
@@ -141,7 +143,7 @@ export function AIInlineSettings(): React.JSX.Element {
         <h4 className="uppercase pb-2 text-muted-foreground font-medium text-[11px]/3.5 tracking-[0.05em]">
           Inline AI Editing
         </h4>
-        <p className="text-xs/4 text-muted-foreground">Loading...</p>
+        <p className="text-xs/4 text-muted-foreground">{t('state.loading')}</p>
       </div>
     )
   }
