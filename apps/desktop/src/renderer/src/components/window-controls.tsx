@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { ChevronLeft, ChevronRight, Search } from '@/lib/icons'
 import { TrafficLights } from '@/components/traffic-lights'
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
@@ -12,6 +13,7 @@ interface WindowControlsProps {
 }
 
 export function WindowControls({ className }: WindowControlsProps): React.JSX.Element {
+  const { t } = useT('common')
   const { state } = useSidebar()
   const sidebarTooltip = state === 'expanded' ? 'Collapse sidebar' : 'Expand sidebar'
 
@@ -36,7 +38,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
             <button
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent('memry:open-search'))}
-              aria-label="Search"
+              aria-label={t('action.search')}
               className="flex items-center justify-center size-7 rounded text-text-tertiary hover:text-foreground hover:bg-sidebar-accent transition-colors duration-150"
             >
               <Search className="size-4" />
