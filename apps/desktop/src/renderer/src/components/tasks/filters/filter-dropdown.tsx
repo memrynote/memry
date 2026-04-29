@@ -202,7 +202,7 @@ export const FilterDropdown = ({
       >
         {activePanel === null && (
           <>
-            <Picker.Search placeholder="Filter by..." />
+            <Picker.Search placeholder={'Filter by...' /* TODO(i18n): wrap placeholder in t() */} />
             <Picker.List>
               {filteredCategories.map((cat) => (
                 <button

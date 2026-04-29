@@ -15,7 +15,7 @@ export const PriorityBars = ({ priority, className }: PriorityBarsProps): React.
         viewBox="0 0 14 14"
         fill="none"
         className={cn('shrink-0', className)}
-        aria-label="no priority"
+        aria-label={'no priority' /* TODO(i18n): wrap aria-label in t() */}
       >
         <line
           x1="2"

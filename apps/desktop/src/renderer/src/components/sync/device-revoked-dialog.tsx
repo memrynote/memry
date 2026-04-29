@@ -50,6 +50,7 @@ export function DeviceRevokedDialog({
               />
             </div>
             <AlertDialogTitle className="font-display text-xl tracking-tight">
+              {/* TODO(i18n): wrap in t() */}
               This device has been removed
             </AlertDialogTitle>
           </div>
@@ -70,6 +71,7 @@ export function DeviceRevokedDialog({
               {exporting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
+                  {/* TODO(i18n): wrap in t() */}
                   Exporting...
                 </>
               ) : exported ? (
@@ -79,7 +81,7 @@ export function DeviceRevokedDialog({
               )}
             </Button>
           )}
-          <Button onClick={onSignOut}>Sign Out</Button>
+          <Button onClick={onSignOut}>{/* TODO(i18n): wrap in t() */}Sign Out</Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

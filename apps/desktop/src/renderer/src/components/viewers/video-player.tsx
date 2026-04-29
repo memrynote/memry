@@ -191,8 +191,12 @@ export function VideoPlayer({ src, className }: VideoPlayerProps) {
         className={cn('flex h-full items-center justify-center bg-muted/30 rounded-md', className)}
       >
         <div className="text-center p-8">
-          <p className="text-destructive font-medium mb-2">Failed to load video</p>
-          <p className="text-sm text-muted-foreground">The video file could not be played.</p>
+          <p className="text-destructive font-medium mb-2">
+            {/* TODO(i18n): wrap in t() */}Failed to load video
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {/* TODO(i18n): wrap in t() */}The video file could not be played.
+          </p>
         </div>
       </div>
     )

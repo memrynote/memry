@@ -235,7 +235,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
         )}
         {!isViewed && (
           <span className="text-text-tertiary text-[11px]">
-            &middot; {t('reminder.notYetViewed')}
+            &{/* TODO(i18n): wrap in t() */}middot; {t('reminder.notYetViewed')}
           </span>
         )}
       </div>

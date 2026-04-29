@@ -68,8 +68,11 @@ function TweetSkeleton(): React.JSX.Element {
 function TweetUnavailable({ url }: { url: string | null }): React.JSX.Element {
   return (
     <div className="flex flex-col items-center justify-center gap-3 p-8 text-center">
-      <div className="text-sm font-medium text-[var(--foreground)]">Tweet unavailable</div>
+      <div className="text-sm font-medium text-[var(--foreground)]">
+        {/* TODO(i18n): wrap in t() */}Tweet unavailable
+      </div>
       <div className="text-xs text-[var(--muted-foreground)]">
+        {/* TODO(i18n): wrap in t() */}
         This tweet may have been deleted or is from a private account.
       </div>
       {url && (
@@ -81,6 +84,7 @@ function TweetUnavailable({ url }: { url: string | null }): React.JSX.Element {
           onClick={(e) => e.stopPropagation()}
         >
           <ExternalLink className="size-3" />
+          {/* TODO(i18n): wrap in t() */}
           Open on x.com
         </a>
       )}
@@ -165,7 +169,9 @@ function TweetMetrics({
             />
             <circle cx="6" cy="6" r="1.5" stroke="currentColor" strokeWidth="1" fill="none" />
           </svg>
-          <span>{formatCount(views)} views</span>
+          <span>
+            {formatCount(views)} {/* TODO(i18n): wrap in t() */}views
+          </span>
         </div>
       )}
     </div>
@@ -215,7 +221,9 @@ export function TweetCard({ item }: TweetCardProps): React.JSX.Element {
           </span>
         </div>
         <div className="flex items-center ml-auto rounded-[10px] py-0.5 px-2 bg-[var(--accent-cyan)]/10">
-          <span className="text-[10px]/3.5 font-medium text-[var(--accent-cyan)]">x.com</span>
+          <span className="text-[10px]/3.5 font-medium text-[var(--accent-cyan)]">
+            {/* TODO(i18n): wrap in t() */}x.com
+          </span>
         </div>
       </div>
 
@@ -263,6 +271,7 @@ export function TweetCard({ item }: TweetCardProps): React.JSX.Element {
           onClick={(e) => e.stopPropagation()}
         >
           <ExternalLink className="size-3" />
+          {/* TODO(i18n): wrap in t() */}
           View on X
         </a>
       )}

@@ -17,7 +17,7 @@ export const HintIndicator = (): React.JSX.Element | null => {
         'animate-in fade-in slide-in-from-bottom-2 duration-200'
       )}
     >
-      <span>HINT</span>
+      <span>{/* TODO(i18n): wrap in t() */}HINT</span>
       {state.typedChars && (
         <kbd className="px-1.5 py-0.5 bg-black/20 rounded text-xs">{state.typedChars}</kbd>
       )}

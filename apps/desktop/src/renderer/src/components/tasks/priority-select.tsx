@@ -75,7 +75,7 @@ export const PrioritySelect = ({
         variant="button"
         chevron
         className={cn('w-full', compact && 'h-9 text-sm', className)}
-        aria-label="Select priority"
+        aria-label={'Select priority' /* TODO(i18n): wrap aria-label in t() */}
       >
         <span className="flex items-center gap-2">
           <PriorityDot color={currentOption?.color || null} compact={compact} />
@@ -104,11 +104,11 @@ export const PrioritySelect = ({
             <kbd className="inline-flex h-4 items-center justify-center rounded border border-border bg-muted px-0.5 text-[10px]">
               ↓
             </kbd>
-            <span className="ml-1">navigate</span>
+            <span className="ml-1">{/* TODO(i18n): wrap in t() */}navigate</span>
             <kbd className="ml-2 inline-flex h-4 items-center justify-center rounded border border-border bg-muted px-1 text-[10px]">
               ↵
             </kbd>
-            <span className="ml-1">select</span>
+            <span className="ml-1">{/* TODO(i18n): wrap in t() */}select</span>
           </div>
         </Picker.Footer>
       </Picker.Content>

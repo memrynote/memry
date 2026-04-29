@@ -532,7 +532,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
           size="icon"
           className="h-8 w-8"
           onClick={handleCreateNote}
-          title="Create new note"
+          title={'Create new note' /* TODO(i18n): wrap title in t() */}
         >
           <Plus className="h-4 w-4" />
         </Button>
@@ -565,22 +565,29 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         {/* T099: View Settings dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8" title="View settings">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              title={'View settings' /* TODO(i18n): wrap title in t() */}
+            >
               <Settings2 className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>Display Density</DropdownMenuLabel>
+            <DropdownMenuLabel>{/* TODO(i18n): wrap in t() */}Display Density</DropdownMenuLabel>
             <DropdownMenuCheckboxItem
               checked={density === 'comfortable'}
               onCheckedChange={() => setDensity('comfortable')}
             >
+              {/* TODO(i18n): wrap in t() */}
               Comfortable
             </DropdownMenuCheckboxItem>
             <DropdownMenuCheckboxItem
               checked={density === 'compact'}
               onCheckedChange={() => setDensity('compact')}
             >
+              {/* TODO(i18n): wrap in t() */}
               Compact
             </DropdownMenuCheckboxItem>
             <DropdownMenuSeparator />
@@ -588,6 +595,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               checked={activeView?.showSummaries ?? false}
               onCheckedChange={() => toggleShowSummaries()}
             >
+              {/* TODO(i18n): wrap in t() */}
               Show summaries
             </DropdownMenuCheckboxItem>
           </DropdownMenuContent>
@@ -727,7 +735,9 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>
+              {/* TODO(i18n): wrap in t() */}Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               disabled={isDeleting}

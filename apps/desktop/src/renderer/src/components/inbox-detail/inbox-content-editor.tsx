@@ -167,7 +167,7 @@ export const InboxContentEditor = memo(function InboxContentEditor({
         className
       )}
       role="region"
-      aria-label="Content editor"
+      aria-label={'Content editor' /* TODO(i18n): wrap aria-label in t() */}
       onMouseDown={handleContainerMouseDown}
     >
       <BlockNoteView

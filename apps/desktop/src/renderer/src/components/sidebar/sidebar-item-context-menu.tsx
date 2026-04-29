@@ -73,28 +73,38 @@ export const SidebarItemContextMenu = ({
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent className="w-48">
         {/* Open actions */}
-        <ContextMenuItem onClick={handleOpen}>Open</ContextMenuItem>
+        <ContextMenuItem onClick={handleOpen}>{/* TODO(i18n): wrap in t() */}Open</ContextMenuItem>
         <ContextMenuItem onClick={handleOpenInNewTab}>
+          {/* TODO(i18n): wrap in t() */}
           Open in New Tab
           <ContextMenuShortcut>⌘↵</ContextMenuShortcut>
         </ContextMenuItem>
-        <ContextMenuItem onClick={handleOpenToTheSide}>Open to the Side</ContextMenuItem>
+        <ContextMenuItem onClick={handleOpenToTheSide}>
+          {/* TODO(i18n): wrap in t() */}Open to the Side
+        </ContextMenuItem>
 
         <ContextMenuSeparator />
 
         {/* Tab actions */}
-        <ContextMenuItem onClick={handlePinToTabs}>Pin to Tabs</ContextMenuItem>
+        <ContextMenuItem onClick={handlePinToTabs}>
+          {/* TODO(i18n): wrap in t() */}Pin to Tabs
+        </ContextMenuItem>
 
         {/* Edit/Delete for editable items */}
         {isEditable && (onEdit || onDelete) && (
           <>
             <ContextMenuSeparator />
-            {onEdit && <ContextMenuItem onClick={handleEdit}>Edit</ContextMenuItem>}
+            {onEdit && (
+              <ContextMenuItem onClick={handleEdit}>
+                {/* TODO(i18n): wrap in t() */}Edit
+              </ContextMenuItem>
+            )}
             {onDelete && (
               <ContextMenuItem
                 onClick={handleDelete}
                 className="text-red-600 focus:text-red-600 focus:bg-red-50"
               >
+                {/* TODO(i18n): wrap in t() */}
                 Delete
               </ContextMenuItem>
             )}
@@ -104,7 +114,9 @@ export const SidebarItemContextMenu = ({
         <ContextMenuSeparator />
 
         {/* Utility actions */}
-        <ContextMenuItem onClick={handleCopyLink}>Copy Link</ContextMenuItem>
+        <ContextMenuItem onClick={handleCopyLink}>
+          {/* TODO(i18n): wrap in t() */}Copy Link
+        </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
   )

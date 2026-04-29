@@ -94,7 +94,7 @@ export function DateEditor({ value, onChange, onBlur, autoFocus = true }: DateEd
       onChange={handleChange}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
-      placeholder="dd.mm.yyyy"
+      placeholder={'dd.mm.yyyy' /* TODO(i18n): wrap placeholder in t() */}
       className={cn(
         'w-full bg-transparent p-0',
         'text-[13px] text-foreground',

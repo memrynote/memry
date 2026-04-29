@@ -28,7 +28,7 @@ export const StatusSelect = ({
         variant="button"
         chevron
         className={cn('w-full', compact && 'h-9 text-sm', className)}
-        aria-label="Select status"
+        aria-label={'Select status' /* TODO(i18n): wrap aria-label in t() */}
       >
         {currentStatus ? (
           <span className="flex items-center gap-2 min-w-0">
@@ -40,7 +40,9 @@ export const StatusSelect = ({
             <span className="truncate">{currentStatus.name}</span>
           </span>
         ) : (
-          <span className="text-muted-foreground">Select status</span>
+          <span className="text-muted-foreground">
+            {/* TODO(i18n): wrap in t() */}Select status
+          </span>
         )}
       </Picker.Trigger>
       <Picker.Content width="trigger" align="start">

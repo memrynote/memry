@@ -22,6 +22,7 @@ export function RecentReasons({
   if (reasons.length === 0) {
     return (
       <div className="py-8 text-center text-sm text-text-tertiary">
+        {/* TODO(i18n): wrap in t() */}
         Search and click items to build your trail
       </div>
     )
@@ -31,6 +32,7 @@ export function RecentReasons({
     <div className="py-1">
       <div className="flex items-center justify-between px-3 py-1.5">
         <span className="text-xs font-semibold uppercase tracking-wider text-text-tertiary">
+          {/* TODO(i18n): wrap in t() */}
           Reasons
         </span>
         <button
@@ -39,6 +41,7 @@ export function RecentReasons({
           className="flex items-center gap-1 text-xs text-text-tertiary hover:text-foreground transition-colors"
         >
           <Trash2 className="size-3" />
+          {/* TODO(i18n): wrap in t() */}
           Clear
         </button>
       </div>

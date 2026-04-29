@@ -139,6 +139,7 @@ export const DateDropIndicator = ({
       )}
     >
       <span className="text-xs font-medium text-primary px-2 py-1 bg-background rounded shadow-sm">
+        {/* TODO(i18n): wrap in t() */}
         Drop to reschedule to {dateLabel}
       </span>
     </div>

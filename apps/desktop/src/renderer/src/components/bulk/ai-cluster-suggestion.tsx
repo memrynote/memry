@@ -22,9 +22,12 @@ const AIClusterSuggestion = ({
   return (
     <div className="flex items-center justify-center gap-3 text-sm">
       <Lightbulb className="size-4 text-yellow-500" aria-hidden="true" />
-      <span className="text-[var(--muted-foreground)]">AI detected: "{suggestion.reason}"</span>
+      <span className="text-[var(--muted-foreground)]">
+        {/* TODO(i18n): wrap in t() */}AI detected: "{suggestion.reason}"
+      </span>
       <Button variant="outline" size="sm" onClick={onAddToSelection} className="gap-1.5 h-7">
         <Plus className="size-3" aria-hidden="true" />
+        {/* TODO(i18n): wrap in t() */}
         Add to selection
       </Button>
       <Button
@@ -34,6 +37,7 @@ const AIClusterSuggestion = ({
         className="gap-1.5 h-7 text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
       >
         <X className="size-3" aria-hidden="true" />
+        {/* TODO(i18n): wrap in t() */}
         Dismiss
       </Button>
     </div>

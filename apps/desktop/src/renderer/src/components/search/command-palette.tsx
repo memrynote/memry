@@ -242,7 +242,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
         if (!v) handleClose()
         else onOpenChange(true)
       }}
-      label="Search"
+      label={'Search' /* TODO(i18n): wrap label in t() */}
       shouldFilter={false}
       loop
       className="fixed inset-0 z-50"
@@ -266,7 +266,9 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
             <Command.Input
               value={query}
               onValueChange={setQuery}
-              placeholder="Search notes, tasks, journal, inbox..."
+              placeholder={
+                'Search notes, tasks, journal, inbox...' /* TODO(i18n): wrap placeholder in t() */
+              }
               autoFocus
               className="flex-1 h-12 bg-transparent border-0 text-sm text-foreground
                 placeholder:text-text-tertiary focus:outline-none focus:ring-0"
@@ -297,7 +299,8 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
           >
             {hasQuery && !loading && !hasResults && !error && (
               <Command.Empty className="py-12 text-center text-sm text-text-tertiary">
-                No results for &ldquo;{query}&rdquo;
+                {/* TODO(i18n): wrap in t() */}
+                No results for &ldquo;{query}&{/* TODO(i18n): wrap in t() */}rdquo;
               </Command.Empty>
             )}
 
@@ -325,7 +328,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
 
             {hasQuery && hasResults && (
               <div className="px-3 py-2 text-xs text-text-tertiary text-right tabular-nums border-t border-border mt-1">
-                {totalCount} result{totalCount !== 1 ? 's' : ''}
+                {totalCount} {/* TODO(i18n): wrap in t() */}result{totalCount !== 1 ? 's' : ''}
               </div>
             )}
           </Command.List>

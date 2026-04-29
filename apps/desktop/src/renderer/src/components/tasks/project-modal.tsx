@@ -262,6 +262,7 @@ const ProjectModalDialog = ({
             {/* Icon & Name Section */}
             <div className="space-y-2">
               <label className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
+                {/* TODO(i18n): wrap in t() */}
                 Icon & Name
               </label>
               <div className="flex items-center gap-3">
@@ -274,7 +275,7 @@ const ProjectModalDialog = ({
                     'transition-colors hover:border-primary hover:bg-accent/50',
                     'focus-visible:outline-none'
                   )}
-                  aria-label="Select icon"
+                  aria-label={'Select icon' /* TODO(i18n): wrap aria-label in t() */}
                 >
                   <ProjectIconPreview iconName={formData.icon} />
                 </button>
@@ -285,7 +286,7 @@ const ProjectModalDialog = ({
                     type="text"
                     value={formData.name}
                     onChange={handleNameChange}
-                    placeholder="Project name"
+                    placeholder={'Project name' /* TODO(i18n): wrap placeholder in t() */}
                     maxLength={50}
                     className={cn(errors.name && 'border-destructive')}
                     autoFocus
@@ -293,7 +294,9 @@ const ProjectModalDialog = ({
                   {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name}</p>}
                 </div>
               </div>
-              <p className="text-xs text-text-tertiary">Click icon to change</p>
+              <p className="text-xs text-text-tertiary">
+                {/* TODO(i18n): wrap in t() */}Click icon to change
+              </p>
             </div>
 
             <Separator />
@@ -301,6 +304,7 @@ const ProjectModalDialog = ({
             {/* Color Section */}
             <div className="space-y-2">
               <label className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
+                {/* TODO(i18n): wrap in t() */}
                 Color
               </label>
               <ColorPicker value={formData.color} onChange={handleColorChange} />
@@ -311,12 +315,15 @@ const ProjectModalDialog = ({
             {/* Description Section */}
             <div className="space-y-2">
               <label className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
+                {/* TODO(i18n): wrap in t() */}
                 Description (optional)
               </label>
               <textarea
                 value={formData.description}
                 onChange={handleDescriptionChange}
-                placeholder="Brief description of this project..."
+                placeholder={
+                  'Brief description of this project...' /* TODO(i18n): wrap placeholder in t() */
+                }
                 rows={2}
                 maxLength={200}
                 className={cn(
@@ -332,9 +339,11 @@ const ProjectModalDialog = ({
             {/* Statuses Section */}
             <div className="space-y-2">
               <label className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
+                {/* TODO(i18n): wrap in t() */}
                 Statuses
               </label>
               <p className="text-xs text-text-tertiary">
+                {/* TODO(i18n): wrap in t() */}
                 Configure the workflow stages for this project.
               </p>
               <StatusEditor
@@ -355,6 +364,7 @@ const ProjectModalDialog = ({
                   onClick={handleDelete}
                   className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                 >
+                  {/* TODO(i18n): wrap in t() */}
                   Delete Project
                 </Button>
               )}
@@ -363,6 +373,7 @@ const ProjectModalDialog = ({
             {/* Cancel and Save buttons (right side) */}
             <div className="flex gap-2">
               <Button type="button" variant="outline" onClick={handleClose}>
+                {/* TODO(i18n): wrap in t() */}
                 Cancel
               </Button>
               <Button type="button" onClick={handleSave} disabled={!isValid}>
@@ -386,14 +397,19 @@ const ProjectModalDialog = ({
       <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Unsaved changes</AlertDialogTitle>
+            <AlertDialogTitle>{/* TODO(i18n): wrap in t() */}Unsaved changes</AlertDialogTitle>
             <AlertDialogDescription>
+              {/* TODO(i18n): wrap in t() */}
               You have unsaved changes. Are you sure you want to discard them?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleCancelDiscard}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDiscardChanges}>Discard</AlertDialogAction>
+            <AlertDialogCancel onClick={handleCancelDiscard}>
+              {/* TODO(i18n): wrap in t() */}Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleDiscardChanges}>
+              {/* TODO(i18n): wrap in t() */}Discard
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

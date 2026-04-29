@@ -58,7 +58,9 @@ export function LinkPreviewCard({
 
       <div className="flex items-center gap-1 rounded-full py-0.5 px-2 bg-accent-green/10 shrink-0">
         <Check className="size-2.5 text-accent-green" />
-        <span className="text-[10px]/3 font-semibold tracking-wide text-accent-green">LINK</span>
+        <span className="text-[10px]/3 font-semibold tracking-wide text-accent-green">
+          {/* TODO(i18n): wrap in t() */}LINK
+        </span>
       </div>
     </div>
   )

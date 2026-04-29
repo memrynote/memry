@@ -45,7 +45,7 @@ export const ResizeHandle = ({
       onMouseDown={onResizeStart}
       role="separator"
       aria-orientation={isHorizontal ? 'vertical' : 'horizontal'}
-      aria-label="Resize panes"
+      aria-label={'Resize panes' /* TODO(i18n): wrap aria-label in t() */}
       tabIndex={0}
     >
       {/* Visual grip indicator */}

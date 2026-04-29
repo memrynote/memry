@@ -120,7 +120,7 @@ export const PriorityBadge = ({
         <Tooltip>
           <TooltipTrigger asChild>{content}</TooltipTrigger>
           <TooltipContent side="top" className="text-xs">
-            {config.label} priority
+            {config.label} {/* TODO(i18n): wrap in t() */}priority
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -203,7 +203,12 @@ export const DueDateBadge = ({
           cn('rounded-sm px-1.5 py-0.5', dueDateBackgroundStyles[formatted.status])
       )}
     >
-      {isRepeating && <Repeat className="size-3 shrink-0" aria-label="Repeating task" />}
+      {isRepeating && (
+        <Repeat
+          className="size-3 shrink-0"
+          aria-label={'Repeating task' /* TODO(i18n): wrap aria-label in t() */}
+        />
+      )}
       <span className="truncate">{formatted.label}</span>
       {isOverdue && variant === 'default' && tierStyle && (
         <span
@@ -212,7 +217,8 @@ export const DueDateBadge = ({
             tierStyle.chipBg
           )}
         >
-          {daysOver}d
+          {daysOver}
+          {/* TODO(i18n): wrap in t() */}d
         </span>
       )}
     </span>

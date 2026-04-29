@@ -291,7 +291,7 @@ const ImagePreview = ({ item }: ImagePreviewProps): React.JSX.Element => {
                 {t('content.dimensions')}
               </span>
               <span className="text-[11px] leading-3.5 text-muted-foreground">
-                {metadata.width} x {metadata.height}
+                {metadata.width} {/* TODO(i18n): wrap in t() */}x {metadata.height}
               </span>
             </div>
           )}

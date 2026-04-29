@@ -115,7 +115,9 @@ export const AccessibleTab = ({
       <span className="truncate text-sm">
         {tab.title}
         {/* Screen reader only: status */}
-        {tab.isModified && <span className="sr-only">, unsaved changes</span>}
+        {tab.isModified && (
+          <span className="sr-only">, {/* TODO(i18n): wrap in t() */}unsaved changes</span>
+        )}
       </span>
 
       {/* Modified indicator */}
@@ -126,6 +128,7 @@ export const AccessibleTab = ({
       {/* Preview indicator - only show when preview mode is enabled */}
       {tab.isPreview && !tab.isModified && settings.previewMode && (
         <span className="text-xs text-gray-400 italic" aria-hidden="true">
+          {/* TODO(i18n): wrap in t() */}
           preview
         </span>
       )}

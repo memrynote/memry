@@ -319,7 +319,7 @@ export function ColumnSelector({
               </Button>
             </PopoverTrigger>
           </TooltipTrigger>
-          <TooltipContent side="bottom">Properties</TooltipContent>
+          <TooltipContent side="bottom">{/* TODO(i18n): wrap in t() */}Properties</TooltipContent>
         </Tooltip>
 
         <PopoverContent align="start" className="w-72 p-0">
@@ -328,7 +328,7 @@ export function ColumnSelector({
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search columns..."
+                placeholder={'Search columns...' /* TODO(i18n): wrap placeholder in t() */}
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 className="h-8 pl-8 text-sm"
@@ -340,6 +340,7 @@ export function ColumnSelector({
           <div className="max-h-80 overflow-y-auto">
             {!hasResults && !showFormulasSection ? (
               <div className="p-4 text-center text-sm text-muted-foreground">
+                {/* TODO(i18n): wrap in t() */}
                 No matching columns
               </div>
             ) : (
@@ -367,7 +368,7 @@ export function ColumnSelector({
 
                 {/* Formulas section - keep separate since they have edit/delete actions */}
                 {showFormulasSection && (
-                  <ColumnGroup title="FORMULAS">
+                  <ColumnGroup title={'FORMULAS' /* TODO(i18n): wrap title in t() */}>
                     {filteredFormulas.length > 0 ? (
                       filteredFormulas.map((formula) => (
                         <FormulaItem
@@ -385,6 +386,7 @@ export function ColumnSelector({
                       ))
                     ) : (
                       <div className="px-3 py-2 text-xs text-muted-foreground italic">
+                        {/* TODO(i18n): wrap in t() */}
                         No formulas defined
                       </div>
                     )}
@@ -400,7 +402,7 @@ export function ColumnSelector({
                         )}
                       >
                         <Plus className="h-4 w-4" />
-                        <span>Add Formula</span>
+                        <span>{/* TODO(i18n): wrap in t() */}Add Formula</span>
                       </button>
                     )}
                   </ColumnGroup>
@@ -431,18 +433,20 @@ export function ColumnSelector({
       <AlertDialog open={Boolean(formulaToDelete)} onOpenChange={() => setFormulaToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Formula</AlertDialogTitle>
+            <AlertDialogTitle>{/* TODO(i18n): wrap in t() */}Delete Formula</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the formula &quot;{formulaToDelete}&quot;? This action
-              cannot be undone.
+              {/* TODO(i18n): wrap in t() */}
+              Are you sure you want to delete the formula &quot;{formulaToDelete}&
+              {/* TODO(i18n): wrap in t() */}quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{/* TODO(i18n): wrap in t() */}Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => void handleConfirmDelete()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
+              {/* TODO(i18n): wrap in t() */}
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -557,10 +561,11 @@ function SummarySelect({
   return (
     <Select value={value?.type ?? 'none'} onValueChange={handleChange}>
       <SelectTrigger className="h-6 w-[72px] text-xs px-2">
-        <SelectValue placeholder="None" />
+        <SelectValue placeholder={'None' /* TODO(i18n): wrap placeholder in t() */} />
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="none" className="text-xs">
+          {/* TODO(i18n): wrap in t() */}
           None
         </SelectItem>
         {availableTypes.map((type) => (
@@ -631,7 +636,7 @@ function FormulaItem({
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top">Edit</TooltipContent>
+                <TooltipContent side="top">{/* TODO(i18n): wrap in t() */}Edit</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
@@ -651,7 +656,7 @@ function FormulaItem({
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top">Delete</TooltipContent>
+                <TooltipContent side="top">{/* TODO(i18n): wrap in t() */}Delete</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}

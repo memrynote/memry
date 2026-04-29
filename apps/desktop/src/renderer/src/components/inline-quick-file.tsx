@@ -91,9 +91,9 @@ const InlineQuickFile = ({
         value={query}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        placeholder="Type folder name..."
+        placeholder={'Type folder name...' /* TODO(i18n): wrap placeholder in t() */}
         className="flex-1 min-w-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 outline-none border-none"
-        aria-label="Quick file folder search"
+        aria-label={'Quick file folder search' /* TODO(i18n): wrap aria-label in t() */}
         autoComplete="off"
         spellCheck={false}
       />

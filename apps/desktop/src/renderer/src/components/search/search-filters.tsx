@@ -142,6 +142,7 @@ export function SearchFilters({
               hover:text-foreground transition-colors"
           >
             <X className="size-3" />
+            {/* TODO(i18n): wrap in t() */}
             Clear
           </button>
         )}
@@ -152,6 +153,7 @@ export function SearchFilters({
           <div>
             <div className="flex items-center gap-1.5 text-xs text-text-tertiary mb-1">
               <Tag className="size-3" />
+              {/* TODO(i18n): wrap in t() */}
               Tags
             </div>
             <div className="flex flex-wrap gap-1 mb-1">
@@ -173,7 +175,7 @@ export function SearchFilters({
                 type="text"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
-                placeholder="Filter by tag..."
+                placeholder={'Filter by tag...' /* TODO(i18n): wrap placeholder in t() */}
                 className="w-full h-7 px-2 text-xs bg-muted rounded
                   border border-border text-foreground
                   placeholder:text-text-tertiary focus:outline-none"
@@ -202,6 +204,7 @@ export function SearchFilters({
           <div>
             <div className="flex items-center gap-1.5 text-xs text-text-tertiary mb-1">
               <Calendar className="size-3" />
+              {/* TODO(i18n): wrap in t() */}
               Date Range
             </div>
             <div className="flex gap-1">

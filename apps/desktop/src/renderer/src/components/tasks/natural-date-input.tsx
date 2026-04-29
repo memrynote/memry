@@ -106,7 +106,7 @@ export const NaturalDateInput = forwardRef<NaturalDateInputRef, NaturalDateInput
               isValid && 'border-task-complete',
               isInvalid && 'border-task-due-today'
             )}
-            aria-label="Type a date in natural language"
+            aria-label={'Type a date in natural language' /* TODO(i18n): wrap aria-label in t() */}
             autoComplete="off"
           />
         </div>
@@ -133,6 +133,7 @@ export const NaturalDateInput = forwardRef<NaturalDateInputRef, NaturalDateInput
                   onClick={handleSelect}
                   className="h-7 px-2 text-task-complete hover:bg-task-complete/10"
                 >
+                  {/* TODO(i18n): wrap in t() */}
                   Select
                 </Button>
               </>

@@ -142,7 +142,7 @@ export function HighlightReminderPopover({
               'bg-amber-500 hover:bg-amber-600 text-white',
               'animate-in fade-in zoom-in duration-200'
             )}
-            title="Set reminder for this text"
+            title={'Set reminder for this text' /* TODO(i18n): wrap title in t() */}
           >
             <Bell className="h-4 w-4" />
           </Button>
@@ -152,7 +152,9 @@ export function HighlightReminderPopover({
           <div className="p-4 space-y-4">
             {/* Header */}
             <div className="flex items-center justify-between">
-              <h4 className="font-medium text-sm">Remind me about this</h4>
+              <h4 className="font-medium text-sm">
+                {/* TODO(i18n): wrap in t() */}Remind me about this
+              </h4>
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleClose}>
                 <X className="h-4 w-4" />
               </Button>
@@ -160,7 +162,9 @@ export function HighlightReminderPopover({
 
             {/* Selected text preview */}
             <div className="rounded-md bg-muted p-3">
-              <p className="text-xs text-muted-foreground mb-1">Selected text:</p>
+              <p className="text-xs text-muted-foreground mb-1">
+                {/* TODO(i18n): wrap in t() */}Selected text:
+              </p>
               <p className="text-sm italic line-clamp-3 border-l-2 border-amber-500 pl-2">
                 "{selection.text}"
               </p>

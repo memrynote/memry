@@ -95,7 +95,7 @@ export const KeyboardShortcutsDialog = ({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
         <DialogHeader>
-          <DialogTitle>Keyboard Shortcuts</DialogTitle>
+          <DialogTitle>{/* TODO(i18n): wrap in t() */}Keyboard Shortcuts</DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
@@ -133,8 +133,9 @@ export const KeyboardShortcutsDialog = ({
 
         <div className="mt-6 pt-4 border-t border-border">
           <p className="text-xs text-muted-foreground text-center">
-            Press <kbd className="px-1 py-0.5 bg-muted rounded text-xs">?</kbd> to toggle this
-            dialog
+            {/* TODO(i18n): wrap in t() */}
+            Press <kbd className="px-1 py-0.5 bg-muted rounded text-xs">?</kbd>{' '}
+            {/* TODO(i18n): wrap in t() */}to toggle this dialog
           </p>
         </div>
       </DialogContent>

@@ -100,7 +100,9 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
         className={cn('flex h-full items-center justify-center bg-muted/30 rounded-md', className)}
       >
         <div className="text-center p-8">
-          <p className="text-destructive font-medium mb-2">Failed to load PDF</p>
+          <p className="text-destructive font-medium mb-2">
+            {/* TODO(i18n): wrap in t() */}Failed to load PDF
+          </p>
           <p className="text-sm text-muted-foreground">{error}</p>
         </div>
       </div>
@@ -139,7 +141,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
             onClick={() => goToPage(currentPage - 1)}
             disabled={currentPage <= 1}
             className="h-8 w-8 p-0"
-            title="Previous page"
+            title={'Previous page' /* TODO(i18n): wrap title in t() */}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -152,7 +154,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
             onClick={() => goToPage(currentPage + 1)}
             disabled={currentPage >= numPages}
             className="h-8 w-8 p-0"
-            title="Next page"
+            title={'Next page' /* TODO(i18n): wrap title in t() */}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -165,7 +167,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
             size="sm"
             onClick={zoomOut}
             className="h-8 w-8 p-0"
-            title="Zoom out"
+            title={'Zoom out' /* TODO(i18n): wrap title in t() */}
           >
             <ZoomOut className="h-4 w-4" />
           </Button>
@@ -177,7 +179,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
             size="sm"
             onClick={zoomIn}
             className="h-8 w-8 p-0"
-            title="Zoom in"
+            title={'Zoom in' /* TODO(i18n): wrap title in t() */}
           >
             <ZoomIn className="h-4 w-4" />
           </Button>
@@ -187,7 +189,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
             size="sm"
             onClick={fitToWidth}
             className="h-8 w-8 p-0"
-            title="Fit to width"
+            title={'Fit to width' /* TODO(i18n): wrap title in t() */}
           >
             <Maximize2 className="h-4 w-4" />
           </Button>
@@ -195,7 +197,13 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
           <div className="w-px h-5 bg-border hidden sm:block" />
 
           {/* Rotate */}
-          <Button variant="ghost" size="sm" onClick={rotate} className="h-8 w-8 p-0" title="Rotate">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={rotate}
+            className="h-8 w-8 p-0"
+            title={'Rotate' /* TODO(i18n): wrap title in t() */}
+          >
             <RotateCw className="h-4 w-4" />
           </Button>
         </div>

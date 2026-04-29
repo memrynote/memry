@@ -72,9 +72,12 @@ export const BulkDueDatePicker = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            Set due date for {taskCount} task{taskCount !== 1 ? 's' : ''}
+            {/* TODO(i18n): wrap in t() */}
+            Set due date for {taskCount} {/* TODO(i18n): wrap in t() */}task
+            {taskCount !== 1 ? 's' : ''}
           </DialogTitle>
           <DialogDescription>
+            {/* TODO(i18n): wrap in t() */}
             Select a date to set as the due date for all selected tasks.
           </DialogDescription>
         </DialogHeader>
@@ -90,6 +93,7 @@ export const BulkDueDatePicker = ({
             <div className="flex items-center gap-2">
               <Switch id="include-time" checked={includeTime} onCheckedChange={setIncludeTime} />
               <Label htmlFor="include-time" className="text-sm">
+                {/* TODO(i18n): wrap in t() */}
                 Also set time
               </Label>
             </div>
@@ -107,9 +111,11 @@ export const BulkDueDatePicker = ({
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={onClose}>
+            {/* TODO(i18n): wrap in t() */}
             Cancel
           </Button>
           <Button onClick={handleConfirm} disabled={!selectedDate}>
+            {/* TODO(i18n): wrap in t() */}
             Set Due Date
           </Button>
         </DialogFooter>

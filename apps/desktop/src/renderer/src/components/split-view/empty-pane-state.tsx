@@ -68,8 +68,11 @@ export const EmptyPaneState = ({ groupId, className }: EmptyPaneStateProps): Rea
       </div>
 
       {/* Typography with refined hierarchy */}
-      <h3 className="text-lg font-medium text-foreground mb-2">No tabs open</h3>
+      <h3 className="text-lg font-medium text-foreground mb-2">
+        {/* TODO(i18n): wrap in t() */}No tabs open
+      </h3>
       <p className="text-sm text-text-tertiary mb-8 text-center max-w-[240px] leading-relaxed">
+        {/* TODO(i18n): wrap in t() */}
         Open a page from the sidebar or create a new tab to get started
       </p>
 
@@ -91,6 +94,7 @@ export const EmptyPaneState = ({ groupId, className }: EmptyPaneStateProps): Rea
           )}
         >
           <Inbox className="w-4 h-4" />
+          {/* TODO(i18n): wrap in t() */}
           Open Inbox
         </button>
 
@@ -110,6 +114,7 @@ export const EmptyPaneState = ({ groupId, className }: EmptyPaneStateProps): Rea
               'transition-all duration-150 ease-out'
             )}
           >
+            {/* TODO(i18n): wrap in t() */}
             Close Pane
           </button>
         )}

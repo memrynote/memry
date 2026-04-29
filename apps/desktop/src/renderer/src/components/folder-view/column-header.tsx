@@ -289,7 +289,7 @@ export function ColumnHeader({
               'text-muted-foreground/50 hover:text-muted-foreground',
               '-ml-1 mr-0.5'
             )}
-            title="Drag to reorder column"
+            title={'Drag to reorder column' /* TODO(i18n): wrap title in t() */}
           >
             <GripVertical className="h-4 w-4" />
           </div>

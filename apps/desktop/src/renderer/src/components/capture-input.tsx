@@ -345,7 +345,7 @@ export function CaptureInput({
               ? 'min-h-[18px] max-h-[18px] text-[12px] leading-[18px] placeholder:text-text-tertiary'
               : 'min-h-[24px] max-h-[200px] text-sm text-foreground/90 leading-6 placeholder:text-muted-foreground/40'
           )}
-          aria-label="Capture input"
+          aria-label={'Capture input' /* TODO(i18n): wrap aria-label in t() */}
         />
 
         <div className={cn('flex shrink-0 items-center', compact ? 'gap-0.5' : 'gap-1')}>
@@ -359,8 +359,8 @@ export function CaptureInput({
               'disabled:opacity-30 disabled:cursor-not-allowed',
               compact ? 'size-5' : 'size-7'
             )}
-            aria-label="Attach file"
-            title="Attach file (Images, Audio, Video, PDF)"
+            aria-label={'Attach file' /* TODO(i18n): wrap aria-label in t() */}
+            title={'Attach file (Images, Audio, Video, PDF)' /* TODO(i18n): wrap title in t() */}
           >
             <Paperclip className={compact ? 'size-3' : 'size-[15px]'} aria-hidden="true" />
           </button>
@@ -375,8 +375,8 @@ export function CaptureInput({
               'disabled:opacity-30 disabled:cursor-not-allowed',
               compact ? 'size-5' : 'size-7'
             )}
-            aria-label="Record voice memo"
-            title="Record voice memo"
+            aria-label={'Record voice memo' /* TODO(i18n): wrap aria-label in t() */}
+            title={'Record voice memo' /* TODO(i18n): wrap title in t() */}
           >
             <Mic className={compact ? 'size-3' : 'size-[15px]'} aria-hidden="true" />
           </button>
@@ -423,13 +423,15 @@ export function CaptureInput({
         <div className="mt-2 flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2">
           <Copy className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
           <p className="flex-1 text-xs text-muted-foreground">
+            {/* TODO(i18n): wrap in t() */}
             Already captured: &ldquo;{duplicateMatch.title.slice(0, 50)}
-            {duplicateMatch.title.length > 50 ? '...' : ''}&rdquo;
+            {duplicateMatch.title.length > 50 ? '...' : ''}&{/* TODO(i18n): wrap in t() */}rdquo;
           </p>
           <button
             onClick={() => handleSubmit(true)}
             className="shrink-0 text-xs font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
           >
+            {/* TODO(i18n): wrap in t() */}
             Capture Anyway
           </button>
         </div>

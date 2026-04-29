@@ -29,7 +29,9 @@ export const ProjectsEmptyState = ({
       </div>
 
       {/* Message */}
-      <p className="text-sm text-sidebar-foreground/60 mb-3">No projects yet</p>
+      <p className="text-sm text-sidebar-foreground/60 mb-3">
+        {/* TODO(i18n): wrap in t() */}No projects yet
+      </p>
 
       {/* Create button */}
       <button
@@ -43,10 +45,10 @@ export const ProjectsEmptyState = ({
           'focus-visible:outline-none'
         )}
         tabIndex={0}
-        aria-label="Create your first project"
+        aria-label={'Create your first project' /* TODO(i18n): wrap aria-label in t() */}
       >
         <Plus className="size-4" />
-        <span>Create your first project</span>
+        <span>{/* TODO(i18n): wrap in t() */}Create your first project</span>
       </button>
     </div>
   )

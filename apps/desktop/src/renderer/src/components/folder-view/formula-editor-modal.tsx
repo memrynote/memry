@@ -356,19 +356,21 @@ export function FormulaEditorModal({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit Formula' : 'Create Formula'}</DialogTitle>
-          <DialogDescription>Define a computed column using an expression.</DialogDescription>
+          <DialogDescription>
+            {/* TODO(i18n): wrap in t() */}Define a computed column using an expression.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
           {/* Name Input */}
           <div className="grid gap-2">
-            <Label htmlFor="formula-name">Name</Label>
+            <Label htmlFor="formula-name">{/* TODO(i18n): wrap in t() */}Name</Label>
             <Input
               id="formula-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={handleNameKeyDown}
-              placeholder="days_until_due"
+              placeholder={'days_until_due' /* TODO(i18n): wrap placeholder in t() */}
               className={cn(nameError && name && 'border-destructive')}
               disabled={isEditing} // Can't rename existing formula
             />
@@ -383,7 +385,7 @@ export function FormulaEditorModal({
           {/* Expression Input with Autocomplete */}
           <div className="grid gap-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="formula-expression">Expression</Label>
+              <Label htmlFor="formula-expression">{/* TODO(i18n): wrap in t() */}Expression</Label>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -431,7 +433,9 @@ export function FormulaEditorModal({
                   // Delay close to allow click on dropdown
                   setTimeout(closeAutocomplete, 150)
                 }}
-                placeholder='dateDiff(due_date, today(), "days")'
+                placeholder={
+                  'dateDiff(due_date, today(), "days")' /* TODO(i18n): wrap placeholder in t() */
+                }
                 className={cn(
                   'font-mono text-sm min-h-[80px]',
                   !expressionValidation.valid && expression && 'border-destructive'
@@ -464,14 +468,14 @@ export function FormulaEditorModal({
 
           {/* Function Hints */}
           <div className="text-xs text-muted-foreground">
-            <span className="font-medium">Available: </span>
+            <span className="font-medium">{/* TODO(i18n): wrap in t() */}Available: </span>
             {functions.slice(0, 8).join(', ')}
             {functions.length > 8 && `, +${functions.length - 8} more`}
           </div>
 
           {/* Preview */}
           <div className="grid gap-2">
-            <Label>Preview</Label>
+            <Label>{/* TODO(i18n): wrap in t() */}Preview</Label>
             <div
               className={cn(
                 'rounded-md border p-3 text-sm font-mono bg-muted/50',
@@ -482,6 +486,7 @@ export function FormulaEditorModal({
                 'No notes available for preview'
               ) : !expressionValidation.valid ? (
                 <span className="text-muted-foreground italic">
+                  {/* TODO(i18n): wrap in t() */}
                   Fix expression errors to see preview
                 </span>
               ) : previewResult?.success ? (
@@ -492,7 +497,8 @@ export function FormulaEditorModal({
             </div>
             {sampleNote && (
               <p className="text-xs text-muted-foreground">
-                Using note: &quot;{sampleNote.title}&quot;
+                {/* TODO(i18n): wrap in t() */}
+                Using note: &quot;{sampleNote.title}&{/* TODO(i18n): wrap in t() */}quot;
               </p>
             )}
           </div>
@@ -500,6 +506,7 @@ export function FormulaEditorModal({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
+            {/* TODO(i18n): wrap in t() */}
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={!canSave}>

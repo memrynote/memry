@@ -55,13 +55,16 @@ export const TabBarContextMenu = ({
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent className="w-48">
         <ContextMenuItem onClick={handleNewTab}>
+          {/* TODO(i18n): wrap in t() */}
           New Tab
-          <ContextMenuShortcut>⌘T</ContextMenuShortcut>
+          <ContextMenuShortcut>⌘{/* TODO(i18n): wrap in t() */}T</ContextMenuShortcut>
         </ContextMenuItem>
 
         <ContextMenuSeparator />
 
-        <ContextMenuItem onClick={handleCloseAll}>Close All Tabs</ContextMenuItem>
+        <ContextMenuItem onClick={handleCloseAll}>
+          {/* TODO(i18n): wrap in t() */}Close All Tabs
+        </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
   )

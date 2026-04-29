@@ -159,11 +159,12 @@ export function FilterRow({
       {/* Property Selector */}
       <Select value={condition.property} onValueChange={handlePropertyChange}>
         <SelectTrigger className="w-[140px] h-8 text-xs">
-          <SelectValue placeholder="Property" />
+          <SelectValue placeholder={'Property' /* TODO(i18n): wrap placeholder in t() */} />
         </SelectTrigger>
         <SelectContent>
           {/* Built-in properties */}
           <div className="px-2 py-1 text-[10px] font-medium text-muted-foreground uppercase">
+            {/* TODO(i18n): wrap in t() */}
             Built-in
           </div>
           {BUILT_IN_PROPERTIES.map((prop) => (
@@ -176,6 +177,7 @@ export function FilterRow({
           {availableProperties.length > 0 && (
             <>
               <div className="px-2 py-1 mt-1 text-[10px] font-medium text-muted-foreground uppercase border-t">
+                {/* TODO(i18n): wrap in t() */}
                 Properties
               </div>
               {availableProperties.map((prop) => (
@@ -191,7 +193,7 @@ export function FilterRow({
       {/* Operator Selector */}
       <Select value={condition.operator} onValueChange={handleOperatorChange}>
         <SelectTrigger className="w-[130px] h-8 text-xs">
-          <SelectValue placeholder="Operator" />
+          <SelectValue placeholder={'Operator' /* TODO(i18n): wrap placeholder in t() */} />
         </SelectTrigger>
         <SelectContent>
           {operators.map((op) => (
@@ -247,7 +249,7 @@ function ValueInput({ type, value, onChange }: ValueInputProps): React.JSX.Eleme
           value={(value as number) ?? ''}
           onChange={(e) => onChange(e.target.value ? Number(e.target.value) : '')}
           className="w-[100px] h-8 text-xs"
-          placeholder="Value"
+          placeholder={'Value' /* TODO(i18n): wrap placeholder in t() */}
         />
       )
 
@@ -269,7 +271,7 @@ function ValueInput({ type, value, onChange }: ValueInputProps): React.JSX.Eleme
           value={String(value ?? '')}
           onChange={(e) => onChange(e.target.value)}
           className="flex-1 h-8 text-xs min-w-[100px]"
-          placeholder="Value"
+          placeholder={'Value' /* TODO(i18n): wrap placeholder in t() */}
         />
       )
   }

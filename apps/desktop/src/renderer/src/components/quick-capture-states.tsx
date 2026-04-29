@@ -16,7 +16,9 @@ export function CaptureSuccess({ onAutoClose }: CaptureSuccessProps): React.JSX.
       <div className="flex size-5 items-center justify-center rounded-full bg-green-500/15">
         <Check className="size-3 text-green-500" />
       </div>
-      <span className="text-sm font-medium text-foreground">Captured</span>
+      <span className="text-sm font-medium text-foreground">
+        {/* TODO(i18n): wrap in t() */}Captured
+      </span>
     </div>
   )
 }
@@ -33,7 +35,7 @@ export function CaptureError({ message, onDismiss }: CaptureErrorProps): React.J
       <button
         onClick={onDismiss}
         className="shrink-0 rounded p-0.5 text-muted-foreground/50 hover:text-foreground transition-colors"
-        aria-label="Dismiss error"
+        aria-label={'Dismiss error' /* TODO(i18n): wrap aria-label in t() */}
       >
         <X className="size-3" />
       </button>
@@ -63,23 +65,27 @@ export function CaptureDuplicate({
     <div className="flex flex-col gap-2.5 px-4 py-3.5">
       <div className="flex items-center gap-2">
         <Copy className="size-4 text-accent-orange" />
-        <span className="text-sm font-medium text-foreground">Already captured</span>
+        <span className="text-sm font-medium text-foreground">
+          {/* TODO(i18n): wrap in t() */}Already captured
+        </span>
       </div>
       <p className="text-xs text-muted-foreground truncate">
-        &ldquo;{title.slice(0, 60)}
-        {title.length > 60 ? '...' : ''}&rdquo; &middot; {dateStr}
+        &{/* TODO(i18n): wrap in t() */}ldquo;{title.slice(0, 60)}
+        {title.length > 60 ? '...' : ''}&{/* TODO(i18n): wrap in t() */}rdquo; &middot; {dateStr}
       </p>
       <div className="flex gap-2">
         <button
           onClick={onForce}
           className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
         >
+          {/* TODO(i18n): wrap in t() */}
           Capture Anyway
         </button>
         <button
           onClick={onClose}
           className="rounded-md bg-accent-orange px-2.5 py-1 text-xs font-medium text-white transition-colors hover:opacity-90"
         >
+          {/* TODO(i18n): wrap in t() */}
           Close
         </button>
       </div>

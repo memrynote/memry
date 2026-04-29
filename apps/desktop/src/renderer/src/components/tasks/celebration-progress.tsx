@@ -89,7 +89,7 @@ export const CelebrationProgress = ({
             exit={{ scale: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
             className="ml-2 flex items-center justify-center w-4 h-4 rounded-full bg-task-complete"
-            aria-label="Complete"
+            aria-label={'Complete' /* TODO(i18n): wrap aria-label in t() */}
           >
             <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
           </motion.div>

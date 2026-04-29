@@ -55,9 +55,12 @@ export const DuplicateWithSubtasksDialog = ({
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Copy className="size-5 text-muted-foreground" />
-            <DialogTitle>Duplicate task</DialogTitle>
+            <DialogTitle>{/* TODO(i18n): wrap in t() */}Duplicate task</DialogTitle>
           </div>
-          <DialogDescription>Create a copy of &ldquo;{taskTitle}&rdquo;</DialogDescription>
+          <DialogDescription>
+            {/* TODO(i18n): wrap in t() */}Create a copy of &ldquo;{taskTitle}&
+            {/* TODO(i18n): wrap in t() */}rdquo;
+          </DialogDescription>
         </DialogHeader>
 
         <div className="py-4">
@@ -69,6 +72,7 @@ export const DuplicateWithSubtasksDialog = ({
             />
             <div className="space-y-1">
               <Label htmlFor="include-subtasks" className="cursor-pointer font-medium">
+                {/* TODO(i18n): wrap in t() */}
                 Also duplicate subtasks ({subtaskCount})
               </Label>
               <p className="text-sm text-muted-foreground">
@@ -82,9 +86,11 @@ export const DuplicateWithSubtasksDialog = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose}>
+            {/* TODO(i18n): wrap in t() */}
             Cancel
           </Button>
           <Button onClick={handleDuplicate}>
+            {/* TODO(i18n): wrap in t() */}
             Duplicate {includeSubtasks ? `(${subtaskCount + 1} items)` : 'task'}
           </Button>
         </DialogFooter>

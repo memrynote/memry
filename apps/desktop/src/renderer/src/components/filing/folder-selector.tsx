@@ -160,7 +160,9 @@ const FolderSelector = ({
     <div className="space-y-4">
       {/* Section Label */}
       <div className="flex items-center gap-1">
-        <h3 className="text-sm font-medium text-foreground">Choose folder</h3>
+        <h3 className="text-sm font-medium text-foreground">
+          {/* TODO(i18n): wrap in t() */}Choose folder
+        </h3>
         <span className="text-red-500">*</span>
       </div>
 
@@ -188,11 +190,11 @@ const FolderSelector = ({
         />
         <Input
           type="text"
-          placeholder="Search folders..."
+          placeholder={'Search folders...' /* TODO(i18n): wrap placeholder in t() */}
           value={searchQuery}
           onChange={handleSearchChange}
           className="pl-9"
-          aria-label="Search folders"
+          aria-label={'Search folders' /* TODO(i18n): wrap aria-label in t() */}
         />
       </div>
 
@@ -200,7 +202,11 @@ const FolderSelector = ({
       <div className="space-y-4 max-h-[280px] overflow-y-auto">
         {isSearching ? (
           // Search Results
-          <div className="space-y-0.5" role="listbox" aria-label="Search results">
+          <div
+            className="space-y-0.5"
+            role="listbox"
+            aria-label={'Search results' /* TODO(i18n): wrap aria-label in t() */}
+          >
             {filteredFolders.length > 0
               ? filteredFolders.map((folder) => (
                   <FolderItem
@@ -247,6 +253,7 @@ const FolderSelector = ({
               >
                 <Plus className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="flex-1 text-sm">
+                  {/* TODO(i18n): wrap in t() */}
                   Create "<span className="font-medium">{searchQuery.trim()}</span>"
                 </span>
                 {selectedFolder?.path === searchQuery.trim() && (
@@ -259,7 +266,7 @@ const FolderSelector = ({
           <>
             {/* Suggested Folders */}
             <FolderSection
-              title="Suggested"
+              title={'Suggested' /* TODO(i18n): wrap title in t() */}
               folders={suggestedFolders}
               selectedId={selectedFolder?.id || null}
               onSelect={onSelect}
@@ -267,7 +274,7 @@ const FolderSelector = ({
 
             {/* Recent Folders */}
             <FolderSection
-              title="Recent"
+              title={'Recent' /* TODO(i18n): wrap title in t() */}
               folders={recentFolders}
               selectedId={selectedFolder?.id || null}
               onSelect={onSelect}
@@ -290,10 +297,15 @@ const FolderSelector = ({
                 ) : (
                   <ChevronRight className="size-3" aria-hidden="true" />
                 )}
+                {/* TODO(i18n): wrap in t() */}
                 All folders
               </button>
               {isAllExpanded && (
-                <div className="space-y-0.5" role="listbox" aria-label="All folders">
+                <div
+                  className="space-y-0.5"
+                  role="listbox"
+                  aria-label={'All folders' /* TODO(i18n): wrap aria-label in t() */}
+                >
                   {folders.map((folder) => (
                     <FolderItem
                       key={folder.id}

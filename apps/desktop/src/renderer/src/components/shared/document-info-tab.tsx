@@ -100,15 +100,19 @@ export const DocumentInfoTab = memo(function DocumentInfoTab({
       <div className="space-y-0.5">
         <StatRow
           icon={<FileText className={iconClass} />}
-          label="Words"
+          label={'Words' /* TODO(i18n): wrap label in t() */}
           value={formatNumber(stats.wordCount)}
         />
         <StatRow
           icon={<Type className={iconClass} />}
-          label="Characters"
+          label={'Characters' /* TODO(i18n): wrap label in t() */}
           value={formatNumber(stats.characterCount)}
         />
-        <StatRow icon={<Clock className={iconClass} />} label="Reading time" value={readingTime} />
+        <StatRow
+          icon={<Clock className={iconClass} />}
+          label={'Reading time' /* TODO(i18n): wrap label in t() */}
+          value={readingTime}
+        />
       </div>
 
       {/* Divider */}
@@ -118,12 +122,12 @@ export const DocumentInfoTab = memo(function DocumentInfoTab({
       <div className="space-y-0.5">
         <StatRow
           icon={<Calendar className={iconClass} />}
-          label="Created"
+          label={'Created' /* TODO(i18n): wrap label in t() */}
           value={formattedCreatedAt}
         />
         <StatRow
           icon={<Pencil className={iconClass} />}
-          label="Modified"
+          label={'Modified' /* TODO(i18n): wrap label in t() */}
           value={formattedModifiedAt}
         />
       </div>

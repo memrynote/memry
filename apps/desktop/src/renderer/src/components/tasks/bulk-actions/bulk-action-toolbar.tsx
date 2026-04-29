@@ -159,7 +159,7 @@ export const BulkActionToolbar = ({
         className
       )}
       role="toolbar"
-      aria-label="Bulk actions"
+      aria-label={'Bulk actions' /* TODO(i18n): wrap aria-label in t() */}
     >
       {/* Select all checkbox + count */}
       <div className="flex items-center gap-2">
@@ -169,7 +169,9 @@ export const BulkActionToolbar = ({
           onChange={onToggleSelectAll}
           aria-label={allSelected ? 'Deselect all' : 'Select all'}
         />
-        <span className="font-medium text-primary">{selectedCount} selected</span>
+        <span className="font-medium text-primary">
+          {selectedCount} {/* TODO(i18n): wrap in t() */}selected
+        </span>
       </div>
 
       {/* Divider */}
@@ -180,14 +182,14 @@ export const BulkActionToolbar = ({
         {/* Complete */}
         <BulkActionButton
           icon={<Check className="size-4" />}
-          label="Complete"
+          label={'Complete' /* TODO(i18n): wrap label in t() */}
           onClick={onComplete}
         />
 
         {/* Priority dropdown */}
         <BulkActionDropdown
           icon={<Flag className="size-4" />}
-          label="Priority"
+          label={'Priority' /* TODO(i18n): wrap label in t() */}
           options={priorityOptions.filter((o) => !o.isSeparator || o.value !== 'none')}
           onSelect={onChangePriority}
           selectedCount={selectedCount}
@@ -196,7 +198,7 @@ export const BulkActionToolbar = ({
         {/* Due Date dropdown */}
         <BulkActionDropdown
           icon={<Calendar className="size-4" />}
-          label="Due Date"
+          label={'Due Date' /* TODO(i18n): wrap label in t() */}
           options={dueDateOptions}
           onSelect={onChangeDueDate}
           selectedCount={selectedCount}
@@ -205,7 +207,7 @@ export const BulkActionToolbar = ({
         {/* Move to project dropdown */}
         <BulkActionDropdown
           icon={<FolderOpen className="size-4" />}
-          label="Move to"
+          label={'Move to' /* TODO(i18n): wrap label in t() */}
           options={projectOptions}
           onSelect={onMoveToProject}
           selectedCount={selectedCount}
@@ -215,7 +217,7 @@ export const BulkActionToolbar = ({
         {showStatusAction && statuses.length > 0 && onChangeStatus && (
           <BulkActionDropdown
             icon={<Columns3 className="size-4" />}
-            label="Status"
+            label={'Status' /* TODO(i18n): wrap label in t() */}
             options={statusOptions}
             onSelect={onChangeStatus}
             selectedCount={selectedCount}
@@ -228,7 +230,7 @@ export const BulkActionToolbar = ({
         {/* Archive */}
         <BulkActionButton
           icon={<Archive className="size-4" />}
-          label="Archive"
+          label={'Archive' /* TODO(i18n): wrap label in t() */}
           onClick={onArchive}
           variant="secondary"
         />
@@ -236,7 +238,7 @@ export const BulkActionToolbar = ({
         {/* Delete */}
         <BulkActionButton
           icon={<Trash2 className="size-4" />}
-          label="Delete"
+          label={'Delete' /* TODO(i18n): wrap label in t() */}
           onClick={onDelete}
           variant="danger"
         />
@@ -255,10 +257,10 @@ export const BulkActionToolbar = ({
           'transition-colors duration-150',
           'focus-visible:outline-none'
         )}
-        aria-label="Cancel selection"
+        aria-label={'Cancel selection' /* TODO(i18n): wrap aria-label in t() */}
       >
         <X className="size-4" />
-        <span className="hidden sm:inline">Cancel</span>
+        <span className="hidden sm:inline">{/* TODO(i18n): wrap in t() */}Cancel</span>
       </button>
     </div>
   )

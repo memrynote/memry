@@ -192,7 +192,7 @@ export function GroupBySelector({
                     type="button"
                     onClick={handleClearGrouping}
                     className="ml-1 p-0.5 rounded hover:bg-muted"
-                    aria-label="Clear grouping"
+                    aria-label={'Clear grouping' /* TODO(i18n): wrap aria-label in t() */}
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -211,7 +211,7 @@ export function GroupBySelector({
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search properties..."
+              placeholder={'Search properties...' /* TODO(i18n): wrap placeholder in t() */}
               className="h-8"
             />
           </div>
@@ -222,6 +222,7 @@ export function GroupBySelector({
             {filteredBuiltIn.length > 0 && (
               <div className="mb-2">
                 <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase">
+                  {/* TODO(i18n): wrap in t() */}
                   Built-in
                 </div>
                 {filteredBuiltIn.map((col) => (
@@ -241,6 +242,7 @@ export function GroupBySelector({
               <div>
                 {filteredBuiltIn.length > 0 && <Separator className="my-1" />}
                 <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase">
+                  {/* TODO(i18n): wrap in t() */}
                   Properties
                 </div>
                 {filteredProperties.map((prop) => (
@@ -259,6 +261,7 @@ export function GroupBySelector({
             {/* No results */}
             {filteredBuiltIn.length === 0 && filteredProperties.length === 0 && (
               <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                {/* TODO(i18n): wrap in t() */}
                 No groupable properties found
               </div>
             )}
@@ -271,7 +274,7 @@ export function GroupBySelector({
               <div className="p-2 space-y-3">
                 {/* Direction toggle */}
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm">Sort direction</Label>
+                  <Label className="text-sm">{/* TODO(i18n): wrap in t() */}Sort direction</Label>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -281,12 +284,12 @@ export function GroupBySelector({
                     {groupBy?.direction === 'asc' ? (
                       <>
                         <ArrowUpAZ className="h-4 w-4" />
-                        <span className="text-xs">A → Z</span>
+                        <span className="text-xs">{/* TODO(i18n): wrap in t() */}A → Z</span>
                       </>
                     ) : (
                       <>
                         <ArrowDownZA className="h-4 w-4" />
-                        <span className="text-xs">Z → A</span>
+                        <span className="text-xs">{/* TODO(i18n): wrap in t() */}Z → A</span>
                       </>
                     )}
                   </Button>
@@ -295,6 +298,7 @@ export function GroupBySelector({
                 {/* Collapsed by default */}
                 <div className="flex items-center justify-between">
                   <Label htmlFor="collapsed-toggle" className="text-sm">
+                    {/* TODO(i18n): wrap in t() */}
                     Collapse groups by default
                   </Label>
                   <Switch
@@ -307,6 +311,7 @@ export function GroupBySelector({
                 {/* Show summaries */}
                 <div className="flex items-center justify-between">
                   <Label htmlFor="summary-toggle" className="text-sm">
+                    {/* TODO(i18n): wrap in t() */}
                     Show group summaries
                   </Label>
                   <Switch
@@ -334,6 +339,7 @@ export function GroupBySelector({
                   className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-4 w-4" />
+                  {/* TODO(i18n): wrap in t() */}
                   Clear grouping
                 </Button>
               </div>

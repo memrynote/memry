@@ -76,7 +76,10 @@ export const TimePicker = ({ value, onChange, className }: TimePickerProps): Rea
   return (
     <div className={cn('relative flex items-center gap-1', className)}>
       <Select value={value || ''} onValueChange={handleValueChange}>
-        <SelectTrigger className="w-full" aria-label="Select time">
+        <SelectTrigger
+          className="w-full"
+          aria-label={'Select time' /* TODO(i18n): wrap aria-label in t() */}
+        >
           <SelectValue>
             {currentOption ? (
               <div className="flex items-center gap-2">
@@ -86,7 +89,7 @@ export const TimePicker = ({ value, onChange, className }: TimePickerProps): Rea
             ) : (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Clock className="size-4" aria-hidden="true" />
-                <span>Select time</span>
+                <span>{/* TODO(i18n): wrap in t() */}Select time</span>
               </div>
             )}
           </SelectValue>
@@ -108,7 +111,7 @@ export const TimePicker = ({ value, onChange, className }: TimePickerProps): Rea
           size="icon"
           className="size-8 shrink-0"
           onClick={handleClear}
-          aria-label="Clear time"
+          aria-label={'Clear time' /* TODO(i18n): wrap aria-label in t() */}
         >
           <X className="size-4" />
         </Button>

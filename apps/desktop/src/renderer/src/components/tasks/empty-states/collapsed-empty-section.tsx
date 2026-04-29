@@ -104,7 +104,7 @@ export const CollapsedEmptySection = ({
         )}
         aria-label={`Add task for ${label.toLowerCase()}`}
       >
-        + Add
+        + {/* TODO(i18n): wrap in t() */}Add
       </button>
     </div>
   )

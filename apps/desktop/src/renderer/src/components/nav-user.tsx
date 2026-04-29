@@ -39,7 +39,9 @@ export function NavUser({
             >
               <Avatar className="h-8 w-8 rounded-full">
                 <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-full">CN</AvatarFallback>
+                <AvatarFallback className="rounded-full">
+                  {/* TODO(i18n): wrap in t() */}CN
+                </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">{user.name}</span>
@@ -58,7 +60,9 @@ export function NavUser({
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-md">
                   <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-md">CN</AvatarFallback>
+                  <AvatarFallback className="rounded-md">
+                    {/* TODO(i18n): wrap in t() */}CN
+                  </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">{user.name}</span>
@@ -70,6 +74,7 @@ export function NavUser({
             <DropdownMenuGroup>
               <DropdownMenuItem>
                 <Sparkles />
+                {/* TODO(i18n): wrap in t() */}
                 Upgrade to Pro
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -77,20 +82,24 @@ export function NavUser({
             <DropdownMenuGroup>
               <DropdownMenuItem>
                 <BadgeCheck />
+                {/* TODO(i18n): wrap in t() */}
                 Account
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <CreditCard />
+                {/* TODO(i18n): wrap in t() */}
                 Billing
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <Bell />
+                {/* TODO(i18n): wrap in t() */}
                 Notifications
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
               <LogOut />
+              {/* TODO(i18n): wrap in t() */}
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>

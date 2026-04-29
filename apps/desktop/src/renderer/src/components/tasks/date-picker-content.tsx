@@ -131,7 +131,9 @@ export function DatePickerContent({
             onClick={() => onSelect(null)}
             className="flex items-center rounded-[5px] py-1.5 px-2 gap-2 hover:bg-accent transition-colors"
           >
-            <span className="text-[12px] text-destructive leading-4">Remove date</span>
+            <span className="text-[12px] text-destructive leading-4">
+              {/* TODO(i18n): wrap in t() */}Remove date
+            </span>
           </button>
         )}
       </div>
@@ -166,7 +168,7 @@ export function DatePickerContent({
                 type="button"
                 onClick={handleClearTime}
                 className="rounded-[5px] p-1.5 text-text-tertiary hover:text-destructive hover:bg-accent transition-colors"
-                aria-label="Clear time"
+                aria-label={'Clear time' /* TODO(i18n): wrap aria-label in t() */}
               >
                 <X size={10} />
               </button>
@@ -178,7 +180,9 @@ export function DatePickerContent({
               className="flex items-center flex-1 rounded-[5px] py-1.5 px-2 gap-2 hover:bg-accent transition-colors"
             >
               <ClockIcon />
-              <span className="text-[12px] text-text-tertiary leading-4">Add time</span>
+              <span className="text-[12px] text-text-tertiary leading-4">
+                {/* TODO(i18n): wrap in t() */}Add time
+              </span>
             </button>
           )}
         </div>

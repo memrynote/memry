@@ -120,7 +120,7 @@ export const TabBarWithDrag = ({
           className
         )}
         role="tablist"
-        aria-label="Open tabs"
+        aria-label={'Open tabs' /* TODO(i18n): wrap aria-label in t() */}
         aria-orientation="horizontal"
         data-group-id={groupId}
       >
@@ -153,7 +153,7 @@ export const TabBarWithDrag = ({
               'transition-all duration-150 ease-out z-20',
               'absolute left-0 bottom-px'
             )}
-            aria-label="Scroll tabs left"
+            aria-label={'Scroll tabs left' /* TODO(i18n): wrap aria-label in t() */}
           >
             <ChevronLeft className="w-3.5 h-3.5 text-text-tertiary hover:text-foreground transition-colors" />
           </button>
@@ -206,7 +206,7 @@ export const TabBarWithDrag = ({
               'transition-all duration-150 ease-out z-20',
               'absolute right-[72px] bottom-px'
             )}
-            aria-label="Scroll tabs right"
+            aria-label={'Scroll tabs right' /* TODO(i18n): wrap aria-label in t() */}
           >
             <ChevronRight className="w-3.5 h-3.5 text-text-tertiary hover:text-foreground transition-colors" />
           </button>
@@ -230,7 +230,7 @@ export const TabBarWithDrag = ({
                 )}
               />
             }
-            tooltip="Graph (⌘G)"
+            tooltip={'Graph (⌘G)' /* TODO(i18n): wrap tooltip in t() */}
             onClick={handleGraphClick}
           />
           <TabBarAction
@@ -242,7 +242,7 @@ export const TabBarWithDrag = ({
                 )}
               />
             }
-            tooltip="Day Panel"
+            tooltip={'Day Panel' /* TODO(i18n): wrap tooltip in t() */}
             onClick={toggleDayPanel}
             isActive={isDayPanelOpen}
           />

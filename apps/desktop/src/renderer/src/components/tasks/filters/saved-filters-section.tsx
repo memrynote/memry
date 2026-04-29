@@ -54,7 +54,7 @@ export const SavedFiltersSection = ({
             onKeyDown={handleKeyDown}
             placeholder={hasActiveFilters ? 'Save current filter...' : 'Set filters first'}
             disabled={!hasActiveFilters}
-            aria-label="Filter name"
+            aria-label={'Filter name' /* TODO(i18n): wrap aria-label in t() */}
             className="flex-1 min-w-0 bg-transparent text-[13px] leading-4 text-foreground placeholder:text-muted-foreground/40 outline-none disabled:opacity-40"
           />
         </div>
@@ -62,7 +62,7 @@ export const SavedFiltersSection = ({
           type="button"
           onClick={handleSave}
           disabled={!filterName.trim() || !hasActiveFilters}
-          aria-label="Save filter"
+          aria-label={'Save filter' /* TODO(i18n): wrap aria-label in t() */}
           className={cn(
             'shrink-0 rounded-[5px] px-2 py-1 text-[11px] font-medium leading-4 transition-colors',
             filterName.trim() && hasActiveFilters
@@ -70,6 +70,7 @@ export const SavedFiltersSection = ({
               : 'bg-foreground/10 text-muted-foreground/60 cursor-not-allowed'
           )}
         >
+          {/* TODO(i18n): wrap in t() */}
           Save
         </button>
       </div>

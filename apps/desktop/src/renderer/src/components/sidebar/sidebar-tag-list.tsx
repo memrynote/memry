@@ -329,7 +329,7 @@ export function SidebarTagList({
       <div className={cn('px-2 py-1.5', className)}>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <div className="size-3 rounded-full bg-muted animate-pulse" />
-          <span>Loading tags...</span>
+          <span>{/* TODO(i18n): wrap in t() */}Loading tags...</span>
         </div>
       </div>
     )
@@ -338,7 +338,9 @@ export function SidebarTagList({
   if (error) {
     return (
       <div className={cn('px-2 py-1.5', className)}>
-        <span className="text-xs text-destructive">Failed to load tags</span>
+        <span className="text-xs text-destructive">
+          {/* TODO(i18n): wrap in t() */}Failed to load tags
+        </span>
       </div>
     )
   }
@@ -348,7 +350,9 @@ export function SidebarTagList({
   if (allTags.length === 0) {
     return (
       <div className={cn('px-2 py-1.5', className)}>
-        <span className="text-xs text-muted-foreground">No tags yet</span>
+        <span className="text-xs text-muted-foreground">
+          {/* TODO(i18n): wrap in t() */}No tags yet
+        </span>
       </div>
     )
   }
@@ -363,7 +367,7 @@ export function SidebarTagList({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleSearchKeyDown}
-            placeholder="Filter tags..."
+            placeholder={'Filter tags...' /* TODO(i18n): wrap placeholder in t() */}
             className="w-full h-6 px-2 text-[11px] rounded-md border bg-transparent placeholder:text-muted-foreground focus:outline-none"
           />
         </div>
@@ -371,7 +375,9 @@ export function SidebarTagList({
 
       <div className="flex flex-col gap-0.5">
         {visibleTree.length === 0 && searchQuery ? (
-          <span className="text-[11px] text-muted-foreground px-2">No matching tags</span>
+          <span className="text-[11px] text-muted-foreground px-2">
+            {/* TODO(i18n): wrap in t() */}No matching tags
+          </span>
         ) : (
           visibleTree.map((node) => (
             <TagTreeItem

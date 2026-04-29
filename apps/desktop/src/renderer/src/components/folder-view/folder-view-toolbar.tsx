@@ -110,7 +110,7 @@ export function FolderViewToolbar({
         <Input
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Search notes..."
+          placeholder={'Search notes...' /* TODO(i18n): wrap placeholder in t() */}
           className="h-8 pl-8 pr-8 text-sm w-full"
         />
         {searchQuery && (
@@ -118,7 +118,7 @@ export function FolderViewToolbar({
             type="button"
             onClick={() => onSearchChange('')}
             className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Clear search"
+            aria-label={'Clear search' /* TODO(i18n): wrap aria-label in t() */}
           >
             <X className="h-4 w-4" />
           </button>

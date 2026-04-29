@@ -272,7 +272,7 @@ export function SortableColumnHeader({
             '-ml-1 mr-0.5'
           )}
           aria-label={`Drag to reorder column: ${columnConfig.displayName ?? columnConfig.id}`}
-          title="Drag to reorder column"
+          title={'Drag to reorder column' /* TODO(i18n): wrap title in t() */}
         >
           <GripVertical className="h-4 w-4" />
         </div>
@@ -326,7 +326,7 @@ export function SortableColumnHeader({
             onWidthChange?.(columnId, newWidth)
           }
         }}
-        aria-label="Resize column"
+        aria-label={'Resize column' /* TODO(i18n): wrap aria-label in t() */}
         className={cn(
           'absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none',
           'opacity-0 group-hover:opacity-100 hover:bg-primary/50',

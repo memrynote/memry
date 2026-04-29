@@ -30,10 +30,14 @@ export function StatusProjectPickerPanel({
         >
           <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.2" />
         </svg>
-        <span className="text-[13px] text-foreground font-medium leading-4">Status</span>
+        <span className="text-[13px] text-foreground font-medium leading-4">
+          {/* TODO(i18n): wrap in t() */}Status
+        </span>
       </div>
       <div className="px-3 pt-1.5 pb-1">
-        <span className="text-[11px] text-muted-foreground/60 leading-3.5">Pick a project</span>
+        <span className="text-[11px] text-muted-foreground/60 leading-3.5">
+          {/* TODO(i18n): wrap in t() */}Pick a project
+        </span>
       </div>
       <div className="flex flex-col p-1">
         {visibleProjects.map((project) => (

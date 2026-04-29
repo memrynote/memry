@@ -58,6 +58,7 @@ function ProjectActions({
           }}
         >
           <Pencil className="mr-2 size-4" />
+          {/* TODO(i18n): wrap in t() */}
           Edit project
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -68,6 +69,7 @@ function ProjectActions({
           }}
         >
           <Archive className="mr-2 size-4" />
+          {/* TODO(i18n): wrap in t() */}
           Archive project
         </DropdownMenuItem>
         <DropdownMenuItem
@@ -78,6 +80,7 @@ function ProjectActions({
           className="text-destructive focus:text-destructive"
         >
           <Trash2 className="mr-2 size-4" />
+          {/* TODO(i18n): wrap in t() */}
           Delete project
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -131,17 +134,20 @@ export const ProjectSelector = ({
               <span className="truncate text-sm font-medium">{selectedProject.name}</span>
             </span>
           ) : (
-            <span className="text-sm text-muted-foreground">Select project</span>
+            <span className="text-sm text-muted-foreground">
+              {/* TODO(i18n): wrap in t() */}Select project
+            </span>
           )}
         </Picker.Trigger>
         <Picker.Content width={280} align="start">
           {activeProjects.length === 0 ? (
             <Picker.Empty
               icon={<FolderKanban className="size-8" />}
-              message="No projects yet"
+              message={'No projects yet' /* TODO(i18n): wrap message in t() */}
               action={
                 <Button variant="outline" size="sm" onClick={onCreateProject}>
                   <Plus className="size-4 mr-1" />
+                  {/* TODO(i18n): wrap in t() */}
                   Create project
                 </Button>
               }

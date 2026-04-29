@@ -39,7 +39,9 @@ export function ProjectPanel({
             strokeWidth="1.1"
           />
         </svg>
-        <span className="text-[13px] text-foreground font-medium leading-4">Project</span>
+        <span className="text-[13px] text-foreground font-medium leading-4">
+          {/* TODO(i18n): wrap in t() */}Project
+        </span>
       </div>
       <div className="flex flex-col p-1">
         <button
@@ -51,7 +53,9 @@ export function ProjectPanel({
           )}
         >
           <div className="shrink-0 rounded-[3px] border-[1.2px] border-solid border-border size-2.5" />
-          <span className="text-[13px] text-muted-foreground/60 leading-4">No project</span>
+          <span className="text-[13px] text-muted-foreground/60 leading-4">
+            {/* TODO(i18n): wrap in t() */}No project
+          </span>
           {selectedProjectIds.length === 0 && <CheckMark className="ml-auto text-primary" />}
         </button>
         {visibleProjects.map((project) => {

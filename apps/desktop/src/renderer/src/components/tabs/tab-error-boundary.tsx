@@ -50,8 +50,11 @@ export class TabErrorBoundary extends Component<TabErrorBoundaryProps, TabErrorB
         <div className="h-full flex items-center justify-center p-8">
           <div className="flex flex-col items-center gap-4 text-center max-w-md">
             <AlertTriangle className="w-12 h-12 text-amber-500" />
-            <h2 className="text-lg font-medium text-foreground">Something went wrong</h2>
+            <h2 className="text-lg font-medium text-foreground">
+              {/* TODO(i18n): wrap in t() */}Something went wrong
+            </h2>
             <p className="text-sm text-muted-foreground">
+              {/* TODO(i18n): wrap in t() */}
               An error occurred while rendering this tab content.
             </p>
             {this.state.error && (
@@ -64,6 +67,7 @@ export class TabErrorBoundary extends Component<TabErrorBoundaryProps, TabErrorB
               className="flex items-center gap-2 px-4 py-2 bg-tint text-tint-foreground rounded-md hover:bg-tint-hover transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
+              {/* TODO(i18n): wrap in t() */}
               Try Again
             </button>
           </div>

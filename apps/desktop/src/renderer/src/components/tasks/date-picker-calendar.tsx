@@ -193,7 +193,7 @@ export function DatePickerCalendar({
           type="button"
           onClick={goToPrevMonth}
           className="text-text-tertiary hover:text-text-secondary transition-colors focus-visible:outline-none rounded-sm"
-          aria-label="Previous month"
+          aria-label={'Previous month' /* TODO(i18n): wrap aria-label in t() */}
         >
           <ChevronLeftIcon />
         </button>
@@ -205,7 +205,7 @@ export function DatePickerCalendar({
             type="button"
             onClick={goToNextMonth}
             className="text-text-tertiary hover:text-text-secondary transition-colors focus-visible:outline-none rounded-sm"
-            aria-label="Next month"
+            aria-label={'Next month' /* TODO(i18n): wrap aria-label in t() */}
           >
             <ChevronRightIcon />
           </button>
@@ -214,8 +214,9 @@ export function DatePickerCalendar({
               type="button"
               onClick={goToToday}
               className="text-[10px] text-text-tertiary hover:text-text-secondary hover:bg-surface-active/50 transition-colors focus-visible:outline-none rounded-md px-1.5 py-0.5 font-medium select-none border border-border/60"
-              aria-label="Go to today"
+              aria-label={'Go to today' /* TODO(i18n): wrap aria-label in t() */}
             >
+              {/* TODO(i18n): wrap in t() */}
               Today
             </button>
           )}
@@ -226,7 +227,7 @@ export function DatePickerCalendar({
       <div className="flex items-center">
         {showWeekNumbers && (
           <div className="w-6 shrink-0 text-[10px] text-center text-text-tertiary/40 font-medium leading-3 select-none">
-            W
+            {/* TODO(i18n): wrap in t() */}W
           </div>
         )}
         {weekdays.map((day) => (

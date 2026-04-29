@@ -150,7 +150,7 @@ export function NewTabMenu({ groupId }: NewTabMenuProps): React.JSX.Element {
                 'transition-all duration-150 ease-out',
                 'active:scale-95 active:bg-surface-active/70'
               )}
-              aria-label="New Tab"
+              aria-label={'New Tab' /* TODO(i18n): wrap aria-label in t() */}
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -160,29 +160,30 @@ export function NewTabMenu({ groupId }: NewTabMenuProps): React.JSX.Element {
           side="bottom"
           className="text-xs px-2.5 py-1.5 font-medium bg-primary text-primary-foreground border-0"
         >
+          {/* TODO(i18n): wrap in t() */}
           New Tab
         </TooltipContent>
       </Tooltip>
       <DropdownMenuContent side="bottom" align="start" className="min-w-[180px]">
         <DropdownMenuItem onClick={handleNewNote}>
           <FileText className="size-4" />
-          <span>New Note</span>
+          <span>{/* TODO(i18n): wrap in t() */}New Note</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleNewJournal}>
           <BookOpen className="size-4" />
-          <span>Journal</span>
+          <span>{/* TODO(i18n): wrap in t() */}Journal</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleOpenCalendar}>
           <Calendar className="size-4" />
-          <span>Calendar</span>
+          <span>{/* TODO(i18n): wrap in t() */}Calendar</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleOpenInbox}>
           <Inbox className="size-4" />
-          <span>Inbox Capture</span>
+          <span>{/* TODO(i18n): wrap in t() */}Inbox Capture</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleNewTask}>
           <ListTodo className="size-4" />
-          <span>Tasks</span>
+          <span>{/* TODO(i18n): wrap in t() */}Tasks</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
