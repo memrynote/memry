@@ -43,7 +43,15 @@
     "search": "Ara",
     "edit": "Düzenle",
     "delete": "Sil",
-    "close": "Kapat"
+    "close": "Kapat",
+    "expand": "Genişlet",
+    "collapse": "Daralt",
+    "showMore": "+{count, plural, one {# tane daha} other {# tane daha}}",
+    "showLess": "Daha az göster"
+  },
+  "tabs": {
+    "pin": "Tab'i sabitle",
+    "unpin": "Tab'in sabitlemesini kaldır"
   },
   "count": {
     "item": "{count, plural, one {# öğe} other {# öğe}}",
@@ -52,5 +60,286 @@
     "task": "{count, plural, one {# görev} other {# görev}}",
     "project": "{count, plural, one {# proje} other {# proje}}",
     "itemDelete": "{count, plural, one {# öğeyi sil} other {# öğeyi sil}}"
+  },
+  "toast": {
+    "actionFailed": "İşlem başarısız oldu",
+    "nothingToUndo": "Geri alınacak bir şey yok",
+    "undone": "Geri alındı: {description}",
+    "undoFailed": "İşlem geri alınamadı",
+    "copied": "Kopyalandı",
+    "copyFailed": "Kopyalanamadı"
+  },
+  "recurrence": {
+    "everyDay": "Her gün",
+    "everyNDays": "{count, plural, one {Her gün} other {Her # günde bir}}",
+    "everyWeek": "Her hafta",
+    "everyNWeeks": "{count, plural, one {Her hafta} other {Her # haftada bir}}",
+    "everyWeekday": "Hafta içi her gün",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Her hafta içi} other {Her # haftada bir hafta içi}}",
+    "everyWeekend": "Her hafta sonu",
+    "everyNWeeksOnWeekends": "{count, plural, one {Her hafta sonu} other {Her # haftada bir hafta sonu}}",
+    "everyWeekOnDays": "Her hafta {days}",
+    "everyNWeeksOnDays": "{count, plural, one {Her hafta {days}} other {# haftada bir {days}}}",
+    "everyMonth": "Her ay",
+    "everyNMonths": "{count, plural, one {Her ay} other {Her # ayda bir}}",
+    "everyMonthOnDay": "Her ay {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {Her ay {day}{suffix}} other {Her # ayda bir {day}{suffix}}}",
+    "everyMonthOnWeekDay": "Her ay {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Her ay {week} {day}} other {Her # ayda bir {week} {day}}}",
+    "everyYear": "Her yıl",
+    "everyNYears": "{count, plural, one {Her yıl} other {Her # yılda bir}}",
+    "repeats": "Tekrarlar"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Koleksiyonlar",
+      "newNote": "Yeni not",
+      "newNote2": "Yeni not",
+      "newFolder": "Yeni klasör",
+      "newFolder2": "Yeni klasör",
+      "bookmarks": "Yer imleri",
+      "tags": "Etiketler",
+      "dropFilesToImport": "İçe aktarılacak dosyaları bırakın",
+      "newNoteN": "Yeni not (⌘N)",
+      "new": "Yeni",
+      "syncDisabled": "Senkronizasyon devre dışı",
+      "syncDisabled2": "Senkronizasyon devre dışı"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Gün Panelini Yeniden Boyutlandır",
+      "dragToResizeDoubleClickToReset": "Yeniden boyutlandırmak için sürükleyin · Sıfırlamak için çift tıklayın"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Bul, değiştir, sor..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "İlk katılımı atla",
+      "welcomeToMemry": "Memry'e hoş geldiniz",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Kişisel bilgi tabanınız. Başlamak için 2 dakikanızı ayıralım.",
+      "getStarted": "Başlayın ",
+      "createYourFirstNote": "İlk notunuzu oluşturun",
+      "markdownBasedStoredLocallyAsPlainFiles": "Markdown tabanlı, yerel olarak düz dosyalar olarak depolanır.",
+      "eGMeetingNotesIdeasAnything": "örneğin Toplantı notları, fikirler, her şey...",
+      "skip": "Atla",
+      "createNote": "Not oluştur ",
+      "addYourFirstTask": "İlk görevinizi ekleyin",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Görevler, öncelikler ve son tarihlerle birlikte notlarınıza bağlantı verir.",
+      "eGReviewProjectProposal": "örneğin Proje teklifini inceleyin...",
+      "skip2": "Atla",
+      "createTask": "Görev oluştur ",
+      "syncAcrossDevices": "Cihazlar arasında senkronizasyon",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Notlarınızı ve görevlerinizi tüm cihazlarınızda senkronize halde tutun. Bunu daha sonra istediğiniz zaman ayarlayabilirsiniz.",
+      "skipForNow": "Şimdilik atla",
+      "doneLetSGo": "Bitti - hadi gidelim! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Klasör simgesini ayarla"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "HINT"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Simge seçici",
+      "selectIcon": "Simge Seç",
+      "closeIconPicker": "Simge seçiciyi kapat",
+      "searchIcons": "Simgeleri ara...",
+      "all": "Tümü",
+      "clearIcon": "Simgeyi Temizle",
+      "noIconsFoundFor": "Simge bulunamadı: \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Klavye Kısayolları",
+      "closeShortcutsHelp": "Kısayolları kapatma yardımı",
+      "press": "Basın",
+      "toClose": "kapatmak"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Simgeyi Ayarla",
+      "clearIcon": "Simgeyi Temizle"
+    },
+    "componentsNavMain": {
+      "platform": "platformu"
+    },
+    "componentsNavProjects": {
+      "projects": "Projeler",
+      "more": "Daha fazla",
+      "viewProject": "Projeyi Görüntüle",
+      "shareProject": "Projeyi Paylaş",
+      "deleteProject": "Projeyi Sil",
+      "more2": "Daha fazla"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Pro'ya yükseltin",
+      "account": "Hesap",
+      "billing": "Faturalandırma",
+      "notifications": "Bildirimler",
+      "logOut": "Oturumu kapat"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Ara",
+      "searchNotesTasksJournalInbox": "Notlarda, görevlerde, günlükte, gelen kutusunda arama yapın...",
+      "noResultsFor": "Sonuç bulunamadı: “",
+      "rdquo": "rdquo;",
+      "result": "sonuç"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "İzinizi oluşturmak için öğeleri arayın ve tıklayın",
+      "reasons": "Sebepler",
+      "clear": "Temizle"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Temizle",
+      "tags": "Etiketler",
+      "filterByTag": "Etikete göre filtrele...",
+      "dateRange": "Tarih Aralığı"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Tümünü görüntüle ",
+      "results": "sonuçlar"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "bulanık"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Açık sekme yok",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Başlamak için kenar çubuğundan bir sayfa açın veya yeni bir sekme oluşturun",
+      "openInbox": "Gelen Kutusunu Aç",
+      "closePane": "Bölmeyi Kapat"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Düzen ön ayarları",
+      "layoutPresets2": "Düzen Ön Ayarları"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Bölmeleri yeniden boyutlandır"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "Görevler Bağlamı mevcut değil",
+      "searchResults": "Arama Sonuçları",
+      "unknownTabType": "Bilinmeyen sekme türü: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "kaydedilmemiş değişiklikler",
+      "preview": "önizleme"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Yeni Tab",
+      "newTab2": "Yeni Tab",
+      "newNote": "Yeni Not",
+      "journal": "Günlük",
+      "calendar": "Takvim",
+      "inboxCapture": "Gelen Kutusu Yakalama",
+      "tasks": "Görevler"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Kaydedilmemiş değişiklikler",
+      "unsaved": "kaydedilmemiş)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Kaydedilmemiş değişiklikler"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Tüm Tab'leri Kapat"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Sekmeleri aç",
+      "scrollTabsLeft": "Sekmeleri sola kaydır",
+      "scrollTabsRight": "Sekmeleri sağa kaydır",
+      "graphG": "Grafik (⌘G)",
+      "dayPanel": "Gün Paneli"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "Sekmeleri sola kaydır",
+      "scrollTabsRight": "Sekmeleri sağa kaydır"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "Sekmeleri aç",
+      "scrollTabsLeft": "Sekmeleri sola kaydır",
+      "scrollTabsRight": "Sekmeleri sağa kaydır"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Bir şeyler ters gitti",
+      "anErrorOccurredWhileRenderingThisTabContent": "Bu sekme içeriği oluşturulurken bir hata oluştu.",
+      "tryAgain": "Tekrar Deneyin"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Not simgesi"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Kaydedilmemiş Değişiklikler",
+      "quot": "alıntı;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "alıntı; kaydedilmemiş değişiklikler var. Ne yapmak istersin?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Yeni çalışma alanı",
+      "darkMode": "Karanlık mod",
+      "settings": "Ayarlar",
+      "integrations": "Entegrasyonlar",
+      "signOut": "Oturumu Kapat",
+      "downloadOnIos": "iOS'te indirin"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Pencereyi kapat",
+      "minimizeWindow": "Pencereyi simge durumuna küçült",
+      "maximizeWindow": "Pencereyi büyüt"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Öneriler",
+      "or": "veya",
+      "enter": "Enter",
+      "toInsert": "eklemek"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "ekmek kırıntısı",
+      "more": "Daha fazla"
+    },
+    "componentsUiDialog": {
+      "close": "Kapat"
+    },
+    "componentsUiSheet": {
+      "close": "Kapat"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Kenar çubuğu",
+      "displaysTheMobileSidebar": "Mobil kenar çubuğunu görüntüler.",
+      "toggleSidebar": "Kenar çubuğunu aç/kapat",
+      "toggleSidebar2": "Kenar çubuğunu aç/kapat",
+      "dragToResizeDoubleClickToReset": "Yeniden boyutlandırmak için sürükleyin · Sıfırlamak için çift tıklayın"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Memry'e hoş geldiniz",
+      "yourPersonalKnowledgeManagementSystem": "Kişisel bilgi yönetim sisteminiz.",
+      "selectAFolderToStoreYourNotesAndTasks": "Notlarınızı ve görevlerinizi saklamak için bir klasör seçin.",
+      "opening": "Açılıyor...",
+      "selectVaultFolder": "Kasa Klasörünü Seçin",
+      "plainMarkdown": "Düz Markdown",
+      "yourNotesStayPortable": "Notlarınız taşınabilir kalır",
+      "syncAnywhere": "Her Yerde Senkronizasyon",
+      "useDropboxIcloudGit": "Dropbox, iCloud, Git'i kullanın",
+      "recentVaults": "Son Kasalar",
+      "notesLastOpened": "notlar · Son açılış"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Henüz kasa yok",
+      "openVault": "Kasayı aç",
+      "settings": "Ayarlar",
+      "logOut": "Oturumu kapat",
+      "signInToSync": "Senkronizasyon için oturum açın",
+      "remove": "Kaldır “",
+      "rdquoFromList": "rdquo; listeden kaldırılsın mı?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Bu kasa uygulamadan kaldırılacak ancak dosyalarınız diskte kalacak. Daha sonra istediğiniz zaman yeniden ekleyebilirsiniz.",
+      "cancel": "İptal",
+      "remove2": "Kaldır"
+    },
+    "componentsWindowControls": {
+      "searchK": "Ara (⌘K)",
+      "browserBack": "Tarayıcı geri",
+      "back": "Geri",
+      "browserForward": "Tarayıcı ileri",
+      "forward": "İleri"
+    }
   }
 }

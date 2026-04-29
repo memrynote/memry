@@ -7,9 +7,9 @@ describe('createRendererI18n', () => {
     expect(i18n.language).toBe('tr')
   })
 
-  it('falls back to English for empty Turkish settings namespace', async () => {
+  it('translates Turkish settings namespace strings', async () => {
     const i18n = await createRendererI18n({ locale: 'tr' })
-    expect(i18n.t('settings:general.language.label')).toBe('Language')
+    expect(i18n.t('settings:general.language.label')).toBe('Dil')
   })
 
   it('translates a tasks namespace string', async () => {
@@ -17,9 +17,9 @@ describe('createRendererI18n', () => {
     expect(i18n.t('tasks:task.add')).toBe('Add Task')
   })
 
-  it('falls back to English for empty Turkish tasks namespace', async () => {
+  it('translates Turkish tasks namespace strings', async () => {
     const i18n = await createRendererI18n({ locale: 'tr' })
-    expect(i18n.t('tasks:task.add')).toBe('Add Task')
+    expect(i18n.t('tasks:task.add')).toBe('Görev Ekle')
   })
 
   it('changeLanguage works', async () => {
