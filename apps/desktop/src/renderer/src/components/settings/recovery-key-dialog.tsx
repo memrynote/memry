@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,7 @@ interface RecoveryKeyDialogProps {
 }
 
 export function RecoveryKeyDialog({ open, onOpenChange }: RecoveryKeyDialogProps) {
+  const { t } = useT('common')
   const [recoveryKey, setRecoveryKey] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [revealed, setRevealed] = useState(false)
@@ -75,7 +77,7 @@ export function RecoveryKeyDialog({ open, onOpenChange }: RecoveryKeyDialogProps
         <div className="space-y-4 py-2">
           {isLoading ? (
             <div className="flex items-center justify-center h-20">
-              <p className="text-sm text-muted-foreground">Loading...</p>
+              <p className="text-sm text-muted-foreground">{t('state.loading')}</p>
             </div>
           ) : recoveryKey ? (
             <div className="space-y-3">
