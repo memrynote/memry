@@ -6,6 +6,16 @@
     },
     "error": {
       "title": "Failed to load note"
+    },
+    "toast": {
+      "cannotSaveDeleted": "Cannot save - note was deleted",
+      "cannotRenameDeleted": "Cannot rename - note was deleted",
+      "createLinkedFailed": "Failed to create linked note",
+      "openLinkedFailed": "Failed to open linked item",
+      "localOnly": "Note set to local only",
+      "willSync": "Note will sync to cloud",
+      "saveFailed": "Failed to save note",
+      "renameFailed": "Failed to rename note"
     }
   },
   "tree": {
