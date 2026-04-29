@@ -9,6 +9,7 @@ import enNotes from './en/notes.json'
 import enJournal from './en/journal.json'
 import enCalendar from './en/calendar.json'
 import enTasks from './en/tasks.json'
+import enGraph from './en/graph.json'
 import enSettings from './en/settings.json'
 import enErrors from './en/errors.json'
 import enMenu from './en/menu.json'
@@ -19,6 +20,7 @@ import trNotes from './tr/notes.json'
 import trJournal from './tr/journal.json'
 import trCalendar from './tr/calendar.json'
 import trTasks from './tr/tasks.json'
+import trGraph from './tr/graph.json'
 import trSettings from './tr/settings.json'
 import trErrors from './tr/errors.json'
 import trMenu from './tr/menu.json'
@@ -29,6 +31,7 @@ import arNotes from './ar/notes.json'
 import arJournal from './ar/journal.json'
 import arCalendar from './ar/calendar.json'
 import arTasks from './ar/tasks.json'
+import arGraph from './ar/graph.json'
 import arSettings from './ar/settings.json'
 import arErrors from './ar/errors.json'
 import arMenu from './ar/menu.json'
@@ -41,6 +44,7 @@ export const RESOURCES = {
     journal: enJournal,
     calendar: enCalendar,
     tasks: enTasks,
+    graph: enGraph,
     settings: enSettings,
     errors: enErrors,
     menu: enMenu
@@ -52,6 +56,7 @@ export const RESOURCES = {
     journal: trJournal,
     calendar: trCalendar,
     tasks: trTasks,
+    graph: trGraph,
     settings: trSettings,
     errors: trErrors,
     menu: trMenu
@@ -63,6 +68,7 @@ export const RESOURCES = {
     journal: arJournal,
     calendar: arCalendar,
     tasks: arTasks,
+    graph: arGraph,
     settings: arSettings,
     errors: arErrors,
     menu: arMenu
