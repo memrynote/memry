@@ -1,1 +1,255 @@
-{}
+{
+  "page": {
+    "empty": {
+      "title": "No note selected",
+      "body": "Select a note from the sidebar to view it"
+    },
+    "error": {
+      "title": "Failed to load note"
+    }
+  },
+  "tree": {
+    "aria": {
+      "tree": "Notes tree",
+      "openFolderView": "Open folder view"
+    },
+    "empty": {
+      "title": "No notes yet",
+      "body": "Create a note to get started",
+      "newNote": "New Note"
+    },
+    "loadingError": "Failed to load notes",
+    "actions": {
+      "newNote": "New Note",
+      "newFolder": "New Folder",
+      "rename": "Rename",
+      "openExternal": "Open in External Editor",
+      "revealInFinder": "Reveal in Finder",
+      "setDefaultTemplate": "Set Default Template",
+      "clearDefaultTemplate": "Clear Default Template",
+      "setIcon": "Set Icon",
+      "removeIcon": "Remove Icon",
+      "deleteSelectedNotes": "Delete {count} Notes",
+      "deleteSelectedItems": "Delete {count} items"
+    },
+    "deleteDialog": {
+      "noteTitle": "Delete Note",
+      "folderTitle": "Delete Folder",
+      "itemsTitle": "Delete {count} Items",
+      "noteBody": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
+      "folderBody": "Are you sure you want to delete \"{name}\" and all notes inside it? This action cannot be undone.",
+      "itemsBody": "Are you sure you want to delete {count} items? This action cannot be undone.",
+      "folderSuffix": "folder",
+      "moreItems": "...and {count} more",
+      "deleting": "Deleting...",
+      "deleteCount": "Delete {count}"
+    }
+  },
+  "editor": {
+    "title": {
+      "untitled": "Untitled",
+      "aria": "Note title"
+    },
+    "content": {
+      "placeholder": "Start writing, or press '/' for commands...",
+      "regionAria": "Note editor",
+      "richTextAria": "Rich text editor",
+      "headingPlaceholder": "Heading",
+      "listPlaceholder": "List item",
+      "todoPlaceholder": "To-do item"
+    },
+    "toolbar": {
+      "reminderSet": "Reminder set",
+      "setReminder": "Set reminder",
+      "removeBookmark": "Remove bookmark",
+      "addBookmark": "Add bookmark",
+      "hideLocalGraph": "Hide local graph",
+      "showLocalGraph": "Show local graph",
+      "versionHistory": "Version history",
+      "export": "Export",
+      "fullWidth": "Full width",
+      "disableLocalOnly": "Disable local only",
+      "setLocalOnly": "Set local only"
+    },
+    "breadcrumb": {
+      "locationAria": "Note location",
+      "parentFolderAria": "Go to parent folder"
+    },
+    "errorBoundary": {
+      "title": "Editor Error",
+      "body": "The editor encountered an error. Your note content is safe.",
+      "technicalDetails": "Technical details",
+      "reloadAria": "Reload editor",
+      "reload": "Reload Editor"
+    },
+    "callout": {
+      "title": "Callout",
+      "group": "Basic blocks",
+      "subtext": "Highlight important information",
+      "changeType": "Change callout type",
+      "menuLabel": "Callout Type",
+      "info": "Info",
+      "warning": "Warning",
+      "error": "Error",
+      "success": "Success"
+    }
+  },
+  "menus": {
+    "wiki": {
+      "aria": "Note suggestions",
+      "loading": "Loading notes...",
+      "empty": "No notes found",
+      "create": "Create new note"
+    },
+    "tags": {
+      "aria": "Tag suggestions",
+      "loading": "Loading tags...",
+      "empty": "Type to create a new tag",
+      "create": "Create #{tag}"
+    },
+    "pasteLink": {
+      "title": "Paste as",
+      "url": "URL",
+      "mention": "Mention",
+      "embedVideo": "Embed video"
+    },
+    "emoji": {
+      "aria": "Emoji and icon picker",
+      "emojiTab": "Emoji",
+      "iconsTab": "Icons",
+      "searchPlaceholder": "Search",
+      "noIcons": "No icons found",
+      "clearSearch": "Clear search"
+    }
+  },
+  "detail": {
+    "bodyPlaceholder": "Write your note..."
+  },
+  "outline": {
+    "title": "Outline",
+    "aria": "Document outline",
+    "empty": "No headings",
+    "emptyYet": "No headings yet",
+    "readTime": "{count} min read",
+    "words": "{count} words",
+    "created": "Created",
+    "modified": "Modified"
+  },
+  "backlinks": {
+    "title": "Backlinks",
+    "sortRecent": "Recent",
+    "sortAlpha": "A-Z",
+    "sortMentions": "Most mentions",
+    "sortBy": "Sort backlinks by {sort}",
+    "summary": "{notes} notes · {references} references",
+    "sectionAria": "Backlinks",
+    "listAria": "Backlinks list",
+    "fromAria": "Backlinks from {title}",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "collapseSection": "Collapse backlinks section",
+    "expandSection": "Expand backlinks section",
+    "showMore": "Show {count} more backlinks",
+    "more": "{count} more"
+  },
+  "tagsRow": {
+    "aria": "Tags",
+    "empty": "Add tags",
+    "add": "Add tag",
+    "removeAria": "Remove tag: {tag}",
+    "inputPlaceholder": "Type tag name...",
+    "recent": "Recent",
+    "matching": "Matching",
+    "all": "All Tags",
+    "none": "No tags found",
+    "createTag": "Create tag: \"{tag}\"",
+    "chooseColor": "Choose color:",
+    "preview": "Preview:",
+    "colorAria": "Select {color} color"
+  },
+  "properties": {
+    "title": "Properties",
+    "noteAria": "Note properties",
+    "workspaceAria": "Workspace properties",
+    "listAria": "Properties list",
+    "add": "Add property",
+    "addDescription": "Add a new property to this note",
+    "namePlaceholder": "Property name",
+    "nameAria": "Property name",
+    "typeSection": "Type",
+    "empty": "Empty",
+    "dragAria": "Drag to reorder property",
+    "editName": "Edit property name",
+    "delete": "Delete property",
+    "searchOptions": "Search options...",
+    "noOptions": "No options yet",
+    "optionName": "Option name",
+    "newOption": "New option",
+    "ratingAria": "Rating",
+    "openUrlAria": "Open URL",
+    "types": {
+      "text": "Text",
+      "number": "Number",
+      "date": "Date",
+      "checkbox": "Checkbox",
+      "url": "URL",
+      "status": "Status",
+      "select": "Select",
+      "multiselect": "Multiselect"
+    }
+  },
+  "templateSelector": {
+    "title": "Choose Your Canvas",
+    "description": "Select a template to begin your note",
+    "searchPlaceholder": "Search templates...",
+    "loading": "Loading templates...",
+    "empty": "No templates found",
+    "myTemplates": "My Templates",
+    "essentials": "Essentials",
+    "setFolderDefault": "Set as folder default",
+    "useTemplate": "Use Template",
+    "createNote": "Create Note"
+  },
+  "exportDialog": {
+    "title": "Export Note",
+    "description": "Export \"{title}\" to a file",
+    "format": "Format",
+    "pdfDescription": "Print-ready document",
+    "htmlDescription": "Web-ready file",
+    "pageSize": "Page Size",
+    "selectPageSize": "Select page size",
+    "options": "Options",
+    "includeMetadata": "Include metadata (tags, dates)",
+    "exporting": "Exporting...",
+    "exported": "Exported!",
+    "export": "Export"
+  },
+  "versionHistory": {
+    "title": "Version History",
+    "description": "View and restore previous versions of \"{title}\"",
+    "hidePreview": "Hide Preview",
+    "showPreview": "Show Preview",
+    "empty": "No versions saved yet",
+    "emptyDescription": "Versions are saved automatically when you make significant changes",
+    "latest": "Latest",
+    "autoSaved": "Auto-saved",
+    "words": "{count} words",
+    "selectPrompt": "Select a version to preview",
+    "restore": "Restore",
+    "deleteTitle": "Delete this version?",
+    "deleteDescription": "This action cannot be undone. This version will be permanently deleted.",
+    "restoreTitle": "Restore this version?",
+    "restoreDescription": "This will replace the current note content with this version. A snapshot of the current state will be saved first, so you can undo this action.",
+    "restoring": "Restoring..."
+  },
+  "reminders": {
+    "summary": "Reminder: {date}",
+    "summaryWithMore": "Reminder: {date} (+{count} more)",
+    "hasReminders": "Has reminders",
+    "setReminder": "Set reminder"
+  },
+  "linkedTasks": {
+    "title": "Linked Tasks",
+    "loading": "Loading linked tasks..."
+  }
+}

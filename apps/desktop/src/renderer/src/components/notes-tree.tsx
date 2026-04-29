@@ -56,6 +56,7 @@ import {
   VirtualizedNotesTree,
   type VirtualizedTreeActions
 } from '@/components/virtualized-notes-tree'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // Main Component
@@ -77,6 +78,8 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
   { onTargetFolderChange, scrollContainerRef }: NotesTreeProps = {},
   ref
 ) {
+  const { t } = useT('notes')
+  const { t: tCommon } = useT('common')
   const data = useNoteTreeData()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
 
@@ -263,16 +266,16 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
                 <>
                   <ContextMenuItem onClick={() => actions.handleRenameClick(note)}>
                     <Pencil className="mr-2 h-4 w-4" />
-                    Rename
+                    {t('tree.actions.rename')}
                   </ContextMenuItem>
                   <ContextMenuSeparator />
                   <ContextMenuItem onClick={() => actions.handleOpenExternal(note)}>
                     <ExternalLink className="mr-2 h-4 w-4" />
-                    Open in External Editor
+                    {t('tree.actions.openExternal')}
                   </ContextMenuItem>
                   <ContextMenuItem onClick={() => actions.handleRevealInFinder(note)}>
                     <FolderOpen className="mr-2 h-4 w-4" />
-                    Reveal in Finder
+                    {t('tree.actions.revealInFinder')}
                   </ContextMenuItem>
                   <ContextMenuSeparator />
                   <ContextMenuItem
@@ -280,14 +283,14 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
                     onClick={() => actions.handleDeleteClick(note)}
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
+                    {tCommon('button.delete')}
                   </ContextMenuItem>
                 </>
               )}
               {isPartOfSelection && (
                 <ContextMenuItem variant="destructive" onClick={actions.handleBulkDelete}>
                   <Trash2 className="mr-2 h-4 w-4" />
-                  Delete {selectedIds.length} Notes
+                  {t('tree.actions.deleteSelectedNotes', { count: selectedIds.length })}
                 </ContextMenuItem>
               )}
             </>
@@ -342,16 +345,16 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
             <>
               <ContextMenuItem onClick={() => actions.handleCreateNoteInFolder(folder.path)}>
                 <FilePlus className="mr-2 h-4 w-4" />
-                New Note
+                {t('tree.actions.newNote')}
               </ContextMenuItem>
               <ContextMenuItem onClick={() => actions.handleCreateSubfolder(folder.path)}>
                 <FolderPlus className="mr-2 h-4 w-4" />
-                New Folder
+                {t('tree.actions.newFolder')}
               </ContextMenuItem>
               <ContextMenuSeparator />
               <ContextMenuItem onClick={() => actions.handleSetFolderTemplate(folder.path)}>
                 <LayoutTemplate className="mr-2 h-4 w-4" />
-                Set Default Template
+                {t('tree.actions.setDefaultTemplate')}
                 {data.folderTemplateNames.get(folder.path) && (
                   <span className="ml-1 text-muted-foreground">
                     ({data.folderTemplateNames.get(folder.path)})
@@ -360,30 +363,30 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
               </ContextMenuItem>
               <ContextMenuItem onClick={() => actions.handleClearFolderTemplate(folder.path)}>
                 <X className="mr-2 h-4 w-4" />
-                Clear Default Template
+                {t('tree.actions.clearDefaultTemplate')}
               </ContextMenuItem>
               <ContextMenuSeparator />
               <ContextMenuItem onClick={() => actions.setIconPickerFolderPath(folder.path)}>
                 <Smile className="mr-2 h-4 w-4" />
-                Set Icon
+                {t('tree.actions.setIcon')}
               </ContextMenuItem>
               {folder.icon && (
                 <ContextMenuItem onClick={() => void data.setFolderIcon(folder.path, null)}>
                   <X className="mr-2 h-4 w-4" />
-                  Remove Icon
+                  {t('tree.actions.removeIcon')}
                 </ContextMenuItem>
               )}
               <ContextMenuSeparator />
               <ContextMenuItem onClick={() => actions.handleRenameFolderClick(folder.path)}>
                 <Pencil className="mr-2 h-4 w-4" />
-                Rename
+                {t('tree.actions.rename')}
               </ContextMenuItem>
               <ContextMenuItem
                 variant="destructive"
                 onClick={() => actions.handleDeleteFolderClick(folder.path)}
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                Delete
+                {tCommon('button.delete')}
               </ContextMenuItem>
             </>
           }
@@ -430,7 +433,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
                     actions.handleOpenFolderView(folder.path)
                   }}
                   className="p-1 cursor-pointer rounded"
-                  aria-label="Open folder view"
+                  aria-label={t('tree.aria.openFolderView')}
                 >
                   <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
                 </button>

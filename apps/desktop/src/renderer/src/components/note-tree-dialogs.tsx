@@ -35,7 +35,8 @@ export function NoteTreeDeleteDialog({
   isDeleting,
   onConfirm
 }: NoteTreeDeleteDialogProps) {
-  const { t } = useT('common')
+  const { t } = useT('notes')
+  const { t: tCommon } = useT('common')
   const totalItems = notesToDelete.length + foldersToDelete.length
 
   return (
@@ -45,9 +46,9 @@ export function NoteTreeDeleteDialog({
           <AlertDialogTitle>
             {totalItems === 1
               ? foldersToDelete.length === 1
-                ? 'Delete Folder'
-                : 'Delete Note'
-              : `Delete ${totalItems} Items`}
+                ? t('tree.deleteDialog.folderTitle')
+                : t('tree.deleteDialog.noteTitle')
+              : t('tree.deleteDialog.itemsTitle', { count: totalItems })}
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="text-sm text-muted-foreground">
@@ -56,7 +57,7 @@ export function NoteTreeDeleteDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>{t('button.cancel')}</AlertDialogCancel>
+          <AlertDialogCancel>{tCommon('button.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             disabled={isDeleting}
@@ -65,12 +66,12 @@ export function NoteTreeDeleteDialog({
             {isDeleting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Deleting...
+                {t('tree.deleteDialog.deleting')}
               </>
             ) : totalItems === 1 ? (
-              'Delete'
+              tCommon('button.delete')
             ) : (
-              `Delete ${totalItems}`
+              t('tree.deleteDialog.deleteCount', { count: totalItems })
             )}
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -86,40 +87,37 @@ function DeleteDialogBody({
   notesToDelete: NoteListItem[]
   foldersToDelete: string[]
 }) {
+  const { t } = useT('notes')
   const totalItems = notesToDelete.length + foldersToDelete.length
 
   if (totalItems === 1) {
     if (foldersToDelete.length === 1) {
       const folderName = foldersToDelete[0].split('/').pop() || foldersToDelete[0]
-      return (
-        <>
-          Are you sure you want to delete the folder &quot;{folderName}&quot; and all its contents?
-          This action cannot be undone.
-        </>
-      )
+      return <>{t('tree.deleteDialog.folderBody', { name: folderName })}</>
     }
     return (
-      <>
-        Are you sure you want to delete &quot;
-        {getDisplayName(notesToDelete[0]?.path || '')}&quot;? This action cannot be undone.
-      </>
+      <>{t('tree.deleteDialog.noteBody', { name: getDisplayName(notesToDelete[0]?.path || '') })}</>
     )
   }
 
   return (
     <>
-      Are you sure you want to delete these items? This action cannot be undone.
+      {t('tree.deleteDialog.itemsBody', { count: totalItems })}
       <ul className="mt-2 max-h-32 overflow-y-auto text-sm list-disc list-inside">
         {foldersToDelete.slice(0, 3).map((folderPath) => (
           <li key={`folder-${folderPath}`} className="flex items-center gap-1">
             <Folder className="h-3 w-3 inline" />
-            {folderPath.split('/').pop() || folderPath} (folder)
+            {folderPath.split('/').pop() || folderPath} ({t('tree.deleteDialog.folderSuffix')})
           </li>
         ))}
         {notesToDelete.slice(0, 5 - Math.min(foldersToDelete.length, 3)).map((note) => (
           <li key={note.id}>{getDisplayName(note.path)}</li>
         ))}
-        {totalItems > 5 && <li className="text-muted-foreground">...and {totalItems - 5} more</li>}
+        {totalItems > 5 && (
+          <li className="text-muted-foreground">
+            {t('tree.deleteDialog.moreItems', { count: totalItems - 5 })}
+          </li>
+        )}
       </ul>
     </>
   )

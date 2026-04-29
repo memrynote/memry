@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { Star } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface RatingEditorProps {
   value: number
@@ -9,6 +10,7 @@ interface RatingEditorProps {
 }
 
 export function RatingEditor({ value, onChange, maxRating = 5 }: RatingEditorProps) {
+  const { t } = useT('notes')
   const [hoverValue, setHoverValue] = useState<number | null>(null)
 
   const handleClick = useCallback(
@@ -45,7 +47,7 @@ export function RatingEditor({ value, onChange, maxRating = 5 }: RatingEditorPro
       aria-valuemin={0}
       aria-valuemax={maxRating}
       aria-valuenow={value}
-      aria-label="Rating"
+      aria-label={t('properties.ratingAria')}
       className="flex items-center gap-0.5"
       onMouseLeave={() => setHoverValue(null)}
     >

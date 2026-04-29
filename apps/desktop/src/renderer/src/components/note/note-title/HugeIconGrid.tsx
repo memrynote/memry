@@ -4,6 +4,7 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { useHugeIconPicker } from './use-hugeicon-picker'
 import { cn } from '@/lib/utils'
 import { Loader } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
 
 const COLS = 8
 const ROW_HEIGHT = 36
@@ -14,6 +15,7 @@ interface HugeIconGridProps {
 }
 
 export function HugeIconGrid({ onSelect }: HugeIconGridProps): React.JSX.Element {
+  const { t } = useT('notes')
   const { icons, search, setSearch, isLoading } = useHugeIconPicker()
   const inputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -66,7 +68,7 @@ export function HugeIconGrid({ onSelect }: HugeIconGridProps): React.JSX.Element
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search"
+                placeholder={t('menus.emoji.searchPlaceholder')}
                 autoComplete="off"
                 className={cn(
                   'block w-full border-0 outline-none appearance-none',
@@ -124,13 +126,13 @@ export function HugeIconGrid({ onSelect }: HugeIconGridProps): React.JSX.Element
           </div>
         ) : icons.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
-            <span className="text-sm">No icons found</span>
+            <span className="text-sm">{t('menus.emoji.noIcons')}</span>
             <button
               type="button"
               onClick={handleClearSearch}
               className="text-xs hover:text-foreground underline"
             >
-              Clear search
+              {t('menus.emoji.clearSearch')}
             </button>
           </div>
         ) : (

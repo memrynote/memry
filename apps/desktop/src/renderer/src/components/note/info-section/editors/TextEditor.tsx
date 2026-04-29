@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface TextEditorProps {
   value: string
@@ -13,9 +14,10 @@ export function TextEditor({
   value,
   onChange,
   onBlur,
-  placeholder = 'Empty',
+  placeholder,
   autoFocus = true
 }: TextEditorProps) {
+  const { t } = useT('notes')
   const inputRef = useRef<HTMLInputElement>(null)
   const [localValue, setLocalValue] = useState(value)
   const [prevValue, setPrevValue] = useState(value)
@@ -64,7 +66,7 @@ export function TextEditor({
       onChange={handleChange}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
-      placeholder={placeholder}
+      placeholder={placeholder ?? t('properties.empty')}
       className={cn(
         'w-full bg-transparent border-none p-0',
         'text-[13px] text-foreground',

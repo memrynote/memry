@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from 'react'
 import { ChevronLeft } from '@/lib/icons'
 import { useTabs } from '@/contexts/tabs'
+import { useT } from '@memry/i18n/renderer'
 
 interface BreadcrumbSegment {
   label: string
@@ -32,6 +33,7 @@ const CRUMB_CLASS =
   'text-xs text-muted-foreground hover:bg-muted rounded-sm px-1 py-0.5 transition-colors cursor-pointer bg-transparent border-none'
 
 export function NoteBreadcrumb({ notePath, noteTitle }: NoteBreadcrumbProps) {
+  const { t } = useT('notes')
   const { openTab } = useTabs()
 
   const segments = useMemo(() => parseBreadcrumbSegments(notePath), [notePath])
@@ -65,14 +67,14 @@ export function NoteBreadcrumb({ notePath, noteTitle }: NoteBreadcrumbProps) {
 
   return (
     <nav
-      aria-label="Note location"
+      aria-label={t('editor.breadcrumb.locationAria')}
       className="flex items-center gap-1.5 text-xs leading-4 select-none"
     >
       <button
         type="button"
         onClick={handleBackClick}
         className="flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors bg-transparent border-none cursor-pointer p-0"
-        aria-label="Go to parent folder"
+        aria-label={t('editor.breadcrumb.parentFolderAria')}
       >
         <ChevronLeft className="h-3.5 w-3.5" />
       </button>

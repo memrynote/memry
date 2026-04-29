@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { NoteReminderButton } from './note-reminder-button'
+import { useT } from '@memry/i18n/renderer'
 
 interface NoteHeaderProps {
   noteId: string
@@ -36,6 +37,8 @@ export const NoteHeader = memo(function NoteHeader({
   onOpenVersionHistory,
   onOpenExport
 }: NoteHeaderProps) {
+  const { t } = useT('notes')
+
   return (
     <div className="flex items-center justify-end shrink-0 py-3.5 px-8 gap-3 border-b border-[var(--border)]">
       <div className="flex items-center gap-0.5">
@@ -59,7 +62,9 @@ export const NoteHeader = memo(function NoteHeader({
           className="h-8 w-8 hover:bg-transparent"
           onClick={onToggleBookmark}
           disabled={isDeleted}
-          title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
+          title={
+            isBookmarked ? t('editor.toolbar.removeBookmark') : t('editor.toolbar.addBookmark')
+          }
         >
           <Bookmark
             className={cn(
@@ -84,17 +89,21 @@ export const NoteHeader = memo(function NoteHeader({
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={onToggleLocalGraph}>
               <GitGraph className="mr-2 h-4 w-4" />
-              {isLocalGraphOpen ? 'Hide local graph' : 'Show local graph'}
+              {isLocalGraphOpen
+                ? t('editor.toolbar.hideLocalGraph')
+                : t('editor.toolbar.showLocalGraph')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onOpenVersionHistory}>
               <History className="mr-2 h-4 w-4" />
-              Version History
+              {t('editor.toolbar.versionHistory')}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onOpenExport}>Export</DropdownMenuItem>
+            <DropdownMenuItem onClick={onOpenExport}>{t('editor.toolbar.export')}</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onToggleLocalOnly}>
               <Monitor className="mr-2 h-4 w-4" />
-              {isLocalOnly ? 'Disable local only' : 'Set local only'}
+              {isLocalOnly
+                ? t('editor.toolbar.disableLocalOnly')
+                : t('editor.toolbar.setLocalOnly')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

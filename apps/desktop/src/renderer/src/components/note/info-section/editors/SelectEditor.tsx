@@ -5,6 +5,7 @@ import { getTagColors } from '../../tags-row/tag-colors'
 import { SelectChip } from './SelectChip'
 import type { SelectOption } from '@memry/contracts/property-types'
 import { COLOR_NAMES } from '../../tags-row/tag-colors'
+import { useT } from '@memry/i18n/renderer'
 
 interface SelectEditorProps {
   value: string | null
@@ -23,6 +24,7 @@ export function SelectEditor({
   onAddOption,
   onRemoveOption
 }: SelectEditorProps) {
+  const { t } = useT('notes')
   const [isOpen, setIsOpen] = useState(defaultOpen ?? false)
   const [newOptionName, setNewOptionName] = useState('')
   const [isCreating, setIsCreating] = useState(false)
@@ -54,14 +56,18 @@ export function SelectEditor({
           ) : isOrphan ? (
             <SelectChip value={String(value)} color="stone" />
           ) : (
-            <span className="text-[13px] text-text-tertiary font-sans">Empty</span>
+            <span className="text-[13px] text-text-tertiary font-sans">
+              {t('properties.empty')}
+            </span>
           )}
         </span>
       </Picker.Trigger>
       <Picker.Content width={220} align="start">
-        <Picker.Search placeholder="Search options..." />
+        <Picker.Search placeholder={t('properties.searchOptions')} />
         <Picker.List>
-          {options.length === 0 && !isCreating && <Picker.Empty message="No options yet" />}
+          {options.length === 0 && !isCreating && (
+            <Picker.Empty message={t('properties.noOptions')} />
+          )}
           {options.map((opt) => (
             <Picker.Item
               key={opt.value}
@@ -113,7 +119,7 @@ export function SelectEditor({
               onBlur={() => {
                 if (!newOptionName.trim()) setIsCreating(false)
               }}
-              placeholder="Option name"
+              placeholder={t('properties.optionName')}
               className="flex-1 bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-foreground/50"
             />
           </div>
@@ -125,7 +131,7 @@ export function SelectEditor({
               className="flex items-center gap-2 w-full px-2 py-1.5 text-[13px] text-muted-foreground hover:bg-accent rounded-[5px]"
             >
               <Plus className="size-3.5" />
-              New option
+              {t('properties.newOption')}
             </button>
           </Picker.Footer>
         )}

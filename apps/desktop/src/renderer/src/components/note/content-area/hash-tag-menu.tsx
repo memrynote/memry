@@ -2,6 +2,7 @@ import type { SuggestionMenuProps } from '@blocknote/react'
 import { Hash, Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { getTagColors } from '@/components/note/tags-row/tag-colors'
+import { useT } from '@memry/i18n/renderer'
 
 export type HashTagSuggestionItem = {
   name: string
@@ -16,10 +17,12 @@ export function HashTagMenu({
   selectedIndex,
   onItemClick
 }: SuggestionMenuProps<HashTagSuggestionItem>) {
+  const { t } = useT('notes')
+
   if (items.length === 0 && loadingState !== 'loaded') {
     return (
       <div className="hash-tag-menu min-w-[200px] rounded-md border bg-popover p-2 text-sm text-muted-foreground shadow-md">
-        Loading tags...
+        {t('menus.tags.loading')}
       </div>
     )
   }
@@ -29,7 +32,7 @@ export function HashTagMenu({
       <div className="hash-tag-menu min-w-[200px] rounded-md border bg-popover p-3 text-sm text-muted-foreground shadow-md">
         <div className="flex items-center gap-2">
           <Hash className="h-4 w-4 opacity-70" />
-          <span>Type to create a new tag</span>
+          <span>{t('menus.tags.empty')}</span>
         </div>
       </div>
     )
@@ -43,7 +46,7 @@ export function HashTagMenu({
         'shadow-md animate-in fade-in-0 zoom-in-95'
       )}
       role="listbox"
-      aria-label="Tag suggestions"
+      aria-label={t('menus.tags.aria')}
     >
       {items.map((item, index) => {
         const isSelected = selectedIndex === index
@@ -64,9 +67,7 @@ export function HashTagMenu({
             {item.type === 'create' ? (
               <>
                 <Plus className="h-4 w-4 shrink-0" />
-                <span className="font-medium">
-                  Create <span className="text-primary">#{item.name}</span>
-                </span>
+                <span className="font-medium">{t('menus.tags.create', { tag: item.name })}</span>
               </>
             ) : (
               <>

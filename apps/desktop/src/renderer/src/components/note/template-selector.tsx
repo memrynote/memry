@@ -22,6 +22,7 @@ import { PrimaryActionButton } from '@/components/ui/primary-action-button'
 import { Search, Lock, Sparkles, PenLine } from '@/lib/icons'
 import { useTemplates } from '@/hooks/use-templates'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface TemplateSelectorProps {
   /** Whether the dialog is open */
@@ -52,6 +53,8 @@ export function TemplateSelector({
   journalDefaultTemplateId,
   onSetJournalDefault
 }: TemplateSelectorProps) {
+  const { t } = useT('notes')
+  const { t: tCommon } = useT('common')
   const { templates, isLoading } = useTemplates()
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>('blank')
@@ -135,10 +138,10 @@ export function TemplateSelector({
             </div>
             <div>
               <DialogTitle className="text-xl font-semibold tracking-tight text-foreground">
-                Choose Your Canvas
+                {t('templateSelector.title')}
               </DialogTitle>
               <DialogDescription className="text-muted-foreground text-sm mt-0.5">
-                Select a template to begin your note
+                {t('templateSelector.description')}
               </DialogDescription>
             </div>
           </div>
@@ -156,7 +159,7 @@ export function TemplateSelector({
           <div className="relative group">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 transition-colors group-focus-within:text-amber-600 dark:group-focus-within:text-amber-500" />
             <Input
-              placeholder="Search templates..."
+              placeholder={t('templateSelector.searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className={cn(
@@ -177,19 +180,19 @@ export function TemplateSelector({
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
               <div className="w-8 h-8 border-2 border-amber-200 dark:border-amber-800 border-t-amber-500 dark:border-t-amber-500 rounded-full animate-spin" />
-              <span className="text-sm">Loading templates...</span>
+              <span className="text-sm">{t('templateSelector.loading')}</span>
             </div>
           ) : filteredTemplates.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
               <Search className="w-10 h-10 opacity-30" />
-              <span className="text-sm">No templates found</span>
+              <span className="text-sm">{t('templateSelector.empty')}</span>
             </div>
           ) : (
             <div className="space-y-6 py-2 pb-4">
               {/* Custom templates first */}
               {customTemplates.length > 0 && (
                 <SelectableListSection
-                  title="My Templates"
+                  title={t('templateSelector.myTemplates')}
                   count={customTemplates.length}
                   selectedId={selectedId}
                   onSelect={setSelectedId}
@@ -209,7 +212,7 @@ export function TemplateSelector({
               {/* Built-in templates - collapsible, hidden by default */}
               {builtInTemplates.length > 0 && (
                 <SelectableListSection
-                  title="Essentials"
+                  title={t('templateSelector.essentials')}
                   icon={<Sparkles className="w-3.5 h-3.5" />}
                   count={builtInTemplates.length}
                   selectedId={selectedId}
@@ -243,7 +246,7 @@ export function TemplateSelector({
                 <LabeledCheckbox
                   checked={setAsFolderDefault}
                   onCheckedChange={setSetAsFolderDefault}
-                  label="Set as folder default"
+                  label={t('templateSelector.setFolderDefault')}
                 />
               )}
               {/* Journal default checkbox - for journal context */}
@@ -267,11 +270,13 @@ export function TemplateSelector({
 
             <div className="flex gap-2.5">
               <Button variant="outline" onClick={handleClose} className="px-4">
-                Cancel
+                {tCommon('button.cancel')}
               </Button>
               <PrimaryActionButton onClick={handleSelect}>
                 <PenLine className="w-4 h-4" />
-                {isJournalContext ? 'Use Template' : 'Create Note'}
+                {isJournalContext
+                  ? t('templateSelector.useTemplate')
+                  : t('templateSelector.createNote')}
               </PrimaryActionButton>
             </div>
           </div>
