@@ -37,15 +37,15 @@ memry ships with `en` translations populated and `tr` / `ar` resource files as e
 
 ## Decisions Captured
 
-| Decision | Choice | Rationale |
-|---|---|---|
-| Number of languages in v1 | Architect for flexibility, ship with English populated | Avoids committing to translator capacity; matches "ship with 1" philosophy |
-| Language switch UX | Hybrid — renderer switches live, native menu rebuilds in main, OS-cached strings (notifications, dock) wait for restart | Best UX-to-cost ratio for an Electron desktop app |
-| RTL support | Yes, from day 1 | Retrofitting RTL on 939 files is exponentially more expensive than starting right |
-| Default locale | Explicit `'en'`, no OS detection | Simpler, predictable first-run; ~30 fewer lines; can add OS detect later if needed |
-| Settings schema | Extend existing `GeneralSettings` with one `locale` field | Matches existing `clockFormat` pattern; pre-production allows refactor later if locale concerns grow |
-| Library choice | `react-i18next` + `i18next-icu` plugin | Works in both main and renderer; largest ecosystem; ICU plurals via plugin |
-| Package home | New `packages/i18n` shared package | Used by both `apps/desktop/src/main` and `apps/desktop/src/renderer` |
+| Decision                  | Choice                                                                                                                  | Rationale                                                                                            |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Number of languages in v1 | Architect for flexibility, ship with English populated                                                                  | Avoids committing to translator capacity; matches "ship with 1" philosophy                           |
+| Language switch UX        | Hybrid — renderer switches live, native menu rebuilds in main, OS-cached strings (notifications, dock) wait for restart | Best UX-to-cost ratio for an Electron desktop app                                                    |
+| RTL support               | Yes, from day 1                                                                                                         | Retrofitting RTL on 939 files is exponentially more expensive than starting right                    |
+| Default locale            | Explicit `'en'`, no OS detection                                                                                        | Simpler, predictable first-run; ~30 fewer lines; can add OS detect later if needed                   |
+| Settings schema           | Extend existing `GeneralSettings` with one `locale` field                                                               | Matches existing `clockFormat` pattern; pre-production allows refactor later if locale concerns grow |
+| Library choice            | `react-i18next` + `i18next-icu` plugin                                                                                  | Works in both main and renderer; largest ecosystem; ICU plurals via plugin                           |
+| Package home              | New `packages/i18n` shared package                                                                                      | Used by both `apps/desktop/src/main` and `apps/desktop/src/renderer`                                 |
 
 ## Architecture
 
@@ -151,7 +151,7 @@ Renderer: locale:changed listener
 
 **Failure modes:**
 
-- `tr.json` fails to load (corrupt file, FS error) → renderer keeps current locale, surfaces error toast via `extractErrorMessage`. Settings is *not* persisted.
+- `tr.json` fails to load (corrupt file, FS error) → renderer keeps current locale, surfaces error toast via `extractErrorMessage`. Settings is _not_ persisted.
 - Main persists but renderer change fails → next reload corrects (main is source of truth).
 - Locale change while sync is in-flight → no impact (sync uses neither i18next nor user-facing strings; logs use `createLogger`, locale-independent).
 
@@ -163,7 +163,7 @@ In `packages/contracts/src/settings-schemas.ts`, extend the existing `GeneralSet
 export const GeneralSettingsSchema = z.object({
   clockFormat: z.enum(['12h', '24h']).default('12h'),
   // …existing fields…
-  locale: LocaleSchema.default('en'),
+  locale: LocaleSchema.default('en')
 })
 ```
 
@@ -174,7 +174,7 @@ export const GeneralSettingsSchema = z.object({
 New file `packages/contracts/src/locale-api.ts`:
 
 ```ts
-export const LocaleSchema = z.enum(['en', 'tr', 'ar'])  // grow over time
+export const LocaleSchema = z.enum(['en', 'tr', 'ar']) // grow over time
 export type Locale = z.infer<typeof LocaleSchema>
 
 export interface LocaleApi {
@@ -217,13 +217,13 @@ DOM is the source of truth for direction. CSS reads via `[dir="rtl"]` selectors.
 ### Tailwind strategy: logical for new code, defer existing audit
 
 | Old (physical, breaks in RTL) | New (logical, RTL-safe) |
-|---|---|
-| `ml-2`, `mr-4` | `ms-2`, `me-4` |
-| `pl-3`, `pr-3` | `ps-3`, `pe-3` |
-| `left-0`, `right-4` | `start-0`, `end-4` |
-| `rounded-l-md` | `rounded-s-md` |
-| `text-left` | `text-start` |
-| `border-l`, `border-r` | `border-s`, `border-e` |
+| ----------------------------- | ----------------------- |
+| `ml-2`, `mr-4`                | `ms-2`, `me-4`          |
+| `pl-3`, `pr-3`                | `ps-3`, `pe-3`          |
+| `left-0`, `right-4`           | `start-0`, `end-4`      |
+| `rounded-l-md`                | `rounded-s-md`          |
+| `text-left`                   | `text-start`            |
+| `border-l`, `border-r`        | `border-s`, `border-e`  |
 
 **Three rules:**
 
@@ -235,17 +235,19 @@ PostCSS auto-flip plugins (`postcss-rtlcss`) are explicitly avoided — they fli
 
 ### Icon mirroring — opt-in, not opt-out
 
-| Mirror in RTL | Don't mirror |
-|---|---|
-| chevron-left / chevron-right | clock, calendar, settings |
-| arrow-back / arrow-forward | search, magnifier |
-| reply icons (curved arrows) | user avatars, document icons |
-| breadcrumb separators | brand logos |
+| Mirror in RTL                | Don't mirror                 |
+| ---------------------------- | ---------------------------- |
+| chevron-left / chevron-right | clock, calendar, settings    |
+| arrow-back / arrow-forward   | search, magnifier            |
+| reply icons (curved arrows)  | user avatars, document icons |
+| breadcrumb separators        | brand logos                  |
 
 Single Tailwind utility class `mirror-rtl` defined globally:
 
 ```css
-[dir="rtl"] .mirror-rtl { transform: scaleX(-1); }
+[dir='rtl'] .mirror-rtl {
+  transform: scaleX(-1);
+}
 ```
 
 Mirrorable icons opt in:
@@ -312,7 +314,7 @@ If `i18n.changeLanguage('tr')` rejects:
 
 1. Log via `createLogger('Locale')`.
 2. Throw → caught by existing `extractErrorMessage(err, fallback)`.
-3. Toast in the *current* language: "Couldn't change to Türkçe — please try again."
+3. Toast in the _current_ language: "Couldn't change to Türkçe — please try again."
 4. Settings is not persisted; picker reverts to previous value.
 
 ### First run
@@ -323,13 +325,13 @@ First-ever launch always shows English. No OS detection, no welcome screen. User
 
 ### Phased rollout
 
-| Phase | What ships | PRs | Risk |
-|---|---|---|---|
-| **A. Infrastructure** | `packages/i18n`, init in main + renderer, settings UI with picker, IPC contract, RTL plumbing. Zero strings migrated. | 1 | Low |
-| **B. Common namespace** | Migrate ~30-50 universal strings (Save, Cancel, OK, Close, Loading, Error, Search, Yes/No). Translate to TR + AR. End-to-end switching validated. | 1 | Low |
-| **C. Feature-by-feature** | One PR per feature folder: `settings`, `inbox`, `notes`, `calendar`, `journal`, `graph`, `tasks`. | 6–8 | Medium per PR |
-| **D. Main-process strings** | `errors.json`, native menu (`menu.json`). | 1 | Low |
-| **E. Codemod sweep + lint gate** | `jscodeshift` codemod for stragglers; ESLint rule errors on JSX text literals. | 1 | Medium |
+| Phase                            | What ships                                                                                                                                        | PRs | Risk          |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ------------- |
+| **A. Infrastructure**            | `packages/i18n`, init in main + renderer, settings UI with picker, IPC contract, RTL plumbing. Zero strings migrated.                             | 1   | Low           |
+| **B. Common namespace**          | Migrate ~30-50 universal strings (Save, Cancel, OK, Close, Loading, Error, Search, Yes/No). Translate to TR + AR. End-to-end switching validated. | 1   | Low           |
+| **C. Feature-by-feature**        | One PR per feature folder: `settings`, `inbox`, `notes`, `calendar`, `journal`, `graph`, `tasks`.                                                 | 6–8 | Medium per PR |
+| **D. Main-process strings**      | `errors.json`, native menu (`menu.json`).                                                                                                         | 1   | Low           |
+| **E. Codemod sweep + lint gate** | `jscodeshift` codemod for stragglers; ESLint rule errors on JSX text literals.                                                                    | 1   | Medium        |
 
 Total: ~10–12 PRs. Each independently mergeable. App is shippable after every merge.
 
@@ -339,19 +341,20 @@ Total: ~10–12 PRs. Each independently mergeable. App is shippable after every 
 - Phase B is the proof-of-concept for end-to-end switching.
 - C.1 through C.6 are parallel (different namespaces, no merge conflicts).
 - Phase E lands last and locks the door (no new untranslated strings can land after).
+- Phase I hardens that lint gate from one JSX text rule to four rules: JSX text, JSX string attributes, toast literals, and `extractErrorMessage` fallback literals. The final gate runs with zero i18n deferrals allowed.
 
 ### Namespace assignment heuristic
 
-| File path | Default namespace |
-|---|---|
-| `src/components/inbox/**` | `inbox.json` |
-| `src/components/note/**` | `notes.json` |
-| `src/components/journal/**` | `journal.json` |
-| `src/components/calendar/**` | `calendar.json` |
-| `src/components/settings*`, `src/pages/settings.tsx` | `settings.json` |
-| `src/components/ui/**`, `src/lib/**` | `common.json` |
-| Errors raised via `extractErrorMessage` | `errors.json` |
-| Main process `Menu.buildFromTemplate` | `menu.json` |
+| File path                                            | Default namespace |
+| ---------------------------------------------------- | ----------------- |
+| `src/components/inbox/**`                            | `inbox.json`      |
+| `src/components/note/**`                             | `notes.json`      |
+| `src/components/journal/**`                          | `journal.json`    |
+| `src/components/calendar/**`                         | `calendar.json`   |
+| `src/components/settings*`, `src/pages/settings.tsx` | `settings.json`   |
+| `src/components/ui/**`, `src/lib/**`                 | `common.json`     |
+| Errors raised via `extractErrorMessage`              | `errors.json`     |
+| Main process `Menu.buildFromTemplate`                | `menu.json`       |
 
 Component imports the hook with namespace baked in:
 
@@ -362,7 +365,7 @@ return <Button>{t('triage.action.archive')}</Button>
 
 ### Codemod (Phase E only)
 
-Phase C is *manual* per feature. The human eye catches:
+Phase C is _manual_ per feature. The human eye catches:
 
 - Non-user-facing strings (CSS class names, ARIA roles, log messages, IDs)
 - Strings needing parameterization (`` `${count} items` `` → `t('count', { count })`)
@@ -380,6 +383,7 @@ A `__pseudo` locale (English with diacritics + 40% length expansion):
 ```
 
 Catches:
+
 1. **Untranslated strings** — visible English in `__pseudo` mode = a missed migration
 2. **Layout breaks** — long pseudo-text exposes UI that breaks at non-English string lengths
 
@@ -393,12 +397,12 @@ Phase B (~50 common strings) translated by hand or via Claude/DeepL. Phases C/D/
 
 ### Four-layer test plan
 
-| Layer | What it verifies | Tool | Cost |
-|---|---|---|---|
-| **Static** | `t('key')` autocomplete + type errors on bad keys; IPC contract types match | TypeScript + `pnpm ipc:check` + new `pnpm i18n:check` | Free, runs on save |
-| **Unit** | `localeDirection()`, schema validation, locale resolver, instance creation | Vitest | Fast |
-| **Integration** | IPC `locale:set` round-trip, persistence, broadcast event delivery | Vitest with mocked IPC | Fast |
-| **E2E** | Live language switching, RTL visual, native menu rebuild | Playwright (built bundle) | Slow but rare |
+| Layer           | What it verifies                                                            | Tool                                                  | Cost               |
+| --------------- | --------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------ |
+| **Static**      | `t('key')` autocomplete + type errors on bad keys; IPC contract types match | TypeScript + `pnpm ipc:check` + new `pnpm i18n:check` | Free, runs on save |
+| **Unit**        | `localeDirection()`, schema validation, locale resolver, instance creation  | Vitest                                                | Fast               |
+| **Integration** | IPC `locale:set` round-trip, persistence, broadcast event delivery          | Vitest with mocked IPC                                | Fast               |
+| **E2E**         | Live language switching, RTL visual, native menu rebuild                    | Playwright (built bundle)                             | Slow but rare      |
 
 ### Concrete test files
 
@@ -438,11 +442,11 @@ pnpm i18n:check
 #   ✗ 3 orphan keys in en/inbox.json: ['old.unused.thing', ...]
 ```
 
-| Signal | Exit |
-|---|---|
-| Missing key in `en.json` referenced by `t()` | **Fail CI** — real bug |
+| Signal                                                      | Exit                                                                 |
+| ----------------------------------------------------------- | -------------------------------------------------------------------- |
+| Missing key in `en.json` referenced by `t()`                | **Fail CI** — real bug                                               |
 | Missing key in `tr.json`/`ar.json` that exists in `en.json` | **Warn** — translations are a content problem on a separate timeline |
-| Orphan key (in JSON but never referenced) | **Warn** — suggests cleanup |
+| Orphan key (in JSON but never referenced)                   | **Warn** — suggests cleanup                                          |
 
 ### What we're NOT testing in v1
 
@@ -479,11 +483,11 @@ E2E (`pnpm test:e2e`) runs on its own gate. The new `i18n.spec.ts` lives there.
 
 ## Risks Verified During Phase A
 
-| Risk | Mitigation |
-|---|---|
+| Risk                                         | Mitigation                                                                                                                      |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `react-i18next` v15 + React 19 compatibility | Smoke-test on day 1: `<Suspense>` + lazy-loading + React 19 transitions. The library officially supports React 19 but validate. |
-| `Intl.Locale.textInfo` works in Electron 39 | One-liner verification: `console.log(new Intl.Locale('ar').textInfo.direction)` should print `'rtl'`. |
-| Native menu rebuild on macOS doesn't flicker | Build menu, swap via `Menu.setApplicationMenu`. Visually confirm. macOS sometimes does odd things with system-owned menu bars. |
+| `Intl.Locale.textInfo` works in Electron 39  | One-liner verification: `console.log(new Intl.Locale('ar').textInfo.direction)` should print `'rtl'`.                           |
+| Native menu rebuild on macOS doesn't flicker | Build menu, swap via `Menu.setApplicationMenu`. Visually confirm. macOS sometimes does odd things with system-owned menu bars.  |
 
 ## Future Enhancements (Deferred)
 
@@ -491,6 +495,6 @@ E2E (`pnpm test:e2e`) runs on its own gate. The new `i18n.spec.ts` lives there.
 2. **Region overrides** (`en-GB` vs `en-US`) — when explicitly requested
 3. **Translation pipeline** integration (Crowdin, Lokalise) — when ≥4 active locales with external translators
 4. **`firstDayOfWeek`, `timezone`, `dateFormat`** as settings fields — split into `LocaleSettings` schema if/when they accumulate
-5. **RTL cleanup codemod** for the existing ~939 renderer files — converts legacy physical Tailwind classes (`ml-*`, `pr-*`, `left-*`, `text-left`) to logical equivalents (`ms-*`, `pe-*`, `start-*`, `text-start`). RTL is fully *supported* from Phase A onward (new code uses logical classes); this codemod is the visual polish pass that makes pre-existing components also flip correctly. Run it before `tr.json` / `ar.json` are populated for real users — until then, an Arabic user sees ~80–90% correct RTL with minor layout artifacts in legacy components. The codemod is mechanical via `jscodeshift`; ~95% automated, the rest flagged for human review.
+5. **RTL cleanup codemod** for the existing ~939 renderer files — converts legacy physical Tailwind classes (`ml-*`, `pr-*`, `left-*`, `text-left`) to logical equivalents (`ms-*`, `pe-*`, `start-*`, `text-start`). RTL is fully _supported_ from Phase A onward (new code uses logical classes); this codemod is the visual polish pass that makes pre-existing components also flip correctly. Run it before `tr.json` / `ar.json` are populated for real users — until then, an Arabic user sees ~80–90% correct RTL with minor layout artifacts in legacy components. The codemod is mechanical via `jscodeshift`; ~95% automated, the rest flagged for human review.
 6. **Pluralization expansion** with ICU `select` and `selectordinal` — the library supports it; use as needed
 7. **Bidi-perfect rendering inside BlockNote** — when an Arabic-locale user writes substantial notes and reports issues
