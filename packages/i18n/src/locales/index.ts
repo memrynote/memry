@@ -13,6 +13,7 @@ import enGraph from './en/graph.json'
 import enSettings from './en/settings.json'
 import enErrors from './en/errors.json'
 import enMenu from './en/menu.json'
+import enSystem from './en/system.json'
 
 import trCommon from './tr/common.json'
 import trInbox from './tr/inbox.json'
@@ -24,6 +25,7 @@ import trGraph from './tr/graph.json'
 import trSettings from './tr/settings.json'
 import trErrors from './tr/errors.json'
 import trMenu from './tr/menu.json'
+import trSystem from './tr/system.json'
 
 import arCommon from './ar/common.json'
 import arInbox from './ar/inbox.json'
@@ -35,6 +37,7 @@ import arGraph from './ar/graph.json'
 import arSettings from './ar/settings.json'
 import arErrors from './ar/errors.json'
 import arMenu from './ar/menu.json'
+import arSystem from './ar/system.json'
 
 export const RESOURCES = {
   en: {
@@ -47,7 +50,8 @@ export const RESOURCES = {
     graph: enGraph,
     settings: enSettings,
     errors: enErrors,
-    menu: enMenu
+    menu: enMenu,
+    system: enSystem
   },
   tr: {
     common: trCommon,
@@ -59,7 +63,8 @@ export const RESOURCES = {
     graph: trGraph,
     settings: trSettings,
     errors: trErrors,
-    menu: trMenu
+    menu: trMenu,
+    system: trSystem
   },
   ar: {
     common: arCommon,
@@ -71,6 +76,7 @@ export const RESOURCES = {
     graph: arGraph,
     settings: arSettings,
     errors: arErrors,
-    menu: arMenu
+    menu: arMenu,
+    system: arSystem
   }
 } as const
