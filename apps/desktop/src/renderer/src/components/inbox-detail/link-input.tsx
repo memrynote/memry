@@ -7,6 +7,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link2, FileText, X, Loader2, Folder } from '@/lib/icons'
 import { useQuery } from '@tanstack/react-query'
+import { useT } from '@memry/i18n/renderer'
 
 import { cn } from '@/lib/utils'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
@@ -40,6 +41,7 @@ interface LinkedNoteCardProps {
 }
 
 const LinkedNoteCard = ({ note, onRemove }: LinkedNoteCardProps): React.JSX.Element => {
+  const { t } = useT('inbox')
   const Icon = note.type === 'folder' ? Folder : FileText
 
   return (
@@ -60,7 +62,9 @@ const LinkedNoteCard = ({ note, onRemove }: LinkedNoteCardProps): React.JSX.Elem
       <div className="flex-1 min-w-0">
         <p className="text-[13px] leading-4 font-medium truncate text-foreground">{note.title}</p>
         {note.type === 'note' && (
-          <p className="text-[11px] leading-3.5 text-muted-foreground/60 truncate">Note</p>
+          <p className="text-[11px] leading-3.5 text-muted-foreground/60 truncate">
+            {t('type.note')}
+          </p>
         )}
       </div>
       <button
@@ -70,7 +74,7 @@ const LinkedNoteCard = ({ note, onRemove }: LinkedNoteCardProps): React.JSX.Elem
           'p-1 rounded-md opacity-0 group-hover:opacity-100',
           'transition-opacity hover:bg-destructive/10 hover:text-destructive'
         )}
-        aria-label={`Remove link to ${note.title}`}
+        aria-label={t('detail.removeLinkTo', { title: note.title })}
       >
         <X className="size-4" aria-hidden="true" />
       </button>
@@ -135,6 +139,8 @@ export const LinkInput = ({
   onLinkedNotesChange,
   className
 }: LinkInputProps): React.JSX.Element => {
+  const { t } = useT('inbox')
+  const { t: tCommon } = useT('common')
   const [searchQuery, setSearchQuery] = useState('')
   const [isDropdownDismissed, setIsDropdownDismissed] = useState(false)
   const [highlightedIndexState, setHighlightedIndex] = useState(0)
@@ -272,12 +278,12 @@ export const LinkInput = ({
           <input
             ref={inputRef}
             type="text"
-            placeholder="Link notes..."
+            placeholder={t('detail.linkNotesPlaceholder')}
             value={searchQuery}
             onChange={handleInputChange}
             onFocus={handleInputFocus}
             onKeyDown={handleKeyDown}
-            aria-label="Search notes to link"
+            aria-label={t('detail.searchNotesAria')}
             aria-expanded={isDropdownOpen}
             aria-haspopup="listbox"
             aria-autocomplete="list"
@@ -296,11 +302,11 @@ export const LinkInput = ({
             {isSearching ? (
               <div className="flex items-center gap-2 px-3 py-2">
                 <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Searching...</span>
+                <span className="text-xs text-muted-foreground">{tCommon('state.searching')}</span>
               </div>
             ) : availableResults.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-3">
-                {searchResults.length > 0 ? 'All matches already linked' : 'No notes found'}
+                {searchResults.length > 0 ? t('empty.allMatchesLinked') : t('empty.noNotes')}
               </p>
             ) : (
               availableResults.map((note, index) => (
@@ -319,7 +325,7 @@ export const LinkInput = ({
 
       {/* Linked Notes List */}
       {linkedNotes.length > 0 && (
-        <div className="space-y-2" role="list" aria-label="Linked notes">
+        <div className="space-y-2" role="list" aria-label={t('detail.linkedNotesAria')}>
           {linkedNotes.map((note) => (
             <LinkedNoteCard key={note.id} note={note} onRemove={handleRemoveNote} />
           ))}

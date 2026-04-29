@@ -1,5 +1,6 @@
 import { InboxContentEditor } from './inbox-content-editor'
 import type { InboxItem, InboxItemListItem } from '@/types'
+import { useT } from '@memry/i18n/renderer'
 
 type NoteItem = InboxItem | InboxItemListItem
 
@@ -13,15 +14,19 @@ export const NoteDetail = ({
   item,
   onContentChange,
   onTitleChange
-}: NoteDetailProps): React.JSX.Element => (
-  <div className="flex flex-col p-5 border-b border-border">
-    <InboxContentEditor
-      initialContent={item.content}
-      onContentChange={onContentChange}
-      onTitleChange={onTitleChange}
-      editable={!!onContentChange}
-      placeholder="Write your note..."
-      className="!min-h-0 [&_.bn-editor]:!min-h-0"
-    />
-  </div>
-)
+}: NoteDetailProps): React.JSX.Element => {
+  const { t } = useT('inbox')
+
+  return (
+    <div className="flex flex-col p-5 border-b border-border">
+      <InboxContentEditor
+        initialContent={item.content}
+        onContentChange={onContentChange}
+        onTitleChange={onTitleChange}
+        editable={!!onContentChange}
+        placeholder={t('detail.notePlaceholder')}
+        className="!min-h-0 [&_.bn-editor]:!min-h-0"
+      />
+    </div>
+  )
+}
