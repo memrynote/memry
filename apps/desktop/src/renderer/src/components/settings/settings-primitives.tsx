@@ -65,7 +65,7 @@ export function SettingRow({ label, description, children }: SettingRowProps) {
           <span className="text-xs/4 text-muted-foreground truncate">{description}</span>
         )}
       </div>
-      <div className="shrink-0 ml-4">{children}</div>
+      <div className="shrink-0 ms-4">{children}</div>
     </div>
   )
 }
