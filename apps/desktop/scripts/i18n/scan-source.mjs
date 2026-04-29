@@ -20,7 +20,15 @@ const TECHNICAL_ATTRIBUTES = new Set([
   'value',
   'key'
 ])
-const IGNORED_TEXT_TAGS = new Set(['code', 'pre', 'kbd', 'script', 'style'])
+const IGNORED_TEXT_TAGS = new Set([
+  'code',
+  'pre',
+  'kbd',
+  'script',
+  'style',
+  'ContextMenuShortcut',
+  'DropdownMenuShortcut'
+])
 const TODO_RE = /TODO\(i18n\):\s*wrap(?:\s+[\w-]+)?\s+in\s+t\(\)/i
 
 function normalizePath(filePath) {
@@ -148,7 +156,26 @@ function shouldIgnoreJsxText(node) {
   const tagName = opening ? getJsxTagName(opening.tagName) : null
 
   if (tagName && IGNORED_TEXT_TAGS.has(tagName)) return true
+  if (parentElement && isShortcutDisplayElement(parentElement)) return true
   return tagName === 'title' && hasAncestorTag(parentElement ?? node, 'svg')
+}
+
+function collectJsxLiteralText(node) {
+  if (ts.isJsxText(node)) return node.getText()
+  if (ts.isJsxExpression(node)) return ''
+  if (ts.isJsxElement(node)) return node.children.map(collectJsxLiteralText).join('')
+  return ''
+}
+
+function isShortcutDisplayElement(node) {
+  if (!ts.isJsxElement(node)) return false
+  const text = collapseWhitespace(collectJsxLiteralText(node))
+  return /[⌘⇧⌥↵←→↑↓\\]/.test(text) && /^[⌘⇧⌥↵←→↑↓\\A-Za-z0-9+\s,.-]+$/.test(text)
+}
+
+function isCodeExampleAttribute(attributeName, value) {
+  if (attributeName !== 'placeholder') return false
+  return /^[a-z][\w.]*\(.*\)$/.test(value) || /^[a-z][a-z0-9_]*$/i.test(value)
 }
 
 function findTextInsertion(sourceFile, node) {
@@ -366,7 +393,8 @@ export function scanFile(filePath, options = {}) {
         !TECHNICAL_ATTRIBUTES.has(attributeName) &&
         node.initializer &&
         ts.isStringLiteral(node.initializer) &&
-        hasLetters(node.initializer.text)
+        hasLetters(node.initializer.text) &&
+        !isCodeExampleAttribute(attributeName, node.initializer.text)
       ) {
         const location = getLineAndColumn(sourceFile, node.initializer.getStart(sourceFile))
         recordUntranslated(node, node.initializer.text, {

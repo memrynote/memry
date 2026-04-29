@@ -1,4 +1,12 @@
-const IGNORED_TAGS = new Set(['kbd', 'code', 'pre', 'script', 'style'])
+const IGNORED_TAGS = new Set([
+  'kbd',
+  'code',
+  'pre',
+  'script',
+  'style',
+  'ContextMenuShortcut',
+  'DropdownMenuShortcut'
+])
 const TODO_RE = /TODO\(i18n\):\s*wrap(?:\s+[\w-]+)?\s+in\s+t\(\)/i
 
 function hasLetters(value) {
@@ -32,7 +40,21 @@ function shouldIgnoreText(node) {
   const tagName = parent?.type === 'JSXElement' ? getJsxName(parent.openingElement?.name) : null
 
   if (tagName && IGNORED_TAGS.has(tagName)) return true
+  if (parent?.type === 'JSXElement' && isShortcutDisplayElement(parent)) return true
   return tagName === 'title' && hasAncestorTag(parent, 'svg')
+}
+
+function collectLiteralText(node) {
+  if (!node) return ''
+  if (node.type === 'JSXText') return node.value
+  if (node.type === 'JSXExpressionContainer') return ''
+  if (node.type === 'JSXElement') return node.children.map(collectLiteralText).join('')
+  return ''
+}
+
+function isShortcutDisplayElement(node) {
+  const text = collapseWhitespace(collectLiteralText(node))
+  return /[⌘⇧⌥↵←→↑↓\\]/.test(text) && /^[⌘⇧⌥↵←→↑↓\\A-Za-z0-9+\s,.-]+$/.test(text)
 }
 
 function hasI18nTodoNear(sourceCode, node) {
