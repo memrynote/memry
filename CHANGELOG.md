@@ -5,6 +5,19 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-30 — Calendar: clickable inbox-snooze chips
+
+### Added
+- Inbox-snooze chips on the calendar are now clickable. Clicking opens a small floating popover next to the chip with three actions: **Open in inbox** (jumps to the inbox tab), **Unsnooze now** (clears the snooze and removes the chip), and **Reschedule** (reuses the standard `<SnoozePicker>` preset list + custom date/time dialog). Previously the click was a silent no-op.
+- New `<CalendarInboxSnoozePopover>` component (presentational; receives data + callbacks) mirroring the positioning + dismiss pattern of `<CalendarEventPopover>`. The outside-click handler explicitly excludes Radix popper portals so the nested SnoozePicker dropdown/dialog don't dismiss the popover mid-interaction.
+- E2E coverage in `calendar-inbox-snooze-click.e2e.ts`: chip-click → popover with three actions + Escape dismiss; Unsnooze removes the chip; Open in inbox tears down the calendar surface (singleton inbox tab takes over).
+
+### Changed
+- After Unsnooze and Reschedule the calendar range query is invalidated so the chip moves or disappears immediately.
+- Reminder click handling (`sourceType === 'reminder'`) is intentionally still a no-op — its 4-state lifecycle needs its own design pass and ships separately.
+
+---
+
 ## 2026-04-29 — Multi-language Support (English, Turkish, Arabic) with RTL
 
 ### Added
