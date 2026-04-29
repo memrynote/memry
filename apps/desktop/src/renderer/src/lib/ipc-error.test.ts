@@ -1,6 +1,7 @@
 import i18next from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import { describe, expect, it } from 'vitest'
+import { RESOURCES } from '@memry/i18n/locales'
 
 import { extractErrorMessage } from './ipc-error'
 
@@ -55,6 +56,19 @@ describe('extractErrorMessage', () => {
 
     expect(extractErrorMessage(new Error('errors:sync.network-failed'), 'fallback')).toBe(
       'Network failed'
+    )
+  })
+
+  it('resolves real errors namespace keys from bundled resources', async () => {
+    const i18n = i18next.createInstance()
+    await i18n.use(initReactI18next).init({
+      lng: 'en',
+      fallbackLng: 'en',
+      resources: RESOURCES
+    })
+
+    expect(extractErrorMessage(new Error('errors:sync.networkOffline'), 'fallback')).toBe(
+      'You are offline. Changes will sync when you reconnect.'
     )
   })
 })
