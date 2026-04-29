@@ -181,19 +181,22 @@ function VersionHistorySession({
   /**
    * Load preview content for a version.
    */
-  const handleSelectVersion = useCallback(async (snapshotId: string) => {
-    setSelectedVersion(snapshotId)
-    setPreviewLoading(true)
+  const handleSelectVersion = useCallback(
+    async (snapshotId: string) => {
+      setSelectedVersion(snapshotId)
+      setPreviewLoading(true)
 
-    try {
-      const detail = await notesService.getVersion(snapshotId)
-      setPreviewContent(detail)
-    } catch {
-      toast.error(t('versionHistory.toast.loadPreviewFailed'))
-    } finally {
-      setPreviewLoading(false)
-    }
-  }, [t])
+      try {
+        const detail = await notesService.getVersion(snapshotId)
+        setPreviewContent(detail)
+      } catch {
+        toast.error(t('versionHistory.toast.loadPreviewFailed'))
+      } finally {
+        setPreviewLoading(false)
+      }
+    },
+    [t]
+  )
 
   /**
    * Restore a version.
