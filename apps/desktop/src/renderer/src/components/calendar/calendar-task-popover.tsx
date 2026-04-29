@@ -8,7 +8,6 @@ import { CalendarTaskPopoverActions } from './calendar-task-popover-actions'
 import { useTask } from '@/hooks/use-task'
 import { useSubtasks } from '@/hooks/use-subtasks'
 import { useProject } from '@/hooks/use-project'
-import { useDayPanel } from '@/contexts/day-panel-context'
 import { useTabs } from '@/contexts/tabs'
 import { tasksService } from '@/services/tasks-service'
 import { createLogger } from '@/lib/logger'
@@ -35,7 +34,6 @@ export function CalendarTaskPopover({
   const { data: subtasks = [] } = useSubtasks(item.sourceId)
   const { data: project } = useProject(task?.projectId ?? null)
   const { data: parentTask } = useTask(task?.parentId ?? null)
-  const { openForTask } = useDayPanel()
   const { openTab } = useTabs()
 
   const isCompleted = !!task?.completedAt
@@ -99,9 +97,19 @@ export function CalendarTaskPopover({
   }, [task, onDismiss])
 
   const handleOpenTask = useCallback(() => {
-    openForTask(item.sourceId)
+    openTab({
+      type: 'tasks',
+      title: 'Tasks',
+      icon: 'CheckSquare',
+      path: '/tasks',
+      isPinned: false,
+      isModified: false,
+      isPreview: false,
+      isDeleted: false,
+      viewState: { openTaskId: item.sourceId }
+    })
     onDismiss()
-  }, [openForTask, item.sourceId, onDismiss])
+  }, [openTab, item.sourceId, onDismiss])
 
   const handleOverflow = useCallback((_anchor: HTMLElement) => {
     // Overflow menu (Delete / Duplicate / Move to project / Copy link) is a
@@ -134,9 +142,21 @@ export function CalendarTaskPopover({
   const handlePickDateTime = useCallback(() => {
     // Custom date-time picker dialog is a follow-up PR. For now, route to the
     // existing TaskDetailDrawer where the user can change due date/time fully.
-    if (task) openForTask(task.id)
+    if (task) {
+      openTab({
+        type: 'tasks',
+        title: 'Tasks',
+        icon: 'CheckSquare',
+        path: '/tasks',
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false,
+        viewState: { openTaskId: task.id }
+      })
+    }
     onDismiss()
-  }, [task, openForTask, onDismiss])
+  }, [task, openTab, onDismiss])
 
   if (!task) return null
 
