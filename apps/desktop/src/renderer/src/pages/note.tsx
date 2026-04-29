@@ -462,7 +462,7 @@ export function NotePage({ noteId }: NotePageProps) {
 
       // Block saves if note was deleted
       if (isDeleted) {
-        toast.error('Cannot save - this note was deleted')
+        toast.error(t('page.toast.cannotSaveDeleted'))
         return
       }
 
@@ -500,7 +500,8 @@ export function NotePage({ noteId }: NotePageProps) {
       isDeleted,
       isLocalGraphOpen,
       queryClient,
-      editorSettings.autoSaveDelay
+      editorSettings.autoSaveDelay,
+      t
     ]
   )
 
@@ -513,7 +514,7 @@ export function NotePage({ noteId }: NotePageProps) {
       if (!noteId || !note || newTitle === note.title) return
 
       if (isDeleted) {
-        toast.error('Cannot rename - this note was deleted')
+        toast.error(t('page.toast.cannotRenameDeleted'))
         return
       }
 
@@ -524,7 +525,7 @@ export function NotePage({ noteId }: NotePageProps) {
         log.error('Failed to rename note:', err)
       }
     },
-    [noteId, note, renameNote.mutateAsync, isDeleted]
+    [noteId, note, renameNote.mutateAsync, isDeleted, t]
   )
 
   // Tag handlers
@@ -651,12 +652,12 @@ export function NotePage({ noteId }: NotePageProps) {
         await notesService.setLocalOnly(noteId, value)
         refetchNote()
         queryClient.invalidateQueries({ queryKey: ['notes', 'localOnlyCount'] })
-        toast.success(value ? 'Note set to local only' : 'Note will sync to cloud')
+        toast.success(value ? t('page.toast.localOnly') : t('page.toast.willSync'))
       } catch (err) {
         toast.error(extractErrorMessage(err, 'Failed to toggle local only'))
       }
     },
-    [noteId, isDeleted, refetchNote, queryClient]
+    [noteId, isDeleted, refetchNote, queryClient, t]
   )
 
   const handleToggleFullWidth = useCallback(
@@ -721,7 +722,7 @@ export function NotePage({ noteId }: NotePageProps) {
             // Create new note with this title
             const result = await createNote.mutateAsync({ title: target })
             if (!result.success || !result.note) {
-              toast.error('Failed to create linked note')
+              toast.error(t('page.toast.createLinkedFailed'))
               return
             }
             openTab({
@@ -744,10 +745,10 @@ export function NotePage({ noteId }: NotePageProps) {
         }
       } catch (err) {
         log.error('Failed to resolve wiki link:', err)
-        toast.error('Failed to open linked item')
+        toast.error(t('page.toast.openLinkedFailed'))
       }
     },
-    [openTab, createNote.mutateAsync]
+    [openTab, createNote.mutateAsync, t]
   )
 
   const handleBacklinkClick = useCallback(
