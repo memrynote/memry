@@ -61,6 +61,7 @@ import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { extractDomain, fetchLinkPreview } from '@/lib/url-metadata'
 import { createLinkMentionContent } from './link-mention'
 import type { PasteLinkOption } from './hooks/use-paste-link-menu'
+import { useT } from '@memry/i18n/renderer'
 
 const PRIORITY_REVERSE: Record<string, number> = { none: 0, low: 1, medium: 2, high: 3, urgent: 4 }
 
@@ -93,7 +94,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   noteId,
   initialContent,
   contentType = 'html',
-  placeholder = "Start writing, or press '/' for commands...",
+  placeholder,
   editable = true,
   stickyToolbar = false,
   spellCheck,
@@ -112,10 +113,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   isRemoteUpdateRef,
   marqueeZoneEl
 }: ContentAreaEditorProps) {
+  const { t } = useT('notes')
+  const { t: tCommon } = useT('common')
   const { resolvedTheme } = useTheme()
   const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
   const { openTag } = useSidebarDrillDown()
   const { port: aiPort, error: aiError, retry: retryAI } = useAIInlineContext()
+  const resolvedPlaceholder = placeholder ?? t('editor.content.placeholder')
 
   const tasksCtx = useTasksOptional()
   const [highlightSelection, setHighlightSelection] = useState<HighlightSelection | null>(null)
@@ -152,11 +156,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     setIdAttribute: true,
     uploadFile,
     placeholders: {
-      default: placeholder,
-      heading: 'Heading',
-      bulletListItem: 'List item',
-      numberedListItem: 'List item',
-      checkListItem: 'To-do item'
+      default: resolvedPlaceholder,
+      heading: t('editor.content.headingPlaceholder'),
+      bulletListItem: t('editor.content.listPlaceholder'),
+      numberedListItem: t('editor.content.listPlaceholder'),
+      checkListItem: t('editor.content.todoPlaceholder')
     },
     dictionary: { ...coreEn, ai: aiEn } as any,
     ...(yjsFragment
@@ -681,7 +685,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     <div
       ref={containerRef}
       role="region"
-      aria-label="Note editor"
+      aria-label={t('editor.content.regionAria')}
       className={cn('content-area h-full flex flex-col relative', className)}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -696,7 +700,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
         <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800/40">
           <span className="truncate">{aiError}</span>
           <button onClick={retryAI} className="shrink-0 underline hover:no-underline">
-            Retry
+            {tCommon('button.retry')}
           </button>
         </div>
       )}
@@ -708,7 +712,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           stickyToolbar && 'sticky-toolbar-enabled'
         )}
         role="application"
-        aria-label="Rich text editor"
+        aria-label={t('editor.content.richTextAria')}
         onContextMenu={handleEditorContextMenu}
       >
         {!marqueeZoneEl && (
@@ -790,7 +794,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             getItems={async (query) => {
               const defaults = getDefaultReactSlashMenuItems(editor)
               const aiItems = aiReady ? getAISlashMenuItems(editor) : []
-              const calloutItem = getCalloutSlashMenuItem(editor)
+              const calloutItem = getCalloutSlashMenuItem(editor, {
+                title: t('editor.callout.title'),
+                group: t('editor.callout.group'),
+                subtext: t('editor.callout.subtext')
+              })
               const taskItem = getTaskSlashMenuItem(editor)
               const all = [...defaults, calloutItem, taskItem, ...aiItems]
               if (!query) return all

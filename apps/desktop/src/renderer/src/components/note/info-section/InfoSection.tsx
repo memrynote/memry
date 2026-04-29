@@ -21,6 +21,7 @@ import { Property, PropertyTemplate, NewProperty } from './types'
 import { InfoHeader } from './InfoHeader'
 import { PropertyRow } from './PropertyRow'
 import { AddPropertyPopup } from './AddPropertyPopup'
+import { useT } from '@memry/i18n/renderer'
 
 export interface InfoSectionProps {
   properties: Property[]
@@ -53,6 +54,7 @@ export const InfoSection = memo(function InfoSection({
   variant = 'default',
   hideAddButton = false
 }: InfoSectionProps) {
+  const { t } = useT('notes')
   const [internalNewlyAddedId, setInternalNewlyAddedId] = useState<string | null>(null)
   const newlyAddedPropertyId = externalNewlyAddedId ?? internalNewlyAddedId
   const isSortable = Boolean(onPropertyOrderChange) && !disabled && properties.length > 1
@@ -142,7 +144,7 @@ export const InfoSection = memo(function InfoSection({
     <div
       className={cn('flex flex-col', variant === 'default' && 'border-t border-b border-border')}
       role="region"
-      aria-label="Note properties"
+      aria-label={t('properties.noteAria')}
     >
       {/* Toggle Header — hidden in inline mode */}
       {!isInline && (
@@ -161,7 +163,7 @@ export const InfoSection = memo(function InfoSection({
           {folderProperties && folderProperties.length > 0 && (
             <div className="mb-3 flex items-center gap-1">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
-                Workspace properties
+                {t('properties.workspaceAria')}
               </span>
             </div>
           )}
@@ -174,7 +176,7 @@ export const InfoSection = memo(function InfoSection({
             modifiers={[restrictToVerticalAxis, restrictToParentElement]}
           >
             <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-              <div role="list" aria-label="Properties list">
+              <div role="list" aria-label={t('properties.listAria')}>
                 {properties.map((property) => (
                   <PropertyRow
                     key={property.id}
@@ -206,10 +208,10 @@ export const InfoSection = memo(function InfoSection({
                     'hover:text-muted-foreground',
                     'disabled:opacity-50 disabled:cursor-not-allowed'
                   )}
-                  aria-label="Add a new property to this note"
+                  aria-label={t('properties.addDescription')}
                 >
                   <Plus className="h-3 w-3" aria-hidden="true" />
-                  Add property
+                  {t('properties.add')}
                 </button>
               </AddPropertyPopup>
             </div>

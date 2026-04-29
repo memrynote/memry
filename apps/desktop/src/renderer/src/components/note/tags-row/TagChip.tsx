@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { X, Check } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { getTagColors, withAlpha } from './tag-colors'
+import { useT } from '@memry/i18n/renderer'
 
 export interface Tag {
   id: string
@@ -19,6 +20,7 @@ interface TagChipProps {
 }
 
 export function TagChip({ tag, onRemove, onClick, isSelected, isFocused, disabled }: TagChipProps) {
+  const { t } = useT('notes')
   const [isHovered, setIsHovered] = useState(false)
   const colors = getTagColors(tag.color)
   const isClickable = !!onClick && !isSelected
@@ -60,7 +62,7 @@ export function TagChip({ tag, onRemove, onClick, isSelected, isFocused, disable
               handleRemove(e as unknown as React.MouseEvent)
             }
           }}
-          aria-label={`Remove tag: ${tag.name}`}
+          aria-label={t('tagsRow.removeAria', { tag: tag.name })}
           className={cn(
             'absolute -right-1 -top-1',
             'flex h-3.5 w-3.5 items-center justify-center',

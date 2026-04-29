@@ -44,6 +44,7 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { notesService, type SnapshotDetail } from '@/services/notes-service'
 import { formatDistanceToNow, format } from 'date-fns'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // Types
@@ -69,15 +70,15 @@ interface VersionHistoryProps {
 /**
  * Get a human-readable label for the snapshot reason.
  */
-function getReasonLabel(reason: string): string {
+function getReasonLabel(reason: string, autoSavedLabel: string): string {
   switch (reason) {
     case 'manual':
     case 'auto':
     case 'timer':
     case 'significant':
-      return 'Auto-saved'
+      return autoSavedLabel
     default:
-      return 'Auto-saved'
+      return autoSavedLabel
   }
 }
 
@@ -127,6 +128,8 @@ function VersionHistorySession({
   onOpenChange,
   onRestore
 }: VersionHistorySessionProps): React.ReactElement {
+  const { t } = useT('notes')
+  const { t: tCommon } = useT('common')
   const [selectedVersion, setSelectedVersion] = useState<string | null>(null)
   const [previewContent, setPreviewContent] = useState<SnapshotDetail | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -249,10 +252,10 @@ function VersionHistorySession({
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <History className="h-5 w-5" />
-            Version History
+            {t('versionHistory.title')}
           </SheetTitle>
           <SheetDescription>
-            View and restore previous versions of &quot;{noteTitle}&quot;
+            {t('versionHistory.description', { title: noteTitle })}
           </SheetDescription>
         </SheetHeader>
 
@@ -265,7 +268,7 @@ function VersionHistorySession({
             disabled={!selectedVersion}
           >
             {showPreview ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
-            {showPreview ? 'Hide Preview' : 'Show Preview'}
+            {showPreview ? t('versionHistory.hidePreview') : t('versionHistory.showPreview')}
           </Button>
         </div>
 
@@ -290,15 +293,15 @@ function VersionHistorySession({
                       })
                     }}
                   >
-                    Try again
+                    {tCommon('button.retry')}
                   </Button>
                 </div>
               ) : versions.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <History className="h-8 w-8 text-muted-foreground/50 mb-2" />
-                  <p className="text-sm text-muted-foreground">No versions saved yet</p>
+                  <p className="text-sm text-muted-foreground">{t('versionHistory.empty')}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Versions are saved automatically when you make significant changes
+                    {t('versionHistory.emptyDescription')}
                   </p>
                 </div>
               ) : (
@@ -337,15 +340,17 @@ function VersionHistorySession({
                               <span className="text-sm font-medium truncate">{version.title}</span>
                               {index === 0 && (
                                 <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-                                  Latest
+                                  {t('versionHistory.latest')}
                                 </span>
                               )}
                             </div>
                             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                               {getReasonIcon()}
-                              <span>{getReasonLabel(version.reason)}</span>
+                              <span>
+                                {getReasonLabel(version.reason, t('versionHistory.autoSaved'))}
+                              </span>
                               <span>•</span>
-                              <span>{version.wordCount} words</span>
+                              <span>{t('versionHistory.words', { count: version.wordCount })}</span>
                             </div>
                             <div className="text-xs text-muted-foreground mt-1">
                               {formatDistanceToNow(createdAt, { addSuffix: true })}
@@ -404,7 +409,7 @@ function VersionHistorySession({
                           onClick={() => setRestoreDialogOpen(true)}
                         >
                           <RotateCcw className="mr-2 h-4 w-4" />
-                          Restore
+                          {t('versionHistory.restore')}
                         </Button>
                       </div>
                     </div>
@@ -420,7 +425,7 @@ function VersionHistorySession({
                   </>
                 ) : (
                   <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                    Select a version to preview
+                    {t('versionHistory.selectPrompt')}
                   </div>
                 )}
               </div>
@@ -433,24 +438,23 @@ function VersionHistorySession({
       <AlertDialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Restore this version?</AlertDialogTitle>
+            <AlertDialogTitle>{t('versionHistory.restoreTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will replace the current note content with this version. A snapshot of the
-              current state will be saved first, so you can undo this action.
+              {t('versionHistory.restoreDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={restoring}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={restoring}>{tCommon('button.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleRestore} disabled={restoring}>
               {restoring ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Restoring...
+                  {t('versionHistory.restoring')}
                 </>
               ) : (
                 <>
                   <RotateCcw className="mr-2 h-4 w-4" />
-                  Restore
+                  {t('versionHistory.restore')}
                 </>
               )}
             </AlertDialogAction>
@@ -462,19 +466,17 @@ function VersionHistorySession({
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this version?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This version will be permanently deleted.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t('versionHistory.deleteTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('versionHistory.deleteDescription')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{tCommon('button.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Delete
+              {tCommon('button.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -4,11 +4,25 @@
  * Tests for the TagsRow component with tag add/remove functionality.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
 import { render, screen, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { I18nextProvider } from 'react-i18next'
+import type { i18n as I18nInstance } from 'i18next'
+import { createRendererI18n } from '@memry/i18n/renderer'
 import { TagsRow } from './TagsRow'
 import type { Tag } from './TagChip'
+
+let i18nEn: I18nInstance
+let i18nTr: I18nInstance
+
+beforeAll(async () => {
+  i18nEn = await createRendererI18n({ locale: 'en' })
+  i18nTr = await createRendererI18n({ locale: 'tr' })
+})
+
+const renderWithI18n = (ui: React.ReactElement, i18n = i18nEn) =>
+  render(<I18nextProvider i18n={i18n}>{ui}</I18nextProvider>)
 
 // ============================================================================
 // Test Data
@@ -56,7 +70,7 @@ describe('T511: TagsRow - tag display and remove', () => {
   })
 
   it('should render all tags', () => {
-    render(<TagsRow {...defaultProps} />)
+    renderWithI18n(<TagsRow {...defaultProps} />)
 
     expect(screen.getByText('react')).toBeInTheDocument()
     expect(screen.getByText('typescript')).toBeInTheDocument()
@@ -64,7 +78,7 @@ describe('T511: TagsRow - tag display and remove', () => {
   })
 
   it('should render tags as list items', () => {
-    render(<TagsRow {...defaultProps} />)
+    renderWithI18n(<TagsRow {...defaultProps} />)
 
     const list = screen.getByRole('list', { name: /tags/i })
     expect(list).toBeInTheDocument()
@@ -74,13 +88,19 @@ describe('T511: TagsRow - tag display and remove', () => {
   })
 
   it('should show empty state when no tags', () => {
-    render(<TagsRow {...defaultProps} tags={[]} />)
+    renderWithI18n(<TagsRow {...defaultProps} tags={[]} />)
+
+    expect(screen.getByText('Add tags')).toBeInTheDocument()
+  })
+
+  it('falls back to English empty label for Turkish notes namespace', () => {
+    renderWithI18n(<TagsRow {...defaultProps} tags={[]} />, i18nTr)
 
     expect(screen.getByText('Add tags')).toBeInTheDocument()
   })
 
   it('should pass onRemoveTag prop correctly', () => {
-    render(<TagsRow {...defaultProps} />)
+    renderWithI18n(<TagsRow {...defaultProps} />)
 
     // Verify tags are rendered
     expect(screen.getByText('react')).toBeInTheDocument()
@@ -91,7 +111,7 @@ describe('T511: TagsRow - tag display and remove', () => {
   })
 
   it('should not show remove button when disabled', () => {
-    render(<TagsRow {...defaultProps} disabled />)
+    renderWithI18n(<TagsRow {...defaultProps} disabled />)
 
     // Even when hovering, remove buttons should not appear
     const tags = screen.getAllByRole('listitem')
@@ -102,13 +122,13 @@ describe('T511: TagsRow - tag display and remove', () => {
   })
 
   it('should show add button', () => {
-    render(<TagsRow {...defaultProps} />)
+    renderWithI18n(<TagsRow {...defaultProps} />)
 
     expect(screen.getByRole('button', { name: /add tag/i })).toBeInTheDocument()
   })
 
   it('should disable add button when disabled', () => {
-    render(<TagsRow {...defaultProps} disabled />)
+    renderWithI18n(<TagsRow {...defaultProps} disabled />)
 
     expect(screen.getByRole('button', { name: /add tag/i })).toBeDisabled()
   })
@@ -134,7 +154,7 @@ describe('T512: TagsRow - tag add and autocomplete', () => {
 
   it('should open popup when add button is clicked', async () => {
     const user = userEvent.setup()
-    render(<TagsRow {...defaultProps} />)
+    renderWithI18n(<TagsRow {...defaultProps} />)
 
     const addButton = screen.getByRole('button', { name: /add tag/i })
     await user.click(addButton)
@@ -145,7 +165,7 @@ describe('T512: TagsRow - tag add and autocomplete', () => {
 
   it('should close popup when add button is clicked again', async () => {
     const user = userEvent.setup()
-    render(<TagsRow {...defaultProps} />)
+    renderWithI18n(<TagsRow {...defaultProps} />)
 
     const addButton = screen.getByRole('button', { name: /add tag/i })
     await user.click(addButton)
@@ -160,7 +180,7 @@ describe('T512: TagsRow - tag add and autocomplete', () => {
 
   it('should not open popup when disabled', async () => {
     const user = userEvent.setup()
-    render(<TagsRow {...defaultProps} disabled />)
+    renderWithI18n(<TagsRow {...defaultProps} disabled />)
 
     const addButton = screen.getByRole('button', { name: /add tag/i })
     await user.click(addButton)
@@ -170,7 +190,7 @@ describe('T512: TagsRow - tag add and autocomplete', () => {
 
   it('should call onAddTag when existing tag is selected', async () => {
     const user = userEvent.setup()
-    render(<TagsRow {...defaultProps} />)
+    renderWithI18n(<TagsRow {...defaultProps} />)
 
     const addButton = screen.getByRole('button', { name: /add tag/i })
     await user.click(addButton)
@@ -188,7 +208,7 @@ describe('T512: TagsRow - tag add and autocomplete', () => {
 
   it('should not show already added tags in suggestions', async () => {
     const user = userEvent.setup()
-    render(<TagsRow {...defaultProps} />)
+    renderWithI18n(<TagsRow {...defaultProps} />)
 
     const addButton = screen.getByRole('button', { name: /add tag/i })
     await user.click(addButton)
@@ -202,7 +222,7 @@ describe('T512: TagsRow - tag add and autocomplete', () => {
 
   it('should call onCreateTag for new tag', async () => {
     const user = userEvent.setup()
-    render(<TagsRow {...defaultProps} />)
+    renderWithI18n(<TagsRow {...defaultProps} />)
 
     const addButton = screen.getByRole('button', { name: /add tag/i })
     await user.click(addButton)
@@ -219,7 +239,7 @@ describe('T512: TagsRow - tag add and autocomplete', () => {
 
   it('should close popup after selecting a tag', async () => {
     const user = userEvent.setup()
-    render(<TagsRow {...defaultProps} />)
+    renderWithI18n(<TagsRow {...defaultProps} />)
 
     const addButton = screen.getByRole('button', { name: /add tag/i })
     await user.click(addButton)
@@ -234,7 +254,7 @@ describe('T512: TagsRow - tag add and autocomplete', () => {
 
   it('should show recent tags section', async () => {
     const user = userEvent.setup()
-    render(<TagsRow {...defaultProps} />)
+    renderWithI18n(<TagsRow {...defaultProps} />)
 
     const addButton = screen.getByRole('button', { name: /add tag/i })
     await user.click(addButton)
@@ -247,7 +267,7 @@ describe('T512: TagsRow - tag add and autocomplete', () => {
 
   it('should filter tags as user types', async () => {
     const user = userEvent.setup()
-    render(<TagsRow {...defaultProps} />)
+    renderWithI18n(<TagsRow {...defaultProps} />)
 
     const addButton = screen.getByRole('button', { name: /add tag/i })
     await user.click(addButton)
@@ -282,13 +302,13 @@ describe('TagsRow - accessibility', () => {
   }
 
   it('should have proper list role', () => {
-    render(<TagsRow {...defaultProps} />)
+    renderWithI18n(<TagsRow {...defaultProps} />)
 
     expect(screen.getByRole('list', { name: /tags/i })).toBeInTheDocument()
   })
 
   it('should have proper aria-label on add button', () => {
-    render(<TagsRow {...defaultProps} />)
+    renderWithI18n(<TagsRow {...defaultProps} />)
 
     expect(screen.getByRole('button', { name: /add tag/i })).toHaveAttribute(
       'aria-label',
@@ -298,7 +318,7 @@ describe('TagsRow - accessibility', () => {
 
   it('should have proper aria-label on remove buttons', async () => {
     const user = userEvent.setup()
-    render(<TagsRow {...defaultProps} />)
+    renderWithI18n(<TagsRow {...defaultProps} />)
 
     // Hover to reveal remove button
     const reactTag = screen.getByText('react')

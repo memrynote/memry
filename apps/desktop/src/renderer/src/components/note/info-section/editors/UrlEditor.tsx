@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { ExternalLink } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface UrlEditorProps {
   value: string
@@ -34,6 +35,7 @@ export function UrlEditor({
   placeholder = 'https://',
   autoFocus = true
 }: UrlEditorProps) {
+  const { t } = useT('notes')
   const inputRef = useRef<HTMLInputElement>(null)
   const [localValue, setLocalValue] = useState(value)
   const [isValid, setIsValid] = useState(true)
@@ -125,7 +127,7 @@ export function UrlEditor({
         <button
           type="button"
           onClick={handleOpenUrl}
-          aria-label="Open URL"
+          aria-label={t('properties.openUrlAria')}
           className={cn(
             'flex h-4 w-4 items-center justify-center shrink-0',
             'rounded text-muted-foreground/40',

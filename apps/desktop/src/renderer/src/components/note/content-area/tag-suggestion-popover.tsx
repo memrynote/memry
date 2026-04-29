@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 import { getTagColors } from '@/components/note/tags-row/tag-colors'
 import { notesService } from '@/services/notes-service'
 import { createLogger } from '@/lib/logger'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('TagSuggestion')
 
@@ -23,6 +24,7 @@ export function TagSuggestionPopover({
   editorContainerRef,
   onSelect
 }: TagSuggestionPopoverProps) {
+  const { t } = useT('notes')
   const [visible, setVisible] = useState(false)
   const [suggestions, setSuggestions] = useState<TagSuggestion[]>([])
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -155,7 +157,7 @@ export function TagSuggestionPopover({
       )}
       style={{ top: position.top, left: position.left }}
       role="listbox"
-      aria-label="Tag suggestions"
+      aria-label={t('menus.tags.aria')}
     >
       {suggestions.map((item, index) => {
         const isSelected = selectedIndex === index

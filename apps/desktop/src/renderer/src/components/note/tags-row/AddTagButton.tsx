@@ -1,17 +1,20 @@
 import * as React from 'react'
 import { Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 type AddTagButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement>
 
 export const AddTagButton = React.forwardRef<HTMLButtonElement, AddTagButtonProps>(
   ({ className, disabled, ...props }, ref) => {
+    const { t } = useT('notes')
+
     return (
       <button
         ref={ref}
         type="button"
         disabled={disabled}
-        aria-label="Add tag"
+        aria-label={t('tagsRow.add')}
         className={cn(
           'flex items-center justify-center',
           'rounded-full shrink-0 size-6',

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface NumberEditorProps {
   value: number | null
@@ -14,10 +15,11 @@ export function NumberEditor({
   value,
   onChange,
   onBlur,
-  placeholder = 'Empty',
+  placeholder,
   autoFocus = true,
   className
 }: NumberEditorProps) {
+  const { t } = useT('notes')
   const inputRef = useRef<HTMLInputElement>(null)
   const [draftValue, setDraftValue] = useState<string | null>(null)
   const inputValue = draftValue ?? value?.toString() ?? ''
@@ -100,7 +102,7 @@ export function NumberEditor({
       onChange={handleChange}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
-      placeholder={placeholder}
+      placeholder={placeholder ?? t('properties.empty')}
       className={cn(
         'w-24 bg-transparent border-none p-0',
         'text-[13px] text-foreground',
