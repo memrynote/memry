@@ -15,7 +15,9 @@
       "localOnly": "Note set to local only",
       "willSync": "Note will sync to cloud",
       "saveFailed": "Failed to save note",
-      "renameFailed": "Failed to rename note"
+      "renameFailed": "Failed to rename note",
+      "toggleLocalOnlyFailed": "Failed to toggle local only",
+      "toggleFullWidthFailed": "Failed to toggle full width"
     },
     "deleteDialogTitle": "{count, plural, one {Delete Note} other {Delete # Notes}}"
   },
