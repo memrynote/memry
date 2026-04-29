@@ -52,6 +52,20 @@ test('no-jsx-text-literals', () => {
             return <kbd>N</kbd>
           }
         `
+      },
+      {
+        code: `
+          export function E() {
+            return <ContextMenuShortcut>⇧⌘M</ContextMenuShortcut>
+          }
+        `
+      },
+      {
+        code: `
+          export function F() {
+            return <span>⌘⇧B</span>
+          }
+        `
       }
     ],
     invalid: [

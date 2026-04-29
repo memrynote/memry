@@ -57,6 +57,16 @@ test('allowed user content fixture reports no failures', () => {
   assert.deepEqual(result.untranslated, [])
 })
 
+test('technical shortcut and code placeholder text reports no failures', () => {
+  const result = scanSourceFiles({
+    workspaceRoot,
+    resources,
+    paths: [path.join(fixtureRoot, 'technical-text.tsx')]
+  })
+
+  assert.deepEqual(result.untranslated, [])
+})
+
 test('test and spec files are ignored by default', () => {
   const result = scanSourceFiles({
     workspaceRoot,
