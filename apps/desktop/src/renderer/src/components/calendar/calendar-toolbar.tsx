@@ -1,3 +1,4 @@
+import { useT } from '@memry/i18n/renderer'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight, Plus, Search } from '@/lib/icons'
 import { addLocalDays, getStartOfWeek, parseLocalDate } from './date-utils'
@@ -67,6 +68,7 @@ export function CalendarToolbar({
   onCreateEvent,
   extraActions
 }: CalendarToolbarProps): React.JSX.Element {
+  const { t } = useT('common')
   const anchorParsed = parseLocalDate(anchorDate)
   const monthName = new Intl.DateTimeFormat(undefined, { month: 'long' }).format(anchorParsed)
   const yearStr = String(anchorParsed.getFullYear())
@@ -113,7 +115,7 @@ export function CalendarToolbar({
           <button
             type="button"
             className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
-            aria-label="Search"
+            aria-label={t('action.search')}
           >
             <Search className="size-4" />
           </button>
