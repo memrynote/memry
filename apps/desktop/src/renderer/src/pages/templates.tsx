@@ -143,10 +143,10 @@ export function TemplatesPage() {
       if (result) {
         toast.success(`Duplicated "${template.name}"`)
       } else {
-        toast.error('Failed to duplicate template')
+        toast.error(tPhaseF('templateEditor.toast.duplicateFailed'))
       }
     },
-    [duplicateTemplate]
+    [duplicateTemplate, tPhaseF]
   )
 
   // Handle delete confirmation
@@ -165,17 +165,17 @@ export function TemplatesPage() {
       if (success) {
         toast.success(`Deleted "${templateToDelete.name}"`)
       } else {
-        toast.error('Failed to delete template')
+        toast.error(tPhaseF('templateEditor.toast.deleteFailed'))
       }
     } catch (err) {
       log.error('Failed to delete template:', err)
-      toast.error('Failed to delete template')
+      toast.error(tPhaseF('templateEditor.toast.deleteFailed'))
     } finally {
       setIsDeleting(false)
       setDeleteDialogOpen(false)
       setTemplateToDelete(null)
     }
-  }, [templateToDelete, deleteTemplate])
+  }, [templateToDelete, deleteTemplate, tPhaseF])
 
   // Loading state with editorial elegance
   if (isLoading) {
