@@ -241,7 +241,7 @@ function TemplateEditorForm({
 
   const handleSave = useCallback(async () => {
     if (!name.trim()) {
-      toast.error('Template name is required')
+      toast.error(tPhaseF('templateEditor.toast.nameRequired'))
       return
     }
 
@@ -257,7 +257,7 @@ function TemplateEditorForm({
           content
         })
         if (result) {
-          toast.success('Template created')
+          toast.success(tPhaseF('templateEditor.toast.created'))
           // Update initial state to mark as saved
           initialStateRef.current = JSON.stringify({
             name,
@@ -270,7 +270,7 @@ function TemplateEditorForm({
           // Close the tab or navigate to the new template
           onCloseActiveTab()
         } else {
-          toast.error('Failed to create template')
+          toast.error(tPhaseF('templateEditor.toast.createFailed'))
         }
       } else {
         const result = await updateTemplate({
@@ -283,7 +283,7 @@ function TemplateEditorForm({
           content
         })
         if (result) {
-          toast.success('Template saved')
+          toast.success(tPhaseF('templateEditor.toast.saved'))
           onUpdateActiveTabTitle(name.trim())
           initialStateRef.current = JSON.stringify({
             name,
@@ -294,12 +294,12 @@ function TemplateEditorForm({
             content
           })
         } else {
-          toast.error('Failed to save template')
+          toast.error(tPhaseF('templateEditor.toast.saveFailed'))
         }
       }
     } catch (err) {
       log.error('Failed to save template:', err)
-      toast.error('Failed to save template')
+      toast.error(tPhaseF('templateEditor.toast.saveFailed'))
     } finally {
       setIsSaving(false)
     }
@@ -315,7 +315,8 @@ function TemplateEditorForm({
     updateTemplate,
     templateId,
     onCloseActiveTab,
-    onUpdateActiveTabTitle
+    onUpdateActiveTabTitle,
+    tPhaseF
   ])
 
   const handleNameChange = useCallback(
@@ -423,7 +424,11 @@ function TemplateEditorForm({
           </Button>
           <div>
             <h1 className="font-semibold">
-              {isNew ? 'New Template' : isBuiltIn ? 'View Template' : 'Edit Template'}
+              {isNew
+                ? tPhaseF('templateEditor.title.new')
+                : isBuiltIn
+                  ? tPhaseF('templateEditor.title.view')
+                  : tPhaseF('templateEditor.title.edit')}
             </h1>
             {isBuiltIn && (
               <p className="text-xs text-muted-foreground flex items-center gap-1">
