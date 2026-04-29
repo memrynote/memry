@@ -14,6 +14,7 @@ import { useAuth } from './auth-context'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { DeviceRevokedDialog } from '@/components/sync/device-revoked-dialog'
 import type { InitialSyncPhase, LinkingRequestEvent } from '@memry/contracts/ipc-events'
+import { useT } from '@memry/i18n/renderer'
 
 type SyncStatus = 'idle' | 'syncing' | 'paused' | 'error' | 'offline' | 'unknown'
 
@@ -64,8 +65,8 @@ type SyncAction =
   | { type: 'CLEAR_ERROR' }
   | { type: 'UPLOAD_PROGRESS'; attachmentId: string; progress: number; status: string }
   | { type: 'DOWNLOAD_PROGRESS'; attachmentId: string; progress: number; status: string }
-  | { type: 'SESSION_EXPIRED' }
-  | { type: 'DEVICE_REVOKED'; unsyncedCount: number }
+  | { type: 'SESSION_EXPIRED'; error: string }
+  | { type: 'DEVICE_REVOKED'; unsyncedCount: number; error: string }
   | { type: 'CONFLICT_DETECTED'; itemId: string; itemType: string }
   | { type: 'QUEUE_CLEARED' }
   | { type: 'CLOCK_SKEW_WARNING' }
@@ -132,13 +133,13 @@ function syncReducer(state: SyncState, action: SyncAction): SyncState {
         }
       }
     case 'SESSION_EXPIRED':
-      return { ...state, sessionExpired: true, status: 'error', error: 'Session expired' }
+      return { ...state, sessionExpired: true, status: 'error', error: action.error }
     case 'DEVICE_REVOKED':
       return {
         ...state,
         deviceRevoked: { unsyncedCount: action.unsyncedCount },
         status: 'error',
-        error: 'This device has been removed'
+        error: action.error
       }
     case 'CONFLICT_DETECTED':
       return {
@@ -205,6 +206,7 @@ interface SyncProviderProps {
 
 export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element {
   const { state: authState, logout } = useAuth()
+  const { t } = useT('errors')
   const [state, dispatch] = useReducer(syncReducer, initialState)
   const [linkingRequest, setLinkingRequest] = useState<LinkingRequestEvent | null>(null)
   const sessionExpiredRef = useRef(state.sessionExpired)
@@ -222,17 +224,18 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       try {
         const status = await window.api.syncOps.getStatus()
         if (cancelled) return
+        const error = status.error ? extractErrorMessage(status.error, '') : undefined
         dispatch({
           type: 'STATUS_CHANGED',
           status: status.status as SyncStatus,
           lastSyncAt: status.lastSyncAt,
           pendingCount: status.pendingCount,
-          error: status.error,
+          error,
           offlineSince: status.offlineSince
         })
       } catch {
         if (!cancelled) {
-          dispatch({ type: 'SET_ERROR', error: 'Failed to fetch sync status' })
+          dispatch({ type: 'SET_ERROR', error: t('sync.statusFetchFailed') })
         }
       }
     }
@@ -243,16 +246,17 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     cleanups.push(
       window.api.onSyncStatusChanged((event) => {
         if (cancelled) return
+        const error = event.error ? extractErrorMessage(event.error, '') : undefined
         dispatch({
           type: 'STATUS_CHANGED',
           status: event.status as SyncStatus,
           lastSyncAt: event.lastSyncAt,
           pendingCount: event.pendingCount,
-          error: event.error,
+          error,
           offlineSince: event.offlineSince
         })
         if (event.errorCategory === 'storage_quota_exceeded') {
-          toast.error('Storage full — free up space or upgrade your plan', { duration: 10000 })
+          toast.error(t('sync.storageQuotaExceeded'), { duration: 10000 })
         }
       })
     )
@@ -299,16 +303,20 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       window.api.onSessionExpired(() => {
         if (cancelled) return
         if (!sessionExpiredRef.current) {
-          toast.error('Session expired — sign in again', { duration: 8000 })
+          toast.error(t('sync.authExpired'), { duration: 8000 })
         }
-        dispatch({ type: 'SESSION_EXPIRED' })
+        dispatch({ type: 'SESSION_EXPIRED', error: t('sync.authExpired') })
       })
     )
 
     cleanups.push(
       window.api.onDeviceRevoked((event) => {
         if (cancelled) return
-        dispatch({ type: 'DEVICE_REVOKED', unsyncedCount: event.unsyncedCount })
+        dispatch({
+          type: 'DEVICE_REVOKED',
+          unsyncedCount: event.unsyncedCount,
+          error: t('sync.deviceRevoked')
+        })
       })
     )
 
@@ -372,7 +380,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
         if (event.phase === 'complete') {
           dispatch({ type: 'CLEAR_ERROR' })
         } else if (event.error) {
-          dispatch({ type: 'SET_ERROR', error: event.error })
+          dispatch({ type: 'SET_ERROR', error: extractErrorMessage(event.error, '') })
         }
       })
     )
@@ -381,8 +389,8 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       window.api.onSecurityWarning((event) => {
         if (cancelled) return
         const message = event.permanent
-          ? 'A sync item could not be verified and has been quarantined for security.'
-          : 'A sync item failed signature verification and will be retried.'
+          ? t('sync.securityQuarantinePermanent')
+          : t('sync.securityQuarantineRetry')
         toast.error(message, { duration: 8000 })
       })
     )
@@ -390,10 +398,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     cleanups.push(
       window.api.onCertificatePinFailed(() => {
         if (cancelled) return
-        toast.error(
-          'Secure connection to sync server could not be verified. Syncing has been paused for your protection.',
-          { duration: 15000 }
-        )
+        toast.error(t('sync.certificatePinPaused'), { duration: 15000 })
       })
     )
 
@@ -401,7 +406,7 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
       cancelled = true
       for (const cleanup of cleanups) cleanup()
     }
-  }, [authState.status])
+  }, [authState.status, t])
 
   useEffect(() => {
     if (authState.status === 'authenticated' && state.sessionExpired) {
@@ -415,27 +420,27 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
     try {
       await window.api.syncOps.triggerSync()
     } catch (err) {
-      dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, 'Sync failed') })
+      dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, t('sync.triggerFailed')) })
     }
-  }, [authState.status])
+  }, [authState.status, t])
 
   const pause = useCallback(async (): Promise<void> => {
     if (authState.status !== 'authenticated') return
     try {
       await window.api.syncOps.pause()
     } catch (err) {
-      dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, 'Failed to pause sync') })
+      dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, t('sync.pauseFailed')) })
     }
-  }, [authState.status])
+  }, [authState.status, t])
 
   const resume = useCallback(async (): Promise<void> => {
     if (authState.status !== 'authenticated') return
     try {
       await window.api.syncOps.resume()
     } catch (err) {
-      dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, 'Failed to resume sync') })
+      dispatch({ type: 'SET_ERROR', error: extractErrorMessage(err, t('sync.resumeFailed')) })
     }
-  }, [authState.status])
+  }, [authState.status, t])
 
   const clearError = useCallback(() => {
     dispatch({ type: 'CLEAR_ERROR' })

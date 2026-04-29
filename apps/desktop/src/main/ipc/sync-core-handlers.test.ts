@@ -265,6 +265,20 @@ describe('sync IPC handlers', () => {
     })
   })
 
+  it('returns the sync trigger error key when full sync fails without a concrete message', async () => {
+    registerSyncHandlers({
+      fullSync: vi.fn(async () => {
+        throw null
+      })
+    } as never)
+
+    const result = await invokeHandler(SYNC_CHANNELS.TRIGGER_SYNC)
+    expect(result).toEqual({
+      success: false,
+      error: 'errors:sync.triggerFailed'
+    })
+  })
+
   // --------------------------------------------------------------------------
   // checkSyncIntegrity — self-healing
   // --------------------------------------------------------------------------

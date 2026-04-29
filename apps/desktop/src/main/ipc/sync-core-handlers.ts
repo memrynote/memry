@@ -155,7 +155,7 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
     return withErrorHandler(async () => {
       await engine.fullSync()
       return { success: true }
-    }, 'Sync failed')()
+    }, 'errors:sync.triggerFailed')()
   })
 
   registerCommand(

@@ -50,10 +50,10 @@ export class ErrorRecoveryHandler {
     this.ctx.abortController?.abort()
     this.ctx.lastErrorInfo = {
       category: 'device_revoked',
-      message: 'This device has been removed',
+      message: 'errors:sync.deviceRevoked',
       retryable: false
     }
-    this.ctx.lastError = 'This device has been removed'
+    this.ctx.lastError = 'errors:sync.deviceRevoked'
     this.stateManager.setState('error')
     this.ctx.deps.ws.disconnect()
 
@@ -67,7 +67,7 @@ export class ErrorRecoveryHandler {
     log.error('SECURITY: Certificate pin failed — sync permanently paused', {
       hostname: event.hostname
     })
-    this.ctx.lastError = 'Certificate pin verification failed. Restart the app to retry.'
+    this.ctx.lastError = 'errors:sync.certificatePinFailed'
     this.ctx.lastErrorInfo = {
       category: 'certificate_pin_failed' as SyncErrorCategory,
       message: this.ctx.lastError,
@@ -89,10 +89,10 @@ export class ErrorRecoveryHandler {
     if (!this.ctx.deps.refreshAccessToken) {
       this.ctx.lastErrorInfo = {
         category: 'auth_expired',
-        message: 'Session expired',
+        message: 'errors:sync.authExpired',
         retryable: false
       }
-      this.ctx.lastError = 'Session expired'
+      this.ctx.lastError = 'errors:sync.authExpired'
       this.stateManager.setState('error')
       return
     }
@@ -105,10 +105,10 @@ export class ErrorRecoveryHandler {
     } else {
       this.ctx.lastErrorInfo = {
         category: 'auth_expired',
-        message: 'Session expired',
+        message: 'errors:sync.authExpired',
         retryable: false
       }
-      this.ctx.lastError = 'Session expired'
+      this.ctx.lastError = 'errors:sync.authExpired'
       this.stateManager.setState('error')
     }
   }

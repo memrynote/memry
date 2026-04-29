@@ -89,7 +89,7 @@ describe('withErrorHandler', () => {
     const result = await handler()
 
     // #then
-    expect(result).toEqual({ success: false, error: 'Operation failed' })
+    expect(result).toEqual({ success: false, error: 'errors:generic.operationFailed' })
   })
 
   it('handles sync handlers', async () => {
@@ -163,7 +163,7 @@ describe('withDb', () => {
     expect(result).toEqual({ success: false, error: 'not found' })
   })
 
-  it('catches getDatabase errors with vault-friendly message', async () => {
+  it('catches getDatabase errors with vault-friendly key', async () => {
     // #given
     mockGetDatabase.mockImplementation(() => {
       throw new Error('Database not initialized')
@@ -177,7 +177,7 @@ describe('withDb', () => {
     // #then
     expect(result).toEqual({
       success: false,
-      error: 'No vault is open. Please open a vault first.'
+      error: 'errors:ipc.noVaultOpen'
     })
   })
 
