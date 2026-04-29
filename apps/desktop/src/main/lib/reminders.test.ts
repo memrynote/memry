@@ -141,17 +141,22 @@ describe('reminders service', () => {
       }))
     }))
     vi.doMock('./main-i18n', () => {
-      const translations: Record<string, string> = {
-        'system:notification.reminder.note': 'Note reminder',
-        'system:notification.reminder.journal': 'Journal reminder',
-        'system:notification.reminder.highlight': 'Highlight reminder',
-        'system:notification.reminder.fallback': 'Reminder due',
-        'system:notification.reminder.default': 'Reminder',
-        'system:error.reminderTimeMustBeFuture': 'Reminder time must be in the future'
+      const systemTranslations: Record<string, string> = {
+        'notification.reminder.note': 'Note reminder',
+        'notification.reminder.journal': 'Journal reminder',
+        'notification.reminder.highlight': 'Highlight reminder',
+        'notification.reminder.fallback': 'Reminder due',
+        'notification.reminder.default': 'Reminder',
+        'error.reminderTimeMustBeFuture': 'Reminder time must be in the future'
       }
       return {
         getMainI18n: () => ({
-          t: (key: string) => translations[key] ?? key
+          t: (key: string) =>
+            key.startsWith('system:')
+              ? (systemTranslations[key.slice('system:'.length)] ?? key)
+              : key,
+          getFixedT: (_lng: unknown, _ns: string) => (key: string) =>
+            systemTranslations[key] ?? key
         })
       }
     })
