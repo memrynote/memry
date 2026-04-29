@@ -338,7 +338,10 @@
     },
     "componentsFolderViewFilterRow": {
       "builtIn": "Yerleşik",
-      "properties": "Özellikler"
+      "properties": "Özellikler",
+      "placeholderOperator": "Operatör",
+      "placeholderProperty": "Özellik",
+      "placeholderValue": "Değer"
     },
     "componentsFolderViewFolderTableView": {
       "notesTable": "Not tablosu"
@@ -356,7 +359,9 @@
       "fixExpressionErrorsToSeePreview": "Önizlemeyi görmek için ifade hatalarını düzeltin",
       "usingNote": "Not kullanılıyor: \"",
       "quot": "alıntı;",
-      "cancel": "İptal"
+      "cancel": "İptal",
+      "expressionPlaceholder": "Formül ifadesi girin",
+      "namePlaceholder": "Formül adı"
     },
     "componentsFolderViewGroupBySelector": {
       "clearGrouping": "Gruplandırmayı temizle",
@@ -607,6 +612,52 @@
       "startYourCollection": "Koleksiyonunuzu Başlatın",
       "templatesHelpYouCreateNotesWithConsistentStructure": "Şablonlar tutarlı yapıya sahip notlar oluşturmanıza yardımcı olur.",
       "createTemplate": "Şablon Oluştur"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCopyLink": "Bağlantı kopyalanamadı",
+      "failedToCreateFolder": "Klasör oluşturulamadı",
+      "failedToCreateNote": "Not oluşturulamadı",
+      "failedToCreateTask": "Görev oluşturulamadı",
+      "failedToCreateView": "Görünüm oluşturulamadı",
+      "failedToDeleteVersion": "Sürüm silinemedi",
+      "failedToLoadMoreBookmarks": "Daha fazla yer işareti yüklenemedi",
+      "failedToLoadProperties": "Özellikler yüklenemedi",
+      "failedToLoadPropertyDefinitions": "Özellik tanımları yüklenemedi",
+      "failedToLoadTemplates": "Şablonlar yüklenemedi",
+      "failedToLoadVersionHistory": "Sürüm geçmişi yüklenemedi",
+      "failedToOpenInExternalEditor": "Harici düzenleyicide açılamadı",
+      "failedToRemoveBookmark": "Yer işareti kaldırılamadı",
+      "failedToRename": "Yeniden adlandırılamadı",
+      "failedToRenameFolder": "Klasör yeniden adlandırılamadı",
+      "failedToReorderBookmarks": "Yer işaretleri yeniden sıralanamadı",
+      "failedToRestoreVersion": "Sürüm geri yüklenemedi",
+      "failedToRevealInFinder": "Finder'da gösterilemedi",
+      "failedToSave": "Kaydedilemedi",
+      "failedToSaveFormula": "Formül kaydedilemedi",
+      "failedToSnoozeReminder": "Hatırlatıcı ertelenemedi",
+      "failedToToggleBookmark": "Yer işareti durumu değiştirilemedi",
+      "failedToUpdateEmoji": "Emoji güncellenemedi",
+      "failedToUpdateTags": "Etiketler güncellenemedi"
+    },
+    "toasts": {
+      "cannotAddTagThisNoteWasDeleted": "Etiket eklenemiyor: bu not silindi",
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "Yalnızca yerel ayarı değiştirilemiyor: bu not silindi",
+      "cannotRemoveTagThisNoteWasDeleted": "Etiket kaldırılamıyor: bu not silindi",
+      "defaultTemplateCleared": "Varsayılan şablon temizlendi",
+      "defaultTemplateSet": "Varsayılan şablon ayarlandı",
+      "failedToAddProperty": "Özellik eklenemedi",
+      "failedToClearDefaultTemplate": "Varsayılan şablon temizlenemedi",
+      "failedToDeleteProperty": "Özellik silinemedi",
+      "failedToRenameProperty": "Özellik yeniden adlandırılamadı",
+      "failedToReorderProperties": "Özellikler yeniden sıralanamadı",
+      "failedToSetDefaultTemplate": "Varsayılan şablon ayarlanamadı",
+      "failedToSnoozeReminder": "Hatırlatıcı ertelenemedi",
+      "failedToUpdateProperty": "Özellik güncellenemedi",
+      "failedToUpdateTags": "Etiketler güncellenemedi",
+      "noteExportedSuccessfully": "Not başarıyla dışa aktarıldı",
+      "reminderSnoozed": "Hatırlatıcı ertelendi"
     }
   }
 }

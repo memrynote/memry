@@ -8,6 +8,7 @@ import {
   onTaskUpdated,
   onTaskDeleted
 } from '@/services/tasks-service'
+import { getI18n } from 'react-i18next'
 
 // ============================================================================
 // TYPES
@@ -43,7 +44,12 @@ export function useTasksLinkedToNote(noteId: string | null): UseTasksLinkedToNot
       const result = await tasksService.getLinkedTasks(id)
       setTasks(result)
     } catch (err) {
-      setError(extractErrorMessage(err, 'Failed to load linked tasks'))
+      setError(
+        extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'tasks')('phaseI.errors.failedToLoadLinkedTasks')
+        )
+      )
       setTasks([])
     } finally {
       setIsLoading(false)

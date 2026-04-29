@@ -1,3 +1,4 @@
+import { getI18n } from 'react-i18next'
 /**
  * VersionHistory Component
  *
@@ -176,7 +177,12 @@ function VersionHistorySession({
     queryFn: async () => notesService.getVersions(noteId)
   })
 
-  const errorMessage = error ? extractErrorMessage(error, 'Failed to load version history') : null
+  const errorMessage = error
+    ? extractErrorMessage(
+        error,
+        getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToLoadVersionHistory')
+      )
+    : null
 
   /**
    * Load preview content for a version.
@@ -213,10 +219,20 @@ function VersionHistorySession({
         onOpenChange(false)
         onRestore?.()
       } else {
-        toast.error(extractErrorMessage(result.error, 'Failed to restore version'))
+        toast.error(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToRestoreVersion')
+          )
+        )
       }
     } catch (err) {
-      toast.error(extractErrorMessage(err, 'Failed to restore version'))
+      toast.error(
+        extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToRestoreVersion')
+        )
+      )
     } finally {
       setRestoring(false)
       setRestoreDialogOpen(false)
@@ -239,10 +255,20 @@ function VersionHistorySession({
           setPreviewContent(null)
         }
       } else {
-        toast.error(extractErrorMessage(result.error, 'Failed to delete version'))
+        toast.error(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToDeleteVersion')
+          )
+        )
       }
     } catch (err) {
-      toast.error(extractErrorMessage(err, 'Failed to delete version'))
+      toast.error(
+        extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToDeleteVersion')
+        )
+      )
     } finally {
       setDeleteDialogOpen(false)
       setVersionToDelete(null)

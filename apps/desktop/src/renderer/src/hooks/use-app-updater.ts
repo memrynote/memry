@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
+import { getI18n } from 'react-i18next'
 
 const DEFAULT_STATE: AppUpdateState = {
   currentVersion: '0.0.0',
@@ -41,7 +42,12 @@ export function useAppUpdater(): UseAppUpdaterResult {
       })
       .catch((err) => {
         if (mounted) {
-          setError(extractErrorMessage(err, 'Failed to load updater state'))
+          setError(
+            extractErrorMessage(
+              err,
+              getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToLoadUpdaterState')
+            )
+          )
         }
       })
       .finally(() => {
@@ -68,7 +74,10 @@ export function useAppUpdater(): UseAppUpdaterResult {
       setError(null)
       return nextState
     } catch (err) {
-      const message = extractErrorMessage(err, 'Failed to check for updates')
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToCheckForUpdates')
+      )
       setError(message)
       throw new Error(message)
     }
@@ -81,7 +90,10 @@ export function useAppUpdater(): UseAppUpdaterResult {
       setError(null)
       return nextState
     } catch (err) {
-      const message = extractErrorMessage(err, 'Failed to download update')
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToDownloadUpdate')
+      )
       setError(message)
       throw new Error(message)
     }
@@ -92,7 +104,10 @@ export function useAppUpdater(): UseAppUpdaterResult {
       await window.api.updater.quitAndInstall()
       setError(null)
     } catch (err) {
-      const message = extractErrorMessage(err, 'Failed to install update')
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToInstallUpdate')
+      )
       setError(message)
       throw new Error(message)
     }

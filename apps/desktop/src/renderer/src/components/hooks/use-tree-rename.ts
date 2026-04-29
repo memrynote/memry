@@ -8,6 +8,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { getDisplayName } from '../notes-tree-utils'
 import { toast } from 'sonner'
 import { createLogger } from '@/lib/logger'
+import { getI18n } from 'react-i18next'
 
 const log = createLogger('Hook:useTreeRename')
 
@@ -108,7 +109,9 @@ export function useTreeRename({
       } catch (err) {
         log.error('Failed to rename note', err)
         revertOptimisticTitle(noteId)
-        toast.error(extractErrorMessage(err, 'Failed to rename note'))
+        toast.error(
+          extractErrorMessage(err, getI18n().getFixedT(null, 'notes')('page.toast.renameFailed'))
+        )
       } finally {
         setIsRenaming(false)
         setRenamingNoteId(null)
@@ -161,7 +164,12 @@ export function useTreeRename({
         await refreshFolders()
       } catch (err) {
         log.error('Failed to rename folder', err)
-        toast.error(extractErrorMessage(err, 'Failed to rename folder'))
+        toast.error(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToRenameFolder')
+          )
+        )
       } finally {
         setIsFolderRenaming(false)
         setRenamingFolderPath(null)

@@ -613,5 +613,39 @@
       "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Önümüzdeki 7 gün içinde teslim edilmesi gereken görevler burada görünecek. Bazı görevler ekleyerek haftanızı planlayın.",
       "addTask2": "Görev ekle"
     }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToAddSubtask": "Alt görev eklenemedi",
+      "failedToAddSubtasks": "Alt görevler eklenemedi",
+      "failedToArchiveTasks": "Görevler arşivlenemedi",
+      "failedToCompleteSubtasks": "Alt görevler tamamlanamadı",
+      "failedToCompleteTask": "Görev tamamlanamadı",
+      "failedToDeleteSubtask": "Alt görev silinemedi",
+      "failedToDeleteSubtasks": "Alt görevler silinemedi",
+      "failedToDeleteTask": "Görev silinemedi",
+      "failedToLoadLinkedTasks": "Bağlı görevler yüklenemedi",
+      "failedToLoadTaskPreferences": "Görev tercihleri yüklenemedi",
+      "failedToMakeSubtask": "Alt görev yapılamadı",
+      "failedToMarkSubtasksIncomplete": "Alt görevler tamamlanmadı olarak işaretlenemedi",
+      "failedToPromoteSubtask": "Alt görev yükseltilemedi",
+      "failedToReorderSubtasks": "Alt görevler yeniden sıralanamadı",
+      "failedToSetDueDate": "Bitiş tarihi ayarlanamadı",
+      "failedToSetPriority": "Öncelik ayarlanamadı",
+      "failedToUpdateTaskPreferences": "Görev tercihleri güncellenemedi"
+    },
+    "toasts": {
+      "allSubtasksCompleteTaskMarkedAsDone": "Tüm alt görevler tamamlandı. Görev tamamlandı olarak işaretlendi",
+      "changesUndone": "Değişiklikler geri alındı",
+      "failedToArchiveTasks": "Görevler arşivlenemedi",
+      "projectNotFound": "Proje bulunamadı",
+      "subtaskAdded": "Alt görev eklendi",
+      "subtaskDeleted": "Alt görev silindi",
+      "taskCompleted": "Görev tamamlandı",
+      "taskKeptOpen": "Görev açık bırakıldı",
+      "taskMarkedAsDone": "Görev tamamlandı olarak işaretlendi",
+      "taskReopened": "Görev yeniden açıldı",
+      "tasksRestoredFromArchive": "Görevler arşivden geri yüklendi"
+    }
   }
 }

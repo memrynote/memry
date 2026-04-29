@@ -236,13 +236,13 @@ describe('AddTaskModal', () => {
       expect(onAddTask).not.toHaveBeenCalled()
     })
 
-    it('falls back to English task strings for Turkish', () => {
+    it('renders Turkish task strings for Turkish', () => {
       renderWithI18n(
         <AddTaskModal isOpen={true} onClose={onClose} onAddTask={onAddTask} projects={PROJECTS} />,
         i18nTr
       )
 
-      expect(screen.getAllByText('Add Task').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText('Görev Ekle').length).toBeGreaterThanOrEqual(1)
     })
   })
 })

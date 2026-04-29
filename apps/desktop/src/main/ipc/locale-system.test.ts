@@ -12,9 +12,9 @@ describe('main-process locale change propagates to system namespace', () => {
     expect(i18n.t('system:dialog.vault.title')).toBe('Select Vault Folder')
   })
 
-  it('After changeLanguage(tr), key falls back to English (tr/system.json empty)', async () => {
+  it('After changeLanguage(tr), key resolves to Turkish', async () => {
     await i18n.changeLanguage('tr')
-    expect(i18n.t('system:dialog.vault.title')).toBe('Select Vault Folder')
+    expect(i18n.t('system:dialog.vault.title')).toBe('Kasa Klasörünü Seçin')
   })
 
   it('After changeLanguage back to en, key resolves to English', async () => {

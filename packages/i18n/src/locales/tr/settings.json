@@ -76,7 +76,7 @@
     "language": {
       "label": "Dil",
       "helper": "Uygulamanın çoğu anında güncellenir. Sistem düzeyindeki bazı metinler (önceden gösterilen bildirimler, dock etiketi, pencere başlık çubuğu) bir sonraki başlatmadan sonra yenilenir.",
-      "changed": "Dil şu şekilde değiştirildi: {nativeName}",
+      "changed": "Dil {nativeName} olarak değiştirildi",
       "failed": "Dil değiştirilemedi. Lütfen tekrar deneyin."
     },
     "clockFormat": {
@@ -1104,6 +1104,41 @@
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "accountSetupFailed": "Hesap kurulumu başarısız oldu",
+      "failedToAnalyzeContent": "İçerik analiz edilemedi",
+      "failedToCheckForUpdates": "Güncellemeler kontrol edilemedi",
+      "failedToCloseVault": "Kasa kapatılamadı",
+      "failedToConfirmRecoveryPhrase": "Kurtarma ifadesi onaylanamadı",
+      "failedToDownloadUpdate": "Güncelleme indirilemedi",
+      "failedToInstallUpdate": "Güncelleme yüklenemedi",
+      "failedToLoadEditorSettings": "Düzenleyici ayarları yüklenemedi",
+      "failedToLoadGeneralSettings": "Genel ayarlar yüklenemedi",
+      "failedToLoadKeyboardSettings": "Klavye ayarları yüklenemedi",
+      "failedToLoadNoteEditorSettings": "Not düzenleyici ayarları yüklenemedi",
+      "failedToLoadNotes": "Notlar yüklenemedi",
+      "failedToLoadTabSettings": "Sekme ayarları yüklenemedi",
+      "failedToLoadTags": "Etiketler yüklenemedi",
+      "failedToLoadUpdaterState": "Güncelleyici durumu yüklenemedi",
+      "failedToLoadVaultStatus": "Kasa durumu yüklenemedi",
+      "failedToReindex": "Yeniden dizinleme başarısız oldu",
+      "failedToResendCode": "Kod yeniden gönderilemedi",
+      "failedToResetKeyboardSettings": "Klavye ayarları sıfırlanamadı",
+      "failedToSelectVault": "Kasa seçilemedi",
+      "failedToSendVerificationCode": "Doğrulama kodu gönderilemedi",
+      "failedToSetUpDevice": "Cihaz kurulamadı",
+      "failedToSwitchVault": "Kasa değiştirilemedi",
+      "failedToUpdateConfig": "Yapılandırma güncellenemedi",
+      "failedToUpdateEditorSettings": "Düzenleyici ayarları güncellenemedi",
+      "failedToUpdateGeneralSettings": "Genel ayarlar güncellenemedi",
+      "failedToUpdateKeyboardSettings": "Klavye ayarları güncellenemedi",
+      "failedToUpdateSettings": "Ayarlar güncellenemedi",
+      "failedToUpdateTagColor": "Etiket rengi güncellenemedi",
+      "googleSignInFailed": "Google ile oturum açma başarısız oldu",
+      "invalidVerificationCode": "Geçersiz doğrulama kodu"
     }
   }
 }

@@ -1,3 +1,4 @@
+import { getI18n } from 'react-i18next'
 /**
  * ExportDialog Component
  *
@@ -116,9 +117,12 @@ export function ExportDialog({
 
       if (result.success) {
         setExportSuccess(true)
-        toast.success(`Note exported successfully`, {
-          description: result.path
-        })
+        toast.success(
+          getI18n().getFixedT(null, 'notes')('phaseI.toasts.noteExportedSuccessfully'),
+          {
+            description: result.path
+          }
+        )
 
         // Close dialog after short delay to show success state
         setTimeout(() => {
@@ -135,12 +139,18 @@ export function ExportDialog({
         // User cancelled - do nothing
       } else {
         toast.error(t('exportDialog.toast.failed'), {
-          description: extractErrorMessage(result.error, 'An unknown error occurred')
+          description: extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'errors')('generic.unknown')
+          )
         })
       }
     } catch (error) {
       toast.error(t('exportDialog.toast.failed'), {
-        description: extractErrorMessage(error, 'An unknown error occurred')
+        description: extractErrorMessage(
+          error,
+          getI18n().getFixedT(null, 'errors')('generic.unknown')
+        )
       })
     } finally {
       setIsExporting(false)

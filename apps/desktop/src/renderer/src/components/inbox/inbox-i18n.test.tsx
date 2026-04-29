@@ -28,15 +28,15 @@ describe('inbox i18n', () => {
     expect(screen.getByText('Insights')).toBeInTheDocument()
   })
 
-  it('falls back to English for Turkish inbox namespace stubs', () => {
+  it('renders Turkish inbox namespace labels', () => {
     render(
       <I18nextProvider i18n={i18nTr}>
         <InboxSegmentControl value="archived" onChange={() => {}} />
       </I18nextProvider>
     )
 
-    expect(screen.getByText('Inbox')).toBeInTheDocument()
-    expect(screen.getByText('Archived')).toBeInTheDocument()
+    expect(screen.getByText('Gelen kutusu')).toBeInTheDocument()
+    expect(screen.getByText('Arşivlendi')).toBeInTheDocument()
   })
 
   it('renders triage action labels from the inbox namespace', () => {

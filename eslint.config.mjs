@@ -57,7 +57,19 @@ export default defineConfig(
       i18n: i18nPlugin
     },
     rules: {
-      'i18n/no-jsx-text-literals': 'error'
+      'i18n/no-jsx-text-literals': 'error',
+      'i18n/no-string-attribute-literals': 'error'
+    }
+  },
+  {
+    files: ['apps/desktop/src/renderer/src/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
+    plugins: {
+      i18n: i18nPlugin
+    },
+    rules: {
+      'i18n/no-toast-string-literal': 'error',
+      'i18n/no-error-fallback-literal': 'error'
     }
   },
   {
