@@ -4,6 +4,7 @@ import { Picker } from '@/components/ui/picker'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { TagChip, Tag } from './TagChip'
 import { getRandomColor } from './tag-colors'
+import { useT } from '@memry/i18n/renderer'
 
 interface TagInputPopupProps {
   availableTags: Tag[]
@@ -28,6 +29,7 @@ export function TagInputPopup({
   disabled = false,
   children
 }: TagInputPopupProps) {
+  const { t } = useT('notes')
   const [searchQuery, setSearchQuery] = useState('')
   const [newTagColor, setNewTagColor] = useState(getRandomColor())
   const [focusedIndex, setFocusedIndex] = useState(-1)
@@ -126,13 +128,13 @@ export function TagInputPopup({
         <FilterSearchHeader
           value={searchQuery}
           onChange={handleSearchChange}
-          placeholder="Type tag name..."
+          placeholder={t('tagsRow.inputPlaceholder')}
         />
 
         <ScrollArea className="max-h-[260px]">
           <Picker.List className="flex-wrap gap-1.5">
             {filteredRecentTags.length > 0 && !searchQuery && (
-              <Picker.Section label="Recent">
+              <Picker.Section label={t('tagsRow.recent')}>
                 <div className="flex flex-wrap gap-1.5 px-2 pb-1">
                   {filteredRecentTags.slice(0, 8).map((tag) => (
                     <TagChip key={tag.id} tag={tag} onClick={() => handleTagClick(tag)} />
@@ -142,7 +144,7 @@ export function TagInputPopup({
             )}
 
             {filteredTags.length > 0 && (
-              <Picker.Section label={searchQuery ? 'Matching' : 'All Tags'}>
+              <Picker.Section label={searchQuery ? t('tagsRow.matching') : t('tagsRow.all')}>
                 <div className="flex flex-wrap gap-1.5 px-2 pb-1">
                   {filteredTags.map((tag, index) => (
                     <TagChip
@@ -156,7 +158,9 @@ export function TagInputPopup({
               </Picker.Section>
             )}
 
-            {filteredTags.length === 0 && searchQuery && <Picker.Empty message="No tags found" />}
+            {filteredTags.length === 0 && searchQuery && (
+              <Picker.Empty message={t('tagsRow.none')} />
+            )}
           </Picker.List>
         </ScrollArea>
       </Picker.Content>

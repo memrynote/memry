@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback, useState, KeyboardEvent } from 'react'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface TitleInputProps {
   value: string
@@ -11,11 +12,12 @@ interface TitleInputProps {
 
 export function TitleInput({
   value,
-  placeholder = 'Untitled',
+  placeholder,
   onChange,
   autoFocus = false,
   disabled = false
 }: TitleInputProps) {
+  const { t } = useT('notes')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [draftValue, setDraftValue] = useState<string | null>(null)
   const displayValue = draftValue ?? value
@@ -78,10 +80,10 @@ export function TitleInput({
       onChange={handleChange}
       onKeyDown={handleKeyDown}
       onBlur={handleBlur}
-      placeholder={placeholder}
+      placeholder={placeholder ?? t('editor.title.untitled')}
       disabled={disabled}
       rows={1}
-      aria-label="Note title"
+      aria-label={t('editor.title.aria')}
       className={cn(
         'w-full resize-none overflow-hidden bg-transparent',
         'text-[42px] tracking-[-0.02em] leading-12 text-text-bright',

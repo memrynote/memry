@@ -1,7 +1,21 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { I18nextProvider } from 'react-i18next'
+import type { i18n as I18nInstance } from 'i18next'
+import { createRendererI18n } from '@memry/i18n/renderer'
 import { NoteTitle } from './NoteTitle'
+
+let i18nEn: I18nInstance
+let i18nTr: I18nInstance
+
+beforeAll(async () => {
+  i18nEn = await createRendererI18n({ locale: 'en' })
+  i18nTr = await createRendererI18n({ locale: 'tr' })
+})
+
+const renderWithI18n = (ui: React.ReactElement, i18n = i18nEn) =>
+  render(<I18nextProvider i18n={i18n}>{ui}</I18nextProvider>)
 
 describe('NoteTitle - title editing', () => {
   const defaultProps = {
@@ -15,21 +29,28 @@ describe('NoteTitle - title editing', () => {
   })
 
   it('should render with title', () => {
-    render(<NoteTitle {...defaultProps} />)
+    renderWithI18n(<NoteTitle {...defaultProps} />)
 
     const textarea = screen.getByRole('textbox', { name: /note title/i })
     expect(textarea).toHaveValue('Test Note')
   })
 
   it('should render with placeholder when title is empty', () => {
-    render(<NoteTitle {...defaultProps} title="" placeholder="Untitled" />)
+    renderWithI18n(<NoteTitle {...defaultProps} title="" placeholder="Untitled" />)
+
+    const textarea = screen.getByRole('textbox', { name: /note title/i })
+    expect(textarea).toHaveAttribute('placeholder', 'Untitled')
+  })
+
+  it('falls back to English placeholder for Turkish notes namespace', () => {
+    renderWithI18n(<NoteTitle {...defaultProps} title="" />, i18nTr)
 
     const textarea = screen.getByRole('textbox', { name: /note title/i })
     expect(textarea).toHaveAttribute('placeholder', 'Untitled')
   })
 
   it('should use custom placeholder', () => {
-    render(<NoteTitle {...defaultProps} title="" placeholder="Enter a title..." />)
+    renderWithI18n(<NoteTitle {...defaultProps} title="" placeholder="Enter a title..." />)
 
     const textarea = screen.getByRole('textbox', { name: /note title/i })
     expect(textarea).toHaveAttribute('placeholder', 'Enter a title...')
@@ -37,7 +58,7 @@ describe('NoteTitle - title editing', () => {
 
   it('should call onTitleChange on blur when value changes', async () => {
     const user = userEvent.setup()
-    render(<NoteTitle {...defaultProps} />)
+    renderWithI18n(<NoteTitle {...defaultProps} />)
 
     const textarea = screen.getByRole('textbox', { name: /note title/i })
     await user.clear(textarea)
@@ -49,7 +70,7 @@ describe('NoteTitle - title editing', () => {
 
   it('should not call onTitleChange if value did not change', async () => {
     const user = userEvent.setup()
-    render(<NoteTitle {...defaultProps} />)
+    renderWithI18n(<NoteTitle {...defaultProps} />)
 
     const textarea = screen.getByRole('textbox', { name: /note title/i })
     await user.click(textarea)
@@ -60,7 +81,7 @@ describe('NoteTitle - title editing', () => {
 
   it('should save on Enter key press', async () => {
     const user = userEvent.setup()
-    render(<NoteTitle {...defaultProps} />)
+    renderWithI18n(<NoteTitle {...defaultProps} />)
 
     const textarea = screen.getByRole('textbox', { name: /note title/i })
     await user.clear(textarea)
@@ -71,7 +92,7 @@ describe('NoteTitle - title editing', () => {
 
   it('should revert and blur on Escape key press', async () => {
     const user = userEvent.setup()
-    render(<NoteTitle {...defaultProps} />)
+    renderWithI18n(<NoteTitle {...defaultProps} />)
 
     const textarea = screen.getByRole('textbox', { name: /note title/i })
     await user.clear(textarea)
@@ -83,14 +104,14 @@ describe('NoteTitle - title editing', () => {
   })
 
   it('should be disabled when disabled prop is true', () => {
-    render(<NoteTitle {...defaultProps} disabled />)
+    renderWithI18n(<NoteTitle {...defaultProps} disabled />)
 
     const textarea = screen.getByRole('textbox', { name: /note title/i })
     expect(textarea).toBeDisabled()
   })
 
   it('should auto-focus when autoFocus is true', () => {
-    render(<NoteTitle {...defaultProps} autoFocus />)
+    renderWithI18n(<NoteTitle {...defaultProps} autoFocus />)
 
     const textarea = screen.getByRole('textbox', { name: /note title/i })
     expect(textarea).toHaveFocus()
@@ -99,13 +120,15 @@ describe('NoteTitle - title editing', () => {
 
 describe('NoteTitle - emoji display', () => {
   it('should display emoji when set', () => {
-    render(<NoteTitle emoji="📝" title="Test" onTitleChange={vi.fn()} />)
+    renderWithI18n(<NoteTitle emoji="📝" title="Test" onTitleChange={vi.fn()} />)
 
     expect(screen.getByText('📝')).toBeInTheDocument()
   })
 
   it('should not render emoji container when emoji is null', () => {
-    const { container } = render(<NoteTitle emoji={null} title="Test" onTitleChange={vi.fn()} />)
+    const { container } = renderWithI18n(
+      <NoteTitle emoji={null} title="Test" onTitleChange={vi.fn()} />
+    )
 
     expect(container.querySelector('.bg-sidebar-terracotta\\/8')).not.toBeInTheDocument()
   })
@@ -113,7 +136,7 @@ describe('NoteTitle - emoji display', () => {
 
 describe('NoteTitle - accessibility', () => {
   it('should have proper ARIA label on title input', () => {
-    render(<NoteTitle emoji={null} title="Test Note" onTitleChange={vi.fn()} />)
+    renderWithI18n(<NoteTitle emoji={null} title="Test Note" onTitleChange={vi.fn()} />)
 
     expect(screen.getByRole('textbox', { name: /note title/i })).toBeInTheDocument()
   })

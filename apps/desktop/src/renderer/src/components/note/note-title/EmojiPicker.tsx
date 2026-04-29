@@ -7,6 +7,7 @@ import { useClickOutside } from './use-click-outside'
 import { X } from '@/lib/icons'
 import { HugeIconGrid } from './HugeIconGrid'
 import { toIconValue } from './emoji-icon-utils'
+import { useT } from '@memry/i18n/renderer'
 
 type PickerTab = 'emoji' | 'icons'
 
@@ -28,6 +29,8 @@ interface EmojiData {
 }
 
 export function EmojiPicker({ isOpen, onClose, onSelect, onRemove, hasEmoji }: EmojiPickerProps) {
+  const { t } = useT('notes')
+  const { t: tCommon } = useT('common')
   const pickerRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const [activeTab, setActiveTab] = useState<PickerTab>('emoji')
@@ -90,7 +93,7 @@ export function EmojiPicker({ isOpen, onClose, onSelect, onRemove, hasEmoji }: E
       ref={pickerRef}
       role="dialog"
       aria-modal="true"
-      aria-label="Emoji and icon picker"
+      aria-label={t('menus.emoji.aria')}
       onKeyDown={handleKeyDown}
       className={cn(
         'absolute left-0 top-full z-50 mt-2',
@@ -109,7 +112,7 @@ export function EmojiPicker({ isOpen, onClose, onSelect, onRemove, hasEmoji }: E
               : 'text-muted-foreground hover:text-foreground'
           )}
         >
-          Emoji
+          {t('menus.emoji.emojiTab')}
         </button>
         <button
           type="button"
@@ -121,7 +124,7 @@ export function EmojiPicker({ isOpen, onClose, onSelect, onRemove, hasEmoji }: E
               : 'text-muted-foreground hover:text-foreground'
           )}
         >
-          Icons
+          {t('menus.emoji.iconsTab')}
         </button>
       </div>
 
@@ -176,7 +179,7 @@ export function EmojiPicker({ isOpen, onClose, onSelect, onRemove, hasEmoji }: E
             )}
           >
             <X className="h-4 w-4" />
-            Remove
+            {tCommon('button.remove')}
           </button>
         </div>
       )}

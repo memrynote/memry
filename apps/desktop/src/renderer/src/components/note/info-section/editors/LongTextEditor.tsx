@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface LongTextEditorProps {
   value: string
@@ -13,9 +14,10 @@ export function LongTextEditor({
   value,
   onChange,
   onBlur,
-  placeholder = 'Empty',
+  placeholder,
   autoFocus = true
 }: LongTextEditorProps) {
+  const { t } = useT('notes')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [localValue, setLocalValue] = useState(value)
   const [prevValue, setPrevValue] = useState(value)
@@ -72,7 +74,7 @@ export function LongTextEditor({
       onChange={handleChange}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
-      placeholder={placeholder}
+      placeholder={placeholder ?? t('properties.empty')}
       rows={2}
       className={cn(
         'w-full min-h-[60px] resize-y bg-transparent border-none p-0',

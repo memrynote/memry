@@ -4,11 +4,14 @@
  * Tests for the NotesTree component with folder tree and drag-drop functionality.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createRef, type RefObject } from 'react'
+import { I18nextProvider } from 'react-i18next'
+import type { i18n as I18nInstance } from 'i18next'
+import { createRendererI18n } from '@memry/i18n/renderer'
 import { NotesTree, type NotesTreeActions } from './notes-tree'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import type { FolderInfo } from '../../../preload/index.d'
@@ -27,12 +30,22 @@ const createTestQueryClient = () =>
     }
   })
 
-const renderWithProviders = (ui: React.ReactElement) => {
+let i18nEn: I18nInstance
+let i18nTr: I18nInstance
+
+beforeAll(async () => {
+  i18nEn = await createRendererI18n({ locale: 'en' })
+  i18nTr = await createRendererI18n({ locale: 'tr' })
+})
+
+const renderWithProviders = (ui: React.ReactElement, i18n = i18nEn) => {
   const queryClient = createTestQueryClient()
   return render(
-    <QueryClientProvider client={queryClient}>
-      <TestWrapper>{ui}</TestWrapper>
-    </QueryClientProvider>
+    <I18nextProvider i18n={i18n}>
+      <QueryClientProvider client={queryClient}>
+        <TestWrapper>{ui}</TestWrapper>
+      </QueryClientProvider>
+    </I18nextProvider>
   )
 }
 
@@ -232,6 +245,14 @@ describe('T521: NotesTree - folder tree display', () => {
 
     // Empty state shows when no notes exist
     expect(screen.getByText(/no notes yet/i)).toBeInTheDocument()
+  })
+
+  it('falls back to English notes copy for Turkish', () => {
+    setupMocks([], [])
+    renderWithProviders(<NotesTree />, i18nTr)
+
+    expect(screen.getByText('No notes yet')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'New Note' })).toBeInTheDocument()
   })
 
   it('should render notes in tree structure', () => {
