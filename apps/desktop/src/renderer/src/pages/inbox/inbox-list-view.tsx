@@ -669,7 +669,7 @@ export function InboxListView({
 
       const MAX_SIZE = 50 * 1024 * 1024
       if (file.size > MAX_SIZE) {
-        toast.error('Image too large (max 50MB)')
+        toast.error(t('loading.imageTooLarge'))
         return
       }
 
@@ -684,10 +684,10 @@ export function InboxListView({
         if (result.success) {
           toast.success(t('view.itemCaptured'))
         } else {
-          throw new Error(result.error || 'Failed to capture image')
+          throw new Error(result.error || t('toast.failedCaptureImage'))
         }
       } catch (error) {
-        toast.error(extractErrorMessage(error, 'Failed to capture image'))
+        toast.error(extractErrorMessage(error, t('toast.failedCaptureImage')))
       } finally {
         setIsCapturingImage(false)
       }

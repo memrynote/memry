@@ -90,7 +90,8 @@
     "capturingImage": "Capturing image...",
     "dropImageTitle": "Drop image to capture",
     "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
-    "unsupportedImageType": "Unsupported image type: {type}"
+    "unsupportedImageType": "Unsupported image type: {type}",
+    "imageTooLarge": "Image too large (max 50MB)"
   },
   "toast": {
     "failedArchiveItem": "Failed to archive item",
@@ -101,6 +102,7 @@
     "failedSnooze": "Failed to snooze",
     "failedSnoozeItem": "Failed to snooze item",
     "failedApplyTags": "Failed to apply tags",
+    "failedCaptureImage": "Failed to capture image",
     "linkedToNote": "Linked to note",
     "linkedToNotes": "Linked to {count} notes",
     "filedTo": "Filed to {folder}",
