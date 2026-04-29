@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useMemo } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { Calendar, Folder, Flag } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
@@ -145,6 +146,7 @@ export const QuickAddInput = ({
   compact = false,
   projectColor = '#6B7280'
 }: QuickAddInputProps): React.JSX.Element => {
+  const { t } = useT('tasks')
   const [value, setValue] = useState('')
   const [isFocused, setIsFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -154,7 +156,7 @@ export const QuickAddInput = ({
     {
       key: 'q',
       action: () => inputRef.current?.focus(),
-      description: 'Focus quick add input'
+      description: t('quickAdd.focusDescription')
     }
   ])
 
@@ -465,7 +467,7 @@ export const QuickAddInput = ({
                     ? 'text-foreground/90 placeholder:text-muted-foreground/40'
                     : 'text-muted-foreground placeholder:text-muted-foreground/40'
               )}
-              aria-label="Quick add task"
+              aria-label={t('quickAdd.label')}
             />
           </div>
 

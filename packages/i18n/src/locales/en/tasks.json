@@ -1,6 +1,7 @@
 {
   "page": {
     "tabs": {
+      "label": "Task views",
       "today": "Today",
       "all": "All"
     },

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 
+import { useT } from '@memry/i18n/renderer'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import type { Task } from '@/data/sample-tasks'
 import type { Project, SortField } from '@/data/tasks-data'
@@ -38,6 +39,7 @@ export const KanbanBoard = ({
   selectedIds,
   onToggleSelect
 }: KanbanBoardProps): React.JSX.Element => {
+  const { t } = useT('tasks')
   const showProjectBadge = !selectedProjectId
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null)
   const boardRef = useRef<HTMLDivElement>(null)
@@ -147,7 +149,7 @@ export const KanbanBoard = ({
       tabIndex={0}
       onKeyDown={handleKeyDown}
       onClick={() => boardRef.current?.focus()}
-      aria-label="Kanban board"
+      aria-label={t('kanban.board')}
     >
       <ScrollArea className="h-full">
         <div className="flex gap-3 p-4 pb-8 h-full">

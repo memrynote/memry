@@ -1,16 +1,33 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeAll } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { I18nextProvider } from 'react-i18next'
+import type { i18n as I18nInstance } from 'i18next'
+import type { ReactNode } from 'react'
+import { createRendererI18n } from '@memry/i18n/renderer'
 
 import { GroupByDropdown } from './group-by-dropdown'
 import type { TaskSort } from '@/data/tasks-data'
 import { defaultSort } from '@/data/tasks-data'
+
+let i18nEn: I18nInstance
+
+beforeAll(async () => {
+  i18nEn = await createRendererI18n({ locale: 'en' })
+})
 
 const renderGroupByDropdown = (
   overrides: Partial<{ sort: TaskSort; onChange: (s: TaskSort) => void }> = {}
 ) => {
   const onChange = overrides.onChange ?? vi.fn()
   const sort = overrides.sort ?? defaultSort
-  return { onChange, ...render(<GroupByDropdown sort={sort} onChange={onChange} />) }
+  return {
+    onChange,
+    ...render(<GroupByDropdown sort={sort} onChange={onChange} />, {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <I18nextProvider i18n={i18nEn}>{children}</I18nextProvider>
+      )
+    })
+  }
 }
 
 describe('GroupByDropdown', () => {

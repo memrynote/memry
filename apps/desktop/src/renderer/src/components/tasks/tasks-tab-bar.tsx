@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { Settings, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -10,7 +11,6 @@ export type TasksInternalTab = 'today' | 'all'
 
 interface TabConfig {
   id: TasksInternalTab
-  label: string
 }
 
 interface TasksTabBarProps {
@@ -31,10 +31,7 @@ interface TasksTabBarProps {
   className?: string
 }
 
-const TABS: TabConfig[] = [
-  { id: 'today', label: 'Today' },
-  { id: 'all', label: 'All' }
-]
+const TABS: TabConfig[] = [{ id: 'today' }, { id: 'all' }]
 
 export const TasksTabBar = ({
   activeTab,
@@ -50,6 +47,7 @@ export const TasksTabBar = ({
   onUnstarSavedFilter,
   className
 }: TasksTabBarProps): React.JSX.Element => {
+  const { t } = useT('tasks')
   const tabRefs = useRef<Map<TasksInternalTab, HTMLButtonElement>>(new Map())
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false)
 
@@ -102,6 +100,8 @@ export const TasksTabBar = ({
   const selectedProject = selectedProjectId
     ? activeProjects.find((p) => p.id === selectedProjectId)
     : null
+  const getTabLabel = (tabId: TasksInternalTab): string =>
+    tabId === 'today' ? t('page.tabs.today') : t('page.tabs.all')
 
   return (
     <div
@@ -114,7 +114,7 @@ export const TasksTabBar = ({
       <div
         className="flex items-center shrink-0 rounded-[5px] overflow-clip border border-border"
         role="tablist"
-        aria-label="Task views"
+        aria-label={t('page.tabs.label')}
       >
         {TABS.map((tab, index) => {
           const isActive = activeTab === tab.id && !activeSavedFilterId
@@ -140,7 +140,7 @@ export const TasksTabBar = ({
                   : 'text-muted-foreground hover:text-foreground/90 hover:bg-surface-active/50'
               )}
             >
-              <span className="text-[12px] leading-4">{tab.label}</span>
+              <span className="text-[12px] leading-4">{getTabLabel(tab.id)}</span>
               <span
                 className={cn(
                   'text-[9px] font-[family-name:var(--font-mono)] leading-3 tabular-nums min-w-[2ch] text-center',
@@ -177,7 +177,7 @@ export const TasksTabBar = ({
               </button>
               <button
                 type="button"
-                aria-label={`Unstar ${sf.name}`}
+                aria-label={t('page.projectScope.unstarSavedFilter', { name: sf.name })}
                 onClick={(e) => {
                   e.stopPropagation()
                   onUnstarSavedFilter?.(sf.id)
@@ -229,6 +229,7 @@ function ProjectDropdown({
   onOpenChange,
   selectedProject
 }: ProjectDropdownProps): React.JSX.Element {
+  const { t } = useT('tasks')
   const [search, setSearch] = useState('')
 
   const filtered = useMemo(() => {
@@ -259,7 +260,9 @@ function ProjectDropdown({
             )}
             style={selectedProject ? { backgroundColor: selectedProject.color } : undefined}
           />
-          <span className="text-[12px] leading-4">{selectedProject?.name ?? 'All projects'}</span>
+          <span className="text-[12px] leading-4">
+            {selectedProject?.name ?? t('page.projectScope.allProjects')}
+          </span>
           <svg
             width="10"
             height="10"
@@ -286,7 +289,7 @@ function ProjectDropdown({
           <FilterSearchHeader
             value={search}
             onChange={setSearch}
-            placeholder="Search projects..."
+            placeholder={t('page.projectScope.searchProjects')}
           />
           <div className="flex flex-col p-1 max-h-64 overflow-y-auto">
             <button
@@ -298,7 +301,9 @@ function ProjectDropdown({
               )}
             >
               <div className="shrink-0 rounded-[3px] border-[1.2px] border-solid border-border size-2.5" />
-              <span className="text-[13px] text-muted-foreground/60 leading-4">All projects</span>
+              <span className="text-[13px] text-muted-foreground/60 leading-4">
+                {t('page.projectScope.allProjects')}
+              </span>
               {!selectedProjectId && <CheckMark className="ml-auto text-primary" />}
             </button>
             {filtered.map((p) => {
@@ -353,7 +358,7 @@ function ProjectDropdown({
                             handleOpenChange(false)
                           }}
                           className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/project-item:opacity-100 transition-opacity"
-                          aria-label={`Edit ${p.name}`}
+                          aria-label={t('page.projectScope.editProject', { name: p.name })}
                         >
                           <Settings className="size-3 text-text-tertiary" />
                         </button>
