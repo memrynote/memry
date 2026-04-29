@@ -280,7 +280,16 @@
     "summary": "Reminder: {date}",
     "summaryWithMore": "Reminder: {date} (+{count} more)",
     "hasReminders": "Has reminders",
-    "setReminder": "Set reminder"
+    "setReminder": "Set reminder",
+    "toast": {
+      "set": "Reminder set",
+      "setForHighlight": "Reminder set for highlighted text",
+      "setFailed": "Failed to set reminder",
+      "deleted": "Reminder deleted",
+      "deleteFailed": "Failed to delete reminder",
+      "dismissed": "Reminder dismissed",
+      "dismissFailed": "Failed to dismiss reminder"
+    }
   },
   "linkedTasks": {
     "title": "Linked Tasks",
