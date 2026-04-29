@@ -105,19 +105,17 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
 
   const handleRenameSubmit = useCallback(
     async (newName: string) => {
+      const tSettings = getI18n().getFixedT(null, 'settings')
       try {
         const result = await tagsService.renameTag({ oldName: tag, newName })
         if (!result.success) {
-          throw new Error(result.error ?? 'Failed to rename tag')
+          throw new Error(result.error ?? tSettings('tags.toasts.renameFailed'))
         }
-        toast.success(`Renamed #${tag} to #${newName}`)
+        toast.success(tSettings('tags.toasts.renamed', { oldName: tag, newName }))
         goBack()
       } catch (err) {
         log.error('Failed to rename tag', err)
-        const message = extractErrorMessage(
-          err,
-          getI18n().getFixedT(null, 'settings')('tags.toasts.renameFailed')
-        )
+        const message = extractErrorMessage(err, tSettings('tags.toasts.renameFailed'))
         toast.error(message)
         throw err instanceof Error ? err : new Error(message)
       }
@@ -126,20 +124,19 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
   )
 
   const handleDeleteConfirm = useCallback(async () => {
+    const tSettings = getI18n().getFixedT(null, 'settings')
     try {
       const result = await tagsService.deleteTag(tag)
       if (!result.success) {
-        throw new Error(result.error ?? 'Failed to delete tag')
+        throw new Error(result.error ?? tSettings('tags.toasts.deleteFailed'))
       }
-      toast.success(`Deleted #${tag}`)
+      toast.success(tSettings('tags.toasts.deleted', { name: tag, count }))
       goBack()
     } catch (err) {
       log.error('Failed to delete tag', err)
-      toast.error(
-        extractErrorMessage(err, getI18n().getFixedT(null, 'settings')('tags.toasts.deleteFailed'))
-      )
+      toast.error(extractErrorMessage(err, tSettings('tags.toasts.deleteFailed')))
     }
-  }, [goBack, tag])
+  }, [goBack, tag, count])
 
   useEffect(() => {
     const unsubscribeRenamed = onTagRenamed((event) => {
@@ -309,16 +306,16 @@ interface NoteItemProps {
 
 function NoteItem({ note, isPinned, onClick, onPin, onUnpin }: NoteItemProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
-  // Format date
+  const { t: tCommon } = useT('common')
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
     const now = new Date()
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
 
-    if (diffDays === 0) return 'Today'
-    if (diffDays === 1) return 'Yesterday'
-    if (diffDays < 7) return `${diffDays} days ago`
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    if (diffDays === 0) return tCommon('dateRelative.today')
+    if (diffDays === 1) return tCommon('dateRelative.yesterday')
+    if (diffDays < 7) return tCommon('dateRelative.daysAgo', { count: diffDays })
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
   }
 
   const handlePinClick = (e: React.MouseEvent) => {

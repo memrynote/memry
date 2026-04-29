@@ -45,6 +45,26 @@
     "delete": "حذف",
     "close": "إغلاق"
   },
+  "dateRelative": {
+    "today": "اليوم",
+    "yesterday": "أمس",
+    "daysAgo": "{count, plural, zero {اليوم} one {منذ يوم واحد} two {منذ يومين} few {منذ # أيام} many {منذ # يوماً} other {منذ # يوم}}"
+  },
+  "tabs": {
+    "pin": "تثبيت علامة التبويب",
+    "unpin": "إلغاء تثبيت علامة التبويب",
+    "contextMenu": {
+      "close": "إغلاق",
+      "closeOthers": "إغلاق الأخرى",
+      "closeToRight": "إغلاق إلى اليسار",
+      "closeAll": "إغلاق الكل",
+      "duplicate": "تكرار علامة التبويب",
+      "splitRight": "تقسيم لليسار",
+      "splitDown": "تقسيم لأسفل",
+      "copyPath": "نسخ المسار",
+      "revealInSidebar": "إظهار في الشريط الجانبي"
+    }
+  },
   "count": {
     "item": "{count, plural, zero {لا توجد عناصر} one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصراً} other {# عنصر}}",
     "note": "{count, plural, zero {لا توجد ملاحظات} one {ملاحظة واحدة} two {ملاحظتان} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}",

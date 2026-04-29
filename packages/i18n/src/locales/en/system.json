@@ -16,7 +16,19 @@
       "filterSupported": "Supported Files",
       "filterAll": "All Files"
     },
-    "exportCancelled": "Export cancelled"
+    "exportCancelled": "Export cancelled",
+    "update": {
+      "availableTitle": "Update available",
+      "availableMessage": "Memry {version} is available.",
+      "availableDetailFallback": "Download the update now?",
+      "buttonDownload": "Download",
+      "buttonLater": "Later",
+      "readyTitle": "Update ready",
+      "readyMessage": "Memry {version} has been downloaded.",
+      "readyDetailFallback": "Restart Memry to finish installing the update.",
+      "buttonRestartNow": "Restart now",
+      "releaseNotesLabel": "Release notes:"
+    }
   },
   "notification": {
     "reminder": {

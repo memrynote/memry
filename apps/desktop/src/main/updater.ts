@@ -202,14 +202,15 @@ async function promptToDownload(info: UpdateInfo): Promise<void> {
 
   downloadPromptVisible = true
   try {
-    const detail = buildPromptDetail(info, 'Download the update now?')
+    const t = getMainI18n().getFixedT(null, 'system')
+    const detail = buildPromptDetail(info, t('dialog.update.availableDetailFallback'))
     const result = await dialog.showMessageBox({
       type: 'info',
-      buttons: ['Download', 'Later'],
+      buttons: [t('dialog.update.buttonDownload'), t('dialog.update.buttonLater')],
       defaultId: 0,
       cancelId: 1,
-      title: 'Update available',
-      message: `Memry ${info.version} is available.`,
+      title: t('dialog.update.availableTitle'),
+      message: t('dialog.update.availableMessage', { version: info.version }),
       detail
     })
 
@@ -228,14 +229,15 @@ async function promptToRestart(info: UpdateInfo): Promise<void> {
 
   restartPromptVisible = true
   try {
-    const detail = buildPromptDetail(info, 'Restart Memry to finish installing the update.')
+    const t = getMainI18n().getFixedT(null, 'system')
+    const detail = buildPromptDetail(info, t('dialog.update.readyDetailFallback'))
     const result = await dialog.showMessageBox({
       type: 'info',
-      buttons: ['Restart now', 'Later'],
+      buttons: [t('dialog.update.buttonRestartNow'), t('dialog.update.buttonLater')],
       defaultId: 0,
       cancelId: 1,
-      title: 'Update ready',
-      message: `Memry ${info.version} has been downloaded.`,
+      title: t('dialog.update.readyTitle'),
+      message: t('dialog.update.readyMessage', { version: info.version }),
       detail
     })
 
@@ -253,8 +255,9 @@ function buildPromptDetail(info: UpdateInfo, fallback: string): string {
     return fallback
   }
 
+  const t = getMainI18n().getFixedT(null, 'system')
   const trimmedNotes = notes.length > 1200 ? `${notes.slice(0, 1197)}...` : notes
-  return `${fallback}\n\nRelease notes:\n${trimmedNotes}`
+  return `${fallback}\n\n${t('dialog.update.releaseNotesLabel')}\n${trimmedNotes}`
 }
 
 function normalizeReleaseNotes(info: UpdateInfo): string | null {
