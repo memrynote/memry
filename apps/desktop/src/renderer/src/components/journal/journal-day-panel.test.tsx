@@ -1,6 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '@tests/utils/render'
+import { I18nextProvider } from 'react-i18next'
+import type { i18n as I18nInstance } from 'i18next'
+import type { ReactElement } from 'react'
+import { createRendererI18n } from '@memry/i18n/renderer'
 import { JournalDayPanel } from './journal-day-panel'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 
@@ -101,7 +105,17 @@ const SAMPLE_ITEMS: CalendarProjectionItem[] = [
   }
 ]
 
+let i18nInstance: I18nInstance
+
+function renderPanel(ui: ReactElement) {
+  return renderWithProviders(<I18nextProvider i18n={i18nInstance}>{ui}</I18nextProvider>)
+}
+
 describe('JournalDayPanel', () => {
+  beforeAll(async () => {
+    i18nInstance = await createRendererI18n({ locale: 'en' })
+  })
+
   beforeEach(() => {
     mockUseCalendarRange.mockReset()
     mockListTasks.mockReset()
@@ -120,7 +134,7 @@ describe('JournalDayPanel', () => {
   })
 
   it('uses projected calendar items for the schedule instead of placeholder events', async () => {
-    renderWithProviders(<JournalDayPanel date="2026-04-14" />)
+    renderPanel(<JournalDayPanel date="2026-04-14" />)
 
     await waitFor(() =>
       expect(mockUseCalendarRange).toHaveBeenCalledWith(

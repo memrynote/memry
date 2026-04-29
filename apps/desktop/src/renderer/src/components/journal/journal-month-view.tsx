@@ -5,9 +5,15 @@
 
 import { useMemo } from 'react'
 import { cn } from '@/lib/utils'
-import { getDaysInMonth, formatDateParts, getTodayString } from '@/lib/journal-utils'
+import {
+  createJournalDateLabels,
+  getDaysInMonth,
+  formatDateParts,
+  getTodayString
+} from '@/lib/journal-utils'
 import { JournalEntryListItem } from './journal-entry-list-item'
 import type { HeatmapEntry } from '@/hooks/use-journal'
+import { useT } from '@memry/i18n/renderer'
 
 // =============================================================================
 // TYPES
@@ -47,6 +53,8 @@ export function JournalMonthView({
   onDayClick,
   className
 }: JournalMonthViewProps): React.JSX.Element {
+  const { t, i18n } = useT('journal')
+  const dateLabels = useMemo(() => createJournalDateLabels(t), [t, i18n.language])
   const today = getTodayString()
 
   // Build heatmap lookup
@@ -67,7 +75,7 @@ export function JournalMonthView({
       {/* Day List */}
       <div className="flex flex-col">
         {reversedDays.map((dayData) => {
-          const dateParts = formatDateParts(dayData.date)
+          const dateParts = formatDateParts(dayData.date, dateLabels)
           const entryData = entries.get(dayData.date)
           const heatmapEntry = heatmapLookup.get(dayData.date)
           const heatmapLevel = heatmapEntry?.level ?? 0
@@ -91,7 +99,7 @@ export function JournalMonthView({
       {/* Empty State */}
       {days.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12 text-center">
-          <p className="text-muted-foreground">No days in this month</p>
+          <p className="text-muted-foreground">{t('empty.noDaysInMonth')}</p>
         </div>
       )}
     </div>

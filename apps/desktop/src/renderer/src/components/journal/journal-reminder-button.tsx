@@ -17,6 +17,7 @@ import { ReminderPicker } from '@/components/reminder'
 import { formatReminderDate } from '@/components/reminder/reminder-presets'
 import { useJournalReminders } from '@/hooks/use-journal-reminders'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // Types
@@ -38,6 +39,7 @@ export function JournalReminderButton({
   disabled = false,
   className
 }: JournalReminderButtonProps): React.ReactElement {
+  const { t } = useT('journal')
   const {
     settings: { clockFormat }
   } = useGeneralSettings()
@@ -51,11 +53,16 @@ export function JournalReminderButton({
   // Format tooltip content
   const tooltipContent = hasActiveReminder
     ? nextReminder
-      ? `Reminder: ${formatReminderDate(new Date(nextReminder.remindAt), clockFormat)}${
-          activeReminderCount > 1 ? ` (+${activeReminderCount - 1} more)` : ''
-        }`
-      : 'Has reminders'
-    : 'Set reminder to revisit'
+      ? activeReminderCount > 1
+        ? t('reminder.tooltipMore', {
+            date: formatReminderDate(new Date(nextReminder.remindAt), clockFormat),
+            count: activeReminderCount - 1
+          })
+        : t('reminder.tooltip', {
+            date: formatReminderDate(new Date(nextReminder.remindAt), clockFormat)
+          })
+      : t('reminder.hasReminders')
+    : t('reminder.setToRevisit')
 
   return (
     <Tooltip>
