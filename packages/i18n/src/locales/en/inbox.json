@@ -11,6 +11,7 @@
     "itemCaptured": "Item captured",
     "searchArchivedTitle": "Search archived items",
     "searchPlaceholder": "Search...",
+    "archivedItemsAria": "Archived items",
     "snoozed": {
       "show": "Show snoozed items",
       "showWithCount": "Show snoozed items ({count})",
@@ -189,7 +190,9 @@
     "closePanel": "Close panel",
     "resizeFiling": "Resize filing section",
     "restore": "Restore",
+    "restoreToInbox": "Restore to inbox",
     "delete": "Delete",
+    "deletePermanently": "Delete permanently",
     "archive": "Archive",
     "file": "File",
     "keyboardHint": "{modifier}⏎ file · 1-5 folder · Esc close",
