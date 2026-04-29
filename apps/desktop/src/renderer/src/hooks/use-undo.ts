@@ -16,6 +16,7 @@
 import { useCallback, useEffect } from 'react'
 import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Hook:Undo')
 
@@ -142,6 +143,8 @@ interface UseUndoTrackerReturn {
  * Used by components that perform undoable operations.
  */
 export const useUndoTracker = (): UseUndoTrackerReturn => {
+  const { t } = useT('common')
+
   // Force re-render when stack changes
   const forceUpdate = useCallback(() => {}, [])
 
@@ -167,20 +170,20 @@ export const useUndoTracker = (): UseUndoTrackerReturn => {
   const undo = useCallback((): boolean => {
     const entry = popUndoEntry()
     if (!entry) {
-      toast.info('Nothing to undo')
+      toast.info(t('toast.nothingToUndo'))
       return false
     }
 
     try {
       entry.undoFn()
-      toast.success(`Undone: ${entry.description}`)
+      toast.success(t('toast.undone', { description: entry.description }))
       return true
     } catch (error) {
       log.error('Error executing undo:', error)
-      toast.error('Failed to undo action')
+      toast.error(t('toast.undoFailed'))
       return false
     }
-  }, [])
+  }, [t])
 
   const lastEntry = getLastUndoEntry()
 
@@ -202,6 +205,8 @@ export const useUndoTracker = (): UseUndoTrackerReturn => {
  * Should be used once in the app, typically at the top level.
  */
 export const useUndoKeyboardShortcut = (): void => {
+  const { t } = useT('common')
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Cmd+Z on Mac, Ctrl+Z on Windows/Linux
@@ -226,23 +231,23 @@ export const useUndoKeyboardShortcut = (): void => {
           if (popped) {
             try {
               popped.undoFn()
-              toast.success(`Undone: ${popped.description}`)
+              toast.success(t('toast.undone', { description: popped.description }))
             } catch (error) {
               log.error('Keyboard shortcut undo error:', error)
-              toast.error('Failed to undo action')
+              toast.error(t('toast.undoFailed'))
             }
           }
         } else {
           // Still prevent default but show info
           e.preventDefault()
-          toast.info('Nothing to undo', { duration: 2000 })
+          toast.info(t('toast.nothingToUndo'), { duration: 2000 })
         }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  }, [t])
 }
 
 // ============================================================================
