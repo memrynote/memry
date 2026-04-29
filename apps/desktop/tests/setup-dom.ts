@@ -7,6 +7,31 @@ import '@testing-library/jest-dom/vitest'
 import { vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
 import { afterEach } from 'vitest'
+import i18next from 'i18next'
+import { initReactI18next } from 'react-i18next'
+import { IcuFormatter } from '@memry/i18n/shared'
+import { RESOURCES } from '@memry/i18n/locales'
+
+// ============================================================================
+// i18n singleton: initialize English so components using useT without an
+// explicit <I18nextProvider> get real translations (not raw keys). Tests that
+// need a specific locale wrap the render in their own <I18nextProvider>.
+// initImmediate: false makes init synchronous.
+// ============================================================================
+
+void i18next
+  .use(IcuFormatter)
+  .use(initReactI18next)
+  .init({
+    lng: 'en',
+    fallbackLng: 'en',
+    ns: ['common', 'inbox', 'notes', 'journal', 'calendar', 'settings', 'errors', 'menu'],
+    defaultNS: 'common',
+    resources: RESOURCES,
+    interpolation: { escapeValue: false },
+    react: { useSuspense: false },
+    initImmediate: false
+  })
 
 vi.mock('electron-log/renderer', () => {
   const createScopedLogger = () => ({

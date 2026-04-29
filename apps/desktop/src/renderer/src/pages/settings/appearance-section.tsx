@@ -11,6 +11,7 @@ import { Sun, Moon, Monitor, FileText } from '@/lib/icons'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 import {
   SettingsHeader,
   SettingsGroup,
@@ -19,14 +20,14 @@ import {
 } from '@/components/settings/settings-primitives'
 
 const ACCENT_PRESETS = [
-  { value: '#6366f1', label: 'Indigo' },
-  { value: '#f59e0b', label: 'Amber' },
-  { value: '#10b981', label: 'Emerald' },
-  { value: '#ef4444', label: 'Red' },
-  { value: '#8b5cf6', label: 'Violet' },
-  { value: '#06b6d4', label: 'Cyan' },
-  { value: '#ec4899', label: 'Pink' },
-  { value: '#f97316', label: 'Orange' }
+  { value: '#6366f1', labelKey: 'appearance.accent.presets.indigo' },
+  { value: '#f59e0b', labelKey: 'appearance.accent.presets.amber' },
+  { value: '#10b981', labelKey: 'appearance.accent.presets.emerald' },
+  { value: '#ef4444', labelKey: 'appearance.accent.presets.red' },
+  { value: '#8b5cf6', labelKey: 'appearance.accent.presets.violet' },
+  { value: '#06b6d4', labelKey: 'appearance.accent.presets.cyan' },
+  { value: '#ec4899', labelKey: 'appearance.accent.presets.pink' },
+  { value: '#f97316', labelKey: 'appearance.accent.presets.orange' }
 ] as const
 
 const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/
@@ -83,11 +84,11 @@ function SegmentedControl({
   )
 }
 
-const THEME_OPTIONS: SegmentOption[] = [
-  { value: 'light', label: 'Warm', icon: Sun },
-  { value: 'white', label: 'White', icon: FileText },
-  { value: 'dark', label: 'Dark', icon: Moon },
-  { value: 'system', label: 'System', icon: Monitor }
+const THEME_OPTIONS = [
+  { value: 'light', labelKey: 'appearance.theme.options.light', icon: Sun },
+  { value: 'white', labelKey: 'appearance.theme.options.white', icon: FileText },
+  { value: 'dark', labelKey: 'appearance.theme.options.dark', icon: Moon },
+  { value: 'system', labelKey: 'appearance.theme.options.system', icon: Monitor }
 ]
 
 const FONT_SIZE_OPTIONS: SegmentOption[] = [
@@ -97,25 +98,32 @@ const FONT_SIZE_OPTIONS: SegmentOption[] = [
 ]
 
 export function AppearanceSettings() {
+  const { t } = useT('settings')
   const { settings, isLoading, updateSettings } = useGeneralSettings()
   const [customHex, setCustomHex] = useState('')
+
+  const themeOptions: SegmentOption[] = THEME_OPTIONS.map((option) => ({
+    value: option.value,
+    label: t(option.labelKey),
+    icon: option.icon
+  }))
 
   const handleThemeChange = useCallback(
     async (value: string) => {
       if (!value) return
       const theme = value as 'light' | 'dark' | 'white' | 'system'
       const success = await updateSettings({ theme })
-      if (!success) toast.error('Failed to update theme')
+      if (!success) toast.error(t('appearance.theme.error'))
     },
-    [updateSettings]
+    [t, updateSettings]
   )
 
   const handleAccentChange = useCallback(
     async (hex: string) => {
       const success = await updateSettings({ accentColor: hex })
-      if (!success) toast.error('Failed to update accent color')
+      if (!success) toast.error(t('appearance.accent.error'))
     },
-    [updateSettings]
+    [t, updateSettings]
   )
 
   const handleCustomHexSubmit = useCallback(() => {
@@ -130,9 +138,9 @@ export function AppearanceSettings() {
       if (!value) return
       const fontSize = value as 'small' | 'medium' | 'large'
       const success = await updateSettings({ fontSize })
-      if (!success) toast.error('Failed to update font size')
+      if (!success) toast.error(t('appearance.typography.fontSizeError'))
     },
-    [updateSettings]
+    [t, updateSettings]
   )
 
   const handleFontFamilyChange = useCallback(
@@ -146,37 +154,48 @@ export function AppearanceSettings() {
         | 'geist'
         | 'inter'
       const success = await updateSettings({ fontFamily })
-      if (!success) toast.error('Failed to update font family')
+      if (!success) toast.error(t('appearance.typography.fontFamilyError'))
     },
-    [updateSettings]
+    [t, updateSettings]
   )
 
   if (isLoading) {
     return (
       <div className="flex flex-col">
-        <SettingsHeader title="Appearance" subtitle="Loading settings..." />
+        <SettingsHeader
+          title={t('appearance.header.title')}
+          subtitle={t('appearance.header.loading')}
+        />
       </div>
     )
   }
 
   return (
     <div className="flex flex-col text-xs/4">
-      <SettingsHeader title="Appearance" subtitle="Customize the look and feel" />
+      <SettingsHeader
+        title={t('appearance.header.title')}
+        subtitle={t('appearance.header.subtitle')}
+      />
 
-      <SettingsGroup label="Theme">
-        <SettingRow label="Color Mode" description="Choose your preferred theme">
+      <SettingsGroup label={t('appearance.groups.theme')}>
+        <SettingRow
+          label={t('appearance.theme.colorMode.label')}
+          description={t('appearance.theme.colorMode.description')}
+        >
           <SegmentedControl
-            options={THEME_OPTIONS}
+            options={themeOptions}
             value={settings.theme}
             onValueChange={handleThemeChange}
-            ariaLabel="Color mode"
+            ariaLabel={t('appearance.theme.colorMode.aria')}
           />
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup label="Accent Color">
+      <SettingsGroup label={t('appearance.groups.accentColor')}>
         <div className="flex items-center justify-between py-3.5 px-4">
-          <span className="font-medium text-[13px]/4 text-foreground">Pick an accent color</span>
+          <span className="font-medium text-[13px]/4 text-foreground">
+            {t('appearance.accent.pick')}
+          </span>
           <div className="flex items-center shrink-0 gap-2">
             {ACCENT_PRESETS.map((preset) => (
               <button
@@ -191,16 +210,19 @@ export function AppearanceSettings() {
                       ? `var(--background) 0px 0px 0px 2px, ${preset.value}80 0px 0px 0px 3.5px`
                       : 'none'
                 }}
-                title={preset.label}
+                title={t(preset.labelKey)}
               />
             ))}
           </div>
         </div>
 
-        <SettingRow label="Custom Color" description="Enter a hex value">
+        <SettingRow
+          label={t('appearance.accent.custom.label')}
+          description={t('appearance.accent.custom.description')}
+        >
           <div className="flex items-center shrink-0 gap-2">
             <Input
-              placeholder="#000000"
+              placeholder={t('appearance.accent.custom.placeholder')}
               value={customHex || settings.accentColor}
               onChange={(e) => setCustomHex(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCustomHexSubmit()}
@@ -223,29 +245,49 @@ export function AppearanceSettings() {
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup label="Typography">
-        <SettingRow label="Font Size" description="Adjust the base text size">
+      <SettingsGroup label={t('appearance.groups.typography')}>
+        <SettingRow
+          label={t('appearance.typography.fontSize.label')}
+          description={t('appearance.typography.fontSize.description')}
+        >
           <SegmentedControl
             options={FONT_SIZE_OPTIONS}
             value={settings.fontSize}
             onValueChange={handleFontSizeChange}
-            ariaLabel="Font size"
+            ariaLabel={t('appearance.typography.fontSize.aria')}
           />
         </SettingRow>
 
-        <SettingRow label="Font Family" description="Primary typeface for the interface">
+        <SettingRow
+          label={t('appearance.typography.fontFamily.label')}
+          description={t('appearance.typography.fontFamily.description')}
+        >
           <Select value={settings.fontFamily} onValueChange={handleFontFamilyChange}>
             <SelectTrigger className={COMPACT_SELECT}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="system">System Default</SelectItem>
-              <SelectItem value="sans-serif">Sans-serif</SelectItem>
-              <SelectItem value="serif">Serif (Crimson Pro)</SelectItem>
-              <SelectItem value="gelasio">Gelasio</SelectItem>
-              <SelectItem value="geist">Geist</SelectItem>
-              <SelectItem value="inter">Inter</SelectItem>
-              <SelectItem value="monospace">Monospace</SelectItem>
+              <SelectItem value="system">
+                {t('appearance.typography.fontFamily.options.system')}
+              </SelectItem>
+              <SelectItem value="sans-serif">
+                {t('appearance.typography.fontFamily.options.sansSerif')}
+              </SelectItem>
+              <SelectItem value="serif">
+                {t('appearance.typography.fontFamily.options.serif')}
+              </SelectItem>
+              <SelectItem value="gelasio">
+                {t('appearance.typography.fontFamily.options.gelasio')}
+              </SelectItem>
+              <SelectItem value="geist">
+                {t('appearance.typography.fontFamily.options.geist')}
+              </SelectItem>
+              <SelectItem value="inter">
+                {t('appearance.typography.fontFamily.options.inter')}
+              </SelectItem>
+              <SelectItem value="monospace">
+                {t('appearance.typography.fontFamily.options.monospace')}
+              </SelectItem>
             </SelectContent>
           </Select>
         </SettingRow>

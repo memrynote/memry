@@ -4,6 +4,7 @@ import { Folder, FolderOpen, ArrowRight } from '@/lib/icons'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { EmojiPicker } from '@/components/note/note-title/EmojiPicker'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface FolderIconButtonProps {
   icon: string | null
@@ -23,6 +24,7 @@ export function FolderIconButton({
   pickerOpen,
   onPickerOpenChange
 }: FolderIconButtonProps) {
+  const { t: tPhaseF } = useT('common')
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const [portalPosition, setPortalPosition] = useState<{ top: number; left: number } | null>(null)
 
@@ -120,7 +122,7 @@ export function FolderIconButton({
         type="button"
         onClick={handleIconClick}
         className="flex h-5 w-5 items-center justify-center rounded"
-        aria-label="Set folder icon"
+        aria-label={tPhaseF('phaseF.componentsFolderIconButton.setFolderIcon')}
       >
         {folderIcon}
       </button>

@@ -4,14 +4,31 @@
  * Tests for the QuickAddInput component with quick add parsing and preview.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { I18nextProvider } from 'react-i18next'
+import type { i18n as I18nInstance } from 'i18next'
+import type { ReactElement, ReactNode } from 'react'
+import { createRendererI18n } from '@memry/i18n/renderer'
 import { QuickAddInput } from './quick-add-input'
 import type { Project } from '@/data/tasks-data'
 
 // Mock scrollIntoView for jsdom
 Element.prototype.scrollIntoView = vi.fn()
+
+let i18nEn: I18nInstance
+
+function renderWithI18n(ui: ReactElement) {
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <I18nextProvider i18n={i18nEn}>{children}</I18nextProvider>
+  )
+  return render(ui, { wrapper: Wrapper })
+}
+
+beforeAll(async () => {
+  i18nEn = await createRendererI18n({ locale: 'en' })
+})
 
 // ============================================================================
 // Test Data
@@ -66,20 +83,20 @@ describe('T517: QuickAddInput - basic input', () => {
   })
 
   it('should render with placeholder', () => {
-    render(<QuickAddInput {...defaultProps} />)
+    renderWithI18n(<QuickAddInput {...defaultProps} />)
 
     expect(screen.getByPlaceholderText(/add a task/i)).toBeInTheDocument()
   })
 
   it('should render with custom placeholder', () => {
-    render(<QuickAddInput {...defaultProps} placeholder="Create a new task..." />)
+    renderWithI18n(<QuickAddInput {...defaultProps} placeholder="Create a new task..." />)
 
     expect(screen.getByPlaceholderText('Create a new task...')).toBeInTheDocument()
   })
 
   it('should update input value on typing', async () => {
     const user = userEvent.setup()
-    render(<QuickAddInput {...defaultProps} />)
+    renderWithI18n(<QuickAddInput {...defaultProps} />)
 
     const input = screen.getByRole('textbox', { name: /quick add task/i })
     await user.type(input, 'Buy groceries')
@@ -89,7 +106,7 @@ describe('T517: QuickAddInput - basic input', () => {
 
   it('should call onAdd with title on Enter', async () => {
     const user = userEvent.setup()
-    render(<QuickAddInput {...defaultProps} />)
+    renderWithI18n(<QuickAddInput {...defaultProps} />)
 
     const input = screen.getByRole('textbox', { name: /quick add task/i })
     await user.type(input, 'Buy groceries{enter}')
@@ -106,7 +123,7 @@ describe('T517: QuickAddInput - basic input', () => {
 
   it('should clear input after submission', async () => {
     const user = userEvent.setup()
-    render(<QuickAddInput {...defaultProps} />)
+    renderWithI18n(<QuickAddInput {...defaultProps} />)
 
     const input = screen.getByRole('textbox', { name: /quick add task/i })
     await user.type(input, 'Buy groceries{enter}')
@@ -116,7 +133,7 @@ describe('T517: QuickAddInput - basic input', () => {
 
   it('should clear input on Escape', async () => {
     const user = userEvent.setup()
-    render(<QuickAddInput {...defaultProps} />)
+    renderWithI18n(<QuickAddInput {...defaultProps} />)
 
     const input = screen.getByRole('textbox', { name: /quick add task/i })
     await user.type(input, 'Some task')
@@ -127,7 +144,7 @@ describe('T517: QuickAddInput - basic input', () => {
 
   it('should not submit empty input', async () => {
     const user = userEvent.setup()
-    render(<QuickAddInput {...defaultProps} />)
+    renderWithI18n(<QuickAddInput {...defaultProps} />)
 
     const input = screen.getByRole('textbox', { name: /quick add task/i })
     await user.click(input)
@@ -138,7 +155,7 @@ describe('T517: QuickAddInput - basic input', () => {
 
   it('should not submit whitespace-only input', async () => {
     const user = userEvent.setup()
-    render(<QuickAddInput {...defaultProps} />)
+    renderWithI18n(<QuickAddInput {...defaultProps} />)
 
     const input = screen.getByRole('textbox', { name: /quick add task/i })
     await user.type(input, '   {enter}')
@@ -148,7 +165,7 @@ describe('T517: QuickAddInput - basic input', () => {
 
   it('should call onOpenModal on Cmd+Enter', async () => {
     const user = userEvent.setup()
-    render(<QuickAddInput {...defaultProps} />)
+    renderWithI18n(<QuickAddInput {...defaultProps} />)
 
     const input = screen.getByRole('textbox', { name: /quick add task/i })
     await user.type(input, 'Buy groceries')
@@ -160,7 +177,7 @@ describe('T517: QuickAddInput - basic input', () => {
 
   it('should maintain focus after submission', async () => {
     const user = userEvent.setup()
-    render(<QuickAddInput {...defaultProps} />)
+    renderWithI18n(<QuickAddInput {...defaultProps} />)
 
     const input = screen.getByRole('textbox', { name: /quick add task/i })
     await user.type(input, 'Buy groceries{enter}')
@@ -187,7 +204,7 @@ describe('T518: QuickAddInput - parsing preview', () => {
   describe('date parsing', () => {
     it('should show preview for !today', async () => {
       const user = userEvent.setup()
-      render(<QuickAddInput {...defaultProps} />)
+      renderWithI18n(<QuickAddInput {...defaultProps} />)
 
       const input = screen.getByRole('textbox', { name: /quick add task/i })
       await user.type(input, 'Buy groceries !today')
@@ -198,7 +215,7 @@ describe('T518: QuickAddInput - parsing preview', () => {
 
     it('should show preview for !tomorrow', async () => {
       const user = userEvent.setup()
-      render(<QuickAddInput {...defaultProps} />)
+      renderWithI18n(<QuickAddInput {...defaultProps} />)
 
       const input = screen.getByRole('textbox', { name: /quick add task/i })
       await user.type(input, 'Buy groceries !tomorrow')
@@ -209,7 +226,7 @@ describe('T518: QuickAddInput - parsing preview', () => {
 
     it('should show preview for !mon (day of week)', async () => {
       const user = userEvent.setup()
-      render(<QuickAddInput {...defaultProps} />)
+      renderWithI18n(<QuickAddInput {...defaultProps} />)
 
       const input = screen.getByRole('textbox', { name: /quick add task/i })
       await user.type(input, 'Meeting !mon')
@@ -221,7 +238,7 @@ describe('T518: QuickAddInput - parsing preview', () => {
 
     it('should parse date and strip from title', async () => {
       const user = userEvent.setup()
-      render(<QuickAddInput {...defaultProps} />)
+      renderWithI18n(<QuickAddInput {...defaultProps} />)
 
       const input = screen.getByRole('textbox', { name: /quick add task/i })
       // Type the task with date syntax
@@ -241,7 +258,7 @@ describe('T518: QuickAddInput - parsing preview', () => {
   describe('priority parsing', () => {
     it('should show preview for !!high', async () => {
       const user = userEvent.setup()
-      render(<QuickAddInput {...defaultProps} />)
+      renderWithI18n(<QuickAddInput {...defaultProps} />)
 
       const input = screen.getByRole('textbox', { name: /quick add task/i })
       await user.type(input, 'Important task !!high')
@@ -252,7 +269,7 @@ describe('T518: QuickAddInput - parsing preview', () => {
 
     it('should show preview for !!urgent', async () => {
       const user = userEvent.setup()
-      render(<QuickAddInput {...defaultProps} />)
+      renderWithI18n(<QuickAddInput {...defaultProps} />)
 
       const input = screen.getByRole('textbox', { name: /quick add task/i })
       await user.type(input, 'Critical task !!urgent')
@@ -263,7 +280,7 @@ describe('T518: QuickAddInput - parsing preview', () => {
 
     it('should show preview for !!medium', async () => {
       const user = userEvent.setup()
-      render(<QuickAddInput {...defaultProps} />)
+      renderWithI18n(<QuickAddInput {...defaultProps} />)
 
       const input = screen.getByRole('textbox', { name: /quick add task/i })
       await user.type(input, 'Normal task !!medium')
@@ -274,7 +291,7 @@ describe('T518: QuickAddInput - parsing preview', () => {
 
     it('should parse priority and strip from title', async () => {
       const user = userEvent.setup()
-      render(<QuickAddInput {...defaultProps} />)
+      renderWithI18n(<QuickAddInput {...defaultProps} />)
 
       const input = screen.getByRole('textbox', { name: /quick add task/i })
       // Type the task with priority syntax
@@ -292,7 +309,7 @@ describe('T518: QuickAddInput - parsing preview', () => {
 
     it('submits directly when Enter is pressed on an exact priority token match', async () => {
       const user = userEvent.setup()
-      render(<QuickAddInput {...defaultProps} />)
+      renderWithI18n(<QuickAddInput {...defaultProps} />)
 
       const input = screen.getByRole('textbox', { name: /quick add task/i })
       await user.type(input, 'Important task !!high')
@@ -309,7 +326,7 @@ describe('T518: QuickAddInput - parsing preview', () => {
   describe('project parsing', () => {
     it('should show preview for #project', async () => {
       const user = userEvent.setup()
-      render(<QuickAddInput {...defaultProps} />)
+      renderWithI18n(<QuickAddInput {...defaultProps} />)
 
       const input = screen.getByRole('textbox', { name: /quick add task/i })
       await user.type(input, 'Task #Personal')
@@ -320,7 +337,7 @@ describe('T518: QuickAddInput - parsing preview', () => {
 
     it('should match partial project names', async () => {
       const user = userEvent.setup()
-      render(<QuickAddInput {...defaultProps} />)
+      renderWithI18n(<QuickAddInput {...defaultProps} />)
 
       const input = screen.getByRole('textbox', { name: /quick add task/i })
       await user.type(input, 'Task #work')
@@ -331,7 +348,7 @@ describe('T518: QuickAddInput - parsing preview', () => {
 
     it('should parse project and strip from title', async () => {
       const user = userEvent.setup()
-      render(<QuickAddInput {...defaultProps} />)
+      renderWithI18n(<QuickAddInput {...defaultProps} />)
 
       const input = screen.getByRole('textbox', { name: /quick add task/i })
       // Type the task with project syntax
@@ -351,7 +368,7 @@ describe('T518: QuickAddInput - parsing preview', () => {
   describe('combined syntax', () => {
     it('should show preview for combined date and priority', async () => {
       const user = userEvent.setup()
-      render(<QuickAddInput {...defaultProps} />)
+      renderWithI18n(<QuickAddInput {...defaultProps} />)
 
       const input = screen.getByRole('textbox', { name: /quick add task/i })
       await user.type(input, 'Task !today !!high')
@@ -363,7 +380,7 @@ describe('T518: QuickAddInput - parsing preview', () => {
 
     it('should show preview for combined date, priority, and project', async () => {
       const user = userEvent.setup()
-      render(<QuickAddInput {...defaultProps} />)
+      renderWithI18n(<QuickAddInput {...defaultProps} />)
 
       const input = screen.getByRole('textbox', { name: /quick add task/i })
       await user.type(input, 'Task !tomorrow !!high #Personal')
@@ -376,7 +393,7 @@ describe('T518: QuickAddInput - parsing preview', () => {
 
     it('should parse all combined syntax correctly', async () => {
       const user = userEvent.setup()
-      render(<QuickAddInput {...defaultProps} />)
+      renderWithI18n(<QuickAddInput {...defaultProps} />)
 
       const input = screen.getByRole('textbox', { name: /quick add task/i })
       // Type the task with combined syntax
@@ -398,7 +415,7 @@ describe('T518: QuickAddInput - parsing preview', () => {
   describe('no preview', () => {
     it('should not show preview for plain text', async () => {
       const user = userEvent.setup()
-      render(<QuickAddInput {...defaultProps} />)
+      renderWithI18n(<QuickAddInput {...defaultProps} />)
 
       const input = screen.getByRole('textbox', { name: /quick add task/i })
       await user.type(input, 'Buy groceries')
@@ -427,7 +444,7 @@ describe('QuickAddInput - autocomplete', () => {
 
   it('should show date autocomplete on !', async () => {
     const user = userEvent.setup()
-    render(<QuickAddInput {...defaultProps} />)
+    renderWithI18n(<QuickAddInput {...defaultProps} />)
 
     const input = screen.getByRole('textbox', { name: /quick add task/i })
     await user.type(input, 'Task !')
@@ -439,7 +456,7 @@ describe('QuickAddInput - autocomplete', () => {
 
   it('should show priority autocomplete on !!', async () => {
     const user = userEvent.setup()
-    render(<QuickAddInput {...defaultProps} />)
+    renderWithI18n(<QuickAddInput {...defaultProps} />)
 
     const input = screen.getByRole('textbox', { name: /quick add task/i })
     await user.type(input, 'Task !!')
@@ -451,7 +468,7 @@ describe('QuickAddInput - autocomplete', () => {
 
   it('should show project autocomplete on #', async () => {
     const user = userEvent.setup()
-    render(<QuickAddInput {...defaultProps} />)
+    renderWithI18n(<QuickAddInput {...defaultProps} />)
 
     const input = screen.getByRole('textbox', { name: /quick add task/i })
     await user.type(input, 'Task #')
@@ -463,7 +480,7 @@ describe('QuickAddInput - autocomplete', () => {
 
   it('should filter autocomplete options as user types', async () => {
     const user = userEvent.setup()
-    render(<QuickAddInput {...defaultProps} />)
+    renderWithI18n(<QuickAddInput {...defaultProps} />)
 
     const input = screen.getByRole('textbox', { name: /quick add task/i })
     await user.type(input, 'Task #per')
@@ -477,7 +494,7 @@ describe('QuickAddInput - autocomplete', () => {
 
   it('should close autocomplete on Escape', async () => {
     const user = userEvent.setup()
-    render(<QuickAddInput {...defaultProps} />)
+    renderWithI18n(<QuickAddInput {...defaultProps} />)
 
     const input = screen.getByRole('textbox', { name: /quick add task/i })
     await user.type(input, 'Task !')
@@ -505,14 +522,14 @@ describe('QuickAddInput - accessibility', () => {
   }
 
   it('should have proper aria-label', () => {
-    render(<QuickAddInput {...defaultProps} />)
+    renderWithI18n(<QuickAddInput {...defaultProps} />)
 
     expect(screen.getByRole('textbox', { name: /quick add task/i })).toBeInTheDocument()
   })
 
   it('should be keyboard accessible', async () => {
     const user = userEvent.setup()
-    render(<QuickAddInput {...defaultProps} />)
+    renderWithI18n(<QuickAddInput {...defaultProps} />)
 
     // Tab to the input
     await user.tab()
@@ -522,7 +539,7 @@ describe('QuickAddInput - accessibility', () => {
   })
 
   it('should show help icon when not focused', () => {
-    render(<QuickAddInput {...defaultProps} />)
+    renderWithI18n(<QuickAddInput {...defaultProps} />)
 
     // Help icon should be visible when input is not focused
     // (Implementation may vary - look for help/question icon)

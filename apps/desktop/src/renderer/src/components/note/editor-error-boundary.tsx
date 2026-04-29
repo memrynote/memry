@@ -12,6 +12,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { AlertTriangle, RefreshCw } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { createLogger } from '@/lib/logger'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Component:EditorErrorBoundary')
 
@@ -31,15 +32,23 @@ interface EditorErrorBoundaryState {
   error: Error | null
 }
 
+interface EditorErrorBoundaryLabels {
+  title: string
+  body: string
+  technicalDetails: string
+  reloadAria: string
+  reload: string
+}
+
 /**
  * Error boundary for BlockNote editor.
  * Shows a friendly fallback UI when the editor crashes.
  */
-export class EditorErrorBoundary extends Component<
-  EditorErrorBoundaryProps,
+class EditorErrorBoundaryImpl extends Component<
+  EditorErrorBoundaryProps & { labels: EditorErrorBoundaryLabels },
   EditorErrorBoundaryState
 > {
-  constructor(props: EditorErrorBoundaryProps) {
+  constructor(props: EditorErrorBoundaryProps & { labels: EditorErrorBoundaryLabels }) {
     super(props)
     this.state = { hasError: false, error: null }
   }
@@ -60,6 +69,8 @@ export class EditorErrorBoundary extends Component<
 
   render(): ReactNode {
     if (this.state.hasError) {
+      const labels = this.props.labels
+
       return (
         <div
           className="h-full flex items-center justify-center p-8 bg-background"
@@ -73,14 +84,12 @@ export class EditorErrorBoundary extends Component<
             >
               <AlertTriangle className="w-8 h-8 text-amber-600 dark:text-amber-400" />
             </div>
-            <h2 className="text-lg font-semibold text-foreground">Editor Error</h2>
-            <p className="text-sm text-muted-foreground">
-              The note editor encountered an error. Your recent changes may not have been saved.
-            </p>
+            <h2 className="text-lg font-semibold text-foreground">{labels.title}</h2>
+            <p className="text-sm text-muted-foreground">{labels.body}</p>
             {this.state.error && (
               <details className="w-full">
                 <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-                  Technical details
+                  {labels.technicalDetails}
                 </summary>
                 <code className="mt-2 block text-xs bg-muted p-2 rounded overflow-auto max-h-24 text-left">
                   {this.state.error.message}
@@ -98,10 +107,10 @@ export class EditorErrorBoundary extends Component<
               variant="default"
               size="sm"
               className="mt-2"
-              aria-label="Reload the editor to try again"
+              aria-label={labels.reloadAria}
             >
               <RefreshCw className="w-4 h-4 mr-2" aria-hidden="true" />
-              Reload Editor
+              {labels.reload}
             </Button>
           </div>
         </div>
@@ -110,6 +119,23 @@ export class EditorErrorBoundary extends Component<
 
     return this.props.children
   }
+}
+
+export function EditorErrorBoundary(props: EditorErrorBoundaryProps): ReactNode {
+  const { t } = useT('notes')
+
+  return (
+    <EditorErrorBoundaryImpl
+      {...props}
+      labels={{
+        title: t('editor.errorBoundary.title'),
+        body: t('editor.errorBoundary.body'),
+        technicalDetails: t('editor.errorBoundary.technicalDetails'),
+        reloadAria: t('editor.errorBoundary.reloadAria'),
+        reload: t('editor.errorBoundary.reload')
+      }}
+    />
+  )
 }
 
 export default EditorErrorBoundary

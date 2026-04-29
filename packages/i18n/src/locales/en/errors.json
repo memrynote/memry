@@ -1,1 +1,80 @@
-{}
+{
+  "generic": {
+    "somethingWentWrong": "Something went wrong. Please try again.",
+    "operationFailed": "Operation failed",
+    "unknown": "An unknown error occurred",
+    "validationFailed": "Validation failed",
+    "actionFailed": "Action failed"
+  },
+  "ipc": {
+    "noVaultOpen": "No vault is open. Please open a vault first."
+  },
+  "vault": {
+    "notFound": "Vault not found. It may have been moved or deleted.",
+    "notInitialized": "No vault is open. Open or create a vault to continue.",
+    "invalidPath": "The selected path is not a valid vault location.",
+    "permissionDenied": "Permission denied. Check that you have access to this folder.",
+    "alreadyExists": "A vault already exists at this location.",
+    "corrupted": "This vault appears to be corrupted. Try restoring from a backup."
+  },
+  "note": {
+    "notFound": "This note could not be found. It may have been deleted.",
+    "invalidFrontmatter": "This note has invalid metadata and cannot be read.",
+    "duplicateId": "A note with this ID already exists.",
+    "writeFailed": "Failed to save this note. Check disk space and permissions.",
+    "readFailed": "Failed to read this note. The file may be locked or corrupted.",
+    "deleteFailed": "Failed to delete this note. Check file permissions.",
+    "invalidPath": "The note path is invalid."
+  },
+  "database": {
+    "connectionFailed": "Could not connect to the local database. Try restarting the app.",
+    "migrationFailed": "Database upgrade failed. Try restarting the app.",
+    "queryFailed": "A database operation failed. Try again.",
+    "notInitialized": "Database not ready. Try restarting the app.",
+    "constraintViolation": "A data conflict occurred. Try again.",
+    "corrupted": "The local database is corrupted. You may need to reset it."
+  },
+  "watcher": {
+    "startFailed": "Could not start watching for file changes.",
+    "stopFailed": "Could not stop the file watcher.",
+    "eventError": "An error occurred while watching for file changes."
+  },
+  "attachment": {
+    "fileTooLarge": "This file is too large to attach.",
+    "unsupportedType": "This file type is not supported.",
+    "writeFailed": "Failed to save the attachment. Check disk space.",
+    "deleteFailed": "Failed to delete the attachment."
+  },
+  "encryption": {
+    "failed": "Failed to encrypt data. Your keys may need to be regenerated.",
+    "decryptionFailed": "Failed to decrypt data. Your encryption keys may be out of date.",
+    "invalidKeyLength": "Invalid encryption key. Try signing out and back in.",
+    "invalidNonceLength": "Encryption error. Try the operation again."
+  },
+  "inboxAttachment": {
+    "writeFailed": "Failed to save the inbox attachment.",
+    "deleteFailed": "Failed to delete the inbox attachment."
+  },
+  "sync": {
+    "networkOffline": "You are offline. Changes will sync when you reconnect.",
+    "networkTimeout": "The sync server took too long to respond. Will retry shortly.",
+    "serverError": "The sync server encountered an error. Will retry automatically.",
+    "authExpired": "Your session has expired. Sign in again to continue syncing.",
+    "deviceRevoked": "This device has been removed from your account.",
+    "rateLimited": "Too many requests. Syncing will resume shortly.",
+    "cryptoFailure": "Failed to encrypt or decrypt sync data. Try signing out and back in.",
+    "versionIncompatible": "This version of Memry is no longer supported. Please update.",
+    "storageQuotaExceeded": "Your sync storage is full. Free up space or upgrade your plan.",
+    "certificatePinFailed": "Secure connection failed. Check your network connection.",
+    "unknown": "An unexpected sync error occurred. Will retry automatically.",
+    "statusFetchFailed": "Failed to fetch sync status",
+    "engineNotInitialized": "Sync engine not initialized. Open a vault to start sync.",
+    "triggerFailed": "Sync failed",
+    "pauseFailed": "Failed to pause sync",
+    "resumeFailed": "Failed to resume sync",
+    "settingsNotInitialized": "Settings sync not initialized",
+    "securityQuarantinePermanent": "A sync item could not be verified and has been quarantined for security.",
+    "securityQuarantineRetry": "A sync item failed signature verification and will be retried.",
+    "certificatePinPaused": "Secure connection to sync server could not be verified. Syncing has been paused for your protection."
+  }
+}

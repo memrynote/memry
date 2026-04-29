@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useT } from '@memry/i18n/renderer'
 
 import { InboxListSection, InboxListItem } from '@/components/inbox'
 import { getFilteredFolders } from '@/components/quick-file-dropdown'
@@ -48,6 +49,7 @@ const ListView = ({
   onFocusedItemChange,
   isPreviewOpen = false
 }: ListViewProps): React.JSX.Element => {
+  const { t } = useT('inbox')
   const containerRef = useRef<HTMLDivElement>(null)
   const groupedItems = groupItemsByTimePeriod(items)
   const densityConfig = DENSITY_CONFIG[density]
@@ -415,45 +417,54 @@ const ListView = ({
       ref={containerRef}
       className={densityConfig.sectionSpacing}
       role="list"
-      aria-label="Inbox items"
+      aria-label={t('list.ariaLabel')}
     >
       {/* Time-grouped items */}
-      {groupedItems.map((group, groupIndex) => (
-        <InboxListSection
-          key={group.period}
-          title={group.period}
-          count={group.items.length}
-          collapsible
-          selectedIds={selectedItemIds}
-          focusedId={focusedItemId}
-          density={density}
-          onSelect={handleSelectionToggle}
-          onFocus={handleItemFocus}
-        >
-          {group.items.map((item) => (
-            <InboxListItem
-              key={item.id}
-              item={item}
-              period={group.period}
-              isExiting={exitingItemIds.has(item.id)}
-              isQuickFileActive={quickFileItemId === item.id}
-              quickFileQuery={quickFileQuery}
-              quickFileHighlightedIndex={highlightedIndex}
-              folders={vaultFolders}
-              onPreview={onPreview}
-              onArchive={onArchive}
-              onSnooze={onSnooze}
-              onQuickFileQueryChange={handleQuickFileQueryChange}
-              onQuickFileSubmit={handleQuickFileSubmit}
-              onQuickFileCancel={handleQuickFileCancel}
-              onQuickFileArrowDown={handleQuickFileArrowDown}
-              onQuickFileArrowUp={handleQuickFileArrowUp}
-              onQuickFileFolderSelect={handleQuickFileFolderSelect}
-              onRetryTranscription={handleRetryTranscription}
-            />
-          ))}
-        </InboxListSection>
-      ))}
+      {groupedItems.map((group) => {
+        const sectionTitle =
+          group.period === 'TODAY'
+            ? t('list.section.today')
+            : group.period === 'YESTERDAY'
+              ? t('list.section.yesterday')
+              : t('list.section.older')
+
+        return (
+          <InboxListSection
+            key={group.period}
+            title={sectionTitle}
+            count={group.items.length}
+            collapsible
+            selectedIds={selectedItemIds}
+            focusedId={focusedItemId}
+            density={density}
+            onSelect={handleSelectionToggle}
+            onFocus={handleItemFocus}
+          >
+            {group.items.map((item) => (
+              <InboxListItem
+                key={item.id}
+                item={item}
+                period={group.period}
+                isExiting={exitingItemIds.has(item.id)}
+                isQuickFileActive={quickFileItemId === item.id}
+                quickFileQuery={quickFileQuery}
+                quickFileHighlightedIndex={highlightedIndex}
+                folders={vaultFolders}
+                onPreview={onPreview}
+                onArchive={onArchive}
+                onSnooze={onSnooze}
+                onQuickFileQueryChange={handleQuickFileQueryChange}
+                onQuickFileSubmit={handleQuickFileSubmit}
+                onQuickFileCancel={handleQuickFileCancel}
+                onQuickFileArrowDown={handleQuickFileArrowDown}
+                onQuickFileArrowUp={handleQuickFileArrowUp}
+                onQuickFileFolderSelect={handleQuickFileFolderSelect}
+                onRetryTranscription={handleRetryTranscription}
+              />
+            ))}
+          </InboxListSection>
+        )
+      })}
     </div>
   )
 }

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import type { Note } from '@/hooks/use-notes-query'
 import { formatTimeOfDay } from '@/lib/time-format'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { useT } from '@memry/i18n/renderer'
 
 // =============================================================================
 // TYPES
@@ -39,6 +40,7 @@ export const TodaysNotesSection = memo(function TodaysNotesSection({
   onCreate,
   maxItems = 3
 }: TodaysNotesSectionProps): React.JSX.Element {
+  const { t, i18n } = useT('journal')
   const [isExpanded, setIsExpanded] = useState(false)
 
   const visibleNotes = isExpanded ? notes : notes.slice(0, maxItems)
@@ -46,20 +48,21 @@ export const TodaysNotesSection = memo(function TodaysNotesSection({
 
   const handleCreateNote = () => {
     const now = new Date()
-    const title = `Note - ${now.toLocaleString('en-US', {
+    const date = now.toLocaleString(i18n.language, {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
       hour: 'numeric',
       minute: '2-digit'
-    })}`
+    })
+    const title = t('note.generatedTitle', { date })
     onCreate?.(title)
   }
 
   return (
     <div
       role="region"
-      aria-label="Today's Notes"
+      aria-label={t('section.todaysNotes')}
       aria-live="polite"
       className="rounded-md border border-border/40 bg-card overflow-hidden"
     >
@@ -96,15 +99,19 @@ export const TodaysNotesSection = memo(function TodaysNotesSection({
                 )}
                 aria-label={
                   isExpanded
-                    ? 'Show fewer notes'
-                    : `Show ${hiddenCount} more note${hiddenCount > 1 ? 's' : ''}`
+                    ? t('action.showFewerNotes')
+                    : hiddenCount === 1
+                      ? t('action.showMoreNotes', { count: hiddenCount })
+                      : t('action.showMoreNotes_plural', { count: hiddenCount })
                 }
               >
                 {isExpanded ? (
-                  <>Show less</>
+                  <>{t('action.showLess')}</>
                 ) : (
                   <>
-                    + {hiddenCount} more note{hiddenCount > 1 ? 's' : ''}
+                    {hiddenCount === 1
+                      ? t('count.moreNotes', { count: hiddenCount })
+                      : t('count.moreNotes_plural', { count: hiddenCount })}
                   </>
                 )}
               </button>
@@ -126,11 +133,13 @@ interface NotesSectionHeaderProps {
 }
 
 function NotesSectionHeader({ count, onCreate }: NotesSectionHeaderProps): React.JSX.Element {
+  const { t } = useT('journal')
+
   return (
     <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between">
       <div className="flex items-center gap-2">
         <FileText className="size-4 text-accent-green" />
-        <span className="text-sm font-medium">Today's Notes</span>
+        <span className="text-sm font-medium">{t('section.todaysNotes')}</span>
       </div>
 
       <div className="flex items-center gap-2">
@@ -141,8 +150,8 @@ function NotesSectionHeader({ count, onCreate }: NotesSectionHeaderProps): React
             size="icon"
             className="size-6"
             onClick={onCreate}
-            title="Create new note"
-            aria-label="Create new note"
+            title={t('action.createNewNote')}
+            aria-label={t('action.createNewNote')}
           >
             <Plus className="size-3.5" />
           </Button>
@@ -152,7 +161,7 @@ function NotesSectionHeader({ count, onCreate }: NotesSectionHeaderProps): React
         {count > 0 && (
           <span
             className="text-xs text-muted-foreground"
-            aria-label={`${count} notes created today`}
+            aria-label={t('aria.notesCreatedToday', { count })}
           >
             ({count})
           </span>
@@ -173,6 +182,7 @@ interface NoteItemProps {
 }
 
 function NoteItem({ note, isActive, onClick }: NoteItemProps): React.JSX.Element {
+  const { t } = useT('journal')
   const {
     settings: { clockFormat }
   } = useGeneralSettings()
@@ -189,7 +199,7 @@ function NoteItem({ note, isActive, onClick }: NoteItemProps): React.JSX.Element
           ? 'bg-accent/10 border-accent/30'
           : 'bg-muted/30 hover:bg-muted/60 border-transparent hover:border-border/40'
       )}
-      aria-label={`Open ${note.title}, created at ${time}`}
+      aria-label={t('note.openAria', { title: note.title, time })}
       aria-current={isActive ? 'true' : undefined}
     >
       {/* Time */}
@@ -221,17 +231,17 @@ interface EmptyStateProps {
 }
 
 function EmptyState({ onCreate }: EmptyStateProps): React.JSX.Element {
+  const { t } = useT('journal')
+
   return (
     <div className="py-8 flex flex-col items-center justify-center text-center">
       <FileText className="size-8 text-muted-foreground/40 mb-3" />
-      <p className="text-sm font-medium text-muted-foreground mb-1">No notes created today</p>
-      <p className="text-xs text-muted-foreground/70 mb-4">
-        Start documenting your thoughts and ideas
-      </p>
+      <p className="text-sm font-medium text-muted-foreground mb-1">{t('empty.noNotesToday')}</p>
+      <p className="text-xs text-muted-foreground/70 mb-4">{t('empty.startDocumenting')}</p>
       {onCreate && (
         <Button variant="outline" size="sm" onClick={onCreate}>
           <Plus className="size-4 mr-2" />
-          Create Note
+          {t('action.createNote')}
         </Button>
       )}
     </div>

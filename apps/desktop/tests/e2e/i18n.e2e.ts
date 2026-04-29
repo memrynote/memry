@@ -77,4 +77,25 @@ test.describe('i18n', () => {
 
     expect(menuLabels).toContain('Dosya')
   })
+
+  test('flips a migrated common-namespace string after switching', async ({
+    electronApp,
+    page
+  }) => {
+    await openGeneralSettings(page, electronApp)
+
+    await chooseLanguage(page, 'Türkçe')
+    await expect(page.getByText('Dil', { exact: true })).toBeVisible()
+
+    // Close Settings so the app shell's accessibility tree is queryable again.
+    // (Radix dialog applies aria-hidden to siblings while open, hiding the
+    // WindowControls Search button from getByRole.)
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog', { name: 'Settings' })).toHaveCount(0)
+
+    // Phase B assertion: WindowControls' search button uses
+    // aria-label={t('action.search')} from common.json. Turkish maps to "Ara".
+    await expect(page.getByRole('button', { name: 'Ara', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Search', exact: true })).toHaveCount(0)
+  })
 })

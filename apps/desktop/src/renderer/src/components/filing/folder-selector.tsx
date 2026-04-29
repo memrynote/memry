@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import type { Folder as FolderType } from '@/types'
+import { useT } from '@memry/i18n/renderer'
 
 // Extended folder type with AI metadata
 interface AIFolderType extends FolderType {
@@ -132,6 +133,7 @@ const FolderSelector = ({
   selectedFolder,
   onSelect
 }: FolderSelectorProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('inbox')
   const [searchQuery, setSearchQuery] = useState('')
   const [isAllExpanded, setIsAllExpanded] = useState(false)
 
@@ -160,7 +162,9 @@ const FolderSelector = ({
     <div className="space-y-4">
       {/* Section Label */}
       <div className="flex items-center gap-1">
-        <h3 className="text-sm font-medium text-foreground">Choose folder</h3>
+        <h3 className="text-sm font-medium text-foreground">
+          {tPhaseF('phaseF.componentsFilingFolderSelector.chooseFolder')}
+        </h3>
         <span className="text-red-500">*</span>
       </div>
 
@@ -188,11 +192,11 @@ const FolderSelector = ({
         />
         <Input
           type="text"
-          placeholder="Search folders..."
+          placeholder={tPhaseF('phaseF.componentsFilingFolderSelector.searchFolders')}
           value={searchQuery}
           onChange={handleSearchChange}
           className="pl-9"
-          aria-label="Search folders"
+          aria-label={tPhaseF('phaseF.componentsFilingFolderSelector.searchFolders2')}
         />
       </div>
 
@@ -200,7 +204,11 @@ const FolderSelector = ({
       <div className="space-y-4 max-h-[280px] overflow-y-auto">
         {isSearching ? (
           // Search Results
-          <div className="space-y-0.5" role="listbox" aria-label="Search results">
+          <div
+            className="space-y-0.5"
+            role="listbox"
+            aria-label={tPhaseF('phaseF.componentsFilingFolderSelector.searchResults')}
+          >
             {filteredFolders.length > 0
               ? filteredFolders.map((folder) => (
                   <FolderItem
@@ -247,7 +255,8 @@ const FolderSelector = ({
               >
                 <Plus className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="flex-1 text-sm">
-                  Create "<span className="font-medium">{searchQuery.trim()}</span>"
+                  {tPhaseF('phaseF.componentsFilingFolderSelector.create')}
+                  <span className="font-medium">{searchQuery.trim()}</span>"
                 </span>
                 {selectedFolder?.path === searchQuery.trim() && (
                   <Check className="size-4 shrink-0" aria-hidden="true" />
@@ -259,7 +268,7 @@ const FolderSelector = ({
           <>
             {/* Suggested Folders */}
             <FolderSection
-              title="Suggested"
+              title={tPhaseF('phaseF.componentsFilingFolderSelector.suggested')}
               folders={suggestedFolders}
               selectedId={selectedFolder?.id || null}
               onSelect={onSelect}
@@ -267,7 +276,7 @@ const FolderSelector = ({
 
             {/* Recent Folders */}
             <FolderSection
-              title="Recent"
+              title={tPhaseF('phaseF.componentsFilingFolderSelector.recent')}
               folders={recentFolders}
               selectedId={selectedFolder?.id || null}
               onSelect={onSelect}
@@ -290,10 +299,15 @@ const FolderSelector = ({
                 ) : (
                   <ChevronRight className="size-3" aria-hidden="true" />
                 )}
-                All folders
+
+                {tPhaseF('phaseF.componentsFilingFolderSelector.allFolders')}
               </button>
               {isAllExpanded && (
-                <div className="space-y-0.5" role="listbox" aria-label="All folders">
+                <div
+                  className="space-y-0.5"
+                  role="listbox"
+                  aria-label={tPhaseF('phaseF.componentsFilingFolderSelector.allFolders2')}
+                >
                   {folders.map((folder) => (
                     <FolderItem
                       key={folder.id}

@@ -7,7 +7,13 @@
 import { useMemo } from 'react'
 import { ChevronLeft, ChevronRight } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { formatDateParts, getMonthName, getTodayString } from '@/lib/journal-utils'
+import {
+  createJournalDateLabels,
+  formatDateParts,
+  getMonthName,
+  getTodayString
+} from '@/lib/journal-utils'
+import { useT } from '@memry/i18n/renderer'
 
 // =============================================================================
 // TYPES
@@ -96,16 +102,17 @@ function BreadcrumbSeparator() {
 interface DayNavArrowProps {
   direction: 'prev' | 'next'
   onClick?: () => void
+  label: string
 }
 
-function DayNavArrow({ direction, onClick }: DayNavArrowProps) {
+function DayNavArrow({ direction, onClick, label }: DayNavArrowProps) {
   const Icon = direction === 'prev' ? ChevronLeft : ChevronRight
 
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={direction === 'prev' ? 'Previous day' : 'Next day'}
+      aria-label={label}
       className={cn(
         'p-1 rounded-md',
         'text-muted-foreground/50 hover:text-foreground',
@@ -129,11 +136,13 @@ interface BackButtonProps {
 }
 
 function BackButton({ onClick, className }: BackButtonProps) {
+  const { t } = useT('journal')
+
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label="Journal back"
+      aria-label={t('nav.journalBack')}
       className={cn(
         'inline-flex items-center gap-1 mr-2 p-1 rounded-md',
         'text-muted-foreground/60 hover:text-foreground',
@@ -161,15 +170,17 @@ export function DateBreadcrumb({
   onNextDay,
   className
 }: DateBreadcrumbProps): React.JSX.Element {
+  const { t, i18n } = useT('journal')
+  const dateLabels = useMemo(() => createJournalDateLabels(t), [t, i18n.language])
   const today = getTodayString()
 
   // Parse date parts for day view
   const dateParts = useMemo(() => {
     if (viewState.type === 'day') {
-      return formatDateParts(viewState.date)
+      return formatDateParts(viewState.date, dateLabels)
     }
     return null
-  }, [viewState])
+  }, [viewState, dateLabels])
 
   // Check if selected date is today
   const isToday = viewState.type === 'day' && viewState.date === today
@@ -179,13 +190,13 @@ export function DateBreadcrumb({
   if (viewState.type === 'day' && dateParts) {
     return (
       <nav
-        aria-label="Journal date navigation"
+        aria-label={t('nav.dateNavigation')}
         className={cn('flex items-center justify-center gap-2', className)}
       >
         {/* Day navigation arrows - grouped on left */}
         <div className="flex items-center gap-0.5 mr-1">
-          <DayNavArrow direction="prev" onClick={onPreviousDay} />
-          <DayNavArrow direction="next" onClick={onNextDay} />
+          <DayNavArrow direction="prev" onClick={onPreviousDay} label={t('nav.previousDay')} />
+          <DayNavArrow direction="next" onClick={onNextDay} label={t('nav.nextDay')} />
         </div>
 
         {/* Breadcrumb segments */}
@@ -224,7 +235,7 @@ export function DateBreadcrumb({
                 'rounded-full border border-amber-500/20'
               )}
             >
-              Today
+              {t('date.relative.today')}
             </span>
           )}
         </div>
@@ -234,10 +245,10 @@ export function DateBreadcrumb({
 
   // Month View: Back + Month Year with clickable year
   if (viewState.type === 'month') {
-    const monthName = getMonthName(viewState.month)
+    const monthName = getMonthName(viewState.month, dateLabels)
     return (
       <nav
-        aria-label="Journal date navigation"
+        aria-label={t('nav.dateNavigation')}
         className={cn('flex items-center justify-center', className)}
       >
         <BackButton onClick={onBackClick} />
@@ -261,7 +272,7 @@ export function DateBreadcrumb({
   if (viewState.type === 'year') {
     return (
       <nav
-        aria-label="Journal date navigation"
+        aria-label={t('nav.dateNavigation')}
         className={cn('flex items-center justify-center', className)}
       >
         <BackButton onClick={onBackClick} />

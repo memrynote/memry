@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils'
 import { PRIORITY_TEXT_CLASSES, type Priority } from '@/data/sample-tasks'
 import type { ScheduleEvent, DayTask } from './day-context-sidebar'
+import { useT } from '@memry/i18n/renderer'
 
 // =============================================================================
 // TYPES
@@ -47,6 +48,7 @@ export const FloatingDayContext = memo(function FloatingDayContext({
   onEventClick,
   className
 }: FloatingDayContextProps): React.JSX.Element {
+  const { t } = useT('journal')
   const [isExpanded, setIsExpanded] = useState(true)
   const [activeTab, setActiveTab] = useState<'schedule' | 'tasks'>('schedule')
 
@@ -118,7 +120,7 @@ export const FloatingDayContext = memo(function FloatingDayContext({
                 )}
               >
                 <Calendar className="size-3.5" />
-                <span>{isToday ? 'Today' : 'Schedule'}</span>
+                <span>{isToday ? t('date.relative.today') : t('section.schedule')}</span>
                 {events.length > 0 && (
                   <span className="text-[10px] px-1 py-0.5 rounded bg-muted-foreground/20">
                     {events.length}
@@ -138,7 +140,7 @@ export const FloatingDayContext = memo(function FloatingDayContext({
                 )}
               >
                 <CheckCircle2 className="size-3.5" />
-                <span>Tasks</span>
+                <span>{t('section.tasks')}</span>
                 {pendingTasks.length > 0 && (
                   <span
                     className={cn(
@@ -195,11 +197,13 @@ interface ScheduleContentProps {
 }
 
 function ScheduleContent({ events, onEventClick }: ScheduleContentProps): React.JSX.Element {
+  const { t } = useT('journal')
+
   if (events.length === 0) {
     return (
       <div className="px-3 py-6 text-center">
         <Calendar className="size-8 text-muted-foreground/30 mx-auto mb-2" />
-        <p className="text-xs text-muted-foreground">No events scheduled</p>
+        <p className="text-xs text-muted-foreground">{t('empty.noEventsScheduled')}</p>
       </div>
     )
   }
@@ -233,7 +237,7 @@ function ScheduleContent({ events, onEventClick }: ScheduleContentProps): React.
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[11px] text-muted-foreground tabular-nums">
-                {event.isAllDay ? 'All day' : event.time}
+                {event.isAllDay ? t('date.allDay') : event.time}
               </span>
               {event.attendeeCount && event.attendeeCount > 1 && (
                 <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground/70">
@@ -271,11 +275,13 @@ function TasksContent({
   onTaskClick,
   onTaskToggle
 }: TasksContentProps): React.JSX.Element {
+  const { t } = useT('journal')
+
   if (tasks.length === 0) {
     return (
       <div className="px-3 py-6 text-center">
         <CheckCircle2 className="size-8 text-muted-foreground/30 mx-auto mb-2" />
-        <p className="text-xs text-muted-foreground">No tasks due</p>
+        <p className="text-xs text-muted-foreground">{t('empty.noTasksDue')}</p>
       </div>
     )
   }
@@ -289,7 +295,7 @@ function TasksContent({
       {overdueCount > 0 && (
         <div className="flex items-center gap-1.5 px-2 py-1.5 mb-2 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
           <AlertCircle className="size-3.5" />
-          <span className="text-xs font-medium">{overdueCount} overdue</span>
+          <span className="text-xs font-medium">{t('count.overdue', { count: overdueCount })}</span>
         </div>
       )}
 
@@ -322,7 +328,7 @@ function TasksContent({
       {completedTasks.length > 0 && (
         <div className="mt-2 pt-2 border-t border-border/30">
           <span className="text-[11px] text-muted-foreground px-1.5">
-            {completedTasks.length} completed
+            {t('count.completed', { count: completedTasks.length })}
           </span>
         </div>
       )}

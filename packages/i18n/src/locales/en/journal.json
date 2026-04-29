@@ -1,1 +1,296 @@
-{}
+{
+  "title": "Journal",
+  "section": {
+    "journal": "Journal",
+    "aiConnections": "AI Connections",
+    "todaysNotes": "Today's Notes",
+    "todaysSchedule": "Today's Schedule",
+    "todaysTasks": "Today's Tasks",
+    "schedule": "Schedule",
+    "tasks": "Tasks",
+    "calendarEvents": "Calendar Events",
+    "overdueTasks": "Overdue Tasks",
+    "technicalDetails": "Technical details"
+  },
+  "action": {
+    "versionHistory": "Version History",
+    "export": "Export",
+    "fullWidth": "Full width",
+    "journalSettings": "Journal Settings",
+    "fullMode": "Full Mode",
+    "compactMode": "Compact Mode",
+    "focusMode": "Focus Mode",
+    "exitFocusMode": "Exit Focus Mode",
+    "enterFocusMode": "Enter Focus Mode",
+    "createNote": "Create Note",
+    "createNewNote": "Create new note",
+    "showLess": "Show less",
+    "showMoreNotes": "Show {{count}} more note",
+    "showMoreNotes_plural": "Show {{count}} more notes",
+    "showFewerNotes": "Show fewer notes",
+    "startBlank": "Start blank instead",
+    "changeTemplate": "Change template",
+    "dismissIndicator": "Dismiss indicator",
+    "refreshConnections": "Refresh connections",
+    "reloadJournal": "Reload Journal",
+    "goToToday": "Go to Today",
+    "copyUnsavedContent": "Copy unsaved content to clipboard",
+    "openNoteFullPage": "Open note in full page",
+    "closeNoteDrawer": "Close note drawer",
+    "addBookmark": "Add bookmark",
+    "removeBookmark": "Remove bookmark",
+    "tryAgain": "Try Again"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "What are you planning...",
+      "today": "What's on your mind today...",
+      "past": "Reflect on this day...",
+      "default": "Start writing..."
+    },
+    "toolbar": {
+      "ariaLabel": "Text formatting",
+      "bold": "Bold",
+      "italic": "Italic",
+      "underline": "Underline",
+      "strikethrough": "Strikethrough",
+      "link": "Link",
+      "image": "Image",
+      "moreOptions": "More options",
+      "heading1": "Heading 1",
+      "heading2": "Heading 2",
+      "heading3": "Heading 3",
+      "bulletList": "Bullet List",
+      "numberedList": "Numbered List",
+      "checklist": "Checklist",
+      "quote": "Quote",
+      "divider": "Divider",
+      "codeBlock": "Code Block"
+    },
+    "prompt": {
+      "enterUrl": "Enter URL:"
+    },
+    "upload": {
+      "noEntry": "Cannot upload image: no journal entry selected",
+      "failed": "Failed to upload image"
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "tomorrow": "Tomorrow",
+      "future": "Future"
+    },
+    "weekday": {
+      "sunday": "Sunday",
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday"
+    },
+    "weekdayShort": {
+      "sunday": "Sun",
+      "monday": "Mon",
+      "tuesday": "Tue",
+      "wednesday": "Wed",
+      "thursday": "Thu",
+      "friday": "Fri",
+      "saturday": "Sat"
+    },
+    "month": {
+      "january": "January",
+      "february": "February",
+      "march": "March",
+      "april": "April",
+      "may": "May",
+      "june": "June",
+      "july": "July",
+      "august": "August",
+      "september": "September",
+      "october": "October",
+      "november": "November",
+      "december": "December"
+    },
+    "monthShort": {
+      "january": "Jan",
+      "february": "Feb",
+      "march": "Mar",
+      "april": "Apr",
+      "may": "May",
+      "june": "Jun",
+      "july": "Jul",
+      "august": "Aug",
+      "september": "Sep",
+      "october": "Oct",
+      "november": "Nov",
+      "december": "Dec"
+    },
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening",
+      "night": "Good night"
+    },
+    "allDay": "All day"
+  },
+  "nav": {
+    "previousDay": "Previous day",
+    "nextDay": "Next day",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
+    "journalBack": "Journal back",
+    "journalNavigation": "Journal navigation",
+    "dateNavigation": "Journal date navigation",
+    "goToYearView": "Go to year view",
+    "previousView": "Previous view",
+    "nextView": "Next view"
+  },
+  "aria": {
+    "moreOptions": "More options",
+    "documentStatistics": "Document statistics",
+    "dayContext": "Day context: tasks and schedule",
+    "scheduleEvents": "Schedule events",
+    "tasks": "Tasks",
+    "notesCreatedToday": "{{count}} notes created today"
+  },
+  "empty": {
+    "noEntry": "No entry",
+    "noDaysInMonth": "No days in this month",
+    "noEventsScheduled": "No events scheduled",
+    "noEventsScheduledToday": "No events scheduled today",
+    "noEventsWereScheduled": "No events were scheduled",
+    "noTasksDue": "No tasks due",
+    "noTasksDueToday": "No tasks due today",
+    "noTasksWereDue": "No tasks were due",
+    "noNotesToday": "No notes created today",
+    "startDocumenting": "Start documenting your thoughts and ideas"
+  },
+  "ai": {
+    "loading": "Analyzing your entry...",
+    "empty": {
+      "willAppear": "Your connections will appear here",
+      "noneYet": "No connections found yet",
+      "moreJournaling": "As you journal more, AI will find related entries",
+      "keepWriting": "Keep writing to discover related entries"
+    },
+    "error": {
+      "loadFailed": "Couldn't load connections"
+    },
+    "connectionAria": "Connection to {{label}}, {{scorePercent}}% match"
+  },
+  "count": {
+    "item": "item",
+    "items": "items",
+    "note": "note",
+    "notes": "notes",
+    "day": "day",
+    "days": "days",
+    "event": "event",
+    "events": "events",
+    "meeting": "meeting",
+    "meetings": "meetings",
+    "task": "task",
+    "tasks": "tasks",
+    "todo": "to do",
+    "people": "{{count}} people",
+    "moreConnections": "+ {{count}} more connection",
+    "moreConnections_plural": "+ {{count}} more connections",
+    "moreNotes": "+ {{count}} more note",
+    "moreNotes_plural": "+ {{count}} more notes",
+    "daysWithEntries": "days with entries",
+    "charactersWritten": "characters written",
+    "words": "{{count}} words",
+    "characters": "{{count}} chars",
+    "completed": "{{count}} completed",
+    "overdue": "{{count}} overdue"
+  },
+  "stats": {
+    "wordCount": "Word count",
+    "characterCount": "Character count",
+    "readingTime": "Estimated reading time",
+    "lastModified": "Last modified",
+    "lessThanOneMinute": "< 1 min",
+    "minutes": "{{minutes}} min",
+    "read": "{{readingTime}} read",
+    "modified": "Modified {{date}}"
+  },
+  "task": {
+    "completed": "Completed",
+    "notCompleted": "Not completed",
+    "priority": "{{priority}} priority",
+    "overdue": "overdue",
+    "markComplete": "Mark \"{{title}}\" as completed",
+    "markNotComplete": "Mark \"{{title}}\" as not completed"
+  },
+  "template": {
+    "using": "Using \"{{templateName}}\""
+  },
+  "reminder": {
+    "hasReminders": "Has reminders",
+    "setToRevisit": "Set reminder to revisit",
+    "tooltip": "Reminder: {{date}}",
+    "tooltipMore": "Reminder: {{date}} (+{{count}} more)",
+    "success": {
+      "set": "Reminder set for this journal entry",
+      "deleted": "Reminder deleted",
+      "dismissed": "Reminder dismissed",
+      "snoozed": "Reminder snoozed"
+    },
+    "error": {
+      "set": "Failed to set reminder",
+      "delete": "Failed to delete reminder",
+      "dismiss": "Failed to dismiss reminder",
+      "snooze": "Failed to snooze reminder"
+    }
+  },
+  "toast": {
+    "unsavedRetry": "Your content is still in memory. Click to retry saving.",
+    "noteNotFound": "Note \"{{target}}\" not found",
+    "fileNotFound": "File not found: {{target}}",
+    "openLinkedItemFailed": "Failed to open linked item",
+    "errorPrefix": "Error:"
+  },
+  "export": {
+    "noteTitle": "Journal - {{month}} {{day}}, {{year}}"
+  },
+  "note": {
+    "generatedTitle": "Note - {{date}}",
+    "openAria": "Open {{title}}, created at {{time}}"
+  },
+  "tag": {
+    "suggestionsAria": "Tag suggestions",
+    "empty": {
+      "title": "No tags yet",
+      "description": "Type to create a new tag"
+    },
+    "groupTitle": "Tags",
+    "create": "Create #{{query}}",
+    "ariaLabel": "Tag: {{tag}}, click to filter"
+  },
+  "wiki": {
+    "suggestionsAria": "Page suggestions",
+    "empty": {
+      "title": "No pages found"
+    },
+    "groupRecent": "Recent",
+    "groupAllPages": "All Pages",
+    "createNewPage": "Create new page",
+    "ariaLabel": "Link to {{title}}"
+  },
+  "error": {
+    "title": "Journal Error",
+    "description": "The journal encountered an error for {{date}}. Your recent changes may not have been saved.",
+    "descriptionNoDate": "The journal encountered an error. Your recent changes may not have been saved.",
+    "unsavedContent": "Unsaved content detected ({{length}} characters)"
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "k"
+    }
+  }
+}

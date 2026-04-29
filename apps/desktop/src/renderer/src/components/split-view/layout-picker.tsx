@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useTabs } from '@/contexts/tabs'
 import { layoutPresets, applyLayoutPreset, type LayoutPreset } from './layout-presets'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface LayoutPickerProps {
   /** Additional CSS classes */
@@ -38,6 +39,7 @@ const getPresetIcon = (id: LayoutPreset): React.ReactNode => {
  * Layout picker with preset options
  */
 export const LayoutPicker = ({ className }: LayoutPickerProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('common')
   const { state, dispatch } = useTabs()
 
   const handleSelectPreset = (preset: LayoutPreset): void => {
@@ -66,13 +68,15 @@ export const LayoutPicker = ({ className }: LayoutPickerProps): React.JSX.Elemen
             'transition-colors',
             className
           )}
-          title="Layout presets"
+          title={tPhaseF('phaseF.componentsSplitViewLayoutPicker.layoutPresets')}
         >
           <LayoutGrid className="w-4 h-4" />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-56 p-2" align="end">
-        <p className="text-xs text-muted-foreground mb-2 px-1">Layout Presets</p>
+        <p className="text-xs text-muted-foreground mb-2 px-1">
+          {tPhaseF('phaseF.componentsSplitViewLayoutPicker.layoutPresets2')}
+        </p>
         <div className="grid grid-cols-3 gap-1">
           {layoutPresets.map((preset) => (
             <button

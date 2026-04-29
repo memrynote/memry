@@ -12,6 +12,7 @@ import { Picker, usePickerContext } from '@/components/ui/picker'
 import { cn } from '@/lib/utils'
 import type { Project } from '@/data/tasks-data'
 import type { Task } from '@/data/sample-tasks'
+import { useT } from '@memry/i18n/renderer'
 
 interface ProjectSelectorProps {
   tasks: Task[]
@@ -36,6 +37,7 @@ function ProjectActions({
   onArchive?: (project: Project) => void
   onDelete?: (projectId: string) => void
 }): React.JSX.Element {
+  const { t: tPhaseF } = useT('tasks')
   const { onOpenChange } = usePickerContext()
 
   return (
@@ -58,7 +60,8 @@ function ProjectActions({
           }}
         >
           <Pencil className="mr-2 size-4" />
-          Edit project
+
+          {tPhaseF('phaseF.componentsTasksProjectsProjectSelector.editProject')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -68,7 +71,8 @@ function ProjectActions({
           }}
         >
           <Archive className="mr-2 size-4" />
-          Archive project
+
+          {tPhaseF('phaseF.componentsTasksProjectsProjectSelector.archiveProject')}
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => {
@@ -78,7 +82,8 @@ function ProjectActions({
           className="text-destructive focus:text-destructive"
         >
           <Trash2 className="mr-2 size-4" />
-          Delete project
+
+          {tPhaseF('phaseF.componentsTasksProjectsProjectSelector.deleteProject')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -96,6 +101,7 @@ export const ProjectSelector = ({
   onCreateProject,
   className
 }: ProjectSelectorProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const activeProjects = useMemo(() => projects.filter((p) => !p.isArchived), [projects])
 
   const selectedProject = useMemo(
@@ -131,18 +137,21 @@ export const ProjectSelector = ({
               <span className="truncate text-sm font-medium">{selectedProject.name}</span>
             </span>
           ) : (
-            <span className="text-sm text-muted-foreground">Select project</span>
+            <span className="text-sm text-muted-foreground">
+              {tPhaseF('phaseF.componentsTasksProjectsProjectSelector.selectProject')}
+            </span>
           )}
         </Picker.Trigger>
         <Picker.Content width={280} align="start">
           {activeProjects.length === 0 ? (
             <Picker.Empty
               icon={<FolderKanban className="size-8" />}
-              message="No projects yet"
+              message={tPhaseF('phaseF.componentsTasksProjectsProjectSelector.noProjectsYet')}
               action={
                 <Button variant="outline" size="sm" onClick={onCreateProject}>
                   <Plus className="size-4 mr-1" />
-                  Create project
+
+                  {tPhaseF('phaseF.componentsTasksProjectsProjectSelector.createProject')}
                 </Button>
               }
             />

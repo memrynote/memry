@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { Plus } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -22,6 +23,7 @@ export const AddSubtaskInput = ({
   onAdd,
   className
 }: AddSubtaskInputProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [isActive, setIsActive] = useState(false)
   const [title, setTitle] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -92,16 +94,18 @@ export const AddSubtaskInput = ({
           onFocus={handleFocus}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
-          placeholder="Add subtask..."
+          placeholder={tPhaseF('phaseF.componentsTasksAddSubtaskInput.addSubtask')}
           className={cn(
             'flex-1 px-2 py-1.5 text-sm bg-transparent outline-none',
             'placeholder:text-muted-foreground/60'
           )}
-          aria-label="Add subtask"
+          aria-label={tPhaseF('phaseF.componentsTasksAddSubtaskInput.addSubtask2')}
         />
 
         {isActive && title && (
-          <span className="text-xs text-muted-foreground mr-2 shrink-0">Enter to add</span>
+          <span className="text-xs text-muted-foreground mr-2 shrink-0">
+            {tPhaseF('phaseF.componentsTasksAddSubtaskInput.enterToAdd')}
+          </span>
         )}
       </div>
     </div>

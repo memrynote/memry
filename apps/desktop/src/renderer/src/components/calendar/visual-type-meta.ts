@@ -2,34 +2,39 @@ import { EVENT_TYPE_COLORS } from '@/lib/event-type-colors'
 import type { CalendarProjectionVisualType } from '@/services/calendar-service'
 
 interface VisualTypeMeta {
-  label: string
+  labelKey:
+    | 'visual-type.event'
+    | 'visual-type.imported-event'
+    | 'visual-type.task'
+    | 'visual-type.reminder'
+    | 'visual-type.snooze'
   swatchColor: string
   dotColor: string
 }
 
 export const VISUAL_TYPE_META: Record<CalendarProjectionVisualType, VisualTypeMeta> = {
   event: {
-    label: 'Event',
+    labelKey: 'visual-type.event',
     swatchColor: EVENT_TYPE_COLORS.event,
     dotColor: EVENT_TYPE_COLORS.event
   },
   external_event: {
-    label: 'Imported event',
+    labelKey: 'visual-type.imported-event',
     swatchColor: EVENT_TYPE_COLORS.external_event,
     dotColor: EVENT_TYPE_COLORS.external_event
   },
   task: {
-    label: 'Task',
+    labelKey: 'visual-type.task',
     swatchColor: EVENT_TYPE_COLORS.task,
     dotColor: EVENT_TYPE_COLORS.task
   },
   reminder: {
-    label: 'Reminder',
+    labelKey: 'visual-type.reminder',
     swatchColor: EVENT_TYPE_COLORS.reminder,
     dotColor: EVENT_TYPE_COLORS.reminder
   },
   snooze: {
-    label: 'Snooze',
+    labelKey: 'visual-type.snooze',
     swatchColor: EVENT_TYPE_COLORS.snooze,
     dotColor: EVENT_TYPE_COLORS.snooze
   }

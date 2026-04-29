@@ -31,6 +31,8 @@ export const I18N_NAMESPACES = [
   'notes',
   'journal',
   'calendar',
+  'tasks',
+  'graph',
   'settings',
   'errors',
   'menu'

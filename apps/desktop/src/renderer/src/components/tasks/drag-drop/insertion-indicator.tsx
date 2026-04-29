@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -129,6 +130,7 @@ export const DateDropIndicator = ({
   dateLabel,
   className
 }: DateDropIndicatorProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   return (
     <div
       className={cn(
@@ -139,7 +141,8 @@ export const DateDropIndicator = ({
       )}
     >
       <span className="text-xs font-medium text-primary px-2 py-1 bg-background rounded shadow-sm">
-        Drop to reschedule to {dateLabel}
+        {tPhaseF('phaseF.componentsTasksDragDropInsertionIndicator.dropToRescheduleTo')}
+        {dateLabel}
       </span>
     </div>
   )

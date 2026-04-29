@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 import {
   statusColors,
   statusTypeOptions,
@@ -56,6 +57,7 @@ const StatusColorPicker = ({
   value: string
   onChange: (color: string) => void
 }): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [isOpen, setIsOpen] = useState(false)
 
   const handleColorSelect = (color: string) => (): void => {
@@ -70,7 +72,7 @@ const StatusColorPicker = ({
           type="button"
           className="size-4 shrink-0 rounded-full transition-transform hover:scale-110 focus-visible:outline-none"
           style={{ backgroundColor: value }}
-          aria-label="Change status color"
+          aria-label={tPhaseF('phaseF.componentsTasksStatusEditor.changeStatusColor')}
         />
       </PopoverTrigger>
       <PopoverContent className="w-auto p-2" align="start">
@@ -147,6 +149,7 @@ const StatusRow = ({
   isDragging,
   isDragOver
 }: StatusRowProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const inputRef = useRef<HTMLInputElement>(null)
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
@@ -213,7 +216,7 @@ const StatusRow = ({
       {/* Drag Handle */}
       <div
         className="cursor-grab text-text-tertiary hover:text-text-secondary active:cursor-grabbing"
-        aria-label="Drag to reorder"
+        aria-label={tPhaseF('phaseF.componentsTasksStatusEditor.dragToReorder')}
       >
         <GripVertical className="size-4" />
       </div>
@@ -227,7 +230,7 @@ const StatusRow = ({
         type="text"
         value={status.name}
         onChange={handleNameChange}
-        placeholder="Status name"
+        placeholder={tPhaseF('phaseF.componentsTasksStatusEditor.statusName')}
         maxLength={30}
         className="h-7 flex-1 border-0 bg-transparent px-1 text-sm shadow-none focus-visible:ring-0"
       />
@@ -259,6 +262,7 @@ export const StatusEditor = ({
   onChange,
   error
 }: StatusEditorProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
@@ -345,7 +349,8 @@ export const StatusEditor = ({
         className="gap-1 text-text-tertiary hover:text-text-secondary"
       >
         <Plus className="size-4" />
-        Add status
+
+        {tPhaseF('phaseF.componentsTasksStatusEditor.addStatus')}
       </Button>
 
       {/* Error Message */}

@@ -1,5 +1,6 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { useEffect, useRef, useState } from 'react'
+import { useT } from '@memry/i18n/renderer'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,21 +45,6 @@ interface CalendarEventPopoverProps {
   readOnlyMetadata?: CalendarEventReadOnlyMetadata
 }
 
-const MONTH_SHORT = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec'
-]
-
 function extractDatePart(value: string, isAllDay: boolean): string | null {
   if (!value) return null
   return isAllDay ? value : value.split('T')[0]
@@ -83,12 +69,21 @@ function combineDateTime(date: Date, time: string | null, isAllDay: boolean): st
   return `${datePart}T${time ?? '09:00'}`
 }
 
-function formatDateLabel(value: string, isAllDay: boolean): string {
+function formatDateLabel(
+  value: string,
+  isAllDay: boolean,
+  locale: string,
+  pickDateLabel: string
+): string {
   const datePart = extractDatePart(value, isAllDay)
-  if (!datePart) return 'Pick a date'
+  if (!datePart) return pickDateLabel
   const [y, m, d] = datePart.split('-').map(Number)
-  if (!y || !m || !d) return 'Pick a date'
-  return `${d} ${MONTH_SHORT[m - 1]} ${y}`
+  if (!y || !m || !d) return pickDateLabel
+  return new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  }).format(new Date(y, m - 1, d))
 }
 
 interface DateTimeFieldProps {
@@ -97,6 +92,8 @@ interface DateTimeFieldProps {
   isAllDay: boolean
   onChange: (next: string) => void
   clockFormat: ClockFormat
+  locale: string
+  pickDateLabel: string
 }
 
 function DateTimeField({
@@ -104,12 +101,14 @@ function DateTimeField({
   value,
   isAllDay,
   onChange,
-  clockFormat
+  clockFormat,
+  locale,
+  pickDateLabel
 }: DateTimeFieldProps): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const date = draftValueToDate(value, isAllDay)
   const time = draftValueToTime(value, isAllDay)
-  const dateLabel = formatDateLabel(value, isAllDay)
+  const dateLabel = formatDateLabel(value, isAllDay, locale, pickDateLabel)
   const timeLabel = time ? formatTimeString(time, clockFormat) : null
 
   return (
@@ -167,6 +166,8 @@ export function CalendarEventPopover({
   const {
     settings: { clockFormat }
   } = useGeneralSettings()
+  const { t, i18n } = useT('calendar')
+  const { t: tCommon } = useT('common')
 
   useEffect(() => {
     if (mode === 'create') titleRef.current?.focus()
@@ -198,6 +199,7 @@ export function CalendarEventPopover({
   }
 
   const { top, left } = computePopoverPosition(anchorRect, { estimatedHeight: 440 })
+  const title = mode === 'create' ? t('form.create-calendar-event') : t('form.edit-calendar-event')
 
   return (
     <DialogPrimitive.Root
@@ -210,7 +212,7 @@ export function CalendarEventPopover({
       <DialogPrimitive.Portal>
         <DialogPrimitive.Content
           data-testid="event-edit-popover"
-          aria-label={mode === 'create' ? 'Create calendar event' : 'Edit calendar event'}
+          aria-label={title}
           onOpenAutoFocus={(e) => {
             e.preventDefault()
             titleRef.current?.focus()
@@ -232,17 +234,15 @@ export function CalendarEventPopover({
           )}
           style={{ top, left, width: POPOVER_WIDTH }}
         >
-          <DialogPrimitive.Title className="sr-only">
-            {mode === 'create' ? 'Create calendar event' : 'Edit calendar event'}
-          </DialogPrimitive.Title>
+          <DialogPrimitive.Title className="sr-only">{title}</DialogPrimitive.Title>
           <DialogPrimitive.Description className="sr-only">
-            Update title, location, date, time, and notes for this event.
+            {t('form.event-editor-description')}
           </DialogPrimitive.Description>
 
           <div className="space-y-3">
             <Input
               ref={titleRef}
-              placeholder="New Event"
+              placeholder={t('form.new-event-placeholder')}
               value={draft.title}
               onChange={(e) => onDraftChange({ ...draft, title: e.target.value })}
               onKeyDown={(e) => {
@@ -255,7 +255,7 @@ export function CalendarEventPopover({
             />
 
             <Input
-              placeholder="Add location"
+              placeholder={t('form.location-placeholder')}
               value={draft.location}
               onChange={(e) => onDraftChange({ ...draft, location: e.target.value })}
               disabled={isSaving}
@@ -264,35 +264,39 @@ export function CalendarEventPopover({
             <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
               <span className="flex items-center gap-2 text-muted-foreground">
                 <CalendarIcon size={14} />
-                All day
+                {t('time.all-day')}
               </span>
               <input
                 type="checkbox"
                 checked={draft.isAllDay}
                 onChange={(e) => handleAllDayToggle(e.target.checked)}
                 className="size-4"
-                aria-label="All day"
+                aria-label={t('time.all-day')}
               />
             </label>
 
             <DateTimeField
-              label="Start"
+              label={t('form.start')}
               value={draft.startAt}
               isAllDay={draft.isAllDay}
               onChange={(next) => onDraftChange({ ...draft, startAt: next })}
               clockFormat={clockFormat}
+              locale={i18n.language}
+              pickDateLabel={t('time.pick-a-date')}
             />
 
             <DateTimeField
-              label="End"
+              label={t('form.end')}
               value={draft.endAt || draft.startAt}
               isAllDay={draft.isAllDay}
               onChange={(next) => onDraftChange({ ...draft, endAt: next })}
               clockFormat={clockFormat}
+              locale={i18n.language}
+              pickDateLabel={t('time.pick-a-date')}
             />
 
             <Textarea
-              placeholder="Add notes or URL"
+              placeholder={t('form.notes-url-placeholder')}
               value={draft.description}
               onChange={(e) => onDraftChange({ ...draft, description: e.target.value })}
               disabled={isSaving}
@@ -326,7 +330,7 @@ export function CalendarEventPopover({
                 onClick={onDismiss}
                 disabled={isSaving}
               >
-                Cancel
+                {tCommon('button.cancel')}
               </Button>
               <Button
                 type="button"
@@ -340,7 +344,11 @@ export function CalendarEventPopover({
                 }}
                 onClick={() => void submit()}
               >
-                {isSaving ? 'Saving…' : mode === 'create' ? 'Create' : 'Save'}
+                {isSaving
+                  ? tCommon('state.saving')
+                  : mode === 'create'
+                    ? tCommon('button.create')
+                    : tCommon('button.save')}
               </Button>
             </div>
           </div>
@@ -358,18 +366,22 @@ interface TargetCalendarFieldProps {
 
 function TargetCalendarField({ value, onChange, disabled }: TargetCalendarFieldProps) {
   const { data, isLoading } = useGoogleCalendars()
+  const { t } = useT('calendar')
   const calendars = data?.calendars ?? []
   // Only surface the picker when the user actually has Google connected
   // (empty list = not connected OR no calendars yet).
   if (!isLoading && calendars.length === 0) return null
 
-  const defaultLabel = data?.currentDefaultId
-    ? `Use default (${data.calendars.find((c) => c.id === data.currentDefaultId)?.title ?? data.currentDefaultId})`
-    : 'Use Memry calendar (default)'
+  const currentDefaultLabel = data?.currentDefaultId
+    ? (data.calendars.find((c) => c.id === data.currentDefaultId)?.title ?? data.currentDefaultId)
+    : null
+  const defaultLabel = currentDefaultLabel
+    ? t('form.use-default-calendar-with-name', { calendar: currentDefaultLabel })
+    : t('form.use-memry-calendar-default')
 
   return (
     <label className="flex flex-col gap-1 text-sm">
-      <span className="text-xs font-medium text-muted-foreground">Google calendar</span>
+      <span className="text-xs font-medium text-muted-foreground">{t('form.google-calendar')}</span>
       <CalendarPicker
         calendars={calendars}
         value={value}

@@ -5,6 +5,7 @@ import { Check } from '@/lib/icons'
 import { SubtaskProgressBar } from './subtask-progress-bar'
 import { cn } from '@/lib/utils'
 import type { SubtaskProgress } from '@/lib/subtask-utils'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -28,6 +29,7 @@ export const CelebrationProgress = ({
   showLabel = true,
   className
 }: CelebrationProgressProps): React.JSX.Element | null => {
+  const { t: tPhaseF } = useT('tasks')
   const [showCelebration, setShowCelebration] = useState(false)
   const prevCompletedRef = useRef<number>(progress.completed)
   const prevTotalRef = useRef<number>(progress.total)
@@ -89,7 +91,7 @@ export const CelebrationProgress = ({
             exit={{ scale: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
             className="ml-2 flex items-center justify-center w-4 h-4 rounded-full bg-task-complete"
-            aria-label="Complete"
+            aria-label={tPhaseF('phaseF.componentsTasksCelebrationProgress.complete')}
           >
             <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
           </motion.div>

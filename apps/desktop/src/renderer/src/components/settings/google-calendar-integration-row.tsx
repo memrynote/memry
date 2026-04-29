@@ -16,6 +16,7 @@ import {
 import { GoogleCalendarSourcePicker } from './google-calendar-source-picker'
 import { GoogleCalendarOnboardingDialog } from '@/components/calendar/google-calendar-onboarding-dialog'
 import { googleCalendarsQueryKey } from '@/hooks/use-google-calendars'
+import { useT } from '@memry/i18n/renderer'
 
 const GOOGLE_STATUS_QUERY_KEY = ['calendar', 'google', 'status'] as const
 const GOOGLE_SOURCES_QUERY_KEY = ['calendar', 'google', 'sources'] as const
@@ -29,6 +30,7 @@ async function invalidateGoogleCalendarQueries(queryClient: ReturnType<typeof us
 }
 
 export function GoogleCalendarIntegrationRow(): React.JSX.Element {
+  const { t } = useT('settings')
   const queryClient = useQueryClient()
   const [showOnboarding, setShowOnboarding] = useState(false)
   // Guard against reopening across renders if the user dismissed the modal
@@ -50,7 +52,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     mutationFn: async () => {
       const result = await connectGoogleCalendarProvider()
       if (!result.success) {
-        throw new Error(result.error ?? 'Failed to connect Google Calendar')
+        throw new Error(result.error ?? t('integrations.googleCalendar.connectFailed'))
       }
       return result
     },
@@ -69,7 +71,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     mutationFn: async () => {
       const result = await refreshGoogleCalendarProvider()
       if (!result.success) {
-        throw new Error(result.error ?? 'Failed to refresh Google Calendar')
+        throw new Error(result.error ?? t('integrations.googleCalendar.refreshFailed'))
       }
       return result
     },
@@ -82,7 +84,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     mutationFn: async () => {
       const result = await disconnectGoogleCalendarProvider()
       if (!result.success) {
-        throw new Error(result.error ?? 'Failed to disconnect Google Calendar')
+        throw new Error(result.error ?? t('integrations.googleCalendar.disconnectFailed'))
       }
       return result
     },
@@ -103,7 +105,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     mutationFn: async (sourceId: string) => {
       const result = await retryGoogleCalendarSourceSync({ sourceId })
       if (!result.success) {
-        throw new Error(result.error ?? 'Retry failed')
+        throw new Error(result.error ?? t('integrations.googleCalendar.retryFailed'))
       }
       return result
     },
@@ -160,9 +162,11 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
 
           <div className="flex min-w-0 flex-col gap-1">
             <div className="flex items-center gap-2">
-              <span className="text-[13px]/4 font-medium text-foreground">Google Calendar</span>
+              <span className="text-[13px]/4 font-medium text-foreground">
+                {t('integrations.googleCalendar.name')}
+              </span>
               <Badge variant="secondary" className="h-4 border-0 px-1.5 py-0 text-[10px]/3">
-                OAuth 2.0
+                {t('integrations.auth.oauth2')}
               </Badge>
               <Badge
                 variant="secondary"
@@ -170,14 +174,14 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
               >
                 {status?.connected
                   ? reconnectRequired && !status.hasLocalAuth
-                    ? 'Reconnect Required'
-                    : 'Connected'
-                  : 'Not Connected'}
+                    ? t('integrations.googleCalendar.statuses.reconnectRequired')
+                    : t('integrations.googleCalendar.statuses.connected')
+                  : t('integrations.googleCalendar.statuses.notConnected')}
               </Badge>
             </div>
 
             <p className="text-xs/4 text-muted-foreground">
-              Two-way sync for Memry events and imported Google calendars.
+              {t('integrations.googleCalendar.description')}
             </p>
 
             {status?.accounts && status.accounts.length > 0 && (
@@ -193,7 +197,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
                           : 'border-muted-foreground/30 bg-muted text-muted-foreground'
                   const detail =
                     account.status === 'reconnect_required'
-                      ? 'Reconnect Google'
+                      ? t('integrations.googleCalendar.accountReconnect')
                       : account.status === 'error'
                         ? account.lastError?.slice(0, 60)
                         : null
@@ -219,7 +223,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
 
             {mutationError && (
               <p className="text-xs text-destructive">
-                {extractErrorMessage(mutationError, 'Something went wrong')}
+                {extractErrorMessage(mutationError, t('integrations.googleCalendar.syncFailed'))}
               </p>
             )}
           </div>
@@ -236,7 +240,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
                   disabled={isPending}
                   onClick={() => connectMutation.mutate()}
                 >
-                  Reconnect Google
+                  {t('integrations.googleCalendar.reconnect')}
                 </Button>
               ) : (
                 <Button
@@ -246,7 +250,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
                   disabled={isPending}
                   onClick={() => refreshMutation.mutate()}
                 >
-                  Sync Now
+                  {t('integrations.googleCalendar.syncNow')}
                 </Button>
               )}
               <Button
@@ -256,7 +260,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
                 disabled={isPending}
                 onClick={() => disconnectMutation.mutate()}
               >
-                Disconnect
+                {t('integrations.googleCalendar.disconnect')}
               </Button>
             </>
           ) : (
@@ -267,7 +271,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
               disabled={isPending}
               onClick={() => connectMutation.mutate()}
             >
-              Connect
+              {t('integrations.connect')}
             </Button>
           )}
         </div>
@@ -277,10 +281,10 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
         <div className="mt-3 grid gap-2">
           <div className="flex items-center justify-between gap-3">
             <span className="text-[11px]/3.5 font-medium uppercase tracking-[0.05em] text-muted-foreground">
-              Imported Calendars
+              {t('integrations.googleCalendar.importedCalendars')}
             </span>
             <span className="text-xs text-muted-foreground">
-              {status.calendars.selected} selected
+              {t('integrations.googleCalendar.selected', { count: status.calendars.selected })}
             </span>
           </div>
 

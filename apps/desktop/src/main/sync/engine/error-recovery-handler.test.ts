@@ -135,7 +135,7 @@ describe('ErrorRecoveryHandler', () => {
       expect(stateManager.setState).toHaveBeenCalledWith('error')
       expect(ctx.lastErrorInfo).toEqual({
         category: 'device_revoked',
-        message: 'This device has been removed',
+        message: 'errors:sync.deviceRevoked',
         retryable: false
       })
     })
@@ -150,7 +150,7 @@ describe('ErrorRecoveryHandler', () => {
       expect(stateManager.setState).toHaveBeenCalledWith('error')
       expect(ctx.lastErrorInfo).toEqual({
         category: 'certificate_pin_failed',
-        message: 'Certificate pin verification failed. Restart the app to retry.',
+        message: 'errors:sync.certificatePinFailed',
         retryable: false
       })
     })
@@ -185,7 +185,7 @@ describe('ErrorRecoveryHandler', () => {
       await handler.handleCoordinatorError(err)
 
       expect(stateManager.setState).toHaveBeenCalledWith('error')
-      expect(ctx.lastError).toBe('Session expired')
+      expect(ctx.lastError).toBe('errors:sync.authExpired')
     })
 
     it('#given no refreshAccessToken dep #when auth_expired #then sets error state directly', async () => {

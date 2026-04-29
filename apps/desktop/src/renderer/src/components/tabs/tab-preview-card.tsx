@@ -3,6 +3,7 @@ import type { WikiLinkPreview } from '@/services/notes-service'
 import { getTagColors, withAlpha } from '../note/tags-row/tag-colors'
 import { format } from 'date-fns'
 import { FileText } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
 
 const MAX_VISIBLE_TAGS = 3
 
@@ -15,6 +16,7 @@ export const TabPreviewCard = memo(function TabPreviewCard({
   preview,
   isLoading = false
 }: TabPreviewCardProps) {
+  const { t: tPhaseF } = useT('common')
   if (isLoading) {
     return (
       <div data-testid="tab-preview-skeleton" className="flex flex-col gap-2 p-3.5">
@@ -43,7 +45,7 @@ export const TabPreviewCard = memo(function TabPreviewCard({
           <FileText
             className="size-3.5 shrink-0"
             style={{ color: 'var(--text-tertiary)' }}
-            aria-label="Note icon"
+            aria-label={tPhaseF('phaseF.componentsTabsTabPreviewCard.noteIcon')}
           />
         )}
         <span className="font-semibold text-[13px]/4 truncate text-text-bright">

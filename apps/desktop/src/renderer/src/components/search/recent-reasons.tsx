@@ -1,5 +1,6 @@
 import { FileText, BookOpen, CheckSquare, Inbox, Trash2 } from '@/lib/icons'
 import type { SearchReason } from '@memry/contracts/search-api'
+import { useT } from '@memry/i18n/renderer'
 
 interface RecentReasonsProps {
   reasons: SearchReason[]
@@ -19,10 +20,11 @@ export function RecentReasons({
   onSelect,
   onClear
 }: RecentReasonsProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('common')
   if (reasons.length === 0) {
     return (
       <div className="py-8 text-center text-sm text-text-tertiary">
-        Search and click items to build your trail
+        {tPhaseF('phaseF.componentsSearchRecentReasons.searchAndClickItemsToBuildYourTrail')}
       </div>
     )
   }
@@ -31,7 +33,7 @@ export function RecentReasons({
     <div className="py-1">
       <div className="flex items-center justify-between px-3 py-1.5">
         <span className="text-xs font-semibold uppercase tracking-wider text-text-tertiary">
-          Reasons
+          {tPhaseF('phaseF.componentsSearchRecentReasons.reasons')}
         </span>
         <button
           type="button"
@@ -39,7 +41,8 @@ export function RecentReasons({
           className="flex items-center gap-1 text-xs text-text-tertiary hover:text-foreground transition-colors"
         >
           <Trash2 className="size-3" />
-          Clear
+
+          {tPhaseF('phaseF.componentsSearchRecentReasons.clear')}
         </button>
       </div>
       {reasons.map((reason) => {

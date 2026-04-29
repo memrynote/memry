@@ -5,6 +5,31 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-04-29 — Multi-language Support (English, Turkish, Arabic) with RTL
+
+### Added
+- Full multi-language support: pick English, Turkish (`Türkçe`), or Arabic (`العربية`) from Settings → General → Language. Switching reloads UI strings across every surface — buttons, dialogs, settings panels, calendar, tasks, inbox, journal, notes, graph, and the native Electron menu — without requiring an app restart.
+- Right-to-left (RTL) layout when Arabic is selected. The renderer applies `dir="rtl"` to `<html>`, mirrors directional UI (close buttons, sidebars, scrollbars), and flips Tailwind logical-property classes (`ms-*`, `me-*`, `ps-*`, `pe-*`, `start-*`, `end-*`, `text-start`, `text-end`, `border-s`, `border-e`, `rounded-s-*`, `rounded-e-*`) automatically.
+- ICU pluralization in user-visible counters (e.g. note property "used in N notes", column-selector usage counts) using locale-correct plural rules: English `one/other`, Turkish `other` (no plural form), Arabic `zero/one/two/few/many/other`. Powered by a custom `IcuFormatter` plugin since the published `i18next-icu` is broken under pure ESM.
+- New `@memry/i18n` package: locale identity (`LocaleSchema`), namespace registry (`common`, `inbox`, `notes`, `journal`, `calendar`, `tasks`, `graph`, `settings`, `errors`, `menu`), main + renderer i18next factories, `useT(namespace)` and `useDirection()` hooks, `applyLocaleToDocument()` helper, `mirrorRtl()` utility, and synchronous resource loader for the main process.
+- Locale IPC bridge (`LocaleChannels` + `LocaleApi` contract) so the renderer can read and update the active locale without touching the filesystem.
+- Locale-aware error rendering: `extractErrorMessage()` now resolves i18n keys returned from the main process so user-facing error toasts translate.
+- Localized native Electron menu — File, Edit, View, Window, Help and every submenu entry pulls from the `menu` namespace.
+- E2E coverage: language-switch flow in Playwright (`i18n.e2e.ts`), Turkish-flip assertion for migrated common buttons, ICU pluralization parity tests across en/tr/ar, and 9+ component-level i18n integration tests (journal, inbox, graph, settings, shortcut registry).
+- Forward-looking plan documents for Phase G (renderer hardcoded-string burn-down), Phase H (main-process completion), and Phase I (ESLint hardening).
+- Documentation: "Adding a Locale" checklist, Tailwind logical-property rule in CLAUDE.md.
+
+### Changed
+- ~120 user-visible English strings across the renderer migrated from hardcoded literals to namespaced `t()` calls: settings shell, general/appearance/account/sync/workspace panels, calendar toolbar/filters/dialogs/event editor, tasks page, inbox (toolbar, list, detail, filing, triage, archived, bulk actions, content preview, insights), notes page, journal, graph (page, controls, menu, tooltips), folder view, search aria-labels, unsaved-changes dialog, bulk-delete dialog, note-tree/task/calendar delete-cancel buttons.
+- Main-process error and menu surfaces resolve through namespaces (`errors:*`, `menu:*`) instead of inline strings.
+- `GeneralSettings.language` tightened to `LocaleSchema` (compile-time validation prevents drift between settings and supported locales).
+
+### Fixed
+- Replace broken `i18next-icu` with a custom `IcuFormatter`. The published package's ESM bundle does `import IntlMessageFormat from 'intl-messageformat'`, but `intl-messageformat` 10.x exports the constructor as a named export — the default-import resolves to the module namespace and `new IntlMessageFormat(...)` throws "is not a constructor". The custom plugin uses the correct named import and falls back to the raw template string on parse error so consumers see the bug instead of an empty string.
+- Avoid renderer provider barrel import that created a circular dependency through the i18n package boundary.
+
+---
+
 ## 2026-04-21 — Calendar Sidebar Typed Indicator Dots
 
 ### Added

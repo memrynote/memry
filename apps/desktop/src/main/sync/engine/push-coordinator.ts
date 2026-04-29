@@ -209,10 +209,10 @@ export class PushCoordinator {
                 this.ctx.deps.queue.markFailed(queueId, reason)
                 this.ctx.lastErrorInfo = {
                   category: 'storage_quota_exceeded',
-                  message: 'Storage quota exceeded',
+                  message: 'errors:sync.storageQuotaExceeded',
                   retryable: false
                 }
-                this.ctx.lastError = 'Storage quota exceeded'
+                this.ctx.lastError = 'errors:sync.storageQuotaExceeded'
                 this.stateManager.setState('error')
                 break
               } else {

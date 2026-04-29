@@ -1,6 +1,7 @@
 import { memo, type RefObject } from 'react'
 import { X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface FindBarProps {
   isOpen: boolean
@@ -27,6 +28,7 @@ export const FindBar = memo(function FindBar({
   onClose,
   className
 }: FindBarProps) {
+  const { t: tPhaseF } = useT('common')
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       e.preventDefault()
@@ -64,7 +66,7 @@ export const FindBar = memo(function FindBar({
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Find, replace, ask..."
+          placeholder={tPhaseF('phaseF.componentsFindBarFindBar.findReplaceAsk')}
           tabIndex={isOpen ? 0 : -1}
           className={cn(
             'w-52 h-7 text-sm bg-transparent',

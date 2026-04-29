@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { useCountdown } from '@/hooks/use-countdown'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { RefreshCw, Loader2, Clock, AlertCircle, Copy, Lock } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
 
 type QrState = 'loading' | 'ready' | 'expired' | 'error'
 
@@ -25,6 +26,8 @@ function truncateCode(code: string, maxLen = 32): string {
 }
 
 export function QrLinking({ onCancel }: QrLinkingProps): React.JSX.Element {
+  const { t } = useT('settings')
+  const { t: tCommon } = useT('common')
   const [qrState, setQrState] = useState<QrState>('loading')
   const [session, setSession] = useState<QrSession | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -37,7 +40,7 @@ export function QrLinking({ onCancel }: QrLinkingProps): React.JSX.Element {
       .then((result) => {
         if (!result.qrData || !result.sessionId || !result.expiresAt) {
           setQrState('error')
-          setError('Failed to generate linking code')
+          setError(t('qrLinking.generateFailed'))
           return
         }
         setSession({
@@ -49,9 +52,9 @@ export function QrLinking({ onCancel }: QrLinkingProps): React.JSX.Element {
       })
       .catch((err: unknown) => {
         setQrState('error')
-        setError(extractErrorMessage(err, 'Failed to generate linking code'))
+        setError(extractErrorMessage(err, t('qrLinking.generateFailed')))
       })
-  }, [])
+  }, [t])
 
   useEffect(() => {
     const t = setTimeout(generateQr, 0)
@@ -62,23 +65,22 @@ export function QrLinking({ onCancel }: QrLinkingProps): React.JSX.Element {
     <div className="flex flex-col items-center gap-5">
       <div className="flex flex-col items-center gap-1.5 text-center">
         <DialogTitle className="font-heading text-xl font-semibold tracking-tight text-foreground">
-          Link new device
+          {t('qrLinking.title')}
         </DialogTitle>
         <DialogDescription className="text-sm text-muted-foreground">
-          Scan this QR code from the device you want to link to transfer your encryption keys
-          securely.
+          {t('qrLinking.description')}
         </DialogDescription>
       </div>
 
       <QrDisplay qrState={qrState} session={session} error={error} onRegenerate={generateQr} />
 
       <Button variant="outline" className="w-full rounded-[10px]" onClick={onCancel}>
-        Cancel
+        {tCommon('button.cancel')}
       </Button>
 
       <div className="flex items-center gap-1.5 text-muted-foreground/60">
         <Lock className="w-3 h-3" />
-        <span className="text-[11px]">End-to-end encrypted</span>
+        <span className="text-[11px]">{t('qrLinking.encrypted')}</span>
       </div>
     </div>
   )
@@ -95,18 +97,20 @@ function QrDisplay({
   error: string | null
   onRegenerate: () => void
 }): React.JSX.Element {
+  const { t } = useT('settings')
+
   if (qrState === 'loading') {
     return (
       <div
         className="flex flex-col items-center justify-center py-12 gap-3"
         role="status"
-        aria-label="Generating linking code"
+        aria-label={t('qrLinking.generatingAria')}
       >
         <Loader2
           className="w-8 h-8 animate-spin text-amber-600 dark:text-amber-400"
           aria-hidden="true"
         />
-        <p className="text-sm text-muted-foreground">Generating linking code...</p>
+        <p className="text-sm text-muted-foreground">{t('qrLinking.generating')}</p>
       </div>
     )
   }
@@ -120,7 +124,7 @@ function QrDisplay({
         <p className="text-sm text-destructive">{error}</p>
         <Button variant="outline" size="sm" onClick={onRegenerate} className="gap-1.5">
           <RefreshCw className="w-3.5 h-3.5" />
-          Try again
+          {t('qrLinking.tryAgain')}
         </Button>
       </div>
     )
@@ -140,6 +144,8 @@ function QrReady({
   session: QrSession
   onRegenerate: () => void
 }): React.JSX.Element {
+  const { t } = useT('settings')
+  const { t: tCommon } = useT('common')
   const { formattedTime, isExpired } = useCountdown(session.expiresAt)
   const [copied, setCopied] = useState(false)
 
@@ -159,10 +165,10 @@ function QrReady({
         <div className="w-12 h-12 rounded-2xl bg-amber-500/10 dark:bg-amber-400/10 flex items-center justify-center">
           <Clock className="w-6 h-6 text-amber-600 dark:text-amber-400" />
         </div>
-        <p className="text-sm text-muted-foreground">Linking code expired</p>
+        <p className="text-sm text-muted-foreground">{t('qrLinking.expired')}</p>
         <Button variant="outline" size="sm" onClick={onRegenerate} className="gap-1.5">
           <RefreshCw className="w-3.5 h-3.5" />
-          Generate new code
+          {t('qrLinking.generateNew')}
         </Button>
       </div>
     )
@@ -170,34 +176,33 @@ function QrReady({
 
   return (
     <div className="flex flex-col items-center gap-4 w-full">
-      <div
-        className="p-5 bg-white rounded-[14px] shadow-sm"
-        aria-label="QR code for device linking"
-      >
+      <div className="p-5 bg-white rounded-[14px] shadow-sm" aria-label={t('qrLinking.qrAria')}>
         <QRCodeSVG
           value={session.qrData}
           size={180}
           level="M"
           marginSize={0}
           role="img"
-          aria-label="Device linking QR code"
+          aria-label={t('qrLinking.qrImageAria')}
         />
       </div>
 
       <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
         <Clock className="w-3.5 h-3.5" />
-        <span className="text-[13px] font-medium tabular-nums">Expires in {formattedTime}</span>
+        <span className="text-[13px] font-medium tabular-nums">
+          {t('qrLinking.expiresIn', { time: formattedTime })}
+        </span>
       </div>
 
       <div className="flex items-center gap-3 w-full">
         <div className="flex-1 h-px bg-border" />
-        <span className="text-xs text-muted-foreground">or</span>
+        <span className="text-xs text-muted-foreground">{t('qrLinking.or')}</span>
         <div className="flex-1 h-px bg-border" />
       </div>
 
       <div className="w-full space-y-2">
         <span className="text-[11px] font-semibold tracking-widest uppercase text-muted-foreground">
-          Linking code
+          {t('qrLinking.codeLabel')}
         </span>
         <div className="flex items-center gap-2 rounded-[10px] bg-foreground/[0.04] border border-border px-3.5 py-2.5 min-w-0">
           <code className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[13px] text-muted-foreground">
@@ -207,10 +212,12 @@ function QrReady({
             type="button"
             onClick={handleCopy}
             className="shrink-0 flex items-center gap-1.5 rounded-md bg-foreground/[0.06] px-2.5 py-1 text-muted-foreground transition-colors hover:bg-foreground/[0.1]"
-            aria-label={copied ? 'Copied' : 'Copy linking code'}
+            aria-label={copied ? t('qrLinking.copiedAria') : t('qrLinking.copyAria')}
           >
             <Copy className="w-3.5 h-3.5" />
-            <span className="text-xs font-medium">{copied ? 'Copied!' : 'Copy'}</span>
+            <span className="text-xs font-medium">
+              {copied ? t('qrLinking.copied') : tCommon('button.copy')}
+            </span>
           </button>
         </div>
       </div>

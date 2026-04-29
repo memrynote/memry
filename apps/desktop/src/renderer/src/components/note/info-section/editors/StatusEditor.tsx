@@ -9,6 +9,7 @@ import type {
   SelectOption,
   STATUS_CATEGORY_KEYS
 } from '@memry/contracts/property-types'
+import { useT } from '@memry/i18n/renderer'
 
 interface StatusEditorProps {
   value: string | null
@@ -29,6 +30,8 @@ export function StatusEditor({
   onAddOption,
   onRemoveOption
 }: StatusEditorProps) {
+  const { t } = useT('notes')
+  const { t: tCommon } = useT('common')
   const [isOpen, setIsOpen] = useState(defaultOpen ?? false)
   const [creatingInCategory, setCreatingInCategory] = useState<StatusCategoryKey | null>(null)
   const [newOptionName, setNewOptionName] = useState('')
@@ -62,7 +65,9 @@ export function StatusEditor({
           ) : isOrphan ? (
             <SelectChip value={String(value)} color="stone" />
           ) : (
-            <span className="text-[13px] text-text-tertiary font-sans">Empty</span>
+            <span className="text-[13px] text-text-tertiary font-sans">
+              {t('properties.empty')}
+            </span>
           )}
         </span>
       </Picker.Trigger>
@@ -123,7 +128,7 @@ export function StatusEditor({
                       onBlur={() => {
                         if (!newOptionName.trim()) setCreatingInCategory(null)
                       }}
-                      placeholder="Option name"
+                      placeholder={t('properties.optionName')}
                       className="flex-1 bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-foreground/50"
                     />
                   </div>
@@ -137,7 +142,7 @@ export function StatusEditor({
                     className="flex items-center gap-2 w-full px-2 py-1 text-[11px] text-muted-foreground/60 hover:text-muted-foreground hover:bg-accent rounded-[5px]"
                   >
                     <Plus className="size-3" />
-                    Add
+                    {tCommon('button.add')}
                   </button>
                 )}
               </Picker.Section>

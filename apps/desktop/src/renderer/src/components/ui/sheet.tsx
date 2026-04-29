@@ -5,6 +5,7 @@ import * as SheetPrimitive from '@radix-ui/react-dialog'
 import { XIcon } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />
@@ -46,6 +47,7 @@ function SheetContent({
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: 'top' | 'right' | 'bottom' | 'left'
 }) {
+  const { t: tPhaseF } = useT('common')
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -68,7 +70,7 @@ function SheetContent({
         {children}
         <SheetPrimitive.Close className="data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none">
           <XIcon className="size-4" />
-          <span className="sr-only">Close</span>
+          <span className="sr-only">{tPhaseF('phaseF.componentsUiSheet.close')}</span>
         </SheetPrimitive.Close>
       </SheetPrimitive.Content>
     </SheetPortal>

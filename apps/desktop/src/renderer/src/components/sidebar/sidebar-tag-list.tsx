@@ -15,6 +15,7 @@ import { getTagColors } from '@/components/note/tags-row/tag-colors'
 import { buildTagTree, type TagTreeNode } from '@/lib/tag-tree'
 import { Button } from '@/components/ui/button'
 import { Picker } from '@/components/ui/picker'
+import { useT } from '@memry/i18n/renderer'
 
 type TagSortOption = 'count-desc' | 'count-asc' | 'alpha-asc' | 'alpha-desc'
 
@@ -188,6 +189,7 @@ export function SidebarTagList({
   className,
   onActionsReady
 }: SidebarTagListProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   const { tags, isLoading, error } = useNoteTagsQuery()
   const [showAll, setShowAll] = React.useState(false)
   const [searchOpen, setSearchOpen] = React.useState(false)
@@ -329,7 +331,7 @@ export function SidebarTagList({
       <div className={cn('px-2 py-1.5', className)}>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <div className="size-3 rounded-full bg-muted animate-pulse" />
-          <span>Loading tags...</span>
+          <span>{tPhaseF('phaseF.componentsSidebarSidebarTagList.loadingTags')}</span>
         </div>
       </div>
     )
@@ -338,7 +340,9 @@ export function SidebarTagList({
   if (error) {
     return (
       <div className={cn('px-2 py-1.5', className)}>
-        <span className="text-xs text-destructive">Failed to load tags</span>
+        <span className="text-xs text-destructive">
+          {tPhaseF('phaseF.componentsSidebarSidebarTagList.failedToLoadTags')}
+        </span>
       </div>
     )
   }
@@ -348,7 +352,9 @@ export function SidebarTagList({
   if (allTags.length === 0) {
     return (
       <div className={cn('px-2 py-1.5', className)}>
-        <span className="text-xs text-muted-foreground">No tags yet</span>
+        <span className="text-xs text-muted-foreground">
+          {tPhaseF('phaseF.componentsSidebarSidebarTagList.noTagsYet')}
+        </span>
       </div>
     )
   }
@@ -363,7 +369,7 @@ export function SidebarTagList({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleSearchKeyDown}
-            placeholder="Filter tags..."
+            placeholder={tPhaseF('phaseF.componentsSidebarSidebarTagList.filterTags')}
             className="w-full h-6 px-2 text-[11px] rounded-md border bg-transparent placeholder:text-muted-foreground focus:outline-none"
           />
         </div>
@@ -371,7 +377,9 @@ export function SidebarTagList({
 
       <div className="flex flex-col gap-0.5">
         {visibleTree.length === 0 && searchQuery ? (
-          <span className="text-[11px] text-muted-foreground px-2">No matching tags</span>
+          <span className="text-[11px] text-muted-foreground px-2">
+            {tPhaseF('phaseF.componentsSidebarSidebarTagList.noMatchingTags')}
+          </span>
         ) : (
           visibleTree.map((node) => (
             <TagTreeItem

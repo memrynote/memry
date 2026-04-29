@@ -23,12 +23,14 @@ import {
 } from '@/components/calendar/date-utils'
 import { buildDayDots } from '@/components/calendar/day-dots'
 import { formatDateToISO, parseISODate, getTodayString } from '@/lib/journal-utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface GlobalDayPanelProps {
   className?: string
 }
 
 function DayPanelResizeRail() {
+  const { t: tPhaseF } = useT('common')
   const { width, setWidth, setIsResizing } = useDayPanel()
   const startXRef = useRef(0)
   const startWidthRef = useRef(0)
@@ -75,11 +77,11 @@ function DayPanelResizeRail() {
 
   return (
     <button
-      aria-label="Resize Day Panel"
+      aria-label={tPhaseF('phaseF.componentsDayPanelGlobalDayPanel.resizeDayPanel')}
       tabIndex={-1}
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
-      title="Drag to resize · Double-click to reset"
+      title={tPhaseF('phaseF.componentsDayPanelGlobalDayPanel.dragToResizeDoubleClickToReset')}
       className="absolute inset-y-0 left-0 z-20 w-4 -translate-x-1/2 cursor-col-resize after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border"
     />
   )

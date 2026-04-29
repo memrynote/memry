@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
 import { formatTimeOfDay } from '@/lib/time-format'
@@ -16,15 +17,19 @@ import type { CalendarProjectionItem } from '@/services/calendar-service'
 import type { CalendarWorkspaceView } from './calendar-toolbar'
 import type { AnchorRect } from './types'
 
-const DAY_HEADERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const CLICK_DELAY_MS = 250
 
-function formatPopoverDate(day: string): string {
-  return new Intl.DateTimeFormat(undefined, {
+function formatPopoverDate(day: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
     weekday: 'long',
     month: 'long',
     day: 'numeric'
   }).format(parseLocalDate(day))
+}
+
+function getMondayWeekdayHeaders(locale: string): string[] {
+  const formatter = new Intl.DateTimeFormat(locale, { weekday: 'narrow' })
+  return Array.from({ length: 7 }, (_, i) => formatter.format(new Date(2020, 5, 1 + i)))
 }
 
 interface CalendarYearViewProps {
@@ -45,11 +50,12 @@ export function CalendarYearView({
   const {
     settings: { clockFormat }
   } = useGeneralSettings()
+  const { t, i18n } = useT('calendar')
   const [popoverDay, setPopoverDay] = useState<string | null>(null)
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function formatPopoverTime(item: CalendarProjectionItem): string {
-    if (item.isAllDay) return 'all-day'
+    if (item.isAllDay) return t('time.all-day-lower')
     return formatTimeOfDay(new Date(item.startAt), clockFormat)
   }
 
@@ -68,12 +74,13 @@ export function CalendarYearView({
         const monthAnchor = toLocalDateString(monthDate)
         return {
           monthAnchor,
-          label: new Intl.DateTimeFormat(undefined, { month: 'long' }).format(monthDate),
+          label: new Intl.DateTimeFormat(i18n.language, { month: 'long' }).format(monthDate),
           gridDays: getMonthGridDaysMondayStart(monthAnchor)
         }
       }),
-    [year]
+    [i18n.language, year]
   )
+  const dayHeaders = useMemo(() => getMondayWeekdayHeaders(i18n.language), [i18n.language])
 
   const itemsByDay = useMemo(() => {
     const map = new Map<string, CalendarProjectionItem[]>()
@@ -130,7 +137,7 @@ export function CalendarYearView({
               <h3 className="mb-2 text-sm font-semibold text-red-400">{month.label}</h3>
 
               <div className="mb-1 grid grid-cols-7">
-                {DAY_HEADERS.map((header, i) => (
+                {dayHeaders.map((header, i) => (
                   <span
                     key={i}
                     className="py-0.5 text-center text-xs font-medium text-muted-foreground"
@@ -155,7 +162,7 @@ export function CalendarYearView({
                       className="relative flex flex-col items-center py-0.5"
                       onClick={() => handleDayClick(day)}
                       onDoubleClick={() => handleDayDoubleClick(day)}
-                      aria-label={formatPopoverDate(day)}
+                      aria-label={formatPopoverDate(day, i18n.language)}
                     >
                       <span
                         className={cn(
@@ -198,10 +205,10 @@ export function CalendarYearView({
         {popoverDay && (
           <>
             <p className="mb-2 text-xs font-medium text-muted-foreground">
-              {formatPopoverDate(popoverDay)}
+              {formatPopoverDate(popoverDay, i18n.language)}
             </p>
             {popoverItems.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No events</p>
+              <p className="text-xs text-muted-foreground">{t('empty.no-events')}</p>
             ) : (
               <div className="flex flex-col gap-1">
                 {popoverItems.map((item) => (

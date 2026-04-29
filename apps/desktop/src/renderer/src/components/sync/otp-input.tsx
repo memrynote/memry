@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
 import { Loader2, Clock } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
 
 interface OtpInputProps {
   onComplete: (code: string) => void
@@ -71,6 +72,7 @@ function OtpInputSession({
   error,
   expiresIn
 }: OtpInputProps): React.JSX.Element {
+  const { t } = useT('settings')
   const [value, setValue] = useState('')
   const { seconds, canResend, reset } = useCountdown(expiresIn, onResend)
 
@@ -106,7 +108,7 @@ function OtpInputSession({
           onChange={handleChange}
           disabled={isVerifying}
           autoFocus
-          aria-label="6-digit verification code"
+          aria-label={t('setup.otp.aria')}
         >
           <InputOTPGroup className="gap-1.5">
             {[0, 1, 2].map((i) => (
@@ -140,10 +142,10 @@ function OtpInputSession({
         <div
           className="flex items-center justify-center gap-2 text-sm text-muted-foreground"
           role="status"
-          aria-label="Verifying code"
+          aria-label={t('setup.otp.verifying')}
         >
           <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-          Verifying...
+          {t('setup.otp.verifying')}
         </div>
       )}
 
@@ -157,7 +159,7 @@ function OtpInputSession({
         {isResending ? (
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <Loader2 className="w-3 h-3 animate-spin" />
-            <span className="text-xs">Resending...</span>
+            <span className="text-xs">{t('setup.otp.resending')}</span>
           </div>
         ) : canResend ? (
           <button
@@ -166,12 +168,14 @@ function OtpInputSession({
             disabled={isVerifying}
             className="text-[var(--tint)] text-[13px] hover:underline disabled:opacity-50"
           >
-            Resend code
+            {t('setup.otp.resend')}
           </button>
         ) : (
           <div className="flex items-center gap-1.5 text-muted-foreground/70">
             <Clock className="w-3 h-3" />
-            <span className="text-xs tabular-nums">Resend in {formatCountdown(seconds)}</span>
+            <span className="text-xs tabular-nums">
+              {t('setup.otp.resendIn', { time: formatCountdown(seconds) })}
+            </span>
           </div>
         )}
         <button
@@ -179,7 +183,7 @@ function OtpInputSession({
           onClick={onBack}
           className="text-[var(--tint)] text-[13px] hover:underline"
         >
-          Use a different email
+          {t('setup.otp.differentEmail')}
         </button>
       </div>
     </div>

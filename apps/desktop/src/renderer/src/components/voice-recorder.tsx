@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Component:VoiceRecorder')
 
@@ -53,6 +54,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
     }: VoiceRecorderProps,
     ref
   ): React.JSX.Element {
+    const { t: tPhaseF } = useT('inbox')
     const [state, setState] = useState<RecordingState>('idle')
     const [duration, setDuration] = useState(0)
     const [error, setError] = useState<string | null>(null)
@@ -290,7 +292,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
           size="icon"
           onClick={handleStartClick}
           className={cn('h-8 w-8 text-muted-foreground hover:text-foreground', className)}
-          aria-label="Start voice recording"
+          aria-label={tPhaseF('phaseF.componentsVoiceRecorder.startVoiceRecording')}
         >
           <Mic className="size-4" />
         </Button>
@@ -307,7 +309,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
           )}
         >
           <Loader2 className="size-4 animate-spin" />
-          <span>Requesting microphone access...</span>
+          <span>{tPhaseF('phaseF.componentsVoiceRecorder.requestingMicrophoneAccess')}</span>
         </div>
       )
     }
@@ -326,7 +328,8 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
           {permissionDenied && (
             <Button variant="ghost" size="sm" onClick={openSettings} className="h-7 px-2 text-xs">
               <Settings className="size-3 mr-1" />
-              Settings
+
+              {tPhaseF('phaseF.componentsVoiceRecorder.settings')}
             </Button>
           )}
           <Button
@@ -351,7 +354,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
           )}
         >
           <Loader2 className="size-4 animate-spin" />
-          <span>Processing...</span>
+          <span>{tPhaseF('phaseF.componentsVoiceRecorder.processing')}</span>
         </div>
       )
     }
@@ -392,10 +395,12 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
             'border border-border/50 text-muted-foreground',
             'hover:bg-muted/50 transition-colors'
           )}
-          aria-label="Cancel recording"
+          aria-label={tPhaseF('phaseF.componentsVoiceRecorder.cancelRecording')}
         >
           <X className="size-3" />
-          <span className="text-[11px]/3.5 font-normal">Cancel</span>
+          <span className="text-[11px]/3.5 font-normal">
+            {tPhaseF('phaseF.componentsVoiceRecorder.cancel')}
+          </span>
         </button>
 
         <button
@@ -405,10 +410,12 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
             'bg-foreground text-background',
             'hover:bg-foreground/90 transition-colors'
           )}
-          aria-label="Stop recording"
+          aria-label={tPhaseF('phaseF.componentsVoiceRecorder.stopRecording')}
         >
           <Square className="size-2.5 fill-current" />
-          <span className="text-[11px]/3.5 font-medium">Stop</span>
+          <span className="text-[11px]/3.5 font-medium">
+            {tPhaseF('phaseF.componentsVoiceRecorder.stop')}
+          </span>
         </button>
       </div>
     )

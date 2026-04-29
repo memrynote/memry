@@ -26,6 +26,7 @@ import { createLogger } from '@/lib/logger'
 import { getEventBaseColor } from '@/lib/event-type-colors'
 import { formatTimeOfDay, type ClockFormat } from '@/lib/time-format'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('JournalDayPanel')
 
@@ -246,6 +247,7 @@ interface JournalDayPanelProps {
 }
 
 export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPanelProps) {
+  const { t, i18n } = useT('journal')
   const [isCollapsed, setIsCollapsed] = useState(false)
   const { projects } = useTasksContext()
   const { openTab } = useTabActions()
@@ -364,7 +366,7 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
   const handleNavigateToOverdue = useCallback(() => {
     openTab({
       type: 'tasks',
-      title: 'Tasks',
+      title: t('section.tasks'),
       icon: 'list-checks',
       path: '/tasks',
       isPinned: false,
@@ -372,13 +374,13 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
       isPreview: false,
       isDeleted: false
     })
-  }, [openTab])
+  }, [openTab, t])
 
   const handleNavigateToTask = useCallback(
     (taskId: string, projectId: string) => {
       openTab({
         type: 'tasks',
-        title: 'Tasks',
+        title: t('section.tasks'),
         icon: 'list-checks',
         path: '/tasks',
         isPinned: false,
@@ -391,7 +393,7 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
         }
       })
     },
-    [openTab]
+    [openTab, t]
   )
 
   const hasContent = schedule.length > 0 || tasks.length > 0
@@ -405,7 +407,7 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
         onClick={() => setIsCollapsed((v) => !v)}
       >
         <span className="tracking-[0.06em] uppercase inline-block text-muted-foreground font-semibold shrink-0 text-[11px]">
-          {isToday ? 'Today' : formatShortDate(date)}
+          {isToday ? t('date.relative.today') : formatShortDate(date, i18n.language)}
         </span>
         <ChevronDown
           className={cn(
@@ -421,7 +423,7 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
                 <span className="tracking-[0.06em] uppercase inline-block text-muted-foreground font-semibold text-[11px]">
-                  Schedule
+                  {t('section.schedule')}
                 </span>
                 <span className="text-[11px] text-muted-foreground tabular-nums">
                   {schedule.length}
@@ -437,7 +439,7 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
             <div className="flex flex-col pt-1 gap-1.5">
               <div className="flex items-center justify-between">
                 <span className="tracking-[0.06em] uppercase inline-block text-muted-foreground font-semibold text-[11px]">
-                  Tasks
+                  {t('section.tasks')}
                 </span>
                 {overdueCount > 0 && isToday && (
                   <button
@@ -447,7 +449,7 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
                   >
                     <span className="size-1 shrink-0 rounded-full bg-destructive" />
                     <span className="text-[10px] font-medium text-destructive">
-                      {overdueCount} overdue
+                      {t('count.overdue', { count: overdueCount })}
                     </span>
                   </button>
                 )}
@@ -475,7 +477,7 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
   )
 }
 
-function formatShortDate(iso: string): string {
+function formatShortDate(iso: string, locale: string): string {
   const d = new Date(iso + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return d.toLocaleDateString(locale, { month: 'short', day: 'numeric' })
 }

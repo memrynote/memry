@@ -12,6 +12,11 @@ describe('createMainI18n', () => {
     expect(i18n.t('menu:file.label')).toBe('Dosya')
   })
 
+  it('loads the tasks namespace in the main i18n instance', async () => {
+    const i18n = await createMainI18n({ locale: 'ar' })
+    expect(i18n.t('tasks:page.tabs.today')).toBe('Today')
+  })
+
   it('returns the key for nonexistent translations', async () => {
     const i18n = await createMainI18n({ locale: 'tr' })
     expect(i18n.t('menu:nonexistent.key')).toBe('menu:nonexistent.key')

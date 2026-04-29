@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
 import { ChevronLeft, ChevronRight } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { formatDateParts, getMonthName } from '@/lib/journal-utils'
+import { createJournalDateLabels, formatDateParts, getMonthName } from '@/lib/journal-utils'
 import type { JournalViewState } from './date-breadcrumb'
+import { useT } from '@memry/i18n/renderer'
 
 interface JournalBreadcrumbProps {
   viewState: JournalViewState
@@ -31,26 +32,34 @@ export function JournalBreadcrumb({
   onTodayClick,
   className
 }: JournalBreadcrumbProps) {
+  const { t, i18n } = useT('journal')
+  const dateLabels = useMemo(() => createJournalDateLabels(t), [t, i18n.language])
+
   const dateParts = useMemo(() => {
-    if (viewState.type === 'day') return formatDateParts(viewState.date)
+    if (viewState.type === 'day') return formatDateParts(viewState.date, dateLabels)
     return null
-  }, [viewState])
+  }, [viewState, dateLabels])
 
   if (viewState.type === 'day' && dateParts) {
     return (
       <nav
-        aria-label="Journal date navigation"
+        aria-label={t('nav.dateNavigation')}
         className={cn('flex items-center gap-1.5 text-xs leading-4 select-none', className)}
       >
         <button
           type="button"
           onClick={onPreviousDay}
           className={BACK_BTN_CLASS}
-          aria-label="Previous day"
+          aria-label={t('nav.previousDay')}
         >
           <ChevronLeft className="h-3.5 w-3.5" />
         </button>
-        <button type="button" onClick={onNextDay} className={BACK_BTN_CLASS} aria-label="Next day">
+        <button
+          type="button"
+          onClick={onNextDay}
+          className={BACK_BTN_CLASS}
+          aria-label={t('nav.nextDay')}
+        >
           <ChevronRight className="h-3.5 w-3.5" />
         </button>
         <button type="button" onClick={() => onYearClick(dateParts.year)} className={CRUMB_CLASS}>
@@ -68,7 +77,7 @@ export function JournalBreadcrumb({
         <span className="text-xs text-foreground font-medium">{dateParts.day}</span>
         {isToday && (
           <span className="ml-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-700 dark:text-amber-400 bg-amber-500/10 rounded-full px-2 py-0.5 border border-amber-500/20">
-            Today
+            {t('date.relative.today')}
           </span>
         )}
       </nav>
@@ -76,17 +85,17 @@ export function JournalBreadcrumb({
   }
 
   if (viewState.type === 'month') {
-    const monthName = getMonthName(viewState.month)
+    const monthName = getMonthName(viewState.month, dateLabels)
     return (
       <nav
-        aria-label="Journal date navigation"
+        aria-label={t('nav.dateNavigation')}
         className={cn('flex items-center gap-1.5 text-xs leading-4 select-none', className)}
       >
         <button
           type="button"
           onClick={() => onYearClick(viewState.year)}
           className={BACK_BTN_CLASS}
-          aria-label="Go to year view"
+          aria-label={t('nav.goToYearView')}
         >
           <ChevronLeft className="h-3.5 w-3.5" />
         </button>
@@ -102,7 +111,7 @@ export function JournalBreadcrumb({
   if (viewState.type === 'year') {
     return (
       <nav
-        aria-label="Journal date navigation"
+        aria-label={t('nav.dateNavigation')}
         className={cn('flex items-center gap-1.5 text-xs leading-4 select-none', className)}
       >
         <span className="text-xs text-foreground font-medium">{viewState.year}</span>

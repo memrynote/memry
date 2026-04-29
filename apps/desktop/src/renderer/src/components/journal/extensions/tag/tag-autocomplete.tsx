@@ -15,6 +15,7 @@ import type { SuggestionProps } from '@tiptap/suggestion'
 import { Hash, Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { Tag } from '@/hooks/use-tags'
+import { useT } from '@memry/i18n/renderer'
 
 export interface TagAutocompleteProps {
   items: Tag[]
@@ -34,6 +35,7 @@ export const TagAutocomplete = forwardRef<
   TagAutocompleteRef,
   TagAutocompleteProps & Partial<SuggestionProps>
 >(({ items, command, query }, ref) => {
+  const { t } = useT('journal')
   const [requestedSelectedIndex, setRequestedSelectedIndex] = useState(0)
   const selectedIndex =
     items.length === 0
@@ -116,21 +118,23 @@ export const TagAutocomplete = forwardRef<
         'shadow-md animate-in fade-in-0 zoom-in-95'
       )}
       role="listbox"
-      aria-label="Tag suggestions"
+      aria-label={t('tag.suggestionsAria')}
     >
       {items.length === 0 && !query ? (
         // Empty state - no tags at all
         <div className="px-3 py-6 text-center text-sm text-muted-foreground">
           <Hash className="mx-auto mb-2 h-8 w-8 opacity-50" />
-          <p>No tags yet</p>
-          <p className="mt-1 text-xs">Type to create a new tag</p>
+          <p>{t('tag.empty.title')}</p>
+          <p className="mt-1 text-xs">{t('tag.empty.description')}</p>
         </div>
       ) : (
         <>
           {/* Tags List */}
           {items.length > 0 && (
             <div className="mb-1">
-              <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">Tags</div>
+              <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">
+                {t('tag.groupTitle')}
+              </div>
               {items.map((item, index) => (
                 <button
                   key={item.name}
@@ -170,9 +174,7 @@ export const TagAutocomplete = forwardRef<
                 aria-selected={selectedIndex === items.length}
               >
                 <Plus className="h-4 w-4 shrink-0" />
-                <span className="font-medium">
-                  Create <span className="text-primary">#{query}</span>
-                </span>
+                <span className="font-medium">{t('tag.create', { query })}</span>
               </button>
             </div>
           )}

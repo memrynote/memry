@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 
+import { useT } from '@memry/i18n/renderer'
 import { toast } from 'sonner'
 import { TaskList } from '@/components/tasks/task-list'
 import { TasksTabBar, type TasksInternalTab } from '@/components/tasks/tasks-tab-bar'
@@ -110,6 +111,8 @@ export const TasksPage = ({
   selectedTaskIds: externalSelectedIds,
   onSelectedTaskIdsChange
 }: TasksPageProps): React.JSX.Element => {
+  const { t } = useT('tasks')
+
   // Get database-aware task operations from context
   const {
     addTask: contextAddTask,
@@ -493,49 +496,49 @@ export const TasksPage = ({
       try {
         if (editingProject) {
           await contextUpdateProject(project.id, project)
-          toast.success('Project updated')
+          toast.success(t('toasts.projectUpdated'))
         } else {
           await contextAddProject(project)
-          toast.success('Project created')
+          toast.success(t('toasts.projectCreated'))
         }
         setIsProjectModalOpen(false)
         setEditingProject(null)
       } catch (error) {
         log.error('Failed to save project:', error)
-        toast.error('Failed to save project')
+        toast.error(t('toasts.projectSaveError'))
       }
     },
-    [editingProject, contextAddProject, contextUpdateProject]
+    [editingProject, contextAddProject, contextUpdateProject, t]
   )
 
   const handleArchiveProject = useCallback(
     async (project: Project) => {
       try {
         await contextUpdateProject(project.id, { isArchived: true })
-        toast.success('Project archived')
+        toast.success(t('toasts.projectArchived'))
       } catch (error) {
         log.error('Failed to archive project:', error)
-        toast.error('Failed to archive project')
+        toast.error(t('toasts.projectArchiveError'))
       }
     },
-    [contextUpdateProject]
+    [contextUpdateProject, t]
   )
 
   const handleDeleteProject = useCallback(
     async (projectId: string) => {
       try {
         await contextDeleteProject(projectId)
-        toast.success('Project deleted')
+        toast.success(t('toasts.projectDeleted'))
         // If we were viewing the deleted project, reset selection
         if (selectedProjectId === projectId) {
           setSelectedProjectId(null)
         }
       } catch (error) {
         log.error('Failed to delete project:', error)
-        toast.error('Failed to delete project')
+        toast.error(t('toasts.projectDeleteError'))
       }
     },
-    [contextDeleteProject, selectedProjectId]
+    [contextDeleteProject, selectedProjectId, t]
   )
 
   // Keyboard shortcuts for filter operations and selection
@@ -554,7 +557,7 @@ export const TasksPage = ({
       if (e.key === 'F' && e.shiftKey && !isInputFocused() && showFilterBar) {
         e.preventDefault()
         clearFilters()
-        toast.success('Filters cleared')
+        toast.success(t('toasts.filtersCleared'))
       }
 
       // Cmd/Ctrl+A to select all visible tasks
@@ -584,7 +587,7 @@ export const TasksPage = ({
 
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [showFilterBar, clearFilters, hasSelection, selectAll, deselectAll, bulkActions])
+  }, [showFilterBar, clearFilters, hasSelection, selectAll, deselectAll, bulkActions, t])
 
   const handleAddTask = (): void => {
     setAddTaskPrefillTitle('')
@@ -835,11 +838,11 @@ export const TasksPage = ({
   const handleSaveFilter = useCallback(
     (name: string, filterState: TaskFilters, sortState?: TaskSort): void => {
       saveFilter(name, filterState, sortState)
-      toast.success('Filter saved', {
+      toast.success(t('toasts.filterSaved'), {
         description: `"${name}" has been saved to your filters.`
       })
     },
-    [saveFilter]
+    [saveFilter, t]
   )
 
   const handleDeleteSavedFilter = useCallback(
@@ -849,9 +852,9 @@ export const TasksPage = ({
         setActiveSavedFilterId(null)
         clearFilters()
       }
-      toast.success('Filter deleted')
+      toast.success(t('toasts.filterDeleted'))
     },
-    [deleteSavedFilter, activeSavedFilterId, clearFilters]
+    [deleteSavedFilter, activeSavedFilterId, clearFilters, t]
   )
 
   const handleApplySavedFilter = useCallback(
@@ -866,9 +869,9 @@ export const TasksPage = ({
         updateSort(savedFilter.sort)
       }
       setActiveSavedFilterId(savedFilter.id)
-      toast.success(`Applied "${savedFilter.name}"`)
+      toast.success(t('toasts.filterApplied', { name: savedFilter.name }))
     },
-    [activeSavedFilterId, updateFilters, updateSort, clearFilters]
+    [activeSavedFilterId, updateFilters, updateSort, clearFilters, t]
   )
 
   const currentProjectStatuses = useMemo(() => {
@@ -947,7 +950,7 @@ export const TasksPage = ({
                     strokeLinecap="round"
                   />
                 </svg>
-                <span className="text-[12px] font-medium">Filter</span>
+                <span className="text-[12px] font-medium">{t('filters.filter')}</span>
                 {filtersActive && (
                   <span className="flex items-center justify-center size-[14px] rounded-full bg-foreground text-background text-[9px] font-bold">
                     {countActiveFilters(filters)}
@@ -964,13 +967,13 @@ export const TasksPage = ({
               <div
                 className="flex items-center shrink-0 rounded-[5px] overflow-clip border border-border"
                 role="radiogroup"
-                aria-label="View mode"
+                aria-label={t('page.viewMode.label')}
               >
                 <button
                   type="button"
                   role="radio"
                   aria-checked={activeView === 'list'}
-                  aria-label="List view"
+                  aria-label={t('page.viewMode.list')}
                   onClick={() => setActiveView('list')}
                   className={cn(
                     'flex items-center justify-center w-[26px] h-6 shrink-0 transition-colors',
@@ -993,7 +996,7 @@ export const TasksPage = ({
                     type="button"
                     role="radio"
                     aria-checked={activeView === 'kanban'}
-                    aria-label="Kanban view"
+                    aria-label={t('page.viewMode.kanban')}
                     onClick={() => setActiveView('kanban')}
                     className={cn(
                       'flex items-center justify-center w-[26px] h-6 shrink-0 transition-colors',

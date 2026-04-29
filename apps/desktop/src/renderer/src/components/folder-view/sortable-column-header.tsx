@@ -14,6 +14,7 @@ import type { Header } from '@tanstack/react-table'
 import type { NoteWithProperties, ColumnConfig } from '@memry/contracts/folder-view-api'
 import { GripVertical, type AppIcon } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface SortableColumnHeaderProps {
   /** TanStack Table header object */
@@ -66,6 +67,7 @@ export function SortableColumnHeader({
   showColumnBorders = true,
   isLastColumn = false
 }: SortableColumnHeaderProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   // Sortable hook
   const { attributes, listeners, setNodeRef, transition, isDragging, isOver } = useSortable({
     id: columnConfig.id,
@@ -272,7 +274,7 @@ export function SortableColumnHeader({
             '-ml-1 mr-0.5'
           )}
           aria-label={`Drag to reorder column: ${columnConfig.displayName ?? columnConfig.id}`}
-          title="Drag to reorder column"
+          title={tPhaseF('phaseF.componentsFolderViewSortableColumnHeader.dragToReorderColumn')}
         >
           <GripVertical className="h-4 w-4" />
         </div>
@@ -326,7 +328,7 @@ export function SortableColumnHeader({
             onWidthChange?.(columnId, newWidth)
           }
         }}
-        aria-label="Resize column"
+        aria-label={tPhaseF('phaseF.componentsFolderViewSortableColumnHeader.resizeColumn')}
         className={cn(
           'absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none',
           'opacity-0 group-hover:opacity-100 hover:bg-primary/50',

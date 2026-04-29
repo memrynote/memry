@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link, FileText, Image, Mic, Check, Loader2 } from '@/lib/icons'
 import { useQuery } from '@tanstack/react-query'
+import { useT } from '@memry/i18n/renderer'
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
@@ -57,12 +58,14 @@ const BulkFilePanel = ({
   onClose,
   onFile
 }: BulkFilePanelProps): React.JSX.Element => {
+  const { t } = useT('inbox')
+
   // Fetch real folders from vault
   const { data: vaultFolders = [] } = useQuery({
     queryKey: ['vault', 'folders'],
     queryFn: async () => {
       const folderInfos = await window.api.notes.getFolders()
-      const folders: Folder[] = [{ id: '', name: 'Notes (root)', path: '' }]
+      const folders: Folder[] = [{ id: '', name: t('detail.notesRootLabel'), path: '' }]
       for (const fi of folderInfos) {
         if (fi.path) {
           folders.push({
@@ -100,7 +103,7 @@ const BulkFilePanel = ({
 
   const isMac =
     typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
-  const keyboardHint = isMac ? '⌘⏎ to file · Esc to close' : 'Ctrl+Enter to file · Esc to close'
+  const keyboardHint = isMac ? t('bulk.filePanel.macHint') : t('bulk.filePanel.ctrlHint')
 
   return (
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
@@ -141,6 +144,7 @@ const BulkFilePanelContent = ({
   onClose,
   onFile
 }: BulkFilePanelContentProps): React.JSX.Element => {
+  const { t } = useT('inbox')
   const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null)
   const [tags, setTags] = useState<string[]>(() => initialTags)
   const [isLoading, setIsLoading] = useState(false)
@@ -193,14 +197,14 @@ const BulkFilePanelContent = ({
     <>
       <SheetHeader className="px-6 py-4 border-b border-[var(--border)] shrink-0">
         <SheetTitle className="text-lg font-semibold">
-          File {itemCount} Item{itemCount !== 1 ? 's' : ''}
+          {t('bulk.filePanel.title', { count: itemCount })}
         </SheetTitle>
       </SheetHeader>
 
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
         <div className="space-y-2">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">
-            Items to file
+            {t('bulk.filePanel.itemsToFile')}
           </h3>
           <div className="rounded-md border border-[var(--border)] bg-[var(--muted)]/20">
             <ScrollArea className="max-h-[160px]">
@@ -230,7 +234,7 @@ const BulkFilePanelContent = ({
         <Separator />
 
         <p className="text-xs text-[var(--muted-foreground)] italic">
-          Note: Links to other notes cannot be added when filing multiple items.
+          {t('bulk.filePanel.multipleNoteLinksUnavailable')}
         </p>
       </div>
 
@@ -244,12 +248,12 @@ const BulkFilePanelContent = ({
           {isLoading ? (
             <>
               <Loader2 className="size-4 animate-spin mr-2" aria-hidden="true" />
-              Filing...
+              {t('bulk.filePanel.filing')}
             </>
           ) : (
             <>
               {canFile && <Check className="size-4 mr-2" aria-hidden="true" />}
-              File {itemCount} item{itemCount !== 1 ? 's' : ''}
+              {t('bulk.filePanel.submit', { count: itemCount })}
             </>
           )}
         </Button>

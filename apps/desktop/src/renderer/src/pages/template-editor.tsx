@@ -23,6 +23,7 @@ import { useNoteEditorSettings } from '@/hooks/use-note-editor-settings'
 import { toast } from 'sonner'
 import type { Template, TemplateProperty } from '@/services/templates-service'
 import { createLogger } from '@/lib/logger'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Page:TemplateEditor')
 
@@ -92,11 +93,12 @@ function mapFromTemplatePropertyType(type: TemplateProperty['type']): PropertyTy
 // ============================================================================
 
 function EditorLoadingState() {
+  const { t: tPhaseF } = useT('notes')
   return (
     <div className="flex items-center justify-center h-full min-h-[400px]">
       <div className="flex flex-col items-center gap-3 text-muted-foreground">
         <Loader2 className="h-8 w-8 animate-spin" />
-        <p className="text-sm">Loading template...</p>
+        <p className="text-sm">{tPhaseF('phaseF.pagesTemplateEditor.loadingTemplate')}</p>
       </div>
     </div>
   )
@@ -156,6 +158,7 @@ function TemplateEditorForm({
   onUpdateActiveTabTitle,
   isStickyToolbar
 }: TemplateEditorFormProps) {
+  const { t: tPhaseF } = useT('notes')
   const isNew = !templateId
   const initialSnapshot = useMemo(
     () =>
@@ -425,7 +428,8 @@ function TemplateEditorForm({
             {isBuiltIn && (
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <Lock className="w-3 h-3" />
-                Built-in templates cannot be modified
+
+                {tPhaseF('phaseF.pagesTemplateEditor.builtInTemplatesCannotBeModified')}
               </p>
             )}
           </div>
@@ -448,12 +452,14 @@ function TemplateEditorForm({
           {/* Template metadata */}
           <div className="space-y-4">
             <div>
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">
+                {tPhaseF('phaseF.pagesTemplateEditor.description')}
+              </Label>
               <textarea
                 id="description"
                 value={description}
                 onChange={(e) => !isBuiltIn && setDescription(e.target.value)}
-                placeholder="Brief description of this template..."
+                placeholder={tPhaseF('phaseF.pagesTemplateEditor.briefDescriptionOfThisTemplate')}
                 className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                 rows={2}
                 disabled={isBuiltIn}
@@ -465,10 +471,13 @@ function TemplateEditorForm({
 
           {/* Note preview section */}
           <div>
-            <h3 className="text-sm font-medium text-muted-foreground mb-4">Template Content</h3>
+            <h3 className="text-sm font-medium text-muted-foreground mb-4">
+              {tPhaseF('phaseF.pagesTemplateEditor.templateContent')}
+            </h3>
             <p className="text-xs text-muted-foreground mb-4">
-              Use <code className="bg-muted px-1 rounded">{'{{title}}'}</code> to insert the note
-              title when creating a note.
+              {tPhaseF('phaseF.pagesTemplateEditor.use')}
+              <code className="bg-muted px-1 rounded">{'{{title}}'}</code>{' '}
+              {tPhaseF('phaseF.pagesTemplateEditor.toInsertTheNoteTitleWhenCreatingANote')}
             </p>
 
             {/* Title with emoji */}
@@ -476,7 +485,7 @@ function TemplateEditorForm({
               <NoteTitle
                 emoji={icon}
                 title={name}
-                placeholder="Template Name"
+                placeholder={tPhaseF('phaseF.pagesTemplateEditor.templateName')}
                 onTitleChange={handleNameChange}
                 disabled={isBuiltIn}
               />
@@ -512,7 +521,9 @@ function TemplateEditorForm({
                 key={templateId || 'new'}
                 initialContent={content}
                 contentType="markdown"
-                placeholder="Default content for notes created from this template..."
+                placeholder={tPhaseF(
+                  'phaseF.pagesTemplateEditor.defaultContentForNotesCreatedFromThisTemplate'
+                )}
                 stickyToolbar={isStickyToolbar}
                 onMarkdownChange={handleContentChange}
                 editable={!isBuiltIn}

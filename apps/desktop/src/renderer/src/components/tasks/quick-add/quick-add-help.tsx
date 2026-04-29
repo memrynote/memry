@@ -1,6 +1,7 @@
 import { HelpCircle } from '@/lib/icons'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -33,6 +34,7 @@ const shortcuts: ShortcutItem[] = [
 // ============================================================================
 
 export const QuickAddHelp = ({ className }: QuickAddHelpProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -43,7 +45,7 @@ export const QuickAddHelp = ({ className }: QuickAddHelpProps): React.JSX.Elemen
             'text-muted-foreground hover:text-foreground',
             className
           )}
-          aria-label="Quick add shortcuts help"
+          aria-label={tPhaseF('phaseF.componentsTasksQuickAddQuickAddHelp.quickAddShortcutsHelp')}
           tabIndex={-1}
         >
           <HelpCircle className="w-4 h-4" />
@@ -55,7 +57,9 @@ export const QuickAddHelp = ({ className }: QuickAddHelpProps): React.JSX.Elemen
         align="end"
         className="w-72 p-3 bg-popover text-popover-foreground"
       >
-        <h4 className="font-medium mb-2 text-sm">Quick Add Shortcuts</h4>
+        <h4 className="font-medium mb-2 text-sm">
+          {tPhaseF('phaseF.componentsTasksQuickAddQuickAddHelp.quickAddShortcuts')}
+        </h4>
 
         <div className="space-y-1.5">
           {shortcuts.map((shortcut) => (
@@ -69,7 +73,7 @@ export const QuickAddHelp = ({ className }: QuickAddHelpProps): React.JSX.Elemen
         </div>
 
         <p className="text-xs text-muted-foreground mt-3 pt-2 border-t border-border">
-          Example: "Buy milk !tomorrow !!high #personal"
+          {tPhaseF('phaseF.componentsTasksQuickAddQuickAddHelp.exampleBuyMilkTomorrowHighPersonal')}
         </p>
       </TooltipContent>
     </Tooltip>

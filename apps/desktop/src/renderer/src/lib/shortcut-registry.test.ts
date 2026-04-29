@@ -98,6 +98,7 @@ describe('shortcut-registry', () => {
   describe('resolveBinding', () => {
     const entry: ShortcutEntry = {
       id: 'test.shortcut',
+      i18nKey: 'test.shortcut',
       label: 'Test',
       description: 'Test shortcut',
       category: 'Navigation',

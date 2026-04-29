@@ -1,5 +1,5 @@
 import i18next, { type i18n as I18nInstance } from 'i18next'
-import ICU from 'i18next-icu'
+import { IcuFormatter } from '../shared/icu-formatter'
 import { initReactI18next } from 'react-i18next'
 import {
   type Locale,
@@ -25,7 +25,7 @@ export async function createRendererI18n(
 ): Promise<I18nInstance> {
   const instance = i18next.createInstance()
   await instance
-    .use(ICU)
+    .use(IcuFormatter)
     .use(initReactI18next)
     .init({
       lng: options.locale,

@@ -2,6 +2,7 @@ import { Check } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -32,6 +33,7 @@ export const SubtaskProgressBadge = ({
   onClick,
   className
 }: SubtaskProgressBadgeProps): React.JSX.Element | null => {
+  const { t: tPhaseF } = useT('tasks')
   // Don't render if no subtasks
   if (total === 0) return null
 
@@ -100,10 +102,16 @@ export const SubtaskProgressBadge = ({
         <TooltipTrigger asChild>{badge}</TooltipTrigger>
         <TooltipContent side="top" className="text-xs">
           <p>
-            {completed} of {total} subtasks complete ({percentage}%)
+            {completed} {tPhaseF('phaseF.componentsTasksSubtaskProgressBadge.of')}
+            {total}
+            {tPhaseF('phaseF.componentsTasksSubtaskProgressBadge.subtasksComplete')}
+            {percentage}%)
           </p>
           {onClick && (
-            <p className="text-muted-foreground">Click to {isExpanded ? 'collapse' : 'expand'}</p>
+            <p className="text-muted-foreground">
+              {tPhaseF('phaseF.componentsTasksSubtaskProgressBadge.clickTo')}
+              {isExpanded ? 'collapse' : 'expand'}
+            </p>
           )}
         </TooltipContent>
       </Tooltip>

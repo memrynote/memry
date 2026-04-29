@@ -1,3 +1,4 @@
+import { useT } from '@memry/i18n/renderer'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight, Plus, Search } from '@/lib/icons'
 import { addLocalDays, getStartOfWeek, parseLocalDate } from './date-utils'
@@ -5,14 +6,14 @@ import type { AnchorRect } from './types'
 
 export type CalendarWorkspaceView = 'day' | 'week' | 'month' | 'year'
 
-const VIEW_LABELS: Record<CalendarWorkspaceView, string> = {
-  day: 'Day',
-  week: 'Week',
-  month: 'Month',
-  year: 'Year'
+const VIEW_LABEL_KEYS: Record<CalendarWorkspaceView, `view.${CalendarWorkspaceView}`> = {
+  day: 'view.day',
+  week: 'view.week',
+  month: 'view.month',
+  year: 'view.year'
 }
 
-const VIEW_OPTIONS = Object.keys(VIEW_LABELS) as CalendarWorkspaceView[]
+const VIEW_OPTIONS = Object.keys(VIEW_LABEL_KEYS) as CalendarWorkspaceView[]
 
 interface CalendarToolbarProps {
   view: CalendarWorkspaceView
@@ -25,17 +26,21 @@ interface CalendarToolbarProps {
   extraActions?: React.ReactNode
 }
 
-export function getSubLabel(view: CalendarWorkspaceView, anchorDate: string): string {
+export function getSubLabel(
+  view: CalendarWorkspaceView,
+  anchorDate: string,
+  locale?: string
+): string {
   const date = parseLocalDate(anchorDate)
 
   if (view === 'day') {
-    return new Intl.DateTimeFormat(undefined, { weekday: 'long' }).format(date)
+    return new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(date)
   }
 
   if (view === 'week') {
     const start = parseLocalDate(getStartOfWeek(anchorDate))
     const end = parseLocalDate(addLocalDays(getStartOfWeek(anchorDate), 6))
-    const fmt = new Intl.DateTimeFormat(undefined, {
+    const fmt = new Intl.DateTimeFormat(locale, {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
@@ -46,7 +51,7 @@ export function getSubLabel(view: CalendarWorkspaceView, anchorDate: string): st
   if (view === 'month') {
     const first = new Date(date.getFullYear(), date.getMonth(), 1)
     const last = new Date(date.getFullYear(), date.getMonth() + 1, 0)
-    const fmt = new Intl.DateTimeFormat(undefined, {
+    const fmt = new Intl.DateTimeFormat(locale, {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
@@ -67,8 +72,10 @@ export function CalendarToolbar({
   onCreateEvent,
   extraActions
 }: CalendarToolbarProps): React.JSX.Element {
+  const { t, i18n } = useT('calendar')
+  const { t: tCommon } = useT('common')
   const anchorParsed = parseLocalDate(anchorDate)
-  const monthName = new Intl.DateTimeFormat(undefined, { month: 'long' }).format(anchorParsed)
+  const monthName = new Intl.DateTimeFormat(i18n.language, { month: 'long' }).format(anchorParsed)
   const yearStr = String(anchorParsed.getFullYear())
 
   return (
@@ -86,7 +93,7 @@ export function CalendarToolbar({
             })
           }}
           className="flex size-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-muted-foreground hover:text-foreground"
-          aria-label="Create event"
+          aria-label={t('toolbar.create-event')}
         >
           <Plus className="size-4" />
         </button>
@@ -103,7 +110,7 @@ export function CalendarToolbar({
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              {VIEW_LABELS[option]}
+              {t(VIEW_LABEL_KEYS[option])}
             </button>
           ))}
         </div>
@@ -113,7 +120,7 @@ export function CalendarToolbar({
           <button
             type="button"
             className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
-            aria-label="Search"
+            aria-label={tCommon('action.search')}
           >
             <Search className="size-4" />
           </button>
@@ -139,7 +146,7 @@ export function CalendarToolbar({
             size="icon-sm"
             className="rounded-full text-muted-foreground hover:bg-surface-active hover:text-foreground"
             onClick={onPrevious}
-            aria-label="Previous period"
+            aria-label={t('toolbar.previous-period')}
           >
             <ChevronLeft className="size-4" />
           </Button>
@@ -148,7 +155,7 @@ export function CalendarToolbar({
             onClick={onToday}
             className="px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
-            Today
+            {t('toolbar.today')}
           </button>
           <Button
             type="button"
@@ -156,7 +163,7 @@ export function CalendarToolbar({
             size="icon-sm"
             className="rounded-full text-muted-foreground hover:bg-surface-active hover:text-foreground"
             onClick={onNext}
-            aria-label="Next period"
+            aria-label={t('toolbar.next-period')}
           >
             <ChevronRight className="size-4" />
           </Button>

@@ -49,6 +49,7 @@ import { getAllSupportedExtensions } from '@memry/shared/file-types'
 import { createLogger } from '@/lib/logger'
 import { useFileDrop } from '@/hooks/use-file-drop'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Component:AppSidebar')
 
@@ -82,6 +83,7 @@ export function AppSidebar({ currentPage, viewCounts, ...props }: AppSidebarProp
  * Inner sidebar component that has access to the drill-down context.
  */
 function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps) {
+  const { t: tPhaseF } = useT('common')
   const [tagsActions, setTagsActions] = useState<React.ReactNode>(null)
   const notesActionsRef = useRef<NotesTreeActions | null>(null)
   const [foldersExpanded, setFoldersExpanded] = useState(false)
@@ -247,7 +249,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
         {/* COLLECTIONS Section */}
         <SidebarSection
           id="collections"
-          label="Collections"
+          label={tPhaseF('phaseF.componentsAppSidebar.collections')}
           defaultExpanded={false}
           actions={
             <>
@@ -283,13 +285,13 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
                     type="button"
                     onClick={() => notesActionsRef.current?.createNote()}
                     className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
-                    aria-label="New note"
+                    aria-label={tPhaseF('phaseF.componentsAppSidebar.newNote')}
                   >
                     <FilePlus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">
-                  New note
+                  {tPhaseF('phaseF.componentsAppSidebar.newNote2')}
                 </TooltipContent>
               </Tooltip>
               <Tooltip>
@@ -298,13 +300,13 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
                     type="button"
                     onClick={() => notesActionsRef.current?.createFolder()}
                     className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
-                    aria-label="New folder"
+                    aria-label={tPhaseF('phaseF.componentsAppSidebar.newFolder')}
                   >
                     <FolderPlus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">
-                  New folder
+                  {tPhaseF('phaseF.componentsAppSidebar.newFolder2')}
                 </TooltipContent>
               </Tooltip>
             </>
@@ -318,12 +320,21 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
         </SidebarSection>
 
         {/* BOOKMARKS Section */}
-        <SidebarSection id="bookmarks" label="Bookmarks" defaultExpanded={false}>
+        <SidebarSection
+          id="bookmarks"
+          label={tPhaseF('phaseF.componentsAppSidebar.bookmarks')}
+          defaultExpanded={false}
+        >
           <SidebarBookmarkList maxVisible={6} onBookmarkClick={handleBookmarkClick} />
         </SidebarSection>
 
         {/* TAGS Section */}
-        <SidebarSection id="tags" label="Tags" defaultExpanded={false} actions={tagsActions}>
+        <SidebarSection
+          id="tags"
+          label={tPhaseF('phaseF.componentsAppSidebar.tags')}
+          defaultExpanded={false}
+          actions={tagsActions}
+        >
           <SidebarTagList
             maxVisible={6}
             onTagClick={handleTagClick}
@@ -340,7 +351,9 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
         >
           <div className="flex flex-col items-center gap-2 rounded-md border-2 border-dashed border-primary/50 px-6 py-4">
             <Upload className="size-6 text-primary" />
-            <span className="text-sm font-medium">Drop files to import</span>
+            <span className="text-sm font-medium">
+              {tPhaseF('phaseF.componentsAppSidebar.dropFilesToImport')}
+            </span>
             <span className="text-xs text-muted-foreground">
               {getAllSupportedExtensions().join(', ')}
             </span>
@@ -367,10 +380,12 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
             type="button"
             onClick={handleNewNote}
             className="flex flex-1 items-center justify-center gap-2 h-[30px] rounded-[5px] bg-sidebar-surface hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
-            title="New note (⌘N)"
+            title={tPhaseF('phaseF.componentsAppSidebar.newNoteN')}
           >
             <Plus className="size-[15px] text-muted-foreground/70" />
-            <span className="text-[13px] text-muted-foreground/70 font-normal">New</span>
+            <span className="text-[13px] text-muted-foreground/70 font-normal">
+              {tPhaseF('phaseF.componentsAppSidebar.new')}
+            </span>
           </button>
         </div>
         <SidebarNav
@@ -392,8 +407,8 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
             <button
               type="button"
               onClick={handleSyncClick}
-              aria-label="Sync disabled"
-              title="Sync disabled"
+              aria-label={tPhaseF('phaseF.componentsAppSidebar.syncDisabled')}
+              title={tPhaseF('phaseF.componentsAppSidebar.syncDisabled2')}
               className="shrink-0 size-7 rounded flex items-center justify-center hover:bg-sidebar-accent text-muted-foreground transition-colors"
             >
               <CloudOff className="size-4" />

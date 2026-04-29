@@ -15,6 +15,7 @@ import {
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { useT } from '@memry/i18n/renderer'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -101,6 +102,8 @@ interface TodayButtonProps {
 }
 
 function TodayButton({ onClick }: TodayButtonProps) {
+  const { t } = useT('journal')
+
   return (
     <Button
       variant="outline"
@@ -114,7 +117,7 @@ function TodayButton({ onClick }: TodayButtonProps) {
         'transition-all duration-200'
       )}
     >
-      Today
+      {t('date.relative.today')}
     </Button>
   )
 }
@@ -139,15 +142,16 @@ export function JournalNavigationRow({
   onExport,
   className
 }: JournalNavigationRowProps): React.JSX.Element {
+  const { t } = useT('journal')
   // Determine navigation labels based on view type
   const getNavLabels = () => {
     switch (viewState.type) {
       case 'day':
-        return { prev: 'Previous day', next: 'Next day' }
+        return { prev: t('nav.previousDay'), next: t('nav.nextDay') }
       case 'month':
-        return { prev: 'Previous month', next: 'Next month' }
+        return { prev: t('nav.previousMonth'), next: t('nav.nextMonth') }
       case 'year':
-        return { prev: 'Previous year', next: 'Next year' }
+        return { prev: t('nav.previousYear'), next: t('nav.nextYear') }
     }
   }
 
@@ -155,7 +159,7 @@ export function JournalNavigationRow({
 
   return (
     <nav
-      aria-label="Journal navigation"
+      aria-label={t('nav.journalNavigation')}
       className={cn('flex items-center justify-between', className)}
     >
       {/* Left side - Navigation arrows and Today button */}
@@ -190,10 +194,12 @@ export function JournalNavigationRow({
               'transition-all duration-200'
             )}
             onClick={onBookmarkToggle}
-            title={isBookmarked ? 'Remove bookmark' : 'Add bookmark'}
+            title={isBookmarked ? t('action.removeBookmark') : t('action.addBookmark')}
           >
             <Bookmark className={cn('size-4', isBookmarked && 'fill-current text-amber-500')} />
-            <span className="sr-only">{isBookmarked ? 'Remove bookmark' : 'Add bookmark'}</span>
+            <span className="sr-only">
+              {isBookmarked ? t('action.removeBookmark') : t('action.addBookmark')}
+            </span>
           </Button>
         )}
 
@@ -212,7 +218,7 @@ export function JournalNavigationRow({
                 )}
               >
                 <MoreHorizontal className="size-4" />
-                <span className="sr-only">More options</span>
+                <span className="sr-only">{t('aria.moreOptions')}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
@@ -220,13 +226,13 @@ export function JournalNavigationRow({
                 {isCompact ? (
                   <>
                     <Maximize2 className="mr-2 size-4" />
-                    <span>Full Mode</span>
+                    <span>{t('action.fullMode')}</span>
                     <DropdownMenuShortcut>⌘\</DropdownMenuShortcut>
                   </>
                 ) : (
                   <>
                     <Minimize2 className="mr-2 size-4" />
-                    <span>Compact Mode</span>
+                    <span>{t('action.compactMode')}</span>
                     <DropdownMenuShortcut>⌘\</DropdownMenuShortcut>
                   </>
                 )}
@@ -237,9 +243,9 @@ export function JournalNavigationRow({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={onVersionHistory}>
                     <History className="mr-2 size-4" />
-                    Version History
+                    {t('action.versionHistory')}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onExport}>Export</DropdownMenuItem>
+                  <DropdownMenuItem onClick={onExport}>{t('action.export')}</DropdownMenuItem>
                 </>
               )}
             </DropdownMenuContent>

@@ -52,6 +52,7 @@ import {
 import { getTabIconForFileType, type FileType } from '@memry/shared/file-types'
 import { FolderIconButton } from '@/components/folder-icon-button'
 import { getDisplayName, getFileIcon } from '@/components/notes-tree-utils'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // Types
@@ -230,6 +231,8 @@ function FolderRow({
   onDrop,
   folderTemplateName
 }: FolderRowProps) {
+  const { t } = useT('notes')
+  const { t: tCommon } = useT('common')
   const rowRef = useRef<HTMLDivElement>(null)
   const showBulkActions = isSelected && selectedCount > 1
   const showSelectionBadge = showBulkActions && isLastSelected
@@ -361,7 +364,7 @@ function FolderRow({
               type="button"
               onClick={handleOpenFolderViewClick}
               className="p-1 cursor-pointer rounded hover:bg-accent/80 transition-colors"
-              aria-label="Open folder view"
+              aria-label={t('tree.aria.openFolderView')}
             >
               <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
             </button>
@@ -377,7 +380,7 @@ function FolderRow({
               onClick={onBulkDelete}
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Delete {selectedCount} items
+              {t('tree.actions.deleteSelectedItems', { count: selectedCount })}
             </ContextMenuItem>
           </>
         ) : (
@@ -385,46 +388,46 @@ function FolderRow({
           <>
             <ContextMenuItem onClick={() => onCreateNote?.(item.folder.path)}>
               <FilePlus className="mr-2 h-4 w-4" />
-              New Note
+              {t('tree.actions.newNote')}
             </ContextMenuItem>
             <ContextMenuItem onClick={() => onCreateFolder?.(item.folder.path)}>
               <FolderPlus className="mr-2 h-4 w-4" />
-              New Folder
+              {t('tree.actions.newFolder')}
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onSetFolderTemplate?.(item.folder.path)}>
               <LayoutTemplate className="mr-2 h-4 w-4" />
-              Set Default Template
+              {t('tree.actions.setDefaultTemplate')}
               {folderTemplateName && (
                 <span className="ml-1 text-muted-foreground">({folderTemplateName})</span>
               )}
             </ContextMenuItem>
             <ContextMenuItem onClick={() => onClearFolderTemplate?.(item.folder.path)}>
               <X className="mr-2 h-4 w-4" />
-              Clear Default Template
+              {t('tree.actions.clearDefaultTemplate')}
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onIconPickerOpenChange?.(item.folder.path)}>
               <Smile className="mr-2 h-4 w-4" />
-              Set Icon
+              {t('tree.actions.setIcon')}
             </ContextMenuItem>
             {item.folder.icon && (
               <ContextMenuItem onClick={() => onSetFolderIcon?.(item.folder.path, null)}>
                 <X className="mr-2 h-4 w-4" />
-                Remove Icon
+                {t('tree.actions.removeIcon')}
               </ContextMenuItem>
             )}
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onRenameFolder?.(item.folder.path)}>
               <Pencil className="mr-2 h-4 w-4" />
-              Rename
+              {t('tree.actions.rename')}
             </ContextMenuItem>
             <ContextMenuItem
               className="text-destructive focus:text-destructive"
               onClick={() => onDeleteFolder?.(item.folder.path)}
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Delete
+              {tCommon('button.delete')}
             </ContextMenuItem>
           </>
         )}
@@ -478,6 +481,8 @@ function NoteRow({
   onDragLeave,
   onDrop
 }: NoteRowProps) {
+  const { t } = useT('notes')
+  const { t: tCommon } = useT('common')
   const rowRef = useRef<HTMLDivElement>(null)
   const showBulkActions = isSelected && selectedCount > 1
   const showSelectionBadge = showBulkActions && isLastSelected
@@ -583,7 +588,7 @@ function NoteRow({
               onClick={onBulkDelete}
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Delete {selectedCount} items
+              {t('tree.actions.deleteSelectedItems', { count: selectedCount })}
             </ContextMenuItem>
           </>
         ) : (
@@ -591,16 +596,16 @@ function NoteRow({
           <>
             <ContextMenuItem onClick={() => onRenameNote?.(item.note)}>
               <Pencil className="mr-2 h-4 w-4" />
-              Rename
+              {t('tree.actions.rename')}
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onOpenExternal?.(item.note)}>
               <ExternalLink className="mr-2 h-4 w-4" />
-              Open in External Editor
+              {t('tree.actions.openExternal')}
             </ContextMenuItem>
             <ContextMenuItem onClick={() => onRevealInFinder?.(item.note)}>
               <FolderOpen className="mr-2 h-4 w-4" />
-              Reveal in Finder
+              {t('tree.actions.revealInFinder')}
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem
@@ -608,7 +613,7 @@ function NoteRow({
               onClick={() => onDeleteNote?.(item.note)}
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Delete
+              {tCommon('button.delete')}
             </ContextMenuItem>
           </>
         )}
@@ -645,6 +650,7 @@ export function VirtualizedNotesTree({
   className,
   scrollContainerRef
 }: VirtualizedNotesTreeProps) {
+  const { t } = useT('notes')
   const { openTab } = useTabActions()
   const parentRef = useRef<HTMLDivElement>(null)
   const [scrollMargin, setScrollMargin] = useState(0)
@@ -955,7 +961,7 @@ export function VirtualizedNotesTree({
     <div
       ref={parentRef}
       role="tree"
-      aria-label="Notes tree"
+      aria-label={t('tree.aria.tree')}
       tabIndex={0}
       className={cn(
         'focus:outline-none',

@@ -1,4 +1,5 @@
 import { Archive } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
 
 import { cn } from '@/lib/utils'
 import { QuickSnoozeButton } from '@/components/snooze'
@@ -19,6 +20,8 @@ const QuickActions = ({
   variant = 'row',
   className
 }: QuickActionsProps): React.JSX.Element => {
+  const { t } = useT('inbox')
+
   const handleArchive = (e: React.MouseEvent): void => {
     e.stopPropagation()
     onArchive(itemId)
@@ -34,7 +37,7 @@ const QuickActions = ({
     <div
       className={cn('flex items-center', isRow ? 'gap-1' : 'gap-2', className)}
       role="group"
-      aria-label="Quick actions"
+      aria-label={t('quickActions.groupAria')}
     >
       {/* Snooze button - with dropdown picker */}
       {onSnooze && <QuickSnoozeButton onSnooze={handleSnooze} showLabel={false} />}
@@ -54,12 +57,12 @@ const QuickActions = ({
                 ? 'p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent'
                 : 'p-2 text-muted-foreground hover:text-foreground hover:bg-accent'
             )}
-            aria-label="Archive item"
+            aria-label={t('quickActions.archiveItem')}
           >
             <Archive className={isRow ? 'size-4' : 'size-4'} aria-hidden="true" />
           </button>
         </TooltipTrigger>
-        <TooltipContent side="bottom">Archive</TooltipContent>
+        <TooltipContent side="bottom">{t('quickActions.archive')}</TooltipContent>
       </Tooltip>
     </div>
   )

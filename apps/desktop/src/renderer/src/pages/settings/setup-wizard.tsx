@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { QrCode, KeyRound } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { useT } from '@memry/i18n/renderer'
 import { useAuth, type WizardStep } from '@/contexts/auth-context'
 import { EmailEntryForm } from '@/components/sync/email-entry-form'
 import { OtpVerification } from '@/components/sync/otp-verification'
@@ -12,7 +13,7 @@ import { RecoveryPhraseInput } from '@/components/sync/recovery-phrase-input'
 import { LinkingCodeEntry } from '@/components/sync/linking-code-entry'
 import { LinkingPending } from '@/components/sync/linking-pending'
 
-const STEPS = ['Sign In', 'Verify', 'Link'] as const
+const STEP_KEYS = ['setup.steps.signIn', 'setup.steps.verify', 'setup.steps.link'] as const
 const STEP_MAP: Record<WizardStep, number> = {
   idle: 0,
   'sign-in': 0,
@@ -26,6 +27,7 @@ const STEP_MAP: Record<WizardStep, number> = {
 }
 
 export function SetupWizard(): React.JSX.Element {
+  const { t } = useT('settings')
   const {
     state: {
       wizardStep,
@@ -103,10 +105,10 @@ export function SetupWizard(): React.JSX.Element {
         })
         .catch((err: unknown) => {
           setIsLoading(false)
-          setWizardError(extractErrorMessage(err, 'Failed to send code'))
+          setWizardError(extractErrorMessage(err, t('setup.signIn.errors.sendCode')))
         })
     },
-    [requestOtp, setWizardStep, setWizardError, clearWizardError]
+    [requestOtp, setWizardStep, setWizardError, clearWizardError, t]
   )
 
   const handleOtpVerify = useCallback(
@@ -121,10 +123,10 @@ export function SetupWizard(): React.JSX.Element {
         })
         .catch((err: unknown) => {
           setIsLoading(false)
-          setWizardError(extractErrorMessage(err, 'Verification failed'))
+          setWizardError(extractErrorMessage(err, t('setup.otp.error')))
         })
     },
-    [verifyOtp, setWizardStep, setWizardError, clearWizardError]
+    [verifyOtp, setWizardStep, setWizardError, clearWizardError, t]
   )
 
   const handleResendOtp = useCallback(() => {
@@ -139,9 +141,9 @@ export function SetupWizard(): React.JSX.Element {
       })
       .catch((err: unknown) => {
         setIsResending(false)
-        setWizardError(extractErrorMessage(err, 'Failed to resend'))
+        setWizardError(extractErrorMessage(err, t('setup.otp.resendError')))
       })
-  }, [resendOtp, setWizardStep, setWizardError, clearWizardError])
+  }, [resendOtp, setWizardStep, setWizardError, clearWizardError, t])
 
   const handleGoogleClick = useCallback(() => {
     if (isLoading) return
@@ -151,16 +153,16 @@ export function SetupWizard(): React.JSX.Element {
       .then((result) => {
         if (!result) {
           setIsLoading(false)
-          setWizardError('Failed to start Google sign-in')
+          setWizardError(t('setup.signIn.errors.googleStart'))
           return
         }
         setWizardStep('sign-in', { oauthState: result.state })
       })
       .catch((err: unknown) => {
         setIsLoading(false)
-        setWizardError(extractErrorMessage(err, 'Failed to start Google sign-in'))
+        setWizardError(extractErrorMessage(err, t('setup.signIn.errors.googleStart')))
       })
-  }, [isLoading, initOAuth, setWizardStep, setWizardError, clearWizardError])
+  }, [isLoading, initOAuth, setWizardStep, setWizardError, clearWizardError, t])
 
   const handleRecoverySubmit = useCallback(
     (phrase: string) => {
@@ -172,10 +174,10 @@ export function SetupWizard(): React.JSX.Element {
         })
         .catch((err: unknown) => {
           setIsLoading(false)
-          setWizardError(extractErrorMessage(err, 'Recovery failed'))
+          setWizardError(extractErrorMessage(err, t('setup.recovery.failed')))
         })
     },
-    [linkViaRecovery, setWizardError, clearWizardError]
+    [linkViaRecovery, setWizardError, clearWizardError, t]
   )
 
   const handleConfirmRecovery = useCallback(() => {
@@ -188,9 +190,9 @@ export function SetupWizard(): React.JSX.Element {
       })
       .catch((err: unknown) => {
         setIsLoading(false)
-        setWizardError(extractErrorMessage(err, 'Confirmation failed'))
+        setWizardError(extractErrorMessage(err, t('setup.recovery.confirmationFailed')))
       })
-  }, [confirmRecoveryPhrase, setWizardError, clearWizardError])
+  }, [confirmRecoveryPhrase, setWizardError, clearWizardError, t])
 
   const currentStepIndex = STEP_MAP[wizardStep]
 
@@ -202,10 +204,10 @@ export function SetupWizard(): React.JSX.Element {
         <div className="wizard-step-enter space-y-6 text-center">
           <div className="flex flex-col pb-7 gap-1.5">
             <div className="tracking-[-0.02em] font-semibold text-xl/6.5 text-foreground">
-              Set up Sync
+              {t('setup.signIn.title')}
             </div>
             <div className="text-[13px]/4.5 text-muted-foreground">
-              Create an account to sync your data across devices with end-to-end encryption.
+              {t('setup.signIn.description')}
             </div>
           </div>
 
@@ -217,7 +219,7 @@ export function SetupWizard(): React.JSX.Element {
             </div>
             <div className="relative flex justify-center">
               <span className="bg-background px-3 uppercase tracking-[0.05em] font-medium text-[10px]/3.5 text-muted-foreground/50">
-                or
+                {t('setup.signIn.or')}
               </span>
             </div>
           </div>
@@ -311,32 +313,32 @@ function LinkingChoiceStep({
   onChooseQr: () => void
   onChooseRecovery: () => void
 }): React.JSX.Element {
+  const { t } = useT('settings')
+
   return (
     <div className="wizard-step-enter space-y-6">
       <div className="space-y-1.5">
         <h3 className="font-semibold text-base/5 tracking-[-0.01em] text-foreground">
-          Link this device
+          {t('setup.linking.choiceTitle')}
         </h3>
-        <p className="text-xs/4 text-muted-foreground">
-          Transfer encryption keys from another device or restore from your recovery phrase.
-        </p>
+        <p className="text-xs/4 text-muted-foreground">{t('setup.linking.choiceDescription')}</p>
       </div>
 
       <div className="space-y-3">
         <button
           type="button"
           onClick={onChooseQr}
-          className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-background hover:bg-muted/50 transition-colors text-left group"
+          className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-background hover:bg-muted/50 transition-colors text-start group"
         >
           <div className="w-11 h-11 rounded-xl bg-[var(--tint)]/10 flex items-center justify-center flex-shrink-0">
             <QrCode className="w-5 h-5 text-[var(--tint)]" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium group-hover:text-foreground transition-colors">
-              Link via QR code
+              {t('setup.linking.qrChoice')}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Scan the code shown on your other device
+              {t('setup.linking.qrChoiceDescription')}
             </p>
           </div>
         </button>
@@ -344,17 +346,17 @@ function LinkingChoiceStep({
         <button
           type="button"
           onClick={onChooseRecovery}
-          className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-background hover:bg-muted/50 transition-colors text-left group"
+          className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-background hover:bg-muted/50 transition-colors text-start group"
         >
           <div className="w-11 h-11 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
             <KeyRound className="w-5 h-5 text-muted-foreground" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium group-hover:text-foreground transition-colors">
-              Recovery phrase
+              {t('setup.linking.recoveryChoice')}
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Enter your 24-word recovery phrase
+              {t('setup.linking.recoveryChoiceDescription')}
             </p>
           </div>
         </button>
@@ -364,12 +366,18 @@ function LinkingChoiceStep({
 }
 
 function WizardProgress({ currentStep }: { currentStep: number }): React.JSX.Element {
-  const widthPct = STEPS.length > 1 ? ((currentStep + 1) / STEPS.length) * 100 : 100
+  const { t } = useT('settings')
+  const widthPct = STEP_KEYS.length > 1 ? ((currentStep + 1) / STEP_KEYS.length) * 100 : 100
+  const currentLabel = t(STEP_KEYS[currentStep] ?? STEP_KEYS[0])
 
   return (
     <div
       role="group"
-      aria-label={`Step ${currentStep + 1} of ${STEPS.length}: ${STEPS[currentStep]}`}
+      aria-label={t('setup.progress', {
+        current: currentStep + 1,
+        total: STEP_KEYS.length,
+        label: currentLabel
+      })}
       className="[font-synthesis:none] flex flex-col pb-8 gap-2 text-xs/4"
     >
       <div className="flex h-0.5 rounded-[1px] overflow-clip bg-foreground/[0.06] shrink-0">
@@ -379,15 +387,15 @@ function WizardProgress({ currentStep }: { currentStep: number }): React.JSX.Ele
         />
       </div>
       <div className="flex items-center justify-between">
-        {STEPS.map((label, i) => (
+        {STEP_KEYS.map((labelKey, i) => (
           <span
-            key={label}
+            key={labelKey}
             className={cn(
               'uppercase tracking-[0.05em] font-medium text-[10px]/3.5 transition-colors duration-300',
               i <= currentStep ? 'text-[var(--tint)]' : 'text-muted-foreground/50'
             )}
           >
-            {label}
+            {t(labelKey)}
           </span>
         ))}
       </div>
