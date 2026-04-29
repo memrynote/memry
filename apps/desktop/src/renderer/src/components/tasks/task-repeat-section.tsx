@@ -61,6 +61,7 @@ export const TaskRepeatSection = ({
   onRepeatChange
 }: TaskRepeatSectionProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('tasks')
+  const { t } = useT('common')
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isStopDialogOpen, setIsStopDialogOpen] = useState(false)
 
@@ -108,7 +109,7 @@ export const TaskRepeatSection = ({
             <RepeatIcon color={projectColor} />
             <div className="flex flex-col gap-0.5">
               <span className="text-[12px] text-text-primary font-medium leading-4">
-                {getRepeatDisplayText(repeatConfig)}
+                {getRepeatDisplayText(repeatConfig, t)}
               </span>
               <span className="text-[11px] text-text-tertiary leading-3.5">
                 {buildRepeatInfoLine(repeatConfig)}

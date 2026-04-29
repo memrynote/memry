@@ -9,6 +9,7 @@ vi.mock('@/lib/repeat-utils', async (importOriginal) => {
   return {
     ...actual,
     getRepeatDisplayText: vi.fn((config: RepeatConfig) => {
+      // Mock ignores the translator param — keeps existing assertion shape.
       if (config.frequency === 'weekly' && config.interval === 1) return 'Every week on Monday'
       if (config.frequency === 'daily') return 'Every day'
       return 'Every week'

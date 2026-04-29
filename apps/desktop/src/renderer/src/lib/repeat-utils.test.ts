@@ -12,7 +12,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import i18next from 'i18next'
 import type { RepeatConfig, RepeatFrequency, RepeatEndType, MonthlyType } from '@/data/sample-tasks'
+import type { RepeatLabelTranslator } from './repeat-utils'
 import {
   // Constants (T099)
   DAY_NAMES,
@@ -36,6 +38,14 @@ import {
   getRepeatProgress,
   calculateNextOccurrences
 } from './repeat-utils'
+
+// ============================================================================
+// I18N FIXTURE
+// ============================================================================
+
+// `setup-dom.ts` initializes i18next with English resources synchronously, so a
+// fixed-namespace `t` function is available here without an explicit provider.
+const t = i18next.getFixedT('en', 'common') as RepeatLabelTranslator
 
 // ============================================================================
 // MOCK FACTORIES
@@ -848,24 +858,24 @@ describe('Repeat Utils', () => {
       describe('daily frequency', () => {
         it("should return 'Every day' for interval=1", () => {
           const config = createMockRepeatConfig({ frequency: 'daily', interval: 1 })
-          expect(getRepeatDisplayText(config)).toBe('Every day')
+          expect(getRepeatDisplayText(config, t)).toBe('Every day')
         })
 
         it("should return 'Every 3 days' for interval=3", () => {
           const config = createMockRepeatConfig({ frequency: 'daily', interval: 3 })
-          expect(getRepeatDisplayText(config)).toBe('Every 3 days')
+          expect(getRepeatDisplayText(config, t)).toBe('Every 3 days')
         })
       })
 
       describe('weekly frequency', () => {
         it("should return 'Every week' when no daysOfWeek", () => {
           const config = createMockRepeatConfig({ frequency: 'weekly', interval: 1 })
-          expect(getRepeatDisplayText(config)).toBe('Every week')
+          expect(getRepeatDisplayText(config, t)).toBe('Every week')
         })
 
         it("should return 'Every 2 weeks' for interval=2 without days", () => {
           const config = createMockRepeatConfig({ frequency: 'weekly', interval: 2 })
-          expect(getRepeatDisplayText(config)).toBe('Every 2 weeks')
+          expect(getRepeatDisplayText(config, t)).toBe('Every 2 weeks')
         })
 
         it("should return 'Every weekday' for Mon-Fri", () => {
@@ -874,7 +884,7 @@ describe('Repeat Utils', () => {
             interval: 1,
             daysOfWeek: [1, 2, 3, 4, 5]
           })
-          expect(getRepeatDisplayText(config)).toBe('Every weekday')
+          expect(getRepeatDisplayText(config, t)).toBe('Every weekday')
         })
 
         it("should return 'Every weekend' for Sat-Sun", () => {
@@ -883,7 +893,7 @@ describe('Repeat Utils', () => {
             interval: 1,
             daysOfWeek: [0, 6]
           })
-          expect(getRepeatDisplayText(config)).toBe('Every weekend')
+          expect(getRepeatDisplayText(config, t)).toBe('Every weekend')
         })
 
         it("should return 'Every week on Monday, Wednesday' for specific days", () => {
@@ -892,7 +902,7 @@ describe('Repeat Utils', () => {
             interval: 1,
             daysOfWeek: [1, 3]
           })
-          expect(getRepeatDisplayText(config)).toBe('Every week on Monday, Wednesday')
+          expect(getRepeatDisplayText(config, t)).toBe('Every week on Monday, Wednesday')
         })
 
         it("should return 'Every 2 weeks on Monday' for interval with single day", () => {
@@ -901,7 +911,7 @@ describe('Repeat Utils', () => {
             interval: 2,
             daysOfWeek: [1]
           })
-          expect(getRepeatDisplayText(config)).toBe('Every 2 weeks on Monday')
+          expect(getRepeatDisplayText(config, t)).toBe('Every 2 weeks on Monday')
         })
 
         it('should use short day names for 3+ days', () => {
@@ -910,7 +920,7 @@ describe('Repeat Utils', () => {
             interval: 1,
             daysOfWeek: [1, 2, 3]
           })
-          expect(getRepeatDisplayText(config)).toBe('Every week on Mon, Tue, Wed')
+          expect(getRepeatDisplayText(config, t)).toBe('Every week on Mon, Tue, Wed')
         })
       })
 
@@ -922,7 +932,7 @@ describe('Repeat Utils', () => {
             monthlyType: 'dayOfMonth',
             dayOfMonth: 15
           })
-          expect(getRepeatDisplayText(config)).toBe('Every month on the 15th')
+          expect(getRepeatDisplayText(config, t)).toBe('Every month on the 15th')
         })
 
         it("should return 'Every month on the 1st' for dayOfMonth=1", () => {
@@ -932,7 +942,7 @@ describe('Repeat Utils', () => {
             monthlyType: 'dayOfMonth',
             dayOfMonth: 1
           })
-          expect(getRepeatDisplayText(config)).toBe('Every month on the 1st')
+          expect(getRepeatDisplayText(config, t)).toBe('Every month on the 1st')
         })
 
         it("should return 'Every month on the 22nd' for dayOfMonth=22", () => {
@@ -942,7 +952,7 @@ describe('Repeat Utils', () => {
             monthlyType: 'dayOfMonth',
             dayOfMonth: 22
           })
-          expect(getRepeatDisplayText(config)).toBe('Every month on the 22nd')
+          expect(getRepeatDisplayText(config, t)).toBe('Every month on the 22nd')
         })
 
         it("should return 'Every 2 months on the 15th' for interval=2", () => {
@@ -952,7 +962,7 @@ describe('Repeat Utils', () => {
             monthlyType: 'dayOfMonth',
             dayOfMonth: 15
           })
-          expect(getRepeatDisplayText(config)).toBe('Every 2 months on the 15th')
+          expect(getRepeatDisplayText(config, t)).toBe('Every 2 months on the 15th')
         })
 
         it("should return 'Every month on the second Tuesday' for weekPattern", () => {
@@ -963,7 +973,7 @@ describe('Repeat Utils', () => {
             weekOfMonth: 2,
             dayOfWeekForMonth: 2 // Tuesday
           })
-          expect(getRepeatDisplayText(config)).toBe('Every month on the second Tuesday')
+          expect(getRepeatDisplayText(config, t)).toBe('Every month on the second Tuesday')
         })
 
         it("should return 'Every month on the last Friday' for weekOfMonth=5", () => {
@@ -974,7 +984,7 @@ describe('Repeat Utils', () => {
             weekOfMonth: 5,
             dayOfWeekForMonth: 5 // Friday
           })
-          expect(getRepeatDisplayText(config)).toBe('Every month on the last Friday')
+          expect(getRepeatDisplayText(config, t)).toBe('Every month on the last Friday')
         })
 
         it("should return 'Every month' when no monthlyType specified", () => {
@@ -982,19 +992,19 @@ describe('Repeat Utils', () => {
             frequency: 'monthly',
             interval: 1
           })
-          expect(getRepeatDisplayText(config)).toBe('Every month')
+          expect(getRepeatDisplayText(config, t)).toBe('Every month')
         })
       })
 
       describe('yearly frequency', () => {
         it("should return 'Every year' for interval=1", () => {
           const config = createMockRepeatConfig({ frequency: 'yearly', interval: 1 })
-          expect(getRepeatDisplayText(config)).toBe('Every year')
+          expect(getRepeatDisplayText(config, t)).toBe('Every year')
         })
 
         it("should return 'Every 2 years' for interval=2", () => {
           const config = createMockRepeatConfig({ frequency: 'yearly', interval: 2 })
-          expect(getRepeatDisplayText(config)).toBe('Every 2 years')
+          expect(getRepeatDisplayText(config, t)).toBe('Every 2 years')
         })
       })
 
@@ -1004,7 +1014,7 @@ describe('Repeat Utils', () => {
             frequency: 'unknown' as RepeatFrequency,
             interval: 1
           })
-          expect(getRepeatDisplayText(config)).toBe('Repeats')
+          expect(getRepeatDisplayText(config, t)).toBe('Repeats')
         })
       })
     })
