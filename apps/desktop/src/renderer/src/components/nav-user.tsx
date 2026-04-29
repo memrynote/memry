@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import { useT } from '@memry/i18n/renderer'
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -26,6 +27,7 @@ export function NavUser({
     avatar: string
   }
 }) {
+  const { t: tPhaseF } = useT('common')
   const { isMobile } = useSidebar()
 
   return (
@@ -40,7 +42,7 @@ export function NavUser({
               <Avatar className="h-8 w-8 rounded-full">
                 <AvatarImage src={user.avatar} alt={user.name} />
                 <AvatarFallback className="rounded-full">
-                  {/* TODO(i18n): wrap in t() */}CN
+                  {tPhaseF('phaseF.componentsNavUser.cn')}
                 </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
@@ -61,7 +63,7 @@ export function NavUser({
                 <Avatar className="h-8 w-8 rounded-md">
                   <AvatarImage src={user.avatar} alt={user.name} />
                   <AvatarFallback className="rounded-md">
-                    {/* TODO(i18n): wrap in t() */}CN
+                    {tPhaseF('phaseF.componentsNavUser.cn2')}
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
@@ -74,33 +76,33 @@ export function NavUser({
             <DropdownMenuGroup>
               <DropdownMenuItem>
                 <Sparkles />
-                {/* TODO(i18n): wrap in t() */}
-                Upgrade to Pro
+
+                {tPhaseF('phaseF.componentsNavUser.upgradeToPro')}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem>
                 <BadgeCheck />
-                {/* TODO(i18n): wrap in t() */}
-                Account
+
+                {tPhaseF('phaseF.componentsNavUser.account')}
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <CreditCard />
-                {/* TODO(i18n): wrap in t() */}
-                Billing
+
+                {tPhaseF('phaseF.componentsNavUser.billing')}
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <Bell />
-                {/* TODO(i18n): wrap in t() */}
-                Notifications
+
+                {tPhaseF('phaseF.componentsNavUser.notifications')}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
               <LogOut />
-              {/* TODO(i18n): wrap in t() */}
-              Log out
+
+              {tPhaseF('phaseF.componentsNavUser.logOut')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

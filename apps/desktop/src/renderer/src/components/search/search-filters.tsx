@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { FileText, BookOpen, CheckSquare, Inbox, X, Filter, Tag, Calendar } from '@/lib/icons'
 import type { ContentType, DateRange } from '@memry/contracts/search-api'
 import { searchService } from '@/services/search-service'
+import { useT } from '@memry/i18n/renderer'
 
 interface SearchFiltersProps {
   activeTypes: ContentType[]
@@ -66,6 +67,7 @@ export function SearchFilters({
   onSetDateRange,
   onClear
 }: SearchFiltersProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('common')
   const [expanded, setExpanded] = useState(false)
   const [allTags, setAllTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
@@ -142,8 +144,8 @@ export function SearchFilters({
               hover:text-foreground transition-colors"
           >
             <X className="size-3" />
-            {/* TODO(i18n): wrap in t() */}
-            Clear
+
+            {tPhaseF('phaseF.componentsSearchSearchFilters.clear')}
           </button>
         )}
       </div>
@@ -153,8 +155,8 @@ export function SearchFilters({
           <div>
             <div className="flex items-center gap-1.5 text-xs text-text-tertiary mb-1">
               <Tag className="size-3" />
-              {/* TODO(i18n): wrap in t() */}
-              Tags
+
+              {tPhaseF('phaseF.componentsSearchSearchFilters.tags')}
             </div>
             <div className="flex flex-wrap gap-1 mb-1">
               {activeTags.map((tag) => (
@@ -175,7 +177,7 @@ export function SearchFilters({
                 type="text"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
-                placeholder={'Filter by tag...' /* TODO(i18n): wrap placeholder in t() */}
+                placeholder={tPhaseF('phaseF.componentsSearchSearchFilters.filterByTag')}
                 className="w-full h-7 px-2 text-xs bg-muted rounded
                   border border-border text-foreground
                   placeholder:text-text-tertiary focus:outline-none"
@@ -204,8 +206,8 @@ export function SearchFilters({
           <div>
             <div className="flex items-center gap-1.5 text-xs text-text-tertiary mb-1">
               <Calendar className="size-3" />
-              {/* TODO(i18n): wrap in t() */}
-              Date Range
+
+              {tPhaseF('phaseF.componentsSearchSearchFilters.dateRange')}
             </div>
             <div className="flex gap-1">
               {DATE_PRESETS.map(({ label, getValue }) => {

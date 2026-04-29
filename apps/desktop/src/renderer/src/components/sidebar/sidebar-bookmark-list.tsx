@@ -30,6 +30,7 @@ import { useBookmarks, type BookmarkWithItem } from '@/hooks/use-bookmarks'
 import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
 import { BookmarkItemTypes } from '@memry/contracts/bookmarks-api'
 import type { SidebarItem, TabType } from '@/contexts/tabs/types'
+import { useT } from '@memry/i18n/renderer'
 
 interface SidebarBookmarkListProps {
   /** Maximum number of bookmarks to show before "Show more" */
@@ -79,6 +80,7 @@ export function SidebarBookmarkList({
   onBookmarkClick,
   className
 }: SidebarBookmarkListProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   const { bookmarks, isLoading, error, removeBookmark } = useBookmarks({
     sortBy: 'position',
     sortOrder: 'asc'
@@ -110,7 +112,7 @@ export function SidebarBookmarkList({
       <div className={cn('px-2 py-1.5', className)}>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Star className="size-3 animate-pulse" />
-          <span>{/* TODO(i18n): wrap in t() */}Loading bookmarks...</span>
+          <span>{tPhaseF('phaseF.componentsSidebarSidebarBookmarkList.loadingBookmarks')}</span>
         </div>
       </div>
     )
@@ -120,7 +122,7 @@ export function SidebarBookmarkList({
     return (
       <div className={cn('px-2 py-1.5', className)}>
         <span className="text-xs text-destructive">
-          {/* TODO(i18n): wrap in t() */}Failed to load bookmarks
+          {tPhaseF('phaseF.componentsSidebarSidebarBookmarkList.failedToLoadBookmarks')}
         </span>
       </div>
     )
@@ -130,7 +132,7 @@ export function SidebarBookmarkList({
     return (
       <div className={cn('px-2 py-1.5', className)}>
         <span className="text-xs text-muted-foreground">
-          {/* TODO(i18n): wrap in t() */}No bookmarks yet
+          {tPhaseF('phaseF.componentsSidebarSidebarBookmarkList.noBookmarksYet')}
         </span>
       </div>
     )
@@ -184,7 +186,9 @@ export function SidebarBookmarkList({
                   showOnHover
                 >
                   <MoreHorizontal className="size-4" />
-                  <span className="sr-only">{/* TODO(i18n): wrap in t() */}More options</span>
+                  <span className="sr-only">
+                    {tPhaseF('phaseF.componentsSidebarSidebarBookmarkList.moreOptions')}
+                  </span>
                 </SidebarMenuAction>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
@@ -193,8 +197,8 @@ export function SidebarBookmarkList({
                   className="text-destructive focus:text-destructive"
                 >
                   <Trash2 className="size-4 mr-2" />
-                  {/* TODO(i18n): wrap in t() */}
-                  Remove
+
+                  {tPhaseF('phaseF.componentsSidebarSidebarBookmarkList.remove')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

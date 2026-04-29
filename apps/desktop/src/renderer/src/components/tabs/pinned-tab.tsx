@@ -8,6 +8,7 @@ import { useTabs } from '@/contexts/tabs'
 import { TabIcon } from './tab-icon'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useT } from '@memry/i18n/renderer'
 
 interface PinnedTabProps {
   /** Tab data */
@@ -29,6 +30,7 @@ export const PinnedTab = ({
   isActive,
   className
 }: PinnedTabProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('common')
   const { setActiveTab, closeTab } = useTabs()
 
   const handleClick = (): void => {
@@ -90,7 +92,7 @@ export const PinnedTab = ({
                 'bg-tint',
                 'animate-pulse'
               )}
-              aria-label={'Unsaved changes' /* TODO(i18n): wrap aria-label in t() */}
+              aria-label={tPhaseF('phaseF.componentsTabsPinnedTab.unsavedChanges')}
             />
           )}
         </div>
@@ -102,7 +104,9 @@ export const PinnedTab = ({
         <div className="flex items-center gap-1.5">
           <span>{tab.title}</span>
           {tab.isModified && (
-            <span className="text-muted-foreground">({/* TODO(i18n): wrap in t() */}unsaved)</span>
+            <span className="text-muted-foreground">
+              ({tPhaseF('phaseF.componentsTabsPinnedTab.unsaved')}
+            </span>
           )}
         </div>
       </TooltipContent>

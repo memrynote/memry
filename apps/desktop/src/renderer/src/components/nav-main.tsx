@@ -1,6 +1,7 @@
 import { ChevronRight, type AppIcon } from '@/lib/icons'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { useT } from '@memry/i18n/renderer'
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -26,9 +27,10 @@ export function NavMain({
     }[]
   }[]
 }) {
+  const { t: tPhaseF } = useT('common')
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>{/* TODO(i18n): wrap in t() */}Platform</SidebarGroupLabel>
+      <SidebarGroupLabel>{tPhaseF('phaseF.componentsNavMain.platform')}</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
           <Collapsible

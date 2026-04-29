@@ -10,6 +10,7 @@ import { RegularTab } from './regular-tab'
 import { PinnedTab } from './pinned-tab'
 import { NewTabMenu } from './new-tab-menu'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface TabBarProps {
   /** ID of the tab group to display */
@@ -22,6 +23,7 @@ interface TabBarProps {
  * Tab bar component with pinned tabs, regular tabs, and action buttons
  */
 export const TabBar = ({ groupId, className }: TabBarProps): React.JSX.Element | null => {
+  const { t: tPhaseF } = useT('common')
   const { state } = useTabs()
   const group = useTabGroup(groupId)
 
@@ -82,7 +84,7 @@ export const TabBar = ({ groupId, className }: TabBarProps): React.JSX.Element |
         className
       )}
       role="tablist"
-      aria-label={'Open tabs' /* TODO(i18n): wrap aria-label in t() */}
+      aria-label={tPhaseF('phaseF.componentsTabsTabBar.openTabs')}
       aria-orientation="horizontal"
       data-group-id={groupId}
     >
@@ -117,7 +119,7 @@ export const TabBar = ({ groupId, className }: TabBarProps): React.JSX.Element |
             'hover:from-surface-active',
             'transition-colors z-10'
           )}
-          aria-label={'Scroll tabs left' /* TODO(i18n): wrap aria-label in t() */}
+          aria-label={tPhaseF('phaseF.componentsTabsTabBar.scrollTabsLeft')}
         >
           <ChevronLeft className="w-4 h-4 text-text-tertiary" />
         </button>
@@ -160,7 +162,7 @@ export const TabBar = ({ groupId, className }: TabBarProps): React.JSX.Element |
             'hover:from-surface-active',
             'transition-colors z-10'
           )}
-          aria-label={'Scroll tabs right' /* TODO(i18n): wrap aria-label in t() */}
+          aria-label={tPhaseF('phaseF.componentsTabsTabBar.scrollTabsRight')}
         >
           <ChevronRight className="w-4 h-4 text-text-tertiary" />
         </button>

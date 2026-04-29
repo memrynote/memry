@@ -49,6 +49,7 @@ import { getAllSupportedExtensions } from '@memry/shared/file-types'
 import { createLogger } from '@/lib/logger'
 import { useFileDrop } from '@/hooks/use-file-drop'
 import { extractErrorMessage } from '@/lib/ipc-error'
+import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Component:AppSidebar')
 
@@ -82,6 +83,7 @@ export function AppSidebar({ currentPage, viewCounts, ...props }: AppSidebarProp
  * Inner sidebar component that has access to the drill-down context.
  */
 function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps) {
+  const { t: tPhaseF } = useT('common')
   const [tagsActions, setTagsActions] = useState<React.ReactNode>(null)
   const notesActionsRef = useRef<NotesTreeActions | null>(null)
   const [foldersExpanded, setFoldersExpanded] = useState(false)
@@ -247,7 +249,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
         {/* COLLECTIONS Section */}
         <SidebarSection
           id="collections"
-          label={'Collections' /* TODO(i18n): wrap label in t() */}
+          label={tPhaseF('phaseF.componentsAppSidebar.collections')}
           defaultExpanded={false}
           actions={
             <>
@@ -283,14 +285,13 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
                     type="button"
                     onClick={() => notesActionsRef.current?.createNote()}
                     className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
-                    aria-label={'New note' /* TODO(i18n): wrap aria-label in t() */}
+                    aria-label={tPhaseF('phaseF.componentsAppSidebar.newNote')}
                   >
                     <FilePlus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">
-                  {/* TODO(i18n): wrap in t() */}
-                  New note
+                  {tPhaseF('phaseF.componentsAppSidebar.newNote2')}
                 </TooltipContent>
               </Tooltip>
               <Tooltip>
@@ -299,14 +300,13 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
                     type="button"
                     onClick={() => notesActionsRef.current?.createFolder()}
                     className="p-0.5 rounded cursor-pointer hover:bg-sidebar-accent transition-colors"
-                    aria-label={'New folder' /* TODO(i18n): wrap aria-label in t() */}
+                    aria-label={tPhaseF('phaseF.componentsAppSidebar.newFolder')}
                   >
                     <FolderPlus className="size-3.5 text-sidebar-muted hover:text-sidebar-foreground" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">
-                  {/* TODO(i18n): wrap in t() */}
-                  New folder
+                  {tPhaseF('phaseF.componentsAppSidebar.newFolder2')}
                 </TooltipContent>
               </Tooltip>
             </>
@@ -322,7 +322,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
         {/* BOOKMARKS Section */}
         <SidebarSection
           id="bookmarks"
-          label={'Bookmarks' /* TODO(i18n): wrap label in t() */}
+          label={tPhaseF('phaseF.componentsAppSidebar.bookmarks')}
           defaultExpanded={false}
         >
           <SidebarBookmarkList maxVisible={6} onBookmarkClick={handleBookmarkClick} />
@@ -331,7 +331,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
         {/* TAGS Section */}
         <SidebarSection
           id="tags"
-          label={'Tags' /* TODO(i18n): wrap label in t() */}
+          label={tPhaseF('phaseF.componentsAppSidebar.tags')}
           defaultExpanded={false}
           actions={tagsActions}
         >
@@ -352,7 +352,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
           <div className="flex flex-col items-center gap-2 rounded-md border-2 border-dashed border-primary/50 px-6 py-4">
             <Upload className="size-6 text-primary" />
             <span className="text-sm font-medium">
-              {/* TODO(i18n): wrap in t() */}Drop files to import
+              {tPhaseF('phaseF.componentsAppSidebar.dropFilesToImport')}
             </span>
             <span className="text-xs text-muted-foreground">
               {getAllSupportedExtensions().join(', ')}
@@ -380,11 +380,11 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
             type="button"
             onClick={handleNewNote}
             className="flex flex-1 items-center justify-center gap-2 h-[30px] rounded-[5px] bg-sidebar-surface hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
-            title={'New note (⌘N)' /* TODO(i18n): wrap title in t() */}
+            title={tPhaseF('phaseF.componentsAppSidebar.newNoteN')}
           >
             <Plus className="size-[15px] text-muted-foreground/70" />
             <span className="text-[13px] text-muted-foreground/70 font-normal">
-              {/* TODO(i18n): wrap in t() */}New
+              {tPhaseF('phaseF.componentsAppSidebar.new')}
             </span>
           </button>
         </div>
@@ -407,8 +407,8 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
             <button
               type="button"
               onClick={handleSyncClick}
-              aria-label={'Sync disabled' /* TODO(i18n): wrap aria-label in t() */}
-              title={'Sync disabled' /* TODO(i18n): wrap title in t() */}
+              aria-label={tPhaseF('phaseF.componentsAppSidebar.syncDisabled')}
+              title={tPhaseF('phaseF.componentsAppSidebar.syncDisabled2')}
               className="shrink-0 size-7 rounded flex items-center justify-center hover:bg-sidebar-accent text-muted-foreground transition-colors"
             >
               <CloudOff className="size-4" />

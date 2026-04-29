@@ -5,6 +5,7 @@ import { getRepeatDisplayText } from '@/lib/repeat-utils'
 import { formatDateShort } from '@/lib/task-utils'
 import { CustomRepeatDialog } from './custom-repeat-dialog'
 import { StopRepeatingDialog, type StopRepeatOption } from './stop-repeating-dialog'
+import { useT } from '@memry/i18n/renderer'
 
 interface TaskRepeatSectionProps {
   taskTitle: string
@@ -59,6 +60,7 @@ export const TaskRepeatSection = ({
   projectColor,
   onRepeatChange
 }: TaskRepeatSectionProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isStopDialogOpen, setIsStopDialogOpen] = useState(false)
 
@@ -84,8 +86,7 @@ export const TaskRepeatSection = ({
     <div className="flex flex-col py-4 px-5 gap-2 border-b border-border">
       <div className="flex items-center justify-between">
         <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
-          {/* TODO(i18n): wrap in t() */}
-          Repeat
+          {tPhaseF('phaseF.componentsTasksTaskRepeatSection.repeat')}
         </span>
         {active ? (
           <RepeatIcon color="var(--text-tertiary)" />
@@ -94,7 +95,7 @@ export const TaskRepeatSection = ({
             type="button"
             onClick={() => setIsEditDialogOpen(true)}
             className="text-text-tertiary hover:text-text-secondary transition-colors"
-            aria-label={'Add repeat' /* TODO(i18n): wrap aria-label in t() */}
+            aria-label={tPhaseF('phaseF.componentsTasksTaskRepeatSection.addRepeat')}
           >
             <Plus size={14} />
           </button>
@@ -120,21 +121,20 @@ export const TaskRepeatSection = ({
               type="button"
               onClick={() => setIsEditDialogOpen(true)}
               className="flex items-center rounded-[5px] py-1 px-2.5 border border-foreground/10"
-              aria-label={'Edit' /* TODO(i18n): wrap aria-label in t() */}
+              aria-label={tPhaseF('phaseF.componentsTasksTaskRepeatSection.edit')}
             >
               <span className="text-[11px] text-text-primary font-medium leading-3.5">
-                {/* TODO(i18n): wrap in t() */}Edit
+                {tPhaseF('phaseF.componentsTasksTaskRepeatSection.edit2')}
               </span>
             </button>
             <button
               type="button"
               onClick={() => setIsStopDialogOpen(true)}
               className="flex items-center rounded-[5px] py-1 px-2.5 border border-foreground/10"
-              aria-label={'Stop repeating' /* TODO(i18n): wrap aria-label in t() */}
+              aria-label={tPhaseF('phaseF.componentsTasksTaskRepeatSection.stopRepeating')}
             >
               <span className="text-[11px] text-text-primary font-medium leading-3.5">
-                {/* TODO(i18n): wrap in t() */}
-                Stop repeating
+                {tPhaseF('phaseF.componentsTasksTaskRepeatSection.stopRepeating2')}
               </span>
             </button>
           </div>

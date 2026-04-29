@@ -4,6 +4,7 @@ import { Search, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -34,6 +35,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     },
     ref
   ) => {
+    const { t: tPhaseF } = useT('tasks')
     const internalRef = useRef<HTMLInputElement>(null)
     const inputRef = (ref as React.RefObject<HTMLInputElement>) || internalRef
 
@@ -78,7 +80,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             'pl-9 pr-8 h-9 text-[13px]',
             expandOnFocus && 'w-48 focus:w-64 transition-all duration-200'
           )}
-          aria-label={'Search tasks' /* TODO(i18n): wrap aria-label in t() */}
+          aria-label={tPhaseF('phaseF.componentsTasksFiltersSearchInput.searchTasks')}
         />
         {value && (
           <Button
@@ -86,7 +88,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             size="icon"
             className="absolute right-1 top-1/2 -translate-y-1/2 size-7 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
             onClick={handleClear}
-            aria-label={'Clear search' /* TODO(i18n): wrap aria-label in t() */}
+            aria-label={tPhaseF('phaseF.componentsTasksFiltersSearchInput.clearSearch')}
             tabIndex={0}
           >
             <X className="size-4 text-muted-foreground/60" />

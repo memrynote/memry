@@ -19,7 +19,7 @@
     "repair:links": "node ../../scripts/repair-package-links.js apps/desktop",
     "prelint": "pnpm repair:links",
     "lint": "pnpm exec eslint --cache .",
-    "i18n:check": "node scripts/i18n/check.mjs",
+    "i18n:check": "node scripts/i18n/check.mjs --max-todo 0",
     "i18n:codemod:todo": "node scripts/i18n/codemod-todo-jsx-literals.mjs --write",
     "i18n:codemod:todo:check": "node scripts/i18n/codemod-todo-jsx-literals.mjs --check",
     "i18n:codemod:todo:dry-run": "node scripts/i18n/codemod-todo-jsx-literals.mjs --dry-run",

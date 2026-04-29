@@ -62,6 +62,7 @@ export function ExportDialog({
   noteId,
   noteTitle
 }: ExportDialogProps): React.ReactElement {
+  const { t: tPhaseF } = useT('notes')
   const { t } = useT('notes')
   const { t: tCommon } = useT('common')
   // Form state
@@ -211,7 +212,9 @@ export function ExportDialog({
                   )}
                 />
                 <div>
-                  <div className="font-medium text-sm">{/* TODO(i18n): wrap in t() */}PDF</div>
+                  <div className="font-medium text-sm">
+                    {tPhaseF('phaseF.componentsNoteExportDialog.pdf')}
+                  </div>
                   <div className="text-xs text-muted-foreground">
                     {t('exportDialog.pdfDescription')}
                   </div>
@@ -235,7 +238,9 @@ export function ExportDialog({
                   )}
                 />
                 <div>
-                  <div className="font-medium text-sm">{/* TODO(i18n): wrap in t() */}HTML</div>
+                  <div className="font-medium text-sm">
+                    {tPhaseF('phaseF.componentsNoteExportDialog.html')}
+                  </div>
                   <div className="text-xs text-muted-foreground">
                     {t('exportDialog.htmlDescription')}
                   </div>
@@ -260,13 +265,13 @@ export function ExportDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="A4">
-                    {/* TODO(i18n): wrap in t() */}A4 (210 x 297 mm)
+                    {tPhaseF('phaseF.componentsNoteExportDialog.a4210X297Mm')}
                   </SelectItem>
                   <SelectItem value="Letter">
-                    {/* TODO(i18n): wrap in t() */}Letter (8.5 x 11 in)
+                    {tPhaseF('phaseF.componentsNoteExportDialog.letter85X11In')}
                   </SelectItem>
                   <SelectItem value="Legal">
-                    {/* TODO(i18n): wrap in t() */}Legal (8.5 x 14 in)
+                    {tPhaseF('phaseF.componentsNoteExportDialog.legal85X14In')}
                   </SelectItem>
                 </SelectContent>
               </Select>

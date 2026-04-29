@@ -25,6 +25,7 @@ import { IconPicker, getIconByName } from '@/components/icon-picker'
 import { ColorPicker } from '@/components/tasks/color-picker'
 import { StatusEditor } from '@/components/tasks/status-editor'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 import {
   type Project,
   type Status,
@@ -139,6 +140,7 @@ const ProjectModalDialog = ({
   onDelete,
   project
 }: ProjectModalProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const isEditMode = !!project
   const canDelete = isEditMode && !project.isDefault
   const initialFormData = useMemo(() => getInitialFormData(project), [project])
@@ -262,8 +264,7 @@ const ProjectModalDialog = ({
             {/* Icon & Name Section */}
             <div className="space-y-2">
               <label className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
-                {/* TODO(i18n): wrap in t() */}
-                Icon & Name
+                {tPhaseF('phaseF.componentsTasksProjectModal.iconName')}
               </label>
               <div className="flex items-center gap-3">
                 {/* Icon Button */}
@@ -275,7 +276,7 @@ const ProjectModalDialog = ({
                     'transition-colors hover:border-primary hover:bg-accent/50',
                     'focus-visible:outline-none'
                   )}
-                  aria-label={'Select icon' /* TODO(i18n): wrap aria-label in t() */}
+                  aria-label={tPhaseF('phaseF.componentsTasksProjectModal.selectIcon')}
                 >
                   <ProjectIconPreview iconName={formData.icon} />
                 </button>
@@ -286,7 +287,7 @@ const ProjectModalDialog = ({
                     type="text"
                     value={formData.name}
                     onChange={handleNameChange}
-                    placeholder={'Project name' /* TODO(i18n): wrap placeholder in t() */}
+                    placeholder={tPhaseF('phaseF.componentsTasksProjectModal.projectName')}
                     maxLength={50}
                     className={cn(errors.name && 'border-destructive')}
                     autoFocus
@@ -295,7 +296,7 @@ const ProjectModalDialog = ({
                 </div>
               </div>
               <p className="text-xs text-text-tertiary">
-                {/* TODO(i18n): wrap in t() */}Click icon to change
+                {tPhaseF('phaseF.componentsTasksProjectModal.clickIconToChange')}
               </p>
             </div>
 
@@ -304,8 +305,7 @@ const ProjectModalDialog = ({
             {/* Color Section */}
             <div className="space-y-2">
               <label className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
-                {/* TODO(i18n): wrap in t() */}
-                Color
+                {tPhaseF('phaseF.componentsTasksProjectModal.color')}
               </label>
               <ColorPicker value={formData.color} onChange={handleColorChange} />
             </div>
@@ -315,15 +315,14 @@ const ProjectModalDialog = ({
             {/* Description Section */}
             <div className="space-y-2">
               <label className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
-                {/* TODO(i18n): wrap in t() */}
-                Description (optional)
+                {tPhaseF('phaseF.componentsTasksProjectModal.descriptionOptional')}
               </label>
               <textarea
                 value={formData.description}
                 onChange={handleDescriptionChange}
-                placeholder={
-                  'Brief description of this project...' /* TODO(i18n): wrap placeholder in t() */
-                }
+                placeholder={tPhaseF(
+                  'phaseF.componentsTasksProjectModal.briefDescriptionOfThisProject'
+                )}
                 rows={2}
                 maxLength={200}
                 className={cn(
@@ -339,12 +338,12 @@ const ProjectModalDialog = ({
             {/* Statuses Section */}
             <div className="space-y-2">
               <label className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
-                {/* TODO(i18n): wrap in t() */}
-                Statuses
+                {tPhaseF('phaseF.componentsTasksProjectModal.statuses')}
               </label>
               <p className="text-xs text-text-tertiary">
-                {/* TODO(i18n): wrap in t() */}
-                Configure the workflow stages for this project.
+                {tPhaseF(
+                  'phaseF.componentsTasksProjectModal.configureTheWorkflowStagesForThisProject'
+                )}
               </p>
               <StatusEditor
                 statuses={formData.statuses}
@@ -364,8 +363,7 @@ const ProjectModalDialog = ({
                   onClick={handleDelete}
                   className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                 >
-                  {/* TODO(i18n): wrap in t() */}
-                  Delete Project
+                  {tPhaseF('phaseF.componentsTasksProjectModal.deleteProject')}
                 </Button>
               )}
             </div>
@@ -373,8 +371,7 @@ const ProjectModalDialog = ({
             {/* Cancel and Save buttons (right side) */}
             <div className="flex gap-2">
               <Button type="button" variant="outline" onClick={handleClose}>
-                {/* TODO(i18n): wrap in t() */}
-                Cancel
+                {tPhaseF('phaseF.componentsTasksProjectModal.cancel')}
               </Button>
               <Button type="button" onClick={handleSave} disabled={!isValid}>
                 {isEditMode ? 'Save' : 'Create'}
@@ -397,18 +394,21 @@ const ProjectModalDialog = ({
       <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{/* TODO(i18n): wrap in t() */}Unsaved changes</AlertDialogTitle>
+            <AlertDialogTitle>
+              {tPhaseF('phaseF.componentsTasksProjectModal.unsavedChanges')}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              {/* TODO(i18n): wrap in t() */}
-              You have unsaved changes. Are you sure you want to discard them?
+              {tPhaseF(
+                'phaseF.componentsTasksProjectModal.youHaveUnsavedChangesAreYouSureYouWantToDiscardThem'
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleCancelDiscard}>
-              {/* TODO(i18n): wrap in t() */}Cancel
+              {tPhaseF('phaseF.componentsTasksProjectModal.cancel2')}
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleDiscardChanges}>
-              {/* TODO(i18n): wrap in t() */}Discard
+              {tPhaseF('phaseF.componentsTasksProjectModal.discard')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

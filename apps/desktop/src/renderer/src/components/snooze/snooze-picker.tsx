@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dialog'
 import { snoozePresets, formatSnoozeTime } from './snooze-presets'
 import type { ClockFormat } from '@/lib/time-format'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // Types
@@ -61,6 +62,7 @@ export function SnoozePicker({
   variant = 'ghost',
   className
 }: SnoozePickerProps) {
+  const { t: tPhaseF } = useT('inbox')
   const {
     settings: { clockFormat }
   } = useGeneralSettings()
@@ -102,10 +104,12 @@ export function SnoozePicker({
       size={size}
       className={className}
       disabled={disabled}
-      title={'Snooze' /* TODO(i18n): wrap title in t() */}
+      title={tPhaseF('phaseF.componentsSnoozeSnoozePicker.snooze')}
     >
       <Clock className="h-4 w-4" />
-      {size !== 'icon' && <span className="ml-2">{/* TODO(i18n): wrap in t() */}Snooze</span>}
+      {size !== 'icon' && (
+        <span className="ml-2">{tPhaseF('phaseF.componentsSnoozeSnoozePicker.snooze2')}</span>
+      )}
     </Button>
   )
 
@@ -145,7 +149,7 @@ export function SnoozePicker({
             className="flex items-center gap-2"
           >
             <CalendarDays className="h-4 w-4" />
-            <span>{/* TODO(i18n): wrap in t() */}Pick Date & Time</span>
+            <span>{tPhaseF('phaseF.componentsSnoozeSnoozePicker.pickDateTime')}</span>
             <ChevronRight className="h-4 w-4 ml-auto" />
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -202,6 +206,7 @@ function SnoozeCustomDialog({
   onSnooze,
   clockFormat
 }: SnoozeCustomDialogProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('inbox')
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(() => new Date())
   const [selectedTime, setSelectedTime] = React.useState('09:00')
 
@@ -241,9 +246,9 @@ function SnoozeCustomDialog({
         }}
       >
         <DialogHeader>
-          <DialogTitle>{/* TODO(i18n): wrap in t() */}Pick Date & Time</DialogTitle>
+          <DialogTitle>{tPhaseF('phaseF.componentsSnoozeSnoozePicker.pickDateTime2')}</DialogTitle>
           <DialogDescription>
-            {/* TODO(i18n): wrap in t() */}Select when to be reminded about this item
+            {tPhaseF('phaseF.componentsSnoozeSnoozePicker.selectWhenToBeRemindedAboutThisItem')}
           </DialogDescription>
         </DialogHeader>
 
@@ -288,8 +293,7 @@ function SnoozeCustomDialog({
             disabled={!selectedDate || !!timeError}
             className="w-full"
           >
-            {/* TODO(i18n): wrap in t() */}
-            Snooze
+            {tPhaseF('phaseF.componentsSnoozeSnoozePicker.snooze3')}
           </Button>
         </div>
       </DialogContent>
@@ -322,6 +326,7 @@ export function QuickSnoozeButton({
   showLabel = true,
   disabled = false
 }: QuickSnoozeButtonProps) {
+  const { t: tPhaseF } = useT('inbox')
   const button = (
     <Button
       variant="ghost"
@@ -332,7 +337,7 @@ export function QuickSnoozeButton({
         e.stopPropagation()
       }}
       className={showLabel ? undefined : 'p-1.5 h-auto'}
-      aria-label={'Snooze' /* TODO(i18n): wrap aria-label in t() */}
+      aria-label={tPhaseF('phaseF.componentsSnoozeSnoozePicker.snooze4')}
     >
       <Clock className={showLabel ? 'h-4 w-4 mr-1' : 'h-4 w-4'} />
       {showLabel && label}
@@ -352,7 +357,9 @@ export function QuickSnoozeButton({
           <SnoozePicker onSnooze={onSnooze} disabled={disabled} trigger={button} />
         </span>
       </TooltipTrigger>
-      <TooltipContent side="bottom">{/* TODO(i18n): wrap in t() */}Snooze</TooltipContent>
+      <TooltipContent side="bottom">
+        {tPhaseF('phaseF.componentsSnoozeSnoozePicker.snooze5')}
+      </TooltipContent>
     </Tooltip>
   )
 }

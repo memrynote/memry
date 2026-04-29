@@ -13,6 +13,7 @@ import { PdfViewer, ImageViewer, AudioPlayer, VideoPlayer } from '@/components/v
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { FileMetadata } from '@memry/rpc/notes'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // Types
@@ -38,18 +39,18 @@ function formatFileSize(bytes: number | null): string {
 // ============================================================================
 
 function FileErrorState({ error, onRetry }: { error: string; onRetry?: () => void }) {
+  const { t: tPhaseF } = useT('notes')
   return (
     <div className="flex items-center justify-center h-full min-h-[400px]">
       <div className="flex flex-col items-center gap-3 text-center">
         <FileWarning className="h-12 w-12 text-muted-foreground" />
         <p className="text-destructive font-medium">
-          {/* TODO(i18n): wrap in t() */}Failed to load file
+          {tPhaseF('phaseF.pagesFile.failedToLoadFile')}
         </p>
         <p className="text-sm text-muted-foreground">{error}</p>
         {onRetry && (
           <Button variant="outline" size="sm" onClick={onRetry}>
-            {/* TODO(i18n): wrap in t() */}
-            Try again
+            {tPhaseF('phaseF.pagesFile.tryAgain')}
           </Button>
         )}
       </div>
@@ -62,14 +63,13 @@ function FileErrorState({ error, onRetry }: { error: string; onRetry?: () => voi
 // ============================================================================
 
 function FileEmptyState() {
+  const { t: tPhaseF } = useT('notes')
   return (
     <div className="flex items-center justify-center h-full min-h-[400px]">
       <div className="flex flex-col items-center gap-3 text-center text-muted-foreground">
         <FileWarning className="h-12 w-12" />
-        <p className="text-sm">{/* TODO(i18n): wrap in t() */}No file selected</p>
-        <p className="text-xs">
-          {/* TODO(i18n): wrap in t() */}Select a file from the sidebar to view it
-        </p>
+        <p className="text-sm">{tPhaseF('phaseF.pagesFile.noFileSelected')}</p>
+        <p className="text-xs">{tPhaseF('phaseF.pagesFile.selectAFileFromTheSidebarToViewIt')}</p>
       </div>
     </div>
   )
@@ -80,13 +80,12 @@ function FileEmptyState() {
 // ============================================================================
 
 function FileLoadingState() {
+  const { t: tPhaseF } = useT('notes')
   return (
     <div className="flex items-center justify-center h-full min-h-[400px]">
       <div className="flex flex-col items-center gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">
-          {/* TODO(i18n): wrap in t() */}Loading file...
-        </p>
+        <p className="text-sm text-muted-foreground">{tPhaseF('phaseF.pagesFile.loadingFile')}</p>
       </div>
     </div>
   )
@@ -97,6 +96,7 @@ function FileLoadingState() {
 // ============================================================================
 
 function FileInfoBar({ file }: { file: FileMetadata }) {
+  const { t: tPhaseF } = useT('notes')
   return (
     <div className="flex items-center justify-between gap-2 px-2 sm:px-4 py-2 border-b border-border bg-muted/30 flex-shrink-0">
       <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
@@ -114,20 +114,20 @@ function FileInfoBar({ file }: { file: FileMetadata }) {
           size="sm"
           onClick={() => window.api.notes.openExternal(file.id)}
           className="h-8 w-8 p-0 sm:w-auto sm:px-3"
-          title={'Open in default app' /* TODO(i18n): wrap title in t() */}
+          title={tPhaseF('phaseF.pagesFile.openInDefaultApp')}
         >
           <ExternalLink className="h-4 w-4 sm:mr-1" />
-          <span className="hidden sm:inline">{/* TODO(i18n): wrap in t() */}Open</span>
+          <span className="hidden sm:inline">{tPhaseF('phaseF.pagesFile.open')}</span>
         </Button>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => window.api.notes.revealInFinder(file.id)}
           className="h-8 w-8 p-0 sm:w-auto sm:px-3"
-          title={'Reveal in Finder' /* TODO(i18n): wrap title in t() */}
+          title={tPhaseF('phaseF.pagesFile.revealInFinder')}
         >
           <Download className="h-4 w-4 sm:mr-1" />
-          <span className="hidden sm:inline">{/* TODO(i18n): wrap in t() */}Reveal</span>
+          <span className="hidden sm:inline">{tPhaseF('phaseF.pagesFile.reveal')}</span>
         </Button>
       </div>
     </div>
@@ -139,6 +139,7 @@ function FileInfoBar({ file }: { file: FileMetadata }) {
 // ============================================================================
 
 function FileViewer({ file }: { file: FileMetadata }) {
+  const { t: tPhaseF } = useT('notes')
   // Convert absolute path to memry-file:// protocol URL for secure local file access
   const fileUrl = `memry-file://local${file.absolutePath}`
 
@@ -161,7 +162,7 @@ function FileViewer({ file }: { file: FileMetadata }) {
           <div className="text-center">
             <FileWarning className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">
-              {/* TODO(i18n): wrap in t() */}Unsupported file type
+              {tPhaseF('phaseF.pagesFile.unsupportedFileType')}
             </p>
           </div>
         </div>

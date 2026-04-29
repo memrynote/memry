@@ -3,6 +3,7 @@ import { useMemo, useCallback } from 'react'
 import { DatePickerContent } from '@/components/tasks/date-picker-content'
 import type { DueDateFilter, DueDateFilterType } from '@/data/tasks-data'
 import { BackButton } from './priority-panel'
+import { useT } from '@memry/i18n/renderer'
 
 function isSameDay(a: Date, b: Date): boolean {
   return (
@@ -34,6 +35,7 @@ export function DueDatePanel({
   onClearDueDate,
   onGoBack
 }: DueDatePanelProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('tasks')
   const today = useMemo(() => {
     const d = new Date()
     d.setHours(0, 0, 0, 0)
@@ -109,7 +111,7 @@ export function DueDatePanel({
           <path d="M2 5.5h10" stroke="currentColor" strokeWidth="1.1" />
         </svg>
         <span className="text-[13px] text-foreground font-medium leading-4">
-          {/* TODO(i18n): wrap in t() */}Due date
+          {tPhaseF('phaseF.componentsTasksFiltersFilterPanelsDueDatePanel.dueDate')}
         </span>
       </div>
       <DatePickerContent selected={selectedDate} onSelect={handleSelect} />

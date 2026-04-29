@@ -52,5 +52,257 @@
     "task": "{count, plural, one {# task} other {# tasks}}",
     "project": "{count, plural, one {# project} other {# projects}}",
     "itemDelete": "{count, plural, one {Delete # item} other {Delete # items}}"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Collections",
+      "newNote": "New note",
+      "newNote2": "New note",
+      "newFolder": "New folder",
+      "newFolder2": "New folder",
+      "bookmarks": "Bookmarks",
+      "tags": "Tags",
+      "dropFilesToImport": "Drop files to import",
+      "newNoteN": "New note (⌘N)",
+      "new": "New",
+      "syncDisabled": "Sync disabled",
+      "syncDisabled2": "Sync disabled"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Resize Day Panel",
+      "dragToResizeDoubleClickToReset": "Drag to resize · Double-click to reset"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Find, replace, ask..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Skip onboarding",
+      "welcomeToMemry": "Welcome to Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Your personal knowledge base. Let's take 2 minutes to get you started.",
+      "getStarted": "Get started ",
+      "createYourFirstNote": "Create your first note",
+      "markdownBasedStoredLocallyAsPlainFiles": "Markdown-based, stored locally as plain files.",
+      "eGMeetingNotesIdeasAnything": "e.g. Meeting notes, ideas, anything...",
+      "skip": "Skip",
+      "createNote": "Create note ",
+      "addYourFirstTask": "Add your first task",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Tasks link to your notes, with priorities and due dates.",
+      "eGReviewProjectProposal": "e.g. Review project proposal...",
+      "skip2": "Skip",
+      "createTask": "Create task ",
+      "syncAcrossDevices": "Sync across devices",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Keep your notes and tasks in sync across all your devices. You can always set this up later.",
+      "skipForNow": "Skip for now",
+      "doneLetSGo": "Done — let's go! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Set folder icon"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "HINT"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Icon picker",
+      "selectIcon": "Select Icon",
+      "closeIconPicker": "Close icon picker",
+      "searchIcons": "Search icons...",
+      "all": "All",
+      "clearIcon": "Clear Icon",
+      "noIconsFoundFor": "No icons found for \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Keyboard Shortcuts",
+      "closeShortcutsHelp": "Close shortcuts help",
+      "press": "Press",
+      "toClose": "to close"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Set Icon",
+      "clearIcon": "Clear Icon"
+    },
+    "componentsNavMain": {
+      "platform": "Platform"
+    },
+    "componentsNavProjects": {
+      "projects": "Projects",
+      "more": "More",
+      "viewProject": "View Project",
+      "shareProject": "Share Project",
+      "deleteProject": "Delete Project",
+      "more2": "More"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Upgrade to Pro",
+      "account": "Account",
+      "billing": "Billing",
+      "notifications": "Notifications",
+      "logOut": "Log out"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Search",
+      "searchNotesTasksJournalInbox": "Search notes, tasks, journal, inbox...",
+      "noResultsFor": "No results for “",
+      "rdquo": "rdquo;",
+      "result": "result"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Search and click items to build your trail",
+      "reasons": "Reasons",
+      "clear": "Clear"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Clear",
+      "tags": "Tags",
+      "filterByTag": "Filter by tag...",
+      "dateRange": "Date Range"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "View all ",
+      "results": "results"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "fuzzy"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "No tabs open",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Open a page from the sidebar or create a new tab to get started",
+      "openInbox": "Open Inbox",
+      "closePane": "Close Pane"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Layout presets",
+      "layoutPresets2": "Layout Presets"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Resize panes"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TasksContext not available",
+      "searchResults": "Search Results",
+      "unknownTabType": "Unknown tab type: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "unsaved changes",
+      "preview": "preview"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "New Tab",
+      "newTab2": "New Tab",
+      "newNote": "New Note",
+      "journal": "Journal",
+      "calendar": "Calendar",
+      "inboxCapture": "Inbox Capture",
+      "tasks": "Tasks"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Unsaved changes",
+      "unsaved": "unsaved)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Unsaved changes"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Close All Tabs"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Open tabs",
+      "scrollTabsLeft": "Scroll tabs left",
+      "scrollTabsRight": "Scroll tabs right",
+      "graphG": "Graph (⌘G)",
+      "dayPanel": "Day Panel"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "Scroll tabs left",
+      "scrollTabsRight": "Scroll tabs right"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "Open tabs",
+      "scrollTabsLeft": "Scroll tabs left",
+      "scrollTabsRight": "Scroll tabs right"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Something went wrong",
+      "anErrorOccurredWhileRenderingThisTabContent": "An error occurred while rendering this tab content.",
+      "tryAgain": "Try Again"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Note icon"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Unsaved Changes",
+      "quot": "quot;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; has unsaved changes. What would you like to do?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "New workspace",
+      "darkMode": "Dark mode",
+      "settings": "Settings",
+      "integrations": "Integrations",
+      "signOut": "Sign Out",
+      "downloadOnIos": "Download on iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Close window",
+      "minimizeWindow": "Minimize window",
+      "maximizeWindow": "Maximize window"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Suggestions",
+      "or": "or",
+      "enter": "Enter",
+      "toInsert": "to insert"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "breadcrumb",
+      "more": "More"
+    },
+    "componentsUiDialog": {
+      "close": "Close"
+    },
+    "componentsUiSheet": {
+      "close": "Close"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Sidebar",
+      "displaysTheMobileSidebar": "Displays the mobile sidebar.",
+      "toggleSidebar": "Toggle Sidebar",
+      "toggleSidebar2": "Toggle Sidebar",
+      "dragToResizeDoubleClickToReset": "Drag to resize · Double-click to reset"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Welcome to Memry",
+      "yourPersonalKnowledgeManagementSystem": "Your personal knowledge management system.",
+      "selectAFolderToStoreYourNotesAndTasks": "Select a folder to store your notes and tasks.",
+      "opening": "Opening...",
+      "selectVaultFolder": "Select Vault Folder",
+      "plainMarkdown": "Plain Markdown",
+      "yourNotesStayPortable": "Your notes stay portable",
+      "syncAnywhere": "Sync Anywhere",
+      "useDropboxIcloudGit": "Use Dropbox, iCloud, Git",
+      "recentVaults": "Recent Vaults",
+      "notesLastOpened": "notes · Last opened"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "No vaults yet",
+      "openVault": "Open vault",
+      "settings": "Settings",
+      "logOut": "Log out",
+      "signInToSync": "Sign in to sync",
+      "remove": "Remove “",
+      "rdquoFromList": "rdquo; from list?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "This vault will be removed from the app, but your files will remain on disk. You can always re-add it later.",
+      "cancel": "Cancel",
+      "remove2": "Remove"
+    },
+    "componentsWindowControls": {
+      "searchK": "Search (⌘K)",
+      "browserBack": "Browser back",
+      "back": "Back",
+      "browserForward": "Browser forward",
+      "forward": "Forward"
+    }
   }
 }

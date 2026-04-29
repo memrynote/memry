@@ -4,6 +4,7 @@ import { AlertTriangle, Flag, Calendar, Repeat, HelpCircle } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { TaskFilters, QuickFilterPreset } from '@/data/tasks-data'
 import { quickFilterPresets, defaultFilters } from '@/data/tasks-data'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -36,6 +37,7 @@ export const QuickFilters = ({
   onApply,
   className
 }: QuickFiltersProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   // Determine which preset is currently active
   const activePresetId = useMemo((): string | null => {
     for (const preset of quickFilterPresets) {
@@ -94,7 +96,7 @@ export const QuickFilters = ({
   return (
     <div className={cn('flex items-center gap-2 px-4 py-2 bg-muted/30 border-b', className)}>
       <span className="text-xs text-muted-foreground shrink-0">
-        {/* TODO(i18n): wrap in t() */}Quick filters:
+        {tPhaseF('phaseF.componentsTasksFiltersQuickFilters.quickFilters')}
       </span>
 
       <div className="flex flex-wrap gap-1.5">

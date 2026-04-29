@@ -104,5 +104,10 @@
       "public": "Public",
       "confidential": "Confidential"
     }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "min · "
+    }
   }
 }

@@ -1,7 +1,9 @@
 import { useHintModeContext } from '@/contexts/hint-mode'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 export const HintIndicator = (): React.JSX.Element | null => {
+  const { t: tPhaseF } = useT('common')
   const { state } = useHintModeContext()
 
   if (!state.isActive) return null
@@ -17,7 +19,7 @@ export const HintIndicator = (): React.JSX.Element | null => {
         'animate-in fade-in slide-in-from-bottom-2 duration-200'
       )}
     >
-      <span>{/* TODO(i18n): wrap in t() */}HINT</span>
+      <span>{tPhaseF('phaseF.componentsHintOverlayHintIndicator.hint')}</span>
       {state.typedChars && (
         <kbd className="px-1.5 py-0.5 bg-black/20 rounded text-xs">{state.typedChars}</kbd>
       )}

@@ -258,6 +258,7 @@ interface ImagePreviewProps {
 }
 
 const ImagePreview = ({ item }: ImagePreviewProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('inbox')
   const { t } = useT('inbox')
   const metadata = 'metadata' in item ? (item.metadata as ImageMetadata | null) : null
   const imageUrl = ('attachmentUrl' in item && item.attachmentUrl) || item.thumbnailUrl
@@ -291,7 +292,8 @@ const ImagePreview = ({ item }: ImagePreviewProps): React.JSX.Element => {
                 {t('content.dimensions')}
               </span>
               <span className="text-[11px] leading-3.5 text-muted-foreground">
-                {metadata.width} {/* TODO(i18n): wrap in t() */}x {metadata.height}
+                {metadata.width} {tPhaseF('phaseF.componentsInboxDetailContentSection.x')}
+                {metadata.height}
               </span>
             </div>
           )}

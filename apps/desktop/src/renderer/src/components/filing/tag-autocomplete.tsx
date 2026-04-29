@@ -9,6 +9,7 @@ import { Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useAllTags } from '@/hooks/use-all-tags'
 import { COLOR_NAMES, getTagColors } from '@/components/note/tags-row/tag-colors'
+import { useT } from '@memry/i18n/renderer'
 
 function getColorForTag(tagName: string): string {
   let hash = 0
@@ -63,6 +64,7 @@ export const TagAutocomplete = ({
   aiSuggestedTags = [],
   className
 }: TagAutocompleteProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('inbox')
   const [inputValue, setInputValue] = useState('')
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [requestedHighlightedIndex, setRequestedHighlightedIndex] = useState(0)
@@ -257,8 +259,7 @@ export const TagAutocomplete = ({
       <div className="flex flex-col py-1">
         <div className="flex items-center py-0.5 px-2">
           <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
-            {/* TODO(i18n): wrap in t() */}
-            Suggested
+            {tPhaseF('phaseF.componentsFilingTagAutocomplete.suggested')}
           </span>
         </div>
         {aiItems.map((tag, i) => {
@@ -278,7 +279,7 @@ export const TagAutocomplete = ({
                 {tag}
               </span>
               <span className="text-[10px] leading-3 text-[var(--tint)]/40">
-                {/* TODO(i18n): wrap in t() */}AI
+                {tPhaseF('phaseF.componentsFilingTagAutocomplete.ai')}
               </span>
             </button>
           )
@@ -352,7 +353,7 @@ export const TagAutocomplete = ({
       >
         <Plus className="size-3 text-muted-foreground/30" aria-hidden="true" />
         <span className="text-[11px] leading-3.5 text-muted-foreground/30">
-          {/* TODO(i18n): wrap in t() */}Create
+          {tPhaseF('phaseF.componentsFilingTagAutocomplete.create')}
         </span>
         <span
           className="inline-flex items-center rounded-md py-px px-1.5 text-[11px] leading-3.5"
@@ -372,8 +373,7 @@ export const TagAutocomplete = ({
       className={cn('flex flex-col gap-2 py-4 px-5 border-b border-border', className)}
     >
       <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
-        {/* TODO(i18n): wrap in t() */}
-        Tags
+        {tPhaseF('phaseF.componentsFilingTagAutocomplete.tags')}
       </span>
 
       <div className="relative">
@@ -384,7 +384,7 @@ export const TagAutocomplete = ({
           )}
           onClick={() => inputRef.current?.focus()}
           role="list"
-          aria-label={'Selected tags' /* TODO(i18n): wrap aria-label in t() */}
+          aria-label={tPhaseF('phaseF.componentsFilingTagAutocomplete.selectedTags')}
         >
           {tags.map((tag) => (
             <TagPill key={tag} tag={tag} />
@@ -405,7 +405,7 @@ export const TagAutocomplete = ({
               setTimeout(() => setIsDropdownOpen(false), 150)
             }}
             role="combobox"
-            aria-label={'Add tags' /* TODO(i18n): wrap aria-label in t() */}
+            aria-label={tPhaseF('phaseF.componentsFilingTagAutocomplete.addTags')}
             aria-expanded={isDropdownOpen}
             aria-haspopup="listbox"
             aria-controls={LISTBOX_ID}
@@ -421,7 +421,7 @@ export const TagAutocomplete = ({
             id={LISTBOX_ID}
             className="absolute z-50 w-full mt-1 p-0 rounded-md border border-border bg-popover shadow-[0_8px_24px_rgba(0,0,0,0.25)] overflow-hidden"
             role="listbox"
-            aria-label={'Tag suggestions' /* TODO(i18n): wrap aria-label in t() */}
+            aria-label={tPhaseF('phaseF.componentsFilingTagAutocomplete.tagSuggestions')}
           >
             {renderAiSection()}
             {renderMatchingSection()}

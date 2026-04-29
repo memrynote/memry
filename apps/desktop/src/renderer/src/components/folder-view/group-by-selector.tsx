@@ -19,6 +19,7 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import type { GroupByConfig } from '@memry/contracts/folder-view-api'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // Types
@@ -61,6 +62,7 @@ export function GroupBySelector({
   onGroupByChange,
   className
 }: GroupBySelectorProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -192,7 +194,7 @@ export function GroupBySelector({
                     type="button"
                     onClick={handleClearGrouping}
                     className="ml-1 p-0.5 rounded hover:bg-muted"
-                    aria-label={'Clear grouping' /* TODO(i18n): wrap aria-label in t() */}
+                    aria-label={tPhaseF('phaseF.componentsFolderViewGroupBySelector.clearGrouping')}
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -211,7 +213,7 @@ export function GroupBySelector({
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={'Search properties...' /* TODO(i18n): wrap placeholder in t() */}
+              placeholder={tPhaseF('phaseF.componentsFolderViewGroupBySelector.searchProperties')}
               className="h-8"
             />
           </div>
@@ -222,8 +224,7 @@ export function GroupBySelector({
             {filteredBuiltIn.length > 0 && (
               <div className="mb-2">
                 <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase">
-                  {/* TODO(i18n): wrap in t() */}
-                  Built-in
+                  {tPhaseF('phaseF.componentsFolderViewGroupBySelector.builtIn')}
                 </div>
                 {filteredBuiltIn.map((col) => (
                   <PropertyRow
@@ -242,8 +243,7 @@ export function GroupBySelector({
               <div>
                 {filteredBuiltIn.length > 0 && <Separator className="my-1" />}
                 <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase">
-                  {/* TODO(i18n): wrap in t() */}
-                  Properties
+                  {tPhaseF('phaseF.componentsFolderViewGroupBySelector.properties')}
                 </div>
                 {filteredProperties.map((prop) => (
                   <PropertyRow
@@ -261,8 +261,7 @@ export function GroupBySelector({
             {/* No results */}
             {filteredBuiltIn.length === 0 && filteredProperties.length === 0 && (
               <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                {/* TODO(i18n): wrap in t() */}
-                No groupable properties found
+                {tPhaseF('phaseF.componentsFolderViewGroupBySelector.noGroupablePropertiesFound')}
               </div>
             )}
           </div>
@@ -274,7 +273,9 @@ export function GroupBySelector({
               <div className="p-2 space-y-3">
                 {/* Direction toggle */}
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm">{/* TODO(i18n): wrap in t() */}Sort direction</Label>
+                  <Label className="text-sm">
+                    {tPhaseF('phaseF.componentsFolderViewGroupBySelector.sortDirection')}
+                  </Label>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -284,12 +285,12 @@ export function GroupBySelector({
                     {groupBy?.direction === 'asc' ? (
                       <>
                         <ArrowUpAZ className="h-4 w-4" />
-                        <span className="text-xs">{/* TODO(i18n): wrap in t() */}A → Z</span>
+                        <span className="text-xs">A → Z</span>
                       </>
                     ) : (
                       <>
                         <ArrowDownZA className="h-4 w-4" />
-                        <span className="text-xs">{/* TODO(i18n): wrap in t() */}Z → A</span>
+                        <span className="text-xs">Z → A</span>
                       </>
                     )}
                   </Button>
@@ -298,8 +299,7 @@ export function GroupBySelector({
                 {/* Collapsed by default */}
                 <div className="flex items-center justify-between">
                   <Label htmlFor="collapsed-toggle" className="text-sm">
-                    {/* TODO(i18n): wrap in t() */}
-                    Collapse groups by default
+                    {tPhaseF('phaseF.componentsFolderViewGroupBySelector.collapseGroupsByDefault')}
                   </Label>
                   <Switch
                     id="collapsed-toggle"
@@ -311,8 +311,7 @@ export function GroupBySelector({
                 {/* Show summaries */}
                 <div className="flex items-center justify-between">
                   <Label htmlFor="summary-toggle" className="text-sm">
-                    {/* TODO(i18n): wrap in t() */}
-                    Show group summaries
+                    {tPhaseF('phaseF.componentsFolderViewGroupBySelector.showGroupSummaries')}
                   </Label>
                   <Switch
                     id="summary-toggle"
@@ -339,8 +338,8 @@ export function GroupBySelector({
                   className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-4 w-4" />
-                  {/* TODO(i18n): wrap in t() */}
-                  Clear grouping
+
+                  {tPhaseF('phaseF.componentsFolderViewGroupBySelector.clearGrouping2')}
                 </Button>
               </div>
             </>

@@ -4,6 +4,7 @@
  */
 
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface ResizeHandleProps {
   /** Split direction */
@@ -22,6 +23,7 @@ export const ResizeHandle = ({
   isResizing,
   onResizeStart
 }: ResizeHandleProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('common')
   const isHorizontal = direction === 'horizontal'
 
   return (
@@ -45,7 +47,7 @@ export const ResizeHandle = ({
       onMouseDown={onResizeStart}
       role="separator"
       aria-orientation={isHorizontal ? 'vertical' : 'horizontal'}
-      aria-label={'Resize panes' /* TODO(i18n): wrap aria-label in t() */}
+      aria-label={tPhaseF('phaseF.componentsSplitViewResizeHandle.resizePanes')}
       tabIndex={0}
     >
       {/* Visual grip indicator */}

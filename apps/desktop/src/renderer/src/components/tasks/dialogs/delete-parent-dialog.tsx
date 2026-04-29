@@ -14,6 +14,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 import type { Task } from '@/data/sample-tasks'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -40,6 +41,7 @@ export const DeleteParentDialog = ({
   subtaskCount,
   onConfirm
 }: DeleteParentDialogProps): React.JSX.Element | null => {
+  const { t: tPhaseF } = useT('tasks')
   const [option, setOption] = useState<DeleteOption>('delete-all')
 
   if (!parent) return null
@@ -62,17 +64,21 @@ export const DeleteParentDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-destructive" />
-            {/* TODO(i18n): wrap in t() */}
-            Delete task with subtasks?
+
+            {tPhaseF('phaseF.componentsTasksDialogsDeleteParentDialog.deleteTaskWithSubtasks')}
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-3">
               <p>
                 <span className="font-medium text-foreground">"{parent.title}"</span>{' '}
-                {/* TODO(i18n): wrap in t() */}has {subtaskCount} {/* TODO(i18n): wrap in t() */}
-                subtask{subtaskCount !== 1 ? 's' : ''}.
+                {tPhaseF('phaseF.componentsTasksDialogsDeleteParentDialog.has')}
+                {subtaskCount}
+                {tPhaseF('phaseF.componentsTasksDialogsDeleteParentDialog.subtask')}
+                {subtaskCount !== 1 ? 's' : ''}.
               </p>
-              <p>{/* TODO(i18n): wrap in t() */}What would you like to do?</p>
+              <p>
+                {tPhaseF('phaseF.componentsTasksDialogsDeleteParentDialog.whatWouldYouLikeToDo')}
+              </p>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -87,11 +93,14 @@ export const DeleteParentDialog = ({
               <RadioGroupItem value="delete-all" id="delete-all" className="mt-0.5" />
               <Label htmlFor="delete-all" className="cursor-pointer flex-1">
                 <div className="font-medium">
-                  {/* TODO(i18n): wrap in t() */}Delete task and all subtasks
+                  {tPhaseF(
+                    'phaseF.componentsTasksDialogsDeleteParentDialog.deleteTaskAndAllSubtasks'
+                  )}
                 </div>
                 <div className="text-sm text-muted-foreground mt-1">
-                  {/* TODO(i18n): wrap in t() */}
-                  Permanently removes everything
+                  {tPhaseF(
+                    'phaseF.componentsTasksDialogsDeleteParentDialog.permanentlyRemovesEverything'
+                  )}
                 </div>
               </Label>
             </div>
@@ -100,11 +109,14 @@ export const DeleteParentDialog = ({
               <RadioGroupItem value="keep-subtasks" id="keep-subtasks" className="mt-0.5" />
               <Label htmlFor="keep-subtasks" className="cursor-pointer flex-1">
                 <div className="font-medium">
-                  {/* TODO(i18n): wrap in t() */}Delete task, keep subtasks as standalone tasks
+                  {tPhaseF(
+                    'phaseF.componentsTasksDialogsDeleteParentDialog.deleteTaskKeepSubtasksAsStandaloneTasks'
+                  )}
                 </div>
                 <div className="text-sm text-muted-foreground mt-1">
-                  {/* TODO(i18n): wrap in t() */}
-                  Subtasks become top-level tasks
+                  {tPhaseF(
+                    'phaseF.componentsTasksDialogsDeleteParentDialog.subtasksBecomeTopLevelTasks'
+                  )}
                 </div>
               </Label>
             </div>
@@ -113,14 +125,13 @@ export const DeleteParentDialog = ({
 
         <AlertDialogFooter>
           <AlertDialogCancel onClick={handleCancel}>
-            {/* TODO(i18n): wrap in t() */}Cancel
+            {tPhaseF('phaseF.componentsTasksDialogsDeleteParentDialog.cancel')}
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {/* TODO(i18n): wrap in t() */}
-            Delete
+            {tPhaseF('phaseF.componentsTasksDialogsDeleteParentDialog.delete')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

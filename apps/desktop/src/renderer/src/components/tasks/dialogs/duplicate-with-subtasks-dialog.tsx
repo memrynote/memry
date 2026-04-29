@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -36,6 +37,7 @@ export const DuplicateWithSubtasksDialog = ({
   onClose,
   onDuplicate
 }: DuplicateWithSubtasksDialogProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [includeSubtasks, setIncludeSubtasks] = useState(true)
 
   const handleDuplicate = (): void => {
@@ -55,11 +57,13 @@ export const DuplicateWithSubtasksDialog = ({
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Copy className="size-5 text-muted-foreground" />
-            <DialogTitle>{/* TODO(i18n): wrap in t() */}Duplicate task</DialogTitle>
+            <DialogTitle>
+              {tPhaseF('phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.duplicateTask')}
+            </DialogTitle>
           </div>
           <DialogDescription>
-            {/* TODO(i18n): wrap in t() */}Create a copy of &ldquo;{taskTitle}&
-            {/* TODO(i18n): wrap in t() */}rdquo;
+            {tPhaseF('phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.createACopyOf')}
+            {taskTitle}&{tPhaseF('phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.rdquo')}
           </DialogDescription>
         </DialogHeader>
 
@@ -72,8 +76,10 @@ export const DuplicateWithSubtasksDialog = ({
             />
             <div className="space-y-1">
               <Label htmlFor="include-subtasks" className="cursor-pointer font-medium">
-                {/* TODO(i18n): wrap in t() */}
-                Also duplicate subtasks ({subtaskCount})
+                {tPhaseF(
+                  'phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.alsoDuplicateSubtasks'
+                )}
+                {subtaskCount})
               </Label>
               <p className="text-sm text-muted-foreground">
                 {includeSubtasks
@@ -86,12 +92,11 @@ export const DuplicateWithSubtasksDialog = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose}>
-            {/* TODO(i18n): wrap in t() */}
-            Cancel
+            {tPhaseF('phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.cancel')}
           </Button>
           <Button onClick={handleDuplicate}>
-            {/* TODO(i18n): wrap in t() */}
-            Duplicate {includeSubtasks ? `(${subtaskCount + 1} items)` : 'task'}
+            {tPhaseF('phaseF.componentsTasksDialogsDuplicateWithSubtasksDialog.duplicate')}
+            {includeSubtasks ? `(${subtaskCount + 1} items)` : 'task'}
           </Button>
         </DialogFooter>
       </DialogContent>

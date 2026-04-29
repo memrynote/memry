@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { createReactBlockSpec } from '@blocknote/react'
 import { Play } from '@/lib/icons'
 import { getYouTubeThumbnailUrl, getYouTubeEmbedUrl } from '@/lib/youtube-utils'
+import { useT } from '@memry/i18n/renderer'
 
 function YouTubePlayer({ videoId, title }: { videoId: string; title?: string }) {
   const [isPlaying, setIsPlaying] = useState(false)
@@ -51,13 +52,13 @@ export const createYoutubeEmbedBlock = createReactBlockSpec(
   },
   {
     render: ({ block, contentRef }) => {
+      const { t: tPhaseF } = useT('notes')
       const { videoId, videoUrl } = block.props
 
       if (!videoId) {
         return (
           <div ref={contentRef} className="p-2 text-muted-foreground text-sm">
-            {/* TODO(i18n): wrap in t() */}
-            No video URL
+            {tPhaseF('phaseF.componentsNoteContentAreaYoutubeEmbedBlock.noVideoUrl')}
           </div>
         )
       }

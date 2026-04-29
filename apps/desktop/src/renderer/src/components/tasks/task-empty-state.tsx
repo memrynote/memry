@@ -2,6 +2,7 @@ import { ClipboardList, Star, CheckCircle, FolderOpen, Plus } from '@/lib/icons'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -64,6 +65,7 @@ export const TaskEmptyState = ({
   onAddTask,
   className
 }: TaskEmptyStateProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const config = emptyStateConfigs[variant]
   const Icon = config.icon
 
@@ -87,8 +89,8 @@ export const TaskEmptyState = ({
       {config.showAddButton && onAddTask && (
         <Button onClick={onAddTask} size="sm">
           <Plus className="size-4" aria-hidden="true" />
-          {/* TODO(i18n): wrap in t() */}
-          Add Task
+
+          {tPhaseF('phaseF.componentsTasksTaskEmptyState.addTask')}
         </Button>
       )}
     </div>

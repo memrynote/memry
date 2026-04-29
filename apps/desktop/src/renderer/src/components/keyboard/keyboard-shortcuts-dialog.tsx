@@ -6,6 +6,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { isMac } from '@/hooks/use-keyboard-shortcuts-base'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 // =============================================================================
 // TYPES
@@ -89,13 +90,16 @@ export const KeyboardShortcutsDialog = ({
   isOpen,
   onClose
 }: KeyboardShortcutsDialogProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('settings')
   const shortcutGroups = getShortcutGroups()
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
         <DialogHeader>
-          <DialogTitle>{/* TODO(i18n): wrap in t() */}Keyboard Shortcuts</DialogTitle>
+          <DialogTitle>
+            {tPhaseF('phaseF.componentsKeyboardKeyboardShortcutsDialog.keyboardShortcuts')}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
@@ -133,9 +137,9 @@ export const KeyboardShortcutsDialog = ({
 
         <div className="mt-6 pt-4 border-t border-border">
           <p className="text-xs text-muted-foreground text-center">
-            {/* TODO(i18n): wrap in t() */}
-            Press <kbd className="px-1 py-0.5 bg-muted rounded text-xs">?</kbd>{' '}
-            {/* TODO(i18n): wrap in t() */}to toggle this dialog
+            {tPhaseF('phaseF.componentsKeyboardKeyboardShortcutsDialog.press')}
+            <kbd className="px-1 py-0.5 bg-muted rounded text-xs">?</kbd>{' '}
+            {tPhaseF('phaseF.componentsKeyboardKeyboardShortcutsDialog.toToggleThisDialog')}
           </p>
         </div>
       </DialogContent>

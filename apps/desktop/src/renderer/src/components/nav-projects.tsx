@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import { useT } from '@memry/i18n/renderer'
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -28,11 +29,12 @@ export function NavProjects({
     icon: AppIcon
   }[]
 }) {
+  const { t: tPhaseF } = useT('common')
   const { isMobile } = useSidebar()
 
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel>{/* TODO(i18n): wrap in t() */}Projects</SidebarGroupLabel>
+      <SidebarGroupLabel>{tPhaseF('phaseF.componentsNavProjects.projects')}</SidebarGroupLabel>
       <SidebarMenu>
         {projects.map((item) => (
           <SidebarMenuItem key={item.name}>
@@ -46,7 +48,7 @@ export function NavProjects({
               <DropdownMenuTrigger asChild>
                 <SidebarMenuAction showOnHover>
                   <MoreHorizontal />
-                  <span className="sr-only">{/* TODO(i18n): wrap in t() */}More</span>
+                  <span className="sr-only">{tPhaseF('phaseF.componentsNavProjects.more')}</span>
                 </SidebarMenuAction>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -56,16 +58,16 @@ export function NavProjects({
               >
                 <DropdownMenuItem>
                   <Folder className="text-muted-foreground" />
-                  <span>{/* TODO(i18n): wrap in t() */}View Project</span>
+                  <span>{tPhaseF('phaseF.componentsNavProjects.viewProject')}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <Forward className="text-muted-foreground" />
-                  <span>{/* TODO(i18n): wrap in t() */}Share Project</span>
+                  <span>{tPhaseF('phaseF.componentsNavProjects.shareProject')}</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
                   <Trash2 className="text-muted-foreground" />
-                  <span>{/* TODO(i18n): wrap in t() */}Delete Project</span>
+                  <span>{tPhaseF('phaseF.componentsNavProjects.deleteProject')}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -74,7 +76,7 @@ export function NavProjects({
         <SidebarMenuItem>
           <SidebarMenuButton className="text-sidebar-foreground/70">
             <MoreHorizontal className="text-sidebar-foreground/70" />
-            <span>{/* TODO(i18n): wrap in t() */}More</span>
+            <span>{tPhaseF('phaseF.componentsNavProjects.more2')}</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>

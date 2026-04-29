@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 import {
   // Files & Documents
   File,
@@ -386,6 +387,7 @@ export const IconPicker = ({
   position,
   currentIcon
 }: IconPickerProps) => {
+  const { t: tPhaseF } = useT('common')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
@@ -517,17 +519,19 @@ export const IconPicker = ({
       )}
       style={positionStyle}
       role="dialog"
-      aria-label={'Icon picker' /* TODO(i18n): wrap aria-label in t() */}
+      aria-label={tPhaseF('phaseF.componentsIconPicker.iconPicker')}
     >
       {/* Header */}
       <div className="border-b p-3">
         <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-sm font-semibold">{/* TODO(i18n): wrap in t() */}Select Icon</h3>
+          <h3 className="text-sm font-semibold">
+            {tPhaseF('phaseF.componentsIconPicker.selectIcon')}
+          </h3>
           <button
             type="button"
             onClick={onClose}
             className="rounded-sm p-1 hover:bg-accent"
-            aria-label={'Close icon picker' /* TODO(i18n): wrap aria-label in t() */}
+            aria-label={tPhaseF('phaseF.componentsIconPicker.closeIconPicker')}
           >
             <X className="h-4 w-4" />
           </button>
@@ -535,7 +539,7 @@ export const IconPicker = ({
         <Input
           ref={inputRef}
           type="text"
-          placeholder={'Search icons...' /* TODO(i18n): wrap placeholder in t() */}
+          placeholder={tPhaseF('phaseF.componentsIconPicker.searchIcons')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="h-8 text-sm"
@@ -552,8 +556,7 @@ export const IconPicker = ({
             !selectedCategory ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
           )}
         >
-          {/* TODO(i18n): wrap in t() */}
-          All
+          {tPhaseF('phaseF.componentsIconPicker.all')}
         </button>
         {Object.keys(ICON_CATEGORIES).map((category) => (
           <button
@@ -582,8 +585,8 @@ export const IconPicker = ({
             className="mb-2 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
           >
             <X className="h-4 w-4" />
-            {/* TODO(i18n): wrap in t() */}
-            Clear Icon
+
+            {tPhaseF('phaseF.componentsIconPicker.clearIcon')}
           </button>
         )}
 
@@ -616,8 +619,8 @@ export const IconPicker = ({
 
         {Object.keys(filteredIcons).length === 0 && (
           <div className="py-8 text-center text-sm text-muted-foreground">
-            {/* TODO(i18n): wrap in t() */}
-            No icons found for "{searchQuery}"
+            {tPhaseF('phaseF.componentsIconPicker.noIconsFoundFor')}
+            {searchQuery}"
           </div>
         )}
       </div>

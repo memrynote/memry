@@ -6,6 +6,7 @@ import { BulkActionButton } from './bulk-action-button'
 import { BulkActionDropdown, type BulkActionOption } from './bulk-action-dropdown'
 import { priorityConfig, type Priority } from '@/data/sample-tasks'
 import type { Project, Status } from '@/data/tasks-data'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -135,6 +136,7 @@ export const BulkActionToolbar = ({
   showStatusAction = false,
   className
 }: BulkActionToolbarProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   // Build project options
   const projectOptions: BulkActionOption<string>[] = projects
     .filter((p) => !p.isArchived)
@@ -159,7 +161,7 @@ export const BulkActionToolbar = ({
         className
       )}
       role="toolbar"
-      aria-label={'Bulk actions' /* TODO(i18n): wrap aria-label in t() */}
+      aria-label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.bulkActions')}
     >
       {/* Select all checkbox + count */}
       <div className="flex items-center gap-2">
@@ -170,7 +172,7 @@ export const BulkActionToolbar = ({
           aria-label={allSelected ? 'Deselect all' : 'Select all'}
         />
         <span className="font-medium text-primary">
-          {selectedCount} {/* TODO(i18n): wrap in t() */}selected
+          {selectedCount} {tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.selected')}
         </span>
       </div>
 
@@ -182,14 +184,14 @@ export const BulkActionToolbar = ({
         {/* Complete */}
         <BulkActionButton
           icon={<Check className="size-4" />}
-          label={'Complete' /* TODO(i18n): wrap label in t() */}
+          label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.complete')}
           onClick={onComplete}
         />
 
         {/* Priority dropdown */}
         <BulkActionDropdown
           icon={<Flag className="size-4" />}
-          label={'Priority' /* TODO(i18n): wrap label in t() */}
+          label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.priority')}
           options={priorityOptions.filter((o) => !o.isSeparator || o.value !== 'none')}
           onSelect={onChangePriority}
           selectedCount={selectedCount}
@@ -198,7 +200,7 @@ export const BulkActionToolbar = ({
         {/* Due Date dropdown */}
         <BulkActionDropdown
           icon={<Calendar className="size-4" />}
-          label={'Due Date' /* TODO(i18n): wrap label in t() */}
+          label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.dueDate')}
           options={dueDateOptions}
           onSelect={onChangeDueDate}
           selectedCount={selectedCount}
@@ -207,7 +209,7 @@ export const BulkActionToolbar = ({
         {/* Move to project dropdown */}
         <BulkActionDropdown
           icon={<FolderOpen className="size-4" />}
-          label={'Move to' /* TODO(i18n): wrap label in t() */}
+          label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.moveTo')}
           options={projectOptions}
           onSelect={onMoveToProject}
           selectedCount={selectedCount}
@@ -217,7 +219,7 @@ export const BulkActionToolbar = ({
         {showStatusAction && statuses.length > 0 && onChangeStatus && (
           <BulkActionDropdown
             icon={<Columns3 className="size-4" />}
-            label={'Status' /* TODO(i18n): wrap label in t() */}
+            label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.status')}
             options={statusOptions}
             onSelect={onChangeStatus}
             selectedCount={selectedCount}
@@ -230,7 +232,7 @@ export const BulkActionToolbar = ({
         {/* Archive */}
         <BulkActionButton
           icon={<Archive className="size-4" />}
-          label={'Archive' /* TODO(i18n): wrap label in t() */}
+          label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.archive')}
           onClick={onArchive}
           variant="secondary"
         />
@@ -238,7 +240,7 @@ export const BulkActionToolbar = ({
         {/* Delete */}
         <BulkActionButton
           icon={<Trash2 className="size-4" />}
-          label={'Delete' /* TODO(i18n): wrap label in t() */}
+          label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.delete')}
           onClick={onDelete}
           variant="danger"
         />
@@ -257,10 +259,12 @@ export const BulkActionToolbar = ({
           'transition-colors duration-150',
           'focus-visible:outline-none'
         )}
-        aria-label={'Cancel selection' /* TODO(i18n): wrap aria-label in t() */}
+        aria-label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.cancelSelection')}
       >
         <X className="size-4" />
-        <span className="hidden sm:inline">{/* TODO(i18n): wrap in t() */}Cancel</span>
+        <span className="hidden sm:inline">
+          {tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.cancel')}
+        </span>
       </button>
     </div>
   )

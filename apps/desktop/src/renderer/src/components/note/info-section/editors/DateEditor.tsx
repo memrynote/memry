@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { parse, isValid, format } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface DateEditorProps {
   value: Date | null
@@ -14,6 +15,7 @@ const DATE_FORMAT = 'dd.MM.yyyy'
 const DATE_PATTERN = /^\d{2}\.\d{2}\.\d{4}$/
 
 export function DateEditor({ value, onChange, onBlur, autoFocus = true }: DateEditorProps) {
+  const { t: tPhaseF } = useT('notes')
   const inputRef = useRef<HTMLInputElement>(null)
   const [draftValue, setDraftValue] = useState<string | null>(null)
   const storedValue = value ? format(value, DATE_FORMAT) : ''
@@ -94,7 +96,7 @@ export function DateEditor({ value, onChange, onBlur, autoFocus = true }: DateEd
       onChange={handleChange}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
-      placeholder={'dd.mm.yyyy' /* TODO(i18n): wrap placeholder in t() */}
+      placeholder={tPhaseF('phaseF.componentsNoteInfoSectionEditorsDateeditor.ddMmYyyy')}
       className={cn(
         'w-full bg-transparent p-0',
         'text-[13px] text-foreground',

@@ -4,6 +4,7 @@ import { X, Star } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { TaskFilters, Project } from '@/data/tasks-data'
 import type { Priority } from '@/data/sample-tasks'
+import { useT } from '@memry/i18n/renderer'
 
 interface ActiveFiltersBarProps {
   filters: TaskFilters
@@ -78,6 +79,7 @@ export const ActiveFiltersBar = ({
   isSaved = false,
   className
 }: ActiveFiltersBarProps): React.JSX.Element | null => {
+  const { t: tPhaseF } = useT('tasks')
   const pills = useMemo(() => {
     const result: React.ReactNode[] = []
 
@@ -99,8 +101,7 @@ export const ActiveFiltersBar = ({
           <span
             className={`text-[11px] text-text-secondary leading-3.5 shrink-0 whitespace-nowrap`}
           >
-            {/* TODO(i18n): wrap in t() */}
-            Priority is
+            {tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.priorityIs')}
           </span>
           <span
             className={`text-[11px] text-foreground font-medium leading-3.5 shrink-0 whitespace-nowrap`}
@@ -108,7 +109,7 @@ export const ActiveFiltersBar = ({
             {values}
           </span>
           <RemoveButton
-            label={'priority' /* TODO(i18n): wrap label in t() */}
+            label={tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.priority')}
             onClick={() => onUpdateFilters({ priorities: [] })}
           />
         </PillWrapper>
@@ -137,8 +138,7 @@ export const ActiveFiltersBar = ({
           <span
             className={`text-[11px] text-text-secondary leading-3.5 shrink-0 whitespace-nowrap`}
           >
-            {/* TODO(i18n): wrap in t() */}
-            Status is
+            {tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.statusIs')}
           </span>
           <span
             className={`text-[11px] text-foreground font-medium leading-3.5 shrink-0 whitespace-nowrap`}
@@ -146,7 +146,7 @@ export const ActiveFiltersBar = ({
             {statusNames.join(', ')}
           </span>
           <RemoveButton
-            label={'status' /* TODO(i18n): wrap label in t() */}
+            label={tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.status')}
             onClick={() => onUpdateFilters({ statusIds: [] })}
           />
         </PillWrapper>
@@ -170,8 +170,7 @@ export const ActiveFiltersBar = ({
           <span
             className={`text-[11px] text-text-secondary leading-3.5 shrink-0 whitespace-nowrap`}
           >
-            {/* TODO(i18n): wrap in t() */}
-            Project is
+            {tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.projectIs')}
           </span>
           <span
             className={`text-[11px] text-foreground font-medium leading-3.5 shrink-0 whitespace-nowrap`}
@@ -179,7 +178,7 @@ export const ActiveFiltersBar = ({
             {names || 'Unknown'}
           </span>
           <RemoveButton
-            label={'project' /* TODO(i18n): wrap label in t() */}
+            label={tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.project')}
             onClick={() => onUpdateFilters({ projectIds: [] })}
           />
         </PillWrapper>
@@ -223,8 +222,7 @@ export const ActiveFiltersBar = ({
           <span
             className={`text-[11px] text-text-secondary leading-3.5 shrink-0 whitespace-nowrap`}
           >
-            {/* TODO(i18n): wrap in t() */}
-            Due
+            {tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.due')}
           </span>
           <span
             className={`text-[11px] text-foreground font-medium leading-3.5 shrink-0 whitespace-nowrap`}
@@ -232,7 +230,7 @@ export const ActiveFiltersBar = ({
             {label}
           </span>
           <RemoveButton
-            label={'due date' /* TODO(i18n): wrap label in t() */}
+            label={tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.dueDate')}
             onClick={() =>
               onUpdateFilters({ dueDate: { type: 'any', customStart: null, customEnd: null } })
             }
@@ -260,7 +258,7 @@ export const ActiveFiltersBar = ({
             "{filters.search}"
           </span>
           <RemoveButton
-            label={'search' /* TODO(i18n): wrap label in t() */}
+            label={tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.search')}
             onClick={() => onUpdateFilters({ search: '' })}
           />
         </PillWrapper>
@@ -298,8 +296,7 @@ export const ActiveFiltersBar = ({
           onClick={onClearAll}
           className="text-[11px] shrink-0 whitespace-nowrap text-destructive leading-3.5 hover:text-destructive/70 transition-colors"
         >
-          {/* TODO(i18n): wrap in t() */}
-          Clear all
+          {tPhaseF('phaseF.componentsTasksFiltersActiveFiltersBar.clearAll')}
         </button>
       </div>
     </div>

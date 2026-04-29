@@ -6,6 +6,7 @@
 import { FileText, Inbox } from '@/lib/icons'
 import { useTabs } from '@/contexts/tabs'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface EmptyPaneStateProps {
   /** Group ID for this pane */
@@ -19,6 +20,7 @@ interface EmptyPaneStateProps {
  * Features elegant, minimal design with subtle visual depth
  */
 export const EmptyPaneState = ({ groupId, className }: EmptyPaneStateProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('common')
   const { openTab, dispatch, state } = useTabs()
 
   // Check if there are other groups (can close this pane)
@@ -69,11 +71,12 @@ export const EmptyPaneState = ({ groupId, className }: EmptyPaneStateProps): Rea
 
       {/* Typography with refined hierarchy */}
       <h3 className="text-lg font-medium text-foreground mb-2">
-        {/* TODO(i18n): wrap in t() */}No tabs open
+        {tPhaseF('phaseF.componentsSplitViewEmptyPaneState.noTabsOpen')}
       </h3>
       <p className="text-sm text-text-tertiary mb-8 text-center max-w-[240px] leading-relaxed">
-        {/* TODO(i18n): wrap in t() */}
-        Open a page from the sidebar or create a new tab to get started
+        {tPhaseF(
+          'phaseF.componentsSplitViewEmptyPaneState.openAPageFromTheSidebarOrCreateANewTabToGetStarted'
+        )}
       </p>
 
       {/* Action buttons with refined styling */}
@@ -94,8 +97,8 @@ export const EmptyPaneState = ({ groupId, className }: EmptyPaneStateProps): Rea
           )}
         >
           <Inbox className="w-4 h-4" />
-          {/* TODO(i18n): wrap in t() */}
-          Open Inbox
+
+          {tPhaseF('phaseF.componentsSplitViewEmptyPaneState.openInbox')}
         </button>
 
         {canClose && (
@@ -114,8 +117,7 @@ export const EmptyPaneState = ({ groupId, className }: EmptyPaneStateProps): Rea
               'transition-all duration-150 ease-out'
             )}
           >
-            {/* TODO(i18n): wrap in t() */}
-            Close Pane
+            {tPhaseF('phaseF.componentsSplitViewEmptyPaneState.closePane')}
           </button>
         )}
       </div>

@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { getFilteredTasks } from '@/lib/task-utils'
 import type { Project } from '@/data/tasks-data'
 import type { Task, Priority } from '@/data/sample-tasks'
+import { useT } from '@memry/i18n/renderer'
 
 interface ProjectsTabContentProps {
   tasks: Task[]
@@ -65,6 +66,7 @@ export const ProjectsTabContent = ({
   onAddSubtask,
   className
 }: ProjectsTabContentProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const activeProjects = useMemo(() => {
     return projects.filter((p) => !p.isArchived)
   }, [projects])
@@ -154,17 +156,18 @@ export const ProjectsTabContent = ({
           <div className="flex flex-col items-center justify-center h-full text-center p-8">
             <FolderKanban className="size-12 text-muted-foreground/50 mb-4" />
             <p className="text-lg font-medium text-foreground mb-2">
-              {/* TODO(i18n): wrap in t() */}No project selected
+              {tPhaseF('phaseF.componentsTasksProjectsProjectsTabContent.noProjectSelected')}
             </p>
             <p className="text-sm text-muted-foreground mb-4">
-              {/* TODO(i18n): wrap in t() */}
-              Select a project from the dropdown or create a new one
+              {tPhaseF(
+                'phaseF.componentsTasksProjectsProjectsTabContent.selectAProjectFromTheDropdownOrCreateANewOne'
+              )}
             </p>
             {activeProjects.length === 0 && (
               <Button onClick={onCreateProject}>
                 <Plus className="size-4 mr-2" />
-                {/* TODO(i18n): wrap in t() */}
-                Create your first project
+
+                {tPhaseF('phaseF.componentsTasksProjectsProjectsTabContent.createYourFirstProject')}
               </Button>
             )}
           </div>

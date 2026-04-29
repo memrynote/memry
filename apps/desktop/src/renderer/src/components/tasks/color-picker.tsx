@@ -1,6 +1,7 @@
 import { Check } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { projectColors } from '@/data/tasks-data'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -25,6 +26,7 @@ export const ColorPicker = ({
   size = 'md',
   className
 }: ColorPickerProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const handleColorClick = (color: string) => (): void => {
     onChange(color)
   }
@@ -45,7 +47,7 @@ export const ColorPicker = ({
     <div
       className={cn('flex flex-wrap gap-2', className)}
       role="radiogroup"
-      aria-label={'Select color' /* TODO(i18n): wrap aria-label in t() */}
+      aria-label={tPhaseF('phaseF.componentsTasksColorPicker.selectColor')}
     >
       {colors.map((color) => {
         const isSelected = value === color.value
