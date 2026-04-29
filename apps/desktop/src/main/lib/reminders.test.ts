@@ -155,8 +155,7 @@ describe('reminders service', () => {
             key.startsWith('system:')
               ? (systemTranslations[key.slice('system:'.length)] ?? key)
               : key,
-          getFixedT: (_lng: unknown, _ns: string) => (key: string) =>
-            systemTranslations[key] ?? key
+          getFixedT: (_lng: unknown, _ns: string) => (key: string) => systemTranslations[key] ?? key
         })
       }
     })
