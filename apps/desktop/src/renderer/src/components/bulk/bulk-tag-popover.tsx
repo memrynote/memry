@@ -6,6 +6,7 @@
 
 import { useState, useCallback } from 'react'
 import { Loader2 } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
@@ -53,6 +54,7 @@ const BulkTagPopoverContent = ({
   onApplyTags,
   onOpenChange
 }: BulkTagPopoverContentProps): React.JSX.Element => {
+  const { t } = useT('inbox')
   const [tags, setTags] = useState<string[]>([])
   const [isApplying, setIsApplying] = useState(false)
 
@@ -79,7 +81,7 @@ const BulkTagPopoverContent = ({
     <>
       <div className="px-4 py-3 border-b border-border">
         <h3 className="font-semibold text-sm">
-          Tag {itemCount} Item{itemCount !== 1 ? 's' : ''}
+          {t('bulk.tagPopover.title', { count: itemCount })}
         </h3>
       </div>
 
@@ -87,7 +89,7 @@ const BulkTagPopoverContent = ({
         <TagAutocomplete
           tags={tags}
           onTagsChange={handleTagsChange}
-          placeholder="Type to search tags..."
+          placeholder={t('bulk.tagPopover.placeholder')}
           showSections={true}
           autoFocus
         />
@@ -103,12 +105,10 @@ const BulkTagPopoverContent = ({
           {isApplying ? (
             <>
               <Loader2 className="size-4 animate-spin mr-2" aria-hidden="true" />
-              Applying...
+              {t('bulk.tagPopover.applying')}
             </>
           ) : (
-            <>
-              Apply to {itemCount} item{itemCount !== 1 ? 's' : ''}
-            </>
+            <>{t('bulk.tagPopover.apply', { count: itemCount })}</>
           )}
         </Button>
       </div>
