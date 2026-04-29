@@ -98,7 +98,7 @@ export function createStringHandler<TResult>(
 
 export function withErrorHandler<TArgs extends unknown[], TResult>(
   handler: (...args: TArgs) => TResult | Promise<TResult>,
-  fallback = 'Operation failed'
+  fallback = 'errors:generic.operationFailed'
 ): (...args: TArgs) => Promise<TResult | { success: false; error: string }> {
   return async (...args: TArgs) => {
     try {
@@ -112,14 +112,14 @@ export function withErrorHandler<TArgs extends unknown[], TResult>(
 
 export function withDb<TArgs extends unknown[], TResult>(
   handler: (db: DataDb, ...args: TArgs) => TResult | Promise<TResult>,
-  fallback = 'Operation failed'
+  fallback = 'errors:generic.operationFailed'
 ): (...args: TArgs) => Promise<TResult | { success: false; error: string }> {
   return async (...args: TArgs) => {
     let db: DataDb
     try {
       db = getDatabase()
     } catch {
-      return { success: false, error: 'No vault is open. Please open a vault first.' }
+      return { success: false, error: 'errors:ipc.noVaultOpen' }
     }
     try {
       return await handler(db, ...args)
