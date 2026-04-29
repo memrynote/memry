@@ -1,4 +1,7 @@
 {
+  "toast": {
+    "exportNotImplemented": "Local data export is not yet implemented"
+  },
   "page": {
     "title": "Settings",
     "nav": {
