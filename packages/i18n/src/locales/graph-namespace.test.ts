@@ -8,17 +8,17 @@ describe('graph namespace resources', () => {
     expect(I18N_NAMESPACES).toContain('graph')
   })
 
-  it('populates English and leaves Turkish/Arabic as fallback-only empty objects', () => {
+  it('populates English and Turkish graph resources while Arabic remains fallback-only', () => {
     expect(RESOURCES.en.graph.page.loading).toBe('Loading graph...')
-    expect(RESOURCES.tr.graph).toEqual({})
+    expect(RESOURCES.tr.graph.page.loading).toBe('Grafik yükleniyor...')
     expect(RESOURCES.ar.graph).toEqual({})
   })
 
-  it('falls back to English graph strings for Turkish and Arabic', async () => {
+  it('translates Turkish graph strings and falls back for Arabic', async () => {
     const tr = await createRendererI18n({ locale: 'tr' })
     const ar = await createRendererI18n({ locale: 'ar' })
 
-    expect(tr.t('graph:page.loading')).toBe('Loading graph...')
+    expect(tr.t('graph:page.loading')).toBe('Grafik yükleniyor...')
     expect(ar.t('graph:context-menu.copy-title')).toBe('Copy title')
   })
 })

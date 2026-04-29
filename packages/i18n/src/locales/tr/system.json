@@ -1,1 +1,36 @@
-{}
+{
+  "dialog": {
+    "vault": {
+      "title": "Kasa Klasörünü Seçin",
+      "button": "Apps Kasası'nı seçin"
+    },
+    "exportPdf": {
+      "title": "PDF olarak dışa aktar",
+      "filterName": "PDF Belgesi"
+    },
+    "exportHtml": {
+      "title": "HTML olarak dışa aktar",
+      "filterName": "HTML Belgesi"
+    },
+    "import": {
+      "filterSupported": "Desteklenen Dosyalar",
+      "filterAll": "Tüm Dosyalar"
+    },
+    "exportCancelled": "Dışa aktarma iptal edildi"
+  },
+  "notification": {
+    "reminder": {
+      "note": "Not hatırlatıcısı",
+      "journal": "Günlük hatırlatıcısı",
+      "highlight": "Hatırlatıcıyı vurgula",
+      "fallback": "Hatırlatma zamanı",
+      "default": "Hatırlatma"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "Hatırlatma zamanı gelecekte olmalıdır",
+    "definitionNotFound": "Tanım bulunamadı",
+    "noteNotFound": "Not bulunamadı",
+    "updateFailed": "Güncelleme başarısız oldu"
+  }
+}

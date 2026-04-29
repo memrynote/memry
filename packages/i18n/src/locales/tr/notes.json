@@ -1,1 +1,612 @@
-{}
+{
+  "page": {
+    "empty": {
+      "title": "Not seçilmedi",
+      "body": "Görüntülemek için kenar çubuğundan bir not seçin"
+    },
+    "error": {
+      "title": "Not yüklenemedi"
+    },
+    "toast": {
+      "cannotSaveDeleted": "Kaydedilemiyor - not silindi",
+      "cannotRenameDeleted": "Yeniden adlandırılamıyor - not silindi",
+      "createLinkedFailed": "Bağlantılı not oluşturulamadı",
+      "openLinkedFailed": "Bağlantılı öğe açılamadı",
+      "localOnly": "Not yalnızca yerel olarak ayarlandı",
+      "willSync": "Not bulutla senkronize edilecek",
+      "saveFailed": "Not kaydedilemedi",
+      "renameFailed": "Not yeniden adlandırılamadı",
+      "toggleLocalOnlyFailed": "Yalnızca yerele geçiş yapılamadı",
+      "toggleFullWidthFailed": "Tam genişliğe geçiş yapılamadı"
+    },
+    "deleteDialogTitle": "{count, plural, one {Notu Sil} other {# Notu Sil}}"
+  },
+  "tree": {
+    "aria": {
+      "tree": "Not ağacı",
+      "openFolderView": "Klasör görünümünü aç"
+    },
+    "empty": {
+      "title": "Henüz not yok",
+      "body": "Başlamak için bir not oluşturun",
+      "newNote": "Yeni Not"
+    },
+    "loadingError": "Notlar yüklenemedi",
+    "actions": {
+      "newNote": "Yeni Not",
+      "newFolder": "Yeni Klasör",
+      "rename": "Yeniden adlandır",
+      "openExternal": "Harici Düzenleyicide Aç",
+      "revealInFinder": "Finder'da Göster",
+      "setDefaultTemplate": "Varsayılan Şablonu Ayarla",
+      "clearDefaultTemplate": "Varsayılan Şablonu Temizle",
+      "setIcon": "Simgeyi Ayarla",
+      "removeIcon": "Simgeyi Kaldır",
+      "deleteSelectedNotes": "Sil {count} Notlar",
+      "deleteSelectedItems": "Sil {count} öğeler"
+    },
+    "deleteDialog": {
+      "noteTitle": "Notu Sil",
+      "folderTitle": "Klasörü Sil",
+      "itemsTitle": "Sil {count} Öğeler",
+      "noteBody": "Silmek istediğinizden emin misiniz?\"{name}\"? Bu eylem geri alınamaz.",
+      "folderBody": "Silmek istediğinizden emin misiniz?\"{name}\" ve içindeki tüm notlar? Bu işlem geri alınamaz.",
+      "itemsBody": "Silmek istediğinizden emin misiniz? {count} öğeler? Bu eylem geri alınamaz.",
+      "folderSuffix": "klasör",
+      "moreItems": "...ve {count} daha fazla",
+      "deleting": "Siliniyor...",
+      "deleteCount": "Sil {count}"
+    }
+  },
+  "editor": {
+    "title": {
+      "untitled": "İsimsiz",
+      "aria": "Not başlığı"
+    },
+    "content": {
+      "placeholder": "Yazmaya başlayın veya komutlar için '/' tuşuna basın...",
+      "regionAria": "Not düzenleyici",
+      "richTextAria": "Zengin metin düzenleyici",
+      "headingPlaceholder": "Başlık",
+      "listPlaceholder": "Liste öğesi",
+      "todoPlaceholder": "Yapılacak öğe"
+    },
+    "toolbar": {
+      "reminderSet": "Hatırlatıcı ayarlandı",
+      "setReminder": "Hatırlatıcı ayarla",
+      "removeBookmark": "Yer işaretini kaldır",
+      "addBookmark": "Yer işareti ekle",
+      "hideLocalGraph": "Yerel grafiği gizle",
+      "showLocalGraph": "Yerel grafiği göster",
+      "versionHistory": "Sürüm geçmişi",
+      "export": "İhracat",
+      "fullWidth": "Tam genişlik",
+      "disableLocalOnly": "Yalnızca yereli devre dışı bırak",
+      "setLocalOnly": "Yalnızca yerel olarak ayarla"
+    },
+    "breadcrumb": {
+      "locationAria": "Not konumu",
+      "parentFolderAria": "Ana klasöre git"
+    },
+    "errorBoundary": {
+      "title": "Düzenleyici Hatası",
+      "body": "Editör bir hatayla karşılaştı. Not içeriğiniz güvende.",
+      "technicalDetails": "Teknik detaylar",
+      "reloadAria": "Düzenleyiciyi yeniden yükle",
+      "reload": "Düzenleyiciyi Yeniden Yükle"
+    },
+    "callout": {
+      "title": "Belirtme çizgisi",
+      "group": "Temel bloklar",
+      "subtext": "Önemli bilgileri vurgulayın",
+      "changeType": "Ek bilgi türünü değiştir",
+      "menuLabel": "Ek Bilgi Türü",
+      "info": "Bilgi",
+      "warning": "Uyarı",
+      "error": "Hata",
+      "success": "Başarı"
+    }
+  },
+  "menus": {
+    "wiki": {
+      "aria": "Önerileri not edin",
+      "loading": "Notlar yükleniyor...",
+      "empty": "Hiçbir not bulunamadı",
+      "create": "Yeni not oluştur"
+    },
+    "tags": {
+      "aria": "Etiket önerileri",
+      "loading": "Etiketler yükleniyor...",
+      "empty": "Yeni bir etiket oluşturmak için yazın",
+      "create": "Oluştur #{tag}"
+    },
+    "pasteLink": {
+      "title": "Farklı yapıştır",
+      "url": "URL",
+      "mention": "Mansiyon",
+      "embedVideo": "Videoyu yerleştir"
+    },
+    "emoji": {
+      "aria": "Emoji ve simge seçici",
+      "emojiTab": "Emoji",
+      "iconsTab": "Simgeler",
+      "searchPlaceholder": "Ara",
+      "noIcons": "Hiçbir simge bulunamadı",
+      "clearSearch": "Aramayı temizle"
+    }
+  },
+  "detail": {
+    "bodyPlaceholder": "Notunuzu yazın..."
+  },
+  "outline": {
+    "title": "Taslak",
+    "aria": "Belge taslağı",
+    "empty": "Başlık yok",
+    "emptyYet": "Henüz başlık yok",
+    "readTime": "{count} dk okuma",
+    "words": "{count} kelime",
+    "created": "Oluşturuldu",
+    "modified": "Değiştirildi"
+  },
+  "backlinks": {
+    "title": "Geri bağlantılar",
+    "sortRecent": "Son",
+    "sortAlpha": "A-Z",
+    "sortMentions": "En çok bahsedilen",
+    "sortBy": "Geri bağlantıları şuna göre sıralayın: {sort}",
+    "summary": "{notes} notlar · {references} referanslar",
+    "sectionAria": "Geri bağlantılar",
+    "listAria": "Geri bağlantı listesi",
+    "fromAria": "Geri bağlantılar {title}",
+    "collapse": "Daralt",
+    "expand": "Genişlet",
+    "collapseSection": "Geri bağlantılar bölümünü daralt",
+    "expandSection": "Geri bağlantılar bölümünü genişlet",
+    "showMore": "Göster {count} daha fazla geri bağlantı",
+    "more": "{count} daha fazla"
+  },
+  "tagsRow": {
+    "aria": "Etiketler",
+    "empty": "Etiket ekle",
+    "add": "Etiket ekle",
+    "removeAria": "Etiketi kaldır: {tag}",
+    "inputPlaceholder": "Etiket adını yazın...",
+    "recent": "Son",
+    "matching": "Eşleştirme",
+    "all": "Tüm Etiketler",
+    "none": "Etiket bulunamadı",
+    "createTag": "Etiket oluştur: \"{tag}\"",
+    "chooseColor": "Renk seçin:",
+    "preview": "Önizleme:",
+    "colorAria": "Seç {color} renk"
+  },
+  "properties": {
+    "title": "Özellikler",
+    "noteAria": "Not özellikleri",
+    "workspaceAria": "Çalışma alanı özellikleri",
+    "listAria": "Özellikler listesi",
+    "add": "Mülk ekle",
+    "addDescription": "Bu nota yeni bir özellik ekleyin",
+    "namePlaceholder": "Mülk adı",
+    "nameAria": "Mülk adı",
+    "typeSection": "Tür",
+    "empty": "Boş",
+    "dragAria": "Özelliği yeniden sıralamak için sürükleyin",
+    "editName": "Mülk adını düzenleyin",
+    "delete": "Mülkü sil",
+    "searchOptions": "Arama seçenekleri...",
+    "noOptions": "Henüz seçenek yok",
+    "optionName": "Seçenek adı",
+    "newOption": "Yeni seçenek",
+    "ratingAria": "Derecelendirme",
+    "openUrlAria": "URL'i açın",
+    "types": {
+      "text": "Metin",
+      "number": "Sayı",
+      "date": "Tarih",
+      "checkbox": "Onay kutusu",
+      "url": "URL",
+      "status": "Durum",
+      "select": "Seç",
+      "multiselect": "Çoklu seçim"
+    }
+  },
+  "templateSelector": {
+    "title": "Kanvasınızı Seçin",
+    "description": "Notunuza başlamak için bir şablon seçin",
+    "searchPlaceholder": "Şablonları ara...",
+    "loading": "Şablonlar yükleniyor...",
+    "empty": "Şablon bulunamadı",
+    "myTemplates": "Şablonlarım",
+    "essentials": "Temel bilgiler",
+    "setFolderDefault": "Klasör varsayılanı olarak ayarla",
+    "useTemplate": "Şablonu Kullan",
+    "createNote": "Not Oluştur"
+  },
+  "exportDialog": {
+    "title": "İhracat Notu",
+    "description": "İhracat \"{title}\"bir dosyaya",
+    "format": "Biçim",
+    "pdfDescription": "Yazdırmaya hazır belge",
+    "htmlDescription": "Web'e hazır dosya",
+    "pageSize": "Sayfa Boyutu",
+    "selectPageSize": "Sayfa boyutunu seçin",
+    "options": "Seçenekler",
+    "includeMetadata": "Meta verileri dahil et (etiketler, tarihler)",
+    "exporting": "Dışa aktarılıyor...",
+    "exported": "İhraç edildi!",
+    "export": "İhracat",
+    "toast": {
+      "failed": "Dışa aktarma başarısız oldu"
+    }
+  },
+  "versionHistory": {
+    "title": "Sürüm Geçmişi",
+    "description": "\"'in önceki sürümlerini görüntüleyin ve geri yükleyin{title}\"",
+    "hidePreview": "Önizlemeyi Gizle",
+    "showPreview": "Önizlemeyi Göster",
+    "empty": "Henüz kayıtlı sürüm yok",
+    "emptyDescription": "Önemli değişiklikler yaptığınızda sürümler otomatik olarak kaydedilir",
+    "latest": "En son",
+    "autoSaved": "Otomatik kaydedildi",
+    "words": "{count} kelime",
+    "selectPrompt": "Önizlenecek sürümü seçin",
+    "restore": "Geri yükle",
+    "deleteTitle": "Bu sürüm silinsin mi?",
+    "deleteDescription": "Bu eylem geri alınamaz. Bu sürüm kalıcı olarak silinecek.",
+    "restoreTitle": "Bu sürüm geri yüklensin mi?",
+    "restoreDescription": "Bu, mevcut not içeriğini bu sürümle değiştirecektir. Önce mevcut durumun anlık görüntüsü kaydedilecektir, böylece bu eylemi geri alabilirsiniz.",
+    "restoring": "Geri yükleniyor...",
+    "toast": {
+      "loadPreviewFailed": "Sürüm önizlemesi yüklenemedi",
+      "restored": "Not önceki sürüme geri yüklendi",
+      "deleted": "Sürüm silindi"
+    }
+  },
+  "templateEditor": {
+    "title": {
+      "new": "Yeni Şablon",
+      "view": "Şablonu Görüntüle",
+      "edit": "Şablonu Düzenle"
+    },
+    "toast": {
+      "nameRequired": "Şablon adı gerekli",
+      "created": "Şablon oluşturuldu",
+      "createFailed": "Şablon oluşturulamadı",
+      "saved": "Şablon kaydedildi",
+      "saveFailed": "Şablon kaydedilemedi",
+      "duplicateFailed": "Şablon kopyalanamadı",
+      "deleteFailed": "Şablon silinemedi"
+    }
+  },
+  "reminders": {
+    "summary": "Hatırlatma: {date}",
+    "summaryWithMore": "Hatırlatma: {date} (+{count} daha fazlası)",
+    "hasReminders": "Hatırlatıcıları var",
+    "setReminder": "Hatırlatıcı ayarla",
+    "toast": {
+      "set": "Hatırlatıcı ayarlandı",
+      "setForHighlight": "Vurgulanan metin için hatırlatıcı ayarlandı",
+      "setFailed": "Hatırlatıcı ayarlanamadı",
+      "deleted": "Hatırlatıcı silindi",
+      "deleteFailed": "Hatırlatıcı silinemedi",
+      "dismissed": "Hatırlatıcı reddedildi",
+      "dismissFailed": "Hatırlatıcı kapatılamadı"
+    }
+  },
+  "linkedTasks": {
+    "title": "Bağlantılı Görevler",
+    "loading": "Bağlantılı görevler yükleniyor..."
+  },
+  "phaseF": {
+    "componentsFolderViewColumnHeader": {
+      "dragToReorderColumn": "Sütunu yeniden sıralamak için sürükleyin"
+    },
+    "componentsFolderViewColumnSelector": {
+      "properties": "Özellikler",
+      "searchColumns": "Sütunlarda ara...",
+      "noMatchingColumns": "Eşleşen sütun yok",
+      "formulas": "FORMÜLLER",
+      "noFormulasDefined": "Tanımlanmış formül yok",
+      "addFormula": "Formül Ekle",
+      "deleteFormula": "Formülü Sil",
+      "areYouSureYouWantToDeleteTheFormula": "Formülü silmek istediğinizden emin misiniz: \"",
+      "quotThisActionCannotBeUndone": "\"? Bu eylem geri alınamaz.",
+      "cancel": "İptal",
+      "delete": "Sil",
+      "none": "Yok",
+      "edit": "Düzenle",
+      "delete2": "Sil"
+    },
+    "componentsFolderViewFilterBuilder": {
+      "filter": "Filtre",
+      "filters": "Filtreler",
+      "clearAll": "Tümünü temizle",
+      "noFiltersApplied": "Hiçbir filtre uygulanmadı",
+      "addFiltersToNarrowDownYourNotes": "Notlarınızı daraltmak için filtreler ekleyin",
+      "match": "Maç",
+      "allAnd": "Hepsi (VE)",
+      "anyOr": "Herhangi biri (VEYA)",
+      "ofTheFollowing": "aşağıdakilerden:",
+      "match2": "Maç",
+      "all": "Tümü",
+      "any": "Herhangi biri",
+      "of": ":",
+      "addCondition": "Koşul ekle",
+      "addFilter": "Filtre ekle",
+      "addGroup": "Grup ekle"
+    },
+    "componentsFolderViewFilterRow": {
+      "builtIn": "Yerleşik",
+      "properties": "Özellikler"
+    },
+    "componentsFolderViewFolderTableView": {
+      "notesTable": "Not tablosu"
+    },
+    "componentsFolderViewFolderViewToolbar": {
+      "searchNotes": "Notlarda ara...",
+      "clearSearch": "Aramayı temizle"
+    },
+    "componentsFolderViewFormulaEditorModal": {
+      "defineAComputedColumnUsingAnExpression": "Bir ifade kullanarak hesaplanan bir sütunu tanımlayın.",
+      "name": "İsim",
+      "expression": "İfade",
+      "available": "Mevcut: ",
+      "preview": "Önizleme",
+      "fixExpressionErrorsToSeePreview": "Önizlemeyi görmek için ifade hatalarını düzeltin",
+      "usingNote": "Not kullanılıyor: \"",
+      "quot": "alıntı;",
+      "cancel": "İptal"
+    },
+    "componentsFolderViewGroupBySelector": {
+      "clearGrouping": "Gruplandırmayı temizle",
+      "searchProperties": "Özellikleri ara...",
+      "builtIn": "Yerleşik",
+      "properties": "Özellikler",
+      "noGroupablePropertiesFound": "Gruplandırılabilir mülk bulunamadı",
+      "sortDirection": "Sıralama yönü",
+      "collapseGroupsByDefault": "Grupları varsayılan olarak daralt",
+      "showGroupSummaries": "Grup özetlerini göster",
+      "clearGrouping2": "Gruplandırmayı temizle"
+    },
+    "componentsFolderViewGroupedTable": {
+      "groupedNotesTable": "Gruplandırılmış notlar tablosu",
+      "more": "daha fazla"
+    },
+    "componentsFolderViewMoveToFolderDialog": {
+      "searchFolders": "Klasörleri ara...",
+      "loadingFolders": "Klasörler yükleniyor...",
+      "suggested": "ÖNERİLEN",
+      "bestMatch": "En iyi eşleşme",
+      "current": "akım)",
+      "allFolders": "TÜM KLASÖRLER",
+      "current2": "akım)",
+      "noFoldersMatch": "Eşleşen klasör yok \"",
+      "quot": "alıntı;",
+      "create": "Oluştur \"",
+      "quot2": "alıntı;",
+      "cancel": "İptal"
+    },
+    "componentsFolderViewRowContextMenu": {
+      "delete": "Sil ",
+      "notes": "Notlar",
+      "open": "Açık",
+      "openInExternalEditor": "Harici Düzenleyicide Aç",
+      "revealInFinder": "Finder'da Göster",
+      "revealInSidebar": "Kenar Çubuğunda Göster",
+      "copyLink": "Bağlantıyı Kopyala",
+      "delete2": "Sil"
+    },
+    "componentsFolderViewSortableColumnHeader": {
+      "dragToReorderColumn": "Sütunu yeniden sıralamak için sürükleyin",
+      "resizeColumn": "Sütunu yeniden boyutlandır"
+    },
+    "componentsFolderViewViewSwitcher": {
+      "default": "varsayılan",
+      "rename": "Yeniden adlandır",
+      "duplicate": "Çoğalt",
+      "setAsDefault": "Varsayılan Olarak Ayarla",
+      "delete": "Sil",
+      "createNewView": "Yeni Görünüm Oluştur",
+      "createNewView2": "Yeni Görünüm Oluştur",
+      "createANewViewWithCustomColumnsFiltersAndSorting": "Özel sütunlar, filtreler ve sıralamayla yeni bir görünüm oluşturun.",
+      "viewName": "Adı Görüntüle",
+      "myCustomView": "Özel Görünümüm",
+      "baseConfiguration": "Temel Yapılandırma",
+      "copyFromCurrentView": "Geçerli görünümden kopyala",
+      "startFreshDefaultColumns": "Yeni başla (varsayılan sütunlar)",
+      "cancel": "İptal",
+      "renameView": "Görünümü Yeniden Adlandır",
+      "enterANewNameForThisView": "Enter bu görünüm için yeni bir ad.",
+      "viewName2": "Adı Görüntüle",
+      "viewName3": "Adı görüntüle",
+      "cancel2": "İptal",
+      "deleteView": "Görünümü Sil",
+      "areYouSureYouWantToDelete": "Silmek istediğinizden emin misiniz: \"",
+      "thisActionCannotBeUndone": "Bu eylem geri alınamaz.",
+      "cancel3": "İptal"
+    },
+    "componentsNoteContentAreaFileBlock": {
+      "failedToLoadPdf": "PDF yüklenemedi: ",
+      "download": "İndir",
+      "download2": "İndir",
+      "noFileAttached": "Dosya eklenmedi"
+    },
+    "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
+      "openInTaskPanel": "Görev panelinde aç",
+      "taskName": "Görev adı...",
+      "taskDeleted": "Görev silindi",
+      "loading": "Yükleniyor..."
+    },
+    "componentsNoteContentAreaTaskBlockTaskCreationPopover": {
+      "project": "Proje",
+      "priority": "Öncelik",
+      "dueDate": "Son tarih",
+      "cancel": "İptal"
+    },
+    "componentsNoteContentAreaYoutubeEmbedBlock": {
+      "noVideoUrl": "Video yok URL"
+    },
+    "componentsNoteExportDialog": {
+      "pdf": "PDF",
+      "html": "HTML",
+      "a4210X297Mm": "A4 (210 x 297 mm)",
+      "letter85X11In": "Mektup (8,5 x 11 inç)",
+      "legal85X14In": "Yasal (8,5 x 14 inç)"
+    },
+    "componentsNoteInfoSectionEditorsDateeditor": {
+      "ddMmYyyy": "gg.aa.yyyy"
+    },
+    "componentsNoteNoteHeader": {
+      "synced": "Senkronize edildi"
+    },
+    "componentsSharedDocumentInfoTab": {
+      "words": "kelimeler",
+      "characters": "Karakterler",
+      "readingTime": "Okuma zamanı",
+      "created": "Oluşturuldu",
+      "modified": "Değiştirildi"
+    },
+    "componentsSidebarProjectsEmptyState": {
+      "noProjectsYet": "Henüz proje yok",
+      "createYourFirstProject": "İlk projenizi oluşturun",
+      "createYourFirstProject2": "İlk projenizi oluşturun"
+    },
+    "componentsSidebarSidebarBookmarkList": {
+      "loadingBookmarks": "Yer işaretleri yükleniyor...",
+      "failedToLoadBookmarks": "Yer işaretleri yüklenemedi",
+      "noBookmarksYet": "Henüz yer işareti yok",
+      "moreOptions": "Daha fazla seçenek",
+      "remove": "Kaldır"
+    },
+    "componentsSidebarSidebarItemContextMenu": {
+      "open": "Açık",
+      "openToTheSide": "Yan tarafa aç",
+      "pinToTabs": "Tabs'e sabitle",
+      "edit": "Düzenle",
+      "delete": "Sil",
+      "copyLink": "Bağlantıyı Kopyala"
+    },
+    "componentsSidebarSidebarTagList": {
+      "loadingTags": "Etiketler yükleniyor...",
+      "failedToLoadTags": "Etiketler yüklenemedi",
+      "noTagsYet": "Henüz etiket yok",
+      "filterTags": "Etiketleri filtrele...",
+      "noMatchingTags": "Eşleşen etiket yok"
+    },
+    "componentsSidebarSortableProjectItem": {
+      "dropHere": "Buraya bırak",
+      "editProject": "Projeyi düzenle"
+    },
+    "componentsSidebarTagDeleteDialog": {
+      "deleteTag": "# etiketini sil",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "Bu etikete sahip notlar silinmez, yalnızca etiketleri kaldırılır.",
+      "cancel": "İptal"
+    },
+    "componentsSidebarTagDetailView": {
+      "goBack": "Geri dön",
+      "notes": "notlar",
+      "loadingNotes": "Notlar yükleniyor...",
+      "noNotesWithThisTag": "Bu etikete sahip not yok",
+      "addThisTagToANoteToSeeItHere": "Burada görmek için bu etiketi bir nota ekleyin",
+      "pinned": "Sabitlendi",
+      "allNotes": "TÜM NOTLAR",
+      "allNotesArePinned": "Tüm notlar sabitlendi",
+      "unpinFromTag": "Etiketteki sabitlemeyi kaldır",
+      "unpin": "Sabitlemeyi kaldır",
+      "pinToTag": "Etikete sabitle",
+      "pin": "Sabitle",
+      "tagActions": "Etiket işlemleri",
+      "editTagName": "Etiket adını düzenle",
+      "changeColor": "Rengi değiştir",
+      "deleteTag": "Etiketi sil",
+      "recent": "Son",
+      "created": "Oluşturuldu",
+      "alphabetical": "alfabetik"
+    },
+    "componentsSidebarTagRenameDialog": {
+      "renameTag": "Etiketi yeniden adlandır",
+      "rename": "Yeniden adlandır ",
+      "acrossEveryNoteThatUsesIt": "onu kullanan her notada.",
+      "newName": "Yeni isim",
+      "cancel": "İptal"
+    },
+    "componentsViewersAudioPlayer": {
+      "failedToLoadAudio": "Ses yüklenemedi",
+      "theAudioFileCouldNotBePlayed": "Ses dosyası çalınamadı.",
+      "skipBack10s": "10 saniye geriye atla",
+      "skipForward10s": "10 saniye ileri atla"
+    },
+    "componentsViewersImageViewer": {
+      "failedToLoadImage": "Resim yüklenemedi",
+      "theImageCouldNotBeDisplayed": "Resim görüntülenemedi.",
+      "resetZoom": "Yakınlaştırmayı sıfırla",
+      "rotate": "Döndür",
+      "dragToPan": "Kaydırmak için sürükleyin"
+    },
+    "componentsViewersPdfViewer": {
+      "failedToLoadPdf": "PDF yüklenemedi",
+      "previousPage": "Önceki sayfa",
+      "nextPage": "Sonraki sayfa",
+      "zoomOut": "Uzaklaştır",
+      "zoomIn": "Yakınlaştır",
+      "fitToWidth": "Genişliğe sığdır",
+      "rotate": "Döndür"
+    },
+    "componentsViewersVideoPlayer": {
+      "failedToLoadVideo": "Video yüklenemedi",
+      "theVideoFileCouldNotBePlayed": "Video dosyası oynatılamadı."
+    },
+    "pagesFile": {
+      "failedToLoadFile": "Dosya yüklenemedi",
+      "tryAgain": "Tekrar dene",
+      "noFileSelected": "Hiçbir dosya seçilmedi",
+      "selectAFileFromTheSidebarToViewIt": "Görüntülemek için kenar çubuğundan bir dosya seçin",
+      "loadingFile": "Dosya yükleniyor...",
+      "openInDefaultApp": "Varsayılan uygulamada aç",
+      "open": "Açık",
+      "revealInFinder": "Finder'da Göster",
+      "reveal": "Açıkla",
+      "unsupportedFileType": "Desteklenmeyen dosya türü"
+    },
+    "pagesFolderView": {
+      "createNewNote": "Yeni not oluştur",
+      "viewSettings": "Ayarları görüntüle",
+      "displayDensity": "Ekran Yoğunluğu",
+      "comfortable": "Rahat",
+      "compact": "Kompakt",
+      "showSummaries": "Özetleri göster",
+      "cancel": "İptal"
+    },
+    "pagesTemplateEditor": {
+      "loadingTemplate": "Şablon yükleniyor...",
+      "builtInTemplatesCannotBeModified": "Yerleşik şablonlar değiştirilemez",
+      "description": "Açıklama",
+      "briefDescriptionOfThisTemplate": "Bu şablonun kısa açıklaması...",
+      "templateContent": "Şablon İçeriği",
+      "use": "Kullanım ",
+      "toInsertTheNoteTitleWhenCreatingANote": "Not oluştururken not başlığını eklemek için.",
+      "templateName": "Şablon Adı",
+      "defaultContentForNotesCreatedFromThisTemplate": "Bu şablondan oluşturulan notlar için varsayılan içerik..."
+    },
+    "pagesTemplates": {
+      "loadingCollection": "Koleksiyon yükleniyor...",
+      "templateCollection": "Şablon Koleksiyonu",
+      "templates": "Şablonlar",
+      "curatedStructuresForYourNotes": "Notlarınız için seçilmiş yapılar.",
+      "newTemplate": "Yeni Şablon",
+      "myTemplates": "Şablonlarım",
+      "builtIn": "Yerleşik",
+      "deleteTemplate": "Şablonu Sil",
+      "areYouSureYouWantToDelete": "Silmek istediğinizden emin misiniz: \"",
+      "notesCreatedFromThisTemplateWillNotBeAffected": "Bu şablondan oluşturulan notlar etkilenmeyecektir.",
+      "cancel": "İptal",
+      "builtIn2": "Yerleşik",
+      "duplicate": "Çoğalt",
+      "delete": "Sil",
+      "startYourCollection": "Koleksiyonunuzu Başlatın",
+      "templatesHelpYouCreateNotesWithConsistentStructure": "Şablonlar tutarlı yapıya sahip notlar oluşturmanıza yardımcı olur.",
+      "createTemplate": "Şablon Oluştur"
+    }
+  }
+}

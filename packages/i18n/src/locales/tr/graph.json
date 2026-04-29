@@ -1,1 +1,77 @@
-{}
+{
+  "page": {
+    "loading": "Grafik yükleniyor...",
+    "load-failed": "Grafik verileri yüklenemedi",
+    "try-again": "Tekrar dene",
+    "aria-label": "Bilgi grafiği: {nodeCount, plural, one {# düğüm} other {# düğüm}} ve {edgeCount, plural, one {# bağlantı} other {# bağlantı}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Grafik düğümleri",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Bilgi grafiğiniz",
+    "description": "Notlarınız, görevleriniz ve projeleriniz arasındaki bağlantılar burada etkileşimli bir grafik olarak görünecektir.",
+    "link-title": "Notlarınızı bağlayın",
+    "link-description": "Fikirleri notlara bağlamak için [[wikilinks]] kullanın",
+    "discover-title": "Desenleri keşfedin",
+    "discover-description": "Bağlantılar büyüdükçe kümeler ve temalar doğal olarak ortaya çıkacak"
+  },
+  "entity": {
+    "note": "not",
+    "notes": "notlar",
+    "journal": "dergi",
+    "journals": "dergiler",
+    "task": "görev",
+    "tasks": "görevler",
+    "project": "proje",
+    "projects": "projeler",
+    "tag": "etiket",
+    "tags": "Etiketler",
+    "orphan": "yetim",
+    "orphans": "yetimler",
+    "unresolved": "çözülmemiş"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Grafik ayarları",
+    "hide-settings": "Ayarları gizle",
+    "reset-filters": "Filtreleri sıfırla",
+    "filters": "Filtreler",
+    "display": "Ekran",
+    "show-labels": "Etiketleri göster",
+    "focus-depth": "derinlik {depth}",
+    "clear-focus": "Odaklanmış düğümü temizle"
+  },
+  "filter": {
+    "notes": "Notlar",
+    "journals": "Günlükler",
+    "tasks": "Görevler",
+    "projects": "Projeler",
+    "tags": "Etiketler",
+    "orphans": "Yetimler",
+    "toggle-entity": "{label} öğesini aç/kapat",
+    "toggle-orphans": "Yetim düğümlerini değiştir"
+  },
+  "search": {
+    "placeholder": "Düğümleri ara...",
+    "clear": "Grafik aramasını temizle"
+  },
+  "context-menu": {
+    "untitled": "İsimsiz",
+    "focus-node": "Bu düğüme odaklan",
+    "open-new-tab": "Yeni sekmede aç",
+    "create-note": "Not oluştur",
+    "copy-title": "Başlığı kopyala"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {# bağlantı} other {# bağlantı}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Grafik yükleniyor...",
+    "empty": "Bağlantı bulunamadı",
+    "open-full": "Grafiğin tamamını aç",
+    "close": "Grafiği kapat"
+  }
+}

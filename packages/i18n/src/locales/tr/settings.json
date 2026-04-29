@@ -1,1 +1,1109 @@
-{}
+{
+  "toast": {
+    "exportNotImplemented": "Yerel veri aktarımı henüz uygulanmadı"
+  },
+  "page": {
+    "title": "Ayarlar",
+    "nav": {
+      "groups": {
+        "workspace": "Çalışma alanı",
+        "preferences": "Tercihler",
+        "services": "Hizmetler",
+        "data": "Veri"
+      },
+      "items": {
+        "account": "Hesap",
+        "general": "Genel",
+        "templates": "Şablonlar",
+        "editor": "Editör",
+        "journal": "Günlük",
+        "tasks": "Görevler",
+        "calendar": "Takvim",
+        "appearance": "Görünüm",
+        "shortcuts": "Kısayollar",
+        "ai": "AI Asistanı",
+        "integrations": "Entegrasyonlar",
+        "vault": "Kasa",
+        "tags": "Etiketler",
+        "properties": "Özellikler"
+      }
+    }
+  },
+  "general": {
+    "header": {
+      "title": "Genel",
+      "subtitle": "Uygulama başlatma ve sekme davranışı",
+      "loading": "Ayarlar yükleniyor..."
+    },
+    "groups": {
+      "startup": "Başlangıç",
+      "updates": "Güncellemeler",
+      "languageRegion": "Dil ve Bölge",
+      "tabBehavior": "Sekme Davranışı",
+      "fileCreation": "Dosya Oluşturma"
+    },
+    "startup": {
+      "launchAtLogin": {
+        "label": "Girişte Başlat",
+        "description": "Giriş yaptığınızda Memry'i başlatın",
+        "error": "Önyüklemede başlatma güncellenemedi"
+      }
+    },
+    "updates": {
+      "appUpdates": "Uygulama Güncellemeleri",
+      "installedVersion": "Yüklü sürüm {version}",
+      "availableVersion": "Mevcut sürüm {version}",
+      "unsupported": "Paketlenmiş derlemeler GitHub Sürümlerinden güncellemeleri kontrol edebilir, indirebilir ve yükleyebilir",
+      "available": "Memry {version} indirilebilir",
+      "downloadingLatest": "En son sürümün indirilmesi",
+      "downloadingLatestPercent": "En son sürümün indirilmesi ({percent}%)",
+      "downloaded": "Memry {version} kuruluma hazır",
+      "upToDate": "Bu kurulum en son yayınlanan sürümdedir",
+      "checking": "Daha yeni bir sürüm için GitHub Sürümlerini kontrol etme",
+      "idle": "Yeni sürümleri kontrol edin ve uygulamadan çıkmadan bunları yükleyin",
+      "unsupportedToast": "Otomatik güncellemeler yalnızca paket sürümlerde mevcuttur",
+      "upToDateToast": "Memry {version} güncel",
+      "actionFailed": "Güncelleme eylemi başarısız oldu",
+      "actions": {
+        "checking": "Kontrol ediliyor...",
+        "available": "Güncellemeyi İndir",
+        "downloading": "İndiriliyor...",
+        "downloadingPercent": "İndiriliyor {percent}%",
+        "downloaded": "Kurulumu Yeniden Başlatın",
+        "idle": "Güncellemeleri Kontrol Et"
+      }
+    },
+    "language": {
+      "label": "Dil",
+      "helper": "Uygulamanın çoğu anında güncellenir. Sistem düzeyindeki bazı metinler (önceden gösterilen bildirimler, dock etiketi, pencere başlık çubuğu) bir sonraki başlatmadan sonra yenilenir.",
+      "changed": "Dil şu şekilde değiştirildi: {nativeName}",
+      "failed": "Dil değiştirilemedi. Lütfen tekrar deneyin."
+    },
+    "clockFormat": {
+      "label": "Saat Formatı",
+      "description": "12 saatlik veya 24 saatlik biçim",
+      "options": {
+        "12h": "12 saatlik",
+        "24h": "24 saat"
+      },
+      "error": "Saat biçimi güncellenemedi"
+    },
+    "tabs": {
+      "previewMode": {
+        "label": "Önizleme Modu",
+        "description": "Tek tıklama önizlemeyi açar, çift tıklama açık kalır"
+      },
+      "restoreSession": {
+        "label": "Başlangıçta Oturumu Geri Yükle",
+        "description": "Son oturumunuzdaki sekmeleri yeniden açın"
+      },
+      "closeButton": {
+        "label": "Tab Kapatma Düğmesi",
+        "description": "Kapatma düğmesi ne zaman gösterilecek?",
+        "options": {
+          "always": "Her zaman görünür",
+          "hover": "Fareyle üzerine gelindiğinde göster",
+          "active": "Yalnızca etkin sekmede"
+        }
+      },
+      "error": "Ayar güncellenemedi"
+    },
+    "fileCreation": {
+      "createInSelectedFolder": {
+        "label": "Seçilen Klasörde Oluştur",
+        "description": "Seçili olan klasörün içinde yeni notlar ve klasörler oluşturulur. Kapalıyken öğeler her zaman kökte oluşturulur."
+      }
+    }
+  },
+  "appearance": {
+    "header": {
+      "title": "Görünüm",
+      "subtitle": "Görünümü ve hissi özelleştirin",
+      "loading": "Ayarlar yükleniyor..."
+    },
+    "groups": {
+      "theme": "Tema",
+      "accentColor": "Vurgu Rengi",
+      "typography": "Tipografi"
+    },
+    "theme": {
+      "colorMode": {
+        "label": "Renk Modu",
+        "description": "Tercih ettiğiniz temayı seçin",
+        "aria": "Renk modu"
+      },
+      "options": {
+        "light": "Sıcak",
+        "white": "Beyaz",
+        "dark": "Karanlık",
+        "system": "Sistem"
+      },
+      "error": "Tema güncellenemedi"
+    },
+    "accent": {
+      "pick": "Bir vurgu rengi seçin",
+      "custom": {
+        "label": "Özel Renk",
+        "description": "Enter onaltılık bir değer",
+        "placeholder": "#000000"
+      },
+      "presets": {
+        "indigo": "Çivit mavisi",
+        "amber": "kehribar",
+        "emerald": "Zümrüt",
+        "red": "Kırmızı",
+        "violet": "Menekşe",
+        "cyan": "Camgöbeği",
+        "pink": "Pembe",
+        "orange": "Turuncu"
+      },
+      "error": "Vurgu rengi güncellenemedi"
+    },
+    "typography": {
+      "fontSize": {
+        "label": "Yazı Tipi Boyutu",
+        "description": "Temel metin boyutunu ayarlayın",
+        "aria": "Yazı tipi boyutu"
+      },
+      "fontFamily": {
+        "label": "Yazı Tipi Ailesi",
+        "description": "Arayüz için birincil yazı tipi",
+        "options": {
+          "system": "Sistem Varsayılanı",
+          "sansSerif": "Sans-serif",
+          "serif": "Serif (Kızıl Pro)",
+          "gelasio": "Gelasio",
+          "geist": "Geist",
+          "inter": "Inter",
+          "monospace": "Tek uzay"
+        }
+      },
+      "fontSizeError": "Yazı tipi boyutu güncellenemedi",
+      "fontFamilyError": "Yazı tipi ailesi güncellenemedi"
+    }
+  },
+  "editor": {
+    "header": {
+      "title": "Editör",
+      "subtitle": "Not düzenleyici ayarları ve tercihleri",
+      "loading": "Ayarlar yükleniyor..."
+    },
+    "groups": {
+      "layout": "Düzen",
+      "toolbar": "Araç Çubuğu",
+      "writing": "Yazma"
+    },
+    "width": {
+      "label": "Düzenleyici Genişliği",
+      "description": "Yazma alanının maksimum genişliği",
+      "options": {
+        "narrow": "Dar",
+        "medium": "Orta",
+        "wide": "Geniş"
+      },
+      "error": "Düzenleyici genişliği güncellenemedi"
+    },
+    "toolbarMode": {
+      "label": "Yapışkan Biçimlendirme Araç Çubuğu",
+      "description": "Araç çubuğunu her zaman düzenleyicinin üzerinde göster",
+      "error": "Araç çubuğu modu güncellenemedi"
+    },
+    "spellCheck": {
+      "label": "Yazım Denetimi",
+      "description": "Yazarken yanlış yazılan kelimelerin altını çizin",
+      "error": "Yazım denetimi güncellenemedi"
+    },
+    "autoSaveDelay": {
+      "label": "Otomatik Kaydetme Gecikmesi",
+      "description": "Yazdıktan sonra kaydetmeden önce bekleme süresi durur",
+      "seconds": "{seconds}s",
+      "error": "Otomatik kaydetme gecikmesi güncellenemedi"
+    },
+    "wordCount": {
+      "label": "Kelime Sayısı",
+      "description": "Düzenleyici altbilgisinde kelime sayısını göster",
+      "error": "Kelime sayısı ekranı güncellenemedi"
+    }
+  },
+  "templates": {
+    "header": {
+      "title": "Şablonlar",
+      "subtitle": "Hızlı oluşturma için not şablonlarını yönetin"
+    },
+    "actions": {
+      "new": "Yeni Şablon",
+      "edit": "Düzenle",
+      "duplicate": "Çoğalt",
+      "delete": "Sil"
+    },
+    "groups": {
+      "builtIn": "Yerleşik",
+      "myTemplates": "Şablonlarım"
+    },
+    "loading": "Şablonlar yükleniyor...",
+    "newTemplateTitle": "Yeni Şablon",
+    "copySuffix": "{name} (Kopya)",
+    "empty": {
+      "title": "Henüz özel şablon yok",
+      "description": "Başlamak için bir şablon oluşturun"
+    },
+    "toasts": {
+      "deleted": "Şablon silindi",
+      "deleteFailed": "Şablon silinemedi",
+      "duplicated": "Şablon kopyalandı",
+      "duplicateFailed": "Şablon kopyalanamadı"
+    },
+    "dialogs": {
+      "delete": {
+        "title": "Şablonu Sil",
+        "description": "Bu şablonu silmek istediğinizden emin misiniz? Bu eylem geri alınamaz. Bu şablondan oluşturulan notlar etkilenmeyecektir."
+      },
+      "duplicate": {
+        "title": "Şablonu Çoğalt",
+        "description": "Enter yeni şablon kopyası için bir ad.",
+        "placeholder": "Şablon adı"
+      }
+    }
+  },
+  "journal": {
+    "header": {
+      "title": "Günlük",
+      "subtitle": "Günlük ayarları ve tercihleri",
+      "loading": "Ayarlar yükleniyor..."
+    },
+    "groups": {
+      "defaultTemplate": "Varsayılan Şablon",
+      "sidebarVisibility": "Kenar Çubuğu Görünürlüğü",
+      "footer": "Altbilgi"
+    },
+    "template": {
+      "label": "Şablon",
+      "description": "Yeni girişler bu şablonla başlar",
+      "placeholder": "Bir şablon seçin",
+      "unknown": "Bilinmeyen şablon",
+      "none": "Yok",
+      "noneAsk": "Yok (her seferinde sor)",
+      "updated": "Varsayılan şablon güncellendi",
+      "cleared": "Varsayılan şablon temizlendi",
+      "error": "Varsayılan şablon güncellenemedi"
+    },
+    "showSchedule": {
+      "label": "Programı Göster",
+      "description": "Bugünün etkinliklerini ve takvimini görüntüle"
+    },
+    "showTasks": {
+      "label": "Görevleri Göster",
+      "description": "Seçilen günde teslim edilmesi gereken görevleri görüntüle"
+    },
+    "showAIConnections": {
+      "label": "AI Bağlantılarını Göster",
+      "description": "İlgili girişlere AI destekli bağlantıları görüntüleyin"
+    },
+    "showStatsFooter": {
+      "label": "İstatistik Alt Bilgisini Göster",
+      "description": "Kelime sayısı, okuma süresi, zaman damgaları"
+    },
+    "updateError": "Ayar güncellenemedi"
+  },
+  "tasks": {
+    "header": {
+      "title": "Görevler",
+      "subtitle": "Görev varsayılanlarını ve davranışını yapılandırma",
+      "loading": "Ayarlar yükleniyor..."
+    },
+    "groups": {
+      "defaults": "Varsayılanlar",
+      "calendar": "Takvim",
+      "inbox": "Gelen kutusu"
+    },
+    "defaultProject": {
+      "label": "Varsayılan Proje",
+      "description": "Hiçbir proje seçilmediğinde atanır",
+      "placeholder": "Varsayılan proje yok",
+      "none": "Varsayılan yok (Kişisel'i kullanın)",
+      "error": "Varsayılan proje güncellenemedi"
+    },
+    "sortOrder": {
+      "label": "Varsayılan Sıralama Düzeni",
+      "description": "Liste görünümünde görevler nasıl sıralanır?",
+      "options": {
+        "manual": "Manuel (sürükle ve bırak)",
+        "dueDate": "Son Tarih",
+        "priority": "Öncelik",
+        "createdAt": "Oluşturulma Tarihi"
+      },
+      "error": "Sıralama düzeni güncellenemedi"
+    },
+    "weekStart": {
+      "label": "Hafta Başlıyor",
+      "description": "Takvim görünümlerinde haftanın ilk günü",
+      "options": {
+        "sunday": "Pazar",
+        "monday": "Pazartesi"
+      },
+      "error": "Hafta başlangıcı güncellenemedi"
+    },
+    "staleInbox": {
+      "label": "Eski Gelen Kutusu Eşiği",
+      "description": "Bundan daha eski görevler eski olarak vurgulanır",
+      "unit": "günler",
+      "error": "Eski gelen kutusu eşiği güncellenemedi"
+    }
+  },
+  "calendar": {
+    "header": {
+      "title": "Takvim",
+      "subtitle": "Gün Panelinde gün hücresi davranışını yapılandırma",
+      "loading": "Ayarlar yükleniyor..."
+    },
+    "groups": {
+      "dayCellClick": "Gün Hücresi Tıklaması"
+    },
+    "defaultBehavior": {
+      "label": "Varsayılan davranış",
+      "description": "Takvim dışı herhangi bir sekmeden Gün Paneli takviminde bir günü tıklattığınızda",
+      "error": "Günlük tıklama davranışı güncellenemedi"
+    },
+    "pageOverride": {
+      "label": "Takvim sayfasını geçersiz kılma",
+      "description": "Takvim sekmesi etkin olduğunda davranış (varsayılan olarak Takvimi Aç seçeneğidir)",
+      "error": "Takvim sayfası geçersiz kılma güncellenemedi"
+    },
+    "options": {
+      "openJournal": "Dergiyi Aç",
+      "openCalendar": "Takvimi Aç",
+      "useGlobal": "Genel ayarı kullan"
+    }
+  },
+  "account": {
+    "header": {
+      "title": "Hesap",
+      "subtitle": "Hesabınız, senkronizasyonunuz ve güvenliğiniz",
+      "loading": "Yükleniyor..."
+    },
+    "groups": {
+      "identity": "Kimlik",
+      "sync": "Senkronizasyon",
+      "storage": "Depolama",
+      "devices": "Cihazlar",
+      "security": "Güvenlik"
+    },
+    "identity": {
+      "unknown": "Bilinmiyor",
+      "plan": "Profesyonel plan"
+    },
+    "sync": {
+      "lastSynced": "Son senkronize edildi {time}",
+      "pending": "{count, plural, one {# beklemede} other {# beklemede}}",
+      "statuses": {
+        "synced": "Senkronize edildi",
+        "syncing": "Senkronize ediliyor...",
+        "paused": "Duraklatıldı",
+        "syncError": "Senkronizasyon Hatası",
+        "offline": "Çevrimdışı",
+        "connecting": "Bağlanıyor...",
+        "pushed": "{count, plural, one {# gönderildi} other {# gönderildi}}",
+        "pulled": "{count, plural, one {# alındı} other {# alındı}}",
+        "pushedPulled": "{parts}",
+        "changesPending": "{count, plural, one {# değişiklik beklemede} other {# değişiklik beklemede}}",
+        "offlinePending": "Çevrimdışı ({count, plural, one {# değişiklik beklemede} other {# değişiklik beklemede}})",
+        "never": "Asla"
+      }
+    },
+    "storage": {
+      "used": "{used} arasında {limit} kullanılmış",
+      "categories": {
+        "notes": "Notlar",
+        "attachments": "Ekler",
+        "crdt": "CRDT",
+        "other": "Diğer",
+        "available": "Mevcut"
+      }
+    },
+    "security": {
+      "recoveryKey": {
+        "label": "Kurtarma Anahtarı",
+        "description": "Veri erişimi için kurtarma anahtarınızı görüntüleyin",
+        "action": "Anahtarı Görüntüle"
+      },
+      "rotateKeys": {
+        "label": "Şifreleme Anahtarlarını Döndür",
+        "description": "Yeni anahtarlar oluşturun ve tüm verileri yeniden şifreleyin",
+        "action": "Döndür"
+      },
+      "signOut": {
+        "label": "Oturumu Kapat",
+        "description": "Bu cihazın senkronizasyon bağlantısını kesin",
+        "action": "Oturumu Kapat"
+      }
+    },
+    "signOutDialog": {
+      "title": "Senkronizasyon oturumu kapatılsın mı?",
+      "description": "Senkronizasyon durdurulacak ve şifreleme anahtarları bu cihazdan kaldırılacak. Notlarınız bu cihazda kalacak. Senkronizasyonu tekrar ayarlamak için kurtarma ifadenize ihtiyacınız olacak.",
+      "confirm": "Oturumu kapat",
+      "signingOut": "Oturum kapatılıyor..."
+    },
+    "toasts": {
+      "signedOut": "Oturum başarıyla kapatıldı",
+      "signOutFailed": "Oturum kapatılamadı",
+      "deviceLinked": "Cihaz başarıyla bağlandı"
+    }
+  },
+  "setup": {
+    "steps": {
+      "signIn": "Oturum aç",
+      "verify": "Doğrula",
+      "link": "Bağlantı"
+    },
+    "progress": "Adım {current}/{total}: {label}",
+    "signIn": {
+      "title": "Senkronizasyonu ayarla",
+      "description": "Verilerinizi uçtan uca şifrelemeyle cihazlar arasında senkronize etmek için bir hesap oluşturun.",
+      "or": "veya",
+      "errors": {
+        "sendCode": "Kod gönderilemedi",
+        "googleStart": "Google ile oturum açma işlemi başlatılamadı"
+      }
+    },
+    "email": {
+      "label": "E-posta adresi",
+      "placeholder": "Enter e-posta adresiniz...",
+      "invalid": "Lütfen geçerli bir e-posta adresi girin",
+      "sending": "Kod gönderiliyor..."
+    },
+    "oauth": {
+      "google": "Google ile devam et"
+    },
+    "otp": {
+      "title": "Enter doğrulama kodu",
+      "sentTo": "6 haneli kodu gönderdik ",
+      "aria": "6 haneli doğrulama kodu",
+      "verifying": "Doğrulanıyor...",
+      "resending": "Yeniden gönderiliyor...",
+      "resend": "Kodu yeniden gönder",
+      "resendIn": "{time} içinde yeniden gönder",
+      "differentEmail": "Farklı bir e-posta kullanın",
+      "error": "Doğrulama başarısız oldu",
+      "resendError": "Yeniden gönderilemedi"
+    },
+    "recovery": {
+      "displayTitle": "Kurtarma ifadenizi kaydedin",
+      "displayDescription": "Tüm cihazlarınıza erişiminizi kaybederseniz şifrelenmiş verilerinizi kurtarmanın tek yolu budur.",
+      "warning": "Bunu bir yere yazın ve güvenli bir yerde saklayın. Bir daha görmeyeceksin.",
+      "wordsAria": "Kurtarma ifade sözcükleri",
+      "wordAria": "Kelime {index}: {word}",
+      "copyAria": "Kurtarma ifadesini panoya kopyala",
+      "copiedAria": "Kurtarma ifadesi kopyalandı",
+      "copied": "Kopyalandı",
+      "saved": "Kurtarma ifademi kaydettim",
+      "confirmTitle": "Kurtarma ifadenizi onaylayın",
+      "confirmDescription": "Doğru şekilde kaydettiğinizi doğrulamak için istenen kelimeleri girin.",
+      "wordPlaceholder": "#{index}. kelimeyi girin",
+      "verify": "Doğrula",
+      "mustMatch": "Devam etmek için 3 kelimenin tamamı eşleşmelidir",
+      "inputTitle": "Enter kurtarma ifadesi",
+      "inputDescription": "Şifrelenmiş verilerinize erişimi yeniden sağlamak için 24 kelimelik kurtarma ifadeniz Enter.",
+      "inputLabel": "Kurtarma ifadesi",
+      "count": "{count} / {total} kelime",
+      "inputPlaceholder": "Enter boşluklarla ayrılmış 24 kelimelik kurtarma ifadeniz...",
+      "lengthHint": "Geri yükleme düğmesini etkinleştirmek için Enter 24 kelimenin tamamı",
+      "restore": "Erişimi geri yükle",
+      "progress": {
+        "deriving": "Şifreleme anahtarları türetiliyor...",
+        "validating": "Kurtarma ifadesi doğrulanıyor...",
+        "registering": "Cihaz kaydediliyor..."
+      },
+      "failed": "Kurtarma başarısız oldu",
+      "confirmationFailed": "Onay başarısız oldu"
+    },
+    "linking": {
+      "choiceTitle": "Bu cihazı bağla",
+      "choiceDescription": "Şifreleme anahtarlarını başka bir cihazdan aktarın veya kurtarma ifadenizden geri yükleyin.",
+      "qrChoice": "QR koduyla bağlantı",
+      "qrChoiceDescription": "Diğer cihazınızda gösterilen kodu tarayın",
+      "recoveryChoice": "Kurtarma ifadesi",
+      "recoveryChoiceDescription": "Enter 24 kelimelik kurtarma ifadeniz",
+      "codeTitle": "Enter bağlantı kodu",
+      "codeDescription": "Şifreleme anahtarlarınızı güvenli bir şekilde aktarmak için diğer cihazınızdaki bağlantı kodunu yapıştırın.",
+      "codeLabel": "Bağlantı kodu",
+      "valid": "Geçerli",
+      "invalid": "Geçersiz biçim",
+      "codePlaceholder": "Kodu diğer cihazınızdan yapıştırın...",
+      "formatHint": "JSON bağlantı kodunu diğer cihazınızdan yapıştırın",
+      "linking": "Bağlanıyor...",
+      "linkDevice": "Cihazı bağla",
+      "failed": "Bağlantı başarısız oldu",
+      "deviceFailed": "Cihaz bağlanamadı",
+      "pendingSuccess": "Cihaz başarıyla bağlandı",
+      "goBack": "Geri dön",
+      "waitingTitle": "Onay bekleniyor",
+      "waitingDescription": "Diğer cihazınızda Memry'i açın ve bağlantı isteğini onaylayın.",
+      "verificationCode": "Doğrulama kodu",
+      "confirmCode": "Bunun diğer cihazınızdaki kodla eşleştiğini doğrulayın",
+      "cancel": "İptal"
+    }
+  },
+  "devices": {
+    "loading": "Cihazlar yükleniyor...",
+    "loadingAria": "Cihazlar yükleniyor",
+    "none": "Henüz bağlı cihaz yok",
+    "linkNew": "Yeni cihazı bağla",
+    "thisDevice": "Bu cihaz",
+    "lastSeen": "Son görülme {time} önce",
+    "linked": "Bağlantılı {time} önce",
+    "renameAria": "{name} cihazını yeniden adlandır",
+    "rename": "Yeniden adlandır",
+    "revoke": "İptal et",
+    "showLess": "Daha az göster",
+    "showMore": "{count, plural, one {# cihaz daha} other {# cihaz daha}}",
+    "showMoreAria": "Göster {count, plural, one {# cihaz daha} other {# cihaz daha}}",
+    "dialogs": {
+      "revokeTitle": "İptal et\"{name}\"?",
+      "revokeDescription": "Bu cihaz, senkronize edilen verilerinize erişimi kaybedecek. Senkronizasyonu geri yüklemek için tekrar bağlanması gerekecek. Söz konusu cihazdaki yerel veriler kalacak.",
+      "revokeDevice": "Cihazı iptal et",
+      "revoking": "İptal ediliyor...",
+      "renameTitle": "Cihazı yeniden adlandır",
+      "renameDescription": "Bu cihazı tanımlamak için bir ad seçin.",
+      "namePlaceholder": "Cihaz adı",
+      "renaming": "Yeniden adlandırılıyor..."
+    },
+    "toasts": {
+      "loadFailed": "Cihazlar yüklenemedi",
+      "removed": "Kaldırıldı\"{name}\"",
+      "removeFailed": "Cihaz kaldırılamadı",
+      "renamed": "\" olarak yeniden adlandırıldı{name}\"",
+      "renameFailed": "Cihaz yeniden adlandırılamadı"
+    }
+  },
+  "qrLinking": {
+    "title": "Yeni cihazı bağla",
+    "description": "Şifreleme anahtarlarınızı güvenli bir şekilde aktarmak için bu QR kodunu bağlamak istediğiniz cihazdan tarayın.",
+    "encrypted": "Uçtan uca şifrelenmiş",
+    "generating": "Bağlantı kodu oluşturuluyor...",
+    "generatingAria": "Bağlantı kodu oluşturuluyor",
+    "generateFailed": "Bağlantı kodu oluşturulamadı",
+    "tryAgain": "Tekrar dene",
+    "expired": "Bağlantı kodunun süresi doldu",
+    "generateNew": "Yeni kod oluştur",
+    "qrAria": "Cihaz bağlantısı için QR kodu",
+    "qrImageAria": "QR kodunu bağlayan cihaz",
+    "expiresIn": "{time} içinde sona erer",
+    "or": "veya",
+    "codeLabel": "Bağlantı kodu",
+    "copyAria": "Bağlantı kodunu kopyala",
+    "copiedAria": "Kopyalandı",
+    "copied": "Kopyalandı!"
+  },
+  "linkingApproval": {
+    "title": "Yeni cihaz bağlanmak istiyor",
+    "description": "Bir cihaz şifrelenmiş verilerinize erişim istiyor. Yalnızca bu isteği siz başlattıysanız onaylayın.",
+    "unknownDevice": "Bilinmeyen cihaz",
+    "unknownPlatform": "Bilinmeyen platform",
+    "verificationCode": "Doğrulama kodu",
+    "computing": "Bilgisayar...",
+    "unavailable": "Mevcut değil",
+    "confirmCode": "Bu kodun yeni cihazda gösterilen kodla eşleştiğini doğrulayın",
+    "reject": "Reddet",
+    "approve": "Onayla",
+    "approving": "Onaylanıyor...",
+    "approvalFailed": "Onay başarısız oldu",
+    "failedToApprove": "Cihaz onaylanamadı"
+  },
+  "recoveryKey": {
+    "title": "Kurtarma Anahtarı",
+    "description": "Bu anahtarı güvenli bir şekilde saklayın. Tüm cihazlara erişiminizi kaybederseniz kasanızı geri yükleyebilir.",
+    "loading": "Yükleniyor...",
+    "retrieveFailed": "Kurtarma anahtarı alınamadı",
+    "copied": "Kurtarma anahtarı panoya kopyalandı",
+    "copyFailed": "Panoya kopyalanamadı",
+    "clickToReveal": "Ortaya çıkarmak için tıklayın",
+    "hide": "Gizle",
+    "reveal": "Açıkla",
+    "copy": "Kopyala",
+    "sessionHint": "Bu anahtar oturum başına bir kez gösterilir. Bellekten temizlemek için bu iletişim kutusunu kapatın."
+  },
+  "keyRotation": {
+    "title": "Şifreleme Anahtarlarını Döndür",
+    "descriptions": {
+      "confirm": "Kasanız için yeni şifreleme anahtarları oluşturun.",
+      "rotating": "Verileriniz yeni anahtarlarla yeniden şifreleniyor...",
+      "phrase": "Yeni kurtarma ifadenizi kaydedin.",
+      "complete": "Anahtar döndürme tamamlandı.",
+      "error": "Anahtar yönlendirme bir hatayla karşılaştı."
+    },
+    "warningTitle": "Bu eylem:",
+    "warningItems": {
+      "keyPair": "Yeni bir şifreleme anahtarı çifti oluşturun",
+      "rewrap": "Senkronize edilen tüm öğeleri yeni anahtarla yeniden sarın",
+      "phrase": "Yeni bir kurtarma ifadesi oluşturun (eskisi geçersiz olur)",
+      "pause": "İşlem sırasında senkronizasyonu geçici olarak duraklatın"
+    },
+    "explanation": "Veri içeriğiniz hiçbir zaman yeniden şifrelenmez; yalnızca anahtar zarfları değişir. Bu hızlı ve güvenli bir işlemdir.",
+    "start": "Anahtar Döndürmeyi Başlat",
+    "starting": "Başlıyor...",
+    "phases": {
+      "preparing": "Hazırlanıyor...",
+      "reencrypting": "Anahtarları yeniden sarma ({processed}/{total})",
+      "finalizing": "Sonlandırılıyor...",
+      "working": "Çalışıyorum..."
+    },
+    "progressAria": "Anahtar rotasyonu: {phaseLabel} {pct}%",
+    "progressLabel": "Anahtar döndürme ilerlemesi",
+    "doNotClose": "Bu işlem sırasında uygulamayı kapatmayın.",
+    "complete": "Tüm şifreleme anahtarları döndürüldü. Yeni kurtarma ifadeniz kaydedildi. Senkronizasyon otomatik olarak devam edecektir.",
+    "unknownError": "Anahtar döndürme sırasında bilinmeyen bir hata oluştu.",
+    "errorHint": "Mevcut anahtarlarınız geçerliliğini korur. Senkronizasyon yeniden başlatıldı. İstediğiniz zaman yeniden deneyebilirsiniz.",
+    "closeConfirm": {
+      "title": "Döndürme devam ediyor",
+      "description": "Anahtar rotasyonu hala çalışıyor. Bu iletişim kutusunun kapatılması işlemi durdurmaz ancak işlem tamamlanana kadar yeni kurtarma ifadenizi göremezsiniz.",
+      "stay": "Kal",
+      "closeAnyway": "Yine de kapat"
+    },
+    "failed": "Anahtar döndürme başarısız oldu"
+  },
+  "ai": {
+    "header": {
+      "title": "AI Asistanı",
+      "subtitle": "Yerleştirmeler yerel olarak çalışır. Sesli notlar Whisper Small'u veya OpenAI anahtarınızı kullanabilir.",
+      "loading": "Ayarlar yükleniyor..."
+    },
+    "enable": {
+      "label": "AI Özelliklerini Etkinleştir",
+      "description": "Akıllı dosyalama önerileri ve not bağlantıları",
+      "enabled": "AI özellikleri etkin",
+      "disabled": "AI özellikleri devre dışı",
+      "error": "Ayar güncellenemedi"
+    },
+    "unknownError": "Bilinmeyen hata",
+    "groups": {
+      "voice": "Ses Transkripsiyon",
+      "embeddingModel": "Yerel Yerleştirme Modeli",
+      "embeddingIndex": "Gömme Dizini",
+      "inline": "Satır içi AI Düzenleme"
+    },
+    "voice": {
+      "provider": "sağlayıcı",
+      "providerDescription": "Sesli notlar için konuşmayı metne dönüştürme sağlayıcısı",
+      "providers": {
+        "local": "Yerel (varsayılan)",
+        "openai": "OpenAI (BYOK)"
+      },
+      "localModel": "Yerel Model",
+      "localModelDescription": "Whisper Small talep üzerine indirilir ve yerel olarak önbelleğe alınır",
+      "status": {
+        "ready": "Hazır",
+        "downloading": "İndiriliyor",
+        "downloaded": "İndirildi",
+        "notDownloaded": "İndirilmedi"
+      },
+      "cacheHint": "Uygulamayla birlikte verilmemiştir · Ayarlar'dan indirilmiştir · Bu cihazda önbelleğe alınmıştır",
+      "preparing": "Whisper Small'u Hazırlıyoruz...",
+      "download": "Whisper Small'u İndirin",
+      "apiKey": "OpenAI API Anahtarı",
+      "apiKeyDescription": "İşletim sistemi anahtarlığınızda saklanır ve yalnızca ses transkripsiyonu için kullanılır",
+      "replaceKey": "Kaydedilen OpenAI anahtarını değiştirin",
+      "enterKey": "Enter OpenAI API anahtarı",
+      "saveKey": "Anahtarı Kaydet",
+      "keySaved": "API anahtarı anahtarlığa kaydedildi",
+      "providerError": "Ses sağlayıcı güncellenemedi",
+      "downloadedToast": "Whisper Small indirildi",
+      "downloadError": "Whisper Small indirilemedi",
+      "keySavedToast": "OpenAI anahtarı kaydedildi",
+      "keySaveError": "OpenAI anahtarı kaydedilemedi"
+    },
+    "embedding": {
+      "loaded": "Yüklendi",
+      "loading": "Yükleniyor",
+      "cacheHint": "~23MB · Yerel olarak önbelleğe alındı · Tümü cihazda",
+      "dimensions": "Boyutlar",
+      "embeddings": "Gömmeler",
+      "downloadLoad": "Modeli İndirin ve Yükleyin",
+      "downloadingModel": "Model indiriliyor...",
+      "loadingModel": "Model yükleniyor...",
+      "loadSuccess": "Model başarıyla yüklendi",
+      "loadFailed": "Model yüklenemedi",
+      "rebuildIndex": "Dizini Yeniden Oluştur",
+      "rebuildDescription": "Tüm notlar için yerleştirmeleri yeniden oluştur",
+      "rebuild": "Yeniden inşa et",
+      "scanning": "Notlar taranıyor...",
+      "generating": "Yerleştirmeler oluşturuluyor...",
+      "complete": "Tamamla!",
+      "reindexed": "Yerleştirmeler yeniden indekslendi: {computed} bilgisayarlı, {skipped} atlandı",
+      "reindexFailed": "Yerleştirmeler yeniden indekslenemedi"
+    },
+    "inline": {
+      "loading": "Yükleniyor...",
+      "title": "Satır içi AI Düzenleme",
+      "enable": "Satır İçi AI'i Etkinleştir",
+      "enableDescription": "Notları düzenlerken AI menüsünü göster",
+      "enabled": "Satır içi AI düzenleme etkin",
+      "disabled": "Satır içi AI düzenleme devre dışı",
+      "provider": "sağlayıcı",
+      "providerDescription": "Metin işlemleri için AI hizmeti",
+      "providers": {
+        "ollama": "Ollama (Yerel)",
+        "openai": "OpenAI",
+        "anthropic": "Antropik"
+      },
+      "model": "Modeli",
+      "modelDescription": "Yeniden yazma ve özetleme için dil modeli",
+      "selectModel": "Bir model seçin",
+      "apiKey": "API Anahtarı",
+      "apiKeyDescription": "Yerel olarak depolanır, yalnızca sağlayıcıya gönderilir",
+      "apiKeyPlaceholder": "Enter {provider} API anahtarı",
+      "ollamaUrl": "Ollama URL",
+      "ollamaUrlDescription": "Yerel sunucu adresi",
+      "connection": "Bağlantı",
+      "activePort": "{port} bağlantı noktasında etkin",
+      "notConnected": "Bağlı değil",
+      "test": "testi",
+      "stopFailed": "Mevcut sunucu durdurulamadı",
+      "connected": "Bağlandı! Sunucu {port} bağlantı noktasında çalışıyor",
+      "connectFailed": "Bağlantı başarısız oldu",
+      "testFailed": "Bağlantı testi başarısız oldu",
+      "updateFailed": "Ayar güncellenemedi"
+    }
+  },
+  "integrations": {
+    "header": {
+      "title": "Entegrasyonlar",
+      "subtitle": "İş akışınızı zenginleştirmek için harici hizmetleri bağlayın"
+    },
+    "auth": {
+      "oauth2": "OAuth 2.0",
+      "apiKey": "API Anahtarı",
+      "none": "Sistem"
+    },
+    "comingSoon": "Yakında",
+    "connect": "Bağlan",
+    "googleCalendar": {
+      "name": "Google Calendar",
+      "description": "Memry etkinlikleri ve içe aktarılan Google takvimleri için iki yönlü senkronizasyon.",
+      "statuses": {
+        "connected": "Bağlı",
+        "notConnected": "Bağlı Değil",
+        "reconnectRequired": "Yeniden Bağlanma Gerekli"
+      },
+      "accountReconnect": "Google'ı yeniden bağlayın",
+      "importedCalendars": "İçe Aktarılan Takvimler",
+      "selected": "{count} seçilmiş",
+      "syncNow": "Şimdi Senkronize Et",
+      "disconnect": "Bağlantıyı kes",
+      "reconnect": "Google'ı yeniden bağlayın",
+      "syncFailed": "Bir şeyler ters gitti",
+      "connectFailed": "Google Calendar'e bağlanılamadı",
+      "refreshFailed": "Google Calendar yenilenemedi",
+      "disconnectFailed": "Google Calendar'in bağlantısı kesilemedi",
+      "selectionFailed": "Takvim seçimi güncellenemedi",
+      "retryFailed": "Takvim senkronizasyonu yeniden denenemedi"
+    },
+    "sourcePicker": {
+      "empty": "Bu cihazda henüz içe aktarılan Google takvimi yok.",
+      "statuses": {
+        "synced": "Senkronize edildi",
+        "error": "Hata",
+        "pending": "Beklemede",
+        "idle": "Boşta"
+      },
+      "retrying": "Yeniden deneniyor…",
+      "retryNow": "Şimdi yeniden dene"
+    },
+    "registry": {
+      "googleCalendar": {
+        "name": "Google Calendar",
+        "description": "Memry etkinlikleri, görevleri, hatırlatıcıları ve içe aktarılan takvimler için iki yönlü senkronizasyon"
+      },
+      "appleCalendar": {
+        "name": "Apple Takvim",
+        "description": "API sistemi aracılığıyla yerel takvim entegrasyonu"
+      },
+      "notion": {
+        "name": "fikir",
+        "description": "Kasanıza tek seferlik sayfa aktarımı"
+      },
+      "readwise": {
+        "name": "Okuma yönünde",
+        "description": "Vurguları kasanızla senkronize edin"
+      },
+      "todoist": {
+        "name": "Todoist",
+        "description": "İki yönlü görev senkronizasyonu"
+      }
+    }
+  },
+  "vault": {
+    "header": {
+      "title": "Kasa",
+      "subtitle": "Kasa yapılandırması ve depolama"
+    },
+    "groups": {
+      "storageUsage": "Depolama Kullanımı",
+      "location": "Konum"
+    },
+    "loadingStorage": "Depolama bilgisi yükleniyor...",
+    "signInStorage": "Depolama kullanımını görüntülemek için oturum açın",
+    "vaultPath": "Kasa Yolu",
+    "reveal": "Açıkla",
+    "storage": {
+      "title": "Depolama",
+      "used": "{used} arasında {limit} kullanılmış",
+      "ratio": "{used} / {limit}",
+      "refreshAria": "Depolama kullanımını yenile",
+      "usageAria": "Depolama kullanımı: {used} / {limit}",
+      "available": "Mevcut {available}",
+      "categories": {
+        "notes": "Notlar",
+        "attachments": "Ekler",
+        "crdt": "CRDT",
+        "other": "Diğer"
+      },
+      "warningTitle": "Depolama alanı neredeyse dolu",
+      "warningDescription": "Senkronizasyon sorunlarını önlemek için yer açın veya planınızı yükseltin."
+    }
+  },
+  "tags": {
+    "header": {
+      "title": "Etiketler",
+      "subtitle": "Notlar, günlükler ve görevler genelindeki etiketleri yönetin"
+    },
+    "loading": "Etiketler yükleniyor...",
+    "empty": "Henüz etiket yok. Etiketler, notlara ve görevlere eklediğinizde burada görünecektir.",
+    "filterPlaceholder": "Etiketleri filtrele...",
+    "noMatch": "Eşleşen etiket yok \"{query}\"",
+    "summary": "{count, plural, one {# etiket} other {# etiket}} notlar ve görevler arasında",
+    "actions": {
+      "rename": "Yeniden adlandır",
+      "changeColor": "Rengi değiştir",
+      "mergeInto": "Birleştir...",
+      "merge": "Birleştir",
+      "delete": "Sil"
+    },
+    "dialogs": {
+      "deleteTitle": "Etiketi sil",
+      "deleteDescription": "Kaldır\"{name}\" den {count, plural, one {# öğe} other {# öğe}}? Bu geri alınamaz.",
+      "mergeTitle": "Etiketi birleştir",
+      "mergeDescription": "\"ile etiketlenen tüm öğeler{source}\" hedef etiketiyle yeniden etiketlenecek. Kaynak etiketi silinecek.",
+      "targetPlaceholder": "Hedef etiketi seçin...",
+      "colorTitle": "\"{name}\" için rengi değiştir"
+    },
+    "toasts": {
+      "renamed": "Yeniden adlandırıldı \"{oldName}\"-e\"{newName}\"",
+      "renameFailed": "Etiket yeniden adlandırılamadı",
+      "deleteFailed": "Etiket silinemedi",
+      "deleted": "\"{name}\" etiketi {count, plural, one {# öğeden} other {# öğeden}} silindi",
+      "mergeFailed": "Etiketler birleştirilemedi",
+      "merged": "\"{source}\" etiketi \"{target}\" etiketiyle birleştirildi ({count, plural, one {# öğe} other {# öğe}})",
+      "colorUpdated": "\"{name}\" için renk güncellendi",
+      "colorFailed": "Renk güncellenemedi"
+    }
+  },
+  "properties": {
+    "header": {
+      "title": "Özellikler",
+      "subtitle": "Tüm notlardaki özellik tanımlarını yönetin"
+    },
+    "loading": "Özellikler yükleniyor...",
+    "empty": "Henüz özellik tanımı yok. Başlamak için herhangi bir nota Durum, Seçim veya Çoklu Seçim özelliği ekleyin.",
+    "filterPlaceholder": "Özellikleri filtrele...",
+    "noMatch": "Eşleşen mülk yok \"{query}\"",
+    "summary": "{count, plural, one {# özellik tanımı} other {# özellik tanımları}}",
+    "optionCount": "{count, plural, one {# seçenek} other {# seçenek}}",
+    "optionNamePlaceholder": "Seçenek adı",
+    "addOption": "Seçenek ekle",
+    "changeColorTitle": "Rengi değiştir",
+    "renameTitle": "Yeniden adlandır",
+    "removeTitle": "Kaldır",
+    "actions": {
+      "deleteProperty": "Mülkü sil"
+    },
+    "types": {
+      "status": "Durum",
+      "select": "Seç",
+      "multiselect": "Çoklu seçim",
+      "text": "Metin",
+      "number": "Sayı",
+      "date": "Tarih",
+      "checkbox": "Onay kutusu",
+      "url": "URL"
+    },
+    "dialogs": {
+      "deleteTitle": "Mülkü sil",
+      "deleteDescription": "\" öğesini kaldırın{name}\" özellik tanımı? Bu özelliği kullanan notlar, değerlerini düz metin olarak koruyacaktır.",
+      "colorTitle": "\"{name}\" için rengi değiştir"
+    },
+    "toasts": {
+      "renamed": "\"{oldValue}\" değeri \"{newValue}\" olarak yeniden adlandırıldı",
+      "renameFailed": "Seçenek yeniden adlandırılamadı",
+      "removed": "\"{value}\" kaldırıldı",
+      "removeFailed": "Seçenek kaldırılamadı",
+      "colorFailed": "Renk güncellenemedi",
+      "deleteFailed": "Mülk silinemedi",
+      "deleted": "\"{name}\" özelliği silindi",
+      "addFailed": "Seçenek eklenemedi"
+    }
+  },
+  "shortcuts": {
+    "header": {
+      "title": "Klavye Kısayolları",
+      "subtitle": "Yeniden bağlamak için herhangi bir kısayolu tıklayın",
+      "loading": "Ayarlar yükleniyor..."
+    },
+    "searchPlaceholder": "Kısayolları ara...",
+    "resetAll": "Tümünü Sıfırla",
+    "custom": "Özel",
+    "pressShortcut": "Kısayola basın…",
+    "cancelTitle": "İptal",
+    "rebindTitle": "Yeniden bağlamak için tıklayın",
+    "resetTitle": "Varsayılana sıfırla",
+    "clearTitle": "Kısayolu temizle",
+    "clickToSet": "Ayarlamak için tıklayın",
+    "noMatch": "Aramanızla eşleşen kısayol yok",
+    "conflict": "Şunlarla çatışmalar: {labels}",
+    "globalCapture": {
+      "title": "Küresel Yakalama",
+      "description": "İstediğiniz yerden not yakalayın",
+      "permissionNeeded": "İzin gerekli",
+      "active": "Aktif",
+      "permissionHint": "Genel kısayollar Erişilebilirlik izni gerektirir. Sistem Ayarları → Gizlilik → Erişilebilirlik seçeneğine gidin ve belleği etkinleştirin."
+    },
+    "toasts": {
+      "saveGlobalFailed": "Genel yakalama kısayolu kaydedilemedi",
+      "saveFailed": "Kısayol kaydedilemedi",
+      "resetFailed": "Kısayol sıfırlanamadı",
+      "resetAllSuccess": "Tüm kısayollar varsayılanlara sıfırlandı",
+      "resetAllFailed": "Kısayollar sıfırlanamadı"
+    },
+    "categories": {
+      "navigation": "Navigasyon",
+      "tabs": "Tab'ler",
+      "editor": "Editör",
+      "view": "Görüntüle"
+    },
+    "entries": {
+      "nav": {
+        "newNote": {
+          "label": "Yeni Not",
+          "description": "Yeni bir not oluştur"
+        },
+        "newTask": {
+          "label": "Yeni Görev",
+          "description": "Yeni bir görev oluştur"
+        },
+        "inbox": {
+          "label": "Gelen Kutusu'na git",
+          "description": "Gelen kutusuna gidin"
+        },
+        "notes": {
+          "label": "Notlara Git",
+          "description": "Notlara git"
+        },
+        "tasks": {
+          "label": "Görevlere Git",
+          "description": "Görevlere git"
+        },
+        "search": {
+          "label": "Ara",
+          "description": "Genel aramayı aç"
+        },
+        "settings": {
+          "label": "Ayarları Aç",
+          "description": "Ayarlar panelini açın"
+        }
+      },
+      "tabs": {
+        "close": {
+          "label": "Tab'i kapat",
+          "description": "Geçerli sekmeyi kapat"
+        },
+        "next": {
+          "label": "Sonraki Tab",
+          "description": "Sonraki sekmeye geç"
+        },
+        "previous": {
+          "label": "Önceki Tab",
+          "description": "Önceki sekmeye geç"
+        },
+        "reopen": {
+          "label": "Son Tab'i Yeniden Aç",
+          "description": "En son kapatılan sekmeyi yeniden aç"
+        }
+      },
+      "editor": {
+        "save": {
+          "label": "Kaydet",
+          "description": "Geçerli notu kaydet"
+        },
+        "bold": {
+          "label": "Kalın",
+          "description": "Kalın biçimlendirmeyi değiştir"
+        },
+        "italic": {
+          "label": "italik",
+          "description": "İtalik biçimlendirmeyi değiştir"
+        },
+        "underline": {
+          "label": "Altı çizili",
+          "description": "Altı çizili biçimlendirmeyi değiştir"
+        }
+      },
+      "view": {
+        "toggleSidebar": {
+          "label": "Kenar Çubuğunu Aç/Kapat",
+          "description": "Kenar çubuğunu göster veya gizle"
+        },
+        "shortcuts": {
+          "label": "Klavye Kısayolları Yardımı",
+          "description": "Klavye kısayolları referansını göster"
+        }
+      }
+    }
+  },
+  "phaseF": {
+    "componentsKeyboardChordIndicator": {
+      "pressedWaitingForSecondKey": "basıldı — ikinci tuş bekleniyor..."
+    },
+    "componentsKeyboardKeyboardShortcutsDialog": {
+      "keyboardShortcuts": "Klavye Kısayolları",
+      "press": "Basın ",
+      "toToggleThisDialog": "bu iletişim kutusunu açıp kapatmak için"
+    },
+    "componentsSyncDeviceList": {
+      "middot": "middot;"
+    },
+    "componentsSyncDeviceRevokedDialog": {
+      "thisDeviceHasBeenRemoved": "Bu cihaz kaldırıldı",
+      "exporting": "Dışa aktarılıyor...",
+      "signOut": "Oturumu Kapat"
+    },
+    "componentsSyncSyncHistory": {
+      "middot": "middot; ",
+      "activity": "Etkinlik",
+      "filterBySyncType": "Senkronizasyon türüne göre filtrele",
+      "allTypes": "Tüm türler",
+      "pushed": "İtildi",
+      "pulled": "Çekildi",
+      "errors": "Hatalar",
+      "filterByTimePeriod": "Döneme göre filtrele",
+      "allTime": "Tüm zamanlar",
+      "today": "Bugün",
+      "last7Days": "Son 7 gün",
+      "last30Days": "Son 30 gün",
+      "loadingSyncHistory": "Senkronizasyon geçmişi yükleniyor",
+      "noSyncActivityYet": "Henüz senkronizasyon etkinliği yok",
+      "loadMore": "Daha fazlasını yükle"
+    },
+    "componentsSyncSyncStatus": {
+      "lastSynced": "Son senkronize edildi ",
+      "pending": "beklemede",
+      "localOnly": "yalnızca yerel",
+      "detected": "tespit edildi",
+      "clockSkewDetected": "Saat çarpıklığı algılandı",
+      "items": "öğeler",
+      "willSyncWhenBackOnline": "Tekrar çevrimiçi olduğunda senkronize edilecek",
+      "openSyncSettings": "Senkronizasyon ayarlarını aç"
+    },
+    "pagesSettingsAiInlineSection": {
+      "httpLocalhost11434V1": "http://localhost:11434/v1"
+    }
+  }
+}

@@ -1,1 +1,296 @@
-{}
+{
+  "title": "Günlük",
+  "section": {
+    "journal": "Günlük",
+    "aiConnections": "AI Bağlantıları",
+    "todaysNotes": "Bugünün Notları",
+    "todaysSchedule": "Bugünün Programı",
+    "todaysTasks": "Bugünün Görevleri",
+    "schedule": "Program",
+    "tasks": "Görevler",
+    "calendarEvents": "Takvim Etkinlikleri",
+    "overdueTasks": "Gecikmiş Görevler",
+    "technicalDetails": "Teknik ayrıntılar"
+  },
+  "action": {
+    "versionHistory": "Sürüm Geçmişi",
+    "export": "Dışa aktar",
+    "fullWidth": "Tam genişlik",
+    "journalSettings": "Günlük Ayarları",
+    "fullMode": "Tam Mod",
+    "compactMode": "Kompakt Mod",
+    "focusMode": "Odak Modu",
+    "exitFocusMode": "Odak Modundan Çık",
+    "enterFocusMode": "Odak Moduna Gir",
+    "createNote": "Not Oluştur",
+    "createNewNote": "Yeni not oluştur",
+    "showLess": "Daha az göster",
+    "showMoreNotes": "{{count}} not daha göster",
+    "showMoreNotes_plural": "{{count}} not daha göster",
+    "showFewerNotes": "Daha az not göster",
+    "startBlank": "Bunun yerine boş başlayın",
+    "changeTemplate": "Şablonu değiştir",
+    "dismissIndicator": "Göstergeyi kapat",
+    "refreshConnections": "Bağlantıları yenile",
+    "reloadJournal": "Günlüğü Yeniden Yükle",
+    "goToToday": "Bugüne Git",
+    "copyUnsavedContent": "Kaydedilmemiş içeriği panoya kopyala",
+    "openNoteFullPage": "Notu tam sayfada aç",
+    "closeNoteDrawer": "Not çekmecesini kapat",
+    "addBookmark": "Yer işareti ekle",
+    "removeBookmark": "Yer işaretini kaldır",
+    "tryAgain": "Tekrar Deneyin"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "Ne planlıyorsun?",
+      "today": "Bugün aklınızdan ne geçiyor?",
+      "past": "Bu günü düşünün...",
+      "default": "Yazmaya başla..."
+    },
+    "toolbar": {
+      "ariaLabel": "Metin biçimlendirmesi",
+      "bold": "Kalın",
+      "italic": "italik",
+      "underline": "Altı çizili",
+      "strikethrough": "Üstü çizili",
+      "link": "Bağlantı",
+      "image": "Resim",
+      "moreOptions": "Daha fazla seçenek",
+      "heading1": "Başlık 1",
+      "heading2": "Başlık 2",
+      "heading3": "Başlık 3",
+      "bulletList": "Madde İşareti Listesi",
+      "numberedList": "Numaralı Liste",
+      "checklist": "Kontrol listesi",
+      "quote": "Alıntı",
+      "divider": "Bölücü",
+      "codeBlock": "Kod Bloğu"
+    },
+    "prompt": {
+      "enterUrl": "URL girin:"
+    },
+    "upload": {
+      "noEntry": "Resim yüklenemiyor: günlük girişi seçilmedi",
+      "failed": "Resim yüklenemedi"
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "Bugün",
+      "yesterday": "Dün",
+      "tomorrow": "Yarın",
+      "future": "Gelecek"
+    },
+    "weekday": {
+      "sunday": "Pazar",
+      "monday": "Pazartesi",
+      "tuesday": "Salı",
+      "wednesday": "Çarşamba",
+      "thursday": "Perşembe",
+      "friday": "Cuma",
+      "saturday": "Cumartesi"
+    },
+    "weekdayShort": {
+      "sunday": "Paz",
+      "monday": "Pzt",
+      "tuesday": "Salı",
+      "wednesday": "Çar",
+      "thursday": "Per",
+      "friday": "Cum",
+      "saturday": "Cmt"
+    },
+    "month": {
+      "january": "Ocak",
+      "february": "Şubat",
+      "march": "Mart",
+      "april": "Nisan",
+      "may": "Mayıs",
+      "june": "Haziran",
+      "july": "Temmuz",
+      "august": "Ağustos",
+      "september": "Eylül",
+      "october": "Ekim",
+      "november": "Kasım",
+      "december": "Aralık"
+    },
+    "monthShort": {
+      "january": "Ocak",
+      "february": "Şubat",
+      "march": "Mart",
+      "april": "Nisan",
+      "may": "Mayıs",
+      "june": "Haziran",
+      "july": "Temmuz",
+      "august": "Ağustos",
+      "september": "Eylül",
+      "october": "Ekim",
+      "november": "Kasım",
+      "december": "Aralık"
+    },
+    "greeting": {
+      "morning": "Günaydın",
+      "afternoon": "İyi günler",
+      "evening": "İyi akşamlar",
+      "night": "İyi geceler"
+    },
+    "allDay": "Bütün gün"
+  },
+  "nav": {
+    "previousDay": "Önceki gün",
+    "nextDay": "Ertesi gün",
+    "previousMonth": "Önceki ay",
+    "nextMonth": "Gelecek ay",
+    "previousYear": "Önceki yıl",
+    "nextYear": "Gelecek yıl",
+    "journalBack": "Günlüğe dön",
+    "journalNavigation": "Günlük gezinmesi",
+    "dateNavigation": "Günlük tarihi gezinmesi",
+    "goToYearView": "Yıl görünümüne git",
+    "previousView": "Önceki görünüm",
+    "nextView": "Sonraki görünüm"
+  },
+  "aria": {
+    "moreOptions": "Daha fazla seçenek",
+    "documentStatistics": "Belge istatistikleri",
+    "dayContext": "Gün bağlamı: görevler ve program",
+    "scheduleEvents": "Program etkinlikleri",
+    "tasks": "Görevler",
+    "notesCreatedToday": "Bugün {{count}} not oluşturuldu"
+  },
+  "empty": {
+    "noEntry": "Giriş yok",
+    "noDaysInMonth": "Bu ayda gün yok",
+    "noEventsScheduled": "Planlanmış etkinlik yok",
+    "noEventsScheduledToday": "Bugün planlanmış bir etkinlik yok",
+    "noEventsWereScheduled": "Hiçbir etkinlik planlanmadı",
+    "noTasksDue": "Vadesi dolan görev yok",
+    "noTasksDueToday": "Bugün teslim edilmesi gereken görev yok",
+    "noTasksWereDue": "Hiçbir görevin zamanı gelmedi",
+    "noNotesToday": "Bugün hiç not oluşturulmadı",
+    "startDocumenting": "Düşüncelerinizi ve fikirlerinizi belgelemeye başlayın"
+  },
+  "ai": {
+    "loading": "Girişiniz analiz ediliyor...",
+    "empty": {
+      "willAppear": "Bağlantılarınız burada görünecek",
+      "noneYet": "Henüz bağlantı bulunamadı",
+      "moreJournaling": "Daha fazlasını günlüğe kaydettikçe AI ilgili girişleri bulacaktır",
+      "keepWriting": "İlgili girişleri keşfetmek için yazmaya devam edin"
+    },
+    "error": {
+      "loadFailed": "Bağlantılar yüklenemedi"
+    },
+    "connectionAria": "Bağlantı {{label}}, {{scorePercent}}% eşleşme"
+  },
+  "count": {
+    "item": "öğe",
+    "items": "öğeler",
+    "note": "not",
+    "notes": "notlar",
+    "day": "gün",
+    "days": "günler",
+    "event": "etkinlik",
+    "events": "etkinlikler",
+    "meeting": "toplantı",
+    "meetings": "toplantılar",
+    "task": "görev",
+    "tasks": "görevler",
+    "todo": "yapılacak",
+    "people": "{{count}} kişi",
+    "moreConnections": "+ {{count}} daha fazla bağlantı",
+    "moreConnections_plural": "+ {{count}} daha fazla bağlantı",
+    "moreNotes": "+ {{count}} daha fazla not",
+    "moreNotes_plural": "+ {{count}} daha fazla not",
+    "daysWithEntries": "girişlerin olduğu günler",
+    "charactersWritten": "yazılı karakterler",
+    "words": "{{count}} kelime",
+    "characters": "{{count}} karakter",
+    "completed": "{{count}} tamamlandı",
+    "overdue": "{{count}} vadesi geçmiş"
+  },
+  "stats": {
+    "wordCount": "Kelime sayısı",
+    "characterCount": "Karakter sayısı",
+    "readingTime": "Tahmini okuma süresi",
+    "lastModified": "Son değiştirilme tarihi",
+    "lessThanOneMinute": "< 1 dakika",
+    "minutes": "{{minutes}} dk",
+    "read": "{{readingTime}} okuma",
+    "modified": "Değiştirildi {{date}}"
+  },
+  "task": {
+    "completed": "Tamamlandı",
+    "notCompleted": "Tamamlanmadı",
+    "priority": "{{priority}} öncelikli",
+    "overdue": "vadesi geçmiş",
+    "markComplete": "\"{{title}}\" görevini tamamlandı olarak işaretle",
+    "markNotComplete": "\"{{title}}\" görevini tamamlanmadı olarak işaretle"
+  },
+  "template": {
+    "using": "\"{{templateName}}\" kullanılıyor"
+  },
+  "reminder": {
+    "hasReminders": "Hatırlatıcıları var",
+    "setToRevisit": "Tekrar ziyaret etmek için hatırlatıcı ayarlayın",
+    "tooltip": "Hatırlatma: {{date}}",
+    "tooltipMore": "Hatırlatma: {{date}} (+{{count}} daha fazla)",
+    "success": {
+      "set": "Bu günlük girişi için hatırlatıcı ayarlandı",
+      "deleted": "Hatırlatıcı silindi",
+      "dismissed": "Hatırlatıcı reddedildi",
+      "snoozed": "Hatırlatıcı ertelendi"
+    },
+    "error": {
+      "set": "Hatırlatıcı ayarlanamadı",
+      "delete": "Hatırlatıcı silinemedi",
+      "dismiss": "Hatırlatıcı kapatılamadı",
+      "snooze": "Hatırlatıcı ertelenemedi"
+    }
+  },
+  "toast": {
+    "unsavedRetry": "İçeriğiniz hâlâ bellekte. Kaydetmeyi yeniden denemek için tıklayın.",
+    "noteNotFound": "Not \"{{target}}\" bulunamadı",
+    "fileNotFound": "Dosya bulunamadı: {{target}}",
+    "openLinkedItemFailed": "Bağlantılı öğe açılamadı",
+    "errorPrefix": "Hata:"
+  },
+  "export": {
+    "noteTitle": "Günlük - {{day}} {{month}} {{year}}"
+  },
+  "note": {
+    "generatedTitle": "Not - {{date}}",
+    "openAria": "{{title}} notunu aç, oluşturulma zamanı: {{time}}"
+  },
+  "tag": {
+    "suggestionsAria": "Etiket önerileri",
+    "empty": {
+      "title": "Henüz etiket yok",
+      "description": "Yeni bir etiket oluşturmak için yazın"
+    },
+    "groupTitle": "Etiketler",
+    "create": "Oluştur #{{query}}",
+    "ariaLabel": "Etiket: {{tag}}, filtrelemek için tıklayın"
+  },
+  "wiki": {
+    "suggestionsAria": "Sayfa önerileri",
+    "empty": {
+      "title": "Hiçbir sayfa bulunamadı"
+    },
+    "groupRecent": "Son",
+    "groupAllPages": "Tüm Sayfalar",
+    "createNewPage": "Yeni sayfa oluştur",
+    "ariaLabel": "{{title}} sayfasına bağlantı"
+  },
+  "error": {
+    "title": "Günlük Hatası",
+    "description": "{{date}} için günlükte bir hata oluştu. Son değişiklikleriniz kaydedilmemiş olabilir.",
+    "descriptionNoDate": "Günlük bir hatayla karşılaştı. Son değişiklikleriniz kaydedilmemiş olabilir.",
+    "unsavedContent": "Kaydedilmemiş içerik algılandı ({{length}} karakter)"
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "k"
+    }
+  }
+}
