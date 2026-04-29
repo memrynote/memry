@@ -1,3 +1,5 @@
+import { useMemo } from 'react'
+import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
 import { ChevronLeft, ChevronRight } from '@/lib/icons'
 import {
@@ -10,7 +12,10 @@ import {
 } from './date-utils'
 import type { CalendarProjectionItem } from '@/services/calendar-service'
 
-const DAY_HEADERS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+function getWeekdayHeaders(locale: string): string[] {
+  const formatter = new Intl.DateTimeFormat(locale, { weekday: 'short' })
+  return Array.from({ length: 7 }, (_, i) => formatter.format(new Date(2020, 5, 7 + i)))
+}
 
 interface CalendarMiniMonthProps {
   anchorDate: string
@@ -25,11 +30,13 @@ export function CalendarMiniMonth({
   onDateSelect,
   onMonthChange
 }: CalendarMiniMonthProps): React.JSX.Element {
+  const { t, i18n } = useT('calendar')
   const date = parseLocalDate(anchorDate)
-  const monthLabel = new Intl.DateTimeFormat(undefined, {
+  const monthLabel = new Intl.DateTimeFormat(i18n.language, {
     month: 'long',
     year: 'numeric'
   }).format(date)
+  const dayHeaders = useMemo(() => getWeekdayHeaders(i18n.language), [i18n.language])
 
   const gridDays = getMonthGridDays(anchorDate)
   const daysWithEvents = new Set(items.map((item) => toLocalDateKey(item.startAt)))
@@ -41,7 +48,7 @@ export function CalendarMiniMonth({
           type="button"
           className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-active"
           onClick={() => onMonthChange(addLocalMonths(anchorDate, -1))}
-          aria-label="Previous month"
+          aria-label={t('toolbar.previous-month')}
         >
           <ChevronLeft className="size-5" />
         </button>
@@ -50,14 +57,14 @@ export function CalendarMiniMonth({
           type="button"
           className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-active"
           onClick={() => onMonthChange(addLocalMonths(anchorDate, 1))}
-          aria-label="Next month"
+          aria-label={t('toolbar.next-month')}
         >
           <ChevronRight className="size-5" />
         </button>
       </div>
 
       <div className="mb-0.5 grid grid-cols-7">
-        {DAY_HEADERS.map((header) => (
+        {dayHeaders.map((header) => (
           <div key={header} className="py-1 text-center text-sm font-medium text-muted-foreground">
             {header}
           </div>
