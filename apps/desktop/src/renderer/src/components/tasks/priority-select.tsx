@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { Picker } from '@/components/ui/picker'
 import { priorityConfig, type Priority } from '@/data/sample-tasks'
+import { useT } from '@memry/i18n/renderer'
 
 interface PrioritySelectProps {
   value: Priority
@@ -56,6 +57,7 @@ export const PrioritySelect = ({
   className,
   compact = false
 }: PrioritySelectProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const currentOption = PRIORITY_OPTIONS.find((opt) => opt.value === value)
 
   const handleKeyDown = useCallback(
@@ -75,7 +77,7 @@ export const PrioritySelect = ({
         variant="button"
         chevron
         className={cn('w-full', compact && 'h-9 text-sm', className)}
-        aria-label={'Select priority' /* TODO(i18n): wrap aria-label in t() */}
+        aria-label={tPhaseF('phaseF.componentsTasksPrioritySelect.selectPriority')}
       >
         <span className="flex items-center gap-2">
           <PriorityDot color={currentOption?.color || null} compact={compact} />
@@ -104,11 +106,11 @@ export const PrioritySelect = ({
             <kbd className="inline-flex h-4 items-center justify-center rounded border border-border bg-muted px-0.5 text-[10px]">
               ↓
             </kbd>
-            <span className="ml-1">{/* TODO(i18n): wrap in t() */}navigate</span>
+            <span className="ml-1">{tPhaseF('phaseF.componentsTasksPrioritySelect.navigate')}</span>
             <kbd className="ml-2 inline-flex h-4 items-center justify-center rounded border border-border bg-muted px-1 text-[10px]">
               ↵
             </kbd>
-            <span className="ml-1">{/* TODO(i18n): wrap in t() */}select</span>
+            <span className="ml-1">{tPhaseF('phaseF.componentsTasksPrioritySelect.select')}</span>
           </div>
         </Picker.Footer>
       </Picker.Content>

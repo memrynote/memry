@@ -355,9 +355,7 @@ function MoreOptionsMenu({ editor }: MoreOptionsMenuProps): React.JSX.Element {
         >
           <Quote className="size-4 mr-2" />
           {t('editor.toolbar.quote')}
-          <span className="ml-auto text-xs text-muted-foreground">
-            ⌘⇧{/* TODO(i18n): wrap in t() */}B
-          </span>
+          <span className="ml-auto text-xs text-muted-foreground">⌘⇧B</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => editor.chain().focus().setHorizontalRule().run()}>
           <Minus className="size-4 mr-2" />
@@ -369,9 +367,7 @@ function MoreOptionsMenu({ editor }: MoreOptionsMenuProps): React.JSX.Element {
         >
           <Code className="size-4 mr-2" />
           {t('editor.toolbar.codeBlock')}
-          <span className="ml-auto text-xs text-muted-foreground">
-            ⌘⇧{/* TODO(i18n): wrap in t() */}C
-          </span>
+          <span className="ml-auto text-xs text-muted-foreground">⌘⇧C</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

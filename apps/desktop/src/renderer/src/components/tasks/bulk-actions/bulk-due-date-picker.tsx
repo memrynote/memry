@@ -13,6 +13,7 @@ import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -42,6 +43,7 @@ export const BulkDueDatePicker = ({
   taskCount,
   onConfirm
 }: BulkDueDatePickerProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
   const [includeTime, setIncludeTime] = useState(false)
   const [selectedTime, setSelectedTime] = useState<string>('12:00')
@@ -72,13 +74,14 @@ export const BulkDueDatePicker = ({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {/* TODO(i18n): wrap in t() */}
-            Set due date for {taskCount} {/* TODO(i18n): wrap in t() */}task
+            {tPhaseF('phaseF.componentsTasksBulkActionsBulkDueDatePicker.setDueDateFor')}
+            {taskCount} {tPhaseF('phaseF.componentsTasksBulkActionsBulkDueDatePicker.task')}
             {taskCount !== 1 ? 's' : ''}
           </DialogTitle>
           <DialogDescription>
-            {/* TODO(i18n): wrap in t() */}
-            Select a date to set as the due date for all selected tasks.
+            {tPhaseF(
+              'phaseF.componentsTasksBulkActionsBulkDueDatePicker.selectADateToSetAsTheDueDateForAllSelectedTasks'
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -93,8 +96,7 @@ export const BulkDueDatePicker = ({
             <div className="flex items-center gap-2">
               <Switch id="include-time" checked={includeTime} onCheckedChange={setIncludeTime} />
               <Label htmlFor="include-time" className="text-sm">
-                {/* TODO(i18n): wrap in t() */}
-                Also set time
+                {tPhaseF('phaseF.componentsTasksBulkActionsBulkDueDatePicker.alsoSetTime')}
               </Label>
             </div>
 
@@ -111,12 +113,10 @@ export const BulkDueDatePicker = ({
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={onClose}>
-            {/* TODO(i18n): wrap in t() */}
-            Cancel
+            {tPhaseF('phaseF.componentsTasksBulkActionsBulkDueDatePicker.cancel')}
           </Button>
           <Button onClick={handleConfirm} disabled={!selectedDate}>
-            {/* TODO(i18n): wrap in t() */}
-            Set Due Date
+            {tPhaseF('phaseF.componentsTasksBulkActionsBulkDueDatePicker.setDueDate')}
           </Button>
         </DialogFooter>
       </DialogContent>

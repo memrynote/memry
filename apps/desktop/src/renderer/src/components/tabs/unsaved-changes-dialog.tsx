@@ -114,15 +114,21 @@ export const UnsavedChangesDialog = ({
   onDiscard,
   onCancel
 }: UnsavedChangesDialogProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('common')
   const { t } = useT('common')
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{/* TODO(i18n): wrap in t() */}Unsaved Changes</AlertDialogTitle>
+          <AlertDialogTitle>
+            {tPhaseF('phaseF.componentsTabsUnsavedChangesDialog.unsavedChanges')}
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            &{/* TODO(i18n): wrap in t() */}quot;{tabTitle}&{/* TODO(i18n): wrap in t() */}quot; has
-            unsaved changes. What would you like to do?
+            &{tPhaseF('phaseF.componentsTabsUnsavedChangesDialog.quot')}
+            {tabTitle}&
+            {tPhaseF(
+              'phaseF.componentsTabsUnsavedChangesDialog.quotHasUnsavedChangesWhatWouldYouLikeToDo'
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

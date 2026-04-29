@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useT } from '@memry/i18n/renderer'
 
 const SIDEBAR_COOKIE_NAME = 'sidebar_state'
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -181,6 +182,7 @@ function Sidebar({
   variant?: 'sidebar' | 'floating' | 'inset'
   collapsible?: 'offcanvas' | 'icon' | 'none'
 }) {
+  const { t: tPhaseF } = useT('common')
   const { isMobile, state, openMobile, setOpenMobile, isResizing } = useSidebar()
 
   if (collapsible === 'none') {
@@ -214,9 +216,9 @@ function Sidebar({
           side={side}
         >
           <SheetHeader className="sr-only">
-            <SheetTitle>{/* TODO(i18n): wrap in t() */}Sidebar</SheetTitle>
+            <SheetTitle>{tPhaseF('phaseF.componentsUiSidebar.sidebar')}</SheetTitle>
             <SheetDescription>
-              {/* TODO(i18n): wrap in t() */}Displays the mobile sidebar.
+              {tPhaseF('phaseF.componentsUiSidebar.displaysTheMobileSidebar')}
             </SheetDescription>
           </SheetHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
@@ -275,6 +277,7 @@ function Sidebar({
 }
 
 function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<typeof Button>) {
+  const { t: tPhaseF } = useT('common')
   const { toggleSidebar, state } = useSidebar()
   const Icon = state === 'expanded' ? PanelLeftOpenIcon : PanelLeftCloseIcon
 
@@ -292,12 +295,13 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
       {...props}
     >
       <Icon />
-      <span className="sr-only">{/* TODO(i18n): wrap in t() */}Toggle Sidebar</span>
+      <span className="sr-only">{tPhaseF('phaseF.componentsUiSidebar.toggleSidebar')}</span>
     </Button>
   )
 }
 
 function SidebarRail({ className, ...props }: React.ComponentProps<'button'>) {
+  const { t: tPhaseF } = useT('common')
   const { toggleSidebar, sidebarWidth, setSidebarWidth, setIsResizing } = useSidebar()
   const startXRef = React.useRef(0)
   const startWidthRef = React.useRef(0)
@@ -361,12 +365,12 @@ function SidebarRail({ className, ...props }: React.ComponentProps<'button'>) {
     <button
       data-sidebar="rail"
       data-slot="sidebar-rail"
-      aria-label={'Toggle Sidebar' /* TODO(i18n): wrap aria-label in t() */}
+      aria-label={tPhaseF('phaseF.componentsUiSidebar.toggleSidebar2')}
       tabIndex={-1}
       onMouseDown={handleMouseDown}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
-      title={'Drag to resize · Double-click to reset' /* TODO(i18n): wrap title in t() */}
+      title={tPhaseF('phaseF.componentsUiSidebar.dragToResizeDoubleClickToReset')}
       className={cn(
         'hover:after:bg-sidebar-border absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex',
         'cursor-col-resize',

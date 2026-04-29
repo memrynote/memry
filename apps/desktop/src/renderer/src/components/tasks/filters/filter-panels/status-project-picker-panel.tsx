@@ -3,6 +3,7 @@ import { useMemo } from 'react'
 import { ChevronRight } from '@/lib/icons'
 import type { Project } from '@/data/tasks-data'
 import { BackButton } from './priority-panel'
+import { useT } from '@memry/i18n/renderer'
 
 interface StatusProjectPickerPanelProps {
   projects: Project[]
@@ -15,6 +16,7 @@ export function StatusProjectPickerPanel({
   onSelectProject,
   onGoBack
 }: StatusProjectPickerPanelProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('tasks')
   const visibleProjects = useMemo(() => projects.filter((p) => !p.isArchived), [projects])
 
   return (
@@ -31,12 +33,12 @@ export function StatusProjectPickerPanel({
           <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.2" />
         </svg>
         <span className="text-[13px] text-foreground font-medium leading-4">
-          {/* TODO(i18n): wrap in t() */}Status
+          {tPhaseF('phaseF.componentsTasksFiltersFilterPanelsStatusProjectPickerPan.status')}
         </span>
       </div>
       <div className="px-3 pt-1.5 pb-1">
         <span className="text-[11px] text-muted-foreground/60 leading-3.5">
-          {/* TODO(i18n): wrap in t() */}Pick a project
+          {tPhaseF('phaseF.componentsTasksFiltersFilterPanelsStatusProjectPickerPan.pickAProject')}
         </span>
       </div>
       <div className="flex flex-col p-1">

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 import {
   type ReminderPreset,
   standardPresets,
@@ -43,6 +44,7 @@ export function ReminderPicker({
   isLoading = false,
   className
 }: ReminderPickerProps): React.ReactElement {
+  const { t: tPhaseF } = useT('inbox')
   const {
     settings: { clockFormat }
   } = useGeneralSettings()
@@ -118,7 +120,7 @@ export function ReminderPicker({
             className={cn(sizeClasses[size], 'gap-1.5', className)}
           >
             <Bell className="h-4 w-4" />
-            <span>{/* TODO(i18n): wrap in t() */}Remind</span>
+            <span>{tPhaseF('phaseF.componentsReminderReminderPicker.remind')}</span>
           </Button>
         )}
       </Picker.Trigger>
@@ -127,7 +129,7 @@ export function ReminderPicker({
         {mode === 'presets' ? (
           <>
             <Picker.List>
-              <Picker.Section label={'Remind me' /* TODO(i18n): wrap label in t() */}>
+              <Picker.Section label={tPhaseF('phaseF.componentsReminderReminderPicker.remindMe')}>
                 {presets.map((preset) => (
                   <Picker.Item
                     key={preset.id}
@@ -146,7 +148,7 @@ export function ReminderPicker({
               <Picker.Separator />
               <Picker.Item
                 value="pick-custom"
-                label={'Pick date & time' /* TODO(i18n): wrap label in t() */}
+                label={tPhaseF('phaseF.componentsReminderReminderPicker.pickDateTime')}
                 icon={<Calendar className="size-4" />}
                 trailing={<ChevronRight className="size-4 text-muted-foreground" />}
               />
@@ -157,7 +159,9 @@ export function ReminderPicker({
                 <Picker.Separator />
                 <div className="px-3 py-2">
                   <Textarea
-                    placeholder={'Add a note (optional)' /* TODO(i18n): wrap placeholder in t() */}
+                    placeholder={tPhaseF(
+                      'phaseF.componentsReminderReminderPicker.addANoteOptional'
+                    )}
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     className="h-16 resize-none text-sm"
@@ -173,8 +177,8 @@ export function ReminderPicker({
               className="mb-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
               <ChevronRight className="h-3 w-3 rotate-180" />
-              {/* TODO(i18n): wrap in t() */}
-              Back to presets
+
+              {tPhaseF('phaseF.componentsReminderReminderPicker.backToPresets')}
             </button>
 
             <DatePickerCalendar
@@ -188,8 +192,8 @@ export function ReminderPicker({
               <div className="flex items-center gap-2">
                 <Label htmlFor="reminder-time" className="flex items-center gap-1.5 text-sm">
                   <Clock className="h-4 w-4" />
-                  {/* TODO(i18n): wrap in t() */}
-                  Time
+
+                  {tPhaseF('phaseF.componentsReminderReminderPicker.time')}
                 </Label>
                 <Input
                   id="reminder-time"
@@ -203,14 +207,13 @@ export function ReminderPicker({
               {shouldShowNote && (
                 <div>
                   <Label htmlFor="reminder-note" className="text-sm">
-                    {/* TODO(i18n): wrap in t() */}
-                    Note (optional)
+                    {tPhaseF('phaseF.componentsReminderReminderPicker.noteOptional')}
                   </Label>
                   <Textarea
                     id="reminder-note"
-                    placeholder={
-                      'Why are you setting this reminder?' /* TODO(i18n): wrap placeholder in t() */
-                    }
+                    placeholder={tPhaseF(
+                      'phaseF.componentsReminderReminderPicker.whyAreYouSettingThisReminder'
+                    )}
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     className="mt-1.5 h-16 resize-none text-sm"

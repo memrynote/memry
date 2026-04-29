@@ -3,6 +3,7 @@ import { X } from '@/lib/icons'
 
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface TagPillProps {
   tag: string
@@ -98,6 +99,7 @@ interface TagInputProps {
 }
 
 const TagInput = ({ tags, suggestedTags, onTagsChange }: TagInputProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('inbox')
   const [inputValue, setInputValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -150,9 +152,11 @@ const TagInput = ({ tags, suggestedTags, onTagsChange }: TagInputProps): React.J
     <div className="space-y-3">
       {/* Section Label */}
       <div className="flex items-center gap-2">
-        <h3 className="text-sm font-medium text-foreground">{/* TODO(i18n): wrap in t() */}Tags</h3>
+        <h3 className="text-sm font-medium text-foreground">
+          {tPhaseF('phaseF.componentsFilingTagInput.tags')}
+        </h3>
         <span className="text-xs text-muted-foreground">
-          ({/* TODO(i18n): wrap in t() */}optional)
+          ({tPhaseF('phaseF.componentsFilingTagInput.optional')}
         </span>
       </div>
 
@@ -161,11 +165,11 @@ const TagInput = ({ tags, suggestedTags, onTagsChange }: TagInputProps): React.J
         <Input
           ref={inputRef}
           type="text"
-          placeholder={'Add tags...' /* TODO(i18n): wrap placeholder in t() */}
+          placeholder={tPhaseF('phaseF.componentsFilingTagInput.addTags')}
           value={inputValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          aria-label={'Add tags' /* TODO(i18n): wrap aria-label in t() */}
+          aria-label={tPhaseF('phaseF.componentsFilingTagInput.addTags2')}
         />
 
         {/* Current Tags */}
@@ -173,7 +177,7 @@ const TagInput = ({ tags, suggestedTags, onTagsChange }: TagInputProps): React.J
           <div
             className="flex flex-wrap gap-1.5"
             role="list"
-            aria-label={'Selected tags' /* TODO(i18n): wrap aria-label in t() */}
+            aria-label={tPhaseF('phaseF.componentsFilingTagInput.selectedTags')}
           >
             {tags.map((tag) => (
               <TagPill key={tag} tag={tag} onRemove={removeTag} variant="selected" />
@@ -186,7 +190,7 @@ const TagInput = ({ tags, suggestedTags, onTagsChange }: TagInputProps): React.J
       {availableSuggestedTags.length > 0 && (
         <div className="space-y-1.5">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-            {/* TODO(i18n): wrap in t() */}Suggested
+            {tPhaseF('phaseF.componentsFilingTagInput.suggested')}
           </p>
           <div className="flex flex-wrap gap-1.5">
             {availableSuggestedTags.map((tag) => (

@@ -27,6 +27,7 @@ export const FilterEmptyState = ({
   onClearFilters,
   className
 }: FilterEmptyStateProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const { t } = useT('tasks')
 
   // Generate a summary of active filters
@@ -82,16 +83,15 @@ export const FilterEmptyState = ({
 
       {filterSummary && (
         <p className="text-sm text-muted-foreground mb-6 text-center max-w-md">
-          {/* TODO(i18n): wrap in t() */}
-          Active filters: {filterSummary}
+          {tPhaseF('phaseF.componentsTasksFiltersFilterEmptyState.activeFilters')}
+          {filterSummary}
         </p>
       )}
 
       <p className="text-sm text-muted-foreground mb-4">{t('filters.emptyHelp')}</p>
 
       <Button variant="outline" onClick={onClearFilters} className="text-primary">
-        {/* TODO(i18n): wrap in t() */}
-        Clear all filters
+        {tPhaseF('phaseF.componentsTasksFiltersFilterEmptyState.clearAllFilters')}
       </Button>
     </div>
   )

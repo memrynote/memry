@@ -3,6 +3,7 @@ import { getIconByName } from '@/components/icon-picker'
 import { cn } from '@/lib/utils'
 import { Picker } from '@/components/ui/picker'
 import type { Project } from '@/data/tasks-data'
+import { useT } from '@memry/i18n/renderer'
 
 interface ProjectSelectProps {
   value: string
@@ -39,6 +40,7 @@ export const ProjectSelect = ({
   projects,
   className
 }: ProjectSelectProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const availableProjects = useMemo(() => projects.filter((p) => !p.isArchived), [projects])
   const currentProject = availableProjects.find((p) => p.id === value)
 
@@ -48,7 +50,7 @@ export const ProjectSelect = ({
         variant="button"
         chevron
         className={cn('w-full', className)}
-        aria-label={'Select project' /* TODO(i18n): wrap aria-label in t() */}
+        aria-label={tPhaseF('phaseF.componentsTasksProjectSelect.selectProject')}
       >
         {currentProject ? (
           <span className="flex items-center gap-2 min-w-0">
@@ -57,7 +59,7 @@ export const ProjectSelect = ({
           </span>
         ) : (
           <span className="text-muted-foreground">
-            {/* TODO(i18n): wrap in t() */}Select project
+            {tPhaseF('phaseF.componentsTasksProjectSelect.selectProject2')}
           </span>
         )}
       </Picker.Trigger>

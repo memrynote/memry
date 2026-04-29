@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -59,6 +60,7 @@ const generateTimeOptions = (): TimeOption[] => {
 // ============================================================================
 
 export const TimePicker = ({ value, onChange, className }: TimePickerProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const timeOptions = useMemo(() => generateTimeOptions(), [])
 
   // Find current option
@@ -78,7 +80,7 @@ export const TimePicker = ({ value, onChange, className }: TimePickerProps): Rea
       <Select value={value || ''} onValueChange={handleValueChange}>
         <SelectTrigger
           className="w-full"
-          aria-label={'Select time' /* TODO(i18n): wrap aria-label in t() */}
+          aria-label={tPhaseF('phaseF.componentsTasksTimePicker.selectTime')}
         >
           <SelectValue>
             {currentOption ? (
@@ -89,7 +91,7 @@ export const TimePicker = ({ value, onChange, className }: TimePickerProps): Rea
             ) : (
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Clock className="size-4" aria-hidden="true" />
-                <span>{/* TODO(i18n): wrap in t() */}Select time</span>
+                <span>{tPhaseF('phaseF.componentsTasksTimePicker.selectTime2')}</span>
               </div>
             )}
           </SelectValue>
@@ -111,7 +113,7 @@ export const TimePicker = ({ value, onChange, className }: TimePickerProps): Rea
           size="icon"
           className="size-8 shrink-0"
           onClick={handleClear}
-          aria-label={'Clear time' /* TODO(i18n): wrap aria-label in t() */}
+          aria-label={tPhaseF('phaseF.componentsTasksTimePicker.clearTime')}
         >
           <X className="size-4" />
         </Button>

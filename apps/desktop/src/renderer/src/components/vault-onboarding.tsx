@@ -4,8 +4,10 @@ import * as React from 'react'
 import { FolderOpen, Sparkles, FileText, Clock, Loader2 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { useVault, useVaultList } from '@/hooks/use-vault'
+import { useT } from '@memry/i18n/renderer'
 
 export function VaultOnboarding() {
+  const { t: tPhaseF } = useT('common')
   const { selectVault, isLoading, error, switchVault } = useVault()
   const { vaults } = useVaultList()
 
@@ -26,14 +28,13 @@ export function VaultOnboarding() {
             <Sparkles className="w-8 h-8" />
           </div>
           <h1 className="text-2xl font-semibold text-gray-900 mb-2">
-            {/* TODO(i18n): wrap in t() */}Welcome to Memry
+            {tPhaseF('phaseF.componentsVaultOnboarding.welcomeToMemry')}
           </h1>
           <p className="text-gray-600">
-            {/* TODO(i18n): wrap in t() */}
-            Your personal knowledge management system.
+            {tPhaseF('phaseF.componentsVaultOnboarding.yourPersonalKnowledgeManagementSystem')}
             <br />
-            {/* TODO(i18n): wrap in t() */}
-            Select a folder to store your notes and tasks.
+
+            {tPhaseF('phaseF.componentsVaultOnboarding.selectAFolderToStoreYourNotesAndTasks')}
           </p>
         </div>
 
@@ -47,14 +48,14 @@ export function VaultOnboarding() {
             {isLoading ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                {/* TODO(i18n): wrap in t() */}
-                Opening...
+
+                {tPhaseF('phaseF.componentsVaultOnboarding.opening')}
               </>
             ) : (
               <>
                 <FolderOpen className="w-5 h-5 mr-2" />
-                {/* TODO(i18n): wrap in t() */}
-                Select Vault Folder
+
+                {tPhaseF('phaseF.componentsVaultOnboarding.selectVaultFolder')}
               </>
             )}
           </Button>
@@ -67,10 +68,10 @@ export function VaultOnboarding() {
               <FileText className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-gray-900">
-                  {/* TODO(i18n): wrap in t() */}Plain Markdown
+                  {tPhaseF('phaseF.componentsVaultOnboarding.plainMarkdown')}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {/* TODO(i18n): wrap in t() */}Your notes stay portable
+                  {tPhaseF('phaseF.componentsVaultOnboarding.yourNotesStayPortable')}
                 </p>
               </div>
             </div>
@@ -78,10 +79,10 @@ export function VaultOnboarding() {
               <Clock className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-gray-900">
-                  {/* TODO(i18n): wrap in t() */}Sync Anywhere
+                  {tPhaseF('phaseF.componentsVaultOnboarding.syncAnywhere')}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {/* TODO(i18n): wrap in t() */}Use Dropbox, iCloud, Git
+                  {tPhaseF('phaseF.componentsVaultOnboarding.useDropboxIcloudGit')}
                 </p>
               </div>
             </div>
@@ -92,7 +93,7 @@ export function VaultOnboarding() {
         {vaults.length > 0 && (
           <div className="bg-white rounded-2xl shadow-lg border border-gray-200/50 p-4">
             <h3 className="text-sm font-medium text-gray-500 mb-3 px-2">
-              {/* TODO(i18n): wrap in t() */}Recent Vaults
+              {tPhaseF('phaseF.componentsVaultOnboarding.recentVaults')}
             </h3>
             <div className="space-y-1">
               {vaults.slice(0, 3).map((vault) => (
@@ -108,7 +109,8 @@ export function VaultOnboarding() {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-900 truncate">{vault.name}</p>
                     <p className="text-xs text-gray-500 truncate">
-                      {vault.noteCount} {/* TODO(i18n): wrap in t() */}notes · Last opened{' '}
+                      {vault.noteCount}{' '}
+                      {tPhaseF('phaseF.componentsVaultOnboarding.notesLastOpened')}{' '}
                       {formatRelativeTime(vault.lastOpened)}
                     </p>
                   </div>

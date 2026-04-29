@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { getOperatorsForType, getDefaultOperator, type PropertyType } from '@/lib/filter-evaluator'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // Types
@@ -82,6 +83,7 @@ export function FilterRow({
   nestingLevel = 0,
   className
 }: FilterRowProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   // Combine built-in and custom properties
   const allProperties = useMemo(() => {
     const customProps = availableProperties.map((p) => ({
@@ -159,13 +161,12 @@ export function FilterRow({
       {/* Property Selector */}
       <Select value={condition.property} onValueChange={handlePropertyChange}>
         <SelectTrigger className="w-[140px] h-8 text-xs">
-          <SelectValue placeholder={'Property' /* TODO(i18n): wrap placeholder in t() */} />
+          <SelectValue placeholder={'Property'} />
         </SelectTrigger>
         <SelectContent>
           {/* Built-in properties */}
           <div className="px-2 py-1 text-[10px] font-medium text-muted-foreground uppercase">
-            {/* TODO(i18n): wrap in t() */}
-            Built-in
+            {tPhaseF('phaseF.componentsFolderViewFilterRow.builtIn')}
           </div>
           {BUILT_IN_PROPERTIES.map((prop) => (
             <SelectItem key={prop.id} value={prop.id} className="text-xs">
@@ -177,8 +178,7 @@ export function FilterRow({
           {availableProperties.length > 0 && (
             <>
               <div className="px-2 py-1 mt-1 text-[10px] font-medium text-muted-foreground uppercase border-t">
-                {/* TODO(i18n): wrap in t() */}
-                Properties
+                {tPhaseF('phaseF.componentsFolderViewFilterRow.properties')}
               </div>
               {availableProperties.map((prop) => (
                 <SelectItem key={prop.id} value={prop.id} className="text-xs">
@@ -193,7 +193,7 @@ export function FilterRow({
       {/* Operator Selector */}
       <Select value={condition.operator} onValueChange={handleOperatorChange}>
         <SelectTrigger className="w-[130px] h-8 text-xs">
-          <SelectValue placeholder={'Operator' /* TODO(i18n): wrap placeholder in t() */} />
+          <SelectValue placeholder={'Operator'} />
         </SelectTrigger>
         <SelectContent>
           {operators.map((op) => (
@@ -249,7 +249,7 @@ function ValueInput({ type, value, onChange }: ValueInputProps): React.JSX.Eleme
           value={(value as number) ?? ''}
           onChange={(e) => onChange(e.target.value ? Number(e.target.value) : '')}
           className="w-[100px] h-8 text-xs"
-          placeholder={'Value' /* TODO(i18n): wrap placeholder in t() */}
+          placeholder={'Value'}
         />
       )
 
@@ -271,7 +271,7 @@ function ValueInput({ type, value, onChange }: ValueInputProps): React.JSX.Eleme
           value={String(value ?? '')}
           onChange={(e) => onChange(e.target.value)}
           className="flex-1 h-8 text-xs min-w-[100px]"
-          placeholder={'Value' /* TODO(i18n): wrap placeholder in t() */}
+          placeholder={'Value'}
         />
       )
   }

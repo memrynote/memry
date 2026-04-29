@@ -2,6 +2,7 @@ import { Check, Calendar, Plus } from '@/lib/icons'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -90,11 +91,12 @@ export const SimpleEmptyState = ({
   onAddTask,
   className
 }: SimpleEmptyStateProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   return (
     <div className={cn('py-4 text-center', className)}>
       {/* Message */}
       <p className="text-sm text-text-tertiary mb-2">
-        {/* TODO(i18n): wrap in t() */}No tasks scheduled
+        {tPhaseF('phaseF.componentsTasksEmptyStatesSectionEmptyStates.noTasksScheduled')}
       </p>
 
       {/* Add task link */}
@@ -109,8 +111,9 @@ export const SimpleEmptyState = ({
         aria-label={`Add task for ${label.toLowerCase()}`}
       >
         <Plus className="size-4" aria-hidden="true" />
-        {/* TODO(i18n): wrap in t() */}
-        Add task for {label.toLowerCase()}
+
+        {tPhaseF('phaseF.componentsTasksEmptyStatesSectionEmptyStates.addTaskFor')}
+        {label.toLowerCase()}
       </button>
     </div>
   )
@@ -129,6 +132,7 @@ export const PlanningEmptyState = ({
   onViewCalendar,
   className
 }: PlanningEmptyStateProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   return (
     <div className={cn('py-8 text-center', className)}>
       {/* Calendar icon */}
@@ -138,27 +142,29 @@ export const PlanningEmptyState = ({
 
       {/* Title */}
       <h3 className="font-medium text-text-primary mb-1">
-        {/* TODO(i18n): wrap in t() */}Nothing scheduled
+        {tPhaseF('phaseF.componentsTasksEmptyStatesSectionEmptyStates.nothingScheduled')}
       </h3>
 
       {/* Description */}
       <p className="text-sm text-text-tertiary mb-5">
-        {/* TODO(i18n): wrap in t() */}Add tasks with due dates to plan your week.
+        {tPhaseF(
+          'phaseF.componentsTasksEmptyStatesSectionEmptyStates.addTasksWithDueDatesToPlanYourWeek'
+        )}
       </p>
 
       {/* Action buttons */}
       <div className="flex items-center justify-center gap-3">
         <Button onClick={onAddTask} size="sm" className="gap-2">
           <Plus className="size-4" aria-hidden="true" />
-          {/* TODO(i18n): wrap in t() */}
-          Add task
+
+          {tPhaseF('phaseF.componentsTasksEmptyStatesSectionEmptyStates.addTask')}
         </Button>
 
         {onViewCalendar && (
           <Button onClick={onViewCalendar} variant="outline" size="sm" className="gap-2">
             <Calendar className="size-4" aria-hidden="true" />
-            {/* TODO(i18n): wrap in t() */}
-            View calendar
+
+            {tPhaseF('phaseF.componentsTasksEmptyStatesSectionEmptyStates.viewCalendar')}
           </Button>
         )}
       </div>

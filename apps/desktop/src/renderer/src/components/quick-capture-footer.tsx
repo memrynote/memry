@@ -1,10 +1,12 @@
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface QuickCaptureFooterProps {
   className?: string
 }
 
 export function QuickCaptureFooter({ className }: QuickCaptureFooterProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('inbox')
   const isMac = navigator.platform.includes('Mac')
   const modKey = isMac ? '⌘' : 'Ctrl'
 
@@ -20,7 +22,7 @@ export function QuickCaptureFooter({ className }: QuickCaptureFooterProps): Reac
           Esc
         </kbd>
         <span className="font-sans text-[11px]/3.5 text-muted-foreground/60">
-          {/* TODO(i18n): wrap in t() */}close
+          {tPhaseF('phaseF.componentsQuickCaptureFooter.close')}
         </span>
       </div>
       <div className="flex items-center gap-1">
@@ -28,7 +30,7 @@ export function QuickCaptureFooter({ className }: QuickCaptureFooterProps): Reac
           {modKey} ↵
         </kbd>
         <span className="font-sans text-[11px]/3.5 font-medium text-accent-orange/70">
-          {/* TODO(i18n): wrap in t() */}capture
+          {tPhaseF('phaseF.componentsQuickCaptureFooter.capture')}
         </span>
       </div>
     </div>

@@ -50,6 +50,7 @@ function hasAnyMetadata(props: CalendarEventMetadataProps): boolean {
 }
 
 export function CalendarEventMetadata(props: CalendarEventMetadataProps): React.JSX.Element | null {
+  const { t: tPhaseF } = useT('calendar')
   const { t } = useT('calendar')
   if (!hasAnyMetadata(props)) return null
   const { attendees, reminders, visibility, conferenceData, className } = props
@@ -125,7 +126,8 @@ export function CalendarEventMetadata(props: CalendarEventMetadataProps): React.
                   key={`${o.method}-${o.minutes}-${idx}`}
                   className="rounded-md bg-muted px-2 py-0.5 text-xs"
                 >
-                  {o.minutes} {/* TODO(i18n): wrap in t() */}min · {o.method}
+                  {o.minutes} {tPhaseF('phaseF.componentsCalendarCalendarEventMetadata.min')}
+                  {o.method}
                 </li>
               ))}
             </ul>

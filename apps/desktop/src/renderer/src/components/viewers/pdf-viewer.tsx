@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils'
 
 // Configure PDF.js worker - import from node_modules for Electron compatibility
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+import { useT } from '@memry/i18n/renderer'
 pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker
 
 // ============================================================================
@@ -45,6 +46,7 @@ interface PdfViewerProps {
 // ============================================================================
 
 export function PdfViewer({ src, className }: PdfViewerProps) {
+  const { t: tPhaseF } = useT('notes')
   const containerRef = useRef<HTMLDivElement>(null)
   const [numPages, setNumPages] = useState<number>(0)
   const [currentPage, setCurrentPage] = useState(1)
@@ -101,7 +103,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
       >
         <div className="text-center p-8">
           <p className="text-destructive font-medium mb-2">
-            {/* TODO(i18n): wrap in t() */}Failed to load PDF
+            {tPhaseF('phaseF.componentsViewersPdfViewer.failedToLoadPdf')}
           </p>
           <p className="text-sm text-muted-foreground">{error}</p>
         </div>
@@ -141,7 +143,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
             onClick={() => goToPage(currentPage - 1)}
             disabled={currentPage <= 1}
             className="h-8 w-8 p-0"
-            title={'Previous page' /* TODO(i18n): wrap title in t() */}
+            title={tPhaseF('phaseF.componentsViewersPdfViewer.previousPage')}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -154,7 +156,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
             onClick={() => goToPage(currentPage + 1)}
             disabled={currentPage >= numPages}
             className="h-8 w-8 p-0"
-            title={'Next page' /* TODO(i18n): wrap title in t() */}
+            title={tPhaseF('phaseF.componentsViewersPdfViewer.nextPage')}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -167,7 +169,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
             size="sm"
             onClick={zoomOut}
             className="h-8 w-8 p-0"
-            title={'Zoom out' /* TODO(i18n): wrap title in t() */}
+            title={tPhaseF('phaseF.componentsViewersPdfViewer.zoomOut')}
           >
             <ZoomOut className="h-4 w-4" />
           </Button>
@@ -179,7 +181,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
             size="sm"
             onClick={zoomIn}
             className="h-8 w-8 p-0"
-            title={'Zoom in' /* TODO(i18n): wrap title in t() */}
+            title={tPhaseF('phaseF.componentsViewersPdfViewer.zoomIn')}
           >
             <ZoomIn className="h-4 w-4" />
           </Button>
@@ -189,7 +191,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
             size="sm"
             onClick={fitToWidth}
             className="h-8 w-8 p-0"
-            title={'Fit to width' /* TODO(i18n): wrap title in t() */}
+            title={tPhaseF('phaseF.componentsViewersPdfViewer.fitToWidth')}
           >
             <Maximize2 className="h-4 w-4" />
           </Button>
@@ -202,7 +204,7 @@ export function PdfViewer({ src, className }: PdfViewerProps) {
             size="sm"
             onClick={rotate}
             className="h-8 w-8 p-0"
-            title={'Rotate' /* TODO(i18n): wrap title in t() */}
+            title={tPhaseF('phaseF.componentsViewersPdfViewer.rotate')}
           >
             <RotateCw className="h-4 w-4" />
           </Button>

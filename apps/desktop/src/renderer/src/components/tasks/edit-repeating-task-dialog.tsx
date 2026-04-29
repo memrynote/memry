@@ -12,6 +12,7 @@ import {
   AlertDialogAction
 } from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -38,6 +39,7 @@ export const EditRepeatingTaskDialog = ({
   taskTitle,
   occurrenceDate
 }: EditRepeatingTaskDialogProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [selectedScope, setSelectedScope] = useState<EditScope>('all')
 
   const dateLabel = occurrenceDate ? format(occurrenceDate, 'MMM d') : 'this date'
@@ -51,10 +53,13 @@ export const EditRepeatingTaskDialog = ({
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{/* TODO(i18n): wrap in t() */}Edit Repeating Task</AlertDialogTitle>
+          <AlertDialogTitle>
+            {tPhaseF('phaseF.componentsTasksEditRepeatingTaskDialog.editRepeatingTask')}
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            {/* TODO(i18n): wrap in t() */}
-            You're editing a repeating task. Apply changes to:
+            {tPhaseF(
+              'phaseF.componentsTasksEditRepeatingTaskDialog.youReEditingARepeatingTaskApplyChangesTo'
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -77,10 +82,11 @@ export const EditRepeatingTaskDialog = ({
             />
             <div className="flex flex-col gap-0.5">
               <span className="text-sm font-medium">
-                {/* TODO(i18n): wrap in t() */}Only this occurrence
+                {tPhaseF('phaseF.componentsTasksEditRepeatingTaskDialog.onlyThisOccurrence')}
               </span>
               <span className="text-xs text-muted-foreground">
-                {dateLabel} {/* TODO(i18n): wrap in t() */}only — future tasks unchanged
+                {dateLabel}{' '}
+                {tPhaseF('phaseF.componentsTasksEditRepeatingTaskDialog.onlyFutureTasksUnchanged')}
               </span>
             </div>
           </label>
@@ -103,19 +109,23 @@ export const EditRepeatingTaskDialog = ({
             />
             <div className="flex flex-col gap-0.5">
               <span className="text-sm font-medium">
-                {/* TODO(i18n): wrap in t() */}This and all future occurrences
+                {tPhaseF(
+                  'phaseF.componentsTasksEditRepeatingTaskDialog.thisAndAllFutureOccurrences'
+                )}
               </span>
               <span className="text-xs text-muted-foreground">
-                {dateLabel} {/* TODO(i18n): wrap in t() */}and beyond
+                {dateLabel} {tPhaseF('phaseF.componentsTasksEditRepeatingTaskDialog.andBeyond')}
               </span>
             </div>
           </label>
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel>{/* TODO(i18n): wrap in t() */}Cancel</AlertDialogCancel>
+          <AlertDialogCancel>
+            {tPhaseF('phaseF.componentsTasksEditRepeatingTaskDialog.cancel')}
+          </AlertDialogCancel>
           <AlertDialogAction onClick={handleConfirm}>
-            {/* TODO(i18n): wrap in t() */}Continue
+            {tPhaseF('phaseF.componentsTasksEditRepeatingTaskDialog.continue')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

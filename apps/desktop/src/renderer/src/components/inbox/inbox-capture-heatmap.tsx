@@ -1,4 +1,5 @@
 import type { InboxCapturePattern } from '@memry/rpc/inbox'
+import { useT } from '@memry/i18n/renderer'
 
 export interface InboxCaptureHeatmapProps {
   patterns: InboxCapturePattern | undefined
@@ -22,6 +23,7 @@ function intensityToAlpha(intensity: number): string {
 }
 
 export function InboxCaptureHeatmap({ patterns }: InboxCaptureHeatmapProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('inbox')
   const heatmap = patterns?.timeHeatmap
 
   let maxCount = 0
@@ -37,7 +39,7 @@ export function InboxCaptureHeatmap({ patterns }: InboxCaptureHeatmapProps): Rea
   return (
     <div className="flex flex-col rounded-[10px] gap-3.5 border border-border/50 p-4">
       <div className="text-muted-foreground font-sans font-medium text-xs/4">
-        {/* TODO(i18n): wrap in t() */}Capture Activity
+        {tPhaseF('phaseF.componentsInboxInboxCaptureHeatmap.captureActivity')}
       </div>
       <div className="[font-synthesis:none] flex gap-1.5 text-xs/4">
         <div className="flex flex-col pt-4 gap-0.75">

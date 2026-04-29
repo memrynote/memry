@@ -2,6 +2,7 @@ import { Calendar, Plus } from '@/lib/icons'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -22,6 +23,7 @@ export const UpcomingEmptyState = ({
   onAddTask,
   className
 }: UpcomingEmptyStateProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   // If there are overdue tasks but nothing upcoming
   if (hasOverdue) {
     return (
@@ -30,17 +32,17 @@ export const UpcomingEmptyState = ({
           <Calendar className="size-8 text-text-tertiary" aria-hidden="true" />
         </div>
         <h3 className="text-lg font-medium text-text-primary mb-2">
-          {/* TODO(i18n): wrap in t() */}
-          Nothing scheduled for the next 7 days
+          {tPhaseF('phaseF.componentsTasksUpcomingEmptyState.nothingScheduledForTheNext7Days')}
         </h3>
         <p className="text-sm text-text-tertiary mb-6 max-w-xs mx-auto">
-          {/* TODO(i18n): wrap in t() */}
-          You have overdue tasks above. Plan ahead by adding tasks for the coming week.
+          {tPhaseF(
+            'phaseF.componentsTasksUpcomingEmptyState.youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi'
+          )}
         </p>
         <Button onClick={onAddTask} size="sm">
           <Plus className="size-4" aria-hidden="true" />
-          {/* TODO(i18n): wrap in t() */}
-          Add task
+
+          {tPhaseF('phaseF.componentsTasksUpcomingEmptyState.addTask')}
         </Button>
       </div>
     )
@@ -56,20 +58,21 @@ export const UpcomingEmptyState = ({
 
       {/* Title */}
       <h3 className="text-lg font-medium text-text-primary mb-2">
-        {/* TODO(i18n): wrap in t() */}No upcoming tasks
+        {tPhaseF('phaseF.componentsTasksUpcomingEmptyState.noUpcomingTasks')}
       </h3>
 
       {/* Description */}
       <p className="text-sm text-text-tertiary mb-6 max-w-sm mx-auto">
-        {/* TODO(i18n): wrap in t() */}
-        Tasks due in the next 7 days will appear here. Plan your week by adding some tasks.
+        {tPhaseF(
+          'phaseF.componentsTasksUpcomingEmptyState.tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding'
+        )}
       </p>
 
       {/* Action button */}
       <Button onClick={onAddTask} size="default">
         <Plus className="size-4" aria-hidden="true" />
-        {/* TODO(i18n): wrap in t() */}
-        Add task
+
+        {tPhaseF('phaseF.componentsTasksUpcomingEmptyState.addTask2')}
       </Button>
     </div>
   )

@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 import { getRepeatPresets, getRepeatDisplayText, type RepeatPreset } from '@/lib/repeat-utils'
 import type { RepeatConfig } from '@/data/sample-tasks'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -33,6 +34,7 @@ export const RepeatPicker = ({
   disabled = false,
   className
 }: RepeatPickerProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [isOpen, setIsOpen] = useState(false)
 
   // Generate presets based on due date
@@ -78,7 +80,7 @@ export const RepeatPicker = ({
           variant="outline"
           role="combobox"
           aria-expanded={isOpen}
-          aria-label={'Select repeat frequency' /* TODO(i18n): wrap aria-label in t() */}
+          aria-label={tPhaseF('phaseF.componentsTasksRepeatPicker.selectRepeatFrequency')}
           disabled={disabled}
           className={cn(
             'w-full justify-between font-normal',
@@ -114,7 +116,7 @@ export const RepeatPicker = ({
           <span className="size-4 flex items-center justify-center">
             {!value && <Check className="size-4" aria-hidden="true" />}
           </span>
-          <span>{/* TODO(i18n): wrap in t() */}Does not repeat</span>
+          <span>{tPhaseF('phaseF.componentsTasksRepeatPicker.doesNotRepeat')}</span>
         </button>
 
         <Separator className="my-1" />
@@ -153,7 +155,7 @@ export const RepeatPicker = ({
               )}
             >
               <span className="size-4" />
-              <span>{/* TODO(i18n): wrap in t() */}Custom...</span>
+              <span>{tPhaseF('phaseF.componentsTasksRepeatPicker.custom')}</span>
             </button>
           </>
         )}

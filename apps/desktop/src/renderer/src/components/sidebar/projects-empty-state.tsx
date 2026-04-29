@@ -1,5 +1,6 @@
 import { Plus, FolderKanban } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 interface ProjectsEmptyStateProps {
   onCreateProject: () => void
@@ -14,6 +15,7 @@ export const ProjectsEmptyState = ({
   onCreateProject,
   className
 }: ProjectsEmptyStateProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('notes')
   const handleKeyDown = (e: React.KeyboardEvent): void => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
@@ -30,7 +32,7 @@ export const ProjectsEmptyState = ({
 
       {/* Message */}
       <p className="text-sm text-sidebar-foreground/60 mb-3">
-        {/* TODO(i18n): wrap in t() */}No projects yet
+        {tPhaseF('phaseF.componentsSidebarProjectsEmptyState.noProjectsYet')}
       </p>
 
       {/* Create button */}
@@ -45,10 +47,10 @@ export const ProjectsEmptyState = ({
           'focus-visible:outline-none'
         )}
         tabIndex={0}
-        aria-label={'Create your first project' /* TODO(i18n): wrap aria-label in t() */}
+        aria-label={tPhaseF('phaseF.componentsSidebarProjectsEmptyState.createYourFirstProject')}
       >
         <Plus className="size-4" />
-        <span>{/* TODO(i18n): wrap in t() */}Create your first project</span>
+        <span>{tPhaseF('phaseF.componentsSidebarProjectsEmptyState.createYourFirstProject2')}</span>
       </button>
     </div>
   )

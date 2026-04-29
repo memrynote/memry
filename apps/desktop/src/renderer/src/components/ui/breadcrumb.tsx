@@ -3,11 +3,13 @@ import { Slot } from '@radix-ui/react-slot'
 import { ChevronRight, MoreHorizontal } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
 
 function Breadcrumb({ ...props }: React.ComponentProps<'nav'>) {
+  const { t: tPhaseF } = useT('common')
   return (
     <nav
-      aria-label={'breadcrumb' /* TODO(i18n): wrap aria-label in t() */}
+      aria-label={tPhaseF('phaseF.componentsUiBreadcrumb.breadcrumb')}
       data-slot="breadcrumb"
       {...props}
     />
@@ -83,6 +85,7 @@ function BreadcrumbSeparator({ children, className, ...props }: React.ComponentP
 }
 
 function BreadcrumbEllipsis({ className, ...props }: React.ComponentProps<'span'>) {
+  const { t: tPhaseF } = useT('common')
   return (
     <span
       data-slot="breadcrumb-ellipsis"
@@ -92,7 +95,7 @@ function BreadcrumbEllipsis({ className, ...props }: React.ComponentProps<'span'
       {...props}
     >
       <MoreHorizontal className="size-4" />
-      <span className="sr-only">{/* TODO(i18n): wrap in t() */}More</span>
+      <span className="sr-only">{tPhaseF('phaseF.componentsUiBreadcrumb.more')}</span>
     </span>
   )
 }

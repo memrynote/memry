@@ -146,6 +146,7 @@ export const QuickAddInput = ({
   compact = false,
   projectColor = '#6B7280'
 }: QuickAddInputProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const { t } = useT('tasks')
   const [value, setValue] = useState('')
   const [isFocused, setIsFocused] = useState(false)
@@ -480,11 +481,13 @@ export const QuickAddInput = ({
             {compact ? (
               <span className="rounded-[3px] px-1 bg-foreground/5 border border-border">
                 <span className="text-[9px] text-text-tertiary font-[family-name:var(--font-mono)] font-medium leading-3">
-                  {/* TODO(i18n): wrap in t() */}Q
+                  {tPhaseF('phaseF.componentsTasksQuickAddInput.q')}
                 </span>
               </span>
             ) : (
-              <Kbd className="px-1.5 py-px text-xs leading-4">{/* TODO(i18n): wrap in t() */}Q</Kbd>
+              <Kbd className="px-1.5 py-px text-xs leading-4">
+                {tPhaseF('phaseF.componentsTasksQuickAddInput.q2')}
+              </Kbd>
             )}
           </div>
         </div>

@@ -18,6 +18,7 @@ import { SubtaskProgressIndicator } from '@/components/tasks/subtask-progress-in
 import { PriorityBars } from '@/components/tasks/task-icons'
 import type { Priority, Task } from '@/data/sample-tasks'
 import type { Project, Status } from '@/data/tasks-data'
+import { useT } from '@memry/i18n/renderer'
 
 export interface ParentTaskRowProps {
   task: Task
@@ -109,6 +110,7 @@ export const ParentTaskRow = ({
   dataTestId,
   overlayWidth
 }: ParentTaskRowProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const isOverlay = renderMode === 'overlay'
   const rowRef = useRef<HTMLDivElement>(null)
   const {
@@ -355,8 +357,8 @@ export const ParentTaskRow = ({
 
         {!isOverlay && droppedPriority && (
           <div className="flex items-center shrink-0 gap-1 px-2 py-0.5 bg-primary/10 rounded text-[10px] font-medium text-primary animate-fade-out">
-            {/* TODO(i18n): wrap in t() */}
-            priority: {PRIORITY_LABELS[droppedPriority] ?? droppedPriority}
+            {tPhaseF('phaseF.componentsTasksParentTaskRow.priority')}
+            {PRIORITY_LABELS[droppedPriority] ?? droppedPriority}
           </div>
         )}
       </div>

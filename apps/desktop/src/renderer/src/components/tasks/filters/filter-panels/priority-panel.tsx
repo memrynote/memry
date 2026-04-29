@@ -7,6 +7,7 @@ import { FilterSearchHeader } from '@/components/ui/filter-search-header'
 import { FilterFooter } from '@/components/ui/filter-footer'
 import type { Priority, Task } from '@/data/sample-tasks'
 import { PriorityIcon } from '@/components/tasks/task-icons'
+import { useT } from '@memry/i18n/renderer'
 
 const PRIORITY_ORDER: Priority[] = ['urgent', 'high', 'medium', 'low', 'none']
 const PRIORITY_LABELS: Record<Priority, string> = {
@@ -42,6 +43,7 @@ export function PriorityPanel({
   onGoBack,
   tasks
 }: PriorityPanelProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('tasks')
   const filteredPriorities = useMemo(() => {
     if (!searchQuery) return PRIORITY_ORDER
     const q = searchQuery.toLowerCase()
@@ -72,16 +74,16 @@ export function PriorityPanel({
           <rect x="9" y="2" width="2.5" height="9.5" rx="0.5" fill="currentColor" />
         </svg>
         <span className="text-[13px] text-foreground font-medium leading-4">
-          {/* TODO(i18n): wrap in t() */}Priority
+          {tPhaseF('phaseF.componentsTasksFiltersFilterPanelsPriorityPanel.priority')}
         </span>
         <span className="text-[11px] ml-auto text-foreground leading-3.5">
-          {/* TODO(i18n): wrap in t() */}is
+          {tPhaseF('phaseF.componentsTasksFiltersFilterPanelsPriorityPanel.is')}
         </span>
       </div>
       <FilterSearchHeader
         value={searchQuery}
         onChange={onSearchChange}
-        placeholder={'Search...' /* TODO(i18n): wrap placeholder in t() */}
+        placeholder={tPhaseF('phaseF.componentsTasksFiltersFilterPanelsPriorityPanel.search')}
         className="py-1.5"
       />
       <div className="flex flex-col p-1">
@@ -125,7 +127,8 @@ export function PriorityPanel({
         onApply={onClose}
         info={
           <span className="text-[11px] text-text-tertiary leading-3.5">
-            {selectedPriorities.length} {/* TODO(i18n): wrap in t() */}selected
+            {selectedPriorities.length}{' '}
+            {tPhaseF('phaseF.componentsTasksFiltersFilterPanelsPriorityPanel.selected')}
           </span>
         }
         className="py-2 px-3"

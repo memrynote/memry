@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import type { Status, RepeatFilterType, HasTimeFilterType } from '@/data/tasks-data'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -69,6 +70,7 @@ export const MoreFiltersDropdown = ({
   taskCountByTime = { withTime: 0, withoutTime: 0 },
   className
 }: MoreFiltersDropdownProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [isOpen, setIsOpen] = useState(false)
   const [showStatusPanel, setShowStatusPanel] = useState(false)
 
@@ -101,9 +103,9 @@ export const MoreFiltersDropdown = ({
           variant="outline"
           size="sm"
           className={cn('h-9 gap-2', hasSelection && 'border-primary bg-primary/5', className)}
-          aria-label={'More filters' /* TODO(i18n): wrap aria-label in t() */}
+          aria-label={tPhaseF('phaseF.componentsTasksFiltersMoreFiltersDropdown.moreFilters')}
         >
-          <span>{/* TODO(i18n): wrap in t() */}More</span>
+          <span>{tPhaseF('phaseF.componentsTasksFiltersMoreFiltersDropdown.more')}</span>
           {hasSelection && (
             <span className="bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded-full min-w-5 text-center">
               {activeCount}
@@ -128,7 +130,7 @@ export const MoreFiltersDropdown = ({
               >
                 <Clock className="size-3.5 text-muted-foreground/60" />
                 <span className="text-[13px] text-foreground leading-4">
-                  {/* TODO(i18n): wrap in t() */}Status
+                  {tPhaseF('phaseF.componentsTasksFiltersMoreFiltersDropdown.status')}
                 </span>
                 {selectedStatusIds.length > 0 && (
                   <span className="text-[11px] text-text-tertiary">
@@ -147,7 +149,7 @@ export const MoreFiltersDropdown = ({
             >
               <Calendar className="size-3.5 text-muted-foreground/60" />
               <span className="text-[13px] text-foreground leading-4">
-                {/* TODO(i18n): wrap in t() */}Has time set
+                {tPhaseF('phaseF.componentsTasksFiltersMoreFiltersDropdown.hasTimeSet')}
               </span>
               <ToggleSwitch
                 enabled={hasTime === 'with-time'}
@@ -165,7 +167,7 @@ export const MoreFiltersDropdown = ({
             >
               <RefreshCw className="size-3.5 text-muted-foreground/60" />
               <span className="text-[13px] text-foreground leading-4">
-                {/* TODO(i18n): wrap in t() */}Recurring only
+                {tPhaseF('phaseF.componentsTasksFiltersMoreFiltersDropdown.recurringOnly')}
               </span>
               <ToggleSwitch
                 enabled={repeatType === 'repeating'}
@@ -185,7 +187,7 @@ export const MoreFiltersDropdown = ({
             >
               <ChevronDown className="size-2.5 text-muted-foreground/60 rotate-90" />
               <span className="text-[13px] text-foreground font-semibold leading-4">
-                {/* TODO(i18n): wrap in t() */}Status
+                {tPhaseF('phaseF.componentsTasksFiltersMoreFiltersDropdown.status2')}
               </span>
             </button>
             <div className="flex flex-col py-2">

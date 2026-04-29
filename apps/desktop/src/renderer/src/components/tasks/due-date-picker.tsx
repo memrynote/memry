@@ -19,6 +19,7 @@ import {
   type DueDateStatus
 } from '@/lib/task-utils'
 import { nextSaturday, nextMonday, type ParsedDateResult } from '@/lib/natural-date-parser'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -169,6 +170,7 @@ export const DueDatePicker = ({
   onTimeChange,
   className
 }: DueDatePickerProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [isOpen, setIsOpen] = useState(false)
   const [showCalendar, setShowCalendar] = useState(false)
   const [inputValue, setInputValue] = useState('') // Track input value for conditional shortcuts
@@ -322,7 +324,7 @@ export const DueDatePicker = ({
           variant="outline"
           role="combobox"
           aria-expanded={isOpen}
-          aria-label={'Select due date' /* TODO(i18n): wrap aria-label in t() */}
+          aria-label={tPhaseF('phaseF.componentsTasksDueDatePicker.selectDueDate')}
           className={cn(
             'w-full justify-start text-left font-normal',
             !date && 'text-muted-foreground',
@@ -337,12 +339,12 @@ export const DueDatePicker = ({
               {time && <span className="ml-1 text-muted-foreground">· {formatTime(time)}</span>}
               {dateDisplay?.status === 'overdue' && (
                 <span className="ml-1 text-xs opacity-80">
-                  · {/* TODO(i18n): wrap in t() */}Overdue
+                  · {tPhaseF('phaseF.componentsTasksDueDatePicker.overdue')}
                 </span>
               )}
             </span>
           ) : (
-            <span>{/* TODO(i18n): wrap in t() */}Set due date</span>
+            <span>{tPhaseF('phaseF.componentsTasksDueDatePicker.setDueDate')}</span>
           )}
         </Button>
       </PopoverTrigger>
@@ -364,8 +366,7 @@ export const DueDatePicker = ({
             {/* Quick Options */}
             <div className="p-1">
               <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                {/* TODO(i18n): wrap in t() */}
-                Suggestions
+                {tPhaseF('phaseF.componentsTasksDueDatePicker.suggestions')}
               </div>
               {quickOptions.map((option) => (
                 <button
@@ -407,7 +408,7 @@ export const DueDatePicker = ({
                 )}
               >
                 <CalendarIcon className="size-4 text-muted-foreground" />
-                <span>{/* TODO(i18n): wrap in t() */}Pick a date...</span>
+                <span>{tPhaseF('phaseF.componentsTasksDueDatePicker.pickADate')}</span>
               </button>
             </div>
 
@@ -441,13 +442,13 @@ export const DueDatePicker = ({
                       )}
                     >
                       <Plus className="size-4" />
-                      <span>{/* TODO(i18n): wrap in t() */}Add time</span>
+                      <span>{tPhaseF('phaseF.componentsTasksDueDatePicker.addTime')}</span>
                     </button>
                   ) : (
                     <div className="mt-2">
                       <div className="mb-1 flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         <Clock className="size-3" />
-                        <span>{/* TODO(i18n): wrap in t() */}Time</span>
+                        <span>{tPhaseF('phaseF.componentsTasksDueDatePicker.time')}</span>
                       </div>
                       <TimePicker value={time} onChange={onTimeChange} />
                     </div>
@@ -468,7 +469,7 @@ export const DueDatePicker = ({
                   >
                     <span className="flex items-center gap-2">
                       <X className="size-4" />
-                      <span>{/* TODO(i18n): wrap in t() */}Clear date</span>
+                      <span>{tPhaseF('phaseF.componentsTasksDueDatePicker.clearDate')}</span>
                     </span>
                     {/* Number hint for clear - only show when input is empty */}
                     {inputIsEmpty && (
@@ -493,7 +494,7 @@ export const DueDatePicker = ({
               )}
             >
               <span className="text-muted-foreground">←</span>
-              <span>{/* TODO(i18n): wrap in t() */}Back to options</span>
+              <span>{tPhaseF('phaseF.componentsTasksDueDatePicker.backToOptions')}</span>
             </button>
 
             {/* Calendar */}

@@ -13,6 +13,7 @@ interface WindowControlsProps {
 }
 
 export function WindowControls({ className }: WindowControlsProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('common')
   const { t } = useT('common')
   const { state } = useSidebar()
   const sidebarTooltip = state === 'expanded' ? 'Collapse sidebar' : 'Expand sidebar'
@@ -45,8 +46,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs">
-            {/* TODO(i18n): wrap in t() */}
-            Search (⌘K)
+            {tPhaseF('phaseF.componentsWindowControls.searchK')}
           </TooltipContent>
         </Tooltip>
 
@@ -54,9 +54,9 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
           type="button"
           disabled
           aria-disabled="true"
-          aria-label={'Browser back' /* TODO(i18n): wrap aria-label in t() */}
+          aria-label={tPhaseF('phaseF.componentsWindowControls.browserBack')}
           className="flex items-center justify-center size-7 rounded text-text-tertiary/40 cursor-default"
-          title={'Back' /* TODO(i18n): wrap title in t() */}
+          title={tPhaseF('phaseF.componentsWindowControls.back')}
         >
           <ChevronLeft className="size-4" />
         </button>
@@ -65,9 +65,9 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
           type="button"
           disabled
           aria-disabled="true"
-          aria-label={'Browser forward' /* TODO(i18n): wrap aria-label in t() */}
+          aria-label={tPhaseF('phaseF.componentsWindowControls.browserForward')}
           className="flex items-center justify-center size-7 rounded text-text-tertiary/40 cursor-default"
-          title={'Forward' /* TODO(i18n): wrap title in t() */}
+          title={tPhaseF('phaseF.componentsWindowControls.forward')}
         >
           <ChevronRight className="size-4" />
         </button>

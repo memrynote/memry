@@ -328,6 +328,7 @@ export function GroupedTable({
   exitingRowIds = new Set<string>(),
   className
 }: GroupedTableProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   const { t } = useT('common')
 
   // ============================================================================
@@ -1028,7 +1029,7 @@ export function GroupedTable({
       <div
         ref={tableContainerRef}
         role="grid"
-        aria-label={'Grouped notes table' /* TODO(i18n): wrap aria-label in t() */}
+        aria-label={tPhaseF('phaseF.componentsFolderViewGroupedTable.groupedNotesTable')}
         className={cn('w-full max-w-full overflow-auto outline-none', className)}
         tabIndex={0}
         onKeyDown={handleKeyDown}
@@ -1243,6 +1244,7 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
   formulas,
   columns
 }: GroupHeaderRowProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   const isExpanded = row.getIsExpanded()
   const groupValue = row.groupingValue
   const subRows = row.subRows
@@ -1339,7 +1341,8 @@ const GroupHeaderRow = memo(function GroupHeaderRow({
               })}
             {Object.keys(groupSummaries).length > 3 && (
               <span className="opacity-60">
-                +{Object.keys(groupSummaries).length - 3} {/* TODO(i18n): wrap in t() */}more
+                +{Object.keys(groupSummaries).length - 3}{' '}
+                {tPhaseF('phaseF.componentsFolderViewGroupedTable.more')}
               </span>
             )}
           </div>

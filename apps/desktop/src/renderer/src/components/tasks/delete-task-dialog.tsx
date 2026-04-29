@@ -31,6 +31,7 @@ export const DeleteTaskDialog = ({
   onConfirm,
   taskTitle
 }: DeleteTaskDialogProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const { t } = useT('common')
 
   const handleConfirm = (): void => {
@@ -42,10 +43,15 @@ export const DeleteTaskDialog = ({
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{/* TODO(i18n): wrap in t() */}Delete task?</AlertDialogTitle>
+          <AlertDialogTitle>
+            {tPhaseF('phaseF.componentsTasksDeleteTaskDialog.deleteTask')}
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            &{/* TODO(i18n): wrap in t() */}ldquo;{taskTitle}&{/* TODO(i18n): wrap in t() */}rdquo;
-            will be permanently deleted. This action cannot be undone.
+            &{tPhaseF('phaseF.componentsTasksDeleteTaskDialog.ldquo')}
+            {taskTitle}&
+            {tPhaseF(
+              'phaseF.componentsTasksDeleteTaskDialog.rdquoWillBePermanentlyDeletedThisActionCannotBeUndone'
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -54,8 +60,7 @@ export const DeleteTaskDialog = ({
             onClick={handleConfirm}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {/* TODO(i18n): wrap in t() */}
-            Delete Task
+            {tPhaseF('phaseF.componentsTasksDeleteTaskDialog.deleteTask2')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

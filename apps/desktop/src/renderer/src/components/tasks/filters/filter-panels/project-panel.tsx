@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import { CheckMark } from '@/components/ui/check-mark'
 import type { Project } from '@/data/tasks-data'
 import { BackButton } from './priority-panel'
+import { useT } from '@memry/i18n/renderer'
 
 interface ProjectPanelProps {
   projects: Project[]
@@ -20,6 +21,7 @@ export function ProjectPanel({
   onClearProjectFilter,
   onGoBack
 }: ProjectPanelProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('tasks')
   const visibleProjects = useMemo(() => projects.filter((p) => !p.isArchived), [projects])
 
   return (
@@ -40,7 +42,7 @@ export function ProjectPanel({
           />
         </svg>
         <span className="text-[13px] text-foreground font-medium leading-4">
-          {/* TODO(i18n): wrap in t() */}Project
+          {tPhaseF('phaseF.componentsTasksFiltersFilterPanelsProjectPanel.project')}
         </span>
       </div>
       <div className="flex flex-col p-1">
@@ -54,7 +56,7 @@ export function ProjectPanel({
         >
           <div className="shrink-0 rounded-[3px] border-[1.2px] border-solid border-border size-2.5" />
           <span className="text-[13px] text-muted-foreground/60 leading-4">
-            {/* TODO(i18n): wrap in t() */}No project
+            {tPhaseF('phaseF.componentsTasksFiltersFilterPanelsProjectPanel.noProject')}
           </span>
           {selectedProjectIds.length === 0 && <CheckMark className="ml-auto text-primary" />}
         </button>

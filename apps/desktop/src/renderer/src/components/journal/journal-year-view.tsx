@@ -109,6 +109,7 @@ export function JournalYearView({
   onMonthClick,
   className
 }: JournalYearViewProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('journal')
   const { t, i18n } = useT('journal')
   const dateLabels = useMemo(() => createJournalDateLabels(t), [t, i18n.language])
   // Get current month from date if not provided
@@ -144,7 +145,7 @@ export function JournalYearView({
         <div className="text-center">
           <p className="text-2xl font-medium text-foreground">
             {Math.round(monthStats.reduce((sum, s) => sum + s.totalChars, 0) / 1000)}
-            {/* TODO(i18n): wrap in t() */}k
+            {tPhaseF('phaseF.componentsJournalJournalYearView.k')}
           </p>
           <p className="text-xs text-muted-foreground">{t('count.charactersWritten')}</p>
         </div>

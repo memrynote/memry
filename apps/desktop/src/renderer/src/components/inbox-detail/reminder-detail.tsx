@@ -49,6 +49,7 @@ function getTargetIcon(targetType: string) {
 }
 
 export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('inbox')
   const { t } = useT('inbox')
   const metadata = item.metadata as ReminderMetadata | undefined
   const queryClient = useQueryClient()
@@ -235,7 +236,8 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
         )}
         {!isViewed && (
           <span className="text-text-tertiary text-[11px]">
-            &{/* TODO(i18n): wrap in t() */}middot; {t('reminder.notYetViewed')}
+            &{tPhaseF('phaseF.componentsInboxDetailReminderDetail.middot')}
+            {t('reminder.notYetViewed')}
           </span>
         )}
       </div>

@@ -288,6 +288,7 @@ export function FolderTableView({
   exitingRowIds = new Set<string>(),
   className
 }: FolderTableViewProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   const { t } = useT('common')
 
   // Convert initial sorting from OrderConfig[] to SortingState
@@ -1011,7 +1012,7 @@ export function FolderTableView({
       <div
         ref={tableContainerRef}
         role="grid"
-        aria-label={'Notes table' /* TODO(i18n): wrap aria-label in t() */}
+        aria-label={tPhaseF('phaseF.componentsFolderViewFolderTableView.notesTable')}
         className={cn('w-full max-w-full overflow-auto outline-none', className)}
         tabIndex={0}
         onKeyDown={handleKeyDown}

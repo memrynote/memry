@@ -10,6 +10,7 @@ import type {
 } from '@memry/contracts/search-api'
 import { highlightTerms, stripMarkTags } from '@/services/search-service'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { useT } from '@memry/i18n/renderer'
 
 interface SearchResultItemProps {
   item: SearchResultItemType
@@ -80,6 +81,7 @@ function JournalMetadata({ meta }: { meta: JournalResultMetadata }): React.JSX.E
 }
 
 function TaskMetadata({ meta }: { meta: TaskResultMetadata }): React.JSX.Element {
+  const { t: tPhaseF } = useT('common')
   const priorityColors: Record<number, string> = {
     4: 'text-red-500',
     3: 'text-orange-500',
@@ -101,7 +103,8 @@ function TaskMetadata({ meta }: { meta: TaskResultMetadata }): React.JSX.Element
       )}
       {meta.priority > 0 && (
         <span className={priorityColors[meta.priority] ?? ''}>
-          {/* TODO(i18n): wrap in t() */}P{meta.priority}
+          {tPhaseF('phaseF.componentsSearchSearchResultItem.p')}
+          {meta.priority}
         </span>
       )}
       {meta.statusName && <span className="text-muted-foreground">{meta.statusName}</span>}
@@ -149,6 +152,7 @@ export function SearchResultItem({
   query,
   onSelect
 }: SearchResultItemProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('common')
   const Icon = TYPE_ICONS[item.type]
   const noteEmoji = item.metadata.type === 'note' ? item.metadata.emoji : null
 
@@ -181,7 +185,7 @@ export function SearchResultItem({
       </div>
       {item.matchType === 'fuzzy' && (
         <span className="text-[10px] text-text-tertiary shrink-0 mt-1">
-          {/* TODO(i18n): wrap in t() */}fuzzy
+          {tPhaseF('phaseF.componentsSearchSearchResultItem.fuzzy')}
         </span>
       )}
     </Command.Item>

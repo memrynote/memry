@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { TaskFilters, TaskSort, Project } from '@/data/tasks-data'
 import { dueDateFilterOptions } from '@/data/tasks-data'
+import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
 // TYPES
@@ -39,6 +40,7 @@ export const SaveFilterDialog = ({
   sort: _sort,
   projects
 }: SaveFilterDialogProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [name, setName] = useState('')
   const [error, setError] = useState('')
 
@@ -130,17 +132,22 @@ export const SaveFilterDialog = ({
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{/* TODO(i18n): wrap in t() */}Save Filter</DialogTitle>
+          <DialogTitle>
+            {tPhaseF('phaseF.componentsTasksFiltersSaveFilterDialog.saveFilter')}
+          </DialogTitle>
           <DialogDescription>
-            {/* TODO(i18n): wrap in t() */}
-            Save your current filter settings for quick access later.
+            {tPhaseF(
+              'phaseF.componentsTasksFiltersSaveFilterDialog.saveYourCurrentFilterSettingsForQuickAccessLater'
+            )}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {/* Filter name input */}
           <div className="space-y-2">
-            <Label htmlFor="filter-name">{/* TODO(i18n): wrap in t() */}Filter Name</Label>
+            <Label htmlFor="filter-name">
+              {tPhaseF('phaseF.componentsTasksFiltersSaveFilterDialog.filterName')}
+            </Label>
             <Input
               id="filter-name"
               value={name}
@@ -149,9 +156,9 @@ export const SaveFilterDialog = ({
                 setError('')
               }}
               onKeyDown={handleKeyDown}
-              placeholder={
-                'e.g., High priority this week' /* TODO(i18n): wrap placeholder in t() */
-              }
+              placeholder={tPhaseF(
+                'phaseF.componentsTasksFiltersSaveFilterDialog.eGHighPriorityThisWeek'
+              )}
               autoFocus
             />
             {error && <p className="text-sm text-destructive">{error}</p>}
@@ -160,7 +167,7 @@ export const SaveFilterDialog = ({
           {/* Current filters summary */}
           <div className="space-y-2">
             <Label className="text-muted-foreground">
-              {/* TODO(i18n): wrap in t() */}Current filters:
+              {tPhaseF('phaseF.componentsTasksFiltersSaveFilterDialog.currentFilters')}
             </Label>
             <ul className="text-sm space-y-1">
               {filterSummary.length > 0 ? (
@@ -171,7 +178,7 @@ export const SaveFilterDialog = ({
                 ))
               ) : (
                 <li className="text-muted-foreground italic">
-                  {/* TODO(i18n): wrap in t() */}No filters applied
+                  {tPhaseF('phaseF.componentsTasksFiltersSaveFilterDialog.noFiltersApplied')}
                 </li>
               )}
             </ul>
@@ -180,12 +187,10 @@ export const SaveFilterDialog = ({
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose}>
-            {/* TODO(i18n): wrap in t() */}
-            Cancel
+            {tPhaseF('phaseF.componentsTasksFiltersSaveFilterDialog.cancel')}
           </Button>
           <Button onClick={handleSave} disabled={filterSummary.length === 0}>
-            {/* TODO(i18n): wrap in t() */}
-            Save Filter
+            {tPhaseF('phaseF.componentsTasksFiltersSaveFilterDialog.saveFilter2')}
           </Button>
         </DialogFooter>
       </DialogContent>

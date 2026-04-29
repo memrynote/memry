@@ -3,6 +3,7 @@ import { useState, useCallback } from 'react'
 import { Star, Trash } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { SavedFilter } from '@/data/tasks-data'
+import { useT } from '@memry/i18n/renderer'
 
 interface SavedFiltersSectionProps {
   savedFilters: SavedFilter[]
@@ -23,6 +24,7 @@ export const SavedFiltersSection = ({
   onToggleStar,
   onSave
 }: SavedFiltersSectionProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
   const [filterName, setFilterName] = useState('')
 
   const handleSave = useCallback(() => {
@@ -54,7 +56,7 @@ export const SavedFiltersSection = ({
             onKeyDown={handleKeyDown}
             placeholder={hasActiveFilters ? 'Save current filter...' : 'Set filters first'}
             disabled={!hasActiveFilters}
-            aria-label={'Filter name' /* TODO(i18n): wrap aria-label in t() */}
+            aria-label={tPhaseF('phaseF.componentsTasksFiltersSavedFiltersSection.filterName')}
             className="flex-1 min-w-0 bg-transparent text-[13px] leading-4 text-foreground placeholder:text-muted-foreground/40 outline-none disabled:opacity-40"
           />
         </div>
@@ -62,7 +64,7 @@ export const SavedFiltersSection = ({
           type="button"
           onClick={handleSave}
           disabled={!filterName.trim() || !hasActiveFilters}
-          aria-label={'Save filter' /* TODO(i18n): wrap aria-label in t() */}
+          aria-label={tPhaseF('phaseF.componentsTasksFiltersSavedFiltersSection.saveFilter')}
           className={cn(
             'shrink-0 rounded-[5px] px-2 py-1 text-[11px] font-medium leading-4 transition-colors',
             filterName.trim() && hasActiveFilters
@@ -70,8 +72,7 @@ export const SavedFiltersSection = ({
               : 'bg-foreground/10 text-muted-foreground/60 cursor-not-allowed'
           )}
         >
-          {/* TODO(i18n): wrap in t() */}
-          Save
+          {tPhaseF('phaseF.componentsTasksFiltersSavedFiltersSection.save')}
         </button>
       </div>
 
