@@ -29,6 +29,7 @@ import {
 } from '@memry/contracts/reminders-api'
 import { InboxChannels, type ReminderMetadata } from '@memry/contracts/inbox-api'
 import { createLogger } from './logger'
+import { getMainI18n } from './main-i18n'
 import { publishProjectionEvent } from '../projections'
 import { emitCalendarProjectionChanged } from '../calendar/change-events'
 import { scheduleGoogleCalendarSourceSync } from '../calendar/google/local-sync-effects'
@@ -222,23 +223,22 @@ function showDesktopNotification(reminder: ReminderWithTarget): void {
     return
   }
 
-  // Build notification title
-  const title = reminder.title || reminder.targetTitle || 'Reminder'
+  const t = getMainI18n().t
 
-  // Build notification body
+  const title = reminder.title || reminder.targetTitle || t('system:notification.reminder.default')
+
   let body = ''
   if (reminder.targetType === 'highlight' && reminder.highlightText) {
     body = `"${reminder.highlightText.slice(0, 100)}${reminder.highlightText.length > 100 ? '...' : ''}"`
   } else if (reminder.note) {
     body = reminder.note
   } else {
-    // Default body based on target type
     const typeLabels: Record<string, string> = {
-      note: 'Note reminder',
-      journal: 'Journal reminder',
-      highlight: 'Highlight reminder'
+      note: t('system:notification.reminder.note'),
+      journal: t('system:notification.reminder.journal'),
+      highlight: t('system:notification.reminder.highlight')
     }
-    body = typeLabels[reminder.targetType] || 'Reminder due'
+    body = typeLabels[reminder.targetType] || t('system:notification.reminder.fallback')
   }
 
   try {
@@ -281,9 +281,8 @@ export function createReminder(input: CreateReminderInput): Reminder {
   const id = `rem_${generateId()}`
   const timestamp = now()
 
-  // Validate remind time is in the future
   if (new Date(input.remindAt) <= new Date()) {
-    throw new Error('Reminder time must be in the future')
+    throw new Error(getMainI18n().t('system:error.reminderTimeMustBeFuture'))
   }
 
   const values: typeof reminders.$inferInsert = {
@@ -329,9 +328,8 @@ export function updateReminder(input: UpdateReminderInput): Reminder | null {
   const db = getDatabase()
   const timestamp = now()
 
-  // Validate remind time if provided
   if (input.remindAt && new Date(input.remindAt) <= new Date()) {
-    throw new Error('Reminder time must be in the future')
+    throw new Error(getMainI18n().t('system:error.reminderTimeMustBeFuture'))
   }
 
   const updates: Partial<typeof reminders.$inferInsert> = {
