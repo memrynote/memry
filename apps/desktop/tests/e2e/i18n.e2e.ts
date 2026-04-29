@@ -98,4 +98,27 @@ test.describe('i18n', () => {
     await expect(page.getByRole('button', { name: 'Ara', exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Search', exact: true })).toHaveCount(0)
   })
+
+  test('toasts surface renders post locale switch (Phase G burn-down)', async ({
+    electronApp,
+    page
+  }) => {
+    // Phase G migrated ~90 toast strings (use-undo, use-bulk-actions,
+    // use-undoable-task-actions, use-drag-handlers, use-note-reminders,
+    // version-history, export-dialog, sync-context, note page, etc.) plus
+    // ~20 JSX state ternaries to t() calls against common/notes/tasks/
+    // settings namespaces. Triggering each migrated path from e2e is
+    // impractical, but they all share the same Sonner toast surface and
+    // the same i18next runtime — so verifying that the toast container
+    // resolves the active locale post-switch covers the wiring those
+    // migrations depend on. The language-change confirmation toast fires
+    // through the exact same path as every Phase G migration.
+    await openGeneralSettings(page, electronApp)
+
+    await chooseLanguage(page, 'Türkçe')
+
+    const sonnerToast = page.locator('[data-sonner-toast]').first()
+    await expect(sonnerToast).toBeVisible({ timeout: 3000 })
+    await expect(page.getByText(/Dil .* olarak değiştirildi/)).toBeVisible()
+  })
 })
