@@ -9,6 +9,8 @@
     "create-event": "Create event",
     "previous-period": "Previous period",
     "next-period": "Next period",
+    "previous-month": "Previous month",
+    "next-month": "Next month",
     "today": "Today"
   },
   "filter": {
@@ -57,15 +59,15 @@
     "google-calendar": "Google calendar",
     "target-calendar": "Target calendar",
     "use-default-calendar": "Use default calendar",
-    "use-default-calendar-with-name": "Use default ({{calendar}})",
+    "use-default-calendar-with-name": "Use default ({calendar})",
     "use-memry-calendar-default": "Use Memry calendar (default)",
     "use-memry-managed-calendar": "Use the Memry-managed calendar",
     "primary-suffix": "primary"
   },
   "delete-dialog": {
     "title": "Delete event?",
-    "local-description": "\"{{title}}\" will be permanently deleted. This action cannot be undone.",
-    "google-bound-description": "\"{{title}}\" will be removed from Memry and Google Calendar. This action cannot be undone.",
+    "local-description": "\"{title}\" will be permanently deleted. This action cannot be undone.",
+    "google-bound-description": "\"{title}\" will be removed from Memry and Google Calendar. This action cannot be undone.",
     "context-menu-delete-label": "Delete event"
   },
   "promote-dialog": {
@@ -85,7 +87,7 @@
   },
   "metadata": {
     "attendees": "Attendees",
-    "attendees-count": "Attendees ({{count}})",
+    "attendees-count": "Attendees ({count})",
     "reminders": "Reminders",
     "default-reminders": "Default reminders",
     "visibility": "Visibility:",
