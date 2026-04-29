@@ -49,6 +49,7 @@ import { startWatcher, stopWatcher } from './watcher'
 import { indexVault, rebuildIndex } from './indexer'
 import { initEmbeddingModel, isModelLoaded, isModelLoading } from '../lib/embeddings'
 import { createLogger } from '../lib/logger'
+import { getMainI18n } from '../lib/main-i18n'
 import { startSyncRuntime, stopSyncRuntime } from '../sync/runtime'
 import { reconcileProjections, startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
@@ -75,10 +76,11 @@ let currentStatus: VaultStatus = {
  * Show native folder picker dialog
  */
 async function showFolderPicker(): Promise<string | null> {
+  const t = getMainI18n().t
   const result = await dialog.showOpenDialog({
     properties: ['openDirectory', 'createDirectory'],
-    title: 'Select Vault Folder',
-    buttonLabel: 'Select Vault'
+    title: t('system:dialog.vault.title'),
+    buttonLabel: t('system:dialog.vault.button')
   })
 
   if (result.canceled || result.filePaths.length === 0) {
