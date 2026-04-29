@@ -28,7 +28,8 @@ export const RepeatIndicator = ({
   className
 }: RepeatIndicatorProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('tasks')
-  const displayText = getRepeatDisplayText(config)
+  const { t } = useT('common')
+  const displayText = getRepeatDisplayText(config, t)
   const progress = getRepeatProgress(config)
 
   const iconSize = size === 'sm' ? 'size-3.5' : 'size-4'

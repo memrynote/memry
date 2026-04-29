@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { RepeatConfig, RepeatFrequency, RepeatEndType, MonthlyType } from '@/data/sample-tasks'
 import {
   addDays,
@@ -9,6 +10,14 @@ import {
   endOfMonth,
   subDays
 } from './task-utils'
+
+/**
+ * Translator function from the `common` namespace, used to localize
+ * recurrence labels in `getRepeatDisplayText`. Callers pass the result of
+ * `useT('common').t` (or `i18next.getFixedT(null, 'common')` in tests) so this
+ * pure utility stays React-free.
+ */
+export type RepeatLabelTranslator = TFunction<'common'>
 
 // ============================================================================
 // CONSTANTS
@@ -245,7 +254,10 @@ export const calculateNextOccurrences = (
 // GET REPEAT DISPLAY TEXT
 // ============================================================================
 
-export const getRepeatDisplayText = (config: RepeatConfig): string => {
+export const getRepeatDisplayText = (
+  config: RepeatConfig,
+  t: RepeatLabelTranslator
+): string => {
   const {
     frequency,
     interval,
@@ -258,21 +270,21 @@ export const getRepeatDisplayText = (config: RepeatConfig): string => {
 
   switch (frequency) {
     case 'daily':
-      return interval === 1 ? 'Every day' : `Every ${interval} days`
+      return t('recurrence.everyNDays', { count: interval })
 
     case 'weekly':
       if (!daysOfWeek || daysOfWeek.length === 0) {
-        return interval === 1 ? 'Every week' : `Every ${interval} weeks`
+        return t('recurrence.everyNWeeks', { count: interval })
       }
 
       // Check for weekdays (Mon-Fri)
       if (daysOfWeek.length === 5 && [1, 2, 3, 4, 5].every((d) => daysOfWeek.includes(d))) {
-        return interval === 1 ? 'Every weekday' : `Every ${interval} weeks on weekdays`
+        return t('recurrence.everyNWeeksOnWeekdays', { count: interval })
       }
 
       // Check for weekends (Sat-Sun)
       if (daysOfWeek.length === 2 && daysOfWeek.includes(0) && daysOfWeek.includes(6)) {
-        return interval === 1 ? 'Every weekend' : `Every ${interval} weeks on weekends`
+        return t('recurrence.everyNWeeksOnWeekends', { count: interval })
       }
 
       const daysList = [...daysOfWeek]
@@ -280,28 +292,32 @@ export const getRepeatDisplayText = (config: RepeatConfig): string => {
         .map((d) => (daysOfWeek.length > 2 ? SHORT_DAY_NAMES[d] : DAY_NAMES[d]))
         .join(', ')
 
-      return interval === 1 ? `Every week on ${daysList}` : `Every ${interval} weeks on ${daysList}`
+      return t('recurrence.everyNWeeksOnDays', { count: interval, days: daysList })
 
     case 'monthly':
       if (monthlyType === 'dayOfMonth' && dayOfMonth) {
         const suffix = getOrdinalSuffix(dayOfMonth)
-        return interval === 1
-          ? `Every month on the ${dayOfMonth}${suffix}`
-          : `Every ${interval} months on the ${dayOfMonth}${suffix}`
+        return t('recurrence.everyNMonthsOnDay', {
+          count: interval,
+          day: dayOfMonth,
+          suffix
+        })
       } else if (monthlyType === 'weekPattern' && weekOfMonth && dayOfWeekForMonth !== undefined) {
         const weekText = ORDINALS[weekOfMonth]
         const dayText = DAY_NAMES[dayOfWeekForMonth]
-        return interval === 1
-          ? `Every month on the ${weekText} ${dayText}`
-          : `Every ${interval} months on the ${weekText} ${dayText}`
+        return t('recurrence.everyNMonthsOnWeekDay', {
+          count: interval,
+          week: weekText,
+          day: dayText
+        })
       }
-      return interval === 1 ? 'Every month' : `Every ${interval} months`
+      return t('recurrence.everyNMonths', { count: interval })
 
     case 'yearly':
-      return interval === 1 ? 'Every year' : `Every ${interval} years`
+      return t('recurrence.everyNYears', { count: interval })
 
     default:
-      return 'Repeats'
+      return t('recurrence.repeats')
   }
 }
 
