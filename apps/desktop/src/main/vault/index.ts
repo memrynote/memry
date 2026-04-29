@@ -76,11 +76,11 @@ let currentStatus: VaultStatus = {
  * Show native folder picker dialog
  */
 async function showFolderPicker(): Promise<string | null> {
-  const t = getMainI18n().t
+  const t = getMainI18n().getFixedT(null, 'system')
   const result = await dialog.showOpenDialog({
     properties: ['openDirectory', 'createDirectory'],
-    title: t('system:dialog.vault.title'),
-    buttonLabel: t('system:dialog.vault.button')
+    title: t('dialog.vault.title'),
+    buttonLabel: t('dialog.vault.button')
   })
 
   if (result.canceled || result.filePaths.length === 0) {

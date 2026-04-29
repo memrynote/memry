@@ -223,9 +223,9 @@ function showDesktopNotification(reminder: ReminderWithTarget): void {
     return
   }
 
-  const t = getMainI18n().t
+  const t = getMainI18n().getFixedT(null, 'system')
 
-  const title = reminder.title || reminder.targetTitle || t('system:notification.reminder.default')
+  const title = reminder.title || reminder.targetTitle || t('notification.reminder.default')
 
   let body = ''
   if (reminder.targetType === 'highlight' && reminder.highlightText) {
@@ -234,11 +234,11 @@ function showDesktopNotification(reminder: ReminderWithTarget): void {
     body = reminder.note
   } else {
     const typeLabels: Record<string, string> = {
-      note: t('system:notification.reminder.note'),
-      journal: t('system:notification.reminder.journal'),
-      highlight: t('system:notification.reminder.highlight')
+      note: t('notification.reminder.note'),
+      journal: t('notification.reminder.journal'),
+      highlight: t('notification.reminder.highlight')
     }
-    body = typeLabels[reminder.targetType] || t('system:notification.reminder.fallback')
+    body = typeLabels[reminder.targetType] || t('notification.reminder.fallback')
   }
 
   try {
