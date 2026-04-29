@@ -8,6 +8,7 @@ import type { NodeDisplayData, EdgeDisplayData } from 'sigma/types'
 import { Button } from '@/components/ui/button'
 import { useLocalGraphData } from '@/hooks/use-graph-data'
 import { buildGraphologyGraph } from '@/lib/graph-builder'
+import { useT } from '@memry/i18n/renderer'
 import { GraphEvents } from './graph-events'
 import { GraphTooltip } from './graph-tooltip'
 
@@ -34,6 +35,7 @@ export function LocalGraphPanel({
   onClose,
   onOpenFullGraph
 }: LocalGraphPanelProps): React.JSX.Element {
+  const { t } = useT('graph')
   const { resolvedTheme } = useTheme()
   const { data, isLoading } = useLocalGraphData(noteId)
 
@@ -141,7 +143,7 @@ export function LocalGraphPanel({
     return (
       <div className="relative h-[250px] rounded-md border border-border bg-muted/30">
         <div className="flex h-full items-center justify-center">
-          <span className="text-xs text-muted-foreground">Loading graph...</span>
+          <span className="text-xs text-muted-foreground">{t('local-panel.loading')}</span>
         </div>
         <PanelHeader onClose={onClose} />
       </div>
@@ -152,7 +154,7 @@ export function LocalGraphPanel({
     return (
       <div className="relative h-[250px] rounded-md border border-border bg-muted/30">
         <div className="flex h-full items-center justify-center">
-          <span className="text-xs text-muted-foreground">No connections found</span>
+          <span className="text-xs text-muted-foreground">{t('local-panel.empty')}</span>
         </div>
         <PanelHeader onClose={onClose} />
       </div>
@@ -191,6 +193,8 @@ function PanelHeader({
   onClose: () => void
   onOpenFullGraph?: () => void
 }): React.JSX.Element {
+  const { t } = useT('graph')
+
   return (
     <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-1">
       {onOpenFullGraph && (
@@ -199,7 +203,7 @@ function PanelHeader({
           size="icon"
           className="h-6 w-6 bg-popover/80 backdrop-blur-sm hover:bg-popover"
           onClick={onOpenFullGraph}
-          title="Open full graph"
+          title={t('local-panel.open-full')}
         >
           <Maximize2 className="size-3" />
         </Button>
@@ -209,7 +213,7 @@ function PanelHeader({
         size="icon"
         className="h-6 w-6 bg-popover/80 backdrop-blur-sm hover:bg-popover"
         onClick={onClose}
-        title="Close graph"
+        title={t('local-panel.close')}
       >
         <X className="size-3" />
       </Button>
