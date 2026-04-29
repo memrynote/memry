@@ -388,7 +388,7 @@ describe('T520: InboxListItem - selection and actions', () => {
     )
 
     const listItem = screen.getByRole('listitem')
-    expect(listItem).toHaveAttribute('aria-label', 'link: Article')
+    expect(listItem).toHaveAttribute('aria-label', 'Link: Article')
   })
 })
 
