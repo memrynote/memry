@@ -49,9 +49,25 @@
     "showMore": "+{count, plural, one {# tane daha} other {# tane daha}}",
     "showLess": "Daha az göster"
   },
+  "dateRelative": {
+    "today": "Bugün",
+    "yesterday": "Dün",
+    "daysAgo": "{count, plural, one {# gün önce} other {# gün önce}}"
+  },
   "tabs": {
-    "pin": "Tab'i sabitle",
-    "unpin": "Tab'in sabitlemesini kaldır"
+    "pin": "Sekmeyi sabitle",
+    "unpin": "Sekme sabitlemesini kaldır",
+    "contextMenu": {
+      "close": "Kapat",
+      "closeOthers": "Diğerlerini kapat",
+      "closeToRight": "Sağdakileri kapat",
+      "closeAll": "Tümünü kapat",
+      "duplicate": "Sekmeyi çoğalt",
+      "splitRight": "Sağa böl",
+      "splitDown": "Aşağı böl",
+      "copyPath": "Yolu kopyala",
+      "revealInSidebar": "Kenar çubuğunda göster"
+    }
   },
   "count": {
     "item": "{count, plural, one {# öğe} other {# öğe}}",
