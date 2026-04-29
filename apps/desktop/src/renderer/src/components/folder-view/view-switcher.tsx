@@ -315,6 +315,7 @@ export function ViewSwitcher({
                           variant="secondary"
                           className="h-5 px-1.5 text-[10px] font-normal flex-shrink-0"
                         >
+                          {/* TODO(i18n): wrap in t() */}
                           default
                         </Badge>
                       )}
@@ -331,6 +332,7 @@ export function ViewSwitcher({
                 <DropdownMenuSubContent sideOffset={2} className="w-44">
                   <DropdownMenuItem onSelect={() => openRenameDialog(index, view)}>
                     <Pencil className="mr-2 h-4 w-4" />
+                    {/* TODO(i18n): wrap in t() */}
                     Rename
                   </DropdownMenuItem>
                   <DropdownMenuItem
@@ -340,6 +342,7 @@ export function ViewSwitcher({
                     }}
                   >
                     <Copy className="mr-2 h-4 w-4" />
+                    {/* TODO(i18n): wrap in t() */}
                     Duplicate
                   </DropdownMenuItem>
                   {!isDefault && (
@@ -350,6 +353,7 @@ export function ViewSwitcher({
                       }}
                     >
                       <Star className="mr-2 h-4 w-4" />
+                      {/* TODO(i18n): wrap in t() */}
                       Set as Default
                     </DropdownMenuItem>
                   )}
@@ -361,6 +365,7 @@ export function ViewSwitcher({
                         onSelect={() => openDeleteDialog(index, view)}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
+                        {/* TODO(i18n): wrap in t() */}
                         Delete
                       </DropdownMenuItem>
                     </>
@@ -375,6 +380,7 @@ export function ViewSwitcher({
           {/* Create New View */}
           <DropdownMenuItem onSelect={openNewViewDialog}>
             <Plus className="mr-2 h-4 w-4" />
+            {/* TODO(i18n): wrap in t() */}
             Create New View
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -384,19 +390,20 @@ export function ViewSwitcher({
       <Dialog open={isNewViewDialogOpen} onOpenChange={setIsNewViewDialogOpen}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle>Create New View</DialogTitle>
+            <DialogTitle>{/* TODO(i18n): wrap in t() */}Create New View</DialogTitle>
             <DialogDescription>
+              {/* TODO(i18n): wrap in t() */}
               Create a new view with custom columns, filters, and sorting.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="view-name">View Name</Label>
+              <Label htmlFor="view-name">{/* TODO(i18n): wrap in t() */}View Name</Label>
               <Input
                 id="view-name"
                 value={newViewName}
                 onChange={(e) => setNewViewName(e.target.value)}
-                placeholder="My Custom View"
+                placeholder={'My Custom View' /* TODO(i18n): wrap placeholder in t() */}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && newViewName.trim()) {
                     handleCreateView()
@@ -405,7 +412,7 @@ export function ViewSwitcher({
               />
             </div>
             <div className="grid gap-2">
-              <Label>Base Configuration</Label>
+              <Label>{/* TODO(i18n): wrap in t() */}Base Configuration</Label>
               <div className="flex flex-col gap-2">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -415,7 +422,9 @@ export function ViewSwitcher({
                     onChange={() => setCopyFromCurrent(true)}
                     className="h-4 w-4"
                   />
-                  <span className="text-sm">Copy from current view</span>
+                  <span className="text-sm">
+                    {/* TODO(i18n): wrap in t() */}Copy from current view
+                  </span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -425,13 +434,16 @@ export function ViewSwitcher({
                     onChange={() => setCopyFromCurrent(false)}
                     className="h-4 w-4"
                   />
-                  <span className="text-sm">Start fresh (default columns)</span>
+                  <span className="text-sm">
+                    {/* TODO(i18n): wrap in t() */}Start fresh (default columns)
+                  </span>
                 </label>
               </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsNewViewDialogOpen(false)}>
+              {/* TODO(i18n): wrap in t() */}
               Cancel
             </Button>
             <Button onClick={handleCreateView} disabled={!newViewName.trim() || isSubmitting}>
@@ -445,17 +457,19 @@ export function ViewSwitcher({
       <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle>Rename View</DialogTitle>
-            <DialogDescription>Enter a new name for this view.</DialogDescription>
+            <DialogTitle>{/* TODO(i18n): wrap in t() */}Rename View</DialogTitle>
+            <DialogDescription>
+              {/* TODO(i18n): wrap in t() */}Enter a new name for this view.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="rename-view">View Name</Label>
+              <Label htmlFor="rename-view">{/* TODO(i18n): wrap in t() */}View Name</Label>
               <Input
                 id="rename-view"
                 value={renameValue}
                 onChange={(e) => setRenameValue(e.target.value)}
-                placeholder="View name"
+                placeholder={'View name' /* TODO(i18n): wrap placeholder in t() */}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && renameValue.trim()) {
                     handleRenameView()
@@ -466,6 +480,7 @@ export function ViewSwitcher({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsRenameDialogOpen(false)}>
+              {/* TODO(i18n): wrap in t() */}
               Cancel
             </Button>
             <Button onClick={handleRenameView} disabled={!renameValue.trim() || isSubmitting}>
@@ -479,14 +494,15 @@ export function ViewSwitcher({
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete View</AlertDialogTitle>
+            <AlertDialogTitle>{/* TODO(i18n): wrap in t() */}Delete View</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{selectedViewForAction?.view.name}"? This action
-              cannot be undone.
+              {/* TODO(i18n): wrap in t() */}
+              Are you sure you want to delete "{selectedViewForAction?.view.name}"?{' '}
+              {/* TODO(i18n): wrap in t() */}This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{/* TODO(i18n): wrap in t() */}Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteView}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"

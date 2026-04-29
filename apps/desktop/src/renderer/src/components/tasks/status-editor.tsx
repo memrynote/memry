@@ -70,7 +70,7 @@ const StatusColorPicker = ({
           type="button"
           className="size-4 shrink-0 rounded-full transition-transform hover:scale-110 focus-visible:outline-none"
           style={{ backgroundColor: value }}
-          aria-label="Change status color"
+          aria-label={'Change status color' /* TODO(i18n): wrap aria-label in t() */}
         />
       </PopoverTrigger>
       <PopoverContent className="w-auto p-2" align="start">
@@ -213,7 +213,7 @@ const StatusRow = ({
       {/* Drag Handle */}
       <div
         className="cursor-grab text-text-tertiary hover:text-text-secondary active:cursor-grabbing"
-        aria-label="Drag to reorder"
+        aria-label={'Drag to reorder' /* TODO(i18n): wrap aria-label in t() */}
       >
         <GripVertical className="size-4" />
       </div>
@@ -227,7 +227,7 @@ const StatusRow = ({
         type="text"
         value={status.name}
         onChange={handleNameChange}
-        placeholder="Status name"
+        placeholder={'Status name' /* TODO(i18n): wrap placeholder in t() */}
         maxLength={30}
         className="h-7 flex-1 border-0 bg-transparent px-1 text-sm shadow-none focus-visible:ring-0"
       />
@@ -345,6 +345,7 @@ export const StatusEditor = ({
         className="gap-1 text-text-tertiary hover:text-text-secondary"
       >
         <Plus className="size-4" />
+        {/* TODO(i18n): wrap in t() */}
         Add status
       </Button>
 

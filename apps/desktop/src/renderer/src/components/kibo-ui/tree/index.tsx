@@ -873,6 +873,7 @@ export const TreeNodeTrigger = ({
             <>
               <ContextMenuItem onClick={handleSetIconClick}>
                 <Palette className="mr-2 h-4 w-4" />
+                {/* TODO(i18n): wrap in t() */}
                 Set Icon
               </ContextMenuItem>
               {effectiveIcon && (
@@ -882,6 +883,7 @@ export const TreeNodeTrigger = ({
                     onClick={() => setNodeIcon(nodeId, null)}
                     className="text-destructive focus:text-destructive"
                   >
+                    {/* TODO(i18n): wrap in t() */}
                     Clear Icon
                   </ContextMenuItem>
                 </>

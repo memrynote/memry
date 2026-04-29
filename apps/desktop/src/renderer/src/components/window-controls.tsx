@@ -45,6 +45,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs">
+            {/* TODO(i18n): wrap in t() */}
             Search (⌘K)
           </TooltipContent>
         </Tooltip>
@@ -53,9 +54,9 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
           type="button"
           disabled
           aria-disabled="true"
-          aria-label="Browser back"
+          aria-label={'Browser back' /* TODO(i18n): wrap aria-label in t() */}
           className="flex items-center justify-center size-7 rounded text-text-tertiary/40 cursor-default"
-          title="Back"
+          title={'Back' /* TODO(i18n): wrap title in t() */}
         >
           <ChevronLeft className="size-4" />
         </button>
@@ -64,9 +65,9 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
           type="button"
           disabled
           aria-disabled="true"
-          aria-label="Browser forward"
+          aria-label={'Browser forward' /* TODO(i18n): wrap aria-label in t() */}
           className="flex items-center justify-center size-7 rounded text-text-tertiary/40 cursor-default"
-          title="Forward"
+          title={'Forward' /* TODO(i18n): wrap title in t() */}
         >
           <ChevronRight className="size-4" />
         </button>

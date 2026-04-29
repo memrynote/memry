@@ -46,6 +46,7 @@ export const NoteHeader = memo(function NoteHeader({
         <div className="flex items-center rounded-md py-1 px-2 gap-1 bg-accent-green/12">
           <div className="rounded-full bg-accent-green shrink-0 size-1.5" />
           <span className="text-[11px] text-accent-green font-sans font-medium leading-3.5">
+            {/* TODO(i18n): wrap in t() */}
             Synced
           </span>
         </div>

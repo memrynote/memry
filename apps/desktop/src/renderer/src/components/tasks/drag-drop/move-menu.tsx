@@ -130,10 +130,10 @@ export const MoveMenu = ({
           variant="ghost"
           size="sm"
           className={cn('h-8 gap-1.5', iconOnly && 'w-8 p-0', className)}
-          aria-label="Move task"
+          aria-label={'Move task' /* TODO(i18n): wrap aria-label in t() */}
         >
           <MoveVertical className="size-4" />
-          {!iconOnly && <span>Move</span>}
+          {!iconOnly && <span>{/* TODO(i18n): wrap in t() */}Move</span>}
         </Button>
       </DropdownMenuTrigger>
 
@@ -143,15 +143,23 @@ export const MoveMenu = ({
           <>
             <DropdownMenuLabel className="flex items-center gap-2 text-muted-foreground">
               <Calendar className="size-4" />
+              {/* TODO(i18n): wrap in t() */}
               Reschedule
             </DropdownMenuLabel>
 
-            <DropdownMenuItem onClick={() => handleDateChange(today)}>Today</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDateChange(tomorrow)}>Tomorrow</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleDateChange(today)}>
+              {/* TODO(i18n): wrap in t() */}Today
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleDateChange(tomorrow)}>
+              {/* TODO(i18n): wrap in t() */}Tomorrow
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleDateChange(nextWeek)}>
+              {/* TODO(i18n): wrap in t() */}
               Next week
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDateChange(null)}>Remove date</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleDateChange(null)}>
+              {/* TODO(i18n): wrap in t() */}Remove date
+            </DropdownMenuItem>
 
             <DropdownMenuSeparator />
           </>
@@ -163,6 +171,7 @@ export const MoveMenu = ({
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <FolderOpen className="size-4 mr-2" />
+                {/* TODO(i18n): wrap in t() */}
                 Move to project
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
@@ -188,7 +197,9 @@ export const MoveMenu = ({
                         )}
                         {project.name}
                         {isCurrent && (
-                          <span className="ml-auto text-muted-foreground text-xs">Current</span>
+                          <span className="ml-auto text-muted-foreground text-xs">
+                            {/* TODO(i18n): wrap in t() */}Current
+                          </span>
                         )}
                       </DropdownMenuItem>
                     )
@@ -211,6 +222,7 @@ export const MoveMenu = ({
                     backgroundColor: statuses.find((s) => s.id === task.statusId)?.color || '#888'
                   }}
                 />
+                {/* TODO(i18n): wrap in t() */}
                 Change status
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
@@ -229,7 +241,9 @@ export const MoveMenu = ({
                       />
                       {status.name}
                       {isCurrent && (
-                        <span className="ml-auto text-muted-foreground text-xs">Current</span>
+                        <span className="ml-auto text-muted-foreground text-xs">
+                          {/* TODO(i18n): wrap in t() */}Current
+                        </span>
                       )}
                     </DropdownMenuItem>
                   )
@@ -246,38 +260,51 @@ export const MoveMenu = ({
           <>
             <DropdownMenuLabel className="flex items-center gap-2 text-muted-foreground">
               <MoveVertical className="size-4" />
+              {/* TODO(i18n): wrap in t() */}
               Reorder
             </DropdownMenuLabel>
 
             {onMoveUp && (
               <DropdownMenuItem onClick={() => handleReorder('up')}>
                 <ArrowUp className="size-4 mr-2" />
+                {/* TODO(i18n): wrap in t() */}
                 Move up
-                <span className="ml-auto text-xs text-muted-foreground">Alt+↑</span>
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {/* TODO(i18n): wrap in t() */}Alt+↑
+                </span>
               </DropdownMenuItem>
             )}
 
             {onMoveDown && (
               <DropdownMenuItem onClick={() => handleReorder('down')}>
                 <ArrowDown className="size-4 mr-2" />
+                {/* TODO(i18n): wrap in t() */}
                 Move down
-                <span className="ml-auto text-xs text-muted-foreground">Alt+↓</span>
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {/* TODO(i18n): wrap in t() */}Alt+↓
+                </span>
               </DropdownMenuItem>
             )}
 
             {onMoveToTop && (
               <DropdownMenuItem onClick={() => handleReorder('top')}>
                 <ChevronsUp className="size-4 mr-2" />
+                {/* TODO(i18n): wrap in t() */}
                 Move to top
-                <span className="ml-auto text-xs text-muted-foreground">Alt+Shift+↑</span>
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {/* TODO(i18n): wrap in t() */}Alt+Shift+↑
+                </span>
               </DropdownMenuItem>
             )}
 
             {onMoveToBottom && (
               <DropdownMenuItem onClick={() => handleReorder('bottom')}>
                 <ChevronsDown className="size-4 mr-2" />
+                {/* TODO(i18n): wrap in t() */}
                 Move to bottom
-                <span className="ml-auto text-xs text-muted-foreground">Alt+Shift+↓</span>
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {/* TODO(i18n): wrap in t() */}Alt+Shift+↓
+                </span>
               </DropdownMenuItem>
             )}
           </>

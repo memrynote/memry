@@ -82,6 +82,7 @@ export const FilterEmptyState = ({
 
       {filterSummary && (
         <p className="text-sm text-muted-foreground mb-6 text-center max-w-md">
+          {/* TODO(i18n): wrap in t() */}
           Active filters: {filterSummary}
         </p>
       )}
@@ -89,6 +90,7 @@ export const FilterEmptyState = ({
       <p className="text-sm text-muted-foreground mb-4">{t('filters.emptyHelp')}</p>
 
       <Button variant="outline" onClick={onClearFilters} className="text-primary">
+        {/* TODO(i18n): wrap in t() */}
         Clear all filters
       </Button>
     </div>

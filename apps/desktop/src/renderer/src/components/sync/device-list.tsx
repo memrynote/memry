@@ -222,7 +222,8 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
                       )}
                     </div>
                     <span className="text-[11px]/3.5 text-muted-foreground">
-                      {platformLabel(device.platform)} &middot; {syncLabel}
+                      {platformLabel(device.platform)} &{/* TODO(i18n): wrap in t() */}middot;{' '}
+                      {syncLabel}
                     </span>
                   </div>
                 </div>

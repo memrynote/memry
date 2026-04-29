@@ -53,7 +53,8 @@ export const RepeatIndicator = ({
             <span className="font-medium">{displayText}</span>
             {progress && (
               <span className="text-xs text-muted-foreground">
-                {progress.current} of {progress.total} completed
+                {progress.current} {/* TODO(i18n): wrap in t() */}of {progress.total}{' '}
+                {/* TODO(i18n): wrap in t() */}completed
               </span>
             )}
           </div>

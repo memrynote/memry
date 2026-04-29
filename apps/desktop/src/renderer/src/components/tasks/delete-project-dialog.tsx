@@ -66,6 +66,7 @@ export const DeleteProjectDialog = ({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
+            {/* TODO(i18n): wrap in t() */}
             Delete "{project.name}"?
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
@@ -73,8 +74,10 @@ export const DeleteProjectDialog = ({
               {hasTasks ? (
                 <>
                   <p>
-                    This project has {taskCount} task{taskCount !== 1 ? 's' : ''}. What would you
-                    like to do with them?
+                    {/* TODO(i18n): wrap in t() */}
+                    This project has {taskCount} {/* TODO(i18n): wrap in t() */}task
+                    {taskCount !== 1 ? 's' : ''}. {/* TODO(i18n): wrap in t() */}What would you like
+                    to do with them?
                   </p>
 
                   {/* Radio Options */}
@@ -106,6 +109,7 @@ export const DeleteProjectDialog = ({
                         )}
                       </div>
                       <span className="text-sm text-foreground">
+                        {/* TODO(i18n): wrap in t() */}
                         Move tasks to Personal project
                       </span>
                     </label>
@@ -136,18 +140,23 @@ export const DeleteProjectDialog = ({
                           <div className="m-0.5 size-2 rounded-full bg-primary-foreground" />
                         )}
                       </div>
-                      <span className="text-sm text-foreground">Delete all tasks permanently</span>
+                      <span className="text-sm text-foreground">
+                        {/* TODO(i18n): wrap in t() */}Delete all tasks permanently
+                      </span>
                     </label>
                   </div>
                 </>
               ) : (
-                <p>This project has no tasks and will be permanently deleted.</p>
+                <p>
+                  {/* TODO(i18n): wrap in t() */}This project has no tasks and will be permanently
+                  deleted.
+                </p>
               )}
 
               {/* Warning */}
               <div className="flex items-center gap-2 rounded-sm bg-destructive/10 p-3 text-sm text-destructive">
                 <AlertTriangle className="size-4 shrink-0" />
-                <span>This action cannot be undone.</span>
+                <span>{/* TODO(i18n): wrap in t() */}This action cannot be undone.</span>
               </div>
             </div>
           </AlertDialogDescription>
@@ -155,9 +164,11 @@ export const DeleteProjectDialog = ({
 
         <AlertDialogFooter>
           <Button variant="outline" onClick={onClose}>
+            {/* TODO(i18n): wrap in t() */}
             Cancel
           </Button>
           <Button variant="destructive" onClick={handleConfirm}>
+            {/* TODO(i18n): wrap in t() */}
             Delete Project
           </Button>
         </AlertDialogFooter>

@@ -42,9 +42,10 @@ export const DeleteTaskDialog = ({
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete task?</AlertDialogTitle>
+          <AlertDialogTitle>{/* TODO(i18n): wrap in t() */}Delete task?</AlertDialogTitle>
           <AlertDialogDescription>
-            &ldquo;{taskTitle}&rdquo; will be permanently deleted. This action cannot be undone.
+            &{/* TODO(i18n): wrap in t() */}ldquo;{taskTitle}&{/* TODO(i18n): wrap in t() */}rdquo;
+            will be permanently deleted. This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -53,6 +54,7 @@ export const DeleteTaskDialog = ({
             onClick={handleConfirm}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
+            {/* TODO(i18n): wrap in t() */}
             Delete Task
           </AlertDialogAction>
         </AlertDialogFooter>

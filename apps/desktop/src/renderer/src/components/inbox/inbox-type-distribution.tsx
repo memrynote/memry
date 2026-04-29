@@ -38,7 +38,9 @@ export function InboxTypeDistribution({ stats }: InboxTypeDistributionProps): Re
   if (!stats?.itemsByType || Object.keys(stats.itemsByType).length === 0) {
     return (
       <div className="p-6 rounded-xl border border-border/50 bg-card h-full flex flex-col items-center justify-center min-h-[200px]">
-        <span className="text-muted-foreground font-serif italic">No item types to display</span>
+        <span className="text-muted-foreground font-serif italic">
+          {/* TODO(i18n): wrap in t() */}No item types to display
+        </span>
       </div>
     )
   }
@@ -52,8 +54,12 @@ export function InboxTypeDistribution({ stats }: InboxTypeDistributionProps): Re
   return (
     <div className="p-6 rounded-xl border border-border/50 bg-card flex flex-col h-full">
       <div className="mb-6">
-        <h3 className="text-lg font-serif font-medium text-foreground">Item Types</h3>
-        <p className="text-sm text-muted-foreground mt-1">Distribution of content formats</p>
+        <h3 className="text-lg font-serif font-medium text-foreground">
+          {/* TODO(i18n): wrap in t() */}Item Types
+        </h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          {/* TODO(i18n): wrap in t() */}Distribution of content formats
+        </p>
       </div>
 
       <div className="space-y-4">

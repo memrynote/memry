@@ -290,7 +290,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
           size="icon"
           onClick={handleStartClick}
           className={cn('h-8 w-8 text-muted-foreground hover:text-foreground', className)}
-          aria-label="Start voice recording"
+          aria-label={'Start voice recording' /* TODO(i18n): wrap aria-label in t() */}
         >
           <Mic className="size-4" />
         </Button>
@@ -307,7 +307,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
           )}
         >
           <Loader2 className="size-4 animate-spin" />
-          <span>Requesting microphone access...</span>
+          <span>{/* TODO(i18n): wrap in t() */}Requesting microphone access...</span>
         </div>
       )
     }
@@ -326,6 +326,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
           {permissionDenied && (
             <Button variant="ghost" size="sm" onClick={openSettings} className="h-7 px-2 text-xs">
               <Settings className="size-3 mr-1" />
+              {/* TODO(i18n): wrap in t() */}
               Settings
             </Button>
           )}
@@ -351,7 +352,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
           )}
         >
           <Loader2 className="size-4 animate-spin" />
-          <span>Processing...</span>
+          <span>{/* TODO(i18n): wrap in t() */}Processing...</span>
         </div>
       )
     }
@@ -392,10 +393,10 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
             'border border-border/50 text-muted-foreground',
             'hover:bg-muted/50 transition-colors'
           )}
-          aria-label="Cancel recording"
+          aria-label={'Cancel recording' /* TODO(i18n): wrap aria-label in t() */}
         >
           <X className="size-3" />
-          <span className="text-[11px]/3.5 font-normal">Cancel</span>
+          <span className="text-[11px]/3.5 font-normal">{/* TODO(i18n): wrap in t() */}Cancel</span>
         </button>
 
         <button
@@ -405,10 +406,10 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
             'bg-foreground text-background',
             'hover:bg-foreground/90 transition-colors'
           )}
-          aria-label="Stop recording"
+          aria-label={'Stop recording' /* TODO(i18n): wrap aria-label in t() */}
         >
           <Square className="size-2.5 fill-current" />
-          <span className="text-[11px]/3.5 font-medium">Stop</span>
+          <span className="text-[11px]/3.5 font-medium">{/* TODO(i18n): wrap in t() */}Stop</span>
         </button>
       </div>
     )

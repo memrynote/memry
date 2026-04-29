@@ -84,6 +84,7 @@ export const TaskRepeatSection = ({
     <div className="flex flex-col py-4 px-5 gap-2 border-b border-border">
       <div className="flex items-center justify-between">
         <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
+          {/* TODO(i18n): wrap in t() */}
           Repeat
         </span>
         {active ? (
@@ -93,7 +94,7 @@ export const TaskRepeatSection = ({
             type="button"
             onClick={() => setIsEditDialogOpen(true)}
             className="text-text-tertiary hover:text-text-secondary transition-colors"
-            aria-label="Add repeat"
+            aria-label={'Add repeat' /* TODO(i18n): wrap aria-label in t() */}
           >
             <Plus size={14} />
           </button>
@@ -119,17 +120,20 @@ export const TaskRepeatSection = ({
               type="button"
               onClick={() => setIsEditDialogOpen(true)}
               className="flex items-center rounded-[5px] py-1 px-2.5 border border-foreground/10"
-              aria-label="Edit"
+              aria-label={'Edit' /* TODO(i18n): wrap aria-label in t() */}
             >
-              <span className="text-[11px] text-text-primary font-medium leading-3.5">Edit</span>
+              <span className="text-[11px] text-text-primary font-medium leading-3.5">
+                {/* TODO(i18n): wrap in t() */}Edit
+              </span>
             </button>
             <button
               type="button"
               onClick={() => setIsStopDialogOpen(true)}
               className="flex items-center rounded-[5px] py-1 px-2.5 border border-foreground/10"
-              aria-label="Stop repeating"
+              aria-label={'Stop repeating' /* TODO(i18n): wrap aria-label in t() */}
             >
               <span className="text-[11px] text-text-primary font-medium leading-3.5">
+                {/* TODO(i18n): wrap in t() */}
                 Stop repeating
               </span>
             </button>

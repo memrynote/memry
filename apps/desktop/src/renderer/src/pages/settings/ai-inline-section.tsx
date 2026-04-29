@@ -244,7 +244,7 @@ export function AIInlineSettings(): React.JSX.Element {
                 value={settings.baseUrl}
                 onChange={(e) => setSettings((prev) => ({ ...prev, baseUrl: e.target.value }))}
                 onBlur={() => void updateSetting({ baseUrl: settings.baseUrl })}
-                placeholder="http://localhost:11434/v1"
+                placeholder={'http://localhost:11434/v1' /* TODO(i18n): wrap placeholder in t() */}
                 className="h-7 text-xs/4"
               />
             </SettingRowTall>

@@ -213,8 +213,12 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
     <div className="space-y-3">
       {/* Section Label */}
       <div className="flex items-center gap-2">
-        <h3 className="text-sm font-medium text-[var(--foreground)]">Link to</h3>
-        <span className="text-xs text-[var(--muted-foreground)]">(optional)</span>
+        <h3 className="text-sm font-medium text-[var(--foreground)]">
+          {/* TODO(i18n): wrap in t() */}Link to
+        </h3>
+        <span className="text-xs text-[var(--muted-foreground)]">
+          ({/* TODO(i18n): wrap in t() */}optional)
+        </span>
       </div>
 
       {/* Search Input */}
@@ -226,13 +230,13 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
         <Input
           ref={inputRef}
           type="text"
-          placeholder="Search notes to link..."
+          placeholder={'Search notes to link...' /* TODO(i18n): wrap placeholder in t() */}
           value={searchQuery}
           onChange={handleInputChange}
           onFocus={handleInputFocus}
           onKeyDown={handleKeyDown}
           className="pl-9"
-          aria-label="Search notes to link"
+          aria-label={'Search notes to link' /* TODO(i18n): wrap aria-label in t() */}
           aria-expanded={isDropdownOpen}
           aria-haspopup="listbox"
         />
@@ -259,27 +263,37 @@ const LinkSearch = ({ linkedNotes, onLinkedNotesChange }: LinkSearchProps): Reac
         {isDropdownOpen && isSearching && (
           <div className="absolute top-full left-0 right-0 mt-1 py-2 px-3 bg-[var(--background)] border border-[var(--border)] rounded-md shadow-lg z-10 flex items-center gap-2">
             <Loader2 className="size-4 animate-spin text-[var(--muted-foreground)]" />
-            <p className="text-sm text-[var(--muted-foreground)]">Searching...</p>
+            <p className="text-sm text-[var(--muted-foreground)]">
+              {/* TODO(i18n): wrap in t() */}Searching...
+            </p>
           </div>
         )}
 
         {/* No results message */}
         {isDropdownOpen && searchQuery.trim() && !isSearching && filteredNotes.length === 0 && (
           <div className="absolute top-full left-0 right-0 mt-1 py-2 px-3 bg-[var(--background)] border border-[var(--border)] rounded-md shadow-lg z-10">
-            <p className="text-sm text-[var(--muted-foreground)]">No notes found</p>
+            <p className="text-sm text-[var(--muted-foreground)]">
+              {/* TODO(i18n): wrap in t() */}No notes found
+            </p>
           </div>
         )}
       </div>
 
       {/* Linked Notes List */}
       {linkedNotes.length > 0 ? (
-        <div className="space-y-1" role="list" aria-label="Linked notes">
+        <div
+          className="space-y-1"
+          role="list"
+          aria-label={'Linked notes' /* TODO(i18n): wrap aria-label in t() */}
+        >
           {linkedNotes.map((note) => (
             <LinkedItem key={note.id} note={note} onRemove={handleRemoveNote} />
           ))}
         </div>
       ) : (
-        <p className="text-sm text-[var(--muted-foreground)]/70 italic">No links added</p>
+        <p className="text-sm text-[var(--muted-foreground)]/70 italic">
+          {/* TODO(i18n): wrap in t() */}No links added
+        </p>
       )}
     </div>
   )

@@ -161,7 +161,7 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
           size="icon"
           className="h-7 w-7 shrink-0"
           onClick={goBack}
-          aria-label="Go back"
+          aria-label={'Go back' /* TODO(i18n): wrap aria-label in t() */}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -192,7 +192,9 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
               )}
             </span>
           </div>
-          <p className="text-xs text-muted-foreground">{count} notes</p>
+          <p className="text-xs text-muted-foreground">
+            {count} {/* TODO(i18n): wrap in t() */}notes
+          </p>
         </div>
 
         {/* Overflow menu */}
@@ -221,14 +223,17 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
       <ScrollArea className="flex-1">
         {isLoading ? (
           <div className="px-3 py-8 text-center text-sm text-muted-foreground">
+            {/* TODO(i18n): wrap in t() */}
             Loading notes...
           </div>
         ) : error ? (
           <div className="px-3 py-8 text-center text-sm text-destructive">{error}</div>
         ) : count === 0 ? (
           <div className="px-3 py-8 text-center text-sm text-muted-foreground">
-            <p>No notes with this tag</p>
-            <p className="mt-1 text-xs">Add this tag to a note to see it here</p>
+            <p>{/* TODO(i18n): wrap in t() */}No notes with this tag</p>
+            <p className="mt-1 text-xs">
+              {/* TODO(i18n): wrap in t() */}Add this tag to a note to see it here
+            </p>
           </div>
         ) : (
           <div className="py-2">
@@ -237,6 +242,7 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
               <>
                 <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                   <Pin className="h-3 w-3" />
+                  {/* TODO(i18n): wrap in t() */}
                   PINNED
                 </div>
                 {pinnedNotes.map((note) => (
@@ -255,7 +261,7 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
 
             {/* All notes section */}
             <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground flex items-center justify-between">
-              <span>ALL NOTES</span>
+              <span>{/* TODO(i18n): wrap in t() */}ALL NOTES</span>
               <SortDropdown sortBy={sortBy} onSortChange={setSortBy} />
             </div>
             {unpinnedNotes.map((note) => (
@@ -272,6 +278,7 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
             {/* Empty state for unpinned when all are pinned */}
             {unpinnedNotes.length === 0 && pinnedNotes.length > 0 && (
               <div className="px-3 py-4 text-center text-xs text-muted-foreground">
+                {/* TODO(i18n): wrap in t() */}
                 All notes are pinned
               </div>
             )}
@@ -353,12 +360,13 @@ function NoteItem({ note, isPinned, onClick, onPin, onUnpin }: NoteItemProps): R
                 <button
                   onClick={handlePinClick}
                   className="shrink-0 mt-0.5 p-1 rounded-sm transition-colors hover:bg-accent text-primary"
-                  aria-label="Unpin from tag"
+                  aria-label={'Unpin from tag' /* TODO(i18n): wrap aria-label in t() */}
                 >
                   <Pin className="h-3.5 w-3.5 fill-current" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="left" className="text-xs">
+                {/* TODO(i18n): wrap in t() */}
                 Unpin
               </TooltipContent>
             </Tooltip>
@@ -370,12 +378,13 @@ function NoteItem({ note, isPinned, onClick, onPin, onUnpin }: NoteItemProps): R
                 <button
                   onClick={handlePinClick}
                   className="shrink-0 mt-0.5 p-1 rounded-sm transition-all hover:bg-accent text-muted-foreground hover:text-foreground opacity-0 group-hover/noteitem:opacity-100"
-                  aria-label="Pin to tag"
+                  aria-label={'Pin to tag' /* TODO(i18n): wrap aria-label in t() */}
                 >
                   <Pin className="h-3.5 w-3.5" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="left" className="text-xs">
+                {/* TODO(i18n): wrap in t() */}
                 Pin
               </TooltipContent>
             </Tooltip>
@@ -425,18 +434,25 @@ function TagOverflowMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Tag actions">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          aria-label={'Tag actions' /* TODO(i18n): wrap aria-label in t() */}
+        >
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
         <DropdownMenuItem onClick={onRequestRename}>
           <Pencil className="h-4 w-4 mr-2" />
+          {/* TODO(i18n): wrap in t() */}
           Edit tag name
         </DropdownMenuItem>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <Palette className="h-4 w-4 mr-2" />
+            {/* TODO(i18n): wrap in t() */}
             Change color
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-48 p-2">
@@ -466,6 +482,7 @@ function TagOverflowMenu({
           className="text-destructive focus:text-destructive"
         >
           <Trash2 className="h-4 w-4 mr-2" />
+          {/* TODO(i18n): wrap in t() */}
           Delete tag
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -490,14 +507,17 @@ function SortDropdown({ sortBy, onSortChange }: SortDropdownProps): React.JSX.El
         <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => onSortChange(v as TagSortBy)}>
           <DropdownMenuRadioItem value="modified">
             <Clock className="h-4 w-4 mr-2" />
+            {/* TODO(i18n): wrap in t() */}
             Recent
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="created">
             <Calendar className="h-4 w-4 mr-2" />
+            {/* TODO(i18n): wrap in t() */}
             Created
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="title">
             <SortAsc className="h-4 w-4 mr-2" />
+            {/* TODO(i18n): wrap in t() */}
             Alphabetical
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>

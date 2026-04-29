@@ -517,17 +517,17 @@ export const IconPicker = ({
       )}
       style={positionStyle}
       role="dialog"
-      aria-label="Icon picker"
+      aria-label={'Icon picker' /* TODO(i18n): wrap aria-label in t() */}
     >
       {/* Header */}
       <div className="border-b p-3">
         <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Select Icon</h3>
+          <h3 className="text-sm font-semibold">{/* TODO(i18n): wrap in t() */}Select Icon</h3>
           <button
             type="button"
             onClick={onClose}
             className="rounded-sm p-1 hover:bg-accent"
-            aria-label="Close icon picker"
+            aria-label={'Close icon picker' /* TODO(i18n): wrap aria-label in t() */}
           >
             <X className="h-4 w-4" />
           </button>
@@ -535,7 +535,7 @@ export const IconPicker = ({
         <Input
           ref={inputRef}
           type="text"
-          placeholder="Search icons..."
+          placeholder={'Search icons...' /* TODO(i18n): wrap placeholder in t() */}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="h-8 text-sm"
@@ -552,6 +552,7 @@ export const IconPicker = ({
             !selectedCategory ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
           )}
         >
+          {/* TODO(i18n): wrap in t() */}
           All
         </button>
         {Object.keys(ICON_CATEGORIES).map((category) => (
@@ -581,6 +582,7 @@ export const IconPicker = ({
             className="mb-2 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
           >
             <X className="h-4 w-4" />
+            {/* TODO(i18n): wrap in t() */}
             Clear Icon
           </button>
         )}
@@ -614,6 +616,7 @@ export const IconPicker = ({
 
         {Object.keys(filteredIcons).length === 0 && (
           <div className="py-8 text-center text-sm text-muted-foreground">
+            {/* TODO(i18n): wrap in t() */}
             No icons found for "{searchQuery}"
           </div>
         )}

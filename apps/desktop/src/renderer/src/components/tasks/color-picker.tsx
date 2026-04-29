@@ -45,7 +45,7 @@ export const ColorPicker = ({
     <div
       className={cn('flex flex-wrap gap-2', className)}
       role="radiogroup"
-      aria-label="Select color"
+      aria-label={'Select color' /* TODO(i18n): wrap aria-label in t() */}
     >
       {colors.map((color) => {
         const isSelected = value === color.value

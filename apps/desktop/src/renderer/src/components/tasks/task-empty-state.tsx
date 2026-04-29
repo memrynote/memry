@@ -87,6 +87,7 @@ export const TaskEmptyState = ({
       {config.showAddButton && onAddTask && (
         <Button onClick={onAddTask} size="sm">
           <Plus className="size-4" aria-hidden="true" />
+          {/* TODO(i18n): wrap in t() */}
           Add Task
         </Button>
       )}

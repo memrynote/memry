@@ -1011,7 +1011,7 @@ export function FolderTableView({
       <div
         ref={tableContainerRef}
         role="grid"
-        aria-label="Notes table"
+        aria-label={'Notes table' /* TODO(i18n): wrap aria-label in t() */}
         className={cn('w-full max-w-full overflow-auto outline-none', className)}
         tabIndex={0}
         onKeyDown={handleKeyDown}

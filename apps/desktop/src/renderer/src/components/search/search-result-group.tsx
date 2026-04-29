@@ -52,7 +52,8 @@ export function SearchResultGroup({
           onClick={() => setExpanded(true)}
           className="w-full px-3 py-1.5 text-xs text-center text-text-tertiary hover:text-foreground transition-colors"
         >
-          View all {group.totalInGroup} results
+          {/* TODO(i18n): wrap in t() */}
+          View all {group.totalInGroup} {/* TODO(i18n): wrap in t() */}results
         </button>
       )}
     </Command.Group>

@@ -109,7 +109,7 @@ export const DueDateFilter = ({
           variant="outline"
           size="sm"
           className={cn('h-9 gap-2', hasSelection && 'border-primary bg-primary/5', className)}
-          aria-label="Filter by due date"
+          aria-label={'Filter by due date' /* TODO(i18n): wrap aria-label in t() */}
         >
           <span className="truncate max-w-32">{getDisplayLabel()}</span>
           <ChevronDown className="size-4 opacity-50 shrink-0" />
@@ -193,6 +193,7 @@ export const DueDateFilter = ({
         {/* Custom range */}
         <div className="flex flex-col py-3 px-4 gap-2 border-b border-border">
           <span className="text-[11px] tracking-[0.05em] uppercase text-text-tertiary font-semibold leading-[14px]">
+            {/* TODO(i18n): wrap in t() */}
             Custom Range
           </span>
           <div className="flex items-center gap-2">
@@ -263,6 +264,7 @@ export const DueDateFilter = ({
             onClick={handleClear}
             className="text-[12px] text-text-tertiary font-medium leading-4 hover:text-foreground transition-colors"
           >
+            {/* TODO(i18n): wrap in t() */}
             Clear
           </button>
           <button
@@ -270,7 +272,9 @@ export const DueDateFilter = ({
             onClick={() => setIsOpen(false)}
             className="flex items-center rounded-sm py-[5px] px-3.5 gap-1 bg-foreground hover:bg-foreground/80 transition-colors"
           >
-            <span className="text-[12px] text-background font-semibold leading-4">Apply</span>
+            <span className="text-[12px] text-background font-semibold leading-4">
+              {/* TODO(i18n): wrap in t() */}Apply
+            </span>
           </button>
         </div>
       </PopoverContent>

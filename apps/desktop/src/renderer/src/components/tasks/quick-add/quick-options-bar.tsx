@@ -47,7 +47,9 @@ export const QuickOptionsBar = ({
 
   return (
     <div className={cn('flex items-center gap-2 mt-2 text-xs', className)}>
-      <span className="text-muted-foreground shrink-0">Quick options:</span>
+      <span className="text-muted-foreground shrink-0">
+        {/* TODO(i18n): wrap in t() */}Quick options:
+      </span>
       <div className="flex items-center gap-1.5 flex-wrap">
         {quickOptions.map((option) => (
           <button

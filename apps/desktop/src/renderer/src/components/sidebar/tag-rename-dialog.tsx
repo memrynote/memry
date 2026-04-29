@@ -76,14 +76,16 @@ export function TagRenameDialog({
     <Dialog open={open} onOpenChange={(next) => (!next ? close() : onOpenChange(next))}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Rename tag</DialogTitle>
+          <DialogTitle>{/* TODO(i18n): wrap in t() */}Rename tag</DialogTitle>
           <DialogDescription>
-            Rename <span className="font-mono">#{tag}</span> across every note that uses it.
+            {/* TODO(i18n): wrap in t() */}
+            Rename <span className="font-mono">#{tag}</span> {/* TODO(i18n): wrap in t() */}across
+            every note that uses it.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2 py-2">
-          <Label htmlFor="tag-rename-input">New name</Label>
+          <Label htmlFor="tag-rename-input">{/* TODO(i18n): wrap in t() */}New name</Label>
           <Input
             id="tag-rename-input"
             value={value}
@@ -106,6 +108,7 @@ export function TagRenameDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={close} disabled={submitting}>
+            {/* TODO(i18n): wrap in t() */}
             Cancel
           </Button>
           <Button onClick={() => void handleSave()} disabled={submitting}>

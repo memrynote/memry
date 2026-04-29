@@ -90,7 +90,7 @@ export const PinnedTab = ({
                 'bg-tint',
                 'animate-pulse'
               )}
-              aria-label="Unsaved changes"
+              aria-label={'Unsaved changes' /* TODO(i18n): wrap aria-label in t() */}
             />
           )}
         </div>
@@ -101,7 +101,9 @@ export const PinnedTab = ({
       >
         <div className="flex items-center gap-1.5">
           <span>{tab.title}</span>
-          {tab.isModified && <span className="text-muted-foreground">(unsaved)</span>}
+          {tab.isModified && (
+            <span className="text-muted-foreground">({/* TODO(i18n): wrap in t() */}unsaved)</span>
+          )}
         </div>
       </TooltipContent>
     </Tooltip>

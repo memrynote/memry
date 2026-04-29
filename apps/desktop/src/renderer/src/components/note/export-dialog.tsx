@@ -211,7 +211,7 @@ export function ExportDialog({
                   )}
                 />
                 <div>
-                  <div className="font-medium text-sm">PDF</div>
+                  <div className="font-medium text-sm">{/* TODO(i18n): wrap in t() */}PDF</div>
                   <div className="text-xs text-muted-foreground">
                     {t('exportDialog.pdfDescription')}
                   </div>
@@ -235,7 +235,7 @@ export function ExportDialog({
                   )}
                 />
                 <div>
-                  <div className="font-medium text-sm">HTML</div>
+                  <div className="font-medium text-sm">{/* TODO(i18n): wrap in t() */}HTML</div>
                   <div className="text-xs text-muted-foreground">
                     {t('exportDialog.htmlDescription')}
                   </div>
@@ -259,9 +259,15 @@ export function ExportDialog({
                   <SelectValue placeholder={t('exportDialog.selectPageSize')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="A4">A4 (210 x 297 mm)</SelectItem>
-                  <SelectItem value="Letter">Letter (8.5 x 11 in)</SelectItem>
-                  <SelectItem value="Legal">Legal (8.5 x 14 in)</SelectItem>
+                  <SelectItem value="A4">
+                    {/* TODO(i18n): wrap in t() */}A4 (210 x 297 mm)
+                  </SelectItem>
+                  <SelectItem value="Letter">
+                    {/* TODO(i18n): wrap in t() */}Letter (8.5 x 11 in)
+                  </SelectItem>
+                  <SelectItem value="Legal">
+                    {/* TODO(i18n): wrap in t() */}Legal (8.5 x 14 in)
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>

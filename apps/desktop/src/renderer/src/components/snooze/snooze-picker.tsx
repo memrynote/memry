@@ -97,9 +97,15 @@ export function SnoozePicker({
 
   // Default trigger
   const defaultTrigger = (
-    <Button variant={variant} size={size} className={className} disabled={disabled} title="Snooze">
+    <Button
+      variant={variant}
+      size={size}
+      className={className}
+      disabled={disabled}
+      title={'Snooze' /* TODO(i18n): wrap title in t() */}
+    >
       <Clock className="h-4 w-4" />
-      {size !== 'icon' && <span className="ml-2">Snooze</span>}
+      {size !== 'icon' && <span className="ml-2">{/* TODO(i18n): wrap in t() */}Snooze</span>}
     </Button>
   )
 
@@ -139,7 +145,7 @@ export function SnoozePicker({
             className="flex items-center gap-2"
           >
             <CalendarDays className="h-4 w-4" />
-            <span>Pick Date & Time</span>
+            <span>{/* TODO(i18n): wrap in t() */}Pick Date & Time</span>
             <ChevronRight className="h-4 w-4 ml-auto" />
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -235,8 +241,10 @@ function SnoozeCustomDialog({
         }}
       >
         <DialogHeader>
-          <DialogTitle>Pick Date & Time</DialogTitle>
-          <DialogDescription>Select when to be reminded about this item</DialogDescription>
+          <DialogTitle>{/* TODO(i18n): wrap in t() */}Pick Date & Time</DialogTitle>
+          <DialogDescription>
+            {/* TODO(i18n): wrap in t() */}Select when to be reminded about this item
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -280,6 +288,7 @@ function SnoozeCustomDialog({
             disabled={!selectedDate || !!timeError}
             className="w-full"
           >
+            {/* TODO(i18n): wrap in t() */}
             Snooze
           </Button>
         </div>
@@ -323,7 +332,7 @@ export function QuickSnoozeButton({
         e.stopPropagation()
       }}
       className={showLabel ? undefined : 'p-1.5 h-auto'}
-      aria-label="Snooze"
+      aria-label={'Snooze' /* TODO(i18n): wrap aria-label in t() */}
     >
       <Clock className={showLabel ? 'h-4 w-4 mr-1' : 'h-4 w-4'} />
       {showLabel && label}
@@ -343,7 +352,7 @@ export function QuickSnoozeButton({
           <SnoozePicker onSnooze={onSnooze} disabled={disabled} trigger={button} />
         </span>
       </TooltipTrigger>
-      <TooltipContent side="bottom">Snooze</TooltipContent>
+      <TooltipContent side="bottom">{/* TODO(i18n): wrap in t() */}Snooze</TooltipContent>
     </Tooltip>
   )
 }

@@ -92,16 +92,18 @@ export const AddSubtaskInput = ({
           onFocus={handleFocus}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
-          placeholder="Add subtask..."
+          placeholder={'Add subtask...' /* TODO(i18n): wrap placeholder in t() */}
           className={cn(
             'flex-1 px-2 py-1.5 text-sm bg-transparent outline-none',
             'placeholder:text-muted-foreground/60'
           )}
-          aria-label="Add subtask"
+          aria-label={'Add subtask' /* TODO(i18n): wrap aria-label in t() */}
         />
 
         {isActive && title && (
-          <span className="text-xs text-muted-foreground mr-2 shrink-0">Enter to add</span>
+          <span className="text-xs text-muted-foreground mr-2 shrink-0">
+            {/* TODO(i18n): wrap in t() */}Enter to add
+          </span>
         )}
       </div>
     </div>

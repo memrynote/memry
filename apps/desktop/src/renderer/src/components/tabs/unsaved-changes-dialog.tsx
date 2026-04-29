@@ -119,9 +119,10 @@ export const UnsavedChangesDialog = ({
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+          <AlertDialogTitle>{/* TODO(i18n): wrap in t() */}Unsaved Changes</AlertDialogTitle>
           <AlertDialogDescription>
-            &quot;{tabTitle}&quot; has unsaved changes. What would you like to do?
+            &{/* TODO(i18n): wrap in t() */}quot;{tabTitle}&{/* TODO(i18n): wrap in t() */}quot; has
+            unsaved changes. What would you like to do?
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

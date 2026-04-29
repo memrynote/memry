@@ -439,7 +439,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
           })
         }}
         className="shrink-0 rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent/80"
-        title="Open in task panel"
+        title={'Open in task panel' /* TODO(i18n): wrap title in t() */}
       >
         <ArrowUpRight className="size-3 text-muted-foreground" />
       </button>
@@ -457,7 +457,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
         onBlur={handleTitleBlur}
         onKeyDown={handleTitleKeyDown}
         className="grow shrink min-w-0 bg-transparent text-[13px] font-medium outline-none text-foreground/90 placeholder:text-muted-foreground"
-        placeholder="Task name..."
+        placeholder={'Task name...' /* TODO(i18n): wrap placeholder in t() */}
       />
     ),
     [editTitle, handleTitleChange, handleTitleBlur, handleTitleKeyDown]
@@ -511,7 +511,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
       >
         <AlertTriangle className="size-4 text-amber-500" />
         <span className="line-through">{task?.title ?? title}</span>
-        <span className="text-xs">Task deleted</span>
+        <span className="text-xs">{/* TODO(i18n): wrap in t() */}Task deleted</span>
         <button
           type="button"
           onClick={handleRemoveGhost}
@@ -538,6 +538,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
         )}
       >
         <Loader2 className="size-4 animate-spin" />
+        {/* TODO(i18n): wrap in t() */}
         Loading...
       </div>
     )

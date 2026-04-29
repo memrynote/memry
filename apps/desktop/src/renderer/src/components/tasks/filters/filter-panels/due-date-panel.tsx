@@ -108,7 +108,9 @@ export function DueDatePanel({
           />
           <path d="M2 5.5h10" stroke="currentColor" strokeWidth="1.1" />
         </svg>
-        <span className="text-[13px] text-foreground font-medium leading-4">Due date</span>
+        <span className="text-[13px] text-foreground font-medium leading-4">
+          {/* TODO(i18n): wrap in t() */}Due date
+        </span>
       </div>
       <DatePickerContent selected={selectedDate} onSelect={handleSelect} />
     </>

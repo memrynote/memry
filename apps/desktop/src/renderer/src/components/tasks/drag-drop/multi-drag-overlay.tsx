@@ -211,7 +211,8 @@ export const MultiDragOverlay = ({
                 </div>
                 {totalCount > 1 && (
                   <div className="text-sm text-primary mt-1">
-                    +{totalCount - 1} more task{totalCount > 2 ? 's' : ''}
+                    +{totalCount - 1} {/* TODO(i18n): wrap in t() */}more task
+                    {totalCount > 2 ? 's' : ''}
                   </div>
                 )}
               </>
@@ -301,7 +302,7 @@ export const MultiTaskBadge = ({ count, className }: MultiTaskBadgeProps): React
         className
       )}
     >
-      {count} task{count !== 1 ? 's' : ''}
+      {count} {/* TODO(i18n): wrap in t() */}task{count !== 1 ? 's' : ''}
     </span>
   )
 }

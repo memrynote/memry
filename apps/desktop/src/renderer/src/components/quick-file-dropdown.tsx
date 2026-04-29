@@ -136,7 +136,7 @@ const QuickFileDropdown = ({
         'animate-in fade-in-0 slide-in-from-top-2 duration-[var(--duration-fast)]'
       )}
       role="listbox"
-      aria-label="Folder suggestions"
+      aria-label={'Folder suggestions' /* TODO(i18n): wrap aria-label in t() */}
     >
       {filteredFolders.length > 0 ? (
         filteredFolders.map((folder, index) => (
@@ -150,6 +150,7 @@ const QuickFileDropdown = ({
         ))
       ) : (
         <div className="px-3 py-3 text-sm text-[var(--muted-foreground)]">
+          {/* TODO(i18n): wrap in t() */}
           No folders match "{query}"
         </div>
       )}

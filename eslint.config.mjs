@@ -5,6 +5,7 @@ import eslintPluginReact from 'eslint-plugin-react'
 import eslintPluginReactHooks from 'eslint-plugin-react-hooks'
 import eslintPluginReactRefresh from 'eslint-plugin-react-refresh'
 import reactYouMightNotNeedAnEffect from 'eslint-plugin-react-you-might-not-need-an-effect'
+import i18nPlugin from './apps/desktop/scripts/i18n/eslint/index.mjs'
 
 export default defineConfig(
   {
@@ -47,6 +48,16 @@ export default defineConfig(
       react: {
         version: 'detect'
       }
+    }
+  },
+  {
+    files: ['apps/desktop/src/renderer/src/**/*.tsx'],
+    ignores: ['**/*.test.tsx', '**/*.spec.tsx'],
+    plugins: {
+      i18n: i18nPlugin
+    },
+    rules: {
+      'i18n/no-jsx-text-literals': 'error'
     }
   },
   {

@@ -62,15 +62,17 @@ export const DeleteParentDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-destructive" />
+            {/* TODO(i18n): wrap in t() */}
             Delete task with subtasks?
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-3">
               <p>
-                <span className="font-medium text-foreground">"{parent.title}"</span> has{' '}
-                {subtaskCount} subtask{subtaskCount !== 1 ? 's' : ''}.
+                <span className="font-medium text-foreground">"{parent.title}"</span>{' '}
+                {/* TODO(i18n): wrap in t() */}has {subtaskCount} {/* TODO(i18n): wrap in t() */}
+                subtask{subtaskCount !== 1 ? 's' : ''}.
               </p>
-              <p>What would you like to do?</p>
+              <p>{/* TODO(i18n): wrap in t() */}What would you like to do?</p>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -84,8 +86,11 @@ export const DeleteParentDialog = ({
             <div className="flex items-start space-x-3 rounded-sm border p-4 cursor-pointer hover:bg-accent/50 transition-colors">
               <RadioGroupItem value="delete-all" id="delete-all" className="mt-0.5" />
               <Label htmlFor="delete-all" className="cursor-pointer flex-1">
-                <div className="font-medium">Delete task and all subtasks</div>
+                <div className="font-medium">
+                  {/* TODO(i18n): wrap in t() */}Delete task and all subtasks
+                </div>
                 <div className="text-sm text-muted-foreground mt-1">
+                  {/* TODO(i18n): wrap in t() */}
                   Permanently removes everything
                 </div>
               </Label>
@@ -94,8 +99,11 @@ export const DeleteParentDialog = ({
             <div className="flex items-start space-x-3 rounded-sm border p-4 cursor-pointer hover:bg-accent/50 transition-colors">
               <RadioGroupItem value="keep-subtasks" id="keep-subtasks" className="mt-0.5" />
               <Label htmlFor="keep-subtasks" className="cursor-pointer flex-1">
-                <div className="font-medium">Delete task, keep subtasks as standalone tasks</div>
+                <div className="font-medium">
+                  {/* TODO(i18n): wrap in t() */}Delete task, keep subtasks as standalone tasks
+                </div>
                 <div className="text-sm text-muted-foreground mt-1">
+                  {/* TODO(i18n): wrap in t() */}
                   Subtasks become top-level tasks
                 </div>
               </Label>
@@ -104,11 +112,14 @@ export const DeleteParentDialog = ({
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={handleCancel}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={handleCancel}>
+            {/* TODO(i18n): wrap in t() */}Cancel
+          </AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
+            {/* TODO(i18n): wrap in t() */}
             Delete
           </AlertDialogAction>
         </AlertDialogFooter>

@@ -39,7 +39,9 @@ export const ChordIndicator = ({
         <kbd className="px-1.5 py-0.5 bg-primary-foreground/20 rounded text-xs font-mono">
           {modKey}K
         </kbd>
-        <span className="text-primary-foreground/60">pressed — waiting for second key...</span>
+        <span className="text-primary-foreground/60">
+          {/* TODO(i18n): wrap in t() */}pressed — waiting for second key...
+        </span>
       </div>
     </div>
   )

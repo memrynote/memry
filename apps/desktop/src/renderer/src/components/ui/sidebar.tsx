@@ -214,8 +214,10 @@ function Sidebar({
           side={side}
         >
           <SheetHeader className="sr-only">
-            <SheetTitle>Sidebar</SheetTitle>
-            <SheetDescription>Displays the mobile sidebar.</SheetDescription>
+            <SheetTitle>{/* TODO(i18n): wrap in t() */}Sidebar</SheetTitle>
+            <SheetDescription>
+              {/* TODO(i18n): wrap in t() */}Displays the mobile sidebar.
+            </SheetDescription>
           </SheetHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
         </SheetContent>
@@ -290,7 +292,7 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
       {...props}
     >
       <Icon />
-      <span className="sr-only">Toggle Sidebar</span>
+      <span className="sr-only">{/* TODO(i18n): wrap in t() */}Toggle Sidebar</span>
     </Button>
   )
 }
@@ -359,12 +361,12 @@ function SidebarRail({ className, ...props }: React.ComponentProps<'button'>) {
     <button
       data-sidebar="rail"
       data-slot="sidebar-rail"
-      aria-label="Toggle Sidebar"
+      aria-label={'Toggle Sidebar' /* TODO(i18n): wrap aria-label in t() */}
       tabIndex={-1}
       onMouseDown={handleMouseDown}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
-      title="Drag to resize · Double-click to reset"
+      title={'Drag to resize · Double-click to reset' /* TODO(i18n): wrap title in t() */}
       className={cn(
         'hover:after:bg-sidebar-border absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex',
         'cursor-col-resize',

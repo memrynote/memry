@@ -257,6 +257,7 @@ export const TagAutocomplete = ({
       <div className="flex flex-col py-1">
         <div className="flex items-center py-0.5 px-2">
           <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
+            {/* TODO(i18n): wrap in t() */}
             Suggested
           </span>
         </div>
@@ -276,7 +277,9 @@ export const TagAutocomplete = ({
               <span className="inline-flex items-center rounded-[10px] py-0.5 px-2 bg-[var(--tint)]/[0.08] text-[var(--tint)] text-[11px] leading-3.5">
                 {tag}
               </span>
-              <span className="text-[10px] leading-3 text-[var(--tint)]/40">AI</span>
+              <span className="text-[10px] leading-3 text-[var(--tint)]/40">
+                {/* TODO(i18n): wrap in t() */}AI
+              </span>
             </button>
           )
         })}
@@ -348,7 +351,9 @@ export const TagAutocomplete = ({
         )}
       >
         <Plus className="size-3 text-muted-foreground/30" aria-hidden="true" />
-        <span className="text-[11px] leading-3.5 text-muted-foreground/30">Create</span>
+        <span className="text-[11px] leading-3.5 text-muted-foreground/30">
+          {/* TODO(i18n): wrap in t() */}Create
+        </span>
         <span
           className="inline-flex items-center rounded-md py-px px-1.5 text-[11px] leading-3.5"
           style={{ backgroundColor: `${colors.text}15`, color: colors.text }}
@@ -367,6 +372,7 @@ export const TagAutocomplete = ({
       className={cn('flex flex-col gap-2 py-4 px-5 border-b border-border', className)}
     >
       <span className="text-[11px] [letter-spacing:0.05em] uppercase text-text-tertiary font-medium leading-3.5">
+        {/* TODO(i18n): wrap in t() */}
         Tags
       </span>
 
@@ -378,7 +384,7 @@ export const TagAutocomplete = ({
           )}
           onClick={() => inputRef.current?.focus()}
           role="list"
-          aria-label="Selected tags"
+          aria-label={'Selected tags' /* TODO(i18n): wrap aria-label in t() */}
         >
           {tags.map((tag) => (
             <TagPill key={tag} tag={tag} />
@@ -399,7 +405,7 @@ export const TagAutocomplete = ({
               setTimeout(() => setIsDropdownOpen(false), 150)
             }}
             role="combobox"
-            aria-label="Add tags"
+            aria-label={'Add tags' /* TODO(i18n): wrap aria-label in t() */}
             aria-expanded={isDropdownOpen}
             aria-haspopup="listbox"
             aria-controls={LISTBOX_ID}
@@ -415,7 +421,7 @@ export const TagAutocomplete = ({
             id={LISTBOX_ID}
             className="absolute z-50 w-full mt-1 p-0 rounded-md border border-border bg-popover shadow-[0_8px_24px_rgba(0,0,0,0.25)] overflow-hidden"
             role="listbox"
-            aria-label="Tag suggestions"
+            aria-label={'Tag suggestions' /* TODO(i18n): wrap aria-label in t() */}
           >
             {renderAiSection()}
             {renderMatchingSection()}

@@ -51,8 +51,9 @@ export const EditRepeatingTaskDialog = ({
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Edit Repeating Task</AlertDialogTitle>
+          <AlertDialogTitle>{/* TODO(i18n): wrap in t() */}Edit Repeating Task</AlertDialogTitle>
           <AlertDialogDescription>
+            {/* TODO(i18n): wrap in t() */}
             You're editing a repeating task. Apply changes to:
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -75,9 +76,11 @@ export const EditRepeatingTaskDialog = ({
               className="mt-0.5 size-4 accent-primary"
             />
             <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium">Only this occurrence</span>
+              <span className="text-sm font-medium">
+                {/* TODO(i18n): wrap in t() */}Only this occurrence
+              </span>
               <span className="text-xs text-muted-foreground">
-                {dateLabel} only — future tasks unchanged
+                {dateLabel} {/* TODO(i18n): wrap in t() */}only — future tasks unchanged
               </span>
             </div>
           </label>
@@ -99,15 +102,21 @@ export const EditRepeatingTaskDialog = ({
               className="mt-0.5 size-4 accent-primary"
             />
             <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium">This and all future occurrences</span>
-              <span className="text-xs text-muted-foreground">{dateLabel} and beyond</span>
+              <span className="text-sm font-medium">
+                {/* TODO(i18n): wrap in t() */}This and all future occurrences
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {dateLabel} {/* TODO(i18n): wrap in t() */}and beyond
+              </span>
             </div>
           </label>
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleConfirm}>Continue</AlertDialogAction>
+          <AlertDialogCancel>{/* TODO(i18n): wrap in t() */}Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleConfirm}>
+            {/* TODO(i18n): wrap in t() */}Continue
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

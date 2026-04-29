@@ -79,9 +79,9 @@ export const PriorityFilter = ({
           variant="outline"
           size="sm"
           className={cn('h-9 gap-2', hasSelection && 'border-primary bg-primary/5', className)}
-          aria-label="Filter by priority"
+          aria-label={'Filter by priority' /* TODO(i18n): wrap aria-label in t() */}
         >
-          <span>Priority</span>
+          <span>{/* TODO(i18n): wrap in t() */}Priority</span>
           {hasSelection && (
             <span className="bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded-full min-w-5 text-center">
               {selectedPriorities.length}

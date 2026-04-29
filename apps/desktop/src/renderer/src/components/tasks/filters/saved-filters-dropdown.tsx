@@ -35,10 +35,10 @@ export const SavedFiltersDropdown = ({
           variant="outline"
           size="sm"
           className={cn('h-9 gap-2', className)}
-          aria-label="Saved filters"
+          aria-label={'Saved filters' /* TODO(i18n): wrap aria-label in t() */}
         >
           <Star className="size-4" />
-          <span className="hidden sm:inline">Saved</span>
+          <span className="hidden sm:inline">{/* TODO(i18n): wrap in t() */}Saved</span>
           <ChevronDown className="size-4 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -91,7 +91,9 @@ export const SavedFiltersDropdown = ({
               </div>
             ))
           ) : (
-            <div className="px-4 py-3 text-[13px] text-text-tertiary">No saved filters yet</div>
+            <div className="px-4 py-3 text-[13px] text-text-tertiary">
+              {/* TODO(i18n): wrap in t() */}No saved filters yet
+            </div>
           )}
         </div>
 
@@ -105,6 +107,7 @@ export const SavedFiltersDropdown = ({
             >
               <Plus className="size-3.5 text-text-tertiary" />
               <span className="text-[13px] text-text-tertiary font-medium leading-4">
+                {/* TODO(i18n): wrap in t() */}
                 Save current filters
               </span>
             </button>
@@ -112,6 +115,7 @@ export const SavedFiltersDropdown = ({
             <div className="flex items-center py-2.5 px-4 gap-2 opacity-50">
               <Plus className="size-3.5 text-text-tertiary" />
               <span className="text-[13px] text-text-tertiary font-medium leading-4">
+                {/* TODO(i18n): wrap in t() */}
                 Save current filters
               </span>
             </div>

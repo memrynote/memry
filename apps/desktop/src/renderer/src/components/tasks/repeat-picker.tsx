@@ -78,7 +78,7 @@ export const RepeatPicker = ({
           variant="outline"
           role="combobox"
           aria-expanded={isOpen}
-          aria-label="Select repeat frequency"
+          aria-label={'Select repeat frequency' /* TODO(i18n): wrap aria-label in t() */}
           disabled={disabled}
           className={cn(
             'w-full justify-between font-normal',
@@ -114,7 +114,7 @@ export const RepeatPicker = ({
           <span className="size-4 flex items-center justify-center">
             {!value && <Check className="size-4" aria-hidden="true" />}
           </span>
-          <span>Does not repeat</span>
+          <span>{/* TODO(i18n): wrap in t() */}Does not repeat</span>
         </button>
 
         <Separator className="my-1" />
@@ -153,7 +153,7 @@ export const RepeatPicker = ({
               )}
             >
               <span className="size-4" />
-              <span>Custom...</span>
+              <span>{/* TODO(i18n): wrap in t() */}Custom...</span>
             </button>
           </>
         )}

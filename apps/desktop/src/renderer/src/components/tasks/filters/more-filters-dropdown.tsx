@@ -101,9 +101,9 @@ export const MoreFiltersDropdown = ({
           variant="outline"
           size="sm"
           className={cn('h-9 gap-2', hasSelection && 'border-primary bg-primary/5', className)}
-          aria-label="More filters"
+          aria-label={'More filters' /* TODO(i18n): wrap aria-label in t() */}
         >
-          <span>More</span>
+          <span>{/* TODO(i18n): wrap in t() */}More</span>
           {hasSelection && (
             <span className="bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded-full min-w-5 text-center">
               {activeCount}
@@ -127,7 +127,9 @@ export const MoreFiltersDropdown = ({
                 className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-accent focus:outline-none transition-colors"
               >
                 <Clock className="size-3.5 text-muted-foreground/60" />
-                <span className="text-[13px] text-foreground leading-4">Status</span>
+                <span className="text-[13px] text-foreground leading-4">
+                  {/* TODO(i18n): wrap in t() */}Status
+                </span>
                 {selectedStatusIds.length > 0 && (
                   <span className="text-[11px] text-text-tertiary">
                     ({selectedStatusIds.length})
@@ -144,7 +146,9 @@ export const MoreFiltersDropdown = ({
               className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-accent focus:outline-none transition-colors"
             >
               <Calendar className="size-3.5 text-muted-foreground/60" />
-              <span className="text-[13px] text-foreground leading-4">Has time set</span>
+              <span className="text-[13px] text-foreground leading-4">
+                {/* TODO(i18n): wrap in t() */}Has time set
+              </span>
               <ToggleSwitch
                 enabled={hasTime === 'with-time'}
                 onToggle={() => onHasTimeChange(hasTime === 'with-time' ? 'all' : 'with-time')}
@@ -160,7 +164,9 @@ export const MoreFiltersDropdown = ({
               className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-accent focus:outline-none transition-colors"
             >
               <RefreshCw className="size-3.5 text-muted-foreground/60" />
-              <span className="text-[13px] text-foreground leading-4">Recurring only</span>
+              <span className="text-[13px] text-foreground leading-4">
+                {/* TODO(i18n): wrap in t() */}Recurring only
+              </span>
               <ToggleSwitch
                 enabled={repeatType === 'repeating'}
                 onToggle={() =>
@@ -178,7 +184,9 @@ export const MoreFiltersDropdown = ({
               className="flex items-center py-2.5 px-4 gap-1.5 bg-surface border-b border-border"
             >
               <ChevronDown className="size-2.5 text-muted-foreground/60 rotate-90" />
-              <span className="text-[13px] text-foreground font-semibold leading-4">Status</span>
+              <span className="text-[13px] text-foreground font-semibold leading-4">
+                {/* TODO(i18n): wrap in t() */}Status
+              </span>
             </button>
             <div className="flex flex-col py-2">
               {statuses.map((status) => {

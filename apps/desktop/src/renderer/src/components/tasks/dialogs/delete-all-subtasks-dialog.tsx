@@ -49,14 +49,15 @@ export const DeleteAllSubtasksDialog = ({
             <div className="p-2 rounded-full bg-destructive/10">
               <Trash2 className="size-5 text-destructive" />
             </div>
-            <AlertDialogTitle>Delete all subtasks?</AlertDialogTitle>
+            <AlertDialogTitle>{/* TODO(i18n): wrap in t() */}Delete all subtasks?</AlertDialogTitle>
           </div>
           <AlertDialogDescription asChild>
             <div className="space-y-3">
               <p>
-                This will delete {subtasks.length} subtask
-                {subtasks.length !== 1 ? 's' : ''} from &ldquo;{parentTitle}
-                &rdquo;.
+                {/* TODO(i18n): wrap in t() */}
+                This will delete {subtasks.length} {/* TODO(i18n): wrap in t() */}subtask
+                {subtasks.length !== 1 ? 's' : ''} {/* TODO(i18n): wrap in t() */}from &ldquo;
+                {parentTitle}&{/* TODO(i18n): wrap in t() */}rdquo;.
               </p>
 
               {/* Subtask list */}
@@ -72,16 +73,19 @@ export const DeleteAllSubtasksDialog = ({
                 </ul>
               </ScrollArea>
 
-              <p className="text-destructive text-sm font-medium">This action cannot be undone.</p>
+              <p className="text-destructive text-sm font-medium">
+                {/* TODO(i18n): wrap in t() */}This action cannot be undone.
+              </p>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{/* TODO(i18n): wrap in t() */}Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
+            {/* TODO(i18n): wrap in t() */}
             Delete All
           </AlertDialogAction>
         </AlertDialogFooter>

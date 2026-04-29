@@ -80,7 +80,8 @@ export const BulkActionDropdown = <T extends string | number = string>({
 
       <DropdownMenuContent align="start" className="min-w-[200px]">
         <DropdownMenuLabel className="text-xs text-muted-foreground">
-          {label} for {selectedCount} task{selectedCount !== 1 ? 's' : ''}
+          {label} {/* TODO(i18n): wrap in t() */}for {selectedCount} {/* TODO(i18n): wrap in t() */}
+          task{selectedCount !== 1 ? 's' : ''}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 

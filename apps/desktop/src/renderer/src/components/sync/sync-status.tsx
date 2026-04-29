@@ -84,7 +84,9 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
           <span className={cn('size-2 shrink-0 rounded-full', dotColor)} aria-hidden="true" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium">{label}</p>
-            <p className="text-muted-foreground text-xs">Last synced {lastSyncLabel}</p>
+            <p className="text-muted-foreground text-xs">
+              {/* TODO(i18n): wrap in t() */}Last synced {lastSyncLabel}
+            </p>
           </div>
         </div>
 
@@ -110,29 +112,37 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
               )}
               {pendingCount > 0 && (
                 <p className="text-muted-foreground text-xs">
-                  {pendingCount} {pendingCount === 1 ? 'change' : 'changes'} pending
+                  {pendingCount} {pendingCount === 1 ? 'change' : 'changes'}{' '}
+                  {/* TODO(i18n): wrap in t() */}pending
                 </p>
               )}
               {localOnlyCount > 0 && (
                 <p className="text-muted-foreground text-xs">
-                  {localOnlyCount} local-only {localOnlyCount === 1 ? 'note' : 'notes'}
+                  {localOnlyCount} {/* TODO(i18n): wrap in t() */}local-only{' '}
+                  {localOnlyCount === 1 ? 'note' : 'notes'}
                 </p>
               )}
               {conflicts.length > 0 && (
                 <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                  {conflicts.length} {conflicts.length === 1 ? 'conflict' : 'conflicts'} detected
+                  {conflicts.length} {conflicts.length === 1 ? 'conflict' : 'conflicts'}{' '}
+                  {/* TODO(i18n): wrap in t() */}detected
                 </p>
               )}
               {clockSkewDetected && (
-                <p className="text-xs text-yellow-600 dark:text-yellow-400">Clock skew detected</p>
+                <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                  {/* TODO(i18n): wrap in t() */}Clock skew detected
+                </p>
               )}
               {isSyncing && initialSyncProgress && (
                 <p className="text-muted-foreground text-xs">
-                  {initialSyncProgress.current}/{initialSyncProgress.total} items
+                  {initialSyncProgress.current}/{initialSyncProgress.total}{' '}
+                  {/* TODO(i18n): wrap in t() */}items
                 </p>
               )}
               {isOffline && pendingCount > 0 && (
-                <p className="text-muted-foreground text-xs">Will sync when back online</p>
+                <p className="text-muted-foreground text-xs">
+                  {/* TODO(i18n): wrap in t() */}Will sync when back online
+                </p>
               )}
             </div>
           </>
@@ -184,7 +194,7 @@ export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React
             size="icon-sm"
             onClick={onOpenSettings}
             className="size-7"
-            aria-label="Open sync settings"
+            aria-label={'Open sync settings' /* TODO(i18n): wrap aria-label in t() */}
           >
             <Settings className="size-3.5" aria-hidden="true" />
           </Button>

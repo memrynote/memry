@@ -139,8 +139,12 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
         className={cn('flex h-full items-center justify-center bg-muted/30 rounded-md', className)}
       >
         <div className="text-center p-8">
-          <p className="text-destructive font-medium mb-2">Failed to load image</p>
-          <p className="text-sm text-muted-foreground">The image could not be displayed.</p>
+          <p className="text-destructive font-medium mb-2">
+            {/* TODO(i18n): wrap in t() */}Failed to load image
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {/* TODO(i18n): wrap in t() */}The image could not be displayed.
+          </p>
         </div>
       </div>
     )
@@ -167,7 +171,7 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
             size="sm"
             onClick={resetZoom}
             className="h-8 w-8 p-0"
-            title="Reset zoom"
+            title={'Reset zoom' /* TODO(i18n): wrap title in t() */}
           >
             <Maximize2 className="h-4 w-4" />
           </Button>
@@ -175,7 +179,13 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
           <div className="w-px h-5 bg-border" />
 
           {/* Rotate */}
-          <Button variant="ghost" size="sm" onClick={rotate} className="h-8 w-8 p-0" title="Rotate">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={rotate}
+            className="h-8 w-8 p-0"
+            title={'Rotate' /* TODO(i18n): wrap title in t() */}
+          >
             <RotateCw className="h-4 w-4" />
           </Button>
 
@@ -184,7 +194,7 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
               <div className="w-px h-5 bg-border" />
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Move className="h-3 w-3" />
-                <span>Drag to pan</span>
+                <span>{/* TODO(i18n): wrap in t() */}Drag to pan</span>
               </div>
             </>
           )}

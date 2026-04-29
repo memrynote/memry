@@ -129,7 +129,9 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
         return (
           <div className="h-full p-4 text-gray-500">
             <div className="text-lg font-medium mb-2">{tab.title}</div>
-            <p className="text-sm text-gray-400">TasksContext not available</p>
+            <p className="text-sm text-gray-400">
+              {/* TODO(i18n): wrap in t() */}TasksContext not available
+            </p>
           </div>
         )
       }
@@ -149,7 +151,7 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
       case 'search':
         return (
           <PlaceholderView
-            title="Search Results"
+            title={'Search Results' /* TODO(i18n): wrap title in t() */}
             icon="search"
             subtitle={`Query: ${tab.viewState?.query ?? ''}`}
           />
@@ -174,7 +176,11 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
         )
 
       default:
-        return <div className="p-4 text-gray-500">Unknown tab type: {tab.type}</div>
+        return (
+          <div className="p-4 text-gray-500">
+            {/* TODO(i18n): wrap in t() */}Unknown tab type: {tab.type}
+          </div>
+        )
     }
     // Dependencies: tab identity fields and tasksContext for TasksPage props
     // eslint-disable-next-line react-hooks/exhaustive-deps

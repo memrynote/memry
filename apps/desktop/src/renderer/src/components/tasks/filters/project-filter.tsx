@@ -63,9 +63,9 @@ export const ProjectFilter = ({
           variant="outline"
           size="sm"
           className={cn('h-9 gap-2', hasSelection && 'border-primary bg-primary/5', className)}
-          aria-label="Filter by project"
+          aria-label={'Filter by project' /* TODO(i18n): wrap aria-label in t() */}
         >
-          <span>Project</span>
+          <span>{/* TODO(i18n): wrap in t() */}Project</span>
           {hasSelection && (
             <span className="bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded-full min-w-5 text-center">
               {selectedIds.length}
@@ -90,7 +90,7 @@ export const ProjectFilter = ({
             <span className="flex items-center justify-center size-4">
               {allSelected && <Check className="size-4 text-primary" />}
             </span>
-            <span>All Projects</span>
+            <span>{/* TODO(i18n): wrap in t() */}All Projects</span>
           </button>
 
           <div className="my-2 h-px bg-border" />
@@ -143,6 +143,7 @@ export const ProjectFilter = ({
               onClick={handleClear}
               className="h-7 text-xs text-muted-foreground hover:text-foreground"
             >
+              {/* TODO(i18n): wrap in t() */}
               Clear
             </Button>
           </div>

@@ -66,13 +66,15 @@ export const LayoutPicker = ({ className }: LayoutPickerProps): React.JSX.Elemen
             'transition-colors',
             className
           )}
-          title="Layout presets"
+          title={'Layout presets' /* TODO(i18n): wrap title in t() */}
         >
           <LayoutGrid className="w-4 h-4" />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-56 p-2" align="end">
-        <p className="text-xs text-muted-foreground mb-2 px-1">Layout Presets</p>
+        <p className="text-xs text-muted-foreground mb-2 px-1">
+          {/* TODO(i18n): wrap in t() */}Layout Presets
+        </p>
         <div className="grid grid-cols-3 gap-1">
           {layoutPresets.map((preset) => (
             <button

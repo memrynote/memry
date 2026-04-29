@@ -100,7 +100,9 @@ function TaskMetadata({ meta }: { meta: TaskResultMetadata }): React.JSX.Element
         </span>
       )}
       {meta.priority > 0 && (
-        <span className={priorityColors[meta.priority] ?? ''}>P{meta.priority}</span>
+        <span className={priorityColors[meta.priority] ?? ''}>
+          {/* TODO(i18n): wrap in t() */}P{meta.priority}
+        </span>
       )}
       {meta.statusName && <span className="text-muted-foreground">{meta.statusName}</span>}
     </div>
@@ -178,7 +180,9 @@ export function SearchResultItem({
         <MetadataRenderer item={item} query={query} />
       </div>
       {item.matchType === 'fuzzy' && (
-        <span className="text-[10px] text-text-tertiary shrink-0 mt-1">fuzzy</span>
+        <span className="text-[10px] text-text-tertiary shrink-0 mt-1">
+          {/* TODO(i18n): wrap in t() */}fuzzy
+        </span>
       )}
     </Command.Item>
   )

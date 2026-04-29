@@ -115,7 +115,7 @@ export const TaskSection = ({
                   'focus-visible:outline-none'
                 )}
               >
-                + Add task
+                + {/* TODO(i18n): wrap in t() */}Add task
               </button>
             )}
           </div>

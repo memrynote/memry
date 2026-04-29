@@ -71,13 +71,17 @@ export function PriorityPanel({
           <rect x="5" y="4.5" width="2.5" height="7" rx="0.5" fill="currentColor" />
           <rect x="9" y="2" width="2.5" height="9.5" rx="0.5" fill="currentColor" />
         </svg>
-        <span className="text-[13px] text-foreground font-medium leading-4">Priority</span>
-        <span className="text-[11px] ml-auto text-foreground leading-3.5">is</span>
+        <span className="text-[13px] text-foreground font-medium leading-4">
+          {/* TODO(i18n): wrap in t() */}Priority
+        </span>
+        <span className="text-[11px] ml-auto text-foreground leading-3.5">
+          {/* TODO(i18n): wrap in t() */}is
+        </span>
       </div>
       <FilterSearchHeader
         value={searchQuery}
         onChange={onSearchChange}
-        placeholder="Search..."
+        placeholder={'Search...' /* TODO(i18n): wrap placeholder in t() */}
         className="py-1.5"
       />
       <div className="flex flex-col p-1">
@@ -121,7 +125,7 @@ export function PriorityPanel({
         onApply={onClose}
         info={
           <span className="text-[11px] text-text-tertiary leading-3.5">
-            {selectedPriorities.length} selected
+            {selectedPriorities.length} {/* TODO(i18n): wrap in t() */}selected
           </span>
         }
         className="py-2 px-3"
