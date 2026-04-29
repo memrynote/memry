@@ -6,6 +6,7 @@
 import type { Tab } from '@/contexts/tabs/types'
 import { useTabs } from '@/contexts/tabs'
 import { useCallback } from 'react'
+import { useT } from '@memry/i18n/renderer'
 
 interface TabContextMenuProps {
   /** Tab data */
@@ -25,6 +26,7 @@ export const TabContextMenu = ({
   children
 }: TabContextMenuProps): React.JSX.Element => {
   const { closeTab, closeOtherTabs, closeTabsToRight, closeAllTabs, dispatch, state } = useTabs()
+  const { t } = useT('common')
 
   const group = state.tabGroups[groupId]
   const tabIndex = group?.tabs.findIndex((t) => t.id === tab.id) ?? -1
@@ -41,7 +43,7 @@ export const TabContextMenu = ({
         { id: 'close-right', label: 'Close to the Right', disabled: !hasTabsToRight },
         { id: 'close-all', label: 'Close All' },
         { id: 'sep1', label: '', type: 'separator' as const },
-        { id: 'pin', label: tab.isPinned ? 'Unpin Tab' : 'Pin Tab' },
+        { id: 'pin', label: tab.isPinned ? t('tabs.unpin') : t('tabs.pin') },
         { id: 'duplicate', label: 'Duplicate Tab' },
         { id: 'sep2', label: '', type: 'separator' as const },
         { id: 'split-right', label: 'Split Right', accelerator: 'CmdOrCtrl+\\' },
@@ -114,7 +116,8 @@ export const TabContextMenu = ({
       closeOtherTabs,
       closeTabsToRight,
       closeAllTabs,
-      dispatch
+      dispatch,
+      t
     ]
   )
 

@@ -84,6 +84,8 @@ interface FolderViewPageProps {
  */
 export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.Element {
   const { t: tPhaseF } = useT('notes')
+  const { t } = useT('notes')
+  const { t: tCommon } = useT('common')
   const { openTab, closeTab, getActiveTab } = useTabs()
   const { openTag } = useSidebarDrillDown()
   const { tags: allTags } = useNoteTagsQuery()
@@ -727,7 +729,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {notesToDelete.length === 1 ? 'Delete Note' : `Delete ${notesToDelete.length} Notes`}
+              {t('page.deleteDialogTitle', { count: notesToDelete.length })}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {notesToDelete.length === 1
@@ -744,7 +746,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? 'Deleting...' : 'Delete'}
+              {isDeleting ? tCommon('state.deleting') : tCommon('button.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

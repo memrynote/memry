@@ -43,7 +43,15 @@
     "search": "Search",
     "edit": "Edit",
     "delete": "Delete",
-    "close": "Close"
+    "close": "Close",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "showMore": "+{count, plural, one {# more} other {# more}}",
+    "showLess": "Show less"
+  },
+  "tabs": {
+    "pin": "Pin Tab",
+    "unpin": "Unpin Tab"
   },
   "count": {
     "item": "{count, plural, one {# item} other {# items}}",
