@@ -51,6 +51,7 @@ import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import { initializeUpdater } from './updater'
 import { buildAppMenu } from './menu'
+import { setMainI18n } from './lib/main-i18n'
 
 if (process.type === 'browser') {
   log.initialize()
@@ -526,6 +527,7 @@ void app.whenReady().then(async () => {
   })
 
   mainI18n = await bootI18n()
+  setMainI18n(mainI18n)
   Menu.setApplicationMenu(buildAppMenu(mainI18n))
   registerAllHandlers({ i18n: mainI18n, rebuildMenu })
 
