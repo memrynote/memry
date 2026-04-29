@@ -1,12 +1,24 @@
 {
+  "app": {
+    "quit": "Quit"
+  },
   "file": {
     "label": "File",
-    "newNote": "New Note"
+    "newNote": "New Note",
+    "close": "Close Window"
   },
   "edit": {
-    "label": "Edit"
+    "label": "Edit",
+    "undo": "Undo",
+    "redo": "Redo",
+    "cut": "Cut",
+    "copy": "Copy",
+    "paste": "Paste"
   },
   "view": {
-    "label": "View"
+    "label": "View",
+    "reload": "Reload",
+    "toggleDevTools": "Toggle Developer Tools",
+    "toggleFullscreen": "Toggle Full Screen"
   }
 }
