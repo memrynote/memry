@@ -2,13 +2,19 @@ import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
+import { I18nextProvider } from 'react-i18next'
+import type { i18n as I18nInstance } from 'i18next'
+import { createRendererI18n } from '@memry/i18n/renderer'
 import { TasksSettings } from './tasks-section'
 import { TasksProvider } from '@/contexts/tasks'
 import { renderWithProviders as renderWithQueryProviders } from '@tests/utils/render'
 import type { Project, Status } from '@/data/tasks-data'
 import type { Task } from '@/data/sample-tasks'
 
-beforeAll(() => {
+let i18nEn: I18nInstance
+
+beforeAll(async () => {
+  i18nEn = await createRendererI18n({ locale: 'en' })
   Element.prototype.hasPointerCapture = vi.fn().mockReturnValue(false)
   Element.prototype.setPointerCapture = vi.fn()
   Element.prototype.releasePointerCapture = vi.fn()
@@ -61,9 +67,11 @@ const DEFAULTS = {
 
 function renderWithProviders(ui: React.ReactElement) {
   return renderWithQueryProviders(
-    <TasksProvider tasks={[] as Task[]} projects={MOCK_PROJECTS}>
-      {ui}
-    </TasksProvider>
+    <I18nextProvider i18n={i18nEn}>
+      <TasksProvider tasks={[] as Task[]} projects={MOCK_PROJECTS}>
+        {ui}
+      </TasksProvider>
+    </I18nextProvider>
   )
 }
 
