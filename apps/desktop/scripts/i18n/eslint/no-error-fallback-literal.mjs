@@ -23,18 +23,14 @@ function hasI18nTodoNear(sourceCode, node) {
 }
 
 function isExtractErrorMessageCall(node) {
-  return (
-    node.callee?.type === 'Identifier' &&
-    node.callee.name === 'extractErrorMessage'
-  )
+  return node.callee?.type === 'Identifier' && node.callee.name === 'extractErrorMessage'
 }
 
 export default {
   meta: {
     type: 'problem',
     docs: {
-      description:
-        'Disallow string-literal fallbacks in extractErrorMessage'
+      description: 'Disallow string-literal fallbacks in extractErrorMessage'
     },
     messages: {
       extractFallback:
