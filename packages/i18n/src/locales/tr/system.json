@@ -16,7 +16,19 @@
       "filterSupported": "Desteklenen Dosyalar",
       "filterAll": "Tüm Dosyalar"
     },
-    "exportCancelled": "Dışa aktarma iptal edildi"
+    "exportCancelled": "Dışa aktarma iptal edildi",
+    "update": {
+      "availableTitle": "Güncelleme mevcut",
+      "availableMessage": "Memry {version} sürümü mevcut.",
+      "availableDetailFallback": "Güncellemeyi şimdi indirmek ister misiniz?",
+      "buttonDownload": "İndir",
+      "buttonLater": "Sonra",
+      "readyTitle": "Güncelleme hazır",
+      "readyMessage": "Memry {version} indirildi.",
+      "readyDetailFallback": "Yüklemeyi tamamlamak için Memry'yi yeniden başlatın.",
+      "buttonRestartNow": "Şimdi yeniden başlat",
+      "releaseNotesLabel": "Sürüm notları:"
+    }
   },
   "notification": {
     "reminder": {

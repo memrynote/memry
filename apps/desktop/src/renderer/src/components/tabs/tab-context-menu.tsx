@@ -38,19 +38,19 @@ export const TabContextMenu = ({
       e.preventDefault()
 
       const menuItems = [
-        { id: 'close', label: 'Close', accelerator: 'CmdOrCtrl+W' },
-        { id: 'close-others', label: 'Close Others', disabled: !hasOtherTabs },
-        { id: 'close-right', label: 'Close to the Right', disabled: !hasTabsToRight },
-        { id: 'close-all', label: 'Close All' },
+        { id: 'close', label: t('tabs.contextMenu.close'), accelerator: 'CmdOrCtrl+W' },
+        { id: 'close-others', label: t('tabs.contextMenu.closeOthers'), disabled: !hasOtherTabs },
+        { id: 'close-right', label: t('tabs.contextMenu.closeToRight'), disabled: !hasTabsToRight },
+        { id: 'close-all', label: t('tabs.contextMenu.closeAll') },
         { id: 'sep1', label: '', type: 'separator' as const },
         { id: 'pin', label: tab.isPinned ? t('tabs.unpin') : t('tabs.pin') },
-        { id: 'duplicate', label: 'Duplicate Tab' },
+        { id: 'duplicate', label: t('tabs.contextMenu.duplicate') },
         { id: 'sep2', label: '', type: 'separator' as const },
-        { id: 'split-right', label: 'Split Right', accelerator: 'CmdOrCtrl+\\' },
-        { id: 'split-down', label: 'Split Down' },
+        { id: 'split-right', label: t('tabs.contextMenu.splitRight'), accelerator: 'CmdOrCtrl+\\' },
+        { id: 'split-down', label: t('tabs.contextMenu.splitDown') },
         { id: 'sep3', label: '', type: 'separator' as const },
-        { id: 'copy-path', label: 'Copy Path' },
-        { id: 'reveal', label: 'Reveal in Sidebar' }
+        { id: 'copy-path', label: t('tabs.contextMenu.copyPath') },
+        { id: 'reveal', label: t('tabs.contextMenu.revealInSidebar') }
       ]
 
       const selectedId = await window.api.showContextMenu(menuItems)

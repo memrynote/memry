@@ -51,7 +51,18 @@
   },
   "tabs": {
     "pin": "Pin Tab",
-    "unpin": "Unpin Tab"
+    "unpin": "Unpin Tab",
+    "contextMenu": {
+      "close": "Close",
+      "closeOthers": "Close Others",
+      "closeToRight": "Close to the Right",
+      "closeAll": "Close All",
+      "duplicate": "Duplicate Tab",
+      "splitRight": "Split Right",
+      "splitDown": "Split Down",
+      "copyPath": "Copy Path",
+      "revealInSidebar": "Reveal in Sidebar"
+    }
   },
   "count": {
     "item": "{count, plural, one {# item} other {# items}}",
@@ -68,6 +79,11 @@
     "undoFailed": "Failed to undo action",
     "copied": "Copied",
     "copyFailed": "Failed to copy"
+  },
+  "dateRelative": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "daysAgo": "{count, plural, one {# day ago} other {# days ago}}"
   },
   "recurrence": {
     "everyDay": "Every day",
