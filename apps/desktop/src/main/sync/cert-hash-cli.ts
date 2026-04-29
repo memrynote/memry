@@ -1,9 +1,10 @@
 const DEFAULT_HOSTNAME = 'sync.memrynote.com'
 const DEFAULT_PORT = 443
 
-export function parseExtractCertHashArgs(
-  argv: readonly string[]
-): { hostname: string; port: number } {
+export function parseExtractCertHashArgs(argv: readonly string[]): {
+  hostname: string
+  port: number
+} {
   const args = argv[0] === '--' ? argv.slice(1) : argv
   const hostname = args[0] || DEFAULT_HOSTNAME
   const portArg = args[1]

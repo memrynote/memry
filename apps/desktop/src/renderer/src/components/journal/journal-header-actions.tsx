@@ -54,8 +54,7 @@ export function JournalHeaderActions({
   onOpenSettings
 }: JournalHeaderActionsProps) {
   const { t } = useT('journal')
-  const previousLabel =
-    viewState.type === 'month' ? t('nav.previousMonth') : t('nav.previousYear')
+  const previousLabel = viewState.type === 'month' ? t('nav.previousMonth') : t('nav.previousYear')
   const nextLabel = viewState.type === 'month' ? t('nav.nextMonth') : t('nav.nextYear')
 
   if (viewState.type === 'month' || viewState.type === 'year') {

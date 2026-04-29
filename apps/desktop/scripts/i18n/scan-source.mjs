@@ -44,7 +44,9 @@ function isSourceFile(filePath) {
 }
 
 export function isIgnoredSourcePath(filePath, workspaceRoot = defaultWorkspaceRoot()) {
-  const rel = normalizePath(path.isAbsolute(filePath) ? path.relative(workspaceRoot, filePath) : filePath)
+  const rel = normalizePath(
+    path.isAbsolute(filePath) ? path.relative(workspaceRoot, filePath) : filePath
+  )
 
   return (
     rel.includes('/node_modules/') ||
@@ -70,12 +72,19 @@ function collectSourceFiles(inputPath, workspaceRoot, files) {
     return
   }
 
-  if (stat.isFile() && isSourceFile(absolutePath) && !isIgnoredSourcePath(absolutePath, workspaceRoot)) {
+  if (
+    stat.isFile() &&
+    isSourceFile(absolutePath) &&
+    !isIgnoredSourcePath(absolutePath, workspaceRoot)
+  ) {
     files.push(absolutePath)
   }
 }
 
-export function resolveSourceFiles(paths = DEFAULT_SCAN_PATHS, workspaceRoot = defaultWorkspaceRoot()) {
+export function resolveSourceFiles(
+  paths = DEFAULT_SCAN_PATHS,
+  workspaceRoot = defaultWorkspaceRoot()
+) {
   const files = []
   for (const inputPath of paths.length === 0 ? DEFAULT_SCAN_PATHS : paths) {
     collectSourceFiles(inputPath, workspaceRoot, files)
@@ -143,8 +152,10 @@ function getOpeningElement(node) {
 function hasAncestorTag(node, tagName) {
   let current = node.parent
   while (current) {
-    if (ts.isJsxElement(current) && getJsxTagName(current.openingElement.tagName) === tagName) return true
-    if (ts.isJsxSelfClosingElement(current) && getJsxTagName(current.tagName) === tagName) return true
+    if (ts.isJsxElement(current) && getJsxTagName(current.openingElement.tagName) === tagName)
+      return true
+    if (ts.isJsxSelfClosingElement(current) && getJsxTagName(current.tagName) === tagName)
+      return true
     current = current.parent
   }
   return false
@@ -189,7 +200,12 @@ function findTextInsertion(sourceFile, node) {
 }
 
 function isUseTCall(node) {
-  return !!node && ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'useT'
+  return (
+    !!node &&
+    ts.isCallExpression(node) &&
+    ts.isIdentifier(node.expression) &&
+    node.expression.text === 'useT'
+  )
 }
 
 function isGetFixedTCall(node) {
@@ -295,7 +311,13 @@ export function scanFile(filePath, options = {}) {
   const englishKeys = options.englishKeys ?? flattenLocale(resources.resources[FALLBACK_LOCALE])
   const sourceText = fs.readFileSync(filePath, 'utf8')
   const sourceKind = filePath.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
-  const sourceFile = ts.createSourceFile(filePath, sourceText, ts.ScriptTarget.Latest, true, sourceKind)
+  const sourceFile = ts.createSourceFile(
+    filePath,
+    sourceText,
+    ts.ScriptTarget.Latest,
+    true,
+    sourceKind
+  )
   const tBindings = new Map()
   const usedKeys = new Set()
   const missingKeys = []
@@ -320,10 +342,17 @@ export function scanFile(filePath, options = {}) {
 
     if (!namespaces.has(resolved.namespace)) {
       unknownNamespaces.push(
-        createFinding(sourceFile, workspaceRoot, filePath, translationCall.keyNode, 'unknown-namespace', {
-          namespace: resolved.namespace,
-          key: resolved.fullKey
-        })
+        createFinding(
+          sourceFile,
+          workspaceRoot,
+          filePath,
+          translationCall.keyNode,
+          'unknown-namespace',
+          {
+            namespace: resolved.namespace,
+            key: resolved.fullKey
+          }
+        )
       )
       return
     }

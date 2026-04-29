@@ -65,20 +65,7 @@ export const ENGLISH_JOURNAL_DATE_LABELS: JournalDateLabels = {
     'November',
     'December'
   ],
-  monthsShort: [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec'
-  ],
+  monthsShort: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
   relative: {
     today: 'Today',
     yesterday: 'Yesterday',
