@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import type { GeneralSettingsDTO } from '../../../preload/index.d'
+import { getI18n } from 'react-i18next'
 
 const DEFAULTS: GeneralSettingsDTO = {
   theme: 'system',
@@ -33,7 +34,13 @@ export function useGeneralSettings(): UseGeneralSettingsReturn {
         const result = await window.api.settings.getGeneralSettings()
         if (mounted) setSettings(result)
       } catch (err) {
-        if (mounted) setError(extractErrorMessage(err, 'Failed to load general settings'))
+        if (mounted)
+          setError(
+            extractErrorMessage(
+              err,
+              getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToLoadGeneralSettings')
+            )
+          )
       } finally {
         if (mounted) setIsLoading(false)
       }
@@ -64,7 +71,12 @@ export function useGeneralSettings(): UseGeneralSettingsReturn {
         setError(result.error ?? 'Update failed')
         return false
       } catch (err) {
-        setError(extractErrorMessage(err, 'Failed to update general settings'))
+        setError(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToUpdateGeneralSettings')
+          )
+        )
         return false
       }
     },

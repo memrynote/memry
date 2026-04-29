@@ -1,3 +1,4 @@
+import { getI18n } from 'react-i18next'
 /**
  * T029: Unified Note Editor Hook
  *
@@ -134,7 +135,10 @@ export function useNoteEditor(
         setError('Note not found')
       }
     } catch (err) {
-      const message = extractErrorMessage(err, 'Failed to load note')
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'notes')('page.error.title')
+      )
       setError(message)
       if (showToasts) {
         toast.error(message)
@@ -231,7 +235,10 @@ export function useNoteEditor(
           }, 2000)
         }
       } catch (err) {
-        const message = extractErrorMessage(err, 'Failed to save')
+        const message = extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToSave')
+        )
         setError(message)
         setSaveStatus('error')
         if (showToasts) {
@@ -259,7 +266,10 @@ export function useNoteEditor(
           setNote(result as unknown as Note)
         }
       } catch (err) {
-        const message = extractErrorMessage(err, 'Failed to rename')
+        const message = extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToRename')
+        )
         setError(message)
         if (showToasts) {
           toast.error(message)
@@ -310,7 +320,10 @@ export function useNoteEditor(
           setNote(result as unknown as Note)
         }
       } catch (err) {
-        const message = extractErrorMessage(err, 'Failed to update emoji')
+        const message = extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToUpdateEmoji')
+        )
         setError(message)
         if (showToasts) {
           toast.error(message)
@@ -330,7 +343,10 @@ export function useNoteEditor(
           setNote(result as unknown as Note)
         }
       } catch (err) {
-        const message = extractErrorMessage(err, 'Failed to update tags')
+        const message = extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToUpdateTags')
+        )
         setError(message)
         if (showToasts) {
           toast.error(message)

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import type { TaskSettingsDTO } from '../../../preload/index.d'
+import { getI18n } from 'react-i18next'
 
 const DEFAULTS: TaskSettingsDTO = {
   defaultProjectId: null,
@@ -28,7 +29,13 @@ export function useTaskPreferences(): UseTaskPreferencesReturn {
         const result = await window.api.settings.getTaskSettings()
         if (mounted) setSettings(result)
       } catch (err) {
-        if (mounted) setError(extractErrorMessage(err, 'Failed to load task preferences'))
+        if (mounted)
+          setError(
+            extractErrorMessage(
+              err,
+              getI18n().getFixedT(null, 'tasks')('phaseI.errors.failedToLoadTaskPreferences')
+            )
+          )
       } finally {
         if (mounted) setIsLoading(false)
       }
@@ -59,7 +66,12 @@ export function useTaskPreferences(): UseTaskPreferencesReturn {
         setError(result.error ?? 'Update failed')
         return false
       } catch (err) {
-        setError(extractErrorMessage(err, 'Failed to update task preferences'))
+        setError(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'tasks')('phaseI.errors.failedToUpdateTaskPreferences')
+          )
+        )
         return false
       }
     },

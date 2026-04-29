@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { useT } from '@memry/i18n/renderer'
+import { getI18n } from 'react-i18next'
 
 const log = createLogger('Component:VoiceRecorder')
 
@@ -244,7 +245,12 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
           } else if (err.name === 'NotFoundError') {
             setError('No microphone found')
           } else {
-            setError(extractErrorMessage(err, 'Failed to access microphone'))
+            setError(
+              extractErrorMessage(
+                err,
+                getI18n().getFixedT(null, 'common')('phaseI.errors.failedToAccessMicrophone')
+              )
+            )
           }
         } else {
           setError('Failed to start recording')

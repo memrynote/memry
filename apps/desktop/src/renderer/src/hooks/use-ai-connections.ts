@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import type { AIConnection } from '@/components/journal/ai-connections-panel'
 import { getAIConnections, MIN_CONTENT_LENGTH } from '@/services/ai-connections-service'
+import { getI18n } from 'react-i18next'
 
 const AI_ANALYSIS_DEBOUNCE_MS = 2000
 
@@ -57,7 +58,12 @@ export function useAIConnections(content: string): UseAIConnectionsResult {
       if (err instanceof DOMException && err.name === 'AbortError') return
 
       if (!abortController.signal.aborted) {
-        setError(extractErrorMessage(err, 'Failed to analyze content'))
+        setError(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToAnalyzeContent')
+          )
+        )
         setIsLoading(false)
       }
     }

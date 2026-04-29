@@ -161,7 +161,9 @@ export function FilterRow({
       {/* Property Selector */}
       <Select value={condition.property} onValueChange={handlePropertyChange}>
         <SelectTrigger className="w-[140px] h-8 text-xs">
-          <SelectValue placeholder={'Property'} />
+          <SelectValue
+            placeholder={tPhaseF('phaseF.componentsFolderViewFilterRow.placeholderProperty')}
+          />
         </SelectTrigger>
         <SelectContent>
           {/* Built-in properties */}
@@ -193,7 +195,9 @@ export function FilterRow({
       {/* Operator Selector */}
       <Select value={condition.operator} onValueChange={handleOperatorChange}>
         <SelectTrigger className="w-[130px] h-8 text-xs">
-          <SelectValue placeholder={'Operator'} />
+          <SelectValue
+            placeholder={tPhaseF('phaseF.componentsFolderViewFilterRow.placeholderOperator')}
+          />
         </SelectTrigger>
         <SelectContent>
           {operators.map((op) => (
@@ -240,6 +244,7 @@ interface ValueInputProps {
 }
 
 function ValueInput({ type, value, onChange }: ValueInputProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
   switch (type) {
     case 'number':
     case 'rating':
@@ -249,7 +254,7 @@ function ValueInput({ type, value, onChange }: ValueInputProps): React.JSX.Eleme
           value={(value as number) ?? ''}
           onChange={(e) => onChange(e.target.value ? Number(e.target.value) : '')}
           className="w-[100px] h-8 text-xs"
-          placeholder={'Value'}
+          placeholder={tPhaseF('phaseF.componentsFolderViewFilterRow.placeholderValue')}
         />
       )
 
@@ -271,7 +276,7 @@ function ValueInput({ type, value, onChange }: ValueInputProps): React.JSX.Eleme
           value={String(value ?? '')}
           onChange={(e) => onChange(e.target.value)}
           className="flex-1 h-8 text-xs min-w-[100px]"
-          placeholder={'Value'}
+          placeholder={tPhaseF('phaseF.componentsFolderViewFilterRow.placeholderValue')}
         />
       )
   }

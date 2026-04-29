@@ -1,3 +1,4 @@
+import { getI18n } from 'react-i18next'
 /**
  * Row Context Menu
  *
@@ -84,7 +85,12 @@ export function RowContextMenu({
       await notesService.openExternal(note.id)
     } catch (err) {
       log.error('Failed to open in external editor', err)
-      toast.error(extractErrorMessage(err, 'Failed to open in external editor'))
+      toast.error(
+        extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToOpenInExternalEditor')
+        )
+      )
     }
   }
 
@@ -93,7 +99,12 @@ export function RowContextMenu({
       await notesService.revealInFinder(note.id)
     } catch (err) {
       log.error('Failed to reveal in Finder', err)
-      toast.error(extractErrorMessage(err, 'Failed to reveal in Finder'))
+      toast.error(
+        extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToRevealInFinder')
+        )
+      )
     }
   }
 
@@ -115,7 +126,12 @@ export function RowContextMenu({
       await navigator.clipboard.writeText(link)
     } catch (err) {
       log.error('Failed to copy link', err)
-      toast.error(extractErrorMessage(err, 'Failed to copy link'))
+      toast.error(
+        extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToCopyLink')
+        )
+      )
     }
   }
 

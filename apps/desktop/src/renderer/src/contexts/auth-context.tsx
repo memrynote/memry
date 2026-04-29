@@ -11,6 +11,7 @@ import {
 import { authService } from '@/services/auth-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { deviceService, setupService } from '@/services/device-service'
+import { getI18n } from 'react-i18next'
 
 type AuthStatus =
   | 'idle'
@@ -309,7 +310,10 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
             state: cbState
           })
           if (result.error) {
-            const message = extractErrorMessage(result.error, 'Google sign-in failed')
+            const message = extractErrorMessage(
+              result.error,
+              getI18n().getFixedT(null, 'settings')('phaseI.errors.googleSignInFailed')
+            )
             dispatch({ type: 'SET_ERROR', error: message })
             dispatch({ type: 'WIZARD_SET_ERROR', error: message })
             return
@@ -325,7 +329,10 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
             dispatch({ type: 'WIZARD_SET_STEP', step: 'recovery-display' })
           }
         } catch (err: unknown) {
-          const message = extractErrorMessage(err, 'Google sign-in failed')
+          const message = extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'settings')('phaseI.errors.googleSignInFailed')
+          )
           dispatch({ type: 'SET_ERROR', error: message })
           dispatch({ type: 'WIZARD_SET_ERROR', error: message })
         }
@@ -339,12 +346,20 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     try {
       const result = await authService.requestOtp({ email })
       if (!result.success) {
-        throw new Error(extractErrorMessage(result.error, 'Failed to send verification code'))
+        throw new Error(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToSendVerificationCode')
+          )
+        )
       }
       dispatch({ type: 'OTP_REQUESTED', email })
       return { expiresIn: result.expiresIn }
     } catch (err) {
-      const message = extractErrorMessage(err, 'Failed to send verification code')
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToSendVerificationCode')
+      )
       dispatch({ type: 'SET_ERROR', error: message })
       throw new Error(message)
     }
@@ -356,13 +371,23 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       try {
         const result = await authService.verifyOtp({ email: state.email, code })
         if (!result.success) {
-          throw new Error(extractErrorMessage(result.error, 'Invalid verification code'))
+          throw new Error(
+            extractErrorMessage(
+              result.error,
+              getI18n().getFixedT(null, 'settings')('phaseI.errors.invalidVerificationCode')
+            )
+          )
         }
 
         if (result.needsSetup) {
           const setupResult = await authService.setupNewAccount()
           if (!setupResult.success) {
-            throw new Error(extractErrorMessage(setupResult.error, 'Account setup failed'))
+            throw new Error(
+              extractErrorMessage(
+                setupResult.error,
+                getI18n().getFixedT(null, 'settings')('phaseI.errors.accountSetupFailed')
+              )
+            )
           }
           const otpResult: VerifyOtpResult = {
             deviceId: setupResult.deviceId ?? '',
@@ -389,7 +414,10 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
         })
         return otpResult
       } catch (err) {
-        const message = extractErrorMessage(err, 'Invalid verification code')
+        const message = extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'settings')('phaseI.errors.invalidVerificationCode')
+        )
         dispatch({ type: 'SET_ERROR', error: message })
         throw new Error(message)
       }
@@ -402,11 +430,19 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     try {
       const result = await authService.resendOtp({ email: state.email })
       if (!result.success) {
-        throw new Error(extractErrorMessage(result.error, 'Failed to resend code'))
+        throw new Error(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToResendCode')
+          )
+        )
       }
       return { expiresIn: result.expiresIn }
     } catch (err) {
-      const message = extractErrorMessage(err, 'Failed to resend code')
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToResendCode')
+      )
       dispatch({ type: 'SET_ERROR', error: message })
       throw new Error(message)
     }
@@ -420,7 +456,10 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     } catch (err) {
       dispatch({
         type: 'SET_ERROR',
-        error: extractErrorMessage(err, 'Failed to start Google sign-in')
+        error: extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'settings')('setup.signIn.errors.googleStart')
+        )
       })
       return null
     }
@@ -436,7 +475,10 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       try {
         const result = await authService.setupFirstDevice(input)
         if (result.error) {
-          const message = extractErrorMessage(result.error, 'Failed to set up device')
+          const message = extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToSetUpDevice')
+          )
           dispatch({ type: 'SET_ERROR', error: message })
           return { ...result, error: message }
         }
@@ -449,7 +491,10 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       } catch (err) {
         dispatch({
           type: 'SET_ERROR',
-          error: extractErrorMessage(err, 'Failed to set up device')
+          error: extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToSetUpDevice')
+          )
         })
         return null
       }
@@ -465,7 +510,12 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
       }
       dispatch({ type: 'RECOVERY_CONFIRMED' })
     } catch (err) {
-      throw new Error(extractErrorMessage(err, 'Failed to confirm recovery phrase'))
+      throw new Error(
+        extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToConfirmRecoveryPhrase')
+        )
+      )
     }
   }, [])
 
@@ -473,12 +523,19 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
     try {
       const result = await window.api.syncLinking.linkViaRecovery({ recoveryPhrase: phrase })
       if (!result.success) {
-        throw new Error(extractErrorMessage(result.error, 'Recovery failed'))
+        throw new Error(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'settings')('setup.recovery.failed')
+          )
+        )
       }
       dispatch({ type: 'RECOVERY_LINKED', deviceId: result.deviceId ?? '' })
       return { deviceId: result.deviceId }
     } catch (err) {
-      throw new Error(extractErrorMessage(err, 'Recovery failed'))
+      throw new Error(
+        extractErrorMessage(err, getI18n().getFixedT(null, 'settings')('setup.recovery.failed'))
+      )
     }
   }, [])
 

@@ -1,3 +1,4 @@
+import { getI18n } from 'react-i18next'
 /**
  * Capture Input Component
  *
@@ -154,7 +155,12 @@ export function CaptureInput({
             setValue('')
             onCaptureSuccess?.()
           } else {
-            onCaptureError?.(extractErrorMessage(result.error, 'Failed to capture link'))
+            onCaptureError?.(
+              extractErrorMessage(
+                result.error,
+                getI18n().getFixedT(null, 'inbox')('phaseI.errors.failedToCaptureLink')
+              )
+            )
           }
         } else {
           const lines = trimmed.split('\n')
@@ -174,11 +180,19 @@ export function CaptureInput({
             setValue('')
             onCaptureSuccess?.()
           } else {
-            onCaptureError?.(extractErrorMessage(result.error, 'Failed to capture note'))
+            onCaptureError?.(
+              extractErrorMessage(
+                result.error,
+                getI18n().getFixedT(null, 'inbox')('phaseI.errors.failedToCaptureNote')
+              )
+            )
           }
         }
       } catch (err) {
-        const message = extractErrorMessage(err, 'Capture failed')
+        const message = extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'inbox')('phaseI.errors.captureFailed')
+        )
         onCaptureError?.(message)
       }
     },
@@ -218,10 +232,18 @@ export function CaptureInput({
         if (result.success) {
           onCaptureSuccess?.()
         } else {
-          onCaptureError?.(extractErrorMessage(result.error, 'Failed to capture voice memo'))
+          onCaptureError?.(
+            extractErrorMessage(
+              result.error,
+              getI18n().getFixedT(null, 'inbox')('phaseI.errors.failedToCaptureVoiceMemo')
+            )
+          )
         }
       } catch (err) {
-        const message = extractErrorMessage(err, 'Voice capture failed')
+        const message = extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'inbox')('phaseI.errors.voiceCaptureFailed')
+        )
         onCaptureError?.(message)
       }
     },
@@ -278,10 +300,18 @@ export function CaptureInput({
         if (result.success) {
           onCaptureSuccess?.()
         } else {
-          onCaptureError?.(extractErrorMessage(result.error, 'Failed to capture file'))
+          onCaptureError?.(
+            extractErrorMessage(
+              result.error,
+              getI18n().getFixedT(null, 'inbox')('phaseI.errors.failedToCaptureFile')
+            )
+          )
         }
       } catch (err) {
-        const message = extractErrorMessage(err, 'File capture failed')
+        const message = extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'inbox')('phaseI.errors.fileCaptureFailed')
+        )
         onCaptureError?.(message)
       }
     },

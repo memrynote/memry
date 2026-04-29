@@ -1,3 +1,4 @@
+import { getI18n } from 'react-i18next'
 /**
  * Note Reminders Hook
  *
@@ -217,15 +218,20 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
         })
 
         if (result.success) {
-          toast.success('Reminder snoozed')
+          toast.success(getI18n().getFixedT(null, 'notes')('phaseI.toasts.reminderSnoozed'))
           return true
         } else {
-          toast.error(extractErrorMessage(result.error, 'Failed to snooze reminder'))
+          toast.error(
+            extractErrorMessage(
+              result.error,
+              getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToSnoozeReminder')
+            )
+          )
           return false
         }
       } catch (err) {
         log.error('Failed to snooze reminder:', err)
-        toast.error('Failed to snooze reminder')
+        toast.error(getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToSnoozeReminder'))
         return false
       }
     },

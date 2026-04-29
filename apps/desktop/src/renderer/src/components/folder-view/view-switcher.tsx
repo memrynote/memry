@@ -1,3 +1,4 @@
+import { getI18n } from 'react-i18next'
 /**
  * View Switcher Component
  *
@@ -148,7 +149,12 @@ export function ViewSwitcher({
       setCopyFromCurrent(true)
     } catch (err) {
       log.error('Failed to create view', err)
-      toast.error(extractErrorMessage(err, 'Failed to create view'))
+      toast.error(
+        extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToCreateView')
+        )
+      )
     } finally {
       setIsSubmitting(false)
     }
