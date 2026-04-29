@@ -1,1 +1,467 @@
-{}
+{
+  "view": {
+    "tabs": {
+      "inbox": "Gelen kutusu",
+      "archived": "Arşivlendi",
+      "insights": "Analizler",
+      "ariaLabel": "Gelen kutusu görünümü seçimi"
+    },
+    "triageButton": "Triyaj",
+    "processInboxTitle": "Gelen kutusunu işle (Cmd+P)",
+    "itemCaptured": "Öğe ele geçirildi",
+    "searchArchivedTitle": "Arşivlenmiş öğeleri ara",
+    "searchPlaceholder": "Ara...",
+    "archivedItemsAria": "Arşivlenen öğeler",
+    "snoozed": {
+      "show": "Ertelenen öğeleri göster",
+      "showWithCount": "Ertelenen öğeleri göster ({count})",
+      "hide": "Ertelenen öğeleri gizle"
+    },
+    "filter": {
+      "button": "Filtre",
+      "byType": "Türe göre filtrele",
+      "active": "{count, plural, one {# türe göre filtreleme} other {# türe göre filtreleme}}",
+      "clearAll": "Tümünü temizle"
+    },
+    "jobs": {
+      "running": "{count, plural, one {# arka planda çalışan iş} other {# arka plan işi çalışıyor}}",
+      "failed": "{count} başarısız oldu"
+    }
+  },
+  "type": {
+    "link": "Bağlantı",
+    "links": "Bağlantılar",
+    "note": "Not",
+    "notes": "Notlar",
+    "image": "Resim",
+    "images": "Görseller",
+    "voice": "Ses",
+    "video": "video",
+    "clip": "Klip",
+    "clips": "Klipler",
+    "pdf": "PDF",
+    "pdfs": "PDF'ler",
+    "social": "Sosyal",
+    "reminder": "Hatırlatma",
+    "reminders": "Hatırlatıcılar",
+    "text": "Metin",
+    "other": "Diğer"
+  },
+  "empty": {
+    "successAria": "Başarılı, gelen kutusu boş",
+    "title": "Gelen Kutusu Sıfır",
+    "body": "Her şey işlendi. Yukarıdaki girişle yeni bir şeyler yakalayın veya başlamak için bir bağlantı yapıştırın.",
+    "filedThisWeek": "{count, plural, one {# bu hafta dosyalandı} other {# bu hafta dosyalandı}}",
+    "dayStreak": "{count, plural, one {# günlük seri} other {# günlük seri}}",
+    "tipPrefix": "İpucu: kullanın",
+    "tipSuffix": "panodan hızlıca yakalamak için",
+    "archivedNone": "Arşivlenmiş öğe yok",
+    "archivedNoMatches": "Eşleşen arşivlenmiş öğe yok",
+    "noItemsYet": "Henüz öğe yok",
+    "noItemsFiled": "Henüz dosyalanmış öğe yok",
+    "noItemTypes": "Görüntülenecek öğe türü yok",
+    "noFolders": "Klasör bulunamadı",
+    "noFolderMatch": "Eşleşen klasör yok \"{query}\"",
+    "noNotes": "Hiçbir not bulunamadı",
+    "allMatchesLinked": "Tüm eşleşmeler zaten bağlı"
+  },
+  "list": {
+    "ariaLabel": "Gelen kutusu öğeleri",
+    "section": {
+      "today": "Bugün",
+      "yesterday": "Dün",
+      "older": "daha yaşlı"
+    },
+    "selectItem": "Seç {title}",
+    "itemAria": "{type}: {title}",
+    "untitled": "İsimsiz",
+    "untitledItem": "Başlıksız Öğe",
+    "transcribing": "Metne dönüştürülüyor...",
+    "transcriptionFailed": "Transkripsiyon başarısız oldu",
+    "retryTranscription": "Yeniden dene",
+    "pageCount": "{count, plural, one {# sayfa} other {# sayfa}}",
+    "snoozedUntilShort": "şu ana kadar ertelendi {date}",
+    "capturedAgo": "Yakalandı {time}"
+  },
+  "loading": {
+    "inbox": "Gelen kutusu yükleniyor...",
+    "failed": "Gelen kutusu yüklenemedi",
+    "tryAgain": "Tekrar dene",
+    "capturingImage": "Görüntü yakalanıyor...",
+    "dropImageTitle": "Yakalamak için resmi bırakın",
+    "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
+    "unsupportedImageType": "Desteklenmeyen resim türü: {type}",
+    "imageTooLarge": "Resim çok büyük (maks. 50 MB)"
+  },
+  "toast": {
+    "failedArchiveItem": "Öğe arşivlenemedi",
+    "failedArchiveItems": "Öğeler arşivlenemedi",
+    "failedFile": "Dosyalanamadı",
+    "failedFileItem": "Öğe dosyalanamadı",
+    "failedFileItems": "Öğeler dosyalanamadı",
+    "failedSnooze": "Ertelenemedi",
+    "failedSnoozeItem": "Öğe ertelenemedi",
+    "failedApplyTags": "Etiketler uygulanamadı",
+    "failedCaptureImage": "Resim yakalanamadı",
+    "linkedToNote": "Nota bağlı",
+    "linkedToNotes": "Bağlantılı {count} notlar",
+    "filedTo": "Dosyalandı {folder}",
+    "filedItemsTo": "{count} öğe {folder} klasörüne dosyalandı",
+    "filedPartial": "Dosyalanmış{processed} arasında {total} öğeler",
+    "appliedTags": "{tagCount, plural, one {# etiket} other {# etiket}} {itemCount, plural, one {# öğeye} other {# öğeye}} uygulandı",
+    "archivedItems": "{count, plural, one {# öğe arşivlendi} other {# öğe arşivlendi}}",
+    "snoozedUntil": "Şu tarihe kadar ertelendi: {time}",
+    "snoozedItemsUntil": "{count, plural, one {# öğe şu tarihe kadar ertelendi: {time}} other {# öğe şu tarihe kadar ertelendi: {time}}}"
+  },
+  "triage": {
+    "modeTitle": "Triyaj Modu",
+    "exitHint": "Çıkmak için Esc",
+    "exitAria": "Triyaj modundan çık",
+    "position": "{current} / {total}",
+    "action": {
+      "discard": "At",
+      "archive": "Arşiv",
+      "open": "Açık",
+      "toTask": "Göreve",
+      "toNote": "Not Edilecekler",
+      "file": "Dosya",
+      "snooze": "Ertele",
+      "cancel": "İptal"
+    },
+    "snoozeUntil": "Şu tarihe kadar ertele:",
+    "complete": {
+      "title": "Gelen Kutusu Sıfır",
+      "processed": "{count, plural, one {# öğe işlendi} other {# öğe işlendi}}",
+      "streak": "çizgi",
+      "streakCount": "{count} çizgi",
+      "dayProcessingStreak": "{count, plural, one {# günlük işlem serisi} other {# günlük işlem serisi}}",
+      "back": "Gelen Kutusu'na dön",
+      "motivation0": "Gelecekteki benliğiniz size teşekkür ediyor.",
+      "motivation1": "Her şey yerli yerinde.",
+      "motivation2": "Gelen kutusunu temizleyin, zihninizi temizleyin.",
+      "motivation3": "Karar borcu: Tamamı ödenmiştir.",
+      "motivation4": "Bu iyi hissettirdi, değil mi?"
+    }
+  },
+  "bulk": {
+    "selected": "{count} seçilmiş",
+    "deselectAll": "Tümünün seçimini kaldır",
+    "ariaLabel": "Şunun için toplu işlemler {count} seçili öğeler",
+    "file": "Dosya",
+    "tag": "Etiket",
+    "snooze": "Ertele",
+    "archive": "Arşiv",
+    "add": "Ekle",
+    "dismissSuggestion": "Öneriyi reddet",
+    "hint": {
+      "file": "dosya",
+      "tag": "etiket",
+      "snooze": "ertelemek",
+      "archive": "arşiv",
+      "deselect": "seçimi kaldır"
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {# öğe arşivlensin mi?} other {# öğe arşivlensin mi?}}",
+      "description": "Bu öğeler arşivlenecek. Arşivlenen öğeleri daha sonra görüntüleyebilirsiniz.",
+      "confirm": "{count, plural, one {# öğeyi arşivle} other {# öğeyi arşivle}}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {Dosya # Öğe} other {Dosya # Öğeleri}}",
+      "itemsToFile": "Dosyalanacak öğeler",
+      "multipleNoteLinksUnavailable": "Not: Birden fazla öğe dosyalanırken diğer notlara bağlantılar eklenemez.",
+      "filing": "Dosyalanıyor...",
+      "submit": "{count, plural, one {Dosya # öğesi} other {Dosya # öğe}}",
+      "macHint": "⌘⏎ dosyalamak · Esc kapatmak için",
+      "ctrlHint": "Dosyaya Ctrl+Enter · Kapatmak için Esc"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {Etiket # Öğe} other {# Öğeyi Etiketle}}",
+      "placeholder": "Etiketleri aramak için yazın...",
+      "applying": "Başvuruluyor...",
+      "apply": "{count, plural, one {# öğeye uygula} other {# öğeye uygula}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "Hızlı eylemler",
+    "archiveItem": "Öğeyi arşivle",
+    "archive": "Arşiv",
+    "snooze": "Ertele"
+  },
+  "detail": {
+    "ariaLabel": "Ürün ayrıntıları",
+    "closePanel": "Paneli kapat",
+    "resizeFiling": "Dosyalama bölümünü yeniden boyutlandır",
+    "restore": "Geri yükle",
+    "restoreToInbox": "Gelen kutusuna geri yükle",
+    "delete": "Sil",
+    "deletePermanently": "Kalıcı olarak sil",
+    "archive": "Arşiv",
+    "file": "Dosya",
+    "keyboardHint": "{modifier}⏎ dosya · 1-5 klasör · Esc kapat",
+    "voiceTitlePlaceholder": "Bu sesli nota bir ad verin...",
+    "fileTo": "Şuraya dosyala:",
+    "ai": "AI",
+    "selectFolder": "Klasör seç",
+    "searchOrCreateFolder": "/... ile arayın veya oluşturun",
+    "suggested": "Önerilen",
+    "notesRoot": "Notlar",
+    "notesRootLabel": "Notlar (kök)",
+    "createFolder": "Oluştur \"{name}\"",
+    "addTags": "Etiketler ekleyin...",
+    "linkToNote": "Nota bağlantı",
+    "linkNotesPlaceholder": "Bağlantı notları...",
+    "searchNotesAria": "Bağlanacak notları arayın",
+    "linkedNotesAria": "Bağlantılı notlar",
+    "removeLinkTo": "Bağlantıyı kaldır {title}",
+    "contentEditorAria": "İçerik düzenleyici",
+    "notePlaceholder": "Notunuzu yazın...",
+    "textPlaceholder": "Yakalanan metninizi düzenleyin..."
+  },
+  "content": {
+    "capturedAt": "Yakalandı {date}",
+    "todayAt": "bugün {time}",
+    "yesterdayAt": "dün saat {time}",
+    "dateAt": "{date}, {time}",
+    "words": "{count, plural, one {# kelime} other {# kelime}}",
+    "duration": "Süre: {duration}",
+    "dimensions": "Boyutlar",
+    "format": "Biçim",
+    "size": "Boyut",
+    "voiceMemo": "Sesli not",
+    "play": "Oyna",
+    "pause": "Duraklat",
+    "audioPosition": "Ses konumu",
+    "transcription": "Transkripsiyon",
+    "processing": "işleme",
+    "pending": "beklemede",
+    "failed": "başarısız oldu",
+    "copyTranscription": "Transkripsiyonu kopyala",
+    "transcribingAudio": "Ses yazıya aktarılıyor...",
+    "awaitingTranscription": "Transkripsiyon bekleniyor...",
+    "noTranscription": "Transkripsiyon mevcut değil",
+    "failedPlayAudio": "Ses çalınamadı",
+    "failedLoadAudio": "Ses yüklenemedi",
+    "video": "video",
+    "unsupportedVideo": "Tarayıcınız video etiketini desteklemiyor."
+  },
+  "reminder": {
+    "dataUnavailable": "Hatırlatma verileri kullanılamıyor.",
+    "triggered": "Hatırlatıcı tetiklendi",
+    "noteLabel": "Hatırlatma Notu",
+    "source": "Kaynak",
+    "journalTitle": "Günlük — {date}",
+    "noteFallback": "Not",
+    "journalFallback": "Günlük",
+    "highlighted": "Vurgulandı: \"{text}\"",
+    "viewed": "Görüntülendi",
+    "markViewed": "Görüntülendi olarak işaretle",
+    "notYetViewed": "Henüz görüntülenmedi",
+    "snooze": "Ertele",
+    "presetInOneHour": "1 saat",
+    "presetTomorrow": "Yarın",
+    "presetNextWeek": "Gelecek hafta",
+    "custom": "Özel..."
+  },
+  "insights": {
+    "loading": "Analizler yükleniyor...",
+    "captureActivity": "Etkinliği Yakala",
+    "byType": "Türe Göre",
+    "itemTypes": "Öğe Türleri",
+    "itemTypesDescription": "İçerik formatlarının dağıtımı",
+    "recentFilings": "Son Başvurular",
+    "recentlyFiled": "Son zamanlarda dosyalanmış",
+    "recentlyFiledDescription": "Gelen kutunuzdaki son işlemler",
+    "captured": "Yakalandı",
+    "capturedThisWeek": "+{count} bu hafta",
+    "processed": "İşlendi",
+    "processRate": "{rate}% oranı",
+    "stale": "Bayat",
+    "needsAttention": "dikkat edilmesi gerekiyor",
+    "allClear": "her şey temiz",
+    "avgTimeToFile": "Ortalama Dosyalama Süresi",
+    "noCapturesYet": "Henüz yakalama yok",
+    "captures": "{count, plural, one {# yakalama} other {# yakalama}}",
+    "peak": "Zirve: {day} {start}–{end}",
+    "convertedToTask": "Göreve dönüştürüldü",
+    "linked": "Bağlantılı",
+    "now": "şimdi",
+    "timeAgoMinutes": "{count} dk önce",
+    "timeAgoHours": "{count} saat önce",
+    "timeAgoDays": "{count} gün önce"
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "AI algılandı: \"",
+      "addToSelection": "Seçime ekle",
+      "dismiss": "Reddet"
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "Sil ",
+      "item": "öğe",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Bu öğeler gelen kutunuzdan kaldırılacak. Bu işlemi hemen ardından geri alabilirsiniz."
+    },
+    "componentsCaptureInput": {
+      "captureInput": "Girişi yakala",
+      "attachFile": "Dosya ekle",
+      "attachFileImagesAudioVideoPdf": "Dosya ekle (Görüntüler, Ses, Video, PDF)",
+      "recordVoiceMemo": "Sesli not kaydet",
+      "recordVoiceMemo2": "Sesli not kaydet",
+      "alreadyCaptured": "Zaten yakalandı: \"",
+      "rdquo": "rdquo;",
+      "captureAnyway": "Yine de Yakala"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "Klasör seç",
+      "searchFolders": "Klasörleri ara...",
+      "searchFolders2": "Klasörleri ara",
+      "searchResults": "Arama sonuçları",
+      "create": "Oluştur \"",
+      "suggested": "Önerilen",
+      "recent": "Son",
+      "allFolders": "Tüm klasörler",
+      "allFolders2": "Tüm klasörler"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "Bağlantı",
+      "optional": "isteğe bağlı)",
+      "searchNotesToLink": "Bağlantı verilecek notları arayın...",
+      "searchNotesToLink2": "Bağlanacak notları arayın",
+      "searching": "Aranıyor...",
+      "noNotesFound": "Hiçbir not bulunamadı",
+      "linkedNotes": "Bağlantılı notlar",
+      "noLinksAdded": "Hiçbir bağlantı eklenmedi"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "Önerilen",
+      "ai": "AI",
+      "create": "Oluştur",
+      "tags": "Etiketler",
+      "selectedTags": "Seçilen etiketler",
+      "addTags": "Etiket ekle",
+      "tagSuggestions": "Etiket önerileri"
+    },
+    "componentsFilingTagInput": {
+      "tags": "Etiketler",
+      "optional": "isteğe bağlı)",
+      "addTags": "Etiketler ekleyin...",
+      "addTags2": "Etiket ekle",
+      "selectedTags": "Seçilen etiketler",
+      "suggested": "Önerilen"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "Etkinliği Yakala"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "Henüz dosyalanmış öğe yok",
+      "recentlyFiled": "Son zamanlarda dosyalanmış",
+      "latestActionsOnYourInbox": "Gelen kutunuzdaki son işlemler",
+      "linked": "Bağlantılı"
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "Analizler yükleniyor..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "Görüntülenecek öğe türü yok",
+      "itemTypes": "Öğe Türleri",
+      "distributionOfContentFormats": "İçerik formatlarının dağıtımı"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "Yakalandı "
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "x "
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "İçerik düzenleyici"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "middot; "
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "Tweet kullanılamıyor",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Bu tweet silinmiş veya özel bir hesaptan gelmiş olabilir.",
+      "openOnXCom": "x.com'da aç",
+      "views": "görünümler",
+      "xCom": "x.com",
+      "viewOnX": "X'te görüntüle"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "Klasör adını yazın...",
+      "quickFileFolderSearch": "Hızlı dosya klasörü araması"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "kapat",
+      "capture": "yakalamak"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "Eki kaldır"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "Hızlı yakalama girişi",
+      "recordVoiceMemo": "Sesli not kaydet",
+      "attachFile": "Dosya ekle"
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "LINK"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "Yakalandı",
+      "dismissError": "Hatayı reddet",
+      "alreadyCaptured": "Zaten yakalandı",
+      "ldquo": "Ldquo;",
+      "rdquoMiddot": "rdquo; · ",
+      "captureAnyway": "Yine de Yakala",
+      "close": "Kapat"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "Yakalamak için bırakın",
+      "capturing": "Yakalanıyor..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "Klasör önerileri",
+      "noFoldersMatch": "Eşleşen klasör yok: \""
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "Bu metin için hatırlatıcı ayarla",
+      "remindMeAboutThis": "Bana bunu hatırlat",
+      "selectedText": "Seçilen metin:"
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "Hatırlat",
+      "remindMe": "Bana hatırlat",
+      "pickDateTime": "Tarih ve saat seçin",
+      "addANoteOptional": "Not ekleyin (isteğe bağlı)",
+      "backToPresets": "Ön ayarlara geri dön",
+      "time": "Zaman",
+      "noteOptional": "Not (isteğe bağlı)",
+      "whyAreYouSettingThisReminder": "Bu hatırlatıcıyı neden ayarlıyorsunuz?"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "Ertele",
+      "snooze2": "Ertele",
+      "pickDateTime": "Tarih ve Saati Seçin",
+      "pickDateTime2": "Tarih ve Saati Seçin",
+      "selectWhenToBeRemindedAboutThisItem": "Bu öğenin ne zaman hatırlatılacağını seçin",
+      "snooze3": "Ertele",
+      "snooze4": "Ertele",
+      "snooze5": "Ertele"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "Gönderi yükleniyor...",
+      "failedToLoad": "Yüklenemedi",
+      "loadingPostContent": "Gönderi içeriği yükleniyor...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Gönderi içeriği yüklenemedi. Gönderi özel veya silinmiş olabilir.",
+      "viewOn": "Görüntüle "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "Ses kaydını başlat",
+      "requestingMicrophoneAccess": "Mikrofon erişimi isteniyor...",
+      "settings": "Ayarlar",
+      "processing": "İşleniyor...",
+      "cancelRecording": "Kaydı iptal et",
+      "cancel": "İptal",
+      "stopRecording": "Kaydı durdur",
+      "stop": "Durdur"
+    }
+  }
+}

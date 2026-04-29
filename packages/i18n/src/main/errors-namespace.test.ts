@@ -16,11 +16,11 @@ describe('errors namespace', () => {
     )
   })
 
-  it('falls back to English for Turkish and Arabic error stubs', async () => {
+  it('translates Turkish errors and falls back for Arabic error stubs', async () => {
     const tr = await createMainI18n({ locale: 'tr' })
     const ar = await createMainI18n({ locale: 'ar' })
 
-    expect(tr.t('errors:generic.operationFailed')).toBe('Operation failed')
+    expect(tr.t('errors:generic.operationFailed')).toBe('İşlem başarısız oldu')
     expect(ar.t('errors:sync.certificatePinFailed')).toBe(
       'Secure connection failed. Check your network connection.'
     )
