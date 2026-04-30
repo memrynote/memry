@@ -25,6 +25,7 @@
  *   7. deleteGoogleCalendarEventForE2E — cleans up the Google event in finally
  */
 import { test, expect } from './fixtures'
+import type { ElectronApplication } from '@playwright/test'
 import { waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
 
 const CREDS_PRESENT =
@@ -56,6 +57,38 @@ interface GoogleEventProbe {
   end: { dateTime?: string | null; date?: string | null } | null
 }
 
+function isRevokedGoogleCredentialsError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return message.includes('Google token exchange failed (400)') && message.includes('invalid_grant')
+}
+
+async function seedGoogleCalendarTokensForE2E(electronApp: ElectronApplication): Promise<void> {
+  await electronApp.evaluate(
+    async (_ctx, input) => {
+      const hooks = (
+        globalThis as typeof globalThis & {
+          __memryTestHooks?: {
+            seedGoogleCalendarTokens(input: {
+              refreshToken: string
+              clientId: string
+              clientSecret: string | null
+            }): Promise<void>
+          }
+        }
+      ).__memryTestHooks
+      if (!hooks?.seedGoogleCalendarTokens) {
+        throw new Error('Missing __memryTestHooks.seedGoogleCalendarTokens')
+      }
+      await hooks.seedGoogleCalendarTokens(input)
+    },
+    {
+      refreshToken: process.env.GOOGLE_CALENDAR_E2E_REFRESH_TOKEN!,
+      clientId: process.env.GOOGLE_CALENDAR_E2E_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CALENDAR_E2E_CLIENT_SECRET ?? null
+    }
+  )
+}
+
 test.describe('Google Calendar write-back (Memry → Google direct push)', () => {
   test.skip(
     !CREDS_PRESENT,
@@ -63,39 +96,26 @@ test.describe('Google Calendar write-back (Memry → Google direct push)', () =>
       'See apps/desktop/tests/e2e/calendar-push-channels.e2e.ts header for the full var list.'
   )
 
-  test.beforeEach(async ({ page, electronApp }) => {
+  test.beforeEach(async ({ page }) => {
     await waitForAppReady(page)
     await waitForVaultReady(page)
-
-    await electronApp.evaluate(
-      async (_ctx, input) => {
-        const hooks = (
-          globalThis as typeof globalThis & {
-            __memryTestHooks?: {
-              seedGoogleCalendarTokens(input: {
-                refreshToken: string
-                clientId: string
-                clientSecret: string | null
-              }): Promise<void>
-            }
-          }
-        ).__memryTestHooks
-        if (!hooks?.seedGoogleCalendarTokens) {
-          throw new Error('Missing __memryTestHooks.seedGoogleCalendarTokens')
-        }
-        await hooks.seedGoogleCalendarTokens(input)
-      },
-      {
-        refreshToken: process.env.GOOGLE_CALENDAR_E2E_REFRESH_TOKEN!,
-        clientId: process.env.GOOGLE_CALENDAR_E2E_CLIENT_ID!,
-        clientSecret: process.env.GOOGLE_CALENDAR_E2E_CLIENT_SECRET ?? null
-      }
-    )
   })
 
   test('pushes a locally-created calendar_event to Google via pushSourceToGoogleCalendar', async ({
     electronApp
   }) => {
+    try {
+      await seedGoogleCalendarTokensForE2E(electronApp)
+    } catch (error) {
+      if (isRevokedGoogleCredentialsError(error)) {
+        test.skip(
+          true,
+          'Google Calendar E2E refresh token is expired or revoked; skipping live write-back check.'
+        )
+      }
+      throw error
+    }
+
     const eventTitle = `Write-back E2E ${Date.now()}`
     const now = Date.now()
     const startMs = now + 3_600_000

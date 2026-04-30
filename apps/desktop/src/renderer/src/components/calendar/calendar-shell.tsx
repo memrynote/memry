@@ -53,6 +53,7 @@ interface CalendarShellProps {
   onPrevious: () => void
   onNext: () => void
   onToday: () => void
+  todayRequestKey?: number
   onCreateEvent: (anchorRect: AnchorRect) => void
   onToggleMemryItems: () => void
   onToggleImportedCalendars: () => void
@@ -96,6 +97,7 @@ export function CalendarShell({
   onPrevious,
   onNext,
   onToday,
+  todayRequestKey,
   onCreateEvent,
   onToggleMemryItems,
   onToggleImportedCalendars,
@@ -278,6 +280,7 @@ export function CalendarShell({
         ) : view === 'week' ? (
           <CalendarWeekView
             {...chipViewProps}
+            todayRequestKey={todayRequestKey}
             onQuickSave={onQuickSave}
             onCreateEventWithRange={onCreateEventWithRange}
             onVisibleDayStartChange={(_, startDate) => onWeekVisibleRangeChange?.(startDate)}
