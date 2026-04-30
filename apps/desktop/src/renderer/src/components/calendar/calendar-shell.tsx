@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { RefreshCw, SlidersHorizontal } from '@/lib/icons'
 import { CalendarDayView } from './calendar-day-view'
 import { CalendarEventPopover, type CalendarEventReadOnlyMetadata } from './calendar-event-popover'
+import { CalendarInboxSnoozePopover } from './calendar-inbox-snooze-popover'
 import { CalendarMonthView } from './calendar-month-view'
 import { CalendarToolbar, type CalendarWorkspaceView } from './calendar-toolbar'
 import { CalendarWeekView } from './calendar-week-view'
@@ -39,6 +40,14 @@ interface CalendarShellProps {
     /** M5: rich read-only metadata surfaced below the editor in edit mode. */
     readOnlyMetadata?: CalendarEventReadOnlyMetadata
   } | null
+  inboxSnoozePopoverState: {
+    item: CalendarProjectionItem
+    anchorRect: AnchorRect
+  } | null
+  onInboxSnoozeOpenInInbox: (itemId: string) => void
+  onInboxSnoozeUnsnooze: (itemId: string) => void | Promise<void>
+  onInboxSnoozeReschedule: (itemId: string, snoozeUntil: string) => void | Promise<void>
+  onInboxSnoozePopoverDismiss: () => void
   isSaving: boolean
   onViewChange: (view: CalendarWorkspaceView) => void
   onPrevious: () => void
@@ -77,6 +86,11 @@ export function CalendarShell({
   selectedVisualTypes,
   selectedItemId,
   popoverState,
+  inboxSnoozePopoverState,
+  onInboxSnoozeOpenInInbox,
+  onInboxSnoozeUnsnooze,
+  onInboxSnoozeReschedule,
+  onInboxSnoozePopoverDismiss,
   isSaving,
   onViewChange,
   onPrevious,
@@ -293,6 +307,17 @@ export function CalendarShell({
           onSave={onPopoverSave}
           onDismiss={onPopoverDismiss}
           readOnlyMetadata={popoverState.readOnlyMetadata}
+        />
+      )}
+
+      {inboxSnoozePopoverState && (
+        <CalendarInboxSnoozePopover
+          item={inboxSnoozePopoverState.item}
+          anchorRect={inboxSnoozePopoverState.anchorRect}
+          onOpenInInbox={onInboxSnoozeOpenInInbox}
+          onUnsnooze={onInboxSnoozeUnsnooze}
+          onReschedule={onInboxSnoozeReschedule}
+          onDismiss={onInboxSnoozePopoverDismiss}
         />
       )}
     </div>

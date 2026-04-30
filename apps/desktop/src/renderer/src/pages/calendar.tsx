@@ -35,7 +35,9 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { useCalendarView } from '@/contexts/calendar-view-context'
+import { useTabActions } from '@/contexts/tabs'
 import { DeleteCalendarEventDialog } from '@/components/calendar/delete-calendar-event-dialog'
+import { inboxService } from '@/services/inbox-service'
 import { getI18n } from 'react-i18next'
 
 const log = createLogger('CalendarPage')
@@ -192,10 +194,15 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     anchorRect: AnchorRect
     readOnlyMetadata?: import('@/components/calendar/calendar-event-popover').CalendarEventReadOnlyMetadata
   } | null>(null)
+  const [inboxSnoozePopoverState, setInboxSnoozePopoverState] = useState<{
+    item: CalendarProjectionItem
+    anchorRect: AnchorRect
+  } | null>(null)
   const [taskPopoverState, setTaskPopoverState] = useState<{
     item: CalendarProjectionItem
     anchorRect: AnchorRect
   } | null>(null)
+  const { openTab } = useTabActions()
   const [isSaving, setIsSaving] = useState(false)
   const [pendingPromote, setPendingPromote] = useState<{
     item: CalendarProjectionItem
@@ -368,12 +375,14 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   const handleSelectItem = async (item: CalendarProjectionItem, rect: AnchorRect) => {
     if (item.sourceType === 'task') {
       setPopoverState(null)
+      setInboxSnoozePopoverState(null)
       setTaskPopoverState({ item, anchorRect: rect })
       return
     }
 
     if (item.sourceType === 'event') {
       setTaskPopoverState(null)
+      setInboxSnoozePopoverState(null)
       const record = await calendarService.getEvent(item.sourceId).catch(() => null)
       setPopoverState({
         mode: 'edit',
@@ -392,6 +401,13 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       return
     }
 
+    if (item.sourceType === 'inbox_snooze') {
+      setPopoverState(null)
+      setTaskPopoverState(null)
+      setInboxSnoozePopoverState({ item, anchorRect: rect })
+      return
+    }
+
     if (item.sourceType !== 'external_event') return
 
     const settings = await window.api.settings.getCalendarGoogleSettings()
@@ -401,6 +417,54 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     }
 
     setPendingPromote({ item, anchorRect: rect })
+  }
+
+  const handleInboxSnoozeOpenInInbox = (_itemId: string) => {
+    setInboxSnoozePopoverState(null)
+    openTab({
+      type: 'inbox',
+      title: 'Inbox',
+      icon: 'inbox',
+      path: '/inbox',
+      isPinned: false,
+      isModified: false,
+      isPreview: false,
+      isDeleted: false
+    })
+  }
+
+  const handleInboxSnoozeUnsnooze = async (itemId: string) => {
+    const tCalendar = getI18n().getFixedT(null, 'calendar')
+    try {
+      const result = await inboxService.unsnooze(itemId)
+      if (!result.success) {
+        throw new Error(result.error ?? tCalendar('phaseI.errors.couldNotUnsnoozeInboxItem'))
+      }
+      await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
+      setInboxSnoozePopoverState(null)
+    } catch (err) {
+      log.error('Failed to unsnooze inbox item', {
+        itemId,
+        error: extractErrorMessage(err, tCalendar('phaseI.errors.couldNotUnsnoozeInboxItem'))
+      })
+    }
+  }
+
+  const handleInboxSnoozeReschedule = async (itemId: string, snoozeUntil: string) => {
+    const tCalendar = getI18n().getFixedT(null, 'calendar')
+    try {
+      const result = await inboxService.snooze({ itemId, snoozeUntil })
+      if (!result.success) {
+        throw new Error(result.error ?? tCalendar('phaseI.errors.couldNotRescheduleInboxItem'))
+      }
+      await queryClient.invalidateQueries({ queryKey: ['calendar', 'range'] })
+      setInboxSnoozePopoverState(null)
+    } catch (err) {
+      log.error('Failed to reschedule inbox item', {
+        itemId,
+        error: extractErrorMessage(err, tCalendar('phaseI.errors.couldNotRescheduleInboxItem'))
+      })
+    }
   }
 
   const handlePopoverSave = async () => {
@@ -488,7 +552,11 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     })
   }
 
-  const selectedItemId = popoverState?.eventId ?? taskPopoverState?.item.sourceId ?? null
+  const selectedItemId =
+    popoverState?.eventId ??
+    taskPopoverState?.item.sourceId ??
+    inboxSnoozePopoverState?.item.sourceId ??
+    null
 
   return (
     <>
@@ -560,6 +628,11 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         }
         onSelectItem={handleSelectItem}
         onDeleteItem={handleDeleteItem}
+        inboxSnoozePopoverState={inboxSnoozePopoverState}
+        onInboxSnoozeOpenInInbox={handleInboxSnoozeOpenInInbox}
+        onInboxSnoozeUnsnooze={handleInboxSnoozeUnsnooze}
+        onInboxSnoozeReschedule={handleInboxSnoozeReschedule}
+        onInboxSnoozePopoverDismiss={() => setInboxSnoozePopoverState(null)}
         onPopoverDismiss={() => setPopoverState(null)}
         onPopoverDraftChange={(draft) =>
           setPopoverState((current) => (current ? { ...current, draft } : current))
