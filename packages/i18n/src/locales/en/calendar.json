@@ -118,7 +118,15 @@
       "failedToLoadCalendarPreferences": "Failed to load calendar preferences",
       "failedToUpdateCalendarPreferences": "Failed to update calendar preferences",
       "couldNotEditThisEventTryAgain": "Could not edit this event. Try again.",
-      "failedToDeleteEvent": "Failed to delete event"
+      "failedToDeleteEvent": "Failed to delete event",
+      "couldNotUnsnoozeInboxItem": "Could not unsnooze.",
+      "couldNotRescheduleInboxItem": "Could not reschedule."
+    },
+    "inboxSnoozePopover": {
+      "title": "Snoozed inbox item",
+      "openInInbox": "Open in inbox",
+      "unsnoozeNow": "Unsnooze now",
+      "reschedule": "Reschedule"
     }
   },
   "task-popover": {
