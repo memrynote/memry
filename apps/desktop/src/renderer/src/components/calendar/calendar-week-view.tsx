@@ -61,6 +61,7 @@ interface CalendarWeekViewProps {
     anchorRect: AnchorRect
   ) => void
   onVisibleDayStartChange?: (dayIndex: number, startDate: string) => void
+  todayRequestKey?: number
 }
 
 export function CalendarWeekView({
@@ -71,7 +72,8 @@ export function CalendarWeekView({
   onDeleteItem,
   onQuickSave,
   onCreateEventWithRange,
-  onVisibleDayStartChange
+  onVisibleDayStartChange,
+  todayRequestKey
 }: CalendarWeekViewProps): React.JSX.Element {
   const {
     settings: { clockFormat }
@@ -83,6 +85,7 @@ export function CalendarWeekView({
   const headerScrollRef = useRef<HTMLDivElement>(null)
   const allDayScrollRef = useRef<HTMLDivElement>(null)
   const lastEmittedAnchorRef = useRef(anchorDate)
+  const lastTodayRequestKeyRef = useRef(todayRequestKey)
 
   const notifyVisibleStart = useCallback(
     (dayIndex: number) => {
@@ -106,6 +109,12 @@ export function CalendarWeekView({
     if (anchorIndex >= visibleDayStart && anchorIndex < visibleDayStart + 7) return
     scrollToDate(anchorDate, { smooth: true })
   }, [anchorDate, visibleDayStart, scrollToDate])
+
+  useEffect(() => {
+    if (todayRequestKey === lastTodayRequestKeyRef.current) return
+    lastTodayRequestKeyRef.current = todayRequestKey
+    scrollToDate(anchorDate, { smooth: false })
+  }, [anchorDate, scrollToDate, todayRequestKey])
 
   useEffect(() => {
     const body = scrollContainerRef.current

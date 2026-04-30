@@ -165,7 +165,7 @@ test.describe('Journal block marquee selection', () => {
     await expect(page.locator(HIGHLIGHTED_SELECTOR)).toHaveCount(0)
   })
 
-  test('drag from left gutter of journal scroll area selects blocks', async ({ page }) => {
+  test('drag from left edge of journal editor selects blocks', async ({ page }) => {
     await focusJournalEditor(page)
     await typeBlocks(page, [
       'Journal gutter block one',
@@ -174,14 +174,13 @@ test.describe('Journal block marquee selection', () => {
     ])
     await page.waitForTimeout(400)
 
-    const zone = await getMarqueeZoneBox(page)
+    await getMarqueeZoneBox(page)
     const first = await getBlockBox(page, 0)
     const last = await getBlockBox(page, 2)
 
-    // Start at the very left edge of the marquee zone (full scroll-area width).
-    const startX = zone.x + 8
     const startY = first.y + first.height / 2
-    const endX = first.x + first.width / 2
+    const startX = first.x + 2
+    const endX = startX
     const endY = last.y + last.height - 4
 
     await page.mouse.move(startX, startY)

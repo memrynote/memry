@@ -181,6 +181,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     }
   }
   const { anchorDate, setAnchorDate } = useCalendarView()
+  const [todayRequestKey, setTodayRequestKey] = useState(0)
   const [showMemryItems, setShowMemryItems] = useState(true)
   const [showImportedCalendars, setShowImportedCalendars] = useState(true)
   const [selectedImportedSourceIds, setSelectedImportedSourceIds] = useState<string[]>([])
@@ -300,6 +301,11 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       if (view === 'month') return addLocalMonths(current, 1)
       return addLocalYears(current, 1)
     })
+  }
+
+  const handleToday = () => {
+    setAnchorDate(getTodayDate())
+    setTodayRequestKey((current) => current + 1)
   }
 
   async function openEditPopoverAfterPromote(
@@ -601,7 +607,8 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         onViewChange={setView}
         onPrevious={handlePrevious}
         onNext={handleNext}
-        onToday={() => setAnchorDate(getTodayDate())}
+        onToday={handleToday}
+        todayRequestKey={todayRequestKey}
         onCreateEvent={(anchorRect) =>
           setPopoverState({
             mode: 'create',
