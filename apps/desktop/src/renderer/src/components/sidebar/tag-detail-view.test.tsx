@@ -145,7 +145,7 @@ describe('TagDetailView rename + delete actions', () => {
       await waitFor(() =>
         expect(mockRenameTag).toHaveBeenCalledWith({ oldName: 'react', newName: 'typescript' })
       )
-      expect(mockToastSuccess).toHaveBeenCalledWith('Renamed #react to #typescript')
+      expect(mockToastSuccess).toHaveBeenCalledWith('Renamed "react" to "typescript"')
       expect(mockGoBack).toHaveBeenCalled()
     })
 
@@ -193,7 +193,7 @@ describe('TagDetailView rename + delete actions', () => {
       await user.click(screen.getByRole('button', { name: 'Delete tag' }))
 
       await waitFor(() => expect(mockDeleteTag).toHaveBeenCalledWith('react'))
-      expect(mockToastSuccess).toHaveBeenCalledWith('Deleted #react')
+      expect(mockToastSuccess).toHaveBeenCalledWith('Deleted "react" from 0 items')
       expect(mockGoBack).toHaveBeenCalled()
     })
 
