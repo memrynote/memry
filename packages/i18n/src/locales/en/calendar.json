@@ -128,5 +128,39 @@
       "unsnoozeNow": "Unsnooze now",
       "reschedule": "Reschedule"
     }
+  },
+  "task-popover": {
+    "title-fallback": "Task details",
+    "open-task": "Open task",
+    "source-note": "Source note",
+    "snooze": "Snooze",
+    "more-actions": "More actions",
+    "mark-done": "Mark done",
+    "mark-not-done": "Mark not done",
+    "later-today": "Later today",
+    "tomorrow": "Tomorrow",
+    "next-week": "Next week",
+    "next-week-mon": "Next week · Mon",
+    "pick-date-time": "Pick date & time…",
+    "remove-due-date": "Remove due date",
+    "subtasks-prefix": "Subtasks",
+    "subtasks-counter": "{done} of {total} done",
+    "today": "Today",
+    "overdue-one": "1 day overdue",
+    "overdue-other": "{count} days overdue",
+    "repeats": "Repeats",
+    "repeats-daily": "Repeats daily",
+    "repeats-weekly": "Repeats weekly",
+    "repeats-monthly": "Repeats monthly",
+    "repeats-yearly": "Repeats yearly",
+    "priority-urgent": "Urgent",
+    "priority-high": "High",
+    "priority-medium": "Medium",
+    "errors": {
+      "could-not-save": "Could not save task",
+      "could-not-snooze": "Could not snooze task",
+      "could-not-remove-due-date": "Could not remove due date",
+      "could-not-open-note": "Could not open note"
+    }
   }
 }
