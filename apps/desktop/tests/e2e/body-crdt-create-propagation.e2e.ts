@@ -2,7 +2,9 @@ import { test, expect } from './fixtures/sync-auth-fixtures'
 import {
   createNoteWithBody,
   expectNoteBody,
+  getNoteFileBodyById,
   getNoteFileBodyByTitle,
+  openNoteByHandle,
   openNoteByTitle
 } from './utils/note-sync-helpers'
 import {
@@ -12,6 +14,7 @@ import {
   waitForSyncOffline,
   waitForSyncOnline
 } from './utils/network-control'
+import { waitForNoteReplicated } from './utils/wait-helpers'
 import type { ElectronApplication, Page } from '@playwright/test'
 
 async function noteExists(
@@ -76,7 +79,7 @@ async function runReceiverOfflineCreatePropagationCase({
   await goOffline(offlineApp)
   await waitForSyncOffline(receiverPage)
 
-  await createNoteWithBody(creatorPage, title, body)
+  const created = await createNoteWithBody(creatorPage, title, body)
 
   expect(await noteExists(creatorPage, title)).toBe(true)
   expect(await noteExists(receiverPage, title)).toBe(false)
@@ -86,9 +89,10 @@ async function runReceiverOfflineCreatePropagationCase({
 
   await syncBothAndWait(creatorPage, receiverPage)
 
-  expect(await getNoteFileBodyByTitle(receiverPage, title)).toBe(body)
+  await waitForNoteReplicated(offlineApp, created.id, body)
+  expect(await getNoteFileBodyById(receiverPage, created.id)).toBe(body)
 
-  await openNoteByTitle(receiverPage, title)
+  await openNoteByHandle(receiverPage, created)
   await expectNoteBody(receiverPage, body)
 }
 

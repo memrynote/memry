@@ -56,6 +56,13 @@ export function useWeekInfiniteScroll({
 
   const lastNotifiedIndexRef = useRef(initialIndex)
 
+  const notifyVisibleDayStart = useCallback((dayIndex: number): void => {
+    if (dayIndex === lastNotifiedIndexRef.current) return
+    lastNotifiedIndexRef.current = dayIndex
+    setVisibleDayStart(dayIndex)
+    onVisibleDayStartChangeRef.current?.(dayIndex)
+  }, [])
+
   const virtualizer = useVirtualizer({
     horizontal: true,
     count: totalDays,
@@ -96,14 +103,11 @@ export function useWeekInfiniteScroll({
     const onScroll = (): void => {
       if (columnWidth <= 0) return
       const nextStart = Math.floor(el.scrollLeft / columnWidth)
-      if (nextStart === lastNotifiedIndexRef.current) return
-      lastNotifiedIndexRef.current = nextStart
-      setVisibleDayStart(nextStart)
-      onVisibleDayStartChangeRef.current?.(nextStart)
+      notifyVisibleDayStart(nextStart)
     }
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => el.removeEventListener('scroll', onScroll)
-  }, [columnWidth])
+  }, [columnWidth, notifyVisibleDayStart])
 
   useEffect(() => {
     const el = scrollContainerRef.current
@@ -128,8 +132,11 @@ export function useWeekInfiniteScroll({
       const farJump = distance > INSTANT_JUMP_THRESHOLD_DAYS * columnWidth
       const behavior: ScrollBehavior = wantSmooth && !farJump ? 'smooth' : 'auto'
       el.scrollTo({ left: target, behavior })
+      if (behavior === 'auto') {
+        notifyVisibleDayStart(dayIndex)
+      }
     },
-    [columnWidth]
+    [columnWidth, notifyVisibleDayStart]
   )
 
   const scrollToDate = useCallback(
