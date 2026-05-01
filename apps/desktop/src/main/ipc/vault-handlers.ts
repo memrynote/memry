@@ -16,7 +16,7 @@ import {
   removeVault,
   reindex
 } from '../vault'
-import { findVault } from '../store'
+import { findVault, getVaults } from '../store'
 import { createLogger } from '../lib/logger'
 import { getTelemetryRuntime } from '../telemetry/runtime'
 
@@ -49,10 +49,12 @@ export function registerVaultHandlers(): void {
   ipcMain.handle(
     VaultChannels.invoke.SELECT,
     createValidatedHandler(SelectVaultSchema, async (input) => {
-      const wasKnown = input.path ? findVault(input.path) !== undefined : null
+      const knownVaultPaths = new Set(getVaults().map((vault) => vault.path))
+      const wasKnown = input.path ? findVault(input.path) !== undefined : undefined
       const result = await selectVault(input)
       if (result.success && result.vault) {
-        if (wasKnown === false) {
+        const selectedWasKnown = wasKnown ?? knownVaultPaths.has(result.vault.path)
+        if (!selectedWasKnown) {
           trackVaultEvent('vault_created', 'select')
         }
         trackVaultEvent('vault_opened', 'select')

@@ -38,8 +38,8 @@ export function registerSearchHandlers(): void {
             durationMs: result.queryTimeMs,
             resultCount: result.totalCount
           },
+          source: 'global',
           dimensions: {
-            search_type: 'global',
             result_bucket: resultBucket(result.totalCount)
           }
         })
@@ -72,8 +72,8 @@ export function registerSearchHandlers(): void {
             durationMs: result.queryTimeMs,
             resultCount: totalCount
           },
+          source: 'quick',
           dimensions: {
-            search_type: 'quick',
             result_bucket: resultBucket(totalCount)
           }
         })

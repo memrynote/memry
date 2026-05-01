@@ -5,6 +5,15 @@ import { SearchChannels } from '@memry/contracts/ipc-channels'
 const handleCalls: unknown[][] = []
 const removeHandlerCalls: string[] = []
 
+const { searchQueriesMock, trackMainEventMock } = vi.hoisted(() => ({
+  searchQueriesMock: {
+    searchAll: vi.fn(),
+    quickSearch: vi.fn(),
+    getSearchStats: vi.fn()
+  },
+  trackMainEventMock: vi.fn()
+}))
+
 vi.mock('electron', () => ({
   ipcMain: {
     handle: vi.fn((channel: string, handler: unknown) => {
@@ -164,6 +173,14 @@ vi.mock('@main/database/queries/search', () => ({
   getSearchStats: vi.fn()
 }))
 
+vi.mock('../search/store', () => ({
+  searchQueries: searchQueriesMock
+}))
+
+vi.mock('../telemetry/track', () => ({
+  trackMainEvent: trackMainEventMock
+}))
+
 vi.mock('@main/database/fts-rebuild', () => ({
   rebuildAllIndexes: vi.fn()
 }))
@@ -183,6 +200,43 @@ describe('search-handlers: reasons', () => {
 
   afterEach(() => {
     unregisterSearchHandlers()
+  })
+
+  describe('QUERY telemetry', () => {
+    it('keeps search type in source and result bucket as the single dimension', async () => {
+      searchQueriesMock.searchAll.mockReturnValue({
+        groups: [],
+        totalCount: 8,
+        queryTimeMs: 12
+      })
+
+      await invokeHandler(SearchChannels.invoke.QUERY, { text: 'budget' })
+
+      expect(trackMainEventMock).toHaveBeenCalledWith(
+        'search_performed',
+        expect.objectContaining({
+          source: 'global',
+          dimensions: { result_bucket: 'six_plus' }
+        })
+      )
+    })
+
+    it('keeps quick search type in source and result bucket as the single dimension', async () => {
+      searchQueriesMock.quickSearch.mockReturnValue({
+        results: [{ id: 'note-1' }],
+        queryTimeMs: 5
+      })
+
+      await invokeHandler(SearchChannels.invoke.QUICK, 'budget')
+
+      expect(trackMainEventMock).toHaveBeenCalledWith(
+        'search_performed',
+        expect.objectContaining({
+          source: 'quick',
+          dimensions: { result_bucket: 'one_to_five' }
+        })
+      )
+    })
   })
 
   describe('GET_REASONS', () => {

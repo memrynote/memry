@@ -253,7 +253,8 @@ Server-side validation rejects:
 - unknown event names
 - unknown surfaces/actions/object types
 - unapproved dimension keys or values
-- any dimension value that looks like a URL, path, email, UUID account ID, or long free-form text
+- any dimension key, dimension value, or enum-like string that looks like a URL, path, email, UUID account ID, or long free-form text
+- more than one dimension on a single event
 - batch size greater than 100 events
 - request body larger than 128 KB
 
@@ -482,8 +483,8 @@ Events:
 
 Allowed dimensions:
 
-- search type: `quick`, `command_palette`, `global`
-- result bucket: `zero`, `one_to_five`, `six_plus`
+- source search type: `quick`, `command_palette`, `global`
+- dimension result bucket: `zero`, `one_to_five`, `six_plus`
 - result opened type: `note`, `journal`, `task`, `inbox`
 - graph depth bucket, not node labels
 
@@ -532,8 +533,8 @@ Events:
 Allowed dimensions:
 
 - auth state
-- sync operation: `push`, `pull`, `full`, `crdt`
-- transport: `record`, `crdt`
+- source sync operation: `push`, `pull`, `full`, `crdt`
+- dimension transport: `record`, `crdt`
 - error code enum
 
 Metrics:

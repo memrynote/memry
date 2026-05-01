@@ -66,8 +66,20 @@ export const TelemetrySyncStateSchema = z.enum(['disabled', 'enabled', 'unknown'
 export const TelemetryPlatformSchema = z.enum(['darwin', 'win32', 'linux'])
 
 const SAFE_DIMENSION_VALUE = /^(?!.*@)(?!.*:\/\/)(?!.*[/\\]).{1,64}$/
+const UUID_SHAPED_VALUE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
 
-export const SafeDimensionValueSchema = z.string().regex(SAFE_DIMENSION_VALUE)
+export const SafeDimensionValueSchema = z
+  .string()
+  .regex(SAFE_DIMENSION_VALUE)
+  .refine((value) => !UUID_SHAPED_VALUE.test(value), {
+    message: 'Telemetry dimension values must not contain raw identifiers'
+  })
+
+export const TelemetryDimensionsSchema = z
+  .record(SafeDimensionValueSchema, SafeDimensionValueSchema)
+  .refine((dimensions) => Object.keys(dimensions).length <= 1, {
+    message: 'Telemetry events support at most one dimension'
+  })
 
 export const TelemetryMetricsSchema = z.object({
   durationMs: z.number().finite().nonnegative().optional(),
@@ -90,7 +102,7 @@ export const TelemetryEventSchema = z.object({
   source: SafeDimensionValueSchema.optional(),
   result: TelemetryResultSchema.optional(),
   errorCode: SafeDimensionValueSchema.optional(),
-  dimensions: z.record(z.string(), SafeDimensionValueSchema).optional(),
+  dimensions: TelemetryDimensionsSchema.optional(),
   metrics: TelemetryMetricsSchema.optional()
 })
 

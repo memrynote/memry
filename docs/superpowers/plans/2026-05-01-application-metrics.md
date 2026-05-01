@@ -199,7 +199,7 @@ export const TelemetryEventSchema = z.object({
   source: z.string().regex(SAFE_DIMENSION_VALUE).optional(),
   result: TelemetryResultSchema.optional(),
   errorCode: z.string().regex(SAFE_DIMENSION_VALUE).optional(),
-  dimensions: z.record(z.string(), z.string().regex(SAFE_DIMENSION_VALUE)).optional(),
+  dimensions: z.record(SafeDimensionValueSchema, SafeDimensionValueSchema).optional(),
   metrics: TelemetryMetricsSchema.optional()
 })
 
@@ -961,8 +961,8 @@ Extend existing sync runtime/engine tests to assert:
 
 Track:
 
-- operation: `push`, `pull`, `full`, `crdt`
-- transport: `record`, `crdt`
+- source operation: `push`, `pull`, `full`, `crdt`
+- dimension transport: `record`, `crdt`
 - itemCount, queueCount, durationMs
 - result/errorCode enum
 
