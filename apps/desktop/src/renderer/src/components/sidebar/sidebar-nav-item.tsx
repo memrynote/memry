@@ -130,7 +130,7 @@ export const SidebarNavItem = ({
         )}
 
         {/* Title */}
-        <span className="flex-1 truncate text-left">{item.title}</span>
+        <span className="sidebar-label-fade flex-1 text-left">{item.title}</span>
 
         {/* Count badge */}
         {item.count !== undefined && item.count > 0 && (

@@ -50,6 +50,7 @@ interface TagAutocompleteProps {
   autoFocus?: boolean
   aiSuggestedTags?: string[]
   className?: string
+  dropdownPlacement?: 'top' | 'bottom'
 }
 
 const LISTBOX_ID = 'tag-autocomplete-listbox'
@@ -62,7 +63,8 @@ export const TagAutocomplete = ({
   maxSuggestions = 8,
   autoFocus = false,
   aiSuggestedTags = [],
-  className
+  className,
+  dropdownPlacement = 'bottom'
 }: TagAutocompleteProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('inbox')
   const [inputValue, setInputValue] = useState('')
@@ -419,7 +421,10 @@ export const TagAutocomplete = ({
           <div
             ref={dropdownRef}
             id={LISTBOX_ID}
-            className="absolute z-50 w-full mt-1 p-0 rounded-md border border-border bg-popover shadow-[0_8px_24px_rgba(0,0,0,0.25)] overflow-hidden"
+            className={cn(
+              'absolute z-50 w-full p-0 rounded-md border border-border bg-popover shadow-[0_8px_24px_rgba(0,0,0,0.25)] max-h-64 overflow-x-hidden overflow-y-auto',
+              dropdownPlacement === 'top' ? 'bottom-full mb-1' : 'mt-1'
+            )}
             role="listbox"
             aria-label={tPhaseF('phaseF.componentsFilingTagAutocomplete.tagSuggestions')}
           >

@@ -173,7 +173,7 @@ export function SidebarBookmarkList({
                 <Icon className={cn('size-4 shrink-0', iconColor)} aria-hidden="true" />
               )}
 
-              <span className="flex-1 truncate text-[13px] text-sidebar-text-folder font-medium">
+              <span className="sidebar-label-fade flex-1 text-[13px] text-sidebar-text-folder font-medium">
                 {title}
               </span>
             </SidebarMenuButton>
