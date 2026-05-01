@@ -55,6 +55,7 @@ import {
   initializeJournalCrdt
 } from '../journal/runtime-effects'
 import { deleteJournalCache, syncJournalCache } from '../vault/journal-cache-sync'
+import { trackMainEvent } from '../telemetry/track'
 
 const logger = createLogger('IPC:Journal')
 
@@ -88,7 +89,16 @@ export function registerJournalHandlers(): void {
   ipcMain.handle(
     JournalChannels.invoke.GET_ENTRY,
     createValidatedHandler(GetEntryInputSchema, async (input): Promise<JournalEntry | null> => {
-      return readJournalEntry(input.date)
+      const entry = await readJournalEntry(input.date)
+      if (entry) {
+        trackMainEvent('journal_opened', {
+          surface: 'journal',
+          action: 'opened',
+          objectType: 'journal',
+          result: 'success'
+        })
+      }
+      return entry
     })
   )
 
@@ -247,6 +257,13 @@ export function registerJournalHandlers(): void {
       emitJournalEvent(JournalChannels.events.ENTRY_UPDATED, {
         date: entry.date,
         entry
+      })
+
+      trackMainEvent('journal_updated', {
+        surface: 'journal',
+        action: 'updated',
+        objectType: 'journal',
+        result: 'success'
       })
 
       return entry

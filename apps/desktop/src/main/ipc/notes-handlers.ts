@@ -84,6 +84,7 @@ import {
   deletePropertyDefinitionRecord,
   updatePropertyDefinitionRecord
 } from '../vault/property-definition-store'
+import { trackMainEvent } from '../telemetry/track'
 
 // ============================================================================
 // Zod Schemas for Property Definitions (T017-T018)
@@ -166,6 +167,12 @@ export function registerNotesHandlers(): void {
     NoteCreateSchema,
     async (input) => {
       const note = await createNoteCommand(input)
+      trackMainEvent('note_created', {
+        surface: 'notes',
+        action: 'created',
+        objectType: 'note',
+        result: 'success'
+      })
       return { success: true as const, note }
     },
     'Failed to create note'
@@ -175,7 +182,16 @@ export function registerNotesHandlers(): void {
   ipcMain.handle(
     NotesChannels.invoke.GET,
     createStringHandler(async (id) => {
-      return getNoteById(id)
+      const note = await getNoteById(id)
+      if (note) {
+        trackMainEvent('note_opened', {
+          surface: 'notes',
+          action: 'opened',
+          objectType: 'note',
+          result: 'success'
+        })
+      }
+      return note
     })
   )
 
@@ -245,6 +261,12 @@ export function registerNotesHandlers(): void {
     NoteUpdateSchema,
     async (input) => {
       const note = await updateNoteCommand(input)
+      trackMainEvent('note_updated', {
+        surface: 'notes',
+        action: 'updated',
+        objectType: 'note',
+        result: 'success'
+      })
       return { success: true as const, note }
     },
     'Failed to update note'
@@ -278,6 +300,12 @@ export function registerNotesHandlers(): void {
     createStringHandler(
       withErrorHandler(async (id) => {
         await deleteNoteCommand(id)
+        trackMainEvent('note_deleted', {
+          surface: 'notes',
+          action: 'deleted',
+          objectType: 'note',
+          result: 'success'
+        })
         return { success: true }
       }, 'Failed to delete note')
     )
