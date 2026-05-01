@@ -22,11 +22,12 @@ import { ContentArea, type Block, type HeadingInfo } from '@/components/note'
 import { BacklinksSection, type Backlink } from '@/components/note/backlinks'
 
 import { TagsRow, type Tag } from '@/components/note/tags-row'
-import { InfoSection } from '@/components/note/info-section'
+import { InfoSection, type NewProperty } from '@/components/note/info-section'
 import { GhostAffordanceRow } from '@/components/note/ghost-affordance-row'
 import { OutlineInfoPanel, type HeadingItem } from '@/components/shared'
 import { useActiveHeading } from '@/hooks/use-active-heading'
 import { useNoteTagsQuery, useNoteLinksQuery } from '@/hooks/use-notes-query'
+import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
 import { usePropertySection } from '@/hooks/use-property-section'
 import { useJournalSettings } from '@/hooks/use-journal-settings'
 import { useEditorSettings } from '@/hooks/use-editor-settings'
@@ -368,6 +369,17 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     handlePropertyNameChange,
     handlePropertyOrderChange
   } = usePropertySection({ entityId: entry?.id ?? null, includeExplicitType: true })
+
+  const [propertiesCollapsed, togglePropertiesCollapsed, setPropertiesCollapsed] =
+    usePropertiesCollapsed(entry?.id ?? '')
+
+  const handleAddPropertyWithExpand = useCallback(
+    (newProp: NewProperty) => {
+      setPropertiesCollapsed(false)
+      handleAddProperty(newProp)
+    },
+    [handleAddProperty, setPropertiesCollapsed]
+  )
 
   const properties = useMemo(() => rawProperties.filter((p) => p.name !== 'date'), [rawProperties])
 
@@ -745,13 +757,13 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                           <InfoSection
                             properties={properties}
                             newlyAddedPropertyId={newlyAddedPropertyId}
-                            isExpanded
-                            variant="inline"
-                            onToggleExpand={() => {}}
+                            isExpanded={!propertiesCollapsed}
+                            variant="embedded"
+                            onToggleExpand={togglePropertiesCollapsed}
                             onPropertyChange={handlePropertyChange}
                             onPropertyNameChange={handlePropertyNameChange}
                             onPropertyOrderChange={handlePropertyOrderChange}
-                            onAddProperty={handleAddProperty}
+                            onAddProperty={handleAddPropertyWithExpand}
                             onDeleteProperty={handleDeleteProperty}
                             hideAddButton
                           />
@@ -762,7 +774,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                           currentTagIds={journalTags.map((t) => t.id)}
                           onAddTag={handleAddTag}
                           onCreateTag={handleCreateTag}
-                          onAddProperty={handleAddProperty}
+                          onAddProperty={handleAddPropertyWithExpand}
                           hasTags={journalTags.length > 0}
                         />
                       </div>
