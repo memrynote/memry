@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('PropertiesCollapsed')
@@ -42,6 +42,10 @@ export function usePropertiesCollapsed(
   noteId: string
 ): readonly [boolean, () => void, (next: boolean) => void] {
   const [isCollapsed, setState] = useState<boolean>(() => readInitial(noteId))
+
+  useEffect(() => {
+    setState(readInitial(noteId))
+  }, [noteId])
 
   const setCollapsed = useCallback(
     (next: boolean) => {
