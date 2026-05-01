@@ -39,7 +39,7 @@ export class UploadQueue {
       this.boundHandler = (ev: { online: boolean }) => {
         if (ev.online && this.queue.length > 0) {
           log.info('network restored, draining upload queue', { pending: this.queue.length })
-          this.drain()
+          void this.drain()
         }
       }
       network.on('status-changed', this.boundHandler)
@@ -50,7 +50,7 @@ export class UploadQueue {
     return new Promise<UploadResult>((resolve, reject) => {
       this.queue.push({ noteId, filePath, onProgress, resolve, reject })
       log.debug('enqueued upload', { noteId, queueLength: this.queue.length })
-      this.drain()
+      void this.drain()
     })
   }
 
@@ -95,9 +95,9 @@ export class UploadQueue {
         if (!item) break
 
         this.running++
-        this.processItem(item).finally(() => {
+        void this.processItem(item).finally(() => {
           this.running--
-          this.drain()
+          void this.drain()
         })
       }
     } finally {

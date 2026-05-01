@@ -207,7 +207,7 @@ export const useSidebarNavigation = () => {
    */
   const copyItemLink = useCallback((item: SidebarItem) => {
     const link = `memry://${item.path}`
-    navigator.clipboard.writeText(link)
+    void navigator.clipboard.writeText(link)
   }, [])
 
   /**

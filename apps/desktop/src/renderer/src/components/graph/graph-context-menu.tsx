@@ -104,7 +104,7 @@ export function GraphContextMenu({
       <button
         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-foreground hover:bg-accent transition-colors"
         onClick={() => {
-          navigator.clipboard.writeText(label)
+          void navigator.clipboard.writeText(label)
           onClose()
         }}
       >

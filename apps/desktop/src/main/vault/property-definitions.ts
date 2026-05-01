@@ -254,10 +254,10 @@ export class PropertyDefinitionsService {
           await task()
           resolve()
         } catch (err) {
-          reject(err)
+          reject(err instanceof Error ? err : new Error(String(err)))
         }
       })
-      this.drainQueue()
+      void this.drainQueue()
     })
   }
 

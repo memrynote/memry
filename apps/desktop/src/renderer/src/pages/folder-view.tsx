@@ -498,7 +498,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
    */
   const handleClearAll = useCallback(() => {
     setSearchQuery('')
-    updateFilters(undefined)
+    void updateFilters(undefined)
   }, [updateFilters])
 
   // ============================================================================
@@ -538,7 +538,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
           variant="ghost"
           size="icon"
           className="h-8 w-8"
-          onClick={handleCreateNote}
+          onClick={() => void handleCreateNote()}
           title={tPhaseF('phaseF.pagesFolderView.createNewNote')}
         >
           <Plus className="h-4 w-4" />
@@ -600,7 +600,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             <DropdownMenuSeparator />
             <DropdownMenuCheckboxItem
               checked={activeView?.showSummaries ?? false}
-              onCheckedChange={() => toggleShowSummaries()}
+              onCheckedChange={() => void toggleShowSummaries()}
             >
               {tPhaseF('phaseF.pagesFolderView.showSummaries')}
             </DropdownMenuCheckboxItem>
@@ -617,17 +617,17 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         filters={activeView?.filters as FilterExpression | undefined}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        onColumnsChange={updateColumns}
-        onFiltersChange={updateFilters}
+        onColumnsChange={(...args) => void updateColumns(...args)}
+        onFiltersChange={(...args) => void updateFilters(...args)}
         onColumnSearchChange={setColumnSearchQuery}
         onFormulaAdd={addFormula}
         onFormulaEdit={updateFormula}
         onFormulaDelete={deleteFormula}
         sampleNote={sampleNote}
         summaries={summaries}
-        onSummaryChange={updateSummaryConfig}
+        onSummaryChange={(...args) => void updateSummaryConfig(...args)}
         groupBy={activeView?.groupBy as GroupByConfig | undefined}
-        onGroupByChange={updateGroupBy}
+        onGroupByChange={(...args) => void updateGroupBy(...args)}
         className="flex-shrink-0 min-w-0 overflow-hidden"
       />
 
@@ -651,7 +651,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
             <FolderViewEmptyState
               variant="error"
               errorMessage={error}
-              onRetry={refresh}
+              onRetry={(...args) => void refresh(...args)}
               className="h-full"
             />
           ) : isLoading ? (
@@ -674,13 +674,13 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               onFolderClick={handleFolderClick}
               onTagClick={handleTagClick}
               onTagRemove={handleTagRemove}
-              onPropertyUpdate={updateNoteProperty}
-              onColumnsChange={updateColumns}
-              onSortingChange={updateSorting}
-              onDisplayNameChange={updateDisplayName}
+              onPropertyUpdate={(...args) => void updateNoteProperty(...args)}
+              onColumnsChange={(...args) => void updateColumns(...args)}
+              onSortingChange={(...args) => void updateSorting(...args)}
+              onDisplayNameChange={(...args) => void updateDisplayName(...args)}
               onDelete={handleDeleteRequest}
               onMoveToFolder={handleMoveRequest}
-              onCreateNote={handleCreateNote}
+              onCreateNote={(...args) => void handleCreateNote(...args)}
               onClearAll={handleClearAll}
               highlightedColumns={highlightedColumns}
               density={density}
@@ -707,13 +707,13 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               onFolderClick={handleFolderClick}
               onTagClick={handleTagClick}
               onTagRemove={handleTagRemove}
-              onPropertyUpdate={updateNoteProperty}
-              onColumnsChange={updateColumns}
-              onSortingChange={updateSorting}
-              onDisplayNameChange={updateDisplayName}
+              onPropertyUpdate={(...args) => void updateNoteProperty(...args)}
+              onColumnsChange={(...args) => void updateColumns(...args)}
+              onSortingChange={(...args) => void updateSorting(...args)}
+              onDisplayNameChange={(...args) => void updateDisplayName(...args)}
               onDelete={handleDeleteRequest}
               onMoveToFolder={handleMoveRequest}
-              onCreateNote={handleCreateNote}
+              onCreateNote={(...args) => void handleCreateNote(...args)}
               onClearAll={handleClearAll}
               highlightedColumns={highlightedColumns}
               density={density}
@@ -745,7 +745,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
               {tPhaseF('phaseF.pagesFolderView.cancel')}
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteConfirm}
+              onClick={() => void handleDeleteConfirm()}
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
@@ -761,7 +761,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         onOpenChange={setMoveDialogOpen}
         noteIds={notesToMove}
         currentFolder={folderPath}
-        onMove={handleMoveConfirm}
+        onMove={(...args) => void handleMoveConfirm(...args)}
         noteTitle={movingNoteTitle}
       />
     </div>

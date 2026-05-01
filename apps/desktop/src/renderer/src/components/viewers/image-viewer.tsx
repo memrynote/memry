@@ -5,7 +5,7 @@
  * @module components/viewers/image-viewer
  */
 
-import { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { ZoomIn, ZoomOut, RotateCw, Maximize2, Move } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -41,14 +41,9 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState(false)
 
-  // Reset position when scale changes to 1. Layout work — useLayoutEffect avoids
-  // the no-event-handler/no-chain-state-updates lints (which only target
-  // useEffect) and keeps the reset visually synchronous.
-  useLayoutEffect(() => {
-    if (scale === 1) {
-      setPosition({ x: 0, y: 0 })
-    }
-  }, [scale])
+  if (scale === 1 && (position.x !== 0 || position.y !== 0)) {
+    setPosition({ x: 0, y: 0 })
+  }
 
   // Attach wheel event with passive: false to allow preventDefault
   useEffect(() => {

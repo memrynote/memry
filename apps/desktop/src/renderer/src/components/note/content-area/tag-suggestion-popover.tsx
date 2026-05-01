@@ -13,8 +13,32 @@ interface TagSuggestion {
   count: number
 }
 
+interface TiptapEditorLike {
+  state: {
+    selection: {
+      $from: {
+        parentOffset: number
+        pos: number
+        nodeBefore: {
+          type: { name: string }
+          attrs: { tag?: unknown }
+          nodeSize: number
+        } | null
+      }
+      from: number
+      to: number
+    }
+  }
+  on: (event: 'selectionUpdate' | 'update', handler: () => void) => void
+  off: (event: 'selectionUpdate' | 'update', handler: () => void) => void
+}
+
+interface EditorWithTiptap {
+  _tiptapEditor?: TiptapEditorLike
+}
+
 interface TagSuggestionPopoverProps {
-  editor: any
+  editor: EditorWithTiptap
   editorContainerRef: React.RefObject<HTMLDivElement | null>
   onSelect: (tag: string, color: string, nodePos: number) => void
 }
@@ -29,7 +53,7 @@ export function TagSuggestionPopover({
   const [suggestions, setSuggestions] = useState<TagSuggestion[]>([])
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
-  const [activeTagName, setActiveTagName] = useState('')
+  const [, setActiveTagName] = useState('')
   const [activeTagPos, setActiveTagPos] = useState(-1)
   const cacheRef = useRef<{ tags: TagSuggestion[]; fetchedAt: number } | null>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
@@ -51,7 +75,7 @@ export function TagSuggestionPopover({
   }, [])
 
   useEffect(() => {
-    const tiptap = (editor as any)?._tiptapEditor
+    const tiptap = editor?._tiptapEditor
     if (!tiptap) return
 
     const handleUpdate = () => {

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { createHashTagInlinePlugin } from '../hash-tag-inline-plugin'
@@ -34,7 +34,7 @@ export function useTagSuggestions({
 
   // Register hashTag inline plugin on editor's tiptap instance
   useEffect(() => {
-    const tiptap = (editor as any)._tiptapEditor
+    const tiptap = editor._tiptapEditor
     if (!tiptap) return
 
     const plugin = createHashTagInlinePlugin(getTagColor)
@@ -51,7 +51,7 @@ export function useTagSuggestions({
   useLayoutEffect(() => {
     if (!tagColorMap || tagColorMap.size === 0) return
 
-    const tiptap = (editor as any)._tiptapEditor
+    const tiptap = editor._tiptapEditor
     if (!tiptap) return
 
     const { state } = tiptap
@@ -71,7 +71,6 @@ export function useTagSuggestions({
     if (changed) {
       tiptap.view.dispatch(tr)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, tagColorMap])
 
   // Tag pill click handler — navigates to tag drill-down
@@ -94,7 +93,7 @@ export function useTagSuggestions({
 
   const handleTagSuggestionSelect = useCallback(
     (tag: string, color: string, nodePos: number) => {
-      const tiptap = (editor as any)._tiptapEditor
+      const tiptap = editor._tiptapEditor
       if (!tiptap) return
 
       const hashTagNodeType = tiptap.state.schema.nodes.hashTag

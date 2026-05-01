@@ -28,8 +28,7 @@ import {
   calendarService,
   promoteExternalCalendarEvent,
   type CalendarProjectionItem,
-  type CalendarProjectionVisualType,
-  type CalendarSourceRecord
+  type CalendarProjectionVisualType
 } from '@/services/calendar-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
@@ -248,10 +247,12 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     queryFn: () => calendarService.listSources({})
   })
 
-  const sources = sourcesQuery.data?.sources ?? []
   const importedSources = useMemo(
-    () => sources.filter((source) => source.kind === 'calendar' && !source.isMemryManaged),
-    [sources]
+    () =>
+      (sourcesQuery.data?.sources ?? []).filter(
+        (source) => source.kind === 'calendar' && !source.isMemryManaged
+      ),
+    [sourcesQuery.data?.sources]
   )
 
   useEffect(() => {
@@ -587,7 +588,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
         view={view}
         anchorDate={anchorDate}
         items={filteredItems}
-        importedSources={importedSources as CalendarSourceRecord[]}
+        importedSources={importedSources}
         isLoading={rangeQuery.isLoading || sourcesQuery.isLoading}
         showMemryItems={showMemryItems}
         showImportedCalendars={showImportedCalendars}
@@ -634,7 +635,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
               : [...current, visualType]
           )
         }
-        onSelectItem={handleSelectItem}
+        onSelectItem={(...args) => void handleSelectItem(...args)}
         onDeleteItem={handleDeleteItem}
         inboxSnoozePopoverState={inboxSnoozePopoverState}
         onInboxSnoozeOpenInInbox={handleInboxSnoozeOpenInInbox}

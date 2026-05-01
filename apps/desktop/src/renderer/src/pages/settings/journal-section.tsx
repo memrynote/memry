@@ -99,7 +99,7 @@ export function JournalSettings() {
         >
           <Select
             value={settings.defaultTemplate ?? 'none'}
-            onValueChange={handleTemplateChange}
+            onValueChange={(...args) => void handleTemplateChange(...args)}
             disabled={isLoadingTemplates || isLoadingSettings}
           >
             <SelectTrigger className={COMPACT_SELECT}>
@@ -134,7 +134,7 @@ export function JournalSettings() {
         >
           <Switch
             checked={settings.showSchedule}
-            onCheckedChange={handleShowScheduleChange}
+            onCheckedChange={(...args) => void handleShowScheduleChange(...args)}
             className={ACCENT_SWITCH}
           />
         </SettingRow>
@@ -145,7 +145,7 @@ export function JournalSettings() {
         >
           <Switch
             checked={settings.showTasks}
-            onCheckedChange={handleShowTasksChange}
+            onCheckedChange={(...args) => void handleShowTasksChange(...args)}
             className={ACCENT_SWITCH}
           />
         </SettingRow>
@@ -156,7 +156,7 @@ export function JournalSettings() {
         >
           <Switch
             checked={settings.showAIConnections}
-            onCheckedChange={handleShowAIConnectionsChange}
+            onCheckedChange={(...args) => void handleShowAIConnectionsChange(...args)}
             className={ACCENT_SWITCH}
           />
         </SettingRow>
@@ -169,7 +169,7 @@ export function JournalSettings() {
         >
           <Switch
             checked={settings.showStatsFooter}
-            onCheckedChange={handleShowStatsFooterChange}
+            onCheckedChange={(...args) => void handleShowStatsFooterChange(...args)}
             className={ACCENT_SWITCH}
           />
         </SettingRow>

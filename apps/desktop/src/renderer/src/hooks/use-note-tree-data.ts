@@ -68,7 +68,7 @@ export function useNoteTreeData(): NoteTreeData {
       }
     }
 
-    loadFolderTemplateNames()
+    void loadFolderTemplateNames()
   }, [folders])
 
   useEffect(() => {
@@ -82,7 +82,7 @@ export function useNoteTreeData(): NoteTreeData {
         log.error('Failed to fetch positions', err)
       }
     }
-    fetchPositions()
+    void fetchPositions()
   }, [notes])
 
   const tree = useMemo(() => {

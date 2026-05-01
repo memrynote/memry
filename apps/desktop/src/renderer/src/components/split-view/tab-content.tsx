@@ -25,6 +25,7 @@ import { TemplateEditorPage } from '@/pages/template-editor'
 import { TemplatesPage } from '@/pages/templates'
 import { GraphPage } from '@/components/graph/graph-page'
 import { useT } from '@memry/i18n/renderer'
+import { stringifyUnknown } from '@/lib/stringify-unknown'
 
 // =============================================================================
 // MEMOIZED PAGE COMPONENTS
@@ -155,7 +156,7 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
           <PlaceholderView
             title={tPhaseF('phaseF.componentsSplitViewTabContent.searchResults')}
             icon="search"
-            subtitle={`Query: ${tab.viewState?.query ?? ''}`}
+            subtitle={`Query: ${stringifyUnknown(tab.viewState?.query)}`}
           />
         )
 

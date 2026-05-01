@@ -36,7 +36,7 @@ export const EditRepeatingTaskDialog = ({
   isOpen,
   onClose,
   onConfirm,
-  taskTitle,
+  taskTitle: _taskTitle,
   occurrenceDate
 }: EditRepeatingTaskDialogProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('tasks')

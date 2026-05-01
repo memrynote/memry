@@ -315,7 +315,7 @@ export function DeviceList({ onLinkDevice }: DeviceListProps): React.JSX.Element
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>{tCommon('button.cancel')}</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleRemove}
+              onClick={() => void handleRemove()}
               disabled={busy}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >

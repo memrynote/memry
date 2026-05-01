@@ -58,7 +58,7 @@ import { graphKeys } from '@/hooks/use-graph-data'
 import { NoteBreadcrumb } from '@/components/note/note-breadcrumb'
 import { FindBar } from '@/components/find-bar/find-bar'
 import { useFindInPage } from '@/hooks/use-find-in-page'
-import { ContentDivider } from '@renderer/components/note/content-area'
+
 import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Page:Note')
@@ -483,31 +483,33 @@ export function NotePage({ noteId }: NotePageProps) {
       }
 
       // Debounce save (configurable via editor settings, default 1000ms)
-      saveTimeoutRef.current = setTimeout(async () => {
-        isSavingRef.current = true
-        try {
-          await updateNote.mutateAsync({ id: noteId, content: markdown })
-          lastSavedContent.current = markdown
-          pendingMarkdownRef.current = null
-          if (isLocalGraphOpen) {
-            void queryClient.invalidateQueries({ queryKey: graphKeys.local(noteId) })
+      saveTimeoutRef.current = setTimeout(() => {
+        void (async () => {
+          isSavingRef.current = true
+          try {
+            await updateNote.mutateAsync({ id: noteId, content: markdown })
+            lastSavedContent.current = markdown
+            pendingMarkdownRef.current = null
+            if (isLocalGraphOpen) {
+              void queryClient.invalidateQueries({ queryKey: graphKeys.local(noteId) })
+            }
+          } catch (err) {
+            log.error('Failed to save note:', err)
+          } finally {
+            isSavingRef.current = false
           }
-        } catch (err) {
-          log.error('Failed to save note:', err)
-        } finally {
-          isSavingRef.current = false
-        }
+        })()
       }, editorSettings.autoSaveDelay)
     },
     [
       noteId,
       note,
-      updateNote.mutateAsync,
       isDeleted,
-      isLocalGraphOpen,
-      queryClient,
       editorSettings.autoSaveDelay,
-      t
+      t,
+      updateNote,
+      isLocalGraphOpen,
+      queryClient
     ]
   )
 
@@ -531,7 +533,7 @@ export function NotePage({ noteId }: NotePageProps) {
         log.error('Failed to rename note:', err)
       }
     },
-    [noteId, note, renameNote.mutateAsync, isDeleted, t]
+    [noteId, note, isDeleted, t, renameNote]
   )
 
   // Tag handlers
@@ -557,7 +559,7 @@ export function NotePage({ noteId }: NotePageProps) {
         }
       }
     },
-    [noteId, note, availableTags, updateNote.mutateAsync, isDeleted]
+    [noteId, note, isDeleted, availableTags, updateNote]
   )
 
   const handleCreateTag = useCallback(
@@ -582,7 +584,7 @@ export function NotePage({ noteId }: NotePageProps) {
         }
       }
     },
-    [noteId, note, updateNote.mutateAsync, isDeleted]
+    [noteId, note, isDeleted, updateNote]
   )
 
   const handleRemoveTag = useCallback(
@@ -604,7 +606,7 @@ export function NotePage({ noteId }: NotePageProps) {
         log.error('Failed to remove tag:', err)
       }
     },
-    [noteId, note, updateNote.mutateAsync, isDeleted]
+    [noteId, note, isDeleted, updateNote]
   )
 
   // Inline #tag sync: track which tags come from editor content
@@ -649,7 +651,7 @@ export function NotePage({ noteId }: NotePageProps) {
         }
       }
     },
-    [noteId, note, updateNote.mutateAsync, isDeleted]
+    [noteId, note, isDeleted, updateNote]
   )
 
   // Local-only toggle
@@ -668,7 +670,7 @@ export function NotePage({ noteId }: NotePageProps) {
       try {
         await notesService.setLocalOnly(noteId, value)
         refetchNote()
-        queryClient.invalidateQueries({ queryKey: ['notes', 'localOnlyCount'] })
+        void queryClient.invalidateQueries({ queryKey: ['notes', 'localOnlyCount'] })
         toast.success(value ? t('page.toast.localOnly') : t('page.toast.willSync'))
       } catch (err) {
         toast.error(extractErrorMessage(err, t('page.toast.toggleLocalOnlyFailed')))
@@ -735,7 +737,7 @@ export function NotePage({ noteId }: NotePageProps) {
             })
             break
 
-          case 'create':
+          case 'create': {
             // Create new note with this title
             const result = await createNote.mutateAsync({ title: target })
             if (!result.success || !result.note) {
@@ -754,6 +756,7 @@ export function NotePage({ noteId }: NotePageProps) {
               isDeleted: false
             })
             break
+          }
 
           case 'not-found':
             // File-like target not found - show error instead of creating a note
@@ -765,7 +768,7 @@ export function NotePage({ noteId }: NotePageProps) {
         toast.error(t('page.toast.openLinkedFailed'))
       }
     },
-    [openTab, createNote.mutateAsync, t]
+    [openTab, createNote, t]
   )
 
   const handleBacklinkClick = useCallback(
@@ -868,7 +871,7 @@ export function NotePage({ noteId }: NotePageProps) {
         variant="ghost"
         size="icon"
         className="size-7 hover:bg-surface-active"
-        onClick={toggleBookmark}
+        onClick={() => void toggleBookmark()}
         disabled={isDeleted}
         title={isBookmarked ? t('editor.toolbar.removeBookmark') : t('editor.toolbar.addBookmark')}
       >
@@ -885,14 +888,15 @@ export function NotePage({ noteId }: NotePageProps) {
         closeOnSelect={false}
         onValueChange={(action) => {
           if (action === 'full-width') {
-            handleToggleFullWidth(!isFullWidth)
+            void handleToggleFullWidth(!isFullWidth)
             return
           }
           setMoreMenuOpen(false)
           if (action === 'local-graph') setIsLocalGraphOpen((prev) => !prev)
           if (action === 'version-history') setIsVersionHistoryOpen(true)
           if (action === 'export') setIsExportDialogOpen(true)
-          if (action === 'local-only') handleToggleLocalOnly(!(note.frontmatter.localOnly ?? false))
+          if (action === 'local-only')
+            void handleToggleLocalOnly(!(note.frontmatter.localOnly ?? false))
         }}
         open={moreMenuOpen}
         onOpenChange={setMoreMenuOpen}
@@ -989,7 +993,7 @@ export function NotePage({ noteId }: NotePageProps) {
           <NoteTitle
             emoji={null}
             title={note.title}
-            onTitleChange={handleTitleChange}
+            onTitleChange={(...args) => void handleTitleChange(...args)}
             placeholder={t('editor.title.untitled')}
           />
 
@@ -998,9 +1002,9 @@ export function NotePage({ noteId }: NotePageProps) {
             tags={noteTags}
             availableTags={availableTags}
             recentTags={recentTags}
-            onAddTag={handleAddTag}
-            onCreateTag={handleCreateTag}
-            onRemoveTag={handleRemoveTag}
+            onAddTag={(...args) => void handleAddTag(...args)}
+            onCreateTag={(...args) => void handleCreateTag(...args)}
+            onRemoveTag={(...args) => void handleRemoveTag(...args)}
             onTagClick={(tag) => openTag(tag.name, tag.color)}
             hideWhenEmpty
           />
@@ -1028,8 +1032,8 @@ export function NotePage({ noteId }: NotePageProps) {
             availableTags={availableTags}
             recentTags={recentTags}
             currentTagIds={noteTags.map((t) => t.id)}
-            onAddTag={handleAddTag}
-            onCreateTag={handleCreateTag}
+            onAddTag={(...args) => void handleAddTag(...args)}
+            onCreateTag={(...args) => void handleCreateTag(...args)}
             onAddProperty={handleAddProperty}
             hasTags={noteTags.length > 0}
             disabled={isDeleted}
@@ -1059,11 +1063,11 @@ export function NotePage({ noteId }: NotePageProps) {
               onMarkdownChange={handleMarkdownChange}
               onHeadingsChange={handleHeadingsChange}
               onLinkClick={handleLinkClick}
-              onInternalLinkClick={handleInternalLinkClick}
+              onInternalLinkClick={(...args) => void handleInternalLinkClick(...args)}
               initialHighlight={initialHighlight}
               noteTags={note.tags}
               tagColorMap={tagColorMap}
-              onInlineTagsChange={handleInlineTagsChange}
+              onInlineTagsChange={(...args) => void handleInlineTagsChange(...args)}
               focusAtEndRef={focusAtEndRef}
               marqueeZoneEl={marqueeZoneEl}
             />

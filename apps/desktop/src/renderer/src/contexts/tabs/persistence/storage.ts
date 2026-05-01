@@ -9,6 +9,10 @@ import { createLogger } from '@/lib/logger'
 
 const log = createLogger('TabPersistence:Storage')
 
+const toError = (error: unknown, fallback: string): Error => {
+  return error instanceof Error ? error : new Error(fallback)
+}
+
 // =============================================================================
 // LOCALSTORAGE ADAPTER
 // =============================================================================
@@ -85,7 +89,7 @@ const openDatabase = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
 
-    request.onerror = () => reject(request.error)
+    request.onerror = () => reject(toError(request.error, 'Failed to open IndexedDB'))
     request.onsuccess = () => resolve(request.result)
 
     request.onupgradeneeded = (event) => {
@@ -110,7 +114,7 @@ export const indexedDBAdapter: TabStorage = {
       const store = tx.objectStore(STORE_NAME)
       const request = store.put(state, 'current')
 
-      request.onerror = () => reject(request.error)
+      request.onerror = () => reject(toError(request.error, 'Failed to save tab state'))
       request.onsuccess = () => resolve()
     })
   },
@@ -124,7 +128,7 @@ export const indexedDBAdapter: TabStorage = {
         const store = tx.objectStore(STORE_NAME)
         const request = store.get('current')
 
-        request.onerror = () => reject(request.error)
+        request.onerror = () => reject(toError(request.error, 'Failed to load tab state'))
         request.onsuccess = () => resolve(request.result || null)
       })
     } catch (error) {
@@ -141,7 +145,7 @@ export const indexedDBAdapter: TabStorage = {
       const store = tx.objectStore(STORE_NAME)
       const request = store.delete('current')
 
-      request.onerror = () => reject(request.error)
+      request.onerror = () => reject(toError(request.error, 'Failed to clear tab state'))
       request.onsuccess = () => resolve()
     })
   }

@@ -41,6 +41,41 @@ function YouTubePlayer({ videoId, title }: { videoId: string; title?: string }) 
   )
 }
 
+function YoutubeEmbedBlockRender({
+  block,
+  contentRef
+}: {
+  block: { props: { videoId: string; videoUrl: string } }
+  contentRef: React.Ref<HTMLDivElement>
+}) {
+  const { t: tPhaseF } = useT('notes')
+  const { videoId, videoUrl } = block.props
+
+  if (!videoId) {
+    return (
+      <div ref={contentRef} className="p-2 text-muted-foreground text-sm">
+        {tPhaseF('phaseF.componentsNoteContentAreaYoutubeEmbedBlock.noVideoUrl')}
+      </div>
+    )
+  }
+
+  return (
+    <div ref={contentRef} className="youtube-embed-block my-2" contentEditable={false}>
+      <YouTubePlayer videoId={videoId} />
+      {videoUrl && (
+        <a
+          href={videoUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-1.5 block text-[11px] text-muted-foreground/60 hover:text-muted-foreground truncate transition-colors"
+        >
+          {videoUrl}
+        </a>
+      )}
+    </div>
+  )
+}
+
 export const createYoutubeEmbedBlock = createReactBlockSpec(
   {
     type: 'youtubeEmbed' as const,
@@ -51,34 +86,7 @@ export const createYoutubeEmbedBlock = createReactBlockSpec(
     content: 'none'
   },
   {
-    render: ({ block, contentRef }) => {
-      const { t: tPhaseF } = useT('notes')
-      const { videoId, videoUrl } = block.props
-
-      if (!videoId) {
-        return (
-          <div ref={contentRef} className="p-2 text-muted-foreground text-sm">
-            {tPhaseF('phaseF.componentsNoteContentAreaYoutubeEmbedBlock.noVideoUrl')}
-          </div>
-        )
-      }
-
-      return (
-        <div ref={contentRef} className="youtube-embed-block my-2" contentEditable={false}>
-          <YouTubePlayer videoId={videoId} />
-          {videoUrl && (
-            <a
-              href={videoUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1.5 block text-[11px] text-muted-foreground/60 hover:text-muted-foreground truncate transition-colors"
-            >
-              {videoUrl}
-            </a>
-          )}
-        </div>
-      )
-    }
+    render: YoutubeEmbedBlockRender
   }
 )
 

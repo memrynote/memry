@@ -176,7 +176,7 @@ export function GraphControlPanel({
 
               {ENTITY_FILTERS.map(({ key, labelKey, icon: Icon, colorVar }) => {
                 const isOrphan = key === 'showOrphans'
-                const checked = isOrphan ? filterState.showOrphans : (filterState[key] as boolean)
+                const checked = isOrphan ? filterState.showOrphans : filterState[key]
                 const label = t(labelKey)
                 return (
                   <div key={key} className="flex items-center justify-between">

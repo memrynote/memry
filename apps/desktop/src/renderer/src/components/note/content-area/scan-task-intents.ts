@@ -12,8 +12,6 @@
  *     ancestor in the document), not the value of the parentTaskId prop.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 export interface SubtaskCandidate {
   blockId: string
   parentTaskId: string
@@ -48,15 +46,29 @@ export interface TaskIntents {
   currentTaskIds: Set<string>
 }
 
-function isTaskBlock(block: any): boolean {
+interface TaskIntentBlock {
+  id: string
+  type?: string
+  props?: {
+    taskId?: string
+    parentTaskId?: string
+    title?: unknown
+  }
+  children?: TaskIntentBlock[]
+}
+
+function isTaskBlock(block: TaskIntentBlock): boolean {
   return block?.type === 'taskBlock'
 }
 
-function isCheckListItem(block: any): boolean {
+function isCheckListItem(block: TaskIntentBlock): boolean {
   return block?.type === 'checkListItem'
 }
 
-export function analyzeTaskIntents(blocks: any[], dismissedBlockIds: Set<string>): TaskIntents {
+export function analyzeTaskIntents(
+  blocks: TaskIntentBlock[],
+  dismissedBlockIds: Set<string>
+): TaskIntents {
   const intents: TaskIntents = {
     subtaskCandidate: null,
     standaloneCandidate: null,
@@ -76,20 +88,20 @@ export function analyzeTaskIntents(blocks: any[], dismissedBlockIds: Set<string>
     }
   }
 
-  const walk = (list: any[], parentTaskBlock: any | null): void => {
+  const walk = (list: TaskIntentBlock[], parentTaskBlock: TaskIntentBlock | null): void => {
     for (const b of list) {
       if (isTaskBlock(b) && b.props?.taskId) {
-        intents.currentTaskIds.add(b.props.taskId as string)
+        intents.currentTaskIds.add(b.props.taskId)
 
         // Tab-indented standalone task → became a child of another taskBlock.
         // The parentTaskId prop is empty/stale and doesn't match the tree
         // ancestor. Wire it up.
         if (parentTaskBlock && parentTaskBlock.props?.taskId) {
-          const expected = parentTaskBlock.props.taskId as string
+          const expected = parentTaskBlock.props.taskId
           if (b.props.parentTaskId !== expected) {
             intents.demotedTaskBlocks.push({
               blockId: b.id,
-              taskId: b.props.taskId as string,
+              taskId: b.props.taskId,
               newParentTaskId: expected
             })
           }
@@ -113,7 +125,7 @@ export function analyzeTaskIntents(blocks: any[], dismissedBlockIds: Set<string>
       ) {
         intents.draftTaskBlock = {
           blockId: b.id,
-          title: b.props.title as string
+          title: b.props.title
         }
       }
 
@@ -122,7 +134,7 @@ export function analyzeTaskIntents(blocks: any[], dismissedBlockIds: Set<string>
           if (!intents.subtaskCandidate) {
             intents.subtaskCandidate = {
               blockId: b.id,
-              parentTaskId: parentTaskBlock.props.taskId as string
+              parentTaskId: parentTaskBlock.props.taskId
             }
           }
         } else if (!intents.standaloneCandidate) {

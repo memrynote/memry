@@ -1,10 +1,9 @@
-import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } from 'react'
+import { useState, useCallback, useRef, useLayoutEffect, useMemo } from 'react'
 import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import {
@@ -363,10 +362,10 @@ function PropertyManager() {
                                 }}
                                 onEditChange={setEditValue}
                                 onConfirmEdit={() =>
-                                  handleRenameOption(def.name, opt.value, editValue)
+                                  void handleRenameOption(def.name, opt.value, editValue)
                                 }
                                 onCancelEdit={() => setEditingOption(null)}
-                                onRemove={() => handleRemoveOption(def.name, opt.value)}
+                                onRemove={() => void handleRemoveOption(def.name, opt.value)}
                                 onColorClick={() =>
                                   setColorEdit({
                                     propertyName: def.name,
@@ -414,9 +413,11 @@ function PropertyManager() {
                             setEditValue(opt.value)
                           }}
                           onEditChange={setEditValue}
-                          onConfirmEdit={() => handleRenameOption(def.name, opt.value, editValue)}
+                          onConfirmEdit={() =>
+                            void handleRenameOption(def.name, opt.value, editValue)
+                          }
                           onCancelEdit={() => setEditingOption(null)}
-                          onRemove={() => handleRemoveOption(def.name, opt.value)}
+                          onRemove={() => void handleRemoveOption(def.name, opt.value)}
                           onColorClick={() =>
                             setColorEdit({ propertyName: def.name, optionValue: opt.value })
                           }
@@ -523,7 +524,7 @@ function PropertyManager() {
 
 function OptionRow({
   option,
-  propertyName,
+  propertyName: _propertyName,
   isEditing,
   editValue,
   editInputRef,

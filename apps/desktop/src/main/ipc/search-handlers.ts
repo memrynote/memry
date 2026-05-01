@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/require-await */
-
 import { ipcMain } from 'electron'
 import { SearchChannels } from '@memry/contracts/ipc-channels'
 import { SearchQuerySchema, AddReasonSchema } from '@memry/contracts/search-api'

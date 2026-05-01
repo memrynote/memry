@@ -168,7 +168,7 @@ export function TemplatesSettings() {
           <AlertDialogFooter>
             <AlertDialogCancel>{tCommon('button.cancel')}</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteTemplate}
+              onClick={() => void handleDeleteTemplate()}
               className="bg-destructive text-destructive-foreground"
             >
               {tCommon('button.delete')}
@@ -195,7 +195,7 @@ export function TemplatesSettings() {
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>{tCommon('button.cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDuplicateTemplate}>
+            <AlertDialogAction onClick={() => void handleDuplicateTemplate()}>
               {t('templates.actions.duplicate')}
             </AlertDialogAction>
           </AlertDialogFooter>

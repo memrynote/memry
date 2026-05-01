@@ -29,11 +29,11 @@ export function JournalBreadcrumb({
   onNextDay,
   onMonthClick,
   onYearClick,
-  onTodayClick,
+  onTodayClick: _onTodayClick,
   className
 }: JournalBreadcrumbProps) {
-  const { t, i18n } = useT('journal')
-  const dateLabels = useMemo(() => createJournalDateLabels(t), [t, i18n.language])
+  const { t, i18n: _i18n } = useT('journal')
+  const dateLabels = useMemo(() => createJournalDateLabels(t), [t])
 
   const dateParts = useMemo(() => {
     if (viewState.type === 'day') return formatDateParts(viewState.date, dateLabels)

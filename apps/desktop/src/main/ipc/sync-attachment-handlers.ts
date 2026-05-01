@@ -239,54 +239,63 @@ export function registerAttachmentHandlers(): void {
     'Failed to fetch download progress'
   )
 
-  attachmentEvents.onSaved(async ({ noteId, diskPath }) => {
-    const token = await getValidAccessToken()
-    if (!token) return
+  attachmentEvents.onSaved(({ noteId, diskPath }) => {
+    void (async () => {
+      const token = await getValidAccessToken()
+      if (!token) return
 
-    const queue = getOrCreateUploadQueue()
-    if (!queue) return
-    try {
-      const result = await queue.enqueue(noteId, diskPath, broadcastUploadProgress)
-      if (isDatabaseInitialized()) {
-        recordUploadedAttachment(noteId, result.attachmentId)
+      const queue = getOrCreateUploadQueue()
+      if (!queue) return
+      try {
+        const result = await queue.enqueue(noteId, diskPath, broadcastUploadProgress)
+        if (isDatabaseInitialized()) {
+          recordUploadedAttachment(noteId, result.attachmentId)
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error'
+        logger.error('Attachment upload failed', { noteId, diskPath, error: message })
+        for (const win of BrowserWindow.getAllWindows()) {
+          win.webContents.send(SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED, {
+            noteId,
+            diskPath,
+            error: message
+          })
+        }
       }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error'
-      logger.error('Attachment upload failed', { noteId, diskPath, error: message })
-      for (const win of BrowserWindow.getAllWindows()) {
-        win.webContents.send(SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED, {
-          noteId,
-          diskPath,
-          error: message
-        })
-      }
-    }
+    })()
   })
 
-  attachmentEvents.onDownloadNeeded(async ({ noteId, attachmentId, diskPath }) => {
-    const token = await getValidAccessToken()
-    if (!token) return
+  attachmentEvents.onDownloadNeeded(({ noteId, attachmentId, diskPath }) => {
+    void (async () => {
+      const token = await getValidAccessToken()
+      if (!token) return
 
-    const service = getOrCreateAttachmentService()
-    if (!service) return
-    try {
-      markWritebackIgnored(diskPath)
-      await service.downloadAttachment(attachmentId, diskPath)
-      const stats = await fs.promises.stat(diskPath)
-      if (isDatabaseInitialized()) {
-        recordDownloadedFileSize(noteId, stats.size)
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error'
-      logger.error('Attachment download failed', { noteId, attachmentId, diskPath, error: message })
-      for (const win of BrowserWindow.getAllWindows()) {
-        win.webContents.send(SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED, {
+      const service = getOrCreateAttachmentService()
+      if (!service) return
+      try {
+        markWritebackIgnored(diskPath)
+        await service.downloadAttachment(attachmentId, diskPath)
+        const stats = await fs.promises.stat(diskPath)
+        if (isDatabaseInitialized()) {
+          recordDownloadedFileSize(noteId, stats.size)
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error'
+        logger.error('Attachment download failed', {
           noteId,
+          attachmentId,
           diskPath,
           error: message
         })
+        for (const win of BrowserWindow.getAllWindows()) {
+          win.webContents.send(SYNC_EVENTS.ATTACHMENT_UPLOAD_FAILED, {
+            noteId,
+            diskPath,
+            error: message
+          })
+        }
       }
-    }
+    })()
   })
 }
 

@@ -109,6 +109,16 @@ const CreatePropertyDefinitionSchema = z.object({
   color: z.string().optional()
 })
 
+function stringifyDefaultValue(value: unknown): string {
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return String(value)
+  }
+  if (typeof value === 'symbol') return value.description ?? value.toString()
+  if (value instanceof Date) return value.toISOString()
+  return JSON.stringify(value) ?? ''
+}
+
 // ============================================================================
 // Zod Schemas for Attachments (T070)
 // ============================================================================
@@ -370,7 +380,7 @@ export function registerNotesHandlers(): void {
   ipcMain.handle(
     NotesChannels.invoke.REVEAL_IN_FINDER,
     createStringHandler(async (id) => {
-      await revealInFinder(id)
+      revealInFinder(id)
     })
   )
 
@@ -403,7 +413,8 @@ export function registerNotesHandlers(): void {
           name: input.name,
           type: input.type,
           options: input.type !== 'status' ? input.options : undefined,
-          defaultValue: input.defaultValue != null ? String(input.defaultValue) : undefined
+          defaultValue:
+            input.defaultValue != null ? stringifyDefaultValue(input.defaultValue) : undefined
         })
         return { success: true as const, definition: service.get(input.name) }
       }
@@ -445,7 +456,9 @@ export function registerNotesHandlers(): void {
           type: input.type ?? existing.type,
           options: input.options ?? existing.options,
           defaultValue:
-            input.defaultValue != null ? String(input.defaultValue) : existing.defaultValue
+            input.defaultValue != null
+              ? stringifyDefaultValue(input.defaultValue)
+              : existing.defaultValue
         })
         return { success: true as const, definition: service.get(input.name) }
       }

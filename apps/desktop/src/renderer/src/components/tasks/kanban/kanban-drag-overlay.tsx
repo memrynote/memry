@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useState } from 'react'
 import { DragOverlay, type DropAnimation, defaultDropAnimationSideEffects } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 
@@ -37,7 +37,7 @@ export const KanbanDragOverlay = ({
   const { isDragging, overType, overId, sourceContainerId } = dragState
   const task = dragState.draggedTasks[0]
 
-  const wasCrossContainerRef = useRef(false)
+  const [wasCrossContainerDrop, setWasCrossContainerDrop] = useState(false)
 
   const overTaskColumn =
     overType === 'task' && overId ? allTasks.find((t) => t.id === overId)?.statusId : null
@@ -45,13 +45,11 @@ export const KanbanDragOverlay = ({
     (overType === 'column' && overId !== sourceContainerId) ||
     (overType === 'task' && overTaskColumn != null && overTaskColumn !== sourceContainerId)
 
-  if (isDragging) {
-    wasCrossContainerRef.current = isCrossContainerDrop
+  if (isDragging && wasCrossContainerDrop !== isCrossContainerDrop) {
+    setWasCrossContainerDrop(isCrossContainerDrop)
   }
 
-  const effectiveDropAnimation = wasCrossContainerRef.current
-    ? crossContainerDropAnimation
-    : dropAnimation
+  const effectiveDropAnimation = wasCrossContainerDrop ? crossContainerDropAnimation : dropAnimation
 
   if (!task || dragState.sourceType !== 'kanban') {
     return <DragOverlay dropAnimation={effectiveDropAnimation} />

@@ -182,7 +182,7 @@ export function useTreeDragDrop({
         return false
       }
     },
-    [tree, noteMap]
+    [tree, noteMap, setNotePositions]
   )
 
   const handleReorderFoldersInParent = useCallback(
@@ -229,7 +229,7 @@ export function useTreeDragDrop({
         return false
       }
     },
-    [tree]
+    [setNotePositions, tree]
   )
 
   const handleMove = useCallback(

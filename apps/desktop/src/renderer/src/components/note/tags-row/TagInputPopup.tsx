@@ -36,15 +36,18 @@ export function TagInputPopup({
   const [internalOpen, setInternalOpen] = useState(false)
   const open = controlledOpen ?? internalOpen
 
-  const handleOpenChange = useCallback((next: boolean) => {
-    if (controlledOpen === undefined) setInternalOpen(next)
-    controlledOnOpenChange?.(next)
-    if (!next) {
-      setSearchQuery('')
-      setNewTagColor(getRandomColor())
-      setFocusedIndex(-1)
-    }
-  }, [])
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      if (controlledOpen === undefined) setInternalOpen(next)
+      controlledOnOpenChange?.(next)
+      if (!next) {
+        setSearchQuery('')
+        setNewTagColor(getRandomColor())
+        setFocusedIndex(-1)
+      }
+    },
+    [controlledOnOpenChange, controlledOpen]
+  )
 
   const filteredTags = useMemo(() => {
     const base = searchQuery.trim()

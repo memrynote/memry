@@ -33,7 +33,7 @@ export const getFilteredTasks = (
   selectedId: string,
   selectedType: 'view' | 'project',
   projects: Project[],
-  includeCompleted = false
+  _includeCompleted = false
 ): Task[] => {
   const nonArchivedTasks = tasks.filter((t) => !t.archivedAt)
 

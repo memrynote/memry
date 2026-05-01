@@ -33,23 +33,23 @@ export function useDayContext(date: string): UseDayContextResult {
   useEffect(() => {
     const unsubscribeTaskUpdated = window.api.onTaskUpdated((event) => {
       if (event.task.dueDate === date || event.changes?.dueDate === date) {
-        queryClient.invalidateQueries({ queryKey: journalKeys.dayContextForDate(date) })
+        void queryClient.invalidateQueries({ queryKey: journalKeys.dayContextForDate(date) })
       }
     })
 
     const unsubscribeTaskCreated = window.api.onTaskCreated((event) => {
       if (event.task.dueDate === date) {
-        queryClient.invalidateQueries({ queryKey: journalKeys.dayContextForDate(date) })
+        void queryClient.invalidateQueries({ queryKey: journalKeys.dayContextForDate(date) })
       }
     })
 
     const unsubscribeTaskDeleted = window.api.onTaskDeleted(() => {
-      queryClient.invalidateQueries({ queryKey: journalKeys.dayContextForDate(date) })
+      void queryClient.invalidateQueries({ queryKey: journalKeys.dayContextForDate(date) })
     })
 
     const unsubscribeTaskCompleted = window.api.onTaskCompleted((event) => {
       if (event.task.dueDate === date) {
-        queryClient.invalidateQueries({ queryKey: journalKeys.dayContextForDate(date) })
+        void queryClient.invalidateQueries({ queryKey: journalKeys.dayContextForDate(date) })
       }
     })
 

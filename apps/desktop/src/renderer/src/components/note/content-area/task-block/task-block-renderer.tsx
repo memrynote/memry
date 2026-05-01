@@ -7,16 +7,48 @@ import { useTasksOptional } from '@/contexts/tasks'
 import { useTabActions } from '@/contexts/tabs'
 import { tasksService } from '@/services/tasks-service'
 import type { Task as DisplayTask } from '@/data/sample-tasks'
-import { defaultStatuses, type Status } from '@/data/tasks-data'
+import { defaultStatuses, type Project, type Status } from '@/data/tasks-data'
 import { TaskRow } from '@/components/tasks/task-row'
 import { useT } from '@memry/i18n/renderer'
 
+export interface TaskBlockProps {
+  taskId: string
+  title: string
+  checked: boolean
+  parentTaskId: string
+}
+
+export type TaskBlockInlineContent = string | { text?: string }
+
+export interface TaskBlock {
+  id: string
+  type?: string
+  props: TaskBlockProps & Record<string, unknown>
+  children?: TaskBlock[]
+  content?: TaskBlockInlineContent[]
+}
+
+export interface TaskBlockEditor {
+  document: TaskBlock[]
+  updateBlock: (
+    block: TaskBlock,
+    update: { type?: string; props?: Partial<TaskBlockProps> }
+  ) => void
+  replaceBlocks: (blocksToRemove: TaskBlock[], blocksToInsert: TaskBlock[]) => void
+  removeBlocks: (blocks: TaskBlock[]) => void
+  insertBlocks: (
+    blocks: Array<{ type: 'paragraph' | 'taskBlock'; props?: Partial<TaskBlockProps> }>,
+    referenceBlock: TaskBlock,
+    placement: 'before' | 'after'
+  ) => void
+  setTextCursorPosition: (blockId: string, placement: 'start' | 'end') => void
+  focus: () => void
+  getTextCursorPosition: () => { block: TaskBlock }
+}
+
 interface TaskBlockRendererProps {
-  block: {
-    id: string
-    props: { taskId: string; title: string; checked: boolean; parentTaskId: string }
-  }
-  editor: any
+  block: TaskBlock
+  editor: unknown
   contentRef: React.Ref<HTMLDivElement>
 }
 
@@ -40,10 +72,15 @@ const BLOCKNOTE_OVERRIDES = `
   }
 `
 
-export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, contentRef }) => {
+export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
+  block,
+  editor: editorInput,
+  contentRef
+}) => {
+  const editor = editorInput as TaskBlockEditor
   const { t: tPhaseF } = useT('notes')
   const { taskId, title, checked, parentTaskId } = block.props
-  const { task, isLoading, isDeleted } = useTaskBlockData(taskId)
+  const { task, isLoading: _isLoading, isDeleted } = useTaskBlockData(taskId)
   const tasksCtx = useTasksOptional()
   const { openTab } = useTabActions()
   const syncingRef = useRef(false)
@@ -57,9 +94,10 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
   const skipBlurRef = useRef(false)
 
   const projects = tasksCtx?.projects ?? []
-  const defaultProject = projects.find((p: any) => p.isDefault || p.isInbox) ?? projects[0]
+  const defaultProject =
+    projects.find((p: Project & { isInbox?: boolean }) => p.isDefault || p.isInbox) ?? projects[0]
   const project = projects.find((p) => p.id === task?.projectId) ?? defaultProject
-  const statuses: Status[] = (project?.statuses as Status[]) ?? defaultStatuses
+  const statuses: Status[] = project?.statuses ?? defaultStatuses
   const isCompleted = task ? !!task.completedAt : checked
 
   const placeholderTask: import('@/data/sample-tasks').Task = useMemo(
@@ -230,8 +268,8 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
       if (e.key === 'Tab' && !e.shiftKey) {
         e.preventDefault()
         if (parentTaskId) return // already nested; nothing to do
-        const doc = editor.document as any[]
-        const idx = doc.findIndex((b: any) => b.id === block.id)
+        const doc = editor.document
+        const idx = doc.findIndex((b) => b.id === block.id)
         if (idx <= 0) return
         const prev = doc[idx - 1]
         if (prev?.type !== 'taskBlock' || !prev?.props?.taskId) return
@@ -254,7 +292,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
         }
         const newParent = {
           ...prev,
-          children: [...((prev.children as any[]) ?? []), movedChild]
+          children: [...(prev.children ?? []), movedChild]
         }
         editor.replaceBlocks([prev, block], [newParent])
 
@@ -271,11 +309,9 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
       if (e.key === 'Tab' && e.shiftKey) {
         e.preventDefault()
         if (!parentTaskId) return
-        const doc = editor.document as any[]
+        const doc = editor.document
         const parentBlock = doc.find(
-          (b: any) =>
-            b.type === 'taskBlock' &&
-            (b.children as any[] | undefined)?.some((c: any) => c.id === block.id)
+          (b) => b.type === 'taskBlock' && b.children?.some((c) => c.id === block.id)
         )
         if (!parentBlock) return
 
@@ -287,9 +323,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
         }
         setIsEditingTitle(false)
 
-        const remainingChildren = ((parentBlock.children as any[]) ?? []).filter(
-          (c: any) => c.id !== block.id
-        )
+        const remainingChildren = (parentBlock.children ?? []).filter((c) => c.id !== block.id)
         const newParent = { ...parentBlock, children: remainingChildren }
         const promotedSelf = {
           ...block,
@@ -318,8 +352,8 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
         setIsEditingTitle(false)
         if (taskId) void tasksService.delete(taskId)
 
-        const doc = editor.document as any[]
-        const blockIdx = doc.findIndex((b: any) => b.id === block.id)
+        const doc = editor.document
+        const blockIdx = doc.findIndex((b) => b.id === block.id)
         const anchor = blockIdx > 0 ? doc[blockIdx - 1] : null
 
         editor.removeBlocks([block])
@@ -336,13 +370,13 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
             editor.focus()
             return
           }
-          const updatedDoc = editor.document as any[]
+          const updatedDoc = editor.document
           if (anchor) {
-            editor.insertBlocks([{ type: 'paragraph' as any }], anchor, 'after')
+            editor.insertBlocks([{ type: 'paragraph' }], anchor, 'after')
           } else if (updatedDoc.length > 0) {
-            editor.insertBlocks([{ type: 'paragraph' as any }], updatedDoc[0], 'before')
+            editor.insertBlocks([{ type: 'paragraph' }], updatedDoc[0], 'before')
           }
-          const finalDoc = editor.document as any[]
+          const finalDoc = editor.document
           const fallback = finalDoc[blockIdx] ?? finalDoc[finalDoc.length - 1]
           if (fallback) {
             editor.setTextCursorPosition(fallback.id, 'start')
@@ -363,7 +397,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
           void saveTitleToDb(trimmed)
           setIsEditingTitle(false)
           editor.insertBlocks(
-            [{ type: 'taskBlock' as any, props: { taskId: '', title: '', checked: false } }],
+            [{ type: 'taskBlock', props: { taskId: '', title: '', checked: false } }],
             block,
             'after'
           )
@@ -371,18 +405,18 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
           isNewBlockRef.current = false
           setIsEditingTitle(false)
           if (taskId) void tasksService.delete(taskId)
-          const doc = editor.document as any[]
-          const blockIdx = doc.findIndex((b: any) => b.id === block.id)
+          const doc = editor.document
+          const blockIdx = doc.findIndex((b) => b.id === block.id)
           const anchor = blockIdx > 0 ? doc[blockIdx - 1] : null
           editor.removeBlocks([block])
-          const updatedDoc = editor.document as any[]
+          const updatedDoc = editor.document
           if (anchor) {
-            editor.insertBlocks([{ type: 'paragraph' as any }], anchor, 'after')
+            editor.insertBlocks([{ type: 'paragraph' }], anchor, 'after')
           } else if (updatedDoc.length > 0) {
-            editor.insertBlocks([{ type: 'paragraph' as any }], updatedDoc[0], 'before')
+            editor.insertBlocks([{ type: 'paragraph' }], updatedDoc[0], 'before')
           }
           requestAnimationFrame(() => {
-            const finalDoc = editor.document as any[]
+            const finalDoc = editor.document
             const para = finalDoc[blockIdx] ?? finalDoc[finalDoc.length - 1]
             if (para) {
               editor.setTextCursorPosition(para.id, 'start')
@@ -466,7 +500,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
         <ArrowUpRight className="size-3 text-muted-foreground" />
       </button>
     ),
-    [openTab, taskId, task?.projectId]
+    [tPhaseF, openTab, taskId, task?.projectId]
   )
 
   const titleInput = useCallback(
@@ -482,7 +516,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
         placeholder={tPhaseF('phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.taskName')}
       />
     ),
-    [editTitle, handleTitleChange, handleTitleBlur, handleTitleKeyDown]
+    [editTitle, handleTitleBlur, handleTitleKeyDown, tPhaseF, handleTitleChange]
   )
 
   const clickableTitle = useCallback(() => {
@@ -582,9 +616,9 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
           projects={projects}
           isCompleted={isCompleted}
           showProjectBadge
-          onToggleComplete={handleToggleComplete}
-          onUpdateTask={handleUpdateTask}
-          onProjectChange={handleProjectChange}
+          onToggleComplete={(...args) => void handleToggleComplete(...args)}
+          onUpdateTask={(...args) => void handleUpdateTask(...args)}
+          onProjectChange={(...args) => void handleProjectChange(...args)}
           actions={navigateArrow}
           renderTitle={isEditingTitle ? titleInput : clickableTitle}
           className="px-0"

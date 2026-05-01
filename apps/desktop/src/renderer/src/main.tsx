@@ -72,9 +72,11 @@ async function boot(): Promise<void> {
   const i18n = await createRendererI18n({ locale: initialLocale })
   applyLocaleToDocument(initialLocale)
 
-  window.api.onLocaleChanged(async (locale) => {
-    await i18n.changeLanguage(locale)
-    applyLocaleToDocument(locale)
+  window.api.onLocaleChanged((locale) => {
+    void (async () => {
+      await i18n.changeLanguage(locale)
+      applyLocaleToDocument(locale)
+    })()
   })
 
   const rootComponent = isQuickCaptureWindow ? (

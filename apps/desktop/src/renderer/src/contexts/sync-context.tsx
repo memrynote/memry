@@ -211,7 +211,9 @@ export function SyncProvider({ children }: SyncProviderProps): React.JSX.Element
   const [state, dispatch] = useReducer(syncReducer, initialState)
   const [linkingRequest, setLinkingRequest] = useState<LinkingRequestEvent | null>(null)
   const sessionExpiredRef = useRef(state.sessionExpired)
-  sessionExpiredRef.current = state.sessionExpired
+  useEffect(() => {
+    sessionExpiredRef.current = state.sessionExpired
+  }, [state.sessionExpired])
 
   useEffect(() => {
     if (authState.status !== 'authenticated') {

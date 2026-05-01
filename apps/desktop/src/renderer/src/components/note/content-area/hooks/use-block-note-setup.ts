@@ -6,7 +6,7 @@ import { DefaultChatTransport } from 'ai'
 import type { HighlightInfo } from '../types'
 import { createLogger } from '@/lib/logger'
 
-const log = createLogger('Hook:BlockNoteSetup')
+const _log = createLogger('Hook:BlockNoteSetup')
 
 interface BlockNoteSetupParams {
   editor: any
@@ -47,7 +47,9 @@ export function useBlockNoteSetup({
       editor.registerExtension(aiExtension)
     }
 
-    setAiReady(Boolean(editor.getExtension('ai')))
+    const readyTimer = window.setTimeout(() => {
+      setAiReady(Boolean(editor.getExtension('ai')))
+    }, 0)
 
     const handleKeyDown = (e: KeyboardEvent): void => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
@@ -64,6 +66,7 @@ export function useBlockNoteSetup({
     document.addEventListener('keydown', handleKeyDown)
 
     return () => {
+      window.clearTimeout(readyTimer)
       document.removeEventListener('keydown', handleKeyDown)
       editor.unregisterExtension('ai')
     }

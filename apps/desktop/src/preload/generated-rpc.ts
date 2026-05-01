@@ -6,11 +6,12 @@ import type { MainIpcInvokeArgs, MainIpcInvokeChannel, MainIpcInvokeResult } fro
 
 export interface GeneratedRpcDeps {
   invoke<C extends MainIpcInvokeChannel>(
+    this: void,
     channel: C,
     ...args: MainIpcInvokeArgs<C>
   ): Promise<MainIpcInvokeResult<C>>
-  invokeSync(channel: string): unknown
-  subscribe<T>(channel: string, callback: (payload: T) => void): () => void
+  invokeSync(this: void, channel: string): unknown
+  subscribe<T>(this: void, channel: string, callback: (payload: T) => void): () => void
 }
 
 export function createGeneratedRpcApi({

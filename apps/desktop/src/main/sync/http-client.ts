@@ -65,7 +65,7 @@ export const syncFetch = async <T>(
   fetchFn?: FetchFn
 ): Promise<T> => {
   const url = `${getSyncServerUrl()}${path}`
-  const fetchImpl = fetchFn ?? net.fetch
+  const fetchImpl = fetchFn ?? ((...args: Parameters<typeof net.fetch>) => net.fetch(...args))
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',

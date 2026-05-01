@@ -41,10 +41,18 @@ interface ActiveDoc {
   closing?: boolean
 }
 
+interface CrdtPersistence {
+  getYDoc(noteId: string): Promise<Y.Doc>
+  clearDocument(noteId: string): Promise<void>
+  destroy(): Promise<void> | void
+  storeUpdate(noteId: string, update: Uint8Array): Promise<void>
+  flushDocument(noteId: string): Promise<void>
+}
+
 export class CrdtProvider {
   private docs = new Map<string, ActiveDoc>()
   private openLocks = new Map<string, Promise<Y.Doc>>()
-  private persistence: LeveldbPersistence | null = null
+  private persistence: CrdtPersistence | null = null
   private updateQueue: CrdtUpdateQueue | null = null
   private snapshotPushFn: SnapshotPushFn | null = null
   private compactingDocs = new Set<string>()
@@ -67,7 +75,7 @@ export class CrdtProvider {
     }
 
     const storagePath = path.join(app.getPath('userData'), 'crdt-store')
-    this.persistence = new LeveldbPersistence(storagePath)
+    this.persistence = new LeveldbPersistence(storagePath) as CrdtPersistence
     log.debug('CrdtProvider persistence initialized', { storagePath })
   }
 

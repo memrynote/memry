@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
+import { useState, useCallback, useRef, useMemo } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Trash2 } from '@/lib/icons'
@@ -16,6 +16,7 @@ import {
   StatusEditor
 } from './editors'
 import { usePropertyDefinitions } from '@/hooks/use-property-definitions'
+import { stringifyUnknown } from '@/lib/stringify-unknown'
 import {
   DEFAULT_STATUS_DEFINITION,
   type SelectOption,
@@ -51,13 +52,15 @@ function PropertyValueDisplay({ property }: { property: Property }) {
     case 'url':
       return (
         <span className="text-[13px] text-tint font-sans leading-4 truncate max-w-[200px] hover:underline">
-          {String(value)}
+          {stringifyUnknown(value)}
         </span>
       )
 
     default:
       return (
-        <span className="text-[13px] text-foreground font-sans leading-4">{String(value)}</span>
+        <span className="text-[13px] text-foreground font-sans leading-4">
+          {stringifyUnknown(value)}
+        </span>
       )
   }
 }
@@ -75,7 +78,7 @@ function PropertyValueEditor({
     case 'text':
       return (
         <TextEditor
-          value={String(property.value ?? '')}
+          value={stringifyUnknown(property.value)}
           onChange={onValueChange}
           onBlur={onEndEdit}
         />
@@ -102,7 +105,7 @@ function PropertyValueEditor({
     case 'url':
       return (
         <UrlEditor
-          value={String(property.value ?? '')}
+          value={stringifyUnknown(property.value)}
           onChange={onValueChange}
           onBlur={onEndEdit}
         />
@@ -111,7 +114,7 @@ function PropertyValueEditor({
     default:
       return (
         <TextEditor
-          value={String(property.value ?? '')}
+          value={stringifyUnknown(property.value)}
           onChange={onValueChange}
           onBlur={onEndEdit}
         />
@@ -190,8 +193,8 @@ function SelectPropertyRenderer({
         categories={categories}
         defaultOpen={autoOpen}
         onChange={onValueChange}
-        onAddOption={handleAddStatusOption}
-        onRemoveOption={handleRemoveOption}
+        onAddOption={(...args) => void handleAddStatusOption(...args)}
+        onRemoveOption={(...args) => void handleRemoveOption(...args)}
       />
     )
   }
@@ -204,8 +207,8 @@ function SelectPropertyRenderer({
         options={options}
         defaultOpen={autoOpen}
         onChange={onValueChange}
-        onAddOption={handleAddOption}
-        onRemoveOption={handleRemoveOption}
+        onAddOption={(...args) => void handleAddOption(...args)}
+        onRemoveOption={(...args) => void handleRemoveOption(...args)}
       />
     )
   }
@@ -216,8 +219,8 @@ function SelectPropertyRenderer({
       options={options}
       defaultOpen={autoOpen}
       onChange={onValueChange}
-      onAddOption={handleAddOption}
-      onRemoveOption={handleRemoveOption}
+      onAddOption={(...args) => void handleAddOption(...args)}
+      onRemoveOption={(...args) => void handleRemoveOption(...args)}
     />
   )
 }

@@ -117,7 +117,7 @@ export class YjsIpcProvider extends Observable<string> {
   }
 
   private sendUpdate(update: Uint8Array): void {
-    window.api.syncCrdt.applyUpdate({
+    void window.api.syncCrdt.applyUpdate({
       noteId: this.noteId,
       update: Array.from(update)
     })

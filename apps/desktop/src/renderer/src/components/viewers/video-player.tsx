@@ -5,13 +5,31 @@
  * @module components/viewers/video-player
  */
 
-import { useState, useCallback, useEffect, useLayoutEffect, forwardRef } from 'react'
+import {
+  useState,
+  useCallback,
+  useLayoutEffect,
+  forwardRef,
+  useRef,
+  type ForwardedRef
+} from 'react'
 import ReactPlayer from 'react-player'
 import { cn } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'
 import { useT } from '@memry/i18n/renderer'
 
 const log = createLogger('Component:VideoPlayer')
+
+const assignForwardedRef = (
+  ref: ForwardedRef<HTMLVideoElement>,
+  value: HTMLVideoElement | null
+): void => {
+  if (typeof ref === 'function') {
+    ref(value)
+  } else if (ref) {
+    ref.current = value
+  }
+}
 
 // ============================================================================
 // Types
@@ -63,8 +81,8 @@ const MemryFilePlayer = forwardRef<HTMLVideoElement, MemryFilePlayerProps>(
       muted,
       volume,
       playbackRate,
-      width,
-      height,
+      width: _width,
+      height: _height,
       onReady,
       onStart,
       onPlay,
@@ -76,7 +94,14 @@ const MemryFilePlayer = forwardRef<HTMLVideoElement, MemryFilePlayerProps>(
     },
     ref
   ) => {
-    const videoRef = (ref as React.RefObject<HTMLVideoElement>) || { current: null }
+    const videoRef = useRef<HTMLVideoElement | null>(null)
+    const setVideoRef = useCallback(
+      (video: HTMLVideoElement | null): void => {
+        videoRef.current = video
+        assignForwardedRef(ref, video)
+      },
+      [ref]
+    )
 
     useLayoutEffect(() => {
       const video = videoRef.current
@@ -87,19 +112,19 @@ const MemryFilePlayer = forwardRef<HTMLVideoElement, MemryFilePlayerProps>(
       } else {
         video.pause()
       }
-    }, [playing, videoRef])
+    }, [playing])
 
     useLayoutEffect(() => {
       const video = videoRef.current
       if (!video || volume === null || volume === undefined) return
       video.volume = volume
-    }, [volume, videoRef])
+    }, [volume])
 
     useLayoutEffect(() => {
       const video = videoRef.current
       if (!video || !playbackRate) return
       video.playbackRate = playbackRate
-    }, [playbackRate, videoRef])
+    }, [playbackRate])
 
     const handleLoadedMetadata = useCallback(() => {
       const video = videoRef.current
@@ -107,7 +132,7 @@ const MemryFilePlayer = forwardRef<HTMLVideoElement, MemryFilePlayerProps>(
         onDuration(video.duration)
       }
       onReady?.()
-    }, [onDuration, onReady, videoRef])
+    }, [onDuration, onReady])
 
     const handleTimeUpdate = useCallback(() => {
       const video = videoRef.current
@@ -121,11 +146,11 @@ const MemryFilePlayer = forwardRef<HTMLVideoElement, MemryFilePlayerProps>(
             : 0,
         loadedSeconds: video.buffered.length > 0 ? video.buffered.end(video.buffered.length - 1) : 0
       })
-    }, [onProgress, videoRef])
+    }, [onProgress])
 
     return (
       <video
-        ref={ref}
+        ref={setVideoRef}
         src={src}
         controls={controls}
         loop={loop}

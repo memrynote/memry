@@ -74,21 +74,11 @@ export function GraphCanvas({
   const fadeRef = useRef(0)
   const hoverTargetRef = useRef<string | null>(null)
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const dimmedColor = useMemo(
-    () => resolveGraphVar('--graph-dimmed-node', '#e4e4de'),
-    [resolvedTheme]
-  )
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const softEdgeColor = useMemo(
-    () => resolveGraphVar('--graph-edge-soft', '#d5d3cd'),
-    [resolvedTheme]
-  )
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const labelColor = useMemo(
-    () => resolveGraphVar('--graph-label-color', '#1a1a1a'),
-    [resolvedTheme]
-  )
+  const dimmedColor = useMemo(() => resolveGraphVar('--graph-dimmed-node', '#e4e4de'), [])
+
+  const softEdgeColor = useMemo(() => resolveGraphVar('--graph-edge-soft', '#d5d3cd'), [])
+
+  const labelColor = useMemo(() => resolveGraphVar('--graph-label-color', '#1a1a1a'), [])
 
   const graphBuildOptions: BuildGraphOptions = useMemo(
     () => ({ showTags: graphSettings.showTagEdges }),
@@ -225,7 +215,7 @@ export function GraphCanvas({
 
       return { ...(attrs as Partial<EdgeDisplayData>), hidden: true }
     },
-    [graph, filterState, focusVisibleSet, softEdgeColor, dimmedColor]
+    [graph, filterState, focusVisibleSet, softEdgeColor]
   )
 
   const initialSigmaSettings = useMemo(
@@ -362,7 +352,7 @@ function ContextMenuWithTabAction({
       graph={graph}
       onFocusNode={onFocusNode}
       onOpenInTab={handleOpenInTab}
-      onCreateNote={handleCreateNote}
+      onCreateNote={(...args) => void handleCreateNote(...args)}
       onClose={onClose}
     />
   )

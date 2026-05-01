@@ -266,7 +266,18 @@ export const ActiveFiltersBar = ({
     }
 
     return result
-  }, [filters, projects, onUpdateFilters])
+  }, [
+    filters.priorities,
+    filters.statusIds,
+    filters.projectIds,
+    filters.dueDate.type,
+    filters.dueDate.customStart,
+    filters.dueDate.customEnd,
+    filters.search,
+    tPhaseF,
+    onUpdateFilters,
+    projects
+  ])
 
   if (pills.length === 0) return null
 

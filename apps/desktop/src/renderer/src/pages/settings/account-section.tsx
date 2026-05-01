@@ -74,7 +74,7 @@ export function AccountSettings() {
   }, [state.status])
 
   useEffect(() => {
-    loadStorage()
+    void loadStorage()
   }, [loadStorage])
 
   const handleSignOut = useCallback(async () => {
@@ -200,7 +200,7 @@ export function AccountSettings() {
             </div>
 
             <div className="flex items-center gap-4 flex-wrap">
-              {Object.entries(storage.breakdown).map(([key, bytes]) => (
+              {Object.entries(storage.breakdown).map(([key, _bytes]) => (
                 <div key={key} className="flex items-center gap-1.5">
                   <span
                     className="w-2 h-2 rounded-full shrink-0"
@@ -277,7 +277,7 @@ export function AccountSettings() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={signingOut}>{tCommon('button.cancel')}</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleSignOut}
+              onClick={() => void handleSignOut()}
               disabled={signingOut}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
