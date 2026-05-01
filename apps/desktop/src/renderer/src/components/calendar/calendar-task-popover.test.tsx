@@ -7,7 +7,7 @@ const mockTask = {
   title: 'Hello',
   description: null,
   projectId: 'p1',
-  statusId: null,
+  statusId: 'p-todo',
   parentId: null,
   priority: 0 as const,
   position: 0,
@@ -35,6 +35,30 @@ vi.mock('@/hooks/use-subtasks', () => ({
 }))
 vi.mock('@/hooks/use-project', () => ({
   useProject: () => ({ data: { id: 'p1', name: 'Memry' } })
+}))
+vi.mock('@/hooks/use-notes-query', () => ({
+  useNoteTagsQuery: () => ({ tags: [{ tag: 'focus', color: 'rose' }] })
+}))
+vi.mock('@/contexts/tasks', () => ({
+  useTasksOptional: () => ({
+    projects: [
+      {
+        id: 'p1',
+        name: 'Memry',
+        statuses: [
+          { id: 'p-todo', name: 'To Do', color: '#6b7280', type: 'todo', order: 0 },
+          {
+            id: 'p-progress',
+            name: 'In Progress',
+            color: '#3b82f6',
+            type: 'in_progress',
+            order: 1
+          },
+          { id: 'p-done', name: 'Done', color: '#10b981', type: 'done', order: 2 }
+        ]
+      }
+    ]
+  })
 }))
 
 const openTabMock = vi.fn()
@@ -100,25 +124,28 @@ describe('CalendarTaskPopover', () => {
   })
 
   it('renders title and due', () => {
-    render(
-      <CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={vi.fn()} />
-    )
+    render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={vi.fn()} />)
     expect(screen.getByText('Hello')).toBeInTheDocument()
     expect(screen.getByText(/Tomorrow/)).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /status: to do/i })).toBeInTheDocument()
+    expect(screen.queryByText('To Do')).not.toBeInTheDocument()
   })
 
-  it('toggle complete on incomplete task calls tasks.complete', async () => {
-    render(
-      <CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={vi.fn()} />
-    )
-    await userEvent.click(screen.getByRole('checkbox'))
-    expect(completeMock).toHaveBeenCalledWith({ id: 't1' })
+  it('does not render a completion checkbox for the task', () => {
+    render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={vi.fn()} />)
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  })
+
+  it('keeps the status icon read-only', async () => {
+    render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={vi.fn()} />)
+    await userEvent.click(screen.getByRole('img', { name: /status: to do/i }))
+    expect(screen.queryByRole('option', { name: /in progress/i })).not.toBeInTheDocument()
+    expect(updateMock).not.toHaveBeenCalled()
+    expect(completeMock).not.toHaveBeenCalled()
   })
 
   it('Open task opens the tasks tab focused on the task id', async () => {
-    render(
-      <CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={vi.fn()} />
-    )
+    render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={vi.fn()} />)
     await userEvent.click(screen.getByRole('button', { name: /open task/i }))
     expect(openTabMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -130,9 +157,7 @@ describe('CalendarTaskPopover', () => {
 
   it('Escape calls onDismiss', async () => {
     const onDismiss = vi.fn()
-    render(
-      <CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={onDismiss} />
-    )
+    render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={onDismiss} />)
     await userEvent.keyboard('{Escape}')
     expect(onDismiss).toHaveBeenCalled()
   })

@@ -166,7 +166,7 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
     label: 'Toggle Sidebar',
     description: 'Show or hide the sidebar',
     category: 'View',
-    defaultBinding: { key: 's', modifiers: { meta: true, shift: true } }
+    defaultBinding: { key: 'b', modifiers: { meta: true } }
   },
   {
     id: 'view.shortcuts',
