@@ -8,6 +8,8 @@ import type { SettingsClientAPI, SettingsSubscriptions } from './settings.ts'
 import { settingsRpc } from './settings.ts'
 import type { TasksClientAPI, TasksSubscriptions } from './tasks.ts'
 import { tasksRpc } from './tasks.ts'
+import type { TelemetryClientAPI } from './telemetry.ts'
+import { telemetryRpc } from './telemetry.ts'
 
 export type { RpcDomainSpec, RpcMethodSpec, RpcEventSpec, RpcClient, RpcSubscriptions } from './schema.ts'
 export { defineDomain, defineEvent, defineMethod } from './schema.ts'
@@ -17,14 +19,16 @@ export { tasksRpc } from './tasks.ts'
 export { inboxRpc } from './inbox.ts'
 export { settingsRpc } from './settings.ts'
 export { calendarRpc } from './calendar.ts'
+export { telemetryRpc } from './telemetry.ts'
 
 export type { NotesClientAPI, NotesSubscriptions } from './notes.ts'
 export type { TasksClientAPI, TasksSubscriptions } from './tasks.ts'
 export type { InboxClientAPI, InboxSubscriptions } from './inbox.ts'
 export type { SettingsClientAPI, SettingsSubscriptions } from './settings.ts'
 export type { CalendarClientAPI, CalendarSubscriptions } from './calendar.ts'
+export type { TelemetryClientAPI, TelemetrySettings } from './telemetry.ts'
 
-export const rpcDomains = [notesRpc, tasksRpc, inboxRpc, settingsRpc, calendarRpc] as const
+export const rpcDomains = [notesRpc, tasksRpc, inboxRpc, settingsRpc, calendarRpc, telemetryRpc] as const
 
 export interface GeneratedRpcApi
   extends NotesSubscriptions,
@@ -37,4 +41,5 @@ export interface GeneratedRpcApi
   inbox: InboxClientAPI
   settings: SettingsClientAPI
   calendar: CalendarClientAPI
+  telemetry: TelemetryClientAPI
 }
