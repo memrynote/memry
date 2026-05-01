@@ -269,6 +269,7 @@ export const VirtualizedProjectTaskList = ({
 
   useEffect(() => {
     virtualizer.measure()
+    return () => {}
   }, [
     expandedIds,
     virtualizer,

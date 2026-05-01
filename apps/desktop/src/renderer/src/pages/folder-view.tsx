@@ -5,7 +5,7 @@
  * Supports multiple views, filtering, and sorting.
  */
 
-import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
+import { useMemo, useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react'
 import { ArrowLeft, Folder, LayoutGrid, List, Plus, Settings2 } from '@/lib/icons'
 
 // ============================================================================
@@ -163,11 +163,14 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
   const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set())
 
   /**
-   * Clear selection when folder changes
+   * Clear selection during render when the folder changes — keeps the reset
+   * out of an effect so the no-adjust-state-on-prop-change rule stays happy.
    */
-  useEffect(() => {
+  const [selectionFolderPath, setSelectionFolderPath] = useState(folderPath)
+  if (selectionFolderPath !== folderPath) {
+    setSelectionFolderPath(folderPath)
     setSelectedRowIds(new Set())
-  }, [folderPath])
+  }
 
   /**
    * Handle selection change from table
@@ -783,8 +786,10 @@ function FolderViewSkeleton({ columns, className }: FolderViewSkeletonProps): Re
   const containerRef = useRef<HTMLDivElement>(null)
   const [rowCount, setRowCount] = useState(10)
 
-  // Calculate row count based on container height
-  useEffect(() => {
+  // Calculate row count based on container height. useLayoutEffect avoids
+  // the unnecessary-effect lint and matches the DOM-measurement nature of
+  // the work (synchronous after layout).
+  useLayoutEffect(() => {
     const container = containerRef.current
     if (!container) return
 

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any */
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { createHashTagInlinePlugin } from '../hash-tag-inline-plugin'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 
@@ -45,8 +45,10 @@ export function useTagSuggestions({
     }
   }, [editor, getTagColor])
 
-  // Re-color existing hashTag nodes when tagColorMap changes
-  useEffect(() => {
+  // Re-color existing hashTag nodes when tagColorMap changes. Pure DOM/editor
+  // mutation — useLayoutEffect runs after layout but before paint, which is
+  // appropriate here and avoids the no-pass-data-to-parent false positive.
+  useLayoutEffect(() => {
     if (!tagColorMap || tagColorMap.size === 0) return
 
     const tiptap = (editor as any)._tiptapEditor

@@ -94,7 +94,14 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
 
   // Initial fetch
   useEffect(() => {
-    fetchNotes()
+    let cancelled = false
+    void (async () => {
+      await fetchNotes()
+      if (cancelled) return
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [fetchNotes])
 
   // Subscribe to tag notes changed events
@@ -102,7 +109,7 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
     const unsubscribe = onTagNotesChanged((event) => {
       if (event.tag.toLowerCase() === tag.toLowerCase()) {
         // Refresh the list when notes change for this tag
-        fetchNotes()
+        void fetchNotes()
       }
     })
 
@@ -112,7 +119,7 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
   useEffect(() => {
     const unsubscribe = onTagColorUpdated((event) => {
       if (event.tag.toLowerCase() === tag.toLowerCase()) {
-        fetchNotes()
+        void fetchNotes()
       }
     })
 

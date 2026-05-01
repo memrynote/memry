@@ -37,10 +37,7 @@ export function useBlockNoteSetup({
 
   // AI extension registration
   useEffect(() => {
-    if (!aiPort) {
-      setAiReady(false)
-      return
-    }
+    if (!aiPort) return
 
     if (!editor.getExtension('ai')) {
       const transport = new DefaultChatTransport({
@@ -184,5 +181,6 @@ export function useBlockNoteSetup({
     return () => clearTimeout(timeoutId)
   }, [initialHighlight, editorContainerRef])
 
-  return { aiReady }
+  // Derive aiReady so we don't reset state in an effect on prop change.
+  return { aiReady: aiPort ? aiReady : false }
 }

@@ -302,12 +302,14 @@ export function PropertyRow({
   const showDragHandle = isDragEnabled && !isEditingName && (isNameHovered || isDragging)
   const isAlwaysInteractive = property.type === 'checkbox' || SELECT_TYPES.has(property.type)
 
-  // Handle autoFocus - start editing when mounted with autoFocus
-  useEffect(() => {
-    if (autoFocus && !isAlwaysInteractive) {
-      setIsEditing(true)
-    }
-  }, [autoFocus, isAlwaysInteractive])
+  // Handle autoFocus - start editing when mounted with autoFocus. Computed
+  // during render so the React linter can verify state isn't redundantly
+  // derived from a prop inside an effect.
+  const [autoFocusHandled, setAutoFocusHandled] = useState(false)
+  if (autoFocus && !isAlwaysInteractive && !autoFocusHandled) {
+    setAutoFocusHandled(true)
+    setIsEditing(true)
+  }
 
   const handleStartEdit = useCallback(() => {
     if (!disabled && !isAlwaysInteractive) {

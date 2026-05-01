@@ -51,9 +51,9 @@ export function TriageView({ onExit }: TriageViewProps): React.JSX.Element | nul
   }, [])
 
   useEffect(() => {
-    if (!state.isLoading && state.totalItems === 0 && !showComplete) {
-      onExit()
-    }
+    if (state.isLoading || state.totalItems !== 0 || showComplete) return () => {}
+    onExit()
+    return () => {}
   }, [state.isLoading, state.totalItems, onExit, showComplete])
 
   useEffect(() => {

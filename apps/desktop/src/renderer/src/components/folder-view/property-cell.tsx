@@ -308,11 +308,11 @@ export const EditablePropertyCell = memo(function EditablePropertyCell({
 }: EditablePropertyCellProps): React.JSX.Element {
   const [isEditing, setIsEditing] = useState(false)
 
-  useEffect(() => {
-    if (!onSave && isEditing) {
-      setIsEditing(false)
-    }
-  }, [onSave, isEditing])
+  // If the consumer drops onSave while we're editing, exit edit mode in render
+  // so the click-handler-as-effect anti-pattern doesn't trip the linter.
+  if (!onSave && isEditing) {
+    setIsEditing(false)
+  }
 
   const stopPropagation = useCallback((event: React.SyntheticEvent) => {
     event.stopPropagation()

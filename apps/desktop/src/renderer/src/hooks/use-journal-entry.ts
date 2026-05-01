@@ -64,7 +64,16 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
 
   const previousDateRef = useRef<string | null>(null)
 
-  // Save pending content for old date before switching
+  // Reset per-date state during render when date prop changes (React-recommended pattern
+  // for "adjusting state when a prop changes", avoids no-adjust-state-on-prop-change).
+  const [storedDate, setStoredDate] = useState(date)
+  if (date !== storedDate) {
+    setStoredDate(date)
+    setIsDirty(false)
+    setSaveError(null)
+  }
+
+  // Save pending content for old date before switching, and update tracking refs.
   useEffect(() => {
     const oldDate = previousDateRef.current
     const pendingContent = pendingContentRef.current
@@ -89,8 +98,6 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     previousDateRef.current = date
     pendingContentRef.current = null
     pendingTagsRef.current = null
-    setIsDirty(false)
-    setSaveError(null)
   }, [date])
 
   const {

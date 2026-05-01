@@ -79,19 +79,20 @@ export const useExpandedTasks = (options: UseExpandedTasksOptions = {}): UseExpa
     return new Set()
   })
 
+  // Reload from storage when storageKey changes — done during render via the
+  // "adjusting state when a prop changes" React pattern.
+  const [storedKey, setStoredKey] = useState(storageKey)
+  if (storedKey !== storageKey) {
+    setStoredKey(storageKey)
+    setExpandedIds(persist ? loadFromStorage(storageKey) : new Set())
+  }
+
   // Persist to localStorage when expandedIds changes
   useEffect(() => {
     if (persist) {
       saveToStorage(storageKey, expandedIds)
     }
   }, [expandedIds, storageKey, persist])
-
-  // Reload from storage when storageKey changes
-  useEffect(() => {
-    if (persist) {
-      setExpandedIds(loadFromStorage(storageKey))
-    }
-  }, [storageKey, persist])
 
   const isExpanded = useCallback(
     (taskId: string): boolean => {

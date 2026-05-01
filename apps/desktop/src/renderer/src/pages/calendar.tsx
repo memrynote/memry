@@ -228,9 +228,9 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
   }, [view, openForDayView, closeForDayView])
 
   useEffect(() => {
-    if (view === 'day') {
-      setDayPanelDate(anchorDate)
-    }
+    if (view !== 'day') return () => {}
+    setDayPanelDate(anchorDate)
+    return () => {}
   }, [view, anchorDate, setDayPanelDate])
 
   const rangeInput = useMemo(

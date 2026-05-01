@@ -54,13 +54,6 @@ export function TagManager() {
   const [colorTarget, setColorTarget] = useState<string | null>(null)
   const editInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    if (editingTag && editInputRef.current) {
-      editInputRef.current.focus()
-      editInputRef.current.select()
-    }
-  }, [editingTag])
-
   const filteredTags = search.trim()
     ? tags.filter((t) => t.name.includes(search.toLowerCase().trim()))
     : tags
@@ -197,8 +190,10 @@ export function TagManager() {
                   {editingTag === tag.name ? (
                     <Input
                       ref={editInputRef}
+                      autoFocus
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
+                      onFocus={(e) => e.currentTarget.select()}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') void handleConfirmRename()
                         if (e.key === 'Escape') handleCancelRename()

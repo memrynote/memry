@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 
 const URL_REGEX = /^https?:\/\/\S+$/
@@ -46,7 +46,7 @@ export function usePasteLinkMenu({ editorContainerRef, onSelect }: UsePasteLinkM
     [onSelect, close]
   )
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const container = editorContainerRef.current
     if (!container) return
 

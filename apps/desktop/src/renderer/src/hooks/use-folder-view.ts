@@ -292,19 +292,14 @@ export function useFolderView({
   const views = viewsQuery.data?.views ?? [DEFAULT_VIEW]
   const summaries = viewsQuery.data?.summaries ?? {}
 
-  // Sync activeViewIndex when views load (only on initial load or invalidation)
-  const hasInitializedRef = useRef(false)
-  useEffect(() => {
-    if (viewsQuery.data && !hasInitializedRef.current) {
-      setActiveViewIndex(viewsQuery.data.defaultIndex)
-      hasInitializedRef.current = true
-    }
-  }, [viewsQuery.data])
-
-  // Reset initialization flag when folder changes
-  useEffect(() => {
-    hasInitializedRef.current = false
-  }, [folderPath])
+  // Sync activeViewIndex when views load (only on initial load or invalidation).
+  // Done during render via the React-recommended "adjusting state when a prop changes"
+  // pattern instead of an effect, so we avoid no-derived-state warnings.
+  const [initFolderPath, setInitFolderPath] = useState<string | null>(null)
+  if (viewsQuery.data && initFolderPath !== folderPath) {
+    setInitFolderPath(folderPath)
+    setActiveViewIndex(viewsQuery.data.defaultIndex)
+  }
 
   // Get active view
   const activeView = views[activeViewIndex] ?? null

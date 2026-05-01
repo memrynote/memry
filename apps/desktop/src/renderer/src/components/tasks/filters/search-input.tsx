@@ -1,4 +1,4 @@
-import { useRef, useEffect, forwardRef } from 'react'
+import { useRef, forwardRef } from 'react'
 import { Search, X } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
@@ -56,13 +56,6 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
       }
     }
 
-    // Auto-focus if requested
-    useEffect(() => {
-      if (autoFocus && inputRef.current) {
-        inputRef.current.focus()
-      }
-    }, [autoFocus])
-
     return (
       <div className={cn('relative group', className)}>
         <Search
@@ -72,6 +65,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
         <Input
           ref={inputRef}
           type="text"
+          autoFocus={autoFocus}
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}

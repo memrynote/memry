@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react'
 import { Calendar, Flag, Folder } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
@@ -106,13 +106,15 @@ export const AutocompleteDropdown = ({
   const [selectedIndex, setSelectedIndex] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
 
-  // Reset selection when options change
-  useEffect(() => {
+  // Reset selection during render whenever the available options change.
+  const [storedOptions, setStoredOptions] = useState(options)
+  if (storedOptions !== options) {
+    setStoredOptions(options)
     setSelectedIndex(0)
-  }, [options])
+  }
 
-  // Scroll selected item into view
-  useEffect(() => {
+  // Scroll selected item into view (layout work).
+  useLayoutEffect(() => {
     if (listRef.current) {
       const selectedElement = listRef.current.querySelector(`[data-index="${selectedIndex}"]`)
       if (selectedElement) {

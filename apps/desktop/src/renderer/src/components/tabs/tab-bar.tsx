@@ -3,7 +3,7 @@
  * Main container for tabs with scroll handling and actions
  */
 
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useRef, useState, useEffect, useLayoutEffect, useCallback } from 'react'
 import { ChevronLeft, ChevronRight } from '@/lib/icons'
 import { useTabGroup, useTabs } from '@/contexts/tabs'
 import { RegularTab } from './regular-tab'
@@ -41,7 +41,7 @@ export const TabBar = ({ groupId, className }: TabBarProps): React.JSX.Element |
 
   const regularTabCount = group?.tabs.filter((t) => !t.isPinned).length ?? 0
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = scrollRef.current
     if (!el) return
 

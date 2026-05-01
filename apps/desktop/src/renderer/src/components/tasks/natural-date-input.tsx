@@ -62,13 +62,10 @@ export const NaturalDateInput = forwardRef<NaturalDateInputRef, NaturalDateInput
       return () => clearTimeout(timer)
     }, [value])
 
-    // Notify parent when input changes
-    useEffect(() => {
-      onInputChange?.(value)
-    }, [value, onInputChange])
-
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-      setValue(e.target.value)
+      const next = e.target.value
+      setValue(next)
+      onInputChange?.(next)
     }
 
     const handleSelect = useCallback((): void => {

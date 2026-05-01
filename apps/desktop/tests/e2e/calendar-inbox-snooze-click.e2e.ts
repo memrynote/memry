@@ -90,9 +90,10 @@ test.describe('Calendar: snoozed inbox item click', () => {
     await popover.getByRole('button', { name: /unsnooze now/i }).click()
 
     await expect(popover).toBeHidden()
-    await expect(
-      calendarPage.getByRole('button', { name: /Review investor email/i })
-    ).toHaveCount(0, { timeout: 5_000 })
+    await expect(calendarPage.getByRole('button', { name: /Review investor email/i })).toHaveCount(
+      0,
+      { timeout: 5_000 }
+    )
   })
 
   test('Open in inbox navigates away from the calendar', async ({ electronApp, page }) => {

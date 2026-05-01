@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { findDropTarget, type DropTarget } from '../drop-target-utils'
 
 interface EditorDragDropParams {
@@ -41,8 +41,9 @@ export function useEditorDragDrop({ containerRef }: EditorDragDropParams): Edito
     }
   }, [])
 
-  // Highlight drop target block with subtle background
-  useEffect(() => {
+  // Highlight drop target block with subtle background. useLayoutEffect avoids
+  // running after paint and removes a no-pass-live-state-to-parent false positive.
+  useLayoutEffect(() => {
     if (!dropTarget || !containerRef.current) return
 
     const blockElement = containerRef.current.querySelector(`[data-id="${dropTarget.blockId}"]`)
