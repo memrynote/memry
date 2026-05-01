@@ -68,6 +68,17 @@ const initialSelectionState: SelectionState = {
   selectAllState: 'none'
 }
 
+const createSelectionState = (
+  selectedIds: Set<string>,
+  previousLastSelectedId: string | null,
+  visibleTaskCount: number
+): SelectionState => ({
+  selectedIds: new Set(selectedIds),
+  isSelectionMode: selectedIds.size > 0,
+  lastSelectedId: getNextLastSelectedId(selectedIds, previousLastSelectedId),
+  selectAllState: getSelectAllState(selectedIds.size, visibleTaskCount)
+})
+
 const getSelectAllState = (
   selectedCount: number,
   visibleTaskCount: number
@@ -105,13 +116,24 @@ export const useTaskSelection = (
   const [internalSelection, setInternalSelectionState] = useState<SelectionState>(() => {
     if (controlledSelectedIds === undefined) return initialSelectionState
 
-    return {
-      selectedIds: new Set(controlledSelectedIds),
-      isSelectionMode: controlledSelectedIds.size > 0,
-      lastSelectedId: getNextLastSelectedId(controlledSelectedIds, null),
-      selectAllState: getSelectAllState(controlledSelectedIds.size, visibleTaskIds.length)
-    }
+    return createSelectionState(controlledSelectedIds, null, visibleTaskIds.length)
   })
+  const [previousControlledSelectedIds, setPreviousControlledSelectedIds] =
+    useState(controlledSelectedIds)
+
+  let currentSelection = internalSelection
+  if (controlledSelectedIds !== previousControlledSelectedIds) {
+    setPreviousControlledSelectedIds(controlledSelectedIds)
+
+    if (controlledSelectedIds !== undefined) {
+      currentSelection = createSelectionState(
+        controlledSelectedIds,
+        internalSelection.lastSelectedId,
+        visibleTaskIds.length
+      )
+      setInternalSelectionState(currentSelection)
+    }
+  }
 
   const calculateSelectAllState = useCallback(
     (newSelectedSize: number): SelectionState['selectAllState'] =>
@@ -119,23 +141,9 @@ export const useTaskSelection = (
     [visibleTaskIds.length]
   )
 
-  const controlledSelection = useMemo<SelectionState | null>(() => {
-    if (controlledSelectedIds === undefined) return null
-    return {
-      selectedIds: new Set(controlledSelectedIds),
-      isSelectionMode: controlledSelectedIds.size > 0,
-      lastSelectedId: getNextLastSelectedId(
-        controlledSelectedIds,
-        internalSelection.lastSelectedId
-      ),
-      selectAllState: getSelectAllState(controlledSelectedIds.size, visibleTaskIds.length)
-    }
-  }, [controlledSelectedIds, internalSelection.lastSelectedId, visibleTaskIds.length])
-
-  const baseSelection = controlledSelection ?? internalSelection
-  const selectedIds = baseSelection.selectedIds
-  const lastSelectedId = getNextLastSelectedId(selectedIds, baseSelection.lastSelectedId)
-  const isSelectionMode = baseSelection.isSelectionMode
+  const selectedIds = currentSelection.selectedIds
+  const lastSelectedId = getNextLastSelectedId(selectedIds, currentSelection.lastSelectedId)
+  const isSelectionMode = currentSelection.isSelectionMode
   const selectAllState = calculateSelectAllState(selectedIds.size)
   const selection = useMemo<SelectionState>(
     () => ({
@@ -157,25 +165,22 @@ export const useTaskSelection = (
 
   const setSelection = useCallback(
     (updater: SelectionState | ((prev: SelectionState) => SelectionState)): void => {
-      const nextSelection =
-        typeof updater === 'function'
-          ? (updater as (prev: SelectionState) => SelectionState)(selection)
-          : updater
-
+      let nextSelectedIds: Set<string> | null = null
       setInternalSelectionState((prev) => {
-        if (controlledSelectedIds !== undefined) {
-          return {
-            ...prev,
-            isSelectionMode: nextSelection.isSelectionMode,
-            lastSelectedId: nextSelection.lastSelectedId,
-            selectAllState: nextSelection.selectAllState
-          }
-        }
+        const nextSelection =
+          typeof updater === 'function'
+            ? (updater as (prev: SelectionState) => SelectionState)(prev)
+            : updater
+
+        nextSelectedIds = nextSelection.selectedIds
         return nextSelection
       })
-      onSelectionChange?.(nextSelection.selectedIds)
+
+      if (nextSelectedIds) {
+        onSelectionChange?.(nextSelectedIds)
+      }
     },
-    [controlledSelectedIds, onSelectionChange, selection]
+    [onSelectionChange]
   )
 
   // ========== ACTIONS ==========
