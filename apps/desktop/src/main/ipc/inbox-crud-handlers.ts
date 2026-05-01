@@ -5,13 +5,22 @@ import {
   type InboxCrudHandlerDeps,
   type InboxCrudHandlers
 } from '../inbox/crud'
+import { trackMainEvent } from '../telemetry/track'
 
 export { createInboxCrudHandlers, type InboxCrudHandlerDeps, type InboxCrudHandlers }
 
 export function registerInboxCrudHandlers(handlers: InboxCrudHandlers): void {
   ipcMain.handle(InboxChannels.invoke.GET, (_, id) => handlers.handleGet(id))
   ipcMain.handle(InboxChannels.invoke.UPDATE, (_, input) => handlers.handleUpdate(input))
-  ipcMain.handle(InboxChannels.invoke.ARCHIVE, (_, id) => handlers.handleArchive(id))
+  ipcMain.handle(InboxChannels.invoke.ARCHIVE, async (_, id) => {
+    const result = await handlers.handleArchive(id)
+    trackMainEvent('inbox_archived', {
+      surface: 'inbox',
+      action: 'archived',
+      result: 'success'
+    })
+    return result
+  })
   ipcMain.handle(InboxChannels.invoke.ADD_TAG, (_, itemId, tag) =>
     handlers.handleAddTag(itemId, tag)
   )

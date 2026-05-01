@@ -21,6 +21,7 @@ import { registerInboxBatchHandlers, unregisterInboxBatchHandlers } from './inbo
 import { registerInboxCrudHandlers, unregisterInboxCrudHandlers } from './inbox-crud-handlers'
 import { registerInboxQueryHandlers, unregisterInboxQueryHandlers } from './inbox-query-handlers'
 import { withErrorHandler } from './validate'
+import { trackMainEvent } from '../telemetry/track'
 
 const logger = createLogger('IPC:Inbox')
 
@@ -88,18 +89,36 @@ export function registerInboxHandlers(): void {
   const queryHandlers = createDesktopInboxQueryHandlers()
   const batchHandlers = createDesktopInboxBatchHandlers(crudHandlers.handleArchive)
 
-  ipcMain.handle(InboxChannels.invoke.CAPTURE_TEXT, (_, input) =>
-    inboxDomain.captureText(CaptureTextSchema.parse(input))
-  )
-  ipcMain.handle(InboxChannels.invoke.CAPTURE_LINK, (_, input) =>
-    inboxDomain.captureLink(CaptureLinkSchema.parse(input))
-  )
-  ipcMain.handle(InboxChannels.invoke.CAPTURE_IMAGE, (_, input) =>
-    inboxDomain.captureImage(CaptureImageSchema.parse(input))
-  )
-  ipcMain.handle(InboxChannels.invoke.CAPTURE_VOICE, (_, input) =>
-    inboxDomain.captureVoice(CaptureVoiceSchema.parse(input))
-  )
+  const trackInboxCaptured = (captureType: string, success: boolean): void => {
+    trackMainEvent('inbox_captured', {
+      surface: 'inbox',
+      action: 'captured',
+      objectType: `inbox_${captureType}`,
+      result: success ? 'success' : 'failed',
+      dimensions: { capture_type: captureType }
+    })
+  }
+
+  ipcMain.handle(InboxChannels.invoke.CAPTURE_TEXT, async (_, input) => {
+    const result = await inboxDomain.captureText(CaptureTextSchema.parse(input))
+    trackInboxCaptured('text', Boolean(result?.success))
+    return result
+  })
+  ipcMain.handle(InboxChannels.invoke.CAPTURE_LINK, async (_, input) => {
+    const result = await inboxDomain.captureLink(CaptureLinkSchema.parse(input))
+    trackInboxCaptured('link', Boolean(result?.success))
+    return result
+  })
+  ipcMain.handle(InboxChannels.invoke.CAPTURE_IMAGE, async (_, input) => {
+    const result = await inboxDomain.captureImage(CaptureImageSchema.parse(input))
+    trackInboxCaptured('image', Boolean(result?.success))
+    return result
+  })
+  ipcMain.handle(InboxChannels.invoke.CAPTURE_VOICE, async (_, input) => {
+    const result = await inboxDomain.captureVoice(CaptureVoiceSchema.parse(input))
+    trackInboxCaptured('voice', Boolean(result?.success))
+    return result
+  })
   ipcMain.handle(InboxChannels.invoke.CAPTURE_CLIP, handleCaptureClipIpc)
   ipcMain.handle(InboxChannels.invoke.CAPTURE_PDF, handleCapturePdfIpc)
 
@@ -107,9 +126,15 @@ export function registerInboxHandlers(): void {
   registerInboxQueryHandlers(queryHandlers)
   registerInboxBatchHandlers(batchHandlers)
 
-  ipcMain.handle(InboxChannels.invoke.FILE, (_, input) =>
-    inboxDomain.fileItem(FileItemSchema.parse(input))
-  )
+  ipcMain.handle(InboxChannels.invoke.FILE, async (_, input) => {
+    const result = await inboxDomain.fileItem(FileItemSchema.parse(input))
+    trackMainEvent('inbox_filed', {
+      surface: 'inbox',
+      action: 'filed',
+      result: result?.success ? 'success' : 'failed'
+    })
+    return result
+  })
   ipcMain.handle(InboxChannels.invoke.GET_SUGGESTIONS, (_, itemId) =>
     inboxDomain.getSuggestions(itemId)
   )
@@ -123,7 +148,15 @@ export function registerInboxHandlers(): void {
   ipcMain.handle(InboxChannels.invoke.LINK_TO_NOTE, (_, itemId, noteId, tags) =>
     inboxDomain.linkToNote(itemId, noteId, tags || [])
   )
-  ipcMain.handle(InboxChannels.invoke.SNOOZE, (_, input) => inboxDomain.snooze(input))
+  ipcMain.handle(InboxChannels.invoke.SNOOZE, async (_, input) => {
+    const result = await inboxDomain.snooze(input)
+    trackMainEvent('inbox_snoozed', {
+      surface: 'inbox',
+      action: 'snoozed',
+      result: result?.success ? 'success' : 'failed'
+    })
+    return result
+  })
   ipcMain.handle(InboxChannels.invoke.UNSNOOZE, (_, itemId) => inboxDomain.unsnooze(itemId))
   ipcMain.handle(InboxChannels.invoke.GET_SNOOZED, () => inboxDomain.getSnoozed())
   ipcMain.handle(InboxChannels.invoke.RETRY_TRANSCRIPTION, (_, itemId) =>
