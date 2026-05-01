@@ -349,7 +349,7 @@ function FolderRow({
           />
 
           {/* Folder name */}
-          <span className="text-sm truncate flex-1">{item.folder.name}</span>
+          <span className="sidebar-label-fade text-sm flex-1">{item.folder.name}</span>
 
           {/* Selection count badge */}
           {showSelectionBadge && (
@@ -569,7 +569,9 @@ function NoteRow({
           {getFileIcon(item.note)}
 
           {/* Note name */}
-          <span className="text-sm truncate flex-1">{getDisplayName(item.note.path)}</span>
+          <span className="sidebar-label-fade text-sm flex-1">
+            {getDisplayName(item.note.path)}
+          </span>
 
           {/* Selection count badge */}
           {showSelectionBadge && (

@@ -316,7 +316,7 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
 
 function SidebarRail({ className, ...props }: React.ComponentProps<'button'>) {
   const { t: tPhaseF } = useT('common')
-  const { toggleSidebar, sidebarWidth, setSidebarWidth, setIsResizing } = useSidebar()
+  const { toggleSidebar, sidebarWidth, setSidebarWidth, setOpen, setIsResizing } = useSidebar()
   const startXRef = React.useRef(0)
   const startWidthRef = React.useRef(0)
   const hasDraggedRef = React.useRef(false)
@@ -331,20 +331,11 @@ function SidebarRail({ className, ...props }: React.ComponentProps<'button'>) {
 
       const sidebarEl = (e.target as HTMLElement).closest('[data-side]')
       const side = sidebarEl?.getAttribute('data-side') || 'left'
+      let didFinish = false
 
-      const onMouseMove = (moveEvent: MouseEvent): void => {
-        const delta = moveEvent.clientX - startXRef.current
-        if (Math.abs(delta) > 2) hasDraggedRef.current = true
-        const direction = side === 'left' ? 1 : -1
-        const maxWidth = Math.min(SIDEBAR_WIDTH_MAX_PX, window.innerWidth * 0.5)
-        const newWidth = Math.min(
-          maxWidth,
-          Math.max(SIDEBAR_WIDTH_MIN_PX, startWidthRef.current + delta * direction)
-        )
-        setSidebarWidth(newWidth)
-      }
-
-      const onMouseUp = (): void => {
+      function finishResize(): void {
+        if (didFinish) return
+        didFinish = true
         setIsResizing(false)
         document.removeEventListener('mousemove', onMouseMove)
         document.removeEventListener('mouseup', onMouseUp)
@@ -352,12 +343,34 @@ function SidebarRail({ className, ...props }: React.ComponentProps<'button'>) {
         document.body.style.userSelect = ''
       }
 
+      const onMouseMove = (moveEvent: MouseEvent): void => {
+        const delta = moveEvent.clientX - startXRef.current
+        if (Math.abs(delta) > 2) hasDraggedRef.current = true
+        const direction = side === 'left' ? 1 : -1
+        const maxWidth = Math.min(SIDEBAR_WIDTH_MAX_PX, window.innerWidth * 0.5)
+        const proposedWidth = startWidthRef.current + delta * direction
+
+        if (maxWidth < SIDEBAR_WIDTH_MIN_PX || proposedWidth < SIDEBAR_WIDTH_MIN_PX) {
+          setSidebarWidth(SIDEBAR_WIDTH_MIN_PX)
+          setOpen(false)
+          finishResize()
+          return
+        }
+
+        const newWidth = Math.min(maxWidth, proposedWidth)
+        setSidebarWidth(newWidth)
+      }
+
+      const onMouseUp = (): void => {
+        finishResize()
+      }
+
       document.body.style.cursor = 'col-resize'
       document.body.style.userSelect = 'none'
       document.addEventListener('mousemove', onMouseMove)
       document.addEventListener('mouseup', onMouseUp)
     },
-    [sidebarWidth, setSidebarWidth, setIsResizing]
+    [sidebarWidth, setSidebarWidth, setOpen, setIsResizing]
   )
 
   const handleClick = React.useCallback(

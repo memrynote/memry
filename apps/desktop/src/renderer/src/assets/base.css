@@ -646,7 +646,7 @@
     --font-mono: 'JetBrains Mono Variable', 'SF Mono', 'Fira Code', monospace;
 
     /* ===== BASE COLORS - Dark Mode (Neutral Charcoal) ===== */
-    --background: #191919;
+    --background: #181919;
     --foreground: #bcbab6;
     --surface: #222222;
     --surface-active: #2a2a2a;
@@ -1377,7 +1377,7 @@ del.bn-inline-content {
 
 .dark {
   /* ===== SIDEBAR THEME - Neutral Charcoal ===== */
-  --sidebar: #202020;
+  --sidebar: #1a1a1a;
   --sidebar-foreground: #b5b3ae;
   --sidebar-primary: #e8e5df;
   --sidebar-primary-foreground: #202020;
@@ -1941,6 +1941,40 @@ del.bn-inline-content {
     black 8px,
     black calc(100% - 8px),
     transparent 100%
+  );
+}
+
+/* Sidebar label fade */
+.sidebar-label-fade {
+  --sidebar-label-fade-width: 1.75rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    #000 calc(100% - var(--sidebar-label-fade-width)),
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    #000 calc(100% - var(--sidebar-label-fade-width)),
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+[dir='rtl'] .sidebar-label-fade {
+  -webkit-mask-image: linear-gradient(
+    to left,
+    #000 calc(100% - var(--sidebar-label-fade-width)),
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  mask-image: linear-gradient(
+    to left,
+    #000 calc(100% - var(--sidebar-label-fade-width)),
+    rgba(0, 0, 0, 0.2) 100%
   );
 }
 

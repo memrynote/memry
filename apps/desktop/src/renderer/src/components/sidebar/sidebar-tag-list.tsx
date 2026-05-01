@@ -145,7 +145,7 @@ function TagTreeItem({
                 : { backgroundColor: 'var(--muted-foreground)' }
             }
           />
-          <span className="truncate">{node.name}</span>
+          <span className="sidebar-label-fade">{node.name}</span>
         </button>
 
         <span className="ml-auto pr-2.5 text-[10px] text-muted-foreground/40 tabular-nums opacity-0 group-hover:opacity-100 transition-opacity">

@@ -109,7 +109,7 @@ export const SortableProjectItem = ({
           style={{ backgroundColor: project.color }}
           aria-hidden="true"
         />
-        <span className="truncate">{project.name}</span>
+        <span className="sidebar-label-fade">{project.name}</span>
       </SidebarMenuButton>
 
       {/* Task count badge - hide when showing drop indicator */}

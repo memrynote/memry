@@ -92,6 +92,7 @@ const BulkTagPopoverContent = ({
           placeholder={t('bulk.tagPopover.placeholder')}
           showSections={true}
           autoFocus
+          dropdownPlacement="top"
         />
       </div>
 
