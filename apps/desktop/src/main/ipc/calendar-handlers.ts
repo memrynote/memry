@@ -36,7 +36,7 @@ import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-externa
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
 import { createLogger } from '../lib/logger'
-import { trackMainEvent } from '../telemetry/track'
+import { trackCalendar } from './calendar-telemetry'
 import { requireDatabase, type DataDb } from '../database'
 import { generateId } from '../lib/id'
 import { createStringHandler, createValidatedHandler, withDb } from './validate'
@@ -385,14 +385,7 @@ export function registerCalendarHandlers(): void {
           log.warn('syncCalendarEventCreate failed; event persisted locally', error)
         }
         emitCalendarChanged({ entityType: 'calendar_event', id })
-        trackMainEvent('calendar_event_created', {
-          surface: 'calendar',
-          action: 'created',
-          objectType: 'calendar_event',
-          source: 'calendar_page',
-          result: 'success',
-          dimensions: { provider: 'local' }
-        })
+        trackCalendar('calendar_event_created', 'created', 'calendar_page')
         return { success: true, event: mapCalendarEvent(created) }
       }, 'Failed to create calendar event')
     )
@@ -469,12 +462,8 @@ export function registerCalendarHandlers(): void {
         )
         syncCalendarEventUpdate(input.id, changedFields)
         emitCalendarChanged({ entityType: 'calendar_event', id: input.id })
-        trackMainEvent('calendar_event_updated', {
-          surface: 'calendar',
-          action: 'updated',
-          objectType: 'calendar_event',
-          result: 'success',
-          metrics: { itemCount: changedFields.length }
+        trackCalendar('calendar_event_updated', 'updated', undefined, {
+          itemCount: changedFields.length
         })
         return { success: true, event: mapCalendarEvent(updated) }
       }, 'Failed to update calendar event')
@@ -640,12 +629,7 @@ export function registerCalendarHandlers(): void {
           // Runner self-logs on failure; swallow to keep connect success green.
         })
 
-        trackMainEvent('calendar_google_connected', {
-          surface: 'calendar',
-          action: 'connected',
-          source: 'google',
-          result: 'success'
-        })
+        trackCalendar('calendar_google_connected', 'connected', 'google')
 
         return {
           success: true,
@@ -783,12 +767,7 @@ export function registerCalendarHandlers(): void {
         await syncGoogleCalendarNow(db)
         emitCalendarChanged({ entityType: 'projection', id: 'google-refresh' })
 
-        trackMainEvent('calendar_google_sync_completed', {
-          surface: 'calendar',
-          action: 'sync_completed',
-          source: 'google',
-          result: 'success'
-        })
+        trackCalendar('calendar_google_sync_completed', 'sync_completed', 'google')
 
         return {
           success: true,
