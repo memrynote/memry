@@ -346,6 +346,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         level={level}
         isLast={isLast}
         acceptsDropInside
+        hasChildren={hasChildren}
       >
         <TreeNodeTrigger
           className=""
@@ -450,7 +451,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           )}
         </TreeNodeTrigger>
         {hasChildren && (
-          <TreeNodeContent hasChildren>
+          <TreeNodeContent>
             {folder.children.map((child, index) =>
               renderFolder(
                 child,

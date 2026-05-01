@@ -3,8 +3,8 @@
  * Auto-save and session restore functionality
  */
 
-import { useEffect, useRef, useCallback } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useEffect, useRef, useState, useCallback } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { useTabs } from '@/contexts/tabs'
 import type { TabSystemState } from '@/contexts/tabs/types'
 import { getDefaultStorage, saveSync } from './storage'
@@ -136,29 +136,11 @@ export const useSessionRestore = (
       const persisted = await storage.load()
 
       if (persisted) {
-        const persistedTabs = Object.values(persisted.tabGroups).flatMap((g) => g.tabs)
-        log.info('loaded persisted state', {
-          tabCount: persistedTabs.length,
-          restoreEnabled: state.settings.restoreSessionOnStart
-        })
-        log.debug('loaded persisted state details', {
-          version: persisted.version,
-          groups: Object.keys(persisted.tabGroups).length,
-          tabs: persistedTabs.map((t) => t.type)
-        })
-
         if (state.settings.restoreSessionOnStart) {
           const restored = deserializeTabState(persisted)
-          const restoredTabs = Object.values((restored as TabSystemState).tabGroups).flatMap(
-            (g) => g.tabs
-          )
           dispatch({
             type: 'RESTORE_SESSION',
             payload: restored as TabSystemState
-          })
-          log.info('session restored', { count: restoredTabs.length })
-          log.debug('session restored details', {
-            tabs: restoredTabs.map((t) => `${t.type}:${t.entityId ?? 'none'}`)
           })
         } else {
           const pinnedTabs = extractPinnedTabs(persisted)
@@ -198,13 +180,33 @@ export const useSessionRestore = (
     }
   }, [storage, state.settings.restoreSessionOnStart, dispatch])
 
-  const autoRestoreQuery = useQuery({
-    queryKey: ['tabs', 'session-restore', state.settings.restoreSessionOnStart],
-    queryFn: restoreSession,
-    enabled: autoRestore,
-    retry: false,
-    staleTime: Infinity
-  })
+  const [autoRestoreState, setAutoRestoreState] = useState<{
+    pending: boolean
+    error: Error | null
+  }>(() => ({ pending: autoRestore, error: null }))
+
+  useEffect(() => {
+    if (!autoRestore) return
+
+    let cancelled = false
+
+    void restoreSession()
+      .then(() => {
+        if (cancelled) return
+        setAutoRestoreState({ pending: false, error: null })
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return
+        setAutoRestoreState({
+          pending: false,
+          error: error instanceof Error ? error : new Error('Failed to restore session')
+        })
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [autoRestore, restoreSession])
 
   const restoreMutation = useMutation({
     mutationFn: restoreSession
@@ -219,13 +221,10 @@ export const useSessionRestore = (
   }, [storage])
 
   const restoreError =
-    autoRestoreQuery.error instanceof Error
-      ? autoRestoreQuery.error
-      : restoreMutation.error instanceof Error
-        ? restoreMutation.error
-        : null
+    autoRestoreState.error ??
+    (restoreMutation.error instanceof Error ? restoreMutation.error : null)
 
-  const isRestoring = autoRestoreQuery.isPending || restoreMutation.isPending
+  const isRestoring = autoRestoreState.pending || restoreMutation.isPending
 
   return {
     isRestoring,
