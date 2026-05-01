@@ -375,6 +375,14 @@ const createMockApi = () => ({
     reorder: vi.fn().mockResolvedValue({ success: true })
   },
 
+  // Telemetry API
+  telemetry: {
+    track: vi.fn().mockResolvedValue({ success: true }),
+    flush: vi.fn().mockResolvedValue({ success: true }),
+    getSettings: vi.fn().mockResolvedValue({ enabled: false }),
+    setEnabled: vi.fn().mockResolvedValue({ success: true })
+  },
+
   // Event subscriptions (return unsubscribe function)
   onVaultStatusChanged: vi.fn().mockReturnValue(() => {}),
   onVaultIndexProgress: vi.fn().mockReturnValue(() => {}),
