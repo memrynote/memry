@@ -118,14 +118,14 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
 
     for (let i = 1; i <= PREFETCH_DAYS; i++) {
       const prevDate = formatDateToISO(addDays(dateObj, -i))
-      queryClient.prefetchQuery({
+      void queryClient.prefetchQuery({
         queryKey: journalKeys.entry(prevDate),
         queryFn: () => journalService.getEntry(prevDate),
         staleTime: ENTRY_STALE_TIME
       })
 
       const nextDate = formatDateToISO(addDays(dateObj, i))
-      queryClient.prefetchQuery({
+      void queryClient.prefetchQuery({
         queryKey: journalKeys.entry(nextDate),
         queryFn: () => journalService.getEntry(nextDate),
         staleTime: ENTRY_STALE_TIME
@@ -140,7 +140,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     onSuccess: (updatedEntry) => {
       queryClient.setQueryData(journalKeys.entry(updatedEntry.date), updatedEntry)
       const year = parseInt(updatedEntry.date.slice(0, 4), 10)
-      queryClient.invalidateQueries({ queryKey: journalKeys.heatmap(year) })
+      void queryClient.invalidateQueries({ queryKey: journalKeys.heatmap(year) })
     }
   })
 
@@ -151,7 +151,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     onSuccess: (_, dateToDelete) => {
       queryClient.setQueryData(journalKeys.entry(dateToDelete), null)
       const year = parseInt(dateToDelete.slice(0, 4), 10)
-      queryClient.invalidateQueries({ queryKey: journalKeys.heatmap(year) })
+      void queryClient.invalidateQueries({ queryKey: journalKeys.heatmap(year) })
     }
   })
 
@@ -210,7 +210,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       clearTimeout(saveTimerRef.current)
     }
     saveTimerRef.current = setTimeout(() => {
-      performSave()
+      void performSave()
     }, AUTO_SAVE_DELAY_MS)
   }, [performSave])
 
@@ -349,7 +349,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
           queryClient.setQueryData(journalKeys.entry(event.date), null)
           setIsDirty(false)
         } else if (event.type === 'modified' && !isDirtyRef.current) {
-          queryClient.invalidateQueries({ queryKey: journalKeys.entry(event.date) })
+          void queryClient.invalidateQueries({ queryKey: journalKeys.entry(event.date) })
         }
       }
     })

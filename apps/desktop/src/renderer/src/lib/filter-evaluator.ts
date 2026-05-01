@@ -9,6 +9,7 @@
 
 import type { NoteWithProperties, FilterExpression } from '@memry/contracts/folder-view-api'
 import { createLogger } from '@/lib/logger'
+import { stringifyUnknown } from '@/lib/stringify-unknown'
 
 const log = createLogger('Evaluator:Filter')
 
@@ -258,7 +259,7 @@ export function serializeCondition(condition: ParsedCondition): string {
   } else if (value === null || value === undefined) {
     valueStr = '""'
   } else {
-    valueStr = String(value)
+    valueStr = stringifyUnknown(value)
   }
 
   return `${property} ${operator} ${valueStr}`
@@ -456,13 +457,13 @@ function compareDates(actual: unknown, expected: unknown): number {
 function containsValue(actual: unknown, expected: unknown): boolean {
   // Array contains
   if (Array.isArray(actual)) {
-    const expectedStr = String(expected).toLowerCase()
-    return actual.some((item) => String(item).toLowerCase() === expectedStr)
+    const expectedStr = stringifyUnknown(expected).toLowerCase()
+    return actual.some((item) => stringifyUnknown(item).toLowerCase() === expectedStr)
   }
 
   // String contains
   if (typeof actual === 'string' && expected != null) {
-    return actual.toLowerCase().includes(String(expected).toLowerCase())
+    return actual.toLowerCase().includes(stringifyUnknown(expected).toLowerCase())
   }
 
   return false
@@ -473,7 +474,7 @@ function containsValue(actual: unknown, expected: unknown): boolean {
  */
 function startsWithValue(actual: unknown, expected: unknown): boolean {
   if (typeof actual !== 'string' || expected == null) return false
-  return actual.toLowerCase().startsWith(String(expected).toLowerCase())
+  return actual.toLowerCase().startsWith(stringifyUnknown(expected).toLowerCase())
 }
 
 /**
@@ -481,7 +482,7 @@ function startsWithValue(actual: unknown, expected: unknown): boolean {
  */
 function endsWithValue(actual: unknown, expected: unknown): boolean {
   if (typeof actual !== 'string' || expected == null) return false
-  return actual.toLowerCase().endsWith(String(expected).toLowerCase())
+  return actual.toLowerCase().endsWith(stringifyUnknown(expected).toLowerCase())
 }
 
 /**

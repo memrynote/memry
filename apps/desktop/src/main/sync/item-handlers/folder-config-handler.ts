@@ -50,7 +50,7 @@ class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
           .where(eq(folderConfigs.path, itemId))
           .run()
 
-        writeFolderConfig(itemId, { icon: data.icon ?? existing.icon })
+        void writeFolderConfig(itemId, { icon: data.icon ?? existing.icon })
         ctx.emit(NotesChannels.events.FOLDER_CONFIG_UPDATED, { path: itemId })
         return resolution.action === 'merge' ? 'conflict' : 'applied'
       }
@@ -65,7 +65,7 @@ class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
         })
         .run()
 
-      writeFolderConfig(itemId, { icon: data.icon ?? null })
+      void writeFolderConfig(itemId, { icon: data.icon ?? null })
       ctx.emit(NotesChannels.events.FOLDER_CONFIG_UPDATED, { path: itemId })
       return 'applied'
     })
@@ -84,7 +84,7 @@ class FolderConfigHandler extends BaseItemHandler<FolderConfigSyncPayload> {
     }
 
     ctx.db.delete(folderConfigs).where(eq(folderConfigs.path, itemId)).run()
-    writeFolderConfig(itemId, { icon: null })
+    void writeFolderConfig(itemId, { icon: null })
     ctx.emit(NotesChannels.events.FOLDER_CONFIG_UPDATED, { path: itemId })
     return 'applied'
   }

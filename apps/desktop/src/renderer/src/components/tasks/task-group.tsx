@@ -116,10 +116,10 @@ export const TaskGroup = ({
   const topLevelTasks = getTopLevelTasks(tasks)
   const topLevelCount = topLevelTasks.length
 
-  if (topLevelCount === 0) return null
-
   const lookupContext = useMemo(() => createLookupContext(projects), [projects])
   const taskIds = useMemo(() => topLevelTasks.map((t) => t.id), [topLevelTasks])
+
+  if (topLevelCount === 0) return null
 
   return (
     <section className={cn('mb-4', className)} aria-label={label}>

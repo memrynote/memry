@@ -97,7 +97,7 @@ function normalizeUrl(text: string): string {
 export function CaptureInput({
   onCaptureSuccess,
   onCaptureError,
-  density = 'comfortable',
+  density: _density = 'comfortable',
   compact = false,
   className
 }: CaptureInputProps): React.JSX.Element {
@@ -398,7 +398,7 @@ export function CaptureInput({
           </button>
 
           <button
-            onClick={handleMicClick}
+            onClick={() => void handleMicClick()}
             disabled={isCapturing}
             className={cn(
               'flex items-center justify-center rounded-md',
@@ -417,13 +417,13 @@ export function CaptureInput({
             ref={fileInputRef}
             type="file"
             accept={ALLOWED_ATTACHMENT_TYPES.join(',')}
-            onChange={handleFileSelect}
+            onChange={(...args) => void handleFileSelect(...args)}
             className="hidden"
             aria-hidden="true"
           />
 
           <button
-            onClick={() => handleSubmit()}
+            onClick={() => void handleSubmit()}
             disabled={!value.trim() || isCapturing}
             className={cn(
               'flex items-center justify-center rounded-md',
@@ -461,7 +461,7 @@ export function CaptureInput({
             {tPhaseF('phaseF.componentsCaptureInput.rdquo')}
           </p>
           <button
-            onClick={() => handleSubmit(true)}
+            onClick={() => void handleSubmit(true)}
             className="shrink-0 text-xs font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
           >
             {tPhaseF('phaseF.componentsCaptureInput.captureAnyway')}
@@ -472,7 +472,7 @@ export function CaptureInput({
       {isRecording && (
         <VoiceRecorder
           ref={voiceRecorderRef}
-          onRecordingComplete={handleRecordingComplete}
+          onRecordingComplete={(...args) => void handleRecordingComplete(...args)}
           onCancel={handleRecordingCancel}
           maxDuration={300}
           className="w-full"

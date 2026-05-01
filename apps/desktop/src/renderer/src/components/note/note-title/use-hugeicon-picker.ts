@@ -30,7 +30,7 @@ export function useHugeIconPicker(): {
   useEffect(() => {
     let cancelled = false
 
-    loadAllIcons().then((mod) => {
+    void loadAllIcons().then((mod) => {
       if (cancelled) return
 
       const entries: IconEntry[] = []

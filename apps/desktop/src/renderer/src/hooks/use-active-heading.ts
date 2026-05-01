@@ -124,8 +124,7 @@ export function useActiveHeading({
   useEffect(() => {
     if (headings.length === 0) return
 
-    // Initial calculation
-    findActiveHeading()
+    const initialCalculation = requestAnimationFrame(findActiveHeading)
 
     const target = scrollContainerRef?.current ?? window
 
@@ -136,6 +135,7 @@ export function useActiveHeading({
     window.addEventListener('resize', handleScroll, { passive: true })
 
     return () => {
+      cancelAnimationFrame(initialCalculation)
       target.removeEventListener('scroll', handleScroll)
       window.removeEventListener('resize', handleScroll)
 
@@ -144,7 +144,7 @@ export function useActiveHeading({
         rafIdRef.current = null
       }
     }
-  }, [headings, handleScroll, findActiveHeading])
+  }, [headings, handleScroll, findActiveHeading, scrollContainerRef])
 
   const setActiveHeading = useCallback((id: string) => {
     setActiveHeadingId(id)

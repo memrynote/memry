@@ -141,7 +141,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
     (ids: string[]) => {
       onTargetFolderChange?.(data.computeTargetFolder(ids))
     },
-    [data.computeTargetFolder, onTargetFolderChange]
+    [data, onTargetFolderChange]
   )
 
   const handleCollapseAll = useCallback(() => {
@@ -171,7 +171,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
       actions.handleSelectionChange(ids)
       notifyTargetFolderChange(ids)
     },
-    [actions.handleSelectionChange, notifyTargetFolderChange]
+    [actions, notifyTargetFolderChange]
   )
 
   useEffect(() => {
@@ -190,7 +190,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
 
     container.addEventListener('keydown', handleKeyDown)
     return () => container.removeEventListener('keydown', handleKeyDown)
-  }, [selectedIds, actions.renamingNoteId, actions.handleBulkDelete])
+  }, [selectedIds, actions.renamingNoteId, actions.handleBulkDelete, actions])
 
   const [pendingRevealNoteId, setPendingRevealNoteId] = useState<string | null>(null)
 
@@ -236,7 +236,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
       }, 100)
       setPendingRevealNoteId(null)
     },
-    [setSelectedIds]
+    [notifyTargetFolderChange]
   )
 
   if (data.isLoading) return <NotesTreeSkeleton />
@@ -254,7 +254,10 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
 
   if (data.notes.length === 0 && data.folders.length === 0) {
     return (
-      <NotesTreeEmpty onCreateNote={actions.handleCreateNote} isCreating={actions.isCreating} />
+      <NotesTreeEmpty
+        onCreateNote={(...args) => void actions.handleCreateNote(...args)}
+        isCreating={actions.isCreating}
+      />
     )
   }
 
@@ -277,11 +280,11 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
                     {t('tree.actions.rename')}
                   </ContextMenuItem>
                   <ContextMenuSeparator />
-                  <ContextMenuItem onClick={() => actions.handleOpenExternal(note)}>
+                  <ContextMenuItem onClick={() => void actions.handleOpenExternal(note)}>
                     <ExternalLink className="mr-2 h-4 w-4" />
                     {t('tree.actions.openExternal')}
                   </ContextMenuItem>
-                  <ContextMenuItem onClick={() => actions.handleRevealInFinder(note)}>
+                  <ContextMenuItem onClick={() => void actions.handleRevealInFinder(note)}>
                     <FolderOpen className="mr-2 h-4 w-4" />
                     {t('tree.actions.revealInFinder')}
                   </ContextMenuItem>
@@ -314,14 +317,14 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
-                  actions.handleRenameSubmit(note.id, note.path)
+                  void actions.handleRenameSubmit(note.id, note.path)
                 } else if (e.key === 'Escape') {
                   e.preventDefault()
                   actions.handleRenameCancel(note.id)
                 }
                 e.stopPropagation()
               }}
-              onBlur={() => actions.handleRenameSubmit(note.id, note.path)}
+              onBlur={() => void actions.handleRenameSubmit(note.id, note.path)}
               onClick={(e) => e.stopPropagation()}
               disabled={actions.isRenaming}
               className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none"
@@ -352,11 +355,11 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           className=""
           contextMenuContent={
             <>
-              <ContextMenuItem onClick={() => actions.handleCreateNoteInFolder(folder.path)}>
+              <ContextMenuItem onClick={() => void actions.handleCreateNoteInFolder(folder.path)}>
                 <FilePlus className="mr-2 h-4 w-4" />
                 {t('tree.actions.newNote')}
               </ContextMenuItem>
-              <ContextMenuItem onClick={() => actions.handleCreateSubfolder(folder.path)}>
+              <ContextMenuItem onClick={() => void actions.handleCreateSubfolder(folder.path)}>
                 <FolderPlus className="mr-2 h-4 w-4" />
                 {t('tree.actions.newFolder')}
               </ContextMenuItem>
@@ -370,7 +373,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
                   </span>
                 )}
               </ContextMenuItem>
-              <ContextMenuItem onClick={() => actions.handleClearFolderTemplate(folder.path)}>
+              <ContextMenuItem onClick={() => void actions.handleClearFolderTemplate(folder.path)}>
                 <X className="mr-2 h-4 w-4" />
                 {t('tree.actions.clearDefaultTemplate')}
               </ContextMenuItem>
@@ -419,14 +422,14 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
-                  actions.handleFolderRenameSubmit(folder.path)
+                  void actions.handleFolderRenameSubmit(folder.path)
                 } else if (e.key === 'Escape') {
                   e.preventDefault()
                   actions.handleFolderRenameCancel()
                 }
                 e.stopPropagation()
               }}
-              onBlur={() => actions.handleFolderRenameSubmit(folder.path)}
+              onBlur={() => void actions.handleFolderRenameSubmit(folder.path)}
               onClick={(e) => e.stopPropagation()}
               disabled={actions.isFolderRenaming}
               className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none"
@@ -488,18 +491,18 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           tree={data.tree}
           selectedIds={selectedIds}
           onSelectionChange={handleSelectionChange}
-          onMove={actions.handleMove}
+          onMove={(...args) => void actions.handleMove(...args)}
           onBulkDelete={actions.handleBulkDelete}
           onRenameNote={actions.handleRenameClick}
           onDeleteNote={actions.handleDeleteClick}
-          onOpenExternal={actions.handleOpenExternal}
-          onRevealInFinder={actions.handleRevealInFinder}
+          onOpenExternal={(...args) => void actions.handleOpenExternal(...args)}
+          onRevealInFinder={(...args) => void actions.handleRevealInFinder(...args)}
           onDeleteFolder={actions.handleDeleteFolderClick}
-          onCreateNote={actions.handleCreateNoteInFolder}
-          onCreateFolder={actions.handleCreateSubfolder}
+          onCreateNote={(...args) => void actions.handleCreateNoteInFolder(...args)}
+          onCreateFolder={(...args) => void actions.handleCreateSubfolder(...args)}
           onRenameFolder={actions.handleRenameFolderClick}
           onSetFolderTemplate={actions.handleSetFolderTemplate}
-          onClearFolderTemplate={actions.handleClearFolderTemplate}
+          onClearFolderTemplate={(...args) => void actions.handleClearFolderTemplate(...args)}
           folderTemplateNames={data.folderTemplateNames}
           onSetFolderIcon={(path, icon) => void data.setFolderIcon(path, icon)}
           noteMap={data.noteMap}
@@ -514,7 +517,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
           selectedIds={selectedIds}
           onSelectionChange={handleSelectionChange}
           draggable={!actions.renamingNoteId && !actions.renamingFolderPath && !actions.isMoving}
-          onMove={actions.handleMove}
+          onMove={(...args) => void actions.handleMove(...args)}
           animateExpand={false}
           multiSelect={true}
           indent={26}
@@ -548,13 +551,13 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         notesToDelete={actions.notesToDelete}
         foldersToDelete={actions.foldersToDelete}
         isDeleting={actions.isDeleting}
-        onConfirm={actions.handleDeleteConfirm}
+        onConfirm={(...args) => void actions.handleDeleteConfirm(...args)}
       />
 
       <NoteTreeTemplateSelector
         isOpen={actions.folderToConfigureTemplate !== null}
-        onClose={() => actions.handleFolderTemplateSelect(null)}
-        onSelect={actions.handleFolderTemplateSelect}
+        onClose={() => void actions.handleFolderTemplateSelect(null)}
+        onSelect={(...args) => void actions.handleFolderTemplateSelect(...args)}
       />
     </div>
   )

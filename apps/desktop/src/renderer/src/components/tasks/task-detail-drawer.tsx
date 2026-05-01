@@ -67,6 +67,9 @@ const NoteIcon = ({ color }: { color: string }): React.JSX.Element => (
   </svg>
 )
 
+type LinkedNoteNames = Record<string, { title: string; emoji?: string | null }>
+const EMPTY_NOTE_NAMES: LinkedNoteNames = {}
+
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
@@ -85,9 +88,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
 }: TaskDetailDrawerProps): React.JSX.Element {
   const { t, i18n } = useT('tasks')
   const { isOpen: isDayPanelOpen, width: dayPanelWidth } = useDayPanel()
-  const [noteNames, setNoteNames] = useState<
-    Record<string, { title: string; emoji?: string | null }>
-  >({})
+  const [noteNames, setNoteNames] = useState<LinkedNoteNames>({})
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isAddingSubtask, setIsAddingSubtask] = useState(false)
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
@@ -101,14 +102,14 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
   const noteSearchInputRef = useRef<HTMLInputElement>(null)
 
   const linkedNoteKey = task?.linkedNoteIds?.join(',') ?? ''
+  const displayedNoteNames = task?.linkedNoteIds?.length ? noteNames : EMPTY_NOTE_NAMES
 
   useEffect(() => {
     if (!task?.linkedNoteIds?.length) {
-      setNoteNames({})
       return
     }
     let cancelled = false
-    Promise.all(
+    void Promise.all(
       task.linkedNoteIds.map(async (id) => {
         try {
           const note = await notesService.get(id)
@@ -126,7 +127,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
     return () => {
       cancelled = true
     }
-  }, [task?.id, linkedNoteKey])
+  }, [task?.id, linkedNoteKey, task?.linkedNoteIds])
 
   useEffect(() => {
     if (!isOpen) return
@@ -155,17 +156,17 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
   const handleStartLinkNote = useCallback(() => {
     setIsLinkingNote(true)
     requestAnimationFrame(() => noteSearchInputRef.current?.focus())
-    notesService.list({ sortBy: 'modified', sortOrder: 'desc', limit: 50 }).then((res) => {
+    void notesService.list({ sortBy: 'modified', sortOrder: 'desc', limit: 50 }).then((res) => {
       setAvailableNotes(res.notes.map((n) => ({ id: n.id, title: n.title, emoji: n.emoji })))
     })
   }, [])
 
   const project = useMemo(
     () => (task ? (projects.find((p) => p.id === task.projectId) ?? null) : null),
-    [task?.projectId, projects]
+    [task, projects]
   )
 
-  const subtasks = useMemo(() => (task ? getSubtasks(task.id, tasks) : []), [task?.id, tasks])
+  const subtasks = useMemo(() => (task ? getSubtasks(task.id, tasks) : []), [task, tasks])
 
   const completedSubtaskCount = useMemo(
     () => subtasks.filter((s) => s.completedAt !== null).length,
@@ -177,41 +178,41 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
     const linked = new Set(task.linkedNoteIds)
     const q = noteSearchQuery.toLowerCase()
     return availableNotes.filter((n) => !linked.has(n.id) && n.title.toLowerCase().includes(q))
-  }, [isLinkingNote, task?.linkedNoteIds, noteSearchQuery, availableNotes])
+  }, [isLinkingNote, task, noteSearchQuery, availableNotes])
 
   const handleStatusChange = useCallback(
     (statusId: string) => {
       if (task) onUpdateTask?.(task.id, { statusId })
     },
-    [task?.id, onUpdateTask]
+    [task, onUpdateTask]
   )
 
   const handlePriorityChange = useCallback(
     (priority: Priority) => {
       if (task) onUpdateTask?.(task.id, { priority })
     },
-    [task?.id, onUpdateTask]
+    [task, onUpdateTask]
   )
 
   const handleDueDateChange = useCallback(
     (dueDate: Date | null) => {
       if (task) onUpdateTask?.(task.id, { dueDate })
     },
-    [task?.id, onUpdateTask]
+    [task, onUpdateTask]
   )
 
   const handleDueTimeChange = useCallback(
     (dueTime: string | null) => {
       if (task) onUpdateTask?.(task.id, { dueTime })
     },
-    [task?.id, onUpdateTask]
+    [task, onUpdateTask]
   )
 
   const handleProjectChange = useCallback(
     (projectId: string) => {
       if (task) onUpdateTask?.(task.id, { projectId })
     },
-    [task?.id, onUpdateTask]
+    [task, onUpdateTask]
   )
 
   const handleRepeatChange = useCallback(
@@ -222,7 +223,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
         isRepeating: repeatConfig !== null
       })
     },
-    [task?.id, onUpdateTask]
+    [task, onUpdateTask]
   )
 
   return (
@@ -434,7 +435,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                 </button>
               </div>
               {task.linkedNoteIds.map((noteId) => {
-                const info = noteNames[noteId]
+                const info = displayedNoteNames[noteId]
                 return (
                   <div
                     key={noteId}

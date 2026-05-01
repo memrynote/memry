@@ -185,7 +185,7 @@ export function useNote(id: string | null, options: UseNoteOptions = {}): UseNot
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     error: query.error,
-    refetch: query.refetch
+    refetch: (...args) => void query.refetch(...args)
   }
 }
 
@@ -252,7 +252,7 @@ export function useNotesList(options: UseNotesListOptions = {}): UseNotesListRes
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     error: query.error,
-    refetch: query.refetch
+    refetch: (...args) => void query.refetch(...args)
   }
 }
 
@@ -353,7 +353,7 @@ export function useNoteFoldersQuery(options: { enabled?: boolean } = {}) {
         return false
       }
     },
-    [createFolderMutation.mutateAsync]
+    [createFolderMutation]
   )
 
   const setFolderIconMutation = useMutation({
@@ -375,7 +375,7 @@ export function useNoteFoldersQuery(options: { enabled?: boolean } = {}) {
         return false
       }
     },
-    [setFolderIconMutation.mutateAsync]
+    [setFolderIconMutation]
   )
 
   // Memoize folders to avoid recreating array reference

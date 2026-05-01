@@ -81,7 +81,7 @@ export function AudioPlayer({ src, fileName = 'Audio', className }: AudioPlayerP
     if (isPlaying) {
       audio.pause()
     } else {
-      audio.play()
+      void audio.play()
     }
     setIsPlaying(!isPlaying)
   }, [isPlaying])

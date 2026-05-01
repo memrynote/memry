@@ -1,12 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  useRef,
-  useEffect,
-  type ReactNode
-} from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
 import type { HintModeState, HintModeContextType } from './types'
 import { scanClickableElements } from '@/lib/dom-scanner'
 import { assignLabels } from '@/lib/label-assigner'
@@ -23,8 +15,6 @@ const HintModeContext = createContext<HintModeContextType | null>(null)
 
 export const HintModeProvider = ({ children }: { children: ReactNode }): React.JSX.Element => {
   const [state, setState] = useState<HintModeState>(INITIAL_STATE)
-  const stateRef = useRef(state)
-  stateRef.current = state
 
   const deactivate = useCallback(() => {
     hintModeActiveRef.current = false
@@ -32,7 +22,7 @@ export const HintModeProvider = ({ children }: { children: ReactNode }): React.J
   }, [])
 
   const activate = useCallback(() => {
-    if (stateRef.current.isActive) {
+    if (state.isActive) {
       deactivate()
       return
     }
@@ -43,13 +33,13 @@ export const HintModeProvider = ({ children }: { children: ReactNode }): React.J
     const hints = assignLabels(elements)
     hintModeActiveRef.current = true
     setState({ isActive: true, hints, typedChars: '' })
-  }, [deactivate])
+  }, [state.isActive, deactivate])
 
   const typeChar = useCallback(
     (char: string) => {
       const upper = char.toUpperCase()
-      const next = stateRef.current.typedChars + upper
-      const matching = stateRef.current.hints.filter((h) => h.label.startsWith(next))
+      const next = state.typedChars + upper
+      const matching = state.hints.filter((h) => h.label.startsWith(next))
 
       if (matching.length === 0) return
 
@@ -63,7 +53,7 @@ export const HintModeProvider = ({ children }: { children: ReactNode }): React.J
 
       setState((prev) => ({ ...prev, typedChars: next }))
     },
-    [deactivate]
+    [state.typedChars, state.hints, deactivate]
   )
 
   const backspace = useCallback(() => {

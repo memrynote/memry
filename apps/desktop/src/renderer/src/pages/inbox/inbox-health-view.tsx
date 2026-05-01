@@ -187,12 +187,12 @@ function CaptureHeatmap({
     let max = 0
     for (let day = 0; day < 7; day++) {
       for (const hour of HEATMAP_HOURS) {
-        const val = (heatmap![hour]?.[day] ?? 0) + (heatmap![hour + 1]?.[day] ?? 0)
+        const val = (heatmap[hour]?.[day] ?? 0) + (heatmap[hour + 1]?.[day] ?? 0)
         if (val > max) max = val
       }
     }
 
-    const peakInfo = computePeakInfo(heatmap!)
+    const peakInfo = computePeakInfo(heatmap)
     if (!peakInfo.hasCaptures) {
       return { maxCount: max, peakText: t('insights.noCapturesYet') }
     }

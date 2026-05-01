@@ -48,7 +48,7 @@ function syncCanonicalMetadata(
     for (const [name, value] of Object.entries(properties)) {
       const existing = getCanonicalPropertyDefinition(dataDb, name)
       const type = (existing?.type as PropertyType | undefined) ?? inferPropertyType(name, value)
-      saveCanonicalPropertyDefinition(dataDb, { name, type: type as PropertyType })
+      saveCanonicalPropertyDefinition(dataDb, { name, type: type })
     }
   }
 }

@@ -365,6 +365,37 @@ function FilePreview({ url, name, size, mimeType }: FilePreviewProps) {
  * Shows inline PDF preview for PDFs, download card for other files.
  * Returns a factory function - call it when adding to schema: `file: createFileBlock()`
  */
+function FileBlockRender({
+  block,
+  contentRef
+}: {
+  block: { props: { url: string; name: string; size: number; mimeType: string } }
+  contentRef: React.Ref<HTMLDivElement>
+}) {
+  const { t: tPhaseF } = useT('notes')
+  const { url, name, size, mimeType } = block.props
+  const isPdf = mimeType === 'application/pdf'
+
+  // Don't render if no URL
+  if (!url) {
+    return (
+      <div ref={contentRef} className="file-block-empty p-2 text-muted-foreground text-sm">
+        {tPhaseF('phaseF.componentsNoteContentAreaFileBlock.noFileAttached')}
+      </div>
+    )
+  }
+
+  return (
+    <div ref={contentRef} className="file-block my-2" contentEditable={false}>
+      {isPdf ? (
+        <PdfPreview url={url} name={name} />
+      ) : (
+        <FilePreview url={url} name={name} size={size} mimeType={mimeType} />
+      )}
+    </div>
+  )
+}
+
 export const createFileBlock = createReactBlockSpec(
   {
     type: 'file',
@@ -377,30 +408,7 @@ export const createFileBlock = createReactBlockSpec(
     content: 'none'
   },
   {
-    render: ({ block, contentRef }) => {
-      const { t: tPhaseF } = useT('notes')
-      const { url, name, size, mimeType } = block.props
-      const isPdf = mimeType === 'application/pdf'
-
-      // Don't render if no URL
-      if (!url) {
-        return (
-          <div ref={contentRef} className="file-block-empty p-2 text-muted-foreground text-sm">
-            {tPhaseF('phaseF.componentsNoteContentAreaFileBlock.noFileAttached')}
-          </div>
-        )
-      }
-
-      return (
-        <div ref={contentRef} className="file-block my-2" contentEditable={false}>
-          {isPdf ? (
-            <PdfPreview url={url} name={name} />
-          ) : (
-            <FilePreview url={url} name={name} size={size} mimeType={mimeType} />
-          )}
-        </div>
-      )
-    }
+    render: FileBlockRender
   }
 )
 

@@ -3,7 +3,7 @@
  * Main container for tabs with scroll handling and actions
  */
 
-import { useRef, useState, useEffect, useLayoutEffect, useCallback } from 'react'
+import { useRef, useState, useLayoutEffect, useCallback } from 'react'
 import { ChevronLeft, ChevronRight } from '@/lib/icons'
 import { useTabGroup, useTabs } from '@/contexts/tabs'
 import { RegularTab } from './regular-tab'

@@ -1,4 +1,4 @@
-import { useState, useCallback, type ReactNode } from 'react'
+import { useState, useCallback } from 'react'
 import type { NoteListItem } from '@/hooks/use-notes-query'
 import { notesService } from '@/services/notes-service'
 import { createLogger } from '@/lib/logger'

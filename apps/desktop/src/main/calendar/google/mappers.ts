@@ -142,7 +142,7 @@ export function mapCalendarEventToGoogleInput(
     isAllDay: row.isAllDay,
     timezone: row.timezone,
     recurrence: toGoogleRecurrenceWithExceptions(
-      row.recurrenceRule as Record<string, unknown> | null,
+      row.recurrenceRule,
       row.recurrenceExceptions ?? null,
       row.timezone
     ),

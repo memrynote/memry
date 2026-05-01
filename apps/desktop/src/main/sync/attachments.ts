@@ -153,7 +153,7 @@ async function binaryFetch(
   body?: Uint8Array | string,
   fetchFn?: FetchFn
 ): Promise<Response> {
-  const fetchImpl = fetchFn ?? net.fetch
+  const fetchImpl = fetchFn ?? ((...args: Parameters<typeof net.fetch>) => net.fetch(...args))
 
   const headers: Record<string, string> = {}
   if (token) {

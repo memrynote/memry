@@ -41,7 +41,7 @@ class CalendarExternalEventHandler extends BaseItemHandler<CalendarExternalEvent
       const now = utcNow()
 
       if (existing) {
-        const resolution = this.resolveClock(existing.clock as VectorClock | null, remoteClock)
+        const resolution = this.resolveClock(existing.clock, remoteClock)
         if (resolution.action === 'skip') {
           log.info('Skipping remote calendar external event update, local is newer', { itemId })
           return 'skipped'
@@ -176,13 +176,13 @@ class CalendarExternalEventHandler extends BaseItemHandler<CalendarExternalEvent
       timezone: row.timezone ?? null,
       isAllDay: row.isAllDay,
       status: row.status,
-      recurrenceRule: (row.recurrenceRule as Record<string, unknown> | null) ?? null,
+      recurrenceRule: row.recurrenceRule ?? null,
       attendees: (row.attendees as Array<Record<string, unknown>> | null) ?? null,
       reminders: (row.reminders as Record<string, unknown> | null) ?? null,
       visibility: row.visibility ?? null,
       colorId: row.colorId ?? null,
       conferenceData: (row.conferenceData as Record<string, unknown> | null) ?? null,
-      rawPayload: (row.rawPayload as Record<string, unknown> | null) ?? null,
+      rawPayload: row.rawPayload ?? null,
       archivedAt: row.archivedAt ?? null,
       clock: (row.clock as VectorClock) ?? undefined,
       createdAt: row.createdAt,

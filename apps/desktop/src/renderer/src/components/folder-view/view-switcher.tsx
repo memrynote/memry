@@ -355,7 +355,7 @@ export function ViewSwitcher({
                   {!isDefault && (
                     <DropdownMenuItem
                       onSelect={() => {
-                        handleSetDefault(index)
+                        void handleSetDefault(index)
                         setIsDropdownOpen(false)
                       }}
                     >
@@ -418,7 +418,7 @@ export function ViewSwitcher({
                 placeholder={tPhaseF('phaseF.componentsFolderViewViewSwitcher.myCustomView')}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && newViewName.trim()) {
-                    handleCreateView()
+                    void handleCreateView()
                   }
                 }}
               />
@@ -457,7 +457,10 @@ export function ViewSwitcher({
             <Button variant="outline" onClick={() => setIsNewViewDialogOpen(false)}>
               {tPhaseF('phaseF.componentsFolderViewViewSwitcher.cancel')}
             </Button>
-            <Button onClick={handleCreateView} disabled={!newViewName.trim() || isSubmitting}>
+            <Button
+              onClick={() => void handleCreateView()}
+              disabled={!newViewName.trim() || isSubmitting}
+            >
               {isSubmitting ? 'Creating...' : 'Create'}
             </Button>
           </DialogFooter>
@@ -487,7 +490,7 @@ export function ViewSwitcher({
                 placeholder={tPhaseF('phaseF.componentsFolderViewViewSwitcher.viewName3')}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && renameValue.trim()) {
-                    handleRenameView()
+                    void handleRenameView()
                   }
                 }}
               />
@@ -497,7 +500,10 @@ export function ViewSwitcher({
             <Button variant="outline" onClick={() => setIsRenameDialogOpen(false)}>
               {tPhaseF('phaseF.componentsFolderViewViewSwitcher.cancel2')}
             </Button>
-            <Button onClick={handleRenameView} disabled={!renameValue.trim() || isSubmitting}>
+            <Button
+              onClick={() => void handleRenameView()}
+              disabled={!renameValue.trim() || isSubmitting}
+            >
               {isSubmitting ? 'Saving...' : 'Save'}
             </Button>
           </DialogFooter>
@@ -522,7 +528,7 @@ export function ViewSwitcher({
               {tPhaseF('phaseF.componentsFolderViewViewSwitcher.cancel3')}
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteView}
+              onClick={() => void handleDeleteView()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isSubmitting ? 'Deleting...' : 'Delete'}

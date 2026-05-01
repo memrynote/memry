@@ -238,64 +238,6 @@ function MoveToFolderDialogSession({
     }
   }, [selectedIndex])
 
-  // Handle keyboard navigation
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent): void => {
-      const itemCount = folderItems.length + (canCreateFolder ? 1 : 0)
-
-      switch (e.key) {
-        case 'ArrowDown':
-          e.preventDefault()
-          setSelectedIndex((prev) => (prev + 1) % itemCount)
-          break
-
-        case 'ArrowUp':
-          e.preventDefault()
-          setSelectedIndex((prev) => (prev - 1 + itemCount) % itemCount)
-          break
-
-        case 'Enter':
-          e.preventDefault()
-          if (canCreateFolder && selectedIndex === folderItems.length) {
-            // Create new folder and move
-            handleCreateAndMove()
-          } else if (selectedItem && selectedItem.path !== currentFolder) {
-            handleMove(selectedItem.path)
-          }
-          break
-
-        case 'Escape':
-          e.preventDefault()
-          onOpenChange(false)
-          break
-
-        // Number keys for quick selection (1-5 for suggestions)
-        case '1':
-        case '2':
-        case '3':
-        case '4':
-        case '5':
-          if (!searchQuery) {
-            const num = parseInt(e.key, 10) - 1
-            if (num < folderItems.length && folderItems[num].isSuggestion) {
-              e.preventDefault()
-              handleMove(folderItems[num].path)
-            }
-          }
-          break
-      }
-    },
-    [
-      folderItems,
-      selectedIndex,
-      canCreateFolder,
-      selectedItem,
-      currentFolder,
-      searchQuery,
-      onOpenChange
-    ]
-  )
-
   // Handle move action
   const handleMove = useCallback(
     async (targetFolder: string): Promise<void> => {
@@ -328,6 +270,66 @@ function MoveToFolderDialogSession({
       setIsMoving(false)
     }
   }, [canCreateFolder, searchQuery, onMove, onOpenChange])
+
+  // Handle keyboard navigation
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent): void => {
+      const itemCount = folderItems.length + (canCreateFolder ? 1 : 0)
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault()
+          setSelectedIndex((prev) => (prev + 1) % itemCount)
+          break
+
+        case 'ArrowUp':
+          e.preventDefault()
+          setSelectedIndex((prev) => (prev - 1 + itemCount) % itemCount)
+          break
+
+        case 'Enter':
+          e.preventDefault()
+          if (canCreateFolder && selectedIndex === folderItems.length) {
+            // Create new folder and move
+            void handleCreateAndMove()
+          } else if (selectedItem && selectedItem.path !== currentFolder) {
+            void handleMove(selectedItem.path)
+          }
+          break
+
+        case 'Escape':
+          e.preventDefault()
+          onOpenChange(false)
+          break
+
+        // Number keys for quick selection (1-5 for suggestions)
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+          if (!searchQuery) {
+            const num = parseInt(e.key, 10) - 1
+            if (num < folderItems.length && folderItems[num].isSuggestion) {
+              e.preventDefault()
+              void handleMove(folderItems[num].path)
+            }
+          }
+          break
+      }
+    },
+    [
+      folderItems,
+      canCreateFolder,
+      selectedIndex,
+      selectedItem,
+      currentFolder,
+      onOpenChange,
+      searchQuery,
+      handleCreateAndMove,
+      handleMove
+    ]
+  )
 
   // Dialog title
   const title =
@@ -389,7 +391,7 @@ function MoveToFolderDialogSession({
                           key={`suggestion-${item.path}`}
                           data-selected={isSelected}
                           disabled={isCurrent}
-                          onClick={() => !isCurrent && handleMove(item.path)}
+                          onClick={() => void (!isCurrent && handleMove(item.path))}
                           className={cn(
                             'w-full flex items-center gap-2 px-2 py-2 rounded-md text-left',
                             'transition-colors',
@@ -438,7 +440,7 @@ function MoveToFolderDialogSession({
                         key={`folder-${item.path}`}
                         data-selected={isSelected}
                         disabled={isCurrent}
-                        onClick={() => !isCurrent && handleMove(item.path)}
+                        onClick={() => void (!isCurrent && handleMove(item.path))}
                         className={cn(
                           'w-full flex items-center gap-2 px-2 py-2 rounded-md text-left',
                           'transition-colors',
@@ -477,7 +479,7 @@ function MoveToFolderDialogSession({
                 <div className="border-t pt-2 mt-2">
                   <button
                     data-selected={selectedIndex === folderItems.length}
-                    onClick={handleCreateAndMove}
+                    onClick={() => void handleCreateAndMove()}
                     className={cn(
                       'w-full flex items-center gap-2 px-2 py-2 rounded-md text-left',
                       'transition-colors text-primary',
@@ -506,9 +508,9 @@ function MoveToFolderDialogSession({
         <Button
           onClick={() => {
             if (canCreateFolder && selectedIndex === folderItems.length) {
-              handleCreateAndMove()
+              void handleCreateAndMove()
             } else if (selectedItem && selectedItem.path !== currentFolder) {
-              handleMove(selectedItem.path)
+              void handleMove(selectedItem.path)
             }
           }}
           disabled={

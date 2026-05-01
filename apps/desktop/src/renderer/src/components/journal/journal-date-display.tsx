@@ -37,8 +37,8 @@ function getTimeOfDay(): TimeOfDay {
 }
 
 export function JournalDateDisplay({ viewState, dateParts, className }: JournalDateDisplayProps) {
-  const { t, i18n } = useT('journal')
-  const dateLabels = useMemo(() => createJournalDateLabels(t), [t, i18n.language])
+  const { t, i18n: _i18n } = useT('journal')
+  const dateLabels = useMemo(() => createJournalDateLabels(t), [t])
   const timeOfDay = useMemo(() => getTimeOfDay(), [])
   const config = TIME_CONFIG[timeOfDay]
   const Icon = config.icon

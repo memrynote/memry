@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import {
   useDayPanel,
@@ -95,11 +95,11 @@ export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
   const { settings: calendarPrefs } = useCalendarPreferences()
   const isCalendarTabActive = activeTab?.type === 'calendar'
 
-  const [hoveredEventColor, setHoveredEventColor] = useState<string | null>(null)
-
-  useEffect(() => {
-    setHoveredEventColor(null)
-  }, [selectedDate])
+  const [hoveredEvent, setHoveredEvent] = useState<{ date: string; color: string | null }>({
+    date: selectedDate,
+    color: null
+  })
+  const hoveredEventColor = hoveredEvent.date === selectedDate ? hoveredEvent.color : null
 
   const selectedDateObj = parseISODate(selectedDate)
   const currentYear = selectedDateObj.getFullYear()
@@ -226,7 +226,10 @@ export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
           </div>
           <div className="h-px mx-4 bg-border/30" />
           <div className="p-4">
-            <JournalDayPanel date={selectedDate} onHoverColor={setHoveredEventColor} />
+            <JournalDayPanel
+              date={selectedDate}
+              onHoverColor={(color) => setHoveredEvent({ date: selectedDate, color })}
+            />
           </div>
         </div>
       </div>

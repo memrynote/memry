@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { getOperatorsForType, getDefaultOperator, type PropertyType } from '@/lib/filter-evaluator'
+import { stringifyUnknown } from '@/lib/stringify-unknown'
 import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
@@ -273,7 +274,7 @@ function ValueInput({ type, value, onChange }: ValueInputProps): React.JSX.Eleme
       return (
         <Input
           type="text"
-          value={String(value ?? '')}
+          value={stringifyUnknown(value)}
           onChange={(e) => onChange(e.target.value)}
           className="flex-1 h-8 text-xs min-w-[100px]"
           placeholder={tPhaseF('phaseF.componentsFolderViewFilterRow.placeholderValue')}

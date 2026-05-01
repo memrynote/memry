@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import { Loader2, CheckCircle, XCircle, Eye, EyeOff } from '@/lib/icons'
+import { Loader2, Eye, EyeOff } from '@/lib/icons'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
@@ -160,7 +160,7 @@ export function AIInlineSettings(): React.JSX.Element {
       <SettingRow label={t('ai.inline.enable')} description={t('ai.inline.enableDescription')}>
         <Switch
           checked={settings.enabled}
-          onCheckedChange={handleToggleEnabled}
+          onCheckedChange={(...args) => void handleToggleEnabled(...args)}
           className={ACCENT_SWITCH}
         />
       </SettingRow>
@@ -171,7 +171,12 @@ export function AIInlineSettings(): React.JSX.Element {
             label={t('ai.inline.provider')}
             description={t('ai.inline.providerDescription')}
           >
-            <Select value={settings.provider} onValueChange={handleProviderChange}>
+            <Select
+              value={settings.provider}
+              onValueChange={(value) =>
+                void handleProviderChange(value as AIInlineSettings['provider'])
+              }
+            >
               <SelectTrigger className={COMPACT_SELECT}>
                 <SelectValue />
               </SelectTrigger>
@@ -278,7 +283,7 @@ export function AIInlineSettings(): React.JSX.Element {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleTestConnection}
+              onClick={() => void handleTestConnection()}
               disabled={isTesting || (needsApiKey && !settings.apiKey)}
               className="h-7 px-3 text-xs/4"
             >

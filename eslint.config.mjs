@@ -116,7 +116,10 @@ export default defineConfig(
       'react/display-name': 'off',
       '@typescript-eslint/unbound-method': 'warn',
       '@typescript-eslint/no-empty-object-type': 'warn',
-      'react-refresh/only-export-components': 'warn',
+      // Existing renderer files intentionally co-export providers/hooks, UI primitives,
+      // and editor block helpers. Enforcing this would require broad file-splitting
+      // unrelated to normal lint correctness.
+      'react-refresh/only-export-components': 'off',
       'react-hooks/rules-of-hooks': 'warn',
       'react-hooks/set-state-in-effect': 'warn',
       'react-hooks/preserve-manual-memoization': 'warn',
@@ -175,7 +178,22 @@ export default defineConfig(
     files: ['apps/desktop/src/preload/index.ts', 'apps/desktop/src/preload/index.d.ts'],
     rules: {
       // TODO(phase-tbd): preload is generated from contracts; drop overrides once chunked output lands
-      'max-lines': 'off'
+      'max-lines': 'off',
+      '@typescript-eslint/no-redundant-type-constituents': 'off'
+    }
+  },
+  {
+    files: [
+      'apps/desktop/src/renderer/src/components/calendar/use-week-infinite-scroll.ts',
+      'apps/desktop/src/renderer/src/components/note/note-title/HugeIconGrid.tsx',
+      'apps/desktop/src/renderer/src/components/tasks/project/virtualized-project-task-list.tsx',
+      'apps/desktop/src/renderer/src/components/tasks/virtualized-all-tasks-view.tsx',
+      'apps/desktop/src/renderer/src/components/virtualized-notes-tree.tsx'
+    ],
+    rules: {
+      // TanStack Virtual is the app virtualization layer; React Compiler cannot
+      // optimize these call sites, but the usage is intentional and isolated.
+      'react-hooks/incompatible-library': 'off'
     }
   },
   {

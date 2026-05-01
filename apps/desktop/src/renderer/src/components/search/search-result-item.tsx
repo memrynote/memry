@@ -47,7 +47,7 @@ function HighlightedText({ text, query }: { text: string; query: string }): Reac
 
 function NoteMetadata({
   meta,
-  query
+  query: _query
 }: {
   meta: NoteResultMetadata
   query: string

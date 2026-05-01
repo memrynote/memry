@@ -727,8 +727,7 @@ import type {
   SearchResponse,
   QuickSearchResponse,
   SearchStats,
-  SearchReason,
-  IndexRebuildProgress
+  SearchReason
 } from '@memry/contracts/search-api'
 
 export interface SearchClientAPI {

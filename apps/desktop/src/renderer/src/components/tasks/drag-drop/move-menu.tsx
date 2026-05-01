@@ -85,7 +85,7 @@ export const MoveMenu = ({
   const [open, setOpen] = useState(false)
 
   // Get current project
-  const currentProject = projects.find((p) => p.id === task.projectId)
+  const _currentProject = projects.find((p) => p.id === task.projectId)
 
   // Quick date options
   const today = startOfDay(new Date())

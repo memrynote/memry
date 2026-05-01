@@ -172,7 +172,7 @@ export function NewTabMenu({ groupId }: NewTabMenuProps): React.JSX.Element {
         </TooltipContent>
       </Tooltip>
       <DropdownMenuContent side="bottom" align="start" className="min-w-[180px]">
-        <DropdownMenuItem onClick={handleNewNote}>
+        <DropdownMenuItem onClick={() => void handleNewNote()}>
           <FileText className="size-4" />
           <span>{tPhaseF('phaseF.componentsTabsNewTabMenu.newNote')}</span>
         </DropdownMenuItem>

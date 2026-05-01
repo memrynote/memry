@@ -161,7 +161,7 @@ export function DatePickerCalendar({
     })
   }, [])
 
-  const isViewingTodayMonth = viewYear === today.getFullYear() && viewMonth === today.getMonth()
+  const _isViewingTodayMonth = viewYear === today.getFullYear() && viewMonth === today.getMonth()
 
   const goToToday = useCallback(() => {
     setViewYear(today.getFullYear())

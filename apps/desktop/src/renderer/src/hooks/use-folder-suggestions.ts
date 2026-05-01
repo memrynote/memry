@@ -98,9 +98,12 @@ export function useFolderSuggestions(noteId: string | null): UseFolderSuggestion
   // Fetch on mount or noteId change
   useEffect(() => {
     mountedRef.current = true
-    fetchSuggestions()
+    const fetchTimer = window.setTimeout(() => {
+      void fetchSuggestions()
+    }, 0)
 
     return () => {
+      window.clearTimeout(fetchTimer)
       mountedRef.current = false
     }
   }, [fetchSuggestions])
@@ -110,7 +113,7 @@ export function useFolderSuggestions(noteId: string | null): UseFolderSuggestion
     if (noteId) {
       suggestionsCache.delete(noteId)
     }
-    fetchSuggestions()
+    void fetchSuggestions()
   }, [noteId, fetchSuggestions])
 
   return {

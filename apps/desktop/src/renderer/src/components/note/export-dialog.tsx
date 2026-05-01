@@ -312,7 +312,7 @@ export function ExportDialog({
           <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isExporting}>
             {tCommon('button.cancel')}
           </Button>
-          <Button onClick={handleExport} disabled={isExporting || exportSuccess}>
+          <Button onClick={() => void handleExport()} disabled={isExporting || exportSuccess}>
             {isExporting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useCallback, useEffect, useRef } from 'react'
 import { type Block } from '@blocknote/core'
@@ -159,7 +159,6 @@ export function useEditorSync({
             if (contentType === 'markdown') {
               blocks = await parseMarkdownPreservingBlanks(editor, content)
             } else {
-              // eslint-disable-next-line @typescript-eslint/await-thenable -- BlockNote types are incorrect
               blocks = await editor.tryParseHTMLToBlocks(content)
             }
 
@@ -200,15 +199,16 @@ export function useEditorSync({
         }
       } finally {
         isContentReadyRef.current = true
-        if (cancelled) return
-        if (onHeadingsChange) {
-          const headings = extractHeadings(editor.document as Block[])
-          onHeadingsChange(headings)
-        }
-        if (onInlineTagsChange) {
-          const tags = extractInlineTags(editor.document as Block[])
-          prevInlineTagsRef.current = tags
-          onInlineTagsChange(tags)
+        if (!cancelled) {
+          if (onHeadingsChange) {
+            const headings = extractHeadings(editor.document as Block[])
+            onHeadingsChange(headings)
+          }
+          if (onInlineTagsChange) {
+            const tags = extractInlineTags(editor.document as Block[])
+            prevInlineTagsRef.current = tags
+            onInlineTagsChange(tags)
+          }
         }
       }
     }
@@ -240,28 +240,30 @@ export function useEditorSync({
       if (markdownDebounceRef.current) {
         clearTimeout(markdownDebounceRef.current)
       }
-      markdownDebounceRef.current = setTimeout(async () => {
-        try {
-          let markdown = await serializeBlocksPreservingBlanks(editor, editor.document as Block[])
+      markdownDebounceRef.current = setTimeout(() => {
+        void (async () => {
+          try {
+            let markdown = await serializeBlocksPreservingBlanks(editor, editor.document as Block[])
 
-          const fileBlocks = (editor.document as Block[]).filter((b) => b.type === 'file')
-          if (fileBlocks.length > 0) {
-            const markers = fileBlocks.map((b) => {
-              const props = b.props as unknown as {
-                url: string
-                name: string
-                size: number
-                mimeType: string
-              }
-              return serializeFileBlock(props)
-            })
-            markdown = markdown + '\n\n' + markers.join('\n')
+            const fileBlocks = (editor.document as Block[]).filter((b) => b.type === 'file')
+            if (fileBlocks.length > 0) {
+              const markers = fileBlocks.map((b) => {
+                const props = b.props as unknown as {
+                  url: string
+                  name: string
+                  size: number
+                  mimeType: string
+                }
+                return serializeFileBlock(props)
+              })
+              markdown = markdown + '\n\n' + markers.join('\n')
+            }
+
+            onMarkdownChange(markdown)
+          } catch (error) {
+            log.error('Failed to convert blocks to markdown', error)
           }
-
-          onMarkdownChange(markdown)
-        } catch (error) {
-          log.error('Failed to convert blocks to markdown', error)
-        }
+        })()
       }, 150)
     }
 
@@ -291,10 +293,11 @@ export function useEditorSync({
   }, [
     editor,
     onContentChange,
+    isRemoteUpdateRef,
+    yjsFragment,
     onMarkdownChange,
     onHeadingsChange,
-    onInlineTagsChange,
-    isRemoteUpdateRef
+    onInlineTagsChange
   ])
 
   return { handleChange, isContentReadyRef, prevInlineTagsRef, lastNormalizedTagsRef }

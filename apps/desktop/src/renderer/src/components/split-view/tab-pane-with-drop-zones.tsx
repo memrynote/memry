@@ -129,7 +129,7 @@ export const TabPaneWithDropZones = ({
       }
     } else {
       const directionMap = { left: 'left', right: 'right', top: 'up', bottom: 'down' } as const
-      const dir = directionMap[zone as keyof typeof directionMap]
+      const dir = directionMap[zone]
       dispatch({
         type: 'MOVE_TAB_TO_NEW_SPLIT',
         payload: {

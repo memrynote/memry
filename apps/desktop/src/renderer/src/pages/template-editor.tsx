@@ -440,7 +440,7 @@ function TemplateEditorForm({
           </div>
         </div>
         {!isBuiltIn && (
-          <Button onClick={handleSave} disabled={isSaving || (!isNew && !isModified)}>
+          <Button onClick={() => void handleSave()} disabled={isSaving || (!isNew && !isModified)}>
             {isSaving ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : (

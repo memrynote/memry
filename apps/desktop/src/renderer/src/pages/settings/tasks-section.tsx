@@ -90,7 +90,7 @@ export function TasksSettings() {
         >
           <Select
             value={settings.defaultProjectId ?? 'none'}
-            onValueChange={handleDefaultProjectChange}
+            onValueChange={(...args) => void handleDefaultProjectChange(...args)}
           >
             <SelectTrigger className={COMPACT_SELECT}>
               <SelectValue placeholder={t('tasks.defaultProject.placeholder')} />
@@ -116,7 +116,10 @@ export function TasksSettings() {
           label={t('tasks.sortOrder.label')}
           description={t('tasks.sortOrder.description')}
         >
-          <Select value={settings.defaultSortOrder} onValueChange={handleSortOrderChange}>
+          <Select
+            value={settings.defaultSortOrder}
+            onValueChange={(...args) => void handleSortOrderChange(...args)}
+          >
             <SelectTrigger className={COMPACT_SELECT}>
               <SelectValue />
             </SelectTrigger>
@@ -139,7 +142,7 @@ export function TasksSettings() {
           <ToggleGroup
             type="single"
             value={settings.weekStartDay}
-            onValueChange={handleWeekStartChange}
+            onValueChange={(...args) => void handleWeekStartChange(...args)}
             className="gap-0 rounded-md border border-border overflow-clip"
           >
             <ToggleGroupItem
