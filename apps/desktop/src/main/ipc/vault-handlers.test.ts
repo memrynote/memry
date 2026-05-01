@@ -39,6 +39,22 @@ vi.mock('../vault', () => ({
   reindex: vi.fn()
 }))
 
+// Mock store helpers used to detect known vaults
+const { findVaultMock, trackMock } = vi.hoisted(() => ({
+  findVaultMock: vi.fn(),
+  trackMock: vi.fn()
+}))
+vi.mock('../store', () => ({
+  findVault: findVaultMock
+}))
+
+// Mock telemetry runtime for tracking assertions
+vi.mock('../telemetry/runtime', () => ({
+  getTelemetryRuntime: () => ({
+    track: trackMock
+  })
+}))
+
 // Import after mocking
 import { registerVaultHandlers, unregisterVaultHandlers } from './vault-handlers'
 import * as vault from '../vault'
@@ -89,6 +105,7 @@ describe('vault-handlers', () => {
         vault: { path: '/home/user/vault', name: 'My Vault' }
       }
       ;(vault.selectVault as Mock).mockResolvedValue(mockResult)
+      findVaultMock.mockReturnValue({ path: '/home/user/vault' })
 
       const result = await invokeHandler(VaultChannels.invoke.SELECT, {
         path: '/home/user/vault'
@@ -96,6 +113,45 @@ describe('vault-handlers', () => {
 
       expect(result).toEqual(mockResult)
       expect(vault.selectVault).toHaveBeenCalledWith({ path: '/home/user/vault' })
+    })
+
+    it('emits vault_opened telemetry on successful select', async () => {
+      const mockResult = {
+        success: true,
+        vault: { path: '/home/user/vault', name: 'My Vault' }
+      }
+      ;(vault.selectVault as Mock).mockResolvedValue(mockResult)
+      findVaultMock.mockReturnValue({ path: '/home/user/vault' })
+
+      await invokeHandler(VaultChannels.invoke.SELECT, { path: '/home/user/vault' })
+
+      expect(trackMock).toHaveBeenCalled()
+      const telemetryNames = trackMock.mock.calls.map((call) => (call[0] as { name: string }).name)
+      expect(telemetryNames).toContain('vault_opened')
+    })
+
+    it('emits vault_created telemetry when selecting a brand-new vault path', async () => {
+      const mockResult = {
+        success: true,
+        vault: { path: '/home/user/fresh-vault', name: 'Fresh Vault' }
+      }
+      ;(vault.selectVault as Mock).mockResolvedValue(mockResult)
+      findVaultMock.mockReturnValue(undefined)
+
+      await invokeHandler(VaultChannels.invoke.SELECT, { path: '/home/user/fresh-vault' })
+
+      const telemetryNames = trackMock.mock.calls.map((call) => (call[0] as { name: string }).name)
+      expect(telemetryNames).toContain('vault_created')
+      expect(telemetryNames).toContain('vault_opened')
+    })
+
+    it('does not emit telemetry when select fails', async () => {
+      ;(vault.selectVault as Mock).mockResolvedValue({ success: false, vault: null, error: 'x' })
+      findVaultMock.mockReturnValue(undefined)
+
+      await invokeHandler(VaultChannels.invoke.SELECT, { path: '/home/user/vault' })
+
+      expect(trackMock).not.toHaveBeenCalled()
     })
 
     it('should select vault without path (shows folder picker)', async () => {
@@ -217,13 +273,28 @@ describe('vault-handlers', () => {
     })
 
     it('should switch to a different vault', async () => {
-      const mockResult = { success: true }
+      const mockResult = { success: true, vault: { path: '/path/to/other/vault' } }
       ;(vault.switchVault as Mock).mockResolvedValue(mockResult)
 
       const result = await invokeHandler(VaultChannels.invoke.SWITCH, '/path/to/other/vault')
 
       expect(result).toEqual(mockResult)
       expect(vault.switchVault).toHaveBeenCalledWith('/path/to/other/vault')
+    })
+
+    it('emits vault_opened telemetry with switch source', async () => {
+      ;(vault.switchVault as Mock).mockResolvedValue({
+        success: true,
+        vault: { path: '/path/to/other/vault' }
+      })
+
+      await invokeHandler(VaultChannels.invoke.SWITCH, '/path/to/other/vault')
+
+      const switchEvents = trackMock.mock.calls
+        .map((call) => call[0] as { name: string; source?: string })
+        .filter((event) => event.name === 'vault_opened')
+      expect(switchEvents.length).toBeGreaterThan(0)
+      expect(switchEvents[0].source).toBe('switch')
     })
 
     it('should handle switch errors', async () => {
