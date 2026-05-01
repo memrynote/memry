@@ -12,6 +12,7 @@ import { useProject } from '@/hooks/use-project'
 import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { useTabs } from '@/contexts/tabs'
 import { useTasksOptional } from '@/contexts/tasks'
+import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 import { tasksService } from '@/services/tasks-service'
 import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -40,6 +41,7 @@ export function CalendarTaskPopover({
   const { tags: allTags } = useNoteTagsQuery({ enabled: (task?.tags?.length ?? 0) > 0 })
   const tasksContext = useTasksOptional()
   const { openTab } = useTabs()
+  const { openTag } = useSidebarDrillDown()
   const { t } = useT('calendar')
 
   const isCompleted = !!task?.completedAt
@@ -94,7 +96,7 @@ export function CalendarTaskPopover({
         .catch((err: unknown) => {
           log.error(
             'snooze failed:',
-            extractErrorMessage(err, t('task-popover.errors.could-not-snooze'))
+            extractErrorMessage(err, t('task-popover.errors.could-not-reschedule'))
           )
         })
     },
@@ -115,6 +117,7 @@ export function CalendarTaskPopover({
   }, [task, onDismiss, t])
 
   const handleOpenTask = useCallback(() => {
+    if (!task) return
     openTab({
       type: 'tasks',
       title: 'Tasks',
@@ -124,10 +127,15 @@ export function CalendarTaskPopover({
       isModified: false,
       isPreview: false,
       isDeleted: false,
-      viewState: { openTaskId: item.sourceId }
+      viewState: {
+        openTaskId: item.sourceId,
+        selectedProjectId: task.projectId,
+        activeInternalTab: 'all',
+        activeTab: 'all'
+      }
     })
     onDismiss()
-  }, [openTab, item.sourceId, onDismiss])
+  }, [openTab, item.sourceId, task, onDismiss])
 
   const handleOpenSourceNote = useCallback((): void => {
     if (!task?.sourceNoteId) return
@@ -156,6 +164,13 @@ export function CalendarTaskPopover({
       })
   }, [task, openTab, onDismiss, t])
 
+  const handleTagClick = useCallback(
+    (tag: { name: string; color: string }): void => {
+      openTag(tag.name, tag.color)
+    },
+    [openTag]
+  )
+
   const handlePickDateTime = useCallback(() => {
     // Custom date-time picker dialog is a follow-up PR. For now, route to the
     // existing TaskDetailDrawer where the user can change due date/time fully.
@@ -169,7 +184,12 @@ export function CalendarTaskPopover({
         isModified: false,
         isPreview: false,
         isDeleted: false,
-        viewState: { openTaskId: task.id }
+        viewState: {
+          openTaskId: task.id,
+          selectedProjectId: task.projectId,
+          activeInternalTab: 'all',
+          activeTab: 'all'
+        }
       })
     }
     onDismiss()
@@ -218,10 +238,12 @@ export function CalendarTaskPopover({
           <CalendarTaskPopoverMeta
             task={task}
             projectName={taskProject?.name ?? project?.name ?? ''}
+            projectColor={taskProject?.color ?? project?.color ?? '#6B7280'}
             tags={taskTags}
             repeatSummary={summarizeRepeat(task.repeatConfig, t)}
             description={task.description}
             isCompleted={isCompleted}
+            onTagClick={handleTagClick}
           />
           <CalendarTaskPopoverSubtasks subtasks={subtasks} onToggleSubtask={handleToggleSubtask} />
           <CalendarTaskPopoverActions

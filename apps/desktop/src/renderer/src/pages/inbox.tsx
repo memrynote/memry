@@ -24,6 +24,7 @@ import { CaptureInput } from '@/components/capture-input'
 import { Picker } from '@/components/ui/picker'
 import { useInboxNotifications } from '@/hooks/use-inbox-notifications'
 import { useInboxJobs, useInboxList, useInboxSnoozed } from '@/hooks/use-inbox'
+import { useActiveTab } from '@/contexts/tabs'
 import type { InboxItemType } from '@memry/contracts/inbox-api'
 import { InboxListView } from './inbox/inbox-list-view'
 import { InboxHealthView } from './inbox/inbox-health-view'
@@ -75,6 +76,26 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
     items.map((item) => item.id)
   )
   const snoozedCount = snoozedItems.length
+
+  const activeTab = useActiveTab()
+  const focusInboxItemId =
+    typeof activeTab?.viewState?.focusInboxItemId === 'string'
+      ? (activeTab.viewState.focusInboxItemId as string)
+      : null
+  const focusToken =
+    typeof activeTab?.viewState?.focusedAt === 'number'
+      ? (activeTab.viewState.focusedAt as number)
+      : null
+  const lastConsumedFocusTokenRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (!focusInboxItemId || focusToken === null) return
+    if (lastConsumedFocusTokenRef.current === focusToken) return
+    lastConsumedFocusTokenRef.current = focusToken
+    setIsTriageMode(false)
+    setShowSnoozedItems(true)
+    setCurrentView('inbox')
+  }, [focusInboxItemId, focusToken])
 
   const itemCountsByType = useMemo(() => {
     const counts: Record<InboxItemType, number> = {
@@ -391,6 +412,8 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                 className={className}
                 selectedTypes={selectedTypes}
                 showSnoozedItems={showSnoozedItems}
+                focusItemId={focusInboxItemId}
+                focusToken={focusToken}
               />
             )}
             {currentView === 'archived' && (

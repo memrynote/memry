@@ -331,6 +331,8 @@ export const InboxDetailPanel = ({
       role="complementary"
       aria-label={t('detail.ariaLabel')}
       aria-hidden={!isOpen}
+      data-testid="inbox-detail-panel"
+      data-state={isOpen ? 'open' : 'closed'}
       className={cn(
         'fixed top-[37px] bottom-0 z-10 border-l bg-surface overflow-hidden',
         'transition-[width,opacity,right] duration-200 ease-out',
