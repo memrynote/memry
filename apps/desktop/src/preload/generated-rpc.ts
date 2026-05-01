@@ -241,6 +241,12 @@ export function createGeneratedRpcApi({
       promoteExternalEvent: ((input) => invoke("calendar:promote-external-event", input)) as GeneratedRpcApi["calendar"]["promoteExternalEvent"],
       retryGoogleCalendarSourceSync: ((input) => invoke("calendar:retry-google-source-sync", input)) as GeneratedRpcApi["calendar"]["retryGoogleCalendarSourceSync"],
     },
+    telemetry: {
+      track: ((event) => invoke("telemetry:track", event)) as GeneratedRpcApi["telemetry"]["track"],
+      flush: (() => invoke("telemetry:flush")) as GeneratedRpcApi["telemetry"]["flush"],
+      getSettings: (() => invoke("telemetry:getSettings")) as GeneratedRpcApi["telemetry"]["getSettings"],
+      setEnabled: ((enabled) => invoke("telemetry:setEnabled", enabled)) as GeneratedRpcApi["telemetry"]["setEnabled"],
+    },
     onNoteCreated: ((callback) => subscribe("notes:created", callback)) as GeneratedRpcApi["onNoteCreated"],
     onNoteUpdated: ((callback) => subscribe("notes:updated", callback)) as GeneratedRpcApi["onNoteUpdated"],
     onNoteDeleted: ((callback) => subscribe("notes:deleted", callback)) as GeneratedRpcApi["onNoteDeleted"],

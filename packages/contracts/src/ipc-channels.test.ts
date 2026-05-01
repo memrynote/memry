@@ -27,7 +27,8 @@ import {
   ReminderChannels,
   SearchChannels,
   FolderViewChannels,
-  GraphChannels
+  GraphChannels,
+  TelemetryChannels
 } from './ipc-channels'
 
 type ChannelGroup = {
@@ -54,7 +55,8 @@ const ALL_GROUPS: Array<readonly [string, ChannelGroup]> = [
   ['ReminderChannels', ReminderChannels],
   ['SearchChannels', SearchChannels],
   ['FolderViewChannels', FolderViewChannels],
-  ['GraphChannels', GraphChannels]
+  ['GraphChannels', GraphChannels],
+  ['TelemetryChannels', TelemetryChannels]
 ]
 
 const GROUP_PREFIXES: Record<string, string> = {
@@ -75,7 +77,8 @@ const GROUP_PREFIXES: Record<string, string> = {
   ReminderChannels: 'reminder:',
   SearchChannels: 'search:',
   FolderViewChannels: 'folder-view:',
-  GraphChannels: 'graph:'
+  GraphChannels: 'graph:',
+  TelemetryChannels: 'telemetry:'
 }
 
 function collectChannels(group: ChannelGroup): string[] {
@@ -205,6 +208,15 @@ describe('GraphChannels', () => {
   it('exposes graph data invoke channels', () => {
     expect(GraphChannels.invoke.GET_GRAPH_DATA).toBe('graph:get-graph-data')
     expect(GraphChannels.invoke.GET_LOCAL_GRAPH).toBe('graph:get-local-graph')
+  })
+})
+
+describe('TelemetryChannels', () => {
+  it('exposes track, flush, getSettings, and setEnabled invoke channels', () => {
+    expect(TelemetryChannels.invoke.TRACK).toBe('telemetry:track')
+    expect(TelemetryChannels.invoke.FLUSH).toBe('telemetry:flush')
+    expect(TelemetryChannels.invoke.GET_SETTINGS).toBe('telemetry:getSettings')
+    expect(TelemetryChannels.invoke.SET_ENABLED).toBe('telemetry:setEnabled')
   })
 })
 

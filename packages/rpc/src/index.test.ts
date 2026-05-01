@@ -8,8 +8,11 @@ import {
   notesRpc,
   rpcDomains,
   settingsRpc,
-  tasksRpc
+  tasksRpc,
+  telemetryRpc
 } from './index.ts'
+
+const DOMAINS_WITHOUT_EVENTS = new Set(['telemetry'])
 
 describe('@memry/rpc public surface', () => {
   it('re-exports the schema factories', () => {
@@ -24,24 +27,32 @@ describe('@memry/rpc public surface', () => {
     expect(inboxRpc.name).toBe('inbox')
     expect(settingsRpc.name).toBe('settings')
     expect(calendarRpc.name).toBe('calendar')
+    expect(telemetryRpc.name).toBe('telemetry')
   })
 })
 
 describe('rpcDomains aggregate', () => {
-  it('contains exactly the five known domains in declaration order', () => {
-    expect(rpcDomains).toHaveLength(5)
+  it('contains exactly the six known domains in declaration order', () => {
+    expect(rpcDomains).toHaveLength(6)
     expect(rpcDomains.map((d) => d.name)).toEqual([
       'notes',
       'tasks',
       'inbox',
       'settings',
-      'calendar'
+      'calendar',
+      'telemetry'
     ])
   })
 
-  it('every domain has non-empty method and event maps (except calendar events minimal)', () => {
+  it('every domain has non-empty method maps', () => {
     for (const domain of rpcDomains) {
       expect(Object.keys(domain.methods).length, `${domain.name}.methods`).toBeGreaterThan(0)
+    }
+  })
+
+  it('every event-bearing domain has non-empty event maps', () => {
+    for (const domain of rpcDomains) {
+      if (DOMAINS_WITHOUT_EVENTS.has(domain.name)) continue
       expect(Object.keys(domain.events).length, `${domain.name}.events`).toBeGreaterThan(0)
     }
   })
