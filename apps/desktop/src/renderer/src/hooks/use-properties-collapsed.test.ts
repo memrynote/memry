@@ -65,6 +65,17 @@ describe('usePropertiesCollapsed', () => {
     expect(resultB.current[0]).toBe(false)
   })
 
+  it('re-reads localStorage when noteId changes across renders', () => {
+    localStorage.setItem('memry:properties-collapsed:note-A', '1')
+    const { result, rerender } = renderHook(
+      ({ id }: { id: string }) => usePropertiesCollapsed(id),
+      { initialProps: { id: 'note-A' } }
+    )
+    expect(result.current[0]).toBe(true)
+    rerender({ id: 'note-B' })
+    expect(result.current[0]).toBe(false)
+  })
+
   it('returns expanded with no-op handlers when noteId is empty', () => {
     const { result } = renderHook(() => usePropertiesCollapsed(''))
     expect(result.current[0]).toBe(false)
@@ -84,6 +95,10 @@ describe('usePropertiesCollapsed', () => {
       result.current[2](true)
     })
     expect(result.current[0]).toBe(true)
+    act(() => {
+      result.current[1]()
+    })
+    expect(result.current[0]).toBe(false)
     setItemSpy.mockRestore()
   })
 
@@ -97,6 +112,10 @@ describe('usePropertiesCollapsed', () => {
       result.current[2](false)
     })
     expect(result.current[0]).toBe(false)
+    act(() => {
+      result.current[1]()
+    })
+    expect(result.current[0]).toBe(true)
     removeItemSpy.mockRestore()
   })
 })
