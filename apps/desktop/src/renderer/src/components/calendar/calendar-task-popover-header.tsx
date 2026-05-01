@@ -35,13 +35,13 @@ export function CalendarTaskPopoverHeader({
             ↳ {parentTitle}
           </div>
         )}
-        <div className="flex items-start gap-2">
+        <div className="flex items-center gap-2">
           {statuses.length > 0 && (
             <span
               role="img"
               aria-label={`Status: ${statusName}`}
               title={statusName}
-              className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm"
+              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm"
               style={{ backgroundColor: `${statusColor}14` }}
             >
               <StatusIcon type={statusType} color={statusColor} />

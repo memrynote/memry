@@ -108,7 +108,6 @@ type TreeNodeContextType = {
   isLast: boolean
   parentPath: boolean[]
   hasChildren: boolean
-  setHasChildren: (value: boolean) => void
   acceptsDropInside: boolean
   hideLines: boolean
   customIcon?: string
@@ -504,6 +503,7 @@ export type TreeNodeProps = HTMLAttributes<HTMLDivElement> & {
   hideLines?: boolean
   customIcon?: string
   inheritedIcon?: string
+  hasChildren?: boolean
 }
 
 export const TreeNode = ({
@@ -518,6 +518,7 @@ export const TreeNode = ({
   hideLines: hideLinesProp = false,
   customIcon: initialCustomIcon,
   inheritedIcon: initialInheritedIcon,
+  hasChildren = false,
   ...props
 }: TreeNodeProps) => {
   const generatedId = useId()
@@ -525,7 +526,6 @@ export const TreeNode = ({
   const { registerNode, unregisterNode } = useTree()
   const parentContext = useContext(TreeNodeContext)
   const parentId = parentContext?.nodeId ?? null
-  const [hasChildren, setHasChildren] = useState(false)
   const [customIcon, setCustomIcon] = useState<string | undefined>(initialCustomIcon)
   const inheritedIcon =
     initialInheritedIcon ?? parentContext?.customIcon ?? parentContext?.inheritedIcon
@@ -557,7 +557,6 @@ export const TreeNode = ({
         isLast,
         parentPath: currentPath,
         hasChildren,
-        setHasChildren,
         acceptsDropInside,
         hideLines: hideLinesProp,
         customIcon,
@@ -930,27 +929,16 @@ export const TreeLines = () => {
   )
 }
 
-export type TreeNodeContentProps = ComponentProps<typeof m.div> & {
-  hasChildren?: boolean
-}
+export type TreeNodeContentProps = ComponentProps<typeof m.div>
 
-export const TreeNodeContent = ({
-  children,
-  hasChildren: hasChildrenProp = false,
-  className,
-  ...props
-}: TreeNodeContentProps) => {
+export const TreeNodeContent = ({ children, className, ...props }: TreeNodeContentProps) => {
   const { animateExpand, expandedIds } = useTree()
-  const { nodeId, setHasChildren, hasChildren } = useTreeNode()
+  const { nodeId, hasChildren } = useTreeNode()
   const isExpanded = expandedIds.has(nodeId)
-
-  if (hasChildrenProp && !hasChildren) {
-    setHasChildren(true)
-  }
 
   return (
     <AnimatePresence>
-      {hasChildrenProp && isExpanded && (
+      {hasChildren && isExpanded && (
         <m.div
           animate={{ height: 'auto', opacity: 1 }}
           className="overflow-clip"
@@ -970,25 +958,14 @@ export const TreeNodeContent = ({
   )
 }
 
-export type TreeExpanderProps = ComponentProps<typeof m.div> & {
-  hasChildren?: boolean
-}
+export type TreeExpanderProps = ComponentProps<typeof m.div>
 
-export const TreeExpander = ({
-  hasChildren: hasChildrenProp = false,
-  className,
-  onClick,
-  ...props
-}: TreeExpanderProps) => {
+export const TreeExpander = ({ className, onClick, ...props }: TreeExpanderProps) => {
   const { expandedIds, toggleExpanded } = useTree()
-  const { nodeId, setHasChildren, hasChildren } = useTreeNode()
+  const { nodeId, hasChildren } = useTreeNode()
   const isExpanded = expandedIds.has(nodeId)
 
-  if (hasChildrenProp && !hasChildren) {
-    setHasChildren(true)
-  }
-
-  if (!hasChildrenProp) {
+  if (!hasChildren) {
     return null
   }
 

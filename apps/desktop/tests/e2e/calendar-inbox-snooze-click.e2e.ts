@@ -96,7 +96,10 @@ test.describe('Calendar: snoozed inbox item click', () => {
     )
   })
 
-  test('Open in inbox navigates away from the calendar', async ({ electronApp, page }) => {
+  test('Open in inbox opens the detail panel for the snoozed item', async ({
+    electronApp,
+    page
+  }) => {
     await seedAndOpenDay(electronApp, page)
 
     const calendarPage = page.getByTestId('calendar-page')
@@ -110,5 +113,10 @@ test.describe('Calendar: snoozed inbox item click', () => {
     // Inbox is a singleton tab; activating it tears down the calendar surface
     // (the active group's content area renders the inbox tab instead).
     await expect(calendarPage).toBeHidden()
+
+    // The inbox detail panel should be open and showing the snoozed item.
+    const detailPanel = page.getByTestId('inbox-detail-panel')
+    await expect(detailPanel).toHaveAttribute('data-state', 'open')
+    await expect(detailPanel.getByText('Review investor email').first()).toBeVisible()
   })
 })

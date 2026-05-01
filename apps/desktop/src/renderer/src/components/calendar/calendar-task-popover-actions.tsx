@@ -58,9 +58,9 @@ export function CalendarTaskPopoverActions({
       {!isCompleted && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" aria-label={t('task-popover.snooze')}>
+            <Button variant="ghost" size="sm" aria-label={t('task-popover.reschedule')}>
               <Clock className="h-3.5 w-3.5 me-1" />
-              {t('task-popover.snooze')}
+              {t('task-popover.reschedule')}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

@@ -40,12 +40,16 @@ export interface InboxListViewProps {
   className?: string
   selectedTypes: Set<InboxItemType>
   showSnoozedItems: boolean
+  focusItemId?: string | null
+  focusToken?: number | null
 }
 
 export function InboxListView({
   className,
   selectedTypes,
-  showSnoozedItems
+  showSnoozedItems,
+  focusItemId = null,
+  focusToken = null
 }: InboxListViewProps): React.JSX.Element {
   const { t } = useT('inbox')
   const queryClient = useQueryClient()
@@ -79,6 +83,7 @@ export function InboxListView({
   const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false)
   const [focusedItemIdState, setFocusedItemIdState] = useState<string | null>(null)
   const emptyStateDelayRef = useRef<number | null>(null)
+  const lastConsumedFocusTokenRef = useRef<number | null>(null)
 
   const isDetailPanelOpen = activeDetailItemId !== null
   const isInBulkMode = selectedItemIds.size > 0
@@ -121,6 +126,18 @@ export function InboxListView({
   }, [clearEmptyStateDelay])
 
   useEffect(() => clearEmptyStateDelay, [clearEmptyStateDelay])
+
+  // Open the detail panel for an item requested from outside (e.g. calendar
+  // snooze popover). Token-keyed so the same item can be re-focused after the
+  // user closes the panel, and so switching tabs away and back does not
+  // re-trigger after consumption.
+  useEffect(() => {
+    if (!focusItemId || focusToken === null) return
+    if (lastConsumedFocusTokenRef.current === focusToken) return
+    lastConsumedFocusTokenRef.current = focusToken
+    setActiveDetailItemId(focusItemId)
+    setFocusedItemIdState(focusItemId)
+  }, [focusItemId, focusToken])
 
   // Computed values
   const selectedItems = useMemo(

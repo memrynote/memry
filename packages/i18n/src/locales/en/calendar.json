@@ -133,7 +133,7 @@
     "title-fallback": "Task details",
     "open-task": "Open task",
     "source-note": "Source note",
-    "snooze": "Snooze",
+    "reschedule": "Reschedule",
     "more-actions": "More actions",
     "mark-done": "Mark done",
     "mark-not-done": "Mark not done",
@@ -158,7 +158,7 @@
     "priority-medium": "Medium",
     "errors": {
       "could-not-save": "Could not save task",
-      "could-not-snooze": "Could not snooze task",
+      "could-not-reschedule": "Could not reschedule task",
       "could-not-remove-due-date": "Could not remove due date",
       "could-not-open-note": "Could not open note"
     }

@@ -425,7 +425,7 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     setPendingPromote({ item, anchorRect: rect })
   }
 
-  const handleInboxSnoozeOpenInInbox = (_itemId: string) => {
+  const handleInboxSnoozeOpenInInbox = (itemId: string) => {
     setInboxSnoozePopoverState(null)
     openTab({
       type: 'inbox',
@@ -435,7 +435,8 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       isPinned: false,
       isModified: false,
       isPreview: false,
-      isDeleted: false
+      isDeleted: false,
+      viewState: { focusInboxItemId: itemId, focusedAt: Date.now() }
     })
   }
 

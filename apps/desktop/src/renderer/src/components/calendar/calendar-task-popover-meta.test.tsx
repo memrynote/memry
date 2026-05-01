@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { CalendarTaskPopoverMeta } from './calendar-task-popover-meta'
 import type { Tag } from '@/components/note/tags-row'
 
@@ -13,6 +14,7 @@ const baseProps = {
     priority: 0 as 0 | 1 | 2 | 3 | 4
   },
   projectName: 'Memry',
+  projectColor: '#6366F1',
   tags: [] as Tag[],
   repeatSummary: null,
   description: null,
@@ -91,5 +93,21 @@ describe('CalendarTaskPopoverMeta', () => {
     }
     render(<CalendarTaskPopoverMeta {...props} />)
     expect(screen.getByTestId('due-row')).toHaveClass('text-destructive')
+  })
+
+  it('renders project as a colored pill (swatch + tinted text)', () => {
+    render(<CalendarTaskPopoverMeta {...baseProps} projectColor="#6366F1" />)
+    expect(screen.getByTestId('project-color-swatch')).toHaveStyle({
+      backgroundColor: '#6366F1'
+    })
+    expect(screen.getByText('Memry')).toHaveStyle({ color: '#6366F1' })
+  })
+
+  it('invokes onTagClick with the clicked tag', async () => {
+    const onTagClick = vi.fn()
+    const tag: Tag = { id: '#focus', name: 'focus', color: 'rose' }
+    render(<CalendarTaskPopoverMeta {...baseProps} tags={[tag]} onTagClick={onTagClick} />)
+    await userEvent.click(screen.getByText('focus'))
+    expect(onTagClick).toHaveBeenCalledWith(tag)
   })
 })
