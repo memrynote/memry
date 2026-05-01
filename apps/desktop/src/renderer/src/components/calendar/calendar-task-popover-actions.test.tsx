@@ -16,10 +16,10 @@ const baseProps = {
 }
 
 describe('CalendarTaskPopoverActions', () => {
-  it('renders Open task and Snooze when not completed', () => {
+  it('renders Open task and Reschedule when not completed', () => {
     render(<CalendarTaskPopoverActions {...baseProps} />)
     expect(screen.getByRole('button', { name: /open task/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /snooze/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /reschedule/i })).toBeInTheDocument()
   })
 
   it('hides Source note button when sourceNoteId is null', () => {
@@ -32,15 +32,15 @@ describe('CalendarTaskPopoverActions', () => {
     expect(screen.getByRole('button', { name: /source note/i })).toBeInTheDocument()
   })
 
-  it('hides Snooze when completed', () => {
+  it('hides Reschedule when completed', () => {
     render(<CalendarTaskPopoverActions {...baseProps} isCompleted={true} />)
-    expect(screen.queryByRole('button', { name: /snooze/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /reschedule/i })).not.toBeInTheDocument()
   })
 
-  it('opens snooze submenu and calls onSnooze with target', async () => {
+  it('opens reschedule submenu and calls onSnooze with target', async () => {
     const props = { ...baseProps, onSnooze: vi.fn() }
     render(<CalendarTaskPopoverActions {...props} />)
-    await userEvent.click(screen.getByRole('button', { name: /snooze/i }))
+    await userEvent.click(screen.getByRole('button', { name: /reschedule/i }))
     await userEvent.click(screen.getByText(/Tomorrow/))
     expect(props.onSnooze).toHaveBeenCalledWith({ dueDate: '2026-04-30', dueTime: '09:00' })
   })
@@ -48,7 +48,7 @@ describe('CalendarTaskPopoverActions', () => {
   it('hides Later today after 19:00', async () => {
     const props = { ...baseProps, now: new Date('2026-04-29T20:00:00') }
     render(<CalendarTaskPopoverActions {...props} />)
-    await userEvent.click(screen.getByRole('button', { name: /snooze/i }))
+    await userEvent.click(screen.getByRole('button', { name: /reschedule/i }))
     expect(screen.queryByText(/Later today/)).not.toBeInTheDocument()
   })
 
