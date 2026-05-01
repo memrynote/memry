@@ -40,12 +40,14 @@ vi.mock('../vault', () => ({
 }))
 
 // Mock store helpers used to detect known vaults
-const { findVaultMock, trackMock } = vi.hoisted(() => ({
+const { findVaultMock, getVaultsMock, trackMock } = vi.hoisted(() => ({
   findVaultMock: vi.fn(),
+  getVaultsMock: vi.fn(() => []),
   trackMock: vi.fn()
 }))
 vi.mock('../store', () => ({
-  findVault: findVaultMock
+  findVault: findVaultMock,
+  getVaults: getVaultsMock
 }))
 
 // Mock telemetry runtime for tracking assertions
@@ -165,6 +167,22 @@ describe('vault-handlers', () => {
 
       expect(result).toEqual(mockResult)
       expect(vault.selectVault).toHaveBeenCalled()
+    })
+
+    it('emits vault_created telemetry when the folder picker returns a new vault', async () => {
+      const mockResult = {
+        success: true,
+        vault: { path: '/selected/fresh-vault', name: 'Fresh Vault' }
+      }
+      ;(vault.selectVault as Mock).mockResolvedValue(mockResult)
+      findVaultMock.mockReturnValue(undefined)
+
+      await invokeHandler(VaultChannels.invoke.SELECT, {})
+
+      expect(getVaultsMock).toHaveBeenCalled()
+      const telemetryNames = trackMock.mock.calls.map((call) => (call[0] as { name: string }).name)
+      expect(telemetryNames).toContain('vault_created')
+      expect(telemetryNames).toContain('vault_opened')
     })
 
     it('should handle empty input (path is optional)', async () => {

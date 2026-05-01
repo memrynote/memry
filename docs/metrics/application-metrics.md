@@ -95,7 +95,7 @@ fragments, IDs, or titles.
 | Event | Surface | Action | Allowed dimensions |
 | ----- | ------- | ------ | ------------------ |
 | `search_opened` | `search` | `opened` | — |
-| `search_performed` | `search` | `queried` | `search_type` ∈ `quick`, `global`; `result_bucket` ∈ `zero`, `one_to_five`, `six_plus` |
+| `search_performed` | `search` | `queried` | `source` ∈ `quick`, `global`; dimension `result_bucket` ∈ `zero`, `one_to_five`, `six_plus` |
 | `search_result_opened` | `search` | `result_opened` | reserved |
 | `graph_opened` | `graph` | `opened` | reserved |
 
@@ -113,8 +113,8 @@ fragments, IDs, or titles.
 | Event | Surface | Action | Dimensions |
 | ----- | ------- | ------ | ---------- |
 | `sync_enabled` | `sync` | `enabled` | — |
-| `sync_run_completed` | `sync` | `push_completed`/`pull_completed`/`full_completed` | `operation` ∈ `push`, `pull`, `full`, `crdt`; `transport` ∈ `record`, `crdt` |
-| `sync_error` | `sync` | `push_failed`/`pull_failed`/`full_failed` | `operation`, `transport`, plus `errorCode` enum |
+| `sync_run_completed` | `sync` | `push_completed`/`pull_completed`/`full_completed` | `source` operation ∈ `push`, `pull`, `full`, `crdt`; dimension `transport` ∈ `record`, `crdt` |
+| `sync_error` | `sync` | `push_failed`/`pull_failed`/`full_failed` | `source` operation, dimension `transport`, plus `errorCode` enum |
 
 ### AI & settings
 
@@ -145,14 +145,15 @@ Every event passes through three layers of validation before reaching the
 analytics dataset:
 
 1. **Renderer** (`apps/desktop/src/renderer/src/lib/telemetry.ts`) — strips
-   dimension values that look like emails, URLs, or paths; wraps every IPC call
+   dimension keys or values that look like emails, URLs, paths, or UUIDs and
+   keeps at most one dimension per event; wraps every IPC call
    in a try/catch that always resolves.
-2. **Main process queue** — accepts only `TelemetryEvent` values that match the
-   shared schema; events from a disabled session are dropped before they reach
-   the queue.
+2. **Main process queue** — accepts typed `TelemetryEvent` values; events from
+   a disabled session are dropped before they reach the queue.
 3. **Worker route** — re-validates with `TelemetryBatchSchema.safeParse` and
-   rejects unknown events, unknown surfaces, free-form long values, oversized
-   batches (> 100 events), and oversized bodies (> 128 KB).
+   rejects unknown events, unknown surfaces, unsafe dimension keys or values,
+   UUID-shaped enum strings, multi-dimension events, oversized batches (> 100
+   events), and oversized bodies (> 128 KB).
 
 ## Workers Analytics Engine Mapping
 
@@ -195,5 +196,6 @@ The following are intentionally not allowed and will be rejected by the schema:
 - `dimensions: { url: 'https://example.com' }` — value matches the URL guard
 - `dimensions: { email: 'user@example.com' }` — value matches the email guard
 - `dimensions: { folder: '/Users/me/notes' }` — value matches the path guard
+- `dimensions: { account_id: '550e8400-e29b-41d4-a716-446655440000' }` — value matches the UUID guard
 - `action: 'open/note'` — action contains a slash
 - Any `dimensions` value longer than 64 characters

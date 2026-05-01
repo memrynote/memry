@@ -30,6 +30,7 @@ import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } fro
 import { stopVoiceModel } from './inbox/voice-model'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
 import { disposeTelemetryRuntime, initializeTelemetryRuntime } from './telemetry/runtime'
+import { getTelemetryAuthState, getTelemetrySyncState } from './telemetry/state'
 import {
   startGoogleCalendarSyncRunner,
   stopGoogleCalendarSyncRunner,
@@ -535,7 +536,9 @@ void app.whenReady().then(async () => {
   // can resolve `getTelemetryRuntime()` to the live instance.
   initializeTelemetryRuntime({
     appVersion: app.getVersion(),
-    locale: app.getLocale()
+    locale: app.getLocale(),
+    authStateProvider: getTelemetryAuthState,
+    syncStateProvider: getTelemetrySyncState
   })
 
   registerAllHandlers({ i18n: mainI18n, rebuildMenu })

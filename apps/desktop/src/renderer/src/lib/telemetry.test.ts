@@ -21,7 +21,7 @@ interface TrackedEventShape {
 
 describe('trackTelemetry (renderer wrapper)', () => {
   beforeEach(() => {
-    const apiMock = (window.api as unknown as { telemetry?: { track: ReturnType<typeof vi.fn> } })
+    const apiMock = window.api as unknown as { telemetry?: { track: ReturnType<typeof vi.fn> } }
     apiMock.telemetry = {
       track: vi.fn().mockResolvedValue({ success: true })
     }
@@ -98,5 +98,22 @@ describe('trackTelemetry (renderer wrapper)', () => {
 
     const event = trackFn.mock.calls[0][0] as TrackedEventShape
     expect(event.dimensions).toEqual({ provider: 'local' })
+  })
+
+  it('drops unsafe dimension keys and UUID-shaped values', async () => {
+    const trackFn = window.api.telemetry!.track as ReturnType<typeof vi.fn>
+
+    await trackTelemetry('search_performed', {
+      surface: 'search',
+      action: 'queried',
+      dimensions: {
+        result_bucket: 'six_plus',
+        '/Users/me/Documents': 'safe_value',
+        account_id: '550e8400-e29b-41d4-a716-446655440000'
+      }
+    })
+
+    const event = trackFn.mock.calls[0][0] as TrackedEventShape
+    expect(event.dimensions).toEqual({ result_bucket: 'six_plus' })
   })
 })

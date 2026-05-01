@@ -70,7 +70,7 @@ describe('TelemetryBatchSchema', () => {
       expect(result.success).toBe(true)
     })
 
-    it('accepts a batch with safe optional dimensions', () => {
+    it('accepts a batch with one safe optional dimension', () => {
       // #given an event with safe enum-like dimensions
       const batch = {
         ...baseBatch,
@@ -81,8 +81,7 @@ describe('TelemetryBatchSchema', () => {
             source: 'sidebar',
             errorCode: 'sync_replay',
             dimensions: {
-              capture_type: 'text',
-              transport: 'record'
+              capture_type: 'text'
             }
           }
         ]
@@ -221,6 +220,80 @@ describe('TelemetryBatchSchema', () => {
       const result = TelemetryBatchSchema.safeParse(batch)
 
       // #then validation fails
+      expect(result.success).toBe(false)
+    })
+
+    it('rejects a dimension key that looks like a path', () => {
+      // #given an event whose dimension key contains a path
+      const batch = {
+        ...baseBatch,
+        events: [
+          {
+            ...baseEvent,
+            dimensions: { '/Users/me/Documents': 'safe_value' }
+          }
+        ]
+      }
+
+      // #when validating
+      const result = TelemetryBatchSchema.safeParse(batch)
+
+      // #then validation fails
+      expect(result.success).toBe(false)
+    })
+
+    it('rejects UUID-shaped dimension values', () => {
+      // #given an event whose dimension value is a raw identifier
+      const batch = {
+        ...baseBatch,
+        events: [
+          {
+            ...baseEvent,
+            dimensions: { account_id: VALID_INSTALL_ID }
+          }
+        ]
+      }
+
+      // #when validating
+      const result = TelemetryBatchSchema.safeParse(batch)
+
+      // #then validation fails
+      expect(result.success).toBe(false)
+    })
+
+    it('rejects UUID-shaped source values', () => {
+      // #given an event whose source is a raw identifier
+      const batch = {
+        ...baseBatch,
+        events: [{ ...baseEvent, source: VALID_INSTALL_ID }]
+      }
+
+      // #when validating
+      const result = TelemetryBatchSchema.safeParse(batch)
+
+      // #then validation fails
+      expect(result.success).toBe(false)
+    })
+
+    it('rejects events with more than one dimension', () => {
+      // #given an event with two dimensions but only one analytics slot
+      const batch = {
+        ...baseBatch,
+        events: [
+          {
+            ...baseEvent,
+            dimensions: {
+              search_type: 'global',
+              result_bucket: 'six_plus'
+            }
+          }
+        ]
+      }
+
+      // #when validating
+      const result = TelemetryBatchSchema.safeParse(batch)
+
+      // #then validation fails instead of silently dropping one dimension
       expect(result.success).toBe(false)
     })
 
