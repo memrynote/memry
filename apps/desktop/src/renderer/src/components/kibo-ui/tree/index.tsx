@@ -1054,5 +1054,8 @@ export const TreeIcon = ({
 export type TreeLabelProps = HTMLAttributes<HTMLSpanElement>
 
 export const TreeLabel = ({ className, ...props }: TreeLabelProps) => (
-  <span className={cn('flex-1 truncate text-[13px] leading-4 font-medium', className)} {...props} />
+  <span
+    className={cn('sidebar-label-fade flex-1 text-[13px] leading-4 font-medium', className)}
+    {...props}
+  />
 )
