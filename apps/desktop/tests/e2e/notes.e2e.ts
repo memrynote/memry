@@ -14,6 +14,7 @@
  */
 
 import { test, expect } from './fixtures'
+import type { Page } from '@playwright/test'
 import {
   waitForAppReady,
   waitForVaultReady,
@@ -388,6 +389,146 @@ test.describe('Notes Management', () => {
     test('should find note by tag in search', async ({ page: _page }) => {
       // Create note with specific tag and search for it
       expect(true).toBe(true)
+    })
+  })
+
+  test.describe('Properties Section Collapse', () => {
+    function getLocalIsoDate(): string {
+      const now = new Date()
+      const year = now.getFullYear()
+      const month = String(now.getMonth() + 1).padStart(2, '0')
+      const day = String(now.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
+    async function clickAddPropertyAndPickText(page: Page): Promise<void> {
+      const metadataGroup = page.locator('.group\\/metadata').first()
+      await metadataGroup.hover()
+
+      const addPropertyButton = page.getByRole('button', { name: 'Add property' }).first()
+      await expect(addPropertyButton).toBeVisible()
+      await addPropertyButton.click()
+
+      const textOption = page.getByRole('option', { name: 'Text' }).first()
+      await expect(textOption).toBeVisible()
+      await textOption.click()
+    }
+
+    async function createNoteWithSeededProperty(page: Page, title: string): Promise<void> {
+      await createNote(page, title, 'Body')
+
+      await expect
+        .poll(
+          async () =>
+            page.evaluate(async (noteTitle) => {
+              const list = await window.api.notes.list({})
+              return list.notes.some((n: { title: string }) => n.title === noteTitle)
+            }, title),
+          { timeout: 10000 }
+        )
+        .toBe(true)
+
+      const setResult = await page.evaluate(async (noteTitle) => {
+        const list = await window.api.notes.list({})
+        const note = list.notes.find((n: { title: string }) => n.title === noteTitle)
+        if (!note) return { ok: false, reason: 'note-not-found' as const }
+        const result = await window.api.properties.set(note.id, { Status: 'Draft' })
+        return { ok: result.success, result }
+      }, title)
+      expect(setResult.ok).toBe(true)
+
+      await page.reload()
+      await waitForAppReady(page)
+      await waitForVaultReady(page)
+    }
+
+    async function createTodayJournalWithSeededProperty(page: Page): Promise<void> {
+      const date = getLocalIsoDate()
+      await _navigateTo(page, 'journal')
+
+      const createResult = await page.evaluate(async (journalDate) => {
+        const entry = await window.api.journal.createEntry({
+          date: journalDate,
+          content: 'Journal body',
+          properties: { Mood: 'Focused' }
+        })
+        return { ok: Boolean(entry?.id) }
+      }, date)
+      expect(createResult.ok).toBe(true)
+
+      await page.reload()
+      await waitForAppReady(page)
+      await waitForVaultReady(page)
+      await _navigateTo(page, 'journal')
+    }
+
+    test('properties section collapse persists across reload', async ({ page }) => {
+      const title = `Props Persist ${Date.now()}`
+      await createNoteWithSeededProperty(page, title)
+
+      const header = page.getByRole('button', { name: /^Properties/ }).first()
+      await expect(header).toBeVisible()
+      await expect(header).toHaveAttribute('aria-expanded', 'true')
+
+      const propertiesContent = page.locator('#properties-content')
+      await expect(propertiesContent).toBeVisible()
+
+      await header.click()
+      await expect(header).toHaveAttribute('aria-expanded', 'false')
+      await expect(propertiesContent).toHaveCount(0)
+
+      await page.reload()
+      await waitForAppReady(page)
+      await waitForVaultReady(page)
+
+      const headerAfterReload = page.getByRole('button', { name: /^Properties/ }).first()
+      await expect(headerAfterReload).toBeVisible()
+      await expect(headerAfterReload).toHaveAttribute('aria-expanded', 'false')
+    })
+
+    test('add property while collapsed auto-expands the section', async ({ page }) => {
+      const title = `Props Expand ${Date.now()}`
+      await createNoteWithSeededProperty(page, title)
+
+      const header = page.getByRole('button', { name: /^Properties/ }).first()
+      await expect(header).toHaveAttribute('aria-expanded', 'true')
+
+      await header.click()
+      await expect(header).toHaveAttribute('aria-expanded', 'false')
+
+      await clickAddPropertyAndPickText(page)
+
+      await expect(header).toHaveAttribute('aria-expanded', 'true')
+
+      const propertiesContent = page.locator('#properties-content')
+      await expect(propertiesContent).toBeVisible()
+
+      const propertyList = page.getByRole('list', { name: 'Properties list' }).first()
+      await expect(propertyList.locator('> div')).toHaveCount(2)
+    })
+
+    test('journal properties section collapse persists across reload', async ({ page }) => {
+      await createTodayJournalWithSeededProperty(page)
+
+      const header = page.getByRole('button', { name: /^Properties/ }).first()
+      await expect(header).toBeVisible()
+      await expect(header).toHaveAttribute('aria-expanded', 'true')
+
+      const propertiesContent = page.locator('#properties-content')
+      await expect(propertiesContent).toBeVisible()
+
+      await header.click()
+      await expect(header).toHaveAttribute('aria-expanded', 'false')
+      await expect(propertiesContent).toHaveCount(0)
+
+      await page.reload()
+      await waitForAppReady(page)
+      await waitForVaultReady(page)
+      await _navigateTo(page, 'journal')
+
+      const headerAfterReload = page.getByRole('button', { name: /^Properties/ }).first()
+      await expect(headerAfterReload).toBeVisible()
+      await expect(headerAfterReload).toHaveAttribute('aria-expanded', 'false')
     })
   })
 
