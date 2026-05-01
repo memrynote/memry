@@ -80,6 +80,8 @@ import {
   Key01Icon,
   Layers01Icon,
   Layout01Icon,
+  LayoutAlignLeftIcon,
+  LayoutAlignRightIcon,
   LayoutGridIcon,
   Leaf01Icon,
   Link01Icon,
@@ -428,6 +430,8 @@ export const ListChecks = createIcon(CheckListIcon)
 export const ListTodo = createIcon(LeftToRightListDashIcon)
 export const Layers = createIcon(Layers01Icon)
 export const Layout = createIcon(Layout01Icon)
+export const LayoutAlignLeft = createIcon(LayoutAlignLeftIcon)
+export const LayoutAlignRight = createIcon(LayoutAlignRightIcon)
 export const LayoutGrid = createIcon(LayoutGridIcon)
 export const LayoutTemplate = createIcon(Layout03Icon)
 export const Columns2 = createIcon(LayoutTwoColumnIcon)
@@ -577,6 +581,9 @@ export const BellOff = createIcon(NotificationOff01Icon)
 
 // ── Alias exports for "Icon"-suffixed names ─────────
 export { PanelLeft as PanelLeftIcon }
+export { PanelRight as PanelRightIcon }
+export { LayoutAlignLeft as LayoutAlignLeftIcon }
+export { LayoutAlignRight as LayoutAlignRightIcon }
 export { PanelLeftClose as PanelLeftCloseIcon }
 export { PanelLeftOpen as PanelLeftOpenIcon }
 export { Calendar as CalendarIcon }

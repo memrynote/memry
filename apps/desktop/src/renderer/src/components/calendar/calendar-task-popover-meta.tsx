@@ -1,6 +1,7 @@
 import { useT } from '@memry/i18n/renderer'
 import { Calendar, Repeat, Folder, Flag, AlertTriangle } from '@/lib/icons'
 import { formatTaskDue } from '@/lib/format-task-due'
+import { TagChip, type Tag } from '@/components/note/tags-row'
 import { cn } from '@/lib/utils'
 
 export interface CalendarTaskPopoverMetaTask {
@@ -14,8 +15,7 @@ export interface CalendarTaskPopoverMetaTask {
 export interface CalendarTaskPopoverMetaProps {
   task: CalendarTaskPopoverMetaTask
   projectName: string
-  statusLabel: string | null
-  tags: string[]
+  tags: Tag[]
   repeatSummary: string | null
   description: string | null
   now?: Date
@@ -27,7 +27,6 @@ const MAX_VISIBLE_TAGS = 3
 export function CalendarTaskPopoverMeta({
   task,
   projectName,
-  statusLabel,
   tags,
   repeatSummary,
   description,
@@ -77,11 +76,6 @@ export function CalendarTaskPopoverMeta({
           <Folder className="h-3.5 w-3.5" />
           {projectName}
         </span>
-        {statusLabel && (
-          <span data-testid="status-pill" className="rounded-full px-2 py-0.5 text-xs bg-muted">
-            {statusLabel}
-          </span>
-        )}
       </div>
 
       {showPriorityRow && (
@@ -95,12 +89,12 @@ export function CalendarTaskPopoverMeta({
           {tags.length > 0 && (
             <span className="flex items-center gap-1.5 flex-wrap">
               {visibleTags.map((tag) => (
-                <span key={tag} className="text-xs text-muted-foreground">
-                  #{tag.replace(/^#/, '')}
-                </span>
+                <TagChip key={tag.id} tag={tag} />
               ))}
               {overflowCount > 0 && (
-                <span className="text-xs text-muted-foreground">+{overflowCount}</span>
+                <span className="rounded-[10px] px-2 py-0.5 text-[11px]/3.5 font-medium text-muted-foreground">
+                  +{overflowCount}
+                </span>
               )}
             </span>
           )}

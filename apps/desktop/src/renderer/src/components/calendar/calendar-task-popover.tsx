@@ -1,5 +1,5 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { computePopoverPosition } from './popover-position'
 import { CalendarTaskPopoverHeader } from './calendar-task-popover-header'
@@ -9,7 +9,9 @@ import { CalendarTaskPopoverActions } from './calendar-task-popover-actions'
 import { useTask } from '@/hooks/use-task'
 import { useSubtasks } from '@/hooks/use-subtasks'
 import { useProject } from '@/hooks/use-project'
+import { useNoteTagsQuery } from '@/hooks/use-notes-query'
 import { useTabs } from '@/contexts/tabs'
+import { useTasksOptional } from '@/contexts/tasks'
 import { tasksService } from '@/services/tasks-service'
 import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -35,25 +37,36 @@ export function CalendarTaskPopover({
   const { data: subtasks = [] } = useSubtasks(item.sourceId)
   const { data: project } = useProject(task?.projectId ?? null)
   const { data: parentTask } = useTask(task?.parentId ?? null)
+  const { tags: allTags } = useNoteTagsQuery({ enabled: (task?.tags?.length ?? 0) > 0 })
+  const tasksContext = useTasksOptional()
   const { openTab } = useTabs()
   const { t } = useT('calendar')
 
   const isCompleted = !!task?.completedAt
-
-  const handleToggleComplete = useCallback((): void => {
-    if (!task) return
-    const promise = task.completedAt
-      ? tasksService.uncomplete(task.id)
-      : tasksService.complete({ id: task.id }).then(() => {
-          setTimeout(onDismiss, 600)
-        })
-    promise.catch((err: unknown) => {
-      log.error(
-        'toggle complete failed:',
-        extractErrorMessage(err, t('task-popover.errors.could-not-save'))
-      )
-    })
-  }, [task, onDismiss, t])
+  const taskProject = useMemo(
+    () => tasksContext?.projects.find((p) => p.id === task?.projectId) ?? null,
+    [tasksContext?.projects, task?.projectId]
+  )
+  const tagColorMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const tag of allTags) {
+      map.set(normalizeTagName(tag.tag), tag.color || 'stone')
+    }
+    return map
+  }, [allTags])
+  const taskTags = useMemo(
+    () =>
+      (task?.tags ?? []).map((tagName) => {
+        const normalizedName = normalizeTagName(tagName)
+        const name = tagName.replace(/^#/, '')
+        return {
+          id: tagName,
+          name,
+          color: tagColorMap.get(normalizedName) ?? 'stone'
+        }
+      }),
+    [task?.tags, tagColorMap]
+  )
 
   const handleToggleSubtask = useCallback(
     (subtaskId: string): void => {
@@ -115,12 +128,6 @@ export function CalendarTaskPopover({
     })
     onDismiss()
   }, [openTab, item.sourceId, onDismiss])
-
-  const handleOverflow = useCallback((_anchor: HTMLElement) => {
-    // Overflow menu (Delete / Duplicate / Move to project / Copy link) is a
-    // follow-up PR. Header still renders the trigger so the layout is final;
-    // clicking it is intentionally a no-op until that PR lands.
-  }, [])
 
   const handleOpenSourceNote = useCallback((): void => {
     if (!task?.sourceNoteId) return
@@ -206,14 +213,12 @@ export function CalendarTaskPopover({
           <CalendarTaskPopoverHeader
             task={task}
             parentTitle={parentTask?.title ?? null}
-            onToggleComplete={handleToggleComplete}
-            onOverflow={handleOverflow}
+            statuses={taskProject?.statuses ?? []}
           />
           <CalendarTaskPopoverMeta
             task={task}
-            projectName={project?.name ?? ''}
-            statusLabel={null}
-            tags={task.tags ?? []}
+            projectName={taskProject?.name ?? project?.name ?? ''}
+            tags={taskTags}
             repeatSummary={summarizeRepeat(task.repeatConfig, t)}
             description={task.description}
             isCompleted={isCompleted}
@@ -249,4 +254,8 @@ function summarizeRepeat(cfg: RepeatConfig | null, t: (key: string) => string): 
     default:
       return t('task-popover.repeats')
   }
+}
+
+function normalizeTagName(tag: string): string {
+  return tag.replace(/^#/, '').toLowerCase()
 }

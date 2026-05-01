@@ -49,6 +49,12 @@ describe('shortcut-registry', () => {
         expect(entries.length).toBeGreaterThan(0)
       }
     })
+
+    it('uses Meta/Ctrl+B as the default sidebar toggle shortcut', () => {
+      const toggleSidebar = SHORTCUT_REGISTRY.find((entry) => entry.id === 'view.toggleSidebar')
+
+      expect(toggleSidebar?.defaultBinding).toEqual({ key: 'b', modifiers: { meta: true } })
+    })
   })
 
   describe('formatBinding', () => {

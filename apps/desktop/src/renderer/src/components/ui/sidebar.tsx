@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { PanelLeftCloseIcon, PanelLeftOpenIcon } from '@/lib/icons'
+import { LayoutAlignLeftIcon, PanelLeftIcon } from '@/lib/icons'
 
 import { useIsMobile } from '@/lib/hooks/use-mobile'
 import { cn } from '@/lib/utils'
@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useKeyboardShortcuts, type KeyboardShortcut } from '@/hooks/use-keyboard-shortcuts-base'
 import { useT } from '@memry/i18n/renderer'
 
 const SIDEBAR_COOKIE_NAME = 'sidebar_state'
@@ -115,6 +116,19 @@ function SidebarProvider({
   const toggleSidebar = React.useCallback(() => {
     return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
   }, [isMobile, setOpen, setOpenMobile])
+
+  const sidebarShortcuts = React.useMemo<KeyboardShortcut[]>(() => {
+    return [
+      {
+        key: 'b',
+        modifiers: { meta: true },
+        action: toggleSidebar,
+        description: 'Toggle sidebar',
+        allowInInput: true
+      }
+    ]
+  }, [toggleSidebar])
+  useKeyboardShortcuts(sidebarShortcuts)
 
   const state = open ? 'expanded' : 'collapsed'
 
@@ -279,7 +293,7 @@ function Sidebar({
 function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<typeof Button>) {
   const { t: tPhaseF } = useT('common')
   const { toggleSidebar, state } = useSidebar()
-  const Icon = state === 'expanded' ? PanelLeftOpenIcon : PanelLeftCloseIcon
+  const Icon = state === 'expanded' ? LayoutAlignLeftIcon : PanelLeftIcon
 
   return (
     <Button

@@ -6,7 +6,7 @@
 
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
-import { ChevronLeft, ChevronRight, Calendar } from '@/lib/icons'
+import { ChevronLeft, ChevronRight, LayoutAlignRightIcon, PanelRightIcon } from '@/lib/icons'
 import { SidebarGraph } from '@/lib/icons/sidebar-nav-icons'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { useTabGroup, useTabs } from '@/contexts/tabs'
@@ -46,6 +46,7 @@ export const TabBarWithDrag = ({
   const needsChromeSpacer = sidebarState === 'collapsed' && showSidebarToggle
 
   const isGraphActive = getActiveTab()?.type === 'graph'
+  const DayPanelIcon = isDayPanelOpen ? PanelRightIcon : LayoutAlignRightIcon
 
   const handleGraphClick = useCallback(() => {
     openTab({
@@ -237,7 +238,7 @@ export const TabBarWithDrag = ({
           />
           <TabBarAction
             icon={
-              <Calendar
+              <DayPanelIcon
                 className={cn(
                   'w-4 h-4 transition-colors duration-150',
                   isDayPanelOpen && 'text-tint'
