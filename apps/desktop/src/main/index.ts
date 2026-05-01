@@ -29,6 +29,7 @@ import { getCurrentVaultPath } from './store'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
 import { stopVoiceModel } from './inbox/voice-model'
 import { startReminderScheduler, stopReminderScheduler } from './lib/reminders'
+import { disposeTelemetryRuntime, initializeTelemetryRuntime } from './telemetry/runtime'
 import {
   startGoogleCalendarSyncRunner,
   stopGoogleCalendarSyncRunner,
@@ -529,6 +530,14 @@ void app.whenReady().then(async () => {
   mainI18n = await bootI18n()
   setMainI18n(mainI18n)
   Menu.setApplicationMenu(buildAppMenu(mainI18n))
+
+  // Initialize telemetry runtime before handlers so registerTelemetryHandlers
+  // can resolve `getTelemetryRuntime()` to the live instance.
+  initializeTelemetryRuntime({
+    appVersion: app.getVersion(),
+    locale: app.getLocale()
+  })
+
   registerAllHandlers({ i18n: mainI18n, rebuildMenu })
 
   // Default open or close DevTools by F12 in development
@@ -937,6 +946,10 @@ app.on('before-quit', (event) => {
     .then(() => {
       shutdownLog.info('stopping voice transcription utility...')
       return stopVoiceModel()
+    })
+    .then(() => {
+      shutdownLog.info('flushing telemetry runtime...')
+      return disposeTelemetryRuntime()
     })
     .then(() => {
       shutdownLog.info('stopping sync runtime...')
