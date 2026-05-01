@@ -1017,7 +1017,6 @@ export function NotePage({ noteId }: NotePageProps) {
             hideWhenEmpty
           />
 
-          {/* Properties: visible when properties exist, inline (no toggle header) */}
           {properties.length > 0 && (
             <InfoSection
               properties={properties}
