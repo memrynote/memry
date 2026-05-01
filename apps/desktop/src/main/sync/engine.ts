@@ -264,7 +264,8 @@ export class SyncEngine extends EventEmitter {
           queueCount: this.ctx.deps.queue.getPendingCount(),
           itemCount: Math.max(0, startingPending - this.ctx.deps.queue.getPendingCount())
         },
-        dimensions: { operation: 'push', transport: 'record' }
+        source: 'push',
+        dimensions: { transport: 'record' }
       })
     } catch (error) {
       trackMainEvent('sync_error', {
@@ -273,7 +274,8 @@ export class SyncEngine extends EventEmitter {
         result: 'failed',
         errorCode: classifySyncErrorCode(error),
         metrics: { durationMs: Date.now() - start },
-        dimensions: { operation: 'push', transport: 'record' }
+        source: 'push',
+        dimensions: { transport: 'record' }
       })
       await this.handleCoordinatorError(error)
     }
@@ -291,7 +293,8 @@ export class SyncEngine extends EventEmitter {
           durationMs: Date.now() - start,
           queueCount: this.ctx.deps.queue.getPendingCount()
         },
-        dimensions: { operation: 'pull', transport: 'record' }
+        source: 'pull',
+        dimensions: { transport: 'record' }
       })
     } catch (error) {
       trackMainEvent('sync_error', {
@@ -300,7 +303,8 @@ export class SyncEngine extends EventEmitter {
         result: 'failed',
         errorCode: classifySyncErrorCode(error),
         metrics: { durationMs: Date.now() - start },
-        dimensions: { operation: 'pull', transport: 'record' }
+        source: 'pull',
+        dimensions: { transport: 'record' }
       })
       await this.handleCoordinatorError(error)
     }
@@ -322,7 +326,8 @@ export class SyncEngine extends EventEmitter {
           durationMs: Date.now() - start,
           queueCount: this.ctx.deps.queue.getPendingCount()
         },
-        dimensions: { operation: 'full', transport: 'record' }
+        source: 'full',
+        dimensions: { transport: 'record' }
       })
     } catch (error) {
       trackMainEvent('sync_error', {
@@ -331,7 +336,8 @@ export class SyncEngine extends EventEmitter {
         result: 'failed',
         errorCode: classifySyncErrorCode(error),
         metrics: { durationMs: Date.now() - start },
-        dimensions: { operation: 'full', transport: 'record' }
+        source: 'full',
+        dimensions: { transport: 'record' }
       })
       throw error
     }

@@ -16,9 +16,10 @@ import type {
  */
 
 const SAFE_DIMENSION_VALUE = /^(?!.*@)(?!.*:\/\/)(?!.*[/\\]).{1,64}$/
+const UUID_SHAPED_VALUE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
 
 const isSafeDimensionValue = (value: unknown): value is string =>
-  typeof value === 'string' && SAFE_DIMENSION_VALUE.test(value)
+  typeof value === 'string' && SAFE_DIMENSION_VALUE.test(value) && !UUID_SHAPED_VALUE.test(value)
 
 const sanitizeDimensions = (
   dimensions: Record<string, string> | undefined
@@ -26,8 +27,9 @@ const sanitizeDimensions = (
   if (!dimensions) return undefined
   const cleaned: Record<string, string> = {}
   for (const [key, value] of Object.entries(dimensions)) {
-    if (isSafeDimensionValue(value)) {
+    if (isSafeDimensionValue(key) && isSafeDimensionValue(value)) {
       cleaned[key] = value
+      break
     }
   }
   return Object.keys(cleaned).length > 0 ? cleaned : undefined
@@ -59,7 +61,11 @@ export const trackTelemetry = async (
   options: TrackTelemetryOptions
 ): Promise<void> => {
   try {
-    const api = (window as Window & { api?: { telemetry?: { track?: (event: TelemetryEvent) => Promise<unknown> } } }).api
+    const api = (
+      window as Window & {
+        api?: { telemetry?: { track?: (event: TelemetryEvent) => Promise<unknown> } }
+      }
+    ).api
     const track = api?.telemetry?.track
     if (typeof track !== 'function') return
 
