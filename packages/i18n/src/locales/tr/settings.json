@@ -40,7 +40,8 @@
       "updates": "Güncellemeler",
       "languageRegion": "Dil ve Bölge",
       "tabBehavior": "Sekme Davranışı",
-      "fileCreation": "Dosya Oluşturma"
+      "fileCreation": "Dosya Oluşturma",
+      "privacy": "Gizlilik"
     },
     "startup": {
       "launchAtLogin": {
@@ -112,6 +113,13 @@
       "createInSelectedFolder": {
         "label": "Seçilen Klasörde Oluştur",
         "description": "Seçili olan klasörün içinde yeni notlar ve klasörler oluşturulur. Kapalıyken öğeler her zaman kökte oluşturulur."
+      }
+    },
+    "privacy": {
+      "telemetry": {
+        "label": "Anonim Kullanım Metriklerini Paylaş",
+        "description": "Sadece anonim metrikler — hiçbir not içeriği, arama sorgusu, dosya yolu, e-posta veya ham kimlik gönderilmez.",
+        "error": "Telemetri ayarı güncellenemedi"
       }
     }
   },
