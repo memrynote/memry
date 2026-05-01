@@ -269,9 +269,14 @@ export function NotePage({ noteId }: NotePageProps) {
     if (note?.content) {
       lastSavedContent.current = note.content
     }
-    // Reset deleted state when switching to a new note
-    setIsDeleted(false)
   }, [note?.id, note?.content])
+
+  // Reset deleted state during render when switching to a new note.
+  const [storedNoteIdForDelete, setStoredNoteIdForDelete] = useState(note?.id)
+  if (storedNoteIdForDelete !== note?.id) {
+    setStoredNoteIdForDelete(note?.id)
+    setIsDeleted(false)
+  }
 
   // Stable ref so cleanup can always call the latest mutateAsync
   const updateNoteRef = useRef(updateNote.mutateAsync)

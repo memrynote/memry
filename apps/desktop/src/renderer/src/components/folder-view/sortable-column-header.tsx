@@ -212,13 +212,6 @@ export function SortableColumnHeader({
     saveDisplayName()
   }, [saveDisplayName])
 
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus()
-      inputRef.current.select()
-    }
-  }, [isEditing])
-
   // ============================================================================
   // Render
   // ============================================================================
@@ -287,8 +280,10 @@ export function SortableColumnHeader({
           <input
             ref={inputRef}
             type="text"
+            autoFocus
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
+            onFocus={(e) => e.currentTarget.select()}
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
             onClick={(e) => e.stopPropagation()}

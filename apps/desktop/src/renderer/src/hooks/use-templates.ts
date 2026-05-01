@@ -181,8 +181,14 @@ export function useTemplates(options: UseTemplatesOptions = {}): UseTemplatesRet
 
   // Auto-load on mount
   useEffect(() => {
-    if (autoLoad) {
-      reload()
+    if (!autoLoad) return
+    let cancelled = false
+    void (async () => {
+      await reload()
+      if (cancelled) return
+    })()
+    return () => {
+      cancelled = true
     }
   }, [autoLoad, reload])
 

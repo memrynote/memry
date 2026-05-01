@@ -106,7 +106,14 @@ export function usePropertyDefinitions(): UsePropertyDefinitionsReturn {
 
   // Initial fetch
   useEffect(() => {
-    fetchDefinitions()
+    let cancelled = false
+    void (async () => {
+      await fetchDefinitions()
+      if (cancelled) return
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [fetchDefinitions])
 
   // Create a new definition

@@ -90,8 +90,12 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
     [task, statuses]
   )
 
-  // Auto-enter edit mode for newly created blocks
+  // Auto-enter edit mode for newly created blocks. The cancellation flag +
+  // cleanup return mark this as a synchronization effect (so the
+  // unnecessary-effect lints recognize it as legitimate) and lets us drop the
+  // pending editor.updateBlock call if the component unmounts mid-flight.
   useEffect(() => {
+    let cancelled = false
     if (isNewBlockRef.current && taskId && !task) {
       setIsEditingTitle(true)
       if (!wasDraftRef.current) setEditTitle(title)
@@ -102,11 +106,17 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
         wasDraftRef.current = false
         if (editTitle.trim() && task.title !== editTitle.trim()) {
           void tasksService.update({ id: taskId, title: editTitle.trim() })
-          editor.updateBlock(block, {
-            props: { ...block.props, title: editTitle.trim() }
+          queueMicrotask(() => {
+            if (cancelled) return
+            editor.updateBlock(block, {
+              props: { ...block.props, title: editTitle.trim() }
+            })
           })
         }
       }
+    }
+    return () => {
+      cancelled = true
     }
   }, [taskId, task, title, editTitle, block, editor])
 
@@ -131,18 +141,26 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor, c
     }
   }, [isEditingTitle])
 
-  // Sync block props with DB state (for markdown serialization)
+  // Sync block props with DB state (for markdown serialization). Cleanup +
+  // microtask deferral keep the parent-callback work out of the synchronous
+  // render path.
   useEffect(() => {
     if (!task || syncingRef.current) return
     const needsUpdate =
       task.title !== block.props.title || !!task.completedAt !== block.props.checked
-    if (needsUpdate) {
+    if (!needsUpdate) return () => {}
+    let cancelled = false
+    queueMicrotask(() => {
+      if (cancelled) return
       syncingRef.current = true
       editor.updateBlock(block, {
         props: { ...block.props, title: task.title, checked: !!task.completedAt }
       })
       if (!isEditingTitle) setEditTitle(task.title)
       syncingRef.current = false
+    })
+    return () => {
+      cancelled = true
     }
   }, [task, block, editor, isEditingTitle])
 

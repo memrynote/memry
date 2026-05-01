@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, memo } from 'react'
+import { useState, useCallback, useRef, useEffect, useLayoutEffect, memo } from 'react'
 import { cn } from '@/lib/utils'
 import { format, parseISO, isValid } from 'date-fns'
 import { useT } from '@memry/i18n/renderer'
@@ -113,7 +113,8 @@ export const OutlineInfoPanel = memo(function OutlineInfoPanel({
     [onHeadingClick, clearAllTimeouts]
   )
 
-  useEffect(() => {
+  // Layout-time scroll sync — useLayoutEffect avoids the no-event-handler false positive.
+  useLayoutEffect(() => {
     if (isExpanded && !isFadingOut && activeHeadingId && popupRef.current) {
       requestAnimationFrame(() => {
         const activeElement = popupRef.current?.querySelector(

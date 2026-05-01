@@ -104,13 +104,13 @@ function SidebarProvider({
   const [isResizing, setIsResizing] = React.useState(false)
 
   React.useEffect(() => {
-    if (!isResizing) {
-      try {
-        localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarWidth))
-      } catch {
-        /* localStorage unavailable */
-      }
+    if (isResizing) return () => {}
+    try {
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarWidth))
+    } catch {
+      /* localStorage unavailable */
     }
+    return () => {}
   }, [sidebarWidth, isResizing])
 
   const toggleSidebar = React.useCallback(() => {

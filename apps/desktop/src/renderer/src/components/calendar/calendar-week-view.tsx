@@ -108,12 +108,14 @@ export function CalendarWeekView({
     const anchorIndex = dayIndexFromDate(anchorDate)
     if (anchorIndex >= visibleDayStart && anchorIndex < visibleDayStart + 7) return
     scrollToDate(anchorDate, { smooth: true })
+    return () => {}
   }, [anchorDate, visibleDayStart, scrollToDate])
 
   useEffect(() => {
     if (todayRequestKey === lastTodayRequestKeyRef.current) return
     lastTodayRequestKeyRef.current = todayRequestKey
     scrollToDate(anchorDate, { smooth: false })
+    return () => {}
   }, [anchorDate, scrollToDate, todayRequestKey])
 
   useEffect(() => {

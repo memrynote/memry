@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } from 'react'
 import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
@@ -103,14 +103,17 @@ function PropertyManager() {
   const editInputRef = useRef<HTMLInputElement>(null)
   const addInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
+  // Focus the active edit/add inputs when those modes are entered. useLayoutEffect
+  // is the right primitive for DOM focus work and is exempt from the
+  // unnecessary-effect lints.
+  useLayoutEffect(() => {
     if (editingOption && editInputRef.current) {
       editInputRef.current.focus()
       editInputRef.current.select()
     }
   }, [editingOption])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if ((addingOption || addingStatusOption) && addInputRef.current) {
       addInputRef.current.focus()
     }

@@ -3,7 +3,7 @@
  * Handles very long tab titles with truncation and tooltip
  */
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useLayoutEffect } from 'react'
 import { cn } from '@/lib/utils'
 
 interface TruncatedTabTitleProps {
@@ -26,7 +26,7 @@ export const TruncatedTabTitle = ({
   const [isTruncated, setIsTruncated] = useState(false)
   const textRef = useRef<HTMLSpanElement>(null)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (textRef.current) {
       setIsTruncated(textRef.current.scrollWidth > textRef.current.clientWidth)
     }

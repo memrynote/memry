@@ -236,14 +236,6 @@ export function ColumnHeader({
     saveDisplayName()
   }, [saveDisplayName])
 
-  // Focus input when entering edit mode
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus()
-      inputRef.current.select()
-    }
-  }, [isEditing])
-
   // ============================================================================
   // Render
   // ============================================================================
@@ -302,8 +294,10 @@ export function ColumnHeader({
           <input
             ref={inputRef}
             type="text"
+            autoFocus
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
+            onFocus={(e) => e.currentTarget.select()}
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
             onClick={(e) => e.stopPropagation()}

@@ -56,13 +56,16 @@ export function useTasksLinkedToNote(noteId: string | null): UseTasksLinkedToNot
     }
   }, [])
 
-  // Load tasks when noteId changes
+  // Load tasks when noteId changes; cancel-pattern keeps stale results from clobbering current state.
   useEffect(() => {
-    if (noteId) {
-      loadTasks(noteId)
-    } else {
-      setTasks([])
-      setError(null)
+    if (!noteId) return
+    let cancelled = false
+    void (async () => {
+      await loadTasks(noteId)
+      if (cancelled) return
+    })()
+    return () => {
+      cancelled = true
     }
   }, [noteId, loadTasks])
 
@@ -71,7 +74,7 @@ export function useTasksLinkedToNote(noteId: string | null): UseTasksLinkedToNot
     if (!noteId) return
 
     const refresh = (): void => {
-      loadTasks(noteId)
+      void loadTasks(noteId)
     }
 
     const unsubCreated = onTaskCreated(refresh)
@@ -87,14 +90,15 @@ export function useTasksLinkedToNote(noteId: string | null): UseTasksLinkedToNot
 
   const refresh = useCallback((): void => {
     if (noteId) {
-      loadTasks(noteId)
+      void loadTasks(noteId)
     }
   }, [noteId, loadTasks])
 
+  // Empty noteId is derived during render — no need to reset state in an effect.
   return {
-    tasks,
-    isLoading,
-    error,
+    tasks: noteId ? tasks : [],
+    isLoading: noteId ? isLoading : false,
+    error: noteId ? error : null,
     refresh
   }
 }

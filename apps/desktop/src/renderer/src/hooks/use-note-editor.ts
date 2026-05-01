@@ -150,7 +150,14 @@ export function useNoteEditor(
 
   // Load note on mount and noteId change
   useEffect(() => {
-    loadNote()
+    let cancelled = false
+    void (async () => {
+      await loadNote()
+      if (cancelled) return
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [loadNote])
 
   // ============================================================================

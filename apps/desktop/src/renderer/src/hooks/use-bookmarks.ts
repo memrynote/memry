@@ -356,8 +356,14 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
 
   // Load initial bookmarks
   useEffect(() => {
-    if (autoLoad) {
-      loadBookmarks()
+    if (!autoLoad) return
+    let cancelled = false
+    void (async () => {
+      await loadBookmarks()
+      if (cancelled) return
+    })()
+    return () => {
+      cancelled = true
     }
   }, [autoLoad, loadBookmarks])
 

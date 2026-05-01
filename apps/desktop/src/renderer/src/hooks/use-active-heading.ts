@@ -122,10 +122,7 @@ export function useActiveHeading({
   }, [findActiveHeading, throttleMs])
 
   useEffect(() => {
-    if (headings.length === 0) {
-      setActiveHeadingId(null)
-      return
-    }
+    if (headings.length === 0) return
 
     // Initial calculation
     findActiveHeading()
@@ -153,8 +150,9 @@ export function useActiveHeading({
     setActiveHeadingId(id)
   }, [])
 
+  // Derive empty state during render so we don't have to reset in an effect.
   return {
-    activeHeadingId,
+    activeHeadingId: headings.length === 0 ? null : activeHeadingId,
     setActiveHeading
   }
 }

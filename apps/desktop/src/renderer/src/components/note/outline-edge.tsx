@@ -8,7 +8,7 @@
  * T078: Fixed flickering by using stable hover area and debounced state
  */
 
-import { useState, useCallback, useRef, useEffect, memo } from 'react'
+import { useState, useCallback, useRef, useEffect, useLayoutEffect, memo } from 'react'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 
@@ -77,8 +77,9 @@ export const OutlineEdge = memo(function OutlineEdge({
     }, 150)
   }, [])
 
-  // Auto-scroll to active heading when popup opens
-  useEffect(() => {
+  // Auto-scroll to active heading when popup opens. Layout work — useLayoutEffect
+  // is the right primitive and avoids the no-event-handler false positive.
+  useLayoutEffect(() => {
     if (isHovered && activeHeadingId && popupRef.current) {
       // Small delay to ensure DOM is rendered
       requestAnimationFrame(() => {

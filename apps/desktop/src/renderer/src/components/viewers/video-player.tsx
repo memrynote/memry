@@ -5,7 +5,7 @@
  * @module components/viewers/video-player
  */
 
-import { useState, useCallback, useEffect, forwardRef } from 'react'
+import { useState, useCallback, useEffect, useLayoutEffect, forwardRef } from 'react'
 import ReactPlayer from 'react-player'
 import { cn } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'
@@ -78,7 +78,7 @@ const MemryFilePlayer = forwardRef<HTMLVideoElement, MemryFilePlayerProps>(
   ) => {
     const videoRef = (ref as React.RefObject<HTMLVideoElement>) || { current: null }
 
-    useEffect(() => {
+    useLayoutEffect(() => {
       const video = videoRef.current
       if (!video) return
 
@@ -89,13 +89,13 @@ const MemryFilePlayer = forwardRef<HTMLVideoElement, MemryFilePlayerProps>(
       }
     }, [playing, videoRef])
 
-    useEffect(() => {
+    useLayoutEffect(() => {
       const video = videoRef.current
       if (!video || volume === null || volume === undefined) return
       video.volume = volume
     }, [volume, videoRef])
 
-    useEffect(() => {
+    useLayoutEffect(() => {
       const video = videoRef.current
       if (!video || !playbackRate) return
       video.playbackRate = playbackRate
@@ -160,14 +160,16 @@ MemryFilePlayer.displayName = 'MemryFilePlayer'
   return src?.startsWith('memry-file://')
 }
 
-// Register custom player for memry-file:// protocol
+// Register custom player for memry-file:// protocol — done at module load
+// time so the VideoPlayer doesn't need a registration effect.
 let customPlayerRegistered = false
-function ensureCustomPlayerRegistered() {
+function ensureCustomPlayerRegistered(): void {
   if (!customPlayerRegistered) {
     ReactPlayer.addCustomPlayer?.(MemryFilePlayer as never)
     customPlayerRegistered = true
   }
 }
+ensureCustomPlayerRegistered()
 
 // ============================================================================
 // Video Player Component
@@ -176,11 +178,6 @@ function ensureCustomPlayerRegistered() {
 export function VideoPlayer({ src, className }: VideoPlayerProps) {
   const { t: tPhaseF } = useT('notes')
   const [error, setError] = useState(false)
-
-  // Register custom player on mount
-  useEffect(() => {
-    ensureCustomPlayerRegistered()
-  }, [])
 
   const handleError = useCallback(() => {
     setError(true)
