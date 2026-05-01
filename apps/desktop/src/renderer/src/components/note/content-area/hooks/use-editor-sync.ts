@@ -200,15 +200,16 @@ export function useEditorSync({
         }
       } finally {
         isContentReadyRef.current = true
-        if (cancelled) return
-        if (onHeadingsChange) {
-          const headings = extractHeadings(editor.document as Block[])
-          onHeadingsChange(headings)
-        }
-        if (onInlineTagsChange) {
-          const tags = extractInlineTags(editor.document as Block[])
-          prevInlineTagsRef.current = tags
-          onInlineTagsChange(tags)
+        if (!cancelled) {
+          if (onHeadingsChange) {
+            const headings = extractHeadings(editor.document as Block[])
+            onHeadingsChange(headings)
+          }
+          if (onInlineTagsChange) {
+            const tags = extractInlineTags(editor.document as Block[])
+            prevInlineTagsRef.current = tags
+            onInlineTagsChange(tags)
+          }
         }
       }
     }
