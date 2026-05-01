@@ -394,8 +394,12 @@ test.describe('Notes Management', () => {
 
   test.describe('Properties Section Collapse', () => {
     async function clickAddPropertyAndPickText(page: Page): Promise<void> {
+      const metadataGroup = page.locator('.group\\/metadata').first()
+      await metadataGroup.hover()
+
       const addPropertyButton = page.getByRole('button', { name: 'Add property' }).first()
-      await addPropertyButton.click({ force: true })
+      await expect(addPropertyButton).toBeVisible()
+      await addPropertyButton.click()
 
       const textOption = page.getByRole('option', { name: 'Text' }).first()
       await expect(textOption).toBeVisible()
@@ -467,6 +471,12 @@ test.describe('Notes Management', () => {
       await clickAddPropertyAndPickText(page)
 
       await expect(header).toHaveAttribute('aria-expanded', 'true')
+
+      const propertiesContent = page.locator('#properties-content')
+      await expect(propertiesContent).toBeVisible()
+
+      const propertyList = page.getByRole('list', { name: 'Properties list' }).first()
+      await expect(propertyList.locator('> div')).toHaveCount(2)
     })
   })
 
