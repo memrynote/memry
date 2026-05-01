@@ -52,6 +52,10 @@ import { VaultOnboarding } from '@/components/vault-onboarding'
 import { FirstRunOnboarding } from '@/components/first-run-onboarding'
 import { useThemeSync } from '@/hooks/use-theme-sync'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { trackTelemetry } from '@/lib/telemetry'
+import type { TelemetrySurface } from '@memry/contracts/telemetry-api'
+import { useActiveTab } from '@/contexts/tabs'
+import type { TabType } from '@/contexts/tabs'
 import { createLogger } from '@/lib/logger'
 import { getStartupTheme, THEME_STORAGE_KEY } from '@/lib/startup-theme'
 import { useTaskWorkspaceData, useTaskWorkspaceMutations } from '@/features/tasks/use-task-queries'
@@ -104,10 +108,37 @@ function TabPersistenceManager({ children }: { children: React.ReactNode }): Rea
 // MAIN APP CONTENT (inside TabProvider)
 // =============================================================================
 
+const TAB_TYPE_TO_SURFACE: Partial<Record<TabType, TelemetrySurface>> = {
+  inbox: 'inbox',
+  calendar: 'calendar',
+  tasks: 'tasks',
+  'all-tasks': 'tasks',
+  today: 'tasks',
+  completed: 'tasks',
+  project: 'tasks',
+  note: 'notes',
+  journal: 'journal',
+  search: 'search',
+  graph: 'graph'
+}
+
 const AppContent = (): React.JSX.Element => {
   const { openTab } = useTabs()
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+
+  // Fire `page_viewed` whenever the active tab type changes. Only ever surface enums,
+  // never tab titles, file paths, or note IDs.
+  const activeTab = useActiveTab()
+  const lastTrackedTabTypeRef = useRef<TabType | null>(null)
+  useEffect(() => {
+    if (!activeTab) return
+    if (lastTrackedTabTypeRef.current === activeTab.type) return
+    lastTrackedTabTypeRef.current = activeTab.type
+    const surface = TAB_TYPE_TO_SURFACE[activeTab.type]
+    if (!surface) return
+    void trackTelemetry('page_viewed', { surface, action: 'viewed' })
+  }, [activeTab])
 
   // Handle creating a new note
   const handleNewNote = useCallback(async () => {
@@ -237,7 +268,25 @@ function App(): React.JSX.Element {
 
   const handleOnboardingComplete = useCallback(async () => {
     await updateGeneralSettings({ onboardingCompleted: true })
+    void trackTelemetry('onboarding_completed', {
+      surface: 'onboarding',
+      action: 'completed',
+      result: 'success'
+    })
   }, [updateGeneralSettings])
+
+  // Track onboarding_started exactly once when first-run onboarding is shown.
+  const onboardingStartedTrackedRef = useRef(false)
+  useEffect(() => {
+    if (generalSettingsLoading) return
+    if (generalSettings.onboardingCompleted) return
+    if (onboardingStartedTrackedRef.current) return
+    onboardingStartedTrackedRef.current = true
+    void trackTelemetry('onboarding_started', {
+      surface: 'onboarding',
+      action: 'started'
+    })
+  }, [generalSettingsLoading, generalSettings.onboardingCompleted])
   const prevVaultPathRef = useRef<string | null>(null)
 
   useEffect(() => {
