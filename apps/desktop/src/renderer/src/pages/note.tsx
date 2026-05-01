@@ -15,7 +15,7 @@ import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
 import { NoteLayout, HeadingItem, ContentArea, HeadingInfo, Block } from '@/components/note'
 import { NoteTitle } from '@/components/note/note-title'
 import { TagsRow, Tag } from '@/components/note/tags-row'
-import { InfoSection } from '@/components/note/info-section'
+import { InfoSection, type NewProperty } from '@/components/note/info-section'
 import { GhostAffordanceRow } from '@/components/note/ghost-affordance-row'
 import { BacklinksSection, Backlink, Mention } from '@/components/note/backlinks'
 import { LinkedTasksSection } from '@/components/note/linked-tasks'
@@ -27,6 +27,7 @@ import {
   type Note
 } from '@/hooks/use-notes-query'
 import { usePropertySection, type PropertySectionAction } from '@/hooks/use-property-section'
+import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
 import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
 import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/services/notes-service'
 import { resolveWikiLink } from '@/lib/wikilink-resolver'
@@ -185,6 +186,17 @@ export function NotePage({ noteId }: NotePageProps) {
     onBlocked: handlePropertyBlocked,
     includeExplicitType: true
   })
+
+  const [propertiesCollapsed, togglePropertiesCollapsed, setPropertiesCollapsed] =
+    usePropertiesCollapsed(noteId ?? '')
+
+  const handleAddPropertyWithExpand = useCallback(
+    (newProp: NewProperty) => {
+      setPropertiesCollapsed(false)
+      handleAddProperty(newProp)
+    },
+    [handleAddProperty, setPropertiesCollapsed]
+  )
 
   // Bookmark state
   const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('note', noteId ?? '')
@@ -1009,20 +1021,19 @@ export function NotePage({ noteId }: NotePageProps) {
             hideWhenEmpty
           />
 
-          {/* Properties: visible when properties exist, inline (no toggle header) */}
           {properties.length > 0 && (
             <InfoSection
               properties={properties}
               newlyAddedPropertyId={newlyAddedPropertyId}
-              isExpanded
-              onToggleExpand={() => {}}
+              isExpanded={!propertiesCollapsed}
+              onToggleExpand={togglePropertiesCollapsed}
               onPropertyChange={handlePropertyChange}
               onPropertyNameChange={handlePropertyNameChange}
               onPropertyOrderChange={handlePropertyOrderChange}
-              onAddProperty={handleAddProperty}
+              onAddProperty={handleAddPropertyWithExpand}
               onDeleteProperty={handleDeleteProperty}
               disabled={isDeleted}
-              variant="inline"
+              variant="embedded"
               hideAddButton
             />
           )}
@@ -1034,7 +1045,7 @@ export function NotePage({ noteId }: NotePageProps) {
             currentTagIds={noteTags.map((t) => t.id)}
             onAddTag={(...args) => void handleAddTag(...args)}
             onCreateTag={(...args) => void handleCreateTag(...args)}
-            onAddProperty={handleAddProperty}
+            onAddProperty={handleAddPropertyWithExpand}
             hasTags={noteTags.length > 0}
             disabled={isDeleted}
           />
