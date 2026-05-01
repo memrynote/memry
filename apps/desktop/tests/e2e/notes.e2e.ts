@@ -393,6 +393,14 @@ test.describe('Notes Management', () => {
   })
 
   test.describe('Properties Section Collapse', () => {
+    function getLocalIsoDate(): string {
+      const now = new Date()
+      const year = now.getFullYear()
+      const month = String(now.getMonth() + 1).padStart(2, '0')
+      const day = String(now.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
     async function clickAddPropertyAndPickText(page: Page): Promise<void> {
       const metadataGroup = page.locator('.group\\/metadata').first()
       await metadataGroup.hover()
@@ -432,6 +440,26 @@ test.describe('Notes Management', () => {
       await page.reload()
       await waitForAppReady(page)
       await waitForVaultReady(page)
+    }
+
+    async function createTodayJournalWithSeededProperty(page: Page): Promise<void> {
+      const date = getLocalIsoDate()
+      await _navigateTo(page, 'journal')
+
+      const createResult = await page.evaluate(async (journalDate) => {
+        const entry = await window.api.journal.createEntry({
+          date: journalDate,
+          content: 'Journal body',
+          properties: { Mood: 'Focused' }
+        })
+        return { ok: Boolean(entry?.id) }
+      }, date)
+      expect(createResult.ok).toBe(true)
+
+      await page.reload()
+      await waitForAppReady(page)
+      await waitForVaultReady(page)
+      await _navigateTo(page, 'journal')
     }
 
     test('properties section collapse persists across reload', async ({ page }) => {
@@ -477,6 +505,30 @@ test.describe('Notes Management', () => {
 
       const propertyList = page.getByRole('list', { name: 'Properties list' }).first()
       await expect(propertyList.locator('> div')).toHaveCount(2)
+    })
+
+    test('journal properties section collapse persists across reload', async ({ page }) => {
+      await createTodayJournalWithSeededProperty(page)
+
+      const header = page.getByRole('button', { name: /^Properties/ }).first()
+      await expect(header).toBeVisible()
+      await expect(header).toHaveAttribute('aria-expanded', 'true')
+
+      const propertiesContent = page.locator('#properties-content')
+      await expect(propertiesContent).toBeVisible()
+
+      await header.click()
+      await expect(header).toHaveAttribute('aria-expanded', 'false')
+      await expect(propertiesContent).toHaveCount(0)
+
+      await page.reload()
+      await waitForAppReady(page)
+      await waitForVaultReady(page)
+      await _navigateTo(page, 'journal')
+
+      const headerAfterReload = page.getByRole('button', { name: /^Properties/ }).first()
+      await expect(headerAfterReload).toBeVisible()
+      await expect(headerAfterReload).toHaveAttribute('aria-expanded', 'false')
     })
   })
 
