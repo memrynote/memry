@@ -54,7 +54,7 @@ export function GraphPage(): React.JSX.Element {
         return t('summary.node-type-count', { count, label })
       })
       .join(', ')
-  }, [data?.nodes, t])
+  }, [data, t])
 
   if (isLoading) {
     return (
@@ -70,7 +70,7 @@ export function GraphPage(): React.JSX.Element {
       <div className="flex h-full flex-col items-center justify-center gap-4">
         <AlertCircle className="size-8 text-destructive/60" />
         <p className="text-sm text-destructive/80 font-serif">{t('page.load-failed')}</p>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
+        <Button variant="outline" size="sm" onClick={() => void refetch()}>
           {t('page.try-again')}
         </Button>
       </div>

@@ -82,8 +82,8 @@ export interface ProjectionProjector {
   name: string
   handles(event: ProjectionEvent): boolean
   project(event: ProjectionEvent): void | Promise<void>
-  rebuild(): unknown | Promise<unknown>
-  reconcile(): unknown | Promise<unknown>
+  rebuild(): unknown
+  reconcile(): unknown
 }
 
 export interface ProjectionLogger {

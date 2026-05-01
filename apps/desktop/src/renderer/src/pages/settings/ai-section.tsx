@@ -114,7 +114,7 @@ export function AISettings() {
       } else if (event.phase === 'ready') {
         setIsLoadingModel(false)
         setReindexProgress(null)
-        window.api.settings.getAIModelStatus().then(setModelStatus)
+        void window.api.settings.getAIModelStatus().then(setModelStatus)
       } else if (event.phase === 'error') {
         setIsLoadingModel(false)
         setReindexProgress(null)
@@ -127,7 +127,7 @@ export function AISettings() {
           setTimeout(() => {
             setIsReindexing(false)
             setReindexProgress(null)
-            window.api.settings.getAIModelStatus().then(setModelStatus)
+            void window.api.settings.getAIModelStatus().then(setModelStatus)
           }, 1000)
         }
       }
@@ -150,7 +150,7 @@ export function AISettings() {
       if (event.phase === 'ready') {
         setIsDownloadingVoiceModel(false)
         setVoiceModelProgress(null)
-        window.api.settings.getVoiceModelStatus().then(setVoiceModelStatus)
+        void window.api.settings.getVoiceModelStatus().then(setVoiceModelStatus)
         return
       }
 
@@ -295,7 +295,7 @@ export function AISettings() {
         <SettingRow label={t('ai.enable.label')} description={t('ai.enable.description')}>
           <Switch
             checked={settings.enabled}
-            onCheckedChange={handleToggleEnabled}
+            onCheckedChange={(...args) => void handleToggleEnabled(...args)}
             className={ACCENT_SWITCH}
           />
         </SettingRow>
@@ -303,7 +303,10 @@ export function AISettings() {
 
       <SettingsGroup label={t('ai.groups.voice')}>
         <SettingRow label={t('ai.voice.provider')} description={t('ai.voice.providerDescription')}>
-          <Select value={voiceSettings.provider} onValueChange={handleVoiceProviderChange}>
+          <Select
+            value={voiceSettings.provider}
+            onValueChange={(value) => void handleVoiceProviderChange(value as 'local' | 'openai')}
+          >
             <SelectTrigger className={COMPACT_SELECT}>
               <SelectValue />
             </SelectTrigger>
@@ -371,7 +374,7 @@ export function AISettings() {
             )}
 
             {!voiceModelStatus?.downloaded && !isDownloadingVoiceModel && (
-              <Button onClick={handleDownloadVoiceModel} size="sm" className="w-full">
+              <Button onClick={() => void handleDownloadVoiceModel()} size="sm" className="w-full">
                 {t('ai.voice.download')}
               </Button>
             )}
@@ -407,7 +410,7 @@ export function AISettings() {
                 </Button>
                 <Button
                   size="sm"
-                  onClick={handleSaveVoiceApiKey}
+                  onClick={() => void handleSaveVoiceApiKey()}
                   disabled={!voiceApiKey.trim()}
                   className="h-7 px-3"
                 >
@@ -476,7 +479,7 @@ export function AISettings() {
           )}
 
           {!modelStatus?.loaded && !isLoadingModel && (
-            <Button onClick={handleLoadModel} size="sm" className="w-full">
+            <Button onClick={() => void handleLoadModel()} size="sm" className="w-full">
               {t('ai.embedding.downloadLoad')}
             </Button>
           )}
@@ -510,7 +513,7 @@ export function AISettings() {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleReindexEmbeddings}
+            onClick={() => void handleReindexEmbeddings()}
             disabled={isReindexing || !modelStatus?.loaded || !settings.enabled}
             className="gap-1.5"
           >

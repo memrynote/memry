@@ -70,7 +70,10 @@ export function CalendarSettingsSection() {
           label={t('calendar.defaultBehavior.label')}
           description={t('calendar.defaultBehavior.description')}
         >
-          <Select value={settings.dayCellClickBehavior} onValueChange={handleGlobalChange}>
+          <Select
+            value={settings.dayCellClickBehavior}
+            onValueChange={(...args) => void handleGlobalChange(...args)}
+          >
             <SelectTrigger className={COMPACT_SELECT}>
               <SelectValue />
             </SelectTrigger>
@@ -88,7 +91,10 @@ export function CalendarSettingsSection() {
           label={t('calendar.pageOverride.label')}
           description={t('calendar.pageOverride.description')}
         >
-          <Select value={settings.calendarPageClickOverride} onValueChange={handleOverrideChange}>
+          <Select
+            value={settings.calendarPageClickOverride}
+            onValueChange={(...args) => void handleOverrideChange(...args)}
+          >
             <SelectTrigger className={COMPACT_SELECT}>
               <SelectValue />
             </SelectTrigger>

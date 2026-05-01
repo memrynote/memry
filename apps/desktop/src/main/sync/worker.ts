@@ -11,8 +11,6 @@ import type {
   DecryptedPullItem,
   DecryptionFailure
 } from './worker-protocol'
-import type { SyncItemType, SyncOperation } from '@memry/contracts/sync-api'
-
 if (!parentPort) {
   throw new Error('worker.ts must be run as a worker_threads Worker')
 }
@@ -53,8 +51,8 @@ function handleEncryptBatch(msg: Extract<MainToWorkerMessage, { type: 'encrypt-b
         const content = new TextEncoder().encode(item.payload)
         const result = encryptItemForPush({
           id: item.itemId,
-          type: item.type as SyncItemType,
-          operation: item.operation as SyncOperation,
+          type: item.type,
+          operation: item.operation,
           content,
           vaultKey: msg.vaultKey,
           signingSecretKey: msg.signingSecretKey,

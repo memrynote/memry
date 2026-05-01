@@ -193,7 +193,7 @@ export function SidebarBookmarkList({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
                 <DropdownMenuItem
-                  onClick={handleRemoveBookmark(bookmark)}
+                  onClick={(...args) => void handleRemoveBookmark(bookmark)(...args)}
                   className="text-destructive focus:text-destructive"
                 >
                   <Trash2 className="size-4 mr-2" />

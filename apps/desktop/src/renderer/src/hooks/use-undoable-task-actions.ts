@@ -10,7 +10,7 @@ import { generateTaskId } from '@/data/sample-tasks'
 import { formatDateShort } from '@/lib/task-utils'
 import { createLogger } from '@/lib/logger'
 
-const log = createLogger('Hook:UndoableTaskActions')
+const _log = createLogger('Hook:UndoableTaskActions')
 
 export const UNDOABLE_FIELDS = new Set([
   'priority',
@@ -296,7 +296,7 @@ export const useUndoableTaskActions = ({
 
       const fieldLabel =
         undoableKeys[0] === 'priority'
-          ? `Priority → ${String((updates as Partial<Task>).priority ?? '')}`
+          ? `Priority → ${String(updates.priority ?? '')}`
           : undoableKeys[0] === 'statusId'
             ? 'Status changed'
             : undoableKeys[0] === 'dueDate'

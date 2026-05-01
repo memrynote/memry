@@ -33,11 +33,11 @@ export const SortableProjectItem = ({
   isActive,
   onClick,
   onEdit,
-  onArchive,
-  onDelete
+  onArchive: _onArchive,
+  onDelete: _onDelete
 }: SortableProjectItemProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('notes')
-  const { isMobile } = useSidebar()
+  const { isMobile: _isMobile } = useSidebar()
 
   // Try to get drag context - may not be available if not wrapped in DragProvider
   let dragState = { isDragging: false }

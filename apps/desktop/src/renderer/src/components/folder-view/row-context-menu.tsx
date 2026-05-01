@@ -195,7 +195,7 @@ export function RowContextMenu({
 
               {tPhaseF('phaseF.componentsFolderViewRowContextMenu.openInExternalEditor')}
             </ContextMenuItem>
-            <ContextMenuItem onClick={handleRevealInFinder}>
+            <ContextMenuItem onClick={() => void handleRevealInFinder()}>
               <FolderOpen className="mr-2 h-4 w-4" />
 
               {tPhaseF('phaseF.componentsFolderViewRowContextMenu.revealInFinder')}
@@ -209,7 +209,7 @@ export function RowContextMenu({
             <ContextMenuSeparator />
 
             {/* Utility actions */}
-            <ContextMenuItem onClick={handleCopyLink}>
+            <ContextMenuItem onClick={() => void handleCopyLink()}>
               <Link className="mr-2 h-4 w-4" />
 
               {tPhaseF('phaseF.componentsFolderViewRowContextMenu.copyLink')}

@@ -292,7 +292,7 @@ export function TemplatesPage() {
                     key={template.id}
                     template={template}
                     onEdit={handleEditTemplate}
-                    onDuplicate={handleDuplicateTemplate}
+                    onDuplicate={(...args) => void handleDuplicateTemplate(...args)}
                     onDelete={handleDeleteClick}
                   />
                 ))}
@@ -324,7 +324,7 @@ export function TemplatesPage() {
                     key={template.id}
                     template={template}
                     onEdit={handleEditTemplate}
-                    onDuplicate={handleDuplicateTemplate}
+                    onDuplicate={(...args) => void handleDuplicateTemplate(...args)}
                   />
                 ))}
               </div>
@@ -353,7 +353,7 @@ export function TemplatesPage() {
               {tPhaseF('phaseF.pagesTemplates.cancel')}
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteConfirm}
+              onClick={() => void handleDeleteConfirm()}
               disabled={isDeleting}
               className={cn(
                 'bg-destructive text-destructive-foreground',

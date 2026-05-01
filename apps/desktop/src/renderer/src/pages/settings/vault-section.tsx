@@ -118,7 +118,7 @@ export function VaultSettings() {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleReveal}
+            onClick={() => void handleReveal()}
             disabled={!vaultPath}
             className="h-7 px-3 text-xs/4"
           >

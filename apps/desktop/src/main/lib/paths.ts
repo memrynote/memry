@@ -1,5 +1,8 @@
 import path from 'path'
 
+const CONTROL_FILENAME_CHARS = `${String.fromCharCode(0)}-${String.fromCharCode(31)}`
+const UNSAFE_FILENAME_CHARS = new RegExp(`[<>:"/\\\\|?*${CONTROL_FILENAME_CHARS}]`, 'g')
+
 /**
  * Sanitizes a file path to prevent directory traversal attacks.
  * Removes .. segments and normalizes the path.
@@ -55,7 +58,7 @@ export function safeFileName(title: string, maxLength = 100): string {
   return (
     title
       // Replace special characters with dashes
-      .replace(/[<>:"/\\|?*\x00-\x1f]/g, '-')
+      .replace(UNSAFE_FILENAME_CHARS, '-')
       // Replace multiple spaces/dashes with single dash
       .replace(/[\s-]+/g, '-')
       // Remove leading/trailing dashes and spaces

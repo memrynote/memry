@@ -371,7 +371,7 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
   useEffect(() => {
     const unsubCreated = window.api.onBookmarkCreated?.(() => {
       // Refresh to get the full bookmark with resolved item
-      refresh()
+      void refresh()
     })
 
     const unsubDeleted = window.api.onBookmarkDeleted?.((event) => {
@@ -381,7 +381,7 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
 
     const unsubReordered = window.api.onBookmarksReordered?.(() => {
       // Refresh to get new order
-      refresh()
+      void refresh()
     })
 
     return () => {
@@ -448,7 +448,7 @@ export function useIsBookmarked(itemType: string, itemId: string) {
   }, [itemType, itemId, isBookmarked])
 
   useEffect(() => {
-    checkBookmark()
+    void checkBookmark()
 
     // Subscribe to bookmark events
     const unsubCreated = window.api.onBookmarkCreated?.((event) => {

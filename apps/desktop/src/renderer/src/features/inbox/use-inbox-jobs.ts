@@ -57,7 +57,7 @@ export function useInboxJobs(itemIds: string[] = []): UseInboxJobsResult {
     }
   }, [queryClient])
 
-  const jobs = query.data?.jobs ?? []
+  const jobs = useMemo(() => query.data?.jobs ?? [], [query.data?.jobs])
   const jobsByItemId = useMemo(() => {
     return jobs.reduce<Record<string, InboxJob[]>>((acc, job) => {
       if (!acc[job.itemId]) acc[job.itemId] = []

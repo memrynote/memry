@@ -185,7 +185,7 @@ export function AppearanceSettings() {
           <SegmentedControl
             options={themeOptions}
             value={settings.theme}
-            onValueChange={handleThemeChange}
+            onValueChange={(...args) => void handleThemeChange(...args)}
             ariaLabel={t('appearance.theme.colorMode.aria')}
           />
         </SettingRow>
@@ -253,7 +253,7 @@ export function AppearanceSettings() {
           <SegmentedControl
             options={FONT_SIZE_OPTIONS}
             value={settings.fontSize}
-            onValueChange={handleFontSizeChange}
+            onValueChange={(...args) => void handleFontSizeChange(...args)}
             ariaLabel={t('appearance.typography.fontSize.aria')}
           />
         </SettingRow>
@@ -262,7 +262,10 @@ export function AppearanceSettings() {
           label={t('appearance.typography.fontFamily.label')}
           description={t('appearance.typography.fontFamily.description')}
         >
-          <Select value={settings.fontFamily} onValueChange={handleFontFamilyChange}>
+          <Select
+            value={settings.fontFamily}
+            onValueChange={(...args) => void handleFontFamilyChange(...args)}
+          >
             <SelectTrigger className={COMPACT_SELECT}>
               <SelectValue />
             </SelectTrigger>

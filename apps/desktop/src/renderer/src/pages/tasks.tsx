@@ -4,8 +4,7 @@ import { useT } from '@memry/i18n/renderer'
 import { toast } from 'sonner'
 import { TaskList } from '@/components/tasks/task-list'
 import { TasksTabBar, type TasksInternalTab } from '@/components/tasks/tasks-tab-bar'
-import { ProjectsTabContent } from '@/components/tasks/projects/projects-tab-content'
-import { ProjectSelector } from '@/components/tasks/projects/project-selector'
+
 import { AddTaskModal } from '@/components/tasks/add-task-modal'
 import { ProjectModal } from '@/components/tasks/project-modal'
 import { KanbanBoard } from '@/components/tasks/kanban'
@@ -35,8 +34,7 @@ import {
   type ViewMode,
   type TaskFilters,
   type TaskSort,
-  type SavedFilter,
-  type CompletionFilterType
+  type SavedFilter
 } from '@/data/tasks-data'
 import { createDefaultTask, type Task, type Priority } from '@/data/sample-tasks'
 import { addDays } from '@/lib/task-utils' // used by handleBulkChangeDueDate
@@ -130,9 +128,9 @@ export const TasksPage = ({
   const undoable = useUndoableTaskActions({
     tasks,
     projects,
-    addTask: contextAddTask,
-    updateTask: contextUpdateTask,
-    deleteTask: contextDeleteTask,
+    addTask: (...args) => void contextAddTask(...args),
+    updateTask: (...args) => void contextUpdateTask(...args),
+    deleteTask: (...args) => void contextDeleteTask(...args),
     registerUndo,
     removeUndoEntry
   })
@@ -173,9 +171,10 @@ export const TasksPage = ({
   )
 
   const taskTabViewState = activeTab?.viewState ?? {}
-  const activeInternalTab = ((taskTabViewState.activeInternalTab as TasksInternalTab | undefined) ??
+  const activeInternalTab =
+    (taskTabViewState.activeInternalTab as TasksInternalTab | undefined) ??
     (taskTabViewState.activeTab as TasksInternalTab | undefined) ??
-    'today') as TasksInternalTab
+    'today'
   const defaultProjectId = useMemo(
     () => resolveInitialViewProject(selectedType, taskPrefs.defaultProjectId, projects),
     [selectedType, taskPrefs.defaultProjectId, projects]
@@ -299,7 +298,7 @@ export const TasksPage = ({
       }
       setActiveInternalTab(tab)
     },
-    [activeSavedFilterId, clearFilters]
+    [activeSavedFilterId, clearFilters, setActiveInternalTab]
   )
 
   // Bulk delete dialog state
@@ -388,15 +387,15 @@ export const TasksPage = ({
     selectedIds: selectedTaskIds,
     tasks,
     projects,
-    onUpdateTask: contextUpdateTask,
-    onDeleteTask: contextDeleteTask,
+    onUpdateTask: (...args) => void contextUpdateTask(...args),
+    onDeleteTask: (...args) => void contextDeleteTask(...args),
     onComplete: deselectAll,
     registerUndo,
-    onAddTask: contextAddTask
+    onAddTask: (...args) => void contextAddTask(...args)
   })
 
   // Toggle selection mode handler
-  const handleToggleSelectionMode = useCallback(() => {
+  const _handleToggleSelectionMode = useCallback(() => {
     if (selection.isSelectionMode) {
       exitSelectionMode()
     } else {
@@ -409,15 +408,17 @@ export const TasksPage = ({
     tasks,
     projects,
     onTasksChange: setTasks,
-    onAddTask: contextAddTask,
-    onUpdateTask: contextUpdateTask,
-    onDeleteTask: contextDeleteTask,
-    onReorderTasks: async (taskIds, positions) => {
-      try {
-        await tasksService.reorder(taskIds, positions)
-      } catch (error) {
-        log.error('Failed to reorder subtasks:', error)
-      }
+    onAddTask: (...args) => void contextAddTask(...args),
+    onUpdateTask: (...args) => void contextUpdateTask(...args),
+    onDeleteTask: (...args) => void contextDeleteTask(...args),
+    onReorderTasks: (taskIds, positions) => {
+      void (async () => {
+        try {
+          await tasksService.reorder(taskIds, positions)
+        } catch (error) {
+          log.error('Failed to reorder subtasks:', error)
+        }
+      })()
     }
   })
 
@@ -466,14 +467,14 @@ export const TasksPage = ({
 
   const handleCloseDetail = useCallback(() => {
     setDetailTaskId(null)
-  }, [])
+  }, [setDetailTaskId])
 
   // Selection change handler (kept for interface compatibility)
   const _handleSelectView = (id: string): void => {
     onSelectionChange(id, 'view')
   }
 
-  const handleProjectSettings = (): void => {
+  const _handleProjectSettings = (): void => {
     // Project settings are now handled in AppSidebar
     // This is kept for the settings button in the header
     // We could emit an event or use a context here
@@ -481,7 +482,7 @@ export const TasksPage = ({
 
   // ========== PROJECT HANDLERS ==========
 
-  const handleCreateProject = useCallback(() => {
+  const _handleCreateProject = useCallback(() => {
     setEditingProject(null)
     setIsProjectModalOpen(true)
   }, [])
@@ -511,7 +512,7 @@ export const TasksPage = ({
     [editingProject, contextAddProject, contextUpdateProject, t]
   )
 
-  const handleArchiveProject = useCallback(
+  const _handleArchiveProject = useCallback(
     async (project: Project) => {
       try {
         await contextUpdateProject(project.id, { isArchived: true })
@@ -538,7 +539,7 @@ export const TasksPage = ({
         toast.error(t('toasts.projectDeleteError'))
       }
     },
-    [contextDeleteProject, selectedProjectId, t]
+    [contextDeleteProject, selectedProjectId, setSelectedProjectId, t]
   )
 
   // Keyboard shortcuts for filter operations and selection
@@ -575,7 +576,7 @@ export const TasksPage = ({
       // Cmd/Ctrl+Enter to complete selected tasks
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && hasSelection) {
         e.preventDefault()
-        bulkActions.bulkComplete()
+        void bulkActions.bulkComplete()
       }
 
       // Cmd/Ctrl+Backspace to delete selected tasks
@@ -589,7 +590,7 @@ export const TasksPage = ({
     return () => window.removeEventListener('keydown', handler)
   }, [showFilterBar, clearFilters, hasSelection, selectAll, deselectAll, bulkActions, t])
 
-  const handleAddTask = (): void => {
+  const _handleAddTask = (): void => {
     setAddTaskPrefillTitle('')
     setAddTaskPrefillDueDate(null)
     setAddTaskPrefillProjectId(null)
@@ -746,7 +747,7 @@ export const TasksPage = ({
     [undoable]
   )
 
-  const handleDeleteTask = useCallback(
+  const _handleDeleteTask = useCallback(
     (taskId: string): void => {
       undoable.deleteTask(taskId)
     },
@@ -758,7 +759,7 @@ export const TasksPage = ({
       undoable.deleteTask(taskId)
       setDetailTaskId(null)
     },
-    [undoable]
+    [setDetailTaskId, undoable]
   )
 
   // ========== BULK ACTION HANDLERS ==========
@@ -816,7 +817,7 @@ export const TasksPage = ({
 
   const handleBulkMoveToProject = useCallback(
     (projectId: string): void => {
-      bulkActions.bulkMoveToProject(projectId)
+      void bulkActions.bulkMoveToProject(projectId)
     },
     [bulkActions]
   )
@@ -829,7 +830,7 @@ export const TasksPage = ({
   )
 
   const handleBulkDeleteConfirm = useCallback((): void => {
-    bulkActions.bulkDelete()
+    void bulkActions.bulkDelete()
     setIsBulkDeleteDialogOpen(false)
   }, [bulkActions])
 
@@ -1042,12 +1043,12 @@ export const TasksPage = ({
               allSelected={allSelected}
               someSelected={someSelected}
               onToggleSelectAll={toggleSelectAll}
-              onComplete={bulkActions.bulkComplete}
+              onComplete={(...args) => void bulkActions.bulkComplete(...args)}
               onChangePriority={handleBulkChangePriority}
               onChangeDueDate={handleBulkChangeDueDate}
               onMoveToProject={handleBulkMoveToProject}
               onChangeStatus={handleBulkChangeStatus}
-              onArchive={bulkActions.bulkArchive}
+              onArchive={(...args) => void bulkActions.bulkArchive(...args)}
               onDelete={() => setIsBulkDeleteDialogOpen(true)}
               onCancel={deselectAll}
               projects={projects}
@@ -1156,7 +1157,7 @@ export const TasksPage = ({
           onToggleComplete={handleToggleComplete}
           onUpdateTask={handleUpdateTask}
           onAddSubtask={subtaskManagement.handleAddSubtask}
-          onNoteClick={handleNoteClick}
+          onNoteClick={(...args) => void handleNoteClick(...args)}
           onDeleteTask={handleDeleteTaskFromDrawer}
         />
       </div>
@@ -1179,8 +1180,12 @@ export const TasksPage = ({
           setIsProjectModalOpen(false)
           setEditingProject(null)
         }}
-        onSave={handleSaveProject}
-        onDelete={editingProject ? () => handleDeleteProject(editingProject.id) : undefined}
+        onSave={(...args) => void handleSaveProject(...args)}
+        onDelete={() => {
+          if (editingProject) {
+            void handleDeleteProject(editingProject.id)
+          }
+        }}
         project={editingProject}
       />
 

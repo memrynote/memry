@@ -80,21 +80,22 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const activeTab = useActiveTab()
   const focusInboxItemId =
     typeof activeTab?.viewState?.focusInboxItemId === 'string'
-      ? (activeTab.viewState.focusInboxItemId as string)
+      ? activeTab.viewState.focusInboxItemId
       : null
   const focusToken =
-    typeof activeTab?.viewState?.focusedAt === 'number'
-      ? (activeTab.viewState.focusedAt as number)
-      : null
+    typeof activeTab?.viewState?.focusedAt === 'number' ? activeTab.viewState.focusedAt : null
   const lastConsumedFocusTokenRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (!focusInboxItemId || focusToken === null) return
     if (lastConsumedFocusTokenRef.current === focusToken) return
     lastConsumedFocusTokenRef.current = focusToken
-    setIsTriageMode(false)
-    setShowSnoozedItems(true)
-    setCurrentView('inbox')
+    const focusTimer = window.setTimeout(() => {
+      setIsTriageMode(false)
+      setShowSnoozedItems(true)
+      setCurrentView('inbox')
+    }, 0)
+    return () => window.clearTimeout(focusTimer)
   }, [focusInboxItemId, focusToken])
 
   const itemCountsByType = useMemo(() => {

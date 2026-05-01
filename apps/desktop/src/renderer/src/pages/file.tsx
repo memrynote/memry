@@ -113,7 +113,7 @@ function FileInfoBar({ file }: { file: FileMetadata }) {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => window.api.notes.openExternal(file.id)}
+          onClick={() => void window.api.notes.openExternal(file.id)}
           className="h-8 w-8 p-0 sm:w-auto sm:px-3"
           title={tPhaseF('phaseF.pagesFile.openInDefaultApp')}
         >
@@ -123,7 +123,7 @@ function FileInfoBar({ file }: { file: FileMetadata }) {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => window.api.notes.revealInFinder(file.id)}
+          onClick={() => void window.api.notes.revealInFinder(file.id)}
           className="h-8 w-8 p-0 sm:w-auto sm:px-3"
           title={tPhaseF('phaseF.pagesFile.revealInFinder')}
         >
@@ -207,7 +207,7 @@ export function FilePage({ fileId }: FilePageProps) {
           error,
           getI18n().getFixedT(null, 'notes')('phaseF.pagesFile.failedToLoadFile')
         )}
-        onRetry={() => refetch()}
+        onRetry={() => void refetch()}
       />
     )
   }
@@ -217,7 +217,7 @@ export function FilePage({ fileId }: FilePageProps) {
     return (
       <FileErrorState
         error="File not found. It may have been deleted or moved."
-        onRetry={() => refetch()}
+        onRetry={() => void refetch()}
       />
     )
   }

@@ -12,6 +12,7 @@
  */
 
 import { parseExpression, type ASTNode, ParseError } from './expression-parser'
+import { stringifyUnknown } from './stringify-unknown'
 import type { NoteWithProperties } from '@memry/contracts/folder-view-api'
 import { createLogger } from '@/lib/logger'
 
@@ -242,7 +243,7 @@ const BUILT_IN_FUNCTIONS: Record<string, BuiltInFunction> = {
 
   // String functions
   concat: (args) => {
-    return args.map((a) => (a === null || a === undefined ? '' : String(a))).join('')
+    return args.map(stringifyUnknown).join('')
   },
 
   lower: (args) => {
@@ -416,7 +417,7 @@ const BUILT_IN_FUNCTIONS: Record<string, BuiltInFunction> = {
     const val = args[0]
     if (val === null || val === undefined) return null
     if (val instanceof Date) return val.toISOString()
-    return String(val)
+    return stringifyUnknown(val)
   },
 
   boolean: (args) => {
@@ -658,7 +659,7 @@ function evaluateBinaryOp(operator: string, left: unknown, right: unknown): unkn
     case '+': {
       // String concatenation
       if (typeof left === 'string' || typeof right === 'string') {
-        return String(left ?? '') + String(right ?? '')
+        return stringifyUnknown(left) + stringifyUnknown(right)
       }
       // Number addition
       const l = typeof left === 'number' ? left : null
@@ -727,8 +728,8 @@ function compareValues(left: unknown, right: unknown): number {
   }
 
   // String comparison
-  const leftStr = String(left)
-  const rightStr = String(right)
+  const leftStr = stringifyUnknown(left)
+  const rightStr = stringifyUnknown(right)
   return leftStr.localeCompare(rightStr)
 }
 

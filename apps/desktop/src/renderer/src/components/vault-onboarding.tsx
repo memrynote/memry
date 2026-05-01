@@ -1,6 +1,5 @@
 'use client'
 
-import * as React from 'react'
 import { FolderOpen, Sparkles, FileText, Clock, Loader2 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import { useVault, useVaultList } from '@/hooks/use-vault'
@@ -41,7 +40,7 @@ export function VaultOnboarding() {
         {/* Main action card */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-200/50 p-6 mb-4">
           <Button
-            onClick={handleSelectVault}
+            onClick={() => void handleSelectVault()}
             disabled={isLoading}
             className="w-full h-14 text-base bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-500/25 transition-all hover:shadow-xl hover:shadow-indigo-500/30"
           >
@@ -99,7 +98,7 @@ export function VaultOnboarding() {
               {vaults.slice(0, 3).map((vault) => (
                 <button
                   key={vault.path}
-                  onClick={() => handleOpenRecentVault(vault.path)}
+                  onClick={() => void handleOpenRecentVault(vault.path)}
                   disabled={isLoading}
                   className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors text-left group"
                 >

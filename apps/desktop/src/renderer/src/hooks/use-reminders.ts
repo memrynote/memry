@@ -20,7 +20,9 @@ import {
   type UpdateReminderInput,
   type SnoozeReminderInput,
   type ListRemindersInput,
-  type ReminderTargetType
+  type Reminder,
+  type ReminderTargetType,
+  type ReminderWithTarget
 } from '@/services/reminder-service'
 
 // ============================================================================
@@ -45,11 +47,11 @@ export const reminderKeys = {
  * Hook for listing reminders with optional filters
  */
 export function useReminders(options?: ListRemindersInput): {
-  reminders: Array<any>
+  reminders: ReminderWithTarget[]
   total: number
   hasMore: boolean
   isLoading: boolean
-  error: any
+  error: Error | null
   refetch: () => void
 } {
   const queryClient = useQueryClient()
@@ -64,19 +66,19 @@ export function useReminders(options?: ListRemindersInput): {
   useEffect(() => {
     const unsubs = [
       onReminderCreated(() => {
-        queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
+        void queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
       }),
       onReminderUpdated(() => {
-        queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
+        void queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
       }),
       onReminderDeleted(() => {
-        queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
+        void queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
       }),
       onReminderDismissed(() => {
-        queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
+        void queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
       }),
       onReminderSnoozed(() => {
-        queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
+        void queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
       })
     ]
 
@@ -89,7 +91,7 @@ export function useReminders(options?: ListRemindersInput): {
     hasMore: query.data?.hasMore ?? false,
     isLoading: query.isLoading,
     error: query.error,
-    refetch: query.refetch
+    refetch: (...args) => void query.refetch(...args)
   }
 }
 
@@ -100,10 +102,10 @@ export function useRemindersForTarget(
   targetType: ReminderTargetType,
   targetId: string
 ): {
-  reminders: Array<any>
+  reminders: Reminder[]
   hasReminders: boolean
   isLoading: boolean
-  error: any
+  error: Error | null
   refetch: () => void
 } {
   const queryClient = useQueryClient()
@@ -122,21 +124,21 @@ export function useRemindersForTarget(
     const unsubs = [
       onReminderCreated((event) => {
         if (event.reminder.targetType === targetType && event.reminder.targetId === targetId) {
-          queryClient.invalidateQueries({
+          void queryClient.invalidateQueries({
             queryKey: reminderKeys.forTarget(targetType, targetId)
           })
         }
       }),
       onReminderDeleted((event) => {
         if (event.targetType === targetType && event.targetId === targetId) {
-          queryClient.invalidateQueries({
+          void queryClient.invalidateQueries({
             queryKey: reminderKeys.forTarget(targetType, targetId)
           })
         }
       }),
       onReminderDismissed((event) => {
         if (event.reminder.targetType === targetType && event.reminder.targetId === targetId) {
-          queryClient.invalidateQueries({
+          void queryClient.invalidateQueries({
             queryKey: reminderKeys.forTarget(targetType, targetId)
           })
         }
@@ -151,7 +153,7 @@ export function useRemindersForTarget(
     hasReminders: (query.data?.length ?? 0) > 0,
     isLoading: query.isLoading,
     error: query.error,
-    refetch: () => query.refetch()
+    refetch: () => void query.refetch()
   }
 }
 
@@ -168,7 +170,7 @@ export function useCreateReminder() {
   return useMutation({
     mutationFn: (input: CreateReminderInput) => reminderService.create(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
     }
   })
 }
@@ -182,7 +184,7 @@ export function useUpdateReminder() {
   return useMutation({
     mutationFn: (input: UpdateReminderInput) => reminderService.update(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
     }
   })
 }
@@ -196,7 +198,7 @@ export function useDeleteReminder() {
   return useMutation({
     mutationFn: (id: string) => reminderService.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
     }
   })
 }
@@ -210,7 +212,7 @@ export function useDismissReminder() {
   return useMutation({
     mutationFn: (id: string) => reminderService.dismiss(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
     }
   })
 }
@@ -224,7 +226,7 @@ export function useSnoozeReminder() {
   return useMutation({
     mutationFn: (input: SnoozeReminderInput) => reminderService.snooze(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
+      void queryClient.invalidateQueries({ queryKey: reminderKeys.lists() })
     }
   })
 }

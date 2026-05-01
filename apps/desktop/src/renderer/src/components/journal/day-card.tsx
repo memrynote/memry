@@ -103,8 +103,8 @@ export const DayCard = memo(
       },
       ref
     ) => {
-      const { t, i18n } = useT('journal')
-      const dateLabels = useMemo(() => createJournalDateLabels(t), [t, i18n.language])
+      const { t, i18n: _i18n } = useT('journal')
+      const dateLabels = useMemo(() => createJournalDateLabels(t), [t])
       const header = formatDayHeader(date, dateLabels)
       const greeting = useMemo(
         () => (isToday ? getTimeBasedGreeting(dateLabels) : null),

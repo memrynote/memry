@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useState } from 'react'
 import { DragOverlay, type DropAnimation, defaultDropAnimationSideEffects } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 
@@ -74,12 +74,10 @@ export const TaskDragOverlay = ({ projects }: TaskDragOverlayProps): React.JSX.E
     overlayParentExpanded
   } = dragState
 
-  const wasCrossContainerRef = useRef(false)
-  const sourceTypeRef = useRef(dragState.sourceType)
-
-  if (isDragging) {
-    sourceTypeRef.current = dragState.sourceType
-  }
+  const [latchedDragState, setLatchedDragState] = useState({
+    sourceType: dragState.sourceType,
+    wasCrossContainerDrop: false
+  })
 
   const isListCrossSectionDrop =
     dragState.sourceType === 'list' &&
@@ -98,17 +96,25 @@ export const TaskDragOverlay = ({ projects }: TaskDragOverlayProps): React.JSX.E
     overType === 'date'
 
   // Latch cross-container state during drag; ref survives resetDragState()
-  if (isDragging) {
-    wasCrossContainerRef.current = isCrossContainerDrop
+  if (
+    isDragging &&
+    (latchedDragState.sourceType !== dragState.sourceType ||
+      latchedDragState.wasCrossContainerDrop !== isCrossContainerDrop)
+  ) {
+    setLatchedDragState({
+      sourceType: dragState.sourceType,
+      wasCrossContainerDrop: isCrossContainerDrop
+    })
   }
 
   // Kanban has its own DragOverlay — skip entirely to avoid duplicate
   // sideEffects racing on the same active element's inline opacity
-  if (sourceTypeRef.current === 'kanban') {
+  const effectiveSourceType = isDragging ? dragState.sourceType : latchedDragState.sourceType
+  if (effectiveSourceType === 'kanban') {
     return null
   }
 
-  const effectiveDropAnimation = wasCrossContainerRef.current
+  const effectiveDropAnimation = latchedDragState.wasCrossContainerDrop
     ? crossContainerDropAnimation
     : dropAnimation
 
@@ -128,7 +134,7 @@ export const TaskDragOverlay = ({ projects }: TaskDragOverlayProps): React.JSX.E
     primaryTask?.dueDate &&
     new Date(primaryTask.dueDate) < new Date(new Date().setHours(0, 0, 0, 0))
   )
-  const previewVariant = sourceTypeRef.current === 'list' ? 'list' : 'kanban'
+  const previewVariant = effectiveSourceType === 'list' ? 'list' : 'kanban'
 
   return (
     <DragOverlay dropAnimation={effectiveDropAnimation}>

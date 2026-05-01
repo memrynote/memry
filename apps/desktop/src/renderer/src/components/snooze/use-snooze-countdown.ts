@@ -24,26 +24,20 @@ export function useSnoozeCountdown(snoozedUntil: Date | string | null): string |
     return formatSnoozeReturn(date)
   }, [snoozedUntil])
 
-  const [countdown, setCountdown] = useState<string | null>(getFormattedTime)
+  const [tick, setTick] = useState(0)
 
   useEffect(() => {
-    if (!snoozedUntil) {
-      setCountdown(null)
-      return
-    }
-
-    // Update immediately
-    setCountdown(getFormattedTime())
+    if (!snoozedUntil) return
 
     // Set up interval to update every minute (60000ms)
     const intervalId = setInterval(() => {
-      setCountdown(getFormattedTime())
+      setTick((current) => current + 1)
     }, 60000)
 
     // Also update when window regains focus (in case app was in background)
     const handleVisibilityChange = (): void => {
       if (document.visibilityState === 'visible') {
-        setCountdown(getFormattedTime())
+        setTick((current) => current + 1)
       }
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -53,7 +47,8 @@ export function useSnoozeCountdown(snoozedUntil: Date | string | null): string |
       clearInterval(intervalId)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [snoozedUntil, getFormattedTime])
+  }, [snoozedUntil])
 
-  return countdown
+  void tick
+  return getFormattedTime()
 }

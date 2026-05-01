@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { createElement, useMemo } from 'react'
 import { getIconByName } from '@/components/icon-picker'
 import { cn } from '@/lib/utils'
 import { Picker } from '@/components/ui/picker'
@@ -16,13 +16,11 @@ const ProjectIndicator = ({ project }: { project: Project }): React.JSX.Element 
   const IconComponent = getIconByName(project.icon)
 
   if (IconComponent) {
-    return (
-      <IconComponent
-        className="size-4 shrink-0"
-        style={{ color: project.color }}
-        aria-hidden="true"
-      />
-    )
+    return createElement(IconComponent, {
+      className: 'size-4 shrink-0',
+      style: { color: project.color },
+      'aria-hidden': 'true'
+    })
   }
 
   return (

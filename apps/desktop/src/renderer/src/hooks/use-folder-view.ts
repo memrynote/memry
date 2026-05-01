@@ -45,9 +45,9 @@ export interface ViewConfig {
   type: 'table' | 'grid' | 'list' | 'kanban'
   default?: boolean
   columns?: ColumnConfig[]
-  filters?: FilterExpression | unknown // Allow unknown for API compatibility
+  filters?: unknown // Allow unknown for API compatibility
   order?: Array<{ property: string; direction: 'asc' | 'desc' }>
-  groupBy?: GroupByConfig | unknown // Allow unknown for API compatibility
+  groupBy?: unknown // Allow unknown for API compatibility
   limit?: number
   showSummaries?: boolean
 }
@@ -289,7 +289,7 @@ export function useFolderView({
   })
 
   // Get views from query data
-  const views = viewsQuery.data?.views ?? [DEFAULT_VIEW]
+  const views = useMemo(() => viewsQuery.data?.views ?? [DEFAULT_VIEW], [viewsQuery.data?.views])
   const summaries = viewsQuery.data?.summaries ?? {}
 
   // Sync activeViewIndex when views load (only on initial load or invalidation).
@@ -365,7 +365,10 @@ export function useFolderView({
       displayName: id.charAt(0).toUpperCase() + id.slice(1),
       type: 'text'
     }))
-  const formulas = propertiesQuery.data?.formulas ?? []
+  const formulas = useMemo(
+    () => propertiesQuery.data?.formulas ?? [],
+    [propertiesQuery.data?.formulas]
+  )
 
   // Formulas map for table rendering
   const formulasMap = useMemo(() => {
@@ -415,21 +418,23 @@ export function useFolderView({
         clearTimeout(updateTimeoutRef.current)
       }
 
-      updateTimeoutRef.current = setTimeout(async () => {
-        try {
-          const result = await window.api.folderView.setView(
-            folderPath,
-            updatedView as unknown as Record<string, unknown>
-          )
+      updateTimeoutRef.current = setTimeout(() => {
+        void (async () => {
+          try {
+            const result = await window.api.folderView.setView(
+              folderPath,
+              updatedView as unknown as Record<string, unknown>
+            )
 
-          if (!result.success) {
-            throw new Error(result.error || 'Failed to save view')
+            if (!result.success) {
+              throw new Error(result.error || 'Failed to save view')
+            }
+          } catch (err) {
+            log.error('updateView failed:', err)
+            // Revert on error
+            void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
           }
-        } catch (err) {
-          log.error('updateView failed:', err)
-          // Revert on error
-          queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
-        }
+        })()
       }, 300)
     },
     [activeView, activeViewIndex, folderPath, queryClient]
@@ -532,7 +537,7 @@ export function useFolderView({
       } catch (err) {
         log.error('setViewAsDefault failed:', err)
         // Revert on error
-        queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
+        void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
         throw err
       }
     },
@@ -647,32 +652,34 @@ export function useFolderView({
         clearTimeout(updateTimeoutRef.current)
       }
 
-      updateTimeoutRef.current = setTimeout(async () => {
-        try {
-          await window.api.folderView.setView(
-            folderPath,
-            updatedView as unknown as Record<string, unknown>
-          )
+      updateTimeoutRef.current = setTimeout(() => {
+        void (async () => {
+          try {
+            await window.api.folderView.setView(
+              folderPath,
+              updatedView as unknown as Record<string, unknown>
+            )
 
-          const configResult = await window.api.folderView.getConfig(folderPath)
-          const existingConfig = configResult.config
+            const configResult = await window.api.folderView.getConfig(folderPath)
+            const existingConfig = configResult.config
 
-          const updatedConfig = {
-            ...existingConfig,
-            properties: {
-              ...existingConfig.properties,
-              [columnId]: {
-                ...(existingConfig.properties?.[columnId] || {}),
-                displayName
+            const updatedConfig = {
+              ...existingConfig,
+              properties: {
+                ...existingConfig.properties,
+                [columnId]: {
+                  ...(existingConfig.properties?.[columnId] || {}),
+                  displayName
+                }
               }
             }
-          }
 
-          await window.api.folderView.setConfig(folderPath, updatedConfig)
-        } catch (err) {
-          log.error('Failed to save display name:', err)
-          queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
-        }
+            await window.api.folderView.setConfig(folderPath, updatedConfig)
+          } catch (err) {
+            log.error('Failed to save display name:', err)
+            void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(folderPath) })
+          }
+        })()
       }, 300)
     },
     [activeView, activeViewIndex, folderPath, queryClient]
@@ -842,7 +849,9 @@ export function useFolderView({
         })
 
         // Invalidate to refetch
-        queryClient.invalidateQueries({ queryKey: folderViewKeys.availableProperties(folderPath) })
+        void queryClient.invalidateQueries({
+          queryKey: folderViewKeys.availableProperties(folderPath)
+        })
       } catch (err) {
         log.error('addFormula failed:', err)
         throw err
@@ -871,7 +880,9 @@ export function useFolderView({
         })
 
         // Invalidate to refetch
-        queryClient.invalidateQueries({ queryKey: folderViewKeys.availableProperties(folderPath) })
+        void queryClient.invalidateQueries({
+          queryKey: folderViewKeys.availableProperties(folderPath)
+        })
       } catch (err) {
         log.error('updateFormula failed:', err)
         throw err
@@ -898,7 +909,9 @@ export function useFolderView({
         })
 
         // Invalidate to refetch
-        queryClient.invalidateQueries({ queryKey: folderViewKeys.availableProperties(folderPath) })
+        void queryClient.invalidateQueries({
+          queryKey: folderViewKeys.availableProperties(folderPath)
+        })
       } catch (err) {
         log.error('deleteFormula failed:', err)
         throw err

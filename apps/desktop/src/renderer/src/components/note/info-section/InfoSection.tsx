@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef, useEffect, memo } from 'react'
+import { useState, useCallback, useMemo, useEffect, memo } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -55,8 +55,23 @@ export const InfoSection = memo(function InfoSection({
   hideAddButton = false
 }: InfoSectionProps) {
   const { t } = useT('notes')
-  const [internalNewlyAddedId, setInternalNewlyAddedId] = useState<string | null>(null)
-  const newlyAddedPropertyId = externalNewlyAddedId ?? internalNewlyAddedId
+  const [internalNewlyAdded, setInternalNewlyAdded] = useState<{
+    propertiesLength: number
+    id: string | null
+  }>({
+    propertiesLength: properties.length,
+    id: null
+  })
+  if (internalNewlyAdded.propertiesLength !== properties.length) {
+    setInternalNewlyAdded({
+      propertiesLength: properties.length,
+      id:
+        properties.length > internalNewlyAdded.propertiesLength
+          ? (properties[properties.length - 1]?.id ?? null)
+          : null
+    })
+  }
+  const newlyAddedPropertyId = externalNewlyAddedId ?? internalNewlyAdded.id
   const isSortable = Boolean(onPropertyOrderChange) && !disabled && properties.length > 1
 
   const sensors = useSensors(
@@ -93,18 +108,15 @@ export const InfoSection = memo(function InfoSection({
     [onDeleteProperty]
   )
 
-  const prevPropertiesLength = useRef(properties.length)
-
   useEffect(() => {
-    if (properties.length > prevPropertiesLength.current) {
-      const newProperty = properties[properties.length - 1]
-      if (newProperty) {
-        setInternalNewlyAddedId(newProperty.id)
-        setTimeout(() => setInternalNewlyAddedId(null), 500)
-      }
-    }
-    prevPropertiesLength.current = properties.length
-  }, [properties])
+    if (!internalNewlyAdded.id) return
+    const clearHighlightTimer = window.setTimeout(() => {
+      setInternalNewlyAdded((current) =>
+        current.id === internalNewlyAdded.id ? { ...current, id: null } : current
+      )
+    }, 500)
+    return () => window.clearTimeout(clearHighlightTimer)
+  }, [internalNewlyAdded.id])
 
   const handleAddProperty = useCallback(
     (newProp: NewProperty) => {
@@ -151,7 +163,7 @@ export const InfoSection = memo(function InfoSection({
         <InfoHeader
           isExpanded={isExpanded}
           onToggle={onToggleExpand}
-          variant={variant as 'default' | 'embedded'}
+          variant={variant}
           propertyCount={properties.length}
         />
       )}

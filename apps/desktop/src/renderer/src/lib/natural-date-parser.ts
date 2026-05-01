@@ -348,7 +348,7 @@ export const parseNaturalDate = (input: string): NaturalDateParseResult => {
   // -------------------------------------------------------------------------
 
   if (!date) {
-    const numericMatch = normalizedInput.match(/^(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?$/)
+    const numericMatch = normalizedInput.match(/^(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?$/)
     if (numericMatch) {
       const month = parseInt(numericMatch[1], 10) - 1 // 0-indexed
       const day = parseInt(numericMatch[2], 10)

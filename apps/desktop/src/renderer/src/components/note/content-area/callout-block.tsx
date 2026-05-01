@@ -53,12 +53,33 @@ const CALLOUT_TYPES = [
 
 type CalloutTypeValue = (typeof CALLOUT_TYPES)[number]['value']
 
+interface CalloutBlock {
+  props: {
+    type: string
+  }
+}
+
+interface CalloutEditor {
+  getTextCursorPosition: () => { block: CalloutBlock }
+  updateBlock: (
+    block: CalloutBlock,
+    update: { type: 'callout'; props: { type: CalloutTypeValue } }
+  ) => void
+}
+
+interface CalloutBlockRendererProps {
+  block: CalloutBlock
+  editor: unknown
+  contentRef: React.Ref<HTMLDivElement>
+}
+
 function getCalloutConfig(type: string) {
   return CALLOUT_TYPES.find((t) => t.value === type) ?? CALLOUT_TYPES[0]
 }
 
-function CalloutBlockRenderer({ block, editor, contentRef }: any) {
+function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendererProps) {
   const { t } = useT('notes')
+  const calloutEditor = editor as CalloutEditor
   const calloutType = getCalloutConfig(block.props.type)
   const Icon = calloutType.icon
   const labels: Record<CalloutTypeValue, string> = {
@@ -101,7 +122,7 @@ function CalloutBlockRenderer({ block, editor, contentRef }: any) {
               <DropdownMenuItem
                 key={type.value}
                 onClick={() =>
-                  editor.updateBlock(block, {
+                  calloutEditor.updateBlock(block, {
                     type: 'callout',
                     props: { type: type.value }
                   })
@@ -133,19 +154,26 @@ export const createCalloutBlock = createReactBlockSpec(
     content: 'inline'
   },
   {
-    render: (props) => <CalloutBlockRenderer {...props} />
+    render: (props) => (
+      <CalloutBlockRenderer
+        block={props.block as CalloutBlock}
+        editor={props.editor}
+        contentRef={props.contentRef}
+      />
+    )
   }
 )
 
 export function getCalloutSlashMenuItem(
-  editor: any,
+  editor: unknown,
   labels: { title: string; group: string; subtext: string }
 ) {
   return {
     title: labels.title,
     onItemClick: () => {
-      const currentBlock = editor.getTextCursorPosition().block
-      editor.updateBlock(currentBlock, {
+      const calloutEditor = editor as CalloutEditor
+      const currentBlock = calloutEditor.getTextCursorPosition().block
+      calloutEditor.updateBlock(currentBlock, {
         type: 'callout',
         props: { type: 'info' }
       })

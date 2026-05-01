@@ -49,10 +49,7 @@ export const NaturalDateInput = forwardRef<NaturalDateInputRef, NaturalDateInput
 
     // Parse input as user types (debounced)
     useEffect(() => {
-      if (!value.trim()) {
-        setParseResult(null)
-        return
-      }
+      if (!value.trim()) return
 
       const timer = setTimeout(() => {
         const result = parseNaturalDate(value)
@@ -65,6 +62,9 @@ export const NaturalDateInput = forwardRef<NaturalDateInputRef, NaturalDateInput
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
       const next = e.target.value
       setValue(next)
+      if (!next.trim()) {
+        setParseResult(null)
+      }
       onInputChange?.(next)
     }
 
