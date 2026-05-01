@@ -351,15 +351,13 @@ export function GroupedTable({
     return true // All expanded by default
   })
 
+  // Reset expanded state during render when the grouping property itself changes —
+  // skips the no-derived-state warning by avoiding a setter inside an effect.
   const prevGroupProperty = useRef(groupBy?.property)
-  useEffect(() => {
-    // Only reset expanded state when the grouping property itself changes
-    // (not when collapsed preference changes, which should be handled by user interaction)
-    if (prevGroupProperty.current !== groupBy?.property) {
-      prevGroupProperty.current = groupBy?.property
-      setExpanded(groupBy?.collapsed ? {} : true)
-    }
-  }, [groupBy?.property, groupBy?.collapsed])
+  if (prevGroupProperty.current !== groupBy?.property) {
+    prevGroupProperty.current = groupBy?.property
+    setExpanded(groupBy?.collapsed ? {} : true)
+  }
 
   // Selection state
   const [focusedRowId, setFocusedRowId] = useState<string | null>(null)

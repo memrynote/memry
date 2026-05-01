@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState, useEffect } from 'react'
+import { useRef, useCallback, useState, useLayoutEffect } from 'react'
 import Picker from '@emoji-mart/react'
 import data from '@emoji-mart/data'
 import { useTheme } from 'next-themes'
@@ -37,7 +37,7 @@ export function EmojiPicker({ isOpen, onClose, onSelect, onRemove, hasEmoji }: E
   const [contentSize, setContentSize] = useState<{ width: number; height: number } | null>(null)
   const { resolvedTheme } = useTheme()
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = contentRef.current
     if (!el || !isOpen) return
 

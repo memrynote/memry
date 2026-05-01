@@ -33,13 +33,19 @@ export function TagRenameDialog({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (open) {
-      setValue(tag)
-      setError(null)
-      setSubmitting(false)
-    }
-  }, [open, tag])
+  // Reset dialog state during render whenever the dialog (re)opens or the
+  // backing tag changes — avoids the no-adjust-state-on-prop-change anti-pattern.
+  const [openSnapshot, setOpenSnapshot] = useState(open)
+  const [tagSnapshot, setTagSnapshot] = useState(tag)
+  if (open && (open !== openSnapshot || tag !== tagSnapshot)) {
+    setOpenSnapshot(open)
+    setTagSnapshot(tag)
+    setValue(tag)
+    setError(null)
+    setSubmitting(false)
+  } else if (!open && openSnapshot) {
+    setOpenSnapshot(open)
+  }
 
   const close = (): void => {
     if (submitting) return

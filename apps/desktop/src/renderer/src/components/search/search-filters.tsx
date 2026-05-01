@@ -75,11 +75,16 @@ export function SearchFilters({
   const hasFilters = activeTypes.length > 0 || activeTags.length > 0 || activeDateRange !== null
 
   useEffect(() => {
-    if (expanded && allTags.length === 0) {
-      searchService
-        .getAllTags()
-        .then(setAllTags)
-        .catch(() => {})
+    if (!expanded || allTags.length > 0) return
+    let cancelled = false
+    searchService
+      .getAllTags()
+      .then((tags) => {
+        if (!cancelled) setAllTags(tags)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
     }
   }, [expanded, allTags.length])
 

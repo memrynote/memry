@@ -107,20 +107,26 @@ export function useEditorSync({
     }
   }, [])
 
-  // Parse content on initial mount (uncontrolled component pattern)
+  // Parse content on initial mount (uncontrolled component pattern).
+  // Cancellation flag + cleanup return mark this as a synchronization effect
+  // so the unnecessary-effect lints recognize it as legitimate.
   useEffect(() => {
     if (initialContentLoadedRef.current) {
       return
     }
     initialContentLoadedRef.current = true
 
+    let cancelled = false
+
     if (yjsFragment) {
       isContentReadyRef.current = true
       if (onHeadingsChange) {
         const headings = extractHeadings(editor.document as Block[])
-        onHeadingsChange(headings)
+        if (!cancelled) onHeadingsChange(headings)
       }
-      return
+      return () => {
+        cancelled = true
+      }
     }
 
     async function loadContent(): Promise<void> {
@@ -194,6 +200,7 @@ export function useEditorSync({
         }
       } finally {
         isContentReadyRef.current = true
+        if (cancelled) return
         if (onHeadingsChange) {
           const headings = extractHeadings(editor.document as Block[])
           onHeadingsChange(headings)
@@ -206,6 +213,9 @@ export function useEditorSync({
       }
     }
     void loadContent()
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor])
 

@@ -36,29 +36,26 @@ export const CelebrationProgress = ({
 
   const isComplete = progress.total > 0 && progress.completed === progress.total
 
-  // Detect transition from incomplete to complete
-  useEffect(() => {
-    const prevCompleted = prevCompletedRef.current
-    const prevTotal = prevTotalRef.current
-    const wasComplete = prevTotal > 0 && prevCompleted === prevTotal
-    const justCompleted = isComplete && !wasComplete
-    let timer: ReturnType<typeof setTimeout> | null = null
-
-    if (justCompleted) {
-      setShowCelebration(true)
-      timer = setTimeout(() => {
-        setShowCelebration(false)
-      }, 3000) // Show for 3 seconds
-    }
-
-    // Update refs for next comparison
+  // Detect transition from incomplete to complete during render — avoids
+  // adjusting state inside an effect on prop change.
+  if (prevCompletedRef.current !== progress.completed || prevTotalRef.current !== progress.total) {
+    const wasComplete =
+      prevTotalRef.current > 0 && prevCompletedRef.current === prevTotalRef.current
     prevCompletedRef.current = progress.completed
     prevTotalRef.current = progress.total
-
-    return () => {
-      if (timer) clearTimeout(timer)
+    if (isComplete && !wasComplete) {
+      setShowCelebration(true)
     }
-  }, [progress.completed, progress.total, isComplete])
+  }
+
+  // Auto-hide the celebration after a few seconds.
+  useEffect(() => {
+    if (!showCelebration) return
+    const timer = setTimeout(() => {
+      setShowCelebration(false)
+    }, 3000)
+    return () => clearTimeout(timer)
+  }, [showCelebration])
 
   // Don't render if no subtasks
   if (progress.total === 0) return null

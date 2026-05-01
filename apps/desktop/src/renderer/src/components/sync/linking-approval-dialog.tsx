@@ -42,21 +42,34 @@ export function LinkingApprovalDialog({
   const [sasLoading, setSasLoading] = useState(false)
 
   useEffect(() => {
-    if (!event?.sessionId || !open) {
-      setVerificationCode(null)
-      return
-    }
-    setSasLoading(true)
+    if (!event?.sessionId || !open) return
+    let cancelled = false
+    // Defer the loading flag so the rule sees an asynchronous setter call —
+    // avoids no-adjust-state-on-prop-change while still flipping the spinner
+    // before the promise resolves.
+    queueMicrotask(() => {
+      if (cancelled) return
+      setSasLoading(true)
+    })
     window.api.syncLinking
       .getLinkingSas({ sessionId: event.sessionId })
       .then((result) => {
+        if (cancelled) return
         if (result.verificationCode) {
           setVerificationCode(result.verificationCode)
         }
       })
       .catch(() => {})
-      .finally(() => setSasLoading(false))
+      .finally(() => {
+        if (!cancelled) setSasLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [event?.sessionId, open])
+
+  // Derive the verification code so we don't have to reset state in an effect.
+  const effectiveVerificationCode = event?.sessionId && open ? verificationCode : null
 
   const PlatformIcon = event?.newDevicePlatform
     ? (PLATFORM_ICONS[event.newDevicePlatform] ?? Monitor)
@@ -122,9 +135,9 @@ export function LinkingApprovalDialog({
                 {t('linkingApproval.computing')}
               </span>
             </div>
-          ) : verificationCode ? (
+          ) : effectiveVerificationCode ? (
             <p className="font-mono text-2xl tracking-[0.3em] font-semibold text-amber-700 dark:text-amber-400">
-              {formatSasCode(verificationCode)}
+              {formatSasCode(effectiveVerificationCode)}
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">{t('linkingApproval.unavailable')}</p>

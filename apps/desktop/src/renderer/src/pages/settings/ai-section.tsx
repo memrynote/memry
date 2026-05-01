@@ -74,7 +74,8 @@ export function AISettings() {
   } | null>(null)
 
   useEffect(() => {
-    const loadData = async (): Promise<void> => {
+    let cancelled = false
+    void (async () => {
       try {
         const [aiSettings, status, voiceConfig, voiceStatus, voiceKeyStatus] = await Promise.all([
           window.api.settings.getAISettings(),
@@ -83,18 +84,22 @@ export function AISettings() {
           window.api.settings.getVoiceModelStatus(),
           window.api.settings.getVoiceTranscriptionOpenAIKeyStatus()
         ])
+        if (cancelled) return
         setSettings(aiSettings)
         setModelStatus(status)
         setVoiceSettings(voiceConfig)
         setVoiceModelStatus(voiceStatus)
         setHasVoiceApiKey(voiceKeyStatus.hasApiKey)
       } catch (error) {
+        if (cancelled) return
         log.error('Failed to load AI settings:', error)
       } finally {
-        setIsLoading(false)
+        if (!cancelled) setIsLoading(false)
       }
+    })()
+    return () => {
+      cancelled = true
     }
-    loadData()
   }, [])
 
   useEffect(() => {

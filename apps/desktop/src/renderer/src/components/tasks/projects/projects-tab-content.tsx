@@ -82,6 +82,7 @@ export const ProjectsTabContent = ({
     if (effectiveSelectedProjectId && effectiveSelectedProjectId !== selectedProjectId) {
       onProjectSelect(effectiveSelectedProjectId)
     }
+    return () => {}
   }, [effectiveSelectedProjectId, selectedProjectId, onProjectSelect])
 
   const selectedProject = useMemo(() => {

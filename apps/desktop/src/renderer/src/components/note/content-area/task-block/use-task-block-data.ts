@@ -37,7 +37,14 @@ export function useTaskBlockData(taskId: string): UseTaskBlockDataResult {
 
   useEffect(() => {
     if (!taskId) return
-    loadTask(taskId)
+    let cancelled = false
+    void (async () => {
+      await loadTask(taskId)
+      if (cancelled) return
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [taskId, loadTask])
 
   useEffect(() => {

@@ -238,15 +238,18 @@ export function FilterBuilder({
     }))
   }, [availableProperties])
 
-  // Sync state when filters prop changes externally (not from our own updates)
-  useEffect(() => {
-    // Skip sync if we caused this change
+  // Sync state when filters prop changes externally (not from our own updates).
+  // Done during render via the React-recommended "adjusting state when a prop changes"
+  // pattern so we avoid no-derived-state warnings.
+  const [storedFilters, setStoredFilters] = useState(filters)
+  if (storedFilters !== filters) {
+    setStoredFilters(filters)
     if (isInternalChangeRef.current) {
       isInternalChangeRef.current = false
-      return
+    } else {
+      setState(filterExpressionToUIState(filters))
     }
-    setState(filterExpressionToUIState(filters))
-  }, [filters])
+  }
 
   // Debounced save
   const saveFilters = useCallback(

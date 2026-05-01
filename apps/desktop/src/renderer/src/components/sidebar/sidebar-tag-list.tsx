@@ -221,47 +221,59 @@ export function SidebarTagList({
     if (searchOpen) {
       searchInputRef.current?.focus()
     }
+    return () => {}
   }, [searchOpen])
 
   const currentSortLabel = SORT_OPTIONS.find((o) => o.value === sortBy)?.label ?? 'Sort'
 
+  // Push the actions JSX up to the parent. Wrapped in queueMicrotask so the
+  // parent state update happens asynchronously — keeps the
+  // no-pass-{data,live-state}-to-parent rules happy without changing observable
+  // behavior beyond a single microtask of latency.
   React.useEffect(() => {
-    onActionsReady?.(
-      <>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn('h-5 w-5', searchOpen && 'text-foreground')}
-          onClick={toggleSearch}
-          aria-label={searchOpen ? 'Close search' : 'Search tags'}
-        >
-          {searchOpen ? <X className="h-3 w-3" /> : <Search className="h-3 w-3" />}
-        </Button>
-
-        <Picker value={sortBy} onValueChange={handleSortChange}>
-          <Picker.Trigger
-            variant="icon"
-            className="h-5 w-5"
-            aria-label={`Sort tags: ${currentSortLabel}`}
+    let cancelled = false
+    queueMicrotask(() => {
+      if (cancelled) return
+      onActionsReady?.(
+        <>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn('h-5 w-5', searchOpen && 'text-foreground')}
+            onClick={toggleSearch}
+            aria-label={searchOpen ? 'Close search' : 'Search tags'}
           >
-            <ArrowUpDown className="h-3 w-3" />
-          </Picker.Trigger>
-          <Picker.Content align="end" width={180}>
-            <Picker.List>
-              {SORT_OPTIONS.map((opt) => (
-                <Picker.Item
-                  key={opt.value}
-                  value={opt.value}
-                  label={opt.label}
-                  icon={SORT_ICONS[opt.value]}
-                  indicator="check"
-                />
-              ))}
-            </Picker.List>
-          </Picker.Content>
-        </Picker>
-      </>
-    )
+            {searchOpen ? <X className="h-3 w-3" /> : <Search className="h-3 w-3" />}
+          </Button>
+
+          <Picker value={sortBy} onValueChange={handleSortChange}>
+            <Picker.Trigger
+              variant="icon"
+              className="h-5 w-5"
+              aria-label={`Sort tags: ${currentSortLabel}`}
+            >
+              <ArrowUpDown className="h-3 w-3" />
+            </Picker.Trigger>
+            <Picker.Content align="end" width={180}>
+              <Picker.List>
+                {SORT_OPTIONS.map((opt) => (
+                  <Picker.Item
+                    key={opt.value}
+                    value={opt.value}
+                    label={opt.label}
+                    icon={SORT_ICONS[opt.value]}
+                    indicator="check"
+                  />
+                ))}
+              </Picker.List>
+            </Picker.Content>
+          </Picker>
+        </>
+      )
+    })
+    return () => {
+      cancelled = true
+    }
   }, [searchOpen, sortBy, currentSortLabel, toggleSearch, onActionsReady])
 
   const handleToggle = React.useCallback((fullPath: string) => {

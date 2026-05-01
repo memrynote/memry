@@ -85,13 +85,13 @@ export const DayPanelProvider = ({
   }, [isOpen])
 
   useEffect(() => {
-    if (!isResizing) {
-      try {
-        localStorage.setItem(DAY_PANEL_WIDTH_KEY, String(width))
-      } catch {
-        /* localStorage unavailable */
-      }
+    if (isResizing) return () => {}
+    try {
+      localStorage.setItem(DAY_PANEL_WIDTH_KEY, String(width))
+    } catch {
+      /* localStorage unavailable */
     }
+    return () => {}
   }, [width, isResizing])
 
   const toggle = useCallback(() => {

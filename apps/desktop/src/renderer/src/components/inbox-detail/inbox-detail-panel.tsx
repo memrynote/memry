@@ -122,9 +122,12 @@ export const InboxDetailPanel = ({
   const containerRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
+  // Reset manual height during render when the displayed item changes.
+  const [storedItemId, setStoredItemId] = useState(item?.id)
+  if (storedItemId !== item?.id) {
+    setStoredItemId(item?.id)
     setManualContentHeight(null)
-  }, [item?.id])
+  }
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()

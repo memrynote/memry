@@ -4,7 +4,7 @@
  * Uses parent DndContext from SplitViewContainer for cross-panel dragging
  */
 
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useRef, useState, useEffect, useLayoutEffect, useCallback } from 'react'
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
 import { ChevronLeft, ChevronRight, LayoutAlignRightIcon, PanelRightIcon } from '@/lib/icons'
 import { SidebarGraph } from '@/lib/icons/sidebar-nav-icons'
@@ -78,7 +78,7 @@ export const TabBarWithDrag = ({
   const regularTabsLength = group?.tabs.filter((t) => !t.isPinned).length ?? 0
 
   // Set up scroll listener - must be before early return (rules of hooks)
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = scrollRef.current
     if (!el) return
 

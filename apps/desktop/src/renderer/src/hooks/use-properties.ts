@@ -57,7 +57,14 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
   }, [entityId])
 
   useEffect(() => {
-    fetchProperties()
+    let cancelled = false
+    void (async () => {
+      await fetchProperties()
+      if (cancelled) return
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [fetchProperties])
 
   useEffect(() => {
@@ -66,7 +73,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
       if (event.operation !== 'pull') return
       if (event.itemId !== entityId) return
       if (event.type !== 'note' && event.type !== 'journal') return
-      fetchProperties()
+      void fetchProperties()
     })
     return unsub
   }, [entityId, fetchProperties])

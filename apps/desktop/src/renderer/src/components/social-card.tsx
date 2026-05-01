@@ -148,10 +148,11 @@ const AuthorAvatar = ({
   size?: 'sm' | 'md' | 'lg'
 }): React.JSX.Element => {
   const [imageError, setImageError] = useState(false)
-
-  useEffect(() => {
+  const [storedAvatarUrl, setStoredAvatarUrl] = useState(avatarUrl)
+  if (storedAvatarUrl !== avatarUrl) {
+    setStoredAvatarUrl(avatarUrl)
     setImageError(false)
-  }, [avatarUrl])
+  }
 
   const sizeClasses = {
     sm: 'size-6',
