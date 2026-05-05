@@ -12,8 +12,15 @@ import { searchQueries } from '../search/store'
 import { rebuildAllIndexes } from '@main/database/fts-rebuild'
 import { searchReasons } from '@memry/db-schema/schema/search-reasons'
 import { eq, desc, sql, and } from 'drizzle-orm'
+import { trackMainEvent } from '../telemetry/track'
 
 const logger = createLogger('IPC:Search')
+
+const resultBucket = (count: number): string => {
+  if (count === 0) return 'zero'
+  if (count <= 5) return 'one_to_five'
+  return 'six_plus'
+}
 
 export function registerSearchHandlers(): void {
   ipcMain.handle(
@@ -22,9 +29,28 @@ export function registerSearchHandlers(): void {
       try {
         const indexDb = getIndexDatabase()
         const dataDb = getDatabase()
-        return searchQueries.searchAll(indexDb, dataDb, input)
+        const result = searchQueries.searchAll(indexDb, dataDb, input)
+        trackMainEvent('search_performed', {
+          surface: 'search',
+          action: 'queried',
+          result: 'success',
+          metrics: {
+            durationMs: result.queryTimeMs,
+            resultCount: result.totalCount
+          },
+          source: 'global',
+          dimensions: {
+            result_bucket: resultBucket(result.totalCount)
+          }
+        })
+        return result
       } catch (error) {
         logger.error('search:query failed:', error)
+        trackMainEvent('search_performed', {
+          surface: 'search',
+          action: 'queried',
+          result: 'failed'
+        })
         return { groups: [], totalCount: 0, queryTimeMs: 0 }
       }
     })
@@ -36,9 +62,29 @@ export function registerSearchHandlers(): void {
       try {
         const indexDb = getIndexDatabase()
         const dataDb = getDatabase()
-        return searchQueries.quickSearch(indexDb, dataDb, text)
+        const result = searchQueries.quickSearch(indexDb, dataDb, text)
+        const totalCount = result.results?.length ?? 0
+        trackMainEvent('search_performed', {
+          surface: 'search',
+          action: 'queried',
+          result: 'success',
+          metrics: {
+            durationMs: result.queryTimeMs,
+            resultCount: totalCount
+          },
+          source: 'quick',
+          dimensions: {
+            result_bucket: resultBucket(totalCount)
+          }
+        })
+        return result
       } catch (error) {
         logger.error('search:quick failed:', error)
+        trackMainEvent('search_performed', {
+          surface: 'search',
+          action: 'queried',
+          result: 'failed'
+        })
         return { results: [], queryTimeMs: 0 }
       }
     })

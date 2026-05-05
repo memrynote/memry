@@ -26,6 +26,7 @@ import { registerGraphHandlers, unregisterGraphHandlers } from './graph-handlers
 import { registerAIInlineHandlers, unregisterAIInlineHandlers } from './ai-inline-handlers'
 import { registerAccountHandlers, unregisterAccountHandlers } from './account-handlers'
 import { registerCrdtIpcHandlers } from './crdt-handlers'
+import { registerTelemetryHandlers, unregisterTelemetryHandlers } from './telemetry-handlers'
 import { registerUpdaterHandlers, unregisterUpdaterHandlers } from './updater-handlers'
 import { registerLocaleHandlers, type RebuildMenuFn } from './locale-handler'
 import type { I18nInstance } from '@memry/i18n/main'
@@ -133,6 +134,9 @@ export function registerAllHandlers(deps?: IpcDeps): void {
   // Register CRDT IPC handlers (app-scoped, survive sign-out/sign-in)
   registerCrdtIpcHandlers()
 
+  // Register telemetry handlers (anonymous-safe, no auth required)
+  registerTelemetryHandlers()
+
   handlersRegistered = true
 }
 
@@ -166,6 +170,7 @@ export function unregisterAllHandlers(): void {
   unregisterAIInlineHandlers()
   unregisterAccountHandlers()
   unregisterUpdaterHandlers()
+  unregisterTelemetryHandlers()
 
   handlersRegistered = false
   ipcLog.info('all handlers unregistered')
@@ -202,4 +207,5 @@ export { registerSearchHandlers, unregisterSearchHandlers } from './search-handl
 export { registerGraphHandlers, unregisterGraphHandlers } from './graph-handlers'
 export { registerAIInlineHandlers, unregisterAIInlineHandlers } from './ai-inline-handlers'
 export { registerUpdaterHandlers, unregisterUpdaterHandlers } from './updater-handlers'
+export { registerTelemetryHandlers, unregisterTelemetryHandlers } from './telemetry-handlers'
 export { registerLocaleHandlers, type RebuildMenuFn } from './locale-handler'

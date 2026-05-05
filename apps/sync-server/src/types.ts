@@ -3,6 +3,7 @@ export type Bindings = {
   STORAGE: R2Bucket
   USER_SYNC_STATE: DurableObjectNamespace
   LINKING_SESSION: DurableObjectNamespace
+  PRODUCT_TELEMETRY: AnalyticsEngineDataset
   ENVIRONMENT: string
   ALLOWED_ORIGIN?: string
   JWT_PUBLIC_KEY: string
@@ -15,6 +16,7 @@ export type Bindings = {
   MIN_APP_VERSION: string
   RECOVERY_DUMMY_SECRET: string
   WEBHOOK_HMAC_KEY: string
+  TELEMETRY_HMAC_KEY: string
 }
 
 export type AppContext = {

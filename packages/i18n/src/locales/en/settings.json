@@ -40,7 +40,8 @@
       "updates": "Updates",
       "languageRegion": "Language & Region",
       "tabBehavior": "Tab Behavior",
-      "fileCreation": "File Creation"
+      "fileCreation": "File Creation",
+      "privacy": "Privacy"
     },
     "startup": {
       "launchAtLogin": {
@@ -112,6 +113,13 @@
       "createInSelectedFolder": {
         "label": "Create in Selected Folder",
         "description": "New notes and folders are created inside the currently selected folder. When off, items are always created at root."
+      }
+    },
+    "privacy": {
+      "telemetry": {
+        "label": "Share Anonymous Usage Metrics",
+        "description": "It's only anon metrics — no note content, search queries, file paths, emails, or raw IDs are ever sent.",
+        "error": "Failed to update telemetry setting"
       }
     }
   },

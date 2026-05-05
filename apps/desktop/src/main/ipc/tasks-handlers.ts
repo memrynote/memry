@@ -34,6 +34,7 @@ import {
   syncTaskDelete,
   syncTaskUpdate
 } from '../tasks/runtime-effects'
+import { trackMainEvent } from '../telemetry/track'
 
 const logger = createLogger('IPC:Tasks')
 
@@ -48,6 +49,12 @@ function createTasksPublisher(): TasksDomainPublisher {
     taskCreated: ({ task }) => {
       emitTaskEvent(TasksChannels.events.CREATED, { task })
       syncTaskCreate(task.id)
+      trackMainEvent('task_created', {
+        surface: 'tasks',
+        action: 'created',
+        objectType: 'task',
+        result: 'success'
+      })
     },
     taskUpdated: ({ id, task, changes, changedFields }) => {
       emitTaskEvent(TasksChannels.events.UPDATED, { id, task, changes })
@@ -60,6 +67,12 @@ function createTasksPublisher(): TasksDomainPublisher {
     taskCompleted: ({ id, task }) => {
       emitTaskEvent(TasksChannels.events.COMPLETED, { id, task })
       syncTaskUpdate(id, ['completedAt'])
+      trackMainEvent('task_completed', {
+        surface: 'tasks',
+        action: 'completed',
+        objectType: 'task',
+        result: 'success'
+      })
     },
     taskMoved: ({ id, task, changedFields }) => {
       emitTaskEvent(TasksChannels.events.MOVED, { id, task })
@@ -71,6 +84,12 @@ function createTasksPublisher(): TasksDomainPublisher {
     projectCreated: ({ project }) => {
       emitTaskEvent(TasksChannels.events.PROJECT_CREATED, { project })
       syncProjectCreate(project.id)
+      trackMainEvent('project_created', {
+        surface: 'tasks',
+        action: 'created',
+        objectType: 'project',
+        result: 'success'
+      })
     },
     projectUpdated: ({ id, project, changedFields }) => {
       emitTaskEvent(TasksChannels.events.PROJECT_UPDATED, { id, project })
@@ -143,7 +162,16 @@ export function registerTasksHandlers(): void {
   ipcMain.handle(
     TasksChannels.invoke.UNCOMPLETE,
     createStringHandler(
-      withDb((db, id) => createTaskDomain(db).uncompleteTask(id), 'Failed to uncomplete task')
+      withDb(async (db, id) => {
+        const result = await createTaskDomain(db).uncompleteTask(id)
+        trackMainEvent('task_reopened', {
+          surface: 'tasks',
+          action: 'reopened',
+          objectType: 'task',
+          result: 'success'
+        })
+        return result
+      }, 'Failed to uncomplete task')
     )
   )
 

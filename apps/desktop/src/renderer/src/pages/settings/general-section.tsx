@@ -15,6 +15,7 @@ import { Switch } from '@/components/ui/switch'
 import { useTabPreferences } from '@/hooks/use-tab-preferences'
 import { useAppUpdater } from '@/hooks/use-app-updater'
 import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { useTelemetrySettings } from '@/hooks/use-telemetry-settings'
 import { useTabs } from '@/contexts/tabs'
 import { toast } from 'sonner'
 import {
@@ -42,6 +43,11 @@ export function GeneralSettings() {
     updateSettings: updateGeneralSettings
   } = useGeneralSettings()
   const {
+    enabled: telemetryEnabled,
+    isLoading: telemetryLoading,
+    setEnabled: setTelemetryEnabled
+  } = useTelemetrySettings()
+  const {
     state: updateState,
     isLoading: updaterLoading,
     error: updaterError,
@@ -51,7 +57,7 @@ export function GeneralSettings() {
   } = useAppUpdater()
   const { updateSettings: updateContextSettings } = useTabs()
 
-  const isLoading = tabLoading || generalLoading
+  const isLoading = tabLoading || generalLoading || telemetryLoading
 
   const handleStartOnBootChange = useCallback(
     async (enabled: boolean) => {
@@ -91,6 +97,14 @@ export function GeneralSettings() {
       if (!success) toast.error(t('general.tabs.error'))
     },
     [t, updateGeneralSettings]
+  )
+
+  const handleTelemetryChange = useCallback(
+    async (enabled: boolean) => {
+      const success = await setTelemetryEnabled(enabled)
+      if (!success) toast.error(t('general.privacy.telemetry.error'))
+    },
+    [t, setTelemetryEnabled]
   )
 
   const handleClockFormatChange = useCallback(
@@ -308,6 +322,19 @@ export function GeneralSettings() {
           <Switch
             checked={generalSettings.createInSelectedFolder}
             onCheckedChange={handleCreateInSelectedFolderChange}
+            className={ACCENT_SWITCH}
+          />
+        </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup label={t('general.groups.privacy')}>
+        <SettingRow
+          label={t('general.privacy.telemetry.label')}
+          description={t('general.privacy.telemetry.description')}
+        >
+          <Switch
+            checked={telemetryEnabled}
+            onCheckedChange={handleTelemetryChange}
             className={ACCENT_SWITCH}
           />
         </SettingRow>
