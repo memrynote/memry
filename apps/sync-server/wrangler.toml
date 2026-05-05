@@ -15,6 +15,10 @@ database_id = "TODO-create-d1-database"
 binding = "STORAGE"
 bucket_name = "memry-encrypted-blobs-staging"
 
+[[analytics_engine_datasets]]
+binding = "PRODUCT_TELEMETRY"
+dataset = "memry_product_telemetry_dev"
+
 [durable_objects]
 bindings = [
   { name = "USER_SYNC_STATE", class_name = "UserSyncState" },
@@ -44,6 +48,10 @@ database_id = "0b7c7894-925e-4a12-a0bc-02ea4081a5c7"
 binding = "STORAGE"
 bucket_name = "memry-encrypted-blobs-staging"
 
+[[env.staging.analytics_engine_datasets]]
+binding = "PRODUCT_TELEMETRY"
+dataset = "memry_product_telemetry_staging"
+
 [env.staging.durable_objects]
 bindings = [
   { name = "USER_SYNC_STATE", class_name = "UserSyncState" },
@@ -65,6 +73,10 @@ database_id = "TODO-create-d1-database-production"
 [[env.production.r2_buckets]]
 binding = "STORAGE"
 bucket_name = "memry-encrypted-blobs-production"
+
+[[env.production.analytics_engine_datasets]]
+binding = "PRODUCT_TELEMETRY"
+dataset = "memry_product_telemetry_production"
 
 [env.production.durable_objects]
 bindings = [

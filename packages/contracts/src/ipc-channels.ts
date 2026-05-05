@@ -708,3 +708,23 @@ export const LocaleChannels = {
   List: 'locale:list',
   Changed: 'locale:changed'
 } as const
+
+// ============================================================================
+// Telemetry Channels
+// ============================================================================
+
+export const TelemetryChannels = {
+  invoke: {
+    /** Track a single telemetry event from the renderer */
+    TRACK: 'telemetry:track',
+    /** Force-flush the queued telemetry batch */
+    FLUSH: 'telemetry:flush',
+    /** Get the current telemetry settings (enabled flag) */
+    GET_SETTINGS: 'telemetry:getSettings',
+    /** Enable or disable telemetry collection */
+    SET_ENABLED: 'telemetry:setEnabled'
+  }
+} as const
+
+export type TelemetryInvokeChannel =
+  (typeof TelemetryChannels.invoke)[keyof typeof TelemetryChannels.invoke]

@@ -16,6 +16,29 @@ import {
   removeVault,
   reindex
 } from '../vault'
+import { findVault, getVaults } from '../store'
+import { createLogger } from '../lib/logger'
+import { getTelemetryRuntime } from '../telemetry/runtime'
+
+const log = createLogger('IPC:Vault')
+
+const trackVaultEvent = (name: 'vault_opened' | 'vault_created', source: string): void => {
+  try {
+    const runtime = getTelemetryRuntime()
+    if (!runtime) return
+    runtime.track({
+      id: crypto.randomUUID(),
+      name,
+      occurredAt: new Date().toISOString(),
+      surface: 'vault',
+      action: name === 'vault_opened' ? 'opened' : 'created',
+      source,
+      result: 'success'
+    })
+  } catch (error) {
+    log.warn('Failed to emit vault telemetry', { name, source, error })
+  }
+}
 
 /**
  * Register all vault-related IPC handlers.
@@ -25,7 +48,19 @@ export function registerVaultHandlers(): void {
   // vault:select - Show folder picker and select vault
   ipcMain.handle(
     VaultChannels.invoke.SELECT,
-    createValidatedHandler(SelectVaultSchema, selectVault)
+    createValidatedHandler(SelectVaultSchema, async (input) => {
+      const knownVaultPaths = new Set(getVaults().map((vault) => vault.path))
+      const wasKnown = input.path ? findVault(input.path) !== undefined : undefined
+      const result = await selectVault(input)
+      if (result.success && result.vault) {
+        const selectedWasKnown = wasKnown ?? knownVaultPaths.has(result.vault.path)
+        if (!selectedWasKnown) {
+          trackVaultEvent('vault_created', 'select')
+        }
+        trackVaultEvent('vault_opened', 'select')
+      }
+      return result
+    })
   )
 
   // vault:get-status - Get current vault status
@@ -56,7 +91,16 @@ export function registerVaultHandlers(): void {
   )
 
   // vault:switch - Switch to a different vault
-  ipcMain.handle(VaultChannels.invoke.SWITCH, createStringHandler(switchVault))
+  ipcMain.handle(
+    VaultChannels.invoke.SWITCH,
+    createStringHandler(async (vaultPath) => {
+      const result = await switchVault(vaultPath)
+      if (result.success && result.vault) {
+        trackVaultEvent('vault_opened', 'switch')
+      }
+      return result
+    })
+  )
 
   // vault:remove - Remove vault from known list
   ipcMain.handle(VaultChannels.invoke.REMOVE, createStringHandler(removeVault))

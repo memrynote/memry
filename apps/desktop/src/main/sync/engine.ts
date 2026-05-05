@@ -30,11 +30,21 @@ import { CrdtSyncCoordinator } from './engine/crdt-sync-coordinator'
 import { PushCoordinator } from './engine/push-coordinator'
 import { PullCoordinator } from './engine/pull-coordinator'
 import { ErrorRecoveryHandler } from './engine/error-recovery-handler'
+import { trackMainEvent } from '../telemetry/track'
 
 export type { SyncEngineDeps, SyncEngineOptions }
 
 const log = createLogger('SyncEngine')
 const MAX_SYNC_ENGINE_LISTENERS = 50
+
+const classifySyncErrorCode = (error: unknown): string => {
+  try {
+    const info = classifyError(error)
+    return info?.category ?? 'unknown'
+  } catch {
+    return 'unknown'
+  }
+}
 
 export class SyncEngine extends EventEmitter {
   private static activeInstance: SyncEngine | null = null
@@ -241,17 +251,61 @@ export class SyncEngine extends EventEmitter {
   // --- Public sync operations (delegated) ---
 
   async push(): Promise<void> {
+    const start = Date.now()
+    const startingPending = this.ctx.deps.queue.getPendingCount()
     try {
       await this.pushCoordinator.push()
+      trackMainEvent('sync_run_completed', {
+        surface: 'sync',
+        action: 'push_completed',
+        result: 'success',
+        metrics: {
+          durationMs: Date.now() - start,
+          queueCount: this.ctx.deps.queue.getPendingCount(),
+          itemCount: Math.max(0, startingPending - this.ctx.deps.queue.getPendingCount())
+        },
+        source: 'push',
+        dimensions: { transport: 'record' }
+      })
     } catch (error) {
+      trackMainEvent('sync_error', {
+        surface: 'sync',
+        action: 'push_failed',
+        result: 'failed',
+        errorCode: classifySyncErrorCode(error),
+        metrics: { durationMs: Date.now() - start },
+        source: 'push',
+        dimensions: { transport: 'record' }
+      })
       await this.handleCoordinatorError(error)
     }
   }
 
   async pull(): Promise<void> {
+    const start = Date.now()
     try {
       await this.pullCoordinator.pull()
+      trackMainEvent('sync_run_completed', {
+        surface: 'sync',
+        action: 'pull_completed',
+        result: 'success',
+        metrics: {
+          durationMs: Date.now() - start,
+          queueCount: this.ctx.deps.queue.getPendingCount()
+        },
+        source: 'pull',
+        dimensions: { transport: 'record' }
+      })
     } catch (error) {
+      trackMainEvent('sync_error', {
+        surface: 'sync',
+        action: 'pull_failed',
+        result: 'failed',
+        errorCode: classifySyncErrorCode(error),
+        metrics: { durationMs: Date.now() - start },
+        source: 'pull',
+        dimensions: { transport: 'record' }
+      })
       await this.handleCoordinatorError(error)
     }
   }
@@ -261,7 +315,32 @@ export class SyncEngine extends EventEmitter {
   }
 
   async fullSync(): Promise<void> {
-    await this.fullSyncRunner.run()
+    const start = Date.now()
+    try {
+      await this.fullSyncRunner.run()
+      trackMainEvent('sync_run_completed', {
+        surface: 'sync',
+        action: 'full_completed',
+        result: 'success',
+        metrics: {
+          durationMs: Date.now() - start,
+          queueCount: this.ctx.deps.queue.getPendingCount()
+        },
+        source: 'full',
+        dimensions: { transport: 'record' }
+      })
+    } catch (error) {
+      trackMainEvent('sync_error', {
+        surface: 'sync',
+        action: 'full_failed',
+        result: 'failed',
+        errorCode: classifySyncErrorCode(error),
+        metrics: { durationMs: Date.now() - start },
+        source: 'full',
+        dimensions: { transport: 'record' }
+      })
+      throw error
+    }
   }
 
   // --- Status & control ---

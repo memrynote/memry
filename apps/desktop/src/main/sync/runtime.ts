@@ -14,6 +14,7 @@ import {
 } from '../crypto'
 import { SyncEngine, type SyncEngineDeps } from './engine'
 import { syncGoogleCalendarSource } from '../calendar/google/sync-service'
+import { trackMainEvent } from '../telemetry/track'
 import { SyncQueueManager } from './queue'
 import { NetworkMonitor } from './network'
 import { WebSocketManager } from './websocket'
@@ -483,6 +484,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       await engine.start()
       log.info('Sync runtime started')
+
+      trackMainEvent('sync_enabled', {
+        surface: 'sync',
+        action: 'enabled',
+        result: 'success'
+      })
 
       seedPromise = seedExistingCrdtDocs(crdtProvider, seedAbortController.signal).catch((err) => {
         log.warn('Post-engine CRDT seed failed (non-fatal)', err)

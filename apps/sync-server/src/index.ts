@@ -11,6 +11,7 @@ import { calendarChannels } from './routes/calendar-channels'
 import { devices } from './routes/devices'
 import { linking } from './routes/linking'
 import { sync } from './routes/sync'
+import { telemetry } from './routes/telemetry'
 import { webhooks } from './routes/webhooks'
 import { securityHeaders } from './middleware/security'
 import {
@@ -43,6 +44,7 @@ app.use('*', securityHeaders)
 
 const MAX_BODY_BYTES_API = 1 * 1024 * 1024
 const MAX_BODY_BYTES_BLOB = 10 * 1024 * 1024
+const MAX_BODY_BYTES_TELEMETRY = 128 * 1024
 
 const bodyLimitError = () => {
   throw new AppError(ErrorCodes.VALIDATION_BODY_TOO_LARGE, 'Request body too large', 413)
@@ -51,6 +53,10 @@ const bodyLimitError = () => {
 const METHOD_WITHOUT_BODY = new Set(['GET', 'HEAD', 'OPTIONS'])
 
 const getMaxBodyBytes = (path: string): number => {
+  if (path.startsWith('/telemetry/')) {
+    return MAX_BODY_BYTES_TELEMETRY
+  }
+
   const isBlobRoute = path.includes('/blob') || path.includes('/attachments/')
   return isBlobRoute ? MAX_BODY_BYTES_BLOB : MAX_BODY_BYTES_API
 }
@@ -122,7 +128,8 @@ app.use('*', async (c, next) => {
     'RESEND_API_KEY',
     'OTP_HMAC_KEY',
     'RECOVERY_DUMMY_SECRET',
-    'WEBHOOK_HMAC_KEY'
+    'WEBHOOK_HMAC_KEY',
+    'TELEMETRY_HMAC_KEY'
   ] as const
 
   for (const key of requiredSecrets) {
@@ -150,6 +157,7 @@ app.route('/auth/linking', linking)
 app.route('/devices', devices)
 app.route('/sync', sync)
 app.route('/sync', blob)
+app.route('/telemetry', telemetry)
 app.route('/webhooks', webhooks)
 app.route('/calendar/channels', calendarChannels)
 

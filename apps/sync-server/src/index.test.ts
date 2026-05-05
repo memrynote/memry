@@ -72,6 +72,7 @@ describe('sync-server app entry point', () => {
         OTP_HMAC_KEY: 'test-hmac-key',
         RECOVERY_DUMMY_SECRET: 'test-dummy-secret',
         WEBHOOK_HMAC_KEY: 'test-webhook-hmac-key',
+        TELEMETRY_HMAC_KEY: 'test-telemetry-hmac-key',
         ALLOWED_ORIGIN: 'https://app.memry.test'
       })
     )
@@ -82,6 +83,44 @@ describe('sync-server app entry point', () => {
     expect(response.headers.get('Strict-Transport-Security')).toBe(
       'max-age=31536000; includeSubDomains'
     )
+  })
+
+  it('fails fast in production when TELEMETRY_HMAC_KEY is missing', async () => {
+    const response = await app.request(
+      'http://localhost/health',
+      {},
+      createEnv({
+        ENVIRONMENT: 'production',
+        JWT_PUBLIC_KEY: 'public-key',
+        JWT_PRIVATE_KEY: 'private-key',
+        RESEND_API_KEY: 'resend-key',
+        OTP_HMAC_KEY: 'test-hmac-key',
+        RECOVERY_DUMMY_SECRET: 'test-dummy-secret',
+        WEBHOOK_HMAC_KEY: 'test-webhook-hmac-key',
+        TELEMETRY_HMAC_KEY: ''
+      })
+    )
+
+    expect(response.status).toBe(500)
+  })
+
+  it('rejects oversized telemetry bodies above 128KB', async () => {
+    const request = new Request('http://localhost/telemetry/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: new Uint8Array(128 * 1024 + 1)
+    })
+
+    const response = await app.request(request, {}, createEnv())
+
+    expect(response.status).toBe(413)
+    const body = await response.json()
+    expect(body).toEqual({
+      error: {
+        code: 'VALIDATION_BODY_TOO_LARGE',
+        message: 'Request body too large'
+      }
+    })
   })
 
   it('rejects oversized API bodies even when Content-Length is omitted', async () => {
