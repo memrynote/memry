@@ -972,7 +972,7 @@
       "description": "Capture a note from anywhere",
       "permissionNeeded": "Permission needed",
       "active": "Active",
-      "permissionHint": "Global shortcuts require Accessibility permission. Go to System Settings → Privacy → Accessibility and enable memry."
+      "permissionHint": "Global shortcuts require Accessibility permission. Go to System Settings → Privacy → Accessibility and enable Memry."
     },
     "toasts": {
       "saveGlobalFailed": "Failed to save global capture shortcut",

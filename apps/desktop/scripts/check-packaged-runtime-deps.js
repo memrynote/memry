@@ -8,7 +8,7 @@ const path = require('node:path')
 
 const appRoot = path.resolve(__dirname, '..')
 const appRequire = createRequire(path.join(appRoot, 'package.json'))
-const productName = 'memry'
+const productName = 'Memry'
 const requiredModules = [
   '@tiptap/core',
   '@tiptap/pm/model',

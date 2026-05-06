@@ -2,7 +2,7 @@
 
 <img src="assets/hero-dark.jpg" width="720" alt="Memry — Your thoughts, beautifully organized" />
 
-# memry
+# Memry
 
 **Your thoughts. Your devices. Your control.**
 
@@ -11,13 +11,13 @@ A private, offline-first workspace for notes, journals, and tasks — with real-
 ![Status](https://img.shields.io/badge/status-in%20development-orange?style=for-the-badge)
 [![Reddit](https://img.shields.io/badge/Reddit-r%2FMemryNote-FF4500?style=for-the-badge&logo=reddit&logoColor=white)](https://www.reddit.com/r/MemryNote/)
 
-> **Not yet released.** memry is under active development and hasn't shipped a public version yet. Star the repo or watch for updates — downloads will be available once we reach a stable release.
+> **Not yet released.** Memry is under active development and hasn't shipped a public version yet. Star the repo or watch for updates — downloads will be available once we reach a stable release.
 
 </div>
 
 ---
 
-Most note apps ask you to trust them with your thoughts. memry doesn't.
+Most note apps ask you to trust them with your thoughts. Memry doesn't.
 
 Everything you write is **encrypted on your device** before it ever leaves. Not even we can read it. Your notes sync across all your devices in real-time — but the servers only ever see encrypted noise.
 
@@ -34,7 +34,6 @@ No cloud lock-in. No subscription walls for basic features. No "oops, we got bre
 ### Write freely
 
 A distraction-free editor that stays out of your way. Rich text, markdown, wiki-style `[[links]]` between notes — connect ideas naturally.
-
 
 </td>
 <td width="50%">
@@ -71,9 +70,9 @@ Tasks and projects live alongside your notes — not in a separate app. Prioriti
 
 </div>
 
-Most apps make you choose: **privacy** or **sync**. memry gives you both.
+Most apps make you choose: **privacy** or **sync**. Memry gives you both.
 
-|                    | memry                                                           | Typical note apps                           |
+|                    | Memry                                                           | Typical note apps                           |
 | ------------------ | --------------------------------------------------------------- | ------------------------------------------- |
 | **Encryption**     | End-to-end. We literally can't read your notes.                 | "Encrypted at rest" (they hold the keys)    |
 | **Offline**        | Full functionality. No internet needed.                         | Degraded or broken without connection       |
@@ -85,14 +84,14 @@ Most apps make you choose: **privacy** or **sync**. memry gives you both.
 
 <br>
 
-When you edit a note on one device, memry:
+When you edit a note on one device, Memry:
 
 1. **Encrypts** the change locally using military-grade cryptography (XChaCha20-Poly1305 + Ed25519 signatures)
 2. **Sends** the encrypted blob to the sync server — which stores it without being able to decrypt it
 3. **Delivers** it to your other devices, where it's decrypted locally
 4. **Merges** intelligently using CRDTs (Conflict-free Replicated Data Types) — the same tech behind Google Docs' real-time collaboration, but without Google seeing your data
 
-Edit the same paragraph on your phone and laptop at the same time? memry merges both edits. No conflicts. No data loss.
+Edit the same paragraph on your phone and laptop at the same time? Memry merges both edits. No conflicts. No data loss.
 
 </details>
 
@@ -100,7 +99,7 @@ Edit the same paragraph on your phone and laptop at the same time? memry merges 
 
 ## Built for speed
 
-memry runs natively on your machine. Not a browser tab pretending to be an app.
+Memry runs natively on your machine. Not a browser tab pretending to be an app.
 
 - **Instant startup** — your notes are already there, in a local database
 - **Works offline** — airplane mode? No Wi-Fi? No problem
@@ -111,7 +110,6 @@ memry runs natively on your machine. Not a browser tab pretending to be an app.
 
 <!-- TODO: Replace with speed/feature demo GIF or video -->
 <!-- Recommended: 700x420 GIF showing tab switching, split pane, dark/light toggle -->
-
 
 </div>
 
@@ -147,7 +145,7 @@ Even if someone broke into the server, they'd get nothing but encrypted noise.
 
 ## Get started
 
-memry is not yet available for download. We're actively building toward a first release.
+Memry is not yet available for download. We're actively building toward a first release.
 
 **Star this repo** to get notified when downloads go live.
 
@@ -161,9 +159,9 @@ When it ships, setup will be simple: **link your devices with a QR code. That's 
 
 <div align="center">
 
-### memry is for people who think best when they're not worried about who's watching.
+### Memry is for people who think best when they're not worried about who's watching.
 
-**[Download memry](#download)** · [Roadmap](#roadmap) · [Community](#community)
+**[Download Memry](#download)** · [Roadmap](#roadmap) · [Community](#community)
 
 </div>
 
@@ -192,7 +190,7 @@ Want to shape what comes next? [Join the conversation →](#community)
 
 <br>
 
-memry is built with:
+Memry is built with:
 
 - **Electron** + **React** + **TypeScript** desktop app
 - **Yjs** CRDTs for conflict-free real-time collaboration
@@ -225,7 +223,7 @@ pnpm test
 
 ## License
 
-memry is licensed under the [GNU General Public License v3.0](LICENSE).
+Memry is licensed under the [GNU General Public License v3.0](LICENSE).
 
 ---
 
