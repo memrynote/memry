@@ -1,0 +1,23 @@
+#!/usr/bin/env sh
+set -eu
+
+pnpm exec lint-staged
+git diff --cached --check
+pnpm check:staged-secrets
+pnpm check:staged-renderer-guards
+
+if git diff --cached --name-only --diff-filter=ACMR -- \
+  package.json \
+  pnpm-lock.yaml \
+  pnpm-workspace.yaml \
+  'apps/*/package.json' \
+  'packages/*/package.json' \
+  'tests/*/package.json' | grep -q .; then
+  pnpm check:lockfile
+fi
+
+if git diff --cached --name-only --diff-filter=ACMR | grep -E \
+  '^(packages/(contracts|rpc)/|apps/desktop/src/preload/|apps/desktop/src/main/ipc/|apps/desktop/src/main/.+-handlers\.ts$|apps/desktop/scripts/generate-(rpc-bindings|ipc-invoke-map)\.(ts|js)$)' \
+  >/dev/null; then
+  pnpm ipc:check
+fi
