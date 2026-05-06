@@ -127,7 +127,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - test
-    if: github.event_name != 'pull_request'
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -142,10 +141,12 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Run tests with coverage
         run: pnpm test:coverage
-      - name: Upload coverage artifact
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Upload coverage to Codecov
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: codecov/codecov-action@v5
         with:
-          name: coverage-report
-          path: apps/desktop/coverage/
-          if-no-files-found: ignore
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: apps/desktop/coverage/lcov.info
+          flags: desktop
+          name: desktop
+          fail_ci_if_error: true
