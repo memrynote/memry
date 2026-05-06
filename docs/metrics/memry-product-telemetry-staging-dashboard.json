@@ -1,0 +1,818 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_MEMRY_CLOUDFLARE_ANALYTICS",
+      "label": "Memry Cloudflare Analytics Engine",
+      "description": "Altinity ClickHouse datasource configured against Cloudflare Analytics Engine SQL API",
+      "type": "datasource",
+      "pluginId": "vertamedia-clickhouse-datasource",
+      "pluginName": "Altinity plugin for ClickHouse"
+    }
+  ],
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "vertamedia-clickhouse-datasource",
+        "uid": "${DS_MEMRY_CLOUDFLARE_ANALYTICS}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "targets": [
+        {
+          "format": "time_series",
+          "refId": "A",
+          "database": "default",
+          "dateColDataType": "",
+          "dateLoading": false,
+          "dateTimeType": "DATETIME",
+          "datetimeLoading": false,
+          "extrapolate": true,
+          "formattedQuery": "SELECT $timeSeries AS t, count() FROM $table WHERE $timeFilter GROUP BY t ORDER BY t",
+          "intervalFactor": 1,
+          "query": "SELECT\n  (intDiv(toUInt32(timestamp), $interval) * $interval) * 1000 AS t,\n  SUM(_sample_interval * double1) AS events\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\nGROUP BY t\nORDER BY t",
+          "rawQuery": "SELECT\n  (intDiv(toUInt32(timestamp), $interval) * $interval) * 1000 AS t,\n  SUM(_sample_interval * double1) AS events\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\nGROUP BY t\nORDER BY t",
+          "round": "0s",
+          "skip_comments": true,
+          "table": "",
+          "tableLoading": false
+        }
+      ],
+      "title": "Events Over Time",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "vertamedia-clickhouse-datasource",
+        "uid": "${DS_MEMRY_CLOUDFLARE_ANALYTICS}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "targets": [
+        {
+          "format": "time_series",
+          "refId": "A",
+          "database": "default",
+          "dateColDataType": "",
+          "dateLoading": false,
+          "dateTimeType": "DATETIME",
+          "datetimeLoading": false,
+          "extrapolate": true,
+          "formattedQuery": "SELECT $timeSeries AS t, count() FROM $table WHERE $timeFilter GROUP BY t ORDER BY t",
+          "intervalFactor": 1,
+          "query": "SELECT\n  (intDiv(toUInt32(timestamp), $interval) * $interval) * 1000 AS t,\n  count(DISTINCT index1) AS active_installs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 IN ('app_started', 'app_active_heartbeat', 'page_viewed')\nGROUP BY t\nORDER BY t",
+          "rawQuery": "SELECT\n  (intDiv(toUInt32(timestamp), $interval) * $interval) * 1000 AS t,\n  count(DISTINCT index1) AS active_installs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 IN ('app_started', 'app_active_heartbeat', 'page_viewed')\nGROUP BY t\nORDER BY t",
+          "round": "0s",
+          "skip_comments": true,
+          "table": "",
+          "tableLoading": false
+        }
+      ],
+      "title": "Active Installs Over Time",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "vertamedia-clickhouse-datasource",
+        "uid": "${DS_MEMRY_CLOUDFLARE_ANALYTICS}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 7
+      },
+      "id": 3,
+      "targets": [
+        {
+          "format": "table",
+          "refId": "A",
+          "database": "default",
+          "dateColDataType": "",
+          "dateLoading": false,
+          "dateTimeType": "DATETIME",
+          "datetimeLoading": false,
+          "extrapolate": true,
+          "formattedQuery": "SELECT $timeSeries AS t, count() FROM $table WHERE $timeFilter GROUP BY t ORDER BY t",
+          "intervalFactor": 1,
+          "query": "SELECT\n  SUM(_sample_interval * double1) AS events\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)",
+          "rawQuery": "SELECT\n  SUM(_sample_interval * double1) AS events\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)",
+          "round": "0s",
+          "skip_comments": true,
+          "table": "",
+          "tableLoading": false
+        }
+      ],
+      "title": "Total Events",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "vertamedia-clickhouse-datasource",
+        "uid": "${DS_MEMRY_CLOUDFLARE_ANALYTICS}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 7
+      },
+      "id": 4,
+      "targets": [
+        {
+          "format": "table",
+          "refId": "A",
+          "database": "default",
+          "dateColDataType": "",
+          "dateLoading": false,
+          "dateTimeType": "DATETIME",
+          "datetimeLoading": false,
+          "extrapolate": true,
+          "formattedQuery": "SELECT $timeSeries AS t, count() FROM $table WHERE $timeFilter GROUP BY t ORDER BY t",
+          "intervalFactor": 1,
+          "query": "SELECT\n  count(DISTINCT index1) AS active_installs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 IN ('app_started', 'app_active_heartbeat', 'page_viewed')",
+          "rawQuery": "SELECT\n  count(DISTINCT index1) AS active_installs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 IN ('app_started', 'app_active_heartbeat', 'page_viewed')",
+          "round": "0s",
+          "skip_comments": true,
+          "table": "",
+          "tableLoading": false
+        }
+      ],
+      "title": "Active Installs",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "vertamedia-clickhouse-datasource",
+        "uid": "${DS_MEMRY_CLOUDFLARE_ANALYTICS}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 7
+      },
+      "id": 5,
+      "targets": [
+        {
+          "format": "table",
+          "refId": "A",
+          "database": "default",
+          "dateColDataType": "",
+          "dateLoading": false,
+          "dateTimeType": "DATETIME",
+          "datetimeLoading": false,
+          "extrapolate": true,
+          "formattedQuery": "SELECT $timeSeries AS t, count() FROM $table WHERE $timeFilter GROUP BY t ORDER BY t",
+          "intervalFactor": 1,
+          "query": "SELECT\n  SUM(_sample_interval * double7) AS errors\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)",
+          "rawQuery": "SELECT\n  SUM(_sample_interval * double7) AS errors\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)",
+          "round": "0s",
+          "skip_comments": true,
+          "table": "",
+          "tableLoading": false
+        }
+      ],
+      "title": "Errors",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "vertamedia-clickhouse-datasource",
+        "uid": "${DS_MEMRY_CLOUDFLARE_ANALYTICS}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 7
+      },
+      "id": 6,
+      "targets": [
+        {
+          "format": "table",
+          "refId": "A",
+          "database": "default",
+          "dateColDataType": "",
+          "dateLoading": false,
+          "dateTimeType": "DATETIME",
+          "datetimeLoading": false,
+          "extrapolate": true,
+          "formattedQuery": "SELECT $timeSeries AS t, count() FROM $table WHERE $timeFilter GROUP BY t ORDER BY t",
+          "intervalFactor": 1,
+          "query": "SELECT\n  SUM(_sample_interval * double2) / SUM(_sample_interval) AS avg_duration_ms\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND double2 > 0",
+          "rawQuery": "SELECT\n  SUM(_sample_interval * double2) / SUM(_sample_interval) AS avg_duration_ms\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND double2 > 0",
+          "round": "0s",
+          "skip_comments": true,
+          "table": "",
+          "tableLoading": false
+        }
+      ],
+      "title": "Avg Duration",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "vertamedia-clickhouse-datasource",
+        "uid": "${DS_MEMRY_CLOUDFLARE_ANALYTICS}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 11
+      },
+      "id": 7,
+      "targets": [
+        {
+          "format": "time_series",
+          "refId": "A",
+          "database": "default",
+          "dateColDataType": "",
+          "dateLoading": false,
+          "dateTimeType": "DATETIME",
+          "datetimeLoading": false,
+          "extrapolate": true,
+          "formattedQuery": "SELECT $timeSeries AS t, count() FROM $table WHERE $timeFilter GROUP BY t ORDER BY t",
+          "intervalFactor": 1,
+          "query": "SELECT\n  (intDiv(toUInt32(timestamp), $interval) * $interval) * 1000 AS t,\n  SUM(_sample_interval * double7) AS errors\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\nGROUP BY t\nORDER BY t",
+          "rawQuery": "SELECT\n  (intDiv(toUInt32(timestamp), $interval) * $interval) * 1000 AS t,\n  SUM(_sample_interval * double7) AS errors\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\nGROUP BY t\nORDER BY t",
+          "round": "0s",
+          "skip_comments": true,
+          "table": "",
+          "tableLoading": false
+        }
+      ],
+      "title": "Errors Over Time",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "vertamedia-clickhouse-datasource",
+        "uid": "${DS_MEMRY_CLOUDFLARE_ANALYTICS}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 11
+      },
+      "id": 8,
+      "targets": [
+        {
+          "format": "time_series",
+          "refId": "A",
+          "database": "default",
+          "dateColDataType": "",
+          "dateLoading": false,
+          "dateTimeType": "DATETIME",
+          "datetimeLoading": false,
+          "extrapolate": true,
+          "formattedQuery": "SELECT $timeSeries AS t, count() FROM $table WHERE $timeFilter GROUP BY t ORDER BY t",
+          "intervalFactor": 1,
+          "query": "SELECT\n  (intDiv(toUInt32(timestamp), $interval) * $interval) * 1000 AS t,\n  SUM(_sample_interval * double2) / SUM(_sample_interval) AS avg_duration_ms\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND double2 > 0\nGROUP BY t\nORDER BY t",
+          "rawQuery": "SELECT\n  (intDiv(toUInt32(timestamp), $interval) * $interval) * 1000 AS t,\n  SUM(_sample_interval * double2) / SUM(_sample_interval) AS avg_duration_ms\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND double2 > 0\nGROUP BY t\nORDER BY t",
+          "round": "0s",
+          "skip_comments": true,
+          "table": "",
+          "tableLoading": false
+        }
+      ],
+      "title": "Avg Duration Over Time",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "vertamedia-clickhouse-datasource",
+        "uid": "${DS_MEMRY_CLOUDFLARE_ANALYTICS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 18
+      },
+      "id": 9,
+      "targets": [
+        {
+          "format": "table",
+          "refId": "A",
+          "database": "default",
+          "dateColDataType": "",
+          "dateLoading": false,
+          "dateTimeType": "DATETIME",
+          "datetimeLoading": false,
+          "extrapolate": true,
+          "formattedQuery": "SELECT $timeSeries AS t, count() FROM $table WHERE $timeFilter GROUP BY t ORDER BY t",
+          "intervalFactor": 1,
+          "query": "SELECT\n  blob1 AS event_name,\n  count(DISTINCT index1) AS installs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 IN ('app_started', 'onboarding_started', 'onboarding_completed', 'vault_opened', 'note_created')\nGROUP BY event_name\nORDER BY installs DESC",
+          "rawQuery": "SELECT\n  blob1 AS event_name,\n  count(DISTINCT index1) AS installs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 IN ('app_started', 'onboarding_started', 'onboarding_completed', 'vault_opened', 'note_created')\nGROUP BY event_name\nORDER BY installs DESC",
+          "round": "0s",
+          "skip_comments": true,
+          "table": "",
+          "tableLoading": false
+        }
+      ],
+      "title": "Activation Funnel",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "vertamedia-clickhouse-datasource",
+        "uid": "${DS_MEMRY_CLOUDFLARE_ANALYTICS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 18
+      },
+      "id": 10,
+      "targets": [
+        {
+          "format": "table",
+          "refId": "A",
+          "database": "default",
+          "dateColDataType": "",
+          "dateLoading": false,
+          "dateTimeType": "DATETIME",
+          "datetimeLoading": false,
+          "extrapolate": true,
+          "formattedQuery": "SELECT $timeSeries AS t, count() FROM $table WHERE $timeFilter GROUP BY t ORDER BY t",
+          "intervalFactor": 1,
+          "query": "SELECT\n  blob1 AS event_name,\n  SUM(_sample_interval * double1) AS events,\n  count(DISTINCT index1) AS installs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\nGROUP BY event_name\nORDER BY events DESC\nLIMIT 20",
+          "rawQuery": "SELECT\n  blob1 AS event_name,\n  SUM(_sample_interval * double1) AS events,\n  count(DISTINCT index1) AS installs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\nGROUP BY event_name\nORDER BY events DESC\nLIMIT 20",
+          "round": "0s",
+          "skip_comments": true,
+          "table": "",
+          "tableLoading": false
+        }
+      ],
+      "title": "Top Events",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "vertamedia-clickhouse-datasource",
+        "uid": "${DS_MEMRY_CLOUDFLARE_ANALYTICS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 18
+      },
+      "id": 11,
+      "targets": [
+        {
+          "format": "table",
+          "refId": "A",
+          "database": "default",
+          "dateColDataType": "",
+          "dateLoading": false,
+          "dateTimeType": "DATETIME",
+          "datetimeLoading": false,
+          "extrapolate": true,
+          "formattedQuery": "SELECT $timeSeries AS t, count() FROM $table WHERE $timeFilter GROUP BY t ORDER BY t",
+          "intervalFactor": 1,
+          "query": "SELECT\n  blob11 AS surface,\n  SUM(_sample_interval * double1) AS events,\n  count(DISTINCT index1) AS installs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob11 != ''\nGROUP BY surface\nORDER BY installs DESC, events DESC",
+          "rawQuery": "SELECT\n  blob11 AS surface,\n  SUM(_sample_interval * double1) AS events,\n  count(DISTINCT index1) AS installs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob11 != ''\nGROUP BY surface\nORDER BY installs DESC, events DESC",
+          "round": "0s",
+          "skip_comments": true,
+          "table": "",
+          "tableLoading": false
+        }
+      ],
+      "title": "Surface Adoption",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "vertamedia-clickhouse-datasource",
+        "uid": "${DS_MEMRY_CLOUDFLARE_ANALYTICS}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 26
+      },
+      "id": 12,
+      "targets": [
+        {
+          "format": "table",
+          "refId": "A",
+          "database": "default",
+          "dateColDataType": "",
+          "dateLoading": false,
+          "dateTimeType": "DATETIME",
+          "datetimeLoading": false,
+          "extrapolate": true,
+          "formattedQuery": "SELECT $timeSeries AS t, count() FROM $table WHERE $timeFilter GROUP BY t ORDER BY t",
+          "intervalFactor": 1,
+          "query": "SELECT\n  blob9 AS auth_state,\n  count(DISTINCT index1) AS installs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 = 'app_started'\nGROUP BY auth_state\nORDER BY installs DESC",
+          "rawQuery": "SELECT\n  blob9 AS auth_state,\n  count(DISTINCT index1) AS installs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 = 'app_started'\nGROUP BY auth_state\nORDER BY installs DESC",
+          "round": "0s",
+          "skip_comments": true,
+          "table": "",
+          "tableLoading": false
+        }
+      ],
+      "title": "Anonymous vs Signed-In",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "vertamedia-clickhouse-datasource",
+        "uid": "${DS_MEMRY_CLOUDFLARE_ANALYTICS}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 26
+      },
+      "id": 13,
+      "targets": [
+        {
+          "format": "table",
+          "refId": "A",
+          "database": "default",
+          "dateColDataType": "",
+          "dateLoading": false,
+          "dateTimeType": "DATETIME",
+          "datetimeLoading": false,
+          "extrapolate": true,
+          "formattedQuery": "SELECT $timeSeries AS t, count() FROM $table WHERE $timeFilter GROUP BY t ORDER BY t",
+          "intervalFactor": 1,
+          "query": "SELECT\n  blob17 AS dimension_key,\n  blob18 AS capture_type,\n  SUM(_sample_interval * double1) AS captures,\n  count(DISTINCT index1) AS installs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 = 'inbox_captured'\nGROUP BY dimension_key, capture_type\nORDER BY captures DESC",
+          "rawQuery": "SELECT\n  blob17 AS dimension_key,\n  blob18 AS capture_type,\n  SUM(_sample_interval * double1) AS captures,\n  count(DISTINCT index1) AS installs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 = 'inbox_captured'\nGROUP BY dimension_key, capture_type\nORDER BY captures DESC",
+          "round": "0s",
+          "skip_comments": true,
+          "table": "",
+          "tableLoading": false
+        }
+      ],
+      "title": "Capture Types",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "vertamedia-clickhouse-datasource",
+        "uid": "${DS_MEMRY_CLOUDFLARE_ANALYTICS}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 26
+      },
+      "id": 14,
+      "targets": [
+        {
+          "format": "table",
+          "refId": "A",
+          "database": "default",
+          "dateColDataType": "",
+          "dateLoading": false,
+          "dateTimeType": "DATETIME",
+          "datetimeLoading": false,
+          "extrapolate": true,
+          "formattedQuery": "SELECT $timeSeries AS t, count() FROM $table WHERE $timeFilter GROUP BY t ORDER BY t",
+          "intervalFactor": 1,
+          "query": "SELECT\n  blob1 AS event_name,\n  blob15 AS result,\n  blob16 AS error_code,\n  SUM(_sample_interval * double1) AS events\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND (blob15 = 'failed' OR double7 > 0 OR blob16 != '')\nGROUP BY event_name, result, error_code\nORDER BY events DESC\nLIMIT 20",
+          "rawQuery": "SELECT\n  blob1 AS event_name,\n  blob15 AS result,\n  blob16 AS error_code,\n  SUM(_sample_interval * double1) AS events\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND (blob15 = 'failed' OR double7 > 0 OR blob16 != '')\nGROUP BY event_name, result, error_code\nORDER BY events DESC\nLIMIT 20",
+          "round": "0s",
+          "skip_comments": true,
+          "table": "",
+          "tableLoading": false
+        }
+      ],
+      "title": "Failures",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "vertamedia-clickhouse-datasource",
+        "uid": "${DS_MEMRY_CLOUDFLARE_ANALYTICS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 33
+      },
+      "id": 15,
+      "targets": [
+        {
+          "format": "table",
+          "refId": "A",
+          "database": "default",
+          "dateColDataType": "",
+          "dateLoading": false,
+          "dateTimeType": "DATETIME",
+          "datetimeLoading": false,
+          "extrapolate": true,
+          "formattedQuery": "SELECT $timeSeries AS t, count() FROM $table WHERE $timeFilter GROUP BY t ORDER BY t",
+          "intervalFactor": 1,
+          "query": "SELECT\n  timestamp,\n  blob1 AS event_name,\n  blob4 AS build_channel,\n  blob5 AS platform,\n  blob9 AS auth_state,\n  blob10 AS sync_state,\n  blob11 AS surface,\n  blob12 AS action,\n  blob14 AS source,\n  blob15 AS result,\n  blob16 AS error_code,\n  blob17 AS dimension_key,\n  blob18 AS dimension_value,\n  double2 AS duration_ms,\n  double3 AS item_count,\n  double6 AS result_count,\n  double12 AS client_queue_depth\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\nORDER BY timestamp DESC\nLIMIT 100",
+          "rawQuery": "SELECT\n  timestamp,\n  blob1 AS event_name,\n  blob4 AS build_channel,\n  blob5 AS platform,\n  blob9 AS auth_state,\n  blob10 AS sync_state,\n  blob11 AS surface,\n  blob12 AS action,\n  blob14 AS source,\n  blob15 AS result,\n  blob16 AS error_code,\n  blob17 AS dimension_key,\n  blob18 AS dimension_value,\n  double2 AS duration_ms,\n  double3 AS item_count,\n  double6 AS result_count,\n  double12 AS client_queue_depth\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\nORDER BY timestamp DESC\nLIMIT 100",
+          "round": "0s",
+          "skip_comments": true,
+          "table": "",
+          "tableLoading": false
+        }
+      ],
+      "title": "Recent Events",
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 41
+      },
+      "id": 16,
+      "panels": [],
+      "title": "Sync Server Metrics",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "vertamedia-clickhouse-datasource",
+        "uid": "${DS_MEMRY_CLOUDFLARE_ANALYTICS}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 42
+      },
+      "id": 17,
+      "targets": [
+        {
+          "format": "time_series",
+          "refId": "A",
+          "database": "default",
+          "dateColDataType": "",
+          "dateLoading": false,
+          "dateTimeType": "DATETIME",
+          "datetimeLoading": false,
+          "extrapolate": true,
+          "formattedQuery": "SELECT $timeSeries AS t, count() FROM $table WHERE $timeFilter GROUP BY t ORDER BY t",
+          "intervalFactor": 1,
+          "query": "SELECT\n  (intDiv(toUInt32(timestamp), $interval) * $interval) * 1000 AS t,\n  blob14 AS operation,\n  SUM(_sample_interval * double1) AS sync_runs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 = 'sync_run_completed'\nGROUP BY t, operation\nORDER BY t",
+          "rawQuery": "SELECT\n  (intDiv(toUInt32(timestamp), $interval) * $interval) * 1000 AS t,\n  blob14 AS operation,\n  SUM(_sample_interval * double1) AS sync_runs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 = 'sync_run_completed'\nGROUP BY t, operation\nORDER BY t",
+          "round": "0s",
+          "skip_comments": true,
+          "table": "",
+          "tableLoading": false
+        }
+      ],
+      "title": "Sync Runs Over Time",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "vertamedia-clickhouse-datasource",
+        "uid": "${DS_MEMRY_CLOUDFLARE_ANALYTICS}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 42
+      },
+      "id": 18,
+      "targets": [
+        {
+          "format": "time_series",
+          "refId": "A",
+          "database": "default",
+          "dateColDataType": "",
+          "dateLoading": false,
+          "dateTimeType": "DATETIME",
+          "datetimeLoading": false,
+          "extrapolate": true,
+          "formattedQuery": "SELECT $timeSeries AS t, count() FROM $table WHERE $timeFilter GROUP BY t ORDER BY t",
+          "intervalFactor": 1,
+          "query": "SELECT\n  (intDiv(toUInt32(timestamp), $interval) * $interval) * 1000 AS t,\n  blob14 AS operation,\n  blob16 AS error_code,\n  SUM(_sample_interval * double1) AS sync_errors\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 = 'sync_error'\nGROUP BY t, operation, error_code\nORDER BY t",
+          "rawQuery": "SELECT\n  (intDiv(toUInt32(timestamp), $interval) * $interval) * 1000 AS t,\n  blob14 AS operation,\n  blob16 AS error_code,\n  SUM(_sample_interval * double1) AS sync_errors\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 = 'sync_error'\nGROUP BY t, operation, error_code\nORDER BY t",
+          "round": "0s",
+          "skip_comments": true,
+          "table": "",
+          "tableLoading": false
+        }
+      ],
+      "title": "Sync Errors Over Time",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "vertamedia-clickhouse-datasource",
+        "uid": "${DS_MEMRY_CLOUDFLARE_ANALYTICS}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 49
+      },
+      "id": 19,
+      "targets": [
+        {
+          "format": "table",
+          "refId": "A",
+          "database": "default",
+          "dateColDataType": "",
+          "dateLoading": false,
+          "dateTimeType": "DATETIME",
+          "datetimeLoading": false,
+          "extrapolate": true,
+          "formattedQuery": "SELECT $timeSeries AS t, count() FROM $table WHERE $timeFilter GROUP BY t ORDER BY t",
+          "intervalFactor": 1,
+          "query": "SELECT\n  blob14 AS operation,\n  blob18 AS transport,\n  SUM(_sample_interval * double2) / SUM(_sample_interval) AS avg_duration_ms,\n  SUM(_sample_interval * double1) AS runs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 = 'sync_run_completed'\n  AND double2 > 0\nGROUP BY operation, transport\nORDER BY avg_duration_ms DESC",
+          "rawQuery": "SELECT\n  blob14 AS operation,\n  blob18 AS transport,\n  SUM(_sample_interval * double2) / SUM(_sample_interval) AS avg_duration_ms,\n  SUM(_sample_interval * double1) AS runs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 = 'sync_run_completed'\n  AND double2 > 0\nGROUP BY operation, transport\nORDER BY avg_duration_ms DESC",
+          "round": "0s",
+          "skip_comments": true,
+          "table": "",
+          "tableLoading": false
+        }
+      ],
+      "title": "Sync Duration by Operation",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "vertamedia-clickhouse-datasource",
+        "uid": "${DS_MEMRY_CLOUDFLARE_ANALYTICS}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 49
+      },
+      "id": 20,
+      "targets": [
+        {
+          "format": "table",
+          "refId": "A",
+          "database": "default",
+          "dateColDataType": "",
+          "dateLoading": false,
+          "dateTimeType": "DATETIME",
+          "datetimeLoading": false,
+          "extrapolate": true,
+          "formattedQuery": "SELECT $timeSeries AS t, count() FROM $table WHERE $timeFilter GROUP BY t ORDER BY t",
+          "intervalFactor": 1,
+          "query": "SELECT\n  blob14 AS operation,\n  blob18 AS transport,\n  SUM(_sample_interval * double5) AS queue_count,\n  SUM(_sample_interval * double3) AS item_count,\n  SUM(_sample_interval * double1) AS runs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 = 'sync_run_completed'\nGROUP BY operation, transport\nORDER BY runs DESC",
+          "rawQuery": "SELECT\n  blob14 AS operation,\n  blob18 AS transport,\n  SUM(_sample_interval * double5) AS queue_count,\n  SUM(_sample_interval * double3) AS item_count,\n  SUM(_sample_interval * double1) AS runs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 = 'sync_run_completed'\nGROUP BY operation, transport\nORDER BY runs DESC",
+          "round": "0s",
+          "skip_comments": true,
+          "table": "",
+          "tableLoading": false
+        }
+      ],
+      "title": "Sync Queue and Items",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "vertamedia-clickhouse-datasource",
+        "uid": "${DS_MEMRY_CLOUDFLARE_ANALYTICS}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 49
+      },
+      "id": 21,
+      "targets": [
+        {
+          "format": "table",
+          "refId": "A",
+          "database": "default",
+          "dateColDataType": "",
+          "dateLoading": false,
+          "dateTimeType": "DATETIME",
+          "datetimeLoading": false,
+          "extrapolate": true,
+          "formattedQuery": "SELECT $timeSeries AS t, count() FROM $table WHERE $timeFilter GROUP BY t ORDER BY t",
+          "intervalFactor": 1,
+          "query": "SELECT\n  blob1 AS event_name,\n  blob14 AS operation,\n  blob18 AS transport,\n  blob15 AS result,\n  blob16 AS error_code,\n  SUM(_sample_interval * double1) AS events,\n  count(DISTINCT index1) AS installs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 IN ('sync_enabled', 'sync_run_completed', 'sync_error')\nGROUP BY event_name, operation, transport, result, error_code\nORDER BY events DESC",
+          "rawQuery": "SELECT\n  blob1 AS event_name,\n  blob14 AS operation,\n  blob18 AS transport,\n  blob15 AS result,\n  blob16 AS error_code,\n  SUM(_sample_interval * double1) AS events,\n  count(DISTINCT index1) AS installs\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 IN ('sync_enabled', 'sync_run_completed', 'sync_error')\nGROUP BY event_name, operation, transport, result, error_code\nORDER BY events DESC",
+          "round": "0s",
+          "skip_comments": true,
+          "table": "",
+          "tableLoading": false
+        }
+      ],
+      "title": "Sync Outcome Summary",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "vertamedia-clickhouse-datasource",
+        "uid": "${DS_MEMRY_CLOUDFLARE_ANALYTICS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 56
+      },
+      "id": 22,
+      "targets": [
+        {
+          "format": "table",
+          "refId": "A",
+          "database": "default",
+          "dateColDataType": "",
+          "dateLoading": false,
+          "dateTimeType": "DATETIME",
+          "datetimeLoading": false,
+          "extrapolate": true,
+          "formattedQuery": "SELECT $timeSeries AS t, count() FROM $table WHERE $timeFilter GROUP BY t ORDER BY t",
+          "intervalFactor": 1,
+          "query": "SELECT\n  timestamp,\n  blob1 AS event_name,\n  blob14 AS operation,\n  blob18 AS transport,\n  blob15 AS result,\n  blob16 AS error_code,\n  double2 AS duration_ms,\n  double3 AS item_count,\n  double5 AS queue_count\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 IN ('sync_enabled', 'sync_run_completed', 'sync_error')\nORDER BY timestamp DESC\nLIMIT 100",
+          "rawQuery": "SELECT\n  timestamp,\n  blob1 AS event_name,\n  blob14 AS operation,\n  blob18 AS transport,\n  blob15 AS result,\n  blob16 AS error_code,\n  double2 AS duration_ms,\n  double3 AS item_count,\n  double5 AS queue_count\nFROM memry_product_telemetry_${env}\nWHERE timestamp >= toDateTime($from)\n  AND timestamp <= toDateTime($to)\n  AND blob1 IN ('sync_enabled', 'sync_run_completed', 'sync_error')\nORDER BY timestamp DESC\nLIMIT 100",
+          "round": "0s",
+          "skip_comments": true,
+          "table": "",
+          "tableLoading": false
+        }
+      ],
+      "title": "Recent Sync Events",
+      "type": "table"
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "memry",
+    "telemetry",
+    "staging",
+    "cloudflare"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": true,
+          "text": "staging",
+          "value": "staging"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Environment",
+        "multi": false,
+        "name": "env",
+        "options": [
+          {
+            "selected": true,
+            "text": "staging",
+            "value": "staging"
+          },
+          {
+            "selected": false,
+            "text": "production",
+            "value": "production"
+          }
+        ],
+        "query": "staging,production",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Memry Product Telemetry",
+  "uid": "memry-product-telemetry",
+  "version": 1,
+  "weekStart": ""
+}

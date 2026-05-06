@@ -42,7 +42,7 @@ MIN_APP_VERSION = "0.1.0"
 [[env.staging.d1_databases]]
 binding = "DB"
 database_name = "memry-sync-staging"
-database_id = "0b7c7894-925e-4a12-a0bc-02ea4081a5c7"
+database_id = "f854636b-118f-492c-9b67-f5fb97b52647"
 
 [[env.staging.r2_buckets]]
 binding = "STORAGE"
