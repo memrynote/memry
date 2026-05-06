@@ -2,9 +2,8 @@ name: Release (Stable)
 
 on:
   push:
-    tags:
-      - 'stable-v*'
-      - 'v20*'
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -14,8 +13,8 @@ env:
   NODE_OPTIONS: --max-old-space-size=4096
 
 concurrency:
-  group: release-stable-${{ github.ref }}
-  cancel-in-progress: true
+  group: release-stable-main
+  cancel-in-progress: false
 
 jobs:
   version:
@@ -24,12 +23,15 @@ jobs:
     outputs:
       app_version: ${{ steps.metadata.outputs.app_version }}
       display_version: ${{ steps.metadata.outputs.display_version }}
+      release_asset_version: ${{ steps.metadata.outputs.release_asset_version }}
       release_name: ${{ steps.metadata.outputs.release_name }}
       tag: ${{ steps.metadata.outputs.release_tag }}
       version: ${{ steps.metadata.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -39,15 +41,43 @@ jobs:
       - name: Resolve release metadata
         id: metadata
         run: |
+          git fetch --tags --force
+          git tag --list > existing-tags.txt
+          git tag --points-at HEAD > current-tags.txt
+
           node scripts/desktop-release-metadata.mjs \
-            --from-tag \
-            --tag "${GITHUB_REF_NAME}" \
+            --resolve \
+            --date "$(date -u +%F)" \
+            --existing-tags-file existing-tags.txt \
+            --current-tags-file current-tags.txt \
             --github-output "$GITHUB_OUTPUT"
+
+      - name: Create or reuse release tag
+        run: |
+          tag="${{ steps.metadata.outputs.release_tag }}"
+          head_sha="$(git rev-parse HEAD)"
+
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            tag_sha="$(git rev-list -n 1 "$tag")"
+            if [ "$tag_sha" != "$head_sha" ]; then
+              echo "::error::Release tag $tag already exists at $tag_sha, not HEAD $head_sha"
+              exit 1
+            fi
+
+            echo "Reusing release tag $tag at HEAD"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "$tag"
+          git push origin "refs/tags/$tag"
 
       - name: Summary
         run: |
           echo "### Stable version: \`${{ steps.metadata.outputs.display_version }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "App version: \`${{ steps.metadata.outputs.app_version }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Release asset version: \`${{ steps.metadata.outputs.release_asset_version }}\`" >> "$GITHUB_STEP_SUMMARY"
 
   build:
     name: Build ${{ matrix.label }}
@@ -259,6 +289,9 @@ jobs:
 
       - name: Collect release assets
         shell: bash
+        env:
+          APP_VERSION: ${{ needs.version.outputs.app_version }}
+          RELEASE_ASSET_VERSION: ${{ needs.version.outputs.release_asset_version }}
         run: |
           mkdir -p release-assets
           find artifacts -type f \
@@ -277,8 +310,34 @@ jobs:
               -o -name 'latest*.yml' \
             \) \
             -print0 | while IFS= read -r -d '' file; do
-              cp "$file" "release-assets/$(basename "$file")"
+              filename="$(basename "$file")"
+              filename="${filename//$APP_VERSION/$RELEASE_ASSET_VERSION}"
+
+              cp "$file" "release-assets/$filename"
             done
+
+          ruby <<'RUBY'
+          require 'yaml'
+
+          app_version = ENV.fetch('APP_VERSION')
+          asset_version = ENV.fetch('RELEASE_ASSET_VERSION')
+
+          Dir['release-assets/latest*.yml'].each do |path|
+            data = YAML.load_file(path) || {}
+            rewrite = ->(value) { value.is_a?(String) ? value.gsub(app_version, asset_version) : value }
+
+            data['path'] = rewrite.call(data['path'])
+            if data['files'].is_a?(Array)
+              data['files'].each do |entry|
+                next unless entry.is_a?(Hash)
+
+                entry['url'] = rewrite.call(entry['url'])
+              end
+            end
+
+            File.write(path, YAML.dump(data))
+          end
+          RUBY
 
           asset_count="$(find release-assets -maxdepth 1 -type f | wc -l | tr -d ' ')"
           if [ "$asset_count" -eq 0 ]; then
@@ -291,7 +350,8 @@ jobs:
       - name: Build stable-latest.json
         shell: bash
         env:
-          VERSION: ${{ needs.version.outputs.app_version }}
+          APP_VERSION: ${{ needs.version.outputs.app_version }}
+          DISPLAY_VERSION: ${{ needs.version.outputs.display_version }}
           TAG: ${{ needs.version.outputs.tag }}
         run: |
           python3 <<'PY'
@@ -301,7 +361,8 @@ jobs:
           import sys
           from datetime import datetime, timezone
 
-          version = os.environ['VERSION']
+          app_version = os.environ['APP_VERSION']
+          display_version = os.environ['DISPLAY_VERSION']
           tag = os.environ['TAG']
           repo = os.environ['GITHUB_REPOSITORY']
           owner, repo_name = repo.split('/', 1)
@@ -333,7 +394,8 @@ jobs:
           linux_deb = pick('linux deb', ['*.deb'])
 
           payload = {
-              'version': version,
+              'version': display_version,
+              'app_version': app_version,
               'notes': f'Stable release. See {pages_url} for full release notes.',
               'pub_date': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
               'platforms': {
@@ -391,7 +453,7 @@ jobs:
           {
             echo ""
             echo "---"
-            echo "**Stable release - manually promoted from \`main\`**"
+            echo "**Stable release - published from \`main\`**"
             echo ""
             echo "**Includes macOS (Apple Silicon and Intel), Windows x64, and Linux x64 bundles**"
             echo ""

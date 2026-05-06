@@ -130,4 +130,19 @@ describe('GeneralSettings i18n', () => {
       expect(toast.error).toHaveBeenCalledWith('Failed to change language. Please try again.')
     })
   })
+
+  it('renders public date versions from updater state', async () => {
+    api.updater.getState = vi.fn().mockResolvedValue({
+      ...updateState,
+      currentVersion: 'v2026-05-06',
+      status: 'available',
+      updateSupported: true,
+      availableVersion: 'v2026-05-06.2'
+    })
+
+    renderGeneral(i18n)
+
+    expect(await screen.findByText('Installed version v2026-05-06')).toBeInTheDocument()
+    expect(screen.getByText('Available version v2026-05-06.2')).toBeInTheDocument()
+  })
 })
