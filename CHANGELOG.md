@@ -5,6 +5,13 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-05-07 — Notes and Journal Block Marquee Selection
+
+### Fixed
+- Fix block marquee selection in notes and journals so dragging selects only blocks, not the text content inside selected blocks. Backspace/Delete and block indent/outdent shortcuts continue to operate on the selected blocks.
+
+---
+
 ## 2026-04-30 — Calendar: clickable inbox-snooze chips
 
 ### Added

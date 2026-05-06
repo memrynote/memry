@@ -14,10 +14,9 @@
  * the visual highlight on release — taskBlock marquee selection was
  * completely broken end-to-end.
  *
- * The fix routes single non-textblock blocks through PM NodeSelection, and
- * multi-block selections through TextSelection.between at depth-0 endpoints.
- * Test #3 below (mixed paragraph + taskBlock + heading + paragraph) is the
- * critical regression gate.
+ * The fix keeps block marquee selection as visual block state and routes
+ * Backspace through editor.removeBlocks, so textblocks and custom blocks share
+ * the same deletion path.
  *
  * NOTE: youtubeEmbed and file blocks are intentionally NOT covered here.
  * They share the same `content: 'none'` schema as taskBlock, so the fix
@@ -203,9 +202,7 @@ test.describe('Marquee selection — block types', () => {
     await waitForVaultReady(page)
   })
 
-  test('1. single taskBlock — visual highlight + PM NodeSelection + Backspace deletes', async ({
-    page
-  }) => {
+  test('1. single taskBlock — visual highlight + Backspace deletes', async ({ page }) => {
     await createNote(page, `Marquee Single TaskBlock ${Date.now()}`)
     await focusEditor(page)
 
@@ -223,10 +220,9 @@ test.describe('Marquee selection — block types', () => {
 
     await expect(page.locator(HIGHLIGHTED_SELECTOR)).toHaveCount(1)
 
-    // The marquee overlay is the primary visual signal. The marquee-side
-    // Backspace handler operates on the selectedBlockIds set directly via
-    // editor.removeBlocks, so PM selection state is secondary — what
-    // matters end-to-end is that Backspace removes the highlighted block.
+    // The marquee-side Backspace handler operates on the selectedBlockIds set
+    // directly via editor.removeBlocks, so what matters end-to-end is that
+    // Backspace removes the highlighted block.
     await page.keyboard.press('Backspace')
     await page.waitForTimeout(300)
     expect(await getBlockCount(page)).toBeLessThan(startCount)
@@ -301,10 +297,9 @@ test.describe('Marquee selection — block types', () => {
     const startCount = await getBlockCount(page)
     await marqueeAcross(page, 0, 3)
 
-    // All four blocks visually highlighted post-release. This is the
-    // exact regression that was broken: previously, the catch path on
-    // applyPmSelection cleared the highlights when the range included a
-    // taskBlock.
+    // All four blocks visually highlighted post-release. This is the exact
+    // mixed-block regression gate: paragraph + taskBlock + heading + paragraph
+    // must remain one block marquee selection.
     expect(await page.locator(HIGHLIGHTED_SELECTOR).count()).toBeGreaterThanOrEqual(4)
 
     await page.keyboard.press('Backspace')
@@ -410,10 +405,8 @@ test.describe('Marquee selection — block types', () => {
 
     await marqueeAcross(page, 0, 2)
 
-    // The fix uses requestAnimationFrame (not queueMicrotask) for the
-    // isApplyingPmSelectionRef guard reset. Without rAF, the secondary
-    // onSelectionChange tick from view.focus() would clear our highlight
-    // ~1 tick after release. 200ms is well past that race window.
+    // Wait past the release/finalize tick so the persisted highlight is the
+    // stable post-marquee state, not just the mid-drag overlay state.
     await page.waitForTimeout(200)
     expect(await page.locator(HIGHLIGHTED_SELECTOR).count()).toBeGreaterThanOrEqual(3)
   })

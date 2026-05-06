@@ -52,6 +52,19 @@ async function getMarqueeZoneBox(page: Page) {
   return box
 }
 
+async function expectNoNativeTextSelection(page: Page): Promise<void> {
+  const selectionState = await page.evaluate(() => {
+    const sel = window.getSelection()
+    return {
+      hasNonCollapsedRange: sel !== null && sel.rangeCount > 0 && !sel.isCollapsed,
+      selectedText: sel?.toString() ?? ''
+    }
+  })
+
+  expect(selectionState.hasNonCollapsedRange).toBe(false)
+  expect(selectionState.selectedText).toBe('')
+}
+
 test.describe('Journal block marquee selection', () => {
   test.beforeEach(async ({ page }) => {
     await waitForAppReady(page)
@@ -96,6 +109,7 @@ test.describe('Journal block marquee selection', () => {
     // Overlay gone after release; highlights persist.
     await expect(page.locator(OVERLAY_SELECTOR)).toHaveCount(0)
     expect(await page.locator(HIGHLIGHTED_SELECTOR).count()).toBeGreaterThanOrEqual(3)
+    await expectNoNativeTextSelection(page)
   })
 
   test('Backspace deletes marquee-selected journal blocks', async ({ page }) => {
