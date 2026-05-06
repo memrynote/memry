@@ -1,5 +1,5 @@
 appId: com.memrynote.memry
-productName: memry
+productName: Memry
 electronUpdaterCompatibility: '>=2.16'
 directories:
   buildResources: build
@@ -23,14 +23,14 @@ asarUnpack:
   - resources/**
 afterPack: scripts/prune-packaged-app.mjs
 win:
-  executableName: memry
+  executableName: Memry
 nsis:
-  artifactName: memry-${version}-setup.${ext}
+  artifactName: ${productName}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
-  artifactName: memry-${version}-${arch}.${ext}
+  artifactName: ${productName}-${version}-${arch}.${ext}
   entitlementsInherit: config/entitlements.mac.plist
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
@@ -45,9 +45,9 @@ linux:
   maintainer: electronjs.org
   category: Utility
 appImage:
-  artifactName: memry-${version}.${ext}
+  artifactName: ${productName}-${version}.${ext}
 deb:
-  artifactName: memry-${version}-${arch}.${ext}
+  artifactName: ${productName}-${version}-${arch}.${ext}
 npmRebuild: false
 publish:
   provider: github

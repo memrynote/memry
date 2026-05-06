@@ -299,14 +299,14 @@ jobs:
             -not -path '*/linux-unpacked/*' \
             -not -path '*.app/*' \
             \( \
-              -name 'memry-*.dmg' \
-              -o -name 'memry-*.dmg.blockmap' \
-              -o -name 'memry-*.zip' \
-              -o -name 'memry-*.zip.blockmap' \
-              -o -name 'memry-*-setup.exe' \
-              -o -name 'memry-*-setup.exe.blockmap' \
-              -o -name 'memry-*.AppImage' \
-              -o -name 'memry-*.deb' \
+              -iname 'memry-*.dmg' \
+              -o -iname 'memry-*.dmg.blockmap' \
+              -o -iname 'memry-*.zip' \
+              -o -iname 'memry-*.zip.blockmap' \
+              -o -iname 'memry-*-setup.exe' \
+              -o -iname 'memry-*-setup.exe.blockmap' \
+              -o -iname 'memry-*.AppImage' \
+              -o -iname 'memry-*.deb' \
               -o -name 'latest*.yml' \
             \) \
             -print0 | while IFS= read -r -d '' file; do

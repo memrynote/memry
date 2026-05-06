@@ -6,7 +6,7 @@ export const buildOtpEmailHtml = (code: string, expiresMinutes: number): string 
 <tr><td align="center">
 <table width="100%" cellpadding="0" cellspacing="0" style="max-width:440px;background:#ffffff;border-radius:12px;overflow:hidden">
 <tr><td style="background:#18181b;padding:24px 32px">
-  <span style="color:#ffffff;font-size:20px;font-weight:600;letter-spacing:-0.3px">memry</span>
+  <span style="color:#ffffff;font-size:20px;font-weight:600;letter-spacing:-0.3px">Memry</span>
 </td></tr>
 <tr><td style="padding:32px">
   <p style="margin:0 0 8px;color:#18181b;font-size:16px;font-weight:600">Your verification code</p>
