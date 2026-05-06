@@ -766,6 +766,9 @@ importers:
       '@memry/contracts':
         specifier: workspace:*
         version: link:../contracts
+      zod:
+        specifier: ^4.3.4
+        version: 4.3.6
     devDependencies:
       '@memry/typescript-config':
         specifier: workspace:*
