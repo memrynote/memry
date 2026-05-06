@@ -1,51 +1,35 @@
-name: Desktop Release Assets
+name: Release (Stable)
 
 on:
-  release:
-    types:
-      - published
-  workflow_dispatch:
-    inputs:
-      release_tag:
-        description: Existing release tag to build and attach assets for, e.g. v2026.4.28.
-        required: true
-        type: string
+  push:
+    tags:
+      - 'stable-v*'
+      - 'v20*'
 
 permissions:
   contents: write
 
-concurrency:
-  group: desktop-release-assets-${{ github.event.release.tag_name || inputs.release_tag }}
-  cancel-in-progress: false
-
 env:
   CI: true
+  NODE_OPTIONS: --max-old-space-size=4096
+
+concurrency:
+  group: release-stable-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  prepare:
-    name: Prepare published release metadata
+  version:
+    name: Compute stable version
     runs-on: ubuntu-latest
     outputs:
       app_version: ${{ steps.metadata.outputs.app_version }}
-      checkout_ref: ${{ steps.refs.outputs.checkout_ref }}
-      release_date: ${{ steps.metadata.outputs.release_date }}
+      display_version: ${{ steps.metadata.outputs.display_version }}
       release_name: ${{ steps.metadata.outputs.release_name }}
-      release_tag: ${{ steps.metadata.outputs.release_tag }}
+      tag: ${{ steps.metadata.outputs.release_tag }}
+      version: ${{ steps.metadata.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.release.tag_name }}
-
-      - name: Resolve checkout ref
-        id: refs
-        shell: bash
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "checkout_ref=${{ github.sha }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "checkout_ref=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -57,16 +41,21 @@ jobs:
         run: |
           node scripts/desktop-release-metadata.mjs \
             --from-tag \
-            --tag "${{ github.event.release.tag_name || inputs.release_tag }}" \
+            --tag "${GITHUB_REF_NAME}" \
             --github-output "$GITHUB_OUTPUT"
+
+      - name: Summary
+        run: |
+          echo "### Stable version: \`${{ steps.metadata.outputs.display_version }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "App version: \`${{ steps.metadata.outputs.app_version }}\`" >> "$GITHUB_STEP_SUMMARY"
 
   build:
     name: Build ${{ matrix.label }}
+    needs: version
     runs-on: ${{ matrix.os }}
-    needs: prepare
     timeout-minutes: 180
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           - label: mac x64
@@ -97,7 +86,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.prepare.outputs.checkout_ref }}
+          ref: ${{ needs.version.outputs.tag }}
 
       - name: Verify mac signing certificate
         if: matrix.platform == 'mac'
@@ -156,7 +145,7 @@ jobs:
           else
             echo "::error::Cert is NOT Developer ID Application."
             echo "::error::Found: $subject"
-            echo "::error::Notarization will reject. Re-export 'Developer ID Application' from Keychain Access (right-click → Export → .p12)."
+            echo "::error::Notarization will reject. Re-export 'Developer ID Application' from Keychain Access (right-click -> Export -> .p12)."
             exit 1
           fi
 
@@ -172,7 +161,7 @@ jobs:
           cache: pnpm
 
       - name: Set release version
-        run: node scripts/set-desktop-version.mjs "${{ needs.prepare.outputs.app_version }}"
+        run: node scripts/set-desktop-version.mjs "${{ needs.version.outputs.app_version }}"
 
       - name: Install Linux system dependencies
         if: matrix.platform == 'linux'
@@ -207,15 +196,23 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: apps/desktop/dist/**
           if-no-files-found: error
+          retention-days: 1
 
-  upload:
-    name: Upload release assets
-    runs-on: ubuntu-latest
+  release:
+    name: GitHub Release (stable)
     needs:
-      - prepare
+      - version
       - build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - name: Download build artifacts
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
@@ -291,10 +288,239 @@ jobs:
 
           find release-assets -maxdepth 1 -type f -print | sort
 
-      - name: Upload release assets
+      - name: Build stable-latest.json
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.version.outputs.app_version }}
+          TAG: ${{ needs.version.outputs.tag }}
         run: |
-          gh release upload "${{ needs.prepare.outputs.release_tag }}" release-assets/* --clobber
+          python3 <<'PY'
+          import glob
+          import json
+          import os
+          import sys
+          from datetime import datetime, timezone
+
+          version = os.environ['VERSION']
+          tag = os.environ['TAG']
+          repo = os.environ['GITHUB_REPOSITORY']
+          owner, repo_name = repo.split('/', 1)
+          release_base_url = f'https://github.com/{repo}/releases/download/{tag}'
+          pages_url = f'https://{owner}.github.io/{repo_name}/'
+
+          def pick(label, patterns):
+              matches = []
+              for pattern in patterns:
+                  matches.extend(glob.glob(os.path.join('release-assets', pattern)))
+              matches = sorted(set(matches))
+              if not matches:
+                  print(f'::error::Missing required {label}: {", ".join(patterns)}', file=sys.stderr)
+                  raise SystemExit(1)
+              return os.path.basename(matches[0])
+
+          def asset_url(filename):
+              return f'{release_base_url}/{filename}'
+
+          latest_mac = pick('mac updater metadata', ['latest-mac.yml'])
+          latest_win = pick('windows updater metadata', ['latest.yml'])
+          latest_linux = pick('linux updater metadata', ['latest-linux.yml'])
+          arm_dmg = pick('mac arm64 dmg', ['*arm64*.dmg'])
+          arm_zip = pick('mac arm64 updater zip', ['*arm64*.zip'])
+          x64_dmg = pick('mac x64 dmg', ['*x64*.dmg'])
+          x64_zip = pick('mac x64 updater zip', ['*x64*.zip'])
+          win_installer = pick('windows installer', ['*-setup.exe'])
+          linux_appimage = pick('linux appimage', ['*.AppImage'])
+          linux_deb = pick('linux deb', ['*.deb'])
+
+          payload = {
+              'version': version,
+              'notes': f'Stable release. See {pages_url} for full release notes.',
+              'pub_date': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+              'platforms': {
+                  'darwin-aarch64': {
+                      'url': asset_url(arm_zip),
+                      'download_url': asset_url(arm_dmg),
+                      'metadata_url': asset_url(latest_mac),
+                  },
+                  'darwin-x86_64': {
+                      'url': asset_url(x64_zip),
+                      'download_url': asset_url(x64_dmg),
+                      'metadata_url': asset_url(latest_mac),
+                  },
+                  'linux-x86_64': {
+                      'url': asset_url(linux_appimage),
+                      'download_url': asset_url(linux_deb),
+                      'metadata_url': asset_url(latest_linux),
+                  },
+                  'windows-x86_64': {
+                      'url': asset_url(win_installer),
+                      'download_url': asset_url(win_installer),
+                      'metadata_url': asset_url(latest_win),
+                  },
+              },
+          }
+
+          with open('release-assets/stable-latest.json', 'w', encoding='utf-8') as handle:
+              json.dump(payload, handle, indent=2)
+              handle.write('\n')
+
+          print(json.dumps(payload, indent=2))
+          PY
+
+      - name: Generate release notes
+        shell: bash
+        env:
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          NOTES_FILE="release-notes/${TAG}.md"
+          if [ -f "$NOTES_FILE" ]; then
+            cat "$NOTES_FILE" > release_notes.md
+          else
+            PREV_TAG=$(git for-each-ref --sort=-creatordate --format='%(refname:short)' refs/tags/v20* refs/tags/stable-v* | grep -vx "$TAG" | head -n 1 || echo "")
+            if [ -z "$PREV_TAG" ]; then
+              NOTES=$(git log --oneline --no-merges -20)
+            else
+              NOTES=$(git log --oneline --no-merges "${PREV_TAG}..${TAG}")
+            fi
+            {
+              echo "## What's Changed"
+              echo ""
+              echo "$NOTES" | while IFS= read -r line; do echo "- $line"; done
+            } > release_notes.md
+          fi
+          {
+            echo ""
+            echo "---"
+            echo "**Stable release - manually promoted from \`main\`**"
+            echo ""
+            echo "**Includes macOS (Apple Silicon and Intel), Windows x64, and Linux x64 bundles**"
+            echo ""
+            echo "*Built from \`$(git rev-parse --short "$TAG")\` on $(date -u +%Y-%m-%d)*"
+          } >> release_notes.md
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: ${{ needs.version.outputs.release_name }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          files: release-assets/*
+
+  pages:
+    name: Update release history page
+    needs:
+      - version
+      - release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build release history page
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          mkdir -p _site/stable/download _site/release-notes
+          if [ -d release-notes ]; then cp release-notes/*.md _site/release-notes/ 2>/dev/null || true; fi
+          gh release list --repo ${{ github.repository }} --limit 100 --json tagName,name,publishedAt > _site/releases.json
+          gh release download --repo ${{ github.repository }} "$TAG" --pattern "stable-latest.json" --output _site/stable/latest.json
+          cp _site/stable/latest.json _site/latest.json
+
+          python3 <<'PY'
+          import html
+          import json
+          import os
+          from pathlib import Path
+
+          site = Path('_site')
+          repo = os.environ['GITHUB_REPOSITORY']
+          releases = json.loads((site / 'releases.json').read_text(encoding='utf-8'))
+          latest = json.loads((site / 'stable/latest.json').read_text(encoding='utf-8'))
+
+          def page(title, body):
+              return f'''<!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>{html.escape(title)}</title>
+            <style>
+              body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; color: #18181b; background: #fafafa; }}
+              main {{ max-width: 920px; margin: 0 auto; padding: 48px 20px; }}
+              h1 {{ font-size: 40px; line-height: 1.1; margin: 0 0 12px; }}
+              h2 {{ margin-top: 36px; }}
+              a {{ color: #155dfc; text-decoration: none; }}
+              a:hover {{ text-decoration: underline; }}
+              .muted {{ color: #71717a; }}
+              .grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 24px; }}
+              .card {{ border: 1px solid #e4e4e7; border-radius: 8px; background: #fff; padding: 16px; }}
+              .release {{ border-top: 1px solid #e4e4e7; padding: 18px 0; }}
+              code {{ background: #f4f4f5; border-radius: 4px; padding: 2px 5px; }}
+            </style>
+          </head>
+          <body>
+            <main>{body}</main>
+          </body>
+          </html>
+          '''
+
+          platforms = latest.get('platforms', {})
+          cards = []
+          labels = {
+              'darwin-aarch64': 'macOS Apple Silicon',
+              'darwin-x86_64': 'macOS Intel',
+              'windows-x86_64': 'Windows x64',
+              'linux-x86_64': 'Linux x64',
+          }
+          for key, label in labels.items():
+              info = platforms.get(key, {})
+              primary = info.get('download_url') or info.get('url')
+              updater = info.get('metadata_url')
+              if not primary:
+                  continue
+              updater_link = f'<p><a href="{html.escape(updater)}">Updater metadata</a></p>' if updater else ''
+              cards.append(f'''<section class="card">
+                <h2>{html.escape(label)}</h2>
+                <p><a href="{html.escape(primary)}">Download</a></p>
+                {updater_link}
+              </section>''')
+
+          download_body = f'''<h1>Memry {html.escape(latest.get('version', ''))}</h1>
+          <p class="muted">Stable desktop release</p>
+          <div class="grid">{''.join(cards)}</div>
+          <p><a href="../../latest.json">Latest JSON</a></p>'''
+          (site / 'stable/download/index.html').write_text(page('Memry Download', download_body), encoding='utf-8')
+          (site / 'download').mkdir(exist_ok=True)
+          (site / 'download/index.html').write_text(page('Memry Download', download_body), encoding='utf-8')
+
+          release_items = []
+          for release in releases[:50]:
+              tag_name = release.get('tagName') or release.get('tag_name') or ''
+              name = html.escape(release.get('name') or tag_name or 'Release')
+              url = html.escape(f'https://github.com/{repo}/releases/tag/{tag_name}' if tag_name else '#')
+              published = html.escape(release.get('published_at') or release.get('publishedAt') or '')
+              release_items.append(f'''<article class="release">
+                <h2><a href="{url}">{name}</a></h2>
+                <p class="muted">{published}</p>
+              </article>''')
+
+          history_body = f'''<h1>Memry Releases</h1>
+          <p><a href="./download/">Download latest stable release</a></p>
+          {''.join(release_items)}'''
+          (site / 'index.html').write_text(page('Memry Releases', history_body), encoding='utf-8')
+          PY
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
+          commit_message: 'Update release history for ${{ needs.version.outputs.tag }}'

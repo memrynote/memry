@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@memry/contracts": "workspace:*"
+    "@memry/contracts": "workspace:*",
+    "zod": "^4.3.4"
   },
   "devDependencies": {
     "@memry/typescript-config": "workspace:*"

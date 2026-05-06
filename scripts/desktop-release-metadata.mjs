@@ -3,14 +3,22 @@
 import { appendFileSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
-const releaseTagPattern = /^v(\d{4}\.\d{1,2}\.\d{1,2})(?:-(\d{3}))?$/
 const releaseDatePattern = /^(\d{4})\.(\d{1,2})\.(\d{1,2})$/
+const isoReleaseDatePattern = /^(\d{4})-(\d{2})-(\d{2})$/
+const releaseTagPattern = /^v(\d{4})-(\d{2})-(\d{2})$/
+const legacyStableTagPattern = /^stable-v(\d{4})\.(\d{1,2})\.(\d{1,2})$/
 const appVersionPattern = /^(\d{4})\.(\d{3,4})\.(\d+)$/
 
 export function validateReleaseDate(input) {
+  const isoMatch = isoReleaseDatePattern.exec(input)
+  if (isoMatch) {
+    const [, yearText, monthText, dayText] = isoMatch
+    return validateCalendarDate(yearText, monthText, dayText)
+  }
+
   const match = releaseDatePattern.exec(input)
   if (!match) {
-    throw new Error('Release date must match YYYY.M.D')
+    throw new Error('Release date must match YYYY.M.D or YYYY-MM-DD')
   }
 
   const [, yearText, monthText, dayText] = match
@@ -18,6 +26,75 @@ export function validateReleaseDate(input) {
     throw new Error('Release date month and day must not be zero-padded')
   }
 
+  return validateCalendarDate(yearText, monthText, dayText)
+}
+
+export function validateAppVersion(input) {
+  const match = appVersionPattern.exec(input)
+  if (!match) {
+    throw new Error('Desktop app version must match semver-safe YYYY.MDD.N')
+  }
+
+  const releaseIndex = Number(match[3])
+  if (releaseIndex < 1) {
+    throw new Error('Desktop app version release index must be at least 1')
+  }
+
+  return input
+}
+
+export function parseReleaseTag(tag) {
+  const stableMatch = releaseTagPattern.exec(tag)
+  if (stableMatch) {
+    const [, yearText, monthText, dayText] = stableMatch
+    const date = validateCalendarDate(yearText, monthText, dayText)
+    return { date, displayVersion: tag, index: 1, tag }
+  }
+
+  const legacyMatch = legacyStableTagPattern.exec(tag)
+  if (legacyMatch) {
+    const [, yearText, monthText, dayText] = legacyMatch
+    const date = validateReleaseDate(`${yearText}.${monthText}.${dayText}`)
+    return { date, displayVersion: date, index: 1, tag }
+  }
+
+  throw new Error(`Invalid desktop release tag: ${tag}`)
+}
+
+export function resolveReleaseMetadata({ date }) {
+  const releaseDate = validateReleaseDate(date)
+  const releaseTag = formatReleaseTag(releaseDate)
+  return buildMetadata({
+    displayVersion: releaseTag,
+    releaseDate,
+    releaseTag
+  })
+}
+
+export function resolveReleaseMetadataFromTag(tag) {
+  const parsed = parseReleaseTag(tag)
+  return buildMetadata({
+    displayVersion: parsed.displayVersion,
+    releaseDate: parsed.date,
+    releaseTag: parsed.tag
+  })
+}
+
+function buildMetadata({ displayVersion, releaseDate, releaseTag }) {
+  const releaseIndex = 1
+  const appVersion = formatAppVersion(releaseDate, releaseIndex)
+
+  return {
+    appVersion,
+    displayVersion,
+    releaseDate,
+    releaseIndex,
+    releaseName: `Memry ${displayVersion}`,
+    releaseTag
+  }
+}
+
+function validateCalendarDate(yearText, monthText, dayText) {
   const year = Number(yearText)
   const month = Number(monthText)
   const day = Number(dayText)
@@ -39,83 +116,14 @@ export function validateReleaseDate(input) {
   return `${year}.${month}.${day}`
 }
 
-export function validateAppVersion(input) {
-  const match = appVersionPattern.exec(input)
-  if (!match) {
-    throw new Error('Desktop app version must match semver-safe YYYY.MDD.N')
-  }
-
-  const releaseIndex = Number(match[3])
-  if (releaseIndex < 1) {
-    throw new Error('Desktop app version release index must be at least 1')
-  }
-
-  return input
-}
-
-export function parseReleaseTag(tag) {
-  const match = releaseTagPattern.exec(tag)
-  if (!match) {
-    throw new Error(`Invalid desktop release tag: ${tag}`)
-  }
-
-  const date = validateReleaseDate(match[1])
-  const index = match[2] ? Number(match[2]) : 1
-  if (index < 2 && match[2]) {
-    throw new Error(`Invalid desktop release tag suffix: ${tag}`)
-  }
-
-  return { date, index, tag }
-}
-
-export function resolveReleaseMetadata({ date, existingTags }) {
-  const releaseDate = validateReleaseDate(date)
-  const sameDayIndexes = existingTags.flatMap((tag) => {
-    try {
-      const parsed = parseReleaseTag(tag)
-      return parsed.date === releaseDate ? [parsed.index] : []
-    } catch {
-      return []
-    }
-  })
-
-  const releaseIndex = sameDayIndexes.length === 0 ? 1 : Math.max(...sameDayIndexes) + 1
-  const releaseTag = formatReleaseTag(releaseDate, releaseIndex)
-  const appVersion = formatAppVersion(releaseDate, releaseIndex)
-
-  return {
-    appVersion,
-    releaseDate,
-    releaseIndex,
-    releaseName: `Memry ${releaseTag}`,
-    releaseTag
-  }
-}
-
-export function resolveReleaseMetadataFromTag(tag) {
-  const parsed = parseReleaseTag(tag)
-  const appVersion = formatAppVersion(parsed.date, parsed.index)
-
-  return {
-    appVersion,
-    releaseDate: parsed.date,
-    releaseIndex: parsed.index,
-    releaseName: `Memry ${parsed.tag}`,
-    releaseTag: parsed.tag
-  }
-}
-
-function formatReleaseTag(date, index) {
-  if (index === 1) {
-    return `v${date}`
-  }
-
-  return `v${date}-${String(index).padStart(3, '0')}`
+function formatReleaseTag(date) {
+  const [year, month, day] = date.split('.').map(Number)
+  return `v${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
 function formatAppVersion(date, index) {
   const [year, month, day] = date.split('.').map(Number)
-  return `${year}.${Number(`${month}${String(day).padStart(2, '0')}`)}.${index}`
+  return validateAppVersion(`${year}.${Number(`${month}${String(day).padStart(2, '0')}`)}.${index}`)
 }
 
 function hasLeadingZero(value) {
@@ -210,10 +218,13 @@ function readTagsFile(tagsPath) {
 function writeGitHubOutputs(outputPath, metadata) {
   const lines = [
     `app_version=${metadata.appVersion}`,
+    `display_version=${metadata.displayVersion}`,
     `release_date=${metadata.releaseDate}`,
     `release_index=${metadata.releaseIndex}`,
     `release_name=${metadata.releaseName}`,
-    `release_tag=${metadata.releaseTag}`
+    `release_tag=${metadata.releaseTag}`,
+    `tag=${metadata.releaseTag}`,
+    `version=${metadata.appVersion}`
   ]
 
   appendFileSync(outputPath, `${lines.join('\n')}\n`)
@@ -258,7 +269,7 @@ function main() {
   }
 
   throw new Error(
-    'Usage: node scripts/desktop-release-metadata.mjs --resolve --date <YYYY.M.D> [--existing-tags-file path] [--github-output path] OR --from-tag --tag <vYYYY.M.D[-NNN]>'
+    'Usage: node scripts/desktop-release-metadata.mjs --resolve --date <YYYY.M.D|YYYY-MM-DD> [--github-output path] OR --from-tag --tag <vYYYY-MM-DD|stable-vYYYY.M.D>'
   )
 }
 
