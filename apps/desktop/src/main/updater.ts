@@ -4,6 +4,7 @@ import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import { UpdaterChannels } from '@memry/contracts/ipc-updater'
 import { createLogger } from './lib/logger'
 import { getMainI18n } from './lib/main-i18n'
+import { formatAppVersionForDisplay } from './lib/app-version-display'
 
 const logger = createLogger('Updater')
 
@@ -14,7 +15,7 @@ let downloadPromptVisible = false
 let restartPromptVisible = false
 
 let state: AppUpdateState = {
-  currentVersion: getCurrentVersion(),
+  currentVersion: getCurrentDisplayVersion(),
   status: isUpdateSupported() ? 'idle' : 'unavailable',
   updateSupported: isUpdateSupported(),
   availableVersion: null,
@@ -47,9 +48,10 @@ export function initializeUpdater(): void {
 
   autoUpdater.on('update-available', (info) => {
     logger.info('update available', { version: info.version })
+    const displayVersion = formatUpdateVersion(info)
     setState({
       status: 'available',
-      availableVersion: info.version,
+      availableVersion: displayVersion,
       releaseName: info.releaseName ?? null,
       releaseDate: info.releaseDate ?? null,
       releaseNotes: normalizeReleaseNotes(info),
@@ -81,9 +83,10 @@ export function initializeUpdater(): void {
 
   autoUpdater.on('update-downloaded', (info) => {
     logger.info('update downloaded', { version: info.version })
+    const displayVersion = formatUpdateVersion(info)
     setState({
       status: 'downloaded',
-      availableVersion: info.version,
+      availableVersion: displayVersion,
       releaseName: info.releaseName ?? null,
       releaseDate: info.releaseDate ?? null,
       releaseNotes: normalizeReleaseNotes(info),
@@ -174,7 +177,7 @@ function setState(patch: Partial<AppUpdateState>): void {
   state = {
     ...state,
     ...patch,
-    currentVersion: getCurrentVersion(),
+    currentVersion: getCurrentDisplayVersion(),
     updateSupported: isUpdateSupported()
   }
   broadcastState()
@@ -182,6 +185,14 @@ function setState(patch: Partial<AppUpdateState>): void {
 
 function getCurrentVersion(): string {
   return typeof app.getVersion === 'function' ? app.getVersion() : '0.0.0'
+}
+
+function getCurrentDisplayVersion(): string {
+  return formatAppVersionForDisplay(getCurrentVersion())
+}
+
+function formatUpdateVersion(info: UpdateInfo): string {
+  return formatAppVersionForDisplay(info.version)
 }
 
 function isUpdateSupported(): boolean {
@@ -210,7 +221,7 @@ async function promptToDownload(info: UpdateInfo): Promise<void> {
       defaultId: 0,
       cancelId: 1,
       title: t('dialog.update.availableTitle'),
-      message: t('dialog.update.availableMessage', { version: info.version }),
+      message: t('dialog.update.availableMessage', { version: formatUpdateVersion(info) }),
       detail
     })
 
@@ -237,7 +248,7 @@ async function promptToRestart(info: UpdateInfo): Promise<void> {
       defaultId: 0,
       cancelId: 1,
       title: t('dialog.update.readyTitle'),
-      message: t('dialog.update.readyMessage', { version: info.version }),
+      message: t('dialog.update.readyMessage', { version: formatUpdateVersion(info) }),
       detail
     })
 
@@ -273,7 +284,7 @@ function normalizeReleaseNotes(info: UpdateInfo): string | null {
 
   const combined = releaseNotes
     .map((entry) => {
-      const heading = entry.version ? `${entry.version}\n` : ''
+      const heading = entry.version ? `${formatAppVersionForDisplay(entry.version)}\n` : ''
       return `${heading}${entry.note}`.trim()
     })
     .filter(Boolean)
