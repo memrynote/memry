@@ -15,7 +15,6 @@ import {
   addWeeks,
   isBefore,
   isWithinInterval,
-  isSameDay,
   startOfWeek,
   endOfWeek,
   endOfMonth

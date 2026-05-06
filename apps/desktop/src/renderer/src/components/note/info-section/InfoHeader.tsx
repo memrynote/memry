@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight } from '@/lib/icons'
+import { ChevronRight } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
 

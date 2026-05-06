@@ -719,7 +719,7 @@ export const useDragHandlers = ({
   // Handle dropping on trash (delete)
   const handleTrashDrop = useCallback(
     (taskIds: string[]) => {
-      const tasksToDelete = tasks.filter((t) => taskIds.includes(t.id))
+      const _tasksToDelete = tasks.filter((t) => taskIds.includes(t.id))
 
       taskIds.forEach((id) => {
         onDeleteTask(id)
@@ -764,7 +764,7 @@ export const useDragHandlers = ({
           duration: 10000, // T052: 10-second timeout for undo per spec
           action: {
             label: 'Undo',
-            onClick: undo
+            onClick: () => void undo()
           }
         }
       )
@@ -1007,12 +1007,12 @@ export const useDragHandlers = ({
   )
 
   // Drag start handler (for logging/analytics)
-  const handleDragStart = useCallback((event: DragStartEvent, dragState: DragState) => {
+  const handleDragStart = useCallback((_event: DragStartEvent, _dragState: DragState) => {
     // Can be used for analytics or additional setup
   }, [])
 
   // Drag over handler (for visual feedback)
-  const handleDragOver = useCallback((event: DragOverEvent, dragState: DragState) => {
+  const handleDragOver = useCallback((_event: DragOverEvent, _dragState: DragState) => {
     // Can be used for additional visual feedback
   }, [])
 
@@ -1020,7 +1020,7 @@ export const useDragHandlers = ({
     handleDragEnd,
     handleDragStart,
     handleDragOver,
-    undo,
+    undo: (...args) => void undo(...args),
     canUndo: undoStack.length > 0,
     lastActionDescription,
     droppedPriorities

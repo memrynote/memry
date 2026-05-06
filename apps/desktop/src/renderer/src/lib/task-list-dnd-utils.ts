@@ -59,7 +59,7 @@ const annotateSectionItems = (
 const resolveMutableGroupColumnId = (
   sortField: MutableSortField,
   groupKey: string,
-  projects: Project[]
+  _projects: Project[]
 ): string | undefined => {
   switch (sortField) {
     case 'priority':

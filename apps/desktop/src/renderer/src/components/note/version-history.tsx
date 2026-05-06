@@ -342,7 +342,7 @@ function VersionHistorySession({
                     return (
                       <button
                         key={version.id}
-                        onClick={() => handleSelectVersion(version.id)}
+                        onClick={() => void handleSelectVersion(version.id)}
                         className={cn(
                           'w-full text-left px-3 py-2.5 rounded-md transition-colors',
                           'hover:bg-muted/50 focus-visible:outline-none',
@@ -474,7 +474,7 @@ function VersionHistorySession({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={restoring}>{tCommon('button.cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRestore} disabled={restoring}>
+            <AlertDialogAction onClick={() => void handleRestore()} disabled={restoring}>
               {restoring ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -501,7 +501,7 @@ function VersionHistorySession({
           <AlertDialogFooter>
             <AlertDialogCancel>{tCommon('button.cancel')}</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={() => void handleDelete()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               <Trash2 className="mr-2 h-4 w-4" />

@@ -197,8 +197,13 @@ export function useTagDetail(options: UseTagDetailOptions): UseTagDetailReturn {
       refresh: fetchNotes
     }),
     [
-      data,
+      data?.tag,
+      data?.color,
+      data?.count,
+      data?.pinnedNotes,
+      data?.unpinnedNotes,
       tag,
+      fallbackColor,
       isLoading,
       error,
       sortBy,

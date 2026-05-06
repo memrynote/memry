@@ -8,7 +8,7 @@
  * to maintain proper table structure.
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import type { Header } from '@tanstack/react-table'
 import type { NoteWithProperties, ColumnConfig } from '@memry/contracts/folder-view-api'

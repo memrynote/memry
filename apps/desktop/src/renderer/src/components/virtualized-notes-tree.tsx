@@ -19,7 +19,6 @@ import {
 } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import {
-  Folder,
   FolderOpen,
   LayoutGrid,
   FilePlus,
@@ -247,7 +246,7 @@ function FolderRow({
     [item.id, onSelect, onToggleExpand]
   )
 
-  const handleExpandClick = useCallback(
+  const _handleExpandClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
       onToggleExpand(item.id)

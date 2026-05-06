@@ -50,7 +50,7 @@ const loadFromStorage = (key: string): Set<string> => {
         return new Set(parsed)
       }
     }
-  } catch (err) {
+  } catch {
     // Ignore storage errors
   }
   return new Set()
@@ -59,7 +59,7 @@ const loadFromStorage = (key: string): Set<string> => {
 const saveToStorage = (key: string, expandedIds: Set<string>): void => {
   try {
     localStorage.setItem(getStorageKey(key), JSON.stringify(Array.from(expandedIds)))
-  } catch (err) {
+  } catch {
     // Ignore storage errors
   }
 }

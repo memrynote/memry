@@ -339,7 +339,7 @@ export async function connectGoogleCalendar(): Promise<GoogleCalendarConnection>
   const callbackPromise = new Promise<{ code: string; state: string }>((resolve, reject) => {
     let settled = false
 
-    const settle = (fn: (value: any) => void, value: unknown): void => {
+    const settle = <T>(fn: (value: T) => void, value: T): void => {
       if (settled) return
       settled = true
       fn(value)

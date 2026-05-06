@@ -44,21 +44,11 @@ export function LocalGraphPanel({
   const fadeRef = useRef(0)
   const hoverTargetRef = useRef<string | null>(null)
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const dimmedColor = useMemo(
-    () => resolveGraphVar('--graph-dimmed-node', '#e4e4de'),
-    [resolvedTheme]
-  )
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const softEdgeColor = useMemo(
-    () => resolveGraphVar('--graph-edge-soft', '#d5d3cd'),
-    [resolvedTheme]
-  )
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const labelColor = useMemo(
-    () => resolveGraphVar('--graph-label-color', '#1a1a1a'),
-    [resolvedTheme]
-  )
+  const dimmedColor = useMemo(() => resolveGraphVar('--graph-dimmed-node', '#e4e4de'), [])
+
+  const softEdgeColor = useMemo(() => resolveGraphVar('--graph-edge-soft', '#d5d3cd'), [])
+
+  const labelColor = useMemo(() => resolveGraphVar('--graph-label-color', '#1a1a1a'), [])
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const graph = useMemo(() => (data ? buildGraphologyGraph(data) : null), [data, resolvedTheme])
 

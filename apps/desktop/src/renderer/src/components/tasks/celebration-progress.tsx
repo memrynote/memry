@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 import { Check } from '@/lib/icons'
@@ -30,29 +30,30 @@ export const CelebrationProgress = ({
   className
 }: CelebrationProgressProps): React.JSX.Element | null => {
   const { t: tPhaseF } = useT('tasks')
-  const [showCelebration, setShowCelebration] = useState(false)
-  const prevCompletedRef = useRef<number>(progress.completed)
-  const prevTotalRef = useRef<number>(progress.total)
-
   const isComplete = progress.total > 0 && progress.completed === progress.total
+  const [celebrationState, setCelebrationState] = useState(() => ({
+    completed: progress.completed,
+    total: progress.total,
+    show: false
+  }))
 
-  // Detect transition from incomplete to complete during render — avoids
-  // adjusting state inside an effect on prop change.
-  if (prevCompletedRef.current !== progress.completed || prevTotalRef.current !== progress.total) {
+  if (
+    celebrationState.completed !== progress.completed ||
+    celebrationState.total !== progress.total
+  ) {
     const wasComplete =
-      prevTotalRef.current > 0 && prevCompletedRef.current === prevTotalRef.current
-    prevCompletedRef.current = progress.completed
-    prevTotalRef.current = progress.total
-    if (isComplete && !wasComplete) {
-      setShowCelebration(true)
-    }
+      celebrationState.total > 0 && celebrationState.completed === celebrationState.total
+    const show = isComplete && !wasComplete ? true : celebrationState.show
+    setCelebrationState({ completed: progress.completed, total: progress.total, show })
   }
+
+  const showCelebration = celebrationState.show
 
   // Auto-hide the celebration after a few seconds.
   useEffect(() => {
     if (!showCelebration) return
     const timer = setTimeout(() => {
-      setShowCelebration(false)
+      setCelebrationState((prev) => ({ ...prev, show: false }))
     }, 3000)
     return () => clearTimeout(timer)
   }, [showCelebration])

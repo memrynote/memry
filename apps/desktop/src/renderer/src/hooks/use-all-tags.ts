@@ -84,7 +84,7 @@ export function useAllTags(): UseAllTagsResult {
     })
 
     return unsubscribe
-  }, [notesQuery.refetch])
+  }, [notesQuery, notesQuery.refetch])
 
   // Combine and deduplicate tags from both sources
   const combinedTags = useMemo((): TagWithMeta[] => {

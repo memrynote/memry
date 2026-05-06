@@ -36,8 +36,6 @@ export interface UseJournalScrollResult {
   state: JournalScrollState
   /** Ref to attach to scroll container */
   scrollContainerRef: React.RefObject<HTMLDivElement | null>
-  /** Map of date -> ref for each day card */
-  dayCardRefs: Map<string, HTMLDivElement>
   /** Register a day card ref */
   registerDayCardRef: (date: string, element: HTMLDivElement | null) => void
   /** Get opacity for a specific date based on distance from active */
@@ -303,7 +301,6 @@ export function useJournalScroll(): UseJournalScrollResult {
   return {
     state,
     scrollContainerRef,
-    dayCardRefs: dayCardRefsMap.current,
     registerDayCardRef,
     getOpacity,
     scrollToDate,

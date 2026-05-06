@@ -191,7 +191,7 @@ export class SyncWorkerBridge {
     await new Promise<void>((resolve) => {
       const timeout = setTimeout(() => {
         this.rejectAll(new Error('Worker shutdown timeout'))
-        this.worker?.terminate()
+        void this.worker?.terminate()
         resolve()
       }, 3_000)
 

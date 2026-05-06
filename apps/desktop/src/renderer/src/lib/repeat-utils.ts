@@ -1,11 +1,10 @@
 import type { TFunction } from 'i18next'
-import type { RepeatConfig, RepeatFrequency, RepeatEndType, MonthlyType } from '@/data/sample-tasks'
+import type { RepeatConfig, RepeatFrequency } from '@/data/sample-tasks'
 import {
   addDays,
   addWeeks,
   addMonths,
   startOfDay,
-  isBefore,
   isAfter,
   endOfMonth,
   subDays
@@ -269,7 +268,7 @@ export const getRepeatDisplayText = (config: RepeatConfig, t: RepeatLabelTransla
     case 'daily':
       return t('recurrence.everyNDays', { count: interval })
 
-    case 'weekly':
+    case 'weekly': {
       if (!daysOfWeek || daysOfWeek.length === 0) {
         return t('recurrence.everyNWeeks', { count: interval })
       }
@@ -290,6 +289,7 @@ export const getRepeatDisplayText = (config: RepeatConfig, t: RepeatLabelTransla
         .join(', ')
 
       return t('recurrence.everyNWeeksOnDays', { count: interval, days: daysList })
+    }
 
     case 'monthly':
       if (monthlyType === 'dayOfMonth' && dayOfMonth) {

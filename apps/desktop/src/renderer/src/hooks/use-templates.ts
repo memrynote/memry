@@ -195,13 +195,13 @@ export function useTemplates(options: UseTemplatesOptions = {}): UseTemplatesRet
   // Subscribe to template events
   useEffect(() => {
     const unsubCreated = onTemplateCreated(() => {
-      reload()
+      void reload()
     })
     const unsubUpdated = onTemplateUpdated(() => {
-      reload()
+      void reload()
     })
     const unsubDeleted = onTemplateDeleted(() => {
-      reload()
+      void reload()
     })
 
     return () => {

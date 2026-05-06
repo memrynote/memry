@@ -77,7 +77,7 @@ function incrementFieldClocksForFields(
   const fc = existing ?? initAllFieldClocks(existingDocClock, allSyncableFields)
   const updated = { ...fc }
   for (const field of changedFields) {
-    if ((allSyncableFields as readonly string[]).includes(field)) {
+    if (allSyncableFields.includes(field)) {
       updated[field] = increment(updated[field] ?? {}, OFFLINE_DEVICE_KEY)
     }
   }
@@ -96,7 +96,7 @@ export function incrementTaskClocksOffline(
     const existingClock = (task.clock as VectorClock) ?? {}
     const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
     const updatedFC = incrementFieldClocksForFields(
-      task.fieldClocks as FieldClocks | null,
+      task.fieldClocks,
       existingClock,
       changedFields,
       TASK_SYNCABLE_FIELDS
@@ -131,7 +131,7 @@ export function incrementProjectClocksOffline(
     const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
     const fields = changedFields ?? [...PROJECT_SYNCABLE_FIELDS]
     const updatedFC = incrementFieldClocksForFields(
-      project.fieldClocks as FieldClocks | null,
+      project.fieldClocks,
       existingClock,
       fields,
       PROJECT_SYNCABLE_FIELDS

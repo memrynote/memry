@@ -27,7 +27,7 @@ export function HugeIconByName({
     if (cached) return
 
     let cancelled = false
-    loadAllIcons().then((mod) => {
+    void loadAllIcons().then((mod) => {
       if (cancelled) return
       const resolved = mod[name] as IconSvgElement | undefined
       if (resolved) {

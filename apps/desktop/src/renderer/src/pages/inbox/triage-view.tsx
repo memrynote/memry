@@ -71,16 +71,18 @@ export function TriageView({ onExit }: TriageViewProps): React.JSX.Element | nul
       setSlideDir(direction)
       setActivePicker(null)
 
-      timeoutRef.current = setTimeout(async () => {
-        try {
-          await action()
-        } catch (err) {
-          log.error('Triage action failed:', err)
-          toast.error(extractErrorMessage(err, tCommon('toast.actionFailed')))
-        } finally {
-          setSlideDir(null)
-          setIsAnimating(false)
-        }
+      timeoutRef.current = setTimeout(() => {
+        void (async () => {
+          try {
+            await action()
+          } catch (err) {
+            log.error('Triage action failed:', err)
+            toast.error(extractErrorMessage(err, tCommon('toast.actionFailed')))
+          } finally {
+            setSlideDir(null)
+            setIsAnimating(false)
+          }
+        })()
       }, 250)
     },
     [isAnimating, tCommon]
@@ -107,12 +109,12 @@ export function TriageView({ onExit }: TriageViewProps): React.JSX.Element | nul
 
   const handleFile = useCallback(
     (input: FileItemInput) => animateAndAct('right', () => actions.file(input)),
-    [animateAndAct, actions.file]
+    [animateAndAct, actions]
   )
 
   const handleDefer = useCallback(
     (input: SnoozeInput) => animateAndAct('right', () => actions.defer(input)),
-    [animateAndAct, actions.defer]
+    [animateAndAct, actions]
   )
 
   const handleFileSubmit = useCallback((): void => {

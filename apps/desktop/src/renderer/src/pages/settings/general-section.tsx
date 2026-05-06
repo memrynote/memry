@@ -204,7 +204,7 @@ export function GeneralSettings() {
         >
           <Switch
             checked={generalSettings.startOnBoot}
-            onCheckedChange={handleStartOnBootChange}
+            onCheckedChange={(...args) => void handleStartOnBootChange(...args)}
             className={ACCENT_SWITCH}
           />
         </SettingRow>
@@ -262,7 +262,10 @@ export function GeneralSettings() {
           label={t('general.clockFormat.label')}
           description={t('general.clockFormat.description')}
         >
-          <Select value={generalSettings.clockFormat} onValueChange={handleClockFormatChange}>
+          <Select
+            value={generalSettings.clockFormat}
+            onValueChange={(value) => void handleClockFormatChange(value as '12h' | '24h')}
+          >
             <SelectTrigger className={COMPACT_SELECT}>
               <SelectValue />
             </SelectTrigger>
@@ -281,7 +284,7 @@ export function GeneralSettings() {
         >
           <Switch
             checked={tabSettings.previewMode}
-            onCheckedChange={handlePreviewModeChange}
+            onCheckedChange={(...args) => void handlePreviewModeChange(...args)}
             className={ACCENT_SWITCH}
           />
         </SettingRow>
@@ -292,7 +295,7 @@ export function GeneralSettings() {
         >
           <Switch
             checked={tabSettings.restoreSessionOnStart}
-            onCheckedChange={handleRestoreSessionChange}
+            onCheckedChange={(...args) => void handleRestoreSessionChange(...args)}
             className={ACCENT_SWITCH}
           />
         </SettingRow>
@@ -301,7 +304,12 @@ export function GeneralSettings() {
           label={t('general.tabs.closeButton.label')}
           description={t('general.tabs.closeButton.description')}
         >
-          <Select value={tabSettings.tabCloseButton} onValueChange={handleCloseButtonChange}>
+          <Select
+            value={tabSettings.tabCloseButton}
+            onValueChange={(value) =>
+              void handleCloseButtonChange(value as 'always' | 'hover' | 'active')
+            }
+          >
             <SelectTrigger className={COMPACT_SELECT}>
               <SelectValue />
             </SelectTrigger>
@@ -321,7 +329,7 @@ export function GeneralSettings() {
         >
           <Switch
             checked={generalSettings.createInSelectedFolder}
-            onCheckedChange={handleCreateInSelectedFolderChange}
+            onCheckedChange={(...args) => void handleCreateInSelectedFolderChange(...args)}
             className={ACCENT_SWITCH}
           />
         </SettingRow>

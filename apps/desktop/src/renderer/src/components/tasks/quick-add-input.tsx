@@ -43,7 +43,7 @@ function tokenize(input: string): Token[] {
   let lastIndex = 0
 
   for (const match of input.matchAll(regex)) {
-    const start = match.index!
+    const start = match.index
     if (start > lastIndex) {
       tokens.push({ text: input.slice(lastIndex, start), kind: 'plain' })
     }
@@ -329,16 +329,16 @@ export const QuickAddInput = ({
     }
   }
 
+  const syncScroll = (): void => {
+    if (inputRef.current && overlayRef.current) {
+      overlayRef.current.scrollLeft = inputRef.current.scrollLeft
+    }
+  }
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setValue(e.target.value)
     syncScroll()
   }
-
-  const syncScroll = useCallback((): void => {
-    if (inputRef.current && overlayRef.current) {
-      overlayRef.current.scrollLeft = inputRef.current.scrollLeft
-    }
-  }, [])
 
   const handleFocus = (): void => {
     setIsFocused(true)

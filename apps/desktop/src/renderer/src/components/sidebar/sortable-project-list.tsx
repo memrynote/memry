@@ -33,7 +33,7 @@ export const SortableProjectList = ({
   onProjectEdit,
   onProjectArchive,
   onProjectDelete,
-  onProjectsReorder,
+  onProjectsReorder: _onProjectsReorder,
   onCreateProject
 }: SortableProjectListProps): React.JSX.Element => {
   // Handle project click

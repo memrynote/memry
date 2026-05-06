@@ -321,7 +321,7 @@ export const FilingSection = ({
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && canCreateFolder) {
                       e.preventDefault()
-                      handleCreateFolder()
+                      void handleCreateFolder()
                     }
                   }}
                   className="h-auto p-0 border-0 bg-transparent text-[13px] leading-4 text-foreground placeholder:text-muted-foreground/30 focus-visible:border-transparent shadow-none"
@@ -378,7 +378,7 @@ export const FilingSection = ({
                 >
                   {canCreateFolder && (
                     <button
-                      onClick={handleCreateFolder}
+                      onClick={() => void handleCreateFolder()}
                       disabled={isCreatingFolder}
                       className="flex items-center gap-2 py-1.5 px-3 mx-1 text-left transition-colors hover:bg-[var(--tint)]/[0.06] rounded-sm disabled:opacity-50"
                     >

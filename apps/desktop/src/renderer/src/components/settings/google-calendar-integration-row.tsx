@@ -134,10 +134,9 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     }
   }, [statusQuery.data?.connected])
 
-  const sources = sourcesQuery.data?.sources ?? []
   const importedSources = useMemo(
-    () => sources.filter((source) => !source.isMemryManaged),
-    [sources]
+    () => (sourcesQuery.data?.sources ?? []).filter((source) => !source.isMemryManaged),
+    [sourcesQuery.data?.sources]
   )
   const status = statusQuery.data
   const reconnectRequired = Boolean(

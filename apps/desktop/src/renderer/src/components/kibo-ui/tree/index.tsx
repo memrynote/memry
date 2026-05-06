@@ -188,7 +188,7 @@ export const TreeProvider = ({
   const nodesRef = useRef<Map<string, NodeInfo>>(new Map())
   const nodeOrderRef = useRef<string[]>([])
   // İkon state'i için re-render tetiklemek için
-  const [iconVersion, setIconVersion] = useState(0)
+  const [, setIconVersion] = useState(0)
 
   // Persist expandedIds to localStorage (debounced)
   useEffect(() => {
@@ -313,14 +313,11 @@ export const TreeProvider = ({
   )
 
   // Bir node için efektif ikonu al (customIcon > inheritedIcon > undefined)
-  const getEffectiveIcon = useCallback(
-    (nodeId: string): string | undefined => {
-      const nodeInfo = nodesRef.current.get(nodeId)
-      if (!nodeInfo) return undefined
-      return nodeInfo.customIcon || nodeInfo.inheritedIcon
-    },
-    [iconVersion]
-  ) // iconVersion dependency ile güncel kalır
+  const getEffectiveIcon = useCallback((nodeId: string): string | undefined => {
+    const nodeInfo = nodesRef.current.get(nodeId)
+    if (!nodeInfo) return undefined
+    return nodeInfo.customIcon || nodeInfo.inheritedIcon
+  }, []) // iconVersion dependency ile güncel kalır
 
   const getNodeInfo = useCallback((nodeId: string) => {
     return nodesRef.current.get(nodeId)
@@ -513,7 +510,7 @@ export const TreeNode = ({
   parentPath = EMPTY_PATH,
   children,
   className,
-  onClick,
+  onClick: _onClick,
   acceptsDropInside = false,
   hideLines: hideLinesProp = false,
   customIcon: initialCustomIcon,

@@ -145,7 +145,7 @@ export const JournalEditor = memo(function JournalEditor({
                     return true
                   }
                   return (
-                    (component?.ref as { onKeyDown?: (props: any) => boolean })?.onKeyDown?.(
+                    (component?.ref as { onKeyDown?: (props: unknown) => boolean })?.onKeyDown?.(
                       props
                     ) ?? false
                   )
@@ -200,7 +200,7 @@ export const JournalEditor = memo(function JournalEditor({
                     return true
                   }
                   return (
-                    (component?.ref as { onKeyDown?: (props: any) => boolean })?.onKeyDown?.(
+                    (component?.ref as { onKeyDown?: (props: unknown) => boolean })?.onKeyDown?.(
                       props
                     ) ?? false
                   )

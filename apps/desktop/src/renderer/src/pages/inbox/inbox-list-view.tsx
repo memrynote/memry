@@ -66,7 +66,7 @@ export function InboxListView({
     refetch
   } = useInboxList({ includeSnoozed: showSnoozedItems })
   const fileItemMutation = useFileInboxItem()
-  const archiveItemMutation = useArchiveInboxItem()
+  const _archiveItemMutation = useArchiveInboxItem()
   const bulkArchiveMutation = useBulkArchiveInboxItems()
   const { archiveWithUndo } = useUndoableAction()
   const [pendingArchiveIds, setPendingArchiveIds] = useState<Set<string>>(new Set())
@@ -135,8 +135,11 @@ export function InboxListView({
     if (!focusItemId || focusToken === null) return
     if (lastConsumedFocusTokenRef.current === focusToken) return
     lastConsumedFocusTokenRef.current = focusToken
-    setActiveDetailItemId(focusItemId)
-    setFocusedItemIdState(focusItemId)
+    const focusTimer = window.setTimeout(() => {
+      setActiveDetailItemId(focusItemId)
+      setFocusedItemIdState(focusItemId)
+    }, 0)
+    return () => window.clearTimeout(focusTimer)
   }, [focusItemId, focusToken])
 
   // Computed values
@@ -174,34 +177,36 @@ export function InboxListView({
 
       if (activeDetailItemId === id) setActiveDetailItemId(null)
 
-      setTimeout(async () => {
-        setPendingArchiveIds((prev) => new Set(prev).add(id))
-        setExitingItemIds((prev) => {
-          const next = new Set(prev)
-          next.delete(id)
-          return next
-        })
-        setSelectedItemIds((prev) => {
-          const next = new Set(prev)
-          next.delete(id)
-          return next
-        })
-
-        if (nextFocusId !== undefined) setFocusedItemIdState(nextFocusId)
-
-        if (willBeEmpty) scheduleEmptyStateReveal()
-
-        try {
-          await archiveWithUndo(id, targetItem.title)
-        } catch {
-          if (willBeEmpty) clearEmptyStateDelay()
-          setPendingArchiveIds((prev) => {
+      setTimeout(() => {
+        void (async () => {
+          setPendingArchiveIds((prev) => new Set(prev).add(id))
+          setExitingItemIds((prev) => {
             const next = new Set(prev)
             next.delete(id)
             return next
           })
-          toast.error(t('toast.failedArchiveItem'))
-        }
+          setSelectedItemIds((prev) => {
+            const next = new Set(prev)
+            next.delete(id)
+            return next
+          })
+
+          if (nextFocusId !== undefined) setFocusedItemIdState(nextFocusId)
+
+          if (willBeEmpty) scheduleEmptyStateReveal()
+
+          try {
+            await archiveWithUndo(id, targetItem.title)
+          } catch {
+            if (willBeEmpty) clearEmptyStateDelay()
+            setPendingArchiveIds((prev) => {
+              const next = new Set(prev)
+              next.delete(id)
+              return next
+            })
+            toast.error(t('toast.failedArchiveItem'))
+          }
+        })()
       }, 200)
     },
     [items, activeDetailItemId, archiveWithUndo, scheduleEmptyStateReveal, clearEmptyStateDelay, t]
@@ -218,7 +223,7 @@ export function InboxListView({
     items,
     onOpenShortcutsModal: () => setIsShortcutsModalOpen(true),
     onRefresh: () => refetch(),
-    onArchiveFocusedItem: (itemId, nextItemId) => archiveWithAnimation(itemId, nextItemId),
+    onArchiveFocusedItem: (itemId, nextItemId) => void archiveWithAnimation(itemId, nextItemId),
     onOpenBulkArchiveDialog: () => setIsArchiveDialogOpen(true),
     onOpenSourceUrl: (url) => window.open(url, '_blank', 'noopener,noreferrer')
   })
@@ -241,55 +246,57 @@ export function InboxListView({
       const willBeEmpty = items.length === 1
       setExitingItemIds((prev) => new Set(prev).add(itemId))
 
-      setTimeout(async () => {
-        setPendingArchiveIds((prev) => new Set(prev).add(itemId))
-        setExitingItemIds((prev) => {
-          const next = new Set(prev)
-          next.delete(itemId)
-          return next
-        })
-        setSelectedItemIds((prev) => {
-          const next = new Set(prev)
-          next.delete(itemId)
-          return next
-        })
-
-        if (willBeEmpty) scheduleEmptyStateReveal()
-
-        try {
-          const destination =
-            linkedNoteIds.length > 0
-              ? { type: 'note' as const, noteIds: linkedNoteIds, path: folderId }
-              : { type: 'folder' as const, path: folderId }
-
-          const result = await fileItemMutation.mutateAsync({ itemId, destination, tags })
-
-          if (result.success) {
-            queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-            if (linkedNoteIds.length > 0) {
-              linkedNoteIds.forEach((noteId) => {
-                queryClient.invalidateQueries({ queryKey: notesKeys.note(noteId) })
-              })
-            }
-            toast.success(
-              linkedNoteIds.length > 1
-                ? t('toast.linkedToNotes', { count: linkedNoteIds.length })
-                : linkedNoteIds.length === 1
-                  ? t('toast.linkedToNote')
-                  : t('toast.filedTo', { folder: folderId || t('detail.notesRoot') })
-            )
-          } else {
-            throw new Error(result.error || t('toast.failedFile'))
-          }
-        } catch (error) {
-          if (willBeEmpty) clearEmptyStateDelay()
-          setPendingArchiveIds((prev) => {
+      setTimeout(() => {
+        void (async () => {
+          setPendingArchiveIds((prev) => new Set(prev).add(itemId))
+          setExitingItemIds((prev) => {
             const next = new Set(prev)
             next.delete(itemId)
             return next
           })
-          toast.error(extractErrorMessage(error, t('toast.failedFileItem')))
-        }
+          setSelectedItemIds((prev) => {
+            const next = new Set(prev)
+            next.delete(itemId)
+            return next
+          })
+
+          if (willBeEmpty) scheduleEmptyStateReveal()
+
+          try {
+            const destination =
+              linkedNoteIds.length > 0
+                ? { type: 'note' as const, noteIds: linkedNoteIds, path: folderId }
+                : { type: 'folder' as const, path: folderId }
+
+            const result = await fileItemMutation.mutateAsync({ itemId, destination, tags })
+
+            if (result.success) {
+              void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+              if (linkedNoteIds.length > 0) {
+                linkedNoteIds.forEach((noteId) => {
+                  void queryClient.invalidateQueries({ queryKey: notesKeys.note(noteId) })
+                })
+              }
+              toast.success(
+                linkedNoteIds.length > 1
+                  ? t('toast.linkedToNotes', { count: linkedNoteIds.length })
+                  : linkedNoteIds.length === 1
+                    ? t('toast.linkedToNote')
+                    : t('toast.filedTo', { folder: folderId || t('detail.notesRoot') })
+              )
+            } else {
+              throw new Error(result.error || t('toast.failedFile'))
+            }
+          } catch (error) {
+            if (willBeEmpty) clearEmptyStateDelay()
+            setPendingArchiveIds((prev) => {
+              const next = new Set(prev)
+              next.delete(itemId)
+              return next
+            })
+            toast.error(extractErrorMessage(error, t('toast.failedFileItem')))
+          }
+        })()
       }, 200)
     },
     [items, fileItemMutation, queryClient, scheduleEmptyStateReveal, clearEmptyStateDelay, t]
@@ -303,49 +310,51 @@ export function InboxListView({
       const willBeEmpty = items.length === 1
       setExitingItemIds((prev) => new Set(prev).add(itemId))
 
-      setTimeout(async () => {
-        setPendingArchiveIds((prev) => new Set(prev).add(itemId))
-        setExitingItemIds((prev) => {
-          const next = new Set(prev)
-          next.delete(itemId)
-          return next
-        })
-        setSelectedItemIds((prev) => {
-          const next = new Set(prev)
-          next.delete(itemId)
-          return next
-        })
-
-        if (willBeEmpty) scheduleEmptyStateReveal()
-
-        try {
-          const result = await fileItemMutation.mutateAsync({
-            itemId,
-            destination: { type: 'folder', path: folderId },
-            tags: []
-          })
-
-          if (result.success) {
-            queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-            toast.success(t('toast.filedTo', { folder: folderId || t('detail.notesRoot') }))
-          } else {
-            throw new Error(result.error || t('toast.failedFile'))
-          }
-        } catch (error) {
-          if (willBeEmpty) clearEmptyStateDelay()
-          setPendingArchiveIds((prev) => {
+      setTimeout(() => {
+        void (async () => {
+          setPendingArchiveIds((prev) => new Set(prev).add(itemId))
+          setExitingItemIds((prev) => {
             const next = new Set(prev)
             next.delete(itemId)
             return next
           })
-          toast.error(extractErrorMessage(error, t('toast.failedFileItem')))
-        }
+          setSelectedItemIds((prev) => {
+            const next = new Set(prev)
+            next.delete(itemId)
+            return next
+          })
+
+          if (willBeEmpty) scheduleEmptyStateReveal()
+
+          try {
+            const result = await fileItemMutation.mutateAsync({
+              itemId,
+              destination: { type: 'folder', path: folderId },
+              tags: []
+            })
+
+            if (result.success) {
+              void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+              toast.success(t('toast.filedTo', { folder: folderId || t('detail.notesRoot') }))
+            } else {
+              throw new Error(result.error || t('toast.failedFile'))
+            }
+          } catch (error) {
+            if (willBeEmpty) clearEmptyStateDelay()
+            setPendingArchiveIds((prev) => {
+              const next = new Set(prev)
+              next.delete(itemId)
+              return next
+            })
+            toast.error(extractErrorMessage(error, t('toast.failedFileItem')))
+          }
+        })()
       }, 200)
     },
     [items, fileItemMutation, queryClient, scheduleEmptyStateReveal, clearEmptyStateDelay, t]
   )
 
-  const openReminderTarget = useCallback(
+  const _openReminderTarget = useCallback(
     async (item: (typeof items)[0]): Promise<void> => {
       const metadata = item.metadata as ReminderMetadata | undefined
       if (!metadata) return
@@ -433,51 +442,53 @@ export function InboxListView({
 
       if (activeDetailItemId === id) setActiveDetailItemId(null)
 
-      setTimeout(async () => {
-        setPendingArchiveIds((prev) => new Set(prev).add(id))
-        setExitingItemIds((prev) => {
-          const next = new Set(prev)
-          next.delete(id)
-          return next
-        })
-        setSelectedItemIds((prev) => {
-          const next = new Set(prev)
-          next.delete(id)
-          return next
-        })
+      setTimeout(() => {
+        void (async () => {
+          setPendingArchiveIds((prev) => new Set(prev).add(id))
+          setExitingItemIds((prev) => {
+            const next = new Set(prev)
+            next.delete(id)
+            return next
+          })
+          setSelectedItemIds((prev) => {
+            const next = new Set(prev)
+            next.delete(id)
+            return next
+          })
 
-        if (willBeEmpty) scheduleEmptyStateReveal()
+          if (willBeEmpty) scheduleEmptyStateReveal()
 
-        try {
-          const result = await inboxService.snooze({ itemId: id, snoozeUntil })
-          if (result.success) {
+          try {
+            const result = await inboxService.snooze({ itemId: id, snoozeUntil })
+            if (result.success) {
+              setPendingArchiveIds((prev) => {
+                const next = new Set(prev)
+                next.delete(id)
+                return next
+              })
+              void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+              const snoozeDate = new Date(snoozeUntil)
+              const timeString = snoozeDate.toLocaleString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+              })
+              toast.success(t('toast.snoozedUntil', { time: timeString }))
+            } else {
+              throw new Error(result.error || t('toast.failedSnooze'))
+            }
+          } catch (error) {
+            if (willBeEmpty) clearEmptyStateDelay()
             setPendingArchiveIds((prev) => {
               const next = new Set(prev)
               next.delete(id)
               return next
             })
-            queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-            const snoozeDate = new Date(snoozeUntil)
-            const timeString = snoozeDate.toLocaleString('en-US', {
-              weekday: 'short',
-              month: 'short',
-              day: 'numeric',
-              hour: 'numeric',
-              minute: '2-digit'
-            })
-            toast.success(t('toast.snoozedUntil', { time: timeString }))
-          } else {
-            throw new Error(result.error || t('toast.failedSnooze'))
+            toast.error(extractErrorMessage(error, t('toast.failedSnoozeItem')))
           }
-        } catch (error) {
-          if (willBeEmpty) clearEmptyStateDelay()
-          setPendingArchiveIds((prev) => {
-            const next = new Set(prev)
-            next.delete(id)
-            return next
-          })
-          toast.error(extractErrorMessage(error, t('toast.failedSnoozeItem')))
-        }
+        })()
       }, 200)
     },
     [items, activeDetailItemId, queryClient, scheduleEmptyStateReveal, clearEmptyStateDelay, t]
@@ -502,7 +513,7 @@ export function InboxListView({
         })
 
         if (result.success) {
-          queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+          void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
           toast.success(
             t('toast.filedItemsTo', {
               count: itemIds.length,
@@ -510,7 +521,7 @@ export function InboxListView({
             })
           )
         } else if (result.errors.length > 0) {
-          queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+          void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
           toast.success(
             t('toast.filedPartial', { processed: result.processedCount, total: itemIds.length })
           )
@@ -535,7 +546,7 @@ export function InboxListView({
       try {
         const result = await window.api.inbox.bulkTag({ itemIds, tags })
         if (result.success || result.processedCount > 0) {
-          queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+          void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
           toast.success(
             t('toast.appliedTags', { tagCount: tags.length, itemCount: result.processedCount })
           )
@@ -560,29 +571,31 @@ export function InboxListView({
       setActiveDetailItemId(null)
     }
 
-    setTimeout(async () => {
-      setPendingArchiveIds((prev) => {
-        const next = new Set(prev)
-        idsToArchive.forEach((id) => next.add(id))
-        return next
-      })
-      setExitingItemIds(new Set())
-      setSelectedItemIds(new Set())
-
-      if (willBeEmpty) scheduleEmptyStateReveal()
-
-      try {
-        await bulkArchiveMutation.mutateAsync({ itemIds: idsToArchive })
-        toast.success(t('toast.archivedItems', { count: idsToArchive.length }))
-      } catch {
-        if (willBeEmpty) clearEmptyStateDelay()
+    setTimeout(() => {
+      void (async () => {
         setPendingArchiveIds((prev) => {
           const next = new Set(prev)
-          idsToArchive.forEach((id) => next.delete(id))
+          idsToArchive.forEach((id) => next.add(id))
           return next
         })
-        toast.error(t('toast.failedArchiveItems'))
-      }
+        setExitingItemIds(new Set())
+        setSelectedItemIds(new Set())
+
+        if (willBeEmpty) scheduleEmptyStateReveal()
+
+        try {
+          await bulkArchiveMutation.mutateAsync({ itemIds: idsToArchive })
+          toast.success(t('toast.archivedItems', { count: idsToArchive.length }))
+        } catch {
+          if (willBeEmpty) clearEmptyStateDelay()
+          setPendingArchiveIds((prev) => {
+            const next = new Set(prev)
+            idsToArchive.forEach((id) => next.delete(id))
+            return next
+          })
+          toast.error(t('toast.failedArchiveItems'))
+        }
+      })()
     }, 200)
   }, [
     selectedItemIds,
@@ -619,49 +632,51 @@ export function InboxListView({
         setActiveDetailItemId(null)
       }
 
-      setTimeout(async () => {
-        setPendingArchiveIds((prev) => {
-          const next = new Set(prev)
-          idsToSnooze.forEach((id) => next.add(id))
-          return next
-        })
-        setExitingItemIds(new Set())
-        setSelectedItemIds(new Set())
+      setTimeout(() => {
+        void (async () => {
+          setPendingArchiveIds((prev) => {
+            const next = new Set(prev)
+            idsToSnooze.forEach((id) => next.add(id))
+            return next
+          })
+          setExitingItemIds(new Set())
+          setSelectedItemIds(new Set())
 
-        if (willBeEmpty) scheduleEmptyStateReveal()
+          if (willBeEmpty) scheduleEmptyStateReveal()
 
-        try {
-          const result = await window.api.inbox.bulkSnooze({ itemIds: idsToSnooze, snoozeUntil })
-          if (result.success || result.processedCount > 0) {
+          try {
+            const result = await window.api.inbox.bulkSnooze({ itemIds: idsToSnooze, snoozeUntil })
+            if (result.success || result.processedCount > 0) {
+              setPendingArchiveIds((prev) => {
+                const next = new Set(prev)
+                idsToSnooze.forEach((id) => next.delete(id))
+                return next
+              })
+              void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+              const snoozeDate = new Date(snoozeUntil)
+              const timeString = snoozeDate.toLocaleString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+              })
+              toast.success(
+                t('toast.snoozedItemsUntil', { count: result.processedCount, time: timeString })
+              )
+            } else {
+              throw new Error(t('toast.failedSnooze'))
+            }
+          } catch (error) {
+            if (willBeEmpty) clearEmptyStateDelay()
             setPendingArchiveIds((prev) => {
               const next = new Set(prev)
               idsToSnooze.forEach((id) => next.delete(id))
               return next
             })
-            queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-            const snoozeDate = new Date(snoozeUntil)
-            const timeString = snoozeDate.toLocaleString('en-US', {
-              weekday: 'short',
-              month: 'short',
-              day: 'numeric',
-              hour: 'numeric',
-              minute: '2-digit'
-            })
-            toast.success(
-              t('toast.snoozedItemsUntil', { count: result.processedCount, time: timeString })
-            )
-          } else {
-            throw new Error(t('toast.failedSnooze'))
+            toast.error(extractErrorMessage(error, t('toast.failedSnooze')))
           }
-        } catch (error) {
-          if (willBeEmpty) clearEmptyStateDelay()
-          setPendingArchiveIds((prev) => {
-            const next = new Set(prev)
-            idsToSnooze.forEach((id) => next.delete(id))
-            return next
-          })
-          toast.error(extractErrorMessage(error, t('toast.failedSnooze')))
-        }
+        })()
       }, 200)
     },
     [
@@ -761,8 +776,11 @@ export function InboxListView({
         }
       }
     }
-    window.addEventListener('paste', handlePaste)
-    return () => window.removeEventListener('paste', handlePaste)
+    const handlePasteEvent = (event: ClipboardEvent): void => {
+      void handlePaste(event)
+    }
+    window.addEventListener('paste', handlePasteEvent)
+    return () => window.removeEventListener('paste', handlePasteEvent)
   }, [handleImageCapture])
 
   // === RENDER ===
@@ -777,7 +795,7 @@ export function InboxListView({
         )}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
+        onDrop={(...args) => void handleDrop(...args)}
       >
         {isDraggingOver && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm pointer-events-none">
@@ -863,8 +881,8 @@ export function InboxListView({
               exitingItemIds={exitingItemIds}
               density={density}
               onPreview={handlePreview}
-              onArchive={handleArchive}
-              onSnooze={handleSnooze}
+              onArchive={(...args) => void handleArchive(...args)}
+              onSnooze={(...args) => void handleSnooze(...args)}
               onQuickFile={handleQuickFile}
               onSelectionChange={handleSelectionChange}
               focusedItemId={focusedItemId}
@@ -880,7 +898,7 @@ export function InboxListView({
           onFileAll={() => setIsBulkFilePanelOpen(true)}
           onTagAll={() => setIsBulkTagPopoverOpen(true)}
           onArchiveAll={() => setIsArchiveDialogOpen(true)}
-          onSnoozeAll={handleBulkSnoozeAll}
+          onSnoozeAll={(...args) => void handleBulkSnoozeAll(...args)}
           aiSuggestion={aiSuggestion}
           onAddSuggestionToSelection={handleAddSuggestionToSelection}
           onDismissSuggestion={handleDismissSuggestion}
@@ -890,7 +908,7 @@ export function InboxListView({
           isOpen={isBulkFilePanelOpen}
           items={selectedItems}
           onClose={() => setIsBulkFilePanelOpen(false)}
-          onFile={handleBulkFileComplete}
+          onFile={(...args) => void handleBulkFileComplete(...args)}
         />
 
         <BulkTagPopover
@@ -898,7 +916,7 @@ export function InboxListView({
           itemCount={selectedCount}
           trigger={<span />}
           onOpenChange={setIsBulkTagPopoverOpen}
-          onApplyTags={handleBulkTagApply}
+          onApplyTags={(...args) => void handleBulkTagApply(...args)}
         />
 
         <ArchiveConfirmationDialog
@@ -920,7 +938,7 @@ export function InboxListView({
         isLoading={isDetailLoading}
         onClose={() => setActiveDetailItemId(null)}
         onFile={handleFilingComplete}
-        onArchive={handleArchive}
+        onArchive={(...args) => void handleArchive(...args)}
       />
     </div>
   )

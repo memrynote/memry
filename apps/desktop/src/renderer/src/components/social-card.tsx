@@ -6,7 +6,7 @@
  * @module components/social-card
  */
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { ExternalLink, AlertCircle, Loader2 } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'

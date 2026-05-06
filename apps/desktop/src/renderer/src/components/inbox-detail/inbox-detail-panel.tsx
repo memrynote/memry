@@ -161,51 +161,6 @@ export const InboxDetailPanel = ({
     document.body.style.userSelect = 'none'
   }, [])
 
-  // Handle keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent): void => {
-      if (!isOpen) return
-
-      // Skip if typing in an input field
-      if (isInputFocused()) {
-        // Still handle Escape in inputs
-        if (e.key === 'Escape') {
-          e.preventDefault()
-          onClose()
-        }
-        return
-      }
-
-      // Escape to close
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        onClose()
-        return
-      }
-
-      // Cmd/Ctrl + Enter to file
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-        e.preventDefault()
-        if (canFile && item) {
-          handleFileItem()
-        }
-        return
-      }
-
-      // Number keys 1-5 to select suggested folders
-      if (/^[1-5]$/.test(e.key)) {
-        const index = parseInt(e.key, 10) - 1
-        if (index < suggestedFoldersForShortcut.length) {
-          e.preventDefault()
-          setSelectedFolder(suggestedFoldersForShortcut[index])
-        }
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, canFile, item, suggestedFoldersForShortcut, setSelectedFolder, onClose])
-
   // Handle filing
   const handleFileItem = useCallback(async (): Promise<void> => {
     if (!selectedFolder || !item) return
@@ -245,6 +200,59 @@ export const InboxDetailPanel = ({
     setIsFilingLoading(false)
     onClose()
   }, [selectedFolder, item, tags, linkedNotes, aiSuggestions, onFile, onClose])
+
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (!isOpen) return
+
+      // Skip if typing in an input field
+      if (isInputFocused()) {
+        // Still handle Escape in inputs
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          onClose()
+        }
+        return
+      }
+
+      // Escape to close
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose()
+        return
+      }
+
+      // Cmd/Ctrl + Enter to file
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault()
+        if (canFile && item) {
+          void handleFileItem()
+        }
+        return
+      }
+
+      // Number keys 1-5 to select suggested folders
+      if (/^[1-5]$/.test(e.key)) {
+        const index = parseInt(e.key, 10) - 1
+        if (index < suggestedFoldersForShortcut.length) {
+          e.preventDefault()
+          setSelectedFolder(suggestedFoldersForShortcut[index])
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [
+    isOpen,
+    canFile,
+    item,
+    suggestedFoldersForShortcut,
+    setSelectedFolder,
+    onClose,
+    handleFileItem
+  ])
 
   // Handle archive
   const handleArchive = useCallback((): void => {
@@ -495,7 +503,7 @@ export const InboxDetailPanel = ({
                       {t('detail.archive')}
                     </Button>
                     <Button
-                      onClick={handleFileItem}
+                      onClick={() => void handleFileItem()}
                       disabled={!canFile || isFilingLoading}
                       className="flex-1 bg-tint hover:bg-tint-hover text-tint-foreground border-0"
                     >

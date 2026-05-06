@@ -224,7 +224,7 @@ export function FilterBuilder({
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
 
   // Track if we're the source of the filter change (to skip unnecessary syncs)
-  const isInternalChangeRef = useRef(false)
+  const [skipNextFiltersSync, setSkipNextFiltersSync] = useState(false)
 
   // Count active filters for badge
   const filterCount = useMemo(() => countFilterConditions(filters), [filters])
@@ -244,8 +244,8 @@ export function FilterBuilder({
   const [storedFilters, setStoredFilters] = useState(filters)
   if (storedFilters !== filters) {
     setStoredFilters(filters)
-    if (isInternalChangeRef.current) {
-      isInternalChangeRef.current = false
+    if (skipNextFiltersSync) {
+      setSkipNextFiltersSync(false)
     } else {
       setState(filterExpressionToUIState(filters))
     }
@@ -261,7 +261,7 @@ export function FilterBuilder({
       debounceRef.current = setTimeout(() => {
         const expression = uiStateToFilterExpression(newState)
         // Mark that we're causing this change so the sync effect skips
-        isInternalChangeRef.current = true
+        setSkipNextFiltersSync(true)
         onFiltersChange(expression)
       }, 200)
     },

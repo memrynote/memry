@@ -43,12 +43,14 @@ function makeCommand(
     title,
     aliases,
     icon,
-    onItemClick: async () => {
-      await editor.getExtension(AIExtension)?.invokeAI({
-        userPrompt,
-        useSelection: opts.useSelection ?? true,
-        streamToolsProvider: opts.streamToolsProvider ?? updateOnly
-      })
+    onItemClick: () => {
+      void (async () => {
+        await editor.getExtension(AIExtension)?.invokeAI({
+          userPrompt,
+          useSelection: opts.useSelection ?? true,
+          streamToolsProvider: opts.streamToolsProvider ?? updateOnly
+        })
+      })()
     },
     size: 'small' as const
   })
@@ -109,12 +111,14 @@ export const translate: (language: string) => CommandFactory = (language) => (ed
   title: `Translate to ${language}`,
   aliases: ['translate', language.toLowerCase()],
   icon: <Languages size={18} />,
-  onItemClick: async () => {
-    await editor.getExtension(AIExtension)?.invokeAI({
-      userPrompt: `Translate the selected text to ${language}. Only output the translation, no explanations.`,
-      useSelection: true,
-      streamToolsProvider: updateOnly
-    })
+  onItemClick: () => {
+    void (async () => {
+      await editor.getExtension(AIExtension)?.invokeAI({
+        userPrompt: `Translate the selected text to ${language}. Only output the translation, no explanations.`,
+        useSelection: true,
+        streamToolsProvider: updateOnly
+      })
+    })()
   },
   size: 'small' as const
 })

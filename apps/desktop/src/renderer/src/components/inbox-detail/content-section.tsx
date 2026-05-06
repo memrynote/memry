@@ -28,7 +28,7 @@ import {
   Link2,
   Bell
 } from '@/lib/icons'
-import { Button } from '@/components/ui/button'
+
 import { Skeleton } from '@/components/ui/skeleton'
 import { extractDomain } from '@/lib/inbox-utils'
 import { InboxContentEditor } from './inbox-content-editor'
@@ -578,7 +578,7 @@ const VoicePreview = ({
           )}
           {transcription && (
             <button
-              onClick={handleCopyTranscription}
+              onClick={() => void handleCopyTranscription()}
               className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
               aria-label={t('content.copyTranscription')}
             >

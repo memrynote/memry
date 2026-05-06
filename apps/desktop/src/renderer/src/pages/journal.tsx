@@ -75,12 +75,12 @@ interface JournalPageProps {
 }
 
 export function JournalPage({ className }: JournalPageProps): React.JSX.Element {
-  const { t, i18n } = useT('journal')
+  const { t, i18n: _i18n } = useT('journal')
   const { t: commonT } = useT('common')
   const activeTab = useActiveTab()
   const { openTab } = useTabs()
   const today = getTodayString()
-  const dateLabels = useMemo(() => createJournalDateLabels(t), [t, i18n.language])
+  const dateLabels = useMemo(() => createJournalDateLabels(t), [t])
   const tabDate = activeTab?.viewState?.date as string | undefined
 
   // Get initial date from tab viewState or default to today
@@ -168,9 +168,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   // Bookmark state - use entry.id (e.g., "j2026-01-13") to match notes_cache lookup
   const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('journal', entry?.id ?? '')
 
-  // Ref to track current entry tags for stable callbacks (prevents re-renders on content changes)
-  const entryTagsRef = useRef<string[]>([])
-  entryTagsRef.current = entry?.tags ?? []
+  const entryTags = useMemo(() => entry?.tags ?? [], [entry?.tags])
 
   const [editorRevision, setEditorRevision] = useState(0)
 
@@ -185,13 +183,15 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
 
   const isDataPending = isEntryLoading || loadedForDate !== selectedDate
   const [showLoadingSpinner, setShowLoadingSpinner] = useState(false)
+  if (!isDataPending && showLoadingSpinner) {
+    setShowLoadingSpinner(false)
+  }
 
   useEffect(() => {
     if (isDataPending) {
       const timer = setTimeout(() => setShowLoadingSpinner(true), 150)
       return () => clearTimeout(timer)
     }
-    setShowLoadingSpinner(false)
     return undefined
   }, [isDataPending])
 
@@ -330,15 +330,12 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   }, [entry])
 
   // Tags & Properties
-  const pendingTagColorsRef = useRef(new Map<string, string>())
+  const [pendingTagColors, setPendingTagColors] = useState(() => new Map<string, string>())
 
   const tagColorMap = useMemo(() => {
     const map = new Map<string, string>()
     for (const t of allAvailableTags) {
       map.set(t.tag, t.color)
-    }
-    for (const key of pendingTagColorsRef.current.keys()) {
-      if (map.has(key)) pendingTagColorsRef.current.delete(key)
     }
     return map
   }, [allAvailableTags])
@@ -347,9 +344,9 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
     return (entry?.tags || []).map((tagName) => ({
       id: tagName,
       name: tagName,
-      color: tagColorMap.get(tagName) ?? pendingTagColorsRef.current.get(tagName) ?? 'stone'
+      color: tagColorMap.get(tagName) ?? pendingTagColors.get(tagName.toLowerCase()) ?? 'stone'
     }))
-  }, [entry?.tags, tagColorMap])
+  }, [entry?.tags, tagColorMap, pendingTagColors])
 
   const availableTags: Tag[] = useMemo(() => {
     return allAvailableTags.map((t) => ({
@@ -571,31 +568,31 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
   const handleAddTag = useCallback(
     (tagId: string) => {
       const tagToAdd = availableTags.find((t) => t.id === tagId)
-      const currentTags = entryTagsRef.current
+      const currentTags = entryTags
       if (tagToAdd && !currentTags.includes(tagToAdd.name)) {
         updateTags([...currentTags, tagToAdd.name])
       }
     },
-    [availableTags, updateTags]
+    [availableTags, entryTags, updateTags]
   )
 
   const handleCreateTag = useCallback(
     (name: string, color: string) => {
-      pendingTagColorsRef.current.set(name.toLowerCase(), color)
-      const currentTags = entryTagsRef.current
+      setPendingTagColors((prev) => new Map(prev).set(name.toLowerCase(), color))
+      const currentTags = entryTags
       if (!currentTags.includes(name)) {
         updateTags([...currentTags, name])
       }
     },
-    [updateTags]
+    [entryTags, updateTags]
   )
 
   const handleRemoveTag = useCallback(
     (tagId: string) => {
-      const currentTags = entryTagsRef.current
+      const currentTags = entryTags
       updateTags(currentTags.filter((t) => t !== tagId))
     },
-    [updateTags]
+    [entryTags, updateTags]
   )
 
   // Backlinks transform
@@ -716,7 +713,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               onPrevious={handleNavigationPrevious}
               onNext={handleNavigationNext}
               onToggleFullWidth={() => setIsFullWidth(!isFullWidth)}
-              onBookmarkToggle={toggleBookmark}
+              onBookmarkToggle={(...args) => void toggleBookmark(...args)}
               onVersionHistory={() => setIsVersionHistoryOpen(true)}
               onExport={() => setIsExportDialogOpen(true)}
               onOpenSettings={() => openSettingsModal('journal')}
@@ -810,7 +807,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                             onMarkdownChange={handleMarkdownChange}
                             onHeadingsChange={handleHeadingsChange}
                             onLinkClick={handleLinkClick}
-                            onInternalLinkClick={handleInternalLinkClick}
+                            onInternalLinkClick={(...args) => void handleInternalLinkClick(...args)}
                             focusAtEndRef={focusAtEndRef}
                             marqueeZoneEl={marqueeZoneEl}
                           />

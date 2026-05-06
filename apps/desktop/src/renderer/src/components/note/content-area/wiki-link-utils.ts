@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import type { Block } from '@blocknote/core'
 import type { HeadingInfo } from './types'

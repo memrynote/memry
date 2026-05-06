@@ -99,7 +99,7 @@ export function FirstRunOnboarding({ onComplete }: FirstRunOnboardingProps): Rea
             <NoteStep
               value={noteTitle}
               onChange={setNoteTitle}
-              onNext={handleCreateNote}
+              onNext={(...args) => void handleCreateNote(...args)}
               onSkip={advance}
               isSubmitting={isSubmitting}
             />
@@ -108,7 +108,7 @@ export function FirstRunOnboarding({ onComplete }: FirstRunOnboardingProps): Rea
             <TaskStep
               value={taskTitle}
               onChange={setTaskTitle}
-              onNext={handleCreateTask}
+              onNext={(...args) => void handleCreateTask(...args)}
               onSkip={advance}
               isSubmitting={isSubmitting}
             />

@@ -11,7 +11,7 @@ export function useInboxNotifications(): void {
     const unsubscribe = onInboxSnoozeDue((event) => {
       const { items: dueItems } = event
       if (dueItems.length > 0) {
-        queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+        void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
 
         if ('Notification' in window && Notification.permission === 'granted') {
           const count = dueItems.length
@@ -30,7 +30,7 @@ export function useInboxNotifications(): void {
     })
 
     if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission()
+      void Notification.requestPermission()
     }
 
     return () => unsubscribe()

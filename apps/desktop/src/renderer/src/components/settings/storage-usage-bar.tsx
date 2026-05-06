@@ -41,7 +41,7 @@ export function StorageUsageBar() {
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">{error || t('vault.signInStorage')}</p>
           {error && (
-            <Button variant="ghost" size="sm" onClick={refresh}>
+            <Button variant="ghost" size="sm" onClick={() => void refresh()}>
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
           )}
@@ -69,7 +69,7 @@ export function StorageUsageBar() {
               variant="ghost"
               size="sm"
               className="h-7 w-7 p-0"
-              onClick={refresh}
+              onClick={() => void refresh()}
               aria-label={t('vault.storage.refreshAria')}
             >
               <RefreshCw className="h-3.5 w-3.5" />
