@@ -4,7 +4,7 @@
  *
  * Finder-style rubber-band selection over BlockNote blocks.
  * Drag from non-text area → rectangle overlay → soft highlight on
- * intersected blocks → PM setSelection for native Backspace/Cmd+C/Cmd+A.
+ * intersected blocks → block-only marquee state for keyboard actions.
  */
 
 import { test, expect, type Page } from './fixtures'
@@ -47,6 +47,19 @@ async function getMarqueeZoneBox(page: Page) {
   const box = await page.locator(MARQUEE_ZONE_SELECTOR).first().boundingBox()
   if (!box) throw new Error('marquee zone not found')
   return box
+}
+
+async function expectNoNativeTextSelection(page: Page): Promise<void> {
+  const selectionState = await page.evaluate(() => {
+    const sel = window.getSelection()
+    return {
+      hasNonCollapsedRange: sel !== null && sel.rangeCount > 0 && !sel.isCollapsed,
+      selectedText: sel?.toString() ?? ''
+    }
+  })
+
+  expect(selectionState.hasNonCollapsedRange).toBe(false)
+  expect(selectionState.selectedText).toBe('')
 }
 
 test.describe('Block marquee selection', () => {
@@ -95,6 +108,7 @@ test.describe('Block marquee selection', () => {
 
     // At least 3 blocks remain highlighted post-release.
     expect(await page.locator(HIGHLIGHTED_SELECTOR).count()).toBeGreaterThanOrEqual(3)
+    await expectNoNativeTextSelection(page)
   })
 
   test('Escape clears marquee selection', async ({ page }) => {
@@ -403,9 +417,7 @@ test.describe('Block marquee selection', () => {
     await expect(page.locator(HIGHLIGHTED_SELECTOR)).toHaveCount(0)
   })
 
-  test('single-block marquee → produces real editor selection (no inert state)', async ({
-    page
-  }) => {
+  test('single-block marquee selects only the block, not its text content', async ({ page }) => {
     await createNote(page, `Marquee Single ${Date.now()}`)
     await focusEditor(page)
     // H1 heading is visually tall enough that a vertical drag fits
@@ -442,25 +454,13 @@ test.describe('Block marquee selection', () => {
     await page.mouse.up()
     await page.waitForTimeout(200)
 
-    // Critical regression gate: the fix must turn the visual marquee
-    // highlight into a REAL editor-owned selection. Previously, single-
-    // block drags left the editor blurred and the window selection
-    // empty → Backspace/Cmd+C/Cmd+A did nothing (inert state).
-    const selectionState = await page.evaluate(() => {
-      const sel = window.getSelection()
-      const active = document.activeElement
-      const isEditorFocused =
-        active instanceof HTMLElement && active.closest('[contenteditable="true"]') !== null
-      return {
-        isEditorFocused,
-        hasNonCollapsedRange: sel !== null && sel.rangeCount > 0 && !sel.isCollapsed,
-        selectedText: sel?.toString() ?? ''
-      }
-    })
+    expect(await page.locator(HIGHLIGHTED_SELECTOR).count()).toBe(1)
+    await expectNoNativeTextSelection(page)
 
-    expect(selectionState.isEditorFocused).toBe(true)
-    expect(selectionState.hasNonCollapsedRange).toBe(true)
-    expect(selectionState.selectedText).toContain('Tall heading')
+    await page.keyboard.press('Backspace')
+    await page.waitForTimeout(400)
+
+    expect(await getBlockCount(page)).toBeLessThan(startCount)
   })
 
   test('regression: non-editor panels carry data-marquee-ignore so gestures are skipped', async ({
