@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 const releaseDatePattern = /^(\d{4})\.(\d{1,2})\.(\d{1,2})$/
 const isoReleaseDatePattern = /^(\d{4})-(\d{2})-(\d{2})$/
-const releaseTagPattern = /^v(\d{4})-(\d{2})-(\d{2})$/
+const releaseTagPattern = /^v(\d{4})-(\d{2})-(\d{2})(?:\.([2-9]\d*))?$/
 const legacyStableTagPattern = /^stable-v(\d{4})\.(\d{1,2})\.(\d{1,2})$/
 const appVersionPattern = /^(\d{4})\.(\d{3,4})\.(\d+)$/
 
@@ -46,9 +46,10 @@ export function validateAppVersion(input) {
 export function parseReleaseTag(tag) {
   const stableMatch = releaseTagPattern.exec(tag)
   if (stableMatch) {
-    const [, yearText, monthText, dayText] = stableMatch
+    const [, yearText, monthText, dayText, releaseIndexText] = stableMatch
     const date = validateCalendarDate(yearText, monthText, dayText)
-    return { date, displayVersion: tag, index: 1, tag }
+    const index = releaseIndexText ? Number(releaseIndexText) : 1
+    return { date, displayVersion: tag, index, tag }
   }
 
   const legacyMatch = legacyStableTagPattern.exec(tag)
@@ -61,12 +62,24 @@ export function parseReleaseTag(tag) {
   throw new Error(`Invalid desktop release tag: ${tag}`)
 }
 
-export function resolveReleaseMetadata({ date }) {
+export function resolveReleaseMetadata({ date, existingTags = [], currentTags = [] }) {
+  const currentRelease = resolveCurrentRelease(currentTags)
+  if (currentRelease) {
+    return buildMetadata({
+      displayVersion: currentRelease.displayVersion,
+      releaseDate: currentRelease.date,
+      releaseIndex: currentRelease.index,
+      releaseTag: currentRelease.tag
+    })
+  }
+
   const releaseDate = validateReleaseDate(date)
-  const releaseTag = formatReleaseTag(releaseDate)
+  const releaseIndex = resolveNextReleaseIndex(releaseDate, existingTags)
+  const releaseTag = formatReleaseTag(releaseDate, releaseIndex)
   return buildMetadata({
     displayVersion: releaseTag,
     releaseDate,
+    releaseIndex,
     releaseTag
   })
 }
@@ -76,22 +89,72 @@ export function resolveReleaseMetadataFromTag(tag) {
   return buildMetadata({
     displayVersion: parsed.displayVersion,
     releaseDate: parsed.date,
+    releaseIndex: parsed.index,
     releaseTag: parsed.tag
   })
 }
 
-function buildMetadata({ displayVersion, releaseDate, releaseTag }) {
-  const releaseIndex = 1
+function buildMetadata({ displayVersion, releaseDate, releaseIndex, releaseTag }) {
   const appVersion = formatAppVersion(releaseDate, releaseIndex)
+  const releaseAssetVersion = formatReleaseAssetVersion({ releaseDate, releaseTag })
 
   return {
     appVersion,
     displayVersion,
+    releaseAssetVersion,
     releaseDate,
     releaseIndex,
     releaseName: `Memry ${displayVersion}`,
     releaseTag
   }
+}
+
+function resolveCurrentRelease(currentTags) {
+  const releases = currentTags.map(parseReleaseTagOrNull).filter(Boolean)
+  if (releases.length === 0) {
+    return null
+  }
+
+  return releases.sort(compareReleaseTags).at(-1)
+}
+
+function resolveNextReleaseIndex(releaseDate, existingTags) {
+  const indexes = existingTags
+    .map(parseReleaseTagOrNull)
+    .filter((release) => release?.date === releaseDate)
+    .map((release) => release.index)
+
+  return indexes.length === 0 ? 1 : Math.max(...indexes) + 1
+}
+
+function parseReleaseTagOrNull(tag) {
+  try {
+    return parseReleaseTag(tag)
+  } catch {
+    return null
+  }
+}
+
+function compareReleaseTags(left, right) {
+  return (
+    compareDate(left.date, right.date) ||
+    left.index - right.index ||
+    left.tag.localeCompare(right.tag)
+  )
+}
+
+function compareDate(left, right) {
+  const [leftYear, leftMonth, leftDay] = left.split('.').map(Number)
+  const [rightYear, rightMonth, rightDay] = right.split('.').map(Number)
+  return leftYear - rightYear || leftMonth - rightMonth || leftDay - rightDay
+}
+
+function formatReleaseAssetVersion({ releaseDate, releaseTag }) {
+  if (releaseTag.startsWith('v')) {
+    return releaseTag.slice(1)
+  }
+
+  return releaseDate
 }
 
 function validateCalendarDate(yearText, monthText, dayText) {
@@ -116,14 +179,16 @@ function validateCalendarDate(yearText, monthText, dayText) {
   return `${year}.${month}.${day}`
 }
 
-function formatReleaseTag(date) {
+function formatReleaseTag(date, index) {
   const [year, month, day] = date.split('.').map(Number)
-  return `v${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  const suffix = index === 1 ? '' : `.${index}`
+  return `v${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}${suffix}`
 }
 
 function formatAppVersion(date, index) {
   const [year, month, day] = date.split('.').map(Number)
-  return validateAppVersion(`${year}.${Number(`${month}${String(day).padStart(2, '0')}`)}.${index}`)
+  const monthDay = Number(`${month}${String(day).padStart(2, '0')}`)
+  return validateAppVersion(`${year}.${monthDay}.${index}`)
 }
 
 function hasLeadingZero(value) {
@@ -132,6 +197,7 @@ function hasLeadingZero(value) {
 
 function parseArgs(argv) {
   const options = {
+    currentTags: [],
     existingTags: []
   }
 
@@ -187,6 +253,19 @@ function parseArgs(argv) {
       continue
     }
 
+    if (arg === '--current-tag') {
+      options.currentTags.push(readRequiredValue(argv, index, arg))
+      index += 1
+      continue
+    }
+
+    if (arg === '--current-tags-file') {
+      const tagsPath = readRequiredValue(argv, index, arg)
+      options.currentTags.push(...readTagsFile(tagsPath))
+      index += 1
+      continue
+    }
+
     if (arg === '--github-output') {
       options.githubOutput = readRequiredValue(argv, index, arg)
       index += 1
@@ -220,6 +299,7 @@ function writeGitHubOutputs(outputPath, metadata) {
     `app_version=${metadata.appVersion}`,
     `display_version=${metadata.displayVersion}`,
     `release_date=${metadata.releaseDate}`,
+    `release_asset_version=${metadata.releaseAssetVersion}`,
     `release_index=${metadata.releaseIndex}`,
     `release_name=${metadata.releaseName}`,
     `release_tag=${metadata.releaseTag}`,
@@ -246,6 +326,7 @@ function main() {
   if (options.mode === 'resolve') {
     const metadata = resolveReleaseMetadata({
       date: options.date,
+      currentTags: options.currentTags,
       existingTags: options.existingTags
     })
 
@@ -269,7 +350,7 @@ function main() {
   }
 
   throw new Error(
-    'Usage: node scripts/desktop-release-metadata.mjs --resolve --date <YYYY.M.D|YYYY-MM-DD> [--github-output path] OR --from-tag --tag <vYYYY-MM-DD|stable-vYYYY.M.D>'
+    'Usage: node scripts/desktop-release-metadata.mjs --resolve --date <YYYY.M.D|YYYY-MM-DD> [--existing-tags-file path] [--current-tags-file path] [--github-output path] OR --from-tag --tag <vYYYY-MM-DD[.N]|stable-vYYYY.M.D>'
   )
 }
 

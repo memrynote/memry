@@ -9,17 +9,25 @@ Format: weekly entries grouped by feature area.
 
 ### Fixed
 - Fix block marquee selection in notes and journals so dragging selects only blocks, not the text content inside selected blocks. Backspace/Delete and block indent/outdent shortcuts continue to operate on the selected blocks.
+## 2026-05-07 — Date-based Release Versioning
+
+### Changed
+
+- Publish stable desktop releases from `main` with public date tags such as `v2026-05-06`, using `.2`, `.3`, and later suffixes for additional UTC-day releases.
+- Show the same public date version in Settings and update dialogs while keeping updater and package metadata semver-safe.
 
 ---
 
 ## 2026-04-30 — Calendar: clickable inbox-snooze chips
 
 ### Added
+
 - Inbox-snooze chips on the calendar are now clickable. Clicking opens a small floating popover next to the chip with three actions: **Open in inbox** (jumps to the inbox tab), **Unsnooze now** (clears the snooze and removes the chip), and **Reschedule** (reuses the standard `<SnoozePicker>` preset list + custom date/time dialog). Previously the click was a silent no-op.
 - New `<CalendarInboxSnoozePopover>` component (presentational; receives data + callbacks) mirroring the positioning + dismiss pattern of `<CalendarEventPopover>`. The outside-click handler explicitly excludes Radix popper portals so the nested SnoozePicker dropdown/dialog don't dismiss the popover mid-interaction.
 - E2E coverage in `calendar-inbox-snooze-click.e2e.ts`: chip-click → popover with three actions + Escape dismiss; Unsnooze removes the chip; Open in inbox tears down the calendar surface (singleton inbox tab takes over).
 
 ### Changed
+
 - After Unsnooze and Reschedule the calendar range query is invalidated so the chip moves or disappears immediately.
 - Reminder click handling (`sourceType === 'reminder'`) is intentionally still a no-op — its 4-state lifecycle needs its own design pass and ships separately.
 
@@ -28,6 +36,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-29 — Multi-language Support (English, Turkish, Arabic) with RTL
 
 ### Added
+
 - Full multi-language support: pick English, Turkish (`Türkçe`), or Arabic (`العربية`) from Settings → General → Language. Switching reloads UI strings across every surface — buttons, dialogs, settings panels, calendar, tasks, inbox, journal, notes, graph, and the native Electron menu — without requiring an app restart.
 - Right-to-left (RTL) layout when Arabic is selected. The renderer applies `dir="rtl"` to `<html>`, mirrors directional UI (close buttons, sidebars, scrollbars), and flips Tailwind logical-property classes (`ms-*`, `me-*`, `ps-*`, `pe-*`, `start-*`, `end-*`, `text-start`, `text-end`, `border-s`, `border-e`, `rounded-s-*`, `rounded-e-*`) automatically.
 - ICU pluralization in user-visible counters (e.g. note property "used in N notes", column-selector usage counts) using locale-correct plural rules: English `one/other`, Turkish `other` (no plural form), Arabic `zero/one/two/few/many/other`. Powered by a custom `IcuFormatter` plugin since the published `i18next-icu` is broken under pure ESM.
@@ -40,11 +49,13 @@ Format: weekly entries grouped by feature area.
 - Documentation: "Adding a Locale" checklist, Tailwind logical-property rule in CLAUDE.md.
 
 ### Changed
+
 - ~120 user-visible English strings across the renderer migrated from hardcoded literals to namespaced `t()` calls: settings shell, general/appearance/account/sync/workspace panels, calendar toolbar/filters/dialogs/event editor, tasks page, inbox (toolbar, list, detail, filing, triage, archived, bulk actions, content preview, insights), notes page, journal, graph (page, controls, menu, tooltips), folder view, search aria-labels, unsaved-changes dialog, bulk-delete dialog, note-tree/task/calendar delete-cancel buttons.
 - Main-process error and menu surfaces resolve through namespaces (`errors:*`, `menu:*`) instead of inline strings.
 - `GeneralSettings.language` tightened to `LocaleSchema` (compile-time validation prevents drift between settings and supported locales).
 
 ### Fixed
+
 - Replace broken `i18next-icu` with a custom `IcuFormatter`. The published package's ESM bundle does `import IntlMessageFormat from 'intl-messageformat'`, but `intl-messageformat` 10.x exports the constructor as a named export — the default-import resolves to the module namespace and `new IntlMessageFormat(...)` throws "is not a constructor". The custom plugin uses the correct named import and falls back to the raw template string on parse error so consumers see the bug instead of an empty string.
 - Avoid renderer provider barrel import that created a circular dependency through the i18n package boundary.
 
@@ -53,6 +64,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-21 — Calendar Sidebar Typed Indicator Dots
 
 ### Added
+
 - Show typed indicator dots on the right-sidebar mini-calendar when viewing the Calendar tab. Each day cell renders up to 3 side-by-side colored dots, one per item, with colors matching the item's visual type: purple for events, green for imported events, blue for tasks, pink for reminders, orange for snoozes. Days with more items than available slots prioritize diversity — one dot per unique type first, then filling remaining slots with duplicates. For example, a day with 3 events, 2 tasks, and 1 snooze shows one purple, one blue, and one orange dot rather than three purple dots. The Journal tab keeps its single emerald/amber activity-intensity dot unchanged, so switching tabs visibly changes what the sidebar tells you.
 
 ---
@@ -60,6 +72,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-20 — Calendar Sync Triggers
 
 ### Fixed
+
 - Sync Google Calendar events on focus, resume, and manual refresh. Calendar now automatically updates when the app window regains focus, when the app resumes from background, and when the user clicks the manual refresh button, ensuring calendar data stays current without relying only on periodic sync intervals.
 
 ---
@@ -67,9 +80,11 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-18 — Calendar Day View All-Day Strip + E2E Stabilization
 
 ### Fixed
+
 - Restore visibility of all-day items (tasks with `due_date` only, reminders on date targets, user-created all-day events) in Calendar Day view. Render a compact "All day" strip above the hour grid so projected and user-created all-day items no longer disappear after PR #266 moved the in-page right sidebar out. Fixes shard 1/3 e2e regressions in `calendar.e2e.ts` and `calendar-comprehensive.e2e.ts`
 
 ### Changed
+
 - Replace the fixed 5×30s convergence loop in `body-crdt-coverage-variants` V6 with `expect.poll` (120s timeout, backoff intervals) so CI xvfb load no longer exhausts the loop before noteB replicates to device A
 
 ---
@@ -77,12 +92,14 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-18 — Calendar Week View Infinite Horizontal Scroll
 
 ### Added
+
 - Infinite horizontal day scroll in Week view: trackpad swipes (and Shift + mouse wheel) pan the 7 visible day columns continuously across week boundaries, with the toolbar label updating live. Prev/Next/Today buttons now smooth-scroll to their target, and event data prefetches ±1 week around the visible range
 - `dayIndexFromDate` / `dateFromDayIndex` helpers in `date-utils.ts`, anchored at a `2020-01-01` epoch for virtualization math
 - `useWeekInfiniteScroll` hook owning a horizontal `@tanstack/react-virtual` virtualizer, `ResizeObserver`-driven column width, stable ref-backed visible-day callback, and a far-jump fallback inside `scrollToDay`
 - E2E tests in `calendar-week-scroll.e2e.ts` covering scroll right, scroll left, Today button, and Next/Prev buttons (no snap-back assertions)
 
 ### Changed
+
 - Week view rewritten around horizontal virtualization with mirrored header + time-gutter scroll containers and a `data-testid="calendar-week-scroll"` hook point for e2e
 - Calendar page fetch range for Week view expanded to `[weekStart − 7, weekStart + 14)` for ±1 week prefetch via the existing `useCalendarRange` query key cache
 - `useTimeGridMarquee` now accepts an optional `getColumnElement` resolver so drag-select + quick-create popover anchoring work against absolute day indices in the virtualized grid
@@ -93,6 +110,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-17 — Calendar Quick-Create Surfaces Silent IPC Failures
 
 ### Fixed
+
 - Fix calendar quick-create and event editor silently closing without persisting when the create/update IPC resolves with `{ success: false }`. The handlers now throw the returned error message so the popover stays open and shows a destructive inline message instead of discarding the user's input with no feedback
 
 ---
@@ -100,6 +118,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-17 — Calendar Day View Uses Global Right Sidebar (#266)
 
 ### Changed
+
 - Remove the in-page right sidebar from Calendar Day view in favor of the global right sidebar
 - Auto-open the global right sidebar on Day view entry and close it on leaving Day view — unless the user had opened it manually, in which case it stays open
 
@@ -108,6 +127,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-17 — Google Calendar Settings Row Compact Layout
 
 ### Changed
+
 - Simplify Google Calendar integration settings: remove the "Memry Calendar" label/value block and the bordered card wrapper around the imported calendars list, leaving a flatter, more compact layout after connection
 
 ---
@@ -115,6 +135,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-17 — Google Calendar OAuth Error Diagnostics
 
 ### Fixed
+
 - Fix silent 400 on Google Calendar token exchange: log structured error details (`status`, `error`, `error_description`) and throw user-friendly messages instead of raw status codes
 - Replace raw API/token errors across OAuth flow and Calendar API client with contextual friendly messages mapped from RFC 6749 error codes and Google API status codes
 - Warn at startup when `GOOGLE_CALENDAR_CLIENT_SECRET` is set (Desktop OAuth clients do not require a secret)
@@ -125,6 +146,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-17 — CRDT Handler Lifecycle on Signout
 
 ### Fixed
+
 - Fix "No handler registered for 'crdt:close-doc'" error logged on signout by registering CRDT IPC handlers at app bootstrap instead of tearing them down with the provider; handlers now route through `getCrdtProvider()` on every call and no-op safely after teardown
 
 ---
@@ -132,10 +154,12 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-17 — Calendar Marquee Quick-Create Fix
 
 ### Fixed
+
 - Fix calendar marquee drag to persist the event when the user submits a title via Enter or Save
 - Keep the quick-create popover mounted and show an inline destructive message when event creation fails, instead of closing silently
 
 ### Changed
+
 - Decouple calendar UI refresh from sync queue health so newly created events appear immediately even when background sync is unavailable
 - Extract `localInputToIso` helper for local-input-to-ISO conversion with explicit NaN guarding
 
@@ -144,6 +168,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-17 — Calendar Auto-scroll to Current Time
 
 ### Added
+
 - Auto-scroll calendar day and week views on mount so the current-time indicator sits ~40% from the top of the viewport; fall back to 7 AM when the visible range does not contain today
 
 ---
@@ -151,15 +176,16 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-14 — Calendar Marquee Live Preview
 
 ### Changed
+
 - Show a rich "New Event" preview with a live `HH:MM–HH:MM` range while dragging on the day and week grids instead of the previous empty tinted box
 - Migrate `CalendarQuickCreatePopover` to the shadcn/Radix `Popover` with a virtual anchor at the selection rect, automatic side/align collision handling, and a directional arrow pointing back at the selection
 - Add a shared `PopoverArrow` export on the shadcn popover wrapper so any popover can opt into an anchor-pointing arrow
 - Remove hand-rolled Escape and outside-click listeners from the quick-create popover now that Radix owns dismissal
 
-
 ## 2026-04-14 — Vim Hint Mode (#202)
 
 ### Added
+
 - Add Vim-style hint mode: Alt+F overlays typed labels on clickable elements for mouseless navigation, with single-char mnemonics, two-char fallback on first-letter collisions, backspace undo, and Escape to dismiss
 
 ---
@@ -167,6 +193,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-12 — Windows Inbox Folder Filing Fix
 
 ### Fixed
+
 - Fix Windows inbox filing so creating a folder inline no longer leaves the item in Inbox after restart
 - Normalize vault-relative paths and folder picker matching so newly created folders resolve consistently across macOS and Windows
 
@@ -175,6 +202,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-12 — Sidebar Nav Alignment
 
 ### Changed
+
 - Align sidebar nav rows (Inbox, Journal, Tasks) with folder/file row styling for visual consistency — match height, padding, border-radius, font size, and gap from the tree node primitive
 
 ---
@@ -182,9 +210,11 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-11 — Settings Modal Scroll Fix and Sidebar Action Reorder
 
 ### Changed
+
 - Move search and new-note actions to the top of the sidebar for faster access
 
 ### Fixed
+
 - Restore scrolling inside the Settings modal so long sections (Shortcuts, Account, etc.) are fully reachable when the window is short — the Radix `DialogContent` grid layout was preventing nested `ScrollArea` from computing a bounded height
 
 ---
@@ -192,6 +222,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-09 — Sync Adapter Registry and Architecture Reset
 
 ### Added
+
 - Add `local-mutations.ts` sync adapter registry centralizing all domain sync dispatch behind `enqueueLocalSyncCreate/Update/Delete`
 - Add `insertItemWithTags` transactional helper for atomic inbox item+tag persistence
 - Add `normalizeBinaryInput` shared helper for Electron IPC binary buffer deserialization
@@ -199,6 +230,7 @@ Format: weekly entries grouped by feature area.
 - Add `check-architecture-boundaries.js` rules blocking direct IPC sync-module and query imports
 
 ### Changed
+
 - Migrate note-sync from direct index-DB writes to projection events with flush
 - Extract note mutation commands into dedicated domain layer (notes/domain.ts)
 - Move all runtime-effects modules (tasks, inbox, notes, journal, tags, settings, filters) from direct sync service calls to adapter registry dispatch
@@ -208,6 +240,7 @@ Format: weekly entries grouped by feature area.
 - Simplify `TasksProvider` to self-load workspace data when no props provided
 
 ### Fixed
+
 - Restore canonical property-type guard to prevent LWW type overwrites on sync
 - Add projection flush to sync handlers, journal handlers, and CRDT writeback
 - Wrap `handleConvertToNote`, `handleConvertToTask`, `handleLinkToNote` with `withErrorHandler` preventing unhandled IPC rejections
@@ -221,6 +254,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-08 — Marquee Selection Indent/Outdent
 
 ### Added
+
 - Add Tab/Shift+Tab indent/outdent support to marquee selections
 
 ---
@@ -228,6 +262,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-07 — Security Fixes
 
 ### Fixed
+
 - Patch 4 critical Electron RCE CVEs and HIGH transitive CVEs
 - Narrow refresh token rotation grace window to 10s
 - Harden /recovery against account enumeration timing leak
@@ -237,6 +272,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-07 — Inline Subtasks in Notes
 
 ### Added
+
 - Support inline subtasks within notes: add parentTaskId, indented rendering, serialization, and recursive normalization
 - Auto-detect indented checkboxes under task blocks as subtasks
 - Promote subtask to standalone task when un-indented (Shift+Tab)
@@ -244,6 +280,7 @@ Format: weekly entries grouped by feature area.
 - Debounced auto-promote and auto-demote handlers for keyboard navigation
 
 ### Fixed
+
 - Delete taskBlock on Backspace in empty title; prevent cascade deletion
 - Preserve nested children when converting checkListItem to taskBlock
 - Sanitize theme values to prevent corruption
@@ -254,6 +291,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-07 — Tasks Tab State Persistence
 
 ### Added
+
 - Persist tasks tab view state (active view, internal tab, selected project, detail drawer) across tab navigation using the existing tab viewState mechanism
 
 ---
@@ -261,6 +299,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-07 — Remove Home Tab
 
 ### Removed
+
 - Remove unused Home tab from sidebar navigation, tab types, content routing, and icon mappings
 - Remove SidebarHome SVG icon component
 - Renumber sidebar keyboard shortcuts (Journal → ⌘⌥2, Tasks → ⌘⌥3)
@@ -270,6 +309,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-07 — Inline Task Blocks
 
 ### Added
+
 - Add custom task block for BlockNote editor with live DB sync and inline editing
 - Add `[] ` bracket shortcut and `/task` slash command to create task blocks
 - Add right-click context menu to promote checkboxes to linked tasks
@@ -281,12 +321,14 @@ Format: weekly entries grouped by feature area.
 - Add task block markdown serialization with `{task:id}` suffix round-trip
 
 ### Fixed
+
 - Fix focus jumping to previous task block when pressing Enter before async task creation completes
 - Fix sync effect reverting title to stale DB value during save (hold syncingRef across async boundary)
 - Fix paragraph conversion from task block not receiving browser focus (add editor.focus() after cursor placement)
 - Fix task deletion scan race condition with debounced block scanning
 
 ### Changed
+
 - Add `renderTitle` prop to TaskRow for inline title editing in task blocks
 
 ---
@@ -294,6 +336,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-06 — Vertical Sidebar Navigation
 
 ### Changed
+
 - Replace horizontal nav with vertical sidebar nav using shadcn SidebarMenu primitives
 - Move navigation (Inbox, Journal, Tasks) from sidebar header to sidebar content area
 - Simplify SidebarHeaderContent to only render traffic lights and vault switcher
@@ -303,6 +346,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-06 — Split View Polish
 
 ### Fixed
+
 - Hide sidebar collapse icon in split view panes (only show in primary/leftmost pane)
 
 ---
@@ -310,6 +354,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-06 — Linked Task Navigation Fix
 
 ### Fixed
+
 - Fix linked task click in note page to open task page with project filter, "all" section, detail panel, and row highlight
 
 ---
@@ -317,14 +362,17 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-05 — Inbox Detail Panel Polish
 
 ### Added
+
 - Show folder emoji/icon in filing dropdown and selected folder display
 - Show note emoji/icon for AI-suggested notes in filing section
 - Surface `emoji` field from note cache through suggestions pipeline
 
 ### Fixed
+
 - Fix checkbox and text vertical misalignment in note task lists
 
 ### Changed
+
 - Stack "File to" and "Tags" vertically instead of side by side
 - Narrow inbox detail panel from 460px to 380px to match task detail drawer
 - Align inbox and task detail panels to tab bar bottom edge (top-[37px])
@@ -337,6 +385,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-04 — Inbox Create Folder
 
 ### Added
+
 - Add inline folder creation to inbox filing dropdown with search-to-create flow
 - Add subfolder hint in folder search input for nested path creation
 
@@ -345,6 +394,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-04 — Link Embeds and Mentions
 
 ### Added
+
 - Add YouTube embed block with inline player and markdown round-trip
 - Add link mention inline content for BlockNote editor
 - Add paste link menu with URL, mention, and embed options
@@ -352,6 +402,7 @@ Format: weekly entries grouped by feature area.
 - Add Reddit JSON API metadata extraction with bot detection bypass
 
 ### Changed
+
 - Use mention and embed format for inbox link filing
 - Update Content Security Policy for YouTube iframe embeds
 
@@ -360,6 +411,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-04 — Voice Transcription
 
 ### Added
+
 - Add local Whisper Small transcription via whisper-node worker thread
 - Add OpenAI BYOK voice transcription with OS keychain storage
 - Add voice provider selector (local / OpenAI) in AI settings
@@ -370,6 +422,7 @@ Format: weekly entries grouped by feature area.
 - Add `settings:openSection` event for cross-window settings navigation
 
 ### Changed
+
 - Replace env-var OpenAI key with per-user keychain secret for voice
 - Refactor transcription module to route by provider setting
 - Extract failure-result helper to reduce duplication in transcription error paths
@@ -379,6 +432,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-03 — Dead Code Cleanup
 
 ### Changed
+
 - Remove 6 unused files and 11 unused exports across monorepo (~762 lines)
 - Remove superseded per-type reminder schemas in favor of unified `CreateReminderSchema`
 - Un-export internal-only `ReminderTargetTypeSchema` and `ReminderStatusSchema`
@@ -388,6 +442,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-03 — Clean Code Audit
 
 ### Changed
+
 - Split task-utils.ts (1,349 LOC, 60 functions) into 5 focused modules: date-utils, formatting, status-helpers, view-helpers, filters
 - Split queries/notes.ts (1,595 LOC, 78 functions) into 7 sub-modules: CRUD, tags, journal, properties, snapshots, links, helpers
 - Decompose ContentArea.tsx (1,482 → 331 lines) into 6 single-responsibility hooks
@@ -395,7 +450,7 @@ Format: weekly entries grouped by feature area.
 - Split use-inbox.ts (993 lines) into query, mutation, and operation modules
 - Decompose notes-tree.tsx (2,089 → 542 lines) into 7 modules with shared utilities across both tree variants
 - Add withDb/withErrorHandler HOFs to eliminate 112 repetitive try/catch blocks across 14 IPC handler files
-- Replace raw console.* calls in sync-server with structured createLogger utility
+- Replace raw console.\* calls in sync-server with structured createLogger utility
 - Add type-safe DB mock factories to reduce as-any casts in sync test files
 
 ---
@@ -403,9 +458,11 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-03 — Sidebar Chevron Always Visible
 
 ### Added
+
 - Add always-visible expand/collapse chevron to folder rows in sidebar tree
 
 ### Changed
+
 - Remove hover-dependent show/hide pattern for folder chevrons
 - Simplify tree node expand animation by removing slide transition
 
@@ -414,6 +471,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-03 — Tag Sort Picker
 
 ### Changed
+
 - Replace DropdownMenu with Picker component for sidebar tag sort control
 - Shorten sort labels to compact single-line names (Most used, Least used, A → Z, Z → A)
 - Add leading icons to all sort options for visual clarity
@@ -423,12 +481,14 @@ Format: weekly entries grouped by feature area.
 ## 2026-04-02 — Journal Redesign and Task Improvements
 
 ### Added
+
 - Add resizable journal page with sidebar, day panel, calendar, and task list
 - Add hierarchical `#parent/child` tags with prefix queries, cascade operations, tree sidebar, and autocomplete
 - Add task deletion from drawer and deep-link from journal
 - Add focusAtEnd click-to-focus behavior and auto-open for select-type property pickers
 
 ### Fixed
+
 - Fix find-in-page to scroll to match on search and navigation
 - Fix task status rollback from completed state
 - Fix graph panel overflow and settings shortcut capture in input fields
@@ -436,6 +496,7 @@ Format: weekly entries grouped by feature area.
 - Fix vault indexer and editor plugins for hierarchical tags
 
 ### Changed
+
 - Redesign journal day view with ghost affordance layout and tab bar toggle
 - Convert right panels to fixed overlays with dynamic day panel width
 - Remove AI Agent panel and all related code
@@ -446,6 +507,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-03-29 — Settings Config.json Migration
 
 ### Changed
+
 - Move portable user preferences (theme, font, editor width) from SQLite to config.json as source of truth
 - Propagate synced remote settings to config.json and broadcast CHANGED events to renderer (fixes sync gap)
 - Populate SQLite settings cache from config.json on vault open with one-time migration for old vaults
@@ -455,6 +517,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-03-29 — Note Page
 
 ### Added
+
 - Redesign note page header with compact Paper-inspired layout
 - Add full-width toggle for note pages
 - Add hover preview cards for wiki-links and note tabs
@@ -470,11 +533,13 @@ Format: weekly entries grouped by feature area.
 - Add ghost affordance row for note metadata
 
 ### Fixed
+
 - Persist emoji in tab state for icon restoration on reopen
 - Omit current year in compact inbox date format
 - Quit app on all windows closed regardless of platform
 
 ### Changed
+
 - Migrate popups, menus, and form controls to Picker primitive (tags, properties, tasks, reminders, inbox filter, vault switcher, overflow menu)
 - Simplify NoteTitle to display-only emoji
 - Remove Instrument Serif font
@@ -485,9 +550,11 @@ Format: weekly entries grouped by feature area.
 ## 2026-03-25 — Settings Modal & Sidebar Polish
 
 ### Added
+
 - Add settings modal dialog with `SettingsModalProvider` context, replacing settings-as-tab pattern
 
 ### Changed
+
 - Remove `settings` tab type from TabType union and singleton list
 - Replace tint-mixed sidebar accent with neutral background tones across all themes
 - Switch active sidebar indicators from `bg-sidebar-accent-foreground` to `bg-tint`
@@ -500,6 +567,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-03-25 — Desktop Polish
 
 ### Added
+
 - Add inbox redesign with toolbar, filters, triage mode, link previews, and waveform visualizer
 - Add embedded tweet rendering with TweetCard component
 - Add reminder detail view with content routing
@@ -516,12 +584,14 @@ Format: weekly entries grouped by feature area.
 - Add Gelasio, Geist, and Inter font families
 
 ### Fixed
+
 - Fix inbox filing auto-link and metascraper field mapping
 - Fix graph crash on null node data
 - Fix tag count casting and prune orphaned definitions
 - Fix project ID resolution before creating onboarding task
 
 ### Changed
+
 - Extract shared settings primitives and redesign all settings pages
 - Replace custom toast notifications with Sonner
 - Remove non-Twitter platform support and simplify social URL parsing
@@ -530,6 +600,7 @@ Format: weekly entries grouped by feature area.
 - Migrate task design tokens and wire undoable task actions
 
 ### Performance
+
 - Parallelize vault open with window creation to reduce cold-start time
 - Optimize startup I/O and large-vault indexing speed
 
@@ -538,6 +609,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-03-19 — Tasks Refinement
 
 ### Added
+
 - Add kanban board view with priority and status column drops
 - Add cross-section parent task reordering via drag-drop
 - Add inline status and priority popover editors in task rows
@@ -555,11 +627,13 @@ Format: weekly entries grouped by feature area.
 - Hide project badge in single-project view
 
 ### Fixed
+
 - Fix kanban cross-column detection to use pointer position
 - Exclude subtasks from completed-task lists and preserve subtaskIds on complete
 - Fix subtask visibility in Today, Week, and Upcoming views
 
 ### Changed
+
 - Redesign task rows with Linear-style status indicators and compact layout
 - Replace task detail panel with slide-out drawer
 - Redesign kanban cards with updated badge layout
@@ -579,18 +653,21 @@ Format: weekly entries grouped by feature area.
 ## 2026-03-14 — White Theme, Tag Sync Fixes, Sidebar Polish
 
 ### Added
+
 - Add tag search and sort (by count/name) to sidebar tag section with localStorage persistence
 - Add `--graph-label-color` semantic token for theme-aware graph labels
 - Add `tagsOverride` parameter to `syncNoteToCache` for authoritative tag syncing
 - Add pasted text tag extraction to `extractInlineTags` (not just hashTag nodes)
 
 ### Fixed
+
 - Fix tag removal from editor not updating frontmatter and UI
 - Fix pasted tags not being highlighted or synced to frontmatter
 - Fix graph colors not updating on theme switch (dimmed nodes, edges, labels)
 - Fix graph labels defaulting to invisible color in dark mode
 
 ### Changed
+
 - Redesign sidebar quick actions as horizontal search bar + compact new-note button
 - Replace sidebar accordion mount/unmount with CSS grid-rows transition (no remount)
 - Remove tree provider entry animation (opacity/translate) for instant render
@@ -603,6 +680,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-03-13 — Inline AI Editing, Editor Polish, Domain Migration
 
 ### Added
+
 - Add BlockNote xl-ai inline editing with local HTTP chat server (Ollama, OpenAI, Anthropic)
 - Add AI commands: rewrite, summarize, expand, simplify, fix grammar, continue writing, translate
 - Add custom AI menu with selection-aware command sets and Cmd+J shortcut
@@ -610,19 +688,22 @@ Format: weekly entries grouped by feature area.
 - Add graceful SIGINT/SIGTERM shutdown with EIO-safe console transport
 
 ### Fixed
+
 - Fix Cmd+W to close window when only inbox tab remains (matching native macOS behavior)
 
 ### Changed
+
 - Migrate CSP connect-src domain from memry.app to memrynote.com
 - Upgrade BlockNote from 0.45.0 to 0.47.1
 - Increase editor bottom padding to 30vh for scroll breathing room
-- Allow http://127.0.0.1:* in CSP for local AI chat server
+- Allow http://127.0.0.1:\* in CSP for local AI chat server
 
 ---
 
 ## 2026-03-09 → 2026-03-12 — Graph View, Editor Tags, Design System
 
 ### Added
+
 - Add interactive knowledge graph view with Sigma.js and Graphology
 - Add tags as first-class graph nodes with entity-tag edges
 - Add inline hash-tag system in editor with space-to-complete
@@ -632,11 +713,13 @@ Format: weekly entries grouped by feature area.
 - Add synchronous theme preload to eliminate flash on startup
 
 ### Fixed
+
 - Fix graph node overlapping by spreading nodes and reducing sizes
 - Fix pre-compute force layout so graph opens without animation jitter
 - Fix UI state reset when switching vaults
 
 ### Changed
+
 - Redesign sidebar with warm editorial palette
 - Redesign note title with editorial typography
 - Redesign backlinks as horizontal compact cards
@@ -650,6 +733,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-03-02 → 2026-03-08 — Global Search, Inbox Redesign, Monorepo (#97, #98, #99)
 
 ### Added
+
 - Add FTS5 search backend with fuzzy fallback and Cmd+K command palette (#97)
 - Add settings system with decomposed sections, tag management, and preferences (#98)
 - Add triage mode with AI note suggestions for inbox (#99)
@@ -663,12 +747,14 @@ Format: weekly entries grouped by feature area.
 - Add convert-to-task IPC and note suggestion types
 
 ### Fixed
+
 - Fix voice recorder autoStart and inbox transcription refresh
 - Fix link filing for folder, note, and multi-note targets
 - Fix date serialization to use local-time and prevent off-by-one day shift
 - Fix async CRDT close destroying reopened docs
 
 ### Changed
+
 - Migrate to turborepo monorepo structure
 - Bump Node to 24
 - Remove Upcoming tab from task navigation
@@ -683,6 +769,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-02-23 → 2026-03-01 — Sync E2EE Phases 8–15, Security Hardening (#95)
 
 ### Added
+
 - Add field-level merge logic for tasks and projects with per-field vector clocks
 - Add offline clock management for deviceless editing
 - Add attachment upload/download service with chunked transfer and thumbnails
@@ -707,6 +794,7 @@ Format: weekly entries grouped by feature area.
 - Add alarm-cycle revocation fallback for WebSocket connections
 
 ### Fixed
+
 - Fix queue dequeue to atomically mark items in-flight
 - Fix binary file handling in applyUpsert (no .md writes for binaries)
 - Fix token rotation UNIQUE collision with retry
@@ -716,12 +804,14 @@ Format: weekly entries grouped by feature area.
 - Zero newVaultKey and newMasterKey after key rotation
 
 ### Changed
+
 - Extract SyncEngine God Object (2086 LOC) into focused modules
 - Harden engine with mutex, key cleanup, bounded retry, and pull validation
 - Streamline session management and logout process
 - Decouple auth from sync for instant post-auth redirect
 
 ### Performance
+
 - Parallelize CRDT snapshots and prefetch pull pages
 - Cache device public keys during pull cycle
 - Skip push when sync queue is empty
@@ -731,6 +821,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-02-16 → 2026-02-22 — Sync E2EE Phases 3–7, CRDT Architecture
 
 ### Added
+
 - Add hybrid CRDT sync architecture with Yjs for notes and journals
 - Add CRDT incremental update endpoints on server
 - Add Yjs collaboration to BlockNote editor with initial sync progress
@@ -745,6 +836,7 @@ Format: weekly entries grouped by feature area.
 - Add CRDT snapshot creation during writeback
 
 ### Fixed
+
 - Fix server security: remove DELETE bypass, rate-limit endpoints, check device revocation
 - Fix dead contentHash removal, crypto version validation
 - Fix sync engine decryption error handling and manifest integrity checks
@@ -755,6 +847,7 @@ Format: weekly entries grouped by feature area.
 - Fix sidebar note list invalidation on notes:updated event
 
 ### Changed
+
 - Extract per-type item handler strategy pattern for sync
 - Extract ContentSyncService base class from note/journal sync
 - Add periodic pull interval with skip logging
@@ -765,6 +858,7 @@ Format: weekly entries grouped by feature area.
 ## 2026-02-09 → 2026-02-15 — Sync E2EE Phases 1–2, Foundation (#95)
 
 ### Added
+
 - Add sync/E2EE dependencies (libsodium, cborg, keytar)
 - Scaffold sync and crypto directory structure
 - Add D1 database schema with 14 tables for sync infrastructure
@@ -781,12 +875,14 @@ Format: weekly entries grouped by feature area.
 - Add contract sync automation to prevent client/server drift
 
 ### Fixed
+
 - Fix server security: rate limiter schema, cleanup timestamps, JWT type validation
 - Fix crypto security: proper KDF derivation, buffer zeroing on exceptions
 - Fix 4xx client error retry (skip all except 429)
 - Fix clipboard promise rejection in recovery phrase cleanup
 
 ### Changed
+
 - Split ipc-sync.ts omnibus into domain-specific contract files
 - Replace preload duplicate type declarations with shared contract imports
 
@@ -801,6 +897,7 @@ _Sync E2EE specification and architecture planning. No code changes._
 ## 2026-01-19 → 2026-01-25 — Sync Specification
 
 ### Added
+
 - Add passwordless email OTP authentication specification
 - Add Ed25519 device-level signing specification
 - Add CRDT architecture plan (Yjs, IPC-backed provider, y-leveldb)
@@ -808,6 +905,7 @@ _Sync E2EE specification and architecture planning. No code changes._
 - Add Google OAuth integration specification
 
 ### Changed
+
 - Transition sync spec from y-indexeddb to y-leveldb
 - Refine OAuth integration to support only Google authentication
 
@@ -816,6 +914,7 @@ _Sync E2EE specification and architecture planning. No code changes._
 ## 2026-01-12 → 2026-01-18 — Journal Polish, Properties, Sync Spec
 
 ### Added
+
 - Add journal settings for sidebar visibility and stats footer
 - Add settings keyboard shortcut
 - Add property renaming functionality
@@ -825,9 +924,11 @@ _Sync E2EE specification and architecture planning. No code changes._
 - Add sync specification with key derivation, encryption, and rate limiting
 
 ### Fixed
+
 - Fix journal entry handling for serialized frontmatter properties
 
 ### Changed
+
 - Unify properties API for notes and journal entries
 - Integrate SidebarDrillDownProvider for folder view components
 
@@ -836,6 +937,7 @@ _Sync E2EE specification and architecture planning. No code changes._
 ## 2026-01-05 → 2026-01-11 — Folder View PR, Platform Polish (#94)
 
 ### Added
+
 - Add FTS and embedding queue systems for batched updates
 - Add WikiLink resolution for note and file navigation
 - Add inbox video file support
@@ -844,10 +946,12 @@ _Sync E2EE specification and architecture planning. No code changes._
 - Add advanced search with operators and filters
 
 ### Fixed
+
 - Fix tab component re-renders with memoization and useCallback
 - Fix FTS queue update error handling
 
 ### Changed
+
 - Merge PR #94: Folder View
 - Consolidate notes hooks into use-notes-query
 - Replace useTabs with useTabActions across components
@@ -855,6 +959,7 @@ _Sync E2EE specification and architecture planning. No code changes._
 - Remove electron-devtools-installer (use session.extensions API)
 
 ### Performance
+
 - Optimize TabContent and sidebar navigation rendering
 - Add batch tag queries for note retrieval
 
@@ -863,6 +968,7 @@ _Sync E2EE specification and architecture planning. No code changes._
 ## 2025-12-29 → 2026-01-04 — Inbox Completion, Folder View, Test Infrastructure
 
 ### Added
+
 - Add social media post extraction with dedicated social card component
 - Add AI filing suggestions with feedback tracking
 - Add sqlite-vec for local embedding vector similarity search
@@ -881,17 +987,20 @@ _Sync E2EE specification and architecture planning. No code changes._
 - Add database seeding for tests
 
 ### Fixed
+
 - Fix inbox archive to use soft deletion instead of hard delete
 - Fix note deletion to clean up links and refresh backlinks
 - Fix TitleInput to trigger onChange only on blur (not every keystroke)
 
 ### Changed
+
 - Replace delete operations with archive actions in inbox
 - Remove CardView and InboxCard components
 - Remove RemindersPanel from sidebar
 - Unify inbox detail panel (replace separate filing/preview panels)
 
 ### Performance
+
 - Memoize property cells and group header rows in folder view
 - Add AST caching for formula expression evaluator
 - Virtualize folder view rows for large datasets
@@ -901,6 +1010,7 @@ _Sync E2EE specification and architecture planning. No code changes._
 ## 2025-12-22 → 2025-12-28 — Task Data Layer, Notes Features, Journal System, Inbox Capture
 
 ### Added
+
 - Add task data layer with RepeatConfig, priority levels 0-4, project management
 - Add task persistence for kanban drag-drop and status changes
 - Add TanStack virtual scrolling for task lists
@@ -923,9 +1033,11 @@ _Sync E2EE specification and architecture planning. No code changes._
 - Add inline tag editing in inbox preview panel
 
 ### Fixed
+
 - Fix note titles to fetch asynchronously in task detail and note page
 
 ### Changed
+
 - Migrate rich text editor from Tiptap to BlockNote
 
 ---
@@ -933,6 +1045,7 @@ _Sync E2EE specification and architecture planning. No code changes._
 ## 2025-12-15 → 2025-12-21 — Core Data Layer, Specifications
 
 ### Added
+
 - Add core data layer with Drizzle ORM and SQLite (tasks T001-T093)
 - Add database migrations and schema for notes, tasks, projects, settings
 - Add vault management system
@@ -945,9 +1058,11 @@ _Sync E2EE specification and architecture planning. No code changes._
 - Add feature specifications for tasks, notes, journal, inbox, sync, and search
 
 ### Fixed
+
 - Fix shift+click selection to include folders
 
 ### Changed
+
 - Move action icons to COLLECTIONS section header
 - Remove virtual folder concept
 - Initialize speckit tooling and constitution documents
@@ -958,6 +1073,7 @@ _Sync E2EE specification and architecture planning. No code changes._
 ## 2025-12-08 → 2025-12-14 — Tab System, Journal, Note Page, AI Composer
 
 ### Added
+
 - Add split view tab system with drag-and-drop between panes
 - Add keyboard shortcuts for tab and split view management
 - Add browser-like tab styling with rounded active tabs
@@ -978,6 +1094,7 @@ _Sync E2EE specification and architecture planning. No code changes._
 - Add global AI agent panel
 
 ### Changed
+
 - Extract tab drag-and-drop logic into dedicated provider
 - Remove Inbox 2 page and consolidate navigation
 - Derive task selection from active tab instead of props
@@ -987,6 +1104,7 @@ _Sync E2EE specification and architecture planning. No code changes._
 ## 2025-12-01 → 2025-12-07 — Initial UI Scaffold, Task Management
 
 ### Added
+
 - Add sidebar with navigation, dropdown menus, and icon management
 - Add file tree component with drag-and-drop
 - Add IconPicker component for selecting icons
@@ -1004,8 +1122,10 @@ _Sync E2EE specification and architecture planning. No code changes._
 - Add custom scrollbar styles
 
 ### Changed
+
 - Lift drag-and-drop context from TasksPage to App.tsx
 - Remove FileTree component after redesign
 
 ### Performance
+
 - Replace React state focus with direct DOM focus in TreeNodeTrigger
