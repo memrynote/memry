@@ -126,6 +126,7 @@ describe('desktop release metadata', () => {
   it('rejects invalid release dates and tag suffixes', () => {
     assert.throws(() => validateReleaseDate('2026.04.27'), /zero-padded/)
     assert.throws(() => validateReleaseDate('2026.2.31'), /valid/)
+    assert.throws(() => parseReleaseTag('v1.4.2'), /release tag/)
     assert.throws(() => parseReleaseTag('v2026.4.27'), /release tag/)
     assert.throws(() => parseReleaseTag('2026-04-27'), /release tag/)
     assert.throws(() => parseReleaseTag('v2026-04-27.1'), /release tag/)
