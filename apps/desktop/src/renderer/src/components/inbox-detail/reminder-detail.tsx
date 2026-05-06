@@ -59,8 +59,8 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
   const [localViewedAt, setLocalViewedAt] = useState<Date | null>(item.viewedAt ?? null)
 
   const invalidateInbox = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
-    queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
+    void queryClient.invalidateQueries({ queryKey: inboxKeys.lists() })
+    void queryClient.invalidateQueries({ queryKey: inboxKeys.stats() })
   }, [queryClient])
 
   const handleSnooze = useCallback(
@@ -80,7 +80,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
 
   const handlePresetSnooze = useCallback(
     (getTime: () => Date) => {
-      handleSnooze(getTime().toISOString())
+      void handleSnooze(getTime().toISOString())
     },
     [handleSnooze]
   )
@@ -227,7 +227,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
           <Button
             variant="outline"
             size="sm"
-            onClick={handleMarkViewed}
+            onClick={() => void handleMarkViewed()}
             disabled={isMarkingViewed}
             className="h-auto py-0.5 px-2 text-[11px] text-muted-foreground border-border"
           >
@@ -268,7 +268,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
             </button>
           ))}
           <SnoozePicker
-            onSnooze={handleSnooze}
+            onSnooze={(snoozeUntil) => void handleSnooze(snoozeUntil)}
             disabled={isSnoozing}
             trigger={
               <button

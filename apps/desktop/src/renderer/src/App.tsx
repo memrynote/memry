@@ -358,8 +358,8 @@ function App(): React.JSX.Element {
   const { handleDragEnd: taskDragEnd, droppedPriorities } = useDragHandlers({
     tasks,
     projects,
-    onUpdateTask: handleUpdateTask,
-    onDeleteTask: handleDeleteTask,
+    onUpdateTask: (...args) => void handleUpdateTask(...args),
+    onDeleteTask: (...args) => void handleDeleteTask(...args),
     onReorder: handleReorder,
     getOrder: taskOrder.getOrder
   })

@@ -180,7 +180,7 @@ function ShortcutRow({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => onClearOverride(entry.id)}
+                  onClick={() => void onClearOverride(entry.id)}
                   className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                   title={t('shortcuts.resetTitle')}
                 >
@@ -224,18 +224,20 @@ function GlobalCaptureRow({
   )
   const captureRef = useRef<HTMLDivElement>(null)
 
-  const checkAndRegister = useCallback(async () => {
-    const result = await window.api.settings.registerGlobalCapture()
-    if (result.permissionRequired) {
-      setPermissionStatus('required')
-    } else if (result.registered) {
-      setPermissionStatus('granted')
-    }
-  }, [])
-
   useEffect(() => {
-    void checkAndRegister()
-  }, [checkAndRegister, binding])
+    let cancelled = false
+    void window.api.settings.registerGlobalCapture().then((result) => {
+      if (cancelled) return
+      if (result.permissionRequired) {
+        setPermissionStatus('required')
+      } else if (result.registered) {
+        setPermissionStatus('granted')
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [binding])
 
   const startCapture = useCallback(() => setIsCapturing(true), [])
   const stopCapture = useCallback(() => setIsCapturing(false), [])
@@ -451,7 +453,12 @@ export function ShortcutsSettings() {
         subtitle={t('shortcuts.header.subtitle')}
         action={
           hasCustomBindings ? (
-            <Button variant="outline" size="sm" onClick={handleResetAll} className="gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleResetAll()}
+              className="gap-1.5"
+            >
               <RotateCcw className="w-3.5 h-3.5" />
               {t('shortcuts.resetAll')}
             </Button>

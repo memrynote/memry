@@ -106,7 +106,7 @@ export function GroupBySelector({
     if (custom) return capitalizeFirst(custom.name)
 
     return capitalizeFirst(groupBy.property)
-  }, [groupBy?.property, builtInColumns, availableProperties])
+  }, [groupBy, builtInColumns, availableProperties])
 
   // Handle property selection
   const handleSelectProperty = useCallback(

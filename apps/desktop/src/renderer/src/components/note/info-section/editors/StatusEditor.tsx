@@ -6,8 +6,7 @@ import { SelectChip } from './SelectChip'
 import type {
   StatusCategories,
   StatusCategoryKey,
-  SelectOption,
-  STATUS_CATEGORY_KEYS
+  SelectOption
 } from '@memry/contracts/property-types'
 import { useT } from '@memry/i18n/renderer'
 

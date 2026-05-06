@@ -19,14 +19,20 @@ export function useJournalChangeInvalidation(
 ): void {
   const queryClient = useQueryClient()
   const matchDateRef = useRef(matchDate)
-  matchDateRef.current = matchDate
   const queryKeyRef = useRef(queryKey)
-  queryKeyRef.current = queryKey
+
+  useEffect(() => {
+    matchDateRef.current = matchDate
+  }, [matchDate])
+
+  useEffect(() => {
+    queryKeyRef.current = queryKey
+  }, [queryKey])
 
   useEffect(() => {
     const invalidate = (eventDate: string) => {
       if (matchDateRef.current(eventDate)) {
-        queryClient.invalidateQueries({ queryKey: queryKeyRef.current })
+        void queryClient.invalidateQueries({ queryKey: queryKeyRef.current })
       }
     }
 

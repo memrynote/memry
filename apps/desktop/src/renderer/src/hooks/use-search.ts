@@ -96,37 +96,39 @@ export function useSearch(): UseSearchReturn {
     setState((prev) => ({ ...prev, loading: true }))
     const requestId = ++abortRef.current
 
-    timerRef.current = setTimeout(async () => {
-      try {
-        const response: SearchResponse = await searchService.query({
-          text: trimmed,
-          types: filters.types,
-          tags: filters.tags,
-          dateRange: filters.dateRange,
-          projectId: null,
-          folderPath: null,
-          limit: 10,
-          offset: 0
-        })
+    timerRef.current = setTimeout(() => {
+      void (async () => {
+        try {
+          const response: SearchResponse = await searchService.query({
+            text: trimmed,
+            types: filters.types,
+            tags: filters.tags,
+            dateRange: filters.dateRange,
+            projectId: null,
+            folderPath: null,
+            limit: 10,
+            offset: 0
+          })
 
-        if (abortRef.current !== requestId) return
+          if (abortRef.current !== requestId) return
 
-        setState((prev) => ({
-          ...prev,
-          results: response.groups,
-          totalCount: response.totalCount,
-          queryTimeMs: response.queryTimeMs,
-          loading: false,
-          error: null
-        }))
-      } catch (err) {
-        if (abortRef.current !== requestId) return
-        setState((prev) => ({
-          ...prev,
-          loading: false,
-          error: err instanceof Error ? err.message : 'Search failed'
-        }))
-      }
+          setState((prev) => ({
+            ...prev,
+            results: response.groups,
+            totalCount: response.totalCount,
+            queryTimeMs: response.queryTimeMs,
+            loading: false,
+            error: null
+          }))
+        } catch (err) {
+          if (abortRef.current !== requestId) return
+          setState((prev) => ({
+            ...prev,
+            loading: false,
+            error: err instanceof Error ? err.message : 'Search failed'
+          }))
+        }
+      })()
     }, DEBOUNCE_MS)
 
     return () => {

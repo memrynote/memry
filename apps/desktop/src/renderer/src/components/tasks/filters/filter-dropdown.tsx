@@ -35,6 +35,13 @@ interface FilterDropdownProps {
 
 type ActivePanel = null | 'priority' | 'status' | 'dueDate' | 'project' | 'status-project-picker'
 
+const FILTER_CATEGORIES: { key: NonNullable<ActivePanel>; label: string }[] = [
+  { key: 'priority', label: 'Priority' },
+  { key: 'status', label: 'Status' },
+  { key: 'dueDate', label: 'Due date' },
+  { key: 'project', label: 'Project' }
+]
+
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   priority: (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-muted-foreground">
@@ -180,17 +187,10 @@ export const FilterDropdown = ({
     onUpdateFilters({ projectIds: [] })
   }, [onUpdateFilters])
 
-  const categories: { key: NonNullable<ActivePanel>; label: string }[] = [
-    { key: 'priority', label: 'Priority' },
-    { key: 'status', label: 'Status' },
-    { key: 'dueDate', label: 'Due date' },
-    { key: 'project', label: 'Project' }
-  ]
-
   const filteredCategories = useMemo(() => {
-    if (!searchQuery) return categories
+    if (!searchQuery) return FILTER_CATEGORIES
     const q = searchQuery.toLowerCase()
-    return categories.filter((c) => c.label.toLowerCase().includes(q))
+    return FILTER_CATEGORIES.filter((c) => c.label.toLowerCase().includes(q))
   }, [searchQuery])
 
   return (

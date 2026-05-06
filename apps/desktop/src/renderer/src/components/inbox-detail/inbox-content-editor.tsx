@@ -86,7 +86,7 @@ export const InboxContentEditor = memo(function InboxContentEditor({
         if (typeof initialContent === 'string' && initialContent.trim()) {
           // Try to parse as HTML first, fallback to plain text
           try {
-            const blocks = await editor.tryParseHTMLToBlocks(initialContent)
+            const blocks = editor.tryParseHTMLToBlocks(initialContent)
             if (blocks.length > 0) {
               editor.replaceBlocks(editor.document, blocks)
             } else {
@@ -110,7 +110,7 @@ export const InboxContentEditor = memo(function InboxContentEditor({
         isContentReadyRef.current = true
       }
     }
-    loadContent()
+    void loadContent()
   }, [editor, initialContent])
 
   // Handle content changes - convert to HTML and notify parent
@@ -121,7 +121,7 @@ export const InboxContentEditor = memo(function InboxContentEditor({
       onTitleChange?.(extractTitleFromBlocks(editor.document))
 
       if (onContentChange) {
-        const html = await editor.blocksToHTMLLossy(editor.document)
+        const html = editor.blocksToHTMLLossy(editor.document)
         onContentChange(html)
       }
     } catch (error) {
@@ -175,7 +175,7 @@ export const InboxContentEditor = memo(function InboxContentEditor({
       <BlockNoteView
         editor={editor}
         editable={editable}
-        onChange={handleChange}
+        onChange={() => void handleChange()}
         theme={editorTheme}
       />
     </div>

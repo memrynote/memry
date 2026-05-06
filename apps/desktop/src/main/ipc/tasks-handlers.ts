@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/require-await */
-
 import { BrowserWindow, ipcMain } from 'electron'
 import type { TasksDomainPublisher } from '@memry/domain-tasks'
 import { TasksChannels } from '@memry/contracts/ipc-channels'

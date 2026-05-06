@@ -121,7 +121,7 @@ export const TabContextMenu = ({
     ]
   )
 
-  return <div onContextMenu={handleContextMenu}>{children}</div>
+  return <div onContextMenu={(...args) => void handleContextMenu(...args)}>{children}</div>
 }
 
 export default TabContextMenu

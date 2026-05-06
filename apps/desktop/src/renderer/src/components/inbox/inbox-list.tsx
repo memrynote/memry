@@ -374,7 +374,7 @@ export interface InboxListItemProps {
 
 export function InboxListItem({
   item,
-  period,
+  period: _period,
   isExiting = false,
   isQuickFileActive = false,
   quickFileQuery = '',
@@ -389,7 +389,7 @@ export function InboxListItem({
   onQuickFileArrowDown,
   onQuickFileArrowUp,
   onQuickFileFolderSelect,
-  onRetryTranscription,
+  onRetryTranscription: _onRetryTranscription,
   className
 }: InboxListItemProps) {
   const { t } = useT('inbox')

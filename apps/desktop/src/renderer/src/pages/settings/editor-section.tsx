@@ -80,7 +80,10 @@ export function EditorSettings() {
 
       <SettingsGroup label={t('editor.groups.layout')}>
         <SettingRow label={t('editor.width.label')} description={t('editor.width.description')}>
-          <Select value={settings.width} onValueChange={handleWidthChange}>
+          <Select
+            value={settings.width}
+            onValueChange={(...args) => void handleWidthChange(...args)}
+          >
             <SelectTrigger className={COMPACT_SELECT}>
               <SelectValue />
             </SelectTrigger>
@@ -100,7 +103,7 @@ export function EditorSettings() {
         >
           <Switch
             checked={settings.toolbarMode === 'sticky'}
-            onCheckedChange={handleToolbarModeChange}
+            onCheckedChange={(...args) => void handleToolbarModeChange(...args)}
             className={ACCENT_SWITCH}
           />
         </SettingRow>
@@ -113,7 +116,7 @@ export function EditorSettings() {
         >
           <Switch
             checked={settings.spellCheck}
-            onCheckedChange={handleSpellCheckChange}
+            onCheckedChange={(...args) => void handleSpellCheckChange(...args)}
             className={ACCENT_SWITCH}
           />
         </SettingRow>
@@ -128,7 +131,7 @@ export function EditorSettings() {
               max={30000}
               step={1000}
               value={[settings.autoSaveDelay]}
-              onValueCommit={handleAutoSaveDelayChange}
+              onValueCommit={(...args) => void handleAutoSaveDelayChange(...args)}
               className="flex-1 max-w-xs"
             />
             <span className="text-xs/4 font-medium text-muted-foreground w-8 text-end shrink-0">
@@ -143,7 +146,7 @@ export function EditorSettings() {
         >
           <Switch
             checked={settings.showWordCount}
-            onCheckedChange={handleWordCountChange}
+            onCheckedChange={(...args) => void handleWordCountChange(...args)}
             className={ACCENT_SWITCH}
           />
         </SettingRow>

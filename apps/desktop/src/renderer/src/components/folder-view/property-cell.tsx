@@ -24,6 +24,7 @@ import {
 } from '@/components/note/info-section/editors'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { stringifyUnknown } from '@/lib/stringify-unknown'
 
 // ============================================================================
 // Types
@@ -253,32 +254,40 @@ function PropertyValueDisplay({
       return <NumberCell value={value} className={className} />
 
     case 'date':
-      return <DateCell value={String(value)} className={className} />
+      return <DateCell value={stringifyUnknown(value)} className={className} />
 
     case 'select':
-      return <SelectCell value={String(value)} className={className} />
+      return <SelectCell value={stringifyUnknown(value)} className={className} />
 
     case 'multiselect': {
-      const items = Array.isArray(value) ? value : String(value).split(',')
-      return <MultiSelectCell values={items.map(String)} className={className} />
+      const items = Array.isArray(value) ? value : stringifyUnknown(value).split(',')
+      return <MultiSelectCell values={items.map(stringifyUnknown)} className={className} />
     }
 
     case 'url':
       return urlAsLink ? (
-        <UrlCell value={String(value)} className={className} />
+        <UrlCell value={stringifyUnknown(value)} className={className} />
       ) : (
-        <TextCell value={String(value)} highlightQuery={highlightQuery} className={className} />
+        <TextCell
+          value={stringifyUnknown(value)}
+          highlightQuery={highlightQuery}
+          className={className}
+        />
       )
 
     case 'rating': {
-      const rating = typeof value === 'number' ? value : parseInt(String(value), 10) || 0
+      const rating = typeof value === 'number' ? value : parseInt(stringifyUnknown(value), 10) || 0
       return <RatingCell value={rating} className={className} />
     }
 
     case 'text':
     default:
       return (
-        <TextCell value={String(value)} highlightQuery={highlightQuery} className={className} />
+        <TextCell
+          value={stringifyUnknown(value)}
+          highlightQuery={highlightQuery}
+          className={className}
+        />
       )
   }
 }
@@ -369,18 +378,18 @@ export const EditablePropertyCell = memo(function EditablePropertyCell({
       value === null || value === undefined
         ? ''
         : Array.isArray(value)
-          ? value.map(String).join(', ')
-          : String(value)
+          ? value.map(stringifyUnknown).join(', ')
+          : stringifyUnknown(value)
     const numberValue =
       typeof value === 'number'
         ? value
         : (() => {
-            const parsed = parseFloat(String(value))
+            const parsed = parseFloat(stringifyUnknown(value))
             return Number.isFinite(parsed) ? parsed : null
           })()
     const dateValue = (() => {
       if (!value) return null
-      const parsed = new Date(String(value))
+      const parsed = new Date(stringifyUnknown(value))
       return isNaN(parsed.getTime()) ? null : parsed
     })()
 

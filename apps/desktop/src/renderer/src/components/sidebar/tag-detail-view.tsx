@@ -256,7 +256,7 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
                     isPinned
                     onClick={() => handleNoteClick(note)}
                     onPin={() => void pinNote(note.id)}
-                    onUnpin={() => unpinNote(note.id)}
+                    onUnpin={() => void unpinNote(note.id)}
                   />
                 ))}
                 <Separator className="my-2" />
@@ -274,8 +274,8 @@ export function TagDetailView({ tag, color, className }: TagDetailViewProps): Re
                 note={note}
                 isPinned={false}
                 onClick={() => handleNoteClick(note)}
-                onPin={() => pinNote(note.id)}
-                onUnpin={() => unpinNote(note.id)}
+                onPin={() => void pinNote(note.id)}
+                onUnpin={() => void unpinNote(note.id)}
               />
             ))}
 
@@ -475,7 +475,7 @@ function TagOverflowMenu({
                       c === color ? 'ring-2 ring-primary ring-offset-2' : ''
                     )}
                     style={{ backgroundColor: colors.background, borderColor: colors.text }}
-                    onClick={() => handleColorChange(c)}
+                    onClick={() => void handleColorChange(c)}
                     disabled={isUpdatingColor}
                     title={c}
                   />

@@ -52,11 +52,16 @@ export function SetupWizard(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(false)
   const [isResending, setIsResending] = useState(false)
   const [recoveryPhrase, setRecoveryPhrase] = useState<string | null>(null)
+  const [now, setNow] = useState(() => Date.now())
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const expiresIn = wizardExpiresAt
-    ? Math.max(0, Math.floor((wizardExpiresAt - Date.now()) / 1000))
-    : 60
+  const expiresIn = wizardExpiresAt ? Math.max(0, Math.floor((wizardExpiresAt - now) / 1000)) : 60
+
+  useEffect(() => {
+    if (!wizardExpiresAt) return
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [wizardExpiresAt])
 
   useEffect(() => {
     const el = containerRef.current
@@ -86,7 +91,8 @@ export function SetupWizard(): React.JSX.Element {
   }, [wizardStep, recoveryPhrase])
 
   useEffect(() => {
-    setIsLoading(false)
+    const resetLoadingTimer = window.setTimeout(() => setIsLoading(false), 0)
+    return () => window.clearTimeout(resetLoadingTimer)
   }, [wizardStep])
 
   const isRecoveryStep = wizardStep === 'recovery-display' || wizardStep === 'recovery-confirm'

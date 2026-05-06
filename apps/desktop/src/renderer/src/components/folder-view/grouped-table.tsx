@@ -12,7 +12,7 @@
  * - T114: Per-group summaries (when showSummary is enabled)
  */
 
-import { useMemo, useCallback, useState, useEffect, useRef, memo } from 'react'
+import { useMemo, useCallback, useState, useRef, memo } from 'react'
 import {
   useReactTable,
   getCoreRowModel,
@@ -66,6 +66,7 @@ import {
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { evaluateFormula } from '@/lib/expression-evaluator'
+import { stringifyUnknown } from '@/lib/stringify-unknown'
 import {
   getColumnValues,
   computeSummary,
@@ -191,10 +192,10 @@ const globalFilterFn: FilterFn<NoteWithProperties> = (row, columnId, filterValue
   const searchValue = String(filterValue).toLowerCase()
 
   if (Array.isArray(value)) {
-    return value.some((item) => String(item).toLowerCase().includes(searchValue))
+    return value.some((item) => stringifyUnknown(item).toLowerCase().includes(searchValue))
   }
 
-  return String(value).toLowerCase().includes(searchValue)
+  return stringifyUnknown(value).toLowerCase().includes(searchValue)
 }
 
 /**
@@ -283,9 +284,9 @@ function getGroupDisplayValue(value: unknown): string {
     return '(Empty)'
   }
   if (Array.isArray(value)) {
-    return value.length > 0 ? value.join(', ') : '(Empty)'
+    return value.length > 0 ? value.map(stringifyUnknown).join(', ') : '(Empty)'
   }
-  return String(value)
+  return stringifyUnknown(value)
 }
 
 // ============================================================================
@@ -488,7 +489,7 @@ export function GroupedTable({
   const renderDateCell = useCallback((info: CellContext<NoteWithProperties, unknown>) => {
     const value = info.getValue()
     if (!value) return <span className="text-muted-foreground/50">—</span>
-    return <DateCell value={String(value)} />
+    return <DateCell value={stringifyUnknown(value)} />
   }, [])
 
   const renderWordCountCell = useCallback((info: CellContext<NoteWithProperties, unknown>) => {
@@ -537,8 +538,13 @@ export function GroupedTable({
         if (typeof result === 'number') return <NumberCell value={result} />
         if (result instanceof Date) return <DateCell value={result.toISOString()} />
         if (Array.isArray(result))
-          return <TextCell value={result.join(', ')} highlightQuery={highlightQuery} />
-        return <TextCell value={String(result)} highlightQuery={highlightQuery} />
+          return (
+            <TextCell
+              value={result.map(stringifyUnknown).join(', ')}
+              highlightQuery={highlightQuery}
+            />
+          )
+        return <TextCell value={stringifyUnknown(result)} highlightQuery={highlightQuery} />
       }
     },
     [highlightQuery]

@@ -105,7 +105,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         }
       }
     },
-    [deps.noteMap, deps.setSelectedIds, openTab]
+    [deps, openTab]
   )
 
   const handleOpenFolderView = useCallback(
@@ -176,15 +176,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     } finally {
       setIsCreating(false)
     }
-  }, [
-    isCreating,
-    deps.mutations.createNote.mutateAsync,
-    deps.selectedIds,
-    deps.computeTargetFolder,
-    deps.expandFolderPath,
-    openTab,
-    generalSettings.createInSelectedFolder
-  ])
+  }, [isCreating, generalSettings.createInSelectedFolder, deps, openTab])
 
   const handleCreateNoteInFolder = useCallback(
     async (folderPath: string) => {
@@ -227,7 +219,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         setIsCreating(false)
       }
     },
-    [isCreating, deps.mutations.createNote.mutateAsync, openTab]
+    [isCreating, deps.mutations.createNote, openTab]
   )
 
   // ---- Create folder ----
@@ -270,16 +262,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     } finally {
       setIsCreatingFolder(false)
     }
-  }, [
-    isCreatingFolder,
-    deps.createFolderMutation,
-    deps.folders,
-    deps.selectedIds,
-    deps.computeTargetFolder,
-    deps.expandFolderPath,
-    deps.refreshFolders,
-    generalSettings.createInSelectedFolder
-  ])
+  }, [isCreatingFolder, generalSettings.createInSelectedFolder, deps])
 
   const handleCreateSubfolder = useCallback(
     async (parentPath: string) => {
@@ -314,7 +297,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         setIsCreatingFolder(false)
       }
     },
-    [isCreatingFolder, deps.createFolderMutation, deps.folders, deps.refreshFolders]
+    [isCreatingFolder, deps]
   )
 
   // ---- Note rename ----
@@ -378,7 +361,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         setRenamingNoteId(null)
       }
     },
-    [renameValue, isRenaming, deps.mutations.renameNote.mutateAsync, revertOptimisticTitle]
+    [renameValue, isRenaming, revertOptimisticTitle, deps.mutations.renameNote]
   )
 
   const handleRenameCancel = useCallback(
@@ -437,7 +420,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         setRenamingFolderPath(null)
       }
     },
-    [folderRenameValue, isFolderRenaming, deps.refreshFolders]
+    [folderRenameValue, isFolderRenaming, deps]
   )
 
   const handleFolderRenameCancel = useCallback(() => {
@@ -510,15 +493,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     } finally {
       setIsDeleting(false)
     }
-  }, [
-    notesToDelete,
-    foldersToDelete,
-    isDeleting,
-    deps.mutations.deleteNote.mutateAsync,
-    closeTab,
-    deps.refreshFolders,
-    deps.setSelectedIds
-  ])
+  }, [notesToDelete, foldersToDelete, isDeleting, deps, closeTab])
 
   // ---- External / Finder ----
 
@@ -571,7 +546,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
       }
       setFolderToConfigureTemplate(null)
     },
-    [folderToConfigureTemplate, deps.setFolderTemplateNames]
+    [folderToConfigureTemplate, deps]
   )
 
   const handleClearFolderTemplate = useCallback(
@@ -594,7 +569,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         )
       }
     },
-    [deps.setFolderTemplateNames]
+    [deps]
   )
 
   // ---- Move / Reorder ----
@@ -633,7 +608,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         return false
       }
     },
-    [deps.noteMap, deps.mutations.moveNote.mutateAsync]
+    [deps.noteMap, deps.mutations.moveNote]
   )
 
   const handleFolderMove = useCallback(
@@ -683,7 +658,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         return false
       }
     },
-    [deps.noteMap, deps.refreshFolders]
+    [deps]
   )
 
   const handleReorderInFolder = useCallback(
@@ -729,7 +704,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         return false
       }
     },
-    [deps.tree, deps.noteMap, deps.setNotePositions]
+    [deps]
   )
 
   const handleReorderFoldersInParent = useCallback(
@@ -770,7 +745,7 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
         return false
       }
     },
-    [deps.tree, deps.setNotePositions]
+    [deps]
   )
 
   const handleMove = useCallback(
@@ -869,14 +844,12 @@ export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
     },
     [
       isMoving,
-      deps.selectedIds,
-      deps.noteMap,
-      deps.setSelectedIds,
+      deps,
       calculateTargetFolder,
-      handleNoteMove,
+      handleReorderFoldersInParent,
       handleFolderMove,
       handleReorderInFolder,
-      handleReorderFoldersInParent
+      handleNoteMove
     ]
   )
 

@@ -146,7 +146,7 @@ export class CrdtSyncCoordinator {
           }
 
           const decrypted = decryptCrdtUpdate(packed, vaultKey, noteId, signerPubKey)
-          this.ctx.deps.crdtProvider!.applyRemoteUpdate(noteId, decrypted)
+          this.ctx.deps.crdtProvider.applyRemoteUpdate(noteId, decrypted)
           since = this.rememberAppliedSequence(noteId, entry.sequenceNum)
         }
 
@@ -198,7 +198,7 @@ export class CrdtSyncCoordinator {
       const activeSince = new Map(sinceMap)
 
       while (activeSince.size > 0) {
-        if (this.ctx.abortController!.signal.aborted) return
+        if (this.ctx.abortController.signal.aborted) return
 
         const notes = Array.from(activeSince, ([noteId, since]) => ({ noteId, since }))
 
@@ -209,7 +209,7 @@ export class CrdtSyncCoordinator {
               { notes, limit: 100 },
               token
             ),
-          { maxRetries: 3, baseDelayMs: 2000, signal: this.ctx.abortController!.signal }
+          { maxRetries: 3, baseDelayMs: 2000, signal: this.ctx.abortController.signal }
         ).then((r) => r.value)
 
         const signerIds = new Set<string>()
@@ -235,7 +235,7 @@ export class CrdtSyncCoordinator {
               continue
             }
             const decrypted = decryptCrdtUpdate(packed, vaultKey, noteId, pubKey)
-            this.ctx.deps.crdtProvider!.applyRemoteUpdate(noteId, decrypted)
+            this.ctx.deps.crdtProvider.applyRemoteUpdate(noteId, decrypted)
             activeSince.set(noteId, this.rememberAppliedSequence(noteId, entry.sequenceNum))
           }
 

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 
 // ============================================================================
 // TYPES
@@ -68,13 +68,16 @@ const initialSelectionState: SelectionState = {
   selectAllState: 'none'
 }
 
-const areSetsEqual = (left: Set<string>, right: Set<string>): boolean => {
-  if (left.size !== right.size) return false
-  for (const value of left) {
-    if (!right.has(value)) return false
-  }
-  return true
-}
+const createSelectionState = (
+  selectedIds: Set<string>,
+  previousLastSelectedId: string | null,
+  visibleTaskCount: number
+): SelectionState => ({
+  selectedIds: new Set(selectedIds),
+  isSelectionMode: selectedIds.size > 0,
+  lastSelectedId: getNextLastSelectedId(selectedIds, previousLastSelectedId),
+  selectAllState: getSelectAllState(selectedIds.size, visibleTaskCount)
+})
 
 const getSelectAllState = (
   selectedCount: number,
@@ -113,41 +116,22 @@ export const useTaskSelection = (
   const [internalSelection, setInternalSelectionState] = useState<SelectionState>(() => {
     if (controlledSelectedIds === undefined) return initialSelectionState
 
-    return {
-      selectedIds: new Set(controlledSelectedIds),
-      isSelectionMode: controlledSelectedIds.size > 0,
-      lastSelectedId: getNextLastSelectedId(controlledSelectedIds, null),
-      selectAllState: getSelectAllState(controlledSelectedIds.size, visibleTaskIds.length)
-    }
+    return createSelectionState(controlledSelectedIds, null, visibleTaskIds.length)
   })
-  const selectionRef = useRef(internalSelection)
-  const previousControlledSelectedIdsRef = useRef(controlledSelectedIds)
+  const [previousControlledSelectedIds, setPreviousControlledSelectedIds] =
+    useState(controlledSelectedIds)
 
-  selectionRef.current = internalSelection
-
-  if (controlledSelectedIds !== previousControlledSelectedIdsRef.current) {
-    previousControlledSelectedIdsRef.current = controlledSelectedIds
+  let currentSelection = internalSelection
+  if (controlledSelectedIds !== previousControlledSelectedIds) {
+    setPreviousControlledSelectedIds(controlledSelectedIds)
 
     if (controlledSelectedIds !== undefined) {
-      const nextSelection: SelectionState = {
-        selectedIds: new Set(controlledSelectedIds),
-        isSelectionMode: controlledSelectedIds.size > 0,
-        lastSelectedId: getNextLastSelectedId(
-          controlledSelectedIds,
-          selectionRef.current.lastSelectedId
-        ),
-        selectAllState: getSelectAllState(controlledSelectedIds.size, visibleTaskIds.length)
-      }
-
-      if (
-        !areSetsEqual(nextSelection.selectedIds, selectionRef.current.selectedIds) ||
-        nextSelection.isSelectionMode !== selectionRef.current.isSelectionMode ||
-        nextSelection.lastSelectedId !== selectionRef.current.lastSelectedId ||
-        nextSelection.selectAllState !== selectionRef.current.selectAllState
-      ) {
-        selectionRef.current = nextSelection
-        setInternalSelectionState(nextSelection)
-      }
+      currentSelection = createSelectionState(
+        controlledSelectedIds,
+        internalSelection.lastSelectedId,
+        visibleTaskIds.length
+      )
+      setInternalSelectionState(currentSelection)
     }
   }
 
@@ -157,9 +141,9 @@ export const useTaskSelection = (
     [visibleTaskIds.length]
   )
 
-  const selectedIds = selectionRef.current.selectedIds
-  const lastSelectedId = getNextLastSelectedId(selectedIds, selectionRef.current.lastSelectedId)
-  const isSelectionMode = selectionRef.current.isSelectionMode
+  const selectedIds = currentSelection.selectedIds
+  const lastSelectedId = getNextLastSelectedId(selectedIds, currentSelection.lastSelectedId)
+  const isSelectionMode = currentSelection.isSelectionMode
   const selectAllState = calculateSelectAllState(selectedIds.size)
   const selection = useMemo<SelectionState>(
     () => ({
@@ -181,14 +165,20 @@ export const useTaskSelection = (
 
   const setSelection = useCallback(
     (updater: SelectionState | ((prev: SelectionState) => SelectionState)): void => {
-      const nextSelection =
-        typeof updater === 'function'
-          ? (updater as (prev: SelectionState) => SelectionState)(selectionRef.current)
-          : updater
+      let nextSelectedIds: Set<string> | null = null
+      setInternalSelectionState((prev) => {
+        const nextSelection =
+          typeof updater === 'function'
+            ? (updater as (prev: SelectionState) => SelectionState)(prev)
+            : updater
 
-      selectionRef.current = nextSelection
-      setInternalSelectionState(nextSelection)
-      onSelectionChange?.(nextSelection.selectedIds)
+        nextSelectedIds = nextSelection.selectedIds
+        return nextSelection
+      })
+
+      if (nextSelectedIds) {
+        onSelectionChange?.(nextSelectedIds)
+      }
     },
     [onSelectionChange]
   )

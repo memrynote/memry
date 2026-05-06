@@ -16,7 +16,7 @@ export function BacklinkSnippet({ mention, className }: BacklinkSnippetProps) {
   let key = 0
 
   for (const match of snippet.matchAll(WIKILINK_RE)) {
-    const matchIndex = match.index!
+    const matchIndex = match.index
     if (matchIndex > lastIndex) {
       parts.push(snippet.slice(lastIndex, matchIndex))
     }

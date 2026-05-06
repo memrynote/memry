@@ -309,7 +309,7 @@ export function useNoteEditor(
       // Schedule save
       saveTimeoutRef.current = setTimeout(() => {
         if (pendingContentRef.current !== null) {
-          performSave(pendingContentRef.current)
+          void performSave(pendingContentRef.current)
           pendingContentRef.current = null
         }
       }, debounceMs)

@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { cn } from '@/lib/utils'
-import { Bell, Bookmark, MoreHorizontal, History, Monitor, GitGraph } from '@/lib/icons'
+import { Bookmark, MoreHorizontal, History, Monitor, GitGraph } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,

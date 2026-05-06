@@ -5,7 +5,7 @@ import {
   CalendarEventSyncPayloadSchema,
   type CalendarEventSyncPayload
 } from '@memry/contracts/sync-payloads'
-import type { FieldClocks, VectorClock } from '@memry/contracts/sync-api'
+import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
 import { increment } from '../vector-clock'
 import { initAllFieldClocks } from '../field-merge'
@@ -37,7 +37,7 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
       const now = utcNow()
 
       if (existing) {
-        const resolution = this.resolveClock(existing.clock as VectorClock | null, remoteClock)
+        const resolution = this.resolveClock(existing.clock, remoteClock)
         if (resolution.action === 'skip') {
           log.info('Skipping remote calendar event update, local is newer', { itemId })
           return 'skipped'
@@ -45,11 +45,8 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
 
         if (resolution.action === 'merge') {
           const localFC =
-            (existing.fieldClocks as FieldClocks | null) ??
-            initAllFieldClocks(
-              (existing.clock as VectorClock | null) ?? {},
-              CALENDAR_EVENT_SYNCABLE_FIELDS
-            )
+            existing.fieldClocks ??
+            initAllFieldClocks(existing.clock ?? {}, CALENDAR_EVENT_SYNCABLE_FIELDS)
           const remoteFC =
             remoteFieldClocks ?? initAllFieldClocks(remoteClock, CALENDAR_EVENT_SYNCABLE_FIELDS)
 
@@ -194,8 +191,8 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
       endAt: row.endAt ?? null,
       timezone: row.timezone,
       isAllDay: row.isAllDay,
-      recurrenceRule: (row.recurrenceRule as Record<string, unknown> | null) ?? null,
-      recurrenceExceptions: (row.recurrenceExceptions as string[] | null) ?? null,
+      recurrenceRule: row.recurrenceRule ?? null,
+      recurrenceExceptions: row.recurrenceExceptions ?? null,
       attendees: (row.attendees as Array<Record<string, unknown>> | null) ?? null,
       reminders: (row.reminders as Record<string, unknown> | null) ?? null,
       visibility: row.visibility ?? null,
@@ -203,7 +200,7 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
       conferenceData: (row.conferenceData as Record<string, unknown> | null) ?? null,
       archivedAt: row.archivedAt ?? null,
       clock: (row.clock as VectorClock) ?? undefined,
-      fieldClocks: (row.fieldClocks as FieldClocks | null) ?? undefined,
+      fieldClocks: row.fieldClocks ?? undefined,
       createdAt: row.createdAt,
       modifiedAt: row.modifiedAt
     }

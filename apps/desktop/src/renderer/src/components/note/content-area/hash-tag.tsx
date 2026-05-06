@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { createInlineContentSpec, type Block } from '@blocknote/core'
 import { TAG_COLORS, withAlpha } from '@/components/note/tags-row/tag-colors'

@@ -23,7 +23,9 @@ export function useAIConnections(content: string): UseAIConnectionsResult {
   const lastAnalyzedContentRef = useRef<string | null>(null)
 
   const contentRef = useRef(content)
-  contentRef.current = content
+  useEffect(() => {
+    contentRef.current = content
+  }, [content])
 
   const analyzeContent = useCallback(async (contentToAnalyze: string) => {
     if (abortControllerRef.current) {
@@ -99,14 +101,14 @@ export function useAIConnections(content: string): UseAIConnectionsResult {
 
       pendingAnalysisTimeout = setTimeout(() => {
         if (currentContent !== lastAnalyzedContentRef.current) {
-          analyzeContent(currentContent)
+          void analyzeContent(currentContent)
         }
       }, AI_ANALYSIS_DEBOUNCE_MS)
     }, 500)
 
     if (contentRef.current.length >= MIN_CONTENT_LENGTH) {
       pendingAnalysisTimeout = setTimeout(() => {
-        analyzeContent(contentRef.current)
+        void analyzeContent(contentRef.current)
       }, AI_ANALYSIS_DEBOUNCE_MS)
     }
 
@@ -137,7 +139,7 @@ export function useAIConnections(content: string): UseAIConnectionsResult {
       debounceTimerRef.current = null
     }
 
-    analyzeContent(contentRef.current)
+    void analyzeContent(contentRef.current)
   }, [analyzeContent])
 
   return {

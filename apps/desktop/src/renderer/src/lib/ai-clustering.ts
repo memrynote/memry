@@ -25,7 +25,7 @@ const TECH_KEYWORDS = [
 ]
 
 // Keywords that indicate research/reading content
-const READING_KEYWORDS = ['article', 'book', 'reading', 'research', 'study', 'paper']
+const _READING_KEYWORDS = ['article', 'book', 'reading', 'research', 'study', 'paper']
 
 /**
  * Detects clusters of related items based on the current selection.

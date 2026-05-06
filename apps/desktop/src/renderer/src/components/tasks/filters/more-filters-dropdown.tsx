@@ -66,8 +66,8 @@ export const MoreFiltersDropdown = ({
   hasTime,
   onHasTimeChange,
   taskCountByStatus = {},
-  taskCountByRepeat = { repeating: 0, oneTime: 0 },
-  taskCountByTime = { withTime: 0, withoutTime: 0 },
+  taskCountByRepeat: _taskCountByRepeat = { repeating: 0, oneTime: 0 },
+  taskCountByTime: _taskCountByTime = { withTime: 0, withoutTime: 0 },
   className
 }: MoreFiltersDropdownProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('tasks')

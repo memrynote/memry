@@ -35,7 +35,7 @@ class CalendarBindingHandler extends BaseItemHandler<CalendarBindingSyncPayload>
       const now = utcNow()
 
       if (existing) {
-        const resolution = this.resolveClock(existing.clock as VectorClock | null, remoteClock)
+        const resolution = this.resolveClock(existing.clock, remoteClock)
         if (resolution.action === 'skip') {
           log.info('Skipping remote calendar binding update, local is newer', { itemId })
           return 'skipped'
@@ -126,7 +126,7 @@ class CalendarBindingHandler extends BaseItemHandler<CalendarBindingSyncPayload>
       ownershipMode: row.ownershipMode,
       writebackMode: row.writebackMode,
       remoteVersion: row.remoteVersion ?? null,
-      lastLocalSnapshot: (row.lastLocalSnapshot as Record<string, unknown> | null) ?? null,
+      lastLocalSnapshot: row.lastLocalSnapshot ?? null,
       archivedAt: row.archivedAt ?? null,
       clock: (row.clock as VectorClock) ?? undefined,
       createdAt: row.createdAt,

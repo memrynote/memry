@@ -67,7 +67,7 @@ export function BacklinksSection({
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
   const [visibleCount, setVisibleCount] = useState(initialCount)
 
-  const backlinks = propBacklinks ?? []
+  const backlinks = useMemo(() => propBacklinks ?? [], [propBacklinks])
   const sortBy = propSortBy ?? internalSortBy
 
   const sortedBacklinks = useMemo(() => {

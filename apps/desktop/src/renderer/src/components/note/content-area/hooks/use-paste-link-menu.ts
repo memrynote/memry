@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useState } from 'react'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 
 const URL_REGEX = /^https?:\/\/\S+$/
@@ -33,17 +33,15 @@ interface UsePasteLinkMenuParams {
 
 export function usePasteLinkMenu({ editorContainerRef, onSelect }: UsePasteLinkMenuParams) {
   const [state, setState] = useState<PasteLinkMenuState>(INITIAL_STATE)
-  const stateRef = useRef(state)
-  stateRef.current = state
 
   const close = useCallback(() => setState(INITIAL_STATE), [])
 
   const handleSelect = useCallback(
     (option: PasteLinkOption) => {
-      onSelect(option, stateRef.current.url)
+      onSelect(option, state.url)
       close()
     },
-    [onSelect, close]
+    [onSelect, state.url, close]
   )
 
   useLayoutEffect(() => {
@@ -51,7 +49,7 @@ export function usePasteLinkMenu({ editorContainerRef, onSelect }: UsePasteLinkM
     if (!container) return
 
     const handlePaste = (e: ClipboardEvent): void => {
-      if (stateRef.current.isOpen) return
+      if (state.isOpen) return
 
       const text = e.clipboardData?.getData('text/plain')?.trim()
       if (!text || !URL_REGEX.test(text)) return
@@ -80,7 +78,7 @@ export function usePasteLinkMenu({ editorContainerRef, onSelect }: UsePasteLinkM
     }
 
     const handleKeyDown = (e: KeyboardEvent): void => {
-      const s = stateRef.current
+      const s = state
       if (!s.isOpen) return
 
       if (e.key === 'Escape') {
@@ -121,7 +119,7 @@ export function usePasteLinkMenu({ editorContainerRef, onSelect }: UsePasteLinkM
     }
 
     const handleClickAway = (e: MouseEvent): void => {
-      if (!stateRef.current.isOpen) return
+      if (!state.isOpen) return
       const target = e.target as HTMLElement
       if (target.closest('[data-paste-link-menu]')) return
       close()
@@ -136,7 +134,7 @@ export function usePasteLinkMenu({ editorContainerRef, onSelect }: UsePasteLinkM
       container.removeEventListener('keydown', handleKeyDown, { capture: true })
       document.removeEventListener('mousedown', handleClickAway)
     }
-  }, [editorContainerRef, handleSelect, close])
+  }, [editorContainerRef, state, handleSelect, close])
 
   return { state, close, handleSelect }
 }

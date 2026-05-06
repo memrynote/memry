@@ -54,7 +54,7 @@ export function usePropertySection({
       value: prop.value,
       isCustom: true
     }))
-  }, [backendProperties, mapPropertyType])
+  }, [backendProperties])
 
   const canPerformAction = useCallback(
     (action: PropertySectionAction) => {
@@ -105,7 +105,7 @@ export function usePropertySection({
         onError?.('add', error)
       }
     },
-    [canPerformAction, addProperty, includeExplicitType, onError, getDefaultValueForType]
+    [canPerformAction, properties, addProperty, includeExplicitType, onError]
   )
 
   const handleDeleteProperty = useCallback(
@@ -147,10 +147,10 @@ export function usePropertySection({
   return {
     properties,
     newlyAddedPropertyId,
-    handlePropertyChange,
-    handleAddProperty,
-    handleDeleteProperty,
-    handlePropertyNameChange,
-    handlePropertyOrderChange
+    handlePropertyChange: (...args) => void handlePropertyChange(...args),
+    handleAddProperty: (...args) => void handleAddProperty(...args),
+    handleDeleteProperty: (...args) => void handleDeleteProperty(...args),
+    handlePropertyNameChange: (...args) => void handlePropertyNameChange(...args),
+    handlePropertyOrderChange: (...args) => void handlePropertyOrderChange(...args)
   }
 }

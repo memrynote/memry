@@ -25,6 +25,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AutocompleteDropdown } from '@/components/ui/autocomplete-dropdown'
 import { cn } from '@/lib/utils'
+import { stringifyUnknown } from '@/lib/stringify-unknown'
 import { validateExpression } from '@/lib/expression-parser'
 import { evaluateFormula, getBuiltInFunctions } from '@/lib/expression-evaluator'
 import { useAutocomplete, type AutocompleteSuggestion } from '@/hooks/use-autocomplete'
@@ -316,7 +317,7 @@ export function FormulaEditorModal({
     if (typeof value === 'object') {
       return JSON.stringify(value)
     }
-    return String(value)
+    return stringifyUnknown(value)
   }, [])
 
   // Handle save
@@ -347,7 +348,7 @@ export function FormulaEditorModal({
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' && !nameError && expressionValidation.valid) {
         e.preventDefault()
-        handleSave()
+        void handleSave()
       }
     },
     [nameError, expressionValidation.valid, handleSave]
@@ -525,7 +526,7 @@ export function FormulaEditorModal({
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
             {tPhaseF('phaseF.componentsFolderViewFormulaEditorModal.cancel')}
           </Button>
-          <Button onClick={handleSave} disabled={!canSave}>
+          <Button onClick={() => void handleSave()} disabled={!canSave}>
             {isSubmitting ? 'Saving...' : isEditing ? 'Update' : 'Create'}
           </Button>
         </DialogFooter>

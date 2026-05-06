@@ -83,7 +83,7 @@ export function AppSidebar({ currentPage, viewCounts, ...props }: AppSidebarProp
 /**
  * Inner sidebar component that has access to the drill-down context.
  */
-function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps) {
+function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: AppSidebarProps) {
   const { t: tPhaseF } = useT('common')
   const [tagsActions, setTagsActions] = useState<React.ReactNode>(null)
   const notesActionsRef = useRef<NotesTreeActions | null>(null)
@@ -389,7 +389,7 @@ function AppSidebarInner({ currentPage, viewCounts, ...props }: AppSidebarProps)
         <div className="shrink-0 flex items-center px-3 pt-2 pb-0 group-data-[collapsible=icon]:hidden">
           <button
             type="button"
-            onClick={handleNewNote}
+            onClick={() => void handleNewNote()}
             className="flex flex-1 items-center justify-center gap-2 h-[30px] rounded-[5px] bg-sidebar-surface hover:bg-black/[0.06] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
             title={tPhaseF('phaseF.componentsAppSidebar.newNoteN')}
           >

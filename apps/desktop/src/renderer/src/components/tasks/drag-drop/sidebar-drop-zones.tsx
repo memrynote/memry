@@ -1,3 +1,4 @@
+import { createElement } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { Trash2, Archive, Settings } from '@/lib/icons'
 
@@ -106,11 +107,11 @@ export const DroppableProjectItem = ({
     >
       {/* Project Icon or Color Dot */}
       {IconComponent ? (
-        <IconComponent
-          className="size-4 shrink-0"
-          style={{ color: project.color }}
-          aria-hidden="true"
-        />
+        createElement(IconComponent, {
+          className: 'size-4 shrink-0',
+          style: { color: project.color },
+          'aria-hidden': 'true'
+        })
       ) : (
         <span
           className="size-3 shrink-0 rounded-full"

@@ -24,7 +24,6 @@ import { DatePickerCalendar } from './date-picker-calendar'
 import { cn } from '@/lib/utils'
 import {
   calculateNextOccurrences,
-  getOrdinalSuffix,
   DAY_NAMES,
   SHORT_DAY_NAMES,
   ORDINALS,
@@ -592,7 +591,7 @@ export const CustomRepeatDialog = ({
   dueDate
 }: CustomRepeatDialogProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('tasks')
-  const effectiveDueDate = dueDate || new Date()
+  const effectiveDueDate = useMemo(() => dueDate || new Date(), [dueDate])
 
   // Create a stable key that changes when dialog opens/closes or config changes
   // This causes React to unmount/remount the inner component, resetting all state

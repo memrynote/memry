@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('PropertiesCollapsed')
@@ -41,27 +41,34 @@ const persist = (noteId: string, collapsed: boolean): void => {
 export function usePropertiesCollapsed(
   noteId: string
 ): readonly [boolean, () => void, (next: boolean) => void] {
-  const [isCollapsed, setState] = useState<boolean>(() => readInitial(noteId))
+  const [collapseState, setCollapseState] = useState(() => ({
+    noteId,
+    isCollapsed: readInitial(noteId)
+  }))
 
-  useEffect(() => {
-    setState(readInitial(noteId))
-  }, [noteId])
+  let currentState = collapseState
+  if (currentState.noteId !== noteId) {
+    currentState = { noteId, isCollapsed: readInitial(noteId) }
+    setCollapseState(currentState)
+  }
 
   const setCollapsed = useCallback(
     (next: boolean) => {
-      setState(next)
+      setCollapseState({ noteId, isCollapsed: next })
       persist(noteId, next)
     },
     [noteId]
   )
 
   const toggle = useCallback(() => {
-    setState((prev) => {
-      const next = !prev
+    setCollapseState((previous) => {
+      const active =
+        previous.noteId === noteId ? previous : { noteId, isCollapsed: readInitial(noteId) }
+      const next = !active.isCollapsed
       persist(noteId, next)
-      return next
+      return { noteId, isCollapsed: next }
     })
   }, [noteId])
 
-  return [isCollapsed, toggle, setCollapsed] as const
+  return [currentState.isCollapsed, toggle, setCollapsed] as const
 }

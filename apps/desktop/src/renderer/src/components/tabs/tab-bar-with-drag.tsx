@@ -4,7 +4,7 @@
  * Uses parent DndContext from SplitViewContainer for cross-panel dragging
  */
 
-import { useRef, useState, useEffect, useLayoutEffect, useCallback } from 'react'
+import { useRef, useState, useLayoutEffect, useCallback } from 'react'
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
 import { ChevronLeft, ChevronRight, LayoutAlignRightIcon, PanelRightIcon } from '@/lib/icons'
 import { SidebarGraph } from '@/lib/icons/sidebar-nav-icons'

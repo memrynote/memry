@@ -66,6 +66,7 @@ import {
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { evaluateFormula } from '@/lib/expression-evaluator'
+import { stringifyUnknown } from '@/lib/stringify-unknown'
 import type {
   NoteWithProperties,
   ColumnConfig,
@@ -176,10 +177,10 @@ const globalFilterFn: FilterFn<NoteWithProperties> = (row, columnId, filterValue
 
   // Handle arrays (tags)
   if (Array.isArray(value)) {
-    return value.some((item) => String(item).toLowerCase().includes(searchValue))
+    return value.some((item) => stringifyUnknown(item).toLowerCase().includes(searchValue))
   }
 
-  return String(value).toLowerCase().includes(searchValue)
+  return stringifyUnknown(value).toLowerCase().includes(searchValue)
 }
 
 /**
@@ -450,7 +451,7 @@ export function FolderTableView({
   const renderDateCell = useCallback((info: CellContext<NoteWithProperties, unknown>) => {
     const value = info.getValue()
     if (!value) return <span className="text-muted-foreground/50">—</span>
-    return <DateCell value={String(value)} />
+    return <DateCell value={stringifyUnknown(value)} />
   }, [])
 
   // Memoized cell renderer for word count column
@@ -501,8 +502,13 @@ export function FolderTableView({
         if (typeof result === 'number') return <NumberCell value={result} />
         if (result instanceof Date) return <DateCell value={result.toISOString()} />
         if (Array.isArray(result))
-          return <TextCell value={result.join(', ')} highlightQuery={highlightQuery} />
-        return <TextCell value={String(result)} highlightQuery={highlightQuery} />
+          return (
+            <TextCell
+              value={result.map(stringifyUnknown).join(', ')}
+              highlightQuery={highlightQuery}
+            />
+          )
+        return <TextCell value={stringifyUnknown(result)} highlightQuery={highlightQuery} />
       }
     },
     [highlightQuery]

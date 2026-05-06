@@ -31,7 +31,7 @@ class CalendarSourceHandler extends BaseItemHandler<CalendarSourceSyncPayload> {
       const now = utcNow()
 
       if (existing) {
-        const resolution = this.resolveClock(existing.clock as VectorClock | null, remoteClock)
+        const resolution = this.resolveClock(existing.clock, remoteClock)
         if (resolution.action === 'skip') {
           log.info('Skipping remote calendar source update, local is newer', { itemId })
           return 'skipped'
@@ -137,7 +137,7 @@ class CalendarSourceHandler extends BaseItemHandler<CalendarSourceSyncPayload> {
       syncCursor: row.syncCursor ?? null,
       syncStatus: row.syncStatus,
       lastSyncedAt: row.lastSyncedAt ?? null,
-      metadata: (row.metadata as Record<string, unknown> | null) ?? null,
+      metadata: row.metadata ?? null,
       archivedAt: row.archivedAt ?? null,
       clock: (row.clock as VectorClock) ?? undefined,
       createdAt: row.createdAt,

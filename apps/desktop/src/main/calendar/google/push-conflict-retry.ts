@@ -4,7 +4,7 @@ import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { reminders } from '@memry/db-schema/schema/reminders'
 import { tasks } from '@memry/db-schema/schema/tasks'
-import type { FieldClocks, VectorClock } from '@memry/contracts/sync-api'
+import type { FieldClocks } from '@memry/contracts/sync-api'
 import { createLogger } from '../../lib/logger'
 import type { DataDb } from '../../database/types'
 import { enqueueLocalSyncUpdate } from '../../sync/local-mutations'
@@ -146,8 +146,7 @@ function mergeRemoteEventIntoLocal(
 
   const remoteData = mapGoogleEventToCalendarEventChanges(remote)
   const localFC: FieldClocks =
-    (existing.fieldClocks as FieldClocks | null) ??
-    initAllFieldClocks((existing.clock as VectorClock | null) ?? {}, CALENDAR_EVENT_SYNCABLE_FIELDS)
+    existing.fieldClocks ?? initAllFieldClocks(existing.clock ?? {}, CALENDAR_EVENT_SYNCABLE_FIELDS)
   const remoteFC: FieldClocks = {}
   for (const field of CALENDAR_EVENT_SYNCABLE_FIELDS) {
     remoteFC[field] = { ...(localFC[field] ?? {}) }

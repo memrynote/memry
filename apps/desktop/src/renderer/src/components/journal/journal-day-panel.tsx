@@ -462,9 +462,9 @@ export function JournalDayPanel({ date, className, onHoverColor }: JournalDayPan
                     key={task.id}
                     task={task}
                     statuses={statuses}
-                    onToggleComplete={handleToggleComplete}
-                    onStatusChange={handleStatusChange}
-                    onPriorityChange={handlePriorityChange}
+                    onToggleComplete={(...args) => void handleToggleComplete(...args)}
+                    onStatusChange={(...args) => void handleStatusChange(...args)}
+                    onPriorityChange={(...args) => void handlePriorityChange(...args)}
                     onNavigate={handleNavigateToTask}
                   />
                 )
