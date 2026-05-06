@@ -13,6 +13,7 @@
 ## Type
 
 <!-- Check one -->
+
 - [ ] `feat` — new feature
 - [ ] `fix` — bug fix
 - [ ] `refactor` — restructure without behavior change
@@ -26,6 +27,7 @@
 ## Test plan
 
 <!-- How was this tested? Check all that apply -->
+
 - [ ] Unit tests added/updated
 - [ ] Integration tests added/updated
 - [ ] Manual testing (describe below)
@@ -33,6 +35,12 @@
 ## Screenshots
 
 <!-- UI changes? Drop before/after screenshots here. Delete section if N/A -->
+
+## Release notes
+
+<!-- User-facing changes should add docs/releases/unreleased/<short-name>.md -->
+
+- [ ] Added user-facing release note, or this PR is internal only
 
 ## Checklist
 
