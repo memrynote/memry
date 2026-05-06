@@ -32,6 +32,8 @@
     "check:contract-boundaries": "node scripts/check-contract-boundaries.js",
     "check:architecture": "node scripts/check-architecture-boundaries.js",
     "check:native": "node apps/desktop/scripts/check-native.js",
+    "check:staged-secrets": "node scripts/check-staged-secrets.mjs",
+    "check:staged-renderer-guards": "node scripts/check-staged-renderer-guards.mjs",
     "ipc:generate": "pnpm --filter @memry/desktop ipc:generate",
     "ipc:check": "pnpm --filter @memry/desktop ipc:check",
     "sync:clean": "rm -rf apps/sync-server/.wrangler",
@@ -39,9 +41,12 @@
     "sync:reset": "pnpm sync:clean && pnpm sync:seed",
     "outdated:check": "pnpm outdated -r --format list | head -100",
     "check:lockfile": "node scripts/check-lockfile.js",
-    "prepare": "git config core.hooksPath .githooks"
+    "prepare": "husky"
   },
   "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.2",
+    "prettier": "^3.8.1",
     "turbo": "^2",
     "typescript": "^5.9.3"
   },
