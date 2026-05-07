@@ -24,7 +24,7 @@ Tasks live alongside notes. Multi-view (list / kanban), filters, saved filters, 
 
 A capture surface for links, files, voice, video, PDFs, clips, and social posts — with a focused triage flow, snooze, and a health view.
 
-→ [Inbox](/user-guide/inbox)
+→ [Inbox](/user-guide/inbox/capturing)
 
 ## Calendar
 

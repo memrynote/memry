@@ -2,20 +2,56 @@
 
 Mark notes you want quick access to, and schedule reminders that fire as in-app toasts.
 
-<!-- screenshot: reminder picker open on a note -->
+<!-- screenshot: reminder picker open over a note -->
 
 ## Bookmarking
 
-Toggle a note's bookmark from the note toolbar. Bookmarked notes appear under the sidebar Bookmarks section.
+Toggle a bookmark from the note toolbar. Bookmarked notes:
+
+- Appear under the sidebar **Bookmarks** section
+- Persist across sessions
+- Sync across devices
+
+A bookmark is a flag on the note; toggling it doesn't move the note or change its content.
 
 ## Reminders
 
-Open the reminder picker from the note toolbar. Choose a date and time; Memry shows an in-app toast when the reminder fires.
+Open the reminder picker from the note toolbar. Pick a date and time:
 
-## Snoozing a Reminder
+- A relative button (in 1 hour, tomorrow morning, next week)
+- A custom date and time picker
 
-Toast actions let you snooze 5 min, 10 min, or to a custom time, or dismiss the reminder.
+When the reminder fires, Memry shows an in-app toast with:
+
+- The note title
+- A snippet of context
+- Action buttons
+
+### Toast Actions
+
+| Action | What it does |
+| --- | --- |
+| Snooze 5 min | Reminder reappears in 5 minutes |
+| Snooze 10 min | Reminder reappears in 10 minutes |
+| Custom snooze | Pick a new time |
+| Open | Open the note in a tab |
+| Dismiss | Mark as handled; don't reappear |
+
+## Reminder Badge
+
+Notes with upcoming reminders show a small bell badge in the sidebar and tab bar. Hover for the time.
 
 ## Where Reminders Live
 
-A reminder badge appears on notes with upcoming reminders. See also [Snooze & Reminders](/user-guide/snooze-reminders) for the cross-cutting view.
+- The note carries the reminder
+- The reminder list view (Settings or sidebar) shows all upcoming
+- Snoozed reminders show a wakes-in countdown
+
+## Persistence
+
+Reminders are stored in the data DB and sync end-to-end encrypted. If Memry isn't running when a reminder fires, the toast appears the next time the app opens.
+
+## See Also
+
+- [Snooze & Reminders](/user-guide/snooze-reminders) — the cross-cutting view including inbox snooze
+- [Day Panel](/user-guide/day-panel) — see today's reminders alongside calendar and tasks

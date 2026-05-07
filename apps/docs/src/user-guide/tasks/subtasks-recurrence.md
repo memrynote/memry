@@ -1,25 +1,82 @@
 # Subtasks & Recurrence
 
-Nest tasks under parents and schedule repeating tasks.
+Nest tasks under parents, and schedule repeating tasks.
 
-<!-- screenshot: parent task with expanded subtasks and recurrence picker -->
+<!-- screenshot: parent task with expanded subtasks and a recurrence picker -->
 
 ## Subtasks
 
-Tasks can have multiple levels of subtasks. Parents show progress bars and badges based on subtask completion.
+Tasks can have multiple levels of subtasks. Each parent shows a progress bar and a small badge with the completion ratio (e.g. `3 / 7`).
 
-## Adding Subtasks
+### Adding Subtasks
 
-Inline "+" on the parent row, or indent in quick-add. Drag-drop to re-parent.
+| How | Where |
+| --- | --- |
+| Inline **+** on a parent row | List or kanban view |
+| Indent during quick-add | Quick-add input |
+| Drag a task onto a parent | List or kanban (re-parent) |
+
+### Drag-Drop Re-Parenting
+
+Drag a subtask onto another parent to move it. Drag to the top level to **promote** it to a parent task.
+
+### Independence
+
+Subtasks have their own:
+
+- Title
+- Status
+- Priority
+- Due date
+- Tags
+
+They don't inherit anything from the parent. This is intentional — many real workflows have subtasks that finish before or after their parent's due date.
+
+### Completion Rules
+
+Marking a parent done **does not** auto-complete subtasks. You decide; Memry doesn't.
+
+If you want strict cascade behavior, use bulk-complete from [Bulk Actions](/user-guide/tasks/bulk-actions).
 
 ## Recurrence
 
-Schedule daily, weekly, monthly, or custom repeats. Optionally cap with a repeat count.
+Schedule a task to repeat on a fixed cadence.
 
-## Completion of Recurring Tasks
+### Recurrence Patterns
 
-Marking a recurring task done generates the next occurrence based on the recurrence rule.
+- **Daily** — every N days
+- **Weekly** — chosen weekdays (e.g. Mon / Wed / Fri)
+- **Monthly** — same date every month, or "first Monday"
+- **Custom** — any cron-like rule
 
-## Due Dates & Priorities
+Set a `repeat count` to cap the number of occurrences (e.g. "weekly for 6 weeks").
 
-Each task and subtask carries its own due date and priority. See [Capturing Tasks](/user-guide/tasks/capturing) for natural language date input.
+### How Completion Works
+
+When you mark a recurring task done, Memry generates the **next occurrence** based on the rule and the current date.
+
+The completed instance moves to the Completed view; the next instance appears in the active list.
+
+### Editing the Series vs One Occurrence
+
+Editing a recurring task:
+
+- Edit the **series** — affects all future occurrences
+- Edit just **this occurrence** — overrides for that single instance only
+
+The picker asks which mode you want when you make a change to a recurring task.
+
+### Skipping an Occurrence
+
+Right-click → "Skip this occurrence" advances the recurrence without creating a completed instance.
+
+## Combining Subtasks and Recurrence
+
+Recurring **parent** tasks regenerate clean subtask lists each cycle (using the parent's subtask template). This is great for routines like a weekly review with the same five subtasks.
+
+Recurring **subtasks** of a non-recurring parent are unusual but supported.
+
+## See Also
+
+- [Capturing Tasks](/user-guide/tasks/capturing)
+- [Drag & Drop](/user-guide/tasks/drag-and-drop)
