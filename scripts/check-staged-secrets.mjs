@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 
 const ignoredPathPatterns = [
   /^node_modules\//,
@@ -144,6 +145,15 @@ function getStagedFiles() {
     .filter(Boolean)
 }
 
+function getChangedFiles(baseRef) {
+  return execFileSync('git', ['diff', '--name-only', '--diff-filter=ACMR', baseRef], {
+    encoding: 'utf8'
+  })
+    .split('\n')
+    .map((file) => file.trim())
+    .filter(Boolean)
+}
+
 function readStagedFile(filePath) {
   const buffer = execFileSync('git', ['show', `:${filePath}`])
 
@@ -154,15 +164,25 @@ function readStagedFile(filePath) {
   return buffer.toString('utf8')
 }
 
-function runCli() {
+function readWorkingTreeFile(filePath) {
+  const buffer = readFileSync(filePath)
+
+  if (buffer.includes(0)) {
+    return null
+  }
+
+  return buffer.toString('utf8')
+}
+
+function scanFiles(files, readFile) {
   const findings = []
 
-  for (const filePath of getStagedFiles()) {
+  for (const filePath of files) {
     if (!shouldScanPath(filePath)) {
       continue
     }
 
-    const text = readStagedFile(filePath)
+    const text = readFile(filePath)
 
     if (text === null) {
       continue
@@ -171,11 +191,28 @@ function runCli() {
     findings.push(...scanTextForSecrets(filePath, text))
   }
 
+  return findings
+}
+
+function runCli() {
+  const changedIndex = process.argv.indexOf('--changed')
+  const changedBaseRef = changedIndex === -1 ? null : process.argv[changedIndex + 1]
+
+  if (changedIndex !== -1 && !changedBaseRef) {
+    console.error('Usage: node scripts/check-staged-secrets.mjs --changed <base-ref>')
+    process.exit(2)
+  }
+
+  const findings = changedBaseRef
+    ? scanFiles(getChangedFiles(changedBaseRef), readWorkingTreeFile)
+    : scanFiles(getStagedFiles(), readStagedFile)
+
   if (findings.length === 0) {
     return
   }
 
-  console.error('\npre-commit: potential secrets detected in staged files:\n')
+  const scope = changedBaseRef ? 'changed files' : 'staged files'
+  console.error(`\nsecret scan: potential secrets detected in ${scope}:\n`)
   for (const finding of findings) {
     console.error(`  ${finding.filePath}:${finding.line} ${finding.rule} - ${finding.message}`)
   }
