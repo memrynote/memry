@@ -199,6 +199,7 @@ jobs:
 
   e2e-full:
     name: Electron E2E full (${{ matrix.shard }})
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -265,6 +266,7 @@ jobs:
 
   package-smoke:
     name: Packaged runtime smoke
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: macos-latest
     timeout-minutes: 45
     env:
