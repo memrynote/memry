@@ -1,40 +1,120 @@
 # Common Gotchas
 
-Issues you'll hit, and the canonical fixes.
+Issues you'll hit while working on Memry, and the canonical fixes.
 
-## better-sqlite3 NODE_MODULE_VERSION mismatch
+## better-sqlite3 NODE_MODULE_VERSION Mismatch
 
-`ERR_DLOPEN_FAILED` means the native module was built for the wrong runtime.
+Symptom: `ERR_DLOPEN_FAILED`, `NODE_MODULE_VERSION X but expecting Y`.
 
-- **Node tests**: `pnpm rebuild better-sqlite3` (or `bash apps/desktop/scripts/ensure-native.sh node`)
-- **Electron app / E2E**: `bash apps/desktop/scripts/ensure-native.sh electron` (or `pnpm rebuild:electron`)
+Two fix paths depending on the target:
 
-Using the Node fix for Electron leaves `autoOpenLastVault` silently failing; the app falls through to the "Welcome to Memry" screen and E2E tests time out on `.bn-container`.
+| Target | Fix |
+| --- | --- |
+| **Node tests** | `pnpm rebuild better-sqlite3` (or `bash apps/desktop/scripts/ensure-native.sh node`) |
+| **Electron app / E2E** | `bash apps/desktop/scripts/ensure-native.sh electron` (or `pnpm rebuild:electron`) |
+
+> Using the Node fix for Electron leaves `autoOpenLastVault` silently failing with `ERR_DLOPEN_FAILED`. The app falls through to the "Welcome to Memry" screen and every E2E test times out on `.bn-container` not visible.
 
 ## Zod v4
 
-`z.record(z.unknown())` throws in `safeParse`. Use `z.record(z.string(), z.unknown())` instead.
+`z.record(z.unknown())` throws in `safeParse` under Zod v4. Use:
 
-## Drizzle nullable JSON columns
+```ts
+z.record(z.string(), z.unknown())
+```
 
-Insert `null`, not `undefined`, in `.values()`.
+This caught Phase 3 sync schemas — a few places still use the old form on legacy branches.
+
+## Drizzle Nullable JSON Columns
+
+Drizzle's `.values()` insert distinguishes `null` from `undefined`. For nullable JSON columns, pass `null` explicitly:
+
+```ts
+db.insert(tasks).values({
+  id,
+  fieldClocks: null,    // ← required for nullable JSON
+  ...
+})
+```
+
+Passing `undefined` produces an `INSERT` that omits the column, then SQLite errors on `NOT NULL` columns or returns wrong rows.
 
 ## Migrations Are Hand-Written Since 0020
 
-`pnpm db:generate` proposes unrelated renames because meta snapshots stop at 0020. Hand-write the SQL and journal entry instead.
+`pnpm db:generate` proposes unrelated renames because Drizzle's meta snapshots stop at `0020`. **Hand-write the SQL and journal entry** instead of running the generator.
 
-## Submit-Buttons Disabling Mid-Click
+Workflow:
 
-If `onClick` calls a handler that synchronously sets `disabled={isSubmitting}`, the browser suppresses the click between `pointerdown` and `click`. Fire submit from `onPointerDown` and keep `onClick` as a keyboard fallback. See `calendar-quick-create-dialog.tsx`.
+1. Update the schema in `packages/db-schema`.
+2. Add a new migration file (`migrations/00xx_description.sql`).
+3. Append a journal entry in `migrations/meta/_journal.json`.
+4. Run `pnpm db:push` to apply.
 
-## Lazy URL Resolution
+## Submit Buttons That Disable Mid-Click
 
-http-client resolves URLs per-call (not at import time) to avoid throws in tests.
+If `onClick` calls a handler that synchronously sets state which adds `disabled={isSubmitting}` to the button, the browser **suppresses the click** between `pointerdown` and `click`. The user thinks they clicked but nothing happens.
 
-## Pre-existing Type Errors
+Fix: fire submit from `onPointerDown`. Keep `onClick` as a keyboard-activation fallback:
 
-`websocket.test.ts`, `folders.test.ts`, and a couple of others have known typecheck errors unrelated to source. Ignore them when running `pnpm typecheck`.
+```tsx
+<button
+  onPointerDown={() => void submit()}
+  onClick={() => void submit()}     // keyboard / accessibility fallback
+  disabled={isSubmitting}
+>
+  Save
+</button>
+```
+
+See `calendar-quick-create-dialog.tsx` for the canonical version.
+
+## Lazy URL Resolution in http-client
+
+The HTTP client resolves URLs **per-call**, not at module-import time. This avoids tests crashing on import when env vars are absent. If you add a new client, follow the same pattern: read env inside the function, not in module scope.
+
+## Pre-Existing Type Errors
+
+These files have known type errors unrelated to runtime behavior. Ignore them when running `pnpm typecheck`:
+
+- `apps/desktop/src/main/sync/websocket.test.ts`
+- `apps/desktop/src/main/folders/folders.test.ts`
+- `apps/desktop/src/main/sync/sync-telemetry.ts`
+
+For non-contract changes, use `pnpm typecheck:node && pnpm typecheck:web` to skip the flaky `ipc:check` pre-hook and the pre-existing `sync-telemetry.ts` error.
 
 ## Virtualized UI Tests
 
-`@tanstack/react-virtual` + jsdom renders zero items. Cover virtualized calendar / week / list UIs at the Playwright E2E layer only.
+`@tanstack/react-virtual` + jsdom = zero items rendered (because jsdom doesn't compute scroll heights). Cover virtualized calendar, week-view, and long-list UIs at the **Playwright E2E layer only**.
+
+## CRDT Sign-Out / Sign-In Ordering
+
+When working in `apps/desktop/src/main/sync/runtime.ts`:
+
+```
+engine.start()                      # pull from server FIRST
+  └─ seedExistingCrdtDocs()         # fire-and-forget, only fills orphans
+```
+
+Reversing the order causes split brain. See [CRDT & Notes Sync](/architecture/crdt) for full reasoning.
+
+## Logging
+
+Always use `createLogger('Scope')` from electron-log — never `console.*`. A pre-commit hook flags raw `console.*` calls.
+
+## User-Facing Errors
+
+Always strip Electron IPC noise from error messages before display:
+
+```ts
+import { extractErrorMessage } from '@/lib/ipc-error'
+
+toast.error(extractErrorMessage(err, 'Could not save note'))
+```
+
+## RTL-Safe Tailwind
+
+New code must use logical properties (`ms-*`, `pe-*`, `start-*`, `text-start`, `border-s`, `rounded-s-*`) instead of physical ones (`ml-*`, `pr-*`, `left-*`, `text-left`, `border-l`, `rounded-l-*`). The lint config allows physical classes only in pre-existing files.
+
+## Pre-Production Database
+
+Memry is pre-production and the DB schema is **resettable**. There are no backward-compat constraints on schema changes within the desktop app. If a migration is messy, deleting the local vault is a valid recovery.

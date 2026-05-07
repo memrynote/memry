@@ -1,35 +1,88 @@
 # Cryptography
 
-Memry's threat model treats the device as the trusted boundary. The server stores ciphertext only.
+Memry's threat model treats the device as the trusted boundary. The server stores ciphertext only, with no access to keys.
 
 ## Primitives (libsodium)
 
-- **Symmetric**: XChaCha20-Poly1305 (AEAD) with random 24-byte nonces.
-- **Signing**: Ed25519 for device keys.
-- **Key derivation**: Argon2id from passphrase + per-vault salt.
+| Use | Algorithm |
+| --- | --- |
+| Authenticated symmetric encryption | XChaCha20-Poly1305 (AEAD) |
+| Asymmetric signing | Ed25519 |
+| Asymmetric key sealing | X25519 (sealed boxes) |
+| Password key derivation | Argon2id |
+| Random | `sodium.randombytes_buf` |
 
 ## Key Hierarchy
 
-1. Passphrase + Argon2id → wrapping key
-2. Wrapping key → vault key (decrypted locally)
-3. Vault key → per-payload data keys
+```
+passphrase ──Argon2id(salt)──▶ wrapping key
+                                    │
+                                    ▼
+                         vault key (decrypted on device)
+                                    │
+                       ┌────────────┼────────────┐
+                       ▼            ▼            ▼
+                  data keys    blob keys    crdt keys
+                  (per item)   (per blob)   (per doc)
+```
 
-## Per-Device Keys
-
-Each device generates an Ed25519 keypair on link. The vault key is sealed for each device's public key so revoking a device cuts off its access without rotating the vault.
+**Per-vault salt** is stored alongside the vault and is unique to that user. **Per-device sealing**: when a device links, the vault key is sealed for its X25519 public key — revoking that device cuts access without rotating the vault.
 
 ## Nonces
 
-All XChaCha20 operations use `sodium.randombytes_buf(24)` via a dedicated nonce utility. Nonces are stored alongside ciphertext.
+All XChaCha20 operations use 24-byte random nonces from `sodium.randombytes_buf(24)` via a dedicated nonce utility (T029b). Nonces are stored alongside ciphertext.
 
-## Constant-Time Comparison
+## Constant-Time Comparisons
 
-All authentication code paths use `sodium.memcmp` to avoid timing leaks.
+All authentication-sensitive comparisons use `sodium.memcmp` (T029c) to avoid timing leaks.
 
 ## Tombstone Signing
 
-`deleted_at` is included in the signed payload so a hostile server cannot forge deletions.
+The `deleted_at` field is included in the Ed25519-signed payload metadata. A hostile server cannot forge a deletion because it would lack the signing key.
 
 ## Argon2id Parameters
 
-Spec calls for parallelism = 4; libsodium pins 1. Memry documents 1 as canonical.
+The spec called for `parallelism = 4`. libsodium pins parallelism to `1` and Memry documents `1` as canonical. `memory_cost` and `time_cost` are tuned for interactive sign-in latency on the slowest supported hardware.
+
+## Recovery Phrase
+
+A list of words generated at vault creation. Words are derived from the same vault key entropy and can re-create the wrapping key without the passphrase. Stored only by the user (never in the cloud).
+
+## Key Rotation
+
+The rotation wizard:
+
+1. Generates a new vault key.
+2. Re-encrypts payloads under the new key (streamed, batched, resumable).
+3. Reseals the new key for every linked device's public key.
+4. Bumps the `crypto_version` so old ciphertexts are auditable.
+
+When to rotate:
+
+- Lost or stolen device that wasn't yet revoked
+- Recovery phrase exposure
+- Major OS or backup compromise
+
+## What the Server Never Sees
+
+- Note titles, content, properties, attachments
+- Task fields, project names, statuses
+- Tags, links, search queries
+- Recovery phrase, passphrase, vault key
+
+## Audit Surfaces
+
+- `crypto_version` on every sync item enables post-hoc upgrades
+- Ed25519 signatures over metadata catch tampering
+- Content hashes catch silent corruption in R2
+
+## Files Worth Knowing
+
+```
+apps/desktop/src/main/crypto/
+├─ vault-key.ts          # passphrase → vault key
+├─ encrypt.ts            # AEAD wrapper
+├─ sign.ts               # Ed25519 signing
+├─ nonce.ts              # 24-byte random nonces (T029b)
+└─ memcmp.ts             # constant-time compare (T029c)
+```

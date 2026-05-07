@@ -1,29 +1,81 @@
 # Search & Command Palette
 
-Press <kbd>Cmd</kbd>+<kbd>K</kbd> for global search and command execution.
+Press <kbd>⌘</kbd>+<kbd>F</kbd> for global search and command execution from anywhere.
 
-<!-- screenshot: command palette open with results -->
+<!-- screenshot: command palette open with mixed results -->
 
 ## Opening
 
-<kbd>Cmd</kbd>+<kbd>K</kbd> from anywhere. <kbd>Esc</kbd> closes it.
+| Where | Shortcut |
+| --- | --- |
+| Anywhere in the app | <kbd>⌘</kbd>+<kbd>F</kbd> |
+| Global hotkey (if set) | Configured in [Settings → Keyboard Shortcuts](/user-guide/settings#keyboard-shortcuts) |
+| Sidebar Search button | Click |
+
+<kbd>Esc</kbd> closes the palette.
+
+## Scope
+
+Type to search across:
+
+- **Notes** — title and body
+- **Journal entries** — title and body
+- **Tasks** — title, description, project name
+- **Inbox items** — title, source URL, captured text
+- **Tags** — direct match by tag name
+- **Settings** — jumps to a settings panel by name
+
+Results are grouped by type, with snippet previews and relative dates.
 
 ## Scoped Search
 
-Number shortcuts <kbd>1</kbd>–<kbd>4</kbd> scope to notes, journals, tasks, or inbox.
+Number prefixes scope to a single source:
 
-## Tag Filtering
+| Prefix | Scope |
+| --- | --- |
+| <kbd>1</kbd> | Notes only |
+| <kbd>2</kbd> | Journal only |
+| <kbd>3</kbd> | Tasks only |
+| <kbd>4</kbd> | Inbox only |
 
-Type `#tagname` to filter by tag inside the palette.
+Type the number, then your query.
 
-## Result Groups
+## Tag Filter
 
-Results are grouped by content type with snippet previews and relative dates.
+Type `#tagname` anywhere in your query to filter results to items tagged with that tag. Multiple tags compose with AND.
+
+Examples:
+
+- `#research neural networks` — items tagged `research` containing "neural networks"
+- `#daily 1 review` — notes only, tagged `daily`, containing "review"
 
 ## Recents
 
-Recent queries and frequently used searches appear when the palette is empty.
+When the palette is empty, recent queries and frequently used searches appear. Pin a query (right-click) to keep it at the top.
 
 ## Semantic Search
 
-If embeddings are enabled, search ranks results by semantic similarity in addition to keyword match. See [Embeddings & Semantic Search](/user-guide/ai/embeddings-search).
+If embeddings are enabled in [Settings → AI](/user-guide/settings#ai), search results are ranked by both keyword match **and** semantic similarity. This means:
+
+- Queries phrased differently from the source can still find it
+- "Setting up authentication" matches notes about "OAuth flow" even without keyword overlap
+- Older notes resurface when their meaning matches your current query
+
+Toggle semantic search per query with the search bar's options menu, or always-on in settings.
+
+See [Embeddings & Semantic Search](/user-guide/ai/embeddings-search) for setup.
+
+## Result Actions
+
+For each result row:
+
+- <kbd>Enter</kbd> — open in current tab
+- <kbd>⌘</kbd>+<kbd>Enter</kbd> — open in new tab
+- <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>Enter</kbd> — open in split pane
+- <kbd>→</kbd> — preview without opening
+
+## Performance
+
+Search runs against the **index DB** for keyword match. Embedding-based ranking happens on the **device**, not the server. Even with semantic search enabled, queries don't leave your machine.
+
+For large vaults, the keyword index is FTS5-backed and stays sub-100ms even with 10k+ documents.

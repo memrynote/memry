@@ -1,21 +1,44 @@
 # Find in Page
 
-Search the current note with <kbd>Cmd</kbd>+<kbd>F</kbd>.
+Search the current note with <kbd>⌘</kbd>+<kbd>F</kbd>. For global search, use [the command palette](/user-guide/search) instead.
 
 <!-- screenshot: find-in-page bar at the top of a note -->
 
 ## Opening the Bar
 
-Press <kbd>Cmd</kbd>+<kbd>F</kbd> while a note is focused.
+Press <kbd>⌘</kbd>+<kbd>F</kbd> while focused on a note. A floating bar appears at the top with:
+
+- Query input
+- Match counter (`3 of 12`)
+- Up / down arrows
+- Close button
 
 ## Navigating Matches
 
-Use the up/down arrows in the bar or <kbd>Enter</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd>.
+| Action | Shortcut |
+| --- | --- |
+| Next match | <kbd>Enter</kbd> or down arrow |
+| Previous match | <kbd>⇧</kbd>+<kbd>Enter</kbd> or up arrow |
+| Close | <kbd>Esc</kbd> |
 
-## Closing
+Matches are highlighted inline; the active match scrolls into view.
 
-Press <kbd>Esc</kbd> or click the close icon.
+## Case Sensitivity
+
+The bar matches case-insensitively by default. Toggle case sensitivity from the bar's options menu.
+
+## Whole Word
+
+Whole-word matching is also a toggle in the options menu.
 
 ## Scope
 
-Find-in-page is local to the current note. For global search across notes, journals, and tasks see [Search & Command Palette](/user-guide/search).
+Find-in-page is **local to the current note**. To search across notes, journals, tasks, and the inbox, open the [command palette](/user-guide/search) with <kbd>⌘</kbd>+<kbd>K</kbd>.
+
+## Inside Embedded PDF Previews
+
+PDF previews use their own embedded find — Memry's find bar doesn't reach into them. Click into the PDF and use the embedded viewer's controls.
+
+## Performance
+
+Find runs against the rendered document, so it sees what you see (including code blocks, list items, callout text). It does not cross block boundaries that aren't visually adjacent.

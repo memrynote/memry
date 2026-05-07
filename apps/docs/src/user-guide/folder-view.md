@@ -1,29 +1,94 @@
 # Folder View
 
-A table view over a collection of notes with sortable columns and grouping.
+A table view over a collection of notes with sortable columns and grouping. Like a database for your notes.
 
 <!-- screenshot: folder view as a sortable table -->
 
 ## When to Use
 
-When you want a database-like overview of notes by tag, folder, or property — especially useful with custom properties.
+When you want a database-like overview rather than the linear sidebar list. Especially useful when notes have **custom properties** you want to compare side-by-side.
 
 ## Columns
 
-Show or hide title, tags, created date, modified date, and any custom property. Drag headers to reorder.
+By default the table shows:
+
+- Title
+- Tags
+- Created
+- Modified
+
+You can show / hide columns including any custom property:
+
+- Click the **column picker** in the header
+- Toggle each property on/off
+- Drag headers to reorder
+
+Property columns let you sort and filter by typed values (numbers, dates, select).
 
 ## Sorting
 
-Click a header to sort. Shift-click for secondary sort.
+Click any header to sort. Click again to reverse direction. <kbd>⇧</kbd>+click for **secondary sort** (sort by A then B).
 
 ## Grouping
 
-Group by folder, tag, or property value. Group headers count rows.
+Group rows by:
+
+- Folder
+- Tag
+- Property value (e.g. all rows with `Status: Live`)
+
+Group headers count rows and roll up subgroup counts.
+
+## Filtering
+
+A filter bar above the table accepts:
+
+- Free-text search across visible columns
+- Property-specific filters (e.g. `Created after: 2026-01-01`)
+- Tag filters (`#tagname`)
+
+Active filters show as chips you can dismiss.
 
 ## Density
 
-Compact / normal / spacious row heights, persisted per device.
+A density toggle in the toolbar:
+
+| Density | Row height |
+| --- | --- |
+| Compact | minimal padding |
+| Normal | comfortable |
+| Spacious | extra room |
+
+Persisted per device.
 
 ## Inline Editing
 
-Click a cell to edit a property in place where supported.
+Click any editable cell to update a property in place. Supported types:
+
+- Text
+- Number
+- Date
+- Select / multi-select
+- Checkbox
+
+Some fields (e.g. created date) are read-only.
+
+## Bulk Operations
+
+Select rows with checkboxes for:
+
+- Move to folder
+- Add / remove tags
+- Set / clear properties (for editable types)
+- Delete
+
+The bulk action bar appears at the top of the table when rows are selected.
+
+## Breadcrumb
+
+If you opened folder view from a folder, a breadcrumb at the top lets you navigate up to parent folders.
+
+## See Also
+
+- [Properties & Tags](/user-guide/notes/properties-tags)
+- [Tabs & Split View](/user-guide/tabs-split-view) — folder views open as tabs

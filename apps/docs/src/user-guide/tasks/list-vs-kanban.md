@@ -1,27 +1,76 @@
 # List vs Kanban
 
-Two views over the same tasks. Switch from the view toggle in the tasks toolbar.
+Two views over the same tasks.
 
 <!-- screenshot: side-by-side list and kanban -->
 
 ## List View
 
-Default. Tasks are flat or grouped, with inline editing of title, status, priority, and due date.
+Default. Tasks render as flat or grouped rows with inline editing of:
+
+- Title
+- Status
+- Priority
+- Due date
+- Project
+- Tags
+
+Rows can be drag-reordered. Multi-select with shift-click for bulk actions.
+
+When grouping is on, group headers show counts and roll up subtask progress.
+
+### When to Use List
+
+- Long triage sessions
+- Filtering a large pool of tasks by criteria
+- Bulk actions across many tasks
+- Cross-project review
 
 ## Kanban View
 
-Columns reflect statuses (or another grouping). Drag cards across columns to update status.
+Columns reflect statuses. Drag cards across columns to update status.
+
+- Each card shows title, due date, priority, and a subtask progress indicator
+- The kanban groups by **status** by default but can group by other fields
+- Empty columns offer "Add task" affordances
+
+### When to Use Kanban
+
+- Weekly planning ("what am I doing this week")
+- Status-focused workflows (Todo / In Progress / Done)
+- Per-project standups
 
 ## Internal Tabs
 
-Tasks page also has tabs for "All," "Today," and "Completed" to scope results without changing filters.
+Above both views, internal tabs scope without changing filters:
 
-## When to Use Which
+| Tab | Scope |
+| --- | --- |
+| All | Everything that matches current filters |
+| Today | Due today (or earlier, undone) |
+| Completed | Recently completed (last 30 days) |
 
-- List: long sessions of triage, sorting, or bulk actions
-- Kanban: weekly planning and status-focused work
+Internal tabs are not filters in the saveable sense — they're shortcuts for the most common scopes.
+
+## Switching
+
+Use the view toggle in the tasks toolbar. Memry remembers the last-used view per scope (per project, all-tasks, etc.).
+
+## Project View vs All Tasks
+
+Each [project](/user-guide/projects) has its own list/kanban. A project's kanban uses **that project's** custom statuses. The All Tasks kanban uses a shared coarse mapping.
+
+## Drag Behavior
+
+| In list | In kanban |
+| --- | --- |
+| Reorder within a list | Reorder within a column |
+| Cross-group drag updates the grouping field | Cross-column drag updates status |
+| Multi-select drag moves the whole selection | Same |
+
+See [Drag & Drop](/user-guide/tasks/drag-and-drop) for the full reference.
 
 ## See Also
 
 - [Filters & Sorting](/user-guide/tasks/filters-sorting)
-- [Drag & Drop](/user-guide/tasks/drag-and-drop)
+- [Bulk Actions](/user-guide/tasks/bulk-actions)

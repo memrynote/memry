@@ -1,30 +1,75 @@
 # Projects
 
-Group tasks under a project with a custom status workflow.
+Projects group tasks under a custom status workflow.
 
 <!-- screenshot: sidebar projects tree with task counts -->
 
 ## Project Tree
 
-Projects appear in the sidebar with incomplete-task counts. Drag to reorder.
+Projects appear in the sidebar with incomplete-task counts. Drag to reorder. Use the right-click context menu to rename, recolor, change icon, or delete.
 
 ## Creating a Project
 
-Use the "+" affordance in the sidebar Projects section. Pick a name, color, and icon.
+The **+** affordance in the sidebar Projects section opens a creation dialog:
+
+- **Name** — display title
+- **Color** — accent for the sidebar entry and project header
+- **Icon** — emoji or icon set choice
+- **Initial statuses** — Memry pre-fills `Todo / In Progress / Done`; you can edit before creating
 
 ## Statuses
 
-Each project has its own ordered list of statuses. Statuses have a type (e.g. todo, in-progress, done) used for grouping and progress.
+Each project owns its own ordered list of statuses. A status has:
 
-## Editing Statuses
+- **Name**
+- **Type** — `todo`, `in-progress`, `done`, or `custom` (used for grouping and progress)
+- **Color** — used in chips, kanban columns, and progress bars
 
-Open the status editor from the project header to add, rename, recolor, or reorder statuses.
+Status types matter for cross-project views: "All Tasks → kanban grouped by status" maps `Memry's status type`, not raw status names.
 
-## Deleting
+### Editing Statuses
 
-Deleting a project asks where its tasks should go (move to another project, or delete with the project).
+Open the project header menu and choose **Edit statuses**. From there you can:
+
+- Add new statuses
+- Rename / recolor
+- Change type (e.g. promote a custom status to `done` so it counts in progress bars)
+- Reorder by drag
+- Delete (with a confirmation; Memry asks where to move tasks currently in that status)
+
+## Task Counts
+
+The sidebar shows **incomplete** task counts per project — tasks whose status type is not `done`. This keeps the count meaningful even as you complete tasks.
+
+## Default Project
+
+[Settings → Tasks → Default Project](/user-guide/settings#tasks) sets which project new tasks go to when you quick-add outside any project view. "(No project)" is a valid default.
+
+## Project Views
+
+Each project has its own:
+
+- List view (with project-specific saved filters)
+- Kanban view (columns = the project's statuses)
+- Tabs for `All`, `Today`, `Completed` scoped to that project
+
+Memry remembers per-project view preferences.
+
+## Deleting a Project
+
+Deleting asks you to choose what to do with the tasks:
+
+- **Move to another project** — pick from the project list
+- **Move to no project** — keep the tasks, drop the project assignment
+- **Delete with project** — destructive; tasks go too
+
+Each path is reversible via undo within the 10-second window.
+
+## Sync
+
+Projects sync as standard sync items with **field-level vector clocks** for resilient cross-device editing. See [Sync Protocol](/architecture/sync-protocol#field-level-merge-tasks-projects).
 
 ## See Also
 
 - [Tasks](/user-guide/tasks/list-vs-kanban)
-- [Filters & Sorting](/user-guide/tasks/filters-sorting)
+- [Bulk Actions](/user-guide/tasks/bulk-actions) — to move many tasks across projects at once
