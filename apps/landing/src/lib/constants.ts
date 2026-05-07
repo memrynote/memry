@@ -18,12 +18,14 @@ import {
 
 export const GITHUB_URL = 'https://github.com/memrynote/memry'
 export const REDDIT_URL = 'https://www.reddit.com/r/MemryNote/'
+export const DOCS_URL = 'https://docs.memrynote.com'
 export const TWITTER_DEV_URL = 'https://x.com/h4yfans'
 
 export const NAV_LINKS = [
   { label: 'Use Cases', href: '/use-cases' },
   { label: 'Roadmap', href: '#roadmap' },
-  { label: 'Security', href: '/security' }
+  { label: 'Security', href: '/security' },
+  { label: 'Docs', href: DOCS_URL }
 ] as const
 
 export const FOOTER_LINKS = {

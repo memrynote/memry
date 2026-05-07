@@ -49,7 +49,15 @@ export function Header() {
 
           <div className="hidden lg:flex items-center gap-2 rounded-full border border-border/70 bg-white/55 p-1.5">
             {NAV_LINKS.map((link) =>
-              link.href.startsWith('/') ? (
+              link.href.startsWith('http') ? (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="rounded-full px-4 py-2 text-sm font-medium text-muted transition-colors hover:bg-white hover:text-ink"
+                >
+                  {link.label}
+                </a>
+              ) : link.href.startsWith('/') ? (
                 <Link
                   key={link.href}
                   to={link.href}
@@ -121,7 +129,16 @@ export function Header() {
             <Container size="full">
               <div className="mx-auto flex max-w-6xl flex-col gap-4 rounded-[28px] border border-white/70 bg-paper/90 p-5 shadow-[var(--shadow-float)] backdrop-blur-xl">
                 {NAV_LINKS.map((link) =>
-                  link.href.startsWith('/') ? (
+                  link.href.startsWith('http') ? (
+                    <a
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="rounded-2xl border border-border/60 bg-white/65 px-4 py-3 text-xl font-serif font-medium text-ink transition-colors hover:text-terracotta"
+                    >
+                      {link.label}
+                    </a>
+                  ) : link.href.startsWith('/') ? (
                     <Link
                       key={link.href}
                       to={link.href}
