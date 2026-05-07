@@ -1,0 +1,71 @@
+categories:
+  - title: '🚀 Features and Improvements'
+    labels:
+      - 'feature'
+      - 'enhancement'
+  - title: '💥️ Breaking Change'
+    labels:
+      - 'change'
+  - title: '🐛 Bug Fixes'
+    labels:
+      - 'fix'
+      - 'bugfix'
+      - 'bug'
+  - title: '⚙️️ Tests'
+    labels:
+      - 'test'
+  - title: '📝 Documentation'
+    labels:
+      - 'documentation'
+  - title: '🧰 Maintenance'
+    labels:
+      - 'chore'
+      - 'maintenance'
+  - title: '⬆️ Dependency'
+    labels:
+      - 'dependencies'
+change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+change-title-escapes: '\<*_&'
+no-changes-template: '- Internal maintenance updates'
+autolabeler:
+  - label: 'documentation'
+    files:
+      - '*.md'
+      - '**/*.md'
+      - 'docs/**/*'
+    branch:
+      - '/docs{0,1}\/.+/'
+  - label: 'bug'
+    branch:
+      - '/fix\/.+/'
+      - '/bugfix\/.+/'
+    title:
+      - '/fix/i'
+      - '/bug/i'
+  - label: 'enhancement'
+    branch:
+      - '/feat\/.+/'
+      - '/feature\/.+/'
+    body:
+      - '/BE-[0-9]{1,4}/'
+      - '/ES-[0-9]{1,4}/'
+  - label: 'test'
+    files:
+      - '**/*.test.ts'
+      - '**/*.test.tsx'
+      - '**/*.test.mjs'
+      - '**/*.spec.ts'
+      - '**/*.spec.tsx'
+      - 'tests/**/*'
+  - label: 'dependencies'
+    files:
+      - 'package.json'
+      - '**/package.json'
+      - 'pnpm-lock.yaml'
+    branch:
+      - '/deps\/.+/'
+      - '/dependencies\/.+/'
+template: |
+  ## What's Changed
+
+  $CHANGES

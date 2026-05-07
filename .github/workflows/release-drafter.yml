@@ -1,0 +1,130 @@
+name: Release Drafter
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  contents: read
+
+jobs:
+  auto_label:
+    name: Auto label pull request
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: release-drafter/release-drafter/autolabeler@v7
+        with:
+          token: ${{ github.token }}
+
+  update_release_draft:
+    name: Update date draft release
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Resolve draft metadata
+        id: metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > releases.json
+
+          node <<'NODE'
+          const { readFileSync, writeFileSync } = require('node:fs')
+
+          const releases = JSON.parse(readFileSync('releases.json', 'utf8'))
+          const tagNames = releases.map((release) => release.tag_name).filter(Boolean)
+          const draftTagNames = releases
+            .filter((release) => release.draft)
+            .map((release) => release.tag_name)
+            .filter(Boolean)
+
+          writeFileSync('existing-tags.txt', tagNames.join('\n') + (tagNames.length ? '\n' : ''))
+          writeFileSync(
+            'draft-tags.txt',
+            draftTagNames.join('\n') + (draftTagNames.length ? '\n' : '')
+          )
+          NODE
+
+          node scripts/desktop-release-metadata.mjs \
+            --resolve-draft \
+            --date "$(date -u +%F)" \
+            --existing-tags-file existing-tags.txt \
+            --draft-tags-file draft-tags.txt \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Update draft release notes
+        id: release_drafter
+        uses: release-drafter/release-drafter@v7
+        with:
+          token: ${{ github.token }}
+          name: ${{ steps.metadata.outputs.release_tag }}
+          tag: ${{ steps.metadata.outputs.release_tag }}
+          commitish: ${{ github.sha }}
+          publish: false
+          latest: false
+
+      - name: Patch full changelog link
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.metadata.outputs.release_tag }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" > draft-release.json
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > releases.json
+
+          node <<'NODE'
+          const { readFileSync, writeFileSync } = require('node:fs')
+
+          const release = JSON.parse(readFileSync('draft-release.json', 'utf8'))
+          const releases = JSON.parse(readFileSync('releases.json', 'utf8'))
+          const tag = process.env.TAG
+          const repo = process.env.GITHUB_REPOSITORY
+          const tagPattern = /^v20\d{2}-\d{2}-\d{2}(?:\.[2-9]\d*)?$/
+          const previous = releases.find(
+            (candidate) =>
+              !candidate.draft &&
+              candidate.tag_name !== tag &&
+              tagPattern.test(candidate.tag_name || '')
+          )
+          const compareUrl = previous
+            ? `https://github.com/${repo}/compare/${previous.tag_name}...${tag}`
+            : `https://github.com/${repo}/commits/${tag}`
+          const body = (release.body || '').replace(/\n\n\*\*Full Changelog\*\*: .+$/s, '')
+          const patchedBody = `${body.trimEnd()}\n\n**Full Changelog**: ${compareUrl}\n`
+
+          writeFileSync(
+            'release-patch.json',
+            JSON.stringify({
+              body: patchedBody,
+              name: tag,
+              tag_name: tag
+            })
+          )
+          NODE
+
+          gh api \
+            --method PATCH \
+            "repos/$GITHUB_REPOSITORY/releases/${{ steps.release_drafter.outputs.id }}" \
+            --input release-patch.json
