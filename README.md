@@ -212,6 +212,9 @@ pnpm dev:desktop
 # Run the sync server
 pnpm dev:sync-server
 
+# Run the marketing site
+pnpm dev:landing
+
 # Common workspace checks
 pnpm typecheck
 pnpm test
