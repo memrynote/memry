@@ -1,33 +1,64 @@
-# Features
+# Features Overview
 
-Memry combines writing, reflection, and planning in one private workspace.
+A high-level map of what Memry does. Each section links to dedicated pages in the [User Guide](/user-guide/notes/editing).
 
 ## Notes
 
-- Rich text editing for long-form notes
-- Markdown-friendly writing
-- Wiki-style `[[links]]` between notes
-- Backlinks and graph-oriented navigation
+Rich-text editing with BlockNote, wiki links, backlinks, properties, attachments, reminders, and version history.
+
+→ [Notes](/user-guide/notes/editing)
 
 ## Journal
 
-- Daily note space for reflection
-- Calendar-oriented browsing
-- Activity context for building a writing habit
+A daily writing space with calendar navigation (day / month / year), heatmap, stats, and templates.
 
-## Tasks and Projects
+→ [Journal](/user-guide/journal/daily-entries)
 
-- Tasks live alongside notes instead of in a separate system
-- Priorities, due dates, and project organization
-- Drag-and-drop planning flows
+## Tasks & Projects
 
-## Offline-First Storage
+Tasks live alongside notes. Multi-view (list / kanban), filters, saved filters, subtasks, recurrence, bulk actions, and drag-drop. Group tasks under projects with custom statuses.
 
-Memry stores workspace data locally so core flows do not depend on a network connection.
-The desktop app uses SQLite-backed local storage and keeps the server out of the critical
-path for everyday writing.
+→ [Tasks](/user-guide/tasks/list-vs-kanban) · [Projects](/user-guide/projects)
 
-## Private Sync
+## Inbox
 
-Sync is designed around end-to-end encryption. Devices encrypt data before it leaves the
-machine, and the server stores encrypted payloads it cannot read.
+A capture surface for links, files, voice, video, PDFs, clips, and social posts — with a focused triage flow, snooze, and a health view.
+
+→ [Inbox](/user-guide/inbox)
+
+## Calendar
+
+Day / week / month / year views over events and date-bound tasks. Optional Google Calendar integration.
+
+→ [Calendar](/user-guide/calendar)
+
+## Search
+
+A global command palette (<kbd>Cmd</kbd>+<kbd>K</kbd>) with scoped filters, tag search, recents, and (when AI is enabled) semantic ranking.
+
+→ [Search](/user-guide/search)
+
+## Workspace Surfaces
+
+- [Tabs & Split View](/user-guide/tabs-split-view)
+- [Folder View](/user-guide/folder-view)
+- [Day Panel](/user-guide/day-panel)
+- [Templates](/user-guide/templates)
+- [Snooze & Reminders](/user-guide/snooze-reminders)
+
+## AI Features
+
+Inline AI menu in the editor, on-device embedding model for semantic search, voice transcription, and pluggable providers (Ollama / OpenAI / Anthropic).
+
+→ [AI Features](/user-guide/ai/inline-menu)
+
+## Sync & Devices
+
+End-to-end encrypted sync, multi-device linking with QR + linking code, recovery phrase, and key rotation.
+
+→ [Sync & Devices](/user-guide/sync/how-sync-works)
+
+## Reference
+
+- [Settings Reference](/user-guide/settings)
+- [Keyboard Shortcuts](/user-guide/keyboard-shortcuts)

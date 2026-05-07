@@ -1,36 +1,58 @@
 # Architecture
 
-Memry is a pnpm monorepo with a desktop app, sync server, and shared TypeScript packages.
+Memry is a pnpm + Turborepo monorepo with an Electron desktop app, a Cloudflare Workers sync server, and shared TypeScript packages.
 
-## Main Packages
+## Top-Level Map
 
-| Path                 | Purpose                                                         |
-| -------------------- | --------------------------------------------------------------- |
-| `apps/desktop`       | Electron, React, Vite, main process, renderer, and preload code |
-| `apps/sync-server`   | Cloudflare Workers sync API backed by D1 and R2                 |
-| `packages/contracts` | Shared IPC and API contract definitions                         |
-| `packages/db-schema` | Drizzle schemas for local and index databases                   |
-| `packages/shared`    | Shared utilities used across packages                           |
+| Path                 | Purpose                                                   |
+| -------------------- | --------------------------------------------------------- |
+| `apps/desktop`       | Electron 39 + React 19 + Vite. Main / renderer / preload. |
+| `apps/sync-server`   | Cloudflare Workers + Hono. D1 + R2.                       |
+| `apps/docs`          | This documentation site (VitePress).                      |
+| `packages/contracts` | IPC and API contracts (Zod).                              |
+| `packages/db-schema` | Drizzle ORM schemas.                                      |
+| `packages/shared`    | Shared utilities.                                         |
 
-## Privacy Model
+## Trust Boundary
 
-Memry treats the local device as the trusted boundary. Workspace data is encrypted before
-sync and decrypted only on user devices. The sync server coordinates delivery and storage,
-but it is not designed to read plaintext note content.
+The user's device is trusted. The server is not. Everything that leaves the device is encrypted; the server stores ciphertext and serves it back.
 
-## Local Data
+## Local Storage
 
-The desktop app uses local SQLite storage for workspace data. This keeps core app flows
-available offline and makes sync an enhancement rather than a hard dependency.
+Two SQLite databases via better-sqlite3 + Drizzle:
 
-## Sync Data
+- **Data DB** — notes, journals, tasks, projects, inbox, templates, settings.
+- **Index DB** — full-text search, link graph, embedding vectors.
 
-The sync system stores metadata in Cloudflare D1 and encrypted payloads in R2. Large sync
-items avoid D1 row-size limits by keeping encrypted payload data in object storage.
+→ [Local Storage (Dual SQLite)](/architecture/local-storage)
+
+## Sync
+
+- **D1**: encrypted sync item metadata (vector clocks, blob keys, hashes).
+- **R2**: encrypted payload blobs (avoids the 1 MB D1 row limit).
+- **Hybrid sync**: bulk snapshots through `SyncItemHandler` plus incremental Yjs updates through `/sync/crdt/updates`.
+
+→ [Sync Protocol](/architecture/sync-protocol) · [CRDT & Notes Sync](/architecture/crdt) · [Sync Item Handlers](/architecture/sync-handlers)
+
+## Cryptography
+
+XChaCha20-Poly1305 + Ed25519 + Argon2id, all via libsodium. Per-device sealing of the vault key. Constant-time comparisons.
+
+→ [Cryptography](/architecture/cryptography)
+
+## IPC Boundary
+
+Shared Zod contracts in `packages/contracts`. Validated at typecheck time via `pnpm ipc:check`.
+
+→ [IPC Boundary](/architecture/ipc)
+
+## Observability
+
+Local logging via electron-log; opt-in telemetry that ships only enums and surface names.
+
+→ [Observability & Telemetry](/architecture/observability)
 
 ## Verification Gates
-
-Common repo checks:
 
 ```bash
 pnpm lint
