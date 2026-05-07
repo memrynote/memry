@@ -80,7 +80,7 @@ jobs:
         uses: release-drafter/release-drafter@v7
         with:
           token: ${{ github.token }}
-          name: ${{ steps.metadata.outputs.release_tag }}
+          name: ${{ steps.metadata.outputs.release_name }}
           tag: ${{ steps.metadata.outputs.release_tag }}
           commitish: ${{ github.sha }}
           publish: false
@@ -90,6 +90,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.metadata.outputs.release_tag }}
+          RELEASE_NAME: ${{ steps.metadata.outputs.release_name }}
         run: |
           gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" > draft-release.json
           gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > releases.json
@@ -100,6 +101,7 @@ jobs:
           const release = JSON.parse(readFileSync('draft-release.json', 'utf8'))
           const releases = JSON.parse(readFileSync('releases.json', 'utf8'))
           const tag = process.env.TAG
+          const releaseName = process.env.RELEASE_NAME
           const repo = process.env.GITHUB_REPOSITORY
           const tagPattern = /^v20\d{2}-\d{2}-\d{2}(?:\.[2-9]\d*)?$/
           const previous = releases.find(
@@ -118,7 +120,7 @@ jobs:
             'release-patch.json',
             JSON.stringify({
               body: patchedBody,
-              name: tag,
+              name: releaseName,
               tag_name: tag
             })
           )
