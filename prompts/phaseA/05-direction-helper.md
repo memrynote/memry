@@ -14,7 +14,7 @@ ls packages/i18n/src/shared/config.ts                # exists from Task 04
 
 ## Your job
 
-Write a single-line helper `localeDirection(locale: string): 'ltr' | 'rtl'` that wraps `Intl.Locale.textInfo.direction`. Test-first per memry's TDD discipline.
+Write a single-line helper `localeDirection(locale: string): 'ltr' | 'rtl'` that wraps `Intl.Locale.textInfo.direction`. Test-first per Memry's TDD discipline.
 
 ## Steps
 

@@ -17,7 +17,7 @@ If working tree is dirty, abort and report — don't proceed with uncommitted ch
 
 ## Your job
 
-Create a git worktree at `../memry-i18n-phase-a` on a fresh branch `feature/i18n-phase-a`. All subsequent Phase A tasks run inside this worktree per memry's MEMORY.md preference (worktree-isolated implementation).
+Create a git worktree at `../memry-i18n-phase-a` on a fresh branch `feature/i18n-phase-a`. All subsequent Phase A tasks run inside this worktree per Memry's MEMORY.md preference (worktree-isolated implementation).
 
 ## Steps
 

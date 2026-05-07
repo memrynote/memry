@@ -13,8 +13,9 @@ cat apps/desktop/src/renderer/src/components/bulk/delete-confirmation-dialog.tsx
 ```
 
 Note the two strings to migrate (line numbers approximate):
-- ~65: `<AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>` — *migrate*
-- ~67: `Delete {itemCount} item{itemCount !== 1 ? 's' : ''}` — *migrate via `count.itemDelete`*
+
+- ~65: `<AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>` — _migrate_
+- ~67: `Delete {itemCount} item{itemCount !== 1 ? 's' : ''}` — _migrate via `count.itemDelete`_
 
 The dialog **title** ("Delete N items?") and **description body** ("These items will be removed from your inbox…") **stay English** — those are inbox-specific copy (Phase C).
 
@@ -27,11 +28,13 @@ First migration to exercise ICU pluralization end-to-end. Add a composite `count
 1. Add `count.itemDelete` to all three `common.json` files (inside the existing `count` object):
 
 **`packages/i18n/src/locales/en/common.json`:**
+
 ```json
 "itemDelete": "{count, plural, one {Delete # item} other {Delete # items}}"
 ```
 
 **`packages/i18n/src/locales/tr/common.json`:**
+
 ```json
 "itemDelete": "{count, plural, one {# öğeyi sil} other {# öğeyi sil}}"
 ```
@@ -39,6 +42,7 @@ First migration to exercise ICU pluralization end-to-end. Add a composite `count
 (Turkish word order: object before verb. "Sil" = delete; "öğeyi" = the item, accusative.)
 
 **`packages/i18n/src/locales/ar/common.json`:**
+
 ```json
 "itemDelete": "{count, plural, zero {حذف العناصر} one {حذف عنصر واحد} two {حذف عنصرين} few {حذف # عناصر} many {حذف # عنصراً} other {حذف # عنصر}}"
 ```
@@ -152,7 +156,7 @@ If `@testing-library/react` is not yet a dev dep on `apps/desktop`, install it:
 pnpm --filter @memry/desktop add -D @testing-library/react @testing-library/jest-dom
 ```
 
-(Search the existing tree first — memry likely already uses Testing Library since several `*.test.tsx` files exist. If yes, skip the install.)
+(Search the existing tree first — Memry likely already uses Testing Library since several `*.test.tsx` files exist. If yes, skip the install.)
 
 8. Run the new test:
 

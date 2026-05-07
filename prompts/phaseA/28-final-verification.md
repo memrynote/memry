@@ -36,7 +36,7 @@ Expected: passes.
 pnpm typecheck
 ```
 
-Expected: passes. Per memry's MEMORY.md, some test-file errors are pre-existing and ignored — that's fine. Source code in `packages/i18n` and `apps/desktop` must be clean.
+Expected: passes. Per Memry's MEMORY.md, some test-file errors are pre-existing and ignored — that's fine. Source code in `packages/i18n` and `apps/desktop` must be clean.
 
 3. **IPC contract check**:
 
@@ -102,7 +102,7 @@ git push -u origin feature/i18n-phase-a
 gh pr create --title "feat(i18n): Phase A — infrastructure" --body "$(cat <<'EOF'
 ## Summary
 
-Ships the i18n infrastructure for memry:
+Ships the i18n infrastructure for Memry:
 
 - New `@memry/i18n` shared package wrapping `react-i18next` + `i18next-icu`
 - Main and renderer i18next instances with synchronous main-process boot

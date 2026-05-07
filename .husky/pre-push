@@ -1,0 +1,60 @@
+#!/usr/bin/env sh
+set -eu
+
+current_branch=$(git branch --show-current)
+
+case "$current_branch" in
+  codex/*|codex-*|t3code*|t3code/*|claude/*|claude-*|cursor/*|cursor-*|fox-inline-go)
+    printf '\npre-push: rename tool-branded/random branch before pushing: %s\n\n' "$current_branch" >&2
+    exit 1
+    ;;
+esac
+
+base_ref=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)
+
+if [ -n "$base_ref" ]; then
+  base_commit=$(git merge-base HEAD "$base_ref")
+elif git rev-parse --verify origin/main >/dev/null 2>&1; then
+  base_commit=$(git merge-base HEAD origin/main)
+else
+  base_commit=$(git rev-list --max-parents=0 HEAD | tail -n 1)
+fi
+
+changed_files=$(git diff --name-only --diff-filter=ACMR "$base_commit"...HEAD)
+
+if [ -z "$changed_files" ]; then
+  exit 0
+fi
+
+has_changes() {
+  printf '%s\n' "$changed_files" | grep -E "$1" >/dev/null
+}
+
+code_changed='^(apps/desktop|apps/sync-server|packages|scripts|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|eslint.config.mjs|lint-staged.config.mjs|tsconfig|turbo.json)'
+package_changed='^(packages|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|tsconfig|turbo.json)'
+desktop_changed='^(apps/desktop|packages|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|eslint.config.mjs|lint-staged.config.mjs|tsconfig|turbo.json)'
+sync_server_changed='^(apps/sync-server|packages/(contracts|shared|sync-core)|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|tsconfig|turbo.json)'
+
+if ! has_changes "$code_changed"; then
+  exit 0
+fi
+
+pnpm repair:links
+pnpm check:contracts
+pnpm check:architecture
+
+if has_changes "$package_changed"; then
+  pnpm typecheck:packages
+fi
+
+if has_changes "$desktop_changed"; then
+  pnpm lint:desktop
+  pnpm ipc:check
+  pnpm typecheck:desktop
+  pnpm test:desktop
+fi
+
+if has_changes "$sync_server_changed"; then
+  pnpm typecheck:sync-server
+  pnpm test:sync-server
+fi

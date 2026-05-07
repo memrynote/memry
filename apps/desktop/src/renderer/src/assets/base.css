@@ -1242,7 +1242,7 @@ div.react-sigma {
 
 /* ===== BLOCKNOTE XL-AI THEMING ===== */
 
-/* AI Menu (combobox) — match memry's warm palette */
+/* AI Menu (combobox) — match Memry's warm palette */
 .bn-combobox {
   background: var(--popover) !important;
   border: 1px solid var(--border) !important;

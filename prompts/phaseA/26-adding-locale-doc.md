@@ -23,9 +23,9 @@ Create a one-page checklist documenting how to add language number 4 (or N) to m
 1. **Create `docs/i18n-adding-a-locale.md`**:
 
 ````markdown
-# Adding a New Locale to memry
+# Adding a New Locale to Memry
 
-This is the checklist to add language number 4 (or any subsequent language) to memry's i18n system.
+This is the checklist to add language number 4 (or any subsequent language) to Memry's i18n system.
 
 ## 1. Update the Locale enum
 

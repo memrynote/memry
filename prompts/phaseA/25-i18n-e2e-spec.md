@@ -13,7 +13,7 @@ ls apps/desktop/tests/e2e/                                              # see e2
 cat apps/desktop/tests/e2e/utils/electron-helpers.ts | head -50         # see helper functions
 ```
 
-**Critical:** memry's E2E tests run against the **built bundle** at `out/main/index.js`, not source. You must rebuild before running. (See memry's MEMORY.md for context.)
+**Critical:** Memry's E2E tests run against the **built bundle** at `out/main/index.js`, not source. You must rebuild before running. (See Memry's MEMORY.md for context.)
 
 ## Your job
 
@@ -38,7 +38,7 @@ ls -la apps/desktop/out/main/index.js   # must exist
 
 ```ts
 import { test, expect } from '@playwright/test'
-// Import from memry's actual electron-helpers exports — adjust names if different
+// Import from Memry's actual electron-helpers exports — adjust names if different
 import { launchApp, openSettings } from './utils/electron-helpers'
 
 test.describe('i18n', () => {
@@ -96,7 +96,7 @@ test.describe('i18n', () => {
 })
 ```
 
-**Adjust selectors and helper imports** to match memry's actual conventions. The grep on `electron-helpers.ts` shows you what's exported. Likely names:
+**Adjust selectors and helper imports** to match Memry's actual conventions. The grep on `electron-helpers.ts` shows you what's exported. Likely names:
 
 - `launchApp` — boots Electron + returns `{ app, page }`
 - `openSettings` — navigates to Settings page
@@ -111,7 +111,7 @@ pnpm --filter @memry/desktop test:e2e i18n
 
 Expected: 3 tests pass.
 
-4. **If tests fail**: common causes per memry's MEMORY.md:
+4. **If tests fail**: common causes per Memry's MEMORY.md:
 
 - **Stale `out/`**: rebuild via `pnpm --filter @memry/desktop build`
 - **Native module mismatch**: `bash apps/desktop/scripts/ensure-native.sh electron`
@@ -133,7 +133,7 @@ git commit -m "test(i18n): e2e — live switch, RTL, native menu rebuild"
 
 ## Skills to use
 
-- **`superpowers:test-driven-development`** — partial: the implementation already exists from prior tasks, but the tests are written *fresh* for the spec
+- **`superpowers:test-driven-development`** — partial: the implementation already exists from prior tasks, but the tests are written _fresh_ for the spec
 - **`superpowers:verification-before-completion`** — all 3 tests must actually pass
 
 ## Report back

@@ -16,7 +16,7 @@ grep -n "Code Style\|## Style\|Prettier" CLAUDE.md | head -5    # find Code Styl
 
 ## Your job
 
-Append a single rule to memry's project `CLAUDE.md` mandating Tailwind logical classes for new code. This makes the convention reviewable in PRs and visible to anyone (human or AI) editing the codebase.
+Append a single rule to Memry's project `CLAUDE.md` mandating Tailwind logical classes for new code. This makes the convention reviewable in PRs and visible to anyone (human or AI) editing the codebase.
 
 ## Steps
 

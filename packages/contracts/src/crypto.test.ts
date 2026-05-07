@@ -102,7 +102,7 @@ describe('Crypto constants', () => {
     expect(LINKING_HKDF_CONTEXTS.SAS).toBe('memry-linking-sas-v1')
   })
 
-  it('pins all keychain entries to the memry service namespace', () => {
+  it('pins all keychain entries to the Memry service namespace', () => {
     for (const entry of Object.values(KEYCHAIN_ENTRIES)) {
       expect(entry.service).toBe('com.memry.sync')
       expect(entry.account.length).toBeGreaterThan(0)

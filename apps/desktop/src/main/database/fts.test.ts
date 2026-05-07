@@ -53,7 +53,7 @@ describe('fts integration', () => {
   it('supports basic, boolean, and prefix search', () => {
     createFtsTable(db)
     insertFtsNote(db, 'note-1', 'Alpha Note', 'hello world', ['alpha'])
-    insertFtsNote(db, 'note-2', 'Beta Note', 'hello memry', ['beta'])
+    insertFtsNote(db, 'note-2', 'Beta Note', 'hello Memry', ['beta'])
     insertFtsNote(db, 'note-3', 'Gamma Note', 'something else', ['gamma'])
 
     const basic = db.all<{ id: string }>(sql`
@@ -67,7 +67,7 @@ describe('fts integration', () => {
     expect(boolean.map((r) => r.id)).toEqual(['note-1'])
 
     const negation = db.all<{ id: string }>(sql`
-      SELECT id FROM fts_notes WHERE fts_notes MATCH 'hello NOT memry'
+      SELECT id FROM fts_notes WHERE fts_notes MATCH 'hello NOT Memry'
     `)
     expect(negation.map((r) => r.id)).toEqual(['note-1'])
 

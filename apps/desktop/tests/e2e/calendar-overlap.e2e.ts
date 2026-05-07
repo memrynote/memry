@@ -92,7 +92,7 @@ test.describe('Calendar — overlapping events layout', () => {
     const disjoint = memryRight <= externalBox.x || externalRight <= memryBox.x
     if (!disjoint) {
       throw new Error(
-        `expected disjoint horizontal regions, got memry ${JSON.stringify(memryBox)} vs external ${JSON.stringify(externalBox)}`
+        `expected disjoint horizontal regions, got Memry ${JSON.stringify(memryBox)} vs external ${JSON.stringify(externalBox)}`
       )
     }
 
@@ -135,7 +135,7 @@ test.describe('Calendar — overlapping events layout', () => {
     const disjoint = memryRight <= externalBox.x || externalRight <= memryBox.x
     if (!disjoint) {
       throw new Error(
-        `expected disjoint horizontal regions, got memry ${JSON.stringify(memryBox)} vs external ${JSON.stringify(externalBox)}`
+        `expected disjoint horizontal regions, got Memry ${JSON.stringify(memryBox)} vs external ${JSON.stringify(externalBox)}`
       )
     }
   })

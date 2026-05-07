@@ -15,7 +15,7 @@ cat packages/contracts/package.json | head -20   # for reference: source-pointin
 
 ## Your job
 
-Create a new workspace package at `packages/i18n` that mirrors memry's existing package conventions: `"type": "module"`, source-pointing exports (no build step), TypeScript-only, depends on `@memry/contracts` for `LocaleSchema`/`Locale` (added in Task 03).
+Create a new workspace package at `packages/i18n` that mirrors Memry's existing package conventions: `"type": "module"`, source-pointing exports (no build step), TypeScript-only, depends on `@memry/contracts` for `LocaleSchema`/`Locale` (added in Task 03).
 
 ## Steps
 
@@ -90,7 +90,7 @@ mkdir -p packages/i18n/src/locales/ar
 4. Create `packages/i18n/src/index.ts` (placeholder so the package resolves):
 
 ```ts
-export { } // placeholder; real exports live in /main, /renderer, /shared
+export {} // placeholder; real exports live in /main, /renderer, /shared
 ```
 
 5. Install:
