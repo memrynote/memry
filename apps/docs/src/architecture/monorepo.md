@@ -38,6 +38,8 @@ pnpm lint               # ESLint flat config
 pnpm typecheck          # TypeScript across all packages
 pnpm test               # vitest (desktop + sync-server)
 pnpm test:e2e           # Playwright E2E (Electron)
+pnpm docs:impact        # suggest docs pages for changed source paths
+pnpm docs:check         # run docs impact report + VitePress build
 pnpm ipc:check          # validate renderer/main contract types
 pnpm ipc:generate       # regenerate IPC invoke map
 

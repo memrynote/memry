@@ -9,6 +9,7 @@ pnpm test                              # all packages
 pnpm --filter @memry/desktop test      # desktop only
 pnpm --filter @memry/sync-server test  # sync server only
 pnpm test:e2e                          # Playwright
+pnpm docs:check                        # docs impact report + VitePress build
 ```
 
 ## Unit + Integration (Vitest)
@@ -63,6 +64,17 @@ When to run:
 - Any time you touch a Zod schema in `packages/contracts`
 - Any time you add or rename an IPC channel
 - Before opening a PR that touches the boundary
+
+## Docs Check
+
+```bash
+pnpm docs:impact       # print docs pages suggested by changed source paths
+pnpm docs:check        # run docs:impact, then build the docs site
+```
+
+Run `pnpm docs:impact` after touching `apps/desktop`, `apps/sync-server`, or shared packages.
+It reads `docs/doc-impact.yml` and points to `apps/docs` pages that may need edits. Build docs with
+`pnpm docs:build` or `pnpm docs:check` after changing those pages.
 
 ## Focused Typecheck
 

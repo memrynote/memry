@@ -1,0 +1,233 @@
+# Source-to-doc map for scripts/check-doc-impact.mjs.
+# Keep rules broad enough to give agents a shortlist, then let the human/agent decide
+# whether the actual behavior change requires text edits.
+rules:
+  - name: monorepo and developer workflow
+    sources:
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - turbo.json
+      - CLAUDE.md
+      - scripts/**
+      - apps/*/package.json
+      - packages/*/package.json
+    docs:
+      - apps/docs/src/architecture/monorepo.md
+      - apps/docs/src/contribute/workflow.md
+      - apps/docs/src/contribute/testing.md
+      - apps/docs/src/contribute/gotchas.md
+
+  - name: ipc and contracts
+    sources:
+      - packages/contracts/src/**
+      - packages/rpc/src/**
+      - apps/desktop/src/main/ipc/**
+      - apps/desktop/src/preload/**
+      - apps/desktop/src/renderer/src/services/**
+      - apps/desktop/src/renderer/src/sync/**
+    docs:
+      - apps/docs/src/architecture/ipc.md
+
+  - name: local storage and vault
+    sources:
+      - packages/db-schema/src/**
+      - packages/storage-data/src/**
+      - packages/storage-vault/src/**
+      - apps/desktop/src/main/database/**
+      - apps/desktop/src/main/vault/**
+    docs:
+      - apps/docs/src/architecture/local-storage.md
+      - apps/docs/src/contribute/gotchas.md
+
+  - name: sync protocol and device sync
+    sources:
+      - apps/sync-server/**
+      - packages/sync-core/src/**
+      - apps/desktop/src/main/sync/**
+      - apps/desktop/src/main/calendar/google/provider-auth-transfer*
+      - apps/desktop/src/renderer/src/components/sync/**
+      - apps/desktop/src/renderer/src/contexts/sync-context*
+      - packages/contracts/src/*sync*
+      - packages/contracts/src/blob*
+      - packages/contracts/src/linking*
+    docs:
+      - apps/docs/src/architecture/sync-protocol.md
+      - apps/docs/src/architecture/sync-handlers.md
+      - apps/docs/src/user-guide/sync/how-sync-works.md
+      - apps/docs/src/user-guide/sync/linking-devices.md
+      - apps/docs/src/user-guide/sync/conflict-health.md
+
+  - name: crdt notes sync
+    sources:
+      - apps/desktop/src/main/sync/*crdt*
+      - apps/desktop/src/main/sync/crdt*/**
+      - apps/desktop/src/renderer/src/sync/**
+      - packages/contracts/src/ipc-crdt*
+    docs:
+      - apps/docs/src/architecture/crdt.md
+      - apps/docs/src/user-guide/notes/version-history.md
+
+  - name: crypto and recovery
+    sources:
+      - apps/desktop/src/main/crypto/**
+      - packages/contracts/src/crypto*
+      - packages/contracts/src/ipc-crypto*
+      - packages/contracts/src/vault*
+    docs:
+      - apps/docs/src/architecture/cryptography.md
+      - apps/docs/src/guide/first-run.md
+      - apps/docs/src/user-guide/sync/recovery-rotation.md
+
+  - name: observability and telemetry
+    sources:
+      - apps/desktop/src/main/telemetry/**
+      - apps/desktop/src/main/ipc/telemetry*
+      - apps/desktop/src/renderer/src/lib/telemetry*
+      - apps/desktop/src/renderer/src/hooks/use-telemetry*
+      - apps/sync-server/src/services/telemetry*
+      - apps/sync-server/src/routes/telemetry*
+      - packages/contracts/src/telemetry*
+    docs:
+      - apps/docs/src/architecture/observability.md
+      - apps/docs/src/user-guide/settings.md
+
+  - name: notes
+    sources:
+      - apps/desktop/src/main/notes/**
+      - apps/desktop/src/renderer/src/components/note/**
+      - apps/desktop/src/renderer/src/hooks/use-note*
+      - apps/desktop/src/renderer/src/services/notes-service*
+      - packages/domain-notes/src/**
+      - packages/contracts/src/notes*
+    docs:
+      - apps/docs/src/user-guide/notes/editing.md
+      - apps/docs/src/user-guide/notes/wiki-links.md
+      - apps/docs/src/user-guide/notes/properties-tags.md
+      - apps/docs/src/user-guide/notes/attachments.md
+
+  - name: tasks
+    sources:
+      - apps/desktop/src/main/tasks/**
+      - apps/desktop/src/main/ipc/tasks*
+      - apps/desktop/src/renderer/src/components/tasks/**
+      - apps/desktop/src/renderer/src/contexts/tasks/**
+      - apps/desktop/src/renderer/src/features/tasks/**
+      - apps/desktop/src/renderer/src/hooks/use-task*
+      - packages/domain-tasks/src/**
+      - packages/contracts/src/tasks*
+    docs:
+      - apps/docs/src/user-guide/tasks/capturing.md
+      - apps/docs/src/user-guide/tasks/list-vs-kanban.md
+      - apps/docs/src/user-guide/tasks/filters-sorting.md
+      - apps/docs/src/user-guide/tasks/subtasks-recurrence.md
+      - apps/docs/src/user-guide/tasks/bulk-actions.md
+      - apps/docs/src/user-guide/tasks/drag-and-drop.md
+
+  - name: inbox
+    sources:
+      - apps/desktop/src/main/inbox/**
+      - apps/desktop/src/main/ipc/inbox*
+      - apps/desktop/src/renderer/src/components/inbox/**
+      - apps/desktop/src/renderer/src/components/inbox-detail/**
+      - apps/desktop/src/renderer/src/features/inbox/**
+      - apps/desktop/src/renderer/src/hooks/use-inbox*
+      - packages/domain-inbox/src/**
+      - packages/contracts/src/inbox*
+    docs:
+      - apps/docs/src/user-guide/inbox/capturing.md
+      - apps/docs/src/user-guide/inbox/triage.md
+      - apps/docs/src/user-guide/inbox/filters.md
+      - apps/docs/src/user-guide/inbox/snooze-archive.md
+      - apps/docs/src/user-guide/inbox/health.md
+
+  - name: calendar
+    sources:
+      - apps/desktop/src/main/calendar/**
+      - apps/desktop/src/main/ipc/calendar*
+      - apps/desktop/src/renderer/src/components/calendar/**
+      - apps/desktop/src/renderer/src/pages/calendar*
+      - apps/desktop/src/renderer/src/hooks/use-calendar*
+      - packages/contracts/src/calendar*
+    docs:
+      - apps/docs/src/user-guide/calendar.md
+
+  - name: journal
+    sources:
+      - apps/desktop/src/main/journal/**
+      - apps/desktop/src/main/ipc/journal*
+      - apps/desktop/src/renderer/src/components/journal/**
+      - apps/desktop/src/renderer/src/hooks/use-journal*
+      - packages/contracts/src/journal*
+    docs:
+      - apps/docs/src/user-guide/journal/daily-entries.md
+      - apps/docs/src/user-guide/journal/calendar-navigation.md
+      - apps/docs/src/user-guide/journal/templates-settings.md
+
+  - name: search and graph
+    sources:
+      - apps/desktop/src/main/search/**
+      - apps/desktop/src/main/graph/**
+      - apps/desktop/src/main/ipc/search*
+      - apps/desktop/src/main/ipc/graph*
+      - apps/desktop/src/renderer/src/components/search/**
+      - apps/desktop/src/renderer/src/components/graph/**
+      - apps/desktop/src/renderer/src/hooks/use-search*
+      - packages/contracts/src/search*
+      - packages/contracts/src/graph*
+    docs:
+      - apps/docs/src/user-guide/search.md
+
+  - name: settings and preferences
+    sources:
+      - apps/desktop/src/main/settings/**
+      - apps/desktop/src/main/store*
+      - apps/desktop/src/main/ipc/settings*
+      - apps/desktop/src/renderer/src/components/settings/**
+      - apps/desktop/src/renderer/src/pages/settings/**
+      - apps/desktop/src/renderer/src/hooks/use-*-preferences*
+      - packages/contracts/src/settings*
+    docs:
+      - apps/docs/src/user-guide/settings.md
+      - apps/docs/src/guide/first-run.md
+
+  - name: ai features
+    sources:
+      - apps/desktop/src/main/ai-inline/**
+      - apps/desktop/src/main/inbox/voice*
+      - apps/desktop/src/renderer/src/services/ai-connections-service*
+      - apps/desktop/src/renderer/src/components/note/content-area/hooks/use-ai*
+      - packages/contracts/src/ai*
+    docs:
+      - apps/docs/src/user-guide/ai/inline-menu.md
+      - apps/docs/src/user-guide/ai/provider-setup.md
+      - apps/docs/src/user-guide/ai/voice-transcription.md
+      - apps/docs/src/user-guide/ai/embeddings-search.md
+
+  - name: templates reminders and shortcuts
+    sources:
+      - apps/desktop/src/main/vault/templates*
+      - apps/desktop/src/main/ipc/templates*
+      - apps/desktop/src/main/ipc/reminder*
+      - apps/desktop/src/renderer/src/components/keyboard/**
+      - apps/desktop/src/renderer/src/components/reminder/**
+      - apps/desktop/src/renderer/src/hooks/use-keyboard*
+      - apps/desktop/src/renderer/src/hooks/use-reminder*
+      - packages/contracts/src/templates*
+      - packages/contracts/src/reminders*
+    docs:
+      - apps/docs/src/user-guide/templates.md
+      - apps/docs/src/user-guide/snooze-reminders.md
+      - apps/docs/src/user-guide/keyboard-shortcuts.md
+
+  - name: tabs folders and workspace layout
+    sources:
+      - apps/desktop/src/renderer/src/components/tabs/**
+      - apps/desktop/src/renderer/src/components/split-view/**
+      - apps/desktop/src/renderer/src/components/folder-view/**
+      - apps/desktop/src/renderer/src/contexts/tabs/**
+      - apps/desktop/src/main/ipc/folder-view*
+      - packages/contracts/src/folder-view*
+    docs:
+      - apps/docs/src/user-guide/tabs-split-view.md
+      - apps/docs/src/user-guide/folder-view.md

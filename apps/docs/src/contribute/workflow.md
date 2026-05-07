@@ -56,6 +56,7 @@ Before opening a PR:
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm docs:impact
 pnpm ipc:check     # if you touched the renderer/main boundary
 ```
 
@@ -68,6 +69,26 @@ pnpm --filter @memry/desktop test
 ```
 
 These skip the flaky `ipc:check` pre-hook and the pre-existing `sync-telemetry.ts` typecheck error.
+
+## Docs Impact
+
+Code changes can require docs changes in `apps/docs`. Do not rely on memory to find the right page.
+Run:
+
+```bash
+pnpm docs:impact
+```
+
+The command compares changed files with `origin/main` and prints the docs pages mapped in
+`docs/doc-impact.yml`. Read each listed page. Update it when the code changed behavior, setup,
+contracts, storage/sync semantics, user-facing flows, shortcuts, settings, or known gotchas.
+
+If the listed code changes are internal-only and no docs text should change, keep the code as-is and
+state that rationale in the PR or handoff. When docs are changed, run:
+
+```bash
+pnpm docs:build
+```
 
 ## Shipping
 
