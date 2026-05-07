@@ -31,4 +31,13 @@ describe('staged secret scanner', () => {
 
     assert.equal(findings.length, 0)
   })
+
+  it('does not scan binary asset paths', () => {
+    const findings = scanTextForSecrets(
+      'apps/landing/public/demos/inbox.mp4',
+      'CLOUDFLARE_API_TOKEN=actual-secret-value'
+    )
+
+    assert.equal(findings.length, 0)
+  })
 })

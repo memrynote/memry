@@ -17,6 +17,8 @@ test-index.db
 
 # Environment & secrets
 .env*
+!.env.example
+!**/.env.example
 electron-builder.env
 .dev.vars
 private.pem
@@ -42,6 +44,9 @@ Thumbs.db
 
 # Cloudflare
 .wrangler
+
+# Vercel
+.vercel
 
 # Worktrees
 .worktrees/
