@@ -1,11 +1,18 @@
 ---
 title: Memry Docs
 description: Redirecting to the install guide.
-head:
-  - - meta
-    - http-equiv: refresh
-      content: 0;url=/guide/install
 ---
+
+<script setup>
+import { onMounted } from 'vue'
+import { useRouter } from 'vitepress'
+
+const router = useRouter()
+
+onMounted(() => {
+  router.go('/guide/install')
+})
+</script>
 
 # Redirecting…
 
