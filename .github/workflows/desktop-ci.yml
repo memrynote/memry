@@ -2,7 +2,23 @@ name: Desktop CI
 
 on:
   pull_request:
+    paths:
+      - 'apps/desktop/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'turbo.json'
+      - '.github/workflows/desktop-ci.yml'
   push:
+    paths:
+      - 'apps/desktop/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'turbo.json'
+      - '.github/workflows/desktop-ci.yml'
   workflow_dispatch:
 
 permissions:
@@ -122,8 +138,39 @@ jobs:
           name: desktop
           fail_ci_if_error: true
 
-  e2e-smoke:
-    name: Electron E2E smoke
+  detect-e2e:
+    name: Detect changed E2E tests
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      files: ${{ steps.changed.outputs.files }}
+      has_changes: ${{ steps.changed.outputs.has_changes }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Find changed E2E test files
+        id: changed
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          changed=$(git diff --name-only --diff-filter=AM "$BASE_SHA"...HEAD -- 'apps/desktop/tests/e2e/*.e2e.ts' | sed 's|^apps/desktop/||' | tr '\n' ' ')
+          echo "Changed e2e files: $changed"
+          echo "files=$changed" >> "$GITHUB_OUTPUT"
+          if [ -n "$changed" ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  e2e-changed:
+    name: Electron E2E (changed tests)
+    needs: detect-e2e
+    if: needs.detect-e2e.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -161,28 +208,29 @@ jobs:
           bash apps/desktop/scripts/ensure-native.sh electron
           pnpm --filter @memry/desktop exec electron-vite build
 
-      - name: Run Electron smoke tests
+      - name: Run changed E2E tests
+        env:
+          E2E_FILES: ${{ needs.detect-e2e.outputs.files }}
         run: |
           dbus-run-session -- bash -c '
             eval "$(printf "\n" | gnome-keyring-daemon --unlock)"
             eval "$(printf "\n" | gnome-keyring-daemon --start --components=secrets)"
             xvfb-run -a pnpm --filter @memry/desktop exec playwright test \
               --config config/playwright.config.ts \
-              tests/e2e/vault.e2e.ts \
-              tests/e2e/notes.e2e.ts \
-              tests/e2e/tasks.e2e.ts
+              '"$E2E_FILES"'
           '
 
       - name: Upload E2E failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-smoke-results
+          name: e2e-changed-results
           path: apps/desktop/test-results/
           if-no-files-found: ignore
 
   e2e-full:
     name: Electron E2E full (${{ matrix.shard }})
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -249,6 +297,7 @@ jobs:
 
   package-smoke:
     name: Packaged runtime smoke
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: macos-latest
     timeout-minutes: 45
     env:
