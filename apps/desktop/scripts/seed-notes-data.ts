@@ -279,7 +279,7 @@ DDIA doesn't teach you a specific technology — it teaches you **how to think a
 Correctness > Performance > Features
 \`\`\`
 
-The chapter on **CRDTs and conflict resolution** directly influenced my understanding of [[Yjs CRDT]]. The replication chapter maps perfectly to the sync architecture in [[memry]].
+The chapter on **CRDTs and conflict resolution** directly influenced my understanding of [[Yjs CRDT]]. The replication chapter maps perfectly to the sync architecture in [[Memry]].
 
 | Chapter | Topic | Re-read? |
 |---------|-------|----------|
@@ -465,7 +465,7 @@ The visual richness connects to [[The Grand Budapest Hotel]] — Wes Anderson wo
   // ═══════════════════════════════════════════════════════════════════════════
   {
     folder: 'projects',
-    title: 'memry',
+    title: 'Memry',
     emoji: '🧠',
     tags: ['electron', 'typescript', 'personal-project'],
     properties: { status: 'active', stack: 'Electron, TypeScript, SQLite, Yjs' },
@@ -615,7 +615,7 @@ interface Recipe {
 }
 \`\`\`
 
-Would store recipes from [[Shakshuka]], [[Homemade Ramen]], [[Sourdough Bread]], and [[Thai Green Curry]]. The local-first approach is borrowed from [[memry]].
+Would store recipes from [[Shakshuka]], [[Homemade Ramen]], [[Sourdough Bread]], and [[Thai Green Curry]]. The local-first approach is borrowed from [[Memry]].
 
 #offline-first #cooking #mobile`
   },
@@ -1099,7 +1099,7 @@ Operational Transform (Google Docs' approach) requires a **central server** to o
 
 ## In Practice
 
-Used in [[memry]] for note synchronization. The theoretical foundations come from Chapter 5 of [[Designing Data-Intensive Applications]] (leaderless replication + conflict resolution).
+Used in [[Memry]] for note synchronization. The theoretical foundations come from Chapter 5 of [[Designing Data-Intensive Applications]] (leaderless replication + conflict resolution).
 
 The ownership semantics differ from [[Rust Ownership]] — in CRDTs, *everyone* owns a copy and the math ensures they converge.
 
@@ -1148,13 +1148,13 @@ PRAGMA busy_timeout = 5000;   -- wait up to 5s for locks
 - Maximum WAL size can be configured with \`PRAGMA wal_autocheckpoint\`
 
 \`\`\`typescript
-// In memry, we set pragmas on every connection
+// In Memry, we set pragmas on every connection
 sqlite.pragma('journal_mode = WAL')
 sqlite.pragma('synchronous = NORMAL')
 sqlite.pragma('foreign_keys = ON')
 \`\`\`
 
-Used in [[memry]] for both data.db and index.db. The concepts map to Chapter 3 of [[Designing Data-Intensive Applications]] (storage engines). The concurrent access patterns relate to [[Yjs CRDT]] — both solve the "multiple actors, one data store" problem differently.
+Used in [[Memry]] for both data.db and index.db. The concepts map to Chapter 3 of [[Designing Data-Intensive Applications]] (storage engines). The concurrent access patterns relate to [[Yjs CRDT]] — both solve the "multiple actors, one data store" problem differently.
 
 #pragma #concurrent-reads #journaling`
   },
@@ -1211,7 +1211,7 @@ q        → stop recording
 4. \`gv\` — reselect last visual selection
 5. \`zz\` — center current line on screen
 
-Once you internalize the grammar, every new verb or noun multiplies your vocabulary. This is why Vim motions work in VS Code, IntelliJ, and even [[memry]].
+Once you internalize the grammar, every new verb or noun multiplies your vocabulary. This is why Vim motions work in VS Code, IntelliJ, and even [[Memry]].
 
 The composability principle connects to [[Rust Ownership]] — small, orthogonal rules that combine into powerful behavior.
 
@@ -1370,12 +1370,12 @@ Stop perfecting things privately. Ship more, share more, iterate in the open.
 ## Quarterly Targets
 
 ### Q1 (Jan–Mar)
-- [x] Launch [[memry]] alpha to 10 testers
+- [x] Launch [[Memry]] alpha to 10 testers
 - [x] Establish [[Morning Routine]] v3
 - [ ] Read 3 books from club list (see [[Book Club Notes]])
 
 ### Q2 (Apr–Jun)
-- [ ] Ship memry to public beta
+- [ ] Ship Memry to public beta
 - [ ] Complete [[Portugal Road Trip]] planning
 - [ ] Hit 100kg squat (currently 85kg, tracked in [[Workout Plan]])
 
@@ -1385,7 +1385,7 @@ Stop perfecting things privately. Ship more, share more, iterate in the open.
 - [ ] Complete [[Japan 2025]] (trip is in October but prep is Q3)
 
 ### Q4 (Oct–Dec)
-- [ ] memry v1.0 launch
+- [ ] Memry v1.0 launch
 - [ ] Annual review and 2027 planning
 - [ ] Try one entirely new skill
 
@@ -1400,7 +1400,7 @@ Things I'm deliberately **not** pursuing this year:
 
 > Am I building in public? What did I ship this month? What am I avoiding?
 
-The yearly perspective connects everything: [[memry]] is the main project, [[Morning Routine]] is the daily foundation, [[Workout Plan]] is the physical side. Even cooking ([[Sourdough Bread]], [[Thai Green Curry]]) is about mastering processes.
+The yearly perspective connects everything: [[Memry]] is the main project, [[Morning Routine]] is the daily foundation, [[Workout Plan]] is the physical side. Even cooking ([[Sourdough Bread]], [[Thai Green Curry]]) is about mastering processes.
 
 #yearly-review #accountability #anti-goals`
   }

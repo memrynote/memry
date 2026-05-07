@@ -25,7 +25,7 @@ Replace user-visible menu labels with `t()` calls so the menu rebuilds in the ac
 
    If it's inline in `index.ts`, you'll extract it. If it's already a module, modify in place.
 
-2. **Replace `apps/desktop/src/main/menu.ts`** (overwriting the Task-15 stub) with a localized template. The structure below covers File / Edit / View. **Adapt this to mirror whatever menu items memry currently has**, just with labels wrapped in `t()`:
+2. **Replace `apps/desktop/src/main/menu.ts`** (overwriting the Task-15 stub) with a localized template. The structure below covers File / Edit / View. **Adapt this to mirror whatever menu items Memry currently has**, just with labels wrapped in `t()`:
 
 ```ts
 import { Menu, type MenuItemConstructorOptions, app } from 'electron'
@@ -76,7 +76,7 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
 }
 ```
 
-**IMPORTANT:** if the existing menu has more items, MORE submenus, or custom click handlers — preserve all of them. Only change *labels* (the strings users see) to `t('menu:...')` calls. Add the new keys to `packages/i18n/src/locales/{en,tr,ar}/menu.json` if they aren't already there from Task 08.
+**IMPORTANT:** if the existing menu has more items, MORE submenus, or custom click handlers — preserve all of them. Only change _labels_ (the strings users see) to `t('menu:...')` calls. Add the new keys to `packages/i18n/src/locales/{en,tr,ar}/menu.json` if they aren't already there from Task 08.
 
 3. **If existing menu was inline in `index.ts`**: remove the inline construction (it's replaced by `buildAppMenu`). Verify `Menu.setApplicationMenu(buildAppMenu(mainI18n))` is the only place setting the menu.
 

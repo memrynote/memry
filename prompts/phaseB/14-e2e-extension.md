@@ -15,9 +15,9 @@ ls apps/desktop/tests/e2e/utils/electron-helpers.ts              # confirm helpe
 
 ## Your job
 
-Append a 4th scenario to the existing `test.describe('i18n', ...)` block in `i18n.spec.ts`. The scenario asserts that a *real* renderer-process button (Cancel in a delete dialog or settings modal) flips to "İptal" after switching to Turkish — proving the user-facing migration works in production-builds, not just the settings picker label that Phase A seeded.
+Append a 4th scenario to the existing `test.describe('i18n', ...)` block in `i18n.spec.ts`. The scenario asserts that a _real_ renderer-process button (Cancel in a delete dialog or settings modal) flips to "İptal" after switching to Turkish — proving the user-facing migration works in production-builds, not just the settings picker label that Phase A seeded.
 
-Per memry's MEMORY.md, e2e runs against the **built bundle** (`out/main/index.js`). Always rebuild after source edits: `pnpm --filter @memry/desktop build`.
+Per Memry's MEMORY.md, e2e runs against the **built bundle** (`out/main/index.js`). Always rebuild after source edits: `pnpm --filter @memry/desktop build`.
 
 ## Steps
 
@@ -52,7 +52,7 @@ test('migrated common-namespace strings flip in renderer UI', async () => {
 })
 ```
 
-If memry's settings modal doesn't reliably surface a Cancel button at idle, reach a known-migrated dialog explicitly:
+If Memry's settings modal doesn't reliably surface a Cancel button at idle, reach a known-migrated dialog explicitly:
 
 - Open a note (any note) → tweak it → attempt to close the tab → unsaved-changes dialog opens → Cancel reads "İptal".
 

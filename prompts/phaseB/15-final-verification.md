@@ -34,7 +34,7 @@ Expected: passes.
 pnpm typecheck
 ```
 
-Expected: passes (modulo memry's known pre-existing test-file errors per MEMORY.md). If `pnpm ipc:check` flakes inside the typecheck pipeline, fall back per MEMORY.md gotcha:
+Expected: passes (modulo Memry's known pre-existing test-file errors per MEMORY.md). If `pnpm ipc:check` flakes inside the typecheck pipeline, fall back per MEMORY.md gotcha:
 
 ```bash
 pnpm typecheck:node && pnpm typecheck:web
@@ -55,6 +55,7 @@ pnpm test
 ```
 
 Expected: all packages green. New tests:
+
 - `packages/i18n/src/shared/icu-plural.test.ts` (Task 04)
 - `apps/desktop/src/renderer/src/components/bulk/delete-confirmation-dialog.test.tsx` (Task 06)
 

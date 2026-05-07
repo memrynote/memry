@@ -7,7 +7,7 @@ import path from 'path'
 const VAULT_FOLDERS = ['notes', 'journal', 'attachments', 'attachments/images', 'attachments/files']
 
 /**
- * Hidden memry folder name
+ * Hidden Memry folder name
  */
 const MEMRY_DIR = '.memry'
 

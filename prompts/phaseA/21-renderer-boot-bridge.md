@@ -64,7 +64,7 @@ Add the import at the top of the .d.ts file:
 import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
 ```
 
-3. **Run `ipc:check` / `ipc:generate`** — if memry's IPC tooling auto-generates anything, regenerate:
+3. **Run `ipc:check` / `ipc:generate`** — if Memry's IPC tooling auto-generates anything, regenerate:
 
 ```bash
 pnpm ipc:check
@@ -83,13 +83,9 @@ Expected eventually: passes.
 
 ```tsx
 import { createRoot } from 'react-dom/client'
-import {
-  createRendererI18n,
-  I18nProvider,
-  applyLocaleToDocument
-} from '@memry/i18n/renderer'
+import { createRendererI18n, I18nProvider, applyLocaleToDocument } from '@memry/i18n/renderer'
 import App from './App'
-import './assets/main.css'  // adapt path if memry's CSS entry is elsewhere
+import './assets/main.css' // adapt path if Memry's CSS entry is elsewhere
 
 async function boot(): Promise<void> {
   const initialLocale = await window.api.locale.get()
@@ -132,18 +128,18 @@ pnpm dev
 App should boot with no UI changes (no strings migrated yet). In DevTools console:
 
 ```js
-document.documentElement.dir       // should print "ltr"
-document.documentElement.lang      // should print "en"
-window.api.locale.get()            // should resolve to "en"
-window.api.locale.list()           // should resolve to ["en", "tr", "ar"]
+document.documentElement.dir // should print "ltr"
+document.documentElement.lang // should print "en"
+window.api.locale.get() // should resolve to "en"
+window.api.locale.list() // should resolve to ["en", "tr", "ar"]
 ```
 
 Then test live switching:
 
 ```js
 await window.api.locale.set('ar')
-document.documentElement.dir       // should print "rtl"
-document.documentElement.lang      // should print "ar"
+document.documentElement.dir // should print "rtl"
+document.documentElement.lang // should print "ar"
 ```
 
 Native menu should rebuild in Arabic. UI should mostly look the same (no strings migrated yet, but doc direction flipped).
