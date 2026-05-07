@@ -8,7 +8,8 @@ export default defineConfig({
   lastUpdated: true,
   head: [['meta', { name: 'theme-color', content: '#111827' }]],
   themeConfig: {
-    siteTitle: 'Memry Docs',
+    siteTitle: 'Memry',
+    logoLink: 'https://memrynote.com',
     nav: [
       { text: 'Install', link: '/guide/install' },
       { text: 'User Guide', link: '/user-guide/notes/editing' },
