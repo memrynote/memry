@@ -8,6 +8,7 @@ build
 out
 *.tsbuildinfo
 .turbo
+apps/docs/src/.vitepress/cache/
 
 # Test
 coverage
