@@ -80,16 +80,17 @@ jobs:
         uses: release-drafter/release-drafter@v7
         with:
           token: ${{ github.token }}
-          name: ${{ steps.metadata.outputs.release_tag }}
+          name: ${{ steps.metadata.outputs.release_name }}
           tag: ${{ steps.metadata.outputs.release_tag }}
           commitish: ${{ github.sha }}
           publish: false
           latest: false
 
-      - name: Patch full changelog link
+      - name: Patch release body
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.metadata.outputs.release_tag }}
+          RELEASE_NAME: ${{ steps.metadata.outputs.release_name }}
         run: |
           gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" > draft-release.json
           gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > releases.json
@@ -100,6 +101,7 @@ jobs:
           const release = JSON.parse(readFileSync('draft-release.json', 'utf8'))
           const releases = JSON.parse(readFileSync('releases.json', 'utf8'))
           const tag = process.env.TAG
+          const releaseName = process.env.RELEASE_NAME
           const repo = process.env.GITHUB_REPOSITORY
           const tagPattern = /^v20\d{2}-\d{2}-\d{2}(?:\.[2-9]\d*)?$/
           const previous = releases.find(
@@ -111,14 +113,37 @@ jobs:
           const compareUrl = previous
             ? `https://github.com/${repo}/compare/${previous.tag_name}...${tag}`
             : `https://github.com/${repo}/commits/${tag}`
-          const body = (release.body || '').replace(/\n\n\*\*Full Changelog\*\*: .+$/s, '')
-          const patchedBody = `${body.trimEnd()}\n\n**Full Changelog**: ${compareUrl}\n`
+
+          function prefixBulletsWithSectionEmoji(input) {
+            const lines = input.split('\n')
+            const output = []
+            let sectionEmoji = ''
+            for (const line of lines) {
+              const headingMatch = line.match(/^##\s+(\S+)/)
+              if (headingMatch) {
+                const token = headingMatch[1]
+                sectionEmoji = /^\p{Extended_Pictographic}/u.test(token) ? token : ''
+                output.push(line)
+                continue
+              }
+              if (sectionEmoji && line.startsWith('- ') && !line.startsWith(`- ${sectionEmoji}`)) {
+                output.push(`- ${sectionEmoji} ${line.slice(2)}`)
+                continue
+              }
+              output.push(line)
+            }
+            return output.join('\n')
+          }
+
+          const stripped = (release.body || '').replace(/\n\n\*\*Full Changelog\*\*: .+$/s, '')
+          const withEmojis = prefixBulletsWithSectionEmoji(stripped)
+          const patchedBody = `${withEmojis.trimEnd()}\n\n**Full Changelog**: ${compareUrl}\n`
 
           writeFileSync(
             'release-patch.json',
             JSON.stringify({
               body: patchedBody,
-              name: tag,
+              name: releaseName,
               tag_name: tag
             })
           )
