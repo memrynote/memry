@@ -1,0 +1,78 @@
+name: Sync Server CI
+
+on:
+  pull_request:
+    paths:
+      - 'apps/sync-server/**'
+      - 'packages/contracts/**'
+      - 'packages/rpc/**'
+      - 'packages/shared/**'
+      - 'packages/sync-core/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'turbo.json'
+      - '.github/workflows/sync-server-ci.yml'
+  push:
+    paths:
+      - 'apps/sync-server/**'
+      - 'packages/contracts/**'
+      - 'packages/rpc/**'
+      - 'packages/shared/**'
+      - 'packages/sync-core/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'turbo.json'
+      - '.github/workflows/sync-server-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-server-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  HUSKY: 0
+  NODE_OPTIONS: --max-old-space-size=4096
+  SKIP_ELECTRON_REBUILD: 1
+  TURBO_TELEMETRY_DISABLED: 1
+
+jobs:
+  sync-server:
+    name: Typecheck, test, and Worker bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck shared packages
+        run: pnpm typecheck:packages
+
+      - name: Typecheck sync-server
+        run: pnpm typecheck:sync-server
+
+      - name: Test sync-server
+        run: pnpm test:sync-server
+
+      - name: Validate Worker bundle
+        run: pnpm --filter @memry/sync-server exec wrangler deploy --dry-run --outdir .wrangler/ci --env staging
