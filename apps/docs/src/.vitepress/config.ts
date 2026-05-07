@@ -10,29 +10,13 @@ export default defineConfig({
   themeConfig: {
     siteTitle: 'Memry Docs',
     nav: [
-      { text: 'Guide', link: '/guide/install' },
-      { text: 'Features', link: '/features' },
+      { text: 'Install', link: '/guide/install' },
+      { text: 'User Guide', link: '/user-guide/notes/editing' },
+      { text: 'Architecture', link: '/architecture' },
       { text: 'Contribute', link: '/contributing' },
       { text: 'GitHub', link: 'https://github.com/memrynote/memry' }
     ],
-    sidebar: [
-      {
-        text: 'Start Here',
-        items: [
-          { text: 'Overview', link: '/' },
-          { text: 'Install Memry', link: '/guide/install' },
-          { text: 'Features', link: '/features' }
-        ]
-      },
-      {
-        text: 'Project',
-        items: [
-          { text: 'Architecture', link: '/architecture' },
-          { text: 'Contributing', link: '/contributing' },
-          { text: 'Roadmap', link: '/roadmap' }
-        ]
-      }
-    ],
+    sidebar: unifiedSidebar(),
     search: {
       provider: 'local'
     },
@@ -50,3 +34,144 @@ export default defineConfig({
     }
   }
 })
+
+function unifiedSidebar() {
+  return [
+    {
+      text: 'Start Here',
+      collapsed: false,
+      items: [
+        { text: 'Install Memry', link: '/guide/install' },
+        { text: 'First Run & Vault Setup', link: '/guide/first-run' },
+        { text: 'A Tour of Memry', link: '/guide/tour' }
+      ]
+    },
+    {
+      text: 'User Guide',
+      collapsed: false,
+      items: [
+        {
+          text: 'Notes',
+          collapsed: true,
+          items: [
+            { text: 'Creating & Editing', link: '/user-guide/notes/editing' },
+            { text: 'Wiki Links & Backlinks', link: '/user-guide/notes/wiki-links' },
+            { text: 'Properties & Tags', link: '/user-guide/notes/properties-tags' },
+            { text: 'Attachments', link: '/user-guide/notes/attachments' },
+            { text: 'Bookmarks & Reminders', link: '/user-guide/notes/bookmarks-reminders' },
+            { text: 'Find in Page', link: '/user-guide/notes/find-in-page' },
+            { text: 'Version History', link: '/user-guide/notes/version-history' }
+          ]
+        },
+        {
+          text: 'Journal',
+          collapsed: true,
+          items: [
+            { text: 'Daily Entries', link: '/user-guide/journal/daily-entries' },
+            { text: 'Calendar Navigation', link: '/user-guide/journal/calendar-navigation' },
+            { text: 'Templates & Settings', link: '/user-guide/journal/templates-settings' }
+          ]
+        },
+        {
+          text: 'Tasks',
+          collapsed: true,
+          items: [
+            { text: 'Capturing Tasks', link: '/user-guide/tasks/capturing' },
+            { text: 'List vs Kanban', link: '/user-guide/tasks/list-vs-kanban' },
+            { text: 'Filters & Sorting', link: '/user-guide/tasks/filters-sorting' },
+            { text: 'Subtasks & Recurrence', link: '/user-guide/tasks/subtasks-recurrence' },
+            { text: 'Bulk Actions', link: '/user-guide/tasks/bulk-actions' },
+            { text: 'Drag & Drop', link: '/user-guide/tasks/drag-and-drop' }
+          ]
+        },
+        {
+          text: 'Inbox',
+          collapsed: true,
+          items: [
+            { text: 'Capturing to Inbox', link: '/user-guide/inbox/capturing' },
+            { text: 'Triage Mode', link: '/user-guide/inbox/triage' },
+            { text: 'Filters & Views', link: '/user-guide/inbox/filters' },
+            { text: 'Snooze & Archive', link: '/user-guide/inbox/snooze-archive' },
+            { text: 'Health', link: '/user-guide/inbox/health' }
+          ]
+        },
+        {
+          text: 'Workspace',
+          collapsed: true,
+          items: [
+            { text: 'Projects', link: '/user-guide/projects' },
+            { text: 'Calendar', link: '/user-guide/calendar' },
+            { text: 'Search & Command Palette', link: '/user-guide/search' },
+            { text: 'Templates', link: '/user-guide/templates' },
+            { text: 'Tabs & Split View', link: '/user-guide/tabs-split-view' },
+            { text: 'Folder View', link: '/user-guide/folder-view' },
+            { text: 'Day Panel', link: '/user-guide/day-panel' },
+            { text: 'Snooze & Reminders', link: '/user-guide/snooze-reminders' }
+          ]
+        },
+        {
+          text: 'AI Features',
+          collapsed: true,
+          items: [
+            { text: 'Inline AI Menu', link: '/user-guide/ai/inline-menu' },
+            { text: 'Embeddings & Semantic Search', link: '/user-guide/ai/embeddings-search' },
+            { text: 'Voice Transcription', link: '/user-guide/ai/voice-transcription' },
+            { text: 'Provider Setup', link: '/user-guide/ai/provider-setup' }
+          ]
+        },
+        {
+          text: 'Sync & Devices',
+          collapsed: true,
+          items: [
+            { text: 'How Sync Works', link: '/user-guide/sync/how-sync-works' },
+            { text: 'Linking Another Device', link: '/user-guide/sync/linking-devices' },
+            { text: 'Recovery Key & Rotation', link: '/user-guide/sync/recovery-rotation' },
+            { text: 'Conflict & Health', link: '/user-guide/sync/conflict-health' }
+          ]
+        },
+        {
+          text: 'Reference',
+          collapsed: true,
+          items: [
+            { text: 'Settings Reference', link: '/user-guide/settings' },
+            { text: 'Keyboard Shortcuts', link: '/user-guide/keyboard-shortcuts' }
+          ]
+        }
+      ]
+    },
+    {
+      text: 'Architecture',
+      collapsed: true,
+      items: [
+        { text: 'Overview', link: '/architecture' },
+        { text: 'Monorepo Layout', link: '/architecture/monorepo' },
+        { text: 'Local Storage (Dual SQLite)', link: '/architecture/local-storage' },
+        { text: 'IPC Boundary', link: '/architecture/ipc' },
+        { text: 'CRDT & Notes Sync', link: '/architecture/crdt' },
+        { text: 'Sync Protocol', link: '/architecture/sync-protocol' },
+        { text: 'Cryptography', link: '/architecture/cryptography' },
+        { text: 'Sync Item Handlers', link: '/architecture/sync-handlers' },
+        { text: 'Observability & Telemetry', link: '/architecture/observability' }
+      ]
+    },
+    {
+      text: 'Contribute',
+      collapsed: true,
+      items: [
+        { text: 'Setting Up', link: '/contributing' },
+        { text: 'Repo Workflow', link: '/contribute/workflow' },
+        { text: 'Testing', link: '/contribute/testing' },
+        { text: 'Common Gotchas', link: '/contribute/gotchas' },
+        { text: 'Releasing', link: '/contribute/releasing' }
+      ]
+    },
+    {
+      text: 'Project',
+      collapsed: true,
+      items: [
+        { text: 'Features Overview', link: '/features' },
+        { text: 'Roadmap', link: '/roadmap' }
+      ]
+    }
+  ]
+}

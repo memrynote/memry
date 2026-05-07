@@ -1,0 +1,99 @@
+# A Tour of Memry
+
+A 60-second lap through the parts of the app you'll use most.
+
+<!-- screenshot: full app window with sidebar, tabs, editor, day panel labeled -->
+
+## The Sidebar
+
+The left sidebar is your primary navigation. Sections from top to bottom:
+
+- **Notes** — recent and pinned notes
+- **Projects** — task projects with their incomplete-task counts
+- **Tags** — your tag vocabulary
+- **Bookmarks** — notes you've marked
+- **Graph** — visual map of how notes link
+- **Journal** — opens today's entry
+- **Inbox** — capture surface
+
+Drag any section item to reorder, or right-click for a context menu.
+
+## Tabs
+
+Across the top of the workspace. Every note, search, project view, journal entry, or settings panel opens in a tab.
+
+- **<kbd>⌘</kbd>+<kbd>T</kbd>** — new tab
+- **<kbd>⌘</kbd>+<kbd>W</kbd>** — close tab
+- **<kbd>Ctrl</kbd>+<kbd>Tab</kbd>** — next tab
+
+Pin a tab to keep it always at the front. Drag a tab to a pane edge to **split** the workspace.
+
+## The Editor
+
+The main writing surface uses **BlockNote** — a block-based rich text editor.
+
+- Type `/` to open the block menu
+- Type `[[` to link to another note (autocomplete suggests existing ones)
+- Markdown shortcuts work inline: `# `, `- `, `**bold**`, `` `code` ``
+
+Saves are automatic and debounced. Find-in-page is <kbd>⌘</kbd>+<kbd>F</kbd>.
+
+## The Day Panel
+
+A right-side panel with:
+
+- A monthly **calendar picker** (heatmap of activity)
+- **Today's tasks** (or whichever date you've focused)
+- **Schedule** (events, journal preview)
+
+Drag the left edge to resize; double-click to reset.
+
+## Inbox & Triage
+
+A capture surface for links, files, voice memos, and other ephemera. The **Triage** view shows one item at a time as a card so you can process them quickly.
+
+## Tasks & Projects
+
+Tasks live alongside notes. Two views — **list** and **kanban**. Group tasks under **projects** with custom statuses.
+
+- Quick-add at the top of any task list
+- Natural-language dates ("tomorrow", "next Friday") parse inline
+- Bulk-select, drag, recurring tasks, subtasks — all there
+
+## Search
+
+<kbd>⌘</kbd>+<kbd>F</kbd> opens the command palette. Type to search across notes, journal entries, tasks, and inbox items at once.
+
+- <kbd>1</kbd> through <kbd>4</kbd> scope to a single source
+- `#tagname` filters by tag
+- If AI embeddings are enabled, results rank by meaning too
+
+## Settings
+
+<kbd>⌘</kbd>+<kbd>,</kbd> opens the settings modal. The full reference lives at [Settings Reference](/user-guide/settings); the categories are:
+
+- **Workspace** — Account, General, Templates, Editor, Journal, Tasks, Calendar
+- **Preferences** — Appearance, Keyboard Shortcuts
+- **Services** — AI, Integrations
+- **Data** — Vault, Tags, Properties
+
+## Keyboard-First
+
+Memry is keyboard-friendly. The full shortcut list is at [Keyboard Shortcuts](/user-guide/keyboard-shortcuts). Highlights:
+
+| Shortcut | Action |
+| --- | --- |
+| <kbd>⌘</kbd>+<kbd>N</kbd> | New note |
+| <kbd>⌘</kbd>+<kbd>F</kbd> | Search / command palette |
+| <kbd>⌘</kbd>+<kbd>,</kbd> | Settings |
+| <kbd>⌘</kbd>+<kbd>B</kbd> | Toggle sidebar |
+| <kbd>⌘</kbd>+<kbd>\\</kbd> | Split right |
+| <kbd>F</kbd> | Hint mode (numeric badges on every clickable thing) |
+
+Open the in-app shortcuts dialog with <kbd>⌘</kbd>+<kbd>/</kbd> for the live list.
+
+## What Next?
+
+- **Just want to use it?** Open [Notes](/user-guide/notes/editing) and start writing.
+- **Want to know what's there?** Browse the [User Guide](/user-guide/notes/editing) — every feature has its own page.
+- **Curious how it works?** Read [Architecture](/architecture).

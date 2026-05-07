@@ -2,7 +2,7 @@
 
 Thanks for helping build Memry. Keep changes small, focused, and easy to review.
 
-## Start
+## Setup
 
 ```bash
 git clone https://github.com/memrynote/memry.git
@@ -16,42 +16,43 @@ pnpm dev
 
 - Check [open issues](https://github.com/memrynote/memry/issues)
 - Comment before starting larger work
-- Open an issue first when the behavior or product direction is unclear
+- Open an issue first when behavior or product direction is unclear
 
-## Branches
+## Branch & Commit
 
-Create a branch from `main` with a name that describes the work.
+Create a branch from `main`:
 
 ```bash
 git checkout -b feat/your-feature main
 ```
+
+Commit with Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`, `test:`, `ci:`, `perf:`).
 
 ## Code Style
 
 - TypeScript strict mode
 - Small, direct changes
 - Tests for new behavior and regressions
-- Renderer and main process boundaries through shared contracts
-- User-facing renderer errors through the existing IPC error helpers
+- Renderer ↔ main goes through `packages/contracts`
+- User-facing renderer errors via `extractErrorMessage(err, fallback)` from `@/lib/ipc-error`
+- Logging via `createLogger('Scope')` from electron-log — never `console.*`
 
-## Checks
-
-Run the checks that match your change before opening a pull request.
+## Pre-PR Checks
 
 ```bash
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm ipc:check     # if you touched the renderer/main boundary
 ```
 
-Run the IPC contract check after editing renderer/main boundary types.
+## Deeper Reading
 
-```bash
-pnpm ipc:check
-```
+- [Repo Workflow](/contribute/workflow)
+- [Testing](/contribute/testing)
+- [Common Gotchas](/contribute/gotchas)
+- [Releasing](/contribute/releasing)
 
 ## Security Issues
 
-Do not open public issues for vulnerabilities. Follow the
-[security policy](https://github.com/memrynote/memry/blob/main/SECURITY.md) and report
-privately.
+Do not open public issues for vulnerabilities. Follow the [security policy](https://github.com/memrynote/memry/blob/main/SECURITY.md) and report privately.
