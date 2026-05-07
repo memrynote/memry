@@ -6,9 +6,6 @@
   "scripts": {
     "repair:links": "node scripts/repair-package-links.js .",
     "release:version": "node scripts/set-desktop-version.mjs",
-    "release:notes:check": "node scripts/release-notes.mjs check",
-    "release:notes:generate": "node scripts/release-notes.mjs generate",
-    "test:release-notes": "node --test scripts/release-notes.test.mjs",
     "dev": "pnpm dev:desktop",
     "dev:desktop": "node scripts/run-turbo.js run dev --filter=@memry/desktop",
     "dev:landing": "pnpm --filter @memry/landing dev",
