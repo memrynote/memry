@@ -21,6 +21,11 @@ describe('release flow workflows', () => {
     assert.match(releaseWorkflow, /gh release upload "\$TAG" release-assets\/\* --clobber/)
   })
 
+  it('resolves draft releases from the releases list instead of releases by tag', () => {
+    assert.doesNotMatch(releaseDrafterWorkflow, /\/releases\/tags\//)
+    assert.doesNotMatch(releaseWorkflow, /\/releases\/tags\//)
+  })
+
   it('keeps shell heredocs at column 0 inside workflow run blocks', () => {
     const lines = releaseWorkflow.split('\n')
 

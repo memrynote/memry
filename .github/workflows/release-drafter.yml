@@ -92,24 +92,30 @@ jobs:
           RELEASE_NAME: ${{ steps.metadata.outputs.release_name }}
           TAG: ${{ steps.metadata.outputs.release_tag }}
         run: |
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" > draft-release.json
           gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > releases.json
 
           node <<'NODE'
           const { readFileSync, writeFileSync } = require('node:fs')
 
-          const release = JSON.parse(readFileSync('draft-release.json', 'utf8'))
           const releases = JSON.parse(readFileSync('releases.json', 'utf8'))
           const releaseName = process.env.RELEASE_NAME
           const tag = process.env.TAG
           const repo = process.env.GITHUB_REPOSITORY
           const tagPattern = /^v20\d{2}-\d{2}-\d{2}(?:\.[2-9]\d*)?$/
+          const release = releases.find(
+            (candidate) => candidate.draft && candidate.tag_name === tag
+          )
           const previous = releases.find(
             (candidate) =>
               !candidate.draft &&
               candidate.tag_name !== tag &&
               tagPattern.test(candidate.tag_name || '')
           )
+
+          if (!release) {
+            throw new Error(`Draft release ${tag} was not found.`)
+          }
+
           const compareUrl = previous
             ? `https://github.com/${repo}/compare/${previous.tag_name}...${tag}`
             : `https://github.com/${repo}/commits/${tag}`
