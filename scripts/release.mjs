@@ -12,6 +12,7 @@ import {
   selectDispatchedWorkflowRun,
   selectDraftRelease
 } from './release-utils.mjs'
+import { assertHumanizedReleaseNotesForPublish } from './release-notes-utils.mjs'
 
 const workflowFile = 'publish-release.yml'
 const workflowName = 'Publish Desktop Release'
@@ -49,6 +50,14 @@ async function runCli() {
     ignoreTag: draftDetails.tagName,
     timeZone: releaseTimeZone
   })
+
+  if (!options.dryRun) {
+    assertHumanizedReleaseNotesForPublish({
+      body: draftDetails.body ?? '',
+      draftTag: draftDetails.tagName,
+      expectedTag: preview.tag
+    })
+  }
 
   printPlan({ draft: draftDetails, dryRun: options.dryRun, preview })
 
@@ -184,6 +193,8 @@ function workflowRunUrl(runId) {
 
 function printHelp() {
   console.log(`Usage: pnpm release -- [options]
+
+Run pnpm release:humanize before publishing a real release.
 
 Options:
   --tag <tag>    Draft release tag to publish. Defaults to the newest draft.

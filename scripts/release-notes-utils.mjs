@@ -1,0 +1,274 @@
+export const HUMANIZED_RELEASE_MARKER = 'memry-humanized-release-notes'
+
+const requiredHumanizedSections = ['New Features', 'Bug Fixes', 'Documentation', 'Chores']
+
+export function extractPullRequestNumbers(body = '') {
+  const seen = new Set()
+  const numbers = []
+  const pattern = /\(#(\d+)\)|^#(\d+)\b/gm
+
+  for (const match of body.matchAll(pattern)) {
+    const number = Number(match[1] ?? match[2])
+    if (!Number.isInteger(number) || seen.has(number)) {
+      continue
+    }
+
+    seen.add(number)
+    numbers.push(number)
+  }
+
+  return numbers
+}
+
+export function extractReleaseNote(body = '') {
+  const match = /^#{2,6}\s*Release note\s*\n([\s\S]*?)(?=\n#{2,6}\s|\s*$)/im.exec(body)
+  if (!match) {
+    return null
+  }
+
+  const note = match[1].replace(/<!--[\s\S]*?-->/g, '').trim()
+  if (!note || /^(none|n\/a|na|no release note)$/i.test(note)) {
+    return null
+  }
+
+  return note
+}
+
+export function buildHumanizedReleaseMarker(tag) {
+  return `<!-- ${HUMANIZED_RELEASE_MARKER} tag=${tag} -->`
+}
+
+export function hasCurrentHumanizedReleaseNotes(body = '', expectedTag) {
+  const marker = parseHumanizedReleaseMarker(body)
+  return marker?.tag === expectedTag
+}
+
+export function assertHumanizedReleaseNotesForPublish({ body = '', draftTag, expectedTag }) {
+  if (hasCurrentHumanizedReleaseNotes(body, expectedTag)) {
+    return
+  }
+
+  const marker = parseHumanizedReleaseMarker(body)
+  const reason = marker
+    ? `Draft release notes were humanized for ${marker.tag}, but this publish resolves to ${expectedTag}.`
+    : `Draft release notes have not been humanized for ${expectedTag}.`
+
+  throw new Error(
+    [
+      reason,
+      `Run: pnpm release:humanize -- --tag ${draftTag}`,
+      'Review the draft release notes, then run pnpm release again.'
+    ].join('\n')
+  )
+}
+
+export function parseHumanizedReleaseMarker(body = '') {
+  const markerPattern = new RegExp(`<!--\\s*${HUMANIZED_RELEASE_MARKER}\\s+tag=([^\\s>]+)\\s*-->`)
+  const match = markerPattern.exec(body)
+
+  return match ? { tag: match[1] } : null
+}
+
+export function extractPreviousTagFromReleaseBody(body = '') {
+  const match = /\/compare\/(.+?)\.\.\.[^\s)]+/.exec(body)
+  return match?.[1] ?? null
+}
+
+export function extractCompareBaseFromReleaseBody(body = '') {
+  const match = /(https:\/\/github\.com\/[^\s)]+\/compare\/).+?\.\.\.[^\s)]+/.exec(body)
+  return match?.[1] ?? null
+}
+
+export function buildCompareUrl({ compareBaseUrl, finalTag, previousTag }) {
+  if (!compareBaseUrl || !previousTag || !finalTag) {
+    throw new Error('compareBaseUrl, previousTag, and finalTag are required')
+  }
+
+  return `${compareBaseUrl}${previousTag}...${finalTag}`
+}
+
+export function validateHumanizedReleaseMarkdown(markdown = '') {
+  const trimmed = markdown.trim()
+
+  for (const section of requiredHumanizedSections) {
+    const sectionPattern = new RegExp(`^##\\s+${escapeRegExp(section)}\\s*$`, 'm')
+    if (!sectionPattern.test(trimmed)) {
+      throw new Error(`Humanized release notes must include a "${section}" section`)
+    }
+  }
+
+  if (/^##\s+Changelog\s*$/im.test(trimmed)) {
+    throw new Error('Humanized release notes must not include the Changelog section')
+  }
+
+  const bulletLines = trimmed.split('\n').filter((line) => line.trim().startsWith('- '))
+  for (const line of bulletLines) {
+    if (!/#\d+\b/.test(line)) {
+      throw new Error(`Humanized release note bullet is missing a PR number: ${line}`)
+    }
+  }
+
+  return trimmed
+}
+
+export function buildChangelogSection({ compareUrl, pullRequests }) {
+  if (!compareUrl) {
+    throw new Error('compareUrl is required')
+  }
+
+  const lines = ['## Changelog', `Full Changelog: ${compareUrl}`, '']
+
+  for (const pullRequest of pullRequests) {
+    lines.push(
+      `#${pullRequest.number} ${normalizeTitle(pullRequest.title)} @${normalizeAuthor(pullRequest.author)}`
+    )
+  }
+
+  return lines.join('\n')
+}
+
+export function buildHumanizedReleaseBody({
+  compareUrl,
+  finalTag,
+  humanizedMarkdown,
+  pullRequests
+}) {
+  const humanized = validateHumanizedReleaseMarkdown(humanizedMarkdown)
+  const changelog = buildChangelogSection({ compareUrl, pullRequests })
+
+  return [buildHumanizedReleaseMarker(finalTag), humanized, changelog].join('\n\n') + '\n'
+}
+
+export function buildReleaseNotesPrompt({ finalTag, pullRequests }) {
+  const input = {
+    finalTag,
+    pullRequests: pullRequests.map((pullRequest) => ({
+      author: normalizeAuthor(pullRequest.author),
+      labels: normalizeLabels(pullRequest.labels),
+      number: pullRequest.number,
+      releaseNote: pullRequest.releaseNote ?? null,
+      title: normalizeTitle(pullRequest.title)
+    }))
+  }
+
+  return [
+    'You are writing Memry release notes.',
+    '',
+    'Rules:',
+    '- Do not invent changes.',
+    '- Use only the provided PR titles, labels, authors, and release notes.',
+    '- Rewrite technical PR names into short human-friendly release-note bullets.',
+    '- Keep each bullet to one sentence.',
+    '- Start every bullet with one relevant emoji, then a concise title, an em dash, and the explanation.',
+    '- Every bullet must include one or more PR numbers.',
+    '- Use exactly these sections: ## New Features, ## Bug Fixes, ## Documentation, ## Chores.',
+    '- Leave a section empty if no provided PR belongs there.',
+    '- Do not include a Changelog section.',
+    '- Return Markdown only. Do not wrap the answer in a code fence.',
+    '',
+    'Input JSON:',
+    JSON.stringify(input, null, 2)
+  ].join('\n')
+}
+
+export function parseHumanizeReleaseArgs(argv) {
+  const options = {
+    dryRun: false,
+    help: false,
+    model: undefined,
+    tag: undefined,
+    yes: false
+  }
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index]
+
+    if (arg === '--') {
+      continue
+    }
+
+    if (arg === '--tag') {
+      options.tag = readRequiredValue(argv, index, arg)
+      index += 1
+      continue
+    }
+
+    if (arg.startsWith('--tag=')) {
+      options.tag = arg.slice('--tag='.length)
+      continue
+    }
+
+    if (arg === '--model') {
+      options.model = readRequiredValue(argv, index, arg)
+      index += 1
+      continue
+    }
+
+    if (arg.startsWith('--model=')) {
+      options.model = arg.slice('--model='.length)
+      continue
+    }
+
+    if (arg === '--dry-run') {
+      options.dryRun = true
+      continue
+    }
+
+    if (arg === '--yes' || arg === '-y') {
+      options.yes = true
+      continue
+    }
+
+    if (arg === '--help' || arg === '-h') {
+      options.help = true
+      continue
+    }
+
+    throw new Error(`Unknown argument: ${arg}`)
+  }
+
+  return options
+}
+
+export function normalizePullRequest(pullRequest) {
+  return {
+    author: normalizeAuthor(pullRequest.author),
+    body: pullRequest.body ?? '',
+    labels: normalizeLabels(pullRequest.labels),
+    number: Number(pullRequest.number),
+    releaseNote: pullRequest.releaseNote ?? extractReleaseNote(pullRequest.body ?? ''),
+    title: normalizeTitle(pullRequest.title),
+    url: pullRequest.url ?? null
+  }
+}
+
+function normalizeAuthor(author) {
+  if (typeof author === 'string') {
+    return author.replace(/^@/, '')
+  }
+
+  return (author?.login ?? author?.name ?? 'unknown').replace(/^@/, '')
+}
+
+function normalizeLabels(labels = []) {
+  return labels
+    .map((label) => (typeof label === 'string' ? label : label?.name))
+    .filter(Boolean)
+    .map(String)
+}
+
+function normalizeTitle(title = '') {
+  return String(title).replace(/\s+/g, ' ').trim()
+}
+
+function readRequiredValue(argv, index, flag) {
+  const value = argv[index + 1]
+  if (!value) {
+    throw new Error(`${flag} requires a value`)
+  }
+  return value
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
