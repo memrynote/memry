@@ -39,6 +39,45 @@ if ! has_changes "$code_changed"; then
   exit 0
 fi
 
+if [ "${MEMRY_DOCS_IMPACT_SKIP:-0}" != "1" ]; then
+  set +e
+  pnpm docs:impact --base "$base_commit" --strict
+  docs_impact_status=$?
+  set -e
+
+  if [ "$docs_impact_status" -ne 0 ]; then
+    if [ "$docs_impact_status" -ne 1 ]; then
+      exit "$docs_impact_status"
+    fi
+
+    if ! git diff --quiet -- apps/docs/src ||
+      ! git diff --cached --quiet -- apps/docs/src; then
+      printf '\npre-push: uncommitted docs changes exist. Commit them before pushing.\n\n' >&2
+      exit 1
+    fi
+
+    if [ "${MEMRY_DOCS_AI_AUTO:-1}" = "1" ]; then
+      printf '\npre-push: running AI docs updater for desktop/sync-server changes...\n\n' >&2
+      pnpm docs:ai-update --base "$base_commit"
+
+      if ! git diff --quiet -- apps/docs/src; then
+        pnpm docs:build
+        printf '\npre-push: AI updated docs. Review, commit, and push again.\n\n' >&2
+      else
+        printf '\npre-push: AI did not change docs. If no docs are needed, retry with MEMRY_DOCS_IMPACT_SKIP=1.\n\n' >&2
+      fi
+    else
+      printf '\npre-push: run `pnpm docs:ai-update --base %s` or update apps/docs/src manually.\n\n' "$base_commit" >&2
+    fi
+
+    exit 1
+  fi
+
+  if has_changes '^apps/docs/'; then
+    pnpm docs:build
+  fi
+fi
+
 pnpm repair:links
 pnpm check:contracts
 pnpm check:architecture
