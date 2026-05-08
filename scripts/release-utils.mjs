@@ -103,6 +103,30 @@ export function getReleaseListFields() {
   return [...releaseListFields]
 }
 
+export function extractWorkflowRunId(output) {
+  const urlMatch = output.match(/\/actions\/runs\/(\d+)/)
+  if (urlMatch) {
+    return urlMatch[1]
+  }
+
+  const viewMatch = output.match(/\bgh run view\s+(\d+)\b/)
+  return viewMatch?.[1] ?? null
+}
+
+export function selectDispatchedWorkflowRun(runs, dispatchedAfter) {
+  const dispatchedAfterTime = dispatchedAfter.getTime()
+
+  return (
+    runs
+      .filter((run) => run.event === 'workflow_dispatch')
+      .filter((run) => new Date(run.createdAt).getTime() >= dispatchedAfterTime)
+      .sort(
+        (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+      )
+      .at(0) ?? null
+  )
+}
+
 function getDateParts(date, timeZone) {
   const formatter = new Intl.DateTimeFormat('en-US', {
     day: '2-digit',
