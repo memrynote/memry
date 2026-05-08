@@ -1,0 +1,194 @@
+#!/usr/bin/env npx tsx
+/**
+ * Unified seed command — populates a dedicated demo vault with notes, tasks,
+ * calendar, journal, and inbox content for screenshots and exploration.
+ *
+ * Default target: ~/MemryDemoVault. Override with --vault=<path>.
+ * Always wipes and re-seeds.
+ */
+
+import { existsSync, writeFileSync } from 'fs'
+import { resolve } from 'path'
+import { homedir } from 'os'
+
+import { wipeVault } from './seed-vault/wipe'
+import { writeNoteFiles } from './seed-vault/file-writer'
+import {
+  insertCalendarEvents,
+  insertCalendarSources,
+  insertFilingHistory,
+  insertFolderConfigs,
+  insertInboxItems,
+  insertProjects,
+  insertPropertyDefinitions,
+  insertStatuses,
+  insertTagDefinitions,
+  insertTaskNotes,
+  insertTasks,
+  insertTaskTags,
+  openDataDb
+} from './seed-vault/db-writer'
+
+import { FOLDER_CONFIGS, NOTES } from './seed-data/notes'
+import { JOURNAL_NOTES } from './seed-data/journal'
+import { PROJECTS, STATUSES, TASKS, TASK_NOTES, TASK_TAGS } from './seed-data/tasks'
+import { CALENDAR_EVENTS, CALENDAR_SOURCES } from './seed-data/calendar'
+import { FILING_HISTORY_ROWS, INBOX_ITEMS } from './seed-data/inbox'
+
+interface CliArgs {
+  vaultPath: string
+}
+
+function parseArgs(argv: string[]): CliArgs {
+  const args: Partial<CliArgs> = {}
+  for (const raw of argv) {
+    if (raw.startsWith('--vault=')) {
+      args.vaultPath = resolve(raw.slice('--vault='.length))
+    }
+  }
+  return {
+    vaultPath: args.vaultPath ?? resolve(homedir(), 'MemryDemoVault')
+  }
+}
+
+const TAG_PALETTE = [
+  { name: 'research', color: '#3b82f6' },
+  { name: 'active', color: '#10b981' },
+  { name: 'archive', color: '#6b7280' },
+  { name: 'sci-fi', color: '#8b5cf6' },
+  { name: 'fiction', color: '#f59e0b' },
+  { name: 'nonfiction', color: '#ec4899' },
+  { name: 'classic', color: '#a855f7' },
+  { name: 'reread', color: '#0ea5e9' },
+  { name: 'tech/typescript', color: '#0ea5e9' },
+  { name: 'tech/sql', color: '#a855f7' },
+  { name: 'tech/sync', color: '#22c55e' },
+  { name: 'tech/rust', color: '#dc2626' },
+  { name: 'tech/electron', color: '#9333ea' },
+  { name: 'tech/postgres', color: '#0284c7' },
+  { name: 'tech/python', color: '#22c55e' },
+  { name: 'projects/memry', color: '#6366f1' },
+  { name: 'projects/active', color: '#14b8a6' },
+  { name: 'projects/personal', color: '#f97316' },
+  { name: 'projects/home', color: '#84cc16' },
+  { name: 'travel/asia', color: '#f97316' },
+  { name: 'travel/europe', color: '#0ea5e9' },
+  { name: 'travel/japan', color: '#ef4444' },
+  { name: 'fitness', color: '#84cc16' },
+  { name: 'reading', color: '#f59e0b' },
+  { name: 'daily', color: '#6366f1' },
+  { name: 'flow', color: '#10b981' },
+  { name: 'reflection', color: '#a855f7' }
+]
+
+const PROPERTY_DEFS = [
+  { name: 'rating', type: 'number', color: '#f59e0b' },
+  { name: 'status', type: 'text', color: '#6366f1' },
+  { name: 'priority', type: 'text', color: '#ef4444' },
+  { name: 'mood', type: 'number', color: '#a855f7' },
+  { name: 'weight', type: 'number', color: '#84cc16' },
+  { name: 'bodyFat', type: 'number', color: '#84cc16' },
+  { name: 'author', type: 'text', color: '#0ea5e9' },
+  { name: 'director', type: 'text', color: '#ec4899' },
+  { name: 'genre', type: 'text', color: '#8b5cf6' },
+  { name: 'language', type: 'text', color: '#10b981' },
+  { name: 'level', type: 'text', color: '#6b7280' },
+  { name: 'location', type: 'text', color: '#f97316' },
+  { name: 'year', type: 'number', color: '#6366f1' },
+  { name: 'pages', type: 'number', color: '#f59e0b' },
+  { name: 'deadline', type: 'date', color: '#ef4444' },
+  { name: 'startDate', type: 'date', color: '#10b981' },
+  { name: 'endDate', type: 'date', color: '#10b981' },
+  { name: 'owner', type: 'text', color: '#6b7280' }
+]
+
+function writeMinimalConfig(vaultPath: string): void {
+  const configPath = resolve(vaultPath, '.memry', 'config.json')
+  if (existsSync(configPath)) return
+  writeFileSync(
+    configPath,
+    JSON.stringify(
+      {
+        version: 1,
+        title: 'Memry Demo Vault',
+        excludePatterns: ['.git', 'node_modules', '.DS_Store']
+      },
+      null,
+      2
+    ),
+    'utf8'
+  )
+}
+
+function main(): void {
+  const { vaultPath } = parseArgs(process.argv.slice(2))
+
+  console.log(`Seeding demo vault at: ${vaultPath}`)
+
+  console.log('  → Wiping existing contents...')
+  wipeVault(vaultPath)
+
+  console.log('  → Writing .memry/config.json')
+  writeMinimalConfig(vaultPath)
+
+  const dataDbPath = resolve(vaultPath, '.memry', 'data.db')
+  console.log(`  → Opening + migrating data.db at ${dataDbPath}`)
+  const { db, close } = openDataDb(dataDbPath)
+
+  try {
+    const tagCount = insertTagDefinitions(db, TAG_PALETTE)
+    console.log(`  → tag_definitions: ${tagCount}`)
+
+    const folderCount = insertFolderConfigs(db, FOLDER_CONFIGS)
+    console.log(`  → folder_configs: ${folderCount}`)
+
+    const propCount = insertPropertyDefinitions(db, PROPERTY_DEFS)
+    console.log(`  → property_definitions: ${propCount}`)
+
+    const projectCount = insertProjects(db, PROJECTS)
+    console.log(`  → projects: ${projectCount}`)
+
+    const statusCount = insertStatuses(db, STATUSES)
+    console.log(`  → statuses: ${statusCount}`)
+
+    const taskCount = insertTasks(db, TASKS)
+    console.log(`  → tasks: ${taskCount}`)
+
+    const taskNoteCount = insertTaskNotes(db, TASK_NOTES)
+    console.log(`  → task_notes: ${taskNoteCount}`)
+
+    const taskTagCount = insertTaskTags(db, TASK_TAGS)
+    console.log(`  → task_tags: ${taskTagCount}`)
+
+    const calendarSourceCount = insertCalendarSources(db, CALENDAR_SOURCES)
+    console.log(`  → calendar_sources: ${calendarSourceCount}`)
+
+    const calendarEventCount = insertCalendarEvents(db, CALENDAR_EVENTS)
+    console.log(`  → calendar_events: ${calendarEventCount}`)
+
+    const inboxCount = insertInboxItems(db, INBOX_ITEMS)
+    console.log(`  → inbox_items: ${inboxCount}`)
+
+    const filingCount = insertFilingHistory(db, FILING_HISTORY_ROWS)
+    console.log(`  → filing_history: ${filingCount}`)
+  } finally {
+    close()
+  }
+
+  console.log(`  → Writing ${NOTES.length} note files`)
+  const notesWritten = writeNoteFiles(vaultPath, NOTES)
+
+  console.log(`  → Writing ${JOURNAL_NOTES.length} journal files`)
+  const journalsWritten = writeNoteFiles(vaultPath, JOURNAL_NOTES)
+
+  console.log('')
+  console.log('Done.')
+  console.log(
+    `Seeded ${notesWritten} notes, ${journalsWritten} journal entries, ${TASKS.length} tasks, ${CALENDAR_EVENTS.length} events, ${INBOX_ITEMS.length} inbox items.`
+  )
+  console.log(`Vault path: ${vaultPath}`)
+  console.log('')
+  console.log('Open Memry → Switch Vault → choose this path to view.')
+}
+
+main()
