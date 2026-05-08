@@ -155,6 +155,7 @@ jobs:
 
       - name: Create runtime environment
         env:
+          GOOGLE_CALENDAR_CLIENT_ID: ${{ secrets.GOOGLE_CALENDAR_CLIENT_ID }}
           SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
         run: |
           set -euo pipefail
@@ -162,7 +163,14 @@ jobs:
             echo "::error::Set SYNC_SERVER_URL as a repository secret before publishing."
             exit 1
           fi
-          printf 'SYNC_SERVER_URL=%s\n' "$SYNC_SERVER_URL" > apps/desktop/.env.staging
+          if [ -z "${GOOGLE_CALENDAR_CLIENT_ID:-}" ]; then
+            echo "::error::Set GOOGLE_CALENDAR_CLIENT_ID as a repository secret before publishing."
+            exit 1
+          fi
+          {
+            printf 'SYNC_SERVER_URL=%s\n' "$SYNC_SERVER_URL"
+            printf 'GOOGLE_CALENDAR_CLIENT_ID=%s\n' "$GOOGLE_CALENDAR_CLIENT_ID"
+          } > apps/desktop/.env.staging
 
       - name: Build signed macOS artifacts
         env:
@@ -288,6 +296,7 @@ jobs:
 
       - name: Create runtime environment
         env:
+          GOOGLE_CALENDAR_CLIENT_ID: ${{ secrets.GOOGLE_CALENDAR_CLIENT_ID }}
           SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
         shell: bash
         run: |
@@ -296,7 +305,14 @@ jobs:
             echo "::error::Set SYNC_SERVER_URL as a repository secret before publishing."
             exit 1
           fi
-          printf 'SYNC_SERVER_URL=%s\n' "$SYNC_SERVER_URL" > apps/desktop/.env.staging
+          if [ -z "${GOOGLE_CALENDAR_CLIENT_ID:-}" ]; then
+            echo "::error::Set GOOGLE_CALENDAR_CLIENT_ID as a repository secret before publishing."
+            exit 1
+          fi
+          {
+            printf 'SYNC_SERVER_URL=%s\n' "$SYNC_SERVER_URL"
+            printf 'GOOGLE_CALENDAR_CLIENT_ID=%s\n' "$GOOGLE_CALENDAR_CLIENT_ID"
+          } > apps/desktop/.env.staging
 
       - name: Build Windows artifacts
         env:
@@ -387,6 +403,7 @@ jobs:
 
       - name: Create runtime environment
         env:
+          GOOGLE_CALENDAR_CLIENT_ID: ${{ secrets.GOOGLE_CALENDAR_CLIENT_ID }}
           SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
         run: |
           set -euo pipefail
@@ -394,7 +411,14 @@ jobs:
             echo "::error::Set SYNC_SERVER_URL as a repository secret before publishing."
             exit 1
           fi
-          printf 'SYNC_SERVER_URL=%s\n' "$SYNC_SERVER_URL" > apps/desktop/.env.staging
+          if [ -z "${GOOGLE_CALENDAR_CLIENT_ID:-}" ]; then
+            echo "::error::Set GOOGLE_CALENDAR_CLIENT_ID as a repository secret before publishing."
+            exit 1
+          fi
+          {
+            printf 'SYNC_SERVER_URL=%s\n' "$SYNC_SERVER_URL"
+            printf 'GOOGLE_CALENDAR_CLIENT_ID=%s\n' "$GOOGLE_CALENDAR_CLIENT_ID"
+          } > apps/desktop/.env.staging
 
       - name: Build Linux artifacts
         env:
