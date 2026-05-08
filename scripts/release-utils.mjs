@@ -1,4 +1,5 @@
 const defaultReleaseTimeZone = 'Europe/Istanbul'
+const releaseListFields = ['tagName', 'name', 'isDraft', 'createdAt']
 
 export function buildDateReleaseVersion({
   date = new Date(),
@@ -96,6 +97,10 @@ export function parseReleaseArgs(argv) {
   }
 
   return options
+}
+
+export function getReleaseListFields() {
+  return [...releaseListFields]
 }
 
 function getDateParts(date, timeZone) {
