@@ -15,6 +15,9 @@ Default. Tasks render as flat or grouped rows with inline editing of:
 - Project
 - Tags
 
+Tasks linked to notes show a compact note indicator at the end of the list row.
+Hover or focus the row to preview the note title, then click the indicator to open the note.
+
 Rows can be drag-reordered. Multi-select with shift-click for bulk actions.
 
 When grouping is on, group headers show counts and roll up subtask progress.
