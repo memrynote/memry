@@ -73,6 +73,22 @@ async function waitForTaskBlockCount(page, expected: number, timeout = 8000) {
     .toBe(expected)
 }
 
+async function expectEditorToContainVisibleText(page, text: string): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const editor = page.locator('[aria-label="Rich text editor"]').first()
+        const textContent = (await editor.textContent()) ?? ''
+        const inputValues = await editor
+          .locator('input')
+          .evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value))
+        return textContent.includes(text) || inputValues.some((value) => value.includes(text))
+      },
+      { timeout: 8000, intervals: [200, 400, 800] }
+    )
+    .toBe(true)
+}
+
 // Create a real DB task via IPC and return its id. We make tasks via the
 // existing tasks-handlers IPC so the rows match what convertCheckboxToTask
 // would create on the live edit path.
@@ -365,6 +381,102 @@ test.describe('Inline Subtasks', () => {
     const editorText = await page.locator('[aria-label="Rich text editor"]').first().textContent()
     expect(editorText).toContain(parentTitle)
     expect(editorText).toContain(subTitle)
+  })
+
+  test('markdown checklist with task refs and blank lines survives tab switch and reload', async ({
+    page,
+    testVaultPath
+  }) => {
+    const parseErrors: string[] = []
+    page.on('console', (msg) => {
+      if (msg.type() !== 'error') return
+      const text = msg.text()
+      if (
+        text.includes('content.forEach') ||
+        text.includes("Block doesn't have id") ||
+        text.includes('Failed to parse markdown content')
+      ) {
+        parseErrors.push(text)
+      }
+    })
+
+    const noteId = `markdown-checklist-reload-${Date.now()}`
+    const title = `Markdown Checklist Reload ${Date.now()}`
+    const firstTask = `Review markdown reload ${Date.now()}`
+    const secondTask = `Verify tab switch ${Date.now()}`
+    const rawTask = `Capture raw checklist ${Date.now()}`
+    const md = [
+      '---',
+      `id: ${noteId}`,
+      `title: ${title}`,
+      'tags:',
+      '  - projects/memry',
+      '  - active',
+      '---',
+      '',
+      '## Launch plan',
+      '',
+      'Intro before tasks.',
+      '',
+      '',
+      `- [ ] ${firstTask} {task:${noteId}-task-1}`,
+      '',
+      '',
+      `- [ ] ${secondTask} {task:${noteId}-task-2}`,
+      '',
+      '',
+      `- [ ] ${rawTask}`,
+      '',
+      '## Risks',
+      '',
+      '> [!warning]',
+      '> Scope creep is the biggest risk.',
+      '',
+      '## Tech debts',
+      '',
+      '* See [[Drizzle ORM]] for the JSON-column gotcha',
+      '',
+      'Outro after tasks.',
+      '',
+      '#projects/memry #active',
+      ''
+    ].join('\n')
+    fs.writeFileSync(path.join(testVaultPath, 'notes', `${noteId}.md`), md)
+
+    await page.waitForTimeout(2000)
+
+    await page.keyboard.press(`${process.platform === 'darwin' ? 'Meta' : 'Control'}+k`)
+    await page.waitForTimeout(400)
+    const searchInput = page.locator('input[placeholder*="Search"], input[role="combobox"]').first()
+    if (await searchInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await searchInput.fill(title)
+      await page.waitForTimeout(500)
+      await page.keyboard.press('Enter')
+    }
+
+    await waitForTaskBlockCount(page, 3, 12000)
+    let editorText = await page.locator('[aria-label="Rich text editor"]').first().textContent()
+    expect(editorText).toContain('Intro before tasks.')
+    await expectEditorToContainVisibleText(page, firstTask)
+    await expectEditorToContainVisibleText(page, secondTask)
+    await expectEditorToContainVisibleText(page, rawTask)
+    expect(editorText).toContain('Scope creep is the biggest risk.')
+    expect(editorText).toContain('Drizzle ORM')
+    expect(editorText).toContain('Outro after tasks.')
+
+    await createNote(page, `Switch Away ${Date.now()}`)
+    await page.getByRole('tab', { name: new RegExp(title) }).click()
+
+    await waitForTaskBlockCount(page, 3, 12000)
+    editorText = await page.locator('[aria-label="Rich text editor"]').first().textContent()
+    expect(editorText).toContain('Intro before tasks.')
+    await expectEditorToContainVisibleText(page, firstTask)
+    await expectEditorToContainVisibleText(page, secondTask)
+    await expectEditorToContainVisibleText(page, rawTask)
+    expect(editorText).toContain('Scope creep is the biggest risk.')
+    expect(editorText).toContain('Drizzle ORM')
+    expect(editorText).toContain('Outro after tasks.')
+    expect(parseErrors).toEqual([])
   })
 
   test('should wire DB parent_id when an existing top-level task is Tab-indented under another', async ({

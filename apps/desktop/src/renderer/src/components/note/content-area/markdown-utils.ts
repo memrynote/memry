@@ -17,6 +17,36 @@ export function isEmptyParagraph(block: Block): boolean {
   return !content || content.length === 0
 }
 
+export function sanitizeBlockIds(blocks: Block[]): Block[] {
+  let didChange = false
+
+  const sanitizeBlock = (block: Block): Block => {
+    let nextBlock = block
+    const id = (block as { id?: unknown }).id
+
+    if (id !== undefined && (typeof id !== 'string' || id.length === 0)) {
+      const rest = { ...(block as Block & { id?: unknown }) }
+      delete rest.id
+      nextBlock = rest as Block
+      didChange = true
+    }
+
+    if (Array.isArray(block.children) && block.children.length > 0) {
+      const nextChildren = block.children.map((child) => sanitizeBlock(child as Block))
+      const childrenChanged = nextChildren.some((child, index) => child !== block.children[index])
+      if (childrenChanged) {
+        nextBlock = { ...nextBlock, children: nextChildren } as Block
+        didChange = true
+      }
+    }
+
+    return nextBlock
+  }
+
+  const nextBlocks = blocks.map(sanitizeBlock)
+  return didChange ? nextBlocks : blocks
+}
+
 export async function parseMarkdownPreservingBlanks(
   editor: any,
   markdown: string
@@ -55,7 +85,6 @@ export async function parseMarkdownPreservingBlanks(
               type: 'paragraph',
               content: [],
               children: [],
-              id: '',
               props: {}
             } as unknown as Block)
           }
