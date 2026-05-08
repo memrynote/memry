@@ -1,0 +1,311 @@
+name: Publish Desktop Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      draft_tag:
+        description: Draft release tag to publish. Leave empty to use the newest draft.
+        required: false
+      dry_run:
+        description: Build artifacts without uploading or publishing the release
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-desktop-release
+  cancel-in-progress: false
+
+env:
+  CI: true
+  HUSKY: 0
+  NODE_OPTIONS: --max-old-space-size=4096
+  RELEASE_TIME_ZONE: Europe/Istanbul
+  TURBO_TELEMETRY_DISABLED: 1
+
+jobs:
+  publish-macos:
+    name: Build, attach, and publish macOS release
+    runs-on: macos-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Validate draft release
+        id: draft
+        env:
+          DRAFT_TAG: ${{ inputs.draft_tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${DRAFT_TAG:-}" ]; then
+            gh release view "$DRAFT_TAG" --json databaseId,tagName,name,isDraft,targetCommitish,assets,url > "$RUNNER_TEMP/draft-release.json"
+          else
+            draft_tag="$(
+              gh release list --limit 100 --json tagName,isDraft,createdAt \
+                --jq '[.[] | select(.isDraft)] | sort_by(.createdAt // "") | reverse | .[0].tagName // ""'
+            )"
+            if [ -z "$draft_tag" ]; then
+              echo "::error::No draft release found"
+              exit 1
+            fi
+            gh release view "$draft_tag" --json databaseId,tagName,name,isDraft,targetCommitish,assets,url > "$RUNNER_TEMP/draft-release.json"
+          fi
+          node <<'NODE'
+          const { appendFileSync, readFileSync } = require('node:fs')
+
+          const draft = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/draft-release.json`, 'utf8'))
+          if (!draft) {
+            throw new Error('No draft release found')
+          }
+
+          const target = draft.targetCommitish || ''
+          const allowedTargets = new Set([process.env.GITHUB_SHA, 'main', 'refs/heads/main'])
+
+          if (!draft.isDraft) {
+            throw new Error(`Release ${draft.tagName} is not a draft`)
+          }
+
+          if (draft.assets.length > 0) {
+            throw new Error(`Draft release ${draft.tagName} already has assets`)
+          }
+
+          if (target && !allowedTargets.has(target)) {
+            throw new Error(
+              `Draft release target ${target} does not match current main SHA ${process.env.GITHUB_SHA}`
+            )
+          }
+
+          appendFileSync(
+            process.env.GITHUB_OUTPUT,
+            [
+              `draft_tag=${draft.tagName}`,
+              `release_id=${draft.databaseId}`,
+              `release_url=${draft.url}`
+            ].join('\n') + '\n'
+          )
+          NODE
+
+      - name: Resolve publish-day version
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release list --limit 100 --json tagName > "$RUNNER_TEMP/releases.json"
+          node scripts/resolve-release-version.mjs \
+            --releases-file "$RUNNER_TEMP/releases.json" \
+            --ignore-tag "${{ steps.draft.outputs.draft_tag }}"
+
+      - name: Install dependencies
+        env:
+          SKIP_ELECTRON_REBUILD: 1
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply release app version
+        env:
+          APP_VERSION: ${{ steps.version.outputs.app_version }}
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { readFileSync, writeFileSync } = require('node:fs')
+
+          const packagePath = 'apps/desktop/package.json'
+          const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'))
+          packageJson.version = process.env.APP_VERSION
+          writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`)
+          NODE
+
+      - name: Create runtime environment
+        env:
+          SYNC_SERVER_URL: ${{ vars.SYNC_SERVER_URL || secrets.SYNC_SERVER_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SYNC_SERVER_URL:-}" ]; then
+            echo "::error::Set SYNC_SERVER_URL as a repository variable or secret before publishing."
+            exit 1
+          fi
+          printf 'SYNC_SERVER_URL=%s\n' "$SYNC_SERVER_URL" > apps/desktop/.env.staging
+
+      - name: Build signed macOS artifacts
+        env:
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_IDENTITY_AUTO_DISCOVERY: true
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SYNC_SERVER_URL: ${{ vars.SYNC_SERVER_URL || secrets.SYNC_SERVER_URL }}
+        run: |
+          set -euo pipefail
+          for name in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing required release secret: $name"
+              exit 1
+            fi
+          done
+
+          pnpm --filter @memry/desktop build
+          node apps/desktop/scripts/build-packaged-app.js \
+            --config config/electron-builder.staged-local-mac.yml \
+            --mac \
+            --arm64 \
+            --publish never
+
+      - name: Check packaged runtime dependencies
+        run: node apps/desktop/scripts/check-packaged-runtime-deps.js
+
+      - name: Stage release assets
+        id: assets
+        run: |
+          set -euo pipefail
+          asset_dir="apps/desktop/dist/release-assets"
+          rm -rf "$asset_dir"
+          mkdir -p "$asset_dir"
+
+          find apps/desktop/dist -maxdepth 1 -type f \
+            \( -name '*.dmg' -o -name '*.zip' -o -name '*.blockmap' -o -name 'latest-mac.yml' \) \
+            -exec cp {} "$asset_dir" \;
+
+          ls -la "$asset_dir"
+
+          if ! ls "$asset_dir"/*.dmg >/dev/null 2>&1; then
+            echo "::error::No DMG artifact was produced."
+            exit 1
+          fi
+
+          if ! ls "$asset_dir"/*.zip >/dev/null 2>&1; then
+            echo "::error::No ZIP artifact was produced."
+            exit 1
+          fi
+
+          if [ ! -f "$asset_dir/latest-mac.yml" ]; then
+            echo "::error::latest-mac.yml was not produced."
+            exit 1
+          fi
+
+          echo "asset_dir=$asset_dir" >> "$GITHUB_OUTPUT"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: memry-macos-${{ steps.version.outputs.app_version }}
+          path: ${{ steps.assets.outputs.asset_dir }}/*
+          if-no-files-found: error
+
+      - name: Upload assets to draft release
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release upload "${{ steps.draft.outputs.draft_tag }}" \
+            "${{ steps.assets.outputs.asset_dir }}"/* \
+            --clobber
+
+      - name: Rename draft to publish-day release
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh api \
+            --method PATCH \
+            "repos/${GITHUB_REPOSITORY}/releases/${{ steps.draft.outputs.release_id }}" \
+            -f tag_name="${{ steps.version.outputs.tag }}" \
+            -f target_commitish="${GITHUB_SHA}" \
+            -f name="${{ steps.version.outputs.release_name }}" \
+            -F draft=true \
+            -F prerelease=false
+
+      - name: Verify release assets
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release view "${{ steps.version.outputs.tag }}" --json tagName,name,isDraft,isPrerelease,assets,url > "$RUNNER_TEMP/release.json"
+          node <<'NODE'
+          const { readFileSync } = require('node:fs')
+
+          const release = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/release.json`, 'utf8'))
+          const assetNames = release.assets.map((asset) => asset.name)
+
+          if (!release.isDraft) {
+            throw new Error('Release was published before asset verification finished')
+          }
+
+          if (!assetNames.some((name) => name.endsWith('.dmg'))) {
+            throw new Error('Release is missing a DMG asset')
+          }
+
+          if (!assetNames.some((name) => name.endsWith('.zip'))) {
+            throw new Error('Release is missing a ZIP asset')
+          }
+
+          if (!assetNames.includes('latest-mac.yml')) {
+            throw new Error('Release is missing latest-mac.yml')
+          }
+          NODE
+
+      - name: Publish release
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh api \
+            --method PATCH \
+            "repos/${GITHUB_REPOSITORY}/releases/${{ steps.draft.outputs.release_id }}" \
+            -F draft=false \
+            -F prerelease=false \
+            -f make_latest=true
+
+      - name: Final release check
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release view "${{ steps.version.outputs.tag }}" --json name,isDraft,isPrerelease,assets,url > "$RUNNER_TEMP/published-release.json"
+          node <<'NODE'
+          const { readFileSync } = require('node:fs')
+
+          const release = JSON.parse(
+            readFileSync(`${process.env.RUNNER_TEMP}/published-release.json`, 'utf8')
+          )
+
+          if (release.isDraft) {
+            throw new Error('Release is still marked as draft after publish')
+          }
+
+          if (release.isPrerelease) {
+            throw new Error('Release is marked as prerelease')
+          }
+
+          if (release.assets.length === 0) {
+            throw new Error('Published release has no assets')
+          }
+
+          console.log(`Published ${release.name}: ${release.url}`)
+          console.log(`Assets: ${release.assets.length}`)
+          NODE
