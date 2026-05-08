@@ -8,6 +8,10 @@ const REPO_ROOT = path.resolve(import.meta.dirname, '..')
 const OUTPUT_PATH = path.join(REPO_ROOT, 'src/preload/generated-rpc.ts')
 const CHECK_MODE = process.argv.includes('--check')
 
+function normalizeGeneratedText(text: string) {
+  return text.replace(/\r\n?/g, '\n')
+}
+
 function renderMethod(
   domainName: string,
   methodName: string,
@@ -81,7 +85,7 @@ function main() {
   const current = fs.existsSync(OUTPUT_PATH) ? fs.readFileSync(OUTPUT_PATH, 'utf8') : ''
 
   if (CHECK_MODE) {
-    if (current !== output) {
+    if (normalizeGeneratedText(current) !== normalizeGeneratedText(output)) {
       console.error(
         'Generated RPC bindings are out of date. Run: node --experimental-strip-types --experimental-transform-types scripts/generate-rpc-bindings.ts'
       )

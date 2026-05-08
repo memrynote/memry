@@ -13,6 +13,10 @@ const CHECK_MODE = process.argv.includes('--check')
 const WORKSPACE_ROOT = path.resolve(REPO_ROOT, '../..')
 const workspaceRequire = createRequire(path.join(WORKSPACE_ROOT, 'package.json'))
 
+function normalizeGeneratedText(text) {
+  return text.replace(/\r\n?/g, '\n')
+}
+
 function loadTypeScript() {
   try {
     return workspaceRequire('typescript')
@@ -268,7 +272,7 @@ function main() {
   const current = fs.existsSync(OUTPUT_PATH) ? fs.readFileSync(OUTPUT_PATH, 'utf8') : ''
 
   if (CHECK_MODE) {
-    if (current !== output) {
+    if (normalizeGeneratedText(current) !== normalizeGeneratedText(output)) {
       console.error('IPC invoke map is out of date. Run: node scripts/generate-ipc-invoke-map.js')
       process.exit(1)
     }
