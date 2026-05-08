@@ -108,7 +108,7 @@ import {
   getProjectOptions,
   resolveDateDay
 } from '@/lib/quick-add-parser'
-import type { Priority } from '@/data/sample-tasks'
+import type { Priority } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { AutocompleteDropdown, type AutocompleteType, type AutocompleteOption } from './quick-add'
 

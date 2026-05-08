@@ -3,7 +3,7 @@ import { DueDateBadge, PriorityBadge } from '@/components/tasks/task-badges'
 import { TaskRow } from './task-row'
 import { ParentTaskRow } from '@/components/tasks/parent-task-row'
 import type { SubtaskProgress } from '@/lib/subtask-utils'
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { useT } from '@memry/i18n/renderer'
 

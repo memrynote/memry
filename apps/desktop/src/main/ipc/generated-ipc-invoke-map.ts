@@ -305,8 +305,6 @@ export interface MainIpcInvokeHandlers {
   "tasks:project-reorder": (...args: [{ projectIds: string[]; positions: number[]; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
   "tasks:project-update": (...args: [{ id: string; name?: string | undefined; description?: string | null | undefined; color?: string | undefined; icon?: string | null | undefined; statuses?: { name: string; type: "todo" | "in_progress" | "done"; order: number; id?: string | undefined; color?: string | undefined; }[] | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; project: null; error: string; } | { success: boolean; project: import("../../../../../packages/domain-tasks/src/types").ProjectWithStatuses; error?: undefined; }>>
   "tasks:reorder": (...args: [{ taskIds: string[]; positions: number[]; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
-  "tasks:seed-demo": (...args: []) => Awaited<Promise<{ success: boolean; message: string; }>>
-  "tasks:seed-performance-test": (...args: []) => Awaited<Promise<{ success: boolean; message: string; }>>
   "tasks:status-create": (...args: [{ projectId: string; name: string; color?: string | undefined; isDone?: boolean | undefined; }]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; status: import("../../../../../packages/domain-tasks/src/types").Status; }>>
   "tasks:status-delete": (...args: [string]) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; }>>
   "tasks:status-list": (...args: [string]) => Awaited<Promise<import("../../../../../packages/domain-tasks/src/types").Status[]>>

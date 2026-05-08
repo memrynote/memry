@@ -1,6 +1,6 @@
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
-import { priorityConfig } from '@/data/sample-tasks'
+import { priorityConfig } from '@/data/task-model'
 import { startOfDay, differenceInDays } from './task-date-utils'
 
 // ============================================================================

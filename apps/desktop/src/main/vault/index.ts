@@ -42,7 +42,7 @@ import {
   checkIndexHealth,
   type IndexHealth
 } from '../database'
-import { seedDefaults } from '../database/seed'
+import { ensureDefaultTaskProject } from '../database/defaults'
 import { VaultChannels } from '@memry/contracts/ipc-channels'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import { startWatcher, stopWatcher } from './watcher'
@@ -218,8 +218,8 @@ async function openVault(vaultPath: string): Promise<void> {
   initializeFtsTasks(dataDb)
   initializeFtsInbox(dataDb)
 
-  // Seed default data (inbox project, etc.)
-  seedDefaults(dataDb)
+  // Ensure task infrastructure expected by new vaults exists.
+  ensureDefaultTaskProject(dataDb)
 
   // Migrate settings: config.json ↔ SQLite cache
   migrateSettingsToConfig(dataDb, vaultPath)

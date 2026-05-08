@@ -3,7 +3,7 @@ import { Repeat } from '@/lib/icons'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { getRepeatDisplayText, getRepeatProgress } from '@/lib/repeat-utils'
-import type { RepeatConfig } from '@/data/sample-tasks'
+import type { RepeatConfig } from '@/data/task-model'
 import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================

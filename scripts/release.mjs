@@ -5,6 +5,7 @@ import { createInterface } from 'node:readline/promises'
 import { stdin as input, stdout as output } from 'node:process'
 
 import {
+  buildHumanizeReleaseArgs,
   buildDateReleaseVersion,
   extractWorkflowRunId,
   getReleaseListFields,
@@ -37,7 +38,7 @@ async function runCli() {
     getReleaseListFields().join(',')
   ])
   const draft = selectDraftRelease(releases, options.tag)
-  const draftDetails = readGhJson([
+  let draftDetails = readGhJson([
     'release',
     'view',
     draft.tagName,
@@ -50,6 +51,24 @@ async function runCli() {
     ignoreTag: draftDetails.tagName,
     timeZone: releaseTimeZone
   })
+
+  if (options.humanize) {
+    runHumanizeReleaseNotes({
+      dryRun: options.dryRun,
+      tag: draftDetails.tagName,
+      yes: options.yes
+    })
+
+    if (!options.dryRun) {
+      draftDetails = readGhJson([
+        'release',
+        'view',
+        draftDetails.tagName,
+        '--json',
+        'tagName,name,isDraft,targetCommitish,body,assets,url'
+      ])
+    }
+  }
 
   if (!options.dryRun) {
     assertHumanizedReleaseNotesForPublish({
@@ -103,6 +122,19 @@ async function runCli() {
 
   if (options.watch) {
     runGh(['run', 'watch', String(run.databaseId), '--exit-status'], { stdio: 'inherit' })
+  }
+}
+
+function runHumanizeReleaseNotes(options) {
+  const args = buildHumanizeReleaseArgs(options)
+  const result = spawnSync(process.execPath, args, { stdio: 'inherit' })
+
+  if (result.error) {
+    throw result.error
+  }
+
+  if (result.status !== 0) {
+    throw new Error(`node ${args.join(' ')} failed`)
   }
 }
 
@@ -194,11 +226,12 @@ function workflowRunUrl(runId) {
 function printHelp() {
   console.log(`Usage: pnpm release -- [options]
 
-Run pnpm release:humanize before publishing a real release.
+Run pnpm release:humanize before publishing, or pass --humanize to run it first.
 
 Options:
   --tag <tag>    Draft release tag to publish. Defaults to the newest draft.
   --dry-run      Build in GitHub Actions and upload workflow artifacts only.
+  --humanize     Humanize draft release notes before dispatching publish.
   --no-watch     Dispatch the workflow without watching it.
   --yes, -y      Skip the interactive confirmation prompt.
   --help, -h     Show this help.

@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils'
-import { priorityConfig, type Priority } from '@/data/sample-tasks'
+import { priorityConfig, type Priority } from '@/data/task-model'
 import { useT } from '@memry/i18n/renderer'
 
 interface PriorityBarsProps {

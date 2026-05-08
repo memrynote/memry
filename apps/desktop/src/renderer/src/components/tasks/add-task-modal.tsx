@@ -13,7 +13,7 @@ import { RepeatPicker } from './repeat-picker'
 import { CustomRepeatDialog } from './custom-repeat-dialog'
 import { cn } from '@/lib/utils'
 import { getDefaultTodoStatus } from '@/lib/task-utils'
-import { createDefaultTask, type Task, type Priority, type RepeatConfig } from '@/data/sample-tasks'
+import { createDefaultTask, type Task, type Priority, type RepeatConfig } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 
 interface AddTaskModalProps {

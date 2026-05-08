@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 
 import { useT } from '@memry/i18n/renderer'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 import type { Project, SortField } from '@/data/tasks-data'
 import { KanbanColumn } from './kanban-column'
 import { KanbanDragOverlay } from './kanban-drag-overlay'

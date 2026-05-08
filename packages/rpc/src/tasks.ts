@@ -271,12 +271,6 @@ export const tasksRpc = defineDomain({
     getLinkedTasks: defineMethod<(noteId: string) => Promise<Task[]>>({
       channel: TasksChannels.invoke.GET_LINKED_TASKS,
       params: ['noteId']
-    }),
-    seedPerformanceTest: defineMethod<() => Promise<{ success: boolean; message: string }>>({
-      channel: 'tasks:seed-performance-test'
-    }),
-    seedDemo: defineMethod<() => Promise<{ success: boolean; message: string }>>({
-      channel: 'tasks:seed-demo'
     })
   },
   events: {

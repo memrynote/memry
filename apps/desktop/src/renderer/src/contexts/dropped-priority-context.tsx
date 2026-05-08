@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { Priority } from '@/data/sample-tasks'
+import type { Priority } from '@/data/task-model'
 
 type DroppedPriorities = Map<string, Priority>
 

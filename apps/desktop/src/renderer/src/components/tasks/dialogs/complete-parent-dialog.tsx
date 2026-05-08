@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================

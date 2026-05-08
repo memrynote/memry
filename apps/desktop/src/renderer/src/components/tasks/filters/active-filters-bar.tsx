@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 import { X, Star } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import type { TaskFilters, Project } from '@/data/tasks-data'
-import type { Priority } from '@/data/sample-tasks'
+import type { Priority } from '@/data/task-model'
 import { useT } from '@memry/i18n/renderer'
 
 interface ActiveFiltersBarProps {

@@ -12,7 +12,7 @@ import {
   useDebouncedValue
 } from './use-task-filters'
 import { defaultFilters, defaultSort } from '@/data/tasks-data'
-import type { Task, Priority } from '@/data/sample-tasks'
+import type { Task, Priority } from '@/data/task-model'
 import type { Project, TaskFilters, TaskSort } from '@/data/tasks-data'
 
 // ============================================================================

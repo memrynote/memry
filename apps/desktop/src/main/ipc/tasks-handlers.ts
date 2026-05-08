@@ -401,22 +401,11 @@ export function registerTasksHandlers(): void {
       createTaskDomain(requireDatabase()).getLinkedTasks(noteId)
     )
   )
-
-  ipcMain.handle(
-    'tasks:seed-performance-test',
-    createHandler(() => ({ success: true, message: '' }))
-  )
-  ipcMain.handle(
-    'tasks:seed-demo',
-    createHandler(() => ({ success: true, message: '' }))
-  )
 }
 
 export function unregisterTasksHandlers(): void {
   Object.values(TasksChannels.invoke).forEach((channel) => {
     ipcMain.removeHandler(channel)
   })
-  ipcMain.removeHandler('tasks:seed-performance-test')
-  ipcMain.removeHandler('tasks:seed-demo')
   logger.info('Tasks handlers unregistered')
 }

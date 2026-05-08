@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 
 import { TaskSection } from './task-section'
 import { DragProvider } from '@/contexts/drag-context'
-import type { Task, Priority } from '@/data/sample-tasks'
+import type { Task, Priority } from '@/data/task-model'
 import type { Project, StatusType, Status } from '@/data/tasks-data'
 
 const createStatus = (overrides: Partial<Status> = {}): Status => ({

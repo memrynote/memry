@@ -11,7 +11,7 @@ import {
   AlertDialogTitle
 } from '@/components/ui/alert-dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================

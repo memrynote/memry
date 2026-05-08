@@ -7,7 +7,7 @@ import type { ReactElement, ReactNode } from 'react'
 import { createRendererI18n } from '@memry/i18n/renderer'
 import { AddTaskModal } from './add-task-modal'
 import type { Project, Status } from '@/data/tasks-data'
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 
 let i18nEn: I18nInstance
 let i18nTr: I18nInstance

@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { SortableTaskRow } from '@/components/tasks/drag-drop'
 import { SectionDivider, type SectionDividerVariant } from '@/components/tasks/section-divider'
 import { createLookupContext, isTaskCompletedFast } from '@/lib/lookup-utils'
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { useT } from '@memry/i18n/renderer'
 

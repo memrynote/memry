@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next'
-import type { RepeatConfig, RepeatFrequency } from '@/data/sample-tasks'
+import type { RepeatConfig, RepeatFrequency } from '@/data/task-model'
 import {
   addDays,
   addWeeks,

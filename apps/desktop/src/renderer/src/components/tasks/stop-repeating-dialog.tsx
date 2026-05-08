@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
 import { getRepeatDisplayText } from '@/lib/repeat-utils'
-import type { RepeatConfig } from '@/data/sample-tasks'
+import type { RepeatConfig } from '@/data/task-model'
 import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================

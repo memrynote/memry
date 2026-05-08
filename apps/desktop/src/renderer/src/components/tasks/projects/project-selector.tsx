@@ -11,7 +11,7 @@ import {
 import { Picker, usePickerContext } from '@/components/ui/picker'
 import { cn } from '@/lib/utils'
 import type { Project } from '@/data/tasks-data'
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 import { useT } from '@memry/i18n/renderer'
 
 interface ProjectSelectorProps {

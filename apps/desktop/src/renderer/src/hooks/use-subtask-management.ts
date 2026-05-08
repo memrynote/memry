@@ -27,7 +27,7 @@ import {
 } from '@/lib/subtask-bulk-utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useTaskSettings } from './use-task-settings'
-import type { Task, Priority } from '@/data/sample-tasks'
+import type { Task, Priority } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { getI18n } from 'react-i18next'
 

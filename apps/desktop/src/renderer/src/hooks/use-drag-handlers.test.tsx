@@ -4,7 +4,7 @@ import type { DragEndEvent } from '@dnd-kit/core'
 
 import { useDragHandlers } from './use-drag-handlers'
 import type { DragState } from '@/contexts/drag-context'
-import type { Priority, Task } from '@/data/sample-tasks'
+import type { Priority, Task } from '@/data/task-model'
 import type { Project, Status, StatusType } from '@/data/tasks-data'
 
 const createStatus = (overrides: Partial<Status> = {}): Status => ({

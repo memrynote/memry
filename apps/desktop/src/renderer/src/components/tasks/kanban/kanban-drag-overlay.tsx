@@ -8,7 +8,7 @@ import { KanbanCardContent } from './kanban-card'
 
 interface KanbanDragOverlayProps {
   projects: Project[]
-  allTasks: import('@/data/sample-tasks').Task[]
+  allTasks: import('@/data/task-model').Task[]
 }
 
 const dropAnimation: DropAnimation = {

@@ -7,7 +7,7 @@ import { useT } from '@memry/i18n/renderer'
 import { resolveTaskEdgeFromDndEvent, type DragState } from '@/contexts/drag-context'
 import { formatDateShort, startOfDay, getDefaultTodoStatus } from '@/lib/task-utils'
 import { resolveColumnDrop } from '@/lib/kanban-drop-resolver'
-import type { Task, Priority } from '@/data/sample-tasks'
+import type { Task, Priority } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { getI18n } from 'react-i18next'
 

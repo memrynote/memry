@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 import { hasSubtasks } from '@/lib/subtask-utils'
 
 // ============================================================================

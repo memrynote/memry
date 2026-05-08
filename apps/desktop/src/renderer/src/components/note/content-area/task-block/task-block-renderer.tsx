@@ -6,7 +6,7 @@ import { serviceTaskToDisplayTask, PRIORITY_REVERSE } from './task-block-utils'
 import { useTasksOptional } from '@/contexts/tasks'
 import { useTabActions } from '@/contexts/tabs'
 import { tasksService } from '@/services/tasks-service'
-import type { Task as DisplayTask } from '@/data/sample-tasks'
+import type { Task as DisplayTask } from '@/data/task-model'
 import { defaultStatuses, type Project, type Status } from '@/data/tasks-data'
 import { TaskRow } from '@/components/tasks/task-row'
 import { useT } from '@memry/i18n/renderer'
@@ -100,7 +100,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({
   const statuses: Status[] = project?.statuses ?? defaultStatuses
   const isCompleted = task ? !!task.completedAt : checked
 
-  const placeholderTask: import('@/data/sample-tasks').Task = useMemo(
+  const placeholderTask: import('@/data/task-model').Task = useMemo(
     () => ({
       id: '',
       title,

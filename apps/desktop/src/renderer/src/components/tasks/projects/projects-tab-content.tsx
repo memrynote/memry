@@ -6,7 +6,7 @@ import { ProjectSelector } from '@/components/tasks/projects/project-selector'
 import { cn } from '@/lib/utils'
 import { getFilteredTasks } from '@/lib/task-utils'
 import type { Project } from '@/data/tasks-data'
-import type { Task, Priority } from '@/data/sample-tasks'
+import type { Task, Priority } from '@/data/task-model'
 import { useT } from '@memry/i18n/renderer'
 
 interface ProjectsTabContentProps {

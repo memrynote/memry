@@ -114,8 +114,6 @@ export function createGeneratedRpcApi({
       getUpcoming: ((days) => invoke("tasks:get-upcoming", { days: days ?? 7 })) as GeneratedRpcApi["tasks"]["getUpcoming"],
       getOverdue: (() => invoke("tasks:get-overdue")) as GeneratedRpcApi["tasks"]["getOverdue"],
       getLinkedTasks: ((noteId) => invoke("tasks:get-linked-tasks", noteId)) as GeneratedRpcApi["tasks"]["getLinkedTasks"],
-      seedPerformanceTest: (() => invoke("tasks:seed-performance-test")) as GeneratedRpcApi["tasks"]["seedPerformanceTest"],
-      seedDemo: (() => invoke("tasks:seed-demo")) as GeneratedRpcApi["tasks"]["seedDemo"],
     },
     inbox: {
       captureText: ((input) => invoke("inbox:capture-text", input)) as GeneratedRpcApi["inbox"]["captureText"],

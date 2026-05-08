@@ -1,4 +1,4 @@
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 import type { Project, Status, SortField, SortDirection } from '@/data/tasks-data'
 import { groupTasksByStatus, type TaskGroupByStatus } from '@/lib/task-utils'
 import { getTopLevelTasks, getSubtasks, hasSubtasks } from '@/lib/subtask-utils'

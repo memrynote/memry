@@ -30,7 +30,7 @@ import {
   createDefaultRepeatConfig
 } from '@/lib/repeat-utils'
 import { formatDateShort } from '@/lib/task-utils'
-import type { RepeatConfig, RepeatFrequency, RepeatEndType, MonthlyType } from '@/data/sample-tasks'
+import type { RepeatConfig, RepeatFrequency, RepeatEndType, MonthlyType } from '@/data/task-model'
 import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================

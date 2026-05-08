@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 import { getRepeatPresets, getRepeatDisplayText, type RepeatPreset } from '@/lib/repeat-utils'
-import type { RepeatConfig } from '@/data/sample-tasks'
+import type { RepeatConfig } from '@/data/task-model'
 import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================

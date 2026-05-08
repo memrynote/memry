@@ -3,7 +3,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { ChevronRight } from '@/lib/icons'
 import { Picker } from '@/components/ui/picker'
 import type { TaskFilters, Project, Status, DueDateFilterType } from '@/data/tasks-data'
-import type { Priority, Task } from '@/data/sample-tasks'
+import type { Priority, Task } from '@/data/task-model'
 import type { SavedFilter } from '@/data/tasks-data'
 
 import { PriorityPanel } from './filter-panels/priority-panel'

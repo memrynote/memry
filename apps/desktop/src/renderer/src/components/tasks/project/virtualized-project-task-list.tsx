@@ -20,7 +20,7 @@ import { calculateProgress } from '@/lib/subtask-utils'
 import { useExpandedTasks } from '@/hooks'
 import { useDragContext } from '@/contexts/drag-context'
 import { annotateProjectStatusVirtualItems } from '@/lib/task-list-dnd-utils'
-import type { Task, Priority } from '@/data/sample-tasks'
+import type { Task, Priority } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
 
 // ============================================================================

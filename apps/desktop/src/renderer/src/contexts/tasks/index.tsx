@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import type { TaskSelectionType } from '@/App'
 import { useTaskWorkspaceMutations } from '@/features/tasks/use-task-queries'

@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import type { Task, Priority } from '@/data/sample-tasks'
+import type { Task, Priority } from '@/data/task-model'
 
 // Mock generateTaskId for deterministic IDs
-vi.mock('@/data/sample-tasks', async () => {
-  const actual = await vi.importActual('@/data/sample-tasks')
+vi.mock('@/data/task-model', async () => {
+  const actual = await vi.importActual('@/data/task-model')
   let idCounter = 0
   return {
     ...actual,

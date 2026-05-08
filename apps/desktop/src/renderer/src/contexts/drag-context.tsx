@@ -25,7 +25,7 @@ import {
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 
 import type { SubtaskProgress } from '@/lib/subtask-utils'
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 
 // ============================================================================
 // TYPES

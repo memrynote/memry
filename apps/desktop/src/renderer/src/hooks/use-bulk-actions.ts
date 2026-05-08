@@ -7,7 +7,7 @@ import { getI18n } from 'react-i18next'
 
 const log = createLogger('Hook:BulkActions')
 
-import type { Task, Priority } from '@/data/sample-tasks'
+import type { Task, Priority } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { getDefaultTodoStatus, getDefaultDoneStatus } from '@/lib/task-utils'
 import { tasksService } from '@/services/tasks-service'

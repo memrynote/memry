@@ -15,7 +15,7 @@ import {
   AlertCircle
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { PRIORITY_TEXT_CLASSES, type Priority } from '@/data/sample-tasks'
+import { PRIORITY_TEXT_CLASSES, type Priority } from '@/data/task-model'
 import type { ScheduleEvent, DayTask } from './day-context-sidebar'
 import { useT } from '@memry/i18n/renderer'
 
