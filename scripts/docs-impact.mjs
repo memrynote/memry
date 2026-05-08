@@ -11,9 +11,7 @@ const docsRelevantPatterns = [
   /^apps\/desktop\/package\.json$/,
   /^apps\/sync-server\/(?:src|schema)\//,
   /^apps\/sync-server\/(?:package\.json|wrangler\.toml)$/,
-  /^packages\/(?:contracts|db-schema|rpc|shared|sync-core)\//,
-  /^\.github\/workflows\/release.*\.ya?ml$/,
-  /^scripts\/(?:desktop-release-metadata|set-desktop-version)\.mjs$/
+  /^packages\/(?:contracts|db-schema|rpc|shared|sync-core)\//
 ]
 
 const ignoredRelevantPatterns = [
@@ -68,7 +66,7 @@ export function buildDocsUpdatePrompt({ baseRef, relevantFiles }) {
 
 Scope:
 - Inspect the current repository and \`git diff ${baseRef}...HEAD\`.
-- Focus on docs impact from Electron desktop, sync-server, contracts, sync protocol, storage schema, and release workflow changes.
+- Focus on docs impact from Electron desktop, sync-server, contracts, sync protocol, and storage schema changes.
 - Update only files under apps/docs/src/**.
 - Do not edit application code, tests, hooks, package metadata, or generated files.
 - If the diff does not require documentation changes, make no edits and say why.

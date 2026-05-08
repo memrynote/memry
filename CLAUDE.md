@@ -27,7 +27,7 @@ pnpm ipc:generate # regenerate IPC invoke map from contracts
 - Prefer editing over rewriting whole files.
 - Do not re-read files you have already read unless the file may have changed.
 - Test your code before declaring done.
-- Before push, PR, merge, or release after desktop/sync-server changes, run `pnpm docs:ai-update` or update `apps/docs/src` manually, then run `pnpm docs:impact --strict` and `pnpm docs:build`.
+- Before push, PR, or merge after desktop/sync-server changes, run `pnpm docs:ai-update` or update `apps/docs/src` manually, then run `pnpm docs:impact --strict` and `pnpm docs:build`.
 - No sycophantic openers or closing fluff.
 - Keep solutions simple and direct. No over-engineering.
 - If unsure: say so. Never guess or invent file paths.

@@ -161,8 +161,7 @@ function unifiedSidebar() {
         { text: 'Setting Up', link: '/contributing' },
         { text: 'Repo Workflow', link: '/contribute/workflow' },
         { text: 'Testing', link: '/contribute/testing' },
-        { text: 'Common Gotchas', link: '/contribute/gotchas' },
-        { text: 'Releasing', link: '/contribute/releasing' }
+        { text: 'Common Gotchas', link: '/contribute/gotchas' }
       ]
     },
     {

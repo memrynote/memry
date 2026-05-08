@@ -1,6 +1,0 @@
-provider: github
-owner: memrynote
-repo: memry
-releaseType: release
-tagNamePrefix: ''
-updaterCacheDirName: memry-updater
