@@ -4,7 +4,12 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { createInterface } from 'node:readline/promises'
 import { stdin as input, stdout as output } from 'node:process'
 
-import { buildDateReleaseVersion, parseReleaseArgs, selectDraftRelease } from './release-utils.mjs'
+import {
+  buildDateReleaseVersion,
+  getReleaseListFields,
+  parseReleaseArgs,
+  selectDraftRelease
+} from './release-utils.mjs'
 
 const workflowFile = 'publish-release.yml'
 const workflowName = 'Publish Desktop Release'
@@ -26,7 +31,7 @@ async function runCli() {
     '--limit',
     '100',
     '--json',
-    'tagName,name,isDraft,createdAt,url'
+    getReleaseListFields().join(',')
   ])
   const draft = selectDraftRelease(releases, options.tag)
   const draftDetails = readGhJson([

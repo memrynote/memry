@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { buildDateReleaseVersion, parseReleaseArgs, selectDraftRelease } from './release-utils.mjs'
+import {
+  buildDateReleaseVersion,
+  getReleaseListFields,
+  parseReleaseArgs,
+  selectDraftRelease
+} from './release-utils.mjs'
 
 describe('release helpers', () => {
   it('builds publish-day date tags and semver-safe app versions', () => {
@@ -96,5 +101,9 @@ describe('release helpers', () => {
         yes: true
       }
     )
+  })
+
+  it('uses only gh release list fields supported by GitHub CLI', () => {
+    assert.deepEqual(getReleaseListFields(), ['tagName', 'name', 'isDraft', 'createdAt'])
   })
 })
