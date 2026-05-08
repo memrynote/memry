@@ -50,6 +50,7 @@ export function parseReleaseArgs(argv) {
   const options = {
     dryRun: false,
     help: false,
+    humanize: false,
     tag: undefined,
     watch: true,
     yes: false
@@ -78,6 +79,11 @@ export function parseReleaseArgs(argv) {
       continue
     }
 
+    if (arg === '--humanize') {
+      options.humanize = true
+      continue
+    }
+
     if (arg === '--no-watch') {
       options.watch = false
       continue
@@ -97,6 +103,20 @@ export function parseReleaseArgs(argv) {
   }
 
   return options
+}
+
+export function buildHumanizeReleaseArgs({ dryRun, tag, yes }) {
+  const args = ['scripts/humanize-release-notes.mjs', '--tag', tag]
+
+  if (dryRun) {
+    args.push('--dry-run')
+  }
+
+  if (yes) {
+    args.push('--yes')
+  }
+
+  return args
 }
 
 export function getReleaseListFields() {

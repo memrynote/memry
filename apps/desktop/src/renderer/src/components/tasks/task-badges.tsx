@@ -11,7 +11,7 @@ import {
   overdueTierStyles,
   type DueDateStatus
 } from '@/lib/task-utils'
-import { priorityConfig, type Priority } from '@/data/sample-tasks'
+import { priorityConfig, type Priority } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useT } from '@memry/i18n/renderer'

@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import type { Task, Priority } from '@/data/sample-tasks'
+import type { Task, Priority } from '@/data/task-model'
 import type { Project, Status, StatusType, TaskFilters, TaskSort } from '@/data/tasks-data'
 import {
   // Date Helpers - Basic (T072)

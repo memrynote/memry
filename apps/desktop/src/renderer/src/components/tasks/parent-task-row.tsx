@@ -16,7 +16,7 @@ import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
 import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
 import { SubtaskProgressIndicator } from '@/components/tasks/subtask-progress-indicator'
 import { PriorityBars } from '@/components/tasks/task-icons'
-import type { Priority, Task } from '@/data/sample-tasks'
+import type { Priority, Task } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
 import { useT } from '@memry/i18n/renderer'
 

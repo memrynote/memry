@@ -3,6 +3,7 @@ import { describe, it } from 'node:test'
 
 import {
   buildDateReleaseVersion,
+  buildHumanizeReleaseArgs,
   extractWorkflowRunId,
   getReleaseListFields,
   parseReleaseArgs,
@@ -94,15 +95,32 @@ describe('release helpers', () => {
 
   it('parses release launcher flags', () => {
     assert.deepEqual(
-      parseReleaseArgs(['--', '--tag', 'vnext', '--dry-run', '--no-watch', '--yes']),
+      parseReleaseArgs(['--', '--tag', 'vnext', '--dry-run', '--humanize', '--no-watch', '--yes']),
       {
         dryRun: true,
         help: false,
+        humanize: true,
         tag: 'vnext',
         watch: false,
         yes: true
       }
     )
+  })
+
+  it('builds humanizer args from release flags', () => {
+    assert.deepEqual(buildHumanizeReleaseArgs({ dryRun: false, tag: 'vnext', yes: true }), [
+      'scripts/humanize-release-notes.mjs',
+      '--tag',
+      'vnext',
+      '--yes'
+    ])
+
+    assert.deepEqual(buildHumanizeReleaseArgs({ dryRun: true, tag: 'vnext', yes: false }), [
+      'scripts/humanize-release-notes.mjs',
+      '--tag',
+      'vnext',
+      '--dry-run'
+    ])
   })
 
   it('uses only gh release list fields supported by GitHub CLI', () => {

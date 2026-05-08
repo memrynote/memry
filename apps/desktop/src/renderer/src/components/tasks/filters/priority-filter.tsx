@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { FilterFooter } from '@/components/ui/filter-footer'
 import { Picker } from '@/components/ui/picker'
 import { cn } from '@/lib/utils'
-import { type Priority } from '@/data/sample-tasks'
+import { type Priority } from '@/data/task-model'
 import { useT } from '@memry/i18n/renderer'
 
 interface PriorityFilterProps {

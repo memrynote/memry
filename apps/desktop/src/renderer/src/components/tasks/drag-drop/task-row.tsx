@@ -12,7 +12,7 @@ import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
 import { InsertionIndicator } from './insertion-indicator'
 import type { SectionDragState } from './list-section-drag-state'
 
-import type { Task, Priority } from '@/data/sample-tasks'
+import type { Task, Priority } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
 import { useT } from '@memry/i18n/renderer'
 

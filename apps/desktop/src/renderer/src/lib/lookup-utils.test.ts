@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
 import {
   createProjectMap,

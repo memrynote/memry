@@ -16,7 +16,7 @@ import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifi
 
 import { cn } from '@/lib/utils'
 import { SortableSubtaskRow } from '@/components/tasks/sortable-subtask-row'
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 import type { Status } from '@/data/tasks-data'
 
 // ============================================================================

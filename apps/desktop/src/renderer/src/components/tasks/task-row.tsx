@@ -6,7 +6,7 @@ import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popove
 import { InteractiveProjectBadge } from '@/components/tasks/interactive-project-badge'
 import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
 import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
 
 // ============================================================================

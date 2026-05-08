@@ -14,7 +14,7 @@ export interface NoteFixture {
   modifiedAt: string
 }
 
-export const sampleNotes: NoteFixture[] = [
+export const noteFixtures: NoteFixture[] = [
   {
     id: 'note-1',
     title: 'Getting Started',

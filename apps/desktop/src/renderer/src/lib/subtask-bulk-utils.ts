@@ -1,4 +1,4 @@
-import { generateTaskId, type Task, type Priority } from '@/data/sample-tasks'
+import { generateTaskId, type Task, type Priority } from '@/data/task-model'
 import { getSubtasks } from './subtask-utils'
 
 // ============================================================================

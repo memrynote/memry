@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 import { SortableParentTaskRow } from './sortable-parent-task-row'
-import type { Task, Priority } from '@/data/sample-tasks'
+import type { Task, Priority } from '@/data/task-model'
 import type { Project, Status, StatusType } from '@/data/tasks-data'
 
 const useSortableMock = vi.fn()

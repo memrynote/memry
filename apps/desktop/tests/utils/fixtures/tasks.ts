@@ -19,7 +19,7 @@ export interface TaskFixture {
   modifiedAt: string
 }
 
-export const sampleTasks: TaskFixture[] = [
+export const taskFixtures: TaskFixture[] = [
   {
     id: 'task-1',
     projectId: 'project-1',

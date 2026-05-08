@@ -190,9 +190,7 @@ const createMockApi = () => ({
     getToday: vi.fn().mockResolvedValue({ tasks: [], total: 0, hasMore: false }),
     getUpcoming: vi.fn().mockResolvedValue({ tasks: [], total: 0, hasMore: false }),
     getOverdue: vi.fn().mockResolvedValue({ tasks: [], total: 0, hasMore: false }),
-    getLinkedTasks: vi.fn().mockResolvedValue([]),
-    seedPerformanceTest: vi.fn().mockResolvedValue({ success: true }),
-    seedDemo: vi.fn().mockResolvedValue({ success: true })
+    getLinkedTasks: vi.fn().mockResolvedValue([])
   },
 
   // Search API

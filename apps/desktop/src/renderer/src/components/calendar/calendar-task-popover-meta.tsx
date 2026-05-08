@@ -2,7 +2,7 @@ import { Calendar, Repeat, AlertTriangle } from '@/lib/icons'
 import { formatTaskDue } from '@/lib/format-task-due'
 import { TagChip, type Tag } from '@/components/note/tags-row'
 import { PriorityIcon } from '@/components/tasks/task-icons'
-import { priorityConfig, type Priority } from '@/data/sample-tasks'
+import { priorityConfig, type Priority } from '@/data/task-model'
 import { cn } from '@/lib/utils'
 
 export interface CalendarTaskPopoverMetaTask {

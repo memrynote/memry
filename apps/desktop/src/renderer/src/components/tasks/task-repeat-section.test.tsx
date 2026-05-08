@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TaskRepeatSection } from './task-repeat-section'
-import type { RepeatConfig } from '@/data/sample-tasks'
+import type { RepeatConfig } from '@/data/task-model'
 
 vi.mock('@/lib/repeat-utils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/repeat-utils')>()

@@ -16,7 +16,7 @@ import {
   Users
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { PRIORITY_TEXT_CLASSES, type Priority } from '@/data/sample-tasks'
+import { PRIORITY_TEXT_CLASSES, type Priority } from '@/data/task-model'
 import { useT } from '@memry/i18n/renderer'
 
 // =============================================================================

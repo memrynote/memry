@@ -2,7 +2,7 @@ import { useCallback, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Project, ProjectWithStats, Status, Task } from '@memry/rpc/tasks'
 import { formatDateKey } from '@/lib/task-utils'
-import type { Task as UiTask, RepeatConfig as UiRepeatConfig } from '@/data/sample-tasks'
+import type { Task as UiTask, RepeatConfig as UiRepeatConfig } from '@/data/task-model'
 import type { Project as UiProject, Status as UiStatus, StatusType } from '@/data/tasks-data'
 import {
   tasksService,

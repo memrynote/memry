@@ -9,7 +9,7 @@ import { TasksSettings } from './tasks-section'
 import { TasksProvider } from '@/contexts/tasks'
 import { renderWithProviders as renderWithQueryProviders } from '@tests/utils/render'
 import type { Project, Status } from '@/data/tasks-data'
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 
 let i18nEn: I18nInstance
 

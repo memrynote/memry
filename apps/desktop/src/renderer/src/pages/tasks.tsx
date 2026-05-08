@@ -36,7 +36,7 @@ import {
   type TaskSort,
   type SavedFilter
 } from '@/data/tasks-data'
-import { createDefaultTask, type Task, type Priority } from '@/data/sample-tasks'
+import { createDefaultTask, type Task, type Priority } from '@/data/task-model'
 import { addDays } from '@/lib/task-utils' // used by handleBulkChangeDueDate
 import {
   useFilterState,

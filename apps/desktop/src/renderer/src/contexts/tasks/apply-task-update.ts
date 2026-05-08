@@ -1,4 +1,4 @@
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 
 export function applyTaskUpdate(prevTasks: Task[], updatedTask: Task, eventId: string): Task[] {
   const oldTask = prevTasks.find((t) => t.id === eventId)

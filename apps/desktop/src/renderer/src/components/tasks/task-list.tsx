@@ -1,6 +1,6 @@
 import { VirtualizedAllTasksView } from '@/components/tasks/virtualized-all-tasks-view'
 import { VirtualizedProjectTaskList } from '@/components/tasks/project/virtualized-project-task-list'
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 import type { Project, SortField, SortDirection } from '@/data/tasks-data'
 
 // ============================================================================
@@ -21,7 +21,7 @@ interface TaskListProps {
     title: string,
     parsedData?: {
       dueDate: Date | null
-      priority: import('@/data/sample-tasks').Priority
+      priority: import('@/data/task-model').Priority
       projectId: string | null
     }
   ) => void

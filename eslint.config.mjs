@@ -162,7 +162,6 @@ export default defineConfig(
   {
     files: [
       'apps/desktop/src/main/index.ts',
-      'apps/desktop/src/main/database/seed.ts',
       'apps/desktop/src/main/database/queries/tasks.ts',
       'apps/desktop/src/main/inbox/filing.ts',
       'apps/desktop/src/main/inbox/suggestions.ts',

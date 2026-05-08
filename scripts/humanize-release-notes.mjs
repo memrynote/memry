@@ -118,6 +118,7 @@ async function runCli() {
     const confirmed = await confirmEdit()
     if (!confirmed) {
       console.log('Release notes update cancelled')
+      process.exitCode = 1
       return
     }
   }

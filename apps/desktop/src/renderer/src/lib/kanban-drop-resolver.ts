@@ -1,4 +1,4 @@
-import type { Priority } from '@/data/sample-tasks'
+import type { Priority } from '@/data/task-model'
 import type { Project, StatusType } from '@/data/tasks-data'
 import { startOfDay, addDays } from '@/lib/task-utils'
 

@@ -7,7 +7,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================

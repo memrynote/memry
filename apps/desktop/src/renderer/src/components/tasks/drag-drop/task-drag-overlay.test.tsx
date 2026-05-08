@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 import { TaskDragOverlay } from './task-drag-overlay'
-import type { Task, Priority, RepeatConfig } from '@/data/sample-tasks'
+import type { Task, Priority, RepeatConfig } from '@/data/task-model'
 import type { Project, Status, StatusType } from '@/data/tasks-data'
 
 const useDragContextMock = vi.fn()

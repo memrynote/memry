@@ -25,7 +25,7 @@ import {
 import { getIconByName } from '@/components/icon-picker'
 import { addDays, startOfDay } from '@/lib/task-utils'
 import type { Project, Status } from '@/data/tasks-data'
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================

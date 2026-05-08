@@ -1,4 +1,4 @@
-import { priorityConfig, type Task, type Priority } from '@/data/sample-tasks'
+import { priorityConfig, type Task, type Priority } from '@/data/task-model'
 import type { Project, SortField, StatusType } from '@/data/tasks-data'
 import { groupByPriority, groupByDueDate } from '@/lib/task-grouping'
 

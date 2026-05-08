@@ -8,7 +8,7 @@ import { SectionDivider, type SectionDividerVariant } from '@/components/tasks/s
 import { type UrgencyLevel } from '@/lib/task-utils'
 import { createLookupContext, isTaskCompletedFast } from '@/lib/lookup-utils'
 import { getTopLevelTasks, getSubtasks, calculateProgress } from '@/lib/subtask-utils'
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
 
 const urgencyToDividerVariant = (urgency: UrgencyLevel): SectionDividerVariant =>

@@ -12,7 +12,7 @@ import type {
   TaskItem,
   VirtualItem
 } from './virtual-list-utils'
-import type { Priority, Task } from '@/data/sample-tasks'
+import type { Priority, Task } from '@/data/task-model'
 import type { Project, Status, StatusType } from '@/data/tasks-data'
 
 const createStatus = (overrides: Partial<Status> = {}): Status => ({

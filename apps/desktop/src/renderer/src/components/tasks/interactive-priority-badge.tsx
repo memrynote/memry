@@ -2,7 +2,7 @@ import * as React from 'react'
 
 import { cn } from '@/lib/utils'
 import { Picker } from '@/components/ui/picker'
-import { priorityConfig, type Priority } from '@/data/sample-tasks'
+import { priorityConfig, type Priority } from '@/data/task-model'
 import type { PriorityBadgeVariant } from './task-badges'
 import { PriorityIcon } from './task-icons'
 

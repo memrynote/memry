@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import type { Task, Priority } from '@/data/sample-tasks'
+import type { Task, Priority } from '@/data/task-model'
 import type { Project, StatusType, Status } from '@/data/tasks-data'
 import { KanbanCardContent } from './kanban-card'
 

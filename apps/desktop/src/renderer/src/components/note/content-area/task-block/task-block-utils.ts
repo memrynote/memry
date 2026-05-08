@@ -3,7 +3,7 @@ import type {
   Task as DisplayTask,
   Priority,
   RepeatConfig as DisplayRepeatConfig
-} from '@/data/sample-tasks'
+} from '@/data/task-model'
 import type { Task as ServiceTask } from '@/services/tasks-service'
 
 const DB_PRIORITY_MAP: Record<number, Priority> = {

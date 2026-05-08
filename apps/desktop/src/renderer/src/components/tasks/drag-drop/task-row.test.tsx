@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 import { TaskRow } from './task-row'
-import type { Task, Priority } from '@/data/sample-tasks'
+import type { Task, Priority } from '@/data/task-model'
 import type { Project, StatusType, Status } from '@/data/tasks-data'
 
 const createStatus = (overrides: Partial<Status> = {}): Status => ({

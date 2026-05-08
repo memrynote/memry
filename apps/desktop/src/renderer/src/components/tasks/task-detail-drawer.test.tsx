@@ -6,7 +6,7 @@ import type { i18n as I18nInstance } from 'i18next'
 import type { ReactElement, ReactNode } from 'react'
 import { createRendererI18n } from '@memry/i18n/renderer'
 import { TaskDetailDrawer, type TaskDetailDrawerProps } from './task-detail-drawer'
-import type { Task, Priority, RepeatConfig } from '@/data/sample-tasks'
+import type { Task, Priority, RepeatConfig } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
 
 import { notesService } from '@/services/notes-service'

@@ -2,7 +2,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { cn } from '@/lib/utils'
 import { InteractiveStatusIcon } from '@/components/tasks/status-icon'
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 import type { Status } from '@/data/tasks-data'
 
 interface SortableSubtaskRowProps {

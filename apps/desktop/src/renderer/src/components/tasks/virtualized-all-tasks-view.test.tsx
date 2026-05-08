@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render } from '@testing-library/react'
 
 import { VirtualizedAllTasksView } from './virtualized-all-tasks-view'
-import type { Task, Priority } from '@/data/sample-tasks'
+import type { Task, Priority } from '@/data/task-model'
 import type { Project, Status, StatusType } from '@/data/tasks-data'
 
 const useDroppableMock = vi.fn()

@@ -2,7 +2,7 @@ import { Calendar, ChevronDown, Clock } from '@/lib/icons'
 
 import { cn } from '@/lib/utils'
 import { PriorityBars, PriorityStar } from '@/components/tasks/task-icons'
-import { priorityConfig, type Priority } from '@/data/sample-tasks'
+import { priorityConfig, type Priority } from '@/data/task-model'
 import type { SortField } from '@/data/tasks-data'
 
 // ============================================================================

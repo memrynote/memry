@@ -1,5 +1,5 @@
-import type { Task, Priority } from '@/data/sample-tasks'
-import { generateTaskId } from '@/data/sample-tasks'
+import type { Task, Priority } from '@/data/task-model'
+import { generateTaskId } from '@/data/task-model'
 
 // ============================================================================
 // SUBTASK TYPES

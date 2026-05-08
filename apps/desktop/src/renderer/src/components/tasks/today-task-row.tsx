@@ -8,7 +8,7 @@ import {
   InteractiveDueDateBadge
 } from '@/components/tasks/task-badges'
 import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
-import type { Task, Priority } from '@/data/sample-tasks'
+import type { Task, Priority } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 
 // ============================================================================

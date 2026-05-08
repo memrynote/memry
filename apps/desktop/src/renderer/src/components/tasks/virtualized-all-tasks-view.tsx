@@ -23,7 +23,7 @@ import { calculateProgress, getTopLevelTasks } from '@/lib/subtask-utils'
 import { useExpandedTasks } from '@/hooks'
 import { useDragContext } from '@/contexts/drag-context'
 import { annotateFlatVirtualItems, annotateGroupedVirtualItems } from '@/lib/task-list-dnd-utils'
-import type { Task, Priority } from '@/data/sample-tasks'
+import type { Task, Priority } from '@/data/task-model'
 import type { Project, SortField, SortDirection } from '@/data/tasks-data'
 
 // ============================================================================

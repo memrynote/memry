@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { Plus } from '@/lib/icons'
-import type { RepeatConfig } from '@/data/sample-tasks'
+import type { RepeatConfig } from '@/data/task-model'
 import { getRepeatDisplayText } from '@/lib/repeat-utils'
 import { formatDateShort } from '@/lib/task-utils'
 import { CustomRepeatDialog } from './custom-repeat-dialog'

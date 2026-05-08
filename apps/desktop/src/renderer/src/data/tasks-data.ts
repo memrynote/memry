@@ -1,4 +1,4 @@
-import type { Priority } from './sample-tasks'
+import type { Priority } from './task-model'
 
 // ============================================================================
 // STATUS TYPES AND INTERFACES
@@ -110,7 +110,7 @@ export const defaultStatuses: Status[] = [
 ]
 
 // ============================================================================
-// SAMPLE DATA - TASK VIEWS
+// TASK VIEWS
 // ============================================================================
 
 export const taskViews: TaskView[] = [
@@ -120,7 +120,7 @@ export const taskViews: TaskView[] = [
 ]
 
 // ============================================================================
-// SAMPLE DATA - PROJECTS (Empty - data loaded from database)
+// INITIAL PROJECTS
 // ============================================================================
 
 export const initialProjects: Project[] = []

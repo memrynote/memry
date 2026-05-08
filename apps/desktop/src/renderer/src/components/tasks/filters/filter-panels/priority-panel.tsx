@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { CheckMark } from '@/components/ui/check-mark'
 import { FilterSearchHeader } from '@/components/ui/filter-search-header'
 import { FilterFooter } from '@/components/ui/filter-footer'
-import type { Priority, Task } from '@/data/sample-tasks'
+import type { Priority, Task } from '@/data/task-model'
 import { PriorityIcon } from '@/components/tasks/task-icons'
 import { useT } from '@memry/i18n/renderer'
 

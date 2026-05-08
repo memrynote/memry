@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { TaskCheckbox } from '@/components/tasks/task-badges'
 import { getPotentialParents } from '@/lib/subtask-utils'
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { useT } from '@memry/i18n/renderer'
 

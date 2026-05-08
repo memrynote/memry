@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useUndoableTaskActions, UNDOABLE_FIELDS } from './use-undoable-task-actions'
-import type { Task, Priority } from '@/data/sample-tasks'
+import type { Task, Priority } from '@/data/task-model'
 
 vi.mock('sonner', () => ({
   toast: {

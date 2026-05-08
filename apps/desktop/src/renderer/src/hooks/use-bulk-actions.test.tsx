@@ -8,7 +8,7 @@ import { renderHook, act } from '@testing-library/react'
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useBulkActions } from './use-bulk-actions'
-import type { Task, Priority } from '@/data/sample-tasks'
+import type { Task, Priority } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
 
 // ============================================================================

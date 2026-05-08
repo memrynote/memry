@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 import { SelectionCheckbox } from './selection-checkbox'
 import { BulkActionButton } from './bulk-action-button'
 import { BulkActionDropdown, type BulkActionOption } from './bulk-action-dropdown'
-import { priorityConfig, type Priority } from '@/data/sample-tasks'
+import { priorityConfig, type Priority } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
 import { useT } from '@memry/i18n/renderer'
 

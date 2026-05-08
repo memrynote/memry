@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 import { InteractiveStatusIcon } from '@/components/tasks/status-icon'
-import type { Task } from '@/data/sample-tasks'
+import type { Task } from '@/data/task-model'
 import type { Status } from '@/data/tasks-data'
 
 interface SubtaskRowProps {
