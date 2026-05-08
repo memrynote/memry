@@ -1070,6 +1070,7 @@ export const TasksPage = ({
                 onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
                 onQuickAdd={handleQuickAdd}
                 onTaskClick={handleTaskClick}
+                onNoteClick={(...args) => void handleNoteClick(...args)}
                 selectedTaskId={detailTaskId}
                 isSelectionMode={selection.isSelectionMode}
                 selectedIds={selection.selectedIds}
@@ -1106,6 +1107,7 @@ export const TasksPage = ({
                   onToggleSubtaskComplete={subtaskManagement.handleCompleteSubtask}
                   onQuickAdd={handleQuickAdd}
                   onTaskClick={handleTaskClick}
+                  onNoteClick={(...args) => void handleNoteClick(...args)}
                   selectedTaskId={detailTaskId}
                   isSelectionMode={selection.isSelectionMode}
                   selectedIds={selection.selectedIds}

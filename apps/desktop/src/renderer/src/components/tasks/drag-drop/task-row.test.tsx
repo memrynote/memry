@@ -1,9 +1,17 @@
-import { describe, it, expect, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 import { TaskRow } from './task-row'
+import { notesService } from '@/services/notes-service'
 import type { Task, Priority } from '@/data/task-model'
 import type { Project, StatusType, Status } from '@/data/tasks-data'
+
+vi.mock('@/services/notes-service', () => ({
+  notesService: {
+    get: vi.fn()
+  }
+}))
 
 const createStatus = (overrides: Partial<Status> = {}): Status => ({
   id: 'status-todo',
@@ -60,6 +68,78 @@ const defaultProps = {
   onToggleComplete: vi.fn(),
   onClick: vi.fn()
 }
+
+const createNote = (overrides: Record<string, unknown> = {}) =>
+  ({
+    id: 'note-1',
+    title: 'Linked Note',
+    emoji: null,
+    ...overrides
+  }) as Awaited<ReturnType<typeof notesService.get>>
+
+beforeEach(() => {
+  vi.mocked(notesService.get).mockReset()
+  vi.mocked(notesService.get).mockResolvedValue(null)
+})
+
+describe('TaskRow — Linked Notes', () => {
+  it('shows the first linked note title and extra count', async () => {
+    vi.mocked(notesService.get).mockResolvedValueOnce(createNote({ title: 'Planning Note' }))
+
+    render(
+      <TaskRow
+        {...defaultProps}
+        task={createTask({ linkedNoteIds: ['note-1', 'note-2'] })}
+        onNoteClick={vi.fn()}
+      />
+    )
+
+    expect(await screen.findByText('Planning Note')).toBeInTheDocument()
+    expect(screen.getByText('+1')).toBeInTheDocument()
+  })
+
+  it('falls back to sourceNoteId when linkedNoteIds is empty', async () => {
+    vi.mocked(notesService.get).mockResolvedValueOnce(createNote({ id: 'source-note' }))
+
+    render(
+      <TaskRow
+        {...defaultProps}
+        task={createTask({ linkedNoteIds: [], sourceNoteId: 'source-note' })}
+        onNoteClick={vi.fn()}
+      />
+    )
+
+    expect(await screen.findByText('Linked Note')).toBeInTheDocument()
+    expect(notesService.get).toHaveBeenCalledWith('source-note')
+  })
+
+  it('opens the linked note without opening the task row', async () => {
+    const user = userEvent.setup()
+    const onClick = vi.fn()
+    const onNoteClick = vi.fn()
+    vi.mocked(notesService.get).mockResolvedValueOnce(createNote({ title: 'Research Note' }))
+
+    render(
+      <TaskRow
+        {...defaultProps}
+        task={createTask({ linkedNoteIds: ['note-1'] })}
+        onClick={onClick}
+        onNoteClick={onNoteClick}
+      />
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Open note Research Note' }))
+
+    expect(onNoteClick).toHaveBeenCalledWith('note-1')
+    expect(onClick).not.toHaveBeenCalled()
+  })
+
+  it('does not show a linked note affordance without note relationships', () => {
+    render(<TaskRow {...defaultProps} onNoteClick={vi.fn()} />)
+
+    expect(screen.queryByRole('button', { name: /open note/i })).not.toBeInTheDocument()
+  })
+})
 
 describe('TaskRow — Whole-Row Drag', () => {
   it('applies cursor-grab when dragHandleListeners are provided', () => {
