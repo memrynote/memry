@@ -4,6 +4,7 @@ import { describe, it } from 'node:test'
 
 const releaseDrafterWorkflow = readFileSync('.github/workflows/release-drafter.yml', 'utf8')
 const releaseWorkflow = readFileSync('.github/workflows/release.yml', 'utf8')
+const releaseSkill = readFileSync('.codex/skills/release/SKILL.md', 'utf8')
 
 describe('release flow workflows', () => {
   it('uses the Memry release name for draft and published releases', () => {
@@ -19,5 +20,11 @@ describe('release flow workflows', () => {
     assert.doesNotMatch(releaseDrafterWorkflow, /release-assets|gh release upload|actions\/upload-artifact/)
     assert.match(releaseWorkflow, /Collect release assets/)
     assert.match(releaseWorkflow, /gh release upload "\$TAG" release-assets\/\* --clobber/)
+  })
+
+  it('keeps the release helper as a valid project skill', () => {
+    assert.match(releaseSkill, /^---\nname: release\n/m)
+    assert.match(releaseSkill, /\ndescription: .+Memry desktop releases/)
+    assert.match(releaseSkill, /\n---\n\n# Memry Release/)
   })
 })
