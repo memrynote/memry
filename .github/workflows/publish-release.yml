@@ -318,8 +318,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
+        shell: pwsh
         run: |
           pnpm --filter @memry/desktop build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node apps/desktop/scripts/build-packaged-app.js --win --x64 --publish never
 
       - name: Stage Windows assets
