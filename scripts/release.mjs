@@ -6,8 +6,10 @@ import { stdin as input, stdout as output } from 'node:process'
 
 import {
   buildDateReleaseVersion,
+  extractWorkflowRunId,
   getReleaseListFields,
   parseReleaseArgs,
+  selectDispatchedWorkflowRun,
   selectDraftRelease
 } from './release-utils.mjs'
 
@@ -58,7 +60,8 @@ async function runCli() {
     }
   }
 
-  runGh(
+  const dispatchedAfter = new Date(Date.now() - 5000)
+  const dispatchOutput = runGh(
     [
       'workflow',
       'run',
@@ -70,10 +73,18 @@ async function runCli() {
       '-f',
       `dry_run=${options.dryRun ? 'true' : 'false'}`
     ],
-    { stdio: 'inherit' }
+    { encoding: 'utf8' }
   )
 
-  const run = await findDispatchedRun()
+  if (dispatchOutput) {
+    console.log(dispatchOutput)
+  }
+
+  const runId = extractWorkflowRunId(dispatchOutput)
+  const run = runId
+    ? { databaseId: runId, url: workflowRunUrl(runId) }
+    : await findDispatchedRun(dispatchedAfter)
+
   if (!run) {
     console.log(`Workflow dispatched. Open GitHub Actions and check ${workflowName}.`)
     return
@@ -117,7 +128,7 @@ async function confirmDispatch() {
   }
 }
 
-async function findDispatchedRun() {
+async function findDispatchedRun(dispatchedAfter) {
   for (let attempt = 0; attempt < 6; attempt += 1) {
     if (attempt > 0) {
       await sleep(3000)
@@ -135,7 +146,7 @@ async function findDispatchedRun() {
       '--json',
       'databaseId,url,status,event,createdAt'
     ])
-    const run = runs.find((candidate) => candidate.event === 'workflow_dispatch')
+    const run = selectDispatchedWorkflowRun(runs, dispatchedAfter)
     if (run) {
       return run
     }
@@ -165,6 +176,10 @@ function runGh(args, options = {}) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function workflowRunUrl(runId) {
+  return `https://github.com/memrynote/memry/actions/runs/${runId}`
 }
 
 function printHelp() {
