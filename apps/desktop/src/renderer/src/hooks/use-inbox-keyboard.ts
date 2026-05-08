@@ -6,13 +6,11 @@ import { getI18n } from 'react-i18next'
 
 export interface UseInboxKeyboardOptions {
   enabled: boolean
-  isShortcutsModalOpen: boolean
   isDetailPanelOpen: boolean
   isBulkFilePanelOpen: boolean
   isInBulkMode: boolean
   focusedItemId: string | null
   items: InboxItemListItem[]
-  onOpenShortcutsModal: () => void
   onRefresh: () => void
   onArchiveFocusedItem: (itemId: string, nextItemId: string | null) => void
   onOpenBulkArchiveDialog: () => void
@@ -22,13 +20,11 @@ export interface UseInboxKeyboardOptions {
 export function useInboxKeyboard(options: UseInboxKeyboardOptions): void {
   const {
     enabled,
-    isShortcutsModalOpen,
     isDetailPanelOpen,
     isBulkFilePanelOpen,
     isInBulkMode,
     focusedItemId,
     items,
-    onOpenShortcutsModal,
     onRefresh,
     onArchiveFocusedItem,
     onOpenBulkArchiveDialog,
@@ -39,13 +35,7 @@ export function useInboxKeyboard(options: UseInboxKeyboardOptions): void {
     if (!enabled) return
 
     const handleGlobalKeyDown = (e: KeyboardEvent): void => {
-      if (isShortcutsModalOpen || isDetailPanelOpen || isBulkFilePanelOpen) return
-
-      if (e.key === '?' || ((e.metaKey || e.ctrlKey) && e.key === '/')) {
-        e.preventDefault()
-        onOpenShortcutsModal()
-        return
-      }
+      if (isDetailPanelOpen || isBulkFilePanelOpen) return
 
       if (isInputFocused()) return
 
@@ -91,13 +81,11 @@ export function useInboxKeyboard(options: UseInboxKeyboardOptions): void {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown)
   }, [
     enabled,
-    isShortcutsModalOpen,
     isDetailPanelOpen,
     isBulkFilePanelOpen,
     isInBulkMode,
     focusedItemId,
     items,
-    onOpenShortcutsModal,
     onRefresh,
     onArchiveFocusedItem,
     onOpenBulkArchiveDialog,
