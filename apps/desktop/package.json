@@ -85,7 +85,8 @@
     "rpc:check": "node --experimental-strip-types --experimental-transform-types scripts/generate-rpc-bindings.ts --check",
     "ipc:generate": "pnpm rpc:generate && node scripts/generate-ipc-invoke-map.js",
     "ipc:check": "pnpm rpc:check && node scripts/generate-ipc-invoke-map.js --check",
-    "generate:icons": "node scripts/generate-icons.mjs"
+    "generate:icons": "node scripts/generate-icons.mjs",
+    "seed:vault": "bash scripts/ensure-native.sh node && npx tsx scripts/seed-vault.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.58",
