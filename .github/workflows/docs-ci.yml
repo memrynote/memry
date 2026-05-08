@@ -1,0 +1,86 @@
+name: Docs CI
+
+on:
+  pull_request:
+    paths:
+      - 'apps/desktop/**'
+      - 'apps/sync-server/**'
+      - 'apps/docs/**'
+      - 'packages/contracts/**'
+      - 'packages/db-schema/**'
+      - 'packages/rpc/**'
+      - 'packages/shared/**'
+      - 'packages/sync-core/**'
+      - 'scripts/docs-*.mjs'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/docs-ci.yml'
+      - '.github/workflows/release*.yml'
+  push:
+    paths:
+      - 'apps/desktop/**'
+      - 'apps/sync-server/**'
+      - 'apps/docs/**'
+      - 'packages/contracts/**'
+      - 'packages/db-schema/**'
+      - 'packages/rpc/**'
+      - 'packages/shared/**'
+      - 'packages/sync-core/**'
+      - 'scripts/docs-*.mjs'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/docs-ci.yml'
+      - '.github/workflows/release*.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  HUSKY: 0
+
+jobs:
+  docs:
+    name: Docs impact and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Check docs impact
+        if: ${{ github.event_name != 'pull_request' || !contains(github.event.pull_request.labels.*.name, 'docs:not-needed') }}
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before || 'origin/main' }}
+        run: |
+          if ! git cat-file -e "$BASE_REF^{commit}" 2>/dev/null; then
+            BASE_REF=origin/main
+          fi
+          pnpm docs:impact --base "$BASE_REF" --strict
+
+      - name: Build docs
+        run: pnpm docs:build

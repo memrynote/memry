@@ -13,6 +13,8 @@
     "docs:dev": "pnpm --filter @memry/docs dev",
     "docs:build": "pnpm --filter @memry/docs build",
     "docs:preview": "pnpm --filter @memry/docs preview",
+    "docs:impact": "node scripts/docs-impact.mjs",
+    "docs:ai-update": "node scripts/docs-ai-update.mjs",
     "build": "pnpm build:desktop",
     "build:desktop": "pnpm --filter @memry/desktop build",
     "build:landing": "pnpm --filter @memry/landing build",

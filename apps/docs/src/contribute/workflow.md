@@ -48,6 +48,20 @@ Use `gh pr create` to keep formatting clean. The repo enforces:
 - IPC contract check gate
 - Visual review for renderer changes
 
+## Docs Updates
+
+Desktop, sync-server, contract, sync protocol, schema, and release-workflow changes go through a docs-impact gate. Before pushing or opening a PR, run:
+
+```bash
+pnpm docs:ai-update
+pnpm docs:impact --strict
+pnpm docs:build
+```
+
+`docs:ai-update` uses the Codex CLI to inspect the branch diff and update only `apps/docs/src`. The pre-push hook runs the same impact check; when docs are missing, it runs the AI updater, stops the push, and leaves the docs patch for review and commit.
+
+If a change truly has no docs impact, use the `docs:not-needed` PR label for CI and `MEMRY_DOCS_IMPACT_SKIP=1 git push` for the local hook.
+
 ## Pre-Land Checks
 
 Before opening a PR:
@@ -56,6 +70,8 @@ Before opening a PR:
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm docs:impact --strict
+pnpm docs:build
 pnpm ipc:check     # if you touched the renderer/main boundary
 ```
 
