@@ -49,27 +49,30 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           INPUT_DRAFT_TAG: ${{ inputs.draft_tag }}
         run: |
-          if [ -n "$INPUT_DRAFT_TAG" ]; then
-            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$INPUT_DRAFT_TAG" > draft-release.json
-          else
-            gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > releases.json
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > releases.json
 
           node <<'NODE'
           const { readFileSync, writeFileSync } = require('node:fs')
 
+          const inputTag = process.env.INPUT_DRAFT_TAG
           const releases = JSON.parse(readFileSync('releases.json', 'utf8'))
           const tagPattern = /^v20\d{2}-\d{2}-\d{2}(?:\.[2-9]\d*)?$/
-          const draft = releases.find(
-            (release) => release.draft && tagPattern.test(release.tag_name || '')
-          )
+          const draft = inputTag
+            ? releases.find((release) => release.draft && release.tag_name === inputTag)
+            : releases.find(
+                (release) => release.draft && tagPattern.test(release.tag_name || '')
+              )
 
           if (!draft) {
-            throw new Error('No date draft release found. Merge to main first.')
+            throw new Error(
+              inputTag
+                ? `Draft release ${inputTag} was not found.`
+                : 'No date draft release found. Merge to main first.'
+            )
           }
 
           writeFileSync('draft-release.json', JSON.stringify(draft, null, 2))
           NODE
-          fi
 
           node <<'NODE'
           const { appendFileSync, readFileSync } = require('node:fs')
