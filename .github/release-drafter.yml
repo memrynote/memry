@@ -1,107 +1,91 @@
-name-template: "v$RESOLVED_VERSION 🌈"
-tag-template: "v$RESOLVED_VERSION"
+name-template: 'Memry next release'
+tag-template: 'vnext'
 categories:
-  - title: "🚀 Features and Improvements"
+  - title: '🚀 Features and Improvements'
     labels:
-      - "feature"
-      - "enhancement"
-  - title: "💥️ Breaking Change"
+      - 'feature'
+      - 'enhancement'
+  - title: '💥️ Breaking Change'
     labels:
-      - "change"
-  - title: "🐛 Bug Fixes"
+      - 'change'
+  - title: '🐛 Bug Fixes'
     labels:
-      - "fix"
-      - "bugfix"
-      - "bug"
-  - title: "⚙️️ Tests"
+      - 'fix'
+      - 'bugfix'
+      - 'bug'
+  - title: '⚙️️ Tests'
     labels:
-      - "test"
-  - title: "📝 Documentation"
+      - 'test'
+  - title: '📝 Documentation'
     labels:
-      - "documentation"
-  - title: "🧰 Maintenance"
-    label: "chore"
-  - title: "⬆️  Dependency"
-    label: "dependencies"
-change-template: "- $TITLE @$AUTHOR (#$NUMBER)"
+      - 'documentation'
+  - title: '🧰 Maintenance'
+    label: 'chore'
+  - title: '⬆️  Dependency'
+    label: 'dependencies'
+change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
 change-title-escapes: '\<*_&'
-no-changes-template: "- No user-facing changes yet."
+no-changes-template: '- No user-facing changes yet.'
 autolabeler:
-  - label: "documentation"
+  - label: 'documentation'
     files:
-      - "*.md"
-      - "**/*.md"
-      - "apps/docs/**/*"
+      - '*.md'
+      - '**/*.md'
+      - 'apps/docs/**/*'
     branch:
       - '/docs{0,1}\/.+/'
       - '/documentation\/.+/'
-  - label: "bug"
+  - label: 'bug'
     branch:
       - '/fix\/.+/'
       - '/bugfix\/.+/'
       - '/hotfix\/.+/'
     title:
-      - "/fix/i"
-      - "/bug/i"
-  - label: "enhancement"
+      - '/fix/i'
+      - '/bug/i'
+  - label: 'enhancement'
     branch:
       - '/feature\/.+/'
       - '/feat\/.+/'
       - '/enhancement\/.+/'
     title:
-      - "/feat/i"
-      - "/feature/i"
-      - "/improve/i"
-  - label: "change"
+      - '/feat/i'
+      - '/feature/i'
+      - '/improve/i'
+  - label: 'change'
     branch:
       - '/change\/.+/'
       - '/breaking\/.+/'
     title:
-      - "/breaking/i"
-  - label: "test"
+      - '/breaking/i'
+  - label: 'test'
     files:
-      - "**/*.test.*"
-      - "**/*.spec.*"
-      - "**/tests/**/*"
+      - '**/*.test.*'
+      - '**/*.spec.*'
+      - '**/tests/**/*'
     branch:
       - '/tests{0,1}\/.+/'
-  - label: "chore"
+  - label: 'chore'
     branch:
       - '/chore\/.+/'
       - '/maintenance\/.+/'
     title:
-      - "/chore/i"
-  - label: "dependencies"
+      - '/chore/i'
+  - label: 'dependencies'
     files:
-      - "package.json"
-      - "**/package.json"
-      - "pnpm-lock.yaml"
+      - 'package.json'
+      - '**/package.json'
+      - 'pnpm-lock.yaml'
     branch:
       - '/deps\/.+/'
       - '/dependencies\/.+/'
       - '/renovate\/.+/'
       - '/dependabot\/.+/'
     title:
-      - "/deps/i"
-      - "/depend/i"
-version-resolver:
-  major:
-    labels:
-      - "change"
-  minor:
-    labels:
-      - "feature"
-      - "enhancement"
-  patch:
-    labels:
-      - "fix"
-      - "bugfix"
-      - "bug"
-      - "dependencies"
-  default: patch
+      - '/deps/i'
+      - '/depend/i'
 template: |
   ## What's Changed
 
   $CHANGES
-
   **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION
