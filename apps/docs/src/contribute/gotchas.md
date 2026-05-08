@@ -8,10 +8,10 @@ Symptom: `ERR_DLOPEN_FAILED`, `NODE_MODULE_VERSION X but expecting Y`.
 
 Two fix paths depending on the target:
 
-| Target | Fix |
-| --- | --- |
-| **Node tests** | `pnpm rebuild better-sqlite3` (or `bash apps/desktop/scripts/ensure-native.sh node`) |
-| **Electron app / E2E** | `bash apps/desktop/scripts/ensure-native.sh electron` (or `pnpm rebuild:electron`) |
+| Target                 | Fix                                                                                  |
+| ---------------------- | ------------------------------------------------------------------------------------ |
+| **Node tests**         | `pnpm rebuild better-sqlite3` (or `bash apps/desktop/scripts/ensure-native.sh node`) |
+| **Electron app / E2E** | `bash apps/desktop/scripts/ensure-native.sh electron` (or `pnpm rebuild:electron`)   |
 
 > Using the Node fix for Electron leaves `autoOpenLastVault` silently failing with `ERR_DLOPEN_FAILED`. The app falls through to the "Welcome to Memry" screen and every E2E test times out on `.bn-container` not visible.
 
@@ -59,7 +59,7 @@ Fix: fire submit from `onPointerDown`. Keep `onClick` as a keyboard-activation f
 ```tsx
 <button
   onPointerDown={() => void submit()}
-  onClick={() => void submit()}     // keyboard / accessibility fallback
+  onClick={() => void submit()} // keyboard / accessibility fallback
   disabled={isSubmitting}
 >
   Save
@@ -100,6 +100,10 @@ Reversing the order causes split brain. See [CRDT & Notes Sync](/architecture/cr
 ## Logging
 
 Always use `createLogger('Scope')` from electron-log — never `console.*`. A pre-commit hook flags raw `console.*` calls.
+
+## DevTools Startup
+
+The desktop app does not open DevTools automatically in development or production. Open them manually from the View menu or with the Electron DevTools shortcut when debugging startup.
 
 ## User-Facing Errors
 
