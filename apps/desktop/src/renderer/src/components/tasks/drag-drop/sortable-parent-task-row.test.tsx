@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 import { SortableParentTaskRow } from './sortable-parent-task-row'
+import { notesService } from '@/services/notes-service'
 import type { Task, Priority } from '@/data/task-model'
 import type { Project, Status, StatusType } from '@/data/tasks-data'
 
@@ -32,6 +33,12 @@ vi.mock('@/contexts/drag-context', () => ({
 
 vi.mock('@/contexts/dropped-priority-context', () => ({
   useDroppedPriorities: () => useDroppedPrioritiesMock()
+}))
+
+vi.mock('@/services/notes-service', () => ({
+  notesService: {
+    get: vi.fn()
+  }
 }))
 
 const createStatus = (overrides: Partial<Status> = {}): Status => ({
@@ -81,6 +88,14 @@ const createTask = (overrides: Partial<Task> = {}): Task => ({
   ...overrides
 })
 
+const createNote = (overrides: Record<string, unknown> = {}) =>
+  ({
+    id: 'note-1',
+    title: 'Parent Note',
+    emoji: null,
+    ...overrides
+  }) as Awaited<ReturnType<typeof notesService.get>>
+
 describe('SortableParentTaskRow', () => {
   const setNodeRef = vi.fn()
 
@@ -89,6 +104,8 @@ describe('SortableParentTaskRow', () => {
     useDragContextMock.mockReset()
     useDroppedPrioritiesMock.mockReset()
     setNodeRef.mockReset()
+    vi.mocked(notesService.get).mockReset()
+    vi.mocked(notesService.get).mockResolvedValue(null)
 
     useSortableMock.mockReturnValue({
       attributes: { role: 'button' },
@@ -116,6 +133,31 @@ describe('SortableParentTaskRow', () => {
     })
 
     useDroppedPrioritiesMock.mockReturnValue(new Map())
+  })
+
+  it('shows a linked note affordance for parent tasks', async () => {
+    const project = createProject()
+    vi.mocked(notesService.get).mockResolvedValueOnce(createNote({ title: 'Parent Planning' }))
+
+    render(
+      <SortableParentTaskRow
+        task={createTask({ linkedNoteIds: ['note-1'] })}
+        project={project}
+        projects={[project]}
+        subtasks={[createTask({ id: 'subtask-1', parentId: 'task-1', title: 'Child Task' })]}
+        progress={{ completed: 0, total: 1 }}
+        isExpanded={false}
+        isCompleted={false}
+        sectionId="status-todo"
+        sectionTaskIds={['task-1']}
+        columnId="status-todo"
+        onToggleExpand={vi.fn()}
+        onToggleComplete={vi.fn()}
+        onNoteClick={vi.fn()}
+      />
+    )
+
+    expect(await screen.findByText('Parent Planning')).toBeInTheDocument()
   })
 
   it('registers the parent row as a sortable list item with full drop metadata', () => {

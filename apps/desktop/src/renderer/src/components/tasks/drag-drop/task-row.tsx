@@ -9,6 +9,7 @@ import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
 import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
 import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
 import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
+import { TaskLinkedNoteIndicator } from '@/components/tasks/task-linked-note-indicator'
 import { InsertionIndicator } from './insertion-indicator'
 import type { SectionDragState } from './list-section-drag-state'
 
@@ -26,6 +27,7 @@ interface TaskRowProps {
   showProjectBadge?: boolean
   onToggleComplete: (taskId: string) => void
   onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
+  onNoteClick?: (noteId: string) => void
   onClick?: (taskId: string) => void
   className?: string
   isSelectionMode?: boolean
@@ -57,6 +59,10 @@ const arePropsEqual = (prevProps: TaskRowProps, nextProps: TaskRowProps): boolea
   if (prevProps.task.isRepeating !== nextProps.task.isRepeating) return false
   if (prevProps.task.repeatConfig !== nextProps.task.repeatConfig) return false
   if (prevProps.task.projectId !== nextProps.task.projectId) return false
+  if (prevProps.task.sourceNoteId !== nextProps.task.sourceNoteId) return false
+  if (prevProps.task.linkedNoteIds.join(',') !== nextProps.task.linkedNoteIds.join(',')) {
+    return false
+  }
   const prevDate = prevProps.task.dueDate?.getTime() ?? null
   const nextDate = nextProps.task.dueDate?.getTime() ?? null
   if (prevDate !== nextDate) return false
@@ -106,6 +112,7 @@ const TaskRowComponent = ({
   showProjectBadge = false,
   onToggleComplete,
   onUpdateTask,
+  onNoteClick,
   onClick,
   className,
   isSelectionMode = false,
@@ -329,6 +336,8 @@ const TaskRowComponent = ({
           {dueDateDisplay.text}
         </div>
       )}
+
+      {!isOverlay && <TaskLinkedNoteIndicator task={task} onNoteClick={onNoteClick} />}
 
       {!isOverlay && droppedPriority && (
         <div className="flex items-center shrink-0 gap-1 px-2 py-0.5 bg-primary/10 rounded text-[10px] font-medium text-primary animate-fade-out">

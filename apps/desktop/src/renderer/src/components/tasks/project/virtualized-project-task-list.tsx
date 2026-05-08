@@ -35,6 +35,7 @@ interface VirtualizedProjectTaskListProps {
   onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
   onToggleSubtaskComplete?: (subtaskId: string) => void
   onTaskClick?: (taskId: string) => void
+  onNoteClick?: (noteId: string) => void
   onQuickAdd: (
     title: string,
     parsedData?: {
@@ -98,6 +99,7 @@ interface VirtualItemRendererProps {
   onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
   onToggleSubtaskComplete?: (subtaskId: string) => void
   onTaskClick?: (taskId: string) => void
+  onNoteClick?: (noteId: string) => void
   isSelectionMode?: boolean
   selectedIds?: Set<string>
   onToggleSelect?: (taskId: string) => void
@@ -119,6 +121,7 @@ const VirtualItemRenderer = memo(
     onUpdateTask,
     onToggleSubtaskComplete,
     onTaskClick,
+    onNoteClick,
     isSelectionMode = false,
     selectedIds,
     onToggleSelect,
@@ -164,6 +167,7 @@ const VirtualItemRenderer = memo(
             onToggleComplete={onToggleComplete}
             onUpdateTask={onUpdateTask}
             onClick={onTaskClick}
+            onNoteClick={onNoteClick}
             isSelectionMode={isSelectionMode}
             isCheckedForSelection={isCheckedForSelection}
             onToggleSelect={onToggleSelect}
@@ -198,6 +202,7 @@ const VirtualItemRenderer = memo(
             onUpdateTask={onUpdateTask}
             onToggleSubtaskComplete={onToggleSubtaskComplete}
             onClick={onTaskClick}
+            onNoteClick={onNoteClick}
             isSelectionMode={isSelectionMode}
             isCheckedForSelection={isCheckedForSelection}
             onToggleSelect={onToggleSelect}
@@ -228,6 +233,7 @@ export const VirtualizedProjectTaskList = ({
   onUpdateTask,
   onToggleSubtaskComplete,
   onTaskClick,
+  onNoteClick,
   onQuickAdd,
   className,
   isSelectionMode = false,
@@ -352,6 +358,7 @@ export const VirtualizedProjectTaskList = ({
                     onUpdateTask={onUpdateTask}
                     onToggleSubtaskComplete={onToggleSubtaskComplete}
                     onTaskClick={onTaskClick}
+                    onNoteClick={onNoteClick}
                     isSelectionMode={isSelectionMode}
                     selectedIds={selectedIds}
                     onToggleSelect={onToggleSelect}
