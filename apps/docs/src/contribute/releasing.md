@@ -20,7 +20,9 @@ Release Drafter aggregates merged PRs into a draft GitHub Release based on PR la
 
 - Branch labels are narrowed to release-relevant changes (no `chore: ci/lint/test` noise).
 - The drafter posts updates after each merge to `main`.
-- Promote the draft to a published release manually when shipping.
+- Run `/release [draft-tag]` when shipping. The Codex command rewrites the draft from PR
+  descriptions, keeps PR references, dispatches the publish workflow, and watches it to completion.
+- Release assets are created only by the publish workflow, not by draft updates.
 
 ## Packaged Installers (Desktop)
 
