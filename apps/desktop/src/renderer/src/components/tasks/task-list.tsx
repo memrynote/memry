@@ -17,6 +17,7 @@ interface TaskListProps {
   onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
   onToggleSubtaskComplete?: (subtaskId: string) => void
   onTaskClick?: (taskId: string) => void
+  onNoteClick?: (noteId: string) => void
   onQuickAdd: (
     title: string,
     parsedData?: {
@@ -56,6 +57,7 @@ export const TaskList = ({
   onUpdateTask,
   onToggleSubtaskComplete,
   onTaskClick,
+  onNoteClick,
   onQuickAdd,
   className,
   // Selection props
@@ -86,6 +88,7 @@ export const TaskList = ({
         onUpdateTask={onUpdateTask}
         onToggleSubtaskComplete={onToggleSubtaskComplete}
         onTaskClick={onTaskClick}
+        onNoteClick={onNoteClick}
         onQuickAdd={onQuickAdd}
         className={className}
         isSelectionMode={isSelectionMode}
@@ -108,6 +111,7 @@ export const TaskList = ({
       onUpdateTask={onUpdateTask}
       onToggleSubtaskComplete={onToggleSubtaskComplete}
       onTaskClick={onTaskClick}
+      onNoteClick={onNoteClick}
       onQuickAdd={onQuickAdd}
       className={className}
       storageKey={selectedId}

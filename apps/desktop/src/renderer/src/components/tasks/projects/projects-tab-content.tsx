@@ -20,6 +20,7 @@ interface ProjectsTabContentProps {
   onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
   onToggleSubtaskComplete: (taskId: string) => void
   onTaskClick: (taskId: string) => void
+  onNoteClick?: (noteId: string) => void
   onQuickAdd: (
     title: string,
     parsedData?: {
@@ -53,6 +54,7 @@ export const ProjectsTabContent = ({
   onUpdateTask,
   onToggleSubtaskComplete,
   onTaskClick,
+  onNoteClick,
   onQuickAdd,
   onProjectEdit,
   onProjectArchive,
@@ -145,6 +147,7 @@ export const ProjectsTabContent = ({
             onUpdateTask={onUpdateTask}
             onToggleSubtaskComplete={onToggleSubtaskComplete}
             onTaskClick={onTaskClick}
+            onNoteClick={onNoteClick}
             onQuickAdd={handleQuickAdd}
             isSelectionMode={isSelectionMode}
             selectedIds={selectedIds}

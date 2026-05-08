@@ -15,6 +15,7 @@ import { StatusIcon } from '@/components/tasks/status-icon'
 import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
 import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
 import { SubtaskProgressIndicator } from '@/components/tasks/subtask-progress-indicator'
+import { TaskLinkedNoteIndicator } from '@/components/tasks/task-linked-note-indicator'
 import { PriorityBars } from '@/components/tasks/task-icons'
 import type { Priority, Task } from '@/data/task-model'
 import type { Project, Status } from '@/data/tasks-data'
@@ -33,6 +34,7 @@ export interface ParentTaskRowProps {
   onToggleExpand: (taskId: string) => void
   onToggleComplete: (taskId: string) => void
   onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
+  onNoteClick?: (noteId: string) => void
   onToggleSubtaskComplete?: (subtaskId: string) => void
   onClick?: (taskId: string) => void
   className?: string
@@ -89,6 +91,7 @@ export const ParentTaskRow = ({
   onToggleExpand,
   onToggleComplete,
   onUpdateTask,
+  onNoteClick,
   onToggleSubtaskComplete,
   onClick,
   className,
@@ -354,6 +357,8 @@ export const ParentTaskRow = ({
             {dueDateDisplay.text}
           </div>
         )}
+
+        {!isOverlay && <TaskLinkedNoteIndicator task={task} onNoteClick={onNoteClick} />}
 
         {!isOverlay && droppedPriority && (
           <div className="flex items-center shrink-0 gap-1 px-2 py-0.5 bg-primary/10 rounded text-[10px] font-medium text-primary animate-fade-out">
