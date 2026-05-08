@@ -51,7 +51,6 @@ pnpm ipc:check     # if you touched the renderer/main boundary
 - [Repo Workflow](/contribute/workflow)
 - [Testing](/contribute/testing)
 - [Common Gotchas](/contribute/gotchas)
-- [Releasing](/contribute/releasing)
 
 ## Security Issues
 

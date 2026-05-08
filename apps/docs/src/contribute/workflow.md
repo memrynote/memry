@@ -50,7 +50,7 @@ Use `gh pr create` to keep formatting clean. The repo enforces:
 
 ## Docs Updates
 
-Desktop, sync-server, contract, sync protocol, schema, and release-workflow changes go through a docs-impact gate. Before pushing or opening a PR, run:
+Desktop, sync-server, contract, sync protocol, and schema changes go through a docs-impact gate. Before pushing or opening a PR, run:
 
 ```bash
 pnpm docs:ai-update
@@ -90,20 +90,7 @@ These skip the flaky `ipc:check` pre-hook and the pre-existing `sync-telemetry.t
 The `/ship` and `/merge` skills wrap the standard PR + CI + merge flow:
 
 - `/ship` — push, open PR, wait for CI, present a summary
-- `/merge` — final landing pass: changelog entry, atomic commits, verify, push, wait for CI green, merge to `main`
-
-`/merge` updates the root `CHANGELOG.md` automatically. Always run it for any PR that ships user-visible changes.
-
-## Release Drafter
-
-The repo runs Release Drafter on `main`. PR labels feed into the draft release notes:
-
-- `type: feat` → Features
-- `type: fix` → Fixes
-- `type: docs` → Documentation
-- `type: chore` → Maintenance
-
-Branch labels are narrowed to release-relevant changes only.
+- `/merge` — final landing pass: atomic commits, verify, push, wait for CI green, merge to `main`
 
 ## Don'ts
 
@@ -121,4 +108,3 @@ When working through a multi-step plan, use a git worktree (or the EnterWorktree
 
 - [Testing](/contribute/testing)
 - [Common Gotchas](/contribute/gotchas)
-- [Releasing](/contribute/releasing)

@@ -9,7 +9,6 @@ pnpm --filter @memry/desktop dev
 pnpm --filter @memry/desktop build
 ```
 
-## Release Builds
+## Packaged Builds
 
-Release packaging is handled through the desktop release workflow and
-`apps/desktop/scripts/build-packaged-app.js`.
+Local packaging uses `apps/desktop/scripts/build-packaged-app.js`.

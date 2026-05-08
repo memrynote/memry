@@ -1,6 +1,5 @@
 appId: com.memrynote.memry
 productName: Memry
-electronUpdaterCompatibility: '>=2.16'
 directories:
   buildResources: build
 files:
@@ -49,11 +48,5 @@ appImage:
 deb:
   artifactName: ${productName}-${version}-${arch}.${ext}
 npmRebuild: false
-publish:
-  provider: github
-  owner: memrynote
-  repo: memry
-  releaseType: release
-  tagNamePrefix: ''
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/
