@@ -6,6 +6,7 @@ import {
   buildHumanizedReleaseBody,
   buildHumanizedReleaseMarker,
   buildReleaseNotesPrompt,
+  buildCodexExecArgs,
   assertHumanizedReleaseNotesForPublish,
   extractPreviousTagFromReleaseBody,
   extractPullRequestNumbers,
@@ -116,6 +117,20 @@ describe('release notes helpers', () => {
     assert.equal(validateHumanizedReleaseMarkdown(markdown), markdown)
     assert.throws(() => validateHumanizedReleaseMarkdown('## New Features\n- Missing sections'), /Bug Fixes/)
     assert.throws(() => validateHumanizedReleaseMarkdown(`${markdown}\n\n## Changelog`), /Changelog/)
+    assert.throws(
+      () =>
+        validateHumanizedReleaseMarkdown([
+          '## New Features',
+          '📑 Table of Contents Shortcut — Open note outlines faster. (#124)',
+          '',
+          '## Bug Fixes',
+          '',
+          '## Documentation',
+          '',
+          '## Chores'
+        ].join('\n')),
+      /must be Markdown bullets/
+    )
   })
 
   it('builds a deterministic changelog separate from AI prose', () => {
@@ -185,6 +200,30 @@ describe('release notes helpers', () => {
     assert.match(prompt, /New Features/)
     assert.match(prompt, /"number": 124/)
     assert.match(prompt, /Open a note outline/)
+  })
+
+  it('builds codex exec args supported by current CLI', () => {
+    assert.deepEqual(buildCodexExecArgs({ outputFile: '/tmp/humanized.md' }), [
+      'exec',
+      '--ephemeral',
+      '--sandbox',
+      'read-only',
+      '--output-last-message',
+      '/tmp/humanized.md',
+      '-'
+    ])
+
+    assert.deepEqual(buildCodexExecArgs({ model: 'gpt-5.4', outputFile: '/tmp/humanized.md' }), [
+      'exec',
+      '--ephemeral',
+      '--sandbox',
+      'read-only',
+      '--output-last-message',
+      '/tmp/humanized.md',
+      '--model',
+      'gpt-5.4',
+      '-'
+    ])
   })
 
   it('parses humanizer CLI flags', () => {

@@ -101,7 +101,20 @@ export function validateHumanizedReleaseMarkdown(markdown = '') {
     throw new Error('Humanized release notes must not include the Changelog section')
   }
 
-  const bulletLines = trimmed.split('\n').filter((line) => line.trim().startsWith('- '))
+  const contentLines = trimmed
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !line.startsWith('## '))
+
+  const nonBulletLines = contentLines.filter((line) => !line.startsWith('- '))
+  if (nonBulletLines.length > 0) {
+    throw new Error(
+      `Humanized release note items must be Markdown bullets starting with "- ": ${nonBulletLines[0]}`
+    )
+  }
+
+  const bulletLines = contentLines.filter((line) => line.startsWith('- '))
   for (const line of bulletLines) {
     if (!/#\d+\b/.test(line)) {
       throw new Error(`Humanized release note bullet is missing a PR number: ${line}`)
@@ -159,6 +172,7 @@ export function buildReleaseNotesPrompt({ finalTag, pullRequests }) {
     '- Use only the provided PR titles, labels, authors, and release notes.',
     '- Rewrite technical PR names into short human-friendly release-note bullets.',
     '- Keep each bullet to one sentence.',
+    '- Every release-note item must be a Markdown bullet line starting with "- ".',
     '- Start every bullet with one relevant emoji, then a concise title, an em dash, and the explanation.',
     '- Every bullet must include one or more PR numbers.',
     '- Use exactly these sections: ## New Features, ## Bug Fixes, ## Documentation, ## Chores.',
@@ -169,6 +183,24 @@ export function buildReleaseNotesPrompt({ finalTag, pullRequests }) {
     'Input JSON:',
     JSON.stringify(input, null, 2)
   ].join('\n')
+}
+
+export function buildCodexExecArgs({ model, outputFile }) {
+  const args = [
+    'exec',
+    '--ephemeral',
+    '--sandbox',
+    'read-only',
+    '--output-last-message',
+    outputFile
+  ]
+
+  if (model) {
+    args.push('--model', model)
+  }
+
+  args.push('-')
+  return args
 }
 
 export function parseHumanizeReleaseArgs(argv) {

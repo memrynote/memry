@@ -14,6 +14,7 @@ import {
 } from './release-utils.mjs'
 import {
   buildCompareUrl,
+  buildCodexExecArgs,
   buildHumanizedReleaseBody,
   buildReleaseNotesPrompt,
   extractCompareBaseFromReleaseBody,
@@ -146,22 +147,7 @@ function printPlan({ compareUrl, draft, dryRun, preview, pullRequests }) {
 function runCodex(prompt, options) {
   const tempDir = mkdtempSync(path.join(os.tmpdir(), 'memry-release-notes-'))
   const outputFile = path.join(tempDir, 'humanized.md')
-  const args = [
-    'exec',
-    '--ephemeral',
-    '--sandbox',
-    'read-only',
-    '--ask-for-approval',
-    'never',
-    '--output-last-message',
-    outputFile
-  ]
-
-  if (options.model) {
-    args.push('--model', options.model)
-  }
-
-  args.push('-')
+  const args = buildCodexExecArgs({ model: options.model, outputFile })
 
   const result = spawnSync('codex', args, {
     encoding: 'utf8',
