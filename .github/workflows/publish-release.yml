@@ -306,7 +306,7 @@ jobs:
             exit 1
           fi
           if [ -z "${GOOGLE_CALENDAR_CLIENT_ID:-}" ]; then
-            echo "::error::Set GOOGLE_CALENDAR_CLIENT_ID as a repository secret before publishing."
+            echo "::error::Set GOOGLE_CALENDAR_CLIENT_ID as a repository secret before publishing"
             exit 1
           fi
           {
