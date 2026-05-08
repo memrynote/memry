@@ -27,27 +27,23 @@ env:
   TURBO_TELEMETRY_DISABLED: 1
 
 jobs:
-  publish-macos:
-    name: Build, attach, and publish macOS release
-    runs-on: macos-latest
-    timeout-minutes: 90
+  setup-release:
+    name: Validate draft and resolve version
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      app_version: ${{ steps.version.outputs.app_version }}
+      draft_tag: ${{ steps.draft.outputs.draft_tag }}
+      release_id: ${{ steps.draft.outputs.release_id }}
+      release_name: ${{ steps.version.outputs.release_name }}
+      release_url: ${{ steps.draft.outputs.release_url }}
+      tag: ${{ steps.version.outputs.tag }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
 
       - name: Validate draft release
         id: draft
@@ -115,6 +111,29 @@ jobs:
             --releases-file "$RUNNER_TEMP/releases.json" \
             --ignore-tag "${{ steps.draft.outputs.draft_tag }}"
 
+  build-macos:
+    name: Build macOS x64 and arm64
+    needs: setup-release
+    runs-on: macos-15-intel
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
       - name: Install dependencies
         env:
           SKIP_ELECTRON_REBUILD: 1
@@ -122,7 +141,7 @@ jobs:
 
       - name: Apply release app version
         env:
-          APP_VERSION: ${{ steps.version.outputs.app_version }}
+          APP_VERSION: ${{ needs.setup-release.outputs.app_version }}
         run: |
           set -euo pipefail
           node <<'NODE'
@@ -174,17 +193,18 @@ jobs:
           node apps/desktop/scripts/build-packaged-app.js \
             --config config/electron-builder.staged-local-mac.yml \
             --mac \
+            --x64 \
             --arm64 \
             --publish never
 
       - name: Check packaged runtime dependencies
         run: node apps/desktop/scripts/check-packaged-runtime-deps.js
 
-      - name: Stage release assets
+      - name: Stage macOS assets
         id: assets
         run: |
           set -euo pipefail
-          asset_dir="apps/desktop/dist/release-assets"
+          asset_dir="$RUNNER_TEMP/release-assets-macos"
           rm -rf "$asset_dir"
           mkdir -p "$asset_dir"
 
@@ -194,13 +214,18 @@ jobs:
 
           ls -la "$asset_dir"
 
-          if ! ls "$asset_dir"/*.dmg >/dev/null 2>&1; then
-            echo "::error::No DMG artifact was produced."
+          if ! ls "$asset_dir"/*-x64.dmg >/dev/null 2>&1; then
+            echo "::error::No macOS x64 DMG artifact was produced."
+            exit 1
+          fi
+
+          if ! ls "$asset_dir"/*-arm64.dmg >/dev/null 2>&1; then
+            echo "::error::No macOS arm64 DMG artifact was produced."
             exit 1
           fi
 
           if ! ls "$asset_dir"/*.zip >/dev/null 2>&1; then
-            echo "::error::No ZIP artifact was produced."
+            echo "::error::No macOS ZIP artifact was produced."
             exit 1
           fi
 
@@ -211,12 +236,261 @@ jobs:
 
           echo "asset_dir=$asset_dir" >> "$GITHUB_OUTPUT"
 
-      - name: Upload workflow artifact
+      - name: Upload macOS workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: memry-macos-${{ steps.version.outputs.app_version }}
+          name: memry-release-macos-${{ needs.setup-release.outputs.app_version }}
           path: ${{ steps.assets.outputs.asset_dir }}/*
           if-no-files-found: error
+
+  build-windows:
+    name: Build Windows x64
+    needs: setup-release
+    runs-on: windows-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        env:
+          SKIP_ELECTRON_REBUILD: 1
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply release app version
+        env:
+          APP_VERSION: ${{ needs.setup-release.outputs.app_version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { readFileSync, writeFileSync } = require('node:fs')
+
+          const packagePath = 'apps/desktop/package.json'
+          const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'))
+          packageJson.version = process.env.APP_VERSION
+          writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`)
+          NODE
+
+      - name: Create runtime environment
+        env:
+          SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${SYNC_SERVER_URL:-}" ]; then
+            echo "::error::Set SYNC_SERVER_URL as a repository secret before publishing."
+            exit 1
+          fi
+          printf 'SYNC_SERVER_URL=%s\n' "$SYNC_SERVER_URL" > apps/desktop/.env.staging
+
+      - name: Build Windows artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
+        run: |
+          pnpm --filter @memry/desktop build
+          node apps/desktop/scripts/build-packaged-app.js --win --x64 --publish never
+
+      - name: Stage Windows assets
+        id: assets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $assetDir = Join-Path $env:RUNNER_TEMP 'release-assets-windows'
+          Remove-Item $assetDir -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $assetDir | Out-Null
+
+          Get-ChildItem apps/desktop/dist -File |
+            Where-Object { $_.Name -like '*.exe' -or $_.Name -like '*.blockmap' -or $_.Name -eq 'latest.yml' } |
+            Copy-Item -Destination $assetDir
+
+          Get-ChildItem $assetDir | Format-Table Name, Length
+
+          if (-not (Get-ChildItem $assetDir -Filter '*.exe')) {
+            throw 'No Windows installer artifact was produced.'
+          }
+
+          if (-not (Test-Path (Join-Path $assetDir 'latest.yml'))) {
+            throw 'latest.yml was not produced.'
+          }
+
+          "asset_dir=$assetDir" >> $env:GITHUB_OUTPUT
+
+      - name: Upload Windows workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: memry-release-windows-${{ needs.setup-release.outputs.app_version }}
+          path: ${{ steps.assets.outputs.asset_dir }}/*
+          if-no-files-found: error
+
+  build-linux:
+    name: Build Linux x64
+    needs: setup-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsecret-1-dev
+
+      - name: Install dependencies
+        env:
+          SKIP_ELECTRON_REBUILD: 1
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply release app version
+        env:
+          APP_VERSION: ${{ needs.setup-release.outputs.app_version }}
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { readFileSync, writeFileSync } = require('node:fs')
+
+          const packagePath = 'apps/desktop/package.json'
+          const packageJson = JSON.parse(readFileSync(packagePath, 'utf8'))
+          packageJson.version = process.env.APP_VERSION
+          writeFileSync(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`)
+          NODE
+
+      - name: Create runtime environment
+        env:
+          SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SYNC_SERVER_URL:-}" ]; then
+            echo "::error::Set SYNC_SERVER_URL as a repository secret before publishing."
+            exit 1
+          fi
+          printf 'SYNC_SERVER_URL=%s\n' "$SYNC_SERVER_URL" > apps/desktop/.env.staging
+
+      - name: Build Linux artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
+        run: |
+          set -euo pipefail
+          pnpm --filter @memry/desktop build
+          node apps/desktop/scripts/build-packaged-app.js --linux --x64 --publish never
+
+      - name: Stage Linux assets
+        id: assets
+        run: |
+          set -euo pipefail
+          asset_dir="$RUNNER_TEMP/release-assets-linux"
+          rm -rf "$asset_dir"
+          mkdir -p "$asset_dir"
+
+          find apps/desktop/dist -maxdepth 1 -type f \
+            \( -name '*.AppImage' -o -name '*.deb' -o -name '*.blockmap' -o -name 'latest-linux.yml' \) \
+            -exec cp {} "$asset_dir" \;
+
+          ls -la "$asset_dir"
+
+          if ! ls "$asset_dir"/*.AppImage >/dev/null 2>&1; then
+            echo "::error::No Linux AppImage artifact was produced."
+            exit 1
+          fi
+
+          if ! ls "$asset_dir"/*.deb >/dev/null 2>&1; then
+            echo "::error::No Linux deb artifact was produced."
+            exit 1
+          fi
+
+          echo "asset_dir=$asset_dir" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Linux workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: memry-release-linux-${{ needs.setup-release.outputs.app_version }}
+          path: ${{ steps.assets.outputs.asset_dir }}/*
+          if-no-files-found: error
+
+  publish-release:
+    name: Attach assets and publish release
+    needs:
+      - setup-release
+      - build-macos
+      - build-windows
+      - build-linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          pattern: memry-release-*-${{ needs.setup-release.outputs.app_version }}
+          path: ${{ runner.temp }}/release-assets
+          merge-multiple: true
+
+      - name: Verify release asset set
+        id: assets
+        run: |
+          set -euo pipefail
+          asset_dir="$RUNNER_TEMP/release-assets"
+          ls -la "$asset_dir"
+
+          require_glob() {
+            local pattern="$1"
+            local message="$2"
+            if ! compgen -G "$asset_dir/$pattern" >/dev/null; then
+              echo "::error::$message"
+              exit 1
+            fi
+          }
+
+          require_file() {
+            local file="$1"
+            local message="$2"
+            if [ ! -f "$asset_dir/$file" ]; then
+              echo "::error::$message"
+              exit 1
+            fi
+          }
+
+          require_glob '*-x64.dmg' 'Missing macOS x64 DMG.'
+          require_glob '*-arm64.dmg' 'Missing macOS arm64 DMG.'
+          require_glob '*.zip' 'Missing macOS ZIP.'
+          require_file 'latest-mac.yml' 'Missing latest-mac.yml.'
+          require_glob '*.exe' 'Missing Windows installer.'
+          require_file 'latest.yml' 'Missing Windows latest.yml.'
+          require_glob '*.AppImage' 'Missing Linux AppImage.'
+          require_glob '*.deb' 'Missing Linux deb.'
+
+          echo "asset_dir=$asset_dir" >> "$GITHUB_OUTPUT"
 
       - name: Upload assets to draft release
         if: ${{ !inputs.dry_run }}
@@ -224,7 +498,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh release upload "${{ steps.draft.outputs.draft_tag }}" \
+          gh release upload "${{ needs.setup-release.outputs.draft_tag }}" \
             "${{ steps.assets.outputs.asset_dir }}"/* \
             --clobber
 
@@ -236,41 +510,44 @@ jobs:
           set -euo pipefail
           gh api \
             --method PATCH \
-            "repos/${GITHUB_REPOSITORY}/releases/${{ steps.draft.outputs.release_id }}" \
-            -f tag_name="${{ steps.version.outputs.tag }}" \
+            "repos/${GITHUB_REPOSITORY}/releases/${{ needs.setup-release.outputs.release_id }}" \
+            -f tag_name="${{ needs.setup-release.outputs.tag }}" \
             -f target_commitish="${GITHUB_SHA}" \
-            -f name="${{ steps.version.outputs.release_name }}" \
+            -f name="${{ needs.setup-release.outputs.release_name }}" \
             -F draft=true \
             -F prerelease=false
 
-      - name: Verify release assets
+      - name: Verify uploaded release assets
         if: ${{ !inputs.dry_run }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh release view "${{ steps.version.outputs.tag }}" --json tagName,name,isDraft,isPrerelease,assets,url > "$RUNNER_TEMP/release.json"
+          gh release view "${{ needs.setup-release.outputs.tag }}" --json tagName,name,isDraft,isPrerelease,assets,url > "$RUNNER_TEMP/release.json"
           node <<'NODE'
           const { readFileSync } = require('node:fs')
 
           const release = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/release.json`, 'utf8'))
           const assetNames = release.assets.map((asset) => asset.name)
 
+          const hasAsset = (predicate, message) => {
+            if (!assetNames.some(predicate)) {
+              throw new Error(message)
+            }
+          }
+
           if (!release.isDraft) {
             throw new Error('Release was published before asset verification finished')
           }
 
-          if (!assetNames.some((name) => name.endsWith('.dmg'))) {
-            throw new Error('Release is missing a DMG asset')
-          }
-
-          if (!assetNames.some((name) => name.endsWith('.zip'))) {
-            throw new Error('Release is missing a ZIP asset')
-          }
-
-          if (!assetNames.includes('latest-mac.yml')) {
-            throw new Error('Release is missing latest-mac.yml')
-          }
+          hasAsset((name) => name.endsWith('-x64.dmg'), 'Release is missing a macOS x64 DMG asset')
+          hasAsset((name) => name.endsWith('-arm64.dmg'), 'Release is missing a macOS arm64 DMG asset')
+          hasAsset((name) => name.endsWith('.zip'), 'Release is missing a macOS ZIP asset')
+          hasAsset((name) => name === 'latest-mac.yml', 'Release is missing latest-mac.yml')
+          hasAsset((name) => name.endsWith('.exe'), 'Release is missing a Windows installer asset')
+          hasAsset((name) => name === 'latest.yml', 'Release is missing Windows latest.yml')
+          hasAsset((name) => name.endsWith('.AppImage'), 'Release is missing a Linux AppImage asset')
+          hasAsset((name) => name.endsWith('.deb'), 'Release is missing a Linux deb asset')
           NODE
 
       - name: Publish release
@@ -281,7 +558,7 @@ jobs:
           set -euo pipefail
           gh api \
             --method PATCH \
-            "repos/${GITHUB_REPOSITORY}/releases/${{ steps.draft.outputs.release_id }}" \
+            "repos/${GITHUB_REPOSITORY}/releases/${{ needs.setup-release.outputs.release_id }}" \
             -F draft=false \
             -F prerelease=false \
             -f make_latest=true
@@ -292,7 +569,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh release view "${{ steps.version.outputs.tag }}" --json name,isDraft,isPrerelease,assets,url > "$RUNNER_TEMP/published-release.json"
+          gh release view "${{ needs.setup-release.outputs.tag }}" --json name,isDraft,isPrerelease,assets,url > "$RUNNER_TEMP/published-release.json"
           node <<'NODE'
           const { readFileSync } = require('node:fs')
 
