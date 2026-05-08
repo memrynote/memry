@@ -6,87 +6,91 @@ Default shortcuts. Every entry in the Navigation, Tabs, Editor, and View categor
 
 ## Navigation
 
-| Action | Shortcut |
-| --- | --- |
-| New note | <kbd>⌘</kbd>+<kbd>N</kbd> |
-| New task | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>T</kbd> |
-| Go to Inbox | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>I</kbd> |
-| Go to Notes | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>E</kbd> |
-| Go to Tasks | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>K</kbd> |
-| Open search | <kbd>⌘</kbd>+<kbd>F</kbd> |
-| Open settings | <kbd>⌘</kbd>+<kbd>,</kbd> |
+| Action        | Shortcut                               |
+| ------------- | -------------------------------------- |
+| New note      | <kbd>⌘</kbd>+<kbd>N</kbd>              |
+| New task      | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>T</kbd> |
+| Go to Inbox   | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>I</kbd> |
+| Go to Notes   | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>E</kbd> |
+| Go to Tasks   | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>K</kbd> |
+| Open search   | <kbd>⌘</kbd>+<kbd>F</kbd>              |
+| Open settings | <kbd>⌘</kbd>+<kbd>,</kbd>              |
 
 ## Tabs
 
-| Action | Shortcut |
-| --- | --- |
-| New tab | <kbd>⌘</kbd>+<kbd>T</kbd> |
-| Close tab | <kbd>⌘</kbd>+<kbd>W</kbd> |
-| Close all tabs | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>W</kbd> |
-| Reopen closed tab | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>T</kbd> |
-| Next tab | <kbd>Ctrl</kbd>+<kbd>Tab</kbd> |
-| Previous tab | <kbd>Ctrl</kbd>+<kbd>⇧</kbd>+<kbd>Tab</kbd> |
-| Go to tab 1–8 | <kbd>⌘</kbd>+<kbd>1</kbd> … <kbd>⌘</kbd>+<kbd>8</kbd> |
-| Go to last tab | <kbd>⌘</kbd>+<kbd>9</kbd> |
-| Pin / unpin tab | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>P</kbd> |
-| Duplicate tab | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>D</kbd> |
+| Action            | Shortcut                                              |
+| ----------------- | ----------------------------------------------------- |
+| New tab           | <kbd>⌘</kbd>+<kbd>T</kbd>                             |
+| Close tab         | <kbd>⌘</kbd>+<kbd>W</kbd>                             |
+| Close all tabs    | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>W</kbd>                |
+| Reopen closed tab | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>T</kbd>                |
+| Next tab          | <kbd>Ctrl</kbd>+<kbd>Tab</kbd>                        |
+| Previous tab      | <kbd>Ctrl</kbd>+<kbd>⇧</kbd>+<kbd>Tab</kbd>           |
+| Go to tab 1–8     | <kbd>⌘</kbd>+<kbd>1</kbd> … <kbd>⌘</kbd>+<kbd>8</kbd> |
+| Go to last tab    | <kbd>⌘</kbd>+<kbd>9</kbd>                             |
+| Pin / unpin tab   | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>P</kbd>                |
+| Duplicate tab     | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>D</kbd>                |
 
 ## Split View
 
 Some commands use a chord — press <kbd>⌘</kbd>+<kbd>K</kbd>, release, then press the next key.
 
-| Action | Shortcut |
-| --- | --- |
-| Split right | <kbd>⌘</kbd>+<kbd>\\</kbd> |
-| Split down | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>\\</kbd> |
-| Close split pane | <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>W</kbd> |
-| Focus right pane | <kbd>⌘</kbd>+<kbd>K</kbd>, then <kbd>⌘</kbd>+<kbd>→</kbd> |
-| Focus left pane | <kbd>⌘</kbd>+<kbd>K</kbd>, then <kbd>⌘</kbd>+<kbd>←</kbd> |
-| Focus pane above | <kbd>⌘</kbd>+<kbd>K</kbd>, then <kbd>⌘</kbd>+<kbd>↑</kbd> |
-| Focus pane below | <kbd>⌘</kbd>+<kbd>K</kbd>, then <kbd>⌘</kbd>+<kbd>↓</kbd> |
-| Toggle maximize pane | <kbd>⌘</kbd>+<kbd>K</kbd>, then <kbd>M</kbd> |
-| Reset split ratios | <kbd>⌘</kbd>+<kbd>K</kbd>, then <kbd>=</kbd> |
+| Action               | Shortcut                                                  |
+| -------------------- | --------------------------------------------------------- |
+| Split right          | <kbd>⌘</kbd>+<kbd>\\</kbd>                                |
+| Split down           | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>\\</kbd>                   |
+| Close split pane     | <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>W</kbd>                    |
+| Focus right pane     | <kbd>⌘</kbd>+<kbd>K</kbd>, then <kbd>⌘</kbd>+<kbd>→</kbd> |
+| Focus left pane      | <kbd>⌘</kbd>+<kbd>K</kbd>, then <kbd>⌘</kbd>+<kbd>←</kbd> |
+| Focus pane above     | <kbd>⌘</kbd>+<kbd>K</kbd>, then <kbd>⌘</kbd>+<kbd>↑</kbd> |
+| Focus pane below     | <kbd>⌘</kbd>+<kbd>K</kbd>, then <kbd>⌘</kbd>+<kbd>↓</kbd> |
+| Toggle maximize pane | <kbd>⌘</kbd>+<kbd>K</kbd>, then <kbd>M</kbd>              |
+| Reset split ratios   | <kbd>⌘</kbd>+<kbd>K</kbd>, then <kbd>=</kbd>              |
 
 A chord indicator briefly flashes when the prefix is active.
 
 ## Editor
 
-| Action | Shortcut |
-| --- | --- |
+| Action              | Shortcut                  |
+| ------------------- | ------------------------- |
 | Save (manual flush) | <kbd>⌘</kbd>+<kbd>S</kbd> |
-| Bold | <kbd>⌘</kbd>+<kbd>B</kbd> |
-| Italic | <kbd>⌘</kbd>+<kbd>I</kbd> |
-| Underline | <kbd>⌘</kbd>+<kbd>U</kbd> |
-| Insert wiki link | Type `[[` |
-| Open block menu | Type `/` |
-| Find in page | <kbd>⌘</kbd>+<kbd>F</kbd> |
+| Bold                | <kbd>⌘</kbd>+<kbd>B</kbd> |
+| Italic              | <kbd>⌘</kbd>+<kbd>I</kbd> |
+| Underline           | <kbd>⌘</kbd>+<kbd>U</kbd> |
+| Insert wiki link    | Type `[[`                 |
+| Open block menu     | Type `/`                  |
+| Find in page        | <kbd>⌘</kbd>+<kbd>F</kbd> |
 
 ## View
 
-| Action | Shortcut |
-| --- | --- |
-| Toggle sidebar | <kbd>⌘</kbd>+<kbd>B</kbd> |
+| Action                         | Shortcut                                  |
+| ------------------------------ | ----------------------------------------- |
+| Toggle sidebar                 | <kbd>⌘</kbd>+<kbd>B</kbd>                 |
 | Show keyboard shortcuts dialog | <kbd>⌘</kbd>+<kbd>/</kbd> or <kbd>?</kbd> |
+
+The same shortcut reference opens from the question-mark button in the sidebar footer.
+It groups shortcuts into General, Tabs & Splits, Inbox, Journal, Notes / Editor, Tasks,
+and Settings sections so you can scan by workflow.
 
 ## Inbox
 
 When the inbox or a card has focus:
 
-| Action | Shortcut |
-| --- | --- |
-| Refresh | <kbd>R</kbd> |
-| Open source URL | <kbd>O</kbd> |
-| Archive | <kbd>Delete</kbd> or <kbd>Backspace</kbd> |
+| Action          | Shortcut                                  |
+| --------------- | ----------------------------------------- |
+| Refresh         | <kbd>R</kbd>                              |
+| Open source URL | <kbd>O</kbd>                              |
+| Archive         | <kbd>Delete</kbd> or <kbd>Backspace</kbd> |
 
 ## Hint Mode
 
 Hint mode overlays numeric badges on interactive elements so you can act without the mouse.
 
-| Action | Shortcut |
-| --- | --- |
+| Action             | Shortcut                                  |
+| ------------------ | ----------------------------------------- |
 | Activate hint mode | <kbd>F</kbd> or <kbd>⌥</kbd>+<kbd>F</kbd> |
-| Pick a target | Type the number shown |
-| Exit | <kbd>Esc</kbd> |
+| Pick a target      | Type the number shown                     |
+| Exit               | <kbd>Esc</kbd>                            |
 
 ## Global Undo (Tasks)
 

@@ -37,7 +37,8 @@ import {
   useUndoKeyboardShortcut,
   useReminderNotifications,
   useSearchShortcut,
-  useHintActivation
+  useHintActivation,
+  isInputFocused
 } from '@/hooks'
 import { HintModeProvider } from '@/contexts/hint-mode'
 import { HintOverlay, HintIndicator } from '@/components/hint-overlay'
@@ -176,6 +177,8 @@ const AppContent = (): React.JSX.Element => {
   useReminderNotifications() // T231-T233: In-app toast notifications for reminders
   useFolderViewEvents() // Global cache invalidation for folder-view tabs
   const toggleSearch = useCallback(() => setSearchOpen((prev) => !prev), [])
+  const openShortcutsDialog = useCallback(() => setShowShortcutsDialog(true), [])
+  const toggleShortcutsDialog = useCallback(() => setShowShortcutsDialog((prev) => !prev), [])
   useSearchShortcut(toggleSearch)
   useHintActivation()
 
@@ -184,6 +187,29 @@ const AppContent = (): React.JSX.Element => {
     window.addEventListener('memry:open-search', openSearch)
     return () => window.removeEventListener('memry:open-search', openSearch)
   }, [])
+
+  useEffect(() => {
+    window.addEventListener('memry:open-shortcuts', openShortcutsDialog)
+    return () => window.removeEventListener('memry:open-shortcuts', openShortcutsDialog)
+  }, [openShortcutsDialog])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      const isQuestionShortcut =
+        event.key === '?' && !event.metaKey && !event.ctrlKey && !event.altKey
+      const isSlashShortcut = (event.metaKey || event.ctrlKey) && event.key === '/'
+
+      if (!isQuestionShortcut && !isSlashShortcut) return
+      if (isQuestionShortcut && isInputFocused()) return
+
+      event.preventDefault()
+      event.stopPropagation()
+      toggleShortcutsDialog()
+    }
+
+    window.addEventListener('keydown', handleKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
+  }, [toggleShortcutsDialog])
 
   useEffect(() => {
     const openTestNote = (
@@ -484,7 +510,7 @@ function App(): React.JSX.Element {
           {/* Last child so paint order puts the chrome overlay above the tab-bar's
               drag-region (OS-level -webkit-app-region hit test picks the topmost
               layer; a drag-region painted over no-drag children eats clicks). */}
-          <WindowControls className="pointer-events-auto fixed top-0 left-0 z-[60] w-[var(--chrome-width)]" />
+          <WindowControls className="pointer-events-auto fixed top-0 start-0 z-[60] w-[var(--chrome-width)]" />
         </SidebarProvider>
         {/* First-run onboarding overlay — shown until user completes or dismisses */}
         {!generalSettingsLoading && !generalSettings.onboardingCompleted && (
