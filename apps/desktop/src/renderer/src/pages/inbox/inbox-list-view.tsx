@@ -13,7 +13,6 @@ import { BulkFilePanel } from '@/components/bulk/bulk-file-panel'
 import { BulkTagPopover } from '@/components/bulk/bulk-tag-popover'
 import { ArchiveConfirmationDialog } from '@/components/bulk/archive-confirmation-dialog'
 import { EmptyState } from '@/components/empty-state/empty-state'
-import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal'
 import { inboxService } from '@/services/inbox-service'
 import type { ReminderMetadata, InboxItemType } from '@memry/contracts/inbox-api'
 import { detectClusters, getClusterKey } from '@/lib/ai-clustering'
@@ -49,7 +48,7 @@ export function InboxListView({
   selectedTypes,
   showSnoozedItems,
   focusItemId = null,
-  focusToken = null
+  focusToken
 }: InboxListViewProps): React.JSX.Element {
   const { t } = useT('inbox')
   const queryClient = useQueryClient()
@@ -80,10 +79,10 @@ export function InboxListView({
   const [isBulkFilePanelOpen, setIsBulkFilePanelOpen] = useState(false)
   const [isBulkTagPopoverOpen, setIsBulkTagPopoverOpen] = useState(false)
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false)
-  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false)
   const [focusedItemIdState, setFocusedItemIdState] = useState<string | null>(null)
   const emptyStateDelayRef = useRef<number | null>(null)
   const lastConsumedFocusTokenRef = useRef<number | null>(null)
+  const focusSequence = focusToken ?? null
 
   const isDetailPanelOpen = activeDetailItemId !== null
   const isInBulkMode = selectedItemIds.size > 0
@@ -132,15 +131,15 @@ export function InboxListView({
   // user closes the panel, and so switching tabs away and back does not
   // re-trigger after consumption.
   useEffect(() => {
-    if (!focusItemId || focusToken === null) return
-    if (lastConsumedFocusTokenRef.current === focusToken) return
-    lastConsumedFocusTokenRef.current = focusToken
+    if (!focusItemId || focusSequence === null) return
+    if (lastConsumedFocusTokenRef.current === focusSequence) return
+    lastConsumedFocusTokenRef.current = focusSequence
     const focusTimer = window.setTimeout(() => {
       setActiveDetailItemId(focusItemId)
       setFocusedItemIdState(focusItemId)
     }, 0)
     return () => window.clearTimeout(focusTimer)
-  }, [focusItemId, focusToken])
+  }, [focusItemId, focusSequence])
 
   // Computed values
   const selectedItems = useMemo(
@@ -215,13 +214,11 @@ export function InboxListView({
   // === KEYBOARD SHORTCUTS ===
   useInboxKeyboard({
     enabled: true,
-    isShortcutsModalOpen,
     isDetailPanelOpen,
     isBulkFilePanelOpen,
     isInBulkMode,
     focusedItemId,
     items,
-    onOpenShortcutsModal: () => setIsShortcutsModalOpen(true),
     onRefresh: () => refetch(),
     onArchiveFocusedItem: (itemId, nextItemId) => void archiveWithAnimation(itemId, nextItemId),
     onOpenBulkArchiveDialog: () => setIsArchiveDialogOpen(true),
@@ -924,11 +921,6 @@ export function InboxListView({
           itemCount={selectedCount}
           onConfirm={handleBulkArchiveConfirm}
           onCancel={() => setIsArchiveDialogOpen(false)}
-        />
-
-        <KeyboardShortcutsModal
-          isOpen={isShortcutsModalOpen}
-          onClose={() => setIsShortcutsModalOpen(false)}
         />
       </div>
 

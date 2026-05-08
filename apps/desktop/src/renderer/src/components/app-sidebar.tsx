@@ -10,6 +10,7 @@ import {
   ChevronsUp,
   FilePlus,
   FolderPlus,
+  HelpCircle,
   Plus,
   Upload
 } from '@/lib/icons'
@@ -381,6 +382,12 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
     openSettings('account')
   }, [openSettings])
 
+  const handleOpenShortcuts = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('memry:open-shortcuts'))
+  }, [])
+  const shortcutsLabel = 'Open keyboard shortcuts'
+  const shortcutsTooltipLabel = 'Keyboard shortcuts'
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeaderContent />
@@ -410,6 +417,22 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
       </SidebarContent>
       <SidebarFooter className="gap-0 p-2">
         <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={handleOpenShortcuts}
+                aria-label={shortcutsLabel}
+                title={shortcutsLabel}
+                className="shrink-0 size-7 rounded flex items-center justify-center hover:bg-sidebar-accent text-muted-foreground transition-colors"
+              >
+                <HelpCircle className="size-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              {shortcutsTooltipLabel}
+            </TooltipContent>
+          </Tooltip>
           {authState.status === 'authenticated' ? (
             <div className="shrink-0 w-7 [&>button]:w-7 [&>button]:justify-center">
               <SyncStatus onOpenSettings={handleSyncClick} iconOnly />
