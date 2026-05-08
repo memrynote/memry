@@ -11,7 +11,11 @@ import {
 import { normalizeHashTags, extractInlineTags } from '../hash-tag'
 import { normalizeTaskBlocks } from '../task-block/task-block-utils'
 import { FILE_BLOCK_REGEX, createFileBlockContent, serializeFileBlock } from '../file-block'
-import { parseMarkdownPreservingBlanks, serializeBlocksPreservingBlanks } from '../markdown-utils'
+import {
+  parseMarkdownPreservingBlanks,
+  sanitizeBlockIds,
+  serializeBlocksPreservingBlanks
+} from '../markdown-utils'
 import { createLinkMentionContent } from '../link-mention'
 import { fetchLinkPreview } from '@/lib/url-metadata'
 import type { HeadingInfo } from '../types'
@@ -24,12 +28,14 @@ function hydrateLinkMentionFavicons(editor: any): void {
 
   const walk = (blocks: any[]): void => {
     for (const block of blocks) {
-      const content = (block.content ?? []) as any[]
-      content.forEach((c: any, i: number) => {
-        if (c.type === 'linkMention' && c.props?.url && !c.props.favicon) {
-          mentions.push({ block, index: i, url: c.props.url })
-        }
-      })
+      const content = block.content
+      if (Array.isArray(content)) {
+        content.forEach((c: any, i: number) => {
+          if (c.type === 'linkMention' && c.props?.url && !c.props.favicon) {
+            mentions.push({ block, index: i, url: c.props.url })
+          }
+        })
+      }
       if (block.children?.length) walk(block.children)
     }
   }
@@ -39,7 +45,8 @@ function hydrateLinkMentionFavicons(editor: any): void {
   for (const { block, index, url } of mentions) {
     fetchLinkPreview(url)
       .then((metadata) => {
-        const current = (block.content ?? []) as any[]
+        const current = block.content
+        if (!Array.isArray(current)) return
         if (current[index]?.type !== 'linkMention') return
         const updated = [...current]
         updated[index] = createLinkMentionContent(
@@ -130,6 +137,7 @@ export function useEditorSync({
     }
 
     async function loadContent(): Promise<void> {
+      let loadedSuccessfully = false
       try {
         if (typeof initialContent === 'string' && initialContent.trim()) {
           try {
@@ -178,8 +186,10 @@ export function useEditorSync({
               lastNormalizedTagsRef.current = noteTags.slice().sort().join(',')
             }
 
+            normalizedBlocks = sanitizeBlockIds(normalizedBlocks)
             editor.replaceBlocks(editor.document, normalizedBlocks)
             hydrateLinkMentionFavicons(editor)
+            loadedSuccessfully = true
           } catch (error) {
             log.error(`Failed to parse ${contentType} content`, error)
           }
@@ -195,11 +205,17 @@ export function useEditorSync({
             lastNormalizedTagsRef.current = noteTags.slice().sort().join(',')
           }
 
+          normalizedBlocks = sanitizeBlockIds(normalizedBlocks)
           editor.replaceBlocks(editor.document, normalizedBlocks)
+          loadedSuccessfully = true
+        } else {
+          loadedSuccessfully = true
         }
       } finally {
-        isContentReadyRef.current = true
-        if (!cancelled) {
+        if (loadedSuccessfully) {
+          isContentReadyRef.current = true
+        }
+        if (!cancelled && loadedSuccessfully) {
           if (onHeadingsChange) {
             const headings = extractHeadings(editor.document as Block[])
             onHeadingsChange(headings)
