@@ -20,4 +20,44 @@ describe('release flow workflows', () => {
     assert.match(releaseWorkflow, /Collect release assets/)
     assert.match(releaseWorkflow, /gh release upload "\$TAG" release-assets\/\* --clobber/)
   })
+
+  it('keeps shell heredocs at column 0 inside workflow run blocks', () => {
+    const lines = releaseWorkflow.split('\n')
+
+    for (let index = 0; index < lines.length; index += 1) {
+      const runMatch = lines[index].match(/^(\s*)run:\s*\|/)
+      if (!runMatch) continue
+
+      const baseIndent = `${runMatch[1]}  `
+      const runLine = index + 1
+
+      for (index += 1; index < lines.length; index += 1) {
+        const line = lines[index]
+        if (line.trim() !== '' && !line.startsWith(baseIndent)) {
+          index -= 1
+          break
+        }
+
+        const heredocMatch = line.match(/^(\s*).*<<'([A-Z_]+)'/)
+        if (!heredocMatch) continue
+
+        assert.equal(
+          heredocMatch[1],
+          baseIndent,
+          `heredoc start in run block at line ${runLine} must be at shell column 0`
+        )
+
+        const terminator = `${baseIndent}${heredocMatch[2]}`
+        const terminatorIndex = lines.findIndex(
+          (candidate, candidateIndex) => candidateIndex > index && candidate === terminator
+        )
+
+        assert.notEqual(
+          terminatorIndex,
+          -1,
+          `heredoc terminator ${heredocMatch[2]} after line ${index + 1} must be at shell column 0`
+        )
+      }
+    }
+  })
 })

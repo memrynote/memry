@@ -54,21 +54,21 @@ jobs:
           else
             gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" > releases.json
 
-            node <<'NODE'
-            const { readFileSync, writeFileSync } = require('node:fs')
+          node <<'NODE'
+          const { readFileSync, writeFileSync } = require('node:fs')
 
-            const releases = JSON.parse(readFileSync('releases.json', 'utf8'))
-            const tagPattern = /^v20\d{2}-\d{2}-\d{2}(?:\.[2-9]\d*)?$/
-            const draft = releases.find(
-              (release) => release.draft && tagPattern.test(release.tag_name || '')
-            )
+          const releases = JSON.parse(readFileSync('releases.json', 'utf8'))
+          const tagPattern = /^v20\d{2}-\d{2}-\d{2}(?:\.[2-9]\d*)?$/
+          const draft = releases.find(
+            (release) => release.draft && tagPattern.test(release.tag_name || '')
+          )
 
-            if (!draft) {
-              throw new Error('No date draft release found. Merge to main first.')
-            }
+          if (!draft) {
+            throw new Error('No date draft release found. Merge to main first.')
+          }
 
-            writeFileSync('draft-release.json', JSON.stringify(draft, null, 2))
-            NODE
+          writeFileSync('draft-release.json', JSON.stringify(draft, null, 2))
+          NODE
           fi
 
           node <<'NODE'
