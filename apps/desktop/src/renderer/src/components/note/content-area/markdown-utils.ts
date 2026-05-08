@@ -25,8 +25,7 @@ export function sanitizeBlockIds(blocks: Block[]): Block[] {
     const id = (block as { id?: unknown }).id
 
     if (id !== undefined && (typeof id !== 'string' || id.length === 0)) {
-      const rest = { ...(block as Block & { id?: unknown }) }
-      delete rest.id
+      const { id: _removedId, ...rest } = block as Block & { id: unknown }
       nextBlock = rest as Block
       didChange = true
     }
