@@ -1,0 +1,2085 @@
+import { generateNoteId } from '../../src/main/lib/id'
+import type { NoteFile } from '../seed-vault/file-writer'
+
+const TODAY = new Date('2026-05-08T12:00:00.000Z')
+
+const dayOffset = (days: number, hour = 12): string => {
+  const d = new Date(TODAY)
+  d.setUTCDate(d.getUTCDate() + days)
+  d.setUTCHours(hour, 30, 0, 0)
+  return d.toISOString()
+}
+
+export const NOTE_IDS = {
+  // Books
+  bookDune: generateNoteId(),
+  bookProjectHailMary: generateNoteId(),
+  bookAtomicHabits: generateNoteId(),
+  bookDeepWork: generateNoteId(),
+  bookTheMartian: generateNoteId(),
+  bookSapiens: generateNoteId(),
+  bookMisteryHotel: generateNoteId(),
+  bookOnWriting: generateNoteId(),
+  bookKitchenConfidential: generateNoteId(),
+  bookAlmanackOfNaval: generateNoteId(),
+  bookFourThousandWeeks: generateNoteId(),
+  bookManSearchMeaning: generateNoteId(),
+  // Movies
+  movieDune2021: generateNoteId(),
+  movieInterstellar: generateNoteId(),
+  movieTheMatrix: generateNoteId(),
+  movieEverythingEverywhere: generateNoteId(),
+  movieAnewHope: generateNoteId(),
+  movieAriival: generateNoteId(),
+  movieTheMartianFilm: generateNoteId(),
+  movieParasite: generateNoteId(),
+  movieSpiritedAway: generateNoteId(),
+  movieWatchlist2026: generateNoteId(),
+  movieBladerunner: generateNoteId(),
+  movieGoodfellas: generateNoteId(),
+  // Weight
+  weightCut2026: generateNoteId(),
+  weightCuttingLog: generateNoteId(),
+  weightProteinTargets: generateNoteId(),
+  weightTrainingSplit: generateNoteId(),
+  weightSundayWeighIn: generateNoteId(),
+  weightCardioPlan: generateNoteId(),
+  weightFoodDiary: generateNoteId(),
+  weightProgressPhotos: generateNoteId(),
+  // Life
+  lifeMyWhy: generateNoteId(),
+  lifeOnReading: generateNoteId(),
+  lifeYearReview2025: generateNoteId(),
+  lifeMorningRoutine: generateNoteId(),
+  lifeFinances: generateNoteId(),
+  lifeOnFear: generateNoteId(),
+  lifeRelationships: generateNoteId(),
+  lifeWhatBringsJoy: generateNoteId(),
+  // Projects
+  projMemryLaunch: generateNoteId(),
+  projMemryArchitecture: generateNoteId(),
+  projMemryRoadmap: generateNoteId(),
+  projMemryGTM: generateNoteId(),
+  projGardenSchedule: generateNoteId(),
+  projHomeRenovation: generateNoteId(),
+  projBlogRedesign: generateNoteId(),
+  projOpenSourceFork: generateNoteId(),
+  projSideProjectIdeas: generateNoteId(),
+  projConferenceTalk: generateNoteId(),
+  // Tech
+  techTypescriptPatterns: generateNoteId(),
+  techDrizzleORM: generateNoteId(),
+  techCRDTArchitecture: generateNoteId(),
+  techPostgresIndexing: generateNoteId(),
+  techCMUDatabaseCourse: generateNoteId(),
+  techKipThorneBlackHoles: generateNoteId(),
+  techElectronGotchas: generateNoteId(),
+  techSqliteVec: generateNoteId(),
+  techVimMotions: generateNoteId(),
+  techGitWorkflow: generateNoteId(),
+  techRustNotes: generateNoteId(),
+  techDockerCheatsheet: generateNoteId(),
+  // Travel
+  travelTokyoTrip: generateNoteId(),
+  travelKyotoDayTrip: generateNoteId(),
+  travelLisbonNotes: generateNoteId(),
+  travelIcelandRingRoad: generateNoteId(),
+  travelPackingList: generateNoteId(),
+  travelSeoulFood: generateNoteId(),
+  travelMexicoCityArt: generateNoteId(),
+  travelOsakaRamen: generateNoteId(),
+  travelTokyoCafes: generateNoteId(),
+  travelAirportLounges: generateNoteId()
+} as const
+
+export const FOLDER_CONFIGS: Array<{ path: string; icon: string }> = [
+  { path: 'notes/books', icon: '📚' },
+  { path: 'notes/movies', icon: '🎬' },
+  { path: 'notes/weight', icon: '💪' },
+  { path: 'notes/life', icon: '🌳' },
+  { path: 'notes/projects', icon: '📦' },
+  { path: 'notes/tech', icon: '💻' },
+  { path: 'notes/travel', icon: '✈️' }
+]
+
+interface NoteSpec {
+  id: string
+  relativePath: string
+  title: string
+  emoji?: string
+  tags: string[]
+  aliases?: string[]
+  customProps?: Record<string, unknown>
+  daysAgoCreated: number
+  daysAgoModified: number
+  body: string
+}
+
+const SPECS: NoteSpec[] = [
+  // ============================================================================
+  // BOOKS
+  // ============================================================================
+  {
+    id: NOTE_IDS.bookDune,
+    relativePath: 'notes/books/Dune.md',
+    title: 'Dune',
+    emoji: '🪐',
+    tags: ['fiction', 'sci-fi', 'classic', 'reread'],
+    aliases: ['Dune (1965)'],
+    customProps: { author: 'Frank Herbert', year: 1965, pages: 688, status: 'done', rating: 5 },
+    daysAgoCreated: -120,
+    daysAgoModified: -8,
+    body: `## Why it still matters
+
+Sixty years on, *Dune* still sets the bar for political-sci-fi worldbuilding. Reread it before catching [[Dune (2021)|the film]] again.
+
+## The lessons that stuck
+
+- **Power is information.** The Bene Gesserit win because they think in centuries.
+- **Ecology is plot.** Frank Herbert built the climate before he built the characters.
+- **Fear is the mind-killer.** Best opening litany in the genre.
+
+> "He who controls the spice controls the universe."
+
+#books/fiction #sci-fi
+
+## Pair with
+
+- [[Project Hail Mary]] — same chewy hard-sci-fi appetite
+- [[Sapiens]] — for the *humans-shape-environment* throughline
+`
+  },
+  {
+    id: NOTE_IDS.bookProjectHailMary,
+    relativePath: 'notes/books/Project Hail Mary.md',
+    title: 'Project Hail Mary',
+    emoji: '🚀',
+    tags: ['fiction', 'sci-fi', 'andy-weir'],
+    customProps: { author: 'Andy Weir', year: 2021, pages: 476, status: 'done', rating: 5 },
+    daysAgoCreated: -90,
+    daysAgoModified: -22,
+    body: `## Plot stretch goal
+
+Lone astronaut wakes up on a starship with amnesia and has to save earth. *Of course* he does.
+
+## What worked
+
+- The friendship is genuinely earned — most aliens-meet-humans stories skip this.
+- Andy Weir does **engineering exposition** better than anyone.
+- Rocky. Just Rocky.
+
+## What dragged
+
+The chemistry-by-flashlight beats run a touch long. Worth it.
+
+See also: [[The Martian]] — same flavor, drier.
+
+#books/fiction #sci-fi
+`
+  },
+  {
+    id: NOTE_IDS.bookAtomicHabits,
+    relativePath: 'notes/books/Atomic Habits.md',
+    title: 'Atomic Habits',
+    emoji: '⚛️',
+    tags: ['nonfiction', 'productivity', 'habits'],
+    customProps: { author: 'James Clear', year: 2018, pages: 320, status: 'done', rating: 4 },
+    daysAgoCreated: -210,
+    daysAgoModified: -45,
+    body: `## The four laws
+
+| Law | Make it | Example |
+|-----|---------|---------|
+| 1 | Obvious | Lay out gym clothes the night before |
+| 2 | Attractive | Stack a habit you want with one you love |
+| 3 | Easy | Two-minute rule |
+| 4 | Satisfying | Tracker, streak, reward |
+
+## Quotes I wrote on a sticky note
+
+> You do not rise to the level of your goals. You fall to the level of your systems.
+
+> Every action you take is a vote for the type of person you wish to become.
+
+## Where I applied it
+
+- **Reading**: kindle on the pillow → 20 minutes a night minimum
+- **Strength**: see [[2026 Cut]] and [[Training Split]]
+- **Writing**: morning, before the inbox opens
+
+#books/nonfiction #habits
+`
+  },
+  {
+    id: NOTE_IDS.bookDeepWork,
+    relativePath: 'notes/books/Deep Work.md',
+    title: 'Deep Work',
+    emoji: '🧠',
+    tags: ['nonfiction', 'productivity', 'focus'],
+    customProps: {
+      author: 'Cal Newport',
+      year: 2016,
+      pages: 304,
+      status: 'done',
+      rating: 4
+    },
+    daysAgoCreated: -300,
+    daysAgoModified: -60,
+    body: `## Core idea
+
+Cognitive demand is the new luxury good. Defend three to four hours a day or surrender them.
+
+## My deep work blocks
+
+- 06:00–08:00 — writing, no exceptions
+- 09:30–12:00 — engineering, slack closed
+- 14:00–15:00 — reading
+
+## Anti-patterns I caught myself doing
+
+- Phantom-checking notifications mid-flow
+- "Quick" Slack threads that weren't quick
+- Email as a procrastination ritual
+
+#books/nonfiction #focus
+`
+  },
+  {
+    id: NOTE_IDS.bookTheMartian,
+    relativePath: 'notes/books/The Martian.md',
+    title: 'The Martian',
+    emoji: '🥔',
+    tags: ['fiction', 'sci-fi', 'andy-weir'],
+    customProps: {
+      author: 'Andy Weir',
+      year: 2011,
+      pages: 369,
+      status: 'done',
+      rating: 4
+    },
+    daysAgoCreated: -250,
+    daysAgoModified: -150,
+    body: `## The pitch
+
+Astronaut botanist gets stranded on Mars. Survives mostly through math and stubbornness.
+
+The film [[The Martian (Film)]] cuts the chemistry but keeps the heart. Andy Weir has clearly done this trick again with [[Project Hail Mary]].
+
+## Lines that hit
+
+> I'm gonna have to science the shit out of this.
+
+## When to reread
+
+When motivation is thin. Watney's *I-am-not-going-to-die-today* energy is contagious.
+
+#books/fiction #sci-fi
+`
+  },
+  {
+    id: NOTE_IDS.bookSapiens,
+    relativePath: 'notes/books/Sapiens.md',
+    title: 'Sapiens',
+    emoji: '🌍',
+    tags: ['nonfiction', 'history', 'big-ideas'],
+    customProps: {
+      author: 'Yuval Noah Harari',
+      year: 2014,
+      pages: 464,
+      status: 'reading',
+      rating: 4
+    },
+    daysAgoCreated: -45,
+    daysAgoModified: -1,
+    body: `## Where I am
+
+Chapter 9. Cognitive revolution → agricultural revolution → unification of humankind.
+
+## What I'm thinking about
+
+- Money, religion, and limited liability companies are all *fictions we agree on*. Memry sync is a fiction we agree on, too.
+- Wheat domesticated humans, not the other way around.
+
+## Open questions
+
+- Does Harari oversell the wheat takeover?
+- Is "happiness research" rigorous enough to lean on this much?
+
+#books/nonfiction #history
+`
+  },
+  {
+    id: NOTE_IDS.bookMisteryHotel,
+    relativePath: 'notes/books/The Mystery Guest.md',
+    title: 'The Mystery Guest',
+    emoji: '🔍',
+    tags: ['fiction', 'mystery', 'cozy'],
+    customProps: {
+      author: 'Nita Prose',
+      year: 2023,
+      pages: 304,
+      status: 'reading',
+      rating: 3
+    },
+    daysAgoCreated: -10,
+    daysAgoModified: -1,
+    body: `Cozy hotel mystery. Easy palette cleanser between heavier reads.
+
+Half through. The narrator's voice is the appeal more than the puzzle.
+
+#books/fiction #mystery
+`
+  },
+  {
+    id: NOTE_IDS.bookOnWriting,
+    relativePath: 'notes/books/On Writing.md',
+    title: 'On Writing',
+    emoji: '✍️',
+    tags: ['nonfiction', 'craft', 'writing'],
+    customProps: {
+      author: 'Stephen King',
+      year: 2000,
+      pages: 288,
+      status: 'done',
+      rating: 5
+    },
+    daysAgoCreated: -400,
+    daysAgoModified: -180,
+    body: `## Memoir + craft, in equal parts
+
+Read it twice now. The memoir is great; the toolkit is *brutal*:
+
+- *Read a lot. Write a lot.* No shortcut.
+- *Adverbs are not your friend.*
+- *The road to hell is paved with adverbs.*
+- *Write with the door closed. Edit with the door open.*
+
+Pair with [[Deep Work]] for the *defend the time* angle.
+
+#books/nonfiction #writing
+`
+  },
+  {
+    id: NOTE_IDS.bookKitchenConfidential,
+    relativePath: 'notes/books/Kitchen Confidential.md',
+    title: 'Kitchen Confidential',
+    emoji: '🔪',
+    tags: ['nonfiction', 'memoir', 'food'],
+    customProps: {
+      author: 'Anthony Bourdain',
+      year: 2000,
+      pages: 312,
+      status: 'done',
+      rating: 5
+    },
+    daysAgoCreated: -340,
+    daysAgoModified: -110,
+    body: `## Why I love it
+
+Bourdain wrote like he cooked: fast, no apologies, with violence and grace. Best food memoir of the century.
+
+Also see [[Tokyo Cafes]] — different cuisine, same reverence.
+
+> Your body is not a temple, it's an amusement park.
+
+#books/nonfiction #memoir
+`
+  },
+  {
+    id: NOTE_IDS.bookAlmanackOfNaval,
+    relativePath: 'notes/books/The Almanack of Naval Ravikant.md',
+    title: 'The Almanack of Naval Ravikant',
+    emoji: '🧭',
+    tags: ['nonfiction', 'philosophy', 'wealth'],
+    customProps: {
+      author: 'Eric Jorgenson',
+      year: 2020,
+      pages: 244,
+      status: 'reading',
+      rating: 4
+    },
+    daysAgoCreated: -30,
+    daysAgoModified: -3,
+    body: `Notes-as-essays from Naval Ravikant. The wealth section is fine. The happiness section is the part to reread.
+
+> Desire is a contract you make with yourself to be unhappy until you get what you want.
+
+Pairs with [[On Reading]] and [[My Why]].
+
+#books/nonfiction #philosophy
+`
+  },
+  {
+    id: NOTE_IDS.bookFourThousandWeeks,
+    relativePath: 'notes/books/Four Thousand Weeks.md',
+    title: 'Four Thousand Weeks',
+    emoji: '⏳',
+    tags: ['nonfiction', 'productivity', 'mortality'],
+    customProps: {
+      author: 'Oliver Burkeman',
+      year: 2021,
+      pages: 288,
+      status: 'done',
+      rating: 5
+    },
+    daysAgoCreated: -160,
+    daysAgoModified: -90,
+    body: `## The reframe
+
+You only get ~4000 weeks. The "productivity stack" is, mostly, a way to pretend you don't.
+
+Hard counterweight to [[Atomic Habits]] and [[Deep Work]] — those say *get more out of every hour*. This one says *give up first*.
+
+#books/nonfiction #mortality
+`
+  },
+  {
+    id: NOTE_IDS.bookManSearchMeaning,
+    relativePath: "notes/books/Man's Search for Meaning.md",
+    title: "Man's Search for Meaning",
+    emoji: '🕯️',
+    tags: ['nonfiction', 'philosophy', 'memoir'],
+    customProps: {
+      author: 'Viktor Frankl',
+      year: 1946,
+      pages: 200,
+      status: 'done',
+      rating: 5
+    },
+    daysAgoCreated: -700,
+    daysAgoModified: -360,
+    body: `## Logotherapy in 200 pages
+
+Frankl's central claim: *meaning* — not pleasure, not even purpose — is what carries you. Pair with [[On Reading]].
+
+> When we are no longer able to change a situation, we are challenged to change ourselves.
+
+#books/nonfiction #philosophy
+`
+  },
+
+  // ============================================================================
+  // MOVIES
+  // ============================================================================
+  {
+    id: NOTE_IDS.movieDune2021,
+    relativePath: 'notes/movies/Dune (2021).md',
+    title: 'Dune (2021)',
+    emoji: '🪐',
+    tags: ['movies/sci-fi', 'denis-villeneuve', 'rewatch'],
+    aliases: ['Dune Part One'],
+    customProps: { year: 2021, director: 'Denis Villeneuve', genre: 'sci-fi', status: 'watched', rating: 5 },
+    daysAgoCreated: -120,
+    daysAgoModified: -8,
+    body: `## The adaptation that finally landed
+
+After 56 years and several misfires, Villeneuve cracked it. The film is the [[Dune|book]] in spirit, not in plot density. That's the right call.
+
+## What sells it
+
+- Hans Zimmer's score — unsettling without being theatrical
+- The sandworm reveal: lit in negative space, doesn't show too much
+- Stilgar's restraint. Bardem refused to ham it up.
+
+Watch trailer: https://www.youtube.com/watch?v=8g18jFHCLXk
+
+## What I'd cut
+
+The Salusa Secundus scene needs ten more seconds. Hardly a crime.
+
+#movies/sci-fi #adaptation
+`
+  },
+  {
+    id: NOTE_IDS.movieInterstellar,
+    relativePath: 'notes/movies/Interstellar.md',
+    title: 'Interstellar',
+    emoji: '🌌',
+    tags: ['movies/sci-fi', 'christopher-nolan', 'rewatch'],
+    customProps: { year: 2014, director: 'Christopher Nolan', genre: 'sci-fi', status: 'watched', rating: 5 },
+    daysAgoCreated: -280,
+    daysAgoModified: -40,
+    body: `## Nolan's most emotional film
+
+Nolan turned Kip Thorne's whitepaper into the most *devastating* sci-fi film since 2001. The black hole render is the work of [[Kip Thorne — Black Holes]] himself.
+
+## The bookcase scene
+
+Plot-mechanically nonsense. Emotionally undefeated. I will fight on this.
+
+> Do not go gentle into that good night.
+
+#movies/sci-fi #emotional
+`
+  },
+  {
+    id: NOTE_IDS.movieTheMatrix,
+    relativePath: 'notes/movies/The Matrix.md',
+    title: 'The Matrix',
+    emoji: '💊',
+    tags: ['movies/sci-fi', 'wachowski', 'classic'],
+    customProps: { year: 1999, director: 'Wachowski Sisters', genre: 'sci-fi', status: 'watched', rating: 5 },
+    daysAgoCreated: -500,
+    daysAgoModified: -200,
+    body: `Still holds up. The bullet-time was the marketing; the philosophy was the staying power.
+
+> What is real? How do you define real?
+
+#movies/sci-fi #classic
+`
+  },
+  {
+    id: NOTE_IDS.movieEverythingEverywhere,
+    relativePath: 'notes/movies/Everything Everywhere All at Once.md',
+    title: 'Everything Everywhere All at Once',
+    emoji: '🥯',
+    tags: ['movies/scifi', 'a24', 'absurd'],
+    customProps: { year: 2022, director: 'Daniels', genre: 'sci-fi', status: 'watched', rating: 5 },
+    daysAgoCreated: -180,
+    daysAgoModified: -55,
+    body: `## Why it works
+
+Multiverse-as-feeling instead of multiverse-as-plot. Michelle Yeoh as the laundromat lady saving the universe by **doing taxes** is the joke that becomes the heart.
+
+## What it owes
+
+- Wong Kar-wai for the longing scenes
+- Hong Kong action choreography for the fanny-pack fight
+- Pixar for the rocks
+
+#movies/sci-fi #a24
+`
+  },
+  {
+    id: NOTE_IDS.movieAnewHope,
+    relativePath: 'notes/movies/Star Wars Episode IV.md',
+    title: 'Star Wars Episode IV',
+    emoji: '⚔️',
+    tags: ['movies/sci-fi', 'star-wars', 'classic'],
+    aliases: ['A New Hope', 'Star Wars (1977)'],
+    customProps: { year: 1977, director: 'George Lucas', genre: 'sci-fi', status: 'watched', rating: 4 },
+    daysAgoCreated: -650,
+    daysAgoModified: -300,
+    body: `Hero's journey, as catalogued by Joseph Campbell, with laser swords. Still works.
+
+#movies/sci-fi #classic
+`
+  },
+  {
+    id: NOTE_IDS.movieAriival,
+    relativePath: 'notes/movies/Arrival.md',
+    title: 'Arrival',
+    emoji: '🛸',
+    tags: ['movies/sci-fi', 'denis-villeneuve', 'thoughtful'],
+    customProps: { year: 2016, director: 'Denis Villeneuve', genre: 'sci-fi', status: 'watched', rating: 5 },
+    daysAgoCreated: -370,
+    daysAgoModified: -120,
+    body: `Sapir-Whorf as a love letter. Best contact-with-aliens movie since 2001. Pair with [[Dune (2021)]] — same director, same ear for silence.
+
+#movies/sci-fi #thoughtful
+`
+  },
+  {
+    id: NOTE_IDS.movieTheMartianFilm,
+    relativePath: 'notes/movies/The Martian (Film).md',
+    title: 'The Martian (Film)',
+    emoji: '🥔',
+    tags: ['movies/sci-fi', 'ridley-scott'],
+    customProps: { year: 2015, director: 'Ridley Scott', genre: 'sci-fi', status: 'watched', rating: 4 },
+    daysAgoCreated: -240,
+    daysAgoModified: -150,
+    body: `Cleaner than [[The Martian|the book]] but loses the chemistry monologues. Watney is still Watney.
+
+#movies/sci-fi
+`
+  },
+  {
+    id: NOTE_IDS.movieParasite,
+    relativePath: 'notes/movies/Parasite.md',
+    title: 'Parasite',
+    emoji: '🪳',
+    tags: ['movies/drama', 'bong-joon-ho', 'foreign'],
+    customProps: { year: 2019, director: 'Bong Joon-ho', genre: 'thriller', status: 'watched', rating: 5 },
+    daysAgoCreated: -310,
+    daysAgoModified: -100,
+    body: `Class warfare as black comedy as horror. The pivot at the basement reveal is the best plot turn of the decade.
+
+#movies/foreign
+`
+  },
+  {
+    id: NOTE_IDS.movieSpiritedAway,
+    relativePath: 'notes/movies/Spirited Away.md',
+    title: 'Spirited Away',
+    emoji: '🐉',
+    tags: ['movies/animation', 'studio-ghibli'],
+    customProps: { year: 2001, director: 'Hayao Miyazaki', genre: 'animation', status: 'watched', rating: 5 },
+    daysAgoCreated: -380,
+    daysAgoModified: -200,
+    body: `Watching it after [[Tokyo Trip]] hit different — the bathhouse aesthetic isn't a fantasy, it's a memory.
+
+#movies/animation #ghibli
+`
+  },
+  {
+    id: NOTE_IDS.movieWatchlist2026,
+    relativePath: 'notes/movies/Watchlist 2026.md',
+    title: 'Watchlist 2026',
+    emoji: '🎞️',
+    tags: ['movies', 'watchlist'],
+    customProps: { year: 2026, status: 'active' },
+    daysAgoCreated: -125,
+    daysAgoModified: -2,
+    body: `## Want to watch
+
+- [ ] **Dune: Part Two** — bumped because [[Dune (2021)]] was so good
+- [ ] **Poor Things** — Yorgos Lanthimos
+- [ ] **Past Lives** — heard it's devastating
+- [x] **Everything Everywhere All at Once** — see [[Everything Everywhere All at Once]]
+- [ ] **Anatomy of a Fall** — French legal thriller
+- [ ] **The Zone of Interest** — quiet horror
+- [x] **Parasite** — see [[Parasite]]
+
+## Comparison
+
+| Film | Year | Genre | Length |
+|------|------|-------|--------|
+| Dune Part Two | 2024 | sci-fi | 166 min |
+| Poor Things | 2023 | drama | 141 min |
+| Past Lives | 2023 | romance | 105 min |
+| Anatomy of a Fall | 2023 | thriller | 152 min |
+
+#movies #watchlist
+`
+  },
+  {
+    id: NOTE_IDS.movieBladerunner,
+    relativePath: 'notes/movies/Blade Runner 2049.md',
+    title: 'Blade Runner 2049',
+    emoji: '🌆',
+    tags: ['movies/sci-fi', 'denis-villeneuve'],
+    customProps: { year: 2017, director: 'Denis Villeneuve', genre: 'sci-fi', status: 'watched', rating: 5 },
+    daysAgoCreated: -290,
+    daysAgoModified: -120,
+    body: `Slow. Achingly beautiful. The yellow-fog Las Vegas sequence is one of the most committed visuals in the medium.
+
+#movies/sci-fi
+`
+  },
+  {
+    id: NOTE_IDS.movieGoodfellas,
+    relativePath: 'notes/movies/Goodfellas.md',
+    title: 'Goodfellas',
+    emoji: '🍝',
+    tags: ['movies/crime', 'scorsese'],
+    customProps: { year: 1990, director: 'Martin Scorsese', genre: 'crime', status: 'watched', rating: 5 },
+    daysAgoCreated: -460,
+    daysAgoModified: -260,
+    body: `The Copacabana tracking shot does in three minutes what most films can't do in three hours.
+
+> As far back as I can remember, I always wanted to be a gangster.
+
+#movies/crime
+`
+  },
+
+  // ============================================================================
+  // WEIGHT
+  // ============================================================================
+  {
+    id: NOTE_IDS.weightCut2026,
+    relativePath: 'notes/weight/2026 Cut.md',
+    title: '2026 Cut',
+    emoji: '💪',
+    tags: ['fitness', 'cut'],
+    customProps: {
+      status: 'active',
+      startDate: '2026-04-01',
+      endDate: '2026-06-15',
+      weight: 82.4,
+      bodyFat: 18,
+      mood: 4
+    },
+    daysAgoCreated: -38,
+    daysAgoModified: 0,
+    body: `## Targets
+
+- **Start**: 87.1 kg / 21% BF (2026-04-01)
+- **Target**: 78 kg / 14% BF (by 2026-06-15)
+- **Pace**: ~0.5 kg / week — sustainable, hold strength
+
+## Strategy
+
+- 2200 kcal weekdays, 2400 weekends
+- Protein floor 180g — see [[Protein Targets]]
+- 4×5 strength + 2×low-impact cardio per [[Training Split]]
+- Sunday weigh-in only — see [[Sunday Weigh-in]]
+
+## Progress
+
+See running table in [[Cutting Log]]. Wikilinked journal entries: [[2026-04-22]], [[2026-05-01]], [[2026-05-08]].
+
+> [!info]
+> The cut isn't the diet. The cut is *not getting bored*.
+
+#fitness #cut
+`
+  },
+  {
+    id: NOTE_IDS.weightCuttingLog,
+    relativePath: 'notes/weight/Cutting Log.md',
+    title: 'Cutting Log',
+    emoji: '📊',
+    tags: ['fitness', 'log'],
+    customProps: { status: 'active' },
+    daysAgoCreated: -38,
+    daysAgoModified: 0,
+    body: `## Weekly weigh-in
+
+| Date | Weight (kg) | BF % | Notes |
+|------|-------------|------|-------|
+| 2026-04-05 | 87.1 | 21.0 | Starting line |
+| 2026-04-12 | 86.4 | 20.4 | Easy week |
+| 2026-04-19 | 85.5 | 19.6 | Cardio added |
+| 2026-04-26 | 85.0 | 19.1 | Stalled, kept patient |
+| 2026-05-03 | 84.0 | 18.4 | Whoosh |
+| 2026-05-08 | 82.4 | 18.0 | On pace |
+
+## Observations
+
+- Protein at 180g is non-negotiable; below it I lose strength
+- 7 hours sleep correlates with better Sunday numbers
+- Travel weeks ≠ progress weeks (see [[Tokyo Trip]])
+
+#fitness #log
+`
+  },
+  {
+    id: NOTE_IDS.weightProteinTargets,
+    relativePath: 'notes/weight/Protein Targets.md',
+    title: 'Protein Targets',
+    emoji: '🍳',
+    tags: ['fitness', 'nutrition'],
+    customProps: { status: 'active' },
+    daysAgoCreated: -38,
+    daysAgoModified: -12,
+    body: `## Daily floor: 180g
+
+Spread across 4 meals (~45g each):
+
+- **Breakfast** — 4 eggs + Greek yogurt + cottage cheese (~50g)
+- **Lunch** — 200g chicken or 250g cod (~45g)
+- **Snack** — protein shake (~30g)
+- **Dinner** — 200g lean beef or salmon (~45g)
+
+## Whey is a tool not a crutch
+
+Real food first. Powder fills gaps after lifting.
+
+#fitness #nutrition
+`
+  },
+  {
+    id: NOTE_IDS.weightTrainingSplit,
+    relativePath: 'notes/weight/Training Split.md',
+    title: 'Training Split',
+    emoji: '🏋️',
+    tags: ['fitness', 'strength'],
+    customProps: { status: 'active' },
+    daysAgoCreated: -90,
+    daysAgoModified: -10,
+    body: `## 4-day upper/lower
+
+- **Mon** — Lower (squat heavy, RDL, walking lunges)
+- **Tue** — Upper (bench, weighted pull-ups, DB row)
+- **Thu** — Lower (DL heavy, front squat, leg curl)
+- **Fri** — Upper (OHP, pull-ups, dips, curls)
+
+Wed and Sat are [[Cardio Plan]]. Sun rest.
+
+## Cues
+
+- Squat: brace, feet wide enough to see toes
+- DL: bar over mid-foot, lats engaged before lift
+- Bench: tucked elbows, leg drive
+
+#fitness #strength
+`
+  },
+  {
+    id: NOTE_IDS.weightSundayWeighIn,
+    relativePath: 'notes/weight/Sunday Weigh-in.md',
+    title: 'Sunday Weigh-in',
+    emoji: '⚖️',
+    tags: ['fitness', 'tracking'],
+    customProps: { status: 'active' },
+    daysAgoCreated: -150,
+    daysAgoModified: -7,
+    body: `Once a week. Sunday morning, after the bathroom, before water.
+
+Daily weighing is noise.
+
+Goes into [[Cutting Log]].
+
+#fitness
+`
+  },
+  {
+    id: NOTE_IDS.weightCardioPlan,
+    relativePath: 'notes/weight/Cardio Plan.md',
+    title: 'Cardio Plan',
+    emoji: '🏃',
+    tags: ['fitness', 'cardio'],
+    customProps: { status: 'active' },
+    daysAgoCreated: -90,
+    daysAgoModified: -25,
+    body: `Two sessions per week:
+
+- Wed — 30 min zone-2 (treadmill, easy nose-breathing)
+- Sat — 20 min interval (8 × 30s sprint / 60s walk)
+
+Heart rate monitor on, not optional.
+
+#fitness #cardio
+`
+  },
+  {
+    id: NOTE_IDS.weightFoodDiary,
+    relativePath: 'notes/weight/Food Diary.md',
+    title: 'Food Diary',
+    emoji: '🥗',
+    tags: ['fitness', 'food'],
+    customProps: { status: 'active' },
+    daysAgoCreated: -38,
+    daysAgoModified: -1,
+    body: `Loose log — only the meals that surprised me.
+
+- 2026-05-06 — Korean BBQ. Stayed lean by stacking veg first; came in under 1100 kcal.
+- 2026-05-04 — Pizza Saturday. Two slices, walked an hour after.
+- 2026-05-02 — Found a great mackerel teishoku spot near the office.
+
+#fitness #food
+`
+  },
+  {
+    id: NOTE_IDS.weightProgressPhotos,
+    relativePath: 'notes/weight/Progress Photos.md',
+    title: 'Progress Photos',
+    emoji: '📸',
+    tags: ['fitness', 'tracking'],
+    customProps: { status: 'active' },
+    daysAgoCreated: -38,
+    daysAgoModified: -1,
+    body: `Friday morning, kitchen window light, same angles. No flexing for the front shot — natural shoulders.
+
+Compares to [[2026 Cut]] start.
+
+![Front 2026-05-08](attachments/weight-front-may.jpg)
+
+#fitness
+`
+  },
+
+  // ============================================================================
+  // LIFE
+  // ============================================================================
+  {
+    id: NOTE_IDS.lifeMyWhy,
+    relativePath: 'notes/life/My Why.md',
+    title: 'My Why',
+    emoji: '🌳',
+    tags: ['life', 'reflection', 'mission'],
+    customProps: { mood: 5 },
+    daysAgoCreated: -700,
+    daysAgoModified: -7,
+    body: `## Why I'm building [[Memry Launch|Memry]]
+
+I lost five years of journal entries to a SaaS that pivoted, then sunset their consumer product. Two months notice and a CSV that didn't include any of the formatting.
+
+I'm building Memry so my **future self** can read my **current self** without asking permission from a vendor.
+
+Local first. End-to-end encrypted. Open file format. Sync optional.
+
+> The default settings of the universe should not include "your data is at risk because we ran out of runway."
+
+#life #mission
+`
+  },
+  {
+    id: NOTE_IDS.lifeOnReading,
+    relativePath: 'notes/life/On Reading.md',
+    title: 'On Reading',
+    emoji: '📖',
+    tags: ['life', 'reading', 'reflection'],
+    customProps: { mood: 4 },
+    daysAgoCreated: -200,
+    daysAgoModified: -20,
+    body: `## Why I keep at it
+
+Three reasons, in increasing order of importance:
+
+1. **Information** — useful, but Wikipedia handles this
+2. **Empathy** — fiction is a flight simulator for other lives
+3. **Slowness** — books make me *think slower*, which I cannot get anywhere else
+
+## What I avoid
+
+~~Self-help books that should have been blog posts.~~ Most of them.
+
+I'd rather read [[Atomic Habits]] (one good idea, executed well) than another *7 Habits Of...* knockoff.
+
+## What I keep coming back to
+
+- [[Deep Work]] — for the *defend the time* argument
+- [[Man's Search for Meaning]] — when things are hard
+
+#life #reading
+`
+  },
+  {
+    id: NOTE_IDS.lifeYearReview2025,
+    relativePath: 'notes/life/Year in Review 2025.md',
+    title: 'Year in Review 2025',
+    emoji: '📅',
+    tags: ['life', 'annual', 'reflection'],
+    customProps: { mood: 4 },
+    daysAgoCreated: -130,
+    daysAgoModified: -125,
+    body: `## What I shipped
+
+- Memry MVP, sync v1
+- 12kg lost (and kept off through holidays)
+- Trip to [[Tokyo Trip]] — first long flight since 2019
+
+## What I read (highlights)
+
+- [[Project Hail Mary]] — best fiction of the year
+- [[Four Thousand Weeks]] — the book I needed
+- [[On Writing]] — second time, hit harder
+
+## What didn't work
+
+- Two side projects abandoned at 60% — see [[Side Project Ideas]]
+- Three-month gap in journaling (Q3, no good reason)
+
+## 2026 themes
+
+- *Ship Memry to friends*
+- *Lose the last 6kg*
+- *Write more in public*
+
+#life #annual
+`
+  },
+  {
+    id: NOTE_IDS.lifeMorningRoutine,
+    relativePath: 'notes/life/Morning Routine.md',
+    title: 'Morning Routine',
+    emoji: '☀️',
+    tags: ['life', 'habits'],
+    customProps: { mood: 5 },
+    daysAgoCreated: -150,
+    daysAgoModified: -30,
+    body: `## 05:45 — 08:00
+
+- 05:45 — Up, water, no phone
+- 06:00 — 20 min journal — see today's entry
+- 06:30 — Coffee + read 30 min
+- 07:00 — Write (Memry, blog, journal)
+- 08:00 — Shower, breakfast, day starts
+
+## Rules
+
+1. No notifications until 09:00
+2. Phone in another room until 06:30
+3. *Coffee is the reward, not the start*
+
+Inspired by [[Deep Work]]. Codified after [[Atomic Habits]].
+
+#life #habits
+`
+  },
+  {
+    id: NOTE_IDS.lifeFinances,
+    relativePath: 'notes/life/Finances.md',
+    title: 'Finances',
+    emoji: '💸',
+    tags: ['life', 'money'],
+    customProps: { mood: 4 },
+    daysAgoCreated: -300,
+    daysAgoModified: -10,
+    body: `## Allocation (target)
+
+| Bucket | % | Vehicle |
+|--------|---|---------|
+| Index funds | 60 | Boring 3-fund portfolio |
+| Cash buffer | 20 | 6 months expenses |
+| Speculative | 10 | Crypto, individual stocks |
+| Cause/giving | 5 | Effective altruism + local |
+| Fun | 5 | Travel + a guilt-free buffer |
+
+## Rules I keep
+
+- *Pay myself first.* Auto-transfer on payday.
+- *No new credit cards.* The points game is a tax on attention.
+- *One big purchase per year* — last year was the [[Tokyo Trip]].
+
+#life #money
+`
+  },
+  {
+    id: NOTE_IDS.lifeOnFear,
+    relativePath: 'notes/life/On Fear.md',
+    title: 'On Fear',
+    emoji: '🌑',
+    tags: ['life', 'reflection'],
+    customProps: { mood: 3 },
+    daysAgoCreated: -90,
+    daysAgoModified: -45,
+    body: `## What I'm afraid of, in 2026
+
+- Building Memry "wrong" — the wrong abstractions, the wrong scope
+- Going public before it's ready
+- Going public after it's *too* ready (waited too long)
+
+## What I do about it
+
+Read [[Man's Search for Meaning]] when it's bad. Talk to my partner. Run hard. Sleep more.
+
+> The fear of suffering is worse than the suffering itself.
+
+#life #reflection
+`
+  },
+  {
+    id: NOTE_IDS.lifeRelationships,
+    relativePath: 'notes/life/Relationships.md',
+    title: 'Relationships',
+    emoji: '🫶',
+    tags: ['life', 'people'],
+    customProps: { mood: 5 },
+    daysAgoCreated: -250,
+    daysAgoModified: -10,
+    body: `## Inner ring
+
+People I want to invest in this year:
+
+- M. — see them every quarter, not less
+- D. — one long phone call per month
+- Two old friends I haven't seen since 2023
+
+## Mid ring
+
+Birthdays, occasional dinners. Loose contact, real warmth.
+
+## "Calendar weight"
+
+If a relationship is important, it should show up *in the calendar*, not just in my head.
+
+#life #people
+`
+  },
+  {
+    id: NOTE_IDS.lifeWhatBringsJoy,
+    relativePath: 'notes/life/What Brings Me Joy.md',
+    title: 'What Brings Me Joy',
+    emoji: '😄',
+    tags: ['life', 'gratitude', 'joy'],
+    customProps: { mood: 5 },
+    daysAgoCreated: -45,
+    daysAgoModified: -3,
+    body: `Running list. Adding when something hits, never editing.
+
+- The sound of espresso pulling
+- A good problem at 06:30 with no one awake
+- [[Spirited Away]] for the tenth time
+- The smell of a new bookstore (looking at you, [[Tokyo Cafes|Tokyo book cafes]])
+- The first 5 minutes of a long walk
+- Discovering my younger self made a smart decision I'd forgotten
+
+#life #joy
+`
+  },
+
+  // ============================================================================
+  // PROJECTS
+  // ============================================================================
+  {
+    id: NOTE_IDS.projMemryLaunch,
+    relativePath: 'notes/projects/Memry Launch.md',
+    title: 'Memry Launch',
+    emoji: '🚀',
+    tags: ['projects/memry', 'projects/active'],
+    customProps: {
+      status: 'active',
+      priority: 'high',
+      deadline: '2026-07-01',
+      owner: 'Kaan'
+    },
+    daysAgoCreated: -90,
+    daysAgoModified: 0,
+    body: `## Launch plan
+
+Aim for 2026-07-01. Soft launch to ~50 friends + IndieHackers.
+
+## What's left
+
+- [x] Sync v1 — see [[CRDT Architecture]]
+- [x] Calendar v1
+- [x] Inbox capture
+- [ ] Mobile read-only
+- [ ] Public landing
+- [ ] Pricing decision
+- [ ] Launch post on HN — see [[Conference Talk]] for the speech version
+
+## Risks
+
+> [!warning]
+> The biggest risk is *scope creep*, not bugs. Every "what about graph view 2.0" is two weeks I don't have.
+
+## Tech debts I'm carrying
+
+- See [[Drizzle ORM]] for the JSON-column gotcha
+- See [[Electron Gotchas]] for native-build pain
+- Postgres was almost the choice — see [[Postgres Indexing]]
+
+## Linked tasks
+
+Tasks tagged \`#projects/memry\` show up under "Memry Launch" project — these are the granular execution items.
+
+#projects/memry #active
+`
+  },
+  {
+    id: NOTE_IDS.projMemryArchitecture,
+    relativePath: 'notes/projects/Memry Architecture.md',
+    title: 'Memry Architecture',
+    emoji: '🏛️',
+    tags: ['projects/memry', 'architecture'],
+    customProps: {
+      status: 'active',
+      priority: 'high',
+      deadline: '2026-06-01',
+      owner: 'Kaan'
+    },
+    daysAgoCreated: -200,
+    daysAgoModified: -3,
+    body: `## Boundaries
+
+- **Renderer** — React 19, no Node access
+- **Main** — Electron, owns SQLite + Y.Docs
+- **Sync** — Cloudflare Workers + D1 + R2; never sees plaintext
+- **Contracts** — Zod-typed IPC + API
+
+See [[CRDT Architecture]] and [[Drizzle ORM]] for the data layer.
+
+## Why Electron
+
+Local-first means *all* data is on disk. Browser sandbox is a non-starter.
+
+#projects/memry #architecture
+`
+  },
+  {
+    id: NOTE_IDS.projMemryRoadmap,
+    relativePath: 'notes/projects/Memry Roadmap.md',
+    title: 'Memry Roadmap',
+    emoji: '🗺️',
+    tags: ['projects/memry', 'planning'],
+    customProps: {
+      status: 'active',
+      priority: 'medium',
+      deadline: '2026-12-31',
+      owner: 'Kaan'
+    },
+    daysAgoCreated: -150,
+    daysAgoModified: -7,
+    body: `## Q2 2026
+
+- v0.1 launch — see [[Memry Launch]]
+- Mobile read-only
+- iCal sync polish
+
+## Q3 2026
+
+- Mobile capture
+- Plugin API draft
+- First paid tier
+
+## Q4 2026
+
+- Plugin marketplace
+- Workspace sharing (selective)
+
+#projects/memry #planning
+`
+  },
+  {
+    id: NOTE_IDS.projMemryGTM,
+    relativePath: 'notes/projects/Memry GTM.md',
+    title: 'Memry GTM',
+    emoji: '📣',
+    tags: ['projects/memry', 'gtm'],
+    customProps: {
+      status: 'active',
+      priority: 'medium',
+      deadline: '2026-07-01',
+      owner: 'Kaan'
+    },
+    daysAgoCreated: -60,
+    daysAgoModified: -2,
+    body: `## Audience
+
+People who already journal but resent their tool. Bonus: programmers, researchers, knowledge workers.
+
+## Channels
+
+1. HN launch post — see [[Conference Talk]] for the long-form version
+2. IndieHackers + Twitter
+3. One thoughtful blog post per month
+
+## Anti-patterns
+
+- No paid ads. Not yet.
+- No "Notion alternative" framing. We are *not* Notion.
+
+#projects/memry #gtm
+`
+  },
+  {
+    id: NOTE_IDS.projGardenSchedule,
+    relativePath: 'notes/projects/Garden Schedule.md',
+    title: 'Garden Schedule',
+    emoji: '🌱',
+    tags: ['projects/home', 'garden'],
+    customProps: {
+      status: 'active',
+      priority: 'low',
+      deadline: '2026-09-15',
+      owner: 'Self'
+    },
+    daysAgoCreated: -45,
+    daysAgoModified: -1,
+    body: `## Spring
+
+- [x] Tomato seedlings — done 2026-04-12
+- [x] Basil — three pots
+- [ ] Bell peppers — week of 5/15
+- [ ] Mint divider barriers (it'll take over otherwise)
+
+## Summer plan
+
+Focus on what survives a heat dome: peppers, eggplant, zucchini.
+
+#projects/home
+`
+  },
+  {
+    id: NOTE_IDS.projHomeRenovation,
+    relativePath: 'notes/projects/Home Renovation.md',
+    title: 'Home Renovation',
+    emoji: '🔨',
+    tags: ['projects/home', 'renovation'],
+    customProps: {
+      status: 'backlog',
+      priority: 'medium',
+      deadline: '2026-10-01',
+      owner: 'Self'
+    },
+    daysAgoCreated: -30,
+    daysAgoModified: -15,
+    body: `## Punch list
+
+- [ ] Replace kitchen lights (LED retrofit)
+- [ ] Sand and stain back deck
+- [ ] Insulate attic crawl-space
+- [ ] Replace bathroom fan
+
+## Budget
+
+| Item | Estimate |
+|------|----------|
+| Kitchen lights | $400 |
+| Deck refinish | $800 |
+| Attic insulation | $1500 |
+| Bathroom fan | $250 |
+| **Total** | **$2950** |
+
+#projects/home
+`
+  },
+  {
+    id: NOTE_IDS.projBlogRedesign,
+    relativePath: 'notes/projects/Blog Redesign.md',
+    title: 'Blog Redesign',
+    emoji: '✏️',
+    tags: ['projects/personal', 'web'],
+    customProps: {
+      status: 'active',
+      priority: 'low',
+      deadline: '2026-06-15',
+      owner: 'Self'
+    },
+    daysAgoCreated: -25,
+    daysAgoModified: -3,
+    body: `Migrating from a static-site to Astro. Mostly to relearn the tooling, partly because I want better RSS.
+
+Tracking related work: [[TypeScript Patterns]], [[Vim Motions]].
+
+#projects/personal #web
+`
+  },
+  {
+    id: NOTE_IDS.projOpenSourceFork,
+    relativePath: 'notes/projects/Open Source Fork.md',
+    title: 'Open Source Fork',
+    emoji: '🌿',
+    tags: ['projects/personal', 'oss'],
+    customProps: {
+      status: 'idea',
+      priority: 'low',
+      owner: 'Self'
+    },
+    daysAgoCreated: -10,
+    daysAgoModified: -2,
+    body: `Considering a fork of an inactive markdown-link-checker. Not much code — but it'd save the team 30 minutes a week.
+
+Move only if a real maintainer disappears for ~6 months.
+
+#projects/oss
+`
+  },
+  {
+    id: NOTE_IDS.projSideProjectIdeas,
+    relativePath: 'notes/projects/Side Project Ideas.md',
+    title: 'Side Project Ideas',
+    emoji: '💡',
+    tags: ['projects/personal', 'ideas'],
+    customProps: {
+      status: 'idea',
+      priority: 'low',
+      owner: 'Self'
+    },
+    daysAgoCreated: -180,
+    daysAgoModified: -3,
+    body: `Running list — most won't ship, that's fine.
+
+- **CSV → graph** — drop a CSV, get an opinionated chart
+- **Reading retreats** — a service that books you a forced offline weekend
+- **Espresso log** — local-first, niche, mine
+- **Anti-newsletter** — subscriptions you *cancel* together
+- **Calendar diff tool** — compare meetings between two weeks
+
+Linked: [[Year in Review 2025]] (the *abandoned-at-60%* problem).
+
+#projects/personal #ideas
+`
+  },
+  {
+    id: NOTE_IDS.projConferenceTalk,
+    relativePath: 'notes/projects/Conference Talk.md',
+    title: 'Conference Talk',
+    emoji: '🎤',
+    tags: ['projects/personal', 'speaking'],
+    customProps: {
+      status: 'active',
+      priority: 'medium',
+      deadline: '2026-09-15',
+      owner: 'Self'
+    },
+    daysAgoCreated: -55,
+    daysAgoModified: -5,
+    body: `## Title (working)
+
+*Local-first is a choice, not a feature.*
+
+## Outline
+
+1. The cloud is a great default — most of the time
+2. The four times it isn't (vendor death, churn, latency, jurisdiction)
+3. What "local-first" actually means (Kleppmann, 2019)
+4. Memry as a worked example
+5. The trade-offs nobody likes to talk about
+
+## Submitted to
+
+- StrangeLoop — pending
+- LocalFirst Conf — accepted, talk on 2026-09-15
+
+#projects/personal #speaking
+`
+  },
+
+  // ============================================================================
+  // TECH
+  // ============================================================================
+  {
+    id: NOTE_IDS.techTypescriptPatterns,
+    relativePath: 'notes/tech/TypeScript Patterns.md',
+    title: 'TypeScript Patterns',
+    emoji: '🟦',
+    tags: ['tech/typescript', 'reference'],
+    customProps: { language: 'typescript', level: 'intermediate', status: 'active' },
+    daysAgoCreated: -240,
+    daysAgoModified: -2,
+    body: `## Discriminated unions for IPC
+
+\`\`\`typescript
+type Result<T, E = Error> =
+  | { ok: true; value: T }
+  | { ok: false; error: E }
+
+function parse(json: string): Result<unknown> {
+  try {
+    return { ok: true, value: JSON.parse(json) }
+  } catch (e) {
+    return { ok: false, error: e as Error }
+  }
+}
+\`\`\`
+
+## Branded types for IDs
+
+\`\`\`typescript
+type NoteId = string & { readonly _brand: unique symbol }
+const asNoteId = (s: string): NoteId => s as NoteId
+\`\`\`
+
+## Why I don't use \`any\`
+
+Because the moment I do, I've thrown away the only reason to write TypeScript. Use \`unknown\` and refine.
+
+Linked: [[Drizzle ORM]] for type inference details, [[Memry Architecture]] for the IPC boundary.
+
+#tech/typescript #reference
+`
+  },
+  {
+    id: NOTE_IDS.techDrizzleORM,
+    relativePath: 'notes/tech/Drizzle ORM.md',
+    title: 'Drizzle ORM',
+    emoji: '🦉',
+    tags: ['tech/sql', 'tech/typescript', 'reference'],
+    customProps: { language: 'typescript', level: 'intermediate', status: 'active' },
+    daysAgoCreated: -180,
+    daysAgoModified: -1,
+    body: `## Why I picked it
+
+Type-safe, no codegen runtime, ergonomics close to writing SQL by hand. Pairs well with [[TypeScript Patterns]].
+
+## Schema example
+
+\`\`\`typescript
+export const tasks = sqliteTable('tasks', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  status: text('status').$type<TaskStatus>(),
+  metadata: text('metadata', { mode: 'json' }).$type<Metadata | null>()
+})
+\`\`\`
+
+> [!warning]
+> Nullable JSON columns require \`null\` not \`undefined\` in \`.values()\` inserts. Otherwise Drizzle silently drops them and SQLite stores \`'undefined'\` as a string. Burned me twice.
+
+## Migrations
+
+Hand-written since 0020 — see commit \`b4c3f2\`. The autogenerated diffs got noisy after meta snapshots stopped being honest.
+
+\`\`\`bash
+pnpm db:generate    # schema → SQL
+pnpm db:push        # apply
+pnpm db:studio      # browse
+\`\`\`
+
+#tech/sql #tech/typescript
+`
+  },
+  {
+    id: NOTE_IDS.techCRDTArchitecture,
+    relativePath: 'notes/tech/CRDT Architecture.md',
+    title: 'CRDT Architecture',
+    emoji: '🧩',
+    tags: ['tech/sync', 'tech/architecture'],
+    customProps: { level: 'advanced', status: 'active' },
+    daysAgoCreated: -120,
+    daysAgoModified: -2,
+    body: `## Why Yjs
+
+CRDT for rich text. Built-in awareness. Battle-tested.
+
+## Sync flow
+
+\`\`\`mermaid
+sequenceDiagram
+    participant A as Device A
+    participant S as Sync Server
+    participant B as Device B
+    A->>S: push update (encrypted)
+    S->>B: notify
+    B->>S: pull updates
+    S-->>B: encrypted bytes
+    B->>B: decrypt + apply
+\`\`\`
+
+## Field-level vector clocks
+
+For tasks/projects — see the [[Drizzle ORM]] schema for \`field_clocks\` JSON column. This avoids whole-row LWW for structured records.
+
+## Footnote on naming
+
+Yes, "CRDT" is overloaded[^1]. Yjs implements a state-based CRDT (specifically a YATA variant).
+
+[^1]: Operational vs state vs delta-state CRDTs are all called "CRDTs" in conversation. Worth being precise in PR reviews.
+
+#tech/sync #tech/architecture
+`
+  },
+  {
+    id: NOTE_IDS.techPostgresIndexing,
+    relativePath: 'notes/tech/Postgres Indexing.md',
+    title: 'Postgres Indexing',
+    emoji: '🐘',
+    tags: ['tech/sql', 'tech/postgres'],
+    customProps: { language: 'sql', level: 'intermediate' },
+    daysAgoCreated: -160,
+    daysAgoModified: -50,
+    body: `## When B-tree isn't enough
+
+\`\`\`sql
+-- Partial index for hot path
+CREATE INDEX idx_tasks_active
+  ON tasks (project_id, modified_at DESC)
+  WHERE archived_at IS NULL;
+
+-- GIN for tag arrays
+CREATE INDEX idx_tasks_tags
+  ON tasks USING GIN (tags);
+
+-- BRIN for time-series, low maintenance
+CREATE INDEX idx_events_brin
+  ON events USING BRIN (created_at);
+\`\`\`
+
+## Pair with EXPLAIN ANALYZE
+
+Always. Otherwise you're index-cargo-culting.
+
+## Reference
+
+[[CMU Database Course]] — the deep dive that finally made this stick.
+
+#tech/sql #tech/postgres
+`
+  },
+  {
+    id: NOTE_IDS.techCMUDatabaseCourse,
+    relativePath: 'notes/tech/CMU Database Course.md',
+    title: 'CMU Database Course',
+    emoji: '🎓',
+    tags: ['tech/sql', 'learning'],
+    customProps: { level: 'advanced' },
+    daysAgoCreated: -210,
+    daysAgoModified: -90,
+    body: `Andy Pavlo's *Intro to Database Systems* (15-445). Watched all of fall 2024.
+
+The B+ tree section unstuck me. The query optimizer one terrified me — in a good way.
+
+Pair with [[Postgres Indexing]] for practice.
+
+#tech/sql #learning
+`
+  },
+  {
+    id: NOTE_IDS.techKipThorneBlackHoles,
+    relativePath: 'notes/tech/Kip Thorne — Black Holes.md',
+    title: 'Kip Thorne — Black Holes',
+    emoji: '⚫',
+    tags: ['tech/physics', 'reference'],
+    customProps: { level: 'intermediate' },
+    daysAgoCreated: -290,
+    daysAgoModified: -100,
+    body: `## Why I read this in 2026
+
+Watched [[Interstellar]] for the fourth time. Wanted to understand Gargantua, not just gawk at it.
+
+## Highlights
+
+- Schwarzschild radius is *that* simple: $r_s = \\frac{2GM}{c^2}$
+- Spinning black holes have an ergosphere — energy can be extracted
+- The hairy theorem: a black hole has only mass, charge, and spin[^1]
+
+[^1]: Kerr-Newman, technically.
+
+> Black holes are not dragons. They are *predictions*.
+
+#tech/physics
+`
+  },
+  {
+    id: NOTE_IDS.techElectronGotchas,
+    relativePath: 'notes/tech/Electron Gotchas.md',
+    title: 'Electron Gotchas',
+    emoji: '⚡',
+    tags: ['tech/electron', 'reference'],
+    customProps: { language: 'javascript', level: 'intermediate' },
+    daysAgoCreated: -100,
+    daysAgoModified: -5,
+    body: `## Native module ABI
+
+\`better-sqlite3\` must be rebuilt against the *target* runtime.
+
+\`\`\`bash
+# For node tests
+pnpm rebuild better-sqlite3
+
+# For electron app
+pnpm exec electron-rebuild -f -o better-sqlite3
+\`\`\`
+
+> [!error]
+> Forget this and you'll get \`ERR_DLOPEN_FAILED\` and the app falls through to the welcome screen. Spent two hours on this once.
+
+## IPC contract drift
+
+Run \`pnpm ipc:check\` after editing any contract type. Renderer will lie about preload until you do.
+
+#tech/electron
+`
+  },
+  {
+    id: NOTE_IDS.techSqliteVec,
+    relativePath: 'notes/tech/sqlite-vec.md',
+    title: 'sqlite-vec',
+    emoji: '🧮',
+    tags: ['tech/sql', 'tech/embeddings'],
+    customProps: { language: 'sql', level: 'intermediate' },
+    daysAgoCreated: -50,
+    daysAgoModified: -8,
+    body: `## Setup
+
+\`\`\`typescript
+import * as sqliteVec from 'sqlite-vec'
+sqliteVec.load(sqliteDb)
+
+sqliteDb.exec(\`
+  CREATE VIRTUAL TABLE vec_notes USING vec0(
+    note_id TEXT PRIMARY KEY,
+    embedding float[384] distance_metric=cosine
+  )
+\`)
+\`\`\`
+
+## Querying
+
+\`\`\`sql
+SELECT note_id, distance
+FROM vec_notes
+WHERE embedding MATCH ?
+  AND k = 10
+ORDER BY distance;
+\`\`\`
+
+#tech/sql #tech/embeddings
+`
+  },
+  {
+    id: NOTE_IDS.techVimMotions,
+    relativePath: 'notes/tech/Vim Motions.md',
+    title: 'Vim Motions',
+    emoji: '⌨️',
+    tags: ['tech/editor', 'reference'],
+    customProps: { level: 'intermediate' },
+    daysAgoCreated: -800,
+    daysAgoModified: -30,
+    body: `## Motions I use daily
+
+- \`ciw\` — change inner word
+- \`dap\` — delete a paragraph
+- \`%\` — match brace
+- \`f<char>\` and \`t<char>\` — jump to char
+- \`gd\` — go to definition
+
+## Plugins
+
+- vim-surround
+- vim-commentary
+- fzf.vim
+
+#tech/editor
+`
+  },
+  {
+    id: NOTE_IDS.techGitWorkflow,
+    relativePath: 'notes/tech/Git Workflow.md',
+    title: 'Git Workflow',
+    emoji: '🌿',
+    tags: ['tech/git', 'reference'],
+    customProps: { level: 'intermediate' },
+    daysAgoCreated: -350,
+    daysAgoModified: -14,
+    body: `## Daily
+
+\`\`\`bash
+git switch -c feat/inbox-snooze
+# work...
+git add -p
+git commit -m "feat: snooze inbox items with reason"
+git push -u origin HEAD
+gh pr create --fill
+\`\`\`
+
+## Rebase, don't merge
+
+Until the branch lands. After that, it's history.
+
+#tech/git
+`
+  },
+  {
+    id: NOTE_IDS.techRustNotes,
+    relativePath: 'notes/tech/Rust Notes.md',
+    title: 'Rust Notes',
+    emoji: '🦀',
+    tags: ['tech/rust', 'learning'],
+    customProps: { language: 'rust', level: 'beginner', status: 'active' },
+    daysAgoCreated: -75,
+    daysAgoModified: -10,
+    body: `Picking it up for fun and possible Memry-CLI tooling.
+
+\`\`\`rust
+fn main() {
+    let nums = vec![1, 2, 3, 4, 5];
+    let sum: i32 = nums.iter().sum();
+    println!("sum: {}", sum);
+}
+\`\`\`
+
+Borrow checker is exactly as advertised. The first week is rough; the second week clicks.
+
+#tech/rust #learning
+`
+  },
+  {
+    id: NOTE_IDS.techDockerCheatsheet,
+    relativePath: 'notes/tech/Docker Cheatsheet.md',
+    title: 'Docker Cheatsheet',
+    emoji: '🐳',
+    tags: ['tech/docker', 'reference'],
+    customProps: { language: 'shell', level: 'intermediate' },
+    daysAgoCreated: -420,
+    daysAgoModified: -25,
+    body: `\`\`\`bash
+docker ps -a
+docker logs -f <container>
+docker exec -it <container> /bin/bash
+docker compose up -d
+docker compose down -v
+docker system prune -af --volumes
+\`\`\`
+
+#tech/docker
+`
+  },
+
+  // ============================================================================
+  // TRAVEL
+  // ============================================================================
+  {
+    id: NOTE_IDS.travelTokyoTrip,
+    relativePath: 'notes/travel/Tokyo Trip.md',
+    title: 'Tokyo Trip',
+    emoji: '🗼',
+    tags: ['travel/asia', 'travel/japan', 'memoir'],
+    customProps: {
+      location: 'Tokyo, Japan',
+      startDate: '2026-04-12',
+      endDate: '2026-04-19',
+      status: 'done'
+    },
+    daysAgoCreated: -60,
+    daysAgoModified: -19,
+    body: `## Day-by-day
+
+- **Day 1** — Land at Haneda 16:00. Tokyo Tower. Onigiri at Narita-zushi.
+- **Day 2** — Shibuya, Meiji Jingu, late ramen at [[Osaka Ramen|the place I keep going to]] (technically Tokyo branch).
+- **Day 3** — Ghibli Museum. See [[Spirited Away]] before the trip — pays off here.
+- **Day 4** — Day trip to Kyoto — see [[Kyoto Day Trip]].
+- **Day 5** — Tsukiji. Coffee crawl — see [[Tokyo Cafes]].
+- **Day 6** — Disney Sea (yes).
+- **Day 7** — Last day. Souvenirs. Cried at Tokyo Station.
+- **Day 8** — Fly home.
+
+## Spending
+
+| Bucket | ¥ | $ |
+|--------|---|---|
+| Flights | 145000 | 970 |
+| Hotel | 110000 | 735 |
+| Food | 75000 | 500 |
+| Trains | 25000 | 165 |
+| Souvenirs | 30000 | 200 |
+| **Total** | **385000** | **2570** |
+
+## Photos
+
+![Tokyo Tower at dusk](attachments/tokyo-tower.jpg)
+
+Linked journal entries: [[2026-04-15]], [[2026-04-17]].
+
+#travel/asia #japan
+`
+  },
+  {
+    id: NOTE_IDS.travelKyotoDayTrip,
+    relativePath: 'notes/travel/Kyoto Day Trip.md',
+    title: 'Kyoto Day Trip',
+    emoji: '⛩️',
+    tags: ['travel/asia', 'travel/japan'],
+    customProps: {
+      location: 'Kyoto, Japan',
+      startDate: '2026-04-15',
+      endDate: '2026-04-15',
+      status: 'done'
+    },
+    daysAgoCreated: -23,
+    daysAgoModified: -23,
+    body: `06:30 Shinkansen. Sit on the right side for Fuji.
+
+## Hits
+
+- Fushimi Inari at 09:00 — climb the back path, skip the gates Instagrammers
+- Coffee + matcha at Kurasu (near the station)
+- Kinkaku-ji in the afternoon light
+
+## Misses
+
+- Skipped Arashiyama on purpose. Save for a longer trip.
+
+Linked: [[Tokyo Trip]] (the parent), journal [[2026-04-15]].
+
+#travel/asia
+`
+  },
+  {
+    id: NOTE_IDS.travelLisbonNotes,
+    relativePath: 'notes/travel/Lisbon Notes.md',
+    title: 'Lisbon Notes',
+    emoji: '🐠',
+    tags: ['travel/europe', 'travel/portugal'],
+    customProps: {
+      location: 'Lisbon, Portugal',
+      startDate: '2025-11-08',
+      endDate: '2025-11-13',
+      status: 'done'
+    },
+    daysAgoCreated: -190,
+    daysAgoModified: -180,
+    body: `## What I'd repeat
+
+- Tram 28 — but at 07:30, not 11:00
+- Pastel de nata at Manteigaria, not the famous one
+- Sunset at Miradouro da Senhora do Monte
+
+## What I'd skip
+
+- Time-out market — fine but tourist-priced
+
+#travel/europe
+`
+  },
+  {
+    id: NOTE_IDS.travelIcelandRingRoad,
+    relativePath: 'notes/travel/Iceland Ring Road.md',
+    title: 'Iceland Ring Road',
+    emoji: '🌋',
+    tags: ['travel/europe', 'travel/iceland', 'planning'],
+    customProps: {
+      location: 'Iceland',
+      startDate: '2026-08-12',
+      endDate: '2026-08-22',
+      status: 'planning'
+    },
+    daysAgoCreated: -40,
+    daysAgoModified: -2,
+    body: `## Plan
+
+10 days, counterclockwise. Camper van with kitchen.
+
+## Key stops
+
+- Snæfellsnes peninsula
+- Westfjords (extra 2 days, worth it)
+- Lake Mývatn
+- Höfn (lobster)
+- Vik
+
+## Watchlist before going
+
+- *The Secret Life of Walter Mitty*
+- *Fjall* documentary
+- See [[Packing List]] — different from Tokyo
+
+#travel/europe #planning
+`
+  },
+  {
+    id: NOTE_IDS.travelPackingList,
+    relativePath: 'notes/travel/Packing List.md',
+    title: 'Packing List',
+    emoji: '🎒',
+    tags: ['travel', 'reference'],
+    customProps: { status: 'active' },
+    daysAgoCreated: -180,
+    daysAgoModified: -10,
+    body: `## Always
+
+- Passport, IDs, two credit cards (separate bags)
+- Phone, charger, plug adapter
+- Kindle (loaded), eye mask, earplugs
+- Two t-shirts, one nice shirt, jeans, gym shorts
+- Running shoes (always)
+
+## Trip-specific
+
+- Tokyo: light layers, walking shoes — see [[Tokyo Trip]]
+- Iceland: rain shell, gloves, base layers — see [[Iceland Ring Road]]
+- Lisbon: linen everything — see [[Lisbon Notes]]
+
+#travel #reference
+`
+  },
+  {
+    id: NOTE_IDS.travelSeoulFood,
+    relativePath: 'notes/travel/Seoul Food.md',
+    title: 'Seoul Food',
+    emoji: '🌶️',
+    tags: ['travel/asia', 'travel/korea', 'food'],
+    customProps: {
+      location: 'Seoul, South Korea',
+      startDate: '2025-09-12',
+      endDate: '2025-09-18',
+      status: 'done'
+    },
+    daysAgoCreated: -240,
+    daysAgoModified: -200,
+    body: `Best meals:
+
+- **Mapo Galbi** — Mapo-gu. Ribs at 22:00, no English menu.
+- **Café Onion** — yes it's instagrammed. Yes, the bread is still that good.
+- **Tteokbokki street stalls** — the one in Myeongdong with the ahjumma in the orange apron.
+
+#travel/asia #food
+`
+  },
+  {
+    id: NOTE_IDS.travelMexicoCityArt,
+    relativePath: 'notes/travel/Mexico City Art.md',
+    title: 'Mexico City Art',
+    emoji: '🎨',
+    tags: ['travel/americas', 'travel/mexico', 'art'],
+    customProps: {
+      location: 'Mexico City',
+      startDate: '2025-06-04',
+      endDate: '2025-06-10',
+      status: 'done'
+    },
+    daysAgoCreated: -340,
+    daysAgoModified: -310,
+    body: `Casa Estudio Luis Barragán was the trip. The water on the staircase. The pink wall. Architecture as quiet drama.
+
+#travel/americas #art
+`
+  },
+  {
+    id: NOTE_IDS.travelOsakaRamen,
+    relativePath: 'notes/travel/Osaka Ramen.md',
+    title: 'Osaka Ramen',
+    emoji: '🍜',
+    tags: ['travel/asia', 'travel/japan', 'food'],
+    customProps: {
+      location: 'Osaka, Japan',
+      status: 'reference'
+    },
+    daysAgoCreated: -60,
+    daysAgoModified: -19,
+    body: `## Spots that earned a return
+
+- **Kamukura** — light shoyu, weirdly veggie-forward. Tokyo branch shows up in [[Tokyo Trip]].
+- **Ichiran** — yeah it's a chain. The booths still rule for jet-lagged solo eating.
+- **Ramen Yashichi** — taiwanese-style. Spicy.
+
+#travel/asia #food
+`
+  },
+  {
+    id: NOTE_IDS.travelTokyoCafes,
+    relativePath: 'notes/travel/Tokyo Cafes.md',
+    title: 'Tokyo Cafes',
+    emoji: '☕',
+    tags: ['travel/asia', 'travel/japan', 'coffee'],
+    customProps: {
+      location: 'Tokyo, Japan',
+      status: 'reference'
+    },
+    daysAgoCreated: -50,
+    daysAgoModified: -19,
+    body: `Working list. Tokyo coffee is *peculiar* — slow, careful, Sunday-mass quiet.
+
+| Cafe | Neighborhood | What to order |
+|------|--------------|---------------|
+| Glitch Coffee | Jimbocho | Filter, single origin |
+| Onibus Coffee | Nakameguro | Espresso outside |
+| Fuglen | Shibuya | Norwegian-Japanese fusion vibe |
+| % Arabica | Various | Insta but yes, the latte |
+| Bear Pond | Shimokitazawa | Closes at noon — show up |
+
+Pair with [[Kitchen Confidential]] for the *travel-as-eating* mindset.
+
+#travel/asia #coffee
+`
+  },
+  {
+    id: NOTE_IDS.travelAirportLounges,
+    relativePath: 'notes/travel/Airport Lounges.md',
+    title: 'Airport Lounges',
+    emoji: '🛫',
+    tags: ['travel', 'logistics'],
+    customProps: { status: 'reference' },
+    daysAgoCreated: -300,
+    daysAgoModified: -19,
+    body: `## Worth a visit
+
+- Cathay Pacific The Pier — HKG. The cabanas are real.
+- ANA Suite — HND. The dining room.
+
+## Skip
+
+- Most "premier" Priority Pass options. Fine, not great.
+
+#travel #logistics
+`
+  }
+]
+
+const TODAY_ISO = TODAY.toISOString()
+
+export const NOTES: NoteFile[] = SPECS.map((spec) => {
+  const created = dayOffset(spec.daysAgoCreated)
+  const modified = dayOffset(spec.daysAgoModified)
+  return {
+    relativePath: spec.relativePath,
+    frontmatter: {
+      id: spec.id,
+      title: spec.title,
+      created,
+      modified,
+      tags: spec.tags,
+      ...(spec.aliases ? { aliases: spec.aliases } : {}),
+      ...(spec.emoji ? { emoji: spec.emoji } : {}),
+      ...(spec.customProps ?? {})
+    },
+    body: spec.body
+  }
+})
+
+export const TODAY_REFERENCE_ISO = TODAY_ISO
