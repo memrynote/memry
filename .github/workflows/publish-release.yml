@@ -136,11 +136,11 @@ jobs:
 
       - name: Create runtime environment
         env:
-          SYNC_SERVER_URL: ${{ vars.SYNC_SERVER_URL || secrets.SYNC_SERVER_URL }}
+          SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
         run: |
           set -euo pipefail
           if [ -z "${SYNC_SERVER_URL:-}" ]; then
-            echo "::error::Set SYNC_SERVER_URL as a repository variable or secret before publishing."
+            echo "::error::Set SYNC_SERVER_URL as a repository secret before publishing."
             exit 1
           fi
           printf 'SYNC_SERVER_URL=%s\n' "$SYNC_SERVER_URL" > apps/desktop/.env.staging
@@ -151,18 +151,24 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           CSC_IDENTITY_AUTO_DISCOVERY: true
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          CSC_LINK: ${{ secrets.MACOS_CERTIFICATE_P12 }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SYNC_SERVER_URL: ${{ vars.SYNC_SERVER_URL || secrets.SYNC_SERVER_URL }}
+          SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
         run: |
           set -euo pipefail
-          for name in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
-            if [ -z "${!name:-}" ]; then
-              echo "::error::Missing required release secret: $name"
+          while IFS=: read -r env_name secret_name; do
+            if [ -z "${!env_name:-}" ]; then
+              echo "::error::Missing required release secret: $secret_name"
               exit 1
             fi
-          done
+          done <<'EOF'
+          CSC_LINK:MACOS_CERTIFICATE_P12
+          CSC_KEY_PASSWORD:MACOS_CERTIFICATE_PASSWORD
+          APPLE_ID:APPLE_ID
+          APPLE_APP_SPECIFIC_PASSWORD:APPLE_APP_SPECIFIC_PASSWORD
+          APPLE_TEAM_ID:APPLE_TEAM_ID
+          EOF
 
           pnpm --filter @memry/desktop build
           node apps/desktop/scripts/build-packaged-app.js \
