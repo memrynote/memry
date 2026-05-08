@@ -63,6 +63,10 @@ const databaseModuleTargets = [
   path.resolve(databaseRoot, 'client')
 ]
 
+function normalizeRepoPath(filePath) {
+  return filePath.replace(/\\/g, '/')
+}
+
 async function walk(dir) {
   const entries = await fs.readdir(dir, { withFileTypes: true })
   const files = await Promise.all(
@@ -136,7 +140,7 @@ function getFilesForRoot(rootPath) {
 }
 
 function formatViolation(filePath, specifier, reason) {
-  return `${path.relative(repoRoot, filePath)} -> ${specifier} (${reason})`
+  return `${normalizeRepoPath(path.relative(repoRoot, filePath))} -> ${specifier} (${reason})`
 }
 
 function isBlockedDataSchemaImport(specifier) {
@@ -317,7 +321,7 @@ async function main() {
   )
   for (const filePath of ipcFiles) {
     const source = await fs.readFile(filePath, 'utf8')
-    const relativeFilePath = path.relative(repoRoot, filePath)
+    const relativeFilePath = normalizeRepoPath(path.relative(repoRoot, filePath))
     const syncBoundaryExempt = syncBoundaryExemptIpcFiles.has(relativeFilePath)
 
     for (const { statement, specifier } of scanImports(source)) {
@@ -372,7 +376,7 @@ async function main() {
 
   for (const filePath of featureFiles) {
     const source = await fs.readFile(filePath, 'utf8')
-    const relativeFilePath = path.relative(repoRoot, filePath)
+    const relativeFilePath = normalizeRepoPath(path.relative(repoRoot, filePath))
     const syncBoundaryExempt = syncBoundaryExemptIpcFiles.has(relativeFilePath)
 
     for (const { specifier } of scanImports(source)) {
