@@ -5,6 +5,10 @@ import { Picker } from '@/components/ui/picker'
 import type { Status } from '@/data/tasks-data'
 import { StatusIcon } from './status-icon'
 
+const stopTriggerPropagation = (event: React.SyntheticEvent): void => {
+  event.stopPropagation()
+}
+
 interface InlineStatusPopoverProps {
   statusId: string
   statuses: Status[]
@@ -55,6 +59,9 @@ export const InlineStatusPopover = ({
             disabled && 'pointer-events-none'
           )}
           aria-label={`Status: ${currentStatus?.name || 'Unknown'}. Click to change.`}
+          onClick={stopTriggerPropagation}
+          onPointerDown={stopTriggerPropagation}
+          onKeyDown={stopTriggerPropagation}
         >
           <StatusIcon type={effectiveType} color={statusColor} size="lg" />
         </button>
