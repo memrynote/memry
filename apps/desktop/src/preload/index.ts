@@ -1,6 +1,10 @@
 import { contextBridge } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import { LocaleChannels } from '@memry/contracts/ipc-channels'
+import {
+  AppChannels,
+  LocaleChannels,
+  type AppNavigationCommandEvent
+} from '@memry/contracts/ipc-channels'
 import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
 import { createLogger } from './lib/logger'
 import { invoke, invokeSync, subscribe } from './lib/ipc'
@@ -94,6 +98,8 @@ export const api = {
   ...updaterEvents,
   ...flushApi,
 
+  onAppNavigationCommand: (callback: (command: AppNavigationCommandEvent) => void) =>
+    subscribe<AppNavigationCommandEvent>(AppChannels.events.NAVIGATION_COMMAND, callback),
   onLocaleChanged: (callback: (locale: Locale) => void) =>
     subscribe<Locale>(LocaleChannels.Changed, callback)
 }

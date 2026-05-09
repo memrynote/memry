@@ -9,6 +9,24 @@
  */
 
 // ============================================================================
+// App Channels
+// ============================================================================
+
+export type AppNavigationDirection = 'back' | 'forward'
+
+export interface AppNavigationCommandEvent {
+  direction: AppNavigationDirection
+}
+
+export const AppChannels = {
+  events: {
+    NAVIGATION_COMMAND: 'app:navigation-command'
+  }
+} as const
+
+export type AppEventChannel = (typeof AppChannels.events)[keyof typeof AppChannels.events]
+
+// ============================================================================
 // Vault Channels
 // ============================================================================
 

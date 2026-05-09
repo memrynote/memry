@@ -20,6 +20,7 @@ export {
 // Note: isMac is also exported from use-keyboard-shortcuts, using that one
 export * from './use-tab-keyboard-shortcuts'
 export * from './use-chord-shortcuts'
+export * from './use-mouse-nav-buttons'
 export * from './use-pane-navigation'
 
 // Accessibility & polish

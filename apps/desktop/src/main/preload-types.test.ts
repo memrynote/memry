@@ -21,6 +21,7 @@ describe('preload type declarations', () => {
     expectTypeOf<Window['api']['crypto']['encryptItem']>().toBeFunction()
     expectTypeOf<Window['api']['syncAttachments']['upload']>().toBeFunction()
     expectTypeOf<Window['api']['onSyncStatusChanged']>().toBeFunction()
+    expectTypeOf<Window['api']['onAppNavigationCommand']>().toBeFunction()
   })
 
   it('reuses canonical rpc note, task, and inbox types', () => {
