@@ -82,6 +82,51 @@ describe('useJournalEntry', () => {
       expect(result.current.loadedForDate).toBe('2026-01-03')
     })
 
+    it('should create a missing entry from the default journal template', async () => {
+      const createdEntry = createMockJournalEntry({
+        date: '2026-01-03',
+        content: '# 2026-01-03\n\nSaturday\n\n2026-01-03',
+        tags: ['reflection']
+      })
+
+      ;(window.api.journal.get as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+      ;(window.api.settings.getJournalSettings as ReturnType<typeof vi.fn>).mockResolvedValue({
+        defaultTemplate: 'daily-reflection',
+        showSchedule: true,
+        showTasks: true,
+        showAIConnections: true,
+        showStatsFooter: false
+      })
+      ;(window.api.templates.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: 'daily-reflection',
+        name: 'Daily Reflection',
+        description: 'Reflect on the day',
+        icon: null,
+        isBuiltIn: true,
+        tags: ['reflection'],
+        properties: [{ name: 'mood', type: 'select', value: 'neutral' }],
+        content: '# {{date:YYYY-MM-DD}}\n\n{{day-of-week}}\n\n{{title}}',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        modifiedAt: '2026-01-01T00:00:00.000Z'
+      })
+      ;(window.api.journal.create as ReturnType<typeof vi.fn>).mockResolvedValue(createdEntry)
+
+      const { result } = renderHook(() => useJournalEntry('2026-01-03'), { wrapper })
+
+      await waitFor(() => {
+        expect(window.api.journal.create).toHaveBeenCalledWith({
+          date: '2026-01-03',
+          content: '# 2026-01-03\n\nSaturday\n\n2026-01-03',
+          tags: ['reflection'],
+          properties: { mood: 'neutral' }
+        })
+      })
+
+      await waitFor(() => {
+        expect(result.current.entry).toEqual(createdEntry)
+      })
+    })
+
     it('should handle load errors', async () => {
       ;(window.api.journal.get as ReturnType<typeof vi.fn>).mockRejectedValue(
         new Error('Failed to load journal')
