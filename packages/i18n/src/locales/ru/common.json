@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "close": "Закрыть",
+    "ok": "ОК",
+    "yes": "Да",
+    "no": "Нет",
+    "delete": "Удалить",
+    "confirm": "Подтвердить",
+    "apply": "Применить",
+    "done": "Готово",
+    "discard": "Отбросить",
+    "dontSave": "Не сохранять",
+    "edit": "Редактировать",
+    "add": "Добавить",
+    "remove": "Удалить",
+    "retry": "Повторить попытку",
+    "submit": "Отправить",
+    "back": "Назад",
+    "next": "Далее",
+    "continue": "Продолжить",
+    "reset": "Сброс",
+    "copy": "Копировать",
+    "paste": "Вставить",
+    "create": "Создать",
+    "open": "Открыть"
+  },
+  "state": {
+    "loading": "Загрузка…",
+    "saving": "Сохранение…",
+    "deleting": "Удаление…",
+    "searching": "Поиск…",
+    "error": "Ошибка",
+    "success": "Успех"
+  },
+  "empty": {
+    "noResults": "Нет результатов",
+    "noItems": "Нет товаров",
+    "noMatch": "Нет совпадений"
+  },
+  "action": {
+    "search": "Поиск",
+    "edit": "Редактировать",
+    "delete": "Удалить",
+    "close": "Закрыть",
+    "expand": "Развернуть",
+    "collapse": "Свернуть",
+    "showMore": "+{count, plural, one {# подробнее} other {# подробнее}}",
+    "showLess": "Показать меньше"
+  },
+  "tabs": {
+    "pin": "Вкладка «Закрепить»",
+    "unpin": "Открепить вкладку",
+    "contextMenu": {
+      "close": "Закрыть",
+      "closeOthers": "Закрыть других",
+      "closeToRight": "Ближе к правому краю",
+      "closeAll": "Закрыть все",
+      "duplicate": "Дублировать вкладку",
+      "splitRight": "Разделить вправо",
+      "splitDown": "Разделить вниз",
+      "copyPath": "Копировать путь",
+      "revealInSidebar": "Показать на боковой панели"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {# элемент} other {# элементов}}",
+    "note": "{count, plural, one {Примечание #} other {Примечания к #}}",
+    "folder": "{count, plural, one {Папка #} other {Папки #}}",
+    "task": "{count, plural, one {Задача #} other {Задачи #}}",
+    "project": "{count, plural, one {Проект #} other {Проекты #}}",
+    "itemDelete": "{count, plural, one {Удалить элемент #} other {Удалить элементы #}}"
+  },
+  "toast": {
+    "actionFailed": "Действие не выполнено",
+    "nothingToUndo": "Ничего нельзя отменить",
+    "undone": "Отменено: {description}",
+    "undoFailed": "Не удалось отменить действие.",
+    "copied": "Скопировано",
+    "copyFailed": "Не удалось скопировать"
+  },
+  "dateRelative": {
+    "today": "Сегодня",
+    "yesterday": "Вчера",
+    "daysAgo": "{count, plural, one {# день назад} other {# дней назад}}"
+  },
+  "recurrence": {
+    "everyDay": "Каждый день",
+    "everyNDays": "{count, plural, one {Каждый день} other {Каждые # дней}}",
+    "everyWeek": "Каждую неделю",
+    "everyNWeeks": "{count, plural, one {Каждую неделю} other {Каждые # недель}}",
+    "everyWeekday": "Каждый будний день",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Каждый будний день} other {Каждые # недели по будням.}}",
+    "everyWeekend": "Каждые выходные",
+    "everyNWeeksOnWeekends": "{count, plural, one {Каждые выходные} other {Каждые # недели по выходным.}}",
+    "everyWeekOnDays": "Каждую неделю на {days}",
+    "everyNWeeksOnDays": "{count, plural, one {Каждую неделю на {days}} other {Каждые # недель на {days}}}",
+    "everyMonth": "Каждый месяц",
+    "everyNMonths": "{count, plural, one {Каждый месяц} other {Каждые # месяцев}}",
+    "everyMonthOnDay": "Каждый месяц на {day}{suffix}.",
+    "everyNMonthsOnDay": "{count, plural, one {Каждый месяц на {day}{suffix}.} other {Каждые # месяцев на {day}{suffix}}}",
+    "everyMonthOnWeekDay": "Каждый месяц на {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Каждый месяц на {week} {day}} other {Каждые # месяцев на {week} {day}}}",
+    "everyYear": "Каждый год",
+    "everyNYears": "{count, plural, one {Каждый год} other {Каждые # лет}}",
+    "repeats": "Повторы"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Коллекции",
+      "newNote": "Новая заметка",
+      "newNote2": "Новая заметка",
+      "newFolder": "Новая папка",
+      "newFolder2": "Новая папка",
+      "bookmarks": "Закладки",
+      "tags": "Теги",
+      "dropFilesToImport": "Перетащите файлы для импорта",
+      "newNoteN": "Новая заметка (⌘N)",
+      "new": "Новый",
+      "syncDisabled": "Синхронизация отключена",
+      "syncDisabled2": "Синхронизация отключена"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Изменение размера панели «День»",
+      "dragToResizeDoubleClickToReset": "Перетащите, чтобы изменить размер · Дважды щелкните, чтобы сбросить настройки"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Найдите, замените, спросите..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Пропустить регистрацию",
+      "welcomeToMemry": "Добро пожаловать в Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Ваша личная база знаний. Давайте уделим 2 минуты, чтобы вы начали.",
+      "getStarted": "Начать ",
+      "createYourFirstNote": "Создайте свою первую заметку",
+      "markdownBasedStoredLocallyAsPlainFiles": "На основе Markdown, хранятся локально в виде простых файлов.",
+      "eGMeetingNotesIdeasAnything": "например Заметки о встречах, идеи, что угодно...",
+      "skip": "Пропустить",
+      "createNote": "Создать заметку ",
+      "addYourFirstTask": "Добавьте свою первую задачу",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Задачи связаны с вашими заметками с указанием приоритетов и сроков выполнения.",
+      "eGReviewProjectProposal": "например Рассмотрение проектного предложения...",
+      "skip2": "Пропустить",
+      "createTask": "Создать задачу ",
+      "syncAcrossDevices": "Синхронизация между устройствами",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Синхронизируйте свои заметки и задачи на всех своих устройствах. Вы всегда можете настроить это позже.",
+      "skipForNow": "Пропустить сейчас",
+      "doneLetSGo": "Готово — поехали! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Установить значок папки"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "ПОДСКАЗКА"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Выбор значков",
+      "selectIcon": "Выберите значок",
+      "closeIconPicker": "Закрыть выбор значков",
+      "searchIcons": "Иконки поиска...",
+      "all": "Все",
+      "clearIcon": "Очистить значок",
+      "noIconsFoundFor": "Не найдено значков для \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Сочетания клавиш",
+      "closeShortcutsHelp": "Закрытие ярлыков поможет",
+      "press": "Пресса",
+      "toClose": "закрыть"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Установить значок",
+      "clearIcon": "Очистить значок"
+    },
+    "componentsNavMain": {
+      "platform": "Платформа"
+    },
+    "componentsNavProjects": {
+      "projects": "Проекты",
+      "more": "Подробнее",
+      "viewProject": "Посмотреть проект",
+      "shareProject": "Поделиться проектом",
+      "deleteProject": "Удалить проект",
+      "more2": "Подробнее"
+    },
+    "componentsNavUser": {
+      "cn": "Китай",
+      "cn2": "Китай",
+      "upgradeToPro": "Обновите до Pro",
+      "account": "Аккаунт",
+      "billing": "Биллинг",
+      "notifications": "Уведомления",
+      "logOut": "Выйти"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Поиск",
+      "searchNotesTasksJournalInbox": "Поиск заметок, задач, журнала, почтового ящика...",
+      "noResultsFor": "Нет результатов по запросу «",
+      "rdquo": "рдкво;",
+      "result": "результат"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Ищите и нажимайте на предметы, чтобы построить свой след",
+      "reasons": "Причины",
+      "clear": "Очистить"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Очистить",
+      "tags": "Теги",
+      "filterByTag": "Фильтровать по тегу...",
+      "dateRange": "Диапазон дат"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Посмотреть все ",
+      "results": "результаты"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "П",
+      "fuzzy": "нечеткий"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Ни одна вкладка не открыта",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Откройте страницу на боковой панели или создайте новую вкладку, чтобы начать работу.",
+      "openInbox": "Открыть входящие",
+      "closePane": "Закрыть панель"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Пресеты макета",
+      "layoutPresets2": "Пресеты макета"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Изменение размера панелей"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "Контекст задач недоступен.",
+      "searchResults": "Результаты поиска",
+      "unknownTabType": "Неизвестный тип вкладки: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "несохраненные изменения",
+      "preview": "предварительный просмотр"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Новая вкладка",
+      "newTab2": "Новая вкладка",
+      "newNote": "Новая заметка",
+      "journal": "Журнал",
+      "calendar": "Календарь",
+      "inboxCapture": "Захват входящих сообщений",
+      "tasks": "Задачи"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Несохраненные изменения",
+      "unsaved": "несохраненный)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Несохраненные изменения"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Закрыть все вкладки"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Открытые вкладки",
+      "scrollTabsLeft": "Прокручивать вкладки влево",
+      "scrollTabsRight": "Прокручивать вкладки вправо",
+      "graphG": "График (⌘G)",
+      "dayPanel": "Дневная панель"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "Прокручивать вкладки влево",
+      "scrollTabsRight": "Прокручивать вкладки вправо"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "Открытые вкладки",
+      "scrollTabsLeft": "Прокручивать вкладки влево",
+      "scrollTabsRight": "Прокручивать вкладки вправо"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Что-то пошло не так",
+      "anErrorOccurredWhileRenderingThisTabContent": "Произошла ошибка при отрисовке содержимого этой вкладки.",
+      "tryAgain": "Попробуйте еще раз"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Значок заметки"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Несохраненные изменения",
+      "quot": "quot;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; имеет несохраненные изменения. Что бы вы хотели сделать?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Новое рабочее пространство",
+      "darkMode": "Темный режим",
+      "settings": "Настройки",
+      "integrations": "Интеграции",
+      "signOut": "Выйти",
+      "downloadOnIos": "Скачать на iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Закрыть окно",
+      "minimizeWindow": "Свернуть окно",
+      "maximizeWindow": "Развернуть окно"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Предложения",
+      "or": "или",
+      "enter": "Войти",
+      "toInsert": "вставить"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "панировочные сухари",
+      "more": "Подробнее"
+    },
+    "componentsUiDialog": {
+      "close": "Закрыть"
+    },
+    "componentsUiSheet": {
+      "close": "Закрыть"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Боковая панель",
+      "displaysTheMobileSidebar": "Отображает боковую панель для мобильных устройств.",
+      "toggleSidebar": "Переключить боковую панель",
+      "toggleSidebar2": "Переключить боковую панель",
+      "dragToResizeDoubleClickToReset": "Перетащите, чтобы изменить размер · Дважды щелкните, чтобы сбросить настройки"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Добро пожаловать в Memry",
+      "yourPersonalKnowledgeManagementSystem": "Ваша персональная система управления знаниями.",
+      "selectAFolderToStoreYourNotesAndTasks": "Выберите папку для хранения ваших заметок и задач.",
+      "opening": "Открытие...",
+      "selectVaultFolder": "Выберите папку хранилища",
+      "plainMarkdown": "Обычная уценка",
+      "yourNotesStayPortable": "Ваши заметки остаются портативными",
+      "syncAnywhere": "Синхронизировать где угодно",
+      "useDropboxIcloudGit": "Используйте Dropbox, iCloud, Git.",
+      "recentVaults": "Недавние хранилища",
+      "notesLastOpened": "заметки · Последнее открытие"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Хранилищ пока нет",
+      "openVault": "Открыть хранилище",
+      "settings": "Настройки",
+      "logOut": "Выйти",
+      "signInToSync": "Войдите для синхронизации",
+      "remove": "Удалить »",
+      "rdquoFromList": "рдкво; из списка?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Это хранилище будет удалено из приложения, но ваши файлы останутся на диске. Вы всегда можете добавить его позже.",
+      "cancel": "Отмена",
+      "remove2": "Удалить"
+    },
+    "componentsWindowControls": {
+      "searchK": "Поиск (⌘К)",
+      "browserBack": "Браузер назад",
+      "back": "Назад",
+      "browserForward": "Браузер вперед",
+      "forward": "Вперед"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Не удалось импортировать файлы",
+      "failedToCreateNote": "Не удалось создать заметку",
+      "failedToAccessMicrophone": "Не удалось получить доступ к микрофону"
+    },
+    "toasts": {
+      "undone": "Отменено"
+    }
+  }
+}

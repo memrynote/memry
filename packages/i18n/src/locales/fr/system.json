@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "Sélectionner un dossier de coffre-fort",
+      "button": "Sélectionnez le coffre-fort"
+    },
+    "exportPdf": {
+      "title": "Exporter au format PDF",
+      "filterName": "Document PDF"
+    },
+    "exportHtml": {
+      "title": "Exporter au format HTML",
+      "filterName": "Document HTML"
+    },
+    "import": {
+      "filterSupported": "Fichiers pris en charge",
+      "filterAll": "Tous les fichiers"
+    },
+    "exportCancelled": "Exportation annulée",
+    "update": {
+      "availableTitle": "Mise à jour disponible",
+      "availableMessage": "Memry {version} est disponible.",
+      "availableDetailFallback": "Télécharger la mise à jour maintenant ?",
+      "buttonDownload": "Télécharger",
+      "buttonLater": "Plus tard",
+      "readyTitle": "Mise à jour prête",
+      "readyMessage": "Memry {version} a été téléchargé.",
+      "readyDetailFallback": "Redémarrez Memry pour terminer l'installation de la mise à jour.",
+      "buttonRestartNow": "Redémarrez maintenant",
+      "releaseNotesLabel": "Notes de version :"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "Rappel de notes",
+      "journal": "Rappel du journal",
+      "highlight": "Rappel des surbrillance",
+      "fallback": "Rappel dû",
+      "default": "Rappel"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "L'heure de rappel doit être dans le futur",
+    "definitionNotFound": "Définition introuvable",
+    "noteNotFound": "Remarque introuvable",
+    "updateFailed": "La mise à jour a échoué"
+  }
+}

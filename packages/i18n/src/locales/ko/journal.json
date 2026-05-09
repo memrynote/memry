@@ -1,0 +1,303 @@
+{
+  "title": "저널",
+  "section": {
+    "journal": "저널",
+    "aiConnections": "AI 연결",
+    "todaysNotes": "오늘의 메모",
+    "todaysSchedule": "오늘의 일정",
+    "todaysTasks": "오늘의 작업",
+    "schedule": "일정",
+    "tasks": "작업",
+    "calendarEvents": "캘린더 이벤트",
+    "overdueTasks": "기한이 지난 작업",
+    "technicalDetails": "기술적인 세부사항"
+  },
+  "action": {
+    "versionHistory": "버전 기록",
+    "export": "수출",
+    "fullWidth": "전폭",
+    "journalSettings": "저널 설정",
+    "fullMode": "전체 모드",
+    "compactMode": "컴팩트 모드",
+    "focusMode": "초점 모드",
+    "exitFocusMode": "초점 모드 종료",
+    "enterFocusMode": "집중 모드 들어가기",
+    "createNote": "메모 작성",
+    "createNewNote": "새 메모 만들기",
+    "showLess": "간략히 보기",
+    "showMoreNotes": "{count} 더 많은 메모 표시",
+    "showMoreNotes_plural": "{count} 메모 더 보기",
+    "showFewerNotes": "메모 간략히 표시",
+    "startBlank": "대신 공백으로 시작하세요",
+    "changeTemplate": "템플릿 변경",
+    "dismissIndicator": "표시 해제",
+    "refreshConnections": "연결 새로 고침",
+    "reloadJournal": "저널 다시 로드",
+    "goToToday": "오늘로 이동",
+    "copyUnsavedContent": "저장되지 않은 콘텐츠를 클립보드에 복사",
+    "openNoteFullPage": "전체 페이지로 노트 열기",
+    "closeNoteDrawer": "메모 창 닫기",
+    "addBookmark": "북마크 추가",
+    "removeBookmark": "북마크 삭제",
+    "tryAgain": "다시 시도"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "무슨 계획을 세우고 있는 거야?",
+      "today": "오늘 무슨 생각이 드시나요...",
+      "past": "이날을 반성해보세요...",
+      "default": "글쓰기를 시작하세요..."
+    },
+    "toolbar": {
+      "ariaLabel": "텍스트 서식",
+      "bold": "굵게",
+      "italic": "이탤릭체",
+      "underline": "밑줄",
+      "strikethrough": "취소선",
+      "link": "링크",
+      "image": "이미지",
+      "moreOptions": "추가 옵션",
+      "heading1": "제목 1",
+      "heading2": "제목 2",
+      "heading3": "제목 3",
+      "bulletList": "글머리 기호 목록",
+      "numberedList": "번호 매기기 목록",
+      "checklist": "체크리스트",
+      "quote": "견적",
+      "divider": "분배기",
+      "codeBlock": "코드 블록"
+    },
+    "prompt": {
+      "enterUrl": "URL 입력:"
+    },
+    "upload": {
+      "noEntry": "이미지를 업로드할 수 없습니다. 선택된 저널 항목이 없습니다.",
+      "failed": "이미지를 업로드하지 못했습니다."
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "오늘",
+      "yesterday": "어제",
+      "tomorrow": "내일",
+      "future": "미래"
+    },
+    "weekday": {
+      "sunday": "일요일",
+      "monday": "월요일",
+      "tuesday": "화요일",
+      "wednesday": "수요일",
+      "thursday": "목요일",
+      "friday": "금요일",
+      "saturday": "토요일"
+    },
+    "weekdayShort": {
+      "sunday": "태양",
+      "monday": "월",
+      "tuesday": "화",
+      "wednesday": "수요일",
+      "thursday": "목",
+      "friday": "금",
+      "saturday": "토요일"
+    },
+    "month": {
+      "january": "1월",
+      "february": "2월",
+      "march": "3월",
+      "april": "4월",
+      "may": "5월",
+      "june": "6월",
+      "july": "7월",
+      "august": "8월",
+      "september": "9월",
+      "october": "10월",
+      "november": "11월",
+      "december": "12월"
+    },
+    "monthShort": {
+      "january": "1월",
+      "february": "2월",
+      "march": "3월",
+      "april": "4월",
+      "may": "5월",
+      "june": "준",
+      "july": "7월",
+      "august": "8월",
+      "september": "9월",
+      "october": "10월",
+      "november": "11월",
+      "december": "12월"
+    },
+    "greeting": {
+      "morning": "좋은 아침",
+      "afternoon": "안녕하세요",
+      "evening": "안녕하세요",
+      "night": "잘자요"
+    },
+    "allDay": "하루 종일"
+  },
+  "nav": {
+    "previousDay": "전날",
+    "nextDay": "다음날",
+    "previousMonth": "지난달",
+    "nextMonth": "다음 달",
+    "previousYear": "전년도",
+    "nextYear": "내년",
+    "journalBack": "저널백",
+    "journalNavigation": "저널 탐색",
+    "dateNavigation": "저널 날짜 탐색",
+    "goToYearView": "연도 보기로 이동",
+    "previousView": "이전 보기",
+    "nextView": "다음 보기"
+  },
+  "aria": {
+    "moreOptions": "추가 옵션",
+    "documentStatistics": "문서통계",
+    "dayContext": "일별 맥락: 작업 및 일정",
+    "scheduleEvents": "이벤트 예약",
+    "tasks": "작업",
+    "notesCreatedToday": "오늘 생성된 {count} 노트"
+  },
+  "empty": {
+    "noEntry": "입장불가",
+    "noDaysInMonth": "이번 달에는 날짜가 없습니다.",
+    "noEventsScheduled": "예정된 이벤트가 없습니다.",
+    "noEventsScheduledToday": "오늘 예정된 이벤트가 없습니다.",
+    "noEventsWereScheduled": "예정된 이벤트가 없습니다.",
+    "noTasksDue": "마감된 작업 없음",
+    "noTasksDueToday": "오늘 마감인 작업이 없습니다.",
+    "noTasksWereDue": "마감된 작업이 없습니다.",
+    "noNotesToday": "오늘 생성된 메모가 없습니다.",
+    "startDocumenting": "당신의 생각과 아이디어를 문서화하기 시작하세요"
+  },
+  "ai": {
+    "loading": "입력 내용을 분석하는 중...",
+    "empty": {
+      "willAppear": "여기에 연결이 표시됩니다",
+      "noneYet": "아직 연결을 찾을 수 없습니다.",
+      "moreJournaling": "일기를 더 많이 쓸수록 AI는 관련 항목을 찾습니다.",
+      "keepWriting": "관련 항목을 찾으려면 계속해서 글을 쓰세요."
+    },
+    "error": {
+      "loadFailed": "연결을 로드할 수 없습니다."
+    },
+    "connectionAria": "{label}, {scorePercent}% 일치에 연결"
+  },
+  "count": {
+    "item": "아이템",
+    "items": "아이템",
+    "note": "참고",
+    "notes": "메모",
+    "day": "일",
+    "days": "일",
+    "event": "이벤트",
+    "events": "이벤트",
+    "meeting": "회의",
+    "meetings": "회의",
+    "task": "작업",
+    "tasks": "작업",
+    "todo": "할 일",
+    "people": "{count}명",
+    "moreConnections": "+ {count} 추가 연결",
+    "moreConnections_plural": "+ {count} 추가 연결",
+    "moreNotes": "+ {count} 추가 참고",
+    "moreNotes_plural": "+ {count} 추가 메모",
+    "daysWithEntries": "항목이 있는 일수",
+    "charactersWritten": "쓰여진 문자",
+    "words": "{count} 단어",
+    "characters": "{count} 문자",
+    "completed": "{count} 완료",
+    "overdue": "{count} 연체"
+  },
+  "stats": {
+    "wordCount": "단어 수",
+    "characterCount": "문자수",
+    "readingTime": "예상 독서 시간",
+    "lastModified": "최종 수정됨",
+    "lessThanOneMinute": "< 1분",
+    "minutes": "{minutes}분",
+    "read": "{readingTime} 읽기",
+    "modified": "수정된 {date}"
+  },
+  "task": {
+    "completed": "완료됨",
+    "notCompleted": "완료되지 않음",
+    "priority": "{priority} 우선순위",
+    "overdue": "기한이 지난",
+    "markComplete": "\"{title}\"를 완료됨으로 표시",
+    "markNotComplete": "\"{title}\"를 완료되지 않은 것으로 표시"
+  },
+  "template": {
+    "using": "\"{templateName}\" 사용"
+  },
+  "reminder": {
+    "hasReminders": "알림 있음",
+    "setToRevisit": "재방문 알림 설정",
+    "tooltip": "알림: {date}",
+    "tooltipMore": "알림: {date}(+{count} 이상)",
+    "success": {
+      "set": "이 일지 항목에 대한 알림이 설정되었습니다.",
+      "deleted": "알림이 삭제되었습니다.",
+      "dismissed": "알림이 해제되었습니다.",
+      "snoozed": "알림이 일시중지되었습니다."
+    },
+    "error": {
+      "set": "알림을 설정하지 못했습니다.",
+      "delete": "알림을 삭제하지 못했습니다.",
+      "dismiss": "알림을 닫지 못했습니다.",
+      "snooze": "알림을 일시중지하지 못했습니다."
+    }
+  },
+  "toast": {
+    "unsavedRetry": "귀하의 콘텐츠는 아직 메모리에 있습니다. 저장을 다시 시도하려면 클릭하세요.",
+    "noteNotFound": "참고 \"{target}\"를 찾을 수 없습니다.",
+    "fileNotFound": "파일을 찾을 수 없습니다: {target}",
+    "openLinkedItemFailed": "연결된 항목을 열지 못했습니다.",
+    "errorPrefix": "오류:"
+  },
+  "export": {
+    "noteTitle": "저널 - {month} {day}, {year}"
+  },
+  "note": {
+    "generatedTitle": "참고 - {date}",
+    "openAria": "{time}에서 생성된 {title}를 엽니다."
+  },
+  "tag": {
+    "suggestionsAria": "태그 제안",
+    "empty": {
+      "title": "아직 태그가 없습니다.",
+      "description": "새 태그를 만들려면 입력하세요."
+    },
+    "groupTitle": "태그",
+    "create": "#{query} 생성",
+    "ariaLabel": "태그: {tag}, 필터링하려면 클릭하세요."
+  },
+  "wiki": {
+    "suggestionsAria": "페이지 제안",
+    "empty": {
+      "title": "페이지를 찾을 수 없습니다"
+    },
+    "groupRecent": "최근",
+    "groupAllPages": "모든 페이지",
+    "createNewPage": "새 페이지 만들기",
+    "ariaLabel": "{title}에 링크"
+  },
+  "error": {
+    "title": "저널 오류",
+    "description": "저널에서 {date}에 대한 오류가 발생했습니다. 최근 변경사항이 저장되지 않았을 수 있습니다.",
+    "descriptionNoDate": "저널에 오류가 발생했습니다. 최근 변경사항이 저장되지 않았을 수 있습니다.",
+    "unsavedContent": "저장되지 않은 콘텐츠가 감지되었습니다({length} 문자)."
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "케이"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveJournalEntry": "일지 항목을 저장하지 못했습니다.",
+      "failedToLoadJournalSettings": "저널 설정을 로드하지 못했습니다.",
+      "failedToUpdateSettings": "설정을 업데이트하지 못했습니다."
+    }
+  }
+}

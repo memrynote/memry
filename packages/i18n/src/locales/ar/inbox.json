@@ -1,1 +1,483 @@
-{}
+{
+  "view": {
+    "tabs": {
+      "inbox": "البريد الوارد",
+      "archived": "مؤرشف",
+      "insights": "رؤى",
+      "ariaLabel": "اختيار عرض البريد الوارد"
+    },
+    "triageButton": "الفرز",
+    "processInboxTitle": "علبة الوارد للعملية (Cmd+P)",
+    "itemCaptured": "تم التقاط العنصر",
+    "searchArchivedTitle": "البحث في العناصر المؤرشفة",
+    "searchPlaceholder": "بحث...",
+    "archivedItemsAria": "العناصر المؤرشفة",
+    "snoozed": {
+      "show": "إظهار العناصر المؤجلة",
+      "showWithCount": "إظهار العناصر المؤجلة ({count})",
+      "hide": "إخفاء العناصر المؤجلة"
+    },
+    "filter": {
+      "button": "تصفية",
+      "byType": "تصفية حسب النوع",
+      "active": "{count, plural, one {التصفية حسب نوع #} other {التصفية حسب أنواع #}}",
+      "clearAll": "مسح الكل"
+    },
+    "jobs": {
+      "running": "{count, plural, one {تشغيل وظيفة # في الخلفية} other {تشغيل وظائف الخلفية #}}",
+      "failed": "فشل {count}"
+    }
+  },
+  "type": {
+    "link": "رابط",
+    "links": "روابط",
+    "note": "ملاحظة",
+    "notes": "ملاحظات",
+    "image": "صورة",
+    "images": "الصور",
+    "voice": "صوت",
+    "video": "فيديو",
+    "clip": "مقطع",
+    "clips": "مقاطع",
+    "pdf": "قوات الدفاع الشعبي",
+    "pdfs": "ملفات PDF",
+    "social": "اجتماعي",
+    "reminder": "تذكير",
+    "reminders": "تذكيرات",
+    "text": "نص",
+    "other": "أخرى"
+  },
+  "empty": {
+    "successAria": "تم بنجاح، صندوق الوارد فارغ",
+    "title": "البريد الوارد صفر",
+    "body": "تمت معالجة كل شيء. التقط شيئًا جديدًا باستخدام الإدخال أعلاه، أو الصق رابطًا للبدء.",
+    "filedThisWeek": "{count, plural, one {تم تقديم # هذا الأسبوع} other {تم تقديم # هذا الأسبوع}}",
+    "dayStreak": "{count, plural, one {خط يوم #} other {خط يوم #}}",
+    "tipPrefix": "نصيحة: استخدم",
+    "tipSuffix": "لالتقاط سريع من الحافظة",
+    "archivedNone": "لا توجد عناصر مؤرشفة",
+    "archivedNoMatches": "لا توجد عناصر مؤرشفة مطابقة",
+    "noItemsYet": "لا توجد عناصر بعد",
+    "noItemsFiled": "لم يتم تقديم أي عناصر حتى الآن",
+    "noItemTypes": "لا توجد أنواع عناصر لعرضها",
+    "noFolders": "لم يتم العثور على مجلدات",
+    "noFolderMatch": "لا توجد مجلدات تطابق \"{query}\"",
+    "noNotes": "لم يتم العثور على أي ملاحظات",
+    "allMatchesLinked": "جميع المباريات مرتبطة بالفعل"
+  },
+  "list": {
+    "ariaLabel": "عناصر البريد الوارد",
+    "section": {
+      "today": "اليوم",
+      "yesterday": "أمس",
+      "older": "أقدم"
+    },
+    "selectItem": "حدد {title}",
+    "itemAria": "{type}: {title}",
+    "untitled": "بدون عنوان",
+    "untitledItem": "عنصر بلا عنوان",
+    "transcribing": "جارٍ النسخ...",
+    "transcriptionFailed": "فشل النسخ",
+    "retryTranscription": "أعد المحاولة",
+    "pageCount": "{count, plural, one {صفحة #} other {صفحات #}}",
+    "snoozedUntilShort": "تم التأجيل حتى {date}",
+    "capturedAgo": "تم التقاط {time}"
+  },
+  "loading": {
+    "inbox": "جارٍ تحميل البريد الوارد...",
+    "failed": "فشل تحميل البريد الوارد",
+    "tryAgain": "حاول مرة أخرى",
+    "capturingImage": "جارٍ التقاط الصورة...",
+    "dropImageTitle": "قم بإسقاط الصورة لالتقاطها",
+    "dropImageTypes": "PNG، JPEG، GIF، WebP، SVG",
+    "unsupportedImageType": "نوع الصورة غير مدعوم: {type}",
+    "imageTooLarge": "الصورة كبيرة جدًا (الحد الأقصى 50 ميجابايت)"
+  },
+  "toast": {
+    "failedArchiveItem": "فشل في أرشفة العنصر",
+    "failedArchiveItems": "فشل في أرشفة العناصر",
+    "failedFile": "فشل الملف",
+    "failedFileItem": "فشل في ملف العنصر",
+    "failedFileItems": "فشل في ملف العناصر",
+    "failedSnooze": "فشل في التأجيل",
+    "failedSnoozeItem": "فشل تأجيل العنصر",
+    "failedApplyTags": "فشل تطبيق العلامات",
+    "failedCaptureImage": "فشل التقاط الصورة",
+    "linkedToNote": "مرتبطة بالملاحظة",
+    "linkedToNotes": "مرتبط بملاحظات {count}",
+    "filedTo": "قدمت إلى {folder}",
+    "filedItemsTo": "تم تقديم عناصر {count} إلى {folder}",
+    "filedPartial": "تم تقديم {processed} لعناصر {total}",
+    "appliedTags": "من {tagCount, plural, one {تم تطبيق علامة #} other {تم تطبيق علامات #}} إلى {itemCount, plural, one {عنصر #} other {عناصر #}}",
+    "archivedItems": "{count, plural, one {عنصر # المؤرشف} other {عناصر # المؤرشفة}}",
+    "snoozedUntil": "تم التأجيل حتى {time}",
+    "snoozedItemsUntil": "{count, plural, one {تم تأجيل عنصر # حتى {time}} other {تم تأجيل عناصر # حتى {time}}}"
+  },
+  "triage": {
+    "modeTitle": "وضع الفرز",
+    "exitHint": "Esc للخروج",
+    "exitAria": "الخروج من وضع الفرز",
+    "position": "{current} من {total}",
+    "action": {
+      "discard": "تجاهل",
+      "archive": "أرشيف",
+      "open": "مفتوح",
+      "toTask": "إلى المهمة",
+      "toNote": "ملاحظة",
+      "file": "ملف",
+      "snooze": "غفوة",
+      "cancel": "إلغاء"
+    },
+    "snoozeUntil": "تأجيل حتى...",
+    "complete": {
+      "title": "البريد الوارد صفر",
+      "processed": "{count, plural, one {تمت معالجة عنصر #} other {تمت معالجة عناصر #}}",
+      "streak": "خط",
+      "streakCount": "خط {count}",
+      "dayProcessingStreak": "{count, plural, one {خط معالجة يوم #} other {خط معالجة يوم #}}",
+      "back": "العودة إلى البريد الوارد",
+      "motivation0": "نفسك المستقبلية تشكرك.",
+      "motivation1": "كل شيء في مكانه.",
+      "motivation2": "مسح البريد الوارد، وعقل واضح.",
+      "motivation3": "قرار الديون: مدفوع بالكامل.",
+      "motivation4": "لقد كان ذلك شعورًا جيدًا، أليس كذلك؟"
+    }
+  },
+  "bulk": {
+    "selected": "تم تحديد {count}",
+    "deselectAll": "قم بإلغاء تحديد الكل",
+    "ariaLabel": "الإجراءات المجمعة للعناصر المحددة {count}",
+    "file": "ملف",
+    "tag": "علامة",
+    "snooze": "غفوة",
+    "archive": "أرشيف",
+    "add": "أضف",
+    "dismissSuggestion": "رفض الاقتراح",
+    "hint": {
+      "file": "file",
+      "tag": "علامة",
+      "snooze": "قيلولة بعد الظهر",
+      "archive": "archive",
+      "deselect": "قم بإلغاء التحديد"
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {أرشفة عنصر #؟} other {أرشفة عناصر #؟}}",
+      "description": "سيتم أرشفة هذه العناصر. يمكنك عرض العناصر المؤرشفة لاحقًا.",
+      "confirm": "{count, plural, one {أرشفة عنصر #} other {أرشفة عناصر #}}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {ملف # البند} other {ملف عناصر #}}",
+      "itemsToFile": "العناصر المطلوب حفظها",
+      "multipleNoteLinksUnavailable": "ملاحظة: لا يمكن إضافة روابط إلى ملاحظات أخرى عند حفظ عناصر متعددة.",
+      "filing": "الايداع...",
+      "submit": "{count, plural, one {ملف # العنصر} other {عناصر ملف #}}",
+      "macHint": "⌘⏎ للملف · Esc للإغلاق",
+      "ctrlHint": "Ctrl+Enter للملف · Esc للإغلاق"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {وضع علامة على العنصر #} other {وضع علامة على عناصر #}}",
+      "placeholder": "اكتب للبحث عن العلامات...",
+      "applying": "جارٍ التقديم...",
+      "apply": "{count, plural, one {تنطبق على عنصر #} other {تنطبق على عناصر #}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "إجراءات سريعة",
+    "archiveItem": "عنصر الأرشيف",
+    "archive": "أرشيف",
+    "snooze": "غفوة"
+  },
+  "detail": {
+    "ariaLabel": "تفاصيل السلعة",
+    "closePanel": "إغلاق اللوحة",
+    "resizeFiling": "تغيير حجم قسم الملفات",
+    "restore": "استعادة",
+    "restoreToInbox": "استعادة إلى البريد الوارد",
+    "delete": "حذف",
+    "deletePermanently": "حذف نهائيا",
+    "archive": "أرشيف",
+    "file": "ملف",
+    "keyboardHint": "{modifier}⏎ ملف · 1-5 مجلد · إغلاق Esc",
+    "voiceTitlePlaceholder": "قم بتسمية هذه المذكرة الصوتية...",
+    "fileTo": "ملف ل",
+    "ai": "منظمة العفو الدولية",
+    "selectFolder": "حدد المجلد",
+    "searchOrCreateFolder": "ابحث أو أنشئ باستخدام /...",
+    "suggested": "مقترح",
+    "notesRoot": "ملاحظات",
+    "notesRootLabel": "ملاحظات (الجذر)",
+    "createFolder": "إنشاء \"{name}\"",
+    "addTags": "إضافة علامات...",
+    "linkToNote": "رابط للملاحظة",
+    "linkNotesPlaceholder": "رابط الملاحظات...",
+    "searchNotesAria": "ملاحظات البحث للارتباط",
+    "linkedNotesAria": "الملاحظات المرتبطة",
+    "removeLinkTo": "قم بإزالة الرابط إلى {title}",
+    "contentEditorAria": "محرر المحتوى",
+    "notePlaceholder": "أكتب مذكرتك...",
+    "textPlaceholder": "تحرير النص الذي تم التقاطه..."
+  },
+  "content": {
+    "capturedAt": "تم التقاط {date}",
+    "todayAt": "اليوم في {time}",
+    "yesterdayAt": "أمس في {time}",
+    "dateAt": "{date} في {time}",
+    "words": "{count, plural, one {كلمة #} other {كلمات #}}",
+    "duration": "المدة: {duration}",
+    "dimensions": "الأبعاد",
+    "format": "التنسيق",
+    "size": "الحجم",
+    "voiceMemo": "مذكرة صوتية",
+    "play": "العب",
+    "pause": "وقفة",
+    "audioPosition": "موضع الصوت",
+    "transcription": "النسخ",
+    "processing": "المعالجة",
+    "pending": "في انتظار",
+    "failed": "فشل",
+    "copyTranscription": "نسخ النسخ",
+    "transcribingAudio": "جارٍ تحويل الصوت إلى نص...",
+    "awaitingTranscription": "في انتظار النسخ...",
+    "noTranscription": "لا يوجد نسخ متاح",
+    "failedPlayAudio": "فشل تشغيل الصوت",
+    "failedLoadAudio": "فشل تحميل الصوت",
+    "video": "فيديو",
+    "unsupportedVideo": "متصفحك لا يدعم علامة الفيديو."
+  },
+  "reminder": {
+    "dataUnavailable": "بيانات التذكير غير متاحة.",
+    "triggered": "تم تشغيل التذكير",
+    "noteLabel": "ملاحظة تذكيرية",
+    "source": "المصدر",
+    "journalTitle": "المجلة - {date}",
+    "noteFallback": "ملاحظة",
+    "journalFallback": "مجلة",
+    "highlighted": "المميز: \"{text}\"",
+    "viewed": "تم المشاهدة",
+    "markViewed": "وضع علامة كما تم عرضها",
+    "notYetViewed": "لم يتم عرضها بعد",
+    "snooze": "غفوة",
+    "presetInOneHour": "1 ساعة",
+    "presetTomorrow": "غدا",
+    "presetNextWeek": "الاسبوع القادم",
+    "custom": "مخصص..."
+  },
+  "insights": {
+    "loading": "جارٍ تحميل الرؤى...",
+    "captureActivity": "التقاط النشاط",
+    "byType": "حسب النوع",
+    "itemTypes": "أنواع العناصر",
+    "itemTypesDescription": "توزيع تنسيقات المحتوى",
+    "recentFilings": "الإيداعات الأخيرة",
+    "recentlyFiled": "تم تقديمه مؤخرًا",
+    "recentlyFiledDescription": "أحدث الإجراءات على البريد الوارد الخاص بك",
+    "captured": "تم التقاطها",
+    "capturedThisWeek": "+{count} هذا الأسبوع",
+    "processed": "تمت معالجتها",
+    "processRate": "معدل {rate}%",
+    "stale": "قديمة",
+    "needsAttention": "يحتاج إلى الاهتمام",
+    "allClear": "كل شيء واضح",
+    "avgTimeToFile": "متوسط الوقت للملف",
+    "noCapturesYet": "لا يلتقط حتى الآن",
+    "captures": "{count, plural, one {التقاط #} other {يلتقط #}}",
+    "peak": "الذروة: {day} {start}–{end}",
+    "convertedToTask": "تم تحويله إلى مهمة",
+    "linked": "مرتبط",
+    "now": "الآن",
+    "timeAgoMinutes": "منذ {count}m",
+    "timeAgoHours": "منذ {count}h",
+    "timeAgoDays": "منذ {count}d"
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "تم اكتشاف الذكاء الاصطناعي: \"",
+      "addToSelection": "أضف إلى الاختيار",
+      "dismiss": "استبعاد"
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "حذف ",
+      "item": "البند",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "ستتم إزالة هذه العناصر من صندوق الوارد الخاص بك. ويمكنك التراجع عن هذا الإجراء فورًا بعد ذلك."
+    },
+    "componentsCaptureInput": {
+      "captureInput": "التقاط المدخلات",
+      "attachFile": "إرفاق الملف",
+      "attachFileImagesAudioVideoPdf": "إرفاق ملف (صور، صوت، فيديو، PDF)",
+      "recordVoiceMemo": "سجل مذكرة صوتية",
+      "recordVoiceMemo2": "سجل مذكرة صوتية",
+      "alreadyCaptured": "تم التقاطها بالفعل: \"",
+      "rdquo": "ردقوو]؛",
+      "captureAnyway": "التقط على أي حال"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "اختر المجلد",
+      "searchFolders": "بحث في المجلدات...",
+      "searchFolders2": "مجلدات البحث",
+      "searchResults": "نتائج البحث",
+      "create": "إنشاء \"",
+      "suggested": "مقترح",
+      "recent": "الأخيرة",
+      "allFolders": "كافة المجلدات",
+      "allFolders2": "كافة المجلدات"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "رابط ل",
+      "optional": "اختياري)",
+      "searchNotesToLink": "بحث في الملاحظات للربط...",
+      "searchNotesToLink2": "ملاحظات البحث للارتباط",
+      "searching": "جارٍ البحث...",
+      "noNotesFound": "لم يتم العثور على أي ملاحظات",
+      "linkedNotes": "الملاحظات المرتبطة",
+      "noLinksAdded": "لم تتم إضافة أي روابط"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "مقترح",
+      "ai": "منظمة العفو الدولية",
+      "create": "إنشاء",
+      "tags": "العلامات",
+      "selectedTags": "العلامات المختارة",
+      "addTags": "إضافة العلامات",
+      "tagSuggestions": "اقتراحات العلامات"
+    },
+    "componentsFilingTagInput": {
+      "tags": "العلامات",
+      "optional": "اختياري)",
+      "addTags": "إضافة علامات...",
+      "addTags2": "إضافة العلامات",
+      "selectedTags": "العلامات المختارة",
+      "suggested": "مقترح"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "التقاط النشاط"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "لم يتم تقديم أي عناصر حتى الآن",
+      "recentlyFiled": "تم تقديمه مؤخرًا",
+      "latestActionsOnYourInbox": "أحدث الإجراءات على البريد الوارد الخاص بك",
+      "linked": "مرتبط"
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "جارٍ تحميل الرؤى..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "لا توجد أنواع عناصر لعرضها",
+      "itemTypes": "أنواع العناصر",
+      "distributionOfContentFormats": "توزيع تنسيقات المحتوى"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "تم التقاطها "
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "س "
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "محرر المحتوى"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "ميدوت; "
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "التغريدة غير متاحة",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "ربما تم حذف هذه التغريدة أو أنها من حساب خاص.",
+      "openOnXCom": "مفتوح على x.com",
+      "views": "وجهات النظر",
+      "xCom": "x.com",
+      "viewOnX": "عرض على X"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "اكتب اسم المجلد...",
+      "quickFileFolderSearch": "بحث سريع في مجلد الملفات"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "قريب",
+      "capture": "التقاط"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "إزالة المرفق"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "إدخال التقاط سريع",
+      "recordVoiceMemo": "سجل مذكرة صوتية",
+      "attachFile": "إرفاق الملف"
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "رابط"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "تم التقاطها",
+      "dismissError": "تجاهل الخطأ",
+      "alreadyCaptured": "تم التقاطها بالفعل",
+      "ldquo": "دقوو]؛",
+      "rdquoMiddot": "ردقوو]؛ · ",
+      "captureAnyway": "التقط على أي حال",
+      "close": "إغلاق"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "إسقاط لالتقاط",
+      "capturing": "جارٍ الالتقاط..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "اقتراحات المجلدات",
+      "noFoldersMatch": "لا توجد مجلدات متطابقة \""
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "تعيين تذكير لهذا النص",
+      "remindMeAboutThis": "ذكرني بهذا",
+      "selectedText": "النص المحدد:"
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "تذكير",
+      "remindMe": "ذكرني",
+      "pickDateTime": "اختر التاريخ والوقت",
+      "addANoteOptional": "إضافة ملاحظة (اختياري)",
+      "backToPresets": "العودة إلى الإعدادات المسبقة",
+      "time": "الوقت",
+      "noteOptional": "ملاحظة (اختياري)",
+      "whyAreYouSettingThisReminder": "لماذا تقوم بتعيين هذا التذكير؟"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "غفوة",
+      "snooze2": "غفوة",
+      "pickDateTime": "اختر التاريخ والوقت",
+      "pickDateTime2": "اختر التاريخ والوقت",
+      "selectWhenToBeRemindedAboutThisItem": "حدد متى سيتم تذكيرك بهذا العنصر",
+      "snooze3": "غفوة",
+      "snooze4": "غفوة",
+      "snooze5": "غفوة"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "جارٍ تحميل المشاركة...",
+      "failedToLoad": "فشل التحميل",
+      "loadingPostContent": "جارٍ تحميل محتوى المشاركة...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "فشل في تحميل محتوى المشاركة. قد تكون المشاركة خاصة أو محذوفة.",
+      "viewOn": "عرض على "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "ابدأ التسجيل الصوتي",
+      "requestingMicrophoneAccess": "جارٍ طلب الوصول إلى الميكروفون...",
+      "settings": "الإعدادات",
+      "processing": "جارٍ المعالجة...",
+      "cancelRecording": "إلغاء التسجيل",
+      "cancel": "إلغاء",
+      "stopRecording": "توقف عن التسجيل",
+      "stop": "توقف"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCaptureLink": "فشل التقاط الرابط",
+      "failedToCaptureNote": "فشل في التقاط الملاحظة",
+      "captureFailed": "فشل الالتقاط",
+      "failedToCaptureVoiceMemo": "فشل في التقاط المذكرة الصوتية",
+      "voiceCaptureFailed": "فشل التقاط الصوت",
+      "failedToCaptureFile": "فشل في التقاط الملف",
+      "fileCaptureFailed": "فشل التقاط الملف",
+      "failedToCaptureAudio": "فشل في التقاط الصوت",
+      "failedToCaptureVoice": "فشل في التقاط الصوت"
+    },
+    "toasts": {
+      "inboxRefreshed": "تم تحديث البريد الوارد"
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "Wybierz Folder Vault",
+      "button": "Wybierz Skarbiec"
+    },
+    "exportPdf": {
+      "title": "Eksportuj jako plik PDF",
+      "filterName": "Dokument PDF"
+    },
+    "exportHtml": {
+      "title": "Eksportuj jako HTML",
+      "filterName": "Dokument HTML"
+    },
+    "import": {
+      "filterSupported": "Obsługiwane pliki",
+      "filterAll": "Wszystkie pliki"
+    },
+    "exportCancelled": "Eksport anulowany",
+    "update": {
+      "availableTitle": "Dostępna aktualizacja",
+      "availableMessage": "Memry {version} jest dostępny.",
+      "availableDetailFallback": "Pobrać aktualizację teraz?",
+      "buttonDownload": "Pobierz",
+      "buttonLater": "Później",
+      "readyTitle": "Aktualizacja gotowa",
+      "readyMessage": "Memry {version} został pobrany.",
+      "readyDetailFallback": "Uruchom ponownie Memry, aby zakończyć instalację aktualizacji.",
+      "buttonRestartNow": "Uruchom ponownie teraz",
+      "releaseNotesLabel": "Informacje o wydaniu:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "Uwaga przypomnienie",
+      "journal": "Przypomnienie dziennika",
+      "highlight": "Zaznacz przypomnienie",
+      "fallback": "Termin przypomnienia",
+      "default": "Przypomnienie"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "Czas przypomnienia musi przypadać w przyszłości",
+    "definitionNotFound": "Nie znaleziono definicji",
+    "noteNotFound": "Nie znaleziono notatki",
+    "updateFailed": "Aktualizacja nie powiodła się"
+  }
+}

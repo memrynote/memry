@@ -1,0 +1,28 @@
+{
+  "app": {
+    "quit": "Renunță"
+  },
+  "file": {
+    "label": "Fișier",
+    "newNote": "Notă nouă",
+    "close": "Închide fereastra"
+  },
+  "navigation": {
+    "back": "Înapoi",
+    "forward": "Înainte"
+  },
+  "edit": {
+    "label": "Editați",
+    "undo": "Anulați",
+    "redo": "Reface",
+    "cut": "Tăiați",
+    "copy": "Copiere",
+    "paste": "Lipiți"
+  },
+  "view": {
+    "label": "Vedeți",
+    "reload": "Reîncărcați",
+    "toggleDevTools": "Comutați Instrumentele pentru dezvoltatori",
+    "toggleFullscreen": "Comutați Ecranul complet"
+  }
+}

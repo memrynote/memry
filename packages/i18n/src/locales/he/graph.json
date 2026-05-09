@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "טוען גרף...",
+    "load-failed": "טעינת נתוני גרף נכשלה",
+    "try-again": "נסה שוב",
+    "aria-label": "גרף ידע עם {nodeCount, plural, one {צומת #} other {צמתי #}} ו-{edgeCount, plural, one {חיבור #} other {חיבורי #}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "גרף צמתים",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "גרף הידע שלך",
+    "description": "חיבורים בין ההערות, המשימות והפרויקטים שלך יופיעו כאן כגרף אינטראקטיבי.",
+    "link-title": "קשר את ההערות שלך",
+    "link-description": "השתמש ב-[[wikilinks]] כדי לחבר רעיונות בין הערות",
+    "discover-title": "גלה דפוסים",
+    "discover-description": "ככל שהקשרים יגדלו, אשכולות ונושאים יצוצו באופן טבעי"
+  },
+  "entity": {
+    "note": "הערה",
+    "notes": "הערות",
+    "journal": "יומן",
+    "journals": "יומנים",
+    "task": "משימה",
+    "tasks": "משימות",
+    "project": "פרויקט",
+    "projects": "פרויקטים",
+    "tag": "תג",
+    "tags": "תגים",
+    "orphan": "יתום",
+    "orphans": "יתומים",
+    "unresolved": "לא פתורה"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "הגדרות גרף",
+    "hide-settings": "הסתר הגדרות",
+    "reset-filters": "אפס מסננים",
+    "filters": "מסננים",
+    "display": "תצוגה",
+    "show-labels": "הצג תוויות",
+    "focus-depth": "עומק {depth}",
+    "clear-focus": "נקה צומת ממוקד"
+  },
+  "filter": {
+    "notes": "הערות",
+    "journals": "כתבי עת",
+    "tasks": "משימות",
+    "projects": "פרויקטים",
+    "tags": "תגים",
+    "orphans": "יתומים",
+    "toggle-entity": "החלף את {label}",
+    "toggle-orphans": "החלף צמתים יתומים"
+  },
+  "search": {
+    "placeholder": "חפש צמתים...",
+    "clear": "נקה חיפוש גרפים"
+  },
+  "context-menu": {
+    "untitled": "ללא כותרת",
+    "focus-node": "התמקד בצומת זה",
+    "open-new-tab": "פתח בכרטיסייה חדשה",
+    "create-note": "צור הערה",
+    "copy-title": "העתק כותרת"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {חיבור #} other {חיבורי #}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "טוען גרף...",
+    "empty": "לא נמצאו קשרים",
+    "open-full": "פתח את הגרף המלא",
+    "close": "סגור גרף"
+  }
+}

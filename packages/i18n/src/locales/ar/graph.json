@@ -1,1 +1,77 @@
-{}
+{
+  "page": {
+    "loading": "جارٍ تحميل الرسم البياني...",
+    "load-failed": "فشل تحميل بيانات الرسم البياني",
+    "try-again": "حاول مرة أخرى",
+    "aria-label": "الرسم البياني المعرفي مع {nodeCount, plural, one {عقدة #} other {العقد #}} و{edgeCount, plural, one {اتصال #} other {اتصالات #}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "عقد الرسم البياني",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "الرسم البياني المعرفي الخاص بك",
+    "description": "ستظهر الروابط بين ملاحظاتك ومهامك ومشاريعك هنا كرسم بياني تفاعلي.",
+    "link-title": "ربط الملاحظات الخاصة بك",
+    "link-description": "استخدم [[wikilinks]] لربط الأفكار عبر الملاحظات",
+    "discover-title": "اكتشف الأنماط",
+    "discover-description": "مع نمو الروابط، ستظهر المجموعات والموضوعات بشكل طبيعي"
+  },
+  "entity": {
+    "note": "ملاحظة",
+    "notes": "ملاحظات",
+    "journal": "مجلة",
+    "journals": "المجلات",
+    "task": "مهمة",
+    "tasks": "المهام",
+    "project": "مشروع",
+    "projects": "المشاريع",
+    "tag": "علامة",
+    "tags": "العلامات",
+    "orphan": "يتيم",
+    "orphans": "الأيتام",
+    "unresolved": "لم يتم حلها"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "إعدادات الرسم البياني",
+    "hide-settings": "إخفاء الإعدادات",
+    "reset-filters": "إعادة تعيين المرشحات",
+    "filters": "المرشحات",
+    "display": "عرض",
+    "show-labels": "إظهار التسميات",
+    "focus-depth": "عمق {depth}",
+    "clear-focus": "مسح العقدة المركزة"
+  },
+  "filter": {
+    "notes": "ملاحظات",
+    "journals": "المجلات",
+    "tasks": "المهام",
+    "projects": "المشاريع",
+    "tags": "العلامات",
+    "orphans": "الأيتام",
+    "toggle-entity": "تبديل {label}",
+    "toggle-orphans": "تبديل العقد اليتيمة"
+  },
+  "search": {
+    "placeholder": "عقد البحث...",
+    "clear": "مسح البحث عن الرسم البياني"
+  },
+  "context-menu": {
+    "untitled": "بدون عنوان",
+    "focus-node": "التركيز على هذه العقدة",
+    "open-new-tab": "افتح في علامة تبويب جديدة",
+    "create-note": "إنشاء ملاحظة",
+    "copy-title": "انسخ العنوان"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {اتصال #} other {اتصالات #}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "جارٍ تحميل الرسم البياني...",
+    "empty": "لم يتم العثور على اتصالات",
+    "open-full": "فتح الرسم البياني الكامل",
+    "close": "إغلاق الرسم البياني"
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "กำลังโหลดกราฟ...",
+    "load-failed": "ไม่สามารถโหลดข้อมูลกราฟได้",
+    "try-again": "ลองอีกครั้ง",
+    "aria-label": "  \nกราฟความรู้กับ {nodeCount, plural, one {โหนด #} other {โหนด # หลายตัว}} และ {edgeCount, plural, one {การเชื่อมต่อ #} other {การเชื่อมต่อ # หลายรายการ}}{summary, select, none {.} other {: {summary}.  }}  ",
+    "nodes-list-label": "  \nโหนดกราฟ  ",
+    "node-list-item": "  \n{label} ({type})  "
+  },
+  "empty": {
+    "title": "  \nกราฟความรู้ของคุณ  ",
+    "description": "  \nการเชื่อมต่อระหว่างบันทึกของคุณ งาน และโครงการจะแสดงที่นี่ในรูปแบบกราฟแบบโต้ตอบ  ",
+    "link-title": "  \nเชื่อมบันทึกของคุณ  ",
+    "link-description": "  \nใช้ [[wikilinks]] เพื่อเชื่อมแนวคิดระหว่างบันทึก  ",
+    "discover-title": "  \nค้นหารูปแบบ  ",
+    "discover-description": "  \nเมื่อการเชื่อมต่อเพิ่มขึ้น กลุ่มและหัวข้อจะปรากฏขึ้นโดยธรรมชาติ  "
+  },
+  "entity": {
+    "note": "บันทึก",
+    "notes": "โน้ต",
+    "journal": "  \nสมุดบันทึก  ",
+    "journals": "  \nสมุดบันทึกหลายเล่ม  ",
+    "task": "งาน",
+    "tasks": "งาน",
+    "project": "โครงการ",
+    "projects": "  \nโครงการ  ",
+    "tag": "แท็ก",
+    "tags": "  \nแท็ก  ",
+    "orphan": "  \nกำพร้า  ",
+    "orphans": "  \nกำพร้าหลายรายการ  ",
+    "unresolved": "  \nไม่ได้แก้ไข  "
+  },
+  "summary": {
+    "node-type-count": "  \n{count} {label}  "
+  },
+  "control": {
+    "show-settings": "  \nการตั้งค่ากราฟ  ",
+    "hide-settings": "  \nซ่อนการตั้งค่า  ",
+    "reset-filters": "  \nรีเซ็ตตัวกรอง  ",
+    "filters": "ตัวกรอง",
+    "display": "  \nการแสดงผล  ",
+    "show-labels": "  \nแสดงป้ายชื่อ",
+    "focus-depth": "ความลึก {depth}",
+    "clear-focus": "ล้างโหนดที่โฟกัส"
+  },
+  "filter": {
+    "notes": "บันทึก",
+    "journals": "สมุดบันทึก",
+    "tasks": "งาน",
+    "projects": "  \nโปรเจกต์  ",
+    "tags": "แท็ก",
+    "orphans": "เด็กกำพร้า",
+    "toggle-entity": "สลับ {label}",
+    "toggle-orphans": "สลับโหนดเด็กกำพร้า"
+  },
+  "search": {
+    "placeholder": "ค้นหาโหนด...",
+    "clear": "ล้างการค้นหาแผนภาพ"
+  },
+  "context-menu": {
+    "untitled": "ไม่มีชื่อเรื่อง",
+    "focus-node": "โฟกัสที่โหนดนี้",
+    "open-new-tab": "เปิดในแท็บใหม่",
+    "create-note": "สร้างบันทึก",
+    "copy-title": "คัดลอกชื่อเรื่อง"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {การเชื่อมต่อ #} other {การเชื่อมต่อ # หลายรายการ}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "กำลังโหลดกราฟ...",
+    "empty": "ไม่พบการเชื่อมต่อ",
+    "open-full": "เปิดแผนภาพเต็มรูปแบบ",
+    "close": "ปิดแผนภาพ"
+  }
+}

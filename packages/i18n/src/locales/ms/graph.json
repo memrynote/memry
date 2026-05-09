@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Memuatkan graf...",
+    "load-failed": "Gagal memuatkan data graf",
+    "try-again": "Cuba lagi",
+    "aria-label": "Graf pengetahuan dengan {nodeCount, plural, one {Nod #} other {Nod #}} dan {edgeCount, plural, one {Sambungan #} other {Sambungan #}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "nod graf",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Graf pengetahuan anda",
+    "description": "Sambungan antara nota, tugasan dan projek anda akan dipaparkan di sini sebagai graf interaktif.",
+    "link-title": "Pautkan nota anda",
+    "link-description": "Gunakan [[wikilinks]] untuk menyambung idea merentas nota",
+    "discover-title": "Temui corak",
+    "discover-description": "Apabila sambungan berkembang, kelompok dan tema akan muncul secara semula jadi"
+  },
+  "entity": {
+    "note": "nota",
+    "notes": "nota",
+    "journal": "jurnal",
+    "journals": "jurnal",
+    "task": "tugasan",
+    "tasks": "tugasan",
+    "project": "projek",
+    "projects": "projek",
+    "tag": "tag",
+    "tags": "tag",
+    "orphan": "yatim piatu",
+    "orphans": "anak yatim",
+    "unresolved": "tidak dapat diselesaikan"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Tetapan graf",
+    "hide-settings": "Sembunyikan tetapan",
+    "reset-filters": "Tetapkan semula penapis",
+    "filters": "Penapis",
+    "display": "Paparan",
+    "show-labels": "Tunjukkan label",
+    "focus-depth": "kedalaman {depth}",
+    "clear-focus": "Kosongkan nod fokus"
+  },
+  "filter": {
+    "notes": "Nota",
+    "journals": "Jurnal",
+    "tasks": "Tugasan",
+    "projects": "Projek",
+    "tags": "Tag",
+    "orphans": "anak yatim",
+    "toggle-entity": "Togol {label}",
+    "toggle-orphans": "Togol nod anak yatim"
+  },
+  "search": {
+    "placeholder": "Cari nod...",
+    "clear": "Kosongkan carian graf"
+  },
+  "context-menu": {
+    "untitled": "Tidak bertajuk",
+    "focus-node": "Fokus pada nod ini",
+    "open-new-tab": "Buka dalam tab baharu",
+    "create-note": "Buat nota",
+    "copy-title": "Salin tajuk"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {Sambungan #} other {Sambungan #}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Memuatkan graf...",
+    "empty": "Tiada sambungan ditemui",
+    "open-full": "Buka graf penuh",
+    "close": "Tutup graf"
+  }
+}

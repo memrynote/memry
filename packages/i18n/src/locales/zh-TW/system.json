@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "選擇保險庫資料夾",
+      "button": "選擇保險箱"
+    },
+    "exportPdf": {
+      "title": "匯出為 PDF",
+      "filterName": "PDF 文件"
+    },
+    "exportHtml": {
+      "title": "匯出為 HTML",
+      "filterName": "HTML 文件"
+    },
+    "import": {
+      "filterSupported": "支援的檔案",
+      "filterAll": "所有檔案"
+    },
+    "exportCancelled": "匯出已取消",
+    "update": {
+      "availableTitle": "有更新可用",
+      "availableMessage": "Memry {version} 可用。",
+      "availableDetailFallback": "現在下載更新嗎？",
+      "buttonDownload": "下載",
+      "buttonLater": "稍後",
+      "readyTitle": "更新已就緒",
+      "readyMessage": "Memry {version} 已下載完成。",
+      "readyDetailFallback": "重新啟動 Memry 以完成更新安裝。",
+      "buttonRestartNow": "立即重新啟動",
+      "releaseNotesLabel": "版本更新說明："
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "備註提醒",
+      "journal": "日誌提醒",
+      "highlight": "重點提醒",
+      "fallback": "提醒到期",
+      "default": "提醒"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "提醒時間必須為未來時間",
+    "definitionNotFound": "未找到定義",
+    "noteNotFound": "未找到備註",
+    "updateFailed": "更新失敗"
+  }
+}

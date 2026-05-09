@@ -1,0 +1,663 @@
+{
+  "page": {
+    "empty": {
+      "title": "ยังไม่ได้เลือกโน้ต",
+      "body": "เลือกโน้ตจากแถบด้านข้างเพื่อดู"
+    },
+    "error": {
+      "title": "ไม่สามารถโหลดโน้ตได้"
+    },
+    "toast": {
+      "cannotSaveDeleted": "ไม่สามารถบันทึก - โน้ตถูกลบแล้ว",
+      "cannotRenameDeleted": "ไม่สามารถเปลี่ยนชื่อ - บันทึกถูกลบแล้ว",
+      "createLinkedFailed": "สร้างบันทึกลิงก์ล้มเหลว",
+      "openLinkedFailed": "เปิดรายการลิงก์ล้มเหลว",
+      "localOnly": "ตั้งค่าบันทึกเป็นสำหรับเครื่องนี้เท่านั้น",
+      "willSync": "บันทึกจะซิงค์ไปยังคลาวด์",
+      "saveFailed": "บันทึกล้มเหลวในการบันทึก",
+      "renameFailed": "บันทึกล้มเหลวในการเปลี่ยนชื่อ",
+      "toggleLocalOnlyFailed": "ล้มเหลวในการสลับเป็นสำหรับเครื่องนี้เท่านั้น",
+      "toggleFullWidthFailed": "ล้มเหลวในการสลับความกว้างเต็ม"
+    },
+    "deleteDialogTitle": "{count, plural, one {ลบบันทึก} other {ลบ # บันทึก}}"
+  },
+  "tree": {
+    "aria": {
+      "tree": "ต้นไม้บันทึก",
+      "openFolderView": "เปิดมุมมองโฟลเดอร์"
+    },
+    "empty": {
+      "title": "ยังไม่มีบันทึก",
+      "body": "สร้างบันทึกเพื่อเริ่มต้น",
+      "newNote": "โน้ตใหม่"
+    },
+    "loadingError": "โหลดบันทึกล้มเหลว",
+    "actions": {
+      "newNote": "โน้ตใหม่",
+      "newFolder": "โฟลเดอร์ใหม่",
+      "rename": "เปลี่ยนชื่อ",
+      "openExternal": "เปิดในโปรแกรมแก้ไขภายนอก",
+      "revealInFinder": "แสดงใน Finder",
+      "setDefaultTemplate": "ตั้งค่าเทมเพลตเริ่มต้น",
+      "clearDefaultTemplate": "ลบเทมเพลตเริ่มต้น",
+      "setIcon": "  \nตั้งค่าไอคอน  ",
+      "removeIcon": "เอาไอคอนออก",
+      "deleteSelectedNotes": "ลบ {count} บันทึก",
+      "deleteSelectedItems": "ลบ {count} รายการ"
+    },
+    "deleteDialog": {
+      "noteTitle": "ลบบันทึก",
+      "folderTitle": "ลบโฟลเดอร์",
+      "itemsTitle": "ลบ {count} รายการ",
+      "noteBody": "คุณแน่ใจหรือว่าต้องการลบ \"{name}\"? การกระทำนี้ไม่สามารถยกเลิกได้",
+      "folderBody": "คุณแน่ใจหรือว่าต้องการลบ \"{name}\" และบันทึกทั้งหมดภายใน? การกระทำนี้ไม่สามารถยกเลิกได้",
+      "itemsBody": "คุณแน่ใจหรือว่าต้องการลบรายการ {count}? การกระทำนี้ไม่สามารถยกเลิกได้",
+      "folderSuffix": "โฟลเดอร์",
+      "moreItems": "...และ {count} รายการเพิ่มเติม",
+      "deleting": "กำลังลบ...",
+      "deleteCount": "ลบ {count}"
+    }
+  },
+  "editor": {
+    "title": {
+      "untitled": "ไม่มีชื่อเรื่อง",
+      "aria": "ชื่อบันทึก"
+    },
+    "content": {
+      "placeholder": "เริ่มเขียน หรือกด '/' สำหรับคำสั่ง...",
+      "regionAria": "ตัวแก้ไขบันทึก",
+      "richTextAria": "ตัวแก้ไขข้อความรูปแบบสมบูรณ์",
+      "headingPlaceholder": "หัวเรื่อง",
+      "listPlaceholder": "รายการ",
+      "todoPlaceholder": "รายการสิ่งที่ต้องทำ"
+    },
+    "toolbar": {
+      "reminderSet": "ตั้งค่าการเตือน",
+      "setReminder": "ตั้งค่าการแจ้งเตือน",
+      "removeBookmark": "ลบบุ๊กมาร์ก",
+      "addBookmark": "เพิ่มบุ๊กมาร์ก",
+      "hideLocalGraph": "ซ่อนกราฟท้องถิ่น",
+      "showLocalGraph": "แสดงกราฟท้องถิ่น",
+      "versionHistory": "ประวัติรุ่น",
+      "export": "ส่งออก",
+      "fullWidth": "ความกว้างเต็ม",
+      "disableLocalOnly": "ปิดใช้งานเฉพาะเครื่อง",
+      "setLocalOnly": "ตั้งค่าเฉพาะเครื่อง"
+    },
+    "breadcrumb": {
+      "locationAria": "บันทึกตำแหน่ง",
+      "parentFolderAria": "ไปยังโฟลเดอร์แม่"
+    },
+    "errorBoundary": {
+      "title": "ข้อผิดพลาดของตัวแก้ไข",
+      "body": "ตัวแก้ไขพบข้อผิดพลาด เนื้อหาบันทึกของคุณปลอดภัย",
+      "technicalDetails": "รายละเอียดทางเทคนิค",
+      "reloadAria": "โหลดตัวแก้ไขใหม่",
+      "reload": "โหลดตัวแก้ไขใหม่"
+    },
+    "callout": {
+      "title": "การแจ้งเตือน",
+      "group": "บล็อกพื้นฐาน",
+      "subtext": "เน้นข้อมูลสำคัญ",
+      "changeType": "เปลี่ยนประเภทการแจ้งเตือน",
+      "menuLabel": "ประเภทการแจ้งเตือน",
+      "info": "ข้อมูล",
+      "warning": "คำเตือน",
+      "error": "ข้อผิดพลาด",
+      "success": "สำเร็จ"
+    }
+  },
+  "menus": {
+    "wiki": {
+      "aria": "คำแนะนำบันทึก",
+      "loading": "กำลังโหลดบันทึก...",
+      "empty": "ไม่พบบันทึก",
+      "create": "สร้างบันทึกใหม่"
+    },
+    "tags": {
+      "aria": "คำแนะนำแท็ก",
+      "loading": "กำลังโหลดแท็ก...",
+      "empty": "พิมพ์เพื่อสร้างแท็กใหม่",
+      "create": "สร้าง #{tag}"
+    },
+    "pasteLink": {
+      "title": "วางเป็น",
+      "url": "ลิงก์ URL",
+      "mention": "การกล่าวถึง",
+      "embedVideo": "ฝังวิดีโอ"
+    },
+    "emoji": {
+      "aria": "ตัวเลือกอีโมจิและไอคอน",
+      "emojiTab": "อีโมจิ",
+      "iconsTab": "ไอคอน",
+      "searchPlaceholder": "ค้นหา",
+      "noIcons": "ไม่พบไอคอน",
+      "clearSearch": "ล้างการค้นหา"
+    }
+  },
+  "detail": {
+    "bodyPlaceholder": "เขียนบันทึกของคุณ..."
+  },
+  "outline": {
+    "title": "โครงร่าง",
+    "aria": "โครงร่างเอกสาร",
+    "empty": "ไม่มีหัวเรื่อง",
+    "emptyYet": "ยังไม่มีหัวเรื่อง",
+    "readTime": "{count} นาทีอ่าน",
+    "words": "{count} คำ",
+    "created": "สร้างเมื่อ",
+    "modified": "แก้ไขเมื่อ"
+  },
+  "backlinks": {
+    "title": "ลิงก์ย้อนกลับ",
+    "sortRecent": "ล่าสุด",
+    "sortAlpha": "A-Z",
+    "sortMentions": "ถูกกล่าวถึงมากที่สุด",
+    "sortBy": "เรียงลิงก์ย้อนกลับตาม {sort}",
+    "summary": "โน้ต {notes} · อ้างอิง {references}",
+    "sectionAria": "ลิงก์ย้อนกลับ",
+    "listAria": "รายการลิงก์ย้อนกลับ",
+    "fromAria": "ลิงก์ย้อนกลับจาก {title}",
+    "collapse": "ย่อ",
+    "expand": "ขยาย",
+    "collapseSection": "ย่อส่วนลิงก์ย้อนกลับ",
+    "expandSection": "ขยายส่วนลิงก์ย้อนกลับ",
+    "showMore": "แสดงลิงก์ย้อนกลับ {count} เพิ่มเติม",
+    "more": "{count} เพิ่มเติม"
+  },
+  "tagsRow": {
+    "aria": "แท็ก",
+    "empty": "เพิ่มแท็ก",
+    "add": "เพิ่มแท็ก",
+    "removeAria": "ลบแท็ก: {tag}",
+    "inputPlaceholder": "พิมพ์ชื่อแท็ก...",
+    "recent": "ล่าสุด",
+    "matching": "ตรงกัน",
+    "all": "แท็กทั้งหมด",
+    "none": "ไม่พบแท็ก",
+    "createTag": "สร้างแท็ก: \"{tag}\"",
+    "chooseColor": "เลือกสี:",
+    "preview": "ตัวอย่าง:",
+    "colorAria": "เลือกสี {color}"
+  },
+  "properties": {
+    "title": "คุณสมบัติ",
+    "noteAria": "คุณสมบัติของบันทึก",
+    "workspaceAria": "คุณสมบัติของพื้นที่ทำงาน",
+    "listAria": "รายการคุณสมบัติ",
+    "add": "เพิ่มคุณสมบัติ",
+    "addDescription": "เพิ่มคุณสมบัติใหม่ให้กับบันทึกนี้",
+    "namePlaceholder": "ชื่อคุณสมบัติ",
+    "nameAria": "ชื่อคุณสมบัติ",
+    "typeSection": "ประเภท",
+    "empty": "ว่าง",
+    "dragAria": "ลากเพื่อจัดลำดับคุณสมบัติ",
+    "editName": "แก้ไขชื่อคุณสมบัติ",
+    "delete": "ลบคุณสมบัติ",
+    "searchOptions": "ตัวเลือกการค้นหา...",
+    "noOptions": "ยังไม่มีตัวเลือก",
+    "optionName": "ชื่อตัวเลือก",
+    "newOption": "ตัวเลือกใหม่",
+    "ratingAria": "การให้คะแนน",
+    "openUrlAria": "เปิด URL",
+    "types": {
+      "text": "ข้อความ",
+      "number": "ตัวเลข",
+      "date": "วันที่",
+      "checkbox": "ช่องทำเครื่องหมาย",
+      "url": "ลิงก์ URL",
+      "status": "สถานะ",
+      "select": "เลือก",
+      "multiselect": "หลายตัวเลือก"
+    }
+  },
+  "templateSelector": {
+    "title": "เลือกผืนผ้าใบของคุณ",
+    "description": "เลือกแม่แบบเพื่อเริ่มบันทึกของคุณ",
+    "searchPlaceholder": "ค้นหาแม่แบบ...",
+    "loading": "กำลังโหลดแม่แบบ...",
+    "empty": "ไม่พบแม่แบบ",
+    "myTemplates": "แม่แบบของฉัน",
+    "essentials": "สิ่งจำเป็น",
+    "setFolderDefault": "ตั้งค่าเป็นค่าเริ่มต้นของโฟลเดอร์",
+    "useTemplate": "ใช้แม่แบบ",
+    "createNote": "สร้างบันทึก"
+  },
+  "exportDialog": {
+    "title": "ส่งออกบันทึก",
+    "description": "ส่งออก \"{title}\" เป็นไฟล์",
+    "format": "รูปแบบ",
+    "pdfDescription": "เอกสารพร้อมพิมพ์",
+    "htmlDescription": "ไฟล์พร้อมใช้งานเว็บ",
+    "pageSize": "ขนาดหน้า",
+    "selectPageSize": "เลือกขนาดหน้า",
+    "options": "ตัวเลือก",
+    "includeMetadata": "รวมเมตาดาต้า (แท็ก, วันที่)",
+    "exporting": "กำลังส่งออก...",
+    "exported": "ส่งออกเรียบร้อย!",
+    "export": "ส่งออก",
+    "toast": {
+      "failed": "ส่งออกล้มเหลว"
+    }
+  },
+  "versionHistory": {
+    "title": "ประวัติรุ่น",
+    "description": "ดูและคืนค่ารุ่นก่อนหน้าของ \"{title}\"",
+    "hidePreview": "ซ่อนตัวอย่าง",
+    "showPreview": "แสดงตัวอย่าง",
+    "empty": "ยังไม่มีบันทึกรุ่นใดบันทึก",
+    "emptyDescription": "เวอร์ชันจะถูกบันทึกโดยอัตโนมัติเมื่อคุณทำการเปลี่ยนแปลงที่สำคัญ",
+    "latest": "ล่าสุด",
+    "autoSaved": "บันทึกอัตโนมัติ",
+    "words": "{count} คำ",
+    "selectPrompt": "เลือกเวอร์ชันเพื่อดูตัวอย่าง",
+    "restore": "เรียกคืน",
+    "deleteTitle": "ลบเวอร์ชันนี้หรือไม่?",
+    "deleteDescription": "การกระทำนี้ไม่สามารถย้อนกลับได้ เวอร์ชันนี้จะถูกลบอย่างถาวร",
+    "restoreTitle": "กู้คืนเวอร์ชันนี้หรือไม่?",
+    "restoreDescription": "สิ่งนี้จะแทนที่เนื้อหาโน้ตปัจจุบันด้วยเวอร์ชันนี้ จะมีการบันทึกสถานะปัจจุบันไว้ก่อน เพื่อที่คุณสามารถย้อนกลับการกระทำนี้ได้",
+    "restoring": "กำลังกู้คืน...",
+    "toast": {
+      "loadPreviewFailed": "ไม่สามารถโหลดตัวอย่างเวอร์ชันได้",
+      "restored": "โน้ตถูกกู้คืนไปยังเวอร์ชันก่อนหน้า",
+      "deleted": "เวอร์ชันถูกลบ"
+    }
+  },
+  "templateEditor": {
+    "title": {
+      "new": "เทมเพลตใหม่",
+      "view": "ดูเทมเพลต",
+      "edit": "แก้ไขเทมเพลต"
+    },
+    "toast": {
+      "nameRequired": "ต้องใส่ชื่อเทมเพลต",
+      "created": "สร้างเทมเพลตแล้ว",
+      "createFailed": "ไม่สามารถสร้างเทมเพลตได้",
+      "saved": "เทมเพลตถูกบันทึกแล้ว",
+      "saveFailed": "ไม่สามารถบันทึกเทมเพลตได้",
+      "duplicateFailed": "ไม่สามารถสร้างสำเนาเทมเพลตได้",
+      "deleteFailed": "ไม่สามารถลบเทมเพลตได้"
+    }
+  },
+  "reminders": {
+    "summary": "การแจ้งเตือน: {date}",
+    "summaryWithMore": "การแจ้งเตือน: {date} (+{count} เพิ่มเติม)",
+    "hasReminders": "มีการแจ้งเตือน",
+    "setReminder": "ตั้งค่าการแจ้งเตือน",
+    "toast": {
+      "set": "ตั้งค่าการเตือน",
+      "setForHighlight": "ตั้งค่าการแจ้งเตือนสำหรับข้อความที่เน้นแล้ว",
+      "setFailed": "ไม่สามารถตั้งค่าการแจ้งเตือนได้",
+      "deleted": "ลบการแจ้งเตือนแล้ว",
+      "deleteFailed": "ไม่สามารถลบการแจ้งเตือนได้",
+      "dismissed": "ยกเลิกการแจ้งเตือนแล้ว",
+      "dismissFailed": "ไม่สามารถยกเลิกการแจ้งเตือนได้"
+    }
+  },
+  "linkedTasks": {
+    "title": "งานที่เชื่อมโยง",
+    "loading": "กำลังโหลดงานที่เชื่อมโยง..."
+  },
+  "phaseF": {
+    "componentsFolderViewColumnHeader": {
+      "dragToReorderColumn": "ลากเพื่อจัดลำดับคอลัมน์"
+    },
+    "componentsFolderViewColumnSelector": {
+      "properties": "คุณสมบัติ",
+      "searchColumns": "ค้นหาคอลัมน์...",
+      "noMatchingColumns": "ไม่มีคอลัมน์ที่ตรงกัน",
+      "formulas": "สูตร",
+      "noFormulasDefined": "ยังไม่ได้กำหนดสูตร",
+      "addFormula": "เพิ่มสูตร",
+      "deleteFormula": "ลบสูตร",
+      "areYouSureYouWantToDeleteTheFormula": "คุณแน่ใจหรือไม่ว่าต้องการลบสูตร \" ",
+      "quotThisActionCannotBeUndone": "\"? การกระทำนี้ไม่สามารถย้อนกลับได้.",
+      "cancel": "ยกเลิก",
+      "delete": "ลบ",
+      "none": "ไม่มี",
+      "edit": "แก้ไข",
+      "delete2": "ลบ"
+    },
+    "componentsFolderViewFilterBuilder": {
+      "filter": "  \nกรอง  ",
+      "filters": "ตัวกรอง",
+      "clearAll": "ล้างทั้งหมด",
+      "noFiltersApplied": "ยังไม่มีตัวกรองที่ถูกนำมาใช้",
+      "addFiltersToNarrowDownYourNotes": "เพิ่มตัวกรองเพื่อจำกัดบันทึกของคุณ",
+      "match": "ตรงกับ",
+      "allAnd": "ทั้งหมด (และ)",
+      "anyOr": "อย่างใดอย่างหนึ่ง (หรือ)",
+      "ofTheFollowing": "ของสิ่งต่อไปนี้:",
+      "match2": "ตรงกับ",
+      "all": "  \nทั้งหมด  ",
+      "any": "อย่างใด",
+      "of": "ของ:",
+      "addCondition": "เพิ่มเงื่อนไข",
+      "addFilter": "เพิ่มตัวกรอง",
+      "addGroup": "เพิ่มกลุ่ม"
+    },
+    "componentsFolderViewFilterRow": {
+      "builtIn": "ในตัว",
+      "properties": "คุณสมบัติ",
+      "placeholderProperty": "สมบัติ",
+      "placeholderOperator": "ตัวดำเนินการ",
+      "placeholderValue": "ค่า"
+    },
+    "componentsFolderViewFolderTableView": {
+      "notesTable": "ตารางบันทึก"
+    },
+    "componentsFolderViewFolderViewToolbar": {
+      "searchNotes": "ค้นหาบันทึก...",
+      "clearSearch": "ล้างการค้นหา"
+    },
+    "componentsFolderViewFormulaEditorModal": {
+      "defineAComputedColumnUsingAnExpression": "กำหนดคอลัมน์ที่คำนวณได้โดยใช้สมการ",
+      "name": "ชื่อ",
+      "expression": "สมการ",
+      "available": "ใช้ได้:",
+      "preview": "ตัวอย่าง",
+      "fixExpressionErrorsToSeePreview": "แก้ไขข้อผิดพลาดในสมการเพื่อดูตัวอย่าง",
+      "usingNote": "ใช้บันทึก:",
+      "quot": "อ้าง;",
+      "cancel": "ยกเลิก",
+      "namePlaceholder": "days_until_due",
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
+    },
+    "componentsFolderViewGroupBySelector": {
+      "clearGrouping": "ล้างการจัดกลุ่ม",
+      "searchProperties": "ค้นหาคุณสมบัติ...",
+      "builtIn": "ในตัว",
+      "properties": "คุณสมบัติ",
+      "noGroupablePropertiesFound": "ไม่พบคุณสมบัติที่สามารถจัดกลุ่มได้",
+      "sortDirection": "ทิศทางการเรียงลำดับ",
+      "collapseGroupsByDefault": "ย่อกลุ่มโดยค่าเริ่มต้น",
+      "showGroupSummaries": "แสดงสรุปกลุ่ม",
+      "clearGrouping2": "ล้างการจัดกลุ่ม"
+    },
+    "componentsFolderViewGroupedTable": {
+      "groupedNotesTable": "ตารางบันทึกที่จัดกลุ่ม",
+      "more": "เพิ่มเติม"
+    },
+    "componentsFolderViewMoveToFolderDialog": {
+      "searchFolders": "ค้นหาโฟลเดอร์...",
+      "loadingFolders": "กำลังโหลดโฟลเดอร์...",
+      "suggested": "ที่แนะนำ",
+      "bestMatch": "การจับคู่ที่ดีที่สุด",
+      "current": "ปัจจุบัน)",
+      "allFolders": "โฟลเดอร์ทั้งหมด",
+      "current2": "ปัจจุบัน)",
+      "noFoldersMatch": "ไม่มีโฟลเดอร์ที่ตรงกัน",
+      "quot": "อ้าง;",
+      "create": "สร้าง",
+      "quot2": "อ้าง;",
+      "cancel": "ยกเลิก"
+    },
+    "componentsFolderViewRowContextMenu": {
+      "delete": "  \nลบ  ",
+      "notes": "บันทึก",
+      "open": "เปิด",
+      "openInExternalEditor": "เปิดในโปรแกรมแก้ไขภายนอก",
+      "revealInFinder": "แสดงใน Finder",
+      "revealInSidebar": "แสดงในแถบด้านข้าง",
+      "copyLink": "คัดลอกลิงก์",
+      "delete2": "ลบ"
+    },
+    "componentsFolderViewSortableColumnHeader": {
+      "dragToReorderColumn": "ลากเพื่อจัดลำดับคอลัมน์",
+      "resizeColumn": "ปรับขนาดคอลัมน์"
+    },
+    "componentsFolderViewViewSwitcher": {
+      "default": "ค่าเริ่มต้น",
+      "rename": "เปลี่ยนชื่อ",
+      "duplicate": "ทำซ้ำ",
+      "setAsDefault": "ตั้งเป็นค่าเริ่มต้น",
+      "delete": "ลบ",
+      "createNewView": "สร้างมุมมองใหม่",
+      "createNewView2": "สร้างมุมมองใหม่",
+      "createANewViewWithCustomColumnsFiltersAndSorting": "สร้างมุมมองใหม่พร้อมคอลัมน์, ตัวกรอง และการเรียงลำดับที่กำหนดเอง",
+      "viewName": "ชื่อมุมมอง",
+      "myCustomView": "มุมมองแบบกำหนดเองของฉัน",
+      "baseConfiguration": "การตั้งค่าพื้นฐาน",
+      "copyFromCurrentView": "คัดลอกจากมุมมองปัจจุบัน",
+      "startFreshDefaultColumns": "เริ่มใหม่ (คอลัมน์เริ่มต้น)",
+      "cancel": "ยกเลิก",
+      "renameView": "เปลี่ยนชื่อมุมมอง",
+      "enterANewNameForThisView": "ป้อนชื่อใหม่สำหรับมุมมองนี้",
+      "viewName2": "ชื่อมุมมอง",
+      "viewName3": "ชื่อมุมมอง",
+      "cancel2": "ยกเลิก",
+      "deleteView": "ลบมุมมอง",
+      "areYouSureYouWantToDelete": "คุณแน่ใจหรือว่าต้องการลบ",
+      "thisActionCannotBeUndone": "การกระทำนี้ไม่สามารถยกเลิกได้",
+      "cancel3": "ยกเลิก"
+    },
+    "componentsNoteContentAreaFileBlock": {
+      "failedToLoadPdf": "ไม่สามารถโหลด PDF ได้: ",
+      "download": "ดาวน์โหลด",
+      "download2": "ดาวน์โหลด",
+      "noFileAttached": "ไม่มีไฟล์แนบ"
+    },
+    "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
+      "openInTaskPanel": "เปิดในแผงงาน",
+      "taskName": "ชื่อภารกิจ...",
+      "taskDeleted": "ลบภารกิจแล้ว",
+      "loading": "กำลังโหลด..."
+    },
+    "componentsNoteContentAreaTaskBlockTaskCreationPopover": {
+      "project": "โครงการ",
+      "priority": "ลำดับความสำคัญ",
+      "dueDate": "วันครบกำหนด",
+      "cancel": "ยกเลิก"
+    },
+    "componentsNoteContentAreaYoutubeEmbedBlock": {
+      "noVideoUrl": "ไม่มี URL วิดีโอ"
+    },
+    "componentsNoteExportDialog": {
+      "pdf": "PDF",
+      "html": "HTML",
+      "a4210X297Mm": "A4 (210 x 297 มม.)",
+      "letter85X11In": "Letter (8.5 x 11 นิ้ว)",
+      "legal85X14In": "Legal (8.5 x 14 นิ้ว)"
+    },
+    "componentsNoteInfoSectionEditorsDateeditor": {
+      "ddMmYyyy": "dd.mm.yyyy"
+    },
+    "componentsNoteNoteHeader": {
+      "synced": "ซิงค์แล้ว"
+    },
+    "componentsSharedDocumentInfoTab": {
+      "words": "คำ",
+      "characters": "ตัวอักษร",
+      "readingTime": "เวลาการอ่าน",
+      "created": "สร้างเมื่อ",
+      "modified": "แก้ไขเมื่อ"
+    },
+    "componentsSidebarProjectsEmptyState": {
+      "noProjectsYet": "ยังไม่มีโครงการ",
+      "createYourFirstProject": "สร้างโครงการแรกของคุณ",
+      "createYourFirstProject2": "สร้างโครงการแรกของคุณ"
+    },
+    "componentsSidebarSidebarBookmarkList": {
+      "loadingBookmarks": "กำลังโหลดบุ๊กมาร์ก...",
+      "failedToLoadBookmarks": "ไม่สามารถโหลดบุ๊กมาร์กได้",
+      "noBookmarksYet": "ยังไม่มีบุ๊กมาร์ก",
+      "moreOptions": "ตัวเลือกเพิ่มเติม",
+      "remove": "ลบออก"
+    },
+    "componentsSidebarSidebarItemContextMenu": {
+      "open": "เปิด",
+      "openToTheSide": "เปิดข้างเคียง",
+      "pinToTabs": "ปักหมุดไปยังแท็บ",
+      "edit": "แก้ไข",
+      "delete": "ลบ",
+      "copyLink": "คัดลอกลิงก์"
+    },
+    "componentsSidebarSidebarTagList": {
+      "loadingTags": "กำลังโหลดแท็ก...",
+      "failedToLoadTags": "ไม่สามารถโหลดแท็กได้",
+      "noTagsYet": "ยังไม่มีแท็ก",
+      "filterTags": "กรองแท็ก...",
+      "noMatchingTags": "ไม่มีแท็กที่ตรงกัน"
+    },
+    "componentsSidebarSortableProjectItem": {
+      "dropHere": "วางที่นี่",
+      "editProject": "แก้ไขโครงการ"
+    },
+    "componentsSidebarTagDeleteDialog": {
+      "deleteTag": "ลบแท็ก #",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "โน้ตที่มีแท็กนี้จะไม่ถูกลบ เพียงแต่เอาแท็กออก",
+      "cancel": "ยกเลิก"
+    },
+    "componentsSidebarTagDetailView": {
+      "goBack": "กลับ",
+      "notes": "โน้ต",
+      "loadingNotes": "กำลังโหลดบันทึก...",
+      "noNotesWithThisTag": "ไม่มีโน้ตที่มีแท็กนี้",
+      "addThisTagToANoteToSeeItHere": "เพิ่มแท็กนี้กับโน้ตเพื่อดูที่นี่",
+      "pinned": "ปักหมุดแล้ว",
+      "allNotes": "ทุกโน้ต",
+      "allNotesArePinned": "โน้ตทั้งหมดถูกปักหมุด",
+      "unpinFromTag": "ยกเลิกการปักหมุดจากแท็ก",
+      "unpin": "ยกเลิกการปักหมุด",
+      "pinToTag": "ปักหมุดไปยังแท็ก",
+      "pin": "ปักหมุด",
+      "tagActions": "การดำเนินการเกี่ยวกับแท็ก",
+      "editTagName": "แก้ไขชื่อแท็ก",
+      "changeColor": "เปลี่ยนสี",
+      "deleteTag": "ลบแท็ก",
+      "recent": "ล่าสุด",
+      "created": "สร้างเมื่อ",
+      "alphabetical": "ตามลำดับตัวอักษร"
+    },
+    "componentsSidebarTagRenameDialog": {
+      "renameTag": "เปลี่ยนชื่อแท็ก",
+      "rename": "เปลี่ยนชื่อ",
+      "acrossEveryNoteThatUsesIt": "ในทุกโน้ตที่ใช้แท็กนี้",
+      "newName": "ชื่อใหม่",
+      "cancel": "ยกเลิก"
+    },
+    "componentsViewersAudioPlayer": {
+      "failedToLoadAudio": "ไม่สามารถโหลดเสียงได้",
+      "theAudioFileCouldNotBePlayed": "ไม่สามารถเล่นไฟล์เสียงได้",
+      "skipBack10s": "ย้อนกลับ 10 วินาที",
+      "skipForward10s": "ข้ามไปข้างหน้า 10 วินาที"
+    },
+    "componentsViewersImageViewer": {
+      "failedToLoadImage": "โหลดรูปภาพล้มเหลว",
+      "theImageCouldNotBeDisplayed": "ไม่สามารถแสดงรูปภาพได้",
+      "resetZoom": "รีเซ็ตการซูม",
+      "rotate": "หมุน",
+      "dragToPan": "ลากเพื่อเลื่อน"
+    },
+    "componentsViewersPdfViewer": {
+      "failedToLoadPdf": "โหลดไฟล์ PDF ล้มเหลว",
+      "previousPage": "หน้าก่อนหน้า",
+      "nextPage": "หน้าถัดไป",
+      "zoomOut": "ซูมออก",
+      "zoomIn": "ซูมเข้า",
+      "fitToWidth": "ปรับให้พอดีกับความกว้าง",
+      "rotate": "หมุน"
+    },
+    "componentsViewersVideoPlayer": {
+      "failedToLoadVideo": "โหลดวิดีโอล้มเหลว",
+      "theVideoFileCouldNotBePlayed": "ไม่สามารถเล่นไฟล์วิดีโอได้"
+    },
+    "pagesFile": {
+      "failedToLoadFile": "โหลดไฟล์ล้มเหลว",
+      "tryAgain": "ลองอีกครั้ง",
+      "noFileSelected": "ยังไม่ได้เลือกไฟล์",
+      "selectAFileFromTheSidebarToViewIt": "เลือกไฟล์จากแถบด้านข้างเพื่อดู",
+      "loadingFile": "กำลังโหลดไฟล์...",
+      "openInDefaultApp": "เปิดในแอปพลิเคชันเริ่มต้น",
+      "open": "เปิด",
+      "revealInFinder": "แสดงใน Finder",
+      "reveal": "เปิดเผย",
+      "unsupportedFileType": "ประเภทไฟล์ไม่รองรับ"
+    },
+    "pagesFolderView": {
+      "createNewNote": "สร้างบันทึกใหม่",
+      "viewSettings": "การตั้งค่าการดู",
+      "displayDensity": "ความหนาแน่นในการแสดงผล",
+      "comfortable": "สบายตา",
+      "compact": "กะทัดรัด",
+      "showSummaries": "แสดงสรุป",
+      "cancel": "ยกเลิก"
+    },
+    "pagesTemplateEditor": {
+      "loadingTemplate": "กำลังโหลดเทมเพลต...",
+      "builtInTemplatesCannotBeModified": "เทมเพลตที่ติดตั้งในตัวไม่สามารถแก้ไขได้",
+      "description": "คำอธิบาย",
+      "briefDescriptionOfThisTemplate": "คำอธิบายสั้น ๆ ของเทมเพลตนี้...",
+      "templateContent": "เนื้อหาเทมเพลต",
+      "use": "ใช้ ",
+      "toInsertTheNoteTitleWhenCreatingANote": "เพื่อแทรกชื่อบันทึกเมื่อสร้างบันทึก",
+      "templateName": "ชื่อเทมเพลต",
+      "defaultContentForNotesCreatedFromThisTemplate": "เนื้อหาเริ่มต้นสำหรับบันทึกที่สร้างจากเทมเพลตนี้..."
+    },
+    "pagesTemplates": {
+      "loadingCollection": "กำลังโหลดคอลเลกชัน...",
+      "templateCollection": "คอลเลกชันเทมเพลต",
+      "templates": "เทมเพลต",
+      "curatedStructuresForYourNotes": "โครงสร้างที่คัดสรรสำหรับบันทึกของคุณ",
+      "newTemplate": "เทมเพลตใหม่",
+      "myTemplates": "แม่แบบของฉัน",
+      "builtIn": "ในตัว",
+      "deleteTemplate": "ลบเทมเพลต",
+      "areYouSureYouWantToDelete": "คุณแน่ใจหรือว่าต้องการลบ",
+      "notesCreatedFromThisTemplateWillNotBeAffected": "บันทึกที่สร้างจากเทมเพลตนี้จะไม่ถูกกระทบ",
+      "cancel": "ยกเลิก",
+      "builtIn2": "ในตัว",
+      "duplicate": "ทำซ้ำ",
+      "delete": "ลบ",
+      "startYourCollection": "เริ่มคอลเลกชันของคุณ",
+      "templatesHelpYouCreateNotesWithConsistentStructure": "เทมเพลตช่วยให้คุณสร้างบันทึกด้วยโครงสร้างที่สอดคล้องกัน",
+      "createTemplate": "สร้างเทมเพลต"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveFormula": "การบันทึกสูตรล้มเหลว",
+      "failedToOpenInExternalEditor": "ไม่สามารถเปิดในตัวแก้ไขภายนอก",
+      "failedToRevealInFinder": "ไม่สามารถเปิดใน Finder ได้",
+      "failedToCopyLink": "ไม่สามารถคัดลอกลิงก์ได้",
+      "failedToCreateView": "ไม่สามารถสร้างมุมมองได้",
+      "failedToRenameFolder": "ไม่สามารถเปลี่ยนชื่อโฟลเดอร์ได้",
+      "failedToCreateTask": "ไม่สามารถสร้างงานได้",
+      "failedToLoadVersionHistory": "ไม่สามารถโหลดประวัติรุ่นได้",
+      "failedToRestoreVersion": "ไม่สามารถกู้คืนรุ่นได้",
+      "failedToDeleteVersion": "ไม่สามารถลบรุ่นได้",
+      "failedToCreateNote": "  \nไม่สามารถสร้างบันทึกได้  ",
+      "failedToLoadMoreBookmarks": "ไม่สามารถโหลดบุ๊กมาร์กเพิ่มเติมได้",
+      "failedToToggleBookmark": "ไม่สามารถสลับบุ๊กมาร์กได้",
+      "failedToRemoveBookmark": "ไม่สามารถลบบุ๊กมาร์กได้",
+      "failedToReorderBookmarks": "ไม่สามารถจัดลำดับบุ๊กมาร์กใหม่ได้",
+      "failedToSave": "ไม่สามารถบันทึกได้",
+      "failedToRename": "ไม่สามารถเปลี่ยนชื่อได้",
+      "failedToUpdateEmoji": "ไม่สามารถอัปเดตอิโมจิได้",
+      "failedToUpdateTags": "ไม่สามารถอัปเดตแท็กได้",
+      "failedToSnoozeReminder": "ไม่สามารถเลื่อนเตือนความจำได้",
+      "failedToCreateFolder": "ไม่สามารถสร้างโฟลเดอร์ได้",
+      "failedToLoadProperties": "ไม่สามารถโหลดคุณสมบัติได้",
+      "failedToLoadPropertyDefinitions": "ไม่สามารถโหลดคำจำกัดความของคุณสมบัติได้",
+      "failedToLoadTemplates": "ไม่สามารถโหลดเทมเพลตได้"
+    },
+    "toasts": {
+      "noteExportedSuccessfully": "บันทึกโน้ตสำเร็จแล้ว",
+      "failedToUpdateProperty": "ล้มเหลวในการอัปเดตทรัพย์สิน",
+      "failedToUpdateTags": "ไม่สามารถอัปเดตแท็กได้",
+      "reminderSnoozed": "เลื่อนการเตือนแล้ว",
+      "failedToSnoozeReminder": "ไม่สามารถเลื่อนเตือนความจำได้",
+      "defaultTemplateSet": "ตั้งค่าเทมเพลตเริ่มต้นแล้ว",
+      "failedToSetDefaultTemplate": "ล้มเหลวในการตั้งค่าเทมเพลตเริ่มต้น",
+      "defaultTemplateCleared": "เคลียร์เทมเพลตเริ่มต้นแล้ว",
+      "failedToClearDefaultTemplate": "ล้มเหลวในการเคลียร์เทมเพลตเริ่มต้น",
+      "failedToAddProperty": "ล้มเหลวในการเพิ่มทรัพย์สิน",
+      "failedToDeleteProperty": "ล้มเหลวในการลบทรัพย์สิน",
+      "failedToRenameProperty": "ล้มเหลวในการเปลี่ยนชื่อทรัพย์สิน",
+      "failedToReorderProperties": "ล้มเหลวในการจัดลำดับทรัพย์สินใหม่",
+      "cannotAddTagThisNoteWasDeleted": "ไม่สามารถเพิ่มแท็กได้ - โน้ตนี้ถูกลบแล้ว",
+      "cannotRemoveTagThisNoteWasDeleted": "ไม่สามารถลบแท็กได้ - โน้ตนี้ถูกลบแล้ว",
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "ไม่สามารถเปลี่ยนสถานะเฉพาะภายในเครื่องได้ — โน้ตนี้ถูกลบแล้ว"
+    }
+  }
+}

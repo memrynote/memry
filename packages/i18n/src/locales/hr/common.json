@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "spremiti",
+    "cancel": "Odustani",
+    "close": "Zatvori",
+    "ok": "OK",
+    "yes": "da",
+    "no": "br",
+    "delete": "Izbriši",
+    "confirm": "Potvrdi",
+    "apply": "primijeniti",
+    "done": "Gotovo",
+    "discard": "Odbaciti",
+    "dontSave": "Ne štedi",
+    "edit": "Uredi",
+    "add": "Dodaj",
+    "remove": "Ukloniti",
+    "retry": "Pokušaj ponovo",
+    "submit": "Pošalji",
+    "back": "natrag",
+    "next": "Dalje",
+    "continue": "nastavi",
+    "reset": "Resetiraj",
+    "copy": "Kopiraj",
+    "paste": "Zalijepite",
+    "create": "Stvorite",
+    "open": "Otvoreno"
+  },
+  "state": {
+    "loading": "učitavanje...",
+    "saving": "Spremanje...",
+    "deleting": "Brisanje...",
+    "searching": "Pretraživanje…",
+    "error": "Greška",
+    "success": "Uspjeh"
+  },
+  "empty": {
+    "noResults": "Nema rezultata",
+    "noItems": "Nema predmeta",
+    "noMatch": "Nema podudaranja"
+  },
+  "action": {
+    "search": "Traži",
+    "edit": "Uredi",
+    "delete": "Izbriši",
+    "close": "Zatvori",
+    "expand": "Proširi",
+    "collapse": "Sažimanje",
+    "showMore": "+{count, plural, one {# više} other {# više}}",
+    "showLess": "Prikaži manje"
+  },
+  "tabs": {
+    "pin": "Prikvači karticu",
+    "unpin": "Otkvači karticu",
+    "contextMenu": {
+      "close": "Zatvori",
+      "closeOthers": "Zatvori Ostalo",
+      "closeToRight": "Blizu desnice",
+      "closeAll": "Zatvori sve",
+      "duplicate": "Duplicirana kartica",
+      "splitRight": "Split desno",
+      "splitDown": "Split dolje",
+      "copyPath": "Kopiraj put",
+      "revealInSidebar": "Otkrij na bočnoj traci"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {# stavka} other {# stavke}}",
+    "note": "{count, plural, one {Napomena #} other {Bilješke #}}",
+    "folder": "{count, plural, one {Mapa #} other {# mape}}",
+    "task": "{count, plural, one {# zadatak} other {# zadaci}}",
+    "project": "{count, plural, one {Projekt #} other {# projekti}}",
+    "itemDelete": "{count, plural, one {Izbrišite stavku #} other {Izbrišite stavke #}}"
+  },
+  "toast": {
+    "actionFailed": "Radnja nije uspjela",
+    "nothingToUndo": "Ništa za poništiti",
+    "undone": "Poništeno: {description}",
+    "undoFailed": "Poništavanje radnje nije uspjelo",
+    "copied": "Kopirano",
+    "copyFailed": "Kopiranje nije uspjelo"
+  },
+  "dateRelative": {
+    "today": "Danas",
+    "yesterday": "jučer",
+    "daysAgo": "{count, plural, one {# prije dan} other {# prije dana}}"
+  },
+  "recurrence": {
+    "everyDay": "Svaki dan",
+    "everyNDays": "{count, plural, one {Svaki dan} other {Svakih # dana}}",
+    "everyWeek": "Svaki tjedan",
+    "everyNWeeks": "{count, plural, one {Svaki tjedan} other {Svakih # tjedana}}",
+    "everyWeekday": "Svaki radni dan",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Svaki radni dan} other {Svakih # tjedana radnim danima}}",
+    "everyWeekend": "Svaki vikend",
+    "everyNWeeksOnWeekends": "{count, plural, one {Svaki vikend} other {Svakih # tjedana vikendom}}",
+    "everyWeekOnDays": "Svaki tjedan na {days}",
+    "everyNWeeksOnDays": "{count, plural, one {Svaki tjedan na {days}} other {Svakih # tjedana na {days}}}",
+    "everyMonth": "Svaki mjesec",
+    "everyNMonths": "{count, plural, one {Svaki mjesec} other {Svakih # mjeseci}}",
+    "everyMonthOnDay": "Svaki mjesec na {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {Svaki mjesec na {day}{suffix}} other {Svakih # mjeseci na {day}{suffix}}}",
+    "everyMonthOnWeekDay": "Svaki mjesec na {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Svaki mjesec na {week} {day}} other {Svakih # mjeseci na {week} {day}}}",
+    "everyYear": "Svake godine",
+    "everyNYears": "{count, plural, one {Svake godine} other {Svakih # godina}}",
+    "repeats": "Ponavlja se"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Zbirke",
+      "newNote": "Nova bilješka",
+      "newNote2": "Nova bilješka",
+      "newFolder": "Nova mapa",
+      "newFolder2": "Nova mapa",
+      "bookmarks": "Knjižne oznake",
+      "tags": "oznake",
+      "dropFilesToImport": "Ispustite datoteke za uvoz",
+      "newNoteN": "Nova bilješka (⌘N)",
+      "new": "novo",
+      "syncDisabled": "Sinkronizacija onemogućena",
+      "syncDisabled2": "Sinkronizacija onemogućena"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Promjena veličine dnevne ploče",
+      "dragToResizeDoubleClickToReset": "Povucite za promjenu veličine · Dvaput kliknite za poništavanje"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Pronađi, zamijeni, pitaj..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Preskoči ukrcavanje",
+      "welcomeToMemry": "Dobrodošli u Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Vaša osobna baza znanja. Uzmimo 2 minute da započnemo.",
+      "getStarted": "Započnite ",
+      "createYourFirstNote": "Napravite svoju prvu bilješku",
+      "markdownBasedStoredLocallyAsPlainFiles": "Na temelju markdowna, pohranjeno lokalno kao obične datoteke.",
+      "eGMeetingNotesIdeasAnything": "npr. Bilješke sa sastanka, ideje, bilo što...",
+      "skip": "Preskoči",
+      "createNote": "Napravi bilješku ",
+      "addYourFirstTask": "Dodajte svoj prvi zadatak",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Zadaci se povezuju s vašim bilješkama, s prioritetima i rokovima.",
+      "eGReviewProjectProposal": "npr. Pregledajte prijedlog projekta...",
+      "skip2": "Preskoči",
+      "createTask": "Izradi zadatak ",
+      "syncAcrossDevices": "Sinkronizacija na svim uređajima",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Sinkronizirajte svoje bilješke i zadatke na svim svojim uređajima. To uvijek možete postaviti kasnije.",
+      "skipForNow": "Preskoči za sada",
+      "doneLetSGo": "Gotovo — idemo! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Postavi ikonu mape"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "SAVJET"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Birač ikona",
+      "selectIcon": "Odaberite ikonu",
+      "closeIconPicker": "Zatvori birač ikona",
+      "searchIcons": "Ikone pretraživanja...",
+      "all": "sve",
+      "clearIcon": "Očisti ikonu",
+      "noIconsFoundFor": "Nisu pronađene ikone za \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Tipkovnički prečaci",
+      "closeShortcutsHelp": "Zatvorite prečace pomoći",
+      "press": "Pritisnite",
+      "toClose": "zatvoriti"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Postavi ikonu",
+      "clearIcon": "Očisti ikonu"
+    },
+    "componentsNavMain": {
+      "platform": "Platforma"
+    },
+    "componentsNavProjects": {
+      "projects": "Projekti",
+      "more": "Više",
+      "viewProject": "Prikaži projekt",
+      "shareProject": "Podijelite projekt",
+      "deleteProject": "Izbriši projekt",
+      "more2": "Više"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Nadogradite na Pro",
+      "account": "Račun",
+      "billing": "Naplata",
+      "notifications": "Obavijesti",
+      "logOut": "Odjavi se"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Traži",
+      "searchNotesTasksJournalInbox": "Pretražite bilješke, zadatke, dnevnik, inbox...",
+      "noResultsFor": "Nema rezultata za \"",
+      "rdquo": "rdquo;",
+      "result": "rezultat"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Pretražujte i kliknite stavke kako biste izgradili svoj trag",
+      "reasons": "Razlozi",
+      "clear": "čisto"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "čisto",
+      "tags": "oznake",
+      "filterByTag": "Filtriraj po oznaci...",
+      "dateRange": "Raspon datuma"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Pogledaj sve ",
+      "results": "rezultate"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "mutan"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Nema otvorenih kartica",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Otvorite stranicu s bočne trake ili izradite novu karticu da biste započeli",
+      "openInbox": "Otvorite Inbox",
+      "closePane": "Zatvori okno"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Zadane postavke izgleda",
+      "layoutPresets2": "Unaprijed postavljeni rasporedi"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Promjena veličine okna"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TasksContext nije dostupan",
+      "searchResults": "Rezultati pretraživanja",
+      "unknownTabType": "Nepoznata vrsta kartice: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "nespremljene promjene",
+      "preview": "pretpregled"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Nova kartica",
+      "newTab2": "Nova kartica",
+      "newNote": "Nova bilješka",
+      "journal": "časopis",
+      "calendar": "Kalendar",
+      "inboxCapture": "Snimanje pristigle pošte",
+      "tasks": "Zadaci"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Nespremljene promjene",
+      "unsaved": "nespremljeno)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Nespremljene promjene"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Zatvori sve kartice"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Otvorene kartice",
+      "scrollTabsLeft": "Pomičite kartice lijevo",
+      "scrollTabsRight": "Pomaknite kartice udesno",
+      "graphG": "Grafikon (⌘G)",
+      "dayPanel": "Dnevni panel"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "Pomičite kartice lijevo",
+      "scrollTabsRight": "Pomaknite kartice udesno"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "Otvorene kartice",
+      "scrollTabsLeft": "Pomičite kartice lijevo",
+      "scrollTabsRight": "Pomaknite kartice udesno"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Nešto nije u redu",
+      "anErrorOccurredWhileRenderingThisTabContent": "Došlo je do pogreške prilikom renderiranja sadržaja ove kartice.",
+      "tryAgain": "Pokušajte ponovno"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Ikona bilješke"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Nespremljene promjene",
+      "quot": "quot;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; ima nespremljenih promjena. Što biste htjeli raditi?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Novi radni prostor",
+      "darkMode": "Tamni način rada",
+      "settings": "postavke",
+      "integrations": "Integracije",
+      "signOut": "Odjavi se",
+      "downloadOnIos": "Preuzmite na iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Zatvori prozor",
+      "minimizeWindow": "Minimiziraj prozor",
+      "maximizeWindow": "Maksimiziraj prozor"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Prijedlozi",
+      "or": "ili",
+      "enter": "Uđi",
+      "toInsert": "umetnuti"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "krušna mrvica",
+      "more": "Više"
+    },
+    "componentsUiDialog": {
+      "close": "Zatvori"
+    },
+    "componentsUiSheet": {
+      "close": "Zatvori"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Bočna traka",
+      "displaysTheMobileSidebar": "Prikazuje mobilnu bočnu traku.",
+      "toggleSidebar": "Uključi/isključi bočnu traku",
+      "toggleSidebar2": "Uključi/isključi bočnu traku",
+      "dragToResizeDoubleClickToReset": "Povucite za promjenu veličine · Dvaput kliknite za poništavanje"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Dobrodošli u Memry",
+      "yourPersonalKnowledgeManagementSystem": "Vaš osobni sustav upravljanja znanjem.",
+      "selectAFolderToStoreYourNotesAndTasks": "Odaberite mapu za pohranjivanje bilješki i zadataka.",
+      "opening": "Otvaranje...",
+      "selectVaultFolder": "Odaberite mapu trezora",
+      "plainMarkdown": "Plain Markdown",
+      "yourNotesStayPortable": "Vaše bilješke ostaju prenosive",
+      "syncAnywhere": "Sinkronizirajte bilo gdje",
+      "useDropboxIcloudGit": "Koristite Dropbox, iCloud, Git",
+      "recentVaults": "Nedavni trezori",
+      "notesLastOpened": "bilješke · Zadnje otvaranje"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Još nema trezora",
+      "openVault": "Otvoreni trezor",
+      "settings": "postavke",
+      "logOut": "Odjavi se",
+      "signInToSync": "Prijavite se za sinkronizaciju",
+      "remove": "Ukloni \"",
+      "rdquoFromList": "rdquo; s popisa?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Ovaj će trezor biti uklonjen iz aplikacije, ali će vaše datoteke ostati na disku. Uvijek ga možete ponovno dodati kasnije.",
+      "cancel": "Odustani",
+      "remove2": "Ukloniti"
+    },
+    "componentsWindowControls": {
+      "searchK": "Pretraživanje (⌘K)",
+      "browserBack": "Preglednik natrag",
+      "back": "natrag",
+      "browserForward": "Preglednik naprijed",
+      "forward": "Naprijed"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Uvoz datoteka nije uspio",
+      "failedToCreateNote": "Stvaranje bilješke nije uspjelo",
+      "failedToAccessMicrophone": "Pristup mikrofonu nije uspio"
+    },
+    "toasts": {
+      "undone": "Poništeno"
+    }
+  }
+}

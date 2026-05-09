@@ -1,0 +1,80 @@
+{
+  "generic": {
+    "somethingWentWrong": "Valami elromlott. Kérjük, próbálja újra.",
+    "operationFailed": "A művelet nem sikerült",
+    "unknown": "Ismeretlen hiba történt",
+    "validationFailed": "Az érvényesítés sikertelen",
+    "actionFailed": "A művelet nem sikerült"
+  },
+  "ipc": {
+    "noVaultOpen": "Nincs páncélszekrény nyitva. Kérjük, először nyisson meg egy trezort."
+  },
+  "vault": {
+    "notFound": "A trezor nem található. Lehet, hogy áthelyezték vagy törölték.",
+    "notInitialized": "Nincs páncélszekrény nyitva. A folytatáshoz nyissa meg vagy hozzon létre egy trezort.",
+    "invalidPath": "A kiválasztott útvonal nem érvényes tárolóhely.",
+    "permissionDenied": "Engedély megtagadva. Ellenőrizze, hogy hozzáfér-e ehhez a mappához.",
+    "alreadyExists": "Ezen a helyen már létezik trezor.",
+    "corrupted": "Úgy tűnik, hogy ez a tároló sérült. Próbálja meg a visszaállítást biztonsági másolatból."
+  },
+  "note": {
+    "notFound": "Ez a jegyzet nem található. Lehet, hogy törölték.",
+    "invalidFrontmatter": "Ennek a jegyzetnek érvénytelen metaadatai vannak, ezért nem olvasható.",
+    "duplicateId": "Ezzel az azonosítóval már létezik jegyzet.",
+    "writeFailed": "Nem sikerült menteni a jegyzetet. Ellenőrizze a lemezterületet és az engedélyeket.",
+    "readFailed": "Nem sikerült elolvasni ezt a jegyzetet. Lehet, hogy a fájl zárolva van vagy sérült.",
+    "deleteFailed": "Nem sikerült törölni ezt a jegyzetet. Ellenőrizze a fájl engedélyeit.",
+    "invalidPath": "A jegyzet elérési útja érvénytelen."
+  },
+  "database": {
+    "connectionFailed": "Nem sikerült csatlakozni a helyi adatbázishoz. Próbálja újraindítani az alkalmazást.",
+    "migrationFailed": "Az adatbázis frissítése nem sikerült. Próbálja újraindítani az alkalmazást.",
+    "queryFailed": "Egy adatbázis-művelet meghiúsult. Próbáld újra.",
+    "notInitialized": "Az adatbázis nincs készen. Próbálja újraindítani az alkalmazást.",
+    "constraintViolation": "Adatütközés történt. Próbáld újra.",
+    "corrupted": "A helyi adatbázis sérült. Lehet, hogy vissza kell állítania."
+  },
+  "watcher": {
+    "startFailed": "Nem sikerült elkezdeni a fájlváltozások figyelését.",
+    "stopFailed": "Nem sikerült leállítani a fájlfigyelőt.",
+    "eventError": "Hiba történt a fájlmódosítások figyelése közben."
+  },
+  "attachment": {
+    "fileTooLarge": "Ez a fájl túl nagy a csatoláshoz.",
+    "unsupportedType": "Ez a fájltípus nem támogatott.",
+    "writeFailed": "Nem sikerült menteni a mellékletet. Ellenőrizze a lemezterületet.",
+    "deleteFailed": "Nem sikerült törölni a mellékletet."
+  },
+  "encryption": {
+    "failed": "Nem sikerült titkosítani az adatokat. Lehet, hogy a kulcsokat újra kell generálni.",
+    "decryptionFailed": "Nem sikerült visszafejteni az adatokat. Előfordulhat, hogy a titkosítási kulcsok elavultak.",
+    "invalidKeyLength": "Érvénytelen titkosítási kulcs. Próbáljon meg kijelentkezni, majd újra bejelentkezni.",
+    "invalidNonceLength": "Titkosítási hiba. Próbálja újra a műveletet."
+  },
+  "inboxAttachment": {
+    "writeFailed": "Nem sikerült menteni a beérkező levelek mellékletét.",
+    "deleteFailed": "Nem sikerült törölni a beérkező levelek mellékletét."
+  },
+  "sync": {
+    "networkOffline": "Ön offline állapotban van. A módosítások szinkronizálódnak, amikor újracsatlakozik.",
+    "networkTimeout": "A szinkronizálószerver túl sokáig tartott a válaszadáshoz. Hamarosan újra megpróbáljuk.",
+    "serverError": "A szinkronizálási szerver hibát észlelt. Automatikusan újra próbálkozik.",
+    "authExpired": "A munkamenet lejárt. A szinkronizálás folytatásához jelentkezzen be újra.",
+    "deviceRevoked": "Ezt az eszközt eltávolítottuk a fiókjából.",
+    "rateLimited": "Túl sok kérés. A szinkronizálás hamarosan folytatódik.",
+    "cryptoFailure": "Nem sikerült titkosítani vagy visszafejteni a szinkronizálási adatokat. Próbáljon meg kijelentkezni, majd újra bejelentkezni.",
+    "versionIncompatible": "Az Memry ezen verziója már nem támogatott. Kérjük, frissítse.",
+    "storageQuotaExceeded": "A szinkronizálási tárhely megtelt. Szabadítson fel helyet, vagy frissítse tervét.",
+    "certificatePinFailed": "A biztonságos kapcsolat nem sikerült. Ellenőrizze a hálózati kapcsolatot.",
+    "unknown": "Váratlan szinkronizálási hiba történt. Automatikusan újra próbálkozik.",
+    "statusFetchFailed": "Nem sikerült lekérni a szinkronizálási állapotot",
+    "engineNotInitialized": "A szinkronizálási motor nincs inicializálva. Nyisson meg egy trezort a szinkronizálás megkezdéséhez.",
+    "triggerFailed": "A szinkronizálás nem sikerült",
+    "pauseFailed": "Nem sikerült szüneteltetni a szinkronizálást",
+    "resumeFailed": "Nem sikerült folytatni a szinkronizálást",
+    "settingsNotInitialized": "A beállítások szinkronizálása nincs inicializálva",
+    "securityQuarantinePermanent": "Egy szinkronizálási elemet nem sikerült ellenőrizni, ezért biztonsági okokból karanténba helyeztük.",
+    "securityQuarantineRetry": "Egy szinkronizálási elem aláírásának ellenőrzése sikertelen volt, ezért újra megpróbáljuk.",
+    "certificatePinPaused": "Nem sikerült ellenőrizni a biztonságos kapcsolatot a szinkronizáló szerverrel. A szinkronizálást az Ön védelme érdekében szüneteltették."
+  }
+}

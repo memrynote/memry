@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Načítavam graf...",
+    "load-failed": "Nepodarilo sa načítať údaje grafu",
+    "try-again": "Skúste znova",
+    "aria-label": "Graf vedomostí s {nodeCount, plural, one {# uzol} other {# uzly}} a {edgeCount, plural, one {# spojenie} other {# spojenia}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Uzly grafu",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Váš graf vedomostí",
+    "description": "Prepojenia medzi vašimi poznámkami, úlohami a projektmi sa tu zobrazia ako interaktívny graf.",
+    "link-title": "Prepojte svoje poznámky",
+    "link-description": "Použite [[wikilinks]] na prepojenie nápadov medzi poznámkami",
+    "discover-title": "Objavujte vzory",
+    "discover-description": "Keď sa prepojenia rozrastú, prirodzene sa vytvoria zoskupenia a témy"
+  },
+  "entity": {
+    "note": "poznámka",
+    "notes": "poznámky",
+    "journal": "denník",
+    "journals": "denníky",
+    "task": "úloha",
+    "tasks": "úlohy",
+    "project": "projekt",
+    "projects": "projekty",
+    "tag": "tag",
+    "tags": "štítky",
+    "orphan": "siroty",
+    "orphans": "siroty",
+    "unresolved": "neriešené"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Nastavenia grafu",
+    "hide-settings": "Skryť nastavenia",
+    "reset-filters": "Obnoviť filtre",
+    "filters": "Filtre",
+    "display": "Zobrazenie",
+    "show-labels": "Zobraziť štítky",
+    "focus-depth": "hĺbka {depth}",
+    "clear-focus": "Vyčisti zameraný uzol"
+  },
+  "filter": {
+    "notes": "Poznámky",
+    "journals": "Denníky",
+    "tasks": "Úlohy",
+    "projects": "Projekty",
+    "tags": "Tagy",
+    "orphans": "Siroty",
+    "toggle-entity": "Prepnúť {label}",
+    "toggle-orphans": "Prepnúť sirotčie uzly"
+  },
+  "search": {
+    "placeholder": "Hľadať uzly...",
+    "clear": "Vyčisti hľadanie v grafe"
+  },
+  "context-menu": {
+    "untitled": "Nepomenované",
+    "focus-node": "Zamerať sa na tento uzol",
+    "open-new-tab": "Otvoriť v novej karte",
+    "create-note": "Vytvoriť poznámku",
+    "copy-title": "Kopírovať názov"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {# spojenie} other {# spojenia}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Načítavam graf...",
+    "empty": "Nenašli sa žiadne spojenia",
+    "open-full": "Otvoriť celý graf",
+    "close": "Zatvoriť graf"
+  }
+}

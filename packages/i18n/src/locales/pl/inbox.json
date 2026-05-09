@@ -1,0 +1,483 @@
+{
+  "view": {
+    "tabs": {
+      "inbox": "Skrzynka odbiorcza",
+      "archived": "Zarchiwizowane",
+      "insights": "Spostrzeżenia",
+      "ariaLabel": "Wybór widoku skrzynki odbiorczej"
+    },
+    "triageButton": "Segregacja",
+    "processInboxTitle": "Skrzynka odbiorcza procesu (Cmd+P)",
+    "itemCaptured": "Przedmiot przechwycony",
+    "searchArchivedTitle": "Wyszukaj zarchiwizowane elementy",
+    "searchPlaceholder": "Szukaj...",
+    "archivedItemsAria": "Elementy zarchiwizowane",
+    "snoozed": {
+      "show": "Pokaż odłożone elementy",
+      "showWithCount": "Pokaż odłożone elementy ({count})",
+      "hide": "Ukryj odłożone elementy"
+    },
+    "filter": {
+      "button": "Filtruj",
+      "byType": "Filtruj według typu",
+      "active": "{count, plural, one {Filtrowanie według typu #} other {Filtrowanie według typów #}}",
+      "clearAll": "Wyczyść wszystko"
+    },
+    "jobs": {
+      "running": "{count, plural, one {Uruchomione zadanie w tle #} other {Uruchomione zadania w tle #}}",
+      "failed": "Błąd {count}"
+    }
+  },
+  "type": {
+    "link": "Link",
+    "links": "Linki",
+    "note": "Uwaga",
+    "notes": "Notatki",
+    "image": "Obraz",
+    "images": "Obrazy",
+    "voice": "Głos",
+    "video": "Wideo",
+    "clip": "Klip",
+    "clips": "Klipy",
+    "pdf": "PDF",
+    "pdfs": "pliki PDF",
+    "social": "Społeczny",
+    "reminder": "Przypomnienie",
+    "reminders": "Przypomnienia",
+    "text": "Tekst",
+    "other": "Inne"
+  },
+  "empty": {
+    "successAria": "Sukces, skrzynka odbiorcza jest pusta",
+    "title": "Zerowa skrzynka odbiorcza",
+    "body": "Wszystko jest przetworzone. Uchwyć coś nowego, korzystając z powyższych danych, lub wklej link, aby rozpocząć.",
+    "filedThisWeek": "{count, plural, one {# złożony w tym tygodniu} other {# złożony w tym tygodniu}}",
+    "dayStreak": "{count, plural, one {Seria dni #} other {Seria dni #}}",
+    "tipPrefix": "Wskazówka: użyj",
+    "tipSuffix": "do szybkiego przechwytywania ze schowka",
+    "archivedNone": "Brak zarchiwizowanych elementów",
+    "archivedNoMatches": "Brak pasujących zarchiwizowanych elementów",
+    "noItemsYet": "Nie ma jeszcze żadnych elementów",
+    "noItemsFiled": "Nie złożono jeszcze żadnych elementów",
+    "noItemTypes": "Brak typów elementów do wyświetlenia",
+    "noFolders": "Nie znaleziono folderów",
+    "noFolderMatch": "Żaden folder nie pasuje do „{query}”",
+    "noNotes": "Nie znaleziono żadnych notatek",
+    "allMatchesLinked": "Wszystkie mecze są już powiązane"
+  },
+  "list": {
+    "ariaLabel": "Elementy skrzynki odbiorczej",
+    "section": {
+      "today": "Dzisiaj",
+      "yesterday": "Wczoraj",
+      "older": "Starszy"
+    },
+    "selectItem": "Wybierz {title}",
+    "itemAria": "{type}: {title}",
+    "untitled": "Bez tytułu",
+    "untitledItem": "Przedmiot bez tytułu",
+    "transcribing": "Transkrypcja...",
+    "transcriptionFailed": "Transkrypcja nie powiodła się",
+    "retryTranscription": "Spróbuj ponownie",
+    "pageCount": "{count, plural, one {Strona #} other {Strony #}}",
+    "snoozedUntilShort": "odłożono do {date}",
+    "capturedAgo": "Przechwycono {time}"
+  },
+  "loading": {
+    "inbox": "Ładowanie skrzynki odbiorczej...",
+    "failed": "Nie udało się załadować skrzynki odbiorczej",
+    "tryAgain": "Spróbuj ponownie",
+    "capturingImage": "Przechwytywanie obrazu...",
+    "dropImageTitle": "Upuść obraz, aby go przechwycić",
+    "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
+    "unsupportedImageType": "Nieobsługiwany typ obrazu: {type}",
+    "imageTooLarge": "Obraz jest za duży (maks. 50MB)"
+  },
+  "toast": {
+    "failedArchiveItem": "Nie udało się zarchiwizować elementu",
+    "failedArchiveItems": "Nie udało się zarchiwizować elementów",
+    "failedFile": "Nie udało się zapisać",
+    "failedFileItem": "Nie udało się zapisać elementu",
+    "failedFileItems": "Nie udało się zapisać elementów",
+    "failedSnooze": "Nie udało się drzemki",
+    "failedSnoozeItem": "Nie udało się odłożyć elementu",
+    "failedApplyTags": "Nie udało się zastosować tagów",
+    "failedCaptureImage": "Nie udało się przechwycić obrazu",
+    "linkedToNote": "Połączono z notatką",
+    "linkedToNotes": "Połączono z notatkami {count}",
+    "filedTo": "Zapisano do {folder}",
+    "filedItemsTo": "Złożono elementy {count} do {folder}",
+    "filedPartial": "Zapisano {processed} z elementów {total}",
+    "appliedTags": "{tagCount, plural, one {Zastosowano znacznik #} other {Zastosowano tagi #}} do {itemCount, plural, one {Element #} other {Elementy #}}",
+    "archivedItems": "{count, plural, one {Zarchiwizowany element #} other {Zarchiwizowane elementy #}}",
+    "snoozedUntil": "Odłożone do {time}",
+    "snoozedItemsUntil": "{count, plural, one {Odłożono element # do czasu {time}} other {Odłożono elementy # do {time}}}"
+  },
+  "triage": {
+    "modeTitle": "Tryb selekcji",
+    "exitHint": "Esc, aby wyjść",
+    "exitAria": "Wyjdź z trybu selekcji",
+    "position": "{current} z {total}",
+    "action": {
+      "discard": "Odrzuć",
+      "archive": "Archiwum",
+      "open": "Otwórz",
+      "toTask": "Do zadania",
+      "toNote": "Uwaga",
+      "file": "Plik",
+      "snooze": "Odłóż",
+      "cancel": "Anuluj"
+    },
+    "snoozeUntil": "Odłóż, aż...",
+    "complete": {
+      "title": "Zerowa skrzynka odbiorcza",
+      "processed": "{count, plural, one {Przedmiot # został przetworzony} other {Elementy # przetworzone}}",
+      "streak": "smuga",
+      "streakCount": "Seria {count}",
+      "dayProcessingStreak": "{count, plural, one {Seria dziennego przetwarzania #} other {Seria dziennego przetwarzania #}}",
+      "back": "Powrót do skrzynki odbiorczej",
+      "motivation0": "Twoje przyszłe ja jest ci wdzięczne.",
+      "motivation1": "Wszystko na swoim miejscu.",
+      "motivation2": "Wyczyść skrzynkę odbiorczą, oczyść umysł.",
+      "motivation3": "Decyzja: dług: spłacony w całości.",
+      "motivation4": "To było dobre uczucie, prawda?"
+    }
+  },
+  "bulk": {
+    "selected": "Wybrano {count}",
+    "deselectAll": "Odznacz wszystko",
+    "ariaLabel": "Działania zbiorcze dla wybranych elementów {count}",
+    "file": "Plik",
+    "tag": "Oznacz",
+    "snooze": "Odłóż",
+    "archive": "Archiwum",
+    "add": "Dodaj",
+    "dismissSuggestion": "Odrzuć sugestię",
+    "hint": {
+      "file": "plik",
+      "tag": "znacznik",
+      "snooze": "drzemka",
+      "archive": "archiwum",
+      "deselect": "odznacz"
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {Zarchiwizować element #?} other {Zarchiwizować elementy #?}}",
+      "description": "Elementy te zostaną zarchiwizowane. Zarchiwizowane elementy możesz przeglądać później.",
+      "confirm": "{count, plural, one {Zarchiwizuj element #} other {Archiwizuj elementy #}}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {Plik # Pozycja} other {Plik elementów #}}",
+      "itemsToFile": "Elementy do pliku",
+      "multipleNoteLinksUnavailable": "Uwaga: w przypadku składania wielu pozycji nie można dodawać łączy do innych notatek.",
+      "filing": "Złożenie...",
+      "submit": "{count, plural, one {Plik elementu #} other {Plik elementów #}}",
+      "macHint": "⌘⏎ do pliku · Esc, aby zamknąć",
+      "ctrlHint": "Ctrl+Enter, aby plik · Esc, aby zamknąć"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {Oznacz element #} other {Oznacz elementy #}}",
+      "placeholder": "Wpisz, aby wyszukać tagi...",
+      "applying": "Stosowanie...",
+      "apply": "{count, plural, one {Zastosuj do elementu #} other {Zastosuj do elementów #}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "Szybkie działania",
+    "archiveItem": "Archiwizuj element",
+    "archive": "Archiwum",
+    "snooze": "Odłóż"
+  },
+  "detail": {
+    "ariaLabel": "Szczegóły przedmiotu",
+    "closePanel": "Zamknij panel",
+    "resizeFiling": "Zmień rozmiar sekcji składania",
+    "restore": "Przywróć",
+    "restoreToInbox": "Przywróć do skrzynki odbiorczej",
+    "delete": "Usuń",
+    "deletePermanently": "Usuń trwale",
+    "archive": "Archiwum",
+    "file": "Plik",
+    "keyboardHint": "{modifier}⏎ plik · 1-5 folderów · Esc zamknij",
+    "voiceTitlePlaceholder": "Nazwij tę notatkę głosową...",
+    "fileTo": "Plik do",
+    "ai": "sztuczna inteligencja",
+    "selectFolder": "Wybierz folder",
+    "searchOrCreateFolder": "Wyszukaj lub utwórz za pomocą /...",
+    "suggested": "Sugerowane",
+    "notesRoot": "Notatki",
+    "notesRootLabel": "Notatki (root)",
+    "createFolder": "Utwórz „{name}”",
+    "addTags": "Dodaj tagi...",
+    "linkToNote": "Link do notatki",
+    "linkNotesPlaceholder": "Linki do notatek...",
+    "searchNotesAria": "Wyszukaj notatki, które chcesz połączyć",
+    "linkedNotesAria": "Powiązane notatki",
+    "removeLinkTo": "Usuń link do {title}",
+    "contentEditorAria": "Edytor treści",
+    "notePlaceholder": "Napisz notatkę...",
+    "textPlaceholder": "Edytuj przechwycony tekst..."
+  },
+  "content": {
+    "capturedAt": "Przechwycono {date}",
+    "todayAt": "dzisiaj o {time}",
+    "yesterdayAt": "wczoraj o {time}",
+    "dateAt": "{date} i {time}",
+    "words": "{count, plural, one {Słowo #} other {# słów}}",
+    "duration": "Czas trwania: {duration}",
+    "dimensions": "Wymiary",
+    "format": "Sformatuj",
+    "size": "Rozmiar",
+    "voiceMemo": "Notatka głosowa",
+    "play": "Zagraj",
+    "pause": "Pauza",
+    "audioPosition": "Pozycja audio",
+    "transcription": "Transkrypcja",
+    "processing": "przetwarzanie",
+    "pending": "w toku",
+    "failed": "nie powiodło się",
+    "copyTranscription": "Kopiuj transkrypcję",
+    "transcribingAudio": "Transkrypcja dźwięku...",
+    "awaitingTranscription": "Oczekiwanie na transkrypcję...",
+    "noTranscription": "Brak dostępnej transkrypcji",
+    "failedPlayAudio": "Nie udało się odtworzyć dźwięku",
+    "failedLoadAudio": "Nie udało się załadować dźwięku",
+    "video": "Wideo",
+    "unsupportedVideo": "Twoja przeglądarka nie obsługuje tagu wideo."
+  },
+  "reminder": {
+    "dataUnavailable": "Dane przypomnienia są niedostępne.",
+    "triggered": "Przypomnienie zostało uruchomione",
+    "noteLabel": "Notatka przypomnienia",
+    "source": "Źródło",
+    "journalTitle": "Dziennik — {date}",
+    "noteFallback": "Uwaga",
+    "journalFallback": "Dziennik",
+    "highlighted": "Wyróżnione: „{text}”",
+    "viewed": "Oglądane",
+    "markViewed": "Oznacz jako obejrzane",
+    "notYetViewed": "Jeszcze nie obejrzane",
+    "snooze": "Odłóż",
+    "presetInOneHour": "1 godzina",
+    "presetTomorrow": "Jutro",
+    "presetNextWeek": "Następny tydzień",
+    "custom": "Niestandardowe..."
+  },
+  "insights": {
+    "loading": "Ładowanie statystyk...",
+    "captureActivity": "Przechwytuj aktywność",
+    "byType": "Według typu",
+    "itemTypes": "Typy przedmiotów",
+    "itemTypesDescription": "Dystrybucja formatów treści",
+    "recentFilings": "Ostatnie zgłoszenia",
+    "recentlyFiled": "Ostatnio złożone",
+    "recentlyFiledDescription": "Najnowsze akcje w Twojej skrzynce odbiorczej",
+    "captured": "Schwytany",
+    "capturedThisWeek": "+{count} w tym tygodniu",
+    "processed": "Przetworzone",
+    "processRate": "Stawka {rate}%.",
+    "stale": "Nieświeży",
+    "needsAttention": "potrzebuje uwagi",
+    "allClear": "wszystko jasne",
+    "avgTimeToFile": "Średni czas do pliku",
+    "noCapturesYet": "Nie ma jeszcze żadnych przechwytów",
+    "captures": "{count, plural, one {Przechwytywanie #} other {Przechwytuje #}}",
+    "peak": "Szczyt: {day} {start}–{end}",
+    "convertedToTask": "Przekształcone w zadanie",
+    "linked": "Połączone",
+    "now": "teraz",
+    "timeAgoMinutes": "{count}m temu",
+    "timeAgoHours": "{count}h temu",
+    "timeAgoDays": "{count}d temu"
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "Wykryto sztuczną inteligencję: „",
+      "addToSelection": "Dodaj do wyboru",
+      "dismiss": "Odrzuć"
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "Usuń ",
+      "item": "przedmiot",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Te elementy zostaną usunięte z Twojej skrzynki odbiorczej. Możesz cofnąć tę akcję natychmiast po."
+    },
+    "componentsCaptureInput": {
+      "captureInput": "Przechwytywanie danych wejściowych",
+      "attachFile": "Załącz plik",
+      "attachFileImagesAudioVideoPdf": "Załącz plik (obrazy, dźwięk, wideo, PDF)",
+      "recordVoiceMemo": "Nagraj notatkę głosową",
+      "recordVoiceMemo2": "Nagraj notatkę głosową",
+      "alreadyCaptured": "Już schwytane: „",
+      "rdquo": "nieważne;",
+      "captureAnyway": "Przechwytuj mimo to"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "Wybierz folder",
+      "searchFolders": "Wyszukaj foldery...",
+      "searchFolders2": "Przeszukaj foldery",
+      "searchResults": "Wyniki wyszukiwania",
+      "create": "Utwórz „",
+      "suggested": "Sugerowane",
+      "recent": "Najnowsze",
+      "allFolders": "Wszystkie foldery",
+      "allFolders2": "Wszystkie foldery"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "Link do",
+      "optional": "opcjonalnie)",
+      "searchNotesToLink": "Wyszukaj notatki, aby połączyć...",
+      "searchNotesToLink2": "Wyszukaj notatki, które chcesz połączyć",
+      "searching": "Wyszukiwanie...",
+      "noNotesFound": "Nie znaleziono żadnych notatek",
+      "linkedNotes": "Powiązane notatki",
+      "noLinksAdded": "Nie dodano żadnych linków"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "Sugerowane",
+      "ai": "sztuczna inteligencja",
+      "create": "Utwórz",
+      "tags": "Tagi",
+      "selectedTags": "Wybrane tagi",
+      "addTags": "Dodaj tagi",
+      "tagSuggestions": "Sugestie tagów"
+    },
+    "componentsFilingTagInput": {
+      "tags": "Tagi",
+      "optional": "opcjonalnie)",
+      "addTags": "Dodaj tagi...",
+      "addTags2": "Dodaj tagi",
+      "selectedTags": "Wybrane tagi",
+      "suggested": "Sugerowane"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "Przechwytuj aktywność"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "Nie złożono jeszcze żadnych elementów",
+      "recentlyFiled": "Ostatnio złożone",
+      "latestActionsOnYourInbox": "Najnowsze akcje w Twojej skrzynce odbiorczej",
+      "linked": "Połączone"
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "Ładowanie statystyk..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "Brak typów elementów do wyświetlenia",
+      "itemTypes": "Typy przedmiotów",
+      "distributionOfContentFormats": "Dystrybucja formatów treści"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "Schwytany "
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "x "
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "Edytor treści"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "kropka środkowa; "
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "Tweet niedostępny",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Ten tweet mógł zostać usunięty lub pochodzi z konta prywatnego.",
+      "openOnXCom": "Otwórz na x.com",
+      "views": "widoki",
+      "xCom": "x.com",
+      "viewOnX": "Zobacz na X"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "Wpisz nazwę folderu...",
+      "quickFileFolderSearch": "Szybkie wyszukiwanie folderów plików"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "blisko",
+      "capture": "przechwycić"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "Usuń załącznik"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "Szybkie przechwytywanie danych wejściowych",
+      "recordVoiceMemo": "Nagraj notatkę głosową",
+      "attachFile": "Załącz plik"
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "LINK"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "Schwytany",
+      "dismissError": "Odrzuć błąd",
+      "alreadyCaptured": "Już schwytany",
+      "ldquo": "bdquo;",
+      "rdquoMiddot": "nieważne; · ",
+      "captureAnyway": "Przechwytuj mimo to",
+      "close": "Zamknij"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "Upuść, aby przechwycić",
+      "capturing": "Przechwytywanie..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "Sugestie folderów",
+      "noFoldersMatch": "Żadne foldery nie pasują \""
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "Ustaw przypomnienie dla tego tekstu",
+      "remindMeAboutThis": "Przypomnij mi o tym",
+      "selectedText": "Wybrany tekst:"
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "Przypomnij",
+      "remindMe": "Przypomnij mi",
+      "pickDateTime": "Wybierz datę i godzinę",
+      "addANoteOptional": "Dodaj notatkę (opcjonalnie)",
+      "backToPresets": "Powrót do ustawień wstępnych",
+      "time": "Czas",
+      "noteOptional": "Uwaga (opcjonalnie)",
+      "whyAreYouSettingThisReminder": "Dlaczego ustawiasz to przypomnienie?"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "Odłóż",
+      "snooze2": "Odłóż",
+      "pickDateTime": "Wybierz datę i godzinę",
+      "pickDateTime2": "Wybierz datę i godzinę",
+      "selectWhenToBeRemindedAboutThisItem": "Wybierz, kiedy chcesz otrzymywać przypomnienie o tym elemencie",
+      "snooze3": "Odłóż",
+      "snooze4": "Odłóż",
+      "snooze5": "Odłóż"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "Ładowanie wpisu...",
+      "failedToLoad": "Nie udało się załadować",
+      "loadingPostContent": "Ładowanie treści wpisu...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Nie udało się wczytać treści wpisu. Post może być prywatny lub usunięty.",
+      "viewOn": "Zobacz dalej "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "Rozpocznij nagrywanie głosu",
+      "requestingMicrophoneAccess": "Prośba o dostęp do mikrofonu...",
+      "settings": "Ustawienia",
+      "processing": "Przetwarzanie...",
+      "cancelRecording": "Anuluj nagrywanie",
+      "cancel": "Anuluj",
+      "stopRecording": "Zatrzymaj nagrywanie",
+      "stop": "Zatrzymaj się"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCaptureLink": "Nie udało się przechwycić linku",
+      "failedToCaptureNote": "Nie udało się przechwycić notatki",
+      "captureFailed": "Przechwytywanie nie powiodło się",
+      "failedToCaptureVoiceMemo": "Nie udało się przechwycić notatki głosowej",
+      "voiceCaptureFailed": "Przechwytywanie głosu nie powiodło się",
+      "failedToCaptureFile": "Nie udało się przechwycić pliku",
+      "fileCaptureFailed": "Przechwytywanie pliku nie powiodło się",
+      "failedToCaptureAudio": "Nie udało się przechwycić dźwięku",
+      "failedToCaptureVoice": "Nie udało się przechwycić głosu"
+    },
+    "toasts": {
+      "inboxRefreshed": "Skrzynka odbiorcza odświeżona"
+    }
+  }
+}

@@ -1,0 +1,483 @@
+{
+  "view": {
+    "tabs": {
+      "inbox": "Beérkezett üzenetek",
+      "archived": "Archivált",
+      "insights": "Insights",
+      "ariaLabel": "Beérkezett üzenetek nézet kiválasztása"
+    },
+    "triageButton": "Triage",
+    "processInboxTitle": "Beérkezett üzenetek feldolgozása (Cmd+P)",
+    "itemCaptured": "Az elem rögzítve",
+    "searchArchivedTitle": "Keresés az archivált elemekben",
+    "searchPlaceholder": "Keresés...",
+    "archivedItemsAria": "Archivált elemek",
+    "snoozed": {
+      "show": "Elhalasztott elemek megjelenítése",
+      "showWithCount": "Elhalasztott elemek megjelenítése ({count})",
+      "hide": "Elhalasztott elemek elrejtése"
+    },
+    "filter": {
+      "button": "Szűrés",
+      "byType": "Szűrés típus szerint",
+      "active": "{count, plural, one {Szűrés # típus szerint} other {Szűrés # típusok szerint}}",
+      "clearAll": "Minden törlése"
+    },
+    "jobs": {
+      "running": "{count, plural, one {# háttérfeladat fut} other {# háttérfeladatok futnak}}",
+      "failed": "{count} nem sikerült"
+    }
+  },
+  "type": {
+    "link": "Link",
+    "links": "Linkek",
+    "note": "Megjegyzés",
+    "notes": "Megjegyzések",
+    "image": "Kép",
+    "images": "Képek",
+    "voice": "Hang",
+    "video": "Videó",
+    "clip": "Klip",
+    "clips": "Klipek",
+    "pdf": "PDF",
+    "pdfs": "PDF-ek",
+    "social": "Társadalmi",
+    "reminder": "Emlékeztető",
+    "reminders": "Emlékeztetők",
+    "text": "Szöveg",
+    "other": "Egyéb"
+  },
+  "empty": {
+    "successAria": "Sikeres, a beérkező levelek mappája üres",
+    "title": "Beérkezett üzenetek nulla",
+    "body": "Minden feldolgozva. Rögzítsen valami újat a fenti bevitellel, vagy illesszen be egy linket a kezdéshez.",
+    "filedThisWeek": "{count, plural, one {A héten benyújtott #} other {A héten benyújtott #}}",
+    "dayStreak": "{count, plural, one {# napos sorozat} other {# napos sorozat}}",
+    "tipPrefix": "Tipp: használd",
+    "tipSuffix": "a vágólapról történő gyors rögzítéshez",
+    "archivedNone": "Nincsenek archivált elemek",
+    "archivedNoMatches": "Nincsenek megfelelő archivált elemek",
+    "noItemsYet": "Még nincsenek tételek",
+    "noItemsFiled": "Még nincsenek bejegyzések",
+    "noItemTypes": "Nincs megjeleníthető elemtípus",
+    "noFolders": "Nem találhatók mappák",
+    "noFolderMatch": "Egyetlen mappa sem felel meg a következőnek: \"{query}\"",
+    "noNotes": "Nem található jegyzet",
+    "allMatchesLinked": "Az összes meccs már be van kapcsolva"
+  },
+  "list": {
+    "ariaLabel": "Beérkezett üzenetek",
+    "section": {
+      "today": "Ma",
+      "yesterday": "tegnap",
+      "older": "Régebbi"
+    },
+    "selectItem": "Válassza az {title} lehetőséget",
+    "itemAria": "{type}: {title}",
+    "untitled": "Cím nélkül",
+    "untitledItem": "Névtelen tétel",
+    "transcribing": "Átírás...",
+    "transcriptionFailed": "Az átírás nem sikerült",
+    "retryTranscription": "Próbálja újra",
+    "pageCount": "{count, plural, one {# oldal} other {# oldalak}}",
+    "snoozedUntilShort": "elhalasztva {date}-ig",
+    "capturedAgo": "Rögzített {time}"
+  },
+  "loading": {
+    "inbox": "Beérkező levelek betöltése...",
+    "failed": "Nem sikerült betölteni a beérkező leveleket",
+    "tryAgain": "Próbáld újra",
+    "capturingImage": "Kép rögzítése...",
+    "dropImageTitle": "Húzza el a képet a rögzítéshez",
+    "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
+    "unsupportedImageType": "Nem támogatott képtípus: {type}",
+    "imageTooLarge": "A kép túl nagy (max. 50 MB)"
+  },
+  "toast": {
+    "failedArchiveItem": "Nem sikerült archiválni az elemet",
+    "failedArchiveItems": "Nem sikerült archiválni az elemeket",
+    "failedFile": "Nem sikerült a fájl",
+    "failedFileItem": "Nem sikerült fájlba helyezni az elemet",
+    "failedFileItems": "Az elemek iktatása sikertelen",
+    "failedSnooze": "Nem sikerült elhalasztani",
+    "failedSnoozeItem": "Nem sikerült elhalasztani az elemet",
+    "failedApplyTags": "A címkék alkalmazása nem sikerült",
+    "failedCaptureImage": "Nem sikerült rögzíteni a képet",
+    "linkedToNote": "Jegyzethez kapcsolódik",
+    "linkedToNotes": "{count} jegyzetekhez kapcsolódik",
+    "filedTo": "Bejelentve az {folder} címre",
+    "filedItemsTo": "{count} elemeket iktatott az {folder} címre",
+    "filedPartial": "Iktatott {processed}/{total} tétel",
+    "appliedTags": "{tagCount, plural, one {# címke felhelyezve} other {Alkalmazott # címkék}} – {itemCount, plural, one {# tétel} other {# tételek}}",
+    "archivedItems": "{count, plural, one {Archivált # elem} other {Archivált # elemek}}",
+    "snoozedUntil": "Elhalasztva a következő időpontig: {time}",
+    "snoozedItemsUntil": "{count, plural, one {Elhalasztva # tétel {time} dátumig} other {Elhalasztott # tételek {time} dátumig}}"
+  },
+  "triage": {
+    "modeTitle": "Triage mód",
+    "exitHint": "Esc a kilépéshez",
+    "exitAria": "Lépjen ki a triage módból",
+    "position": "{current}/{total}",
+    "action": {
+      "discard": "Eldobni",
+      "archive": "Archívum",
+      "open": "Nyissa meg",
+      "toTask": "Feladathoz",
+      "toNote": "Megjegyzéshez",
+      "file": "Fájl",
+      "snooze": "Szundi",
+      "cancel": "Mégsem"
+    },
+    "snoozeUntil": "Szundi addig...",
+    "complete": {
+      "title": "Beérkezett üzenetek nulla",
+      "processed": "{count, plural, one {# tétel feldolgozva} other {# tételek feldolgozva}}",
+      "streak": "csík",
+      "streakCount": "{count} sorozat",
+      "dayProcessingStreak": "{count, plural, one {# napi feldolgozási sorozat} other {# napi feldolgozási sorozat}}",
+      "back": "Vissza az Inboxhoz",
+      "motivation0": "Jövőbeli éned hálás neked.",
+      "motivation1": "Minden a helyén.",
+      "motivation2": "Tiszta postafiók, tiszta elme.",
+      "motivation3": "Határozati tartozás: teljes egészében kifizetve.",
+      "motivation4": "Ez jó érzés volt, nem?"
+    }
+  },
+  "bulk": {
+    "selected": "{count} kiválasztva",
+    "deselectAll": "Törölje az összes kijelölését",
+    "ariaLabel": "Tömeges műveletek {count} kiválasztott elemekhez",
+    "file": "Fájl",
+    "tag": "Címke",
+    "snooze": "Szundi",
+    "archive": "Archívum",
+    "add": "Hozzáadás",
+    "dismissSuggestion": "Javaslat elvetése",
+    "hint": {
+      "file": "fájlt",
+      "tag": "címke",
+      "snooze": "szundikál",
+      "archive": "archívum",
+      "deselect": "szüntesse meg a kijelölést"
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {Archívum # tételt?} other {Archíválja az # tételeket?}}",
+      "description": "Ezek az elemek archiválva lesznek. Az archivált elemeket később megtekintheti.",
+      "confirm": "{count, plural, one {Archívum # tétel} other {Archív # elemeket}}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {Fájl # tétel} other {Fájl # tételeket}}",
+      "itemsToFile": "Iktálandó elemek",
+      "multipleNoteLinksUnavailable": "Megjegyzés: Több elem iktatása esetén nem adható hozzá más megjegyzésekre mutató hivatkozás.",
+      "filing": "Bejelentés...",
+      "submit": "{count, plural, one {Fájl # elem} other {Fájlja az # elemeket}}",
+      "macHint": "⌘⏎ fájlba · Esc a bezáráshoz",
+      "ctrlHint": "Ctrl+Enter a fájlhoz · Esc a bezáráshoz"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {Címke # tétel} other {Címke # elemek}}",
+      "placeholder": "Gépeljen a címkék kereséséhez...",
+      "applying": "Jelentkezés...",
+      "apply": "{count, plural, one {Alkalmazni az # elemre} other {Alkalmazni az # tételekre}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "Gyors cselekvések",
+    "archiveItem": "Archív elem",
+    "archive": "Archívum",
+    "snooze": "Szundi"
+  },
+  "detail": {
+    "ariaLabel": "A tétel részletei",
+    "closePanel": "Panel bezárása",
+    "resizeFiling": "Az iktatási szakasz átméretezése",
+    "restore": "Visszaállítás",
+    "restoreToInbox": "Visszaállítás a postaládába",
+    "delete": "Törölje",
+    "deletePermanently": "Végleges törlés",
+    "archive": "Archívum",
+    "file": "Fájl",
+    "keyboardHint": "{modifier}⏎ fájl · 1-5 mappa · Esc bezár",
+    "voiceTitlePlaceholder": "Nevezze el ezt a hangjegyzetet...",
+    "fileTo": "Fájl ide",
+    "ai": "AI",
+    "selectFolder": "Válasszon mappát",
+    "searchOrCreateFolder": "Keresés vagy létrehozás a /...",
+    "suggested": "Javasolt",
+    "notesRoot": "Megjegyzések",
+    "notesRootLabel": "Jegyzetek (gyökér)",
+    "createFolder": "\"{name}\" létrehozása",
+    "addTags": "Címkék hozzáadása...",
+    "linkToNote": "Link a megjegyzéshez",
+    "linkNotesPlaceholder": "Linkjegyzetek...",
+    "searchNotesAria": "Keresés a jegyzetekben a hivatkozáshoz",
+    "linkedNotesAria": "Kapcsolt jegyzetek",
+    "removeLinkTo": "Távolítsa el az {title} linket",
+    "contentEditorAria": "Tartalomszerkesztő",
+    "notePlaceholder": "Írd meg a jegyzetedet...",
+    "textPlaceholder": "Szerkessze a rögzített szöveget..."
+  },
+  "content": {
+    "capturedAt": "Rögzített {date}",
+    "todayAt": "ma az {time}",
+    "yesterdayAt": "tegnap az {time}-en",
+    "dateAt": "{date} és {time}",
+    "words": "{count, plural, one {# szó} other {# szó}}",
+    "duration": "Időtartam: {duration}",
+    "dimensions": "Méretek",
+    "format": "Formátum",
+    "size": "Méret",
+    "voiceMemo": "Hangjegyzet",
+    "play": "Játssz",
+    "pause": "Szünet",
+    "audioPosition": "Hang pozíció",
+    "transcription": "Átírás",
+    "processing": "feldolgozás",
+    "pending": "függőben",
+    "failed": "nem sikerült",
+    "copyTranscription": "Átírás másolása",
+    "transcribingAudio": "Hang átírása...",
+    "awaitingTranscription": "Átírásra vár...",
+    "noTranscription": "Nem áll rendelkezésre átírás",
+    "failedPlayAudio": "Nem sikerült lejátszani a hangot",
+    "failedLoadAudio": "Nem sikerült betölteni a hangot",
+    "video": "Videó",
+    "unsupportedVideo": "Az Ön böngészője nem támogatja a videocímkét."
+  },
+  "reminder": {
+    "dataUnavailable": "Az emlékeztető adatok nem állnak rendelkezésre.",
+    "triggered": "Emlékeztető aktiválva",
+    "noteLabel": "Emlékeztető megjegyzés",
+    "source": "Forrás",
+    "journalTitle": "Napló — {date}",
+    "noteFallback": "Megjegyzés",
+    "journalFallback": "Journal",
+    "highlighted": "Kiemelve: \"{text}\"",
+    "viewed": "Megtekintve",
+    "markViewed": "Megjelölés megtekintettként",
+    "notYetViewed": "Még nem nézték meg",
+    "snooze": "Szundi",
+    "presetInOneHour": "1 óra",
+    "presetTomorrow": "Holnap",
+    "presetNextWeek": "Jövő héten",
+    "custom": "Egyedi..."
+  },
+  "insights": {
+    "loading": "Statisztika betöltése...",
+    "captureActivity": "Rögzítési tevékenység",
+    "byType": "Típus szerint",
+    "itemTypes": "Tételtípusok",
+    "itemTypesDescription": "Tartalomformátumok terjesztése",
+    "recentFilings": "Legutóbbi bejelentések",
+    "recentlyFiled": "Nemrég benyújtott",
+    "recentlyFiledDescription": "Legutóbbi műveletek a postaládájában",
+    "captured": "Elfogták",
+    "capturedThisWeek": "+{count} ezen a héten",
+    "processed": "Feldolgozva",
+    "processRate": "{rate}% árfolyam",
+    "stale": "Állott",
+    "needsAttention": "figyelmet igényel",
+    "allClear": "minden világos",
+    "avgTimeToFile": "Átlagos idő a fájlba",
+    "noCapturesYet": "Még nincsenek rögzítések",
+    "captures": "{count, plural, one {# rögzítés} other {# rögzít}}",
+    "peak": "Csúcs: {day} {start}–{end}",
+    "convertedToTask": "Feladattá konvertálva",
+    "linked": "Összekapcsolva",
+    "now": "most",
+    "timeAgoMinutes": "{count}m ezelőtt",
+    "timeAgoHours": "{count}h ezelőtt",
+    "timeAgoDays": "{count}d ezelőtt"
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "AI észlelte: \"",
+      "addToSelection": "Hozzáadás a kijelöléshez",
+      "dismiss": "Elvetés"
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "Törölje ",
+      "item": "tételt",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Ezeket az elemeket eltávolítjuk a postaládájából. Ezt a műveletet azonnal visszavonhatja."
+    },
+    "componentsCaptureInput": {
+      "captureInput": "Bemenet rögzítése",
+      "attachFile": "Fájl csatolása",
+      "attachFileImagesAudioVideoPdf": "Fájl csatolása (képek, hang, videó, PDF)",
+      "recordVoiceMemo": "Hangjegyzet rögzítése",
+      "recordVoiceMemo2": "Hangjegyzet rögzítése",
+      "alreadyCaptured": "Már elfogták: \"",
+      "rdquo": "rdquo;",
+      "captureAnyway": "Mindenképpen rögzítse"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "Válasszon mappát",
+      "searchFolders": "Mappák keresése...",
+      "searchFolders2": "Mappák keresése",
+      "searchResults": "Keresési eredmények",
+      "create": "Létrehoz",
+      "suggested": "Javasolt",
+      "recent": "Legutóbbi",
+      "allFolders": "Minden mappa",
+      "allFolders2": "Minden mappa"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "Link a",
+      "optional": "opcionális)",
+      "searchNotesToLink": "Keresés a jegyzetekben a linkhez...",
+      "searchNotesToLink2": "Keresés a jegyzetekben a hivatkozáshoz",
+      "searching": "Keresés...",
+      "noNotesFound": "Nem található jegyzet",
+      "linkedNotes": "Kapcsolt jegyzetek",
+      "noLinksAdded": "Nincsenek linkek hozzáadva"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "Javasolt",
+      "ai": "AI",
+      "create": "Létrehozása",
+      "tags": "Címkék",
+      "selectedTags": "Kiválasztott címkék",
+      "addTags": "Címkék hozzáadása",
+      "tagSuggestions": "Címkejavaslatok"
+    },
+    "componentsFilingTagInput": {
+      "tags": "Címkék",
+      "optional": "opcionális)",
+      "addTags": "Címkék hozzáadása...",
+      "addTags2": "Címkék hozzáadása",
+      "selectedTags": "Kiválasztott címkék",
+      "suggested": "Javasolt"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "Rögzítési tevékenység"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "Még nincsenek bejegyzések",
+      "recentlyFiled": "Nemrég benyújtott",
+      "latestActionsOnYourInbox": "Legutóbbi műveletek a postaládájában",
+      "linked": "Összekapcsolva"
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "Statisztika betöltése..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "Nincs megjeleníthető elemtípus",
+      "itemTypes": "Tételtípusok",
+      "distributionOfContentFormats": "Tartalomformátumok terjesztése"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "Elfogták "
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "x "
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "Tartalomszerkesztő"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "középpont; "
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "A tweet nem érhető el",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Lehet, hogy ezt a tweetet törölték, vagy egy privát fiókból származik.",
+      "openOnXCom": "Nyissa meg az x.com oldalon",
+      "views": "nézetek",
+      "xCom": "x.com",
+      "viewOnX": "Megtekintés X-en"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "Írja be a mappa nevét...",
+      "quickFileFolderSearch": "Gyors fájl mappa keresés"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "bezárni",
+      "capture": "elfogása"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "Távolítsa el a mellékletet"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "Gyors rögzítés bemenet",
+      "recordVoiceMemo": "Hangjegyzet rögzítése",
+      "attachFile": "Fájl csatolása"
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "LINK"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "Elfogták",
+      "dismissError": "Elvetési hiba",
+      "alreadyCaptured": "Már elfogták",
+      "ldquo": "ldquo;",
+      "rdquoMiddot": "rdquo; · ",
+      "captureAnyway": "Mindenképpen rögzítse",
+      "close": "Bezárás"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "Emelje le a rögzítéshez",
+      "capturing": "Rögzítés..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "Mappajavaslatok",
+      "noFoldersMatch": "Egyik mappa sem egyezik"
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "Emlékeztető beállítása ehhez a szöveghez",
+      "remindMeAboutThis": "Emlékeztessen erre",
+      "selectedText": "Kiválasztott szöveg:"
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "Emlékeztesd",
+      "remindMe": "Emlékeztessen",
+      "pickDateTime": "Válassza ki a dátumot és az időt",
+      "addANoteOptional": "Megjegyzés hozzáadása (nem kötelező)",
+      "backToPresets": "Vissza az előre beállított értékekhez",
+      "time": "Idő",
+      "noteOptional": "Megjegyzés (nem kötelező)",
+      "whyAreYouSettingThisReminder": "Miért állítja be ezt az emlékeztetőt?"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "Szundi",
+      "snooze2": "Szundi",
+      "pickDateTime": "Válassza ki a Dátumot és az időt",
+      "pickDateTime2": "Válassza ki a Dátumot és az időt",
+      "selectWhenToBeRemindedAboutThisItem": "Válassza ki, hogy mikor szeretne emlékeztetőt kapni erről az elemről",
+      "snooze3": "Szundi",
+      "snooze4": "Szundi",
+      "snooze5": "Szundi"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "Bejegyzés betöltése...",
+      "failedToLoad": "Nem sikerült betölteni",
+      "loadingPostContent": "Bejegyzés tartalmának betöltése...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Nem sikerült betölteni a bejegyzés tartalmát. A bejegyzés lehet privát vagy törölt.",
+      "viewOn": "Nézd meg "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "Indítsa el a hangfelvételt",
+      "requestingMicrophoneAccess": "Mikrofon hozzáférés kérése...",
+      "settings": "Beállítások elemre",
+      "processing": "Feldolgozás...",
+      "cancelRecording": "Felvétel megszakítása",
+      "cancel": "Mégsem",
+      "stopRecording": "Állítsa le a felvételt",
+      "stop": "Állj"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCaptureLink": "Nem sikerült rögzíteni a linket",
+      "failedToCaptureNote": "Nem sikerült rögzíteni a jegyzetet",
+      "captureFailed": "A rögzítés nem sikerült",
+      "failedToCaptureVoiceMemo": "Nem sikerült rögzíteni a hangjegyzetet",
+      "voiceCaptureFailed": "A hangrögzítés nem sikerült",
+      "failedToCaptureFile": "Nem sikerült rögzíteni a fájlt",
+      "fileCaptureFailed": "A fájl rögzítése nem sikerült",
+      "failedToCaptureAudio": "Nem sikerült rögzíteni a hangot",
+      "failedToCaptureVoice": "Nem sikerült rögzíteni a hangot"
+    },
+    "toasts": {
+      "inboxRefreshed": "Beérkező levelek frissítve"
+    }
+  }
+}

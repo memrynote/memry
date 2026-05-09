@@ -1,0 +1,483 @@
+{
+  "view": {
+    "tabs": {
+      "inbox": "Вхідні",
+      "archived": "Архів",
+      "insights": "Аналітика",
+      "ariaLabel": "Вибір перегляду вхідних"
+    },
+    "triageButton": "Тріаж",
+    "processInboxTitle": "Обробити вхідні (Cmd+P)",
+    "itemCaptured": "Елемент захоплено",
+    "searchArchivedTitle": "Пошук в архівованих елементах",
+    "searchPlaceholder": "Пошук...",
+    "archivedItemsAria": "Архівовані елементи",
+    "snoozed": {
+      "show": "Показати відкладені елементи",
+      "showWithCount": "Показати відкладені елементи ({count})",
+      "hide": "Сховати відкладені елементи"
+    },
+    "filter": {
+      "button": "Фільтр",
+      "byType": "Фільтрувати за типом",
+      "active": "{count, plural, one {Фільтрація за типом #} other {Фільтрація за типами #}}",
+      "clearAll": "Очистити все"
+    },
+    "jobs": {
+      "running": "{count, plural, one {Фонове завдання # запущено} other {Фонові завдання # запущено}}",
+      "failed": "{count} не вдалося"
+    }
+  },
+  "type": {
+    "link": "Посилання",
+    "links": "Посилання",
+    "note": "Примітка",
+    "notes": "Примітки",
+    "image": "Зображення",
+    "images": "Зображення",
+    "voice": "Голос",
+    "video": "Відео",
+    "clip": "Кліп",
+    "clips": "Кліпи",
+    "pdf": "PDF",
+    "pdfs": "PDF-файли",
+    "social": "Соціальні мережі",
+    "reminder": "Нагадування",
+    "reminders": "Нагадування",
+    "text": "Текст",
+    "other": "Інше"
+  },
+  "empty": {
+    "successAria": "Успіх, вхідна порожня",
+    "title": "Inbox Zero",
+    "body": "Все оброблено. Зафіксуйте щось нове за допомогою вхідних даних вище або вставте посилання, щоб почати.",
+    "filedThisWeek": "{count, plural, one {# цього тижня} other {# цього тижня}}",
+    "dayStreak": "{count, plural, one {Серія днів #} other {Серія днів #}}",
+    "tipPrefix": "Підказка: використовуйте",
+    "tipSuffix": "для швидкого захоплення з буфера обміну",
+    "archivedNone": "Немає архівованих елементів",
+    "archivedNoMatches": "Немає відповідних архівованих елементів",
+    "noItemsYet": "Ще немає елементів",
+    "noItemsFiled": "Ще не відсортовано жодного елементу",
+    "noItemTypes": "Немає типів елементів для відображення",
+    "noFolders": "Папки не знайдено",
+    "noFolderMatch": "Жодна папка не відповідає \"{query}\"",
+    "noNotes": "Нотатки не знайдено",
+    "allMatchesLinked": "Всі співпадіння вже пов'язані"
+  },
+  "list": {
+    "ariaLabel": "Елементи вхідних",
+    "section": {
+      "today": "Сьогодні",
+      "yesterday": "Вчора",
+      "older": "Старіші"
+    },
+    "selectItem": "Виберіть {title}",
+    "itemAria": "{type}: {title}",
+    "untitled": "Без назви",
+    "untitledItem": "Елемент без назви",
+    "transcribing": "Транскрибування...",
+    "transcriptionFailed": "Не вдалося транскрибувати",
+    "retryTranscription": "Спробувати знову",
+    "pageCount": "{count, plural, one {Сторінка #} other {Сторінки #}}",
+    "snoozedUntilShort": "відкладено до {date}",
+    "capturedAgo": "Захоплено {time}"
+  },
+  "loading": {
+    "inbox": "Завантаження вхідних...",
+    "failed": "Не вдалося завантажити вхідні",
+    "tryAgain": "Спробуйте ще раз",
+    "capturingImage": "Захоплення зображення...",
+    "dropImageTitle": "Перетягніть зображення для захоплення",
+    "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
+    "unsupportedImageType": "Непідтримуваний тип зображення: {type}",
+    "imageTooLarge": "Зображення занадто велике (макс. 50МБ)"
+  },
+  "toast": {
+    "failedArchiveItem": "Не вдалося архівувати елемент",
+    "failedArchiveItems": "Не вдалося архівувати елементи",
+    "failedFile": "Не вдалося заархівувати",
+    "failedFileItem": "Не вдалося заархівувати елемент",
+    "failedFileItems": "Не вдалося заархівувати елементи",
+    "failedSnooze": "Не вдалося відкласти",
+    "failedSnoozeItem": "Не вдалося відкласти елемент",
+    "failedApplyTags": "Не вдалося застосувати теги",
+    "failedCaptureImage": "Не вдалося захопити зображення",
+    "linkedToNote": "Пов'язано з нотаткою",
+    "linkedToNotes": "Пов'язано з {count} нотатками",
+    "filedTo": "Зареєстровано в {folder}",
+    "filedItemsTo": "Зареєстровано {count} елементів у {folder}",
+    "filedPartial": "Зареєстровано {processed} із {total} елементів",
+    "appliedTags": "{tagCount, plural, one {Застосовано тег #} other {Застосовано теги #}} до {itemCount, plural, one {# елемент} other {# елементи}}",
+    "archivedItems": "{count, plural, one {Архівований елемент #} other {Архівовані елементи #}}",
+    "snoozedUntil": "Відкладено до {time}",
+    "snoozedItemsUntil": "{count, plural, one {Відкладено елемент # до {time}} other {Відкладено елементи # до {time}}}"
+  },
+  "triage": {
+    "modeTitle": "Режим сортування",
+    "exitHint": "Esc для виходу",
+    "exitAria": "Вийти з режиму сортування",
+    "position": "{current} з {total}",
+    "action": {
+      "discard": "Відхилити",
+      "archive": "Архівувати",
+      "open": "Відкрити",
+      "toTask": "До завдання",
+      "toNote": "До нотатки",
+      "file": "Файл",
+      "snooze": "Відкласти",
+      "cancel": "Скасувати"
+    },
+    "snoozeUntil": "Відкласти до...",
+    "complete": {
+      "title": "Inbox Zero",
+      "processed": "{count, plural, one {Опрацьовано # елемент} other {Опрацьовано # елементів}}",
+      "streak": "серія",
+      "streakCount": "Серія {count}",
+      "dayProcessingStreak": "{count, plural, one {Серія обробки протягом # днів} other {Серія обробки протягом # днів}}",
+      "back": "Назад до вхідних",
+      "motivation0": "Ваше майбутнє «я» дякує вам.",
+      "motivation1": "Все на своєму місці.",
+      "motivation2": "Чистий вхідне, чистий розум.",
+      "motivation3": "Рішення боргу: сплачено повністю.",
+      "motivation4": "Це було приємно, правда?"
+    }
+  },
+  "bulk": {
+    "selected": "Вибрано {count}",
+    "deselectAll": "Зняти виділення всіх",
+    "ariaLabel": "Масові дії для вибраних елементів {count}",
+    "file": "Файл",
+    "tag": "Позначити",
+    "snooze": "Відкласти",
+    "archive": "Архівувати",
+    "add": "Додати",
+    "dismissSuggestion": "Відхилити пропозицію",
+    "hint": {
+      "file": "файл",
+      "tag": "позначка",
+      "snooze": "відкласти",
+      "archive": "архівувати",
+      "deselect": "зняти виділення"
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {Архівувати елемент #?} other {Архівувати елементи #?}}",
+      "description": "Ці елементи будуть архівовані. Ви можете переглянути архівовані елементи пізніше.",
+      "confirm": "{count, plural, one {Архівувати елемент #} other {Архівувати елементи #}}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {Зберегти елемент # у файлі} other {Зберегти елементи # у файлі}}",
+      "itemsToFile": "Елементи для зберігання",
+      "multipleNoteLinksUnavailable": "Примітка: Посилання на інші нотатки не можна додати при збереженні кількох елементів.",
+      "filing": "Збереження...",
+      "submit": "{count, plural, one {Зберегти елемент # у файлі} other {Файл елементів #}}",
+      "macHint": "⌘⏎ для файлу · Esc щоб закрити",
+      "ctrlHint": "Ctrl+Enter для файлу · Esc щоб закрити"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {Позначити елемент #} other {Позначити елементи #}}",
+      "placeholder": "Введіть для пошуку міток...",
+      "applying": "Застосування...",
+      "apply": "{count, plural, one {Застосувати до елемента #} other {Застосувати до елементів #}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "Швидкі дії",
+    "archiveItem": "Архівувати елемент",
+    "archive": "Архівувати",
+    "snooze": "Відкласти"
+  },
+  "detail": {
+    "ariaLabel": "Деталі елемента",
+    "closePanel": "Закрити панель",
+    "resizeFiling": "Змінити розмір секції файлів",
+    "restore": "Відновити",
+    "restoreToInbox": "Відновити у вхідні",
+    "delete": "Видалити",
+    "deletePermanently": "Видалити назавжди",
+    "archive": "Архівувати",
+    "file": "Файл",
+    "keyboardHint": "{modifier}⏎ файл · 1-5 папок · Esc закрити",
+    "voiceTitlePlaceholder": "Назвіть цю голосову замітку...",
+    "fileTo": "Файл до",
+    "ai": "ШІ",
+    "selectFolder": "Вибрати папку",
+    "searchOrCreateFolder": "Шукати або створити за допомогою /...",
+    "suggested": "Рекомендовано",
+    "notesRoot": "Примітки",
+    "notesRootLabel": "Нотатки (корінь)",
+    "createFolder": "Створити \"{name}\"",
+    "addTags": "Додати теги...",
+    "linkToNote": "Посилання на нотатку",
+    "linkNotesPlaceholder": "Посилання на нотатки...",
+    "searchNotesAria": "Шукати нотатки для посилання",
+    "linkedNotesAria": "Пов'язані нотатки",
+    "removeLinkTo": "Видалити посилання на {title}",
+    "contentEditorAria": "Редактор вмісту",
+    "notePlaceholder": "Напишіть свою нотатку...",
+    "textPlaceholder": "Редагувати захоплений текст..."
+  },
+  "content": {
+    "capturedAt": "Захоплено {date}",
+    "todayAt": "сьогодні о {time}",
+    "yesterdayAt": "вчора о {time}",
+    "dateAt": "{date} о {time}",
+    "words": "{count, plural, one {слово #} other {слова #}}",
+    "duration": "Тривалість: {duration}",
+    "dimensions": "Розміри",
+    "format": "Формат",
+    "size": "Розмір",
+    "voiceMemo": "Аудіозапис",
+    "play": "Відтворити",
+    "pause": "Пауза",
+    "audioPosition": "Позиція аудіо",
+    "transcription": "Транскрипція",
+    "processing": "обробка",
+    "pending": "очікування",
+    "failed": "не вдалося",
+    "copyTranscription": "Копіювати транскрипцію",
+    "transcribingAudio": "Транскрибування аудіо...",
+    "awaitingTranscription": "Очікування транскрипції...",
+    "noTranscription": "Транскрипція недоступна",
+    "failedPlayAudio": "Не вдалося відтворити аудіо",
+    "failedLoadAudio": "Не вдалося завантажити аудіо",
+    "video": "Відео",
+    "unsupportedVideo": "Ваш браузер не підтримує тег відео."
+  },
+  "reminder": {
+    "dataUnavailable": "Дані нагадування недоступні.",
+    "triggered": "Нагадування спрацьоване",
+    "noteLabel": "Нотатка нагадування",
+    "source": "Джерело",
+    "journalTitle": "Журнал — {date}",
+    "noteFallback": "Примітка",
+    "journalFallback": "Щоденник",
+    "highlighted": "Виділено: \"{text}\"",
+    "viewed": "Переглянуто",
+    "markViewed": "Позначити як переглянуто",
+    "notYetViewed": "Ще не переглянуто",
+    "snooze": "Відкласти",
+    "presetInOneHour": "1 година",
+    "presetTomorrow": "Завтра",
+    "presetNextWeek": "Наступного тижня",
+    "custom": "Власний..."
+  },
+  "insights": {
+    "loading": "Завантаження аналітики...",
+    "captureActivity": "Фіксувати активність",
+    "byType": "За типом",
+    "itemTypes": "Типи елементів",
+    "itemTypesDescription": "Розподіл форматів контенту",
+    "recentFilings": "Останні подані документи",
+    "recentlyFiled": "Нещодавно подано",
+    "recentlyFiledDescription": "Останні дії у вашій поштовій скриньці",
+    "captured": "Зафіксовано",
+    "capturedThisWeek": "+{count} цього тижня",
+    "processed": "Опрацьовано",
+    "processRate": "{rate}% ставка",
+    "stale": "Старе",
+    "needsAttention": "потребує уваги",
+    "allClear": "все чисто",
+    "avgTimeToFile": "Середній час на файл",
+    "noCapturesYet": "Поки що немає захоплень",
+    "captures": "{count, plural, one {Захоплення #} other {Захоплення #}}",
+    "peak": "Пік: {day} {start}–{end}",
+    "convertedToTask": "Перетворено на завдання",
+    "linked": "Пов’язано",
+    "now": "зараз",
+    "timeAgoMinutes": "{count}m тому",
+    "timeAgoHours": "{count}h тому",
+    "timeAgoDays": "{count}d тому"
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "Виявлено AI: ",
+      "addToSelection": "Додати до вибору",
+      "dismiss": "Відхилити"
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "Видалити ",
+      "item": "елемент",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Ці елементи будуть видалені з вашої папки «Вхідні». Ви можете скасувати цю дію одразу після."
+    },
+    "componentsCaptureInput": {
+      "captureInput": "Введення захоплення",
+      "attachFile": "Прикріпити файл",
+      "attachFileImagesAudioVideoPdf": "Прикріпити файл (Зображення, Аудіо, Відео, PDF)",
+      "recordVoiceMemo": "Записати голосову замітку",
+      "recordVoiceMemo2": "Записати голосову замітку",
+      "alreadyCaptured": "Вже захоплено: “",
+      "rdquo": "rdquo;",
+      "captureAnyway": "Захопити все одно"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "Вибрати папку",
+      "searchFolders": "Пошук папок...",
+      "searchFolders2": "Пошук папок",
+      "searchResults": "Результати пошуку",
+      "create": "Створити ",
+      "suggested": "Рекомендовано",
+      "recent": "Недавні",
+      "allFolders": "Усі папки",
+      "allFolders2": "Усі папки"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "Посилання на",
+      "optional": "(необов’язково)",
+      "searchNotesToLink": "Пошук нотаток для посилання...",
+      "searchNotesToLink2": "Шукати нотатки для посилання",
+      "searching": "Пошук...",
+      "noNotesFound": "Нотатки не знайдено",
+      "linkedNotes": "Пов'язані нотатки",
+      "noLinksAdded": "Посилань не додано"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "Рекомендовано",
+      "ai": "ШІ",
+      "create": "Створити",
+      "tags": "Теги",
+      "selectedTags": "Вибрані теги",
+      "addTags": "Додати теги",
+      "tagSuggestions": "Пропозиції тегів"
+    },
+    "componentsFilingTagInput": {
+      "tags": "Теги",
+      "optional": "(необов’язково)",
+      "addTags": "Додати теги...",
+      "addTags2": "Додати теги",
+      "selectedTags": "Вибрані теги",
+      "suggested": "Рекомендовано"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "Фіксувати активність"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "Ще не відсортовано жодного елементу",
+      "recentlyFiled": "Нещодавно подано",
+      "latestActionsOnYourInbox": "Останні дії у вашій поштовій скриньці",
+      "linked": "Пов’язано"
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "Завантаження аналітики..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "Немає типів елементів для відображення",
+      "itemTypes": "Типи елементів",
+      "distributionOfContentFormats": "Розподіл форматів контенту"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "Захоплено "
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "x "
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "Редактор вмісту"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "середня точка; "
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "Твіт недоступний",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Цей твіт міг бути видалений або належати приватному акаунту.",
+      "openOnXCom": "Відкрити на x.com",
+      "views": "переглядів",
+      "xCom": "x.com",
+      "viewOnX": "Переглянути на X"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "Введіть назву папки...",
+      "quickFileFolderSearch": "Швидкий пошук папок для файлів"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "закрити",
+      "capture": "захопити"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "Видалити вкладення"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "Швидке захоплення вводу",
+      "recordVoiceMemo": "Записати голосову замітку",
+      "attachFile": "Прикріпити файл"
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "ПОСИЛАННЯ"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "Зафіксовано",
+      "dismissError": "Закрити помилку",
+      "alreadyCaptured": "Вже захоплено",
+      "ldquo": "ldquo;",
+      "rdquoMiddot": "rdquo; &middot; ",
+      "captureAnyway": "Захопити все одно",
+      "close": "Закрити"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "Перетягніть для захоплення",
+      "capturing": "Захоплення..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "Пропозиції папок",
+      "noFoldersMatch": "Немає відповідних папок"
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "Встановити нагадування для цього тексту",
+      "remindMeAboutThis": "Нагадайте мені про це",
+      "selectedText": "Вибраний текст:"
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "Нагадати",
+      "remindMe": "Нагадайте мені",
+      "pickDateTime": "Вибрати дату та час",
+      "addANoteOptional": "Додати примітку (необов'язково)",
+      "backToPresets": "Назад до налаштувань за замовчуванням",
+      "time": "Час",
+      "noteOptional": "Примітка (необов'язково)",
+      "whyAreYouSettingThisReminder": "Чому ви встановлюєте це нагадування?"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "Відкласти",
+      "snooze2": "Відкласти",
+      "pickDateTime": "Вибрати дату та час",
+      "pickDateTime2": "Вибрати дату та час",
+      "selectWhenToBeRemindedAboutThisItem": "Виберіть, коли нагадати про цей елемент",
+      "snooze3": "Відкласти",
+      "snooze4": "Відкласти",
+      "snooze5": "Відкласти"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "Завантаження посту...",
+      "failedToLoad": "Не вдалося завантажити",
+      "loadingPostContent": "Завантаження вмісту допису...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Не вдалося завантажити вміст допису. Допис може бути приватним або видаленим.",
+      "viewOn": "Переглянути на "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "Почати голосовий запис",
+      "requestingMicrophoneAccess": "Запит доступу до мікрофона...",
+      "settings": "Налаштування",
+      "processing": "Обробка...",
+      "cancelRecording": "Скасувати запис",
+      "cancel": "Скасувати",
+      "stopRecording": "Зупинити запис",
+      "stop": "Стоп"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCaptureLink": "Не вдалося захопити посилання",
+      "failedToCaptureNote": "Не вдалося захопити нотатку",
+      "captureFailed": "Не вдалося захопити",
+      "failedToCaptureVoiceMemo": "Не вдалося захопити голосову замітку",
+      "voiceCaptureFailed": "Не вдалося захопити голос",
+      "failedToCaptureFile": "Не вдалося захопити файл",
+      "fileCaptureFailed": "Не вдалося захопити файл",
+      "failedToCaptureAudio": "Не вдалося захопити аудіо",
+      "failedToCaptureVoice": "Не вдалося захопити голос"
+    },
+    "toasts": {
+      "inboxRefreshed": "Вхідні оновлено"
+    }
+  }
+}

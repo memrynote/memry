@@ -1,0 +1,483 @@
+{
+  "view": {
+    "tabs": {
+      "inbox": "Doručená pošta",
+      "archived": "Archivováno",
+      "insights": "Postřehy",
+      "ariaLabel": "Výběr zobrazení doručené pošty"
+    },
+    "triageButton": "Třídění",
+    "processInboxTitle": "Zpracovat doručenou poštu (Cmd+P)",
+    "itemCaptured": "Položka zachycena",
+    "searchArchivedTitle": "Prohledávejte archivované položky",
+    "searchPlaceholder": "Hledat...",
+    "archivedItemsAria": "Archivované položky",
+    "snoozed": {
+      "show": "Zobrazit odložené položky",
+      "showWithCount": "Zobrazit odložené položky ({count})",
+      "hide": "Skrýt odložené položky"
+    },
+    "filter": {
+      "button": "Filtr",
+      "byType": "Filtrujte podle typu",
+      "active": "{count, plural, one {Filtrování podle typu #} other {Filtrování podle typů #}}",
+      "clearAll": "Vymazat vše"
+    },
+    "jobs": {
+      "running": "{count, plural, one {Úloha # běží na pozadí} other {Úlohy # běží na pozadí}}",
+      "failed": "{count} se nezdařilo"
+    }
+  },
+  "type": {
+    "link": "Odkaz",
+    "links": "Odkazy",
+    "note": "Poznámka",
+    "notes": "Poznámky",
+    "image": "Obrázek",
+    "images": "Obrázky",
+    "voice": "Hlas",
+    "video": "Video",
+    "clip": "Klip",
+    "clips": "Klipy",
+    "pdf": "PDF",
+    "pdfs": "PDF",
+    "social": "Sociální",
+    "reminder": "Připomenutí",
+    "reminders": "Připomenutí",
+    "text": "Text",
+    "other": "Jiné"
+  },
+  "empty": {
+    "successAria": "Úspěch, doručená pošta je prázdná",
+    "title": "Doručená pošta nula",
+    "body": "Vše je zpracováno. Zachyťte něco nového pomocí výše uvedeného vstupu nebo začněte vložením odkazu.",
+    "filedThisWeek": "{count, plural, one {# podáno tento týden} other {# podáno tento týden}}",
+    "dayStreak": "{count, plural, one {# denní série} other {# denní série}}",
+    "tipPrefix": "Tip: použijte",
+    "tipSuffix": "pro rychlé zachycení ze schránky",
+    "archivedNone": "Žádné archivované položky",
+    "archivedNoMatches": "Žádné odpovídající archivované položky",
+    "noItemsYet": "Zatím žádné položky",
+    "noItemsFiled": "Dosud nebyly vloženy žádné položky",
+    "noItemTypes": "Žádné typy položek k zobrazení",
+    "noFolders": "Nebyly nalezeny žádné složky",
+    "noFolderMatch": "Žádné složky neodpovídají \"{query}\"",
+    "noNotes": "Nebyly nalezeny žádné poznámky",
+    "allMatchesLinked": "Všechny zápasy jsou již propojeny"
+  },
+  "list": {
+    "ariaLabel": "Položky doručené pošty",
+    "section": {
+      "today": "dnes",
+      "yesterday": "včera",
+      "older": "Starší"
+    },
+    "selectItem": "Vyberte {title}",
+    "itemAria": "{type}: {title}",
+    "untitled": "Bez názvu",
+    "untitledItem": "Položka bez názvu",
+    "transcribing": "Přepis...",
+    "transcriptionFailed": "Přepis se nezdařil",
+    "retryTranscription": "Zkuste to znovu",
+    "pageCount": "{count, plural, one {Stránka #} other {Stránky #}}",
+    "snoozedUntilShort": "odloženo do {date}",
+    "capturedAgo": "Zachyceno {time}"
+  },
+  "loading": {
+    "inbox": "Načítání doručené pošty...",
+    "failed": "Načtení doručené pošty se nezdařilo",
+    "tryAgain": "Zkuste to znovu",
+    "capturingImage": "Snímání obrázku...",
+    "dropImageTitle": "Pusťte obrázek, který chcete zachytit",
+    "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
+    "unsupportedImageType": "Nepodporovaný typ obrázku: {type}",
+    "imageTooLarge": "Obrázek je příliš velký (max 50 MB)"
+  },
+  "toast": {
+    "failedArchiveItem": "Položku se nepodařilo archivovat",
+    "failedArchiveItems": "Archivace položek se nezdařila",
+    "failedFile": "Soubor se nezdařil",
+    "failedFileItem": "Soubor položky se nezdařil",
+    "failedFileItems": "Soubor položek se nezdařil",
+    "failedSnooze": "Odložení se nezdařilo",
+    "failedSnoozeItem": "Položku se nepodařilo odložit",
+    "failedApplyTags": "Nepodařilo se použít značky",
+    "failedCaptureImage": "Snímek se nepodařilo zachytit",
+    "linkedToNote": "Propojeno s poznámkou",
+    "linkedToNotes": "Propojeno s poznámkami {count}",
+    "filedTo": "Zařazeno do {folder}",
+    "filedItemsTo": "Zařazeny položky {count} do {folder}",
+    "filedPartial": "Zařazeno {processed} z {total} položek",
+    "appliedTags": "{tagCount, plural, one {Použitý štítek #} other {Použité značky #}} až {itemCount, plural, one {položka #} other {položky #}}",
+    "archivedItems": "{count, plural, one {Archivovaná položka #} other {Archivované položky #}}",
+    "snoozedUntil": "Odloženo do {time}",
+    "snoozedItemsUntil": "{count, plural, one {Položka # byla odložena do {time}} other {Položky # byly odloženy do {time}}}"
+  },
+  "triage": {
+    "modeTitle": "Třídění režim",
+    "exitHint": "Esc pro ukončení",
+    "exitAria": "Ukončete režim třídění",
+    "position": "{current} z {total}",
+    "action": {
+      "discard": "Zahodit",
+      "archive": "Archiv",
+      "open": "Otevřít",
+      "toTask": "Do úkolu",
+      "toNote": "K poznámce",
+      "file": "Soubor",
+      "snooze": "Odložit",
+      "cancel": "Zrušit"
+    },
+    "snoozeUntil": "Odložit, dokud...",
+    "complete": {
+      "title": "Doručená pošta nula",
+      "processed": "{count, plural, one {Položka # zpracována} other {Zpracovány položky #}}",
+      "streak": "pruh",
+      "streakCount": "pruh {count}",
+      "dayProcessingStreak": "{count, plural, one {# denní série zpracování} other {# denní série zpracování}}",
+      "back": "Zpět do doručené pošty",
+      "motivation0": "Vaše budoucí já vám poděkuje.",
+      "motivation1": "Všechno na svém místě.",
+      "motivation2": "Čistá schránka, čistá mysl.",
+      "motivation3": "Rozhodnutí dluh: splacen v plné výši.",
+      "motivation4": "To byl dobrý pocit, ne?"
+    }
+  },
+  "bulk": {
+    "selected": "Vybráno {count}",
+    "deselectAll": "Zrušte výběr všech",
+    "ariaLabel": "Hromadné akce pro vybrané položky {count}",
+    "file": "Soubor",
+    "tag": "Tag",
+    "snooze": "Odložit",
+    "archive": "Archiv",
+    "add": "Přidat",
+    "dismissSuggestion": "Odmítnout návrh",
+    "hint": {
+      "file": "soubor",
+      "tag": "tag",
+      "snooze": "odložit",
+      "archive": "archiv",
+      "deselect": "zrušit výběr"
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {Archivovat položku #?} other {Archivovat položky #?}}",
+      "description": "Tyto položky budou archivovány. Archivované položky si můžete prohlédnout později.",
+      "confirm": "{count, plural, one {Archivovat položku #} other {Archivujte položky #}}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {Soubor # Položka} other {Soubor položek #}}",
+      "itemsToFile": "Položky do souboru",
+      "multipleNoteLinksUnavailable": "Poznámka: Odkazy na jiné poznámky nelze přidávat při ukládání více položek.",
+      "filing": "Ukládání...",
+      "submit": "{count, plural, one {Soubor položky #} other {Soubor položek #}}",
+      "macHint": "⌘⏎ do souboru · Esc pro zavření",
+      "ctrlHint": "Ctrl+Enter do souboru · Esc pro zavření"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {Označte položku #} other {Označte položky #}}",
+      "placeholder": "Zadejte a vyhledejte značky...",
+      "applying": "Aplikace...",
+      "apply": "{count, plural, one {Použít na položku #} other {Použít na položky #}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "Rychlé akce",
+    "archiveItem": "Archivní položka",
+    "archive": "Archiv",
+    "snooze": "Odložit"
+  },
+  "detail": {
+    "ariaLabel": "Podrobnosti o položce",
+    "closePanel": "Zavřít panel",
+    "resizeFiling": "Změnit velikost sekce archivace",
+    "restore": "Obnovit",
+    "restoreToInbox": "Obnovit do doručené pošty",
+    "delete": "Smazat",
+    "deletePermanently": "Trvale smazat",
+    "archive": "Archiv",
+    "file": "Soubor",
+    "keyboardHint": "{modifier}⏎ soubor · 1-5 složka · Esc zavřít",
+    "voiceTitlePlaceholder": "Pojmenujte tuto hlasovou poznámku...",
+    "fileTo": "Soubor do",
+    "ai": "AI",
+    "selectFolder": "Vyberte složku",
+    "searchOrCreateFolder": "Vyhledejte nebo vytvořte pomocí /...",
+    "suggested": "Doporučeno",
+    "notesRoot": "Poznámky",
+    "notesRootLabel": "poznámky (kořen)",
+    "createFolder": "Vytvořit \"{name}\"",
+    "addTags": "Přidat štítky...",
+    "linkToNote": "Odkaz na poznámku",
+    "linkNotesPlaceholder": "Odkaz na poznámky...",
+    "searchNotesAria": "Vyhledejte poznámky k propojení",
+    "linkedNotesAria": "Propojené poznámky",
+    "removeLinkTo": "Odebrat odkaz na {title}",
+    "contentEditorAria": "Editor obsahu",
+    "notePlaceholder": "Napište poznámku...",
+    "textPlaceholder": "Upravit zachycený text..."
+  },
+  "content": {
+    "capturedAt": "Zachyceno {date}",
+    "todayAt": "dnes v {time}",
+    "yesterdayAt": "včera v {time}",
+    "dateAt": "{date} na {time}",
+    "words": "{count, plural, one {Slovo #} other {# slova}}",
+    "duration": "Délka: {duration}",
+    "dimensions": "Rozměry",
+    "format": "Formát",
+    "size": "Velikost",
+    "voiceMemo": "Hlasová poznámka",
+    "play": "hrát",
+    "pause": "Pauza",
+    "audioPosition": "Pozice zvuku",
+    "transcription": "Přepis",
+    "processing": "zpracování",
+    "pending": "čeká na vyřízení",
+    "failed": "nepodařilo",
+    "copyTranscription": "Kopírovat přepis",
+    "transcribingAudio": "Přepis zvuku...",
+    "awaitingTranscription": "Čeká se na přepis...",
+    "noTranscription": "Není k dispozici žádný přepis",
+    "failedPlayAudio": "Zvuk se nepodařilo přehrát",
+    "failedLoadAudio": "Zvuk se nepodařilo načíst",
+    "video": "Video",
+    "unsupportedVideo": "Váš prohlížeč nepodporuje značku videa."
+  },
+  "reminder": {
+    "dataUnavailable": "Data připomenutí nejsou k dispozici.",
+    "triggered": "Připomenutí spuštěno",
+    "noteLabel": "Poznámka k připomenutí",
+    "source": "Zdroj",
+    "journalTitle": "Deník — {date}",
+    "noteFallback": "Poznámka",
+    "journalFallback": "Deník",
+    "highlighted": "Zvýrazněno: \"{text}\"",
+    "viewed": "Zobrazeno",
+    "markViewed": "Označit jako zobrazené",
+    "notYetViewed": "Zatím nezobrazeno",
+    "snooze": "Odložit",
+    "presetInOneHour": "1 hodina",
+    "presetTomorrow": "zítra",
+    "presetNextWeek": "Příští týden",
+    "custom": "Vlastní..."
+  },
+  "insights": {
+    "loading": "Načítání statistik...",
+    "captureActivity": "Aktivita zachycení",
+    "byType": "Podle typu",
+    "itemTypes": "Typy položek",
+    "itemTypesDescription": "Distribuce obsahových formátů",
+    "recentFilings": "Nedávná podání",
+    "recentlyFiled": "Nedávno podáno",
+    "recentlyFiledDescription": "Nejnovější akce ve vaší doručené poště",
+    "captured": "Zajato",
+    "capturedThisWeek": "+{count} tento týden",
+    "processed": "Zpracováno",
+    "processRate": "Sazba {rate}",
+    "stale": "Zatuchlý",
+    "needsAttention": "potřebuje pozornost",
+    "allClear": "vše jasné",
+    "avgTimeToFile": "Průměrný čas do souboru",
+    "noCapturesYet": "Zatím žádné zachycení",
+    "captures": "{count, plural, one {zachycení #} other {# zachycuje}}",
+    "peak": "Vrchol: {day} {start}–{end}",
+    "convertedToTask": "Převedeno na úkol",
+    "linked": "Propojeno",
+    "now": "teď",
+    "timeAgoMinutes": "Před {count}m",
+    "timeAgoHours": "Před {count}h",
+    "timeAgoDays": "Před {count}d"
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "Detekována AI: \"",
+      "addToSelection": "Přidat do výběru",
+      "dismiss": "Odmítnout"
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "Smazat ",
+      "item": "položka",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Tyto položky budou odstraněny z vaší doručené pošty. Tuto akci můžete ihned poté vrátit zpět."
+    },
+    "componentsCaptureInput": {
+      "captureInput": "Zachyťte vstup",
+      "attachFile": "Připojit soubor",
+      "attachFileImagesAudioVideoPdf": "Připojit soubor (obrázky, zvuk, video, PDF)",
+      "recordVoiceMemo": "Nahrajte hlasovou poznámku",
+      "recordVoiceMemo2": "Nahrajte hlasovou poznámku",
+      "alreadyCaptured": "Již zachyceno: “",
+      "rdquo": "rdquo;",
+      "captureAnyway": "Každopádně zachytit"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "Vyberte složku",
+      "searchFolders": "Prohledat složky...",
+      "searchFolders2": "Hledat složky",
+      "searchResults": "Výsledky vyhledávání",
+      "create": "Vytvořit \"",
+      "suggested": "Doporučeno",
+      "recent": "Nedávné",
+      "allFolders": "Všechny složky",
+      "allFolders2": "Všechny složky"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "Odkaz na",
+      "optional": "volitelné)",
+      "searchNotesToLink": "Vyhledejte poznámky k odkazu...",
+      "searchNotesToLink2": "Vyhledejte poznámky k propojení",
+      "searching": "Hledání...",
+      "noNotesFound": "Nebyly nalezeny žádné poznámky",
+      "linkedNotes": "Propojené poznámky",
+      "noLinksAdded": "Nebyly přidány žádné odkazy"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "Doporučeno",
+      "ai": "AI",
+      "create": "Vytvořit",
+      "tags": "Tagy",
+      "selectedTags": "Vybrané značky",
+      "addTags": "Přidejte značky",
+      "tagSuggestions": "Návrhy značek"
+    },
+    "componentsFilingTagInput": {
+      "tags": "Tagy",
+      "optional": "volitelné)",
+      "addTags": "Přidat štítky...",
+      "addTags2": "Přidejte značky",
+      "selectedTags": "Vybrané značky",
+      "suggested": "Doporučeno"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "Aktivita zachycení"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "Dosud nebyly vloženy žádné položky",
+      "recentlyFiled": "Nedávno podáno",
+      "latestActionsOnYourInbox": "Nejnovější akce ve vaší doručené poště",
+      "linked": "Propojeno"
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "Načítání statistik..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "Žádné typy položek k zobrazení",
+      "itemTypes": "Typy položek",
+      "distributionOfContentFormats": "Distribuce obsahových formátů"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "Zajato "
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "x "
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "Editor obsahu"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "střední tečka; "
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "Tweet není dostupný",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Tento tweet mohl být smazán nebo pochází ze soukromého účtu.",
+      "openOnXCom": "Otevřít na x.com",
+      "views": "pohledy",
+      "xCom": "x.com",
+      "viewOnX": "Zobrazit na X"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "Zadejte název složky...",
+      "quickFileFolderSearch": "Rychlé vyhledávání složek souborů"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "zavřít",
+      "capture": "zachytit"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "Odstraňte přílohu"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "Rychlé zachycení vstupu",
+      "recordVoiceMemo": "Nahrajte hlasovou poznámku",
+      "attachFile": "Připojit soubor"
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "ODKAZ"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "Zajato",
+      "dismissError": "Odmítnout chybu",
+      "alreadyCaptured": "Již zachyceno",
+      "ldquo": "ldquo;",
+      "rdquoMiddot": "rdquo; · ",
+      "captureAnyway": "Každopádně zachytit",
+      "close": "Zavřít"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "Zachyťte pádem",
+      "capturing": "Snímání..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "Návrhy složek",
+      "noFoldersMatch": "Žádné složky neodpovídají \""
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "Nastavit připomenutí pro tento text",
+      "remindMeAboutThis": "Připomeňte mi to",
+      "selectedText": "Vybraný text:"
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "Připomeňte",
+      "remindMe": "Připomeňte mi",
+      "pickDateTime": "Vyberte datum a čas",
+      "addANoteOptional": "Přidat poznámku (volitelné)",
+      "backToPresets": "Zpět k předvolbám",
+      "time": "Čas",
+      "noteOptional": "Poznámka (volitelné)",
+      "whyAreYouSettingThisReminder": "Proč nastavujete toto připomenutí?"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "Odložit",
+      "snooze2": "Odložit",
+      "pickDateTime": "Vyberte Datum a čas",
+      "pickDateTime2": "Vyberte Datum a čas",
+      "selectWhenToBeRemindedAboutThisItem": "Vyberte, kdy chcete být upozorněni na tuto položku",
+      "snooze3": "Odložit",
+      "snooze4": "Odložit",
+      "snooze5": "Odložit"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "Načítání příspěvku...",
+      "failedToLoad": "Načtení se nezdařilo",
+      "loadingPostContent": "Načítání obsahu příspěvku...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Nepodařilo se načíst obsah příspěvku. Příspěvek může být soukromý nebo smazaný.",
+      "viewOn": "Zobrazit na "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "Spusťte nahrávání hlasu",
+      "requestingMicrophoneAccess": "Požaduji přístup k mikrofonu...",
+      "settings": "Nastavení",
+      "processing": "Zpracovává se...",
+      "cancelRecording": "Zrušit nahrávání",
+      "cancel": "Zrušit",
+      "stopRecording": "Zastavit nahrávání",
+      "stop": "Přestaň"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCaptureLink": "Odkaz se nepodařilo zachytit",
+      "failedToCaptureNote": "Nepodařilo se zachytit poznámku",
+      "captureFailed": "Zachycení se nezdařilo",
+      "failedToCaptureVoiceMemo": "Nepodařilo se zachytit hlasovou poznámku",
+      "voiceCaptureFailed": "Zachycení hlasu se nezdařilo",
+      "failedToCaptureFile": "Nepodařilo se zachytit soubor",
+      "fileCaptureFailed": "Snímání souboru se nezdařilo",
+      "failedToCaptureAudio": "Nepodařilo se zachytit zvuk",
+      "failedToCaptureVoice": "Nepodařilo se zachytit hlas"
+    },
+    "toasts": {
+      "inboxRefreshed": "Doručená pošta byla obnovena"
+    }
+  }
+}

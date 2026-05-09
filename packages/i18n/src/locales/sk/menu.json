@@ -1,0 +1,28 @@
+{
+  "app": {
+    "quit": "Ukončiť"
+  },
+  "file": {
+    "label": "Súbor",
+    "newNote": "Nová poznámka",
+    "close": "Zatvoriť okno"
+  },
+  "navigation": {
+    "back": "Späť",
+    "forward": "Dopredu"
+  },
+  "edit": {
+    "label": "Edit",
+    "undo": "Späť",
+    "redo": "Znovu",
+    "cut": "Vystrihnúť",
+    "copy": "Rozumiem",
+    "paste": "Pasta"
+  },
+  "view": {
+    "label": "Zobraziť",
+    "reload": "Obnoviť",
+    "toggleDevTools": "Prepínať nástroje vývojára",
+    "toggleFullscreen": "Prepínať režim celej obrazovky"
+  }
+}

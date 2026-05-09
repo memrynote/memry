@@ -1,0 +1,651 @@
+{
+  "page": {
+    "tabs": {
+      "label": "작업 보기",
+      "today": "오늘",
+      "all": "모두"
+    },
+    "viewMode": {
+      "label": "보기 모드",
+      "list": "목록 보기",
+      "kanban": "칸반 보기"
+    },
+    "projectScope": {
+      "allProjects": "모든 프로젝트",
+      "searchProjects": "프로젝트 검색…",
+      "editProject": "{name} 편집",
+      "unstarSavedFilter": "{name} 별표 해제"
+    }
+  },
+  "task": {
+    "add": "작업 추가",
+    "title": "제목",
+    "titleRequired": "제목은 필수 항목입니다.",
+    "titlePlaceholder": "무엇을 해야 합니까?",
+    "namePlaceholder": "작업 이름",
+    "description": "설명",
+    "descriptionPlaceholder": "설명 추가…",
+    "details": "작업 세부정보",
+    "status": "상태",
+    "priority": "우선순위",
+    "dueDate": "마감일",
+    "project": "프로젝트",
+    "repeat": "반복",
+    "createAnother": "다른 만들기",
+    "delete": "할 일 삭제",
+    "created": "{date}를 생성했습니다."
+  },
+  "project": {
+    "create": "프로젝트 생성",
+    "edit": "프로젝트 편집",
+    "delete": "프로젝트 삭제",
+    "iconAndName": "아이콘 및 이름",
+    "namePlaceholder": "프로젝트 이름",
+    "select": "프로젝트 선택",
+    "selectIcon": "아이콘 선택",
+    "clickIconToChange": "변경하려면 아이콘을 클릭하세요.",
+    "color": "색상",
+    "descriptionOptional": "설명(선택사항)",
+    "descriptionPlaceholder": "이 프로젝트에 대한 간략한 설명…",
+    "statuses": "상태",
+    "statusesHelp": "이 프로젝트의 워크플로 단계를 구성합니다.",
+    "createDescription": "이름, 아이콘, 색상 및 작업 흐름 상태를 사용하여 새 프로젝트를 만듭니다.",
+    "editDescription": "프로젝트 이름, 아이콘, 색상, 워크플로 상태를 편집합니다."
+  },
+  "status": {
+    "select": "상태 선택",
+    "todo": "할 일",
+    "inProgress": "진행 중",
+    "done": "완료"
+  },
+  "priority": {
+    "select": "우선순위 선택",
+    "none": "우선순위 없음",
+    "noneShort": "없음",
+    "low": "낮음",
+    "medium": "중간",
+    "high": "높음",
+    "urgent": "긴급"
+  },
+  "filters": {
+    "filter": "필터",
+    "emptyTitle": "필터와 일치하는 작업이 없습니다.",
+    "emptyHelp": "필터를 조정해 보거나",
+    "groupBy": "그룹화 기준",
+    "groupByOptions": "옵션별로 그룹화",
+    "sortAscending": "오름차순 정렬",
+    "sortDescending": "내림차순 정렬"
+  },
+  "quickAdd": {
+    "label": "빠른 추가 작업",
+    "focusDescription": "초점 빠른 추가 입력"
+  },
+  "drawer": {
+    "close": "작업 세부정보 닫기",
+    "subIssues": "하위 문제",
+    "addSubIssue": "하위 문제 추가",
+    "subIssuePlaceholder": "하위 문제 추가…",
+    "noSubIssues": "아직 하위 문제가 없습니다.",
+    "linkedNotes": "연결된 노트",
+    "linkNote": "메모 연결",
+    "loading": "로드 중…",
+    "searchNotes": "메모 검색…",
+    "noMatchingNotes": "일치하는 메모 없음",
+    "noNotesAvailable": "사용 가능한 메모가 없습니다.",
+    "noLinkedNotes": "아직 연결된 메모가 없습니다.",
+    "removeLinkTo": "{title}에 대한 링크 제거",
+    "removeLinkFallback": "참고"
+  },
+  "kanban": {
+    "board": "칸반보드"
+  },
+  "toasts": {
+    "projectUpdated": "프로젝트가 업데이트되었습니다.",
+    "projectCreated": "프로젝트가 생성되었습니다.",
+    "projectSaveError": "프로젝트를 저장하지 못했습니다.",
+    "projectArchived": "프로젝트가 보관되었습니다.",
+    "projectArchiveError": "프로젝트를 보관하지 못했습니다.",
+    "projectDeleted": "프로젝트가 삭제되었습니다.",
+    "projectDeleteError": "프로젝트를 삭제하지 못했습니다.",
+    "filtersCleared": "필터가 삭제되었습니다.",
+    "filterSaved": "필터가 저장되었습니다.",
+    "filterDeleted": "필터가 삭제되었습니다.",
+    "filterApplied": "\"{name}\" 적용",
+    "deleted": "작업이 삭제되었습니다.",
+    "deletedSeries": "시리즈 완성!",
+    "deletedNext": "다음 발생",
+    "completed": "작업이 완료되었습니다!",
+    "archived": "작업이 보관되었습니다.",
+    "undoNotAvailableForDelete": "삭제 시 실행취소할 수 없습니다.",
+    "alreadyAllComplete": "선택한 작업이 모두 이미 완료되었습니다.",
+    "noCompletedSelected": "완료된 작업을 선택하지 않았습니다.",
+    "completeFailed": "작업을 완료하지 못했습니다.",
+    "reopenFailed": "작업을 다시 열 수 없습니다.",
+    "deleteFailed": "작업을 삭제하지 못했습니다.",
+    "moveFailed": "작업을 이동하지 못했습니다."
+  },
+  "phaseF": {
+    "componentsTasksAddSubtaskInput": {
+      "addSubtask": "하위 할 일 추가...",
+      "addSubtask2": "하위 할 일 추가",
+      "enterToAdd": "추가하려면 입력하세요."
+    },
+    "componentsTasksBulkActionsBulkActionDropdown": {
+      "for": "에 대한 ",
+      "task": "작업"
+    },
+    "componentsTasksBulkActionsBulkActionToolbar": {
+      "bulkActions": "대량 작업",
+      "selected": "선택됨",
+      "complete": "완료",
+      "priority": "우선순위",
+      "dueDate": "마감일",
+      "moveTo": "다음으로 이동",
+      "status": "상태",
+      "archive": "아카이브",
+      "delete": "삭제",
+      "cancelSelection": "선택 취소",
+      "cancel": "취소"
+    },
+    "componentsTasksBulkActionsBulkDeleteDialog": {
+      "delete": "삭제 ",
+      "task": "작업",
+      "youReAboutToDelete": "삭제하려고 합니다. ",
+      "task2": "작업",
+      "and": "그리고 ",
+      "moreTask": "더 많은 작업",
+      "thisActionCanBeUndoneForAShortTimeAfterDeletion": "이 작업은 삭제 후 잠시 동안 취소할 수 있습니다.",
+      "cancel": "취소",
+      "delete2": "삭제 ",
+      "task3": "작업"
+    },
+    "componentsTasksBulkActionsBulkDueDatePicker": {
+      "setDueDateFor": "마감일 설정 ",
+      "task": "작업",
+      "selectADateToSetAsTheDueDateForAllSelectedTasks": "선택한 모든 작업의 마감일로 설정할 날짜를 선택하세요.",
+      "alsoSetTime": "시간도 정하고",
+      "cancel": "취소",
+      "setDueDate": "마감일 설정"
+    },
+    "componentsTasksCelebrationProgress": {
+      "complete": "완료"
+    },
+    "componentsTasksColorPicker": {
+      "selectColor": "색상 선택"
+    },
+    "componentsTasksCustomRepeatDialog": {
+      "onTheseDays": "요즘에는",
+      "repeatOn": "반복",
+      "day": "일",
+      "ofTheMonth": "이달의",
+      "the": "는",
+      "ofTheMonth2": "이달의",
+      "ends": "종료",
+      "never": "절대로",
+      "onDate": "날짜에",
+      "after": "이후",
+      "occurrences": "발생",
+      "preview": "미리보기",
+      "of": "의 ",
+      "andMore": "그리고 더",
+      "frequency": "빈도",
+      "repeatEvery": "반복 간격",
+      "day2": "일",
+      "week": "주",
+      "month": "달",
+      "year": "년",
+      "cancel": "취소",
+      "save": "저장",
+      "customRepeat": "사용자 정의 반복"
+    },
+    "componentsTasksDatePickerCalendar": {
+      "previousMonth": "지난달",
+      "nextMonth": "다음 달",
+      "goToToday": "오늘로 이동",
+      "today": "오늘",
+      "w": "여"
+    },
+    "componentsTasksDatePickerContent": {
+      "removeDate": "날짜 삭제",
+      "clearTime": "클리어 시간",
+      "addTime": "시간 추가"
+    },
+    "componentsTasksDeleteProjectDialog": {
+      "delete": "삭제 \"",
+      "thisProjectHas": "이 프로젝트에는 ",
+      "task": "작업",
+      "whatWouldYouLikeToDoWithThem": "그들과 함께 무엇을 하시겠습니까?",
+      "moveTasksToPersonalProject": "작업을 개인 프로젝트로 이동",
+      "deleteAllTasksPermanently": "모든 작업을 영구적으로 삭제",
+      "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "이 프로젝트에는 작업이 없으며 영구적으로 삭제됩니다.",
+      "thisActionCannotBeUndone": "이 작업은 취소할 수 없습니다.",
+      "cancel": "취소",
+      "deleteProject": "프로젝트 삭제"
+    },
+    "componentsTasksDeleteTaskDialog": {
+      "deleteTask": "할 일을 삭제하시겠습니까?",
+      "ldquo": "ldquo;",
+      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; 영구적으로 삭제됩니다. 이 작업은 취소할 수 없습니다.",
+      "deleteTask2": "작업 삭제"
+    },
+    "componentsTasksDialogsAllSubtasksCompleteDialog": {
+      "allSubtasksComplete": "모든 하위 작업이 완료되었습니다!",
+      "ldquo": "ldquo;",
+      "rdquoHasAll": "rdquo; 모든 것을 가지고 있다 ",
+      "subtask": "하위 작업",
+      "done": "완료.",
+      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "상위 작업도 완료로 표시하시겠습니까?",
+      "keepTaskOpen": "할 일을 열어두세요",
+      "completeTask": "작업 완료 ✓"
+    },
+    "componentsTasksDialogsBulkDueDateDialog": {
+      "setDueDateForAllSubtasks": "모든 하위 작업의 마감일 설정",
+      "setDueDateFor": "마감일 설정 ",
+      "subtask": "하위 작업",
+      "in": "“에서",
+      "rdquo": "rdquo;",
+      "alsoApplyToCompletedSubtasks": "완료된 하위 작업에도 적용됩니다(",
+      "clearDate": "날짜 지우기",
+      "cancel": "취소",
+      "apply": "적용"
+    },
+    "componentsTasksDialogsBulkPriorityDialog": {
+      "setPriorityForAllSubtasks": "모든 하위 작업의 우선순위 설정",
+      "setPriorityFor": "우선순위 설정 ",
+      "subtask": "하위 작업",
+      "in": "“에서",
+      "rdquo": "rdquo;",
+      "alsoApplyToCompletedSubtasks": "완료된 하위 작업에도 적용됩니다(",
+      "cancel": "취소",
+      "apply": "적용"
+    },
+    "componentsTasksDialogsCompleteParentDialog": {
+      "completeTaskWithIncompleteSubtasks": "완료되지 않은 하위 작업이 있는 작업을 완료하시겠습니까?",
+      "has": "있다 ",
+      "incompleteSubtask": "불완전한 하위 작업",
+      "and": "그리고 ",
+      "more": "더",
+      "whatWouldYouLikeToDo": "무엇을 하고 싶나요?",
+      "completeAllParentSubtasks": "모두 완료(상위 + 하위 작업)",
+      "markTheParentAndAllSubtasksAsComplete": "상위 작업과 모든 하위 작업을 완료로 표시",
+      "completeParentOnlyKeepSubtasksIncomplete": "상위 항목만 완료하고 하위 작업은 미완료 상태로 유지",
+      "onlyMarkTheParentTaskAsComplete": "상위 작업만 완료로 표시",
+      "cancel": "취소",
+      "complete": "완료"
+    },
+    "componentsTasksDialogsDeleteAllSubtasksDialog": {
+      "deleteAllSubtasks": "모든 하위 할 일을 삭제하시겠습니까?",
+      "thisWillDelete": "삭제됩니다 ",
+      "subtask": "하위 작업",
+      "from": "“에서",
+      "rdquo": "rdquo;.",
+      "thisActionCannotBeUndone": "이 작업은 취소할 수 없습니다.",
+      "cancel": "취소",
+      "deleteAll": "모두 삭제"
+    },
+    "componentsTasksDialogsDeleteParentDialog": {
+      "deleteTaskWithSubtasks": "하위 할 일이 있는 할 일을 삭제하시겠습니까?",
+      "has": "있다 ",
+      "subtask": "하위 작업",
+      "whatWouldYouLikeToDo": "무엇을 하고 싶나요?",
+      "deleteTaskAndAllSubtasks": "작업 및 모든 하위 작업 삭제",
+      "permanentlyRemovesEverything": "모든 것을 영구적으로 제거합니다.",
+      "deleteTaskKeepSubtasksAsStandaloneTasks": "작업 삭제, 하위 작업을 독립형 작업으로 유지",
+      "subtasksBecomeTopLevelTasks": "하위 작업이 최상위 작업이 됩니다.",
+      "cancel": "취소",
+      "delete": "삭제"
+    },
+    "componentsTasksDialogsDuplicateWithSubtasksDialog": {
+      "duplicateTask": "중복된 작업",
+      "createACopyOf": "\"의 사본을 작성하십시오.",
+      "rdquo": "rdquo;",
+      "alsoDuplicateSubtasks": "하위 작업도 중복됩니다(",
+      "cancel": "취소",
+      "duplicate": "중복 "
+    },
+    "componentsTasksDialogsParentPickerDialog": {
+      "makeSubtaskOf": "하위 할 일 만들기...",
+      "selectATaskToMake": "만들 작업을 선택하세요.",
+      "aSubtaskOf": "하위 작업.",
+      "searchTasks": "작업 검색...",
+      "sameProject": "같은 프로젝트",
+      "otherProjects": "기타 프로젝트"
+    },
+    "componentsTasksDragDropInsertionIndicator": {
+      "dropToRescheduleTo": "일정을 변경하려면 취소하세요. "
+    },
+    "componentsTasksDragDropMoveMenu": {
+      "moveTask": "작업 이동",
+      "move": "이동",
+      "reschedule": "일정 변경",
+      "today": "오늘",
+      "tomorrow": "내일",
+      "nextWeek": "다음 주",
+      "removeDate": "날짜 삭제",
+      "moveToProject": "프로젝트로 이동",
+      "current": "현재",
+      "changeStatus": "상태 변경",
+      "current2": "현재",
+      "reorder": "재정렬"
+    },
+    "componentsTasksDragDropMultiDragOverlay": {
+      "moreTask": "더 많은 작업",
+      "task": "작업"
+    },
+    "componentsTasksDragDropSidebarDropZones": {
+      "dropHere": "여기에 드롭"
+    },
+    "componentsTasksDragDropTaskRow": {
+      "priority": "우선순위: "
+    },
+    "componentsTasksDueDatePicker": {
+      "selectDueDate": "마감일 선택",
+      "overdue": "연체",
+      "setDueDate": "마감일 설정",
+      "suggestions": "제안",
+      "pickADate": "날짜를 선택하세요...",
+      "addTime": "시간 추가",
+      "time": "시간",
+      "clearDate": "날짜 지우기",
+      "backToOptions": "옵션으로 돌아가기"
+    },
+    "componentsTasksEditRepeatingTaskDialog": {
+      "editRepeatingTask": "반복되는 작업 편집",
+      "youReEditingARepeatingTaskApplyChangesTo": "반복되는 작업을 편집하고 있습니다. 다음에 변경 사항을 적용합니다.",
+      "onlyThisOccurrence": "이번 사건만",
+      "onlyFutureTasksUnchanged": "only — 향후 작업은 변경되지 않음",
+      "thisAndAllFutureOccurrences": "이번 일과 앞으로 일어날 모든 일",
+      "andBeyond": "그리고 그 이상",
+      "cancel": "취소",
+      "continue": "계속"
+    },
+    "componentsTasksEmptyStatesCollapsedEmptySection": {
+      "add": "추가"
+    },
+    "componentsTasksEmptyStatesSectionEmptyStates": {
+      "noTasksScheduled": "예정된 작업 없음",
+      "addTaskFor": "다음에 대한 작업 추가 ",
+      "nothingScheduled": "예정된 내용 없음",
+      "addTasksWithDueDatesToPlanYourWeek": "마감일이 있는 작업을 추가하여 한 주를 계획하세요.",
+      "addTask": "작업 추가",
+      "viewCalendar": "달력 보기"
+    },
+    "componentsTasksFiltersActiveFiltersBar": {
+      "priorityIs": "우선순위는",
+      "priority": "우선순위",
+      "statusIs": "상태는",
+      "status": "상태",
+      "projectIs": "프로젝트는",
+      "project": "프로젝트",
+      "due": "마감",
+      "dueDate": "마감일",
+      "search": "검색",
+      "clearAll": "모두 지우기"
+    },
+    "componentsTasksFiltersDueDateFilter": {
+      "filterByDueDate": "마감일로 필터링",
+      "customRange": "맞춤 범위",
+      "clear": "지우기",
+      "apply": "적용"
+    },
+    "componentsTasksFiltersFilterDropdown": {
+      "filterBy": "필터링 기준:"
+    },
+    "componentsTasksFiltersFilterEmptyState": {
+      "activeFilters": "활성 필터: ",
+      "clearAllFilters": "모든 필터 지우기"
+    },
+    "componentsTasksFiltersFilterPanelsDueDatePanel": {
+      "dueDate": "마감일"
+    },
+    "componentsTasksFiltersFilterPanelsPriorityPanel": {
+      "priority": "우선순위",
+      "is": "이다",
+      "search": "검색...",
+      "selected": "선택됨"
+    },
+    "componentsTasksFiltersFilterPanelsProjectPanel": {
+      "project": "프로젝트",
+      "noProject": "프로젝트 없음"
+    },
+    "componentsTasksFiltersFilterPanelsStatusPanel": {
+      "status": "상태"
+    },
+    "componentsTasksFiltersFilterPanelsStatusProjectPickerPan": {
+      "status": "상태",
+      "pickAProject": "프로젝트 선택"
+    },
+    "componentsTasksFiltersMoreFiltersDropdown": {
+      "moreFilters": "더 많은 필터",
+      "more": "더보기",
+      "status": "상태",
+      "hasTimeSet": "시간이 설정되어 있음",
+      "recurringOnly": "반복만",
+      "status2": "상태"
+    },
+    "componentsTasksFiltersPriorityFilter": {
+      "filterByPriority": "우선순위로 필터링",
+      "priority": "우선순위"
+    },
+    "componentsTasksFiltersProjectFilter": {
+      "filterByProject": "프로젝트별로 필터링",
+      "project": "프로젝트",
+      "allProjects": "모든 프로젝트",
+      "clear": "지우기"
+    },
+    "componentsTasksFiltersQuickFilters": {
+      "quickFilters": "빠른 필터:"
+    },
+    "componentsTasksFiltersSaveFilterDialog": {
+      "saveFilter": "필터 저장",
+      "saveYourCurrentFilterSettingsForQuickAccessLater": "나중에 빠르게 액세스할 수 있도록 현재 필터 설정을 저장하세요.",
+      "filterName": "필터 이름",
+      "eGHighPriorityThisWeek": "예: 이번 주 우선순위가 높음",
+      "currentFilters": "현재 필터:",
+      "noFiltersApplied": "필터가 적용되지 않았습니다.",
+      "cancel": "취소",
+      "saveFilter2": "필터 저장"
+    },
+    "componentsTasksFiltersSavedFiltersDropdown": {
+      "savedFilters": "저장된 필터",
+      "saved": "저장됨",
+      "noSavedFiltersYet": "아직 저장된 필터가 없습니다.",
+      "saveCurrentFilters": "현재 필터 저장",
+      "saveCurrentFilters2": "현재 필터 저장"
+    },
+    "componentsTasksFiltersSavedFiltersSection": {
+      "filterName": "필터 이름",
+      "saveFilter": "필터 저장",
+      "save": "저장"
+    },
+    "componentsTasksFiltersSearchInput": {
+      "searchTasks": "작업 검색",
+      "clearSearch": "검색 지우기"
+    },
+    "componentsTasksKanbanKanbanColumn": {
+      "dropHere": "여기에 드롭",
+      "releaseToMoveTaskToThisColumn": "작업을 이 열로 이동하려면 손을 떼세요.",
+      "moreCompleted": "더 완성됨",
+      "showFewer": "간략히 표시",
+      "taskTitle": "작업 제목..."
+    },
+    "componentsTasksNaturalDateInput": {
+      "typeADateInNaturalLanguage": "자연어로 날짜를 입력하세요.",
+      "select": "선택"
+    },
+    "componentsTasksParentTaskRow": {
+      "priority": "우선순위: "
+    },
+    "componentsTasksPrioritySelect": {
+      "selectPriority": "우선순위 선택",
+      "navigate": "항해하다",
+      "select": "선택하다"
+    },
+    "componentsTasksProjectModal": {
+      "iconName": "아이콘 및 이름",
+      "selectIcon": "아이콘 선택",
+      "projectName": "프로젝트 이름",
+      "clickIconToChange": "변경하려면 아이콘을 클릭하세요.",
+      "color": "색상",
+      "descriptionOptional": "설명(선택사항)",
+      "briefDescriptionOfThisProject": "이번 프로젝트에 대한 간략한 설명...",
+      "statuses": "상태",
+      "configureTheWorkflowStagesForThisProject": "이 프로젝트의 워크플로 단계를 구성합니다.",
+      "deleteProject": "프로젝트 삭제",
+      "cancel": "취소",
+      "unsavedChanges": "저장되지 않은 변경사항",
+      "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "저장되지 않은 변경사항이 있습니다. 정말로 삭제하시겠습니까?",
+      "cancel2": "취소",
+      "discard": "폐기"
+    },
+    "componentsTasksProjectSelect": {
+      "selectProject": "프로젝트 선택",
+      "selectProject2": "프로젝트 선택"
+    },
+    "componentsTasksProjectsProjectSelector": {
+      "editProject": "프로젝트 편집",
+      "archiveProject": "프로젝트 보관",
+      "deleteProject": "프로젝트 삭제",
+      "selectProject": "프로젝트 선택",
+      "noProjectsYet": "아직 프로젝트가 없습니다.",
+      "createProject": "프로젝트 생성"
+    },
+    "componentsTasksProjectsProjectsTabContent": {
+      "noProjectSelected": "선택한 프로젝트가 없습니다.",
+      "selectAProjectFromTheDropdownOrCreateANewOne": "드롭다운에서 프로젝트를 선택하거나 새 프로젝트를 만듭니다.",
+      "createYourFirstProject": "첫 번째 프로젝트 만들기"
+    },
+    "componentsTasksQuickAddQuickAddHelp": {
+      "quickAddShortcutsHelp": "빠른 추가 바로가기 도움말",
+      "quickAddShortcuts": "빠른 추가 바로가기",
+      "exampleBuyMilkTomorrowHighPersonal": "예: \"우유 구매 !내일 !!높은 #personal\""
+    },
+    "componentsTasksQuickAddQuickOptionsBar": {
+      "quickOptions": "빠른 옵션:"
+    },
+    "componentsTasksQuickAddInput": {
+      "q": "질문",
+      "q2": "질문"
+    },
+    "componentsTasksRepeatIndicator": {
+      "of": "의 ",
+      "completed": "완료"
+    },
+    "componentsTasksRepeatPicker": {
+      "selectRepeatFrequency": "반복 빈도 선택",
+      "doesNotRepeat": "반복하지 않음",
+      "custom": "맞춤..."
+    },
+    "componentsTasksStatusEditor": {
+      "changeStatusColor": "상태 색상 변경",
+      "dragToReorder": "드래그하여 재정렬하세요.",
+      "statusName": "상태 이름",
+      "addStatus": "상태 추가"
+    },
+    "componentsTasksStatusSelect": {
+      "selectStatus": "상태 선택",
+      "selectStatus2": "상태 선택"
+    },
+    "componentsTasksStopRepeatingDialog": {
+      "stopRepeating": "반복 중지",
+      "isSetToRepeat": "반복되도록 설정되어 있습니다 ",
+      "whatWouldYouLikeToDo": "무엇을 하고 싶나요?",
+      "keepThisTaskStopFutureOccurrences": "이 작업을 유지하고 향후 발생을 중지하세요.",
+      "taskWillBecomeAOneTimeTask": "작업이 일회성 작업이 됩니다.",
+      "deleteThisAndAllFutureOccurrences": "이번 항목과 향후 모든 항목 삭제",
+      "taskWillBeRemovedEntirely": "작업이 완전히 제거됩니다.",
+      "cancel": "취소",
+      "confirm": "확인"
+    },
+    "componentsTasksSubtaskDots": {
+      "of": "의 ",
+      "subtasksComplete": "하위 작업 완료(",
+      "clickTo": "클릭하면 ",
+      "of2": "의 ",
+      "subtasksComplete2": "하위 작업 완료",
+      "clickTo2": "클릭하면 "
+    },
+    "componentsTasksSubtaskProgressBadge": {
+      "of": "의 ",
+      "subtasksComplete": "하위 작업 완료(",
+      "clickTo": "클릭하면 "
+    },
+    "componentsTasksTaskBadges": {
+      "priority": "우선순위",
+      "repeatingTask": "반복되는 작업",
+      "d": "디"
+    },
+    "componentsTasksTaskEmptyState": {
+      "addTask": "작업 추가"
+    },
+    "componentsTasksTaskIcons": {
+      "noPriority": "우선순위 없음"
+    },
+    "componentsTasksTaskRepeatSection": {
+      "repeat": "반복",
+      "addRepeat": "반복 추가",
+      "edit": "편집",
+      "edit2": "편집",
+      "stopRepeating": "반복 중지",
+      "stopRepeating2": "반복 중지"
+    },
+    "componentsTasksTaskSection": {
+      "addTask": "작업 추가"
+    },
+    "componentsTasksTimePicker": {
+      "selectTime": "시간 선택",
+      "selectTime2": "시간 선택",
+      "clearTime": "클리어 시간"
+    },
+    "componentsTasksTodayEmptyState": {
+      "nothingScheduledForToday": "오늘은 예정된 일이 없습니다.",
+      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "위에 기한이 지난 작업이 있습니다. 오늘 할 일을 추가하거나 예정된 목록을 확인하세요.",
+      "addTaskForToday": "오늘 할 일 추가",
+      "allCaughtUpForToday": "오늘은 모두 따라잡았어",
+      "youHaveNothingScheduledEnjoyTheClarity": "예정된 일정이 없습니다. 선명함을 즐겨보세요.",
+      "addTaskForToday2": "오늘 할 일 추가"
+    },
+    "componentsTasksUpcomingEmptyState": {
+      "nothingScheduledForTheNext7Days": "앞으로 7일 동안 예정된 일정이 없습니다.",
+      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "위에 기한이 지난 작업이 있습니다. 다음 주의 작업을 추가하여 미리 계획하세요.",
+      "addTask": "작업 추가",
+      "noUpcomingTasks": "예정된 작업이 없습니다.",
+      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "앞으로 7일 내에 마감되는 작업이 여기에 표시됩니다. 몇 가지 작업을 추가하여 한 주를 계획하세요.",
+      "addTask2": "작업 추가"
+    }
+  },
+  "phaseI": {
+    "toasts": {
+      "changesUndone": "변경사항이 취소되었습니다.",
+      "projectNotFound": "프로젝트를 찾을 수 없습니다",
+      "failedToArchiveTasks": "작업을 보관하지 못했습니다.",
+      "tasksRestoredFromArchive": "아카이브에서 복원된 작업",
+      "subtaskAdded": "하위 작업이 추가됨",
+      "subtaskDeleted": "하위 할 일이 삭제되었습니다.",
+      "taskCompleted": "작업 완료",
+      "allSubtasksCompleteTaskMarkedAsDone": "🎉 모든 하위 작업이 완료되었습니다! 작업이 완료로 표시되었습니다.",
+      "taskReopened": "작업이 다시 열렸습니다.",
+      "taskKeptOpen": "작업이 열린 상태로 유지됨",
+      "taskMarkedAsDone": "🎉 작업이 완료로 표시되었습니다!"
+    },
+    "errors": {
+      "failedToArchiveTasks": "작업을 보관하지 못했습니다.",
+      "failedToAddSubtask": "하위 할 일을 추가하지 못했습니다.",
+      "failedToAddSubtasks": "하위 할 일을 추가하지 못했습니다.",
+      "failedToReorderSubtasks": "하위 작업을 재정렬하지 못했습니다.",
+      "failedToPromoteSubtask": "하위 작업을 승격하지 못했습니다.",
+      "failedToDeleteSubtask": "하위 할 일을 삭제하지 못했습니다.",
+      "failedToDeleteTask": "작업을 삭제하지 못했습니다.",
+      "failedToCompleteTask": "작업을 완료하지 못했습니다.",
+      "failedToMakeSubtask": "하위 할 일을 만들지 못했습니다.",
+      "failedToCompleteSubtasks": "하위 작업을 완료하지 못했습니다.",
+      "failedToMarkSubtasksIncomplete": "하위 작업을 완료하지 않음으로 표시하지 못했습니다.",
+      "failedToSetDueDate": "마감일을 설정하지 못했습니다.",
+      "failedToSetPriority": "우선순위를 설정하지 못했습니다.",
+      "failedToDeleteSubtasks": "하위 할 일을 삭제하지 못했습니다.",
+      "failedToLoadTaskPreferences": "작업 기본 설정을 로드하지 못했습니다.",
+      "failedToUpdateTaskPreferences": "작업 기본 설정을 업데이트하지 못했습니다.",
+      "failedToLoadLinkedTasks": "연결된 작업을 로드하지 못했습니다."
+    }
+  }
+}

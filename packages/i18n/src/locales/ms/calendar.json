@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "Hari",
+    "week": "Minggu",
+    "month": "bulan",
+    "year": "tahun"
+  },
+  "toolbar": {
+    "create-event": "Buat acara",
+    "previous-period": "Tempoh sebelumnya",
+    "next-period": "Tempoh seterusnya",
+    "previous-month": "Bulan sebelumnya",
+    "next-month": "Bulan depan",
+    "today": "Hari ini"
+  },
+  "filter": {
+    "filter-calendars": "Tapis kalendar",
+    "sources": "Sumber",
+    "memry-items": "Item Memry",
+    "imported-calendars": "Kalendar yang diimport",
+    "event-types": "Jenis acara",
+    "google-calendars": "kalendar Google",
+    "refresh-google-calendars": "Muat semula kalendar Google"
+  },
+  "visual-type": {
+    "event": "Peristiwa",
+    "imported-event": "Acara yang diimport",
+    "task": "Tugasan",
+    "reminder": "Peringatan",
+    "snooze": "Tunda"
+  },
+  "state": {
+    "loading-calendar": "Memuatkan kalendar…",
+    "loading-calendars": "Memuatkan kalendar…",
+    "preparing": "Menyediakan…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "Belum ada kalendar yang diimport.",
+    "no-events": "Tiada acara"
+  },
+  "time": {
+    "all-day": "Sepanjang hari",
+    "all-day-lower": "sepanjang hari",
+    "pick-a-date": "Pilih tarikh",
+    "new-event": "Acara Baru",
+    "more-events": "{count, plural, one {# lagi acara} other {# lagi acara}}"
+  },
+  "form": {
+    "create-calendar-event": "Buat acara kalendar",
+    "edit-calendar-event": "Edit acara kalendar",
+    "quick-create-description": "Masukkan tajuk dan simpan untuk mencipta acara pada julat masa yang dipilih.",
+    "event-editor-description": "Kemas kini tajuk, lokasi, tarikh, masa dan nota untuk acara ini.",
+    "new-event-placeholder": "Acara Baru",
+    "location-placeholder": "Tambah lokasi",
+    "notes-url-placeholder": "Tambahkan nota atau URL",
+    "start": "Mulakan",
+    "end": "tamat",
+    "add-details": "Tambah butiran",
+    "google-calendar": "kalendar Google",
+    "target-calendar": "Kalendar sasaran",
+    "use-default-calendar": "Gunakan kalendar lalai",
+    "use-default-calendar-with-name": "Gunakan lalai ({calendar})",
+    "use-memry-calendar-default": "Gunakan kalendar Memry (lalai)",
+    "use-memry-managed-calendar": "Gunakan kalendar yang diuruskan Memry",
+    "primary-suffix": "utama"
+  },
+  "delete-dialog": {
+    "title": "Padamkan acara?",
+    "local-description": "\"{title}\" akan dipadamkan secara kekal. Tindakan ini tidak boleh dibuat asal.",
+    "google-bound-description": "\"{title}\" akan dialih keluar daripada Memry dan Kalendar Google. Tindakan ini tidak boleh dibuat asal.",
+    "context-menu-delete-label": "Padamkan acara"
+  },
+  "promote-dialog": {
+    "aria": "Edit acara kalendar luaran",
+    "title": "Edit acara ini dalam Memry?",
+    "body": "Mengedit acara ini akan membuat salinan terpaut dalam Memry supaya perubahan menyegerakkan kedua-dua cara. teruskan?",
+    "do-not-ask-again": "Jangan tanya lagi",
+    "confirm-label": "Edit dalam Memry"
+  },
+  "onboarding-dialog": {
+    "aria": "Pilih kalendar Google lalai anda",
+    "title": "Kalendar manakah yang patut dilawati oleh acara Memry baharu?",
+    "body": "Pilih kalendar Google Memry yang patut digunakan secara lalai. Anda masih boleh menggantikannya setiap acara.",
+    "default-calendar-label": "Gunakan kalendar yang diuruskan Memry",
+    "skip": "Langkau",
+    "use-this-calendar": "Gunakan kalendar ini"
+  },
+  "metadata": {
+    "attendees": "Hadirin",
+    "attendees-count": "Hadirin ({count})",
+    "reminders": "Peringatan",
+    "default-reminders": "Peringatan lalai",
+    "visibility": "Keterlihatan:",
+    "optional": "Pilihan",
+    "join-meeting": "Sertai mesyuarat",
+    "response": {
+      "accepted": "Diterima",
+      "declined": "ditolak",
+      "tentative": "Tentatif",
+      "needs-action": "Belum selesai"
+    },
+    "visibility-value": {
+      "private": "Persendirian",
+      "public": "Awam",
+      "confidential": "Sulit"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "min · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "Tidak dapat menyimpan acara. Cuba lagi.",
+      "couldNotCreateEventTryAgain": "Tidak dapat mencipta acara. Cuba lagi.",
+      "couldNotSaveDefaultCalendarTryAgain": "Tidak dapat menyimpan kalendar lalai. Cuba lagi.",
+      "failedToLoadCalendarPreferences": "Gagal memuatkan pilihan kalendar",
+      "failedToUpdateCalendarPreferences": "Gagal mengemas kini pilihan kalendar",
+      "couldNotEditThisEventTryAgain": "Tidak dapat mengedit acara ini. Cuba lagi.",
+      "failedToDeleteEvent": "Gagal memadamkan acara",
+      "couldNotUnsnoozeInboxItem": "Tidak dapat menyahtunda.",
+      "couldNotRescheduleInboxItem": "Tidak dapat menjadualkan semula."
+    },
+    "inboxSnoozePopover": {
+      "title": "Item peti masuk ditunda",
+      "openInInbox": "Buka dalam peti masuk",
+      "unsnoozeNow": "Nyahtunda sekarang",
+      "reschedule": "Jadual semula"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "Butiran tugas",
+    "open-task": "Tugas terbuka",
+    "source-note": "Nota sumber",
+    "reschedule": "Jadual semula",
+    "more-actions": "Lebih banyak tindakan",
+    "mark-done": "Tandakan selesai",
+    "mark-not-done": "Tandai belum selesai",
+    "later-today": "Nanti hari ini",
+    "tomorrow": "Esok",
+    "next-week": "Minggu depan",
+    "next-week-mon": "Minggu depan · Isn",
+    "pick-date-time": "Pilih tarikh & masa…",
+    "remove-due-date": "Alih keluar tarikh tamat tempoh",
+    "subtasks-prefix": "Subtugas",
+    "subtasks-counter": "{done} daripada {total} selesai",
+    "today": "Hari ini",
+    "overdue-one": "1 hari tertunggak",
+    "overdue-other": "{count} hari tertunggak",
+    "repeats": "Berulang",
+    "repeats-daily": "Berulang setiap hari",
+    "repeats-weekly": "Berulang setiap minggu",
+    "repeats-monthly": "Berulang setiap bulan",
+    "repeats-yearly": "Berulang setiap tahun",
+    "priority-urgent": "mendesak",
+    "priority-high": "tinggi",
+    "priority-medium": "Sederhana",
+    "errors": {
+      "could-not-save": "Tidak dapat menyimpan tugasan",
+      "could-not-reschedule": "Tidak dapat menjadualkan semula tugas",
+      "could-not-remove-due-date": "Tidak dapat mengalih keluar tarikh tamat tempoh",
+      "could-not-open-note": "Tidak dapat membuka nota"
+    }
+  }
+}

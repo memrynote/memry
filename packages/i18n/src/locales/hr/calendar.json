@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "dan",
+    "week": "tjedan",
+    "month": "mjesec",
+    "year": "godine"
+  },
+  "toolbar": {
+    "create-event": "Kreiraj događaj",
+    "previous-period": "Prethodno razdoblje",
+    "next-period": "Sljedeće razdoblje",
+    "previous-month": "Prethodni mjesec",
+    "next-month": "Sljedeći mjesec",
+    "today": "Danas"
+  },
+  "filter": {
+    "filter-calendars": "Filtrirajte kalendare",
+    "sources": "Izvori",
+    "memry-items": "Memry stavke",
+    "imported-calendars": "Uvezeni kalendari",
+    "event-types": "Vrste događaja",
+    "google-calendars": "Google kalendari",
+    "refresh-google-calendars": "Osvježite Google kalendare"
+  },
+  "visual-type": {
+    "event": "događaj",
+    "imported-event": "Uvezeni događaj",
+    "task": "zadatak",
+    "reminder": "Podsjetnik",
+    "snooze": "Odgoditi"
+  },
+  "state": {
+    "loading-calendar": "Učitavanje kalendara…",
+    "loading-calendars": "Učitavanje kalendara...",
+    "preparing": "Priprema…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "Još nema uvezenih kalendara.",
+    "no-events": "Nema događaja"
+  },
+  "time": {
+    "all-day": "Cijeli dan",
+    "all-day-lower": "cjelodnevni",
+    "pick-a-date": "Odaberite datum",
+    "new-event": "Novi događaj",
+    "more-events": "{count, plural, one {# više događaja} other {# više događaja}}"
+  },
+  "form": {
+    "create-calendar-event": "Stvorite događaj u kalendaru",
+    "edit-calendar-event": "Uredite događaj u kalendaru",
+    "quick-create-description": "Unesite naslov i spremite za stvaranje događaja u odabranom vremenskom rasponu.",
+    "event-editor-description": "Ažurirajte naslov, lokaciju, datum, vrijeme i bilješke za ovaj događaj.",
+    "new-event-placeholder": "Novi događaj",
+    "location-placeholder": "Dodajte lokaciju",
+    "notes-url-placeholder": "Dodajte bilješke ili URL",
+    "start": "Start",
+    "end": "Kraj",
+    "add-details": "Dodajte detalje",
+    "google-calendar": "Google kalendar",
+    "target-calendar": "Ciljni kalendar",
+    "use-default-calendar": "Koristi zadani kalendar",
+    "use-default-calendar-with-name": "Koristi zadano ({calendar})",
+    "use-memry-calendar-default": "Koristi Memry kalendar (zadano)",
+    "use-memry-managed-calendar": "Koristite kalendar kojim upravlja Memry",
+    "primary-suffix": "primarni"
+  },
+  "delete-dialog": {
+    "title": "Izbrisati događaj?",
+    "local-description": "\"{title}\" bit će trajno izbrisan. Ova se radnja ne može poništiti.",
+    "google-bound-description": "\"{title}\" bit će uklonjen iz Memry i Google kalendara. Ova se radnja ne može poništiti.",
+    "context-menu-delete-label": "Izbriši događaj"
+  },
+  "promote-dialog": {
+    "aria": "Uredite događaj vanjskog kalendara",
+    "title": "Urediti ovaj događaj u Memry?",
+    "body": "Uređivanjem ovog događaja stvorit će se povezana kopija u Memry tako da se promjene sinkroniziraju u oba smjera. Nastaviti?",
+    "do-not-ask-again": "Ne pitaj više",
+    "confirm-label": "Uredite u Memry"
+  },
+  "onboarding-dialog": {
+    "aria": "Odaberite svoj zadani Google kalendar",
+    "title": "U koji bi kalendar trebali ići novi Memry događaji?",
+    "body": "Odaberite Google kalendar koji bi Memry trebao koristiti prema zadanim postavkama. I dalje ga možete nadjačati po događaju.",
+    "default-calendar-label": "Koristite kalendar kojim upravlja Memry",
+    "skip": "Preskoči",
+    "use-this-calendar": "Koristite ovaj kalendar"
+  },
+  "metadata": {
+    "attendees": "Polaznici",
+    "attendees-count": "Sudionici ({count})",
+    "reminders": "Podsjetnici",
+    "default-reminders": "Zadani podsjetnici",
+    "visibility": "Vidljivost:",
+    "optional": "Neobavezno",
+    "join-meeting": "Pridružite se sastanku",
+    "response": {
+      "accepted": "Prihvaćeno",
+      "declined": "Odbijeno",
+      "tentative": "probno",
+      "needs-action": "Na čekanju"
+    },
+    "visibility-value": {
+      "private": "Privatno",
+      "public": "Javno",
+      "confidential": "Povjerljivo"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "min · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "Nije moguće spremiti događaj. Pokušajte ponovno.",
+      "couldNotCreateEventTryAgain": "Nije moguće stvoriti događaj. Pokušajte ponovno.",
+      "couldNotSaveDefaultCalendarTryAgain": "Nije moguće spremiti zadani kalendar. Pokušajte ponovno.",
+      "failedToLoadCalendarPreferences": "Neuspješno učitavanje postavki kalendara",
+      "failedToUpdateCalendarPreferences": "Ažuriranje postavki kalendara nije uspjelo",
+      "couldNotEditThisEventTryAgain": "Nije moguće urediti ovaj događaj. Pokušajte ponovno.",
+      "failedToDeleteEvent": "Brisanje događaja nije uspjelo",
+      "couldNotUnsnoozeInboxItem": "Nije moguće poništiti odgodu.",
+      "couldNotRescheduleInboxItem": "Nije moguće ponovno zakazati."
+    },
+    "inboxSnoozePopover": {
+      "title": "Odgođena stavka pristigle pošte",
+      "openInInbox": "Otvori u inboxu",
+      "unsnoozeNow": "Sada poništi odgodu",
+      "reschedule": "Ponovo rasporedite"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "Detalji zadatka",
+    "open-task": "Otvoren zadatak",
+    "source-note": "Bilješka o izvoru",
+    "reschedule": "Ponovo rasporedite",
+    "more-actions": "Više akcija",
+    "mark-done": "Označi gotovo",
+    "mark-not-done": "Označi kao nedovršeno",
+    "later-today": "Kasnije danas",
+    "tomorrow": "Sutra",
+    "next-week": "Sljedeći tjedan",
+    "next-week-mon": "Sljedeći tjedan · Pon",
+    "pick-date-time": "Odaberite datum i vrijeme…",
+    "remove-due-date": "Ukloni rok",
+    "subtasks-prefix": "Podzadaci",
+    "subtasks-counter": "{done} od {total} gotov",
+    "today": "Danas",
+    "overdue-one": "Kasni 1 dan",
+    "overdue-other": "{count} dana kasni",
+    "repeats": "Ponavlja se",
+    "repeats-daily": "Ponavlja se svakodnevno",
+    "repeats-weekly": "Ponavlja se tjedno",
+    "repeats-monthly": "Ponavlja se mjesečno",
+    "repeats-yearly": "Ponavlja se svake godine",
+    "priority-urgent": "Hitno",
+    "priority-high": "visoko",
+    "priority-medium": "srednje",
+    "errors": {
+      "could-not-save": "Nije moguće spremiti zadatak",
+      "could-not-reschedule": "Nije moguće promijeniti raspored zadatka",
+      "could-not-remove-due-date": "Nije moguće ukloniti rok",
+      "could-not-open-note": "Nije moguće otvoriti bilješku"
+    }
+  }
+}

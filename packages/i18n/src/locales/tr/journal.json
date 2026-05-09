@@ -295,8 +295,8 @@
   },
   "phaseI": {
     "errors": {
-      "failedToLoadJournalSettings": "Günlük ayarları yüklenemedi",
       "failedToSaveJournalEntry": "Günlük girişi kaydedilemedi",
+      "failedToLoadJournalSettings": "Günlük ayarları yüklenemedi",
       "failedToUpdateSettings": "Ayarlar güncellenemedi"
     }
   }

@@ -1,0 +1,1160 @@
+{
+  "toast": {
+    "exportNotImplemented": "本地資料導出尚未實作"
+  },
+  "page": {
+    "title": "場景設定",
+    "nav": {
+      "groups": {
+        "workspace": "工作區",
+        "preferences": "偏好設定",
+        "services": "服務",
+        "data": "資料"
+      },
+      "items": {
+        "account": "帳戶",
+        "general": "一般",
+        "templates": "範本",
+        "editor": "編輯器",
+        "journal": "期刊",
+        "tasks": "任務",
+        "calendar": "賽程表",
+        "appearance": "外觀",
+        "shortcuts": "快速鍵",
+        "ai": "AI 助手",
+        "integrations": "整合",
+        "vault": "保險庫",
+        "tags": "標籤",
+        "properties": "屬性"
+      }
+    }
+  },
+  "general": {
+    "header": {
+      "title": "一般",
+      "subtitle": "應用程式啟動與分頁行為",
+      "loading": "載入設定..."
+    },
+    "groups": {
+      "startup": "啟動",
+      "updates": "更新",
+      "languageRegion": "語言與地區",
+      "tabBehavior": "分頁行為",
+      "fileCreation": "檔案建立",
+      "privacy": "隱私"
+    },
+    "startup": {
+      "launchAtLogin": {
+        "label": "登入時啟動",
+        "description": "登入時啟動 Memry",
+        "error": "啟動時更新失敗"
+      }
+    },
+    "updates": {
+      "appUpdates": "應用程式更新",
+      "installedVersion": "已安裝版本 {version}",
+      "availableVersion": "可用版本 {version}",
+      "unsupported": "封裝版本可以從 GitHub Releases 檢查、下載與安裝更新",
+      "available": "Memry {version} 可供下載",
+      "downloadingLatest": "正在下載最新版本",
+      "downloadingLatestPercent": "正在下載最新版本 ({percent}%)",
+      "downloaded": "Memry {version} 已準備好安裝",
+      "upToDate": "此安裝已是最新發布版本",
+      "checking": "正在檢查 GitHub Releases 是否有更新版本",
+      "idle": "檢查新版本並在應用程式內安裝",
+      "unsupportedToast": "自動更新僅適用於封裝版本",
+      "upToDateToast": "Memry {version} 已是最新",
+      "actionFailed": "更新操作失敗",
+      "actions": {
+        "checking": "檢查中...",
+        "available": "下載更新",
+        "downloading": "下載中...",
+        "downloadingPercent": "下載 {percent}%",
+        "downloaded": "重新啟動以安裝",
+        "idle": "檢查更新"
+      }
+    },
+    "language": {
+      "label": "語言",
+      "helper": "大部分應用程式會立即更新。某些系統層級文字 — 已顯示的通知、Dock 標籤、視窗標題列 — 會在下次啟動後更新。",
+      "changed": "語言已更改為 {nativeName}",
+      "failed": "更改語言失敗。請再試一次。"
+    },
+    "clockFormat": {
+      "label": "時間格式",
+      "description": "12 小時或 24 小時制",
+      "options": {
+        "12h": "12 小時",
+        "24h": "24 小時"
+      },
+      "error": "更新時間格式失敗"
+    },
+    "tabs": {
+      "previewMode": {
+        "label": "預覽模式",
+        "description": "單擊打開預覽，雙擊保持打開"
+      },
+      "restoreSession": {
+        "label": "啟動時還原工作階段",
+        "description": "重新打開上次會話中的標籤頁"
+      },
+      "closeButton": {
+        "label": "標籤關閉按鈕",
+        "description": "何時顯示關閉按鈕",
+        "options": {
+          "always": "始終可見",
+          "hover": "懸停時顯示",
+          "active": "僅在活動標籤中顯示"
+        }
+      },
+      "error": "更新設定失敗"
+    },
+    "fileCreation": {
+      "createInSelectedFolder": {
+        "label": "在選定的資料夾中建立",
+        "description": "新筆記和資料夾會在當前選定的資料夾內建立。關閉此選項時，項目總是在根目錄建立。"
+      }
+    },
+    "privacy": {
+      "telemetry": {
+        "label": "分享匿名使用指標",
+        "description": "這僅是匿名指標——永遠不會發送筆記內容、搜索查詢、檔案路徑、電子郵件或原始 ID。",
+        "error": "更新遙測設定失敗"
+      }
+    }
+  },
+  "appearance": {
+    "header": {
+      "title": "外觀",
+      "subtitle": "自訂外觀與感覺",
+      "loading": "載入設定..."
+    },
+    "groups": {
+      "theme": "主題",
+      "accentColor": "強調色",
+      "typography": "字體排印"
+    },
+    "theme": {
+      "colorMode": {
+        "label": "顏色模式",
+        "description": "選擇您偏好的主題",
+        "aria": "顏色模式"
+      },
+      "options": {
+        "light": "暖色",
+        "white": "白色",
+        "dark": "深色",
+        "system": "系統"
+      },
+      "error": "更新主題失敗"
+    },
+    "accent": {
+      "pick": "選擇一個重點色",
+      "custom": {
+        "label": "自訂顏色",
+        "description": "輸入十六進位值",
+        "placeholder": "#000000"
+      },
+      "presets": {
+        "indigo": "靛藍",
+        "amber": "琥珀",
+        "emerald": "翡翠",
+        "red": "紅色",
+        "violet": "紫羅蘭",
+        "cyan": "青色",
+        "pink": "粉紅色",
+        "orange": "橙色"
+      },
+      "error": "更新重點色失敗"
+    },
+    "typography": {
+      "fontSize": {
+        "label": "字體大小",
+        "description": "調整基本文字大小",
+        "aria": "字體大小"
+      },
+      "fontFamily": {
+        "label": "字體系列",
+        "description": "介面的主要字體",
+        "options": {
+          "system": "系統預設",
+          "sansSerif": "無襯線",
+          "serif": "襯線字體（Crimson Pro）",
+          "gelasio": "Gelasio",
+          "geist": "Geist",
+          "inter": "Inter",
+          "monospace": "等寬字體"
+        }
+      },
+      "fontSizeError": "更新字體大小失敗",
+      "fontFamilyError": "更新字體家族失敗"
+    }
+  },
+  "editor": {
+    "header": {
+      "title": "編輯器",
+      "subtitle": "筆記編輯器設定與偏好",
+      "loading": "載入設定..."
+    },
+    "groups": {
+      "layout": "版面配置",
+      "toolbar": "工具列",
+      "writing": "寫作"
+    },
+    "width": {
+      "label": "編輯器寬度",
+      "description": "寫作區最大寬度",
+      "options": {
+        "narrow": "窄",
+        "medium": "中",
+        "wide": "寬"
+      },
+      "error": "更新編輯器寬度失敗"
+    },
+    "toolbarMode": {
+      "label": "固定格式工具列",
+      "description": "總是在編輯器上方顯示工具列",
+      "error": "更新工具列模式失敗"
+    },
+    "spellCheck": {
+      "label": "拼字檢查",
+      "description": "輸入時在錯別字下方加底線",
+      "error": "更新拼字檢查失敗"
+    },
+    "autoSaveDelay": {
+      "label": "自動儲存延遲",
+      "description": "停止輸入後等待多久再儲存",
+      "seconds": "{seconds}s",
+      "error": "更新自動儲存延遲失敗"
+    },
+    "wordCount": {
+      "label": "字數統計",
+      "description": "在編輯頁尾顯示字數",
+      "error": "無法更新字數顯示"
+    }
+  },
+  "templates": {
+    "header": {
+      "title": "範本",
+      "subtitle": "管理筆記範本以快速製作"
+    },
+    "actions": {
+      "new": "新模板",
+      "edit": "編輯",
+      "duplicate": "複製",
+      "delete": "刪除"
+    },
+    "groups": {
+      "builtIn": "內建",
+      "myTemplates": "我的模板"
+    },
+    "loading": "正在加載模板...",
+    "newTemplateTitle": "新模板",
+    "copySuffix": "{name}（複製）",
+    "empty": {
+      "title": "目前還沒有自訂範本",
+      "description": "建立一個範本開始"
+    },
+    "toasts": {
+      "deleted": "模板已刪除",
+      "deleteFailed": "無法刪除範本",
+      "duplicated": "模板已複製",
+      "duplicateFailed": "無法複製範本"
+    },
+    "dialogs": {
+      "delete": {
+        "title": "刪除範本",
+        "description": "你確定要刪除這個範本嗎？這種行為無法撤銷。從此範本建立的筆記不會受到影響。"
+      },
+      "duplicate": {
+        "title": "重複範本",
+        "description": "輸入新範本的名稱。",
+        "placeholder": "模板名稱"
+      }
+    }
+  },
+  "journal": {
+    "header": {
+      "title": "期刊",
+      "subtitle": "日誌設定與偏好",
+      "loading": "載入設定..."
+    },
+    "groups": {
+      "defaultTemplate": "預設範本",
+      "sidebarVisibility": "側邊欄可見性",
+      "footer": "頁腳"
+    },
+    "template": {
+      "label": "範本",
+      "description": "新條目皆以此範本開始",
+      "placeholder": "選擇範本",
+      "unknown": "未知模板",
+      "none": "無",
+      "noneAsk": "無（每次詢問）",
+      "updated": "預設範本已更新",
+      "cleared": "已清除預設範本",
+      "error": "更新預設範本失敗"
+    },
+    "showSchedule": {
+      "label": "顯示行程",
+      "description": "顯示今天的事件和行事曆"
+    },
+    "showTasks": {
+      "label": "顯示任務",
+      "description": "顯示選定日期到期的任務"
+    },
+    "showAIConnections": {
+      "label": "顯示 AI 連結",
+      "description": "顯示與相關項目的 AI 驅動連結"
+    },
+    "showStatsFooter": {
+      "label": "顯示統計頁尾",
+      "description": "字數、閱讀時間、時間戳記"
+    },
+    "updateError": "更新設定失敗"
+  },
+  "tasks": {
+    "header": {
+      "title": "任務",
+      "subtitle": "配置任務預設值和行為",
+      "loading": "載入設定..."
+    },
+    "groups": {
+      "defaults": "預設值",
+      "calendar": "賽程表",
+      "inbox": "收件箱"
+    },
+    "defaultProject": {
+      "label": "預設專案",
+      "description": "未選擇專案時分配",
+      "placeholder": "無預設專案",
+      "none": "無預設（使用個人）",
+      "error": "更新預設專案失敗"
+    },
+    "sortOrder": {
+      "label": "預設排序方式",
+      "description": "任務在列表視圖中的排序方式",
+      "options": {
+        "manual": "手動（拖放）",
+        "dueDate": "截止日期",
+        "priority": "優先事項",
+        "createdAt": "建立日期"
+      },
+      "error": "更新排序失敗"
+    },
+    "weekStart": {
+      "label": "週開始於",
+      "description": "行事曆檢視中的一週第一天",
+      "options": {
+        "sunday": "星期日",
+        "monday": "星期一"
+      },
+      "error": "更新週開始失敗"
+    },
+    "staleInbox": {
+      "label": "陳舊收件箱閾值",
+      "description": "比這個時間還早的任務將被標示為陳舊",
+      "unit": "天數",
+      "error": "更新陳舊收件箱閾值失敗"
+    }
+  },
+  "calendar": {
+    "header": {
+      "title": "賽程表",
+      "subtitle": "配置日面板中日格的行為",
+      "loading": "載入設定..."
+    },
+    "groups": {
+      "dayCellClick": "日格點擊"
+    },
+    "defaultBehavior": {
+      "label": "預設行為",
+      "description": "從任何非行事曆標籤點擊日面板行事曆中的日期時",
+      "error": "更新日點擊行為失敗"
+    },
+    "pageOverride": {
+      "label": "行事曆頁面覆蓋",
+      "description": "當行事曆標籤為活動時的行為（預設為開啟行事曆）",
+      "error": "更新行事曆頁面覆蓋失敗"
+    },
+    "options": {
+      "openJournal": "打開日誌",
+      "openCalendar": "打開行事曆",
+      "useGlobal": "使用全域設定"
+    }
+  },
+  "account": {
+    "header": {
+      "title": "帳戶",
+      "subtitle": "您的帳號、同步和安全",
+      "loading": "載入中..."
+    },
+    "groups": {
+      "identity": "身份認證",
+      "sync": "同步",
+      "storage": "儲存",
+      "devices": "裝置",
+      "security": "安全"
+    },
+    "identity": {
+      "unknown": "未知",
+      "plan": "專業方案"
+    },
+    "sync": {
+      "lastSynced": "最後同步 {time}",
+      "pending": "{count, plural, one {# 等待中} other {# 等待中}}",
+      "statuses": {
+        "synced": "已同步",
+        "syncing": "同步中...",
+        "paused": "已暫停",
+        "syncError": "同步錯誤",
+        "offline": "離線",
+        "connecting": "連接中...",
+        "pushed": "{count, plural, one {# 已推送} other {# 已推送}}",
+        "pulled": "{count, plural, one {# 已拉取} other {# 已拉取}}",
+        "pushedPulled": "{parts}",
+        "changesPending": "{count, plural, one {# 變更待處理} other {# 變更待處理}}",
+        "offlinePending": "離線 ({count, plural, one {# 變更待處理} other {# 變更待處理}})",
+        "never": "永不"
+      }
+    },
+    "storage": {
+      "used": "{used} 的 {limit} 已使用",
+      "categories": {
+        "notes": "備註們",
+        "attachments": "附件",
+        "crdt": "CRDT",
+        "other": "其他",
+        "available": "可用"
+      }
+    },
+    "security": {
+      "recoveryKey": {
+        "label": "恢復金鑰",
+        "description": "查看您的恢復金鑰以存取資料",
+        "action": "查看金鑰"
+      },
+      "rotateKeys": {
+        "label": "輪換加密金鑰",
+        "description": "生成新金鑰並重新加密所有資料",
+        "action": "旋轉"
+      },
+      "signOut": {
+        "label": "登出",
+        "description": "將此裝置與同步斷開",
+        "action": "登出"
+      }
+    },
+    "signOutDialog": {
+      "title": "要登出同步嗎？",
+      "description": "同步將停止，且此裝置上的加密金鑰將被移除。您的筆記將保留在此裝置上。您將需要恢復短語來再次設定同步。",
+      "confirm": "登出",
+      "signingOut": "正在登出..."
+    },
+    "toasts": {
+      "signedOut": "登出成功",
+      "signOutFailed": "登出失敗",
+      "deviceLinked": "裝置已成功連結"
+    }
+  },
+  "setup": {
+    "steps": {
+      "signIn": "登入",
+      "verify": "驗證",
+      "link": "連結"
+    },
+    "progress": "步驟 {current} 之 {total}：{label}",
+    "signIn": {
+      "title": "設定同步",
+      "description": "建立帳戶以透過端對端加密在多個裝置上同步您的資料。",
+      "or": "或",
+      "errors": {
+        "sendCode": "發送代碼失敗",
+        "googleStart": "啟動 Google 登入失敗"
+      }
+    },
+    "email": {
+      "label": "電子郵件地址",
+      "placeholder": "輸入您的電子郵件地址...",
+      "invalid": "請輸入有效的電子郵件地址",
+      "sending": "正在發送代碼..."
+    },
+    "oauth": {
+      "google": "繼續使用 Google"
+    },
+    "otp": {
+      "title": "輸入驗證碼",
+      "sentTo": "我們已發送六位數驗證碼至",
+      "aria": "六位數驗證碼",
+      "verifying": "正在驗證...",
+      "resending": "重新發送中...",
+      "resend": "重新發送驗證碼",
+      "resendIn": "{time} 後可重新發送",
+      "differentEmail": "使用不同的電子郵件",
+      "error": "驗證失敗",
+      "resendError": "重新發送失敗"
+    },
+    "recovery": {
+      "displayTitle": "保存您的恢復短語",
+      "displayDescription": "如果您失去所有裝置的存取權，這是恢復加密數據的唯一方式。",
+      "warning": "請將其寫下並妥善保存，您將不會再次看到它。",
+      "wordsAria": "恢復短語單詞",
+      "wordAria": "單詞 {index}：{word}",
+      "copyAria": "將恢復短語複製到剪貼簿",
+      "copiedAria": "恢復短語已複製",
+      "copied": "已複製",
+      "saved": "我已保存我的恢復短語",
+      "confirmTitle": "確認您的恢復短語",
+      "confirmDescription": "輸入要求的單詞以驗證您是否正確保存。 ",
+      "wordPlaceholder": "輸入單詞 #{index}",
+      "verify": "驗證",
+      "mustMatch": "所有 3 個單詞必須匹配才能繼續",
+      "inputTitle": "輸入恢復短語",
+      "inputDescription": "輸入您的 24 個單詞恢復短語以恢復對加密資料的訪問。",
+      "inputLabel": "恢復短語",
+      "count": "{count} / {total} 單詞",
+      "inputPlaceholder": "輸入以空格分隔的 24 個單詞恢復短語...",
+      "lengthHint": "輸入所有 24 個單詞以啟用恢復按鈕",
+      "restore": "恢復訪問",
+      "progress": {
+        "deriving": "正在導出加密密鑰...",
+        "validating": "正在驗證恢復短語...",
+        "registering": "正在註冊設備..."
+      },
+      "failed": "恢復失敗",
+      "confirmationFailed": "確認失敗"
+    },
+    "linking": {
+      "choiceTitle": "連接此設備",
+      "choiceDescription": "從其他設備轉移加密密鑰或從您的恢復短語恢復。",
+      "qrChoice": "通過 QR 碼連接",
+      "qrChoiceDescription": "掃描您其他裝置上顯示的代碼",
+      "recoveryChoice": "恢復短語",
+      "recoveryChoiceDescription": "輸入您的24個單詞恢復短語",
+      "codeTitle": "輸入連結代碼",
+      "codeDescription": "從您的其他裝置貼上連結代碼以安全傳輸您的加密金鑰。",
+      "codeLabel": "連結代碼",
+      "valid": "有效",
+      "invalid": "格式無效",
+      "codePlaceholder": "從您的其他裝置貼上代碼...",
+      "formatHint": "從您的其他裝置貼上 JSON 連結代碼",
+      "linking": "連結中...",
+      "linkDevice": "連結裝置",
+      "failed": "連結失敗",
+      "deviceFailed": "裝置連結失敗",
+      "pendingSuccess": "裝置已成功連結",
+      "goBack": "返回",
+      "waitingTitle": "等待批准",
+      "waitingDescription": "在您的其他裝置打開 Memry 並批准連結請求。",
+      "verificationCode": "驗證碼",
+      "confirmCode": "確認此與您其他裝置上的代碼相符",
+      "cancel": "取消"
+    }
+  },
+  "devices": {
+    "loading": "載入裝置中...",
+    "loadingAria": "載入裝置",
+    "none": "尚未連結任何裝置",
+    "linkNew": "連接新裝置",
+    "thisDevice": "此裝置",
+    "lastSeen": "最後出現於 {time} 前",
+    "linked": "已連接於 {time} 前",
+    "renameAria": "重新命名 {name}",
+    "rename": "重命名",
+    "revoke": "撤銷",
+    "showLess": "顯示較少",
+    "showMore": "{count, plural, one {# 更多裝置} other {# 更多裝置}}",
+    "showMoreAria": "顯示 {count, plural, one {# 更多裝置} other {# 更多裝置}}",
+    "dialogs": {
+      "revokeTitle": "撤銷 \"{name}\"？",
+      "revokeDescription": "此裝置將失去存取您同步資料的權限。它需要重新連接以恢復同步。該裝置上的本地資料將保留。",
+      "revokeDevice": "撤銷裝置",
+      "revoking": "撤銷中...",
+      "renameTitle": "重新命名裝置",
+      "renameDescription": "選擇一個名稱以識別此裝置。",
+      "namePlaceholder": "裝置名稱",
+      "renaming": "重新命名中..."
+    },
+    "toasts": {
+      "loadFailed": "載入裝置失敗",
+      "removed": "已移除 \"{name}\"",
+      "removeFailed": "移除裝置失敗",
+      "renamed": "已重新命名為 \"{name}\"",
+      "renameFailed": "重新命名裝置失敗"
+    }
+  },
+  "qrLinking": {
+    "title": "連接新裝置",
+    "description": "從您想要連接的裝置掃描此 QR 碼以安全地傳輸您的加密金鑰。",
+    "encrypted": "端對端加密",
+    "generating": "正在生成連接碼...",
+    "generatingAria": "正在生成連接碼",
+    "generateFailed": "生成連接碼失敗",
+    "tryAgain": "請再試一次",
+    "expired": "連接碼已過期",
+    "generateNew": "生成新碼",
+    "qrAria": "裝置連接 QR 碼",
+    "qrImageAria": "裝置連接 QR 碼",
+    "expiresIn": "將於 {time} 到期",
+    "or": "或",
+    "codeLabel": "連結代碼",
+    "copyAria": "複製連接碼",
+    "copiedAria": "已複製",
+    "copied": "已複製！"
+  },
+  "linkingApproval": {
+    "title": "新裝置想要連接",
+    "description": "有一個裝置正在請求存取您的加密資料。僅在您發起此請求時批准。",
+    "unknownDevice": "未知裝置",
+    "unknownPlatform": "未知平台",
+    "verificationCode": "驗證碼",
+    "computing": "計算中...",
+    "unavailable": "不可用",
+    "confirmCode": "確認此代碼與新裝置上顯示的一致",
+    "reject": "拒絕",
+    "approve": "批准",
+    "approving": "批准中...",
+    "approvalFailed": "批准失敗",
+    "failedToApprove": "無法批准設備"
+  },
+  "recoveryKey": {
+    "title": "恢復金鑰",
+    "description": "請妥善保存此金鑰。如果您失去對所有設備的存取，可以用它來恢復保險庫。",
+    "loading": "載入中...",
+    "retrieveFailed": "無法檢索恢復金鑰",
+    "copied": "恢復金鑰已複製到剪貼簿",
+    "copyFailed": "無法複製到剪貼簿",
+    "clickToReveal": "點擊以顯示",
+    "hide": "隱藏",
+    "reveal": "顯示",
+    "copy": "複製",
+    "sessionHint": "此金鑰每次會話僅顯示一次。關閉此對話框可從記憶中清除它。"
+  },
+  "keyRotation": {
+    "title": "輪換加密金鑰",
+    "descriptions": {
+      "confirm": "為您的保險庫生成新的加密金鑰。",
+      "rotating": "正在使用新金鑰重新加密您的數據...",
+      "phrase": "保存您的新恢復短語。",
+      "complete": "金鑰輪換完成。",
+      "error": "金鑰輪換發生錯誤。"
+    },
+    "warningTitle": "此操作將：",
+    "warningItems": {
+      "keyPair": "生成新的加密金鑰對",
+      "rewrap": "使用新金鑰重新包裝所有同步項目",
+      "phrase": "產生新的恢復短語（舊的將失效）",
+      "pause": "在此過程中暫時暫停同步"
+    },
+    "explanation": "您的數據內容從未重新加密——只有金鑰封套會改變。這是一個快速且安全的操作。",
+    "start": "開始金鑰輪換",
+    "starting": "開始中...",
+    "phases": {
+      "preparing": "準備中...",
+      "reencrypting": "重新包裝金鑰（{processed}/{total}）",
+      "finalizing": "最終處理中...",
+      "working": "進行中..."
+    },
+    "progressAria": "金鑰輪換：{phaseLabel} {pct}%",
+    "progressLabel": "金鑰輪換進度",
+    "doNotClose": "在此過程中請勿關閉應用程式。",
+    "complete": "所有加密金鑰已經輪換完成。您的新恢復短語已保存。同步將自動恢復。",
+    "unknownError": "金鑰輪換過程中發生未知錯誤。",
+    "errorHint": "您現有的金鑰仍然有效。同步已恢復。您可以隨時重試。",
+    "closeConfirm": {
+      "title": "正在旋轉中",
+      "description": "密鑰旋轉仍在進行中。關閉此對話框不會停止此過程，但在完成之前，您將無法看到新的恢復短語。",
+      "stay": "留下",
+      "closeAnyway": "仍要關閉"
+    },
+    "failed": "密鑰旋轉失敗"
+  },
+  "ai": {
+    "header": {
+      "title": "AI 助手",
+      "subtitle": "嵌入式在本地運行。語音備忘錄可以使用 Whisper Small 或您的 OpenAI 金鑰。",
+      "loading": "載入設定..."
+    },
+    "enable": {
+      "label": "啟用 AI 功能",
+      "description": "智能歸檔建議和筆記連接",
+      "enabled": "已啟用 AI 功能",
+      "disabled": "已禁用 AI 功能",
+      "error": "更新設定失敗"
+    },
+    "unknownError": "未知錯誤",
+    "groups": {
+      "voice": "語音轉錄",
+      "embeddingModel": "本地嵌入模型",
+      "embeddingIndex": "嵌入索引",
+      "inline": "內嵌 AI 編輯"
+    },
+    "voice": {
+      "provider": "提供者",
+      "providerDescription": "語音備忘錄的語音轉文字提供者",
+      "providers": {
+        "local": "本地（預設）",
+        "openai": "OpenAI（自帶金鑰）"
+      },
+      "localModel": "本地模型",
+      "localModelDescription": "Whisper Small 可按需下載並在本地緩存",
+      "status": {
+        "ready": "準備就緒",
+        "downloading": "下載中",
+        "downloaded": "已下載",
+        "notDownloaded": "未下載"
+      },
+      "cacheHint": "未隨應用程式捆綁 · 從設定下載 · 已在此裝置緩存",
+      "preparing": "正在準備 Whisper Small...",
+      "download": "下載 Whisper Small",
+      "apiKey": "OpenAI API 金鑰",
+      "apiKeyDescription": "儲存在您的作業系統金鑰圈中，僅用於語音轉錄",
+      "replaceKey": "替換已儲存的 OpenAI 金鑰",
+      "enterKey": "輸入 OpenAI API 金鑰",
+      "saveKey": "儲存金鑰",
+      "keySaved": "API 金鑰已儲存在金鑰圈",
+      "providerError": "更新語音提供者失敗",
+      "downloadedToast": "Whisper Small 已下載",
+      "downloadError": "下載 Whisper Small 失敗",
+      "keySavedToast": "OpenAI 金鑰已儲存",
+      "keySaveError": "儲存 OpenAI 金鑰失敗"
+    },
+    "embedding": {
+      "loaded": "已載入",
+      "loading": "載入中",
+      "cacheHint": "~23MB · 本地快取 · 全部在裝置上",
+      "dimensions": "尺寸",
+      "embeddings": "嵌入向量",
+      "downloadLoad": "下載並載入模型",
+      "downloadingModel": "正在下載模型...",
+      "loadingModel": "正在載入模型...",
+      "loadSuccess": "模型載入成功",
+      "loadFailed": "模型載入失敗",
+      "rebuildIndex": "重建索引",
+      "rebuildDescription": "為所有筆記重新生成嵌入向量",
+      "rebuild": "重建",
+      "scanning": "正在掃描筆記...",
+      "generating": "正在生成嵌入向量...",
+      "complete": "完成！",
+      "reindexed": "嵌入向量重新索引完成：{computed} 已計算，{skipped} 已跳過",
+      "reindexFailed": "嵌入向量重新索引失敗"
+    },
+    "inline": {
+      "loading": "載入中...",
+      "title": "內嵌 AI 編輯",
+      "enable": "啟用內嵌 AI",
+      "enableDescription": "編輯筆記時顯示 AI 選單",
+      "enabled": "已啟用內嵌 AI 編輯",
+      "disabled": "已禁用內嵌 AI 編輯",
+      "provider": "提供者",
+      "providerDescription": "用於文字操作的 AI 服務",
+      "providers": {
+        "ollama": "Ollama（本地）",
+        "openai": "OpenAI",
+        "anthropic": "Anthropic"
+      },
+      "model": "模型",
+      "modelDescription": "用於重寫和摘要的語言模型",
+      "selectModel": "選擇模型",
+      "apiKey": "API 密鑰",
+      "apiKeyDescription": "本地存儲，僅發送給提供者",
+      "apiKeyPlaceholder": "輸入 {provider} API 密鑰",
+      "ollamaUrl": "Ollama URL",
+      "ollamaUrlDescription": "本地伺服器地址",
+      "connection": "連線",
+      "activePort": "在端口 {port} 上啟動",
+      "notConnected": "未連線",
+      "test": "測試",
+      "stopFailed": "停止現有伺服器失敗",
+      "connected": "已連線！伺服器運行於端口 {port}",
+      "connectFailed": "連線失敗",
+      "testFailed": "連線測試失敗",
+      "updateFailed": "更新設定失敗"
+    }
+  },
+  "integrations": {
+    "header": {
+      "title": "整合",
+      "subtitle": "連接外部服務以豐富您的工作流程"
+    },
+    "auth": {
+      "oauth2": "OAuth 2.0",
+      "apiKey": "API 密鑰",
+      "none": "系統"
+    },
+    "comingSoon": "即將推出",
+    "connect": "連接",
+    "googleCalendar": {
+      "name": "Google 日曆",
+      "description": "對 Memry 事件和匯入的 Google 日曆進行雙向同步。",
+      "statuses": {
+        "connected": "已連線",
+        "notConnected": "未連線",
+        "reconnectRequired": "重新連線所需"
+      },
+      "accountReconnect": "重新連線 Google",
+      "importedCalendars": "已匯入的行事曆",
+      "selected": "已選擇 {count}",
+      "syncNow": "立即同步",
+      "disconnect": "斷開連線",
+      "reconnect": "重新連線 Google",
+      "syncFailed": "出了問題",
+      "connectFailed": "連線 Google 行事曆失敗",
+      "refreshFailed": "刷新 Google 行事曆失敗",
+      "disconnectFailed": "斷開 Google 行事曆失敗",
+      "selectionFailed": "更新行事曆選擇失敗",
+      "retryFailed": "重試行事曆同步失敗"
+    },
+    "sourcePicker": {
+      "empty": "此裝置尚無匯入的 Google 行事曆可用。",
+      "statuses": {
+        "synced": "已同步",
+        "error": "錯誤",
+        "pending": "待定",
+        "idle": "閒置"
+      },
+      "retrying": "正在重試…",
+      "retryNow": "立即重試"
+    },
+    "registry": {
+      "googleCalendar": {
+        "name": "Google 日曆",
+        "description": "Memry 事件、任務、提醒事項及已匯入行事曆的雙向同步"
+      },
+      "appleCalendar": {
+        "name": "Apple 行事曆",
+        "description": "透過系統 API 整合本地行事曆"
+      },
+      "notion": {
+        "name": "Notion",
+        "description": "一次性將頁面匯入您的保險庫"
+      },
+      "readwise": {
+        "name": "Readwise",
+        "description": "將重點同步到您的保險庫"
+      },
+      "todoist": {
+        "name": "Todoist",
+        "description": "雙向任務同步"
+      }
+    }
+  },
+  "vault": {
+    "header": {
+      "title": "保險庫",
+      "subtitle": "保險庫配置與存儲"
+    },
+    "groups": {
+      "storageUsage": "存儲使用情況",
+      "location": "位置"
+    },
+    "loadingStorage": "正在加載存儲資訊...",
+    "signInStorage": "登入以查看存儲使用情況",
+    "vaultPath": "保險庫路徑",
+    "reveal": "顯示",
+    "storage": {
+      "title": "儲存",
+      "used": "{used} 的 {limit} 已使用",
+      "ratio": "{used} / {limit}",
+      "refreshAria": "刷新存儲使用情況",
+      "usageAria": "存儲使用：{used} / {limit}",
+      "available": "可用 {available}",
+      "categories": {
+        "notes": "備註們",
+        "attachments": "附件",
+        "crdt": "CRDT",
+        "other": "其他"
+      },
+      "warningTitle": "存儲空間即將滿",
+      "warningDescription": "釋放空間或升級方案以避免同步問題。"
+    }
+  },
+  "tags": {
+    "header": {
+      "title": "標籤",
+      "subtitle": "管理筆記、日誌和任務中的標籤"
+    },
+    "loading": "正在載入標籤...",
+    "empty": "尚無標籤。當您將標籤添加至筆記和任務時，標籤將顯示在此處。",
+    "filterPlaceholder": "篩選標籤...",
+    "noMatch": "無符合「{query}」的標籤",
+    "summary": "筆記和任務中的 {count, plural, one {# 標籤} other {# 標籤}}",
+    "actions": {
+      "rename": "重命名",
+      "changeColor": "更改顏色",
+      "mergeInto": "合併到...",
+      "merge": "合併",
+      "delete": "刪除"
+    },
+    "dialogs": {
+      "deleteTitle": "刪除標籤",
+      "deleteDescription": "把「{name}」從{count, plural, one {# 項目} other {# 項目(複數)}}移除？這無法逆轉。",
+      "mergeTitle": "合併標籤",
+      "mergeDescription": "所有標有「{source}」標籤的物品都會重新標註目標標籤。來源標籤將會被刪除。",
+      "targetPlaceholder": "選擇目標標籤......",
+      "colorTitle": "將顏色改成「{name}」"
+    },
+    "toasts": {
+      "renamed": "更名為「{oldName}」為「{newName}」",
+      "renameFailed": "未能重新命名標籤",
+      "deleteFailed": "刪除標籤失敗",
+      "deleted": "已從{count, plural, one {# 項目} other {# 項目(複數)}}刪除「{name}」",
+      "mergeFailed": "未能合併標籤",
+      "merged": "將「{source}」合併為「{target}」（{count, plural, one {# 項目} other {# 項目(複數)}}）",
+      "colorUpdated": "「{name}」的更新顏色",
+      "colorFailed": "顏色更新失敗"
+    }
+  },
+  "properties": {
+    "header": {
+      "title": "屬性",
+      "subtitle": "管理所有筆記中的屬性定義"
+    },
+    "loading": "正在載入屬性......",
+    "empty": "目前還沒有屬性定義。為任何筆記新增狀態、選擇或多重選取屬性來開始使用。",
+    "filterPlaceholder": "篩選屬性...",
+    "noMatch": "沒有符合「{query}」的屬性",
+    "summary": "{count, plural, one {# 屬性定義} other {# 屬性定義}}",
+    "optionCount": "{count, plural, one {# 選項} other {# 選項}}",
+    "optionNamePlaceholder": "選項名稱",
+    "addOption": "新增選項",
+    "changeColorTitle": "更改顏色",
+    "renameTitle": "重命名",
+    "removeTitle": "移除",
+    "actions": {
+      "deleteProperty": "刪除屬性"
+    },
+    "types": {
+      "status": "狀態",
+      "select": "選擇",
+      "multiselect": "多選",
+      "text": "文字",
+      "number": "數字",
+      "date": "日期",
+      "checkbox": "核取方塊",
+      "url": "網址"
+    },
+    "dialogs": {
+      "deleteTitle": "刪除屬性",
+      "deleteDescription": "是否移除「{name}」屬性定義？使用此屬性的筆記將保留其值為純文字。",
+      "colorTitle": "將顏色改成「{name}」"
+    },
+    "toasts": {
+      "renamed": "更名為「{oldValue}」為「{newValue}」",
+      "renameFailed": "重新命名選項失敗",
+      "removed": "已移除 \"{value}\"",
+      "removeFailed": "移除選項失敗",
+      "colorFailed": "顏色更新失敗",
+      "deleteFailed": "刪除屬性失敗",
+      "deleted": "已刪除屬性「{name}」",
+      "addFailed": "新增選項失敗"
+    }
+  },
+  "shortcuts": {
+    "header": {
+      "title": "鍵盤快速鍵",
+      "subtitle": "點擊任何快捷鍵以重新綁定",
+      "loading": "載入設定..."
+    },
+    "searchPlaceholder": "搜尋快捷鍵...",
+    "resetAll": "重設全部",
+    "custom": "自訂",
+    "pressShortcut": "按下快捷鍵…",
+    "cancelTitle": "取消",
+    "rebindTitle": "點擊重新綁定",
+    "resetTitle": "重設為預設",
+    "clearTitle": "清除快捷鍵",
+    "clickToSet": "點擊設定",
+    "noMatch": "沒有快捷鍵符合您的搜尋",
+    "conflict": "與之衝突：{labels}",
+    "globalCapture": {
+      "title": "全域截取",
+      "description": "從任何地方截取筆記",
+      "permissionNeeded": "需要權限",
+      "active": "啟用中",
+      "permissionHint": "全域快捷鍵需要輔助功能權限。前往系統設定 → 隱私 → 輔助功能並啟用 Memry。"
+    },
+    "toasts": {
+      "saveGlobalFailed": "無法保存全域截取快捷鍵",
+      "saveFailed": "無法保存快捷鍵",
+      "resetFailed": "無法重置快捷鍵",
+      "resetAllSuccess": "所有快捷鍵已重置為預設",
+      "resetAllFailed": "無法重置快捷鍵"
+    },
+    "categories": {
+      "navigation": "導覽",
+      "tabs": "分頁",
+      "editor": "編輯器",
+      "view": "檢視"
+    },
+    "entries": {
+      "nav": {
+        "newNote": {
+          "label": "新筆記",
+          "description": "建立新筆記"
+        },
+        "newTask": {
+          "label": "新任務",
+          "description": "建立新任務"
+        },
+        "inbox": {
+          "label": "前往收件匣",
+          "description": "導覽至收件匣"
+        },
+        "notes": {
+          "label": "前往筆記",
+          "description": "導覽至筆記"
+        },
+        "tasks": {
+          "label": "前往任務",
+          "description": "導覽至任務"
+        },
+        "search": {
+          "label": "搜尋",
+          "description": "打開全域搜尋"
+        },
+        "settings": {
+          "label": "打開設定",
+          "description": "打開設定面板"
+        }
+      },
+      "tabs": {
+        "close": {
+          "label": "關閉分頁",
+          "description": "關閉當前分頁"
+        },
+        "next": {
+          "label": "下一個分頁",
+          "description": "切換到下一個分頁"
+        },
+        "previous": {
+          "label": "上一個分頁",
+          "description": "切換到上一個分頁"
+        },
+        "reopen": {
+          "label": "重新打開最後的分頁",
+          "description": "重新打開最近關閉的分頁"
+        },
+        "navBack": {
+          "label": "返回",
+          "description": "重新啟用先前的活動分頁"
+        },
+        "navForward": {
+          "label": "前進",
+          "description": "重做返回操作"
+        }
+      },
+      "editor": {
+        "save": {
+          "label": "儲存",
+          "description": "儲存當前筆記"
+        },
+        "bold": {
+          "label": "粗體",
+          "description": "切換粗體格式"
+        },
+        "italic": {
+          "label": "斜體",
+          "description": "切換斜體格式"
+        },
+        "underline": {
+          "label": "底線",
+          "description": "切換底線格式"
+        }
+      },
+      "view": {
+        "toggleSidebar": {
+          "label": "切換側邊欄",
+          "description": "顯示或隱藏側邊欄"
+        },
+        "shortcuts": {
+          "label": "鍵盤快速鍵幫助",
+          "description": "顯示鍵盤快速鍵參考"
+        }
+      }
+    }
+  },
+  "phaseF": {
+    "componentsKeyboardChordIndicator": {
+      "pressedWaitingForSecondKey": "已按下 — 等待第二個按鍵..."
+    },
+    "componentsKeyboardKeyboardShortcutsDialog": {
+      "keyboardShortcuts": "鍵盤快速鍵",
+      "press": "按下",
+      "toToggleThisDialog": "切換此對話框"
+    },
+    "componentsSyncDeviceList": {
+      "middot": "middot;"
+    },
+    "componentsSyncDeviceRevokedDialog": {
+      "thisDeviceHasBeenRemoved": "此裝置已被移除",
+      "exporting": "正在匯出...",
+      "signOut": "登出"
+    },
+    "componentsSyncSyncHistory": {
+      "middot": "·",
+      "activity": "活動",
+      "filterBySyncType": "依同步類型篩選",
+      "allTypes": "所有類型",
+      "pushed": "推送",
+      "pulled": "拉取",
+      "errors": "錯誤",
+      "filterByTimePeriod": "依時間範圍篩選",
+      "allTime": "所有時間",
+      "today": "今天",
+      "last7Days": "過去 7 天",
+      "last30Days": "過去 30 天",
+      "loadingSyncHistory": "正在加載同步歷史",
+      "noSyncActivityYet": "尚無同步活動",
+      "loadMore": "加載更多"
+    },
+    "componentsSyncSyncStatus": {
+      "lastSynced": "上次同步",
+      "pending": "待處理",
+      "localOnly": "僅本地",
+      "detected": "已檢測",
+      "clockSkewDetected": "檢測到時鐘偏差",
+      "items": "項目",
+      "willSyncWhenBackOnline": "上線時將進行同步",
+      "openSyncSettings": "打開同步設定"
+    },
+    "pagesSettingsAiInlineSection": {
+      "httpLocalhost11434V1": "http://localhost:11434/v1"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToUpdateTagColor": "更新標籤顏色失敗",
+      "googleSignInFailed": "Google 登入失敗",
+      "failedToSendVerificationCode": "發送驗證碼失敗",
+      "invalidVerificationCode": "驗證碼無效",
+      "accountSetupFailed": "帳戶設定失敗",
+      "failedToResendCode": "重新發送代碼失敗",
+      "failedToSetUpDevice": "裝置設定失敗",
+      "failedToConfirmRecoveryPhrase": "確認找回密語失敗",
+      "failedToAnalyzeContent": "分析內容失敗",
+      "failedToLoadUpdaterState": "載入更新程式狀態失敗",
+      "failedToCheckForUpdates": "檢查更新失敗",
+      "failedToDownloadUpdate": "下載更新失敗",
+      "failedToInstallUpdate": "安裝更新失敗",
+      "failedToLoadEditorSettings": "載入編輯器設定失敗",
+      "failedToUpdateEditorSettings": "更新編輯器設定失敗",
+      "failedToLoadGeneralSettings": "載入一般設定失敗",
+      "failedToUpdateGeneralSettings": "更新一般設定失敗",
+      "failedToLoadKeyboardSettings": "載入鍵盤設定失敗",
+      "failedToUpdateKeyboardSettings": "更新鍵盤設定失敗",
+      "failedToResetKeyboardSettings": "重置鍵盤設定失敗",
+      "failedToLoadNoteEditorSettings": "載入筆記編輯器設定失敗",
+      "failedToUpdateSettings": "無法更新設定",
+      "failedToLoadTabSettings": "載入分頁設定失敗",
+      "failedToLoadNotes": "加載筆記失敗",
+      "failedToLoadTags": "標籤載入失敗",
+      "failedToLoadVaultStatus": "載入保險庫狀態失敗",
+      "failedToSelectVault": "選擇保險庫失敗",
+      "failedToCloseVault": "無法關閉保險庫",
+      "failedToSwitchVault": "無法切換保險庫",
+      "failedToUpdateConfig": "無法更新配置",
+      "failedToReindex": "無法重新索引"
+    }
+  }
+}

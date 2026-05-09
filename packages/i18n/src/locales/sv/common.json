@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "Spara",
+    "cancel": "Avbryt",
+    "close": "Stäng",
+    "ok": "OK",
+    "yes": "Ja",
+    "no": "Nej",
+    "delete": "Ta bort",
+    "confirm": "Bekräfta",
+    "apply": "Tillämpa",
+    "done": "Klart",
+    "discard": "Kassera",
+    "dontSave": "Spara inte",
+    "edit": "Redigera",
+    "add": "Lägg till",
+    "remove": "Ta bort",
+    "retry": "Försök igen",
+    "submit": "Skicka",
+    "back": "Tillbaka",
+    "next": "Nästa",
+    "continue": "Fortsätt",
+    "reset": "Återställ",
+    "copy": "Kopiera",
+    "paste": "Klistra in",
+    "create": "Skapa",
+    "open": "Öppna"
+  },
+  "state": {
+    "loading": "Laddar…",
+    "saving": "Sparar…",
+    "deleting": "Tar bort…",
+    "searching": "Söker…",
+    "error": "Fel",
+    "success": "Framgång"
+  },
+  "empty": {
+    "noResults": "Inga resultat",
+    "noItems": "Inga objekt",
+    "noMatch": "Inga matchningar"
+  },
+  "action": {
+    "search": "Sök",
+    "edit": "Redigera",
+    "delete": "Ta bort",
+    "close": "Stäng",
+    "expand": "Expandera",
+    "collapse": "Komprimera",
+    "showMore": "+{count, plural, one {# mer} other {# mer}}",
+    "showLess": "Visa mindre"
+  },
+  "tabs": {
+    "pin": "Fäst flik",
+    "unpin": "Ta bort fäst flik",
+    "contextMenu": {
+      "close": "Stäng",
+      "closeOthers": "Stäng andra",
+      "closeToRight": "Stäng till höger",
+      "closeAll": "Stäng alla",
+      "duplicate": "Duplicera flik",
+      "splitRight": "Dela till höger",
+      "splitDown": "Dela nedåt",
+      "copyPath": "Kopiera sökväg",
+      "revealInSidebar": "Visa i sidofält"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {# objekt} other {# objekt}}",
+    "note": "{count, plural, one {# anteckning} other {# anteckningar}}",
+    "folder": "{count, plural, one {# mapp} other {# mappar}}",
+    "task": "{count, plural, one {# uppgift} other {# uppgifter}}",
+    "project": "{count, plural, one {# projekt} other {# projekt}}",
+    "itemDelete": "{count, plural, one {Ta bort # objekt} other {Ta bort # objekt}}"
+  },
+  "toast": {
+    "actionFailed": "Åtgärden misslyckades",
+    "nothingToUndo": "Inget att ångra",
+    "undone": "Ångrad: {description}",
+    "undoFailed": "Misslyckades med att ångra åtgärd",
+    "copied": "Kopierad",
+    "copyFailed": "Misslyckades med att kopiera"
+  },
+  "dateRelative": {
+    "today": "Idag",
+    "yesterday": "Igår",
+    "daysAgo": "{count, plural, one {# dag sedan} other {# dagar sedan}}"
+  },
+  "recurrence": {
+    "everyDay": "Varje dag",
+    "everyNDays": "{count, plural, one {Varje dag} other {Varje # dagar}}",
+    "everyWeek": "Varje vecka",
+    "everyNWeeks": "{count, plural, one {Varje vecka} other {Varje # veckor}}",
+    "everyWeekday": "Varje vardag",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Varje vardag} other {Varje # veckor på vardagar}}",
+    "everyWeekend": "Varje helg",
+    "everyNWeeksOnWeekends": "{count, plural, one {Varje helg} other {Varje # veckor på helger}}",
+    "everyWeekOnDays": "Varje vecka på {days}",
+    "everyNWeeksOnDays": "{count, plural, one {Varje vecka på {days}} other {Varje # veckor på {days}}}",
+    "everyMonth": "Varje månad",
+    "everyNMonths": "{count, plural, one {Varje månad} other {Varje # månader}}",
+    "everyMonthOnDay": "Varje månad på {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {Varje månad på {day}{suffix}} other {Varje # månader på {day}{suffix}}}",
+    "everyMonthOnWeekDay": "Varje månad på {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Varje månad på {week} {day}} other {Varje # månader på {week} {day}}}",
+    "everyYear": "Varje år",
+    "everyNYears": "{count, plural, one {Varje år} other {Varje # år}}",
+    "repeats": "Upprepas"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Samlingar",
+      "newNote": "Ny anteckning",
+      "newNote2": "Ny anteckning",
+      "newFolder": "Ny mapp",
+      "newFolder2": "Ny mapp",
+      "bookmarks": "Bokmärken",
+      "tags": "Taggar",
+      "dropFilesToImport": "Släpp filer för att importera",
+      "newNoteN": "Ny anteckning (⌘N)",
+      "new": "Ny",
+      "syncDisabled": "Synkronisering avstängd",
+      "syncDisabled2": "Synkronisering avstängd"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Ändra storlek på dagspanel",
+      "dragToResizeDoubleClickToReset": "Dra för att ändra storlek · Dubbelklicka för att återställa"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Hitta, ersätt, fråga..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Hoppa över introduktion",
+      "welcomeToMemry": "Välkommen till Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Din personliga kunskapsbas. Låt oss ta 2 minuter för att komma igång.",
+      "getStarted": "Kom igång",
+      "createYourFirstNote": "Skapa din första anteckning",
+      "markdownBasedStoredLocallyAsPlainFiles": "Basera på Markdown, lagras lokalt som vanliga filer.",
+      "eGMeetingNotesIdeasAnything": "t.ex. Mötesanteckningar, idéer, vad som helst...",
+      "skip": "Hoppa över",
+      "createNote": "Skapa anteckning ",
+      "addYourFirstTask": "Lägg till din första uppgift",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Uppgifter länkas till dina anteckningar, med prioriteringar och förfallodatum.",
+      "eGReviewProjectProposal": "t.ex. Granska projektförslag...",
+      "skip2": "Hoppa över",
+      "createTask": "Skapa uppgift ",
+      "syncAcrossDevices": "Synkronisera över enheter",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Håll dina anteckningar och uppgifter synkroniserade över alla dina enheter. Du kan alltid ställa in detta senare.",
+      "skipForNow": "Hoppa över för nu",
+      "doneLetSGo": "Klart — kör igång!"
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Ställ in mappikon"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "TIPS"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Ikonväljare",
+      "selectIcon": "Välj ikon",
+      "closeIconPicker": "Stäng ikonväljare",
+      "searchIcons": "Sök ikoner...",
+      "all": "Alla",
+      "clearIcon": "Rensa ikon",
+      "noIconsFoundFor": "Inga ikoner hittades för \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Tangentbordsgenvägar",
+      "closeShortcutsHelp": "Stäng genvägshjälp",
+      "press": "Tryck",
+      "toClose": "för att stänga"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Ställ in ikon",
+      "clearIcon": "Rensa ikon"
+    },
+    "componentsNavMain": {
+      "platform": "Plattform"
+    },
+    "componentsNavProjects": {
+      "projects": "Projekt",
+      "more": "Mer",
+      "viewProject": "Visa projekt",
+      "shareProject": "Dela projekt",
+      "deleteProject": "Ta bort projekt",
+      "more2": "Mer"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Uppgradera till Pro",
+      "account": "Konto",
+      "billing": "Fakturering",
+      "notifications": "Meddelanden",
+      "logOut": "Logga ut"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Sök",
+      "searchNotesTasksJournalInbox": "Sök anteckningar, uppgifter, dagbok, inkorg...",
+      "noResultsFor": "Inga resultat för “",
+      "rdquo": "rdquo;",
+      "result": "resultat"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Sök och klicka på objekt för att bygga din spårning",
+      "reasons": "Anledningar",
+      "clear": "Rensa"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Rensa",
+      "tags": "Taggar",
+      "filterByTag": "Filtrera efter tagg...",
+      "dateRange": "Datointervall"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Visa alla ",
+      "results": "resultat"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "suddig"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Inga flikar öppna",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Öppna en sida från sidofältet eller skapa en ny flik för att komma igång",
+      "openInbox": "Öppna inkorg",
+      "closePane": "Stäng panel"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Layoutförinställningar",
+      "layoutPresets2": "Layoutförinställningar"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Ändra storlek på paneler"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TasksContext inte tillgängligt",
+      "searchResults": "Sökresultat",
+      "unknownTabType": "Okänd fliktyp:"
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "osparade ändringar",
+      "preview": "förhandsgranska"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Ny flik",
+      "newTab2": "Ny flik",
+      "newNote": "Ny anteckning",
+      "journal": "Journal",
+      "calendar": "Kalender",
+      "inboxCapture": "Inkorgfångst",
+      "tasks": "Uppgifter"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Osparade ändringar",
+      "unsaved": "osparad)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Osparade ändringar"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Stäng alla flikar"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Öppna flikar",
+      "scrollTabsLeft": "Skrolla flikar åt vänster",
+      "scrollTabsRight": "Skrolla flikar åt höger",
+      "graphG": "Graf (⌘G)",
+      "dayPanel": "Dagspanel"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "Skrolla flikar åt vänster",
+      "scrollTabsRight": "Skrolla flikar åt höger"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "Öppna flikar",
+      "scrollTabsLeft": "Skrolla flikar åt vänster",
+      "scrollTabsRight": "Skrolla flikar åt höger"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Något gick fel",
+      "anErrorOccurredWhileRenderingThisTabContent": "Ett fel uppstod vid rendering av detta flikinnehåll.",
+      "tryAgain": "Försök igen"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Anteckningsikon"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Osparade ändringar",
+      "quot": "quot;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; har osparade ändringar. Vad vill du göra?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Nytt arbetsområde",
+      "darkMode": "Mörkt läge",
+      "settings": "Inställningar",
+      "integrations": "Integrationer",
+      "signOut": "Logga ut",
+      "downloadOnIos": "Ladda ner på iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Stäng fönster",
+      "minimizeWindow": "Minimera fönster",
+      "maximizeWindow": "Maximera fönster"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Förslag",
+      "or": "eller",
+      "enter": "Tryck på Enter",
+      "toInsert": "för att infoga"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "brödsmula",
+      "more": "Mer"
+    },
+    "componentsUiDialog": {
+      "close": "Stäng"
+    },
+    "componentsUiSheet": {
+      "close": "Stäng"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Sidofält",
+      "displaysTheMobileSidebar": "Visar det mobila sidofältet.",
+      "toggleSidebar": "Växla sidofält",
+      "toggleSidebar2": "Växla sidofält",
+      "dragToResizeDoubleClickToReset": "Dra för att ändra storlek · Dubbelklicka för att återställa"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Välkommen till Memry",
+      "yourPersonalKnowledgeManagementSystem": "Ditt personliga kunskapshanteringssystem.",
+      "selectAFolderToStoreYourNotesAndTasks": "Välj en mapp för att lagra dina anteckningar och uppgifter.",
+      "opening": "Öppnar...",
+      "selectVaultFolder": "Välj valvmapp",
+      "plainMarkdown": "Enkel Markdown",
+      "yourNotesStayPortable": "Dina anteckningar förblir portabla",
+      "syncAnywhere": "Synkronisera var som helst",
+      "useDropboxIcloudGit": "Använd Dropbox, iCloud, Git",
+      "recentVaults": "Senaste valven",
+      "notesLastOpened": "anteckningar · Senast öppnad"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Inga valv ännu",
+      "openVault": "Öppna valv",
+      "settings": "Inställningar",
+      "logOut": "Logga ut",
+      "signInToSync": "Logga in för att synkronisera",
+      "remove": "Ta bort “",
+      "rdquoFromList": "rdquo; från listan?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Detta valv kommer att tas bort från appen, men dina filer kommer att finnas kvar på disken. Du kan alltid lägga till det igen senare.",
+      "cancel": "Avbryt",
+      "remove2": "Ta bort"
+    },
+    "componentsWindowControls": {
+      "searchK": "Sök (⌘K)",
+      "browserBack": "Bläddra tillbaka",
+      "back": "Tillbaka",
+      "browserForward": "Bläddra framåt",
+      "forward": "Framåt"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Misslyckades med att importera filer",
+      "failedToCreateNote": "Misslyckades med att skapa anteckning",
+      "failedToAccessMicrophone": "Misslyckades med att få åtkomst till mikrofonen"
+    },
+    "toasts": {
+      "undone": "Ångrad"
+    }
+  }
+}

@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "日",
+    "week": "周",
+    "month": "月",
+    "year": "年"
+  },
+  "toolbar": {
+    "create-event": "创建事件",
+    "previous-period": "上一个周期",
+    "next-period": "下一个周期",
+    "previous-month": "上个月",
+    "next-month": "下个月",
+    "today": "今天"
+  },
+  "filter": {
+    "filter-calendars": "筛选日历",
+    "sources": "来源",
+    "memry-items": "Memry 项目",
+    "imported-calendars": "已导入的日历",
+    "event-types": "事件类型",
+    "google-calendars": "谷歌日历",
+    "refresh-google-calendars": "刷新谷歌日历"
+  },
+  "visual-type": {
+    "event": "事件",
+    "imported-event": "导入事件",
+    "task": "任务",
+    "reminder": "提醒",
+    "snooze": "延迟"
+  },
+  "state": {
+    "loading-calendar": "正在加载日历…",
+    "loading-calendars": "正在加载日历…",
+    "preparing": "准备中…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "尚无导入的日历。",
+    "no-events": "无事件"
+  },
+  "time": {
+    "all-day": "全天",
+    "all-day-lower": "全天",
+    "pick-a-date": "选择日期",
+    "new-event": "新事件",
+    "more-events": "{count, plural, one {# 更多事件} other {# 更多事件}}"
+  },
+  "form": {
+    "create-calendar-event": "创建日历事件",
+    "edit-calendar-event": "编辑日历事件",
+    "quick-create-description": "输入标题并保存以在选定的时间范围内创建事件。",
+    "event-editor-description": "更新此事件的标题、地点、日期、时间和备注。",
+    "new-event-placeholder": "新事件",
+    "location-placeholder": "添加地点",
+    "notes-url-placeholder": "添加备注或网址",
+    "start": "开始",
+    "end": "结束",
+    "add-details": "添加详细信息",
+    "google-calendar": "谷歌日历",
+    "target-calendar": "目标日历",
+    "use-default-calendar": "使用默认日历",
+    "use-default-calendar-with-name": "使用默认 ({calendar})",
+    "use-memry-calendar-default": "使用 Memry 日历（默认）",
+    "use-memry-managed-calendar": "使用 Memry 管理的日历",
+    "primary-suffix": "主要"
+  },
+  "delete-dialog": {
+    "title": "删除事件？",
+    "local-description": "“{title}”将被永久删除。此操作无法撤销。",
+    "google-bound-description": "\"{title}\" 将从 Memry 和 Google 日历中移除。此操作无法撤销。  ",
+    "context-menu-delete-label": "  \n删除事件  "
+  },
+  "promote-dialog": {
+    "aria": "  \n编辑外部日历事件  ",
+    "title": "  \n在 Memry 中编辑此事件？  ",
+    "body": "  \n编辑此事件将会在 Memry 中创建一个关联副本，使更改双向同步。继续吗？  ",
+    "do-not-ask-again": "  \n不再提示  ",
+    "confirm-label": "  \n在 Memry 中编辑  "
+  },
+  "onboarding-dialog": {
+    "aria": "  \n选择默认 Google 日历  ",
+    "title": "  \n新 Memry 事件应放入哪个日历？  ",
+    "body": "  \n选择 Memry 默认使用的 Google 日历。你仍可以在每个事件中覆盖此设置。  ",
+    "default-calendar-label": "使用 Memry 管理的日历",
+    "skip": "跳过",
+    "use-this-calendar": "  \n使用此日历  "
+  },
+  "metadata": {
+    "attendees": "  \n与会者  ",
+    "attendees-count": "  \n与会者（{count}）  ",
+    "reminders": "提醒事项",
+    "default-reminders": "  \n默认提醒  ",
+    "visibility": "  \n可见性：  ",
+    "optional": "  \n可选  ",
+    "join-meeting": "  \n加入会议  ",
+    "response": {
+      "accepted": "  \n已接受  ",
+      "declined": "  \n已拒绝",
+      "tentative": "暂定",
+      "needs-action": "待定"
+    },
+    "visibility-value": {
+      "private": "私人",
+      "public": "公开",
+      "confidential": "机密"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "分钟 · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "无法保存事件。请重试。",
+      "couldNotCreateEventTryAgain": "无法创建事件。请重试。",
+      "couldNotSaveDefaultCalendarTryAgain": "无法保存默认日历。请重试。",
+      "failedToLoadCalendarPreferences": "加载日历偏好设置失败",
+      "failedToUpdateCalendarPreferences": "更新日历偏好设置失败",
+      "couldNotEditThisEventTryAgain": "无法编辑此事件。请重试。",
+      "failedToDeleteEvent": "删除事件失败",
+      "couldNotUnsnoozeInboxItem": "无法解除延迟提醒。",
+      "couldNotRescheduleInboxItem": "无法重新安排。"
+    },
+    "inboxSnoozePopover": {
+      "title": "已延迟提醒的收件箱项目",
+      "openInInbox": "在收件箱中打开",
+      "unsnoozeNow": "立即解除延迟提醒",
+      "reschedule": "重新安排"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "任务详情",
+    "open-task": "打开任务",
+    "source-note": "来源笔记",
+    "reschedule": "重新安排",
+    "more-actions": "更多操作",
+    "mark-done": "标记为完成",
+    "mark-not-done": "标记为未完成",
+    "later-today": "今天稍晚",
+    "tomorrow": "明天",
+    "next-week": "下周",
+    "next-week-mon": "下周 · 周一",
+    "pick-date-time": "选择日期和时间…",
+    "remove-due-date": "移除截止日期",
+    "subtasks-prefix": "子任务",
+    "subtasks-counter": "{done} / {total} 完成",
+    "today": "今天",
+    "overdue-one": "已逾期 1 天",
+    "overdue-other": "已逾期 {count} 天",
+    "repeats": "重复",
+    "repeats-daily": "每日重复",
+    "repeats-weekly": "每周重复",
+    "repeats-monthly": "每月重复",
+    "repeats-yearly": "每年重复",
+    "priority-urgent": "紧急",
+    "priority-high": "高",
+    "priority-medium": "中",
+    "errors": {
+      "could-not-save": "无法保存任务",
+      "could-not-reschedule": "无法重新安排任务",
+      "could-not-remove-due-date": "无法移除截止日期",
+      "could-not-open-note": "无法打开笔记"
+    }
+  }
+}

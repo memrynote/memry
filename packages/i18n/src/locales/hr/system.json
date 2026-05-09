@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "Odaberite mapu trezora",
+      "button": "Odaberite Trezor"
+    },
+    "exportPdf": {
+      "title": "Izvezi kao PDF",
+      "filterName": "PDF dokument"
+    },
+    "exportHtml": {
+      "title": "Izvezi kao HTML",
+      "filterName": "HTML dokument"
+    },
+    "import": {
+      "filterSupported": "Podržane datoteke",
+      "filterAll": "Sve datoteke"
+    },
+    "exportCancelled": "Izvoz otkazan",
+    "update": {
+      "availableTitle": "Ažuriranje dostupno",
+      "availableMessage": "Memry {version} je dostupan.",
+      "availableDetailFallback": "Želite li sada preuzeti ažuriranje?",
+      "buttonDownload": "preuzimanje",
+      "buttonLater": "kasnije",
+      "readyTitle": "Ažuriranje spremno",
+      "readyMessage": "Memry {version} je preuzet.",
+      "readyDetailFallback": "Ponovno pokrenite Memry kako biste dovršili instalaciju ažuriranja.",
+      "buttonRestartNow": "Ponovno pokrenite sada",
+      "releaseNotesLabel": "Napomene o izdanju:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "Napomena podsjetnik",
+      "journal": "Dnevnik podsjetnik",
+      "highlight": "Označite podsjetnik",
+      "fallback": "Rok za opomenu",
+      "default": "Podsjetnik"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "Vrijeme podsjetnika mora biti u budućnosti",
+    "definitionNotFound": "Definicija nije pronađena",
+    "noteNotFound": "Napomena nije pronađena",
+    "updateFailed": "Ažuriranje nije uspjelo"
+  }
+}

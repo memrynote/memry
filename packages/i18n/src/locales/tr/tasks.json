@@ -615,37 +615,37 @@
     }
   },
   "phaseI": {
-    "errors": {
-      "failedToAddSubtask": "Alt görev eklenemedi",
-      "failedToAddSubtasks": "Alt görevler eklenemedi",
-      "failedToArchiveTasks": "Görevler arşivlenemedi",
-      "failedToCompleteSubtasks": "Alt görevler tamamlanamadı",
-      "failedToCompleteTask": "Görev tamamlanamadı",
-      "failedToDeleteSubtask": "Alt görev silinemedi",
-      "failedToDeleteSubtasks": "Alt görevler silinemedi",
-      "failedToDeleteTask": "Görev silinemedi",
-      "failedToLoadLinkedTasks": "Bağlı görevler yüklenemedi",
-      "failedToLoadTaskPreferences": "Görev tercihleri yüklenemedi",
-      "failedToMakeSubtask": "Alt görev yapılamadı",
-      "failedToMarkSubtasksIncomplete": "Alt görevler tamamlanmadı olarak işaretlenemedi",
-      "failedToPromoteSubtask": "Alt görev yükseltilemedi",
-      "failedToReorderSubtasks": "Alt görevler yeniden sıralanamadı",
-      "failedToSetDueDate": "Bitiş tarihi ayarlanamadı",
-      "failedToSetPriority": "Öncelik ayarlanamadı",
-      "failedToUpdateTaskPreferences": "Görev tercihleri güncellenemedi"
-    },
     "toasts": {
-      "allSubtasksCompleteTaskMarkedAsDone": "Tüm alt görevler tamamlandı. Görev tamamlandı olarak işaretlendi",
       "changesUndone": "Değişiklikler geri alındı",
-      "failedToArchiveTasks": "Görevler arşivlenemedi",
       "projectNotFound": "Proje bulunamadı",
+      "failedToArchiveTasks": "Görevler arşivlenemedi",
+      "tasksRestoredFromArchive": "Görevler arşivden geri yüklendi",
       "subtaskAdded": "Alt görev eklendi",
       "subtaskDeleted": "Alt görev silindi",
       "taskCompleted": "Görev tamamlandı",
-      "taskKeptOpen": "Görev açık bırakıldı",
-      "taskMarkedAsDone": "Görev tamamlandı olarak işaretlendi",
+      "allSubtasksCompleteTaskMarkedAsDone": "Tüm alt görevler tamamlandı. Görev tamamlandı olarak işaretlendi",
       "taskReopened": "Görev yeniden açıldı",
-      "tasksRestoredFromArchive": "Görevler arşivden geri yüklendi"
+      "taskKeptOpen": "Görev açık bırakıldı",
+      "taskMarkedAsDone": "Görev tamamlandı olarak işaretlendi"
+    },
+    "errors": {
+      "failedToArchiveTasks": "Görevler arşivlenemedi",
+      "failedToAddSubtask": "Alt görev eklenemedi",
+      "failedToAddSubtasks": "Alt görevler eklenemedi",
+      "failedToReorderSubtasks": "Alt görevler yeniden sıralanamadı",
+      "failedToPromoteSubtask": "Alt görev yükseltilemedi",
+      "failedToDeleteSubtask": "Alt görev silinemedi",
+      "failedToDeleteTask": "Görev silinemedi",
+      "failedToCompleteTask": "Görev tamamlanamadı",
+      "failedToMakeSubtask": "Alt görev yapılamadı",
+      "failedToCompleteSubtasks": "Alt görevler tamamlanamadı",
+      "failedToMarkSubtasksIncomplete": "Alt görevler tamamlanmadı olarak işaretlenemedi",
+      "failedToSetDueDate": "Bitiş tarihi ayarlanamadı",
+      "failedToSetPriority": "Öncelik ayarlanamadı",
+      "failedToDeleteSubtasks": "Alt görevler silinemedi",
+      "failedToLoadTaskPreferences": "Görev tercihleri yüklenemedi",
+      "failedToUpdateTaskPreferences": "Görev tercihleri güncellenemedi",
+      "failedToLoadLinkedTasks": "Bağlı görevler yüklenemedi"
     }
   }
 }

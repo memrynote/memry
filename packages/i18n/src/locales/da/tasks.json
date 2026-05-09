@@ -1,0 +1,651 @@
+{
+  "page": {
+    "tabs": {
+      "label": "Opgavevisninger",
+      "today": "I dag",
+      "all": "Alle"
+    },
+    "viewMode": {
+      "label": "Visningstilstand",
+      "list": "Listevisning",
+      "kanban": "Kanban udsigt"
+    },
+    "projectScope": {
+      "allProjects": "Alle projekter",
+      "searchProjects": "Søg efter projekter...",
+      "editProject": "Rediger {name}",
+      "unstarSavedFilter": "Fjern stjerne {name}"
+    }
+  },
+  "task": {
+    "add": "Tilføj opgave",
+    "title": "Titel",
+    "titleRequired": "Titel er påkrævet",
+    "titlePlaceholder": "Hvad skal der gøres?",
+    "namePlaceholder": "Opgavenavn",
+    "description": "Beskrivelse",
+    "descriptionPlaceholder": "Tilføj en beskrivelse...",
+    "details": "Opgavedetaljer",
+    "status": "Status",
+    "priority": "Prioritet",
+    "dueDate": "Forfaldsdato",
+    "project": "Projekt",
+    "repeat": "Gentag",
+    "createAnother": "Opret en anden",
+    "delete": "Slet opgave",
+    "created": "Oprettet {date}"
+  },
+  "project": {
+    "create": "Opret projekt",
+    "edit": "Rediger projekt",
+    "delete": "Slet projekt",
+    "iconAndName": "Ikon og navn",
+    "namePlaceholder": "Projektnavn",
+    "select": "Vælg projekt",
+    "selectIcon": "Vælg ikon",
+    "clickIconToChange": "Klik på ikonet for at ændre",
+    "color": "Farve",
+    "descriptionOptional": "Beskrivelse (valgfrit)",
+    "descriptionPlaceholder": "Kort beskrivelse af dette projekt...",
+    "statuses": "Statusser",
+    "statusesHelp": "Konfigurer arbejdsprocesstadierne for dette projekt.",
+    "createDescription": "Opret et nyt projekt med navn, ikon, farve og arbejdsgangstatus.",
+    "editDescription": "Rediger projektnavn, ikon, farve og arbejdsgangstatus."
+  },
+  "status": {
+    "select": "Vælg status",
+    "todo": "At gøre",
+    "inProgress": "Igangværende",
+    "done": "Færdig"
+  },
+  "priority": {
+    "select": "Vælg prioritet",
+    "none": "Ingen prioritet",
+    "noneShort": "Ingen",
+    "low": "Lav",
+    "medium": "Medium",
+    "high": "Høj",
+    "urgent": "Haster"
+  },
+  "filters": {
+    "filter": "Filter",
+    "emptyTitle": "Ingen opgaver matcher dine filtre",
+    "emptyHelp": "Prøv at justere dine filtre eller",
+    "groupBy": "Grupper efter",
+    "groupByOptions": "Gruppér efter muligheder",
+    "sortAscending": "Sorter stigende",
+    "sortDescending": "Sorter faldende"
+  },
+  "quickAdd": {
+    "label": "Hurtig tilføjelsesopgave",
+    "focusDescription": "Fokusér hurtigt tilføje input"
+  },
+  "drawer": {
+    "close": "Luk opgavedetaljer",
+    "subIssues": "Underspørgsmål",
+    "addSubIssue": "Tilføj undernummer",
+    "subIssuePlaceholder": "Tilføj undernummer...",
+    "noSubIssues": "Ingen underudgaver endnu",
+    "linkedNotes": "Sammenkædede noter",
+    "linkNote": "Link en note",
+    "loading": "Indlæser...",
+    "searchNotes": "Søg i noter...",
+    "noMatchingNotes": "Ingen matchende noter",
+    "noNotesAvailable": "Ingen tilgængelige noter",
+    "noLinkedNotes": "Ingen tilknyttede noter endnu",
+    "removeLinkTo": "Fjern link til {title}",
+    "removeLinkFallback": "bemærk"
+  },
+  "kanban": {
+    "board": "Kanban bord"
+  },
+  "toasts": {
+    "projectUpdated": "Projekt opdateret",
+    "projectCreated": "Projekt oprettet",
+    "projectSaveError": "Projektet kunne ikke gemmes",
+    "projectArchived": "Projekt arkiveret",
+    "projectArchiveError": "Projektet kunne ikke arkiveres",
+    "projectDeleted": "Projekt slettet",
+    "projectDeleteError": "Projektet kunne ikke slettes",
+    "filtersCleared": "Filtre ryddet",
+    "filterSaved": "Filter gemt",
+    "filterDeleted": "Filter slettet",
+    "filterApplied": "Anvendt \"{name}\"",
+    "deleted": "Opgave slettet",
+    "deletedSeries": "Serie færdig!",
+    "deletedNext": "Næste hændelse",
+    "completed": "Opgave afsluttet!",
+    "archived": "Opgave arkiveret",
+    "undoNotAvailableForDelete": "Fortryd ikke tilgængelig for sletning",
+    "alreadyAllComplete": "Alle valgte opgaver er allerede udført",
+    "noCompletedSelected": "Ingen udførte opgaver er valgt",
+    "completeFailed": "Kunne ikke fuldføre opgaver",
+    "reopenFailed": "Opgaverne kunne ikke genåbnes",
+    "deleteFailed": "Kunne ikke slette opgaver",
+    "moveFailed": "Kunne ikke flytte opgaver"
+  },
+  "phaseF": {
+    "componentsTasksAddSubtaskInput": {
+      "addSubtask": "Tilføj underopgave...",
+      "addSubtask2": "Tilføj underopgave",
+      "enterToAdd": "Indtast for at tilføje"
+    },
+    "componentsTasksBulkActionsBulkActionDropdown": {
+      "for": "for ",
+      "task": "opgave"
+    },
+    "componentsTasksBulkActionsBulkActionToolbar": {
+      "bulkActions": "Massehandlinger",
+      "selected": "valgt",
+      "complete": "Komplet",
+      "priority": "Prioritet",
+      "dueDate": "Forfaldsdato",
+      "moveTo": "Flyt til",
+      "status": "Status",
+      "archive": "Arkiv",
+      "delete": "Slet",
+      "cancelSelection": "Annuller valg",
+      "cancel": "Annuller"
+    },
+    "componentsTasksBulkActionsBulkDeleteDialog": {
+      "delete": "Slet ",
+      "task": "opgave",
+      "youReAboutToDelete": "Du er ved at slette ",
+      "task2": "opgave",
+      "and": "og ",
+      "moreTask": "mere opgave",
+      "thisActionCanBeUndoneForAShortTimeAfterDeletion": "Denne handling kan fortrydes i kort tid efter sletning.",
+      "cancel": "Annuller",
+      "delete2": "Slet ",
+      "task3": "opgave"
+    },
+    "componentsTasksBulkActionsBulkDueDatePicker": {
+      "setDueDateFor": "Sæt forfaldsdato for ",
+      "task": "opgave",
+      "selectADateToSetAsTheDueDateForAllSelectedTasks": "Vælg en dato, der skal angives som forfaldsdato for alle valgte opgaver.",
+      "alsoSetTime": "Indstil også tid",
+      "cancel": "Annuller",
+      "setDueDate": "Indstil forfaldsdato"
+    },
+    "componentsTasksCelebrationProgress": {
+      "complete": "Komplet"
+    },
+    "componentsTasksColorPicker": {
+      "selectColor": "Vælg farve"
+    },
+    "componentsTasksCustomRepeatDialog": {
+      "onTheseDays": "På disse dage",
+      "repeatOn": "Gentag videre",
+      "day": "dag",
+      "ofTheMonth": "i måneden",
+      "the": "Den",
+      "ofTheMonth2": "i måneden",
+      "ends": "Slutter",
+      "never": "Aldrig",
+      "onDate": "På dato",
+      "after": "Efter",
+      "occurrences": "hændelser",
+      "preview": "Forhåndsvisning",
+      "of": "af ",
+      "andMore": "og mere",
+      "frequency": "Frekvens",
+      "repeatEvery": "Gentag hver",
+      "day2": "dag",
+      "week": "uge",
+      "month": "måned",
+      "year": "år",
+      "cancel": "Annuller",
+      "save": "Gem",
+      "customRepeat": "Brugerdefineret gentagelse"
+    },
+    "componentsTasksDatePickerCalendar": {
+      "previousMonth": "Forrige måned",
+      "nextMonth": "Næste måned",
+      "goToToday": "Gå til i dag",
+      "today": "I dag",
+      "w": "W"
+    },
+    "componentsTasksDatePickerContent": {
+      "removeDate": "Fjern dato",
+      "clearTime": "Klar tid",
+      "addTime": "Tilføj tid"
+    },
+    "componentsTasksDeleteProjectDialog": {
+      "delete": "Slet\"",
+      "thisProjectHas": "Dette projekt har ",
+      "task": "opgave",
+      "whatWouldYouLikeToDoWithThem": "Hvad vil du gerne med dem?",
+      "moveTasksToPersonalProject": "Flyt opgaver til Personligt projekt",
+      "deleteAllTasksPermanently": "Slet alle opgaver permanent",
+      "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Dette projekt har ingen opgaver og vil blive slettet permanent.",
+      "thisActionCannotBeUndone": "Denne handling kan ikke fortrydes.",
+      "cancel": "Annuller",
+      "deleteProject": "Slet projekt"
+    },
+    "componentsTasksDeleteTaskDialog": {
+      "deleteTask": "Vil du slette opgaven?",
+      "ldquo": "ldquo;",
+      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; slettes permanent. Denne handling kan ikke fortrydes.",
+      "deleteTask2": "Slet opgave"
+    },
+    "componentsTasksDialogsAllSubtasksCompleteDialog": {
+      "allSubtasksComplete": "Alle delopgaver afsluttet!",
+      "ldquo": "ldquo;",
+      "rdquoHasAll": "rdquo; har alt ",
+      "subtask": "delopgave",
+      "done": "gjort.",
+      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Vil du også markere forældreopgaven som fuldført?",
+      "keepTaskOpen": "Hold opgaven åben",
+      "completeTask": "Fuldfør opgave ✓"
+    },
+    "componentsTasksDialogsBulkDueDateDialog": {
+      "setDueDateForAllSubtasks": "Indstil forfaldsdato for alle delopgaver",
+      "setDueDateFor": "Sæt forfaldsdato for ",
+      "subtask": "delopgave",
+      "in": "i \"",
+      "rdquo": "rdquo;",
+      "alsoApplyToCompletedSubtasks": "Gælder også for gennemførte delopgaver (",
+      "clearDate": "Klar dato",
+      "cancel": "Annuller",
+      "apply": "Ansøg"
+    },
+    "componentsTasksDialogsBulkPriorityDialog": {
+      "setPriorityForAllSubtasks": "Sæt prioritet for alle underopgaver",
+      "setPriorityFor": "Sæt prioritet for ",
+      "subtask": "delopgave",
+      "in": "i \"",
+      "rdquo": "rdquo;",
+      "alsoApplyToCompletedSubtasks": "Gælder også for gennemførte delopgaver (",
+      "cancel": "Annuller",
+      "apply": "Ansøg"
+    },
+    "componentsTasksDialogsCompleteParentDialog": {
+      "completeTaskWithIncompleteSubtasks": "Fuldstændig opgave med ufuldstændige delopgaver?",
+      "has": "har ",
+      "incompleteSubtask": "ufuldstændig delopgave",
+      "and": "og ",
+      "more": "mere",
+      "whatWouldYouLikeToDo": "Hvad vil du gerne lave?",
+      "completeAllParentSubtasks": "Fuldfør alle (forældre + underopgaver)",
+      "markTheParentAndAllSubtasksAsComplete": "Marker forælderen og alle underopgaver som fuldførte",
+      "completeParentOnlyKeepSubtasksIncomplete": "Fuldfør kun forælder, hold underopgaver ufuldstændige",
+      "onlyMarkTheParentTaskAsComplete": "Markér kun den overordnede opgave som fuldført",
+      "cancel": "Annuller",
+      "complete": "Komplet"
+    },
+    "componentsTasksDialogsDeleteAllSubtasksDialog": {
+      "deleteAllSubtasks": "Vil du slette alle underopgaver?",
+      "thisWillDelete": "Dette vil slette ",
+      "subtask": "delopgave",
+      "from": "fra \"",
+      "rdquo": "rdquo;.",
+      "thisActionCannotBeUndone": "Denne handling kan ikke fortrydes.",
+      "cancel": "Annuller",
+      "deleteAll": "Slet alle"
+    },
+    "componentsTasksDialogsDeleteParentDialog": {
+      "deleteTaskWithSubtasks": "Slet opgave med underopgaver?",
+      "has": "har ",
+      "subtask": "delopgave",
+      "whatWouldYouLikeToDo": "Hvad vil du gerne lave?",
+      "deleteTaskAndAllSubtasks": "Slet opgave og alle underopgaver",
+      "permanentlyRemovesEverything": "Fjerner alt permanent",
+      "deleteTaskKeepSubtasksAsStandaloneTasks": "Slet opgave, behold underopgaver som selvstændige opgaver",
+      "subtasksBecomeTopLevelTasks": "Underopgaver bliver opgaver på øverste niveau",
+      "cancel": "Annuller",
+      "delete": "Slet"
+    },
+    "componentsTasksDialogsDuplicateWithSubtasksDialog": {
+      "duplicateTask": "Dubleret opgave",
+      "createACopyOf": "Opret en kopi af \"",
+      "rdquo": "rdquo;",
+      "alsoDuplicateSubtasks": "Dupliker også underopgaver (",
+      "cancel": "Annuller",
+      "duplicate": "Dublet "
+    },
+    "componentsTasksDialogsParentPickerDialog": {
+      "makeSubtaskOf": "Lav en delopgave af...",
+      "selectATaskToMake": "Vælg en opgave at lave \"",
+      "aSubtaskOf": "en delopgave af.",
+      "searchTasks": "Søg opgaver...",
+      "sameProject": "Samme projekt",
+      "otherProjects": "Andre projekter"
+    },
+    "componentsTasksDragDropInsertionIndicator": {
+      "dropToRescheduleTo": "Drop for at omplanlægge til "
+    },
+    "componentsTasksDragDropMoveMenu": {
+      "moveTask": "Flyt opgave",
+      "move": "Flyt",
+      "reschedule": "Flyt tidsplanen",
+      "today": "I dag",
+      "tomorrow": "I morgen",
+      "nextWeek": "Næste uge",
+      "removeDate": "Fjern dato",
+      "moveToProject": "Flyt til projekt",
+      "current": "Nuværende",
+      "changeStatus": "Skift status",
+      "current2": "Nuværende",
+      "reorder": "Genbestil"
+    },
+    "componentsTasksDragDropMultiDragOverlay": {
+      "moreTask": "mere opgave",
+      "task": "opgave"
+    },
+    "componentsTasksDragDropSidebarDropZones": {
+      "dropHere": "Drop her"
+    },
+    "componentsTasksDragDropTaskRow": {
+      "priority": "prioritet: "
+    },
+    "componentsTasksDueDatePicker": {
+      "selectDueDate": "Vælg forfaldsdato",
+      "overdue": "Forfalden",
+      "setDueDate": "Sæt forfaldsdato",
+      "suggestions": "Forslag",
+      "pickADate": "Vælg en dato...",
+      "addTime": "Tilføj tid",
+      "time": "Tid",
+      "clearDate": "Klar dato",
+      "backToOptions": "Tilbage til muligheder"
+    },
+    "componentsTasksEditRepeatingTaskDialog": {
+      "editRepeatingTask": "Rediger gentagende opgave",
+      "youReEditingARepeatingTaskApplyChangesTo": "Du redigerer en gentaget opgave. Anvend ændringer på:",
+      "onlyThisOccurrence": "Kun denne begivenhed",
+      "onlyFutureTasksUnchanged": "kun — fremtidige opgaver uændrede",
+      "thisAndAllFutureOccurrences": "Dette og alle fremtidige hændelser",
+      "andBeyond": "og videre",
+      "cancel": "Annuller",
+      "continue": "Fortsæt"
+    },
+    "componentsTasksEmptyStatesCollapsedEmptySection": {
+      "add": "Tilføj"
+    },
+    "componentsTasksEmptyStatesSectionEmptyStates": {
+      "noTasksScheduled": "Ingen opgaver planlagt",
+      "addTaskFor": "Tilføj opgave til ",
+      "nothingScheduled": "Intet planlagt",
+      "addTasksWithDueDatesToPlanYourWeek": "Tilføj opgaver med forfaldsdatoer for at planlægge din uge.",
+      "addTask": "Tilføj opgave",
+      "viewCalendar": "Se kalender"
+    },
+    "componentsTasksFiltersActiveFiltersBar": {
+      "priorityIs": "Prioritet er",
+      "priority": "prioritet",
+      "statusIs": "Status er",
+      "status": "status",
+      "projectIs": "Projekt er",
+      "project": "projekt",
+      "due": "Forfalder",
+      "dueDate": "forfaldsdato",
+      "search": "søge",
+      "clearAll": "Ryd alle"
+    },
+    "componentsTasksFiltersDueDateFilter": {
+      "filterByDueDate": "Filtrer efter forfaldsdato",
+      "customRange": "Brugerdefineret rækkevidde",
+      "clear": "Ryd",
+      "apply": "Ansøg"
+    },
+    "componentsTasksFiltersFilterDropdown": {
+      "filterBy": "Filtrer efter..."
+    },
+    "componentsTasksFiltersFilterEmptyState": {
+      "activeFilters": "Aktive filtre: ",
+      "clearAllFilters": "Ryd alle filtre"
+    },
+    "componentsTasksFiltersFilterPanelsDueDatePanel": {
+      "dueDate": "Forfaldsdato"
+    },
+    "componentsTasksFiltersFilterPanelsPriorityPanel": {
+      "priority": "Prioritet",
+      "is": "er",
+      "search": "Søg...",
+      "selected": "valgt"
+    },
+    "componentsTasksFiltersFilterPanelsProjectPanel": {
+      "project": "Projekt",
+      "noProject": "Intet projekt"
+    },
+    "componentsTasksFiltersFilterPanelsStatusPanel": {
+      "status": "Status"
+    },
+    "componentsTasksFiltersFilterPanelsStatusProjectPickerPan": {
+      "status": "Status",
+      "pickAProject": "Vælg et projekt"
+    },
+    "componentsTasksFiltersMoreFiltersDropdown": {
+      "moreFilters": "Flere filtre",
+      "more": "Mere",
+      "status": "Status",
+      "hasTimeSet": "Har sat tid",
+      "recurringOnly": "Kun tilbagevendende",
+      "status2": "Status"
+    },
+    "componentsTasksFiltersPriorityFilter": {
+      "filterByPriority": "Filtrer efter prioritet",
+      "priority": "Prioritet"
+    },
+    "componentsTasksFiltersProjectFilter": {
+      "filterByProject": "Filtrer efter projekt",
+      "project": "Projekt",
+      "allProjects": "Alle projekter",
+      "clear": "Ryd"
+    },
+    "componentsTasksFiltersQuickFilters": {
+      "quickFilters": "Hurtige filtre:"
+    },
+    "componentsTasksFiltersSaveFilterDialog": {
+      "saveFilter": "Gem filter",
+      "saveYourCurrentFilterSettingsForQuickAccessLater": "Gem dine nuværende filterindstillinger for hurtig adgang senere.",
+      "filterName": "Filternavn",
+      "eGHighPriorityThisWeek": "f.eks. Høj prioritet i denne uge",
+      "currentFilters": "Nuværende filtre:",
+      "noFiltersApplied": "Ingen filtre anvendt",
+      "cancel": "Annuller",
+      "saveFilter2": "Gem filter"
+    },
+    "componentsTasksFiltersSavedFiltersDropdown": {
+      "savedFilters": "Gemte filtre",
+      "saved": "Gemt",
+      "noSavedFiltersYet": "Ingen gemte filtre endnu",
+      "saveCurrentFilters": "Gem aktuelle filtre",
+      "saveCurrentFilters2": "Gem aktuelle filtre"
+    },
+    "componentsTasksFiltersSavedFiltersSection": {
+      "filterName": "Filternavn",
+      "saveFilter": "Gem filter",
+      "save": "Gem"
+    },
+    "componentsTasksFiltersSearchInput": {
+      "searchTasks": "Søg opgaver",
+      "clearSearch": "Ryd søgning"
+    },
+    "componentsTasksKanbanKanbanColumn": {
+      "dropHere": "Drop her",
+      "releaseToMoveTaskToThisColumn": "Slip for at flytte opgave til denne kolonne",
+      "moreCompleted": "mere gennemført",
+      "showFewer": "Vis færre",
+      "taskTitle": "Opgavetitel..."
+    },
+    "componentsTasksNaturalDateInput": {
+      "typeADateInNaturalLanguage": "Indtast en dato på naturligt sprog",
+      "select": "Vælg"
+    },
+    "componentsTasksParentTaskRow": {
+      "priority": "prioritet: "
+    },
+    "componentsTasksPrioritySelect": {
+      "selectPriority": "Vælg prioritet",
+      "navigate": "navigere",
+      "select": "vælge"
+    },
+    "componentsTasksProjectModal": {
+      "iconName": "Ikon og navn",
+      "selectIcon": "Vælg ikon",
+      "projectName": "Projektnavn",
+      "clickIconToChange": "Klik på ikonet for at ændre",
+      "color": "Farve",
+      "descriptionOptional": "Beskrivelse (valgfrit)",
+      "briefDescriptionOfThisProject": "Kort beskrivelse af dette projekt...",
+      "statuses": "Statusser",
+      "configureTheWorkflowStagesForThisProject": "Konfigurer arbejdsprocesstadierne for dette projekt.",
+      "deleteProject": "Slet projekt",
+      "cancel": "Annuller",
+      "unsavedChanges": "Ikke-gemte ændringer",
+      "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Du har ikke-gemte ændringer. Er du sikker på, at du vil kassere dem?",
+      "cancel2": "Annuller",
+      "discard": "Kassér"
+    },
+    "componentsTasksProjectSelect": {
+      "selectProject": "Vælg projekt",
+      "selectProject2": "Vælg projekt"
+    },
+    "componentsTasksProjectsProjectSelector": {
+      "editProject": "Rediger projekt",
+      "archiveProject": "Arkivprojekt",
+      "deleteProject": "Slet projekt",
+      "selectProject": "Vælg projekt",
+      "noProjectsYet": "Ingen projekter endnu",
+      "createProject": "Opret projekt"
+    },
+    "componentsTasksProjectsProjectsTabContent": {
+      "noProjectSelected": "Intet projekt valgt",
+      "selectAProjectFromTheDropdownOrCreateANewOne": "Vælg et projekt fra rullemenuen, eller opret et nyt",
+      "createYourFirstProject": "Opret dit første projekt"
+    },
+    "componentsTasksQuickAddQuickAddHelp": {
+      "quickAddShortcutsHelp": "Hjælp til hurtig tilføjelse af genveje",
+      "quickAddShortcuts": "Hurtig tilføjelse af genveje",
+      "exampleBuyMilkTomorrowHighPersonal": "Eksempel: \"Køb mælk !i morgen !!høj #personal\""
+    },
+    "componentsTasksQuickAddQuickOptionsBar": {
+      "quickOptions": "Hurtige muligheder:"
+    },
+    "componentsTasksQuickAddInput": {
+      "q": "Q",
+      "q2": "Q"
+    },
+    "componentsTasksRepeatIndicator": {
+      "of": "af ",
+      "completed": "afsluttet"
+    },
+    "componentsTasksRepeatPicker": {
+      "selectRepeatFrequency": "Vælg gentagelsesfrekvens",
+      "doesNotRepeat": "Gentager sig ikke",
+      "custom": "Brugerdefineret..."
+    },
+    "componentsTasksStatusEditor": {
+      "changeStatusColor": "Skift statusfarve",
+      "dragToReorder": "Træk for at omarrangere",
+      "statusName": "Status navn",
+      "addStatus": "Tilføj status"
+    },
+    "componentsTasksStatusSelect": {
+      "selectStatus": "Vælg status",
+      "selectStatus2": "Vælg status"
+    },
+    "componentsTasksStopRepeatingDialog": {
+      "stopRepeating": "Stop med at gentage",
+      "isSetToRepeat": "er indstillet til at gentage ",
+      "whatWouldYouLikeToDo": "Hvad vil du gerne lave?",
+      "keepThisTaskStopFutureOccurrences": "Behold denne opgave, stop fremtidige hændelser",
+      "taskWillBecomeAOneTimeTask": "Opgaven bliver en engangsopgave",
+      "deleteThisAndAllFutureOccurrences": "Slet denne og alle fremtidige hændelser",
+      "taskWillBeRemovedEntirely": "Opgaven fjernes helt",
+      "cancel": "Annuller",
+      "confirm": "Bekræft"
+    },
+    "componentsTasksSubtaskDots": {
+      "of": "af ",
+      "subtasksComplete": "delopgaver fuldført (",
+      "clickTo": "Klik for at ",
+      "of2": "af ",
+      "subtasksComplete2": "delopgaver afsluttet",
+      "clickTo2": "Klik for at "
+    },
+    "componentsTasksSubtaskProgressBadge": {
+      "of": "af ",
+      "subtasksComplete": "delopgaver fuldført (",
+      "clickTo": "Klik for at "
+    },
+    "componentsTasksTaskBadges": {
+      "priority": "prioritet",
+      "repeatingTask": "Gentagende opgave",
+      "d": "d"
+    },
+    "componentsTasksTaskEmptyState": {
+      "addTask": "Tilføj opgave"
+    },
+    "componentsTasksTaskIcons": {
+      "noPriority": "ingen prioritet"
+    },
+    "componentsTasksTaskRepeatSection": {
+      "repeat": "Gentag",
+      "addRepeat": "Tilføj gentagelse",
+      "edit": "Rediger",
+      "edit2": "Rediger",
+      "stopRepeating": "Stop med at gentage",
+      "stopRepeating2": "Stop med at gentage"
+    },
+    "componentsTasksTaskSection": {
+      "addTask": "Tilføj opgave"
+    },
+    "componentsTasksTimePicker": {
+      "selectTime": "Vælg tid",
+      "selectTime2": "Vælg tid",
+      "clearTime": "Klar tid"
+    },
+    "componentsTasksTodayEmptyState": {
+      "nothingScheduledForToday": "Intet planlagt i dag",
+      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "Du har forfaldne opgaver ovenfor. Tilføj nogle opgaver for i dag, eller tjek din kommende liste.",
+      "addTaskForToday": "Tilføj opgave for i dag",
+      "allCaughtUpForToday": "Alt indhentet for i dag",
+      "youHaveNothingScheduledEnjoyTheClarity": "Du har intet planlagt. Nyd klarheden.",
+      "addTaskForToday2": "Tilføj opgave for i dag"
+    },
+    "componentsTasksUpcomingEmptyState": {
+      "nothingScheduledForTheNext7Days": "Intet planlagt de næste 7 dage",
+      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "Du har forfaldne opgaver ovenfor. Planlæg ved at tilføje opgaver for den kommende uge.",
+      "addTask": "Tilføj opgave",
+      "noUpcomingTasks": "Ingen kommende opgaver",
+      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Opgaver, der skal betales inden for de næste 7 dage, vises her. Planlæg din uge ved at tilføje nogle opgaver.",
+      "addTask2": "Tilføj opgave"
+    }
+  },
+  "phaseI": {
+    "toasts": {
+      "changesUndone": "Ændringer fortrydes",
+      "projectNotFound": "Projekt ikke fundet",
+      "failedToArchiveTasks": "Kunne ikke arkivere opgaver",
+      "tasksRestoredFromArchive": "Opgaver gendannet fra arkiv",
+      "subtaskAdded": "Underopgave tilføjet",
+      "subtaskDeleted": "Underopgave slettet",
+      "taskCompleted": "Opgave udført",
+      "allSubtasksCompleteTaskMarkedAsDone": "🎉 Alle delopgaver gennemført! Opgave markeret som udført.",
+      "taskReopened": "Opgaven genåbnet",
+      "taskKeptOpen": "Opgaven holdes åben",
+      "taskMarkedAsDone": "🎉 Opgave markeret som udført!"
+    },
+    "errors": {
+      "failedToArchiveTasks": "Kunne ikke arkivere opgaver",
+      "failedToAddSubtask": "Kunne ikke tilføje underopgave",
+      "failedToAddSubtasks": "Kunne ikke tilføje underopgaver",
+      "failedToReorderSubtasks": "Kunne ikke omarrangere underopgaver",
+      "failedToPromoteSubtask": "Kunne ikke promovere underopgaven",
+      "failedToDeleteSubtask": "Kunne ikke slette underopgaven",
+      "failedToDeleteTask": "Opgaven kunne ikke slettes",
+      "failedToCompleteTask": "Opgaven kunne ikke fuldføres",
+      "failedToMakeSubtask": "Kunne ikke lave underopgave",
+      "failedToCompleteSubtasks": "Kunne ikke fuldføre underopgaver",
+      "failedToMarkSubtasksIncomplete": "Kunne ikke markere underopgaver som ufuldstændige",
+      "failedToSetDueDate": "Kunne ikke angive forfaldsdato",
+      "failedToSetPriority": "Kunne ikke indstille prioritet",
+      "failedToDeleteSubtasks": "Kunne ikke slette underopgaver",
+      "failedToLoadTaskPreferences": "Kunne ikke indlæse opgavepræferencer",
+      "failedToUpdateTaskPreferences": "Kunne ikke opdatere opgavepræferencer",
+      "failedToLoadLinkedTasks": "Kunne ikke indlæse linkede opgaver"
+    }
+  }
+}

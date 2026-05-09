@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Grafik wird geladen...",
+    "load-failed": "Diagrammdaten konnten nicht geladen werden",
+    "try-again": "Versuchen Sie es erneut",
+    "aria-label": "Wissensgraph mit {nodeCount, plural, one {#-Knoten} other {#-Knoten}} und {edgeCount, plural, one {#-Verbindung} other {#-Verbindungen}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Diagrammknoten",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Ihr Wissensgraph",
+    "description": "Verbindungen zwischen Ihren Notizen, Aufgaben und Projekten werden hier als interaktives Diagramm angezeigt.",
+    "link-title": "Verknüpfen Sie Ihre Notizen",
+    "link-description": "Verwenden Sie [[Wikilinks]], um Ideen notizübergreifend zu verbinden",
+    "discover-title": "Entdecken Sie Muster",
+    "discover-description": "Wenn die Verbindungen wachsen, entstehen auf natürliche Weise Cluster und Themen"
+  },
+  "entity": {
+    "note": "Hinweis",
+    "notes": "Notizen",
+    "journal": "Tagebuch",
+    "journals": "Zeitschriften",
+    "task": "Aufgabe",
+    "tasks": "Aufgaben",
+    "project": "Projekt",
+    "projects": "Projekte",
+    "tag": "Tag",
+    "tags": "Tags",
+    "orphan": "Waise",
+    "orphans": "Waisen",
+    "unresolved": "ungelöst"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Grafikeinstellungen",
+    "hide-settings": "Einstellungen ausblenden",
+    "reset-filters": "Filter zurücksetzen",
+    "filters": "Filter",
+    "display": "Anzeige",
+    "show-labels": "Beschriftungen anzeigen",
+    "focus-depth": "Tiefe {depth}",
+    "clear-focus": "Klar fokussierter Knoten"
+  },
+  "filter": {
+    "notes": "Notizen",
+    "journals": "Zeitschriften",
+    "tasks": "Aufgaben",
+    "projects": "Projekte",
+    "tags": "Schlagworte",
+    "orphans": "Waisen",
+    "toggle-entity": "Schalten Sie {label} um",
+    "toggle-orphans": "Verwaiste Knoten umschalten"
+  },
+  "search": {
+    "placeholder": "Knoten durchsuchen...",
+    "clear": "Klare Diagrammsuche"
+  },
+  "context-menu": {
+    "untitled": "Ohne Titel",
+    "focus-node": "Konzentrieren Sie sich auf diesen Knoten",
+    "open-new-tab": "In neuem Tab öffnen",
+    "create-note": "Notiz erstellen",
+    "copy-title": "Titel kopieren"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {#-Verbindung} other {#-Verbindungen}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Grafik wird geladen...",
+    "empty": "Keine Verbindungen gefunden",
+    "open-full": "Vollständiges Diagramm öffnen",
+    "close": "Diagramm schließen"
+  }
+}

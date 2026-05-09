@@ -1,0 +1,28 @@
+{
+  "app": {
+    "quit": "Przestań"
+  },
+  "file": {
+    "label": "Plik",
+    "newNote": "Nowa notatka",
+    "close": "Zamknij okno"
+  },
+  "navigation": {
+    "back": "Powrót",
+    "forward": "Naprzód"
+  },
+  "edit": {
+    "label": "Edytuj",
+    "undo": "Cofnij",
+    "redo": "Powtórz",
+    "cut": "Cięcie",
+    "copy": "Kopiuj",
+    "paste": "Wklej"
+  },
+  "view": {
+    "label": "Zobacz",
+    "reload": "Załaduj ponownie",
+    "toggleDevTools": "Przełącz Narzędzia programistyczne",
+    "toggleFullscreen": "Przełącz pełny ekran"
+  }
+}

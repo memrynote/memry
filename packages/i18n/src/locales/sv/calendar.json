@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "Dag",
+    "week": "Vecka",
+    "month": "Månad",
+    "year": "År"
+  },
+  "toolbar": {
+    "create-event": "Skapa händelse",
+    "previous-period": "Föregående period",
+    "next-period": "Nästa period",
+    "previous-month": "Föregående månad",
+    "next-month": "Nästa månad",
+    "today": "Idag"
+  },
+  "filter": {
+    "filter-calendars": "Filtrera kalendrar",
+    "sources": "Källor",
+    "memry-items": "Memry objekt",
+    "imported-calendars": "Importerade kalendrar",
+    "event-types": "Händelsetyper",
+    "google-calendars": "Google-kalendrar",
+    "refresh-google-calendars": "Uppdatera Google-kalendrar"
+  },
+  "visual-type": {
+    "event": "Händelse",
+    "imported-event": "Importerad händelse",
+    "task": "Uppgift",
+    "reminder": "Påminnelse",
+    "snooze": "Snooza"
+  },
+  "state": {
+    "loading-calendar": "Laddar kalender…",
+    "loading-calendars": "Laddar kalendrar…",
+    "preparing": "Förbereder…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "Inga importerade kalendrar ännu.",
+    "no-events": "Inga händelser"
+  },
+  "time": {
+    "all-day": "Hela dagen",
+    "all-day-lower": "heldag",
+    "pick-a-date": "Välj ett datum",
+    "new-event": "Ny händelse",
+    "more-events": "{count, plural, one {# fler händelser} other {# fler händelser}}"
+  },
+  "form": {
+    "create-calendar-event": "Skapa kalenderhändelse",
+    "edit-calendar-event": "Redigera kalenderhändelse",
+    "quick-create-description": "Ange en titel och spara för att skapa en händelse under den valda tidsperioden.",
+    "event-editor-description": "Uppdatera titel, plats, datum, tid och anteckningar för denna händelse.",
+    "new-event-placeholder": "Ny händelse",
+    "location-placeholder": "Lägg till plats",
+    "notes-url-placeholder": "Lägg till anteckningar eller URL",
+    "start": "Start",
+    "end": "Slut",
+    "add-details": "Lägg till detaljer",
+    "google-calendar": "Google Kalender",
+    "target-calendar": "Målkalender",
+    "use-default-calendar": "Använd standardkalender",
+    "use-default-calendar-with-name": "Använd standard ({calendar})",
+    "use-memry-calendar-default": "Använd Memry kalender (standard)",
+    "use-memry-managed-calendar": "Använd Memry-hanterad kalender",
+    "primary-suffix": "primär"
+  },
+  "delete-dialog": {
+    "title": "Ta bort händelse?",
+    "local-description": "\"{title}\" kommer att tas bort permanent. Denna åtgärd kan inte ångras.",
+    "google-bound-description": "\"{title}\" kommer att tas bort från Memry och Google Kalender. Denna åtgärd kan inte ångras.",
+    "context-menu-delete-label": "Ta bort händelse"
+  },
+  "promote-dialog": {
+    "aria": "Redigera extern kalenderhändelse",
+    "title": "Redigera denna händelse i Memry?",
+    "body": "Att redigera denna händelse skapar en länkad kopia i Memry så att ändringar synkroniseras åt båda hållen. Fortsätta?",
+    "do-not-ask-again": "Fråga inte igen",
+    "confirm-label": "Redigera i Memry"
+  },
+  "onboarding-dialog": {
+    "aria": "Välj din standard Google-kalender",
+    "title": "Vilken kalender ska nya Memry-händelser gå till?",
+    "body": "Välj den Google-kalender som Memry ska använda som standard. Du kan fortfarande åsidosätta detta per händelse.",
+    "default-calendar-label": "Använd Memry-hanterad kalender",
+    "skip": "Hoppa över",
+    "use-this-calendar": "Använd denna kalender"
+  },
+  "metadata": {
+    "attendees": "Deltagare",
+    "attendees-count": "Deltagare ({count})",
+    "reminders": "Påminnelser",
+    "default-reminders": "Standardpåminnelser",
+    "visibility": "Synlighet:",
+    "optional": "Valfri",
+    "join-meeting": "Gå med i mötet",
+    "response": {
+      "accepted": "Accepterad",
+      "declined": "Avstyrd",
+      "tentative": "Tentativ",
+      "needs-action": "Avvaktar"
+    },
+    "visibility-value": {
+      "private": "Privat",
+      "public": "Offentlig",
+      "confidential": "Konfidentiell"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "min · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "Kunde inte spara händelsen. Försök igen.",
+      "couldNotCreateEventTryAgain": "Kunde inte skapa händelsen. Försök igen.",
+      "couldNotSaveDefaultCalendarTryAgain": "Kunde inte spara standardkalendern. Försök igen.",
+      "failedToLoadCalendarPreferences": "Misslyckades med att ladda kalenderinställningar",
+      "failedToUpdateCalendarPreferences": "Misslyckades med att uppdatera kalenderinställningar",
+      "couldNotEditThisEventTryAgain": "Kunde inte redigera denna händelse. Försök igen.",
+      "failedToDeleteEvent": "Misslyckades med att ta bort händelse",
+      "couldNotUnsnoozeInboxItem": "Kunde inte avsnooza.",
+      "couldNotRescheduleInboxItem": "Kunde inte schemalägga om."
+    },
+    "inboxSnoozePopover": {
+      "title": "Snoozad inkorgspost",
+      "openInInbox": "Öppna i inkorgen",
+      "unsnoozeNow": "Avsnooza nu",
+      "reschedule": "Schemalägg om"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "Uppgiftsdetaljer",
+    "open-task": "Öppna uppgift",
+    "source-note": "Källanteckning",
+    "reschedule": "Schemalägg om",
+    "more-actions": "Fler åtgärder",
+    "mark-done": "Markera som klar",
+    "mark-not-done": "Markera som inte klar",
+    "later-today": "Senare idag",
+    "tomorrow": "Imorgon",
+    "next-week": "Nästa vecka",
+    "next-week-mon": "Nästa vecka · Mån",
+    "pick-date-time": "Välj datum & tid…",
+    "remove-due-date": "Ta bort förfallodatum",
+    "subtasks-prefix": "Deluppgifter",
+    "subtasks-counter": "{done} av {total} klar",
+    "today": "Idag",
+    "overdue-one": "1 dag försenad",
+    "overdue-other": "{count} dagar försenad",
+    "repeats": "Upprepas",
+    "repeats-daily": "Upprepas dagligen",
+    "repeats-weekly": "Upprepas veckovis",
+    "repeats-monthly": "Upprepas månadsvis",
+    "repeats-yearly": "Upprepas årligen",
+    "priority-urgent": "Brådskande",
+    "priority-high": "Hög",
+    "priority-medium": "Medium",
+    "errors": {
+      "could-not-save": "Kunde inte spara uppgift",
+      "could-not-reschedule": "Kunde inte ändra uppgiftens schema",
+      "could-not-remove-due-date": "Kunde inte ta bort förfallodatum",
+      "could-not-open-note": "Kunde inte öppna anteckning"
+    }
+  }
+}

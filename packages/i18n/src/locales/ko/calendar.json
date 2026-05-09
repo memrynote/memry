@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "일",
+    "week": "주",
+    "month": "월",
+    "year": "연도"
+  },
+  "toolbar": {
+    "create-event": "이벤트 만들기",
+    "previous-period": "이전 기간",
+    "next-period": "다음 기간",
+    "previous-month": "지난달",
+    "next-month": "다음 달",
+    "today": "오늘"
+  },
+  "filter": {
+    "filter-calendars": "캘린더 필터링",
+    "sources": "출처",
+    "memry-items": "Memry 항목",
+    "imported-calendars": "가져온 캘린더",
+    "event-types": "이벤트 유형",
+    "google-calendars": "구글 캘린더",
+    "refresh-google-calendars": "Google 캘린더 새로 고침"
+  },
+  "visual-type": {
+    "event": "이벤트",
+    "imported-event": "가져온 이벤트",
+    "task": "작업",
+    "reminder": "알림",
+    "snooze": "스누즈"
+  },
+  "state": {
+    "loading-calendar": "캘린더 로드 중…",
+    "loading-calendars": "캘린더 로드 중…",
+    "preparing": "준비 중…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "아직 가져온 캘린더가 없습니다.",
+    "no-events": "이벤트 없음"
+  },
+  "time": {
+    "all-day": "하루 종일",
+    "all-day-lower": "하루 종일",
+    "pick-a-date": "날짜를 선택하세요",
+    "new-event": "새로운 이벤트",
+    "more-events": "{count, plural, one {# 추가 이벤트} other {# 추가 이벤트}}"
+  },
+  "form": {
+    "create-calendar-event": "캘린더 일정 만들기",
+    "edit-calendar-event": "캘린더 일정 수정",
+    "quick-create-description": "제목을 입력하고 저장하면 선택한 시간 범위에 이벤트가 생성됩니다.",
+    "event-editor-description": "이 이벤트의 제목, 위치, 날짜, 시간, 메모를 업데이트하세요.",
+    "new-event-placeholder": "새로운 이벤트",
+    "location-placeholder": "위치 추가",
+    "notes-url-placeholder": "메모 또는 URL 추가",
+    "start": "시작",
+    "end": "종료",
+    "add-details": "세부정보 추가",
+    "google-calendar": "구글캘린더",
+    "target-calendar": "대상캘린더",
+    "use-default-calendar": "기본 달력 사용",
+    "use-default-calendar-with-name": "기본값 사용({calendar})",
+    "use-memry-calendar-default": "Memry 달력 사용(기본값)",
+    "use-memry-managed-calendar": "Memry 관리 캘린더 사용",
+    "primary-suffix": "기본"
+  },
+  "delete-dialog": {
+    "title": "일정을 삭제하시겠습니까?",
+    "local-description": "\"{title}\"가 영구적으로 삭제됩니다. 이 작업은 취소할 수 없습니다.",
+    "google-bound-description": "\"{title}\"는 Memry 및 Google 캘린더에서 제거됩니다. 이 작업은 취소할 수 없습니다.",
+    "context-menu-delete-label": "일정 삭제"
+  },
+  "promote-dialog": {
+    "aria": "외부 캘린더 일정 수정",
+    "title": "Memry에서 이 이벤트를 편집하시겠습니까?",
+    "body": "이 이벤트를 편집하면 Memry에 연결된 복사본이 생성되므로 변경 사항이 양방향으로 동기화됩니다. 계속하시겠습니까?",
+    "do-not-ask-again": "다시 묻지 마세요",
+    "confirm-label": "Memry에서 편집"
+  },
+  "onboarding-dialog": {
+    "aria": "기본 Google 캘린더를 선택하세요.",
+    "title": "새로운 Memry 이벤트는 어떤 캘린더로 이동해야 합니까?",
+    "body": "Memry가 기본적으로 사용할 Google 캘린더를 선택하세요. 여전히 이벤트별로 재정의할 수 있습니다.",
+    "default-calendar-label": "Memry 관리 캘린더 사용",
+    "skip": "건너뛰기",
+    "use-this-calendar": "이 캘린더를 사용하세요"
+  },
+  "metadata": {
+    "attendees": "참석자",
+    "attendees-count": "참석자({count})",
+    "reminders": "알림",
+    "default-reminders": "기본 알림",
+    "visibility": "가시성:",
+    "optional": "선택사항",
+    "join-meeting": "회의 참여",
+    "response": {
+      "accepted": "수락됨",
+      "declined": "거절됨",
+      "tentative": "잠정",
+      "needs-action": "보류 중"
+    },
+    "visibility-value": {
+      "private": "비공개",
+      "public": "공개",
+      "confidential": "기밀"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "분 · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "이벤트를 저장할 수 없습니다. 다시 시도해 보세요.",
+      "couldNotCreateEventTryAgain": "이벤트를 만들 수 없습니다. 다시 시도해 보세요.",
+      "couldNotSaveDefaultCalendarTryAgain": "기본 캘린더를 저장할 수 없습니다. 다시 시도해 보세요.",
+      "failedToLoadCalendarPreferences": "캘린더 환경설정을 로드하지 못했습니다.",
+      "failedToUpdateCalendarPreferences": "캘린더 환경설정을 업데이트하지 못했습니다.",
+      "couldNotEditThisEventTryAgain": "이 일정을 수정할 수 없습니다. 다시 시도해 보세요.",
+      "failedToDeleteEvent": "일정을 삭제하지 못했습니다.",
+      "couldNotUnsnoozeInboxItem": "일시중지를 해제할 수 없습니다.",
+      "couldNotRescheduleInboxItem": "일정을 변경할 수 없습니다."
+    },
+    "inboxSnoozePopover": {
+      "title": "일시 중지된 받은편지함 항목",
+      "openInInbox": "받은 편지함에서 열기",
+      "unsnoozeNow": "지금 다시 알림 해제",
+      "reschedule": "일정 변경"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "작업 세부정보",
+    "open-task": "작업 열기",
+    "source-note": "소스 노트",
+    "reschedule": "일정 변경",
+    "more-actions": "추가 작업",
+    "mark-done": "완료로 표시",
+    "mark-not-done": "완료하지 않음으로 표시",
+    "later-today": "오늘 늦게",
+    "tomorrow": "내일",
+    "next-week": "다음 주",
+    "next-week-mon": "다음주·월",
+    "pick-date-time": "날짜 및 시간 선택…",
+    "remove-due-date": "마감일 삭제",
+    "subtasks-prefix": "하위 작업",
+    "subtasks-counter": "{total} 중 {done} 완료",
+    "today": "오늘",
+    "overdue-one": "1일 연체",
+    "overdue-other": "{count}일 연체",
+    "repeats": "반복",
+    "repeats-daily": "매일 반복",
+    "repeats-weekly": "매주 반복",
+    "repeats-monthly": "매월 반복",
+    "repeats-yearly": "매년 반복",
+    "priority-urgent": "긴급",
+    "priority-high": "높음",
+    "priority-medium": "중간",
+    "errors": {
+      "could-not-save": "작업을 저장할 수 없습니다.",
+      "could-not-reschedule": "작업 일정을 변경할 수 없습니다.",
+      "could-not-remove-due-date": "마감일을 삭제할 수 없습니다.",
+      "could-not-open-note": "메모를 열 수 없습니다."
+    }
+  }
+}

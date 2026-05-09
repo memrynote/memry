@@ -1,0 +1,1160 @@
+{
+  "toast": {
+    "exportNotImplemented": "Xuất dữ liệu cục bộ chưa được thực hiện"
+  },
+  "page": {
+    "title": "Cài đặt",
+    "nav": {
+      "groups": {
+        "workspace": "Không gian làm việc",
+        "preferences": "Tùy chọn",
+        "services": "Dịch vụ",
+        "data": "Dữ liệu"
+      },
+      "items": {
+        "account": "Tài khoản",
+        "general": "Chung",
+        "templates": "Các mẫu",
+        "editor": "Trình soạn thảo",
+        "journal": "Nhật ký",
+        "tasks": "Nhiệm vụ",
+        "calendar": "Lịch",
+        "appearance": "Giao diện",
+        "shortcuts": "Phím tắt",
+        "ai": "Trợ lý AI",
+        "integrations": "Tích hợp",
+        "vault": "Kho lưu trữ",
+        "tags": "Thẻ",
+        "properties": "Thuộc tính"
+      }
+    }
+  },
+  "general": {
+    "header": {
+      "title": "Chung",
+      "subtitle": "Khởi động ứng dụng và hành vi tab",
+      "loading": "Đang tải cài đặt..."
+    },
+    "groups": {
+      "startup": "Khởi động",
+      "updates": "Cập nhật",
+      "languageRegion": "Ngôn ngữ & Khu vực",
+      "tabBehavior": "Hành vi tab",
+      "fileCreation": "Tạo tệp",
+      "privacy": "Quyền riêng tư"
+    },
+    "startup": {
+      "launchAtLogin": {
+        "label": "Khởi động cùng đăng nhập",
+        "description": "Bắt đầu Memry khi bạn đăng nhập",
+        "error": "Không thể cập nhật khởi động cùng hệ thống"
+      }
+    },
+    "updates": {
+      "appUpdates": "Cập nhật ứng dụng",
+      "installedVersion": "Phiên bản đã cài đặt {version}",
+      "availableVersion": "Phiên bản có sẵn {version}",
+      "unsupported": "Các bản đóng gói có thể kiểm tra, tải xuống và cài đặt cập nhật từ GitHub Releases",
+      "available": "Memry {version} có sẵn để tải xuống",
+      "downloadingLatest": "Đang tải xuống bản phát hành mới nhất",
+      "downloadingLatestPercent": "Đang tải xuống bản phát hành mới nhất ({percent}%)",
+      "downloaded": "Memry {version} đã sẵn sàng để cài đặt",
+      "upToDate": "Cài đặt này đang ở phiên bản phát hành mới nhất",
+      "checking": "Đang kiểm tra GitHub Releases để tìm phiên bản mới hơn",
+      "idle": "Kiểm tra các phiên bản mới và cài đặt chúng mà không cần rời khỏi ứng dụng",
+      "unsupportedToast": "Tự động cập nhật chỉ có trong các phiên bản đóng gói",
+      "upToDateToast": "Memry {version} đã được cập nhật",
+      "actionFailed": "Thao tác cập nhật thất bại",
+      "actions": {
+        "checking": "Đang kiểm tra...",
+        "available": "Tải Cập Nhật",
+        "downloading": "Đang tải...",
+        "downloadingPercent": "Đang tải {percent}%",
+        "downloaded": "Khởi động lại để Cài đặt",
+        "idle": "Kiểm tra Cập Nhật"
+      }
+    },
+    "language": {
+      "label": "Ngôn ngữ",
+      "helper": "Phần lớn các bản cập nhật của ứng dụng xảy ra ngay lập tức. Một số văn bản ở cấp hệ thống — thông báo đã hiển thị, nhãn dock, thanh tiêu đề cửa sổ — sẽ được làm mới sau lần khởi động tiếp theo.",
+      "changed": "Ngôn ngữ đã được thay đổi thành {nativeName}",
+      "failed": "Thay đổi ngôn ngữ thất bại. Vui lòng thử lại."
+    },
+    "clockFormat": {
+      "label": "Định dạng Thời gian",
+      "description": "Đồng hồ 12 giờ hoặc 24 giờ",
+      "options": {
+        "12h": "12 giờ",
+        "24h": "24 giờ"
+      },
+      "error": "Cập nhật định dạng thời gian thất bại"
+    },
+    "tabs": {
+      "previewMode": {
+        "label": "Chế độ Xem trước",
+        "description": "Nhấp đơn để mở xem trước, nhấp đôi để giữ mở"
+      },
+      "restoreSession": {
+        "label": "Khôi phục Phiên làm việc khi Khởi động",
+        "description": "Mở lại các tab từ phiên làm việc trước của bạn"
+      },
+      "closeButton": {
+        "label": "Nút Đóng Tab",
+        "description": "Khi nào hiển thị nút đóng",
+        "options": {
+          "always": "Luôn hiển thị",
+          "hover": "Hiển thị khi rê chuột",
+          "active": "Chỉ trên tab đang hoạt động"
+        }
+      },
+      "error": "Cập nhật cài đặt thất bại"
+    },
+    "fileCreation": {
+      "createInSelectedFolder": {
+        "label": "Tạo trong Thư mục Đã Chọn",
+        "description": "Ghi chú và thư mục mới được tạo bên trong thư mục hiện được chọn. Khi tắt, các mục luôn được tạo tại gốc."
+      }
+    },
+    "privacy": {
+      "telemetry": {
+        "label": "Chia sẻ Số liệu Sử dụng Ẩn danh",
+        "description": "Chỉ là số liệu ẩn danh — không bao giờ gửi nội dung ghi chú, truy vấn tìm kiếm, đường dẫn tập tin, email, hoặc ID gốc.",
+        "error": "Cập nhật cài đặt dữ liệu từ xa thất bại"
+      }
+    }
+  },
+  "appearance": {
+    "header": {
+      "title": "Giao diện",
+      "subtitle": "Tùy chỉnh giao diện và cảm giác",
+      "loading": "Đang tải cài đặt..."
+    },
+    "groups": {
+      "theme": "Giao diện",
+      "accentColor": "Màu nhấn",
+      "typography": "Kiểu chữ"
+    },
+    "theme": {
+      "colorMode": {
+        "label": "Chế Độ Màu",
+        "description": "Chọn chủ đề ưa thích của bạn",
+        "aria": "Chế độ màu"
+      },
+      "options": {
+        "light": "Ấm",
+        "white": "Trắng",
+        "dark": "Tối",
+        "system": "Hệ thống"
+      },
+      "error": "Cập nhật chủ đề thất bại"
+    },
+    "accent": {
+      "pick": "Chọn màu nhấn",
+      "custom": {
+        "label": "Màu Tùy Chỉnh",
+        "description": "Nhập giá trị hex",
+        "placeholder": "#000000"
+      },
+      "presets": {
+        "indigo": "Chàm",
+        "amber": "Vàng hổ phách",
+        "emerald": "Ngọc lục bảo",
+        "red": "Đỏ",
+        "violet": "Tím",
+        "cyan": "Xanh lam nhạt",
+        "pink": "Hồng",
+        "orange": "Cam"
+      },
+      "error": "Cập nhật màu nhấn thất bại"
+    },
+    "typography": {
+      "fontSize": {
+        "label": "Kích Thước Phông Chữ",
+        "description": "Điều chỉnh kích thước văn bản cơ bản",
+        "aria": "Kích thước phông chữ"
+      },
+      "fontFamily": {
+        "label": "Họ Phông Chữ",
+        "description": "Phông chữ chính cho giao diện",
+        "options": {
+          "system": "Mặc định Hệ Thống",
+          "sansSerif": "Sans-serif",
+          "serif": "Serif (Crimson Pro)",
+          "gelasio": "Gelasio",
+          "geist": "Geist",
+          "inter": "Inter",
+          "monospace": "Monospace"
+        }
+      },
+      "fontSizeError": "Không thể cập nhật kích thước phông chữ",
+      "fontFamilyError": "Không thể cập nhật kiểu chữ"
+    }
+  },
+  "editor": {
+    "header": {
+      "title": "Trình soạn thảo",
+      "subtitle": "Cài đặt và tùy chọn trình soạn thảo ghi chú",
+      "loading": "Đang tải cài đặt..."
+    },
+    "groups": {
+      "layout": "Bố cục",
+      "toolbar": "Thanh công cụ",
+      "writing": "Viết"
+    },
+    "width": {
+      "label": "Chiều rộng trình soạn thảo",
+      "description": "Chiều rộng tối đa của khu vực viết",
+      "options": {
+        "narrow": "Hẹp",
+        "medium": " Trung bình ",
+        "wide": "Rộng"
+      },
+      "error": "Không thể cập nhật chiều rộng trình soạn thảo"
+    },
+    "toolbarMode": {
+      "label": "Thanh công cụ định dạng cố định",
+      "description": "Luôn hiển thị thanh công cụ phía trên trình soạn thảo",
+      "error": "Không thể cập nhật chế độ thanh công cụ"
+    },
+    "spellCheck": {
+      "label": "Kiểm tra chính tả",
+      "description": "Gạch chân từ sai chính tả khi gõ",
+      "error": "Không thể cập nhật kiểm tra chính tả"
+    },
+    "autoSaveDelay": {
+      "label": "Khoảng thời gian tự động lưu",
+      "description": "Thời gian chờ sau khi ngừng gõ trước khi lưu",
+      "seconds": "{seconds}s",
+      "error": "Không thể cập nhật khoảng thời gian tự động lưu"
+    },
+    "wordCount": {
+      "label": "Đếm từ",
+      "description": "Hiển thị số từ trong chân trang của trình chỉnh sửa",
+      "error": "Cập nhật hiển thị số từ thất bại"
+    }
+  },
+  "templates": {
+    "header": {
+      "title": "Các mẫu",
+      "subtitle": "Quản lý mẫu ghi chú để tạo nhanh"
+    },
+    "actions": {
+      "new": "Mẫu mới",
+      "edit": "Chỉnh sửa",
+      "duplicate": "Sao chép",
+      "delete": "Xóa"
+    },
+    "groups": {
+      "builtIn": "Có sẵn",
+      "myTemplates": "Mẫu của tôi"
+    },
+    "loading": "Đang tải các mẫu...",
+    "newTemplateTitle": "Mẫu mới",
+    "copySuffix": "{name} (Sao chép)",
+    "empty": {
+      "title": "Chưa có mẫu tùy chỉnh nào",
+      "description": "Tạo mẫu để bắt đầu"
+    },
+    "toasts": {
+      "deleted": "Mẫu đã bị xóa",
+      "deleteFailed": "Không xóa được mẫu",
+      "duplicated": "Mẫu đã được nhân đôi",
+      "duplicateFailed": "Không nhân đôi được mẫu"
+    },
+    "dialogs": {
+      "delete": {
+        "title": "Xóa Mẫu",
+        "description": "Bạn có chắc chắn muốn xóa mẫu này không? Hành động này không thể hoàn tác. Những ghi chú tạo từ mẫu này sẽ không bị ảnh hưởng."
+      },
+      "duplicate": {
+        "title": "Nhân đôi Mẫu",
+        "description": "Nhập tên cho bản sao mẫu mới.",
+        "placeholder": "Tên mẫu"
+      }
+    }
+  },
+  "journal": {
+    "header": {
+      "title": "Nhật ký",
+      "subtitle": "Cài đặt và tùy chọn nhật ký",
+      "loading": "Đang tải cài đặt..."
+    },
+    "groups": {
+      "defaultTemplate": "Mẫu Mặc định",
+      "sidebarVisibility": "Hiển thị Thanh bên",
+      "footer": "Chân trang"
+    },
+    "template": {
+      "label": "Mẫu",
+      "description": "Mục nhật ký mới bắt đầu với mẫu này",
+      "placeholder": "Chọn một mẫu",
+      "unknown": "Mẫu không xác định",
+      "none": "Không có",
+      "noneAsk": "Không có (hỏi mỗi lần)",
+      "updated": "Mẫu mặc định đã được cập nhật",
+      "cleared": "Mẫu mặc định đã được xóa",
+      "error": "Cập nhật mẫu mặc định thất bại"
+    },
+    "showSchedule": {
+      "label": "Hiển thị Lịch trình",
+      "description": "Hiển thị các sự kiện và lịch hôm nay"
+    },
+    "showTasks": {
+      "label": "Hiển thị Nhiệm vụ",
+      "description": "Hiển thị các nhiệm vụ đến hạn trong ngày được chọn"
+    },
+    "showAIConnections": {
+      "label": "Hiển thị Kết nối AI",
+      "description": "Hiển thị các kết nối được hỗ trợ bởi AI với các mục liên quan"
+    },
+    "showStatsFooter": {
+      "label": "Hiển thị Chân trang Thống kê",
+      "description": "Số lượng từ, thời gian đọc, dấu thời gian"
+    },
+    "updateError": "Cập nhật cài đặt thất bại"
+  },
+  "tasks": {
+    "header": {
+      "title": "Nhiệm vụ",
+      "subtitle": "Cấu hình mặc định và hành vi của nhiệm vụ",
+      "loading": "Đang tải cài đặt..."
+    },
+    "groups": {
+      "defaults": "Mặc định",
+      "calendar": "Lịch",
+      "inbox": "  \nHộp thư đến  "
+    },
+    "defaultProject": {
+      "label": "Dự án Mặc định",
+      "description": "Được gán khi không chọn dự án",
+      "placeholder": "Không có dự án mặc định",
+      "none": "Không có mặc định (sử dụng Cá nhân)",
+      "error": "Cập nhật dự án mặc định thất bại"
+    },
+    "sortOrder": {
+      "label": "Thứ tự Sắp xếp Mặc định",
+      "description": "Cách các nhiệm vụ được sắp xếp trong chế độ xem danh sách",
+      "options": {
+        "manual": "Thủ công (kéo & thả)",
+        "dueDate": "Hạn chót",
+        "priority": "  \nƯu tiên  ",
+        "createdAt": "Ngày Tạo"
+      },
+      "error": "Không thể cập nhật thứ tự sắp xếp"
+    },
+    "weekStart": {
+      "label": "Tuần bắt đầu vào",
+      "description": "Ngày đầu tuần trong chế độ xem lịch",
+      "options": {
+        "sunday": "Chủ nhật",
+        "monday": "Thứ hai"
+      },
+      "error": "Không thể cập nhật ngày bắt đầu tuần"
+    },
+    "staleInbox": {
+      "label": "Ngưỡng hộp thư cũ",
+      "description": "Các tác vụ cũ hơn mức này sẽ được đánh dấu là cũ",
+      "unit": "ngày",
+      "error": "Không thể cập nhật ngưỡng hộp thư cũ"
+    }
+  },
+  "calendar": {
+    "header": {
+      "title": "Lịch",
+      "subtitle": "Cấu hình hành vi ô ngày trong Bảng Ngày",
+      "loading": "Đang tải cài đặt..."
+    },
+    "groups": {
+      "dayCellClick": "Nhấp vào ô ngày"
+    },
+    "defaultBehavior": {
+      "label": "Hành vi mặc định",
+      "description": "Khi nhấp vào một ngày trong lịch Bảng Ngày từ bất kỳ tab không phải lịch nào",
+      "error": "Không thể cập nhật hành vi khi nhấp vào ngày"
+    },
+    "pageOverride": {
+      "label": "Ghi đè trang lịch",
+      "description": "Hành vi khi tab Lịch được kích hoạt (mặc định là Mở Lịch)",
+      "error": "Không thể cập nhật ghi đè trang lịch"
+    },
+    "options": {
+      "openJournal": "Mở Nhật ký",
+      "openCalendar": "Mở Lịch",
+      "useGlobal": "Sử dụng cài đặt toàn cục"
+    }
+  },
+  "account": {
+    "header": {
+      "title": "Tài khoản",
+      "subtitle": "Tài khoản, đồng bộ và bảo mật của bạn",
+      "loading": "  \nĐang tải...  "
+    },
+    "groups": {
+      "identity": "Danh tính",
+      "sync": "Đồng bộ",
+      "storage": "Lưu trữ",
+      "devices": "Thiết bị",
+      "security": "Bảo mật"
+    },
+    "identity": {
+      "unknown": "Không xác định",
+      "plan": "Gói Pro"
+    },
+    "sync": {
+      "lastSynced": "Đồng bộ lần cuối {time}",
+      "pending": "{count, plural, one {# đang chờ} other {# đang chờ}}",
+      "statuses": {
+        "synced": "  \nĐã đồng bộ  ",
+        "syncing": "Đang đồng bộ...",
+        "paused": "Tạm dừng",
+        "syncError": "Lỗi đồng bộ",
+        "offline": "Ngoại tuyến",
+        "connecting": "Đang kết nối...",
+        "pushed": "{count, plural, one {# đã đẩy} other {# đã đẩy}}",
+        "pulled": "{count, plural, one {# đã kéo} other {# đã kéo}}",
+        "pushedPulled": "{parts}",
+        "changesPending": "{count, plural, one {# thay đổi đang chờ} other {Các thay đổi # đang chờ}}",
+        "offlinePending": "Ngoại tuyến ({count, plural, one {# thay đổi đang chờ} other {Các thay đổi # đang chờ}})",
+        "never": "Không bao giờ"
+      }
+    },
+    "storage": {
+      "used": "{used} của {limit} đã sử dụng",
+      "categories": {
+        "notes": "Các ghi chú",
+        "attachments": "Tệp đính kèm",
+        "crdt": "CRDT",
+        "other": "Khác",
+        "available": "Có sẵn"
+      }
+    },
+    "security": {
+      "recoveryKey": {
+        "label": "Khóa khôi phục",
+        "description": "Xem khóa khôi phục của bạn để truy cập dữ liệu",
+        "action": "Xem khóa"
+      },
+      "rotateKeys": {
+        "label": "Xoay khóa mã hóa",
+        "description": "Tạo khóa mới và mã hóa lại tất cả dữ liệu",
+        "action": "Xoay"
+      },
+      "signOut": {
+        "label": "Đăng xuất",
+        "description": "Ngắt kết nối thiết bị này khỏi đồng bộ",
+        "action": "Đăng xuất"
+      }
+    },
+    "signOutDialog": {
+      "title": "Đăng xuất khỏi đồng bộ?",
+      "description": "Đồng bộ sẽ dừng và các khóa mã hóa sẽ bị xóa khỏi thiết bị này. Ghi chú của bạn sẽ vẫn còn trên thiết bị này. Bạn sẽ cần cụm từ khôi phục để thiết lập đồng bộ lại.",
+      "confirm": "Đăng xuất",
+      "signingOut": "Đang đăng xuất..."
+    },
+    "toasts": {
+      "signedOut": "Đã đăng xuất thành công",
+      "signOutFailed": "Đăng xuất thất bại",
+      "deviceLinked": "Thiết bị đã liên kết thành công"
+    }
+  },
+  "setup": {
+    "steps": {
+      "signIn": "Đăng nhập",
+      "verify": "Xác minh",
+      "link": "Liên kết"
+    },
+    "progress": "Bước {current} của {total}: {label}",
+    "signIn": {
+      "title": "Thiết lập Đồng bộ",
+      "description": "Tạo tài khoản để đồng bộ dữ liệu của bạn trên các thiết bị với mã hóa đầu cuối.",
+      "or": "hoặc",
+      "errors": {
+        "sendCode": "Gửi mã thất bại",
+        "googleStart": "Bắt đầu đăng nhập bằng Google thất bại"
+      }
+    },
+    "email": {
+      "label": "Địa chỉ email",
+      "placeholder": "Nhập địa chỉ email của bạn...",
+      "invalid": "Vui lòng nhập địa chỉ email hợp lệ",
+      "sending": "Đang gửi mã..."
+    },
+    "oauth": {
+      "google": "Tiếp tục với Google"
+    },
+    "otp": {
+      "title": "Nhập mã xác minh",
+      "sentTo": "Chúng tôi đã gửi một mã 6 chữ số đến",
+      "aria": "Mã xác minh 6 chữ số",
+      "verifying": "Đang xác minh...",
+      "resending": "Đang gửi lại...",
+      "resend": "Gửi lại mã",
+      "resendIn": "Gửi lại sau {time}",
+      "differentEmail": "Sử dụng email khác",
+      "error": "Xác minh thất bại",
+      "resendError": "Gửi lại thất bại"
+    },
+    "recovery": {
+      "displayTitle": "Lưu cụm từ khôi phục của bạn",
+      "displayDescription": "Đây là cách duy nhất để khôi phục dữ liệu đã mã hóa của bạn nếu bạn mất quyền truy cập vào tất cả các thiết bị.",
+      "warning": "Viết ra và cất ở nơi an toàn. Bạn sẽ không nhìn thấy nó nữa.",
+      "wordsAria": "Các từ trong cụm từ khôi phục",
+      "wordAria": "Từ {index}: {word}",
+      "copyAria": "Sao chép cụm từ khôi phục vào bộ nhớ tạm",
+      "copiedAria": "Cụm từ khôi phục đã được sao chép",
+      "copied": "Đã sao chép",
+      "saved": "Tôi đã lưu cụm từ khôi phục của mình",
+      "confirmTitle": "Xác nhận cụm từ khôi phục của bạn",
+      "confirmDescription": "Nhập các từ được yêu cầu để xác minh rằng bạn đã lưu chúng chính xác.",
+      "wordPlaceholder": "Nhập từ #{index}",
+      "verify": "Xác minh",
+      "mustMatch": "Tất cả 3 từ phải khớp để tiếp tục",
+      "inputTitle": "Nhập cụm từ khôi phục",
+      "inputDescription": "Nhập cụm từ khôi phục gồm 24 từ của bạn để khôi phục quyền truy cập vào dữ liệu được mã hóa.",
+      "inputLabel": "Cụm từ khôi phục",
+      "count": "Các từ {count} / {total}",
+      "inputPlaceholder": "Nhập cụm từ khôi phục 24 từ của bạn, cách nhau bằng dấu cách...",
+      "lengthHint": "Nhập đủ 24 từ để kích hoạt nút khôi phục",
+      "restore": "Khôi phục quyền truy cập",
+      "progress": {
+        "deriving": "Đang tạo khóa mã hóa...",
+        "validating": "Đang xác minh cụm từ khôi phục...",
+        "registering": "Đang đăng ký thiết bị..."
+      },
+      "failed": "Khôi phục thất bại",
+      "confirmationFailed": "Xác nhận thất bại"
+    },
+    "linking": {
+      "choiceTitle": "Liên kết thiết bị này",
+      "choiceDescription": "Chuyển khóa mã hóa từ thiết bị khác hoặc khôi phục từ cụm từ khôi phục của bạn.",
+      "qrChoice": "Liên kết qua mã QR",
+      "qrChoiceDescription": "Quét mã hiển thị trên thiết bị khác của bạn",
+      "recoveryChoice": "Cụm từ khôi phục",
+      "recoveryChoiceDescription": "Nhập cụm từ khôi phục 24 từ của bạn",
+      "codeTitle": "Nhập mã liên kết",
+      "codeDescription": "Dán mã liên kết từ thiết bị khác của bạn để chuyển khóa mã hóa một cách an toàn.",
+      "codeLabel": "Mã liên kết",
+      "valid": "Hợp lệ",
+      "invalid": "Định dạng không hợp lệ",
+      "codePlaceholder": "Dán mã từ thiết bị khác của bạn...",
+      "formatHint": "Dán mã liên kết JSON từ thiết bị khác của bạn",
+      "linking": "Đang liên kết...",
+      "linkDevice": "Liên kết thiết bị",
+      "failed": "Liên kết thất bại",
+      "deviceFailed": "Không thể liên kết thiết bị",
+      "pendingSuccess": "Thiết bị đã liên kết thành công",
+      "goBack": "Quay lại",
+      "waitingTitle": "Đang chờ phê duyệt",
+      "waitingDescription": "Mở Memry trên thiết bị khác của bạn và phê duyệt yêu cầu liên kết.",
+      "verificationCode": "Mã xác minh",
+      "confirmCode": "Xác nhận điều này khớp với mã trên thiết bị khác của bạn",
+      "cancel": "Hủy"
+    }
+  },
+  "devices": {
+    "loading": "Đang tải thiết bị...",
+    "loadingAria": "Đang tải thiết bị",
+    "none": "Chưa có thiết bị nào được liên kết",
+    "linkNew": "Liên kết thiết bị mới",
+    "thisDevice": "Thiết bị này",
+    "lastSeen": "Lần cuối thấy {time} trước",
+    "linked": "Đã liên kết {time} trước",
+    "renameAria": "Đổi tên {name}",
+    "rename": "Đổi tên",
+    "revoke": "Thu hồi",
+    "showLess": "Hiển thị ít hơn",
+    "showMore": "{count, plural, one {# thiết bị nữa} other {# thiết bị khác}}",
+    "showMoreAria": "Hiển thị {count, plural, one {# thiết bị nữa} other {# thiết bị khác}}",
+    "dialogs": {
+      "revokeTitle": "Thu hồi \"{name}\"?",
+      "revokeDescription": "Thiết bị này sẽ mất quyền truy cập vào dữ liệu đồng bộ của bạn. Nó sẽ cần được liên kết lại để khôi phục việc đồng bộ. Dữ liệu cục bộ trên thiết bị đó sẽ vẫn được giữ.",
+      "revokeDevice": "Thu hồi thiết bị",
+      "revoking": "Đang thu hồi...",
+      "renameTitle": "Đổi tên thiết bị",
+      "renameDescription": "Chọn tên để nhận diện thiết bị này.",
+      "namePlaceholder": "Tên thiết bị",
+      "renaming": "Đang đổi tên..."
+    },
+    "toasts": {
+      "loadFailed": "Không tải được thiết bị",
+      "removed": "Đã xóa \"{name}\"",
+      "removeFailed": "Không xóa được thiết bị",
+      "renamed": "Đã đổi tên thành \"{name}\"",
+      "renameFailed": "Không đổi tên được thiết bị"
+    }
+  },
+  "qrLinking": {
+    "title": "Liên kết thiết bị mới",
+    "description": "Quét mã QR này từ thiết bị bạn muốn liên kết để chuyển khóa mã hóa một cách an toàn.",
+    "encrypted": "Mã hóa đầu cuối",
+    "generating": "Đang tạo mã liên kết...",
+    "generatingAria": "Đang tạo mã liên kết",
+    "generateFailed": "Không thể tạo mã liên kết",
+    "tryAgain": "Thử lại",
+    "expired": "Mã liên kết đã hết hạn",
+    "generateNew": "Tạo mã mới",
+    "qrAria": "Mã QR để liên kết thiết bị",
+    "qrImageAria": "Mã QR liên kết thiết bị",
+    "expiresIn": "Hết hạn sau {time}",
+    "or": "hoặc",
+    "codeLabel": "Mã liên kết",
+    "copyAria": "Sao chép mã liên kết",
+    "copiedAria": "Đã sao chép",
+    "copied": "Đã sao chép!"
+  },
+  "linkingApproval": {
+    "title": "Thiết bị mới muốn liên kết",
+    "description": "Một thiết bị đang yêu cầu truy cập dữ liệu mã hóa của bạn. Chỉ chấp thuận nếu bạn đã khởi tạo yêu cầu này.",
+    "unknownDevice": "Thiết bị không xác định",
+    "unknownPlatform": "Nền tảng không xác định",
+    "verificationCode": "Mã xác minh",
+    "computing": "Đang tính toán...",
+    "unavailable": "Không khả dụng",
+    "confirmCode": "Xác nhận mã này khớp với mã hiển thị trên thiết bị mới",
+    "reject": "Từ chối",
+    "approve": "Chấp thuận",
+    "approving": "Đang phê duyệt...",
+    "approvalFailed": "Phê duyệt thất bại",
+    "failedToApprove": "Không thể phê duyệt thiết bị"
+  },
+  "recoveryKey": {
+    "title": "Khóa khôi phục",
+    "description": "Lưu khóa này một cách an toàn. Nó có thể khôi phục kho dữ liệu của bạn nếu bạn mất quyền truy cập tất cả thiết bị.",
+    "loading": "  \nĐang tải...  ",
+    "retrieveFailed": "Không thể lấy khóa khôi phục",
+    "copied": "Đã sao chép khóa khôi phục vào clipboard",
+    "copyFailed": "Không thể sao chép vào clipboard",
+    "clickToReveal": "Nhấp để hiển thị",
+    "hide": "Ẩn",
+    "reveal": "Hiện ra",
+    "copy": "Sao chép",
+    "sessionHint": "Khóa này được hiển thị một lần mỗi phiên. Đóng hộp thoại này để xóa nó khỏi bộ nhớ."
+  },
+  "keyRotation": {
+    "title": "Xoay khóa mã hóa",
+    "descriptions": {
+      "confirm": "Tạo khóa mã hóa mới cho kho dữ liệu của bạn.",
+      "rotating": "Đang mã hóa lại dữ liệu của bạn với các khóa mới...",
+      "phrase": "Lưu cụm từ khôi phục mới của bạn.",
+      "complete": "Hoàn tất xoay khóa.",
+      "error": "Xoay khóa gặp lỗi."
+    },
+    "warningTitle": "Hành động này sẽ:",
+    "warningItems": {
+      "keyPair": "Tạo một cặp khóa mã hóa mới",
+      "rewrap": "Mã hóa lại tất cả các mục đã đồng bộ với khóa mới",
+      "phrase": "Tạo một cụm từ khôi phục mới (cụm từ cũ sẽ không còn hiệu lực)",
+      "pause": "Tạm thời tạm dừng đồng bộ trong quá trình này"
+    },
+    "explanation": "Nội dung dữ liệu của bạn không bao giờ bị mã hóa lại - chỉ có các phong bì khóa thay đổi. Đây là một thao tác nhanh và an toàn.",
+    "start": "Bắt đầu Quay vòng Khóa",
+    "starting": "Bắt đầu...",
+    "phases": {
+      "preparing": "Đang chuẩn bị...",
+      "reencrypting": "Đang bọc lại các khóa ({processed}/{total})",
+      "finalizing": "Đang hoàn tất...",
+      "working": "Đang thực hiện..."
+    },
+    "progressAria": "Quay vòng khóa: {phaseLabel} {pct}%",
+    "progressLabel": "Tiến trình quay vòng khóa",
+    "doNotClose": "Không đóng ứng dụng trong quá trình này.",
+    "complete": "Tất cả các khóa mã hóa đã được quay vòng. Cụm từ khôi phục mới của bạn đã được lưu. Đồng bộ sẽ tự động tiếp tục.",
+    "unknownError": "Đã xảy ra lỗi không xác định trong quá trình quay vòng khóa.",
+    "errorHint": "Các khóa hiện có của bạn vẫn còn hiệu lực. Đồng bộ đã được tiếp tục. Bạn có thể thử lại bất cứ lúc nào.",
+    "closeConfirm": {
+      "title": "Đang quay vòng  ",
+      "description": "  \nViệc quay vòng khóa vẫn đang diễn ra. Đóng hộp thoại này sẽ không dừng quá trình, nhưng bạn sẽ không thấy cụm từ khôi phục mới cho đến khi quá trình hoàn tất.  ",
+      "stay": "  \nỞ lại  ",
+      "closeAnyway": "  \nĐóng dù sao  "
+    },
+    "failed": "  \nQuay vòng khóa thất bại  "
+  },
+  "ai": {
+    "header": {
+      "title": "Trợ lý AI",
+      "subtitle": "  \nEmbedding chạy cục bộ. Ghi chú giọng nói có thể sử dụng Whisper Small hoặc khóa OpenAI của bạn.  ",
+      "loading": "Đang tải cài đặt..."
+    },
+    "enable": {
+      "label": "  \nBật tính năng AI  ",
+      "description": "  \nGợi ý lưu trữ thông minh và kết nối ghi chú  ",
+      "enabled": "  \nTính năng AI đã bật  ",
+      "disabled": "  \nTính năng AI đã tắt  ",
+      "error": "Cập nhật cài đặt thất bại"
+    },
+    "unknownError": "  \nLỗi không xác định  ",
+    "groups": {
+      "voice": "  \nChuyển giọng nói thành văn bản  ",
+      "embeddingModel": "  \nMô hình embedding cục bộ  ",
+      "embeddingIndex": "  \nChỉ mục embedding  ",
+      "inline": "  \nChỉnh sửa AI trực tiếp  "
+    },
+    "voice": {
+      "provider": "  \nNhà cung cấp  ",
+      "providerDescription": "  \nNhà cung cấp chuyển giọng nói thành văn bản cho ghi chú giọng nói  ",
+      "providers": {
+        "local": "  \nCục bộ (mặc định)  ",
+        "openai": "  \nOpenAI (BYOK)  "
+      },
+      "localModel": "  \nMô hình cục bộ",
+      "localModelDescription": "Whisper Small tải xuống theo yêu cầu và lưu trữ tạm thời trên thiết bị",
+      "status": {
+        "ready": "Sẵn sàng",
+        "downloading": "Đang tải xuống",
+        "downloaded": "Đã tải xuống",
+        "notDownloaded": "Chưa tải xuống"
+      },
+      "cacheHint": "Không kèm theo ứng dụng · Đã tải xuống từ Cài đặt · Lưu tạm trên thiết bị này",
+      "preparing": "Đang chuẩn bị Whisper Small...",
+      "download": "Tải xuống Whisper Small",
+      "apiKey": "Khóa API OpenAI",
+      "apiKeyDescription": "Được lưu trong keychain của hệ điều hành và chỉ sử dụng cho chuyển âm giọng nói",
+      "replaceKey": "Thay thế khóa OpenAI đã lưu",
+      "enterKey": "Nhập khóa API OpenAI",
+      "saveKey": "Lưu khóa",
+      "keySaved": "Khóa API đã được lưu trong keychain",
+      "providerError": "Cập nhật nhà cung cấp giọng nói thất bại",
+      "downloadedToast": "Whisper Small đã được tải xuống",
+      "downloadError": "Tải xuống Whisper Small thất bại",
+      "keySavedToast": "Khóa OpenAI đã được lưu",
+      "keySaveError": "Lưu khóa OpenAI thất bại"
+    },
+    "embedding": {
+      "loaded": "Đã tải",
+      "loading": "Đang tải",
+      "cacheHint": "~23MB · Đã lưu trong bộ nhớ cục bộ · Tất cả trên thiết bị  ",
+      "dimensions": "Kích thước",
+      "embeddings": "  \nNhúng  ",
+      "downloadLoad": "  \nTải xuống & Nạp mô hình  ",
+      "downloadingModel": "  \nĐang tải mô hình...  ",
+      "loadingModel": "  \nĐang nạp mô hình...  ",
+      "loadSuccess": "  \nMô hình đã nạp thành công  ",
+      "loadFailed": "  \nKhông tải được mô hình  ",
+      "rebuildIndex": "  \nXây dựng lại chỉ mục  ",
+      "rebuildDescription": "  \nTái tạo nhúng cho tất cả ghi chú  ",
+      "rebuild": "  \nXây dựng lại  ",
+      "scanning": "  \nĐang quét các ghi chú...  ",
+      "generating": "  \nĐang tạo nhúng...  ",
+      "complete": "  \nHoàn tất!  ",
+      "reindexed": "  \nNhúng đã được tái chỉ mục: {computed} đã tính toán, {skipped} bỏ qua  ",
+      "reindexFailed": "  \nKhông tái chỉ mục được nhúng  "
+    },
+    "inline": {
+      "loading": "  \nĐang tải...  ",
+      "title": "  \nChỉnh sửa AI trực tiếp  ",
+      "enable": "  \nBật AI nội tuyến  ",
+      "enableDescription": "  \nHiển thị menu AI khi chỉnh sửa ghi chú  ",
+      "enabled": "  \nChỉnh sửa AI nội tuyến đã bật  ",
+      "disabled": "  \nChỉnh sửa AI nội tuyến đã tắt  ",
+      "provider": "  \nNhà cung cấp  ",
+      "providerDescription": "  \nDịch vụ AI cho các thao tác văn bản  ",
+      "providers": {
+        "ollama": "  \nOllama (Cục bộ)  ",
+        "openai": "  \nOpenAI  ",
+        "anthropic": "  \nAnthropic  "
+      },
+      "model": "  \nMô hình",
+      "modelDescription": "Mô hình ngôn ngữ để viết lại và tóm tắt",
+      "selectModel": "Chọn một mô hình",
+      "apiKey": "Khóa API",
+      "apiKeyDescription": "Lưu trữ cục bộ, chỉ gửi đến nhà cung cấp",
+      "apiKeyPlaceholder": "Nhập khóa API {provider}",
+      "ollamaUrl": "URL Ollama",
+      "ollamaUrlDescription": "Địa chỉ máy chủ cục bộ",
+      "connection": "Kết nối",
+      "activePort": "Hoạt động trên cổng {port}",
+      "notConnected": "Chưa kết nối",
+      "test": "Kiểm tra",
+      "stopFailed": "Không thể dừng máy chủ hiện có",
+      "connected": "Đã kết nối! Máy chủ đang chạy trên cổng {port}",
+      "connectFailed": "Kết nối thất bại",
+      "testFailed": "Kiểm tra kết nối thất bại",
+      "updateFailed": "Cập nhật cài đặt thất bại"
+    }
+  },
+  "integrations": {
+    "header": {
+      "title": "Tích hợp",
+      "subtitle": "Kết nối các dịch vụ bên ngoài để nâng cao quy trình làm việc của bạn"
+    },
+    "auth": {
+      "oauth2": "OAuth 2.0",
+      "apiKey": "Khóa API",
+      "none": "Hệ thống"
+    },
+    "comingSoon": "Sắp ra mắt",
+    "connect": "Kết nối",
+    "googleCalendar": {
+      "name": "Google Calendar",
+      "description": "Đồng bộ hai chiều cho các sự kiện Memry và các lịch Google được nhập.",
+      "statuses": {
+        "connected": "Đã kết nối",
+        "notConnected": "Chưa kết nối",
+        "reconnectRequired": "Cần kết nối lại"
+      },
+      "accountReconnect": "Kết nối lại Google",
+      "importedCalendars": "Các lịch đã nhập",
+      "selected": "Đã chọn {count}",
+      "syncNow": "Đồng bộ ngay",
+      "disconnect": "Ngắt kết nối",
+      "reconnect": "Kết nối lại Google",
+      "syncFailed": "Đã xảy ra sự cố",
+      "connectFailed": "Không thể kết nối Google Calendar",
+      "refreshFailed": "Không thể làm mới Google Calendar",
+      "disconnectFailed": "Không thể ngắt kết nối Google Calendar",
+      "selectionFailed": "Không thể cập nhật lựa chọn lịch",
+      "retryFailed": "Không thể thử lại đồng bộ lịch"
+    },
+    "sourcePicker": {
+      "empty": "Chưa có lịch Google nào được nhập có sẵn trên thiết bị này.",
+      "statuses": {
+        "synced": "  \nĐã đồng bộ  ",
+        "error": "Lỗi",
+        "pending": "Đang chờ",
+        "idle": "Nhàn rỗi"
+      },
+      "retrying": "Đang thử lại…",
+      "retryNow": "Thử lại ngay"
+    },
+    "registry": {
+      "googleCalendar": {
+        "name": "Google Calendar",
+        "description": "Đồng bộ hai chiều cho các sự kiện, nhiệm vụ, nhắc nhở và lịch đã nhập của Memry"
+      },
+      "appleCalendar": {
+        "name": "Apple Calendar",
+        "description": "Tích hợp lịch cục bộ qua API hệ thống"
+      },
+      "notion": {
+        "name": "Notion",
+        "description": "Nhập trang một lần vào kho của bạn"
+      },
+      "readwise": {
+        "name": "Readwise",
+        "description": "Đồng bộ các điểm nổi bật vào kho của bạn"
+      },
+      "todoist": {
+        "name": "Todoist",
+        "description": "Đồng bộ nhiệm vụ hai chiều"
+      }
+    }
+  },
+  "vault": {
+    "header": {
+      "title": "Kho lưu trữ",
+      "subtitle": "Cấu hình và lưu trữ két sắt"
+    },
+    "groups": {
+      "storageUsage": "Sử dụng lưu trữ",
+      "location": "Vị trí"
+    },
+    "loadingStorage": "Đang tải thông tin lưu trữ...",
+    "signInStorage": "Đăng nhập để xem mức sử dụng lưu trữ",
+    "vaultPath": "Đường dẫn két sắt",
+    "reveal": "Hiện ra",
+    "storage": {
+      "title": "Lưu trữ",
+      "used": "{used} của {limit} đã sử dụng",
+      "ratio": "{used} / {limit}",
+      "refreshAria": "Làm mới mức sử dụng lưu trữ",
+      "usageAria": "Sử dụng lưu trữ: {used} của {limit}",
+      "available": "Còn trống {available}",
+      "categories": {
+        "notes": "Các ghi chú",
+        "attachments": "Tệp đính kèm",
+        "crdt": "CRDT",
+        "other": "Khác"
+      },
+      "warningTitle": "Lưu trữ gần đầy",
+      "warningDescription": "Giải phóng bộ nhớ hoặc nâng cấp gói của bạn để tránh các sự cố đồng bộ."
+    }
+  },
+  "tags": {
+    "header": {
+      "title": "Thẻ",
+      "subtitle": "Quản lý nhãn trên ghi chú, nhật ký và nhiệm vụ"
+    },
+    "loading": "Đang tải thẻ...",
+    "empty": "Chưa có nhãn nào. Nhãn sẽ xuất hiện ở đây khi bạn thêm chúng vào ghi chú và nhiệm vụ.",
+    "filterPlaceholder": "Lọc thẻ...",
+    "noMatch": "Không có nhãn nào phù hợp với \"{query}\"",
+    "summary": "{count, plural, one {Nhãn #} other {Các nhãn #}} trên các ghi chú và nhiệm vụ",
+    "actions": {
+      "rename": "Đổi tên",
+      "changeColor": "Đổi màu",
+      "mergeInto": "Gộp vào...",
+      "merge": "Gộp",
+      "delete": "Xóa"
+    },
+    "dialogs": {
+      "deleteTitle": "Xóa thẻ",
+      "deleteDescription": "Xóa \"{name}\" khỏi {count, plural, one {# mục} other {# mục}}? Hành động này không thể hoàn tác.",
+      "mergeTitle": "Gộp thẻ",
+      "mergeDescription": "Tất cả các mục được gắn thẻ \"{source}\" sẽ được gắn lại với thẻ đích. Thẻ nguồn sẽ bị xóa.",
+      "targetPlaceholder": "Chọn thẻ đích...",
+      "colorTitle": "Đổi màu cho \"{name}\""
+    },
+    "toasts": {
+      "renamed": "Đã đổi tên \"{oldName}\" thành \"{newName}\"",
+      "renameFailed": "Không thể đổi tên thẻ",
+      "deleteFailed": "Không thể xóa thẻ",
+      "deleted": "Đã xóa \"{name}\" khỏi {count, plural, one {# mục} other {# mục}}",
+      "mergeFailed": "Không thể gộp các thẻ",
+      "merged": "Đã gộp \"{source}\" vào \"{target}\" ({count, plural, one {# mục} other {# mục}})",
+      "colorUpdated": "Đã cập nhật màu cho \"{name}\"",
+      "colorFailed": "Không thể cập nhật màu"
+    }
+  },
+  "properties": {
+    "header": {
+      "title": "Thuộc tính",
+      "subtitle": "Quản lý các định nghĩa thuộc tính trên tất cả các ghi chú"
+    },
+    "loading": "Đang tải các thuộc tính...",
+    "empty": "Chưa có định nghĩa thuộc tính nào. Thêm một thuộc tính Trạng thái, Chọn hoặc Chọn nhiều vào bất kỳ ghi chú nào để bắt đầu.",
+    "filterPlaceholder": "Lọc thuộc tính...",
+    "noMatch": "Không có thuộc tính nào khớp với \"{query}\"",
+    "summary": "{count, plural, one {Định nghĩa thuộc tính #} other {Các định nghĩa thuộc tính #}}",
+    "optionCount": "{count, plural, one {Tùy chọn #} other {Các tùy chọn #}}",
+    "optionNamePlaceholder": "Tên tùy chọn",
+    "addOption": "Thêm tùy chọn",
+    "changeColorTitle": "Đổi màu",
+    "renameTitle": "Đổi tên",
+    "removeTitle": "Gỡ bỏ",
+    "actions": {
+      "deleteProperty": "Xóa thuộc tính"
+    },
+    "types": {
+      "status": "Trạng thái",
+      "select": "Chọn",
+      "multiselect": "Chọn nhiều",
+      "text": "Văn bản",
+      "number": "Số",
+      "date": "Ngày",
+      "checkbox": "Hộp kiểm",
+      "url": "URL"
+    },
+    "dialogs": {
+      "deleteTitle": "Xóa thuộc tính",
+      "deleteDescription": "Xóa định nghĩa thuộc tính \"{name}\"? Các ghi chú sử dụng thuộc tính này sẽ giữ nguyên giá trị dưới dạng văn bản thuần.",
+      "colorTitle": "Đổi màu cho \"{name}\""
+    },
+    "toasts": {
+      "renamed": "Đã đổi tên \"{oldValue}\" thành \"{newValue}\"",
+      "renameFailed": "Không đổi tên được tùy chọn",
+      "removed": "Đã xóa \"{value}\"",
+      "removeFailed": "Không xóa được tùy chọn",
+      "colorFailed": "Không thể cập nhật màu",
+      "deleteFailed": "Không thể xóa thuộc tính",
+      "deleted": "Đã xóa thuộc tính \"{name}\"",
+      "addFailed": "Không thêm được tùy chọn"
+    }
+  },
+  "shortcuts": {
+    "header": {
+      "title": "Phím tắt bàn phím",
+      "subtitle": "Nhấn vào bất kỳ phím tắt nào để gán lại",
+      "loading": "Đang tải cài đặt..."
+    },
+    "searchPlaceholder": "Tìm kiếm phím tắt...",
+    "resetAll": "Đặt lại tất cả",
+    "custom": "Tùy chỉnh",
+    "pressShortcut": "Nhấn phím tắt…",
+    "cancelTitle": "Hủy",
+    "rebindTitle": "Nhấn để gán lại",
+    "resetTitle": "Đặt về mặc định",
+    "clearTitle": "Xóa phím tắt",
+    "clickToSet": "Nhấn để thiết lập",
+    "noMatch": "Không có phím tắt nào khớp với tìm kiếm của bạn",
+    "conflict": "Xung đột với: {labels}",
+    "globalCapture": {
+      "title": "Chụp toàn cầu",
+      "description": "Chụp một ghi chú từ bất kỳ đâu",
+      "permissionNeeded": "Cần quyền",
+      "active": "Đang hoạt động",
+      "permissionHint": "Phím tắt toàn cầu yêu cầu quyền Truy cập. Đi tới Cài đặt Hệ thống → Quyền riêng tư → Truy cập và bật Memry."
+    },
+    "toasts": {
+      "saveGlobalFailed": "Không thể lưu phím tắt chụp toàn cầu",
+      "saveFailed": "Không thể lưu phím tắt",
+      "resetFailed": "Không thể đặt lại phím tắt",
+      "resetAllSuccess": "Tất cả phím tắt đã được đặt lại về mặc định",
+      "resetAllFailed": "Không thể đặt lại phím tắt"
+    },
+    "categories": {
+      "navigation": "Điều hướng",
+      "tabs": "Các tab",
+      "editor": "Trình soạn thảo",
+      "view": "Xem"
+    },
+    "entries": {
+      "nav": {
+        "newNote": {
+          "label": "Ghi chú Mới",
+          "description": "Tạo một ghi chú mới"
+        },
+        "newTask": {
+          "label": "Nhiệm vụ mới",
+          "description": "Tạo một nhiệm vụ mới"
+        },
+        "inbox": {
+          "label": "Đi tới Hộp thư đến",
+          "description": "Đi tới hộp thư đến"
+        },
+        "notes": {
+          "label": "Đi tới Ghi chú",
+          "description": "Đi tới ghi chú"
+        },
+        "tasks": {
+          "label": "Đi tới Nhiệm vụ",
+          "description": "Đi tới nhiệm vụ"
+        },
+        "search": {
+          "label": "Tìm kiếm",
+          "description": "Mở tìm kiếm toàn cầu"
+        },
+        "settings": {
+          "label": "Mở Cài đặt",
+          "description": "Mở bảng cài đặt"
+        }
+      },
+      "tabs": {
+        "close": {
+          "label": "Đóng Tab",
+          "description": "Đóng tab hiện tại"
+        },
+        "next": {
+          "label": "Tab tiếp theo",
+          "description": "Chuyển sang tab tiếp theo"
+        },
+        "previous": {
+          "label": "Tab trước",
+          "description": "Chuyển sang tab trước"
+        },
+        "reopen": {
+          "label": "Mở lại Tab gần đây",
+          "description": "Mở lại tab vừa đóng gần đây"
+        },
+        "navBack": {
+          "label": "Quay lại",
+          "description": "Kích hoạt lại tab đang hoạt động trước đó"
+        },
+        "navForward": {
+          "label": "Đi về phía trước",
+          "description": "Thực hiện lại thao tác quay lại"
+        }
+      },
+      "editor": {
+        "save": {
+          "label": "Lưu",
+          "description": "Lưu ghi chú hiện tại"
+        },
+        "bold": {
+          "label": "Đậm",
+          "description": "Chuyển đổi định dạng chữ đậm"
+        },
+        "italic": {
+          "label": "Nghiêng",
+          "description": "Chuyển đổi định dạng chữ nghiêng"
+        },
+        "underline": {
+          "label": "Gạch chân",
+          "description": "Chuyển đổi định dạng chữ gạch chân"
+        }
+      },
+      "view": {
+        "toggleSidebar": {
+          "label": "Chuyển đổi Thanh bên",
+          "description": "Hiển thị hoặc ẩn thanh bên"
+        },
+        "shortcuts": {
+          "label": "Trợ giúp Phím tắt bàn phím",
+          "description": "Hiển thị tham chiếu phím tắt bàn phím"
+        }
+      }
+    }
+  },
+  "phaseF": {
+    "componentsKeyboardChordIndicator": {
+      "pressedWaitingForSecondKey": "đã nhấn — đang chờ phím thứ hai..."
+    },
+    "componentsKeyboardKeyboardShortcutsDialog": {
+      "keyboardShortcuts": "Phím tắt bàn phím",
+      "press": "Nhấn",
+      "toToggleThisDialog": "để chuyển đổi hộp thoại này"
+    },
+    "componentsSyncDeviceList": {
+      "middot": "middot;"
+    },
+    "componentsSyncDeviceRevokedDialog": {
+      "thisDeviceHasBeenRemoved": "Thiết bị này đã bị gỡ",
+      "exporting": "Đang xuất...",
+      "signOut": "Đăng xuất"
+    },
+    "componentsSyncSyncHistory": {
+      "middot": "middot;",
+      "activity": "Hoạt động",
+      "filterBySyncType": "Lọc theo loại đồng bộ",
+      "allTypes": "Tất cả loại",
+      "pushed": "Đã đẩy",
+      "pulled": "Đã kéo",
+      "errors": "Lỗi",
+      "filterByTimePeriod": "Lọc theo khoảng thời gian",
+      "allTime": "Tất cả thời gian",
+      "today": "Hôm nay",
+      "last7Days": "7 ngày qua",
+      "last30Days": "30 ngày qua",
+      "loadingSyncHistory": "Đang tải lịch sử đồng bộ",
+      "noSyncActivityYet": "Chưa có hoạt động đồng bộ",
+      "loadMore": "Tải thêm"
+    },
+    "componentsSyncSyncStatus": {
+      "lastSynced": "Đồng bộ lần cuối ",
+      "pending": "đang chờ",
+      "localOnly": "chỉ cục bộ",
+      "detected": "đã phát hiện",
+      "clockSkewDetected": "Phát hiện lệch giờ",
+      "items": "mục",
+      "willSyncWhenBackOnline": "Sẽ đồng bộ khi trực tuyến lại",
+      "openSyncSettings": "Mở cài đặt đồng bộ"
+    },
+    "pagesSettingsAiInlineSection": {
+      "httpLocalhost11434V1": "http://localhost:11434/v1"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToUpdateTagColor": "Cập nhật màu thẻ thất bại",
+      "googleSignInFailed": "Đăng nhập Google thất bại",
+      "failedToSendVerificationCode": "Gửi mã xác minh thất bại",
+      "invalidVerificationCode": "Mã xác minh không hợp lệ",
+      "accountSetupFailed": "Thiết lập tài khoản thất bại",
+      "failedToResendCode": "Gửi lại mã thất bại",
+      "failedToSetUpDevice": "Cài đặt thiết bị thất bại",
+      "failedToConfirmRecoveryPhrase": "Xác nhận cụm từ khôi phục thất bại",
+      "failedToAnalyzeContent": "Phân tích nội dung thất bại",
+      "failedToLoadUpdaterState": "Tải trạng thái cập nhật thất bại",
+      "failedToCheckForUpdates": "Kiểm tra cập nhật thất bại",
+      "failedToDownloadUpdate": "Tải xuống cập nhật thất bại",
+      "failedToInstallUpdate": "Cài đặt cập nhật thất bại",
+      "failedToLoadEditorSettings": "Tải cài đặt trình chỉnh sửa thất bại",
+      "failedToUpdateEditorSettings": "Cập nhật cài đặt trình chỉnh sửa thất bại",
+      "failedToLoadGeneralSettings": "Tải cài đặt chung thất bại",
+      "failedToUpdateGeneralSettings": "Cập nhật cài đặt chung thất bại",
+      "failedToLoadKeyboardSettings": "Tải cài đặt bàn phím thất bại",
+      "failedToUpdateKeyboardSettings": "Cập nhật cài đặt bàn phím thất bại",
+      "failedToResetKeyboardSettings": "Đặt lại cài đặt bàn phím thất bại",
+      "failedToLoadNoteEditorSettings": "Tải cài đặt trình chỉnh sửa ghi chú thất bại",
+      "failedToUpdateSettings": "Không thể cập nhật cài đặt",
+      "failedToLoadTabSettings": "Tải cài đặt tab thất bại",
+      "failedToLoadNotes": "Không thể tải ghi chú",
+      "failedToLoadTags": "Không tải được thẻ",
+      "failedToLoadVaultStatus": "Tải trạng thái kho lưu trữ thất bại",
+      "failedToSelectVault": "Chọn kho lưu trữ thất bại",
+      "failedToCloseVault": "Không thể đóng kho",
+      "failedToSwitchVault": "Không thể chuyển kho",
+      "failedToUpdateConfig": "Không thể cập nhật cấu hình",
+      "failedToReindex": "Không thể lập chỉ mục lại"
+    }
+  }
+}

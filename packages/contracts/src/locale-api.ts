@@ -1,6 +1,39 @@
 import { z } from 'zod'
 
-export const LocaleSchema = z.enum(['en', 'tr', 'ar'])
+export const LocaleSchema = z.enum([
+  'ar',
+  'cs',
+  'da',
+  'en',
+  'de',
+  'el',
+  'es',
+  'fi',
+  'fil',
+  'fr',
+  'he',
+  'hr',
+  'hu',
+  'id',
+  'it',
+  'ja',
+  'ko',
+  'ms',
+  'nl',
+  'no',
+  'pl',
+  'pt',
+  'ro',
+  'ru',
+  'sk',
+  'sv',
+  'th',
+  'tr',
+  'uk',
+  'vi',
+  'zh-CN',
+  'zh-TW'
+])
 export type Locale = z.infer<typeof LocaleSchema>
 
 export const SUPPORTED_LOCALES = LocaleSchema.options

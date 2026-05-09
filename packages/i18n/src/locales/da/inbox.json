@@ -1,0 +1,483 @@
+{
+  "view": {
+    "tabs": {
+      "inbox": "Indbakke",
+      "archived": "Arkiveret",
+      "insights": "Indsigt",
+      "ariaLabel": "Valg af indbakkevisning"
+    },
+    "triageButton": "Triage",
+    "processInboxTitle": "Behandle indbakke (Cmd+P)",
+    "itemCaptured": "Genstand fanget",
+    "searchArchivedTitle": "Søg i arkiverede elementer",
+    "searchPlaceholder": "Søg...",
+    "archivedItemsAria": "Arkiverede genstande",
+    "snoozed": {
+      "show": "Vis udsatte elementer",
+      "showWithCount": "Vis udsatte elementer ({count})",
+      "hide": "Skjul udsatte elementer"
+    },
+    "filter": {
+      "button": "Filter",
+      "byType": "Filtrer efter type",
+      "active": "{count, plural, one {Filtrering efter # type} other {Filtrering efter #-typer}}",
+      "clearAll": "Ryd alle"
+    },
+    "jobs": {
+      "running": "{count, plural, one {# baggrundsjob kører} other {# baggrundsjob kører}}",
+      "failed": "{count} mislykkedes"
+    }
+  },
+  "type": {
+    "link": "Link",
+    "links": "Links",
+    "note": "Bemærk",
+    "notes": "Noter",
+    "image": "Billede",
+    "images": "Billeder",
+    "voice": "Stemme",
+    "video": "Video",
+    "clip": "Klip",
+    "clips": "Klip",
+    "pdf": "PDF",
+    "pdfs": "PDF'er",
+    "social": "Socialt",
+    "reminder": "Påmindelse",
+    "reminders": "Påmindelser",
+    "text": "Tekst",
+    "other": "Andet"
+  },
+  "empty": {
+    "successAria": "Succes, indbakken er tom",
+    "title": "Indbakke nul",
+    "body": "Alt er behandlet. Fang noget nyt med inputtet ovenfor, eller indsæt et link for at komme i gang.",
+    "filedThisWeek": "{count, plural, one {# indsendt i denne uge} other {# indsendt i denne uge}}",
+    "dayStreak": "{count, plural, one {# dagsrække} other {# dagsrække}}",
+    "tipPrefix": "Tip: brug",
+    "tipSuffix": "til hurtig optagelse fra udklipsholder",
+    "archivedNone": "Ingen arkiverede elementer",
+    "archivedNoMatches": "Ingen matchende arkiverede elementer",
+    "noItemsYet": "Ingen varer endnu",
+    "noItemsFiled": "Der er endnu ikke indsendt nogen elementer",
+    "noItemTypes": "Ingen varetyper at vise",
+    "noFolders": "Ingen mapper fundet",
+    "noFolderMatch": "Ingen mapper matcher \"{query}\"",
+    "noNotes": "Ingen noter fundet",
+    "allMatchesLinked": "Alle kampe er allerede linket"
+  },
+  "list": {
+    "ariaLabel": "Indbakke varer",
+    "section": {
+      "today": "I dag",
+      "yesterday": "I går",
+      "older": "Ældre"
+    },
+    "selectItem": "Vælg {title}",
+    "itemAria": "{type}: {title}",
+    "untitled": "Uden titel",
+    "untitledItem": "Unavngivet vare",
+    "transcribing": "Transskriberer...",
+    "transcriptionFailed": "Transskription mislykkedes",
+    "retryTranscription": "Prøv igen",
+    "pageCount": "{count, plural, one {# side} other {# sider}}",
+    "snoozedUntilShort": "snoozed til {date}",
+    "capturedAgo": "Optaget {time}"
+  },
+  "loading": {
+    "inbox": "Indlæser indbakke...",
+    "failed": "Indbakken kunne ikke indlæses",
+    "tryAgain": "Prøv igen",
+    "capturingImage": "Optager billede...",
+    "dropImageTitle": "Slip billede for at fange",
+    "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
+    "unsupportedImageType": "Ikke-understøttet billedtype: {type}",
+    "imageTooLarge": "Billedet er for stort (maks. 50 MB)"
+  },
+  "toast": {
+    "failedArchiveItem": "Kunne ikke arkivere elementet",
+    "failedArchiveItems": "Kunne ikke arkivere elementer",
+    "failedFile": "Kunne ikke arkivere",
+    "failedFileItem": "Kunne ikke arkivere elementet",
+    "failedFileItems": "Kunne ikke arkivere elementer",
+    "failedSnooze": "Kunne ikke udsætte",
+    "failedSnoozeItem": "Kunne ikke udsætte elementet",
+    "failedApplyTags": "Tags kunne ikke anvendes",
+    "failedCaptureImage": "Billedet kunne ikke tages",
+    "linkedToNote": "Linket til note",
+    "linkedToNotes": "Linket til {count} noter",
+    "filedTo": "Arkiveret til {folder}",
+    "filedItemsTo": "Arkiverede {count}-genstande til {folder}",
+    "filedPartial": "Arkiveret {processed} af {total} genstande",
+    "appliedTags": "{tagCount, plural, one {Påført # tag} other {Anvendte #-tags}} til {itemCount, plural, one {# vare} other {# varer}}",
+    "archivedItems": "{count, plural, one {Arkiveret #-vare} other {Arkiverede #-genstande}}",
+    "snoozedUntil": "Udsat indtil {time}",
+    "snoozedItemsUntil": "{count, plural, one {Udsat # element indtil {time}} other {Udsatte #-elementer indtil {time}}}"
+  },
+  "triage": {
+    "modeTitle": "Triage-tilstand",
+    "exitHint": "Esc for at afslutte",
+    "exitAria": "Afslut triage-tilstand",
+    "position": "{current} af {total}",
+    "action": {
+      "discard": "Kassér",
+      "archive": "Arkiv",
+      "open": "Åbn",
+      "toTask": "Til Opgave",
+      "toNote": "At bemærke",
+      "file": "Fil",
+      "snooze": "Snooze",
+      "cancel": "Annuller"
+    },
+    "snoozeUntil": "Udsæt indtil...",
+    "complete": {
+      "title": "Indbakke nul",
+      "processed": "{count, plural, one {# vare behandlet} other {# varer behandlet}}",
+      "streak": "streak",
+      "streakCount": "{count} streak",
+      "dayProcessingStreak": "{count, plural, one {# dag behandling streak} other {# dag behandling streak}}",
+      "back": "Tilbage til Indbakke",
+      "motivation0": "Dit fremtidige jeg takker dig.",
+      "motivation1": "Alt på sin plads.",
+      "motivation2": "Ryd indbakke, klart sind.",
+      "motivation3": "Afgørelsesgæld: fuldt ud betalt.",
+      "motivation4": "Det føltes godt, ikke?"
+    }
+  },
+  "bulk": {
+    "selected": "{count} valgt",
+    "deselectAll": "Fravælg alle",
+    "ariaLabel": "Massehandlinger for {count} valgte elementer",
+    "file": "Fil",
+    "tag": "Tag",
+    "snooze": "Snooze",
+    "archive": "Arkiv",
+    "add": "Tilføj",
+    "dismissSuggestion": "Afvis forslaget",
+    "hint": {
+      "file": "fil",
+      "tag": "tag",
+      "snooze": "snooze",
+      "archive": "arkiv",
+      "deselect": "fravælg"
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {Arkiver #-emne?} other {Vil du arkivere #-genstande?}}",
+      "description": "Disse elementer vil blive arkiveret. Du kan se arkiverede elementer senere.",
+      "confirm": "{count, plural, one {Arkiver #-element} other {Arkiver #-genstande}}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {Fil # vare} other {Fil # genstande}}",
+      "itemsToFile": "Elementer til fil",
+      "multipleNoteLinksUnavailable": "Bemærk: Links til andre noter kan ikke tilføjes, når der arkiveres flere elementer.",
+      "filing": "Arkiver...",
+      "submit": "{count, plural, one {Fil # element} other {Filer #-emner}}",
+      "macHint": "⌘⏎ til fil · Esc for at lukke",
+      "ctrlHint": "Ctrl+Enter til fil · Esc for at lukke"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {Tag # vare} other {Tag # genstande}}",
+      "placeholder": "Indtast for at søge tags...",
+      "applying": "Ansøger...",
+      "apply": "{count, plural, one {Anvend på #-vare} other {Anvend på #-varer}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "Hurtige handlinger",
+    "archiveItem": "Arkivelement",
+    "archive": "Arkiv",
+    "snooze": "Snooze"
+  },
+  "detail": {
+    "ariaLabel": "Varedetaljer",
+    "closePanel": "Luk panelet",
+    "resizeFiling": "Ændr størrelse på arkiveringssektionen",
+    "restore": "Gendan",
+    "restoreToInbox": "Gendan til indbakke",
+    "delete": "Slet",
+    "deletePermanently": "Slet permanent",
+    "archive": "Arkiv",
+    "file": "Fil",
+    "keyboardHint": "{modifier}⏎ fil · 1-5 mappe · Esc close",
+    "voiceTitlePlaceholder": "Navngiv dette stemmememo...",
+    "fileTo": "Fil til",
+    "ai": "AI",
+    "selectFolder": "Vælg mappe",
+    "searchOrCreateFolder": "Søg eller opret med /...",
+    "suggested": "Foreslået",
+    "notesRoot": "Noter",
+    "notesRootLabel": "Noter (rod)",
+    "createFolder": "Opret \"{name}\"",
+    "addTags": "Tilføj tags...",
+    "linkToNote": "Link til note",
+    "linkNotesPlaceholder": "Linknoter...",
+    "searchNotesAria": "Søg i noter for at linke",
+    "linkedNotesAria": "Sammenkædede noter",
+    "removeLinkTo": "Fjern link til {title}",
+    "contentEditorAria": "Indholdsredaktør",
+    "notePlaceholder": "Skriv din note...",
+    "textPlaceholder": "Rediger din optagne tekst..."
+  },
+  "content": {
+    "capturedAt": "Optaget {date}",
+    "todayAt": "i dag på {time}",
+    "yesterdayAt": "i går på {time}",
+    "dateAt": "{date} ved {time}",
+    "words": "{count, plural, one {# ord} other {# ord}}",
+    "duration": "Varighed: {duration}",
+    "dimensions": "Dimensioner",
+    "format": "Format",
+    "size": "Størrelse",
+    "voiceMemo": "Stemmememo",
+    "play": "Spil",
+    "pause": "Pause",
+    "audioPosition": "Lydposition",
+    "transcription": "Transskription",
+    "processing": "forarbejdning",
+    "pending": "afventer",
+    "failed": "mislykkedes",
+    "copyTranscription": "Kopi transskription",
+    "transcribingAudio": "Transskriberer lyd...",
+    "awaitingTranscription": "Afventer transskription...",
+    "noTranscription": "Ingen transskription tilgængelig",
+    "failedPlayAudio": "Kunne ikke afspille lyd",
+    "failedLoadAudio": "Lyden kunne ikke indlæses",
+    "video": "Video",
+    "unsupportedVideo": "Din browser understøtter ikke video-tagget."
+  },
+  "reminder": {
+    "dataUnavailable": "Påmindelsesdata er ikke tilgængelige.",
+    "triggered": "Påmindelse udløst",
+    "noteLabel": "Påmindelse",
+    "source": "Kilde",
+    "journalTitle": "Journal — {date}",
+    "noteFallback": "Bemærk",
+    "journalFallback": "Journal",
+    "highlighted": "Fremhævet: \"{text}\"",
+    "viewed": "Set",
+    "markViewed": "Markér som vist",
+    "notYetViewed": "Ikke set endnu",
+    "snooze": "Snooze",
+    "presetInOneHour": "1 time",
+    "presetTomorrow": "I morgen",
+    "presetNextWeek": "Næste uge",
+    "custom": "Brugerdefineret..."
+  },
+  "insights": {
+    "loading": "Indlæser indsigt...",
+    "captureActivity": "Optag aktivitet",
+    "byType": "Efter type",
+    "itemTypes": "Varetyper",
+    "itemTypesDescription": "Distribution af indholdsformater",
+    "recentFilings": "Seneste arkiveringer",
+    "recentlyFiled": "For nylig indgivet",
+    "recentlyFiledDescription": "Seneste handlinger på din indbakke",
+    "captured": "Fanget",
+    "capturedThisWeek": "+{count} i denne uge",
+    "processed": "Bearbejdet",
+    "processRate": "{rate} % sats",
+    "stale": "Forældet",
+    "needsAttention": "har brug for opmærksomhed",
+    "allClear": "alt klart",
+    "avgTimeToFile": "Gns. tid til fil",
+    "noCapturesYet": "Ingen optagelser endnu",
+    "captures": "{count, plural, one {#-optagelse} other {# fanger}}",
+    "peak": "Top: {day} {start}–{end}",
+    "convertedToTask": "Konverteret til opgave",
+    "linked": "Forbundet",
+    "now": "nu",
+    "timeAgoMinutes": "{count}m siden",
+    "timeAgoHours": "{count}h siden",
+    "timeAgoDays": "{count}d siden"
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "AI detekteret: \"",
+      "addToSelection": "Tilføj til udvalg",
+      "dismiss": "Afvis"
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "Slet ",
+      "item": "vare",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Disse elementer vil blive fjernet fra din indbakke. Du kan fortryde denne handling umiddelbart efter."
+    },
+    "componentsCaptureInput": {
+      "captureInput": "Optag input",
+      "attachFile": "Vedhæft fil",
+      "attachFileImagesAudioVideoPdf": "Vedhæft fil (billeder, lyd, video, PDF)",
+      "recordVoiceMemo": "Optag stemmememo",
+      "recordVoiceMemo2": "Optag stemmememo",
+      "alreadyCaptured": "Allerede fanget: \"",
+      "rdquo": "rdquo;",
+      "captureAnyway": "Fang alligevel"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "Vælg mappe",
+      "searchFolders": "Søg i mapper...",
+      "searchFolders2": "Søg i mapper",
+      "searchResults": "Søgeresultater",
+      "create": "Opret \"",
+      "suggested": "Foreslået",
+      "recent": "Seneste",
+      "allFolders": "Alle mapper",
+      "allFolders2": "Alle mapper"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "Link til",
+      "optional": "valgfrit)",
+      "searchNotesToLink": "Søg i noter for at linke...",
+      "searchNotesToLink2": "Søg i noter for at linke",
+      "searching": "Søger...",
+      "noNotesFound": "Ingen noter fundet",
+      "linkedNotes": "Sammenkædede noter",
+      "noLinksAdded": "Ingen links tilføjet"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "Foreslået",
+      "ai": "AI",
+      "create": "Opret",
+      "tags": "Tags",
+      "selectedTags": "Udvalgte tags",
+      "addTags": "Tilføj tags",
+      "tagSuggestions": "Tag forslag"
+    },
+    "componentsFilingTagInput": {
+      "tags": "Tags",
+      "optional": "valgfrit)",
+      "addTags": "Tilføj tags...",
+      "addTags2": "Tilføj tags",
+      "selectedTags": "Udvalgte tags",
+      "suggested": "Foreslået"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "Optag aktivitet"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "Der er endnu ikke indsendt nogen elementer",
+      "recentlyFiled": "For nylig indgivet",
+      "latestActionsOnYourInbox": "Seneste handlinger på din indbakke",
+      "linked": "Forbundet"
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "Indlæser indsigt..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "Ingen varetyper at vise",
+      "itemTypes": "Varetyper",
+      "distributionOfContentFormats": "Distribution af indholdsformater"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "Fanget "
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "x "
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "Indholdsredaktør"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "middot; "
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "Tweet er ikke tilgængeligt",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Dette tweet kan være blevet slettet eller er fra en privat konto.",
+      "openOnXCom": "Åbn på x.com",
+      "views": "visninger",
+      "xCom": "x.com",
+      "viewOnX": "Se på X"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "Indtast mappenavn...",
+      "quickFileFolderSearch": "Hurtig filmappesøgning"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "tæt på",
+      "capture": "fange"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "Fjern vedhæftet fil"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "Hurtig optagelsesinput",
+      "recordVoiceMemo": "Optag stemmememo",
+      "attachFile": "Vedhæft fil"
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "LINK"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "Fanget",
+      "dismissError": "Afvis fejl",
+      "alreadyCaptured": "Allerede fanget",
+      "ldquo": "ldquo;",
+      "rdquoMiddot": "rdquo; · ",
+      "captureAnyway": "Fang alligevel",
+      "close": "Luk"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "Slip for at fange",
+      "capturing": "Optager..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "Mappeforslag",
+      "noFoldersMatch": "Ingen mapper matcher \""
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "Indstil påmindelse for denne tekst",
+      "remindMeAboutThis": "Mind mig om dette",
+      "selectedText": "Valgt tekst:"
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "Påmind",
+      "remindMe": "Mind mig",
+      "pickDateTime": "Vælg dato og tid",
+      "addANoteOptional": "Tilføj en note (valgfrit)",
+      "backToPresets": "Tilbage til forudindstillinger",
+      "time": "Tid",
+      "noteOptional": "Bemærk (valgfrit)",
+      "whyAreYouSettingThisReminder": "Hvorfor indstiller du denne påmindelse?"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "Snooze",
+      "snooze2": "Snooze",
+      "pickDateTime": "Vælg dato og tid",
+      "pickDateTime2": "Vælg dato og tid",
+      "selectWhenToBeRemindedAboutThisItem": "Vælg, hvornår du vil blive mindet om denne vare",
+      "snooze3": "Snooze",
+      "snooze4": "Snooze",
+      "snooze5": "Snooze"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "Indlæser indlæg...",
+      "failedToLoad": "Kunne ikke indlæses",
+      "loadingPostContent": "Indlæser indlægsindhold...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Indlægsindholdet kunne ikke indlæses. Indlægget kan være privat eller slettet.",
+      "viewOn": "Se på "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "Start stemmeoptagelse",
+      "requestingMicrophoneAccess": "Anmoder om mikrofonadgang...",
+      "settings": "Indstillinger",
+      "processing": "Behandler...",
+      "cancelRecording": "Annuller optagelsen",
+      "cancel": "Annuller",
+      "stopRecording": "Stop optagelsen",
+      "stop": "Stop"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCaptureLink": "Linket kunne ikke fanges",
+      "failedToCaptureNote": "Noten kunne ikke fanges",
+      "captureFailed": "Optagelse mislykkedes",
+      "failedToCaptureVoiceMemo": "Kunne ikke optage talememo",
+      "voiceCaptureFailed": "Stemmeoptagelse mislykkedes",
+      "failedToCaptureFile": "Filen kunne ikke fanges",
+      "fileCaptureFailed": "Filoptagelse mislykkedes",
+      "failedToCaptureAudio": "Lyden kunne ikke optages",
+      "failedToCaptureVoice": "Kunne ikke fange stemmen"
+    },
+    "toasts": {
+      "inboxRefreshed": "Indbakke opdateret"
+    }
+  }
+}

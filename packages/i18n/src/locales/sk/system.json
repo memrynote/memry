@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "Vybrať priečinok trezoru",
+      "button": "Vybrať trezor"
+    },
+    "exportPdf": {
+      "title": "Exportovať ako PDF",
+      "filterName": "PDF dokument"
+    },
+    "exportHtml": {
+      "title": "Exportovať ako HTML",
+      "filterName": "HTML dokument"
+    },
+    "import": {
+      "filterSupported": "Podporované súbory",
+      "filterAll": "Všetky súbory"
+    },
+    "exportCancelled": "Export zrušený",
+    "update": {
+      "availableTitle": "Aktualizácia dostupná",
+      "availableMessage": "Memry {version} je k dispozícii.",
+      "availableDetailFallback": "Stiahnuť aktualizáciu teraz?",
+      "buttonDownload": "Stiahnuť",
+      "buttonLater": "Neskôr",
+      "readyTitle": "Aktualizácia pripravená",
+      "readyMessage": "Memry {version} bol stiahnutý.",
+      "readyDetailFallback": "Reštartujte Memry, aby sa dokončila inštalácia aktualizácie.",
+      "buttonRestartNow": "Reštartovať teraz",
+      "releaseNotesLabel": "Poznámky k vydaniu:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "Pripomienka poznámky",
+      "journal": "Pripomienka v denníku",
+      "highlight": "Pripomienka zvýraznenia",
+      "fallback": "Pripomienka splatná",
+      "default": "Pripomienka"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "Čas pripomienky musí byť v budúcnosti",
+    "definitionNotFound": "Definícia nenájdená",
+    "noteNotFound": "Poznámka nenájdená",
+    "updateFailed": "Aktualizácia zlyhala"
+  }
+}

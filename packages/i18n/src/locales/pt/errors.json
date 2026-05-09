@@ -1,0 +1,80 @@
+{
+  "generic": {
+    "somethingWentWrong": "Algo deu errado. Por favor, tente novamente.",
+    "operationFailed": "Falha na operação",
+    "unknown": "Ocorreu um erro desconhecido",
+    "validationFailed": "Falha na validação",
+    "actionFailed": "Falha na ação"
+  },
+  "ipc": {
+    "noVaultOpen": "Nenhum cofre está aberto. Por favor, abra um cofre primeiro."
+  },
+  "vault": {
+    "notFound": "Cofre não encontrado. Pode ter sido movido ou excluído.",
+    "notInitialized": "Nenhum cofre está aberto. Abra ou crie um cofre para continuar.",
+    "invalidPath": "O caminho selecionado não é um local de vault válido.",
+    "permissionDenied": "Permissão negada. Verifique se você tem acesso a esta pasta.",
+    "alreadyExists": "Já existe um cofre neste local.",
+    "corrupted": "Este cofre parece estar corrompido. Tente restaurar a partir de um backup."
+  },
+  "note": {
+    "notFound": "Esta nota não foi encontrada. Pode ter sido excluído.",
+    "invalidFrontmatter": "Esta nota contém metadados inválidos e não pode ser lida.",
+    "duplicateId": "Já existe uma nota com este ID.",
+    "writeFailed": "Falha ao salvar esta nota. Verifique o espaço em disco e as permissões.",
+    "readFailed": "Falha ao ler esta nota. O arquivo pode estar bloqueado ou corrompido.",
+    "deleteFailed": "Falha ao excluir esta nota. Verifique as permissões do arquivo.",
+    "invalidPath": "O caminho da nota é inválido."
+  },
+  "database": {
+    "connectionFailed": "Não foi possível conectar-se ao banco de dados local. Tente reiniciar o aplicativo.",
+    "migrationFailed": "Falha na atualização do banco de dados. Tente reiniciar o aplicativo.",
+    "queryFailed": "Uma operação de banco de dados falhou. Tente novamente.",
+    "notInitialized": "Banco de dados não está pronto. Tente reiniciar o aplicativo.",
+    "constraintViolation": "Ocorreu um conflito de dados. Tente novamente.",
+    "corrupted": "O banco de dados local está corrompido. Pode ser necessário redefini-lo."
+  },
+  "watcher": {
+    "startFailed": "Não foi possível começar a observar alterações no arquivo.",
+    "stopFailed": "Não foi possível parar o observador de arquivos.",
+    "eventError": "Ocorreu um erro ao observar alterações no arquivo."
+  },
+  "attachment": {
+    "fileTooLarge": "Este arquivo é muito grande para ser anexado.",
+    "unsupportedType": "Este tipo de arquivo não é compatível.",
+    "writeFailed": "Falha ao salvar o anexo. Verifique o espaço em disco.",
+    "deleteFailed": "Falha ao excluir o anexo."
+  },
+  "encryption": {
+    "failed": "Falha ao criptografar dados. Talvez suas chaves precisem ser regeneradas.",
+    "decryptionFailed": "Falha ao descriptografar os dados. Suas chaves de criptografia podem estar desatualizadas.",
+    "invalidKeyLength": "Chave de criptografia inválida. Tente sair e entrar novamente.",
+    "invalidNonceLength": "Erro de criptografia. Tente a operação novamente."
+  },
+  "inboxAttachment": {
+    "writeFailed": "Falha ao salvar o anexo da caixa de entrada.",
+    "deleteFailed": "Falha ao excluir o anexo da caixa de entrada."
+  },
+  "sync": {
+    "networkOffline": "Você está off-line. As alterações serão sincronizadas quando você se reconectar.",
+    "networkTimeout": "O servidor de sincronização demorou muito para responder. Tentaremos novamente em breve.",
+    "serverError": "O servidor de sincronização encontrou um erro. Tentará novamente automaticamente.",
+    "authExpired": "Sua sessão expirou. Faça login novamente para continuar a sincronização.",
+    "deviceRevoked": "Este dispositivo foi removido da sua conta.",
+    "rateLimited": "Muitos pedidos. A sincronização será retomada em breve.",
+    "cryptoFailure": "Falha ao criptografar ou descriptografar os dados de sincronização. Tente sair e entrar novamente.",
+    "versionIncompatible": "Esta versão do Memry não é mais suportada. Por favor atualize.",
+    "storageQuotaExceeded": "Seu armazenamento de sincronização está cheio. Libere espaço ou atualize seu plano.",
+    "certificatePinFailed": "A conexão segura falhou. Verifique sua conexão de rede.",
+    "unknown": "Ocorreu um erro de sincronização inesperado. Tentará novamente automaticamente.",
+    "statusFetchFailed": "Falha ao buscar o status de sincronização",
+    "engineNotInitialized": "Mecanismo de sincronização não inicializado. Abra um cofre para iniciar a sincronização.",
+    "triggerFailed": "Falha na sincronização",
+    "pauseFailed": "Falha ao pausar a sincronização",
+    "resumeFailed": "Falha ao retomar a sincronização",
+    "settingsNotInitialized": "Sincronização de configurações não inicializada",
+    "securityQuarantinePermanent": "Não foi possível verificar um item de sincronização e ele foi colocado em quarentena por segurança.",
+    "securityQuarantineRetry": "Um item de sincronização falhou na verificação de assinatura e será tentado novamente.",
+    "certificatePinPaused": "Não foi possível verificar a conexão segura com o servidor de sincronização. A sincronização foi pausada para sua proteção."
+  }
+}

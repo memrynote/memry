@@ -20,9 +20,38 @@ export {
 } from '@memry/contracts/locale-api'
 
 export const LOCALE_DISPLAY_NAMES: Record<Locale, string> = {
+  ar: 'العربية',
+  cs: 'Čeština',
+  da: 'Dansk',
   en: 'English',
+  de: 'Deutsch',
+  el: 'Ελληνικά',
+  es: 'Español',
+  fi: 'Suomi',
+  fil: 'Filipino',
+  fr: 'Français',
+  he: 'עברית',
+  hr: 'Hrvatski',
+  hu: 'Magyar',
+  id: 'Bahasa Indonesia',
+  it: 'Italiano',
+  ja: '日本語',
+  ko: '한국어',
+  ms: 'Bahasa Melayu',
+  nl: 'Nederlands',
+  no: 'Norsk',
+  pl: 'Polski',
+  pt: 'Português',
+  ro: 'Română',
+  ru: 'Русский',
+  sk: 'Slovenčina',
+  sv: 'Svenska',
+  th: 'ไทย',
   tr: 'Türkçe',
-  ar: 'العربية'
+  uk: 'Українська',
+  vi: 'Tiếng Việt',
+  'zh-CN': '简体中文',
+  'zh-TW': '繁體中文'
 }
 
 export const I18N_NAMESPACES = [

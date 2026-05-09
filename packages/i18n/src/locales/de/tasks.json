@@ -1,0 +1,651 @@
+{
+  "page": {
+    "tabs": {
+      "label": "Aufgabenansichten",
+      "today": "Heute",
+      "all": "Alle"
+    },
+    "viewMode": {
+      "label": "Ansichtsmodus",
+      "list": "Listenansicht",
+      "kanban": "Kanban-Ansicht"
+    },
+    "projectScope": {
+      "allProjects": "Alle Projekte",
+      "searchProjects": "Projekte suchen…",
+      "editProject": "Bearbeiten Sie {name}",
+      "unstarSavedFilter": "Deaktivieren Sie {name}"
+    }
+  },
+  "task": {
+    "add": "Aufgabe hinzufügen",
+    "title": "Titel",
+    "titleRequired": "Titel ist erforderlich",
+    "titlePlaceholder": "Was muss getan werden?",
+    "namePlaceholder": "Aufgabenname",
+    "description": "Beschreibung",
+    "descriptionPlaceholder": "Fügen Sie eine Beschreibung hinzu…",
+    "details": "Aufgabendetails",
+    "status": "Status",
+    "priority": "Priorität",
+    "dueDate": "Fälligkeitsdatum",
+    "project": "Projekt",
+    "repeat": "Wiederholen",
+    "createAnother": "Erstellen Sie ein anderes",
+    "delete": "Aufgabe löschen",
+    "created": "{date} erstellt"
+  },
+  "project": {
+    "create": "Projekt erstellen",
+    "edit": "Projekt bearbeiten",
+    "delete": "Projekt löschen",
+    "iconAndName": "Symbol und Name",
+    "namePlaceholder": "Projektname",
+    "select": "Projekt auswählen",
+    "selectIcon": "Symbol auswählen",
+    "clickIconToChange": "Klicken Sie zum Ändern auf das Symbol",
+    "color": "Farbe",
+    "descriptionOptional": "Beschreibung (optional)",
+    "descriptionPlaceholder": "Kurze Beschreibung dieses Projekts…",
+    "statuses": "Status",
+    "statusesHelp": "Konfigurieren Sie die Workflow-Phasen für dieses Projekt.",
+    "createDescription": "Erstellen Sie ein neues Projekt mit Namen, Symbol, Farbe und Workflow-Status.",
+    "editDescription": "Bearbeiten Sie den Projektnamen, das Symbol, die Farbe und den Workflow-Status."
+  },
+  "status": {
+    "select": "Status auswählen",
+    "todo": "Zu tun",
+    "inProgress": "In Bearbeitung",
+    "done": "Fertig"
+  },
+  "priority": {
+    "select": "Wählen Sie Priorität aus",
+    "none": "Keine Priorität",
+    "noneShort": "Keine",
+    "low": "Niedrig",
+    "medium": "Mittel",
+    "high": "Hoch",
+    "urgent": "Dringend"
+  },
+  "filters": {
+    "filter": "Filtern",
+    "emptyTitle": "Keine Aufgabe entspricht Ihren Filtern",
+    "emptyHelp": "Versuchen Sie, Ihre Filter anzupassen oder",
+    "groupBy": "Gruppieren nach",
+    "groupByOptions": "Nach Optionen gruppieren",
+    "sortAscending": "Aufsteigend sortieren",
+    "sortDescending": "Absteigend sortieren"
+  },
+  "quickAdd": {
+    "label": "Aufgabe schnell hinzufügen",
+    "focusDescription": "Fokus, schnelle Eingabe hinzufügen"
+  },
+  "drawer": {
+    "close": "Aufgabendetails schließen",
+    "subIssues": "Unterthemen",
+    "addSubIssue": "Unterthema hinzufügen",
+    "subIssuePlaceholder": "Unterthema hinzufügen…",
+    "noSubIssues": "Noch keine Unterthemen",
+    "linkedNotes": "Verknüpfte Notizen",
+    "linkNote": "Verknüpfen Sie eine Notiz",
+    "loading": "Laden…",
+    "searchNotes": "Notizen durchsuchen…",
+    "noMatchingNotes": "Keine passenden Notizen",
+    "noNotesAvailable": "Keine Notizen verfügbar",
+    "noLinkedNotes": "Noch keine verknüpften Notizen",
+    "removeLinkTo": "Link zu {title} entfernen",
+    "removeLinkFallback": "Hinweis"
+  },
+  "kanban": {
+    "board": "Kanban-Board"
+  },
+  "toasts": {
+    "projectUpdated": "Projekt aktualisiert",
+    "projectCreated": "Projekt erstellt",
+    "projectSaveError": "Projekt konnte nicht gespeichert werden",
+    "projectArchived": "Projekt archiviert",
+    "projectArchiveError": "Projekt konnte nicht archiviert werden",
+    "projectDeleted": "Projekt gelöscht",
+    "projectDeleteError": "Das Projekt konnte nicht gelöscht werden",
+    "filtersCleared": "Filter gelöscht",
+    "filterSaved": "Filter gespeichert",
+    "filterDeleted": "Filter gelöscht",
+    "filterApplied": "Angewendet „{name}“",
+    "deleted": "Aufgabe gelöscht",
+    "deletedSeries": "Serie komplett!",
+    "deletedNext": "Nächstes Ereignis",
+    "completed": "Aufgabe erledigt!",
+    "archived": "Aufgabe archiviert",
+    "undoNotAvailableForDelete": "Rückgängig zum Löschen nicht verfügbar",
+    "alreadyAllComplete": "Alle ausgewählten Aufgaben sind bereits abgeschlossen",
+    "noCompletedSelected": "Keine abgeschlossenen Aufgaben ausgewählt",
+    "completeFailed": "Aufgaben konnten nicht abgeschlossen werden",
+    "reopenFailed": "Aufgaben konnten nicht erneut geöffnet werden",
+    "deleteFailed": "Aufgaben konnten nicht gelöscht werden",
+    "moveFailed": "Aufgaben konnten nicht verschoben werden"
+  },
+  "phaseF": {
+    "componentsTasksAddSubtaskInput": {
+      "addSubtask": "Unteraufgabe hinzufügen...",
+      "addSubtask2": "Unteraufgabe hinzufügen",
+      "enterToAdd": "Zum Hinzufügen eingeben"
+    },
+    "componentsTasksBulkActionsBulkActionDropdown": {
+      "for": "für ",
+      "task": "Aufgabe"
+    },
+    "componentsTasksBulkActionsBulkActionToolbar": {
+      "bulkActions": "Massenaktionen",
+      "selected": "ausgewählt",
+      "complete": "Komplett",
+      "priority": "Priorität",
+      "dueDate": "Fälligkeitsdatum",
+      "moveTo": "Bewegen Sie sich nach",
+      "status": "Status",
+      "archive": "Archiv",
+      "delete": "Löschen",
+      "cancelSelection": "Auswahl abbrechen",
+      "cancel": "Abbrechen"
+    },
+    "componentsTasksBulkActionsBulkDeleteDialog": {
+      "delete": "Löschen ",
+      "task": "Aufgabe",
+      "youReAboutToDelete": "Sie sind im Begriff zu löschen ",
+      "task2": "Aufgabe",
+      "and": "und ",
+      "moreTask": "mehr Aufgabe",
+      "thisActionCanBeUndoneForAShortTimeAfterDeletion": "Diese Aktion kann nach dem Löschen für kurze Zeit rückgängig gemacht werden.",
+      "cancel": "Abbrechen",
+      "delete2": "Löschen ",
+      "task3": "Aufgabe"
+    },
+    "componentsTasksBulkActionsBulkDueDatePicker": {
+      "setDueDateFor": "Legen Sie das Fälligkeitsdatum fest ",
+      "task": "Aufgabe",
+      "selectADateToSetAsTheDueDateForAllSelectedTasks": "Wählen Sie ein Datum aus, das als Fälligkeitsdatum für alle ausgewählten Aufgaben festgelegt werden soll.",
+      "alsoSetTime": "Stellen Sie auch die Zeit ein",
+      "cancel": "Abbrechen",
+      "setDueDate": "Legen Sie das Fälligkeitsdatum fest"
+    },
+    "componentsTasksCelebrationProgress": {
+      "complete": "Komplett"
+    },
+    "componentsTasksColorPicker": {
+      "selectColor": "Farbe auswählen"
+    },
+    "componentsTasksCustomRepeatDialog": {
+      "onTheseDays": "An diesen Tagen",
+      "repeatOn": "Wiederholen Sie den Vorgang",
+      "day": "Tag",
+      "ofTheMonth": "des Monats",
+      "the": "Die",
+      "ofTheMonth2": "des Monats",
+      "ends": "Endet",
+      "never": "Niemals",
+      "onDate": "Am Datum",
+      "after": "Nachher",
+      "occurrences": "Vorkommnisse",
+      "preview": "Vorschau",
+      "of": "von ",
+      "andMore": "und mehr",
+      "frequency": "Häufigkeit",
+      "repeatEvery": "Wiederholen Sie alle",
+      "day2": "Tag",
+      "week": "Woche",
+      "month": "Monat",
+      "year": "Jahr",
+      "cancel": "Abbrechen",
+      "save": "Speichern",
+      "customRepeat": "Benutzerdefinierte Wiederholung"
+    },
+    "componentsTasksDatePickerCalendar": {
+      "previousMonth": "Vorheriger Monat",
+      "nextMonth": "Nächsten Monat",
+      "goToToday": "Gehen Sie zu heute",
+      "today": "Heute",
+      "w": "W"
+    },
+    "componentsTasksDatePickerContent": {
+      "removeDate": "Datum entfernen",
+      "clearTime": "Klare Zeit",
+      "addTime": "Fügen Sie Zeit hinzu"
+    },
+    "componentsTasksDeleteProjectDialog": {
+      "delete": "Löschen „",
+      "thisProjectHas": "Dieses Projekt hat ",
+      "task": "Aufgabe",
+      "whatWouldYouLikeToDoWithThem": "Was möchtest du mit ihnen machen?",
+      "moveTasksToPersonalProject": "Verschieben Sie Aufgaben in das persönliche Projekt",
+      "deleteAllTasksPermanently": "Alle Aufgaben dauerhaft löschen",
+      "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Dieses Projekt hat keine Aufgaben und wird dauerhaft gelöscht.",
+      "thisActionCannotBeUndone": "Diese Aktion kann nicht rückgängig gemacht werden.",
+      "cancel": "Abbrechen",
+      "deleteProject": "Projekt löschen"
+    },
+    "componentsTasksDeleteTaskDialog": {
+      "deleteTask": "Aufgabe löschen?",
+      "ldquo": "ldquo;",
+      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+      "deleteTask2": "Aufgabe löschen"
+    },
+    "componentsTasksDialogsAllSubtasksCompleteDialog": {
+      "allSubtasksComplete": "Alle Teilaufgaben erledigt!",
+      "ldquo": "ldquo;",
+      "rdquoHasAll": "rdquo; hat alles ",
+      "subtask": "Teilaufgabe",
+      "done": "erledigt.",
+      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Möchten Sie die übergeordnete Aufgabe auch als erledigt markieren?",
+      "keepTaskOpen": "Aufgabe offen lassen",
+      "completeTask": "Aufgabe abschließen ✓"
+    },
+    "componentsTasksDialogsBulkDueDateDialog": {
+      "setDueDateForAllSubtasks": "Legen Sie das Fälligkeitsdatum für alle Unteraufgaben fest",
+      "setDueDateFor": "Legen Sie das Fälligkeitsdatum fest ",
+      "subtask": "Teilaufgabe",
+      "in": "in „",
+      "rdquo": "rdquo;",
+      "alsoApplyToCompletedSubtasks": "Gilt auch für abgeschlossene Teilaufgaben (",
+      "clearDate": "Klares Datum",
+      "cancel": "Abbrechen",
+      "apply": "Bewerben"
+    },
+    "componentsTasksDialogsBulkPriorityDialog": {
+      "setPriorityForAllSubtasks": "Legen Sie die Priorität für alle Unteraufgaben fest",
+      "setPriorityFor": "Priorität festlegen für ",
+      "subtask": "Teilaufgabe",
+      "in": "in „",
+      "rdquo": "rdquo;",
+      "alsoApplyToCompletedSubtasks": "Gilt auch für abgeschlossene Teilaufgaben (",
+      "cancel": "Abbrechen",
+      "apply": "Bewerben"
+    },
+    "componentsTasksDialogsCompleteParentDialog": {
+      "completeTaskWithIncompleteSubtasks": "Komplette Aufgabe mit unvollständigen Teilaufgaben?",
+      "has": "hat ",
+      "incompleteSubtask": "unvollständige Teilaufgabe",
+      "and": "und ",
+      "more": "mehr",
+      "whatWouldYouLikeToDo": "Was möchten Sie tun?",
+      "completeAllParentSubtasks": "Alle erledigen (übergeordnete + Unteraufgaben)",
+      "markTheParentAndAllSubtasksAsComplete": "Markieren Sie die übergeordnete Aufgabe und alle Unteraufgaben als erledigt",
+      "completeParentOnlyKeepSubtasksIncomplete": "Nur übergeordnete Aufgaben abschließen, Unteraufgaben unvollständig lassen",
+      "onlyMarkTheParentTaskAsComplete": "Markieren Sie nur die übergeordnete Aufgabe als abgeschlossen",
+      "cancel": "Abbrechen",
+      "complete": "Komplett"
+    },
+    "componentsTasksDialogsDeleteAllSubtasksDialog": {
+      "deleteAllSubtasks": "Alle Unteraufgaben löschen?",
+      "thisWillDelete": "Dies wird gelöscht ",
+      "subtask": "Teilaufgabe",
+      "from": "von „",
+      "rdquo": "rdquo;.",
+      "thisActionCannotBeUndone": "Diese Aktion kann nicht rückgängig gemacht werden.",
+      "cancel": "Abbrechen",
+      "deleteAll": "Alle löschen"
+    },
+    "componentsTasksDialogsDeleteParentDialog": {
+      "deleteTaskWithSubtasks": "Aufgabe mit Unteraufgaben löschen?",
+      "has": "hat ",
+      "subtask": "Teilaufgabe",
+      "whatWouldYouLikeToDo": "Was möchten Sie tun?",
+      "deleteTaskAndAllSubtasks": "Aufgabe und alle Unteraufgaben löschen",
+      "permanentlyRemovesEverything": "Entfernt dauerhaft alles",
+      "deleteTaskKeepSubtasksAsStandaloneTasks": "Aufgabe löschen, Unteraufgaben als eigenständige Aufgaben behalten",
+      "subtasksBecomeTopLevelTasks": "Unteraufgaben werden zu Aufgaben der obersten Ebene",
+      "cancel": "Abbrechen",
+      "delete": "Löschen"
+    },
+    "componentsTasksDialogsDuplicateWithSubtasksDialog": {
+      "duplicateTask": "Doppelte Aufgabe",
+      "createACopyOf": "Erstellen Sie eine Kopie von „",
+      "rdquo": "rdquo;",
+      "alsoDuplicateSubtasks": "Auch doppelte Unteraufgaben (",
+      "cancel": "Abbrechen",
+      "duplicate": "Duplizieren "
+    },
+    "componentsTasksDialogsParentPickerDialog": {
+      "makeSubtaskOf": "Unteraufgabe erstellen aus...",
+      "selectATaskToMake": "Wählen Sie eine Aufgabe aus, die Sie erstellen möchten.",
+      "aSubtaskOf": "eine Teilaufgabe von.",
+      "searchTasks": "Suchaufgaben...",
+      "sameProject": "Gleiches Projekt",
+      "otherProjects": "Andere Projekte"
+    },
+    "componentsTasksDragDropInsertionIndicator": {
+      "dropToRescheduleTo": "Kommen Sie vorbei, um einen neuen Termin zu vereinbaren "
+    },
+    "componentsTasksDragDropMoveMenu": {
+      "moveTask": "Aufgabe verschieben",
+      "move": "Bewegen",
+      "reschedule": "Neu planen",
+      "today": "Heute",
+      "tomorrow": "Morgen",
+      "nextWeek": "Nächste Woche",
+      "removeDate": "Datum entfernen",
+      "moveToProject": "Zum Projekt wechseln",
+      "current": "Aktuell",
+      "changeStatus": "Status ändern",
+      "current2": "Aktuell",
+      "reorder": "Neu anordnen"
+    },
+    "componentsTasksDragDropMultiDragOverlay": {
+      "moreTask": "mehr Aufgabe",
+      "task": "Aufgabe"
+    },
+    "componentsTasksDragDropSidebarDropZones": {
+      "dropHere": "Kommen Sie hier vorbei"
+    },
+    "componentsTasksDragDropTaskRow": {
+      "priority": "Priorität: "
+    },
+    "componentsTasksDueDatePicker": {
+      "selectDueDate": "Fälligkeitsdatum auswählen",
+      "overdue": "Überfällig",
+      "setDueDate": "Fälligkeitsdatum festlegen",
+      "suggestions": "Vorschläge",
+      "pickADate": "Wählen Sie ein Datum...",
+      "addTime": "Fügen Sie Zeit hinzu",
+      "time": "Zeit",
+      "clearDate": "Klares Datum",
+      "backToOptions": "Zurück zu den Optionen"
+    },
+    "componentsTasksEditRepeatingTaskDialog": {
+      "editRepeatingTask": "Wiederkehrende Aufgabe bearbeiten",
+      "youReEditingARepeatingTaskApplyChangesTo": "Sie bearbeiten eine wiederkehrende Aufgabe. Änderungen anwenden auf:",
+      "onlyThisOccurrence": "Nur dieses Ereignis",
+      "onlyFutureTasksUnchanged": "nur — zukünftige Aufgaben unverändert",
+      "thisAndAllFutureOccurrences": "Dies und alle zukünftigen Ereignisse",
+      "andBeyond": "und darüber hinaus",
+      "cancel": "Abbrechen",
+      "continue": "Weiter"
+    },
+    "componentsTasksEmptyStatesCollapsedEmptySection": {
+      "add": "Hinzufügen"
+    },
+    "componentsTasksEmptyStatesSectionEmptyStates": {
+      "noTasksScheduled": "Keine Aufgaben geplant",
+      "addTaskFor": "Aufgabe hinzufügen für ",
+      "nothingScheduled": "Nichts geplant",
+      "addTasksWithDueDatesToPlanYourWeek": "Fügen Sie Aufgaben mit Fälligkeitsterminen hinzu, um Ihre Woche zu planen.",
+      "addTask": "Aufgabe hinzufügen",
+      "viewCalendar": "Kalender ansehen"
+    },
+    "componentsTasksFiltersActiveFiltersBar": {
+      "priorityIs": "Priorität ist",
+      "priority": "Priorität",
+      "statusIs": "Status ist",
+      "status": "Status",
+      "projectIs": "Projekt ist",
+      "project": "Projekt",
+      "due": "Fällig",
+      "dueDate": "Fälligkeitsdatum",
+      "search": "suchen",
+      "clearAll": "Alles löschen"
+    },
+    "componentsTasksFiltersDueDateFilter": {
+      "filterByDueDate": "Nach Fälligkeitsdatum filtern",
+      "customRange": "Benutzerdefinierter Bereich",
+      "clear": "Klar",
+      "apply": "Bewerben"
+    },
+    "componentsTasksFiltersFilterDropdown": {
+      "filterBy": "Filtern nach..."
+    },
+    "componentsTasksFiltersFilterEmptyState": {
+      "activeFilters": "Aktive Filter: ",
+      "clearAllFilters": "Alle Filter löschen"
+    },
+    "componentsTasksFiltersFilterPanelsDueDatePanel": {
+      "dueDate": "Fälligkeitsdatum"
+    },
+    "componentsTasksFiltersFilterPanelsPriorityPanel": {
+      "priority": "Priorität",
+      "is": "ist",
+      "search": "Suchen...",
+      "selected": "ausgewählt"
+    },
+    "componentsTasksFiltersFilterPanelsProjectPanel": {
+      "project": "Projekt",
+      "noProject": "Kein Projekt"
+    },
+    "componentsTasksFiltersFilterPanelsStatusPanel": {
+      "status": "Status"
+    },
+    "componentsTasksFiltersFilterPanelsStatusProjectPickerPan": {
+      "status": "Status",
+      "pickAProject": "Wählen Sie ein Projekt"
+    },
+    "componentsTasksFiltersMoreFiltersDropdown": {
+      "moreFilters": "Weitere Filter",
+      "more": "Mehr",
+      "status": "Status",
+      "hasTimeSet": "Die Zeit ist eingestellt",
+      "recurringOnly": "Nur wiederkehrend",
+      "status2": "Status"
+    },
+    "componentsTasksFiltersPriorityFilter": {
+      "filterByPriority": "Nach Priorität filtern",
+      "priority": "Priorität"
+    },
+    "componentsTasksFiltersProjectFilter": {
+      "filterByProject": "Nach Projekt filtern",
+      "project": "Projekt",
+      "allProjects": "Alle Projekte",
+      "clear": "Klar"
+    },
+    "componentsTasksFiltersQuickFilters": {
+      "quickFilters": "Schnellfilter:"
+    },
+    "componentsTasksFiltersSaveFilterDialog": {
+      "saveFilter": "Filter speichern",
+      "saveYourCurrentFilterSettingsForQuickAccessLater": "Speichern Sie Ihre aktuellen Filtereinstellungen für einen späteren schnellen Zugriff.",
+      "filterName": "Filtername",
+      "eGHighPriorityThisWeek": "z. B. „Hohe Priorität diese Woche“.",
+      "currentFilters": "Aktuelle Filter:",
+      "noFiltersApplied": "Keine Filter angewendet",
+      "cancel": "Abbrechen",
+      "saveFilter2": "Filter speichern"
+    },
+    "componentsTasksFiltersSavedFiltersDropdown": {
+      "savedFilters": "Gespeicherte Filter",
+      "saved": "Gespeichert",
+      "noSavedFiltersYet": "Noch keine gespeicherten Filter",
+      "saveCurrentFilters": "Aktuelle Filter speichern",
+      "saveCurrentFilters2": "Aktuelle Filter speichern"
+    },
+    "componentsTasksFiltersSavedFiltersSection": {
+      "filterName": "Filtername",
+      "saveFilter": "Filter speichern",
+      "save": "Speichern"
+    },
+    "componentsTasksFiltersSearchInput": {
+      "searchTasks": "Suchaufgaben",
+      "clearSearch": "Suche löschen"
+    },
+    "componentsTasksKanbanKanbanColumn": {
+      "dropHere": "Kommen Sie hier vorbei",
+      "releaseToMoveTaskToThisColumn": "Lassen Sie die Taste los, um die Aufgabe in diese Spalte zu verschieben",
+      "moreCompleted": "mehr abgeschlossen",
+      "showFewer": "Weniger anzeigen",
+      "taskTitle": "Aufgabentitel..."
+    },
+    "componentsTasksNaturalDateInput": {
+      "typeADateInNaturalLanguage": "Geben Sie ein Datum in natürlicher Sprache ein",
+      "select": "Auswählen"
+    },
+    "componentsTasksParentTaskRow": {
+      "priority": "Priorität: "
+    },
+    "componentsTasksPrioritySelect": {
+      "selectPriority": "Wählen Sie Priorität aus",
+      "navigate": "navigieren",
+      "select": "auswählen"
+    },
+    "componentsTasksProjectModal": {
+      "iconName": "Symbol und Name",
+      "selectIcon": "Symbol auswählen",
+      "projectName": "Projektname",
+      "clickIconToChange": "Klicken Sie zum Ändern auf das Symbol",
+      "color": "Farbe",
+      "descriptionOptional": "Beschreibung (optional)",
+      "briefDescriptionOfThisProject": "Kurze Beschreibung dieses Projekts...",
+      "statuses": "Status",
+      "configureTheWorkflowStagesForThisProject": "Konfigurieren Sie die Workflow-Phasen für dieses Projekt.",
+      "deleteProject": "Projekt löschen",
+      "cancel": "Abbrechen",
+      "unsavedChanges": "Nicht gespeicherte Änderungen",
+      "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Sie haben nicht gespeicherte Änderungen. Sind Sie sicher, dass Sie sie verwerfen möchten?",
+      "cancel2": "Abbrechen",
+      "discard": "Verwerfen"
+    },
+    "componentsTasksProjectSelect": {
+      "selectProject": "Projekt auswählen",
+      "selectProject2": "Projekt auswählen"
+    },
+    "componentsTasksProjectsProjectSelector": {
+      "editProject": "Projekt bearbeiten",
+      "archiveProject": "Archivprojekt",
+      "deleteProject": "Projekt löschen",
+      "selectProject": "Projekt auswählen",
+      "noProjectsYet": "Noch keine Projekte",
+      "createProject": "Projekt erstellen"
+    },
+    "componentsTasksProjectsProjectsTabContent": {
+      "noProjectSelected": "Kein Projekt ausgewählt",
+      "selectAProjectFromTheDropdownOrCreateANewOne": "Wählen Sie ein Projekt aus der Dropdown-Liste aus oder erstellen Sie ein neues",
+      "createYourFirstProject": "Erstellen Sie Ihr erstes Projekt"
+    },
+    "componentsTasksQuickAddQuickAddHelp": {
+      "quickAddShortcutsHelp": "Hilfe zum schnellen Hinzufügen von Verknüpfungen",
+      "quickAddShortcuts": "Schnell Verknüpfungen hinzufügen",
+      "exampleBuyMilkTomorrowHighPersonal": "Beispiel: „Milch kaufen !tomorrow !!high #personal“"
+    },
+    "componentsTasksQuickAddQuickOptionsBar": {
+      "quickOptions": "Schnelloptionen:"
+    },
+    "componentsTasksQuickAddInput": {
+      "q": "F",
+      "q2": "F"
+    },
+    "componentsTasksRepeatIndicator": {
+      "of": "von ",
+      "completed": "abgeschlossen"
+    },
+    "componentsTasksRepeatPicker": {
+      "selectRepeatFrequency": "Wählen Sie die Wiederholungsfrequenz",
+      "doesNotRepeat": "Wiederholt sich nicht",
+      "custom": "Benutzerdefinierte..."
+    },
+    "componentsTasksStatusEditor": {
+      "changeStatusColor": "Statusfarbe ändern",
+      "dragToReorder": "Zum Neuanordnen ziehen",
+      "statusName": "Statusname",
+      "addStatus": "Status hinzufügen"
+    },
+    "componentsTasksStatusSelect": {
+      "selectStatus": "Status auswählen",
+      "selectStatus2": "Status auswählen"
+    },
+    "componentsTasksStopRepeatingDialog": {
+      "stopRepeating": "Hör auf zu wiederholen",
+      "isSetToRepeat": "ist auf Wiederholung eingestellt ",
+      "whatWouldYouLikeToDo": "Was möchten Sie tun?",
+      "keepThisTaskStopFutureOccurrences": "Behalten Sie diese Aufgabe bei und verhindern Sie zukünftige Ereignisse",
+      "taskWillBecomeAOneTimeTask": "Die Aufgabe wird zu einer einmaligen Aufgabe",
+      "deleteThisAndAllFutureOccurrences": "Löschen Sie dieses und alle zukünftigen Vorkommen",
+      "taskWillBeRemovedEntirely": "Die Aufgabe wird vollständig entfernt",
+      "cancel": "Abbrechen",
+      "confirm": "Bestätigen"
+    },
+    "componentsTasksSubtaskDots": {
+      "of": "von ",
+      "subtasksComplete": "Teilaufgaben abgeschlossen (",
+      "clickTo": "Klicken Sie hier ",
+      "of2": "von ",
+      "subtasksComplete2": "Teilaufgaben abgeschlossen",
+      "clickTo2": "Klicken Sie hier "
+    },
+    "componentsTasksSubtaskProgressBadge": {
+      "of": "von ",
+      "subtasksComplete": "Teilaufgaben abgeschlossen (",
+      "clickTo": "Klicken Sie hier "
+    },
+    "componentsTasksTaskBadges": {
+      "priority": "Priorität",
+      "repeatingTask": "Sich wiederholende Aufgabe",
+      "d": "d"
+    },
+    "componentsTasksTaskEmptyState": {
+      "addTask": "Aufgabe hinzufügen"
+    },
+    "componentsTasksTaskIcons": {
+      "noPriority": "keine Priorität"
+    },
+    "componentsTasksTaskRepeatSection": {
+      "repeat": "Wiederholen",
+      "addRepeat": "Wiederholung hinzufügen",
+      "edit": "Bearbeiten",
+      "edit2": "Bearbeiten",
+      "stopRepeating": "Hör auf zu wiederholen",
+      "stopRepeating2": "Hör auf zu wiederholen"
+    },
+    "componentsTasksTaskSection": {
+      "addTask": "Aufgabe hinzufügen"
+    },
+    "componentsTasksTimePicker": {
+      "selectTime": "Wählen Sie die Uhrzeit aus",
+      "selectTime2": "Wählen Sie die Uhrzeit aus",
+      "clearTime": "Klare Zeit"
+    },
+    "componentsTasksTodayEmptyState": {
+      "nothingScheduledForToday": "Für heute ist nichts geplant",
+      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "Sie haben oben überfällige Aufgaben. Fügen Sie einige Aufgaben für heute hinzu oder sehen Sie sich Ihre bevorstehende Liste an.",
+      "addTaskForToday": "Aufgabe für heute hinzufügen",
+      "allCaughtUpForToday": "Alles für heute aufgeholt",
+      "youHaveNothingScheduledEnjoyTheClarity": "Sie haben nichts geplant. Genießen Sie die Klarheit.",
+      "addTaskForToday2": "Aufgabe für heute hinzufügen"
+    },
+    "componentsTasksUpcomingEmptyState": {
+      "nothingScheduledForTheNext7Days": "Für die nächsten 7 Tage ist nichts geplant",
+      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "Sie haben oben überfällige Aufgaben. Planen Sie im Voraus, indem Sie Aufgaben für die kommende Woche hinzufügen.",
+      "addTask": "Aufgabe hinzufügen",
+      "noUpcomingTasks": "Keine anstehenden Aufgaben",
+      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Hier werden Aufgaben angezeigt, die in den nächsten 7 Tagen fällig sind. Planen Sie Ihre Woche, indem Sie einige Aufgaben hinzufügen.",
+      "addTask2": "Aufgabe hinzufügen"
+    }
+  },
+  "phaseI": {
+    "toasts": {
+      "changesUndone": "Änderungen rückgängig gemacht",
+      "projectNotFound": "Projekt nicht gefunden",
+      "failedToArchiveTasks": "Aufgaben konnten nicht archiviert werden",
+      "tasksRestoredFromArchive": "Aus dem Archiv wiederhergestellte Aufgaben",
+      "subtaskAdded": "Unteraufgabe hinzugefügt",
+      "subtaskDeleted": "Unteraufgabe gelöscht",
+      "taskCompleted": "Aufgabe abgeschlossen",
+      "allSubtasksCompleteTaskMarkedAsDone": "🎉 Alle Teilaufgaben erledigt! Aufgabe als erledigt markiert.",
+      "taskReopened": "Aufgabe erneut geöffnet",
+      "taskKeptOpen": "Aufgabe offen gehalten",
+      "taskMarkedAsDone": "🎉 Aufgabe als erledigt markiert!"
+    },
+    "errors": {
+      "failedToArchiveTasks": "Aufgaben konnten nicht archiviert werden",
+      "failedToAddSubtask": "Unteraufgabe konnte nicht hinzugefügt werden",
+      "failedToAddSubtasks": "Unteraufgaben konnten nicht hinzugefügt werden",
+      "failedToReorderSubtasks": "Unteraufgaben konnten nicht neu angeordnet werden",
+      "failedToPromoteSubtask": "Unteraufgabe konnte nicht heraufgestuft werden",
+      "failedToDeleteSubtask": "Unteraufgabe konnte nicht gelöscht werden",
+      "failedToDeleteTask": "Aufgabe konnte nicht gelöscht werden",
+      "failedToCompleteTask": "Aufgabe konnte nicht abgeschlossen werden",
+      "failedToMakeSubtask": "Unteraufgabe konnte nicht erstellt werden",
+      "failedToCompleteSubtasks": "Unteraufgaben konnten nicht abgeschlossen werden",
+      "failedToMarkSubtasksIncomplete": "Unteraufgaben konnten nicht als unvollständig markiert werden",
+      "failedToSetDueDate": "Das Fälligkeitsdatum konnte nicht festgelegt werden",
+      "failedToSetPriority": "Priorität konnte nicht festgelegt werden",
+      "failedToDeleteSubtasks": "Unteraufgaben konnten nicht gelöscht werden",
+      "failedToLoadTaskPreferences": "Die Aufgabeneinstellungen konnten nicht geladen werden",
+      "failedToUpdateTaskPreferences": "Die Aufgabeneinstellungen konnten nicht aktualisiert werden",
+      "failedToLoadLinkedTasks": "Verknüpfte Aufgaben konnten nicht geladen werden"
+    }
+  }
+}

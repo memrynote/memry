@@ -1,0 +1,28 @@
+{
+  "app": {
+    "quit": "退出"
+  },
+  "file": {
+    "label": "檔案",
+    "newNote": "新筆記",
+    "close": "關閉視窗"
+  },
+  "navigation": {
+    "back": "返回",
+    "forward": "前進"
+  },
+  "edit": {
+    "label": "編輯",
+    "undo": "復原",
+    "redo": "重做",
+    "cut": "剪下",
+    "copy": "複製",
+    "paste": "貼上"
+  },
+  "view": {
+    "label": "檢視",
+    "reload": "重新載入",
+    "toggleDevTools": "切換開發人員工具",
+    "toggleFullscreen": "切換全螢幕"
+  }
+}

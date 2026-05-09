@@ -1,0 +1,303 @@
+{
+  "title": "Jurnal",
+  "section": {
+    "journal": "Jurnal",
+    "aiConnections": "Conexiuni AI",
+    "todaysNotes": "Notele de azi",
+    "todaysSchedule": "Programul de azi",
+    "todaysTasks": "Sarcinile de azi",
+    "schedule": "Program",
+    "tasks": "Sarcini",
+    "calendarEvents": "Evenimente din calendar",
+    "overdueTasks": "Sarcini restante",
+    "technicalDetails": "Detalii tehnice"
+  },
+  "action": {
+    "versionHistory": "Istoricul versiunilor",
+    "export": "Exportați",
+    "fullWidth": "Latimea intreaga",
+    "journalSettings": "Setări jurnal",
+    "fullMode": "Modul complet",
+    "compactMode": "Modul compact",
+    "focusMode": "Modul de focalizare",
+    "exitFocusMode": "Ieșiți din modul de focalizare",
+    "enterFocusMode": "Intrați în modul Focus",
+    "createNote": "Creați o notă",
+    "createNewNote": "Creați o notă nouă",
+    "showLess": "Arată mai puțin",
+    "showMoreNotes": "Afișați {count} mai multe note",
+    "showMoreNotes_plural": "Afișați {count} mai multe note",
+    "showFewerNotes": "Afișați mai puține note",
+    "startBlank": "Începeți în gol",
+    "changeTemplate": "Schimbați șablonul",
+    "dismissIndicator": "Indicator de respingere",
+    "refreshConnections": "Actualizează conexiunile",
+    "reloadJournal": "Reîncărcați jurnalul",
+    "goToToday": "Du-te la Azi",
+    "copyUnsavedContent": "Copiați conținutul nesalvat în clipboard",
+    "openNoteFullPage": "Deschideți nota pe toată pagina",
+    "closeNoteDrawer": "Închideți sertarul de note",
+    "addBookmark": "Adăugați marcaj",
+    "removeBookmark": "Eliminați marcajul",
+    "tryAgain": "Încercați din nou"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "ce planuiesti...",
+      "today": "Ce ai în minte astăzi...",
+      "past": "Reflectați la această zi...",
+      "default": "Începeți să scrieți..."
+    },
+    "toolbar": {
+      "ariaLabel": "Formatarea textului",
+      "bold": "Îndrăzneț",
+      "italic": "cursiv",
+      "underline": "Subliniați",
+      "strikethrough": "Striat",
+      "link": "Link",
+      "image": "Imagine",
+      "moreOptions": "Mai multe opțiuni",
+      "heading1": "Titlul 1",
+      "heading2": "Titlul 2",
+      "heading3": "Titlul 3",
+      "bulletList": "Lista cu marcatori",
+      "numberedList": "Lista numerotata",
+      "checklist": "Lista de verificare",
+      "quote": "citat",
+      "divider": "Divizor",
+      "codeBlock": "Bloc de cod"
+    },
+    "prompt": {
+      "enterUrl": "Introduceți adresa URL:"
+    },
+    "upload": {
+      "noEntry": "Nu se poate încărca imaginea: nu a fost selectată nicio intrare de jurnal",
+      "failed": "Nu s-a putut încărca imaginea"
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "Astăzi",
+      "yesterday": "Ieri",
+      "tomorrow": "Mâine",
+      "future": "Viitorul"
+    },
+    "weekday": {
+      "sunday": "duminica",
+      "monday": "luni",
+      "tuesday": "marți",
+      "wednesday": "miercuri",
+      "thursday": "joi",
+      "friday": "vineri",
+      "saturday": "Sambata"
+    },
+    "weekdayShort": {
+      "sunday": "soare",
+      "monday": "Lun",
+      "tuesday": "mar",
+      "wednesday": "mier",
+      "thursday": "joi",
+      "friday": "vineri",
+      "saturday": "sat"
+    },
+    "month": {
+      "january": "ianuarie",
+      "february": "februarie",
+      "march": "martie",
+      "april": "aprilie",
+      "may": "mai",
+      "june": "iunie",
+      "july": "iulie",
+      "august": "august",
+      "september": "septembrie",
+      "october": "octombrie",
+      "november": "noiembrie",
+      "december": "decembrie"
+    },
+    "monthShort": {
+      "january": "ian",
+      "february": "feb",
+      "march": "Mar",
+      "april": "apr",
+      "may": "mai",
+      "june": "Iun",
+      "july": "iul",
+      "august": "aug",
+      "september": "sept",
+      "october": "oct",
+      "november": "nov",
+      "december": "Dec"
+    },
+    "greeting": {
+      "morning": "Bună dimineața",
+      "afternoon": "Bună seara",
+      "evening": "Bună seara",
+      "night": "Noapte bună"
+    },
+    "allDay": "Toată ziua"
+  },
+  "nav": {
+    "previousDay": "Ziua anterioară",
+    "nextDay": "A doua zi",
+    "previousMonth": "Luna anterioară",
+    "nextMonth": "Luna viitoare",
+    "previousYear": "Anul precedent",
+    "nextYear": "Anul viitor",
+    "journalBack": "Jurnal înapoi",
+    "journalNavigation": "Navigare în jurnal",
+    "dateNavigation": "Navigare prin data jurnalului",
+    "goToYearView": "Accesați vizualizarea anului",
+    "previousView": "Vedere anterioară",
+    "nextView": "Următoarea vizualizare"
+  },
+  "aria": {
+    "moreOptions": "Mai multe opțiuni",
+    "documentStatistics": "Statistica documentelor",
+    "dayContext": "Contextul zilei: sarcini și program",
+    "scheduleEvents": "Programați evenimente",
+    "tasks": "Sarcini",
+    "notesCreatedToday": "Note {count} create astăzi"
+  },
+  "empty": {
+    "noEntry": "Fără intrare",
+    "noDaysInMonth": "Fără zile în această lună",
+    "noEventsScheduled": "Nu au fost programate evenimente",
+    "noEventsScheduledToday": "Nu sunt evenimente programate astăzi",
+    "noEventsWereScheduled": "Nu au fost programate evenimente",
+    "noTasksDue": "Nicio sarcină datorată",
+    "noTasksDueToday": "Nicio sarcină datorată astăzi",
+    "noTasksWereDue": "Nu se datorau sarcini",
+    "noNotesToday": "Nicio notă creată astăzi",
+    "startDocumenting": "Începeți să vă documentați gândurile și ideile"
+  },
+  "ai": {
+    "loading": "Se analizează intrarea dvs....",
+    "empty": {
+      "willAppear": "Conexiunile dvs. vor apărea aici",
+      "noneYet": "Nu s-au găsit conexiuni încă",
+      "moreJournaling": "Pe măsură ce înregistrați mai multe, AI va găsi intrări similare",
+      "keepWriting": "Continuați să scrieți pentru a descoperi intrări similare"
+    },
+    "error": {
+      "loadFailed": "Nu s-au putut încărca conexiunile"
+    },
+    "connectionAria": "Conexiune la {label}, {scorePercent}% potrivire"
+  },
+  "count": {
+    "item": "articol",
+    "items": "articole",
+    "note": "notă",
+    "notes": "note",
+    "day": "zi",
+    "days": "zile",
+    "event": "eveniment",
+    "events": "evenimente",
+    "meeting": "întâlnire",
+    "meetings": "întâlniri",
+    "task": "sarcina",
+    "tasks": "sarcini",
+    "todo": "a face",
+    "people": "{count} persoane",
+    "moreConnections": "+ {count} mai multă conexiune",
+    "moreConnections_plural": "+ {count} mai multe conexiuni",
+    "moreNotes": "+ {count} notă suplimentară",
+    "moreNotes_plural": "+ {count} mai multe note",
+    "daysWithEntries": "zile cu intrări",
+    "charactersWritten": "personaje scrise",
+    "words": "{count} cuvinte",
+    "characters": "{count} caractere",
+    "completed": "{count} finalizat",
+    "overdue": "{count} întârziat"
+  },
+  "stats": {
+    "wordCount": "Număr de cuvinte",
+    "characterCount": "Numărul de caractere",
+    "readingTime": "Timp de citire estimat",
+    "lastModified": "Ultima modificare",
+    "lessThanOneMinute": "< 1 min",
+    "minutes": "{minutes} min",
+    "read": "{readingTime} citit",
+    "modified": "{date} modificat"
+  },
+  "task": {
+    "completed": "Terminat",
+    "notCompleted": "Nefinalizat",
+    "priority": "Prioritate {priority}",
+    "overdue": "întârziat",
+    "markComplete": "Marcați „{title}” ca finalizat",
+    "markNotComplete": "Marcați „{title}” ca nefinalizat"
+  },
+  "template": {
+    "using": "Folosind „{templateName}”"
+  },
+  "reminder": {
+    "hasReminders": "Are mementouri",
+    "setToRevisit": "Setați mementoul pentru a reveni",
+    "tooltip": "Memento: {date}",
+    "tooltipMore": "Memento: {date} (+{count} mai mult)",
+    "success": {
+      "set": "Memento setat pentru această înregistrare în jurnal",
+      "deleted": "Memento a fost șters",
+      "dismissed": "Memento a fost respins",
+      "snoozed": "Memento amânat"
+    },
+    "error": {
+      "set": "Nu s-a putut seta mementoul",
+      "delete": "Mementoul nu a fost șters",
+      "dismiss": "Mementoul nu a fost respins",
+      "snooze": "Mementoul nu a fost amânat"
+    }
+  },
+  "toast": {
+    "unsavedRetry": "Conținutul tău este încă în memorie. Faceți clic pentru a reîncerca salvarea.",
+    "noteNotFound": "Notă „{target}” nu a fost găsit",
+    "fileNotFound": "Fișierul nu a fost găsit: {target}",
+    "openLinkedItemFailed": "Nu s-a putut deschide elementul conectat",
+    "errorPrefix": "Eroare:"
+  },
+  "export": {
+    "noteTitle": "Jurnal - {month} {day}, {year}"
+  },
+  "note": {
+    "generatedTitle": "Notă - {date}",
+    "openAria": "Deschideți {title}, creat la {time}"
+  },
+  "tag": {
+    "suggestionsAria": "Sugestii de etichete",
+    "empty": {
+      "title": "Nicio etichetă încă",
+      "description": "Tastați pentru a crea o nouă etichetă"
+    },
+    "groupTitle": "Etichete",
+    "create": "Creați #{query}",
+    "ariaLabel": "Etichetă: {tag}, faceți clic pentru a filtra"
+  },
+  "wiki": {
+    "suggestionsAria": "Sugestii de pagini",
+    "empty": {
+      "title": "Nu au fost găsite pagini"
+    },
+    "groupRecent": "Recent",
+    "groupAllPages": "Toate paginile",
+    "createNewPage": "Creați o pagină nouă",
+    "ariaLabel": "Link către {title}"
+  },
+  "error": {
+    "title": "Eroare de jurnal",
+    "description": "Jurnalul a întâmpinat o eroare pentru {date}. Este posibil ca modificările dvs. recente să nu fi fost salvate.",
+    "descriptionNoDate": "Jurnalul a întâmpinat o eroare. Este posibil ca modificările dvs. recente să nu fi fost salvate.",
+    "unsavedContent": "S-a detectat conținut nesalvat ({length} caractere)"
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "k"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveJournalEntry": "Nu s-a putut salva intrarea în jurnal",
+      "failedToLoadJournalSettings": "Nu s-au încărcat setările jurnalului",
+      "failedToUpdateSettings": "Nu s-au putut actualiza setările"
+    }
+  }
+}

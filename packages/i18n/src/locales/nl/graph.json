@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Grafiek laden...",
+    "load-failed": "Kan grafiekgegevens niet laden",
+    "try-again": "Probeer het opnieuw",
+    "aria-label": "Kennisgrafiek met {nodeCount, plural, one {#-knooppunt} other {#-knooppunten}} en {edgeCount, plural, one {#-verbinding} other {#-verbindingen}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Grafiek knooppunten",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Jouw kennisgrafiek",
+    "description": "Verbindingen tussen uw notities, taken en projecten verschijnen hier als een interactieve grafiek.",
+    "link-title": "Koppel uw notities",
+    "link-description": "Gebruik [[wikilinks]] om ideeën in notities met elkaar te verbinden",
+    "discover-title": "Ontdek patronen",
+    "discover-description": "Naarmate verbindingen groeien, zullen op natuurlijke wijze clusters en thema’s ontstaan"
+  },
+  "entity": {
+    "note": "opmerking",
+    "notes": "notities",
+    "journal": "dagboek",
+    "journals": "tijdschriften",
+    "task": "taak",
+    "tasks": "taken",
+    "project": "project",
+    "projects": "projecten",
+    "tag": "label",
+    "tags": "labels",
+    "orphan": "wees",
+    "orphans": "weeskinderen",
+    "unresolved": "onopgelost"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Grafiek instellingen",
+    "hide-settings": "Instellingen verbergen",
+    "reset-filters": "Filters opnieuw instellen",
+    "filters": "Filters",
+    "display": "Weergave",
+    "show-labels": "Etiketten tonen",
+    "focus-depth": "diepte {depth}",
+    "clear-focus": "Duidelijk gefocust knooppunt"
+  },
+  "filter": {
+    "notes": "Opmerkingen",
+    "journals": "Tijdschriften",
+    "tasks": "Taken",
+    "projects": "Projecten",
+    "tags": "Labels",
+    "orphans": "Weeskinderen",
+    "toggle-entity": "Schakel {label} in",
+    "toggle-orphans": "Schakel weesknooppunten in of uit"
+  },
+  "search": {
+    "placeholder": "Knooppunten zoeken...",
+    "clear": "Duidelijke grafiekzoekopdracht"
+  },
+  "context-menu": {
+    "untitled": "Zonder titel",
+    "focus-node": "Focus op dit knooppunt",
+    "open-new-tab": "Openen in nieuw tabblad",
+    "create-note": "Notitie maken",
+    "copy-title": "Titel kopiëren"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {#-verbinding} other {#-verbindingen}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Grafiek laden...",
+    "empty": "Geen verbindingen gevonden",
+    "open-full": "Volledige grafiek openen",
+    "close": "Grafiek sluiten"
+  }
+}
