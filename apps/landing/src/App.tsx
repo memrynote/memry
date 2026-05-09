@@ -8,6 +8,9 @@ import { FeaturesPage } from '@/pages/Features'
 import { UseCasesPage } from '@/pages/UseCases'
 import { SecurityPage } from '@/pages/Security'
 import { PricingPage } from '@/pages/Pricing'
+import { TermsPage } from '@/pages/Terms'
+import { PrivacyPage } from '@/pages/Privacy'
+import { RefundPage } from '@/pages/Refund'
 import { NotFound } from '@/pages/NotFound'
 
 function ScrollToHash() {
@@ -47,6 +50,9 @@ function AppContent() {
           <Route path="/use-cases" element={<UseCasesPage />} />
           <Route path="/security" element={<SecurityPage />} />
           <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/refund" element={<RefundPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
