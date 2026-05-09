@@ -56,6 +56,7 @@ import {
 } from '../journal/runtime-effects'
 import { deleteJournalCache, syncJournalCache } from '../vault/journal-cache-sync'
 import { trackMainEvent } from '../telemetry/track'
+import { flushProjectionEvents } from '../projections'
 
 const logger = createLogger('IPC:Journal')
 
@@ -134,16 +135,19 @@ export function registerJournalHandlers(): void {
         },
         { isNew: !cached }
       )
-      enqueueJournalCreate(cacheId, entry.date)
-      initializeJournalCrdt(cacheId, entry.date, entry.tags)
+      await flushProjectionEvents()
+
+      const syncedEntry = cacheId === entry.id ? entry : { ...entry, id: cacheId }
+      enqueueJournalCreate(cacheId, syncedEntry.date)
+      await initializeJournalCrdt(cacheId, syncedEntry.date, syncedEntry.tags)
 
       // Emit event
       emitJournalEvent(JournalChannels.events.ENTRY_CREATED, {
-        date: entry.date,
-        entry
+        date: syncedEntry.date,
+        entry: syncedEntry
       })
 
-      return entry
+      return syncedEntry
     })
   )
 
@@ -183,15 +187,18 @@ export function registerJournalHandlers(): void {
           },
           { isNew: !cached }
         )
-        enqueueJournalCreate(cacheId, entry.date)
-        initializeJournalCrdt(cacheId, entry.date, entry.tags)
+        await flushProjectionEvents()
+
+        const syncedEntry = cacheId === entry.id ? entry : { ...entry, id: cacheId }
+        enqueueJournalCreate(cacheId, syncedEntry.date)
+        await initializeJournalCrdt(cacheId, syncedEntry.date, syncedEntry.tags)
 
         emitJournalEvent(JournalChannels.events.ENTRY_CREATED, {
-          date: entry.date,
-          entry
+          date: syncedEntry.date,
+          entry: syncedEntry
         })
 
-        return entry
+        return syncedEntry
       }
 
       // Merge updates
