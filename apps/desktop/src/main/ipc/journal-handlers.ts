@@ -139,7 +139,7 @@ export function registerJournalHandlers(): void {
 
       const syncedEntry = cacheId === entry.id ? entry : { ...entry, id: cacheId }
       enqueueJournalCreate(cacheId, syncedEntry.date)
-      initializeJournalCrdt(cacheId, syncedEntry.date, syncedEntry.tags)
+      await initializeJournalCrdt(cacheId, syncedEntry.date, syncedEntry.tags)
 
       // Emit event
       emitJournalEvent(JournalChannels.events.ENTRY_CREATED, {
@@ -191,7 +191,7 @@ export function registerJournalHandlers(): void {
 
         const syncedEntry = cacheId === entry.id ? entry : { ...entry, id: cacheId }
         enqueueJournalCreate(cacheId, syncedEntry.date)
-        initializeJournalCrdt(cacheId, syncedEntry.date, syncedEntry.tags)
+        await initializeJournalCrdt(cacheId, syncedEntry.date, syncedEntry.tags)
 
         emitJournalEvent(JournalChannels.events.ENTRY_CREATED, {
           date: syncedEntry.date,
