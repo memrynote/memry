@@ -141,6 +141,41 @@ describe('TaskRow — Linked Notes', () => {
   })
 })
 
+describe('TaskRow — Row Click Boundaries', () => {
+  it('opens the task row when clicking the row body', async () => {
+    const user = userEvent.setup()
+    const onClick = vi.fn()
+
+    render(<TaskRow {...defaultProps} onClick={onClick} />)
+
+    await user.click(screen.getByLabelText(/^Task: Test Task/))
+
+    expect(onClick).toHaveBeenCalledWith('task-1')
+  })
+
+  it('does not open the task row when clicking the status trigger', async () => {
+    const user = userEvent.setup()
+    const onClick = vi.fn()
+
+    render(<TaskRow {...defaultProps} onClick={onClick} />)
+
+    await user.click(screen.getByRole('button', { name: /status: to do/i }))
+
+    expect(onClick).not.toHaveBeenCalled()
+  })
+
+  it('does not open the task row when clicking the priority trigger', async () => {
+    const user = userEvent.setup()
+    const onClick = vi.fn()
+
+    render(<TaskRow {...defaultProps} onClick={onClick} />)
+
+    await user.click(screen.getByRole('button', { name: /priority: medium/i }))
+
+    expect(onClick).not.toHaveBeenCalled()
+  })
+})
+
 describe('TaskRow — Whole-Row Drag', () => {
   it('applies cursor-grab when dragHandleListeners are provided', () => {
     const listeners = { onPointerDown: vi.fn() }

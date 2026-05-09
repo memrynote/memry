@@ -5,6 +5,10 @@ import { Picker } from '@/components/ui/picker'
 import { priorityConfig, type Priority } from '@/data/task-model'
 import { PriorityBars, PriorityIcon } from './task-icons'
 
+const stopTriggerPropagation = (event: React.SyntheticEvent): void => {
+  event.stopPropagation()
+}
+
 const PRIORITY_OPTIONS: { value: Priority; label: string; shortcut: string }[] = [
   { value: 'urgent', label: priorityConfig.urgent.label ?? 'Urgent', shortcut: '1' },
   { value: 'high', label: priorityConfig.high.label ?? 'High', shortcut: '2' },
@@ -50,6 +54,9 @@ export const InlinePriorityPopover = ({
             disabled && 'pointer-events-none'
           )}
           aria-label={`Priority: ${config.label || 'none'}. Click to change.`}
+          onClick={stopTriggerPropagation}
+          onPointerDown={stopTriggerPropagation}
+          onKeyDown={stopTriggerPropagation}
         >
           <PriorityBars priority={priority} />
         </button>
