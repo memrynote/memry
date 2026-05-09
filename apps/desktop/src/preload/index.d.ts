@@ -28,6 +28,7 @@ import type {
   SecurityWarningEvent,
   CertificatePinFailedEvent
 } from '../shared/contracts/ipc-sync'
+import type { CrdtOpenDocResult, CrdtSyncStep1Result } from '@memry/contracts/ipc-crdt'
 
 // Vault types (mirrored from contracts for preload compatibility)
 export interface VaultInfo {
@@ -1347,7 +1348,7 @@ interface SyncAuthClientAPI {
   initOAuth: (input: { provider: 'google' }) => Promise<{
     state: string
   }>
-  refreshToken: () => Promise<{
+  refreshToken /* auth action */: () => Promise<{
     success: boolean
     error?: string
   }>
@@ -1620,13 +1621,13 @@ interface API extends WindowAPI, GeneratedRpcApi {
     quitAndInstall: () => Promise<void>
   }
   syncCrdt: {
-    openDoc: (input: { noteId: string }) => Promise<void>
+    openDoc: (input: { noteId: string }) => Promise<CrdtOpenDocResult>
     closeDoc: (input: { noteId: string }) => Promise<void>
     applyUpdate: (input: { noteId: string; update: number[] }) => Promise<void>
     syncStep1: (input: {
       noteId: string
       stateVector: number[]
-    }) => Promise<{ diff: number[]; stateVector: number[] }>
+    }) => Promise<CrdtSyncStep1Result | null>
     syncStep2: (input: { noteId: string; diff: number[] }) => Promise<void>
   }
   /** Show a native OS context menu and return the selected item id, or null if dismissed */
