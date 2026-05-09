@@ -14,7 +14,7 @@ describe('createMainI18n', () => {
 
   it('loads the tasks namespace in the main i18n instance', async () => {
     const i18n = await createMainI18n({ locale: 'ar' })
-    expect(i18n.t('tasks:page.tabs.today')).toBe('Today')
+    expect(i18n.t('tasks:page.tabs.today')).toBe('اليوم')
   })
 
   it('returns the key for nonexistent translations', async () => {

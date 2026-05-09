@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "Jimat",
+    "cancel": "Batal",
+    "close": "tutup",
+    "ok": "OK",
+    "yes": "ya",
+    "no": "Tidak",
+    "delete": "Padam",
+    "confirm": "sahkan",
+    "apply": "Mohon",
+    "done": "Selesai",
+    "discard": "Buang",
+    "dontSave": "Jangan Simpan",
+    "edit": "Sunting",
+    "add": "Tambah",
+    "remove": "Alih keluar",
+    "retry": "Cuba semula",
+    "submit": "Hantar",
+    "back": "belakang",
+    "next": "Seterusnya",
+    "continue": "teruskan",
+    "reset": "Tetapkan semula",
+    "copy": "salin",
+    "paste": "Tampal",
+    "create": "Buat",
+    "open": "Buka"
+  },
+  "state": {
+    "loading": "Memuatkan…",
+    "saving": "Menyimpan…",
+    "deleting": "Memadamkan…",
+    "searching": "Mencari…",
+    "error": "ralat",
+    "success": "Kejayaan"
+  },
+  "empty": {
+    "noResults": "Tiada hasil",
+    "noItems": "Tiada barang",
+    "noMatch": "Tiada padanan"
+  },
+  "action": {
+    "search": "Cari",
+    "edit": "Sunting",
+    "delete": "Padam",
+    "close": "tutup",
+    "expand": "Kembangkan",
+    "collapse": "Runtuh",
+    "showMore": "+{count, plural, one {# lagi} other {# lagi}}",
+    "showLess": "Tunjukkan lebih sedikit"
+  },
+  "tabs": {
+    "pin": "Tab Semat",
+    "unpin": "Nyahsemat Tab",
+    "contextMenu": {
+      "close": "tutup",
+      "closeOthers": "Tutup Orang Lain",
+      "closeToRight": "Dekat ke Kanan",
+      "closeAll": "Tutup Semua",
+      "duplicate": "Tab Pendua",
+      "splitRight": "Belah Kanan",
+      "splitDown": "Berpisah",
+      "copyPath": "Salin Laluan",
+      "revealInSidebar": "Dedahkan dalam Sidebar"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {Item #} other {Item #}}",
+    "note": "{count, plural, one {Nota #} other {Nota #}}",
+    "folder": "{count, plural, one {Folder #} other {Folder #}}",
+    "task": "{count, plural, one {Tugasan #} other {# tugasan}}",
+    "project": "{count, plural, one {Projek #} other {Projek #}}",
+    "itemDelete": "{count, plural, one {Padamkan item #} other {Padamkan item #}}"
+  },
+  "toast": {
+    "actionFailed": "Tindakan gagal",
+    "nothingToUndo": "Tiada apa yang perlu dibuat asal",
+    "undone": "Dibuat asal: {description}",
+    "undoFailed": "Gagal membuat asal tindakan",
+    "copied": "disalin",
+    "copyFailed": "Gagal menyalin"
+  },
+  "dateRelative": {
+    "today": "Hari ini",
+    "yesterday": "Semalam",
+    "daysAgo": "{count, plural, one {# hari yang lalu} other {# hari yang lalu}}"
+  },
+  "recurrence": {
+    "everyDay": "Setiap hari",
+    "everyNDays": "{count, plural, one {Setiap hari} other {Setiap # hari}}",
+    "everyWeek": "Setiap minggu",
+    "everyNWeeks": "{count, plural, one {Setiap minggu} other {Setiap # minggu}}",
+    "everyWeekday": "Setiap hari minggu",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Setiap hari minggu} other {Setiap # minggu pada hari bekerja}}",
+    "everyWeekend": "Setiap hujung minggu",
+    "everyNWeeksOnWeekends": "{count, plural, one {Setiap hujung minggu} other {Setiap # minggu pada hujung minggu}}",
+    "everyWeekOnDays": "Setiap minggu pada {days}",
+    "everyNWeeksOnDays": "{count, plural, one {Setiap minggu pada {days}} other {Setiap # minggu pada {days}}}",
+    "everyMonth": "Setiap bulan",
+    "everyNMonths": "{count, plural, one {Setiap bulan} other {Setiap # bulan}}",
+    "everyMonthOnDay": "Setiap bulan pada {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {Setiap bulan pada {day}{suffix}} other {Setiap # bulan pada {day}{suffix}}}",
+    "everyMonthOnWeekDay": "Setiap bulan pada {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Setiap bulan pada {week} {day}} other {Setiap # bulan pada {week} {day}}}",
+    "everyYear": "Setiap tahun",
+    "everyNYears": "{count, plural, one {Setiap tahun} other {Setiap # tahun}}",
+    "repeats": "Berulang"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Koleksi",
+      "newNote": "Nota baharu",
+      "newNote2": "Nota baharu",
+      "newFolder": "Folder baharu",
+      "newFolder2": "Folder baharu",
+      "bookmarks": "Penanda buku",
+      "tags": "Tag",
+      "dropFilesToImport": "Lepaskan fail untuk diimport",
+      "newNoteN": "Nota baharu (⌘N)",
+      "new": "baru",
+      "syncDisabled": "Penyegerakan dilumpuhkan",
+      "syncDisabled2": "Penyegerakan dilumpuhkan"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Saiz semula Panel Hari",
+      "dragToResizeDoubleClickToReset": "Seret untuk mengubah saiz · Klik dua kali untuk menetapkan semula"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Cari, ganti, tanya..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Langkau onboarding",
+      "welcomeToMemry": "Selamat datang ke Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Pangkalan pengetahuan peribadi anda. Mari luangkan masa 2 minit untuk anda bermula.",
+      "getStarted": "Mulakan ",
+      "createYourFirstNote": "Buat nota pertama anda",
+      "markdownBasedStoredLocallyAsPlainFiles": "Berasaskan penurunan harga, disimpan secara setempat sebagai fail biasa.",
+      "eGMeetingNotesIdeasAnything": "cth. Nota mesyuarat, idea, apa sahaja...",
+      "skip": "Langkau",
+      "createNote": "Buat nota ",
+      "addYourFirstTask": "Tambah tugas pertama anda",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Tugasan dipautkan ke nota anda, dengan keutamaan dan tarikh akhir.",
+      "eGReviewProjectProposal": "cth. Semak cadangan projek...",
+      "skip2": "Langkau",
+      "createTask": "Buat tugasan ",
+      "syncAcrossDevices": "Segerakkan merentas peranti",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Pastikan nota dan tugasan anda segerak merentas semua peranti anda. Anda sentiasa boleh menyediakannya kemudian.",
+      "skipForNow": "Langkau buat masa ini",
+      "doneLetSGo": "Selesai — mari pergi! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Tetapkan ikon folder"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "PETUA"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Pemilih ikon",
+      "selectIcon": "Pilih Ikon",
+      "closeIconPicker": "Tutup pemilih ikon",
+      "searchIcons": "Cari ikon...",
+      "all": "Semua",
+      "clearIcon": "Kosongkan Ikon",
+      "noIconsFoundFor": "Tiada ikon ditemui untuk \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Pintasan Papan Kekunci",
+      "closeShortcutsHelp": "Tutup pintasan membantu",
+      "press": "Tekan",
+      "toClose": "untuk menutup"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Set Ikon",
+      "clearIcon": "Kosongkan Ikon"
+    },
+    "componentsNavMain": {
+      "platform": "Platform"
+    },
+    "componentsNavProjects": {
+      "projects": "Projek",
+      "more": "Lagi",
+      "viewProject": "Lihat Projek",
+      "shareProject": "Kongsi Projek",
+      "deleteProject": "Padamkan Projek",
+      "more2": "Lagi"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Naik taraf kepada Pro",
+      "account": "Akaun",
+      "billing": "Pengebilan",
+      "notifications": "Pemberitahuan",
+      "logOut": "Log keluar"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Cari",
+      "searchNotesTasksJournalInbox": "Cari nota, tugasan, jurnal, peti masuk...",
+      "noResultsFor": "Tiada hasil untuk “",
+      "rdquo": "rdquo;",
+      "result": "hasil"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Cari dan klik item untuk membina jejak anda",
+      "reasons": "Sebab-sebab",
+      "clear": "Jelas"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Jelas",
+      "tags": "Tag",
+      "filterByTag": "Tapis mengikut teg...",
+      "dateRange": "Julat Tarikh"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Lihat semua ",
+      "results": "keputusan"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "kabur"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Tiada tab dibuka",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Buka halaman dari bar sisi atau buat tab baharu untuk bermula",
+      "openInbox": "Buka Peti Masuk",
+      "closePane": "Tutup Anak Tetingkap"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Pratetap susun atur",
+      "layoutPresets2": "Pratetap Reka Letak"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Ubah saiz anak tetingkap"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TasksContext tidak tersedia",
+      "searchResults": "Hasil Carian",
+      "unknownTabType": "Jenis tab tidak diketahui: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "perubahan yang belum disimpan",
+      "preview": "pratonton"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Tab Baharu",
+      "newTab2": "Tab Baharu",
+      "newNote": "Nota Baharu",
+      "journal": "Jurnal",
+      "calendar": "Kalendar",
+      "inboxCapture": "Tangkapan Peti Masuk",
+      "tasks": "Tugasan"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Perubahan yang tidak disimpan",
+      "unsaved": "belum disimpan)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Perubahan yang tidak disimpan"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Tutup Semua Tab"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Buka tab",
+      "scrollTabsLeft": "Tatal tab ke kiri",
+      "scrollTabsRight": "Tatal tab ke kanan",
+      "graphG": "Graf (⌘G)",
+      "dayPanel": "Panel Harian"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "Tatal tab ke kiri",
+      "scrollTabsRight": "Tatal tab ke kanan"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "Buka tab",
+      "scrollTabsLeft": "Tatal tab ke kiri",
+      "scrollTabsRight": "Tatal tab ke kanan"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Sesuatu telah berlaku",
+      "anErrorOccurredWhileRenderingThisTabContent": "Ralat berlaku semasa memaparkan kandungan tab ini.",
+      "tryAgain": "Cuba Lagi"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Ikon nota"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Perubahan Tidak Disimpan",
+      "quot": "quot;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; mempunyai perubahan yang belum disimpan. Apa yang anda ingin lakukan?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Ruang kerja baharu",
+      "darkMode": "Mod gelap",
+      "settings": "tetapan",
+      "integrations": "Integrasi",
+      "signOut": "Log Keluar",
+      "downloadOnIos": "Muat turun pada iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Tutup tingkap",
+      "minimizeWindow": "Minimumkan tetingkap",
+      "maximizeWindow": "Maksimumkan tetingkap"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Cadangan",
+      "or": "atau",
+      "enter": "Masuk",
+      "toInsert": "untuk memasukkan"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "serbuk roti",
+      "more": "Lagi"
+    },
+    "componentsUiDialog": {
+      "close": "tutup"
+    },
+    "componentsUiSheet": {
+      "close": "tutup"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Bar sisi",
+      "displaysTheMobileSidebar": "Memaparkan bar sisi mudah alih.",
+      "toggleSidebar": "Togol Sidebar",
+      "toggleSidebar2": "Togol Sidebar",
+      "dragToResizeDoubleClickToReset": "Seret untuk mengubah saiz · Klik dua kali untuk menetapkan semula"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Selamat datang ke Memry",
+      "yourPersonalKnowledgeManagementSystem": "Sistem pengurusan pengetahuan peribadi anda.",
+      "selectAFolderToStoreYourNotesAndTasks": "Pilih folder untuk menyimpan nota dan tugasan anda.",
+      "opening": "Membuka...",
+      "selectVaultFolder": "Pilih Folder Bilik Kebal",
+      "plainMarkdown": "Penurunan Harga Biasa",
+      "yourNotesStayPortable": "Nota anda kekal mudah alih",
+      "syncAnywhere": "Segerakkan Di Mana-mana",
+      "useDropboxIcloudGit": "Gunakan Dropbox, iCloud, Git",
+      "recentVaults": "Bilik Kebal Terkini",
+      "notesLastOpened": "nota · Terakhir dibuka"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Tiada peti besi lagi",
+      "openVault": "Buka peti besi",
+      "settings": "tetapan",
+      "logOut": "Log keluar",
+      "signInToSync": "Log masuk untuk menyegerak",
+      "remove": "Alih keluar \"",
+      "rdquoFromList": "rdquo; dari senarai?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Bilik kebal ini akan dialih keluar daripada apl, tetapi fail anda akan kekal pada cakera. Anda sentiasa boleh menambahkannya semula kemudian.",
+      "cancel": "Batal",
+      "remove2": "Alih keluar"
+    },
+    "componentsWindowControls": {
+      "searchK": "Cari (⌘K)",
+      "browserBack": "Pelayar kembali",
+      "back": "belakang",
+      "browserForward": "Penyemak imbas ke hadapan",
+      "forward": "ke hadapan"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Gagal mengimport fail",
+      "failedToCreateNote": "Gagal membuat nota",
+      "failedToAccessMicrophone": "Gagal mengakses mikrofon"
+    },
+    "toasts": {
+      "undone": "Dibuat asal"
+    }
+  }
+}

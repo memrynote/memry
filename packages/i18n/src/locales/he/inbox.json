@@ -1,0 +1,483 @@
+{
+  "view": {
+    "tabs": {
+      "inbox": "תיבת דואר נכנס",
+      "archived": "בארכיון",
+      "insights": "תובנות",
+      "ariaLabel": "בחירת תצוגת תיבת דואר נכנס"
+    },
+    "triageButton": "טריאז'",
+    "processInboxTitle": "תיבת דואר נכנס עיבוד (Cmd+P)",
+    "itemCaptured": "פריט נלכד",
+    "searchArchivedTitle": "חפש פריטים בארכיון",
+    "searchPlaceholder": "חפש...",
+    "archivedItemsAria": "פריטים בארכיון",
+    "snoozed": {
+      "show": "הצג פריטים מושלמים",
+      "showWithCount": "הצג פריטים מושלמים ({count})",
+      "hide": "הסתר פריטים מושלמים"
+    },
+    "filter": {
+      "button": "מסנן",
+      "byType": "סנן לפי סוג",
+      "active": "{count, plural, one {סינון לפי סוג #} other {סינון לפי סוגי #}}",
+      "clearAll": "נקה הכל"
+    },
+    "jobs": {
+      "running": "{count, plural, one {עבודת רקע # פועלת} other {פועלות עבודות רקע של #}}",
+      "failed": "{count} נכשל"
+    }
+  },
+  "type": {
+    "link": "קישור",
+    "links": "קישורים",
+    "note": "הערה",
+    "notes": "הערות",
+    "image": "תמונה",
+    "images": "תמונות",
+    "voice": "קול",
+    "video": "וידאו",
+    "clip": "קליפ",
+    "clips": "קליפים",
+    "pdf": "PDF",
+    "pdfs": "קובצי PDF",
+    "social": "חברתי",
+    "reminder": "תזכורת",
+    "reminders": "תזכורות",
+    "text": "טקסט",
+    "other": "אחר"
+  },
+  "empty": {
+    "successAria": "בהצלחה, תיבת הדואר הנכנס ריקה",
+    "title": "תיבת דואר נכנס אפס",
+    "body": "הכל מעובד. צלם משהו חדש עם הקלט למעלה, או הדבק קישור כדי להתחיל.",
+    "filedThisWeek": "{count, plural, one {# הוגש השבוע} other {# הוגש השבוע}}",
+    "dayStreak": "{count, plural, one {רצף יום של #} other {רצף יום של #}}",
+    "tipPrefix": "טיפ: השתמש",
+    "tipSuffix": "לצילום מהיר מהלוח",
+    "archivedNone": "אין פריטים בארכיון",
+    "archivedNoMatches": "אין פריטים תואמים בארכיון",
+    "noItemsYet": "עדיין אין פריטים",
+    "noItemsFiled": "עדיין לא הוגשו פריטים",
+    "noItemTypes": "אין סוגי פריטים להצגה",
+    "noFolders": "לא נמצאו תיקיות",
+    "noFolderMatch": "אין תיקיות תואמות ל-\"{query}\"",
+    "noNotes": "לא נמצאו הערות",
+    "allMatchesLinked": "כל ההתאמות כבר מקושרות"
+  },
+  "list": {
+    "ariaLabel": "פריטי תיבת דואר נכנס",
+    "section": {
+      "today": "היום",
+      "yesterday": "אתמול",
+      "older": "ישן יותר"
+    },
+    "selectItem": "בחר {title}",
+    "itemAria": "{type}: {title}",
+    "untitled": "ללא כותרת",
+    "untitledItem": "פריט ללא כותרת",
+    "transcribing": "מתמלל...",
+    "transcriptionFailed": "התמלול נכשל",
+    "retryTranscription": "נסה שוב",
+    "pageCount": "{count, plural, one {עמוד #} other {דפי #}}",
+    "snoozedUntilShort": "נודניק עד {date}",
+    "capturedAgo": "מצולם {time}"
+  },
+  "loading": {
+    "inbox": "טוען תיבת דואר נכנס...",
+    "failed": "טעינת תיבת הדואר הנכנס נכשלה",
+    "tryAgain": "נסה שוב",
+    "capturingImage": "מצלם תמונה...",
+    "dropImageTitle": "שחרר תמונה לצילום",
+    "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
+    "unsupportedImageType": "סוג תמונה לא נתמך: {type}",
+    "imageTooLarge": "תמונה גדולה מדי (מקסימום 50MB)"
+  },
+  "toast": {
+    "failedArchiveItem": "העברת הפריט לארכיון נכשלה",
+    "failedArchiveItems": "ארכיון פריטים נכשל",
+    "failedFile": "התיוק נכשל",
+    "failedFileItem": "נכשל תיוק הפריט",
+    "failedFileItems": "נכשל תיוק הפריטים",
+    "failedSnooze": "נודניק נכשל",
+    "failedSnoozeItem": "השהיית הפריט נכשלה",
+    "failedApplyTags": "החלת התגים נכשלה",
+    "failedCaptureImage": "צילום התמונה נכשל",
+    "linkedToNote": "מקושר להערה",
+    "linkedToNotes": "מקושר להערות {count}",
+    "filedTo": "הוגש ל-{folder}",
+    "filedItemsTo": "הגיש פריטי {count} ל-{folder}",
+    "filedPartial": "מתויק {processed} של פריטי {total}",
+    "appliedTags": "{tagCount, plural, one {הוחל תג #} other {תגי # הוחלו}} ל-{itemCount, plural, one {פריט #} other {פריטי #}}",
+    "archivedItems": "{count, plural, one {פריט # בארכיון} other {פריטי # בארכיון}}",
+    "snoozedUntil": "הושהה עד {time}",
+    "snoozedItemsUntil": "{count, plural, one {פריט # הושהה עד ל-{time}} other {פריטי # הושהו עד ל-{time}}}"
+  },
+  "triage": {
+    "modeTitle": "מצב טריאז'",
+    "exitHint": "Esc כדי לצאת",
+    "exitAria": "צא ממצב טריאג'",
+    "position": "{current} של {total}",
+    "action": {
+      "discard": "לזרוק",
+      "archive": "ארכיון",
+      "open": "פתוח",
+      "toTask": "למשימה",
+      "toNote": "לשים לב",
+      "file": "קובץ",
+      "snooze": "נודניק",
+      "cancel": "בטל"
+    },
+    "snoozeUntil": "נודניק עד...",
+    "complete": {
+      "title": "תיבת דואר נכנס אפס",
+      "processed": "{count, plural, one {פריט # עובד} other {פריטי # עובדו}}",
+      "streak": "פס",
+      "streakCount": "רצף {count}",
+      "dayProcessingStreak": "{count, plural, one {רצף עיבוד יום של #} other {רצף עיבוד יום של #}}",
+      "back": "חזרה לתיבת הדואר הנכנס",
+      "motivation0": "העצמי העתידי שלך מודה לך.",
+      "motivation1": "הכל במקומו.",
+      "motivation2": "נקה תיבת דואר נכנס, צלול מחשבה.",
+      "motivation3": "חוב החלטה: שולם במלואו.",
+      "motivation4": "זה הרגיש טוב, לא?"
+    }
+  },
+  "bulk": {
+    "selected": "{count} נבחר",
+    "deselectAll": "בטל את הבחירה בכולם",
+    "ariaLabel": "פעולות בכמות גדולה עבור פריטים נבחרים של {count}",
+    "file": "קובץ",
+    "tag": "תג",
+    "snooze": "נודניק",
+    "archive": "ארכיון",
+    "add": "הוסף",
+    "dismissSuggestion": "דחה את ההצעה",
+    "hint": {
+      "file": "קובץ",
+      "tag": "תג",
+      "snooze": "נודניק",
+      "archive": "ארכיון",
+      "deselect": "בטל את הבחירה"
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {ארכיון פריט #?} other {ארכיון פריטי #?}}",
+      "description": "פריטים אלה יישמרו בארכיון. אתה יכול להציג פריטים בארכיון מאוחר יותר.",
+      "confirm": "{count, plural, one {ארכיון פריט #} other {ארכיון פריטי #}}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {קובץ # פריט} other {קובץ # פריטי}}",
+      "itemsToFile": "פריטים לתיוק",
+      "multipleNoteLinksUnavailable": "הערה: לא ניתן להוסיף קישורים להערות אחרות בעת הגשת מספר פריטים.",
+      "filing": "מגיש...",
+      "submit": "{count, plural, one {קובץ # פריט} other {קובץ פריטי #}}",
+      "macHint": "⌘⏎ לקובץ · Esc לסגירה",
+      "ctrlHint": "Ctrl+Enter לקובץ · Esc לסגירה"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {תג # פריט} other {תייגו פריטי #}}",
+      "placeholder": "הקלד לחיפוש תגיות...",
+      "applying": "מגיש בקשה...",
+      "apply": "{count, plural, one {החל על פריט #} other {החל על פריטי #}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "פעולות מהירות",
+    "archiveItem": "פריט ארכיון",
+    "archive": "ארכיון",
+    "snooze": "נודניק"
+  },
+  "detail": {
+    "ariaLabel": "פרטי פריט",
+    "closePanel": "סגור לוח",
+    "resizeFiling": "שנה את גודל מקטע התיוק",
+    "restore": "שחזר",
+    "restoreToInbox": "שחזר לתיבת הדואר הנכנס",
+    "delete": "מחק",
+    "deletePermanently": "מחק לצמיתות",
+    "archive": "ארכיון",
+    "file": "קובץ",
+    "keyboardHint": "קובץ {modifier}⏎ · תיקייה 1-5 · Esc close",
+    "voiceTitlePlaceholder": "תן שם לתזכיר הקולי הזה...",
+    "fileTo": "קובץ ל",
+    "ai": "AI",
+    "selectFolder": "בחר תיקייה",
+    "searchOrCreateFolder": "חפש או צור עם /...",
+    "suggested": "מוצע",
+    "notesRoot": "הערות",
+    "notesRootLabel": "הערות (שורש)",
+    "createFolder": "צור \"{name}\"",
+    "addTags": "הוסף תגים...",
+    "linkToNote": "קישור להערה",
+    "linkNotesPlaceholder": "הערות קישור...",
+    "searchNotesAria": "חפש הערות לקישור",
+    "linkedNotesAria": "הערות מקושרות",
+    "removeLinkTo": "הסר קישור ל-{title}",
+    "contentEditorAria": "עורך תוכן",
+    "notePlaceholder": "כתוב את ההערה שלך...",
+    "textPlaceholder": "ערוך את הטקסט שצולם..."
+  },
+  "content": {
+    "capturedAt": "מצולם {date}",
+    "todayAt": "היום ב-{time}",
+    "yesterdayAt": "אתמול ב-{time}",
+    "dateAt": "{date} ב-{time}",
+    "words": "{count, plural, one {מילה #} other {מילים #}}",
+    "duration": "משך זמן: {duration}",
+    "dimensions": "מידות",
+    "format": "פורמט",
+    "size": "גודל",
+    "voiceMemo": "תזכיר קולי",
+    "play": "שחק",
+    "pause": "השהה",
+    "audioPosition": "מיקום אודיו",
+    "transcription": "תמלול",
+    "processing": "עיבוד",
+    "pending": "בהמתנה",
+    "failed": "נכשל",
+    "copyTranscription": "העתקת תמלול",
+    "transcribingAudio": "מתמלל אודיו...",
+    "awaitingTranscription": "ממתין לתמלול...",
+    "noTranscription": "אין תמלול זמין",
+    "failedPlayAudio": "הפעלת האודיו נכשלה",
+    "failedLoadAudio": "טעינת האודיו נכשלה",
+    "video": "וידאו",
+    "unsupportedVideo": "הדפדפן שלך אינו תומך בתג הווידאו."
+  },
+  "reminder": {
+    "dataUnavailable": "נתוני תזכורת אינם זמינים.",
+    "triggered": "התזכורת הופעלה",
+    "noteLabel": "הערת תזכורת",
+    "source": "מקור",
+    "journalTitle": "יומן - {date}",
+    "noteFallback": "הערה",
+    "journalFallback": "יומן",
+    "highlighted": "מודגש: \"{text}\"",
+    "viewed": "נצפה",
+    "markViewed": "סמן כמוצג",
+    "notYetViewed": "עדיין לא נצפה",
+    "snooze": "נודניק",
+    "presetInOneHour": "שעה אחת",
+    "presetTomorrow": "מחר",
+    "presetNextWeek": "בשבוע הבא",
+    "custom": "מותאם אישית..."
+  },
+  "insights": {
+    "loading": "טוען תובנות...",
+    "captureActivity": "פעילות לכידה",
+    "byType": "לפי סוג",
+    "itemTypes": "סוגי פריטים",
+    "itemTypesDescription": "הפצת פורמטים של תוכן",
+    "recentFilings": "הגשות אחרונות",
+    "recentlyFiled": "הוגש לאחרונה",
+    "recentlyFiledDescription": "הפעולות האחרונות בתיבת הדואר הנכנס שלך",
+    "captured": "נלכד",
+    "capturedThisWeek": "+{count} השבוע",
+    "processed": "מעובד",
+    "processRate": "שיעור {rate}",
+    "stale": "מעופש",
+    "needsAttention": "זקוק לתשומת לב",
+    "allClear": "הכל ברור",
+    "avgTimeToFile": "זמן ממוצע לקובץ",
+    "noCapturesYet": "עדיין אין לכידות",
+    "captures": "{count, plural, one {לכידת #} other {מצלמת #}}",
+    "peak": "שיא: {day} {start}–{end}",
+    "convertedToTask": "הומר למשימה",
+    "linked": "מקושר",
+    "now": "עכשיו",
+    "timeAgoMinutes": "{count}m לפני",
+    "timeAgoHours": "{count}h לפני",
+    "timeAgoDays": "{count}d לפני"
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "AI זוהה: \"",
+      "addToSelection": "הוסף לבחירה",
+      "dismiss": "לבטל"
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "מחק ",
+      "item": "פריט",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "פריטים אלה יוסרו מתיבת הדואר הנכנס שלך. אתה יכול לבטל פעולה זו מיד לאחר מכן."
+    },
+    "componentsCaptureInput": {
+      "captureInput": "לכידת קלט",
+      "attachFile": "צרף קובץ",
+      "attachFileImagesAudioVideoPdf": "צרף קובץ (תמונות, אודיו, וידאו, PDF)",
+      "recordVoiceMemo": "הקלט תזכיר קולי",
+      "recordVoiceMemo2": "הקלט תזכיר קולי",
+      "alreadyCaptured": "כבר נלכד: \"",
+      "rdquo": "rdquo;",
+      "captureAnyway": "ללכוד בכל מקרה"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "בחר תיקיה",
+      "searchFolders": "חפש תיקיות...",
+      "searchFolders2": "חפש תיקיות",
+      "searchResults": "תוצאות חיפוש",
+      "create": "צור \"",
+      "suggested": "מוצע",
+      "recent": "לאחרונה",
+      "allFolders": "כל התיקיות",
+      "allFolders2": "כל התיקיות"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "קישור ל",
+      "optional": "אופציונלי)",
+      "searchNotesToLink": "חפש הערות לקישור...",
+      "searchNotesToLink2": "חפש הערות לקישור",
+      "searching": "מחפש...",
+      "noNotesFound": "לא נמצאו הערות",
+      "linkedNotes": "הערות מקושרות",
+      "noLinksAdded": "לא נוספו קישורים"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "מוצע",
+      "ai": "AI",
+      "create": "צור",
+      "tags": "תגים",
+      "selectedTags": "תגים נבחרים",
+      "addTags": "הוסף תגים",
+      "tagSuggestions": "הצעות לתייג"
+    },
+    "componentsFilingTagInput": {
+      "tags": "תגים",
+      "optional": "אופציונלי)",
+      "addTags": "הוסף תגים...",
+      "addTags2": "הוסף תגים",
+      "selectedTags": "תגים נבחרים",
+      "suggested": "מוצע"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "פעילות לכידה"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "עדיין לא הוגשו פריטים",
+      "recentlyFiled": "הוגש לאחרונה",
+      "latestActionsOnYourInbox": "הפעולות האחרונות בתיבת הדואר הנכנס שלך",
+      "linked": "מקושר"
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "טוען תובנות..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "אין סוגי פריטים להצגה",
+      "itemTypes": "סוגי פריטים",
+      "distributionOfContentFormats": "הפצת פורמטים של תוכן"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "נלכד "
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "x "
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "עורך תוכן"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "middot; "
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "הציוץ לא זמין",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "ייתכן שהציוץ הזה נמחק או שהוא מחשבון פרטי.",
+      "openOnXCom": "פתח ב-x.com",
+      "views": "צפיות",
+      "xCom": "x.com",
+      "viewOnX": "צפה ב-X"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "הקלד את שם התיקיה...",
+      "quickFileFolderSearch": "חיפוש מהיר של תיקיות קבצים"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "לסגור",
+      "capture": "ללכוד"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "הסר את הקובץ המצורף"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "קלט צילום מהיר",
+      "recordVoiceMemo": "הקלט תזכיר קולי",
+      "attachFile": "צרף קובץ"
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "קישור"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "נלכד",
+      "dismissError": "בטל שגיאה",
+      "alreadyCaptured": "כבר נלכד",
+      "ldquo": "ldquo;",
+      "rdquoMiddot": "rdquo; · ",
+      "captureAnyway": "ללכוד בכל מקרה",
+      "close": "סגור"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "זרוק כדי ללכוד",
+      "capturing": "מצלם..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "הצעות לתיקיות",
+      "noFoldersMatch": "אין תיקיות תואמות \""
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "הגדר תזכורת עבור הטקסט הזה",
+      "remindMeAboutThis": "תזכיר לי את זה",
+      "selectedText": "טקסט נבחר:"
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "להזכיר",
+      "remindMe": "תזכיר לי",
+      "pickDateTime": "בחר תאריך ושעה",
+      "addANoteOptional": "הוסף הערה (אופציונלי)",
+      "backToPresets": "חזרה להגדרות קבועות מראש",
+      "time": "זמן",
+      "noteOptional": "הערה (אופציונלי)",
+      "whyAreYouSettingThisReminder": "למה אתה מגדיר את התזכורת הזו?"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "נודניק",
+      "snooze2": "נודניק",
+      "pickDateTime": "בחר תאריך ושעה",
+      "pickDateTime2": "בחר תאריך ושעה",
+      "selectWhenToBeRemindedAboutThisItem": "בחר מתי לקבל תזכורת לגבי פריט זה",
+      "snooze3": "נודניק",
+      "snooze4": "נודניק",
+      "snooze5": "נודניק"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "טוען פוסט...",
+      "failedToLoad": "הטעינה נכשלה",
+      "loadingPostContent": "טוען תוכן פוסט...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "טעינת תוכן הפוסט נכשלה. הפוסט עשוי להיות פרטי או נמחק.",
+      "viewOn": "הצג על "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "התחל להקליט קול",
+      "requestingMicrophoneAccess": "מבקש גישה למיקרופון...",
+      "settings": "הגדרות",
+      "processing": "מעבד...",
+      "cancelRecording": "בטל הקלטה",
+      "cancel": "בטל",
+      "stopRecording": "תפסיק להקליט",
+      "stop": "עצור"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCaptureLink": "כשל בלכידת הקישור",
+      "failedToCaptureNote": "לכידת ההערה נכשלה",
+      "captureFailed": "הלכידה נכשלה",
+      "failedToCaptureVoiceMemo": "כשל בלכידת התזכיר הקולי",
+      "voiceCaptureFailed": "לכידת קול נכשלה",
+      "failedToCaptureFile": "כשל בלכידת הקובץ",
+      "fileCaptureFailed": "לכידת הקובץ נכשלה",
+      "failedToCaptureAudio": "כשל בלכידת האודיו",
+      "failedToCaptureVoice": "לא הצליח ללכוד את הקול"
+    },
+    "toasts": {
+      "inboxRefreshed": "דואר נכנס רענון"
+    }
+  }
+}

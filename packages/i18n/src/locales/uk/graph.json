@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Завантаження графіка...",
+    "load-failed": "Не вдалося завантажити дані графіка",
+    "try-again": "Спробуйте ще раз",
+    "aria-label": "Граф знань з {nodeCount, plural, one {# вузол} other {# вузли}} та {edgeCount, plural, one {# з'єднання} other {# з'єднання}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Вузли графа",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Ваш граф знань",
+    "description": "З’єднання між вашими нотатками, завданнями та проєктами з’являться тут у вигляді інтерактивного графа.",
+    "link-title": "Пов’язати ваші нотатки",
+    "link-description": "Використовуйте [[wikilinks]] для зв’язку ідей між нотатками",
+    "discover-title": "Відкрийте закономірності",
+    "discover-description": "Зі зростанням кількості зв’язків кластери та теми будуть виникати природно"
+  },
+  "entity": {
+    "note": "нотатка",
+    "notes": "нотатки",
+    "journal": "щоденник",
+    "journals": "щоденники",
+    "task": "завдання",
+    "tasks": "завдання",
+    "project": "проект",
+    "projects": "проєкти",
+    "tag": "позначка",
+    "tags": "теги",
+    "orphan": "сирота",
+    "orphans": "сироти",
+    "unresolved": "нерозв’язані"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Налаштування графа",
+    "hide-settings": "Приховати налаштування",
+    "reset-filters": "Скинути фільтри",
+    "filters": "Фільтри",
+    "display": "Відображення",
+    "show-labels": "Показати підписи",
+    "focus-depth": "глибина {depth}",
+    "clear-focus": "Очистити виділений вузол"
+  },
+  "filter": {
+    "notes": "Примітки",
+    "journals": "Журнали",
+    "tasks": "Завдання",
+    "projects": "Проекти",
+    "tags": "Теги",
+    "orphans": "Сироти",
+    "toggle-entity": "Перемкнути {label}",
+    "toggle-orphans": "Перемкнути вузли-сироти"
+  },
+  "search": {
+    "placeholder": "Пошук вузлів...",
+    "clear": "Очистити пошук по графу"
+  },
+  "context-menu": {
+    "untitled": "Без назви",
+    "focus-node": "Зосередитися на цьому вузлі",
+    "open-new-tab": "Відкрити у новій вкладці",
+    "create-note": "Створити нотатку",
+    "copy-title": "Скопіювати заголовок"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {# з'єднання} other {# з'єднання}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Завантаження графіка...",
+    "empty": "З’єднань не знайдено",
+    "open-full": "Відкрити повний граф",
+    "close": "Закрити граф"
+  }
+}

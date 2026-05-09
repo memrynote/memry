@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "Salva",
+    "cancel": "Annulla",
+    "close": "Chiudi",
+    "ok": "Va bene",
+    "yes": "Sì",
+    "no": "No",
+    "delete": "Elimina",
+    "confirm": "Conferma",
+    "apply": "Applicare",
+    "done": "Fatto",
+    "discard": "Scartare",
+    "dontSave": "Non salvare",
+    "edit": "Modifica",
+    "add": "Aggiungi",
+    "remove": "Rimuovi",
+    "retry": "Riprova",
+    "submit": "Invia",
+    "back": "Indietro",
+    "next": "Avanti",
+    "continue": "Continua",
+    "reset": "Ripristina",
+    "copy": "Copia",
+    "paste": "Incolla",
+    "create": "Crea",
+    "open": "Aperto"
+  },
+  "state": {
+    "loading": "Caricamento…",
+    "saving": "Salvataggio…",
+    "deleting": "Eliminazione…",
+    "searching": "Ricerca…",
+    "error": "Errore",
+    "success": "Successo"
+  },
+  "empty": {
+    "noResults": "Nessun risultato",
+    "noItems": "Nessun articolo",
+    "noMatch": "Nessuna corrispondenza"
+  },
+  "action": {
+    "search": "Cerca",
+    "edit": "Modifica",
+    "delete": "Elimina",
+    "close": "Chiudi",
+    "expand": "Espandi",
+    "collapse": "Crollo",
+    "showMore": "+{count, plural, one {# altro} other {# altro}}",
+    "showLess": "Mostra meno"
+  },
+  "tabs": {
+    "pin": "Scheda Perno",
+    "unpin": "Sblocca scheda",
+    "contextMenu": {
+      "close": "Chiudi",
+      "closeOthers": "Chiudi gli altri",
+      "closeToRight": "Vicino a destra",
+      "closeAll": "Chiudi tutto",
+      "duplicate": "Scheda duplicata",
+      "splitRight": "Dividi a destra",
+      "splitDown": "Diviso",
+      "copyPath": "Copia percorso",
+      "revealInSidebar": "Rivela nella barra laterale"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {Articolo #} other {Elementi #}}",
+    "note": "{count, plural, one {Nota #} other {Note #}}",
+    "folder": "{count, plural, one {cartella #} other {cartelle #}}",
+    "task": "{count, plural, one {Attività #} other {Attività #}}",
+    "project": "{count, plural, one {Progetto #} other {Progetti #}}",
+    "itemDelete": "{count, plural, one {Elimina l'elemento #} other {Elimina elementi #}}"
+  },
+  "toast": {
+    "actionFailed": "Azione fallita",
+    "nothingToUndo": "Niente da annullare",
+    "undone": "Annullato: {description}",
+    "undoFailed": "Impossibile annullare l'azione",
+    "copied": "Copiato",
+    "copyFailed": "Impossibile copiare"
+  },
+  "dateRelative": {
+    "today": "Oggi",
+    "yesterday": "Ieri",
+    "daysAgo": "{count, plural, one {# giorno fa} other {# giorni fa}}"
+  },
+  "recurrence": {
+    "everyDay": "Ogni giorno",
+    "everyNDays": "{count, plural, one {Ogni giorno} other {Ogni # giorni}}",
+    "everyWeek": "Ogni settimana",
+    "everyNWeeks": "{count, plural, one {Ogni settimana} other {Ogni # settimane}}",
+    "everyWeekday": "Tutti i giorni feriali",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Tutti i giorni feriali} other {Ogni # settimane nei giorni feriali}}",
+    "everyWeekend": "Ogni fine settimana",
+    "everyNWeeksOnWeekends": "{count, plural, one {Ogni fine settimana} other {Ogni # settimane nei fine settimana}}",
+    "everyWeekOnDays": "Ogni settimana su {days}",
+    "everyNWeeksOnDays": "{count, plural, one {Ogni settimana su {days}} other {Ogni settimana # su {days}}}",
+    "everyMonth": "Ogni mese",
+    "everyNMonths": "{count, plural, one {Ogni mese} other {Ogni # mesi}}",
+    "everyMonthOnDay": "Ogni mese su {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {Ogni mese su {day}{suffix}} other {Ogni mese # su {day}{suffix}}}",
+    "everyMonthOnWeekDay": "Ogni mese su {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Ogni mese su {week} {day}} other {Ogni mese # su {week} {day}}}",
+    "everyYear": "Ogni anno",
+    "everyNYears": "{count, plural, one {Ogni anno} other {Ogni # anni}}",
+    "repeats": "Si ripete"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Collezioni",
+      "newNote": "Nuova nota",
+      "newNote2": "Nuova nota",
+      "newFolder": "Nuova cartella",
+      "newFolder2": "Nuova cartella",
+      "bookmarks": "Segnalibri",
+      "tags": "Tag",
+      "dropFilesToImport": "Rilascia i file da importare",
+      "newNoteN": "Nuova nota (⌘N)",
+      "new": "Nuovo",
+      "syncDisabled": "Sincronizzazione disabilitata",
+      "syncDisabled2": "Sincronizzazione disabilitata"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Ridimensiona il pannello del giorno",
+      "dragToResizeDoubleClickToReset": "Trascina per ridimensionare · Fare doppio clic per reimpostare"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Trova, sostituisci, chiedi..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Salta l'onboarding",
+      "welcomeToMemry": "Benvenuto in Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "La tua base di conoscenza personale. Prendiamoci 2 minuti per iniziare.",
+      "getStarted": "Inizia ",
+      "createYourFirstNote": "Crea la tua prima nota",
+      "markdownBasedStoredLocallyAsPlainFiles": "Basato su Markdown, archiviato localmente come file semplici.",
+      "eGMeetingNotesIdeasAnything": "ad es. Appunti di riunioni, idee, qualsiasi cosa...",
+      "skip": "Salta",
+      "createNote": "Crea nota ",
+      "addYourFirstTask": "Aggiungi la tua prima attività",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Le attività si collegano alle tue note, con priorità e date di scadenza.",
+      "eGReviewProjectProposal": "ad es. Esamina la proposta di progetto...",
+      "skip2": "Salta",
+      "createTask": "Crea attività ",
+      "syncAcrossDevices": "Sincronizza tra dispositivi",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Mantieni le tue note e le tue attività sincronizzate su tutti i tuoi dispositivi. Puoi sempre configurarlo in seguito.",
+      "skipForNow": "Salta per ora",
+      "doneLetSGo": "Fatto: andiamo! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Imposta l'icona della cartella"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "SUGGERIMENTO"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Selettore di icone",
+      "selectIcon": "Seleziona l'icona",
+      "closeIconPicker": "Chiudi il selettore di icone",
+      "searchIcons": "Cerca icone...",
+      "all": "Tutto",
+      "clearIcon": "Icona Cancella",
+      "noIconsFoundFor": "Nessuna icona trovata per \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Scorciatoie da tastiera",
+      "closeShortcutsHelp": "Aiuto per chiudere le scorciatoie",
+      "press": "Premere",
+      "toClose": "chiudere"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Imposta icona",
+      "clearIcon": "Icona Cancella"
+    },
+    "componentsNavMain": {
+      "platform": "Piattaforma"
+    },
+    "componentsNavProjects": {
+      "projects": "Progetti",
+      "more": "Di più",
+      "viewProject": "Visualizza progetto",
+      "shareProject": "Condividi progetto",
+      "deleteProject": "Elimina progetto",
+      "more2": "Di più"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Passa a Pro",
+      "account": "Conto",
+      "billing": "Fatturazione",
+      "notifications": "Notifiche",
+      "logOut": "Esci"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Cerca",
+      "searchNotesTasksJournalInbox": "Cerca note, attività, diario, posta in arrivo...",
+      "noResultsFor": "Nessun risultato per “",
+      "rdquo": "rdquo;",
+      "result": "risultato"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Cerca e fai clic sugli elementi per creare il tuo percorso",
+      "reasons": "Ragioni",
+      "clear": "Chiaro"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Chiaro",
+      "tags": "Tag",
+      "filterByTag": "Filtra per tag...",
+      "dateRange": "Intervallo di date"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Visualizza tutto ",
+      "results": "risultati"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "p",
+      "fuzzy": "sfocato"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Nessuna scheda aperta",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Apri una pagina dalla barra laterale o crea una nuova scheda per iniziare",
+      "openInbox": "Apri Posta in arrivo",
+      "closePane": "Chiudi riquadro"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Preimpostazioni del layout",
+      "layoutPresets2": "Preimpostazioni di layout"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Ridimensionare i riquadri"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TasksContext non disponibile",
+      "searchResults": "Risultati della ricerca",
+      "unknownTabType": "Tipo di scheda sconosciuto: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "modifiche non salvate",
+      "preview": "anteprima"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Nuova scheda",
+      "newTab2": "Nuova scheda",
+      "newNote": "Nuova nota",
+      "journal": "Diario",
+      "calendar": "Calendario",
+      "inboxCapture": "Acquisizione della posta in arrivo",
+      "tasks": "Compiti"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Modifiche non salvate",
+      "unsaved": "non salvato)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Modifiche non salvate"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Chiudi tutte le schede"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Schede aperte",
+      "scrollTabsLeft": "Scorri le schede a sinistra",
+      "scrollTabsRight": "Scorri le schede verso destra",
+      "graphG": "Grafico (⌘G)",
+      "dayPanel": "Pannello del giorno"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "Scorri le schede a sinistra",
+      "scrollTabsRight": "Scorri le schede verso destra"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "Schede aperte",
+      "scrollTabsLeft": "Scorri le schede a sinistra",
+      "scrollTabsRight": "Scorri le schede verso destra"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Qualcosa è andato storto",
+      "anErrorOccurredWhileRenderingThisTabContent": "Si è verificato un errore durante il rendering del contenuto di questa scheda.",
+      "tryAgain": "Riprova"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Icona della nota"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Modifiche non salvate",
+      "quot": "quot;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; presenta modifiche non salvate. Cosa ti piacerebbe fare?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Nuovo spazio di lavoro",
+      "darkMode": "Modalità oscura",
+      "settings": "Impostazioni",
+      "integrations": "Integrazioni",
+      "signOut": "Esci",
+      "downloadOnIos": "Scarica su iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Chiudi la finestra",
+      "minimizeWindow": "Riduci a icona la finestra",
+      "maximizeWindow": "Ingrandisci la finestra"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Suggerimenti",
+      "or": "o",
+      "enter": "Entra",
+      "toInsert": "inserire"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "pangrattato",
+      "more": "Di più"
+    },
+    "componentsUiDialog": {
+      "close": "Chiudi"
+    },
+    "componentsUiSheet": {
+      "close": "Chiudi"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Barra laterale",
+      "displaysTheMobileSidebar": "Visualizza la barra laterale mobile.",
+      "toggleSidebar": "Attiva/disattiva la barra laterale",
+      "toggleSidebar2": "Attiva/disattiva la barra laterale",
+      "dragToResizeDoubleClickToReset": "Trascina per ridimensionare · Fare doppio clic per reimpostare"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Benvenuto in Memry",
+      "yourPersonalKnowledgeManagementSystem": "Il tuo sistema personale di gestione della conoscenza.",
+      "selectAFolderToStoreYourNotesAndTasks": "Seleziona una cartella in cui archiviare le note e le attività.",
+      "opening": "Apertura...",
+      "selectVaultFolder": "Seleziona la cartella del Vault",
+      "plainMarkdown": "Ribasso semplice",
+      "yourNotesStayPortable": "I tuoi appunti rimangono portatili",
+      "syncAnywhere": "Sincronizza ovunque",
+      "useDropboxIcloudGit": "Usa Dropbox, iCloud, Git",
+      "recentVaults": "Depositi recenti",
+      "notesLastOpened": "note · Ultima apertura"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Nessun caveau ancora",
+      "openVault": "Volta aperta",
+      "settings": "Impostazioni",
+      "logOut": "Esci",
+      "signInToSync": "Accedi per sincronizzare",
+      "remove": "Rimuovi “",
+      "rdquoFromList": "rdquo; dalla lista?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Questo deposito verrà rimosso dall'app, ma i tuoi file rimarranno sul disco. Puoi sempre aggiungerlo nuovamente in seguito.",
+      "cancel": "Annulla",
+      "remove2": "Rimuovi"
+    },
+    "componentsWindowControls": {
+      "searchK": "Cerca (⌘K)",
+      "browserBack": "Browser indietro",
+      "back": "Indietro",
+      "browserForward": "Avanzamento del browser",
+      "forward": "Avanti"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Impossibile importare i file",
+      "failedToCreateNote": "Impossibile creare la nota",
+      "failedToAccessMicrophone": "Impossibile accedere al microfono"
+    },
+    "toasts": {
+      "undone": "Annullato"
+    }
+  }
+}

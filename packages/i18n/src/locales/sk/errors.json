@@ -1,0 +1,80 @@
+{
+  "generic": {
+    "somethingWentWrong": "Niečo sa pokazilo. Skúste to prosím znova.",
+    "operationFailed": "Operácia zlyhala",
+    "unknown": "Vyskytla sa neznáma chyba",
+    "validationFailed": "Overenie zlyhalo",
+    "actionFailed": "Akcia zlyhala"
+  },
+  "ipc": {
+    "noVaultOpen": "Žiadny trezor nie je otvorený. Najprv otvorte trezor."
+  },
+  "vault": {
+    "notFound": "Trezor sa nenašiel. Možno bol presunutý alebo vymazaný.",
+    "notInitialized": "Žiadny trezor nie je otvorený. Otvorte alebo vytvorte trezor, aby ste pokračovali.",
+    "invalidPath": "Vybraná cesta nie je platná lokalita trezora.",
+    "permissionDenied": "Prístup zamietnutý. Skontrolujte, či máte prístup do tejto zložky.",
+    "alreadyExists": "Na tejto lokalite už trezor existuje.",
+    "corrupted": "Tento trezor sa zdá byť poškodený. Skúste ho obnoviť zo zálohy."
+  },
+  "note": {
+    "notFound": "Táto poznámka sa nenašla. Možno bola vymazaná.",
+    "invalidFrontmatter": "Táto poznámka má neplatné metaúdaje a nemožno ju čítať.",
+    "duplicateId": "Poznámka s týmto ID už existuje.",
+    "writeFailed": "Nepodarilo sa uložiť túto poznámku. Skontrolujte miesto na disku a oprávnenia.",
+    "readFailed": "Nepodarilo sa prečítať túto poznámku. Súbor môže byť zamknutý alebo poškodený.",
+    "deleteFailed": "Nepodarilo sa vymazať túto poznámku. Skontrolujte oprávnenia súboru.",
+    "invalidPath": "Cesta k poznámke je neplatná."
+  },
+  "database": {
+    "connectionFailed": "Nepodarilo sa pripojiť k lokálnej databáze. Skúste reštartovať aplikáciu.",
+    "migrationFailed": "Aktualizácia databázy zlyhala. Skúste reštartovať aplikáciu.",
+    "queryFailed": "Operácia s databázou zlyhala. Skúste znova.",
+    "notInitialized": "Databáza nie je pripravená. Skúste reštartovať aplikáciu.",
+    "constraintViolation": "Vyskytol sa konflikt dát. Skúste znova.",
+    "corrupted": "Lokálna databáza je poškodená. Možno bude potrebné ju resetovať."
+  },
+  "watcher": {
+    "startFailed": "Nepodarilo sa začať sledovať zmeny súboru.",
+    "stopFailed": "Nepodarilo sa zastaviť sledovanie súboru.",
+    "eventError": "Pri sledovaní zmien súboru došlo k chybe."
+  },
+  "attachment": {
+    "fileTooLarge": "Tento súbor je príliš veľký na priloženie.",
+    "unsupportedType": "Tento typ súboru nie je podporovaný.",
+    "writeFailed": "Nepodarilo sa uložiť prílohu. Skontrolujte miesto na disku.",
+    "deleteFailed": "Nepodarilo sa vymazať prílohu."
+  },
+  "encryption": {
+    "failed": "Nepodarilo sa zašifrovať dáta. Môže byť potrebné znovu vygenerovať vaše kľúče.",
+    "decryptionFailed": "Nepodarilo sa dešifrovať dáta. Vaše šifrovacie kľúče môžu byť zastarané.",
+    "invalidKeyLength": "Neplatný šifrovací kľúč. Skúste sa odhlásiť a potom prihlásiť späť.",
+    "invalidNonceLength": "Chyba šifrovania. Skúste operáciu znova."
+  },
+  "inboxAttachment": {
+    "writeFailed": "Nepodarilo sa uložiť prílohu doručenej pošty.",
+    "deleteFailed": "Nepodarilo sa vymazať prílohu doručenej pošty."
+  },
+  "sync": {
+    "networkOffline": "Ste offline. Zmeny sa synchronizujú, keď sa pripojíte späť.",
+    "networkTimeout": "Synchronizačný server reagoval príliš pomaly. Čoskoro sa opäť pokúsime.",
+    "serverError": "Synchronizačný server narazil na chybu. Automaticky sa pokúsime znova.",
+    "authExpired": "Vaša relácia vypršala. Prihláste sa znova, aby ste pokračovali v synchronizácii.",
+    "deviceRevoked": "Toto zariadenie bolo odstránené z vášho účtu.",
+    "rateLimited": "Príliš veľa požiadaviek. Synchronizácia bude čoskoro pokračovať.",
+    "cryptoFailure": "Nepodarilo sa zašifrovať alebo dešifrovať údaje synchronizácie. Skúste sa odhlásiť a znova prihlásiť.",
+    "versionIncompatible": "Táto verzia Memry už nie je podporovaná. Prosím aktualizujte.",
+    "storageQuotaExceeded": "Váš úložný priestor pre synchronizáciu je plný. Uvoľnite miesto alebo upgradujte svoj plán.",
+    "certificatePinFailed": "Nepodarilo sa nadviazať bezpečné pripojenie. Skontrolujte svoje sieťové pripojenie.",
+    "unknown": "Vyskytla sa neočakávaná chyba synchronizácie. Skúsi sa to automaticky znova.",
+    "statusFetchFailed": "Nepodarilo sa načítať stav synchronizácie",
+    "engineNotInitialized": "Synchronizačný stroj nebol inicializovaný. Otvorte trezor, aby ste spustili synchronizáciu.",
+    "triggerFailed": "Synchronizácia zlyhala",
+    "pauseFailed": "Nepodarilo sa pozastaviť synchronizáciu",
+    "resumeFailed": "Nepodarilo sa obnoviť synchronizáciu",
+    "settingsNotInitialized": "Synchronizácia nastavení nebola inicializovaná",
+    "securityQuarantinePermanent": "Synchronizačná položka nemohla byť overená a bola umiestnená do karantény z bezpečnostných dôvodov.",
+    "securityQuarantineRetry": "Overenie podpisu synchronizačnej položky zlyhalo a bude sa skúšať znova.",
+    "certificatePinPaused": "Bezpečné pripojenie k synchronizačnému serveru nemohlo byť overené. Synchronizácia bola zastavená na vašu ochranu."
+  }
+}

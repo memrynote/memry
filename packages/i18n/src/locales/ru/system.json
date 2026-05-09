@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "Выберите папку хранилища",
+      "button": "Выберите хранилище"
+    },
+    "exportPdf": {
+      "title": "Экспортировать в PDF",
+      "filterName": "PDF-документ"
+    },
+    "exportHtml": {
+      "title": "Экспортировать как HTML",
+      "filterName": "HTML-документ"
+    },
+    "import": {
+      "filterSupported": "Поддерживаемые файлы",
+      "filterAll": "Все файлы"
+    },
+    "exportCancelled": "Экспорт отменен",
+    "update": {
+      "availableTitle": "Доступно обновление",
+      "availableMessage": "Memry Доступен {version}.",
+      "availableDetailFallback": "Загрузить обновление сейчас?",
+      "buttonDownload": "Скачать",
+      "buttonLater": "Позже",
+      "readyTitle": "Обновление готово",
+      "readyMessage": "Memry {version} загружен.",
+      "readyDetailFallback": "Перезапустите Memry, чтобы завершить установку обновления.",
+      "buttonRestartNow": "Перезагрузить сейчас",
+      "releaseNotesLabel": "Примечания к выпуску:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "Напоминание о заметке",
+      "journal": "Напоминание о журнале",
+      "highlight": "Выделить напоминание",
+      "fallback": "Срок напоминания",
+      "default": "Напоминание"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "Время напоминания должно быть в будущем",
+    "definitionNotFound": "Определение не найдено",
+    "noteNotFound": "Примечание не найдено",
+    "updateFailed": "Обновление не выполнено"
+  }
+}

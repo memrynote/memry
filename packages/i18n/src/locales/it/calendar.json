@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "Giorno",
+    "week": "Settimana",
+    "month": "Mese",
+    "year": "Anno"
+  },
+  "toolbar": {
+    "create-event": "Crea evento",
+    "previous-period": "Periodo precedente",
+    "next-period": "Prossimo periodo",
+    "previous-month": "Mese precedente",
+    "next-month": "Il mese prossimo",
+    "today": "Oggi"
+  },
+  "filter": {
+    "filter-calendars": "Filtra i calendari",
+    "sources": "Fonti",
+    "memry-items": "Elementi Memry",
+    "imported-calendars": "Calendari importati",
+    "event-types": "Tipi di eventi",
+    "google-calendars": "Calendari di Google",
+    "refresh-google-calendars": "Aggiorna i calendari di Google"
+  },
+  "visual-type": {
+    "event": "Evento",
+    "imported-event": "Evento importato",
+    "task": "Compito",
+    "reminder": "Promemoria",
+    "snooze": "Posticipa"
+  },
+  "state": {
+    "loading-calendar": "Caricamento calendario...",
+    "loading-calendars": "Caricamento calendari...",
+    "preparing": "Preparazione…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "Nessun calendario ancora importato.",
+    "no-events": "Nessun evento"
+  },
+  "time": {
+    "all-day": "Tutto il giorno",
+    "all-day-lower": "tutto il giorno",
+    "pick-a-date": "Scegli una data",
+    "new-event": "Nuovo evento",
+    "more-events": "{count, plural, one {# altro evento} other {# altri eventi}}"
+  },
+  "form": {
+    "create-calendar-event": "Crea evento nel calendario",
+    "edit-calendar-event": "Modifica evento del calendario",
+    "quick-create-description": "Inserisci un titolo e salva per creare un evento nell'intervallo di tempo selezionato.",
+    "event-editor-description": "Aggiorna titolo, luogo, data, ora e note per questo evento.",
+    "new-event-placeholder": "Nuovo evento",
+    "location-placeholder": "Aggiungi posizione",
+    "notes-url-placeholder": "Aggiungi note o URL",
+    "start": "Inizia",
+    "end": "Fine",
+    "add-details": "Aggiungi dettagli",
+    "google-calendar": "Calendario di Google",
+    "target-calendar": "Calendario di destinazione",
+    "use-default-calendar": "Utilizza il calendario predefinito",
+    "use-default-calendar-with-name": "Utilizza predefinito ({calendar})",
+    "use-memry-calendar-default": "Utilizza il calendario Memry (predefinito)",
+    "use-memry-managed-calendar": "Utilizza il calendario gestito da Memry",
+    "primary-suffix": "primario"
+  },
+  "delete-dialog": {
+    "title": "Eliminare l'evento?",
+    "local-description": "\"{title}\" verrà eliminato definitivamente. Questa azione non può essere annullata.",
+    "google-bound-description": "\"{title}\" verrà rimosso da Memry e Google Calendar. Questa azione non può essere annullata.",
+    "context-menu-delete-label": "Elimina evento"
+  },
+  "promote-dialog": {
+    "aria": "Modifica evento del calendario esterno",
+    "title": "Modificare questo evento in Memry?",
+    "body": "La modifica di questo evento creerà una copia collegata in Memry in modo che le modifiche vengano sincronizzate in entrambe le direzioni. Continuare?",
+    "do-not-ask-again": "Non chiedermelo più",
+    "confirm-label": "Modifica in Memry"
+  },
+  "onboarding-dialog": {
+    "aria": "Scegli il tuo calendario Google predefinito",
+    "title": "A quale calendario dovrebbero andare i nuovi eventi Memry?",
+    "body": "Scegli il calendario Google che Memry dovrebbe utilizzare per impostazione predefinita. Puoi comunque sovrascriverlo per evento.",
+    "default-calendar-label": "Utilizza il calendario gestito da Memry",
+    "skip": "Salta",
+    "use-this-calendar": "Usa questo calendario"
+  },
+  "metadata": {
+    "attendees": "Partecipanti",
+    "attendees-count": "Partecipanti ({count})",
+    "reminders": "Promemoria",
+    "default-reminders": "Promemoria predefiniti",
+    "visibility": "Visibilità:",
+    "optional": "Facoltativo",
+    "join-meeting": "Partecipa alla riunione",
+    "response": {
+      "accepted": "Accettato",
+      "declined": "Rifiutato",
+      "tentative": "Provvisorio",
+      "needs-action": "In sospeso"
+    },
+    "visibility-value": {
+      "private": "Privato",
+      "public": "Pubblico",
+      "confidential": "Confidenziale"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "minimo · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "Impossibile salvare l'evento. Riprova.",
+      "couldNotCreateEventTryAgain": "Impossibile creare l'evento. Riprova.",
+      "couldNotSaveDefaultCalendarTryAgain": "Impossibile salvare il calendario predefinito. Riprova.",
+      "failedToLoadCalendarPreferences": "Impossibile caricare le preferenze del calendario",
+      "failedToUpdateCalendarPreferences": "Impossibile aggiornare le preferenze del calendario",
+      "couldNotEditThisEventTryAgain": "Impossibile modificare questo evento. Riprova.",
+      "failedToDeleteEvent": "Impossibile eliminare l'evento",
+      "couldNotUnsnoozeInboxItem": "Impossibile riattivare il posticipo.",
+      "couldNotRescheduleInboxItem": "Impossibile riprogrammare."
+    },
+    "inboxSnoozePopover": {
+      "title": "Elemento della posta in arrivo posticipato",
+      "openInInbox": "Apri nella posta in arrivo",
+      "unsnoozeNow": "Riattiva ora",
+      "reschedule": "Riprogrammare"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "Dettagli dell'attività",
+    "open-task": "Apri attività",
+    "source-note": "Nota sulla fonte",
+    "reschedule": "Riprogrammare",
+    "more-actions": "Più azioni",
+    "mark-done": "Marco fatto",
+    "mark-not-done": "Marco non fatto",
+    "later-today": "Più tardi oggi",
+    "tomorrow": "Domani",
+    "next-week": "La prossima settimana",
+    "next-week-mon": "La prossima settimana · Lun",
+    "pick-date-time": "Scegli data e ora...",
+    "remove-due-date": "Rimuovi la data di scadenza",
+    "subtasks-prefix": "Attività secondarie",
+    "subtasks-counter": "{done} di {total} eseguito",
+    "today": "Oggi",
+    "overdue-one": "1 giorno di ritardo",
+    "overdue-other": "{count} giorni di ritardo",
+    "repeats": "Si ripete",
+    "repeats-daily": "Si ripete ogni giorno",
+    "repeats-weekly": "Si ripete settimanalmente",
+    "repeats-monthly": "Si ripete mensilmente",
+    "repeats-yearly": "Si ripete ogni anno",
+    "priority-urgent": "Urgente",
+    "priority-high": "Alto",
+    "priority-medium": "Medio",
+    "errors": {
+      "could-not-save": "Impossibile salvare l'attività",
+      "could-not-reschedule": "Impossibile riprogrammare l'attività",
+      "could-not-remove-due-date": "Impossibile rimuovere la data di scadenza",
+      "could-not-open-note": "Impossibile aprire la nota"
+    }
+  }
+}

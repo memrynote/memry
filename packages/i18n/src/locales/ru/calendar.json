@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "День",
+    "week": "неделя",
+    "month": "Месяц",
+    "year": "Год"
+  },
+  "toolbar": {
+    "create-event": "Создать событие",
+    "previous-period": "Предыдущий период",
+    "next-period": "Следующий период",
+    "previous-month": "Предыдущий месяц",
+    "next-month": "В следующем месяце",
+    "today": "Сегодня"
+  },
+  "filter": {
+    "filter-calendars": "Фильтровать календари",
+    "sources": "Источники",
+    "memry-items": "Memry элементов",
+    "imported-calendars": "Импортированные календари",
+    "event-types": "Типы событий",
+    "google-calendars": "Google календари",
+    "refresh-google-calendars": "Обновите календари Google."
+  },
+  "visual-type": {
+    "event": "Событие",
+    "imported-event": "Импортированное событие",
+    "task": "Задача",
+    "reminder": "Напоминание",
+    "snooze": "Отложить"
+  },
+  "state": {
+    "loading-calendar": "Загрузка календаря…",
+    "loading-calendars": "Загрузка календарей…",
+    "preparing": "Подготовка…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "Импортированных календарей пока нет.",
+    "no-events": "Нет событий"
+  },
+  "time": {
+    "all-day": "Весь день",
+    "all-day-lower": "весь день",
+    "pick-a-date": "Выберите дату",
+    "new-event": "Новое событие",
+    "more-events": "{count, plural, one {# еще событие} other {# больше событий}}"
+  },
+  "form": {
+    "create-calendar-event": "Создать событие календаря",
+    "edit-calendar-event": "Изменить событие календаря",
+    "quick-create-description": "Введите название и сохраните его, чтобы создать событие в выбранном временном диапазоне.",
+    "event-editor-description": "Обновите название, место, дату, время и примечания для этого события.",
+    "new-event-placeholder": "Новое событие",
+    "location-placeholder": "Добавить местоположение",
+    "notes-url-placeholder": "Добавить заметки или URL",
+    "start": "Старт",
+    "end": "Конец",
+    "add-details": "Добавить детали",
+    "google-calendar": "Google календарь",
+    "target-calendar": "Целевой календарь",
+    "use-default-calendar": "Использовать календарь по умолчанию",
+    "use-default-calendar-with-name": "Использовать по умолчанию ({calendar})",
+    "use-memry-calendar-default": "Использовать календарь Memry (по умолчанию)",
+    "use-memry-managed-calendar": "Используйте календарь, управляемый Memry.",
+    "primary-suffix": "первичный"
+  },
+  "delete-dialog": {
+    "title": "Удалить мероприятие?",
+    "local-description": "«{title}» будет удален без возможности восстановления. Это действие невозможно отменить.",
+    "google-bound-description": "«{title}» будет удален из Memry и Календаря Google. Это действие невозможно отменить.",
+    "context-menu-delete-label": "Удалить мероприятие"
+  },
+  "promote-dialog": {
+    "aria": "Изменить событие внешнего календаря",
+    "title": "Изменить это событие в Memry?",
+    "body": "При редактировании этого события будет создана связанная копия в Memry, поэтому изменения синхронизируются в обоих направлениях. Продолжить?",
+    "do-not-ask-again": "Не спрашивай больше",
+    "confirm-label": "Редактировать в Memry"
+  },
+  "onboarding-dialog": {
+    "aria": "Выберите календарь Google по умолчанию.",
+    "title": "В какой календарь следует помещать новые события Memry?",
+    "body": "Выберите календарь Google, который Memry должен использовать по умолчанию. Вы все равно можете переопределить его для каждого события.",
+    "default-calendar-label": "Используйте календарь, управляемый Memry.",
+    "skip": "Пропустить",
+    "use-this-calendar": "Используйте этот календарь"
+  },
+  "metadata": {
+    "attendees": "Участники",
+    "attendees-count": "Участники ({count})",
+    "reminders": "Напоминания",
+    "default-reminders": "Напоминания по умолчанию",
+    "visibility": "Видимость:",
+    "optional": "Необязательно",
+    "join-meeting": "Присоединиться к встрече",
+    "response": {
+      "accepted": "Принято",
+      "declined": "Отклонено",
+      "tentative": "Предварительный",
+      "needs-action": "Ожидается"
+    },
+    "visibility-value": {
+      "private": "Частный",
+      "public": "Общественный",
+      "confidential": "Конфиденциально"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "мин · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "Не удалось сохранить мероприятие. Попробуйте еще раз.",
+      "couldNotCreateEventTryAgain": "Не удалось создать мероприятие. Попробуйте еще раз.",
+      "couldNotSaveDefaultCalendarTryAgain": "Не удалось сохранить календарь по умолчанию. Попробуйте еще раз.",
+      "failedToLoadCalendarPreferences": "Не удалось загрузить настройки календаря.",
+      "failedToUpdateCalendarPreferences": "Не удалось обновить настройки календаря.",
+      "couldNotEditThisEventTryAgain": "Не удалось изменить это мероприятие. Попробуйте еще раз.",
+      "failedToDeleteEvent": "Не удалось удалить мероприятие",
+      "couldNotUnsnoozeInboxItem": "Не удалось отложить.",
+      "couldNotRescheduleInboxItem": "Не удалось перенести встречу."
+    },
+    "inboxSnoozePopover": {
+      "title": "Отложенный элемент входящих сообщений",
+      "openInInbox": "Открыть во входящих",
+      "unsnoozeNow": "Отменить откладывание сейчас",
+      "reschedule": "Перенести"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "Подробности задачи",
+    "open-task": "Открыть задачу",
+    "source-note": "Исходное примечание",
+    "reschedule": "Перенести",
+    "more-actions": "Дополнительные действия",
+    "mark-done": "Отметить готово",
+    "mark-not-done": "Отметить как не выполнено",
+    "later-today": "Позже сегодня",
+    "tomorrow": "Завтра",
+    "next-week": "На следующей неделе",
+    "next-week-mon": "На следующей неделе · Пн",
+    "pick-date-time": "Выберите дату и время…",
+    "remove-due-date": "Удалить срок выполнения",
+    "subtasks-prefix": "Подзадачи",
+    "subtasks-counter": "{done} из {total} выполнено",
+    "today": "Сегодня",
+    "overdue-one": "просрочка на 1 день",
+    "overdue-other": "{count} дней просрочено",
+    "repeats": "Повторы",
+    "repeats-daily": "Повторяется ежедневно",
+    "repeats-weekly": "Повторяется еженедельно",
+    "repeats-monthly": "Повторяется ежемесячно",
+    "repeats-yearly": "Повторяется ежегодно",
+    "priority-urgent": "Срочно",
+    "priority-high": "Высокий",
+    "priority-medium": "Средний",
+    "errors": {
+      "could-not-save": "Не удалось сохранить задачу",
+      "could-not-reschedule": "Не удалось перенести задачу",
+      "could-not-remove-due-date": "Не удалось удалить дату сдачи.",
+      "could-not-open-note": "Не удалось открыть заметку"
+    }
+  }
+}

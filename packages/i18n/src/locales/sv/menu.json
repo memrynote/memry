@@ -1,0 +1,28 @@
+{
+  "app": {
+    "quit": "Avsluta"
+  },
+  "file": {
+    "label": "Fil",
+    "newNote": "Ny anteckning",
+    "close": "Stäng fönster"
+  },
+  "navigation": {
+    "back": "Tillbaka",
+    "forward": "Framåt"
+  },
+  "edit": {
+    "label": "Redigera",
+    "undo": "Ångra",
+    "redo": "Gör om",
+    "cut": "Klipp ut",
+    "copy": "Kopiera",
+    "paste": "Klistra in"
+  },
+  "view": {
+    "label": "Visa",
+    "reload": "Ladda om",
+    "toggleDevTools": "Växla utvecklarverktyg",
+    "toggleFullscreen": "Växla fullskärm"
+  }
+}

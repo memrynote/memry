@@ -1,0 +1,1160 @@
+{
+  "toast": {
+    "exportNotImplemented": "Lokalny eksport danych nie został jeszcze zaimplementowany"
+  },
+  "page": {
+    "title": "Ustawienia",
+    "nav": {
+      "groups": {
+        "workspace": "Obszar roboczy",
+        "preferences": "Preferencje",
+        "services": "Usługi",
+        "data": "Dane"
+      },
+      "items": {
+        "account": "Konto",
+        "general": "Generał",
+        "templates": "Szablony",
+        "editor": "Redaktor",
+        "journal": "Dziennik",
+        "tasks": "Zadania",
+        "calendar": "Kalendarz",
+        "appearance": "Wygląd",
+        "shortcuts": "Skróty",
+        "ai": "Asystent AI",
+        "integrations": "Integracje",
+        "vault": "Skarbiec",
+        "tags": "Tagi",
+        "properties": "Właściwości"
+      }
+    }
+  },
+  "general": {
+    "header": {
+      "title": "Generał",
+      "subtitle": "Uruchamianie aplikacji i zachowanie zakładek",
+      "loading": "Ładowanie ustawień..."
+    },
+    "groups": {
+      "startup": "Uruchomienie",
+      "updates": "Aktualizacje",
+      "languageRegion": "Język i region",
+      "tabBehavior": "Zachowanie karty",
+      "fileCreation": "Tworzenie pliku",
+      "privacy": "Prywatność"
+    },
+    "startup": {
+      "launchAtLogin": {
+        "label": "Uruchom po zalogowaniu",
+        "description": "Uruchom Memry po zalogowaniu",
+        "error": "Nie udało się zaktualizować startu przy uruchomieniu"
+      }
+    },
+    "updates": {
+      "appUpdates": "Aktualizacje aplikacji",
+      "installedVersion": "Zainstalowana wersja {version}",
+      "availableVersion": "Dostępna wersja {version}",
+      "unsupported": "Kompilacje spakowane umożliwiają sprawdzanie, pobieranie i instalowanie aktualizacji z wydań GitHub",
+      "available": "Memry {version} jest dostępny do pobrania",
+      "downloadingLatest": "Pobieranie najnowszej wersji",
+      "downloadingLatestPercent": "Pobieranie najnowszej wersji ({percent}%)",
+      "downloaded": "Memry {version} jest gotowy do instalacji",
+      "upToDate": "Ta instalacja dotyczy najnowszej opublikowanej wersji",
+      "checking": "Sprawdzanie wydań GitHub pod kątem nowszej wersji",
+      "idle": "Sprawdź dostępność nowych wersji i zainstaluj je bez opuszczania aplikacji",
+      "unsupportedToast": "Automatyczne aktualizacje są dostępne tylko w wersjach pakietowych",
+      "upToDateToast": "Memry {version} jest aktualny",
+      "actionFailed": "Akcja aktualizacji nie powiodła się",
+      "actions": {
+        "checking": "Sprawdzam...",
+        "available": "Pobierz aktualizację",
+        "downloading": "Pobieram...",
+        "downloadingPercent": "Pobieranie {percent}%",
+        "downloaded": "Uruchom ponownie, aby zainstalować",
+        "idle": "Sprawdź aktualizacje"
+      }
+    },
+    "language": {
+      "label": "Język",
+      "helper": "Większość aplikacji aktualizuje się natychmiast. Niektóre teksty na poziomie systemu — już wyświetlane powiadomienia, etykieta stacji dokującej, pasek tytułu okna — są odświeżane po następnym uruchomieniu.",
+      "changed": "Język zmieniony na {nativeName}",
+      "failed": "Nie udało się zmienić języka. Spróbuj ponownie."
+    },
+    "clockFormat": {
+      "label": "Format czasu",
+      "description": "Zegar 12-godzinny lub 24-godzinny",
+      "options": {
+        "12h": "12-godzinny",
+        "24h": "24-godzinne"
+      },
+      "error": "Nie udało się zaktualizować formatu godziny"
+    },
+    "tabs": {
+      "previewMode": {
+        "label": "Tryb podglądu",
+        "description": "Pojedyncze kliknięcie otwiera podgląd, podwójne kliknięcie utrzymuje otwarte"
+      },
+      "restoreSession": {
+        "label": "Przywróć sesję przy uruchomieniu",
+        "description": "Otwórz ponownie karty z ostatniej sesji"
+      },
+      "closeButton": {
+        "label": "Przycisk zamykania karty",
+        "description": "Kiedy wyświetlać przycisk zamykania",
+        "options": {
+          "always": "Zawsze widoczny",
+          "hover": "Pokaż po najechaniu myszką",
+          "active": "Tylko na aktywnej karcie"
+        }
+      },
+      "error": "Nie udało się zaktualizować ustawienia"
+    },
+    "fileCreation": {
+      "createInSelectedFolder": {
+        "label": "Utwórz w wybranym folderze",
+        "description": "Nowe notatki i foldery są tworzone w aktualnie wybranym folderze. Gdy opcja jest wyłączona, elementy są zawsze tworzone w katalogu głównym."
+      }
+    },
+    "privacy": {
+      "telemetry": {
+        "label": "Udostępniaj anonimowe wskaźniki użytkowania",
+        "description": "To tylko dane anonimowe — nie są nigdy wysyłane żadne treści notatek, zapytania wyszukiwania, ścieżki plików, wiadomości e-mail ani surowe identyfikatory.",
+        "error": "Nie udało się zaktualizować ustawień telemetrii"
+      }
+    }
+  },
+  "appearance": {
+    "header": {
+      "title": "Wygląd",
+      "subtitle": "Dostosuj wygląd i styl",
+      "loading": "Ładowanie ustawień..."
+    },
+    "groups": {
+      "theme": "Motyw",
+      "accentColor": "Kolor akcentujący",
+      "typography": "Typografia"
+    },
+    "theme": {
+      "colorMode": {
+        "label": "Tryb koloru",
+        "description": "Wybierz preferowany motyw",
+        "aria": "Tryb koloru"
+      },
+      "options": {
+        "light": "Ciepły",
+        "white": "Biały",
+        "dark": "Ciemny",
+        "system": "Systemu"
+      },
+      "error": "Nie udało się zaktualizować motywu"
+    },
+    "accent": {
+      "pick": "Wybierz kolor akcentujący",
+      "custom": {
+        "label": "Kolor niestandardowy",
+        "description": "Wprowadź wartość szesnastkową",
+        "placeholder": "#000000"
+      },
+      "presets": {
+        "indigo": "Indygo",
+        "amber": "Bursztyn",
+        "emerald": "Szmaragd",
+        "red": "Czerwony",
+        "violet": "Fioletowy",
+        "cyan": "Cyjan",
+        "pink": "Różowy",
+        "orange": "Pomarańczowy"
+      },
+      "error": "Nie udało się zaktualizować koloru akcentu"
+    },
+    "typography": {
+      "fontSize": {
+        "label": "Rozmiar czcionki",
+        "description": "Dostosuj podstawowy rozmiar tekstu",
+        "aria": "Rozmiar czcionki"
+      },
+      "fontFamily": {
+        "label": "Rodzina czcionek",
+        "description": "Podstawowy krój pisma interfejsu",
+        "options": {
+          "system": "Domyślne systemowe",
+          "sansSerif": "Bezszeryfowy",
+          "serif": "Szeryf (Crimson Pro)",
+          "gelasio": "Gelasio",
+          "geist": "Geist",
+          "inter": "Inter",
+          "monospace": "Monoprzestrzeń"
+        }
+      },
+      "fontSizeError": "Nie udało się zaktualizować rozmiaru czcionki",
+      "fontFamilyError": "Nie udało się zaktualizować rodziny czcionek"
+    }
+  },
+  "editor": {
+    "header": {
+      "title": "Redaktor",
+      "subtitle": "Zanotuj ustawienia i preferencje edytora",
+      "loading": "Ładowanie ustawień..."
+    },
+    "groups": {
+      "layout": "Układ",
+      "toolbar": "Pasek narzędzi",
+      "writing": "Pisanie"
+    },
+    "width": {
+      "label": "Szerokość edytora",
+      "description": "Maksymalna szerokość obszaru pisania",
+      "options": {
+        "narrow": "Wąskie",
+        "medium": "Średni",
+        "wide": "Szeroki"
+      },
+      "error": "Nie udało się zaktualizować szerokości edytora"
+    },
+    "toolbarMode": {
+      "label": "Przyklejony pasek narzędzi formatowania",
+      "description": "Zawsze pokazuj pasek narzędzi nad edytorem",
+      "error": "Nie udało się zaktualizować trybu paska narzędzi"
+    },
+    "spellCheck": {
+      "label": "Sprawdzanie pisowni",
+      "description": "Podczas pisania podkreślaj błędnie napisane słowa",
+      "error": "Nie udało się zaktualizować sprawdzania pisowni"
+    },
+    "autoSaveDelay": {
+      "label": "Opóźnienie automatycznego zapisu",
+      "description": "Czas oczekiwania po wpisaniu zatrzymuje się przed zapisaniem",
+      "seconds": "{seconds}s",
+      "error": "Nie udało się zaktualizować opóźnienia automatycznego zapisywania"
+    },
+    "wordCount": {
+      "label": "Liczba słów",
+      "description": "Pokaż liczbę słów w stopce edytora",
+      "error": "Nie udało się zaktualizować wyświetlania liczby słów"
+    }
+  },
+  "templates": {
+    "header": {
+      "title": "Szablony",
+      "subtitle": "Zarządzaj szablonami notatek w celu szybkiego tworzenia"
+    },
+    "actions": {
+      "new": "Nowy szablon",
+      "edit": "Edytuj",
+      "duplicate": "Duplikat",
+      "delete": "Usuń"
+    },
+    "groups": {
+      "builtIn": "Wbudowany",
+      "myTemplates": "Moje szablony"
+    },
+    "loading": "Ładowanie szablonów...",
+    "newTemplateTitle": "Nowy szablon",
+    "copySuffix": "{name} (Kopia)",
+    "empty": {
+      "title": "Nie ma jeszcze żadnych szablonów niestandardowych",
+      "description": "Aby rozpocząć, utwórz szablon"
+    },
+    "toasts": {
+      "deleted": "Szablon usunięty",
+      "deleteFailed": "Nie udało się usunąć szablonu",
+      "duplicated": "Szablon zduplikowany",
+      "duplicateFailed": "Nie udało się zduplikować szablonu"
+    },
+    "dialogs": {
+      "delete": {
+        "title": "Usuń szablon",
+        "description": "Czy na pewno chcesz usunąć ten szablon? Tej akcji nie można cofnąć. Nie będzie to miało wpływu na notatki utworzone na podstawie tego szablonu."
+      },
+      "duplicate": {
+        "title": "Zduplikowany szablon",
+        "description": "Wprowadź nazwę nowej kopii szablonu.",
+        "placeholder": "Nazwa szablonu"
+      }
+    }
+  },
+  "journal": {
+    "header": {
+      "title": "Dziennik",
+      "subtitle": "Ustawienia i preferencje dziennika",
+      "loading": "Ładowanie ustawień..."
+    },
+    "groups": {
+      "defaultTemplate": "Domyślny szablon",
+      "sidebarVisibility": "Widoczność paska bocznego",
+      "footer": "Stopka"
+    },
+    "template": {
+      "label": "Szablon",
+      "description": "Nowe wpisy rozpoczynają się od tego szablonu",
+      "placeholder": "Wybierz szablon",
+      "unknown": "Nieznany szablon",
+      "none": "Żadne",
+      "noneAsk": "Brak (za każdym razem pytaj)",
+      "updated": "Domyślny szablon zaktualizowany",
+      "cleared": "Domyślny szablon został usunięty",
+      "error": "Nie udało się zaktualizować szablonu domyślnego"
+    },
+    "showSchedule": {
+      "label": "Pokaż harmonogram",
+      "description": "Wyświetl dzisiejsze wydarzenia i kalendarz"
+    },
+    "showTasks": {
+      "label": "Pokaż zadania",
+      "description": "Wyświetl zadania z terminem realizacji w wybranym dniu"
+    },
+    "showAIConnections": {
+      "label": "Pokaż połączenia AI",
+      "description": "Wyświetlaj połączenia obsługiwane przez sztuczną inteligencję z powiązanymi wpisami"
+    },
+    "showStatsFooter": {
+      "label": "Pokaż stopkę statystyk",
+      "description": "Liczba słów, czas czytania, znaczniki czasu"
+    },
+    "updateError": "Nie udało się zaktualizować ustawienia"
+  },
+  "tasks": {
+    "header": {
+      "title": "Zadania",
+      "subtitle": "Skonfiguruj ustawienia domyślne i zachowanie zadania",
+      "loading": "Ładowanie ustawień..."
+    },
+    "groups": {
+      "defaults": "Domyślne",
+      "calendar": "Kalendarz",
+      "inbox": "Skrzynka odbiorcza"
+    },
+    "defaultProject": {
+      "label": "Domyślny projekt",
+      "description": "Przydzielany, gdy nie wybrano żadnego projektu",
+      "placeholder": "Brak projektu domyślnego",
+      "none": "Brak ustawień domyślnych (użyj Osobistego)",
+      "error": "Nie udało się zaktualizować projektu domyślnego"
+    },
+    "sortOrder": {
+      "label": "Domyślna kolejność sortowania",
+      "description": "Sposób uporządkowania zadań w widoku listy",
+      "options": {
+        "manual": "Ręczny (przeciągnij i upuść)",
+        "dueDate": "Termin",
+        "priority": "Priorytet",
+        "createdAt": "Data utworzenia"
+      },
+      "error": "Nie udało się zaktualizować kolejności sortowania"
+    },
+    "weekStart": {
+      "label": "Tydzień zaczyna się",
+      "description": "Pierwszy dzień tygodnia w widokach kalendarza",
+      "options": {
+        "sunday": "niedziela",
+        "monday": "poniedziałek"
+      },
+      "error": "Nie udało się zaktualizować początku tygodnia"
+    },
+    "staleInbox": {
+      "label": "Nieaktualny próg skrzynki odbiorczej",
+      "description": "Zadania starsze niż to są podświetlane jako nieaktualne",
+      "unit": "dni",
+      "error": "Nie udało się zaktualizować progu nieaktualnych skrzynek odbiorczych"
+    }
+  },
+  "calendar": {
+    "header": {
+      "title": "Kalendarz",
+      "subtitle": "Skonfiguruj zachowanie komórek dziennych w panelu Dzień",
+      "loading": "Ładowanie ustawień..."
+    },
+    "groups": {
+      "dayCellClick": "Kliknij komórkę dnia"
+    },
+    "defaultBehavior": {
+      "label": "Domyślne zachowanie",
+      "description": "Po kliknięciu dnia w kalendarzu Panelu Dni z dowolnej zakładki niebędącej kalendarzem",
+      "error": "Nie udało się zaktualizować zachowania kliknięcia w dniu"
+    },
+    "pageOverride": {
+      "label": "Zastąpienie strony kalendarza",
+      "description": "Zachowanie, gdy zakładka Kalendarz jest aktywna (domyślnie jest to Otwórz Kalendarz)",
+      "error": "Nie udało się zaktualizować zastąpienia strony kalendarza"
+    },
+    "options": {
+      "openJournal": "Otwórz dziennik",
+      "openCalendar": "Otwórz Kalendarz",
+      "useGlobal": "Użyj ustawień globalnych"
+    }
+  },
+  "account": {
+    "header": {
+      "title": "Konto",
+      "subtitle": "Twoje konto, synchronizacja i bezpieczeństwo",
+      "loading": "Ładowanie..."
+    },
+    "groups": {
+      "identity": "Tożsamość",
+      "sync": "Synchronizuj",
+      "storage": "Przechowywanie",
+      "devices": "Urządzenia",
+      "security": "Bezpieczeństwo"
+    },
+    "identity": {
+      "unknown": "Nieznany",
+      "plan": "Plan profesjonalny"
+    },
+    "sync": {
+      "lastSynced": "Ostatnia synchronizacja {time}",
+      "pending": "{count, plural, one {Oczekiwanie na #} other {Oczekiwanie na #}}",
+      "statuses": {
+        "synced": "Zsynchronizowane",
+        "syncing": "Synchronizowanie...",
+        "paused": "Wstrzymano",
+        "syncError": "Błąd synchronizacji",
+        "offline": "Nieaktywny",
+        "connecting": "Łączenie...",
+        "pushed": "{count, plural, one {Wciśnięto #} other {Wciśnięto #}}",
+        "pulled": "{count, plural, one {Wyciągnięto #} other {Wyciągnięto #}}",
+        "pushedPulled": "{parts}",
+        "changesPending": "{count, plural, one {Oczekująca zmiana #} other {Zmiany w # oczekują}}",
+        "offlinePending": "Nieaktywny ({count, plural, one {Oczekująca zmiana #} other {Zmiany w # oczekują}})",
+        "never": "Nigdy"
+      }
+    },
+    "storage": {
+      "used": "Używano {used} z {limit}",
+      "categories": {
+        "notes": "Notatki",
+        "attachments": "Załączniki",
+        "crdt": "CRDT",
+        "other": "Inne",
+        "available": "Dostępne"
+      }
+    },
+    "security": {
+      "recoveryKey": {
+        "label": "Klucz odzyskiwania",
+        "description": "Wyświetl klucz odzyskiwania, aby uzyskać dostęp do danych",
+        "action": "Zobacz klucz"
+      },
+      "rotateKeys": {
+        "label": "Obróć klucze szyfrujące",
+        "description": "Wygeneruj nowe klucze i ponownie zaszyfruj wszystkie dane",
+        "action": "Obróć"
+      },
+      "signOut": {
+        "label": "Wyloguj się",
+        "description": "Odłącz to urządzenie od synchronizacji",
+        "action": "Wyloguj się"
+      }
+    },
+    "signOutDialog": {
+      "title": "Wyloguj się i nie synchronizuj?",
+      "description": "Synchronizacja zostanie zatrzymana, a klucze szyfrowania zostaną usunięte z tego urządzenia. Twoje notatki pozostaną na tym urządzeniu. Aby ponownie skonfigurować synchronizację, będziesz potrzebować frazy odzyskiwania.",
+      "confirm": "Wyloguj się",
+      "signingOut": "Wylogowywanie się..."
+    },
+    "toasts": {
+      "signedOut": "Wylogowano się pomyślnie",
+      "signOutFailed": "Nie udało się się wylogować",
+      "deviceLinked": "Urządzenie zostało pomyślnie połączone"
+    }
+  },
+  "setup": {
+    "steps": {
+      "signIn": "Zaloguj się",
+      "verify": "Zweryfikuj",
+      "link": "Link"
+    },
+    "progress": "Krok {current} z {total}: {label}",
+    "signIn": {
+      "title": "Skonfiguruj synchronizację",
+      "description": "Utwórz konto, aby synchronizować dane między urządzeniami za pomocą kompleksowego szyfrowania.",
+      "or": "lub",
+      "errors": {
+        "sendCode": "Nie udało się wysłać kodu",
+        "googleStart": "Nie udało się rozpocząć logowania Google"
+      }
+    },
+    "email": {
+      "label": "Adres e-mail",
+      "placeholder": "Wpisz swój adres e-mail...",
+      "invalid": "Proszę podać prawidłowy adres e-mail",
+      "sending": "Wysyłam kod..."
+    },
+    "oauth": {
+      "google": "Kontynuuj z Google"
+    },
+    "otp": {
+      "title": "Wprowadź kod weryfikacyjny",
+      "sentTo": "Wysłaliśmy 6-cyfrowy kod na adres ",
+      "aria": "6-cyfrowy kod weryfikacyjny",
+      "verifying": "Weryfikuję...",
+      "resending": "Wysyłam ponownie...",
+      "resend": "Wyślij kod ponownie",
+      "resendIn": "Wyślij ponownie w {time}",
+      "differentEmail": "Użyj innego adresu e-mail",
+      "error": "Weryfikacja nie powiodła się",
+      "resendError": "Nie udało się wysłać ponownie"
+    },
+    "recovery": {
+      "displayTitle": "Zapisz frazę odzyskiwania",
+      "displayDescription": "To jedyny sposób na odzyskanie zaszyfrowanych danych, jeśli utracisz dostęp do wszystkich swoich urządzeń.",
+      "warning": "Zapisz to i przechowuj w bezpiecznym miejscu. Już tego nie zobaczysz.",
+      "wordsAria": "Słowa frazy odzyskiwania",
+      "wordAria": "Słowo {index}: {word}",
+      "copyAria": "Skopiuj frazę odzyskiwania do schowka",
+      "copiedAria": "Skopiowano frazę odzyskiwania",
+      "copied": "Skopiowano",
+      "saved": "Zapisałem frazę odzyskiwania",
+      "confirmTitle": "Potwierdź frazę odzyskiwania",
+      "confirmDescription": "Wpisz żądane słowa, aby sprawdzić, czy zapisałeś je poprawnie.",
+      "wordPlaceholder": "Wpisz słowo #{index}",
+      "verify": "Zweryfikuj",
+      "mustMatch": "Aby kontynuować, wszystkie 3 słowa muszą pasować",
+      "inputTitle": "Wprowadź frazę odzyskiwania",
+      "inputDescription": "Wpisz 24-wyrazową frazę odzyskiwania, aby przywrócić dostęp do zaszyfrowanych danych.",
+      "inputLabel": "Fraza odzyskiwania",
+      "count": "Słowa {count} / {total}",
+      "inputPlaceholder": "Wpisz 24-wyrazową frazę odzyskiwania oddzieloną spacjami...",
+      "lengthHint": "Wprowadź wszystkie 24 słowa, aby włączyć przycisk przywracania",
+      "restore": "Przywróć dostęp",
+      "progress": {
+        "deriving": "Wyprowadzanie kluczy szyfrujących...",
+        "validating": "Sprawdzanie frazy odzyskiwania...",
+        "registering": "Rejestrowanie urządzenia..."
+      },
+      "failed": "Odzyskiwanie nie powiodło się",
+      "confirmationFailed": "Potwierdzenie nie powiodło się"
+    },
+    "linking": {
+      "choiceTitle": "Połącz to urządzenie",
+      "choiceDescription": "Przenieś klucze szyfrujące z innego urządzenia lub przywróć je z frazy odzyskiwania.",
+      "qrChoice": "Link za pomocą kodu QR",
+      "qrChoiceDescription": "Zeskanuj kod wyświetlony na drugim urządzeniu",
+      "recoveryChoice": "Fraza odzyskiwania",
+      "recoveryChoiceDescription": "Wprowadź frazę odzyskiwania składającą się z 24 słów",
+      "codeTitle": "Wpisz kod połączenia",
+      "codeDescription": "Wklej kod łączący z drugiego urządzenia, aby bezpiecznie przesłać klucze szyfrujące.",
+      "codeLabel": "Kod łączenia",
+      "valid": "Ważne",
+      "invalid": "Nieprawidłowy format",
+      "codePlaceholder": "Wklej kod z innego urządzenia...",
+      "formatHint": "Wklej kod łączący JSON z innego urządzenia",
+      "linking": "Łączenie...",
+      "linkDevice": "Połącz urządzenie",
+      "failed": "Połączenie nie powiodło się",
+      "deviceFailed": "Nie udało się połączyć urządzenia",
+      "pendingSuccess": "Urządzenie zostało pomyślnie połączone",
+      "goBack": "Wróć",
+      "waitingTitle": "Oczekiwanie na zatwierdzenie",
+      "waitingDescription": "Otwórz Memry na drugim urządzeniu i zatwierdź prośbę o połączenie.",
+      "verificationCode": "Kod weryfikacyjny",
+      "confirmCode": "Potwierdź, że pasuje to do kodu na Twoim drugim urządzeniu",
+      "cancel": "Anuluj"
+    }
+  },
+  "devices": {
+    "loading": "Ładowanie urządzeń...",
+    "loadingAria": "Ładowanie urządzeń",
+    "none": "Żadne urządzenia nie są jeszcze połączone",
+    "linkNew": "Połącz nowe urządzenie",
+    "thisDevice": "To urządzenie",
+    "lastSeen": "Ostatnio widziany {time} temu",
+    "linked": "Połączono {time} temu",
+    "renameAria": "Zmień nazwę {name}",
+    "rename": "Zmień nazwę",
+    "revoke": "Odwołaj",
+    "showLess": "Pokaż mniej",
+    "showMore": "{count, plural, one {# więcej urządzenia} other {# więcej urządzeń}}",
+    "showMoreAria": "Pokaż {count, plural, one {# więcej urządzenia} other {# więcej urządzeń}}",
+    "dialogs": {
+      "revokeTitle": "Unieważnić „{name}”?",
+      "revokeDescription": "To urządzenie utraci dostęp do zsynchronizowanych danych. Aby przywrócić synchronizację, konieczne będzie ponowne połączenie. Dane lokalne na tym urządzeniu pozostaną.",
+      "revokeDevice": "Unieważnij urządzenie",
+      "revoking": "Odwoływanie...",
+      "renameTitle": "Zmień nazwę urządzenia",
+      "renameDescription": "Wybierz nazwę identyfikującą to urządzenie.",
+      "namePlaceholder": "Nazwa urządzenia",
+      "renaming": "Zmiana nazwy..."
+    },
+    "toasts": {
+      "loadFailed": "Nie udało się załadować urządzeń",
+      "removed": "Usunięto „{name}”",
+      "removeFailed": "Nie udało się usunąć urządzenia",
+      "renamed": "Zmieniono nazwę na „{name}”",
+      "renameFailed": "Nie udało się zmienić nazwy urządzenia"
+    }
+  },
+  "qrLinking": {
+    "title": "Połącz nowe urządzenie",
+    "description": "Zeskanuj ten kod QR z urządzenia, które chcesz połączyć, aby bezpiecznie przesłać klucze szyfrujące.",
+    "encrypted": "Szyfrowane od końca do końca",
+    "generating": "Generuję kod łączący...",
+    "generatingAria": "Generowanie kodu łączącego",
+    "generateFailed": "Nie udało się wygenerować kodu łączącego",
+    "tryAgain": "Spróbuj ponownie",
+    "expired": "Kod łączący wygasł",
+    "generateNew": "Wygeneruj nowy kod",
+    "qrAria": "Kod QR do łączenia urządzeń",
+    "qrImageAria": "Urządzenie łączące kod QR",
+    "expiresIn": "Wygasa za {time}",
+    "or": "lub",
+    "codeLabel": "Kod łączenia",
+    "copyAria": "Skopiuj kod łączący",
+    "copiedAria": "Skopiowano",
+    "copied": "Skopiowano!"
+  },
+  "linkingApproval": {
+    "title": "Nowe urządzenie chce się połączyć",
+    "description": "Urządzenie żąda dostępu do Twoich zaszyfrowanych danych. Zatwierdź tylko, jeśli to Ty zainicjowałeś tę prośbę.",
+    "unknownDevice": "Nieznane urządzenie",
+    "unknownPlatform": "Nieznana platforma",
+    "verificationCode": "Kod weryfikacyjny",
+    "computing": "Obliczanie...",
+    "unavailable": "Niedostępne",
+    "confirmCode": "Upewnij się, że ten kod jest zgodny z kodem wyświetlanym na nowym urządzeniu",
+    "reject": "Odrzuć",
+    "approve": "Zatwierdź",
+    "approving": "Zatwierdzanie...",
+    "approvalFailed": "Zatwierdzenie nie powiodło się",
+    "failedToApprove": "Nie udało się zatwierdzić urządzenia"
+  },
+  "recoveryKey": {
+    "title": "Klucz odzyskiwania",
+    "description": "Przechowuj ten klucz w bezpiecznym miejscu. Może przywrócić skarbiec, jeśli utracisz dostęp do wszystkich urządzeń.",
+    "loading": "Ładowanie...",
+    "retrieveFailed": "Nie udało się pobrać klucza odzyskiwania",
+    "copied": "Klucz odzyskiwania skopiowany do schowka",
+    "copyFailed": "Nie udało się skopiować do schowka",
+    "clickToReveal": "Kliknij, aby odsłonić",
+    "hide": "Ukryj",
+    "reveal": "Ujawnij",
+    "copy": "Kopiuj",
+    "sessionHint": "Ten klucz jest wyświetlany raz na sesję. Zamknij to okno dialogowe, aby usunąć je z pamięci."
+  },
+  "keyRotation": {
+    "title": "Obróć klucze szyfrujące",
+    "descriptions": {
+      "confirm": "Wygeneruj nowe klucze szyfrujące dla swojego skarbca.",
+      "rotating": "Ponowne szyfrowanie danych za pomocą nowych kluczy...",
+      "phrase": "Zapisz nową frazę odzyskiwania.",
+      "complete": "Zakończono rotację klucza.",
+      "error": "Rotacja klucza napotkała błąd."
+    },
+    "warningTitle": "To działanie:",
+    "warningItems": {
+      "keyPair": "Wygeneruj nową parę kluczy szyfrujących",
+      "rewrap": "Ponownie zawiń wszystkie zsynchronizowane elementy nowym kluczem",
+      "phrase": "Utwórz nową frazę odzyskiwania (stara stanie się nieważna)",
+      "pause": "Tymczasowo wstrzymaj synchronizację w trakcie procesu"
+    },
+    "explanation": "Treść Twoich danych nigdy nie jest ponownie szyfrowana – zmieniają się jedynie koperty kluczy. Jest to szybka i bezpieczna operacja.",
+    "start": "Rozpocznij rotację klucza",
+    "starting": "Zaczynam...",
+    "phases": {
+      "preparing": "Przygotowanie...",
+      "reencrypting": "Ponowne pakowanie kluczy ({processed}/{total})",
+      "finalizing": "Finalizowanie...",
+      "working": "Pracuję..."
+    },
+    "progressAria": "Rotacja klawiszy: {phaseLabel} {pct}%",
+    "progressLabel": "Postęp rotacji klucza",
+    "doNotClose": "Nie zamykaj aplikacji w trakcie tego procesu.",
+    "complete": "Wszystkie klucze szyfrujące zostały obrócone. Twoja nowa fraza odzyskiwania została zapisana. Synchronizacja zostanie wznowiona automatycznie.",
+    "unknownError": "Wystąpił nieznany błąd podczas obracania klucza.",
+    "errorHint": "Twoje istniejące klucze pozostają ważne. Synchronizacja została wznowiona. Możesz spróbować ponownie w dowolnym momencie.",
+    "closeConfirm": {
+      "title": "Trwa rotacja",
+      "description": "Rotacja kluczy nadal trwa. Zamknięcie tego okna dialogowego nie zatrzyma procesu, ale nowa fraza odzyskiwania nie będzie widoczna, dopóki się nie zakończy.",
+      "stay": "Zostań",
+      "closeAnyway": "Zamknij mimo wszystko"
+    },
+    "failed": "Rotacja klucza nie powiodła się"
+  },
+  "ai": {
+    "header": {
+      "title": "Asystent AI",
+      "subtitle": "Osadzania działają lokalnie. Notatki głosowe mogą korzystać z Whisper Small lub klucza OpenAI.",
+      "loading": "Ładowanie ustawień..."
+    },
+    "enable": {
+      "label": "Włącz funkcje AI",
+      "description": "Inteligentne sugestie dotyczące archiwizacji i połączenia z notatkami",
+      "enabled": "Włączono funkcje AI",
+      "disabled": "Funkcje AI wyłączone",
+      "error": "Nie udało się zaktualizować ustawienia"
+    },
+    "unknownError": "Nieznany błąd",
+    "groups": {
+      "voice": "Transkrypcja głosu",
+      "embeddingModel": "Lokalny model osadzania",
+      "embeddingIndex": "Indeks osadzania",
+      "inline": "Wbudowana edycja AI"
+    },
+    "voice": {
+      "provider": "Dostawca",
+      "providerDescription": "Dostawca zamiany mowy na tekst dla notatek głosowych",
+      "providers": {
+        "local": "Lokalny (domyślny)",
+        "openai": "OpenAI (BYOK)"
+      },
+      "localModel": "Model lokalny",
+      "localModelDescription": "Whisper Small pobierane są na żądanie i przechowywane lokalnie w pamięci podręcznej",
+      "status": {
+        "ready": "Gotowy",
+        "downloading": "Pobieranie",
+        "downloaded": "Pobrano",
+        "notDownloaded": "Nie pobrano"
+      },
+      "cacheHint": "Nie jest dołączony do aplikacji · Pobrano z Ustawień · Pamięć podręczna na tym urządzeniu",
+      "preparing": "Przygotowanie szeptu małego...",
+      "download": "Pobierz Whisper Small",
+      "apiKey": "Klucz API OpenAI",
+      "apiKeyDescription": "Przechowywane w pęku kluczy systemu operacyjnego i używane wyłącznie do transkrypcji głosu",
+      "replaceKey": "Zastąp zapisany klucz OpenAI",
+      "enterKey": "Wprowadź klucz API OpenAI",
+      "saveKey": "Zapisz klucz",
+      "keySaved": "Klucz API zapisany w pęku kluczy",
+      "providerError": "Nie udało się zaktualizować dostawcy głosu",
+      "downloadedToast": "Pobrano Whisper Small",
+      "downloadError": "Nie udało się pobrać Whisper Small",
+      "keySavedToast": "Klucz OpenAI został zapisany",
+      "keySaveError": "Nie udało się zapisać klucza OpenAI"
+    },
+    "embedding": {
+      "loaded": "Załadowano",
+      "loading": "Ładowanie",
+      "cacheHint": "~23MB · Buforowane lokalnie · Wszystko na urządzeniu",
+      "dimensions": "Wymiary",
+      "embeddings": "Osadzenia",
+      "downloadLoad": "Pobierz i załaduj model",
+      "downloadingModel": "Pobieranie modelu...",
+      "loadingModel": "Ładowanie modelu...",
+      "loadSuccess": "Model został załadowany pomyślnie",
+      "loadFailed": "Nie udało się załadować modelu",
+      "rebuildIndex": "Odbuduj indeks",
+      "rebuildDescription": "Wygeneruj ponownie osadzenie dla wszystkich notatek",
+      "rebuild": "Odbuduj",
+      "scanning": "Skanuję notatki...",
+      "generating": "Generowanie osadzania...",
+      "complete": "Kompletne!",
+      "reindexed": "Ponownie zindeksowano osadzenia: obliczono {computed}, pominięto {skipped}",
+      "reindexFailed": "Nie udało się ponownie zindeksować osadzonych elementów"
+    },
+    "inline": {
+      "loading": "Ładowanie...",
+      "title": "Wbudowana edycja AI",
+      "enable": "Włącz wbudowaną sztuczną inteligencję",
+      "enableDescription": "Pokaż menu AI podczas edycji notatek",
+      "enabled": "Wbudowana edycja AI włączona",
+      "disabled": "Wbudowana edycja AI wyłączona",
+      "provider": "Dostawca",
+      "providerDescription": "Usługa AI do operacji tekstowych",
+      "providers": {
+        "ollama": "Ollama (lokalnie)",
+        "openai": "OpenAI",
+        "anthropic": "Antropiczny"
+      },
+      "model": "Modelka",
+      "modelDescription": "Model językowy do przepisywania i podsumowywania",
+      "selectModel": "Wybierz model",
+      "apiKey": "Klucz API",
+      "apiKeyDescription": "Przechowywane lokalnie, wysyłane tylko do dostawcy",
+      "apiKeyPlaceholder": "Wprowadź klucz API {provider}",
+      "ollamaUrl": "Adres URL Ollama",
+      "ollamaUrlDescription": "Adres lokalnego serwera",
+      "connection": "Połączenie",
+      "activePort": "Aktywny na porcie {port}",
+      "notConnected": "Nie podłączony",
+      "test": "Testuj",
+      "stopFailed": "Nie udało się zatrzymać istniejącego serwera",
+      "connected": "Połączono! Serwer działający na porcie {port}",
+      "connectFailed": "Nie udało się połączyć",
+      "testFailed": "Test połączenia nie powiódł się",
+      "updateFailed": "Nie udało się zaktualizować ustawienia"
+    }
+  },
+  "integrations": {
+    "header": {
+      "title": "Integracje",
+      "subtitle": "Połącz usługi zewnętrzne, aby wzbogacić swój przepływ pracy"
+    },
+    "auth": {
+      "oauth2": "OAuth 2.0",
+      "apiKey": "Klucz API",
+      "none": "Systemu"
+    },
+    "comingSoon": "Już wkrótce",
+    "connect": "Połącz",
+    "googleCalendar": {
+      "name": "Kalendarz Google",
+      "description": "Dwukierunkowa synchronizacja wydarzeń Memry i importowanych kalendarzy Google.",
+      "statuses": {
+        "connected": "Połączono",
+        "notConnected": "Brak połączenia",
+        "reconnectRequired": "Wymagane ponowne połączenie"
+      },
+      "accountReconnect": "Połącz ponownie Google",
+      "importedCalendars": "Importowane kalendarze",
+      "selected": "Wybrano {count}",
+      "syncNow": "Synchronizuj teraz",
+      "disconnect": "Rozłącz",
+      "reconnect": "Połącz ponownie Google",
+      "syncFailed": "Coś poszło nie tak",
+      "connectFailed": "Nie udało się połączyć Kalendarza Google",
+      "refreshFailed": "Nie udało się odświeżyć Kalendarza Google",
+      "disconnectFailed": "Nie udało się odłączyć Kalendarza Google",
+      "selectionFailed": "Nie udało się zaktualizować wyboru kalendarza",
+      "retryFailed": "Nie udało się ponowić próby synchronizacji kalendarza"
+    },
+    "sourcePicker": {
+      "empty": "Na tym urządzeniu nie są jeszcze dostępne żadne zaimportowane kalendarze Google.",
+      "statuses": {
+        "synced": "Zsynchronizowane",
+        "error": "Błąd",
+        "pending": "Oczekujące",
+        "idle": "Bezczynny"
+      },
+      "retrying": "Ponawiam próbę…",
+      "retryNow": "Spróbuj ponownie teraz"
+    },
+    "registry": {
+      "googleCalendar": {
+        "name": "Kalendarz Google",
+        "description": "Dwukierunkowa synchronizacja wydarzeń, zadań, przypomnień i zaimportowanych kalendarzy Memry"
+      },
+      "appleCalendar": {
+        "name": "Kalendarz Apple",
+        "description": "Integracja z kalendarzem lokalnym poprzez systemowe API"
+      },
+      "notion": {
+        "name": "Pojęcie",
+        "description": "Jednorazowy import strony do skarbca"
+      },
+      "readwise": {
+        "name": "Przeczytaj",
+        "description": "Synchronizuj najważniejsze momenty ze swoim skarbcem"
+      },
+      "todoist": {
+        "name": "Todoist",
+        "description": "Dwukierunkowa synchronizacja zadań"
+      }
+    }
+  },
+  "vault": {
+    "header": {
+      "title": "Skarbiec",
+      "subtitle": "Konfiguracja i przechowywanie skarbca"
+    },
+    "groups": {
+      "storageUsage": "Wykorzystanie pamięci",
+      "location": "Lokalizacja"
+    },
+    "loadingStorage": "Ładowanie informacji o pamięci...",
+    "signInStorage": "Zaloguj się, aby zobaczyć wykorzystanie miejsca",
+    "vaultPath": "Ścieżka skarbca",
+    "reveal": "Ujawnij",
+    "storage": {
+      "title": "Przechowywanie",
+      "used": "Używano {used} z {limit}",
+      "ratio": "{used} / {limit}",
+      "refreshAria": "Odśwież wykorzystanie pamięci",
+      "usageAria": "Użycie pamięci: {used} z {limit}",
+      "available": "Dostępne {available}",
+      "categories": {
+        "notes": "Notatki",
+        "attachments": "Załączniki",
+        "crdt": "CRDT",
+        "other": "Inne"
+      },
+      "warningTitle": "Magazyn prawie pełny",
+      "warningDescription": "Zwolnij miejsce lub uaktualnij swój plan, aby uniknąć problemów z synchronizacją."
+    }
+  },
+  "tags": {
+    "header": {
+      "title": "Tagi",
+      "subtitle": "Zarządzaj tagami w notatkach, dziennikach i zadaniach"
+    },
+    "loading": "Ładowanie tagów...",
+    "empty": "Nie ma jeszcze tagów. Tagi będą pojawiać się tutaj, gdy dodasz je do notatek i zadań.",
+    "filterPlaceholder": "Filtruj tagi...",
+    "noMatch": "Brak tagów pasujących do „{query}”",
+    "summary": "{count, plural, one {Znacznik #} other {Tagi #}} w notatkach i zadaniach",
+    "actions": {
+      "rename": "Zmień nazwę",
+      "changeColor": "Zmień kolor",
+      "mergeInto": "Połącz się w...",
+      "merge": "Połącz",
+      "delete": "Usuń"
+    },
+    "dialogs": {
+      "deleteTitle": "Usuń tag",
+      "deleteDescription": "Usunąć „{name}” z {count, plural, one {Element #} other {Elementy #}}? Tego nie można cofnąć.",
+      "mergeTitle": "Połącz tag",
+      "mergeDescription": "Wszystkie elementy oznaczone tagiem „{source}” zostaną ponownie oznaczone tagiem docelowym. Znacznik źródłowy zostanie usunięty.",
+      "targetPlaceholder": "Wybierz tag docelowy...",
+      "colorTitle": "Zmień kolor dla „{name}”"
+    },
+    "toasts": {
+      "renamed": "Zmieniono nazwę „{oldName}” na „{newName}”",
+      "renameFailed": "Nie udało się zmienić nazwy tagu",
+      "deleteFailed": "Nie udało się usunąć tagu",
+      "deleted": "Usunięto „{name}” z {count, plural, one {Element #} other {Elementy #}}",
+      "mergeFailed": "Nie udało się scalić tagów",
+      "merged": "Połączono „{source}” z „{target}” ({count, plural, one {Element #} other {Elementy #}})",
+      "colorUpdated": "Zaktualizowano kolor dla „{name}”",
+      "colorFailed": "Nie udało się zaktualizować koloru"
+    }
+  },
+  "properties": {
+    "header": {
+      "title": "Właściwości",
+      "subtitle": "Zarządzaj definicjami właściwości we wszystkich notatkach"
+    },
+    "loading": "Ładowanie właściwości...",
+    "empty": "Nie ma jeszcze definicji właściwości. Aby rozpocząć, dodaj właściwość Status, Select lub Multiselect do dowolnej notatki.",
+    "filterPlaceholder": "Właściwości filtra...",
+    "noMatch": "Brak właściwości pasujących do „{query}”",
+    "summary": "{count, plural, one {Definicja właściwości #} other {Definicje właściwości #}}",
+    "optionCount": "{count, plural, one {Opcja #} other {Opcje #}}",
+    "optionNamePlaceholder": "Nazwa opcji",
+    "addOption": "Dodaj opcję",
+    "changeColorTitle": "Zmień kolor",
+    "renameTitle": "Zmień nazwę",
+    "removeTitle": "Usuń",
+    "actions": {
+      "deleteProperty": "Usuń właściwość"
+    },
+    "types": {
+      "status": "Stan",
+      "select": "Wybierz",
+      "multiselect": "Wybór wielokrotny",
+      "text": "Tekst",
+      "number": "Numer",
+      "date": "Data",
+      "checkbox": "Pole wyboru",
+      "url": "Adres URL"
+    },
+    "dialogs": {
+      "deleteTitle": "Usuń właściwość",
+      "deleteDescription": "Usunąć definicję właściwości „{name}”? Notatki korzystające z tej właściwości zachowają swoje wartości w postaci zwykłego tekstu.",
+      "colorTitle": "Zmień kolor dla „{name}”"
+    },
+    "toasts": {
+      "renamed": "Zmieniono nazwę „{oldValue}” na „{newValue}”",
+      "renameFailed": "Nie udało się zmienić nazwy opcji",
+      "removed": "Usunięto „{value}”",
+      "removeFailed": "Nie udało się usunąć opcji",
+      "colorFailed": "Nie udało się zaktualizować koloru",
+      "deleteFailed": "Nie udało się usunąć właściwości",
+      "deleted": "Usunięto właściwość „{name}”",
+      "addFailed": "Nie udało się dodać opcji"
+    }
+  },
+  "shortcuts": {
+    "header": {
+      "title": "Skróty klawiaturowe",
+      "subtitle": "Kliknij dowolny skrót, aby go ponownie powiązać",
+      "loading": "Ładowanie ustawień..."
+    },
+    "searchPlaceholder": "Wyszukaj skróty...",
+    "resetAll": "Zresetuj wszystko",
+    "custom": "Niestandardowe",
+    "pressShortcut": "Naciśnij skrót…",
+    "cancelTitle": "Anuluj",
+    "rebindTitle": "Kliknij, aby ponownie powiązać",
+    "resetTitle": "Przywróć ustawienia domyślne",
+    "clearTitle": "Wyczyść skrót",
+    "clickToSet": "Kliknij, aby ustawić",
+    "noMatch": "Żadne skróty nie pasują do Twojego wyszukiwania",
+    "conflict": "Konflikt z: {labels}",
+    "globalCapture": {
+      "title": "Globalne przechwytywanie",
+      "description": "Przechwytuj notatki z dowolnego miejsca",
+      "permissionNeeded": "Potrzebne pozwolenie",
+      "active": "Aktywny",
+      "permissionHint": "Skróty globalne wymagają uprawnień Dostępność. Przejdź do Ustawienia systemu → Prywatność → Dostępność i włącz Memry."
+    },
+    "toasts": {
+      "saveGlobalFailed": "Nie udało się zapisać globalnego skrótu do przechwytywania",
+      "saveFailed": "Nie udało się zapisać skrótu",
+      "resetFailed": "Nie udało się zresetować skrótu",
+      "resetAllSuccess": "Wszystkie skróty zostały zresetowane do wartości domyślnych",
+      "resetAllFailed": "Nie udało się zresetować skrótów"
+    },
+    "categories": {
+      "navigation": "Nawigacja",
+      "tabs": "Zakładki",
+      "editor": "Redaktor",
+      "view": "Zobacz"
+    },
+    "entries": {
+      "nav": {
+        "newNote": {
+          "label": "Nowa notatka",
+          "description": "Utwórz nową notatkę"
+        },
+        "newTask": {
+          "label": "Nowe zadanie",
+          "description": "Utwórz nowe zadanie"
+        },
+        "inbox": {
+          "label": "Przejdź do skrzynki odbiorczej",
+          "description": "Przejdź do skrzynki odbiorczej"
+        },
+        "notes": {
+          "label": "Przejdź do Notatek",
+          "description": "Przejdź do notatek"
+        },
+        "tasks": {
+          "label": "Przejdź do Zadań",
+          "description": "Przejdź do zadań"
+        },
+        "search": {
+          "label": "Szukaj",
+          "description": "Otwórz wyszukiwanie globalne"
+        },
+        "settings": {
+          "label": "Otwórz Ustawienia",
+          "description": "Otwórz panel ustawień"
+        }
+      },
+      "tabs": {
+        "close": {
+          "label": "Zamknij kartę",
+          "description": "Zamknij bieżącą kartę"
+        },
+        "next": {
+          "label": "Następna zakładka",
+          "description": "Przejdź do następnej zakładki"
+        },
+        "previous": {
+          "label": "Poprzednia zakładka",
+          "description": "Przejdź do poprzedniej karty"
+        },
+        "reopen": {
+          "label": "Otwórz ponownie ostatnią kartę",
+          "description": "Otwórz ponownie ostatnio zamkniętą kartę"
+        },
+        "navBack": {
+          "label": "Przejdź wstecz",
+          "description": "Aktywuj ponownie poprzednio aktywną kartę"
+        },
+        "navForward": {
+          "label": "Nawiguj do przodu",
+          "description": "Wykonaj ponownie nawigację wstecz"
+        }
+      },
+      "editor": {
+        "save": {
+          "label": "Zapisz",
+          "description": "Zapisz bieżącą notatkę"
+        },
+        "bold": {
+          "label": "Odważne",
+          "description": "Przełącz pogrubione formatowanie"
+        },
+        "italic": {
+          "label": "Kursywa",
+          "description": "Przełącz formatowanie kursywy"
+        },
+        "underline": {
+          "label": "Podkreśl",
+          "description": "Przełącz formatowanie podkreślenia"
+        }
+      },
+      "view": {
+        "toggleSidebar": {
+          "label": "Przełącz pasek boczny",
+          "description": "Pokaż lub ukryj pasek boczny"
+        },
+        "shortcuts": {
+          "label": "Pomoc dotycząca skrótów klawiaturowych",
+          "description": "Pokaż odniesienie do skrótów klawiaturowych"
+        }
+      }
+    }
+  },
+  "phaseF": {
+    "componentsKeyboardChordIndicator": {
+      "pressedWaitingForSecondKey": "wciśnięty — oczekiwanie na drugi klawisz..."
+    },
+    "componentsKeyboardKeyboardShortcutsDialog": {
+      "keyboardShortcuts": "Skróty klawiaturowe",
+      "press": "Naciśnij ",
+      "toToggleThisDialog": "aby przełączyć to okno dialogowe"
+    },
+    "componentsSyncDeviceList": {
+      "middot": "kropka środkowa;"
+    },
+    "componentsSyncDeviceRevokedDialog": {
+      "thisDeviceHasBeenRemoved": "To urządzenie zostało usunięte",
+      "exporting": "Eksportowanie...",
+      "signOut": "Wyloguj się"
+    },
+    "componentsSyncSyncHistory": {
+      "middot": "kropka środkowa; ",
+      "activity": "Aktywność",
+      "filterBySyncType": "Filtruj według typu synchronizacji",
+      "allTypes": "Wszystkie typy",
+      "pushed": "Pchnięty",
+      "pulled": "Pociągnięty",
+      "errors": "Błędy",
+      "filterByTimePeriod": "Filtruj według okresu",
+      "allTime": "Cały czas",
+      "today": "Dzisiaj",
+      "last7Days": "Ostatnie 7 dni",
+      "last30Days": "Ostatnie 30 dni",
+      "loadingSyncHistory": "Ładowanie historii synchronizacji",
+      "noSyncActivityYet": "Brak aktywności związanej z synchronizacją",
+      "loadMore": "Załaduj więcej"
+    },
+    "componentsSyncSyncStatus": {
+      "lastSynced": "Ostatnia synchronizacja ",
+      "pending": "w toku",
+      "localOnly": "tylko lokalnie",
+      "detected": "wykryty",
+      "clockSkewDetected": "Wykryto przesunięcie zegara",
+      "items": "przedmioty",
+      "willSyncWhenBackOnline": "Synchronizacja nastąpi po powrocie do trybu online",
+      "openSyncSettings": "Otwórz ustawienia synchronizacji"
+    },
+    "pagesSettingsAiInlineSection": {
+      "httpLocalhost11434V1": "http://localhost:11434/v1"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToUpdateTagColor": "Nie udało się zaktualizować koloru tagu",
+      "googleSignInFailed": "Logowanie do Google nie powiodło się",
+      "failedToSendVerificationCode": "Nie udało się wysłać kodu weryfikacyjnego",
+      "invalidVerificationCode": "Nieprawidłowy kod weryfikacyjny",
+      "accountSetupFailed": "Konfiguracja konta nie powiodła się",
+      "failedToResendCode": "Nie udało się ponownie wysłać kodu",
+      "failedToSetUpDevice": "Nie udało się skonfigurować urządzenia",
+      "failedToConfirmRecoveryPhrase": "Nie udało się potwierdzić frazy odzyskiwania",
+      "failedToAnalyzeContent": "Nie udało się przeanalizować treści",
+      "failedToLoadUpdaterState": "Nie udało się załadować stanu aktualizatora",
+      "failedToCheckForUpdates": "Nie udało się sprawdzić dostępności aktualizacji",
+      "failedToDownloadUpdate": "Nie udało się pobrać aktualizacji",
+      "failedToInstallUpdate": "Nie udało się zainstalować aktualizacji",
+      "failedToLoadEditorSettings": "Nie udało się załadować ustawień edytora",
+      "failedToUpdateEditorSettings": "Nie udało się zaktualizować ustawień edytora",
+      "failedToLoadGeneralSettings": "Nie udało się załadować ustawień ogólnych",
+      "failedToUpdateGeneralSettings": "Nie udało się zaktualizować ustawień ogólnych",
+      "failedToLoadKeyboardSettings": "Nie udało się załadować ustawień klawiatury",
+      "failedToUpdateKeyboardSettings": "Nie udało się zaktualizować ustawień klawiatury",
+      "failedToResetKeyboardSettings": "Nie udało się zresetować ustawień klawiatury",
+      "failedToLoadNoteEditorSettings": "Nie udało się załadować ustawień edytora notatek",
+      "failedToUpdateSettings": "Nie udało się zaktualizować ustawień",
+      "failedToLoadTabSettings": "Nie udało się załadować ustawień karty",
+      "failedToLoadNotes": "Nie udało się załadować notatek",
+      "failedToLoadTags": "Nie udało się załadować tagów",
+      "failedToLoadVaultStatus": "Nie udało się załadować stanu skarbca",
+      "failedToSelectVault": "Nie udało się wybrać skarbca",
+      "failedToCloseVault": "Nie udało się zamknąć skarbca",
+      "failedToSwitchVault": "Nie udało się przełączyć skarbca",
+      "failedToUpdateConfig": "Nie udało się zaktualizować konfiguracji",
+      "failedToReindex": "Nie udało się ponownie zaindeksować"
+    }
+  }
+}

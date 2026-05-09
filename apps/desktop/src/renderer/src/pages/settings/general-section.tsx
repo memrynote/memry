@@ -248,7 +248,12 @@ export function GeneralSettings() {
             <SelectTrigger id="language-select" className={COMPACT_SELECT}>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent
+              side="bottom"
+              align="end"
+              avoidCollisions={false}
+              className="max-h-60 overflow-y-auto"
+            >
               {SUPPORTED_LOCALES.map((locale) => (
                 <SelectItem key={locale} value={locale}>
                   {LOCALE_DISPLAY_NAMES[locale]}

@@ -1,0 +1,483 @@
+{
+  "view": {
+    "tabs": {
+      "inbox": "Peti masuk",
+      "archived": "Diarkibkan",
+      "insights": "Wawasan",
+      "ariaLabel": "Pilihan paparan peti masuk"
+    },
+    "triageButton": "Triage",
+    "processInboxTitle": "Peti masuk proses (Cmd+P)",
+    "itemCaptured": "Item ditangkap",
+    "searchArchivedTitle": "Cari item yang diarkibkan",
+    "searchPlaceholder": "Cari...",
+    "archivedItemsAria": "Item yang diarkibkan",
+    "snoozed": {
+      "show": "Tunjukkan item yang ditunda",
+      "showWithCount": "Tunjukkan item ditunda ({count})",
+      "hide": "Sembunyikan item yang ditunda"
+    },
+    "filter": {
+      "button": "Penapis",
+      "byType": "Tapis mengikut jenis",
+      "active": "{count, plural, one {Menapis mengikut jenis #} other {Menapis mengikut jenis #}}",
+      "clearAll": "Kosongkan semua"
+    },
+    "jobs": {
+      "running": "{count, plural, one {# kerja latar belakang berjalan} other {# kerja latar belakang berjalan}}",
+      "failed": "{count} gagal"
+    }
+  },
+  "type": {
+    "link": "Pautan",
+    "links": "Pautan",
+    "note": "Nota",
+    "notes": "Nota",
+    "image": "Imej",
+    "images": "Imej",
+    "voice": "Suara",
+    "video": "Video",
+    "clip": "Klip",
+    "clips": "Klip",
+    "pdf": "PDF",
+    "pdfs": "PDF",
+    "social": "sosial",
+    "reminder": "Peringatan",
+    "reminders": "Peringatan",
+    "text": "Teks",
+    "other": "Lain-lain"
+  },
+  "empty": {
+    "successAria": "Berjaya, peti masuk kosong",
+    "title": "Peti Masuk Sifar",
+    "body": "Semuanya diproses. Tangkap sesuatu yang baharu dengan input di atas atau tampal pautan untuk bermula.",
+    "filedThisWeek": "{count, plural, one {# difailkan minggu ini} other {# difailkan minggu ini}}",
+    "dayStreak": "{count, plural, one {# hari berturut-turut} other {# hari berturut-turut}}",
+    "tipPrefix": "Petua: gunakan",
+    "tipSuffix": "untuk menangkap pantas daripada papan keratan",
+    "archivedNone": "Tiada item yang diarkibkan",
+    "archivedNoMatches": "Tiada item arkib yang sepadan",
+    "noItemsYet": "Tiada item lagi",
+    "noItemsFiled": "Tiada item difailkan lagi",
+    "noItemTypes": "Tiada jenis item untuk dipaparkan",
+    "noFolders": "Tiada folder ditemui",
+    "noFolderMatch": "Tiada folder yang sepadan dengan \"{query}\"",
+    "noNotes": "Tiada nota ditemui",
+    "allMatchesLinked": "Semua perlawanan sudah dikaitkan"
+  },
+  "list": {
+    "ariaLabel": "Item peti masuk",
+    "section": {
+      "today": "Hari ini",
+      "yesterday": "Semalam",
+      "older": "Lebih tua"
+    },
+    "selectItem": "Pilih {title}",
+    "itemAria": "{type}: {title}",
+    "untitled": "Tidak bertajuk",
+    "untitledItem": "Item Tidak Bertajuk",
+    "transcribing": "Mentranskripsi...",
+    "transcriptionFailed": "Transkripsi gagal",
+    "retryTranscription": "Cuba semula",
+    "pageCount": "{count, plural, one {halaman #} other {# muka surat}}",
+    "snoozedUntilShort": "ditunda sehingga {date}",
+    "capturedAgo": "Ditangkap {time}"
+  },
+  "loading": {
+    "inbox": "Memuatkan peti masuk...",
+    "failed": "Gagal memuatkan peti masuk",
+    "tryAgain": "Cuba lagi",
+    "capturingImage": "Menangkap imej...",
+    "dropImageTitle": "Jatuhkan imej untuk ditangkap",
+    "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
+    "unsupportedImageType": "Jenis imej tidak disokong: {type}",
+    "imageTooLarge": "Imej terlalu besar (maks 50MB)"
+  },
+  "toast": {
+    "failedArchiveItem": "Gagal mengarkibkan item",
+    "failedArchiveItems": "Gagal mengarkibkan item",
+    "failedFile": "Gagal memfailkan",
+    "failedFileItem": "Gagal memfailkan item",
+    "failedFileItems": "Gagal memfailkan item",
+    "failedSnooze": "Gagal menunda",
+    "failedSnoozeItem": "Gagal menunda item",
+    "failedApplyTags": "Gagal menggunakan teg",
+    "failedCaptureImage": "Gagal menangkap imej",
+    "linkedToNote": "Dipautkan kepada nota",
+    "linkedToNotes": "Dipautkan kepada nota {count}",
+    "filedTo": "Difailkan kepada {folder}",
+    "filedItemsTo": "Memfailkan item {count} ke {folder}",
+    "filedPartial": "Memfailkan {processed} daripada item {total}",
+    "appliedTags": "{tagCount, plural, one {Teg # digunakan} other {Teg # digunakan}} kepada {itemCount, plural, one {Item #} other {Item #}}",
+    "archivedItems": "{count, plural, one {Item # yang diarkibkan} other {Item # diarkibkan}}",
+    "snoozedUntil": "Ditunda sehingga {time}",
+    "snoozedItemsUntil": "{count, plural, one {Item # ditunda sehingga {time}} other {Item # ditunda sehingga {time}}}"
+  },
+  "triage": {
+    "modeTitle": "Mod Triage",
+    "exitHint": "Esc untuk keluar",
+    "exitAria": "Keluar dari mod triage",
+    "position": "{current} daripada {total}",
+    "action": {
+      "discard": "Buang",
+      "archive": "Arkib",
+      "open": "Buka",
+      "toTask": "Kepada Tugas",
+      "toNote": "Untuk Nota",
+      "file": "Fail",
+      "snooze": "Tunda",
+      "cancel": "Batal"
+    },
+    "snoozeUntil": "Tunda sehingga...",
+    "complete": {
+      "title": "Peti Masuk Sifar",
+      "processed": "{count, plural, one {Item # diproses} other {Item # diproses}}",
+      "streak": "coretan",
+      "streakCount": "{count} coretan",
+      "dayProcessingStreak": "{count, plural, one {# hari pemprosesan berturut-turut} other {# hari pemprosesan berturut-turut}}",
+      "back": "Kembali ke Peti Masuk",
+      "motivation0": "Diri masa depan anda berterima kasih kepada anda.",
+      "motivation1": "Semuanya pada tempatnya.",
+      "motivation2": "Kosongkan peti masuk, jernihkan fikiran.",
+      "motivation3": "Hutang keputusan: dibayar penuh.",
+      "motivation4": "Itu terasa baik, bukan?"
+    }
+  },
+  "bulk": {
+    "selected": "{count} dipilih",
+    "deselectAll": "Nyahpilih semua",
+    "ariaLabel": "Tindakan pukal untuk {count} item yang dipilih",
+    "file": "Fail",
+    "tag": "Tag",
+    "snooze": "Tunda",
+    "archive": "Arkib",
+    "add": "Tambah",
+    "dismissSuggestion": "Tolak cadangan",
+    "hint": {
+      "file": "fail",
+      "tag": "tag",
+      "snooze": "tidur sebentar",
+      "archive": "arkib",
+      "deselect": "nyahpilih"
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {Arkibkan item #?} other {Arkibkan item #?}}",
+      "description": "Item ini akan diarkibkan. Anda boleh melihat item yang diarkibkan kemudian.",
+      "confirm": "{count, plural, one {Arkibkan item #} other {Arkibkan item #}}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {Fail # Item} other {Failkan Item #}}",
+      "itemsToFile": "Item untuk difailkan",
+      "multipleNoteLinksUnavailable": "Nota: Pautan ke nota lain tidak boleh ditambah apabila memfailkan berbilang item.",
+      "filing": "Memfailkan...",
+      "submit": "{count, plural, one {Failkan item #} other {Failkan item #}}",
+      "macHint": "⌘⏎ untuk memfailkan · Esc untuk menutup",
+      "ctrlHint": "Ctrl+Enter untuk fail · Esc untuk menutup"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {Teg Item #} other {Teg Item #}}",
+      "placeholder": "Taip untuk mencari teg...",
+      "applying": "Memohon...",
+      "apply": "{count, plural, one {Mohon pada item #} other {Mohon pada item #}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "Tindakan pantas",
+    "archiveItem": "Item arkib",
+    "archive": "Arkib",
+    "snooze": "Tunda"
+  },
+  "detail": {
+    "ariaLabel": "Butiran item",
+    "closePanel": "Tutup panel",
+    "resizeFiling": "Ubah saiz bahagian pemfailan",
+    "restore": "Pulihkan",
+    "restoreToInbox": "Pulihkan ke peti masuk",
+    "delete": "Padam",
+    "deletePermanently": "Padam secara kekal",
+    "archive": "Arkib",
+    "file": "Fail",
+    "keyboardHint": "Fail {modifier}⏎ · 1-5 folder · Esc tutup",
+    "voiceTitlePlaceholder": "Namakan memo suara ini...",
+    "fileTo": "Failkan ke",
+    "ai": "AI",
+    "selectFolder": "Pilih folder",
+    "searchOrCreateFolder": "Cari atau buat dengan /...",
+    "suggested": "Dicadangkan",
+    "notesRoot": "Nota",
+    "notesRootLabel": "Nota (akar)",
+    "createFolder": "Buat \"{name}\"",
+    "addTags": "Tambah tag...",
+    "linkToNote": "Pautan ke nota",
+    "linkNotesPlaceholder": "Pautkan nota...",
+    "searchNotesAria": "Cari nota untuk dipautkan",
+    "linkedNotesAria": "Nota terpaut",
+    "removeLinkTo": "Alih keluar pautan ke {title}",
+    "contentEditorAria": "Penyunting kandungan",
+    "notePlaceholder": "Tulis nota anda...",
+    "textPlaceholder": "Edit teks tangkapan anda..."
+  },
+  "content": {
+    "capturedAt": "Ditangkap {date}",
+    "todayAt": "hari ini di {time}",
+    "yesterdayAt": "semalam di {time}",
+    "dateAt": "{date} dan {time}",
+    "words": "{count, plural, one {# perkataan} other {# perkataan}}",
+    "duration": "Tempoh: {duration}",
+    "dimensions": "Dimensi",
+    "format": "Format",
+    "size": "Saiz",
+    "voiceMemo": "Memo suara",
+    "play": "Main",
+    "pause": "jeda",
+    "audioPosition": "Kedudukan audio",
+    "transcription": "Transkripsi",
+    "processing": "pemprosesan",
+    "pending": "belum selesai",
+    "failed": "gagal",
+    "copyTranscription": "Salin transkripsi",
+    "transcribingAudio": "Mentranskripsi audio...",
+    "awaitingTranscription": "Menunggu transkripsi...",
+    "noTranscription": "Tiada transkripsi tersedia",
+    "failedPlayAudio": "Gagal memainkan audio",
+    "failedLoadAudio": "Gagal memuatkan audio",
+    "video": "Video",
+    "unsupportedVideo": "Penyemak imbas anda tidak menyokong teg video."
+  },
+  "reminder": {
+    "dataUnavailable": "Data peringatan tidak tersedia.",
+    "triggered": "Peringatan dicetuskan",
+    "noteLabel": "Nota Peringatan",
+    "source": "Sumber",
+    "journalTitle": "Jurnal — {date}",
+    "noteFallback": "Nota",
+    "journalFallback": "Jurnal",
+    "highlighted": "Diserlahkan: \"{text}\"",
+    "viewed": "Dilihat",
+    "markViewed": "Tandai sebagai dilihat",
+    "notYetViewed": "Belum dilihat",
+    "snooze": "Tunda",
+    "presetInOneHour": "1 jam",
+    "presetTomorrow": "Esok",
+    "presetNextWeek": "Minggu depan",
+    "custom": "tersuai..."
+  },
+  "insights": {
+    "loading": "Memuatkan cerapan...",
+    "captureActivity": "Aktiviti Tangkap",
+    "byType": "Mengikut Jenis",
+    "itemTypes": "Jenis Barang",
+    "itemTypesDescription": "Pengedaran format kandungan",
+    "recentFilings": "Pemfailan Terkini",
+    "recentlyFiled": "Difailkan Baru-baru ini",
+    "recentlyFiledDescription": "Tindakan terkini pada peti masuk anda",
+    "captured": "Ditangkap",
+    "capturedThisWeek": "+{count} minggu ini",
+    "processed": "Diproses",
+    "processRate": "Kadar {rate}%.",
+    "stale": "basi",
+    "needsAttention": "perlukan perhatian",
+    "allClear": "semua jelas",
+    "avgTimeToFile": "Purata Masa untuk Fail",
+    "noCapturesYet": "Tiada tangkapan lagi",
+    "captures": "{count, plural, one {Tangkapan #} other {# menangkap}}",
+    "peak": "Puncak: {day} {start}–{end}",
+    "convertedToTask": "Ditukar kepada tugasan",
+    "linked": "Dipautkan",
+    "now": "sekarang",
+    "timeAgoMinutes": "{count}m yang lalu",
+    "timeAgoHours": "{count}h yang lalu",
+    "timeAgoDays": "{count}d yang lalu"
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "AI dikesan: \"",
+      "addToSelection": "Tambahkan pada pilihan",
+      "dismiss": "Tolak"
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "Padam ",
+      "item": "item",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Item ini akan dialih keluar daripada peti masuk anda. Anda boleh membuat asal tindakan ini serta-merta selepas itu."
+    },
+    "componentsCaptureInput": {
+      "captureInput": "Tangkap input",
+      "attachFile": "Lampirkan fail",
+      "attachFileImagesAudioVideoPdf": "Lampirkan fail (Imej, Audio, Video, PDF)",
+      "recordVoiceMemo": "Rakam memo suara",
+      "recordVoiceMemo2": "Rakam memo suara",
+      "alreadyCaptured": "Sudah ditangkap: “",
+      "rdquo": "rdquo;",
+      "captureAnyway": "Tangkap Bagaimanapun"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "Pilih folder",
+      "searchFolders": "Cari folder...",
+      "searchFolders2": "Cari folder",
+      "searchResults": "Hasil carian",
+      "create": "Buat \"",
+      "suggested": "Dicadangkan",
+      "recent": "Baru-baru ini",
+      "allFolders": "Semua folder",
+      "allFolders2": "Semua folder"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "Pautan ke",
+      "optional": "pilihan)",
+      "searchNotesToLink": "Cari nota untuk dipautkan...",
+      "searchNotesToLink2": "Cari nota untuk dipautkan",
+      "searching": "Mencari...",
+      "noNotesFound": "Tiada nota ditemui",
+      "linkedNotes": "Nota terpaut",
+      "noLinksAdded": "Tiada pautan ditambah"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "Dicadangkan",
+      "ai": "AI",
+      "create": "Buat",
+      "tags": "Tag",
+      "selectedTags": "Tag yang dipilih",
+      "addTags": "Tambah tag",
+      "tagSuggestions": "Tag cadangan"
+    },
+    "componentsFilingTagInput": {
+      "tags": "Tag",
+      "optional": "pilihan)",
+      "addTags": "Tambah tag...",
+      "addTags2": "Tambah tag",
+      "selectedTags": "Tag yang dipilih",
+      "suggested": "Dicadangkan"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "Aktiviti Tangkap"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "Tiada item difailkan lagi",
+      "recentlyFiled": "Difailkan Baru-baru ini",
+      "latestActionsOnYourInbox": "Tindakan terkini pada peti masuk anda",
+      "linked": "Dipautkan"
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "Memuatkan cerapan..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "Tiada jenis item untuk dipaparkan",
+      "itemTypes": "Jenis Barang",
+      "distributionOfContentFormats": "Pengedaran format kandungan"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "Ditangkap "
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "x "
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "Penyunting kandungan"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "titik tengah; "
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "Tweet tidak tersedia",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Tweet ini mungkin telah dipadamkan atau daripada akaun peribadi.",
+      "openOnXCom": "Buka di x.com",
+      "views": "pandangan",
+      "xCom": "x.com",
+      "viewOnX": "Lihat pada X"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "Taip nama folder...",
+      "quickFileFolderSearch": "Carian folder fail pantas"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "dekat",
+      "capture": "tangkap"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "Alih keluar lampiran"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "Input tangkapan pantas",
+      "recordVoiceMemo": "Rakam memo suara",
+      "attachFile": "Lampirkan fail"
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "PAUTAN"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "Ditangkap",
+      "dismissError": "Tolak ralat",
+      "alreadyCaptured": "Sudah ditangkap",
+      "ldquo": "ldquo;",
+      "rdquoMiddot": "rdquo; · ",
+      "captureAnyway": "Tangkap Bagaimanapun",
+      "close": "tutup"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "Jatuhkan untuk menangkap",
+      "capturing": "Menangkap..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "Cadangan folder",
+      "noFoldersMatch": "Tiada folder yang sepadan \""
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "Tetapkan peringatan untuk teks ini",
+      "remindMeAboutThis": "Ingatkan saya tentang ini",
+      "selectedText": "Teks yang dipilih:"
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "Ingatkan",
+      "remindMe": "Ingatkan saya",
+      "pickDateTime": "Pilih tarikh & masa",
+      "addANoteOptional": "Tambahkan nota (pilihan)",
+      "backToPresets": "Kembali ke pratetap",
+      "time": "Masa",
+      "noteOptional": "Nota (pilihan)",
+      "whyAreYouSettingThisReminder": "Mengapa anda menetapkan peringatan ini?"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "Tunda",
+      "snooze2": "Tunda",
+      "pickDateTime": "Pilih Tarikh & Masa",
+      "pickDateTime2": "Pilih Tarikh & Masa",
+      "selectWhenToBeRemindedAboutThisItem": "Pilih masa untuk diingatkan tentang item ini",
+      "snooze3": "Tunda",
+      "snooze4": "Tunda",
+      "snooze5": "Tunda"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "Memuatkan siaran...",
+      "failedToLoad": "Gagal memuatkan",
+      "loadingPostContent": "Memuatkan kandungan siaran...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Gagal memuatkan kandungan siaran. Siaran itu mungkin peribadi atau dipadamkan.",
+      "viewOn": "Lihat pada "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "Mulakan rakaman suara",
+      "requestingMicrophoneAccess": "Meminta akses mikrofon...",
+      "settings": "tetapan",
+      "processing": "Memproses...",
+      "cancelRecording": "Batalkan rakaman",
+      "cancel": "Batal",
+      "stopRecording": "Hentikan rakaman",
+      "stop": "Berhenti"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCaptureLink": "Gagal menangkap pautan",
+      "failedToCaptureNote": "Gagal menangkap nota",
+      "captureFailed": "Tangkapan gagal",
+      "failedToCaptureVoiceMemo": "Gagal menangkap memo suara",
+      "voiceCaptureFailed": "Tangkapan suara gagal",
+      "failedToCaptureFile": "Gagal menangkap fail",
+      "fileCaptureFailed": "Tangkapan fail gagal",
+      "failedToCaptureAudio": "Gagal menangkap audio",
+      "failedToCaptureVoice": "Gagal menangkap suara"
+    },
+    "toasts": {
+      "inboxRefreshed": "Peti masuk dimuat semula"
+    }
+  }
+}

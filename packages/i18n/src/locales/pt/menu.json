@@ -1,0 +1,28 @@
+{
+  "app": {
+    "quit": "Sair"
+  },
+  "file": {
+    "label": "Arquivo",
+    "newNote": "Nova nota",
+    "close": "Fechar janela"
+  },
+  "navigation": {
+    "back": "Voltar",
+    "forward": "Avançar"
+  },
+  "edit": {
+    "label": "Editar",
+    "undo": "Desfazer",
+    "redo": "Refazer",
+    "cut": "Cortar",
+    "copy": "Copiar",
+    "paste": "Colar"
+  },
+  "view": {
+    "label": "Ver",
+    "reload": "Recarregar",
+    "toggleDevTools": "Alternar ferramentas de desenvolvedor",
+    "toggleFullscreen": "Alternar tela inteira"
+  }
+}

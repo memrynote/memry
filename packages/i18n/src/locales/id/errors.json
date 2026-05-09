@@ -1,0 +1,80 @@
+{
+  "generic": {
+    "somethingWentWrong": "Ada yang tidak beres. Silakan coba lagi.",
+    "operationFailed": "Operasi gagal",
+    "unknown": "Terjadi kesalahan yang tidak diketahui",
+    "validationFailed": "Validasi gagal",
+    "actionFailed": "Tindakan gagal"
+  },
+  "ipc": {
+    "noVaultOpen": "Tidak ada brankas yang terbuka. Silakan buka brankas terlebih dahulu."
+  },
+  "vault": {
+    "notFound": "Gudang tidak ditemukan. Mungkin telah dipindahkan atau dihapus.",
+    "notInitialized": "Tidak ada brankas yang terbuka. Buka atau buat brankas untuk melanjutkan.",
+    "invalidPath": "Jalur yang dipilih bukan lokasi brankas yang valid.",
+    "permissionDenied": "Izin ditolak. Periksa apakah Anda memiliki akses ke folder ini.",
+    "alreadyExists": "Vault sudah ada di lokasi ini.",
+    "corrupted": "Gudang ini tampaknya rusak. Coba pulihkan dari cadangan."
+  },
+  "note": {
+    "notFound": "Catatan ini tidak dapat ditemukan. Itu mungkin telah dihapus.",
+    "invalidFrontmatter": "Catatan ini memiliki metadata yang tidak valid dan tidak dapat dibaca.",
+    "duplicateId": "Catatan dengan ID ini sudah ada.",
+    "writeFailed": "Gagal menyimpan catatan ini. Periksa ruang disk dan izin.",
+    "readFailed": "Gagal membaca catatan ini. File mungkin terkunci atau rusak.",
+    "deleteFailed": "Gagal menghapus catatan ini. Periksa izin file.",
+    "invalidPath": "Jalur catatan tidak valid."
+  },
+  "database": {
+    "connectionFailed": "Tidak dapat terhubung ke database lokal. Coba mulai ulang aplikasi.",
+    "migrationFailed": "Peningkatan basis data gagal. Coba mulai ulang aplikasi.",
+    "queryFailed": "Operasi basis data gagal. Coba lagi.",
+    "notInitialized": "Basis data belum siap. Coba mulai ulang aplikasi.",
+    "constraintViolation": "Terjadi konflik data. Coba lagi.",
+    "corrupted": "Basis data lokal rusak. Anda mungkin perlu mengatur ulangnya."
+  },
+  "watcher": {
+    "startFailed": "Tidak dapat mulai mengamati perubahan file.",
+    "stopFailed": "Tidak dapat menghentikan pengamat file.",
+    "eventError": "Terjadi kesalahan saat mengamati perubahan file."
+  },
+  "attachment": {
+    "fileTooLarge": "File ini terlalu besar untuk dilampirkan.",
+    "unsupportedType": "Jenis file ini tidak didukung.",
+    "writeFailed": "Gagal menyimpan lampiran. Periksa ruang disk.",
+    "deleteFailed": "Gagal menghapus lampiran."
+  },
+  "encryption": {
+    "failed": "Gagal mengenkripsi data. Kunci Anda mungkin perlu dibuat ulang.",
+    "decryptionFailed": "Gagal mendekripsi data. Kunci enkripsi Anda mungkin sudah kedaluwarsa.",
+    "invalidKeyLength": "Kunci enkripsi tidak valid. Coba keluar lalu masuk kembali.",
+    "invalidNonceLength": "Kesalahan enkripsi. Coba operasi lagi."
+  },
+  "inboxAttachment": {
+    "writeFailed": "Gagal menyimpan lampiran kotak masuk.",
+    "deleteFailed": "Gagal menghapus lampiran kotak masuk."
+  },
+  "sync": {
+    "networkOffline": "Anda sedang luring. Perubahan akan disinkronkan saat Anda menyambung kembali.",
+    "networkTimeout": "Server sinkronisasi membutuhkan waktu terlalu lama untuk merespons. Akan segera mencoba lagi.",
+    "serverError": "Server sinkronisasi mengalami kesalahan. Akan mencoba lagi secara otomatis.",
+    "authExpired": "Sesi Anda telah berakhir. Masuk lagi untuk melanjutkan sinkronisasi.",
+    "deviceRevoked": "Perangkat ini telah dihapus dari akun Anda.",
+    "rateLimited": "Terlalu banyak permintaan. Sinkronisasi akan segera dilanjutkan.",
+    "cryptoFailure": "Gagal mengenkripsi atau mendekripsi data sinkronisasi. Coba keluar lalu masuk kembali.",
+    "versionIncompatible": "Versi Memry ini tidak lagi didukung. Harap perbarui.",
+    "storageQuotaExceeded": "Penyimpanan sinkronisasi Anda penuh. Kosongkan ruang atau tingkatkan paket Anda.",
+    "certificatePinFailed": "Koneksi aman gagal. Periksa koneksi jaringan Anda.",
+    "unknown": "Terjadi kesalahan sinkronisasi yang tidak terduga. Akan mencoba lagi secara otomatis.",
+    "statusFetchFailed": "Gagal mengambil status sinkronisasi",
+    "engineNotInitialized": "Mesin sinkronisasi tidak diinisialisasi. Buka brankas untuk memulai sinkronisasi.",
+    "triggerFailed": "Sinkronisasi gagal",
+    "pauseFailed": "Gagal menjeda sinkronisasi",
+    "resumeFailed": "Gagal melanjutkan sinkronisasi",
+    "settingsNotInitialized": "Sinkronisasi pengaturan tidak diinisialisasi",
+    "securityQuarantinePermanent": "Item sinkronisasi tidak dapat diverifikasi dan telah dikarantina demi keamanan.",
+    "securityQuarantineRetry": "Item sinkronisasi gagal dalam verifikasi tanda tangan dan akan dicoba lagi.",
+    "certificatePinPaused": "Sambungan aman ke server sinkronisasi tidak dapat diverifikasi. Sinkronisasi telah dijeda demi perlindungan Anda."
+  }
+}

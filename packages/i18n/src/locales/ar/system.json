@@ -1,1 +1,48 @@
-{}
+{
+  "dialog": {
+    "vault": {
+      "title": "حدد مجلد Vault",
+      "button": "حدد قبو"
+    },
+    "exportPdf": {
+      "title": "تصدير بصيغة PDF",
+      "filterName": "وثيقة PDF"
+    },
+    "exportHtml": {
+      "title": "تصدير بتنسيق HTML",
+      "filterName": "وثيقة HTML"
+    },
+    "import": {
+      "filterSupported": "الملفات المدعومة",
+      "filterAll": "جميع الملفات"
+    },
+    "exportCancelled": "تم إلغاء التصدير",
+    "update": {
+      "availableTitle": "التحديث متاح",
+      "availableMessage": "Memry {version} متاح.",
+      "availableDetailFallback": "تنزيل التحديث الآن؟",
+      "buttonDownload": "تحميل",
+      "buttonLater": "في وقت لاحق",
+      "readyTitle": "التحديث جاهز",
+      "readyMessage": "تم تنزيل Memry {version}.",
+      "readyDetailFallback": "أعد تشغيل Memry لإنهاء تثبيت التحديث.",
+      "buttonRestartNow": "أعد التشغيل الآن",
+      "releaseNotesLabel": "ملاحظات الإصدار:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "ملاحظة تذكير",
+      "journal": "تذكير بالمجلة",
+      "highlight": "تسليط الضوء على التذكير",
+      "fallback": "تذكير واجب",
+      "default": "تذكير"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "يجب أن يكون وقت التذكير في المستقبل",
+    "definitionNotFound": "لم يتم العثور على التعريف",
+    "noteNotFound": "لم يتم العثور على ملاحظة",
+    "updateFailed": "فشل التحديث"
+  }
+}

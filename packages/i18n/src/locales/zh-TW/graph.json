@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "正在載入圖表...",
+    "load-failed": "載入圖表資料失敗",
+    "try-again": "請再試一次",
+    "aria-label": "使用 {nodeCount, plural, one {# 節點} other {# 節點}} 和 {edgeCount, plural, one {# 連結} other {# 連結}} {summary, select, none {.} other {: {summary}。}} 的知識圖譜",
+    "nodes-list-label": "圖譜節點",
+    "node-list-item": "{label}（{type}）"
+  },
+  "empty": {
+    "title": "您的知識圖譜",
+    "description": "您的筆記、任務和項目之間的連接將以互動圖的形式顯示在此處。",
+    "link-title": "連結您的筆記",
+    "link-description": "使用 [[wikilinks]] 將不同筆記中的想法連接起來",
+    "discover-title": "發現模式",
+    "discover-description": "隨著連接增多，集群和主題將自然浮現"
+  },
+  "entity": {
+    "note": "筆記",
+    "notes": "筆記",
+    "journal": "日誌",
+    "journals": "日誌",
+    "task": "任務",
+    "tasks": "任務（複數）",
+    "project": "專案",
+    "projects": "項目",
+    "tag": "標籤",
+    "tags": "標籤",
+    "orphan": "孤立的",
+    "orphans": "孤立項",
+    "unresolved": "未解決"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "圖譜設定",
+    "hide-settings": "隱藏設定",
+    "reset-filters": "重置篩選",
+    "filters": "篩選器",
+    "display": "顯示",
+    "show-labels": "顯示標籤",
+    "focus-depth": "深度 {depth}",
+    "clear-focus": "清除焦點節點"
+  },
+  "filter": {
+    "notes": "備註們",
+    "journals": "日誌",
+    "tasks": "任務",
+    "projects": "專案",
+    "tags": "標籤",
+    "orphans": "孤立節點",
+    "toggle-entity": "切換 {label}",
+    "toggle-orphans": "切換孤立節點"
+  },
+  "search": {
+    "placeholder": "搜尋節點...",
+    "clear": "清除圖表搜尋"
+  },
+  "context-menu": {
+    "untitled": "未命名",
+    "focus-node": "聚焦此節點",
+    "open-new-tab": "在新分頁開啟",
+    "create-note": "建立筆記",
+    "copy-title": "複製標題"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {# 連結} other {# 連結}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "正在載入圖表...",
+    "empty": "未找到連結",
+    "open-full": "開啟完整圖表",
+    "close": "關閉圖表"
+  }
+}

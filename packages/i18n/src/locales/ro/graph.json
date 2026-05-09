@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Se încarcă graficul...",
+    "load-failed": "Nu s-au încărcat datele din grafic",
+    "try-again": "Încercați din nou",
+    "aria-label": "Graficul de cunoștințe cu {nodeCount, plural, one {Nodul #} other {nodurile #}} și {edgeCount, plural, one {Conexiune #} other {Conexiuni #}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Nodurile grafice",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Graficul cunoștințelor tale",
+    "description": "Conexiunile dintre notele, sarcinile și proiectele dvs. vor apărea aici ca un grafic interactiv.",
+    "link-title": "Conectați-vă notele",
+    "link-description": "Utilizați [[wikilink-uri]] pentru a conecta ideile între note",
+    "discover-title": "Descoperiți modele",
+    "discover-description": "Pe măsură ce conexiunile cresc, grupurile și temele vor apărea în mod natural"
+  },
+  "entity": {
+    "note": "notă",
+    "notes": "note",
+    "journal": "jurnal",
+    "journals": "jurnale",
+    "task": "sarcina",
+    "tasks": "sarcini",
+    "project": "proiect",
+    "projects": "proiecte",
+    "tag": "eticheta",
+    "tags": "etichete",
+    "orphan": "orfan",
+    "orphans": "orfani",
+    "unresolved": "nerezolvată"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Setări pentru grafic",
+    "hide-settings": "Ascundeți setările",
+    "reset-filters": "Resetați filtrele",
+    "filters": "Filtre",
+    "display": "Afișare",
+    "show-labels": "Afișați etichetele",
+    "focus-depth": "adâncimea {depth}",
+    "clear-focus": "Ștergeți nodul focalizat"
+  },
+  "filter": {
+    "notes": "Note",
+    "journals": "Jurnalele",
+    "tasks": "Sarcini",
+    "projects": "Proiecte",
+    "tags": "Etichete",
+    "orphans": "orfani",
+    "toggle-entity": "Comutați {label}",
+    "toggle-orphans": "Comutați nodurile orfane"
+  },
+  "search": {
+    "placeholder": "Căutați noduri...",
+    "clear": "Șterge căutarea grafică"
+  },
+  "context-menu": {
+    "untitled": "Fără titlu",
+    "focus-node": "Concentrați-vă pe acest nod",
+    "open-new-tab": "Deschide într-o filă nouă",
+    "create-note": "Creați o notă",
+    "copy-title": "Copiați titlul"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {Conexiune #} other {Conexiuni #}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Se încarcă graficul...",
+    "empty": "Nu s-au găsit conexiuni",
+    "open-full": "Deschideți graficul complet",
+    "close": "Închide graficul"
+  }
+}

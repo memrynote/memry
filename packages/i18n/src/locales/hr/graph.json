@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Učitavanje grafikona...",
+    "load-failed": "Učitavanje podataka grafikona nije uspjelo",
+    "try-again": "Pokušajte ponovno",
+    "aria-label": "Grafikon znanja s {nodeCount, plural, one {# čvor} other {# čvorovi}} i {edgeCount, plural, one {# veza} other {# veze}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Čvorovi grafa",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Vaš grafikon znanja",
+    "description": "Veze između vaših bilješki, zadataka i projekata pojavit će se ovdje kao interaktivni grafikon.",
+    "link-title": "Povežite svoje bilješke",
+    "link-description": "Upotrijebite [[wikiveze]] za povezivanje ideja kroz bilješke",
+    "discover-title": "Otkrijte uzorke",
+    "discover-description": "Kako veze rastu, klasteri i teme će se pojaviti prirodno"
+  },
+  "entity": {
+    "note": "bilješka",
+    "notes": "bilješke",
+    "journal": "časopis",
+    "journals": "časopisi",
+    "task": "zadatak",
+    "tasks": "zadaci",
+    "project": "projekt",
+    "projects": "projektima",
+    "tag": "oznaka",
+    "tags": "oznake",
+    "orphan": "siroče",
+    "orphans": "siročad",
+    "unresolved": "neriješena"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Postavke grafikona",
+    "hide-settings": "Sakrij postavke",
+    "reset-filters": "Resetiraj filtere",
+    "filters": "Filteri",
+    "display": "Prikaz",
+    "show-labels": "Prikaži oznake",
+    "focus-depth": "dubina {depth}",
+    "clear-focus": "Očistite fokusirani čvor"
+  },
+  "filter": {
+    "notes": "Bilješke",
+    "journals": "časopisi",
+    "tasks": "Zadaci",
+    "projects": "Projekti",
+    "tags": "oznake",
+    "orphans": "Siročad",
+    "toggle-entity": "Uključi/isključi {label}",
+    "toggle-orphans": "Uključi/isključi čvorove siroče"
+  },
+  "search": {
+    "placeholder": "Pretraži čvorove...",
+    "clear": "Jasno pretraživanje grafikona"
+  },
+  "context-menu": {
+    "untitled": "Bez naslova",
+    "focus-node": "Usredotočite se na ovaj čvor",
+    "open-new-tab": "Otvori u novoj kartici",
+    "create-note": "Napravi bilješku",
+    "copy-title": "Kopiraj naslov"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {# veza} other {# veze}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Učitavanje grafikona...",
+    "empty": "Nema pronađenih veza",
+    "open-full": "Otvori cijeli grafikon",
+    "close": "Zatvori grafikon"
+  }
+}

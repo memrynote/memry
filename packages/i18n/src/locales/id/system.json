@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "Pilih Folder Gudang",
+      "button": "Pilih Gudang"
+    },
+    "exportPdf": {
+      "title": "Ekspor sebagai PDF",
+      "filterName": "Dokumen PDF"
+    },
+    "exportHtml": {
+      "title": "Ekspor sebagai HTML",
+      "filterName": "Dokumen HTML"
+    },
+    "import": {
+      "filterSupported": "File yang Didukung",
+      "filterAll": "Semua File"
+    },
+    "exportCancelled": "Ekspor dibatalkan",
+    "update": {
+      "availableTitle": "Pembaruan tersedia",
+      "availableMessage": "Memry {version} tersedia.",
+      "availableDetailFallback": "Unduh pembaruan sekarang?",
+      "buttonDownload": "Unduh",
+      "buttonLater": "Nanti",
+      "readyTitle": "Pembaruan siap",
+      "readyMessage": "Memry {version} telah diunduh.",
+      "readyDetailFallback": "Mulai ulang Memry untuk menyelesaikan instalasi pembaruan.",
+      "buttonRestartNow": "Mulai ulang sekarang",
+      "releaseNotesLabel": "Catatan rilis:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "Pengingat catatan",
+      "journal": "Pengingat jurnal",
+      "highlight": "Sorot pengingat",
+      "fallback": "Pengingat jatuh tempo",
+      "default": "Pengingat"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "Waktu pengingat harus di masa depan",
+    "definitionNotFound": "Definisi tidak ditemukan",
+    "noteNotFound": "Catatan tidak ditemukan",
+    "updateFailed": "Pembaruan gagal"
+  }
+}

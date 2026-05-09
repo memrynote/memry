@@ -112,13 +112,55 @@
   },
   "phaseI": {
     "errors": {
-      "couldNotCreateEventTryAgain": "Etkinlik oluşturulamadı. Lütfen tekrar deneyin.",
-      "couldNotEditThisEventTryAgain": "Bu etkinlik düzenlenemedi. Lütfen tekrar deneyin.",
-      "couldNotSaveDefaultCalendarTryAgain": "Varsayılan takvim kaydedilemedi. Lütfen tekrar deneyin.",
       "couldNotSaveEventTryAgain": "Etkinlik kaydedilemedi. Lütfen tekrar deneyin.",
-      "failedToDeleteEvent": "Etkinlik silinemedi",
+      "couldNotCreateEventTryAgain": "Etkinlik oluşturulamadı. Lütfen tekrar deneyin.",
+      "couldNotSaveDefaultCalendarTryAgain": "Varsayılan takvim kaydedilemedi. Lütfen tekrar deneyin.",
       "failedToLoadCalendarPreferences": "Takvim tercihleri yüklenemedi",
-      "failedToUpdateCalendarPreferences": "Takvim tercihleri güncellenemedi"
+      "failedToUpdateCalendarPreferences": "Takvim tercihleri güncellenemedi",
+      "couldNotEditThisEventTryAgain": "Bu etkinlik düzenlenemedi. Lütfen tekrar deneyin.",
+      "failedToDeleteEvent": "Etkinlik silinemedi",
+      "couldNotUnsnoozeInboxItem": "Başlatma geri alınamadı.",
+      "couldNotRescheduleInboxItem": "Yeniden planlanamadı."
+    },
+    "inboxSnoozePopover": {
+      "title": "Ertelenmiş gelen kutusu öğesi",
+      "openInInbox": "Gelen kutusunda aç",
+      "unsnoozeNow": "Şimdi ertelemeyi kaldır",
+      "reschedule": "Yeniden planla"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "Görev detayları",
+    "open-task": "Görevi aç",
+    "source-note": "Kaynak not",
+    "reschedule": "Yeniden planla",
+    "more-actions": "Daha fazla işlem",
+    "mark-done": "Tamamlandı olarak işaretle",
+    "mark-not-done": "Tamamlanmadı olarak işaretle",
+    "later-today": "Bugün ilerleyen saatlerde",
+    "tomorrow": "Yarın",
+    "next-week": "Gelecek hafta",
+    "next-week-mon": "Gelecek hafta · Pazartesi",
+    "pick-date-time": "Tarih ve saat seç...",
+    "remove-due-date": "Bitiş tarihini kaldır",
+    "subtasks-prefix": "Alt görevler",
+    "subtasks-counter": "{done} / {total} tamamlandı",
+    "today": "Bugün",
+    "overdue-one": "1 gün gecikmiş",
+    "overdue-other": "{count} gün gecikmiş",
+    "repeats": "Tekrarlar",
+    "repeats-daily": "Günlük tekrarlar",
+    "repeats-weekly": "Haftalık tekrarlar",
+    "repeats-monthly": "Aylık tekrarlar",
+    "repeats-yearly": "Yıllık tekrarlar",
+    "priority-urgent": "Acil",
+    "priority-high": "Yüksek",
+    "priority-medium": "Orta",
+    "errors": {
+      "could-not-save": "Görev kaydedilemedi",
+      "could-not-reschedule": "Görev yeniden planlanamadı",
+      "could-not-remove-due-date": "Son teslim tarihi kaldırılamadı",
+      "could-not-open-note": "Not açılamadı"
     }
   }
 }

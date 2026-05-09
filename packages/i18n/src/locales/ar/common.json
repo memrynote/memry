@@ -43,12 +43,11 @@
     "search": "بحث",
     "edit": "تعديل",
     "delete": "حذف",
-    "close": "إغلاق"
-  },
-  "dateRelative": {
-    "today": "اليوم",
-    "yesterday": "أمس",
-    "daysAgo": "{count, plural, zero {اليوم} one {منذ يوم واحد} two {منذ يومين} few {منذ # أيام} many {منذ # يوماً} other {منذ # يوم}}"
+    "close": "إغلاق",
+    "expand": "توسيع",
+    "collapse": "طي",
+    "showMore": "+{count, plural, one {# أكثر} other {# أكثر}}",
+    "showLess": "عرض أقل"
   },
   "tabs": {
     "pin": "تثبيت علامة التبويب",
@@ -72,5 +71,301 @@
     "task": "{count, plural, zero {لا توجد مهام} one {مهمة واحدة} two {مهمتان} few {# مهام} many {# مهمة} other {# مهمة}}",
     "project": "{count, plural, zero {لا توجد مشاريع} one {مشروع واحد} two {مشروعان} few {# مشاريع} many {# مشروعاً} other {# مشروع}}",
     "itemDelete": "{count, plural, zero {حذف العناصر} one {حذف عنصر واحد} two {حذف عنصرين} few {حذف # عناصر} many {حذف # عنصراً} other {حذف # عنصر}}"
+  },
+  "toast": {
+    "actionFailed": "فشل الإجراء",
+    "nothingToUndo": "لا يوجد شيء للتراجع عنه",
+    "undone": "تم التراجع: {description}",
+    "undoFailed": "فشل التراجع عن الإجراء",
+    "copied": "منقول",
+    "copyFailed": "فشل النسخ"
+  },
+  "dateRelative": {
+    "today": "اليوم",
+    "yesterday": "أمس",
+    "daysAgo": "{count, plural, zero {اليوم} one {منذ يوم واحد} two {منذ يومين} few {منذ # أيام} many {منذ # يوماً} other {منذ # يوم}}"
+  },
+  "recurrence": {
+    "everyDay": "كل يوم",
+    "everyNDays": "{count, plural, one {كل يوم} other {كل # أيام}}",
+    "everyWeek": "كل أسبوع",
+    "everyNWeeks": "{count, plural, one {كل أسبوع} other {كل أسابيع #}}",
+    "everyWeekday": "كل يوم من أيام الأسبوع",
+    "everyNWeeksOnWeekdays": "{count, plural, one {كل يوم من أيام الأسبوع} other {كل أسابيع # في أيام الأسبوع}}",
+    "everyWeekend": "في نهاية كل أسبوع",
+    "everyNWeeksOnWeekends": "{count, plural, one {في نهاية كل أسبوع} other {كل أسابيع # في عطلات نهاية الأسبوع}}",
+    "everyWeekOnDays": "كل أسبوع على {days}",
+    "everyNWeeksOnDays": "{count, plural, one {كل أسبوع على {days}} other {كل أسابيع # على {days}}}",
+    "everyMonth": "كل شهر",
+    "everyNMonths": "{count, plural, one {كل شهر} other {كل # أشهر}}",
+    "everyMonthOnDay": "كل شهر على {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {كل شهر على {day}{suffix}} other {كل # أشهر على {day}{suffix}}}",
+    "everyMonthOnWeekDay": "كل شهر على {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {كل شهر على {week} {day}} other {كل # أشهر على {week} {day}}}",
+    "everyYear": "كل عام",
+    "everyNYears": "{count, plural, one {كل عام} other {كل # سنة}}",
+    "repeats": "يكرر"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "المجموعات",
+      "newNote": "ملاحظة جديدة",
+      "newNote2": "ملاحظة جديدة",
+      "newFolder": "مجلد جديد",
+      "newFolder2": "مجلد جديد",
+      "bookmarks": "الإشارات المرجعية",
+      "tags": "العلامات",
+      "dropFilesToImport": "قم بإسقاط الملفات لاستيرادها",
+      "newNoteN": "ملاحظة جديدة (⌘N)",
+      "new": "جديد",
+      "syncDisabled": "تم تعطيل المزامنة",
+      "syncDisabled2": "تم تعطيل المزامنة"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "تغيير حجم لوحة اليوم",
+      "dragToResizeDoubleClickToReset": "اسحب لتغيير الحجم · انقر نقرًا مزدوجًا لإعادة التعيين"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "ابحث، استبدل، اسأل..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "تخطي الصعود",
+      "welcomeToMemry": "مرحبًا بك في Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "قاعدة المعرفة الشخصية الخاصة بك. لنأخذ دقيقتين للبدء.",
+      "getStarted": "ابدأ ",
+      "createYourFirstNote": "قم بإنشاء ملاحظتك الأولى",
+      "markdownBasedStoredLocallyAsPlainFiles": "يعتمد على Markdown، ويتم تخزينه محليًا كملفات عادية.",
+      "eGMeetingNotesIdeasAnything": "على سبيل المثال ملاحظات الاجتماع والأفكار وأي شيء ...",
+      "skip": "تخطي",
+      "createNote": "إنشاء ملاحظة ",
+      "addYourFirstTask": "أضف مهمتك الأولى",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "ترتبط المهام بملاحظاتك، مع الأولويات وتواريخ الاستحقاق.",
+      "eGReviewProjectProposal": "على سبيل المثال مراجعة مقترح المشروع...",
+      "skip2": "تخطي",
+      "createTask": "إنشاء مهمة ",
+      "syncAcrossDevices": "المزامنة عبر الأجهزة",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "حافظ على مزامنة ملاحظاتك ومهامك عبر جميع أجهزتك. يمكنك دائمًا إعداد هذا لاحقًا.",
+      "skipForNow": "تخطي الآن",
+      "doneLetSGo": "تم - دعنا نذهب! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "تعيين رمز المجلد"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "تلميح"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "منتقي الأيقونات",
+      "selectIcon": "حدد الرمز",
+      "closeIconPicker": "إغلاق منتقي الأيقونات",
+      "searchIcons": "ايقونات البحث...",
+      "all": "الكل",
+      "clearIcon": "أيقونة واضحة",
+      "noIconsFoundFor": "لم يتم العثور على أيقونات لـ \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "اختصارات لوحة المفاتيح",
+      "closeShortcutsHelp": "مساعدة على إغلاق الاختصارات",
+      "press": "اضغط",
+      "toClose": "ليغلق"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "تعيين أيقونة",
+      "clearIcon": "أيقونة واضحة"
+    },
+    "componentsNavMain": {
+      "platform": "منصة"
+    },
+    "componentsNavProjects": {
+      "projects": "المشاريع",
+      "more": "المزيد",
+      "viewProject": "عرض المشروع",
+      "shareProject": "شارك المشروع",
+      "deleteProject": "حذف المشروع",
+      "more2": "المزيد"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "الترقية إلى برو",
+      "account": "الحساب",
+      "billing": "الفواتير",
+      "notifications": "الإخطارات",
+      "logOut": "تسجيل الخروج"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "بحث",
+      "searchNotesTasksJournalInbox": "البحث في الملاحظات والمهام والمجلة والبريد الوارد...",
+      "noResultsFor": "لا توجد نتائج ل \"\"",
+      "rdquo": "ردقوو]؛",
+      "result": "نتيجة"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "ابحث وانقر فوق العناصر لبناء المسار الخاص بك",
+      "reasons": "الأسباب",
+      "clear": "واضح"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "واضح",
+      "tags": "العلامات",
+      "filterByTag": "التصفية حسب العلامة...",
+      "dateRange": "النطاق الزمني"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "عرض الكل ",
+      "results": "النتائج"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "ص",
+      "fuzzy": "غامض"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "لا توجد علامات تبويب مفتوحة",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "افتح صفحة من الشريط الجانبي أو أنشئ علامة تبويب جديدة للبدء",
+      "openInbox": "افتح البريد الوارد",
+      "closePane": "إغلاق الجزء"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "الإعدادات المسبقة للتخطيط",
+      "layoutPresets2": "الإعدادات المسبقة للتخطيط"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "تغيير حجم الأجزاء"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "سياق المهام غير متوفر",
+      "searchResults": "نتائج البحث",
+      "unknownTabType": "نوع علامة التبويب غير معروف: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "التغييرات غير المحفوظة",
+      "preview": "معاينة"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "علامة تبويب جديدة",
+      "newTab2": "علامة تبويب جديدة",
+      "newNote": "ملاحظة جديدة",
+      "journal": "مجلة",
+      "calendar": "التقويم",
+      "inboxCapture": "التقاط البريد الوارد",
+      "tasks": "المهام"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "التغييرات غير المحفوظة",
+      "unsaved": "غير محفوظ)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "التغييرات غير المحفوظة"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "إغلاق كافة علامات التبويب"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "علامات التبويب المفتوحة",
+      "scrollTabsLeft": "انتقل علامات التبويب إلى اليسار",
+      "scrollTabsRight": "قم بتمرير علامات التبويب إلى اليمين",
+      "graphG": "الرسم البياني (⌘G)",
+      "dayPanel": "لوحة اليوم"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "انتقل علامات التبويب إلى اليسار",
+      "scrollTabsRight": "قم بتمرير علامات التبويب إلى اليمين"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "علامات التبويب المفتوحة",
+      "scrollTabsLeft": "انتقل علامات التبويب إلى اليسار",
+      "scrollTabsRight": "قم بتمرير علامات التبويب إلى اليمين"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "حدث خطأ ما",
+      "anErrorOccurredWhileRenderingThisTabContent": "حدث خطأ أثناء عرض محتوى علامة التبويب هذه.",
+      "tryAgain": "حاول مرة أخرى"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "أيقونة الملاحظة"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "التغييرات غير المحفوظة",
+      "quot": "مثل؛",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "مثل؛ به تغييرات غير محفوظة. ماذا تريد أن تفعل؟"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "مساحة عمل جديدة",
+      "darkMode": "الوضع المظلم",
+      "settings": "الإعدادات",
+      "integrations": "التكامل",
+      "signOut": "تسجيل الخروج",
+      "downloadOnIos": "تحميل على دائرة الرقابة الداخلية"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "أغلق النافذة",
+      "minimizeWindow": "تصغير النافذة",
+      "maximizeWindow": "تكبير النافذة"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "اقتراحات",
+      "or": "أو",
+      "enter": "أدخل",
+      "toInsert": "لإدراج"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "فتات الخبز",
+      "more": "المزيد"
+    },
+    "componentsUiDialog": {
+      "close": "إغلاق"
+    },
+    "componentsUiSheet": {
+      "close": "إغلاق"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "الشريط الجانبي",
+      "displaysTheMobileSidebar": "يعرض الشريط الجانبي للجوال.",
+      "toggleSidebar": "تبديل الشريط الجانبي",
+      "toggleSidebar2": "تبديل الشريط الجانبي",
+      "dragToResizeDoubleClickToReset": "اسحب لتغيير الحجم · انقر نقرًا مزدوجًا لإعادة التعيين"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "مرحبًا بك في Memry",
+      "yourPersonalKnowledgeManagementSystem": "نظام إدارة المعرفة الشخصية الخاص بك.",
+      "selectAFolderToStoreYourNotesAndTasks": "حدد مجلدًا لتخزين ملاحظاتك ومهامك.",
+      "opening": "الافتتاح...",
+      "selectVaultFolder": "حدد مجلد Vault",
+      "plainMarkdown": "تخفيض السعر عادي",
+      "yourNotesStayPortable": "تظل ملاحظاتك محمولة",
+      "syncAnywhere": "مزامنة في أي مكان",
+      "useDropboxIcloudGit": "استخدم Dropbox، iCloud، Git",
+      "recentVaults": "الخزائن الأخيرة",
+      "notesLastOpened": "ملاحظات · آخر فتح"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "لا يوجد خزائن حتى الآن",
+      "openVault": "قبو مفتوح",
+      "settings": "الإعدادات",
+      "logOut": "تسجيل الخروج",
+      "signInToSync": "قم بتسجيل الدخول للمزامنة",
+      "remove": "إزالة \"",
+      "rdquoFromList": "ردقوو]؛ من القائمة؟",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "ستتم إزالة هذا المخزن من التطبيق، لكن ملفاتك ستبقى على القرص. ويمكنك دائمًا إعادة إضافته لاحقًا.",
+      "cancel": "إلغاء",
+      "remove2": "إزالة"
+    },
+    "componentsWindowControls": {
+      "searchK": "بحث (⌘K)",
+      "browserBack": "عودة المتصفح",
+      "back": "العودة",
+      "browserForward": "المتصفح إلى الأمام",
+      "forward": "إلى الأمام"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "فشل استيراد الملفات",
+      "failedToCreateNote": "فشل في إنشاء ملاحظة",
+      "failedToAccessMicrophone": "فشل الوصول إلى الميكروفون"
+    },
+    "toasts": {
+      "undone": "تم التراجع عنه"
+    }
   }
 }

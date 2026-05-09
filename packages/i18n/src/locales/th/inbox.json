@@ -1,0 +1,483 @@
+{
+  "view": {
+    "tabs": {
+      "inbox": "  \nกล่องเข้า  ",
+      "archived": "  \nเก็บถาวร  ",
+      "insights": "  \nข้อมูลเชิงลึก  ",
+      "ariaLabel": "  \nการเลือกมุมมองกล่องเข้า  "
+    },
+    "triageButton": "  \nคัดกรอง  ",
+    "processInboxTitle": "  \nจัดการกล่องเข้า (Cmd+P)  ",
+    "itemCaptured": "  \nรายการที่จับได้  ",
+    "searchArchivedTitle": "  \nค้นหารายการที่เก็บถาวร  ",
+    "searchPlaceholder": "  \nค้นหา...  ",
+    "archivedItemsAria": "  \nรายการที่เก็บถาวร  ",
+    "snoozed": {
+      "show": "  \nแสดงรายการที่เลื่อนออกไป  ",
+      "showWithCount": "  \nแสดงรายการที่เลื่อนออกไป ({count})  ",
+      "hide": "  \nซ่อนรายการที่เลื่อนออกไป  "
+    },
+    "filter": {
+      "button": "  \nกรอง  ",
+      "byType": "  \nกรองตามประเภท",
+      "active": "{count, plural, one {กรองตามประเภท #} other {กรองตามประเภท #}}",
+      "clearAll": "ล้างทั้งหมด"
+    },
+    "jobs": {
+      "running": "{count, plural, one {งานเบื้องหลัง # กำลังทำงาน} other {งานเบื้องหลัง # กำลังทำงาน}}",
+      "failed": "{count} ล้มเหลว"
+    }
+  },
+  "type": {
+    "link": "ลิงก์",
+    "links": "ลิงก์",
+    "note": "บันทึก",
+    "notes": "บันทึก",
+    "image": "รูปภาพ",
+    "images": "รูปภาพ",
+    "voice": "เสียง",
+    "video": "วิดีโอ",
+    "clip": "คลิป",
+    "clips": "คลิป",
+    "pdf": "PDF",
+    "pdfs": "ไฟล์ PDF",
+    "social": "โซเชียล",
+    "reminder": "การเตือน",
+    "reminders": "การเตือน",
+    "text": "ข้อความ",
+    "other": "อื่น ๆ"
+  },
+  "empty": {
+    "successAria": "สำเร็จ กล่องขาเข้าเป็นว่าง",
+    "title": "กล่องขาเข้าเป็นศูนย์",
+    "body": "ทุกอย่างถูกประมวลผลแล้ว ทำการจับภาพสิ่งใหม่ด้วยข้อมูลข้างต้น หรือวางลิงก์เพื่อเริ่มต้น",
+    "filedThisWeek": "{count, plural, one {# ยื่นเอกสารสัปดาห์นี้} other {# ยื่นเอกสารสัปดาห์นี้}}",
+    "dayStreak": "{count, plural, one {# วันติดต่อกัน} other {# วันติดต่อกัน}}",
+    "tipPrefix": "เคล็ดลับ: ใช้",
+    "tipSuffix": "เพื่อจับภาพด่วนจากคลิปบอร์ด",
+    "archivedNone": "ไม่มีรายการที่ถูกเก็บ",
+    "archivedNoMatches": "ไม่มีรายการที่เก็บตรงกัน",
+    "noItemsYet": "ยังไม่มีรายการ",
+    "noItemsFiled": "ยังไม่มีการจัดเก็บรายการ",
+    "noItemTypes": "ไม่มีประเภทของรายการที่จะแสดง",
+    "noFolders": "ไม่พบโฟลเดอร์",
+    "noFolderMatch": "ไม่มีโฟลเดอร์ตรงกับ \"{query}\"",
+    "noNotes": "ไม่พบบันทึก",
+    "allMatchesLinked": "การจับคู่ทั้งหมดลิงก์แล้ว"
+  },
+  "list": {
+    "ariaLabel": "รายการกล่องขาเข้า",
+    "section": {
+      "today": "วันนี้",
+      "yesterday": "เมื่อวาน",
+      "older": "เก่า"
+    },
+    "selectItem": "เลือก {title}",
+    "itemAria": "{type}: {title}",
+    "untitled": "ไม่มีชื่อเรื่อง",
+    "untitledItem": "รายการไม่มีชื่อ",
+    "transcribing": "กำลังถอดความ...",
+    "transcriptionFailed": "ถอดความล้มเหลว",
+    "retryTranscription": "ลองใหม่",
+    "pageCount": "{count, plural, one {หน้าของ #} other {หลายหน้าของ #}}",
+    "snoozedUntilShort": "เลื่อนแจ้งเตือนจนถึง {date}",
+    "capturedAgo": "จับภาพ {time}"
+  },
+  "loading": {
+    "inbox": "กำลังโหลดกล่องขาเข้า...",
+    "failed": "โหลดกล่องขาเข้าล้มเหลว",
+    "tryAgain": "ลองอีกครั้ง",
+    "capturingImage": "กำลังจับภาพ...",
+    "dropImageTitle": "วางรูปภาพเพื่อจับภาพ",
+    "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
+    "unsupportedImageType": "ประเภทภาพที่ไม่รองรับ: {type}",
+    "imageTooLarge": "ภาพมีขนาดใหญ่เกินไป (สูงสุด 50MB)"
+  },
+  "toast": {
+    "failedArchiveItem": "ไม่สามารถเก็บรายการไว้ในแฟ้มได้",
+    "failedArchiveItems": "ไม่สามารถเก็บรายการหลายรายการไว้ในแฟ้มได้",
+    "failedFile": "ไม่สามารถบันทึกแฟ้มได้",
+    "failedFileItem": "ไม่สามารถบันทึกรายการไว้ในแฟ้มได้",
+    "failedFileItems": "ไม่สามารถบันทึกรายการหลายรายการไว้ในแฟ้มได้",
+    "failedSnooze": "ไม่สามารถเลื่อนเวลาการแจ้งเตือนได้",
+    "failedSnoozeItem": "ไม่สามารถเลื่อนเวลาการแจ้งเตือนรายการได้",
+    "failedApplyTags": "ไม่สามารถใช้แท็กได้",
+    "failedCaptureImage": "ไม่สามารถจับภาพได้",
+    "linkedToNote": "ลิงก์ไปยังโน้ต",
+    "linkedToNotes": "ลิงก์ไปยังโน้ต {count}",
+    "filedTo": "ถูกบันทึกไปที่ {folder}",
+    "filedItemsTo": "บันทึกรายการ {count} ไปยัง {folder}",
+    "filedPartial": "บันทึก {processed} ของรายการ {total}",
+    "appliedTags": "{tagCount, plural, one {ใช้แท็ก # แล้ว} other {ใช้แท็ก # หลายรายการแล้ว}} ไปยัง {itemCount, plural, one {# รายการ} other {# รายการ}}",
+    "archivedItems": "{count, plural, one {รายการ # ที่เก็บถาวร} other {รายการ # ที่เก็บถาวรทั้งหมด}}",
+    "snoozedUntil": "เลื่อนจนถึง {time}",
+    "snoozedItemsUntil": "{count, plural, one {เลื่อนรายการ # จนถึง {time}} other {เลื่อนรายการ # ทั้งหมดจนถึง {time}}}"
+  },
+  "triage": {
+    "modeTitle": "โหมดจัดลำดับความสำคัญ",
+    "exitHint": "กด Esc เพื่อออก",
+    "exitAria": "ออกจากโหมดจัดลำดับความสำคัญ",
+    "position": "{current} จาก {total}",
+    "action": {
+      "discard": "ทิ้ง",
+      "archive": "เก็บถาวร",
+      "open": "เปิด",
+      "toTask": "ไปที่งาน",
+      "toNote": "ไปที่บันทึก",
+      "file": "แฟ้ม",
+      "snooze": "เลื่อน",
+      "cancel": "ยกเลิก"
+    },
+    "snoozeUntil": "เลื่อนจนถึง...",
+    "complete": {
+      "title": "กล่องขาเข้าเป็นศูนย์",
+      "processed": "{count, plural, one {รายการ # ถูกดำเนินการแล้ว} other {รายการ # ทั้งหมดถูกดำเนินการแล้ว}}",
+      "streak": "สตรีค",
+      "streakCount": "สตรีค {count}",
+      "dayProcessingStreak": "{count, plural, one {สตรีคการประมวลผลวัน #} other {สตรีคการประมวลผลวัน #}}",
+      "back": "กลับไปยังกล่องเข้า",
+      "motivation0": "ตัวคุณในอนาคตขอบคุณคุณ",
+      "motivation1": "ทุกอย่างอยู่ในที่ของมัน",
+      "motivation2": "ล้างกล่องเข้า ล้างสมอง.",
+      "motivation3": "หนี้การตัดสินใจ: ชำระเต็มจำนวน",
+      "motivation4": "มันรู้สึกดีใช่ไหม?"
+    }
+  },
+  "bulk": {
+    "selected": "เลือก {count}",
+    "deselectAll": "ยกเลิกการเลือกทั้งหมด",
+    "ariaLabel": "การดำเนินการเป็นกลุ่มสำหรับรายการ {count} ที่เลือก",
+    "file": "แฟ้ม",
+    "tag": "แท็ก",
+    "snooze": "เลื่อน",
+    "archive": "เก็บถาวร",
+    "add": "เพิ่ม",
+    "dismissSuggestion": "ปฏิเสธคำแนะนำ",
+    "hint": {
+      "file": "ไฟล์",
+      "tag": "แท็ก",
+      "snooze": "เลื่อนเวลา",
+      "archive": "เก็บเข้าแฟ้ม",
+      "deselect": "ยกเลิกการเลือก"
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {เก็บรายการ # เข้าแฟ้ม?} other {เก็บรายการ # เข้าแฟ้มทั้งหมด?}}",
+      "description": "รายการเหล่านี้จะถูกเก็บเข้าแฟ้ม คุณสามารถดูรายการที่เก็บเข้าแฟ้มได้ภายหลัง",
+      "confirm": "{count, plural, one {เก็บรายการ # เข้าแฟ้ม} other {เก็บรายการ # เข้าแฟ้มทั้งหมด}}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {จัดเก็บรายการ #} other {จัดเก็บรายการ # ทั้งหมด}}",
+      "itemsToFile": "รายการที่จะจัดเก็บ",
+      "multipleNoteLinksUnavailable": "หมายเหตุ: ลิงก์ไปยังหมายเหตุอื่นไม่สามารถเพิ่มได้เมื่อจัดเก็บหลายรายการ",
+      "filing": "กำลังจัดเก็บ...",
+      "submit": "{count, plural, one {จัดเก็บรายการ #} other {แฟ้มรายการ #}}",
+      "macHint": "⌘⏎ เพื่อจัดเก็บ · Esc เพื่อปิด",
+      "ctrlHint": "Ctrl+Enter เพื่อจัดเก็บ · Esc เพื่อปิด"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {แท็กรายการ #} other {แท็กรายการ #}}",
+      "placeholder": "พิมพ์เพื่อค้นหาแท็ก...",
+      "applying": "กำลังใช้งาน...",
+      "apply": "{count, plural, one {ใช้กับรายการ #} other {ใช้กับรายการ # หลายรายการ}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "การดำเนินการด่วน",
+    "archiveItem": "จัดเก็บรายการ",
+    "archive": "เก็บถาวร",
+    "snooze": "เลื่อน"
+  },
+  "detail": {
+    "ariaLabel": "รายละเอียดรายการ",
+    "closePanel": "ปิดแผง",
+    "resizeFiling": "ปรับขนาดส่วนจัดเก็บ",
+    "restore": "เรียกคืน",
+    "restoreToInbox": "เรียกคืนไปยังกล่องจดหมาย",
+    "delete": "ลบ",
+    "deletePermanently": "ลบถาวร",
+    "archive": "เก็บถาวร",
+    "file": "แฟ้ม",
+    "keyboardHint": "{modifier}⏎ จัดเก็บ · 1-5 โฟลเดอร์ · Esc ปิด",
+    "voiceTitlePlaceholder": "ตั้งชื่อบันทึกเสียงนี้...",
+    "fileTo": "จัดเก็บไปที่",
+    "ai": "AI",
+    "selectFolder": "เลือกโฟลเดอร์",
+    "searchOrCreateFolder": "ค้นหาหรือสร้างด้วย /...",
+    "suggested": "ที่แนะนำ",
+    "notesRoot": "บันทึก",
+    "notesRootLabel": "บันทึก (ราก)",
+    "createFolder": "สร้าง \"{name}\"",
+    "addTags": "เพิ่มแท็ก...",
+    "linkToNote": "ลิงก์ไปยังบันทึก",
+    "linkNotesPlaceholder": "ลิงก์บันทึก...",
+    "searchNotesAria": "ค้นหาบันทึกเพื่อลิงก์",
+    "linkedNotesAria": "บันทึกลิงก์",
+    "removeLinkTo": "ลบลิงก์ไปยัง {title}",
+    "contentEditorAria": "ตัวแก้ไขเนื้อหา",
+    "notePlaceholder": "เขียนบันทึกของคุณ...",
+    "textPlaceholder": "แก้ไขข้อความที่บันทึกไว้..."
+  },
+  "content": {
+    "capturedAt": "จับภาพ {date}",
+    "todayAt": "วันนี้ที่ {time}",
+    "yesterdayAt": "เมื่อวานนี้ที่ {time}",
+    "dateAt": "{date} ที่ {time}",
+    "words": "{count, plural, one {# คำ} other {# คำ}}",
+    "duration": "ระยะเวลา: {duration}",
+    "dimensions": "ขนาด",
+    "format": "รูปแบบ",
+    "size": "ขนาด",
+    "voiceMemo": "บันทึกเสียง",
+    "play": "เล่น",
+    "pause": "หยุดชั่วคราว",
+    "audioPosition": "ตำแหน่งเสียง",
+    "transcription": "การถอดความ",
+    "processing": "กำลังประมวลผล",
+    "pending": "รอดำเนินการ",
+    "failed": "ล้มเหลว",
+    "copyTranscription": "คัดลอกการถอดความ",
+    "transcribingAudio": "กำลังถอดความเสียง...",
+    "awaitingTranscription": "กำลังรอฟังการถอดความ...",
+    "noTranscription": "ไม่มีการถอดความ",
+    "failedPlayAudio": "ไม่สามารถเล่นเสียงได้",
+    "failedLoadAudio": "ไม่สามารถโหลดเสียงได้",
+    "video": "วิดีโอ",
+    "unsupportedVideo": "เบราว์เซอร์ของคุณไม่รองรับแท็กวิดีโอ"
+  },
+  "reminder": {
+    "dataUnavailable": "ไม่มีข้อมูลการเตือน",
+    "triggered": "เตือนแล้ว",
+    "noteLabel": "หมายเหตุการเตือน",
+    "source": "แหล่งที่มา",
+    "journalTitle": "บันทึก — {date}",
+    "noteFallback": "บันทึก",
+    "journalFallback": "วารสาร",
+    "highlighted": "ไฮไลต์: \"{text}\"",
+    "viewed": "ดูแล้ว",
+    "markViewed": "ทำเครื่องหมายว่าได้ดูแล้ว",
+    "notYetViewed": "ยังไม่ได้ดู",
+    "snooze": "เลื่อน",
+    "presetInOneHour": "1 ชั่วโมง",
+    "presetTomorrow": "พรุ่งนี้",
+    "presetNextWeek": "สัปดาห์หน้า",
+    "custom": "กำหนดเอง..."
+  },
+  "insights": {
+    "loading": "กำลังโหลดข้อมูลเชิงลึก...",
+    "captureActivity": "จับกิจกรรม",
+    "byType": "ตามประเภท",
+    "itemTypes": "ประเภทของรายการ",
+    "itemTypesDescription": "การกระจายของรูปแบบเนื้อหา",
+    "recentFilings": "เอกสารที่ยื่นเมื่อเร็ว ๆ นี้",
+    "recentlyFiled": "ยื่นล่าสุด",
+    "recentlyFiledDescription": "การดำเนินการล่าสุดในกล่องขาเข้าของคุณ",
+    "captured": "จับแล้ว",
+    "capturedThisWeek": "+{count} สัปดาห์นี้  ",
+    "processed": "  \nประมวลผลแล้ว  ",
+    "processRate": "  \nอัตรา {rate}%  ",
+    "stale": "  \nล้าสมัย  ",
+    "needsAttention": "  \nต้องการความสนใจ  ",
+    "allClear": "  \nทุกอย่างเรียบร้อย  ",
+    "avgTimeToFile": "  \nค่าเฉลี่ยเวลายื่นเอกสาร  ",
+    "noCapturesYet": "  \nยังไม่มีการบันทึก  ",
+    "captures": "{count, plural, one {  \nการจับของ #  } other {  \nการจับของ # หลายรายการ  }}",
+    "peak": "  \nสูงสุด: {day} {start}–{end}  ",
+    "convertedToTask": "  \nแปลงเป็นงาน  ",
+    "linked": "  \nเชื่อมโยงแล้ว  ",
+    "now": "  \nตอนนี้  ",
+    "timeAgoMinutes": "  \n{count} นาทีที่ผ่านมา  ",
+    "timeAgoHours": "  \n{count} ชั่วโมงที่ผ่านมา  ",
+    "timeAgoDays": "  \n{count} วันผ่านมา  "
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "  \nตรวจพบโดย AI:  ",
+      "addToSelection": "  \nเพิ่มไปยังการเลือก  ",
+      "dismiss": "  \nไม่สนใจ  "
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "  \nลบ  ",
+      "item": "  \nรายการ  ",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "  \nรายการเหล่านี้จะถูกลบออกจากกล่องข้อความของคุณ คุณสามารถย้อนกลับการกระทำนี้ได้ทันทีหลังจากนั้น  "
+    },
+    "componentsCaptureInput": {
+      "captureInput": "  \nป้อนข้อมูลการจับ  ",
+      "attachFile": "  \nแนบไฟล์  ",
+      "attachFileImagesAudioVideoPdf": "  \nแนบไฟล์ (รูปภาพ, เสียง, วิดีโอ, PDF)",
+      "recordVoiceMemo": "บันทึกข้อความเสียง",
+      "recordVoiceMemo2": "บันทึกข้อความเสียง",
+      "alreadyCaptured": "จับภาพแล้ว: “",
+      "rdquo": "rdquo;",
+      "captureAnyway": "จับภาพต่อ"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "เลือกโฟลเดอร์",
+      "searchFolders": "ค้นหาโฟลเดอร์...",
+      "searchFolders2": "ค้นหาโฟลเดอร์",
+      "searchResults": "ผลการค้นหา",
+      "create": "สร้าง",
+      "suggested": "ที่แนะนำ",
+      "recent": "ล่าสุด",
+      "allFolders": "โฟลเดอร์ทั้งหมด",
+      "allFolders2": "โฟลเดอร์ทั้งหมด"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "ลิงก์ไปยัง",
+      "optional": "(ไม่บังคับ)",
+      "searchNotesToLink": "ค้นหาบันทึกเพื่อเชื่อมโยง...",
+      "searchNotesToLink2": "ค้นหาบันทึกเพื่อลิงก์",
+      "searching": "กำลังค้นหา...",
+      "noNotesFound": "ไม่พบบันทึก",
+      "linkedNotes": "บันทึกลิงก์",
+      "noLinksAdded": "ยังไม่มีลิงก์เพิ่ม"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "ที่แนะนำ",
+      "ai": "AI",
+      "create": "สร้าง",
+      "tags": "แท็ก",
+      "selectedTags": "แท็กที่เลือก",
+      "addTags": "เพิ่มแท็ก",
+      "tagSuggestions": "คำแนะนำแท็ก"
+    },
+    "componentsFilingTagInput": {
+      "tags": "แท็ก",
+      "optional": "(ไม่บังคับ)",
+      "addTags": "เพิ่มแท็ก...",
+      "addTags2": "เพิ่มแท็ก",
+      "selectedTags": "แท็กที่เลือก",
+      "suggested": "ที่แนะนำ"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "จับกิจกรรม"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "ยังไม่มีการจัดเก็บรายการ",
+      "recentlyFiled": "ยื่นล่าสุด",
+      "latestActionsOnYourInbox": "การดำเนินการล่าสุดในกล่องขาเข้าของคุณ",
+      "linked": "  \nเชื่อมโยงแล้ว  "
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "กำลังโหลดข้อมูลเชิงลึก..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "ไม่มีประเภทของรายการที่จะแสดง",
+      "itemTypes": "ประเภทของรายการ",
+      "distributionOfContentFormats": "การกระจายของรูปแบบเนื้อหา"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "จับภาพแล้ว"
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "x"
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "ตัวแก้ไขเนื้อหา"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "middot;"
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "ทวีตไม่พร้อมใช้งาน",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "ทวีตนี้อาจถูกลบหรือมาจากบัญชีส่วนตัว",
+      "openOnXCom": "เปิดบน x.com",
+      "views": "การดู",
+      "xCom": "x.com",
+      "viewOnX": "ดูบน X"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "พิมพ์ชื่อโฟลเดอร์...",
+      "quickFileFolderSearch": "ค้นหาโฟลเดอร์ไฟล์อย่างรวดเร็ว"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "ปิด",
+      "capture": "จับภาพ"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "ลบไฟล์แนบ"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "ป้อนการจับภาพด่วน",
+      "recordVoiceMemo": "บันทึกข้อความเสียง",
+      "attachFile": "  \nแนบไฟล์  "
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "ลิงก์"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "จับแล้ว",
+      "dismissError": "ปิดข้อผิดพลาด",
+      "alreadyCaptured": "จับภาพแล้ว",
+      "ldquo": "ldquo;",
+      "rdquoMiddot": "rdquo; &middot; ",
+      "captureAnyway": "จับภาพต่อ",
+      "close": "ปิด"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "วางเพื่อจับภาพ",
+      "capturing": "กำลังจับภาพ..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "คำแนะนำโฟลเดอร์",
+      "noFoldersMatch": "ไม่มีโฟลเดอร์ที่ตรงกัน"
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "ตั้งค่าการเตือนสำหรับข้อความนี้",
+      "remindMeAboutThis": "เตือนฉันเกี่ยวกับสิ่งนี้",
+      "selectedText": "ข้อความที่เลือก:"
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "เตือน",
+      "remindMe": "เตือนฉัน",
+      "pickDateTime": "เลือกวันที่และเวลา",
+      "addANoteOptional": "เพิ่มบันทึก (ไม่บังคับ)",
+      "backToPresets": "กลับไปยังค่าที่กำหนดล่วงหน้า",
+      "time": "เวลา",
+      "noteOptional": "บันทึก (ไม่บังคับ)",
+      "whyAreYouSettingThisReminder": "ทำไมคุณถึงตั้งการเตือนนี้?"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "เลื่อน",
+      "snooze2": "เลื่อน",
+      "pickDateTime": "เลือกวันที่และเวลา",
+      "pickDateTime2": "เลือกวันที่และเวลา",
+      "selectWhenToBeRemindedAboutThisItem": "เลือกเวลาที่ต้องการให้เตือนเกี่ยวกับรายการนี้",
+      "snooze3": "เลื่อน",
+      "snooze4": "เลื่อน",
+      "snooze5": "เลื่อน"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "กำลังโหลดโพสต์...",
+      "failedToLoad": "โหลดล้มเหลว",
+      "loadingPostContent": "กำลังโหลดเนื้อหาของโพสต์...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "ไม่สามารถโหลดเนื้อหาของโพสต์ได้ โพสต์อาจเป็นแบบส่วนตัวหรือถูกลบแล้ว",
+      "viewOn": "ดูบน"
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "เริ่มบันทึกเสียง",
+      "requestingMicrophoneAccess": "ขออนุญาตเข้าถึงไมโครโฟน...",
+      "settings": "การตั้งค่า",
+      "processing": "กำลังประมวลผล...",
+      "cancelRecording": "ยกเลิกการบันทึก",
+      "cancel": "ยกเลิก",
+      "stopRecording": "หยุดการบันทึก",
+      "stop": "หยุด"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCaptureLink": "ไม่สามารถจับลิงก์ได้",
+      "failedToCaptureNote": "ไม่สามารถบันทึกโน้ตได้",
+      "captureFailed": "การจับล้มเหลว",
+      "failedToCaptureVoiceMemo": "ไม่สามารถจับบันทึกเสียงได้",
+      "voiceCaptureFailed": "การจับเสียงล้มเหลว",
+      "failedToCaptureFile": "ไม่สามารถจับไฟล์ได้",
+      "fileCaptureFailed": "การจับไฟล์ล้มเหลว",
+      "failedToCaptureAudio": "ไม่สามารถจับเสียงได้",
+      "failedToCaptureVoice": "ไม่สามารถจับเสียงได้"
+    },
+    "toasts": {
+      "inboxRefreshed": "กล่องขาเข้าถูกรีเฟรช"
+    }
+  }
+}

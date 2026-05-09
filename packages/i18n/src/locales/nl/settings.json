@@ -1,0 +1,1160 @@
+{
+  "toast": {
+    "exportNotImplemented": "Lokale gegevensexport is nog niet geïmplementeerd"
+  },
+  "page": {
+    "title": "Instellingen",
+    "nav": {
+      "groups": {
+        "workspace": "Werkruimte",
+        "preferences": "Voorkeuren",
+        "services": "Diensten",
+        "data": "Gegevens"
+      },
+      "items": {
+        "account": "Rekening",
+        "general": "Algemeen",
+        "templates": "Sjablonen",
+        "editor": "Redacteur",
+        "journal": "Journaal",
+        "tasks": "Taken",
+        "calendar": "Kalender",
+        "appearance": "Uiterlijk",
+        "shortcuts": "Snelkoppelingen",
+        "ai": "AI-assistent",
+        "integrations": "Integraties",
+        "vault": "Kluis",
+        "tags": "Labels",
+        "properties": "Eigenschappen"
+      }
+    }
+  },
+  "general": {
+    "header": {
+      "title": "Algemeen",
+      "subtitle": "Opstart- en tabbladgedrag van applicatie",
+      "loading": "Instellingen laden..."
+    },
+    "groups": {
+      "startup": "Opstarten",
+      "updates": "Updates",
+      "languageRegion": "Taal & Regio",
+      "tabBehavior": "Tabbladgedrag",
+      "fileCreation": "Bestanden maken",
+      "privacy": "Privacy"
+    },
+    "startup": {
+      "launchAtLogin": {
+        "label": "Start bij Inloggen",
+        "description": "Start Memry wanneer u inlogt",
+        "error": "Kan het starten bij het opstarten niet updaten"
+      }
+    },
+    "updates": {
+      "appUpdates": "App-updates",
+      "installedVersion": "Geïnstalleerde versie {version}",
+      "availableVersion": "Beschikbare versie {version}",
+      "unsupported": "Verpakte builds kunnen updates van GitHub-releases controleren, downloaden en installeren",
+      "available": "Memry {version} kan worden gedownload",
+      "downloadingLatest": "De nieuwste versie downloaden",
+      "downloadingLatestPercent": "De nieuwste release downloaden ({percent}%)",
+      "downloaded": "Memry {version} is klaar om te installeren",
+      "upToDate": "Deze installatie is gebaseerd op de laatst gepubliceerde release",
+      "checking": "GitHub-releases controleren op een nieuwere versie",
+      "idle": "Controleer op nieuwe releases en installeer deze zonder de app te verlaten",
+      "unsupportedToast": "Automatische updates zijn alleen beschikbaar in verpakte releases",
+      "upToDateToast": "Memry {version} is up-to-date",
+      "actionFailed": "Updateactie mislukt",
+      "actions": {
+        "checking": "Controleren...",
+        "available": "Update downloaden",
+        "downloading": "Downloaden...",
+        "downloadingPercent": "{percent}% downloaden",
+        "downloaded": "Start opnieuw om te installeren",
+        "idle": "Controleer op updates"
+      }
+    },
+    "language": {
+      "label": "Taal",
+      "helper": "Het grootste deel van de app wordt onmiddellijk bijgewerkt. Sommige tekst op systeemniveau (al weergegeven meldingen, docklabel, titelbalk van het venster) wordt vernieuwd na de volgende keer opstarten.",
+      "changed": "Taal gewijzigd in {nativeName}",
+      "failed": "Kan de taal niet wijzigen. Probeer het opnieuw."
+    },
+    "clockFormat": {
+      "label": "Tijdformaat",
+      "description": "12-uurs- of 24-uursklok",
+      "options": {
+        "12h": "12 uur",
+        "24h": "24 uur per dag"
+      },
+      "error": "Kan de tijdnotatie niet updaten"
+    },
+    "tabs": {
+      "previewMode": {
+        "label": "Voorbeeldmodus",
+        "description": "Eén klik opent het voorbeeld, dubbelklikken blijft open"
+      },
+      "restoreSession": {
+        "label": "Herstel sessie bij starten",
+        "description": "Open tabbladen van uw laatste sessie opnieuw"
+      },
+      "closeButton": {
+        "label": "Knop Sluiten tabblad",
+        "description": "Wanneer moet de sluitknop worden weergegeven?",
+        "options": {
+          "always": "Altijd zichtbaar",
+          "hover": "Toon bij hover",
+          "active": "Alleen op actief tabblad"
+        }
+      },
+      "error": "Kan de instelling niet updaten"
+    },
+    "fileCreation": {
+      "createInSelectedFolder": {
+        "label": "Maken in geselecteerde map",
+        "description": "Nieuwe notities en mappen worden gemaakt in de momenteel geselecteerde map. Indien uitgeschakeld, worden items altijd in de root gemaakt."
+      }
+    },
+    "privacy": {
+      "telemetry": {
+        "label": "Deel anonieme gebruiksstatistieken",
+        "description": "Het zijn alleen anonieme statistieken: er worden nooit notitie-inhoud, zoekopdrachten, bestandspaden, e-mails of onbewerkte ID's verzonden.",
+        "error": "Kan de telemetrie-instelling niet updaten"
+      }
+    }
+  },
+  "appearance": {
+    "header": {
+      "title": "Uiterlijk",
+      "subtitle": "Pas de look en feel aan",
+      "loading": "Instellingen laden..."
+    },
+    "groups": {
+      "theme": "Thema",
+      "accentColor": "Accentkleur",
+      "typography": "Typografie"
+    },
+    "theme": {
+      "colorMode": {
+        "label": "Kleurmodus",
+        "description": "Kies het thema van uw voorkeur",
+        "aria": "Kleurmodus"
+      },
+      "options": {
+        "light": "Warm",
+        "white": "Wit",
+        "dark": "Donker",
+        "system": "Systeem"
+      },
+      "error": "Kan het thema niet updaten"
+    },
+    "accent": {
+      "pick": "Kies een accentkleur",
+      "custom": {
+        "label": "Aangepaste kleur",
+        "description": "Voer een hexadecimale waarde in",
+        "placeholder": "#000000"
+      },
+      "presets": {
+        "indigo": "Indigo",
+        "amber": "Amber",
+        "emerald": "Smaragd",
+        "red": "Rood",
+        "violet": "Violet",
+        "cyan": "Cyaan",
+        "pink": "Roze",
+        "orange": "Oranje"
+      },
+      "error": "Kan de accentkleur niet updaten"
+    },
+    "typography": {
+      "fontSize": {
+        "label": "Lettergrootte",
+        "description": "Pas de basistekstgrootte aan",
+        "aria": "Lettergrootte"
+      },
+      "fontFamily": {
+        "label": "Lettertypefamilie",
+        "description": "Primair lettertype voor de interface",
+        "options": {
+          "system": "Systeemstandaard",
+          "sansSerif": "Sans-serif",
+          "serif": "Serif (Crimson Pro)",
+          "gelasio": "Gelasio",
+          "geist": "Geist",
+          "inter": "Inter",
+          "monospace": "Monoruimte"
+        }
+      },
+      "fontSizeError": "Kan de lettergrootte niet bijwerken",
+      "fontFamilyError": "Kan de lettertypefamilie niet updaten"
+    }
+  },
+  "editor": {
+    "header": {
+      "title": "Redacteur",
+      "subtitle": "Noteer de instellingen en voorkeuren van de editor",
+      "loading": "Instellingen laden..."
+    },
+    "groups": {
+      "layout": "Indeling",
+      "toolbar": "Werkbalk",
+      "writing": "Schrijven"
+    },
+    "width": {
+      "label": "Editorbreedte",
+      "description": "Maximale breedte van het schrijfgebied",
+      "options": {
+        "narrow": "Smal",
+        "medium": "Middelmatig",
+        "wide": "Breed"
+      },
+      "error": "Kan de breedte van de editor niet bijwerken"
+    },
+    "toolbarMode": {
+      "label": "Vaste opmaakwerkbalk",
+      "description": "Toon altijd de werkbalk boven de editor",
+      "error": "Kan de werkbalkmodus niet updaten"
+    },
+    "spellCheck": {
+      "label": "Spellingcontrole",
+      "description": "Onderstreep verkeerd gespelde woorden tijdens het typen",
+      "error": "Kan de spellingcontrole niet updaten"
+    },
+    "autoSaveDelay": {
+      "label": "Vertraging automatisch opslaan",
+      "description": "Wachttijd nadat het typen stopt voordat u opslaat",
+      "seconds": "{seconds}s",
+      "error": "Kan de vertraging voor automatisch opslaan niet updaten"
+    },
+    "wordCount": {
+      "label": "Aantal woorden",
+      "description": "Toon het aantal woorden in de voettekst van de editor",
+      "error": "Kan de weergave van het aantal woorden niet updaten"
+    }
+  },
+  "templates": {
+    "header": {
+      "title": "Sjablonen",
+      "subtitle": "Beheer notitiesjablonen voor snelle creatie"
+    },
+    "actions": {
+      "new": "Nieuwe sjabloon",
+      "edit": "Bewerken",
+      "duplicate": "Duplicaat",
+      "delete": "Verwijderen"
+    },
+    "groups": {
+      "builtIn": "Ingebouwd",
+      "myTemplates": "Mijn sjablonen"
+    },
+    "loading": "Sjablonen laden...",
+    "newTemplateTitle": "Nieuwe sjabloon",
+    "copySuffix": "{name} (kopie)",
+    "empty": {
+      "title": "Nog geen aangepaste sjablonen",
+      "description": "Maak een sjabloon om aan de slag te gaan"
+    },
+    "toasts": {
+      "deleted": "Sjabloon verwijderd",
+      "deleteFailed": "Kan sjabloon niet verwijderen",
+      "duplicated": "Sjabloon gedupliceerd",
+      "duplicateFailed": "Kan de sjabloon niet dupliceren"
+    },
+    "dialogs": {
+      "delete": {
+        "title": "Sjabloon verwijderen",
+        "description": "Weet u zeker dat u deze sjabloon wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt. Notities die op basis van deze sjabloon zijn gemaakt, worden niet beïnvloed."
+      },
+      "duplicate": {
+        "title": "Dubbele sjabloon",
+        "description": "Voer een naam in voor de nieuwe sjabloonkopie.",
+        "placeholder": "Sjabloonnaam"
+      }
+    }
+  },
+  "journal": {
+    "header": {
+      "title": "Journaal",
+      "subtitle": "Journaalinstellingen en voorkeuren",
+      "loading": "Instellingen laden..."
+    },
+    "groups": {
+      "defaultTemplate": "Standaardsjabloon",
+      "sidebarVisibility": "Zichtbaarheid van de zijbalk",
+      "footer": "Voettekst"
+    },
+    "template": {
+      "label": "Sjabloon",
+      "description": "Nieuwe vermeldingen beginnen met dit sjabloon",
+      "placeholder": "Selecteer een sjabloon",
+      "unknown": "Onbekend sjabloon",
+      "none": "Geen",
+      "noneAsk": "Geen (elke keer vragen)",
+      "updated": "Standaardsjabloon bijgewerkt",
+      "cleared": "Standaardsjabloon gewist",
+      "error": "Kan de standaardsjabloon niet updaten"
+    },
+    "showSchedule": {
+      "label": "Schema tonen",
+      "description": "Geef de evenementen en agenda van vandaag weer"
+    },
+    "showTasks": {
+      "label": "Taken weergeven",
+      "description": "Geef taken weer die op de geselecteerde dag moeten plaatsvinden"
+    },
+    "showAIConnections": {
+      "label": "Toon AI-verbindingen",
+      "description": "Geef AI-aangedreven verbindingen met gerelateerde vermeldingen weer"
+    },
+    "showStatsFooter": {
+      "label": "Voettekst statistieken weergeven",
+      "description": "Aantal woorden, leestijd, tijdstempels"
+    },
+    "updateError": "Kan de instelling niet updaten"
+  },
+  "tasks": {
+    "header": {
+      "title": "Taken",
+      "subtitle": "Configureer taakstandaarden en gedrag",
+      "loading": "Instellingen laden..."
+    },
+    "groups": {
+      "defaults": "Standaardinstellingen",
+      "calendar": "Kalender",
+      "inbox": "Postvak IN"
+    },
+    "defaultProject": {
+      "label": "Standaardproject",
+      "description": "Toegewezen als er geen project is geselecteerd",
+      "placeholder": "Geen standaardproject",
+      "none": "Geen standaard (gebruik persoonlijk)",
+      "error": "Kan het standaardproject niet updaten"
+    },
+    "sortOrder": {
+      "label": "Standaard sorteervolgorde",
+      "description": "Hoe taken worden geordend in de lijstweergave",
+      "options": {
+        "manual": "Handmatig (slepen en neerzetten)",
+        "dueDate": "Vervaldatum",
+        "priority": "Prioriteit",
+        "createdAt": "Datum gemaakt"
+      },
+      "error": "Kan de sorteervolgorde niet updaten"
+    },
+    "weekStart": {
+      "label": "De week begint",
+      "description": "Eerste dag van de week in kalenderweergaven",
+      "options": {
+        "sunday": "Zondag",
+        "monday": "Maandag"
+      },
+      "error": "Kan het begin van de week niet updaten"
+    },
+    "staleInbox": {
+      "label": "Verouderde inboxdrempel",
+      "description": "Taken die ouder zijn, worden als verouderd gemarkeerd",
+      "unit": "dagen",
+      "error": "Kan de drempelwaarde voor het verouderde postvak IN niet updaten"
+    }
+  },
+  "calendar": {
+    "header": {
+      "title": "Kalender",
+      "subtitle": "Configureer het dagcelgedrag in het Dagpaneel",
+      "loading": "Instellingen laden..."
+    },
+    "groups": {
+      "dayCellClick": "Dagcelklik"
+    },
+    "defaultBehavior": {
+      "label": "Standaardgedrag",
+      "description": "Wanneer u op een dag in de kalender van het Dagpaneel klikt vanuit een niet-kalendertabblad",
+      "error": "Kan het klikgedrag van de dag niet updaten"
+    },
+    "pageOverride": {
+      "label": "Agendapagina overschrijven",
+      "description": "Gedrag wanneer het tabblad Agenda actief is (standaard ingesteld op Agenda openen)",
+      "error": "Kan de overschrijving van de agendapagina niet bijwerken"
+    },
+    "options": {
+      "openJournal": "Journaal openen",
+      "openCalendar": "Agenda openen",
+      "useGlobal": "Gebruik de globale instelling"
+    }
+  },
+  "account": {
+    "header": {
+      "title": "Rekening",
+      "subtitle": "Uw account, synchronisatie en beveiliging",
+      "loading": "Laden..."
+    },
+    "groups": {
+      "identity": "Identiteit",
+      "sync": "Synchroniseren",
+      "storage": "Opslag",
+      "devices": "Apparaten",
+      "security": "Beveiliging"
+    },
+    "identity": {
+      "unknown": "Onbekend",
+      "plan": "Pro-abonnement"
+    },
+    "sync": {
+      "lastSynced": "Laatst gesynchroniseerde {time}",
+      "pending": "{count, plural, one {# in behandeling} other {# in behandeling}}",
+      "statuses": {
+        "synced": "Gesynchroniseerd",
+        "syncing": "Synchroniseren...",
+        "paused": "Gepauzeerd",
+        "syncError": "Synchronisatiefout",
+        "offline": "Offline",
+        "connecting": "Verbinden...",
+        "pushed": "{count, plural, one {# ingedrukt} other {# ingedrukt}}",
+        "pulled": "{count, plural, one {# getrokken} other {# getrokken}}",
+        "pushedPulled": "{parts}",
+        "changesPending": "{count, plural, one {#-wijziging in behandeling} other {#-wijzigingen in behandeling}}",
+        "offlinePending": "Offline ({count, plural, one {#-wijziging in behandeling} other {#-wijzigingen in behandeling}})",
+        "never": "Nooit"
+      }
+    },
+    "storage": {
+      "used": "{used} of {limit} gebruikt",
+      "categories": {
+        "notes": "Opmerkingen",
+        "attachments": "Bijlagen",
+        "crdt": "CRDT",
+        "other": "Anders",
+        "available": "Beschikbaar"
+      }
+    },
+    "security": {
+      "recoveryKey": {
+        "label": "Herstelsleutel",
+        "description": "Bekijk uw herstelsleutel voor gegevenstoegang",
+        "action": "Sleutel bekijken"
+      },
+      "rotateKeys": {
+        "label": "Versleutelingssleutels roteren",
+        "description": "Genereer nieuwe sleutels en versleutel alle gegevens opnieuw",
+        "action": "Draaien"
+      },
+      "signOut": {
+        "label": "Uitloggen",
+        "description": "Ontkoppel dit apparaat van synchronisatie",
+        "action": "Uitloggen"
+      }
+    },
+    "signOutDialog": {
+      "title": "Afmelden voor synchronisatie?",
+      "description": "De synchronisatie stopt en de coderingssleutels worden van dit apparaat verwijderd. Je aantekeningen blijven op dit apparaat staan. U heeft uw herstelzin nodig om de synchronisatie opnieuw in te stellen.",
+      "confirm": "Meld u af",
+      "signingOut": "Afmelden..."
+    },
+    "toasts": {
+      "signedOut": "Afgemeld",
+      "signOutFailed": "Afmelden is mislukt",
+      "deviceLinked": "Apparaat succesvol gekoppeld"
+    }
+  },
+  "setup": {
+    "steps": {
+      "signIn": "Inloggen",
+      "verify": "Verifieer",
+      "link": "Koppeling"
+    },
+    "progress": "Stap {current} van {total}: {label}",
+    "signIn": {
+      "title": "Synchronisatie instellen",
+      "description": "Maak een account aan om uw gegevens op verschillende apparaten te synchroniseren met end-to-end-codering.",
+      "or": "of",
+      "errors": {
+        "sendCode": "Kan code niet verzenden",
+        "googleStart": "Kan inloggen bij Google niet starten"
+      }
+    },
+    "email": {
+      "label": "E-mailadres",
+      "placeholder": "Voer uw e-mailadres in...",
+      "invalid": "Voer een geldig e-mailadres in",
+      "sending": "Code verzenden..."
+    },
+    "oauth": {
+      "google": "Ga verder met Google"
+    },
+    "otp": {
+      "title": "Voer de verificatiecode in",
+      "sentTo": "We hebben een 6-cijferige code gestuurd naar ",
+      "aria": "6-cijferige verificatiecode",
+      "verifying": "Verifiëren...",
+      "resending": "Opnieuw verzenden...",
+      "resend": "Code opnieuw verzenden",
+      "resendIn": "Opnieuw verzenden in {time}",
+      "differentEmail": "Gebruik een ander e-mailadres",
+      "error": "Verificatie mislukt",
+      "resendError": "Opnieuw verzenden mislukt"
+    },
+    "recovery": {
+      "displayTitle": "Bewaar uw herstelzin",
+      "displayDescription": "Dit is de enige manier om uw gecodeerde gegevens te herstellen als u de toegang tot al uw apparaten verliest.",
+      "warning": "Schrijf dit op en bewaar het op een veilige plek. Je zult het niet meer zien.",
+      "wordsAria": "Herstelzinwoorden",
+      "wordAria": "Woord {index}: {word}",
+      "copyAria": "Kopieer de herstelzin naar het klembord",
+      "copiedAria": "Herstelzin gekopieerd",
+      "copied": "Gekopieerd",
+      "saved": "Ik heb mijn herstelzin opgeslagen",
+      "confirmTitle": "Bevestig uw herstelzin",
+      "confirmDescription": "Voer de gevraagde woorden in om te verifiëren dat u deze correct hebt opgeslagen.",
+      "wordPlaceholder": "Voer het woord #{index} in",
+      "verify": "Verifieer",
+      "mustMatch": "Alle drie de woorden moeten overeenkomen om door te gaan",
+      "inputTitle": "Voer de herstelzin in",
+      "inputDescription": "Voer uw herstelzin van 24 woorden in om de toegang tot uw gecodeerde gegevens te herstellen.",
+      "inputLabel": "Herstelzin",
+      "count": "{count} / {total}-woorden",
+      "inputPlaceholder": "Voer uw herstelzin van 24 woorden in, gescheiden door spaties...",
+      "lengthHint": "Voer alle 24 woorden in om de herstelknop in te schakelen",
+      "restore": "Toegang herstellen",
+      "progress": {
+        "deriving": "Encryptiesleutels afleiden...",
+        "validating": "Herstelzin valideren...",
+        "registering": "Apparaat registreren..."
+      },
+      "failed": "Herstel is mislukt",
+      "confirmationFailed": "Bevestiging mislukt"
+    },
+    "linking": {
+      "choiceTitle": "Koppel dit apparaat",
+      "choiceDescription": "Breng encryptiesleutels over van een ander apparaat of herstel ze vanaf uw herstelzin.",
+      "qrChoice": "Link via QR-code",
+      "qrChoiceDescription": "Scan de code die op uw andere apparaat wordt weergegeven",
+      "recoveryChoice": "Herstelzin",
+      "recoveryChoiceDescription": "Voer uw herstelzin van 24 woorden in",
+      "codeTitle": "Voer de koppelingscode in",
+      "codeDescription": "Plak de koppelingscode van uw andere apparaat om uw coderingssleutels veilig over te dragen.",
+      "codeLabel": "Koppelingscode",
+      "valid": "Geldig",
+      "invalid": "Ongeldig formaat",
+      "codePlaceholder": "Plak de code vanaf uw andere apparaat...",
+      "formatHint": "Plak de JSON-koppelingscode vanaf uw andere apparaat",
+      "linking": "Koppelen...",
+      "linkDevice": "Apparaat koppelen",
+      "failed": "Het koppelen is mislukt",
+      "deviceFailed": "Kan apparaat niet koppelen",
+      "pendingSuccess": "Apparaat succesvol gekoppeld",
+      "goBack": "Ga terug",
+      "waitingTitle": "Wachten op goedkeuring",
+      "waitingDescription": "Open Memry op uw andere apparaat en keur het koppelingsverzoek goed.",
+      "verificationCode": "Verificatiecode",
+      "confirmCode": "Controleer of dit overeenkomt met de code op uw andere apparaat",
+      "cancel": "Annuleer"
+    }
+  },
+  "devices": {
+    "loading": "Apparaten laden...",
+    "loadingAria": "Apparaten laden",
+    "none": "Nog geen apparaten gekoppeld",
+    "linkNew": "Nieuw apparaat koppelen",
+    "thisDevice": "Dit apparaat",
+    "lastSeen": "Laatst gezien {time} geleden",
+    "linked": "{time} geleden gekoppeld",
+    "renameAria": "Hernoem {name}",
+    "rename": "Hernoemen",
+    "revoke": "Intrekken",
+    "showLess": "Laat minder zien",
+    "showMore": "{count, plural, one {# meer apparaat} other {# meer apparaten}}",
+    "showMoreAria": "Toon {count, plural, one {# meer apparaat} other {# meer apparaten}}",
+    "dialogs": {
+      "revokeTitle": "\"{name}\" intrekken?",
+      "revokeDescription": "Dit apparaat verliest de toegang tot uw gesynchroniseerde gegevens. Het moet opnieuw worden gekoppeld om de synchronisatie te herstellen. Lokale gegevens op dat apparaat blijven behouden.",
+      "revokeDevice": "Apparaat intrekken",
+      "revoking": "Intrekken...",
+      "renameTitle": "Apparaat hernoemen",
+      "renameDescription": "Kies een naam om dit apparaat te identificeren.",
+      "namePlaceholder": "Apparaatnaam",
+      "renaming": "Naam wijzigen..."
+    },
+    "toasts": {
+      "loadFailed": "Kan apparaten niet laden",
+      "removed": "\"{name}\" verwijderd",
+      "removeFailed": "Kan apparaat niet verwijderen",
+      "renamed": "Hernoemd naar \"{name}\"",
+      "renameFailed": "Kan de naam van het apparaat niet wijzigen"
+    }
+  },
+  "qrLinking": {
+    "title": "Nieuw apparaat koppelen",
+    "description": "Scan deze QR-code vanaf het apparaat dat u wilt koppelen om uw coderingssleutels veilig over te dragen.",
+    "encrypted": "End-to-end gecodeerd",
+    "generating": "Koppelingscode genereren...",
+    "generatingAria": "Koppelingscode genereren",
+    "generateFailed": "Kan koppelingscode niet genereren",
+    "tryAgain": "Probeer het opnieuw",
+    "expired": "Koppelingscode is verlopen",
+    "generateNew": "Genereer nieuwe code",
+    "qrAria": "QR-code voor het koppelen van apparaten",
+    "qrImageAria": "Apparaat dat QR-code koppelt",
+    "expiresIn": "Verloopt in {time}",
+    "or": "of",
+    "codeLabel": "Koppelingscode",
+    "copyAria": "Koppelingscode kopiëren",
+    "copiedAria": "Gekopieerd",
+    "copied": "Gekopieerd!"
+  },
+  "linkingApproval": {
+    "title": "Nieuw apparaat wil koppelen",
+    "description": "Een apparaat vraagt om toegang tot uw gecodeerde gegevens. Keur alleen goed als u dit verzoek heeft ingediend.",
+    "unknownDevice": "Onbekend apparaat",
+    "unknownPlatform": "Onbekend platform",
+    "verificationCode": "Verificatiecode",
+    "computing": "Computergebruik...",
+    "unavailable": "Niet beschikbaar",
+    "confirmCode": "Bevestig dat deze code overeenkomt met de code die op het nieuwe apparaat wordt weergegeven",
+    "reject": "Afwijzen",
+    "approve": "Goedkeuren",
+    "approving": "Goedkeuren...",
+    "approvalFailed": "Goedkeuring mislukt",
+    "failedToApprove": "Kan het apparaat niet goedkeuren"
+  },
+  "recoveryKey": {
+    "title": "Herstelsleutel",
+    "description": "Bewaar deze sleutel veilig. Het kan uw kluis herstellen als u de toegang tot alle apparaten verliest.",
+    "loading": "Laden...",
+    "retrieveFailed": "Kan de herstelsleutel niet ophalen",
+    "copied": "Herstelsleutel gekopieerd naar klembord",
+    "copyFailed": "Kopiëren naar klembord is mislukt",
+    "clickToReveal": "Klik om te onthullen",
+    "hide": "Verbergen",
+    "reveal": "Onthullen",
+    "copy": "Kopieer",
+    "sessionHint": "Deze sleutel wordt één keer per sessie getoond. Sluit dit dialoogvenster om het uit het geheugen te wissen."
+  },
+  "keyRotation": {
+    "title": "Versleutelingssleutels roteren",
+    "descriptions": {
+      "confirm": "Genereer nieuwe coderingssleutels voor uw kluis.",
+      "rotating": "Uw gegevens opnieuw coderen met nieuwe sleutels...",
+      "phrase": "Sla uw nieuwe herstelzin op.",
+      "complete": "Sleutelrotatie voltooid.",
+      "error": "Bij sleutelrotatie is een fout opgetreden."
+    },
+    "warningTitle": "Deze actie zal:",
+    "warningItems": {
+      "keyPair": "Genereer een nieuw coderingssleutelpaar",
+      "rewrap": "Verpak alle gesynchroniseerde items opnieuw met de nieuwe sleutel",
+      "phrase": "Maak een nieuwe herstelzin (de oude wordt ongeldig)",
+      "pause": "Onderbreek de synchronisatie tijdelijk tijdens het proces"
+    },
+    "explanation": "Uw gegevensinhoud wordt nooit opnieuw gecodeerd; alleen de sleutelenveloppen veranderen. Dit is een snelle, veilige operatie.",
+    "start": "Sleutelrotatie starten",
+    "starting": "Beginnen...",
+    "phases": {
+      "preparing": "Voorbereiden...",
+      "reencrypting": "Sleutels opnieuw inpakken ({processed}/{total})",
+      "finalizing": "Bezig met afronden...",
+      "working": "Werken..."
+    },
+    "progressAria": "Sleutelrotatie: {phaseLabel} {pct}%",
+    "progressLabel": "Voortgang van de sleutelrotatie",
+    "doNotClose": "Sluit de applicatie niet tijdens dit proces.",
+    "complete": "Alle encryptiesleutels zijn gerouleerd. Uw nieuwe herstelzin is opgeslagen. De synchronisatie wordt automatisch hervat.",
+    "unknownError": "Er is een onbekende fout opgetreden tijdens het wisselen van de sleutel.",
+    "errorHint": "Uw bestaande sleutels blijven geldig. De synchronisatie is hervat. U kunt het op elk gewenst moment opnieuw proberen.",
+    "closeConfirm": {
+      "title": "Rotatie bezig",
+      "description": "Sleutelrotatie is nog steeds actief. Als u dit dialoogvenster sluit, wordt het proces niet gestopt, maar u zult uw nieuwe herstelzin pas zien als deze is voltooid.",
+      "stay": "Blijf",
+      "closeAnyway": "Toch dicht"
+    },
+    "failed": "Sleutelrotatie is mislukt"
+  },
+  "ai": {
+    "header": {
+      "title": "AI-assistent",
+      "subtitle": "Insluitingen worden lokaal uitgevoerd. Spraakmemo's kunnen Whisper Small of uw OpenAI-sleutel gebruiken.",
+      "loading": "Instellingen laden..."
+    },
+    "enable": {
+      "label": "Schakel AI-functies in",
+      "description": "Slimme archiveringssuggesties en notitiekoppelingen",
+      "enabled": "AI-functies ingeschakeld",
+      "disabled": "AI-functies uitgeschakeld",
+      "error": "Kan de instelling niet updaten"
+    },
+    "unknownError": "Onbekende fout",
+    "groups": {
+      "voice": "Stemtranscriptie",
+      "embeddingModel": "Lokaal inbeddingsmodel",
+      "embeddingIndex": "Inbeddingsindex",
+      "inline": "Inline AI-bewerking"
+    },
+    "voice": {
+      "provider": "Aanbieder",
+      "providerDescription": "Spraak-naar-tekstprovider voor spraakmemo's",
+      "providers": {
+        "local": "Lokaal (standaard)",
+        "openai": "Open AI (BYOK)"
+      },
+      "localModel": "Lokaal model",
+      "localModelDescription": "Whisper Small downloadt op aanvraag en blijft lokaal in de cache",
+      "status": {
+        "ready": "Klaar",
+        "downloading": "Downloaden",
+        "downloaded": "Gedownload",
+        "notDownloaded": "Niet gedownload"
+      },
+      "cacheHint": "Niet gebundeld met de app · Gedownload via Instellingen · In cache opgeslagen op dit apparaat",
+      "preparing": "Whisper Klein bereiden...",
+      "download": "Whisper klein downloaden",
+      "apiKey": "OpenAI API-sleutel",
+      "apiKeyDescription": "Opgeslagen in de sleutelhanger van uw besturingssysteem en alleen gebruikt voor spraaktranscriptie",
+      "replaceKey": "Vervang de opgeslagen OpenAI-sleutel",
+      "enterKey": "Voer de OpenAI API-sleutel in",
+      "saveKey": "Sleutel opslaan",
+      "keySaved": "API-sleutel opgeslagen in sleutelhanger",
+      "providerError": "Kan de spraakprovider niet updaten",
+      "downloadedToast": "Whisper Klein gedownload",
+      "downloadError": "Kan Whisper Small niet downloaden",
+      "keySavedToast": "OpenAI-sleutel opgeslagen",
+      "keySaveError": "Kan OpenAI-sleutel niet opslaan"
+    },
+    "embedding": {
+      "loaded": "Geladen",
+      "loading": "Laden",
+      "cacheHint": "~23MB · Lokaal in cache opgeslagen · Alles op het apparaat",
+      "dimensions": "Afmetingen",
+      "embeddings": "Inbedding",
+      "downloadLoad": "Model downloaden en laden",
+      "downloadingModel": "Model downloaden...",
+      "loadingModel": "Model laden...",
+      "loadSuccess": "Model succesvol geladen",
+      "loadFailed": "Kan het model niet laden",
+      "rebuildIndex": "Index opnieuw opbouwen",
+      "rebuildDescription": "Genereer insluitingen voor alle notities opnieuw",
+      "rebuild": "Herbouwen",
+      "scanning": "Notities scannen...",
+      "generating": "Insluitingen genereren...",
+      "complete": "Compleet!",
+      "reindexed": "Insluitingen opnieuw geïndexeerd: {computed} berekend, {skipped} overgeslagen",
+      "reindexFailed": "Kan insluitingen niet opnieuw indexeren"
+    },
+    "inline": {
+      "loading": "Laden...",
+      "title": "Inline AI-bewerking",
+      "enable": "Schakel Inline AI in",
+      "enableDescription": "Toon AI-menu bij het bewerken van notities",
+      "enabled": "Inline AI-bewerking ingeschakeld",
+      "disabled": "Inline AI-bewerking uitgeschakeld",
+      "provider": "Aanbieder",
+      "providerDescription": "AI-service voor tekstbewerkingen",
+      "providers": {
+        "ollama": "Ollama (lokaal)",
+        "openai": "OpenAI",
+        "anthropic": "Antropisch"
+      },
+      "model": "Model",
+      "modelDescription": "Taalmodel voor herschrijven en samenvatten",
+      "selectModel": "Selecteer een model",
+      "apiKey": "API-sleutel",
+      "apiKeyDescription": "Lokaal opgeslagen, alleen verzonden naar de provider",
+      "apiKeyPlaceholder": "Voer de {provider} API-sleutel in",
+      "ollamaUrl": "Ollama-URL",
+      "ollamaUrlDescription": "Lokaal serveradres",
+      "connection": "Verbinding",
+      "activePort": "Actief op poort {port}",
+      "notConnected": "Niet verbonden",
+      "test": "Testen",
+      "stopFailed": "Kan bestaande server niet stoppen",
+      "connected": "Verbonden! Server draait op poort {port}",
+      "connectFailed": "Kan geen verbinding maken",
+      "testFailed": "Verbindingstest mislukt",
+      "updateFailed": "Kan de instelling niet updaten"
+    }
+  },
+  "integrations": {
+    "header": {
+      "title": "Integraties",
+      "subtitle": "Sluit externe services aan om uw workflow te verrijken"
+    },
+    "auth": {
+      "oauth2": "OAuth 2.0",
+      "apiKey": "API-sleutel",
+      "none": "Systeem"
+    },
+    "comingSoon": "Binnenkort beschikbaar",
+    "connect": "Verbinden",
+    "googleCalendar": {
+      "name": "Google Agenda",
+      "description": "Tweerichtingssynchronisatie voor Memry-evenementen en geïmporteerde Google-agenda's.",
+      "statuses": {
+        "connected": "Verbonden",
+        "notConnected": "Niet verbonden",
+        "reconnectRequired": "Opnieuw verbinden vereist"
+      },
+      "accountReconnect": "Maak opnieuw verbinding met Google",
+      "importedCalendars": "Geïmporteerde kalenders",
+      "selected": "{count} geselecteerd",
+      "syncNow": "Synchroniseer nu",
+      "disconnect": "Verbreek de verbinding",
+      "reconnect": "Maak opnieuw verbinding met Google",
+      "syncFailed": "Er is iets misgegaan",
+      "connectFailed": "Kan geen verbinding maken met Google Agenda",
+      "refreshFailed": "Kan Google Agenda niet vernieuwen",
+      "disconnectFailed": "Kan Google Agenda niet ontkoppelen",
+      "selectionFailed": "Kan agendaselectie niet updaten",
+      "retryFailed": "Kan agendasynchronisatie niet opnieuw proberen"
+    },
+    "sourcePicker": {
+      "empty": "Er zijn nog geen geïmporteerde Google-agenda's beschikbaar op dit apparaat.",
+      "statuses": {
+        "synced": "Gesynchroniseerd",
+        "error": "Fout",
+        "pending": "In behandeling",
+        "idle": "Inactief"
+      },
+      "retrying": "Opnieuw proberen…",
+      "retryNow": "Probeer het nu opnieuw"
+    },
+    "registry": {
+      "googleCalendar": {
+        "name": "Google Agenda",
+        "description": "Tweerichtingssynchronisatie voor Memry-evenementen, taken, herinneringen en geïmporteerde agenda's"
+      },
+      "appleCalendar": {
+        "name": "Apple-agenda",
+        "description": "Lokale agenda-integratie via systeem-API's"
+      },
+      "notion": {
+        "name": "Begrip",
+        "description": "Eenmalige pagina-import in uw kluis"
+      },
+      "readwise": {
+        "name": "Lees verstandig",
+        "description": "Synchroniseer hoogtepunten met uw kluis"
+      },
+      "todoist": {
+        "name": "Todoist",
+        "description": "Taaksynchronisatie in twee richtingen"
+      }
+    }
+  },
+  "vault": {
+    "header": {
+      "title": "Kluis",
+      "subtitle": "Kluisconfiguratie en opslag"
+    },
+    "groups": {
+      "storageUsage": "Opslaggebruik",
+      "location": "Locatie"
+    },
+    "loadingStorage": "Opslaginformatie laden...",
+    "signInStorage": "Meld u aan om het opslaggebruik te bekijken",
+    "vaultPath": "Kluispad",
+    "reveal": "Onthullen",
+    "storage": {
+      "title": "Opslag",
+      "used": "{used} of {limit} gebruikt",
+      "ratio": "{used} / {limit}",
+      "refreshAria": "Ververs het opslaggebruik",
+      "usageAria": "Opslaggebruik: {used} of {limit}",
+      "available": "Beschikbaar {available}",
+      "categories": {
+        "notes": "Opmerkingen",
+        "attachments": "Bijlagen",
+        "crdt": "CRDT",
+        "other": "Anders"
+      },
+      "warningTitle": "Opslag bijna vol",
+      "warningDescription": "Maak ruimte vrij of upgrade uw abonnement om synchronisatieproblemen te voorkomen."
+    }
+  },
+  "tags": {
+    "header": {
+      "title": "Labels",
+      "subtitle": "Beheer tags voor notities, dagboeken en taken"
+    },
+    "loading": "Labels laden...",
+    "empty": "Nog geen tags. Tags verschijnen hier wanneer u ze aan notities en taken toevoegt.",
+    "filterPlaceholder": "Labels filteren...",
+    "noMatch": "Geen tags die overeenkomen met \"{query}\"",
+    "summary": "{count, plural, one {#-tag} other {#-tags}} voor notities en taken",
+    "actions": {
+      "rename": "Hernoemen",
+      "changeColor": "Verander kleur",
+      "mergeInto": "Samenvoegen in...",
+      "merge": "Samenvoegen",
+      "delete": "Verwijderen"
+    },
+    "dialogs": {
+      "deleteTitle": "Label verwijderen",
+      "deleteDescription": "\"{name}\" verwijderen uit {count, plural, one {#-artikel} other {#-artikelen}}? Dit kan niet ongedaan worden gemaakt.",
+      "mergeTitle": "Tag samenvoegen",
+      "mergeDescription": "Alle items die zijn getagd met \"{source}\" worden opnieuw getagd met de doeltag. De brontag wordt verwijderd.",
+      "targetPlaceholder": "Doeltag selecteren...",
+      "colorTitle": "Verander de kleur voor \"{name}\""
+    },
+    "toasts": {
+      "renamed": "Hernoemd \"{oldName}\" naar \"{newName}\"",
+      "renameFailed": "Kan de naam van de tag niet wijzigen",
+      "deleteFailed": "Kan tag niet verwijderen",
+      "deleted": "\"{name}\" verwijderd uit {count, plural, one {#-artikel} other {#-artikelen}}",
+      "mergeFailed": "Kan tags niet samenvoegen",
+      "merged": "Samengevoegd \"{source}\" in \"{target}\" ({count, plural, one {#-artikel} other {#-artikelen}})",
+      "colorUpdated": "Bijgewerkte kleur voor \"{name}\"",
+      "colorFailed": "Kan de kleur niet updaten"
+    }
+  },
+  "properties": {
+    "header": {
+      "title": "Eigenschappen",
+      "subtitle": "Beheer eigenschapsdefinities voor alle notities"
+    },
+    "loading": "Eigenschappen laden...",
+    "empty": "Er zijn nog geen eigendomsdefinities. Voeg een Status-, Select- of Multiselect-eigenschap toe aan een notitie om aan de slag te gaan.",
+    "filterPlaceholder": "Eigenschappen filteren...",
+    "noMatch": "Geen zoekresultaten die overeenkomen met \"{query}\"",
+    "summary": "{count, plural, one {# eigenschapsdefinitie} other {#-eigenschapsdefinities}}",
+    "optionCount": "{count, plural, one {#-optie} other {#-opties}}",
+    "optionNamePlaceholder": "Naam van optie",
+    "addOption": "Optie toevoegen",
+    "changeColorTitle": "Verander kleur",
+    "renameTitle": "Hernoemen",
+    "removeTitle": "Verwijderen",
+    "actions": {
+      "deleteProperty": "Eigenschap verwijderen"
+    },
+    "types": {
+      "status": "Status",
+      "select": "Selecteer",
+      "multiselect": "Multiselecteren",
+      "text": "Tekst",
+      "number": "Nummer",
+      "date": "Datum",
+      "checkbox": "Selectievakje",
+      "url": "URL"
+    },
+    "dialogs": {
+      "deleteTitle": "Eigenschap verwijderen",
+      "deleteDescription": "De eigenschapsdefinitie \"{name}\" verwijderen? Notities die deze eigenschap gebruiken, behouden hun waarden als platte tekst.",
+      "colorTitle": "Verander de kleur voor \"{name}\""
+    },
+    "toasts": {
+      "renamed": "Hernoemd \"{oldValue}\" naar \"{newValue}\"",
+      "renameFailed": "Kan de naam van de optie niet wijzigen",
+      "removed": "\"{value}\" verwijderd",
+      "removeFailed": "Kan de optie niet verwijderen",
+      "colorFailed": "Kan de kleur niet updaten",
+      "deleteFailed": "Kan de eigenschap niet verwijderen",
+      "deleted": "Eigenschap \"{name}\" verwijderd",
+      "addFailed": "Kan optie niet toevoegen"
+    }
+  },
+  "shortcuts": {
+    "header": {
+      "title": "Sneltoetsen",
+      "subtitle": "Klik op een snelkoppeling om deze opnieuw te binden",
+      "loading": "Instellingen laden..."
+    },
+    "searchPlaceholder": "Snelkoppelingen zoeken...",
+    "resetAll": "Alles resetten",
+    "custom": "Aangepast",
+    "pressShortcut": "Druk op snelkoppeling…",
+    "cancelTitle": "Annuleer",
+    "rebindTitle": "Klik om opnieuw te binden",
+    "resetTitle": "Resetten naar standaard",
+    "clearTitle": "Snelkoppeling wissen",
+    "clickToSet": "Klik om in te stellen",
+    "noMatch": "Er zijn geen snelkoppelingen die overeenkomen met uw zoekopdracht",
+    "conflict": "Conflicteert met: {labels}",
+    "globalCapture": {
+      "title": "Mondiale vangst",
+      "description": "Leg overal een notitie vast",
+      "permissionNeeded": "Toestemming nodig",
+      "active": "Actief",
+      "permissionHint": "Voor globale snelkoppelingen is toegankelijkheidstoestemming vereist. Ga naar Systeeminstellingen → Privacy → Toegankelijkheid en schakel Memry in."
+    },
+    "toasts": {
+      "saveGlobalFailed": "Kan de globale snelkoppeling voor vastleggen niet opslaan",
+      "saveFailed": "Kan snelkoppeling niet opslaan",
+      "resetFailed": "Kan de snelkoppeling niet opnieuw instellen",
+      "resetAllSuccess": "Alle snelkoppelingen worden teruggezet naar de standaardwaarden",
+      "resetAllFailed": "Kan snelkoppelingen niet opnieuw instellen"
+    },
+    "categories": {
+      "navigation": "Navigatie",
+      "tabs": "Tabbladen",
+      "editor": "Redacteur",
+      "view": "Bekijk"
+    },
+    "entries": {
+      "nav": {
+        "newNote": {
+          "label": "Nieuwe notitie",
+          "description": "Maak een nieuwe notitie"
+        },
+        "newTask": {
+          "label": "Nieuwe taak",
+          "description": "Maak een nieuwe taak"
+        },
+        "inbox": {
+          "label": "Ga naar Postvak IN",
+          "description": "Navigeer naar de inbox"
+        },
+        "notes": {
+          "label": "Ga naar Notities",
+          "description": "Navigeer naar notities"
+        },
+        "tasks": {
+          "label": "Ga naar Taken",
+          "description": "Navigeer naar taken"
+        },
+        "search": {
+          "label": "Zoeken",
+          "description": "Globaal zoeken openen"
+        },
+        "settings": {
+          "label": "Instellingen openen",
+          "description": "Open het instellingenpaneel"
+        }
+      },
+      "tabs": {
+        "close": {
+          "label": "Tabblad sluiten",
+          "description": "Sluit het huidige tabblad"
+        },
+        "next": {
+          "label": "Volgende tabblad",
+          "description": "Ga naar het volgende tabblad"
+        },
+        "previous": {
+          "label": "Vorig tabblad",
+          "description": "Ga naar het vorige tabblad"
+        },
+        "reopen": {
+          "label": "Open het laatste tabblad opnieuw",
+          "description": "Open het meest recent gesloten tabblad opnieuw"
+        },
+        "navBack": {
+          "label": "Navigeer terug",
+          "description": "Activeer het eerder actieve tabblad opnieuw"
+        },
+        "navForward": {
+          "label": "Navigeer vooruit",
+          "description": "Voer een terugnavigatie opnieuw uit"
+        }
+      },
+      "editor": {
+        "save": {
+          "label": "Opslaan",
+          "description": "Sla de huidige notitie op"
+        },
+        "bold": {
+          "label": "Vet",
+          "description": "Schakel vetgedrukte opmaak in of uit"
+        },
+        "italic": {
+          "label": "Cursief",
+          "description": "Schakel cursieve opmaak in of uit"
+        },
+        "underline": {
+          "label": "Onderstreep",
+          "description": "Schakel onderstrepingsopmaak in of uit"
+        }
+      },
+      "view": {
+        "toggleSidebar": {
+          "label": "Schakel zijbalk in",
+          "description": "Toon of verberg de zijbalk"
+        },
+        "shortcuts": {
+          "label": "Hulp bij sneltoetsen",
+          "description": "Toon referentie voor sneltoetsen"
+        }
+      }
+    }
+  },
+  "phaseF": {
+    "componentsKeyboardChordIndicator": {
+      "pressedWaitingForSecondKey": "ingedrukt — wachtend op de tweede toets..."
+    },
+    "componentsKeyboardKeyboardShortcutsDialog": {
+      "keyboardShortcuts": "Sneltoetsen",
+      "press": "Druk op ",
+      "toToggleThisDialog": "om dit dialoogvenster in of uit te schakelen"
+    },
+    "componentsSyncDeviceList": {
+      "middot": "middenpunt;"
+    },
+    "componentsSyncDeviceRevokedDialog": {
+      "thisDeviceHasBeenRemoved": "Dit apparaat is verwijderd",
+      "exporting": "Exporteren...",
+      "signOut": "Uitloggen"
+    },
+    "componentsSyncSyncHistory": {
+      "middot": "middenpunt; ",
+      "activity": "Activiteit",
+      "filterBySyncType": "Filter op synchronisatietype",
+      "allTypes": "Alle soorten",
+      "pushed": "Geduwd",
+      "pulled": "Getrokken",
+      "errors": "Fouten",
+      "filterByTimePeriod": "Filter op tijdsperiode",
+      "allTime": "Altijd",
+      "today": "Vandaag",
+      "last7Days": "Laatste 7 dagen",
+      "last30Days": "Laatste 30 dagen",
+      "loadingSyncHistory": "Synchronisatiegeschiedenis laden",
+      "noSyncActivityYet": "Nog geen synchronisatieactiviteit",
+      "loadMore": "Laad meer"
+    },
+    "componentsSyncSyncStatus": {
+      "lastSynced": "Laatst gesynchroniseerd ",
+      "pending": "in afwachting",
+      "localOnly": "alleen lokaal",
+      "detected": "gedetecteerd",
+      "clockSkewDetected": "Klokafwijking gedetecteerd",
+      "items": "artikelen",
+      "willSyncWhenBackOnline": "Zal synchroniseren zodra ik weer online ben",
+      "openSyncSettings": "Open de synchronisatie-instellingen"
+    },
+    "pagesSettingsAiInlineSection": {
+      "httpLocalhost11434V1": "http://localhost:11434/v1"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToUpdateTagColor": "Kan de tagkleur niet updaten",
+      "googleSignInFailed": "Inloggen bij Google is mislukt",
+      "failedToSendVerificationCode": "Kan verificatiecode niet verzenden",
+      "invalidVerificationCode": "Ongeldige verificatiecode",
+      "accountSetupFailed": "Accountconfiguratie mislukt",
+      "failedToResendCode": "Kan de code niet opnieuw verzenden",
+      "failedToSetUpDevice": "Kan apparaat niet instellen",
+      "failedToConfirmRecoveryPhrase": "Kan de herstelzin niet bevestigen",
+      "failedToAnalyzeContent": "Kan inhoud niet analyseren",
+      "failedToLoadUpdaterState": "Kan updaterstatus niet laden",
+      "failedToCheckForUpdates": "Kan niet controleren op updates",
+      "failedToDownloadUpdate": "Kan de update niet downloaden",
+      "failedToInstallUpdate": "Kan update niet installeren",
+      "failedToLoadEditorSettings": "Kan editorinstellingen niet laden",
+      "failedToUpdateEditorSettings": "Kan de editorinstellingen niet updaten",
+      "failedToLoadGeneralSettings": "Kan algemene instellingen niet laden",
+      "failedToUpdateGeneralSettings": "Kan de algemene instellingen niet updaten",
+      "failedToLoadKeyboardSettings": "Kan toetsenbordinstellingen niet laden",
+      "failedToUpdateKeyboardSettings": "Kan toetsenbordinstellingen niet updaten",
+      "failedToResetKeyboardSettings": "Kan de toetsenbordinstellingen niet resetten",
+      "failedToLoadNoteEditorSettings": "Kan de instellingen van de notitie-editor niet laden",
+      "failedToUpdateSettings": "Kan instellingen niet updaten",
+      "failedToLoadTabSettings": "Kan tabbladinstellingen niet laden",
+      "failedToLoadNotes": "Kan notities niet laden",
+      "failedToLoadTags": "Kan tags niet laden",
+      "failedToLoadVaultStatus": "Kan de kluisstatus niet laden",
+      "failedToSelectVault": "Kan kluis niet selecteren",
+      "failedToCloseVault": "Kan de kluis niet sluiten",
+      "failedToSwitchVault": "Kan niet van kluis wisselen",
+      "failedToUpdateConfig": "Kan configuratie niet updaten",
+      "failedToReindex": "Opnieuw indexeren is mislukt"
+    }
+  }
+}

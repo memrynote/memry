@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Caricamento grafico...",
+    "load-failed": "Impossibile caricare i dati del grafico",
+    "try-again": "Riprova",
+    "aria-label": "Grafico della conoscenza con {nodeCount, plural, one {Nodo #} other {Nodi #}} e {edgeCount, plural, one {Connessione #} other {Connessioni #}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Nodi del grafico",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Il tuo grafico della conoscenza",
+    "description": "Le connessioni tra note, attività e progetti verranno visualizzate qui come grafico interattivo.",
+    "link-title": "Collega le tue note",
+    "link-description": "Usa [[wikilinks]] per collegare le idee tra le note",
+    "discover-title": "Scopri i modelli",
+    "discover-description": "Man mano che le connessioni crescono, cluster e temi emergeranno in modo naturale"
+  },
+  "entity": {
+    "note": "nota",
+    "notes": "note",
+    "journal": "diario",
+    "journals": "riviste",
+    "task": "compito",
+    "tasks": "compiti",
+    "project": "progetto",
+    "projects": "progetti",
+    "tag": "etichetta",
+    "tags": "tag",
+    "orphan": "orfano",
+    "orphans": "orfani",
+    "unresolved": "irrisolto"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Impostazioni del grafico",
+    "hide-settings": "Nascondi impostazioni",
+    "reset-filters": "Reimposta i filtri",
+    "filters": "Filtri",
+    "display": "Visualizzazione",
+    "show-labels": "Mostra etichette",
+    "focus-depth": "profondità {depth}",
+    "clear-focus": "Nodo focalizzato chiaro"
+  },
+  "filter": {
+    "notes": "Note",
+    "journals": "Riviste",
+    "tasks": "Compiti",
+    "projects": "Progetti",
+    "tags": "Tag",
+    "orphans": "Orfani",
+    "toggle-entity": "Attiva/disattiva {label}",
+    "toggle-orphans": "Attiva/disattiva i nodi orfani"
+  },
+  "search": {
+    "placeholder": "Cerca nodi...",
+    "clear": "Cancella ricerca nel grafico"
+  },
+  "context-menu": {
+    "untitled": "Senza titolo",
+    "focus-node": "Concentrati su questo nodo",
+    "open-new-tab": "Apri in una nuova scheda",
+    "create-note": "Crea nota",
+    "copy-title": "Copia titolo"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {Connessione #} other {Connessioni #}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Caricamento grafico...",
+    "empty": "Nessuna connessione trovata",
+    "open-full": "Apri il grafico completo",
+    "close": "Chiudi il grafico"
+  }
+}

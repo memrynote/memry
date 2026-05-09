@@ -1,0 +1,303 @@
+{
+  "title": "Dziennik",
+  "section": {
+    "journal": "Dziennik",
+    "aiConnections": "Połączenia AI",
+    "todaysNotes": "Dzisiejsze notatki",
+    "todaysSchedule": "Dzisiejszy harmonogram",
+    "todaysTasks": "Dzisiejsze Zadania",
+    "schedule": "Harmonogram",
+    "tasks": "Zadania",
+    "calendarEvents": "Wydarzenia w kalendarzu",
+    "overdueTasks": "Zaległe zadania",
+    "technicalDetails": "Szczegóły techniczne"
+  },
+  "action": {
+    "versionHistory": "Historia wersji",
+    "export": "Eksportuj",
+    "fullWidth": "Pełna szerokość",
+    "journalSettings": "Ustawienia dziennika",
+    "fullMode": "Tryb pełny",
+    "compactMode": "Tryb kompaktowy",
+    "focusMode": "Tryb ostrości",
+    "exitFocusMode": "Wyjdź z trybu ostrości",
+    "enterFocusMode": "Wejdź w tryb skupienia",
+    "createNote": "Utwórz notatkę",
+    "createNewNote": "Utwórz nową notatkę",
+    "showLess": "Pokaż mniej",
+    "showMoreNotes": "Pokaż {count} dodatkową notatkę",
+    "showMoreNotes_plural": "Pokaż {count} więcej notatek",
+    "showFewerNotes": "Pokaż mniej notatek",
+    "startBlank": "Zamiast tego zacznij od pustego miejsca",
+    "changeTemplate": "Zmień szablon",
+    "dismissIndicator": "Wskaźnik odrzucenia",
+    "refreshConnections": "Odśwież połączenia",
+    "reloadJournal": "Załaduj ponownie dziennik",
+    "goToToday": "Przejdź do Dzisiaj",
+    "copyUnsavedContent": "Skopiuj niezapisaną zawartość do schowka",
+    "openNoteFullPage": "Otwórz notatkę na całej stronie",
+    "closeNoteDrawer": "Zamknij szufladę na notatki",
+    "addBookmark": "Dodaj zakładkę",
+    "removeBookmark": "Usuń zakładkę",
+    "tryAgain": "Spróbuj ponownie"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "Co planujesz...",
+      "today": "Co masz dzisiaj na myśli...",
+      "past": "Zastanów się nad tym dniem...",
+      "default": "Zacznij pisać..."
+    },
+    "toolbar": {
+      "ariaLabel": "Formatowanie tekstu",
+      "bold": "Odważne",
+      "italic": "Kursywa",
+      "underline": "Podkreśl",
+      "strikethrough": "Przekreślenie",
+      "link": "Link",
+      "image": "Obraz",
+      "moreOptions": "Więcej opcji",
+      "heading1": "Nagłówek 1",
+      "heading2": "Nagłówek 2",
+      "heading3": "Nagłówek 3",
+      "bulletList": "Lista punktorów",
+      "numberedList": "Lista numerowana",
+      "checklist": "Lista kontrolna",
+      "quote": "Cytat",
+      "divider": "Dzielnik",
+      "codeBlock": "Blok kodu"
+    },
+    "prompt": {
+      "enterUrl": "Wpisz adres URL:"
+    },
+    "upload": {
+      "noEntry": "Nie można przesłać obrazu: nie wybrano wpisu do dziennika",
+      "failed": "Nie udało się przesłać obrazu"
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "Dzisiaj",
+      "yesterday": "Wczoraj",
+      "tomorrow": "Jutro",
+      "future": "Przyszłość"
+    },
+    "weekday": {
+      "sunday": "niedziela",
+      "monday": "poniedziałek",
+      "tuesday": "wtorek",
+      "wednesday": "środa",
+      "thursday": "czwartek",
+      "friday": "piątek",
+      "saturday": "sobota"
+    },
+    "weekdayShort": {
+      "sunday": "niedziela",
+      "monday": "pon",
+      "tuesday": "wt",
+      "wednesday": "śr",
+      "thursday": "czw",
+      "friday": "piątek",
+      "saturday": "sob"
+    },
+    "month": {
+      "january": "Styczeń",
+      "february": "luty",
+      "march": "Marzec",
+      "april": "kwiecień",
+      "may": "Maj",
+      "june": "Czerwiec",
+      "july": "Lipiec",
+      "august": "sierpień",
+      "september": "Wrzesień",
+      "october": "Październik",
+      "november": "Listopad",
+      "december": "Grudzień"
+    },
+    "monthShort": {
+      "january": "styczeń",
+      "february": "luty",
+      "march": "marca",
+      "april": "kwiecień",
+      "may": "Maj",
+      "june": "czerwca",
+      "july": "lipiec",
+      "august": "sierpień",
+      "september": "wrzesień",
+      "october": "paź",
+      "november": "listopad",
+      "december": "grudzień"
+    },
+    "greeting": {
+      "morning": "Dzień dobry",
+      "afternoon": "Dzień dobry",
+      "evening": "Dobry wieczór",
+      "night": "Dobranoc"
+    },
+    "allDay": "Cały dzień"
+  },
+  "nav": {
+    "previousDay": "Poprzedni dzień",
+    "nextDay": "Następny dzień",
+    "previousMonth": "Poprzedni miesiąc",
+    "nextMonth": "Następny miesiąc",
+    "previousYear": "Poprzedni rok",
+    "nextYear": "Następny rok",
+    "journalBack": "Dziennik z powrotem",
+    "journalNavigation": "Nawigacja dziennika",
+    "dateNavigation": "Nawigacja po datach dziennika",
+    "goToYearView": "Przejdź do widoku roku",
+    "previousView": "Poprzedni widok",
+    "nextView": "Następny widok"
+  },
+  "aria": {
+    "moreOptions": "Więcej opcji",
+    "documentStatistics": "Statystyki dokumentów",
+    "dayContext": "Kontekst dnia: zadania i harmonogram",
+    "scheduleEvents": "Zaplanuj wydarzenia",
+    "tasks": "Zadania",
+    "notesCreatedToday": "Notatki {count} utworzone dzisiaj"
+  },
+  "empty": {
+    "noEntry": "Brak wpisu",
+    "noDaysInMonth": "Brak dni w tym miesiącu",
+    "noEventsScheduled": "Brak zaplanowanych wydarzeń",
+    "noEventsScheduledToday": "Na dzisiaj nie zaplanowano żadnych wydarzeń",
+    "noEventsWereScheduled": "Nie zaplanowano żadnych wydarzeń",
+    "noTasksDue": "Brak zadań do wykonania",
+    "noTasksDueToday": "Brak zadań z terminem na dzisiaj",
+    "noTasksWereDue": "Nie przypadały żadne zadania",
+    "noNotesToday": "Dzisiaj nie utworzono żadnych notatek",
+    "startDocumenting": "Zacznij dokumentować swoje przemyślenia i pomysły"
+  },
+  "ai": {
+    "loading": "Analizuję Twój wpis...",
+    "empty": {
+      "willAppear": "Tutaj pojawią się Twoje połączenia",
+      "noneYet": "Nie znaleziono jeszcze żadnych połączeń",
+      "moreJournaling": "W miarę pisania kolejnych wpisów sztuczna inteligencja będzie znajdować powiązane wpisy",
+      "keepWriting": "Pisz dalej, aby odkryć powiązane wpisy"
+    },
+    "error": {
+      "loadFailed": "Nie udało się wczytać połączeń"
+    },
+    "connectionAria": "Połączenie z {label}, {scorePercent}% pasuje"
+  },
+  "count": {
+    "item": "przedmiot",
+    "items": "przedmioty",
+    "note": "uwaga",
+    "notes": "notatki",
+    "day": "dzień",
+    "days": "dni",
+    "event": "wydarzenie",
+    "events": "wydarzenia",
+    "meeting": "spotkanie",
+    "meetings": "spotkania",
+    "task": "zadanie",
+    "tasks": "zadania",
+    "todo": "zrobić",
+    "people": "{count} osób",
+    "moreConnections": "+ {count} więcej połączenia",
+    "moreConnections_plural": "+ {count} więcej połączeń",
+    "moreNotes": "+ {count} dodatkowa uwaga",
+    "moreNotes_plural": "+ {count} więcej notatek",
+    "daysWithEntries": "dni z wpisami",
+    "charactersWritten": "zapisane znaki",
+    "words": "{count} słów",
+    "characters": "{count} znaków",
+    "completed": "{count} ukończono",
+    "overdue": "{count} spóźniony"
+  },
+  "stats": {
+    "wordCount": "Liczba słów",
+    "characterCount": "Liczba znaków",
+    "readingTime": "Szacowany czas czytania",
+    "lastModified": "Ostatnia modyfikacja",
+    "lessThanOneMinute": "< 1 min",
+    "minutes": "{minutes} min",
+    "read": "Odczytano {readingTime}",
+    "modified": "Zmodyfikowano {date}"
+  },
+  "task": {
+    "completed": "Ukończono",
+    "notCompleted": "Nieukończone",
+    "priority": "Priorytet {priority}",
+    "overdue": "spóźnione",
+    "markComplete": "Oznacz „{title}” jako ukończony",
+    "markNotComplete": "Oznacz „{title}” jako nieukończony"
+  },
+  "template": {
+    "using": "Korzystanie z „{templateName}”"
+  },
+  "reminder": {
+    "hasReminders": "Zawiera przypomnienia",
+    "setToRevisit": "Ustaw przypomnienie o ponownej wizycie",
+    "tooltip": "Przypomnienie: {date}",
+    "tooltipMore": "Przypomnienie: {date} (+{count} więcej)",
+    "success": {
+      "set": "Ustawiono przypomnienie dla tego wpisu w dzienniku",
+      "deleted": "Przypomnienie zostało usunięte",
+      "dismissed": "Przypomnienie odrzucone",
+      "snoozed": "Przypomnienie zostało odłożone"
+    },
+    "error": {
+      "set": "Nie udało się ustawić przypomnienia",
+      "delete": "Nie udało się usunąć przypomnienia",
+      "dismiss": "Nie udało się odrzucić przypomnienia",
+      "snooze": "Nie udało się odłożyć przypomnienia"
+    }
+  },
+  "toast": {
+    "unsavedRetry": "Twoja treść jest nadal w pamięci. Kliknij, aby spróbować ponownie zapisać.",
+    "noteNotFound": "Uwaga: Nie znaleziono „{target}”.",
+    "fileNotFound": "Nie znaleziono pliku: {target}",
+    "openLinkedItemFailed": "Nie udało się otworzyć połączonego elementu",
+    "errorPrefix": "Błąd:"
+  },
+  "export": {
+    "noteTitle": "Dziennik - {month} {day}, {year}"
+  },
+  "note": {
+    "generatedTitle": "Uwaga - {date}",
+    "openAria": "Otwórz {title}, utworzony w {time}"
+  },
+  "tag": {
+    "suggestionsAria": "Sugestie tagów",
+    "empty": {
+      "title": "Nie ma jeszcze tagów",
+      "description": "Wpisz, aby utworzyć nowy tag"
+    },
+    "groupTitle": "Tagi",
+    "create": "Utwórz plik #{query}",
+    "ariaLabel": "Etykieta: {tag}, kliknij, aby filtrować"
+  },
+  "wiki": {
+    "suggestionsAria": "Sugestie stron",
+    "empty": {
+      "title": "Nie znaleziono żadnych stron"
+    },
+    "groupRecent": "Najnowsze",
+    "groupAllPages": "Wszystkie strony",
+    "createNewPage": "Utwórz nową stronę",
+    "ariaLabel": "Link do {title}"
+  },
+  "error": {
+    "title": "Błąd dziennika",
+    "description": "W dzienniku wystąpił błąd dla {date}. Twoje ostatnie zmiany mogły nie zostać zapisane.",
+    "descriptionNoDate": "W czasopiśmie wystąpił błąd. Twoje ostatnie zmiany mogły nie zostać zapisane.",
+    "unsavedContent": "Wykryto niezapisaną treść (znaki {length})"
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "k"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveJournalEntry": "Nie udało się zapisać wpisu do dziennika",
+      "failedToLoadJournalSettings": "Nie udało się załadować ustawień dziennika",
+      "failedToUpdateSettings": "Nie udało się zaktualizować ustawień"
+    }
+  }
+}

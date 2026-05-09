@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Načítání grafu...",
+    "load-failed": "Data grafu se nepodařilo načíst",
+    "try-again": "Zkuste to znovu",
+    "aria-label": "Graf znalostí s {nodeCount, plural, one {uzel #} other {uzly #}} a {edgeCount, plural, one {Připojení #} other {Připojení #}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Uzly grafu",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Graf vašich znalostí",
+    "description": "Propojení mezi vašimi poznámkami, úkoly a projekty se zde zobrazí jako interaktivní graf.",
+    "link-title": "Propojte své poznámky",
+    "link-description": "Pomocí [[wikilinks]] propojte nápady napříč poznámkami",
+    "discover-title": "Objevte vzory",
+    "discover-description": "Jak narůstají vazby, přirozeně se objevují shluky a témata"
+  },
+  "entity": {
+    "note": "poznámka",
+    "notes": "poznámky",
+    "journal": "deník",
+    "journals": "deníky",
+    "task": "úkol",
+    "tasks": "úkoly",
+    "project": "projekt",
+    "projects": "projekty",
+    "tag": "tag",
+    "tags": "značky",
+    "orphan": "sirotek",
+    "orphans": "sirotci",
+    "unresolved": "nevyřešené"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Nastavení grafu",
+    "hide-settings": "Skrýt nastavení",
+    "reset-filters": "Resetovat filtry",
+    "filters": "Filtry",
+    "display": "Displej",
+    "show-labels": "Zobrazit štítky",
+    "focus-depth": "hloubka {depth}",
+    "clear-focus": "Jasný zaměřený uzel"
+  },
+  "filter": {
+    "notes": "Poznámky",
+    "journals": "Deníky",
+    "tasks": "Úkoly",
+    "projects": "Projekty",
+    "tags": "Tagy",
+    "orphans": "Sirotci",
+    "toggle-entity": "Přepnout {label}",
+    "toggle-orphans": "Přepnout osiřelé uzly"
+  },
+  "search": {
+    "placeholder": "Hledat uzly...",
+    "clear": "Jasné vyhledávání v grafu"
+  },
+  "context-menu": {
+    "untitled": "Bez názvu",
+    "focus-node": "Zaměřte se na tento uzel",
+    "open-new-tab": "Otevřít na nové kartě",
+    "create-note": "Vytvořte poznámku",
+    "copy-title": "Zkopírujte název"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {Připojení #} other {Připojení #}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Načítání grafu...",
+    "empty": "Nebyla nalezena žádná spojení",
+    "open-full": "Otevřít celý graf",
+    "close": "Zavřít graf"
+  }
+}

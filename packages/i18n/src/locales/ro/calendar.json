@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "Ziua",
+    "week": "Săptămâna",
+    "month": "luna",
+    "year": "Anul"
+  },
+  "toolbar": {
+    "create-event": "Creați un eveniment",
+    "previous-period": "Perioada anterioară",
+    "next-period": "Următoarea perioadă",
+    "previous-month": "Luna anterioară",
+    "next-month": "Luna viitoare",
+    "today": "Astăzi"
+  },
+  "filter": {
+    "filter-calendars": "Filtrați calendarele",
+    "sources": "Surse",
+    "memry-items": "articole Memry",
+    "imported-calendars": "Calendare importate",
+    "event-types": "Tipuri de evenimente",
+    "google-calendars": "Calendare Google",
+    "refresh-google-calendars": "Actualizează calendarele Google"
+  },
+  "visual-type": {
+    "event": "Eveniment",
+    "imported-event": "Eveniment importat",
+    "task": "Sarcină",
+    "reminder": "Memento",
+    "snooze": "Amână"
+  },
+  "state": {
+    "loading-calendar": "Se încarcă calendarul...",
+    "loading-calendars": "Se încarcă calendarele...",
+    "preparing": "Se pregătesc…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "Niciun calendar importat încă.",
+    "no-events": "Fără evenimente"
+  },
+  "time": {
+    "all-day": "Toată ziua",
+    "all-day-lower": "toată ziua",
+    "pick-a-date": "Alegeți o dată",
+    "new-event": "Eveniment nou",
+    "more-events": "{count, plural, one {# mai mult eveniment} other {# mai multe evenimente}}"
+  },
+  "form": {
+    "create-calendar-event": "Creați un eveniment din calendar",
+    "edit-calendar-event": "Editați evenimentul din calendar",
+    "quick-create-description": "Introduceți un titlu și salvați pentru a crea un eveniment în intervalul de timp selectat.",
+    "event-editor-description": "Actualizați titlul, locația, data, ora și notele pentru acest eveniment.",
+    "new-event-placeholder": "Eveniment nou",
+    "location-placeholder": "Adăugați locația",
+    "notes-url-placeholder": "Adăugați note sau adresa URL",
+    "start": "Începeți",
+    "end": "Sfârșit",
+    "add-details": "Adăugați detalii",
+    "google-calendar": "Calendar Google",
+    "target-calendar": "Calendar țintă",
+    "use-default-calendar": "Utilizați calendarul implicit",
+    "use-default-calendar-with-name": "Utilizați implicit ({calendar})",
+    "use-memry-calendar-default": "Utilizați calendarul Memry (implicit)",
+    "use-memry-managed-calendar": "Utilizați calendarul gestionat de Memry",
+    "primary-suffix": "primar"
+  },
+  "delete-dialog": {
+    "title": "Ștergeți evenimentul?",
+    "local-description": "„{title}” va fi șters definitiv. Această acțiune nu poate fi anulată.",
+    "google-bound-description": "„{title}” va fi eliminat din Memry și Google Calendar. Această acțiune nu poate fi anulată.",
+    "context-menu-delete-label": "Șterge evenimentul"
+  },
+  "promote-dialog": {
+    "aria": "Editați evenimentul din calendar extern",
+    "title": "Editați acest eveniment în Memry?",
+    "body": "Editarea acestui eveniment va crea o copie legată în Memry, astfel încât modificările se sincronizează în ambele sensuri. Continuați?",
+    "do-not-ask-again": "Nu mai întreba",
+    "confirm-label": "Editați în Memry"
+  },
+  "onboarding-dialog": {
+    "aria": "Alegeți calendarul dvs. implicit Google",
+    "title": "La ce calendar ar trebui să meargă noile evenimente Memry?",
+    "body": "Alegeți calendarul Google pe care Memry ar trebui să îl folosească în mod implicit. Îl puteți anula în continuare pentru fiecare eveniment.",
+    "default-calendar-label": "Utilizați calendarul gestionat de Memry",
+    "skip": "Sari peste",
+    "use-this-calendar": "Utilizați acest calendar"
+  },
+  "metadata": {
+    "attendees": "Participantii",
+    "attendees-count": "Participanți ({count})",
+    "reminders": "Mementouri",
+    "default-reminders": "Mementouri implicite",
+    "visibility": "Vizibilitate:",
+    "optional": "Opțional",
+    "join-meeting": "Alăturați-vă întâlnirii",
+    "response": {
+      "accepted": "Acceptat",
+      "declined": "A refuzat",
+      "tentative": "Tentativ",
+      "needs-action": "În așteptare"
+    },
+    "visibility-value": {
+      "private": "Privat",
+      "public": "Public",
+      "confidential": "Confidențial"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "min · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "Evenimentul nu a putut fi salvat. Încercați din nou.",
+      "couldNotCreateEventTryAgain": "Evenimentul nu a putut fi creat. Încercați din nou.",
+      "couldNotSaveDefaultCalendarTryAgain": "Nu s-a putut salva calendarul implicit. Încercați din nou.",
+      "failedToLoadCalendarPreferences": "Nu s-au încărcat preferințele calendarului",
+      "failedToUpdateCalendarPreferences": "Nu s-au actualizat preferințele calendarului",
+      "couldNotEditThisEventTryAgain": "Nu s-a putut edita acest eveniment. Încercați din nou.",
+      "failedToDeleteEvent": "Evenimentul nu a fost șters",
+      "couldNotUnsnoozeInboxItem": "Nu s-a putut anula amânarea.",
+      "couldNotRescheduleInboxItem": "Nu s-a putut reprograma."
+    },
+    "inboxSnoozePopover": {
+      "title": "Articol amânat",
+      "openInInbox": "Deschide în inbox",
+      "unsnoozeNow": "Anulează amânarea acum",
+      "reschedule": "Reprogramați"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "Detalii despre sarcină",
+    "open-task": "Deschideți sarcina",
+    "source-note": "Notă sursă",
+    "reschedule": "Reprogramați",
+    "more-actions": "Mai multe acțiuni",
+    "mark-done": "Mark gata",
+    "mark-not-done": "Mark nu a fost terminat",
+    "later-today": "Mai târziu astăzi",
+    "tomorrow": "Mâine",
+    "next-week": "Săptămâna viitoare",
+    "next-week-mon": "Săptămâna viitoare · Lun",
+    "pick-date-time": "Alegeți data și ora...",
+    "remove-due-date": "Eliminați data scadentă",
+    "subtasks-prefix": "Subsarcini",
+    "subtasks-counter": "{done} din {total} finalizat",
+    "today": "Astăzi",
+    "overdue-one": "1 zi în întârziere",
+    "overdue-other": "{count} zile întârziate",
+    "repeats": "Se repetă",
+    "repeats-daily": "Se repetă zilnic",
+    "repeats-weekly": "Se repetă săptămânal",
+    "repeats-monthly": "Se repetă lunar",
+    "repeats-yearly": "Se repetă anual",
+    "priority-urgent": "Urgent",
+    "priority-high": "Înalt",
+    "priority-medium": "Mediu",
+    "errors": {
+      "could-not-save": "Sarcina nu a putut fi salvată",
+      "could-not-reschedule": "Nu s-a putut reprograma sarcina",
+      "could-not-remove-due-date": "Nu s-a putut elimina data scadentă",
+      "could-not-open-note": "Nota nu a putut fi deschisă"
+    }
+  }
+}
