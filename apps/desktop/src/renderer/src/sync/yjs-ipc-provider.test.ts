@@ -13,6 +13,10 @@ const mockSyncStep2 = vi.fn()
 const mockOnCrdtStateChanged = vi.fn(() => () => {})
 
 beforeEach(() => {
+  mockOpenDoc.mockResolvedValue({ success: true })
+  mockCloseDoc.mockResolvedValue({ success: true })
+  mockSyncStep1.mockResolvedValue(null)
+  mockSyncStep2.mockResolvedValue(undefined)
   ;(globalThis as unknown as { window: unknown }).window = {
     api: {
       syncCrdt: {
@@ -45,6 +49,20 @@ vi.mock('@/lib/logger', () => ({
 // ============================================================================
 
 import { YjsIpcProvider } from './yjs-ipc-provider'
+
+describe('YjsIpcProvider.connect', () => {
+  it('rejects when openDoc returns an unsuccessful result', async () => {
+    mockOpenDoc.mockResolvedValueOnce({ success: false, error: 'Note not found' })
+    const doc = new Y.Doc()
+    const provider = new YjsIpcProvider({ noteId: 'note-missing', doc })
+
+    await expect(provider.connect()).rejects.toThrow('Note not found')
+    expect(mockSyncStep1).not.toHaveBeenCalled()
+
+    provider.destroy()
+    doc.destroy()
+  })
+})
 
 describe('YjsIpcProvider.disconnect', () => {
   it('swallows rejection from closeDoc (expected during teardown)', async () => {

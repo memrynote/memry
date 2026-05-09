@@ -77,9 +77,13 @@ export class YjsIpcProvider extends Observable<string> {
 
   private async openDoc(): Promise<void> {
     try {
-      await window.api.syncCrdt.openDoc({ noteId: this.noteId })
-    } catch {
-      log.error('Failed to open doc', { noteId: this.noteId })
+      const result = await window.api.syncCrdt.openDoc({ noteId: this.noteId })
+      if (!result.success) {
+        throw new Error(result.error ?? 'Failed to open CRDT doc')
+      }
+    } catch (err) {
+      log.error('Failed to open doc', { noteId: this.noteId, error: err })
+      throw err
     }
   }
 
