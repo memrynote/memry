@@ -13,12 +13,17 @@ export function PrivacyPage() {
       >
         <h2>Summary in 30 seconds</h2>
         <ul>
-          <li>The local app stores everything on your device. We never see it.</li>
+          <li>Your notes, tasks, and journal stay on your device. We never see their content.</li>
           <li>
             Sync uploads only ciphertext. Every byte is encrypted on your device with
             XChaCha20-Poly1305 before it leaves.
           </li>
           <li>Encryption keys live in your password manager and never touch our servers.</li>
+          <li>
+            Anonymous usage metrics are optional, on by default, and switchable from Settings →
+            Privacy. They never include note content, search queries, file paths, emails, or raw
+            IDs.
+          </li>
           <li>We collect the minimum metadata needed to bill, deliver, and secure the service.</li>
           <li>We never sell your data. We have nothing to sell.</li>
         </ul>
@@ -30,19 +35,60 @@ export function PrivacyPage() {
           of country.
         </p>
 
-        <h2>2. The local app collects nothing</h2>
+        <h2>2. The local app keeps your content on your device</h2>
         <p>
           The Memry desktop application runs entirely on your computer. Your notes, tasks, journal,
           and files are stored as plain Markdown files in a vault folder you choose. None of that
           content is sent to us, period.
         </p>
         <p>
-          We do not include analytics, telemetry, or crash reporting that transmits your content.
           Optional update checks contact our update server, which sees only your IP address and app
           version.
         </p>
 
-        <h2>3. What Sync sends to our servers</h2>
+        <h2>3. Optional anonymous usage metrics</h2>
+        <p>
+          Memry includes an optional, anonymous telemetry stream so we can understand which features
+          get used, where the app crashes, and where it slows down. You can turn it off at any time
+          in <strong>Settings → Privacy → Share Anonymous Usage Metrics</strong>. It is on by
+          default in production builds and off in development builds.
+        </p>
+        <p>
+          Each event is one row from a fixed list — for example <em>app_started</em>,{' '}
+          <em>note_created</em>, <em>search_performed</em>, <em>sync_run_completed</em>,{' '}
+          <em>app_error_seen</em>. We do not capture free-form strings. The schema rejects any
+          dimension that looks like an email address, URL, file path, or raw identifier before the
+          event ever leaves your device.
+        </p>
+        <p>Each event ships with:</p>
+        <ul>
+          <li>The event name and a short action label (both from a fixed enum).</li>
+          <li>
+            An anonymous install ID and session ID. The install ID is a random UUID generated on
+            your device — it is not derived from your hardware, account, or any personal data.
+          </li>
+          <li>
+            App version, release channel, OS platform, CPU architecture, locale, and your timezone
+            offset.
+          </li>
+          <li>Whether you are signed in to Sync (yes/no/unknown) and whether Sync is enabled.</li>
+          <li>
+            Optional numeric metrics for the action — duration, item count, byte count, retry count.
+          </li>
+        </ul>
+        <p>
+          Events are batched in memory and uploaded to{' '}
+          <code>sync.memrynote.com/telemetry/batch</code> at most every 30 seconds. We never log
+          your IP address against your telemetry stream beyond the standard edge access logs that
+          every web server keeps for a short window.
+        </p>
+        <p>
+          Crash reporting is part of the same stream. We see that an error happened, on which
+          surface, and an error code from a fixed list — never a stack trace that could contain your
+          data.
+        </p>
+
+        <h2>4. What Sync sends to our servers</h2>
         <p>If you opt into the paid Sync service, the following is uploaded:</p>
         <ul>
           <li>
@@ -64,7 +110,7 @@ export function PrivacyPage() {
           server&apos;s view of your notes is a stream of opaque encrypted bytes.
         </p>
 
-        <h2>4. What the website collects</h2>
+        <h2>5. What the website collects</h2>
         <p>
           Memrynote.com uses minimal, privacy-respecting analytics to understand how people find the
           site and which pages are useful. We do not use third-party advertising trackers and do not
@@ -75,7 +121,7 @@ export function PrivacyPage() {
           reply or send the messages you opted into.
         </p>
 
-        <h2>5. How we use the data we have</h2>
+        <h2>6. How we use the data we have</h2>
         <p>We use the data described above only to:</p>
         <ul>
           <li>Operate, sync, and secure your account.</li>
@@ -83,15 +129,18 @@ export function PrivacyPage() {
           <li>
             Send transactional email (sign-up confirmation, payment receipts, security notices).
           </li>
-          <li>Investigate abuse, debug crashes, and improve product quality.</li>
-          <li>Comply with legal obligations.</li>
+          <li>
+            Understand which features get used and where the app crashes (if you have left anonymous
+            usage metrics on).
+          </li>
+          <li>Investigate abuse and comply with legal obligations.</li>
         </ul>
         <p>
           We do not use your data to train models, build advertising profiles, or sell anything to
           anyone.
         </p>
 
-        <h2>6. Encryption details</h2>
+        <h2>7. Encryption details</h2>
         <p>
           Memry uses end-to-end encryption based on the libsodium primitives: XChaCha20-Poly1305 for
           content, Ed25519 for signatures, and Argon2id for password-based key derivation. Your
@@ -103,7 +152,7 @@ export function PrivacyPage() {
           ourselves.
         </p>
 
-        <h2>7. Sub-processors</h2>
+        <h2>8. Sub-processors</h2>
         <p>
           We use a small set of third-party services to operate Memry. Each is contractually bound
           to handle your data only for the purpose listed:
@@ -126,14 +175,14 @@ export function PrivacyPage() {
           We do not share data with advertising networks, data brokers, or social media platforms.
         </p>
 
-        <h2>8. International transfers</h2>
+        <h2>9. International transfers</h2>
         <p>
           Memry is a small indie operation. Our infrastructure is global by default — encrypted
           blobs may be served from data centers near you for performance. Where personal data
           crosses borders, we rely on standard contractual clauses with our sub-processors.
         </p>
 
-        <h2>9. How long we keep things</h2>
+        <h2>10. How long we keep things</h2>
         <ul>
           <li>
             <strong>Encrypted blobs:</strong> kept while your subscription is active. After a lapse,
@@ -149,11 +198,15 @@ export function PrivacyPage() {
             (typically 7 years).
           </li>
           <li>
+            <strong>Anonymous usage metrics:</strong> aggregated and retained for up to 24 months,
+            then deleted. There is no way to tie an event back to a person.
+          </li>
+          <li>
             <strong>Server logs:</strong> retained for up to 30 days for security and debugging.
           </li>
         </ul>
 
-        <h2>10. Your rights</h2>
+        <h2>11. Your rights</h2>
         <p>
           Depending on where you live (GDPR, UK GDPR, CCPA, and similar laws), you have the right
           to:
@@ -175,7 +228,7 @@ export function PrivacyPage() {
           hear from you first, but you do not have to.
         </p>
 
-        <h2>11. Children</h2>
+        <h2>12. Children</h2>
         <p>
           Memry is not designed for children under 13 (or under 16 in jurisdictions that require
           it). We do not knowingly collect data from children. If you believe a child has signed up,
@@ -183,7 +236,7 @@ export function PrivacyPage() {
           the account.
         </p>
 
-        <h2>12. Security incidents</h2>
+        <h2>13. Security incidents</h2>
         <p>
           If we discover an incident that affects your data, we will notify you within 72 hours of
           confirming the impact. Because content is end-to-end encrypted, the most likely incident
@@ -191,13 +244,13 @@ export function PrivacyPage() {
           tell you exactly what was affected.
         </p>
 
-        <h2>13. Changes to this policy</h2>
+        <h2>14. Changes to this policy</h2>
         <p>
           We will update this page when our practices change. Material changes will be announced in
           the app and via email at least 14 days before they take effect.
         </p>
 
-        <h2>14. Contact</h2>
+        <h2>15. Contact</h2>
         <p>
           Privacy questions: <a href="mailto:privacy@memrynote.com">privacy@memrynote.com</a>.
           Anything else: <a href="mailto:hi@memrynote.com">hi@memrynote.com</a>.
