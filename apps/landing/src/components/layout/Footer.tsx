@@ -14,8 +14,8 @@ export function Footer() {
   return (
     <footer className="border-t border-border bg-paper py-20">
       <Container>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-16">
-          <div className="md:col-span-2 pr-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-10 mb-16">
+          <div className="col-span-2 md:col-span-2 pe-8">
             <Link to="/" className="inline-block mb-6 group">
               <span className="font-serif text-3xl font-medium text-ink group-hover:text-terracotta transition-colors">
                 Memry.
@@ -33,6 +33,22 @@ export function Footer() {
                 <li key={link.label}>
                   <Link
                     to={footerHref(link.href, pathname)}
+                    className="text-sm text-muted hover:text-terracotta transition-colors font-medium"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-serif text-lg text-ink mb-6">Resources</h4>
+            <ul className="space-y-4">
+              {FOOTER_LINKS.resources.map((link) => (
+                <li key={link.label}>
+                  <Link
+                    to={link.href}
                     className="text-sm text-muted hover:text-terracotta transition-colors font-medium"
                   >
                     {link.label}
