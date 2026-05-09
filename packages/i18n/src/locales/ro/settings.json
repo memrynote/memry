@@ -1,0 +1,1160 @@
+{
+  "toast": {
+    "exportNotImplemented": "Exportul local de date nu este încă implementat"
+  },
+  "page": {
+    "title": "Setări",
+    "nav": {
+      "groups": {
+        "workspace": "Spațiul de lucru",
+        "preferences": "Preferințe",
+        "services": "Servicii",
+        "data": "Date"
+      },
+      "items": {
+        "account": "Cont",
+        "general": "general",
+        "templates": "Șabloane",
+        "editor": "Editor",
+        "journal": "Jurnal",
+        "tasks": "Sarcini",
+        "calendar": "Calendar",
+        "appearance": "Aspectul",
+        "shortcuts": "Comenzi rapide",
+        "ai": "Asistent AI",
+        "integrations": "Integrari",
+        "vault": "Seif",
+        "tags": "Etichete",
+        "properties": "Proprietăți"
+      }
+    }
+  },
+  "general": {
+    "header": {
+      "title": "general",
+      "subtitle": "Pornirea aplicației și comportamentul filei",
+      "loading": "Se încarcă setările..."
+    },
+    "groups": {
+      "startup": "Pornire",
+      "updates": "Actualizări",
+      "languageRegion": "Limbă și regiune",
+      "tabBehavior": "Comportamentul filei",
+      "fileCreation": "Crearea fișierului",
+      "privacy": "Confidențialitate"
+    },
+    "startup": {
+      "launchAtLogin": {
+        "label": "Lansați la Logare",
+        "description": "Porniți Memry când vă conectați",
+        "error": "Nu s-a putut actualiza pornirea la pornire"
+      }
+    },
+    "updates": {
+      "appUpdates": "Actualizări ale aplicației",
+      "installedVersion": "Versiunea instalată {version}",
+      "availableVersion": "Versiunea disponibilă {version}",
+      "unsupported": "Compilările împachetate pot verifica, descărca și instala actualizări din versiunile GitHub",
+      "available": "Memry {version} este disponibil pentru descărcare",
+      "downloadingLatest": "Se descarcă cea mai recentă versiune",
+      "downloadingLatestPercent": "Se descarcă cea mai recentă versiune ({percent}%)",
+      "downloaded": "Memry {version} este gata de instalare",
+      "upToDate": "Această instalare se află pe cea mai recentă versiune publicată",
+      "checking": "Verificarea versiunilor GitHub pentru o versiune mai nouă",
+      "idle": "Verificați noi versiuni și instalați-le fără a părăsi aplicația",
+      "unsupportedToast": "Actualizările automate sunt disponibile numai în versiunile pachetate",
+      "upToDateToast": "Memry {version} este actualizat",
+      "actionFailed": "Acțiunea de actualizare a eșuat",
+      "actions": {
+        "checking": "Se verifică...",
+        "available": "Descărcați actualizarea",
+        "downloading": "Se descarcă...",
+        "downloadingPercent": "Se descarcă {percent}%",
+        "downloaded": "Reporniți pentru a instala",
+        "idle": "Verificați actualizările"
+      }
+    },
+    "language": {
+      "label": "Limba",
+      "helper": "Majoritatea aplicației se actualizează imediat. Unele texte la nivel de sistem - notificări deja afișate, etichetă de andocare, bara de titlu a ferestrei - se reîmprospătează după următoarea lansare.",
+      "changed": "Limba a fost schimbată în {nativeName}",
+      "failed": "Nu s-a putut schimba limba. Vă rugăm să încercați din nou."
+    },
+    "clockFormat": {
+      "label": "Format de timp",
+      "description": "Ceas de 12 sau 24 de ore",
+      "options": {
+        "12h": "12 ore",
+        "24h": "24 de ore"
+      },
+      "error": "Nu s-a putut actualiza formatul orei"
+    },
+    "tabs": {
+      "previewMode": {
+        "label": "Modul de previzualizare",
+        "description": "Un singur clic deschide previzualizarea, dublu clic rămâne deschis"
+      },
+      "restoreSession": {
+        "label": "Restaurați sesiunea la pornire",
+        "description": "Redeschideți filele din ultima dvs. sesiune"
+      },
+      "closeButton": {
+        "label": "Butonul Închidere filă",
+        "description": "Când să afișați butonul de închidere",
+        "options": {
+          "always": "Întotdeauna vizibil",
+          "hover": "Afișați la trecerea cursorului",
+          "active": "Doar pe fila activă"
+        }
+      },
+      "error": "Setarea nu a fost actualizată"
+    },
+    "fileCreation": {
+      "createInSelectedFolder": {
+        "label": "Creați în dosarul selectat",
+        "description": "Sunt create note și foldere noi în dosarul selectat curent. Când este dezactivat, elementele sunt întotdeauna create la rădăcină."
+      }
+    },
+    "privacy": {
+      "telemetry": {
+        "label": "Partajați valori anonime de utilizare",
+        "description": "Sunt doar valori anone – nu sunt trimise niciodată conținut de note, interogări de căutare, căi de fișiere, e-mailuri sau ID-uri brute.",
+        "error": "Nu s-a putut actualiza setarea de telemetrie"
+      }
+    }
+  },
+  "appearance": {
+    "header": {
+      "title": "Aspectul",
+      "subtitle": "Personalizați aspectul și senzația",
+      "loading": "Se încarcă setările..."
+    },
+    "groups": {
+      "theme": "Temă",
+      "accentColor": "Culoare de accent",
+      "typography": "Tipografie"
+    },
+    "theme": {
+      "colorMode": {
+        "label": "Modul Culoare",
+        "description": "Alegeți tema preferată",
+        "aria": "Mod culoare"
+      },
+      "options": {
+        "light": "Cald",
+        "white": "alb",
+        "dark": "Întuneric",
+        "system": "Sistem"
+      },
+      "error": "Nu s-a putut actualiza tema"
+    },
+    "accent": {
+      "pick": "Alegeți o culoare de accent",
+      "custom": {
+        "label": "Culoare personalizată",
+        "description": "Introduceți o valoare hexadecimală",
+        "placeholder": "#000000"
+      },
+      "presets": {
+        "indigo": "Indigo",
+        "amber": "chihlimbar",
+        "emerald": "Smarald",
+        "red": "roșu",
+        "violet": "violet",
+        "cyan": "Cyan",
+        "pink": "roz",
+        "orange": "Portocaliu"
+      },
+      "error": "Nu s-a putut actualiza culoarea de accent"
+    },
+    "typography": {
+      "fontSize": {
+        "label": "Dimensiunea fontului",
+        "description": "Ajustați dimensiunea textului de bază",
+        "aria": "Dimensiunea fontului"
+      },
+      "fontFamily": {
+        "label": "Familia de fonturi",
+        "description": "Font principal pentru interfață",
+        "options": {
+          "system": "Implicit sistem",
+          "sansSerif": "Sans-serif",
+          "serif": "Serif (Crimson Pro)",
+          "gelasio": "Gelasio",
+          "geist": "Geist",
+          "inter": "Inter",
+          "monospace": "Monospațiu"
+        }
+      },
+      "fontSizeError": "Nu s-a putut actualiza dimensiunea fontului",
+      "fontFamilyError": "Nu s-a putut actualiza familia de fonturi"
+    }
+  },
+  "editor": {
+    "header": {
+      "title": "Editor",
+      "subtitle": "Notați setările și preferințele editorului",
+      "loading": "Se încarcă setările..."
+    },
+    "groups": {
+      "layout": "Aspect",
+      "toolbar": "Bara de instrumente",
+      "writing": "Scrierea"
+    },
+    "width": {
+      "label": "Lățimea editorului",
+      "description": "Lățimea maximă a zonei de scriere",
+      "options": {
+        "narrow": "Îngustă",
+        "medium": "Mediu",
+        "wide": "Lat"
+      },
+      "error": "Nu s-a putut actualiza lățimea editorului"
+    },
+    "toolbarMode": {
+      "label": "Bara de instrumente Sticky Formatting",
+      "description": "Afișați întotdeauna bara de instrumente deasupra editorului",
+      "error": "Nu s-a putut actualiza modul bară de instrumente"
+    },
+    "spellCheck": {
+      "label": "Verificare ortografică",
+      "description": "Subliniați cuvintele scrise greșit în timp ce introduceți text",
+      "error": "Nu s-a putut actualiza verificarea ortografică"
+    },
+    "autoSaveDelay": {
+      "label": "Întârziere pentru salvare automată",
+      "description": "Așteptați timp după ce se oprește tastarea înainte de a salva",
+      "seconds": "{seconds}s",
+      "error": "Nu s-a putut actualiza întârzierea de salvare automată"
+    },
+    "wordCount": {
+      "label": "Număr de cuvinte",
+      "description": "Afișați numărul de cuvinte în subsolul editorului",
+      "error": "Nu s-a actualizat afișarea numărului de cuvinte"
+    }
+  },
+  "templates": {
+    "header": {
+      "title": "Șabloane",
+      "subtitle": "Gestionați șabloanele de note pentru crearea rapidă"
+    },
+    "actions": {
+      "new": "Șablon nou",
+      "edit": "Editați",
+      "duplicate": "Duplicat",
+      "delete": "Ștergeți"
+    },
+    "groups": {
+      "builtIn": "Încorporat",
+      "myTemplates": "Șabloanele mele"
+    },
+    "loading": "Se încarcă șabloanele...",
+    "newTemplateTitle": "Șablon nou",
+    "copySuffix": "{name} (Copiere)",
+    "empty": {
+      "title": "Nu există încă șabloane personalizate",
+      "description": "Creați un șablon pentru a începe"
+    },
+    "toasts": {
+      "deleted": "Șablonul a fost șters",
+      "deleteFailed": "Ștergerea șablonului a eșuat",
+      "duplicated": "Șablon duplicat",
+      "duplicateFailed": "Nu s-a putut duplica șablonul"
+    },
+    "dialogs": {
+      "delete": {
+        "title": "Ștergeți șablonul",
+        "description": "Sigur doriți să ștergeți acest șablon? Această acțiune nu poate fi anulată. Notele create din acest șablon nu vor fi afectate."
+      },
+      "duplicate": {
+        "title": "Șablon duplicat",
+        "description": "Introduceți un nume pentru noua copie a șablonului.",
+        "placeholder": "Numele șablonului"
+      }
+    }
+  },
+  "journal": {
+    "header": {
+      "title": "Jurnal",
+      "subtitle": "Setări și preferințe jurnal",
+      "loading": "Se încarcă setările..."
+    },
+    "groups": {
+      "defaultTemplate": "Șablon implicit",
+      "sidebarVisibility": "Vizibilitatea barei laterale",
+      "footer": "Subsol"
+    },
+    "template": {
+      "label": "Șablon",
+      "description": "Noile intrări încep cu acest șablon",
+      "placeholder": "Selectați un șablon",
+      "unknown": "Șablon necunoscut",
+      "none": "Niciuna",
+      "noneAsk": "Niciuna (intreaba de fiecare data)",
+      "updated": "Șablonul implicit a fost actualizat",
+      "cleared": "Șablonul implicit a fost șters",
+      "error": "Nu s-a putut actualiza șablonul implicit"
+    },
+    "showSchedule": {
+      "label": "Afișați programul",
+      "description": "Afișează evenimentele și calendarul de astăzi"
+    },
+    "showTasks": {
+      "label": "Afișați sarcini",
+      "description": "Afișează sarcinile datorate în ziua selectată"
+    },
+    "showAIConnections": {
+      "label": "Afișați conexiuni AI",
+      "description": "Afișați conexiuni alimentate de AI la intrările asociate"
+    },
+    "showStatsFooter": {
+      "label": "Afișați subsolul statisticilor",
+      "description": "Numărul de cuvinte, timpul de citire, marcajele de timp"
+    },
+    "updateError": "Setarea nu a fost actualizată"
+  },
+  "tasks": {
+    "header": {
+      "title": "Sarcini",
+      "subtitle": "Configurați valorile implicite și comportamentul sarcinii",
+      "loading": "Se încarcă setările..."
+    },
+    "groups": {
+      "defaults": "Valori implicite",
+      "calendar": "Calendar",
+      "inbox": "Inbox"
+    },
+    "defaultProject": {
+      "label": "Proiect implicit",
+      "description": "Atribuit atunci când nu este selectat niciun proiect",
+      "placeholder": "Niciun proiect implicit",
+      "none": "Fără implicit (utilizați Personal)",
+      "error": "Nu s-a putut actualiza proiectul implicit"
+    },
+    "sortOrder": {
+      "label": "Ordine de sortare implicită",
+      "description": "Cum sunt ordonate sarcinile în vizualizarea listă",
+      "options": {
+        "manual": "Manual (glisare și plasare)",
+        "dueDate": "Data scadentă",
+        "priority": "Prioritate",
+        "createdAt": "Data creării"
+      },
+      "error": "Nu s-a putut actualiza ordinea de sortare"
+    },
+    "weekStart": {
+      "label": "Săptămâna începe",
+      "description": "Prima zi a săptămânii în vizualizările calendarului",
+      "options": {
+        "sunday": "duminica",
+        "monday": "luni"
+      },
+      "error": "Nu s-a putut actualiza începutul săptămânii"
+    },
+    "staleInbox": {
+      "label": "Prag veche al căsuței primite",
+      "description": "Sarcinile mai vechi decât aceasta sunt evidențiate ca învechite",
+      "unit": "zile",
+      "error": "Nu s-a putut actualiza pragul de mesaje primite învechit"
+    }
+  },
+  "calendar": {
+    "header": {
+      "title": "Calendar",
+      "subtitle": "Configurați comportamentul celulei de zi în Panoul de zi",
+      "loading": "Se încarcă setările..."
+    },
+    "groups": {
+      "dayCellClick": "Faceți clic pe celulă de zi"
+    },
+    "defaultBehavior": {
+      "label": "Comportament implicit",
+      "description": "Când faceți clic pe o zi din calendarul Panoului de zile din orice filă care nu este calendar",
+      "error": "Nu s-a actualizat comportamentul clicurilor zilnice"
+    },
+    "pageOverride": {
+      "label": "Suprascrierea paginii de calendar",
+      "description": "Comportament atunci când fila Calendar este activă (implicit la Deschidere calendar)",
+      "error": "Nu s-a putut actualiza modificarea paginii de calendar"
+    },
+    "options": {
+      "openJournal": "Deschide Jurnalul",
+      "openCalendar": "Deschide Calendar",
+      "useGlobal": "Utilizați setarea globală"
+    }
+  },
+  "account": {
+    "header": {
+      "title": "Cont",
+      "subtitle": "Contul, sincronizarea și securitatea dvs",
+      "loading": "Se încarcă..."
+    },
+    "groups": {
+      "identity": "Identitatea",
+      "sync": "Sincronizare",
+      "storage": "Depozitare",
+      "devices": "Dispozitive",
+      "security": "Securitate"
+    },
+    "identity": {
+      "unknown": "Necunoscut",
+      "plan": "Plan pro"
+    },
+    "sync": {
+      "lastSynced": "Ultima sincronizare {time}",
+      "pending": "{count, plural, one {# în așteptare} other {# în așteptare}}",
+      "statuses": {
+        "synced": "Sincronizat",
+        "syncing": "Se sincronizează...",
+        "paused": "Întrerupt",
+        "syncError": "Eroare de sincronizare",
+        "offline": "Offline",
+        "connecting": "Se conectează...",
+        "pushed": "{count, plural, one {# a fost împins} other {# a fost împins}}",
+        "pulled": "{count, plural, one {# tras} other {# tras}}",
+        "pushedPulled": "{parts}",
+        "changesPending": "{count, plural, one {Modificarea # este în așteptare} other {Modificările # sunt în așteptare}}",
+        "offlinePending": "Offline ({count, plural, one {Modificarea # este în așteptare} other {Modificările # sunt în așteptare}})",
+        "never": "Niciodată"
+      }
+    },
+    "storage": {
+      "used": "{used} din {limit} folosit",
+      "categories": {
+        "notes": "Note",
+        "attachments": "Atasamente",
+        "crdt": "CRDT",
+        "other": "Altele",
+        "available": "Disponibil"
+      }
+    },
+    "security": {
+      "recoveryKey": {
+        "label": "Cheie de recuperare",
+        "description": "Vizualizați cheia de recuperare pentru acces la date",
+        "action": "Vedere cheie"
+      },
+      "rotateKeys": {
+        "label": "Rotiți cheile de criptare",
+        "description": "Generați chei noi și recriptați toate datele",
+        "action": "Rotiți"
+      },
+      "signOut": {
+        "label": "Deconectați-vă",
+        "description": "Deconectați acest dispozitiv de la sincronizare",
+        "action": "Deconectați-vă"
+      }
+    },
+    "signOutDialog": {
+      "title": "Deconectați-vă de la sincronizare?",
+      "description": "Sincronizarea se va opri și cheile de criptare vor fi eliminate de pe acest dispozitiv. Notele dvs. vor rămâne pe acest dispozitiv. Veți avea nevoie de expresia de recuperare pentru a configura din nou sincronizarea.",
+      "confirm": "Deconectați-vă",
+      "signingOut": "Se deconectează..."
+    },
+    "toasts": {
+      "signedOut": "S-a deconectat cu succes",
+      "signOutFailed": "Nu s-a putut deconecta",
+      "deviceLinked": "Dispozitivul a fost conectat cu succes"
+    }
+  },
+  "setup": {
+    "steps": {
+      "signIn": "Conectați-vă",
+      "verify": "Verificați",
+      "link": "Link"
+    },
+    "progress": "Pasul {current} din {total}: {label}",
+    "signIn": {
+      "title": "Configurați sincronizarea",
+      "description": "Creați un cont pentru a vă sincroniza datele pe dispozitive cu criptare end-to-end.",
+      "or": "sau",
+      "errors": {
+        "sendCode": "Nu s-a putut trimite codul",
+        "googleStart": "Nu s-a pornit conectarea la Google"
+      }
+    },
+    "email": {
+      "label": "Adresă de e-mail",
+      "placeholder": "Introdu adresa ta de e-mail...",
+      "invalid": "Vă rugăm să introduceți o adresă de e-mail validă",
+      "sending": "Se trimite codul..."
+    },
+    "oauth": {
+      "google": "Continuați cu Google"
+    },
+    "otp": {
+      "title": "Introdu codul de verificare",
+      "sentTo": "Am trimis un cod din 6 cifre către ",
+      "aria": "Cod de verificare din 6 cifre",
+      "verifying": "Se verifică...",
+      "resending": "Se retrimite...",
+      "resend": "Retrimiteți codul",
+      "resendIn": "Retrimiteți în {time}",
+      "differentEmail": "Utilizați un alt e-mail",
+      "error": "Verificarea a eșuat",
+      "resendError": "Retrimiterea eșuată"
+    },
+    "recovery": {
+      "displayTitle": "Salvați fraza de recuperare",
+      "displayDescription": "Acesta este singurul mod de a vă recupera datele criptate dacă pierdeți accesul la toate dispozitivele dvs.",
+      "warning": "Notează-l și depozitează-l într-un loc sigur. Nu o vei mai vedea.",
+      "wordsAria": "Cuvinte expresii de recuperare",
+      "wordAria": "Cuvântul {index}: {word}",
+      "copyAria": "Copiați fraza de recuperare în clipboard",
+      "copiedAria": "Fraza de recuperare a fost copiată",
+      "copied": "Copiat",
+      "saved": "Mi-am salvat fraza de recuperare",
+      "confirmTitle": "Confirmați fraza de recuperare",
+      "confirmDescription": "Introduceți cuvintele solicitate pentru a verifica că le-ați salvat corect.",
+      "wordPlaceholder": "Introduceți cuvântul #{index}",
+      "verify": "Verificați",
+      "mustMatch": "Toate cele 3 cuvinte trebuie să se potrivească pentru a continua",
+      "inputTitle": "Introduceți expresia de recuperare",
+      "inputDescription": "Introduceți expresia de recuperare de 24 de cuvinte pentru a restabili accesul la datele dvs. criptate.",
+      "inputLabel": "Fraza de recuperare",
+      "count": "Cuvinte {count} / {total}",
+      "inputPlaceholder": "Introduceți expresia de recuperare de 24 de cuvinte separate prin spații...",
+      "lengthHint": "Introduceți toate cele 24 de cuvinte pentru a activa butonul de restaurare",
+      "restore": "Restabiliți accesul",
+      "progress": {
+        "deriving": "Se obțin chei de criptare...",
+        "validating": "Se validează expresia de recuperare...",
+        "registering": "Se înregistrează dispozitivul..."
+      },
+      "failed": "Recuperarea a eșuat",
+      "confirmationFailed": "Confirmarea nu a reușit"
+    },
+    "linking": {
+      "choiceTitle": "Conectați acest dispozitiv",
+      "choiceDescription": "Transferați cheile de criptare de pe alt dispozitiv sau restaurați din fraza de recuperare.",
+      "qrChoice": "Link prin cod QR",
+      "qrChoiceDescription": "Scanați codul afișat pe celălalt dispozitiv",
+      "recoveryChoice": "Fraza de recuperare",
+      "recoveryChoiceDescription": "Introduceți expresia de recuperare de 24 de cuvinte",
+      "codeTitle": "Introdu codul de conectare",
+      "codeDescription": "Lipiți codul de conectare de pe celălalt dispozitiv pentru a vă transfera în siguranță cheile de criptare.",
+      "codeLabel": "Cod de conectare",
+      "valid": "Valabil",
+      "invalid": "Format nevalid",
+      "codePlaceholder": "Inserați codul de pe celălalt dispozitiv...",
+      "formatHint": "Inserați codul de conectare JSON de pe celălalt dispozitiv",
+      "linking": "Se leagă...",
+      "linkDevice": "Conectați dispozitivul",
+      "failed": "Conectarea a eșuat",
+      "deviceFailed": "Nu s-a putut conecta dispozitivul",
+      "pendingSuccess": "Dispozitivul a fost conectat cu succes",
+      "goBack": "Du-te înapoi",
+      "waitingTitle": "În așteptarea aprobării",
+      "waitingDescription": "Deschideți Memry pe celălalt dispozitiv și aprobați solicitarea de conectare.",
+      "verificationCode": "Cod de verificare",
+      "confirmCode": "Confirmați că acesta se potrivește cu codul de pe celălalt dispozitiv",
+      "cancel": "Anulează"
+    }
+  },
+  "devices": {
+    "loading": "Se încarcă dispozitivele...",
+    "loadingAria": "Dispozitive de încărcare",
+    "none": "Niciun dispozitiv conectat încă",
+    "linkNew": "Conectați dispozitivul nou",
+    "thisDevice": "Acest dispozitiv",
+    "lastSeen": "Văzut ultima dată acum {time}",
+    "linked": "Conectat cu {time} în urmă",
+    "renameAria": "Redenumiți {name}",
+    "rename": "Redenumiți",
+    "revoke": "Revocați",
+    "showLess": "Arată mai puțin",
+    "showMore": "{count, plural, one {# mai mult dispozitiv} other {# mai multe dispozitive}}",
+    "showMoreAria": "Afișați {count, plural, one {# mai mult dispozitiv} other {# mai multe dispozitive}}",
+    "dialogs": {
+      "revokeTitle": "Revocați „{name}”?",
+      "revokeDescription": "Acest dispozitiv va pierde accesul la datele dvs. sincronizate. Va trebui să fie conectat din nou pentru a restabili sincronizarea. Datele locale de pe acel dispozitiv vor rămâne.",
+      "revokeDevice": "Revocați dispozitivul",
+      "revoking": "Se revocă...",
+      "renameTitle": "Redenumiți dispozitivul",
+      "renameDescription": "Alegeți un nume pentru a identifica acest dispozitiv.",
+      "namePlaceholder": "Numele dispozitivului",
+      "renaming": "Redenumire..."
+    },
+    "toasts": {
+      "loadFailed": "Nu s-au încărcat dispozitivele",
+      "removed": "S-a eliminat „{name}”",
+      "removeFailed": "Dispozitivul nu a fost eliminat",
+      "renamed": "Redenumită în „{name}”",
+      "renameFailed": "Nu s-a putut redenumi dispozitivul"
+    }
+  },
+  "qrLinking": {
+    "title": "Conectați dispozitivul nou",
+    "description": "Scanați acest cod QR de pe dispozitivul pe care doriți să îl conectați pentru a vă transfera cheile de criptare în siguranță.",
+    "encrypted": "Criptat de la capăt la capăt",
+    "generating": "Se generează codul de conectare...",
+    "generatingAria": "Generarea codului de legătură",
+    "generateFailed": "Nu s-a generat codul de conectare",
+    "tryAgain": "Încercați din nou",
+    "expired": "Codul de conectare a expirat",
+    "generateNew": "Generați cod nou",
+    "qrAria": "Cod QR pentru conectarea dispozitivului",
+    "qrImageAria": "Codul QR de conectare a dispozitivului",
+    "expiresIn": "Expiră în {time}",
+    "or": "sau",
+    "codeLabel": "Cod de conectare",
+    "copyAria": "Copiați codul de conectare",
+    "copiedAria": "Copiat",
+    "copied": "Copiat!"
+  },
+  "linkingApproval": {
+    "title": "Dispozitivul nou dorește să se conecteze",
+    "description": "Un dispozitiv solicită acces la datele dvs. criptate. Aprobați numai dacă ați inițiat această solicitare.",
+    "unknownDevice": "Dispozitiv necunoscut",
+    "unknownPlatform": "Platformă necunoscută",
+    "verificationCode": "Cod de verificare",
+    "computing": "Se calculează...",
+    "unavailable": "Indisponibil",
+    "confirmCode": "Confirmați că acest cod se potrivește cu cel afișat pe noul dispozitiv",
+    "reject": "Respinge",
+    "approve": "Aprobați",
+    "approving": "Se aprobă...",
+    "approvalFailed": "Aprobarea nu a reușit",
+    "failedToApprove": "Dispozitivul nu a fost aprobat"
+  },
+  "recoveryKey": {
+    "title": "Cheie de recuperare",
+    "description": "Păstrați această cheie în siguranță. Îți poate restabili seiful dacă pierzi accesul la toate dispozitivele.",
+    "loading": "Se încarcă...",
+    "retrieveFailed": "Nu s-a putut prelua cheia de recuperare",
+    "copied": "Cheia de recuperare a fost copiată în clipboard",
+    "copyFailed": "Copierea eșuată în clipboard",
+    "clickToReveal": "Faceți clic pentru a dezvălui",
+    "hide": "Ascunde",
+    "reveal": "Dezvăluie",
+    "copy": "Copiere",
+    "sessionHint": "Această cheie este afișată o dată pe sesiune. Închideți acest dialog pentru a-l șterge din memorie."
+  },
+  "keyRotation": {
+    "title": "Rotiți cheile de criptare",
+    "descriptions": {
+      "confirm": "Generați noi chei de criptare pentru seif.",
+      "rotating": "Re-criptarea datelor dvs. cu chei noi...",
+      "phrase": "Salvați noua frază de recuperare.",
+      "complete": "Rotirea cheii s-a încheiat.",
+      "error": "Rotirea tastelor a întâmpinat o eroare."
+    },
+    "warningTitle": "Această acțiune va:",
+    "warningItems": {
+      "keyPair": "Generați o nouă pereche de chei de criptare",
+      "rewrap": "Reînfășurați toate elementele sincronizate cu noua cheie",
+      "phrase": "Produceți o nouă expresie de recuperare (cea veche devine invalidă)",
+      "pause": "Întrerupeți temporar sincronizarea în timpul procesului"
+    },
+    "explanation": "Conținutul dvs. de date nu este niciodată re-criptat - doar plicurile cheii se schimbă. Aceasta este o operațiune rapidă și sigură.",
+    "start": "Începeți rotirea tastelor",
+    "starting": "Incepand...",
+    "phases": {
+      "preparing": "Se pregatesc...",
+      "reencrypting": "Reambalarea cheilor ({processed}/{total})",
+      "finalizing": "Finalizarea...",
+      "working": "Se lucreaza..."
+    },
+    "progressAria": "Rotatie cheie: {phaseLabel} {pct}%",
+    "progressLabel": "Progresul rotației cheilor",
+    "doNotClose": "Nu închideți aplicația în timpul acestui proces.",
+    "complete": "Toate cheile de criptare au fost rotite. Noua ta expresie de recuperare a fost salvată. Sincronizarea se va relua automat.",
+    "unknownError": "A apărut o eroare necunoscută în timpul rotației cheii.",
+    "errorHint": "Cheile dvs. existente rămân valabile. Sincronizarea a fost reluată. Puteți reîncerca oricând.",
+    "closeConfirm": {
+      "title": "Rotație în curs",
+      "description": "Rotirea tastelor este încă în curs. Închiderea acestei casete de dialog nu va opri procesul, dar nu veți vedea noua frază de recuperare până când nu se va finaliza.",
+      "stay": "Stai",
+      "closeAnyway": "Închide oricum"
+    },
+    "failed": "Rotirea cheii a eșuat"
+  },
+  "ai": {
+    "header": {
+      "title": "Asistent AI",
+      "subtitle": "Embedding-urile rulează local. Notele vocale pot folosi Whisper Small sau cheia dvs. OpenAI.",
+      "loading": "Se încarcă setările..."
+    },
+    "enable": {
+      "label": "Activați funcțiile AI",
+      "description": "Sugestii inteligente de depunere și conexiuni de note",
+      "enabled": "Funcțiile AI sunt activate",
+      "disabled": "Funcțiile AI sunt dezactivate",
+      "error": "Setarea nu a fost actualizată"
+    },
+    "unknownError": "Eroare necunoscută",
+    "groups": {
+      "voice": "Transcrierea vocii",
+      "embeddingModel": "Model de încorporare locală",
+      "embeddingIndex": "Index de încorporare",
+      "inline": "Editare AI în linie"
+    },
+    "voice": {
+      "provider": "Furnizor",
+      "providerDescription": "Furnizor de vorbire în text pentru note vocale",
+      "providers": {
+        "local": "Local (implicit)",
+        "openai": "OpenAI (BYOK)"
+      },
+      "localModel": "Model local",
+      "localModelDescription": "Whisper Small descărcă la cerere și rămâne în cache local",
+      "status": {
+        "ready": "Gata",
+        "downloading": "Descărcarea",
+        "downloaded": "Descărcat",
+        "notDownloaded": "Nu a fost descărcat"
+      },
+      "cacheHint": "Nu este livrat cu aplicația · Descărcat din Setări · Memorat în cache pe acest dispozitiv",
+      "preparing": "Se pregătește Whisper Small...",
+      "download": "Descărcați Whisper Small",
+      "apiKey": "Cheia API OpenAI",
+      "apiKeyDescription": "Stocat în brelocul sistemului de operare și folosit numai pentru transcrierea vocii",
+      "replaceKey": "Înlocuiți cheia OpenAI salvată",
+      "enterKey": "Introduceți cheia API OpenAI",
+      "saveKey": "Salvare cheie",
+      "keySaved": "Cheia API salvată în breloc",
+      "providerError": "Nu s-a putut actualiza furnizorul de voce",
+      "downloadedToast": "Whisper Small a fost descărcat",
+      "downloadError": "Nu s-a putut descărca Whisper Small",
+      "keySavedToast": "Cheia OpenAI salvată",
+      "keySaveError": "Nu s-a salvat cheia OpenAI"
+    },
+    "embedding": {
+      "loaded": "Încărcat",
+      "loading": "Încărcare",
+      "cacheHint": "~23MB · Memorate în cache local · Toate pe dispozitiv",
+      "dimensions": "Dimensiuni",
+      "embeddings": "Înglobări",
+      "downloadLoad": "Descărcați și încărcați modelul",
+      "downloadingModel": "Se descarcă modelul...",
+      "loadingModel": "Se încarcă modelul...",
+      "loadSuccess": "Modelul a fost încărcat cu succes",
+      "loadFailed": "Nu s-a încărcat modelul",
+      "rebuildIndex": "Reconstruiți indexul",
+      "rebuildDescription": "Regenerați încorporațiile pentru toate notele",
+      "rebuild": "Reconstruiește",
+      "scanning": "Se scanează note...",
+      "generating": "Se generează înglobări...",
+      "complete": "Complet!",
+      "reindexed": "Înglobări reindexate: {computed} calculat, {skipped} omis",
+      "reindexFailed": "Nu s-au reindexat înglobările"
+    },
+    "inline": {
+      "loading": "Se încarcă...",
+      "title": "Editare AI în linie",
+      "enable": "Activați Inline AI",
+      "enableDescription": "Afișați meniul AI când editați note",
+      "enabled": "Editarea inline AI activată",
+      "disabled": "Editarea inline AI a fost dezactivată",
+      "provider": "Furnizor",
+      "providerDescription": "Serviciu AI pentru operațiuni text",
+      "providers": {
+        "ollama": "Ollama (local)",
+        "openai": "OpenAI",
+        "anthropic": "antropică"
+      },
+      "model": "Model",
+      "modelDescription": "Model de limbă pentru rescrie și rezumat",
+      "selectModel": "Selectați un model",
+      "apiKey": "Cheia API",
+      "apiKeyDescription": "Stocat local, trimis numai furnizorului",
+      "apiKeyPlaceholder": "Introduceți cheia API {provider}",
+      "ollamaUrl": "URL Ollama",
+      "ollamaUrlDescription": "Adresa serverului local",
+      "connection": "Conexiune",
+      "activePort": "Activ pe portul {port}",
+      "notConnected": "Nu este conectat",
+      "test": "Testează",
+      "stopFailed": "Nu s-a oprit serverul existent",
+      "connected": "Conectat! Server rulează pe portul {port}",
+      "connectFailed": "Nu s-a putut conecta",
+      "testFailed": "Testul de conectare a eșuat",
+      "updateFailed": "Setarea nu a fost actualizată"
+    }
+  },
+  "integrations": {
+    "header": {
+      "title": "Integrari",
+      "subtitle": "Conectați servicii externe pentru a vă îmbogăți fluxul de lucru"
+    },
+    "auth": {
+      "oauth2": "OAuth 2.0",
+      "apiKey": "Cheia API",
+      "none": "Sistem"
+    },
+    "comingSoon": "În curând",
+    "connect": "Conectați-vă",
+    "googleCalendar": {
+      "name": "Google Calendar",
+      "description": "Sincronizare bidirecțională pentru evenimentele Memry și calendarele Google importate.",
+      "statuses": {
+        "connected": "Conectat",
+        "notConnected": "Nu este conectat",
+        "reconnectRequired": "Reconectare obligatorie"
+      },
+      "accountReconnect": "Reconectați Google",
+      "importedCalendars": "Calendare importate",
+      "selected": "{count} selectat",
+      "syncNow": "Sincronizează acum",
+      "disconnect": "Deconectați-vă",
+      "reconnect": "Reconectați Google",
+      "syncFailed": "Ceva a mers prost",
+      "connectFailed": "Nu s-a putut conecta Google Calendar",
+      "refreshFailed": "Nu s-a reîmprospătat Google Calendar",
+      "disconnectFailed": "Nu s-a putut deconecta Google Calendar",
+      "selectionFailed": "Nu s-a putut actualiza selecția calendarului",
+      "retryFailed": "Nu s-a reîncercat sincronizarea calendarului"
+    },
+    "sourcePicker": {
+      "empty": "Încă nu sunt disponibile calendare Google importate pe acest dispozitiv.",
+      "statuses": {
+        "synced": "Sincronizat",
+        "error": "Eroare",
+        "pending": "În așteptare",
+        "idle": "Inactiv"
+      },
+      "retrying": "Se reîncercă…",
+      "retryNow": "Reîncercați acum"
+    },
+    "registry": {
+      "googleCalendar": {
+        "name": "Google Calendar",
+        "description": "Sincronizare bidirecțională pentru evenimente, sarcini, mementouri și calendare importate Memry"
+      },
+      "appleCalendar": {
+        "name": "Calendar Apple",
+        "description": "Integrarea calendarului local prin intermediul API-urilor de sistem"
+      },
+      "notion": {
+        "name": "Noțiune",
+        "description": "Import unic de pagină în seif"
+      },
+      "readwise": {
+        "name": "Readwise",
+        "description": "Sincronizați evidențierile în seif"
+      },
+      "todoist": {
+        "name": "Todoist",
+        "description": "Sincronizare bidirecțională a sarcinilor"
+      }
+    }
+  },
+  "vault": {
+    "header": {
+      "title": "Seif",
+      "subtitle": "Configurarea și stocarea seifului"
+    },
+    "groups": {
+      "storageUsage": "Utilizarea depozitării",
+      "location": "Locație"
+    },
+    "loadingStorage": "Se încarcă informațiile de stocare...",
+    "signInStorage": "Conectați-vă pentru a vedea utilizarea spațiului de stocare",
+    "vaultPath": "Calea seifului",
+    "reveal": "Dezvăluie",
+    "storage": {
+      "title": "Depozitare",
+      "used": "{used} din {limit} folosit",
+      "ratio": "{used} / {limit}",
+      "refreshAria": "Actualizează utilizarea stocării",
+      "usageAria": "Utilizarea stocării: {used} sau {limit}",
+      "available": "Disponibil {available}",
+      "categories": {
+        "notes": "Note",
+        "attachments": "Atasamente",
+        "crdt": "CRDT",
+        "other": "Altele"
+      },
+      "warningTitle": "Depozitare aproape plină",
+      "warningDescription": "Eliberați spațiu sau actualizați-vă planul pentru a evita problemele de sincronizare."
+    }
+  },
+  "tags": {
+    "header": {
+      "title": "Etichete",
+      "subtitle": "Gestionați etichetele în notițe, jurnale și sarcini"
+    },
+    "loading": "Se încarcă etichetele...",
+    "empty": "Nicio etichetă încă. Etichetele vor apărea aici pe măsură ce le adăugați la note și sarcini.",
+    "filterPlaceholder": "Filtrați etichetele...",
+    "noMatch": "Nicio etichetă care să se potrivească cu „{query}”",
+    "summary": "{count, plural, one {Eticheta #} other {Etichetele #}} între note și sarcini",
+    "actions": {
+      "rename": "Redenumiți",
+      "changeColor": "Schimbați culoarea",
+      "mergeInto": "Fuzionați în...",
+      "merge": "Merge",
+      "delete": "Ștergeți"
+    },
+    "dialogs": {
+      "deleteTitle": "Ștergeți eticheta",
+      "deleteDescription": "Eliminați „{name}” din {count, plural, one {articol #} other {articole #}}? Acest lucru nu poate fi anulat.",
+      "mergeTitle": "Îmbinați eticheta",
+      "mergeDescription": "Toate articolele etichetate cu „{source}” vor fi reetichetate cu eticheta țintă. Eticheta sursă va fi ștearsă.",
+      "targetPlaceholder": "Selectați eticheta țintă...",
+      "colorTitle": "Schimbați culoarea pentru „{name}”"
+    },
+    "toasts": {
+      "renamed": "Redenumit „{oldName}” în „{newName}”",
+      "renameFailed": "Nu s-a putut redenumi eticheta",
+      "deleteFailed": "Eticheta nu s-a șters",
+      "deleted": "S-a șters „{name}” din {count, plural, one {articol #} other {articole #}}",
+      "mergeFailed": "Nu s-au putut îmbina etichetele",
+      "merged": "Îmbinat „{source}” în „{target}” ({count, plural, one {articol #} other {articole #}})",
+      "colorUpdated": "Culoarea actualizată pentru „{name}”",
+      "colorFailed": "Nu s-a putut actualiza culoarea"
+    }
+  },
+  "properties": {
+    "header": {
+      "title": "Proprietăți",
+      "subtitle": "Gestionați definițiile proprietăților pentru toate notele"
+    },
+    "loading": "Se încarcă proprietăți...",
+    "empty": "Încă nu există definiții de proprietate. Adăugați o proprietate Stare, Selectare sau Selectare multiplă la orice notă pentru a începe.",
+    "filterPlaceholder": "Proprietățile filtrului...",
+    "noMatch": "Nicio proprietate care să se potrivească cu „{query}”",
+    "summary": "{count, plural, one {Definiția proprietății #} other {Definițiile proprietăților #}}",
+    "optionCount": "{count, plural, one {Opțiunea #} other {Opțiuni #}}",
+    "optionNamePlaceholder": "Numele opțiunii",
+    "addOption": "Adăugați opțiunea",
+    "changeColorTitle": "Schimbați culoarea",
+    "renameTitle": "Redenumiți",
+    "removeTitle": "Eliminați",
+    "actions": {
+      "deleteProperty": "Ștergeți proprietatea"
+    },
+    "types": {
+      "status": "Stare",
+      "select": "Selectați",
+      "multiselect": "Multiselect",
+      "text": "Text",
+      "number": "Număr",
+      "date": "Data",
+      "checkbox": "Caseta de selectare",
+      "url": "URL"
+    },
+    "dialogs": {
+      "deleteTitle": "Ștergeți proprietatea",
+      "deleteDescription": "Eliminați definiția proprietății „{name}”? Notele care utilizează această proprietate își vor păstra valorile ca text simplu.",
+      "colorTitle": "Schimbați culoarea pentru „{name}”"
+    },
+    "toasts": {
+      "renamed": "Redenumit „{oldValue}” în „{newValue}”",
+      "renameFailed": "Opțiunea nu a putut fi redenumită",
+      "removed": "S-a eliminat „{value}”",
+      "removeFailed": "Opțiunea nu a fost eliminată",
+      "colorFailed": "Nu s-a putut actualiza culoarea",
+      "deleteFailed": "Nu s-a șters proprietatea",
+      "deleted": "Proprietatea „{name}” a fost ștearsă",
+      "addFailed": "Opțiunea nu a fost adăugată"
+    }
+  },
+  "shortcuts": {
+    "header": {
+      "title": "Comenzi rapide de la tastatură",
+      "subtitle": "Faceți clic pe orice comandă rapidă pentru ao relega",
+      "loading": "Se încarcă setările..."
+    },
+    "searchPlaceholder": "Căutați comenzi rapide...",
+    "resetAll": "Resetați toate",
+    "custom": "Personalizat",
+    "pressShortcut": "Apăsați pe scurtătură...",
+    "cancelTitle": "Anulează",
+    "rebindTitle": "Faceți clic pentru a relega",
+    "resetTitle": "Resetați la valoarea implicită",
+    "clearTitle": "Ștergeți comanda rapidă",
+    "clickToSet": "Faceți clic pentru a seta",
+    "noMatch": "Nicio scurtătură nu corespunde căutării dvs",
+    "conflict": "Intră în conflict cu: {labels}",
+    "globalCapture": {
+      "title": "Captură globală",
+      "description": "Capturați o notă de oriunde",
+      "permissionNeeded": "Este nevoie de permisiunea",
+      "active": "Activ",
+      "permissionHint": "Comenzile rapide globale necesită permisiunea de accesibilitate. Accesați Setări sistem → Confidențialitate → Accesibilitate și activați Memry."
+    },
+    "toasts": {
+      "saveGlobalFailed": "Nu s-a salvat comanda rapidă de captură globală",
+      "saveFailed": "Nu s-a putut salva comanda rapidă",
+      "resetFailed": "Nu s-a resetat comanda rapidă",
+      "resetAllSuccess": "Toate comenzile rapide revin la valorile implicite",
+      "resetAllFailed": "Comenzile rapide nu au fost resetate"
+    },
+    "categories": {
+      "navigation": "Navigare",
+      "tabs": "Filele",
+      "editor": "Editor",
+      "view": "Vedeți"
+    },
+    "entries": {
+      "nav": {
+        "newNote": {
+          "label": "Notă nouă",
+          "description": "Creați o notă nouă"
+        },
+        "newTask": {
+          "label": "Sarcină nouă",
+          "description": "Creați o sarcină nouă"
+        },
+        "inbox": {
+          "label": "Accesați Inbox",
+          "description": "Navigați la căsuța de e-mail"
+        },
+        "notes": {
+          "label": "Accesați Note",
+          "description": "Navigați la note"
+        },
+        "tasks": {
+          "label": "Accesați Sarcini",
+          "description": "Navigați la sarcini"
+        },
+        "search": {
+          "label": "Caută",
+          "description": "Deschideți căutarea globală"
+        },
+        "settings": {
+          "label": "Deschide Setări",
+          "description": "Deschide panoul de setări"
+        }
+      },
+      "tabs": {
+        "close": {
+          "label": "Închideți fila",
+          "description": "Închideți fila curentă"
+        },
+        "next": {
+          "label": "Următoarea filă",
+          "description": "Comutați la următoarea filă"
+        },
+        "previous": {
+          "label": "Fila anterioară",
+          "description": "Comutați la fila anterioară"
+        },
+        "reopen": {
+          "label": "Redeschideți Ultima filă",
+          "description": "Redeschideți fila cea mai recent închisă"
+        },
+        "navBack": {
+          "label": "Navigați înapoi",
+          "description": "Reactivați fila activă anterior"
+        },
+        "navForward": {
+          "label": "Navigați înainte",
+          "description": "Refaceți o navigare din spate"
+        }
+      },
+      "editor": {
+        "save": {
+          "label": "Salvați",
+          "description": "Salvați nota curentă"
+        },
+        "bold": {
+          "label": "Îndrăzneț",
+          "description": "Comutați formatarea aldine"
+        },
+        "italic": {
+          "label": "cursiv",
+          "description": "Comutați formatarea cursiv"
+        },
+        "underline": {
+          "label": "Subliniați",
+          "description": "Comutați formatarea sublinierii"
+        }
+      },
+      "view": {
+        "toggleSidebar": {
+          "label": "Comutați bara laterală",
+          "description": "Afișați sau ascundeți bara laterală"
+        },
+        "shortcuts": {
+          "label": "Ajutor pentru comenzi rapide de la tastatură",
+          "description": "Afișați referința pentru comenzile rapide de la tastatură"
+        }
+      }
+    }
+  },
+  "phaseF": {
+    "componentsKeyboardChordIndicator": {
+      "pressedWaitingForSecondKey": "apăsat — se așteaptă a doua tastă..."
+    },
+    "componentsKeyboardKeyboardShortcutsDialog": {
+      "keyboardShortcuts": "Comenzi rapide de la tastatură",
+      "press": "Apăsați ",
+      "toToggleThisDialog": "pentru a comuta acest dialog"
+    },
+    "componentsSyncDeviceList": {
+      "middot": "punct mijlociu;"
+    },
+    "componentsSyncDeviceRevokedDialog": {
+      "thisDeviceHasBeenRemoved": "Acest dispozitiv a fost eliminat",
+      "exporting": "Se exportă...",
+      "signOut": "Deconectați-vă"
+    },
+    "componentsSyncSyncHistory": {
+      "middot": "punct mijlociu; ",
+      "activity": "Activitate",
+      "filterBySyncType": "Filtrați după tipul de sincronizare",
+      "allTypes": "Toate tipurile",
+      "pushed": "Impins",
+      "pulled": "Trase",
+      "errors": "Erori",
+      "filterByTimePeriod": "Filtrați după perioadă de timp",
+      "allTime": "Tot timpul",
+      "today": "Astăzi",
+      "last7Days": "Ultimele 7 zile",
+      "last30Days": "Ultimele 30 de zile",
+      "loadingSyncHistory": "Se încarcă istoricul de sincronizare",
+      "noSyncActivityYet": "Nicio activitate de sincronizare încă",
+      "loadMore": "Încărcați mai multe"
+    },
+    "componentsSyncSyncStatus": {
+      "lastSynced": "Ultima sincronizare ",
+      "pending": "în așteptare",
+      "localOnly": "numai local",
+      "detected": "detectat",
+      "clockSkewDetected": "Ceasul a fost detectat",
+      "items": "articole",
+      "willSyncWhenBackOnline": "Se va sincroniza când revine online",
+      "openSyncSettings": "Deschideți setările de sincronizare"
+    },
+    "pagesSettingsAiInlineSection": {
+      "httpLocalhost11434V1": "http://localhost:11434/v1"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToUpdateTagColor": "Nu s-a putut actualiza culoarea etichetei",
+      "googleSignInFailed": "Conectarea la Google a eșuat",
+      "failedToSendVerificationCode": "Nu s-a putut trimite codul de verificare",
+      "invalidVerificationCode": "Cod de verificare nevalid",
+      "accountSetupFailed": "Configurarea contului a eșuat",
+      "failedToResendCode": "Nu s-a retrimis codul",
+      "failedToSetUpDevice": "Nu s-a putut configura dispozitivul",
+      "failedToConfirmRecoveryPhrase": "Nu s-a putut confirma fraza de recuperare",
+      "failedToAnalyzeContent": "Nu s-a putut analiza conținutul",
+      "failedToLoadUpdaterState": "Nu s-a încărcat starea de actualizare",
+      "failedToCheckForUpdates": "Nu s-au putut verifica actualizările",
+      "failedToDownloadUpdate": "Nu s-a putut descărca actualizarea",
+      "failedToInstallUpdate": "Nu s-a instalat actualizarea",
+      "failedToLoadEditorSettings": "Nu s-au încărcat setările editorului",
+      "failedToUpdateEditorSettings": "Nu s-au actualizat setările editorului",
+      "failedToLoadGeneralSettings": "Nu s-au încărcat setările generale",
+      "failedToUpdateGeneralSettings": "Nu s-au putut actualiza setările generale",
+      "failedToLoadKeyboardSettings": "Nu s-au încărcat setările tastaturii",
+      "failedToUpdateKeyboardSettings": "Nu s-au actualizat setările tastaturii",
+      "failedToResetKeyboardSettings": "Nu s-au resetat setările tastaturii",
+      "failedToLoadNoteEditorSettings": "Nu s-au încărcat setările editorului de note",
+      "failedToUpdateSettings": "Nu s-au putut actualiza setările",
+      "failedToLoadTabSettings": "Nu s-au încărcat setările filei",
+      "failedToLoadNotes": "Nu s-au încărcat notele",
+      "failedToLoadTags": "Nu s-au încărcat etichetele",
+      "failedToLoadVaultStatus": "Nu s-a încărcat starea seifului",
+      "failedToSelectVault": "Nu s-a putut selecta seiful",
+      "failedToCloseVault": "Seiful nu a putut fi închis",
+      "failedToSwitchVault": "Nu s-a putut schimba seiful",
+      "failedToUpdateConfig": "Nu s-a putut actualiza configurația",
+      "failedToReindex": "Nu s-a reindexat"
+    }
+  }
+}

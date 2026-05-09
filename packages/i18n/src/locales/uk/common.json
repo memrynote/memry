@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "Зберегти",
+    "cancel": "Скасувати",
+    "close": "Закрити",
+    "ok": "OK",
+    "yes": "Так",
+    "no": "Ні",
+    "delete": "Видалити",
+    "confirm": "Підтвердити",
+    "apply": "Застосувати",
+    "done": "Готово",
+    "discard": "Відхилити",
+    "dontSave": "Не зберігати",
+    "edit": "Редагувати",
+    "add": "Додати",
+    "remove": "Видалити",
+    "retry": "Спробувати знову",
+    "submit": "Надіслати",
+    "back": "Назад",
+    "next": "Далі",
+    "continue": "Продовжити",
+    "reset": "Скинути",
+    "copy": "Копіювати",
+    "paste": "Вставити",
+    "create": "Створити",
+    "open": "Відкрити"
+  },
+  "state": {
+    "loading": "Завантаження…",
+    "saving": "Збереження…",
+    "deleting": "Видалення…",
+    "searching": "Пошук…",
+    "error": "Помилка",
+    "success": "Успішно"
+  },
+  "empty": {
+    "noResults": "Немає результатів",
+    "noItems": "Немає елементів",
+    "noMatch": "Немає збігів"
+  },
+  "action": {
+    "search": "Пошук",
+    "edit": "Редагувати",
+    "delete": "Видалити",
+    "close": "Закрити",
+    "expand": "Розгорнути",
+    "collapse": "Згорнути",
+    "showMore": "+{count, plural, one {# більше} other {# більше}}",
+    "showLess": "Показати менше"
+  },
+  "tabs": {
+    "pin": "Закріпити вкладку",
+    "unpin": "Відкріпити вкладку",
+    "contextMenu": {
+      "close": "Закрити",
+      "closeOthers": "Закрити інші",
+      "closeToRight": "Закрити праворуч",
+      "closeAll": "Закрити всі",
+      "duplicate": "Дублювати вкладку",
+      "splitRight": "Розділити справа",
+      "splitDown": "Розділити вниз",
+      "copyPath": "Скопіювати шлях",
+      "revealInSidebar": "Показати в боковій панелі"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {# елемент} other {# елементи}}",
+    "note": "{count, plural, one {# нотатка} other {# нотатки}}",
+    "folder": "{count, plural, one {# папка} other {# папки}}",
+    "task": "{count, plural, one {# завдання} other {# завдання}}",
+    "project": "{count, plural, one {# проєкт} other {# проєкти}}",
+    "itemDelete": "{count, plural, one {Видалити # елемент} other {Видалити # елементи}}"
+  },
+  "toast": {
+    "actionFailed": "Дія не вдалася",
+    "nothingToUndo": "Немає що скасовувати",
+    "undone": "Скасовано: {description}",
+    "undoFailed": "Не зміг скасувати дію",
+    "copied": "Скопійовано",
+    "copyFailed": "Не вдалося скопіювати"
+  },
+  "dateRelative": {
+    "today": "Сьогодні",
+    "yesterday": "Вчора",
+    "daysAgo": "{count, plural, one {# день тому} other {# днів тому}}"
+  },
+  "recurrence": {
+    "everyDay": "Щодня",
+    "everyNDays": "{count, plural, one {Щодня} other {Кожні # дні}}",
+    "everyWeek": "Щотижня",
+    "everyNWeeks": "{count, plural, one {Щотижня} other {Кожні # тижні}}",
+    "everyWeekday": "Щодня у будні",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Щодня у будні} other {Кожні # тижня у будні дні}}",
+    "everyWeekend": "Щовихідних",
+    "everyNWeeksOnWeekends": "{count, plural, one {Щовихідних} other {Кожні # тижні у вихідні}}",
+    "everyWeekOnDays": "Щотижня на {days}",
+    "everyNWeeksOnDays": "{count, plural, one {Щотижня на {days}} other {Кожні # тижні на {days}}}",
+    "everyMonth": "Щомісяця",
+    "everyNMonths": "{count, plural, one {Щомісяця} other {Кожні # місяці}}",
+    "everyMonthOnDay": "Щомісяця на {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {Щомісяця на {day}{suffix}} other {Кожні # місяці на {day}{suffix}}}",
+    "everyMonthOnWeekDay": "Щомісяця на {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Щомісяця на {week} {day}} other {Що # місяці в {week} {day}}}",
+    "everyYear": "Щороку",
+    "everyNYears": "{count, plural, one {Щороку} other {Що # років}}",
+    "repeats": "Повторюється"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Колекції",
+      "newNote": "Нова замітка",
+      "newNote2": "Нова замітка",
+      "newFolder": "Нова папка",
+      "newFolder2": "Нова папка",
+      "bookmarks": "Закладки",
+      "tags": "Теги",
+      "dropFilesToImport": "Перетягніть файли для імпорту",
+      "newNoteN": "Нова замітка (⌘N)",
+      "new": "Новий",
+      "syncDisabled": "Синхронізація вимкнена",
+      "syncDisabled2": "Синхронізація вимкнена"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Змінити розмір панелі дня",
+      "dragToResizeDoubleClickToReset": "Перетягніть, щоб змінити розмір · Подвійний клік для скидання"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Знайти, замінити, запитати..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Пропустити введення",
+      "welcomeToMemry": "Ласкаво просимо до Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Ваша персональна база знань. Давайте витратимо 2 хвилини, щоб почати.",
+      "getStarted": "Почати ",
+      "createYourFirstNote": "Створіть свою першу замітку",
+      "markdownBasedStoredLocallyAsPlainFiles": "На основі Markdown, збережена локально у вигляді звичайних файлів.",
+      "eGMeetingNotesIdeasAnything": "Наприклад, нотатки зустрічей, ідеї, що завгодно...",
+      "skip": "Пропустити",
+      "createNote": "Створити нотатку ",
+      "addYourFirstTask": "Додайте ваше перше завдання",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Завдання пов’язуються з вашими нотатками, з пріоритетами та термінами виконання.",
+      "eGReviewProjectProposal": "Напр. Переглянути пропозицію проекту...",
+      "skip2": "Пропустити",
+      "createTask": "Створити завдання ",
+      "syncAcrossDevices": "Синхронізація на всіх пристроях",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Тримайте ваші нотатки та завдання синхронізованими на всіх ваших пристроях. Ви завжди можете налаштувати це пізніше.",
+      "skipForNow": "Пропустити зараз",
+      "doneLetSGo": "Готово — поїхали! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Встановити значок папки"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "ПІДКАЗКА"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Вибір значка",
+      "selectIcon": "Вибрати значок",
+      "closeIconPicker": "Закрити вибір значка",
+      "searchIcons": "Пошук значків...",
+      "all": "Всі",
+      "clearIcon": "Очистити значок",
+      "noIconsFoundFor": "Не знайдено значків для "
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Клавіатурні скорочення",
+      "closeShortcutsHelp": "Закрити довідку по скороченнях",
+      "press": "Натисніть",
+      "toClose": "щоб закрити"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Встановити значок",
+      "clearIcon": "Очистити значок"
+    },
+    "componentsNavMain": {
+      "platform": "Платформа"
+    },
+    "componentsNavProjects": {
+      "projects": "Проекти",
+      "more": "Більше",
+      "viewProject": "Переглянути проект",
+      "shareProject": "Поділитися проектом",
+      "deleteProject": "Видалити проект",
+      "more2": "Більше"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Оновити до Pro",
+      "account": "Обліковий запис",
+      "billing": "Оплата",
+      "notifications": "Сповіщення",
+      "logOut": "Вийти"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Пошук",
+      "searchNotesTasksJournalInbox": "Шукати нотатки, завдання, журнал, вхідні...",
+      "noResultsFor": "Немає результатів для “",
+      "rdquo": "rdquo;",
+      "result": "результат"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Шукайте та натискайте елементи, щоб будувати свій шлях",
+      "reasons": "Причини",
+      "clear": "Очистити"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Очистити",
+      "tags": "Теги",
+      "filterByTag": "Фільтрувати за тегом...",
+      "dateRange": "Діапазон дат"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Переглянути всі ",
+      "results": "результати"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "розмитий"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Вкладок немає",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Відкрийте сторінку з бічної панелі або створіть нову вкладку, щоб почати",
+      "openInbox": "Відкрити вхідні",
+      "closePane": "Закрити панель"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Попередньо встановлені макети",
+      "layoutPresets2": "Попередні налаштування макетів"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Змінити розмір панелей"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "Контекст завдань недоступний",
+      "searchResults": "Результати пошуку",
+      "unknownTabType": "Невідомий тип вкладки: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "незбережені зміни",
+      "preview": "попередній перегляд"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Нова вкладка",
+      "newTab2": "Нова вкладка",
+      "newNote": "Нова нотатка",
+      "journal": "Щоденник",
+      "calendar": "Календар",
+      "inboxCapture": "Вхідні",
+      "tasks": "Завдання"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Незбережені зміни",
+      "unsaved": "незбережені)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Незбережені зміни"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Закрити всі вкладки"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Відкриті вкладки",
+      "scrollTabsLeft": "Прокрутити вкладки вліво",
+      "scrollTabsRight": "Прокрутити вкладки вправо",
+      "graphG": "Граф (⌘G)",
+      "dayPanel": "Денна панель"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "Прокрутити вкладки вліво",
+      "scrollTabsRight": "Прокрутити вкладки вправо"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "Відкриті вкладки",
+      "scrollTabsLeft": "Прокрутити вкладки вліво",
+      "scrollTabsRight": "Прокрутити вкладки вправо"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Щось пішло не так",
+      "anErrorOccurredWhileRenderingThisTabContent": "Сталася помилка під час відображення вмісту цієї вкладки.",
+      "tryAgain": "Спробувати ще раз"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Іконка нотатки"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Незбережені зміни",
+      "quot": "\";",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "\" має незбережені зміни. Що ви хочете зробити?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Новий робочий простір",
+      "darkMode": "Темна тема",
+      "settings": "Налаштування",
+      "integrations": "Інтеграції",
+      "signOut": "Вийти",
+      "downloadOnIos": "Завантажити на iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Закрити вікно",
+      "minimizeWindow": "Згорнути вікно",
+      "maximizeWindow": "Розгорнути вікно"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Пропозиції",
+      "or": "або",
+      "enter": "Введіть",
+      "toInsert": "щоб вставити"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "хлібні крихти",
+      "more": "Більше"
+    },
+    "componentsUiDialog": {
+      "close": "Закрити"
+    },
+    "componentsUiSheet": {
+      "close": "Закрити"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Бічна панель",
+      "displaysTheMobileSidebar": "Показує мобільну бічну панель.",
+      "toggleSidebar": "Перемкнути бічну панель",
+      "toggleSidebar2": "Перемкнути бічну панель",
+      "dragToResizeDoubleClickToReset": "Перетягніть, щоб змінити розмір · Подвійний клік для скидання"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Ласкаво просимо до Memry",
+      "yourPersonalKnowledgeManagementSystem": "Ваша персональна система керування знаннями.",
+      "selectAFolderToStoreYourNotesAndTasks": "Виберіть папку для збереження нотаток і завдань.",
+      "opening": "Відкривається...",
+      "selectVaultFolder": "Вибрати папку сховища",
+      "plainMarkdown": "Звичайний Markdown",
+      "yourNotesStayPortable": "Ваші нотатки залишаються портативними",
+      "syncAnywhere": "Синхронізація будь-де",
+      "useDropboxIcloudGit": "Використовуйте Dropbox, iCloud, Git",
+      "recentVaults": "Останні сховища",
+      "notesLastOpened": "нотатки · востаннє відкриті"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Ще немає сховищ",
+      "openVault": "Відкрити сховище",
+      "settings": "Налаштування",
+      "logOut": "Вийти",
+      "signInToSync": "Увійдіть для синхронізації",
+      "remove": "Видалити ",
+      "rdquoFromList": "rdquo; зі списку?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Цей сховище буде видалено з додатку, але ваші файли залишаться на диску. Ви завжди можете додати його пізніше.",
+      "cancel": "Скасувати",
+      "remove2": "Видалити"
+    },
+    "componentsWindowControls": {
+      "searchK": "Пошук (⌘K)",
+      "browserBack": "Назад у браузері",
+      "back": "Назад",
+      "browserForward": "Вперед у браузері",
+      "forward": "Вперед"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Не вдалося імпортувати файли",
+      "failedToCreateNote": "Не вдалося створити нотатку",
+      "failedToAccessMicrophone": "Не вдалося отримати доступ до мікрофона"
+    },
+    "toasts": {
+      "undone": "Скасовано"
+    }
+  }
+}

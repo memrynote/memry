@@ -1,0 +1,80 @@
+{
+  "generic": {
+    "somethingWentWrong": "Nešto nije u redu. Molimo pokušajte ponovo.",
+    "operationFailed": "Operacija nije uspjela",
+    "unknown": "Došlo je do nepoznate pogreške",
+    "validationFailed": "Validacija nije uspjela",
+    "actionFailed": "Radnja nije uspjela"
+  },
+  "ipc": {
+    "noVaultOpen": "Nijedan trezor nije otvoren. Prvo otvorite trezor."
+  },
+  "vault": {
+    "notFound": "Trezor nije pronađen. Možda je premješten ili izbrisan.",
+    "notInitialized": "Nijedan trezor nije otvoren. Otvorite ili izradite trezor za nastavak.",
+    "invalidPath": "Odabrani put nije važeća lokacija trezora.",
+    "permissionDenied": "Dopuštenje odbijeno. Provjerite imate li pristup ovoj mapi.",
+    "alreadyExists": "Na ovoj lokaciji već postoji trezor.",
+    "corrupted": "Čini se da je ovaj trezor oštećen. Pokušajte vratiti iz sigurnosne kopije."
+  },
+  "note": {
+    "notFound": "Ova bilješka nije mogla biti pronađena. Možda je izbrisano.",
+    "invalidFrontmatter": "Ova bilješka ima nevažeće metapodatke i ne može se pročitati.",
+    "duplicateId": "Bilješka s ovim ID-om već postoji.",
+    "writeFailed": "Spremanje ove bilješke nije uspjelo. Provjerite prostor na disku i dopuštenja.",
+    "readFailed": "Čitanje ove bilješke nije uspjelo. Datoteka je možda zaključana ili oštećena.",
+    "deleteFailed": "Brisanje ove bilješke nije uspjelo. Provjerite dopuštenja datoteke.",
+    "invalidPath": "Put bilješke nije valjan."
+  },
+  "database": {
+    "connectionFailed": "Nije moguće povezati se s lokalnom bazom podataka. Pokušajte ponovo pokrenuti aplikaciju.",
+    "migrationFailed": "Nadogradnja baze podataka nije uspjela. Pokušajte ponovo pokrenuti aplikaciju.",
+    "queryFailed": "Operacija baze podataka nije uspjela. Pokušajte ponovno.",
+    "notInitialized": "Baza podataka nije spremna. Pokušajte ponovo pokrenuti aplikaciju.",
+    "constraintViolation": "Došlo je do sukoba podataka. Pokušajte ponovno.",
+    "corrupted": "Lokalna baza podataka je oštećena. Možda ćete ga morati resetirati."
+  },
+  "watcher": {
+    "startFailed": "Nije moguće pokrenuti praćenje promjena datoteke.",
+    "stopFailed": "Nije moguće zaustaviti promatrač datoteka.",
+    "eventError": "Došlo je do pogreške tijekom praćenja promjena datoteke."
+  },
+  "attachment": {
+    "fileTooLarge": "Ova je datoteka prevelika za prilaganje.",
+    "unsupportedType": "Ova vrsta datoteke nije podržana.",
+    "writeFailed": "Spremanje privitka nije uspjelo. Provjerite prostor na disku.",
+    "deleteFailed": "Brisanje privitka nije uspjelo."
+  },
+  "encryption": {
+    "failed": "Šifriranje podataka nije uspjelo. Vaše ključeve će možda trebati regenerirati.",
+    "decryptionFailed": "Dešifriranje podataka nije uspjelo. Vaši ključevi za šifriranje možda su zastarjeli.",
+    "invalidKeyLength": "Nevažeći ključ šifriranja. Pokušajte se odjaviti i ponovno prijaviti.",
+    "invalidNonceLength": "Greška šifriranja. Pokušajte ponoviti operaciju."
+  },
+  "inboxAttachment": {
+    "writeFailed": "Spremanje privitka pristigle pošte nije uspjelo.",
+    "deleteFailed": "Brisanje privitka pristigle pošte nije uspjelo."
+  },
+  "sync": {
+    "networkOffline": "Vi ste izvan mreže. Promjene će se sinkronizirati kada se ponovno povežete.",
+    "networkTimeout": "Poslužitelju za sinkronizaciju trebalo je predugo da odgovori. Pokušat ćemo uskoro.",
+    "serverError": "Poslužitelj za sinkronizaciju naišao je na pogrešku. Pokušat će se automatski.",
+    "authExpired": "Vaša je sesija istekla. Prijavite se ponovno za nastavak sinkronizacije.",
+    "deviceRevoked": "Ovaj je uređaj uklonjen s vašeg računa.",
+    "rateLimited": "Previše zahtjeva. Sinkronizacija će se uskoro nastaviti.",
+    "cryptoFailure": "Šifriranje ili dešifriranje sinkroniziranih podataka nije uspjelo. Pokušajte se odjaviti i ponovno prijaviti.",
+    "versionIncompatible": "Ova verzija Memry više nije podržana. Molimo ažurirajte.",
+    "storageQuotaExceeded": "Vaša pohrana za sinkronizaciju je puna. Oslobodite prostor ili nadogradite svoj plan.",
+    "certificatePinFailed": "Sigurna veza nije uspjela. Provjerite mrežnu vezu.",
+    "unknown": "Došlo je do neočekivane pogreške sinkronizacije. Pokušat će se automatski.",
+    "statusFetchFailed": "Dohvaćanje statusa sinkronizacije nije uspjelo",
+    "engineNotInitialized": "Sinkronizacija nije pokrenuta. Otvorite trezor za početak sinkronizacije.",
+    "triggerFailed": "Sinkronizacija nije uspjela",
+    "pauseFailed": "Pauziranje sinkronizacije nije uspjelo",
+    "resumeFailed": "Nastavak sinkronizacije nije uspio",
+    "settingsNotInitialized": "Sinkronizacija postavki nije pokrenuta",
+    "securityQuarantinePermanent": "Stavku sinkronizacije nije bilo moguće provjeriti i stavljena je u karantenu radi sigurnosti.",
+    "securityQuarantineRetry": "Stavka sinkronizacije nije uspjela provjeru potpisa i pokušat će se ponovno.",
+    "certificatePinPaused": "Nije moguće provjeriti sigurnu vezu s poslužiteljem za sinkronizaciju. Sinkronizacija je pauzirana radi vaše zaštite."
+  }
+}

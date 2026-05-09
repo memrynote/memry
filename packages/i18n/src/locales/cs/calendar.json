@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "den",
+    "week": "týden",
+    "month": "měsíc",
+    "year": "rok"
+  },
+  "toolbar": {
+    "create-event": "Vytvořit událost",
+    "previous-period": "Předchozí období",
+    "next-period": "Další období",
+    "previous-month": "Předchozí měsíc",
+    "next-month": "Příští měsíc",
+    "today": "dnes"
+  },
+  "filter": {
+    "filter-calendars": "Filtrovat kalendáře",
+    "sources": "Zdroje",
+    "memry-items": "položky Memry",
+    "imported-calendars": "Importované kalendáře",
+    "event-types": "Typy událostí",
+    "google-calendars": "Kalendáře Google",
+    "refresh-google-calendars": "Obnovte kalendáře Google"
+  },
+  "visual-type": {
+    "event": "Událost",
+    "imported-event": "Importovaná událost",
+    "task": "Úkol",
+    "reminder": "Připomenutí",
+    "snooze": "Odložit"
+  },
+  "state": {
+    "loading-calendar": "Načítání kalendáře…",
+    "loading-calendars": "Načítání kalendářů…",
+    "preparing": "Příprava…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "Zatím žádné importované kalendáře.",
+    "no-events": "Žádné události"
+  },
+  "time": {
+    "all-day": "Celý den",
+    "all-day-lower": "celodenní",
+    "pick-a-date": "Vyberte si datum",
+    "new-event": "Nová událost",
+    "more-events": "{count, plural, one {# další událost} other {# další události}}"
+  },
+  "form": {
+    "create-calendar-event": "Vytvořit událost kalendáře",
+    "edit-calendar-event": "Upravit událost kalendáře",
+    "quick-create-description": "Zadejte název a uložte pro vytvoření události ve zvoleném časovém období.",
+    "event-editor-description": "Aktualizujte název, místo, datum, čas a poznámky pro tuto událost.",
+    "new-event-placeholder": "Nová událost",
+    "location-placeholder": "Přidat umístění",
+    "notes-url-placeholder": "Přidejte poznámky nebo URL",
+    "start": "Začněte",
+    "end": "Konec",
+    "add-details": "Přidejte podrobnosti",
+    "google-calendar": "Kalendář Google",
+    "target-calendar": "Cílový kalendář",
+    "use-default-calendar": "Použít výchozí kalendář",
+    "use-default-calendar-with-name": "Použít výchozí ({calendar})",
+    "use-memry-calendar-default": "Použít kalendář Memry (výchozí)",
+    "use-memry-managed-calendar": "Použijte kalendář spravovaný Memry",
+    "primary-suffix": "primární"
+  },
+  "delete-dialog": {
+    "title": "Smazat událost?",
+    "local-description": "„{title}“ bude trvale smazáno. Tuto akci nelze vrátit zpět.",
+    "google-bound-description": "„{title}“ bude odstraněn z Memry a Kalendáře Google. Tuto akci nelze vrátit zpět.",
+    "context-menu-delete-label": "Smazat událost"
+  },
+  "promote-dialog": {
+    "aria": "Upravit událost externího kalendáře",
+    "title": "Upravit tuto událost v Memry?",
+    "body": "Úpravou této události se vytvoří propojená kopie v Memry, takže změny budou synchronizovány oběma způsoby. Pokračovat?",
+    "do-not-ask-again": "Už se neptejte",
+    "confirm-label": "Upravit v Memry"
+  },
+  "onboarding-dialog": {
+    "aria": "Vyberte svůj výchozí kalendář Google",
+    "title": "Do kterého kalendáře by měly jít nové události Memry?",
+    "body": "Vyberte kalendář Google, který má Memry používat jako výchozí. Stále jej můžete přepsat pro každou událost.",
+    "default-calendar-label": "Použijte kalendář spravovaný Memry",
+    "skip": "Přeskočit",
+    "use-this-calendar": "Použijte tento kalendář"
+  },
+  "metadata": {
+    "attendees": "Účastníci",
+    "attendees-count": "Účastníci ({count})",
+    "reminders": "Připomenutí",
+    "default-reminders": "Výchozí připomenutí",
+    "visibility": "Viditelnost:",
+    "optional": "Volitelné",
+    "join-meeting": "Připojte se ke schůzce",
+    "response": {
+      "accepted": "Přijato",
+      "declined": "Odmítnuto",
+      "tentative": "Předběžně",
+      "needs-action": "Čeká na vyřízení"
+    },
+    "visibility-value": {
+      "private": "Soukromé",
+      "public": "Veřejné",
+      "confidential": "Důvěrné"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "min · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "Událost se nepodařilo uložit. Zkuste to znovu.",
+      "couldNotCreateEventTryAgain": "Událost nelze vytvořit. Zkuste to znovu.",
+      "couldNotSaveDefaultCalendarTryAgain": "Výchozí kalendář nelze uložit. Zkuste to znovu.",
+      "failedToLoadCalendarPreferences": "Předvolby kalendáře se nepodařilo načíst",
+      "failedToUpdateCalendarPreferences": "Aktualizace předvoleb kalendáře se nezdařila",
+      "couldNotEditThisEventTryAgain": "Tuto událost nelze upravit. Zkuste to znovu.",
+      "failedToDeleteEvent": "Událost se nepodařilo smazat",
+      "couldNotUnsnoozeInboxItem": "Odložení se nepodařilo zrušit.",
+      "couldNotRescheduleInboxItem": "Nelze přeplánovat."
+    },
+    "inboxSnoozePopover": {
+      "title": "Odložená položka doručené pošty",
+      "openInInbox": "Otevřít v doručené poště",
+      "unsnoozeNow": "Nyní zrušit odložení",
+      "reschedule": "Přeplánovat"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "Podrobnosti úkolu",
+    "open-task": "Otevřete úkol",
+    "source-note": "Poznámka ke zdroji",
+    "reschedule": "Přeplánovat",
+    "more-actions": "Více akcí",
+    "mark-done": "Označit hotovo",
+    "mark-not-done": "Označit nedokončeno",
+    "later-today": "Dnes později",
+    "tomorrow": "zítra",
+    "next-week": "Příští týden",
+    "next-week-mon": "Příští týden · Po",
+    "pick-date-time": "Vyberte datum a čas…",
+    "remove-due-date": "Odebrat datum splatnosti",
+    "subtasks-prefix": "Dílčí úkoly",
+    "subtasks-counter": "Hotovo {done} z {total}",
+    "today": "dnes",
+    "overdue-one": "1 den po splatnosti",
+    "overdue-other": "{count} dní po splatnosti",
+    "repeats": "Opakuje se",
+    "repeats-daily": "Opakuje se denně",
+    "repeats-weekly": "Opakuje se týdně",
+    "repeats-monthly": "Opakuje se měsíčně",
+    "repeats-yearly": "Opakuje se ročně",
+    "priority-urgent": "Naléhavé",
+    "priority-high": "Vysoká",
+    "priority-medium": "Střední",
+    "errors": {
+      "could-not-save": "Úkol nelze uložit",
+      "could-not-reschedule": "Úkol nelze přeplánovat",
+      "could-not-remove-due-date": "Termín se nepodařilo odstranit",
+      "could-not-open-note": "Poznámku nelze otevřít"
+    }
+  }
+}

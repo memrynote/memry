@@ -1,0 +1,663 @@
+{
+  "page": {
+    "empty": {
+      "title": "ノートが選択されていません",
+      "body": "サイドバーからメモを選択して表示します"
+    },
+    "error": {
+      "title": "メモのロードに失敗しました"
+    },
+    "toast": {
+      "cannotSaveDeleted": "保存できません - メモは削除されました",
+      "cannotRenameDeleted": "名前を変更できません - メモは削除されました",
+      "createLinkedFailed": "リンクされたノートの作成に失敗しました",
+      "openLinkedFailed": "リンクされたアイテムを開けませんでした",
+      "localOnly": "ノートはローカルのみに設定されています",
+      "willSync": "メモはクラウドに同期されます",
+      "saveFailed": "メモの保存に失敗しました",
+      "renameFailed": "メモの名前を変更できませんでした",
+      "toggleLocalOnlyFailed": "ローカルのみの切り替えに失敗しました",
+      "toggleFullWidthFailed": "全幅の切り替えに失敗しました"
+    },
+    "deleteDialogTitle": "{count, plural, one {メモの削除} other {#メモの削除}}"
+  },
+  "tree": {
+    "aria": {
+      "tree": "ノートツリー",
+      "openFolderView": "フォルダービューを開く"
+    },
+    "empty": {
+      "title": "まだメモはありません",
+      "body": "始めるためにメモを作成してください",
+      "newNote": "新しいメモ"
+    },
+    "loadingError": "メモのロードに失敗しました",
+    "actions": {
+      "newNote": "新しいメモ",
+      "newFolder": "新しいフォルダー",
+      "rename": "名前の変更",
+      "openExternal": "外部エディタで開く",
+      "revealInFinder": "ファインダーで表示",
+      "setDefaultTemplate": "デフォルトのテンプレートを設定する",
+      "clearDefaultTemplate": "デフォルトのテンプレートをクリア",
+      "setIcon": "アイコンを設定",
+      "removeIcon": "アイコンを削除",
+      "deleteSelectedNotes": "{count}メモの削除",
+      "deleteSelectedItems": "{count} アイテムを削除する"
+    },
+    "deleteDialog": {
+      "noteTitle": "メモの削除",
+      "folderTitle": "フォルダーの削除",
+      "itemsTitle": "{count} アイテムの削除",
+      "noteBody": "「{name}」を削除してもよろしいですか?この操作は元に戻すことができません。",
+      "folderBody": "「{name}」とその中のメモをすべて削除してもよろしいですか?この操作は元に戻すことができません。",
+      "itemsBody": "{count} アイテムを削除してもよろしいですか?この操作は元に戻すことができません。",
+      "folderSuffix": "フォルダ",
+      "moreItems": "...そして {count} 詳細",
+      "deleting": "削除中...",
+      "deleteCount": "{count}を削除"
+    }
+  },
+  "editor": {
+    "title": {
+      "untitled": "無題",
+      "aria": "ノートのタイトル"
+    },
+    "content": {
+      "placeholder": "書き込みを開始するか、「/」を押してコマンドを入力します...",
+      "regionAria": "ノートエディタ",
+      "richTextAria": "リッチテキストエディター",
+      "headingPlaceholder": "見出し",
+      "listPlaceholder": "リスト項目",
+      "todoPlaceholder": "To Do アイテム"
+    },
+    "toolbar": {
+      "reminderSet": "リマインダーセット",
+      "setReminder": "リマインダーを設定する",
+      "removeBookmark": "ブックマークを削除する",
+      "addBookmark": "ブックマークを追加する",
+      "hideLocalGraph": "ローカルグラフを非表示にする",
+      "showLocalGraph": "ローカルグラフを表示",
+      "versionHistory": "バージョン履歴",
+      "export": "エクスポート",
+      "fullWidth": "全幅",
+      "disableLocalOnly": "ローカルのみを無効にする",
+      "setLocalOnly": "ローカルのみに設定"
+    },
+    "breadcrumb": {
+      "locationAria": "メモの場所",
+      "parentFolderAria": "親フォルダーに移動"
+    },
+    "errorBoundary": {
+      "title": "編集者のエラー",
+      "body": "エディターでエラーが発生しました。メモの内容は安全です。",
+      "technicalDetails": "技術的な詳細",
+      "reloadAria": "エディターをリロードする",
+      "reload": "エディターのリロード"
+    },
+    "callout": {
+      "title": "吹き出し",
+      "group": "基本ブロック",
+      "subtext": "重要な情報を強調表示する",
+      "changeType": "吹き出しの種類を変更する",
+      "menuLabel": "吹き出しの種類",
+      "info": "情報",
+      "warning": "警告",
+      "error": "エラー",
+      "success": "成功"
+    }
+  },
+  "menus": {
+    "wiki": {
+      "aria": "メモの提案",
+      "loading": "メモを読み込んでいます...",
+      "empty": "メモが見つかりませんでした",
+      "create": "新しいメモを作成する"
+    },
+    "tags": {
+      "aria": "タグの提案",
+      "loading": "タグを読み込んでいます...",
+      "empty": "入力して新しいタグを作成します",
+      "create": "#{tag} を作成する"
+    },
+    "pasteLink": {
+      "title": "として貼り付け",
+      "url": "URL",
+      "mention": "言及",
+      "embedVideo": "ビデオを埋め込む"
+    },
+    "emoji": {
+      "aria": "絵文字とアイコンのピッカー",
+      "emojiTab": "絵文字",
+      "iconsTab": "アイコン",
+      "searchPlaceholder": "検索",
+      "noIcons": "アイコンが見つかりません",
+      "clearSearch": "検索をクリア"
+    }
+  },
+  "detail": {
+    "bodyPlaceholder": "メモを書いてください..."
+  },
+  "outline": {
+    "title": "概要",
+    "aria": "文書概要",
+    "empty": "見出しなし",
+    "emptyYet": "まだ見出しがありません",
+    "readTime": "{count} 分読み取り",
+    "words": "{count} ワード",
+    "created": "作成されました",
+    "modified": "修正済み"
+  },
+  "backlinks": {
+    "title": "バックリンク",
+    "sortRecent": "最近の",
+    "sortAlpha": "A-Z",
+    "sortMentions": "最も多くの言及",
+    "sortBy": "バックリンクを {sort} で並べ替える",
+    "summary": "{notes} メモ · {references} リファレンス",
+    "sectionAria": "バックリンク",
+    "listAria": "バックリンクリスト",
+    "fromAria": "{title} からのバックリンク",
+    "collapse": "崩壊する",
+    "expand": "拡大する",
+    "collapseSection": "バックリンクセクションを折りたたむ",
+    "expandSection": "バックリンクセクションを展開する",
+    "showMore": "{count} のバックリンクをさらに表示",
+    "more": "{count} もっと見る"
+  },
+  "tagsRow": {
+    "aria": "タグ",
+    "empty": "タグを追加する",
+    "add": "タグを追加",
+    "removeAria": "タグを削除: {tag}",
+    "inputPlaceholder": "タグ名を入力...",
+    "recent": "最近の",
+    "matching": "マッチング",
+    "all": "すべてのタグ",
+    "none": "タグが見つかりませんでした",
+    "createTag": "タグを作成:「{tag}」",
+    "chooseColor": "色を選択してください:",
+    "preview": "プレビュー:",
+    "colorAria": "{color} カラーを選択してください"
+  },
+  "properties": {
+    "title": "プロパティ",
+    "noteAria": "ノートのプロパティ",
+    "workspaceAria": "ワークスペースのプロパティ",
+    "listAria": "プロパティリスト",
+    "add": "プロパティの追加",
+    "addDescription": "このメモに新しいプロパティを追加します",
+    "namePlaceholder": "プロパティ名",
+    "nameAria": "プロパティ名",
+    "typeSection": "種類",
+    "empty": "空の",
+    "dragAria": "ドラッグしてプロパティを並べ替えます",
+    "editName": "プロパティ名の編集",
+    "delete": "プロパティの削除",
+    "searchOptions": "検索オプション...",
+    "noOptions": "まだオプションはありません",
+    "optionName": "オプション名",
+    "newOption": "新しいオプション",
+    "ratingAria": "評価",
+    "openUrlAria": "URLを開く",
+    "types": {
+      "text": "テキスト",
+      "number": "番号",
+      "date": "日付",
+      "checkbox": "チェックボックス",
+      "url": "URL",
+      "status": "ステータス",
+      "select": "選択",
+      "multiselect": "複数選択"
+    }
+  },
+  "templateSelector": {
+    "title": "キャンバスを選択してください",
+    "description": "メモを開始するにはテンプレートを選択してください",
+    "searchPlaceholder": "テンプレートを検索...",
+    "loading": "テンプレートを読み込んでいます...",
+    "empty": "テンプレートが見つかりません",
+    "myTemplates": "私のテンプレート",
+    "essentials": "必需品",
+    "setFolderDefault": "フォルダーのデフォルトとして設定",
+    "useTemplate": "テンプレートを使用する",
+    "createNote": "メモの作成"
+  },
+  "exportDialog": {
+    "title": "エクスポートメモ",
+    "description": "「{title}」をファイルにエクスポート",
+    "format": "フォーマット",
+    "pdfDescription": "印刷可能な文書",
+    "htmlDescription": "Web 対応ファイル",
+    "pageSize": "ページサイズ",
+    "selectPageSize": "ページサイズを選択してください",
+    "options": "オプション",
+    "includeMetadata": "メタデータ（タグ、日付）を含める",
+    "exporting": "エクスポート中...",
+    "exported": "輸出されました！",
+    "export": "エクスポート",
+    "toast": {
+      "failed": "エクスポートに失敗しました"
+    }
+  },
+  "versionHistory": {
+    "title": "バージョン履歴",
+    "description": "「{title}」の以前のバージョンを表示および復元する",
+    "hidePreview": "プレビューを非表示にする",
+    "showPreview": "プレビューを表示",
+    "empty": "まだバージョンが保存されていません",
+    "emptyDescription": "大幅な変更を加えるとバージョンが自動的に保存されます",
+    "latest": "最新の",
+    "autoSaved": "自動保存",
+    "words": "{count} ワード",
+    "selectPrompt": "プレビューするバージョンを選択してください",
+    "restore": "復元",
+    "deleteTitle": "このバージョンを削除しますか?",
+    "deleteDescription": "この操作は元に戻すことができません。このバージョンは完全に削除されます。",
+    "restoreTitle": "このバージョンを復元しますか?",
+    "restoreDescription": "これにより、現在のメモの内容がこのバージョンに置き換えられます。現在の状態のスナップショットが最初に保存されるため、この操作を元に戻すことができます。",
+    "restoring": "復元中...",
+    "toast": {
+      "loadPreviewFailed": "バージョンのプレビューをロードできませんでした",
+      "restored": "以前のバージョンに復元されたメモ",
+      "deleted": "削除されたバージョン"
+    }
+  },
+  "templateEditor": {
+    "title": {
+      "new": "新しいテンプレート",
+      "view": "テンプレートの表示",
+      "edit": "テンプレートの編集"
+    },
+    "toast": {
+      "nameRequired": "テンプレート名は必須です",
+      "created": "テンプレートが作成されました",
+      "createFailed": "テンプレートの作成に失敗しました",
+      "saved": "テンプレートが保存されました",
+      "saveFailed": "テンプレートの保存に失敗しました",
+      "duplicateFailed": "テンプレートの複製に失敗しました",
+      "deleteFailed": "テンプレートの削除に失敗しました"
+    }
+  },
+  "reminders": {
+    "summary": "リマインダー: {date}",
+    "summaryWithMore": "リマインダー: {date} (+{count} 以上)",
+    "hasReminders": "リマインダーあり",
+    "setReminder": "リマインダーを設定する",
+    "toast": {
+      "set": "リマインダーセット",
+      "setForHighlight": "ハイライトされたテキストに設定されたリマインダー",
+      "setFailed": "リマインダーの設定に失敗しました",
+      "deleted": "リマインダーが削除されました",
+      "deleteFailed": "リマインダーの削除に失敗しました",
+      "dismissed": "リマインダーが却下されました",
+      "dismissFailed": "リマインダーを無視できませんでした"
+    }
+  },
+  "linkedTasks": {
+    "title": "リンクされたタスク",
+    "loading": "リンクされたタスクを読み込んでいます..."
+  },
+  "phaseF": {
+    "componentsFolderViewColumnHeader": {
+      "dragToReorderColumn": "ドラッグして列を並べ替えます"
+    },
+    "componentsFolderViewColumnSelector": {
+      "properties": "プロパティ",
+      "searchColumns": "列を検索...",
+      "noMatchingColumns": "一致する列がありません",
+      "formulas": "数式",
+      "noFormulasDefined": "数式が定義されていません",
+      "addFormula": "数式を追加",
+      "deleteFormula": "数式の削除",
+      "areYouSureYouWantToDeleteTheFormula": "数式を削除してもよろしいですか?",
+      "quotThisActionCannotBeUndone": "引用;?この操作は元に戻すことができません。",
+      "cancel": "キャンセル",
+      "delete": "削除",
+      "none": "なし",
+      "edit": "編集",
+      "delete2": "削除"
+    },
+    "componentsFolderViewFilterBuilder": {
+      "filter": "フィルター",
+      "filters": "フィルター",
+      "clearAll": "すべてクリア",
+      "noFiltersApplied": "フィルターは適用されていません",
+      "addFiltersToNarrowDownYourNotes": "フィルターを追加してメモを絞り込む",
+      "match": "一致",
+      "allAnd": "すべて (AND)",
+      "anyOr": "任意 (または)",
+      "ofTheFollowing": "次のいずれか:",
+      "match2": "一致",
+      "all": "すべて",
+      "any": "どれでも",
+      "of": "の:",
+      "addCondition": "条件の追加",
+      "addFilter": "フィルターを追加",
+      "addGroup": "グループを追加"
+    },
+    "componentsFolderViewFilterRow": {
+      "builtIn": "内蔵",
+      "properties": "プロパティ",
+      "placeholderProperty": "プロパティ",
+      "placeholderOperator": "オペレーター",
+      "placeholderValue": "値"
+    },
+    "componentsFolderViewFolderTableView": {
+      "notesTable": "注記テーブル"
+    },
+    "componentsFolderViewFolderViewToolbar": {
+      "searchNotes": "メモを検索...",
+      "clearSearch": "検索をクリア"
+    },
+    "componentsFolderViewFormulaEditorModal": {
+      "defineAComputedColumnUsingAnExpression": "式を使用して計算列を定義します。",
+      "name": "名前",
+      "expression": "表現",
+      "available": "利用可能: ",
+      "preview": "プレビュー",
+      "fixExpressionErrorsToSeePreview": "プレビューを表示するには式のエラーを修正してください",
+      "usingNote": "メモの使用: \"",
+      "quot": "引用;",
+      "cancel": "キャンセル",
+      "namePlaceholder": "days_until_due",
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"日\")"
+    },
+    "componentsFolderViewGroupBySelector": {
+      "clearGrouping": "明確なグループ化",
+      "searchProperties": "プロパティを検索...",
+      "builtIn": "内蔵",
+      "properties": "プロパティ",
+      "noGroupablePropertiesFound": "グループ化可能なプロパティが見つかりません",
+      "sortDirection": "ソート方向",
+      "collapseGroupsByDefault": "デフォルトでグループを折りたたむ",
+      "showGroupSummaries": "グループの概要を表示する",
+      "clearGrouping2": "明確なグループ化"
+    },
+    "componentsFolderViewGroupedTable": {
+      "groupedNotesTable": "グループ化されたメモテーブル",
+      "more": "もっと見る"
+    },
+    "componentsFolderViewMoveToFolderDialog": {
+      "searchFolders": "フォルダーを検索...",
+      "loadingFolders": "フォルダーを読み込んでいます...",
+      "suggested": "提案",
+      "bestMatch": "ベストマッチ",
+      "current": "現在)",
+      "allFolders": "すべてのフォルダー",
+      "current2": "現在)",
+      "noFoldersMatch": "一致するフォルダーはありません。」",
+      "quot": "引用;",
+      "create": "「」を作成します。",
+      "quot2": "引用;",
+      "cancel": "キャンセル"
+    },
+    "componentsFolderViewRowContextMenu": {
+      "delete": "削除 ",
+      "notes": "注意事項",
+      "open": "開く",
+      "openInExternalEditor": "外部エディタで開く",
+      "revealInFinder": "ファインダーで表示",
+      "revealInSidebar": "サイドバーに表示",
+      "copyLink": "リンクをコピー",
+      "delete2": "削除"
+    },
+    "componentsFolderViewSortableColumnHeader": {
+      "dragToReorderColumn": "ドラッグして列を並べ替えます",
+      "resizeColumn": "列のサイズを変更する"
+    },
+    "componentsFolderViewViewSwitcher": {
+      "default": "デフォルト",
+      "rename": "名前の変更",
+      "duplicate": "重複",
+      "setAsDefault": "デフォルトとして設定",
+      "delete": "削除",
+      "createNewView": "新しいビューの作成",
+      "createNewView2": "新しいビューの作成",
+      "createANewViewWithCustomColumnsFiltersAndSorting": "カスタム列、フィルター、並べ替えを使用して新しいビューを作成します。",
+      "viewName": "ビュー名",
+      "myCustomView": "私のカスタムビュー",
+      "baseConfiguration": "基本構成",
+      "copyFromCurrentView": "現在のビューからコピー",
+      "startFreshDefaultColumns": "最初から開始 (デフォルトの列)",
+      "cancel": "キャンセル",
+      "renameView": "ビューの名前を変更",
+      "enterANewNameForThisView": "このビューの新しい名前を入力します。",
+      "viewName2": "ビュー名",
+      "viewName3": "ビュー名",
+      "cancel2": "キャンセル",
+      "deleteView": "ビューの削除",
+      "areYouSureYouWantToDelete": "削除してもよろしいですか?",
+      "thisActionCannotBeUndone": "この操作は元に戻すことができません。",
+      "cancel3": "キャンセル"
+    },
+    "componentsNoteContentAreaFileBlock": {
+      "failedToLoadPdf": "PDF のロードに失敗しました: ",
+      "download": "ダウンロード",
+      "download2": "ダウンロード",
+      "noFileAttached": "ファイルが添付されていません"
+    },
+    "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
+      "openInTaskPanel": "タスクパネルで開く",
+      "taskName": "タスク名...",
+      "taskDeleted": "タスクが削除されました",
+      "loading": "読み込み中..."
+    },
+    "componentsNoteContentAreaTaskBlockTaskCreationPopover": {
+      "project": "プロジェクト",
+      "priority": "優先順位",
+      "dueDate": "期限",
+      "cancel": "キャンセル"
+    },
+    "componentsNoteContentAreaYoutubeEmbedBlock": {
+      "noVideoUrl": "動画のURLがありません"
+    },
+    "componentsNoteExportDialog": {
+      "pdf": "PDF",
+      "html": "HTML",
+      "a4210X297Mm": "A4(210×297mm)",
+      "letter85X11In": "レター (8.5 x 11 インチ)",
+      "legal85X14In": "リーガル (8.5 x 14 インチ)"
+    },
+    "componentsNoteInfoSectionEditorsDateeditor": {
+      "ddMmYyyy": "dd.mm.yyyy"
+    },
+    "componentsNoteNoteHeader": {
+      "synced": "同期済み"
+    },
+    "componentsSharedDocumentInfoTab": {
+      "words": "言葉",
+      "characters": "キャラクター",
+      "readingTime": "読書時間",
+      "created": "作成されました",
+      "modified": "修正済み"
+    },
+    "componentsSidebarProjectsEmptyState": {
+      "noProjectsYet": "まだプロジェクトはありません",
+      "createYourFirstProject": "最初のプロジェクトを作成する",
+      "createYourFirstProject2": "最初のプロジェクトを作成する"
+    },
+    "componentsSidebarSidebarBookmarkList": {
+      "loadingBookmarks": "ブックマークを読み込んでいます...",
+      "failedToLoadBookmarks": "ブックマークのロードに失敗しました",
+      "noBookmarksYet": "まだブックマークはありません",
+      "moreOptions": "その他のオプション",
+      "remove": "削除"
+    },
+    "componentsSidebarSidebarItemContextMenu": {
+      "open": "開く",
+      "openToTheSide": "横に開く",
+      "pinToTabs": "タブにピン留めする",
+      "edit": "編集",
+      "delete": "削除",
+      "copyLink": "リンクをコピー"
+    },
+    "componentsSidebarSidebarTagList": {
+      "loadingTags": "タグを読み込んでいます...",
+      "failedToLoadTags": "タグの読み込みに失敗しました",
+      "noTagsYet": "まだタグがありません",
+      "filterTags": "タグをフィルタリング...",
+      "noMatchingTags": "一致するタグがありません"
+    },
+    "componentsSidebarSortableProjectItem": {
+      "dropHere": "ここにドロップしてください",
+      "editProject": "プロジェクトの編集"
+    },
+    "componentsSidebarTagDeleteDialog": {
+      "deleteTag": "タグ#の削除",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "このタグが付いたメモは削除されず、タグが外されるだけです。",
+      "cancel": "キャンセル"
+    },
+    "componentsSidebarTagDetailView": {
+      "goBack": "戻る",
+      "notes": "メモ",
+      "loadingNotes": "メモを読み込んでいます...",
+      "noNotesWithThisTag": "このタグが付いたメモはありません",
+      "addThisTagToANoteToSeeItHere": "このタグをメモに追加すると、ここに表示されます",
+      "pinned": "固定された",
+      "allNotes": "すべてのメモ",
+      "allNotesArePinned": "すべてのメモが固定されています",
+      "unpinFromTag": "タグからの固定を解除する",
+      "unpin": "固定を解除する",
+      "pinToTag": "タグにピン留めする",
+      "pin": "ピン",
+      "tagActions": "タグアクション",
+      "editTagName": "タグ名の編集",
+      "changeColor": "色を変更する",
+      "deleteTag": "タグの削除",
+      "recent": "最近の",
+      "created": "作成されました",
+      "alphabetical": "アルファベット順"
+    },
+    "componentsSidebarTagRenameDialog": {
+      "renameTag": "タグ名の変更",
+      "rename": "名前の変更 ",
+      "acrossEveryNoteThatUsesIt": "それを使用するすべてのノートにわたって。",
+      "newName": "新しい名前",
+      "cancel": "キャンセル"
+    },
+    "componentsViewersAudioPlayer": {
+      "failedToLoadAudio": "音声のロードに失敗しました",
+      "theAudioFileCouldNotBePlayed": "音声ファイルを再生できませんでした。",
+      "skipBack10s": "10 秒前にスキップ",
+      "skipForward10s": "10 秒スキップ"
+    },
+    "componentsViewersImageViewer": {
+      "failedToLoadImage": "画像のロードに失敗しました",
+      "theImageCouldNotBeDisplayed": "画像を表示できませんでした。",
+      "resetZoom": "ズームをリセットする",
+      "rotate": "回転",
+      "dragToPan": "ドラッグしてパンします"
+    },
+    "componentsViewersPdfViewer": {
+      "failedToLoadPdf": "PDFの読み込みに失敗しました",
+      "previousPage": "前のページへ",
+      "nextPage": "次のページ",
+      "zoomOut": "ズームアウト",
+      "zoomIn": "ズームイン",
+      "fitToWidth": "幅に合わせる",
+      "rotate": "回転"
+    },
+    "componentsViewersVideoPlayer": {
+      "failedToLoadVideo": "ビデオのロードに失敗しました",
+      "theVideoFileCouldNotBePlayed": "ビデオファイルを再生できませんでした。"
+    },
+    "pagesFile": {
+      "failedToLoadFile": "ファイルのロードに失敗しました",
+      "tryAgain": "もう一度試してください",
+      "noFileSelected": "ファイルが選択されていません",
+      "selectAFileFromTheSidebarToViewIt": "サイドバーからファイルを選択して表示します",
+      "loadingFile": "ファイルをロード中...",
+      "openInDefaultApp": "デフォルトのアプリで開く",
+      "open": "開く",
+      "revealInFinder": "ファインダーで表示",
+      "reveal": "明らかにする",
+      "unsupportedFileType": "サポートされていないファイル形式です"
+    },
+    "pagesFolderView": {
+      "createNewNote": "新しいメモを作成する",
+      "viewSettings": "設定を表示する",
+      "displayDensity": "表示密度",
+      "comfortable": "快適",
+      "compact": "コンパクト",
+      "showSummaries": "概要を表示",
+      "cancel": "キャンセル"
+    },
+    "pagesTemplateEditor": {
+      "loadingTemplate": "テンプレートを読み込んでいます...",
+      "builtInTemplatesCannotBeModified": "組み込みのテンプレートは変更できません",
+      "description": "説明",
+      "briefDescriptionOfThisTemplate": "このテンプレートの簡単な説明...",
+      "templateContent": "テンプレートの内容",
+      "use": "使用する ",
+      "toInsertTheNoteTitleWhenCreatingANote": "メモを作成するときにメモのタイトルを挿入します。",
+      "templateName": "テンプレート名",
+      "defaultContentForNotesCreatedFromThisTemplate": "このテンプレートから作成されたメモのデフォルトのコンテンツ..."
+    },
+    "pagesTemplates": {
+      "loadingCollection": "コレクションを読み込んでいます...",
+      "templateCollection": "テンプレートコレクション",
+      "templates": "テンプレート",
+      "curatedStructuresForYourNotes": "メモ用に厳選された構造。",
+      "newTemplate": "新しいテンプレート",
+      "myTemplates": "私のテンプレート",
+      "builtIn": "内蔵",
+      "deleteTemplate": "テンプレートの削除",
+      "areYouSureYouWantToDelete": "削除してもよろしいですか?",
+      "notesCreatedFromThisTemplateWillNotBeAffected": "このテンプレートから作成されたメモは影響を受けません。",
+      "cancel": "キャンセル",
+      "builtIn2": "内蔵",
+      "duplicate": "重複",
+      "delete": "削除",
+      "startYourCollection": "コレクションを始めましょう",
+      "templatesHelpYouCreateNotesWithConsistentStructure": "テンプレートを使用すると、一貫した構造のメモを作成できます。",
+      "createTemplate": "テンプレートの作成"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveFormula": "数式の保存に失敗しました",
+      "failedToOpenInExternalEditor": "外部エディタで開けませんでした",
+      "failedToRevealInFinder": "Finder で表示できませんでした",
+      "failedToCopyLink": "リンクのコピーに失敗しました",
+      "failedToCreateView": "ビューの作成に失敗しました",
+      "failedToRenameFolder": "フォルダー名の変更に失敗しました",
+      "failedToCreateTask": "タスクの作成に失敗しました",
+      "failedToLoadVersionHistory": "バージョン履歴のロードに失敗しました",
+      "failedToRestoreVersion": "バージョンの復元に失敗しました",
+      "failedToDeleteVersion": "バージョンの削除に失敗しました",
+      "failedToCreateNote": "メモの作成に失敗しました",
+      "failedToLoadMoreBookmarks": "さらにブックマークをロードできませんでした",
+      "failedToToggleBookmark": "ブックマークの切り替えに失敗しました",
+      "failedToRemoveBookmark": "ブックマークの削除に失敗しました",
+      "failedToReorderBookmarks": "ブックマークの並べ替えに失敗しました",
+      "failedToSave": "保存に失敗しました",
+      "failedToRename": "名前の変更に失敗しました",
+      "failedToUpdateEmoji": "絵文字の更新に失敗しました",
+      "failedToUpdateTags": "タグの更新に失敗しました",
+      "failedToSnoozeReminder": "リマインダーのスヌーズに失敗しました",
+      "failedToCreateFolder": "フォルダーの作成に失敗しました",
+      "failedToLoadProperties": "プロパティの読み込みに失敗しました",
+      "failedToLoadPropertyDefinitions": "プロパティ定義のロードに失敗しました",
+      "failedToLoadTemplates": "テンプレートのロードに失敗しました"
+    },
+    "toasts": {
+      "noteExportedSuccessfully": "メモは正常にエクスポートされました",
+      "failedToUpdateProperty": "プロパティの更新に失敗しました",
+      "failedToUpdateTags": "タグの更新に失敗しました",
+      "reminderSnoozed": "リマインダーがスヌーズされました",
+      "failedToSnoozeReminder": "リマインダーのスヌーズに失敗しました",
+      "defaultTemplateSet": "デフォルトのテンプレートセット",
+      "failedToSetDefaultTemplate": "デフォルトのテンプレートの設定に失敗しました",
+      "defaultTemplateCleared": "デフォルトのテンプレートがクリアされました",
+      "failedToClearDefaultTemplate": "デフォルトのテンプレートをクリアできませんでした",
+      "failedToAddProperty": "プロパティの追加に失敗しました",
+      "failedToDeleteProperty": "プロパティの削除に失敗しました",
+      "failedToRenameProperty": "プロパティの名前変更に失敗しました",
+      "failedToReorderProperties": "プロパティの並べ替えに失敗しました",
+      "cannotAddTagThisNoteWasDeleted": "タグを追加できません - このメモは削除されました",
+      "cannotRemoveTagThisNoteWasDeleted": "タグを削除できません - このメモは削除されました",
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "ローカルのみを変更できません - このメモは削除されました"
+    }
+  }
+}

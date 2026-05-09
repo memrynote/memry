@@ -1,0 +1,28 @@
+{
+  "app": {
+    "quit": "Stoppen"
+  },
+  "file": {
+    "label": "Bestand",
+    "newNote": "Nieuwe notitie",
+    "close": "Sluit venster"
+  },
+  "navigation": {
+    "back": "Terug",
+    "forward": "Vooruit"
+  },
+  "edit": {
+    "label": "Bewerken",
+    "undo": "Ongedaan maken",
+    "redo": "Opnieuw uitvoeren",
+    "cut": "Knippen",
+    "copy": "Kopieer",
+    "paste": "Plakken"
+  },
+  "view": {
+    "label": "Bekijk",
+    "reload": "Herladen",
+    "toggleDevTools": "Schakel ontwikkelaarstools in",
+    "toggleFullscreen": "Schakel Volledig scherm in"
+  }
+}

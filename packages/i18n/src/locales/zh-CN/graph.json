@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "正在加载图表...",
+    "load-failed": "未能加载图表数据",
+    "try-again": "请重试",
+    "aria-label": "用 {nodeCount, plural, one {# 节点} other {# 节点（复数）}} 和 {edgeCount, plural, one {# 连接} other {# 连接（复数）}}{summary, select, none {.} other {: {summary}。}} 构建的知识图谱",
+    "nodes-list-label": "图节点",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "你的知识图谱",
+    "description": "你的笔记、任务和项目之间的连接将以互动图的形式显示在这里。",
+    "link-title": "链接你的笔记",
+    "link-description": "使用 [[wikilinks]] 在笔记之间连接想法",
+    "discover-title": "发现模式",
+    "discover-description": "随着连接的增长，聚类和主题将自然出现"
+  },
+  "entity": {
+    "note": "笔记",
+    "notes": "笔记",
+    "journal": "日记",
+    "journals": "日记本",
+    "task": "任务",
+    "tasks": "任务",
+    "project": "项目",
+    "projects": "项目",
+    "tag": "标签 ",
+    "tags": "标签",
+    "orphan": "孤立",
+    "orphans": "孤立项",
+    "unresolved": "未解决"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "图设置",
+    "hide-settings": "隐藏设置",
+    "reset-filters": "重置过滤器",
+    "filters": "筛选器",
+    "display": "显示",
+    "show-labels": "显示标签",
+    "focus-depth": "深度 {depth}",
+    "clear-focus": "清除聚焦节点"
+  },
+  "filter": {
+    "notes": "笔记",
+    "journals": "日志",
+    "tasks": "任务",
+    "projects": "项目",
+    "tags": "标签",
+    "orphans": "孤立节点",
+    "toggle-entity": "切换 {label}",
+    "toggle-orphans": "切换孤立节点"
+  },
+  "search": {
+    "placeholder": "搜索节点...",
+    "clear": "清除图搜索"
+  },
+  "context-menu": {
+    "untitled": "未命名",
+    "focus-node": "聚焦此节点",
+    "open-new-tab": "在新标签页中打开",
+    "create-note": "创建笔记",
+    "copy-title": "复制标题"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {# 连接} other {# 连接（复数）}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "正在加载图表...",
+    "empty": "未找到连接",
+    "open-full": "打开完整图",
+    "close": "关闭图"
+  }
+}

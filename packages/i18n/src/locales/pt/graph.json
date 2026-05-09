@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Carregando gráfico...",
+    "load-failed": "Falha ao carregar dados do gráfico",
+    "try-again": "Tente novamente",
+    "aria-label": "Gráfico de conhecimento com {nodeCount, plural, one {Nó #} other {Nós #}} e {edgeCount, plural, one {Conexão #} other {Conexões #}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Nós gráficos",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Seu gráfico de conhecimento",
+    "description": "As conexões entre suas notas, tarefas e projetos aparecerão aqui como um gráfico interativo.",
+    "link-title": "Vincule suas notas",
+    "link-description": "Use [[wikilinks]] para conectar ideias entre notas",
+    "discover-title": "Descubra padrões",
+    "discover-description": "À medida que as conexões crescem, clusters e temas surgirão naturalmente"
+  },
+  "entity": {
+    "note": "nota",
+    "notes": "notas",
+    "journal": "diário",
+    "journals": "diários",
+    "task": "tarefa",
+    "tasks": "tarefas",
+    "project": "projeto",
+    "projects": "projetos",
+    "tag": "etiqueta",
+    "tags": "etiquetas",
+    "orphan": "órfão",
+    "orphans": "órfãos",
+    "unresolved": "não resolvido"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Configurações de gráfico",
+    "hide-settings": "Ocultar configurações",
+    "reset-filters": "Redefinir filtros",
+    "filters": "Filtros",
+    "display": "Exibição",
+    "show-labels": "Mostrar rótulos",
+    "focus-depth": "profundidade {depth}",
+    "clear-focus": "Limpar nó em foco"
+  },
+  "filter": {
+    "notes": "Notas",
+    "journals": "Diários",
+    "tasks": "Tarefas",
+    "projects": "Projetos",
+    "tags": "Etiquetas",
+    "orphans": "Órfãos",
+    "toggle-entity": "Alternar {label}",
+    "toggle-orphans": "Alternar nós órfãos"
+  },
+  "search": {
+    "placeholder": "Pesquisar nós...",
+    "clear": "Limpar pesquisa de gráfico"
+  },
+  "context-menu": {
+    "untitled": "Sem título",
+    "focus-node": "Concentre-se neste nó",
+    "open-new-tab": "Abrir em nova aba",
+    "create-note": "Criar nota",
+    "copy-title": "Copiar título"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {Conexão #} other {Conexões #}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Carregando gráfico...",
+    "empty": "Nenhuma conexão encontrada",
+    "open-full": "Abrir gráfico completo",
+    "close": "Fechar gráfico"
+  }
+}

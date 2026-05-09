@@ -1,0 +1,663 @@
+{
+  "page": {
+    "empty": {
+      "title": "Tiada nota dipilih",
+      "body": "Pilih nota dari bar sisi untuk melihatnya"
+    },
+    "error": {
+      "title": "Gagal memuatkan nota"
+    },
+    "toast": {
+      "cannotSaveDeleted": "Tidak dapat menyimpan - nota telah dipadamkan",
+      "cannotRenameDeleted": "Tidak boleh menamakan semula - nota telah dipadamkan",
+      "createLinkedFailed": "Gagal membuat nota terpaut",
+      "openLinkedFailed": "Gagal membuka item terpaut",
+      "localOnly": "Nota ditetapkan kepada setempat sahaja",
+      "willSync": "Nota akan disegerakkan ke awan",
+      "saveFailed": "Gagal menyimpan nota",
+      "renameFailed": "Gagal menamakan semula nota",
+      "toggleLocalOnlyFailed": "Gagal menogol tempatan sahaja",
+      "toggleFullWidthFailed": "Gagal menogol lebar penuh"
+    },
+    "deleteDialogTitle": "{count, plural, one {Padam Nota} other {Padamkan Nota #}}"
+  },
+  "tree": {
+    "aria": {
+      "tree": "Pokok nota",
+      "openFolderView": "Buka paparan folder"
+    },
+    "empty": {
+      "title": "Tiada nota lagi",
+      "body": "Buat nota untuk bermula",
+      "newNote": "Nota Baharu"
+    },
+    "loadingError": "Gagal memuatkan nota",
+    "actions": {
+      "newNote": "Nota Baharu",
+      "newFolder": "Folder Baharu",
+      "rename": "Namakan semula",
+      "openExternal": "Buka dalam Editor Luaran",
+      "revealInFinder": "Dedahkan dalam Finder",
+      "setDefaultTemplate": "Tetapkan Templat Lalai",
+      "clearDefaultTemplate": "Kosongkan Templat Lalai",
+      "setIcon": "Set Ikon",
+      "removeIcon": "Alih keluar Ikon",
+      "deleteSelectedNotes": "Padamkan Nota {count}",
+      "deleteSelectedItems": "Padamkan item {count}"
+    },
+    "deleteDialog": {
+      "noteTitle": "Padam Nota",
+      "folderTitle": "Padam Folder",
+      "itemsTitle": "Padamkan Item {count}",
+      "noteBody": "Adakah anda pasti mahu memadamkan \"{name}\"? Tindakan ini tidak boleh dibuat asal.",
+      "folderBody": "Adakah anda pasti mahu memadamkan \"{name}\" dan semua nota di dalamnya? Tindakan ini tidak boleh dibuat asal.",
+      "itemsBody": "Adakah anda pasti mahu memadamkan item {count}? Tindakan ini tidak boleh dibuat asal.",
+      "folderSuffix": "folder",
+      "moreItems": "...dan {count} lagi",
+      "deleting": "Memadamkan...",
+      "deleteCount": "Padamkan {count}"
+    }
+  },
+  "editor": {
+    "title": {
+      "untitled": "Tidak bertajuk",
+      "aria": "Nota tajuk"
+    },
+    "content": {
+      "placeholder": "Mula menulis, atau tekan '/' untuk arahan...",
+      "regionAria": "Editor nota",
+      "richTextAria": "Penyunting teks kaya",
+      "headingPlaceholder": "Tajuk",
+      "listPlaceholder": "Item senarai",
+      "todoPlaceholder": "Perkara yang perlu dilakukan"
+    },
+    "toolbar": {
+      "reminderSet": "Set peringatan",
+      "setReminder": "Tetapkan peringatan",
+      "removeBookmark": "Alih keluar penanda halaman",
+      "addBookmark": "Tambah penanda halaman",
+      "hideLocalGraph": "Sembunyikan graf tempatan",
+      "showLocalGraph": "Tunjukkan graf tempatan",
+      "versionHistory": "Sejarah versi",
+      "export": "Eksport",
+      "fullWidth": "Lebar penuh",
+      "disableLocalOnly": "Lumpuhkan tempatan sahaja",
+      "setLocalOnly": "Tetapkan tempatan sahaja"
+    },
+    "breadcrumb": {
+      "locationAria": "Perhatikan lokasi",
+      "parentFolderAria": "Pergi ke folder induk"
+    },
+    "errorBoundary": {
+      "title": "Ralat Editor",
+      "body": "Editor mengalami ralat. Kandungan nota anda selamat.",
+      "technicalDetails": "Butiran teknikal",
+      "reloadAria": "Muat semula editor",
+      "reload": "Muat semula Editor"
+    },
+    "callout": {
+      "title": "Serlahan ciri",
+      "group": "Blok asas",
+      "subtext": "Serlahkan maklumat penting",
+      "changeType": "Tukar jenis butiran",
+      "menuLabel": "Jenis Petak Bual",
+      "info": "info",
+      "warning": "Amaran",
+      "error": "ralat",
+      "success": "Kejayaan"
+    }
+  },
+  "menus": {
+    "wiki": {
+      "aria": "Nota cadangan",
+      "loading": "Memuatkan nota...",
+      "empty": "Tiada nota ditemui",
+      "create": "Buat nota baharu"
+    },
+    "tags": {
+      "aria": "Tag cadangan",
+      "loading": "Memuatkan tag...",
+      "empty": "Taip untuk membuat teg baharu",
+      "create": "Cipta #{tag}"
+    },
+    "pasteLink": {
+      "title": "Tampal sebagai",
+      "url": "URL",
+      "mention": "Sebut",
+      "embedVideo": "Benamkan video"
+    },
+    "emoji": {
+      "aria": "Emoji dan pemilih ikon",
+      "emojiTab": "Emoji",
+      "iconsTab": "ikon",
+      "searchPlaceholder": "Cari",
+      "noIcons": "Tiada ikon ditemui",
+      "clearSearch": "Kosongkan carian"
+    }
+  },
+  "detail": {
+    "bodyPlaceholder": "Tulis nota anda..."
+  },
+  "outline": {
+    "title": "Garis besar",
+    "aria": "Garis besar dokumen",
+    "empty": "Tiada tajuk",
+    "emptyYet": "Tiada tajuk lagi",
+    "readTime": "{count} min dibaca",
+    "words": "{count} perkataan",
+    "created": "Dicipta",
+    "modified": "Diubah suai"
+  },
+  "backlinks": {
+    "title": "Pautan balik",
+    "sortRecent": "Baru-baru ini",
+    "sortAlpha": "A-Z",
+    "sortMentions": "Kebanyakan sebutan",
+    "sortBy": "Isih pautan balik mengikut {sort}",
+    "summary": "Nota {notes} · Rujukan {references}",
+    "sectionAria": "Pautan balik",
+    "listAria": "Senarai pautan balik",
+    "fromAria": "Pautan balik daripada {title}",
+    "collapse": "Runtuh",
+    "expand": "Kembangkan",
+    "collapseSection": "Runtuhkan bahagian pautan balik",
+    "expandSection": "Kembangkan bahagian pautan balik",
+    "showMore": "Tunjukkan {count} lagi pautan balik",
+    "more": "{count} lagi"
+  },
+  "tagsRow": {
+    "aria": "Tag",
+    "empty": "Tambah tag",
+    "add": "Tambah tag",
+    "removeAria": "Alih keluar teg: {tag}",
+    "inputPlaceholder": "Taip nama tag...",
+    "recent": "Baru-baru ini",
+    "matching": "Padanan",
+    "all": "Semua Tag",
+    "none": "Tiada tag ditemui",
+    "createTag": "Cipta teg: \"{tag}\"",
+    "chooseColor": "Pilih warna:",
+    "preview": "Pratonton:",
+    "colorAria": "Pilih warna {color}"
+  },
+  "properties": {
+    "title": "Hartanah",
+    "noteAria": "Nota sifat",
+    "workspaceAria": "Sifat ruang kerja",
+    "listAria": "Senarai sifat",
+    "add": "Tambah harta",
+    "addDescription": "Tambahkan sifat baharu pada nota ini",
+    "namePlaceholder": "Nama harta",
+    "nameAria": "Nama harta",
+    "typeSection": "taip",
+    "empty": "kosong",
+    "dragAria": "Seret untuk menyusun semula harta",
+    "editName": "Edit nama harta",
+    "delete": "Padamkan harta",
+    "searchOptions": "Pilihan carian...",
+    "noOptions": "Tiada pilihan lagi",
+    "optionName": "Nama pilihan",
+    "newOption": "Pilihan baharu",
+    "ratingAria": "Penilaian",
+    "openUrlAria": "Buka URL",
+    "types": {
+      "text": "Teks",
+      "number": "Nombor",
+      "date": "tarikh",
+      "checkbox": "Kotak semak",
+      "url": "URL",
+      "status": "Status",
+      "select": "Pilih",
+      "multiselect": "Berbilang pilih"
+    }
+  },
+  "templateSelector": {
+    "title": "Pilih Kanvas Anda",
+    "description": "Pilih templat untuk memulakan nota anda",
+    "searchPlaceholder": "Cari templat...",
+    "loading": "Memuatkan templat...",
+    "empty": "Tiada templat ditemui",
+    "myTemplates": "Templat Saya",
+    "essentials": "Perkara-perkara penting",
+    "setFolderDefault": "Tetapkan sebagai folder lalai",
+    "useTemplate": "Gunakan Templat",
+    "createNote": "Cipta Nota"
+  },
+  "exportDialog": {
+    "title": "Nota Eksport",
+    "description": "Eksport \"{title}\" ke fail",
+    "format": "Format",
+    "pdfDescription": "Dokumen sedia cetak",
+    "htmlDescription": "Fail sedia web",
+    "pageSize": "Saiz Halaman",
+    "selectPageSize": "Pilih saiz halaman",
+    "options": "Pilihan",
+    "includeMetadata": "Sertakan metadata (teg, tarikh)",
+    "exporting": "Mengeksport...",
+    "exported": "Dieksport!",
+    "export": "Eksport",
+    "toast": {
+      "failed": "Eksport gagal"
+    }
+  },
+  "versionHistory": {
+    "title": "Sejarah Versi",
+    "description": "Lihat dan pulihkan versi sebelumnya \"{title}\"",
+    "hidePreview": "Sembunyikan Pratonton",
+    "showPreview": "Tunjukkan Pratonton",
+    "empty": "Tiada versi disimpan lagi",
+    "emptyDescription": "Versi disimpan secara automatik apabila anda membuat perubahan ketara",
+    "latest": "Terkini",
+    "autoSaved": "Disimpan secara automatik",
+    "words": "{count} perkataan",
+    "selectPrompt": "Pilih versi untuk dipratonton",
+    "restore": "Pulihkan",
+    "deleteTitle": "Padamkan versi ini?",
+    "deleteDescription": "Tindakan ini tidak boleh dibuat asal. Versi ini akan dipadamkan secara kekal.",
+    "restoreTitle": "Pulihkan versi ini?",
+    "restoreDescription": "Ini akan menggantikan kandungan nota semasa dengan versi ini. Gambar keadaan semasa akan disimpan dahulu, jadi anda boleh membuat asal tindakan ini.",
+    "restoring": "Memulihkan...",
+    "toast": {
+      "loadPreviewFailed": "Gagal memuatkan pratonton versi",
+      "restored": "Nota dipulihkan kepada versi sebelumnya",
+      "deleted": "Versi dipadamkan"
+    }
+  },
+  "templateEditor": {
+    "title": {
+      "new": "Templat Baharu",
+      "view": "Lihat Templat",
+      "edit": "Edit Templat"
+    },
+    "toast": {
+      "nameRequired": "Nama templat diperlukan",
+      "created": "Templat dibuat",
+      "createFailed": "Gagal membuat templat",
+      "saved": "Templat disimpan",
+      "saveFailed": "Gagal menyimpan templat",
+      "duplicateFailed": "Gagal menduplikasi templat",
+      "deleteFailed": "Gagal memadamkan templat"
+    }
+  },
+  "reminders": {
+    "summary": "Peringatan: {date}",
+    "summaryWithMore": "Peringatan: {date} (+{count} lagi)",
+    "hasReminders": "Mempunyai peringatan",
+    "setReminder": "Tetapkan peringatan",
+    "toast": {
+      "set": "Set peringatan",
+      "setForHighlight": "Peringatan ditetapkan untuk teks yang diserlahkan",
+      "setFailed": "Gagal menetapkan peringatan",
+      "deleted": "Peringatan dipadamkan",
+      "deleteFailed": "Gagal memadamkan peringatan",
+      "dismissed": "Peringatan ditolak",
+      "dismissFailed": "Gagal mengetepikan peringatan"
+    }
+  },
+  "linkedTasks": {
+    "title": "Tugas Berkaitan",
+    "loading": "Memuatkan tugasan terpaut..."
+  },
+  "phaseF": {
+    "componentsFolderViewColumnHeader": {
+      "dragToReorderColumn": "Seret untuk menyusun semula lajur"
+    },
+    "componentsFolderViewColumnSelector": {
+      "properties": "Hartanah",
+      "searchColumns": "Cari lajur...",
+      "noMatchingColumns": "Tiada lajur yang sepadan",
+      "formulas": "FORMULA",
+      "noFormulasDefined": "Tiada formula ditakrifkan",
+      "addFormula": "Tambah Formula",
+      "deleteFormula": "Padamkan Formula",
+      "areYouSureYouWantToDeleteTheFormula": "Adakah anda pasti mahu memadamkan formula \"",
+      "quotThisActionCannotBeUndone": "quot;? Tindakan ini tidak boleh dibuat asal.",
+      "cancel": "Batal",
+      "delete": "Padam",
+      "none": "tiada",
+      "edit": "Sunting",
+      "delete2": "Padam"
+    },
+    "componentsFolderViewFilterBuilder": {
+      "filter": "Penapis",
+      "filters": "Penapis",
+      "clearAll": "Kosongkan semua",
+      "noFiltersApplied": "Tiada penapis digunakan",
+      "addFiltersToNarrowDownYourNotes": "Tambahkan penapis untuk mengecilkan nota anda",
+      "match": "Perlawanan",
+      "allAnd": "Semua (DAN)",
+      "anyOr": "Mana-mana (ATAU)",
+      "ofTheFollowing": "daripada yang berikut:",
+      "match2": "Perlawanan",
+      "all": "Semua",
+      "any": "mana-mana",
+      "of": "daripada:",
+      "addCondition": "Tambah syarat",
+      "addFilter": "Tambah penapis",
+      "addGroup": "Tambah kumpulan"
+    },
+    "componentsFolderViewFilterRow": {
+      "builtIn": "terbina dalam",
+      "properties": "Hartanah",
+      "placeholderProperty": "Harta benda",
+      "placeholderOperator": "Operator",
+      "placeholderValue": "Nilai"
+    },
+    "componentsFolderViewFolderTableView": {
+      "notesTable": "Jadual nota"
+    },
+    "componentsFolderViewFolderViewToolbar": {
+      "searchNotes": "Cari nota...",
+      "clearSearch": "Kosongkan carian"
+    },
+    "componentsFolderViewFormulaEditorModal": {
+      "defineAComputedColumnUsingAnExpression": "Tentukan lajur yang dikira menggunakan ungkapan.",
+      "name": "Nama",
+      "expression": "Ungkapan",
+      "available": "Tersedia: ",
+      "preview": "Pratonton",
+      "fixExpressionErrorsToSeePreview": "Betulkan ralat ungkapan untuk melihat pratonton",
+      "usingNote": "Menggunakan nota: \"",
+      "quot": "quot;",
+      "cancel": "Batal",
+      "namePlaceholder": "hari_hingga_tamat",
+      "expressionPlaceholder": "dateDiff(tarikh_masa, hari ini(), \"hari\")"
+    },
+    "componentsFolderViewGroupBySelector": {
+      "clearGrouping": "Pengumpulan yang jelas",
+      "searchProperties": "Cari sifat...",
+      "builtIn": "terbina dalam",
+      "properties": "Hartanah",
+      "noGroupablePropertiesFound": "Tiada sifat boleh berkumpulan ditemui",
+      "sortDirection": "Isih arah",
+      "collapseGroupsByDefault": "Runtuhkan kumpulan secara lalai",
+      "showGroupSummaries": "Tunjukkan ringkasan kumpulan",
+      "clearGrouping2": "Pengumpulan yang jelas"
+    },
+    "componentsFolderViewGroupedTable": {
+      "groupedNotesTable": "Jadual nota berkumpulan",
+      "more": "lebih"
+    },
+    "componentsFolderViewMoveToFolderDialog": {
+      "searchFolders": "Cari folder...",
+      "loadingFolders": "Memuatkan folder...",
+      "suggested": "CADANGAN",
+      "bestMatch": "Perlawanan terbaik",
+      "current": "semasa)",
+      "allFolders": "SEMUA FOLDER",
+      "current2": "semasa)",
+      "noFoldersMatch": "Tiada folder yang sepadan \"",
+      "quot": "quot;",
+      "create": "Buat \"",
+      "quot2": "quot;",
+      "cancel": "Batal"
+    },
+    "componentsFolderViewRowContextMenu": {
+      "delete": "Padam ",
+      "notes": "Nota",
+      "open": "Buka",
+      "openInExternalEditor": "Buka dalam Editor Luaran",
+      "revealInFinder": "Dedahkan dalam Finder",
+      "revealInSidebar": "Dedahkan dalam Sidebar",
+      "copyLink": "Salin Pautan",
+      "delete2": "Padam"
+    },
+    "componentsFolderViewSortableColumnHeader": {
+      "dragToReorderColumn": "Seret untuk menyusun semula lajur",
+      "resizeColumn": "Ubah saiz lajur"
+    },
+    "componentsFolderViewViewSwitcher": {
+      "default": "lalai",
+      "rename": "Namakan semula",
+      "duplicate": "Pendua",
+      "setAsDefault": "Tetapkan sebagai Lalai",
+      "delete": "Padam",
+      "createNewView": "Cipta Pandangan Baharu",
+      "createNewView2": "Cipta Pandangan Baharu",
+      "createANewViewWithCustomColumnsFiltersAndSorting": "Cipta paparan baharu dengan lajur tersuai, penapis dan pengisihan.",
+      "viewName": "Lihat Nama",
+      "myCustomView": "Pandangan Tersuai Saya",
+      "baseConfiguration": "Konfigurasi Pangkalan",
+      "copyFromCurrentView": "Salin daripada paparan semasa",
+      "startFreshDefaultColumns": "Mula baharu (lajur lalai)",
+      "cancel": "Batal",
+      "renameView": "Namakan semula View",
+      "enterANewNameForThisView": "Masukkan nama baharu untuk paparan ini.",
+      "viewName2": "Lihat Nama",
+      "viewName3": "Lihat nama",
+      "cancel2": "Batal",
+      "deleteView": "Padamkan Paparan",
+      "areYouSureYouWantToDelete": "Adakah anda pasti mahu memadamkan \"",
+      "thisActionCannotBeUndone": "Tindakan ini tidak boleh dibuat asal.",
+      "cancel3": "Batal"
+    },
+    "componentsNoteContentAreaFileBlock": {
+      "failedToLoadPdf": "Gagal memuatkan PDF: ",
+      "download": "Muat turun",
+      "download2": "Muat turun",
+      "noFileAttached": "Tiada fail dilampirkan"
+    },
+    "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
+      "openInTaskPanel": "Buka dalam panel tugas",
+      "taskName": "Nama tugas...",
+      "taskDeleted": "Tugasan dipadamkan",
+      "loading": "Memuatkan..."
+    },
+    "componentsNoteContentAreaTaskBlockTaskCreationPopover": {
+      "project": "Projek",
+      "priority": "Keutamaan",
+      "dueDate": "tarikh tamat tempoh",
+      "cancel": "Batal"
+    },
+    "componentsNoteContentAreaYoutubeEmbedBlock": {
+      "noVideoUrl": "Tiada URL video"
+    },
+    "componentsNoteExportDialog": {
+      "pdf": "PDF",
+      "html": "HTML",
+      "a4210X297Mm": "A4 (210 x 297 mm)",
+      "letter85X11In": "Huruf (8.5 x 11 in)",
+      "legal85X14In": "Sah (8.5 x 14 in)"
+    },
+    "componentsNoteInfoSectionEditorsDateeditor": {
+      "ddMmYyyy": "dd.mm.yyyy"
+    },
+    "componentsNoteNoteHeader": {
+      "synced": "disegerakkan"
+    },
+    "componentsSharedDocumentInfoTab": {
+      "words": "Kata-kata",
+      "characters": "Watak",
+      "readingTime": "Masa membaca",
+      "created": "Dicipta",
+      "modified": "Diubah suai"
+    },
+    "componentsSidebarProjectsEmptyState": {
+      "noProjectsYet": "Tiada projek lagi",
+      "createYourFirstProject": "Buat projek pertama anda",
+      "createYourFirstProject2": "Buat projek pertama anda"
+    },
+    "componentsSidebarSidebarBookmarkList": {
+      "loadingBookmarks": "Memuatkan penanda halaman...",
+      "failedToLoadBookmarks": "Gagal memuatkan penanda halaman",
+      "noBookmarksYet": "Tiada penanda halaman lagi",
+      "moreOptions": "Lebih banyak pilihan",
+      "remove": "Alih keluar"
+    },
+    "componentsSidebarSidebarItemContextMenu": {
+      "open": "Buka",
+      "openToTheSide": "Buka ke Sisi",
+      "pinToTabs": "Sematkan pada Tab",
+      "edit": "Sunting",
+      "delete": "Padam",
+      "copyLink": "Salin Pautan"
+    },
+    "componentsSidebarSidebarTagList": {
+      "loadingTags": "Memuatkan tag...",
+      "failedToLoadTags": "Gagal memuatkan teg",
+      "noTagsYet": "Tiada tag lagi",
+      "filterTags": "Tag penapis...",
+      "noMatchingTags": "Tiada tag yang sepadan"
+    },
+    "componentsSidebarSortableProjectItem": {
+      "dropHere": "Turun sini",
+      "editProject": "Edit projek"
+    },
+    "componentsSidebarTagDeleteDialog": {
+      "deleteTag": "Padamkan teg #",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "Nota dengan tag ini tidak akan dipadamkan, hanya dinyahteg sahaja.",
+      "cancel": "Batal"
+    },
+    "componentsSidebarTagDetailView": {
+      "goBack": "pergi balik",
+      "notes": "nota",
+      "loadingNotes": "Memuatkan nota...",
+      "noNotesWithThisTag": "Tiada nota dengan tag ini",
+      "addThisTagToANoteToSeeItHere": "Tambahkan teg ini pada nota untuk melihatnya di sini",
+      "pinned": "DIPIN",
+      "allNotes": "SEMUA CATATAN",
+      "allNotesArePinned": "Semua nota disematkan",
+      "unpinFromTag": "Nyahsemat daripada teg",
+      "unpin": "Nyahsemat",
+      "pinToTag": "Sematkan pada tanda nama",
+      "pin": "Pin",
+      "tagActions": "Tindakan teg",
+      "editTagName": "Edit nama tag",
+      "changeColor": "Tukar warna",
+      "deleteTag": "Padamkan teg",
+      "recent": "Baru-baru ini",
+      "created": "Dicipta",
+      "alphabetical": "Mengikut abjad"
+    },
+    "componentsSidebarTagRenameDialog": {
+      "renameTag": "Namakan semula tag",
+      "rename": "Namakan semula ",
+      "acrossEveryNoteThatUsesIt": "merentasi setiap nota yang menggunakannya.",
+      "newName": "nama baru",
+      "cancel": "Batal"
+    },
+    "componentsViewersAudioPlayer": {
+      "failedToLoadAudio": "Gagal memuatkan audio",
+      "theAudioFileCouldNotBePlayed": "Fail audio tidak dapat dimainkan.",
+      "skipBack10s": "Langkau ke belakang 10s",
+      "skipForward10s": "Langkau ke hadapan 10s"
+    },
+    "componentsViewersImageViewer": {
+      "failedToLoadImage": "Gagal memuatkan imej",
+      "theImageCouldNotBeDisplayed": "Imej tidak dapat dipaparkan.",
+      "resetZoom": "Tetapkan semula zum",
+      "rotate": "Putar",
+      "dragToPan": "Seret ke kuali"
+    },
+    "componentsViewersPdfViewer": {
+      "failedToLoadPdf": "Gagal memuatkan PDF",
+      "previousPage": "Halaman sebelumnya",
+      "nextPage": "Halaman seterusnya",
+      "zoomOut": "Zum keluar",
+      "zoomIn": "Zum masuk",
+      "fitToWidth": "Sesuai dengan lebar",
+      "rotate": "Putar"
+    },
+    "componentsViewersVideoPlayer": {
+      "failedToLoadVideo": "Gagal memuatkan video",
+      "theVideoFileCouldNotBePlayed": "Fail video tidak dapat dimainkan."
+    },
+    "pagesFile": {
+      "failedToLoadFile": "Gagal memuatkan fail",
+      "tryAgain": "Cuba lagi",
+      "noFileSelected": "Tiada fail dipilih",
+      "selectAFileFromTheSidebarToViewIt": "Pilih fail dari bar sisi untuk melihatnya",
+      "loadingFile": "Memuatkan fail...",
+      "openInDefaultApp": "Buka dalam apl lalai",
+      "open": "Buka",
+      "revealInFinder": "Dedahkan dalam Finder",
+      "reveal": "Dedahkan",
+      "unsupportedFileType": "Jenis fail tidak disokong"
+    },
+    "pagesFolderView": {
+      "createNewNote": "Buat nota baharu",
+      "viewSettings": "Lihat tetapan",
+      "displayDensity": "Ketumpatan Paparan",
+      "comfortable": "Selesa",
+      "compact": "Padat",
+      "showSummaries": "Tunjukkan ringkasan",
+      "cancel": "Batal"
+    },
+    "pagesTemplateEditor": {
+      "loadingTemplate": "Memuatkan templat...",
+      "builtInTemplatesCannotBeModified": "Templat terbina dalam tidak boleh diubah suai",
+      "description": "Penerangan",
+      "briefDescriptionOfThisTemplate": "Penerangan ringkas templat ini...",
+      "templateContent": "Kandungan Templat",
+      "use": "guna ",
+      "toInsertTheNoteTitleWhenCreatingANote": "untuk memasukkan tajuk nota semasa membuat nota.",
+      "templateName": "Nama Templat",
+      "defaultContentForNotesCreatedFromThisTemplate": "Kandungan lalai untuk nota yang dibuat daripada templat ini..."
+    },
+    "pagesTemplates": {
+      "loadingCollection": "Memuatkan koleksi...",
+      "templateCollection": "Koleksi Templat",
+      "templates": "templat",
+      "curatedStructuresForYourNotes": "Struktur susun atur untuk nota anda.",
+      "newTemplate": "Templat Baharu",
+      "myTemplates": "Templat Saya",
+      "builtIn": "terbina dalam",
+      "deleteTemplate": "Padam Templat",
+      "areYouSureYouWantToDelete": "Adakah anda pasti mahu memadamkan \"",
+      "notesCreatedFromThisTemplateWillNotBeAffected": "Nota yang dibuat daripada templat ini tidak akan terjejas.",
+      "cancel": "Batal",
+      "builtIn2": "terbina dalam",
+      "duplicate": "Pendua",
+      "delete": "Padam",
+      "startYourCollection": "Mulakan Koleksi Anda",
+      "templatesHelpYouCreateNotesWithConsistentStructure": "Templat membantu anda membuat nota dengan struktur yang konsisten.",
+      "createTemplate": "Cipta Templat"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveFormula": "Gagal menyimpan formula",
+      "failedToOpenInExternalEditor": "Gagal dibuka dalam editor luaran",
+      "failedToRevealInFinder": "Gagal didedahkan dalam Finder",
+      "failedToCopyLink": "Gagal menyalin pautan",
+      "failedToCreateView": "Gagal membuat paparan",
+      "failedToRenameFolder": "Gagal menamakan semula folder",
+      "failedToCreateTask": "Gagal membuat tugasan",
+      "failedToLoadVersionHistory": "Gagal memuatkan sejarah versi",
+      "failedToRestoreVersion": "Gagal memulihkan versi",
+      "failedToDeleteVersion": "Gagal memadamkan versi",
+      "failedToCreateNote": "Gagal membuat nota",
+      "failedToLoadMoreBookmarks": "Gagal memuatkan lebih banyak penanda halaman",
+      "failedToToggleBookmark": "Gagal menogol penanda halaman",
+      "failedToRemoveBookmark": "Gagal mengalih keluar penanda halaman",
+      "failedToReorderBookmarks": "Gagal menyusun semula penanda halaman",
+      "failedToSave": "Gagal menyimpan",
+      "failedToRename": "Gagal menamakan semula",
+      "failedToUpdateEmoji": "Gagal mengemas kini emoji",
+      "failedToUpdateTags": "Gagal mengemas kini teg",
+      "failedToSnoozeReminder": "Gagal menunda peringatan",
+      "failedToCreateFolder": "Gagal membuat folder",
+      "failedToLoadProperties": "Gagal memuatkan sifat",
+      "failedToLoadPropertyDefinitions": "Gagal memuatkan definisi harta benda",
+      "failedToLoadTemplates": "Gagal memuatkan templat"
+    },
+    "toasts": {
+      "noteExportedSuccessfully": "Nota berjaya dieksport",
+      "failedToUpdateProperty": "Gagal mengemas kini harta benda",
+      "failedToUpdateTags": "Gagal mengemas kini teg",
+      "reminderSnoozed": "Peringatan ditunda",
+      "failedToSnoozeReminder": "Gagal menunda peringatan",
+      "defaultTemplateSet": "Set templat lalai",
+      "failedToSetDefaultTemplate": "Gagal menetapkan templat lalai",
+      "defaultTemplateCleared": "Templat lalai dikosongkan",
+      "failedToClearDefaultTemplate": "Gagal mengosongkan templat lalai",
+      "failedToAddProperty": "Gagal menambah harta",
+      "failedToDeleteProperty": "Gagal memadamkan harta benda",
+      "failedToRenameProperty": "Gagal menamakan semula harta benda",
+      "failedToReorderProperties": "Gagal menyusun semula sifat",
+      "cannotAddTagThisNoteWasDeleted": "Tidak boleh menambah teg - nota ini telah dipadamkan",
+      "cannotRemoveTagThisNoteWasDeleted": "Tidak boleh mengalih keluar teg - nota ini telah dipadamkan",
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "Tidak boleh menukar setempat sahaja — nota ini telah dipadamkan"
+    }
+  }
+}

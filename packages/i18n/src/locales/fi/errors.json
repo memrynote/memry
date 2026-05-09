@@ -1,0 +1,80 @@
+{
+  "generic": {
+    "somethingWentWrong": "Jotain meni pieleen. Yritä uudelleen.",
+    "operationFailed": "Toiminto epäonnistui",
+    "unknown": "Tapahtui tuntematon virhe",
+    "validationFailed": "Vahvistus epäonnistui",
+    "actionFailed": "Toiminto epäonnistui"
+  },
+  "ipc": {
+    "noVaultOpen": "Mikään holvi ei ole auki. Avaa ensin holvi."
+  },
+  "vault": {
+    "notFound": "Holvia ei löydy. Se on saatettu siirtää tai poistaa.",
+    "notInitialized": "Mikään holvi ei ole auki. Avaa tai luo holvi jatkaaksesi.",
+    "invalidPath": "Valittu polku ei ole kelvollinen varaston sijainti.",
+    "permissionDenied": "Lupa evätty. Tarkista, että sinulla on pääsy tähän kansioon.",
+    "alreadyExists": "Tässä paikassa on jo holvi.",
+    "corrupted": "Tämä holvi näyttää olevan vioittunut. Yritä palauttaa varmuuskopiosta."
+  },
+  "note": {
+    "notFound": "Tätä muistiinpanoa ei löytynyt. Se on ehkä poistettu.",
+    "invalidFrontmatter": "Tässä muistiinpanossa on virheelliset metatiedot, eikä sitä voida lukea.",
+    "duplicateId": "Tällä tunnuksella varustettu muistiinpano on jo olemassa.",
+    "writeFailed": "Tämän muistiinpanon tallentaminen epäonnistui. Tarkista levytila ​​ja käyttöoikeudet.",
+    "readFailed": "Tämän huomautuksen lukeminen epäonnistui. Tiedosto voi olla lukittu tai vioittunut.",
+    "deleteFailed": "Tämän muistiinpanon poistaminen epäonnistui. Tarkista tiedostojen käyttöoikeudet.",
+    "invalidPath": "Huomautuspolku on virheellinen."
+  },
+  "database": {
+    "connectionFailed": "Yhteyttä paikalliseen tietokantaan ei voitu muodostaa. Yritä käynnistää sovellus uudelleen.",
+    "migrationFailed": "Tietokannan päivitys epäonnistui. Yritä käynnistää sovellus uudelleen.",
+    "queryFailed": "Tietokantatoiminto epäonnistui. Yritä uudelleen.",
+    "notInitialized": "Tietokanta ei ole valmis. Yritä käynnistää sovellus uudelleen.",
+    "constraintViolation": "Tapahtui tietoristiriita. Yritä uudelleen.",
+    "corrupted": "Paikallinen tietokanta on vioittunut. Saatat joutua nollaamaan sen."
+  },
+  "watcher": {
+    "startFailed": "Tiedostomuutosten tarkkailua ei voitu aloittaa.",
+    "stopFailed": "Tiedostojen tarkkailua ei voitu pysäyttää.",
+    "eventError": "Tiedostomuutoksia haettaessa tapahtui virhe."
+  },
+  "attachment": {
+    "fileTooLarge": "Tämä tiedosto on liian suuri liitettäväksi.",
+    "unsupportedType": "Tätä tiedostotyyppiä ei tueta.",
+    "writeFailed": "Liitteen tallentaminen epäonnistui. Tarkista levytila.",
+    "deleteFailed": "Liitteen poistaminen epäonnistui."
+  },
+  "encryption": {
+    "failed": "Tietojen salaus epäonnistui. Avaimesi on ehkä luotava uudelleen.",
+    "decryptionFailed": "Tietojen salauksen purkaminen epäonnistui. Salausavaimesi voivat olla vanhentuneita.",
+    "invalidKeyLength": "Virheellinen salausavain. Yritä kirjautua ulos ja takaisin sisään.",
+    "invalidNonceLength": "Salausvirhe. Yritä toimintoa uudelleen."
+  },
+  "inboxAttachment": {
+    "writeFailed": "Saapuneet-kansion liitteen tallentaminen epäonnistui.",
+    "deleteFailed": "Saapuneet-kansion liitteen poistaminen epäonnistui."
+  },
+  "sync": {
+    "networkOffline": "Olet offline-tilassa. Muutokset synkronoidaan, kun muodostat yhteyden uudelleen.",
+    "networkTimeout": "Synkronointipalvelimelta kesti liian kauan vastata. Yritetään pian uudelleen.",
+    "serverError": "Synkronointipalvelin havaitsi virheen. Yritetään automaattisesti uudelleen.",
+    "authExpired": "Istuntosi on vanhentunut. Kirjaudu uudelleen sisään jatkaaksesi synkronointia.",
+    "deviceRevoked": "Tämä laite on poistettu tililtäsi.",
+    "rateLimited": "Liikaa pyyntöjä. Synkronointia jatketaan pian.",
+    "cryptoFailure": "Synkronointitietojen salaus tai salauksen purkaminen epäonnistui. Yritä kirjautua ulos ja takaisin sisään.",
+    "versionIncompatible": "Tätä Memry-versiota ei enää tueta. Päivitä.",
+    "storageQuotaExceeded": "Synkronointimuistisi on täynnä. Vapauta tilaa tai päivitä suunnitelmasi.",
+    "certificatePinFailed": "Suojattu yhteys epäonnistui. Tarkista verkkoyhteytesi.",
+    "unknown": "Tapahtui odottamaton synkronointivirhe. Yritetään automaattisesti uudelleen.",
+    "statusFetchFailed": "Synkronoinnin tilan nouto epäonnistui",
+    "engineNotInitialized": "Synkronointimoottoria ei ole alustettu. Aloita synkronointi avaamalla holvi.",
+    "triggerFailed": "Synkronointi epäonnistui",
+    "pauseFailed": "Synkronoinnin keskeyttäminen epäonnistui",
+    "resumeFailed": "Synkronoinnin jatkaminen epäonnistui",
+    "settingsNotInitialized": "Asetusten synkronointia ei ole alustettu",
+    "securityQuarantinePermanent": "Synkronointikohdetta ei voitu vahvistaa, ja se on asetettu karanteeniin turvallisuussyistä.",
+    "securityQuarantineRetry": "Synkronointikohteen allekirjoituksen vahvistus epäonnistui, ja sitä yritetään uudelleen.",
+    "certificatePinPaused": "Suojattua yhteyttä synkronointipalvelimeen ei voitu vahvistaa. Synkronointi on keskeytetty turvallisuutesi vuoksi."
+  }
+}

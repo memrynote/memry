@@ -1,0 +1,651 @@
+{
+  "page": {
+    "tabs": {
+      "label": "Vizualizări de sarcină",
+      "today": "Astăzi",
+      "all": "Toate"
+    },
+    "viewMode": {
+      "label": "Modul vizualizare",
+      "list": "Vizualizare listă",
+      "kanban": "Vizualizare Kanban"
+    },
+    "projectScope": {
+      "allProjects": "Toate proiectele",
+      "searchProjects": "Cauta proiecte...",
+      "editProject": "Editați {name}",
+      "unstarSavedFilter": "Anulați marcarea {name}"
+    }
+  },
+  "task": {
+    "add": "Adăugați o sarcină",
+    "title": "Titlu",
+    "titleRequired": "Titlul este obligatoriu",
+    "titlePlaceholder": "Ce trebuie făcut?",
+    "namePlaceholder": "Numele sarcinii",
+    "description": "Descriere",
+    "descriptionPlaceholder": "Adăugați o descriere...",
+    "details": "Detalii despre sarcină",
+    "status": "Stare",
+    "priority": "Prioritate",
+    "dueDate": "Data scadentă",
+    "project": "Proiect",
+    "repeat": "Repetați",
+    "createAnother": "Creați altul",
+    "delete": "Ștergeți sarcina",
+    "created": "S-a creat {date}"
+  },
+  "project": {
+    "create": "Creați proiect",
+    "edit": "Editați proiectul",
+    "delete": "Ștergeți proiectul",
+    "iconAndName": "Pictogramă și nume",
+    "namePlaceholder": "Numele proiectului",
+    "select": "Selectați proiectul",
+    "selectIcon": "Selectați pictograma",
+    "clickIconToChange": "Faceți clic pe pictogramă pentru a schimba",
+    "color": "Culoare",
+    "descriptionOptional": "Descriere (opțional)",
+    "descriptionPlaceholder": "Scurtă descriere a acestui proiect...",
+    "statuses": "Statuturi",
+    "statusesHelp": "Configurați etapele fluxului de lucru pentru acest proiect.",
+    "createDescription": "Creați un proiect nou cu nume, pictogramă, culoare și stări ale fluxului de lucru.",
+    "editDescription": "Editați numele proiectului, pictograma, culoarea și stările fluxului de lucru."
+  },
+  "status": {
+    "select": "Selectați starea",
+    "todo": "De făcut",
+    "inProgress": "În curs",
+    "done": "Gata"
+  },
+  "priority": {
+    "select": "Selectați prioritate",
+    "none": "Nicio prioritate",
+    "noneShort": "Niciuna",
+    "low": "Scăzut",
+    "medium": "Mediu",
+    "high": "Înalt",
+    "urgent": "Urgent"
+  },
+  "filters": {
+    "filter": "Filtru",
+    "emptyTitle": "Nicio sarcină nu se potrivește cu filtrele dvs",
+    "emptyHelp": "Încercați să vă ajustați filtrele sau",
+    "groupBy": "Grupați după",
+    "groupByOptions": "Grupați după opțiuni",
+    "sortAscending": "Sortați crescător",
+    "sortDescending": "Sortați descendent"
+  },
+  "quickAdd": {
+    "label": "Sarcină de adăugare rapidă",
+    "focusDescription": "Concentrați intrarea de adăugare rapidă"
+  },
+  "drawer": {
+    "close": "Închideți detaliile sarcinii",
+    "subIssues": "Subprobleme",
+    "addSubIssue": "Adăugați o problemă secundară",
+    "subIssuePlaceholder": "Adăugați o problemă secundară...",
+    "noSubIssues": "Încă nu există probleme secundare",
+    "linkedNotes": "Note legate",
+    "linkNote": "Legați o notă",
+    "loading": "Se încarcă…",
+    "searchNotes": "Căutați note...",
+    "noMatchingNotes": "Nicio notă care se potrivește",
+    "noNotesAvailable": "Nu există note disponibile",
+    "noLinkedNotes": "Nu există încă note legate",
+    "removeLinkTo": "Eliminați linkul către {title}",
+    "removeLinkFallback": "notă"
+  },
+  "kanban": {
+    "board": "Placă Kanban"
+  },
+  "toasts": {
+    "projectUpdated": "Proiect actualizat",
+    "projectCreated": "Proiect creat",
+    "projectSaveError": "Nu s-a putut salva proiectul",
+    "projectArchived": "Proiect arhivat",
+    "projectArchiveError": "Proiectul nu a putut fi arhivat",
+    "projectDeleted": "Proiect șters",
+    "projectDeleteError": "Nu s-a șters proiectul",
+    "filtersCleared": "Filtrele au fost șterse",
+    "filterSaved": "Filtrul salvat",
+    "filterDeleted": "Filtrul șters",
+    "filterApplied": "S-a aplicat „{name}”",
+    "deleted": "Sarcina ștearsă",
+    "deletedSeries": "Seria completă!",
+    "deletedNext": "Următoarea apariție",
+    "completed": "Sarcina finalizată!",
+    "archived": "Sarcina arhivată",
+    "undoNotAvailableForDelete": "Anulare nu este disponibil pentru ștergere",
+    "alreadyAllComplete": "Toate sarcinile selectate sunt deja finalizate",
+    "noCompletedSelected": "Nu au fost selectate sarcini finalizate",
+    "completeFailed": "Nu s-au finalizat sarcinile",
+    "reopenFailed": "Nu s-au redeschis sarcinile",
+    "deleteFailed": "Nu s-au șters sarcinile",
+    "moveFailed": "Nu s-au mutat sarcinile"
+  },
+  "phaseF": {
+    "componentsTasksAddSubtaskInput": {
+      "addSubtask": "Adăugați o sarcină secundară...",
+      "addSubtask2": "Adăugați o sarcină secundară",
+      "enterToAdd": "Intră pentru a adăuga"
+    },
+    "componentsTasksBulkActionsBulkActionDropdown": {
+      "for": "pentru ",
+      "task": "sarcina"
+    },
+    "componentsTasksBulkActionsBulkActionToolbar": {
+      "bulkActions": "Acțiuni în bloc",
+      "selected": "selectat",
+      "complete": "Complet",
+      "priority": "Prioritate",
+      "dueDate": "Data scadentă",
+      "moveTo": "Mutați la",
+      "status": "Stare",
+      "archive": "Arhiva",
+      "delete": "Ștergeți",
+      "cancelSelection": "Anulați selecția",
+      "cancel": "Anulează"
+    },
+    "componentsTasksBulkActionsBulkDeleteDialog": {
+      "delete": "Ștergeți ",
+      "task": "sarcina",
+      "youReAboutToDelete": "Sunteți pe cale să ștergeți ",
+      "task2": "sarcina",
+      "and": "şi ",
+      "moreTask": "mai multă sarcină",
+      "thisActionCanBeUndoneForAShortTimeAfterDeletion": "Această acțiune poate fi anulată pentru o perioadă scurtă de timp după ștergere.",
+      "cancel": "Anulează",
+      "delete2": "Ștergeți ",
+      "task3": "sarcina"
+    },
+    "componentsTasksBulkActionsBulkDueDatePicker": {
+      "setDueDateFor": "Stabiliți data scadentă pentru ",
+      "task": "sarcina",
+      "selectADateToSetAsTheDueDateForAllSelectedTasks": "Selectați o dată pentru a seta ca dată scadentă pentru toate sarcinile selectate.",
+      "alsoSetTime": "Setați și ora",
+      "cancel": "Anulează",
+      "setDueDate": "Setează data scadentă"
+    },
+    "componentsTasksCelebrationProgress": {
+      "complete": "Complet"
+    },
+    "componentsTasksColorPicker": {
+      "selectColor": "Selectați culoarea"
+    },
+    "componentsTasksCustomRepeatDialog": {
+      "onTheseDays": "În aceste zile",
+      "repeatOn": "Repetați mai departe",
+      "day": "Ziua",
+      "ofTheMonth": "a lunii",
+      "the": "The",
+      "ofTheMonth2": "a lunii",
+      "ends": "Se termină",
+      "never": "Niciodată",
+      "onDate": "La data",
+      "after": "După",
+      "occurrences": "apariții",
+      "preview": "Previzualizare",
+      "of": "de ",
+      "andMore": "si mai mult",
+      "frequency": "Frecvența",
+      "repeatEvery": "Repetați fiecare",
+      "day2": "zi",
+      "week": "saptamana",
+      "month": "luna",
+      "year": "an",
+      "cancel": "Anulează",
+      "save": "Salvați",
+      "customRepeat": "Repetare personalizată"
+    },
+    "componentsTasksDatePickerCalendar": {
+      "previousMonth": "Luna anterioară",
+      "nextMonth": "Luna viitoare",
+      "goToToday": "Du-te la azi",
+      "today": "Astăzi",
+      "w": "W"
+    },
+    "componentsTasksDatePickerContent": {
+      "removeDate": "Eliminați data",
+      "clearTime": "Timp clar",
+      "addTime": "Adăugați timp"
+    },
+    "componentsTasksDeleteProjectDialog": {
+      "delete": "Șterge \"",
+      "thisProjectHas": "Acest proiect are ",
+      "task": "sarcina",
+      "whatWouldYouLikeToDoWithThem": "Ce ai vrea sa faci cu ei?",
+      "moveTasksToPersonalProject": "Mutați sarcinile în Proiect personal",
+      "deleteAllTasksPermanently": "Ștergeți definitiv toate sarcinile",
+      "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Acest proiect nu are sarcini și va fi șters definitiv.",
+      "thisActionCannotBeUndone": "Această acțiune nu poate fi anulată.",
+      "cancel": "Anulează",
+      "deleteProject": "Ștergeți proiectul"
+    },
+    "componentsTasksDeleteTaskDialog": {
+      "deleteTask": "Ștergeți sarcina?",
+      "ldquo": "ldquo;",
+      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; vor fi șterse definitiv. Această acțiune nu poate fi anulată.",
+      "deleteTask2": "Ștergeți sarcina"
+    },
+    "componentsTasksDialogsAllSubtasksCompleteDialog": {
+      "allSubtasksComplete": "Toate subsarcinile finalizate!",
+      "ldquo": "ldquo;",
+      "rdquoHasAll": "rdquo; are toate ",
+      "subtask": "subsarcină",
+      "done": "gata.",
+      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Doriți să marcați și sarcina părinte ca finalizată?",
+      "keepTaskOpen": "Păstrați sarcina deschisă",
+      "completeTask": "Finalizați sarcina ✓"
+    },
+    "componentsTasksDialogsBulkDueDateDialog": {
+      "setDueDateForAllSubtasks": "Setați data limită pentru toate sarcinile secundare",
+      "setDueDateFor": "Stabiliți data scadentă pentru ",
+      "subtask": "subsarcină",
+      "in": "în „",
+      "rdquo": "rdquo;",
+      "alsoApplyToCompletedSubtasks": "Se aplică și subsarcinilor finalizate (",
+      "clearDate": "Data clară",
+      "cancel": "Anulează",
+      "apply": "Aplicați"
+    },
+    "componentsTasksDialogsBulkPriorityDialog": {
+      "setPriorityForAllSubtasks": "Setați prioritate pentru toate sarcinile secundare",
+      "setPriorityFor": "Setați prioritate pentru ",
+      "subtask": "subsarcină",
+      "in": "în „",
+      "rdquo": "rdquo;",
+      "alsoApplyToCompletedSubtasks": "Se aplică și subsarcinilor finalizate (",
+      "cancel": "Anulează",
+      "apply": "Aplicați"
+    },
+    "componentsTasksDialogsCompleteParentDialog": {
+      "completeTaskWithIncompleteSubtasks": "Sarcina completă cu subsarcini incomplete?",
+      "has": "are ",
+      "incompleteSubtask": "subsarcină incompletă",
+      "and": "şi ",
+      "more": "mai mult",
+      "whatWouldYouLikeToDo": "Ce ai vrea sa faci?",
+      "completeAllParentSubtasks": "Finalizați toate (părinte + sarcini secundare)",
+      "markTheParentAndAllSubtasksAsComplete": "Marcați părintele și toate sarcinile secundare ca fiind finalizate",
+      "completeParentOnlyKeepSubtasksIncomplete": "Completați numai părinte, păstrați subsarcinile incomplete",
+      "onlyMarkTheParentTaskAsComplete": "Marcați doar sarcina părinte ca finalizată",
+      "cancel": "Anulează",
+      "complete": "Complet"
+    },
+    "componentsTasksDialogsDeleteAllSubtasksDialog": {
+      "deleteAllSubtasks": "Ștergeți toate sarcinile secundare?",
+      "thisWillDelete": "Aceasta se va șterge ",
+      "subtask": "subsarcină",
+      "from": "de la „",
+      "rdquo": "rdquo;.",
+      "thisActionCannotBeUndone": "Această acțiune nu poate fi anulată.",
+      "cancel": "Anulează",
+      "deleteAll": "Ștergeți toate"
+    },
+    "componentsTasksDialogsDeleteParentDialog": {
+      "deleteTaskWithSubtasks": "Ștergeți sarcina cu subsarcini?",
+      "has": "are ",
+      "subtask": "subsarcină",
+      "whatWouldYouLikeToDo": "Ce ai vrea sa faci?",
+      "deleteTaskAndAllSubtasks": "Ștergeți sarcina și toate subsarcinile",
+      "permanentlyRemovesEverything": "Îndepărtează definitiv totul",
+      "deleteTaskKeepSubtasksAsStandaloneTasks": "Ștergeți sarcina, păstrați subsarcinile ca sarcini de sine stătătoare",
+      "subtasksBecomeTopLevelTasks": "Subsarcinile devin sarcini de nivel superior",
+      "cancel": "Anulează",
+      "delete": "Ștergeți"
+    },
+    "componentsTasksDialogsDuplicateWithSubtasksDialog": {
+      "duplicateTask": "Sarcină duplicată",
+      "createACopyOf": "Creați o copie a „",
+      "rdquo": "rdquo;",
+      "alsoDuplicateSubtasks": "De asemenea, duplicați subsarcini (",
+      "cancel": "Anulează",
+      "duplicate": "Duplicat "
+    },
+    "componentsTasksDialogsParentPickerDialog": {
+      "makeSubtaskOf": "Faceți o sarcină secundară de...",
+      "selectATaskToMake": "Selectați o sarcină de făcut \"",
+      "aSubtaskOf": "o subsarcină de.",
+      "searchTasks": "Sarcini de căutare...",
+      "sameProject": "Același Proiect",
+      "otherProjects": "Alte Proiecte"
+    },
+    "componentsTasksDragDropInsertionIndicator": {
+      "dropToRescheduleTo": "Aruncă pentru a reprograma la "
+    },
+    "componentsTasksDragDropMoveMenu": {
+      "moveTask": "Mutați sarcina",
+      "move": "Mișcă-te",
+      "reschedule": "Reprogramați",
+      "today": "Astăzi",
+      "tomorrow": "Mâine",
+      "nextWeek": "Săptămâna viitoare",
+      "removeDate": "Eliminați data",
+      "moveToProject": "Treci la proiect",
+      "current": "Curent",
+      "changeStatus": "Schimbați starea",
+      "current2": "Curent",
+      "reorder": "Reordonați"
+    },
+    "componentsTasksDragDropMultiDragOverlay": {
+      "moreTask": "mai multă sarcină",
+      "task": "sarcina"
+    },
+    "componentsTasksDragDropSidebarDropZones": {
+      "dropHere": "Aruncă aici"
+    },
+    "componentsTasksDragDropTaskRow": {
+      "priority": "prioritate: "
+    },
+    "componentsTasksDueDatePicker": {
+      "selectDueDate": "Selectați data scadentă",
+      "overdue": "Întârziat",
+      "setDueDate": "Stabiliți data scadentă",
+      "suggestions": "Sugestii",
+      "pickADate": "Alegeți o dată...",
+      "addTime": "Adăugați timp",
+      "time": "timpul",
+      "clearDate": "Data clară",
+      "backToOptions": "Înapoi la opțiuni"
+    },
+    "componentsTasksEditRepeatingTaskDialog": {
+      "editRepeatingTask": "Editați sarcina care se repetă",
+      "youReEditingARepeatingTaskApplyChangesTo": "Editați o sarcină care se repetă. Aplicați modificări la:",
+      "onlyThisOccurrence": "Doar această întâmplare",
+      "onlyFutureTasksUnchanged": "numai — sarcinile viitoare neschimbate",
+      "thisAndAllFutureOccurrences": "Aceasta și toate evenimentele viitoare",
+      "andBeyond": "si mai departe",
+      "cancel": "Anulează",
+      "continue": "Continuă"
+    },
+    "componentsTasksEmptyStatesCollapsedEmptySection": {
+      "add": "Adăugați"
+    },
+    "componentsTasksEmptyStatesSectionEmptyStates": {
+      "noTasksScheduled": "Nicio sarcină programată",
+      "addTaskFor": "Adăugați sarcină pentru ",
+      "nothingScheduled": "Nimic programat",
+      "addTasksWithDueDatesToPlanYourWeek": "Adăugați sarcini cu termene limită pentru a vă planifica săptămâna.",
+      "addTask": "Adăugați sarcină",
+      "viewCalendar": "Vezi calendarul"
+    },
+    "componentsTasksFiltersActiveFiltersBar": {
+      "priorityIs": "Prioritatea este",
+      "priority": "prioritate",
+      "statusIs": "Starea este",
+      "status": "starea",
+      "projectIs": "Proiectul este",
+      "project": "proiect",
+      "due": "Datorită",
+      "dueDate": "data scadentă",
+      "search": "caută",
+      "clearAll": "Ștergeți totul"
+    },
+    "componentsTasksFiltersDueDateFilter": {
+      "filterByDueDate": "Filtrați după data scadenței",
+      "customRange": "Interval personalizat",
+      "clear": "Clar",
+      "apply": "Aplicați"
+    },
+    "componentsTasksFiltersFilterDropdown": {
+      "filterBy": "Filtrați după..."
+    },
+    "componentsTasksFiltersFilterEmptyState": {
+      "activeFilters": "Filtre active: ",
+      "clearAllFilters": "Ștergeți toate filtrele"
+    },
+    "componentsTasksFiltersFilterPanelsDueDatePanel": {
+      "dueDate": "Data scadentă"
+    },
+    "componentsTasksFiltersFilterPanelsPriorityPanel": {
+      "priority": "Prioritate",
+      "is": "este",
+      "search": "Cauta...",
+      "selected": "selectat"
+    },
+    "componentsTasksFiltersFilterPanelsProjectPanel": {
+      "project": "Proiect",
+      "noProject": "Nici un proiect"
+    },
+    "componentsTasksFiltersFilterPanelsStatusPanel": {
+      "status": "Stare"
+    },
+    "componentsTasksFiltersFilterPanelsStatusProjectPickerPan": {
+      "status": "Stare",
+      "pickAProject": "Alege un proiect"
+    },
+    "componentsTasksFiltersMoreFiltersDropdown": {
+      "moreFilters": "Mai multe filtre",
+      "more": "Mai mult",
+      "status": "Stare",
+      "hasTimeSet": "Are timpul stabilit",
+      "recurringOnly": "Numai recurent",
+      "status2": "Stare"
+    },
+    "componentsTasksFiltersPriorityFilter": {
+      "filterByPriority": "Filtrați după prioritate",
+      "priority": "Prioritate"
+    },
+    "componentsTasksFiltersProjectFilter": {
+      "filterByProject": "Filtrați după proiect",
+      "project": "Proiect",
+      "allProjects": "Toate Proiectele",
+      "clear": "Clar"
+    },
+    "componentsTasksFiltersQuickFilters": {
+      "quickFilters": "Filtre rapide:"
+    },
+    "componentsTasksFiltersSaveFilterDialog": {
+      "saveFilter": "Salvați filtrul",
+      "saveYourCurrentFilterSettingsForQuickAccessLater": "Salvați setările curente ale filtrului pentru acces rapid mai târziu.",
+      "filterName": "Nume filtru",
+      "eGHighPriorityThisWeek": "de exemplu, prioritate mare în această săptămână",
+      "currentFilters": "Filtre curente:",
+      "noFiltersApplied": "Nu s-au aplicat filtre",
+      "cancel": "Anulează",
+      "saveFilter2": "Salvați filtrul"
+    },
+    "componentsTasksFiltersSavedFiltersDropdown": {
+      "savedFilters": "Filtre salvate",
+      "saved": "Salvat",
+      "noSavedFiltersYet": "Încă nu au fost salvate filtre",
+      "saveCurrentFilters": "Salvați filtrele curente",
+      "saveCurrentFilters2": "Salvați filtrele curente"
+    },
+    "componentsTasksFiltersSavedFiltersSection": {
+      "filterName": "Numele filtrului",
+      "saveFilter": "Salvați filtrul",
+      "save": "Salvați"
+    },
+    "componentsTasksFiltersSearchInput": {
+      "searchTasks": "Sarcini de căutare",
+      "clearSearch": "Ștergeți căutarea"
+    },
+    "componentsTasksKanbanKanbanColumn": {
+      "dropHere": "Aruncă aici",
+      "releaseToMoveTaskToThisColumn": "Eliberați pentru a muta sarcina în această coloană",
+      "moreCompleted": "mai completat",
+      "showFewer": "Arată mai puține",
+      "taskTitle": "Titlul sarcinii..."
+    },
+    "componentsTasksNaturalDateInput": {
+      "typeADateInNaturalLanguage": "Introduceți o dată în limbaj natural",
+      "select": "Selectați"
+    },
+    "componentsTasksParentTaskRow": {
+      "priority": "prioritate: "
+    },
+    "componentsTasksPrioritySelect": {
+      "selectPriority": "Selectați prioritate",
+      "navigate": "naviga",
+      "select": "selectați"
+    },
+    "componentsTasksProjectModal": {
+      "iconName": "Pictogramă și nume",
+      "selectIcon": "Selectați pictograma",
+      "projectName": "Numele proiectului",
+      "clickIconToChange": "Faceți clic pe pictogramă pentru a schimba",
+      "color": "Culoare",
+      "descriptionOptional": "Descriere (opțional)",
+      "briefDescriptionOfThisProject": "Scurtă descriere a acestui proiect...",
+      "statuses": "Statuturi",
+      "configureTheWorkflowStagesForThisProject": "Configurați etapele fluxului de lucru pentru acest proiect.",
+      "deleteProject": "Ștergeți proiectul",
+      "cancel": "Anulează",
+      "unsavedChanges": "Modificări nesalvate",
+      "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Aveți modificări nesalvate. Ești sigur că vrei să le renunți?",
+      "cancel2": "Anulează",
+      "discard": "Aruncă"
+    },
+    "componentsTasksProjectSelect": {
+      "selectProject": "Selectați proiectul",
+      "selectProject2": "Selectați proiectul"
+    },
+    "componentsTasksProjectsProjectSelector": {
+      "editProject": "Editați proiectul",
+      "archiveProject": "Proiect de arhivă",
+      "deleteProject": "Șterge proiectul",
+      "selectProject": "Selectați proiectul",
+      "noProjectsYet": "Niciun proiect încă",
+      "createProject": "Creați proiect"
+    },
+    "componentsTasksProjectsProjectsTabContent": {
+      "noProjectSelected": "Niciun proiect selectat",
+      "selectAProjectFromTheDropdownOrCreateANewOne": "Selectați un proiect din meniul derulant sau creați unul nou",
+      "createYourFirstProject": "Creează primul tău proiect"
+    },
+    "componentsTasksQuickAddQuickAddHelp": {
+      "quickAddShortcutsHelp": "Ajutor pentru adăugarea rapidă a comenzilor rapide",
+      "quickAddShortcuts": "Adăugare rapidă comenzi rapide",
+      "exampleBuyMilkTomorrowHighPersonal": "Exemplu: „Cumpărați lapte !mâine !!#personal”"
+    },
+    "componentsTasksQuickAddQuickOptionsBar": {
+      "quickOptions": "Opțiuni rapide:"
+    },
+    "componentsTasksQuickAddInput": {
+      "q": "Q",
+      "q2": "Q"
+    },
+    "componentsTasksRepeatIndicator": {
+      "of": "de ",
+      "completed": "finalizat"
+    },
+    "componentsTasksRepeatPicker": {
+      "selectRepeatFrequency": "Selectați frecvența de repetare",
+      "doesNotRepeat": "Nu se repeta",
+      "custom": "Personalizat..."
+    },
+    "componentsTasksStatusEditor": {
+      "changeStatusColor": "Schimbați culoarea stării",
+      "dragToReorder": "Trageți pentru a reordona",
+      "statusName": "Nume de stare",
+      "addStatus": "Adăugați starea"
+    },
+    "componentsTasksStatusSelect": {
+      "selectStatus": "Selectați starea",
+      "selectStatus2": "Selectați starea"
+    },
+    "componentsTasksStopRepeatingDialog": {
+      "stopRepeating": "Nu mai repeta",
+      "isSetToRepeat": "este setat să se repete ",
+      "whatWouldYouLikeToDo": "Ce ai vrea sa faci?",
+      "keepThisTaskStopFutureOccurrences": "Păstrați această sarcină, opriți aparițiile viitoare",
+      "taskWillBecomeAOneTimeTask": "Sarcina va deveni o sarcină unică",
+      "deleteThisAndAllFutureOccurrences": "Ștergeți aceasta și toate aparițiile viitoare",
+      "taskWillBeRemovedEntirely": "Sarcina va fi eliminată în întregime",
+      "cancel": "Anulează",
+      "confirm": "Confirmați"
+    },
+    "componentsTasksSubtaskDots": {
+      "of": "de ",
+      "subtasksComplete": "subsarcini finalizate (",
+      "clickTo": "Faceți clic pentru ",
+      "of2": "de ",
+      "subtasksComplete2": "subsarcinile finalizate",
+      "clickTo2": "Faceți clic pentru "
+    },
+    "componentsTasksSubtaskProgressBadge": {
+      "of": "de ",
+      "subtasksComplete": "subsarcini finalizate (",
+      "clickTo": "Faceți clic pentru "
+    },
+    "componentsTasksTaskBadges": {
+      "priority": "prioritate",
+      "repeatingTask": "Sarcina repetată",
+      "d": "d"
+    },
+    "componentsTasksTaskEmptyState": {
+      "addTask": "Adăugați o sarcină"
+    },
+    "componentsTasksTaskIcons": {
+      "noPriority": "nicio prioritate"
+    },
+    "componentsTasksTaskRepeatSection": {
+      "repeat": "Repetați",
+      "addRepeat": "Adăugați repetarea",
+      "edit": "Editați",
+      "edit2": "Editați",
+      "stopRepeating": "Nu mai repeta",
+      "stopRepeating2": "Nu mai repeta"
+    },
+    "componentsTasksTaskSection": {
+      "addTask": "Adăugați sarcină"
+    },
+    "componentsTasksTimePicker": {
+      "selectTime": "Selectați ora",
+      "selectTime2": "Selectați ora",
+      "clearTime": "Timp clar"
+    },
+    "componentsTasksTodayEmptyState": {
+      "nothingScheduledForToday": "Nimic programat pentru azi",
+      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "Aveți sarcini restante mai sus. Adăugați câteva sarcini pentru astăzi sau verificați lista viitoare.",
+      "addTaskForToday": "Adăugați sarcina pentru azi",
+      "allCaughtUpForToday": "Toate prinse pentru azi",
+      "youHaveNothingScheduledEnjoyTheClarity": "Nu ai nimic programat. Bucurați-vă de claritate.",
+      "addTaskForToday2": "Adăugați sarcina pentru azi"
+    },
+    "componentsTasksUpcomingEmptyState": {
+      "nothingScheduledForTheNext7Days": "Nimic programat pentru următoarele 7 zile",
+      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "Aveți sarcini restante mai sus. Planificați din timp adăugând sarcini pentru săptămâna viitoare.",
+      "addTask": "Adăugați sarcină",
+      "noUpcomingTasks": "Fără sarcini viitoare",
+      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Sarcinile datorate în următoarele 7 zile vor apărea aici. Planificați-vă săptămâna adăugând câteva sarcini.",
+      "addTask2": "Adăugați sarcină"
+    }
+  },
+  "phaseI": {
+    "toasts": {
+      "changesUndone": "Modificări anulate",
+      "projectNotFound": "Proiectul nu a fost găsit",
+      "failedToArchiveTasks": "Arhivarea sarcinilor a eșuat",
+      "tasksRestoredFromArchive": "Sarcinile restaurate din arhivă",
+      "subtaskAdded": "Subsarcina adăugată",
+      "subtaskDeleted": "Sarcina secundară a fost ștearsă",
+      "taskCompleted": "Sarcina finalizată",
+      "allSubtasksCompleteTaskMarkedAsDone": "🎉 Toate subsarcinile finalizate! Sarcina marcată ca finalizată.",
+      "taskReopened": "Sarcina redeschisă",
+      "taskKeptOpen": "Sarcina menținută deschisă",
+      "taskMarkedAsDone": "🎉 Sarcina marcată ca finalizată!"
+    },
+    "errors": {
+      "failedToArchiveTasks": "Arhivarea sarcinilor a eșuat",
+      "failedToAddSubtask": "Nu s-a putut adăuga o sarcină secundară",
+      "failedToAddSubtasks": "Nu s-au putut adăuga sarcini secundare",
+      "failedToReorderSubtasks": "Nu s-au reordonat subsarcinile",
+      "failedToPromoteSubtask": "Nu s-a putut promova sarcina secundară",
+      "failedToDeleteSubtask": "Nu s-a șters subsarcina",
+      "failedToDeleteTask": "Nu s-a putut șterge sarcina",
+      "failedToCompleteTask": "Sarcina nu a fost finalizată",
+      "failedToMakeSubtask": "Sarcina secundară a eșuat",
+      "failedToCompleteSubtasks": "Subsarcinile nu au fost finalizate",
+      "failedToMarkSubtasksIncomplete": "Nu s-au marcat subsarcinile incomplete",
+      "failedToSetDueDate": "Nu s-a stabilit data scadentă",
+      "failedToSetPriority": "Nu s-a putut seta prioritatea",
+      "failedToDeleteSubtasks": "Nu s-au șters subsarcinile",
+      "failedToLoadTaskPreferences": "Nu s-au încărcat preferințele sarcinilor",
+      "failedToUpdateTaskPreferences": "Nu s-au actualizat preferințele sarcinilor",
+      "failedToLoadLinkedTasks": "Nu s-au încărcat sarcinile conectate"
+    }
+  }
+}

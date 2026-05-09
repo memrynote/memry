@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "保存",
+    "cancel": "取消",
+    "close": "关闭",
+    "ok": "确定",
+    "yes": "是",
+    "no": "否",
+    "delete": "删除",
+    "confirm": "确认",
+    "apply": "应用",
+    "done": "完成",
+    "discard": "放弃",
+    "dontSave": "不保存",
+    "edit": "编辑",
+    "add": "添加",
+    "remove": "移除",
+    "retry": "重试",
+    "submit": "提交",
+    "back": "返回",
+    "next": "下一步",
+    "continue": "继续",
+    "reset": "重置",
+    "copy": "复制",
+    "paste": "粘贴",
+    "create": "创建",
+    "open": "打开"
+  },
+  "state": {
+    "loading": "加载中…",
+    "saving": "保存中…",
+    "deleting": "删除中…",
+    "searching": "搜索中…",
+    "error": "错误",
+    "success": "成功"
+  },
+  "empty": {
+    "noResults": "没有结果",
+    "noItems": "没有项目",
+    "noMatch": "没有匹配项"
+  },
+  "action": {
+    "search": "搜索",
+    "edit": "编辑",
+    "delete": "删除",
+    "close": "关闭",
+    "expand": "展开",
+    "collapse": "收起",
+    "showMore": "+{count, plural, one {# 更多} other {# 更多}}",
+    "showLess": "显示较少"
+  },
+  "tabs": {
+    "pin": "固定标签页",
+    "unpin": "取消固定标签页",
+    "contextMenu": {
+      "close": "关闭",
+      "closeOthers": "关闭其他",
+      "closeToRight": "关闭右侧",
+      "closeAll": "全部关闭",
+      "duplicate": "复制标签页",
+      "splitRight": "向右拆分",
+      "splitDown": "向下拆分",
+      "copyPath": "复制路径",
+      "revealInSidebar": "在侧边栏中显示"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {# 项} other {# 项目}}",
+    "note": "{count, plural, one {# 笔记} other {# 笔记集合}}",
+    "folder": "{count, plural, one {# 文件夹} other {# 文件夹集合}}",
+    "task": "{count, plural, one {# 任务} other {# 任务集合}}",
+    "project": "{count, plural, one {# 项目} other {# 项目集合}}",
+    "itemDelete": "{count, plural, one {删除 # 项} other {删除 # 项目}}"
+  },
+  "toast": {
+    "actionFailed": "操作失败",
+    "nothingToUndo": "没有可撤销操作",
+    "undone": "已撤销: {description}",
+    "undoFailed": "撤销操作失败",
+    "copied": "已复制",
+    "copyFailed": "复制失败"
+  },
+  "dateRelative": {
+    "today": "今天",
+    "yesterday": "昨天",
+    "daysAgo": "{count, plural, one {# 天前} other {# 天前}}"
+  },
+  "recurrence": {
+    "everyDay": "每天",
+    "everyNDays": "{count, plural, one {每天} other {每 # 天}}",
+    "everyWeek": "每周",
+    "everyNWeeks": "{count, plural, one {每周} other {每 # 周}}",
+    "everyWeekday": "每个工作日",
+    "everyNWeeksOnWeekdays": "{count, plural, one {每个工作日} other {每 # 周的工作日}}",
+    "everyWeekend": "每个周末",
+    "everyNWeeksOnWeekends": "{count, plural, one {每个周末} other {每 # 周的周末}}",
+    "everyWeekOnDays": "每周的 {days}",
+    "everyNWeeksOnDays": "{count, plural, one {每周的 {days}} other {每 # 周的 {days}}}",
+    "everyMonth": "每月",
+    "everyNMonths": "{count, plural, one {每月} other {每 # 月}}",
+    "everyMonthOnDay": "每月的 {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {每月的 {day}{suffix}} other {每 # 月的 {day}{suffix}}}",
+    "everyMonthOnWeekDay": "每月的 {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {每月的 {week} {day}} other {每 # 个月在 {week} {day}}}",
+    "everyYear": "每年",
+    "everyNYears": "{count, plural, one {每年} other {每 # 年}}",
+    "repeats": "重复"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "收藏",
+      "newNote": "新建笔记",
+      "newNote2": "新建笔记",
+      "newFolder": "新建文件夹",
+      "newFolder2": "新建文件夹",
+      "bookmarks": "书签",
+      "tags": "标签",
+      "dropFilesToImport": "拖放文件以导入",
+      "newNoteN": "新建笔记 (⌘N)",
+      "new": "新建",
+      "syncDisabled": "同步已禁用",
+      "syncDisabled2": "同步已禁用"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "调整日面板大小",
+      "dragToResizeDoubleClickToReset": "拖动以调整大小 · 双击重置"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "查找、替换、询问..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "跳过入门",
+      "welcomeToMemry": "欢迎使用 Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "您的个人知识库。让我们花 2 分钟帮您快速入门。",
+      "getStarted": "开始使用",
+      "createYourFirstNote": "创建您的第一条笔记",
+      "markdownBasedStoredLocallyAsPlainFiles": "基于 Markdown，本地以纯文件存储。",
+      "eGMeetingNotesIdeasAnything": "例如：会议记录、创意、任何内容...",
+      "skip": "跳过",
+      "createNote": "创建笔记 ",
+      "addYourFirstTask": "添加你的第一个任务",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "任务链接到你的笔记，包含优先级和截止日期。",
+      "eGReviewProjectProposal": "例如：审查项目提案...",
+      "skip2": "跳过",
+      "createTask": "创建任务 ",
+      "syncAcrossDevices": "跨设备同步",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "在所有设备上保持笔记和任务同步。你可以随时设置。",
+      "skipForNow": "暂不设置",
+      "doneLetSGo": "完成 — 开始吧！"
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "设置文件夹图标"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "提示"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "图标选择器",
+      "selectIcon": "选择图标",
+      "closeIconPicker": "关闭图标选择器",
+      "searchIcons": "搜索图标...",
+      "all": "全部",
+      "clearIcon": "清除图标",
+      "noIconsFoundFor": "未找到与 \" 匹配的图标"
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "键盘快捷键",
+      "closeShortcutsHelp": "关闭快捷键帮助",
+      "press": "按下",
+      "toClose": "以关闭"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "设置图标",
+      "clearIcon": "清除图标"
+    },
+    "componentsNavMain": {
+      "platform": "平台"
+    },
+    "componentsNavProjects": {
+      "projects": "项目",
+      "more": "更多",
+      "viewProject": "查看项目",
+      "shareProject": "分享项目",
+      "deleteProject": "删除项目",
+      "more2": "更多"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "升级到专业版",
+      "account": "账户",
+      "billing": "账单",
+      "notifications": "通知",
+      "logOut": "登出"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "搜索",
+      "searchNotesTasksJournalInbox": "搜索笔记、任务、日记、收件箱...",
+      "noResultsFor": "“ 未找到结果",
+      "rdquo": "rdquo;",
+      "result": "结果"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "搜索并点击项目以建立你的轨迹",
+      "reasons": "原因",
+      "clear": "清除"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "清除",
+      "tags": "标签",
+      "filterByTag": "按标签筛选...",
+      "dateRange": "日期范围"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "查看全部",
+      "results": "结果"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "模糊"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "没有打开的标签页",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "从侧边栏打开页面或创建新标签页以开始",
+      "openInbox": "打开收件箱",
+      "closePane": "关闭面板"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "布局预设",
+      "layoutPresets2": "布局预设"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "调整面板大小"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "任务上下文不可用",
+      "searchResults": "搜索结果",
+      "unknownTabType": "未知的标签类型："
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "未保存的更改",
+      "preview": "预览"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "新标签",
+      "newTab2": "新标签",
+      "newNote": "新笔记",
+      "journal": "日记",
+      "calendar": "日历",
+      "inboxCapture": "收件箱捕获",
+      "tasks": "任务"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "未保存的更改",
+      "unsaved": "未保存)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "未保存的更改"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "关闭所有标签"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "打开的标签",
+      "scrollTabsLeft": "向左滚动标签",
+      "scrollTabsRight": "向右滚动标签",
+      "graphG": "图表 (⌘G)",
+      "dayPanel": "日程面板"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "向左滚动标签",
+      "scrollTabsRight": "向右滚动标签"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "打开的标签",
+      "scrollTabsLeft": "向左滚动标签",
+      "scrollTabsRight": "向右滚动标签"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "发生错误",
+      "anErrorOccurredWhileRenderingThisTabContent": "渲染此标签内容时发生错误。",
+      "tryAgain": "重试"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "笔记图标"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "未保存的更改",
+      "quot": "“",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "“有未保存的更改。您想怎么做？"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "新工作区",
+      "darkMode": "深色模式",
+      "settings": "设置",
+      "integrations": "集成",
+      "signOut": "登出",
+      "downloadOnIos": "iOS 下载"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "关闭窗口",
+      "minimizeWindow": "最小化窗口",
+      "maximizeWindow": "最大化窗口"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "建议",
+      "or": "或者",
+      "enter": "回车",
+      "toInsert": "插入"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "面包屑导航",
+      "more": "更多"
+    },
+    "componentsUiDialog": {
+      "close": "关闭"
+    },
+    "componentsUiSheet": {
+      "close": "关闭"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "侧边栏",
+      "displaysTheMobileSidebar": "显示移动侧边栏。",
+      "toggleSidebar": "切换侧边栏",
+      "toggleSidebar2": "切换侧边栏",
+      "dragToResizeDoubleClickToReset": "拖动以调整大小 · 双击重置"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "欢迎使用 Memry",
+      "yourPersonalKnowledgeManagementSystem": "您的个人知识管理系统。",
+      "selectAFolderToStoreYourNotesAndTasks": "选择一个文件夹来存储您的笔记和任务。",
+      "opening": "正在打开...",
+      "selectVaultFolder": "选择保险库文件夹",
+      "plainMarkdown": "纯 Markdown",
+      "yourNotesStayPortable": "您的笔记保持可携带性",
+      "syncAnywhere": "随时同步",
+      "useDropboxIcloudGit": "使用 Dropbox、iCloud、Git",
+      "recentVaults": "最近的保险库",
+      "notesLastOpened": "笔记 · 上次打开"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "尚无保险库",
+      "openVault": "打开保险库",
+      "settings": "设置",
+      "logOut": "登出",
+      "signInToSync": "登录以同步",
+      "remove": "移除",
+      "rdquoFromList": "从列表中删除？",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "此保险库将从应用中移除，但您的文件仍会保存在磁盘上。您以后可以随时重新添加。",
+      "cancel": "取消",
+      "remove2": "移除"
+    },
+    "componentsWindowControls": {
+      "searchK": "搜索 (⌘K)",
+      "browserBack": "浏览器后退",
+      "back": "返回",
+      "browserForward": "浏览器前进",
+      "forward": "前进"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "文件导入失败",
+      "failedToCreateNote": "创建笔记失败",
+      "failedToAccessMicrophone": "无法访问麦克风"
+    },
+    "toasts": {
+      "undone": "撤销"
+    }
+  }
+}

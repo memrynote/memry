@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "Araw",
+    "week": "Linggo",
+    "month": "buwan",
+    "year": "taon"
+  },
+  "toolbar": {
+    "create-event": "Lumikha ng kaganapan",
+    "previous-period": "Nakaraang panahon",
+    "next-period": "Susunod na panahon",
+    "previous-month": "Nakaraang buwan",
+    "next-month": "Sa susunod na buwan",
+    "today": "Ngayong araw"
+  },
+  "filter": {
+    "filter-calendars": "I-filter ang mga kalendaryo",
+    "sources": "Mga pinagmumulan",
+    "memry-items": "Memry item",
+    "imported-calendars": "Mga na-import na kalendaryo",
+    "event-types": "Mga uri ng kaganapan",
+    "google-calendars": "Mga kalendaryo ng Google",
+    "refresh-google-calendars": "I-refresh ang mga kalendaryo ng Google"
+  },
+  "visual-type": {
+    "event": "Kaganapan",
+    "imported-event": "Na-import na kaganapan",
+    "task": "Gawain",
+    "reminder": "Paalala",
+    "snooze": "I-snooze"
+  },
+  "state": {
+    "loading-calendar": "Nilo-load ang kalendaryo…",
+    "loading-calendars": "Nilo-load ang mga kalendaryo…",
+    "preparing": "Inihahanda…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "Wala pang na-import na kalendaryo.",
+    "no-events": "Walang mga kaganapan"
+  },
+  "time": {
+    "all-day": "Buong araw",
+    "all-day-lower": "buong araw",
+    "pick-a-date": "Pumili ng petsa",
+    "new-event": "Bagong Kaganapan",
+    "more-events": "{count, plural, one {# pang event} other {# pang event}}"
+  },
+  "form": {
+    "create-calendar-event": "Lumikha ng kaganapan sa kalendaryo",
+    "edit-calendar-event": "I-edit ang kaganapan sa kalendaryo",
+    "quick-create-description": "Maglagay ng pamagat at i-save para gumawa ng kaganapan sa napiling hanay ng oras.",
+    "event-editor-description": "I-update ang pamagat, lokasyon, petsa, oras, at mga tala para sa kaganapang ito.",
+    "new-event-placeholder": "Bagong Kaganapan",
+    "location-placeholder": "Magdagdag ng lokasyon",
+    "notes-url-placeholder": "Magdagdag ng mga tala o URL",
+    "start": "Magsimula",
+    "end": "Tapusin",
+    "add-details": "Magdagdag ng mga detalye",
+    "google-calendar": "Google kalendaryo",
+    "target-calendar": "Target na kalendaryo",
+    "use-default-calendar": "Gamitin ang default na kalendaryo",
+    "use-default-calendar-with-name": "Gamitin ang default ({calendar})",
+    "use-memry-calendar-default": "Gamitin ang Memry na kalendaryo (default)",
+    "use-memry-managed-calendar": "Gamitin ang Memry na pinamamahalaang kalendaryo",
+    "primary-suffix": "pangunahin"
+  },
+  "delete-dialog": {
+    "title": "Tanggalin ang kaganapan?",
+    "local-description": "Ang \"{title}\" ay permanenteng tatanggalin. Ang pagkilos na ito ay hindi maaaring i-undo.",
+    "google-bound-description": "Aalisin ang \"{title}\" sa Memry at Google Calendar. Ang pagkilos na ito ay hindi maaaring i-undo.",
+    "context-menu-delete-label": "Tanggalin ang kaganapan"
+  },
+  "promote-dialog": {
+    "aria": "I-edit ang panlabas na kaganapan sa kalendaryo",
+    "title": "I-edit ang kaganapang ito sa Memry?",
+    "body": "Ang pag-edit sa kaganapang ito ay lilikha ng naka-link na kopya sa Memry kaya ang mga pagbabago ay nagsi-sync sa parehong paraan. Magpatuloy?",
+    "do-not-ask-again": "Wag ka nang magtanong ulit",
+    "confirm-label": "I-edit sa Memry"
+  },
+  "onboarding-dialog": {
+    "aria": "Piliin ang iyong default na kalendaryo ng Google",
+    "title": "Aling kalendaryo dapat pumunta sa mga bagong kaganapan sa Memry?",
+    "body": "Piliin ang Google calendar na dapat gamitin ng Memry bilang default. Maaari mo pa rin itong i-override sa bawat kaganapan.",
+    "default-calendar-label": "Gamitin ang Memry na pinamamahalaang kalendaryo",
+    "skip": "Laktawan",
+    "use-this-calendar": "Gamitin ang kalendaryong ito"
+  },
+  "metadata": {
+    "attendees": "Mga dadalo",
+    "attendees-count": "Mga Dadalo ({count})",
+    "reminders": "Mga paalala",
+    "default-reminders": "Mga default na paalala",
+    "visibility": "Visibility:",
+    "optional": "Opsyonal",
+    "join-meeting": "Sumali sa pulong",
+    "response": {
+      "accepted": "Tinanggap",
+      "declined": "Tinanggihan",
+      "tentative": "Pansamantala",
+      "needs-action": "Nakabinbin"
+    },
+    "visibility-value": {
+      "private": "Pribado",
+      "public": "Pampubliko",
+      "confidential": "Kumpidensyal"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "min · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "Hindi ma-save ang kaganapan. Subukan muli.",
+      "couldNotCreateEventTryAgain": "Hindi makalikha ng kaganapan. Subukan muli.",
+      "couldNotSaveDefaultCalendarTryAgain": "Hindi ma-save ang default na kalendaryo. Subukan muli.",
+      "failedToLoadCalendarPreferences": "Nabigong i-load ang mga kagustuhan sa kalendaryo",
+      "failedToUpdateCalendarPreferences": "Nabigong i-update ang mga kagustuhan sa kalendaryo",
+      "couldNotEditThisEventTryAgain": "Hindi ma-edit ang kaganapang ito. Subukan muli.",
+      "failedToDeleteEvent": "Nabigong tanggalin ang kaganapan",
+      "couldNotUnsnoozeInboxItem": "Hindi ma-unsnooze.",
+      "couldNotRescheduleInboxItem": "Hindi ma-reschedule."
+    },
+    "inboxSnoozePopover": {
+      "title": "Naka-snooze na item sa inbox",
+      "openInInbox": "Buksan sa inbox",
+      "unsnoozeNow": "I-unsnooze ngayon",
+      "reschedule": "Mag-reschedule"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "Mga detalye ng gawain",
+    "open-task": "Buksan ang gawain",
+    "source-note": "Tala ng pinagmulan",
+    "reschedule": "Mag-reschedule",
+    "more-actions": "Higit pang mga aksyon",
+    "mark-done": "Mark tapos na",
+    "mark-not-done": "Hindi pa tapos si Mark",
+    "later-today": "Mamaya ngayong araw",
+    "tomorrow": "Bukas",
+    "next-week": "Sa susunod na linggo",
+    "next-week-mon": "Sa susunod na linggo · Lun",
+    "pick-date-time": "Pumili ng petsa at oras…",
+    "remove-due-date": "Alisin ang takdang petsa",
+    "subtasks-prefix": "Mga subtask",
+    "subtasks-counter": "Tapos na ang {done} ng {total}",
+    "today": "Ngayong araw",
+    "overdue-one": "1 araw na overdue",
+    "overdue-other": "{count} araw na overdue",
+    "repeats": "Inuulit",
+    "repeats-daily": "Umuulit araw-araw",
+    "repeats-weekly": "Umuulit linggu-linggo",
+    "repeats-monthly": "Umuulit buwan-buwan",
+    "repeats-yearly": "Umuulit taun-taon",
+    "priority-urgent": "Urgent",
+    "priority-high": "Mataas",
+    "priority-medium": "Katamtaman",
+    "errors": {
+      "could-not-save": "Hindi ma-save ang gawain",
+      "could-not-reschedule": "Hindi ma-reschedule ang gawain",
+      "could-not-remove-due-date": "Hindi maalis ang takdang petsa",
+      "could-not-open-note": "Hindi mabuksan ang tala"
+    }
+  }
+}

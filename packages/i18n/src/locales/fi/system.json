@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "Valitse Holvikansio",
+      "button": "Valitse Holvi"
+    },
+    "exportPdf": {
+      "title": "Vie PDF-muodossa",
+      "filterName": "PDF-dokumentti"
+    },
+    "exportHtml": {
+      "title": "Vie HTML-muodossa",
+      "filterName": "HTML-dokumentti"
+    },
+    "import": {
+      "filterSupported": "Tuetut tiedostot",
+      "filterAll": "Kaikki tiedostot"
+    },
+    "exportCancelled": "Vienti peruttu",
+    "update": {
+      "availableTitle": "Päivitys saatavilla",
+      "availableMessage": "Memry {version} on saatavilla.",
+      "availableDetailFallback": "Lataa päivitys nyt?",
+      "buttonDownload": "Lataa",
+      "buttonLater": "Myöhemmin",
+      "readyTitle": "Päivitys valmis",
+      "readyMessage": "Memry {version} on ladattu.",
+      "readyDetailFallback": "Viimeistele päivityksen asennus käynnistämällä Memry uudelleen.",
+      "buttonRestartNow": "Käynnistä nyt uudelleen",
+      "releaseNotesLabel": "Julkaisutiedot:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "Huomautus muistutus",
+      "journal": "Päiväkirjan muistutus",
+      "highlight": "Korosta muistutus",
+      "fallback": "Muistutus erääntyy",
+      "default": "Muistutus"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "Muistutusajan tulee olla tulevaisuudessa",
+    "definitionNotFound": "Määritelmää ei löydy",
+    "noteNotFound": "Huomautusta ei löydy",
+    "updateFailed": "Päivitys epäonnistui"
+  }
+}

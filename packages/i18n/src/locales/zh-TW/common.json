@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "儲存",
+    "cancel": "取消",
+    "close": "關閉",
+    "ok": "確定",
+    "yes": "是",
+    "no": "否",
+    "delete": "刪除",
+    "confirm": "確認",
+    "apply": "應用",
+    "done": "完成",
+    "discard": "捨棄",
+    "dontSave": "不儲存",
+    "edit": "編輯",
+    "add": "新增",
+    "remove": "移除",
+    "retry": "重試",
+    "submit": "提交",
+    "back": "返回",
+    "next": "下一步",
+    "continue": "繼續",
+    "reset": "重設",
+    "copy": "複製",
+    "paste": "貼上",
+    "create": "建立",
+    "open": "打開"
+  },
+  "state": {
+    "loading": "載入中…",
+    "saving": "儲存中…",
+    "deleting": "刪除中…",
+    "searching": "搜尋中…",
+    "error": "錯誤",
+    "success": "成功"
+  },
+  "empty": {
+    "noResults": "無結果",
+    "noItems": "無項目",
+    "noMatch": "無匹配項"
+  },
+  "action": {
+    "search": "搜尋",
+    "edit": "編輯",
+    "delete": "刪除",
+    "close": "關閉",
+    "expand": "展開",
+    "collapse": "收合",
+    "showMore": "+{count, plural, one {# 更多} other {# 更多}}",
+    "showLess": "顯示較少"
+  },
+  "tabs": {
+    "pin": "固定標籤",
+    "unpin": "取消固定標籤",
+    "contextMenu": {
+      "close": "關閉",
+      "closeOthers": "關閉其他",
+      "closeToRight": "關閉右側",
+      "closeAll": "全部關閉",
+      "duplicate": "複製標籤",
+      "splitRight": "向右拆分",
+      "splitDown": "向下拆分",
+      "copyPath": "複製路徑",
+      "revealInSidebar": "在側邊欄顯示"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {# 項目} other {# 項目(複數)}}",
+    "note": "{count, plural, one {# 筆記} other {# 筆記(複數)}}",
+    "folder": "{count, plural, one {# 資料夾} other {# 資料夾(複數)}}",
+    "task": "{count, plural, one {# 任務} other {# 任務(複數)}}",
+    "project": "{count, plural, one {# 專案} other {# 專案(複數)}}",
+    "itemDelete": "{count, plural, one {刪除 # 項目} other {刪除 # 項目(複數)}}"
+  },
+  "toast": {
+    "actionFailed": "操作失敗",
+    "nothingToUndo": "無可復原操作",
+    "undone": "已復原: {description}",
+    "undoFailed": "無法撤銷操作",
+    "copied": "已複製",
+    "copyFailed": "複製失敗"
+  },
+  "dateRelative": {
+    "today": "今天",
+    "yesterday": "昨天",
+    "daysAgo": "{count, plural, one {# 天前} other {# 天前}}"
+  },
+  "recurrence": {
+    "everyDay": "每天",
+    "everyNDays": "{count, plural, one {每天} other {每 # 天}}",
+    "everyWeek": "每週",
+    "everyNWeeks": "{count, plural, one {每週} other {每 # 週}}",
+    "everyWeekday": "每個工作日",
+    "everyNWeeksOnWeekdays": "{count, plural, one {每個工作日} other {每 # 週的工作日}}",
+    "everyWeekend": "每個週末",
+    "everyNWeeksOnWeekends": "{count, plural, one {每個週末} other {每 # 週的週末}}",
+    "everyWeekOnDays": "每週 {days}",
+    "everyNWeeksOnDays": "{count, plural, one {每週 {days}} other {每 # 週的 {days}}}",
+    "everyMonth": "每月",
+    "everyNMonths": "{count, plural, one {每月} other {每 # 個月}}",
+    "everyMonthOnDay": "每月在 {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {每月在 {day}{suffix}} other {每 # 個月在 {day}{suffix}}}",
+    "everyMonthOnWeekDay": "每月在 {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {每月在 {week} {day}} other {每隔 # 個月在 {week} {day}}}",
+    "everyYear": "每年",
+    "everyNYears": "{count, plural, one {每年} other {每 # 年}}",
+    "repeats": "重複"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "收藏",
+      "newNote": "新筆記",
+      "newNote2": "新筆記",
+      "newFolder": "新資料夾",
+      "newFolder2": "新資料夾",
+      "bookmarks": "書籤",
+      "tags": "標籤",
+      "dropFilesToImport": "拖放檔案以匯入",
+      "newNoteN": "新筆記 (⌘N)",
+      "new": "新增",
+      "syncDisabled": "同步已停用",
+      "syncDisabled2": "同步已停用"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "調整每日面板大小",
+      "dragToResizeDoubleClickToReset": "拖曳以調整大小·雙擊重置"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "搜尋、取代、詢問..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "跳過入門",
+      "welcomeToMemry": "歡迎使用 Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "你的個人知識庫。花兩分鐘開始使用。",
+      "getStarted": "開始使用",
+      "createYourFirstNote": "建立你的第一則筆記",
+      "markdownBasedStoredLocallyAsPlainFiles": "基於 Markdown，本地儲存為純文字檔案。",
+      "eGMeetingNotesIdeasAnything": "例如：會議紀錄、想法、任何內容...",
+      "skip": "跳過",
+      "createNote": "建立筆記",
+      "addYourFirstTask": "新增你的第一個任務",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "任務與你的筆記相關聯，包含優先順序和到期日期。",
+      "eGReviewProjectProposal": "e.g. 審查專案提案...",
+      "skip2": "跳過",
+      "createTask": "建立任務",
+      "syncAcrossDevices": "跨裝置同步",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "在所有裝置上保持筆記和任務同步。你可以隨時稍後設置。",
+      "skipForNow": "暫時跳過",
+      "doneLetSGo": "完成 — 開始吧！"
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "設置資料夾圖示"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "提示"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "圖示選擇器",
+      "selectIcon": "選取圖示",
+      "closeIconPicker": "關閉圖示選擇器",
+      "searchIcons": "搜尋圖示...",
+      "all": "全部",
+      "clearIcon": "清除圖示",
+      "noIconsFoundFor": "找不到「"
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "鍵盤快速鍵",
+      "closeShortcutsHelp": "關閉快速鍵說明",
+      "press": "按下",
+      "toClose": "以關閉"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "設置圖示",
+      "clearIcon": "清除圖示"
+    },
+    "componentsNavMain": {
+      "platform": "平台"
+    },
+    "componentsNavProjects": {
+      "projects": "專案",
+      "more": "更多",
+      "viewProject": "查看專案",
+      "shareProject": "分享專案",
+      "deleteProject": "刪除專案",
+      "more2": "更多"
+    },
+    "componentsNavUser": {
+      "cn": "中國",
+      "cn2": "中國",
+      "upgradeToPro": "升級到專業版",
+      "account": "帳戶",
+      "billing": "帳單",
+      "notifications": "通知",
+      "logOut": "登出"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "搜尋",
+      "searchNotesTasksJournalInbox": "搜尋筆記、任務、日誌、收件箱...",
+      "noResultsFor": "未找到“",
+      "rdquo": "rdquo;",
+      "result": "結果"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "搜尋並點擊項目以建立你的足跡",
+      "reasons": "原因",
+      "clear": "清除"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "清除",
+      "tags": "標籤",
+      "filterByTag": "按標籤篩選...",
+      "dateRange": "日期範圍"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "查看全部",
+      "results": "結果"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "模糊"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "沒有打開的分頁",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "從側邊欄打開一個頁面或創建一個新分頁以開始",
+      "openInbox": "打開收件箱",
+      "closePane": "關閉窗格"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "版面預設",
+      "layoutPresets2": "版面預設"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "調整窗格大小"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "任務上下文不可用",
+      "searchResults": "搜尋結果",
+      "unknownTabType": "未知的分頁類型："
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "未儲存的變更",
+      "preview": "預告"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "新分頁",
+      "newTab2": "新分頁",
+      "newNote": "新筆記",
+      "journal": "期刊",
+      "calendar": "賽程表",
+      "inboxCapture": "收件匣擷取",
+      "tasks": "任務"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "未儲存的變更",
+      "unsaved": "未儲存）"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "未儲存的變更"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "關閉所有分頁"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "開啟分頁",
+      "scrollTabsLeft": "左捲動分頁",
+      "scrollTabsRight": "右捲動分頁",
+      "graphG": "圖 （⌘G）",
+      "dayPanel": "日間座談會"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "左捲動分頁",
+      "scrollTabsRight": "右捲動分頁"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "開啟分頁",
+      "scrollTabsLeft": "左捲動分頁",
+      "scrollTabsRight": "右捲動分頁"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "出了問題",
+      "anErrorOccurredWhileRenderingThisTabContent": "在渲染這個分頁內容時發生了錯誤。",
+      "tryAgain": "再試一次"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "筆記圖示"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "未儲存的變更",
+      "quot": "「」",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "「」有未儲存的變更。你想做什麼？"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "新工作空間",
+      "darkMode": "暗黑模式",
+      "settings": "場景設定",
+      "integrations": "整合",
+      "signOut": "登出",
+      "downloadOnIos": "在 iOS 下載"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "關閉視窗",
+      "minimizeWindow": "最小化視窗",
+      "maximizeWindow": "最大化視窗"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "建議",
+      "or": "或",
+      "enter": "按下 Enter",
+      "toInsert": "來插入"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "麵包屑",
+      "more": "更多"
+    },
+    "componentsUiDialog": {
+      "close": "關閉"
+    },
+    "componentsUiSheet": {
+      "close": "關閉"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "側邊欄",
+      "displaysTheMobileSidebar": "顯示行動側邊欄。",
+      "toggleSidebar": "切換側邊欄",
+      "toggleSidebar2": "切換側邊欄",
+      "dragToResizeDoubleClickToReset": "拖曳以調整大小·雙擊重置"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "歡迎使用 Memry",
+      "yourPersonalKnowledgeManagementSystem": "你的個人知識管理系統。",
+      "selectAFolderToStoreYourNotesAndTasks": "選擇資料夾以儲存你的筆記和任務。",
+      "opening": "正在開啟...",
+      "selectVaultFolder": "選擇保險庫資料夾",
+      "plainMarkdown": "純 Markdown",
+      "yourNotesStayPortable": "你的筆記保持可攜式",
+      "syncAnywhere": "隨處同步",
+      "useDropboxIcloudGit": "使用 Dropbox、iCloud、Git",
+      "recentVaults": "最近的保險庫",
+      "notesLastOpened": "筆記 · 上次開啟"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "尚無保險庫",
+      "openVault": "開啟保險庫",
+      "settings": "場景設定",
+      "logOut": "登出",
+      "signInToSync": "登入以同步",
+      "remove": "移除 “",
+      "rdquoFromList": "從列表中移除？",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "此保險庫將從應用程式中移除，但您的檔案仍會保留在磁碟上。您隨時可以重新添加。",
+      "cancel": "取消",
+      "remove2": "移除"
+    },
+    "componentsWindowControls": {
+      "searchK": "搜尋 (⌘K)",
+      "browserBack": "瀏覽器返回",
+      "back": "返回",
+      "browserForward": "瀏覽器前進",
+      "forward": "前進"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "導入檔案失敗",
+      "failedToCreateNote": "建立筆記失敗",
+      "failedToAccessMicrophone": "無法訪問麥克風"
+    },
+    "toasts": {
+      "undone": "已復原"
+    }
+  }
+}

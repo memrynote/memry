@@ -1,0 +1,663 @@
+{
+  "page": {
+    "empty": {
+      "title": "Примечание не выбрано",
+      "body": "Выберите заметку на боковой панели, чтобы просмотреть ее."
+    },
+    "error": {
+      "title": "Не удалось загрузить заметку"
+    },
+    "toast": {
+      "cannotSaveDeleted": "Невозможно сохранить - заметка удалена",
+      "cannotRenameDeleted": "Невозможно переименовать - заметка удалена",
+      "createLinkedFailed": "Не удалось создать связанную заметку.",
+      "openLinkedFailed": "Не удалось открыть связанный элемент",
+      "localOnly": "Примечание установлено только локально",
+      "willSync": "Заметка будет синхронизирована с облаком",
+      "saveFailed": "Не удалось сохранить заметку.",
+      "renameFailed": "Не удалось переименовать заметку.",
+      "toggleLocalOnlyFailed": "Не удалось переключить только локальный режим.",
+      "toggleFullWidthFailed": "Не удалось переключить полную ширину."
+    },
+    "deleteDialogTitle": "{count, plural, one {Удалить заметку} other {Удалить заметки #}}"
+  },
+  "tree": {
+    "aria": {
+      "tree": "Дерево заметок",
+      "openFolderView": "Открыть папку"
+    },
+    "empty": {
+      "title": "Пока нет заметок",
+      "body": "Создайте заметку, чтобы начать",
+      "newNote": "Новая заметка"
+    },
+    "loadingError": "Не удалось загрузить заметки.",
+    "actions": {
+      "newNote": "Новая заметка",
+      "newFolder": "Новая папка",
+      "rename": "Переименовать",
+      "openExternal": "Открыть во внешнем редакторе",
+      "revealInFinder": "Показать в Finder",
+      "setDefaultTemplate": "Установить шаблон по умолчанию",
+      "clearDefaultTemplate": "Очистить шаблон по умолчанию",
+      "setIcon": "Установить значок",
+      "removeIcon": "Удалить значок",
+      "deleteSelectedNotes": "Удалить заметки {count}",
+      "deleteSelectedItems": "Удалить элементы {count}"
+    },
+    "deleteDialog": {
+      "noteTitle": "Удалить заметку",
+      "folderTitle": "Удалить папку",
+      "itemsTitle": "Удалить элементы {count}",
+      "noteBody": "Вы уверены, что хотите удалить «{name}»? Это действие невозможно отменить.",
+      "folderBody": "Вы уверены, что хотите удалить «{name}» и все заметки внутри него? Это действие невозможно отменить.",
+      "itemsBody": "Вы уверены, что хотите удалить элементы {count}? Это действие невозможно отменить.",
+      "folderSuffix": "папка",
+      "moreItems": "...и {count} еще",
+      "deleting": "Удаление...",
+      "deleteCount": "Удалить {count}"
+    }
+  },
+  "editor": {
+    "title": {
+      "untitled": "Без названия",
+      "aria": "Название заметки"
+    },
+    "content": {
+      "placeholder": "Начните писать или нажмите «/» для команд...",
+      "regionAria": "Редактор заметок",
+      "richTextAria": "Редактор расширенного текста",
+      "headingPlaceholder": "Заголовок",
+      "listPlaceholder": "Элемент списка",
+      "todoPlaceholder": "Задача"
+    },
+    "toolbar": {
+      "reminderSet": "Напоминание установлено",
+      "setReminder": "Установить напоминание",
+      "removeBookmark": "Удалить закладку",
+      "addBookmark": "Добавить закладку",
+      "hideLocalGraph": "Скрыть локальный график",
+      "showLocalGraph": "Показать локальный график",
+      "versionHistory": "История версий",
+      "export": "Экспорт",
+      "fullWidth": "Полная ширина",
+      "disableLocalOnly": "Отключить только локально",
+      "setLocalOnly": "Установить только локально"
+    },
+    "breadcrumb": {
+      "locationAria": "Примечание местоположения",
+      "parentFolderAria": "Перейти в родительскую папку"
+    },
+    "errorBoundary": {
+      "title": "Ошибка редактора",
+      "body": "Редактор обнаружил ошибку. Содержимое вашей заметки безопасно.",
+      "technicalDetails": "Технические детали",
+      "reloadAria": "Перезагрузить редактор",
+      "reload": "Перезагрузить редактор"
+    },
+    "callout": {
+      "title": "Выноска",
+      "group": "Базовые блоки",
+      "subtext": "Выделите важную информацию",
+      "changeType": "Изменить тип уточнения",
+      "menuLabel": "Тип выноски",
+      "info": "Информация",
+      "warning": "Предупреждение",
+      "error": "Ошибка",
+      "success": "Успех"
+    }
+  },
+  "menus": {
+    "wiki": {
+      "aria": "Обратите внимание на предложения",
+      "loading": "Загрузка заметок...",
+      "empty": "Заметки не найдены",
+      "create": "Создать новую заметку"
+    },
+    "tags": {
+      "aria": "Предложения по тегам",
+      "loading": "Загрузка тегов...",
+      "empty": "Введите, чтобы создать новый тег",
+      "create": "Создать #{tag}"
+    },
+    "pasteLink": {
+      "title": "Вставить как",
+      "url": "URL-адрес",
+      "mention": "Упоминание",
+      "embedVideo": "Вставить видео"
+    },
+    "emoji": {
+      "aria": "Выбор эмодзи и значков",
+      "emojiTab": "Эмодзи",
+      "iconsTab": "Иконки",
+      "searchPlaceholder": "Поиск",
+      "noIcons": "Значки не найдены",
+      "clearSearch": "Очистить поиск"
+    }
+  },
+  "detail": {
+    "bodyPlaceholder": "Напишите свою заметку..."
+  },
+  "outline": {
+    "title": "Схема",
+    "aria": "Схема документа",
+    "empty": "Нет заголовков",
+    "emptyYet": "Заголовков пока нет",
+    "readTime": "{count} минута чтения",
+    "words": "{count} слов",
+    "created": "Создано",
+    "modified": "Модифицированный"
+  },
+  "backlinks": {
+    "title": "Обратные ссылки",
+    "sortRecent": "Недавние",
+    "sortAlpha": "А-Я",
+    "sortMentions": "Наибольшее количество упоминаний",
+    "sortBy": "Сортировка обратных ссылок по {sort}",
+    "summary": "Примечания к {notes} · Ссылки на {references}",
+    "sectionAria": "Обратные ссылки",
+    "listAria": "Список обратных ссылок",
+    "fromAria": "Обратные ссылки от {title}",
+    "collapse": "Свернуть",
+    "expand": "Развернуть",
+    "collapseSection": "Свернуть раздел обратных ссылок",
+    "expandSection": "Развернуть раздел обратных ссылок",
+    "showMore": "Показать {count} больше обратных ссылок",
+    "more": "{count} подробнее"
+  },
+  "tagsRow": {
+    "aria": "Теги",
+    "empty": "Добавить теги",
+    "add": "Добавить тег",
+    "removeAria": "Удалить тег: {tag}",
+    "inputPlaceholder": "Введите имя тега...",
+    "recent": "Недавние",
+    "matching": "Соответствие",
+    "all": "Все теги",
+    "none": "Теги не найдены",
+    "createTag": "Создать тег: \"{tag}\"",
+    "chooseColor": "Выберите цвет:",
+    "preview": "Предварительный просмотр:",
+    "colorAria": "Выберите цвет {color}"
+  },
+  "properties": {
+    "title": "Свойства",
+    "noteAria": "Свойства заметки",
+    "workspaceAria": "Свойства рабочей области",
+    "listAria": "Список свойств",
+    "add": "Добавить недвижимость",
+    "addDescription": "Добавить новое свойство в эту заметку",
+    "namePlaceholder": "Имя свойства",
+    "nameAria": "Имя свойства",
+    "typeSection": "Тип",
+    "empty": "Пустой",
+    "dragAria": "Перетащите, чтобы изменить порядок свойств",
+    "editName": "Изменить название свойства",
+    "delete": "Удалить свойство",
+    "searchOptions": "Варианты поиска...",
+    "noOptions": "Пока нет вариантов",
+    "optionName": "Название опции",
+    "newOption": "Новая опция",
+    "ratingAria": "Рейтинг",
+    "openUrlAria": "Открыть URL-адрес",
+    "types": {
+      "text": "Текст",
+      "number": "Номер",
+      "date": "Дата",
+      "checkbox": "Флажок",
+      "url": "URL-адрес",
+      "status": "Статус",
+      "select": "Выбрать",
+      "multiselect": "Мультивыбор"
+    }
+  },
+  "templateSelector": {
+    "title": "Выберите свой холст",
+    "description": "Выберите шаблон, чтобы начать заметку",
+    "searchPlaceholder": "Поиск шаблонов...",
+    "loading": "Загрузка шаблонов...",
+    "empty": "Шаблоны не найдены",
+    "myTemplates": "Мои шаблоны",
+    "essentials": "Основы",
+    "setFolderDefault": "Установить папку по умолчанию",
+    "useTemplate": "Использовать шаблон",
+    "createNote": "Создать заметку"
+  },
+  "exportDialog": {
+    "title": "Экспортировать примечание",
+    "description": "Экспортировать «{title}» в файл.",
+    "format": "Формат",
+    "pdfDescription": "Готовый к печати документ",
+    "htmlDescription": "Готовый к использованию файл",
+    "pageSize": "Размер страницы",
+    "selectPageSize": "Выберите размер страницы",
+    "options": "Опции",
+    "includeMetadata": "Включить метаданные (теги, даты)",
+    "exporting": "Экспорт...",
+    "exported": "Экспортировано!",
+    "export": "Экспорт",
+    "toast": {
+      "failed": "Экспорт не удался"
+    }
+  },
+  "versionHistory": {
+    "title": "История версий",
+    "description": "Просмотр и восстановление предыдущих версий «{title}»",
+    "hidePreview": "Скрыть предварительный просмотр",
+    "showPreview": "Показать предварительный просмотр",
+    "empty": "Версии еще не сохранены",
+    "emptyDescription": "Версии сохраняются автоматически при внесении существенных изменений.",
+    "latest": "Последние",
+    "autoSaved": "Автосохранено",
+    "words": "{count} слов",
+    "selectPrompt": "Выберите версию для предварительного просмотра",
+    "restore": "Восстановить",
+    "deleteTitle": "Удалить эту версию?",
+    "deleteDescription": "Это действие невозможно отменить. Эта версия будет удалена навсегда.",
+    "restoreTitle": "Восстановить эту версию?",
+    "restoreDescription": "Это заменит текущее содержимое заметки этой версией. Сначала будет сохранен снимок текущего состояния, поэтому вы можете отменить это действие.",
+    "restoring": "Восстановление...",
+    "toast": {
+      "loadPreviewFailed": "Не удалось загрузить предварительную версию.",
+      "restored": "Примечание восстановлено до предыдущей версии",
+      "deleted": "Версия удалена"
+    }
+  },
+  "templateEditor": {
+    "title": {
+      "new": "Новый шаблон",
+      "view": "Просмотр шаблона",
+      "edit": "Редактировать шаблон"
+    },
+    "toast": {
+      "nameRequired": "Укажите название шаблона.",
+      "created": "Шаблон создан",
+      "createFailed": "Не удалось создать шаблон",
+      "saved": "Шаблон сохранен.",
+      "saveFailed": "Не удалось сохранить шаблон.",
+      "duplicateFailed": "Не удалось дублировать шаблон.",
+      "deleteFailed": "Не удалось удалить шаблон."
+    }
+  },
+  "reminders": {
+    "summary": "Напоминание: {date}",
+    "summaryWithMore": "Напоминание: {date} (+ еще {count})",
+    "hasReminders": "Есть напоминания",
+    "setReminder": "Установить напоминание",
+    "toast": {
+      "set": "Напоминание установлено",
+      "setForHighlight": "Напоминание установлено для выделенного текста",
+      "setFailed": "Не удалось установить напоминание.",
+      "deleted": "Напоминание удалено.",
+      "deleteFailed": "Не удалось удалить напоминание.",
+      "dismissed": "Напоминание закрыто",
+      "dismissFailed": "Не удалось закрыть напоминание."
+    }
+  },
+  "linkedTasks": {
+    "title": "Связанные задачи",
+    "loading": "Загрузка связанных задач..."
+  },
+  "phaseF": {
+    "componentsFolderViewColumnHeader": {
+      "dragToReorderColumn": "Перетащите, чтобы изменить порядок столбцов"
+    },
+    "componentsFolderViewColumnSelector": {
+      "properties": "Свойства",
+      "searchColumns": "Поиск по столбцам...",
+      "noMatchingColumns": "Нет соответствующих столбцов",
+      "formulas": "ФОРМУЛЫ",
+      "noFormulasDefined": "Формулы не определены",
+      "addFormula": "Добавить формулу",
+      "deleteFormula": "Удалить формулу",
+      "areYouSureYouWantToDeleteTheFormula": "Вы уверены, что хотите удалить формулу \"",
+      "quotThisActionCannotBeUndone": "quot;? Это действие невозможно отменить.",
+      "cancel": "Отмена",
+      "delete": "Удалить",
+      "none": "Нет",
+      "edit": "Редактировать",
+      "delete2": "Удалить"
+    },
+    "componentsFolderViewFilterBuilder": {
+      "filter": "Фильтр",
+      "filters": "Фильтры",
+      "clearAll": "Очистить все",
+      "noFiltersApplied": "Фильтры не применены",
+      "addFiltersToNarrowDownYourNotes": "Добавьте фильтры, чтобы сузить свои заметки",
+      "match": "Матч",
+      "allAnd": "Все (И)",
+      "anyOr": "Любой (ИЛИ)",
+      "ofTheFollowing": "из следующего:",
+      "match2": "Матч",
+      "all": "Все",
+      "any": "Любой",
+      "of": "из:",
+      "addCondition": "Добавить условие",
+      "addFilter": "Добавить фильтр",
+      "addGroup": "Добавить группу"
+    },
+    "componentsFolderViewFilterRow": {
+      "builtIn": "Встроенный",
+      "properties": "Свойства",
+      "placeholderProperty": "Недвижимость",
+      "placeholderOperator": "Оператор",
+      "placeholderValue": "Значение"
+    },
+    "componentsFolderViewFolderTableView": {
+      "notesTable": "Таблица примечаний"
+    },
+    "componentsFolderViewFolderViewToolbar": {
+      "searchNotes": "Поиск заметок...",
+      "clearSearch": "Очистить поиск"
+    },
+    "componentsFolderViewFormulaEditorModal": {
+      "defineAComputedColumnUsingAnExpression": "Определите вычисляемый столбец с помощью выражения.",
+      "name": "Имя",
+      "expression": "Выражение",
+      "available": "Доступно: ",
+      "preview": "Предварительный просмотр",
+      "fixExpressionErrorsToSeePreview": "Исправьте ошибки выражения, чтобы увидеть предварительный просмотр",
+      "usingNote": "Используя примечание: \"",
+      "quot": "quot;",
+      "cancel": "Отмена",
+      "namePlaceholder": "дней_до_даты",
+      "expressionPlaceholder": "dateDiff(due_date, Today(), \"дни\")"
+    },
+    "componentsFolderViewGroupBySelector": {
+      "clearGrouping": "Очистить группировку",
+      "searchProperties": "Поиск недвижимости...",
+      "builtIn": "Встроенный",
+      "properties": "Свойства",
+      "noGroupablePropertiesFound": "Группируемые свойства не найдены",
+      "sortDirection": "Направление сортировки",
+      "collapseGroupsByDefault": "Свернуть группы по умолчанию",
+      "showGroupSummaries": "Показать сводку группы",
+      "clearGrouping2": "Очистить группировку"
+    },
+    "componentsFolderViewGroupedTable": {
+      "groupedNotesTable": "Таблица сгруппированных заметок",
+      "more": "больше"
+    },
+    "componentsFolderViewMoveToFolderDialog": {
+      "searchFolders": "Поиск папок...",
+      "loadingFolders": "Загрузка папок...",
+      "suggested": "ПРЕДЛАГАЕТСЯ",
+      "bestMatch": "Лучший матч",
+      "current": "текущий)",
+      "allFolders": "ВСЕ ПАПКИ",
+      "current2": "текущий)",
+      "noFoldersMatch": "Ни одна папка не соответствует \"",
+      "quot": "quot;",
+      "create": "Создать \"",
+      "quot2": "quot;",
+      "cancel": "Отмена"
+    },
+    "componentsFolderViewRowContextMenu": {
+      "delete": "Удалить ",
+      "notes": "Примечания",
+      "open": "Открыть",
+      "openInExternalEditor": "Открыть во внешнем редакторе",
+      "revealInFinder": "Показать в Finder",
+      "revealInSidebar": "Показать на боковой панели",
+      "copyLink": "Копировать ссылку",
+      "delete2": "Удалить"
+    },
+    "componentsFolderViewSortableColumnHeader": {
+      "dragToReorderColumn": "Перетащите, чтобы изменить порядок столбцов",
+      "resizeColumn": "Изменить размер столбца"
+    },
+    "componentsFolderViewViewSwitcher": {
+      "default": "по умолчанию",
+      "rename": "Переименовать",
+      "duplicate": "Дублировать",
+      "setAsDefault": "Установить по умолчанию",
+      "delete": "Удалить",
+      "createNewView": "Создать новое представление",
+      "createNewView2": "Создать новое представление",
+      "createANewViewWithCustomColumnsFiltersAndSorting": "Создайте новое представление с настраиваемыми столбцами, фильтрами и сортировкой.",
+      "viewName": "Посмотреть имя",
+      "myCustomView": "Мой индивидуальный вид",
+      "baseConfiguration": "Базовая конфигурация",
+      "copyFromCurrentView": "Копировать из текущего представления",
+      "startFreshDefaultColumns": "Начать заново (столбцы по умолчанию)",
+      "cancel": "Отмена",
+      "renameView": "Переименовать вид",
+      "enterANewNameForThisView": "Введите новое имя для этого представления.",
+      "viewName2": "Посмотреть имя",
+      "viewName3": "Посмотреть имя",
+      "cancel2": "Отмена",
+      "deleteView": "Удалить представление",
+      "areYouSureYouWantToDelete": "Вы уверены, что хотите удалить \"",
+      "thisActionCannotBeUndone": "Это действие невозможно отменить.",
+      "cancel3": "Отмена"
+    },
+    "componentsNoteContentAreaFileBlock": {
+      "failedToLoadPdf": "Не удалось загрузить PDF: ",
+      "download": "Скачать",
+      "download2": "Скачать",
+      "noFileAttached": "Файл не прикреплен"
+    },
+    "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
+      "openInTaskPanel": "Открыть на панели задач",
+      "taskName": "Название задачи...",
+      "taskDeleted": "Задача удалена",
+      "loading": "Загрузка..."
+    },
+    "componentsNoteContentAreaTaskBlockTaskCreationPopover": {
+      "project": "Проект",
+      "priority": "Приоритет",
+      "dueDate": "Срок сдачи",
+      "cancel": "Отмена"
+    },
+    "componentsNoteContentAreaYoutubeEmbedBlock": {
+      "noVideoUrl": "Нет URL-адреса видео"
+    },
+    "componentsNoteExportDialog": {
+      "pdf": "PDF",
+      "html": "HTML",
+      "a4210X297Mm": "А4 (210 х 297 мм)",
+      "letter85X11In": "Письмо (8,5 x 11 дюймов)",
+      "legal85X14In": "Юридический (8,5 x 14 дюймов)"
+    },
+    "componentsNoteInfoSectionEditorsDateeditor": {
+      "ddMmYyyy": "дд.мм.гггг"
+    },
+    "componentsNoteNoteHeader": {
+      "synced": "Синхронизировано"
+    },
+    "componentsSharedDocumentInfoTab": {
+      "words": "Слова",
+      "characters": "Персонажи",
+      "readingTime": "Время чтения",
+      "created": "Создано",
+      "modified": "Модифицированный"
+    },
+    "componentsSidebarProjectsEmptyState": {
+      "noProjectsYet": "Пока нет проектов",
+      "createYourFirstProject": "Создайте свой первый проект",
+      "createYourFirstProject2": "Создайте свой первый проект"
+    },
+    "componentsSidebarSidebarBookmarkList": {
+      "loadingBookmarks": "Загрузка закладок...",
+      "failedToLoadBookmarks": "Не удалось загрузить закладки",
+      "noBookmarksYet": "Закладок пока нет",
+      "moreOptions": "Больше возможностей",
+      "remove": "Удалить"
+    },
+    "componentsSidebarSidebarItemContextMenu": {
+      "open": "Открыть",
+      "openToTheSide": "Открыть в сторону",
+      "pinToTabs": "Закрепить на вкладках",
+      "edit": "Редактировать",
+      "delete": "Удалить",
+      "copyLink": "Копировать ссылку"
+    },
+    "componentsSidebarSidebarTagList": {
+      "loadingTags": "Загрузка тегов...",
+      "failedToLoadTags": "Не удалось загрузить теги.",
+      "noTagsYet": "Тегов пока нет",
+      "filterTags": "Фильтровать теги...",
+      "noMatchingTags": "Нет соответствующих тегов"
+    },
+    "componentsSidebarSortableProjectItem": {
+      "dropHere": "Перетащите сюда",
+      "editProject": "Редактировать проект"
+    },
+    "componentsSidebarTagDeleteDialog": {
+      "deleteTag": "Удалить тег #",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "Заметки с этим тегом не будут удалены, а будут без тегов.",
+      "cancel": "Отмена"
+    },
+    "componentsSidebarTagDetailView": {
+      "goBack": "Вернуться назад",
+      "notes": "заметки",
+      "loadingNotes": "Загрузка заметок...",
+      "noNotesWithThisTag": "Нет заметок с этим тегом",
+      "addThisTagToANoteToSeeItHere": "Добавьте этот тег в заметку, чтобы увидеть ее здесь",
+      "pinned": "ПРИКРЕПЛЕНО",
+      "allNotes": "ВСЕ ПРИМЕЧАНИЯ",
+      "allNotesArePinned": "Все заметки закреплены",
+      "unpinFromTag": "Открепить от тега",
+      "unpin": "Открепить",
+      "pinToTag": "Прикрепить к тегу",
+      "pin": "Пин-код",
+      "tagActions": "Действия с тегами",
+      "editTagName": "Изменить имя тега",
+      "changeColor": "Изменить цвет",
+      "deleteTag": "Удалить тег",
+      "recent": "Недавние",
+      "created": "Создано",
+      "alphabetical": "Алфавитный"
+    },
+    "componentsSidebarTagRenameDialog": {
+      "renameTag": "Переименовать тег",
+      "rename": "Переименовать ",
+      "acrossEveryNoteThatUsesIt": "для каждой ноты, в которой он используется.",
+      "newName": "Новое имя",
+      "cancel": "Отмена"
+    },
+    "componentsViewersAudioPlayer": {
+      "failedToLoadAudio": "Не удалось загрузить аудио",
+      "theAudioFileCouldNotBePlayed": "Аудиофайл не удалось воспроизвести.",
+      "skipBack10s": "Перейти назад на 10 секунд",
+      "skipForward10s": "Перейти вперед на 10 секунд"
+    },
+    "componentsViewersImageViewer": {
+      "failedToLoadImage": "Не удалось загрузить изображение",
+      "theImageCouldNotBeDisplayed": "Изображение не удалось отобразить.",
+      "resetZoom": "Сбросить масштаб",
+      "rotate": "Поворот",
+      "dragToPan": "Перетащите для панорамирования"
+    },
+    "componentsViewersPdfViewer": {
+      "failedToLoadPdf": "Не удалось загрузить PDF-файл.",
+      "previousPage": "Предыдущая страница",
+      "nextPage": "Следующая страница",
+      "zoomOut": "Уменьшить масштаб",
+      "zoomIn": "Увеличить масштаб",
+      "fitToWidth": "По ширине",
+      "rotate": "Поворот"
+    },
+    "componentsViewersVideoPlayer": {
+      "failedToLoadVideo": "Не удалось загрузить видео",
+      "theVideoFileCouldNotBePlayed": "Видеофайл не удалось воспроизвести."
+    },
+    "pagesFile": {
+      "failedToLoadFile": "Не удалось загрузить файл",
+      "tryAgain": "Попробуйте еще раз",
+      "noFileSelected": "Файл не выбран",
+      "selectAFileFromTheSidebarToViewIt": "Выберите файл на боковой панели, чтобы просмотреть его.",
+      "loadingFile": "Загрузка файла...",
+      "openInDefaultApp": "Открыть в приложении по умолчанию",
+      "open": "Открыть",
+      "revealInFinder": "Показать в Finder",
+      "reveal": "Раскрыть",
+      "unsupportedFileType": "Неподдерживаемый тип файла"
+    },
+    "pagesFolderView": {
+      "createNewNote": "Создать новую заметку",
+      "viewSettings": "Посмотреть настройки",
+      "displayDensity": "Плотность дисплея",
+      "comfortable": "Удобный",
+      "compact": "Компактный",
+      "showSummaries": "Показать сводку",
+      "cancel": "Отмена"
+    },
+    "pagesTemplateEditor": {
+      "loadingTemplate": "Загрузка шаблона...",
+      "builtInTemplatesCannotBeModified": "Встроенные шаблоны не могут быть изменены.",
+      "description": "Описание",
+      "briefDescriptionOfThisTemplate": "Краткое описание этого шаблона...",
+      "templateContent": "Содержимое шаблона",
+      "use": "Использование ",
+      "toInsertTheNoteTitleWhenCreatingANote": "чтобы вставить заголовок заметки при создании заметки.",
+      "templateName": "Имя шаблона",
+      "defaultContentForNotesCreatedFromThisTemplate": "Содержимое по умолчанию для заметок, созданных на основе этого шаблона..."
+    },
+    "pagesTemplates": {
+      "loadingCollection": "Загрузка коллекции...",
+      "templateCollection": "Коллекция шаблонов",
+      "templates": "Шаблоны",
+      "curatedStructuresForYourNotes": "Кураторские структуры для ваших заметок.",
+      "newTemplate": "Новый шаблон",
+      "myTemplates": "Мои шаблоны",
+      "builtIn": "Встроенный",
+      "deleteTemplate": "Удалить шаблон",
+      "areYouSureYouWantToDelete": "Вы уверены, что хотите удалить \"",
+      "notesCreatedFromThisTemplateWillNotBeAffected": "Заметки, созданные на основе этого шаблона, не будут затронуты.",
+      "cancel": "Отмена",
+      "builtIn2": "Встроенный",
+      "duplicate": "Дублировать",
+      "delete": "Удалить",
+      "startYourCollection": "Начни свою коллекцию",
+      "templatesHelpYouCreateNotesWithConsistentStructure": "Шаблоны помогают создавать заметки с единообразной структурой.",
+      "createTemplate": "Создать шаблон"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveFormula": "Не удалось сохранить формулу.",
+      "failedToOpenInExternalEditor": "Не удалось открыть во внешнем редакторе.",
+      "failedToRevealInFinder": "Не удалось обнаружить в Finder",
+      "failedToCopyLink": "Не удалось скопировать ссылку",
+      "failedToCreateView": "Не удалось создать представление.",
+      "failedToRenameFolder": "Не удалось переименовать папку",
+      "failedToCreateTask": "Не удалось создать задачу",
+      "failedToLoadVersionHistory": "Не удалось загрузить историю версий.",
+      "failedToRestoreVersion": "Не удалось восстановить версию",
+      "failedToDeleteVersion": "Не удалось удалить версию",
+      "failedToCreateNote": "Не удалось создать заметку",
+      "failedToLoadMoreBookmarks": "Не удалось загрузить больше закладок.",
+      "failedToToggleBookmark": "Не удалось переключить закладку",
+      "failedToRemoveBookmark": "Не удалось удалить закладку",
+      "failedToReorderBookmarks": "Не удалось изменить порядок закладок.",
+      "failedToSave": "Не удалось сохранить",
+      "failedToRename": "Не удалось переименовать",
+      "failedToUpdateEmoji": "Не удалось обновить эмодзи.",
+      "failedToUpdateTags": "Не удалось обновить теги.",
+      "failedToSnoozeReminder": "Не удалось отложить напоминание.",
+      "failedToCreateFolder": "Не удалось создать папку",
+      "failedToLoadProperties": "Не удалось загрузить свойства",
+      "failedToLoadPropertyDefinitions": "Не удалось загрузить определения свойств.",
+      "failedToLoadTemplates": "Не удалось загрузить шаблоны."
+    },
+    "toasts": {
+      "noteExportedSuccessfully": "Заметка успешно экспортирована",
+      "failedToUpdateProperty": "Не удалось обновить ресурс.",
+      "failedToUpdateTags": "Не удалось обновить теги.",
+      "reminderSnoozed": "Напоминание отложено",
+      "failedToSnoozeReminder": "Не удалось отложить напоминание.",
+      "defaultTemplateSet": "Набор шаблонов по умолчанию",
+      "failedToSetDefaultTemplate": "Не удалось установить шаблон по умолчанию.",
+      "defaultTemplateCleared": "Шаблон по умолчанию удален.",
+      "failedToClearDefaultTemplate": "Не удалось очистить шаблон по умолчанию.",
+      "failedToAddProperty": "Не удалось добавить ресурс.",
+      "failedToDeleteProperty": "Не удалось удалить ресурс.",
+      "failedToRenameProperty": "Не удалось переименовать ресурс.",
+      "failedToReorderProperties": "Не удалось изменить порядок свойств.",
+      "cannotAddTagThisNoteWasDeleted": "Невозможно добавить тег — эта заметка была удалена.",
+      "cannotRemoveTagThisNoteWasDeleted": "Невозможно удалить тег — эта заметка была удалена.",
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "Невозможно изменить только локально — это примечание было удалено."
+    }
+  }
+}

@@ -1,0 +1,663 @@
+{
+  "page": {
+    "empty": {
+      "title": "Ingen anteckning vald",
+      "body": "Välj en anteckning från sidofältet för att visa den"
+    },
+    "error": {
+      "title": "Misslyckades med att ladda anteckning"
+    },
+    "toast": {
+      "cannotSaveDeleted": "Kan inte spara - anteckningen raderades",
+      "cannotRenameDeleted": "Kan inte byta namn - anteckningen raderades",
+      "createLinkedFailed": "Misslyckades med att skapa länkad anteckning",
+      "openLinkedFailed": "Misslyckades med att öppna länkad post",
+      "localOnly": "Anteckning satt till endast lokal",
+      "willSync": "Anteckning kommer att synkroniseras till molnet",
+      "saveFailed": "Misslyckades med att spara anteckning",
+      "renameFailed": "Misslyckades med att byta namn på anteckning",
+      "toggleLocalOnlyFailed": "Misslyckades med att växla endast lokal",
+      "toggleFullWidthFailed": "Misslyckades med att växla full bredd"
+    },
+    "deleteDialogTitle": "{count, plural, one {Radera anteckning} other {Radera # Anteckningar}}"
+  },
+  "tree": {
+    "aria": {
+      "tree": "Anteckningsträd",
+      "openFolderView": "Öppna mappvy"
+    },
+    "empty": {
+      "title": "Inga anteckningar ännu",
+      "body": "Skapa en anteckning för att börja",
+      "newNote": "Ny anteckning"
+    },
+    "loadingError": "Misslyckades med att ladda anteckningar",
+    "actions": {
+      "newNote": "Ny anteckning",
+      "newFolder": "Ny mapp",
+      "rename": "Byt namn",
+      "openExternal": "Öppna i extern redigerare",
+      "revealInFinder": "Visa i Finder",
+      "setDefaultTemplate": "Sätt standardmall",
+      "clearDefaultTemplate": "Rensa standardmall",
+      "setIcon": "Ställ in ikon",
+      "removeIcon": "Ta bort ikon",
+      "deleteSelectedNotes": "Radera {count} Anteckningar",
+      "deleteSelectedItems": "Ta bort {count} objekt"
+    },
+    "deleteDialog": {
+      "noteTitle": "Radera anteckning",
+      "folderTitle": "Radera mapp",
+      "itemsTitle": "Radera {count} Poster",
+      "noteBody": "Är du säker på att du vill ta bort \"{name}\"? Den här åtgärden kan inte ångras.",
+      "folderBody": "Är du säker på att du vill ta bort \"{name}\" och alla anteckningar inuti den? Den här åtgärden kan inte ångras.",
+      "itemsBody": "Är du säker på att du vill ta bort {count} objekt? Den här åtgärden kan inte ångras.",
+      "folderSuffix": "mapp",
+      "moreItems": "...och {count} till",
+      "deleting": "Tar bort...",
+      "deleteCount": "Ta bort {count}"
+    }
+  },
+  "editor": {
+    "title": {
+      "untitled": "Untitled",
+      "aria": "Anteckningstitel"
+    },
+    "content": {
+      "placeholder": "Börja skriva, eller tryck på '/' för kommandon...",
+      "regionAria": "Anteckningsredigerare",
+      "richTextAria": "Rik textredigerare",
+      "headingPlaceholder": "Rubrik",
+      "listPlaceholder": "Punkt i lista",
+      "todoPlaceholder": "Att-göra-item"
+    },
+    "toolbar": {
+      "reminderSet": "Påminnelse inställd",
+      "setReminder": "Ställ in påminnelse",
+      "removeBookmark": "Ta bort bokmärke",
+      "addBookmark": "Lägg till bokmärke",
+      "hideLocalGraph": "Dölj lokalt diagram",
+      "showLocalGraph": "Visa lokalt diagram",
+      "versionHistory": "Versionshistorik",
+      "export": "Exportera",
+      "fullWidth": "Helskärmsläge",
+      "disableLocalOnly": "Inaktivera endast lokalt",
+      "setLocalOnly": "Ange endast lokalt"
+    },
+    "breadcrumb": {
+      "locationAria": "Notera plats",
+      "parentFolderAria": "Gå till överordnad mapp"
+    },
+    "errorBoundary": {
+      "title": "Redigeringsfel",
+      "body": "Redigeraren stötte på ett fel. Ditt notinnehåll är säkert.",
+      "technicalDetails": "Tekniska detaljer",
+      "reloadAria": "Ladda om redigeraren",
+      "reload": "Ladda om redigeraren"
+    },
+    "callout": {
+      "title": "Avvikande ruta",
+      "group": "Grundläggande block",
+      "subtext": "Markera viktig information",
+      "changeType": "Ändra typ av avvikande ruta",
+      "menuLabel": "Typ av avvikande ruta",
+      "info": "Information",
+      "warning": "Varning",
+      "error": "Fel",
+      "success": "Framgång"
+    }
+  },
+  "menus": {
+    "wiki": {
+      "aria": "Notförslag",
+      "loading": "Laddar anteckningar...",
+      "empty": "Inga anteckningar hittades",
+      "create": "Skapa ny anteckning"
+    },
+    "tags": {
+      "aria": "Etikettförslag",
+      "loading": "Laddar taggar...",
+      "empty": "Skriv för att skapa en ny tagg",
+      "create": "Skapa #{tag}"
+    },
+    "pasteLink": {
+      "title": "Klistra in som",
+      "url": "URL",
+      "mention": "Nämn",
+      "embedVideo": "Bädda in video"
+    },
+    "emoji": {
+      "aria": "Emoji- och ikonväljare",
+      "emojiTab": "Emoji",
+      "iconsTab": "Ikoner",
+      "searchPlaceholder": "Sök",
+      "noIcons": "Inga ikoner hittades",
+      "clearSearch": "Rensa sökning"
+    }
+  },
+  "detail": {
+    "bodyPlaceholder": "Skriv din anteckning..."
+  },
+  "outline": {
+    "title": "Omriss",
+    "aria": "Dokumentomriss",
+    "empty": "Inga rubriker",
+    "emptyYet": "Inga rubriker än",
+    "readTime": "{count} min läsning",
+    "words": "{count} ord",
+    "created": "Skapad",
+    "modified": "Ändrad"
+  },
+  "backlinks": {
+    "title": "Bakåtlänkar",
+    "sortRecent": "Senaste",
+    "sortAlpha": "A-Ö",
+    "sortMentions": "Flest omnämnanden",
+    "sortBy": "Sortera bakåtlänkar efter {sort}",
+    "summary": "{notes} anteckningar · {references} referenser",
+    "sectionAria": "Bakåtlänkar",
+    "listAria": "Lista över bakåtlänkar",
+    "fromAria": "Bakåtlänkar från {title}",
+    "collapse": "Komprimera",
+    "expand": "Expandera",
+    "collapseSection": "Fäll ihop avsnittet med bakåtlänkar",
+    "expandSection": "Expandera avsnittet med bakåtlänkar",
+    "showMore": "Visa {count} fler bakåtlänkar",
+    "more": "{count} mer"
+  },
+  "tagsRow": {
+    "aria": "Taggar",
+    "empty": "Lägg till etiketter",
+    "add": "Lägg till tagg",
+    "removeAria": "Ta bort tagg: {tag}",
+    "inputPlaceholder": "Skriv taggnamn...",
+    "recent": "Senaste",
+    "matching": "Matchande",
+    "all": "Alla taggar",
+    "none": "Inga taggar hittades",
+    "createTag": "Skapa tagg: \"{tag}\"",
+    "chooseColor": "Välj färg:",
+    "preview": "Förhandsgranskning:",
+    "colorAria": "Välj {color}-färg"
+  },
+  "properties": {
+    "title": "Egenskaper",
+    "noteAria": "Noteringsegenskaper",
+    "workspaceAria": "Arbetsytans egenskaper",
+    "listAria": "Lista över egenskaper",
+    "add": "Lägg till egenskap",
+    "addDescription": "Lägg till en ny egenskap till denna notering",
+    "namePlaceholder": "Egenskapsnamn",
+    "nameAria": "Egenskapsnamn",
+    "typeSection": "Typ",
+    "empty": "Tom",
+    "dragAria": "Dra för att ordna om egenskap",
+    "editName": "Redigera egenskapsnamn",
+    "delete": "Ta bort egenskap",
+    "searchOptions": "Sökalternativ...",
+    "noOptions": "Inga alternativ än",
+    "optionName": "Alternativnamn",
+    "newOption": "Nytt alternativ",
+    "ratingAria": "Betyg",
+    "openUrlAria": "Öppna URL",
+    "types": {
+      "text": "Text",
+      "number": "Nummer",
+      "date": "Datum",
+      "checkbox": "Checklista",
+      "url": "URL",
+      "status": "Status",
+      "select": "Välj",
+      "multiselect": "Flerval"
+    }
+  },
+  "templateSelector": {
+    "title": "Välj din duk",
+    "description": "Välj en mall för att börja din anteckning",
+    "searchPlaceholder": "Sök mallar...",
+    "loading": "Laddar mallar...",
+    "empty": "Inga mallar hittades",
+    "myTemplates": "Mina mallar",
+    "essentials": "Grundläggande",
+    "setFolderDefault": "Ange som mappstandard",
+    "useTemplate": "Använd mall",
+    "createNote": "Skapa anteckning"
+  },
+  "exportDialog": {
+    "title": "Exportera anteckning",
+    "description": "Exportera \"{title}\" till en fil",
+    "format": "Format",
+    "pdfDescription": "Tryckvänligt dokument",
+    "htmlDescription": "Webbfärdig fil",
+    "pageSize": "Sidstorlek",
+    "selectPageSize": "Välj sidstorlek",
+    "options": "Alternativ",
+    "includeMetadata": "Inkludera metadata (taggar, datum)",
+    "exporting": "Exporterar...",
+    "exported": "Exporterad!",
+    "export": "Exportera",
+    "toast": {
+      "failed": "Export misslyckades"
+    }
+  },
+  "versionHistory": {
+    "title": "Versionshistorik",
+    "description": "Visa och återställ tidigare versioner av \"{title}\"",
+    "hidePreview": "Dölj förhandsvisning",
+    "showPreview": "Visa förhandsvisning",
+    "empty": "Inga versioner sparade än",
+    "emptyDescription": "Versioner sparas automatiskt när du gör betydande ändringar",
+    "latest": "Senaste",
+    "autoSaved": "Automatiskt sparad",
+    "words": "{count} ord",
+    "selectPrompt": "Välj en version för förhandsgranskning",
+    "restore": "Återställ",
+    "deleteTitle": "Radera denna version?",
+    "deleteDescription": "Denna åtgärd kan inte ångras. Denna version kommer att raderas permanent.",
+    "restoreTitle": "Återställ denna version?",
+    "restoreDescription": "Detta kommer att ersätta det nuvarande innehållet i anteckningen med denna version. En ögonblicksbild av det nuvarande tillståndet kommer först att sparas, så att du kan ångra denna åtgärd.",
+    "restoring": "Återställer...",
+    "toast": {
+      "loadPreviewFailed": "Misslyckades med att ladda förhandsgranskning av versionen",
+      "restored": "Anteckning återställd till tidigare version",
+      "deleted": "Version raderad"
+    }
+  },
+  "templateEditor": {
+    "title": {
+      "new": "Ny mall",
+      "view": "Visa mall",
+      "edit": "Redigera mall"
+    },
+    "toast": {
+      "nameRequired": "Mallnamn krävs",
+      "created": "Mall skapad",
+      "createFailed": "Misslyckades med att skapa mall",
+      "saved": "Mall sparad",
+      "saveFailed": "Misslyckades med att spara mall",
+      "duplicateFailed": "Misslyckades med att duplicera mall",
+      "deleteFailed": "Misslyckades med att ta bort mall"
+    }
+  },
+  "reminders": {
+    "summary": "Påminnelse: {date}",
+    "summaryWithMore": "Påminnelse: {date} (+{count} till)",
+    "hasReminders": "Har påminnelser",
+    "setReminder": "Ställ in påminnelse",
+    "toast": {
+      "set": "Påminnelse inställd",
+      "setForHighlight": "Påminnelse satt för markerad text",
+      "setFailed": "Misslyckades med att sätta påminnelse",
+      "deleted": "Påminnelse borttagen",
+      "deleteFailed": "Misslyckades med att ta bort påminnelse",
+      "dismissed": "Påminnelse avvisad",
+      "dismissFailed": "Misslyckades med att avvisa påminnelse"
+    }
+  },
+  "linkedTasks": {
+    "title": "Länkade uppgifter",
+    "loading": "Laddar länkade uppgifter..."
+  },
+  "phaseF": {
+    "componentsFolderViewColumnHeader": {
+      "dragToReorderColumn": "Dra för att ändra kolumnordning"
+    },
+    "componentsFolderViewColumnSelector": {
+      "properties": "Egenskaper",
+      "searchColumns": "Sök kolumner...",
+      "noMatchingColumns": "Inga matchande kolumner",
+      "formulas": "FORMELER",
+      "noFormulasDefined": "Inga definierade formler",
+      "addFormula": "Lägg till formel",
+      "deleteFormula": "Ta bort formel",
+      "areYouSureYouWantToDeleteTheFormula": "Är du säker på att du vill ta bort formeln \"",
+      "quotThisActionCannotBeUndone": "\"? Denna åtgärd kan inte ångras.",
+      "cancel": "Avbryt",
+      "delete": "Ta bort",
+      "none": "Inga",
+      "edit": "Redigera",
+      "delete2": "Ta bort"
+    },
+    "componentsFolderViewFilterBuilder": {
+      "filter": "Filter",
+      "filters": "Filter",
+      "clearAll": "Rensa allt",
+      "noFiltersApplied": "Inga filter applicerade",
+      "addFiltersToNarrowDownYourNotes": "Lägg till filter för att begränsa dina anteckningar",
+      "match": "Matchen",
+      "allAnd": "Alla (OCH)",
+      "anyOr": "Vilken som helst (OR)",
+      "ofTheFollowing": "av följande:",
+      "match2": "Matchen",
+      "all": "Alla",
+      "any": "Vilken som helst",
+      "of": "av:",
+      "addCondition": "Lägg till villkor",
+      "addFilter": "Lägg till filter",
+      "addGroup": "Lägg till grupp"
+    },
+    "componentsFolderViewFilterRow": {
+      "builtIn": "Inbyggd",
+      "properties": "Egenskaper",
+      "placeholderProperty": "Egendom",
+      "placeholderOperator": "Operatör",
+      "placeholderValue": "Värde"
+    },
+    "componentsFolderViewFolderTableView": {
+      "notesTable": "Nottabell"
+    },
+    "componentsFolderViewFolderViewToolbar": {
+      "searchNotes": "Sökanteckningar...",
+      "clearSearch": "Rensa sökning"
+    },
+    "componentsFolderViewFormulaEditorModal": {
+      "defineAComputedColumnUsingAnExpression": "Definiera en beräknad kolumn med ett uttryck.",
+      "name": "Namn",
+      "expression": "Uttryck",
+      "available": "Tillgängligt: ",
+      "preview": "Förhandsvisning",
+      "fixExpressionErrorsToSeePreview": "Åtgärda uttrycksfel för att se förhandsgranskning",
+      "usingNote": "Använder not: \"",
+      "quot": "quot;",
+      "cancel": "Avbryt",
+      "namePlaceholder": "days_until_due",
+      "expressionPlaceholder": "dateDiff(due_date, idag(), \"dagar\")"
+    },
+    "componentsFolderViewGroupBySelector": {
+      "clearGrouping": "Tydlig gruppering",
+      "searchProperties": "Sök på egendomar...",
+      "builtIn": "Inbyggd",
+      "properties": "Egenskaper",
+      "noGroupablePropertiesFound": "Inga grupperbara egenskaper hittades",
+      "sortDirection": "Sorteringsriktning",
+      "collapseGroupsByDefault": "Kollapsa grupper som standard",
+      "showGroupSummaries": "Visa gruppsammanfattningar",
+      "clearGrouping2": "Tydlig gruppering"
+    },
+    "componentsFolderViewGroupedTable": {
+      "groupedNotesTable": "Grupperad anteckningstabell",
+      "more": "mer"
+    },
+    "componentsFolderViewMoveToFolderDialog": {
+      "searchFolders": "Sök mappar...",
+      "loadingFolders": "Laddar mappar...",
+      "suggested": "FÖRESLAGET",
+      "bestMatch": "Bästa matchning",
+      "current": "nuvarande)",
+      "allFolders": "ALLA MAPPAR",
+      "current2": "nuvarande)",
+      "noFoldersMatch": "Inga mappar matchar",
+      "quot": "quot;",
+      "create": "Skapa ",
+      "quot2": "quot;",
+      "cancel": "Avbryt"
+    },
+    "componentsFolderViewRowContextMenu": {
+      "delete": "Radera ",
+      "notes": "Anteckningar",
+      "open": "Öppna",
+      "openInExternalEditor": "Öppna i extern redigerare",
+      "revealInFinder": "Visa i Finder",
+      "revealInSidebar": "Visa i sidofält",
+      "copyLink": "Kopiera länk",
+      "delete2": "Ta bort"
+    },
+    "componentsFolderViewSortableColumnHeader": {
+      "dragToReorderColumn": "Dra för att ändra kolumnordning",
+      "resizeColumn": "Ändra kolumnstorlek"
+    },
+    "componentsFolderViewViewSwitcher": {
+      "default": "standard",
+      "rename": "Byt namn",
+      "duplicate": "Duplicera",
+      "setAsDefault": "Sätt som standard",
+      "delete": "Ta bort",
+      "createNewView": "Skapa ny vy",
+      "createNewView2": "Skapa ny vy",
+      "createANewViewWithCustomColumnsFiltersAndSorting": "Skapa en ny vy med anpassade kolumner, filter och sortering.",
+      "viewName": "Vy namn",
+      "myCustomView": "Min anpassade vy",
+      "baseConfiguration": "Grundkonfiguration",
+      "copyFromCurrentView": "Kopiera från nuvarande vy",
+      "startFreshDefaultColumns": "Börja från början (standardkolumner)",
+      "cancel": "Avbryt",
+      "renameView": "Byt namn på vy",
+      "enterANewNameForThisView": "Ange ett nytt namn för denna vy.",
+      "viewName2": "Vy namn",
+      "viewName3": "Vy namn",
+      "cancel2": "Avbryt",
+      "deleteView": "Radera vy",
+      "areYouSureYouWantToDelete": "Är du säker på att du vill radera ",
+      "thisActionCannotBeUndone": "Den här åtgärden kan inte ångras.",
+      "cancel3": "Avbryt"
+    },
+    "componentsNoteContentAreaFileBlock": {
+      "failedToLoadPdf": "Misslyckades med att ladda PDF: ",
+      "download": "Ladda ner",
+      "download2": "Ladda ner",
+      "noFileAttached": "Ingen fil bifogad"
+    },
+    "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
+      "openInTaskPanel": "Öppna i uppgiftspanel",
+      "taskName": "Uppgiftsnamn...",
+      "taskDeleted": "Uppgift raderad",
+      "loading": "Laddar..."
+    },
+    "componentsNoteContentAreaTaskBlockTaskCreationPopover": {
+      "project": "Projekt",
+      "priority": "Prioritet",
+      "dueDate": "Förfallodatum",
+      "cancel": "Avbryt"
+    },
+    "componentsNoteContentAreaYoutubeEmbedBlock": {
+      "noVideoUrl": "Ingen video-URL"
+    },
+    "componentsNoteExportDialog": {
+      "pdf": "PDF",
+      "html": "HTML",
+      "a4210X297Mm": "A4 (210 x 297 mm)",
+      "letter85X11In": "Letter (8,5 x 11 tum)",
+      "legal85X14In": "Legal (8,5 x 14 tum)"
+    },
+    "componentsNoteInfoSectionEditorsDateeditor": {
+      "ddMmYyyy": "dd.mm.åååå"
+    },
+    "componentsNoteNoteHeader": {
+      "synced": "Synkroniserad"
+    },
+    "componentsSharedDocumentInfoTab": {
+      "words": "Ord",
+      "characters": "Tecken",
+      "readingTime": "Läser tid",
+      "created": "Skapad",
+      "modified": "Ändrad"
+    },
+    "componentsSidebarProjectsEmptyState": {
+      "noProjectsYet": "Inga projekt än",
+      "createYourFirstProject": "Skapa ditt första projekt",
+      "createYourFirstProject2": "Skapa ditt första projekt"
+    },
+    "componentsSidebarSidebarBookmarkList": {
+      "loadingBookmarks": "Laddar bokmärken...",
+      "failedToLoadBookmarks": "Misslyckades med att ladda bokmärken",
+      "noBookmarksYet": "Inga bokmärken än",
+      "moreOptions": "Fler alternativ",
+      "remove": "Ta bort"
+    },
+    "componentsSidebarSidebarItemContextMenu": {
+      "open": "Öppna",
+      "openToTheSide": "Öppna vid sidan",
+      "pinToTabs": "Fäst på flikar",
+      "edit": "Redigera",
+      "delete": "Ta bort",
+      "copyLink": "Kopiera länk"
+    },
+    "componentsSidebarSidebarTagList": {
+      "loadingTags": "Laddar taggar...",
+      "failedToLoadTags": "Misslyckades med att ladda taggar",
+      "noTagsYet": "Inga taggar än",
+      "filterTags": "Filtrera taggar...",
+      "noMatchingTags": "Inga matchande taggar"
+    },
+    "componentsSidebarSortableProjectItem": {
+      "dropHere": "Släpp här",
+      "editProject": "Redigera projekt"
+    },
+    "componentsSidebarTagDeleteDialog": {
+      "deleteTag": "Ta bort tagg #",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "Anteckningar med denna tagg kommer inte att raderas, bara tas bort från taggning.",
+      "cancel": "Avbryt"
+    },
+    "componentsSidebarTagDetailView": {
+      "goBack": "Gå tillbaka",
+      "notes": "anteckningar",
+      "loadingNotes": "Laddar anteckningar...",
+      "noNotesWithThisTag": "Inga anteckningar med denna tagg",
+      "addThisTagToANoteToSeeItHere": "Lägg till denna tagg på en anteckning för att se den här",
+      "pinned": "FÄST",
+      "allNotes": "ALLA ANTECKNINGAR",
+      "allNotesArePinned": "Alla anteckningar är fästa",
+      "unpinFromTag": "Ta bort fästning från tagg",
+      "unpin": "Ta bort fästning",
+      "pinToTag": "Fäst på tagg",
+      "pin": "Fäst",
+      "tagActions": "Tagg-åtgärder",
+      "editTagName": "Redigera taggnamn",
+      "changeColor": "Byt färg",
+      "deleteTag": "Ta bort tagg",
+      "recent": "Senaste",
+      "created": "Skapad",
+      "alphabetical": "Alfabetiskt"
+    },
+    "componentsSidebarTagRenameDialog": {
+      "renameTag": "Byt namn på tagg",
+      "rename": "Byt namn",
+      "acrossEveryNoteThatUsesIt": "over varje anteckning som använder den.",
+      "newName": "Nytt namn",
+      "cancel": "Avbryt"
+    },
+    "componentsViewersAudioPlayer": {
+      "failedToLoadAudio": "Misslyckades med att ladda ljud",
+      "theAudioFileCouldNotBePlayed": "Ljudfilen kunde inte spelas upp.",
+      "skipBack10s": "Hoppa tillbaka 10 s",
+      "skipForward10s": "Hoppa fram 10 s"
+    },
+    "componentsViewersImageViewer": {
+      "failedToLoadImage": "Misslyckades med att ladda bilden",
+      "theImageCouldNotBeDisplayed": "Bilden kunde inte visas.",
+      "resetZoom": "Återställ zoom",
+      "rotate": "Rotera",
+      "dragToPan": "Dra för att panorera"
+    },
+    "componentsViewersPdfViewer": {
+      "failedToLoadPdf": "Misslyckades med att ladda PDF",
+      "previousPage": "Föregående sida",
+      "nextPage": "Nästa sida",
+      "zoomOut": "Zooma ut",
+      "zoomIn": "Zooma in",
+      "fitToWidth": "Passa till bredd",
+      "rotate": "Rotera"
+    },
+    "componentsViewersVideoPlayer": {
+      "failedToLoadVideo": "Misslyckades med att ladda video",
+      "theVideoFileCouldNotBePlayed": "Videofilen kunde inte spelas upp."
+    },
+    "pagesFile": {
+      "failedToLoadFile": "Misslyckades med att ladda fil",
+      "tryAgain": "Försök igen",
+      "noFileSelected": "Ingen fil valdes",
+      "selectAFileFromTheSidebarToViewIt": "Välj en fil från sidofältet för att visa den",
+      "loadingFile": "Laddar fil...",
+      "openInDefaultApp": "Öppna i standardapp",
+      "open": "Öppna",
+      "revealInFinder": "Visa i Finder",
+      "reveal": "Visa",
+      "unsupportedFileType": "Otillåten filtyp"
+    },
+    "pagesFolderView": {
+      "createNewNote": "Skapa ny anteckning",
+      "viewSettings": "Visningsinställningar",
+      "displayDensity": "Visningstäthet",
+      "comfortable": "Bekväm",
+      "compact": "Kompakt",
+      "showSummaries": "Visa sammanfattningar",
+      "cancel": "Avbryt"
+    },
+    "pagesTemplateEditor": {
+      "loadingTemplate": "Laddar mall...",
+      "builtInTemplatesCannotBeModified": "Inbyggda mallar kan inte ändras",
+      "description": "Beskrivning",
+      "briefDescriptionOfThisTemplate": "Kort beskrivning av denna mall...",
+      "templateContent": "Mallinnehåll",
+      "use": "Använd ",
+      "toInsertTheNoteTitleWhenCreatingANote": "för att infoga anteckningstiteln när du skapar en anteckning.",
+      "templateName": "Mallnamn",
+      "defaultContentForNotesCreatedFromThisTemplate": "Standardinnehåll för anteckningar skapade från denna mall..."
+    },
+    "pagesTemplates": {
+      "loadingCollection": "Laddar samling...",
+      "templateCollection": "Mallkollektion",
+      "templates": "Mallar",
+      "curatedStructuresForYourNotes": "Kuraterade strukturer för dina anteckningar.",
+      "newTemplate": "Ny mall",
+      "myTemplates": "Mina mallar",
+      "builtIn": "Inbyggd",
+      "deleteTemplate": "Radera mall",
+      "areYouSureYouWantToDelete": "Är du säker på att du vill radera ",
+      "notesCreatedFromThisTemplateWillNotBeAffected": "Anteckningar skapade från denna mall kommer inte att påverkas.",
+      "cancel": "Avbryt",
+      "builtIn2": "Inbyggd",
+      "duplicate": "Duplicera",
+      "delete": "Ta bort",
+      "startYourCollection": "Starta din samling",
+      "templatesHelpYouCreateNotesWithConsistentStructure": "Mallar hjälper dig att skapa anteckningar med konsekvent struktur.",
+      "createTemplate": "Skapa mall"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveFormula": "Kunde inte spara formel",
+      "failedToOpenInExternalEditor": "Kunde inte öppna i extern redigerare",
+      "failedToRevealInFinder": "Det gick inte att visa i Finder",
+      "failedToCopyLink": "Det gick inte att kopiera länk",
+      "failedToCreateView": "Det gick inte att skapa vy",
+      "failedToRenameFolder": "Det gick inte att byta namn på mapp",
+      "failedToCreateTask": "Det gick inte att skapa uppgift",
+      "failedToLoadVersionHistory": "Det gick inte att ladda versionshistorik",
+      "failedToRestoreVersion": "Det gick inte att återställa version",
+      "failedToDeleteVersion": "Det gick inte att radera version",
+      "failedToCreateNote": "Misslyckades med att skapa anteckning",
+      "failedToLoadMoreBookmarks": "Det gick inte att ladda fler bokmärken",
+      "failedToToggleBookmark": "Det gick inte att växla bokmärke",
+      "failedToRemoveBookmark": "Det gick inte att ta bort bokmärke",
+      "failedToReorderBookmarks": "Det gick inte att ordna om bokmärken",
+      "failedToSave": "Det gick inte att spara",
+      "failedToRename": "Det gick inte att byta namn",
+      "failedToUpdateEmoji": "Det gick inte att uppdatera emoji",
+      "failedToUpdateTags": "Det gick inte att uppdatera taggar",
+      "failedToSnoozeReminder": "Det gick inte att skjuta upp påminnelse",
+      "failedToCreateFolder": "Det gick inte att skapa mapp",
+      "failedToLoadProperties": "Det gick inte att ladda egenskaper",
+      "failedToLoadPropertyDefinitions": "Det gick inte att ladda egenskapsdefinitioner",
+      "failedToLoadTemplates": "Det gick inte att ladda mallar"
+    },
+    "toasts": {
+      "noteExportedSuccessfully": "Noten exporterades framgångsrikt",
+      "failedToUpdateProperty": "Misslyckades med att uppdatera egenskap",
+      "failedToUpdateTags": "Det gick inte att uppdatera taggar",
+      "reminderSnoozed": "Påminnelse uppskjuten",
+      "failedToSnoozeReminder": "Det gick inte att skjuta upp påminnelse",
+      "defaultTemplateSet": "Standardmall inställd",
+      "failedToSetDefaultTemplate": "Misslyckades med att ange standardmall",
+      "defaultTemplateCleared": "Standardmall rensad",
+      "failedToClearDefaultTemplate": "Misslyckades med att rensa standardmall",
+      "failedToAddProperty": "Misslyckades med att lägga till egenskap",
+      "failedToDeleteProperty": "Misslyckades med att ta bort egenskap",
+      "failedToRenameProperty": "Misslyckades med att byta namn på egenskap",
+      "failedToReorderProperties": "Misslyckades med att ändra ordning på egenskaper",
+      "cannotAddTagThisNoteWasDeleted": "Kan inte lägga till tagg - denna anteckning raderades",
+      "cannotRemoveTagThisNoteWasDeleted": "Kan inte ta bort tagg - denna anteckning raderades",
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "Kan inte ändra lokal endast — denna anteckning raderades"
+    }
+  }
+}

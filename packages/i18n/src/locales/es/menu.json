@@ -1,0 +1,28 @@
+{
+  "app": {
+    "quit": "dejar de fumar"
+  },
+  "file": {
+    "label": "Archivo",
+    "newNote": "Nueva nota",
+    "close": "Cerrar ventana"
+  },
+  "navigation": {
+    "back": "Atrás",
+    "forward": "Adelante"
+  },
+  "edit": {
+    "label": "Editar",
+    "undo": "Deshacer",
+    "redo": "Rehacer",
+    "cut": "cortar",
+    "copy": "Copiar",
+    "paste": "Pegar"
+  },
+  "view": {
+    "label": "Ver",
+    "reload": "recargar",
+    "toggleDevTools": "Alternar herramientas de desarrollador",
+    "toggleFullscreen": "Alternar pantalla completa"
+  }
+}

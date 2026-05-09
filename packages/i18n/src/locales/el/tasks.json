@@ -1,0 +1,651 @@
+{
+  "page": {
+    "tabs": {
+      "label": "Προβολές εργασιών",
+      "today": "Σήμερα",
+      "all": "Όλα"
+    },
+    "viewMode": {
+      "label": "Λειτουργία προβολής",
+      "list": "Προβολή λίστας",
+      "kanban": "Άποψη Kanban"
+    },
+    "projectScope": {
+      "allProjects": "Όλα τα έργα",
+      "searchProjects": "Αναζήτηση έργων…",
+      "editProject": "Επεξεργασία {name}",
+      "unstarSavedFilter": "Καταργήστε το αστέρι του {name}"
+    }
+  },
+  "task": {
+    "add": "Προσθήκη Εργασίας",
+    "title": "Τίτλος",
+    "titleRequired": "Απαιτείται τίτλος",
+    "titlePlaceholder": "Τι πρέπει να γίνει;",
+    "namePlaceholder": "Όνομα εργασίας",
+    "description": "Περιγραφή",
+    "descriptionPlaceholder": "Προσθήκη περιγραφής…",
+    "details": "Λεπτομέρειες εργασίας",
+    "status": "Κατάσταση",
+    "priority": "Προτεραιότητα",
+    "dueDate": "Ημερομηνία λήξης",
+    "project": "Έργο",
+    "repeat": "Επαναλάβετε",
+    "createAnother": "Δημιουργήστε ένα άλλο",
+    "delete": "Διαγραφή εργασίας",
+    "created": "Δημιουργήθηκε το {date}"
+  },
+  "project": {
+    "create": "Δημιουργία έργου",
+    "edit": "Επεξεργασία έργου",
+    "delete": "Διαγραφή έργου",
+    "iconAndName": "Εικονίδιο & Όνομα",
+    "namePlaceholder": "Όνομα έργου",
+    "select": "Επιλέξτε έργο",
+    "selectIcon": "Επιλέξτε εικονίδιο",
+    "clickIconToChange": "Κάντε κλικ στο εικονίδιο για αλλαγή",
+    "color": "Χρώμα",
+    "descriptionOptional": "Περιγραφή (προαιρετικό)",
+    "descriptionPlaceholder": "Σύντομη περιγραφή αυτού του έργου…",
+    "statuses": "Καταστάσεις",
+    "statusesHelp": "Διαμορφώστε τα στάδια ροής εργασίας για αυτό το έργο.",
+    "createDescription": "Δημιουργήστε ένα νέο έργο με όνομα, εικονίδιο, χρώμα και καταστάσεις ροής εργασίας.",
+    "editDescription": "Επεξεργαστείτε το όνομα του έργου, το εικονίδιο, το χρώμα και τις καταστάσεις ροής εργασίας."
+  },
+  "status": {
+    "select": "Επιλέξτε κατάσταση",
+    "todo": "Να Κάνετε",
+    "inProgress": "Σε εξέλιξη",
+    "done": "Έγινε"
+  },
+  "priority": {
+    "select": "Επιλέξτε προτεραιότητα",
+    "none": "Καμία προτεραιότητα",
+    "noneShort": "Κανένα",
+    "low": "Χαμηλό",
+    "medium": "Μεσαίο",
+    "high": "Ψηλά",
+    "urgent": "Επείγον"
+  },
+  "filters": {
+    "filter": "Φίλτρο",
+    "emptyTitle": "Καμία εργασία δεν ταιριάζει με τα φίλτρα σας",
+    "emptyHelp": "Δοκιμάστε να προσαρμόσετε τα φίλτρα σας ή",
+    "groupBy": "Ομάδα κατά",
+    "groupByOptions": "Ομαδοποίηση κατά επιλογές",
+    "sortAscending": "Ταξινόμηση αύξουσα",
+    "sortDescending": "Ταξινόμηση φθίνουσα"
+  },
+  "quickAdd": {
+    "label": "Γρήγορη προσθήκη εργασίας",
+    "focusDescription": "Εστίαση εισόδου γρήγορης προσθήκης"
+  },
+  "drawer": {
+    "close": "Κλείστε τα στοιχεία της εργασίας",
+    "subIssues": "Υποθέματα",
+    "addSubIssue": "Προσθήκη δευτερεύοντος ζητήματος",
+    "subIssuePlaceholder": "Προσθήκη δευτερεύοντος θέματος…",
+    "noSubIssues": "Δεν υπάρχουν ακόμη υποθέματα",
+    "linkedNotes": "Συνδεδεμένες σημειώσεις",
+    "linkNote": "Συνδέστε μια σημείωση",
+    "loading": "Φόρτωση…",
+    "searchNotes": "Αναζήτηση σημειώσεων…",
+    "noMatchingNotes": "Δεν υπάρχουν σημειώσεις που να ταιριάζουν",
+    "noNotesAvailable": "Δεν υπάρχουν διαθέσιμες σημειώσεις",
+    "noLinkedNotes": "Δεν υπάρχουν ακόμη συνδεδεμένες σημειώσεις",
+    "removeLinkTo": "Κατάργηση συνδέσμου στο {title}",
+    "removeLinkFallback": "σημείωση"
+  },
+  "kanban": {
+    "board": "Πίνακας Kanban"
+  },
+  "toasts": {
+    "projectUpdated": "Το έργο ενημερώθηκε",
+    "projectCreated": "Το έργο δημιουργήθηκε",
+    "projectSaveError": "Αποτυχία αποθήκευσης έργου",
+    "projectArchived": "Το έργο αρχειοθετήθηκε",
+    "projectArchiveError": "Απέτυχε η αρχειοθέτηση του έργου",
+    "projectDeleted": "Το έργο διαγράφηκε",
+    "projectDeleteError": "Αποτυχία διαγραφής έργου",
+    "filtersCleared": "Τα φίλτρα διαγράφηκαν",
+    "filterSaved": "Το φίλτρο αποθηκεύτηκε",
+    "filterDeleted": "Το φίλτρο διαγράφηκε",
+    "filterApplied": "Εφαρμόστηκε \"{name}\"",
+    "deleted": "Η εργασία διαγράφηκε",
+    "deletedSeries": "Η σειρά ολοκληρώθηκε!",
+    "deletedNext": "Επόμενο περιστατικό",
+    "completed": "Η εργασία ολοκληρώθηκε!",
+    "archived": "Η εργασία αρχειοθετήθηκε",
+    "undoNotAvailableForDelete": "Η αναίρεση δεν είναι διαθέσιμη για διαγραφή",
+    "alreadyAllComplete": "Όλες οι επιλεγμένες εργασίες έχουν ήδη ολοκληρωθεί",
+    "noCompletedSelected": "Δεν επιλέχθηκαν ολοκληρωμένες εργασίες",
+    "completeFailed": "Αποτυχία ολοκλήρωσης εργασιών",
+    "reopenFailed": "Απέτυχε το εκ νέου άνοιγμα των εργασιών",
+    "deleteFailed": "Αποτυχία διαγραφής εργασιών",
+    "moveFailed": "Αποτυχία μετακίνησης εργασιών"
+  },
+  "phaseF": {
+    "componentsTasksAddSubtaskInput": {
+      "addSubtask": "Προσθήκη δευτερεύουσας εργασίας...",
+      "addSubtask2": "Προσθήκη δευτερεύουσας εργασίας",
+      "enterToAdd": "Εισαγάγετε για προσθήκη"
+    },
+    "componentsTasksBulkActionsBulkActionDropdown": {
+      "for": "για ",
+      "task": "καθήκον"
+    },
+    "componentsTasksBulkActionsBulkActionToolbar": {
+      "bulkActions": "Μαζικές ενέργειες",
+      "selected": "επιλεγμένο",
+      "complete": "Ολοκληρώθηκε",
+      "priority": "Προτεραιότητα",
+      "dueDate": "Ημερομηνία λήξης",
+      "moveTo": "Μετακίνηση σε",
+      "status": "Κατάσταση",
+      "archive": "Αρχείο",
+      "delete": "Διαγραφή",
+      "cancelSelection": "Ακύρωση επιλογής",
+      "cancel": "Ακύρωση"
+    },
+    "componentsTasksBulkActionsBulkDeleteDialog": {
+      "delete": "Διαγραφή ",
+      "task": "καθήκον",
+      "youReAboutToDelete": "Πρόκειται να διαγράψετε ",
+      "task2": "καθήκον",
+      "and": "και ",
+      "moreTask": "περισσότερο έργο",
+      "thisActionCanBeUndoneForAShortTimeAfterDeletion": "Αυτή η ενέργεια μπορεί να αναιρεθεί για σύντομο χρονικό διάστημα μετά τη διαγραφή.",
+      "cancel": "Ακύρωση",
+      "delete2": "Διαγραφή ",
+      "task3": "καθήκον"
+    },
+    "componentsTasksBulkActionsBulkDueDatePicker": {
+      "setDueDateFor": "Ορίστε ημερομηνία λήξης για ",
+      "task": "καθήκον",
+      "selectADateToSetAsTheDueDateForAllSelectedTasks": "Επιλέξτε μια ημερομηνία που θα ορίσετε ως ημερομηνία λήξης για όλες τις επιλεγμένες εργασίες.",
+      "alsoSetTime": "Ρυθμίστε επίσης την ώρα",
+      "cancel": "Ακύρωση",
+      "setDueDate": "Ορισμός ημερομηνίας λήξης"
+    },
+    "componentsTasksCelebrationProgress": {
+      "complete": "Ολοκληρώθηκε"
+    },
+    "componentsTasksColorPicker": {
+      "selectColor": "Επιλέξτε χρώμα"
+    },
+    "componentsTasksCustomRepeatDialog": {
+      "onTheseDays": "Αυτές τις μέρες",
+      "repeatOn": "Επαναλάβετε",
+      "day": "Ημέρα",
+      "ofTheMonth": "του μήνα",
+      "the": "Το",
+      "ofTheMonth2": "του μήνα",
+      "ends": "Τελειώνει",
+      "never": "Ποτέ",
+      "onDate": "Στην ημερομηνία",
+      "after": "Μετά",
+      "occurrences": "περιστατικά",
+      "preview": "Προεπισκόπηση",
+      "of": "του ",
+      "andMore": "και άλλα",
+      "frequency": "Συχνότητα",
+      "repeatEvery": "Επαναλάβετε κάθε",
+      "day2": "ημέρα",
+      "week": "εβδομάδα",
+      "month": "μήνα",
+      "year": "έτος",
+      "cancel": "Ακύρωση",
+      "save": "Αποθήκευση",
+      "customRepeat": "Προσαρμοσμένη επανάληψη"
+    },
+    "componentsTasksDatePickerCalendar": {
+      "previousMonth": "Προηγούμενος μήνας",
+      "nextMonth": "Τον επόμενο μήνα",
+      "goToToday": "Πηγαίνετε στο σήμερα",
+      "today": "Σήμερα",
+      "w": "W"
+    },
+    "componentsTasksDatePickerContent": {
+      "removeDate": "Αφαίρεση ημερομηνίας",
+      "clearTime": "Καθαρός χρόνος",
+      "addTime": "Προσθέστε χρόνο"
+    },
+    "componentsTasksDeleteProjectDialog": {
+      "delete": "Διαγραφή\"",
+      "thisProjectHas": "Αυτό το έργο έχει ",
+      "task": "καθήκον",
+      "whatWouldYouLikeToDoWithThem": "Τι θα θέλατε να κάνετε μαζί τους;",
+      "moveTasksToPersonalProject": "Μετακίνηση εργασιών στο Προσωπικό έργο",
+      "deleteAllTasksPermanently": "Διαγράψτε μόνιμα όλες τις εργασίες",
+      "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Αυτό το έργο δεν έχει εργασίες και θα διαγραφεί οριστικά.",
+      "thisActionCannotBeUndone": "Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.",
+      "cancel": "Ακύρωση",
+      "deleteProject": "Διαγραφή έργου"
+    },
+    "componentsTasksDeleteTaskDialog": {
+      "deleteTask": "Διαγραφή εργασίας;",
+      "ldquo": "ldquo;",
+      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; θα διαγραφεί οριστικά. Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.",
+      "deleteTask2": "Διαγραφή Εργασίας"
+    },
+    "componentsTasksDialogsAllSubtasksCompleteDialog": {
+      "allSubtasksComplete": "Όλες οι δευτερεύουσες εργασίες ολοκληρώθηκαν!",
+      "ldquo": "ldquo;",
+      "rdquoHasAll": "rdquo; τα έχει όλα ",
+      "subtask": "υποεργασία",
+      "done": "έγινε.",
+      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Θέλετε να επισημάνετε και τη γονική εργασία ως ολοκληρωμένη;",
+      "keepTaskOpen": "Κρατήστε την εργασία ανοιχτή",
+      "completeTask": "Ολοκληρώστε την εργασία ✓"
+    },
+    "componentsTasksDialogsBulkDueDateDialog": {
+      "setDueDateForAllSubtasks": "Ορίστε ημερομηνία λήξης για όλες τις δευτερεύουσες εργασίες",
+      "setDueDateFor": "Ορίστε ημερομηνία λήξης για ",
+      "subtask": "υποεργασία",
+      "in": "σε \"",
+      "rdquo": "rdquo;",
+      "alsoApplyToCompletedSubtasks": "Εφαρμόστε επίσης σε ολοκληρωμένες δευτερεύουσες εργασίες (",
+      "clearDate": "Καθαρή ημερομηνία",
+      "cancel": "Ακύρωση",
+      "apply": "Εφαρμογή"
+    },
+    "componentsTasksDialogsBulkPriorityDialog": {
+      "setPriorityForAllSubtasks": "Ορίστε προτεραιότητα για όλες τις δευτερεύουσες εργασίες",
+      "setPriorityFor": "Ορίστε προτεραιότητα για ",
+      "subtask": "υποεργασία",
+      "in": "σε \"",
+      "rdquo": "rdquo;",
+      "alsoApplyToCompletedSubtasks": "Εφαρμόστε επίσης σε ολοκληρωμένες δευτερεύουσες εργασίες (",
+      "cancel": "Ακύρωση",
+      "apply": "Εφαρμογή"
+    },
+    "componentsTasksDialogsCompleteParentDialog": {
+      "completeTaskWithIncompleteSubtasks": "Ολοκληρωμένη εργασία με ημιτελείς δευτερεύουσες εργασίες;",
+      "has": "έχει ",
+      "incompleteSubtask": "ημιτελής υποεργασία",
+      "and": "και ",
+      "more": "περισσότερα",
+      "whatWouldYouLikeToDo": "Τι θα ήθελες να κάνεις;",
+      "completeAllParentSubtasks": "Ολοκλήρωση όλων (γονέας + δευτερεύουσες εργασίες)",
+      "markTheParentAndAllSubtasksAsComplete": "Επισημάνετε τον γονέα και όλες τις δευτερεύουσες εργασίες ως ολοκληρωμένες",
+      "completeParentOnlyKeepSubtasksIncomplete": "Μόνο πλήρης γονέας, κρατήστε τις δευτερεύουσες εργασίες ημιτελείς",
+      "onlyMarkTheParentTaskAsComplete": "Επισημάνετε μόνο τη γονική εργασία ως ολοκληρωμένη",
+      "cancel": "Ακύρωση",
+      "complete": "Ολοκληρώθηκε"
+    },
+    "componentsTasksDialogsDeleteAllSubtasksDialog": {
+      "deleteAllSubtasks": "Διαγραφή όλων των δευτερευουσών εργασιών;",
+      "thisWillDelete": "Αυτό θα διαγράψει ",
+      "subtask": "υποεργασία",
+      "from": "από \"",
+      "rdquo": "rdquo;.",
+      "thisActionCannotBeUndone": "Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.",
+      "cancel": "Ακύρωση",
+      "deleteAll": "Διαγραφή όλων"
+    },
+    "componentsTasksDialogsDeleteParentDialog": {
+      "deleteTaskWithSubtasks": "Διαγραφή εργασίας με δευτερεύουσες εργασίες;",
+      "has": "έχει ",
+      "subtask": "υποεργασία",
+      "whatWouldYouLikeToDo": "Τι θα ήθελες να κάνεις;",
+      "deleteTaskAndAllSubtasks": "Διαγραφή εργασίας και όλων των δευτερευουσών εργασιών",
+      "permanentlyRemovesEverything": "Αφαιρεί οριστικά τα πάντα",
+      "deleteTaskKeepSubtasksAsStandaloneTasks": "Διαγράψτε εργασία, διατηρήστε τις δευτερεύουσες εργασίες ως αυτόνομες εργασίες",
+      "subtasksBecomeTopLevelTasks": "Οι δευτερεύουσες εργασίες γίνονται εργασίες ανώτατου επιπέδου",
+      "cancel": "Ακύρωση",
+      "delete": "Διαγραφή"
+    },
+    "componentsTasksDialogsDuplicateWithSubtasksDialog": {
+      "duplicateTask": "Διπλότυπη εργασία",
+      "createACopyOf": "Δημιουργήστε ένα αντίγραφο του \"",
+      "rdquo": "rdquo;",
+      "alsoDuplicateSubtasks": "Επίσης διπλότυπες δευτερεύουσες εργασίες (",
+      "cancel": "Ακύρωση",
+      "duplicate": "Διπλότυπο "
+    },
+    "componentsTasksDialogsParentPickerDialog": {
+      "makeSubtaskOf": "Κάντε υποεργασία του...",
+      "selectATaskToMake": "Επιλέξτε μια εργασία για να κάνετε \"",
+      "aSubtaskOf": "μια υποεργασία του.",
+      "searchTasks": "Εργασίες αναζήτησης...",
+      "sameProject": "Ίδιο Έργο",
+      "otherProjects": "Άλλα Έργα"
+    },
+    "componentsTasksDragDropInsertionIndicator": {
+      "dropToRescheduleTo": "Απόθεση για επαναπρογραμματισμό σε "
+    },
+    "componentsTasksDragDropMoveMenu": {
+      "moveTask": "Μετακίνηση εργασίας",
+      "move": "Μετακίνηση",
+      "reschedule": "Επαναπρογραμματισμός",
+      "today": "Σήμερα",
+      "tomorrow": "Αύριο",
+      "nextWeek": "Την επόμενη εβδομάδα",
+      "removeDate": "Αφαίρεση ημερομηνίας",
+      "moveToProject": "Μετακίνηση στο έργο",
+      "current": "Τρέχον",
+      "changeStatus": "Αλλαγή κατάστασης",
+      "current2": "Τρέχον",
+      "reorder": "Αναπαραγγελία"
+    },
+    "componentsTasksDragDropMultiDragOverlay": {
+      "moreTask": "περισσότερο έργο",
+      "task": "καθήκον"
+    },
+    "componentsTasksDragDropSidebarDropZones": {
+      "dropHere": "Πέτα εδώ"
+    },
+    "componentsTasksDragDropTaskRow": {
+      "priority": "προτεραιότητα: "
+    },
+    "componentsTasksDueDatePicker": {
+      "selectDueDate": "Επιλέξτε ημερομηνία λήξης",
+      "overdue": "Εκπρόθεσμα",
+      "setDueDate": "Ορίστε ημερομηνία λήξης",
+      "suggestions": "Προτάσεις",
+      "pickADate": "Διάλεξε ημερομηνία...",
+      "addTime": "Προσθέστε χρόνο",
+      "time": "Χρόνος",
+      "clearDate": "Καθαρή ημερομηνία",
+      "backToOptions": "Επιστροφή στις επιλογές"
+    },
+    "componentsTasksEditRepeatingTaskDialog": {
+      "editRepeatingTask": "Επεξεργασία Επαναλαμβανόμενης Εργασίας",
+      "youReEditingARepeatingTaskApplyChangesTo": "Επεξεργάζεστε μια επαναλαμβανόμενη εργασία. Εφαρμογή αλλαγών σε:",
+      "onlyThisOccurrence": "Μόνο αυτό το περιστατικό",
+      "onlyFutureTasksUnchanged": "μόνο — μελλοντικές εργασίες αμετάβλητες",
+      "thisAndAllFutureOccurrences": "Αυτό και όλα τα μελλοντικά γεγονότα",
+      "andBeyond": "και παραπέρα",
+      "cancel": "Ακύρωση",
+      "continue": "Συνέχεια"
+    },
+    "componentsTasksEmptyStatesCollapsedEmptySection": {
+      "add": "Προσθήκη"
+    },
+    "componentsTasksEmptyStatesSectionEmptyStates": {
+      "noTasksScheduled": "Δεν έχουν προγραμματιστεί εργασίες",
+      "addTaskFor": "Προσθήκη εργασίας για ",
+      "nothingScheduled": "Τίποτα προγραμματισμένο",
+      "addTasksWithDueDatesToPlanYourWeek": "Προσθέστε εργασίες με ημερομηνίες λήξης για να προγραμματίσετε την εβδομάδα σας.",
+      "addTask": "Προσθήκη εργασίας",
+      "viewCalendar": "Προβολή ημερολογίου"
+    },
+    "componentsTasksFiltersActiveFiltersBar": {
+      "priorityIs": "Προτεραιότητα είναι",
+      "priority": "προτεραιότητα",
+      "statusIs": "Κατάσταση είναι",
+      "status": "κατάσταση",
+      "projectIs": "Έργο είναι",
+      "project": "έργο",
+      "due": "Οφειλόμενο",
+      "dueDate": "ημερομηνία λήξης",
+      "search": "αναζήτηση",
+      "clearAll": "Καθαρίστε όλα"
+    },
+    "componentsTasksFiltersDueDateFilter": {
+      "filterByDueDate": "Φιλτράρισμα κατά ημερομηνία λήξης",
+      "customRange": "Προσαρμοσμένο εύρος",
+      "clear": "Καθαρό",
+      "apply": "Εφαρμογή"
+    },
+    "componentsTasksFiltersFilterDropdown": {
+      "filterBy": "Φιλτράρισμα κατά..."
+    },
+    "componentsTasksFiltersFilterEmptyState": {
+      "activeFilters": "Ενεργά φίλτρα: ",
+      "clearAllFilters": "Διαγράψτε όλα τα φίλτρα"
+    },
+    "componentsTasksFiltersFilterPanelsDueDatePanel": {
+      "dueDate": "Ημερομηνία λήξης"
+    },
+    "componentsTasksFiltersFilterPanelsPriorityPanel": {
+      "priority": "Προτεραιότητα",
+      "is": "είναι",
+      "search": "Αναζήτηση...",
+      "selected": "επιλεγμένο"
+    },
+    "componentsTasksFiltersFilterPanelsProjectPanel": {
+      "project": "Έργο",
+      "noProject": "Κανένα έργο"
+    },
+    "componentsTasksFiltersFilterPanelsStatusPanel": {
+      "status": "Κατάσταση"
+    },
+    "componentsTasksFiltersFilterPanelsStatusProjectPickerPan": {
+      "status": "Κατάσταση",
+      "pickAProject": "Επιλέξτε ένα έργο"
+    },
+    "componentsTasksFiltersMoreFiltersDropdown": {
+      "moreFilters": "Περισσότερα φίλτρα",
+      "more": "Περισσότερα",
+      "status": "Κατάσταση",
+      "hasTimeSet": "Έχει καθορισμένο χρόνο",
+      "recurringOnly": "Μόνο επαναλαμβανόμενα",
+      "status2": "Κατάσταση"
+    },
+    "componentsTasksFiltersPriorityFilter": {
+      "filterByPriority": "Φιλτράρισμα κατά προτεραιότητα",
+      "priority": "Προτεραιότητα"
+    },
+    "componentsTasksFiltersProjectFilter": {
+      "filterByProject": "Φιλτράρισμα ανά έργο",
+      "project": "Έργο",
+      "allProjects": "Όλα τα Έργα",
+      "clear": "Καθαρό"
+    },
+    "componentsTasksFiltersQuickFilters": {
+      "quickFilters": "Γρήγορα φίλτρα:"
+    },
+    "componentsTasksFiltersSaveFilterDialog": {
+      "saveFilter": "Αποθήκευση φίλτρου",
+      "saveYourCurrentFilterSettingsForQuickAccessLater": "Αποθηκεύστε τις τρέχουσες ρυθμίσεις φίλτρου για γρήγορη πρόσβαση αργότερα.",
+      "filterName": "Όνομα φίλτρου",
+      "eGHighPriorityThisWeek": "π.χ. Υψηλή προτεραιότητα αυτή την εβδομάδα",
+      "currentFilters": "Τρέχοντα φίλτρα:",
+      "noFiltersApplied": "Δεν εφαρμόστηκαν φίλτρα",
+      "cancel": "Ακύρωση",
+      "saveFilter2": "Αποθήκευση φίλτρου"
+    },
+    "componentsTasksFiltersSavedFiltersDropdown": {
+      "savedFilters": "Αποθηκευμένα φίλτρα",
+      "saved": "Αποθηκεύτηκε",
+      "noSavedFiltersYet": "Δεν υπάρχουν ακόμα αποθηκευμένα φίλτρα",
+      "saveCurrentFilters": "Αποθηκεύστε τα τρέχοντα φίλτρα",
+      "saveCurrentFilters2": "Αποθηκεύστε τα τρέχοντα φίλτρα"
+    },
+    "componentsTasksFiltersSavedFiltersSection": {
+      "filterName": "Όνομα φίλτρου",
+      "saveFilter": "Αποθήκευση φίλτρου",
+      "save": "Αποθήκευση"
+    },
+    "componentsTasksFiltersSearchInput": {
+      "searchTasks": "Εργασίες αναζήτησης",
+      "clearSearch": "Εκκαθάριση αναζήτησης"
+    },
+    "componentsTasksKanbanKanbanColumn": {
+      "dropHere": "Πέτα εδώ",
+      "releaseToMoveTaskToThisColumn": "Απελευθερώστε για να μετακινήσετε την εργασία σε αυτήν τη στήλη",
+      "moreCompleted": "πιο ολοκληρωμένη",
+      "showFewer": "Εμφάνιση λιγότερων",
+      "taskTitle": "Τίτλος εργασίας..."
+    },
+    "componentsTasksNaturalDateInput": {
+      "typeADateInNaturalLanguage": "Πληκτρολογήστε μια ημερομηνία σε φυσική γλώσσα",
+      "select": "Επιλέξτε"
+    },
+    "componentsTasksParentTaskRow": {
+      "priority": "προτεραιότητα: "
+    },
+    "componentsTasksPrioritySelect": {
+      "selectPriority": "Επιλέξτε προτεραιότητα",
+      "navigate": "πλοηγηθείτε",
+      "select": "επιλέξτε"
+    },
+    "componentsTasksProjectModal": {
+      "iconName": "Εικονίδιο & Όνομα",
+      "selectIcon": "Επιλέξτε εικονίδιο",
+      "projectName": "Όνομα έργου",
+      "clickIconToChange": "Κάντε κλικ στο εικονίδιο για αλλαγή",
+      "color": "Χρώμα",
+      "descriptionOptional": "Περιγραφή (προαιρετικό)",
+      "briefDescriptionOfThisProject": "Σύντομη περιγραφή αυτού του έργου...",
+      "statuses": "Καταστάσεις",
+      "configureTheWorkflowStagesForThisProject": "Διαμορφώστε τα στάδια ροής εργασίας για αυτό το έργο.",
+      "deleteProject": "Διαγραφή έργου",
+      "cancel": "Ακύρωση",
+      "unsavedChanges": "Μη αποθηκευμένες αλλαγές",
+      "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Έχετε μη αποθηκευμένες αλλαγές. Είστε βέβαιοι ότι θέλετε να τα απορρίψετε;",
+      "cancel2": "Ακύρωση",
+      "discard": "Απορρίψτε"
+    },
+    "componentsTasksProjectSelect": {
+      "selectProject": "Επιλέξτε έργο",
+      "selectProject2": "Επιλέξτε έργο"
+    },
+    "componentsTasksProjectsProjectSelector": {
+      "editProject": "Επεξεργασία έργου",
+      "archiveProject": "Αρχειακό έργο",
+      "deleteProject": "Διαγραφή έργου",
+      "selectProject": "Επιλέξτε έργο",
+      "noProjectsYet": "Δεν υπάρχουν ακόμη έργα",
+      "createProject": "Δημιουργία έργου"
+    },
+    "componentsTasksProjectsProjectsTabContent": {
+      "noProjectSelected": "Δεν επιλέχθηκε έργο",
+      "selectAProjectFromTheDropdownOrCreateANewOne": "Επιλέξτε ένα έργο από το αναπτυσσόμενο μενού ή δημιουργήστε ένα νέο",
+      "createYourFirstProject": "Δημιουργήστε το πρώτο σας έργο"
+    },
+    "componentsTasksQuickAddQuickAddHelp": {
+      "quickAddShortcutsHelp": "Βοήθεια για γρήγορη προσθήκη συντομεύσεων",
+      "quickAddShortcuts": "Γρήγορη προσθήκη συντομεύσεων",
+      "exampleBuyMilkTomorrowHighPersonal": "Παράδειγμα: \"Αγοράστε γάλα !αύριο !!high #personal\""
+    },
+    "componentsTasksQuickAddQuickOptionsBar": {
+      "quickOptions": "Γρήγορες επιλογές:"
+    },
+    "componentsTasksQuickAddInput": {
+      "q": "Q",
+      "q2": "Q"
+    },
+    "componentsTasksRepeatIndicator": {
+      "of": "του ",
+      "completed": "ολοκληρωθεί"
+    },
+    "componentsTasksRepeatPicker": {
+      "selectRepeatFrequency": "Επιλέξτε συχνότητα επανάληψης",
+      "doesNotRepeat": "Δεν επαναλαμβάνεται",
+      "custom": "Προσαρμοσμένο..."
+    },
+    "componentsTasksStatusEditor": {
+      "changeStatusColor": "Αλλαγή χρώματος κατάστασης",
+      "dragToReorder": "Σύρετε για αναδιάταξη",
+      "statusName": "Όνομα κατάστασης",
+      "addStatus": "Προσθήκη κατάστασης"
+    },
+    "componentsTasksStatusSelect": {
+      "selectStatus": "Επιλέξτε κατάσταση",
+      "selectStatus2": "Επιλέξτε κατάσταση"
+    },
+    "componentsTasksStopRepeatingDialog": {
+      "stopRepeating": "Σταματήστε την επανάληψη",
+      "isSetToRepeat": "έχει οριστεί για επανάληψη ",
+      "whatWouldYouLikeToDo": "Τι θα ήθελες να κάνεις;",
+      "keepThisTaskStopFutureOccurrences": "Διατηρήστε αυτήν την εργασία, σταματήστε μελλοντικά συμβάντα",
+      "taskWillBecomeAOneTimeTask": "Η εργασία θα γίνει εφάπαξ",
+      "deleteThisAndAllFutureOccurrences": "Διαγράψτε αυτό και όλες τις μελλοντικές εμφανίσεις",
+      "taskWillBeRemovedEntirely": "Η εργασία θα αφαιρεθεί εντελώς",
+      "cancel": "Ακύρωση",
+      "confirm": "Επιβεβαίωση"
+    },
+    "componentsTasksSubtaskDots": {
+      "of": "του ",
+      "subtasksComplete": "οι δευτερεύουσες εργασίες ολοκληρώθηκαν (",
+      "clickTo": "Κάντε κλικ στο ",
+      "of2": "του ",
+      "subtasksComplete2": "ολοκληρώθηκαν οι δευτερεύουσες εργασίες",
+      "clickTo2": "Κάντε κλικ στο "
+    },
+    "componentsTasksSubtaskProgressBadge": {
+      "of": "του ",
+      "subtasksComplete": "οι δευτερεύουσες εργασίες ολοκληρώθηκαν (",
+      "clickTo": "Κάντε κλικ στο "
+    },
+    "componentsTasksTaskBadges": {
+      "priority": "προτεραιότητα",
+      "repeatingTask": "Επαναλαμβανόμενη εργασία",
+      "d": "δ"
+    },
+    "componentsTasksTaskEmptyState": {
+      "addTask": "Προσθήκη Εργασίας"
+    },
+    "componentsTasksTaskIcons": {
+      "noPriority": "χωρίς προτεραιότητα"
+    },
+    "componentsTasksTaskRepeatSection": {
+      "repeat": "Επαναλάβετε",
+      "addRepeat": "Προσθήκη επανάληψης",
+      "edit": "Επεξεργασία",
+      "edit2": "Επεξεργασία",
+      "stopRepeating": "Σταμάτα να επαναλαμβάνεις",
+      "stopRepeating2": "Σταμάτα να επαναλαμβάνεις"
+    },
+    "componentsTasksTaskSection": {
+      "addTask": "Προσθήκη εργασίας"
+    },
+    "componentsTasksTimePicker": {
+      "selectTime": "Επιλέξτε ώρα",
+      "selectTime2": "Επιλέξτε ώρα",
+      "clearTime": "Καθαρός χρόνος"
+    },
+    "componentsTasksTodayEmptyState": {
+      "nothingScheduledForToday": "Δεν έχει προγραμματιστεί τίποτα για σήμερα",
+      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "Έχετε καθυστερημένες εργασίες παραπάνω. Προσθέστε ορισμένες εργασίες για σήμερα ή ελέγξτε την επερχόμενη λίστα σας.",
+      "addTaskForToday": "Προσθήκη εργασίας για σήμερα",
+      "allCaughtUpForToday": "Όλα κολλημένα για σήμερα",
+      "youHaveNothingScheduledEnjoyTheClarity": "Δεν έχετε τίποτα προγραμματισμένο. Απολαύστε τη διαύγεια.",
+      "addTaskForToday2": "Προσθήκη εργασίας για σήμερα"
+    },
+    "componentsTasksUpcomingEmptyState": {
+      "nothingScheduledForTheNext7Days": "Δεν έχει προγραμματιστεί τίποτα για τις επόμενες 7 ημέρες",
+      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "Έχετε καθυστερημένες εργασίες παραπάνω. Προγραμματίστε εκ των προτέρων προσθέτοντας εργασίες για την επόμενη εβδομάδα.",
+      "addTask": "Προσθήκη εργασίας",
+      "noUpcomingTasks": "Δεν υπάρχουν επερχόμενες εργασίες",
+      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Οι εργασίες που πρέπει να γίνουν τις επόμενες 7 ημέρες θα εμφανιστούν εδώ. Προγραμματίστε την εβδομάδα σας προσθέτοντας κάποιες εργασίες.",
+      "addTask2": "Προσθήκη εργασίας"
+    }
+  },
+  "phaseI": {
+    "toasts": {
+      "changesUndone": "Οι αλλαγές αναιρέθηκαν",
+      "projectNotFound": "Το έργο δεν βρέθηκε",
+      "failedToArchiveTasks": "Αποτυχία αρχειοθέτησης εργασιών",
+      "tasksRestoredFromArchive": "Οι εργασίες αποκαταστάθηκαν από το αρχείο",
+      "subtaskAdded": "Προστέθηκε δευτερεύουσα εργασία",
+      "subtaskDeleted": "Η δευτερεύουσα εργασία διαγράφηκε",
+      "taskCompleted": "Η εργασία ολοκληρώθηκε",
+      "allSubtasksCompleteTaskMarkedAsDone": "🎉 Όλες οι δευτερεύουσες εργασίες ολοκληρώθηκαν! Η εργασία επισημάνθηκε ως ολοκληρωμένη.",
+      "taskReopened": "Η εργασία άνοιξε ξανά",
+      "taskKeptOpen": "Η εργασία παρέμεινε ανοιχτή",
+      "taskMarkedAsDone": "🎉 Η εργασία επισημάνθηκε ως ολοκληρωμένη!"
+    },
+    "errors": {
+      "failedToArchiveTasks": "Αποτυχία αρχειοθέτησης εργασιών",
+      "failedToAddSubtask": "Αποτυχία προσθήκης δευτερεύουσας εργασίας",
+      "failedToAddSubtasks": "Αποτυχία προσθήκης δευτερευουσών εργασιών",
+      "failedToReorderSubtasks": "Αποτυχία αναδιάταξης δευτερευουσών εργασιών",
+      "failedToPromoteSubtask": "Αποτυχία προώθησης δευτερεύουσας εργασίας",
+      "failedToDeleteSubtask": "Αποτυχία διαγραφής δευτερεύουσας εργασίας",
+      "failedToDeleteTask": "Αποτυχία διαγραφής εργασίας",
+      "failedToCompleteTask": "Αποτυχία ολοκλήρωσης της εργασίας",
+      "failedToMakeSubtask": "Αποτυχία δημιουργίας δευτερεύουσας εργασίας",
+      "failedToCompleteSubtasks": "Αποτυχία ολοκλήρωσης δευτερευουσών εργασιών",
+      "failedToMarkSubtasksIncomplete": "Αποτυχία επισήμανσης δευτερευουσών εργασιών ως μη ολοκληρωμένων",
+      "failedToSetDueDate": "Αποτυχία ορισμού ημερομηνίας λήξης",
+      "failedToSetPriority": "Αποτυχία ορισμού προτεραιότητας",
+      "failedToDeleteSubtasks": "Αποτυχία διαγραφής δευτερευουσών εργασιών",
+      "failedToLoadTaskPreferences": "Η φόρτωση των προτιμήσεων εργασιών απέτυχε",
+      "failedToUpdateTaskPreferences": "Η ενημέρωση των προτιμήσεων εργασιών απέτυχε",
+      "failedToLoadLinkedTasks": "Αποτυχία φόρτωσης συνδεδεμένων εργασιών"
+    }
+  }
+}

@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "dag",
+    "week": "uge",
+    "month": "Måned",
+    "year": "år"
+  },
+  "toolbar": {
+    "create-event": "Opret begivenhed",
+    "previous-period": "Tidligere periode",
+    "next-period": "Næste periode",
+    "previous-month": "Forrige måned",
+    "next-month": "Næste måned",
+    "today": "I dag"
+  },
+  "filter": {
+    "filter-calendars": "Filtrer kalendere",
+    "sources": "Kilder",
+    "memry-items": "Memry varer",
+    "imported-calendars": "Importerede kalendere",
+    "event-types": "Begivenhedstyper",
+    "google-calendars": "Google kalendere",
+    "refresh-google-calendars": "Opdater Google-kalendere"
+  },
+  "visual-type": {
+    "event": "Begivenhed",
+    "imported-event": "Importeret begivenhed",
+    "task": "Opgave",
+    "reminder": "Påmindelse",
+    "snooze": "Snooze"
+  },
+  "state": {
+    "loading-calendar": "Indlæser kalender...",
+    "loading-calendars": "Indlæser kalendere...",
+    "preparing": "Forbereder..."
+  },
+  "empty": {
+    "no-imported-calendars-yet": "Ingen importerede kalendere endnu.",
+    "no-events": "Ingen begivenheder"
+  },
+  "time": {
+    "all-day": "Hele dagen",
+    "all-day-lower": "hele dagen",
+    "pick-a-date": "Vælg en dato",
+    "new-event": "Ny begivenhed",
+    "more-events": "{count, plural, one {# mere begivenhed} other {# flere begivenheder}}"
+  },
+  "form": {
+    "create-calendar-event": "Opret kalenderbegivenhed",
+    "edit-calendar-event": "Rediger kalenderbegivenhed",
+    "quick-create-description": "Indtast en titel og gem for at oprette en begivenhed i det valgte tidsinterval.",
+    "event-editor-description": "Opdater titel, placering, dato, klokkeslæt og noter for denne begivenhed.",
+    "new-event-placeholder": "Ny begivenhed",
+    "location-placeholder": "Tilføj placering",
+    "notes-url-placeholder": "Tilføj noter eller URL",
+    "start": "Start",
+    "end": "Slut",
+    "add-details": "Tilføj detaljer",
+    "google-calendar": "Google kalender",
+    "target-calendar": "Målkalender",
+    "use-default-calendar": "Brug standardkalender",
+    "use-default-calendar-with-name": "Brug standard ({calendar})",
+    "use-memry-calendar-default": "Brug Memry-kalender (standard)",
+    "use-memry-managed-calendar": "Brug den Memry-administrerede kalender",
+    "primary-suffix": "primære"
+  },
+  "delete-dialog": {
+    "title": "Vil du slette begivenheden?",
+    "local-description": "\"{title}\" slettes permanent. Denne handling kan ikke fortrydes.",
+    "google-bound-description": "\"{title}\" vil blive fjernet fra Memry og Google Kalender. Denne handling kan ikke fortrydes.",
+    "context-menu-delete-label": "Slet begivenhed"
+  },
+  "promote-dialog": {
+    "aria": "Rediger ekstern kalenderbegivenhed",
+    "title": "Vil du redigere denne begivenhed i Memry?",
+    "body": "Redigering af denne begivenhed vil oprette en linket kopi i Memry, så ændringer synkroniseres begge veje. Vil du fortsætte?",
+    "do-not-ask-again": "Spørg ikke igen",
+    "confirm-label": "Rediger i Memry"
+  },
+  "onboarding-dialog": {
+    "aria": "Vælg din standard Google-kalender",
+    "title": "Hvilken kalender skal nye Memry-begivenheder gå til?",
+    "body": "Vælg den Google-kalender Memry skal bruge som standard. Du kan stadig tilsidesætte det pr. begivenhed.",
+    "default-calendar-label": "Brug den Memry-administrerede kalender",
+    "skip": "Spring over",
+    "use-this-calendar": "Brug denne kalender"
+  },
+  "metadata": {
+    "attendees": "Deltagere",
+    "attendees-count": "Deltagere ({count})",
+    "reminders": "Påmindelser",
+    "default-reminders": "Standard påmindelser",
+    "visibility": "Synlighed:",
+    "optional": "Valgfrit",
+    "join-meeting": "Deltag i mødet",
+    "response": {
+      "accepted": "Accepteret",
+      "declined": "Afvist",
+      "tentative": "Foreløbig",
+      "needs-action": "Afventer"
+    },
+    "visibility-value": {
+      "private": "Privat",
+      "public": "Offentlig",
+      "confidential": "Fortroligt"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "min · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "Begivenheden kunne ikke gemmes. Prøv igen.",
+      "couldNotCreateEventTryAgain": "Begivenheden kunne ikke oprettes. Prøv igen.",
+      "couldNotSaveDefaultCalendarTryAgain": "Kunne ikke gemme standardkalenderen. Prøv igen.",
+      "failedToLoadCalendarPreferences": "Kunne ikke indlæse kalenderpræferencer",
+      "failedToUpdateCalendarPreferences": "Kunne ikke opdatere kalenderpræferencer",
+      "couldNotEditThisEventTryAgain": "Denne begivenhed kunne ikke redigeres. Prøv igen.",
+      "failedToDeleteEvent": "Begivenheden kunne ikke slettes",
+      "couldNotUnsnoozeInboxItem": "Kunne ikke annullere udsættelsen.",
+      "couldNotRescheduleInboxItem": "Kunne ikke omplanlægge."
+    },
+    "inboxSnoozePopover": {
+      "title": "Udsat indbakkeelement",
+      "openInInbox": "Åbn i indbakken",
+      "unsnoozeNow": "Sluk nu",
+      "reschedule": "Flyt tidsplanen"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "Opgavedetaljer",
+    "open-task": "Åben opgave",
+    "source-note": "Kildebemærkning",
+    "reschedule": "Flyt tidsplanen",
+    "more-actions": "Flere handlinger",
+    "mark-done": "Marker færdig",
+    "mark-not-done": "Marker ikke færdig",
+    "later-today": "Senere i dag",
+    "tomorrow": "I morgen",
+    "next-week": "Næste uge",
+    "next-week-mon": "Næste uge · Man",
+    "pick-date-time": "Vælg dato og klokkeslæt...",
+    "remove-due-date": "Fjern forfaldsdato",
+    "subtasks-prefix": "Underopgaver",
+    "subtasks-counter": "{done} af {total} færdig",
+    "today": "I dag",
+    "overdue-one": "1 dag forsinket",
+    "overdue-other": "{count} dage forsinket",
+    "repeats": "Gentager",
+    "repeats-daily": "Gentages dagligt",
+    "repeats-weekly": "Gentages ugentligt",
+    "repeats-monthly": "Gentages månedligt",
+    "repeats-yearly": "Gentages årligt",
+    "priority-urgent": "Haster",
+    "priority-high": "Høj",
+    "priority-medium": "Medium",
+    "errors": {
+      "could-not-save": "Opgaven kunne ikke gemmes",
+      "could-not-reschedule": "Opgaven kunne ikke omplanlægges",
+      "could-not-remove-due-date": "Forfaldsdatoen kunne ikke fjernes",
+      "could-not-open-note": "Noten kunne ikke åbnes"
+    }
+  }
+}

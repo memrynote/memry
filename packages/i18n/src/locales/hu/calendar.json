@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "nap",
+    "week": "hét",
+    "month": "hónap",
+    "year": "év"
+  },
+  "toolbar": {
+    "create-event": "Esemény létrehozása",
+    "previous-period": "Előző időszak",
+    "next-period": "Következő időszak",
+    "previous-month": "Előző hónap",
+    "next-month": "Következő hónapban",
+    "today": "Ma"
+  },
+  "filter": {
+    "filter-calendars": "Naptárak szűrése",
+    "sources": "Források",
+    "memry-items": "Memry tételek",
+    "imported-calendars": "Importált naptárak",
+    "event-types": "Eseménytípusok",
+    "google-calendars": "Google naptárak",
+    "refresh-google-calendars": "Frissítse a Google naptárakat"
+  },
+  "visual-type": {
+    "event": "Esemény",
+    "imported-event": "Importált esemény",
+    "task": "Feladat",
+    "reminder": "Emlékeztető",
+    "snooze": "Szundi"
+  },
+  "state": {
+    "loading-calendar": "Naptár betöltése…",
+    "loading-calendars": "Naptárak betöltése…",
+    "preparing": "Felkészülés…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "Még nincsenek importált naptárak.",
+    "no-events": "Nincsenek események"
+  },
+  "time": {
+    "all-day": "Egész nap",
+    "all-day-lower": "egész nap",
+    "pick-a-date": "Válassz egy dátumot",
+    "new-event": "Új esemény",
+    "more-events": "{count, plural, one {# további esemény} other {# további események}}"
+  },
+  "form": {
+    "create-calendar-event": "Naptáresemény létrehozása",
+    "edit-calendar-event": "Naptáresemény szerkesztése",
+    "quick-create-description": "Adja meg a címet, és mentse el az esemény létrehozásához a kiválasztott időtartományban.",
+    "event-editor-description": "Frissítse az esemény címét, helyét, dátumát, időpontját és megjegyzéseit.",
+    "new-event-placeholder": "Új esemény",
+    "location-placeholder": "Hely hozzáadása",
+    "notes-url-placeholder": "Jegyzetek vagy URL hozzáadása",
+    "start": "Indítsa el",
+    "end": "Vége",
+    "add-details": "Adjon hozzá részleteket",
+    "google-calendar": "Google naptár",
+    "target-calendar": "Célnaptár",
+    "use-default-calendar": "Az alapértelmezett naptár használata",
+    "use-default-calendar-with-name": "Alapértelmezés használata ({calendar})",
+    "use-memry-calendar-default": "Memry naptár használata (alapértelmezett)",
+    "use-memry-managed-calendar": "Használja az Memry által kezelt naptárat",
+    "primary-suffix": "elsődleges"
+  },
+  "delete-dialog": {
+    "title": "Törli az eseményt?",
+    "local-description": "Az \"{title}\" véglegesen törlődik. Ez a művelet nem vonható vissza.",
+    "google-bound-description": "Az „{title}” el lesz távolítva az Memry-ből és a Google Naptárból. Ez a művelet nem vonható vissza.",
+    "context-menu-delete-label": "Esemény törlése"
+  },
+  "promote-dialog": {
+    "aria": "Külső naptáresemény szerkesztése",
+    "title": "Szerkeszti ezt az eseményt az Memry fájlban?",
+    "body": "Az esemény szerkesztésével egy csatolt másolat jön létre az Memry fájlban, így a változások mindkét irányban szinkronizálódnak. Folytatja?",
+    "do-not-ask-again": "Ne kérdezd újra",
+    "confirm-label": "Szerkesztés az Memry-ben"
+  },
+  "onboarding-dialog": {
+    "aria": "Válassza ki alapértelmezett Google-naptárát",
+    "title": "Melyik naptárba kerüljenek az új Memry események?",
+    "body": "Válassza ki azt a Google naptárt, amelyet az Memry alapértelmezés szerint használnia kell. Eseményenként továbbra is felülbírálhatja.",
+    "default-calendar-label": "Használja az Memry által kezelt naptárat",
+    "skip": "Kihagyás",
+    "use-this-calendar": "Használja ezt a naptárat"
+  },
+  "metadata": {
+    "attendees": "Résztvevők",
+    "attendees-count": "Résztvevők ({count})",
+    "reminders": "Emlékeztetők",
+    "default-reminders": "Alapértelmezett emlékeztetők",
+    "visibility": "Láthatóság:",
+    "optional": "Választható",
+    "join-meeting": "Csatlakozz a találkozóhoz",
+    "response": {
+      "accepted": "Elfogadva",
+      "declined": "Elutasítva",
+      "tentative": "Kísérleti",
+      "needs-action": "Függőben"
+    },
+    "visibility-value": {
+      "private": "Privát",
+      "public": "Nyilvános",
+      "confidential": "Bizalmas"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "perc · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "Nem sikerült menteni az eseményt. Próbáld újra.",
+      "couldNotCreateEventTryAgain": "Nem sikerült létrehozni az eseményt. Próbáld újra.",
+      "couldNotSaveDefaultCalendarTryAgain": "Az alapértelmezett naptár mentése nem sikerült. Próbáld újra.",
+      "failedToLoadCalendarPreferences": "Nem sikerült betölteni a naptárbeállításokat",
+      "failedToUpdateCalendarPreferences": "Nem sikerült frissíteni a naptárbeállításokat",
+      "couldNotEditThisEventTryAgain": "Nem sikerült szerkeszteni ezt az eseményt. Próbáld újra.",
+      "failedToDeleteEvent": "Nem sikerült törölni az eseményt",
+      "couldNotUnsnoozeInboxItem": "Nem sikerült feloldani a halasztást.",
+      "couldNotRescheduleInboxItem": "Nem sikerült átütemezni."
+    },
+    "inboxSnoozePopover": {
+      "title": "Elhalasztott beérkező levelek",
+      "openInInbox": "Megnyitás a beérkező levelek között",
+      "unsnoozeNow": "Halasztás feloldása most",
+      "reschedule": "Átütemezés"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "A feladat részletei",
+    "open-task": "Nyitott feladat",
+    "source-note": "Forrás megjegyzés",
+    "reschedule": "Átütemezés",
+    "more-actions": "További műveletek",
+    "mark-done": "Jelölje késznek",
+    "mark-not-done": "Jelölje meg nem késznek",
+    "later-today": "Ma később",
+    "tomorrow": "Holnap",
+    "next-week": "Jövő héten",
+    "next-week-mon": "Jövő hét · Hétfő",
+    "pick-date-time": "Dátum és idő kiválasztása…",
+    "remove-due-date": "Törölje a határidőt",
+    "subtasks-prefix": "Részfeladatok",
+    "subtasks-counter": "{done}/{total} kész",
+    "today": "Ma",
+    "overdue-one": "1 nap késés",
+    "overdue-other": "{count} nap késés",
+    "repeats": "Ismétlődik",
+    "repeats-daily": "Naponta ismétlődik",
+    "repeats-weekly": "Hetente ismétlődik",
+    "repeats-monthly": "Havonta ismétlődik",
+    "repeats-yearly": "Évente ismétlődik",
+    "priority-urgent": "Sürgős",
+    "priority-high": "Magas",
+    "priority-medium": "Közepes",
+    "errors": {
+      "could-not-save": "Nem sikerült menteni a feladatot",
+      "could-not-reschedule": "Nem sikerült átütemezni a feladatot",
+      "could-not-remove-due-date": "Nem sikerült eltávolítani a határidőt",
+      "could-not-open-note": "Nem sikerült megnyitni a jegyzetet"
+    }
+  }
+}

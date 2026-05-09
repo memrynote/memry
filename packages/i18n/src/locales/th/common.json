@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "บันทึก",
+    "cancel": "ยกเลิก",
+    "close": "ปิด",
+    "ok": "ตกลง",
+    "yes": "ใช่",
+    "no": "ไม่ใช่",
+    "delete": "ลบ",
+    "confirm": "ยืนยัน",
+    "apply": "ใช้",
+    "done": "เสร็จสิ้น",
+    "discard": "ทิ้ง",
+    "dontSave": "ไม่บันทึก",
+    "edit": "แก้ไข",
+    "add": "เพิ่ม",
+    "remove": "ลบออก",
+    "retry": "ลองใหม่",
+    "submit": "ส่ง",
+    "back": "ย้อนกลับ",
+    "next": "ถัดไป",
+    "continue": "ดำเนินการต่อ",
+    "reset": "รีเซ็ต",
+    "copy": "คัดลอก",
+    "paste": "วาง",
+    "create": "สร้าง",
+    "open": "เปิด"
+  },
+  "state": {
+    "loading": "กำลังโหลด…",
+    "saving": "กำลังบันทึก…",
+    "deleting": "กำลังลบ…",
+    "searching": "กำลังค้นหา…",
+    "error": "ข้อผิดพลาด",
+    "success": "สำเร็จ"
+  },
+  "empty": {
+    "noResults": "ไม่มีผลลัพธ์",
+    "noItems": "ไม่มีรายการ",
+    "noMatch": "ไม่มีรายการที่ตรงกัน"
+  },
+  "action": {
+    "search": "ค้นหา",
+    "edit": "แก้ไข",
+    "delete": "ลบ",
+    "close": "ปิด",
+    "expand": "ขยาย",
+    "collapse": "ย่อ",
+    "showMore": "+{count, plural, one {# เพิ่มเติม} other {# เพิ่มเติม}}",
+    "showLess": "แสดงน้อยลง"
+  },
+  "tabs": {
+    "pin": "ปักหมุดแท็บ",
+    "unpin": "เลิกปักหมุดแท็บ",
+    "contextMenu": {
+      "close": "ปิด",
+      "closeOthers": "ปิดอันอื่น",
+      "closeToRight": "ปิดด้านขวา",
+      "closeAll": "ปิดทั้งหมด",
+      "duplicate": "ทำสำเนาแท็บ",
+      "splitRight": "แยกด้านขวา",
+      "splitDown": "แยกลง",
+      "copyPath": "คัดลอกเส้นทาง",
+      "revealInSidebar": "แสดงในแถบด้านข้าง"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {# รายการ} other {# รายการ}}",
+    "note": "{count, plural, one {# โน้ต} other {# โน้ต}}",
+    "folder": "{count, plural, one {# โฟลเดอร์} other {# โฟลเดอร์}}",
+    "task": "{count, plural, one {# งาน} other {# งาน}}",
+    "project": "{count, plural, one {# โครงการ} other {# โครงการ}}",
+    "itemDelete": "{count, plural, one {ลบ # รายการ} other {ลบ # รายการ}}"
+  },
+  "toast": {
+    "actionFailed": "การทำงานล้มเหลว",
+    "nothingToUndo": "ไม่มีอะไรให้เลิกทำ",
+    "undone": "เลิกทำแล้ว: {description}",
+    "undoFailed": "ล้มเหลวในการเลิกทำการดำเนินการ",
+    "copied": "คัดลอกแล้ว",
+    "copyFailed": "คัดลอกไม่สำเร็จ"
+  },
+  "dateRelative": {
+    "today": "วันนี้",
+    "yesterday": "เมื่อวาน",
+    "daysAgo": "{count, plural, one {# วันที่แล้ว} other {# วันก่อน}}"
+  },
+  "recurrence": {
+    "everyDay": "ทุกวัน",
+    "everyNDays": "{count, plural, one {ทุกวัน} other {ทุก # วัน}}",
+    "everyWeek": "ทุกสัปดาห์",
+    "everyNWeeks": "{count, plural, one {ทุกสัปดาห์} other {ทุก # สัปดาห์}}",
+    "everyWeekday": "ทุกวันในสัปดาห์",
+    "everyNWeeksOnWeekdays": "{count, plural, one {ทุกวันในสัปดาห์} other {ทุก # สัปดาห์ในวันธรรมดา}}",
+    "everyWeekend": "ทุกวันหยุดสุดสัปดาห์",
+    "everyNWeeksOnWeekends": "{count, plural, one {ทุกวันหยุดสุดสัปดาห์} other {ทุก # สัปดาห์ในวันหยุดสุดสัปดาห์}}",
+    "everyWeekOnDays": "ทุกสัปดาห์ใน {days}",
+    "everyNWeeksOnDays": "{count, plural, one {ทุกสัปดาห์ใน {days}} other {ทุก # สัปดาห์ใน {days}}}",
+    "everyMonth": "ทุกเดือน",
+    "everyNMonths": "{count, plural, one {ทุกเดือน} other {ทุก # เดือน}}",
+    "everyMonthOnDay": "ทุกเดือนในวันที่ {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {ทุกเดือนในวันที่ {day}{suffix}} other {ทุก # เดือนในวันที่ {day}{suffix}}}",
+    "everyMonthOnWeekDay": "ทุกเดือนใน {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {ทุกเดือนใน {week} {day}} other {ทุก # เดือน ใน {week} {day}}}",
+    "everyYear": "ทุกปี",
+    "everyNYears": "{count, plural, one {ทุกปี} other {ทุก # ปี}}",
+    "repeats": "ทำซ้ำ"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "คอลเลกชัน",
+      "newNote": "บันทึกใหม่",
+      "newNote2": "บันทึกใหม่",
+      "newFolder": "โฟลเดอร์ใหม่",
+      "newFolder2": "โฟลเดอร์ใหม่",
+      "bookmarks": "ที่คั่นหน้า",
+      "tags": "แท็ก",
+      "dropFilesToImport": "วางไฟล์เพื่อนำเข้า",
+      "newNoteN": "บันทึกใหม่ (⌘N)",
+      "new": "ใหม่",
+      "syncDisabled": "ปิดการซิงค์",
+      "syncDisabled2": "ปิดการซิงค์"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "ปรับขนาดแผงวัน",
+      "dragToResizeDoubleClickToReset": "ลากเพื่อปรับขนาด · ดับเบิลคลิกเพื่อตั้งค่าใหม่"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "ค้นหา แทนที่ สอบถาม..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "ข้ามขั้นตอนเริ่มต้น",
+      "welcomeToMemry": "ยินดีต้อนรับสู่ Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "ฐานความรู้ส่วนตัวของคุณ มาลองใช้เวลา 2 นาทีในการเริ่มต้นกันเถอะ",
+      "getStarted": "เริ่มต้น",
+      "createYourFirstNote": "สร้างบันทึกแรกของคุณ",
+      "markdownBasedStoredLocallyAsPlainFiles": "อิงตาม Markdown เก็บไว้ในเครื่องเป็นไฟล์ธรรมดา",
+      "eGMeetingNotesIdeasAnything": "เช่น บันทึกการประชุม ไอเดีย อะไรก็ได้...",
+      "skip": "ข้าม",
+      "createNote": "สร้างบันทึก  ",
+      "addYourFirstTask": "  \nเพิ่มงานแรกของคุณ  ",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "  \nงานจะลิงก์ไปยังบันทึกของคุณ พร้อมลำดับความสำคัญและวันที่กำหนดส่ง  ",
+      "eGReviewProjectProposal": "  \nเช่น ตรวจสอบข้อเสนอโปรเจกต์...  ",
+      "skip2": "ข้าม",
+      "createTask": "  \nสร้างงาน  ",
+      "syncAcrossDevices": "  \nซิงค์ข้ามอุปกรณ์  ",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "  \nเก็บบันทึกและงานของคุณให้ซิงค์กันบนทุกอุปกรณ์ คุณสามารถตั้งค่านี้ภายหลังได้เสมอ  ",
+      "skipForNow": "  \nข้ามตอนนี้  ",
+      "doneLetSGo": "  \nเรียบร้อย — ไปกันเลย!  "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "  \nตั้งค่าไอคอนโฟลเดอร์  "
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "  \nคำแนะนำ  "
+    },
+    "componentsIconPicker": {
+      "iconPicker": "  \nตัวเลือกไอคอน  ",
+      "selectIcon": "  \nเลือกไอคอน  ",
+      "closeIconPicker": "  \nปิดตัวเลือกไอคอน  ",
+      "searchIcons": "  \nค้นหาไอคอน...  ",
+      "all": "  \nทั้งหมด  ",
+      "clearIcon": "  \nล้างไอคอน  ",
+      "noIconsFoundFor": "  \nไม่พบไอคอนสำหรับ \"  "
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "  \nทางลัดแป้นพิมพ์  ",
+      "closeShortcutsHelp": "  \nปิดการช่วยเหลือทางลัด  ",
+      "press": "  \nกด  ",
+      "toClose": "  \nเพื่อปิด  "
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "  \nตั้งค่าไอคอน  ",
+      "clearIcon": "  \nล้างไอคอน  "
+    },
+    "componentsNavMain": {
+      "platform": "  \nแพลตฟอร์ม  "
+    },
+    "componentsNavProjects": {
+      "projects": "  \nโปรเจกต์  ",
+      "more": "  \nเพิ่มเติม",
+      "viewProject": "ดูโปรเจกต์",
+      "shareProject": "แชร์โปรเจกต์",
+      "deleteProject": "ลบโปรเจกต์",
+      "more2": "  \nเพิ่มเติม"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "อัปเกรดเป็น Pro",
+      "account": "บัญชี",
+      "billing": "การเรียกเก็บเงิน",
+      "notifications": "การแจ้งเตือน",
+      "logOut": "ออกจากระบบ"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "ค้นหา",
+      "searchNotesTasksJournalInbox": "ค้นหาบันทึก งาน วารสาร กล่องข้อความ...",
+      "noResultsFor": "ไม่พบผลลัพธ์สำหรับ “",
+      "rdquo": "rdquo;",
+      "result": "ผลลัพธ์"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "ค้นหาและคลิกที่รายการเพื่อสร้างเส้นทางของคุณ",
+      "reasons": "เหตุผล",
+      "clear": "ล้าง"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "ล้าง",
+      "tags": "แท็ก",
+      "filterByTag": "กรองตามแท็ก...",
+      "dateRange": "ช่วงวันที่"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "ดูทั้งหมด",
+      "results": "ผลลัพธ์"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "ฟัซซี"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "ไม่พบแท็บที่เปิดอยู่",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "เปิดหน้าจากแถบด้านข้างหรือสร้างแท็บใหม่เพื่อเริ่มต้น",
+      "openInbox": "เปิดกล่องข้อความ",
+      "closePane": "ปิดหน้าต่าง"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "แม่แบบเค้าโครง",
+      "layoutPresets2": "แม่แบบเค้าโครง"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "ปรับขนาดหน้าต่าง"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TasksContext ไม่พร้อมใช้งาน",
+      "searchResults": "ผลการค้นหา",
+      "unknownTabType": "ประเภทแท็บที่ไม่รู้จัก: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
+      "preview": "ตัวอย่าง"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "แท็บใหม่",
+      "newTab2": "แท็บใหม่",
+      "newNote": "โน้ตใหม่",
+      "journal": "วารสาร",
+      "calendar": "ปฏิทิน",
+      "inboxCapture": "การจับภาพกล่องจดหมาย",
+      "tasks": "งาน"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
+      "unsaved": "ยังไม่ได้บันทึก)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "ปิดแท็บทั้งหมด"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "เปิดแท็บ",
+      "scrollTabsLeft": "เลื่อนแท็บไปทางซ้าย",
+      "scrollTabsRight": "เลื่อนแท็บไปทางขวา",
+      "graphG": "กราฟ (⌘G)",
+      "dayPanel": "แผงวัน"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "เลื่อนแท็บไปทางซ้าย",
+      "scrollTabsRight": "เลื่อนแท็บไปทางขวา"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "เปิดแท็บ",
+      "scrollTabsLeft": "เลื่อนแท็บไปทางซ้าย",
+      "scrollTabsRight": "เลื่อนแท็บไปทางขวา"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "มีบางอย่างผิดพลาด",
+      "anErrorOccurredWhileRenderingThisTabContent": "เกิดข้อผิดพลาดขณะแสดงเนื้อหาแท็บนี้",
+      "tryAgain": "ลองอีกครั้ง"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "ไอคอนหมายเหตุ"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
+      "quot": "อ้าง;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "อ้าง; มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก คุณต้องการทําอะไร"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "พื้นที่ทํางานใหม่",
+      "darkMode": "โหมดมืด",
+      "settings": "การตั้งค่า",
+      "integrations": "การรวมระบบ",
+      "signOut": "ออกจากระบบ",
+      "downloadOnIos": "ดาวน์โหลดบน iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "ปิดหน้าต่าง",
+      "minimizeWindow": "ย่อหน้าต่าง",
+      "maximizeWindow": "ขยายหน้าต่าง"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "คำแนะนำ",
+      "or": "หรือ",
+      "enter": "กด Enter",
+      "toInsert": "เพื่อแทรก"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "เส้นนำทาง",
+      "more": "  \nเพิ่มเติม"
+    },
+    "componentsUiDialog": {
+      "close": "ปิด"
+    },
+    "componentsUiSheet": {
+      "close": "ปิด"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "แถบด้านข้าง",
+      "displaysTheMobileSidebar": "แสดงแถบด้านข้างบนมือถือ",
+      "toggleSidebar": "สลับแถบด้านข้าง",
+      "toggleSidebar2": "สลับแถบด้านข้าง",
+      "dragToResizeDoubleClickToReset": "ลากเพื่อปรับขนาด · ดับเบิลคลิกเพื่อตั้งค่าใหม่"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "ยินดีต้อนรับสู่ Memry",
+      "yourPersonalKnowledgeManagementSystem": "ระบบจัดการความรู้ส่วนบุคคลของคุณ",
+      "selectAFolderToStoreYourNotesAndTasks": "เลือกโฟลเดอร์เพื่อจัดเก็บบันทึกและงานของคุณ",
+      "opening": "กำลังเปิด...",
+      "selectVaultFolder": "เลือกโฟลเดอร์เก็บ Vault",
+      "plainMarkdown": "Markdown ธรรมดา",
+      "yourNotesStayPortable": "บันทึกของคุณยังคงพกพาได้",
+      "syncAnywhere": "ซิงค์ได้ทุกที่",
+      "useDropboxIcloudGit": "ใช้ Dropbox, iCloud, Git",
+      "recentVaults": "Vault ล่าสุด",
+      "notesLastOpened": "บันทึก · เปิดครั้งล่าสุด"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "ยังไม่มี vault",
+      "openVault": "เปิด vault",
+      "settings": "การตั้งค่า",
+      "logOut": "ออกจากระบบ",
+      "signInToSync": "เข้าสู่ระบบเพื่อซิงค์",
+      "remove": "ลบ ",
+      "rdquoFromList": "rdquo; จากรายการ?  ",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "  \nคลังเก็บนี้จะถูกลบออกจากแอป แต่ไฟล์ของคุณจะยังคงอยู่บนดิสก์ คุณสามารถเพิ่มกลับได้ตลอดเวลาในภายหลัง  ",
+      "cancel": "ยกเลิก",
+      "remove2": "ลบออก"
+    },
+    "componentsWindowControls": {
+      "searchK": "  \nค้นหา (⌘K)  ",
+      "browserBack": "  \nกลับไปหน้าก่อนหน้า  ",
+      "back": "ย้อนกลับ",
+      "browserForward": "  \nไปหน้าถัดไป  ",
+      "forward": "  \nไปข้างหน้า  "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "  \nไม่สามารถนำเข้าไฟล์ได้  ",
+      "failedToCreateNote": "  \nไม่สามารถสร้างบันทึกได้  ",
+      "failedToAccessMicrophone": "  \nไม่สามารถเข้าถึงไมโครโฟนได้  "
+    },
+    "toasts": {
+      "undone": "  \nเลิกทำแล้ว  "
+    }
+  }
+}

@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "วัน",
+    "week": "สัปดาห์",
+    "month": "เดือน",
+    "year": "ปี"
+  },
+  "toolbar": {
+    "create-event": "สร้างกิจกรรม",
+    "previous-period": "ช่วงเวลาก่อนหน้า",
+    "next-period": "ช่วงเวลาถัดไป",
+    "previous-month": "เดือนก่อน",
+    "next-month": "เดือนถัดไป",
+    "today": "วันนี้"
+  },
+  "filter": {
+    "filter-calendars": "กรองปฏิทิน",
+    "sources": "แหล่งที่มา",
+    "memry-items": "Memry รายการ",
+    "imported-calendars": "ปฏิทินที่นำเข้า",
+    "event-types": "ประเภทกิจกรรม",
+    "google-calendars": "ปฏิทิน Google",
+    "refresh-google-calendars": "รีเฟรชปฏิทิน Google"
+  },
+  "visual-type": {
+    "event": "กิจกรรม",
+    "imported-event": "กิจกรรมที่นำเข้า",
+    "task": "งาน",
+    "reminder": "การเตือน",
+    "snooze": "เลื่อน"
+  },
+  "state": {
+    "loading-calendar": "กำลังโหลดปฏิทิน…",
+    "loading-calendars": "กำลังโหลดปฏิทินหลายรายการ…",
+    "preparing": "กำลังเตรียม…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "ยังไม่มีปฏิทินที่นำเข้า",
+    "no-events": "ไม่มีเหตุการณ์"
+  },
+  "time": {
+    "all-day": "ตลอดวัน",
+    "all-day-lower": "ตลอดวัน",
+    "pick-a-date": "เลือกวันที่",
+    "new-event": "กิจกรรมใหม่",
+    "more-events": "{count, plural, one {# กิจกรรมเพิ่มเติม} other {# กิจกรรมเพิ่มเติม}}"
+  },
+  "form": {
+    "create-calendar-event": "สร้างกิจกรรมปฏิทิน",
+    "edit-calendar-event": "แก้ไขกิจกรรมปฏิทิน",
+    "quick-create-description": "กรอกชื่อเรื่องและบันทึกเพื่อสร้างกิจกรรมในช่วงเวลาที่เลือก",
+    "event-editor-description": "อัปเดตชื่อเรื่อง สถานที่ วันที่ เวลา และบันทึกสำหรับกิจกรรมนี้",
+    "new-event-placeholder": "กิจกรรมใหม่",
+    "location-placeholder": "เพิ่มสถานที่",
+    "notes-url-placeholder": "เพิ่มบันทึกหรือ URL",
+    "start": "เริ่ม",
+    "end": "สิ้นสุด",
+    "add-details": "เพิ่มรายละเอียด",
+    "google-calendar": "ปฏิทิน Google",
+    "target-calendar": "ปฏิทินเป้าหมาย",
+    "use-default-calendar": "ใช้ปฏิทินเริ่มต้น",
+    "use-default-calendar-with-name": "ใช้ค่าเริ่มต้น ({calendar})",
+    "use-memry-calendar-default": "ใช้ปฏิทิน Memry (ค่าเริ่มต้น)",
+    "use-memry-managed-calendar": "ใช้ปฏิทินที่จัดการโดย Memry",
+    "primary-suffix": "หลัก"
+  },
+  "delete-dialog": {
+    "title": "ลบกิจกรรม?",
+    "local-description": "\"{title}\" จะถูกลบอย่างถาวร การกระทำนี้ไม่สามารถย้อนกลับได้",
+    "google-bound-description": "\"{title}\" จะถูกลบออกจาก Memry และ Google Calendar การดำเนินการนี้ไม่สามารถย้อนกลับได้  ",
+    "context-menu-delete-label": "  \nลบกิจกรรม  "
+  },
+  "promote-dialog": {
+    "aria": "  \nแก้ไขกิจกรรมในปฏิทินภายนอก  ",
+    "title": "  \nแก้ไขกิจกรรมนี้ใน Memry?  ",
+    "body": "  \nการแก้ไขกิจกรรมนี้จะสร้างสำเนาที่เชื่อมโยงใน Memry เพื่อให้การเปลี่ยนแปลงซิงค์ทั้งสองทาง ดำเนินการต่อหรือไม่?  ",
+    "do-not-ask-again": "  \nไม่ต้องถามอีก  ",
+    "confirm-label": "  \nแก้ไขใน Memry  "
+  },
+  "onboarding-dialog": {
+    "aria": "  \nเลือกปฏิทิน Google เริ่มต้นของคุณ  ",
+    "title": "  \nกิจกรรม Memry ใหม่ควรไปที่ปฏิทินใด?  ",
+    "body": "  \nเลือกปฏิทิน Google ที่ Memry ควรใช้เป็นค่าเริ่มต้น คุณยังสามารถแก้ไขตามแต่ละเหตุการณ์ได้  ",
+    "default-calendar-label": "ใช้ปฏิทินที่จัดการโดย Memry",
+    "skip": "ข้าม",
+    "use-this-calendar": "  \nใช้ปฏิทินนี้  "
+  },
+  "metadata": {
+    "attendees": "  \nผู้เข้าร่วม  ",
+    "attendees-count": "  \nผู้เข้าร่วม ({count})  ",
+    "reminders": "การเตือน",
+    "default-reminders": "  \nการแจ้งเตือนเริ่มต้น  ",
+    "visibility": "  \nการมองเห็น:  ",
+    "optional": "  \nไม่บังคับ  ",
+    "join-meeting": "  \nเข้าร่วมการประชุม  ",
+    "response": {
+      "accepted": "  \nยอมรับ  ",
+      "declined": "  \nปฏิเสธ",
+      "tentative": "ชั่วคราว",
+      "needs-action": "รอดำเนินการ"
+    },
+    "visibility-value": {
+      "private": "ส่วนตัว",
+      "public": "สาธารณะ",
+      "confidential": "ลับ"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "นาที · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "ไม่สามารถบันทึกเหตุการณ์ได้ ลองอีกครั้ง",
+      "couldNotCreateEventTryAgain": "ไม่สามารถสร้างเหตุการณ์ได้ ลองอีกครั้ง",
+      "couldNotSaveDefaultCalendarTryAgain": "ไม่สามารถบันทึกปฏิทินเริ่มต้นได้ ลองอีกครั้ง",
+      "failedToLoadCalendarPreferences": "การโหลดการตั้งค่าปฏิทินล้มเหลว",
+      "failedToUpdateCalendarPreferences": "การอัปเดตการตั้งค่าปฏิทินล้มเหลว",
+      "couldNotEditThisEventTryAgain": "ไม่สามารถแก้ไขเหตุการณ์นี้ได้ ลองอีกครั้ง",
+      "failedToDeleteEvent": "การลบเหตุการณ์ล้มเหลว",
+      "couldNotUnsnoozeInboxItem": "ไม่สามารถเลิกเลื่อนแจ้งเตือนได้",
+      "couldNotRescheduleInboxItem": "ไม่สามารถกำหนดเวลาซ้ำได้"
+    },
+    "inboxSnoozePopover": {
+      "title": "รายการในกล่องจดหมายที่ถูกเลื่อน",
+      "openInInbox": "เปิดในกล่องจดหมาย",
+      "unsnoozeNow": "เลิกเลื่อนตอนนี้",
+      "reschedule": "กำหนดเวลาซ้ำ"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "รายละเอียดงาน",
+    "open-task": "เปิดงาน",
+    "source-note": "บันทึกต้นทาง",
+    "reschedule": "กำหนดเวลาซ้ำ",
+    "more-actions": "การกระทำเพิ่มเติม",
+    "mark-done": "ทำเครื่องหมายว่าสำเร็จแล้ว",
+    "mark-not-done": "ทำเครื่องหมายว่ายังไม่เสร็จ",
+    "later-today": "ภายหลังวันนี้",
+    "tomorrow": "พรุ่งนี้",
+    "next-week": "สัปดาห์หน้า",
+    "next-week-mon": "สัปดาห์หน้า · จันทร์",
+    "pick-date-time": "เลือกวันที่ & เวลา…",
+    "remove-due-date": "ลบวันครบกำหนด",
+    "subtasks-prefix": "งานย่อย",
+    "subtasks-counter": "ทำ {done} ของ {total} เสร็จแล้ว",
+    "today": "วันนี้",
+    "overdue-one": "ล่าช้า 1 วัน",
+    "overdue-other": "ล่าช้า {count} วัน",
+    "repeats": "ทำซ้ำ",
+    "repeats-daily": "ทำซ้ำทุกวัน",
+    "repeats-weekly": "ทำซ้ำทุกสัปดาห์",
+    "repeats-monthly": "ทำซ้ำทุกเดือน",
+    "repeats-yearly": "ทำซ้ำทุกปี",
+    "priority-urgent": "ด่วน",
+    "priority-high": "สูง",
+    "priority-medium": "ปานกลาง",
+    "errors": {
+      "could-not-save": "ไม่สามารถบันทึกงานได้",
+      "could-not-reschedule": "ไม่สามารถกำหนดเวลางานใหม่ได้",
+      "could-not-remove-due-date": "ไม่สามารถลบวันครบกำหนดได้",
+      "could-not-open-note": "ไม่สามารถเปิดบันทึกได้"
+    }
+  }
+}

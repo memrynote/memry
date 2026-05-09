@@ -1,0 +1,303 @@
+{
+  "title": "Revue",
+  "section": {
+    "journal": "Revue",
+    "aiConnections": "Connexions IA",
+    "todaysNotes": "Notes du jour",
+    "todaysSchedule": "Programme du jour",
+    "todaysTasks": "Les tâches du jour",
+    "schedule": "Calendrier",
+    "tasks": "Tâches",
+    "calendarEvents": "Événements du calendrier",
+    "overdueTasks": "Tâches en retard",
+    "technicalDetails": "Détails techniques"
+  },
+  "action": {
+    "versionHistory": "Historique des versions",
+    "export": "Exporter",
+    "fullWidth": "Pleine largeur",
+    "journalSettings": "Paramètres du journal",
+    "fullMode": "Mode complet",
+    "compactMode": "Mode compact",
+    "focusMode": "Mode de mise au point",
+    "exitFocusMode": "Quitter le mode de mise au point",
+    "enterFocusMode": "Passer en mode mise au point",
+    "createNote": "Créer une note",
+    "createNewNote": "Créer une nouvelle note",
+    "showLess": "Afficher moins",
+    "showMoreNotes": "Afficher {count} plus de remarques",
+    "showMoreNotes_plural": "Afficher {count} plus de notes",
+    "showFewerNotes": "Afficher moins de notes",
+    "startBlank": "Commencez plutôt à blanc",
+    "changeTemplate": "Changer de modèle",
+    "dismissIndicator": "Indicateur de rejet",
+    "refreshConnections": "Actualiser les connexions",
+    "reloadJournal": "Recharger le journal",
+    "goToToday": "Aller à aujourd'hui",
+    "copyUnsavedContent": "Copier le contenu non enregistré dans le presse-papiers",
+    "openNoteFullPage": "Ouvrir la note en pleine page",
+    "closeNoteDrawer": "Fermer le tiroir à notes",
+    "addBookmark": "Ajouter un signet",
+    "removeBookmark": "Supprimer le favori",
+    "tryAgain": "Réessayez"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "Qu'est-ce que tu prévois...",
+      "today": "Qu'est-ce qui vous préoccupe aujourd'hui...",
+      "past": "Pensez à cette journée...",
+      "default": "Commencez à écrire..."
+    },
+    "toolbar": {
+      "ariaLabel": "Formatage du texte",
+      "bold": "Audacieux",
+      "italic": "Italique",
+      "underline": "Souligner",
+      "strikethrough": "Barré",
+      "link": "Lien",
+      "image": "Images",
+      "moreOptions": "Plus d'options",
+      "heading1": "Titre 1",
+      "heading2": "Titre 2",
+      "heading3": "Titre 3",
+      "bulletList": "Liste à puces",
+      "numberedList": "Liste numérotée",
+      "checklist": "Liste de contrôle",
+      "quote": "Citation",
+      "divider": "Diviseur",
+      "codeBlock": "Bloc de code"
+    },
+    "prompt": {
+      "enterUrl": "Entrez l'URL :"
+    },
+    "upload": {
+      "noEntry": "Impossible de télécharger l'image : aucune entrée de journal sélectionnée",
+      "failed": "Échec du téléchargement de l'image"
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "Aujourd'hui",
+      "yesterday": "Hier",
+      "tomorrow": "Demain",
+      "future": "Avenir"
+    },
+    "weekday": {
+      "sunday": "dimanche",
+      "monday": "Lundi",
+      "tuesday": "mardi",
+      "wednesday": "mercredi",
+      "thursday": "jeudi",
+      "friday": "vendredi",
+      "saturday": "samedi"
+    },
+    "weekdayShort": {
+      "sunday": "Soleil",
+      "monday": "lundi",
+      "tuesday": "mar.",
+      "wednesday": "mer",
+      "thursday": "jeu.",
+      "friday": "vendredi",
+      "saturday": "Samedi"
+    },
+    "month": {
+      "january": "janvier",
+      "february": "Février",
+      "march": "Mars",
+      "april": "avril",
+      "may": "mai",
+      "june": "juin",
+      "july": "juillet",
+      "august": "Août",
+      "september": "septembre",
+      "october": "octobre",
+      "november": "novembre",
+      "december": "décembre"
+    },
+    "monthShort": {
+      "january": "janvier",
+      "february": "Février",
+      "march": "mars",
+      "april": "avril",
+      "may": "mai",
+      "june": "juin",
+      "july": "juillet",
+      "august": "Août",
+      "september": "septembre",
+      "october": "octobre",
+      "november": "novembre",
+      "december": "décembre"
+    },
+    "greeting": {
+      "morning": "Bonjour",
+      "afternoon": "Bonjour",
+      "evening": "Bonsoir",
+      "night": "Bonne nuit"
+    },
+    "allDay": "Toute la journée"
+  },
+  "nav": {
+    "previousDay": "Jour précédent",
+    "nextDay": "Le lendemain",
+    "previousMonth": "Mois précédent",
+    "nextMonth": "Le mois prochain",
+    "previousYear": "Année précédente",
+    "nextYear": "L'année prochaine",
+    "journalBack": "Retour du journal",
+    "journalNavigation": "Navigation dans le journal",
+    "dateNavigation": "Navigation par date de journal",
+    "goToYearView": "Aller à la vue annuelle",
+    "previousView": "Vue précédente",
+    "nextView": "Vue suivante"
+  },
+  "aria": {
+    "moreOptions": "Plus d'options",
+    "documentStatistics": "Statistiques des documents",
+    "dayContext": "Contexte de la journée : tâches et planning",
+    "scheduleEvents": "Planifier des événements",
+    "tasks": "Tâches",
+    "notesCreatedToday": "Notes {count} créées aujourd'hui"
+  },
+  "empty": {
+    "noEntry": "Aucune entrée",
+    "noDaysInMonth": "Aucun jour ce mois-ci",
+    "noEventsScheduled": "Aucun événement programmé",
+    "noEventsScheduledToday": "Aucun événement prévu aujourd'hui",
+    "noEventsWereScheduled": "Aucun événement n'était programmé",
+    "noTasksDue": "Aucune tâche à accomplir",
+    "noTasksDueToday": "Aucune tâche à accomplir aujourd'hui",
+    "noTasksWereDue": "Aucune tâche n'était due",
+    "noNotesToday": "Aucune note créée aujourd'hui",
+    "startDocumenting": "Commencez à documenter vos pensées et vos idées"
+  },
+  "ai": {
+    "loading": "Analyse de votre entrée...",
+    "empty": {
+      "willAppear": "Vos connexions apparaîtront ici",
+      "noneYet": "Aucune connexion trouvée pour l'instant",
+      "moreJournaling": "Au fur et à mesure que vous journalisez davantage, l'IA trouvera les entrées associées",
+      "keepWriting": "Continuez à écrire pour découvrir les entrées associées"
+    },
+    "error": {
+      "loadFailed": "Impossible de charger les connexions"
+    },
+    "connectionAria": "Connexion à {label}, correspondance {scorePercent}%"
+  },
+  "count": {
+    "item": "article",
+    "items": "articles",
+    "note": "remarque",
+    "notes": "remarques",
+    "day": "jour",
+    "days": "jours",
+    "event": "événement",
+    "events": "événements",
+    "meeting": "réunion",
+    "meetings": "réunions",
+    "task": "tâche",
+    "tasks": "tâches",
+    "todo": "faire",
+    "people": "{count} personnes",
+    "moreConnections": "+ {count} plus de connexion",
+    "moreConnections_plural": "+ {count} plus de connexions",
+    "moreNotes": "+ {count} plus de remarque",
+    "moreNotes_plural": "+ {count} plus de notes",
+    "daysWithEntries": "jours avec entrées",
+    "charactersWritten": "caractères écrits",
+    "words": "{count} mots",
+    "characters": "Caractères {count}",
+    "completed": "{count} terminé",
+    "overdue": "{count} en retard"
+  },
+  "stats": {
+    "wordCount": "Nombre de mots",
+    "characterCount": "Nombre de caractères",
+    "readingTime": "Temps de lecture estimé",
+    "lastModified": "Dernière modification",
+    "lessThanOneMinute": "< 1 min",
+    "minutes": "{minutes} min",
+    "read": "{readingTime} lire",
+    "modified": "{date} modifié"
+  },
+  "task": {
+    "completed": "Terminé",
+    "notCompleted": "Non terminé",
+    "priority": "Priorité {priority}",
+    "overdue": "en retard",
+    "markComplete": "Marquer \"{title}\" comme terminé",
+    "markNotComplete": "Marquer \"{title}\" comme non terminé"
+  },
+  "template": {
+    "using": "Utilisation de \"{templateName}\""
+  },
+  "reminder": {
+    "hasReminders": "A des rappels",
+    "setToRevisit": "Définir un rappel pour revenir",
+    "tooltip": "Rappel : {date}",
+    "tooltipMore": "Rappel : {date} (+{count} plus)",
+    "success": {
+      "set": "Rappel défini pour cette entrée de journal",
+      "deleted": "Rappel supprimé",
+      "dismissed": "Rappel rejeté",
+      "snoozed": "Rappel mis en attente"
+    },
+    "error": {
+      "set": "Échec de la définition du rappel",
+      "delete": "Échec de la suppression du rappel",
+      "dismiss": "Échec de la suppression du rappel",
+      "snooze": "Échec de la répétition du rappel"
+    }
+  },
+  "toast": {
+    "unsavedRetry": "Votre contenu est toujours en mémoire. Cliquez pour réessayer d'enregistrer.",
+    "noteNotFound": "Remarque \"{target}\" introuvable",
+    "fileNotFound": "Fichier introuvable : {target}",
+    "openLinkedItemFailed": "Échec de l'ouverture de l'élément lié",
+    "errorPrefix": "Erreur :"
+  },
+  "export": {
+    "noteTitle": "Journal-{month} {day}, {year}"
+  },
+  "note": {
+    "generatedTitle": "Remarque-{date}",
+    "openAria": "Ouvrez {title}, créé sur {time}"
+  },
+  "tag": {
+    "suggestionsAria": "Suggestions de balises",
+    "empty": {
+      "title": "Pas encore de balises",
+      "description": "Tapez pour créer une nouvelle balise"
+    },
+    "groupTitle": "Balises",
+    "create": "Créer #{query}",
+    "ariaLabel": "Étiquette : {tag}, cliquez pour filtrer"
+  },
+  "wiki": {
+    "suggestionsAria": "Suggestions de pages",
+    "empty": {
+      "title": "Aucune page trouvée"
+    },
+    "groupRecent": "Récent",
+    "groupAllPages": "Toutes les pages",
+    "createNewPage": "Créer une nouvelle page",
+    "ariaLabel": "Lien vers {title}"
+  },
+  "error": {
+    "title": "Erreur de journal",
+    "description": "Le journal a rencontré une erreur pour {date}. Vos modifications récentes n'ont peut-être pas été enregistrées.",
+    "descriptionNoDate": "Le journal a rencontré une erreur. Vos modifications récentes n'ont peut-être pas été enregistrées.",
+    "unsavedContent": "Contenu non enregistré détecté (caractères {length})"
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "k"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveJournalEntry": "Échec de l'enregistrement de l'entrée de journal",
+      "failedToLoadJournalSettings": "Échec du chargement des paramètres du journal",
+      "failedToUpdateSettings": "Échec de la mise à jour des paramètres"
+    }
+  }
+}

@@ -1,0 +1,303 @@
+{
+  "title": "Journal",
+  "section": {
+    "journal": "Journal",
+    "aiConnections": "AI kapcsolatok",
+    "todaysNotes": "Mai jegyzetek",
+    "todaysSchedule": "A mai menetrend",
+    "todaysTasks": "A mai nap feladatai",
+    "schedule": "Ütemezés",
+    "tasks": "Feladatok",
+    "calendarEvents": "Események naptárban",
+    "overdueTasks": "Lejárt feladatok",
+    "technicalDetails": "Műszaki részletek"
+  },
+  "action": {
+    "versionHistory": "Verziótörténet",
+    "export": "Exportálás",
+    "fullWidth": "Teljes szélességben",
+    "journalSettings": "Naplóbeállítások",
+    "fullMode": "Teljes mód",
+    "compactMode": "Kompakt mód",
+    "focusMode": "Fókusz mód",
+    "exitFocusMode": "Lépjen ki a fókusz módból",
+    "enterFocusMode": "Lépjen be a Fókusz módba",
+    "createNote": "Jegyzet létrehozása",
+    "createNewNote": "Új jegyzet létrehozása",
+    "showLess": "Mutass kevesebbet",
+    "showMoreNotes": "Mutasd az {count} további megjegyzést",
+    "showMoreNotes_plural": "További {count} jegyzetek megjelenítése",
+    "showFewerNotes": "Kevesebb jegyzet megjelenítése",
+    "startBlank": "Inkább kezdje üresen",
+    "changeTemplate": "Sablon módosítása",
+    "dismissIndicator": "Elvetés jelző",
+    "refreshConnections": "Kapcsolatok frissítése",
+    "reloadJournal": "Napló újratöltése",
+    "goToToday": "Ugrás a mai napra",
+    "copyUnsavedContent": "A nem mentett tartalom másolása a vágólapra",
+    "openNoteFullPage": "Jegyzet megnyitása teljes oldalon",
+    "closeNoteDrawer": "Zárja be a jegyzetfiókot",
+    "addBookmark": "Könyvjelző hozzáadása",
+    "removeBookmark": "Könyvjelző eltávolítása",
+    "tryAgain": "Próbáld újra"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "mit tervezel...",
+      "today": "Mi jár ma a fejedben...",
+      "past": "Gondolj erre a napra...",
+      "default": "Kezdj el írni..."
+    },
+    "toolbar": {
+      "ariaLabel": "Szöveg formázása",
+      "bold": "Félkövér",
+      "italic": "Dőlt",
+      "underline": "Aláhúzás",
+      "strikethrough": "Áthúzott",
+      "link": "Link",
+      "image": "Kép",
+      "moreOptions": "További lehetőségek",
+      "heading1": "1. címsor",
+      "heading2": "2. címsor",
+      "heading3": "3. címsor",
+      "bulletList": "Bullet List",
+      "numberedList": "Számozott lista",
+      "checklist": "Ellenőrzőlista",
+      "quote": "Idézet",
+      "divider": "Elválasztó",
+      "codeBlock": "Kódblokk"
+    },
+    "prompt": {
+      "enterUrl": "Írja be az URL-t:"
+    },
+    "upload": {
+      "noEntry": "Nem sikerült feltölteni a képet: nincs kiválasztva naplóbejegyzés",
+      "failed": "Nem sikerült feltölteni a képet"
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "Ma",
+      "yesterday": "tegnap",
+      "tomorrow": "Holnap",
+      "future": "Jövő"
+    },
+    "weekday": {
+      "sunday": "vasárnap",
+      "monday": "hétfő",
+      "tuesday": "kedd",
+      "wednesday": "szerda",
+      "thursday": "csütörtök",
+      "friday": "péntek",
+      "saturday": "szombat"
+    },
+    "weekdayShort": {
+      "sunday": "V",
+      "monday": "Hétfő",
+      "tuesday": "kedd",
+      "wednesday": "Sze",
+      "thursday": "cs",
+      "friday": "Péntek",
+      "saturday": "Szo"
+    },
+    "month": {
+      "january": "január",
+      "february": "február",
+      "march": "március",
+      "april": "április",
+      "may": "május",
+      "june": "június",
+      "july": "július",
+      "august": "augusztus",
+      "september": "szeptember",
+      "october": "október",
+      "november": "november",
+      "december": "december"
+    },
+    "monthShort": {
+      "january": "jan",
+      "february": "febr",
+      "march": "márc",
+      "april": "ápr",
+      "may": "május",
+      "june": "jún",
+      "july": "júl",
+      "august": "Aug",
+      "september": "szept",
+      "october": "okt",
+      "november": "nov",
+      "december": "dec"
+    },
+    "greeting": {
+      "morning": "Jó reggelt",
+      "afternoon": "Jó napot",
+      "evening": "Jó estét",
+      "night": "Jó éjszakát"
+    },
+    "allDay": "Egész nap"
+  },
+  "nav": {
+    "previousDay": "Előző nap",
+    "nextDay": "Másnap",
+    "previousMonth": "Előző hónap",
+    "nextMonth": "Következő hónapban",
+    "previousYear": "Előző év",
+    "nextYear": "Jövőre",
+    "journalBack": "Napló vissza",
+    "journalNavigation": "Napló navigáció",
+    "dateNavigation": "Napló dátum navigáció",
+    "goToYearView": "Ugrás az év nézethez",
+    "previousView": "Előző nézet",
+    "nextView": "Következő nézet"
+  },
+  "aria": {
+    "moreOptions": "További lehetőségek",
+    "documentStatistics": "Dokumentumstatisztika",
+    "dayContext": "Napi kontextus: feladatok és ütemterv",
+    "scheduleEvents": "Események ütemezése",
+    "tasks": "Feladatok",
+    "notesCreatedToday": "{count} jegyzetek ma készültek"
+  },
+  "empty": {
+    "noEntry": "Nincs belépés",
+    "noDaysInMonth": "Ebben a hónapban nincs nap",
+    "noEventsScheduled": "Nincsenek ütemezett események",
+    "noEventsScheduledToday": "A mai napra nincs betervezve esemény",
+    "noEventsWereScheduled": "Semmilyen eseményt nem terveztek",
+    "noTasksDue": "Nincs esedékes feladat",
+    "noTasksDueToday": "Ma nincs esedékes feladat",
+    "noTasksWereDue": "Feladat nem volt esedékes",
+    "noNotesToday": "Ma nem készült jegyzet",
+    "startDocumenting": "Kezdje el dokumentálni gondolatait és ötleteit"
+  },
+  "ai": {
+    "loading": "Bejegyzésed elemzése...",
+    "empty": {
+      "willAppear": "A kapcsolataid itt jelennek meg",
+      "noneYet": "Még nem találtunk kapcsolatokat",
+      "moreJournaling": "Ahogy egyre többet naplóz, a mesterséges intelligencia megtalálja a kapcsolódó bejegyzéseket",
+      "keepWriting": "Írjon tovább a kapcsolódó bejegyzések felfedezéséhez"
+    },
+    "error": {
+      "loadFailed": "Nem sikerült betölteni a kapcsolatokat"
+    },
+    "connectionAria": "Csatlakozás {label}-hez, {scorePercent}%-os egyezés"
+  },
+  "count": {
+    "item": "tételt",
+    "items": "tételeket",
+    "note": "megjegyzés",
+    "notes": "jegyzetek",
+    "day": "napon",
+    "days": "napokon",
+    "event": "esemény",
+    "events": "eseményeket",
+    "meeting": "találkozó",
+    "meetings": "találkozók",
+    "task": "feladatot",
+    "tasks": "feladatokat",
+    "todo": "tenni",
+    "people": "{count} ember",
+    "moreConnections": "+ {count} több kapcsolat",
+    "moreConnections_plural": "+ {count} több csatlakozás",
+    "moreNotes": "+ {count} további megjegyzés",
+    "moreNotes_plural": "+ {count} további jegyzetek",
+    "daysWithEntries": "napok bejegyzésekkel",
+    "charactersWritten": "írt karakterek",
+    "words": "{count} szó",
+    "characters": "{count} karakterek",
+    "completed": "{count} kész",
+    "overdue": "{count} lejárt"
+  },
+  "stats": {
+    "wordCount": "Szószám",
+    "characterCount": "Karakterszám",
+    "readingTime": "Becsült olvasási idő",
+    "lastModified": "Utoljára módosítva",
+    "lessThanOneMinute": "< 1 perc",
+    "minutes": "{minutes} min",
+    "read": "{readingTime} olvasható",
+    "modified": "{date} módosított"
+  },
+  "task": {
+    "completed": "Befejezve",
+    "notCompleted": "Nem fejeződött be",
+    "priority": "{priority} prioritás",
+    "overdue": "lejárt",
+    "markComplete": "Jelölje meg az „{title}”-t készként",
+    "markNotComplete": "Az „{title}” megjelölése befejezetlenként"
+  },
+  "template": {
+    "using": "\"{templateName}\" használata"
+  },
+  "reminder": {
+    "hasReminders": "Emlékeztetők vannak",
+    "setToRevisit": "Állítson be emlékeztetőt az újralátogatásra",
+    "tooltip": "Emlékeztető: {date}",
+    "tooltipMore": "Emlékeztető: {date} (+{count} több)",
+    "success": {
+      "set": "Emlékeztető beállítva ehhez a naplóbejegyzéshez",
+      "deleted": "Emlékeztető törölve",
+      "dismissed": "Emlékeztető elvetve",
+      "snoozed": "Az emlékeztető elhalasztva"
+    },
+    "error": {
+      "set": "Nem sikerült beállítani az emlékeztetőt",
+      "delete": "Nem sikerült törölni az emlékeztetőt",
+      "dismiss": "Nem sikerült elvetni az emlékeztetőt",
+      "snooze": "Nem sikerült elhalasztani az emlékeztetőt"
+    }
+  },
+  "toast": {
+    "unsavedRetry": "A tartalma még mindig a memóriában van. Kattintson a mentés újrapróbálásához.",
+    "noteNotFound": "Az „{target}” megjegyzés nem található",
+    "fileNotFound": "A fájl nem található: {target}",
+    "openLinkedItemFailed": "Nem sikerült megnyitni a hivatkozott elemet",
+    "errorPrefix": "Hiba:"
+  },
+  "export": {
+    "noteTitle": "Napló - {month} {day}, {year}"
+  },
+  "note": {
+    "generatedTitle": "Megjegyzés - {date}",
+    "openAria": "Nyissa meg az {title} fájlt, amelyet az {time} címen hoztak létre"
+  },
+  "tag": {
+    "suggestionsAria": "Címkejavaslatok",
+    "empty": {
+      "title": "Még nincsenek címkék",
+      "description": "Új címke létrehozásához írja be"
+    },
+    "groupTitle": "Címkék",
+    "create": "Hozzon létre #{query}",
+    "ariaLabel": "Címke: {tag}, kattintson a szűréshez"
+  },
+  "wiki": {
+    "suggestionsAria": "Oldalajánlatok",
+    "empty": {
+      "title": "Nem található oldal"
+    },
+    "groupRecent": "Legutóbbi",
+    "groupAllPages": "Minden oldal",
+    "createNewPage": "Új oldal létrehozása",
+    "ariaLabel": "Link az {title}-hez"
+  },
+  "error": {
+    "title": "Naplóhiba",
+    "description": "A napló {date} hibát észlelt. Lehetséges, hogy a legutóbbi módosításait nem mentette a rendszer.",
+    "descriptionNoDate": "A napló hibát észlelt. Lehetséges, hogy a legutóbbi módosításait nem mentette a rendszer.",
+    "unsavedContent": "Nem mentett tartalom észlelve ({length} karakter)"
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "k"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveJournalEntry": "Nem sikerült menteni a naplóbejegyzést",
+      "failedToLoadJournalSettings": "Nem sikerült betölteni a naplóbeállításokat",
+      "failedToUpdateSettings": "Nem sikerült frissíteni a beállításokat"
+    }
+  }
+}

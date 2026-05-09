@@ -1,0 +1,303 @@
+{
+  "title": "Journal",
+  "section": {
+    "journal": "Journal",
+    "aiConnections": "AI-anslutningar",
+    "todaysNotes": "Dagens anteckningar",
+    "todaysSchedule": "Dagens schema",
+    "todaysTasks": "Dagens uppgifter",
+    "schedule": "Schema",
+    "tasks": "Uppgifter",
+    "calendarEvents": "Kalenderhändelser",
+    "overdueTasks": "Förfallna uppgifter",
+    "technicalDetails": "Tekniska detaljer"
+  },
+  "action": {
+    "versionHistory": "Versionshistorik",
+    "export": "Exportera",
+    "fullWidth": "Helskärmsläge",
+    "journalSettings": "Journalinställningar",
+    "fullMode": "Fullt läge",
+    "compactMode": "Kompakt läge",
+    "focusMode": "Fokusläge",
+    "exitFocusMode": "Avsluta fokuseringsläge",
+    "enterFocusMode": "Gå in i fokuseringsläge",
+    "createNote": "Skapa anteckning",
+    "createNewNote": "Skapa ny anteckning",
+    "showLess": "Visa mindre",
+    "showMoreNotes": "Visa {count} fler anteckningar",
+    "showMoreNotes_plural": "Visa {count} fler anteckningar",
+    "showFewerNotes": "Visa färre anteckningar",
+    "startBlank": "Börja med tomt istället",
+    "changeTemplate": "Ändra mall",
+    "dismissIndicator": "Avvisa indikator",
+    "refreshConnections": "Uppdatera anslutningar",
+    "reloadJournal": "Ladda om dagbok",
+    "goToToday": "Gå till idag",
+    "copyUnsavedContent": "Kopiera osparat innehåll till urklipp",
+    "openNoteFullPage": "Öppna anteckning i full sida",
+    "closeNoteDrawer": "Stäng anteckningsfack",
+    "addBookmark": "Lägg till bokmärke",
+    "removeBookmark": "Ta bort bokmärke",
+    "tryAgain": "Försök igen"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "Vad planerar du...",
+      "today": "Vad tänker du på idag...",
+      "past": "Reflektera över denna dag...",
+      "default": "Börja skriva..."
+    },
+    "toolbar": {
+      "ariaLabel": "Textformatering",
+      "bold": "Fetstil",
+      "italic": "Kursiv",
+      "underline": "Understruken",
+      "strikethrough": "Genomstruken",
+      "link": "Länk",
+      "image": "Bild",
+      "moreOptions": "Fler alternativ",
+      "heading1": "Rubrik 1",
+      "heading2": "Rubrik 2",
+      "heading3": "Rubrik 3",
+      "bulletList": "Punktlista",
+      "numberedList": "Numrerad lista",
+      "checklist": "Checklista",
+      "quote": "Citat",
+      "divider": "Avskiljare",
+      "codeBlock": "Kodblock"
+    },
+    "prompt": {
+      "enterUrl": "Ange URL:"
+    },
+    "upload": {
+      "noEntry": "Kan inte ladda upp bild: ingen dagboksanteckning vald",
+      "failed": "Misslyckades med att ladda upp bild"
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "Idag",
+      "yesterday": "Igår",
+      "tomorrow": "Imorgon",
+      "future": "Framtid"
+    },
+    "weekday": {
+      "sunday": "Söndag",
+      "monday": "Måndag",
+      "tuesday": "Tisdag",
+      "wednesday": "Onsdag",
+      "thursday": "Torsdag",
+      "friday": "Fredag",
+      "saturday": "Lördag"
+    },
+    "weekdayShort": {
+      "sunday": "Sön",
+      "monday": "Mån",
+      "tuesday": "Tis",
+      "wednesday": "Ons",
+      "thursday": "Tor",
+      "friday": "Fre",
+      "saturday": "Lör"
+    },
+    "month": {
+      "january": "Januari",
+      "february": "Februari",
+      "march": "Mars",
+      "april": "April",
+      "may": "Maj",
+      "june": "Juni",
+      "july": "Juli",
+      "august": "Augusti",
+      "september": "September",
+      "october": "Oktober",
+      "november": "November",
+      "december": "December"
+    },
+    "monthShort": {
+      "january": "Jan",
+      "february": "Feb",
+      "march": "Mar",
+      "april": "Apr",
+      "may": "Maj",
+      "june": "Jun",
+      "july": "Jul",
+      "august": "Aug",
+      "september": "Sep",
+      "october": "Okt",
+      "november": "Nov",
+      "december": "Dec"
+    },
+    "greeting": {
+      "morning": "God morgon",
+      "afternoon": "God eftermiddag",
+      "evening": "God kväll",
+      "night": "God natt"
+    },
+    "allDay": "Hela dagen"
+  },
+  "nav": {
+    "previousDay": "Föregående dag",
+    "nextDay": "Nästa dag",
+    "previousMonth": "Föregående månad",
+    "nextMonth": "Nästa månad",
+    "previousYear": "Föregående år",
+    "nextYear": "Nästa år",
+    "journalBack": "Tillbaka till journal",
+    "journalNavigation": "Journalnavigering",
+    "dateNavigation": "Journaldatumnavigering",
+    "goToYearView": "Gå till årsvy",
+    "previousView": "Föregående vy",
+    "nextView": "Nästa vy"
+  },
+  "aria": {
+    "moreOptions": "Fler alternativ",
+    "documentStatistics": "Dokumentstatistik",
+    "dayContext": "Dagskontext: uppgifter och schema",
+    "scheduleEvents": "Schemalägg händelser",
+    "tasks": "Uppgifter",
+    "notesCreatedToday": "{count} anteckningar skapade idag"
+  },
+  "empty": {
+    "noEntry": "Ingen post",
+    "noDaysInMonth": "Inga dagar denna månad",
+    "noEventsScheduled": "Inga evenemang schemalagda",
+    "noEventsScheduledToday": "Inga evenemang schemalagda idag",
+    "noEventsWereScheduled": "Inga evenemang var schemalagda",
+    "noTasksDue": "Inga uppgifter förfaller",
+    "noTasksDueToday": "Inga uppgifter förfaller idag",
+    "noTasksWereDue": "Inga uppgifter förföll",
+    "noNotesToday": "Inga anteckningar skapades idag",
+    "startDocumenting": "Börja dokumentera dina tankar och idéer"
+  },
+  "ai": {
+    "loading": "Analyserar din post...",
+    "empty": {
+      "willAppear": "Dina kopplingar kommer att visas här",
+      "noneYet": "Inga kopplingar hittades än",
+      "moreJournaling": "När du skriver mer kommer AI att hitta relaterade poster",
+      "keepWriting": "Fortsätt skriva för att upptäcka relaterade poster"
+    },
+    "error": {
+      "loadFailed": "Kunde inte ladda kopplingar"
+    },
+    "connectionAria": "Koppling till {label}, {scorePercent}% match"
+  },
+  "count": {
+    "item": "objekt",
+    "items": "artiklar",
+    "note": "anteckning",
+    "notes": "anteckningar",
+    "day": "dag",
+    "days": "dagar",
+    "event": "evenemang",
+    "events": "evenemang",
+    "meeting": "möte",
+    "meetings": "möten",
+    "task": "uppgift",
+    "tasks": "uppgifter",
+    "todo": "göra",
+    "people": "{count} personer",
+    "moreConnections": "+ {count} fler anslutning",
+    "moreConnections_plural": "+ {count} fler anslutningar",
+    "moreNotes": "+ {count} fler anteckning",
+    "moreNotes_plural": "+ {count} fler anteckningar",
+    "daysWithEntries": "dagar med poster",
+    "charactersWritten": "skrivna tecken",
+    "words": "{count} ord",
+    "characters": "{count} tecken",
+    "completed": "{count} slutförda",
+    "overdue": "{count} försenade"
+  },
+  "stats": {
+    "wordCount": "Ordantal",
+    "characterCount": "Teckenantal",
+    "readingTime": "Beräknad lästid",
+    "lastModified": "Senast ändrad",
+    "lessThanOneMinute": "< 1 min",
+    "minutes": "{minutes} min",
+    "read": "{readingTime} lästa",
+    "modified": "Ändrad {date}"
+  },
+  "task": {
+    "completed": "Slutförd",
+    "notCompleted": "Inte slutförd",
+    "priority": "{priority} prioritet",
+    "overdue": "försenad",
+    "markComplete": "Markera \"{title}\" som slutförd",
+    "markNotComplete": "Markera \"{title}\" som inte slutförd"
+  },
+  "template": {
+    "using": "Använder \"{templateName}\""
+  },
+  "reminder": {
+    "hasReminders": "Har påminnelser",
+    "setToRevisit": "Sätt påminnelse för att återbesöka",
+    "tooltip": "Påminnelse: {date}",
+    "tooltipMore": "Påminnelse: {date} (+{count} till)",
+    "success": {
+      "set": "Påminnelse inställd för denna journalpost",
+      "deleted": "Påminnelse borttagen",
+      "dismissed": "Påminnelse avvisad",
+      "snoozed": "Påminnelse uppskjuten"
+    },
+    "error": {
+      "set": "Misslyckades med att sätta påminnelse",
+      "delete": "Misslyckades med att ta bort påminnelse",
+      "dismiss": "Misslyckades med att avvisa påminnelse",
+      "snooze": "Det gick inte att skjuta upp påminnelse"
+    }
+  },
+  "toast": {
+    "unsavedRetry": "Ditt innehåll finns fortfarande i minnet. Klicka för att försöka spara igen.",
+    "noteNotFound": "Anteckning \"{target}\" hittades inte",
+    "fileNotFound": "Fil hittades inte: {target}",
+    "openLinkedItemFailed": "Misslyckades med att öppna länkad post",
+    "errorPrefix": "Fel:"
+  },
+  "export": {
+    "noteTitle": "Journal - {month} {day}, {year}"
+  },
+  "note": {
+    "generatedTitle": "Anteckning - {date}",
+    "openAria": "Öppna {title}, skapad den {time}"
+  },
+  "tag": {
+    "suggestionsAria": "Etikettförslag",
+    "empty": {
+      "title": "Inga taggar än",
+      "description": "Skriv för att skapa en ny tagg"
+    },
+    "groupTitle": "Taggar",
+    "create": "Skapa #{query}",
+    "ariaLabel": "Tagg: {tag}, klicka för att filtrera"
+  },
+  "wiki": {
+    "suggestionsAria": "Föreslagna sidor",
+    "empty": {
+      "title": "Inga sidor hittades"
+    },
+    "groupRecent": "Senaste",
+    "groupAllPages": "Alla sidor",
+    "createNewPage": "Skapa ny sida",
+    "ariaLabel": "Länk till {title}"
+  },
+  "error": {
+    "title": "Journalfel",
+    "description": "Journalen stötte på ett fel för {date}. Dina senaste ändringar kan ha gått förlorade.",
+    "descriptionNoDate": "Journalen stötte på ett fel. Dina senaste ändringar kan ha gått förlorade.",
+    "unsavedContent": "Osparat innehåll upptäckt ({length} tecken)"
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "k"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveJournalEntry": "Misslyckades med att spara dagboksinlägg",
+      "failedToLoadJournalSettings": "Misslyckades med att ladda dagboksinställningar",
+      "failedToUpdateSettings": "Misslyckades med att uppdatera inställningar"
+    }
+  }
+}

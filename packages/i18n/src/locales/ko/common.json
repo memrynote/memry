@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "저장",
+    "cancel": "취소",
+    "close": "닫기",
+    "ok": "알았어",
+    "yes": "예",
+    "no": "아니요",
+    "delete": "삭제",
+    "confirm": "확인",
+    "apply": "적용",
+    "done": "완료",
+    "discard": "폐기",
+    "dontSave": "저장하지 않음",
+    "edit": "편집",
+    "add": "추가",
+    "remove": "제거",
+    "retry": "재시도",
+    "submit": "제출",
+    "back": "뒤로",
+    "next": "다음",
+    "continue": "계속",
+    "reset": "재설정",
+    "copy": "복사",
+    "paste": "붙여넣기",
+    "create": "만들기",
+    "open": "열기"
+  },
+  "state": {
+    "loading": "로드 중…",
+    "saving": "저장 중…",
+    "deleting": "삭제 중…",
+    "searching": "검색 중…",
+    "error": "오류",
+    "success": "성공"
+  },
+  "empty": {
+    "noResults": "결과 없음",
+    "noItems": "항목 없음",
+    "noMatch": "일치하는 항목 없음"
+  },
+  "action": {
+    "search": "검색",
+    "edit": "편집",
+    "delete": "삭제",
+    "close": "닫기",
+    "expand": "펼치기",
+    "collapse": "접기",
+    "showMore": "+{count, plural, one {# 더 보기} other {# 더 보기}}",
+    "showLess": "간략히 보기"
+  },
+  "tabs": {
+    "pin": "핀 탭",
+    "unpin": "탭 고정 해제",
+    "contextMenu": {
+      "close": "닫기",
+      "closeOthers": "기타 닫기",
+      "closeToRight": "오른쪽에 가까움",
+      "closeAll": "모두 닫기",
+      "duplicate": "탭 복제",
+      "splitRight": "오른쪽 분할",
+      "splitDown": "분할",
+      "copyPath": "경로 복사",
+      "revealInSidebar": "사이드바에 공개"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {# 항목} other {# 항목}}",
+    "note": "{count, plural, one {# 노트} other {# 노트}}",
+    "folder": "{count, plural, one {# 폴더} other {# 폴더}}",
+    "task": "{count, plural, one {# 작업} other {# 작업}}",
+    "project": "{count, plural, one {# 프로젝트} other {# 프로젝트}}",
+    "itemDelete": "{count, plural, one {# 항목 삭제} other {# 항목 삭제}}"
+  },
+  "toast": {
+    "actionFailed": "작업 실패",
+    "nothingToUndo": "실행취소할 항목이 없습니다.",
+    "undone": "실행 취소: {description}",
+    "undoFailed": "작업을 실행취소하지 못했습니다.",
+    "copied": "복사됨",
+    "copyFailed": "복사하지 못했습니다."
+  },
+  "dateRelative": {
+    "today": "오늘",
+    "yesterday": "어제",
+    "daysAgo": "{count, plural, one {#일 전} other {#일 전}}"
+  },
+  "recurrence": {
+    "everyDay": "매일",
+    "everyNDays": "{count, plural, one {매일} other {#일마다}}",
+    "everyWeek": "매주",
+    "everyNWeeks": "{count, plural, one {매주} other {#주마다}}",
+    "everyWeekday": "평일마다",
+    "everyNWeeksOnWeekdays": "{count, plural, one {평일마다} other {#주마다 평일}}",
+    "everyWeekend": "주말마다",
+    "everyNWeeksOnWeekends": "{count, plural, one {주말마다} other {매주 #주 주말}}",
+    "everyWeekOnDays": "매주 {days}에서",
+    "everyNWeeksOnDays": "{count, plural, one {매주 {days}에서} other {{days}에서 #주마다}}",
+    "everyMonth": "매달",
+    "everyNMonths": "{count, plural, one {매달} other {#개월마다}}",
+    "everyMonthOnDay": "매달 {day}{suffix}에서",
+    "everyNMonthsOnDay": "{count, plural, one {매달 {day}{suffix}에서} other {{day}{suffix}에서 #개월마다}}",
+    "everyMonthOnWeekDay": "매달 {week} {day}에서",
+    "everyNMonthsOnWeekDay": "{count, plural, one {매달 {week} {day}에서} other {{week} {day}에서 #개월마다}}",
+    "everyYear": "매년",
+    "everyNYears": "{count, plural, one {매년} other {#년마다}}",
+    "repeats": "반복"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "컬렉션",
+      "newNote": "새 메모",
+      "newNote2": "새 메모",
+      "newFolder": "새 폴더",
+      "newFolder2": "새 폴더",
+      "bookmarks": "북마크",
+      "tags": "태그",
+      "dropFilesToImport": "가져올 파일을 삭제하세요.",
+      "newNoteN": "새 메모(⌘N)",
+      "new": "새로운",
+      "syncDisabled": "동기화가 비활성화되었습니다.",
+      "syncDisabled2": "동기화가 비활성화되었습니다."
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "일 패널 크기 조정",
+      "dragToResizeDoubleClickToReset": "크기를 조정하려면 드래그하세요. 재설정하려면 두 번 클릭하세요."
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "찾기, 바꾸기, 질문하기..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "온보딩 건너뛰기",
+      "welcomeToMemry": "Memry에 오신 것을 환영합니다",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "귀하의 개인 지식 기반. 2분만 투자해 시작해 보세요.",
+      "getStarted": "시작하기 ",
+      "createYourFirstNote": "첫 번째 메모 만들기",
+      "markdownBasedStoredLocallyAsPlainFiles": "마크다운 기반이며 일반 파일로 로컬에 저장됩니다.",
+      "eGMeetingNotesIdeasAnything": "예를 들어 회의록, 아이디어, 무엇이든...",
+      "skip": "건너뛰기",
+      "createNote": "메모 만들기 ",
+      "addYourFirstTask": "첫 번째 작업 추가",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "작업은 우선순위 및 마감일이 포함된 메모에 연결됩니다.",
+      "eGReviewProjectProposal": "예를 들어 프로젝트 제안 검토...",
+      "skip2": "건너뛰기",
+      "createTask": "작업 만들기 ",
+      "syncAcrossDevices": "여러 기기에서 동기화",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "모든 기기에서 메모와 작업을 동기화하세요. 나중에 언제든지 설정할 수 있습니다.",
+      "skipForNow": "지금은 건너뛰세요",
+      "doneLetSGo": "완료 — 가자! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "폴더 아이콘 설정"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "힌트"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "아이콘 선택기",
+      "selectIcon": "아이콘 선택",
+      "closeIconPicker": "아이콘 선택기 닫기",
+      "searchIcons": "아이콘 검색...",
+      "all": "모두",
+      "clearIcon": "아이콘 지우기",
+      "noIconsFoundFor": "\"에 대한 아이콘을 찾을 수 없습니다."
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "키보드 단축키",
+      "closeShortcutsHelp": "바로가기 도움말 닫기",
+      "press": "언론",
+      "toClose": "닫다"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "아이콘 설정",
+      "clearIcon": "아이콘 지우기"
+    },
+    "componentsNavMain": {
+      "platform": "플랫폼"
+    },
+    "componentsNavProjects": {
+      "projects": "프로젝트",
+      "more": "더보기",
+      "viewProject": "프로젝트 보기",
+      "shareProject": "프로젝트 공유",
+      "deleteProject": "프로젝트 삭제",
+      "more2": "더보기"
+    },
+    "componentsNavUser": {
+      "cn": "중국",
+      "cn2": "중국",
+      "upgradeToPro": "프로로 업그레이드",
+      "account": "계정",
+      "billing": "청구",
+      "notifications": "알림",
+      "logOut": "로그아웃"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "검색",
+      "searchNotesTasksJournalInbox": "메모, 작업, 일지, 받은 편지함 검색...",
+      "noResultsFor": "“에 대한 검색결과가 없습니다.",
+      "rdquo": "rdquo;",
+      "result": "결과"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "항목을 검색하고 클릭하여 트레일을 구축하세요.",
+      "reasons": "이유",
+      "clear": "지우기"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "지우기",
+      "tags": "태그",
+      "filterByTag": "태그로 필터링...",
+      "dateRange": "기간"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "모두 보기 ",
+      "results": "결과"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "피",
+      "fuzzy": "퍼지"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "열린 탭이 없습니다.",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "사이드바에서 페이지를 열거나 새 탭을 만들어 시작하세요.",
+      "openInbox": "받은편지함 열기",
+      "closePane": "창 닫기"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "레이아웃 사전 설정",
+      "layoutPresets2": "레이아웃 사전 설정"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "창 크기 조정"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TasksContext를 사용할 수 없습니다.",
+      "searchResults": "검색결과",
+      "unknownTabType": "알 수 없는 탭 유형: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "저장되지 않은 변경사항",
+      "preview": "미리보기"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "새 탭",
+      "newTab2": "새 탭",
+      "newNote": "새 메모",
+      "journal": "저널",
+      "calendar": "달력",
+      "inboxCapture": "받은 편지함 캡처",
+      "tasks": "작업"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "저장되지 않은 변경사항",
+      "unsaved": "저장되지 않음)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "저장되지 않은 변경사항"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "모든 탭 닫기"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "탭 열기",
+      "scrollTabsLeft": "탭을 왼쪽으로 스크롤",
+      "scrollTabsRight": "탭을 오른쪽으로 스크롤",
+      "graphG": "그래프(⌘G)",
+      "dayPanel": "일 패널"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "탭을 왼쪽으로 스크롤",
+      "scrollTabsRight": "탭을 오른쪽으로 스크롤"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "탭 열기",
+      "scrollTabsLeft": "탭을 왼쪽으로 스크롤",
+      "scrollTabsRight": "탭을 오른쪽으로 스크롤"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "문제가 발생했습니다.",
+      "anErrorOccurredWhileRenderingThisTabContent": "이 탭 콘텐츠를 렌더링하는 동안 오류가 발생했습니다.",
+      "tryAgain": "다시 시도"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "메모 아이콘"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "저장되지 않은 변경사항",
+      "quot": "quot;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; 저장되지 않은 변경사항이 있습니다. 무엇을 하고 싶나요?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "새로운 작업공간",
+      "darkMode": "다크 모드",
+      "settings": "설정",
+      "integrations": "통합",
+      "signOut": "로그아웃",
+      "downloadOnIos": "iOS에서 다운로드"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "창 닫기",
+      "minimizeWindow": "창 최소화",
+      "maximizeWindow": "창 최대화"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "제안",
+      "or": "또는",
+      "enter": "입력",
+      "toInsert": "삽입하다"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "이동 경로",
+      "more": "더보기"
+    },
+    "componentsUiDialog": {
+      "close": "닫기"
+    },
+    "componentsUiSheet": {
+      "close": "닫기"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "사이드바",
+      "displaysTheMobileSidebar": "모바일 사이드바를 표시합니다.",
+      "toggleSidebar": "사이드바 전환",
+      "toggleSidebar2": "사이드바 전환",
+      "dragToResizeDoubleClickToReset": "크기를 조정하려면 드래그하세요. 재설정하려면 두 번 클릭하세요."
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Memry에 오신 것을 환영합니다",
+      "yourPersonalKnowledgeManagementSystem": "귀하의 개인 지식 관리 시스템.",
+      "selectAFolderToStoreYourNotesAndTasks": "메모와 작업을 저장할 폴더를 선택하세요.",
+      "opening": "여는 중...",
+      "selectVaultFolder": "Vault 폴더 선택",
+      "plainMarkdown": "일반 마크다운",
+      "yourNotesStayPortable": "메모는 휴대 가능합니다",
+      "syncAnywhere": "어디서나 동기화",
+      "useDropboxIcloudGit": "Dropbox, iCloud, Git 사용",
+      "recentVaults": "최근 금고",
+      "notesLastOpened": "메모 · 마지막 열림"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "아직 Vault가 없습니다.",
+      "openVault": "금고 열기",
+      "settings": "설정",
+      "logOut": "로그아웃",
+      "signInToSync": "동기화하려면 로그인하세요.",
+      "remove": "'제거",
+      "rdquoFromList": "rdquo; 목록에서?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "이 저장소는 앱에서 제거되지만 파일은 디스크에 남아 있습니다. 나중에 언제든지 다시 추가할 수 있습니다.",
+      "cancel": "취소",
+      "remove2": "제거"
+    },
+    "componentsWindowControls": {
+      "searchK": "검색(⌘K)",
+      "browserBack": "브라우저 뒤로",
+      "back": "뒤로",
+      "browserForward": "브라우저 앞으로",
+      "forward": "앞으로"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "파일을 가져오지 못했습니다.",
+      "failedToCreateNote": "메모를 작성하지 못했습니다.",
+      "failedToAccessMicrophone": "마이크에 액세스하지 못했습니다."
+    },
+    "toasts": {
+      "undone": "실행 취소됨"
+    }
+  }
+}

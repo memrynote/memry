@@ -1,0 +1,1160 @@
+{
+  "toast": {
+    "exportNotImplemented": "Export lokálních dat zatím není implementován"
+  },
+  "page": {
+    "title": "Nastavení",
+    "nav": {
+      "groups": {
+        "workspace": "Pracovní prostor",
+        "preferences": "Předvolby",
+        "services": "Služby",
+        "data": "Data"
+      },
+      "items": {
+        "account": "účet",
+        "general": "Generál",
+        "templates": "Šablony",
+        "editor": "redaktor",
+        "journal": "Deník",
+        "tasks": "Úkoly",
+        "calendar": "Kalendář",
+        "appearance": "Vzhled",
+        "shortcuts": "Zkratky",
+        "ai": "Asistent AI",
+        "integrations": "Integrace",
+        "vault": "Vault",
+        "tags": "Tagy",
+        "properties": "Vlastnosti"
+      }
+    }
+  },
+  "general": {
+    "header": {
+      "title": "Generál",
+      "subtitle": "Spouštění aplikace a chování karty",
+      "loading": "Načítání nastavení..."
+    },
+    "groups": {
+      "startup": "Spuštění",
+      "updates": "Aktualizace",
+      "languageRegion": "Jazyk a region",
+      "tabBehavior": "Chování karty",
+      "fileCreation": "Vytvoření souboru",
+      "privacy": "soukromí"
+    },
+    "startup": {
+      "launchAtLogin": {
+        "label": "Spusťte při přihlášení",
+        "description": "Když se přihlásíte, spusťte Memry",
+        "error": "Aktualizace startu při spouštění se nezdařila"
+      }
+    },
+    "updates": {
+      "appUpdates": "Aktualizace aplikací",
+      "installedVersion": "Instalovaná verze {version}",
+      "availableVersion": "Dostupná verze {version}",
+      "unsupported": "Zabalené sestavení mohou kontrolovat, stahovat a instalovat aktualizace z GitHub Releases",
+      "available": "Memry {version} je k dispozici ke stažení",
+      "downloadingLatest": "Stahování nejnovější verze",
+      "downloadingLatestPercent": "Stahování nejnovější verze ({percent}%)",
+      "downloaded": "Memry {version} je připraven k instalaci",
+      "upToDate": "Tato instalace je na nejnovější publikované verzi",
+      "checking": "Kontrola vydání GitHubu pro novější verzi",
+      "idle": "Vyhledejte nová vydání a nainstalujte je, aniž byste opustili aplikaci",
+      "unsupportedToast": "Automatické aktualizace jsou k dispozici pouze v balených verzích",
+      "upToDateToast": "Memry {version} je aktuální",
+      "actionFailed": "Akce aktualizace se nezdařila",
+      "actions": {
+        "checking": "Kontrola...",
+        "available": "Stáhnout aktualizaci",
+        "downloading": "Stahování...",
+        "downloadingPercent": "Stahování {percent} %",
+        "downloaded": "Restartujte k instalaci",
+        "idle": "Zkontrolujte aktualizace"
+      }
+    },
+    "language": {
+      "label": "Jazyk",
+      "helper": "Většina aplikací se aktualizuje okamžitě. Některý text na úrovni systému – již zobrazená oznámení, štítek doku, záhlaví okna – se po příštím spuštění obnoví.",
+      "changed": "Jazyk změněn na {nativeName}",
+      "failed": "Změna jazyka se nezdařila. Zkuste to prosím znovu."
+    },
+    "clockFormat": {
+      "label": "Formát času",
+      "description": "12hodinový nebo 24hodinový formát času",
+      "options": {
+        "12h": "12 hodin",
+        "24h": "24 hodin"
+      },
+      "error": "Aktualizace formátu času se nezdařila"
+    },
+    "tabs": {
+      "previewMode": {
+        "label": "Režim náhledu",
+        "description": "Jedno kliknutí otevře náhled, dvojité kliknutí zůstane otevřené"
+      },
+      "restoreSession": {
+        "label": "Obnovit relaci na začátku",
+        "description": "Znovu otevřete karty z poslední relace"
+      },
+      "closeButton": {
+        "label": "Tlačítko Zavřít kartu",
+        "description": "Kdy zobrazit tlačítko Zavřít",
+        "options": {
+          "always": "Vždy viditelné",
+          "hover": "Zobrazit při umístění kurzoru myši",
+          "active": "Pouze na aktivní kartě"
+        }
+      },
+      "error": "Aktualizace nastavení se nezdařila"
+    },
+    "fileCreation": {
+      "createInSelectedFolder": {
+        "label": "Vytvořit ve vybrané složce",
+        "description": "V aktuálně vybrané složce se vytvoří nové poznámky a složky. Když je vypnuto, položky se vždy vytvářejí v kořenovém adresáři."
+      }
+    },
+    "privacy": {
+      "telemetry": {
+        "label": "Sdílejte anonymní metriky používání",
+        "description": "Jsou to pouze anonové metriky – nikdy se neodesílají žádné poznámky, vyhledávací dotazy, cesty k souborům, e-maily ani nezpracovaná ID.",
+        "error": "Nastavení telemetrie se nepodařilo aktualizovat"
+      }
+    }
+  },
+  "appearance": {
+    "header": {
+      "title": "Vzhled",
+      "subtitle": "Přizpůsobte si vzhled a dojem",
+      "loading": "Načítání nastavení..."
+    },
+    "groups": {
+      "theme": "téma",
+      "accentColor": "Barva zvýraznění",
+      "typography": "Typografie"
+    },
+    "theme": {
+      "colorMode": {
+        "label": "Barevný režim",
+        "description": "Vyberte si preferovaný motiv",
+        "aria": "Barevný režim"
+      },
+      "options": {
+        "light": "Teplý",
+        "white": "Bílá",
+        "dark": "Tmavý",
+        "system": "Systém"
+      },
+      "error": "Aktualizace motivu se nezdařila"
+    },
+    "accent": {
+      "pick": "Vyberte barvu zvýraznění",
+      "custom": {
+        "label": "Vlastní barva",
+        "description": "Zadejte hexadecimální hodnotu",
+        "placeholder": "#000000"
+      },
+      "presets": {
+        "indigo": "Indigo",
+        "amber": "Amber",
+        "emerald": "Emerald",
+        "red": "Červená",
+        "violet": "Fialová",
+        "cyan": "azurová",
+        "pink": "Růžová",
+        "orange": "Oranžová"
+      },
+      "error": "Aktualizace zvýrazňující barvy se nezdařila"
+    },
+    "typography": {
+      "fontSize": {
+        "label": "Velikost písma",
+        "description": "Upravte základní velikost textu",
+        "aria": "Velikost písma"
+      },
+      "fontFamily": {
+        "label": "Rodina písem",
+        "description": "Primární typ písma pro rozhraní",
+        "options": {
+          "system": "Výchozí nastavení systému",
+          "sansSerif": "Bezpatkové",
+          "serif": "Serif (Crimson Pro)",
+          "gelasio": "Gelasio",
+          "geist": "Geist",
+          "inter": "Inter",
+          "monospace": "Jednoprostorový"
+        }
+      },
+      "fontSizeError": "Aktualizace velikosti písma se nezdařila",
+      "fontFamilyError": "Aktualizace rodiny písem se nezdařila"
+    }
+  },
+  "editor": {
+    "header": {
+      "title": "redaktor",
+      "subtitle": "Nastavení a předvolby editoru poznámek",
+      "loading": "Načítání nastavení..."
+    },
+    "groups": {
+      "layout": "Rozložení",
+      "toolbar": "Panel nástrojů",
+      "writing": "Psaní"
+    },
+    "width": {
+      "label": "Šířka editoru",
+      "description": "Maximální šířka plochy pro psaní",
+      "options": {
+        "narrow": "Úzký",
+        "medium": "Střední",
+        "wide": "Široký"
+      },
+      "error": "Aktualizace šířky editoru se nezdařila"
+    },
+    "toolbarMode": {
+      "label": "Sticky Formating Toolbar",
+      "description": "Vždy zobrazovat panel nástrojů nad editorem",
+      "error": "Aktualizace režimu panelu nástrojů se nezdařila"
+    },
+    "spellCheck": {
+      "label": "Kontrola pravopisu",
+      "description": "Při psaní podtrhávejte chybně napsaná slova",
+      "error": "Aktualizace kontroly pravopisu se nezdařila"
+    },
+    "autoSaveDelay": {
+      "label": "Zpoždění automatického ukládání",
+      "description": "Čekací doba po zastavení psaní před uložením",
+      "seconds": "{seconds}s",
+      "error": "Aktualizace zpoždění automatického ukládání se nezdařila"
+    },
+    "wordCount": {
+      "label": "Počet slov",
+      "description": "Zobrazit počet slov v zápatí editoru",
+      "error": "Aktualizace zobrazení počtu slov se nezdařila"
+    }
+  },
+  "templates": {
+    "header": {
+      "title": "Šablony",
+      "subtitle": "Spravujte šablony poznámek pro rychlé vytváření"
+    },
+    "actions": {
+      "new": "Nová šablona",
+      "edit": "Upravit",
+      "duplicate": "Duplicitní",
+      "delete": "Smazat"
+    },
+    "groups": {
+      "builtIn": "Vestavěný",
+      "myTemplates": "Moje šablony"
+    },
+    "loading": "Načítání šablon...",
+    "newTemplateTitle": "Nová šablona",
+    "copySuffix": "{name} (kopie)",
+    "empty": {
+      "title": "Zatím žádné vlastní šablony",
+      "description": "Začněte vytvořením šablony"
+    },
+    "toasts": {
+      "deleted": "Šablona smazána",
+      "deleteFailed": "Šablonu se nepodařilo smazat",
+      "duplicated": "Šablona duplikována",
+      "duplicateFailed": "Duplikování šablony se nezdařilo"
+    },
+    "dialogs": {
+      "delete": {
+        "title": "Smazat šablonu",
+        "description": "Opravdu chcete smazat tuto šablonu? Tuto akci nelze vrátit zpět. Poznámky vytvořené z této šablony nebudou ovlivněny."
+      },
+      "duplicate": {
+        "title": "Duplicitní šablona",
+        "description": "Zadejte název nové kopie šablony.",
+        "placeholder": "Název šablony"
+      }
+    }
+  },
+  "journal": {
+    "header": {
+      "title": "Deník",
+      "subtitle": "Nastavení a preference deníku",
+      "loading": "Načítání nastavení..."
+    },
+    "groups": {
+      "defaultTemplate": "Výchozí šablona",
+      "sidebarVisibility": "Viditelnost postranního panelu",
+      "footer": "Zápatí"
+    },
+    "template": {
+      "label": "Šablona",
+      "description": "Nové položky začínají touto šablonou",
+      "placeholder": "Vyberte šablonu",
+      "unknown": "Neznámá šablona",
+      "none": "žádný",
+      "noneAsk": "Žádné (zeptejte se pokaždé)",
+      "updated": "Výchozí šablona aktualizována",
+      "cleared": "Výchozí šablona byla vymazána",
+      "error": "Aktualizace výchozí šablony se nezdařila"
+    },
+    "showSchedule": {
+      "label": "Zobrazit rozvrh",
+      "description": "Zobrazte dnešní události a kalendář"
+    },
+    "showTasks": {
+      "label": "Zobrazit úkoly",
+      "description": "Zobrazit úkoly splatné ve vybraný den"
+    },
+    "showAIConnections": {
+      "label": "Zobrazit připojení AI",
+      "description": "Zobrazte připojení napájená umělou inteligencí k souvisejícím záznamům"
+    },
+    "showStatsFooter": {
+      "label": "Zobrazit zápatí statistik",
+      "description": "Počet slov, doba čtení, časová razítka"
+    },
+    "updateError": "Aktualizace nastavení se nezdařila"
+  },
+  "tasks": {
+    "header": {
+      "title": "Úkoly",
+      "subtitle": "Nakonfigurujte výchozí hodnoty a chování úloh",
+      "loading": "Načítání nastavení..."
+    },
+    "groups": {
+      "defaults": "Výchozí",
+      "calendar": "Kalendář",
+      "inbox": "Doručená pošta"
+    },
+    "defaultProject": {
+      "label": "Výchozí projekt",
+      "description": "Přiřazeno, když není vybrán žádný projekt",
+      "placeholder": "Žádný výchozí projekt",
+      "none": "Žádné výchozí (použijte Osobní)",
+      "error": "Nepodařilo se aktualizovat výchozí projekt"
+    },
+    "sortOrder": {
+      "label": "Výchozí pořadí řazení",
+      "description": "Jak jsou úkoly seřazeny v zobrazení seznamu",
+      "options": {
+        "manual": "Manuální (drag & drop)",
+        "dueDate": "Datum splatnosti",
+        "priority": "Priorita",
+        "createdAt": "Datum vytvoření"
+      },
+      "error": "Aktualizace pořadí řazení se nezdařila"
+    },
+    "weekStart": {
+      "label": "Týden začíná",
+      "description": "První den v týdnu v zobrazení kalendáře",
+      "options": {
+        "sunday": "neděle",
+        "monday": "pondělí"
+      },
+      "error": "Aktualizace začátku týdne se nezdařila"
+    },
+    "staleInbox": {
+      "label": "Prahová hodnota zastaralé doručené pošty",
+      "description": "Úkoly starší než toto jsou zvýrazněny jako zastaralé",
+      "unit": "dní",
+      "error": "Aktualizace prahové hodnoty zastaralé doručené pošty se nezdařila"
+    }
+  },
+  "calendar": {
+    "header": {
+      "title": "Kalendář",
+      "subtitle": "Nakonfigurujte chování denní buňky na panelu Den",
+      "loading": "Načítání nastavení..."
+    },
+    "groups": {
+      "dayCellClick": "Denní kliknutí na buňku"
+    },
+    "defaultBehavior": {
+      "label": "Výchozí chování",
+      "description": "Když kliknete na den v kalendáři Day Panel z jakékoli jiné karty než kalendáře",
+      "error": "Nepodařilo se aktualizovat denní chování kliknutí"
+    },
+    "pageOverride": {
+      "label": "Přepsání stránky kalendáře",
+      "description": "Chování, když je aktivní karta Kalendář (výchozí nastavení Otevřít kalendář)",
+      "error": "Aktualizace přepsání stránky kalendáře se nezdařila"
+    },
+    "options": {
+      "openJournal": "Otevřete deník",
+      "openCalendar": "Otevřete Kalendář",
+      "useGlobal": "Použijte globální nastavení"
+    }
+  },
+  "account": {
+    "header": {
+      "title": "účet",
+      "subtitle": "Váš účet, synchronizace a zabezpečení",
+      "loading": "Načítání..."
+    },
+    "groups": {
+      "identity": "Identita",
+      "sync": "Synchronizovat",
+      "storage": "Skladování",
+      "devices": "Zařízení",
+      "security": "Bezpečnost"
+    },
+    "identity": {
+      "unknown": "Neznámý",
+      "plan": "Pro plán"
+    },
+    "sync": {
+      "lastSynced": "Poslední synchronizace {time}",
+      "pending": "{count, plural, one {# čeká na vyřízení} other {# čeká na vyřízení}}",
+      "statuses": {
+        "synced": "Synchronizováno",
+        "syncing": "Synchronizace...",
+        "paused": "Pozastaveno",
+        "syncError": "Chyba synchronizace",
+        "offline": "Offline",
+        "connecting": "Připojování...",
+        "pushed": "{count, plural, one {# zatlačil} other {# zatlačil}}",
+        "pulled": "{count, plural, one {# vytažen} other {# vytažen}}",
+        "pushedPulled": "{parts}",
+        "changesPending": "{count, plural, one {Čeká se na změnu #} other {Změny # čekají na vyřízení}}",
+        "offlinePending": "Offline ({count, plural, one {Čeká se na změnu #} other {Změny # čekají na vyřízení}})",
+        "never": "Nikdy"
+      }
+    },
+    "storage": {
+      "used": "Použito {used} z {limit}",
+      "categories": {
+        "notes": "Poznámky",
+        "attachments": "Přílohy",
+        "crdt": "CRDT",
+        "other": "Jiné",
+        "available": "K dispozici"
+      }
+    },
+    "security": {
+      "recoveryKey": {
+        "label": "Obnovovací klíč",
+        "description": "Zobrazte svůj obnovovací klíč pro přístup k datům",
+        "action": "Zobrazit klíč"
+      },
+      "rotateKeys": {
+        "label": "Otočte šifrovací klíče",
+        "description": "Vygenerujte nové klíče a znovu zašifrujte všechna data",
+        "action": "Otočit"
+      },
+      "signOut": {
+        "label": "Odhlásit se",
+        "description": "Odpojte toto zařízení od synchronizace",
+        "action": "Odhlásit se"
+      }
+    },
+    "signOutDialog": {
+      "title": "Odhlásit se ze synchronizace?",
+      "description": "Synchronizace se zastaví a šifrovací klíče budou z tohoto zařízení odstraněny. Vaše poznámky zůstanou v tomto zařízení. K opětovnému nastavení synchronizace budete potřebovat frázi pro obnovení.",
+      "confirm": "Odhlaste se",
+      "signingOut": "Odhlašování..."
+    },
+    "toasts": {
+      "signedOut": "Úspěšně jste odhlášeni",
+      "signOutFailed": "Odhlášení se nezdařilo",
+      "deviceLinked": "Zařízení bylo úspěšně připojeno"
+    }
+  },
+  "setup": {
+    "steps": {
+      "signIn": "Přihlaste se",
+      "verify": "Ověřte",
+      "link": "Odkaz"
+    },
+    "progress": "Krok {current} z {total}: {label}",
+    "signIn": {
+      "title": "Nastavit synchronizaci",
+      "description": "Vytvořte si účet pro synchronizaci dat mezi zařízeními pomocí end-to-end šifrování.",
+      "or": "nebo",
+      "errors": {
+        "sendCode": "Kód se nepodařilo odeslat",
+        "googleStart": "Nepodařilo se spustit přihlášení přes Google"
+      }
+    },
+    "email": {
+      "label": "E-mailová adresa",
+      "placeholder": "Zadejte svou e-mailovou adresu...",
+      "invalid": "Zadejte prosím platnou e-mailovou adresu",
+      "sending": "Odesílání kódu..."
+    },
+    "oauth": {
+      "google": "Pokračujte s Googlem"
+    },
+    "otp": {
+      "title": "Zadejte ověřovací kód",
+      "sentTo": "Poslali jsme 6místný kód na ",
+      "aria": "6místný ověřovací kód",
+      "verifying": "Ověřování...",
+      "resending": "Opětovné odesílání...",
+      "resend": "Znovu odeslat kód",
+      "resendIn": "Znovu odeslat v {time}",
+      "differentEmail": "Použijte jiný e-mail",
+      "error": "Ověření se nezdařilo",
+      "resendError": "Opětovné odeslání se nezdařilo"
+    },
+    "recovery": {
+      "displayTitle": "Uložte si frázi pro obnovení",
+      "displayDescription": "Toto je jediný způsob, jak obnovit zašifrovaná data, pokud ztratíte přístup ke všem svým zařízením.",
+      "warning": "Zapište si to a uložte na bezpečném místě. Už to neuvidíte.",
+      "wordsAria": "Slova fráze pro zotavení",
+      "wordAria": "Slovo {index}: {word}",
+      "copyAria": "Zkopírujte frázi pro obnovení do schránky",
+      "copiedAria": "Fráze pro obnovení byla zkopírována",
+      "copied": "Zkopírováno",
+      "saved": "Uložil jsem svou frázi pro obnovení",
+      "confirmTitle": "Potvrďte frázi pro obnovení",
+      "confirmDescription": "Zadejte požadovaná slova, abyste ověřili, že jste je uložili správně.",
+      "wordPlaceholder": "Zadejte slovo #{index}",
+      "verify": "Ověřte",
+      "mustMatch": "Aby bylo možné pokračovat, musí se všechna 3 slova shodovat",
+      "inputTitle": "Zadejte frázi pro obnovení",
+      "inputDescription": "Zadejte svou 24slovou frázi pro obnovení a obnovte přístup k zašifrovaným datům.",
+      "inputLabel": "Fráze obnovy",
+      "count": "{count} / {total} slova",
+      "inputPlaceholder": "Zadejte svou 24slovou frázi pro obnovení oddělenou mezerami...",
+      "lengthHint": "Chcete-li aktivovat tlačítko obnovení, zadejte všech 24 slov",
+      "restore": "Obnovit přístup",
+      "progress": {
+        "deriving": "Odvozování šifrovacích klíčů...",
+        "validating": "Ověřování fráze pro obnovení...",
+        "registering": "Registrace zařízení..."
+      },
+      "failed": "Obnovení se nezdařilo",
+      "confirmationFailed": "Potvrzení se nezdařilo"
+    },
+    "linking": {
+      "choiceTitle": "Propojte toto zařízení",
+      "choiceDescription": "Přeneste šifrovací klíče z jiného zařízení nebo obnovte z vaší fráze pro obnovení.",
+      "qrChoice": "Odkaz přes QR kód",
+      "qrChoiceDescription": "Naskenujte kód zobrazený na vašem druhém zařízení",
+      "recoveryChoice": "Fráze obnovy",
+      "recoveryChoiceDescription": "Zadejte svou 24slovou frázi pro obnovení",
+      "codeTitle": "Zadejte propojovací kód",
+      "codeDescription": "Vložte propojovací kód z druhého zařízení, abyste mohli bezpečně přenést své šifrovací klíče.",
+      "codeLabel": "Propojovací kód",
+      "valid": "Platné",
+      "invalid": "Neplatný formát",
+      "codePlaceholder": "Vložte kód z druhého zařízení...",
+      "formatHint": "Vložte propojovací kód JSON ze svého druhého zařízení",
+      "linking": "Propojování...",
+      "linkDevice": "Propojit zařízení",
+      "failed": "Propojení se nezdařilo",
+      "deviceFailed": "Připojení zařízení se nezdařilo",
+      "pendingSuccess": "Zařízení bylo úspěšně připojeno",
+      "goBack": "Vraťte se",
+      "waitingTitle": "Čekání na schválení",
+      "waitingDescription": "Otevřete Memry na svém druhém zařízení a schvalte žádost o propojení.",
+      "verificationCode": "Ověřovací kód",
+      "confirmCode": "Potvrďte, že se toto shoduje s kódem na vašem druhém zařízení",
+      "cancel": "Zrušit"
+    }
+  },
+  "devices": {
+    "loading": "Načítání zařízení...",
+    "loadingAria": "Nakládací zařízení",
+    "none": "Zatím nejsou připojena žádná zařízení",
+    "linkNew": "Připojte nové zařízení",
+    "thisDevice": "Toto zařízení",
+    "lastSeen": "Naposledy viděn {time} před",
+    "linked": "Propojeno před {time}",
+    "renameAria": "Přejmenujte {name}",
+    "rename": "Přejmenovat",
+    "revoke": "Odvolat",
+    "showLess": "Ukažte méně",
+    "showMore": "{count, plural, one {# více zařízení} other {# více zařízení}}",
+    "showMoreAria": "Zobrazit {count, plural, one {# více zařízení} other {# více zařízení}}",
+    "dialogs": {
+      "revokeTitle": "Zrušit \"{name}\"?",
+      "revokeDescription": "Toto zařízení ztratí přístup k vašim synchronizovaným datům. Pro obnovení synchronizace jej bude nutné znovu propojit. Místní data na tomto zařízení zůstanou.",
+      "revokeDevice": "Odvolat zařízení",
+      "revoking": "Odebírání...",
+      "renameTitle": "Přejmenujte zařízení",
+      "renameDescription": "Vyberte název k identifikaci tohoto zařízení.",
+      "namePlaceholder": "Název zařízení",
+      "renaming": "Přejmenování..."
+    },
+    "toasts": {
+      "loadFailed": "Zařízení se nepodařilo načíst",
+      "removed": "Odebráno \"{name}\"",
+      "removeFailed": "Zařízení se nepodařilo odebrat",
+      "renamed": "Přejmenováno na \"{name}\"",
+      "renameFailed": "Přejmenování zařízení se nezdařilo"
+    }
+  },
+  "qrLinking": {
+    "title": "Připojte nové zařízení",
+    "description": "Naskenujte tento QR kód ze zařízení, které chcete propojit, abyste mohli bezpečně přenést své šifrovací klíče.",
+    "encrypted": "End-to-end šifrováno",
+    "generating": "Generování propojovacího kódu...",
+    "generatingAria": "Generování propojovacího kódu",
+    "generateFailed": "Vygenerování propojovacího kódu se nezdařilo",
+    "tryAgain": "Zkuste to znovu",
+    "expired": "Platnost propojovacího kódu vypršela",
+    "generateNew": "Vygenerujte nový kód",
+    "qrAria": "QR kód pro propojení zařízení",
+    "qrImageAria": "QR kód propojující zařízení",
+    "expiresIn": "Vyprší za {time}",
+    "or": "nebo",
+    "codeLabel": "Propojovací kód",
+    "copyAria": "Zkopírujte propojovací kód",
+    "copiedAria": "Zkopírováno",
+    "copied": "Zkopírováno!"
+  },
+  "linkingApproval": {
+    "title": "Nové zařízení se chce propojit",
+    "description": "Zařízení požaduje přístup k vašim šifrovaným datům. Schvalte pouze v případě, že jste tento požadavek iniciovali.",
+    "unknownDevice": "Neznámé zařízení",
+    "unknownPlatform": "Neznámá platforma",
+    "verificationCode": "Ověřovací kód",
+    "computing": "Počítání...",
+    "unavailable": "Není k dispozici",
+    "confirmCode": "Potvrďte, že tento kód odpovídá kódu zobrazenému na novém zařízení",
+    "reject": "Odmítnout",
+    "approve": "Schválit",
+    "approving": "Schvalování...",
+    "approvalFailed": "Schválení se nezdařilo",
+    "failedToApprove": "Zařízení se nepodařilo schválit"
+  },
+  "recoveryKey": {
+    "title": "Obnovovací klíč",
+    "description": "Tento klíč bezpečně uschovejte. Může obnovit váš trezor, pokud ztratíte přístup ke všem zařízením.",
+    "loading": "Načítání...",
+    "retrieveFailed": "Nepodařilo se načíst obnovovací klíč",
+    "copied": "Obnovovací klíč byl zkopírován do schránky",
+    "copyFailed": "Kopírování do schránky se nezdařilo",
+    "clickToReveal": "Kliknutím zobrazíte",
+    "hide": "Skrýt",
+    "reveal": "Odhalit",
+    "copy": "Kopírovat",
+    "sessionHint": "Tento klíč se zobrazuje jednou za relaci. Zavřete toto dialogové okno, chcete-li jej vymazat z paměti."
+  },
+  "keyRotation": {
+    "title": "Otočte šifrovací klíče",
+    "descriptions": {
+      "confirm": "Vygenerujte nové šifrovací klíče pro svůj trezor.",
+      "rotating": "Opětovné šifrování dat pomocí nových klíčů...",
+      "phrase": "Uložte si novou frázi pro obnovení.",
+      "complete": "Otočení klíče dokončeno.",
+      "error": "Při rotaci klíče došlo k chybě."
+    },
+    "warningTitle": "Tato akce:",
+    "warningItems": {
+      "keyPair": "Vygenerujte nový pár šifrovacích klíčů",
+      "rewrap": "Znovu zabalte všechny synchronizované položky novým klíčem",
+      "phrase": "Vytvořte novou frázi pro obnovení (stará se stane neplatnou)",
+      "pause": "Během procesu dočasně pozastavte synchronizaci"
+    },
+    "explanation": "Váš datový obsah není nikdy znovu zašifrován – mění se pouze obálky klíčů. Jedná se o rychlou a bezpečnou operaci.",
+    "start": "Start Key Rotation",
+    "starting": "Spouštění...",
+    "phases": {
+      "preparing": "Příprava...",
+      "reencrypting": "Přebalení klíčů ({processed}/{total})",
+      "finalizing": "Dokončování...",
+      "working": "Práce..."
+    },
+    "progressAria": "Otočení klíče: {phaseLabel} {pct}%",
+    "progressLabel": "Průběh střídání klíčů",
+    "doNotClose": "Během tohoto procesu nezavírejte aplikaci.",
+    "complete": "Všechny šifrovací klíče byly otočeny. Vaše nová fráze pro obnovení byla uložena. Synchronizace se automaticky obnoví.",
+    "unknownError": "Při otáčení klíče došlo k neznámé chybě.",
+    "errorHint": "Vaše stávající klíče zůstávají v platnosti. Synchronizace byla obnovena. Kdykoli to můžete zkusit znovu.",
+    "closeConfirm": {
+      "title": "Probíhá rotace",
+      "description": "Střídání klíčů stále běží. Zavřením tohoto dialogového okna se proces nezastaví, ale dokud nebude dokončena, nová fráze pro obnovení se nezobrazí.",
+      "stay": "Zůstaň",
+      "closeAnyway": "Každopádně zavřít"
+    },
+    "failed": "Otočení klíče se nezdařilo"
+  },
+  "ai": {
+    "header": {
+      "title": "Asistent AI",
+      "subtitle": "Vložení běží lokálně. Hlasové poznámky mohou používat Whisper Small nebo váš klíč OpenAI.",
+      "loading": "Načítání nastavení..."
+    },
+    "enable": {
+      "label": "Povolit funkce AI",
+      "description": "Inteligentní návrhy pro ukládání a propojení poznámek",
+      "enabled": "Funkce AI povoleny",
+      "disabled": "Funkce AI jsou deaktivovány",
+      "error": "Aktualizace nastavení se nezdařila"
+    },
+    "unknownError": "Neznámá chyba",
+    "groups": {
+      "voice": "Přepis hlasu",
+      "embeddingModel": "Místní model vkládání",
+      "embeddingIndex": "Index vkládání",
+      "inline": "Inline AI editace"
+    },
+    "voice": {
+      "provider": "Poskytovatel",
+      "providerDescription": "Poskytovatel převodu řeči na text pro hlasové poznámky",
+      "providers": {
+        "local": "Místní (výchozí)",
+        "openai": "OpenAI (BYOK)"
+      },
+      "localModel": "Místní model",
+      "localModelDescription": "Whisper Small se stahuje na vyžádání a zůstává v místní mezipaměti",
+      "status": {
+        "ready": "Připraveno",
+        "downloading": "Stahování",
+        "downloaded": "Staženo",
+        "notDownloaded": "Nestaženo"
+      },
+      "cacheHint": "Není součástí dodávky s aplikací · Staženo z Nastavení · Uloženo do mezipaměti tohoto zařízení",
+      "preparing": "Příprava Whisper Small...",
+      "download": "Stáhněte si fotografii Whisper Small",
+      "apiKey": "Klíč OpenAI API",
+      "apiKeyDescription": "Uloženo ve vaší klíčence OS a používané pouze pro přepis hlasu",
+      "replaceKey": "Nahraďte uložený klíč OpenAI",
+      "enterKey": "Zadejte klíč API OpenAI",
+      "saveKey": "Uložit klíč",
+      "keySaved": "Klíč API uložený v klíčence",
+      "providerError": "Aktualizace hlasového poskytovatele se nezdařila",
+      "downloadedToast": "Whisper Small staženo",
+      "downloadError": "Stažení Whisper Small se nezdařilo",
+      "keySavedToast": "Klíč OpenAI byl uložen",
+      "keySaveError": "Nepodařilo se uložit klíč OpenAI"
+    },
+    "embedding": {
+      "loaded": "Nabito",
+      "loading": "Načítání",
+      "cacheHint": "~23 MB · Ukládáno do místní mezipaměti · Vše v zařízení",
+      "dimensions": "Rozměry",
+      "embeddings": "Vložení",
+      "downloadLoad": "Stáhnout a načíst model",
+      "downloadingModel": "Stahování modelu...",
+      "loadingModel": "Načítání modelu...",
+      "loadSuccess": "Model úspěšně načten",
+      "loadFailed": "Model se nepodařilo načíst",
+      "rebuildIndex": "Obnovit index",
+      "rebuildDescription": "Obnovte vložení pro všechny poznámky",
+      "rebuild": "Obnovit",
+      "scanning": "Skenování poznámek...",
+      "generating": "Generování vložení...",
+      "complete": "Hotovo!",
+      "reindexed": "Vložení byla přeindexována: {computed} vypočteno, {skipped} přeskočeno",
+      "reindexFailed": "Znovu indexování vložení se nezdařilo"
+    },
+    "inline": {
+      "loading": "Načítání...",
+      "title": "Inline AI editace",
+      "enable": "Povolit Inline AI",
+      "enableDescription": "Při úpravě poznámek zobrazit nabídku AI",
+      "enabled": "Inline editace AI povolena",
+      "disabled": "Inline editace AI zakázána",
+      "provider": "Poskytovatel",
+      "providerDescription": "Služba AI pro textové operace",
+      "providers": {
+        "ollama": "ollama (místní)",
+        "openai": "OpenAI",
+        "anthropic": "Antropický"
+      },
+      "model": "Model",
+      "modelDescription": "Jazykový model pro přepsání a shrnutí",
+      "selectModel": "Vyberte model",
+      "apiKey": "Klíč API",
+      "apiKeyDescription": "Uloženo lokálně, odesláno pouze poskytovateli",
+      "apiKeyPlaceholder": "Zadejte klíč API {provider}",
+      "ollamaUrl": "Adresa URL Ollamy",
+      "ollamaUrlDescription": "Adresa místního serveru",
+      "connection": "Připojení",
+      "activePort": "Aktivní na portu {port}",
+      "notConnected": "Nepřipojeno",
+      "test": "Test",
+      "stopFailed": "Stávající server se nepodařilo zastavit",
+      "connected": "Připojeno! Server běží na portu {port}",
+      "connectFailed": "Připojení se nezdařilo",
+      "testFailed": "Test připojení se nezdařil",
+      "updateFailed": "Aktualizace nastavení se nezdařila"
+    }
+  },
+  "integrations": {
+    "header": {
+      "title": "Integrace",
+      "subtitle": "Připojte externí služby, abyste obohatili svůj pracovní postup"
+    },
+    "auth": {
+      "oauth2": "OAuth 2.0",
+      "apiKey": "Klíč API",
+      "none": "Systém"
+    },
+    "comingSoon": "Již brzy",
+    "connect": "Připojte se",
+    "googleCalendar": {
+      "name": "Kalendář Google",
+      "description": "Obousměrná synchronizace pro události Memry a importované kalendáře Google.",
+      "statuses": {
+        "connected": "Připojeno",
+        "notConnected": "Nepřipojeno",
+        "reconnectRequired": "Je vyžadováno opětovné připojení"
+      },
+      "accountReconnect": "Znovu připojte Google",
+      "importedCalendars": "Importované kalendáře",
+      "selected": "Vybráno {count}",
+      "syncNow": "Synchronizovat nyní",
+      "disconnect": "Odpojit",
+      "reconnect": "Znovu připojte Google",
+      "syncFailed": "Něco se pokazilo",
+      "connectFailed": "Připojení Kalendáře Google se nezdařilo",
+      "refreshFailed": "Obnovení Kalendáře Google se nezdařilo",
+      "disconnectFailed": "Kalendář Google se nepodařilo odpojit",
+      "selectionFailed": "Aktualizace výběru kalendáře se nezdařila",
+      "retryFailed": "Nepodařilo se opakovat synchronizaci kalendáře"
+    },
+    "sourcePicker": {
+      "empty": "V tomto zařízení zatím nejsou k dispozici žádné importované kalendáře Google.",
+      "statuses": {
+        "synced": "Synchronizováno",
+        "error": "Chyba",
+        "pending": "Čeká na vyřízení",
+        "idle": "Nečinný"
+      },
+      "retrying": "Opakování…",
+      "retryNow": "Zkuste to znovu"
+    },
+    "registry": {
+      "googleCalendar": {
+        "name": "Kalendář Google",
+        "description": "Obousměrná synchronizace pro události, úkoly, připomenutí a importované kalendáře Memry"
+      },
+      "appleCalendar": {
+        "name": "Kalendář Apple",
+        "description": "Integrace místního kalendáře prostřednictvím systémových rozhraní API"
+      },
+      "notion": {
+        "name": "Pojem",
+        "description": "Jednorázový import stránky do vašeho trezoru"
+      },
+      "readwise": {
+        "name": "Čtěte",
+        "description": "Synchronizujte zvýraznění do svého trezoru"
+      },
+      "todoist": {
+        "name": "Todoista",
+        "description": "Obousměrná synchronizace úkolů"
+      }
+    }
+  },
+  "vault": {
+    "header": {
+      "title": "Vault",
+      "subtitle": "Konfigurace a úložiště trezoru"
+    },
+    "groups": {
+      "storageUsage": "Využití úložiště",
+      "location": "Umístění"
+    },
+    "loadingStorage": "Načítání informací o úložišti...",
+    "signInStorage": "Chcete-li zobrazit využití úložiště, přihlaste se",
+    "vaultPath": "Cesta k trezoru",
+    "reveal": "Odhalit",
+    "storage": {
+      "title": "Skladování",
+      "used": "Použito {used} z {limit}",
+      "ratio": "{used} / {limit}",
+      "refreshAria": "Obnovit využití úložiště",
+      "usageAria": "Využití úložiště: {used} z {limit}",
+      "available": "K dispozici {available}",
+      "categories": {
+        "notes": "Poznámky",
+        "attachments": "Přílohy",
+        "crdt": "CRDT",
+        "other": "Jiné"
+      },
+      "warningTitle": "Úložiště téměř plné",
+      "warningDescription": "Uvolněte místo nebo upgradujte svůj plán, abyste se vyhnuli problémům se synchronizací."
+    }
+  },
+  "tags": {
+    "header": {
+      "title": "Tagy",
+      "subtitle": "Spravujte štítky napříč poznámkami, deníky a úkoly"
+    },
+    "loading": "Načítání značek...",
+    "empty": "Zatím žádné značky. Štítky se zde zobrazí, jakmile je přidáte do poznámek a úkolů.",
+    "filterPlaceholder": "Filtrovat značky...",
+    "noMatch": "Žádné štítky neodpovídají \"{query}\"",
+    "summary": "{count, plural, one {Štítek #} other {Štítky #}} napříč poznámkami a úkoly",
+    "actions": {
+      "rename": "Přejmenovat",
+      "changeColor": "Změňte barvu",
+      "mergeInto": "Sloučit do...",
+      "merge": "Sloučit",
+      "delete": "Smazat"
+    },
+    "dialogs": {
+      "deleteTitle": "Smazat značku",
+      "deleteDescription": "Odebrat \"{name}\" z {count, plural, one {položka #} other {položky #}}? Toto nelze vrátit zpět.",
+      "mergeTitle": "Sloučit značku",
+      "mergeDescription": "Všechny položky označené „{source}“ budou znovu označeny cílovou značkou. Zdrojový tag bude smazán.",
+      "targetPlaceholder": "Vyberte cílovou značku...",
+      "colorTitle": "Změnit barvu pro \"{name}\""
+    },
+    "toasts": {
+      "renamed": "Přejmenováno „{oldName}“ na „{newName}“",
+      "renameFailed": "Přejmenování značky se nezdařilo",
+      "deleteFailed": "Štítek se nepodařilo smazat",
+      "deleted": "Odstraněno \"{name}\" z {count, plural, one {položka #} other {položky #}}",
+      "mergeFailed": "Sloučení značek se nezdařilo",
+      "merged": "Sloučeno \"{source}\" do \"{target}\" ({count, plural, one {položka #} other {položky #}})",
+      "colorUpdated": "Aktualizovaná barva pro \"{name}\"",
+      "colorFailed": "Aktualizace barvy se nezdařila"
+    }
+  },
+  "properties": {
+    "header": {
+      "title": "Vlastnosti",
+      "subtitle": "Spravujte definice vlastností ve všech poznámkách"
+    },
+    "loading": "Načítání vlastností...",
+    "empty": "Zatím žádné definice vlastností. Začněte přidáním vlastnosti Stav, Výběr nebo Vícenásobný výběr do libovolné poznámky.",
+    "filterPlaceholder": "Vlastnosti filtru...",
+    "noMatch": "Žádné vlastnosti neodpovídají \"{query}\"",
+    "summary": "{count, plural, one {Definice vlastnosti #} other {Definice vlastností #}}",
+    "optionCount": "{count, plural, one {Možnost #} other {Možnosti #}}",
+    "optionNamePlaceholder": "Název možnosti",
+    "addOption": "Přidat možnost",
+    "changeColorTitle": "Změňte barvu",
+    "renameTitle": "Přejmenovat",
+    "removeTitle": "Odebrat",
+    "actions": {
+      "deleteProperty": "Smazat vlastnost"
+    },
+    "types": {
+      "status": "Stav",
+      "select": "Vyberte",
+      "multiselect": "Vícenásobný výběr",
+      "text": "Text",
+      "number": "Číslo",
+      "date": "Datum",
+      "checkbox": "Zaškrtávací políčko",
+      "url": "URL"
+    },
+    "dialogs": {
+      "deleteTitle": "Smazat vlastnost",
+      "deleteDescription": "Odebrat definici vlastnosti \"{name}\"? Poznámky používající tuto vlastnost si zachovají své hodnoty jako prostý text.",
+      "colorTitle": "Změnit barvu pro \"{name}\""
+    },
+    "toasts": {
+      "renamed": "Přejmenováno „{oldValue}“ na „{newValue}“",
+      "renameFailed": "Přejmenování možnosti se nezdařilo",
+      "removed": "Odebráno \"{value}\"",
+      "removeFailed": "Odebrání možnosti se nezdařilo",
+      "colorFailed": "Aktualizace barvy se nezdařila",
+      "deleteFailed": "Smazání služby se nezdařilo",
+      "deleted": "Smazaná vlastnost \"{name}\"",
+      "addFailed": "Nepodařilo se přidat možnost"
+    }
+  },
+  "shortcuts": {
+    "header": {
+      "title": "Klávesové zkratky",
+      "subtitle": "Klepnutím na kteroukoli zkratku ji znovu svážete",
+      "loading": "Načítání nastavení..."
+    },
+    "searchPlaceholder": "Hledat zkratky...",
+    "resetAll": "Obnovit vše",
+    "custom": "Vlastní",
+    "pressShortcut": "Stiskněte zkratku…",
+    "cancelTitle": "Zrušit",
+    "rebindTitle": "Kliknutím znovu svážete",
+    "resetTitle": "Obnovit výchozí",
+    "clearTitle": "Vymazat zkratku",
+    "clickToSet": "Kliknutím nastavíte",
+    "noMatch": "Vašemu vyhledávání neodpovídají žádné zkratky",
+    "conflict": "Konflikty s: {labels}",
+    "globalCapture": {
+      "title": "Globální zachycení",
+      "description": "Zachyťte poznámku odkudkoli",
+      "permissionNeeded": "Je potřeba povolení",
+      "active": "Aktivní",
+      "permissionHint": "Globální zkratky vyžadují oprávnění pro usnadnění. Přejděte do Nastavení systému → Soukromí → Usnadnění a povolte Memry."
+    },
+    "toasts": {
+      "saveGlobalFailed": "Zástupce globálního zachycení se nepodařilo uložit",
+      "saveFailed": "Zástupce se nepodařilo uložit",
+      "resetFailed": "Zástupce se nepodařilo resetovat",
+      "resetAllSuccess": "Všechny zkratky se resetují na výchozí hodnoty",
+      "resetAllFailed": "Resetování zástupců se nezdařilo"
+    },
+    "categories": {
+      "navigation": "Navigace",
+      "tabs": "Karty",
+      "editor": "redaktor",
+      "view": "Zobrazit"
+    },
+    "entries": {
+      "nav": {
+        "newNote": {
+          "label": "Nová poznámka",
+          "description": "Vytvořte novou poznámku"
+        },
+        "newTask": {
+          "label": "Nový úkol",
+          "description": "Vytvořte nový úkol"
+        },
+        "inbox": {
+          "label": "Přejděte do složky Doručená pošta",
+          "description": "Přejděte do doručené pošty"
+        },
+        "notes": {
+          "label": "Přejděte na Poznámky",
+          "description": "Přejděte na poznámky"
+        },
+        "tasks": {
+          "label": "Přejděte na Úkoly",
+          "description": "Přejděte na úkoly"
+        },
+        "search": {
+          "label": "Hledat",
+          "description": "Otevřete globální vyhledávání"
+        },
+        "settings": {
+          "label": "Otevřete Nastavení",
+          "description": "Otevřete panel nastavení"
+        }
+      },
+      "tabs": {
+        "close": {
+          "label": "Zavřít kartu",
+          "description": "Zavřete aktuální kartu"
+        },
+        "next": {
+          "label": "Další Tab",
+          "description": "Přepněte na další kartu"
+        },
+        "previous": {
+          "label": "Předchozí Tab",
+          "description": "Přepněte na předchozí kartu"
+        },
+        "reopen": {
+          "label": "Znovu otevřete poslední kartu",
+          "description": "Znovu otevřete naposledy zavřenou kartu"
+        },
+        "navBack": {
+          "label": "Přejít zpět",
+          "description": "Znovu aktivujte dříve aktivní kartu"
+        },
+        "navForward": {
+          "label": "Přejít vpřed",
+          "description": "Opakujte navigaci zpět"
+        }
+      },
+      "editor": {
+        "save": {
+          "label": "Uložit",
+          "description": "Uložte aktuální poznámku"
+        },
+        "bold": {
+          "label": "Tučné",
+          "description": "Přepnout tučné formátování"
+        },
+        "italic": {
+          "label": "kurzíva",
+          "description": "Přepnout formátování kurzívou"
+        },
+        "underline": {
+          "label": "Podtrhněte",
+          "description": "Přepnout formátování podtržení"
+        }
+      },
+      "view": {
+        "toggleSidebar": {
+          "label": "Přepnout postranní panel",
+          "description": "Zobrazit nebo skrýt postranní panel"
+        },
+        "shortcuts": {
+          "label": "Nápověda ke klávesovým zkratkám",
+          "description": "Zobrazit odkaz na klávesové zkratky"
+        }
+      }
+    }
+  },
+  "phaseF": {
+    "componentsKeyboardChordIndicator": {
+      "pressedWaitingForSecondKey": "stisknuto — čekání na druhou klávesu..."
+    },
+    "componentsKeyboardKeyboardShortcutsDialog": {
+      "keyboardShortcuts": "Klávesové zkratky",
+      "press": "Stiskněte ",
+      "toToggleThisDialog": "pro přepnutí tohoto dialogu"
+    },
+    "componentsSyncDeviceList": {
+      "middot": "střední tečka;"
+    },
+    "componentsSyncDeviceRevokedDialog": {
+      "thisDeviceHasBeenRemoved": "Toto zařízení bylo odstraněno",
+      "exporting": "Exportování...",
+      "signOut": "Odhlásit se"
+    },
+    "componentsSyncSyncHistory": {
+      "middot": "střední tečka; ",
+      "activity": "Aktivita",
+      "filterBySyncType": "Filtrujte podle typu synchronizace",
+      "allTypes": "Všechny typy",
+      "pushed": "Zatlačeno",
+      "pulled": "Vytaženo",
+      "errors": "Chyby",
+      "filterByTimePeriod": "Filtrujte podle časového období",
+      "allTime": "Celou dobu",
+      "today": "dnes",
+      "last7Days": "Posledních 7 dní",
+      "last30Days": "Posledních 30 dní",
+      "loadingSyncHistory": "Načítání historie synchronizace",
+      "noSyncActivityYet": "Zatím žádná synchronizační aktivita",
+      "loadMore": "Načíst více"
+    },
+    "componentsSyncSyncStatus": {
+      "lastSynced": "Poslední synchronizace ",
+      "pending": "čeká na vyřízení",
+      "localOnly": "pouze místní",
+      "detected": "zjištěno",
+      "clockSkewDetected": "Bylo zjištěno zkreslení hodin",
+      "items": "položky",
+      "willSyncWhenBackOnline": "Synchronizuje se, až bude znovu online",
+      "openSyncSettings": "Otevřete nastavení synchronizace"
+    },
+    "pagesSettingsAiInlineSection": {
+      "httpLocalhost11434V1": "http://localhost:11434/v1"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToUpdateTagColor": "Aktualizace barvy značky se nezdařila",
+      "googleSignInFailed": "Přihlášení přes Google se nezdařilo",
+      "failedToSendVerificationCode": "Odeslání ověřovacího kódu se nezdařilo",
+      "invalidVerificationCode": "Neplatný ověřovací kód",
+      "accountSetupFailed": "Nastavení účtu se nezdařilo",
+      "failedToResendCode": "Nepodařilo se znovu odeslat kód",
+      "failedToSetUpDevice": "Nastavení zařízení se nezdařilo",
+      "failedToConfirmRecoveryPhrase": "Nepodařilo se potvrdit frázi pro obnovení",
+      "failedToAnalyzeContent": "Analýza obsahu se nezdařila",
+      "failedToLoadUpdaterState": "Stav aktualizátoru se nepodařilo načíst",
+      "failedToCheckForUpdates": "Kontrola aktualizací se nezdařila",
+      "failedToDownloadUpdate": "Stažení aktualizace se nezdařilo",
+      "failedToInstallUpdate": "Aktualizaci se nepodařilo nainstalovat",
+      "failedToLoadEditorSettings": "Nastavení editoru se nepodařilo načíst",
+      "failedToUpdateEditorSettings": "Aktualizace nastavení editoru se nezdařila",
+      "failedToLoadGeneralSettings": "Nepodařilo se načíst obecná nastavení",
+      "failedToUpdateGeneralSettings": "Aktualizace obecných nastavení se nezdařila",
+      "failedToLoadKeyboardSettings": "Nastavení klávesnice se nepodařilo načíst",
+      "failedToUpdateKeyboardSettings": "Nastavení klávesnice se nepodařilo aktualizovat",
+      "failedToResetKeyboardSettings": "Nastavení klávesnice se nepodařilo resetovat",
+      "failedToLoadNoteEditorSettings": "Nastavení editoru poznámek se nepodařilo načíst",
+      "failedToUpdateSettings": "Aktualizace nastavení se nezdařila",
+      "failedToLoadTabSettings": "Nastavení karty se nepodařilo načíst",
+      "failedToLoadNotes": "Poznámky se nepodařilo načíst",
+      "failedToLoadTags": "Značky se nepodařilo načíst",
+      "failedToLoadVaultStatus": "Nepodařilo se načíst stav trezoru",
+      "failedToSelectVault": "Nepodařilo se vybrat trezor",
+      "failedToCloseVault": "Trezor se nepodařilo zavřít",
+      "failedToSwitchVault": "Přepnutí trezoru se nezdařilo",
+      "failedToUpdateConfig": "Aktualizace konfigurace se nezdařila",
+      "failedToReindex": "Přeindexování se nezdařilo"
+    }
+  }
+}

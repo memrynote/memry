@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "Selecteer Kluismap",
+      "button": "Selecteer Kluis"
+    },
+    "exportPdf": {
+      "title": "Exporteren als PDF",
+      "filterName": "PDF-document"
+    },
+    "exportHtml": {
+      "title": "Exporteren als HTML",
+      "filterName": "HTML-document"
+    },
+    "import": {
+      "filterSupported": "Ondersteunde bestanden",
+      "filterAll": "Alle bestanden"
+    },
+    "exportCancelled": "Exporteren geannuleerd",
+    "update": {
+      "availableTitle": "Update beschikbaar",
+      "availableMessage": "Memry {version} is beschikbaar.",
+      "availableDetailFallback": "De update nu downloaden?",
+      "buttonDownload": "Downloaden",
+      "buttonLater": "Later",
+      "readyTitle": "Update gereed",
+      "readyMessage": "Memry {version} is gedownload.",
+      "readyDetailFallback": "Start Memry opnieuw om de installatie van de update te voltooien.",
+      "buttonRestartNow": "Start nu opnieuw op",
+      "releaseNotesLabel": "Release-opmerkingen:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "Opmerking herinnering",
+      "journal": "Journaalherinnering",
+      "highlight": "Markeer herinnering",
+      "fallback": "Herinnering verschuldigd",
+      "default": "Herinnering"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "Het herinneringstijdstip moet in de toekomst liggen",
+    "definitionNotFound": "Definitie niet gevonden",
+    "noteNotFound": "Opmerking niet gevonden",
+    "updateFailed": "Update mislukt"
+  }
+}

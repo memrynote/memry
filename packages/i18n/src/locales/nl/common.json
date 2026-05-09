@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "Opslaan",
+    "cancel": "Annuleer",
+    "close": "Sluiten",
+    "ok": "Oké",
+    "yes": "Ja",
+    "no": "Nee",
+    "delete": "Verwijderen",
+    "confirm": "Bevestig",
+    "apply": "Toepassen",
+    "done": "Klaar",
+    "discard": "Gooi weg",
+    "dontSave": "Niet opslaan",
+    "edit": "Bewerken",
+    "add": "Toevoegen",
+    "remove": "Verwijderen",
+    "retry": "Opnieuw proberen",
+    "submit": "Verzenden",
+    "back": "Terug",
+    "next": "Volgende",
+    "continue": "Ga door",
+    "reset": "Opnieuw instellen",
+    "copy": "Kopieer",
+    "paste": "Plakken",
+    "create": "Creëer",
+    "open": "Openen"
+  },
+  "state": {
+    "loading": "Laden…",
+    "saving": "Opslaan…",
+    "deleting": "Verwijderen…",
+    "searching": "Zoeken…",
+    "error": "Fout",
+    "success": "Succes"
+  },
+  "empty": {
+    "noResults": "Geen resultaten",
+    "noItems": "Geen artikelen",
+    "noMatch": "Geen overeenkomsten"
+  },
+  "action": {
+    "search": "Zoeken",
+    "edit": "Bewerken",
+    "delete": "Verwijderen",
+    "close": "Sluiten",
+    "expand": "Uitbreiden",
+    "collapse": "Samenvouwen",
+    "showMore": "+{count, plural, one {# meer} other {# meer}}",
+    "showLess": "Laat minder zien"
+  },
+  "tabs": {
+    "pin": "Tabblad vastzetten",
+    "unpin": "Tabblad losmaken",
+    "contextMenu": {
+      "close": "Sluiten",
+      "closeOthers": "Sluit overige",
+      "closeToRight": "Dichtbij rechts",
+      "closeAll": "Sluit alles",
+      "duplicate": "Dubbel tabblad",
+      "splitRight": "Rechts splitsen",
+      "splitDown": "Afgesplitst",
+      "copyPath": "Kopieer pad",
+      "revealInSidebar": "Onthullen in zijbalk"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {#-artikel} other {#-artikelen}}",
+    "note": "{count, plural, one {#-opmerking} other {#-opmerkingen}}",
+    "folder": "{count, plural, one {#-map} other {#-mappen}}",
+    "task": "{count, plural, one {#-taak} other {#-taken}}",
+    "project": "{count, plural, one {#-project} other {#-projecten}}",
+    "itemDelete": "{count, plural, one {#-item verwijderen} other {Verwijder #-items}}"
+  },
+  "toast": {
+    "actionFailed": "Actie mislukt",
+    "nothingToUndo": "Niets om ongedaan te maken",
+    "undone": "Ongedaan gemaakt: {description}",
+    "undoFailed": "Kan actie niet ongedaan maken",
+    "copied": "Gekopieerd",
+    "copyFailed": "Kopiëren is niet gelukt"
+  },
+  "dateRelative": {
+    "today": "Vandaag",
+    "yesterday": "Gisteren",
+    "daysAgo": "{count, plural, one {# dag geleden} other {# dagen geleden}}"
+  },
+  "recurrence": {
+    "everyDay": "Elke dag",
+    "everyNDays": "{count, plural, one {Elke dag} other {Elke #-dagen}}",
+    "everyWeek": "Elke week",
+    "everyNWeeks": "{count, plural, one {Elke week} other {Elke #-weken}}",
+    "everyWeekday": "Elke weekdag",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Elke weekdag} other {Elke #-weken op weekdagen}}",
+    "everyWeekend": "Elk weekend",
+    "everyNWeeksOnWeekends": "{count, plural, one {Elk weekend} other {Elke #-weken in het weekend}}",
+    "everyWeekOnDays": "Elke week op {days}",
+    "everyNWeeksOnDays": "{count, plural, one {Elke week op {days}} other {Elke #-weken op {days}}}",
+    "everyMonth": "Elke maand",
+    "everyNMonths": "{count, plural, one {Elke maand} other {Elke #-maanden}}",
+    "everyMonthOnDay": "Elke maand op de {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {Elke maand op de {day}{suffix}} other {Elke # maanden op de {day}{suffix}}}",
+    "everyMonthOnWeekDay": "Elke maand op de {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Elke maand op de {week} {day}} other {Elke # maanden op de {week} {day}}}",
+    "everyYear": "Elk jaar",
+    "everyNYears": "{count, plural, one {Elk jaar} other {Elke #-jaar}}",
+    "repeats": "Herhalingen"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Collecties",
+      "newNote": "Nieuwe notitie",
+      "newNote2": "Nieuwe notitie",
+      "newFolder": "Nieuwe map",
+      "newFolder2": "Nieuwe map",
+      "bookmarks": "Bladwijzers",
+      "tags": "Labels",
+      "dropFilesToImport": "Zet bestanden neer om te importeren",
+      "newNoteN": "Nieuwe notitie (⌘N)",
+      "new": "Nieuw",
+      "syncDisabled": "Synchronisatie uitgeschakeld",
+      "syncDisabled2": "Synchronisatie uitgeschakeld"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Formaat van dagpaneel wijzigen",
+      "dragToResizeDoubleClickToReset": "Sleep om het formaat te wijzigen · Dubbelklik om te resetten"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Vind, vervang, vraag..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Onboarding overslaan",
+      "welcomeToMemry": "Welkom bij Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Jouw persoonlijke kennisbank. Laten we twee minuten de tijd nemen om u op weg te helpen.",
+      "getStarted": "Ga aan de slag ",
+      "createYourFirstNote": "Maak uw eerste notitie",
+      "markdownBasedStoredLocallyAsPlainFiles": "Op basis van markdown, lokaal opgeslagen als gewone bestanden.",
+      "eGMeetingNotesIdeasAnything": "bijv. Notulen, ideeën, wat dan ook...",
+      "skip": "Overslaan",
+      "createNote": "Notitie maken ",
+      "addYourFirstTask": "Voeg uw eerste taak toe",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Taken zijn gekoppeld aan uw aantekeningen, met prioriteiten en vervaldatums.",
+      "eGReviewProjectProposal": "bijv. Projectvoorstel beoordelen...",
+      "skip2": "Overslaan",
+      "createTask": "Taak maken ",
+      "syncAcrossDevices": "Synchroniseer tussen apparaten",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Houd uw notities en taken gesynchroniseerd op al uw apparaten. Je kunt dit altijd later nog instellen.",
+      "skipForNow": "Overslaan voor nu",
+      "doneLetSGo": "Klaar - laten we gaan! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Mappictogram instellen"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "TIP"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Pictogramkiezer",
+      "selectIcon": "Selecteer Pictogram",
+      "closeIconPicker": "Pictogramkiezer sluiten",
+      "searchIcons": "Zoekpictogrammen...",
+      "all": "Allemaal",
+      "clearIcon": "Duidelijk pictogram",
+      "noIconsFoundFor": "Geen iconen gevonden voor \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Sneltoetsen",
+      "closeShortcutsHelp": "Hulp bij snelkoppelingen sluiten",
+      "press": "Druk op",
+      "toClose": "sluiten"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Pictogram instellen",
+      "clearIcon": "Duidelijk pictogram"
+    },
+    "componentsNavMain": {
+      "platform": "Platform"
+    },
+    "componentsNavProjects": {
+      "projects": "Projecten",
+      "more": "Meer",
+      "viewProject": "Bekijk project",
+      "shareProject": "Deel project",
+      "deleteProject": "Project verwijderen",
+      "more2": "Meer"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Upgrade naar Pro",
+      "account": "Rekening",
+      "billing": "Facturering",
+      "notifications": "Meldingen",
+      "logOut": "Uitloggen"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Zoeken",
+      "searchNotesTasksJournalInbox": "Zoek naar notities, taken, dagboek, inbox...",
+      "noResultsFor": "Geen resultaat voor “",
+      "rdquo": "rdquo;",
+      "result": "resultaat"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Zoek en klik op items om je parcours te bouwen",
+      "reasons": "Redenen",
+      "clear": "Duidelijk"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Duidelijk",
+      "tags": "Labels",
+      "filterByTag": "Filter op tag...",
+      "dateRange": "Datumbereik"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Bekijk alles ",
+      "results": "resultaten"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "vaag"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Geen tabbladen geopend",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Open een pagina vanuit de zijbalk of maak een nieuw tabblad om aan de slag te gaan",
+      "openInbox": "Open Postvak IN",
+      "closePane": "Sluit venster"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Voorinstellingen voor lay-out",
+      "layoutPresets2": "Lay-outvoorinstellingen"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Het formaat van deelvensters wijzigen"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TakenContext niet beschikbaar",
+      "searchResults": "Zoekresultaten",
+      "unknownTabType": "Onbekend tabbladtype: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "niet-opgeslagen wijzigingen",
+      "preview": "voorbeeld"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Nieuw tabblad",
+      "newTab2": "Nieuw tabblad",
+      "newNote": "Nieuwe notitie",
+      "journal": "Journaal",
+      "calendar": "Kalender",
+      "inboxCapture": "Inbox vastleggen",
+      "tasks": "Taken"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Niet-opgeslagen wijzigingen",
+      "unsaved": "niet opgeslagen)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Niet-opgeslagen wijzigingen"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Sluit alle tabbladen"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Tabbladen openen",
+      "scrollTabsLeft": "Blader door de tabbladen naar links",
+      "scrollTabsRight": "Blader door de tabbladen naar rechts",
+      "graphG": "Grafiek (⌘G)",
+      "dayPanel": "Dagpaneel"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "Blader door de tabbladen naar links",
+      "scrollTabsRight": "Blader door de tabbladen naar rechts"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "Tabbladen openen",
+      "scrollTabsLeft": "Blader door de tabbladen naar links",
+      "scrollTabsRight": "Blader door de tabbladen naar rechts"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Er is iets misgegaan",
+      "anErrorOccurredWhileRenderingThisTabContent": "Er is een fout opgetreden bij het weergeven van de inhoud van dit tabblad.",
+      "tryAgain": "Probeer het opnieuw"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Notitiepictogram"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Niet-opgeslagen wijzigingen",
+      "quot": "quot;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; bevat niet-opgeslagen wijzigingen. Wat zou je graag willen doen?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Nieuwe werkruimte",
+      "darkMode": "Donkere modus",
+      "settings": "Instellingen",
+      "integrations": "Integraties",
+      "signOut": "Uitloggen",
+      "downloadOnIos": "Downloaden op iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Sluit venster",
+      "minimizeWindow": "Minimaliseer het venster",
+      "maximizeWindow": "Venster maximaliseren"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Suggesties",
+      "or": "of",
+      "enter": "Kom binnen",
+      "toInsert": "invoegen"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "broodkruimel",
+      "more": "Meer"
+    },
+    "componentsUiDialog": {
+      "close": "Sluiten"
+    },
+    "componentsUiSheet": {
+      "close": "Sluiten"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Zijbalk",
+      "displaysTheMobileSidebar": "Geeft de mobiele zijbalk weer.",
+      "toggleSidebar": "Schakel zijbalk in",
+      "toggleSidebar2": "Schakel zijbalk in",
+      "dragToResizeDoubleClickToReset": "Sleep om het formaat te wijzigen · Dubbelklik om te resetten"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Welkom bij Memry",
+      "yourPersonalKnowledgeManagementSystem": "Uw persoonlijke kennismanagementsysteem.",
+      "selectAFolderToStoreYourNotesAndTasks": "Selecteer een map om uw notities en taken op te slaan.",
+      "opening": "Openen...",
+      "selectVaultFolder": "Selecteer Kluismap",
+      "plainMarkdown": "Gewoon afwaarderen",
+      "yourNotesStayPortable": "Uw aantekeningen blijven draagbaar",
+      "syncAnywhere": "Synchroniseer overal",
+      "useDropboxIcloudGit": "Gebruik Dropbox, iCloud, Git",
+      "recentVaults": "Recente kluizen",
+      "notesLastOpened": "opmerkingen · Laatst geopend"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Nog geen kluizen",
+      "openVault": "Open kluis",
+      "settings": "Instellingen",
+      "logOut": "Uitloggen",
+      "signInToSync": "Log in om te synchroniseren",
+      "remove": "Verwijder “",
+      "rdquoFromList": "rdquo; uit de lijst?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Deze kluis wordt uit de app verwijderd, maar uw bestanden blijven op schijf staan. Je kunt het later altijd opnieuw toevoegen.",
+      "cancel": "Annuleer",
+      "remove2": "Verwijderen"
+    },
+    "componentsWindowControls": {
+      "searchK": "Zoeken (⌘K)",
+      "browserBack": "Browser terug",
+      "back": "Terug",
+      "browserForward": "Browser vooruit",
+      "forward": "Vooruit"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Kan bestanden niet importeren",
+      "failedToCreateNote": "Kan notitie niet maken",
+      "failedToAccessMicrophone": "Kan geen toegang krijgen tot de microfoon"
+    },
+    "toasts": {
+      "undone": "Ongedaan gemaakt"
+    }
+  }
+}

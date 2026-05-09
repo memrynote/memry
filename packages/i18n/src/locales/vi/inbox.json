@@ -1,0 +1,483 @@
+{
+  "view": {
+    "tabs": {
+      "inbox": "  \nHộp thư đến  ",
+      "archived": "  \nĐã lưu trữ  ",
+      "insights": "  \nNhận xét  ",
+      "ariaLabel": "  \nLựa chọn chế độ xem hộp thư đến  "
+    },
+    "triageButton": "  \nPhân loại  ",
+    "processInboxTitle": "  \nXử lý hộp thư đến (Cmd+P)  ",
+    "itemCaptured": "  \nMục đã được ghi lại  ",
+    "searchArchivedTitle": "  \nTìm kiếm mục đã lưu trữ  ",
+    "searchPlaceholder": "  \nTìm kiếm...  ",
+    "archivedItemsAria": "  \nCác mục đã lưu trữ  ",
+    "snoozed": {
+      "show": "  \nHiển thị các mục bị trì hoãn  ",
+      "showWithCount": "  \nHiển thị các mục bị trì hoãn ({count})  ",
+      "hide": "  \nẨn các mục bị trì hoãn  "
+    },
+    "filter": {
+      "button": "  \nBộ lọc  ",
+      "byType": "  \nLọc theo loại",
+      "active": "{count, plural, one {Lọc theo loại #} other {Lọc theo các loại #}}",
+      "clearAll": "Xóa tất cả"
+    },
+    "jobs": {
+      "running": "{count, plural, one {Công việc nền # đang chạy} other {Các công việc nền # đang chạy}}",
+      "failed": "{count} thất bại"
+    }
+  },
+  "type": {
+    "link": "Liên kết",
+    "links": "Các liên kết",
+    "note": "Ghi chú",
+    "notes": "Các ghi chú",
+    "image": "Hình ảnh",
+    "images": "Các hình ảnh",
+    "voice": "Âm thanh",
+    "video": "Video",
+    "clip": "Đoạn clip",
+    "clips": "Các đoạn clip",
+    "pdf": "PDF",
+    "pdfs": "Các tập tin PDF",
+    "social": "Mạng xã hội",
+    "reminder": "Nhắc nhở",
+    "reminders": "Các nhắc nhở",
+    "text": "Văn bản",
+    "other": "Khác"
+  },
+  "empty": {
+    "successAria": "Thành công, hộp thư đến trống",
+    "title": "Hộp Thư Đến Rỗng",
+    "body": "Mọi thứ đã được xử lý. Ghi lại một cái gì đó mới với mục nhập ở trên, hoặc dán một liên kết để bắt đầu.",
+    "filedThisWeek": "{count, plural, one {# tệp tuần này} other {# tệp tuần này}}",
+    "dayStreak": "{count, plural, one {Chuỗi ngày #} other {Chuỗi ngày #}}",
+    "tipPrefix": "Mẹo: sử dụng",
+    "tipSuffix": "để chụp nhanh từ clipboard",
+    "archivedNone": "Không có mục lưu trữ",
+    "archivedNoMatches": "Không có mục lưu trữ khớp",
+    "noItemsYet": "Chưa có mục nào",
+    "noItemsFiled": "Chưa có mục nào được lưu",
+    "noItemTypes": "Không có loại mục để hiển thị",
+    "noFolders": "Không tìm thấy thư mục nào",
+    "noFolderMatch": "Không có thư mục nào khớp với \"{query}\"",
+    "noNotes": "Không tìm thấy ghi chú nào",
+    "allMatchesLinked": "Tất cả các kết quả khớp đã được liên kết"
+  },
+  "list": {
+    "ariaLabel": "Mục trong hộp thư đến",
+    "section": {
+      "today": "Hôm nay",
+      "yesterday": "Hôm qua",
+      "older": "Cũ hơn"
+    },
+    "selectItem": "Chọn {title}",
+    "itemAria": "{type}: {title}",
+    "untitled": "Chưa đặt tiêu đề",
+    "untitledItem": "Mục chưa đặt tiêu đề",
+    "transcribing": "Đang phiên âm...",
+    "transcriptionFailed": "Phiên âm thất bại",
+    "retryTranscription": "Thử lại",
+    "pageCount": "{count, plural, one {Trang #} other {Các trang #}}",
+    "snoozedUntilShort": "Đã hoãn đến {date}",
+    "capturedAgo": "Đã chụp {time}"
+  },
+  "loading": {
+    "inbox": "Đang tải hộp thư đến...",
+    "failed": "Tải hộp thư đến thất bại",
+    "tryAgain": "Thử lại",
+    "capturingImage": "Đang chụp ảnh...",
+    "dropImageTitle": "Kéo ảnh vào để chụp",
+    "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
+    "unsupportedImageType": "Loại ảnh không được hỗ trợ: {type}",
+    "imageTooLarge": "Ảnh quá lớn (tối đa 50MB)"
+  },
+  "toast": {
+    "failedArchiveItem": "Không thể lưu trữ mục",
+    "failedArchiveItems": "Không thể lưu trữ các mục",
+    "failedFile": "Không thể lưu tệp",
+    "failedFileItem": "Không thể lưu mục",
+    "failedFileItems": "Không thể lưu các mục",
+    "failedSnooze": "Không thể tạm hoãn",
+    "failedSnoozeItem": "Không thể tạm hoãn mục",
+    "failedApplyTags": "Không thể áp dụng nhãn",
+    "failedCaptureImage": "Không thể chụp ảnh",
+    "linkedToNote": "Đã liên kết đến ghi chú",
+    "linkedToNotes": "Đã liên kết đến {count} ghi chú",
+    "filedTo": "Đã lưu vào {folder}",
+    "filedItemsTo": "Đã lưu {count} mục vào {folder}",
+    "filedPartial": "Đã lưu {processed} trên tổng số {total} mục",
+    "appliedTags": "{tagCount, plural, one {Đã áp dụng nhãn #} other {Đã áp dụng các nhãn #}} trên {itemCount, plural, one {# mục} other {# mục}}",
+    "archivedItems": "{count, plural, one {Mục # đã được lưu trữ} other {Các mục # đã được lưu trữ}}",
+    "snoozedUntil": "Hoãn cho đến {time}",
+    "snoozedItemsUntil": "{count, plural, one {Mục # đã bị hoãn cho đến {time}} other {Các mục # đã bị hoãn cho đến {time}}}"
+  },
+  "triage": {
+    "modeTitle": "Chế độ phân loại",
+    "exitHint": "Nhấn Esc để thoát",
+    "exitAria": "Thoát chế độ phân loại",
+    "position": "{current} trong {total}",
+    "action": {
+      "discard": "Bỏ qua",
+      "archive": "Lưu trữ",
+      "open": "Mở",
+      "toTask": "Chuyển thành Công việc",
+      "toNote": "Chuyển thành Ghi chú",
+      "file": "Tập tin",
+      "snooze": "Hoãn",
+      "cancel": "Hủy"
+    },
+    "snoozeUntil": "Hoãn cho đến...",
+    "complete": {
+      "title": "Hộp Thư Đến Rỗng",
+      "processed": "{count, plural, one {Mục # đã được xử lý} other {Các mục # đã được xử lý}}",
+      "streak": "chuỗi",
+      "streakCount": "Chuỗi {count}",
+      "dayProcessingStreak": "{count, plural, one {Chuỗi xử lý ngày #} other {Chuỗi xử lý ngày #}}",
+      "back": "Quay lại Hộp thư đến",
+      "motivation0": "Con người tương lai của bạn cảm ơn bạn.",
+      "motivation1": "Mọi thứ vào đúng chỗ của nó.",
+      "motivation2": "Dọn sạch hộp thư đến, tâm trí cũng thanh thản.",
+      "motivation3": "Nợ quyết định: đã thanh toán đầy đủ.",
+      "motivation4": "Cảm giác đó thật đã, phải không?"
+    }
+  },
+  "bulk": {
+    "selected": "Đã chọn {count}",
+    "deselectAll": "Bỏ chọn tất cả",
+    "ariaLabel": "Hành động hàng loạt cho các mục {count} được chọn",
+    "file": "Tập tin",
+    "tag": "Gắn thẻ",
+    "snooze": "Hoãn",
+    "archive": "Lưu trữ",
+    "add": "Thêm",
+    "dismissSuggestion": "Bỏ qua gợi ý",
+    "hint": {
+      "file": "Tệp",
+      "tag": "Gắn thẻ",
+      "snooze": "Hoãn",
+      "archive": "Lưu trữ",
+      "deselect": "Bỏ chọn"
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {Lưu trữ mục #?} other {Lưu trữ các mục #?}}",
+      "description": "Những mục này sẽ được lưu trữ. Bạn có thể xem các mục đã lưu trữ sau.",
+      "confirm": "{count, plural, one {Lưu trữ mục #} other {Lưu trữ các mục #}}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {Lưu mục #} other {Lưu các mục #}}",
+      "itemsToFile": "Các mục để lưu",
+      "multipleNoteLinksUnavailable": "Lưu ý: Không thể thêm liên kết tới các ghi chú khác khi lưu nhiều mục.",
+      "filing": "Đang lưu...",
+      "submit": "{count, plural, one {Lưu mục #} other {Tệp các mục #}}",
+      "macHint": "⌘⏎ để lưu tệp · Esc để đóng",
+      "ctrlHint": "Ctrl+Enter để lưu tệp · Esc để đóng"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {Gắn thẻ mục #} other {Gắn thẻ các mục #}}",
+      "placeholder": "Gõ để tìm kiếm thẻ...",
+      "applying": "Đang áp dụng...",
+      "apply": "{count, plural, one {Áp dụng cho mục #} other {Áp dụng cho các mục #}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "Các hành động nhanh",
+    "archiveItem": "Lưu trữ mục",
+    "archive": "Lưu trữ",
+    "snooze": "Hoãn"
+  },
+  "detail": {
+    "ariaLabel": "Chi tiết mục",
+    "closePanel": "Đóng bảng",
+    "resizeFiling": "Thay đổi kích thước phần lưu trữ",
+    "restore": "Phục hồi",
+    "restoreToInbox": "Phục hồi vào hộp thư đến",
+    "delete": "Xóa",
+    "deletePermanently": "Xóa vĩnh viễn",
+    "archive": "Lưu trữ",
+    "file": "Tập tin",
+    "keyboardHint": "{modifier}⏎ lưu tệp · 1-5 thư mục · Esc đóng",
+    "voiceTitlePlaceholder": "Đặt tên ghi âm này...",
+    "fileTo": "Lưu tệp vào",
+    "ai": "AI",
+    "selectFolder": "Chọn thư mục",
+    "searchOrCreateFolder": "Tìm kiếm hoặc tạo với /...",
+    "suggested": "Gợi ý",
+    "notesRoot": "Các ghi chú",
+    "notesRootLabel": "Ghi chú (gốc)",
+    "createFolder": "Tạo \"{name}\"",
+    "addTags": "Thêm thẻ...",
+    "linkToNote": "Liên kết đến ghi chú",
+    "linkNotesPlaceholder": "Liên kết ghi chú...",
+    "searchNotesAria": "Tìm kiếm ghi chú để liên kết",
+    "linkedNotesAria": "Ghi chú đã liên kết",
+    "removeLinkTo": "Xóa liên kết đến {title}",
+    "contentEditorAria": "Trình chỉnh sửa nội dung",
+    "notePlaceholder": "Viết ghi chú của bạn...",
+    "textPlaceholder": "Chỉnh sửa văn bản đã ghi..."
+  },
+  "content": {
+    "capturedAt": "Đã chụp {date}",
+    "todayAt": "hôm nay vào {time}",
+    "yesterdayAt": "hôm qua vào {time}",
+    "dateAt": "{date} vào {time}",
+    "words": "{count, plural, one {# từ} other {# từ}}",
+    "duration": "Thời lượng: {duration}",
+    "dimensions": "Kích thước",
+    "format": "Định dạng",
+    "size": "Kích cỡ",
+    "voiceMemo": "Ghi chú giọng nói",
+    "play": "Phát",
+    "pause": "Tạm dừng",
+    "audioPosition": "Vị trí âm thanh",
+    "transcription": "Chuyển văn bản",
+    "processing": "đang xử lý",
+    "pending": "đang chờ",
+    "failed": "thất bại",
+    "copyTranscription": "Sao chép bản tường thuật",
+    "transcribingAudio": "Đang chuyển văn bản âm thanh...",
+    "awaitingTranscription": "Đang chờ phiên âm...",
+    "noTranscription": "Không có phiên âm",
+    "failedPlayAudio": "Phát âm thanh thất bại",
+    "failedLoadAudio": "Tải âm thanh thất bại",
+    "video": "Video",
+    "unsupportedVideo": "Trình duyệt của bạn không hỗ trợ thẻ video."
+  },
+  "reminder": {
+    "dataUnavailable": "Dữ liệu nhắc nhở không có sẵn.",
+    "triggered": "Nhắc nhở đã được kích hoạt",
+    "noteLabel": "Ghi chú nhắc nhở",
+    "source": "Nguồn",
+    "journalTitle": "Nhật ký — {date}",
+    "noteFallback": "Ghi chú",
+    "journalFallback": "Nhật ký",
+    "highlighted": "Được đánh dấu: \"{text}\"",
+    "viewed": "Đã xem",
+    "markViewed": "Đánh dấu là đã xem",
+    "notYetViewed": "Chưa xem",
+    "snooze": "Hoãn",
+    "presetInOneHour": "1 giờ",
+    "presetTomorrow": "Ngày mai",
+    "presetNextWeek": "Tuần tới",
+    "custom": "Tùy chỉnh..."
+  },
+  "insights": {
+    "loading": "Đang tải thông tin chi tiết...",
+    "captureActivity": "Hoạt động đã ghi lại",
+    "byType": "Theo loại",
+    "itemTypes": "Loại mục",
+    "itemTypesDescription": "Phân phối định dạng nội dung",
+    "recentFilings": "Hồ sơ gần đây",
+    "recentlyFiled": "Mới nộp gần đây",
+    "recentlyFiledDescription": "Hành động mới nhất trên hộp thư đến của bạn",
+    "captured": "Đã ghi lại",
+    "capturedThisWeek": "+{count} tuần này  ",
+    "processed": "  \nĐã xử lý  ",
+    "processRate": "  \nTỷ lệ {rate}%  ",
+    "stale": "  \nCũ  ",
+    "needsAttention": "  \ncần chú ý  ",
+    "allClear": "  \ntất cả đều rõ ràng  ",
+    "avgTimeToFile": "  \nThời gian trung bình để ghi nhận  ",
+    "noCapturesYet": "  \nChưa có bản ghi nào  ",
+    "captures": "{count, plural, one {  \nBản ghi #  } other {  \nCác bản ghi #  }}",
+    "peak": "  \nĐỉnh điểm: {day} {start}–{end}  ",
+    "convertedToTask": "  \nĐã chuyển thành công việc  ",
+    "linked": "  \nĐã liên kết  ",
+    "now": "  \nngay bây giờ  ",
+    "timeAgoMinutes": "  \n{count}m trước  ",
+    "timeAgoHours": "  \n{count}h trước  ",
+    "timeAgoDays": "  \n{count}d trước  "
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "  \nĐã phát hiện AI:  ",
+      "addToSelection": "  \nThêm vào lựa chọn  ",
+      "dismiss": "  \nTừ chối  "
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "  \nXóa  ",
+      "item": "  \nmục  ",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "  \nNhững mục này sẽ được xóa khỏi hộp thư đến của bạn. Bạn có thể hoàn tác hành động này ngay lập tức sau đó.  "
+    },
+    "componentsCaptureInput": {
+      "captureInput": "  \nNhập bản ghi  ",
+      "attachFile": "  \nĐính kèm tệp  ",
+      "attachFileImagesAudioVideoPdf": "  \nĐính kèm tệp (Hình ảnh, Âm thanh, Video, PDF)",
+      "recordVoiceMemo": "Ghi nhớ giọng nói",
+      "recordVoiceMemo2": "Ghi nhớ giọng nói",
+      "alreadyCaptured": "Đã ghi lại: “",
+      "rdquo": "rdquo;",
+      "captureAnyway": "Ghi lại dù sao"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "Chọn thư mục",
+      "searchFolders": "Tìm kiếm thư mục...",
+      "searchFolders2": "Tìm kiếm thư mục",
+      "searchResults": "Kết quả tìm kiếm",
+      "create": "Tạo",
+      "suggested": "Gợi ý",
+      "recent": "Gần đây",
+      "allFolders": "Tất cả thư mục",
+      "allFolders2": "Tất cả thư mục"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "Liên kết đến",
+      "optional": "(tùy chọn)",
+      "searchNotesToLink": "Tìm ghi chú để liên kết...",
+      "searchNotesToLink2": "Tìm kiếm ghi chú để liên kết",
+      "searching": "Đang tìm kiếm...",
+      "noNotesFound": "Không tìm thấy ghi chú nào",
+      "linkedNotes": "Ghi chú đã liên kết",
+      "noLinksAdded": "Chưa thêm liên kết nào"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "Gợi ý",
+      "ai": "AI",
+      "create": "Tạo",
+      "tags": "Thẻ",
+      "selectedTags": "Thẻ đã chọn",
+      "addTags": "Thêm thẻ",
+      "tagSuggestions": "Gợi ý thẻ"
+    },
+    "componentsFilingTagInput": {
+      "tags": "Thẻ",
+      "optional": "(tùy chọn)",
+      "addTags": "Thêm thẻ...",
+      "addTags2": "Thêm thẻ",
+      "selectedTags": "Thẻ đã chọn",
+      "suggested": "Gợi ý"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "Hoạt động đã ghi lại"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "Chưa có mục nào được lưu",
+      "recentlyFiled": "Mới nộp gần đây",
+      "latestActionsOnYourInbox": "Hành động mới nhất trên hộp thư đến của bạn",
+      "linked": "  \nĐã liên kết  "
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "Đang tải thông tin chi tiết..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "Không có loại mục để hiển thị",
+      "itemTypes": "Loại mục",
+      "distributionOfContentFormats": "Phân phối định dạng nội dung"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "Đã ghi lại"
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "x"
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "Trình chỉnh sửa nội dung"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "middot;"
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "Tweet không khả dụng",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Tweet này có thể đã bị xóa hoặc từ tài khoản riêng tư.",
+      "openOnXCom": "Mở trên x.com",
+      "views": "lượt xem",
+      "xCom": "x.com",
+      "viewOnX": "Xem trên X"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "Gõ tên thư mục...",
+      "quickFileFolderSearch": "Tìm thư mục nhanh"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "đóng",
+      "capture": "chụp"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "Gỡ tệp đính kèm"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "Nhập nhanh để chụp",
+      "recordVoiceMemo": "Ghi nhớ giọng nói",
+      "attachFile": "  \nĐính kèm tệp  "
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "LIÊN KẾT"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "Đã ghi lại",
+      "dismissError": "Bỏ qua lỗi",
+      "alreadyCaptured": "Đã chụp",
+      "ldquo": "ldquo;",
+      "rdquoMiddot": "rdquo; &middot; ",
+      "captureAnyway": "Ghi lại dù sao",
+      "close": "Đóng"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "Thả để chụp",
+      "capturing": "Đang chụp..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "Gợi ý thư mục",
+      "noFoldersMatch": "Không có thư mục nào phù hợp"
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "Đặt lời nhắc cho văn bản này",
+      "remindMeAboutThis": "Nhắc tôi về điều này",
+      "selectedText": "Văn bản đã chọn:"
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "Nhắc",
+      "remindMe": "Nhắc tôi",
+      "pickDateTime": "Chọn ngày & giờ",
+      "addANoteOptional": "Thêm ghi chú (tùy chọn)",
+      "backToPresets": "Quay lại cài đặt sẵn",
+      "time": "Thời gian",
+      "noteOptional": "Ghi chú (tùy chọn)",
+      "whyAreYouSettingThisReminder": "Tại sao bạn lại đặt lời nhắc này?"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "Hoãn",
+      "snooze2": "Hoãn",
+      "pickDateTime": "Chọn Ngày & Giờ",
+      "pickDateTime2": "Chọn Ngày & Giờ",
+      "selectWhenToBeRemindedAboutThisItem": "Chọn khi nào được nhắc về mục này",
+      "snooze3": "Hoãn",
+      "snooze4": "Hoãn",
+      "snooze5": "Hoãn"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "Đang tải bài viết...",
+      "failedToLoad": "Tải không thành công",
+      "loadingPostContent": "Đang tải nội dung bài viết...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Không thể tải nội dung bài viết. Bài viết có thể là riêng tư hoặc đã bị xóa.",
+      "viewOn": "Xem trên "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "Bắt đầu ghi âm giọng nói",
+      "requestingMicrophoneAccess": "Yêu cầu quyền truy cập micro...",
+      "settings": "Cài đặt",
+      "processing": "Đang xử lý...",
+      "cancelRecording": "Hủy ghi âm",
+      "cancel": "Hủy",
+      "stopRecording": "Dừng ghi âm",
+      "stop": "Dừng"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCaptureLink": "Không thể ghi lại liên kết",
+      "failedToCaptureNote": "Không thể ghi lại ghi chú",
+      "captureFailed": "Ghi lại thất bại",
+      "failedToCaptureVoiceMemo": "Không thể ghi lại ghi chú giọng nói",
+      "voiceCaptureFailed": "Ghi âm giọng nói thất bại",
+      "failedToCaptureFile": "Không thể ghi lại tệp",
+      "fileCaptureFailed": "Ghi lại tệp thất bại",
+      "failedToCaptureAudio": "Không thể ghi lại âm thanh",
+      "failedToCaptureVoice": "Không thể ghi lại giọng nói"
+    },
+    "toasts": {
+      "inboxRefreshed": "Hộp thư đến đã được làm mới"
+    }
+  }
+}

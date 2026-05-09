@@ -1,0 +1,303 @@
+{
+  "title": "日记",
+  "section": {
+    "journal": "日记",
+    "aiConnections": "AI 连接",
+    "todaysNotes": "今天的笔记",
+    "todaysSchedule": "今天的日程",
+    "todaysTasks": "今天的任务",
+    "schedule": "日程",
+    "tasks": "任务",
+    "calendarEvents": "日历事件",
+    "overdueTasks": "逾期任务",
+    "technicalDetails": "技术细节"
+  },
+  "action": {
+    "versionHistory": "版本历史",
+    "export": "导出",
+    "fullWidth": "全宽",
+    "journalSettings": "日志设置",
+    "fullMode": "完整模式",
+    "compactMode": "紧凑模式",
+    "focusMode": "专注模式",
+    "exitFocusMode": "退出专注模式",
+    "enterFocusMode": "进入专注模式",
+    "createNote": "创建笔记",
+    "createNewNote": "创建新笔记",
+    "showLess": "显示较少",
+    "showMoreNotes": "显示更多 {count} 笔记",
+    "showMoreNotes_plural": "显示更多 {count} 笔记",
+    "showFewerNotes": "显示更少的笔记",
+    "startBlank": "改为从空白开始",
+    "changeTemplate": "更改模板",
+    "dismissIndicator": "关闭指示器",
+    "refreshConnections": "刷新连接",
+    "reloadJournal": "重新加载日记",
+    "goToToday": "转到今天",
+    "copyUnsavedContent": "将未保存内容复制到剪贴板",
+    "openNoteFullPage": "在全屏页面中打开笔记",
+    "closeNoteDrawer": "关闭笔记抽屉",
+    "addBookmark": "添加书签",
+    "removeBookmark": "移除书签",
+    "tryAgain": "重试"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "你计划做什么…",
+      "today": "你今天在想什么…",
+      "past": "回顾这一天…",
+      "default": "开始写作…"
+    },
+    "toolbar": {
+      "ariaLabel": "文本格式",
+      "bold": "加粗",
+      "italic": "斜体",
+      "underline": "下划线",
+      "strikethrough": "删除线",
+      "link": "链接",
+      "image": "图片",
+      "moreOptions": "更多选项",
+      "heading1": "标题 1",
+      "heading2": "标题 2",
+      "heading3": "标题 3",
+      "bulletList": "项目符号列表",
+      "numberedList": "编号列表",
+      "checklist": "检查清单",
+      "quote": "引用",
+      "divider": "分隔线",
+      "codeBlock": "代码块"
+    },
+    "prompt": {
+      "enterUrl": "输入网址："
+    },
+    "upload": {
+      "noEntry": "无法上传图片：未选择日记条目",
+      "failed": "上传图片失败"
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "今天",
+      "yesterday": "昨天",
+      "tomorrow": "明天",
+      "future": "未来"
+    },
+    "weekday": {
+      "sunday": "星期天",
+      "monday": "星期一",
+      "tuesday": "星期二",
+      "wednesday": "星期三",
+      "thursday": "星期四",
+      "friday": "星期五",
+      "saturday": "星期六"
+    },
+    "weekdayShort": {
+      "sunday": "周日",
+      "monday": "周一",
+      "tuesday": "周二",
+      "wednesday": "周三",
+      "thursday": "周四",
+      "friday": "周五",
+      "saturday": "周六"
+    },
+    "month": {
+      "january": "一月",
+      "february": "二月",
+      "march": "三月",
+      "april": "四月",
+      "may": "五月",
+      "june": "六月",
+      "july": "七月",
+      "august": "八月",
+      "september": "九月",
+      "october": "十月",
+      "november": "十一月",
+      "december": "十二月"
+    },
+    "monthShort": {
+      "january": "一月",
+      "february": "二月",
+      "march": "三月",
+      "april": "四月",
+      "may": "五月",
+      "june": "六月",
+      "july": "七月",
+      "august": "八月",
+      "september": "九月",
+      "october": "十月",
+      "november": "十一月",
+      "december": "十二月"
+    },
+    "greeting": {
+      "morning": "早上好",
+      "afternoon": "下午好",
+      "evening": "晚上好",
+      "night": "晚安"
+    },
+    "allDay": "全天"
+  },
+  "nav": {
+    "previousDay": "前一天",
+    "nextDay": "后一天",
+    "previousMonth": "上个月",
+    "nextMonth": "下个月",
+    "previousYear": "去年",
+    "nextYear": "明年",
+    "journalBack": "返回日记",
+    "journalNavigation": "日记导航",
+    "dateNavigation": "日记日期导航",
+    "goToYearView": "转到年份视图",
+    "previousView": "前一个视图",
+    "nextView": "下一个视图"
+  },
+  "aria": {
+    "moreOptions": "更多选项",
+    "documentStatistics": "文档统计",
+    "dayContext": "日情况：任务和日程",
+    "scheduleEvents": "日程事件",
+    "tasks": "任务",
+    "notesCreatedToday": "{count} 今天创建的笔记"
+  },
+  "empty": {
+    "noEntry": "无条目",
+    "noDaysInMonth": "本月没有日期",
+    "noEventsScheduled": "没有安排的活动",
+    "noEventsScheduledToday": "今天没有安排的活动",
+    "noEventsWereScheduled": "没有安排过的活动",
+    "noTasksDue": "没有到期的任务",
+    "noTasksDueToday": "今天没有到期的任务",
+    "noTasksWereDue": "没有到期过的任务",
+    "noNotesToday": "今天没有创建的笔记",
+    "startDocumenting": "开始记录你的想法和创意"
+  },
+  "ai": {
+    "loading": "正在分析你的输入...",
+    "empty": {
+      "willAppear": "你的关联将显示在这里",
+      "noneYet": "尚未找到关联",
+      "moreJournaling": "随着你更多地写日记，AI会找到相关的条目",
+      "keepWriting": "继续写作以发现相关条目"
+    },
+    "error": {
+      "loadFailed": "无法加载关联"
+    },
+    "connectionAria": "与 {label} 的关联，匹配度为 {scorePercent}%"
+  },
+  "count": {
+    "item": "项目",
+    "items": "条目",
+    "note": "笔记",
+    "notes": "笔记",
+    "day": "天",
+    "days": "天数",
+    "event": "事件",
+    "events": "事件",
+    "meeting": "会议",
+    "meetings": "会议",
+    "task": "任务",
+    "tasks": "任务",
+    "todo": "待办",
+    "people": "{count} 人",
+    "moreConnections": "+ {count} 更多连接",
+    "moreConnections_plural": "+ {count} 更多连接",
+    "moreNotes": "+ {count} 更多笔记",
+    "moreNotes_plural": "+ {count} 更多笔记",
+    "daysWithEntries": "有记录的天数",
+    "charactersWritten": "已写字符数",
+    "words": "{count} 个字",
+    "characters": "{count} 字符",
+    "completed": "{count} 已完成",
+    "overdue": "{count} 逾期"
+  },
+  "stats": {
+    "wordCount": "字数",
+    "characterCount": "字符数",
+    "readingTime": "预计阅读时间",
+    "lastModified": "最后修改",
+    "lessThanOneMinute": "< 1 分钟",
+    "minutes": "{minutes} 分钟",
+    "read": "{readingTime} 阅读",
+    "modified": "修改于 {date}"
+  },
+  "task": {
+    "completed": "已完成",
+    "notCompleted": "未完成",
+    "priority": "{priority} 优先级",
+    "overdue": "逾期",
+    "markComplete": "将 \"{title}\" 标记为已完成",
+    "markNotComplete": "将 \"{title}\" 标记为未完成"
+  },
+  "template": {
+    "using": "使用 \"{templateName}\""
+  },
+  "reminder": {
+    "hasReminders": "有提醒",
+    "setToRevisit": "设置提醒以重新查看",
+    "tooltip": "提醒：{date}",
+    "tooltipMore": "提醒：{date}（+ {count} 更多）",
+    "success": {
+      "set": "已为此日记条目设置提醒",
+      "deleted": "提醒已删除",
+      "dismissed": "提醒已解除",
+      "snoozed": "提醒已延迟"
+    },
+    "error": {
+      "set": "无法设置提醒",
+      "delete": "无法删除提醒",
+      "dismiss": "无法解除提醒",
+      "snooze": "推迟提醒失败"
+    }
+  },
+  "toast": {
+    "unsavedRetry": "您的内容仍在内存中。点击以重试保存。",
+    "noteNotFound": "未找到笔记 \"{target}\"",
+    "fileNotFound": "未找到文件：{target}",
+    "openLinkedItemFailed": "打开关联项目失败",
+    "errorPrefix": "错误："
+  },
+  "export": {
+    "noteTitle": "日记 - {month} {day}, {year}"
+  },
+  "note": {
+    "generatedTitle": "笔记 - {date}",
+    "openAria": "打开 {title}，创建于 {time}"
+  },
+  "tag": {
+    "suggestionsAria": "标签建议",
+    "empty": {
+      "title": "尚无标签",
+      "description": "输入以创建新标签"
+    },
+    "groupTitle": "标签",
+    "create": "创建 #{query}",
+    "ariaLabel": "标签：{tag}，点击以筛选"
+  },
+  "wiki": {
+    "suggestionsAria": "页面建议",
+    "empty": {
+      "title": "未找到页面"
+    },
+    "groupRecent": "最近",
+    "groupAllPages": "所有页面",
+    "createNewPage": "创建新页面",
+    "ariaLabel": "链接到 {title}"
+  },
+  "error": {
+    "title": "日记错误",
+    "description": "日记在 {date} 处遇到错误。您最近的更改可能尚未保存。",
+    "descriptionNoDate": "日记遇到错误。您最近的更改可能尚未保存。",
+    "unsavedContent": "检测到未保存的内容 ({length} 个字符)"
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "k"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveJournalEntry": "保存日记条目失败",
+      "failedToLoadJournalSettings": "加载日记设置失败",
+      "failedToUpdateSettings": "更新设置失败"
+    }
+  }
+}
