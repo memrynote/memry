@@ -45,6 +45,8 @@ export interface MockAPIConfig {
   notes?: Partial<MockNotesAPI>
   tasks?: Partial<MockTasksAPI>
   search?: Partial<MockSearchAPI>
+  settings?: Partial<MockSettingsAPI>
+  templates?: Partial<MockTemplatesAPI>
   journal?: Partial<MockJournalAPI>
   inbox?: Partial<MockInboxAPI>
   bookmarks?: Partial<MockBookmarksAPI>
@@ -117,6 +119,20 @@ interface MockSearchAPI {
   clearReasons: Mock
   getStats: Mock
   rebuildIndex: Mock
+}
+
+interface MockSettingsAPI {
+  getJournalSettings: Mock
+  setJournalSettings: Mock
+}
+
+interface MockTemplatesAPI {
+  list: Mock
+  get: Mock
+  create: Mock
+  update: Mock
+  delete: Mock
+  duplicate: Mock
 }
 
 interface MockJournalAPI {
@@ -271,6 +287,30 @@ export function createMockAPI(config?: MockAPIConfig): Record<string, unknown> {
       getStats: vi.fn().mockResolvedValue({ indexed: 0, pending: 0 }),
       rebuildIndex: vi.fn().mockResolvedValue({ success: true }),
       ...config?.search
+    },
+
+    // Settings API
+    settings: {
+      getJournalSettings: vi.fn().mockResolvedValue({
+        defaultTemplate: null,
+        showSchedule: true,
+        showTasks: true,
+        showAIConnections: true,
+        showStatsFooter: false
+      }),
+      setJournalSettings: vi.fn().mockResolvedValue({ success: true }),
+      ...config?.settings
+    },
+
+    // Templates API
+    templates: {
+      list: vi.fn().mockResolvedValue({ templates: [] }),
+      get: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({ success: true, template: null }),
+      update: vi.fn().mockResolvedValue({ success: true, template: null }),
+      delete: vi.fn().mockResolvedValue({ success: true }),
+      duplicate: vi.fn().mockResolvedValue({ success: true, template: null }),
+      ...config?.templates
     },
 
     // Journal API
