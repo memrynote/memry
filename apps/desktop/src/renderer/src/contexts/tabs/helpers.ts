@@ -216,7 +216,9 @@ export const createInitialTabGroup = (): TabGroup => {
     id: generateId(),
     tabs: [initialTab],
     activeTabId: initialTab.id,
-    isActive: true
+    isActive: true,
+    back: [],
+    forward: []
   }
 }
 
@@ -228,7 +230,9 @@ export const createEmptyTabGroup = (withDefaultTab: boolean = true): TabGroup =>
     id: generateId(),
     tabs: [],
     activeTabId: null,
-    isActive: false
+    isActive: false,
+    back: [],
+    forward: []
   }
 
   if (withDefaultTab) {

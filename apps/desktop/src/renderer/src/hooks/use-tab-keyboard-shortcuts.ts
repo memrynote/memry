@@ -11,7 +11,8 @@ import { useKeyboardShortcuts, type KeyboardShortcut } from './use-keyboard-shor
  * Hook providing all tab-related keyboard shortcuts
  */
 export const useTabKeyboardShortcuts = (): void => {
-  const { state, dispatch, openTab, closeTab, pinTab, unpinTab, splitView } = useTabs()
+  const { state, dispatch, openTab, closeTab, pinTab, unpinTab, splitView, navBack, navForward } =
+    useTabs()
 
   const shortcuts = useMemo<KeyboardShortcut[]>(() => {
     const activeGroup = state.tabGroups[state.activeGroupId]
@@ -93,6 +94,22 @@ export const useTabKeyboardShortcuts = (): void => {
           })
         },
         description: 'Previous tab'
+      },
+
+      // Navigate back in tab history (⌘[)
+      {
+        key: '[',
+        modifiers: { meta: true },
+        action: () => navBack(state.activeGroupId),
+        description: 'Navigate back'
+      },
+
+      // Navigate forward in tab history (⌘])
+      {
+        key: ']',
+        modifiers: { meta: true },
+        action: () => navForward(state.activeGroupId),
+        description: 'Navigate forward'
       },
 
       // Go to tab 1-8 (⌘1-8)
@@ -215,7 +232,9 @@ export const useTabKeyboardShortcuts = (): void => {
     closeTab,
     pinTab,
     unpinTab,
-    splitView
+    splitView,
+    navBack,
+    navForward
   ])
 
   useKeyboardShortcuts(shortcuts)

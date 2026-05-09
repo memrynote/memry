@@ -7,6 +7,7 @@ const { buildFromTemplate } = vi.hoisted(() => ({
 
 vi.mock('electron', () => ({
   app: { name: 'Memry' },
+  BrowserWindow: { getFocusedWindow: vi.fn() },
   Menu: { buildFromTemplate }
 }))
 
@@ -33,6 +34,8 @@ describe('buildAppMenu', () => {
     expect(template.flatMap((item) => item.submenu ?? []).map((item) => item.label)).toEqual(
       expect.arrayContaining([
         'New Note',
+        'Back',
+        'Forward',
         'Close Window',
         'Undo',
         'Redo',
@@ -42,6 +45,32 @@ describe('buildAppMenu', () => {
         'Reload',
         'Toggle Developer Tools',
         'Toggle Full Screen'
+      ])
+    )
+  })
+
+  it('registers hidden browser navigation menu accelerators', async () => {
+    const i18n = await createMainI18n({ locale: 'en' })
+
+    buildAppMenu(i18n)
+
+    const template = buildFromTemplate.mock.calls[0][0] as Array<{
+      submenu?: Array<{ label?: string; accelerator?: string; visible?: boolean }>
+    }>
+    const items = template.flatMap((item) => item.submenu ?? [])
+
+    expect(items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: 'Back',
+          accelerator: 'CmdOrCtrl+[',
+          visible: false
+        }),
+        expect.objectContaining({
+          label: 'Forward',
+          accelerator: 'CmdOrCtrl+]',
+          visible: false
+        })
       ])
     )
   })

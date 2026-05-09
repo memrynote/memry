@@ -50,7 +50,9 @@ const createGroup = (id: string, tabs: Tab[], isActive: boolean): TabGroup => {
     id,
     tabs: groupTabs,
     activeTabId: groupTabs[0]?.id ?? null,
-    isActive
+    isActive,
+    back: [],
+    forward: []
   }
 }
 

@@ -1,5 +1,6 @@
 import type { TabAction, TabSystemState } from '../types'
 import { closeGroup } from './tab-crud-reducer'
+import { pruneHistory } from './history-helpers'
 
 type ReorderAction = Extract<TabAction, { type: 'REORDER_TABS' | 'MOVE_TAB' }>
 
@@ -35,6 +36,7 @@ export function tabReorderReducer(state: TabSystemState, action: ReorderAction):
       if (!tab) return state
 
       const newFromTabs = fromGroup.tabs.filter((t) => t.id !== tabId)
+      const removedFromHistory = new Set([tabId])
 
       if (newFromTabs.length === 0 && Object.keys(state.tabGroups).length > 1) {
         const newToTabs = [
@@ -68,11 +70,17 @@ export function tabReorderReducer(state: TabSystemState, action: ReorderAction):
         newFromActiveTabId = newFromTabs[newIndex].id
       }
 
+      const fromGroupAfter = pruneHistory(fromGroup, removedFromHistory)
+
       return {
         ...state,
         tabGroups: {
           ...state.tabGroups,
-          [fromGroupId]: { ...fromGroup, tabs: newFromTabs, activeTabId: newFromActiveTabId },
+          [fromGroupId]: {
+            ...fromGroupAfter,
+            tabs: newFromTabs,
+            activeTabId: newFromActiveTabId
+          },
           [toGroupId]: { ...toGroup, tabs: newToTabs, activeTabId: tab.id }
         },
         activeGroupId: toGroupId

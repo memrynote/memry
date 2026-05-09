@@ -28,6 +28,8 @@ const makeGroup = (tabs: Tab[], overrides: Partial<TabGroup> = {}): TabGroup => 
   tabs,
   activeTabId: tabs[0]?.id ?? null,
   isActive: true,
+  back: [],
+  forward: [],
   ...overrides
 })
 
@@ -134,7 +136,9 @@ describe('tabReducer', () => {
         id: generateId(),
         tabs: [],
         activeTabId: null,
-        isActive: true
+        isActive: true,
+        back: [],
+        forward: []
       }
       const state = makeState([group])
 

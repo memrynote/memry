@@ -7,6 +7,10 @@
     "newNote": "Yeni Not",
     "close": "Pencereyi Kapat"
   },
+  "navigation": {
+    "back": "Geri",
+    "forward": "İleri"
+  },
   "edit": {
     "label": "Düzenle",
     "undo": "Geri al",

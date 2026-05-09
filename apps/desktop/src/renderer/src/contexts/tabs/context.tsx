@@ -103,6 +103,26 @@ interface TabContextType {
   goToTabIndex: (index: number, groupId?: string) => void
 
   /**
+   * Re-activate the previously active tab in this group (browser-style back).
+   */
+  navBack: (groupId?: string) => void
+
+  /**
+   * Redo a back navigation (browser-style forward).
+   */
+  navForward: (groupId?: string) => void
+
+  /**
+   * True when navBack would activate a tab.
+   */
+  canNavBack: boolean
+
+  /**
+   * True when navForward would activate a tab.
+   */
+  canNavForward: boolean
+
+  /**
    * Pin a tab
    */
   pinTab: (tabId: string, groupId?: string) => void
@@ -404,6 +424,26 @@ export const TabProvider = ({
     })
   }, [])
 
+  const navBack = useCallback((groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({ type: 'NAV_BACK', payload: { groupId: actualGroupId } })
+  }, [])
+
+  const navForward = useCallback((groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({ type: 'NAV_FORWARD', payload: { groupId: actualGroupId } })
+  }, [])
+
+  const canNavBack = useMemo(
+    () => (state.tabGroups[state.activeGroupId]?.back?.length ?? 0) > 0,
+    [state.tabGroups, state.activeGroupId]
+  )
+
+  const canNavForward = useMemo(
+    () => (state.tabGroups[state.activeGroupId]?.forward?.length ?? 0) > 0,
+    [state.tabGroups, state.activeGroupId]
+  )
+
   const pinTab = useCallback((tabId: string, groupId?: string) => {
     const actualGroupId = groupId ?? activeGroupIdRef.current
     dispatch({
@@ -619,6 +659,10 @@ export const TabProvider = ({
       goToNextTab,
       goToPreviousTab,
       goToTabIndex,
+      navBack,
+      navForward,
+      canNavBack,
+      canNavForward,
       pinTab,
       unpinTab,
       togglePinTab,
@@ -656,6 +700,10 @@ export const TabProvider = ({
       goToNextTab,
       goToPreviousTab,
       goToTabIndex,
+      navBack,
+      navForward,
+      canNavBack,
+      canNavForward,
       pinTab,
       unpinTab,
       togglePinTab,

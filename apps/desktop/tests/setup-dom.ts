@@ -69,6 +69,7 @@ const createMockApi = () => ({
   windowMinimize: vi.fn(),
   windowMaximize: vi.fn(),
   windowClose: vi.fn(),
+  onAppNavigationCommand: vi.fn(() => () => {}),
 
   // Native context menu bridge (main-process IPC in production)
   showContextMenu: vi.fn().mockResolvedValue(null),

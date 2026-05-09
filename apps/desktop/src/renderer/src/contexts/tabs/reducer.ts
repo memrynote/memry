@@ -23,6 +23,8 @@ export function tabReducer(state: TabSystemState, action: TabAction): TabSystemS
     case 'GO_TO_NEXT_TAB':
     case 'GO_TO_PREVIOUS_TAB':
     case 'GO_TO_TAB_INDEX':
+    case 'NAV_BACK':
+    case 'NAV_FORWARD':
       return tabNavReducer(state, action)
 
     case 'PIN_TAB':

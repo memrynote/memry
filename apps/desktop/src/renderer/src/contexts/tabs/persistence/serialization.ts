@@ -98,7 +98,9 @@ export const deserializeTabState = (persisted: PersistedTabState): Partial<TabSy
       id: group.id,
       tabs: finalTabs,
       activeTabId,
-      isActive: groupId === migrated.activeGroupId
+      isActive: groupId === migrated.activeGroupId,
+      back: [],
+      forward: []
     }
   }
 
@@ -110,7 +112,9 @@ export const deserializeTabState = (persisted: PersistedTabState): Partial<TabSy
       id: defaultGroupId,
       tabs: [defaultTab],
       activeTabId: defaultTab.id,
-      isActive: true
+      isActive: true,
+      back: [],
+      forward: []
     }
   }
 

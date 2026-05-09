@@ -32,6 +32,20 @@ describe('staged secret scanner', () => {
     assert.equal(findings.length, 0)
   })
 
+  it('does not flag code declarations that contain token-like names', () => {
+    const findings = scanTextForSecrets(
+      'packages/contracts/src/ipc-channels.ts',
+      [
+        "SET_API_KEY: 'settings:setApiKey',",
+        'refreshToken: () => Promise<{',
+        '  success: boolean',
+        '}>'
+      ].join('\n')
+    )
+
+    assert.equal(findings.length, 0)
+  })
+
   it('does not scan binary asset paths', () => {
     const findings = scanTextForSecrets(
       'apps/landing/public/demos/inbox.mp4',

@@ -124,6 +124,22 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
     category: 'Tabs',
     defaultBinding: { key: 't', modifiers: { meta: true } }
   },
+  {
+    id: 'tabs.navBack',
+    i18nKey: 'tabs.navBack',
+    label: 'Navigate Back',
+    description: 'Re-activate the previously active tab',
+    category: 'Tabs',
+    defaultBinding: { key: '[', modifiers: { meta: true } }
+  },
+  {
+    id: 'tabs.navForward',
+    i18nKey: 'tabs.navForward',
+    label: 'Navigate Forward',
+    description: 'Redo a back navigation',
+    category: 'Tabs',
+    defaultBinding: { key: ']', modifiers: { meta: true } }
+  },
 
   // Editor
   {

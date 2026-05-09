@@ -1034,6 +1034,14 @@
         "reopen": {
           "label": "Son Tab'i Yeniden Aç",
           "description": "En son kapatılan sekmeyi yeniden aç"
+        },
+        "navBack": {
+          "label": "Geri Git",
+          "description": "Önceki etkin sekmeyi yeniden etkinleştir"
+        },
+        "navForward": {
+          "label": "İleri Git",
+          "description": "Geri navigasyonu yinele"
         }
       },
       "editor": {
