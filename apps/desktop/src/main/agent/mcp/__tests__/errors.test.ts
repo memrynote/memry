@@ -33,12 +33,7 @@ describe('AgentToolError', () => {
   })
 
   it('exports the union of legal codes', () => {
-    const codes: AgentToolErrorCode[] = [
-      'NOT_FOUND',
-      'PERMISSION_DENIED',
-      'VALIDATION',
-      'INTERNAL'
-    ]
+    const codes: AgentToolErrorCode[] = ['NOT_FOUND', 'PERMISSION_DENIED', 'VALIDATION', 'INTERNAL']
     expect(codes).toHaveLength(4)
   })
 })
