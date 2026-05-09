@@ -11,6 +11,7 @@ import {
   onJournalExternalChange,
   onJournalEntryCreated
 } from '@/services/journal-service'
+import { getTemplate, type Template } from '@/services/templates-service'
 import { addDays, formatDateToISO, parseISODate } from '@/lib/journal-utils'
 import {
   journalKeys,
@@ -22,6 +23,58 @@ import {
 import { getI18n } from 'react-i18next'
 
 const log = createLogger('Hook:JournalEntry')
+
+type AppliedJournalTemplate = {
+  content: string
+  tags: string[]
+  properties: Record<string, unknown>
+}
+
+function formatDateToken(date: Date, pattern: string | undefined, locale: string): string {
+  const year = String(date.getFullYear())
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  if (pattern) {
+    return pattern.replace(/YYYY/g, year).replace(/MM/g, month).replace(/DD/g, day)
+  }
+
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  }).format(date)
+}
+
+function applyJournalTemplate(template: Template, date: string): AppliedJournalTemplate {
+  const locale = getI18n().language || 'en-US'
+  const dateObj = parseISODate(date)
+  const time = new Intl.DateTimeFormat(locale, {
+    hour: 'numeric',
+    minute: '2-digit'
+  }).format(new Date())
+  const dayOfWeek = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(dateObj)
+
+  const content = template.content
+    .replace(/\{\{title\}\}/g, date)
+    .replace(/\{\{date(?::([^}]+))?\}\}/g, (_match, pattern: string | undefined) =>
+      formatDateToken(dateObj, pattern, locale)
+    )
+    .replace(/\{\{time\}\}/g, time)
+    .replace(/\{\{day-of-week\}\}/g, dayOfWeek)
+
+  const properties: Record<string, unknown> = {}
+  for (const property of template.properties) {
+    properties[property.name] = property.value
+  }
+
+  return {
+    content,
+    tags: [...template.tags],
+    properties
+  }
+}
 
 export interface UseJournalEntryResult {
   entry: JournalEntry | null
@@ -56,7 +109,9 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   const currentDateRef = useRef(date)
   const isDirtyRef = useRef(isDirty)
   const isSavingRef = useRef(false)
+  const templateSeedKeyRef = useRef<string | null>(null)
   const performSaveRef = useRef<() => Promise<void>>(async () => {})
+  const [isSeedingFromTemplate, setIsSeedingFromTemplate] = useState(false)
 
   useEffect(() => {
     isDirtyRef.current = isDirty
@@ -143,6 +198,53 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
       void queryClient.invalidateQueries({ queryKey: journalKeys.heatmap(year) })
     }
   })
+
+  useEffect(() => {
+    if (isLoading || queryError || entry !== null) return
+
+    let cancelled = false
+
+    void (async () => {
+      try {
+        const settings = await window.api.settings.getJournalSettings()
+        const templateId = settings.defaultTemplate
+        if (!templateId) return
+
+        const seedKey = `${date}:${templateId}`
+        if (templateSeedKeyRef.current === seedKey) return
+        templateSeedKeyRef.current = seedKey
+        setIsSeedingFromTemplate(true)
+
+        const template = await getTemplate(templateId)
+        if (!template) return
+        if (cancelled || currentDateRef.current !== date) return
+
+        const applied = applyJournalTemplate(template, date)
+        const createdEntry = await journalService.createEntry({
+          date,
+          content: applied.content,
+          tags: applied.tags,
+          properties: applied.properties
+        })
+
+        if (cancelled) return
+
+        queryClient.setQueryData(journalKeys.entry(createdEntry.date), createdEntry)
+        const year = parseInt(createdEntry.date.slice(0, 4), 10)
+        void queryClient.invalidateQueries({ queryKey: journalKeys.heatmap(year) })
+      } catch (err) {
+        log.error('Failed to seed journal entry from default template:', err)
+      } finally {
+        if (!cancelled) {
+          setIsSeedingFromTemplate(false)
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [date, entry, isLoading, queryClient, queryError])
 
   const deleteMutation = useMutation({
     mutationFn: async (dateToDelete: string) => {
@@ -362,12 +464,12 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     }
   }, [queryClient])
 
-  const loadedForDate = isLoading ? null : date
+  const loadedForDateResult = isLoading || isSeedingFromTemplate ? null : date
 
   return {
     entry,
-    isLoading,
-    loadedForDate,
+    isLoading: isLoading || isSeedingFromTemplate,
+    loadedForDate: loadedForDateResult,
     error: queryError ? extractErrorMessage(queryError) : null,
     isSaving,
     isDirty,
