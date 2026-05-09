@@ -38,6 +38,12 @@ export const PAGE_META: Record<string, PageMeta> = {
     description:
       'Local-first storage, XChaCha20-Poly1305 encryption, zero-knowledge sync, on-device AI. Your data never leaves your device unencrypted.',
     path: '/security'
+  },
+  pricing: {
+    title: 'Pricing — Memry Sync',
+    description:
+      'Local-first stays free, forever. Sync is paid, fair, and end-to-end encrypted. Standard from $4/mo, Plus from $8/mo, or Believer for a one-time $500.',
+    path: '/pricing'
   }
 }
 
