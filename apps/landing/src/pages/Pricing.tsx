@@ -1,124 +1,702 @@
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Check } from 'lucide-react'
+import {
+  Check,
+  ArrowRight,
+  Vault,
+  HardDrive,
+  FileUp,
+  History,
+  Sparkles,
+  ShieldCheck,
+  Heart
+} from 'lucide-react'
 import { Container } from '@/components/layout/Container'
-import { SectionHeading } from '@/components/shared/SectionHeading'
 import { PageHead } from '@/components/shared/PageHead'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger
 } from '@/components/ui/accordion'
-import { PRICING_TIERS } from '@/lib/constants'
+import {
+  SYNC_PLAN_TIERS,
+  PLAN_LIMIT_MATRIX,
+  LIFECYCLE_STAGES,
+  PRICING_FAQ_ITEMS,
+  type SyncPlanTier,
+  type LifecycleTone
+} from '@/lib/constants'
 import { cn } from '@/lib/utils'
 
-const pricingFAQ = [
-  {
-    question: 'Can I switch between plans?',
-    answer:
-      "Yes! You can upgrade to Supporter at any time, or cancel and continue using the free tier. Your data stays yours regardless of which plan you're on."
-  },
-  {
-    question: 'What happens if I cancel my Supporter subscription?',
-    answer:
-      'You keep all your data and can continue using Memry with all features. The Supporter tier is about supporting development and getting early access, not unlocking features.'
-  },
-  {
-    question: 'Do you offer refunds?',
-    answer:
-      'Yes, we offer a 30-day money-back guarantee for annual subscriptions. Monthly subscriptions can be cancelled anytime.'
-  },
-  {
-    question: 'Is there a team or enterprise plan?',
-    answer:
-      "We're focused on individual users for now, but team features are on our roadmap. Join the waitlist to stay updated."
-  }
-]
+type Cadence = 'monthly' | 'annual'
+
+const fadeUp = {
+  initial: { opacity: 0, y: 20 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: '-80px' },
+  transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] }
+}
 
 export function PricingPage() {
+  const [cadence, setCadence] = useState<Cadence>('annual')
+
   return (
-    <main className="pt-24">
+    <>
       <PageHead page="pricing" />
-      <section className="py-16">
-        <Container size="md">
-          <SectionHeading
-            title="Simple, honest pricing"
-            subtitle="Memry is free forever. The Supporter tier helps fund development and gives you early access to new features."
-          />
+      <main>
+        <Hero cadence={cadence} setCadence={setCadence} />
+        <TierGrid cadence={cadence} />
+        <BelieverNarrative />
+        <LifecycleTimeline />
+        <LimitMatrix />
+        <PricingFaq />
+        <FinalCta />
+      </main>
+    </>
+  )
+}
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto mb-16">
-            {PRICING_TIERS.map((tier, index) => (
-              <motion.div
-                key={tier.name}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-              >
-                <Card
-                  className={cn('h-full relative', tier.highlighted && 'border-primary shadow-lg')}
-                >
-                  {tier.highlighted && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <span className="bg-primary text-primary-foreground text-xs font-medium px-3 py-1 rounded-full">
-                        Support us
-                      </span>
-                    </div>
-                  )}
+function Hero({ cadence, setCadence }: { cadence: Cadence; setCadence: (c: Cadence) => void }) {
+  return (
+    <section className="relative overflow-hidden pt-32 pb-16 sm:pt-40 sm:pb-20">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px] bg-[radial-gradient(ellipse_at_top,rgba(199,91,57,0.10),transparent_60%)]"
+      />
+      <Container size="md">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center"
+        >
+          <p className="font-mono-accent text-[11px] uppercase tracking-[0.32em] text-terracotta">
+            Pricing &nbsp;·&nbsp; V.1
+          </p>
+          <h1 className="mt-5 font-serif text-5xl font-normal leading-[1.05] text-ink text-balance md:text-7xl">
+            Sync that respects
+            <br />
+            your <span className="italic text-terracotta">wallet.</span>
+          </h1>
+          <p className="mx-auto mt-7 max-w-xl text-lg leading-relaxed text-muted text-balance md:text-xl">
+            The local app stays free, forever. Sync is paid — fair, predictable, and
+            end-to-end encrypted before a single byte leaves your device.
+          </p>
 
-                  <CardHeader className="text-center pb-2">
-                    <CardTitle className="text-xl">{tier.name}</CardTitle>
-                    <div className="mt-4">
-                      <span className="text-4xl font-bold text-foreground">{tier.price}</span>
-                      <span className="text-muted ml-1">{tier.period}</span>
-                    </div>
-                    {'yearlyPrice' in tier && tier.yearlyPrice && (
-                      <p className="text-sm text-muted mt-1">or {tier.yearlyPrice}</p>
-                    )}
-                    <CardDescription className="mt-3">{tier.description}</CardDescription>
-                  </CardHeader>
-
-                  <CardContent className="pt-4">
-                    <ul className="space-y-3 mb-6">
-                      {tier.features.map((feature) => (
-                        <li key={feature} className="flex items-start gap-3 text-sm">
-                          <Check className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                          <span className="text-muted">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    <Button
-                      variant={tier.highlighted ? 'default' : 'secondary'}
-                      className="w-full"
-                      asChild
-                    >
-                      <a href="/#waitlist">{tier.cta}</a>
-                    </Button>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+          <div className="mt-10 flex flex-col items-center gap-3">
+            <CadenceToggle cadence={cadence} setCadence={setCadence} />
+            <p className="font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted/70">
+              Switch any time. No tier change fees.
+            </p>
           </div>
+        </motion.div>
+      </Container>
+    </section>
+  )
+}
 
-          <div className="max-w-2xl mx-auto">
-            <h3 className="text-xl font-semibold text-foreground text-center mb-8">Pricing FAQ</h3>
-            <Accordion type="single" collapsible className="w-full">
-              {pricingFAQ.map((item, index) => (
-                <AccordionItem key={index} value={`item-${index}`}>
-                  <AccordionTrigger className="text-left text-foreground">
-                    {item.question}
-                  </AccordionTrigger>
-                  <AccordionContent className="text-muted leading-relaxed">
-                    {item.answer}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+function CadenceToggle({
+  cadence,
+  setCadence
+}: {
+  cadence: Cadence
+  setCadence: (c: Cadence) => void
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label="Billing cadence"
+      className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-white/65 p-1 shadow-[0_2px_18px_rgba(26,26,26,0.04)] backdrop-blur"
+    >
+      {(['monthly', 'annual'] as Cadence[]).map((option) => {
+        const active = cadence === option
+        return (
+          <button
+            key={option}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => setCadence(option)}
+            className={cn(
+              'relative inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-all duration-300',
+              active
+                ? 'bg-ink text-paper shadow-[0_4px_14px_rgba(26,26,26,0.18)]'
+                : 'text-muted hover:text-ink'
+            )}
+          >
+            <span className="capitalize">{option}</span>
+            {option === 'annual' && (
+              <span
+                className={cn(
+                  'rounded-full px-1.5 py-0.5 font-mono-accent text-[10px] uppercase tracking-widest transition-colors',
+                  active ? 'bg-terracotta/30 text-paper' : 'bg-terracotta/15 text-terracotta'
+                )}
+              >
+                –20%
+              </span>
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function TierGrid({ cadence }: { cadence: Cadence }) {
+  return (
+    <section className="pb-24">
+      <Container size="lg">
+        <div className="grid gap-6 lg:grid-cols-3 lg:items-stretch lg:gap-7">
+          {SYNC_PLAN_TIERS.map((tier, index) => (
+            <motion.div
+              key={tier.id}
+              initial={{ opacity: 0, y: 28 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{
+                duration: 0.7,
+                delay: index * 0.08,
+                ease: [0.16, 1, 0.3, 1]
+              }}
+              className="h-full"
+            >
+              <TierCard tier={tier} cadence={cadence} />
+            </motion.div>
+          ))}
+        </div>
+        <p className="mt-10 text-center font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted/70">
+          All prices in USD &nbsp;·&nbsp; VAT and sales tax handled at checkout
+        </p>
+      </Container>
+    </section>
+  )
+}
+
+function TierCard({ tier, cadence }: { tier: SyncPlanTier; cadence: Cadence }) {
+  const isFounding = tier.emphasis === 'founding'
+  const isRecommended = tier.emphasis === 'recommended'
+
+  return (
+    <article
+      className={cn(
+        'relative flex h-full flex-col overflow-hidden rounded-[28px] border p-7 transition-all duration-300 sm:p-8',
+        isFounding
+          ? 'border-dark-border bg-dark text-ink-inverted shadow-[0_24px_60px_-30px_rgba(20,18,16,0.55)]'
+          : isRecommended
+            ? 'border-terracotta/35 bg-card shadow-[0_20px_60px_-32px_rgba(199,91,57,0.45)] lg:scale-[1.015]'
+            : 'border-border/60 bg-card shadow-card'
+      )}
+    >
+      {tier.ribbon && (
+        <span
+          className={cn(
+            'absolute right-6 top-6 inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-mono-accent text-[10px] uppercase tracking-[0.2em]',
+            isFounding
+              ? 'bg-terracotta/15 text-terracotta'
+              : 'bg-terracotta text-paper shadow-[0_8px_22px_-8px_rgba(199,91,57,0.6)]'
+          )}
+        >
+          {isFounding ? <Heart className="h-3 w-3" aria-hidden /> : null}
+          {tier.ribbon}
+        </span>
+      )}
+
+      <header>
+        <h3
+          className={cn(
+            'font-serif text-3xl font-normal',
+            isFounding ? 'text-ink-inverted' : 'text-ink'
+          )}
+        >
+          {tier.name}
+        </h3>
+        <p
+          className={cn(
+            'mt-2 max-w-[28ch] text-sm leading-relaxed',
+            isFounding ? 'text-dark-muted' : 'text-muted'
+          )}
+        >
+          {tier.tagline}
+        </p>
+      </header>
+
+      <div className="mt-7">
+        <PriceBlock tier={tier} cadence={cadence} isFounding={isFounding} />
+      </div>
+
+      <LimitsGrid tier={tier} isFounding={isFounding} />
+
+      <ul className="mt-7 space-y-3">
+        {tier.features.map((feature) => (
+          <li key={feature} className="flex items-start gap-3 text-sm">
+            <span
+              className={cn(
+                'mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border',
+                isFounding
+                  ? 'border-terracotta/40 bg-terracotta/10 text-terracotta'
+                  : 'border-sage/35 bg-sage/10 text-sage'
+              )}
+            >
+              <Check className="h-3 w-3" strokeWidth={3} />
+            </span>
+            <span
+              className={cn(
+                'leading-relaxed',
+                isFounding ? 'text-ink-inverted/85' : 'text-ink/80'
+              )}
+            >
+              {feature}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-auto pt-8">
+        {isFounding ? (
+          <Button
+            variant="default"
+            size="lg"
+            className="w-full rounded-full bg-terracotta text-white hover:bg-terracotta-dark"
+            asChild
+          >
+            <a href="#waitlist">
+              {tier.cta}
+              <ArrowRight className="h-4 w-4" />
+            </a>
+          </Button>
+        ) : isRecommended ? (
+          <Button
+            variant="default"
+            size="lg"
+            className="w-full rounded-full"
+            asChild
+          >
+            <a href="#waitlist">
+              {tier.cta}
+              <ArrowRight className="h-4 w-4" />
+            </a>
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-full rounded-full border-ink/15 bg-paper-alt/40 text-ink hover:bg-paper-alt"
+            asChild
+          >
+            <a href="#waitlist">
+              {tier.cta}
+              <ArrowRight className="h-4 w-4" />
+            </a>
+          </Button>
+        )}
+      </div>
+    </article>
+  )
+}
+
+function PriceBlock({
+  tier,
+  cadence,
+  isFounding
+}: {
+  tier: SyncPlanTier
+  cadence: Cadence
+  isFounding: boolean
+}) {
+  if (tier.lifetimePrice !== null) {
+    return (
+      <div>
+        <div className="flex items-baseline gap-2">
+          <span className="font-mono-accent text-5xl font-medium text-ink-inverted leading-none">
+            ${tier.lifetimePrice}
+          </span>
+          <span className="font-sans text-sm uppercase tracking-widest text-dark-muted">
+            paid once
+          </span>
+        </div>
+        <p className="mt-2 font-mono-accent text-xs uppercase tracking-[0.18em] text-terracotta">
+          Lifetime &nbsp;·&nbsp; no expiry &nbsp;·&nbsp; future features included
+        </p>
+      </div>
+    )
+  }
+
+  const showAnnual = cadence === 'annual'
+  const displayPrice = showAnnual ? tier.annualMonthlyEquivalent : tier.monthlyPrice
+
+  return (
+    <div>
+      <div className="flex items-baseline gap-2">
+        <span
+          className={cn(
+            'font-mono-accent text-5xl font-medium leading-none transition-colors',
+            isFounding ? 'text-ink-inverted' : 'text-ink'
+          )}
+        >
+          ${displayPrice}
+        </span>
+        <span
+          className={cn(
+            'font-sans text-sm',
+            isFounding ? 'text-dark-muted' : 'text-muted'
+          )}
+        >
+          / month
+        </span>
+      </div>
+      <p
+        className={cn(
+          'mt-2 font-mono-accent text-xs uppercase tracking-[0.18em]',
+          showAnnual ? 'text-terracotta' : 'text-muted/80'
+        )}
+      >
+        {showAnnual
+          ? `Billed $${tier.annualPrice} yearly · save 20%`
+          : `or $${tier.annualPrice} / yr ($${tier.annualMonthlyEquivalent}/mo billed yearly)`}
+      </p>
+    </div>
+  )
+}
+
+function LimitsGrid({ tier, isFounding }: { tier: SyncPlanTier; isFounding: boolean }) {
+  const cells = [
+    { icon: Vault, label: 'Vaults', value: tier.limits.vaults },
+    { icon: HardDrive, label: 'Storage', value: tier.limits.storage },
+    { icon: FileUp, label: 'Per file', value: tier.limits.fileSize },
+    { icon: History, label: 'History', value: tier.limits.history }
+  ]
+
+  return (
+    <div
+      className={cn(
+        'mt-7 grid grid-cols-4 gap-2 rounded-2xl border p-3',
+        isFounding
+          ? 'border-dark-border/80 bg-dark-surface/60'
+          : 'border-border/60 bg-paper-alt/55'
+      )}
+    >
+      {cells.map(({ icon: Icon, label, value }) => (
+        <div key={label} className="flex flex-col items-center gap-1.5 px-1 py-2 text-center">
+          <Icon
+            className={cn('h-3.5 w-3.5', isFounding ? 'text-terracotta' : 'text-terracotta/80')}
+          />
+          <span
+            className={cn(
+              'font-mono-accent text-base font-medium leading-none',
+              isFounding ? 'text-ink-inverted' : 'text-ink'
+            )}
+          >
+            {value}
+          </span>
+          <span
+            className={cn(
+              'font-mono-accent text-[9px] uppercase tracking-[0.14em]',
+              isFounding ? 'text-dark-muted' : 'text-muted/85'
+            )}
+          >
+            {label}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function BelieverNarrative() {
+  return (
+    <section className="relative">
+      <div className="h-[80px] bg-gradient-to-b from-paper to-dark" aria-hidden />
+      <div className="zone-dark py-24 md:py-28">
+        <Container size="md">
+          <div className="grid gap-12 md:grid-cols-[1fr_1.4fr] md:items-center">
+            <motion.div {...fadeUp} className="space-y-6">
+              <span className="inline-flex items-center gap-2 rounded-full border border-terracotta/30 bg-terracotta/10 px-3 py-1 font-mono-accent text-[10px] uppercase tracking-[0.22em] text-terracotta">
+                <Sparkles className="h-3 w-3" aria-hidden /> Believer
+              </span>
+              <h2 className="font-serif text-4xl font-normal leading-tight text-ink-inverted md:text-5xl">
+                Pay <span className="italic text-terracotta">$500 once.</span>
+                <br />
+                Sync forever.
+              </h2>
+              <p className="text-lg leading-relaxed text-dark-muted">
+                Believers fund the next chapter of Memry. In return, they get every paid feature
+                we ever ship — automatic, no extra invoice — for as long as Memry exists.
+              </p>
+            </motion.div>
+
+            <motion.figure
+              {...fadeUp}
+              transition={{ ...fadeUp.transition, delay: 0.15 }}
+              className="relative rounded-3xl border border-dark-border bg-dark-surface p-8 md:p-10"
+            >
+              <div
+                className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-terracotta/60 to-transparent"
+                aria-hidden
+              />
+              <blockquote className="font-serif text-xl leading-relaxed text-ink-inverted/90 md:text-2xl">
+                <span className="font-serif text-4xl text-terracotta leading-none">“</span>
+                Indie software lives or dies on the people who back it early.
+                Believers aren&apos;t buying a tier — they&apos;re buying a seat at
+                the table while we figure out what the next ten years of memry looks like.
+              </blockquote>
+              <figcaption className="mt-6 flex items-center gap-3 text-sm font-mono-accent uppercase tracking-[0.18em] text-dark-muted">
+                <span className="h-px w-8 bg-terracotta/60" aria-hidden />
+                Kaan, founder
+              </figcaption>
+            </motion.figure>
           </div>
         </Container>
-      </section>
-    </main>
+      </div>
+    </section>
+  )
+}
+
+const TONE_DOT_CLASS: Record<LifecycleTone, string> = {
+  sage: 'bg-sage shadow-[0_0_0_5px_rgba(91,127,106,0.15)]',
+  amber: 'bg-amber-500 shadow-[0_0_0_5px_rgba(217,119,6,0.18)]',
+  terracotta: 'bg-terracotta shadow-[0_0_0_5px_rgba(199,91,57,0.22)]',
+  'terracotta-dim': 'bg-terracotta/55 shadow-[0_0_0_5px_rgba(199,91,57,0.12)]',
+  ink: 'bg-ink/80 shadow-[0_0_0_5px_rgba(26,26,26,0.12)]'
+}
+
+const TONE_TEXT_CLASS: Record<LifecycleTone, string> = {
+  sage: 'text-sage',
+  amber: 'text-amber-600',
+  terracotta: 'text-terracotta',
+  'terracotta-dim': 'text-terracotta/75',
+  ink: 'text-ink/75'
+}
+
+function LifecycleTimeline() {
+  return (
+    <section className="border-t border-border/40 bg-paper-deep/40 py-24 md:py-28">
+      <Container size="md">
+        <motion.div {...fadeUp} className="mx-auto max-w-2xl text-center">
+          <span className="font-mono-accent text-[11px] uppercase tracking-[0.28em] text-muted">
+            Lapse policy
+          </span>
+          <h2 className="mt-3 font-serif text-4xl font-normal leading-tight text-ink md:text-5xl">
+            What happens if you stop paying?
+          </h2>
+          <p className="mt-5 text-lg leading-relaxed text-muted">
+            Sync gets paused, never punished. You get a long, predictable runway to recover —
+            up to 90 days before encrypted blobs are physically deleted.
+          </p>
+        </motion.div>
+
+        <div className="mt-16">
+          <div className="relative">
+            <div
+              aria-hidden
+              className="absolute left-4 top-2 hidden h-[calc(100%-1.5rem)] w-px bg-gradient-to-b from-sage/60 via-terracotta/40 to-ink/30 md:left-1/2 md:top-1/2 md:hidden md:h-px md:w-[calc(100%-3rem)] md:-translate-y-1/2"
+            />
+            <div
+              aria-hidden
+              className="absolute left-0 right-0 top-[22px] hidden h-px bg-gradient-to-r from-sage/50 via-terracotta/40 to-ink/20 md:block"
+            />
+
+            <ol className="grid gap-10 md:grid-cols-5 md:gap-4">
+              {LIFECYCLE_STAGES.map((stage, i) => (
+                <motion.li
+                  key={stage.id}
+                  {...fadeUp}
+                  transition={{ ...fadeUp.transition, delay: i * 0.08 }}
+                  className="relative flex flex-col gap-3 md:items-center md:text-center"
+                >
+                  <div
+                    className={cn(
+                      'relative z-10 inline-flex h-3 w-3 items-center justify-center rounded-full',
+                      TONE_DOT_CLASS[stage.tone]
+                    )}
+                    aria-hidden
+                  />
+                  <p
+                    className={cn(
+                      'font-mono-accent text-[11px] uppercase tracking-[0.18em]',
+                      TONE_TEXT_CLASS[stage.tone]
+                    )}
+                  >
+                    {stage.days}
+                  </p>
+                  <h3 className="font-serif text-xl text-ink leading-tight">{stage.label}</h3>
+                  <p className="text-sm leading-relaxed text-muted md:max-w-[20ch]">
+                    {stage.description}
+                  </p>
+                </motion.li>
+              ))}
+            </ol>
+          </div>
+        </div>
+
+        <motion.div
+          {...fadeUp}
+          transition={{ ...fadeUp.transition, delay: 0.4 }}
+          className="mt-14 flex flex-col items-center gap-4 rounded-2xl border border-terracotta/25 bg-terracotta/5 px-6 py-5 text-center md:flex-row md:justify-center md:text-left"
+        >
+          <ShieldCheck className="h-5 w-5 text-terracotta shrink-0" aria-hidden />
+          <p className="text-sm leading-relaxed text-ink">
+            <span className="font-medium">46-day recovery window.</span> Re-subscribe any time
+            before day 90 and your encrypted vaults restore exactly where they left off.
+          </p>
+        </motion.div>
+      </Container>
+    </section>
+  )
+}
+
+function LimitMatrix() {
+  return (
+    <section className="py-24 md:py-28">
+      <Container size="md">
+        <motion.div {...fadeUp} className="mx-auto max-w-2xl text-center">
+          <span className="font-mono-accent text-[11px] uppercase tracking-[0.28em] text-muted">
+            The full picture
+          </span>
+          <h2 className="mt-3 font-serif text-4xl font-normal leading-tight text-ink md:text-5xl">
+            Compare every limit
+          </h2>
+          <p className="mt-5 text-lg leading-relaxed text-muted">
+            All four limits — vaults, storage, file size, history — are enforced server-side.
+            Numbers are exact; no asterisks, no fair-use clauses.
+          </p>
+        </motion.div>
+
+        <motion.div
+          {...fadeUp}
+          transition={{ ...fadeUp.transition, delay: 0.1 }}
+          className="mt-12 overflow-hidden rounded-2xl border border-border/55 bg-white/55 shadow-card"
+        >
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border/60">
+                {PLAN_LIMIT_MATRIX.headers.map((header, i) => (
+                  <th
+                    key={header || 'feature'}
+                    className={cn(
+                      'px-6 py-5 font-mono-accent text-[11px] uppercase tracking-[0.18em]',
+                      i === 0 ? 'text-left text-ink' : 'text-center',
+                      i === 0 && 'min-w-[160px]',
+                      i === 2
+                        ? 'border-x border-terracotta/25 bg-terracotta/[0.04] text-terracotta'
+                        : 'text-muted'
+                    )}
+                  >
+                    {i === 2 ? (
+                      <span className="inline-flex items-center justify-center gap-2">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-terracotta" />
+                        {header}
+                      </span>
+                    ) : (
+                      header
+                    )}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {PLAN_LIMIT_MATRIX.rows.map((row) => (
+                <tr
+                  key={row.feature}
+                  className="border-b border-border/40 last:border-0 transition-colors hover:bg-paper-alt/40"
+                >
+                  <td className="px-6 py-4 text-sm font-medium text-ink">{row.feature}</td>
+                  <td className="px-6 py-4 text-center font-mono-accent text-sm text-ink/80">
+                    {row.standard}
+                  </td>
+                  <td className="border-x border-terracotta/15 bg-terracotta/[0.025] px-6 py-4 text-center font-mono-accent text-sm text-ink">
+                    {row.plus}
+                  </td>
+                  <td className="px-6 py-4 text-center font-mono-accent text-sm text-ink/80">
+                    {row.believer}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </motion.div>
+      </Container>
+    </section>
+  )
+}
+
+function PricingFaq() {
+  return (
+    <section className="border-t border-border/40 bg-paper-alt/35 py-24">
+      <Container size="sm">
+        <motion.div {...fadeUp} className="mb-12 text-center">
+          <span className="font-mono-accent text-[11px] uppercase tracking-[0.28em] text-muted">
+            FAQ
+          </span>
+          <h2 className="mt-3 font-serif text-3xl font-normal leading-tight text-ink md:text-4xl">
+            The honest billing answers
+          </h2>
+        </motion.div>
+
+        <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }}>
+          <Accordion type="single" collapsible className="w-full">
+            {PRICING_FAQ_ITEMS.map((item, i) => (
+              <AccordionItem
+                key={i}
+                value={`pricing-faq-${i}`}
+                className="rounded-none border-b border-border/55 bg-transparent px-0 last:border-0 data-[state=open]:bg-transparent"
+              >
+                <AccordionTrigger className="py-5 text-left font-serif text-lg text-ink hover:text-terracotta hover:no-underline">
+                  {item.question}
+                </AccordionTrigger>
+                <AccordionContent className="pb-5 text-[17px] font-sans leading-relaxed text-muted max-w-[92%]">
+                  {item.answer}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </motion.div>
+      </Container>
+    </section>
+  )
+}
+
+function FinalCta() {
+  return (
+    <section className="relative overflow-hidden py-28">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,rgba(199,91,57,0.10),transparent_55%)]"
+      />
+      <Container size="md">
+        <motion.div {...fadeUp} className="text-center">
+          <h2 className="mx-auto max-w-2xl font-serif text-4xl font-normal leading-tight text-ink text-balance md:text-5xl">
+            Local-first is free.{' '}
+            <span className="italic text-terracotta">Sync when you need it.</span>
+          </h2>
+          <p className="mx-auto mt-5 max-w-xl text-lg text-muted leading-relaxed">
+            Start in the free local app. Upgrade the day you want your notes on a second device —
+            not a moment sooner.
+          </p>
+
+          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Button size="lg" className="rounded-full px-8" asChild>
+              <Link to="/#waitlist">
+                Join the waitlist
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button
+              size="lg"
+              variant="ghost"
+              className="rounded-full px-8 text-ink hover:bg-paper-alt"
+              asChild
+            >
+              <Link to="/security">
+                Read the security architecture
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        </motion.div>
+      </Container>
+    </section>
   )
 }
