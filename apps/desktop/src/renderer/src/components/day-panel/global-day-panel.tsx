@@ -82,7 +82,7 @@ function DayPanelResizeRail() {
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
       title={tPhaseF('phaseF.componentsDayPanelGlobalDayPanel.dragToResizeDoubleClickToReset')}
-      className="absolute inset-y-0 left-0 z-20 w-4 -translate-x-1/2 cursor-col-resize after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border"
+      className="absolute inset-y-0 start-0 z-20 w-4 -translate-x-1/2 cursor-col-resize after:absolute after:inset-y-0 after:start-1/2 after:w-[2px] hover:after:bg-sidebar-border"
     />
   )
 }
@@ -100,6 +100,16 @@ export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
     color: null
   })
   const hoveredEventColor = hoveredEvent.date === selectedDate ? hoveredEvent.color : null
+
+  const handleHoverColor = useCallback(
+    (color: string | null) => {
+      setHoveredEvent((prev) => {
+        if (prev.date === selectedDate && prev.color === color) return prev
+        return { date: selectedDate, color }
+      })
+    },
+    [selectedDate]
+  )
 
   const selectedDateObj = parseISODate(selectedDate)
   const currentYear = selectedDateObj.getFullYear()
@@ -194,9 +204,9 @@ export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
       data-slot="day-panel-container"
       style={{ width: isOpen ? `${width}px` : 0 }}
       className={cn(
-        'fixed top-[37px] bottom-0 right-0 z-10',
+        'fixed top-[37px] bottom-0 end-0 z-10',
         !isResizing && 'transition-[width] duration-200 ease-linear',
-        'flex flex-col bg-sidebar border-l border-sidebar-border',
+        'flex flex-col bg-sidebar border-s border-sidebar-border',
         className
       )}
     >
@@ -226,10 +236,7 @@ export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
           </div>
           <div className="h-px mx-4 bg-border/30" />
           <div className="p-4">
-            <JournalDayPanel
-              date={selectedDate}
-              onHoverColor={(color) => setHoveredEvent({ date: selectedDate, color })}
-            />
+            <JournalDayPanel date={selectedDate} onHoverColor={handleHoverColor} />
           </div>
         </div>
       </div>

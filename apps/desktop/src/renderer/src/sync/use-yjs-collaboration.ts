@@ -22,8 +22,15 @@ export interface UseYjsCollaborationReturn extends YjsCollaborationState {
 }
 
 const DISABLED_STATE: YjsCollaborationState = { fragment: null, provider: null, isReady: false }
-type ActiveYjsCollaborationState = YjsCollaborationState & { noteId: string | null }
-const EMPTY_ACTIVE_STATE: ActiveYjsCollaborationState = { noteId: null, ...DISABLED_STATE }
+type ActiveYjsCollaborationState = YjsCollaborationState & {
+  noteId: string | null
+  fallback: boolean
+}
+const EMPTY_ACTIVE_STATE: ActiveYjsCollaborationState = {
+  noteId: null,
+  ...DISABLED_STATE,
+  fallback: false
+}
 
 export function useYjsCollaboration(
   options: UseYjsCollaborationOptions
@@ -57,7 +64,7 @@ export function useYjsCollaboration(
       .then(() => {
         if (cancelled) return
         const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
-        setActiveState({ noteId, fragment, provider, isReady: true })
+        setActiveState({ noteId, fragment, provider, isReady: true, fallback: false })
         log.debug('Collaboration ready', { noteId })
       })
       .catch((err) => {
@@ -66,7 +73,7 @@ export function useYjsCollaboration(
         provider.destroy()
         doc.destroy()
         isRemoteUpdateRef.current = false
-        setActiveState({ noteId, fragment: null, provider: null, isReady: false })
+        setActiveState({ noteId, fragment: null, provider: null, isReady: true, fallback: true })
       })
 
     return () => {
@@ -78,7 +85,10 @@ export function useYjsCollaboration(
   }, [noteId, enabled])
 
   const state =
-    !noteId || !enabled || activeState.noteId !== noteId || !activeState.provider?.isSynced
+    !noteId ||
+    !enabled ||
+    activeState.noteId !== noteId ||
+    (!activeState.fallback && !activeState.provider?.isSynced)
       ? DISABLED_STATE
       : {
           fragment: activeState.fragment,

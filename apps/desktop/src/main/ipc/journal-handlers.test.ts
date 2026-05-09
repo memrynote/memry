@@ -66,6 +66,13 @@ vi.mock('../sync/crdt-provider', () => ({
   }))
 }))
 
+vi.mock('../journal/runtime-effects', () => ({
+  enqueueJournalCreate: vi.fn(),
+  enqueueJournalUpdate: vi.fn(),
+  enqueueJournalDelete: vi.fn(),
+  initializeJournalCrdt: vi.fn().mockResolvedValue(undefined)
+}))
+
 vi.mock('@memry/domain-notes', () => ({
   getCanonicalJournalByDate: vi.fn()
 }))
@@ -106,6 +113,8 @@ import * as notesQueries from '@main/database/queries/notes'
 import * as tasksQueries from '@main/database/queries/tasks'
 import * as domainNotes from '@memry/domain-notes'
 import * as projections from '../projections'
+import * as runtimeEffects from '../journal/runtime-effects'
+import { BrowserWindow } from 'electron'
 
 describe('journal-handlers', () => {
   const baseEntry: JournalEntry = {
@@ -179,7 +188,10 @@ describe('journal-handlers', () => {
       expect.objectContaining({ id: 'j2025-01-01', properties: { mood: 'good' } })
     )
     expect(noteSync.syncNoteToCache).toHaveBeenCalled()
-    expect(projections.flushProjectionEvents).not.toHaveBeenCalled()
+    expect(projections.flushProjectionEvents).toHaveBeenCalledTimes(1)
+    expect((noteSync.syncNoteToCache as Mock).mock.invocationCallOrder[0]).toBeLessThan(
+      (projections.flushProjectionEvents as Mock).mock.invocationCallOrder[0]
+    )
     // Properties are now serialized to frontmatter and synced via syncNoteToCache
     // instead of being set separately via setNoteProperties
     expect(journalVault.writeJournalEntryWithContent).toHaveBeenCalledWith(
@@ -188,6 +200,90 @@ describe('journal-handlers', () => {
       ['focus'],
       null, // existingEntry
       { mood: 'good' } // properties
+    )
+  })
+
+  it('awaits initializeJournalCrdt before emitting ENTRY_CREATED', async () => {
+    registerJournalHandlers()
+    ;(journalVault.writeJournalEntryWithContent as Mock).mockResolvedValue({
+      entry: baseEntry,
+      fileContent: 'serialized',
+      frontmatter: {
+        id: baseEntry.id,
+        date: baseEntry.date,
+        created: baseEntry.createdAt,
+        modified: baseEntry.modifiedAt,
+        tags: baseEntry.tags
+      }
+    })
+    ;(journalVault.getJournalRelativePath as Mock).mockReturnValue('journal/2025-01-01.md')
+    ;(notesQueries.getJournalEntryByDate as Mock).mockReturnValue(undefined)
+    ;(domainNotes.getCanonicalJournalByDate as Mock).mockReturnValue(undefined)
+
+    // #given a deferred initializeJournalCrdt that we control
+    let resolveInit!: () => void
+    const deferred = new Promise<void>((resolve) => {
+      resolveInit = resolve
+    })
+    ;(runtimeEffects.initializeJournalCrdt as Mock).mockReturnValueOnce(deferred)
+
+    // #when we invoke the handler but do not let initializeJournalCrdt resolve yet
+    const handlerPromise = invokeHandler(JournalChannels.invoke.CREATE_ENTRY, {
+      date: '2025-01-01',
+      content: 'Hello journal',
+      tags: ['focus']
+    })
+
+    // Yield several microtasks so the handler reaches `await initializeJournalCrdt`
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve()
+    }
+
+    // #then initializeJournalCrdt was called with the canonical id, but emit has not happened
+    expect(runtimeEffects.initializeJournalCrdt).toHaveBeenCalledWith(
+      baseEntry.id,
+      baseEntry.date,
+      baseEntry.tags
+    )
+    expect(BrowserWindow.getAllWindows).not.toHaveBeenCalled()
+
+    // #when the CRDT init resolves
+    resolveInit()
+    const result = await handlerPromise
+
+    // #then emit fires and the handler returns
+    expect(BrowserWindow.getAllWindows).toHaveBeenCalled()
+    expect(result).toEqual(expect.objectContaining({ id: baseEntry.id }))
+  })
+
+  it('returns the canonical cache id when creating a journal entry', async () => {
+    registerJournalHandlers()
+    ;(journalVault.writeJournalEntryWithContent as Mock).mockResolvedValue({
+      entry: { ...baseEntry, id: 'file-id' },
+      fileContent: 'serialized',
+      frontmatter: {
+        id: 'file-id',
+        date: baseEntry.date,
+        created: baseEntry.createdAt,
+        modified: baseEntry.modifiedAt,
+        tags: baseEntry.tags
+      }
+    })
+    ;(journalVault.getJournalRelativePath as Mock).mockReturnValue('journal/2025-01-01.md')
+    ;(notesQueries.getJournalEntryByDate as Mock).mockReturnValue({ id: 'cache-1' })
+    ;(domainNotes.getCanonicalJournalByDate as Mock).mockReturnValue({ id: 'canonical-1' })
+
+    const result = await invokeHandler(JournalChannels.invoke.CREATE_ENTRY, {
+      date: '2025-01-01',
+      content: 'Hello journal',
+      tags: ['focus']
+    })
+
+    expect(result).toEqual(expect.objectContaining({ id: 'canonical-1' }))
+    expect(noteSync.syncNoteToCache).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({ id: 'canonical-1' }),
+      expect.any(Object)
     )
   })
 
@@ -228,6 +324,37 @@ describe('journal-handlers', () => {
     expect(result).toEqual(expect.objectContaining({ content: 'Updated content' }))
     expect(noteSync.syncNoteToCache).toHaveBeenCalled()
     expect(projections.flushProjectionEvents).not.toHaveBeenCalled()
+  })
+
+  it('flushes projections when update creates a missing journal entry', async () => {
+    registerJournalHandlers()
+    ;(journalVault.readJournalEntry as Mock).mockResolvedValue(null)
+    ;(journalVault.writeJournalEntryWithContent as Mock).mockResolvedValue({
+      entry: { ...baseEntry, id: 'file-id' },
+      fileContent: 'serialized',
+      frontmatter: {
+        id: 'file-id',
+        date: baseEntry.date,
+        created: baseEntry.createdAt,
+        modified: baseEntry.modifiedAt,
+        tags: baseEntry.tags
+      }
+    })
+    ;(journalVault.getJournalRelativePath as Mock).mockReturnValue('journal/2025-01-01.md')
+    ;(notesQueries.getJournalEntryByDate as Mock).mockReturnValue(undefined)
+    ;(domainNotes.getCanonicalJournalByDate as Mock).mockReturnValue({ id: 'canonical-1' })
+
+    const result = await invokeHandler(JournalChannels.invoke.UPDATE_ENTRY, {
+      date: '2025-01-01',
+      content: 'Hello journal',
+      tags: ['focus']
+    })
+
+    expect(result).toEqual(expect.objectContaining({ id: 'canonical-1' }))
+    expect(projections.flushProjectionEvents).toHaveBeenCalledTimes(1)
+    expect((noteSync.syncNoteToCache as Mock).mock.invocationCallOrder[0]).toBeLessThan(
+      (projections.flushProjectionEvents as Mock).mock.invocationCallOrder[0]
+    )
   })
 
   it('deletes a journal entry and emits delete event', async () => {
