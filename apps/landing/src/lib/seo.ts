@@ -44,6 +44,24 @@ export const PAGE_META: Record<string, PageMeta> = {
     description:
       'Local-first stays free, forever. Sync is paid, fair, and end-to-end encrypted. Standard from $4/mo, Plus from $8/mo, or Believer for a one-time $500.',
     path: '/pricing'
+  },
+  terms: {
+    title: 'Terms of Service — Memry',
+    description:
+      'The agreement between you and Memry when you use the local app and Sync service. Plain-English terms covering accounts, billing, lapse policy, and acceptable use.',
+    path: '/terms'
+  },
+  privacy: {
+    title: 'Privacy Policy — Memry',
+    description:
+      'How Memry handles your data. The local app collects nothing. Sync uploads only ciphertext encrypted on your device. Keys never touch our servers.',
+    path: '/privacy'
+  },
+  refund: {
+    title: 'Refund Policy — Memry',
+    description:
+      'Seven-day money-back guarantee on every paid Sync plan, including Believer. Requests processed through Paddle, refunded to your original payment method.',
+    path: '/refund'
   }
 }
 

@@ -9,13 +9,19 @@ import { FeaturesPage } from '@/pages/Features'
 import { UseCasesPage } from '@/pages/UseCases'
 import { SecurityPage } from '@/pages/Security'
 import { PricingPage } from '@/pages/Pricing'
+import { TermsPage } from '@/pages/Terms'
+import { PrivacyPage } from '@/pages/Privacy'
+import { RefundPage } from '@/pages/Refund'
 
 const ROUTE_MAP: Record<string, () => ReactNode> = {
   '/': () => <Home />,
   '/features': () => <FeaturesPage />,
   '/use-cases': () => <UseCasesPage />,
   '/security': () => <SecurityPage />,
-  '/pricing': () => <PricingPage />
+  '/pricing': () => <PricingPage />,
+  '/terms': () => <TermsPage />,
+  '/privacy': () => <PrivacyPage />,
+  '/refund': () => <RefundPage />
 }
 
 export function render(url: string): { html: string; helmet: HelmetServerState | null } {

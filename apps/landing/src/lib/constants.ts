@@ -34,6 +34,11 @@ export const FOOTER_LINKS = {
     { label: 'Pricing', href: '/pricing' },
     { label: 'Security', href: '/security' }
   ],
+  resources: [
+    { label: 'Terms of Service', href: '/terms' },
+    { label: 'Privacy Policy', href: '/privacy' },
+    { label: 'Refund Policy', href: '/refund' }
+  ],
   social: [
     { label: 'Reddit', href: 'https://www.reddit.com/r/MemryNote/' },
     { label: 'Twitter', href: 'https://x.com/h4yfans' },
