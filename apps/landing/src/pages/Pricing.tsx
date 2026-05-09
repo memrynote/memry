@@ -82,8 +82,8 @@ function Hero({ cadence, setCadence }: { cadence: Cadence; setCadence: (c: Caden
             your <span className="italic text-terracotta">wallet.</span>
           </h1>
           <p className="mx-auto mt-7 max-w-xl text-lg leading-relaxed text-muted text-balance md:text-xl">
-            The local app stays free, forever. Sync is paid — fair, predictable, and
-            end-to-end encrypted before a single byte leaves your device.
+            The local app stays free, forever. Sync is paid — fair, predictable, and end-to-end
+            encrypted before a single byte leaves your device.
           </p>
 
           <div className="mt-10 flex flex-col items-center gap-3">
@@ -178,6 +178,7 @@ function TierGrid({ cadence }: { cadence: Cadence }) {
 function TierCard({ tier, cadence }: { tier: SyncPlanTier; cadence: Cadence }) {
   const isFounding = tier.emphasis === 'founding'
   const isRecommended = tier.emphasis === 'recommended'
+  const ctaLabel = `${tier.cta} - Coming soon`
 
   return (
     <article
@@ -243,10 +244,7 @@ function TierCard({ tier, cadence }: { tier: SyncPlanTier; cadence: Cadence }) {
               <Check className="h-3 w-3" strokeWidth={3} />
             </span>
             <span
-              className={cn(
-                'leading-relaxed',
-                isFounding ? 'text-ink-inverted/85' : 'text-ink/80'
-              )}
+              className={cn('leading-relaxed', isFounding ? 'text-ink-inverted/85' : 'text-ink/80')}
             >
               {feature}
             </span>
@@ -259,37 +257,31 @@ function TierCard({ tier, cadence }: { tier: SyncPlanTier; cadence: Cadence }) {
           <Button
             variant="default"
             size="lg"
+            disabled
+            aria-label={ctaLabel}
             className="w-full rounded-full bg-terracotta text-white hover:bg-terracotta-dark"
-            asChild
           >
-            <a href="#waitlist">
-              {tier.cta}
-              <ArrowRight className="h-4 w-4" />
-            </a>
+            {ctaLabel}
           </Button>
         ) : isRecommended ? (
           <Button
             variant="default"
             size="lg"
+            disabled
+            aria-label={ctaLabel}
             className="w-full rounded-full"
-            asChild
           >
-            <a href="#waitlist">
-              {tier.cta}
-              <ArrowRight className="h-4 w-4" />
-            </a>
+            {ctaLabel}
           </Button>
         ) : (
           <Button
             variant="outline"
             size="lg"
+            disabled
+            aria-label={ctaLabel}
             className="w-full rounded-full border-ink/15 bg-paper-alt/40 text-ink hover:bg-paper-alt"
-            asChild
           >
-            <a href="#waitlist">
-              {tier.cta}
-              <ArrowRight className="h-4 w-4" />
-            </a>
+            {ctaLabel}
           </Button>
         )}
       </div>
@@ -338,12 +330,7 @@ function PriceBlock({
         >
           ${displayPrice}
         </span>
-        <span
-          className={cn(
-            'font-sans text-sm',
-            isFounding ? 'text-dark-muted' : 'text-muted'
-          )}
-        >
+        <span className={cn('font-sans text-sm', isFounding ? 'text-dark-muted' : 'text-muted')}>
           / month
         </span>
       </div>
@@ -373,9 +360,7 @@ function LimitsGrid({ tier, isFounding }: { tier: SyncPlanTier; isFounding: bool
     <div
       className={cn(
         'mt-7 grid grid-cols-4 gap-2 rounded-2xl border p-3',
-        isFounding
-          ? 'border-dark-border/80 bg-dark-surface/60'
-          : 'border-border/60 bg-paper-alt/55'
+        isFounding ? 'border-dark-border/80 bg-dark-surface/60' : 'border-border/60 bg-paper-alt/55'
       )}
     >
       {cells.map(({ icon: Icon, label, value }) => (
@@ -422,8 +407,8 @@ function BelieverNarrative() {
                 Sync forever.
               </h2>
               <p className="text-lg leading-relaxed text-dark-muted">
-                Believers fund the next chapter of Memry. In return, they get every paid feature
-                we ever ship — automatic, no extra invoice — for as long as Memry exists.
+                Believers fund the next chapter of Memry. In return, they get every paid feature we
+                ever ship — automatic, no extra invoice — for as long as Memry exists.
               </p>
             </motion.div>
 
@@ -438,9 +423,9 @@ function BelieverNarrative() {
               />
               <blockquote className="font-serif text-xl leading-relaxed text-ink-inverted/90 md:text-2xl">
                 <span className="font-serif text-4xl text-terracotta leading-none">“</span>
-                Indie software lives or dies on the people who back it early.
-                Believers aren&apos;t buying a tier — they&apos;re buying a seat at
-                the table while we figure out what the next ten years of memry looks like.
+                Indie software lives or dies on the people who back it early. Believers aren&apos;t
+                buying a tier — they&apos;re buying a seat at the table while we figure out what the
+                next ten years of memry looks like.
               </blockquote>
               <figcaption className="mt-6 flex items-center gap-3 text-sm font-mono-accent uppercase tracking-[0.18em] text-dark-muted">
                 <span className="h-px w-8 bg-terracotta/60" aria-hidden />
@@ -482,8 +467,8 @@ function LifecycleTimeline() {
             What happens if you stop paying?
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-muted">
-            Sync gets paused, never punished. You get a long, predictable runway to recover —
-            up to 90 days before encrypted blobs are physically deleted.
+            Sync gets paused, never punished. You get a long, predictable runway to recover — up to
+            90 days before encrypted blobs are physically deleted.
           </p>
         </motion.div>
 
