@@ -8,6 +8,7 @@ import { JournalEntryListItem } from './journal-entry-list-item'
 import { JournalBreadcrumb } from './journal-breadcrumb'
 import { JournalNavigationRow } from './journal-navigation-row'
 import { AIConnectionsPanel } from './ai-connections-panel'
+import { JournalStatsFooter } from './journal-stats-footer'
 
 type TestLocale = 'en' | 'tr' | 'ar'
 
@@ -125,5 +126,22 @@ describe('journal i18n', () => {
 
     expect(screen.getByText('No related journal history')).toBeInTheDocument()
     expect(screen.getByText('Keep writing for matches')).toBeInTheDocument()
+  })
+
+  it('renders footer statistics without raw interpolation tokens', async () => {
+    await renderWithI18n(
+      <JournalStatsFooter
+        wordCount={201}
+        characterCount={1234}
+        createdAt={null}
+        modifiedAt="2026-04-14T12:00:00.000Z"
+      />
+    )
+
+    expect(screen.getByText('201 words')).toBeInTheDocument()
+    expect(screen.getByText('1234 chars')).toBeInTheDocument()
+    expect(screen.getByText('2 min read')).toBeInTheDocument()
+    expect(screen.getByText('Modified Apr 14, 2026')).toBeInTheDocument()
+    expect(screen.queryByText(/\{\{/)).not.toBeInTheDocument()
   })
 })

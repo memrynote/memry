@@ -25,8 +25,8 @@
     "createNote": "Not Oluştur",
     "createNewNote": "Yeni not oluştur",
     "showLess": "Daha az göster",
-    "showMoreNotes": "{{count}} not daha göster",
-    "showMoreNotes_plural": "{{count}} not daha göster",
+    "showMoreNotes": "{count} not daha göster",
+    "showMoreNotes_plural": "{count} not daha göster",
     "showFewerNotes": "Daha az not göster",
     "startBlank": "Bunun yerine boş başlayın",
     "changeTemplate": "Şablonu değiştir",
@@ -156,7 +156,7 @@
     "dayContext": "Gün bağlamı: görevler ve program",
     "scheduleEvents": "Program etkinlikleri",
     "tasks": "Görevler",
-    "notesCreatedToday": "Bugün {{count}} not oluşturuldu"
+    "notesCreatedToday": "Bugün {count} not oluşturuldu"
   },
   "empty": {
     "noEntry": "Giriş yok",
@@ -181,7 +181,7 @@
     "error": {
       "loadFailed": "Bağlantılar yüklenemedi"
     },
-    "connectionAria": "Bağlantı {{label}}, {{scorePercent}}% eşleşme"
+    "connectionAria": "Bağlantı {label}, {scorePercent}% eşleşme"
   },
   "count": {
     "item": "öğe",
@@ -197,17 +197,17 @@
     "task": "görev",
     "tasks": "görevler",
     "todo": "yapılacak",
-    "people": "{{count}} kişi",
-    "moreConnections": "+ {{count}} daha fazla bağlantı",
-    "moreConnections_plural": "+ {{count}} daha fazla bağlantı",
-    "moreNotes": "+ {{count}} daha fazla not",
-    "moreNotes_plural": "+ {{count}} daha fazla not",
+    "people": "{count} kişi",
+    "moreConnections": "+ {count} daha fazla bağlantı",
+    "moreConnections_plural": "+ {count} daha fazla bağlantı",
+    "moreNotes": "+ {count} daha fazla not",
+    "moreNotes_plural": "+ {count} daha fazla not",
     "daysWithEntries": "girişlerin olduğu günler",
     "charactersWritten": "yazılı karakterler",
-    "words": "{{count}} kelime",
-    "characters": "{{count}} karakter",
-    "completed": "{{count}} tamamlandı",
-    "overdue": "{{count}} vadesi geçmiş"
+    "words": "{count} kelime",
+    "characters": "{count} karakter",
+    "completed": "{count} tamamlandı",
+    "overdue": "{count} vadesi geçmiş"
   },
   "stats": {
     "wordCount": "Kelime sayısı",
@@ -215,26 +215,26 @@
     "readingTime": "Tahmini okuma süresi",
     "lastModified": "Son değiştirilme tarihi",
     "lessThanOneMinute": "< 1 dakika",
-    "minutes": "{{minutes}} dk",
-    "read": "{{readingTime}} okuma",
-    "modified": "Değiştirildi {{date}}"
+    "minutes": "{minutes} dk",
+    "read": "{readingTime} okuma",
+    "modified": "Değiştirildi {date}"
   },
   "task": {
     "completed": "Tamamlandı",
     "notCompleted": "Tamamlanmadı",
-    "priority": "{{priority}} öncelikli",
+    "priority": "{priority} öncelikli",
     "overdue": "vadesi geçmiş",
-    "markComplete": "\"{{title}}\" görevini tamamlandı olarak işaretle",
-    "markNotComplete": "\"{{title}}\" görevini tamamlanmadı olarak işaretle"
+    "markComplete": "\"{title}\" görevini tamamlandı olarak işaretle",
+    "markNotComplete": "\"{title}\" görevini tamamlanmadı olarak işaretle"
   },
   "template": {
-    "using": "\"{{templateName}}\" kullanılıyor"
+    "using": "\"{templateName}\" kullanılıyor"
   },
   "reminder": {
     "hasReminders": "Hatırlatıcıları var",
     "setToRevisit": "Tekrar ziyaret etmek için hatırlatıcı ayarlayın",
-    "tooltip": "Hatırlatma: {{date}}",
-    "tooltipMore": "Hatırlatma: {{date}} (+{{count}} daha fazla)",
+    "tooltip": "Hatırlatma: {date}",
+    "tooltipMore": "Hatırlatma: {date} (+{count} daha fazla)",
     "success": {
       "set": "Bu günlük girişi için hatırlatıcı ayarlandı",
       "deleted": "Hatırlatıcı silindi",
@@ -250,17 +250,17 @@
   },
   "toast": {
     "unsavedRetry": "İçeriğiniz hâlâ bellekte. Kaydetmeyi yeniden denemek için tıklayın.",
-    "noteNotFound": "Not \"{{target}}\" bulunamadı",
-    "fileNotFound": "Dosya bulunamadı: {{target}}",
+    "noteNotFound": "Not \"{target}\" bulunamadı",
+    "fileNotFound": "Dosya bulunamadı: {target}",
     "openLinkedItemFailed": "Bağlantılı öğe açılamadı",
     "errorPrefix": "Hata:"
   },
   "export": {
-    "noteTitle": "Günlük - {{day}} {{month}} {{year}}"
+    "noteTitle": "Günlük - {day} {month} {year}"
   },
   "note": {
-    "generatedTitle": "Not - {{date}}",
-    "openAria": "{{title}} notunu aç, oluşturulma zamanı: {{time}}"
+    "generatedTitle": "Not - {date}",
+    "openAria": "{title} notunu aç, oluşturulma zamanı: {time}"
   },
   "tag": {
     "suggestionsAria": "Etiket önerileri",
@@ -269,8 +269,8 @@
       "description": "Yeni bir etiket oluşturmak için yazın"
     },
     "groupTitle": "Etiketler",
-    "create": "Oluştur #{{query}}",
-    "ariaLabel": "Etiket: {{tag}}, filtrelemek için tıklayın"
+    "create": "Oluştur #{query}",
+    "ariaLabel": "Etiket: {tag}, filtrelemek için tıklayın"
   },
   "wiki": {
     "suggestionsAria": "Sayfa önerileri",
@@ -280,13 +280,13 @@
     "groupRecent": "Son",
     "groupAllPages": "Tüm Sayfalar",
     "createNewPage": "Yeni sayfa oluştur",
-    "ariaLabel": "{{title}} sayfasına bağlantı"
+    "ariaLabel": "{title} sayfasına bağlantı"
   },
   "error": {
     "title": "Günlük Hatası",
-    "description": "{{date}} için günlükte bir hata oluştu. Son değişiklikleriniz kaydedilmemiş olabilir.",
+    "description": "{date} için günlükte bir hata oluştu. Son değişiklikleriniz kaydedilmemiş olabilir.",
     "descriptionNoDate": "Günlük bir hatayla karşılaştı. Son değişiklikleriniz kaydedilmemiş olabilir.",
-    "unsavedContent": "Kaydedilmemiş içerik algılandı ({{length}} karakter)"
+    "unsavedContent": "Kaydedilmemiş içerik algılandı ({length} karakter)"
   },
   "phaseF": {
     "componentsJournalJournalYearView": {
