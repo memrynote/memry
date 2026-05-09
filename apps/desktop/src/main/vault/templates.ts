@@ -64,23 +64,21 @@ const BUILT_IN_TEMPLATES: Omit<Template, 'createdAt' | 'modifiedAt'>[] = [
         options: ['scheduled', 'completed', 'cancelled']
       }
     ],
-    content: `# {{title}}
+    content: `## Attendees
 
-## Attendees
-
-- 
+-
 
 ## Agenda
 
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ## Notes
 
 ## Action Items
 
-- [ ] 
+- [ ]
 `
   },
   {
@@ -101,26 +99,24 @@ const BUILT_IN_TEMPLATES: Omit<Template, 'createdAt' | 'modifiedAt'>[] = [
       { name: 'startDate', type: 'date', value: null },
       { name: 'dueDate', type: 'date', value: null }
     ],
-    content: `# {{title}}
-
-## Overview
+    content: `## Overview
 
 Brief description of the project...
 
 ## Goals
 
-- 
-- 
+-
+-
 
 ## Scope
 
 ### In Scope
 
-- 
+-
 
 ### Out of Scope
 
-- 
+-
 
 ## Timeline
 
@@ -136,19 +132,17 @@ Brief description of the project...
     isBuiltIn: true,
     tags: ['standup', 'daily'],
     properties: [{ name: 'date', type: 'date', value: null }],
-    content: `# {{title}}
+    content: `## What I did yesterday
 
-## What I did yesterday
-
-- 
+-
 
 ## What I'm doing today
 
-- 
+-
 
 ## Blockers
 
-- 
+-
 `
   },
   // ===========================================================================
@@ -197,17 +191,17 @@ Write freely for the next few minutes. Don't worry about grammar, spelling, or m
 
 ## What went well today?
 
-- 
+-
 
 ## What could have gone better?
 
-- 
+-
 
 ## What am I grateful for?
 
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ## What did I learn?
 
@@ -225,11 +219,11 @@ Write freely for the next few minutes. Don't worry about grammar, spelling, or m
 
 Today I am grateful for:
 
-1. 
-2. 
-3. 
-4. 
-5. 
+1.
+2.
+3.
+4.
+5.
 
 ---
 
@@ -249,21 +243,21 @@ Today I am grateful for:
 
 ## Wins This Week
 
-- 
+-
 
 ## Challenges Faced
 
-- 
+-
 
 ## Lessons Learned
 
-- 
+-
 
 ## Next Week's Focus
 
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ## Energy & Wellbeing Check
 
