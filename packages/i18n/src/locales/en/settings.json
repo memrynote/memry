@@ -1034,6 +1034,14 @@
         "reopen": {
           "label": "Reopen Last Tab",
           "description": "Reopen the most recently closed tab"
+        },
+        "navBack": {
+          "label": "Navigate Back",
+          "description": "Re-activate the previously active tab"
+        },
+        "navForward": {
+          "label": "Navigate Forward",
+          "description": "Redo a back navigation"
         }
       },
       "editor": {

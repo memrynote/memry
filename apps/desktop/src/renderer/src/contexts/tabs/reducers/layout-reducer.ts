@@ -2,6 +2,7 @@ import type { SplitDirection, SplitLayout, TabAction, TabGroup, TabSystemState }
 import { generateId, createDefaultTab } from '../helpers'
 import { insertSplitAtGroup } from '@/components/split-view/layout-helpers'
 import { closeGroup } from './tab-crud-reducer'
+import { pruneHistory } from './history-helpers'
 
 type LayoutAction = Extract<
   TabAction,
@@ -50,7 +51,9 @@ export function layoutReducer(state: TabSystemState, action: LayoutAction): TabS
         id: generateId(),
         tabs: [clonedTab],
         activeTabId: clonedTab.id,
-        isActive: false
+        isActive: false,
+        back: [],
+        forward: []
       }
 
       const newLayout = insertSplitAtGroup(state.layout, groupId, newGroup.id, direction)
@@ -103,10 +106,13 @@ export function layoutReducer(state: TabSystemState, action: LayoutAction): TabS
         id: generateId(),
         tabs: [{ ...tab, lastAccessedAt: Date.now() }],
         activeTabId: tab.id,
-        isActive: false
+        isActive: false,
+        back: [],
+        forward: []
       }
 
       const newFromTabs = fromGroup.tabs.filter((t) => t.id !== tabId)
+      const fromGroupAfter = pruneHistory(fromGroup, new Set([tabId]))
 
       // Map direction to split type
       const splitDirection: SplitDirection =
@@ -161,7 +167,11 @@ export function layoutReducer(state: TabSystemState, action: LayoutAction): TabS
         ...state,
         tabGroups: {
           ...state.tabGroups,
-          [fromGroupId]: { ...fromGroup, tabs: newFromTabs, activeTabId: newFromActiveTabId },
+          [fromGroupId]: {
+            ...fromGroupAfter,
+            tabs: newFromTabs,
+            activeTabId: newFromActiveTabId
+          },
           [newGroup.id]: newGroup
         },
         layout: insertSplit(state.layout),

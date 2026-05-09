@@ -54,6 +54,12 @@ import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import { initializeUpdater } from './updater'
 import { buildAppMenu } from './menu'
 import { setMainI18n } from './lib/main-i18n'
+import {
+  sendAppNavigationCommand,
+  sendAppNavigationKeyboardCommand,
+  sendAppNavigationSwipeCommand,
+  type AppNavigationSwipeDirection
+} from './app-navigation-command'
 
 if (process.type === 'browser') {
   log.initialize()
@@ -309,6 +315,22 @@ function createWindow(): void {
   mainWindow.webContents.setWindowOpenHandler((details) => {
     void shell.openExternal(details.url)
     return { action: 'deny' }
+  })
+
+  // Browser-style mouse-button navigation: Windows/Linux fire WM_APPCOMMAND for X1/X2.
+  mainWindow.on('app-command', (_event, cmd) => {
+    sendAppNavigationCommand(mainWindow.webContents, cmd)
+  })
+
+  mainWindow.on('swipe', (_event, direction) => {
+    sendAppNavigationSwipeCommand(mainWindow.webContents, direction as AppNavigationSwipeDirection)
+  })
+
+  // Some mouse drivers expose browser side buttons as dedicated keyboard keys instead.
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (sendAppNavigationKeyboardCommand(mainWindow.webContents, input)) {
+      event.preventDefault()
+    }
   })
 
   // HMR for renderer base on electron-vite cli.

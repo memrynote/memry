@@ -56,7 +56,9 @@ const makeGroup = (tabs: Tab[], isActive = true): TabGroup => ({
   id: `group-${Math.random().toString(36).slice(2, 8)}`,
   tabs,
   activeTabId: tabs[0]?.id ?? null,
-  isActive
+  isActive,
+  back: [],
+  forward: []
 })
 
 const makeState = (groups: TabGroup[], layout?: SplitLayout): TabSystemState => {
