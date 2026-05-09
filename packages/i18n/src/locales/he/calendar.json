@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "יום",
+    "week": "שבוע",
+    "month": "חודש",
+    "year": "שנה"
+  },
+  "toolbar": {
+    "create-event": "צור אירוע",
+    "previous-period": "תקופה קודמת",
+    "next-period": "התקופה הבאה",
+    "previous-month": "החודש הקודם",
+    "next-month": "בחודש הבא",
+    "today": "היום"
+  },
+  "filter": {
+    "filter-calendars": "סינון לוחות שנה",
+    "sources": "מקורות",
+    "memry-items": "פריטי Memry",
+    "imported-calendars": "לוחות שנה מיובאים",
+    "event-types": "סוגי אירועים",
+    "google-calendars": "לוחות שנה של גוגל",
+    "refresh-google-calendars": "רענן את יומני Google"
+  },
+  "visual-type": {
+    "event": "אירוע",
+    "imported-event": "אירוע מיובא",
+    "task": "משימה",
+    "reminder": "תזכורת",
+    "snooze": "נודניק"
+  },
+  "state": {
+    "loading-calendar": "טוען לוח שנה...",
+    "loading-calendars": "טוען יומנים...",
+    "preparing": "מתכונן..."
+  },
+  "empty": {
+    "no-imported-calendars-yet": "אין עדיין יומנים מיובאים.",
+    "no-events": "אין אירועים"
+  },
+  "time": {
+    "all-day": "כל היום",
+    "all-day-lower": "כל היום",
+    "pick-a-date": "בחר תאריך",
+    "new-event": "אירוע חדש",
+    "more-events": "{count, plural, one {# אירוע נוסף} other {# אירועים נוספים}}"
+  },
+  "form": {
+    "create-calendar-event": "צור אירוע ביומן",
+    "edit-calendar-event": "ערוך אירוע ביומן",
+    "quick-create-description": "הזן כותרת ושמור כדי ליצור אירוע בטווח הזמן שנבחר.",
+    "event-editor-description": "עדכן כותרת, מיקום, תאריך, שעה והערות עבור אירוע זה.",
+    "new-event-placeholder": "אירוע חדש",
+    "location-placeholder": "הוסף מיקום",
+    "notes-url-placeholder": "הוסף הערות או כתובת אתר",
+    "start": "התחל",
+    "end": "סוף",
+    "add-details": "הוסף פרטים",
+    "google-calendar": "יומן גוגל",
+    "target-calendar": "לוח שנה יעד",
+    "use-default-calendar": "השתמש ביומן ברירת המחדל",
+    "use-default-calendar-with-name": "השתמש ברירת מחדל ({calendar})",
+    "use-memry-calendar-default": "השתמש ביומן Memry (ברירת מחדל)",
+    "use-memry-managed-calendar": "השתמש בלוח השנה המנוהל על ידי Memry",
+    "primary-suffix": "ראשוני"
+  },
+  "delete-dialog": {
+    "title": "למחוק את האירוע?",
+    "local-description": "\"{title}\" יימחק לצמיתות. לא ניתן לבטל פעולה זו.",
+    "google-bound-description": "\"{title}\" יוסר מ-Memry ומיומן Google. לא ניתן לבטל פעולה זו.",
+    "context-menu-delete-label": "מחק את האירוע"
+  },
+  "promote-dialog": {
+    "aria": "ערוך אירוע יומן חיצוני",
+    "title": "לערוך את האירוע הזה ב-Memry?",
+    "body": "עריכת אירוע זה תיצור עותק מקושר ב-Memry כך שהשינויים יסונכרנו לשני הכיוונים. להמשיך?",
+    "do-not-ask-again": "אל תשאל שוב",
+    "confirm-label": "ערוך ב-Memry"
+  },
+  "onboarding-dialog": {
+    "aria": "בחר את יומן ברירת המחדל שלך ב-Google",
+    "title": "לאיזה לוח שנה כדאי ללכת לאירועי Memry?",
+    "body": "בחר את לוח השנה של Google שבו Memry צריך להשתמש כברירת מחדל. אתה עדיין יכול לעקוף אותו לכל אירוע.",
+    "default-calendar-label": "השתמש בלוח השנה המנוהל על ידי Memry",
+    "skip": "דלג",
+    "use-this-calendar": "השתמש בלוח השנה הזה"
+  },
+  "metadata": {
+    "attendees": "משתתפים",
+    "attendees-count": "משתתפים ({count})",
+    "reminders": "תזכורות",
+    "default-reminders": "תזכורות ברירת מחדל",
+    "visibility": "נראות:",
+    "optional": "אופציונלי",
+    "join-meeting": "הצטרף לפגישה",
+    "response": {
+      "accepted": "התקבל",
+      "declined": "נדחה",
+      "tentative": "טנטטיבי",
+      "needs-action": "בהמתנה"
+    },
+    "visibility-value": {
+      "private": "פרטי",
+      "public": "ציבורי",
+      "confidential": "חסוי"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "דקה · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "לא ניתן לשמור את האירוע. נסה שוב.",
+      "couldNotCreateEventTryAgain": "לא ניתן ליצור אירוע. נסה שוב.",
+      "couldNotSaveDefaultCalendarTryAgain": "לא ניתן לשמור את יומן ברירת המחדל. נסה שוב.",
+      "failedToLoadCalendarPreferences": "טעינת העדפות היומן נכשלה",
+      "failedToUpdateCalendarPreferences": "עדכון העדפות היומן נכשל",
+      "couldNotEditThisEventTryAgain": "לא ניתן לערוך את האירוע הזה. נסה שוב.",
+      "failedToDeleteEvent": "מחיקת האירוע נכשלה",
+      "couldNotUnsnoozeInboxItem": "לא ניתן היה לבטל את הנודניק.",
+      "couldNotRescheduleInboxItem": "לא ניתן היה לתזמן מחדש."
+    },
+    "inboxSnoozePopover": {
+      "title": "פריט דואר נכנס לטיפול בהמשך",
+      "openInInbox": "פתח בתיבת הדואר הנכנס",
+      "unsnoozeNow": "בטל את נודניק עכשיו",
+      "reschedule": "תזמון מחדש"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "פרטי המשימה",
+    "open-task": "משימה פתוחה",
+    "source-note": "הערת מקור",
+    "reschedule": "תזמון מחדש",
+    "more-actions": "עוד פעולות",
+    "mark-done": "סמן סיים",
+    "mark-not-done": "סמן לא בוצע",
+    "later-today": "מאוחר יותר היום",
+    "tomorrow": "מחר",
+    "next-week": "בשבוע הבא",
+    "next-week-mon": "שבוע הבא · שני",
+    "pick-date-time": "בחר תאריך ושעה...",
+    "remove-due-date": "הסר תאריך יעד",
+    "subtasks-prefix": "משימות משנה",
+    "subtasks-counter": "{done} של {total} נעשה",
+    "today": "היום",
+    "overdue-one": "איחור של יום אחד",
+    "overdue-other": "{count} ימים באיחור",
+    "repeats": "חוזר",
+    "repeats-daily": "חוזר מדי יום",
+    "repeats-weekly": "חוזר מדי שבוע",
+    "repeats-monthly": "חוזר מדי חודש",
+    "repeats-yearly": "חוזר מדי שנה",
+    "priority-urgent": "דחוף",
+    "priority-high": "גבוה",
+    "priority-medium": "בינוני",
+    "errors": {
+      "could-not-save": "לא ניתן לשמור את המשימה",
+      "could-not-reschedule": "לא ניתן היה לתזמן מחדש את המשימה",
+      "could-not-remove-due-date": "לא ניתן היה להסיר את תאריך היעד",
+      "could-not-open-note": "לא ניתן היה לפתוח את ההערה"
+    }
+  }
+}

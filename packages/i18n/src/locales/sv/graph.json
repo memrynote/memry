@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Laddar graf...",
+    "load-failed": "Misslyckades med att ladda grafdata",
+    "try-again": "Försök igen",
+    "aria-label": "Kunskapsgraf med {nodeCount, plural, one {# nod} other {# noder}} och {edgeCount, plural, one {# koppling} other {# kopplingar}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Grafnoder",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Din kunskapsgraf",
+    "description": "Anslutningar mellan dina anteckningar, uppgifter och projekt kommer att visas här som en interaktiv graf.",
+    "link-title": "Länka dina anteckningar",
+    "link-description": "Använd [[wikilänkar]] för att koppla idéer mellan anteckningar",
+    "discover-title": "Upptäck mönster",
+    "discover-description": "När anslutningarna växer kommer kluster och teman att framträda naturligt"
+  },
+  "entity": {
+    "note": "anteckning",
+    "notes": "anteckningar",
+    "journal": "journal",
+    "journals": "dagböcker",
+    "task": "uppgift",
+    "tasks": "uppgifter",
+    "project": "projekt",
+    "projects": "projekt",
+    "tag": "tag",
+    "tags": "taggar",
+    "orphan": "föräldralös",
+    "orphans": "föräldralösa",
+    "unresolved": "olöst"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Grafinställningar",
+    "hide-settings": "Dölj inställningar",
+    "reset-filters": "Återställ filter",
+    "filters": "Filter",
+    "display": "Visning",
+    "show-labels": "Visa etiketter",
+    "focus-depth": "djup {depth}",
+    "clear-focus": "Rensa fokuserad nod"
+  },
+  "filter": {
+    "notes": "Anteckningar",
+    "journals": "Journaler",
+    "tasks": "Uppgifter",
+    "projects": "Projekt",
+    "tags": "Taggar",
+    "orphans": "Föräldralösa",
+    "toggle-entity": "Växla {label}",
+    "toggle-orphans": "Växla föräldralösa noder"
+  },
+  "search": {
+    "placeholder": "Sök noder...",
+    "clear": "Rensa graf-sökning"
+  },
+  "context-menu": {
+    "untitled": "Untitled",
+    "focus-node": "Fokusera på denna nod",
+    "open-new-tab": "Öppna i ny flik",
+    "create-note": "Skapa anteckning",
+    "copy-title": "Kopiera titel"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {# koppling} other {# kopplingar}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Laddar graf...",
+    "empty": "Inga anslutningar hittades",
+    "open-full": "Öppna fullständig graf",
+    "close": "Stäng graf"
+  }
+}

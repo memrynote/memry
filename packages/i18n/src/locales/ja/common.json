@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "保存",
+    "cancel": "キャンセル",
+    "close": "閉じる",
+    "ok": "OK",
+    "yes": "はい",
+    "no": "いいえ",
+    "delete": "削除",
+    "confirm": "確認する",
+    "apply": "申し込む",
+    "done": "完了",
+    "discard": "廃棄する",
+    "dontSave": "保存しないでください",
+    "edit": "編集",
+    "add": "追加",
+    "remove": "削除",
+    "retry": "再試行",
+    "submit": "送信する",
+    "back": "戻る",
+    "next": "次へ",
+    "continue": "続ける",
+    "reset": "リセット",
+    "copy": "コピー",
+    "paste": "ペースト",
+    "create": "作成",
+    "open": "開く"
+  },
+  "state": {
+    "loading": "読み込み中…",
+    "saving": "保存中…",
+    "deleting": "削除中…",
+    "searching": "検索中…",
+    "error": "エラー",
+    "success": "成功"
+  },
+  "empty": {
+    "noResults": "結果はありません",
+    "noItems": "アイテムがありません",
+    "noMatch": "一致しません"
+  },
+  "action": {
+    "search": "検索",
+    "edit": "編集",
+    "delete": "削除",
+    "close": "閉じる",
+    "expand": "拡大する",
+    "collapse": "崩壊する",
+    "showMore": "+{count, plural, one {# もっと見る} other {# もっと見る}}",
+    "showLess": "表示を少なくする"
+  },
+  "tabs": {
+    "pin": "ピンタブ",
+    "unpin": "タブの固定を解除する",
+    "contextMenu": {
+      "close": "閉じる",
+      "closeOthers": "その他を閉じる",
+      "closeToRight": "右に近い",
+      "closeAll": "すべて閉じる",
+      "duplicate": "タブの複製",
+      "splitRight": "右に分割",
+      "splitDown": "スプリットダウン",
+      "copyPath": "パスのコピー",
+      "revealInSidebar": "サイドバーに表示"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {# アイテム} other {# アイテム}}",
+    "note": "{count, plural, one {#メモ} other {# メモ}}",
+    "folder": "{count, plural, one {#フォルダー} other {# フォルダー}}",
+    "task": "{count, plural, one {# タスク} other {# タスク}}",
+    "project": "{count, plural, one {# プロジェクト} other {# プロジェクト}}",
+    "itemDelete": "{count, plural, one {# アイテムの削除} other {# アイテムを削除する}}"
+  },
+  "toast": {
+    "actionFailed": "アクションが失敗しました",
+    "nothingToUndo": "元に戻すものはありません",
+    "undone": "元に戻す: {description}",
+    "undoFailed": "アクションを元に戻すことができませんでした",
+    "copied": "コピーされました",
+    "copyFailed": "コピーに失敗しました"
+  },
+  "dateRelative": {
+    "today": "今日",
+    "yesterday": "昨日",
+    "daysAgo": "{count, plural, one {# 日前} other {# 日前}}"
+  },
+  "recurrence": {
+    "everyDay": "毎日",
+    "everyNDays": "{count, plural, one {毎日} other {# 日ごと}}",
+    "everyWeek": "毎週",
+    "everyNWeeks": "{count, plural, one {毎週} other {# 週間ごと}}",
+    "everyWeekday": "平日毎日",
+    "everyNWeeksOnWeekdays": "{count, plural, one {平日毎日} other {平日は # 週間ごと}}",
+    "everyWeekend": "毎週末",
+    "everyNWeeksOnWeekends": "{count, plural, one {毎週末} other {# 週間ごとの週末}}",
+    "everyWeekOnDays": "{days} で毎週",
+    "everyNWeeksOnDays": "{count, plural, one {{days} で毎週} other {{days} で # 週間ごと}}",
+    "everyMonth": "毎月",
+    "everyNMonths": "{count, plural, one {毎月} other {# か月ごと}}",
+    "everyMonthOnDay": "毎月 {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {毎月 {day}{suffix}} other {{day}{suffix} の # か月ごと}}",
+    "everyMonthOnWeekDay": "毎月 {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {毎月 {week} {day}} other {{week} {day} で # か月ごと}}",
+    "everyYear": "毎年",
+    "everyNYears": "{count, plural, one {毎年} other {# 年ごと}}",
+    "repeats": "繰り返し"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "コレクション",
+      "newNote": "新しいメモ",
+      "newNote2": "新しいメモ",
+      "newFolder": "新しいフォルダー",
+      "newFolder2": "新しいフォルダー",
+      "bookmarks": "ブックマーク",
+      "tags": "タグ",
+      "dropFilesToImport": "インポートするファイルをドロップします",
+      "newNoteN": "新しい音符 (⌘N)",
+      "new": "新しい",
+      "syncDisabled": "同期は無効です",
+      "syncDisabled2": "同期は無効です"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "日パネルのサイズ変更",
+      "dragToResizeDoubleClickToReset": "ドラッグしてサイズを変更します。ダブルクリックしてリセットします。"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "見つける、置き換える、尋ねる..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "オンボーディングをスキップ",
+      "welcomeToMemry": "Memry へようこそ",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "あなた個人の知識ベース。始めましょう。2 分ほどかかります。",
+      "getStarted": "始めましょう ",
+      "createYourFirstNote": "最初のメモを作成する",
+      "markdownBasedStoredLocallyAsPlainFiles": "マークダウンベースで、プレーンファイルとしてローカルに保存されます。",
+      "eGMeetingNotesIdeasAnything": "例：会議のメモ、アイデア、何でも...",
+      "skip": "スキップ",
+      "createNote": "メモを作成する ",
+      "addYourFirstTask": "最初のタスクを追加する",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "タスクは優先順位と期日とともにメモにリンクされます。",
+      "eGReviewProjectProposal": "例：プロジェクト提案を確認します...",
+      "skip2": "スキップ",
+      "createTask": "タスクの作成 ",
+      "syncAcrossDevices": "デバイス間で同期する",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "すべてのデバイス間でメモとタスクを同期させます。これは後でいつでも設定できます。",
+      "skipForNow": "今のところスキップしてください",
+      "doneLetSGo": "完了 — 行きましょう! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "フォルダーアイコンを設定する"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "ヒント"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "アイコンピッカー",
+      "selectIcon": "アイコンを選択",
+      "closeIconPicker": "アイコンピッカーを閉じる",
+      "searchIcons": "検索アイコン...",
+      "all": "すべて",
+      "clearIcon": "クリアアイコン",
+      "noIconsFoundFor": "「」のアイコンが見つかりませんでした。"
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "キーボードショートカット",
+      "closeShortcutsHelp": "ショートカットのヘルプを閉じる",
+      "press": "プレス",
+      "toClose": "閉じる"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "アイコンを設定",
+      "clearIcon": "クリアアイコン"
+    },
+    "componentsNavMain": {
+      "platform": "プラットフォーム"
+    },
+    "componentsNavProjects": {
+      "projects": "プロジェクト",
+      "more": "もっと見る",
+      "viewProject": "プロジェクトを見る",
+      "shareProject": "プロジェクトを共有する",
+      "deleteProject": "プロジェクトの削除",
+      "more2": "もっと見る"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "プロにアップグレード",
+      "account": "アカウント",
+      "billing": "請求",
+      "notifications": "通知",
+      "logOut": "ログアウト"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "検索",
+      "searchNotesTasksJournalInbox": "メモ、タスク、日記、受信トレイを検索...",
+      "noResultsFor": "「」の結果はありません",
+      "rdquo": "rdquo;",
+      "result": "結果"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "アイテムを検索してクリックしてトレイルを構築します",
+      "reasons": "理由",
+      "clear": "クリア"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "クリア",
+      "tags": "タグ",
+      "filterByTag": "タグでフィルタリング...",
+      "dateRange": "日付範囲"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "すべて見る ",
+      "results": "結果"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "あいまいな"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "タブが開いていません",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "サイドバーからページを開くか、新しいタブを作成して開始してください",
+      "openInbox": "受信箱を開く",
+      "closePane": "ペインを閉じる"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "レイアウトのプリセット",
+      "layoutPresets2": "レイアウトのプリセット"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "ペインのサイズを変更する"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TasksContext が使用できません",
+      "searchResults": "検索結果",
+      "unknownTabType": "不明なタブの種類: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "未保存の変更",
+      "preview": "プレビュー"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "新しいタブ",
+      "newTab2": "新しいタブ",
+      "newNote": "新しいメモ",
+      "journal": "日記",
+      "calendar": "カレンダー",
+      "inboxCapture": "受信箱のキャプチャ",
+      "tasks": "タスク"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "未保存の変更",
+      "unsaved": "未保存)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "未保存の変更"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "すべてのタブを閉じる"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "タブを開く",
+      "scrollTabsLeft": "タブを左にスクロール",
+      "scrollTabsRight": "タブを右にスクロールする",
+      "graphG": "グラフ(⌘G)",
+      "dayPanel": "曜日パネル"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "タブを左にスクロール",
+      "scrollTabsRight": "タブを右にスクロールする"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "タブを開く",
+      "scrollTabsLeft": "タブを左にスクロール",
+      "scrollTabsRight": "タブを右にスクロールする"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "何か問題が発生しました",
+      "anErrorOccurredWhileRenderingThisTabContent": "このタブのコンテンツをレンダリング中にエラーが発生しました。",
+      "tryAgain": "もう一度試してください"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "注記アイコン"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "未保存の変更",
+      "quot": "引用;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "引用;未保存の変更があります。何をしたいですか?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "新しいワークスペース",
+      "darkMode": "ダークモード",
+      "settings": "設定",
+      "integrations": "統合",
+      "signOut": "サインアウト",
+      "downloadOnIos": "iOSでダウンロード"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "ウィンドウを閉じる",
+      "minimizeWindow": "ウィンドウを最小化する",
+      "maximizeWindow": "ウィンドウを最大化する"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "提案",
+      "or": "または",
+      "enter": "入力してください",
+      "toInsert": "挿入する"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "パンくずリスト",
+      "more": "もっと見る"
+    },
+    "componentsUiDialog": {
+      "close": "閉じる"
+    },
+    "componentsUiSheet": {
+      "close": "閉じる"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "サイドバー",
+      "displaysTheMobileSidebar": "モバイルサイドバーを表示します。",
+      "toggleSidebar": "サイドバーの切り替え",
+      "toggleSidebar2": "サイドバーの切り替え",
+      "dragToResizeDoubleClickToReset": "ドラッグしてサイズを変更します。ダブルクリックしてリセットします。"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Memry へようこそ",
+      "yourPersonalKnowledgeManagementSystem": "個人のナレッジ マネジメント システム。",
+      "selectAFolderToStoreYourNotesAndTasks": "メモとタスクを保存するフォルダーを選択します。",
+      "opening": "オープニング...",
+      "selectVaultFolder": "ボルトフォルダの選択",
+      "plainMarkdown": "プレーンマークダウン",
+      "yourNotesStayPortable": "メモは持ち運び可能です",
+      "syncAnywhere": "どこでも同期",
+      "useDropboxIcloudGit": "Dropbox、iCloud、Git を使用する",
+      "recentVaults": "最近の保管庫",
+      "notesLastOpened": "注記 · 最後に開いたもの"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "まだ保管庫はありません",
+      "openVault": "開いた金庫",
+      "settings": "設定",
+      "logOut": "ログアウト",
+      "signInToSync": "サインインして同期する",
+      "remove": "「」を削除します",
+      "rdquoFromList": "rdquo;リストから?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "このボールトはアプリから削除されますが、ファイルはディスク上に残ります。後でいつでも再追加できます。",
+      "cancel": "キャンセル",
+      "remove2": "削除"
+    },
+    "componentsWindowControls": {
+      "searchK": "検索(⌘K)",
+      "browserBack": "ブラウザバック",
+      "back": "戻る",
+      "browserForward": "ブラウザ転送",
+      "forward": "進む"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "ファイルのインポートに失敗しました",
+      "failedToCreateNote": "メモの作成に失敗しました",
+      "failedToAccessMicrophone": "マイクにアクセスできませんでした"
+    },
+    "toasts": {
+      "undone": "元に戻す"
+    }
+  }
+}

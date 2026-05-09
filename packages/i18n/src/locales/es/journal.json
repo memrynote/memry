@@ -1,0 +1,303 @@
+{
+  "title": "Diario",
+  "section": {
+    "journal": "Diario",
+    "aiConnections": "Conexiones de IA",
+    "todaysNotes": "Notas de hoy",
+    "todaysSchedule": "Horario de hoy",
+    "todaysTasks": "Las tareas de hoy",
+    "schedule": "Horario",
+    "tasks": "Tareas",
+    "calendarEvents": "Eventos del calendario",
+    "overdueTasks": "Tareas atrasadas",
+    "technicalDetails": "Detalles técnicos"
+  },
+  "action": {
+    "versionHistory": "Historial de versiones",
+    "export": "Exportar",
+    "fullWidth": "Ancho completo",
+    "journalSettings": "Configuración del diario",
+    "fullMode": "Modo completo",
+    "compactMode": "Modo compacto",
+    "focusMode": "Modo de enfoque",
+    "exitFocusMode": "Salir del modo de enfoque",
+    "enterFocusMode": "Ingrese al modo de enfoque",
+    "createNote": "Crear nota",
+    "createNewNote": "Crear nueva nota",
+    "showLess": "Mostrar menos",
+    "showMoreNotes": "Mostrar {count} más nota",
+    "showMoreNotes_plural": "Mostrar {count} más notas",
+    "showFewerNotes": "Mostrar menos notas",
+    "startBlank": "Empezar en blanco en su lugar",
+    "changeTemplate": "Cambiar plantilla",
+    "dismissIndicator": "Descartar indicador",
+    "refreshConnections": "Actualizar conexiones",
+    "reloadJournal": "Recargar diario",
+    "goToToday": "Ir a hoy",
+    "copyUnsavedContent": "Copiar contenido no guardado al portapapeles",
+    "openNoteFullPage": "Abrir nota en página completa",
+    "closeNoteDrawer": "Cerrar cajón de notas",
+    "addBookmark": "Agregar marcador",
+    "removeBookmark": "Quitar marcador",
+    "tryAgain": "Inténtalo de nuevo"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "¿Qué estás planeando...?",
+      "today": "¿Qué tienes en mente hoy?...",
+      "past": "Reflexiona sobre este día...",
+      "default": "Empieza a escribir..."
+    },
+    "toolbar": {
+      "ariaLabel": "Formato de texto",
+      "bold": "Negrita",
+      "italic": "cursiva",
+      "underline": "subrayado",
+      "strikethrough": "Tachado",
+      "link": "Enlace",
+      "image": "Imagen",
+      "moreOptions": "Más opciones",
+      "heading1": "Título 1",
+      "heading2": "Título 2",
+      "heading3": "Título 3",
+      "bulletList": "Lista de viñetas",
+      "numberedList": "Lista numerada",
+      "checklist": "Lista de verificación",
+      "quote": "Cotización",
+      "divider": "Divisor",
+      "codeBlock": "Bloque de código"
+    },
+    "prompt": {
+      "enterUrl": "Introduzca la URL:"
+    },
+    "upload": {
+      "noEntry": "No se puede cargar la imagen: no se ha seleccionado ninguna entrada de diario",
+      "failed": "No se pudo cargar la imagen"
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "hoy",
+      "yesterday": "ayer",
+      "tomorrow": "mañana",
+      "future": "Futuro"
+    },
+    "weekday": {
+      "sunday": "domingo",
+      "monday": "lunes",
+      "tuesday": "martes",
+      "wednesday": "miércoles",
+      "thursday": "jueves",
+      "friday": "viernes",
+      "saturday": "sábado"
+    },
+    "weekdayShort": {
+      "sunday": "sol",
+      "monday": "lun",
+      "tuesday": "mar",
+      "wednesday": "mié",
+      "thursday": "jueves",
+      "friday": "viernes",
+      "saturday": "sábado"
+    },
+    "month": {
+      "january": "enero",
+      "february": "febrero",
+      "march": "marzo",
+      "april": "abril",
+      "may": "mayo",
+      "june": "junio",
+      "july": "julio",
+      "august": "agosto",
+      "september": "septiembre",
+      "october": "octubre",
+      "november": "noviembre",
+      "december": "diciembre"
+    },
+    "monthShort": {
+      "january": "enero",
+      "february": "febrero",
+      "march": "mar",
+      "april": "abril",
+      "may": "mayo",
+      "june": "junio",
+      "july": "julio",
+      "august": "agosto",
+      "september": "septiembre",
+      "october": "octubre",
+      "november": "noviembre",
+      "december": "diciembre"
+    },
+    "greeting": {
+      "morning": "buenos dias",
+      "afternoon": "Buenas tardes",
+      "evening": "Buenas noches",
+      "night": "buenas noches"
+    },
+    "allDay": "todo el dia"
+  },
+  "nav": {
+    "previousDay": "dia anterior",
+    "nextDay": "dia siguiente",
+    "previousMonth": "Mes anterior",
+    "nextMonth": "El próximo mes",
+    "previousYear": "año anterior",
+    "nextYear": "el año que viene",
+    "journalBack": "Diario de vuelta",
+    "journalNavigation": "Navegación del diario",
+    "dateNavigation": "Navegación por fecha del diario",
+    "goToYearView": "Ir a la vista del año",
+    "previousView": "Vista anterior",
+    "nextView": "Siguiente vista"
+  },
+  "aria": {
+    "moreOptions": "Más opciones",
+    "documentStatistics": "Estadísticas de documentos",
+    "dayContext": "Contexto del día: tareas y cronograma.",
+    "scheduleEvents": "Programar eventos",
+    "tasks": "Tareas",
+    "notesCreatedToday": "Notas {count} creadas hoy"
+  },
+  "empty": {
+    "noEntry": "Sin entrada",
+    "noDaysInMonth": "No hay días en este mes",
+    "noEventsScheduled": "No hay eventos programados",
+    "noEventsScheduledToday": "No hay eventos programados para hoy",
+    "noEventsWereScheduled": "No se programaron eventos",
+    "noTasksDue": "No hay tareas pendientes",
+    "noTasksDueToday": "No hay tareas pendientes hoy",
+    "noTasksWereDue": "No había tareas pendientes",
+    "noNotesToday": "No se crearon notas hoy",
+    "startDocumenting": "Comience a documentar sus pensamientos e ideas."
+  },
+  "ai": {
+    "loading": "Analizando tu entrada...",
+    "empty": {
+      "willAppear": "Tus conexiones aparecerán aquí",
+      "noneYet": "Aún no se han encontrado conexiones",
+      "moreJournaling": "A medida que escriba más en el diario, la IA encontrará entradas relacionadas",
+      "keepWriting": "Sigue escribiendo para descubrir entradas relacionadas"
+    },
+    "error": {
+      "loadFailed": "No se pudieron cargar las conexiones"
+    },
+    "connectionAria": "Conexión a {label}, {scorePercent}% coincide"
+  },
+  "count": {
+    "item": "artículo",
+    "items": "artículos",
+    "note": "nota",
+    "notes": "notas",
+    "day": "dia",
+    "days": "dias",
+    "event": "evento",
+    "events": "eventos",
+    "meeting": "reunión",
+    "meetings": "reuniones",
+    "task": "tarea",
+    "tasks": "tareas",
+    "todo": "hacer",
+    "people": "{count} personas",
+    "moreConnections": "+ {count} más conexión",
+    "moreConnections_plural": "+ {count} más conexiones",
+    "moreNotes": "+ {count} más nota",
+    "moreNotes_plural": "+ {count} más notas",
+    "daysWithEntries": "días con entradas",
+    "charactersWritten": "personajes escritos",
+    "words": "{count} palabras",
+    "characters": "Caracteres {count}",
+    "completed": "{count} completado",
+    "overdue": "{count} vencido"
+  },
+  "stats": {
+    "wordCount": "recuento de palabras",
+    "characterCount": "Recuento de caracteres",
+    "readingTime": "Tiempo estimado de lectura",
+    "lastModified": "Última modificación",
+    "lessThanOneMinute": "< 1 minuto",
+    "minutes": "{minutes} min",
+    "read": "{readingTime} leer",
+    "modified": "{date} modificado"
+  },
+  "task": {
+    "completed": "Completado",
+    "notCompleted": "No completado",
+    "priority": "Prioridad {priority}",
+    "overdue": "vencido",
+    "markComplete": "Marcar \"{title}\" como completado",
+    "markNotComplete": "Marcar \"{title}\" como no completado"
+  },
+  "template": {
+    "using": "Usando \"{templateName}\""
+  },
+  "reminder": {
+    "hasReminders": "Tiene recordatorios",
+    "setToRevisit": "Establecer recordatorio para volver a visitar",
+    "tooltip": "Recordatorio: {date}",
+    "tooltipMore": "Recordatorio: {date} (+{count} más)",
+    "success": {
+      "set": "Recordatorio configurado para esta entrada del diario",
+      "deleted": "Recordatorio eliminado",
+      "dismissed": "Recordatorio descartado",
+      "snoozed": "Recordatorio pospuesto"
+    },
+    "error": {
+      "set": "No se pudo configurar el recordatorio",
+      "delete": "No se pudo eliminar el recordatorio",
+      "dismiss": "No se pudo descartar el recordatorio",
+      "snooze": "No se pudo posponer el recordatorio"
+    }
+  },
+  "toast": {
+    "unsavedRetry": "Tu contenido todavía está en la memoria. Haga clic para volver a intentar guardar.",
+    "noteNotFound": "Nota \"{target}\" no encontrada",
+    "fileNotFound": "Archivo no encontrado: {target}",
+    "openLinkedItemFailed": "No se pudo abrir el elemento vinculado",
+    "errorPrefix": "Error:"
+  },
+  "export": {
+    "noteTitle": "Diario - {month} {day}, {year}"
+  },
+  "note": {
+    "generatedTitle": "Nota: {date}",
+    "openAria": "Abra {title}, creado en {time}"
+  },
+  "tag": {
+    "suggestionsAria": "Sugerencias de etiquetas",
+    "empty": {
+      "title": "Aún no hay etiquetas",
+      "description": "Escriba para crear una nueva etiqueta"
+    },
+    "groupTitle": "Etiquetas",
+    "create": "Crear #{query}",
+    "ariaLabel": "Etiqueta: {tag}, haga clic para filtrar"
+  },
+  "wiki": {
+    "suggestionsAria": "Sugerencias de página",
+    "empty": {
+      "title": "No se encontraron páginas"
+    },
+    "groupRecent": "Reciente",
+    "groupAllPages": "Todas las páginas",
+    "createNewPage": "Crear nueva página",
+    "ariaLabel": "Enlace a {title}"
+  },
+  "error": {
+    "title": "Error de diario",
+    "description": "El diario encontró un error para {date}. Es posible que sus cambios recientes no se hayan guardado.",
+    "descriptionNoDate": "La revista encontró un error. Es posible que sus cambios recientes no se hayan guardado.",
+    "unsavedContent": "Se detectó contenido no guardado (caracteres {length})"
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "k"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveJournalEntry": "No se pudo guardar la entrada del diario",
+      "failedToLoadJournalSettings": "No se pudo cargar la configuración del diario",
+      "failedToUpdateSettings": "No se pudo actualizar la configuración"
+    }
+  }
+}

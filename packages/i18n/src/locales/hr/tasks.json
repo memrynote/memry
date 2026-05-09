@@ -1,0 +1,651 @@
+{
+  "page": {
+    "tabs": {
+      "label": "Pregledi zadataka",
+      "today": "Danas",
+      "all": "sve"
+    },
+    "viewMode": {
+      "label": "Način prikaza",
+      "list": "Prikaz popisa",
+      "kanban": "Kanban pogled"
+    },
+    "projectScope": {
+      "allProjects": "Svi projekti",
+      "searchProjects": "Pretražite projekte…",
+      "editProject": "Uredi {name}",
+      "unstarSavedFilter": "Ukloni zvjezdicu {name}"
+    }
+  },
+  "task": {
+    "add": "Dodaj zadatak",
+    "title": "Naslov",
+    "titleRequired": "Naslov je obavezan",
+    "titlePlaceholder": "Što treba učiniti?",
+    "namePlaceholder": "Naziv zadatka",
+    "description": "Opis",
+    "descriptionPlaceholder": "Dodajte opis…",
+    "details": "Detalji zadatka",
+    "status": "Status",
+    "priority": "Prioritet",
+    "dueDate": "Datum dospijeća",
+    "project": "Projekt",
+    "repeat": "Ponovi",
+    "createAnother": "Stvorite drugu",
+    "delete": "Izbriši zadatak",
+    "created": "Kreiran {date}"
+  },
+  "project": {
+    "create": "Stvori projekt",
+    "edit": "Uredi projekt",
+    "delete": "Izbriši projekt",
+    "iconAndName": "Ikona i naziv",
+    "namePlaceholder": "Naziv projekta",
+    "select": "Odaberite projekt",
+    "selectIcon": "Odaberite ikonu",
+    "clickIconToChange": "Kliknite ikonu za promjenu",
+    "color": "Boja",
+    "descriptionOptional": "Opis (nije obavezno)",
+    "descriptionPlaceholder": "Kratak opis ovog projekta…",
+    "statuses": "Statusi",
+    "statusesHelp": "Konfigurirajte faze tijeka rada za ovaj projekt.",
+    "createDescription": "Stvorite novi projekt s nazivom, ikonom, bojom i statusima tijeka rada.",
+    "editDescription": "Uredite naziv projekta, ikonu, boju i statuse tijeka rada."
+  },
+  "status": {
+    "select": "Odaberite status",
+    "todo": "Učiniti",
+    "inProgress": "U tijeku",
+    "done": "Gotovo"
+  },
+  "priority": {
+    "select": "Odaberite prioritet",
+    "none": "Bez prioriteta",
+    "noneShort": "Nijedan",
+    "low": "Niska",
+    "medium": "srednje",
+    "high": "visoko",
+    "urgent": "Hitno"
+  },
+  "filters": {
+    "filter": "Filter",
+    "emptyTitle": "Nijedan zadatak ne odgovara vašim filtrima",
+    "emptyHelp": "Pokušajte prilagoditi svoje filtre ili",
+    "groupBy": "Grupiraj po",
+    "groupByOptions": "Grupirajte po opcijama",
+    "sortAscending": "Poredaj uzlazno",
+    "sortDescending": "Poredaj silazno"
+  },
+  "quickAdd": {
+    "label": "Brzo dodavanje zadatka",
+    "focusDescription": "Fokusirajte unos brzog dodavanja"
+  },
+  "drawer": {
+    "close": "Zatvori detalje zadatka",
+    "subIssues": "Podbrojevi",
+    "addSubIssue": "Dodaj podproblem",
+    "subIssuePlaceholder": "Dodaj podproblem…",
+    "noSubIssues": "Još nema podproblema",
+    "linkedNotes": "Povezane bilješke",
+    "linkNote": "Povežite bilješku",
+    "loading": "učitavanje...",
+    "searchNotes": "Pretraži bilješke…",
+    "noMatchingNotes": "Nema odgovarajućih bilješki",
+    "noNotesAvailable": "Nema dostupnih bilješki",
+    "noLinkedNotes": "Još nema povezanih bilješki",
+    "removeLinkTo": "Ukloni vezu na {title}",
+    "removeLinkFallback": "bilješka"
+  },
+  "kanban": {
+    "board": "Kanban ploča"
+  },
+  "toasts": {
+    "projectUpdated": "Projekt ažuriran",
+    "projectCreated": "Projekt izrađen",
+    "projectSaveError": "Spremanje projekta nije uspjelo",
+    "projectArchived": "Projekt arhiviran",
+    "projectArchiveError": "Arhiviranje projekta nije uspjelo",
+    "projectDeleted": "Projekt izbrisan",
+    "projectDeleteError": "Brisanje projekta nije uspjelo",
+    "filtersCleared": "Filtri očišćeni",
+    "filterSaved": "Filter spremljen",
+    "filterDeleted": "Filter izbrisan",
+    "filterApplied": "Primijenjeno \"{name}\"",
+    "deleted": "Zadatak izbrisan",
+    "deletedSeries": "Serija završena!",
+    "deletedNext": "Sljedeća pojava",
+    "completed": "Zadatak obavljen!",
+    "archived": "Zadatak arhiviran",
+    "undoNotAvailableForDelete": "Poništavanje nije dostupno za brisanje",
+    "alreadyAllComplete": "Svi odabrani zadaci već su dovršeni",
+    "noCompletedSelected": "Nema odabranih dovršenih zadataka",
+    "completeFailed": "Zadaci nisu uspjeli dovršiti",
+    "reopenFailed": "Ponovno otvaranje zadataka nije uspjelo",
+    "deleteFailed": "Brisanje zadataka nije uspjelo",
+    "moveFailed": "Premještanje zadataka nije uspjelo"
+  },
+  "phaseF": {
+    "componentsTasksAddSubtaskInput": {
+      "addSubtask": "Dodaj podzadatak...",
+      "addSubtask2": "Dodaj podzadatak",
+      "enterToAdd": "Unesite za dodavanje"
+    },
+    "componentsTasksBulkActionsBulkActionDropdown": {
+      "for": "za ",
+      "task": "zadatak"
+    },
+    "componentsTasksBulkActionsBulkActionToolbar": {
+      "bulkActions": "Skupne akcije",
+      "selected": "odabrano",
+      "complete": "Kompletan",
+      "priority": "Prioritet",
+      "dueDate": "Datum dospijeća",
+      "moveTo": "Premjesti u",
+      "status": "Status",
+      "archive": "Arhiva",
+      "delete": "Izbriši",
+      "cancelSelection": "Poništi odabir",
+      "cancel": "Odustani"
+    },
+    "componentsTasksBulkActionsBulkDeleteDialog": {
+      "delete": "Izbriši ",
+      "task": "zadatak",
+      "youReAboutToDelete": "Upravo ćete izbrisati ",
+      "task2": "zadatak",
+      "and": "i ",
+      "moreTask": "više zadataka",
+      "thisActionCanBeUndoneForAShortTimeAfterDeletion": "Ova se radnja može poništiti kratko vrijeme nakon brisanja.",
+      "cancel": "Odustani",
+      "delete2": "Izbriši ",
+      "task3": "zadatak"
+    },
+    "componentsTasksBulkActionsBulkDueDatePicker": {
+      "setDueDateFor": "Postavite rok za ",
+      "task": "zadatak",
+      "selectADateToSetAsTheDueDateForAllSelectedTasks": "Odaberite datum koji želite postaviti kao rok za sve odabrane zadatke.",
+      "alsoSetTime": "Također postavite vrijeme",
+      "cancel": "Odustani",
+      "setDueDate": "Postavite datum dospijeća"
+    },
+    "componentsTasksCelebrationProgress": {
+      "complete": "Kompletan"
+    },
+    "componentsTasksColorPicker": {
+      "selectColor": "Odaberite boju"
+    },
+    "componentsTasksCustomRepeatDialog": {
+      "onTheseDays": "Ovih dana",
+      "repeatOn": "Ponovi dalje",
+      "day": "dan",
+      "ofTheMonth": "mjeseca",
+      "the": "The",
+      "ofTheMonth2": "mjeseca",
+      "ends": "Završava",
+      "never": "nikada",
+      "onDate": "Na dan",
+      "after": "poslije",
+      "occurrences": "pojave",
+      "preview": "Pregled",
+      "of": "od ",
+      "andMore": "i više",
+      "frequency": "Učestalost",
+      "repeatEvery": "Ponovite svaki",
+      "day2": "dan",
+      "week": "tjedan",
+      "month": "mjesec",
+      "year": "godine",
+      "cancel": "Odustani",
+      "save": "spremiti",
+      "customRepeat": "Prilagođeno ponavljanje"
+    },
+    "componentsTasksDatePickerCalendar": {
+      "previousMonth": "Prethodni mjesec",
+      "nextMonth": "Sljedeći mjesec",
+      "goToToday": "Idi na danas",
+      "today": "Danas",
+      "w": "W"
+    },
+    "componentsTasksDatePickerContent": {
+      "removeDate": "Ukloni datum",
+      "clearTime": "Čisto vrijeme",
+      "addTime": "Dodajte vrijeme"
+    },
+    "componentsTasksDeleteProjectDialog": {
+      "delete": "Izbriši \"",
+      "thisProjectHas": "Ovaj projekt ima ",
+      "task": "zadatak",
+      "whatWouldYouLikeToDoWithThem": "Što biste željeli učiniti s njima?",
+      "moveTasksToPersonalProject": "Premjestite zadatke u Osobni projekt",
+      "deleteAllTasksPermanently": "Trajno izbrišite sve zadatke",
+      "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Ovaj projekt nema zadataka i bit će trajno izbrisan.",
+      "thisActionCannotBeUndone": "Ova se radnja ne može poništiti.",
+      "cancel": "Odustani",
+      "deleteProject": "Izbriši projekt"
+    },
+    "componentsTasksDeleteTaskDialog": {
+      "deleteTask": "Izbrisati zadatak?",
+      "ldquo": "ldquo;",
+      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; bit će trajno izbrisani. Ova se radnja ne može poništiti.",
+      "deleteTask2": "Izbriši zadatak"
+    },
+    "componentsTasksDialogsAllSubtasksCompleteDialog": {
+      "allSubtasksComplete": "Svi podzadaci dovršeni!",
+      "ldquo": "ldquo;",
+      "rdquoHasAll": "rdquo; ima sve ",
+      "subtask": "podzadatak",
+      "done": "učinjeno.",
+      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Želite li i nadređeni zadatak označiti kao dovršen?",
+      "keepTaskOpen": "Držite zadatak otvorenim",
+      "completeTask": "Izvršite zadatak ✓"
+    },
+    "componentsTasksDialogsBulkDueDateDialog": {
+      "setDueDateForAllSubtasks": "Postavite rok za sve podzadatke",
+      "setDueDateFor": "Postavite rok za ",
+      "subtask": "podzadatak",
+      "in": "u \"",
+      "rdquo": "rdquo;",
+      "alsoApplyToCompletedSubtasks": "Primijeni i na dovršene podzadatke (",
+      "clearDate": "Jasan datum",
+      "cancel": "Odustani",
+      "apply": "primijeniti"
+    },
+    "componentsTasksDialogsBulkPriorityDialog": {
+      "setPriorityForAllSubtasks": "Postavite prioritet za sve podzadatke",
+      "setPriorityFor": "Postavite prioritet za ",
+      "subtask": "podzadatak",
+      "in": "u \"",
+      "rdquo": "rdquo;",
+      "alsoApplyToCompletedSubtasks": "Primijeni i na dovršene podzadatke (",
+      "cancel": "Odustani",
+      "apply": "primijeniti"
+    },
+    "componentsTasksDialogsCompleteParentDialog": {
+      "completeTaskWithIncompleteSubtasks": "Dovršiti zadatak s nedovršenim podzadacima?",
+      "has": "ima ",
+      "incompleteSubtask": "nedovršen podzadatak",
+      "and": "i ",
+      "more": "više",
+      "whatWouldYouLikeToDo": "Što biste htjeli raditi?",
+      "completeAllParentSubtasks": "Dovrši sve (nadređeni + podzadaci)",
+      "markTheParentAndAllSubtasksAsComplete": "Označite nadređeni i sve podzadatke kao dovršene",
+      "completeParentOnlyKeepSubtasksIncomplete": "Potpuni samo roditelj, neka podzadaci budu nedovršeni",
+      "onlyMarkTheParentTaskAsComplete": "Označite samo nadređeni zadatak kao dovršen",
+      "cancel": "Odustani",
+      "complete": "Kompletan"
+    },
+    "componentsTasksDialogsDeleteAllSubtasksDialog": {
+      "deleteAllSubtasks": "Izbrisati sve podzadatke?",
+      "thisWillDelete": "Ovo će izbrisati ",
+      "subtask": "podzadatak",
+      "from": "od “",
+      "rdquo": "rdquo;.",
+      "thisActionCannotBeUndone": "Ova se radnja ne može poništiti.",
+      "cancel": "Odustani",
+      "deleteAll": "Izbriši sve"
+    },
+    "componentsTasksDialogsDeleteParentDialog": {
+      "deleteTaskWithSubtasks": "Izbrisati zadatak s podzadacima?",
+      "has": "ima ",
+      "subtask": "podzadatak",
+      "whatWouldYouLikeToDo": "Što biste htjeli raditi?",
+      "deleteTaskAndAllSubtasks": "Izbrišite zadatak i sve podzadatke",
+      "permanentlyRemovesEverything": "Trajno uklanja sve",
+      "deleteTaskKeepSubtasksAsStandaloneTasks": "Izbrišite zadatak, zadržite podzadatke kao samostalne zadatke",
+      "subtasksBecomeTopLevelTasks": "Podzadaci postaju zadaci najviše razine",
+      "cancel": "Odustani",
+      "delete": "Izbriši"
+    },
+    "componentsTasksDialogsDuplicateWithSubtasksDialog": {
+      "duplicateTask": "Duplicirani zadatak",
+      "createACopyOf": "Napravite kopiju \"",
+      "rdquo": "rdquo;",
+      "alsoDuplicateSubtasks": "Također duplicirati podzadatke (",
+      "cancel": "Odustani",
+      "duplicate": "Duplikat "
+    },
+    "componentsTasksDialogsParentPickerDialog": {
+      "makeSubtaskOf": "Napravi podzadatak od...",
+      "selectATaskToMake": "Odaberite zadatak za izradu \"",
+      "aSubtaskOf": "podzadatak od.",
+      "searchTasks": "Traži zadatke...",
+      "sameProject": "Isti projekt",
+      "otherProjects": "Ostali projekti"
+    },
+    "componentsTasksDragDropInsertionIndicator": {
+      "dropToRescheduleTo": "Ispustite da biste promijenili raspored na "
+    },
+    "componentsTasksDragDropMoveMenu": {
+      "moveTask": "Premjesti zadatak",
+      "move": "kreni",
+      "reschedule": "Ponovo rasporedite",
+      "today": "Danas",
+      "tomorrow": "Sutra",
+      "nextWeek": "Sljedeći tjedan",
+      "removeDate": "Ukloni datum",
+      "moveToProject": "Prijeđi na projekt",
+      "current": "Trenutni",
+      "changeStatus": "Promjena statusa",
+      "current2": "Trenutni",
+      "reorder": "Ponovno naručivanje"
+    },
+    "componentsTasksDragDropMultiDragOverlay": {
+      "moreTask": "više zadataka",
+      "task": "zadatak"
+    },
+    "componentsTasksDragDropSidebarDropZones": {
+      "dropHere": "Baci ovdje"
+    },
+    "componentsTasksDragDropTaskRow": {
+      "priority": "prioritet: "
+    },
+    "componentsTasksDueDatePicker": {
+      "selectDueDate": "Odaberite rok",
+      "overdue": "Zakašnjelo",
+      "setDueDate": "Postavite rok",
+      "suggestions": "Prijedlozi",
+      "pickADate": "Odaberite datum...",
+      "addTime": "Dodajte vrijeme",
+      "time": "Vrijeme",
+      "clearDate": "Jasan datum",
+      "backToOptions": "Povratak na opcije"
+    },
+    "componentsTasksEditRepeatingTaskDialog": {
+      "editRepeatingTask": "Uredi ponavljajući zadatak",
+      "youReEditingARepeatingTaskApplyChangesTo": "Uređujete zadatak koji se ponavlja. Primijeni promjene na:",
+      "onlyThisOccurrence": "Samo ova pojava",
+      "onlyFutureTasksUnchanged": "samo — budući zadaci nepromijenjeni",
+      "thisAndAllFutureOccurrences": "Ovo i sve buduće pojave",
+      "andBeyond": "i šire",
+      "cancel": "Odustani",
+      "continue": "nastavi"
+    },
+    "componentsTasksEmptyStatesCollapsedEmptySection": {
+      "add": "Dodaj"
+    },
+    "componentsTasksEmptyStatesSectionEmptyStates": {
+      "noTasksScheduled": "Nema zakazanih zadataka",
+      "addTaskFor": "Dodaj zadatak za ",
+      "nothingScheduled": "Ništa nije planirano",
+      "addTasksWithDueDatesToPlanYourWeek": "Dodajte zadatke s rokovima za planiranje tjedna.",
+      "addTask": "Dodaj zadatak",
+      "viewCalendar": "Pogledaj kalendar"
+    },
+    "componentsTasksFiltersActiveFiltersBar": {
+      "priorityIs": "Prioritet je",
+      "priority": "prioritet",
+      "statusIs": "Status je",
+      "status": "status",
+      "projectIs": "Projekt je",
+      "project": "projekt",
+      "due": "Duge",
+      "dueDate": "datum dospijeća",
+      "search": "traženje",
+      "clearAll": "Obriši sve"
+    },
+    "componentsTasksFiltersDueDateFilter": {
+      "filterByDueDate": "Filtrirajte prema roku",
+      "customRange": "Prilagođeni raspon",
+      "clear": "čisto",
+      "apply": "primijeniti"
+    },
+    "componentsTasksFiltersFilterDropdown": {
+      "filterBy": "Filtriraj po..."
+    },
+    "componentsTasksFiltersFilterEmptyState": {
+      "activeFilters": "Aktivni filteri: ",
+      "clearAllFilters": "Obrišite sve filtere"
+    },
+    "componentsTasksFiltersFilterPanelsDueDatePanel": {
+      "dueDate": "Datum dospijeća"
+    },
+    "componentsTasksFiltersFilterPanelsPriorityPanel": {
+      "priority": "Prioritet",
+      "is": "je",
+      "search": "Traži...",
+      "selected": "odabrano"
+    },
+    "componentsTasksFiltersFilterPanelsProjectPanel": {
+      "project": "Projekt",
+      "noProject": "Nema projekta"
+    },
+    "componentsTasksFiltersFilterPanelsStatusPanel": {
+      "status": "Status"
+    },
+    "componentsTasksFiltersFilterPanelsStatusProjectPickerPan": {
+      "status": "Status",
+      "pickAProject": "Odaberite projekt"
+    },
+    "componentsTasksFiltersMoreFiltersDropdown": {
+      "moreFilters": "Više filtera",
+      "more": "Više",
+      "status": "Status",
+      "hasTimeSet": "Ima postavljeno vrijeme",
+      "recurringOnly": "Samo ponavljajuće",
+      "status2": "Status"
+    },
+    "componentsTasksFiltersPriorityFilter": {
+      "filterByPriority": "Filtriraj po prioritetu",
+      "priority": "Prioritet"
+    },
+    "componentsTasksFiltersProjectFilter": {
+      "filterByProject": "Filtriraj prema projektu",
+      "project": "Projekt",
+      "allProjects": "Svi projekti",
+      "clear": "čisto"
+    },
+    "componentsTasksFiltersQuickFilters": {
+      "quickFilters": "Brzi filteri:"
+    },
+    "componentsTasksFiltersSaveFilterDialog": {
+      "saveFilter": "Spremi filtar",
+      "saveYourCurrentFilterSettingsForQuickAccessLater": "Spremite trenutne postavke filtera za kasniji brzi pristup.",
+      "filterName": "Naziv filtra",
+      "eGHighPriorityThisWeek": "npr. Visoki prioritet ovaj tjedan",
+      "currentFilters": "Trenutačni filtri:",
+      "noFiltersApplied": "Nema primijenjenih filtara",
+      "cancel": "Odustani",
+      "saveFilter2": "Spremi filtar"
+    },
+    "componentsTasksFiltersSavedFiltersDropdown": {
+      "savedFilters": "Spremljeni filtri",
+      "saved": "Spremljeno",
+      "noSavedFiltersYet": "Još nema spremljenih filtara",
+      "saveCurrentFilters": "Spremi trenutne filtre",
+      "saveCurrentFilters2": "Spremi trenutne filtre"
+    },
+    "componentsTasksFiltersSavedFiltersSection": {
+      "filterName": "Naziv filtra",
+      "saveFilter": "Spremi filter",
+      "save": "spremiti"
+    },
+    "componentsTasksFiltersSearchInput": {
+      "searchTasks": "Zadaci pretraživanja",
+      "clearSearch": "Očisti pretragu"
+    },
+    "componentsTasksKanbanKanbanColumn": {
+      "dropHere": "Baci ovdje",
+      "releaseToMoveTaskToThisColumn": "Otpustite za premještanje zadatka u ovaj stupac",
+      "moreCompleted": "dovršeniji",
+      "showFewer": "Prikaži manje",
+      "taskTitle": "Naslov zadatka..."
+    },
+    "componentsTasksNaturalDateInput": {
+      "typeADateInNaturalLanguage": "Upišite datum na prirodnom jeziku",
+      "select": "Odaberite"
+    },
+    "componentsTasksParentTaskRow": {
+      "priority": "prioritet: "
+    },
+    "componentsTasksPrioritySelect": {
+      "selectPriority": "Odaberite prioritet",
+      "navigate": "ploviti",
+      "select": "odabrati"
+    },
+    "componentsTasksProjectModal": {
+      "iconName": "Ikona i naziv",
+      "selectIcon": "Odaberite ikonu",
+      "projectName": "Naziv projekta",
+      "clickIconToChange": "Kliknite ikonu za promjenu",
+      "color": "Boja",
+      "descriptionOptional": "Opis (nije obavezno)",
+      "briefDescriptionOfThisProject": "Kratak opis ovog projekta...",
+      "statuses": "Statusi",
+      "configureTheWorkflowStagesForThisProject": "Konfigurirajte faze tijeka rada za ovaj projekt.",
+      "deleteProject": "Izbriši projekt",
+      "cancel": "Odustani",
+      "unsavedChanges": "Nespremljene promjene",
+      "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Imate nespremljene promjene. Jeste li sigurni da ih želite odbaciti?",
+      "cancel2": "Odustani",
+      "discard": "Odbaciti"
+    },
+    "componentsTasksProjectSelect": {
+      "selectProject": "Odaberite projekt",
+      "selectProject2": "Odaberite projekt"
+    },
+    "componentsTasksProjectsProjectSelector": {
+      "editProject": "Uredi projekt",
+      "archiveProject": "Arhivski projekt",
+      "deleteProject": "Izbriši projekt",
+      "selectProject": "Odaberite projekt",
+      "noProjectsYet": "Još nema projekata",
+      "createProject": "Izradi projekt"
+    },
+    "componentsTasksProjectsProjectsTabContent": {
+      "noProjectSelected": "Nije odabran nijedan projekt",
+      "selectAProjectFromTheDropdownOrCreateANewOne": "Odaberite projekt s padajućeg izbornika ili izradite novi",
+      "createYourFirstProject": "Napravite svoj prvi projekt"
+    },
+    "componentsTasksQuickAddQuickAddHelp": {
+      "quickAddShortcutsHelp": "Pomoć za brzo dodavanje prečaca",
+      "quickAddShortcuts": "Brzo dodavanje prečaca",
+      "exampleBuyMilkTomorrowHighPersonal": "Primjer: \"Kupite mlijeko !sutra !!visoka #osobno\""
+    },
+    "componentsTasksQuickAddQuickOptionsBar": {
+      "quickOptions": "Brze opcije:"
+    },
+    "componentsTasksQuickAddInput": {
+      "q": "Q",
+      "q2": "Q"
+    },
+    "componentsTasksRepeatIndicator": {
+      "of": "od ",
+      "completed": "dovršeno"
+    },
+    "componentsTasksRepeatPicker": {
+      "selectRepeatFrequency": "Odaberite učestalost ponavljanja",
+      "doesNotRepeat": "Ne ponavlja se",
+      "custom": "Prilagođeno..."
+    },
+    "componentsTasksStatusEditor": {
+      "changeStatusColor": "Promjena boje statusa",
+      "dragToReorder": "Povucite za promjenu redoslijeda",
+      "statusName": "Naziv statusa",
+      "addStatus": "Dodajte status"
+    },
+    "componentsTasksStatusSelect": {
+      "selectStatus": "Odaberite status",
+      "selectStatus2": "Odaberite status"
+    },
+    "componentsTasksStopRepeatingDialog": {
+      "stopRepeating": "Prestani ponavljati",
+      "isSetToRepeat": "je postavljen na ponavljanje ",
+      "whatWouldYouLikeToDo": "Što biste htjeli raditi?",
+      "keepThisTaskStopFutureOccurrences": "Zadrži ovaj zadatak, zaustavi buduće pojave",
+      "taskWillBecomeAOneTimeTask": "Zadatak će postati jednokratni zadatak",
+      "deleteThisAndAllFutureOccurrences": "Izbriši ovo i sva buduća pojavljivanja",
+      "taskWillBeRemovedEntirely": "Zadatak će biti potpuno uklonjen",
+      "cancel": "Odustani",
+      "confirm": "Potvrdi"
+    },
+    "componentsTasksSubtaskDots": {
+      "of": "od ",
+      "subtasksComplete": "podzadaci dovršeni (",
+      "clickTo": "Kliknite za ",
+      "of2": "od ",
+      "subtasksComplete2": "podzadaci dovršeni",
+      "clickTo2": "Kliknite za "
+    },
+    "componentsTasksSubtaskProgressBadge": {
+      "of": "od ",
+      "subtasksComplete": "podzadaci dovršeni (",
+      "clickTo": "Kliknite za "
+    },
+    "componentsTasksTaskBadges": {
+      "priority": "prioritet",
+      "repeatingTask": "Zadatak koji se ponavlja",
+      "d": "d"
+    },
+    "componentsTasksTaskEmptyState": {
+      "addTask": "Dodaj zadatak"
+    },
+    "componentsTasksTaskIcons": {
+      "noPriority": "bez prioriteta"
+    },
+    "componentsTasksTaskRepeatSection": {
+      "repeat": "Ponovi",
+      "addRepeat": "Dodajte ponavljanje",
+      "edit": "Uredi",
+      "edit2": "Uredi",
+      "stopRepeating": "Prestani ponavljati",
+      "stopRepeating2": "Prestani ponavljati"
+    },
+    "componentsTasksTaskSection": {
+      "addTask": "Dodaj zadatak"
+    },
+    "componentsTasksTimePicker": {
+      "selectTime": "Odaberite vrijeme",
+      "selectTime2": "Odaberite vrijeme",
+      "clearTime": "Čisto vrijeme"
+    },
+    "componentsTasksTodayEmptyState": {
+      "nothingScheduledForToday": "Ništa nije planirano za danas",
+      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "Gore imate zakašnjele zadatke. Dodajte neke zadatke za danas ili provjerite svoj nadolazeći popis.",
+      "addTaskForToday": "Dodaj zadatak za danas",
+      "allCaughtUpForToday": "Sve je nadoknađeno za danas",
+      "youHaveNothingScheduledEnjoyTheClarity": "Nemate ništa planirano. Uživajte u jasnoći.",
+      "addTaskForToday2": "Dodaj zadatak za danas"
+    },
+    "componentsTasksUpcomingEmptyState": {
+      "nothingScheduledForTheNext7Days": "Ništa nije planirano za sljedećih 7 dana",
+      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "Gore imate zakašnjele zadatke. Planirajte unaprijed dodavanjem zadataka za sljedeći tjedan.",
+      "addTask": "Dodaj zadatak",
+      "noUpcomingTasks": "Nema nadolazećih zadataka",
+      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Ovdje će se pojaviti zadaci koji se trebaju ispuniti u sljedećih 7 dana. Planirajte svoj tjedan dodavanjem nekih zadataka.",
+      "addTask2": "Dodaj zadatak"
+    }
+  },
+  "phaseI": {
+    "toasts": {
+      "changesUndone": "Promjene poništene",
+      "projectNotFound": "Projekt nije pronađen",
+      "failedToArchiveTasks": "Arhiviranje zadataka nije uspjelo",
+      "tasksRestoredFromArchive": "Zadaci vraćeni iz arhive",
+      "subtaskAdded": "Podzadatak dodan",
+      "subtaskDeleted": "Podzadatak izbrisan",
+      "taskCompleted": "Zadatak obavljen",
+      "allSubtasksCompleteTaskMarkedAsDone": "🎉 Svi podzadaci dovršeni! Zadatak je označen kao obavljen.",
+      "taskReopened": "Zadatak ponovno otvoren",
+      "taskKeptOpen": "Zadatak ostaje otvoren",
+      "taskMarkedAsDone": "🎉 Zadatak označen kao obavljen!"
+    },
+    "errors": {
+      "failedToArchiveTasks": "Arhiviranje zadataka nije uspjelo",
+      "failedToAddSubtask": "Dodavanje podzadatka nije uspjelo",
+      "failedToAddSubtasks": "Dodavanje podzadataka nije uspjelo",
+      "failedToReorderSubtasks": "Promjena redoslijeda podzadataka nije uspjela",
+      "failedToPromoteSubtask": "Promicanje podzadatka nije uspjelo",
+      "failedToDeleteSubtask": "Brisanje podzadatka nije uspjelo",
+      "failedToDeleteTask": "Brisanje zadatka nije uspjelo",
+      "failedToCompleteTask": "Zadatak nije uspio",
+      "failedToMakeSubtask": "Izrada podzadatka nije uspjela",
+      "failedToCompleteSubtasks": "Dovršavanje podzadataka nije uspjelo",
+      "failedToMarkSubtasksIncomplete": "Označavanje podzadataka kao nedovršenih nije uspjelo",
+      "failedToSetDueDate": "Postavljanje roka nije uspjelo",
+      "failedToSetPriority": "Postavljanje prioriteta nije uspjelo",
+      "failedToDeleteSubtasks": "Brisanje podzadataka nije uspjelo",
+      "failedToLoadTaskPreferences": "Neuspješno učitavanje postavki zadatka",
+      "failedToUpdateTaskPreferences": "Ažuriranje postavki zadatka nije uspjelo",
+      "failedToLoadLinkedTasks": "Učitavanje povezanih zadataka nije uspjelo"
+    }
+  }
+}

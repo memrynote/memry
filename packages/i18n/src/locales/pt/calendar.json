@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "Dia",
+    "week": "Semana",
+    "month": "Mês",
+    "year": "Ano"
+  },
+  "toolbar": {
+    "create-event": "Criar evento",
+    "previous-period": "Período anterior",
+    "next-period": "Próximo período",
+    "previous-month": "Mês anterior",
+    "next-month": "No próximo mês",
+    "today": "Hoje"
+  },
+  "filter": {
+    "filter-calendars": "Filtrar calendários",
+    "sources": "Fontes",
+    "memry-items": "Itens Memry",
+    "imported-calendars": "Calendários importados",
+    "event-types": "Tipos de eventos",
+    "google-calendars": "Calendários do Google",
+    "refresh-google-calendars": "Atualizar calendários do Google"
+  },
+  "visual-type": {
+    "event": "Evento",
+    "imported-event": "Evento importado",
+    "task": "Tarefa",
+    "reminder": "Lembrete",
+    "snooze": "Adiar"
+  },
+  "state": {
+    "loading-calendar": "Carregando calendário…",
+    "loading-calendars": "Carregando agendas…",
+    "preparing": "Preparando…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "Ainda não há calendários importados.",
+    "no-events": "Nenhum evento"
+  },
+  "time": {
+    "all-day": "O dia todo",
+    "all-day-lower": "o dia todo",
+    "pick-a-date": "Escolha uma data",
+    "new-event": "Novo Evento",
+    "more-events": "{count, plural, one {# mais evento} other {# mais eventos}}"
+  },
+  "form": {
+    "create-calendar-event": "Criar evento de calendário",
+    "edit-calendar-event": "Editar evento do calendário",
+    "quick-create-description": "Insira um título e salve para criar um evento no intervalo de tempo selecionado.",
+    "event-editor-description": "Atualize o título, local, data, hora e notas deste evento.",
+    "new-event-placeholder": "Novo Evento",
+    "location-placeholder": "Adicionar local",
+    "notes-url-placeholder": "Adicione notas ou URL",
+    "start": "Começar",
+    "end": "Fim",
+    "add-details": "Adicionar detalhes",
+    "google-calendar": "Calendário do Google",
+    "target-calendar": "Calendário de destino",
+    "use-default-calendar": "Usar calendário padrão",
+    "use-default-calendar-with-name": "Usar padrão ({calendar})",
+    "use-memry-calendar-default": "Usar calendário Memry (padrão)",
+    "use-memry-managed-calendar": "Use o calendário gerenciado por Memry",
+    "primary-suffix": "primário"
+  },
+  "delete-dialog": {
+    "title": "Excluir evento?",
+    "local-description": "\"{title}\" será excluído permanentemente. Esta ação não pode ser desfeita.",
+    "google-bound-description": "\"{title}\" será removido do Memry e do Google Agenda. Esta ação não pode ser desfeita.",
+    "context-menu-delete-label": "Excluir evento"
+  },
+  "promote-dialog": {
+    "aria": "Editar evento de calendário externo",
+    "title": "Editar este evento em Memry?",
+    "body": "A edição deste evento criará uma cópia vinculada em Memry para que as alterações sejam sincronizadas nos dois sentidos. Continuar?",
+    "do-not-ask-again": "Não pergunte novamente",
+    "confirm-label": "Editar em Memry"
+  },
+  "onboarding-dialog": {
+    "aria": "Escolha sua agenda padrão do Google",
+    "title": "Para qual calendário os novos eventos Memry devem ir?",
+    "body": "Escolha o calendário do Google que Memry deve usar por padrão. Você ainda pode substituí-lo por evento.",
+    "default-calendar-label": "Use o calendário gerenciado por Memry",
+    "skip": "Pular",
+    "use-this-calendar": "Use este calendário"
+  },
+  "metadata": {
+    "attendees": "Participantes",
+    "attendees-count": "Participantes ({count})",
+    "reminders": "Lembretes",
+    "default-reminders": "Lembretes padrão",
+    "visibility": "Visibilidade:",
+    "optional": "Opcional",
+    "join-meeting": "Participar da reunião",
+    "response": {
+      "accepted": "Aceito",
+      "declined": "Recusado",
+      "tentative": "Provisório",
+      "needs-action": "Pendente"
+    },
+    "visibility-value": {
+      "private": "Privado",
+      "public": "Público",
+      "confidential": "Confidencial"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "min · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "Não foi possível salvar o evento. Tente novamente.",
+      "couldNotCreateEventTryAgain": "Não foi possível criar o evento. Tente novamente.",
+      "couldNotSaveDefaultCalendarTryAgain": "Não foi possível salvar o calendário padrão. Tente novamente.",
+      "failedToLoadCalendarPreferences": "Falha ao carregar as preferências do calendário",
+      "failedToUpdateCalendarPreferences": "Falha ao atualizar as preferências do calendário",
+      "couldNotEditThisEventTryAgain": "Não foi possível editar este evento. Tente novamente.",
+      "failedToDeleteEvent": "Falha ao excluir evento",
+      "couldNotUnsnoozeInboxItem": "Não foi possível tirar a soneca.",
+      "couldNotRescheduleInboxItem": "Não foi possível reagendar."
+    },
+    "inboxSnoozePopover": {
+      "title": "Item adiado da caixa de entrada",
+      "openInInbox": "Abrir na caixa de entrada",
+      "unsnoozeNow": "Ative a soneca agora",
+      "reschedule": "Reprogramar"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "Detalhes da tarefa",
+    "open-task": "Tarefa aberta",
+    "source-note": "Nota de origem",
+    "reschedule": "Reprogramar",
+    "more-actions": "Mais ações",
+    "mark-done": "Marcar como concluído",
+    "mark-not-done": "Marcar como não concluído",
+    "later-today": "Mais tarde hoje",
+    "tomorrow": "Amanhã",
+    "next-week": "Semana que vem",
+    "next-week-mon": "Semana que vem · Seg.",
+    "pick-date-time": "Escolha data e hora…",
+    "remove-due-date": "Remover data de vencimento",
+    "subtasks-prefix": "Subtarefas",
+    "subtasks-counter": "{done} de {total} concluído",
+    "today": "Hoje",
+    "overdue-one": "1 dia atrasado",
+    "overdue-other": "{count} dias vencidos",
+    "repeats": "Repete",
+    "repeats-daily": "Repete diariamente",
+    "repeats-weekly": "Repete semanalmente",
+    "repeats-monthly": "Repete mensalmente",
+    "repeats-yearly": "Repete anualmente",
+    "priority-urgent": "Urgente",
+    "priority-high": "Alto",
+    "priority-medium": "Médio",
+    "errors": {
+      "could-not-save": "Não foi possível salvar a tarefa",
+      "could-not-reschedule": "Não foi possível reagendar a tarefa",
+      "could-not-remove-due-date": "Não foi possível remover a data de vencimento",
+      "could-not-open-note": "Não foi possível abrir a nota"
+    }
+  }
+}

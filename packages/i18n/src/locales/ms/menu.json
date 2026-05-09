@@ -1,0 +1,28 @@
+{
+  "app": {
+    "quit": "Berhenti"
+  },
+  "file": {
+    "label": "Fail",
+    "newNote": "Nota Baharu",
+    "close": "Tutup Tetingkap"
+  },
+  "navigation": {
+    "back": "belakang",
+    "forward": "ke hadapan"
+  },
+  "edit": {
+    "label": "Sunting",
+    "undo": "Buat asal",
+    "redo": "Buat semula",
+    "cut": "potong",
+    "copy": "salin",
+    "paste": "Tampal"
+  },
+  "view": {
+    "label": "Lihat",
+    "reload": "Muat semula",
+    "toggleDevTools": "Togol Alat Pembangun",
+    "toggleFullscreen": "Togol Skrin Penuh"
+  }
+}

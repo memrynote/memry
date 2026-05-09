@@ -1,0 +1,303 @@
+{
+  "title": "Denník",
+  "section": {
+    "journal": "Denník",
+    "aiConnections": "AI Prepojenia",
+    "todaysNotes": "Dnešné poznámky",
+    "todaysSchedule": "Dnešný program",
+    "todaysTasks": "Dnešné úlohy",
+    "schedule": "Program",
+    "tasks": "Úlohy",
+    "calendarEvents": "Udalosti v kalendári",
+    "overdueTasks": "Po termíne",
+    "technicalDetails": "Technické detaily"
+  },
+  "action": {
+    "versionHistory": "História verzií",
+    "export": "Export",
+    "fullWidth": "Celá šírka",
+    "journalSettings": "Nastavenia denníka",
+    "fullMode": "Plný režim",
+    "compactMode": "Kompaktný režim",
+    "focusMode": "Režim zamerania",
+    "exitFocusMode": "Opustiť režim sústredenia",
+    "enterFocusMode": "Vstúpiť do režimu sústredenia",
+    "createNote": "Vytvoriť poznámku",
+    "createNewNote": "Vytvoriť novú poznámku",
+    "showLess": "Zobraziť menej",
+    "showMoreNotes": "Zobraziť ešte {count} poznámku",
+    "showMoreNotes_plural": "Zobraziť ešte {count} poznámok",
+    "showFewerNotes": "Zobraziť menej poznámok",
+    "startBlank": "Začať prázdne miesto",
+    "changeTemplate": "Zmeniť šablónu",
+    "dismissIndicator": "Zavrieť indikátor",
+    "refreshConnections": "Obnoviť pripojenia",
+    "reloadJournal": "Načítať denník znova",
+    "goToToday": "Ísť na dnes",
+    "copyUnsavedContent": "Skopírovať neuložený obsah do schránky",
+    "openNoteFullPage": "Otvoriť poznámku na celej stránke",
+    "closeNoteDrawer": "Zatvoriť zásuvku poznámok",
+    "addBookmark": "Pridať záložku",
+    "removeBookmark": "Odstrániť záložku",
+    "tryAgain": "Skúsiť znova"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "Čo plánujete...",
+      "today": "Na čo myslíte dnes...",
+      "past": "Zamyslite sa nad týmto dňom...",
+      "default": "Začať písať..."
+    },
+    "toolbar": {
+      "ariaLabel": "Formátovanie textu",
+      "bold": "Tučné",
+      "italic": "Kurzíva",
+      "underline": "Podčiarknuté",
+      "strikethrough": "Preškrtnuté",
+      "link": "Odkaz",
+      "image": "Obraz",
+      "moreOptions": "Viac možností",
+      "heading1": "Nadpis 1",
+      "heading2": "Nadpis 2",
+      "heading3": "Nadpis 3",
+      "bulletList": "Zoznam s odrážkami",
+      "numberedList": "Číslovaný zoznam",
+      "checklist": "Kontrolný zoznam",
+      "quote": "Citát",
+      "divider": "Delič",
+      "codeBlock": "Blok kódu"
+    },
+    "prompt": {
+      "enterUrl": "Zadajte URL:"
+    },
+    "upload": {
+      "noEntry": "Nie je možné nahrať obrázok: nevybraná žurnálová položka",
+      "failed": "Nepodarilo sa nahrať obrázok"
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "Dnes",
+      "yesterday": "Včera",
+      "tomorrow": "Zajtra",
+      "future": "Budúcnosť"
+    },
+    "weekday": {
+      "sunday": "Nedeľa",
+      "monday": "Pondelok",
+      "tuesday": "Utorok",
+      "wednesday": "Streda",
+      "thursday": "Štvrtok",
+      "friday": "Piatok",
+      "saturday": "Sobota"
+    },
+    "weekdayShort": {
+      "sunday": "Ne",
+      "monday": "Po",
+      "tuesday": "Ut",
+      "wednesday": "St",
+      "thursday": "Št",
+      "friday": "Pi",
+      "saturday": "So"
+    },
+    "month": {
+      "january": "Január",
+      "february": "Február",
+      "march": "Marec",
+      "april": "Apríl",
+      "may": "Máj",
+      "june": "Jún",
+      "july": "Júl",
+      "august": "August",
+      "september": "September",
+      "october": "Október",
+      "november": "November",
+      "december": "December"
+    },
+    "monthShort": {
+      "january": "Jan",
+      "february": "Feb",
+      "march": "Mar",
+      "april": "Apr",
+      "may": "Máj",
+      "june": "Jún",
+      "july": "Júl",
+      "august": "Aug",
+      "september": "Sep",
+      "october": "Október",
+      "november": "Nov",
+      "december": "Dec"
+    },
+    "greeting": {
+      "morning": "Dobré ráno",
+      "afternoon": "Dobré popoludnie",
+      "evening": "Dobrý večer",
+      "night": "Dobrú noc"
+    },
+    "allDay": "Celý deň"
+  },
+  "nav": {
+    "previousDay": "Predchádzajúci deň",
+    "nextDay": "Nasledujúci deň",
+    "previousMonth": "Predchádzajúci mesiac",
+    "nextMonth": "Nasledujúci mesiac",
+    "previousYear": "Predchádzajúci rok",
+    "nextYear": "Nasledujúci rok",
+    "journalBack": "Späť do denníka",
+    "journalNavigation": "Navigácia v denníku",
+    "dateNavigation": "Navigácia podľa dátumu v denníku",
+    "goToYearView": "Prejsť na zobrazenie roka",
+    "previousView": "Predchádzajúce zobrazenie",
+    "nextView": "Nasledujúce zobrazenie"
+  },
+  "aria": {
+    "moreOptions": "Viac možností",
+    "documentStatistics": "Štatistiky dokumentu",
+    "dayContext": "Denný kontext: úlohy a plán",
+    "scheduleEvents": "Plánované udalosti",
+    "tasks": "Úlohy",
+    "notesCreatedToday": "{count} poznámky vytvorené dnes"
+  },
+  "empty": {
+    "noEntry": "Žiadny zápis",
+    "noDaysInMonth": "V tomto mesiaci nie sú žiadne dni",
+    "noEventsScheduled": "Žiadne naplánované udalosti",
+    "noEventsScheduledToday": "Dnes nie sú žiadne naplánované udalosti",
+    "noEventsWereScheduled": "Neboli naplánované žiadne udalosti",
+    "noTasksDue": "Žiadne úlohy na vykonanie",
+    "noTasksDueToday": "Dnes nie sú žiadne úlohy na vykonanie",
+    "noTasksWereDue": "Žiadne úlohy neboli splatné",
+    "noNotesToday": "Dnes neboli vytvorené žiadne poznámky",
+    "startDocumenting": "Začnite dokumentovať svoje myšlienky a nápady"
+  },
+  "ai": {
+    "loading": "Analyzujem váš zápis...",
+    "empty": {
+      "willAppear": "Tu sa zobrazia vaše spojenia",
+      "noneYet": "Zatiaľ neboli nájdené žiadne spojenia",
+      "moreJournaling": "Ako budete viac zapisovať, AI nájde súvisiace zápisy",
+      "keepWriting": "Pokračujte v písaní, aby ste objavili súvisiace zápisy"
+    },
+    "error": {
+      "loadFailed": "Nepodarilo sa načítať spojenia"
+    },
+    "connectionAria": "Spojenie s {label}, zhoda {scorePercent}%"
+  },
+  "count": {
+    "item": "položka",
+    "items": "položky",
+    "note": "poznámka",
+    "notes": "poznámky",
+    "day": "den",
+    "days": "dni",
+    "event": "udalosť",
+    "events": "udalosti",
+    "meeting": "stretnutie",
+    "meetings": "stretnutia",
+    "task": "úloha",
+    "tasks": "úlohy",
+    "todo": "urobiť",
+    "people": "{count} ľudia",
+    "moreConnections": "+ {count} viac spojení",
+    "moreConnections_plural": "+ {count} viac spojení",
+    "moreNotes": "+ {count} viac poznámok",
+    "moreNotes_plural": "+ {count} viac poznámok",
+    "daysWithEntries": "dni s príspevkami",
+    "charactersWritten": "znaky napísané",
+    "words": "{count} slová",
+    "characters": "{count} znakov",
+    "completed": "{count} dokončené",
+    "overdue": "{count} oneskorené"
+  },
+  "stats": {
+    "wordCount": "Počet slov",
+    "characterCount": "Počet znakov",
+    "readingTime": "Odhadovaný čas čítania",
+    "lastModified": "Naposledy upravené",
+    "lessThanOneMinute": "< 1 min",
+    "minutes": "{minutes} min",
+    "read": "{readingTime} prečítané",
+    "modified": "Upravené {date}"
+  },
+  "task": {
+    "completed": "Dokončené",
+    "notCompleted": "Nedokončené",
+    "priority": "{priority} priorita",
+    "overdue": "oneskorené",
+    "markComplete": "Označiť \"{title}\" ako dokončené",
+    "markNotComplete": "Označiť \"{title}\" ako nedokončené"
+  },
+  "template": {
+    "using": "Používajúci \"{templateName}\""
+  },
+  "reminder": {
+    "hasReminders": "Má pripomienky",
+    "setToRevisit": "Nastaviť pripomienku na opätovnú návštevu",
+    "tooltip": "Pripomienka: {date}",
+    "tooltipMore": "Pripomienka: {date} (+{count} ďalšie)",
+    "success": {
+      "set": "Pripomienka nastavená pre tento zápis do denníka",
+      "deleted": "Pripomienka vymazaná",
+      "dismissed": "Pripomienka odmietnutá",
+      "snoozed": "Pripomienka odložená"
+    },
+    "error": {
+      "set": "Nepodarilo sa nastaviť pripomienku",
+      "delete": "Nepodarilo sa vymazať pripomienku",
+      "dismiss": "Nepodarilo sa odmietnuť pripomienku",
+      "snooze": "Nepodarilo sa odložiť pripomienku"
+    }
+  },
+  "toast": {
+    "unsavedRetry": "Váš obsah je stále v pamäti. Kliknite pre opätovné uloženie.",
+    "noteNotFound": "Poznámka \"{target}\" sa nenašla",
+    "fileNotFound": "Súbor sa nenašiel: {target}",
+    "openLinkedItemFailed": "Nepodarilo sa otvoriť prepojenú položku",
+    "errorPrefix": "Chyba:"
+  },
+  "export": {
+    "noteTitle": "Denník - {month} {day}, {year}"
+  },
+  "note": {
+    "generatedTitle": "Poznámka - {date}",
+    "openAria": "Otvoriť {title}, vytvorené dňa {time}"
+  },
+  "tag": {
+    "suggestionsAria": "Návrhy značiek",
+    "empty": {
+      "title": "Zatiaľ žiadne značky",
+      "description": "Zadajte text na vytvorenie novej značky"
+    },
+    "groupTitle": "Tagy",
+    "create": "Vytvoriť #{query}",
+    "ariaLabel": "Tag: {tag}, kliknite pre filtrovanie"
+  },
+  "wiki": {
+    "suggestionsAria": "Návrhy stránok",
+    "empty": {
+      "title": "Nenašli sa žiadne stránky"
+    },
+    "groupRecent": "Nedávne",
+    "groupAllPages": "Všetky stránky",
+    "createNewPage": "Vytvoriť novú stránku",
+    "ariaLabel": "Odkaz na {title}"
+  },
+  "error": {
+    "title": "Chyba denníka",
+    "description": "Denník zaznamenal chybu pre {date}. Vaše posledné zmeny nemusia byť uložené.",
+    "descriptionNoDate": "Denník zaznamenal chybu. Vaše posledné zmeny nemusia byť uložené.",
+    "unsavedContent": "Detekovaný neuložený obsah ({length} znakov)"
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "k"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveJournalEntry": "Nepodarilo sa uložiť zápisník",
+      "failedToLoadJournalSettings": "Nepodarilo sa načítať nastavenia zápisníka",
+      "failedToUpdateSettings": "Nepodarilo sa aktualizovať nastavenia"
+    }
+  }
+}

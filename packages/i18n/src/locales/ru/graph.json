@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Загрузка графика...",
+    "load-failed": "Не удалось загрузить данные графика.",
+    "try-again": "Попробуйте еще раз",
+    "aria-label": "График знаний с {nodeCount, plural, one {Узел #} other {Узлы #}} и {edgeCount, plural, one {Соединение #} other {Соединения #}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Узлы графа",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "График ваших знаний",
+    "description": "Связи между вашими заметками, задачами и проектами будут отображаться здесь в виде интерактивного графика.",
+    "link-title": "Свяжите свои заметки",
+    "link-description": "Используйте [[wikilinks]] для объединения идей в заметках",
+    "discover-title": "Откройте для себя шаблоны",
+    "discover-description": "По мере роста связей естественным образом будут возникать кластеры и темы."
+  },
+  "entity": {
+    "note": "Примечание",
+    "notes": "заметки",
+    "journal": "журнал",
+    "journals": "журналы",
+    "task": "задача",
+    "tasks": "задачи",
+    "project": "проект",
+    "projects": "проекты",
+    "tag": "тег",
+    "tags": "теги",
+    "orphan": "сирота",
+    "orphans": "сироты",
+    "unresolved": "нерешенный"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Настройки графика",
+    "hide-settings": "Скрыть настройки",
+    "reset-filters": "Сбросить фильтры",
+    "filters": "Фильтры",
+    "display": "Дисплей",
+    "show-labels": "Показать ярлыки",
+    "focus-depth": "глубина {depth}",
+    "clear-focus": "Очистить сфокусированный узел"
+  },
+  "filter": {
+    "notes": "Примечания",
+    "journals": "Журналы",
+    "tasks": "Задачи",
+    "projects": "Проекты",
+    "tags": "Теги",
+    "orphans": "Сироты",
+    "toggle-entity": "Переключить {label}",
+    "toggle-orphans": "Переключить потерянные узлы"
+  },
+  "search": {
+    "placeholder": "Поиск узлов...",
+    "clear": "Очистить поиск по графику"
+  },
+  "context-menu": {
+    "untitled": "Без названия",
+    "focus-node": "Сосредоточьтесь на этом узле",
+    "open-new-tab": "Открыть в новой вкладке",
+    "create-note": "Создать заметку",
+    "copy-title": "Копировать заголовок"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {Соединение #} other {Соединения #}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Загрузка графика...",
+    "empty": "Связей не найдено",
+    "open-full": "Открыть полный график",
+    "close": "Закрыть график"
+  }
+}

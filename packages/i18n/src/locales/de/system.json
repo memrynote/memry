@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "Wählen Sie den Tresorordner aus",
+      "button": "Wählen Sie Tresor aus"
+    },
+    "exportPdf": {
+      "title": "Als PDF exportieren",
+      "filterName": "PDF-Dokument"
+    },
+    "exportHtml": {
+      "title": "Als HTML exportieren",
+      "filterName": "HTML-Dokument"
+    },
+    "import": {
+      "filterSupported": "Unterstützte Dateien",
+      "filterAll": "Alle Dateien"
+    },
+    "exportCancelled": "Export abgebrochen",
+    "update": {
+      "availableTitle": "Update verfügbar",
+      "availableMessage": "Memry {version} ist verfügbar.",
+      "availableDetailFallback": "Jetzt das Update herunterladen?",
+      "buttonDownload": "Herunterladen",
+      "buttonLater": "Später",
+      "readyTitle": "Update bereit",
+      "readyMessage": "Memry {version} wurde heruntergeladen.",
+      "readyDetailFallback": "Starten Sie Memry neu, um die Installation des Updates abzuschließen.",
+      "buttonRestartNow": "Starten Sie jetzt neu",
+      "releaseNotesLabel": "Versionshinweise:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "Notizerinnerung",
+      "journal": "Tagebucherinnerung",
+      "highlight": "Markieren Sie die Erinnerung",
+      "fallback": "Mahnung fällig",
+      "default": "Erinnerung"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "Der Erinnerungszeitpunkt muss in der Zukunft liegen",
+    "definitionNotFound": "Definition nicht gefunden",
+    "noteNotFound": "Notiz nicht gefunden",
+    "updateFailed": "Update fehlgeschlagen"
+  }
+}

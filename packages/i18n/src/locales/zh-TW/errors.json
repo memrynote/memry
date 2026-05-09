@@ -1,0 +1,80 @@
+{
+  "generic": {
+    "somethingWentWrong": "發生錯誤。請再試一次。",
+    "operationFailed": "操作失敗",
+    "unknown": "發生未知錯誤",
+    "validationFailed": "驗證失敗",
+    "actionFailed": "操作失敗"
+  },
+  "ipc": {
+    "noVaultOpen": "沒有打開的保險庫。請先打開保險庫。"
+  },
+  "vault": {
+    "notFound": "未找到保險庫。它可能已被移動或刪除。",
+    "notInitialized": "沒有打開的保險庫。請打開或創建保險庫以繼續。",
+    "invalidPath": "所選路徑不是有效的保險庫位置。",
+    "permissionDenied": "權限被拒。請檢查您是否有訪問此資料夾的權限。",
+    "alreadyExists": "此位置已經存在保險庫。",
+    "corrupted": "此保險庫似乎已損壞。請嘗試從備份恢復。"
+  },
+  "note": {
+    "notFound": "找不到此筆記。它可能已被刪除。",
+    "invalidFrontmatter": "此筆記的元資料無效，無法閱讀。",
+    "duplicateId": "具有此 ID 的筆記已存在。",
+    "writeFailed": "無法儲存此筆記。請檢查磁碟空間和權限。",
+    "readFailed": "無法讀取此筆記。檔案可能被鎖定或已損壞。",
+    "deleteFailed": "無法刪除此筆記。請檢查檔案權限。",
+    "invalidPath": "筆記路徑無效。"
+  },
+  "database": {
+    "connectionFailed": "無法連接到本地資料庫。請嘗試重新啟動應用程式。",
+    "migrationFailed": "資料庫升級失敗。請嘗試重新啟動應用程式。",
+    "queryFailed": "資料庫操作失敗。請重試。",
+    "notInitialized": "資料庫尚未就緒。請嘗試重新啟動應用程式。",
+    "constraintViolation": "發生資料衝突。請重試。",
+    "corrupted": "本地資料庫已損壞。您可能需要重置它。"
+  },
+  "watcher": {
+    "startFailed": "無法啟動檔案變更監控。",
+    "stopFailed": "無法停止檔案監視器。",
+    "eventError": "觀察檔案變更時發生錯誤。"
+  },
+  "attachment": {
+    "fileTooLarge": "此檔案過大，無法附加。",
+    "unsupportedType": "不支援此檔案類型。",
+    "writeFailed": "儲存附件失敗。請檢查磁碟空間。",
+    "deleteFailed": "刪除附件失敗。"
+  },
+  "encryption": {
+    "failed": "加密資料失敗。您的金鑰可能需要重新生成。",
+    "decryptionFailed": "解密資料失敗。您的加密金鑰可能已過期。",
+    "invalidKeyLength": "無效的加密金鑰。請嘗試登出後再登入。",
+    "invalidNonceLength": "加密錯誤。請再次嘗試操作。"
+  },
+  "inboxAttachment": {
+    "writeFailed": "儲存收件匣附件失敗。",
+    "deleteFailed": "刪除收件匣附件失敗。"
+  },
+  "sync": {
+    "networkOffline": "您處於離線狀態。變更將在重新連線時同步。",
+    "networkTimeout": "同步伺服器回應超時。將稍後重試。",
+    "serverError": "同步伺服器發生錯誤。將自動重試。",
+    "authExpired": "您的會話已過期。請重新登錄以繼續同步。",
+    "deviceRevoked": "此裝置已從您的帳戶中移除。",
+    "rateLimited": "請求過多。同步將很快恢復。",
+    "cryptoFailure": "加密或解密同步數據失敗。請嘗試登出後再登入。",
+    "versionIncompatible": "此版本的Memry已不再受支援。請更新。",
+    "storageQuotaExceeded": "您的同步存儲已滿。請釋放空間或升級方案。",
+    "certificatePinFailed": "安全連接失敗。請檢查您的網路連線。",
+    "unknown": "發生意外的同步錯誤。將自動重試。",
+    "statusFetchFailed": "獲取同步狀態失敗",
+    "engineNotInitialized": "同步引擎尚未初始化。請打開金庫以開始同步。",
+    "triggerFailed": "同步失敗",
+    "pauseFailed": "暫停同步失敗",
+    "resumeFailed": "恢復同步失敗",
+    "settingsNotInitialized": "設定同步尚未初始化",
+    "securityQuarantinePermanent": "無法驗證同步項目，已為安全起見將其隔離。",
+    "securityQuarantineRetry": "同步項目簽名驗證失敗，將重新嘗試。",
+    "certificatePinPaused": "無法驗證與同步伺服器的安全連線。為了保護您，同步已暫停。"
+  }
+}

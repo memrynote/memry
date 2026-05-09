@@ -1,0 +1,483 @@
+{
+  "view": {
+    "tabs": {
+      "inbox": "Postvak IN",
+      "archived": "Gearchiveerd",
+      "insights": "Inzichten",
+      "ariaLabel": "Selectie inboxweergave"
+    },
+    "triageButton": "Triage",
+    "processInboxTitle": "Postvak IN verwerken (Cmd+P)",
+    "itemCaptured": "Artikel vastgelegd",
+    "searchArchivedTitle": "Zoek gearchiveerde items",
+    "searchPlaceholder": "Zoeken...",
+    "archivedItemsAria": "Gearchiveerde items",
+    "snoozed": {
+      "show": "Toon gesnoozede items",
+      "showWithCount": "Gesnoozede items weergeven ({count})",
+      "hide": "Verberg gesnoozede items"
+    },
+    "filter": {
+      "button": "Filteren",
+      "byType": "Filter op soort",
+      "active": "{count, plural, one {Filteren op #-type} other {Filteren op #-typen}}",
+      "clearAll": "Alles wissen"
+    },
+    "jobs": {
+      "running": "{count, plural, one {#-achtergrondtaak actief} other {#-achtergrondtaken worden uitgevoerd}}",
+      "failed": "{count} is mislukt"
+    }
+  },
+  "type": {
+    "link": "Koppeling",
+    "links": "Koppelingen",
+    "note": "Let op",
+    "notes": "Opmerkingen",
+    "image": "Afbeelding",
+    "images": "Afbeeldingen",
+    "voice": "Stem",
+    "video": "Video",
+    "clip": "Klem",
+    "clips": "Klemmen",
+    "pdf": "Pdf",
+    "pdfs": "PDF's",
+    "social": "Sociaal",
+    "reminder": "Herinnering",
+    "reminders": "Herinneringen",
+    "text": "Tekst",
+    "other": "Anders"
+  },
+  "empty": {
+    "successAria": "Succes, inbox is leeg",
+    "title": "Postvak IN nul",
+    "body": "Alles is verwerkt. Leg iets nieuws vast met de bovenstaande invoer of plak een link om aan de slag te gaan.",
+    "filedThisWeek": "{count, plural, one {# deze week ingediend} other {# deze week ingediend}}",
+    "dayStreak": "{count, plural, one {# dagreeks} other {# dagreeks}}",
+    "tipPrefix": "Tip: gebruik",
+    "tipSuffix": "om snel vast te leggen vanaf het klembord",
+    "archivedNone": "Geen gearchiveerde items",
+    "archivedNoMatches": "Geen overeenkomende gearchiveerde items",
+    "noItemsYet": "Nog geen artikelen",
+    "noItemsFiled": "Er zijn nog geen items ingediend",
+    "noItemTypes": "Er zijn geen itemtypen om weer te geven",
+    "noFolders": "Geen mappen gevonden",
+    "noFolderMatch": "Er zijn geen mappen die overeenkomen met '{query}'",
+    "noNotes": "Geen notities gevonden",
+    "allMatchesLinked": "Alle wedstrijden zijn al gekoppeld"
+  },
+  "list": {
+    "ariaLabel": "Inbox-items",
+    "section": {
+      "today": "Vandaag",
+      "yesterday": "Gisteren",
+      "older": "Ouder"
+    },
+    "selectItem": "Selecteer {title}",
+    "itemAria": "{type}: {title}",
+    "untitled": "Zonder titel",
+    "untitledItem": "Naamloos item",
+    "transcribing": "Transcriberen...",
+    "transcriptionFailed": "Transcriptie is mislukt",
+    "retryTranscription": "Opnieuw proberen",
+    "pageCount": "{count, plural, one {#-pagina} other {#-pagina's}}",
+    "snoozedUntilShort": "gesnoozed tot {date}",
+    "capturedAgo": "{time} vastgelegd"
+  },
+  "loading": {
+    "inbox": "Postvak IN laden...",
+    "failed": "Kan het postvak IN niet laden",
+    "tryAgain": "Probeer het opnieuw",
+    "capturingImage": "Beeld vastleggen...",
+    "dropImageTitle": "Zet de afbeelding neer om vast te leggen",
+    "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
+    "unsupportedImageType": "Niet-ondersteund afbeeldingstype: {type}",
+    "imageTooLarge": "Afbeelding te groot (max. 50 MB)"
+  },
+  "toast": {
+    "failedArchiveItem": "Kan het item niet archiveren",
+    "failedArchiveItems": "Kan items niet archiveren",
+    "failedFile": "Kan niet archiveren",
+    "failedFileItem": "Kan item niet archiveren",
+    "failedFileItems": "Kan items niet archiveren",
+    "failedSnooze": "Sluimeren is niet gelukt",
+    "failedSnoozeItem": "Kan item niet snoozen",
+    "failedApplyTags": "Kan tags niet toepassen",
+    "failedCaptureImage": "Kan afbeelding niet vastleggen",
+    "linkedToNote": "Gekoppeld aan notitie",
+    "linkedToNotes": "Gekoppeld aan {count}-notities",
+    "filedTo": "Geplaatst op {folder}",
+    "filedItemsTo": "{count}-items opgeslagen bij {folder}",
+    "filedPartial": "{processed} van {total}-items gearchiveerd",
+    "appliedTags": "{tagCount, plural, one {Toegepaste #-tag} other {Toegepaste #-tags}} tot {itemCount, plural, one {#-artikel} other {#-artikelen}}",
+    "archivedItems": "{count, plural, one {Gearchiveerd #-item} other {Gearchiveerde #-items}}",
+    "snoozedUntil": "Gesnoozed tot {time}",
+    "snoozedItemsUntil": "{count, plural, one {#-item gesnoozed tot {time}} other {#-items gesnoozed tot {time}}}"
+  },
+  "triage": {
+    "modeTitle": "Triage-modus",
+    "exitHint": "Esc om af te sluiten",
+    "exitAria": "Verlaat de triagemodus",
+    "position": "{current} of {total}",
+    "action": {
+      "discard": "Gooi weg",
+      "archive": "Archief",
+      "open": "Openen",
+      "toTask": "Naar taak",
+      "toNote": "Om op te merken",
+      "file": "Bestand",
+      "snooze": "Snoozen",
+      "cancel": "Annuleer"
+    },
+    "snoozeUntil": "Snooze tot...",
+    "complete": {
+      "title": "Postvak IN nul",
+      "processed": "{count, plural, one {#-item verwerkt} other {#-items verwerkt}}",
+      "streak": "streep",
+      "streakCount": "{count}-reeks",
+      "dayProcessingStreak": "{count, plural, one {# dagverwerkingsreeks} other {# dagverwerkingsreeks}}",
+      "back": "Terug naar Postvak IN",
+      "motivation0": "Je toekomstige zelf dankt je.",
+      "motivation1": "Alles op zijn plaats.",
+      "motivation2": "Een heldere inbox, een heldere geest.",
+      "motivation3": "Beslissingsschuld: volledig betaald.",
+      "motivation4": "Dat voelde goed, nietwaar?"
+    }
+  },
+  "bulk": {
+    "selected": "{count} geselecteerd",
+    "deselectAll": "Deselecteer alles",
+    "ariaLabel": "Bulkacties voor geselecteerde {count}-items",
+    "file": "Bestand",
+    "tag": "Label",
+    "snooze": "Snoozen",
+    "archive": "Archief",
+    "add": "Toevoegen",
+    "dismissSuggestion": "Suggestie afwijzen",
+    "hint": {
+      "file": "bestand",
+      "tag": "label",
+      "snooze": "snoozen",
+      "archive": "archief",
+      "deselect": "deselecteren"
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {#-item archiveren?} other {#-items archiveren?}}",
+      "description": "Deze items worden gearchiveerd. U kunt gearchiveerde items later bekijken.",
+      "confirm": "{count, plural, one {Archief #-item} other {Archiveer #-items}}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {Bestand #-item} other {Bestand #-items}}",
+      "itemsToFile": "Items om te archiveren",
+      "multipleNoteLinksUnavailable": "Let op: Bij het archiveren van meerdere items kunnen geen koppelingen naar andere notities worden toegevoegd.",
+      "filing": "Indienen...",
+      "submit": "{count, plural, one {Bestand #-item} other {Bestand #-items}}",
+      "macHint": "⌘⏎ naar bestand · Esc om te sluiten",
+      "ctrlHint": "Ctrl+Enter naar bestand · Esc om te sluiten"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {Tag #-artikel} other {Tag #-items}}",
+      "placeholder": "Typ om tags te zoeken...",
+      "applying": "Toepassen...",
+      "apply": "{count, plural, one {Toepassen op #-item} other {Toepassen op #-artikelen}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "Snelle acties",
+    "archiveItem": "Archiefitem",
+    "archive": "Archief",
+    "snooze": "Snoozen"
+  },
+  "detail": {
+    "ariaLabel": "Artikeldetails",
+    "closePanel": "Sluit paneel",
+    "resizeFiling": "Formaat van archiefsectie wijzigen",
+    "restore": "Herstellen",
+    "restoreToInbox": "Herstellen naar Postvak IN",
+    "delete": "Verwijderen",
+    "deletePermanently": "Permanent verwijderen",
+    "archive": "Archief",
+    "file": "Bestand",
+    "keyboardHint": "{modifier}⏎-bestand · map 1-5 · Esc sluiten",
+    "voiceTitlePlaceholder": "Geef deze spraakmemo een naam...",
+    "fileTo": "Bestand naar",
+    "ai": "AI",
+    "selectFolder": "Selecteer map",
+    "searchOrCreateFolder": "Zoek of maak met /...",
+    "suggested": "Voorgesteld",
+    "notesRoot": "Opmerkingen",
+    "notesRootLabel": "Notities (wortel)",
+    "createFolder": "Maak \"{name}\" aan",
+    "addTags": "Labels toevoegen...",
+    "linkToNote": "Link naar notitie",
+    "linkNotesPlaceholder": "Notities koppelen...",
+    "searchNotesAria": "Zoek naar notities om te linken",
+    "linkedNotesAria": "Gekoppelde notities",
+    "removeLinkTo": "Verwijder de link naar {title}",
+    "contentEditorAria": "Inhoudseditor",
+    "notePlaceholder": "Schrijf uw notitie...",
+    "textPlaceholder": "Bewerk uw vastgelegde tekst..."
+  },
+  "content": {
+    "capturedAt": "{date} vastgelegd",
+    "todayAt": "vandaag bij {time}",
+    "yesterdayAt": "gisteren bij {time}",
+    "dateAt": "{date} en {time}",
+    "words": "{count, plural, one {#-woord} other {#-woorden}}",
+    "duration": "Duur: {duration}",
+    "dimensions": "Afmetingen",
+    "format": "Formaat",
+    "size": "Grootte",
+    "voiceMemo": "Spraakmemo",
+    "play": "Spelen",
+    "pause": "Pauze",
+    "audioPosition": "Audio-positie",
+    "transcription": "Transcriptie",
+    "processing": "verwerking",
+    "pending": "in afwachting",
+    "failed": "mislukt",
+    "copyTranscription": "Kopieer transcriptie",
+    "transcribingAudio": "Audio transcriberen...",
+    "awaitingTranscription": "In afwachting van transcriptie...",
+    "noTranscription": "Geen transcriptie beschikbaar",
+    "failedPlayAudio": "Kan audio niet afspelen",
+    "failedLoadAudio": "Kan audio niet laden",
+    "video": "Video",
+    "unsupportedVideo": "Uw browser ondersteunt de videotag niet."
+  },
+  "reminder": {
+    "dataUnavailable": "Herinneringsgegevens niet beschikbaar.",
+    "triggered": "Herinnering geactiveerd",
+    "noteLabel": "Herinnering Opmerking",
+    "source": "Bron",
+    "journalTitle": "Journaal — {date}",
+    "noteFallback": "Let op",
+    "journalFallback": "Journaal",
+    "highlighted": "Uitgelicht: \"{text}\"",
+    "viewed": "Bekeken",
+    "markViewed": "Markeer als bekeken",
+    "notYetViewed": "Nog niet bekeken",
+    "snooze": "Snoozen",
+    "presetInOneHour": "1 uur",
+    "presetTomorrow": "Morgen",
+    "presetNextWeek": "Volgende week",
+    "custom": "Aangepast..."
+  },
+  "insights": {
+    "loading": "Inzichten laden...",
+    "captureActivity": "Activiteit vastleggen",
+    "byType": "Op soort",
+    "itemTypes": "Artikeltypen",
+    "itemTypesDescription": "Distributie van inhoudsformaten",
+    "recentFilings": "Recente indieningen",
+    "recentlyFiled": "Recent ingediend",
+    "recentlyFiledDescription": "Laatste acties in uw inbox",
+    "captured": "Gevangen",
+    "capturedThisWeek": "+{count} deze week",
+    "processed": "Verwerkt",
+    "processRate": "{rate}% tarief",
+    "stale": "Oud",
+    "needsAttention": "heeft aandacht nodig",
+    "allClear": "allemaal duidelijk",
+    "avgTimeToFile": "Gem. tijd tot bestand",
+    "noCapturesYet": "Nog geen opnames",
+    "captures": "{count, plural, one {#-opname} other {#-opnamen}}",
+    "peak": "Piek: {day} {start}–{end}",
+    "convertedToTask": "Omgezet naar taak",
+    "linked": "Gekoppeld",
+    "now": "nu",
+    "timeAgoMinutes": "{count}m geleden",
+    "timeAgoHours": "{count}h geleden",
+    "timeAgoDays": "{count}d geleden"
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "AI gedetecteerd: \"",
+      "addToSelection": "Toevoegen aan selectie",
+      "dismiss": "Negeren"
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "Verwijderen ",
+      "item": "artikel",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Deze items worden uit uw inbox verwijderd. U kunt deze actie onmiddellijk daarna ongedaan maken."
+    },
+    "componentsCaptureInput": {
+      "captureInput": "Invoer vastleggen",
+      "attachFile": "Bestand bijvoegen",
+      "attachFileImagesAudioVideoPdf": "Bestand bijvoegen (afbeeldingen, audio, video, pdf)",
+      "recordVoiceMemo": "Spraakmemo opnemen",
+      "recordVoiceMemo2": "Spraakmemo opnemen",
+      "alreadyCaptured": "Al vastgelegd: “",
+      "rdquo": "rdquo;",
+      "captureAnyway": "Hoe dan ook vastleggen"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "Kies map",
+      "searchFolders": "Mappen zoeken...",
+      "searchFolders2": "Zoek in mappen",
+      "searchResults": "Zoekresultaten",
+      "create": "Creëer \"",
+      "suggested": "Voorgesteld",
+      "recent": "Recent",
+      "allFolders": "Alle mappen",
+      "allFolders2": "Alle mappen"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "Link naar",
+      "optional": "optioneel)",
+      "searchNotesToLink": "Zoek notities om te linken...",
+      "searchNotesToLink2": "Zoek naar notities om te linken",
+      "searching": "Zoeken...",
+      "noNotesFound": "Geen notities gevonden",
+      "linkedNotes": "Gekoppelde notities",
+      "noLinksAdded": "Geen koppelingen toegevoegd"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "Voorgesteld",
+      "ai": "AI",
+      "create": "Creëer",
+      "tags": "Labels",
+      "selectedTags": "Geselecteerde labels",
+      "addTags": "Tags toevoegen",
+      "tagSuggestions": "Tag suggesties"
+    },
+    "componentsFilingTagInput": {
+      "tags": "Labels",
+      "optional": "optioneel)",
+      "addTags": "Labels toevoegen...",
+      "addTags2": "Tags toevoegen",
+      "selectedTags": "Geselecteerde labels",
+      "suggested": "Voorgesteld"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "Activiteit vastleggen"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "Er zijn nog geen items ingediend",
+      "recentlyFiled": "Recent ingediend",
+      "latestActionsOnYourInbox": "Laatste acties in uw inbox",
+      "linked": "Gekoppeld"
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "Inzichten laden..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "Er zijn geen itemtypen om weer te geven",
+      "itemTypes": "Artikeltypen",
+      "distributionOfContentFormats": "Distributie van inhoudsformaten"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "Gevangen "
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "x "
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "Inhoudseditor"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "middenpunt; "
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "Tweet niet beschikbaar",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Deze tweet is mogelijk verwijderd of komt van een privéaccount.",
+      "openOnXCom": "Open op x.com",
+      "views": "bekeken",
+      "xCom": "x.com",
+      "viewOnX": "Bekijk op X"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "Typ de mapnaam...",
+      "quickFileFolderSearch": "Snel zoeken naar bestandsmappen"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "dichtbij",
+      "capture": "vangen"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "Bijlage verwijderen"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "Snelle opname-invoer",
+      "recordVoiceMemo": "Spraakmemo opnemen",
+      "attachFile": "Bestand bijvoegen"
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "LINK"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "Gevangen",
+      "dismissError": "Fout afwijzen",
+      "alreadyCaptured": "Al vastgelegd",
+      "ldquo": "ldquo;",
+      "rdquoMiddot": "rdquo; · ",
+      "captureAnyway": "Hoe dan ook vastleggen",
+      "close": "Sluiten"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "Laat vallen om vast te leggen",
+      "capturing": "Vastleggen..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "Mapsuggesties",
+      "noFoldersMatch": "Er komen geen mappen overeen \""
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "Stel een herinnering in voor deze tekst",
+      "remindMeAboutThis": "Herinner mij hieraan",
+      "selectedText": "Geselecteerde tekst:"
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "Herinner",
+      "remindMe": "Herinner mij eraan",
+      "pickDateTime": "Kies datum en tijd",
+      "addANoteOptional": "Voeg een notitie toe (optioneel)",
+      "backToPresets": "Terug naar voorinstellingen",
+      "time": "Tijd",
+      "noteOptional": "Opmerking (optioneel)",
+      "whyAreYouSettingThisReminder": "Waarom stel je deze herinnering in?"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "Snoozen",
+      "snooze2": "Snoozen",
+      "pickDateTime": "Kies datum en tijd",
+      "pickDateTime2": "Kies datum en tijd",
+      "selectWhenToBeRemindedAboutThisItem": "Selecteer wanneer u aan dit item herinnerd wilt worden",
+      "snooze3": "Snoozen",
+      "snooze4": "Snoozen",
+      "snooze5": "Snoozen"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "Bericht laden...",
+      "failedToLoad": "Kan niet laden",
+      "loadingPostContent": "Berichtinhoud laden...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Kan berichtinhoud niet laden. Het bericht kan privé zijn of verwijderd.",
+      "viewOn": "Bekijk op "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "Spraakopname starten",
+      "requestingMicrophoneAccess": "Microfoontoegang aanvragen...",
+      "settings": "Instellingen",
+      "processing": "Verwerken...",
+      "cancelRecording": "Annuleer de opname",
+      "cancel": "Annuleer",
+      "stopRecording": "Stop met opnemen",
+      "stop": "Stop"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCaptureLink": "Kan link niet vastleggen",
+      "failedToCaptureNote": "Kan notitie niet vastleggen",
+      "captureFailed": "Vastleggen mislukt",
+      "failedToCaptureVoiceMemo": "Kan spraakmemo niet opnemen",
+      "voiceCaptureFailed": "Spraakopname mislukt",
+      "failedToCaptureFile": "Kan bestand niet vastleggen",
+      "fileCaptureFailed": "Het vastleggen van bestanden is mislukt",
+      "failedToCaptureAudio": "Kan geen audio vastleggen",
+      "failedToCaptureVoice": "Kan stem niet vastleggen"
+    },
+    "toasts": {
+      "inboxRefreshed": "Postvak IN vernieuwd"
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "选择保险库文件夹",
+      "button": "选择保险库"
+    },
+    "exportPdf": {
+      "title": "导出为 PDF",
+      "filterName": "PDF 文件"
+    },
+    "exportHtml": {
+      "title": "导出为 HTML",
+      "filterName": "HTML 文件"
+    },
+    "import": {
+      "filterSupported": "支持的文件",
+      "filterAll": "所有文件"
+    },
+    "exportCancelled": "导出已取消",
+    "update": {
+      "availableTitle": "有可用更新",
+      "availableMessage": "Memry {version} 可用。",
+      "availableDetailFallback": "现在下载更新？",
+      "buttonDownload": "下载",
+      "buttonLater": "稍后",
+      "readyTitle": "更新已准备好",
+      "readyMessage": "Memry {version} 已下载。",
+      "readyDetailFallback": "重新启动 Memry 以完成更新安装。",
+      "buttonRestartNow": "立即重启",
+      "releaseNotesLabel": "更新说明："
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "便签提醒",
+      "journal": "日记提醒",
+      "highlight": "高亮提醒",
+      "fallback": "提醒到期",
+      "default": "提醒"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "提醒时间必须在将来",
+    "definitionNotFound": "未找到定义",
+    "noteNotFound": "未找到便签",
+    "updateFailed": "更新失败"
+  }
+}

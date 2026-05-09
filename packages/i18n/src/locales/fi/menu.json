@@ -1,0 +1,28 @@
+{
+  "app": {
+    "quit": "Lopeta"
+  },
+  "file": {
+    "label": "Tiedosto",
+    "newNote": "Uusi huomautus",
+    "close": "Sulje ikkuna"
+  },
+  "navigation": {
+    "back": "Takaisin",
+    "forward": "Eteenpäin"
+  },
+  "edit": {
+    "label": "Muokkaa",
+    "undo": "Kumoa",
+    "redo": "Toista",
+    "cut": "Leikkaa",
+    "copy": "Kopioi",
+    "paste": "Liitä"
+  },
+  "view": {
+    "label": "Näytä",
+    "reload": "Lataa uudelleen",
+    "toggleDevTools": "Vaihda Kehittäjätyökalut",
+    "toggleFullscreen": "Koko näyttö päälle/pois"
+  }
+}

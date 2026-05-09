@@ -1,0 +1,303 @@
+{
+  "title": "วารสาร",
+  "section": {
+    "journal": "วารสาร",
+    "aiConnections": "การเชื่อมต่อ AI",
+    "todaysNotes": "โน้ตวันนี้",
+    "todaysSchedule": "ตารางวันนี้",
+    "todaysTasks": "งานวันนี้",
+    "schedule": "ตารางเวลา",
+    "tasks": "งาน",
+    "calendarEvents": "กิจกรรมในปฏิทิน",
+    "overdueTasks": "งานที่เกินกำหนด",
+    "technicalDetails": "รายละเอียดทางเทคนิค"
+  },
+  "action": {
+    "versionHistory": "ประวัติรุ่น",
+    "export": "ส่งออก",
+    "fullWidth": "ความกว้างเต็ม",
+    "journalSettings": "การตั้งค่าวารสาร",
+    "fullMode": "โหมดเต็ม",
+    "compactMode": "โหมดกะทัดรัด",
+    "focusMode": "โหมดโฟกัส",
+    "exitFocusMode": "ออกจากโหมดโฟกัส",
+    "enterFocusMode": "เข้าสู่โหมดโฟกัส",
+    "createNote": "สร้างบันทึก",
+    "createNewNote": "สร้างบันทึกใหม่",
+    "showLess": "แสดงน้อยลง",
+    "showMoreNotes": "แสดงบันทึก {count} เพิ่มเติม",
+    "showMoreNotes_plural": "แสดงบันทึก {count} อื่นๆ",
+    "showFewerNotes": "แสดงบันทึกให้น้อยลง",
+    "startBlank": "เริ่มต้นว่างแทน",
+    "changeTemplate": "เปลี่ยนแบบฟอร์ม",
+    "dismissIndicator": "ปิดตัวบ่งชี้",
+    "refreshConnections": "รีเฟรชการเชื่อมต่อ",
+    "reloadJournal": "โหลดสมุดบันทึกใหม่",
+    "goToToday": "ไปที่วันนี้",
+    "copyUnsavedContent": "คัดลอกเนื้อหาที่ยังไม่ได้บันทึกไปยังคลิปบอร์ด",
+    "openNoteFullPage": "เปิดบันทึกในหน้าเต็ม",
+    "closeNoteDrawer": "ปิดแถบบันทึก",
+    "addBookmark": "เพิ่มบุ๊กมาร์ก",
+    "removeBookmark": "ลบบุ๊กมาร์ก",
+    "tryAgain": "ลองอีกครั้ง"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "คุณกำลังวางแผนอะไร...",
+      "today": "คุณคิดอะไรอยู่วันนี้...",
+      "past": "ใคร่ครวญวันวันนี้...",
+      "default": "เริ่มเขียน..."
+    },
+    "toolbar": {
+      "ariaLabel": "การจัดรูปแบบข้อความ",
+      "bold": "ตัวหนา",
+      "italic": "ตัวเอียง",
+      "underline": "ขีดเส้นใต้",
+      "strikethrough": "ขีดฆ่า",
+      "link": "ลิงก์",
+      "image": "รูปภาพ",
+      "moreOptions": "ตัวเลือกเพิ่มเติม",
+      "heading1": "หัวข้อ 1",
+      "heading2": "หัวข้อ 2",
+      "heading3": "หัวข้อ 3",
+      "bulletList": "รายการสัญลักษณ์แสดงหัวข้อ",
+      "numberedList": "รายการที่มีหมายเลข",
+      "checklist": "รายการตรวจสอบ",
+      "quote": "คำคม",
+      "divider": "ตัวแบ่ง",
+      "codeBlock": "บล็อกโค้ด"
+    },
+    "prompt": {
+      "enterUrl": "ใส่ URL:"
+    },
+    "upload": {
+      "noEntry": "ไม่สามารถอัปโหลดรูปภาพ: ไม่มีบันทึกประจำวันที่ถูกเลือก",
+      "failed": "การอัปโหลดรูปภาพล้มเหลว"
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "วันนี้",
+      "yesterday": "เมื่อวาน",
+      "tomorrow": "พรุ่งนี้",
+      "future": "อนาคต"
+    },
+    "weekday": {
+      "sunday": "วันอาทิตย์",
+      "monday": "วันจันทร์",
+      "tuesday": "วันอังคาร",
+      "wednesday": "วันพุธ",
+      "thursday": "วันพฤหัสบดี",
+      "friday": "วันศุกร์",
+      "saturday": "วันเสาร์"
+    },
+    "weekdayShort": {
+      "sunday": "อา.",
+      "monday": "จ.",
+      "tuesday": "อ.",
+      "wednesday": "พ.",
+      "thursday": "พฤ.",
+      "friday": "ศ.",
+      "saturday": "ส."
+    },
+    "month": {
+      "january": "มกราคม",
+      "february": "กุมภาพันธ์",
+      "march": "มีนาคม",
+      "april": "เมษายน",
+      "may": "พฤษภาคม",
+      "june": "มิถุนายน",
+      "july": "กรกฎาคม",
+      "august": "สิงหาคม",
+      "september": "กันยายน",
+      "october": "ตุลาคม",
+      "november": "พฤศจิกายน",
+      "december": "ธันวาคม"
+    },
+    "monthShort": {
+      "january": "ม.ค.",
+      "february": "ก.พ.",
+      "march": "มี.ค.",
+      "april": "เม.ย.",
+      "may": "พฤษภาคม",
+      "june": "มิ.ย.",
+      "july": "ก.ค.",
+      "august": "ส.ค.",
+      "september": "ก.ย.",
+      "october": "ต.ค.",
+      "november": "พ.ย.",
+      "december": "ธ.ค."
+    },
+    "greeting": {
+      "morning": "สวัสดีตอนเช้า",
+      "afternoon": "สวัสดีตอนบ่าย",
+      "evening": "สวัสดีตอนเย็น",
+      "night": "ราตรีสวัสดิ์"
+    },
+    "allDay": "ตลอดวัน"
+  },
+  "nav": {
+    "previousDay": "วันก่อน",
+    "nextDay": "วันถัดไป",
+    "previousMonth": "เดือนก่อน",
+    "nextMonth": "เดือนถัดไป",
+    "previousYear": "ปีก่อน",
+    "nextYear": "ปีถัดไป",
+    "journalBack": "กลับไปที่สมุดบันทึก",
+    "journalNavigation": "การนำทางสมุดบันทึก",
+    "dateNavigation": "การนำทางวันที่ในสมุดบันทึก",
+    "goToYearView": "ไปยังมุมมองรายปี",
+    "previousView": "มุมมองก่อนหน้า",
+    "nextView": "มุมมองถัดไป"
+  },
+  "aria": {
+    "moreOptions": "ตัวเลือกเพิ่มเติม",
+    "documentStatistics": "สถิติเอกสาร",
+    "dayContext": "บริบทของวัน: งานและกำหนดการ",
+    "scheduleEvents": "เหตุการณ์กำหนดการ",
+    "tasks": "งาน",
+    "notesCreatedToday": "{count} โน้ตที่สร้างวันนี้"
+  },
+  "empty": {
+    "noEntry": "ไม่มีรายการ",
+    "noDaysInMonth": "ไม่มีวันในเดือนนี้",
+    "noEventsScheduled": "ไม่มีเหตุการณ์ที่กำหนดไว้",
+    "noEventsScheduledToday": "ไม่มีเหตุการณ์ที่กำหนดไว้วันนี้",
+    "noEventsWereScheduled": "ไม่มีเหตุการณ์ถูกกำหนดไว้",
+    "noTasksDue": "ไม่มีงานที่ต้องทำ",
+    "noTasksDueToday": "ไม่มีงานที่ต้องทำวันนี้",
+    "noTasksWereDue": "ไม่มีงานที่ต้องทำ",
+    "noNotesToday": "ไม่มีบันทึกที่สร้างขึ้นวันนี้",
+    "startDocumenting": "เริ่มบันทึกความคิดและไอเดียของคุณ"
+  },
+  "ai": {
+    "loading": "กำลังวิเคราะห์การบันทึกของคุณ...",
+    "empty": {
+      "willAppear": "การเชื่อมต่อของคุณจะแสดงที่นี่",
+      "noneYet": "ยังไม่พบการเชื่อมต่อ",
+      "moreJournaling": "เมื่อคุณบันทึกมากขึ้น AI จะหาบันทึกที่เกี่ยวข้อง",
+      "keepWriting": "เขียนต่อไปเพื่อค้นหาบันทึกที่เกี่ยวข้อง"
+    },
+    "error": {
+      "loadFailed": "ไม่สามารถโหลดการเชื่อมต่อได้"
+    },
+    "connectionAria": "การเชื่อมต่อกับ {label}, {scorePercent}% ตรงกัน"
+  },
+  "count": {
+    "item": "  \nรายการ  ",
+    "items": "รายการ",
+    "note": "บันทึก",
+    "notes": "โน้ต",
+    "day": "วัน",
+    "days": "วัน",
+    "event": "เหตุการณ์",
+    "events": "เหตุการณ์",
+    "meeting": "การประชุม",
+    "meetings": "การประชุม",
+    "task": "งาน",
+    "tasks": "งาน",
+    "todo": "ต้องทำ",
+    "people": "ผู้คน {count}",
+    "moreConnections": "+ การเชื่อมต่อเพิ่มเติม {count}",
+    "moreConnections_plural": "+ การเชื่อมต่อเพิ่มเติม {count}",
+    "moreNotes": "+ บันทึกเพิ่มเติม {count}",
+    "moreNotes_plural": "+ บันทึกเพิ่มเติม {count}",
+    "daysWithEntries": "วันกับการบันทึก",
+    "charactersWritten": "ตัวอักษรที่เขียน",
+    "words": "{count} คำ",
+    "characters": "ตัวอักษร {count}",
+    "completed": "เสร็จสิ้น {count}",
+    "overdue": "เกินกำหนด {count}"
+  },
+  "stats": {
+    "wordCount": "จำนวนคำ",
+    "characterCount": "จำนวนอักขระ",
+    "readingTime": "เวลาที่ประมาณการอ่าน",
+    "lastModified": "แก้ไขล่าสุด",
+    "lessThanOneMinute": "< 1 นาที",
+    "minutes": "{minutes} นาที",
+    "read": "อ่าน {readingTime}",
+    "modified": "แก้ไข {date}"
+  },
+  "task": {
+    "completed": "เสร็จสิ้น",
+    "notCompleted": "ยังไม่เสร็จสิ้น",
+    "priority": "ลำดับความสำคัญ {priority}",
+    "overdue": "เกินกำหนด",
+    "markComplete": "ทำเครื่องหมาย \"{title}\" ว่าเสร็จสิ้น",
+    "markNotComplete": "ทำเครื่องหมาย \"{title}\" ว่ายังไม่เสร็จสิ้น"
+  },
+  "template": {
+    "using": "ใช้ \"{templateName}\""
+  },
+  "reminder": {
+    "hasReminders": "มีการแจ้งเตือน",
+    "setToRevisit": "ตั้งค่าการเตือนให้กลับมาเยี่ยมชม",
+    "tooltip": "การแจ้งเตือน: {date}",
+    "tooltipMore": "การแจ้งเตือน: {date} (+{count} เพิ่มเติม)",
+    "success": {
+      "set": "ตั้งค่าการเตือนสำหรับบันทึกประจำวันนี้แล้ว",
+      "deleted": "ลบการแจ้งเตือนแล้ว",
+      "dismissed": "ยกเลิกการแจ้งเตือนแล้ว",
+      "snoozed": "เลื่อนการเตือนแล้ว"
+    },
+    "error": {
+      "set": "ไม่สามารถตั้งค่าการแจ้งเตือนได้",
+      "delete": "ไม่สามารถลบการแจ้งเตือนได้",
+      "dismiss": "ไม่สามารถยกเลิกการแจ้งเตือนได้",
+      "snooze": "ไม่สามารถเลื่อนเตือนความจำได้"
+    }
+  },
+  "toast": {
+    "unsavedRetry": "เนื้อหาของคุณยังอยู่ในหน่วยความจำ คลิกเพื่อบันทึกอีกครั้ง",
+    "noteNotFound": "ไม่พบบันทึก \"{target}\"",
+    "fileNotFound": "ไม่พบไฟล์: {target}",
+    "openLinkedItemFailed": "เปิดรายการลิงก์ล้มเหลว",
+    "errorPrefix": "ข้อผิดพลาด:"
+  },
+  "export": {
+    "noteTitle": "บันทึกประจำวัน - {month} {day}, {year}"
+  },
+  "note": {
+    "generatedTitle": "บันทึก - {date}",
+    "openAria": "เปิด {title}, สร้างเมื่อ {time}"
+  },
+  "tag": {
+    "suggestionsAria": "คำแนะนำแท็ก",
+    "empty": {
+      "title": "ยังไม่มีแท็ก",
+      "description": "พิมพ์เพื่อสร้างแท็กใหม่"
+    },
+    "groupTitle": "แท็ก",
+    "create": "สร้าง #{query}",
+    "ariaLabel": "แท็ก: {tag}, คลิกเพื่อกรอง"
+  },
+  "wiki": {
+    "suggestionsAria": "คำแนะนำหน้า",
+    "empty": {
+      "title": "ไม่พบหน้าใด ๆ"
+    },
+    "groupRecent": "ล่าสุด",
+    "groupAllPages": "หน้าทั้งหมด",
+    "createNewPage": "สร้างหน้าใหม่",
+    "ariaLabel": "ลิงก์ไปยัง {title}"
+  },
+  "error": {
+    "title": "ข้อผิดพลาดของบันทึกประจำวัน",
+    "description": "บันทึกประจำวันพบข้อผิดพลาดสำหรับ {date} การเปลี่ยนแปลงล่าสุดของคุณอาจไม่ได้รับการบันทึก",
+    "descriptionNoDate": "บันทึกประจำวันพบข้อผิดพลาด การเปลี่ยนแปลงล่าสุดของคุณอาจไม่ได้รับการบันทึก",
+    "unsavedContent": "ตรวจพบเนื้อหาที่ยังไม่ได้บันทึก ({length} ตัวอักษร)"
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "k"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveJournalEntry": "ไม่สามารถบันทึกบันทึกประจำวันได้",
+      "failedToLoadJournalSettings": "ไม่สามารถโหลดการตั้งค่าบันทึกประจำวันได้",
+      "failedToUpdateSettings": "ไม่สามารถอัปเดตการตั้งค่าได้"
+    }
+  }
+}

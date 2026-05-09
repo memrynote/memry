@@ -1,0 +1,483 @@
+{
+  "view": {
+    "tabs": {
+      "inbox": "Входящие",
+      "archived": "В архиве",
+      "insights": "Информация",
+      "ariaLabel": "Выбор вида входящих сообщений"
+    },
+    "triageButton": "сортировка",
+    "processInboxTitle": "Обработать входящие (Cmd+P)",
+    "itemCaptured": "Объект захвачен",
+    "searchArchivedTitle": "Поиск в архиве",
+    "searchPlaceholder": "Искать...",
+    "archivedItemsAria": "Архивированные элементы",
+    "snoozed": {
+      "show": "Показать отложенные элементы",
+      "showWithCount": "Показать отложенные элементы ({count})",
+      "hide": "Скрыть отложенные элементы"
+    },
+    "filter": {
+      "button": "Фильтр",
+      "byType": "Фильтровать по типу",
+      "active": "{count, plural, one {Фильтрация по типу #} other {Фильтрация по типам #}}",
+      "clearAll": "Очистить все"
+    },
+    "jobs": {
+      "running": "{count, plural, one {# выполняется фоновое задание} other {# выполняются фоновые задания}}",
+      "failed": "{count} не удалось"
+    }
+  },
+  "type": {
+    "link": "Ссылка",
+    "links": "Ссылки",
+    "note": "Примечание",
+    "notes": "Примечания",
+    "image": "Изображение",
+    "images": "Изображения",
+    "voice": "Голос",
+    "video": "Видео",
+    "clip": "Клип",
+    "clips": "Клипы",
+    "pdf": "PDF",
+    "pdfs": "PDF-файлы",
+    "social": "Социальные",
+    "reminder": "Напоминание",
+    "reminders": "Напоминания",
+    "text": "Текст",
+    "other": "Другое"
+  },
+  "empty": {
+    "successAria": "Успех, почтовый ящик пуст",
+    "title": "Входящие ноль",
+    "body": "Все обработано. Запишите что-то новое, используя введенные выше данные, или вставьте ссылку, чтобы начать.",
+    "filedThisWeek": "{count, plural, one {# зарегистрирован на этой неделе.} other {# зарегистрирован на этой неделе.}}",
+    "dayStreak": "{count, plural, one {Дневная серия #} other {Дневная серия #}}",
+    "tipPrefix": "Совет: используйте",
+    "tipSuffix": "для быстрого захвата из буфера обмена",
+    "archivedNone": "Нет элементов в архиве",
+    "archivedNoMatches": "Нет соответствующих заархивированных элементов.",
+    "noItemsYet": "Товаров пока нет",
+    "noItemsFiled": "Элементы еще не отправлены",
+    "noItemTypes": "Нет типов элементов для отображения",
+    "noFolders": "Папки не найдены",
+    "noFolderMatch": "Нет папок, соответствующих «{query}».",
+    "noNotes": "Заметки не найдены",
+    "allMatchesLinked": "Все совпадения уже связаны"
+  },
+  "list": {
+    "ariaLabel": "Входящие элементы",
+    "section": {
+      "today": "Сегодня",
+      "yesterday": "Вчера",
+      "older": "Старше"
+    },
+    "selectItem": "Выберите {title}.",
+    "itemAria": "{type}: {title}",
+    "untitled": "Без названия",
+    "untitledItem": "Безымянный предмет",
+    "transcribing": "Расшифровка...",
+    "transcriptionFailed": "Транскрипция не удалась",
+    "retryTranscription": "Повторить попытку",
+    "pageCount": "{count, plural, one {Страница #} other {Страницы #}}",
+    "snoozedUntilShort": "отложено до {date}",
+    "capturedAgo": "Захвачен {time}"
+  },
+  "loading": {
+    "inbox": "Загрузка входящих...",
+    "failed": "Не удалось загрузить входящие",
+    "tryAgain": "Попробуйте еще раз",
+    "capturingImage": "Захват изображения...",
+    "dropImageTitle": "Перетащите изображение для захвата",
+    "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
+    "unsupportedImageType": "Неподдерживаемый тип изображения: {type}.",
+    "imageTooLarge": "Изображение слишком большое (максимум 50 МБ)."
+  },
+  "toast": {
+    "failedArchiveItem": "Не удалось заархивировать элемент",
+    "failedArchiveItems": "Не удалось заархивировать элементы",
+    "failedFile": "Не удалось отправить файл",
+    "failedFileItem": "Не удалось сохранить элемент",
+    "failedFileItems": "Не удалось сохранить элементы",
+    "failedSnooze": "Не удалось отложить",
+    "failedSnoozeItem": "Не удалось отложить элемент.",
+    "failedApplyTags": "Не удалось применить теги",
+    "failedCaptureImage": "Не удалось захватить изображение",
+    "linkedToNote": "Ссылка на заметку",
+    "linkedToNotes": "Связано с заметками {count}.",
+    "filedTo": "Записано в {folder}",
+    "filedItemsTo": "Элементы {count} сохранены в {folder}.",
+    "filedPartial": "Зарегистрировано {processed} из элементов {total}.",
+    "appliedTags": "{tagCount, plural, one {Применен тег #.} other {Применены теги #}} — {itemCount, plural, one {# элемент} other {# элементов}}",
+    "archivedItems": "{count, plural, one {Архивированный элемент #} other {Архивированные элементы #}}",
+    "snoozedUntil": "Отложено до {time}",
+    "snoozedItemsUntil": "{count, plural, one {Элемент # отложен до {time}.} other {Отложены элементы # до {time}.}}"
+  },
+  "triage": {
+    "modeTitle": "Режим сортировки",
+    "exitHint": "Esc для выхода",
+    "exitAria": "Выйти из режима сортировки",
+    "position": "{current} из {total}",
+    "action": {
+      "discard": "Отбросить",
+      "archive": "Архив",
+      "open": "Открыть",
+      "toTask": "Задача",
+      "toNote": "Примечание",
+      "file": "Файл",
+      "snooze": "Отложить",
+      "cancel": "Отмена"
+    },
+    "snoozeUntil": "Отложить пока...",
+    "complete": {
+      "title": "Входящие ноль",
+      "processed": "{count, plural, one {Элемент # обработан} other {Обработаны элементы #}}",
+      "streak": "полоса",
+      "streakCount": "Серия {count}",
+      "dayProcessingStreak": "{count, plural, one {Дневная полоса обработки #} other {Дневная полоса обработки #}}",
+      "back": "Вернуться во входящие",
+      "motivation0": "Ваше будущее я благодарит вас.",
+      "motivation1": "Все на своем месте.",
+      "motivation2": "Очистите почтовый ящик, очистите разум.",
+      "motivation3": "Решение долг: погашен полностью.",
+      "motivation4": "Это было приятно, не так ли?"
+    }
+  },
+  "bulk": {
+    "selected": "{count} выбрано",
+    "deselectAll": "Отменить выбор всех",
+    "ariaLabel": "Массовые действия для выбранных элементов {count}",
+    "file": "Файл",
+    "tag": "Тег",
+    "snooze": "Отложить",
+    "archive": "Архив",
+    "add": "Добавить",
+    "dismissSuggestion": "Отклонить предложение",
+    "hint": {
+      "file": "файл",
+      "tag": "тег",
+      "snooze": "отложить",
+      "archive": "архив",
+      "deselect": "отменить выбор"
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {Архивировать элемент #?} other {Архивировать элементы #?}}",
+      "description": "Эти элементы будут заархивированы. Вы можете просмотреть заархивированные элементы позже.",
+      "confirm": "{count, plural, one {Архивировать элемент #} other {Архив элементов #}}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {Файл # Элемент} other {Элементы файла #}}",
+      "itemsToFile": "Элементы для хранения",
+      "multipleNoteLinksUnavailable": "Примечание. При подаче нескольких элементов нельзя добавлять ссылки на другие примечания.",
+      "filing": "Подача...",
+      "submit": "{count, plural, one {Файловый элемент #} other {Элементы файла #}}",
+      "macHint": "⌘⏎ для сохранения файла · Esc для закрытия",
+      "ctrlHint": "Ctrl+Enter для открытия файла · Esc для закрытия"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {Тег # Элемент} other {Тег # элементов}}",
+      "placeholder": "Введите для поиска тегов...",
+      "applying": "Применение...",
+      "apply": "{count, plural, one {Применить к элементу #} other {Применить к элементам #}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "Быстрые действия",
+    "archiveItem": "Архивный элемент",
+    "archive": "Архив",
+    "snooze": "Отложить"
+  },
+  "detail": {
+    "ariaLabel": "Детали товара",
+    "closePanel": "Закрыть панель",
+    "resizeFiling": "Изменить размер раздела файлов",
+    "restore": "Восстановить",
+    "restoreToInbox": "Восстановить во входящих",
+    "delete": "Удалить",
+    "deletePermanently": "Удалить навсегда",
+    "archive": "Архив",
+    "file": "Файл",
+    "keyboardHint": "Файл {modifier}⏎ · Папка 1–5 · Esc закрыть",
+    "voiceTitlePlaceholder": "Назовите эту голосовую заметку...",
+    "fileTo": "Файл в",
+    "ai": "ИИ",
+    "selectFolder": "Выбрать папку",
+    "searchOrCreateFolder": "Найдите или создайте с помощью /...",
+    "suggested": "Предлагается",
+    "notesRoot": "Примечания",
+    "notesRootLabel": "Примечания (корень)",
+    "createFolder": "Создать «{name}»",
+    "addTags": "Добавить теги...",
+    "linkToNote": "Ссылка на заметку",
+    "linkNotesPlaceholder": "Ссылка на примечания...",
+    "searchNotesAria": "Поиск заметок для ссылки",
+    "linkedNotesAria": "Связанные заметки",
+    "removeLinkTo": "Удалить ссылку на {title}",
+    "contentEditorAria": "Редактор контента",
+    "notePlaceholder": "Напишите свою заметку...",
+    "textPlaceholder": "Отредактируйте захваченный текст..."
+  },
+  "content": {
+    "capturedAt": "Захвачен {date}",
+    "todayAt": "сегодня в {time}",
+    "yesterdayAt": "вчера на {time}",
+    "dateAt": "{date} и {time}",
+    "words": "{count, plural, one {Слово #} other {# слов}}",
+    "duration": "Продолжительность: {duration}",
+    "dimensions": "Размеры",
+    "format": "Формат",
+    "size": "Размер",
+    "voiceMemo": "Голосовая заметка",
+    "play": "Играть",
+    "pause": "Пауза",
+    "audioPosition": "Аудио позиция",
+    "transcription": "Транскрипция",
+    "processing": "обработка",
+    "pending": "в ожидании",
+    "failed": "не удалось",
+    "copyTranscription": "Копировать транскрипцию",
+    "transcribingAudio": "Расшифровка аудио...",
+    "awaitingTranscription": "Жду транскрипцию...",
+    "noTranscription": "Транскрипция недоступна",
+    "failedPlayAudio": "Не удалось воспроизвести аудио",
+    "failedLoadAudio": "Не удалось загрузить аудио",
+    "video": "Видео",
+    "unsupportedVideo": "Ваш браузер не поддерживает тег видео."
+  },
+  "reminder": {
+    "dataUnavailable": "Данные напоминания недоступны.",
+    "triggered": "Напоминание активировано",
+    "noteLabel": "Напоминание Примечание",
+    "source": "Источник",
+    "journalTitle": "Журнал — {date}",
+    "noteFallback": "Примечание",
+    "journalFallback": "Журнал",
+    "highlighted": "Выделено: «{text}»",
+    "viewed": "Просмотрено",
+    "markViewed": "Отметить как просмотренное",
+    "notYetViewed": "Еще не просмотрено",
+    "snooze": "Отложить",
+    "presetInOneHour": "1 час",
+    "presetTomorrow": "Завтра",
+    "presetNextWeek": "На следующей неделе",
+    "custom": "Пользовательский..."
+  },
+  "insights": {
+    "loading": "Загрузка статистики...",
+    "captureActivity": "Захват активности",
+    "byType": "По типу",
+    "itemTypes": "Типы предметов",
+    "itemTypesDescription": "Распространение форматов контента",
+    "recentFilings": "Недавние заявки",
+    "recentlyFiled": "Недавно подано",
+    "recentlyFiledDescription": "Последние действия в вашем почтовом ящике",
+    "captured": "Захваченный",
+    "capturedThisWeek": "+{count} на этой неделе",
+    "processed": "Обработано",
+    "processRate": "ставка {rate}%",
+    "stale": "Несвежий",
+    "needsAttention": "требует внимания",
+    "allClear": "все ясно",
+    "avgTimeToFile": "Среднее время подачи файла",
+    "noCapturesYet": "Пока нет захватов",
+    "captures": "{count, plural, one {Захват #} other {# фиксирует}}",
+    "peak": "Пик: {day} {start}–{end}",
+    "convertedToTask": "Преобразовано в задачу",
+    "linked": "Связано",
+    "now": "сейчас",
+    "timeAgoMinutes": "{count}м назад",
+    "timeAgoHours": "{count}ч назад",
+    "timeAgoDays": "{count}d назад"
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "ИИ обнаружил: \"",
+      "addToSelection": "Добавить в выбор",
+      "dismiss": "Уволить"
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "Удалить ",
+      "item": "предмет",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Эти элементы будут удалены из вашего почтового ящика. Вы можете отменить это действие сразу после этого."
+    },
+    "componentsCaptureInput": {
+      "captureInput": "Захват входных данных",
+      "attachFile": "Прикрепить файл",
+      "attachFileImagesAudioVideoPdf": "Прикрепить файл (изображения, аудио, видео, PDF)",
+      "recordVoiceMemo": "Запись голосовой заметки",
+      "recordVoiceMemo2": "Запись голосовой заметки",
+      "alreadyCaptured": "Уже схвачено: «",
+      "rdquo": "рдкво;",
+      "captureAnyway": "Все равно захватить"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "Выбрать папку",
+      "searchFolders": "Поиск папок...",
+      "searchFolders2": "Поиск по папкам",
+      "searchResults": "Результаты поиска",
+      "create": "Создать \"",
+      "suggested": "Предлагается",
+      "recent": "Недавние",
+      "allFolders": "Все папки",
+      "allFolders2": "Все папки"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "Ссылка на",
+      "optional": "необязательно)",
+      "searchNotesToLink": "Поиск заметок для ссылки...",
+      "searchNotesToLink2": "Поиск заметок для ссылки",
+      "searching": "Поиск...",
+      "noNotesFound": "Заметки не найдены",
+      "linkedNotes": "Связанные заметки",
+      "noLinksAdded": "Ссылки не добавлены"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "Предлагается",
+      "ai": "ИИ",
+      "create": "Создать",
+      "tags": "Теги",
+      "selectedTags": "Выбранные теги",
+      "addTags": "Добавить теги",
+      "tagSuggestions": "Предложения по тегам"
+    },
+    "componentsFilingTagInput": {
+      "tags": "Теги",
+      "optional": "необязательно)",
+      "addTags": "Добавить теги...",
+      "addTags2": "Добавить теги",
+      "selectedTags": "Выбранные теги",
+      "suggested": "Предлагается"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "Захват активности"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "Элементы еще не отправлены",
+      "recentlyFiled": "Недавно подано",
+      "latestActionsOnYourInbox": "Последние действия в вашем почтовом ящике",
+      "linked": "Связано"
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "Загрузка статистики..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "Нет типов элементов для отображения",
+      "itemTypes": "Типы предметов",
+      "distributionOfContentFormats": "Распространение форматов контента"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "Захваченный "
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "х "
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "Редактор контента"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "миддот; "
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "Твит недоступен",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Возможно, этот твит был удален или взят из частного аккаунта.",
+      "openOnXCom": "Открыть на x.com",
+      "views": "просмотры",
+      "xCom": "х.ком",
+      "viewOnX": "Посмотреть на X"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "Введите имя папки...",
+      "quickFileFolderSearch": "Быстрый поиск папки с файлами"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "закрыть",
+      "capture": "захват"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "Удалить вложение"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "Быстрый захват ввода",
+      "recordVoiceMemo": "Запись голосовой заметки",
+      "attachFile": "Прикрепить файл"
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "ССЫЛКА"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "Захваченный",
+      "dismissError": "Ошибка закрытия",
+      "alreadyCaptured": "Уже захвачено",
+      "ldquo": "«Дкво»;",
+      "rdquoMiddot": "рдкво; · ",
+      "captureAnyway": "Все равно захватить",
+      "close": "Закрыть"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "Отбросьте, чтобы захватить",
+      "capturing": "Захват..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "Предложения папок",
+      "noFoldersMatch": "Ни одна папка не соответствует \""
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "Установить напоминание для этого текста",
+      "remindMeAboutThis": "Напомни мне об этом",
+      "selectedText": "Выделенный текст:"
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "Напомнить",
+      "remindMe": "Напомни мне",
+      "pickDateTime": "Выберите дату и время",
+      "addANoteOptional": "Добавить заметку (необязательно)",
+      "backToPresets": "Вернуться к пресетам",
+      "time": "Время",
+      "noteOptional": "Примечание (необязательно)",
+      "whyAreYouSettingThisReminder": "Почему вы устанавливаете это напоминание?"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "Отложить",
+      "snooze2": "Отложить",
+      "pickDateTime": "Выберите дату и время",
+      "pickDateTime2": "Выберите дату и время",
+      "selectWhenToBeRemindedAboutThisItem": "Выберите, когда вам будет напоминать об этом элементе",
+      "snooze3": "Отложить",
+      "snooze4": "Отложить",
+      "snooze5": "Отложить"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "Загрузка сообщения...",
+      "failedToLoad": "Не удалось загрузить",
+      "loadingPostContent": "Загрузка содержимого публикации...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Не удалось загрузить содержимое публикации. Пост может быть личным или удаленным.",
+      "viewOn": "Посмотреть на "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "Начать запись голоса",
+      "requestingMicrophoneAccess": "Запрос доступа к микрофону...",
+      "settings": "Настройки",
+      "processing": "Обработка...",
+      "cancelRecording": "Отменить запись",
+      "cancel": "Отмена",
+      "stopRecording": "Остановить запись",
+      "stop": "Стоп"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCaptureLink": "Не удалось захватить ссылку",
+      "failedToCaptureNote": "Не удалось сохранить заметку.",
+      "captureFailed": "Не удалось захватить",
+      "failedToCaptureVoiceMemo": "Не удалось записать голосовую заметку.",
+      "voiceCaptureFailed": "Запись голоса не удалась",
+      "failedToCaptureFile": "Не удалось захватить файл",
+      "fileCaptureFailed": "Захватить файл не удалось",
+      "failedToCaptureAudio": "Не удалось записать звук",
+      "failedToCaptureVoice": "Не удалось записать голос"
+    },
+    "toasts": {
+      "inboxRefreshed": "Входящие обновлены"
+    }
+  }
+}

@@ -1,1 +1,663 @@
-{}
+{
+  "page": {
+    "empty": {
+      "title": "لم يتم تحديد أي ملاحظة",
+      "body": "حدد ملاحظة من الشريط الجانبي لمشاهدتها"
+    },
+    "error": {
+      "title": "فشل تحميل الملاحظة"
+    },
+    "toast": {
+      "cannotSaveDeleted": "لا يمكن الحفظ - تم حذف الملاحظة",
+      "cannotRenameDeleted": "لا يمكن إعادة التسمية - تم حذف الملاحظة",
+      "createLinkedFailed": "فشل إنشاء ملاحظة مرتبطة",
+      "openLinkedFailed": "فشل في فتح العنصر المرتبط",
+      "localOnly": "ملاحظة تم ضبطها على المستوى المحلي فقط",
+      "willSync": "ستتم مزامنة الملاحظة مع السحابة",
+      "saveFailed": "فشل حفظ الملاحظة",
+      "renameFailed": "فشلت إعادة تسمية الملاحظة",
+      "toggleLocalOnlyFailed": "فشل التبديل المحلي فقط",
+      "toggleFullWidthFailed": "فشل تبديل العرض الكامل"
+    },
+    "deleteDialogTitle": "{count, plural, one {حذف الملاحظة} other {حذف ملاحظات #}}"
+  },
+  "tree": {
+    "aria": {
+      "tree": "شجرة الملاحظات",
+      "openFolderView": "فتح عرض المجلد"
+    },
+    "empty": {
+      "title": "لا توجد ملاحظات حتى الآن",
+      "body": "قم بإنشاء ملاحظة للبدء",
+      "newNote": "ملاحظة جديدة"
+    },
+    "loadingError": "فشل تحميل الملاحظات",
+    "actions": {
+      "newNote": "ملاحظة جديدة",
+      "newFolder": "مجلد جديد",
+      "rename": "إعادة تسمية",
+      "openExternal": "فتح في المحرر الخارجي",
+      "revealInFinder": "كشف في الباحث",
+      "setDefaultTemplate": "تعيين القالب الافتراضي",
+      "clearDefaultTemplate": "مسح القالب الافتراضي",
+      "setIcon": "تعيين أيقونة",
+      "removeIcon": "إزالة الرمز",
+      "deleteSelectedNotes": "حذف ملاحظات {count}",
+      "deleteSelectedItems": "حذف عناصر {count}"
+    },
+    "deleteDialog": {
+      "noteTitle": "حذف الملاحظة",
+      "folderTitle": "حذف المجلد",
+      "itemsTitle": "حذف عناصر {count}",
+      "noteBody": "هل أنت متأكد أنك تريد حذف \"{name}\"؟ لا يمكن التراجع عن هذا الإجراء.",
+      "folderBody": "هل أنت متأكد أنك تريد حذف \"{name}\" وجميع الملاحظات الموجودة بداخله؟ لا يمكن التراجع عن هذا الإجراء.",
+      "itemsBody": "هل أنت متأكد أنك تريد حذف عناصر {count}؟ لا يمكن التراجع عن هذا الإجراء.",
+      "folderSuffix": "المجلد",
+      "moreItems": "... و{count} أكثر",
+      "deleting": "جارٍ الحذف...",
+      "deleteCount": "حذف {count}"
+    }
+  },
+  "editor": {
+    "title": {
+      "untitled": "بدون عنوان",
+      "aria": "ملاحظة العنوان"
+    },
+    "content": {
+      "placeholder": "ابدأ الكتابة، أو اضغط على \"/\" للأوامر...",
+      "regionAria": "محرر الملاحظات",
+      "richTextAria": "محرر النص الغني",
+      "headingPlaceholder": "العنوان",
+      "listPlaceholder": "عنصر القائمة",
+      "todoPlaceholder": "عنصر المهام"
+    },
+    "toolbar": {
+      "reminderSet": "مجموعة تذكير",
+      "setReminder": "ضبط التذكير",
+      "removeBookmark": "إزالة الإشارة المرجعية",
+      "addBookmark": "إضافة إشارة مرجعية",
+      "hideLocalGraph": "إخفاء الرسم البياني المحلي",
+      "showLocalGraph": "عرض الرسم البياني المحلي",
+      "versionHistory": "تاريخ الإصدار",
+      "export": "تصدير",
+      "fullWidth": "العرض الكامل",
+      "disableLocalOnly": "تعطيل المحلية فقط",
+      "setLocalOnly": "تعيين محلي فقط"
+    },
+    "breadcrumb": {
+      "locationAria": "ملاحظة الموقع",
+      "parentFolderAria": "انتقل إلى المجلد الأصل"
+    },
+    "errorBoundary": {
+      "title": "خطأ في المحرر",
+      "body": "واجه المحرر خطأ. محتوى ملاحظتك آمن.",
+      "technicalDetails": "التفاصيل الفنية",
+      "reloadAria": "إعادة تحميل المحرر",
+      "reload": "إعادة تحميل المحرر"
+    },
+    "callout": {
+      "title": "وسيلة الشرح",
+      "group": "الكتل الأساسية",
+      "subtext": "تسليط الضوء على المعلومات الهامة",
+      "changeType": "تغيير نوع وسيلة الشرح",
+      "menuLabel": "نوع وسيلة الشرح",
+      "info": "معلومات",
+      "warning": "تحذير",
+      "error": "خطأ",
+      "success": "النجاح"
+    }
+  },
+  "menus": {
+    "wiki": {
+      "aria": "ملاحظة الاقتراحات",
+      "loading": "جارٍ تحميل الملاحظات...",
+      "empty": "لم يتم العثور على أي ملاحظات",
+      "create": "إنشاء ملاحظة جديدة"
+    },
+    "tags": {
+      "aria": "اقتراحات العلامات",
+      "loading": "جارٍ تحميل العلامات...",
+      "empty": "اكتب لإنشاء علامة جديدة",
+      "create": "إنشاء #{tag}"
+    },
+    "pasteLink": {
+      "title": "لصق باسم",
+      "url": "عنوان URL",
+      "mention": "أذكر",
+      "embedVideo": "تضمين الفيديو"
+    },
+    "emoji": {
+      "aria": "الرموز التعبيرية ومنتقي الأيقونات",
+      "emojiTab": "الرموز التعبيرية",
+      "iconsTab": "أيقونات",
+      "searchPlaceholder": "بحث",
+      "noIcons": "لم يتم العثور على أي أيقونات",
+      "clearSearch": "مسح البحث"
+    }
+  },
+  "detail": {
+    "bodyPlaceholder": "أكتب مذكرتك..."
+  },
+  "outline": {
+    "title": "الخطوط العريضة",
+    "aria": "الخطوط العريضة للوثيقة",
+    "empty": "لا عناوين",
+    "emptyYet": "لا يوجد عناوين بعد",
+    "readTime": "{count} دقيقة قراءة",
+    "words": "كلمات {count}",
+    "created": "تم إنشاؤها",
+    "modified": "معدلة"
+  },
+  "backlinks": {
+    "title": "الروابط الخلفية",
+    "sortRecent": "الأخيرة",
+    "sortAlpha": "من الألف إلى الياء",
+    "sortMentions": "معظم الإشارات",
+    "sortBy": "فرز الروابط الخلفية حسب {sort}",
+    "summary": "ملاحظات {notes} · مراجع {references}",
+    "sectionAria": "الروابط الخلفية",
+    "listAria": "قائمة الروابط الخلفية",
+    "fromAria": "الروابط الخلفية من {title}",
+    "collapse": "طي",
+    "expand": "توسيع",
+    "collapseSection": "طي قسم الروابط الخلفية",
+    "expandSection": "قم بتوسيع قسم الروابط الخلفية",
+    "showMore": "عرض المزيد من الروابط الخلفية لـ {count}",
+    "more": "{count} أكثر"
+  },
+  "tagsRow": {
+    "aria": "العلامات",
+    "empty": "إضافة العلامات",
+    "add": "إضافة علامة",
+    "removeAria": "إزالة العلامة: {tag}",
+    "inputPlaceholder": "اكتب اسم العلامة...",
+    "recent": "الأخيرة",
+    "matching": "مطابقة",
+    "all": "جميع العلامات",
+    "none": "لم يتم العثور على علامات",
+    "createTag": "إنشاء علامة: \"{tag}\"",
+    "chooseColor": "اختر اللون:",
+    "preview": "معاينة:",
+    "colorAria": "حدد لون {color}"
+  },
+  "properties": {
+    "title": "خصائص",
+    "noteAria": "خصائص الملاحظة",
+    "workspaceAria": "خصائص مساحة العمل",
+    "listAria": "قائمة الخصائص",
+    "add": "أضف خاصية",
+    "addDescription": "أضف خاصية جديدة إلى هذه الملاحظة",
+    "namePlaceholder": "اسم العقار",
+    "nameAria": "اسم العقار",
+    "typeSection": "اكتب",
+    "empty": "فارغ",
+    "dragAria": "اسحب لإعادة ترتيب الخاصية",
+    "editName": "تعديل اسم الخاصية",
+    "delete": "حذف الممتلكات",
+    "searchOptions": "خيارات البحث...",
+    "noOptions": "لا توجد خيارات بعد",
+    "optionName": "اسم الخيار",
+    "newOption": "خيار جديد",
+    "ratingAria": "التقييم",
+    "openUrlAria": "افتح عنوان URL",
+    "types": {
+      "text": "نص",
+      "number": "رقم",
+      "date": "التاريخ",
+      "checkbox": "خانة الاختيار",
+      "url": "عنوان URL",
+      "status": "الحالة",
+      "select": "اختر",
+      "multiselect": "تحديد متعدد"
+    }
+  },
+  "templateSelector": {
+    "title": "اختر قماشك",
+    "description": "حدد قالبًا لبدء ملاحظتك",
+    "searchPlaceholder": "قوالب البحث...",
+    "loading": "جارٍ تحميل النماذج...",
+    "empty": "لم يتم العثور على قوالب",
+    "myTemplates": "القوالب الخاصة بي",
+    "essentials": "أساسيات",
+    "setFolderDefault": "تعيين كمجلد افتراضي",
+    "useTemplate": "استخدم القالب",
+    "createNote": "إنشاء ملاحظة"
+  },
+  "exportDialog": {
+    "title": "ملاحظة التصدير",
+    "description": "تصدير \"{title}\" إلى ملف",
+    "format": "التنسيق",
+    "pdfDescription": "وثيقة جاهزة للطباعة",
+    "htmlDescription": "ملف جاهز للويب",
+    "pageSize": "حجم الصفحة",
+    "selectPageSize": "حدد حجم الصفحة",
+    "options": "خيارات",
+    "includeMetadata": "تضمين البيانات الوصفية (العلامات والتواريخ)",
+    "exporting": "جارٍ التصدير...",
+    "exported": "تصدير!",
+    "export": "تصدير",
+    "toast": {
+      "failed": "فشل التصدير"
+    }
+  },
+  "versionHistory": {
+    "title": "تاريخ الإصدار",
+    "description": "عرض واستعادة الإصدارات السابقة من \"{title}\"",
+    "hidePreview": "إخفاء المعاينة",
+    "showPreview": "عرض المعاينة",
+    "empty": "لم يتم حفظ أي إصدارات حتى الآن",
+    "emptyDescription": "يتم حفظ الإصدارات تلقائيًا عند إجراء تغييرات مهمة",
+    "latest": "الأحدث",
+    "autoSaved": "تم الحفظ تلقائيًا",
+    "words": "كلمات {count}",
+    "selectPrompt": "حدد نسخة لمعاينتها",
+    "restore": "استعادة",
+    "deleteTitle": "هل تريد حذف هذا الإصدار؟",
+    "deleteDescription": "لا يمكن التراجع عن هذا الإجراء. سيتم حذف هذا الإصدار نهائيًا.",
+    "restoreTitle": "استعادة هذا الإصدار؟",
+    "restoreDescription": "سيؤدي هذا إلى استبدال محتوى الملاحظة الحالية بهذا الإصدار. سيتم حفظ لقطة للحالة الحالية أولاً، حتى تتمكن من التراجع عن هذا الإجراء.",
+    "restoring": "جارٍ الاستعادة...",
+    "toast": {
+      "loadPreviewFailed": "فشل تحميل معاينة الإصدار",
+      "restored": "تمت استعادة الملاحظة إلى الإصدار السابق",
+      "deleted": "تم حذف الإصدار"
+    }
+  },
+  "templateEditor": {
+    "title": {
+      "new": "قالب جديد",
+      "view": "عرض القالب",
+      "edit": "تحرير القالب"
+    },
+    "toast": {
+      "nameRequired": "اسم القالب مطلوب",
+      "created": "تم إنشاء القالب",
+      "createFailed": "فشل في إنشاء القالب",
+      "saved": "تم حفظ القالب",
+      "saveFailed": "فشل حفظ القالب",
+      "duplicateFailed": "فشل تكرار القالب",
+      "deleteFailed": "فشل في حذف القالب"
+    }
+  },
+  "reminders": {
+    "summary": "تذكير: {date}",
+    "summaryWithMore": "تذكير: {date} (+{count} أكثر)",
+    "hasReminders": "لديه تذكيرات",
+    "setReminder": "ضبط التذكير",
+    "toast": {
+      "set": "مجموعة تذكير",
+      "setForHighlight": "تم تعيين التذكير للنص المميز",
+      "setFailed": "فشل تعيين التذكير",
+      "deleted": "تم حذف التذكير",
+      "deleteFailed": "فشل حذف التذكير",
+      "dismissed": "تم رفض التذكير",
+      "dismissFailed": "تعذّر تجاهل التذكير"
+    }
+  },
+  "linkedTasks": {
+    "title": "المهام المرتبطة",
+    "loading": "جارٍ تحميل المهام المرتبطة..."
+  },
+  "phaseF": {
+    "componentsFolderViewColumnHeader": {
+      "dragToReorderColumn": "اسحب لإعادة ترتيب العمود"
+    },
+    "componentsFolderViewColumnSelector": {
+      "properties": "خصائص",
+      "searchColumns": "أعمدة البحث...",
+      "noMatchingColumns": "لا توجد أعمدة متطابقة",
+      "formulas": "الصيغ",
+      "noFormulasDefined": "لم يتم تحديد أي صيغ",
+      "addFormula": "إضافة صيغة",
+      "deleteFormula": "حذف الصيغة",
+      "areYouSureYouWantToDeleteTheFormula": "هل أنت متأكد أنك تريد حذف الصيغة \"",
+      "quotThisActionCannotBeUndone": "مثل ؛؟ لا يمكن التراجع عن هذا الإجراء.",
+      "cancel": "إلغاء",
+      "delete": "حذف",
+      "none": "لا شيء",
+      "edit": "تحرير",
+      "delete2": "حذف"
+    },
+    "componentsFolderViewFilterBuilder": {
+      "filter": "تصفية",
+      "filters": "المرشحات",
+      "clearAll": "مسح الكل",
+      "noFiltersApplied": "لم يتم تطبيق أي مرشحات",
+      "addFiltersToNarrowDownYourNotes": "أضف مرشحات لتضييق نطاق ملاحظاتك",
+      "match": "مباراة",
+      "allAnd": "الكل (و)",
+      "anyOr": "أي (أو)",
+      "ofTheFollowing": "مما يلي:",
+      "match2": "مباراة",
+      "all": "الكل",
+      "any": "أي",
+      "of": "من:",
+      "addCondition": "إضافة شرط",
+      "addFilter": "إضافة مرشح",
+      "addGroup": "أضف مجموعة"
+    },
+    "componentsFolderViewFilterRow": {
+      "builtIn": "مدمج",
+      "properties": "خصائص",
+      "placeholderProperty": "الملكية",
+      "placeholderOperator": "المشغل",
+      "placeholderValue": "القيمة"
+    },
+    "componentsFolderViewFolderTableView": {
+      "notesTable": "جدول الملاحظات"
+    },
+    "componentsFolderViewFolderViewToolbar": {
+      "searchNotes": "ملاحظات البحث...",
+      "clearSearch": "مسح البحث"
+    },
+    "componentsFolderViewFormulaEditorModal": {
+      "defineAComputedColumnUsingAnExpression": "تحديد عمود محسوب باستخدام تعبير.",
+      "name": "الاسم",
+      "expression": "التعبير",
+      "available": "متاح: ",
+      "preview": "معاينة",
+      "fixExpressionErrorsToSeePreview": "إصلاح أخطاء التعبير لرؤية المعاينة",
+      "usingNote": "باستخدام الملاحظة: \"",
+      "quot": "مثل؛",
+      "cancel": "إلغاء",
+      "namePlaceholder": "days_until_due",
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
+    },
+    "componentsFolderViewGroupBySelector": {
+      "clearGrouping": "مسح التجميع",
+      "searchProperties": "خصائص البحث...",
+      "builtIn": "مدمج",
+      "properties": "خصائص",
+      "noGroupablePropertiesFound": "لم يتم العثور على خصائص قابلة للتجميع",
+      "sortDirection": "فرز الاتجاه",
+      "collapseGroupsByDefault": "طي المجموعات بشكل افتراضي",
+      "showGroupSummaries": "عرض ملخصات المجموعة",
+      "clearGrouping2": "مسح التجميع"
+    },
+    "componentsFolderViewGroupedTable": {
+      "groupedNotesTable": "جدول الملاحظات المجمعة",
+      "more": "المزيد"
+    },
+    "componentsFolderViewMoveToFolderDialog": {
+      "searchFolders": "بحث في المجلدات...",
+      "loadingFolders": "جارٍ تحميل المجلدات...",
+      "suggested": "مقترح",
+      "bestMatch": "أفضل مباراة",
+      "current": "الحالي)",
+      "allFolders": "كافة المجلدات",
+      "current2": "الحالي)",
+      "noFoldersMatch": "لا توجد مجلدات متطابقة \"",
+      "quot": "مثل؛",
+      "create": "إنشاء \"",
+      "quot2": "مثل؛",
+      "cancel": "إلغاء"
+    },
+    "componentsFolderViewRowContextMenu": {
+      "delete": "حذف ",
+      "notes": "ملاحظات",
+      "open": "مفتوح",
+      "openInExternalEditor": "فتح في المحرر الخارجي",
+      "revealInFinder": "كشف في الباحث",
+      "revealInSidebar": "كشف في الشريط الجانبي",
+      "copyLink": "نسخ الرابط",
+      "delete2": "حذف"
+    },
+    "componentsFolderViewSortableColumnHeader": {
+      "dragToReorderColumn": "اسحب لإعادة ترتيب العمود",
+      "resizeColumn": "تغيير حجم العمود"
+    },
+    "componentsFolderViewViewSwitcher": {
+      "default": "default",
+      "rename": "إعادة تسمية",
+      "duplicate": "مكررة",
+      "setAsDefault": "تعيين كافتراضي",
+      "delete": "حذف",
+      "createNewView": "إنشاء عرض جديد",
+      "createNewView2": "إنشاء عرض جديد",
+      "createANewViewWithCustomColumnsFiltersAndSorting": "قم بإنشاء طريقة عرض جديدة باستخدام الأعمدة المخصصة وعوامل التصفية والفرز.",
+      "viewName": "عرض الاسم",
+      "myCustomView": "وجهة نظري المخصصة",
+      "baseConfiguration": "التكوين الأساسي",
+      "copyFromCurrentView": "نسخ من العرض الحالي",
+      "startFreshDefaultColumns": "البدء من جديد (الأعمدة الافتراضية)",
+      "cancel": "إلغاء",
+      "renameView": "إعادة تسمية العرض",
+      "enterANewNameForThisView": "أدخل اسمًا جديدًا لطريقة العرض هذه.",
+      "viewName2": "عرض الاسم",
+      "viewName3": "عرض الاسم",
+      "cancel2": "إلغاء",
+      "deleteView": "حذف العرض",
+      "areYouSureYouWantToDelete": "هل أنت متأكد أنك تريد حذف \"",
+      "thisActionCannotBeUndone": "لا يمكن التراجع عن هذا الإجراء.",
+      "cancel3": "إلغاء"
+    },
+    "componentsNoteContentAreaFileBlock": {
+      "failedToLoadPdf": "فشل تحميل ملف PDF: ",
+      "download": "تحميل",
+      "download2": "تحميل",
+      "noFileAttached": "لا يوجد ملف مرفق"
+    },
+    "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
+      "openInTaskPanel": "فتح في لوحة المهام",
+      "taskName": "اسم المهمة...",
+      "taskDeleted": "تم حذف المهمة",
+      "loading": "جار التحميل..."
+    },
+    "componentsNoteContentAreaTaskBlockTaskCreationPopover": {
+      "project": "مشروع",
+      "priority": "الأولوية",
+      "dueDate": "تاريخ الاستحقاق",
+      "cancel": "إلغاء"
+    },
+    "componentsNoteContentAreaYoutubeEmbedBlock": {
+      "noVideoUrl": "لا يوجد عنوان URL للفيديو"
+    },
+    "componentsNoteExportDialog": {
+      "pdf": "قوات الدفاع الشعبي",
+      "html": "HTML",
+      "a4210X297Mm": "A4 (210 × 297 ملم)",
+      "letter85X11In": "حرف (8.5 × 11 بوصة)",
+      "legal85X14In": "قانوني (8.5 × 14 بوصة)"
+    },
+    "componentsNoteInfoSectionEditorsDateeditor": {
+      "ddMmYyyy": "dd.mm.yyyy"
+    },
+    "componentsNoteNoteHeader": {
+      "synced": "تمت المزامنة"
+    },
+    "componentsSharedDocumentInfoTab": {
+      "words": "كلمات",
+      "characters": "الشخصيات",
+      "readingTime": "وقت القراءة",
+      "created": "تم إنشاؤها",
+      "modified": "معدلة"
+    },
+    "componentsSidebarProjectsEmptyState": {
+      "noProjectsYet": "لا توجد مشاريع حتى الآن",
+      "createYourFirstProject": "أنشئ مشروعك الأول",
+      "createYourFirstProject2": "أنشئ مشروعك الأول"
+    },
+    "componentsSidebarSidebarBookmarkList": {
+      "loadingBookmarks": "جارٍ تحميل الإشارات المرجعية...",
+      "failedToLoadBookmarks": "فشل تحميل الإشارات المرجعية",
+      "noBookmarksYet": "لا توجد إشارات مرجعية حتى الآن",
+      "moreOptions": "المزيد من الخيارات",
+      "remove": "إزالة"
+    },
+    "componentsSidebarSidebarItemContextMenu": {
+      "open": "مفتوح",
+      "openToTheSide": "مفتوح على الجانب",
+      "pinToTabs": "تثبيت على علامات التبويب",
+      "edit": "تحرير",
+      "delete": "حذف",
+      "copyLink": "نسخ الرابط"
+    },
+    "componentsSidebarSidebarTagList": {
+      "loadingTags": "جارٍ تحميل العلامات...",
+      "failedToLoadTags": "فشل تحميل العلامات",
+      "noTagsYet": "لا توجد علامات حتى الآن",
+      "filterTags": "تصفية العلامات...",
+      "noMatchingTags": "لا توجد علامات مطابقة"
+    },
+    "componentsSidebarSortableProjectItem": {
+      "dropHere": "أسقط هنا",
+      "editProject": "تحرير المشروع"
+    },
+    "componentsSidebarTagDeleteDialog": {
+      "deleteTag": "حذف العلامة #",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "لن يتم حذف الملاحظات التي تحتوي على هذه العلامة، بل سيتم إلغاء وضع علامة عليها فقط.",
+      "cancel": "إلغاء"
+    },
+    "componentsSidebarTagDetailView": {
+      "goBack": "ارجع",
+      "notes": "ملاحظات",
+      "loadingNotes": "جارٍ تحميل الملاحظات...",
+      "noNotesWithThisTag": "لا توجد ملاحظات مع هذه العلامة",
+      "addThisTagToANoteToSeeItHere": "أضف هذه العلامة إلى ملاحظة لرؤيتها هنا",
+      "pinned": "مثبت",
+      "allNotes": "جميع الملاحظات",
+      "allNotesArePinned": "تم تثبيت جميع الملاحظات",
+      "unpinFromTag": "قم بإلغاء التثبيت من العلامة",
+      "unpin": "إزالة التثبيت",
+      "pinToTag": "تثبيت على العلامة",
+      "pin": "دبوس",
+      "tagActions": "إجراءات العلامة",
+      "editTagName": "تحرير اسم العلامة",
+      "changeColor": "تغيير اللون",
+      "deleteTag": "حذف العلامة",
+      "recent": "الأخيرة",
+      "created": "تم إنشاؤها",
+      "alphabetical": "أبجديا"
+    },
+    "componentsSidebarTagRenameDialog": {
+      "renameTag": "إعادة تسمية العلامة",
+      "rename": "إعادة تسمية ",
+      "acrossEveryNoteThatUsesIt": "عبر كل ملاحظة يستخدمها.",
+      "newName": "اسم جديد",
+      "cancel": "إلغاء"
+    },
+    "componentsViewersAudioPlayer": {
+      "failedToLoadAudio": "فشل تحميل الصوت",
+      "theAudioFileCouldNotBePlayed": "لا يمكن تشغيل الملف الصوتي.",
+      "skipBack10s": "تخطي 10S إلى الوراء",
+      "skipForward10s": "تخطي إلى الأمام 10S"
+    },
+    "componentsViewersImageViewer": {
+      "failedToLoadImage": "فشل تحميل الصورة",
+      "theImageCouldNotBeDisplayed": "لا يمكن عرض الصورة.",
+      "resetZoom": "إعادة ضبط التكبير",
+      "rotate": "تدوير",
+      "dragToPan": "اسحب إلى المقلاة"
+    },
+    "componentsViewersPdfViewer": {
+      "failedToLoadPdf": "فشل تحميل PDF",
+      "previousPage": "الصفحة السابقة",
+      "nextPage": "الصفحة التالية",
+      "zoomOut": "تصغير",
+      "zoomIn": "تكبير",
+      "fitToWidth": "تناسب العرض",
+      "rotate": "تدوير"
+    },
+    "componentsViewersVideoPlayer": {
+      "failedToLoadVideo": "فشل تحميل الفيديو",
+      "theVideoFileCouldNotBePlayed": "لا يمكن تشغيل ملف الفيديو."
+    },
+    "pagesFile": {
+      "failedToLoadFile": "فشل تحميل الملف",
+      "tryAgain": "حاول مرة أخرى",
+      "noFileSelected": "لم يتم تحديد أي ملف",
+      "selectAFileFromTheSidebarToViewIt": "حدد ملفًا من الشريط الجانبي لمشاهدته",
+      "loadingFile": "جارٍ تحميل الملف...",
+      "openInDefaultApp": "فتح في التطبيق الافتراضي",
+      "open": "مفتوح",
+      "revealInFinder": "كشف في الباحث",
+      "reveal": "كشف",
+      "unsupportedFileType": "نوع الملف غير معتمد"
+    },
+    "pagesFolderView": {
+      "createNewNote": "إنشاء ملاحظة جديدة",
+      "viewSettings": "عرض الإعدادات",
+      "displayDensity": "كثافة العرض",
+      "comfortable": "مريح",
+      "compact": "مدمج",
+      "showSummaries": "عرض الملخصات",
+      "cancel": "إلغاء"
+    },
+    "pagesTemplateEditor": {
+      "loadingTemplate": "جارٍ تحميل النموذج...",
+      "builtInTemplatesCannotBeModified": "لا يمكن تعديل القوالب المضمنة",
+      "description": "الوصف",
+      "briefDescriptionOfThisTemplate": "وصف مختصر لهذا القالب...",
+      "templateContent": "محتوى القالب",
+      "use": "استخدم ",
+      "toInsertTheNoteTitleWhenCreatingANote": "لإدراج عنوان الملاحظة عند إنشاء ملاحظة.",
+      "templateName": "اسم القالب",
+      "defaultContentForNotesCreatedFromThisTemplate": "المحتوى الافتراضي للملاحظات التي تم إنشاؤها من هذا القالب..."
+    },
+    "pagesTemplates": {
+      "loadingCollection": "جارٍ تحميل المجموعة...",
+      "templateCollection": "مجموعة القوالب",
+      "templates": "قوالب",
+      "curatedStructuresForYourNotes": "الهياكل المنسقة لملاحظاتك.",
+      "newTemplate": "قالب جديد",
+      "myTemplates": "القوالب الخاصة بي",
+      "builtIn": "مدمج",
+      "deleteTemplate": "حذف القالب",
+      "areYouSureYouWantToDelete": "هل أنت متأكد أنك تريد حذف \"",
+      "notesCreatedFromThisTemplateWillNotBeAffected": "لن تتأثر الملاحظات التي تم إنشاؤها من هذا القالب.",
+      "cancel": "إلغاء",
+      "builtIn2": "مدمج",
+      "duplicate": "مكررة",
+      "delete": "حذف",
+      "startYourCollection": "ابدأ مجموعتك",
+      "templatesHelpYouCreateNotesWithConsistentStructure": "تساعدك القوالب على إنشاء ملاحظات ذات بنية متسقة.",
+      "createTemplate": "إنشاء قالب"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveFormula": "فشل حفظ الصيغة",
+      "failedToOpenInExternalEditor": "فشل الفتح في المحرر الخارجي",
+      "failedToRevealInFinder": "فشل الكشف في Finder",
+      "failedToCopyLink": "فشل نسخ الرابط",
+      "failedToCreateView": "فشل إنشاء طريقة العرض",
+      "failedToRenameFolder": "فشلت إعادة تسمية المجلد",
+      "failedToCreateTask": "فشل في إنشاء المهمة",
+      "failedToLoadVersionHistory": "فشل تحميل سجل الإصدارات",
+      "failedToRestoreVersion": "فشل في استعادة الإصدار",
+      "failedToDeleteVersion": "فشل في حذف الإصدار",
+      "failedToCreateNote": "فشل في إنشاء ملاحظة",
+      "failedToLoadMoreBookmarks": "فشل تحميل المزيد من الإشارات المرجعية",
+      "failedToToggleBookmark": "فشل في تبديل الإشارة المرجعية",
+      "failedToRemoveBookmark": "فشل في إزالة الإشارة المرجعية",
+      "failedToReorderBookmarks": "فشل في إعادة ترتيب الإشارات المرجعية",
+      "failedToSave": "فشل الحفظ",
+      "failedToRename": "فشلت إعادة التسمية",
+      "failedToUpdateEmoji": "فشل تحديث الرموز التعبيرية",
+      "failedToUpdateTags": "فشل تحديث العلامات",
+      "failedToSnoozeReminder": "فشل تأجيل التذكير",
+      "failedToCreateFolder": "فشل في إنشاء المجلد",
+      "failedToLoadProperties": "فشل في تحميل الخصائص",
+      "failedToLoadPropertyDefinitions": "فشل تحميل تعريفات الخاصية",
+      "failedToLoadTemplates": "فشل تحميل القوالب"
+    },
+    "toasts": {
+      "noteExportedSuccessfully": "تم تصدير الملاحظة بنجاح",
+      "failedToUpdateProperty": "فشل في تحديث الخاصية",
+      "failedToUpdateTags": "فشل تحديث العلامات",
+      "reminderSnoozed": "تم تأجيل التذكير",
+      "failedToSnoozeReminder": "فشل تأجيل التذكير",
+      "defaultTemplateSet": "مجموعة القالب الافتراضية",
+      "failedToSetDefaultTemplate": "فشل في تعيين القالب الافتراضي",
+      "defaultTemplateCleared": "تم مسح القالب الافتراضي",
+      "failedToClearDefaultTemplate": "فشل في مسح القالب الافتراضي",
+      "failedToAddProperty": "فشلت إضافة خاصية",
+      "failedToDeleteProperty": "فشل في حذف الخاصية",
+      "failedToRenameProperty": "فشل في إعادة تسمية الخاصية",
+      "failedToReorderProperties": "فشل في إعادة ترتيب الخصائص",
+      "cannotAddTagThisNoteWasDeleted": "لا يمكن إضافة علامة - تم حذف هذه الملاحظة",
+      "cannotRemoveTagThisNoteWasDeleted": "لا يمكن إزالة العلامة - تم حذف هذه الملاحظة",
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "لا يمكن التغيير محليًا فقط — تم حذف هذه الملاحظة"
+    }
+  }
+}

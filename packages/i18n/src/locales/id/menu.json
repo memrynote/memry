@@ -1,0 +1,28 @@
+{
+  "app": {
+    "quit": "Berhenti"
+  },
+  "file": {
+    "label": "Mengajukan",
+    "newNote": "Catatan Baru",
+    "close": "Tutup Jendela"
+  },
+  "navigation": {
+    "back": "Kembali",
+    "forward": "Maju"
+  },
+  "edit": {
+    "label": "Sunting",
+    "undo": "Membatalkan",
+    "redo": "Ulangi",
+    "cut": "Potong",
+    "copy": "Salin",
+    "paste": "Tempel"
+  },
+  "view": {
+    "label": "Lihat",
+    "reload": "Muat ulang",
+    "toggleDevTools": "Alihkan Alat Pengembang",
+    "toggleFullscreen": "Alihkan Layar Penuh"
+  }
+}

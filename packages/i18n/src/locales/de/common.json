@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "close": "Schließen",
+    "ok": "Okay",
+    "yes": "Ja",
+    "no": "Nein",
+    "delete": "Löschen",
+    "confirm": "Bestätigen",
+    "apply": "Bewerben",
+    "done": "Fertig",
+    "discard": "Verwerfen",
+    "dontSave": "Nicht speichern",
+    "edit": "Bearbeiten",
+    "add": "Hinzufügen",
+    "remove": "Entfernen",
+    "retry": "Versuchen Sie es noch einmal",
+    "submit": "Senden",
+    "back": "Zurück",
+    "next": "Als nächstes",
+    "continue": "Weiter",
+    "reset": "Zurücksetzen",
+    "copy": "Kopieren",
+    "paste": "Einfügen",
+    "create": "Erstellen",
+    "open": "Offen"
+  },
+  "state": {
+    "loading": "Laden…",
+    "saving": "Sparen…",
+    "deleting": "Löschen…",
+    "searching": "Suche...",
+    "error": "Fehler",
+    "success": "Erfolg"
+  },
+  "empty": {
+    "noResults": "Keine Ergebnisse",
+    "noItems": "Keine Artikel",
+    "noMatch": "Keine Übereinstimmungen"
+  },
+  "action": {
+    "search": "Suchen",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "close": "Schließen",
+    "expand": "Erweitern",
+    "collapse": "Zusammenbruch",
+    "showMore": "+{count, plural, one {# mehr} other {# mehr}}",
+    "showLess": "Weniger anzeigen"
+  },
+  "tabs": {
+    "pin": "Pin-Registerkarte",
+    "unpin": "Tab lösen",
+    "contextMenu": {
+      "close": "Schließen",
+      "closeOthers": "Andere schließen",
+      "closeToRight": "Ganz rechts",
+      "closeAll": "Alle schließen",
+      "duplicate": "Registerkarte duplizieren",
+      "splitRight": "Rechts teilen",
+      "splitDown": "Aufteilen",
+      "copyPath": "Pfad kopieren",
+      "revealInSidebar": "In der Seitenleiste anzeigen"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {#-Element} other {#-Elemente}}",
+    "note": "{count, plural, one {#-Hinweis} other {#-Notizen}}",
+    "folder": "{count, plural, one {#-Ordner} other {#-Ordner}}",
+    "task": "{count, plural, one {#-Aufgabe} other {#-Aufgaben}}",
+    "project": "{count, plural, one {#-Projekt} other {#-Projekte}}",
+    "itemDelete": "{count, plural, one {Löschen Sie das #-Element} other {Löschen Sie #-Elemente}}"
+  },
+  "toast": {
+    "actionFailed": "Aktion fehlgeschlagen",
+    "nothingToUndo": "Nichts rückgängig zu machen",
+    "undone": "Rückgängig gemacht: {description}",
+    "undoFailed": "Aktion konnte nicht rückgängig gemacht werden",
+    "copied": "Kopiert",
+    "copyFailed": "Kopieren fehlgeschlagen"
+  },
+  "dateRelative": {
+    "today": "Heute",
+    "yesterday": "Gestern",
+    "daysAgo": "{count, plural, one {# Tag vor} other {# Tage her}}"
+  },
+  "recurrence": {
+    "everyDay": "Jeden Tag",
+    "everyNDays": "{count, plural, one {Jeden Tag} other {Alle # Tage}}",
+    "everyWeek": "Jede Woche",
+    "everyNWeeks": "{count, plural, one {Jede Woche} other {Alle # Wochen}}",
+    "everyWeekday": "Jeden Wochentag",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Jeden Wochentag} other {Alle # Wochen an Wochentagen}}",
+    "everyWeekend": "Jedes Wochenende",
+    "everyNWeeksOnWeekends": "{count, plural, one {Jedes Wochenende} other {Alle # Wochen am Wochenende}}",
+    "everyWeekOnDays": "Jede Woche auf {days}",
+    "everyNWeeksOnDays": "{count, plural, one {Jede Woche auf {days}} other {Alle # Wochen auf {days}}}",
+    "everyMonth": "Jeden Monat",
+    "everyNMonths": "{count, plural, one {Jeden Monat} other {Alle # Monate}}",
+    "everyMonthOnDay": "Jeden Monat auf dem {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {Jeden Monat auf dem {day}{suffix}} other {Alle # Monate auf dem {day}{suffix}}}",
+    "everyMonthOnWeekDay": "Jeden Monat auf dem {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Jeden Monat auf dem {week} {day}} other {Alle # Monate auf dem {week} {day}}}",
+    "everyYear": "Jedes Jahr",
+    "everyNYears": "{count, plural, one {Jedes Jahr} other {Alle # Jahre}}",
+    "repeats": "Wiederholt"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Sammlungen",
+      "newNote": "Neuer Hinweis",
+      "newNote2": "Neuer Hinweis",
+      "newFolder": "Neuer Ordner",
+      "newFolder2": "Neuer Ordner",
+      "bookmarks": "Lesezeichen",
+      "tags": "Schlagworte",
+      "dropFilesToImport": "Legen Sie die zu importierenden Dateien ab",
+      "newNoteN": "Neue Notiz (⌘N)",
+      "new": "Neu",
+      "syncDisabled": "Synchronisierung deaktiviert",
+      "syncDisabled2": "Synchronisierung deaktiviert"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Größe des Tagesfensters ändern",
+      "dragToResizeDoubleClickToReset": "Zum Ändern der Größe ziehen · Zum Zurücksetzen doppelklicken"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Finden, ersetzen, fragen..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Onboarding überspringen",
+      "welcomeToMemry": "Willkommen bei Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Ihre persönliche Wissensdatenbank. Nehmen wir uns 2 Minuten Zeit, um Ihnen den Einstieg zu erleichtern.",
+      "getStarted": "Fangen Sie an ",
+      "createYourFirstNote": "Erstellen Sie Ihre erste Notiz",
+      "markdownBasedStoredLocallyAsPlainFiles": "Markdown-basiert, lokal als einfache Dateien gespeichert.",
+      "eGMeetingNotesIdeasAnything": "z.B. Besprechungsnotizen, Ideen, alles ...",
+      "skip": "Überspringen",
+      "createNote": "Notiz erstellen ",
+      "addYourFirstTask": "Fügen Sie Ihre erste Aufgabe hinzu",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Aufgaben sind mit Ihren Notizen verknüpft, mit Prioritäten und Fälligkeitsterminen.",
+      "eGReviewProjectProposal": "z.B. Projektvorschlag prüfen...",
+      "skip2": "Überspringen",
+      "createTask": "Aufgabe erstellen ",
+      "syncAcrossDevices": "Geräteübergreifend synchronisieren",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Halten Sie Ihre Notizen und Aufgaben auf allen Ihren Geräten synchron. Sie können dies jederzeit später einrichten.",
+      "skipForNow": "Überspringen Sie es vorerst",
+      "doneLetSGo": "Fertig – los geht’s! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Ordnersymbol festlegen"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "HINWEIS"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Symbolauswahl",
+      "selectIcon": "Wählen Sie Symbol",
+      "closeIconPicker": "Symbolauswahl schließen",
+      "searchIcons": "Suchsymbole...",
+      "all": "Alle",
+      "clearIcon": "Klares Symbol",
+      "noIconsFoundFor": "Keine Symbole gefunden für „"
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Tastaturkürzel",
+      "closeShortcutsHelp": "Hilfe zu Verknüpfungen schließen",
+      "press": "Drücken Sie",
+      "toClose": "schließen"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Symbol festlegen",
+      "clearIcon": "Klares Symbol"
+    },
+    "componentsNavMain": {
+      "platform": "Plattform"
+    },
+    "componentsNavProjects": {
+      "projects": "Projekte",
+      "more": "Mehr",
+      "viewProject": "Projekt anzeigen",
+      "shareProject": "Projekt teilen",
+      "deleteProject": "Projekt löschen",
+      "more2": "Mehr"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Upgrade auf Pro",
+      "account": "Konto",
+      "billing": "Abrechnung",
+      "notifications": "Benachrichtigungen",
+      "logOut": "Abmelden"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Suchen",
+      "searchNotesTasksJournalInbox": "Durchsuchen Sie Notizen, Aufgaben, Tagebuch, Posteingang ...",
+      "noResultsFor": "Keine Ergebnisse für „",
+      "rdquo": "rdquo;",
+      "result": "Ergebnis"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Suchen und klicken Sie auf Elemente, um Ihren Weg zu erstellen",
+      "reasons": "Gründe",
+      "clear": "Klar"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Klar",
+      "tags": "Schlagworte",
+      "filterByTag": "Nach Tag filtern...",
+      "dateRange": "Datumsbereich"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Alle anzeigen ",
+      "results": "Ergebnisse"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "verschwommen"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Keine Tabs geöffnet",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Öffnen Sie eine Seite über die Seitenleiste oder erstellen Sie eine neue Registerkarte, um loszulegen",
+      "openInbox": "Posteingang öffnen",
+      "closePane": "Fenster schließen"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Layout-Voreinstellungen",
+      "layoutPresets2": "Layout-Voreinstellungen"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Fenstergröße ändern"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TasksContext nicht verfügbar",
+      "searchResults": "Suchergebnisse",
+      "unknownTabType": "Unbekannter Tab-Typ: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "nicht gespeicherte Änderungen",
+      "preview": "Vorschau"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Neuer Tab",
+      "newTab2": "Neuer Tab",
+      "newNote": "Neue Notiz",
+      "journal": "Tagebuch",
+      "calendar": "Kalender",
+      "inboxCapture": "Posteingangserfassung",
+      "tasks": "Aufgaben"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Nicht gespeicherte Änderungen",
+      "unsaved": "nicht gespeichert)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Nicht gespeicherte Änderungen"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Alle Tabs schließen"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Tabs öffnen",
+      "scrollTabsLeft": "Scrollen Sie durch die Tabs nach links",
+      "scrollTabsRight": "Scrollen Sie durch die Tabs nach rechts",
+      "graphG": "Diagramm (⌘G)",
+      "dayPanel": "Tagestafel"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "Scrollen Sie durch die Tabs nach links",
+      "scrollTabsRight": "Scrollen Sie durch die Tabs nach rechts"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "Tabs öffnen",
+      "scrollTabsLeft": "Scrollen Sie durch die Tabs nach links",
+      "scrollTabsRight": "Scrollen Sie durch die Tabs nach rechts"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Etwas ist schief gelaufen",
+      "anErrorOccurredWhileRenderingThisTabContent": "Beim Rendern dieses Tab-Inhalts ist ein Fehler aufgetreten.",
+      "tryAgain": "Versuchen Sie es erneut"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Notizsymbol"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Nicht gespeicherte Änderungen",
+      "quot": "quot;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; hat nicht gespeicherte Änderungen. Was möchten Sie tun?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Neuer Arbeitsbereich",
+      "darkMode": "Dunkler Modus",
+      "settings": "Einstellungen",
+      "integrations": "Integrationen",
+      "signOut": "Abmelden",
+      "downloadOnIos": "Auf iOS herunterladen"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Fenster schließen",
+      "minimizeWindow": "Fenster minimieren",
+      "maximizeWindow": "Fenster maximieren"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Vorschläge",
+      "or": "oder",
+      "enter": "Treten Sie ein",
+      "toInsert": "einfügen"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "Semmelbrösel",
+      "more": "Mehr"
+    },
+    "componentsUiDialog": {
+      "close": "Schließen"
+    },
+    "componentsUiSheet": {
+      "close": "Schließen"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Seitenleiste",
+      "displaysTheMobileSidebar": "Zeigt die mobile Seitenleiste an.",
+      "toggleSidebar": "Seitenleiste umschalten",
+      "toggleSidebar2": "Seitenleiste umschalten",
+      "dragToResizeDoubleClickToReset": "Zum Ändern der Größe ziehen · Zum Zurücksetzen doppelklicken"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Willkommen bei Memry",
+      "yourPersonalKnowledgeManagementSystem": "Ihr persönliches Wissensmanagementsystem.",
+      "selectAFolderToStoreYourNotesAndTasks": "Wählen Sie einen Ordner zum Speichern Ihrer Notizen und Aufgaben.",
+      "opening": "Eröffnung...",
+      "selectVaultFolder": "Wählen Sie den Tresorordner aus",
+      "plainMarkdown": "Einfacher Abschlag",
+      "yourNotesStayPortable": "Ihre Notizen bleiben mobil",
+      "syncAnywhere": "Überall synchronisieren",
+      "useDropboxIcloudGit": "Verwenden Sie Dropbox, iCloud, Git",
+      "recentVaults": "Aktuelle Tresore",
+      "notesLastOpened": "Notizen · Zuletzt geöffnet"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Noch keine Tresore",
+      "openVault": "Tresorraum öffnen",
+      "settings": "Einstellungen",
+      "logOut": "Abmelden",
+      "signInToSync": "Melden Sie sich zum Synchronisieren an",
+      "remove": "Entfernen „",
+      "rdquoFromList": "rdquo; aus der Liste?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Dieser Tresor wird aus der App entfernt, Ihre Dateien bleiben jedoch auf der Festplatte. Sie können es später jederzeit erneut hinzufügen.",
+      "cancel": "Abbrechen",
+      "remove2": "Entfernen"
+    },
+    "componentsWindowControls": {
+      "searchK": "Suche (⌘K)",
+      "browserBack": "Browser zurück",
+      "back": "Zurück",
+      "browserForward": "Browser vorwärts",
+      "forward": "Vorwärts"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Dateien konnten nicht importiert werden",
+      "failedToCreateNote": "Notiz konnte nicht erstellt werden",
+      "failedToAccessMicrophone": "Zugriff auf das Mikrofon fehlgeschlagen"
+    },
+    "toasts": {
+      "undone": "Rückgängig gemacht"
+    }
+  }
+}

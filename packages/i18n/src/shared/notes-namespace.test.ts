@@ -14,10 +14,10 @@ describe('notes namespace', () => {
     expect(i18n.t('notes:page.empty.title')).toBe('Not seçilmedi')
   })
 
-  it('falls back to English for Arabic notes keys', async () => {
+  it('translates Arabic notes keys', async () => {
     const i18n = await createMainI18n({ locale: 'ar' })
 
-    expect(i18n.t('notes:tree.empty.newNote')).toBe('New Note')
+    expect(i18n.t('notes:tree.empty.newNote')).toBe('ملاحظة جديدة')
   })
 
   it('returns the key for missing notes translations', async () => {

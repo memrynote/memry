@@ -1,0 +1,80 @@
+{
+  "generic": {
+    "somethingWentWrong": "Algo salió mal. Por favor inténtalo de nuevo.",
+    "operationFailed": "Operación fallida",
+    "unknown": "Se produjo un error desconocido",
+    "validationFailed": "La validación falló",
+    "actionFailed": "La acción falló"
+  },
+  "ipc": {
+    "noVaultOpen": "No hay ninguna bóveda abierta. Primero abra una bóveda."
+  },
+  "vault": {
+    "notFound": "Bóveda no encontrada. Es posible que se haya movido o eliminado.",
+    "notInitialized": "No hay ninguna bóveda abierta. Abra o cree una bóveda para continuar.",
+    "invalidPath": "La ruta seleccionada no es una ubicación de almacén válida.",
+    "permissionDenied": "Permiso denegado. Comprueba que tienes acceso a esta carpeta.",
+    "alreadyExists": "Ya existe una bóveda en esta ubicación.",
+    "corrupted": "Esta bóveda parece estar corrupta. Intente restaurar desde una copia de seguridad."
+  },
+  "note": {
+    "notFound": "Esta nota no se pudo encontrar. Es posible que haya sido eliminado.",
+    "invalidFrontmatter": "Esta nota tiene metadatos no válidos y no se puede leer.",
+    "duplicateId": "Ya existe una nota con este ID.",
+    "writeFailed": "No se pudo guardar esta nota. Verifique el espacio en disco y los permisos.",
+    "readFailed": "No se pudo leer esta nota. El archivo puede estar bloqueado o dañado.",
+    "deleteFailed": "No se pudo eliminar esta nota. Verifique los permisos del archivo.",
+    "invalidPath": "La ruta de la nota no es válida."
+  },
+  "database": {
+    "connectionFailed": "No se pudo conectar a la base de datos local. Intente reiniciar la aplicación.",
+    "migrationFailed": "Error en la actualización de la base de datos. Intente reiniciar la aplicación.",
+    "queryFailed": "Falló una operación de base de datos. Intentar otra vez.",
+    "notInitialized": "La base de datos no está lista. Intente reiniciar la aplicación.",
+    "constraintViolation": "Se produjo un conflicto de datos. Intentar otra vez.",
+    "corrupted": "La base de datos local está dañada. Es posible que tengas que restablecerlo."
+  },
+  "watcher": {
+    "startFailed": "No se pudo comenzar a buscar cambios en el archivo.",
+    "stopFailed": "No se pudo detener el observador de archivos.",
+    "eventError": "Se produjo un error al buscar cambios en el archivo."
+  },
+  "attachment": {
+    "fileTooLarge": "Este archivo es demasiado grande para adjuntarlo.",
+    "unsupportedType": "Este tipo de archivo no es compatible.",
+    "writeFailed": "No se pudo guardar el archivo adjunto. Verifique el espacio en disco.",
+    "deleteFailed": "No se pudo eliminar el archivo adjunto."
+  },
+  "encryption": {
+    "failed": "No se pudieron cifrar los datos. Es posible que sea necesario regenerar sus claves.",
+    "decryptionFailed": "No se pudieron descifrar los datos. Es posible que sus claves de cifrado estén desactualizadas.",
+    "invalidKeyLength": "Clave de cifrado no válida. Intente cerrar sesión y volver a iniciarla.",
+    "invalidNonceLength": "Error de cifrado. Intente la operación nuevamente."
+  },
+  "inboxAttachment": {
+    "writeFailed": "No se pudo guardar el archivo adjunto de la bandeja de entrada.",
+    "deleteFailed": "No se pudo eliminar el archivo adjunto de la bandeja de entrada."
+  },
+  "sync": {
+    "networkOffline": "Estás desconectado. Los cambios se sincronizarán cuando te vuelvas a conectar.",
+    "networkTimeout": "El servidor de sincronización tardó demasiado en responder. Lo volveré a intentar en breve.",
+    "serverError": "El servidor de sincronización encontró un error. Lo reintentará automáticamente.",
+    "authExpired": "Tu sesión ha caducado. Inicie sesión nuevamente para continuar con la sincronización.",
+    "deviceRevoked": "Este dispositivo ha sido eliminado de su cuenta.",
+    "rateLimited": "Demasiadas solicitudes. La sincronización se reanudará en breve.",
+    "cryptoFailure": "No se pudieron cifrar o descifrar los datos de sincronización. Intente cerrar sesión y volver a iniciarla.",
+    "versionIncompatible": "Esta versión de Memry ya no es compatible. Por favor actualice.",
+    "storageQuotaExceeded": "Tu almacenamiento de sincronización está lleno. Libera espacio o actualiza tu plan.",
+    "certificatePinFailed": "La conexión segura falló. Verifique su conexión de red.",
+    "unknown": "Se produjo un error de sincronización inesperado. Lo reintentará automáticamente.",
+    "statusFetchFailed": "No se pudo recuperar el estado de sincronización",
+    "engineNotInitialized": "Motor de sincronización no inicializado. Abra una bóveda para iniciar la sincronización.",
+    "triggerFailed": "Error de sincronización",
+    "pauseFailed": "No se pudo pausar la sincronización",
+    "resumeFailed": "No se pudo reanudar la sincronización",
+    "settingsNotInitialized": "Sincronización de configuración no inicializada",
+    "securityQuarantinePermanent": "No se pudo verificar un elemento de sincronización y se puso en cuarentena por motivos de seguridad.",
+    "securityQuarantineRetry": "Un elemento de sincronización falló en la verificación de firma y se volverá a intentar.",
+    "certificatePinPaused": "No se pudo verificar la conexión segura al servidor de sincronización. La sincronización se ha pausado para tu protección."
+  }
+}

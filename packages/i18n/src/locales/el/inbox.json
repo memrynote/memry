@@ -1,0 +1,483 @@
+{
+  "view": {
+    "tabs": {
+      "inbox": "Εισερχόμενα",
+      "archived": "Αρχειοθετήθηκε",
+      "insights": "Insights",
+      "ariaLabel": "Επιλογή προβολής εισερχομένων"
+    },
+    "triageButton": "Διαλογή",
+    "processInboxTitle": "Εισερχόμενα επεξεργασίας (Cmd+P)",
+    "itemCaptured": "Το στοιχείο καταγράφηκε",
+    "searchArchivedTitle": "Αναζήτηση αρχειοθετημένων στοιχείων",
+    "searchPlaceholder": "Αναζήτηση...",
+    "archivedItemsAria": "Αρχειοθετημένα στοιχεία",
+    "snoozed": {
+      "show": "Εμφάνιση στοιχείων σε αναβολή",
+      "showWithCount": "Εμφάνιση στοιχείων σε αναβολή ({count})",
+      "hide": "Απόκρυψη στοιχείων σε αναβολή"
+    },
+    "filter": {
+      "button": "Φίλτρο",
+      "byType": "Φιλτράρισμα ανά τύπο",
+      "active": "{count, plural, one {Φιλτράρισμα κατά τύπο #} other {Φιλτράρισμα κατά τύπους #}}",
+      "clearAll": "Καθαρίστε όλα"
+    },
+    "jobs": {
+      "running": "{count, plural, one {Εκτελείται η εργασία παρασκηνίου #} other {Εκτελούνται εργασίες παρασκηνίου #}}",
+      "failed": "Το {count} απέτυχε"
+    }
+  },
+  "type": {
+    "link": "Σύνδεσμος",
+    "links": "Σύνδεσμοι",
+    "note": "Σημείωση",
+    "notes": "Σημειώσεις",
+    "image": "Εικόνα",
+    "images": "εικόνες",
+    "voice": "Φωνή",
+    "video": "Βίντεο",
+    "clip": "Κλιπ",
+    "clips": "Κλιπ",
+    "pdf": "PDF",
+    "pdfs": "PDF",
+    "social": "Κοινωνικό",
+    "reminder": "Υπενθύμιση",
+    "reminders": "Υπενθυμίσεις",
+    "text": "Κείμενο",
+    "other": "Άλλο"
+  },
+  "empty": {
+    "successAria": "Επιτυχία, τα εισερχόμενα είναι άδεια",
+    "title": "Inbox Zero",
+    "body": "Όλα είναι επεξεργασμένα. Καταγράψτε κάτι νέο με την παραπάνω εισαγωγή ή επικολλήστε έναν σύνδεσμο για να ξεκινήσετε.",
+    "filedThisWeek": "{count, plural, one {Το # κατατέθηκε αυτήν την εβδομάδα} other {Το # κατατέθηκε αυτήν την εβδομάδα}}",
+    "dayStreak": "{count, plural, one {# σερί ημέρας} other {# σερί ημέρας}}",
+    "tipPrefix": "Συμβουλή: χρήση",
+    "tipSuffix": "για γρήγορη λήψη από το πρόχειρο",
+    "archivedNone": "Δεν υπάρχουν αρχειοθετημένα στοιχεία",
+    "archivedNoMatches": "Δεν υπάρχουν αντιστοιχισμένα αρχειοθετημένα στοιχεία",
+    "noItemsYet": "Δεν υπάρχουν ακόμη στοιχεία",
+    "noItemsFiled": "Δεν έχουν κατατεθεί ακόμη στοιχεία",
+    "noItemTypes": "Δεν υπάρχουν τύποι στοιχείων για εμφάνιση",
+    "noFolders": "Δεν βρέθηκαν φάκελοι",
+    "noFolderMatch": "Δεν υπάρχουν φάκελοι που να αντιστοιχούν στο \"{query}\"",
+    "noNotes": "Δεν βρέθηκαν σημειώσεις",
+    "allMatchesLinked": "Όλοι οι αγώνες έχουν ήδη συνδεθεί"
+  },
+  "list": {
+    "ariaLabel": "Στοιχεία εισερχομένων",
+    "section": {
+      "today": "Σήμερα",
+      "yesterday": "Χθες",
+      "older": "Πιο παλιά"
+    },
+    "selectItem": "Επιλέξτε {title}",
+    "itemAria": "{type}: {title}",
+    "untitled": "Χωρίς τίτλο",
+    "untitledItem": "Στοιχείο χωρίς τίτλο",
+    "transcribing": "Μεταγραφή...",
+    "transcriptionFailed": "Η μεταγραφή απέτυχε",
+    "retryTranscription": "Επανάληψη",
+    "pageCount": "{count, plural, one {Σελίδα #} other {σελίδες #}}",
+    "snoozedUntilShort": "αναβολή έως το {date}",
+    "capturedAgo": "Καταγράφηκε το {time}"
+  },
+  "loading": {
+    "inbox": "Φόρτωση εισερχομένων...",
+    "failed": "Η φόρτωση των εισερχομένων απέτυχε",
+    "tryAgain": "Προσπαθήστε ξανά",
+    "capturingImage": "Λήψη εικόνας...",
+    "dropImageTitle": "Ρίξτε εικόνα για λήψη",
+    "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
+    "unsupportedImageType": "Μη υποστηριζόμενος τύπος εικόνας: {type}",
+    "imageTooLarge": "Η εικόνα είναι πολύ μεγάλη (μέγιστο 50 MB)"
+  },
+  "toast": {
+    "failedArchiveItem": "Απέτυχε η αρχειοθέτηση του στοιχείου",
+    "failedArchiveItems": "Αποτυχία αρχειοθέτησης στοιχείων",
+    "failedFile": "Αποτυχία κατάθεσης",
+    "failedFileItem": "Αποτυχία αρχειοθέτησης του στοιχείου",
+    "failedFileItems": "Αποτυχία αρχειοθέτησης στοιχείων",
+    "failedSnooze": "Αποτυχία αναβολής",
+    "failedSnoozeItem": "Απέτυχε η αναβολή του στοιχείου",
+    "failedApplyTags": "Αποτυχία εφαρμογής ετικετών",
+    "failedCaptureImage": "Αποτυχία λήψης εικόνας",
+    "linkedToNote": "Συνδέεται με τη σημείωση",
+    "linkedToNotes": "Συνδέεται με σημειώσεις {count}",
+    "filedTo": "Κατατέθηκε στο {folder}",
+    "filedItemsTo": "Αρχειοθετήθηκαν στοιχεία {count} στο {folder}",
+    "filedPartial": "Κατατέθηκε {processed} από στοιχεία {total}",
+    "appliedTags": "{tagCount, plural, one {Εφαρμόστηκε η ετικέτα #} other {Εφαρμόστηκαν ετικέτες #}} έως {itemCount, plural, one {Στοιχείο #} other {# αντικείμενα}}",
+    "archivedItems": "{count, plural, one {Αρχειοθετημένο στοιχείο #} other {Αρχειοθετημένα στοιχεία #}}",
+    "snoozedUntil": "Σε αναβολή έως το {time}",
+    "snoozedItemsUntil": "{count, plural, one {Το στοιχείο # σε αναβολή έως το {time}} other {Στοιχεία # σε αναβολή έως το {time}}}"
+  },
+  "triage": {
+    "modeTitle": "Λειτουργία Triage",
+    "exitHint": "Esc για έξοδο",
+    "exitAria": "Έξοδος από τη λειτουργία διαλογής",
+    "position": "{current} του {total}",
+    "action": {
+      "discard": "Απορρίψτε",
+      "archive": "Αρχείο",
+      "open": "Ανοίξτε",
+      "toTask": "Προς εργασία",
+      "toNote": "Σημείωση",
+      "file": "Αρχείο",
+      "snooze": "Αναβολή",
+      "cancel": "Ακύρωση"
+    },
+    "snoozeUntil": "Αναβολή μέχρι...",
+    "complete": {
+      "title": "Inbox Zero",
+      "processed": "{count, plural, one {Έγινε επεξεργασία του αντικειμένου #} other {Έγινε επεξεργασία στοιχείων #}}",
+      "streak": "σερί",
+      "streakCount": "{count} σερί",
+      "dayProcessingStreak": "{count, plural, one {# σειρά επεξεργασίας ημέρας} other {# σειρά επεξεργασίας ημέρας}}",
+      "back": "Επιστροφή στα Εισερχόμενα",
+      "motivation0": "Ο μελλοντικός σου εαυτός σε ευχαριστεί.",
+      "motivation1": "Όλα στη θέση τους.",
+      "motivation2": "Καθαρά εισερχόμενα, καθαρό μυαλό.",
+      "motivation3": "Χρέος απόφασης: εξοφλήθηκε πλήρως.",
+      "motivation4": "Ένιωθε καλά, έτσι δεν είναι;"
+    }
+  },
+  "bulk": {
+    "selected": "Επιλέχθηκε το {count}",
+    "deselectAll": "Αποεπιλογή όλων",
+    "ariaLabel": "Μαζικές ενέργειες για επιλεγμένα στοιχεία {count}",
+    "file": "Αρχείο",
+    "tag": "Ετικέτα",
+    "snooze": "Αναβολή",
+    "archive": "Αρχείο",
+    "add": "Προσθήκη",
+    "dismissSuggestion": "Απόρριψη πρότασης",
+    "hint": {
+      "file": "αρχείο",
+      "tag": "ετικέτα",
+      "snooze": "αναβολή",
+      "archive": "αρχείο",
+      "deselect": "αποεπιλογή"
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {Αρχειοθέτηση στοιχείου #;} other {Αρχειοθέτηση στοιχείων #;}}",
+      "description": "Αυτά τα στοιχεία θα αρχειοθετηθούν. Μπορείτε να δείτε τα αρχειοθετημένα στοιχεία αργότερα.",
+      "confirm": "{count, plural, one {Αρχειοθέτηση στοιχείου #} other {Αρχειοθέτηση στοιχείων #}}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {Αρχείο # Στοιχείο} other {Αρχείο # Items}}",
+      "itemsToFile": "Στοιχεία προς αρχειοθέτηση",
+      "multipleNoteLinksUnavailable": "Σημείωση: Δεν μπορούν να προστεθούν σύνδεσμοι προς άλλες σημειώσεις κατά την υποβολή πολλών στοιχείων.",
+      "filing": "Αρχειοθέτηση...",
+      "submit": "{count, plural, one {Αρχείο στοιχείου #} other {Αρχειοθέτηση στοιχείων #}}",
+      "macHint": "⌘⏎ σε αρχείο · Esc για κλείσιμο",
+      "ctrlHint": "Ctrl+Enter στο αρχείο · Esc για κλείσιμο"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {Επισήμανση στοιχείου #} other {Προσθήκη ετικέτας σε είδη #}}",
+      "placeholder": "Πληκτρολογήστε για να αναζητήσετε ετικέτες...",
+      "applying": "Εφαρμογή...",
+      "apply": "{count, plural, one {Εφαρμογή στο στοιχείο #} other {Εφαρμογή σε στοιχεία #}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "Γρήγορες ενέργειες",
+    "archiveItem": "Αρχειοθέτηση αντικειμένου",
+    "archive": "Αρχείο",
+    "snooze": "Αναβολή"
+  },
+  "detail": {
+    "ariaLabel": "Λεπτομέρειες αντικειμένου",
+    "closePanel": "Κλείσιμο πίνακα",
+    "resizeFiling": "Αλλαγή μεγέθους ενότητας αρχειοθέτησης",
+    "restore": "Επαναφορά",
+    "restoreToInbox": "Επαναφορά στα εισερχόμενα",
+    "delete": "Διαγραφή",
+    "deletePermanently": "Διαγραφή οριστικά",
+    "archive": "Αρχείο",
+    "file": "Αρχείο",
+    "keyboardHint": "Αρχείο {modifier}⏎ · 1-5 φάκελος · Κλείσιμο Esc",
+    "voiceTitlePlaceholder": "Ονομάστε αυτό το φωνητικό σημείωμα...",
+    "fileTo": "Αρχείο σε",
+    "ai": "AI",
+    "selectFolder": "Επιλέξτε φάκελο",
+    "searchOrCreateFolder": "Αναζήτηση ή δημιουργία με /...",
+    "suggested": "Προτεινόμενα",
+    "notesRoot": "Σημειώσεις",
+    "notesRootLabel": "Σημειώσεις (ρίζα)",
+    "createFolder": "Δημιουργία \"{name}\"",
+    "addTags": "Προσθήκη ετικετών...",
+    "linkToNote": "Σύνδεσμος για σημείωση",
+    "linkNotesPlaceholder": "Σημειώσεις συνδέσμου...",
+    "searchNotesAria": "Αναζήτηση σημειώσεων για σύνδεση",
+    "linkedNotesAria": "Συνδεδεμένες σημειώσεις",
+    "removeLinkTo": "Κατάργηση συνδέσμου στο {title}",
+    "contentEditorAria": "Επεξεργαστής περιεχομένου",
+    "notePlaceholder": "Γράψε το σημείωμά σου...",
+    "textPlaceholder": "Επεξεργαστείτε το κείμενο που καταγράψατε..."
+  },
+  "content": {
+    "capturedAt": "Καταγράφηκε το {date}",
+    "todayAt": "σήμερα στο {time}",
+    "yesterdayAt": "χθες στο {time}",
+    "dateAt": "{date} στο {time}",
+    "words": "{count, plural, one {λέξη #} other {# λέξεις}}",
+    "duration": "Διάρκεια: {duration}",
+    "dimensions": "Διαστάσεις",
+    "format": "Μορφοποίηση",
+    "size": "Μέγεθος",
+    "voiceMemo": "Φωνητικό σημείωμα",
+    "play": "Παίξτε",
+    "pause": "Παύση",
+    "audioPosition": "Θέση ήχου",
+    "transcription": "Μεταγραφή",
+    "processing": "επεξεργασία",
+    "pending": "σε εκκρεμότητα",
+    "failed": "απέτυχε",
+    "copyTranscription": "Αντιγραφή μεταγραφής",
+    "transcribingAudio": "Μεταγραφή ήχου...",
+    "awaitingTranscription": "Αναμονή μεταγραφής...",
+    "noTranscription": "Δεν υπάρχει διαθέσιμη μεταγραφή",
+    "failedPlayAudio": "Αποτυχία αναπαραγωγής ήχου",
+    "failedLoadAudio": "Η φόρτωση του ήχου απέτυχε",
+    "video": "Βίντεο",
+    "unsupportedVideo": "Το πρόγραμμα περιήγησής σας δεν υποστηρίζει την ετικέτα βίντεο."
+  },
+  "reminder": {
+    "dataUnavailable": "Τα δεδομένα υπενθύμισης δεν είναι διαθέσιμα.",
+    "triggered": "Ενεργοποιήθηκε η υπενθύμιση",
+    "noteLabel": "Σημείωση υπενθύμισης",
+    "source": "Πηγή",
+    "journalTitle": "Περιοδικό — {date}",
+    "noteFallback": "Σημείωση",
+    "journalFallback": "Εφημερίδα",
+    "highlighted": "Επισημασμένο: \"{text}\"",
+    "viewed": "Προβλήθηκε",
+    "markViewed": "Επισήμανση ως προβολής",
+    "notYetViewed": "Δεν έχει προβληθεί ακόμη",
+    "snooze": "Αναβολή",
+    "presetInOneHour": "1 ώρα",
+    "presetTomorrow": "Αύριο",
+    "presetNextWeek": "Την επόμενη εβδομάδα",
+    "custom": "Προσαρμοσμένο..."
+  },
+  "insights": {
+    "loading": "Φόρτωση πληροφοριών...",
+    "captureActivity": "Λήψη δραστηριότητας",
+    "byType": "Κατά τύπο",
+    "itemTypes": "Τύποι αντικειμένων",
+    "itemTypesDescription": "Διανομή μορφών περιεχομένου",
+    "recentFilings": "Πρόσφατες Καταθέσεις",
+    "recentlyFiled": "Κατατέθηκε πρόσφατα",
+    "recentlyFiledDescription": "Τελευταίες ενέργειες στα εισερχόμενά σας",
+    "captured": "συλληφθεί",
+    "capturedThisWeek": "+{count} αυτή την εβδομάδα",
+    "processed": "Επεξεργασμένο",
+    "processRate": "ποσοστό {rate}%.",
+    "stale": "μπαγιάτικο",
+    "needsAttention": "χρειάζεται προσοχή",
+    "allClear": "όλα ξεκάθαρα",
+    "avgTimeToFile": "Μέσος χρόνος αρχείου",
+    "noCapturesYet": "Δεν υπάρχουν ακόμη συλλήψεις",
+    "captures": "{count, plural, one {Λήψη #} other {Το # καταγράφει}}",
+    "peak": "Κορυφή: {day} {start}–{end}",
+    "convertedToTask": "Μετατράπηκε σε εργασία",
+    "linked": "Συνδεδεμένο",
+    "now": "τώρα",
+    "timeAgoMinutes": "{count}m πριν",
+    "timeAgoHours": "{count}h πριν",
+    "timeAgoDays": "{count}d πριν"
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "Η τεχνητή νοημοσύνη εντόπισε: \"",
+      "addToSelection": "Προσθήκη στην επιλογή",
+      "dismiss": "Απόρριψη"
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "Διαγραφή ",
+      "item": "αντικείμενο",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Αυτά τα στοιχεία θα αφαιρεθούν από τα εισερχόμενά σας. Μπορείτε να αναιρέσετε αυτήν την ενέργεια αμέσως μετά."
+    },
+    "componentsCaptureInput": {
+      "captureInput": "Καταγραφή εισόδου",
+      "attachFile": "Επισύναψη αρχείου",
+      "attachFileImagesAudioVideoPdf": "Επισύναψη αρχείου (Εικόνες, Ήχος, Βίντεο, PDF)",
+      "recordVoiceMemo": "Ηχογράφηση φωνητικής σημείωσης",
+      "recordVoiceMemo2": "Ηχογράφηση φωνητικής σημείωσης",
+      "alreadyCaptured": "Έχει ήδη καταγραφεί: \"",
+      "rdquo": "rdquo;",
+      "captureAnyway": "Λήψη Τέλος πάντων"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "Επιλέξτε φάκελο",
+      "searchFolders": "Αναζήτηση φακέλων...",
+      "searchFolders2": "Αναζήτηση φακέλων",
+      "searchResults": "Αποτελέσματα αναζήτησης",
+      "create": "Δημιουργία \"",
+      "suggested": "Προτεινόμενα",
+      "recent": "Πρόσφατα",
+      "allFolders": "Όλοι οι φάκελοι",
+      "allFolders2": "Όλοι οι φάκελοι"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "Σύνδεσμος προς",
+      "optional": "προαιρετικό)",
+      "searchNotesToLink": "Αναζήτηση σημειώσεων για σύνδεση...",
+      "searchNotesToLink2": "Αναζήτηση σημειώσεων για σύνδεση",
+      "searching": "Αναζήτηση...",
+      "noNotesFound": "Δεν βρέθηκαν σημειώσεις",
+      "linkedNotes": "Συνδεδεμένες σημειώσεις",
+      "noLinksAdded": "Δεν προστέθηκαν σύνδεσμοι"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "Προτεινόμενα",
+      "ai": "AI",
+      "create": "Δημιουργία",
+      "tags": "Ετικέτες",
+      "selectedTags": "Επιλεγμένες ετικέτες",
+      "addTags": "Προσθήκη ετικετών",
+      "tagSuggestions": "Προτάσεις ετικέτας"
+    },
+    "componentsFilingTagInput": {
+      "tags": "Ετικέτες",
+      "optional": "προαιρετικό)",
+      "addTags": "Προσθήκη ετικετών...",
+      "addTags2": "Προσθήκη ετικετών",
+      "selectedTags": "Επιλεγμένες ετικέτες",
+      "suggested": "Προτεινόμενα"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "Λήψη δραστηριότητας"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "Δεν έχουν κατατεθεί ακόμη στοιχεία",
+      "recentlyFiled": "Κατατέθηκε πρόσφατα",
+      "latestActionsOnYourInbox": "Τελευταίες ενέργειες στα εισερχόμενά σας",
+      "linked": "Συνδεδεμένο"
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "Φόρτωση πληροφοριών..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "Δεν υπάρχουν τύποι στοιχείων για εμφάνιση",
+      "itemTypes": "Τύποι αντικειμένων",
+      "distributionOfContentFormats": "Διανομή μορφών περιεχομένου"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "συλληφθεί "
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "x "
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "Επεξεργαστής περιεχομένου"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "middot? "
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "Το tweet δεν είναι διαθέσιμο",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Αυτό το tweet μπορεί να έχει διαγραφεί ή να είναι από ιδιωτικό λογαριασμό.",
+      "openOnXCom": "Ανοίξτε στο x.com",
+      "views": "απόψεις",
+      "xCom": "x.com",
+      "viewOnX": "Προβολή στο Χ"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "Πληκτρολογήστε όνομα φακέλου...",
+      "quickFileFolderSearch": "Γρήγορη αναζήτηση φακέλων αρχείων"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "κλείσιμο",
+      "capture": "σύλληψη"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "Αφαιρέστε το συνημμένο"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "Γρήγορη είσοδος λήψης",
+      "recordVoiceMemo": "Ηχογράφηση φωνητικής σημείωσης",
+      "attachFile": "Επισύναψη αρχείου"
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "ΣΥΝΔΕΣΜΟΣ"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "συλληφθεί",
+      "dismissError": "Παράβλεψη σφάλματος",
+      "alreadyCaptured": "Ήδη συλληφθεί",
+      "ldquo": "ldquo;",
+      "rdquoMiddot": "rdquo; · ",
+      "captureAnyway": "Λήψη Τέλος πάντων",
+      "close": "Κλείσιμο"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "Απόθεση για λήψη",
+      "capturing": "Λήψη..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "Προτάσεις φακέλων",
+      "noFoldersMatch": "Δεν ταιριάζουν φάκελοι \""
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "Ορίστε υπενθύμιση για αυτό το κείμενο",
+      "remindMeAboutThis": "Θύμισέ μου αυτό",
+      "selectedText": "Επιλεγμένο κείμενο:"
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "Υπενθύμιση",
+      "remindMe": "Θύμισέ μου",
+      "pickDateTime": "Επιλέξτε ημερομηνία και ώρα",
+      "addANoteOptional": "Προσθήκη σημείωσης (προαιρετικό)",
+      "backToPresets": "Επιστροφή στις προεπιλογές",
+      "time": "Χρόνος",
+      "noteOptional": "Σημείωση (προαιρετικό)",
+      "whyAreYouSettingThisReminder": "Γιατί ορίζετε αυτήν την υπενθύμιση;"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "Αναβολή",
+      "snooze2": "Αναβολή",
+      "pickDateTime": "Επιλέξτε Ημερομηνία & Ώρα",
+      "pickDateTime2": "Επιλέξτε Ημερομηνία & Ώρα",
+      "selectWhenToBeRemindedAboutThisItem": "Επιλέξτε πότε θα σας υπενθυμίζεται αυτό το στοιχείο",
+      "snooze3": "Αναβολή",
+      "snooze4": "Αναβολή",
+      "snooze5": "Αναβολή"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "Φόρτωση ανάρτησης...",
+      "failedToLoad": "Αποτυχία φόρτωσης",
+      "loadingPostContent": "Φόρτωση περιεχομένου ανάρτησης...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Αποτυχία φόρτωσης περιεχομένου ανάρτησης. Η ανάρτηση μπορεί να είναι ιδιωτική ή διαγραμμένη.",
+      "viewOn": "Προβολή σε "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "Ξεκινήστε την εγγραφή φωνής",
+      "requestingMicrophoneAccess": "Αίτημα πρόσβασης στο μικρόφωνο...",
+      "settings": "Ρυθμίσεις",
+      "processing": "Επεξεργασία...",
+      "cancelRecording": "Ακύρωση εγγραφής",
+      "cancel": "Ακύρωση",
+      "stopRecording": "Διακοπή εγγραφής",
+      "stop": "Σταμάτα"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCaptureLink": "Η λήψη του συνδέσμου απέτυχε",
+      "failedToCaptureNote": "Η λήψη της σημείωσης απέτυχε",
+      "captureFailed": "Η λήψη απέτυχε",
+      "failedToCaptureVoiceMemo": "Αποτυχία λήψης φωνητικής σημείωσης",
+      "voiceCaptureFailed": "Η λήψη φωνής απέτυχε",
+      "failedToCaptureFile": "Αποτυχία λήψης αρχείου",
+      "fileCaptureFailed": "Η λήψη αρχείου απέτυχε",
+      "failedToCaptureAudio": "Αποτυχία λήψης ήχου",
+      "failedToCaptureVoice": "Αποτυχία λήψης φωνής"
+    },
+    "toasts": {
+      "inboxRefreshed": "Τα Εισερχόμενα ανανεώθηκαν"
+    }
+  }
+}

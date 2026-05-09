@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "שמור",
+    "cancel": "בטל",
+    "close": "סגור",
+    "ok": "בסדר",
+    "yes": "כן",
+    "no": "לא",
+    "delete": "מחק",
+    "confirm": "אשר",
+    "apply": "החל",
+    "done": "בוצע",
+    "discard": "לזרוק",
+    "dontSave": "אל תחסוך",
+    "edit": "ערוך",
+    "add": "הוסף",
+    "remove": "הסר",
+    "retry": "נסה שוב",
+    "submit": "שלח",
+    "back": "חזרה",
+    "next": "הבא",
+    "continue": "המשך",
+    "reset": "אפס",
+    "copy": "העתק",
+    "paste": "הדבק",
+    "create": "צור",
+    "open": "פתוח"
+  },
+  "state": {
+    "loading": "טוען...",
+    "saving": "שומר...",
+    "deleting": "מוחק...",
+    "searching": "מחפש...",
+    "error": "שגיאה",
+    "success": "הצלחה"
+  },
+  "empty": {
+    "noResults": "אין תוצאות",
+    "noItems": "אין פריטים",
+    "noMatch": "אין התאמות"
+  },
+  "action": {
+    "search": "חפש",
+    "edit": "ערוך",
+    "delete": "מחק",
+    "close": "סגור",
+    "expand": "הרחב",
+    "collapse": "התמוטט",
+    "showMore": "+{count, plural, one {# יותר} other {# יותר}}",
+    "showLess": "הצג פחות"
+  },
+  "tabs": {
+    "pin": "הצמד כרטיסייה",
+    "unpin": "בטל את הצמדת הכרטיסייה",
+    "contextMenu": {
+      "close": "סגור",
+      "closeOthers": "סגור אחרים",
+      "closeToRight": "קרוב לימין",
+      "closeAll": "סגור הכל",
+      "duplicate": "לשכפל כרטיסייה",
+      "splitRight": "פיצול ימינה",
+      "splitDown": "פיצול למטה",
+      "copyPath": "העתק נתיב",
+      "revealInSidebar": "חשוף בסרגל הצד"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {פריט #} other {פריטי #}}",
+    "note": "{count, plural, one {הערה #} other {הערות #}}",
+    "folder": "{count, plural, one {תיקיית #} other {תיקיות #}}",
+    "task": "{count, plural, one {משימת #} other {משימות #}}",
+    "project": "{count, plural, one {פרויקט #} other {פרויקטים של #}}",
+    "itemDelete": "{count, plural, one {מחק פריט #} other {מחק פריטי #}}"
+  },
+  "toast": {
+    "actionFailed": "הפעולה נכשלה",
+    "nothingToUndo": "אין מה לבטל",
+    "undone": "ביטול: {description}",
+    "undoFailed": "ביטול הפעולה נכשל",
+    "copied": "הועתק",
+    "copyFailed": "ההעתקה נכשלה"
+  },
+  "dateRelative": {
+    "today": "היום",
+    "yesterday": "אתמול",
+    "daysAgo": "{count, plural, one {# לפני יום} other {# לפני ימים}}"
+  },
+  "recurrence": {
+    "everyDay": "כל יום",
+    "everyNDays": "{count, plural, one {כל יום} other {כל # ימים}}",
+    "everyWeek": "כל שבוע",
+    "everyNWeeks": "{count, plural, one {כל שבוע} other {כל # שבועות}}",
+    "everyWeekday": "כל יום חול",
+    "everyNWeeksOnWeekdays": "{count, plural, one {כל יום חול} other {כל # שבועות בימי חול}}",
+    "everyWeekend": "כל סוף שבוע",
+    "everyNWeeksOnWeekends": "{count, plural, one {כל סוף שבוע} other {כל # שבועות בסופי שבוע}}",
+    "everyWeekOnDays": "כל שבוע ב-{days}",
+    "everyNWeeksOnDays": "{count, plural, one {כל שבוע ב-{days}} other {כל # שבועות ב-{days}}}",
+    "everyMonth": "כל חודש",
+    "everyNMonths": "{count, plural, one {כל חודש} other {כל # חודשים}}",
+    "everyMonthOnDay": "כל חודש ב-{day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {כל חודש ב-{day}{suffix}} other {כל # חודשים ב-{day}{suffix}}}",
+    "everyMonthOnWeekDay": "כל חודש ב-{week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {כל חודש ב-{week} {day}} other {כל # חודשים ב-{week} {day}}}",
+    "everyYear": "כל שנה",
+    "everyNYears": "{count, plural, one {כל שנה} other {כל # שנים}}",
+    "repeats": "חוזר"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "אוספים",
+      "newNote": "פתק חדש",
+      "newNote2": "פתק חדש",
+      "newFolder": "תיקייה חדשה",
+      "newFolder2": "תיקייה חדשה",
+      "bookmarks": "סימניות",
+      "tags": "תגים",
+      "dropFilesToImport": "שחרר קבצים לייבוא",
+      "newNoteN": "הערה חדשה (⌘N)",
+      "new": "חדש",
+      "syncDisabled": "הסנכרון מושבת",
+      "syncDisabled2": "הסנכרון מושבת"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "שנה את גודל לוח יום",
+      "dragToResizeDoubleClickToReset": "גרור כדי לשנות את הגודל · לחץ פעמיים כדי לאפס"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "מצא, החלף, שאל..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "דלג על העלייה למטוס",
+      "welcomeToMemry": "ברוכים הבאים ל-Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "מאגר הידע האישי שלך. בואו ניקח 2 דקות כדי להתחיל.",
+      "getStarted": "התחל ",
+      "createYourFirstNote": "צור את ההערה הראשונה שלך",
+      "markdownBasedStoredLocallyAsPlainFiles": "מבוסס Markdown, מאוחסן באופן מקומי כקבצים רגילים.",
+      "eGMeetingNotesIdeasAnything": "למשל הערות פגישה, רעיונות, כל דבר...",
+      "skip": "דלג",
+      "createNote": "צור הערה ",
+      "addYourFirstTask": "הוסף את המשימה הראשונה שלך",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "משימות מקשרות להערות שלך, עם סדרי עדיפויות ותאריכי יעד.",
+      "eGReviewProjectProposal": "למשל בדוק את הצעת הפרויקט...",
+      "skip2": "דלג",
+      "createTask": "צור משימה ",
+      "syncAcrossDevices": "סנכרון בין מכשירים",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "שמור את ההערות והמשימות שלך מסונכרנות בכל המכשירים שלך. תמיד תוכל להגדיר זאת מאוחר יותר.",
+      "skipForNow": "דלג לעת עתה",
+      "doneLetSGo": "סיים - בוא נלך! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "הגדר סמל תיקייה"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "רמז"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "בוחר אייקונים",
+      "selectIcon": "בחר אייקון",
+      "closeIconPicker": "סגור את בוחר הסמלים",
+      "searchIcons": "חיפוש אייקונים...",
+      "all": "הכל",
+      "clearIcon": "סמל נקה",
+      "noIconsFoundFor": "לא נמצאו אייקונים עבור \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "קיצורי מקלדת",
+      "closeShortcutsHelp": "סגירת קיצורי דרך עזרה",
+      "press": "לחץ",
+      "toClose": "לסגור"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "הגדר אייקון",
+      "clearIcon": "סמל נקה"
+    },
+    "componentsNavMain": {
+      "platform": "פלטפורמה"
+    },
+    "componentsNavProjects": {
+      "projects": "פרויקטים",
+      "more": "עוד",
+      "viewProject": "צפה בפרויקט",
+      "shareProject": "שתף את הפרויקט",
+      "deleteProject": "מחק את הפרויקט",
+      "more2": "עוד"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "שדרג ל-Pro",
+      "account": "חשבון",
+      "billing": "חיוב",
+      "notifications": "התראות",
+      "logOut": "התנתק"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "חפש",
+      "searchNotesTasksJournalInbox": "חפש בהערות, משימות, יומן, תיבת דואר נכנס...",
+      "noResultsFor": "אין תוצאות עבור \"",
+      "rdquo": "rdquo;",
+      "result": "תוצאה"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "חפש ולחץ על פריטים כדי לבנות את המסלול שלך",
+      "reasons": "סיבות",
+      "clear": "ברור"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "ברור",
+      "tags": "תגים",
+      "filterByTag": "סינון לפי תג...",
+      "dateRange": "טווח תאריכים"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "הצג הכל ",
+      "results": "תוצאות"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "פ",
+      "fuzzy": "מטושטשת"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "אין כרטיסיות פתוחות",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "פתח דף מהסרגל הצדדי או צור כרטיסייה חדשה כדי להתחיל",
+      "openInbox": "פתח את תיבת הדואר הנכנס",
+      "closePane": "סגור חלונית"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "פריסה קבועה מראש",
+      "layoutPresets2": "הגדרות פריסה מראש"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "שנה את גודל החלוניות"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TasksContext אינו זמין",
+      "searchResults": "תוצאות חיפוש",
+      "unknownTabType": "סוג כרטיסייה לא ידוע: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "שינויים שלא נשמרו",
+      "preview": "תצוגה מקדימה"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "כרטיסייה חדשה",
+      "newTab2": "כרטיסייה חדשה",
+      "newNote": "הערה חדשה",
+      "journal": "יומן",
+      "calendar": "לוח שנה",
+      "inboxCapture": "לכידת תיבת דואר נכנס",
+      "tasks": "משימות"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "שינויים שלא נשמרו",
+      "unsaved": "לא נשמר)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "שינויים שלא נשמרו"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "סגור את כל הכרטיסיות"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "פתח כרטיסיות",
+      "scrollTabsLeft": "גלול לשוניות שמאלה",
+      "scrollTabsRight": "גלול לשוניות ימינה",
+      "graphG": "גרף (⌘G)",
+      "dayPanel": "פאנל יום"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "גלול לשוניות שמאלה",
+      "scrollTabsRight": "גלול לשוניות ימינה"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "פתח כרטיסיות",
+      "scrollTabsLeft": "גלול לשוניות שמאלה",
+      "scrollTabsRight": "גלול לשוניות ימינה"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "משהו השתבש",
+      "anErrorOccurredWhileRenderingThisTabContent": "אירעה שגיאה בעת עיבוד תוכן הכרטיסייה הזו.",
+      "tryAgain": "נסה שוב"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "סמל הערה"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "שינויים שלא נשמרו",
+      "quot": "quot;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; יש שינויים שלא נשמרו. מה היית רוצה לעשות?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "חלל עבודה חדש",
+      "darkMode": "מצב כהה",
+      "settings": "הגדרות",
+      "integrations": "אינטגרציות",
+      "signOut": "צא",
+      "downloadOnIos": "הורד ב-iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "סגור חלון",
+      "minimizeWindow": "צמצם את החלון",
+      "maximizeWindow": "הגדל את החלון"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "הצעות",
+      "or": "או",
+      "enter": "הכנס",
+      "toInsert": "להכניס"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "פירורי לחם",
+      "more": "עוד"
+    },
+    "componentsUiDialog": {
+      "close": "סגור"
+    },
+    "componentsUiSheet": {
+      "close": "סגור"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "סרגל צד",
+      "displaysTheMobileSidebar": "מציג את סרגל הצד לנייד.",
+      "toggleSidebar": "החלף את הסרגל הצידי",
+      "toggleSidebar2": "החלף את הסרגל הצידי",
+      "dragToResizeDoubleClickToReset": "גרור כדי לשנות את הגודל · לחץ פעמיים כדי לאפס"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "ברוכים הבאים ל-Memry",
+      "yourPersonalKnowledgeManagementSystem": "מערכת ניהול הידע האישי שלך.",
+      "selectAFolderToStoreYourNotesAndTasks": "בחר תיקיה לאחסון ההערות והמשימות שלך.",
+      "opening": "פותח...",
+      "selectVaultFolder": "בחר תיקיית כספת",
+      "plainMarkdown": "Markdown רגיל",
+      "yourNotesStayPortable": "ההערות שלך נשארות ניידות",
+      "syncAnywhere": "סנכרן בכל מקום",
+      "useDropboxIcloudGit": "השתמש ב-Dropbox, iCloud, Git",
+      "recentVaults": "קמרונות אחרונים",
+      "notesLastOpened": "הערות · נפתח לאחרונה"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "עדיין אין כספות",
+      "openVault": "פתח כספת",
+      "settings": "הגדרות",
+      "logOut": "התנתק",
+      "signInToSync": "היכנס כדי לסנכרן",
+      "remove": "הסר \"",
+      "rdquoFromList": "rdquo; מהרשימה?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "כספת זו תוסר מהאפליקציה, אך הקבצים שלך יישארו בדיסק. תמיד תוכל להוסיף אותו מחדש מאוחר יותר.",
+      "cancel": "בטל",
+      "remove2": "הסר"
+    },
+    "componentsWindowControls": {
+      "searchK": "חפש (⌘K)",
+      "browserBack": "דפדפן חזרה",
+      "back": "חזרה",
+      "browserForward": "דפדפן קדימה",
+      "forward": "קדימה"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "ייבוא הקבצים נכשל",
+      "failedToCreateNote": "יצירת הערה נכשלה",
+      "failedToAccessMicrophone": "הגישה למיקרופון נכשלה"
+    },
+    "toasts": {
+      "undone": "בטל"
+    }
+  }
+}

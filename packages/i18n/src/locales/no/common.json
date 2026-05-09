@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "Lagre",
+    "cancel": "Avbryt",
+    "close": "Lukk",
+    "ok": "OK",
+    "yes": "Ja",
+    "no": "Nei",
+    "delete": "Slett",
+    "confirm": "Bekreft",
+    "apply": "Søk",
+    "done": "Ferdig",
+    "discard": "Kast",
+    "dontSave": "Ikke lagre",
+    "edit": "Rediger",
+    "add": "Legg til",
+    "remove": "Fjern",
+    "retry": "Prøv på nytt",
+    "submit": "Send inn",
+    "back": "Tilbake",
+    "next": "Neste",
+    "continue": "Fortsett",
+    "reset": "Tilbakestill",
+    "copy": "Kopier",
+    "paste": "Lim inn",
+    "create": "Opprett",
+    "open": "Åpne"
+  },
+  "state": {
+    "loading": "Laster inn …",
+    "saving": "Lagrer …",
+    "deleting": "Sletter …",
+    "searching": "Søker …",
+    "error": "Feil",
+    "success": "Suksess"
+  },
+  "empty": {
+    "noResults": "Ingen resultater",
+    "noItems": "Ingen varer",
+    "noMatch": "Ingen treff"
+  },
+  "action": {
+    "search": "Søk",
+    "edit": "Rediger",
+    "delete": "Slett",
+    "close": "Lukk",
+    "expand": "Utvid",
+    "collapse": "Kollaps",
+    "showMore": "+{count, plural, one {# mer} other {# mer}}",
+    "showLess": "Vis mindre"
+  },
+  "tabs": {
+    "pin": "Fest fane",
+    "unpin": "Løsne fanen",
+    "contextMenu": {
+      "close": "Lukk",
+      "closeOthers": "Lukk Andre",
+      "closeToRight": "Nær høyre",
+      "closeAll": "Lukk alle",
+      "duplicate": "Dupliser fane",
+      "splitRight": "Del høyre",
+      "splitDown": "Del ned",
+      "copyPath": "Kopier bane",
+      "revealInSidebar": "Avslør i sidepanelet"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {# vare} other {# varer}}",
+    "note": "{count, plural, one {# merknad} other {# notater}}",
+    "folder": "{count, plural, one {# mappe} other {#-mapper}}",
+    "task": "{count, plural, one {#-oppgave} other {# oppgaver}}",
+    "project": "{count, plural, one {#-prosjekt} other {#-prosjekter}}",
+    "itemDelete": "{count, plural, one {Slett #-element} other {Slett #-elementer}}"
+  },
+  "toast": {
+    "actionFailed": "Handlingen mislyktes",
+    "nothingToUndo": "Ingenting å angre",
+    "undone": "Angret: {description}",
+    "undoFailed": "Kunne ikke angre handlingen",
+    "copied": "Kopiert",
+    "copyFailed": "Kunne ikke kopiere"
+  },
+  "dateRelative": {
+    "today": "I dag",
+    "yesterday": "I går",
+    "daysAgo": "{count, plural, one {# dag siden} other {# dager siden}}"
+  },
+  "recurrence": {
+    "everyDay": "Hver dag",
+    "everyNDays": "{count, plural, one {Hver dag} other {Hver # dag}}",
+    "everyWeek": "Hver uke",
+    "everyNWeeks": "{count, plural, one {Hver uke} other {Hver # uke}}",
+    "everyWeekday": "Hver ukedag",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Hver ukedag} other {Hver # uke på ukedager}}",
+    "everyWeekend": "Hver helg",
+    "everyNWeeksOnWeekends": "{count, plural, one {Hver helg} other {Hver # uke i helgene}}",
+    "everyWeekOnDays": "Hver uke på {days}",
+    "everyNWeeksOnDays": "{count, plural, one {Hver uke på {days}} other {Hver # uke på {days}}}",
+    "everyMonth": "Hver måned",
+    "everyNMonths": "{count, plural, one {Hver måned} other {Hver # måned}}",
+    "everyMonthOnDay": "Hver måned på {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {Hver måned på {day}{suffix}} other {Hver # måned på {day}{suffix}}}",
+    "everyMonthOnWeekDay": "Hver måned på {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Hver måned på {week} {day}} other {Hver # måned på {week} {day}}}",
+    "everyYear": "Hvert år",
+    "everyNYears": "{count, plural, one {Hvert år} other {Hvert # år}}",
+    "repeats": "Gjentas"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Samlinger",
+      "newNote": "Ny lapp",
+      "newNote2": "Ny lapp",
+      "newFolder": "Ny mappe",
+      "newFolder2": "Ny mappe",
+      "bookmarks": "Bokmerker",
+      "tags": "Tagger",
+      "dropFilesToImport": "Slipp filer for å importere",
+      "newNoteN": "Nytt notat (⌘N)",
+      "new": "Nytt",
+      "syncDisabled": "Synkronisering er deaktivert",
+      "syncDisabled2": "Synkronisering er deaktivert"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Endre størrelse på dagpanel",
+      "dragToResizeDoubleClickToReset": "Dra for å endre størrelse · Dobbeltklikk for å tilbakestille"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Finn, erstatt, spør..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Hopp over ombordstigning",
+      "welcomeToMemry": "Velkommen til Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Din personlige kunnskapsbase. La oss bruke 2 minutter på å komme i gang.",
+      "getStarted": "Kom i gang ",
+      "createYourFirstNote": "Lag ditt første notat",
+      "markdownBasedStoredLocallyAsPlainFiles": "Markdown-basert, lagret lokalt som vanlige filer.",
+      "eGMeetingNotesIdeasAnything": "f.eks. Møtenotater, ideer, hva som helst...",
+      "skip": "Hopp over",
+      "createNote": "Opprett notat ",
+      "addYourFirstTask": "Legg til din første oppgave",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Oppgaver lenker til notatene dine, med prioriteringer og forfallsdatoer.",
+      "eGReviewProjectProposal": "f.eks. Gjennomgå prosjektforslag...",
+      "skip2": "Hopp over",
+      "createTask": "Lag oppgave ",
+      "syncAcrossDevices": "Synkroniser på tvers av enheter",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Hold notatene og oppgavene dine synkronisert på alle enhetene dine. Du kan alltid sette opp dette senere.",
+      "skipForNow": "Hopp over for nå",
+      "doneLetSGo": "Ferdig - la oss gå! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Sett mappeikon"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "TIPS"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Ikonvelger",
+      "selectIcon": "Velg ikon",
+      "closeIconPicker": "Lukk ikonvelgeren",
+      "searchIcons": "Søkeikoner...",
+      "all": "Alle",
+      "clearIcon": "Fjern ikon",
+      "noIconsFoundFor": "Ingen ikoner funnet for \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Tastatursnarveier",
+      "closeShortcutsHelp": "Lukk snarveier hjelper",
+      "press": "Trykk på",
+      "toClose": "å lukke"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Sett ikon",
+      "clearIcon": "Fjern ikon"
+    },
+    "componentsNavMain": {
+      "platform": "Plattform"
+    },
+    "componentsNavProjects": {
+      "projects": "Prosjekter",
+      "more": "Mer",
+      "viewProject": "Se prosjekt",
+      "shareProject": "Del prosjektet",
+      "deleteProject": "Slett prosjekt",
+      "more2": "Mer"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Oppgrader til Pro",
+      "account": "Konto",
+      "billing": "Fakturering",
+      "notifications": "Varsler",
+      "logOut": "Logg ut"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Søk",
+      "searchNotesTasksJournalInbox": "Søk i notater, oppgaver, journal, innboks...",
+      "noResultsFor": "Ingen resultater for \"",
+      "rdquo": "rdquo;",
+      "result": "resultat"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Søk og klikk på elementer for å bygge stien din",
+      "reasons": "Årsaker",
+      "clear": "Klart"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Klart",
+      "tags": "Tagger",
+      "filterByTag": "Filtrer etter tag...",
+      "dateRange": "Datoperiode"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Se alle ",
+      "results": "resultater"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "uklar"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Ingen faner åpne",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Åpne en side fra sidefeltet eller opprett en ny fane for å komme i gang",
+      "openInbox": "Åpne innboks",
+      "closePane": "Lukk ruten"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Forhåndsinnstillinger for layout",
+      "layoutPresets2": "Forhåndsinnstillinger for layout"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Endre størrelse på ruter"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TasksContext ikke tilgjengelig",
+      "searchResults": "Søkeresultater",
+      "unknownTabType": "Ukjent fanetype: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "ulagrede endringer",
+      "preview": "forhåndsvisning"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Ny fane",
+      "newTab2": "Ny fane",
+      "newNote": "Ny merknad",
+      "journal": "Journal",
+      "calendar": "Kalender",
+      "inboxCapture": "Innboksfangst",
+      "tasks": "Oppgaver"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Ulagrede endringer",
+      "unsaved": "ikke lagret)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Ulagrede endringer"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Lukk alle faner"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Åpne faner",
+      "scrollTabsLeft": "Rull til venstre i fanene",
+      "scrollTabsRight": "Rull til høyre i fanene",
+      "graphG": "Graf (⌘G)",
+      "dayPanel": "Dagpanel"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "Rull til venstre i fanene",
+      "scrollTabsRight": "Rull til høyre i fanene"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "Åpne faner",
+      "scrollTabsLeft": "Rull til venstre i fanene",
+      "scrollTabsRight": "Rull til høyre i fanene"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Noe gikk galt",
+      "anErrorOccurredWhileRenderingThisTabContent": "Det oppsto en feil under gjengivelsen av dette faneinnholdet.",
+      "tryAgain": "Prøv igjen"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Merknadsikon"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Ulagrede endringer",
+      "quot": "quot;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; har ulagrede endringer. Hva vil du gjøre?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Ny arbeidsplass",
+      "darkMode": "Mørk modus",
+      "settings": "Innstillinger",
+      "integrations": "Integrasjoner",
+      "signOut": "Logg ut",
+      "downloadOnIos": "Last ned på iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Lukk vinduet",
+      "minimizeWindow": "Minimer vinduet",
+      "maximizeWindow": "Maksimer vinduet"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Forslag",
+      "or": "eller",
+      "enter": "Gå inn",
+      "toInsert": "å sette inn"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "brødsmule",
+      "more": "Mer"
+    },
+    "componentsUiDialog": {
+      "close": "Lukk"
+    },
+    "componentsUiSheet": {
+      "close": "Lukk"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Sidefelt",
+      "displaysTheMobileSidebar": "Viser sidefeltet for mobil.",
+      "toggleSidebar": "Slå av sidepanel",
+      "toggleSidebar2": "Slå av sidepanel",
+      "dragToResizeDoubleClickToReset": "Dra for å endre størrelse · Dobbeltklikk for å tilbakestille"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Velkommen til Memry",
+      "yourPersonalKnowledgeManagementSystem": "Ditt personlige kunnskapsstyringssystem.",
+      "selectAFolderToStoreYourNotesAndTasks": "Velg en mappe for å lagre notatene og oppgavene dine.",
+      "opening": "Åpner...",
+      "selectVaultFolder": "Velg Vault-mappe",
+      "plainMarkdown": "Vanlig Markdown",
+      "yourNotesStayPortable": "Notatene dine forblir bærbare",
+      "syncAnywhere": "Synkroniser hvor som helst",
+      "useDropboxIcloudGit": "Bruk Dropbox, iCloud, Git",
+      "recentVaults": "Nylige hvelv",
+      "notesLastOpened": "notater · Sist åpnet"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Ingen hvelv ennå",
+      "openVault": "Åpent hvelv",
+      "settings": "Innstillinger",
+      "logOut": "Logg ut",
+      "signInToSync": "Logg på for å synkronisere",
+      "remove": "Fjern \"",
+      "rdquoFromList": "rdquo; fra listen?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Dette hvelvet vil bli fjernet fra appen, men filene dine forblir på disken. Du kan alltid legge den til på nytt senere.",
+      "cancel": "Avbryt",
+      "remove2": "Fjern"
+    },
+    "componentsWindowControls": {
+      "searchK": "Søk (⌘K)",
+      "browserBack": "Nettleser tilbake",
+      "back": "Tilbake",
+      "browserForward": "Nettleser fremover",
+      "forward": "Fremover"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Kunne ikke importere filer",
+      "failedToCreateNote": "Kunne ikke opprette notatet",
+      "failedToAccessMicrophone": "Kunne ikke få tilgang til mikrofonen"
+    },
+    "toasts": {
+      "undone": "Angret"
+    }
+  }
+}

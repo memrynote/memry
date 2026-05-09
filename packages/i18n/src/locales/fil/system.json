@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "Piliin ang Vault Folder",
+      "button": "Piliin ang Vault"
+    },
+    "exportPdf": {
+      "title": "I-export bilang PDF",
+      "filterName": "PDF na Dokumento"
+    },
+    "exportHtml": {
+      "title": "I-export bilang HTML",
+      "filterName": "HTML na Dokumento"
+    },
+    "import": {
+      "filterSupported": "Mga Sinusuportahang File",
+      "filterAll": "Lahat ng File"
+    },
+    "exportCancelled": "Kinansela ang pag-export",
+    "update": {
+      "availableTitle": "Available ang update",
+      "availableMessage": "Available ang Memry {version}.",
+      "availableDetailFallback": "I-download ang update ngayon?",
+      "buttonDownload": "I-download",
+      "buttonLater": "Mamaya",
+      "readyTitle": "Handa na ang update",
+      "readyMessage": "Na-download na ang Memry {version}.",
+      "readyDetailFallback": "I-restart ang Memry para tapusin ang pag-install ng update.",
+      "buttonRestartNow": "I-restart ngayon",
+      "releaseNotesLabel": "Mga tala sa paglabas:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "Paalala ng tala",
+      "journal": "Paalala sa journal",
+      "highlight": "I-highlight ang paalala",
+      "fallback": "Nakatakdang paalala",
+      "default": "Paalala"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "Ang oras ng paalala ay dapat nasa hinaharap",
+    "definitionNotFound": "Hindi natagpuan ang kahulugan",
+    "noteNotFound": "Hindi nakita ang tala",
+    "updateFailed": "Nabigo ang pag-update"
+  }
+}

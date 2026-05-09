@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "Tallenna",
+    "cancel": "Peruuta",
+    "close": "Sulje",
+    "ok": "OK",
+    "yes": "Kyllä",
+    "no": "Ei",
+    "delete": "Poista",
+    "confirm": "Vahvista",
+    "apply": "Käytä",
+    "done": "Valmis",
+    "discard": "Hävitä",
+    "dontSave": "Älä Tallenna",
+    "edit": "Muokkaa",
+    "add": "Lisää",
+    "remove": "Poista",
+    "retry": "Yritä uudelleen",
+    "submit": "Lähetä",
+    "back": "Takaisin",
+    "next": "Seuraavaksi",
+    "continue": "Jatka",
+    "reset": "Nollaa",
+    "copy": "Kopioi",
+    "paste": "Liitä",
+    "create": "Luo",
+    "open": "Avaa"
+  },
+  "state": {
+    "loading": "Ladataan…",
+    "saving": "Tallennetaan…",
+    "deleting": "Poistetaan…",
+    "searching": "Haetaan…",
+    "error": "Virhe",
+    "success": "Menestystä"
+  },
+  "empty": {
+    "noResults": "Ei tuloksia",
+    "noItems": "Ei kohteita",
+    "noMatch": "Ei osumia"
+  },
+  "action": {
+    "search": "Etsi",
+    "edit": "Muokkaa",
+    "delete": "Poista",
+    "close": "Sulje",
+    "expand": "Laajenna",
+    "collapse": "Kutista",
+    "showMore": "+{count, plural, one {# enemmän} other {# enemmän}}",
+    "showLess": "Näytä vähemmän"
+  },
+  "tabs": {
+    "pin": "Kiinnitä välilehti",
+    "unpin": "Irrota välilehti",
+    "contextMenu": {
+      "close": "Sulje",
+      "closeOthers": "Sulje Muut",
+      "closeToRight": "Lähellä oikeaa",
+      "closeAll": "Sulje kaikki",
+      "duplicate": "Kopioi välilehti",
+      "splitRight": "Jaa oikealle",
+      "splitDown": "Jaa alas",
+      "copyPath": "Kopioi polku",
+      "revealInSidebar": "Näytä sivupalkissa"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {# tuote} other {# tuotteet}}",
+    "note": "{count, plural, one {# huomautus} other {# toteaa}}",
+    "folder": "{count, plural, one {#-kansio} other {# kansiot}}",
+    "task": "{count, plural, one {# tehtävä} other {# tehtäviä}}",
+    "project": "{count, plural, one {# projekti} other {#-projektit}}",
+    "itemDelete": "{count, plural, one {Poista # kohde} other {Poista # kohteet}}"
+  },
+  "toast": {
+    "actionFailed": "Toiminto epäonnistui",
+    "nothingToUndo": "Ei mitään peruttavaa",
+    "undone": "Kumottu: {description}",
+    "undoFailed": "Toiminnon kumoaminen epäonnistui",
+    "copied": "Kopioitu",
+    "copyFailed": "Kopiointi epäonnistui"
+  },
+  "dateRelative": {
+    "today": "Tänään",
+    "yesterday": "eilen",
+    "daysAgo": "{count, plural, one {# päivä sitten} other {# päivää sitten}}"
+  },
+  "recurrence": {
+    "everyDay": "Joka päivä",
+    "everyNDays": "{count, plural, one {Joka päivä} other {Joka # päivä}}",
+    "everyWeek": "Joka viikko",
+    "everyNWeeks": "{count, plural, one {Joka viikko} other {Joka # viikko}}",
+    "everyWeekday": "Joka arkipäivä",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Joka arkipäivä} other {Joka # viikko arkisin}}",
+    "everyWeekend": "Joka viikonloppu",
+    "everyNWeeksOnWeekends": "{count, plural, one {Joka viikonloppu} other {Joka # viikko viikonloppuisin}}",
+    "everyWeekOnDays": "Joka viikko {days}:llä",
+    "everyNWeeksOnDays": "{count, plural, one {Joka viikko {days}:llä} other {Joka # viikko {days}}}",
+    "everyMonth": "Joka kuukausi",
+    "everyNMonths": "{count, plural, one {Joka kuukausi} other {Joka # kuukausi}}",
+    "everyMonthOnDay": "Joka kuukausi {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {Joka kuukausi {day}{suffix}} other {Joka # kuukausi {day}{suffix}}}",
+    "everyMonthOnWeekDay": "Joka kuukausi {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Joka kuukausi {week} {day}} other {Joka # kuukausi {week} {day}}}",
+    "everyYear": "Joka vuosi",
+    "everyNYears": "{count, plural, one {Joka vuosi} other {Joka # vuosi}}",
+    "repeats": "Toistaa"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Kokoelmat",
+      "newNote": "Uusi muistiinpano",
+      "newNote2": "Uusi muistiinpano",
+      "newFolder": "Uusi kansio",
+      "newFolder2": "Uusi kansio",
+      "bookmarks": "Kirjanmerkit",
+      "tags": "Tunnisteet",
+      "dropFilesToImport": "Pudota tuotavat tiedostot",
+      "newNoteN": "Uusi muistiinpano (⌘N)",
+      "new": "Uusi",
+      "syncDisabled": "Synkronointi pois käytöstä",
+      "syncDisabled2": "Synkronointi pois käytöstä"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Muuta päiväpaneelin kokoa",
+      "dragToResizeDoubleClickToReset": "Muuta kokoa vetämällä · Nollaa kaksoisnapsauttamalla"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Etsi, vaihda, kysy..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Ohita perehdytys",
+      "welcomeToMemry": "Tervetuloa Memry:ään",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Henkilökohtainen tietopohjasi. Käytetään 2 minuuttia, jotta pääset alkuun.",
+      "getStarted": "Aloita ",
+      "createYourFirstNote": "Luo ensimmäinen muistiinpanosi",
+      "markdownBasedStoredLocallyAsPlainFiles": "Markdown-pohjainen, tallennettu paikallisesti tavallisina tiedostoina.",
+      "eGMeetingNotesIdeasAnything": "esim. Kokousmuistiinpanoja, ideoita, mitä tahansa...",
+      "skip": "Ohita",
+      "createNote": "Luo muistiinpano ",
+      "addYourFirstTask": "Lisää ensimmäinen tehtäväsi",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Tehtävät linkittävät muistiinpanoihisi, joissa on prioriteetit ja eräpäivät.",
+      "eGReviewProjectProposal": "esim. Tarkista projektiehdotus...",
+      "skip2": "Ohita",
+      "createTask": "Luo tehtävä ",
+      "syncAcrossDevices": "Synkronoi laitteiden välillä",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Pidä muistiinpanosi ja tehtäväsi synkronoituna kaikilla laitteillasi. Voit aina määrittää tämän myöhemmin.",
+      "skipForNow": "Ohita toistaiseksi",
+      "doneLetSGo": "Valmis - mennään! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Aseta kansiokuvake"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "VINKKI"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Kuvakkeen valitsin",
+      "selectIcon": "Valitse kuvake",
+      "closeIconPicker": "Sulje kuvakevalitsin",
+      "searchIcons": "Hae kuvakkeita...",
+      "all": "Kaikki",
+      "clearIcon": "Tyhjennä kuvake",
+      "noIconsFoundFor": "Ei kuvakkeita haulle \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Pikanäppäimet",
+      "closeShortcutsHelp": "Sulje pikanäppäimet auttavat",
+      "press": "Paina",
+      "toClose": "sulkea"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Aseta kuvake",
+      "clearIcon": "Tyhjennä kuvake"
+    },
+    "componentsNavMain": {
+      "platform": "Alusta"
+    },
+    "componentsNavProjects": {
+      "projects": "Projektit",
+      "more": "Lisää",
+      "viewProject": "Näytä projekti",
+      "shareProject": "Jaa projekti",
+      "deleteProject": "Poista projekti",
+      "more2": "Lisää"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Päivitä Pro-versioon",
+      "account": "Tili",
+      "billing": "Laskutus",
+      "notifications": "Ilmoitukset",
+      "logOut": "Kirjaudu ulos"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Etsi",
+      "searchNotesTasksJournalInbox": "Hae muistiinpanoja, tehtäviä, päiväkirjaa, postilaatikkoa...",
+      "noResultsFor": "Ei tuloksia haulle \"",
+      "rdquo": "rdquo;",
+      "result": "tulos"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Hae ja napsauta kohteita rakentaaksesi polkusi",
+      "reasons": "Syitä",
+      "clear": "Selkeä"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Selkeä",
+      "tags": "Tunnisteet",
+      "filterByTag": "Suodata tunnisteen mukaan...",
+      "dateRange": "Ajanjakso"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Näytä kaikki ",
+      "results": "tuloksia"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "sumeaa"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Ei välilehtiä auki",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Aloita avaamalla sivu sivupalkista tai luomalla uusi välilehti",
+      "openInbox": "Avaa Saapuneet",
+      "closePane": "Sulje ruutu"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Asettelun esiasetukset",
+      "layoutPresets2": "Asettelun esiasetukset"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Muuta ruutujen kokoa"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TasksContext ei ole käytettävissä",
+      "searchResults": "Hakutulokset",
+      "unknownTabType": "Tuntematon välilehtityyppi: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "tallentamattomat muutokset",
+      "preview": "esikatselu"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Uusi välilehti",
+      "newTab2": "Uusi välilehti",
+      "newNote": "Uusi huomautus",
+      "journal": "Journal",
+      "calendar": "Kalenteri",
+      "inboxCapture": "Saapuneet-kansion sieppaus",
+      "tasks": "Tehtävät"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Tallentamattomat muutokset",
+      "unsaved": "tallentamaton)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Tallentamattomat muutokset"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Sulje kaikki välilehdet"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Avaa välilehdet",
+      "scrollTabsLeft": "Vieritä välilehtiä vasemmalle",
+      "scrollTabsRight": "Vieritä välilehtiä oikealle",
+      "graphG": "Kaavio (⌘G)",
+      "dayPanel": "Päivän paneeli"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "Vieritä välilehtiä vasemmalle",
+      "scrollTabsRight": "Vieritä välilehtiä oikealle"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "Avaa välilehdet",
+      "scrollTabsLeft": "Vieritä välilehtiä vasemmalle",
+      "scrollTabsRight": "Vieritä välilehtiä oikealle"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Jotain meni pieleen",
+      "anErrorOccurredWhileRenderingThisTabContent": "Tämän välilehden sisältöä hahmonnettaessa tapahtui virhe.",
+      "tryAgain": "Yritä uudelleen"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Huomautus-kuvake"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Tallentamattomat muutokset",
+      "quot": "quot;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; sisältää tallentamattomia muutoksia. Mitä haluaisit tehdä?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Uusi työtila",
+      "darkMode": "Tumma tila",
+      "settings": "Asetukset",
+      "integrations": "Integraatiot",
+      "signOut": "Kirjaudu ulos",
+      "downloadOnIos": "Lataa iOS:lle"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Sulje ikkuna",
+      "minimizeWindow": "Pienennä ikkuna",
+      "maximizeWindow": "Suurenna ikkuna"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "ehdotuksia",
+      "or": "tai",
+      "enter": "Enter",
+      "toInsert": "lisätäksesi"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "korppujauho",
+      "more": "Lisää"
+    },
+    "componentsUiDialog": {
+      "close": "Sulje"
+    },
+    "componentsUiSheet": {
+      "close": "Sulje"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Sivupalkki",
+      "displaysTheMobileSidebar": "Näyttää mobiilisivupalkin.",
+      "toggleSidebar": "Vaihda sivupalkki",
+      "toggleSidebar2": "Vaihda sivupalkki",
+      "dragToResizeDoubleClickToReset": "Muuta kokoa vetämällä · Nollaa kaksoisnapsauttamalla"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Tervetuloa Memry:ään",
+      "yourPersonalKnowledgeManagementSystem": "Henkilökohtainen tiedonhallintajärjestelmäsi.",
+      "selectAFolderToStoreYourNotesAndTasks": "Valitse kansio muistiinpanojen ja tehtävien tallentamiseen.",
+      "opening": "Avataan...",
+      "selectVaultFolder": "Valitse Holvikansio",
+      "plainMarkdown": "Pelkkä Markdown",
+      "yourNotesStayPortable": "Muistiinpanosi pysyvät kannettavana",
+      "syncAnywhere": "Synkronoi missä tahansa",
+      "useDropboxIcloudGit": "Käytä Dropboxia, iCloudia, Gitiä",
+      "recentVaults": "Viimeaikaiset holvit",
+      "notesLastOpened": "huomautukset · Viimeksi avattu"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Ei vielä holveja",
+      "openVault": "Avaa holvi",
+      "settings": "Asetukset",
+      "logOut": "Kirjaudu ulos",
+      "signInToSync": "Kirjaudu sisään synkronoidaksesi",
+      "remove": "Poista \"",
+      "rdquoFromList": "rdquo; listalta?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Tämä holvi poistetaan sovelluksesta, mutta tiedostosi säilyvät levyllä. Voit aina lisätä sen myöhemmin uudelleen.",
+      "cancel": "Peruuta",
+      "remove2": "Poista"
+    },
+    "componentsWindowControls": {
+      "searchK": "Haku (⌘K)",
+      "browserBack": "Selain takaisin",
+      "back": "Takaisin",
+      "browserForward": "Selain eteenpäin",
+      "forward": "Eteenpäin"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Tiedostojen tuonti epäonnistui",
+      "failedToCreateNote": "Muistiinpanon luominen epäonnistui",
+      "failedToAccessMicrophone": "Mikrofonin käyttö epäonnistui"
+    },
+    "toasts": {
+      "undone": "Kumottu"
+    }
+  }
+}

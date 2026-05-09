@@ -1,0 +1,483 @@
+{
+  "view": {
+    "tabs": {
+      "inbox": "받은편지함",
+      "archived": "보관됨",
+      "insights": "통찰력",
+      "ariaLabel": "받은편지함 보기 선택"
+    },
+    "triageButton": "분류",
+    "processInboxTitle": "받은편지함 처리(Cmd+P)",
+    "itemCaptured": "포획된 아이템",
+    "searchArchivedTitle": "보관된 항목 검색",
+    "searchPlaceholder": "검색...",
+    "archivedItemsAria": "보관된 항목",
+    "snoozed": {
+      "show": "일시 중지된 항목 표시",
+      "showWithCount": "일시 중지된 항목 표시({count})",
+      "hide": "일시 중지된 항목 숨기기"
+    },
+    "filter": {
+      "button": "필터",
+      "byType": "유형별로 필터링",
+      "active": "{count, plural, one {# 유형으로 필터링} other {# 유형별 필터링}}",
+      "clearAll": "모두 지우기"
+    },
+    "jobs": {
+      "running": "{count, plural, one {# 백그라운드 작업 실행 중} other {# 백그라운드 작업 실행 중}}",
+      "failed": "{count} 실패"
+    }
+  },
+  "type": {
+    "link": "링크",
+    "links": "링크",
+    "note": "참고",
+    "notes": "메모",
+    "image": "이미지",
+    "images": "이미지",
+    "voice": "음성",
+    "video": "비디오",
+    "clip": "클립",
+    "clips": "클립",
+    "pdf": "PDF",
+    "pdfs": "PDF",
+    "social": "소셜",
+    "reminder": "알림",
+    "reminders": "알림",
+    "text": "텍스트",
+    "other": "기타"
+  },
+  "empty": {
+    "successAria": "성공했습니다. 받은편지함이 비어 있습니다.",
+    "title": "받은 편지함 제로",
+    "body": "모든 것이 처리되었습니다. 위 입력으로 새로운 내용을 캡처하거나 링크를 붙여넣어 시작하세요.",
+    "filedThisWeek": "{count, plural, one {이번 주에 제출된 #} other {이번 주에 제출된 #}}",
+    "dayStreak": "{count, plural, one {#일 연속} other {#일 연속}}",
+    "tipPrefix": "팁: 사용",
+    "tipSuffix": "클립보드에서 빠르게 캡처하려면",
+    "archivedNone": "보관된 항목 없음",
+    "archivedNoMatches": "일치하는 보관된 항목이 없습니다.",
+    "noItemsYet": "아직 항목이 없습니다",
+    "noItemsFiled": "아직 제출된 항목이 없습니다.",
+    "noItemTypes": "표시할 항목 유형이 없습니다.",
+    "noFolders": "폴더를 찾을 수 없습니다.",
+    "noFolderMatch": "\"{query}\"와 일치하는 폴더가 없습니다.",
+    "noNotes": "메모를 찾을 수 없습니다.",
+    "allMatchesLinked": "모든 경기가 이미 연결되었습니다."
+  },
+  "list": {
+    "ariaLabel": "받은 편지함 항목",
+    "section": {
+      "today": "오늘",
+      "yesterday": "어제",
+      "older": "이전"
+    },
+    "selectItem": "{title}를 선택하세요.",
+    "itemAria": "{type}: {title}",
+    "untitled": "제목 없음",
+    "untitledItem": "제목 없는 항목",
+    "transcribing": "스크립트 작성 중...",
+    "transcriptionFailed": "전사 실패",
+    "retryTranscription": "재시도",
+    "pageCount": "{count, plural, one {# 페이지} other {# 페이지}}",
+    "snoozedUntilShort": "{date}까지 일시 중지됨",
+    "capturedAgo": "캡처된 {time}"
+  },
+  "loading": {
+    "inbox": "받은편지함 로드 중...",
+    "failed": "받은편지함을 로드하지 못했습니다.",
+    "tryAgain": "다시 시도하세요",
+    "capturingImage": "이미지 캡처 중...",
+    "dropImageTitle": "캡처할 이미지를 드롭하세요.",
+    "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
+    "unsupportedImageType": "지원되지 않는 이미지 유형: {type}",
+    "imageTooLarge": "이미지가 너무 큼(최대 50MB)"
+  },
+  "toast": {
+    "failedArchiveItem": "항목을 보관하지 못했습니다.",
+    "failedArchiveItems": "항목을 보관하지 못했습니다.",
+    "failedFile": "제출하지 못했습니다.",
+    "failedFileItem": "항목을 제출하지 못했습니다.",
+    "failedFileItems": "항목을 보관하지 못했습니다.",
+    "failedSnooze": "일시중지하지 못했습니다.",
+    "failedSnoozeItem": "항목을 일시중지하지 못했습니다.",
+    "failedApplyTags": "태그를 적용하지 못했습니다.",
+    "failedCaptureImage": "이미지를 캡처하지 못했습니다.",
+    "linkedToNote": "메모에 연결됨",
+    "linkedToNotes": "{count} 노트에 연결됨",
+    "filedTo": "{folder}에 제출됨",
+    "filedItemsTo": "{count} 항목을 {folder}에 제출했습니다.",
+    "filedPartial": "{total} 항목 중 {processed}를 제출했습니다.",
+    "appliedTags": "{tagCount, plural, one {# 태그 적용} other {# 태그 적용}}에서 {itemCount, plural, one {# 항목} other {# 항목}}로",
+    "archivedItems": "{count, plural, one {보관된 # 항목} other {보관된 # 항목}}",
+    "snoozedUntil": "{time}까지 일시 중지되었습니다.",
+    "snoozedItemsUntil": "{count, plural, one {{time}까지 # 항목을 일시 중지했습니다.} other {{time}까지 # 항목을 일시 중지했습니다.}}"
+  },
+  "triage": {
+    "modeTitle": "분류 모드",
+    "exitHint": "종료하려면 Esc를 누르세요.",
+    "exitAria": "분류 모드 종료",
+    "position": "{total}의 {current}",
+    "action": {
+      "discard": "폐기",
+      "archive": "아카이브",
+      "open": "열기",
+      "toTask": "작업으로",
+      "toNote": "참고할 사항",
+      "file": "파일",
+      "snooze": "스누즈",
+      "cancel": "취소"
+    },
+    "snoozeUntil": "다음 날짜까지 일시중지하세요...",
+    "complete": {
+      "title": "받은 편지함 제로",
+      "processed": "{count, plural, one {# 항목이 처리되었습니다.} other {# 항목이 처리되었습니다.}}",
+      "streak": "줄무늬",
+      "streakCount": "{count} 연속",
+      "dayProcessingStreak": "{count, plural, one {#일 연속 처리} other {#일 연속 처리}}",
+      "back": "받은편지함으로 돌아가기",
+      "motivation0": "미래의 당신도 고마워요.",
+      "motivation1": "모든 것이 제자리에 있습니다.",
+      "motivation2": "받은편지함을 정리하고 마음을 정리하세요.",
+      "motivation3": "결정 부채: 전액 지불되었습니다.",
+      "motivation4": "기분 좋았지, 그렇지?"
+    }
+  },
+  "bulk": {
+    "selected": "{count} 선택됨",
+    "deselectAll": "모두 선택 취소",
+    "ariaLabel": "{count} 선택 항목에 대한 대량 작업",
+    "file": "파일",
+    "tag": "태그",
+    "snooze": "스누즈",
+    "archive": "아카이브",
+    "add": "추가",
+    "dismissSuggestion": "제안 닫기",
+    "hint": {
+      "file": "파일",
+      "tag": "태그",
+      "snooze": "잠을 자다",
+      "archive": "아카이브",
+      "deselect": "선택 취소"
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {# 항목을 보관하시겠습니까?} other {# 항목을 보관하시겠습니까?}}",
+      "description": "이 항목은 보관됩니다. 나중에 보관된 항목을 볼 수 있습니다.",
+      "confirm": "{count, plural, one {# 항목 보관} other {# 항목 보관}}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {파일 # 항목} other {파일 # 항목}}",
+      "itemsToFile": "제출 항목",
+      "multipleNoteLinksUnavailable": "참고: 여러 항목을 제출하는 경우 다른 메모에 대한 링크를 추가할 수 없습니다.",
+      "filing": "제출 중...",
+      "submit": "{count, plural, one {파일 # 항목} other {파일 # 항목}}",
+      "macHint": "⌘⏎ 파일로 · Esc로 닫음",
+      "ctrlHint": "파일을 보려면 Ctrl+Enter · 닫으려면 Esc"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {# 항목 태그} other {# 항목 태그}}",
+      "placeholder": "태그를 검색하려면 입력하세요...",
+      "applying": "신청 중...",
+      "apply": "{count, plural, one {# 항목에 적용} other {# 항목에 적용}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "빠른 작업",
+    "archiveItem": "보관 항목",
+    "archive": "아카이브",
+    "snooze": "스누즈"
+  },
+  "detail": {
+    "ariaLabel": "품목 세부정보",
+    "closePanel": "패널 닫기",
+    "resizeFiling": "파일링 섹션 크기 조정",
+    "restore": "복원",
+    "restoreToInbox": "받은편지함으로 복원",
+    "delete": "삭제",
+    "deletePermanently": "영구 삭제",
+    "archive": "아카이브",
+    "file": "파일",
+    "keyboardHint": "{modifier}⏎ 파일 · 1-5 폴더 · Esc 닫기",
+    "voiceTitlePlaceholder": "이 음성 메모의 이름을 지정하세요.",
+    "fileTo": "파일 대상",
+    "ai": "AI",
+    "selectFolder": "폴더 선택",
+    "searchOrCreateFolder": "/...로 검색하거나 생성하세요.",
+    "suggested": "제안",
+    "notesRoot": "메모",
+    "notesRootLabel": "메모(루트)",
+    "createFolder": "\"{name}\" 생성",
+    "addTags": "태그 추가...",
+    "linkToNote": "메모 링크",
+    "linkNotesPlaceholder": "링크 노트...",
+    "searchNotesAria": "연결할 노트 검색",
+    "linkedNotesAria": "연결된 노트",
+    "removeLinkTo": "{title}에 대한 링크 제거",
+    "contentEditorAria": "콘텐츠 편집자",
+    "notePlaceholder": "메모를 작성하세요...",
+    "textPlaceholder": "캡처한 텍스트를 편집하세요..."
+  },
+  "content": {
+    "capturedAt": "캡처된 {date}",
+    "todayAt": "오늘 {time}에서",
+    "yesterdayAt": "어제 {time}에서",
+    "dateAt": "{time}의 {date}",
+    "words": "{count, plural, one {# 단어} other {# 단어}}",
+    "duration": "기간: {duration}",
+    "dimensions": "치수",
+    "format": "형식",
+    "size": "크기",
+    "voiceMemo": "음성 메모",
+    "play": "플레이",
+    "pause": "일시중지",
+    "audioPosition": "오디오 위치",
+    "transcription": "전사",
+    "processing": "처리",
+    "pending": "보류 중",
+    "failed": "실패했다",
+    "copyTranscription": "전사 복사",
+    "transcribingAudio": "오디오 스크립트 작성 중...",
+    "awaitingTranscription": "스크립트 작성을 기다리는 중...",
+    "noTranscription": "사용할 수 있는 텍스트 변환이 없습니다.",
+    "failedPlayAudio": "오디오를 재생하지 못했습니다.",
+    "failedLoadAudio": "오디오를 로드하지 못했습니다.",
+    "video": "비디오",
+    "unsupportedVideo": "귀하의 브라우저는 video 태그를 지원하지 않습니다."
+  },
+  "reminder": {
+    "dataUnavailable": "알림 데이터를 사용할 수 없습니다.",
+    "triggered": "알림이 실행되었습니다.",
+    "noteLabel": "알림 메모",
+    "source": "소스",
+    "journalTitle": "저널 — {date}",
+    "noteFallback": "참고",
+    "journalFallback": "저널",
+    "highlighted": "강조표시됨: \"{text}\"",
+    "viewed": "본",
+    "markViewed": "본 것으로 표시",
+    "notYetViewed": "아직 조회되지 않음",
+    "snooze": "스누즈",
+    "presetInOneHour": "1시간",
+    "presetTomorrow": "내일",
+    "presetNextWeek": "다음 주",
+    "custom": "맞춤..."
+  },
+  "insights": {
+    "loading": "통계 로드 중...",
+    "captureActivity": "활동 캡처",
+    "byType": "유형별",
+    "itemTypes": "품목 유형",
+    "itemTypesDescription": "콘텐츠 형식의 배포",
+    "recentFilings": "최근 제출",
+    "recentlyFiled": "최근 출원됨",
+    "recentlyFiledDescription": "받은편지함의 최신 작업",
+    "captured": "캡처됨",
+    "capturedThisWeek": "이번 주 +{count}",
+    "processed": "처리됨",
+    "processRate": "{rate}% 비율",
+    "stale": "부실",
+    "needsAttention": "주의가 필요하다",
+    "allClear": "모두 깨끗해",
+    "avgTimeToFile": "평균 파일 제출 시간",
+    "noCapturesYet": "아직 캡처가 없습니다.",
+    "captures": "{count, plural, one {# 캡처} other {# 캡처}}",
+    "peak": "피크: {day} {start}–{end}",
+    "convertedToTask": "작업으로 변환됨",
+    "linked": "연결됨",
+    "now": "지금",
+    "timeAgoMinutes": "{count}분 전",
+    "timeAgoHours": "{count}시간 전",
+    "timeAgoDays": "{count}일 전"
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "AI가 감지했습니다: \"",
+      "addToSelection": "선택 항목에 추가",
+      "dismiss": "닫기"
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "삭제 ",
+      "item": "아이템",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "해당 항목은 받은 편지함에서 제거됩니다. 이 작업은 즉시 취소할 수 있습니다."
+    },
+    "componentsCaptureInput": {
+      "captureInput": "입력 캡처",
+      "attachFile": "파일첨부",
+      "attachFileImagesAudioVideoPdf": "파일 첨부(이미지, 오디오, 비디오, PDF)",
+      "recordVoiceMemo": "음성 메모 녹음",
+      "recordVoiceMemo2": "음성 메모 녹음",
+      "alreadyCaptured": "이미 캡처되었습니다: “",
+      "rdquo": "rdquo;",
+      "captureAnyway": "어쨌든 캡처"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "폴더 선택",
+      "searchFolders": "폴더 검색...",
+      "searchFolders2": "폴더 검색",
+      "searchResults": "검색결과",
+      "create": "\" 만들기",
+      "suggested": "제안",
+      "recent": "최근",
+      "allFolders": "모든 폴더",
+      "allFolders2": "모든 폴더"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "링크",
+      "optional": "선택 사항)",
+      "searchNotesToLink": "연결할 노트 검색...",
+      "searchNotesToLink2": "연결할 노트 검색",
+      "searching": "검색 중...",
+      "noNotesFound": "메모를 찾을 수 없습니다.",
+      "linkedNotes": "연결된 노트",
+      "noLinksAdded": "추가된 링크가 없습니다."
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "제안",
+      "ai": "AI",
+      "create": "만들기",
+      "tags": "태그",
+      "selectedTags": "선택된 태그",
+      "addTags": "태그 추가",
+      "tagSuggestions": "태그 제안"
+    },
+    "componentsFilingTagInput": {
+      "tags": "태그",
+      "optional": "선택 사항)",
+      "addTags": "태그 추가...",
+      "addTags2": "태그 추가",
+      "selectedTags": "선택된 태그",
+      "suggested": "제안"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "활동 캡처"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "아직 제출된 항목이 없습니다.",
+      "recentlyFiled": "최근 출원됨",
+      "latestActionsOnYourInbox": "받은편지함의 최신 작업",
+      "linked": "연결됨"
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "통계 로드 중..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "표시할 항목 유형이 없습니다.",
+      "itemTypes": "품목 유형",
+      "distributionOfContentFormats": "콘텐츠 형식의 배포"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "캡처됨 "
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "엑스 "
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "콘텐츠 편집자"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "중간점; "
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "트윗할 수 없음",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "이 트윗은 삭제되었거나 개인 계정에서 트윗되었을 수 있습니다.",
+      "openOnXCom": "x.com에서 열기",
+      "views": "조회수",
+      "xCom": "x.com",
+      "viewOnX": "X에서 보기"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "폴더 이름을 입력하세요...",
+      "quickFileFolderSearch": "빠른 파일 폴더 검색"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "닫기",
+      "capture": "캡처"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "첨부파일 삭제"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "빠른 캡처 입력",
+      "recordVoiceMemo": "음성 메모 녹음",
+      "attachFile": "파일첨부"
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "링크"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "캡처됨",
+      "dismissError": "오류 무시",
+      "alreadyCaptured": "이미 캡처됨",
+      "ldquo": "ldquo;",
+      "rdquoMiddot": "rdquo; · ",
+      "captureAnyway": "어쨌든 캡처",
+      "close": "닫기"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "드롭하여 캡처",
+      "capturing": "캡처 중..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "폴더 제안",
+      "noFoldersMatch": "\"와(과) 일치하는 폴더가 없습니다."
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "이 문자 메시지에 대한 알림 설정",
+      "remindMeAboutThis": "이에 대해 알림",
+      "selectedText": "선택한 텍스트:"
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "알림",
+      "remindMe": "알림",
+      "pickDateTime": "날짜 및 시간 선택",
+      "addANoteOptional": "메모 추가(선택사항)",
+      "backToPresets": "사전 설정으로 돌아가기",
+      "time": "시간",
+      "noteOptional": "참고(선택사항)",
+      "whyAreYouSettingThisReminder": "이 알림을 설정하는 이유는 무엇인가요?"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "스누즈",
+      "snooze2": "스누즈",
+      "pickDateTime": "날짜 및 시간 선택",
+      "pickDateTime2": "날짜 및 시간 선택",
+      "selectWhenToBeRemindedAboutThisItem": "이 항목에 대해 언제 알림을 받을지 선택하세요.",
+      "snooze3": "스누즈",
+      "snooze4": "스누즈",
+      "snooze5": "스누즈"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "게시물 로드 중...",
+      "failedToLoad": "로드하지 못했습니다.",
+      "loadingPostContent": "게시물 콘텐츠 로드 중...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "게시물 콘텐츠를 로드하지 못했습니다. 해당 게시물은 비공개이거나 삭제될 수 있습니다.",
+      "viewOn": "보기 "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "음성 녹음 시작",
+      "requestingMicrophoneAccess": "마이크 액세스 요청 중...",
+      "settings": "설정",
+      "processing": "처리 중...",
+      "cancelRecording": "녹음 취소",
+      "cancel": "취소",
+      "stopRecording": "녹음 중지",
+      "stop": "중지"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCaptureLink": "링크를 캡처하지 못했습니다.",
+      "failedToCaptureNote": "메모를 캡처하지 못했습니다.",
+      "captureFailed": "캡처 실패",
+      "failedToCaptureVoiceMemo": "음성 메모를 캡처하지 못했습니다.",
+      "voiceCaptureFailed": "음성 캡처 실패",
+      "failedToCaptureFile": "파일을 캡처하지 못했습니다.",
+      "fileCaptureFailed": "파일 캡처 실패",
+      "failedToCaptureAudio": "오디오를 캡처하지 못했습니다.",
+      "failedToCaptureVoice": "음성을 캡처하지 못했습니다."
+    },
+    "toasts": {
+      "inboxRefreshed": "받은 편지함을 새로 고쳤습니다."
+    }
+  }
+}

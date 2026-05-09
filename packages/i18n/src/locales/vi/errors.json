@@ -1,0 +1,80 @@
+{
+  "generic": {
+    "somethingWentWrong": "Có gì đó đã xảy ra. Vui lòng thử lại.",
+    "operationFailed": "Thao tác thất bại",
+    "unknown": "Đã xảy ra lỗi không xác định",
+    "validationFailed": "Xác thực thất bại",
+    "actionFailed": "Thao tác thất bại"
+  },
+  "ipc": {
+    "noVaultOpen": "Chưa mở kho nào. Vui lòng mở kho trước."
+  },
+  "vault": {
+    "notFound": "Không tìm thấy kho. Có thể nó đã bị di chuyển hoặc xóa.",
+    "notInitialized": "Chưa mở kho nào. Mở hoặc tạo kho để tiếp tục.",
+    "invalidPath": "Đường dẫn được chọn không phải là vị trí kho hợp lệ.",
+    "permissionDenied": "Không có quyền truy cập. Kiểm tra xem bạn có quyền truy cập vào thư mục này không.",
+    "alreadyExists": "Kho đã tồn tại ở vị trí này.",
+    "corrupted": "Kho này có vẻ bị hỏng. Thử khôi phục từ bản sao lưu."
+  },
+  "note": {
+    "notFound": "Không tìm thấy ghi chú này. Có thể nó đã bị xóa.",
+    "invalidFrontmatter": "Ghi chú này có siêu dữ liệu không hợp lệ và không thể đọc được.",
+    "duplicateId": "Một ghi chú với ID này đã tồn tại.",
+    "writeFailed": "Không thể lưu ghi chú này. Kiểm tra dung lượng đĩa và quyền truy cập.",
+    "readFailed": "Không thể đọc ghi chú này. Tệp có thể bị khóa hoặc bị hỏng.",
+    "deleteFailed": "Không thể xóa ghi chú này. Kiểm tra quyền của tệp.",
+    "invalidPath": "Đường dẫn ghi chú không hợp lệ."
+  },
+  "database": {
+    "connectionFailed": "Không thể kết nối với cơ sở dữ liệu cục bộ. Thử khởi động lại ứng dụng.",
+    "migrationFailed": "Nâng cấp cơ sở dữ liệu thất bại. Thử khởi động lại ứng dụng.",
+    "queryFailed": "Một thao tác cơ sở dữ liệu đã thất bại. Thử lại.",
+    "notInitialized": "Cơ sở dữ liệu chưa sẵn sàng. Thử khởi động lại ứng dụng.",
+    "constraintViolation": "Đã xảy ra xung đột dữ liệu. Thử lại.",
+    "corrupted": "Cơ sở dữ liệu cục bộ bị hỏng. Bạn có thể cần phải đặt lại nó."
+  },
+  "watcher": {
+    "startFailed": "Không thể bắt đầu theo dõi thay đổi tệp.",
+    "stopFailed": "Không thể dừng trình theo dõi tệp.",
+    "eventError": "Đã xảy ra lỗi khi theo dõi các thay đổi của tệp."
+  },
+  "attachment": {
+    "fileTooLarge": "Tệp này quá lớn để đính kèm.",
+    "unsupportedType": "Loại tệp này không được hỗ trợ.",
+    "writeFailed": "Không lưu được tệp đính kèm. Kiểm tra dung lượng ổ đĩa.",
+    "deleteFailed": "Không xóa được tệp đính kèm."
+  },
+  "encryption": {
+    "failed": "Không mã hóa được dữ liệu. Có thể cần tạo lại khóa.",
+    "decryptionFailed": "Không giải mã được dữ liệu. Khóa mã hóa của bạn có thể đã lỗi thời.",
+    "invalidKeyLength": "Khóa mã hóa không hợp lệ. Thử đăng xuất và đăng nhập lại.",
+    "invalidNonceLength": "Lỗi mã hóa. Thử lại thao tác."
+  },
+  "inboxAttachment": {
+    "writeFailed": "Không lưu được tệp đính kèm trong hộp thư đến.",
+    "deleteFailed": "Không xóa được tệp đính kèm trong hộp thư đến."
+  },
+  "sync": {
+    "networkOffline": "Bạn đang ngoại tuyến. Các thay đổi sẽ được đồng bộ khi bạn kết nối lại.",
+    "networkTimeout": "Máy chủ đồng bộ phản hồi quá lâu. Sẽ thử lại trong thời gian ngắn.",
+    "serverError": "Máy chủ đồng bộ gặp lỗi. Sẽ tự động thử lại.",
+    "authExpired": "Phiên đăng nhập của bạn đã hết hạn. Đăng nhập lại để tiếp tục đồng bộ.",
+    "deviceRevoked": "Thiết bị này đã bị xóa khỏi tài khoản của bạn.",
+    "rateLimited": "Quá nhiều yêu cầu. Việc đồng bộ sẽ tiếp tục sau vài lúc.",
+    "cryptoFailure": "Không thể mã hóa hoặc giải mã dữ liệu đồng bộ. Thử đăng xuất và đăng nhập lại.",
+    "versionIncompatible": "Phiên bản Memry này không còn được hỗ trợ. Vui lòng cập nhật.",
+    "storageQuotaExceeded": "Bộ nhớ đồng bộ của bạn đã đầy. Giải phóng không gian hoặc nâng cấp gói.",
+    "certificatePinFailed": "Kết nối bảo mật thất bại. Kiểm tra kết nối mạng của bạn.",
+    "unknown": "Đã xảy ra lỗi đồng bộ không mong muốn. Sẽ thử lại tự động.",
+    "statusFetchFailed": "Không thể lấy trạng thái đồng bộ",
+    "engineNotInitialized": "Công cụ đồng bộ chưa được khởi tạo. Mở một kho để bắt đầu đồng bộ.",
+    "triggerFailed": "Đồng bộ thất bại",
+    "pauseFailed": "Không thể tạm dừng đồng bộ",
+    "resumeFailed": "Không thể tiếp tục đồng bộ",
+    "settingsNotInitialized": "Đồng bộ cài đặt chưa được khởi tạo",
+    "securityQuarantinePermanent": "Một mục đồng bộ không thể được xác minh và đã bị cách ly vì lý do bảo mật.",
+    "securityQuarantineRetry": "Một mục đồng bộ không vượt qua kiểm tra chữ ký và sẽ được thử lại.",
+    "certificatePinPaused": "Kết nối bảo mật với máy chủ đồng bộ không thể xác minh. Việc đồng bộ đã tạm dừng để bảo vệ bạn."
+  }
+}

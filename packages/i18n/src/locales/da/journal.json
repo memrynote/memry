@@ -1,0 +1,303 @@
+{
+  "title": "Journal",
+  "section": {
+    "journal": "Journal",
+    "aiConnections": "AI-forbindelser",
+    "todaysNotes": "Dagens noter",
+    "todaysSchedule": "Dagens skema",
+    "todaysTasks": "Dagens opgaver",
+    "schedule": "Tidsplan",
+    "tasks": "Opgaver",
+    "calendarEvents": "Kalenderbegivenheder",
+    "overdueTasks": "Forfaldne opgaver",
+    "technicalDetails": "Tekniske detaljer"
+  },
+  "action": {
+    "versionHistory": "Versionshistorik",
+    "export": "Eksporter",
+    "fullWidth": "Fuld bredde",
+    "journalSettings": "Journalindstillinger",
+    "fullMode": "Fuld tilstand",
+    "compactMode": "Kompakt tilstand",
+    "focusMode": "Fokustilstand",
+    "exitFocusMode": "Afslut fokustilstand",
+    "enterFocusMode": "Gå ind i fokustilstand",
+    "createNote": "Opret note",
+    "createNewNote": "Opret ny note",
+    "showLess": "Vis mindre",
+    "showMoreNotes": "Vis {count} mere note",
+    "showMoreNotes_plural": "Vis {count} flere noter",
+    "showFewerNotes": "Vis færre noter",
+    "startBlank": "Start blank i stedet",
+    "changeTemplate": "Skift skabelon",
+    "dismissIndicator": "Afvis indikator",
+    "refreshConnections": "Opdater forbindelser",
+    "reloadJournal": "Genindlæs journal",
+    "goToToday": "Gå til i dag",
+    "copyUnsavedContent": "Kopier ikke-gemt indhold til udklipsholder",
+    "openNoteFullPage": "Åbn note på hele siden",
+    "closeNoteDrawer": "Luk seddelskuffen",
+    "addBookmark": "Tilføj bogmærke",
+    "removeBookmark": "Fjern bogmærke",
+    "tryAgain": "Prøv igen"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "Hvad planlægger du...",
+      "today": "Hvad tænker du på i dag...",
+      "past": "Tænk på denne dag...",
+      "default": "Begynd at skrive..."
+    },
+    "toolbar": {
+      "ariaLabel": "Tekstformatering",
+      "bold": "Fed",
+      "italic": "Kursiv",
+      "underline": "Understreg",
+      "strikethrough": "Gennemstregning",
+      "link": "Link",
+      "image": "Billede",
+      "moreOptions": "Flere muligheder",
+      "heading1": "Overskrift 1",
+      "heading2": "Overskrift 2",
+      "heading3": "Overskrift 3",
+      "bulletList": "Punktliste",
+      "numberedList": "Nummereret liste",
+      "checklist": "Tjekliste",
+      "quote": "Citat",
+      "divider": "Afdeler",
+      "codeBlock": "Kodeblok"
+    },
+    "prompt": {
+      "enterUrl": "Indtast URL:"
+    },
+    "upload": {
+      "noEntry": "Kan ikke uploade billede: ingen journalpost valgt",
+      "failed": "Kunne ikke uploade billede"
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "I dag",
+      "yesterday": "I går",
+      "tomorrow": "I morgen",
+      "future": "Fremtid"
+    },
+    "weekday": {
+      "sunday": "søndag",
+      "monday": "mandag",
+      "tuesday": "tirsdag",
+      "wednesday": "onsdag",
+      "thursday": "torsdag",
+      "friday": "fredag",
+      "saturday": "lørdag"
+    },
+    "weekdayShort": {
+      "sunday": "Sol",
+      "monday": "man",
+      "tuesday": "tir",
+      "wednesday": "ons",
+      "thursday": "tor",
+      "friday": "fre",
+      "saturday": "Lør"
+    },
+    "month": {
+      "january": "januar",
+      "february": "februar",
+      "march": "marts",
+      "april": "april",
+      "may": "maj",
+      "june": "juni",
+      "july": "juli",
+      "august": "august",
+      "september": "september",
+      "october": "oktober",
+      "november": "november",
+      "december": "december"
+    },
+    "monthShort": {
+      "january": "Jan",
+      "february": "feb",
+      "march": "Mar",
+      "april": "apr",
+      "may": "maj",
+      "june": "jun",
+      "july": "jul",
+      "august": "aug",
+      "september": "sep",
+      "october": "okt",
+      "november": "nov",
+      "december": "dec"
+    },
+    "greeting": {
+      "morning": "Godmorgen",
+      "afternoon": "God eftermiddag",
+      "evening": "God aften",
+      "night": "Godnat"
+    },
+    "allDay": "Hele dagen"
+  },
+  "nav": {
+    "previousDay": "Forrige dag",
+    "nextDay": "Næste dag",
+    "previousMonth": "Forrige måned",
+    "nextMonth": "Næste måned",
+    "previousYear": "Forrige år",
+    "nextYear": "Næste år",
+    "journalBack": "Journal tilbage",
+    "journalNavigation": "Journalnavigation",
+    "dateNavigation": "Journal dato navigation",
+    "goToYearView": "Gå til årsvisning",
+    "previousView": "Forrige visning",
+    "nextView": "Næste visning"
+  },
+  "aria": {
+    "moreOptions": "Flere muligheder",
+    "documentStatistics": "Dokument statistik",
+    "dayContext": "Dagskontekst: opgaver og tidsplan",
+    "scheduleEvents": "Planlæg begivenheder",
+    "tasks": "Opgaver",
+    "notesCreatedToday": "{count}-noter oprettet i dag"
+  },
+  "empty": {
+    "noEntry": "Ingen adgang",
+    "noDaysInMonth": "Ingen dage i denne måned",
+    "noEventsScheduled": "Ingen planlagte begivenheder",
+    "noEventsScheduledToday": "Ingen begivenheder planlagt i dag",
+    "noEventsWereScheduled": "Ingen begivenheder var planlagt",
+    "noTasksDue": "Ingen opgaver pga",
+    "noTasksDueToday": "Ingen opgaver i dag",
+    "noTasksWereDue": "Der var ingen opgaver",
+    "noNotesToday": "Ingen noter oprettet i dag",
+    "startDocumenting": "Begynd at dokumentere dine tanker og ideer"
+  },
+  "ai": {
+    "loading": "Analyserer din post...",
+    "empty": {
+      "willAppear": "Dine forbindelser vises her",
+      "noneYet": "Ingen forbindelser fundet endnu",
+      "moreJournaling": "Efterhånden som du journalfører mere, vil AI finde relaterede poster",
+      "keepWriting": "Bliv ved med at skrive for at finde relaterede poster"
+    },
+    "error": {
+      "loadFailed": "Kunne ikke indlæse forbindelser"
+    },
+    "connectionAria": "Forbindelse til {label}, {scorePercent}% matcher"
+  },
+  "count": {
+    "item": "vare",
+    "items": "genstande",
+    "note": "bemærk",
+    "notes": "noter",
+    "day": "dag",
+    "days": "dage",
+    "event": "begivenhed",
+    "events": "begivenheder",
+    "meeting": "møde",
+    "meetings": "møder",
+    "task": "opgave",
+    "tasks": "opgaver",
+    "todo": "at gøre",
+    "people": "{count} mennesker",
+    "moreConnections": "+ {count} mere forbindelse",
+    "moreConnections_plural": "+ {count} flere forbindelser",
+    "moreNotes": "+ {count} mere bemærkning",
+    "moreNotes_plural": "+ {count} flere noter",
+    "daysWithEntries": "dage med tilmeldinger",
+    "charactersWritten": "skrevet tegn",
+    "words": "{count} ord",
+    "characters": "{count} tegn",
+    "completed": "{count} afsluttet",
+    "overdue": "{count} er forsinket"
+  },
+  "stats": {
+    "wordCount": "Ordantal",
+    "characterCount": "Antal tegn",
+    "readingTime": "Estimeret læsetid",
+    "lastModified": "Sidst ændret",
+    "lessThanOneMinute": "< 1 min",
+    "minutes": "{minutes} min",
+    "read": "{readingTime} læst",
+    "modified": "Ændret {date}"
+  },
+  "task": {
+    "completed": "Afsluttet",
+    "notCompleted": "Ikke afsluttet",
+    "priority": "{priority} prioritet",
+    "overdue": "forfalden",
+    "markComplete": "Marker \"{title}\" som afsluttet",
+    "markNotComplete": "Marker \"{title}\" som ikke afsluttet"
+  },
+  "template": {
+    "using": "Brug af \"{templateName}\""
+  },
+  "reminder": {
+    "hasReminders": "Har påmindelser",
+    "setToRevisit": "Indstil påmindelse om at besøge igen",
+    "tooltip": "Påmindelse: {date}",
+    "tooltipMore": "Påmindelse: {date} (+{count} mere)",
+    "success": {
+      "set": "Påmindelse indstillet for denne journalpost",
+      "deleted": "Påmindelsen er slettet",
+      "dismissed": "Påmindelsen afvist",
+      "snoozed": "Påmindelsen er udsat"
+    },
+    "error": {
+      "set": "Kunne ikke indstille påmindelsen",
+      "delete": "Kunne ikke slette påmindelsen",
+      "dismiss": "Kunne ikke afvise påmindelsen",
+      "snooze": "Kunne ikke udsætte påmindelsen"
+    }
+  },
+  "toast": {
+    "unsavedRetry": "Dit indhold er stadig i hukommelsen. Klik for at prøve at gemme igen.",
+    "noteNotFound": "Bemærk \"{target}\" ikke fundet",
+    "fileNotFound": "Filen blev ikke fundet: {target}",
+    "openLinkedItemFailed": "Kunne ikke åbne linket element",
+    "errorPrefix": "Fejl:"
+  },
+  "export": {
+    "noteTitle": "Journal - {month} {day}, {year}"
+  },
+  "note": {
+    "generatedTitle": "Bemærk - {date}",
+    "openAria": "Åbn {title}, oprettet på {time}"
+  },
+  "tag": {
+    "suggestionsAria": "Tag forslag",
+    "empty": {
+      "title": "Ingen tags endnu",
+      "description": "Skriv for at oprette et nyt tag"
+    },
+    "groupTitle": "Tags",
+    "create": "Opret #{query}",
+    "ariaLabel": "Tag: {tag}, klik for at filtrere"
+  },
+  "wiki": {
+    "suggestionsAria": "Sideforslag",
+    "empty": {
+      "title": "Ingen sider fundet"
+    },
+    "groupRecent": "Seneste",
+    "groupAllPages": "Alle sider",
+    "createNewPage": "Opret ny side",
+    "ariaLabel": "Link til {title}"
+  },
+  "error": {
+    "title": "Journalfejl",
+    "description": "Journalen stødte på en fejl for {date}. Dine seneste ændringer er muligvis ikke blevet gemt.",
+    "descriptionNoDate": "Journalen stødte på en fejl. Dine seneste ændringer er muligvis ikke blevet gemt.",
+    "unsavedContent": "Ikke-gemt indhold fundet ({length}-tegn)"
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "k"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveJournalEntry": "Kunne ikke gemme journalpost",
+      "failedToLoadJournalSettings": "Kunne ikke indlæse journalindstillinger",
+      "failedToUpdateSettings": "Indstillingerne kunne ikke opdateres"
+    }
+  }
+}

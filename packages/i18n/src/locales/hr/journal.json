@@ -1,0 +1,303 @@
+{
+  "title": "časopis",
+  "section": {
+    "journal": "časopis",
+    "aiConnections": "Veze AI",
+    "todaysNotes": "Današnje bilješke",
+    "todaysSchedule": "Današnji raspored",
+    "todaysTasks": "Današnji zadaci",
+    "schedule": "Raspored",
+    "tasks": "Zadaci",
+    "calendarEvents": "Kalendar događanja",
+    "overdueTasks": "Zakašnjeli zadaci",
+    "technicalDetails": "Tehnički detalji"
+  },
+  "action": {
+    "versionHistory": "Povijest verzija",
+    "export": "Izvoz",
+    "fullWidth": "Puna širina",
+    "journalSettings": "Postavke dnevnika",
+    "fullMode": "Puni način rada",
+    "compactMode": "Kompaktni način rada",
+    "focusMode": "Način fokusiranja",
+    "exitFocusMode": "Izađite iz načina fokusiranja",
+    "enterFocusMode": "Uđite u način fokusiranja",
+    "createNote": "Stvori bilješku",
+    "createNewNote": "Stvori novu bilješku",
+    "showLess": "Prikaži manje",
+    "showMoreNotes": "Pokaži {count} više bilješki",
+    "showMoreNotes_plural": "Pokaži {count} više bilješki",
+    "showFewerNotes": "Prikaži manje bilješki",
+    "startBlank": "Umjesto toga započnite prazno",
+    "changeTemplate": "Promjena predloška",
+    "dismissIndicator": "Indikator odbacivanja",
+    "refreshConnections": "Osvježi veze",
+    "reloadJournal": "Ponovno učitaj dnevnik",
+    "goToToday": "Idi na Danas",
+    "copyUnsavedContent": "Kopiraj nespremljeni sadržaj u međuspremnik",
+    "openNoteFullPage": "Otvori bilješku na cijeloj stranici",
+    "closeNoteDrawer": "Zatvori ladicu za bilješke",
+    "addBookmark": "Dodaj knjižnu oznaku",
+    "removeBookmark": "Ukloni oznaku",
+    "tryAgain": "Pokušajte ponovno"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "Što planiraš...",
+      "today": "Što vam je danas na umu...",
+      "past": "Osvrnite se na ovaj dan...",
+      "default": "Počni pisati..."
+    },
+    "toolbar": {
+      "ariaLabel": "Oblikovanje teksta",
+      "bold": "Podebljano",
+      "italic": "kurziv",
+      "underline": "Podcrtano",
+      "strikethrough": "Precrtano",
+      "link": "Link",
+      "image": "Slika",
+      "moreOptions": "Više mogućnosti",
+      "heading1": "Naslov 1",
+      "heading2": "Naslov 2",
+      "heading3": "Naslov 3",
+      "bulletList": "Bullet List",
+      "numberedList": "Numerirani popis",
+      "checklist": "Kontrolni popis",
+      "quote": "Citat",
+      "divider": "Razdjelnik",
+      "codeBlock": "Blok koda"
+    },
+    "prompt": {
+      "enterUrl": "Unesite URL:"
+    },
+    "upload": {
+      "noEntry": "Ne mogu učitati sliku: nije odabran nijedan unos u dnevnik",
+      "failed": "Prijenos slike nije uspio"
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "Danas",
+      "yesterday": "jučer",
+      "tomorrow": "Sutra",
+      "future": "budućnost"
+    },
+    "weekday": {
+      "sunday": "nedjelja",
+      "monday": "ponedjeljak",
+      "tuesday": "utorak",
+      "wednesday": "srijeda",
+      "thursday": "četvrtak",
+      "friday": "petak",
+      "saturday": "subota"
+    },
+    "weekdayShort": {
+      "sunday": "sunce",
+      "monday": "pon",
+      "tuesday": "uto",
+      "wednesday": "sri",
+      "thursday": "čet",
+      "friday": "pet",
+      "saturday": "sub"
+    },
+    "month": {
+      "january": "siječnja",
+      "february": "veljače",
+      "march": "ožujka",
+      "april": "travnja",
+      "may": "svibnja",
+      "june": "lipnja",
+      "july": "srpnja",
+      "august": "kolovoza",
+      "september": "rujna",
+      "october": "listopada",
+      "november": "studenog",
+      "december": "prosinca"
+    },
+    "monthShort": {
+      "january": "siječanj",
+      "february": "velj",
+      "march": "ožujak",
+      "april": "tra",
+      "may": "svibnja",
+      "june": "lipnja",
+      "july": "srp",
+      "august": "kolovoz",
+      "september": "ruj",
+      "october": "lis",
+      "november": "nov",
+      "december": "pro"
+    },
+    "greeting": {
+      "morning": "dobro jutro",
+      "afternoon": "dobar dan",
+      "evening": "dobra večer",
+      "night": "laku noc"
+    },
+    "allDay": "Cijeli dan"
+  },
+  "nav": {
+    "previousDay": "Prethodni dan",
+    "nextDay": "Sljedeći dan",
+    "previousMonth": "Prethodni mjesec",
+    "nextMonth": "Sljedeći mjesec",
+    "previousYear": "Prethodna godina",
+    "nextYear": "Sljedeće godine",
+    "journalBack": "Dnevnik natrag",
+    "journalNavigation": "Navigacija dnevnika",
+    "dateNavigation": "Navigacija po datumu dnevnika",
+    "goToYearView": "Idi na prikaz godine",
+    "previousView": "Prethodni pogled",
+    "nextView": "Sljedeći pogled"
+  },
+  "aria": {
+    "moreOptions": "Više mogućnosti",
+    "documentStatistics": "Statistika dokumenata",
+    "dayContext": "Kontekst dana: zadaci i raspored",
+    "scheduleEvents": "Zakažite događaje",
+    "tasks": "Zadaci",
+    "notesCreatedToday": "{count} bilješke stvorene danas"
+  },
+  "empty": {
+    "noEntry": "Zabranjen ulaz",
+    "noDaysInMonth": "Nema dana u ovom mjesecu",
+    "noEventsScheduled": "Nema zakazanih događaja",
+    "noEventsScheduledToday": "Danas nema zakazanih događaja",
+    "noEventsWereScheduled": "Nema zakazanih događaja",
+    "noTasksDue": "Nema dospjelih zadataka",
+    "noTasksDueToday": "Danas nema zadataka",
+    "noTasksWereDue": "Nije bilo dospjelih zadataka",
+    "noNotesToday": "Danas nije stvorena nijedna bilješka",
+    "startDocumenting": "Počnite dokumentirati svoje misli i ideje"
+  },
+  "ai": {
+    "loading": "Analiziram vaš unos...",
+    "empty": {
+      "willAppear": "Ovdje će se pojaviti vaše veze",
+      "noneYet": "Još nisu pronađene veze",
+      "moreJournaling": "Kako više budete vodili dnevnik, AI će pronaći povezane unose",
+      "keepWriting": "Nastavite pisati kako biste otkrili povezane unose"
+    },
+    "error": {
+      "loadFailed": "Nije moguće učitati veze"
+    },
+    "connectionAria": "Povezivanje s {label}, {scorePercent}% odgovara"
+  },
+  "count": {
+    "item": "predmet",
+    "items": "stavke",
+    "note": "bilješka",
+    "notes": "bilješke",
+    "day": "dan",
+    "days": "dana",
+    "event": "događaj",
+    "events": "događanja",
+    "meeting": "sastanak",
+    "meetings": "sastanci",
+    "task": "zadatak",
+    "tasks": "zadaci",
+    "todo": "učiniti",
+    "people": "{count} ljudi",
+    "moreConnections": "+ {count} više veze",
+    "moreConnections_plural": "+ {count} više veza",
+    "moreNotes": "+ {count} dodatna napomena",
+    "moreNotes_plural": "+ {count} više bilješki",
+    "daysWithEntries": "dana s ulascima",
+    "charactersWritten": "napisani likovi",
+    "words": "{count} riječi",
+    "characters": "{count} znakovi",
+    "completed": "{count} dovršen",
+    "overdue": "{count} kasni"
+  },
+  "stats": {
+    "wordCount": "Broj riječi",
+    "characterCount": "Broj znakova",
+    "readingTime": "Procijenjeno vrijeme čitanja",
+    "lastModified": "Zadnja izmjena",
+    "lessThanOneMinute": "< 1 min",
+    "minutes": "{minutes} min",
+    "read": "{readingTime} pročitaj",
+    "modified": "Izmijenjen {date}"
+  },
+  "task": {
+    "completed": "Završeno",
+    "notCompleted": "Nije dovršeno",
+    "priority": "{priority} prioritet",
+    "overdue": "zakašnjeli",
+    "markComplete": "Označite \"{title}\" kao dovršeno",
+    "markNotComplete": "Označite \"{title}\" kao nedovršeno"
+  },
+  "template": {
+    "using": "Korištenje \"{templateName}\""
+  },
+  "reminder": {
+    "hasReminders": "Ima podsjetnike",
+    "setToRevisit": "Postavite podsjetnik za ponovni posjet",
+    "tooltip": "Podsjetnik: {date}",
+    "tooltipMore": "Podsjetnik: {date} (+{count} još)",
+    "success": {
+      "set": "Podsjetnik postavljen za ovaj unos u dnevnik",
+      "deleted": "Podsjetnik izbrisan",
+      "dismissed": "Podsjetnik je odbačen",
+      "snoozed": "Podsjetnik je odgođen"
+    },
+    "error": {
+      "set": "Postavljanje podsjetnika nije uspjelo",
+      "delete": "Brisanje podsjetnika nije uspjelo",
+      "dismiss": "Odbacivanje podsjetnika nije uspjelo",
+      "snooze": "Odgoda podsjetnika nije uspjela"
+    }
+  },
+  "toast": {
+    "unsavedRetry": "Vaš je sadržaj još uvijek u memoriji. Kliknite za ponovni pokušaj spremanja.",
+    "noteNotFound": "Napomena \"{target}\" nije pronađena",
+    "fileNotFound": "Datoteka nije pronađena: {target}",
+    "openLinkedItemFailed": "Otvaranje povezane stavke nije uspjelo",
+    "errorPrefix": "Greška:"
+  },
+  "export": {
+    "noteTitle": "Dnevnik - {month} {day}, {year}"
+  },
+  "note": {
+    "generatedTitle": "Napomena - {date}",
+    "openAria": "Otvorite {title}, kreiran na {time}"
+  },
+  "tag": {
+    "suggestionsAria": "Prijedlozi oznaka",
+    "empty": {
+      "title": "Još nema oznaka",
+      "description": "Upišite za izradu nove oznake"
+    },
+    "groupTitle": "oznake",
+    "create": "Stvorite #{query}",
+    "ariaLabel": "Oznaka: {tag}, kliknite za filtriranje"
+  },
+  "wiki": {
+    "suggestionsAria": "Prijedlozi stranica",
+    "empty": {
+      "title": "Nema pronađenih stranica"
+    },
+    "groupRecent": "Nedavno",
+    "groupAllPages": "Sve stranice",
+    "createNewPage": "Napravi novu stranicu",
+    "ariaLabel": "Veza na {title}"
+  },
+  "error": {
+    "title": "Pogreška dnevnika",
+    "description": "Dnevnik je naišao na pogrešku za {date}. Vaše nedavne promjene možda nisu spremljene.",
+    "descriptionNoDate": "Dnevnik je naišao na pogrešku. Vaše nedavne promjene možda nisu spremljene.",
+    "unsavedContent": "Otkriven je nespremljeni sadržaj (znakovi {length})"
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "k"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveJournalEntry": "Neuspješno spremanje unosa u dnevnik",
+      "failedToLoadJournalSettings": "Neuspješno učitavanje postavki dnevnika",
+      "failedToUpdateSettings": "Ažuriranje postavki nije uspjelo"
+    }
+  }
+}

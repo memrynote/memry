@@ -1,0 +1,80 @@
+{
+  "generic": {
+    "somethingWentWrong": "Etwas ist schief gelaufen. Bitte versuchen Sie es erneut.",
+    "operationFailed": "Der Vorgang ist fehlgeschlagen",
+    "unknown": "Es ist ein unbekannter Fehler aufgetreten",
+    "validationFailed": "Die Validierung ist fehlgeschlagen",
+    "actionFailed": "Aktion fehlgeschlagen"
+  },
+  "ipc": {
+    "noVaultOpen": "Kein Tresor ist geöffnet. Bitte öffnen Sie zuerst einen Tresor."
+  },
+  "vault": {
+    "notFound": "Tresor nicht gefunden. Möglicherweise wurde es verschoben oder gelöscht.",
+    "notInitialized": "Kein Tresor ist geöffnet. Öffnen oder erstellen Sie einen Tresor, um fortzufahren.",
+    "invalidPath": "Der ausgewählte Pfad ist kein gültiger Tresorspeicherort.",
+    "permissionDenied": "Erlaubnis verweigert. Überprüfen Sie, ob Sie Zugriff auf diesen Ordner haben.",
+    "alreadyExists": "An diesem Standort ist bereits ein Tresor vorhanden.",
+    "corrupted": "Dieser Tresor scheint beschädigt zu sein. Versuchen Sie es mit einer Wiederherstellung aus einem Backup."
+  },
+  "note": {
+    "notFound": "Diese Notiz konnte nicht gefunden werden. Möglicherweise wurde es gelöscht.",
+    "invalidFrontmatter": "Diese Notiz enthält ungültige Metadaten und kann nicht gelesen werden.",
+    "duplicateId": "Eine Notiz mit dieser ID ist bereits vorhanden.",
+    "writeFailed": "Diese Notiz konnte nicht gespeichert werden. Überprüfen Sie den Speicherplatz und die Berechtigungen.",
+    "readFailed": "Diese Notiz konnte nicht gelesen werden. Die Datei ist möglicherweise gesperrt oder beschädigt.",
+    "deleteFailed": "Diese Notiz konnte nicht gelöscht werden. Überprüfen Sie die Dateiberechtigungen.",
+    "invalidPath": "Der Notizpfad ist ungültig."
+  },
+  "database": {
+    "connectionFailed": "Es konnte keine Verbindung zur lokalen Datenbank hergestellt werden. Versuchen Sie, die App neu zu starten.",
+    "migrationFailed": "Das Datenbank-Upgrade ist fehlgeschlagen. Versuchen Sie, die App neu zu starten.",
+    "queryFailed": "Ein Datenbankvorgang ist fehlgeschlagen. Versuchen Sie es erneut.",
+    "notInitialized": "Datenbank nicht bereit. Versuchen Sie, die App neu zu starten.",
+    "constraintViolation": "Es ist ein Datenkonflikt aufgetreten. Versuchen Sie es erneut.",
+    "corrupted": "Die lokale Datenbank ist beschädigt. Möglicherweise müssen Sie es zurücksetzen."
+  },
+  "watcher": {
+    "startFailed": "Die Suche nach Dateiänderungen konnte nicht gestartet werden.",
+    "stopFailed": "Der Dateimonitor konnte nicht gestoppt werden.",
+    "eventError": "Beim Suchen nach Dateiänderungen ist ein Fehler aufgetreten."
+  },
+  "attachment": {
+    "fileTooLarge": "Diese Datei ist zu groß zum Anhängen.",
+    "unsupportedType": "Dieser Dateityp wird nicht unterstützt.",
+    "writeFailed": "Der Anhang konnte nicht gespeichert werden. Überprüfen Sie den Speicherplatz.",
+    "deleteFailed": "Der Anhang konnte nicht gelöscht werden."
+  },
+  "encryption": {
+    "failed": "Daten konnten nicht verschlüsselt werden. Möglicherweise müssen Ihre Schlüssel neu generiert werden.",
+    "decryptionFailed": "Daten konnten nicht entschlüsselt werden. Ihre Verschlüsselungsschlüssel sind möglicherweise veraltet.",
+    "invalidKeyLength": "Ungültiger Verschlüsselungsschlüssel. Versuchen Sie, sich abzumelden und wieder anzumelden.",
+    "invalidNonceLength": "Verschlüsselungsfehler. Versuchen Sie den Vorgang erneut."
+  },
+  "inboxAttachment": {
+    "writeFailed": "Der Posteingangsanhang konnte nicht gespeichert werden.",
+    "deleteFailed": "Der Posteingangsanhang konnte nicht gelöscht werden."
+  },
+  "sync": {
+    "networkOffline": "Du bist offline. Die Änderungen werden synchronisiert, wenn Sie die Verbindung wiederherstellen.",
+    "networkTimeout": "Die Antwort des Synchronisierungsservers dauerte zu lange. Werde es in Kürze noch einmal versuchen.",
+    "serverError": "Der Synchronisierungsserver hat einen Fehler festgestellt. Wird automatisch erneut versucht.",
+    "authExpired": "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an, um mit der Synchronisierung fortzufahren.",
+    "deviceRevoked": "Dieses Gerät wurde aus Ihrem Konto entfernt.",
+    "rateLimited": "Zu viele Anfragen. Die Synchronisierung wird in Kürze fortgesetzt.",
+    "cryptoFailure": "Synchronisierungsdaten konnten nicht ver- oder entschlüsselt werden. Versuchen Sie, sich abzumelden und wieder anzumelden.",
+    "versionIncompatible": "Diese Version von Memry wird nicht mehr unterstützt. Bitte aktualisieren.",
+    "storageQuotaExceeded": "Ihr Synchronisierungsspeicher ist voll. Geben Sie Speicherplatz frei oder aktualisieren Sie Ihren Plan.",
+    "certificatePinFailed": "Die sichere Verbindung ist fehlgeschlagen. Überprüfen Sie Ihre Netzwerkverbindung.",
+    "unknown": "Es ist ein unerwarteter Synchronisierungsfehler aufgetreten. Wird automatisch erneut versucht.",
+    "statusFetchFailed": "Der Synchronisierungsstatus konnte nicht abgerufen werden",
+    "engineNotInitialized": "Synchronisierungs-Engine nicht initialisiert. Öffnen Sie einen Tresor, um die Synchronisierung zu starten.",
+    "triggerFailed": "Die Synchronisierung ist fehlgeschlagen",
+    "pauseFailed": "Die Synchronisierung konnte nicht angehalten werden",
+    "resumeFailed": "Die Synchronisierung konnte nicht fortgesetzt werden",
+    "settingsNotInitialized": "Die Synchronisierung der Einstellungen wurde nicht initialisiert",
+    "securityQuarantinePermanent": "Ein Synchronisierungselement konnte nicht überprüft werden und wurde aus Sicherheitsgründen unter Quarantäne gestellt.",
+    "securityQuarantineRetry": "Die Signaturüberprüfung eines Synchronisierungselements ist fehlgeschlagen und wird erneut versucht.",
+    "certificatePinPaused": "Die sichere Verbindung zum Synchronisierungsserver konnte nicht überprüft werden. Die Synchronisierung wurde zu Ihrem Schutz angehalten."
+  }
+}

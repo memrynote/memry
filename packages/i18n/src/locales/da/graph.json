@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Indlæser graf...",
+    "load-failed": "Kunne ikke indlæse grafdata",
+    "try-again": "Prøv igen",
+    "aria-label": "Vidensgraf med {nodeCount, plural, one {# node} other {# noder}} og {edgeCount, plural, one {# forbindelse} other {#-forbindelser}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Grafknuder",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Din vidensgraf",
+    "description": "Forbindelser mellem dine noter, opgaver og projekter vises her som en interaktiv graf.",
+    "link-title": "Link dine noter",
+    "link-description": "Brug [[wikilinks]] til at forbinde ideer på tværs af noter",
+    "discover-title": "Opdag mønstre",
+    "discover-description": "Efterhånden som forbindelser vokser, vil klynger og temaer opstå naturligt"
+  },
+  "entity": {
+    "note": "bemærk",
+    "notes": "noter",
+    "journal": "journal",
+    "journals": "journaler",
+    "task": "opgave",
+    "tasks": "opgaver",
+    "project": "projekt",
+    "projects": "projekter",
+    "tag": "tag",
+    "tags": "tags",
+    "orphan": "forældreløs",
+    "orphans": "forældreløse børn",
+    "unresolved": "uafklaret"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Grafindstillinger",
+    "hide-settings": "Skjul indstillinger",
+    "reset-filters": "Nulstil filtre",
+    "filters": "Filtre",
+    "display": "Display",
+    "show-labels": "Vis etiketter",
+    "focus-depth": "dybde {depth}",
+    "clear-focus": "Klar fokuseret node"
+  },
+  "filter": {
+    "notes": "Noter",
+    "journals": "Journaler",
+    "tasks": "Opgaver",
+    "projects": "Projekter",
+    "tags": "Tags",
+    "orphans": "Forældreløse børn",
+    "toggle-entity": "Skift {label}",
+    "toggle-orphans": "Skift forældreløse noder"
+  },
+  "search": {
+    "placeholder": "Søg noder...",
+    "clear": "Ryd grafsøgning"
+  },
+  "context-menu": {
+    "untitled": "Uden titel",
+    "focus-node": "Fokuser på denne node",
+    "open-new-tab": "Åbn i ny fane",
+    "create-note": "Opret note",
+    "copy-title": "Kopiér titel"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {# forbindelse} other {#-forbindelser}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Indlæser graf...",
+    "empty": "Ingen forbindelser fundet",
+    "open-full": "Åbn hele grafen",
+    "close": "Luk graf"
+  }
+}

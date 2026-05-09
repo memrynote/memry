@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "Mentés",
+    "cancel": "Mégsem",
+    "close": "Bezárás",
+    "ok": "OK",
+    "yes": "Igen",
+    "no": "Nem",
+    "delete": "Törölje",
+    "confirm": "Erősítse meg",
+    "apply": "Alkalmazni",
+    "done": "Kész",
+    "discard": "Eldobni",
+    "dontSave": "Ne mentse",
+    "edit": "Szerkesztés",
+    "add": "Hozzáadás",
+    "remove": "Távolítsa el",
+    "retry": "Próbálja újra",
+    "submit": "Beküld",
+    "back": "Vissza",
+    "next": "Következő",
+    "continue": "Folytatás",
+    "reset": "Reset",
+    "copy": "Másolás",
+    "paste": "Beillesztés",
+    "create": "Létrehozása",
+    "open": "Nyissa meg"
+  },
+  "state": {
+    "loading": "Betöltés…",
+    "saving": "Mentés…",
+    "deleting": "Törlés…",
+    "searching": "Keresés…",
+    "error": "Hiba",
+    "success": "Siker"
+  },
+  "empty": {
+    "noResults": "Nincs eredmény",
+    "noItems": "Nincsenek tételek",
+    "noMatch": "Nincs egyezés"
+  },
+  "action": {
+    "search": "Keresés",
+    "edit": "Szerkesztés",
+    "delete": "Törölje",
+    "close": "Bezárás",
+    "expand": "Bontsa ki",
+    "collapse": "Összeomlás",
+    "showMore": "+{count, plural, one {# több} other {# több}}",
+    "showLess": "Mutass kevesebbet"
+  },
+  "tabs": {
+    "pin": "Lap rögzítése",
+    "unpin": "Lap rögzítésének feloldása",
+    "contextMenu": {
+      "close": "Bezárás",
+      "closeOthers": "Mások bezárása",
+      "closeToRight": "Közel a jobboldalhoz",
+      "closeAll": "Összes bezárása",
+      "duplicate": "Lap duplikálása",
+      "splitRight": "Felosztás jobbra",
+      "splitDown": "Oszd meg",
+      "copyPath": "Útvonal másolása",
+      "revealInSidebar": "Felfedés az oldalsávban"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {# tétel} other {# tételek}}",
+    "note": "{count, plural, one {# megjegyzés} other {# jegyzetek}}",
+    "folder": "{count, plural, one {# mappa} other {# mappák}}",
+    "task": "{count, plural, one {# feladat} other {# feladatok}}",
+    "project": "{count, plural, one {# projekt} other {# projektek}}",
+    "itemDelete": "{count, plural, one {Törölje az # elemet} other {Törölje az # elemeket}}"
+  },
+  "toast": {
+    "actionFailed": "A művelet nem sikerült",
+    "nothingToUndo": "Nincs mit visszavonni",
+    "undone": "Visszavonva: {description}",
+    "undoFailed": "A művelet visszavonása nem sikerült",
+    "copied": "Másolva",
+    "copyFailed": "Nem sikerült másolni"
+  },
+  "dateRelative": {
+    "today": "Ma",
+    "yesterday": "tegnap",
+    "daysAgo": "{count, plural, one {# napja} other {# napja}}"
+  },
+  "recurrence": {
+    "everyDay": "Minden nap",
+    "everyNDays": "{count, plural, one {Minden nap} other {Minden # napon}}",
+    "everyWeek": "Minden héten",
+    "everyNWeeks": "{count, plural, one {Minden héten} other {Minden # hetente}}",
+    "everyWeekday": "Minden hétköznap",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Minden hétköznap} other {Minden # héten hétköznap}}",
+    "everyWeekend": "Minden hétvégén",
+    "everyNWeeksOnWeekends": "{count, plural, one {Minden hétvégén} other {Minden # hét hétvégén}}",
+    "everyWeekOnDays": "Minden héten az {days}-en",
+    "everyNWeeksOnDays": "{count, plural, one {Minden héten az {days}-en} other {Minden # hetente az {days} napon}}",
+    "everyMonth": "Minden hónapban",
+    "everyNMonths": "{count, plural, one {Minden hónapban} other {Minden # havonta}}",
+    "everyMonthOnDay": "Minden hónapban az {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {Minden hónapban az {day}{suffix}} other {Minden # havonta az {day}{suffix}}}",
+    "everyMonthOnWeekDay": "Minden hónapban az {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Minden hónapban az {week} {day}} other {Minden # havonta az {week} {day}}}",
+    "everyYear": "Minden évben",
+    "everyNYears": "{count, plural, one {Minden évben} other {# évente}}",
+    "repeats": "Ismétlődik"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Gyűjtemények",
+      "newNote": "Új jegyzet",
+      "newNote2": "Új jegyzet",
+      "newFolder": "Új mappa",
+      "newFolder2": "Új mappa",
+      "bookmarks": "Könyvjelzők",
+      "tags": "Címkék",
+      "dropFilesToImport": "Húzza le az importálandó fájlokat",
+      "newNoteN": "Új jegyzet (⌘N)",
+      "new": "Új",
+      "syncDisabled": "Szinkronizálás letiltva",
+      "syncDisabled2": "Szinkronizálás letiltva"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "A Nap panel átméretezése",
+      "dragToResizeDoubleClickToReset": "Húzza az átméretezéshez · Kattintson duplán a visszaállításhoz"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Keress, cserélj, kérdezz..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Kihagyja a beszállást",
+      "welcomeToMemry": "Üdvözli az Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Az Ön személyes tudásbázisa. Szánjunk rá 2 percet az induláshoz.",
+      "getStarted": "Kezdje el ",
+      "createYourFirstNote": "Készítse el első jegyzetét",
+      "markdownBasedStoredLocallyAsPlainFiles": "Markdown alapú, helyben sima fájlként tárolva.",
+      "eGMeetingNotesIdeasAnything": "pl. Jegyzetek, ötletek, bármi...",
+      "skip": "Kihagyás",
+      "createNote": "Jegyzet létrehozása ",
+      "addYourFirstTask": "Adja hozzá az első feladatot",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "A Feladatok a jegyzetekre hivatkoznak, prioritásokkal és határidőkkel.",
+      "eGReviewProjectProposal": "pl. Projektjavaslat áttekintése...",
+      "skip2": "Kihagyás",
+      "createTask": "Feladat létrehozása ",
+      "syncAcrossDevices": "Szinkronizálás az eszközök között",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Tartsa szinkronban jegyzeteit és feladatait minden eszközén. Ezt később bármikor beállíthatja.",
+      "skipForNow": "Most hagyd ki",
+      "doneLetSGo": "Kész – gyerünk! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Állítsa be a mappa ikonját"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "TIPP"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Ikonválasztó",
+      "selectIcon": "Válassza az Ikont",
+      "closeIconPicker": "Zárja be az ikonválasztót",
+      "searchIcons": "Ikonok keresése...",
+      "all": "Mind",
+      "clearIcon": "Tiszta ikon",
+      "noIconsFoundFor": "Nem található ikon a következőhöz: \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Billentyűparancsok",
+      "closeShortcutsHelp": "A gyorsbillentyűk bezárása segít",
+      "press": "Nyomja meg",
+      "toClose": "bezárni"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Állítsa be az ikont",
+      "clearIcon": "Tiszta ikon"
+    },
+    "componentsNavMain": {
+      "platform": "Platform"
+    },
+    "componentsNavProjects": {
+      "projects": "Projektek",
+      "more": "Többet",
+      "viewProject": "Projekt megtekintése",
+      "shareProject": "Projekt megosztása",
+      "deleteProject": "Projekt törlése",
+      "more2": "Többet"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Frissítsen Pro-ra",
+      "account": "fiók",
+      "billing": "Számlázás",
+      "notifications": "Értesítések",
+      "logOut": "Jelentkezzen ki"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Keresés",
+      "searchNotesTasksJournalInbox": "Jegyzetek, feladatok, napló, beérkező levelek keresése...",
+      "noResultsFor": "Nincs találat a következőre",
+      "rdquo": "rdquo;",
+      "result": "eredményt"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Keressen és kattintson az elemekre a nyomvonal megépítéséhez",
+      "reasons": "Okok",
+      "clear": "Világos"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Világos",
+      "tags": "Címkék",
+      "filterByTag": "Szűrés címke szerint...",
+      "dateRange": "Dátumtartomány"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Az összes megtekintése ",
+      "results": "eredményeket"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "homályos"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Nincsenek nyitott lapok",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "A kezdéshez nyisson meg egy oldalt az oldalsávról, vagy hozzon létre egy új lapot",
+      "openInbox": "Nyissa meg a Beérkező leveleket",
+      "closePane": "A panel bezárása"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Előre beállított elrendezés",
+      "layoutPresets2": "Előre beállított elrendezés"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Az ablaktáblák átméretezése"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "A TasksContext nem érhető el",
+      "searchResults": "Keresési eredmények",
+      "unknownTabType": "Ismeretlen laptípus: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "nem mentett módosítások",
+      "preview": "előnézet"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Új lap",
+      "newTab2": "Új lap",
+      "newNote": "Új megjegyzés",
+      "journal": "Journal",
+      "calendar": "Naptár",
+      "inboxCapture": "Beérkezett üzenetek rögzítése",
+      "tasks": "Feladatok"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Nem mentett módosítások",
+      "unsaved": "nem mentve)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Nem mentett módosítások"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Zárja be az összes lapot"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Nyissa meg a lapokat",
+      "scrollTabsLeft": "Görgesse balra a lapokat",
+      "scrollTabsRight": "Görgessen jobbra a lapokon",
+      "graphG": "Grafikon (⌘G)",
+      "dayPanel": "Napi panel"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "Görgesse balra a lapokat",
+      "scrollTabsRight": "Görgessen jobbra a lapokon"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "Nyissa meg a lapokat",
+      "scrollTabsLeft": "Görgesse balra a lapokat",
+      "scrollTabsRight": "Görgessen jobbra a lapokon"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Valami elromlott",
+      "anErrorOccurredWhileRenderingThisTabContent": "Hiba történt a lap tartalmának megjelenítésekor.",
+      "tryAgain": "Próbáld újra"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Megjegyzés ikonra"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Nem mentett módosítások",
+      "quot": "quot;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; nem mentett módosításokat tartalmaz. mit szeretnél csinálni?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Új munkaterület",
+      "darkMode": "Sötét mód",
+      "settings": "Beállítások elemre",
+      "integrations": "Integrációk",
+      "signOut": "Jelentkezzen ki",
+      "downloadOnIos": "Letöltés iOS rendszeren"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Zárja be az ablakot",
+      "minimizeWindow": "Az ablak kicsinyítése",
+      "maximizeWindow": "Az ablak maximalizálása"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Javaslatok",
+      "or": "vagy",
+      "enter": "Enter",
+      "toInsert": "beilleszteni"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "zsemlemorzsa",
+      "more": "Többet"
+    },
+    "componentsUiDialog": {
+      "close": "Bezárás"
+    },
+    "componentsUiSheet": {
+      "close": "Bezárás"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Oldalsáv",
+      "displaysTheMobileSidebar": "Megjeleníti a mobil oldalsávot.",
+      "toggleSidebar": "Kapcsolja be az oldalsávot",
+      "toggleSidebar2": "Kapcsolja be az oldalsávot",
+      "dragToResizeDoubleClickToReset": "Húzza az átméretezéshez · Kattintson duplán a visszaállításhoz"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Üdvözli az Memry",
+      "yourPersonalKnowledgeManagementSystem": "Az Ön személyes tudásmenedzsment rendszere.",
+      "selectAFolderToStoreYourNotesAndTasks": "Válasszon mappát a jegyzetek és feladatok tárolására.",
+      "opening": "Megnyitás...",
+      "selectVaultFolder": "Válassza ki a Vault mappát",
+      "plainMarkdown": "Sima Markdown",
+      "yourNotesStayPortable": "A jegyzetei hordozhatóak maradnak",
+      "syncAnywhere": "Szinkronizálás bárhol",
+      "useDropboxIcloudGit": "Dropbox, iCloud, Git használata",
+      "recentVaults": "Legutóbbi trezorok",
+      "notesLastOpened": "megjegyzések · Utoljára megnyitva"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Még nincsenek trezorok",
+      "openVault": "Nyitott páncélszekrény",
+      "settings": "Beállítások elemre",
+      "logOut": "Jelentkezzen ki",
+      "signInToSync": "Jelentkezzen be a szinkronizáláshoz",
+      "remove": "Eltávolítás",
+      "rdquoFromList": "rdquo; listából?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Ezt a tárolót eltávolítjuk az alkalmazásból, de a fájlok a lemezen maradnak. Később bármikor újra hozzáadhatja.",
+      "cancel": "Mégsem",
+      "remove2": "Távolítsa el"
+    },
+    "componentsWindowControls": {
+      "searchK": "Keresés (⌘K)",
+      "browserBack": "Böngésző vissza",
+      "back": "Vissza",
+      "browserForward": "Böngésző előre",
+      "forward": "Előre"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Nem sikerült importálni a fájlokat",
+      "failedToCreateNote": "Nem sikerült létrehozni a jegyzetet",
+      "failedToAccessMicrophone": "Nem sikerült elérni a mikrofont"
+    },
+    "toasts": {
+      "undone": "Visszavonva"
+    }
+  }
+}

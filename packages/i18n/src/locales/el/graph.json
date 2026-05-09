@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Φόρτωση γραφήματος...",
+    "load-failed": "Αποτυχία φόρτωσης δεδομένων γραφήματος",
+    "try-again": "Προσπαθήστε ξανά",
+    "aria-label": "Γράφημα γνώσης με {nodeCount, plural, one {# κόμβος} other {# κόμβοι}} και {edgeCount, plural, one {Σύνδεση #} other {Συνδέσεις #}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Κόμβοι γραφημάτων",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Γράφημα γνώσεων σας",
+    "description": "Οι συνδέσεις μεταξύ των σημειώσεων, των εργασιών και των έργων σας θα εμφανίζονται εδώ ως διαδραστικό γράφημα.",
+    "link-title": "Συνδέστε τις σημειώσεις σας",
+    "link-description": "Χρησιμοποιήστε [[wikilinks]] για να συνδέσετε ιδέες σε σημειώσεις",
+    "discover-title": "Ανακαλύψτε μοτίβα",
+    "discover-description": "Καθώς οι συνδέσεις μεγαλώνουν, τα συμπλέγματα και τα θέματα θα προκύπτουν φυσικά"
+  },
+  "entity": {
+    "note": "σημείωση",
+    "notes": "σημειώσεις",
+    "journal": "περιοδικό",
+    "journals": "περιοδικά",
+    "task": "καθήκον",
+    "tasks": "καθήκοντα",
+    "project": "έργο",
+    "projects": "έργα",
+    "tag": "ετικέτα",
+    "tags": "ετικέτες",
+    "orphan": "ορφανός",
+    "orphans": "ορφανά",
+    "unresolved": "άλυτο"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Ρυθμίσεις γραφήματος",
+    "hide-settings": "Απόκρυψη ρυθμίσεων",
+    "reset-filters": "Επαναφορά φίλτρων",
+    "filters": "Φίλτρα",
+    "display": "Εμφάνιση",
+    "show-labels": "Εμφάνιση ετικετών",
+    "focus-depth": "βάθος {depth}",
+    "clear-focus": "Καθαρίστε τον εστιασμένο κόμβο"
+  },
+  "filter": {
+    "notes": "Σημειώσεις",
+    "journals": "περιοδικά",
+    "tasks": "Καθήκοντα",
+    "projects": "Έργα",
+    "tags": "Ετικέτες",
+    "orphans": "ορφανά",
+    "toggle-entity": "Εναλλαγή {label}",
+    "toggle-orphans": "Εναλλαγή ορφανών κόμβων"
+  },
+  "search": {
+    "placeholder": "Αναζήτηση κόμβων...",
+    "clear": "Εκκαθάριση αναζήτησης γραφήματος"
+  },
+  "context-menu": {
+    "untitled": "Χωρίς τίτλο",
+    "focus-node": "Εστιάστε σε αυτόν τον κόμβο",
+    "open-new-tab": "Άνοιγμα σε νέα καρτέλα",
+    "create-note": "Δημιουργία σημείωσης",
+    "copy-title": "Αντιγραφή τίτλου"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {Σύνδεση #} other {Συνδέσεις #}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Φόρτωση γραφήματος...",
+    "empty": "Δεν βρέθηκαν συνδέσεις",
+    "open-full": "Ανοίξτε το πλήρες γράφημα",
+    "close": "Κλείσιμο γραφήματος"
+  }
+}

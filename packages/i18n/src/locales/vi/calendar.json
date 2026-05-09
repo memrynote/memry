@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "Ngày",
+    "week": "Tuần",
+    "month": "Tháng",
+    "year": "Năm"
+  },
+  "toolbar": {
+    "create-event": "Tạo sự kiện",
+    "previous-period": "Khoảng thời gian trước",
+    "next-period": "Khoảng thời gian tiếp theo",
+    "previous-month": "Tháng trước",
+    "next-month": "Tháng sau",
+    "today": "Hôm nay"
+  },
+  "filter": {
+    "filter-calendars": "Lọc lịch",
+    "sources": "Nguồn",
+    "memry-items": "Memry mục",
+    "imported-calendars": "Lịch đã nhập",
+    "event-types": "Loại sự kiện",
+    "google-calendars": "Lịch Google",
+    "refresh-google-calendars": "Làm mới lịch Google"
+  },
+  "visual-type": {
+    "event": "Sự kiện",
+    "imported-event": "Sự kiện đã nhập",
+    "task": "Công việc",
+    "reminder": "Nhắc nhở",
+    "snooze": "Hoãn"
+  },
+  "state": {
+    "loading-calendar": "Đang tải lịch…",
+    "loading-calendars": "Đang tải các lịch…",
+    "preparing": "Đang chuẩn bị…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "Chưa có lịch nhập nào.",
+    "no-events": "Chưa có sự kiện nào"
+  },
+  "time": {
+    "all-day": "Cả ngày",
+    "all-day-lower": "cả ngày",
+    "pick-a-date": "Chọn ngày",
+    "new-event": "Sự kiện mới",
+    "more-events": "{count, plural, one {# thêm sự kiện} other {# thêm các sự kiện}}"
+  },
+  "form": {
+    "create-calendar-event": "Tạo sự kiện lịch",
+    "edit-calendar-event": "Chỉnh sửa sự kiện lịch",
+    "quick-create-description": "Nhập tiêu đề và lưu để tạo sự kiện trong khoảng thời gian được chọn.",
+    "event-editor-description": "Cập nhật tiêu đề, địa điểm, ngày, giờ và ghi chú cho sự kiện này.",
+    "new-event-placeholder": "Sự kiện mới",
+    "location-placeholder": "Thêm địa điểm",
+    "notes-url-placeholder": "Thêm ghi chú hoặc URL",
+    "start": "Bắt đầu",
+    "end": "Kết thúc",
+    "add-details": "Thêm chi tiết",
+    "google-calendar": "Lịch Google",
+    "target-calendar": "Lịch đích",
+    "use-default-calendar": "Sử dụng lịch mặc định",
+    "use-default-calendar-with-name": "Sử dụng mặc định ({calendar})",
+    "use-memry-calendar-default": "Sử dụng lịch Memry (mặc định)",
+    "use-memry-managed-calendar": "Sử dụng lịch do Memry quản lý",
+    "primary-suffix": "chính"
+  },
+  "delete-dialog": {
+    "title": "Xóa sự kiện?",
+    "local-description": "\"{title}\" sẽ bị xóa vĩnh viễn. Hành động này không thể hồi phục.",
+    "google-bound-description": "\"{title}\" sẽ bị xóa khỏi Memry và Google Calendar. Hành động này không thể hoàn tác.",
+    "context-menu-delete-label": "Xóa sự kiện"
+  },
+  "promote-dialog": {
+    "aria": "Chỉnh sửa sự kiện trên lịch ngoài",
+    "title": "Chỉnh sửa sự kiện này trong Memry?",
+    "body": "Chỉnh sửa sự kiện này sẽ tạo một bản sao liên kết trong Memry để các thay đổi đồng bộ hai chiều. Tiếp tục?",
+    "do-not-ask-again": "Không hỏi lại",
+    "confirm-label": "Chỉnh sửa trong Memry"
+  },
+  "onboarding-dialog": {
+    "aria": "Chọn lịch Google mặc định của bạn",
+    "title": "Sự kiện Memry mới nên đi vào lịch nào?",
+    "body": "Chọn lịch Google mà Memry nên sử dụng mặc định. Bạn vẫn có thể ghi đè cho từng sự kiện.",
+    "default-calendar-label": "Sử dụng lịch do Memry quản lý",
+    "skip": "Bỏ qua",
+    "use-this-calendar": "Sử dụng lịch này"
+  },
+  "metadata": {
+    "attendees": "Người tham dự",
+    "attendees-count": "Người tham dự ({count})",
+    "reminders": "Các nhắc nhở",
+    "default-reminders": "Nhắc nhở mặc định",
+    "visibility": "Hiển thị:",
+    "optional": "Tùy chọn",
+    "join-meeting": "Tham gia cuộc họp",
+    "response": {
+      "accepted": "Đã chấp nhận",
+      "declined": "Đã từ chối",
+      "tentative": "Tạm thời",
+      "needs-action": "Đang chờ"
+    },
+    "visibility-value": {
+      "private": "Riêng tư",
+      "public": "Công khai",
+      "confidential": "Bảo mật"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "phút · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "Không thể lưu sự kiện. Thử lại.",
+      "couldNotCreateEventTryAgain": "Không thể tạo sự kiện. Thử lại.",
+      "couldNotSaveDefaultCalendarTryAgain": "Không thể lưu lịch mặc định. Thử lại.",
+      "failedToLoadCalendarPreferences": "Không tải được tùy chọn lịch",
+      "failedToUpdateCalendarPreferences": "Cập nhật tùy chọn lịch thất bại",
+      "couldNotEditThisEventTryAgain": "Không thể chỉnh sửa sự kiện này. Thử lại.",
+      "failedToDeleteEvent": "Xóa sự kiện thất bại",
+      "couldNotUnsnoozeInboxItem": "Không thể hủy tạm hoãn.",
+      "couldNotRescheduleInboxItem": "Không thể sắp xếp lại."
+    },
+    "inboxSnoozePopover": {
+      "title": "Mục hộp thư đi tạm hoãn",
+      "openInInbox": "Mở trong hộp thư đến",
+      "unsnoozeNow": "Hủy tạm hoãn ngay",
+      "reschedule": "Sắp xếp lại"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "Chi tiết công việc",
+    "open-task": "Mở công việc",
+    "source-note": "Ghi chú nguồn",
+    "reschedule": "Sắp xếp lại",
+    "more-actions": "Thêm hành động",
+    "mark-done": "Đánh dấu đã xong",
+    "mark-not-done": "Đánh dấu chưa xong",
+    "later-today": "Sau hôm nay",
+    "tomorrow": "Ngày mai",
+    "next-week": "Tuần tới",
+    "next-week-mon": "Tuần tới · Thứ Hai ",
+    "pick-date-time": " Chọn ngày & giờ… ",
+    "remove-due-date": " Xóa hạn chót ",
+    "subtasks-prefix": " Các nhiệm vụ con ",
+    "subtasks-counter": " {done} của {total} đã xong ",
+    "today": "Hôm nay",
+    "overdue-one": " Quá hạn 1 ngày ",
+    "overdue-other": " Quá hạn {count} ngày ",
+    "repeats": "Lặp lại",
+    "repeats-daily": " Lặp lại hàng ngày ",
+    "repeats-weekly": " Lặp lại hàng tuần ",
+    "repeats-monthly": " Lặp lại hàng tháng ",
+    "repeats-yearly": " Lặp lại hàng năm ",
+    "priority-urgent": " Khẩn cấp ",
+    "priority-high": " Cao ",
+    "priority-medium": " Trung bình ",
+    "errors": {
+      "could-not-save": " Không thể lưu nhiệm vụ ",
+      "could-not-reschedule": " Không thể thay đổi lịch nhiệm vụ ",
+      "could-not-remove-due-date": " Không thể xóa hạn chót ",
+      "could-not-open-note": " Không thể mở ghi chú "
+    }
+  }
+}

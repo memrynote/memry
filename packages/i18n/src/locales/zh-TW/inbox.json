@@ -1,0 +1,483 @@
+{
+  "view": {
+    "tabs": {
+      "inbox": "收件箱",
+      "archived": "已歸檔",
+      "insights": "見解",
+      "ariaLabel": "收件箱檢視選擇"
+    },
+    "triageButton": "分類",
+    "processInboxTitle": "處理收件箱 (Cmd+P)",
+    "itemCaptured": "項目已捕捉",
+    "searchArchivedTitle": "搜尋已歸檔項目",
+    "searchPlaceholder": "搜尋...",
+    "archivedItemsAria": "已歸檔項目",
+    "snoozed": {
+      "show": "顯示延遲項目",
+      "showWithCount": "顯示延遲項目 ({count})",
+      "hide": "隱藏延遲項目"
+    },
+    "filter": {
+      "button": "篩選",
+      "byType": "按類型篩選",
+      "active": "{count, plural, one {按 # 類型篩選} other {按 # 類型篩選}}",
+      "clearAll": "清除全部"
+    },
+    "jobs": {
+      "running": "{count, plural, one {# 背景工作正在運行} other {# 背景工作正在運行}}",
+      "failed": "{count} 失敗"
+    }
+  },
+  "type": {
+    "link": "連結",
+    "links": "連結們",
+    "note": "備註",
+    "notes": "備註們",
+    "image": "圖片",
+    "images": "圖片們",
+    "voice": "語音",
+    "video": "影片",
+    "clip": "剪輯",
+    "clips": "剪輯們",
+    "pdf": "PDF",
+    "pdfs": "PDF們",
+    "social": "社交",
+    "reminder": "提醒",
+    "reminders": "提醒們",
+    "text": "文字",
+    "other": "其他"
+  },
+  "empty": {
+    "successAria": "成功，收件箱為空",
+    "title": "收件箱零",
+    "body": "所有內容已處理。使用上方輸入框抓取新內容，或貼上連結開始。",
+    "filedThisWeek": "{count, plural, one {# 本週已歸檔} other {# 本週已歸檔}}",
+    "dayStreak": "{count, plural, one {# 天連續紀錄} other {# 天連續紀錄}}",
+    "tipPrefix": "提示：使用",
+    "tipSuffix": "可快速從剪貼簿捕捉",
+    "archivedNone": "沒有已存檔的項目",
+    "archivedNoMatches": "沒有匹配的已存檔項目",
+    "noItemsYet": "尚無項目",
+    "noItemsFiled": "尚無已歸檔項目",
+    "noItemTypes": "沒有要顯示的項目類型",
+    "noFolders": "未找到資料夾",
+    "noFolderMatch": "沒有資料夾符合 \"{query}\"",
+    "noNotes": "未找到筆記",
+    "allMatchesLinked": "所有匹配項目已連結"
+  },
+  "list": {
+    "ariaLabel": "收件箱項目",
+    "section": {
+      "today": "今天",
+      "yesterday": "昨天",
+      "older": "較舊"
+    },
+    "selectItem": "選擇 {title}",
+    "itemAria": "{type}：{title}",
+    "untitled": "未命名",
+    "untitledItem": "未命名項目",
+    "transcribing": "轉錄中...",
+    "transcriptionFailed": "轉錄失敗",
+    "retryTranscription": "重試",
+    "pageCount": "{count, plural, one {# 頁面} other {# 頁}}",
+    "snoozedUntilShort": "延遲到 {date}",
+    "capturedAgo": "已捕捉 {time}"
+  },
+  "loading": {
+    "inbox": "正在加載收件箱...",
+    "failed": "加載收件箱失敗",
+    "tryAgain": "請再試一次",
+    "capturingImage": "擷取影像...",
+    "dropImageTitle": "拖曳影像以擷取",
+    "dropImageTypes": "PNG、JPEG、GIF、WebP、SVG",
+    "unsupportedImageType": "不支援的影像類型：{type}",
+    "imageTooLarge": "影像過大（最大 50MB）"
+  },
+  "toast": {
+    "failedArchiveItem": "無法封存項目",
+    "failedArchiveItems": "無法封存多個項目",
+    "failedFile": "無法歸檔",
+    "failedFileItem": "無法歸檔項目",
+    "failedFileItems": "無法歸檔多個項目",
+    "failedSnooze": "無法延後處理",
+    "failedSnoozeItem": "無法延後處理項目",
+    "failedApplyTags": "無法套用標籤",
+    "failedCaptureImage": "無法擷取影像",
+    "linkedToNote": "已連結至筆記",
+    "linkedToNotes": "已連結至 {count} 筆記",
+    "filedTo": "已歸檔至 {folder}",
+    "filedItemsTo": "已將 {count} 項目歸檔至 {folder}",
+    "filedPartial": "已將 {processed} 項目中的 {total}",
+    "appliedTags": "{tagCount, plural, one {已套用 # 標籤} other {已套用 # 標籤（複數）}} 至 {itemCount, plural, one {# 項目} other {# 項目(複數)}}",
+    "archivedItems": "{count, plural, one {已封存的 # 項目} other {已封存的 # 項目}}",
+    "snoozedUntil": "已延遲至 {time}",
+    "snoozedItemsUntil": "{count, plural, one {已延遲 # 項目至 {time}} other {已延遲 # 項目至 {time}}}"
+  },
+  "triage": {
+    "modeTitle": "分流模式",
+    "exitHint": "按 Esc 退出",
+    "exitAria": "退出分流模式",
+    "position": "{current} / {total}",
+    "action": {
+      "discard": "捨棄",
+      "archive": "封存",
+      "open": "打開",
+      "toTask": "轉為任務",
+      "toNote": "轉為筆記",
+      "file": "檔案",
+      "snooze": "延遲處理",
+      "cancel": "取消"
+    },
+    "snoozeUntil": "延遲至...",
+    "complete": {
+      "title": "收件箱零",
+      "processed": "{count, plural, one {# 項目已處理} other {# 項目已處理}}",
+      "streak": "連續紀錄",
+      "streakCount": "{count} 連續紀錄",
+      "dayProcessingStreak": "{count, plural, one {# 天處理連續紀錄} other {# 天處理連續紀錄}}",
+      "back": "返回收件箱",
+      "motivation0": "你的未來的自己會感謝你。",
+      "motivation1": "井然有序。",
+      "motivation2": "清空收件箱，清空心情。",
+      "motivation3": "決策債務：已全額支付。",
+      "motivation4": "感覺不錯，對吧？"
+    }
+  },
+  "bulk": {
+    "selected": "已選擇 {count}",
+    "deselectAll": "取消全選",
+    "ariaLabel": "對已選擇的 {count} 項目進行批量操作",
+    "file": "檔案",
+    "tag": "標籤",
+    "snooze": "延遲處理",
+    "archive": "封存",
+    "add": "新增",
+    "dismissSuggestion": "忽略建議",
+    "hint": {
+      "file": "檔案",
+      "tag": "標籤",
+      "snooze": "稍後提醒",
+      "archive": "存檔",
+      "deselect": "取消選擇"
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {要存檔 # 項目嗎？} other {要存檔 # 項目嗎？}}",
+      "description": "這些項目將被存檔。您稍後可以查看存檔的項目。",
+      "confirm": "{count, plural, one {存檔 # 項目} other {存檔 # 項目}}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {歸檔 # 項目} other {歸檔 # 項目}}",
+      "itemsToFile": "要歸檔的項目",
+      "multipleNoteLinksUnavailable": "注意：在歸檔多個項目時，無法添加其他筆記的連結。",
+      "filing": "正在歸檔...",
+      "submit": "{count, plural, one {歸檔 # 項目} other {檔案 # 項目}}",
+      "macHint": "⌘⏎ 存檔 · Esc 關閉",
+      "ctrlHint": "Ctrl+Enter 存檔 · Esc 關閉"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {標籤 # 項目} other {標籤 # 項目}}",
+      "placeholder": "輸入以搜尋標籤...",
+      "applying": "正在套用...",
+      "apply": "{count, plural, one {套用到 # 項目} other {套用到 # 項目}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "快速操作",
+    "archiveItem": "封存項目",
+    "archive": "封存",
+    "snooze": "延遲處理"
+  },
+  "detail": {
+    "ariaLabel": "項目詳細資訊",
+    "closePanel": "關閉面板",
+    "resizeFiling": "調整存檔區大小",
+    "restore": "還原",
+    "restoreToInbox": "還原至收件匣",
+    "delete": "刪除",
+    "deletePermanently": "永久刪除",
+    "archive": "封存",
+    "file": "檔案",
+    "keyboardHint": "{modifier}⏎ 存檔 · 1-5 資料夾 · Esc 關閉",
+    "voiceTitlePlaceholder": "為此語音備忘錄命名...",
+    "fileTo": "存檔至",
+    "ai": "AI",
+    "selectFolder": "選擇資料夾",
+    "searchOrCreateFolder": "使用 / 搜尋或建立...",
+    "suggested": "推薦",
+    "notesRoot": "備註們",
+    "notesRootLabel": "筆記 (根目錄)",
+    "createFolder": "建立 \"{name}\"",
+    "addTags": "新增標籤...",
+    "linkToNote": "連結到筆記",
+    "linkNotesPlaceholder": "連結筆記...",
+    "searchNotesAria": "搜尋要連結的筆記",
+    "linkedNotesAria": "已連結的筆記",
+    "removeLinkTo": "移除與 {title} 的連結",
+    "contentEditorAria": "內容編輯器",
+    "notePlaceholder": "撰寫您的筆記...",
+    "textPlaceholder": "編輯您捕捉的文字..."
+  },
+  "content": {
+    "capturedAt": "已捕捉 {date}",
+    "todayAt": "今天在 {time}",
+    "yesterdayAt": "昨天在 {time}",
+    "dateAt": "{date} 在 {time}",
+    "words": "{count, plural, one {# 字} other {# 個字}}",
+    "duration": "時長: {duration}",
+    "dimensions": "尺寸",
+    "format": "格式",
+    "size": "大小",
+    "voiceMemo": "語音備忘",
+    "play": "播放",
+    "pause": "暫停",
+    "audioPosition": "音訊位置",
+    "transcription": "轉錄",
+    "processing": "處理中",
+    "pending": "待處理",
+    "failed": "失敗",
+    "copyTranscription": "複製轉錄內容",
+    "transcribingAudio": "正在轉錄音訊...",
+    "awaitingTranscription": "等待轉錄......",
+    "noTranscription": "無法取得轉錄資料",
+    "failedPlayAudio": "無法播放音訊",
+    "failedLoadAudio": "無法載入音訊",
+    "video": "影片",
+    "unsupportedVideo": "您的瀏覽器不支援影片標籤。"
+  },
+  "reminder": {
+    "dataUnavailable": "提醒資料無法取得。",
+    "triggered": "提醒已觸發",
+    "noteLabel": "提醒",
+    "source": "資料來源",
+    "journalTitle": "日誌 — {date}",
+    "noteFallback": "備註",
+    "journalFallback": "期刊",
+    "highlighted": "重點：「{text}」",
+    "viewed": "已瀏覽",
+    "markViewed": "馬可的視角",
+    "notYetViewed": "尚未公開",
+    "snooze": "延遲處理",
+    "presetInOneHour": "1小時",
+    "presetTomorrow": "明天",
+    "presetNextWeek": "下週",
+    "custom": "自訂......"
+  },
+  "insights": {
+    "loading": "正在載入洞察......",
+    "captureActivity": "捕獲活動",
+    "byType": "按類型分類",
+    "itemTypes": "物品類型",
+    "itemTypesDescription": "內容格式的分發",
+    "recentFilings": "近期申報",
+    "recentlyFiled": "最近申請",
+    "recentlyFiledDescription": "最新動態可達您的收件匣",
+    "captured": "被俘",
+    "capturedThisWeek": "+{count} 本週  ",
+    "processed": "  \n已處理  ",
+    "processRate": "  \n{rate}% 率  ",
+    "stale": "  \n過時  ",
+    "needsAttention": "  \n需要注意  ",
+    "allClear": "  \n一切正常  ",
+    "avgTimeToFile": "  \n平均提交時間  ",
+    "noCapturesYet": "  \n尚無捕捉  ",
+    "captures": "{count, plural, one {  \n# 捕捉  } other {  \n# 捕捉數  }}",
+    "peak": "  \n高峰: {day} {start}–{end}  ",
+    "convertedToTask": "  \n已轉為任務  ",
+    "linked": "  \n已關聯  ",
+    "now": "  \n現在  ",
+    "timeAgoMinutes": "  \n{count} 分鐘前  ",
+    "timeAgoHours": "  \n{count} 小時前  ",
+    "timeAgoDays": "  \n{count} 天前  "
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "  \nAI 偵測:  ",
+      "addToSelection": "  \n加入選擇  ",
+      "dismiss": "  \n忽略  "
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "  \n刪除  ",
+      "item": "  \n項目  ",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "  \n這些項目將從您的收件匣移除。您可以在此操作後立即復原。  "
+    },
+    "componentsCaptureInput": {
+      "captureInput": "  \n捕捉輸入  ",
+      "attachFile": "  \n附加檔案  ",
+      "attachFileImagesAudioVideoPdf": "  \n附加檔案（圖片、音訊、影片、PDF）",
+      "recordVoiceMemo": "錄音備忘錄",
+      "recordVoiceMemo2": "錄音備忘錄",
+      "alreadyCaptured": "已捕捉：「",
+      "rdquo": "rdquo;",
+      "captureAnyway": "仍要捕捉"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "選擇資料夾",
+      "searchFolders": "搜尋資料夾...",
+      "searchFolders2": "搜尋資料夾",
+      "searchResults": "搜尋結果",
+      "create": "建立",
+      "suggested": "推薦",
+      "recent": "最近使用",
+      "allFolders": "所有資料夾",
+      "allFolders2": "所有資料夾"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "連結到",
+      "optional": "（選填）",
+      "searchNotesToLink": "搜尋要連結的筆記...",
+      "searchNotesToLink2": "搜尋要連結的筆記",
+      "searching": "正在搜尋...",
+      "noNotesFound": "未找到筆記",
+      "linkedNotes": "已連結的筆記",
+      "noLinksAdded": "尚未新增連結"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "推薦",
+      "ai": "AI",
+      "create": "建立",
+      "tags": "標籤",
+      "selectedTags": "已選標籤",
+      "addTags": "新增標籤",
+      "tagSuggestions": "標籤建議"
+    },
+    "componentsFilingTagInput": {
+      "tags": "標籤",
+      "optional": "（選填）",
+      "addTags": "新增標籤...",
+      "addTags2": "新增標籤",
+      "selectedTags": "已選標籤",
+      "suggested": "推薦"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "捕獲活動"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "尚無已歸檔項目",
+      "recentlyFiled": "最近申請",
+      "latestActionsOnYourInbox": "最新動態可達您的收件匣",
+      "linked": "  \n已關聯  "
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "正在載入洞察......"
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "沒有要顯示的項目類型",
+      "itemTypes": "物品類型",
+      "distributionOfContentFormats": "內容格式的分發"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "已捕捉"
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "x"
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "內容編輯器"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "·"
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "推文不可用",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "此推文可能已刪除或來自私人帳號。",
+      "openOnXCom": "在 x.com 上開啟",
+      "views": "檢視次數",
+      "xCom": "x.com",
+      "viewOnX": "在 X 上檢視"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "輸入資料夾名稱...",
+      "quickFileFolderSearch": "快速檔案資料夾搜尋"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "關閉",
+      "capture": "捕捉"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "移除附件"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "快速捕捉輸入",
+      "recordVoiceMemo": "錄音備忘錄",
+      "attachFile": "  \n附加檔案  "
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "連結"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "被俘",
+      "dismissError": "忽略錯誤",
+      "alreadyCaptured": "已捕捉",
+      "ldquo": "ldquo;",
+      "rdquoMiddot": "rdquo; &middot; ",
+      "captureAnyway": "仍要捕捉",
+      "close": "關閉"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "拖放以捕捉",
+      "capturing": "捕捉中..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "資料夾建議",
+      "noFoldersMatch": "沒有符合的資料夾"
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "為此文本設定提醒",
+      "remindMeAboutThis": "提醒我這件事",
+      "selectedText": "選取的文本："
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "提醒",
+      "remindMe": "提醒我",
+      "pickDateTime": "選擇日期與時間",
+      "addANoteOptional": "新增備註（可選）",
+      "backToPresets": "返回預設",
+      "time": "時間",
+      "noteOptional": "備註（可選）",
+      "whyAreYouSettingThisReminder": "你為什麼設定這個提醒？"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "延遲處理",
+      "snooze2": "延遲處理",
+      "pickDateTime": "選擇日期與時間",
+      "pickDateTime2": "選擇日期與時間",
+      "selectWhenToBeRemindedAboutThisItem": "選擇何時提醒此項目",
+      "snooze3": "延遲處理",
+      "snooze4": "延遲處理",
+      "snooze5": "延遲處理"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "載入文章中...",
+      "failedToLoad": "載入失敗",
+      "loadingPostContent": "正在載入文章內容...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "載入文章內容失敗。文章可能是私人或已被刪除。",
+      "viewOn": "查看於 "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "開始語音錄製",
+      "requestingMicrophoneAccess": "請求麥克風存取權...",
+      "settings": "場景設定",
+      "processing": "處理中...",
+      "cancelRecording": "取消錄製",
+      "cancel": "取消",
+      "stopRecording": "停止錄製",
+      "stop": "停止"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCaptureLink": "擷取連結失敗",
+      "failedToCaptureNote": "擷取筆記失敗",
+      "captureFailed": "擷取失敗",
+      "failedToCaptureVoiceMemo": "擷取語音備忘錄失敗",
+      "voiceCaptureFailed": "語音擷取失敗",
+      "failedToCaptureFile": "擷取檔案失敗",
+      "fileCaptureFailed": "檔案擷取失敗",
+      "failedToCaptureAudio": "擷取音訊失敗",
+      "failedToCaptureVoice": "擷取語音失敗"
+    },
+    "toasts": {
+      "inboxRefreshed": "收件箱已刷新"
+    }
+  }
+}

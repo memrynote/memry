@@ -1,1 +1,651 @@
-{}
+{
+  "page": {
+    "tabs": {
+      "label": "طرق عرض المهام",
+      "today": "اليوم",
+      "all": "الكل"
+    },
+    "viewMode": {
+      "label": "وضع العرض",
+      "list": "عرض القائمة",
+      "kanban": "عرض كانبان"
+    },
+    "projectScope": {
+      "allProjects": "جميع المشاريع",
+      "searchProjects": "مشاريع البحث...",
+      "editProject": "تحرير {name}",
+      "unstarSavedFilter": "إلغاء النجمة {name}"
+    }
+  },
+  "task": {
+    "add": "إضافة مهمة",
+    "title": "العنوان",
+    "titleRequired": "العنوان مطلوب",
+    "titlePlaceholder": "ما الذي يجب القيام به؟",
+    "namePlaceholder": "اسم المهمة",
+    "description": "الوصف",
+    "descriptionPlaceholder": "إضافة وصف...",
+    "details": "تفاصيل المهمة",
+    "status": "الحالة",
+    "priority": "الأولوية",
+    "dueDate": "تاريخ الاستحقاق",
+    "project": "مشروع",
+    "repeat": "كرر",
+    "createAnother": "إنشاء آخر",
+    "delete": "حذف المهمة",
+    "created": "تم إنشاء {date}"
+  },
+  "project": {
+    "create": "إنشاء مشروع",
+    "edit": "تحرير المشروع",
+    "delete": "حذف المشروع",
+    "iconAndName": "الرمز والاسم",
+    "namePlaceholder": "اسم المشروع",
+    "select": "حدد المشروع",
+    "selectIcon": "حدد الرمز",
+    "clickIconToChange": "انقر على أيقونة للتغيير",
+    "color": "اللون",
+    "descriptionOptional": "الوصف (اختياري)",
+    "descriptionPlaceholder": "وصف مختصر لهذا المشروع…",
+    "statuses": "الحالات",
+    "statusesHelp": "تكوين مراحل سير العمل لهذا المشروع.",
+    "createDescription": "قم بإنشاء مشروع جديد بالاسم والرمز واللون وحالات سير العمل.",
+    "editDescription": "قم بتحرير اسم المشروع وأيقونته ولونه وحالات سير العمل."
+  },
+  "status": {
+    "select": "اختر الحالة",
+    "todo": "للقيام",
+    "inProgress": "قيد التقدم",
+    "done": "تم"
+  },
+  "priority": {
+    "select": "حدد الأولوية",
+    "none": "لا أولوية",
+    "noneShort": "لا شيء",
+    "low": "منخفض",
+    "medium": "متوسط",
+    "high": "عالية",
+    "urgent": "عاجل"
+  },
+  "filters": {
+    "filter": "تصفية",
+    "emptyTitle": "لا توجد مهام تتطابق مع عوامل التصفية الخاصة بك",
+    "emptyHelp": "حاول تعديل المرشحات أو",
+    "groupBy": "تجميع حسب",
+    "groupByOptions": "تجميع حسب الخيارات",
+    "sortAscending": "فرز تصاعدي",
+    "sortDescending": "الترتيب تنازليًا"
+  },
+  "quickAdd": {
+    "label": "مهمة إضافة سريعة",
+    "focusDescription": "التركيز على إضافة مدخلات سريعة"
+  },
+  "drawer": {
+    "close": "إغلاق تفاصيل المهمة",
+    "subIssues": "القضايا الفرعية",
+    "addSubIssue": "إضافة قضية فرعية",
+    "subIssuePlaceholder": "إضافة موضوع فرعي...",
+    "noSubIssues": "لا توجد قضايا فرعية حتى الآن",
+    "linkedNotes": "الملاحظات المرتبطة",
+    "linkNote": "ربط ملاحظة",
+    "loading": "جارٍ التحميل…",
+    "searchNotes": "ملاحظات البحث...",
+    "noMatchingNotes": "لا توجد ملاحظات مطابقة",
+    "noNotesAvailable": "لا توجد ملاحظات متاحة",
+    "noLinkedNotes": "لا توجد ملاحظات مرتبطة حتى الآن",
+    "removeLinkTo": "قم بإزالة الرابط إلى {title}",
+    "removeLinkFallback": "ملاحظة"
+  },
+  "kanban": {
+    "board": "لوحة كانبان"
+  },
+  "toasts": {
+    "projectUpdated": "تم تحديث المشروع",
+    "projectCreated": "تم إنشاء المشروع",
+    "projectSaveError": "فشل حفظ المشروع",
+    "projectArchived": "تم أرشفة المشروع",
+    "projectArchiveError": "فشل في أرشفة المشروع",
+    "projectDeleted": "تم حذف المشروع",
+    "projectDeleteError": "فشل في حذف المشروع",
+    "filtersCleared": "تم مسح عوامل التصفية",
+    "filterSaved": "تم حفظ الفلتر",
+    "filterDeleted": "تم حذف الفلتر",
+    "filterApplied": "تم تطبيق \"{name}\"",
+    "deleted": "تم حذف المهمة",
+    "deletedSeries": "السلسلة كاملة!",
+    "deletedNext": "الحدوث التالي",
+    "completed": "اكتملت المهمة!",
+    "archived": "تمت أرشفة المهمة",
+    "undoNotAvailableForDelete": "التراجع غير متاح للحذف",
+    "alreadyAllComplete": "جميع المهام المحددة مكتملة بالفعل",
+    "noCompletedSelected": "لم يتم تحديد أي مهام مكتملة",
+    "completeFailed": "فشل في إكمال المهام",
+    "reopenFailed": "فشلت إعادة فتح المهام",
+    "deleteFailed": "فشل في حذف المهام",
+    "moveFailed": "فشل في نقل المهام"
+  },
+  "phaseF": {
+    "componentsTasksAddSubtaskInput": {
+      "addSubtask": "إضافة مهمة فرعية...",
+      "addSubtask2": "إضافة مهمة فرعية",
+      "enterToAdd": "أدخل للإضافة"
+    },
+    "componentsTasksBulkActionsBulkActionDropdown": {
+      "for": "ل ",
+      "task": "مهمة"
+    },
+    "componentsTasksBulkActionsBulkActionToolbar": {
+      "bulkActions": "الإجراءات السائبة",
+      "selected": "مختارة",
+      "complete": "كامل",
+      "priority": "الأولوية",
+      "dueDate": "تاريخ الاستحقاق",
+      "moveTo": "انتقل الى",
+      "status": "الحالة",
+      "archive": "أرشيف",
+      "delete": "حذف",
+      "cancelSelection": "إلغاء التحديد",
+      "cancel": "إلغاء"
+    },
+    "componentsTasksBulkActionsBulkDeleteDialog": {
+      "delete": "حذف ",
+      "task": "مهمة",
+      "youReAboutToDelete": "أنت على وشك الحذف ",
+      "task2": "مهمة",
+      "and": "و ",
+      "moreTask": "المزيد من المهمة",
+      "thisActionCanBeUndoneForAShortTimeAfterDeletion": "يمكن التراجع عن هذا الإجراء لفترة قصيرة بعد الحذف.",
+      "cancel": "إلغاء",
+      "delete2": "حذف ",
+      "task3": "مهمة"
+    },
+    "componentsTasksBulkActionsBulkDueDatePicker": {
+      "setDueDateFor": "تحديد موعد ل ",
+      "task": "مهمة",
+      "selectADateToSetAsTheDueDateForAllSelectedTasks": "حدد تاريخًا لتعيينه كتاريخ استحقاق لجميع المهام المحددة.",
+      "alsoSetTime": "ضبط الوقت أيضا",
+      "cancel": "إلغاء",
+      "setDueDate": "تحديد تاريخ الاستحقاق"
+    },
+    "componentsTasksCelebrationProgress": {
+      "complete": "كامل"
+    },
+    "componentsTasksColorPicker": {
+      "selectColor": "اختر اللون"
+    },
+    "componentsTasksCustomRepeatDialog": {
+      "onTheseDays": "في هذه الأيام",
+      "repeatOn": "كرر",
+      "day": "يوم",
+      "ofTheMonth": "من الشهر",
+      "the": "ال",
+      "ofTheMonth2": "من الشهر",
+      "ends": "ينتهي",
+      "never": "أبدا",
+      "onDate": "في موعد",
+      "after": "بعد",
+      "occurrences": "الأحداث",
+      "preview": "معاينة",
+      "of": "من ",
+      "andMore": "وأكثر",
+      "frequency": "التردد",
+      "repeatEvery": "كرر كل",
+      "day2": "يوم",
+      "week": "أسبوع",
+      "month": "شهر",
+      "year": "سنة",
+      "cancel": "إلغاء",
+      "save": "حفظ",
+      "customRepeat": "تكرار مخصص"
+    },
+    "componentsTasksDatePickerCalendar": {
+      "previousMonth": "الشهر السابق",
+      "nextMonth": "الشهر القادم",
+      "goToToday": "اذهب الى اليوم",
+      "today": "اليوم",
+      "w": "دبليو"
+    },
+    "componentsTasksDatePickerContent": {
+      "removeDate": "إزالة التاريخ",
+      "clearTime": "وقت واضح",
+      "addTime": "أضف الوقت"
+    },
+    "componentsTasksDeleteProjectDialog": {
+      "delete": "حذف \"",
+      "thisProjectHas": "هذا المشروع لديه ",
+      "task": "مهمة",
+      "whatWouldYouLikeToDoWithThem": "ماذا تريد أن تفعل معهم؟",
+      "moveTasksToPersonalProject": "نقل المهام إلى المشروع الشخصي",
+      "deleteAllTasksPermanently": "حذف كافة المهام بشكل دائم",
+      "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "لا يتضمن هذا المشروع أي مهام وسيتم حذفه نهائيًا.",
+      "thisActionCannotBeUndone": "لا يمكن التراجع عن هذا الإجراء.",
+      "cancel": "إلغاء",
+      "deleteProject": "حذف المشروع"
+    },
+    "componentsTasksDeleteTaskDialog": {
+      "deleteTask": "هل تريد حذف المهمة؟",
+      "ldquo": "دقوو]؛",
+      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "ردقوو]؛ سيتم حذفه نهائيًا. لا يمكن التراجع عن هذا الإجراء.",
+      "deleteTask2": "حذف المهمة"
+    },
+    "componentsTasksDialogsAllSubtasksCompleteDialog": {
+      "allSubtasksComplete": "جميع المهام الفرعية كاملة!",
+      "ldquo": "دقوو]؛",
+      "rdquoHasAll": "ردقوو]؛ لديه كل شيء ",
+      "subtask": "مهمة فرعية",
+      "done": "تم.",
+      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "هل ترغب في وضع علامة على المهمة الرئيسية كمكتملة أيضًا؟",
+      "keepTaskOpen": "أبقِ المهمة مفتوحة",
+      "completeTask": "إكمال المهمة ✓"
+    },
+    "componentsTasksDialogsBulkDueDateDialog": {
+      "setDueDateForAllSubtasks": "تحديد تاريخ الاستحقاق لجميع المهام الفرعية",
+      "setDueDateFor": "تحديد موعد ل ",
+      "subtask": "مهمة فرعية",
+      "in": "في \"",
+      "rdquo": "ردقوو]؛",
+      "alsoApplyToCompletedSubtasks": "ينطبق أيضًا على المهام الفرعية المكتملة (",
+      "clearDate": "تاريخ واضح",
+      "cancel": "إلغاء",
+      "apply": "تطبيق"
+    },
+    "componentsTasksDialogsBulkPriorityDialog": {
+      "setPriorityForAllSubtasks": "تحديد الأولوية لجميع المهام الفرعية",
+      "setPriorityFor": "تحديد الأولوية ل ",
+      "subtask": "مهمة فرعية",
+      "in": "في \"",
+      "rdquo": "ردقوو]؛",
+      "alsoApplyToCompletedSubtasks": "ينطبق أيضًا على المهام الفرعية المكتملة (",
+      "cancel": "إلغاء",
+      "apply": "تطبيق"
+    },
+    "componentsTasksDialogsCompleteParentDialog": {
+      "completeTaskWithIncompleteSubtasks": "مهمة كاملة مع المهام الفرعية غير مكتملة؟",
+      "has": "لديه ",
+      "incompleteSubtask": "مهمة فرعية غير مكتملة",
+      "and": "و ",
+      "more": "المزيد",
+      "whatWouldYouLikeToDo": "ماذا تريد أن تفعل؟",
+      "completeAllParentSubtasks": "أكمل الكل (المهام الرئيسية + المهام الفرعية)",
+      "markTheParentAndAllSubtasksAsComplete": "قم بوضع علامة على الأصل وجميع المهام الفرعية كمكتملة",
+      "completeParentOnlyKeepSubtasksIncomplete": "أكمل الأصل فقط، واحتفظ بالمهام الفرعية غير مكتملة",
+      "onlyMarkTheParentTaskAsComplete": "ضع علامة على المهمة الأصلية على أنها مكتملة فقط",
+      "cancel": "إلغاء",
+      "complete": "كامل"
+    },
+    "componentsTasksDialogsDeleteAllSubtasksDialog": {
+      "deleteAllSubtasks": "هل تريد حذف كافة المهام الفرعية؟",
+      "thisWillDelete": "سيتم حذف هذا ",
+      "subtask": "مهمة فرعية",
+      "from": "من \"",
+      "rdquo": "ردقوو]؛.",
+      "thisActionCannotBeUndone": "لا يمكن التراجع عن هذا الإجراء.",
+      "cancel": "إلغاء",
+      "deleteAll": "حذف الكل"
+    },
+    "componentsTasksDialogsDeleteParentDialog": {
+      "deleteTaskWithSubtasks": "هل تريد حذف المهمة التي تحتوي على مهام فرعية؟",
+      "has": "لديه ",
+      "subtask": "مهمة فرعية",
+      "whatWouldYouLikeToDo": "ماذا تريد أن تفعل؟",
+      "deleteTaskAndAllSubtasks": "حذف المهمة وجميع المهام الفرعية",
+      "permanentlyRemovesEverything": "يزيل كل شيء بشكل دائم",
+      "deleteTaskKeepSubtasksAsStandaloneTasks": "حذف المهمة، والاحتفاظ بالمهام الفرعية كمهام مستقلة",
+      "subtasksBecomeTopLevelTasks": "تصبح المهام الفرعية مهام ذات مستوى أعلى",
+      "cancel": "إلغاء",
+      "delete": "حذف"
+    },
+    "componentsTasksDialogsDuplicateWithSubtasksDialog": {
+      "duplicateTask": "مهمة مكررة",
+      "createACopyOf": "إنشاء نسخة من \"",
+      "rdquo": "ردقوو]؛",
+      "alsoDuplicateSubtasks": "مهام فرعية مكررة أيضًا (",
+      "cancel": "إلغاء",
+      "duplicate": "مكررة "
+    },
+    "componentsTasksDialogsParentPickerDialog": {
+      "makeSubtaskOf": "قم بمهمة فرعية...",
+      "selectATaskToMake": "حدد مهمة للقيام بها \"",
+      "aSubtaskOf": "مهمة فرعية من.",
+      "searchTasks": "مهام البحث...",
+      "sameProject": "نفس المشروع",
+      "otherProjects": "مشاريع أخرى"
+    },
+    "componentsTasksDragDropInsertionIndicator": {
+      "dropToRescheduleTo": "أسقط لإعادة الجدولة إلى "
+    },
+    "componentsTasksDragDropMoveMenu": {
+      "moveTask": "نقل المهمة",
+      "move": "تحرك",
+      "reschedule": "إعادة جدولة",
+      "today": "اليوم",
+      "tomorrow": "غدا",
+      "nextWeek": "الاسبوع القادم",
+      "removeDate": "إزالة التاريخ",
+      "moveToProject": "الانتقال إلى المشروع",
+      "current": "الحالي",
+      "changeStatus": "تغيير الحالة",
+      "current2": "الحالي",
+      "reorder": "إعادة الترتيب"
+    },
+    "componentsTasksDragDropMultiDragOverlay": {
+      "moreTask": "المزيد من المهمة",
+      "task": "مهمة"
+    },
+    "componentsTasksDragDropSidebarDropZones": {
+      "dropHere": "أسقط هنا"
+    },
+    "componentsTasksDragDropTaskRow": {
+      "priority": "الأولوية: "
+    },
+    "componentsTasksDueDatePicker": {
+      "selectDueDate": "حدد تاريخ الاستحقاق",
+      "overdue": "تأخرت",
+      "setDueDate": "تحديد تاريخ الاستحقاق",
+      "suggestions": "اقتراحات",
+      "pickADate": "اختر موعدا...",
+      "addTime": "أضف الوقت",
+      "time": "الوقت",
+      "clearDate": "تاريخ واضح",
+      "backToOptions": "العودة إلى الخيارات"
+    },
+    "componentsTasksEditRepeatingTaskDialog": {
+      "editRepeatingTask": "تحرير المهمة المتكررة",
+      "youReEditingARepeatingTaskApplyChangesTo": "أنت تقوم بتحرير مهمة متكررة. تطبيق التغييرات على:",
+      "onlyThisOccurrence": "هذا الحادث فقط",
+      "onlyFutureTasksUnchanged": "فقط - المهام المستقبلية دون تغيير",
+      "thisAndAllFutureOccurrences": "هذا وكل الأحداث المستقبلية",
+      "andBeyond": "وما بعدها",
+      "cancel": "إلغاء",
+      "continue": "متابعة"
+    },
+    "componentsTasksEmptyStatesCollapsedEmptySection": {
+      "add": "أضف"
+    },
+    "componentsTasksEmptyStatesSectionEmptyStates": {
+      "noTasksScheduled": "لا توجد مهام مجدولة",
+      "addTaskFor": "إضافة مهمة ل ",
+      "nothingScheduled": "لا شيء مقرر",
+      "addTasksWithDueDatesToPlanYourWeek": "أضف المهام ذات التواريخ المحددة للتخطيط لأسبوعك.",
+      "addTask": "أضف مهمة",
+      "viewCalendar": "عرض التقويم"
+    },
+    "componentsTasksFiltersActiveFiltersBar": {
+      "priorityIs": "الأولوية هي",
+      "priority": "الأولوية",
+      "statusIs": "الحالة هي",
+      "status": "الحالة",
+      "projectIs": "المشروع هو",
+      "project": "مشروع",
+      "due": "مستحق",
+      "dueDate": "تاريخ الاستحقاق",
+      "search": "بحث",
+      "clearAll": "مسح الكل"
+    },
+    "componentsTasksFiltersDueDateFilter": {
+      "filterByDueDate": "التصفية حسب تاريخ الاستحقاق",
+      "customRange": "نطاق مخصص",
+      "clear": "واضح",
+      "apply": "تطبيق"
+    },
+    "componentsTasksFiltersFilterDropdown": {
+      "filterBy": "تصفية حسب..."
+    },
+    "componentsTasksFiltersFilterEmptyState": {
+      "activeFilters": "المرشحات النشطة: ",
+      "clearAllFilters": "مسح كافة عوامل التصفية"
+    },
+    "componentsTasksFiltersFilterPanelsDueDatePanel": {
+      "dueDate": "تاريخ الاستحقاق"
+    },
+    "componentsTasksFiltersFilterPanelsPriorityPanel": {
+      "priority": "الأولوية",
+      "is": "هو",
+      "search": "بحث...",
+      "selected": "مختارة"
+    },
+    "componentsTasksFiltersFilterPanelsProjectPanel": {
+      "project": "مشروع",
+      "noProject": "لا يوجد مشروع"
+    },
+    "componentsTasksFiltersFilterPanelsStatusPanel": {
+      "status": "الحالة"
+    },
+    "componentsTasksFiltersFilterPanelsStatusProjectPickerPan": {
+      "status": "الحالة",
+      "pickAProject": "اختر مشروعًا"
+    },
+    "componentsTasksFiltersMoreFiltersDropdown": {
+      "moreFilters": "المزيد من المرشحات",
+      "more": "المزيد",
+      "status": "الحالة",
+      "hasTimeSet": "لديه الوقت المحدد",
+      "recurringOnly": "المتكررة فقط",
+      "status2": "الحالة"
+    },
+    "componentsTasksFiltersPriorityFilter": {
+      "filterByPriority": "التصفية حسب الأولوية",
+      "priority": "الأولوية"
+    },
+    "componentsTasksFiltersProjectFilter": {
+      "filterByProject": "تصفية حسب المشروع",
+      "project": "مشروع",
+      "allProjects": "جميع المشاريع",
+      "clear": "واضح"
+    },
+    "componentsTasksFiltersQuickFilters": {
+      "quickFilters": "مرشحات سريعة:"
+    },
+    "componentsTasksFiltersSaveFilterDialog": {
+      "saveFilter": "حفظ عامل التصفية",
+      "saveYourCurrentFilterSettingsForQuickAccessLater": "احفظ إعدادات الفلتر الحالية للوصول إليها بسرعة لاحقًا.",
+      "filterName": "اسم الفلتر",
+      "eGHighPriorityThisWeek": "على سبيل المثال، أولوية عالية هذا الأسبوع",
+      "currentFilters": "المرشحات الحالية:",
+      "noFiltersApplied": "لم يتم تطبيق أي مرشحات",
+      "cancel": "إلغاء",
+      "saveFilter2": "حفظ عامل التصفية"
+    },
+    "componentsTasksFiltersSavedFiltersDropdown": {
+      "savedFilters": "المرشحات المحفوظة",
+      "saved": "تم الحفظ",
+      "noSavedFiltersYet": "لا توجد مرشحات محفوظة حتى الآن",
+      "saveCurrentFilters": "حفظ المرشحات الحالية",
+      "saveCurrentFilters2": "حفظ المرشحات الحالية"
+    },
+    "componentsTasksFiltersSavedFiltersSection": {
+      "filterName": "اسم الفلتر",
+      "saveFilter": "حفظ الفلتر",
+      "save": "حفظ"
+    },
+    "componentsTasksFiltersSearchInput": {
+      "searchTasks": "مهام البحث",
+      "clearSearch": "مسح البحث"
+    },
+    "componentsTasksKanbanKanbanColumn": {
+      "dropHere": "أسقط هنا",
+      "releaseToMoveTaskToThisColumn": "حرر لنقل المهمة إلى هذا العمود",
+      "moreCompleted": "أكثر اكتمالا",
+      "showFewer": "عرض أقل",
+      "taskTitle": "عنوان المهمة..."
+    },
+    "componentsTasksNaturalDateInput": {
+      "typeADateInNaturalLanguage": "اكتب التاريخ باللغة الطبيعية",
+      "select": "اختر"
+    },
+    "componentsTasksParentTaskRow": {
+      "priority": "الأولوية: "
+    },
+    "componentsTasksPrioritySelect": {
+      "selectPriority": "حدد الأولوية",
+      "navigate": "التنقل",
+      "select": "حدد"
+    },
+    "componentsTasksProjectModal": {
+      "iconName": "الرمز والاسم",
+      "selectIcon": "حدد الرمز",
+      "projectName": "اسم المشروع",
+      "clickIconToChange": "انقر على أيقونة للتغيير",
+      "color": "اللون",
+      "descriptionOptional": "الوصف (اختياري)",
+      "briefDescriptionOfThisProject": "وصف مختصر لهذا المشروع...",
+      "statuses": "الحالات",
+      "configureTheWorkflowStagesForThisProject": "تكوين مراحل سير العمل لهذا المشروع.",
+      "deleteProject": "حذف المشروع",
+      "cancel": "إلغاء",
+      "unsavedChanges": "التغييرات غير المحفوظة",
+      "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "لديك تغييرات غير محفوظة. هل أنت متأكد أنك تريد التخلص منها؟",
+      "cancel2": "إلغاء",
+      "discard": "تجاهل"
+    },
+    "componentsTasksProjectSelect": {
+      "selectProject": "حدد المشروع",
+      "selectProject2": "حدد المشروع"
+    },
+    "componentsTasksProjectsProjectSelector": {
+      "editProject": "تحرير المشروع",
+      "archiveProject": "مشروع الأرشيف",
+      "deleteProject": "حذف المشروع",
+      "selectProject": "حدد المشروع",
+      "noProjectsYet": "لا توجد مشاريع حتى الآن",
+      "createProject": "إنشاء مشروع"
+    },
+    "componentsTasksProjectsProjectsTabContent": {
+      "noProjectSelected": "لم يتم تحديد أي مشروع",
+      "selectAProjectFromTheDropdownOrCreateANewOne": "حدد مشروعًا من القائمة المنسدلة أو قم بإنشاء مشروع جديد",
+      "createYourFirstProject": "أنشئ مشروعك الأول"
+    },
+    "componentsTasksQuickAddQuickAddHelp": {
+      "quickAddShortcutsHelp": "مساعدة سريعة في إضافة اختصارات",
+      "quickAddShortcuts": "إضافة اختصارات سريعة",
+      "exampleBuyMilkTomorrowHighPersonal": "مثال: \"اشتري حليبًا! غدًا!!عالية #personal\""
+    },
+    "componentsTasksQuickAddQuickOptionsBar": {
+      "quickOptions": "خيارات سريعة:"
+    },
+    "componentsTasksQuickAddInput": {
+      "q": "س",
+      "q2": "س"
+    },
+    "componentsTasksRepeatIndicator": {
+      "of": "من ",
+      "completed": "اكتمل"
+    },
+    "componentsTasksRepeatPicker": {
+      "selectRepeatFrequency": "حدد تردد التكرار",
+      "doesNotRepeat": "لا يتكرر",
+      "custom": "مخصص..."
+    },
+    "componentsTasksStatusEditor": {
+      "changeStatusColor": "تغيير لون الحالة",
+      "dragToReorder": "اسحب لإعادة الترتيب",
+      "statusName": "اسم الحالة",
+      "addStatus": "إضافة الحالة"
+    },
+    "componentsTasksStatusSelect": {
+      "selectStatus": "اختر الحالة",
+      "selectStatus2": "اختر الحالة"
+    },
+    "componentsTasksStopRepeatingDialog": {
+      "stopRepeating": "توقف عن التكرار",
+      "isSetToRepeat": "تم ضبطه على التكرار ",
+      "whatWouldYouLikeToDo": "ماذا تريد أن تفعل؟",
+      "keepThisTaskStopFutureOccurrences": "احتفظ بهذه المهمة، وأوقف التكرارات المستقبلية",
+      "taskWillBecomeAOneTimeTask": "ستصبح المهمة مهمة لمرة واحدة",
+      "deleteThisAndAllFutureOccurrences": "حذف هذا وجميع الأحداث المستقبلية",
+      "taskWillBeRemovedEntirely": "ستتم إزالة المهمة بالكامل",
+      "cancel": "إلغاء",
+      "confirm": "تأكيد"
+    },
+    "componentsTasksSubtaskDots": {
+      "of": "من ",
+      "subtasksComplete": "اكتملت المهام الفرعية (",
+      "clickTo": "انقر ل ",
+      "of2": "من ",
+      "subtasksComplete2": "اكتملت المهام الفرعية",
+      "clickTo2": "انقر ل "
+    },
+    "componentsTasksSubtaskProgressBadge": {
+      "of": "من ",
+      "subtasksComplete": "اكتملت المهام الفرعية (",
+      "clickTo": "انقر ل "
+    },
+    "componentsTasksTaskBadges": {
+      "priority": "الأولوية",
+      "repeatingTask": "تكرار المهمة",
+      "d": "د"
+    },
+    "componentsTasksTaskEmptyState": {
+      "addTask": "إضافة مهمة"
+    },
+    "componentsTasksTaskIcons": {
+      "noPriority": "لا أولوية"
+    },
+    "componentsTasksTaskRepeatSection": {
+      "repeat": "كرر",
+      "addRepeat": "أضف تكرار",
+      "edit": "تحرير",
+      "edit2": "تحرير",
+      "stopRepeating": "توقف عن التكرار",
+      "stopRepeating2": "توقف عن التكرار"
+    },
+    "componentsTasksTaskSection": {
+      "addTask": "أضف مهمة"
+    },
+    "componentsTasksTimePicker": {
+      "selectTime": "حدد الوقت",
+      "selectTime2": "حدد الوقت",
+      "clearTime": "وقت واضح"
+    },
+    "componentsTasksTodayEmptyState": {
+      "nothingScheduledForToday": "لا شيء مقرر لهذا اليوم",
+      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "لديك مهام متأخرة أعلاه. أضف بعض المهام لهذا اليوم أو تحقق من قائمتك القادمة.",
+      "addTaskForToday": "أضف مهمة لهذا اليوم",
+      "allCaughtUpForToday": "جميع المحاصرين لهذا اليوم",
+      "youHaveNothingScheduledEnjoyTheClarity": "ليس لديك أي شيء مقرر. استمتع بالوضوح.",
+      "addTaskForToday2": "أضف مهمة لهذا اليوم"
+    },
+    "componentsTasksUpcomingEmptyState": {
+      "nothingScheduledForTheNext7Days": "لا شيء مقرر للأيام السبعة القادمة",
+      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "لديك مهام متأخرة أعلاه. التخطيط للمستقبل عن طريق إضافة المهام للأسبوع القادم.",
+      "addTask": "أضف مهمة",
+      "noUpcomingTasks": "لا توجد مهام قادمة",
+      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "ستظهر هنا المهام المستحقة خلال الأيام السبعة القادمة. خطط لأسبوعك بإضافة بعض المهام.",
+      "addTask2": "أضف مهمة"
+    }
+  },
+  "phaseI": {
+    "toasts": {
+      "changesUndone": "تم التراجع عن التغييرات",
+      "projectNotFound": "لم يتم العثور على المشروع",
+      "failedToArchiveTasks": "فشل في أرشفة المهام",
+      "tasksRestoredFromArchive": "تمت استعادة المهام من الأرشيف",
+      "subtaskAdded": "تمت إضافة المهمة الفرعية",
+      "subtaskDeleted": "تم حذف المهمة الفرعية",
+      "taskCompleted": "اكتملت المهمة",
+      "allSubtasksCompleteTaskMarkedAsDone": "🎉 جميع المهام الفرعية كاملة! تم وضع علامة \"تم\" على المهمة.",
+      "taskReopened": "تم إعادة فتح المهمة",
+      "taskKeptOpen": "ظلت المهمة مفتوحة",
+      "taskMarkedAsDone": "🎉 تم وضع علامة \"تم\" على المهمة!"
+    },
+    "errors": {
+      "failedToArchiveTasks": "فشل في أرشفة المهام",
+      "failedToAddSubtask": "فشلت إضافة مهمة فرعية",
+      "failedToAddSubtasks": "فشل في إضافة المهام الفرعية",
+      "failedToReorderSubtasks": "فشل في إعادة ترتيب المهام الفرعية",
+      "failedToPromoteSubtask": "فشل في ترقية المهمة الفرعية",
+      "failedToDeleteSubtask": "فشل في حذف المهمة الفرعية",
+      "failedToDeleteTask": "فشل في حذف المهمة",
+      "failedToCompleteTask": "فشل في إكمال المهمة",
+      "failedToMakeSubtask": "فشل في تنفيذ مهمة فرعية",
+      "failedToCompleteSubtasks": "فشل في إكمال المهام الفرعية",
+      "failedToMarkSubtasksIncomplete": "فشل في وضع علامة على المهام الفرعية غير مكتملة",
+      "failedToSetDueDate": "فشل في تحديد تاريخ الاستحقاق",
+      "failedToSetPriority": "فشل في تعيين الأولوية",
+      "failedToDeleteSubtasks": "فشل في حذف المهام الفرعية",
+      "failedToLoadTaskPreferences": "فشل تحميل تفضيلات المهمة",
+      "failedToUpdateTaskPreferences": "فشل في تحديث تفضيلات المهمة",
+      "failedToLoadLinkedTasks": "فشل تحميل المهام المرتبطة"
+    }
+  }
+}

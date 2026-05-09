@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "Dag",
+    "week": "Week",
+    "month": "Maand",
+    "year": "Jaar"
+  },
+  "toolbar": {
+    "create-event": "Evenement aanmaken",
+    "previous-period": "Vorige periode",
+    "next-period": "Volgende periode",
+    "previous-month": "Vorige maand",
+    "next-month": "Volgende maand",
+    "today": "Vandaag"
+  },
+  "filter": {
+    "filter-calendars": "Kalenders filteren",
+    "sources": "Bronnen",
+    "memry-items": "Memry-artikelen",
+    "imported-calendars": "Geïmporteerde kalenders",
+    "event-types": "Soorten evenementen",
+    "google-calendars": "Google-agenda's",
+    "refresh-google-calendars": "Vernieuw Google-agenda's"
+  },
+  "visual-type": {
+    "event": "Evenement",
+    "imported-event": "Geïmporteerd evenement",
+    "task": "Taak",
+    "reminder": "Herinnering",
+    "snooze": "Snoozen"
+  },
+  "state": {
+    "loading-calendar": "Kalender laden…",
+    "loading-calendars": "Agenda's laden…",
+    "preparing": "Voorbereiden…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "Nog geen geïmporteerde kalenders.",
+    "no-events": "Geen evenementen"
+  },
+  "time": {
+    "all-day": "De hele dag",
+    "all-day-lower": "de hele dag",
+    "pick-a-date": "Kies een datum",
+    "new-event": "Nieuw evenement",
+    "more-events": "{count, plural, one {# meer evenement} other {# meer evenementen}}"
+  },
+  "form": {
+    "create-calendar-event": "Agendagebeurtenis maken",
+    "edit-calendar-event": "Agenda-afspraak bewerken",
+    "quick-create-description": "Voer een titel in en sla deze op om een evenement in het geselecteerde tijdsbereik te maken.",
+    "event-editor-description": "Update de titel, locatie, datum, tijd en opmerkingen voor dit evenement.",
+    "new-event-placeholder": "Nieuw evenement",
+    "location-placeholder": "Locatie toevoegen",
+    "notes-url-placeholder": "Voeg notities of URL toe",
+    "start": "Begin",
+    "end": "Einde",
+    "add-details": "Voeg details toe",
+    "google-calendar": "Google-agenda",
+    "target-calendar": "Doelkalender",
+    "use-default-calendar": "Gebruik standaardkalender",
+    "use-default-calendar-with-name": "Standaard gebruiken ({calendar})",
+    "use-memry-calendar-default": "Gebruik Memry-agenda (standaard)",
+    "use-memry-managed-calendar": "Gebruik de door Memry beheerde agenda",
+    "primary-suffix": "primair"
+  },
+  "delete-dialog": {
+    "title": "Evenement verwijderen?",
+    "local-description": "\"{title}\" wordt permanent verwijderd. Deze actie kan niet ongedaan worden gemaakt.",
+    "google-bound-description": "\"{title}\" wordt verwijderd uit Memry en Google Agenda. Deze actie kan niet ongedaan worden gemaakt.",
+    "context-menu-delete-label": "Evenement verwijderen"
+  },
+  "promote-dialog": {
+    "aria": "Externe agendagebeurtenis bewerken",
+    "title": "Deze gebeurtenis bewerken in Memry?",
+    "body": "Als u deze gebeurtenis bewerkt, wordt er een gekoppelde kopie gemaakt in Memry, zodat wijzigingen in beide richtingen worden gesynchroniseerd. Doorgaan?",
+    "do-not-ask-again": "Vraag het niet opnieuw",
+    "confirm-label": "Bewerken in Memry"
+  },
+  "onboarding-dialog": {
+    "aria": "Kies uw standaard Google-agenda",
+    "title": "Naar welke kalender moeten nieuwe Memry-evenementen gaan?",
+    "body": "Kies de Google-agenda die Memry standaard moet gebruiken. Je kunt het nog steeds per gebeurtenis overschrijven.",
+    "default-calendar-label": "Gebruik de door Memry beheerde agenda",
+    "skip": "Overslaan",
+    "use-this-calendar": "Gebruik deze kalender"
+  },
+  "metadata": {
+    "attendees": "Deelnemers",
+    "attendees-count": "Deelnemers ({count})",
+    "reminders": "Herinneringen",
+    "default-reminders": "Standaardherinneringen",
+    "visibility": "Zichtbaarheid:",
+    "optional": "Optioneel",
+    "join-meeting": "Neem deel aan de vergadering",
+    "response": {
+      "accepted": "Geaccepteerd",
+      "declined": "Geweigerd",
+      "tentative": "Voorlopig",
+      "needs-action": "In behandeling"
+    },
+    "visibility-value": {
+      "private": "Privé",
+      "public": "Openbaar",
+      "confidential": "Vertrouwelijk"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "min. · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "Kan evenement niet opslaan. Probeer het opnieuw.",
+      "couldNotCreateEventTryAgain": "Kan evenement niet aanmaken. Probeer het opnieuw.",
+      "couldNotSaveDefaultCalendarTryAgain": "Kan de standaardagenda niet opslaan. Probeer het opnieuw.",
+      "failedToLoadCalendarPreferences": "Kan agendavoorkeuren niet laden",
+      "failedToUpdateCalendarPreferences": "Kan agendavoorkeuren niet bijwerken",
+      "couldNotEditThisEventTryAgain": "Kan deze gebeurtenis niet bewerken. Probeer het opnieuw.",
+      "failedToDeleteEvent": "Kan gebeurtenis niet verwijderen",
+      "couldNotUnsnoozeInboxItem": "Kon de snooze niet ongedaan maken.",
+      "couldNotRescheduleInboxItem": "Kan niet opnieuw plannen."
+    },
+    "inboxSnoozePopover": {
+      "title": "Gesnoozed postvak IN-item",
+      "openInInbox": "Openen in postvak IN",
+      "unsnoozeNow": "Nu uitsnoozen",
+      "reschedule": "Opnieuw plannen"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "Taakdetails",
+    "open-task": "Open taak",
+    "source-note": "Bron opmerking",
+    "reschedule": "Opnieuw plannen",
+    "more-actions": "Meer acties",
+    "mark-done": "Markeer klaar",
+    "mark-not-done": "Markeer niet gedaan",
+    "later-today": "Later vandaag",
+    "tomorrow": "Morgen",
+    "next-week": "Volgende week",
+    "next-week-mon": "Volgende week · Ma",
+    "pick-date-time": "Datum en tijd kiezen…",
+    "remove-due-date": "Verwijder de vervaldatum",
+    "subtasks-prefix": "Subtaken",
+    "subtasks-counter": "{done} of {total} voltooid",
+    "today": "Vandaag",
+    "overdue-one": "1 dag te laat",
+    "overdue-other": "{count} dagen te laat",
+    "repeats": "Herhalingen",
+    "repeats-daily": "Wordt dagelijks herhaald",
+    "repeats-weekly": "Wordt wekelijks herhaald",
+    "repeats-monthly": "Wordt maandelijks herhaald",
+    "repeats-yearly": "Wordt jaarlijks herhaald",
+    "priority-urgent": "Dringend",
+    "priority-high": "Hoog",
+    "priority-medium": "Middelmatig",
+    "errors": {
+      "could-not-save": "Kan taak niet opslaan",
+      "could-not-reschedule": "Kan de taak niet opnieuw plannen",
+      "could-not-remove-due-date": "Kan de vervaldatum niet verwijderen",
+      "could-not-open-note": "Kan notitie niet openen"
+    }
+  }
+}

@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "День",
+    "week": "Тиждень",
+    "month": "Місяць",
+    "year": "Рік"
+  },
+  "toolbar": {
+    "create-event": "Створити подію",
+    "previous-period": "Попередній період",
+    "next-period": "Наступний період",
+    "previous-month": "Попередній місяць",
+    "next-month": "Наступний місяць",
+    "today": "Сьогодні"
+  },
+  "filter": {
+    "filter-calendars": "Фільтрувати календарі",
+    "sources": "Джерела",
+    "memry-items": "Memry елементи",
+    "imported-calendars": "Імпортовані календарі",
+    "event-types": "Типи подій",
+    "google-calendars": "Календарі Google",
+    "refresh-google-calendars": "Оновити календарі Google"
+  },
+  "visual-type": {
+    "event": "Подія",
+    "imported-event": "Імпортована подія",
+    "task": "Завдання",
+    "reminder": "Нагадування",
+    "snooze": "Відкласти"
+  },
+  "state": {
+    "loading-calendar": "Завантаження календаря…",
+    "loading-calendars": "Завантаження календарів…",
+    "preparing": "Підготовка…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "Імпортованих календарів ще немає.",
+    "no-events": "Немає подій"
+  },
+  "time": {
+    "all-day": "Цілий день",
+    "all-day-lower": "весь день",
+    "pick-a-date": "Виберіть дату",
+    "new-event": "Нова подія",
+    "more-events": "{count, plural, one {# ще подія} other {# ще події}}"
+  },
+  "form": {
+    "create-calendar-event": "Створити подію календаря",
+    "edit-calendar-event": "Редагувати подію календаря",
+    "quick-create-description": "Введіть заголовок і збережіть, щоб створити подію на вибраний проміжок часу.",
+    "event-editor-description": "Оновіть заголовок, місце, дату, час і нотатки для цієї події.",
+    "new-event-placeholder": "Нова подія",
+    "location-placeholder": "Додати місце",
+    "notes-url-placeholder": "Додати нотатки або URL",
+    "start": "Початок",
+    "end": "Кінець",
+    "add-details": "Додати деталі",
+    "google-calendar": "Календар Google",
+    "target-calendar": "Цільовий календар",
+    "use-default-calendar": "Використовувати календар за замовчуванням",
+    "use-default-calendar-with-name": "Використовувати за замовчуванням ({calendar})",
+    "use-memry-calendar-default": "Використовувати календар Memry (за замовчуванням)",
+    "use-memry-managed-calendar": "Використовувати календар, керований Memry",
+    "primary-suffix": "основний"
+  },
+  "delete-dialog": {
+    "title": "Видалити подію?",
+    "local-description": "\"{title}\" буде видалено назавжди. Цю дію неможливо скасувати.",
+    "google-bound-description": "\"{title}\" буде видалено з Memry та Google Календаря. Цю дію неможливо скасувати.",
+    "context-menu-delete-label": "Видалити подію"
+  },
+  "promote-dialog": {
+    "aria": "Редагувати подію зовнішнього календаря",
+    "title": "Редагувати цю подію в Memry?",
+    "body": "Редагування цієї події створить пов'язану копію в Memry, щоб зміни синхронізувалися в обох напрямах. Продовжити?",
+    "do-not-ask-again": "Більше не питати",
+    "confirm-label": "Редагувати в Memry"
+  },
+  "onboarding-dialog": {
+    "aria": "Виберіть свій календар Google за замовчуванням",
+    "title": "У який календар повинні потрапляти нові події Memry?",
+    "body": "Виберіть календар Google, який Memry буде використовувати за замовчуванням. Ви все ще можете змінювати його для кожної події.",
+    "default-calendar-label": "Використовувати календар, керований Memry",
+    "skip": "Пропустити",
+    "use-this-calendar": "Використовувати цей календар"
+  },
+  "metadata": {
+    "attendees": "Учасники",
+    "attendees-count": "Учасники ({count})",
+    "reminders": "Нагадування",
+    "default-reminders": "Загальні нагадування",
+    "visibility": "Видимість:",
+    "optional": "Необов'язково",
+    "join-meeting": "Приєднатися до зустрічі",
+    "response": {
+      "accepted": "Прийнято",
+      "declined": "Відхилено",
+      "tentative": "Попередньо",
+      "needs-action": "Очікує"
+    },
+    "visibility-value": {
+      "private": "Приватне",
+      "public": "Публічне",
+      "confidential": "Конфіденційне"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "хв · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "Не вдалося зберегти подію. Спробуйте ще раз.",
+      "couldNotCreateEventTryAgain": "Не вдалося створити подію. Спробуйте ще раз.",
+      "couldNotSaveDefaultCalendarTryAgain": "Не вдалося зберегти календар за замовчуванням. Спробуйте ще раз.",
+      "failedToLoadCalendarPreferences": "Не вдалося завантажити налаштування календаря",
+      "failedToUpdateCalendarPreferences": "Не вдалося оновити налаштування календаря",
+      "couldNotEditThisEventTryAgain": "Не вдалося редагувати цю подію. Спробуйте ще раз.",
+      "failedToDeleteEvent": "Не вдалося видалити подію",
+      "couldNotUnsnoozeInboxItem": "Не вдалося зняти відкладення.",
+      "couldNotRescheduleInboxItem": "Не вдалося перенести подію."
+    },
+    "inboxSnoozePopover": {
+      "title": "Відкладений елемент вхідних",
+      "openInInbox": "Відкрити у вхідних",
+      "unsnoozeNow": "Зняти відкладення зараз",
+      "reschedule": "Перепланувати"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "Деталі завдання",
+    "open-task": "Відкрити завдання",
+    "source-note": "Джерело нотатки",
+    "reschedule": "Перепланувати",
+    "more-actions": "Більше дій",
+    "mark-done": "Позначити як виконано",
+    "mark-not-done": "Позначити як не виконано",
+    "later-today": "Пізніше сьогодні",
+    "tomorrow": "Завтра",
+    "next-week": "Наступного тижня",
+    "next-week-mon": "Наступного тижня · Пн",
+    "pick-date-time": "Виберіть дату та час...",
+    "remove-due-date": "Видалити термін виконання",
+    "subtasks-prefix": "Підзадачі",
+    "subtasks-counter": "{done} з {total} виконано",
+    "today": "Сьогодні",
+    "overdue-one": "1 день прострочено",
+    "overdue-other": "{count} днів прострочено",
+    "repeats": "Повторюється",
+    "repeats-daily": "Повторюється щодня",
+    "repeats-weekly": "Повторюється щотижня",
+    "repeats-monthly": "Повторюється щомісяця",
+    "repeats-yearly": "Повторюється щороку",
+    "priority-urgent": "Терміново",
+    "priority-high": "Високий",
+    "priority-medium": "Середній",
+    "errors": {
+      "could-not-save": "Не вдалося зберегти завдання",
+      "could-not-reschedule": "Не вдалося перенести завдання",
+      "could-not-remove-due-date": "Не вдалося видалити термін виконання",
+      "could-not-open-note": "Не вдалося відкрити примітку"
+    }
+  }
+}

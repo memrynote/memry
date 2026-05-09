@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "Вибрати папку сховища",
+      "button": "Вибрати сховище"
+    },
+    "exportPdf": {
+      "title": "Експортувати як PDF",
+      "filterName": "Документ PDF"
+    },
+    "exportHtml": {
+      "title": "Експортувати як HTML",
+      "filterName": "Документ HTML"
+    },
+    "import": {
+      "filterSupported": "Підтримувані файли",
+      "filterAll": "Всі файли"
+    },
+    "exportCancelled": "Експорт скасовано",
+    "update": {
+      "availableTitle": "Доступне оновлення",
+      "availableMessage": "Доступне Memry {version}.",
+      "availableDetailFallback": "Завантажити оновлення зараз?",
+      "buttonDownload": "Завантажити",
+      "buttonLater": "Пізніше",
+      "readyTitle": "Оновлення готове",
+      "readyMessage": "Memry {version} було завантажено.",
+      "readyDetailFallback": "Перезапустіть Memry, щоб завершити встановлення оновлення.",
+      "buttonRestartNow": "Перезапустити зараз",
+      "releaseNotesLabel": "Примітки до версії:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "Нагадування про нотатку",
+      "journal": "Нагадування з журналу",
+      "highlight": "Нагадування про виділення",
+      "fallback": "Нагадування настав час",
+      "default": "Нагадування"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "Час нагадування має бути у майбутньому",
+    "definitionNotFound": "Визначення не знайдено",
+    "noteNotFound": "Нотатку не знайдено",
+    "updateFailed": "Оновлення не вдалося"
+  }
+}

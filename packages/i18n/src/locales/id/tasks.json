@@ -1,0 +1,651 @@
+{
+  "page": {
+    "tabs": {
+      "label": "Tampilan tugas",
+      "today": "Hari ini",
+      "all": "Semua"
+    },
+    "viewMode": {
+      "label": "Modus tampilan",
+      "list": "Tampilan daftar",
+      "kanban": "tampilan Kanban"
+    },
+    "projectScope": {
+      "allProjects": "Semua proyek",
+      "searchProjects": "Cari proyek…",
+      "editProject": "Sunting {name}",
+      "unstarSavedFilter": "Hapus bintang {name}"
+    }
+  },
+  "task": {
+    "add": "Tambahkan Tugas",
+    "title": "Judul",
+    "titleRequired": "Judul diperlukan",
+    "titlePlaceholder": "Apa yang perlu dilakukan?",
+    "namePlaceholder": "Nama tugas",
+    "description": "Deskripsi",
+    "descriptionPlaceholder": "Tambahkan deskripsi…",
+    "details": "Detail tugas",
+    "status": "Status",
+    "priority": "Prioritas",
+    "dueDate": "Tanggal Jatuh Tempo",
+    "project": "Proyek",
+    "repeat": "Ulangi",
+    "createAnother": "Buat yang lain",
+    "delete": "Hapus tugas",
+    "created": "Membuat {date}"
+  },
+  "project": {
+    "create": "Buat Proyek",
+    "edit": "Sunting Proyek",
+    "delete": "Hapus Proyek",
+    "iconAndName": "Ikon & Nama",
+    "namePlaceholder": "Nama proyek",
+    "select": "Pilih proyek",
+    "selectIcon": "Pilih ikon",
+    "clickIconToChange": "Klik ikon untuk mengubah",
+    "color": "Warna",
+    "descriptionOptional": "Deskripsi (opsional)",
+    "descriptionPlaceholder": "Deskripsi singkat tentang proyek ini…",
+    "statuses": "Status",
+    "statusesHelp": "Konfigurasikan tahapan alur kerja untuk proyek ini.",
+    "createDescription": "Buat proyek baru dengan nama, ikon, warna, dan status alur kerja.",
+    "editDescription": "Edit nama proyek, ikon, warna, dan status alur kerja."
+  },
+  "status": {
+    "select": "Pilih status",
+    "todo": "Yang Harus Dilakukan",
+    "inProgress": "Sedang Berlangsung",
+    "done": "Selesai"
+  },
+  "priority": {
+    "select": "Pilih prioritas",
+    "none": "Tidak Ada Prioritas",
+    "noneShort": "Tidak ada",
+    "low": "Rendah",
+    "medium": "Sedang",
+    "high": "Tinggi",
+    "urgent": "Mendesak"
+  },
+  "filters": {
+    "filter": "Menyaring",
+    "emptyTitle": "Tidak ada tugas yang cocok dengan filter Anda",
+    "emptyHelp": "Coba sesuaikan filter Anda atau",
+    "groupBy": "Kelompokkan berdasarkan",
+    "groupByOptions": "Kelompokkan berdasarkan opsi",
+    "sortAscending": "Urutkan secara menaik",
+    "sortDescending": "Urutkan secara menurun"
+  },
+  "quickAdd": {
+    "label": "Tambahkan tugas dengan cepat",
+    "focusDescription": "Fokus cepat tambahkan masukan"
+  },
+  "drawer": {
+    "close": "Tutup detail tugas",
+    "subIssues": "Sub-masalah",
+    "addSubIssue": "Tambahkan sub-masalah",
+    "subIssuePlaceholder": "Tambahkan sub-masalah…",
+    "noSubIssues": "Belum ada sub-masalah",
+    "linkedNotes": "Catatan Tertaut",
+    "linkNote": "Tautkan catatan",
+    "loading": "Memuat…",
+    "searchNotes": "Cari catatan…",
+    "noMatchingNotes": "Tidak ada catatan yang cocok",
+    "noNotesAvailable": "Tidak ada catatan tersedia",
+    "noLinkedNotes": "Belum ada catatan tertaut",
+    "removeLinkTo": "Hapus tautan ke {title}",
+    "removeLinkFallback": "catatan"
+  },
+  "kanban": {
+    "board": "Papan Kanban"
+  },
+  "toasts": {
+    "projectUpdated": "Proyek diperbarui",
+    "projectCreated": "Proyek dibuat",
+    "projectSaveError": "Gagal menyimpan proyek",
+    "projectArchived": "Proyek diarsipkan",
+    "projectArchiveError": "Gagal mengarsipkan proyek",
+    "projectDeleted": "Proyek dihapus",
+    "projectDeleteError": "Gagal menghapus proyek",
+    "filtersCleared": "Filter dibersihkan",
+    "filterSaved": "Filter disimpan",
+    "filterDeleted": "Filter dihapus",
+    "filterApplied": "Menerapkan \"{name}\"",
+    "deleted": "Tugas dihapus",
+    "deletedSeries": "Seri selesai!",
+    "deletedNext": "Kejadian selanjutnya",
+    "completed": "Tugas selesai!",
+    "archived": "Tugas diarsipkan",
+    "undoNotAvailableForDelete": "Urungkan tidak tersedia untuk dihapus",
+    "alreadyAllComplete": "Semua tugas yang dipilih sudah selesai",
+    "noCompletedSelected": "Tidak ada tugas selesai yang dipilih",
+    "completeFailed": "Gagal menyelesaikan tugas",
+    "reopenFailed": "Gagal membuka kembali tugas",
+    "deleteFailed": "Gagal menghapus tugas",
+    "moveFailed": "Gagal memindahkan tugas"
+  },
+  "phaseF": {
+    "componentsTasksAddSubtaskInput": {
+      "addSubtask": "Tambahkan subtugas...",
+      "addSubtask2": "Tambahkan subtugas",
+      "enterToAdd": "Masuk untuk menambahkan"
+    },
+    "componentsTasksBulkActionsBulkActionDropdown": {
+      "for": "untuk ",
+      "task": "tugas"
+    },
+    "componentsTasksBulkActionsBulkActionToolbar": {
+      "bulkActions": "Tindakan massal",
+      "selected": "dipilih",
+      "complete": "Lengkap",
+      "priority": "Prioritas",
+      "dueDate": "Tanggal Jatuh Tempo",
+      "moveTo": "Pindah ke",
+      "status": "Status",
+      "archive": "Arsip",
+      "delete": "Hapus",
+      "cancelSelection": "Batalkan pilihan",
+      "cancel": "Batalkan"
+    },
+    "componentsTasksBulkActionsBulkDeleteDialog": {
+      "delete": "Hapus ",
+      "task": "tugas",
+      "youReAboutToDelete": "Anda akan menghapus ",
+      "task2": "tugas",
+      "and": "dan ",
+      "moreTask": "lebih banyak tugas",
+      "thisActionCanBeUndoneForAShortTimeAfterDeletion": "Tindakan ini dapat dibatalkan dalam waktu singkat setelah penghapusan.",
+      "cancel": "Batalkan",
+      "delete2": "Hapus ",
+      "task3": "tugas"
+    },
+    "componentsTasksBulkActionsBulkDueDatePicker": {
+      "setDueDateFor": "Tetapkan tanggal jatuh tempo untuk ",
+      "task": "tugas",
+      "selectADateToSetAsTheDueDateForAllSelectedTasks": "Pilih tanggal untuk ditetapkan sebagai tanggal jatuh tempo semua tugas yang dipilih.",
+      "alsoSetTime": "Juga atur waktu",
+      "cancel": "Batalkan",
+      "setDueDate": "Tetapkan Tanggal Jatuh Tempo"
+    },
+    "componentsTasksCelebrationProgress": {
+      "complete": "Lengkap"
+    },
+    "componentsTasksColorPicker": {
+      "selectColor": "Pilih warna"
+    },
+    "componentsTasksCustomRepeatDialog": {
+      "onTheseDays": "Pada hari-hari ini",
+      "repeatOn": "Ulangi terus",
+      "day": "Hari",
+      "ofTheMonth": "bulan ini",
+      "the": "Itu",
+      "ofTheMonth2": "bulan ini",
+      "ends": "Berakhir",
+      "never": "Tidak pernah",
+      "onDate": "Pada tanggal",
+      "after": "Setelah",
+      "occurrences": "kejadian",
+      "preview": "Pratinjau",
+      "of": "dari ",
+      "andMore": "dan banyak lagi",
+      "frequency": "Frekuensi",
+      "repeatEvery": "Ulangi setiap",
+      "day2": "hari",
+      "week": "minggu",
+      "month": "bulan",
+      "year": "tahun",
+      "cancel": "Batalkan",
+      "save": "Simpan",
+      "customRepeat": "Ulangi Kustom"
+    },
+    "componentsTasksDatePickerCalendar": {
+      "previousMonth": "Bulan sebelumnya",
+      "nextMonth": "Bulan depan",
+      "goToToday": "Pergi ke hari ini",
+      "today": "Hari ini",
+      "w": "W"
+    },
+    "componentsTasksDatePickerContent": {
+      "removeDate": "Hapus tanggal",
+      "clearTime": "Waktu yang jelas",
+      "addTime": "Tambahkan waktu"
+    },
+    "componentsTasksDeleteProjectDialog": {
+      "delete": "Hapus \"",
+      "thisProjectHas": "Proyek ini punya ",
+      "task": "tugas",
+      "whatWouldYouLikeToDoWithThem": "Apa yang ingin Anda lakukan dengan mereka?",
+      "moveTasksToPersonalProject": "Pindahkan tugas ke Proyek pribadi",
+      "deleteAllTasksPermanently": "Hapus semua tugas secara permanen",
+      "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Proyek ini tidak memiliki tugas dan akan dihapus secara permanen.",
+      "thisActionCannotBeUndone": "Tindakan ini tidak dapat dibatalkan.",
+      "cancel": "Batalkan",
+      "deleteProject": "Hapus Proyek"
+    },
+    "componentsTasksDeleteTaskDialog": {
+      "deleteTask": "Hapus tugas?",
+      "ldquo": "ldquo;",
+      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "benar; akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.",
+      "deleteTask2": "Hapus Tugas"
+    },
+    "componentsTasksDialogsAllSubtasksCompleteDialog": {
+      "allSubtasksComplete": "Semua subtugas selesai!",
+      "ldquo": "ldquo;",
+      "rdquoHasAll": "benar; memiliki semuanya ",
+      "subtask": "subtugas",
+      "done": "selesai.",
+      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Apakah Anda ingin menandai tugas orang tua sebagai selesai juga?",
+      "keepTaskOpen": "Biarkan tugas tetap terbuka",
+      "completeTask": "Selesaikan tugas ✓"
+    },
+    "componentsTasksDialogsBulkDueDateDialog": {
+      "setDueDateForAllSubtasks": "Tetapkan tanggal jatuh tempo untuk semua subtugas",
+      "setDueDateFor": "Tetapkan tanggal jatuh tempo untuk ",
+      "subtask": "subtugas",
+      "in": "di “",
+      "rdquo": "benar;",
+      "alsoApplyToCompletedSubtasks": "Juga berlaku untuk subtugas yang diselesaikan (",
+      "clearDate": "Hapus tanggal",
+      "cancel": "Batalkan",
+      "apply": "Terapkan"
+    },
+    "componentsTasksDialogsBulkPriorityDialog": {
+      "setPriorityForAllSubtasks": "Tetapkan prioritas untuk semua subtugas",
+      "setPriorityFor": "Tetapkan prioritas untuk ",
+      "subtask": "subtugas",
+      "in": "di “",
+      "rdquo": "benar;",
+      "alsoApplyToCompletedSubtasks": "Juga berlaku untuk subtugas yang diselesaikan (",
+      "cancel": "Batalkan",
+      "apply": "Terapkan"
+    },
+    "componentsTasksDialogsCompleteParentDialog": {
+      "completeTaskWithIncompleteSubtasks": "Selesaikan tugas dengan subtugas yang belum lengkap?",
+      "has": "memiliki ",
+      "incompleteSubtask": "subtugas yang tidak lengkap",
+      "and": "dan ",
+      "more": "lebih",
+      "whatWouldYouLikeToDo": "Apa yang ingin kamu lakukan?",
+      "completeAllParentSubtasks": "Selesaikan semua (tugas induk + subtugas)",
+      "markTheParentAndAllSubtasksAsComplete": "Tandai tugas induk dan semua subtugas sebagai selesai",
+      "completeParentOnlyKeepSubtasksIncomplete": "Selesaikan tugas orang tua saja, biarkan subtugas tidak lengkap",
+      "onlyMarkTheParentTaskAsComplete": "Hanya tandai tugas induk sebagai selesai",
+      "cancel": "Batalkan",
+      "complete": "Lengkap"
+    },
+    "componentsTasksDialogsDeleteAllSubtasksDialog": {
+      "deleteAllSubtasks": "Hapus semua subtugas?",
+      "thisWillDelete": "Ini akan menghapus ",
+      "subtask": "subtugas",
+      "from": "dari “",
+      "rdquo": "rdquo;.",
+      "thisActionCannotBeUndone": "Tindakan ini tidak dapat dibatalkan.",
+      "cancel": "Batalkan",
+      "deleteAll": "Hapus Semua"
+    },
+    "componentsTasksDialogsDeleteParentDialog": {
+      "deleteTaskWithSubtasks": "Hapus tugas dengan subtugas?",
+      "has": "memiliki ",
+      "subtask": "subtugas",
+      "whatWouldYouLikeToDo": "Apa yang ingin kamu lakukan?",
+      "deleteTaskAndAllSubtasks": "Hapus tugas dan semua subtugas",
+      "permanentlyRemovesEverything": "Menghapus semuanya secara permanen",
+      "deleteTaskKeepSubtasksAsStandaloneTasks": "Hapus tugas, pertahankan subtugas sebagai tugas mandiri",
+      "subtasksBecomeTopLevelTasks": "Subtugas menjadi tugas tingkat atas",
+      "cancel": "Batalkan",
+      "delete": "Hapus"
+    },
+    "componentsTasksDialogsDuplicateWithSubtasksDialog": {
+      "duplicateTask": "Tugas duplikat",
+      "createACopyOf": "Buat salinan “",
+      "rdquo": "benar;",
+      "alsoDuplicateSubtasks": "Juga duplikat subtugas (",
+      "cancel": "Batalkan",
+      "duplicate": "Duplikat "
+    },
+    "componentsTasksDialogsParentPickerDialog": {
+      "makeSubtaskOf": "Buatlah subtugas dari...",
+      "selectATaskToMake": "Pilih tugas yang akan dibuat \"",
+      "aSubtaskOf": "sebuah subtugas dari.",
+      "searchTasks": "Tugas pencarian...",
+      "sameProject": "Proyek yang Sama",
+      "otherProjects": "Proyek Lainnya"
+    },
+    "componentsTasksDragDropInsertionIndicator": {
+      "dropToRescheduleTo": "Drop untuk menjadwal ulang ke "
+    },
+    "componentsTasksDragDropMoveMenu": {
+      "moveTask": "Pindahkan tugas",
+      "move": "Pindah",
+      "reschedule": "Jadwalkan ulang",
+      "today": "Hari ini",
+      "tomorrow": "Besok",
+      "nextWeek": "Minggu depan",
+      "removeDate": "Hapus tanggal",
+      "moveToProject": "Pindah ke proyek",
+      "current": "Saat ini",
+      "changeStatus": "Ubah status",
+      "current2": "Saat ini",
+      "reorder": "Susun ulang"
+    },
+    "componentsTasksDragDropMultiDragOverlay": {
+      "moreTask": "lebih banyak tugas",
+      "task": "tugas"
+    },
+    "componentsTasksDragDropSidebarDropZones": {
+      "dropHere": "Jatuhkan di sini"
+    },
+    "componentsTasksDragDropTaskRow": {
+      "priority": "prioritas: "
+    },
+    "componentsTasksDueDatePicker": {
+      "selectDueDate": "Pilih tanggal jatuh tempo",
+      "overdue": "Terlambat",
+      "setDueDate": "Tetapkan tanggal jatuh tempo",
+      "suggestions": "Saran",
+      "pickADate": "Pilih tanggal...",
+      "addTime": "Tambahkan waktu",
+      "time": "Waktu",
+      "clearDate": "Hapus tanggal",
+      "backToOptions": "Kembali ke opsi"
+    },
+    "componentsTasksEditRepeatingTaskDialog": {
+      "editRepeatingTask": "Edit Tugas Berulang",
+      "youReEditingARepeatingTaskApplyChangesTo": "Anda sedang mengedit tugas berulang. Terapkan perubahan pada:",
+      "onlyThisOccurrence": "Hanya kejadian ini",
+      "onlyFutureTasksUnchanged": "saja — tugas masa depan tidak berubah",
+      "thisAndAllFutureOccurrences": "Ini dan semua kejadian di masa depan",
+      "andBeyond": "dan seterusnya",
+      "cancel": "Batalkan",
+      "continue": "Lanjutkan"
+    },
+    "componentsTasksEmptyStatesCollapsedEmptySection": {
+      "add": "Tambahkan"
+    },
+    "componentsTasksEmptyStatesSectionEmptyStates": {
+      "noTasksScheduled": "Tidak ada tugas yang dijadwalkan",
+      "addTaskFor": "Tambahkan tugas untuk ",
+      "nothingScheduled": "Tidak ada yang dijadwalkan",
+      "addTasksWithDueDatesToPlanYourWeek": "Tambahkan tugas dengan tanggal jatuh tempo untuk merencanakan minggu Anda.",
+      "addTask": "Tambahkan tugas",
+      "viewCalendar": "Lihat kalender"
+    },
+    "componentsTasksFiltersActiveFiltersBar": {
+      "priorityIs": "Prioritasnya adalah",
+      "priority": "prioritas",
+      "statusIs": "Statusnya adalah",
+      "status": "status",
+      "projectIs": "Proyek adalah",
+      "project": "proyek",
+      "due": "Jatuh tempo",
+      "dueDate": "tanggal jatuh tempo",
+      "search": "pencarian",
+      "clearAll": "Hapus semuanya"
+    },
+    "componentsTasksFiltersDueDateFilter": {
+      "filterByDueDate": "Filter berdasarkan tanggal jatuh tempo",
+      "customRange": "Rentang Kustom",
+      "clear": "Jelas",
+      "apply": "Terapkan"
+    },
+    "componentsTasksFiltersFilterDropdown": {
+      "filterBy": "Saring berdasarkan..."
+    },
+    "componentsTasksFiltersFilterEmptyState": {
+      "activeFilters": "Filter aktif: ",
+      "clearAllFilters": "Hapus semua filter"
+    },
+    "componentsTasksFiltersFilterPanelsDueDatePanel": {
+      "dueDate": "Tanggal jatuh tempo"
+    },
+    "componentsTasksFiltersFilterPanelsPriorityPanel": {
+      "priority": "Prioritas",
+      "is": "adalah",
+      "search": "Cari...",
+      "selected": "dipilih"
+    },
+    "componentsTasksFiltersFilterPanelsProjectPanel": {
+      "project": "Proyek",
+      "noProject": "Tidak ada proyek"
+    },
+    "componentsTasksFiltersFilterPanelsStatusPanel": {
+      "status": "Status"
+    },
+    "componentsTasksFiltersFilterPanelsStatusProjectPickerPan": {
+      "status": "Status",
+      "pickAProject": "Pilih sebuah proyek"
+    },
+    "componentsTasksFiltersMoreFiltersDropdown": {
+      "moreFilters": "Lebih banyak filter",
+      "more": "Lebih lanjut",
+      "status": "Status",
+      "hasTimeSet": "Telah menetapkan waktu",
+      "recurringOnly": "Hanya berulang",
+      "status2": "Status"
+    },
+    "componentsTasksFiltersPriorityFilter": {
+      "filterByPriority": "Filter berdasarkan prioritas",
+      "priority": "Prioritas"
+    },
+    "componentsTasksFiltersProjectFilter": {
+      "filterByProject": "Filter berdasarkan proyek",
+      "project": "Proyek",
+      "allProjects": "Semua Proyek",
+      "clear": "Jelas"
+    },
+    "componentsTasksFiltersQuickFilters": {
+      "quickFilters": "Filter cepat:"
+    },
+    "componentsTasksFiltersSaveFilterDialog": {
+      "saveFilter": "Simpan Filter",
+      "saveYourCurrentFilterSettingsForQuickAccessLater": "Simpan pengaturan filter Anda saat ini untuk akses cepat nanti.",
+      "filterName": "Nama Penyaring",
+      "eGHighPriorityThisWeek": "misalnya, Prioritas tinggi minggu ini",
+      "currentFilters": "Filter saat ini:",
+      "noFiltersApplied": "Tidak ada filter yang diterapkan",
+      "cancel": "Batalkan",
+      "saveFilter2": "Simpan Filter"
+    },
+    "componentsTasksFiltersSavedFiltersDropdown": {
+      "savedFilters": "Filter tersimpan",
+      "saved": "Disimpan",
+      "noSavedFiltersYet": "Belum ada filter tersimpan",
+      "saveCurrentFilters": "Simpan filter saat ini",
+      "saveCurrentFilters2": "Simpan filter saat ini"
+    },
+    "componentsTasksFiltersSavedFiltersSection": {
+      "filterName": "Nama penyaring",
+      "saveFilter": "Simpan penyaring",
+      "save": "Simpan"
+    },
+    "componentsTasksFiltersSearchInput": {
+      "searchTasks": "Tugas pencarian",
+      "clearSearch": "Hapus pencarian"
+    },
+    "componentsTasksKanbanKanbanColumn": {
+      "dropHere": "Jatuhkan di sini",
+      "releaseToMoveTaskToThisColumn": "Lepaskan untuk memindahkan tugas ke kolom ini",
+      "moreCompleted": "lebih lengkap",
+      "showFewer": "Tampilkan lebih sedikit",
+      "taskTitle": "Judul tugas..."
+    },
+    "componentsTasksNaturalDateInput": {
+      "typeADateInNaturalLanguage": "Ketikkan tanggal dalam bahasa alami",
+      "select": "Pilih"
+    },
+    "componentsTasksParentTaskRow": {
+      "priority": "prioritas: "
+    },
+    "componentsTasksPrioritySelect": {
+      "selectPriority": "Pilih prioritas",
+      "navigate": "menavigasi",
+      "select": "pilih"
+    },
+    "componentsTasksProjectModal": {
+      "iconName": "Ikon & Nama",
+      "selectIcon": "Pilih ikon",
+      "projectName": "Nama proyek",
+      "clickIconToChange": "Klik ikon untuk mengubah",
+      "color": "Warna",
+      "descriptionOptional": "Deskripsi (opsional)",
+      "briefDescriptionOfThisProject": "Deskripsi singkat tentang proyek ini...",
+      "statuses": "Status",
+      "configureTheWorkflowStagesForThisProject": "Konfigurasikan tahapan alur kerja untuk proyek ini.",
+      "deleteProject": "Hapus Proyek",
+      "cancel": "Batalkan",
+      "unsavedChanges": "Perubahan yang belum disimpan",
+      "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Anda memiliki perubahan yang belum disimpan. Apakah Anda yakin ingin membuangnya?",
+      "cancel2": "Batalkan",
+      "discard": "Buang"
+    },
+    "componentsTasksProjectSelect": {
+      "selectProject": "Pilih proyek",
+      "selectProject2": "Pilih proyek"
+    },
+    "componentsTasksProjectsProjectSelector": {
+      "editProject": "Sunting proyek",
+      "archiveProject": "Proyek arsip",
+      "deleteProject": "Hapus proyek",
+      "selectProject": "Pilih proyek",
+      "noProjectsYet": "Belum ada proyek",
+      "createProject": "Buat proyek"
+    },
+    "componentsTasksProjectsProjectsTabContent": {
+      "noProjectSelected": "Tidak ada proyek yang dipilih",
+      "selectAProjectFromTheDropdownOrCreateANewOne": "Pilih proyek dari dropdown atau buat yang baru",
+      "createYourFirstProject": "Buat proyek pertama Anda"
+    },
+    "componentsTasksQuickAddQuickAddHelp": {
+      "quickAddShortcutsHelp": "Bantuan penambahan pintasan dengan cepat",
+      "quickAddShortcuts": "Tambah Pintasan Cepat",
+      "exampleBuyMilkTomorrowHighPersonal": "Contoh: \"Beli susu !besok !!tinggi #personal\""
+    },
+    "componentsTasksQuickAddQuickOptionsBar": {
+      "quickOptions": "Opsi cepat:"
+    },
+    "componentsTasksQuickAddInput": {
+      "q": "T",
+      "q2": "T"
+    },
+    "componentsTasksRepeatIndicator": {
+      "of": "dari ",
+      "completed": "selesai"
+    },
+    "componentsTasksRepeatPicker": {
+      "selectRepeatFrequency": "Pilih frekuensi pengulangan",
+      "doesNotRepeat": "Tidak mengulangi",
+      "custom": "Kustom..."
+    },
+    "componentsTasksStatusEditor": {
+      "changeStatusColor": "Ubah warna status",
+      "dragToReorder": "Tarik untuk menyusun ulang",
+      "statusName": "Nama status",
+      "addStatus": "Tambahkan status"
+    },
+    "componentsTasksStatusSelect": {
+      "selectStatus": "Pilih status",
+      "selectStatus2": "Pilih status"
+    },
+    "componentsTasksStopRepeatingDialog": {
+      "stopRepeating": "Berhenti Mengulangi",
+      "isSetToRepeat": "diatur untuk diulang ",
+      "whatWouldYouLikeToDo": "Apa yang ingin kamu lakukan?",
+      "keepThisTaskStopFutureOccurrences": "Pertahankan tugas ini, hentikan kejadian di masa depan",
+      "taskWillBecomeAOneTimeTask": "Tugas akan menjadi tugas satu kali",
+      "deleteThisAndAllFutureOccurrences": "Hapus ini dan semua kejadian di masa depan",
+      "taskWillBeRemovedEntirely": "Tugas akan dihapus seluruhnya",
+      "cancel": "Batalkan",
+      "confirm": "Konfirmasikan"
+    },
+    "componentsTasksSubtaskDots": {
+      "of": "dari ",
+      "subtasksComplete": "subtugas selesai (",
+      "clickTo": "Klik untuk ",
+      "of2": "dari ",
+      "subtasksComplete2": "subtugas selesai",
+      "clickTo2": "Klik untuk "
+    },
+    "componentsTasksSubtaskProgressBadge": {
+      "of": "dari ",
+      "subtasksComplete": "subtugas selesai (",
+      "clickTo": "Klik untuk "
+    },
+    "componentsTasksTaskBadges": {
+      "priority": "prioritas",
+      "repeatingTask": "Mengulangi tugas",
+      "d": "d"
+    },
+    "componentsTasksTaskEmptyState": {
+      "addTask": "Tambahkan Tugas"
+    },
+    "componentsTasksTaskIcons": {
+      "noPriority": "tidak ada prioritas"
+    },
+    "componentsTasksTaskRepeatSection": {
+      "repeat": "Ulangi",
+      "addRepeat": "Tambahkan ulangi",
+      "edit": "Sunting",
+      "edit2": "Sunting",
+      "stopRepeating": "Berhenti mengulangi",
+      "stopRepeating2": "Berhenti mengulangi"
+    },
+    "componentsTasksTaskSection": {
+      "addTask": "Tambahkan tugas"
+    },
+    "componentsTasksTimePicker": {
+      "selectTime": "Pilih waktu",
+      "selectTime2": "Pilih waktu",
+      "clearTime": "Waktu yang jelas"
+    },
+    "componentsTasksTodayEmptyState": {
+      "nothingScheduledForToday": "Tidak ada yang dijadwalkan untuk hari ini",
+      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "Anda memiliki tugas yang terlambat di atas. Tambahkan beberapa tugas untuk hari ini atau periksa daftar Anda yang akan datang.",
+      "addTaskForToday": "Tambahkan tugas untuk hari ini",
+      "allCaughtUpForToday": "Semua terjebak untuk hari ini",
+      "youHaveNothingScheduledEnjoyTheClarity": "Anda tidak punya jadwal apa pun. Nikmati kejelasannya.",
+      "addTaskForToday2": "Tambahkan tugas untuk hari ini"
+    },
+    "componentsTasksUpcomingEmptyState": {
+      "nothingScheduledForTheNext7Days": "Tidak ada yang dijadwalkan untuk 7 hari ke depan",
+      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "Anda memiliki tugas yang terlambat di atas. Rencanakan ke depan dengan menambahkan tugas untuk minggu mendatang.",
+      "addTask": "Tambahkan tugas",
+      "noUpcomingTasks": "Tidak ada tugas yang akan datang",
+      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Tugas yang harus diselesaikan dalam 7 hari ke depan akan muncul di sini. Rencanakan minggu Anda dengan menambahkan beberapa tugas.",
+      "addTask2": "Tambahkan tugas"
+    }
+  },
+  "phaseI": {
+    "toasts": {
+      "changesUndone": "Perubahan dibatalkan",
+      "projectNotFound": "Proyek tidak ditemukan",
+      "failedToArchiveTasks": "Gagal mengarsipkan tugas",
+      "tasksRestoredFromArchive": "Tugas dipulihkan dari arsip",
+      "subtaskAdded": "Subtugas ditambahkan",
+      "subtaskDeleted": "Subtugas dihapus",
+      "taskCompleted": "Tugas selesai",
+      "allSubtasksCompleteTaskMarkedAsDone": "🎉 Semua subtugas selesai! Tugas ditandai sebagai selesai.",
+      "taskReopened": "Tugas dibuka kembali",
+      "taskKeptOpen": "Tugas tetap terbuka",
+      "taskMarkedAsDone": "🎉 Tugas ditandai selesai!"
+    },
+    "errors": {
+      "failedToArchiveTasks": "Gagal mengarsipkan tugas",
+      "failedToAddSubtask": "Gagal menambahkan subtugas",
+      "failedToAddSubtasks": "Gagal menambahkan subtugas",
+      "failedToReorderSubtasks": "Gagal menyusun ulang subtugas",
+      "failedToPromoteSubtask": "Gagal mempromosikan subtugas",
+      "failedToDeleteSubtask": "Gagal menghapus subtugas",
+      "failedToDeleteTask": "Gagal menghapus tugas",
+      "failedToCompleteTask": "Gagal menyelesaikan tugas",
+      "failedToMakeSubtask": "Gagal membuat subtugas",
+      "failedToCompleteSubtasks": "Gagal menyelesaikan subtugas",
+      "failedToMarkSubtasksIncomplete": "Gagal menandai subtugas sebagai belum selesai",
+      "failedToSetDueDate": "Gagal menetapkan tanggal jatuh tempo",
+      "failedToSetPriority": "Gagal menetapkan prioritas",
+      "failedToDeleteSubtasks": "Gagal menghapus subtugas",
+      "failedToLoadTaskPreferences": "Gagal memuat preferensi tugas",
+      "failedToUpdateTaskPreferences": "Gagal memperbarui preferensi tugas",
+      "failedToLoadLinkedTasks": "Gagal memuat tugas tertaut"
+    }
+  }
+}

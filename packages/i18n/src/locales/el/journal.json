@@ -1,0 +1,303 @@
+{
+  "title": "Εφημερίδα",
+  "section": {
+    "journal": "Εφημερίδα",
+    "aiConnections": "Συνδέσεις AI",
+    "todaysNotes": "Οι σημερινές σημειώσεις",
+    "todaysSchedule": "Το σημερινό πρόγραμμα",
+    "todaysTasks": "Τα σημερινά καθήκοντα",
+    "schedule": "Πρόγραμμα",
+    "tasks": "Καθήκοντα",
+    "calendarEvents": "Εκδηλώσεις ημερολογίου",
+    "overdueTasks": "Εκπρόθεσμα καθήκοντα",
+    "technicalDetails": "Τεχνικές λεπτομέρειες"
+  },
+  "action": {
+    "versionHistory": "Ιστορικό έκδοσης",
+    "export": "Εξαγωγή",
+    "fullWidth": "Πλήρες πλάτος",
+    "journalSettings": "Ρυθμίσεις περιοδικού",
+    "fullMode": "Πλήρης λειτουργία",
+    "compactMode": "Συμπαγής λειτουργία",
+    "focusMode": "Λειτουργία εστίασης",
+    "exitFocusMode": "Έξοδος από τη λειτουργία εστίασης",
+    "enterFocusMode": "Μπείτε στη λειτουργία εστίασης",
+    "createNote": "Δημιουργία Σημείωσης",
+    "createNewNote": "Δημιουργία νέας σημείωσης",
+    "showLess": "Δείξτε λιγότερα",
+    "showMoreNotes": "Εμφάνιση περισσότερης σημείωσης {count}",
+    "showMoreNotes_plural": "Εμφάνιση περισσότερων σημειώσεων {count}",
+    "showFewerNotes": "Εμφάνιση λιγότερων σημειώσεων",
+    "startBlank": "Αντ' αυτού, ξεκινήστε το κενό",
+    "changeTemplate": "Αλλαγή προτύπου",
+    "dismissIndicator": "Ένδειξη απόρριψης",
+    "refreshConnections": "Ανανέωση συνδέσεων",
+    "reloadJournal": "Επαναφόρτωση περιοδικού",
+    "goToToday": "Μεταβείτε στο Σήμερα",
+    "copyUnsavedContent": "Αντιγράψτε το μη αποθηκευμένο περιεχόμενο στο πρόχειρο",
+    "openNoteFullPage": "Ανοίξτε τη σημείωση σε πλήρη σελίδα",
+    "closeNoteDrawer": "Κλείστε το συρτάρι σημειώσεων",
+    "addBookmark": "Προσθήκη σελιδοδείκτη",
+    "removeBookmark": "Αφαίρεση σελιδοδείκτη",
+    "tryAgain": "Δοκιμάστε ξανά"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "Τι σχεδιάζετε...",
+      "today": "Τι έχεις στο μυαλό σου σήμερα...",
+      "past": "Σκεφτείτε αυτή τη μέρα...",
+      "default": "Ξεκινήστε να γράφετε..."
+    },
+    "toolbar": {
+      "ariaLabel": "Μορφοποίηση κειμένου",
+      "bold": "Τολμηρή",
+      "italic": "Πλάγια γραφή",
+      "underline": "Υπογράμμιση",
+      "strikethrough": "Strikethrough",
+      "link": "Σύνδεσμος",
+      "image": "Εικόνα",
+      "moreOptions": "Περισσότερες επιλογές",
+      "heading1": "Επικεφαλίδα 1",
+      "heading2": "Επικεφαλίδα 2",
+      "heading3": "Κεφάλαιο 3",
+      "bulletList": "Λίστα κουκκίδων",
+      "numberedList": "Αριθμημένη λίστα",
+      "checklist": "Λίστα ελέγχου",
+      "quote": "Παράθεση",
+      "divider": "Διαιρέτης",
+      "codeBlock": "Μπλοκ κωδικών"
+    },
+    "prompt": {
+      "enterUrl": "Εισαγάγετε τη διεύθυνση URL:"
+    },
+    "upload": {
+      "noEntry": "Δεν είναι δυνατή η μεταφόρτωση εικόνας: δεν έχει επιλεγεί καταχώριση ημερολογίου",
+      "failed": "Η μεταφόρτωση της εικόνας απέτυχε"
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "Σήμερα",
+      "yesterday": "Χθες",
+      "tomorrow": "Αύριο",
+      "future": "Μέλλον"
+    },
+    "weekday": {
+      "sunday": "Κυριακή",
+      "monday": "Δευτέρα",
+      "tuesday": "Τρίτη",
+      "wednesday": "Τετάρτη",
+      "thursday": "Πέμπτη",
+      "friday": "Παρασκευή",
+      "saturday": "Σάββατο"
+    },
+    "weekdayShort": {
+      "sunday": "Κυρ",
+      "monday": "Δευτ",
+      "tuesday": "Τρ",
+      "wednesday": "Τετ",
+      "thursday": "Πέμ",
+      "friday": "Παρ",
+      "saturday": "Σάβ"
+    },
+    "month": {
+      "january": "Ιανουάριος",
+      "february": "Φεβρουάριος",
+      "march": "Μάρτιος",
+      "april": "Απρίλιος",
+      "may": "Μάιος",
+      "june": "Ιούνιος",
+      "july": "Ιούλιος",
+      "august": "Αύγουστος",
+      "september": "Σεπτέμβριος",
+      "october": "Οκτώβριος",
+      "november": "Νοέμβριος",
+      "december": "Δεκέμβριος"
+    },
+    "monthShort": {
+      "january": "Ιαν",
+      "february": "Φεβ",
+      "march": "Μαρ",
+      "april": "Απρ",
+      "may": "Μάιος",
+      "june": "Ιούν",
+      "july": "Ιούλ",
+      "august": "Αύγ",
+      "september": "Σεπτ",
+      "october": "Οκτ",
+      "november": "Νοε",
+      "december": "Δεκ"
+    },
+    "greeting": {
+      "morning": "Καλημέρα",
+      "afternoon": "Καλησπέρα",
+      "evening": "καλησπέρα",
+      "night": "Καληνύχτα"
+    },
+    "allDay": "Όλη μέρα"
+  },
+  "nav": {
+    "previousDay": "Προηγούμενη μέρα",
+    "nextDay": "Την επόμενη μέρα",
+    "previousMonth": "Προηγούμενος μήνας",
+    "nextMonth": "Τον επόμενο μήνα",
+    "previousYear": "Προηγούμενο έτος",
+    "nextYear": "Του χρόνου",
+    "journalBack": "Ημερολόγιο πίσω",
+    "journalNavigation": "Πλοήγηση στο περιοδικό",
+    "dateNavigation": "Ημερομηνία πλοήγησης",
+    "goToYearView": "Μετάβαση στην προβολή έτους",
+    "previousView": "Προηγούμενη προβολή",
+    "nextView": "Επόμενη προβολή"
+  },
+  "aria": {
+    "moreOptions": "Περισσότερες επιλογές",
+    "documentStatistics": "Στατιστικά έγγραφα",
+    "dayContext": "Πλαίσιο ημέρας: εργασίες και πρόγραμμα",
+    "scheduleEvents": "Προγραμματίστε εκδηλώσεις",
+    "tasks": "Καθήκοντα",
+    "notesCreatedToday": "Σημειώσεις {count} που δημιουργήθηκαν σήμερα"
+  },
+  "empty": {
+    "noEntry": "Δεν υπάρχει είσοδος",
+    "noDaysInMonth": "Δεν υπάρχουν μέρες σε αυτόν τον μήνα",
+    "noEventsScheduled": "Δεν έχουν προγραμματιστεί εκδηλώσεις",
+    "noEventsScheduledToday": "Δεν έχουν προγραμματιστεί εκδηλώσεις σήμερα",
+    "noEventsWereScheduled": "Δεν είχαν προγραμματιστεί εκδηλώσεις",
+    "noTasksDue": "Δεν οφείλονται καθήκοντα",
+    "noTasksDueToday": "Δεν υπάρχουν εργασίες σήμερα",
+    "noTasksWereDue": "Δεν οφείλονταν καθήκοντα",
+    "noNotesToday": "Δεν δημιουργήθηκαν σημειώσεις σήμερα",
+    "startDocumenting": "Ξεκινήστε να τεκμηριώνετε τις σκέψεις και τις ιδέες σας"
+  },
+  "ai": {
+    "loading": "Αναλύοντας την καταχώρισή σας...",
+    "empty": {
+      "willAppear": "Οι συνδέσεις σας θα εμφανιστούν εδώ",
+      "noneYet": "Δεν βρέθηκαν ακόμη συνδέσεις",
+      "moreJournaling": "Καθώς γράφετε περισσότερα, η τεχνητή νοημοσύνη θα βρει σχετικές καταχωρήσεις",
+      "keepWriting": "Συνεχίστε να γράφετε για να ανακαλύψετε σχετικές καταχωρήσεις"
+    },
+    "error": {
+      "loadFailed": "Δεν ήταν δυνατή η φόρτωση των συνδέσεων"
+    },
+    "connectionAria": "Σύνδεση με {label}, {scorePercent}% αντιστοίχιση"
+  },
+  "count": {
+    "item": "αντικείμενο",
+    "items": "είδη",
+    "note": "σημείωση",
+    "notes": "σημειώσεις",
+    "day": "ημέρα",
+    "days": "ημέρες",
+    "event": "εκδήλωση",
+    "events": "εκδηλώσεις",
+    "meeting": "συνάντηση",
+    "meetings": "συναντήσεις",
+    "task": "καθήκον",
+    "tasks": "καθήκοντα",
+    "todo": "να κάνουμε",
+    "people": "{count} άτομα",
+    "moreConnections": "+ {count} περισσότερη σύνδεση",
+    "moreConnections_plural": "+ {count} περισσότερες συνδέσεις",
+    "moreNotes": "+ {count} περισσότερη σημείωση",
+    "moreNotes_plural": "+ {count} περισσότερες σημειώσεις",
+    "daysWithEntries": "ημέρες με συμμετοχές",
+    "charactersWritten": "χαρακτήρες γραμμένοι",
+    "words": "{count} λέξεις",
+    "characters": "χαρακτήρες {count}",
+    "completed": "Το {count} ολοκληρώθηκε",
+    "overdue": "{count} ληξιπρόθεσμα"
+  },
+  "stats": {
+    "wordCount": "Καταμέτρηση λέξεων",
+    "characterCount": "Αριθμός χαρακτήρων",
+    "readingTime": "Εκτιμώμενος χρόνος ανάγνωσης",
+    "lastModified": "Τελευταία τροποποίηση",
+    "lessThanOneMinute": "< 1 λεπτό",
+    "minutes": "{minutes} ελάχ",
+    "read": "{readingTime} ανάγνωση",
+    "modified": "Τροποποιημένο {date}"
+  },
+  "task": {
+    "completed": "Ολοκληρώθηκε",
+    "notCompleted": "Δεν έχει ολοκληρωθεί",
+    "priority": "{priority} προτεραιότητα",
+    "overdue": "ληξιπρόθεσμα",
+    "markComplete": "Επισημάνετε το \"{title}\" ως ολοκληρωμένο",
+    "markNotComplete": "Επισημάνετε το \"{title}\" ως μη ολοκληρωμένο"
+  },
+  "template": {
+    "using": "Χρήση \"{templateName}\""
+  },
+  "reminder": {
+    "hasReminders": "Έχει υπενθυμίσεις",
+    "setToRevisit": "Ρύθμιση υπενθύμισης για επανάληψη",
+    "tooltip": "Υπενθύμιση: {date}",
+    "tooltipMore": "Υπενθύμιση: {date} (+{count} περισσότερα)",
+    "success": {
+      "set": "Ορίστηκε υπενθύμιση για αυτήν την καταχώριση ημερολογίου",
+      "deleted": "Η υπενθύμιση διαγράφηκε",
+      "dismissed": "Η υπενθύμιση απορρίφθηκε",
+      "snoozed": "Η υπενθύμιση αναβλήθηκε"
+    },
+    "error": {
+      "set": "Αποτυχία ορισμού υπενθύμισης",
+      "delete": "Αποτυχία διαγραφής υπενθύμισης",
+      "dismiss": "Αποτυχία παράβλεψης υπενθύμισης",
+      "snooze": "Απέτυχε η αναβολή της υπενθύμισης"
+    }
+  },
+  "toast": {
+    "unsavedRetry": "Το περιεχόμενό σας είναι ακόμα στη μνήμη. Κάντε κλικ για να προσπαθήσετε ξανά να αποθηκεύσετε.",
+    "noteNotFound": "Σημείωση \"{target}\" δεν βρέθηκε",
+    "fileNotFound": "Το αρχείο δεν βρέθηκε: {target}",
+    "openLinkedItemFailed": "Απέτυχε το άνοιγμα του συνδεδεμένου στοιχείου",
+    "errorPrefix": "Σφάλμα:"
+  },
+  "export": {
+    "noteTitle": "Περιοδικό - {month} {day}, {year}"
+  },
+  "note": {
+    "generatedTitle": "Σημείωση - {date}",
+    "openAria": "Ανοίξτε το {title}, που δημιουργήθηκε στο {time}"
+  },
+  "tag": {
+    "suggestionsAria": "Προτάσεις ετικέτας",
+    "empty": {
+      "title": "Δεν υπάρχουν ακόμη ετικέτες",
+      "description": "Πληκτρολογήστε για να δημιουργήσετε μια νέα ετικέτα"
+    },
+    "groupTitle": "Ετικέτες",
+    "create": "Δημιουργήστε το #{query}",
+    "ariaLabel": "Ετικέτα: {tag}, κάντε κλικ για φιλτράρισμα"
+  },
+  "wiki": {
+    "suggestionsAria": "Προτάσεις σελίδας",
+    "empty": {
+      "title": "Δεν βρέθηκαν σελίδες"
+    },
+    "groupRecent": "Πρόσφατα",
+    "groupAllPages": "Όλες οι σελίδες",
+    "createNewPage": "Δημιουργία νέας σελίδας",
+    "ariaLabel": "Σύνδεσμος στο {title}"
+  },
+  "error": {
+    "title": "Σφάλμα ημερολογίου",
+    "description": "Το ημερολόγιο αντιμετώπισε ένα σφάλμα για το {date}. Οι πρόσφατες αλλαγές σας ενδέχεται να μην έχουν αποθηκευτεί.",
+    "descriptionNoDate": "Το ημερολόγιο αντιμετώπισε σφάλμα. Οι πρόσφατες αλλαγές σας ενδέχεται να μην έχουν αποθηκευτεί.",
+    "unsavedContent": "Εντοπίστηκε μη αποθηκευμένο περιεχόμενο ({length} χαρακτήρες)"
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "κ"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveJournalEntry": "Αποτυχία αποθήκευσης καταχώρισης ημερολογίου",
+      "failedToLoadJournalSettings": "Αποτυχία φόρτωσης ρυθμίσεων ημερολογίου",
+      "failedToUpdateSettings": "Η ενημέρωση των ρυθμίσεων απέτυχε"
+    }
+  }
+}
