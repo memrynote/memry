@@ -22,6 +22,16 @@ describe('createRendererI18n', () => {
     expect(i18n.t('tasks:task.add')).toBe('Görev Ekle')
   })
 
+  it('formats journal count labels with ICU placeholders', async () => {
+    const i18n = await createRendererI18n({ locale: 'en' })
+    expect(i18n.t('journal:count.overdue', { count: 3 })).toBe('3 overdue')
+  })
+
+  it('formats Turkish journal count labels with ICU placeholders', async () => {
+    const i18n = await createRendererI18n({ locale: 'tr' })
+    expect(i18n.t('journal:count.overdue', { count: 3 })).toBe('3 vadesi geçmiş')
+  })
+
   it('changeLanguage works', async () => {
     const i18n = await createRendererI18n({ locale: 'en' })
     await i18n.changeLanguage('ar')
