@@ -7,6 +7,10 @@
     "newNote": "New Note",
     "close": "Close Window"
   },
+  "navigation": {
+    "back": "Back",
+    "forward": "Forward"
+  },
   "edit": {
     "label": "Edit",
     "undo": "Undo",

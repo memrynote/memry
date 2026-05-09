@@ -1,5 +1,13 @@
-import { app, Menu, type MenuItemConstructorOptions } from 'electron'
+import { app, BrowserWindow, Menu, type MenuItemConstructorOptions } from 'electron'
 import type { I18nInstance } from '@memry/i18n/main'
+import { sendAppNavigationDirection } from './app-navigation-command'
+
+function sendNavigationToFocusedWindow(direction: 'back' | 'forward'): void {
+  const window = BrowserWindow.getFocusedWindow()
+  if (!window || window.webContents.isDestroyed()) return
+
+  sendAppNavigationDirection(window.webContents, direction)
+}
 
 export function buildAppMenu(i18n: I18nInstance): Menu {
   const t = i18n.getFixedT(null, 'menu')
@@ -19,6 +27,20 @@ export function buildAppMenu(i18n: I18nInstance): Menu {
         {
           label: t('file.newNote'),
           accelerator: 'CmdOrCtrl+N'
+        },
+        {
+          label: t('navigation.back'),
+          accelerator: 'CmdOrCtrl+[',
+          visible: false,
+          acceleratorWorksWhenHidden: true,
+          click: () => sendNavigationToFocusedWindow('back')
+        },
+        {
+          label: t('navigation.forward'),
+          accelerator: 'CmdOrCtrl+]',
+          visible: false,
+          acceleratorWorksWhenHidden: true,
+          click: () => sendNavigationToFocusedWindow('forward')
         },
         { type: 'separator' },
         { label: t('file.close'), role: 'close' }

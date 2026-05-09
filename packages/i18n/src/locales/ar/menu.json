@@ -3,6 +3,10 @@
     "label": "ملف",
     "newNote": "ملاحظة جديدة"
   },
+  "navigation": {
+    "back": "رجوع",
+    "forward": "تقدم"
+  },
   "edit": {
     "label": "تحرير"
   },

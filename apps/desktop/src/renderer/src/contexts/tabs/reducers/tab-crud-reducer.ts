@@ -9,6 +9,7 @@ import {
 } from '../helpers'
 import { removeGroupFromLayout } from '@/components/split-view/layout-helpers'
 import { createInitialState } from '../helpers'
+import { pruneHistory, recordActivation } from './history-helpers'
 
 type CrudAction = Extract<
   TabAction,
@@ -84,11 +85,12 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
             const newTabs = [...targetGroup.tabs]
             newTabs[activeTabIndex] = newTab
 
+            const pruned = pruneHistory(targetGroup, new Set([activeTab.id]))
             return {
               ...state,
               tabGroups: {
                 ...state.tabGroups,
-                [groupId]: { ...targetGroup, tabs: newTabs, activeTabId: newTab.id }
+                [groupId]: { ...pruned, tabs: newTabs, activeTabId: newTab.id }
               }
             }
           }
@@ -107,24 +109,21 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
           // Only dedup non-entity tabs to avoid cross-type collisions
           const isSameKind = existingInGroup.type === tab.type && existingInGroup.path === tab.path
           if (isSameKind) {
+            const updatedTabs = targetGroup.tabs.map((t) =>
+              t.id === existingInGroup.id
+                ? {
+                    ...t,
+                    lastAccessedAt: Date.now(),
+                    ...(tab.viewState && { viewState: { ...t.viewState, ...tab.viewState } })
+                  }
+                : t
+            )
+            const groupAfter = background
+              ? { ...targetGroup, tabs: updatedTabs }
+              : { ...recordActivation(targetGroup, existingInGroup.id), tabs: updatedTabs }
             return {
               ...state,
-              tabGroups: {
-                ...state.tabGroups,
-                [groupId]: {
-                  ...targetGroup,
-                  activeTabId: background ? targetGroup.activeTabId : existingInGroup.id,
-                  tabs: targetGroup.tabs.map((t) =>
-                    t.id === existingInGroup.id
-                      ? {
-                          ...t,
-                          lastAccessedAt: Date.now(),
-                          ...(tab.viewState && { viewState: { ...t.viewState, ...tab.viewState } })
-                        }
-                      : t
-                  )
-                }
-              },
+              tabGroups: { ...state.tabGroups, [groupId]: groupAfter },
               activeGroupId: background ? state.activeGroupId : groupId
             }
           }
@@ -139,20 +138,16 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
       ) {
         const existing = findExistingTab(state, tab.type)
         if (existing) {
+          const existingGroup = state.tabGroups[existing.groupId]
+          const updatedTabs = existingGroup.tabs.map((t) =>
+            t.id === existing.tab.id ? { ...t, lastAccessedAt: Date.now() } : t
+          )
+          const groupAfter = background
+            ? { ...existingGroup, tabs: updatedTabs }
+            : { ...recordActivation(existingGroup, existing.tab.id), tabs: updatedTabs }
           return {
             ...state,
-            tabGroups: {
-              ...state.tabGroups,
-              [existing.groupId]: {
-                ...state.tabGroups[existing.groupId],
-                activeTabId: background
-                  ? state.tabGroups[existing.groupId].activeTabId
-                  : existing.tab.id,
-                tabs: state.tabGroups[existing.groupId].tabs.map((t) =>
-                  t.id === existing.tab.id ? { ...t, lastAccessedAt: Date.now() } : t
-                )
-              }
-            },
+            tabGroups: { ...state.tabGroups, [existing.groupId]: groupAfter },
             activeGroupId: background ? state.activeGroupId : existing.groupId
           }
         }
@@ -162,26 +157,23 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
       if (tab.entityId) {
         const existingInGroup = findTabByEntityIdInGroup(targetGroup, tab.entityId)
         if (existingInGroup) {
+          const updatedTabs = targetGroup.tabs.map((t) =>
+            t.id === existingInGroup.id
+              ? {
+                  ...t,
+                  lastAccessedAt: Date.now(),
+                  ...(tab.viewState && {
+                    viewState: { ...t.viewState, ...tab.viewState }
+                  })
+                }
+              : t
+          )
+          const groupAfter = background
+            ? { ...targetGroup, tabs: updatedTabs }
+            : { ...recordActivation(targetGroup, existingInGroup.id), tabs: updatedTabs }
           return {
             ...state,
-            tabGroups: {
-              ...state.tabGroups,
-              [groupId]: {
-                ...targetGroup,
-                activeTabId: background ? targetGroup.activeTabId : existingInGroup.id,
-                tabs: targetGroup.tabs.map((t) =>
-                  t.id === existingInGroup.id
-                    ? {
-                        ...t,
-                        lastAccessedAt: Date.now(),
-                        ...(tab.viewState && {
-                          viewState: { ...t.viewState, ...tab.viewState }
-                        })
-                      }
-                    : t
-                )
-              }
-            },
+            tabGroups: { ...state.tabGroups, [groupId]: groupAfter },
             activeGroupId: background ? state.activeGroupId : groupId
           }
         }
@@ -191,28 +183,24 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
         if (!action.payload.groupId) {
           const existingElsewhere = findTabByEntityId(state, tab.entityId)
           if (existingElsewhere) {
+            const elsewhereGroup = state.tabGroups[existingElsewhere.groupId]
+            const updatedTabs = elsewhereGroup.tabs.map((t) =>
+              t.id === existingElsewhere.tab.id
+                ? {
+                    ...t,
+                    lastAccessedAt: Date.now(),
+                    ...(tab.viewState && {
+                      viewState: { ...t.viewState, ...tab.viewState }
+                    })
+                  }
+                : t
+            )
+            const groupAfter = background
+              ? { ...elsewhereGroup, tabs: updatedTabs }
+              : { ...recordActivation(elsewhereGroup, existingElsewhere.tab.id), tabs: updatedTabs }
             return {
               ...state,
-              tabGroups: {
-                ...state.tabGroups,
-                [existingElsewhere.groupId]: {
-                  ...state.tabGroups[existingElsewhere.groupId],
-                  activeTabId: background
-                    ? state.tabGroups[existingElsewhere.groupId].activeTabId
-                    : existingElsewhere.tab.id,
-                  tabs: state.tabGroups[existingElsewhere.groupId].tabs.map((t) =>
-                    t.id === existingElsewhere.tab.id
-                      ? {
-                          ...t,
-                          lastAccessedAt: Date.now(),
-                          ...(tab.viewState && {
-                            viewState: { ...t.viewState, ...tab.viewState }
-                          })
-                        }
-                      : t
-                  )
-                }
-              },
+              tabGroups: { ...state.tabGroups, [existingElsewhere.groupId]: groupAfter },
               activeGroupId: background ? state.activeGroupId : existingElsewhere.groupId
             }
           }
@@ -223,6 +211,7 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
       if (state.settings.previewMode && tab.isPreview) {
         const previewTabIndex = targetGroup.tabs.findIndex((t) => t.isPreview)
         if (previewTabIndex !== -1) {
+          const previewTab = targetGroup.tabs[previewTabIndex]
           const newTab: Tab = {
             ...tab,
             id: generateId(),
@@ -232,16 +221,15 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
           const newTabs = [...targetGroup.tabs]
           newTabs[previewTabIndex] = newTab
 
+          const pruned = pruneHistory(targetGroup, new Set([previewTab.id]))
+          const nextActiveId = background ? pruned.activeTabId : newTab.id
+          const groupAfter =
+            background || pruned.activeTabId === nextActiveId
+              ? { ...pruned, tabs: newTabs, activeTabId: nextActiveId }
+              : { ...recordActivation(pruned, nextActiveId), tabs: newTabs }
           return {
             ...state,
-            tabGroups: {
-              ...state.tabGroups,
-              [groupId]: {
-                ...targetGroup,
-                tabs: newTabs,
-                activeTabId: background ? targetGroup.activeTabId : newTab.id
-              }
-            },
+            tabGroups: { ...state.tabGroups, [groupId]: groupAfter },
             activeGroupId: background ? state.activeGroupId : groupId
           }
         }
@@ -269,16 +257,12 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
         ...targetGroup.tabs.slice(insertIndex)
       ]
 
+      const groupAfter = background
+        ? { ...targetGroup, tabs: newTabs }
+        : { ...recordActivation(targetGroup, newTab.id), tabs: newTabs }
       return {
         ...state,
-        tabGroups: {
-          ...state.tabGroups,
-          [groupId]: {
-            ...targetGroup,
-            tabs: newTabs,
-            activeTabId: background ? targetGroup.activeTabId : newTab.id
-          }
-        },
+        tabGroups: { ...state.tabGroups, [groupId]: groupAfter },
         activeGroupId: background ? state.activeGroupId : groupId
       }
     }
@@ -300,7 +284,13 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
           return {
             ...state,
             tabGroups: {
-              [groupId]: { ...group, tabs: [defaultTab], activeTabId: defaultTab.id }
+              [groupId]: {
+                ...group,
+                tabs: [defaultTab],
+                activeTabId: defaultTab.id,
+                back: [],
+                forward: []
+              }
             }
           }
         }
@@ -313,11 +303,12 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
         newActiveTabId = newTabs[newActiveIndex].id
       }
 
+      const pruned = pruneHistory(group, new Set([tabId]))
       return {
         ...state,
         tabGroups: {
           ...state.tabGroups,
-          [groupId]: { ...group, tabs: newTabs, activeTabId: newActiveTabId }
+          [groupId]: { ...pruned, tabs: newTabs, activeTabId: newActiveTabId }
         }
       }
     }
@@ -330,12 +321,14 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
       if (!group.tabs.find((t) => t.id === tabId)) return state
 
       const tabsToKeep = group.tabs.filter((t) => t.id === tabId || t.isPinned)
+      const removedIds = new Set(group.tabs.filter((t) => !tabsToKeep.includes(t)).map((t) => t.id))
+      const pruned = pruneHistory(group, removedIds)
 
       return {
         ...state,
         tabGroups: {
           ...state.tabGroups,
-          [groupId]: { ...group, tabs: tabsToKeep, activeTabId: tabId }
+          [groupId]: { ...pruned, tabs: tabsToKeep, activeTabId: tabId }
         }
       }
     }
@@ -350,12 +343,14 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
       if (tabIndex === -1) return state
 
       const tabsToKeep = group.tabs.filter((t, i) => i <= tabIndex || t.isPinned)
+      const removedIds = new Set(group.tabs.filter((t) => !tabsToKeep.includes(t)).map((t) => t.id))
+      const pruned = pruneHistory(group, removedIds)
 
       return {
         ...state,
         tabGroups: {
           ...state.tabGroups,
-          [groupId]: { ...group, tabs: tabsToKeep }
+          [groupId]: { ...pruned, tabs: tabsToKeep }
         }
       }
     }
@@ -374,18 +369,27 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
           return {
             ...state,
             tabGroups: {
-              [groupId]: { ...group, tabs: [defaultTab], activeTabId: defaultTab.id }
+              [groupId]: {
+                ...group,
+                tabs: [defaultTab],
+                activeTabId: defaultTab.id,
+                back: [],
+                forward: []
+              }
             }
           }
         }
         return closeGroup(state, groupId)
       }
 
+      const removedIds = new Set(group.tabs.filter((t) => !t.isPinned).map((t) => t.id))
+      const pruned = pruneHistory(group, removedIds)
+
       return {
         ...state,
         tabGroups: {
           ...state.tabGroups,
-          [groupId]: { ...group, tabs: pinnedTabs, activeTabId: pinnedTabs[0]?.id || null }
+          [groupId]: { ...pruned, tabs: pinnedTabs, activeTabId: pinnedTabs[0]?.id || null }
         }
       }
     }

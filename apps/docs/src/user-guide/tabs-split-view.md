@@ -47,6 +47,10 @@ Promote a preview to a permanent tab by:
 
 Toggle preview mode in [Settings → General → Tab Behavior](/user-guide/settings#general).
 
+## Mouse Navigation
+
+Mouse Back and Forward side buttons move through tab focus history across the whole window, including split panes. Back returns to the previously focused tab; Forward replays the next tab after a Back action. Opening or selecting another tab starts a new history path.
+
 ## Split View
 
 Drag a tab to the left, right, top, or bottom edge of the window to open a second pane.
@@ -73,14 +77,14 @@ Resize ratios persist across sessions.
 
 ### Pane Navigation (Chord)
 
-| Action | Shortcut |
-| --- | --- |
-| Split right | <kbd>⌘</kbd>+<kbd>\\</kbd> |
-| Split down | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>\\</kbd> |
-| Close split pane | <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>W</kbd> |
-| Focus right pane | <kbd>⌘</kbd>+<kbd>K</kbd>, <kbd>⌘</kbd>+<kbd>→</kbd> |
-| Focus left pane | <kbd>⌘</kbd>+<kbd>K</kbd>, <kbd>⌘</kbd>+<kbd>←</kbd> |
-| Toggle maximize pane | <kbd>⌘</kbd>+<kbd>K</kbd>, <kbd>M</kbd> |
+| Action               | Shortcut                                             |
+| -------------------- | ---------------------------------------------------- |
+| Split right          | <kbd>⌘</kbd>+<kbd>\\</kbd>                           |
+| Split down           | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>\\</kbd>              |
+| Close split pane     | <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>W</kbd>               |
+| Focus right pane     | <kbd>⌘</kbd>+<kbd>K</kbd>, <kbd>⌘</kbd>+<kbd>→</kbd> |
+| Focus left pane      | <kbd>⌘</kbd>+<kbd>K</kbd>, <kbd>⌘</kbd>+<kbd>←</kbd> |
+| Toggle maximize pane | <kbd>⌘</kbd>+<kbd>K</kbd>, <kbd>M</kbd>              |
 
 A chord indicator briefly flashes when the prefix is active. See [Keyboard Shortcuts](/user-guide/keyboard-shortcuts#split-view) for the full list.
 

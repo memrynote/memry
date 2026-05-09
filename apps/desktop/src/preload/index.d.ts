@@ -3,6 +3,7 @@ import type { GeneratedRpcApi } from '@memry/rpc'
 import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
 import type * as TasksRpc from '@memry/rpc/tasks'
+import type { AppNavigationCommandEvent } from '@memry/contracts/ipc-channels'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
 import type {
@@ -1708,6 +1709,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onSecurityWarning: (callback: (event: SecurityWarningEvent) => void) => () => void
   onCertificatePinFailed: (callback: (event: CertificatePinFailedEvent) => void) => () => void
   onUpdaterStateChanged: (callback: (state: AppUpdateState) => void) => () => void
+  onAppNavigationCommand: (callback: (command: AppNavigationCommandEvent) => void) => () => void
   onLocaleChanged: (callback: (locale: Locale) => void) => () => void
   onCrdtStateChanged: (
     callback: (data: { noteId: string; update: number[]; origin: string }) => void

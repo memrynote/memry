@@ -10,6 +10,7 @@
 
 import { describe, it, expect } from 'vitest'
 import {
+  AppChannels,
   VaultChannels,
   NotesChannels,
   TagsChannels,
@@ -38,6 +39,7 @@ type ChannelGroup = {
 }
 
 const ALL_GROUPS: Array<readonly [string, ChannelGroup]> = [
+  ['AppChannels', AppChannels],
   ['VaultChannels', VaultChannels],
   ['NotesChannels', NotesChannels],
   ['TagsChannels', TagsChannels],
@@ -60,6 +62,7 @@ const ALL_GROUPS: Array<readonly [string, ChannelGroup]> = [
 ]
 
 const GROUP_PREFIXES: Record<string, string> = {
+  AppChannels: 'app:',
   VaultChannels: 'vault:',
   NotesChannels: 'notes:',
   TagsChannels: 'tags:',
@@ -126,6 +129,12 @@ describe('IPC channel constants', () => {
       }
     }
     expect(duplicates).toEqual([])
+  })
+})
+
+describe('AppChannels', () => {
+  it('exposes app navigation command events', () => {
+    expect(AppChannels.events.NAVIGATION_COMMAND).toBe('app:navigation-command')
   })
 })
 

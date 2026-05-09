@@ -47,8 +47,16 @@ const tokenPatterns = [
 function normalizeValue(value) {
   return value
     .trim()
+    .replace(/,$/, '')
+    .trim()
     .replace(/^['"]|['"]$/g, '')
     .trim()
+}
+
+function isCodeDeclarationValue(value) {
+  const normalized = normalizeValue(value)
+
+  return normalized.startsWith('() =>') || /^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/i.test(normalized)
 }
 
 function isPlaceholderValue(value) {
@@ -120,6 +128,7 @@ export function scanTextForSecrets(filePath, text) {
     if (
       tokenLines.has(index + 1) ||
       key.toUpperCase().includes('PUBLIC_KEY') ||
+      isCodeDeclarationValue(value) ||
       isPlaceholderValue(value)
     ) {
       return

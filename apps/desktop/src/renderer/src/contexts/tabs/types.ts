@@ -113,6 +113,10 @@ export interface TabGroup {
   activeTabId: string | null
   /** Is this the focused group? */
   isActive: boolean
+  /** Tab activation history: ids previously active in this group, oldest → newest. In-memory only. */
+  back: string[]
+  /** Forward stack: tab ids re-activatable after a NAV_BACK. */
+  forward: string[]
 }
 
 /**
@@ -220,6 +224,8 @@ export type TabAction =
   | { type: 'GO_TO_NEXT_TAB'; payload: { groupId: string } }
   | { type: 'GO_TO_PREVIOUS_TAB'; payload: { groupId: string } }
   | { type: 'GO_TO_TAB_INDEX'; payload: { index: number; groupId: string } }
+  | { type: 'NAV_BACK'; payload: { groupId: string } }
+  | { type: 'NAV_FORWARD'; payload: { groupId: string } }
 
   // Tab modification
   | { type: 'PIN_TAB'; payload: { tabId: string; groupId: string } }

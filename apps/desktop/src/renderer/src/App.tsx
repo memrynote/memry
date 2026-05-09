@@ -29,6 +29,7 @@ import { ChordIndicator, KeyboardShortcutsDialog } from '@/components/keyboard'
 import {
   useTabKeyboardShortcuts,
   useChordShortcuts,
+  useMouseNavButtons,
   useDragHandlers,
   useTaskOrder,
   useVault,
@@ -169,6 +170,7 @@ const AppContent = (): React.JSX.Element => {
 
   // Keyboard shortcuts
   useTabKeyboardShortcuts()
+  useMouseNavButtons()
   const isChordActive = useChordShortcuts()
   const { open: openSettings } = useSettingsModal()
   useSettingsShortcut(openSettings)
