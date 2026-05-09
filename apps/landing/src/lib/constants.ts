@@ -23,7 +23,7 @@ export const TWITTER_DEV_URL = 'https://x.com/h4yfans'
 
 export const NAV_LINKS = [
   { label: 'Use Cases', href: '/use-cases' },
-  { label: 'Roadmap', href: '#roadmap' },
+  { label: 'Pricing', href: '/pricing' },
   { label: 'Security', href: '/security' },
   { label: 'Docs', href: DOCS_URL }
 ] as const
@@ -31,6 +31,7 @@ export const NAV_LINKS = [
 export const FOOTER_LINKS = {
   product: [
     { label: 'Features', href: '#features' },
+    { label: 'Pricing', href: '/pricing' },
     { label: 'Security', href: '/security' }
   ],
   social: [
@@ -420,6 +421,221 @@ export const USE_CASES = [
       'Track habits with recurring tasks',
       'Reflect in morning Journal'
     ]
+  }
+] as const
+
+export type SyncPlanId = 'standard' | 'plus' | 'believer'
+
+export type SyncPlanEmphasis = 'standard' | 'recommended' | 'founding'
+
+export type SyncPlanTier = {
+  id: SyncPlanId
+  name: string
+  tagline: string
+  monthlyPrice: number | null
+  annualPrice: number | null
+  annualMonthlyEquivalent: number | null
+  lifetimePrice: number | null
+  limits: {
+    vaults: string
+    storage: string
+    fileSize: string
+    history: string
+  }
+  features: readonly string[]
+  cta: string
+  emphasis: SyncPlanEmphasis
+  ribbon?: string
+}
+
+export const SYNC_PLAN_TIERS: readonly SyncPlanTier[] = [
+  {
+    id: 'standard',
+    name: 'Sync Standard',
+    tagline: 'One vault, encrypted, everywhere.',
+    monthlyPrice: 5,
+    annualPrice: 48,
+    annualMonthlyEquivalent: 4,
+    lifetimePrice: null,
+    limits: {
+      vaults: '1',
+      storage: '1 GiB',
+      fileSize: '5 MiB',
+      history: '30 d'
+    },
+    features: [
+      'End-to-end encrypted sync',
+      'Unlimited devices on one account',
+      'Server never sees plaintext',
+      '30 days of version history',
+      '7-day money-back guarantee'
+    ],
+    cta: 'Get Sync Standard',
+    emphasis: 'standard'
+  },
+  {
+    id: 'plus',
+    name: 'Sync Plus',
+    tagline: 'Multiple vaults. Big files. Deep history.',
+    monthlyPrice: 10,
+    annualPrice: 96,
+    annualMonthlyEquivalent: 8,
+    lifetimePrice: null,
+    limits: {
+      vaults: '10',
+      storage: '10 GiB',
+      fileSize: '200 MiB',
+      history: '365 d'
+    },
+    features: [
+      'Everything in Sync Standard',
+      'Up to 10 separate vaults',
+      'Large attachments and PDFs',
+      'A full year of version history',
+      'Priority support — straight from the founder'
+    ],
+    cta: 'Get Sync Plus',
+    emphasis: 'recommended',
+    ribbon: 'Most popular'
+  },
+  {
+    id: 'believer',
+    name: 'Believer',
+    tagline: 'Pay once. Sync forever. Every future paid feature included.',
+    monthlyPrice: null,
+    annualPrice: null,
+    annualMonthlyEquivalent: null,
+    lifetimePrice: 500,
+    limits: {
+      vaults: '10',
+      storage: '10 GiB',
+      fileSize: '200 MiB',
+      history: '365 d'
+    },
+    features: [
+      'Lifetime Sync Plus — never billed again',
+      'Every future paid feature, included forever',
+      'Recognized as a founding supporter',
+      'Direct line to the founder',
+      'Limited slots'
+    ],
+    cta: 'Become a Believer',
+    emphasis: 'founding',
+    ribbon: 'Founding supporter'
+  }
+] as const
+
+export const PLAN_LIMIT_MATRIX = {
+  headers: ['', 'Sync Standard', 'Sync Plus', 'Believer'] as const,
+  rows: [
+    { feature: 'Synced vaults', standard: '1', plus: '10', believer: '10' },
+    { feature: 'Total storage', standard: '1 GiB', plus: '10 GiB', believer: '10 GiB' },
+    { feature: 'Max file size', standard: '5 MiB', plus: '200 MiB', believer: '200 MiB' },
+    { feature: 'Version history', standard: '30 days', plus: '365 days', believer: '365 days' },
+    {
+      feature: 'Devices per account',
+      standard: 'Unlimited',
+      plus: 'Unlimited',
+      believer: 'Unlimited'
+    },
+    { feature: 'Monthly billing', standard: '$5', plus: '$10', believer: '—' },
+    { feature: 'Annual billing', standard: '$48 ($4/mo)', plus: '$96 ($8/mo)', believer: '—' },
+    { feature: 'Lifetime', standard: '—', plus: '—', believer: '$500 once' },
+    {
+      feature: 'Future paid features',
+      standard: 'In tier',
+      plus: 'In tier',
+      believer: 'Included forever'
+    }
+  ] as const
+} as const
+
+export type LifecycleTone = 'sage' | 'amber' | 'terracotta' | 'terracotta-dim' | 'ink'
+
+export const LIFECYCLE_STAGES: readonly {
+  id: string
+  label: string
+  days: string
+  description: string
+  tone: LifecycleTone
+}[] = [
+  {
+    id: 'active',
+    label: 'Active',
+    days: 'Day 0',
+    description: 'Sync runs everywhere. All limits apply per tier.',
+    tone: 'sage'
+  },
+  {
+    id: 'grace',
+    label: 'Grace',
+    days: '+ 14 days',
+    description: 'Sync keeps working. Time to fix the card or change your mind.',
+    tone: 'amber'
+  },
+  {
+    id: 'read-only',
+    label: 'Read-only',
+    days: '+ 30 days',
+    description: 'Pulls succeed, pushes blocked. Pull everything to local at your pace.',
+    tone: 'terracotta'
+  },
+  {
+    id: 'purged',
+    label: 'Purged status',
+    days: 'Day 44',
+    description: 'Server returns 402 on every request. Encrypted blobs untouched.',
+    tone: 'terracotta-dim'
+  },
+  {
+    id: 'deleted',
+    label: 'Blobs deleted',
+    days: 'Day 90',
+    description: 'Encrypted blobs physically removed from R2. Recovery ends.',
+    tone: 'ink'
+  }
+] as const
+
+export const PRICING_FAQ_ITEMS = [
+  {
+    question: 'Is the local app still free?',
+    answer:
+      'Yes. Notes, tasks, journal, and inbox stay free, forever, no account required. Sync between devices is the paid layer — and only the paid layer.'
+  },
+  {
+    question: 'What happens if my card fails or I cancel?',
+    answer:
+      'You get 14 days of grace where sync keeps working, then 30 days of read-only mode where pulls still succeed. After day 44 your account is marked purged but encrypted blobs sit untouched on our servers until day 90 — re-subscribe before then and everything restores intact.'
+  },
+  {
+    question: 'You store my data, but you cannot read it. What does that actually mean?',
+    answer:
+      'Every byte is encrypted on your device with XChaCha20-Poly1305 before it leaves. The keys live in your password manager and never touch our servers. We hold ciphertext, count bytes for billing, and that is the limit of what we see.'
+  },
+  {
+    question: 'How does the refund policy work?',
+    answer:
+      '7-day money-back guarantee on every plan, including Believer. Request it inside the app — Paddle processes the refund back to your original payment method, no questions asked.'
+  },
+  {
+    question: 'What is the Believer tier really?',
+    answer:
+      'A bet on us. You pay once, get lifetime Sync Plus, and inherit every paid feature we ship from now until forever. Roughly five years of annual Plus, with no expiry. Slots may be limited later.'
+  },
+  {
+    question: 'Can I upgrade or downgrade later?',
+    answer:
+      'Yes. Upgrades pro-rate immediately. Downgrades take effect at the end of your billing period — if you have more vaults than the new tier allows, existing data stays readable while you archive what you no longer need.'
+  },
+  {
+    question: 'Do you handle VAT and sales tax?',
+    answer:
+      'Yes. Paddle is the merchant of record and handles VAT, GST, and US sales tax across 60+ countries. The price you see at checkout is the price you pay.'
+  },
+  {
+    question: 'Which payment methods are accepted?',
+    answer:
+      'Cards, Apple Pay, Google Pay, PayPal, and several regional methods depending on your country — all processed through Paddle.'
   }
 ] as const
 
