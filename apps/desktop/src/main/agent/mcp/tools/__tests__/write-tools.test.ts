@@ -71,9 +71,9 @@ describe('Write tools — P1 deny-by-default', () => {
 
   it('still rejects malformed args with VALIDATION before gating', async () => {
     const t = tools.find((x) => x.name === 'vault_create_note')!
-    await expect(t.handler({ title: '' }, { conversationId: null, windowId: null })).rejects.toMatchObject(
-      { code: 'VALIDATION' }
-    )
+    await expect(
+      t.handler({ title: '' }, { conversationId: null, windowId: null })
+    ).rejects.toMatchObject({ code: 'VALIDATION' })
   })
 
   it('forwards to handles when a gate approves', async () => {
