@@ -164,7 +164,10 @@ export const TagAutocomplete = ({
   }, [])
 
   useEffect(() => {
-    if (autoFocus) setTimeout(() => inputRef.current?.focus(), 100)
+    if (!autoFocus) return
+
+    const focusTimeout = setTimeout(() => inputRef.current?.focus(), 100)
+    return () => clearTimeout(focusTimeout)
   }, [autoFocus])
 
   const addTag = useCallback(
@@ -273,7 +276,7 @@ export const TagAutocomplete = ({
               onClick={() => addTag(tag)}
               onMouseEnter={() => setRequestedHighlightedIndex(idx)}
               className={cn(
-                'flex items-center gap-2 rounded-sm py-2 px-3 mx-1 my-0.5 text-left transition-colors',
+                'flex items-center gap-2 rounded-sm py-2 px-3 mx-1 my-0.5 text-start transition-colors',
                 highlightedIndex === idx ? 'bg-[var(--tint)]/[0.03]' : 'hover:bg-foreground/[0.03]'
               )}
             >
@@ -320,7 +323,7 @@ export const TagAutocomplete = ({
               onClick={() => addTag(tag.name)}
               onMouseEnter={() => setRequestedHighlightedIndex(idx)}
               className={cn(
-                'flex items-center gap-2 rounded-sm py-2 px-3 mx-1 my-0.5 text-left transition-colors',
+                'flex items-center gap-2 rounded-sm py-2 px-3 mx-1 my-0.5 text-start transition-colors',
                 highlightedIndex === idx ? 'bg-foreground/[0.03]' : 'hover:bg-foreground/[0.03]'
               )}
             >
@@ -349,7 +352,7 @@ export const TagAutocomplete = ({
         onClick={() => addTag(normalized)}
         onMouseEnter={() => setRequestedHighlightedIndex(idx)}
         className={cn(
-          'flex items-center w-full py-2 px-3 gap-1.5 border-t border-border/40 text-left transition-colors',
+          'flex items-center w-full py-2 px-3 gap-1.5 border-t border-border/40 text-start transition-colors',
           highlightedIndex === idx ? 'bg-foreground/[0.03]' : 'hover:bg-foreground/[0.03]'
         )}
       >

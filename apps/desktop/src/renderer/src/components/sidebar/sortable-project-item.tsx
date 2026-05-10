@@ -10,7 +10,7 @@ import {
   SidebarMenuItem,
   useSidebar
 } from '@/components/ui/sidebar'
-import { useDragContext } from '@/contexts/drag-context'
+import { useOptionalDragContext } from '@/contexts/drag-context'
 import type { Project } from '@/data/tasks-data'
 import { useT } from '@memry/i18n/renderer'
 
@@ -39,14 +39,8 @@ export const SortableProjectItem = ({
   const { t: tPhaseF } = useT('notes')
   const { isMobile: _isMobile } = useSidebar()
 
-  // Try to get drag context - may not be available if not wrapped in DragProvider
-  let dragState = { isDragging: false }
-  try {
-    const context = useDragContext()
-    dragState = context.dragState
-  } catch {
-    // Not in DragProvider context - that's okay, just no drop zone features
-  }
+  const dragContext = useOptionalDragContext()
+  const dragState = dragContext?.dragState ?? { isDragging: false }
 
   // Sortable for reordering projects
   const {
@@ -98,7 +92,7 @@ export const SortableProjectItem = ({
     >
       {/* Drop indicator when hovering */}
       {isOver && (
-        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-primary font-medium z-10">
+        <span className="absolute end-2 top-1/2 -translate-y-1/2 text-xs text-primary font-medium z-10">
           {tPhaseF('phaseF.componentsSidebarSortableProjectItem.dropHere')}
         </span>
       )}
