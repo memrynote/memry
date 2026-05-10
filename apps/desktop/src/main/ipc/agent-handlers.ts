@@ -21,7 +21,14 @@ import { createLogger } from '../lib/logger'
 const logger = createLogger('IPC:Agent')
 
 interface AgentHandlerDeps {
-  runtime: Pick<AgentRuntime, 'cancelTurn' | 'resolveApproval' | 'getPendingApproval'>
+  runtime: Pick<
+    AgentRuntime,
+    | 'cancelTurn'
+    | 'resolveApproval'
+    | 'getPendingApproval'
+    | 'trackSubprocess'
+    | 'untrackSubprocess'
+  >
   conversations: ConversationStore
   messages: MessageStore
   previewNoteUpdate: (input: {
@@ -67,7 +74,20 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
       {
         conversations: deps.conversations,
         messages: deps.messages,
-        spawnSubprocess: deps.spawn,
+        spawnSubprocess: async (input) => {
+          const subprocess = await deps.spawn(input)
+          deps.runtime.trackSubprocess(input.conversationId, subprocess)
+          return {
+            ...subprocess,
+            cleanup: async () => {
+              try {
+                await subprocess.cleanup()
+              } finally {
+                deps.runtime.untrackSubprocess(subprocess.pid)
+              }
+            }
+          }
+        },
         toolHandlers: { routeToolCall: deps.routeToolCall }
       },
       {
