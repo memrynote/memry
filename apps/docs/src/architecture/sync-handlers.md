@@ -28,6 +28,8 @@ apps/desktop/src/main/sync/item-handlers/
 ├─ project-handler.ts
 ├─ inbox-handler.ts
 ├─ template-handler.ts
+├─ agent-conversation-handler.ts
+├─ agent-message-handler.ts
 └─ index.ts              # registry: getHandler(type), getAllHandlers()
 ```
 
@@ -39,7 +41,12 @@ Phase 3 replaced a switch-based `ItemApplier` with this registry. The reason: ev
 
 Every handler uses the shared `resolveClockConflict()` helper for vector-clock compare and merge.
 
-For tasks and projects, handlers additionally invoke `mergeFields()` from `field-merge.ts` to merge field-level vector clocks. See [Sync Protocol](/architecture/sync-protocol#field-level-merge-tasks-projects).
+For tasks, projects, and agent conversations, handlers additionally invoke `mergeFields()` from
+`field-merge.ts` to merge field-level vector clocks. See
+[Sync Protocol](/architecture/sync-protocol#field-level-merge-tasks-projects).
+
+Agent message sync is append-only. If a message id already exists locally, the handler treats the
+remote item as idempotent instead of overwriting a terminal message.
 
 ## Atomicity
 
@@ -63,6 +70,10 @@ A partial write is impossible — either every change in a handler invocation ap
 4. Register it in `index.ts`.
 5. Add a server-side validator in `apps/sync-server` if the new type has unusual constraints.
 6. Add tests under the handler file (every existing handler has one).
+
+Handlers that persist locally encrypted fields must receive the vault key from the sync engine during
+pull apply and push payload encoding. Agent conversation and message handlers use that key to decrypt
+their SQLite envelopes and re-encode sync payloads without exposing plaintext to the server.
 
 ## Field-Level Merge Quick Reference
 

@@ -16,6 +16,7 @@ type SyncDomain =
   | 'tags'
   | 'folders'
   | 'calendar'
+  | 'agent_chat'
 
 const logger = createLogger('SyncTelemetry')
 
@@ -52,6 +53,9 @@ const toSyncDomain = (itemType: SyncItemType): SyncDomain => {
     case 'calendar_binding':
     case 'calendar_external_event':
       return 'calendar'
+    case 'agent_conversation':
+    case 'agent_message':
+      return 'agent_chat'
   }
 }
 
