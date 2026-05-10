@@ -41,8 +41,8 @@ function toRemoteSyncAdapter(handler: SyncItemHandler): DesktopRemoteSyncAdapter
   return {
     type: handler.type,
     schema: handler.schema,
-    applyRemoteMutation: ({ db, emit, itemId, operation, data, clock }) => {
-      const ctx = { db, emit }
+    applyRemoteMutation: ({ db, emit, itemId, operation, data, clock, vaultKey }) => {
+      const ctx = { db, emit, vaultKey }
       if (operation === 'delete') {
         return handler.applyDelete(ctx, itemId, clock)
       }
@@ -55,8 +55,8 @@ function toRemoteSyncAdapter(handler: SyncItemHandler): DesktopRemoteSyncAdapter
           handler.seedUnclocked?.(db, deviceId, queue as SyncQueueManager) ?? 0
       : undefined,
     buildPushPayload: handler.buildPushPayload
-      ? (db, itemId, deviceId, operation) =>
-          handler.buildPushPayload?.(db, itemId, deviceId, operation) ?? null
+      ? (db, itemId, deviceId, operation, vaultKey) =>
+          handler.buildPushPayload?.(db, itemId, deviceId, operation, vaultKey) ?? null
       : undefined,
     markPushSynced: handler.markPushSynced
       ? (db, itemId) => handler.markPushSynced?.(db, itemId)
