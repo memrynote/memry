@@ -7,7 +7,9 @@ import type { ConversationStore } from '../storage/conversation-store'
 import type { MessageStore } from '../storage/message-store'
 import type { MessageAttachment } from '../storage/types'
 import { broadcastAgentEvent } from './event-bus'
+import { maybeCompact } from './compactor'
 import { assemblePrompt } from './prompt-assembler'
+import { COMPACTION_THRESHOLD, estimateTokens } from './token-estimator'
 
 const logger = createLogger('AgentRuntime:Turn')
 
@@ -47,7 +49,7 @@ export interface RunTurnInput {
 export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ turnId: string }> {
   const turnId = randomUUID()
 
-  await deps.messages.append({
+  const user = await deps.messages.append({
     conversationId: input.conversationId,
     role: 'user',
     content: { role: 'user', data: { text: input.text } },
@@ -55,15 +57,39 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     status: 'completed'
   })
 
-  const history = await deps.messages.listByConversation(input.conversationId)
+  let history = deps.messages
+    .listByConversation(input.conversationId)
+    .filter((message) => message.id !== user.id)
   const prompt = assemblePrompt({
-    history: history.slice(0, -1),
+    history,
+    userMessage: input.text,
+    attachments: input.attachments
+  })
+
+  await maybeCompact({
+    conversationId: input.conversationId,
+    messages: deps.messages,
+    summarize: (toSummarize) =>
+      summarizeWithSubprocess(deps, {
+        prompt: toSummarize,
+        conversationId: input.conversationId,
+        windowId: input.sourceWindowId
+      }),
+    estimateLimit: COMPACTION_THRESHOLD,
+    currentEstimate: estimateTokens(prompt)
+  })
+
+  history = deps.messages
+    .listByConversation(input.conversationId)
+    .filter((message) => message.id !== user.id)
+  const compactedPrompt = assemblePrompt({
+    history,
     userMessage: input.text,
     attachments: input.attachments
   })
 
   const sub = await deps.spawnSubprocess({
-    prompt,
+    prompt: compactedPrompt,
     conversationId: input.conversationId,
     windowId: input.sourceWindowId
   })
@@ -120,6 +146,44 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
   }
 
   return { turnId }
+}
+
+async function summarizeWithSubprocess(
+  deps: TurnDeps,
+  input: { prompt: string; conversationId: string; windowId: string }
+): Promise<string> {
+  const sub = await deps.spawnSubprocess(input)
+  const events: BackendEvent[] = []
+  const parser = createStreamParser((event) => {
+    events.push(event)
+  })
+  let raw = ''
+  let summary = ''
+
+  try {
+    for await (const chunk of sub.stdout) {
+      const text = chunk.toString('utf8')
+      raw += text
+      parser.feed(text)
+      while (events.length > 0) {
+        const event = events.shift()
+        if (event?.kind === 'assistant_delta') {
+          summary += event.text
+        }
+      }
+    }
+    parser.flush()
+    while (events.length > 0) {
+      const event = events.shift()
+      if (event?.kind === 'assistant_delta') {
+        summary += event.text
+      }
+    }
+    await sub.waitExit()
+    return summary.trim() || raw.trim()
+  } finally {
+    await sub.cleanup()
+  }
 }
 
 async function handleBackendEvent(
