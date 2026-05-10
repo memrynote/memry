@@ -1,4 +1,5 @@
 import type { BinaryStatus } from '@memry/contracts/ipc-agent'
+import { useT } from '@memry/i18n/renderer'
 
 import { Button } from '@/components/ui/button'
 import { Plus } from '@/lib/icons'
@@ -14,12 +15,13 @@ export function EmptyState({
   creating = false,
   onCreateConversation
 }: EmptyStateProps): React.JSX.Element {
+  const { t } = useT('common')
   const canCreate = binaryStatus?.detected === true && binaryStatus.meetsMinimum
 
   return (
     <div className="flex h-full flex-col items-start gap-3 p-5">
       <div className="space-y-1">
-        <h2 className="text-base font-semibold text-foreground">Start chatting with your vault</h2>
+        <h2 className="text-base font-semibold text-foreground">{t('agentChat.startTitle')}</h2>
         <BinaryLine status={binaryStatus} />
       </div>
       <Button
@@ -28,33 +30,39 @@ export function EmptyState({
         disabled={!canCreate || creating}
       >
         <Plus className="size-4" aria-hidden="true" />
-        New conversation
+        {t('agentChat.newConversation')}
       </Button>
     </div>
   )
 }
 
 function BinaryLine({ status }: { status: BinaryStatus | null }): React.JSX.Element {
+  const { t } = useT('common')
+
   if (!status) {
-    return <p className="text-sm text-muted-foreground">Checking Claude CLI...</p>
+    return <p className="text-sm text-muted-foreground">{t('agentChat.binary.checking')}</p>
   }
   if (!status.detected) {
     return (
       <p className="text-sm text-amber-700 dark:text-amber-400">
-        claude not found. {status.installHint}
+        {t('agentChat.binary.notFound', { hint: status.installHint ?? '' })}
       </p>
     )
   }
   if (!status.meetsMinimum) {
     return (
       <p className="text-sm text-amber-700 dark:text-amber-400">
-        claude {status.version} is too old. Need {status.minimumRequired}. {status.installHint}
+        {t('agentChat.binary.tooOld', {
+          version: status.version ?? '',
+          minimumRequired: status.minimumRequired,
+          hint: status.installHint ?? ''
+        })}
       </p>
     )
   }
   return (
     <p className="text-sm text-emerald-700 dark:text-emerald-400">
-      claude {status.version} detected and ready.
+      {t('agentChat.binary.ready', { version: status.version ?? '' })}
     </p>
   )
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import type { AttachmentInput } from '@memry/contracts/ipc-agent'
 import type { SearchResultItem } from '@memry/contracts/search-api'
+import { useT } from '@memry/i18n/renderer'
 
 interface RefPickerProps {
   query: string
@@ -25,6 +26,7 @@ function toAttachmentResult(item: SearchResultItem): RefPickerResult | null {
 }
 
 export function RefPicker({ query, onPick, onClose }: RefPickerProps): React.JSX.Element {
+  const { t } = useT('common')
   const [results, setResults] = useState<RefPickerResult[]>([])
 
   useEffect(() => {
@@ -66,7 +68,9 @@ export function RefPicker({ query, onPick, onClose }: RefPickerProps): React.JSX
       }}
     >
       {results.length === 0 && (
-        <div className="px-2 py-1.5 text-xs text-muted-foreground">No matches</div>
+        <div className="px-2 py-1.5 text-xs text-muted-foreground">
+          {t('agentChat.refPicker.noMatches')}
+        </div>
       )}
       {results.map((result) => (
         <button

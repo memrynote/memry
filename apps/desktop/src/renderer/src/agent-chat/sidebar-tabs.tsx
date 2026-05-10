@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useT } from '@memry/i18n/renderer'
 
 import { Bot, CalendarDays } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -25,6 +26,7 @@ function readInitialTab(defaultTab: RightSidebarTab): RightSidebarTab {
 }
 
 export function SidebarTabs({ children, defaultTab = 'day' }: SidebarTabsProps): React.JSX.Element {
+  const { t } = useT('common')
   const [active, setActive] = useState<RightSidebarTab>(() => readInitialTab(defaultTab))
   const agent = useAgentOptional()
 
@@ -53,23 +55,23 @@ export function SidebarTabs({ children, defaultTab = 'day' }: SidebarTabsProps):
       <div className="border-b border-sidebar-border px-3 py-2">
         <div
           role="tablist"
-          aria-label="Right sidebar"
+          aria-label={t('agentChat.sidebar.label')}
           className="grid h-8 grid-cols-2 rounded-md border border-sidebar-border bg-sidebar-accent/30 p-0.5"
         >
           <SidebarTabButton active={active === 'day'} onClick={() => setActive('day')}>
             <CalendarDays className="size-3.5" aria-hidden="true" />
-            <span>Day</span>
+            <span>{t('agentChat.sidebar.day')}</span>
           </SidebarTabButton>
           <SidebarTabButton active={active === 'agent'} onClick={() => setActive('agent')}>
             <Bot className="size-3.5" aria-hidden="true" />
-            <span>Agent</span>
+            <span>{t('agentChat.sidebar.agent')}</span>
             {hasBackgroundActivity && (
               <span
                 className="ms-1 size-1.5 rounded-full bg-primary"
                 aria-label={
                   pendingApprovalCount > 0
-                    ? `${pendingApprovalCount} pending approval`
-                    : 'Agent turn in progress'
+                    ? t('agentChat.sidebar.pendingApproval', { count: pendingApprovalCount })
+                    : t('agentChat.sidebar.inProgress')
                 }
               />
             )}

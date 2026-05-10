@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '@memry/i18n/renderer'
 
 import { ApprovalModal } from './approval-modal'
 import { useAgentOptional } from './agent-context'
@@ -8,14 +9,18 @@ import { EmptyState } from './empty-state'
 import { Enablement } from './enablement'
 
 export function AgentPane(): React.JSX.Element {
+  const { t } = useT('common')
   const agent = useAgentOptional()
   const [creating, setCreating] = useState(false)
 
   if (!agent) {
     return (
-      <section className="flex h-full min-h-0 flex-col bg-sidebar" aria-label="Agent chat">
+      <section
+        className="flex h-full min-h-0 flex-col bg-sidebar"
+        aria-label={t('agentChat.title')}
+      >
         <div className="border-b border-sidebar-border px-4 py-3">
-          <h2 className="text-sm font-semibold text-foreground">Agent chat</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t('agentChat.title')}</h2>
         </div>
         <div className="min-h-0 flex-1" />
       </section>
@@ -27,7 +32,7 @@ export function AgentPane(): React.JSX.Element {
   if (state.disclosureAccepted === null || state.binaryStatus === null) {
     return (
       <div className="flex h-full items-start p-5 text-sm text-muted-foreground">
-        Loading agent chat...
+        {t('agentChat.loading')}
       </div>
     )
   }

@@ -1,3 +1,5 @@
+import { useT } from '@memry/i18n/renderer'
+
 import { Button } from '@/components/ui/button'
 import { Square } from '@/lib/icons'
 import { Composer } from './composer'
@@ -10,12 +12,13 @@ interface ConversationViewProps {
 }
 
 export function ConversationView({ conversationId }: ConversationViewProps): React.JSX.Element {
+  const { t } = useT('common')
   const agent = useAgentOptional()
 
   if (!agent) {
     return (
       <div className="flex h-full items-start p-5 text-sm text-muted-foreground">
-        Conversation loading...
+        {t('agentChat.conversationLoading')}
       </div>
     )
   }
@@ -26,7 +29,7 @@ export function ConversationView({ conversationId }: ConversationViewProps): Rea
   if (!conversation) {
     return (
       <div className="flex h-full items-start p-5 text-sm text-muted-foreground">
-        Conversation loading...
+        {t('agentChat.conversationLoading')}
       </div>
     )
   }
@@ -45,7 +48,7 @@ export function ConversationView({ conversationId }: ConversationViewProps): Rea
   return (
     <section
       className="flex h-full min-h-0 flex-col bg-sidebar"
-      aria-label="Agent chat"
+      aria-label={t('agentChat.title')}
       tabIndex={-1}
       onKeyDown={(event) => {
         if (!inFlight || event.key !== 'Escape') return
@@ -65,7 +68,7 @@ export function ConversationView({ conversationId }: ConversationViewProps): Rea
         <div className="flex items-center justify-end border-b border-sidebar-border px-3 py-2">
           <Button type="button" variant="secondary" size="sm" onClick={cancelTurn}>
             <Square className="size-3" aria-hidden="true" />
-            Stop
+            {t('agentChat.stop')}
           </Button>
         </div>
       )}
