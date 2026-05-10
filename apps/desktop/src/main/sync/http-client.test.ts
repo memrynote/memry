@@ -135,6 +135,22 @@ describe('http-client', () => {
       // #when / #then
       await expect(syncFetch('GET', '/api/test')).rejects.toThrow('Internal server error')
     })
+
+    it('preserves structured server error codes for sync classification', async () => {
+      // #given
+      mockFetch.mockResolvedValue(
+        createJsonResponse(
+          { error: { code: 'AUTH_DEVICE_REVOKED', message: 'Device has been revoked' } },
+          403
+        )
+      )
+
+      // #when / #then
+      await expect(syncFetch('GET', '/sync/changes')).rejects.toMatchObject({
+        statusCode: 403,
+        serverError: 'AUTH_DEVICE_REVOKED: Device has been revoked'
+      })
+    })
   })
 
   describe('convenience functions', () => {
