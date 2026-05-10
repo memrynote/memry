@@ -90,4 +90,47 @@ describe('Agent MCP server tool round-trip', () => {
       await handle.stop()
     }
   })
+
+  it('replaces an existing tool registration for gate updates', async () => {
+    const handle = await startAgentMcpServer({
+      toolRegistrations: [
+        {
+          name: 'replaceable_tool',
+          description: 'first handler',
+          inputSchema: z.object({}),
+          handler: async () => ({ version: 'first' })
+        }
+      ]
+    })
+
+    try {
+      handle.registerTool({
+        name: 'replaceable_tool',
+        description: 'second handler',
+        inputSchema: z.object({}),
+        handler: async () => ({ version: 'second' })
+      })
+
+      const r = await fetch(`${handle.url}/mcp`, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${handle.token}`,
+          'content-type': 'application/json',
+          accept: 'application/json, text/event-stream'
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: { name: 'replaceable_tool', arguments: {} }
+        })
+      })
+
+      expect(r.status).toBe(200)
+      const text = await r.text()
+      expect(text).toContain('"version":"second"')
+    } finally {
+      await handle.stop()
+    }
+  })
 })
