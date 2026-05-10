@@ -54,4 +54,13 @@ describe('staged secret scanner', () => {
 
     assert.equal(findings.length, 0)
   })
+
+  it('does not scan Markdown files', () => {
+    const findings = scanTextForSecrets(
+      'docs/superpowers/plans/example.md',
+      'token = "documented-example-value"'
+    )
+
+    assert.equal(findings.length, 0)
+  })
 })
