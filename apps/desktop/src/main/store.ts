@@ -25,6 +25,10 @@ export interface SyncStoreData {
   email?: string
 }
 
+export interface AgentStoreData {
+  disclosureAccepted?: boolean
+}
+
 /**
  * Application store schema
  */
@@ -35,6 +39,8 @@ interface StoreSchema {
   vaults: StoredVaultInfo[]
   /** Sync configuration */
   sync: SyncStoreData
+  /** Local agent-chat preferences */
+  agent: AgentStoreData
 }
 
 const CONFIG_FILE = 'memry-config.json'
@@ -42,7 +48,8 @@ const CONFIG_FILE = 'memry-config.json'
 const defaultData: StoreSchema = {
   currentVault: null,
   vaults: [],
-  sync: {}
+  sync: {},
+  agent: {}
 }
 
 /** In-memory cache — populated on first read, updated on every write. */

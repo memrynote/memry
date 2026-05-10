@@ -7,6 +7,16 @@ export interface MainIpcInvokeHandlers {
   "account:signOut": (...args: []) => Awaited<Promise<{ keychainWarning?: string | undefined; success: boolean; }>>
   "agent_mcp:get_status": (...args: []) => Awaited<{ url: string | null; token: string | null; toolCount: number; }>
   "agent_mcp:rotate_token": (...args: []) => Awaited<{ url: string | null; token: string | null; toolCount: number; }>
+  "agent:acceptDisclosure": (...args: []) => Awaited<import("../agent/runtime/disclosure-state").DisclosureState>
+  "agent:approveTool": (...args: [unknown]) => Awaited<Promise<{ ok: boolean; }>>
+  "agent:cancelTurn": (...args: [unknown]) => Awaited<Promise<{ ok: boolean; }>>
+  "agent:createConversation": (...args: [unknown]) => Awaited<Promise<import("../agent/storage/types").Conversation>>
+  "agent:editTrustList": (...args: [unknown]) => Awaited<Promise<import("../agent/storage/types").Conversation | null>>
+  "agent:getBinaryStatus": (...args: []) => Awaited<Promise<{ detected: boolean; version: string | null; meetsMinimum: boolean; minimumRequired: string; installHint: string | null; }>>
+  "agent:getDisclosureState": (...args: []) => Awaited<import("../agent/runtime/disclosure-state").DisclosureState>
+  "agent:listConversations": (...args: [unknown]) => Awaited<Promise<import("../agent/storage/types").Conversation[]>>
+  "agent:loadConversation": (...args: [unknown]) => Awaited<Promise<{ conversation: import("../agent/storage/types").Conversation | null; messages: import("../agent/storage/types").Message[]; }>>
+  "agent:sendTurn": (...args: [unknown]) => Awaited<Promise<{ ok: boolean; }>>
   "ai-inline:get-server-port": (...args: []) => Awaited<number | null>
   "ai-inline:get-settings": (...args: []) => Awaited<import("../../../../../packages/contracts/src/ai-inline-channels").AIInlineSettings>
   "ai-inline:set-settings": (...args: [Partial<import("../../../../../packages/contracts/src/ai-inline-channels").AIInlineSettings>]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
