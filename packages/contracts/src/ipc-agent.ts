@@ -38,6 +38,12 @@ export const SendTurnRequestSchema = z.object({
 })
 export type SendTurnRequest = z.infer<typeof SendTurnRequestSchema>
 
+export const SendTurnResponseSchema = z.object({
+  ok: z.boolean(),
+  error: z.string().optional()
+})
+export type SendTurnResponse = z.infer<typeof SendTurnResponseSchema>
+
 export const ApproveToolDecisionSchema = z.union([
   z.object({ kind: z.literal('allow') }),
   z.object({ kind: z.literal('allow_always') }),

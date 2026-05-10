@@ -28,6 +28,8 @@ interface AgentHandlerDeps {
     | 'getPendingApproval'
     | 'trackSubprocess'
     | 'untrackSubprocess'
+    | 'acquireTurnLock'
+    | 'releaseTurnLock'
   >
   conversations: ConversationStore
   messages: MessageStore
@@ -68,6 +70,15 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
 
   ipcMain.handle(AgentChannels.invoke.SEND_TURN, async (_event, payload: unknown) => {
     const request = SendTurnRequestSchema.parse(payload)
+    try {
+      deps.runtime.acquireTurnLock(request.conversationId)
+    } catch (error) {
+      return {
+        ok: false,
+        error: extractErrorMessage(error, 'Conversation busy')
+      }
+    }
+
     const attachments = await snapshotAttachments(request.attachments)
 
     void runTurn(
@@ -96,9 +107,13 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
         text: request.text,
         attachments
       }
-    ).catch((error) => {
-      logger.error('Agent turn failed', error)
-    })
+    )
+      .catch((error) => {
+        logger.error('Agent turn failed', error)
+      })
+      .finally(() => {
+        deps.runtime.releaseTurnLock(request.conversationId)
+      })
 
     return { ok: true }
   })
@@ -160,4 +175,8 @@ export function unregisterAgentHandlers(): void {
   for (const channel of Object.values(AgentChannels.invoke)) {
     ipcMain.removeHandler(channel)
   }
+}
+
+function extractErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback
 }
