@@ -7,6 +7,7 @@ import type { BinaryStatus } from '@memry/contracts/ipc-agent'
 const mockUseAgentOptional = vi.hoisted(() => vi.fn())
 const mockAcceptDisclosure = vi.hoisted(() => vi.fn())
 const mockCreateConversation = vi.hoisted(() => vi.fn())
+const mockLoadConversation = vi.hoisted(() => vi.fn())
 
 vi.mock('../agent-context', () => ({
   useAgentOptional: mockUseAgentOptional
@@ -42,7 +43,8 @@ function mockAgentState(
       ...overrides
     },
     acceptDisclosure: mockAcceptDisclosure,
-    createConversation: mockCreateConversation
+    createConversation: mockCreateConversation,
+    loadConversation: mockLoadConversation
   })
 }
 
@@ -51,6 +53,7 @@ describe('AgentPane', () => {
     mockUseAgentOptional.mockReset()
     mockAcceptDisclosure.mockReset()
     mockCreateConversation.mockReset()
+    mockLoadConversation.mockReset()
   })
 
   it('shows the disclosure gate until the user accepts it', async () => {
@@ -93,5 +96,60 @@ describe('AgentPane', () => {
     await user.click(screen.getByRole('button', { name: 'New conversation' }))
 
     expect(mockCreateConversation).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders the active conversation header and switches conversations', async () => {
+    const user = userEvent.setup()
+    mockUseAgentOptional.mockReturnValue({
+      state: {
+        binaryStatus: readyBinary,
+        disclosureAccepted: true,
+        activeConversationId: 'conversation-1',
+        conversations: {
+          'conversation-1': {
+            id: 'conversation-1',
+            vaultId: 'vault-1',
+            title: 'Planning',
+            backend: 'claude_cli',
+            trustList: [],
+            pinned: false,
+            vectorClock: {},
+            fieldClocks: {},
+            createdAt: 100,
+            updatedAt: 100,
+            deletedAt: null,
+            lastSyncedAt: null
+          },
+          'conversation-2': {
+            id: 'conversation-2',
+            vaultId: 'vault-1',
+            title: 'Inbox cleanup',
+            backend: 'claude_cli',
+            trustList: [],
+            pinned: false,
+            vectorClock: {},
+            fieldClocks: {},
+            createdAt: 200,
+            updatedAt: 200,
+            deletedAt: null,
+            lastSyncedAt: null
+          }
+        },
+        messagesByConversation: {},
+        pendingApprovals: [],
+        inFlight: {},
+        error: null
+      },
+      acceptDisclosure: mockAcceptDisclosure,
+      createConversation: mockCreateConversation,
+      loadConversation: mockLoadConversation
+    })
+
+    render(<AgentPane />)
+
+    await user.click(screen.getByRole('button', { name: /Planning/ }))
+    await user.click(screen.getByRole('button', { name: 'Inbox cleanup' }))
+
+    expect(mockLoadConversation).toHaveBeenCalledWith('conversation-2')
   })
 })
