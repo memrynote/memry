@@ -1,6 +1,6 @@
 import http from 'node:http'
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { McpServer, type RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import type { ZodTypeAny } from 'zod'
 
@@ -35,10 +35,12 @@ export interface AgentMcpServerHandle {
 export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpServerHandle> {
   const session = createMcpSession()
   const tools = new Map<string, ToolRegistration>()
+  const registeredTools = new Map<string, RegisteredTool>()
   const mcp = new McpServer({ name: 'memry-vault', version: '1.0.0' })
 
   function bindTool(reg: ToolRegistration): void {
-    mcp.registerTool(
+    registeredTools.get(reg.name)?.remove()
+    const registered = mcp.registerTool(
       reg.name,
       { description: reg.description, inputSchema: reg.inputSchema },
       async (input, extra) => {
@@ -57,6 +59,7 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
       }
     )
     tools.set(reg.name, reg)
+    registeredTools.set(reg.name, registered)
   }
 
   for (const reg of opts.toolRegistrations) bindTool(reg)
