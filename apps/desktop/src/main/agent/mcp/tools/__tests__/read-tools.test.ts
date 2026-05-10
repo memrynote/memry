@@ -55,7 +55,9 @@ function fake(): VaultServiceHandles {
       createIfMissing: async () => ({ id: 'unused', created: false })
     },
     inbox: {
-      list: async () => [{ id: 'i1', source: 'web', title: 'Cool', snippet: '...', captured_at: 0 }],
+      list: async () => [
+        { id: 'i1', source: 'web', title: 'Cool', snippet: '...', captured_at: 0 }
+      ],
       add: async () => ({ id: 'unused' })
     },
     tags: {
@@ -136,10 +138,13 @@ describe('Read tools', () => {
   it('vault_list_journal_entries returns range', async () => {
     const out = (await tools
       .find((t) => t.name === 'vault_list_journal_entries')!
-      .handler({ from: '2026-05-01', to: '2026-05-31' }, {
-        conversationId: null,
-        windowId: null
-      })) as unknown[]
+      .handler(
+        { from: '2026-05-01', to: '2026-05-31' },
+        {
+          conversationId: null,
+          windowId: null
+        }
+      )) as unknown[]
     expect(out).toHaveLength(1)
   })
 
@@ -180,8 +185,8 @@ describe('Read tools', () => {
 
   it('rejects an invalid input via Zod (bubbles VALIDATION error)', async () => {
     const t = tools.find((x) => x.name === 'vault_search_notes')!
-    await expect(t.handler({ query: '' }, { conversationId: null, windowId: null })).rejects.toBeInstanceOf(
-      AgentToolError
-    )
+    await expect(
+      t.handler({ query: '' }, { conversationId: null, windowId: null })
+    ).rejects.toBeInstanceOf(AgentToolError)
   })
 })
