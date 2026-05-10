@@ -15,6 +15,7 @@ vi.mock('./calendar-section', () => ({ CalendarSettingsSection: () => <div /> })
 vi.mock('./vault-section', () => ({ VaultSettings: () => <div /> }))
 vi.mock('./appearance-section', () => ({ AppearanceSettings: () => <div /> }))
 vi.mock('./ai-section', () => ({ AISettings: () => <div /> }))
+vi.mock('./agent-mcp-section', () => ({ AgentMcpSection: () => <div /> }))
 vi.mock('./integrations-section', () => ({ IntegrationsSettings: () => <div /> }))
 vi.mock('./tags-section', () => ({ TagsSettings: () => <div /> }))
 vi.mock('./properties-section', () => ({ PropertiesSettings: () => <div /> }))
@@ -55,6 +56,7 @@ describe('SettingsPage i18n', () => {
       'Appearance',
       'Shortcuts',
       'AI Assistant',
+      'Agent MCP',
       'Integrations',
       'Vault',
       'Tags',
