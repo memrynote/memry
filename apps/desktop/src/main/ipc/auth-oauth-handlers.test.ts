@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { invokeHandler, mockIpcMain, resetIpcMocks } from '@tests/utils/mock-ipc'
-import { SYNC_CHANNELS } from '@memry/contracts/ipc-sync'
+import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
 
 // ============================================================================
 // Mocks
@@ -70,6 +70,53 @@ vi.mock('../sync/token-manager', () => ({
   refreshAccessToken: (...args: unknown[]) => mockRefreshAccessToken(...args)
 }))
 
+const mockStartGoogleRunner = vi.fn()
+vi.mock('../calendar/google/sync-service', () => ({
+  startGoogleCalendarSyncRunner: (...args: unknown[]) => mockStartGoogleRunner(...args)
+}))
+
+const loopback = vi.hoisted(() => {
+  const state = {
+    requestHandler: undefined as undefined | ((req: any, res: any) => void),
+    close: vi.fn(),
+    listen: vi.fn(),
+    address: vi.fn(() => ({ port: 4321 })),
+    httpGet: vi.fn(),
+    httpsGet: vi.fn(),
+    shellOpenExternal: vi.fn()
+  }
+  return {
+    ...state,
+    get requestHandler() {
+      return state.requestHandler
+    },
+    set requestHandler(handler: undefined | ((req: any, res: any) => void)) {
+      state.requestHandler = handler
+    },
+    serverOn: vi.fn((event: string, handler: (...args: any[]) => void) => {
+      if (event === 'request') state.requestHandler = handler
+    })
+  }
+})
+
+vi.mock('node:http', () => ({
+  default: {
+    createServer: vi.fn(() => ({
+      listen: loopback.listen,
+      address: loopback.address,
+      close: loopback.close,
+      on: loopback.serverOn
+    })),
+    get: loopback.httpGet
+  }
+}))
+
+vi.mock('node:https', () => ({
+  default: {
+    get: loopback.httpsGet
+  }
+}))
+
 const mockGetAllWindows = vi.fn().mockReturnValue([])
 vi.mock('electron', () => ({
   ipcMain: {
@@ -84,7 +131,7 @@ vi.mock('electron', () => ({
     getAllWindows: () => mockGetAllWindows()
   },
   shell: {
-    openExternal: vi.fn().mockResolvedValue(undefined)
+    openExternal: (...args: unknown[]) => loopback.shellOpenExternal(...args)
   }
 }))
 
@@ -116,10 +163,103 @@ describe('auth-oauth handlers', () => {
     mockRefreshAccessToken.mockResolvedValue(true)
     mockTeardownSession.mockResolvedValue({ success: true, keychainFailures: [] })
     mockGetSyncEngine.mockReturnValue(null)
+    mockStartSyncRuntime.mockResolvedValue(undefined)
+    mockStartGoogleRunner.mockResolvedValue(undefined)
+    loopback.requestHandler = undefined
+    loopback.listen.mockImplementation((_port: number, _host: string, callback: () => void) => {
+      callback()
+    })
+    loopback.address.mockReturnValue({ port: 4321 })
+    loopback.close.mockImplementation((callback?: () => void) => {
+      callback?.()
+    })
+    loopback.httpGet.mockImplementation((_url: string, callback: (res: any) => void) => {
+      callback({
+        headers: { location: 'https://accounts.google.com/o/oauth2/v2/auth?state=oauth-state' },
+        resume: vi.fn()
+      })
+      return { on: vi.fn() }
+    })
+    loopback.httpsGet.mockImplementation((_url: string, callback: (res: any) => void) => {
+      callback({
+        headers: { location: 'https://accounts.google.com/o/oauth2/v2/auth?state=oauth-state' },
+        resume: vi.fn()
+      })
+      return { on: vi.fn() }
+    })
+    loopback.shellOpenExternal.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
     unregisterAuthOAuthHandlers()
+  })
+
+  // --------------------------------------------------------------------------
+  // T072: OAuth initiation
+  // --------------------------------------------------------------------------
+
+  describe('AUTH_INIT_OAUTH', () => {
+    it('opens the provider URL and relays successful loopback callbacks', async () => {
+      const send = vi.fn()
+      mockGetAllWindows.mockReturnValue([{ webContents: { send } }])
+      registerAuthOAuthHandlers()
+
+      const result = await invokeHandler(SYNC_CHANNELS.AUTH_INIT_OAUTH, { provider: 'google' })
+
+      expect(result).toEqual({ state: 'oauth-state' })
+      expect(loopback.shellOpenExternal).toHaveBeenCalledWith(
+        'https://accounts.google.com/o/oauth2/v2/auth?state=oauth-state'
+      )
+
+      const res = { writeHead: vi.fn(), end: vi.fn() }
+      loopback.requestHandler?.({ url: '/callback?code=google-code&state=oauth-state' }, res)
+
+      expect(res.writeHead).toHaveBeenCalledWith(200, {
+        'Content-Type': 'text/html; charset=utf-8'
+      })
+      expect(send).toHaveBeenCalledWith(SYNC_EVENTS.OAUTH_CALLBACK, {
+        code: 'google-code',
+        state: 'oauth-state'
+      })
+      expect(loopback.close).toHaveBeenCalled()
+    })
+
+    it('relays OAuth errors and rejects malformed provider responses', async () => {
+      const send = vi.fn()
+      mockGetAllWindows.mockReturnValue([{ webContents: { send } }])
+      registerAuthOAuthHandlers()
+
+      await invokeHandler(SYNC_CHANNELS.AUTH_INIT_OAUTH, { provider: 'google' })
+      const res = { writeHead: vi.fn(), end: vi.fn() }
+      loopback.requestHandler?.({ url: '/callback?error=access_denied&state=oauth-state' }, res)
+
+      expect(send).toHaveBeenCalledWith(SYNC_EVENTS.OAUTH_ERROR, { error: 'access_denied' })
+      expect(loopback.close).toHaveBeenCalled()
+
+      unregisterAuthOAuthHandlers()
+      registerAuthOAuthHandlers()
+      loopback.httpGet.mockImplementationOnce((_url: string, callback: (res: any) => void) => {
+        callback({ headers: {}, resume: vi.fn() })
+        return { on: vi.fn() }
+      })
+
+      const failure = await invokeHandler<{ success: false; error: string }>(
+        SYNC_CHANNELS.AUTH_INIT_OAUTH,
+        { provider: 'google' }
+      )
+      expect(failure).toEqual({ success: false, error: 'Failed to get OAuth URL from server' })
+    })
+
+    it('returns 404 for non-callback loopback requests', async () => {
+      registerAuthOAuthHandlers()
+      await invokeHandler(SYNC_CHANNELS.AUTH_INIT_OAUTH, { provider: 'google' })
+
+      const res = { writeHead: vi.fn(), end: vi.fn() }
+      loopback.requestHandler?.({ url: '/wrong-path' }, res)
+
+      expect(res.writeHead).toHaveBeenCalledWith(404)
+      expect(res.end).toHaveBeenCalled()
+    })
   })
 
   // --------------------------------------------------------------------------
@@ -235,6 +375,40 @@ describe('auth-oauth handlers', () => {
       // #then
       expect(mockActivate).not.toHaveBeenCalled()
     })
+
+    it('returns structured errors for invalid state and missing setup token', async () => {
+      registerAuthOAuthHandlers()
+
+      await expect(
+        invokeHandler(SYNC_CHANNELS.SETUP_FIRST_DEVICE, {
+          oauthToken: 'google-code',
+          provider: 'google',
+          state: 'missing-state'
+        })
+      ).resolves.toEqual({
+        success: false,
+        error: 'Invalid or expired OAuth state parameter'
+      })
+
+      seedOAuthSession('missing-token', 'http://127.0.0.1:9999/callback')
+      mockPostToServer.mockResolvedValueOnce({
+        success: true,
+        userId: 'user-1',
+        isNewUser: true,
+        needsSetup: true
+      })
+
+      await expect(
+        invokeHandler(SYNC_CHANNELS.SETUP_FIRST_DEVICE, {
+          oauthToken: 'google-code',
+          provider: 'google',
+          state: 'missing-token'
+        })
+      ).resolves.toEqual({
+        success: false,
+        error: 'OAuth callback missing setupToken'
+      })
+    })
   })
 
   // --------------------------------------------------------------------------
@@ -297,6 +471,39 @@ describe('auth-oauth handlers', () => {
 
       // #then
       expect(mockActivate).not.toHaveBeenCalled()
+    })
+
+    it('starts sync runtime and calendar runner when no engine exists', async () => {
+      registerAuthOAuthHandlers()
+
+      const result = await invokeHandler(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE, {
+        confirmed: true
+      })
+
+      expect(result).toEqual({ success: true })
+      expect(mockStartSyncRuntime).toHaveBeenCalledOnce()
+      expect(mockStartGoogleRunner).toHaveBeenCalledOnce()
+    })
+  })
+
+  describe('AUTH_REFRESH_TOKEN and AUTH_LOGOUT', () => {
+    it('returns token refresh failures and logout keychain warnings', async () => {
+      registerAuthOAuthHandlers()
+      mockRefreshAccessToken.mockResolvedValueOnce(false)
+      mockTeardownSession.mockResolvedValueOnce({
+        success: true,
+        keychainFailures: ['access-token', 'refresh-token']
+      })
+
+      await expect(invokeHandler(SYNC_CHANNELS.AUTH_REFRESH_TOKEN)).resolves.toEqual({
+        success: false,
+        error: 'Token refresh failed'
+      })
+
+      await expect(invokeHandler(SYNC_CHANNELS.AUTH_LOGOUT)).resolves.toEqual({
+        success: true,
+        keychainWarning: 'Failed to remove: access-token, refresh-token'
+      })
     })
   })
 

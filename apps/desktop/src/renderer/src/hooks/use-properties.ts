@@ -82,12 +82,9 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
     async (name: string, value: unknown) => {
       if (!entityId) return
 
-      let record: Record<string, unknown> = {}
-      setProperties((prev) => {
-        const next = prev.map((p) => (p.name === name ? { ...p, value } : p))
-        record = toRecord(next)
-        return next
-      })
+      const next = properties.map((p) => (p.name === name ? { ...p, value } : p))
+      const record = toRecord(next)
+      setProperties(next)
 
       try {
         const result = await propertiesService.set(entityId, record)
@@ -101,7 +98,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
         throw err
       }
     },
-    [entityId, fetchProperties]
+    [entityId, fetchProperties, properties]
   )
 
   const addProperty = useCallback(
@@ -109,14 +106,11 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
       if (!entityId) return
 
       const type = explicitType ?? inferType(value)
-      let record: Record<string, unknown> = {}
-      setProperties((prev) => {
-        const existingNames = prev.map((p) => p.name)
-        const uniqueName = getUniquePropertyName(name, existingNames)
-        const next = [...prev, { name: uniqueName, value, type }]
-        record = toRecord(next)
-        return next
-      })
+      const existingNames = properties.map((p) => p.name)
+      const uniqueName = getUniquePropertyName(name, existingNames)
+      const next = [...properties, { name: uniqueName, value, type }]
+      const record = toRecord(next)
+      setProperties(next)
 
       try {
         const result = await propertiesService.set(entityId, record)
@@ -130,19 +124,16 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
         throw err
       }
     },
-    [entityId, fetchProperties]
+    [entityId, fetchProperties, properties]
   )
 
   const removeProperty = useCallback(
     async (name: string) => {
       if (!entityId) return
 
-      let record: Record<string, unknown> = {}
-      setProperties((prev) => {
-        const next = prev.filter((p) => p.name !== name)
-        record = toRecord(next)
-        return next
-      })
+      const next = properties.filter((p) => p.name !== name)
+      const record = toRecord(next)
+      setProperties(next)
 
       try {
         const result = await propertiesService.set(entityId, record)
@@ -156,7 +147,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
         throw err
       }
     },
-    [entityId, fetchProperties]
+    [entityId, fetchProperties, properties]
   )
 
   const renameProperty = useCallback(
@@ -164,7 +155,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
       if (!entityId) return
       if (oldName === newName) return
 
-      setProperties((prev) => prev.map((p) => (p.name === oldName ? { ...p, name: newName } : p)))
+      setProperties(properties.map((p) => (p.name === oldName ? { ...p, name: newName } : p)))
 
       try {
         const result = await propertiesService.rename(entityId, oldName, newName)
@@ -178,36 +169,29 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
         throw err
       }
     },
-    [entityId, fetchProperties]
+    [entityId, fetchProperties, properties]
   )
 
   const reorderProperties = useCallback(
     async (orderedNames: string[]) => {
       if (!entityId) return
 
-      let record: Record<string, unknown> = {}
-      let changed = false
-      setProperties((prev) => {
-        const currentOrder = prev.map((p) => p.name)
-        const isSameOrder =
-          orderedNames.length === currentOrder.length &&
-          orderedNames.every((n, i) => n === currentOrder[i])
-        if (isSameOrder) return prev
+      const currentOrder = properties.map((p) => p.name)
+      const isSameOrder =
+        orderedNames.length === currentOrder.length &&
+        orderedNames.every((n, i) => n === currentOrder[i])
+      if (isSameOrder) return
 
-        const orderSet = new Set(orderedNames)
-        const propertyMap = new Map(prev.map((p) => [p.name, p]))
-        const next = [
-          ...orderedNames
-            .map((n) => propertyMap.get(n))
-            .filter((p): p is PropertyValue => Boolean(p)),
-          ...prev.filter((p) => !orderSet.has(p.name))
-        ]
-        record = toRecord(next)
-        changed = true
-        return next
-      })
-
-      if (!changed) return
+      const orderSet = new Set(orderedNames)
+      const propertyMap = new Map(properties.map((p) => [p.name, p]))
+      const next = [
+        ...orderedNames
+          .map((n) => propertyMap.get(n))
+          .filter((p): p is PropertyValue => Boolean(p)),
+        ...properties.filter((p) => !orderSet.has(p.name))
+      ]
+      const record = toRecord(next)
+      setProperties(next)
 
       try {
         const result = await propertiesService.set(entityId, record)
@@ -221,7 +205,7 @@ export function useProperties(entityId: string | null): UsePropertiesReturn {
         throw err
       }
     },
-    [entityId, fetchProperties]
+    [entityId, fetchProperties, properties]
   )
 
   return {

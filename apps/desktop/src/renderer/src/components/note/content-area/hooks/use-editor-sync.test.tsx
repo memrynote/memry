@@ -161,4 +161,134 @@ describe('useEditorSync', () => {
     const [, nextBlocks] = editor.replaceBlocks.mock.calls[0]
     expect(collectIds(nextBlocks)).not.toContain('')
   })
+
+  it('debounces markdown, heading, and inline tag notifications after local edits', async () => {
+    vi.useFakeTimers()
+    const onContentChange = vi.fn()
+    const onMarkdownChange = vi.fn()
+    const onHeadingsChange = vi.fn()
+    const onInlineTagsChange = vi.fn()
+    const editor = createEditor()
+    editor.blocksToMarkdownLossy.mockResolvedValue('Body markdown')
+    const initialBlocks = [
+      {
+        id: 'heading-1',
+        type: 'heading',
+        props: { level: 2 },
+        content: [{ type: 'text', text: 'Roadmap', styles: {} }],
+        children: []
+      },
+      {
+        id: 'paragraph-1',
+        type: 'paragraph',
+        props: {},
+        content: ['Ship #Focus'],
+        children: []
+      },
+      {
+        id: 'file-1',
+        type: 'file',
+        props: {
+          url: 'memry://files/spec.pdf',
+          name: 'spec.pdf',
+          size: 42,
+          mimeType: 'application/pdf'
+        },
+        content: [],
+        children: []
+      }
+    ]
+
+    const { result } = renderHook(() =>
+      useEditorSync({
+        editor,
+        initialContent: initialBlocks as never,
+        contentType: 'blocks',
+        onContentChange,
+        onMarkdownChange,
+        onHeadingsChange,
+        onInlineTagsChange
+      })
+    )
+
+    await waitFor(() => expect(result.current.isContentReadyRef.current).toBe(true))
+    onHeadingsChange.mockClear()
+    onInlineTagsChange.mockClear()
+    ;(editor.document[1].content as string[]) = ['Ship #Focus #Build']
+
+    act(() => {
+      result.current.handleChange()
+      vi.advanceTimersByTime(150)
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(onContentChange).toHaveBeenCalledWith(editor.document)
+    expect(onMarkdownChange).toHaveBeenCalledWith(
+      expect.stringContaining('<!-- file:{"url":"memry://files/spec.pdf"')
+    )
+
+    act(() => {
+      vi.advanceTimersByTime(50)
+    })
+    expect(onHeadingsChange).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'heading-1', text: 'Roadmap', level: 2 })
+    ])
+
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
+    expect(onInlineTagsChange).toHaveBeenCalledWith(['build', 'focus'])
+    expect(result.current.prevInlineTagsRef.current).toEqual(['build', 'focus'])
+  })
+
+  it('skips markdown persistence for remote updates and Yjs-backed documents', async () => {
+    vi.useFakeTimers()
+    const onContentChange = vi.fn()
+    const onMarkdownChange = vi.fn()
+    const editor = createEditor([
+      {
+        id: 'paragraph-1',
+        type: 'paragraph',
+        props: {},
+        content: ['Body'],
+        children: []
+      }
+    ])
+    const isRemoteUpdateRef = { current: true }
+
+    const { result, rerender } = renderHook(
+      ({ yjsFragment }) =>
+        useEditorSync({
+          editor,
+          initialContent: 'Body',
+          contentType: 'markdown',
+          isRemoteUpdateRef,
+          yjsFragment,
+          onContentChange,
+          onMarkdownChange
+        }),
+      { initialProps: { yjsFragment: undefined as unknown } }
+    )
+
+    await waitFor(() => expect(result.current.isContentReadyRef.current).toBe(true))
+
+    act(() => {
+      result.current.handleChange()
+      vi.advanceTimersByTime(200)
+    })
+
+    expect(onContentChange).toHaveBeenCalled()
+    expect(onMarkdownChange).not.toHaveBeenCalled()
+
+    isRemoteUpdateRef.current = false
+    rerender({ yjsFragment: {} })
+    act(() => {
+      result.current.handleChange()
+      vi.advanceTimersByTime(200)
+    })
+
+    expect(onMarkdownChange).not.toHaveBeenCalled()
+  })
 })

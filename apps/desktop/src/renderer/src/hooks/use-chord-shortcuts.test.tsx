@@ -11,16 +11,21 @@ import { useChordShortcuts } from './use-chord-shortcuts'
 import { TabProvider, useTabs } from '@/contexts/tabs'
 import type { TabSystemState, TabGroup, Tab, SplitLayout } from '@/contexts/tabs/types'
 
+const mockPanePositions = vi.hoisted(() => ({
+  value: {} as Record<string, { centerX: number; centerY: number }>
+}))
+const mockHintModeActiveRef = vi.hoisted(() => ({ current: false }))
+
 vi.mock('./use-keyboard-shortcuts-base', () => ({
   isMac: true
 }))
 
 vi.mock('@/contexts/hint-mode', () => ({
-  hintModeActiveRef: { current: false }
+  hintModeActiveRef: mockHintModeActiveRef
 }))
 
 vi.mock('./use-pane-navigation', () => ({
-  calculateGroupPositions: () => ({})
+  calculateGroupPositions: () => mockPanePositions.value
 }))
 
 const mockApi = {
@@ -30,6 +35,8 @@ const mockApi = {
 
 beforeEach(() => {
   ;(window as unknown as { api: typeof mockApi }).api = mockApi
+  mockPanePositions.value = {}
+  mockHintModeActiveRef.current = false
 })
 
 afterEach(() => {
@@ -225,5 +232,127 @@ describe('useChordShortcuts', () => {
     const g2After = after.tabGroups[g2.id]
     expect(g2After.tabs.some((t) => t.title === 'Moving')).toBe(true)
     expect(after.activeGroupId).toBe(g2.id)
+  })
+
+  it('focuses adjacent groups, wraps arrows, and moves tabs backward', () => {
+    const movingTab = makeTab({ title: 'Moving backward' })
+    const g1 = makeGroup([movingTab])
+    const g2 = makeGroup([makeTab({ title: 'Side' })], false)
+    const g3 = makeGroup([makeTab({ title: 'Below' })], false)
+    const layout: SplitLayout = {
+      type: 'split',
+      direction: 'horizontal',
+      ratio: 0.5,
+      first: { type: 'leaf', tabGroupId: g1.id },
+      second: {
+        type: 'split',
+        direction: 'vertical',
+        ratio: 0.5,
+        first: { type: 'leaf', tabGroupId: g2.id },
+        second: { type: 'leaf', tabGroupId: g3.id }
+      }
+    }
+    mockPanePositions.value = {
+      [g1.id]: { centerX: 0, centerY: 0 },
+      [g2.id]: { centerX: 100, centerY: 0 },
+      [g3.id]: { centerX: 0, centerY: 100 }
+    }
+    const state = makeState([g1, g2, g3], layout)
+    const { rerender, getState } = renderWithState(state)
+
+    act(() => {
+      dispatchKey('k', { meta: true })
+    })
+    rerender()
+    act(() => {
+      dispatchKey('ArrowRight', { meta: true })
+    })
+    rerender()
+    expect(getState().activeGroupId).toBe(g2.id)
+
+    act(() => {
+      dispatchKey('k', { meta: true })
+    })
+    rerender()
+    act(() => {
+      dispatchKey('ArrowLeft', { meta: true })
+    })
+    rerender()
+    expect(getState().activeGroupId).toBe(g1.id)
+
+    act(() => {
+      dispatchKey('k', { meta: true })
+    })
+    rerender()
+    act(() => {
+      dispatchKey('ArrowDown', { meta: true })
+    })
+    rerender()
+    expect(getState().activeGroupId).toBe(g3.id)
+
+    act(() => {
+      dispatchKey('k', { meta: true })
+    })
+    rerender()
+    act(() => {
+      dispatchKey('ArrowUp', { meta: true })
+    })
+    rerender()
+    expect(getState().activeGroupId).toBe(g1.id)
+
+    act(() => {
+      dispatchKey('k', { meta: true })
+    })
+    rerender()
+    act(() => {
+      dispatchKey('ArrowLeft', { shift: true })
+    })
+    rerender()
+    expect(getState().tabGroups[g3.id].tabs.some((tab) => tab.title === 'Moving backward')).toBe(
+      true
+    )
+  })
+
+  it('ignores typing targets, hint mode, unsupported chords, and timeout expiry', () => {
+    vi.useFakeTimers()
+    const g1 = makeGroup([makeTab()])
+    const g2 = makeGroup([makeTab()], false)
+    const state = makeState([g1, g2])
+    const { result } = renderHook(() => useChordShortcuts(), {
+      wrapper: ({ children }) => <TabProvider initialState={state}>{children}</TabProvider>
+    })
+
+    const input = document.createElement('input')
+    document.body.append(input)
+    act(() => {
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))
+    })
+    expect(result.current).toBe(false)
+
+    mockHintModeActiveRef.current = true
+    act(() => {
+      dispatchKey('k', { meta: true })
+    })
+    expect(result.current).toBe(false)
+
+    mockHintModeActiveRef.current = false
+    act(() => {
+      dispatchKey('k', { meta: true })
+    })
+    expect(result.current).toBe(true)
+
+    act(() => {
+      dispatchKey('x', { meta: true })
+    })
+    expect(result.current).toBe(false)
+
+    act(() => {
+      dispatchKey('k', { meta: true })
+      vi.advanceTimersByTime(1000)
+    })
+    expect(result.current).toBe(false)
+
+    input.remove()
+    vi.useRealTimers()
   })
 })

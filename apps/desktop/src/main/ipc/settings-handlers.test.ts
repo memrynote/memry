@@ -10,7 +10,23 @@ import { SettingsChannels } from '@memry/contracts/ipc-channels'
 
 const handleCalls: unknown[][] = []
 const removeHandlerCalls: string[] = []
-const mockSend = vi.fn()
+const electronMocks = vi.hoisted(() => {
+  const send = vi.fn()
+  return {
+    send,
+    getAllWindows: vi.fn(() => [{ isDestroyed: () => false, webContents: { send } }]),
+    setLoginItemSettings: vi.fn(),
+    globalShortcutUnregisterAll: vi.fn(),
+    globalShortcutRegister: vi.fn(),
+    isTrustedAccessibilityClient: vi.fn()
+  }
+})
+const mockSend = electronMocks.send
+const mockGetAllWindows = electronMocks.getAllWindows
+const mockSetLoginItemSettings = electronMocks.setLoginItemSettings
+const mockGlobalShortcutUnregisterAll = electronMocks.globalShortcutUnregisterAll
+const mockGlobalShortcutRegister = electronMocks.globalShortcutRegister
+const mockIsTrustedAccessibilityClient = electronMocks.isTrustedAccessibilityClient
 const mockGetVoiceModelStatus = vi.hoisted(() => vi.fn())
 const mockDownloadVoiceModel = vi.hoisted(() => vi.fn())
 const mockGetVoiceRecordingReadiness = vi.hoisted(() => vi.fn())
@@ -41,7 +57,17 @@ vi.mock('electron', () => ({
     })
   },
   BrowserWindow: {
-    getAllWindows: vi.fn(() => [{ webContents: { send: mockSend } }])
+    getAllWindows: electronMocks.getAllWindows
+  },
+  app: {
+    setLoginItemSettings: electronMocks.setLoginItemSettings
+  },
+  globalShortcut: {
+    unregisterAll: electronMocks.globalShortcutUnregisterAll,
+    register: electronMocks.globalShortcutRegister
+  },
+  systemPreferences: {
+    isTrustedAccessibilityClient: electronMocks.isTrustedAccessibilityClient
   }
 }))
 
@@ -113,12 +139,18 @@ vi.mock('../store', () => ({
   getCurrentVaultPath: () => mockGetCurrentVaultPath()
 }))
 
-import { registerSettingsHandlers, unregisterSettingsHandlers } from './settings-handlers'
+import {
+  applyGlobalCaptureShortcut,
+  registerSettingsHandlers,
+  unregisterSettingsHandlers
+} from './settings-handlers'
 import { getDatabase } from '../database'
 import * as settingsQueries from '@main/database/queries/settings'
 import * as embeddings from '../lib/embeddings'
 import * as projections from '../projections'
 import { getSettingsSyncManager } from '../sync/settings-sync'
+
+const originalPlatform = process.platform
 
 function invokeSyncHandler<T>(channel: string, ...args: unknown[]): T {
   const listener = syncListeners.get(channel)
@@ -139,6 +171,13 @@ describe('settings-handlers', () => {
     removeHandlerCalls.length = 0
     syncListeners.clear()
     mockSend.mockClear()
+    mockGetAllWindows
+      .mockReset()
+      .mockReturnValue([{ isDestroyed: () => false, webContents: { send: mockSend } }])
+    mockSetLoginItemSettings.mockReset()
+    mockGlobalShortcutUnregisterAll.mockReset()
+    mockGlobalShortcutRegister.mockReset().mockReturnValue(true)
+    mockIsTrustedAccessibilityClient.mockReset().mockReturnValue(true)
     mockUpdateField.mockClear()
     mockWritePreferences.mockClear()
     mockGetCurrentVaultPath.mockReturnValue('/test/vault')
@@ -158,10 +197,17 @@ describe('settings-handlers', () => {
     })
     mockHasVoiceTranscriptionOpenAIApiKey.mockReset().mockResolvedValue(false)
     mockSetVoiceTranscriptionOpenAIApiKey.mockReset().mockResolvedValue(undefined)
+    ;(settingsQueries.getSetting as Mock).mockReset().mockReturnValue(null)
+    ;(settingsQueries.setSetting as Mock).mockClear()
+    ;(settingsQueries.deleteSetting as Mock).mockClear()
+    ;(getSettingsSyncManager as Mock).mockReset().mockReturnValue({
+      updateField: mockUpdateField
+    })
     ;(getDatabase as Mock).mockReturnValue({})
   })
 
   afterEach(() => {
+    Object.defineProperty(process, 'platform', { configurable: true, value: originalPlatform })
     unregisterSettingsHandlers()
   })
 
@@ -241,6 +287,39 @@ describe('settings-handlers', () => {
     })
     expect(clearResult).toEqual({ success: true })
     expect(settingsQueries.deleteSetting).toHaveBeenCalledWith({}, 'journal.defaultTemplate')
+  })
+
+  it('covers journal defaults and boolean updates when the vault state changes', async () => {
+    registerSettingsHandlers()
+    ;(getDatabase as Mock).mockImplementationOnce(() => {
+      throw new Error('no db')
+    })
+
+    const noVaultSettings = await invokeHandler(SettingsChannels.invoke.GET_JOURNAL_SETTINGS)
+    expect(noVaultSettings).toEqual({
+      defaultTemplate: null,
+      showSchedule: true,
+      showTasks: true,
+      showAIConnections: true,
+      showStatsFooter: false
+    })
+
+    const updateResult = await invokeHandler(SettingsChannels.invoke.SET_JOURNAL_SETTINGS, {
+      showSchedule: false,
+      showTasks: false,
+      showAIConnections: false,
+      showStatsFooter: true
+    })
+
+    expect(updateResult).toEqual({ success: true })
+    expect(settingsQueries.setSetting).toHaveBeenCalledWith({}, 'journal.showSchedule', 'false')
+    expect(settingsQueries.setSetting).toHaveBeenCalledWith({}, 'journal.showTasks', 'false')
+    expect(settingsQueries.setSetting).toHaveBeenCalledWith(
+      {},
+      'journal.showAIConnections',
+      'false'
+    )
+    expect(settingsQueries.setSetting).toHaveBeenCalledWith({}, 'journal.showStatsFooter', 'true')
   })
 
   it('gets and sets AI settings', async () => {
@@ -327,6 +406,36 @@ describe('settings-handlers', () => {
     expect(mockDownloadVoiceModel).toHaveBeenCalledOnce()
   })
 
+  it('returns voice download and BYOK errors without throwing', async () => {
+    registerSettingsHandlers()
+    mockDownloadVoiceModel.mockResolvedValueOnce(false)
+    mockGetVoiceModelStatus.mockReturnValueOnce({
+      name: 'Whisper Small',
+      downloaded: false,
+      loaded: false,
+      loading: false,
+      error: 'network failed'
+    })
+
+    await expect(invokeHandler(SettingsChannels.invoke.DOWNLOAD_VOICE_MODEL)).resolves.toEqual({
+      success: false,
+      error: 'network failed'
+    })
+
+    mockDownloadVoiceModel.mockRejectedValueOnce(new Error('disk full'))
+    await expect(invokeHandler(SettingsChannels.invoke.DOWNLOAD_VOICE_MODEL)).resolves.toEqual({
+      success: false,
+      error: 'disk full'
+    })
+
+    mockSetVoiceTranscriptionOpenAIApiKey.mockRejectedValueOnce('bad key')
+    await expect(
+      invokeHandler(SettingsChannels.invoke.SET_VOICE_TRANSCRIPTION_OPENAI_KEY, {
+        apiKey: 'sk-bad'
+      })
+    ).resolves.toEqual({ success: false, error: 'Unknown error' })
+  })
+
   it('handles AI model status and load flows', async () => {
     registerSettingsHandlers()
     ;(embeddings.getModelInfo as Mock).mockReturnValue({
@@ -367,6 +476,53 @@ describe('settings-handlers', () => {
     })
     const failedResult = await invokeHandler(SettingsChannels.invoke.LOAD_AI_MODEL)
     expect(failedResult).toEqual({ success: false, error: 'init failed' })
+  })
+
+  it('recovers corrupted group settings and covers group setters', async () => {
+    registerSettingsHandlers()
+    ;(settingsQueries.getSetting as Mock).mockReturnValueOnce('{bad json')
+
+    const generalSettings = await invokeHandler(SettingsChannels.invoke.GET_GENERAL_SETTINGS)
+    expect(generalSettings).toEqual(expect.objectContaining({ theme: 'system' }))
+    expect(settingsQueries.deleteSetting).toHaveBeenCalledWith({}, 'general')
+
+    await invokeHandler(SettingsChannels.invoke.SET_EDITOR_SETTINGS, { width: 'wide' })
+    await invokeHandler(SettingsChannels.invoke.SET_TASK_SETTINGS, { defaultProjectId: 'work' })
+    await invokeHandler(SettingsChannels.invoke.SET_SYNC_SETTINGS, { autoSync: false })
+    await invokeHandler(SettingsChannels.invoke.SET_BACKUP_SETTINGS, { enabled: true })
+    await invokeHandler(SettingsChannels.invoke.SET_GRAPH_SETTINGS, { depth: 3 })
+    await invokeHandler(SettingsChannels.invoke.SET_CALENDAR_SETTINGS, { weekStartsOn: 1 })
+
+    expect(settingsQueries.setSetting).toHaveBeenCalledWith(
+      {},
+      'editor',
+      expect.stringContaining('"width":"wide"')
+    )
+    expect(settingsQueries.setSetting).toHaveBeenCalledWith(
+      {},
+      'tasks',
+      expect.stringContaining('"defaultProjectId":"work"')
+    )
+    expect(settingsQueries.setSetting).toHaveBeenCalledWith(
+      {},
+      'sync',
+      expect.stringContaining('"autoSync":false')
+    )
+    expect(settingsQueries.setSetting).toHaveBeenCalledWith(
+      {},
+      'backup',
+      expect.stringContaining('"enabled":true')
+    )
+    expect(settingsQueries.setSetting).toHaveBeenCalledWith(
+      {},
+      'graph',
+      expect.stringContaining('"depth":3')
+    )
+    expect(settingsQueries.setSetting).toHaveBeenCalledWith(
+      {},
+      'calendar',
+      expect.stringContaining('"weekStartsOn":1')
+    )
   })
 
   it('reindexes embeddings and updates tab settings', async () => {
@@ -514,7 +670,21 @@ describe('settings-handlers', () => {
       await invokeHandler(SettingsChannels.invoke.SET_GENERAL_SETTINGS, { startOnBoot: true })
 
       // #then
+      expect(mockSetLoginItemSettings).toHaveBeenCalledWith({ openAtLogin: true })
       expect(mockUpdateField).not.toHaveBeenCalled()
+    })
+
+    it('#given login item update fails #when startOnBoot is set #then returns settings success', async () => {
+      registerSettingsHandlers()
+      mockSetLoginItemSettings.mockImplementationOnce(() => {
+        throw new Error('not allowed')
+      })
+
+      const result = await invokeHandler(SettingsChannels.invoke.SET_GENERAL_SETTINGS, {
+        startOnBoot: true
+      })
+
+      expect(result).toEqual({ success: true })
     })
 
     it('#given sync manager exists #when multiple syncable fields updated #then syncs each', async () => {
@@ -607,6 +777,97 @@ describe('settings-handlers', () => {
 
       expect(mockWritePreferences).not.toHaveBeenCalled()
       expect(settingsQueries.setSetting).toHaveBeenCalled()
+    })
+
+    it('#given config writes fail #when portable/editor settings changed #then persists settings anyway', async () => {
+      registerSettingsHandlers()
+      mockWritePreferences.mockImplementationOnce(() => {
+        throw new Error('read only')
+      })
+
+      const generalResult = await invokeHandler(SettingsChannels.invoke.SET_GENERAL_SETTINGS, {
+        theme: 'dark'
+      })
+      expect(generalResult).toEqual({ success: true })
+
+      mockWritePreferences.mockImplementationOnce(() => {
+        throw new Error('read only')
+      })
+      const editorResult = await invokeHandler(SettingsChannels.invoke.SET_EDITOR_SETTINGS, {
+        width: 'wide'
+      })
+      expect(editorResult).toEqual({ success: true })
+    })
+  })
+
+  describe('global capture shortcut', () => {
+    it('#given no binding #when registered #then unregisters existing shortcuts only', () => {
+      registerSettingsHandlers()
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(JSON.stringify({}))
+
+      const result = applyGlobalCaptureShortcut()
+
+      expect(result).toEqual({ success: true, registered: false })
+      expect(mockGlobalShortcutUnregisterAll).toHaveBeenCalledTimes(1)
+      expect(mockGlobalShortcutRegister).not.toHaveBeenCalled()
+    })
+
+    it('#given macOS permission missing #when registered #then reports permission requirement', () => {
+      registerSettingsHandlers()
+      Object.defineProperty(process, 'platform', { configurable: true, value: 'darwin' })
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(
+        JSON.stringify({ globalCapture: { key: 'Space', modifiers: { meta: true } } })
+      )
+      mockIsTrustedAccessibilityClient.mockReturnValueOnce(false)
+
+      expect(applyGlobalCaptureShortcut()).toEqual({
+        success: false,
+        registered: false,
+        permissionRequired: true
+      })
+      expect(mockGlobalShortcutRegister).not.toHaveBeenCalled()
+    })
+
+    it('#given shortcut conflict #when registered #then reports accelerator in use', () => {
+      registerSettingsHandlers()
+      Object.defineProperty(process, 'platform', { configurable: true, value: 'darwin' })
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(
+        JSON.stringify({
+          globalCapture: { key: 'Space', modifiers: { meta: true, shift: true, alt: true } }
+        })
+      )
+      mockGlobalShortcutRegister.mockReturnValueOnce(false)
+
+      expect(applyGlobalCaptureShortcut()).toEqual({
+        success: false,
+        registered: false,
+        error: 'Shortcut CommandOrControl+Alt+Shift+Space is already in use'
+      })
+    })
+
+    it('#given shortcut registered #when accelerator fires #then opens quick capture windows', () => {
+      registerSettingsHandlers()
+      Object.defineProperty(process, 'platform', { configurable: true, value: 'linux' })
+      ;(settingsQueries.getSetting as Mock).mockReturnValue(
+        JSON.stringify({
+          globalCapture: { key: 'K', modifiers: { ctrl: true } }
+        })
+      )
+      let callback: (() => void) | undefined
+      mockGetAllWindows.mockReturnValue([
+        { isDestroyed: () => false, webContents: { send: mockSend } },
+        { isDestroyed: () => true, webContents: { send: vi.fn() } }
+      ])
+      mockGlobalShortcutRegister.mockImplementationOnce((_accelerator, cb) => {
+        callback = cb
+        return true
+      })
+
+      expect(applyGlobalCaptureShortcut()).toEqual({ success: true, registered: true })
+
+      callback?.()
+      expect(mockGlobalShortcutRegister).toHaveBeenCalledWith('Control+K', expect.any(Function))
+      expect(mockSend).toHaveBeenCalledWith('quick-capture:open')
     })
   })
 

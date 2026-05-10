@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act, fireEvent } from '@testing-library/react'
 import { type ReactNode } from 'react'
 import { HintModeProvider, useHintModeContext } from '@/contexts/hint-mode'
+import { useHintActivation } from '@/hooks/use-hint-activation'
 
 const wrapper = ({ children }: { children: ReactNode }): React.JSX.Element => (
   <HintModeProvider>{children}</HintModeProvider>
@@ -134,5 +135,71 @@ describe('HintModeProvider', () => {
 
     expect(result.current.state.typedChars).toBe('')
     expect(result.current.state.isActive).toBe(true)
+  })
+
+  it('useHintActivation starts hint mode from plain F and ignores text inputs', () => {
+    addButton('Inbox')
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+
+    const { result } = renderHook(
+      () => {
+        useHintActivation()
+        return useHintModeContext()
+      },
+      { wrapper }
+    )
+
+    input.focus()
+    fireEvent.keyDown(window, { key: 'f', code: 'KeyF' })
+    expect(result.current.state.isActive).toBe(false)
+
+    input.blur()
+    fireEvent.keyDown(window, { key: 'f', code: 'KeyF' })
+    expect(result.current.state.isActive).toBe(true)
+  })
+
+  it('useHintActivation handles active-mode typing, backspace, escape, composition, and input blur', () => {
+    const btn = addButton('Inbox')
+    addButton('Ideas')
+    const clickSpy = vi.spyOn(btn, 'click')
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+
+    const { result } = renderHook(
+      () => {
+        useHintActivation()
+        return useHintModeContext()
+      },
+      { wrapper }
+    )
+
+    fireEvent.keyDown(window, { key: 'f', code: 'KeyF', isComposing: true })
+    expect(result.current.state.isActive).toBe(false)
+
+    fireEvent.keyDown(window, { key: 'F', code: 'KeyF', altKey: true })
+    expect(result.current.state.isActive).toBe(true)
+
+    fireEvent.keyDown(window, { key: 'x' })
+    expect(result.current.state.typedChars).toBe('')
+    fireEvent.keyDown(window, { key: 'I' })
+    expect(result.current.state.typedChars).toBe('I')
+    expect(clickSpy).not.toHaveBeenCalled()
+    fireEvent.keyDown(window, { key: 'Backspace' })
+    expect(result.current.state.typedChars).toBe('')
+
+    fireEvent.keyDown(window, { key: 'I' })
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(result.current.state.isActive).toBe(false)
+
+    fireEvent.keyDown(window, { key: 'F', code: 'KeyF', altKey: true })
+    fireEvent.keyDown(window, { key: 'I' })
+    fireEvent.keyDown(window, { key: 'N' })
+    expect(clickSpy).toHaveBeenCalledOnce()
+    expect(result.current.state.isActive).toBe(false)
+
+    input.focus()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(document.activeElement).not.toBe(input)
   })
 })

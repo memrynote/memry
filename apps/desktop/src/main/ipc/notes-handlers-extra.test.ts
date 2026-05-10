@@ -1,0 +1,588 @@
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
+import { NotesChannels } from '@memry/contracts/notes-api'
+import { PropertyTypes } from '@memry/contracts/property-types'
+
+const mocks = vi.hoisted(() => {
+  const handlers = new Map<string, (event: unknown, input?: unknown) => unknown>()
+  const removeHandler = vi.fn((channel: string) => handlers.delete(channel))
+  const webContents = {
+    printToPDF: vi.fn().mockResolvedValue(Buffer.from('pdf'))
+  }
+  const windowInstance = {
+    loadURL: vi.fn().mockResolvedValue(undefined),
+    webContents,
+    destroy: vi.fn()
+  }
+  const BrowserWindow = Object.assign(
+    vi.fn(function BrowserWindowMock() {
+      return windowInstance
+    }),
+    {
+      getAllWindows: vi.fn(() => [])
+    }
+  )
+
+  return {
+    handlers,
+    removeHandler,
+    dialog: {
+      showSaveDialog: vi.fn(),
+      showOpenDialog: vi.fn()
+    },
+    BrowserWindow,
+    windowInstance,
+    webContents,
+    fsWriteFile: vi.fn(),
+    resolveNoteByTitle: vi.fn(),
+    getNoteTags: vi.fn(),
+    getAllTagDefinitions: vi.fn(),
+    deleteNoteSnapshot: vi.fn(),
+    getNotesInFolder: vi.fn(),
+    reorderNotesInFolder: vi.fn(),
+    getAllNotePositions: vi.fn(),
+    getNoteById: vi.fn(),
+    saveAttachment: vi.fn(),
+    listNoteAttachments: vi.fn(),
+    deleteAttachment: vi.fn(),
+    importFiles: vi.fn(),
+    getVersionHistory: vi.fn(),
+    getVersion: vi.fn(),
+    restoreVersion: vi.fn(),
+    readFolderConfig: vi.fn(),
+    writeFolderConfig: vi.fn(),
+    getFolderTemplate: vi.fn(),
+    syncFolderConfigSet: vi.fn(),
+    syncFolderConfigRename: vi.fn(),
+    syncFolderConfigDelete: vi.fn(),
+    setNoteLocalOnlyCommand: vi.fn(),
+    createPropertyDefinitionRecord: vi.fn(),
+    updatePropertyDefinitionRecord: vi.fn(),
+    deletePropertyDefinitionRecord: vi.fn(),
+    countLocalOnlyNoteMetadata: vi.fn(),
+    listPropertyDefinitions: vi.fn(),
+    emitNoteAttachmentSaved: vi.fn(),
+    fromMemryFileUrl: vi.fn(),
+    service: {
+      get: vi.fn(),
+      upsert: vi.fn(),
+      addOption: vi.fn(),
+      addStatusOption: vi.fn(),
+      removeOption: vi.fn(),
+      renameOption: vi.fn(),
+      updateOptionColor: vi.fn(),
+      remove: vi.fn()
+    }
+  }
+})
+
+vi.mock('electron', () => ({
+  ipcMain: {
+    handle: vi.fn((channel: string, handler: (event: unknown, input?: unknown) => unknown) => {
+      mocks.handlers.set(channel, handler)
+    }),
+    removeHandler: mocks.removeHandler
+  },
+  dialog: mocks.dialog,
+  BrowserWindow: mocks.BrowserWindow
+}))
+
+vi.mock('fs/promises', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('fs/promises')>()),
+  writeFile: mocks.fsWriteFile
+}))
+
+vi.mock('../database', () => ({
+  getDatabase: vi.fn(() => ({ id: 'data-db' })),
+  getIndexDatabase: vi.fn(() => ({ id: 'index-db' }))
+}))
+
+vi.mock('../vault/notes', () => ({
+  getNoteById: mocks.getNoteById,
+  getNoteByPath: vi.fn(),
+  getFileById: vi.fn(),
+  listNotes: vi.fn(),
+  getTagsWithCounts: vi.fn(),
+  getNoteLinks: vi.fn(),
+  getFolders: vi.fn(),
+  createFolder: vi.fn(),
+  renameFolder: vi.fn(),
+  deleteFolder: vi.fn(),
+  noteExists: vi.fn(),
+  openExternal: vi.fn(),
+  revealInFinder: vi.fn(),
+  getVersionHistory: mocks.getVersionHistory,
+  getVersion: mocks.getVersion,
+  restoreVersion: mocks.restoreVersion,
+  importFiles: mocks.importFiles
+}))
+
+vi.mock('../notes/domain', () => ({
+  createNoteCommand: vi.fn(),
+  updateNoteCommand: vi.fn(),
+  renameNoteCommand: vi.fn(),
+  moveNoteCommand: vi.fn(),
+  deleteNoteCommand: vi.fn(),
+  setNoteLocalOnlyCommand: mocks.setNoteLocalOnlyCommand
+}))
+
+vi.mock('../notes/store', () => ({
+  resolveNoteByTitle: mocks.resolveNoteByTitle,
+  getNoteTags: mocks.getNoteTags,
+  getAllTagDefinitions: mocks.getAllTagDefinitions,
+  deleteNoteSnapshot: mocks.deleteNoteSnapshot,
+  getNotesInFolder: mocks.getNotesInFolder,
+  reorderNotesInFolder: mocks.reorderNotesInFolder,
+  getAllNotePositions: mocks.getAllNotePositions
+}))
+
+vi.mock('../vault/attachments', () => ({
+  saveAttachment: mocks.saveAttachment,
+  deleteAttachment: mocks.deleteAttachment,
+  listNoteAttachments: mocks.listNoteAttachments
+}))
+
+vi.mock('../vault/folders', () => ({
+  readFolderConfig: mocks.readFolderConfig,
+  writeFolderConfig: mocks.writeFolderConfig,
+  getFolderTemplate: mocks.getFolderTemplate
+}))
+
+vi.mock('../notes/folder-config-effects', () => ({
+  syncFolderConfigSet: mocks.syncFolderConfigSet,
+  syncFolderConfigRename: mocks.syncFolderConfigRename,
+  syncFolderConfigDelete: mocks.syncFolderConfigDelete
+}))
+
+vi.mock('../vault/property-definition-store', () => ({
+  createPropertyDefinitionRecord: mocks.createPropertyDefinitionRecord,
+  updatePropertyDefinitionRecord: mocks.updatePropertyDefinitionRecord,
+  deletePropertyDefinitionRecord: mocks.deletePropertyDefinitionRecord
+}))
+
+vi.mock('../vault/property-definitions', () => ({
+  DEFAULT_STATUS_DEFINITION: {
+    name: 'Status',
+    type: 'status',
+    categories: { todo: [], in_progress: [], done: [] }
+  },
+  PropertyDefinitionsService: {
+    get: () => mocks.service
+  }
+}))
+
+vi.mock('../lib/export-utils', () => ({
+  renderNoteAsHtml: vi.fn(() => '<html><body>note</body></html>'),
+  sanitizeFilename: vi.fn((value: string) => value.replace(/\W+/g, '_'))
+}))
+
+vi.mock('../lib/main-i18n', () => ({
+  getMainI18n: () => ({
+    t: (key: string) => key,
+    getFixedT: () => (key: string) => key
+  })
+}))
+
+vi.mock('../lib/paths', () => ({
+  fromMemryFileUrl: mocks.fromMemryFileUrl
+}))
+
+vi.mock('../notes/runtime-effects', () => ({
+  emitNoteAttachmentSaved: mocks.emitNoteAttachmentSaved
+}))
+
+vi.mock('../telemetry/track', () => ({
+  trackMainEvent: vi.fn()
+}))
+
+vi.mock('@memry/storage-data', () => ({
+  countLocalOnlyNoteMetadata: mocks.countLocalOnlyNoteMetadata,
+  listPropertyDefinitions: mocks.listPropertyDefinitions
+}))
+
+vi.mock('@memry/shared/file-types', () => ({
+  getAllSupportedExtensions: vi.fn(() => ['md', 'pdf', 'png'])
+}))
+
+import { registerNotesHandlers, unregisterNotesHandlers } from './notes-handlers'
+
+const invoke = async (channel: string, input?: unknown): Promise<unknown> => {
+  const handler = mocks.handlers.get(channel)
+  expect(handler, `missing handler for ${channel}`).toBeTypeOf('function')
+  return handler?.({}, input)
+}
+
+const successful = (result: unknown): unknown => {
+  if (result && typeof result === 'object' && 'success' in result) {
+    expect((result as { success: boolean }).success).toBe(true)
+  }
+  return result
+}
+
+describe('notes-handlers extra coverage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.handlers.clear()
+    mocks.webContents.printToPDF.mockResolvedValue(Buffer.from('pdf'))
+    mocks.windowInstance.loadURL.mockResolvedValue(undefined)
+    mocks.fsWriteFile.mockResolvedValue(undefined)
+    mocks.fromMemryFileUrl.mockReturnValue('/vault/.memry/attachments/note-a/file.png')
+    mocks.service.get.mockReturnValue(null)
+    registerNotesHandlers()
+  })
+
+  afterEach(() => {
+    unregisterNotesHandlers()
+    mocks.handlers.clear()
+  })
+
+  it('resolves WikiLink targets and preview metadata with tag colors', async () => {
+    mocks.resolveNoteByTitle.mockReturnValueOnce(null)
+
+    await expect(invoke(NotesChannels.invoke.RESOLVE_BY_TITLE, 'Missing')).resolves.toBeNull()
+
+    mocks.resolveNoteByTitle.mockReturnValueOnce({
+      id: 'note-a',
+      path: 'Daily.md',
+      title: 'Daily',
+      fileType: null
+    })
+
+    expect(await invoke(NotesChannels.invoke.RESOLVE_BY_TITLE, 'Daily')).toEqual({
+      id: 'note-a',
+      path: 'Daily.md',
+      title: 'Daily',
+      fileType: 'markdown'
+    })
+
+    mocks.resolveNoteByTitle.mockReturnValueOnce({
+      id: 'note-a',
+      title: 'Daily',
+      fileType: 'markdown',
+      emoji: 'x',
+      snippet: 'Preview text',
+      createdAt: '2026-05-10T00:00:00.000Z'
+    })
+    mocks.getNoteTags.mockReturnValue(['work', 'plain'])
+    mocks.getAllTagDefinitions.mockReturnValue([{ name: 'work', color: 'blue' }])
+
+    expect(await invoke(NotesChannels.invoke.PREVIEW_BY_TITLE, 'Daily')).toEqual({
+      id: 'note-a',
+      title: 'Daily',
+      emoji: 'x',
+      snippet: 'Preview text',
+      tags: [
+        { name: 'work', color: 'blue' },
+        { name: 'plain', color: 'stone' }
+      ],
+      createdAt: '2026-05-10T00:00:00.000Z'
+    })
+
+    mocks.resolveNoteByTitle.mockReturnValueOnce({ id: 'asset-a', fileType: 'pdf' })
+    await expect(invoke(NotesChannels.invoke.PREVIEW_BY_TITLE, 'Asset')).resolves.toBeNull()
+  })
+
+  it('handles property definition and option mutation branches', async () => {
+    mocks.createPropertyDefinitionRecord.mockReturnValue({ name: 'Rating', type: 'number' })
+
+    expect(
+      successful(
+        await invoke(NotesChannels.invoke.CREATE_PROPERTY_DEFINITION, {
+          name: 'Rating',
+          type: PropertyTypes.NUMBER,
+          defaultValue: 5,
+          color: 'blue'
+        })
+      )
+    ).toEqual({ success: true, definition: { name: 'Rating', type: 'number' } })
+    expect(mocks.createPropertyDefinitionRecord).toHaveBeenCalledWith({
+      name: 'Rating',
+      type: PropertyTypes.NUMBER,
+      options: null,
+      defaultValue: '5',
+      color: 'blue'
+    })
+
+    mocks.service.get.mockReturnValueOnce({ name: 'Status', type: 'status' })
+    await invoke(NotesChannels.invoke.CREATE_PROPERTY_DEFINITION, {
+      name: 'Status',
+      type: PropertyTypes.STATUS,
+      defaultValue: true
+    })
+    expect(mocks.service.upsert).toHaveBeenCalledWith({
+      name: 'Status',
+      type: PropertyTypes.STATUS,
+      options: undefined,
+      defaultValue: 'true'
+    })
+
+    mocks.service.get.mockReturnValueOnce(null)
+    expect(
+      await invoke(NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION, {
+        name: 'Missing',
+        type: PropertyTypes.SELECT
+      })
+    ).toEqual({
+      success: false,
+      definition: null,
+      error: 'system:error.definitionNotFound'
+    })
+
+    mocks.service.get.mockReturnValueOnce({ name: 'Status', type: 'status', options: [] })
+    await invoke(NotesChannels.invoke.UPDATE_PROPERTY_DEFINITION, {
+      name: 'Status',
+      type: PropertyTypes.STATUS,
+      defaultValue: new Date('2026-05-10T00:00:00.000Z')
+    })
+    expect(mocks.service.upsert).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        name: 'Status',
+        defaultValue: '2026-05-10T00:00:00.000Z'
+      })
+    )
+
+    mocks.service.get.mockReturnValueOnce(null)
+    await invoke(NotesChannels.invoke.ENSURE_PROPERTY_DEFINITION, {
+      name: 'Mood',
+      type: PropertyTypes.SELECT
+    })
+    expect(mocks.service.upsert).toHaveBeenLastCalledWith({
+      name: 'Mood',
+      type: PropertyTypes.SELECT,
+      options: []
+    })
+
+    mocks.service.get.mockReturnValueOnce(null)
+    await invoke(NotesChannels.invoke.ADD_PROPERTY_OPTION, {
+      propertyName: 'Mood',
+      option: { value: 'Focused', color: 'green' }
+    })
+    expect(mocks.service.upsert).toHaveBeenLastCalledWith({
+      name: 'Mood',
+      type: 'select',
+      options: [{ value: 'Focused', color: 'green' }]
+    })
+
+    mocks.service.get.mockReturnValueOnce({ name: 'Mood', type: 'select' })
+    await invoke(NotesChannels.invoke.ADD_PROPERTY_OPTION, {
+      propertyName: 'Mood',
+      option: { value: 'Calm', color: 'blue' }
+    })
+    expect(mocks.service.addOption).toHaveBeenCalledWith('Mood', { value: 'Calm', color: 'blue' })
+
+    mocks.service.get.mockReturnValueOnce(null)
+    await invoke(NotesChannels.invoke.ADD_STATUS_OPTION, {
+      propertyName: 'Status',
+      categoryKey: 'todo',
+      option: { value: 'Queued', color: 'gray' }
+    })
+    expect(mocks.service.addStatusOption).toHaveBeenCalledWith('Status', 'todo', {
+      value: 'Queued',
+      color: 'gray'
+    })
+
+    await invoke(NotesChannels.invoke.REMOVE_PROPERTY_OPTION, {
+      propertyName: 'Mood',
+      optionValue: 'Calm'
+    })
+    await invoke(NotesChannels.invoke.RENAME_PROPERTY_OPTION, {
+      propertyName: 'Mood',
+      oldValue: 'Focused',
+      newValue: 'Deep work'
+    })
+    await invoke(NotesChannels.invoke.UPDATE_OPTION_COLOR, {
+      propertyName: 'Mood',
+      optionValue: 'Deep work',
+      newColor: 'purple'
+    })
+    await invoke(NotesChannels.invoke.DELETE_PROPERTY_DEFINITION, { name: 'Mood' })
+
+    expect(mocks.service.removeOption).toHaveBeenCalledWith('Mood', 'Calm')
+    expect(mocks.service.renameOption).toHaveBeenCalledWith('Mood', 'Focused', 'Deep work')
+    expect(mocks.service.updateOptionColor).toHaveBeenCalledWith('Mood', 'Deep work', 'purple')
+    expect(mocks.service.remove).toHaveBeenCalledWith('Mood')
+    expect(mocks.deletePropertyDefinitionRecord).toHaveBeenCalledWith('Mood')
+  })
+
+  it('handles attachments and import dialog workflows', async () => {
+    mocks.saveAttachment.mockResolvedValue({
+      success: true,
+      path: 'memry-file://attachments/note-a/file.png'
+    })
+    await invoke(NotesChannels.invoke.UPLOAD_ATTACHMENT, {
+      noteId: 'note-a',
+      filename: 'file.png',
+      data: [1, 2, 3]
+    })
+    expect(mocks.emitNoteAttachmentSaved).toHaveBeenCalledWith(
+      'note-a',
+      '/vault/.memry/attachments/note-a/file.png'
+    )
+
+    mocks.listNoteAttachments.mockResolvedValue([{ filename: 'file.png' }])
+    await expect(invoke(NotesChannels.invoke.LIST_ATTACHMENTS, 'note-a')).resolves.toEqual([
+      { filename: 'file.png' }
+    ])
+
+    await invoke(NotesChannels.invoke.DELETE_ATTACHMENT, {
+      noteId: 'note-a',
+      filename: 'file.png'
+    })
+    expect(mocks.deleteAttachment).toHaveBeenCalledWith('note-a', 'file.png')
+
+    mocks.importFiles.mockResolvedValue({
+      success: true,
+      imported: 2,
+      failed: 0,
+      errors: [],
+      importedFiles: [
+        { destPath: '/vault/notes/Doc.md', filename: 'Doc.md', fileType: 'markdown' },
+        { destPath: '/vault/notes/photo.png', filename: 'photo.png', fileType: 'image' }
+      ]
+    })
+
+    await invoke(NotesChannels.invoke.IMPORT_FILES, {
+      sourcePaths: ['/tmp/Doc.md', '/tmp/photo.png'],
+      targetFolder: 'Inbox'
+    })
+    expect(mocks.emitNoteAttachmentSaved).toHaveBeenCalledWith(
+      'vault-import',
+      '/vault/notes/photo.png'
+    )
+
+    mocks.dialog.showOpenDialog.mockResolvedValueOnce({ canceled: true, filePaths: [] })
+    await expect(invoke(NotesChannels.invoke.SHOW_IMPORT_DIALOG)).resolves.toEqual({
+      canceled: true,
+      filePaths: []
+    })
+
+    mocks.dialog.showOpenDialog.mockResolvedValueOnce({
+      canceled: false,
+      filePaths: ['/tmp/Doc.md']
+    })
+    await expect(invoke(NotesChannels.invoke.SHOW_IMPORT_DIALOG)).resolves.toEqual({
+      canceled: false,
+      filePaths: ['/tmp/Doc.md']
+    })
+  })
+
+  it('exports notes to PDF and HTML with canceled and missing-note guards', async () => {
+    mocks.getNoteById.mockResolvedValueOnce(null)
+    expect(await invoke(NotesChannels.invoke.EXPORT_PDF, { noteId: 'missing' })).toEqual({
+      success: false,
+      error: 'error.noteNotFound'
+    })
+
+    const note = {
+      id: 'note-a',
+      title: 'Daily note',
+      content: '# Today',
+      emoji: null,
+      tags: ['work'],
+      created: new Date('2026-05-10T00:00:00.000Z'),
+      modified: new Date('2026-05-10T00:00:00.000Z')
+    }
+    mocks.getNoteById.mockResolvedValue(note)
+    mocks.dialog.showSaveDialog.mockResolvedValueOnce({
+      canceled: false,
+      filePath: '/tmp/Daily_note.pdf'
+    })
+
+    await expect(
+      invoke(NotesChannels.invoke.EXPORT_PDF, {
+        noteId: 'note-a',
+        includeMetadata: true,
+        pageSize: 'Letter'
+      })
+    ).resolves.toEqual({ success: true, path: '/tmp/Daily_note.pdf' })
+    expect(mocks.BrowserWindow).toHaveBeenCalledWith(
+      expect.objectContaining({ show: false, width: 800, height: 600 })
+    )
+    expect(mocks.webContents.printToPDF).toHaveBeenCalledWith(
+      expect.objectContaining({ pageSize: 'Letter', printBackground: true })
+    )
+    expect(mocks.fsWriteFile).toHaveBeenCalledWith('/tmp/Daily_note.pdf', Buffer.from('pdf'))
+
+    mocks.dialog.showSaveDialog.mockResolvedValueOnce({ canceled: true })
+    await expect(
+      invoke(NotesChannels.invoke.EXPORT_HTML, {
+        noteId: 'note-a',
+        includeMetadata: false,
+        pageSize: 'A4'
+      })
+    ).resolves.toEqual({ success: false, error: 'dialog.exportCancelled' })
+
+    mocks.dialog.showSaveDialog.mockResolvedValueOnce({
+      canceled: false,
+      filePath: '/tmp/Daily_note.html'
+    })
+    await expect(
+      invoke(NotesChannels.invoke.EXPORT_HTML, {
+        noteId: 'note-a',
+        includeMetadata: false,
+        pageSize: 'A4'
+      })
+    ).resolves.toEqual({ success: true, path: '/tmp/Daily_note.html' })
+    expect(mocks.fsWriteFile).toHaveBeenCalledWith(
+      '/tmp/Daily_note.html',
+      '<html><body>note</body></html>',
+      'utf-8'
+    )
+  })
+
+  it('handles position, version, folder, and local-only helper handlers', async () => {
+    mocks.getVersionHistory.mockReturnValue([{ id: 'snapshot-a' }])
+    mocks.getVersion.mockReturnValue({ id: 'snapshot-a', content: 'old' })
+    mocks.restoreVersion.mockResolvedValue({ id: 'note-a' })
+    mocks.getNotesInFolder.mockReturnValue([{ path: 'A.md', position: 0 }])
+    mocks.getAllNotePositions.mockReturnValue([
+      { path: 'A.md', position: 0 },
+      { path: 'B.md', position: 1 }
+    ])
+    mocks.setNoteLocalOnlyCommand.mockResolvedValue({ id: 'note-a', localOnly: true })
+    mocks.countLocalOnlyNoteMetadata.mockReturnValue(3)
+    mocks.readFolderConfig.mockResolvedValue({ icon: 'folder' })
+    mocks.getFolderTemplate.mockResolvedValue('template-a')
+
+    await expect(invoke(NotesChannels.invoke.GET_VERSIONS, 'note-a')).resolves.toEqual([
+      { id: 'snapshot-a' }
+    ])
+    await expect(invoke(NotesChannels.invoke.GET_VERSION, 'snapshot-a')).resolves.toEqual({
+      id: 'snapshot-a',
+      content: 'old'
+    })
+    await expect(invoke(NotesChannels.invoke.RESTORE_VERSION, 'snapshot-a')).resolves.toEqual({
+      success: true,
+      note: { id: 'note-a' }
+    })
+    await expect(invoke(NotesChannels.invoke.DELETE_VERSION, 'snapshot-a')).resolves.toEqual({
+      success: true
+    })
+    expect(mocks.deleteNoteSnapshot).toHaveBeenCalledWith({ id: 'index-db' }, 'snapshot-a')
+
+    await expect(
+      invoke(NotesChannels.invoke.GET_POSITIONS, { folderPath: 'Projects' })
+    ).resolves.toEqual({ success: true, positions: [{ path: 'A.md', position: 0 }] })
+    await expect(invoke(NotesChannels.invoke.GET_ALL_POSITIONS)).resolves.toEqual({
+      success: true,
+      positions: { 'A.md': 0, 'B.md': 1 }
+    })
+    await expect(
+      invoke(NotesChannels.invoke.REORDER, {
+        folderPath: 'Projects',
+        notePaths: ['B.md', 'A.md']
+      })
+    ).resolves.toEqual({ success: true })
+
+    await expect(invoke(NotesChannels.invoke.GET_FOLDER_CONFIG, 'Projects')).resolves.toEqual({
+      icon: 'folder'
+    })
+    await expect(invoke(NotesChannels.invoke.GET_FOLDER_TEMPLATE, 'Projects')).resolves.toBe(
+      'template-a'
+    )
+
+    await expect(
+      invoke(NotesChannels.invoke.SET_LOCAL_ONLY, { id: 'note-a', localOnly: true })
+    ).resolves.toEqual({ success: true, note: { id: 'note-a', localOnly: true } })
+    await expect(invoke(NotesChannels.invoke.GET_LOCAL_ONLY_COUNT)).resolves.toEqual({ count: 3 })
+  })
+})

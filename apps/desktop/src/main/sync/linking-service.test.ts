@@ -107,6 +107,7 @@ import {
   clearPendingLinkCompletion,
   clearPendingSession,
   completeLinkingQr,
+  getLinkingVerificationCode,
   initiateDeviceLinking,
   linkViaQr
 } from './linking-service'
@@ -372,6 +373,210 @@ describe('linking-service provider auth transfer', () => {
       expect(mockSend).toHaveBeenCalledWith('sync:linking-finalized', {
         deviceId: 'device-1',
         warning: 'Google Calendar needs reconnect on this device for: account-b'
+      })
+    })
+  })
+
+  it('returns guard errors for invalid QR data and missing sessions', async () => {
+    expect(await linkViaQr('not-json', 'setup-token')).toEqual({
+      success: false,
+      error: 'Invalid QR code data'
+    })
+
+    expect(await linkViaQr(JSON.stringify({ sessionId: 'session-1' }), 'setup-token')).toEqual({
+      success: false,
+      error: 'Malformed QR code data'
+    })
+
+    expect(
+      await linkViaQr(
+        JSON.stringify({
+          sessionId: 'session-1',
+          ephemeralPublicKey: sodium.to_base64(
+            new Uint8Array(32).fill(71),
+            sodium.base64_variants.ORIGINAL
+          ),
+          linkingSecret: sodium.to_base64(
+            new Uint8Array(32).fill(4),
+            sodium.base64_variants.ORIGINAL
+          ),
+          expiresAt: Math.floor(Date.now() / 1000) - 1
+        }),
+        'setup-token'
+      )
+    ).toEqual({ success: false, error: 'Linking session has expired' })
+
+    expect(await completeLinkingQr('missing')).toEqual({
+      success: false,
+      error: 'No pending linking session found'
+    })
+    expect(await approveDeviceLinking('missing', 'access-token')).toEqual({
+      success: false,
+      error: 'No pending linking session found for this session ID'
+    })
+    expect(await getLinkingVerificationCode('missing', 'access-token')).toEqual({
+      error: 'No pending linking session found'
+    })
+  })
+
+  it('expires pending sessions before approval or completion', async () => {
+    await initiateDeviceLinking('access-token')
+    const expiredNow = Math.floor(Date.now() / 1000) + 301
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(expiredNow * 1000)
+
+    expect(await approveDeviceLinking('session-1', 'access-token')).toEqual({
+      success: false,
+      error: 'Linking session has expired'
+    })
+
+    dateNowSpy.mockRestore()
+
+    const expiresAt = Math.floor(Date.now() / 1000) + 300
+    await linkViaQr(
+      JSON.stringify({
+        sessionId: 'session-1',
+        ephemeralPublicKey: sodium.to_base64(
+          new Uint8Array(32).fill(71),
+          sodium.base64_variants.ORIGINAL
+        ),
+        linkingSecret: sodium.to_base64(
+          new Uint8Array(32).fill(4),
+          sodium.base64_variants.ORIGINAL
+        ),
+        expiresAt
+      }),
+      'setup-token'
+    )
+
+    const completeDateNowSpy = vi.spyOn(Date, 'now').mockReturnValue((expiresAt + 1) * 1000)
+    expect(await completeLinkingQr('session-1')).toEqual({
+      success: false,
+      error: 'Linking session has expired'
+    })
+    completeDateNowSpy.mockRestore()
+  })
+
+  it('reports not-yet-approved completion states without clearing the pending session', async () => {
+    const { SyncServerError } = await import('./http-client')
+    const qrData = JSON.stringify({
+      sessionId: 'session-1',
+      ephemeralPublicKey: sodium.to_base64(
+        new Uint8Array(32).fill(71),
+        sodium.base64_variants.ORIGINAL
+      ),
+      linkingSecret: sodium.to_base64(new Uint8Array(32).fill(4), sodium.base64_variants.ORIGINAL),
+      expiresAt: Math.floor(Date.now() / 1000) + 300
+    })
+
+    await linkViaQr(qrData, 'setup-token')
+    mockPostToServer.mockResolvedValueOnce({ success: true })
+    expect(await completeLinkingQr('session-1')).toEqual({
+      success: false,
+      error: 'Session not yet approved'
+    })
+
+    await linkViaQr(qrData, 'setup-token')
+    mockPostToServer.mockRejectedValueOnce(new SyncServerError('wait', 409))
+    expect(await completeLinkingQr('session-1')).toEqual({
+      success: false,
+      error: 'Session not yet approved'
+    })
+  })
+
+  it('rejects tampered approvals and missing local master keys', async () => {
+    const crypto = await import('../crypto')
+
+    await initiateDeviceLinking('access-token')
+    vi.mocked(crypto.constantTimeEqual).mockReturnValueOnce(false)
+    expect(await approveDeviceLinking('session-1', 'access-token')).toEqual({
+      success: false,
+      error: 'Device verification failed — linking data may be corrupted'
+    })
+
+    await initiateDeviceLinking('access-token')
+    vi.mocked(crypto.retrieveKey).mockResolvedValueOnce(null)
+    expect(await approveDeviceLinking('session-1', 'access-token')).toEqual({
+      success: false,
+      error: 'Master key not found in keychain'
+    })
+  })
+
+  it('handles unscanned sessions, verification codes, and provider decrypt warnings', async () => {
+    const qrData = JSON.stringify({
+      sessionId: 'session-1',
+      ephemeralPublicKey: sodium.to_base64(
+        new Uint8Array(32).fill(71),
+        sodium.base64_variants.ORIGINAL
+      ),
+      linkingSecret: sodium.to_base64(new Uint8Array(32).fill(4), sodium.base64_variants.ORIGINAL),
+      expiresAt: Math.floor(Date.now() / 1000) + 300
+    })
+
+    await initiateDeviceLinking('access-token')
+    mockGetFromServer.mockResolvedValueOnce({
+      sessionId: 'session-1',
+      status: 'pending',
+      newDevicePublicKey: null,
+      newDeviceConfirm: null,
+      expiresAt: Math.floor(Date.now() / 1000) + 300
+    })
+    expect(await approveDeviceLinking('session-1', 'access-token')).toEqual({
+      success: false,
+      error: 'Session has not been scanned yet'
+    })
+
+    await initiateDeviceLinking('access-token')
+    expect(await getLinkingVerificationCode('session-1', 'access-token')).toEqual({
+      verificationCode: '123456'
+    })
+
+    await initiateDeviceLinking('access-token')
+    mockGetFromServer.mockResolvedValueOnce({
+      sessionId: 'session-1',
+      status: 'pending',
+      newDevicePublicKey: null,
+      expiresAt: Math.floor(Date.now() / 1000) + 300
+    })
+    expect(await getLinkingVerificationCode('session-1', 'access-token')).toEqual({
+      error: 'Session has not been scanned yet'
+    })
+
+    mockPostToServer.mockImplementation(async (path: string) => {
+      if (path === '/auth/linking/scan') return { success: true }
+      if (path === '/auth/linking/complete') {
+        return {
+          success: true,
+          encryptedMasterKey: sodium.to_base64(
+            new Uint8Array([41, 42, 43]),
+            sodium.base64_variants.ORIGINAL
+          ),
+          encryptedKeyNonce: sodium.to_base64(
+            new Uint8Array(24).fill(8),
+            sodium.base64_variants.ORIGINAL
+          ),
+          keyConfirm: sodium.to_base64(
+            new Uint8Array(32).fill(11),
+            sodium.base64_variants.ORIGINAL
+          ),
+          encryptedProviderAuth: 'encrypted-provider-auth',
+          encryptedProviderAuthNonce: 'provider-auth-nonce',
+          providerAuthConfirm: 'provider-auth-confirm',
+          providerAuthVersion: 1
+        }
+      }
+      return { success: true }
+    })
+    mockDecryptGoogleProviderAuthTransfer.mockImplementationOnce(() => {
+      throw new Error('bad provider payload')
+    })
+
+    await linkViaQr(qrData, 'setup-token')
+    expect(await completeLinkingQr('session-1')).toEqual({ success: true })
+    await waitUntil(() => {
+      expect(mockSend).toHaveBeenCalledWith('sync:linking-finalized', {
+        deviceId: 'device-1',
+        warning:
+          'Google Calendar auth could not be restored on this device. Reconnect Google if needed.'
       })
     })
   })

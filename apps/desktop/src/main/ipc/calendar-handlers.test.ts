@@ -23,6 +23,21 @@ const mockSyncGoogleCalendarSource = vi.fn()
 const mockStartGoogleCalendarSyncRunner = vi.fn(async () => {})
 const mockStopGoogleCalendarSyncRunner = vi.fn()
 const mockIsMemryUserSignedIn = vi.fn(async () => true)
+const mockPushSelectionToggle = vi.fn()
+const mockListGoogleCalendars = vi.fn()
+const mockSetDefaultGoogleCalendar = vi.fn()
+const mockCreateGoogleCalendarClient = vi.fn((options: unknown) => ({ options }))
+const mockPromoteExternalEvent = vi.fn()
+
+const mockCalendarPromoteErrors = vi.hoisted(() => {
+  class ExternalEventNotFoundError extends Error {}
+  class ExternalEventSourceMissingError extends Error {}
+
+  return {
+    ExternalEventNotFoundError,
+    ExternalEventSourceMissingError
+  }
+})
 
 vi.mock('electron', () => ({
   ipcMain: {
@@ -71,6 +86,27 @@ vi.mock('../calendar/google/sync-service', () => ({
   stopGoogleCalendarSyncRunner: (...args: unknown[]) => mockStopGoogleCalendarSyncRunner(...args)
 }))
 
+vi.mock('../calendar/google/onboarding', () => ({
+  listGoogleCalendars: (...args: unknown[]) => mockListGoogleCalendars(...args),
+  setDefaultGoogleCalendar: (...args: unknown[]) => mockSetDefaultGoogleCalendar(...args)
+}))
+
+vi.mock('../calendar/google/client', () => ({
+  createGoogleCalendarClient: (...args: unknown[]) => mockCreateGoogleCalendarClient(...args)
+}))
+
+vi.mock('../calendar/google/push-runtime', () => ({
+  getGooglePushRuntime: vi.fn(() => ({
+    handleSelectionToggle: (...args: unknown[]) => mockPushSelectionToggle(...args)
+  }))
+}))
+
+vi.mock('../calendar/promote-external-event', () => ({
+  promoteExternalEvent: (...args: unknown[]) => mockPromoteExternalEvent(...args),
+  ExternalEventNotFoundError: mockCalendarPromoteErrors.ExternalEventNotFoundError,
+  ExternalEventSourceMissingError: mockCalendarPromoteErrors.ExternalEventSourceMissingError
+}))
+
 vi.mock('../auth-state', () => ({
   isMemryUserSignedIn: (...args: unknown[]) => mockIsMemryUserSignedIn(...args)
 }))
@@ -101,6 +137,22 @@ describe('calendar-handlers', () => {
     mockListGoogleAccountIds.mockReturnValue([])
     mockResolveDefaultGoogleAccountId.mockReturnValue(null)
     mockDisconnectGoogleCalendar.mockResolvedValue(undefined)
+    mockIsMemryUserSignedIn.mockResolvedValue(true)
+    mockSyncGoogleCalendarSource.mockResolvedValue(undefined)
+    mockPushSelectionToggle.mockResolvedValue(undefined)
+    mockListGoogleCalendars.mockResolvedValue({
+      calendars: [{ id: 'primary', summary: 'Primary' }],
+      primary: { id: 'primary', summary: 'Primary' },
+      currentDefaultId: 'primary'
+    })
+    mockSetDefaultGoogleCalendar.mockReturnValue({
+      success: true,
+      source: { id: 'google-calendar:primary', remoteId: 'primary' }
+    })
+    mockPromoteExternalEvent.mockReturnValue({
+      success: true,
+      eventId: 'promoted-event'
+    })
   })
 
   afterEach(() => {
@@ -585,6 +637,147 @@ describe('calendar-handlers', () => {
       entityType: 'calendar_source',
       id: 'google-calendar-1'
     })
+    expect(mockPushSelectionToggle).toHaveBeenCalledWith({
+      sourceId: 'google-calendar-1',
+      isSelected: false,
+      calendarId: 'remote-calendar-1'
+    })
+  })
+
+  it('covers calendar handler error and provider edge paths', async () => {
+    registerCalendarHandlers()
+
+    expect(await invokeHandler(CalendarChannels.invoke.GET_EVENT, 'missing-event')).toBeNull()
+    expect(
+      await invokeHandler(CalendarChannels.invoke.UPDATE_EVENT, {
+        id: 'missing-event',
+        title: 'Nope'
+      })
+    ).toEqual({ success: false, event: null, error: 'Calendar event not found' })
+    expect(await invokeHandler(CalendarChannels.invoke.DELETE_EVENT, 'missing-event')).toEqual({
+      success: false,
+      error: 'Calendar event not found'
+    })
+
+    expect(
+      await invokeHandler(CalendarChannels.invoke.UPDATE_SOURCE_SELECTION, {
+        id: 'missing-source',
+        isSelected: true
+      })
+    ).toEqual({
+      success: false,
+      source: null,
+      error: 'Calendar source not found'
+    })
+
+    db.run(sql`
+      INSERT INTO calendar_sources (
+        id, provider, kind, account_id, remote_id, title, timezone,
+        is_selected, sync_status, created_at, modified_at
+      ) VALUES (
+        ${'google-account:edge@example.com'}, ${'google'}, ${'account'},
+        ${'edge@example.com'}, ${'edge@example.com'}, ${'Edge Account'}, ${'UTC'},
+        ${0}, ${'ok'}, ${'2026-04-12T08:00:00.000Z'}, ${'2026-04-12T08:00:00.000Z'}
+      )
+    `)
+
+    expect(
+      await invokeHandler(CalendarChannels.invoke.UPDATE_SOURCE_SELECTION, {
+        id: 'google-account:edge@example.com',
+        isSelected: true
+      })
+    ).toEqual({
+      success: false,
+      source: null,
+      error: 'Only calendar sources can be selected'
+    })
+
+    mockIsMemryUserSignedIn.mockResolvedValueOnce(false)
+    const unsignedRefresh = await invokeHandler(CalendarChannels.invoke.REFRESH_PROVIDER, {
+      provider: 'google'
+    })
+    expect(unsignedRefresh).toEqual(
+      expect.objectContaining({
+        success: false,
+        error: 'Sign in to Memry before refreshing Google Calendar'
+      })
+    )
+
+    expect(await invokeHandler(CalendarChannels.invoke.LIST_GOOGLE_CALENDARS, {})).toEqual({
+      calendars: [],
+      primary: null,
+      currentDefaultId: null
+    })
+
+    mockResolveDefaultGoogleAccountId.mockReturnValue('edge@example.com')
+    const listedCalendars = await invokeHandler(CalendarChannels.invoke.LIST_GOOGLE_CALENDARS, {})
+    expect(mockCreateGoogleCalendarClient).toHaveBeenCalledWith({ accountId: 'edge@example.com' })
+    expect(listedCalendars).toEqual({
+      calendars: [{ id: 'primary', summary: 'Primary' }],
+      primary: { id: 'primary', summary: 'Primary' },
+      currentDefaultId: 'primary'
+    })
+
+    expect(
+      await invokeHandler(CalendarChannels.invoke.SET_DEFAULT_GOOGLE_CALENDAR, {
+        calendarId: 'primary'
+      })
+    ).toEqual({
+      success: true,
+      source: { id: 'google-calendar:primary', remoteId: 'primary' }
+    })
+
+    expect(
+      await invokeHandler(CalendarChannels.invoke.RETRY_GOOGLE_CALENDAR_SOURCE_SYNC, {
+        sourceId: 'missing-source'
+      })
+    ).toEqual({ success: false, source: null, error: 'Calendar source not found' })
+
+    expect(
+      await invokeHandler(CalendarChannels.invoke.RETRY_GOOGLE_CALENDAR_SOURCE_SYNC, {
+        sourceId: 'google-account:edge@example.com'
+      })
+    ).toEqual({
+      success: false,
+      source: null,
+      error: 'Only Google calendar sources can be retried'
+    })
+
+    db.run(sql`
+      INSERT INTO calendar_sources (
+        id, provider, kind, account_id, remote_id, title, timezone,
+        is_selected, sync_status, created_at, modified_at
+      ) VALUES (
+        ${'google-calendar:edge'}, ${'google'}, ${'calendar'},
+        ${'edge@example.com'}, ${'edge-calendar'}, ${'Edge Calendar'}, ${'UTC'},
+        ${1}, ${'error'}, ${'2026-04-12T08:00:00.000Z'}, ${'2026-04-12T08:00:00.000Z'}
+      )
+    `)
+    mockSyncGoogleCalendarSource.mockRejectedValueOnce(new Error('retry failed'))
+    expect(
+      await invokeHandler(CalendarChannels.invoke.RETRY_GOOGLE_CALENDAR_SOURCE_SYNC, {
+        sourceId: 'google-calendar:edge'
+      })
+    ).toEqual({
+      success: false,
+      source: expect.objectContaining({ id: 'google-calendar:edge' }),
+      error: 'retry failed'
+    })
+
+    expect(
+      await invokeHandler(CalendarChannels.invoke.PROMOTE_EXTERNAL_EVENT, {
+        externalEventId: 'external-event-1'
+      })
+    ).toEqual({ success: true, eventId: 'promoted-event' })
+
+    mockPromoteExternalEvent.mockImplementationOnce(() => {
+      throw new mockCalendarPromoteErrors.ExternalEventNotFoundError('external missing')
+    })
+    expect(
+      await invokeHandler(CalendarChannels.invoke.PROMOTE_EXTERNAL_EVENT, {
+        externalEventId: 'missing-external'
+      })
+    ).toEqual({ success: false, eventId: null, error: 'external missing' })
   })
 
   it('returns one account in status.accounts per connected Google account (M6 T3)', async () => {
