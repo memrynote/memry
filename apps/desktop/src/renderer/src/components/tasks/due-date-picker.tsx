@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef, useId } from 'react'
 import { Calendar as CalendarIcon, Star, X, Clock, Plus, Sun } from '@/lib/icons'
 
 import { Button } from '@/components/ui/button'
@@ -176,6 +176,7 @@ export const DueDatePicker = ({
   const [inputValue, setInputValue] = useState('') // Track input value for conditional shortcuts
   const triggerRef = useRef<HTMLButtonElement>(null)
   const naturalDateInputRef = useRef<NaturalDateInputRef>(null)
+  const pickerContentId = useId()
 
   const quickOptions = useMemo(() => getQuickDateOptions(), [])
 
@@ -323,22 +324,23 @@ export const DueDatePicker = ({
           ref={triggerRef}
           variant="outline"
           role="combobox"
+          aria-controls={pickerContentId}
           aria-expanded={isOpen}
           aria-label={tPhaseF('phaseF.componentsTasksDueDatePicker.selectDueDate')}
           className={cn(
-            'w-full justify-start text-left font-normal',
+            'w-full justify-start text-start font-normal',
             !date && 'text-muted-foreground',
             dateDisplay && statusColors[dateDisplay.status],
             className
           )}
         >
-          <CalendarIcon className="mr-2 size-4 shrink-0" />
+          <CalendarIcon className="me-2 size-4 shrink-0" />
           {date ? (
             <span className="truncate">
               {dateDisplay?.text}
-              {time && <span className="ml-1 text-muted-foreground">· {formatTime(time)}</span>}
+              {time && <span className="ms-1 text-muted-foreground">· {formatTime(time)}</span>}
               {dateDisplay?.status === 'overdue' && (
-                <span className="ml-1 text-xs opacity-80">
+                <span className="ms-1 text-xs opacity-80">
                   · {tPhaseF('phaseF.componentsTasksDueDatePicker.overdue')}
                 </span>
               )}
@@ -349,7 +351,7 @@ export const DueDatePicker = ({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-80 p-0" align="start">
+      <PopoverContent id={pickerContentId} className="w-80 p-0" align="start">
         {!showCalendar ? (
           <div className="flex flex-col">
             {/* Natural Language Input */}

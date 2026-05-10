@@ -69,10 +69,11 @@ export const NoteDrawer = memo(function NoteDrawer({
 
   // Focus close button when drawer opens
   useEffect(() => {
-    if (isOpen && closeButtonRef.current) {
-      // Small delay to allow animation to start
-      setTimeout(() => closeButtonRef.current?.focus(), 100)
-    }
+    if (!isOpen || !closeButtonRef.current) return
+
+    // Small delay to allow animation to start
+    const focusTimeout = setTimeout(() => closeButtonRef.current?.focus(), 100)
+    return () => clearTimeout(focusTimeout)
   }, [isOpen])
 
   // Handle click outside
@@ -106,9 +107,9 @@ export const NoteDrawer = memo(function NoteDrawer({
         aria-labelledby="drawer-title"
         aria-hidden={!isOpen}
         className={cn(
-          'fixed top-0 right-0 bottom-0 z-50',
+          'fixed top-0 end-0 bottom-0 z-50',
           'w-[40vw] min-w-[360px] max-w-[600px]',
-          'bg-card border-l border-border',
+          'bg-card border-s border-border',
           'shadow-[-4px_0_20px_rgba(0,0,0,0.15)]',
           'flex flex-col',
           'transform transition-transform duration-250 ease-out',

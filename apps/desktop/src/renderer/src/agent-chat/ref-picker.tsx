@@ -77,6 +77,7 @@ export function RefPicker({ query, onPick, onClose }: RefPickerProps): React.JSX
           key={`${result.kind}-${result.id}`}
           type="button"
           role="option"
+          aria-selected={false}
           className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm hover:bg-accent hover:text-accent-foreground"
           onClick={() => onPick({ kind: result.kind, ref_id: result.id, label: result.label })}
         >

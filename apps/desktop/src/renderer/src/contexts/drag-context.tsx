@@ -304,6 +304,8 @@ export const useDragContext = (): DragContextValue => {
   return context
 }
 
+export const useOptionalDragContext = (): DragContextValue | null => useContext(DragContext)
+
 // ============================================================================
 // PROVIDER
 // ============================================================================
