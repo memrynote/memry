@@ -206,6 +206,15 @@ export function listJournalEntries(db: IndexDb): NoteCache[] {
     .all()
 }
 
+export function listJournalEntriesInRange(db: IndexDb, from: string, to: string): NoteCache[] {
+  return db
+    .select()
+    .from(noteCache)
+    .where(and(sql`${noteCache.date} >= ${from}`, sql`${noteCache.date} <= ${to}`))
+    .orderBy(desc(noteCache.date))
+    .all()
+}
+
 export function countJournalEntries(db: IndexDb): number {
   const result = db
     .select({ count: count() })
