@@ -194,7 +194,7 @@ describe('migrateSettingsToConfig', () => {
     const general = JSON.parse(generalRaw!)
     expect(general.theme).toBe('white')
     expect(general.fontFamily).toBe('geist')
-    expect(general.language).toBe(GENERAL_SETTINGS_DEFAULTS.language)
+    expect(general.language).toBe('de')
   })
 
   it('#given fresh vault with no SQLite data #then writes defaults everywhere', () => {
