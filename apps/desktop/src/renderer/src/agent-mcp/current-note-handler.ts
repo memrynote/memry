@@ -2,7 +2,6 @@ import { useEffect } from 'react'
 
 import { useActiveTab } from '@/contexts/tabs'
 import { createLogger } from '@/lib/logger'
-import { extractMarkdownFromActiveEditor } from '@/components/note/content-area/hooks/use-editor-sync'
 
 const log = createLogger('AgentMcpCurrentNote')
 const CURRENT_NOTE_CHANNEL = 'agent_mcp:get_current_note'
@@ -22,6 +21,8 @@ export function useAgentMcpCurrentNoteResponder(): void {
       }
 
       try {
+        const { extractMarkdownFromActiveEditor } =
+          await import('@/components/note/content-area/hooks/use-editor-sync')
         const markdown = await extractMarkdownFromActiveEditor(activeNoteId)
         if (markdown === null) {
           window.api.respondToMainInvoke(requestId, null)
