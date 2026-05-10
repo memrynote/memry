@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { ApprovalModal } from './approval-modal'
 import { useAgentOptional } from './agent-context'
 import { ConversationView } from './conversation-view'
 import { EmptyState } from './empty-state'
@@ -51,7 +52,12 @@ export function AgentPane(): React.JSX.Element {
     )
   }
 
-  return <ConversationView conversationId={state.activeConversationId} />
+  return (
+    <>
+      <ConversationView conversationId={state.activeConversationId} />
+      <ApprovalModal />
+    </>
+  )
 }
 
 export default AgentPane
