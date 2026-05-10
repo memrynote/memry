@@ -4,12 +4,18 @@ vi.mock('electron', () => ({
   BrowserWindow: { fromId: vi.fn() }
 }))
 
+vi.mock('../../../../lib/window-rpc', () => ({
+  mainToRendererInvoke: vi.fn()
+}))
+
 import { BrowserWindow } from 'electron'
+import { mainToRendererInvoke } from '../../../../lib/window-rpc'
 import { snapshotCurrentNoteFromWindow } from '../current-note'
 
 describe('snapshotCurrentNoteFromWindow', () => {
   beforeEach(() => {
     vi.mocked(BrowserWindow.fromId).mockReset()
+    vi.mocked(mainToRendererInvoke).mockReset()
   })
 
   it('returns null when window id is invalid', async () => {
@@ -24,15 +30,16 @@ describe('snapshotCurrentNoteFromWindow', () => {
   })
 
   it('asks the renderer and returns the snapshot', async () => {
-    const invoke = vi.fn(async () => ({
+    vi.mocked(mainToRendererInvoke).mockResolvedValue({
       id: 'n1',
       title: 'Today',
       content_markdown: '# Today',
       tags: ['daily']
-    }))
-    vi.mocked(BrowserWindow.fromId).mockReturnValue({
-      webContents: { invoke }
-    } as unknown as Electron.BrowserWindow)
+    })
+    const win = {
+      webContents: {}
+    } as unknown as Electron.BrowserWindow
+    vi.mocked(BrowserWindow.fromId).mockReturnValue(win)
 
     await expect(snapshotCurrentNoteFromWindow('99')).resolves.toEqual({
       id: 'n1',
@@ -40,6 +47,6 @@ describe('snapshotCurrentNoteFromWindow', () => {
       content_markdown: '# Today',
       tags: ['daily']
     })
-    expect(invoke).toHaveBeenCalledWith('agent_mcp:get_current_note', undefined)
+    expect(mainToRendererInvoke).toHaveBeenCalledWith(win, 'agent_mcp:get_current_note', undefined)
   })
 })

@@ -1591,6 +1591,12 @@ interface WindowAPI {
   windowClose: () => void
 }
 
+interface MainInvokePayload {
+  requestId: string
+  channel: string
+  payload?: unknown
+}
+
 // Full API interface
 interface API extends WindowAPI, GeneratedRpcApi {
   getFileDropPaths: (files: File[]) => string[]
@@ -1711,6 +1717,8 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onUpdaterStateChanged: (callback: (state: AppUpdateState) => void) => () => void
   onAppNavigationCommand: (callback: (command: AppNavigationCommandEvent) => void) => () => void
   onLocaleChanged: (callback: (locale: Locale) => void) => () => void
+  onMainInvoke: (callback: (payload: MainInvokePayload) => void | Promise<void>) => () => void
+  respondToMainInvoke: (requestId: string, response: unknown) => void
   onCrdtStateChanged: (
     callback: (data: { noteId: string; update: number[]; origin: string }) => void
   ) => () => void
