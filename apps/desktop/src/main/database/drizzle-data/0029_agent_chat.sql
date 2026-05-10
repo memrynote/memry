@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS `vault_metadata` (
   `created_at` INTEGER NOT NULL,
   `updated_at` INTEGER NOT NULL
 );
+--> statement-breakpoint
 
 CREATE TABLE IF NOT EXISTS `agent_conversations` (
   `id` TEXT PRIMARY KEY NOT NULL,
@@ -22,10 +23,13 @@ CREATE TABLE IF NOT EXISTS `agent_conversations` (
   `deleted_at` INTEGER,
   `last_synced_at` INTEGER
 );
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS `agent_conversations_by_vault`
   ON `agent_conversations` (`vault_id`);
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS `agent_conversations_by_updated`
   ON `agent_conversations` (`vault_id`, `updated_at`);
+--> statement-breakpoint
 
 CREATE TABLE IF NOT EXISTS `agent_messages` (
   `id` TEXT PRIMARY KEY NOT NULL,
@@ -40,5 +44,6 @@ CREATE TABLE IF NOT EXISTS `agent_messages` (
   `updated_at` INTEGER NOT NULL,
   `deleted_at` INTEGER
 );
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS `agent_messages_by_conversation`
   ON `agent_messages` (`conversation_id`, `created_at`);
