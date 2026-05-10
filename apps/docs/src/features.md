@@ -48,9 +48,10 @@ A global command palette (<kbd>Cmd</kbd>+<kbd>K</kbd>) with scoped filters, tag 
 
 ## AI Features
 
-Inline AI menu in the editor, on-device embedding model for semantic search, voice transcription, and pluggable providers (Ollama / OpenAI / Anthropic).
+Inline AI menu in the editor, on-device embedding model for semantic search, voice transcription,
+a localhost MCP server for vault read tools, and pluggable providers (Ollama / OpenAI / Anthropic).
 
-→ [AI Features](/user-guide/ai/inline-menu)
+→ [AI Features](/user-guide/ai/inline-menu) · [Agent MCP Server](/user-guide/ai/agent-mcp)
 
 ## Sync & Devices
 

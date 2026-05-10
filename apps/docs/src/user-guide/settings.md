@@ -6,7 +6,7 @@ Settings are organized into four groups:
 
 - **Workspace** — how Memry behaves day-to-day (Account, General, Templates, Editor, Journal, Tasks, Calendar)
 - **Preferences** — your personal taste (Appearance, Keyboard Shortcuts)
-- **Services** — external integrations and AI (AI, Integrations)
+- **Services** — external integrations and AI (AI, Agent MCP, Integrations)
 - **Data** — what's on disk and metadata (Vault, Tags, Properties)
 
 <!-- screenshot: settings modal with sidebar of sections -->
@@ -178,6 +178,19 @@ Inline editor AI menu (grammar, tone, length, custom prompt).
 - **API Key** — required for OpenAI / Anthropic
 - **Base URL** — defaults to `http://localhost:11434/v1` for Ollama
 - **Test Connection** — verifies URL + key
+
+## Agent MCP
+
+Local MCP server controls for external desktop AI clients.
+
+- **Server URL** — localhost endpoint copied into an MCP client
+- **Bearer Token** — per-launch in-memory token copied as an authorization header
+- **Rotate Token** — immediately invalidates the previous token
+- **Registered Tools** — count of exposed vault tools
+
+Read tools are available through the server today. Create and update tools are visible to clients but
+return `PERMISSION_DENIED` until the in-app approval flow exists. See
+[Agent MCP Server](/user-guide/ai/agent-mcp).
 
 ---
 
