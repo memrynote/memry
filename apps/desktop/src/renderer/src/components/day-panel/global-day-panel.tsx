@@ -1,5 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
+import { AgentPane } from '@/agent-chat/agent-pane'
+import { SidebarTabs } from '@/agent-chat/sidebar-tabs'
 import {
   useDayPanel,
   DAY_PANEL_WIDTH_DEFAULT_PX,
@@ -221,24 +223,31 @@ export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
       >
         {isOpen && <DayPanelResizeRail />}
 
-        <div className="flex-1 overflow-y-auto pt-3">
-          <div className="px-4 pb-3">
-            <DatePickerCalendar
-              selected={selectedDateObj}
-              onSelect={handleDateSelect}
-              activityData={isCalendarTabActive ? undefined : journalActivityData}
-              dayDots={isCalendarTabActive ? dayDotsData : undefined}
-              hoveredEventColor={hoveredEventColor}
-              className="w-full"
-              showWeekNumbers
-              onTodayClick={handleTodayClick}
-            />
-          </div>
-          <div className="h-px mx-4 bg-border/30" />
-          <div className="p-4">
-            <JournalDayPanel date={selectedDate} onHoverColor={handleHoverColor} />
-          </div>
-        </div>
+        <SidebarTabs>
+          {{
+            day: (
+              <div className="h-full overflow-y-auto pt-3">
+                <div className="px-4 pb-3">
+                  <DatePickerCalendar
+                    selected={selectedDateObj}
+                    onSelect={handleDateSelect}
+                    activityData={isCalendarTabActive ? undefined : journalActivityData}
+                    dayDots={isCalendarTabActive ? dayDotsData : undefined}
+                    hoveredEventColor={hoveredEventColor}
+                    className="w-full"
+                    showWeekNumbers
+                    onTodayClick={handleTodayClick}
+                  />
+                </div>
+                <div className="h-px mx-4 bg-border/30" />
+                <div className="p-4">
+                  <JournalDayPanel date={selectedDate} onHoverColor={handleHoverColor} />
+                </div>
+              </div>
+            ),
+            agent: <AgentPane />
+          }}
+        </SidebarTabs>
       </div>
     </div>
   )

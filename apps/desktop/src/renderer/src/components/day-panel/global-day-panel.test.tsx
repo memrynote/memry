@@ -1,5 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 
 import { CalendarViewProvider } from '@/contexts/calendar-view-context'
@@ -90,5 +91,17 @@ describe('GlobalDayPanel', () => {
 
     expect(screen.getByTestId('journal-day-panel')).toBeInTheDocument()
     expect(journalPanelRenderCount.current).toBeLessThanOrEqual(2)
+  })
+
+  it('switches between day and agent sidebar tabs', async () => {
+    const user = userEvent.setup()
+    renderPanel()
+
+    expect(screen.getByRole('tab', { name: /Day/ })).toHaveAttribute('aria-selected', 'true')
+
+    await user.click(screen.getByRole('tab', { name: /Agent/ }))
+
+    expect(screen.getByText('Agent chat')).toBeInTheDocument()
+    expect(screen.queryByTestId('journal-day-panel')).not.toBeInTheDocument()
   })
 })
