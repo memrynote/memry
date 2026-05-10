@@ -84,7 +84,14 @@ vi.mock('./runtime-effects', () => ({
 }))
 
 vi.mock('./social', () => ({
-  detectSocialPlatform: (url: string) => (url.includes('x.com') ? 'twitter' : null),
+  detectSocialPlatform: (url: string) => {
+    try {
+      const hostname = new URL(url).hostname.toLowerCase()
+      return hostname === 'x.com' || hostname.endsWith('.x.com') ? 'twitter' : null
+    } catch {
+      return null
+    }
+  },
   extractSocialPost: (...args: unknown[]) => mockExtractSocialPost(...args),
   isSocialPost: (url: string) => url.includes('x.com')
 }))
