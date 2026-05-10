@@ -49,6 +49,13 @@ pnpm test:e2e -- tests/notes.spec.ts    # one file
 >
 > Skipping the rebuild is the #1 source of "passes locally, fails in CI" surprises.
 
+### E2E Test Hooks
+
+Desktop E2E helpers live behind `globalThis.__memryTestHooks` and only register when
+`NODE_ENV=test`. Keep hooks deterministic and limited to test control surfaces such as seeded
+sync data, secondary windows, or Quick Capture shortcut probes. If a flow can be tested through
+normal user-visible UI, prefer that path before adding a hook.
+
 ### Virtualized UI Tests
 
 `@tanstack/react-virtual` doesn't render any items inside jsdom (heights are zero, virtualization sees no scrollable area). Cover virtualized calendar / week / list UIs at the **Playwright** layer only.
