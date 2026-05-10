@@ -1,0 +1,303 @@
+{
+  "title": "Journal",
+  "section": {
+    "journal": "Journal",
+    "aiConnections": "AI-tilkoblinger",
+    "todaysNotes": "Dagens notater",
+    "todaysSchedule": "Dagens timeplan",
+    "todaysTasks": "Dagens oppgaver",
+    "schedule": "Tidsplan",
+    "tasks": "Oppgaver",
+    "calendarEvents": "Kalenderhendelser",
+    "overdueTasks": "Forfalte oppgaver",
+    "technicalDetails": "Tekniske detaljer"
+  },
+  "action": {
+    "versionHistory": "Versjonshistorikk",
+    "export": "Eksporter",
+    "fullWidth": "Full bredde",
+    "journalSettings": "Journalinnstillinger",
+    "fullMode": "Full modus",
+    "compactMode": "Kompakt modus",
+    "focusMode": "Fokusmodus",
+    "exitFocusMode": "Avslutt fokusmodus",
+    "enterFocusMode": "Gå inn i fokusmodus",
+    "createNote": "Opprett notat",
+    "createNewNote": "Opprett et nytt notat",
+    "showLess": "Vis mindre",
+    "showMoreNotes": "Vis {count} mer merknad",
+    "showMoreNotes_plural": "Vis {count} flere notater",
+    "showFewerNotes": "Vis færre notater",
+    "startBlank": "Start tomt i stedet",
+    "changeTemplate": "Endre mal",
+    "dismissIndicator": "Avvis indikator",
+    "refreshConnections": "Oppdater tilkoblinger",
+    "reloadJournal": "Last journal på nytt",
+    "goToToday": "Gå til i dag",
+    "copyUnsavedContent": "Kopier ulagret innhold til utklippstavlen",
+    "openNoteFullPage": "Åpne notatet på helsiden",
+    "closeNoteDrawer": "Lukk notatskuffen",
+    "addBookmark": "Legg til bokmerke",
+    "removeBookmark": "Fjern bokmerket",
+    "tryAgain": "Prøv igjen"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "Hva planlegger du...",
+      "today": "Hva tenker du på i dag...",
+      "past": "Reflekter over denne dagen...",
+      "default": "Begynn å skrive..."
+    },
+    "toolbar": {
+      "ariaLabel": "Tekstformatering",
+      "bold": "Fet",
+      "italic": "Kursiv",
+      "underline": "Understrek",
+      "strikethrough": "Gjennomstreking",
+      "link": "Link",
+      "image": "Bilde",
+      "moreOptions": "Flere alternativer",
+      "heading1": "Overskrift 1",
+      "heading2": "Overskrift 2",
+      "heading3": "Overskrift 3",
+      "bulletList": "Punktliste",
+      "numberedList": "Nummerert liste",
+      "checklist": "Sjekkliste",
+      "quote": "Sitat",
+      "divider": "Avdeler",
+      "codeBlock": "Kodeblokk"
+    },
+    "prompt": {
+      "enterUrl": "Skriv inn URL:"
+    },
+    "upload": {
+      "noEntry": "Kan ikke laste opp bilde: ingen journalpost valgt",
+      "failed": "Kunne ikke laste opp bildet"
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "I dag",
+      "yesterday": "I går",
+      "tomorrow": "I morgen",
+      "future": "Fremtid"
+    },
+    "weekday": {
+      "sunday": "søndag",
+      "monday": "mandag",
+      "tuesday": "tirsdag",
+      "wednesday": "onsdag",
+      "thursday": "torsdag",
+      "friday": "fredag",
+      "saturday": "lørdag"
+    },
+    "weekdayShort": {
+      "sunday": "Sol",
+      "monday": "man",
+      "tuesday": "tirs",
+      "wednesday": "ons",
+      "thursday": "tor",
+      "friday": "fre",
+      "saturday": "Lør"
+    },
+    "month": {
+      "january": "januar",
+      "february": "februar",
+      "march": "mars",
+      "april": "april",
+      "may": "mai",
+      "june": "juni",
+      "july": "juli",
+      "august": "august",
+      "september": "september",
+      "october": "oktober",
+      "november": "november",
+      "december": "desember"
+    },
+    "monthShort": {
+      "january": "Jan",
+      "february": "feb",
+      "march": "Mar",
+      "april": "apr",
+      "may": "mai",
+      "june": "jun",
+      "july": "jul",
+      "august": "august",
+      "september": "sep",
+      "october": "okt",
+      "november": "nov",
+      "december": "des"
+    },
+    "greeting": {
+      "morning": "God morgen",
+      "afternoon": "God ettermiddag",
+      "evening": "God kveld",
+      "night": "God natt"
+    },
+    "allDay": "Hele dagen"
+  },
+  "nav": {
+    "previousDay": "Forrige dag",
+    "nextDay": "Neste dag",
+    "previousMonth": "Forrige måned",
+    "nextMonth": "Neste måned",
+    "previousYear": "Forrige år",
+    "nextYear": "Neste år",
+    "journalBack": "Journal tilbake",
+    "journalNavigation": "Journalnavigasjon",
+    "dateNavigation": "Journaldatonavigering",
+    "goToYearView": "Gå til årsvisning",
+    "previousView": "Forrige visning",
+    "nextView": "Neste visning"
+  },
+  "aria": {
+    "moreOptions": "Flere alternativer",
+    "documentStatistics": "Dokumentstatistikk",
+    "dayContext": "Dagskontekst: oppgaver og tidsplan",
+    "scheduleEvents": "Planlegg hendelser",
+    "tasks": "Oppgaver",
+    "notesCreatedToday": "{count}-notater opprettet i dag"
+  },
+  "empty": {
+    "noEntry": "Ingen inngang",
+    "noDaysInMonth": "Ingen dager i denne måneden",
+    "noEventsScheduled": "Ingen arrangementer planlagt",
+    "noEventsScheduledToday": "Ingen arrangementer planlagt i dag",
+    "noEventsWereScheduled": "Ingen arrangementer var planlagt",
+    "noTasksDue": "Ingen oppgaver pga",
+    "noTasksDueToday": "Ingen oppgaver forfaller i dag",
+    "noTasksWereDue": "Ingen oppgaver forelå",
+    "noNotesToday": "Ingen notater opprettet i dag",
+    "startDocumenting": "Begynn å dokumentere dine tanker og ideer"
+  },
+  "ai": {
+    "loading": "Analyserer oppføringen din ...",
+    "empty": {
+      "willAppear": "Tilkoblingene dine vises her",
+      "noneYet": "Ingen tilkoblinger funnet ennå",
+      "moreJournaling": "Etter hvert som du journalfører mer, vil AI finne relaterte oppføringer",
+      "keepWriting": "Fortsett å skrive for å finne relaterte oppføringer"
+    },
+    "error": {
+      "loadFailed": "Kunne ikke laste tilkoblinger"
+    },
+    "connectionAria": "Tilkobling til {label}, {scorePercent} % samsvar"
+  },
+  "count": {
+    "item": "element",
+    "items": "gjenstander",
+    "note": "merk",
+    "notes": "notater",
+    "day": "dag",
+    "days": "dager",
+    "event": "begivenhet",
+    "events": "hendelser",
+    "meeting": "møte",
+    "meetings": "møter",
+    "task": "oppgave",
+    "tasks": "oppgaver",
+    "todo": "å gjøre",
+    "people": "{count} mennesker",
+    "moreConnections": "+ {count} mer tilkobling",
+    "moreConnections_plural": "+ {count} flere tilkoblinger",
+    "moreNotes": "+ {count} mer merknad",
+    "moreNotes_plural": "+ {count} flere notater",
+    "daysWithEntries": "dager med oppføringer",
+    "charactersWritten": "tegn skrevet",
+    "words": "{count} ord",
+    "characters": "{count} tegn",
+    "completed": "{count} fullført",
+    "overdue": "{count} forsinket"
+  },
+  "stats": {
+    "wordCount": "Antall ord",
+    "characterCount": "Antall tegn",
+    "readingTime": "Beregnet lesetid",
+    "lastModified": "Sist endret",
+    "lessThanOneMinute": "< 1 min",
+    "minutes": "{minutes} min",
+    "read": "{readingTime} lest",
+    "modified": "Modifisert {date}"
+  },
+  "task": {
+    "completed": "Fullført",
+    "notCompleted": "Ikke fullført",
+    "priority": "{priority} prioritet",
+    "overdue": "forfalt",
+    "markComplete": "Merk \"{title}\" som fullført",
+    "markNotComplete": "Merk \"{title}\" som ikke fullført"
+  },
+  "template": {
+    "using": "Bruker \"{templateName}\""
+  },
+  "reminder": {
+    "hasReminders": "Har påminnelser",
+    "setToRevisit": "Still inn påminnelse om å besøke på nytt",
+    "tooltip": "Påminnelse: {date}",
+    "tooltipMore": "Påminnelse: {date} (+{count} mer)",
+    "success": {
+      "set": "Påminnelse satt for denne journalposten",
+      "deleted": "Påminnelse slettet",
+      "dismissed": "Påminnelse avvist",
+      "snoozed": "Påminnelsen er slumret"
+    },
+    "error": {
+      "set": "Kunne ikke angi påminnelse",
+      "delete": "Kunne ikke slette påminnelsen",
+      "dismiss": "Kunne ikke avvise påminnelsen",
+      "snooze": "Kunne ikke slumre påminnelsen"
+    }
+  },
+  "toast": {
+    "unsavedRetry": "Innholdet ditt er fortsatt i minnet. Klikk for å prøve å lagre på nytt.",
+    "noteNotFound": "Merk at \"{target}\" ikke ble funnet",
+    "fileNotFound": "Filen ble ikke funnet: {target}",
+    "openLinkedItemFailed": "Kunne ikke åpne koblet element",
+    "errorPrefix": "Feil:"
+  },
+  "export": {
+    "noteTitle": "Journal - {month} {day}, {year}"
+  },
+  "note": {
+    "generatedTitle": "Merk - {date}",
+    "openAria": "Åpne {title}, opprettet på {time}"
+  },
+  "tag": {
+    "suggestionsAria": "Tag-forslag",
+    "empty": {
+      "title": "Ingen tagger ennå",
+      "description": "Skriv for å lage en ny tag"
+    },
+    "groupTitle": "Tagger",
+    "create": "Opprett #{query}",
+    "ariaLabel": "Tag: {tag}, klikk for å filtrere"
+  },
+  "wiki": {
+    "suggestionsAria": "Sideforslag",
+    "empty": {
+      "title": "Ingen sider funnet"
+    },
+    "groupRecent": "Nylig",
+    "groupAllPages": "Alle sider",
+    "createNewPage": "Opprett ny side",
+    "ariaLabel": "Link til {title}"
+  },
+  "error": {
+    "title": "Journalfeil",
+    "description": "Journalen fant en feil for {date}. De siste endringene dine er kanskje ikke lagret.",
+    "descriptionNoDate": "Journalen fant en feil. De siste endringene dine er kanskje ikke lagret.",
+    "unsavedContent": "Ulagret innhold oppdaget ({length}-tegn)"
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "k"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveJournalEntry": "Kunne ikke lagre journaloppføringen",
+      "failedToLoadJournalSettings": "Kunne ikke laste journalinnstillinger",
+      "failedToUpdateSettings": "Kunne ikke oppdatere innstillingene"
+    }
+  }
+}

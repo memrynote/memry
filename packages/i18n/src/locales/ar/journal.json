@@ -1,1 +1,303 @@
-{}
+{
+  "title": "مجلة",
+  "section": {
+    "journal": "مجلة",
+    "aiConnections": "اتصالات الذكاء الاصطناعي",
+    "todaysNotes": "ملاحظات اليوم",
+    "todaysSchedule": "جدول اليوم",
+    "todaysTasks": "مهام اليوم",
+    "schedule": "الجدول الزمني",
+    "tasks": "المهام",
+    "calendarEvents": "أحداث التقويم",
+    "overdueTasks": "المهام المتأخرة",
+    "technicalDetails": "التفاصيل الفنية"
+  },
+  "action": {
+    "versionHistory": "تاريخ الإصدار",
+    "export": "تصدير",
+    "fullWidth": "العرض الكامل",
+    "journalSettings": "إعدادات المجلة",
+    "fullMode": "الوضع الكامل",
+    "compactMode": "الوضع المضغوط",
+    "focusMode": "وضع التركيز",
+    "exitFocusMode": "الخروج من وضع التركيز",
+    "enterFocusMode": "أدخل وضع التركيز",
+    "createNote": "إنشاء ملاحظة",
+    "createNewNote": "إنشاء ملاحظة جديدة",
+    "showLess": "عرض أقل",
+    "showMoreNotes": "إظهار المزيد من الملاحظات لـ {count}",
+    "showMoreNotes_plural": "عرض المزيد من الملاحظات على {count}",
+    "showFewerNotes": "عرض ملاحظات أقل",
+    "startBlank": "ابدأ فارغًا بدلاً من ذلك",
+    "changeTemplate": "تغيير القالب",
+    "dismissIndicator": "تجاهل المؤشر",
+    "refreshConnections": "تحديث الاتصالات",
+    "reloadJournal": "إعادة تحميل المجلة",
+    "goToToday": "اذهب إلى اليوم",
+    "copyUnsavedContent": "انسخ المحتوى غير المحفوظ إلى الحافظة",
+    "openNoteFullPage": "افتح الملاحظة في صفحة كاملة",
+    "closeNoteDrawer": "أغلق درج الملاحظات",
+    "addBookmark": "إضافة إشارة مرجعية",
+    "removeBookmark": "إزالة الإشارة المرجعية",
+    "tryAgain": "حاول مرة أخرى"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "ماذا تخطط...",
+      "today": "ماذا يدور في ذهنك اليوم...",
+      "past": "تأمل في هذا اليوم..",
+      "default": "ابدأ بالكتابة..."
+    },
+    "toolbar": {
+      "ariaLabel": "تنسيق النص",
+      "bold": "جريئة",
+      "italic": "مائل",
+      "underline": "تسطير",
+      "strikethrough": "يتوسطه خط",
+      "link": "رابط",
+      "image": "صورة",
+      "moreOptions": "المزيد من الخيارات",
+      "heading1": "العنوان 1",
+      "heading2": "العنوان 2",
+      "heading3": "العنوان 3",
+      "bulletList": "قائمة رصاصة",
+      "numberedList": "قائمة مرقمة",
+      "checklist": "قائمة التحقق",
+      "quote": "اقتباس",
+      "divider": "مقسم",
+      "codeBlock": "كتلة الكود"
+    },
+    "prompt": {
+      "enterUrl": "أدخل عنوان URL:"
+    },
+    "upload": {
+      "noEntry": "لا يمكن تحميل الصورة: لم يتم تحديد إدخال دفتر اليومية",
+      "failed": "فشل تحميل الصورة"
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "اليوم",
+      "yesterday": "أمس",
+      "tomorrow": "غدا",
+      "future": "المستقبل"
+    },
+    "weekday": {
+      "sunday": "الأحد",
+      "monday": "الاثنين",
+      "tuesday": "الثلاثاء",
+      "wednesday": "الأربعاء",
+      "thursday": "الخميس",
+      "friday": "الجمعة",
+      "saturday": "السبت"
+    },
+    "weekdayShort": {
+      "sunday": "الشمس",
+      "monday": "الاثنين",
+      "tuesday": "الثلاثاء",
+      "wednesday": "الأربعاء",
+      "thursday": "الخميس",
+      "friday": "الجمعة",
+      "saturday": "جلس"
+    },
+    "month": {
+      "january": "يناير",
+      "february": "فبراير",
+      "march": "مارس",
+      "april": "أبريل",
+      "may": "مايو",
+      "june": "يونيو",
+      "july": "يوليو",
+      "august": "أغسطس",
+      "september": "سبتمبر",
+      "october": "أكتوبر",
+      "november": "نوفمبر",
+      "december": "ديسمبر"
+    },
+    "monthShort": {
+      "january": "يناير",
+      "february": "فبراير",
+      "march": "مارس",
+      "april": "أبريل",
+      "may": "مايو",
+      "june": "يونيو",
+      "july": "يوليو",
+      "august": "أغسطس",
+      "september": "سبتمبر",
+      "october": "أكتوبر",
+      "november": "نوفمبر",
+      "december": "ديسمبر"
+    },
+    "greeting": {
+      "morning": "صباح الخير",
+      "afternoon": "مساء الخير",
+      "evening": "مساء الخير",
+      "night": "ليلة سعيدة"
+    },
+    "allDay": "طوال اليوم"
+  },
+  "nav": {
+    "previousDay": "اليوم السابق",
+    "nextDay": "في اليوم التالي",
+    "previousMonth": "الشهر السابق",
+    "nextMonth": "الشهر القادم",
+    "previousYear": "العام السابق",
+    "nextYear": "العام القادم",
+    "journalBack": "مجلة العودة",
+    "journalNavigation": "التنقل في المجلة",
+    "dateNavigation": "الملاحة تاريخ المجلة",
+    "goToYearView": "انتقل إلى عرض السنة",
+    "previousView": "العرض السابق",
+    "nextView": "العرض التالي"
+  },
+  "aria": {
+    "moreOptions": "المزيد من الخيارات",
+    "documentStatistics": "إحصائيات الوثيقة",
+    "dayContext": "سياق اليوم: المهام والجدول الزمني",
+    "scheduleEvents": "جدولة الأحداث",
+    "tasks": "المهام",
+    "notesCreatedToday": "تم إنشاء ملاحظات {count} اليوم"
+  },
+  "empty": {
+    "noEntry": "لا دخول",
+    "noDaysInMonth": "لا توجد أيام في هذا الشهر",
+    "noEventsScheduled": "لم يتم جدولة أي أحداث",
+    "noEventsScheduledToday": "لا توجد أحداث مجدولة اليوم",
+    "noEventsWereScheduled": "لم تتم جدولة أي أحداث",
+    "noTasksDue": "لا توجد مهام مستحقة",
+    "noTasksDueToday": "لا توجد مهام مستحقة اليوم",
+    "noTasksWereDue": "لم تكن هناك مهام مستحقة",
+    "noNotesToday": "لم يتم إنشاء أي ملاحظات اليوم",
+    "startDocumenting": "ابدأ بتوثيق أفكارك وأفكارك"
+  },
+  "ai": {
+    "loading": "جارٍ تحليل إدخالك...",
+    "empty": {
+      "willAppear": "سوف تظهر اتصالاتك هنا",
+      "noneYet": "لم يتم العثور على اتصالات حتى الآن",
+      "moreJournaling": "كلما قمت بتدوين يومياتك أكثر، سيجد الذكاء الاصطناعي الإدخالات ذات الصلة",
+      "keepWriting": "استمر في الكتابة لاكتشاف الإدخالات ذات الصلة"
+    },
+    "error": {
+      "loadFailed": "تعذر تحميل الاتصالات"
+    },
+    "connectionAria": "الاتصال بـ {label}، تطابق {scorePercent}%"
+  },
+  "count": {
+    "item": "البند",
+    "items": "العناصر",
+    "note": "ملاحظة",
+    "notes": "ملاحظات",
+    "day": "يوم",
+    "days": "أيام",
+    "event": "حدث",
+    "events": "الأحداث",
+    "meeting": "اجتماع",
+    "meetings": "الاجتماعات",
+    "task": "مهمة",
+    "tasks": "المهام",
+    "todo": "للقيام به",
+    "people": "{count} الناس",
+    "moreConnections": "+ {count} المزيد من الاتصال",
+    "moreConnections_plural": "+ {count} المزيد من الاتصالات",
+    "moreNotes": "+ {count} المزيد من الملاحظة",
+    "moreNotes_plural": "+ {count} المزيد من الملاحظات",
+    "daysWithEntries": "أيام مع الإدخالات",
+    "charactersWritten": "الشخصيات مكتوبة",
+    "words": "كلمات {count}",
+    "characters": "{count} أحرف",
+    "completed": "اكتمل {count}",
+    "overdue": "{count} متأخر"
+  },
+  "stats": {
+    "wordCount": "عدد الكلمات",
+    "characterCount": "عدد الأحرف",
+    "readingTime": "الوقت المقدر للقراءة",
+    "lastModified": "آخر تعديل",
+    "lessThanOneMinute": "< 1 دقيقة",
+    "minutes": "{minutes} دقيقة",
+    "read": "قراءة {readingTime}",
+    "modified": "تعديل {date}"
+  },
+  "task": {
+    "completed": "مكتمل",
+    "notCompleted": "لم يكتمل",
+    "priority": "أولوية {priority}",
+    "overdue": "تأخرت",
+    "markComplete": "قم بوضع علامة على \"{title}\" كمكتملة",
+    "markNotComplete": "ضع علامة على \"{title}\" على أنها غير مكتملة"
+  },
+  "template": {
+    "using": "باستخدام \"{templateName}\""
+  },
+  "reminder": {
+    "hasReminders": "لديه تذكيرات",
+    "setToRevisit": "قم بتعيين تذكير لإعادة الزيارة",
+    "tooltip": "تذكير: {date}",
+    "tooltipMore": "تذكير: {date} (+{count} أكثر)",
+    "success": {
+      "set": "تم تعيين تذكير لإدخال دفتر اليومية هذا",
+      "deleted": "تم حذف التذكير",
+      "dismissed": "تم رفض التذكير",
+      "snoozed": "تم تأجيل التذكير"
+    },
+    "error": {
+      "set": "فشل تعيين التذكير",
+      "delete": "فشل حذف التذكير",
+      "dismiss": "تعذّر تجاهل التذكير",
+      "snooze": "فشل تأجيل التذكير"
+    }
+  },
+  "toast": {
+    "unsavedRetry": "المحتوى الخاص بك لا يزال في الذاكرة. انقر لإعادة محاولة الحفظ.",
+    "noteNotFound": "ملاحظة: \"{target}\" لم يتم العثور عليه",
+    "fileNotFound": "لم يتم العثور على الملف: {target}",
+    "openLinkedItemFailed": "فشل في فتح العنصر المرتبط",
+    "errorPrefix": "خطأ:"
+  },
+  "export": {
+    "noteTitle": "مجلة - {month} {day}، {year}"
+  },
+  "note": {
+    "generatedTitle": "ملاحظة-{date}",
+    "openAria": "افتح {title}، الذي تم إنشاؤه في {time}"
+  },
+  "tag": {
+    "suggestionsAria": "اقتراحات العلامات",
+    "empty": {
+      "title": "لا توجد علامات حتى الآن",
+      "description": "اكتب لإنشاء علامة جديدة"
+    },
+    "groupTitle": "العلامات",
+    "create": "إنشاء #{query}",
+    "ariaLabel": "العلامة: {tag}، انقر للتصفية"
+  },
+  "wiki": {
+    "suggestionsAria": "اقتراحات الصفحة",
+    "empty": {
+      "title": "لم يتم العثور على صفحات"
+    },
+    "groupRecent": "الأخيرة",
+    "groupAllPages": "جميع الصفحات",
+    "createNewPage": "إنشاء صفحة جديدة",
+    "ariaLabel": "رابط إلى {title}"
+  },
+  "error": {
+    "title": "خطأ في المجلة",
+    "description": "واجهت المجلة خطأً بالنسبة لـ {date}. ربما لم يتم حفظ تغييراتك الأخيرة.",
+    "descriptionNoDate": "واجهت المجلة خطأ. ربما لم يتم حفظ تغييراتك الأخيرة.",
+    "unsavedContent": "تم اكتشاف محتوى غير محفوظ (أحرف {length})"
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "ك"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveJournalEntry": "فشل في حفظ إدخال دفتر اليومية",
+      "failedToLoadJournalSettings": "فشل تحميل إعدادات دفتر اليومية",
+      "failedToUpdateSettings": "فشل في تحديث الإعدادات"
+    }
+  }
+}

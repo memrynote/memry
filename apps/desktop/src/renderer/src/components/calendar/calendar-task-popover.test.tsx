@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 const mockTask = {
@@ -14,15 +14,16 @@ const mockTask = {
   dueDate: '2026-04-30',
   dueTime: '14:00',
   startDate: null,
-  repeatConfig: null,
+  repeatConfig: null as { frequency: string; interval: number; endType: string } | null,
   repeatFrom: null,
-  sourceNoteId: null,
+  sourceNoteId: null as string | null,
   completedAt: null,
   archivedAt: null,
   createdAt: '2026-04-01T00:00:00Z',
   modifiedAt: '2026-04-01T00:00:00Z',
   tags: [] as string[]
 }
+let mockSubtasks: Array<{ id: string; title: string; completedAt: string | null }> = []
 
 vi.mock('@/hooks/use-task', () => ({
   useTask: (id: string | null) => ({
@@ -31,7 +32,7 @@ vi.mock('@/hooks/use-task', () => ({
   })
 }))
 vi.mock('@/hooks/use-subtasks', () => ({
-  useSubtasks: () => ({ data: [], isLoading: false })
+  useSubtasks: () => ({ data: mockSubtasks, isLoading: false })
 }))
 vi.mock('@/hooks/use-project', () => ({
   useProject: () => ({ data: { id: 'p1', name: 'Memry' } })
@@ -125,8 +126,13 @@ describe('CalendarTaskPopover', () => {
     completeMock.mockClear()
     uncompleteMock.mockClear()
     updateMock.mockClear()
+    noteGetMock.mockClear()
     openTabMock.mockClear()
     openTagMock.mockClear()
+    mockTask.sourceNoteId = null
+    mockTask.repeatConfig = null
+    mockTask.tags = []
+    mockSubtasks = []
   })
 
   it('renders title and due', () => {
@@ -200,6 +206,89 @@ describe('CalendarTaskPopover', () => {
       expect(onDismiss).not.toHaveBeenCalled()
     } finally {
       mockTask.tags = []
+    }
+  })
+
+  it('toggles subtasks and reschedules or clears due dates', async () => {
+    const onDismiss = vi.fn()
+    mockSubtasks = [
+      { id: 'sub-1', title: 'Draft outline', completedAt: null },
+      { id: 'sub-2', title: 'Send review', completedAt: '2026-04-29T12:00:00Z' }
+    ]
+
+    render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={onDismiss} />)
+
+    await userEvent.click(screen.getByLabelText(/mark done/i))
+    expect(completeMock).toHaveBeenCalledWith({ id: 'sub-1' })
+
+    await userEvent.click(screen.getByLabelText(/mark not done/i))
+    expect(uncompleteMock).toHaveBeenCalledWith('sub-2')
+
+    await userEvent.click(screen.getByRole('button', { name: /reschedule/i }))
+    await userEvent.click(screen.getByRole('menuitem', { name: /tomorrow/i }))
+    await waitFor(() => expect(onDismiss).toHaveBeenCalled())
+    expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ id: 't1' }))
+
+    await userEvent.click(screen.getByRole('button', { name: /reschedule/i }))
+    await userEvent.click(screen.getByRole('menuitem', { name: /remove due date/i }))
+    expect(updateMock).toHaveBeenCalledWith({ id: 't1', dueDate: null, dueTime: null })
+  })
+
+  it('logs failed task actions without dismissing the popover', async () => {
+    const onDismiss = vi.fn()
+    mockSubtasks = [{ id: 'sub-1', title: 'Draft outline', completedAt: null }]
+    completeMock.mockRejectedValueOnce(new Error('nope'))
+    updateMock.mockRejectedValueOnce(new Error('nope'))
+
+    render(<CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={onDismiss} />)
+
+    await userEvent.click(screen.getByLabelText(/mark done/i))
+    await userEvent.click(screen.getByRole('button', { name: /reschedule/i }))
+    await userEvent.click(screen.getByRole('menuitem', { name: /tomorrow/i }))
+    await Promise.resolve()
+
+    expect(onDismiss).not.toHaveBeenCalled()
+  })
+
+  it('opens source notes and ignores missing task data', async () => {
+    const onDismiss = vi.fn()
+    mockTask.sourceNoteId = 'note-1'
+    noteGetMock.mockResolvedValueOnce({ id: 'note-1', title: 'Source note', path: '/source.md' })
+
+    const { rerender } = render(
+      <CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={onDismiss} />
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /source note/i }))
+    await waitFor(() =>
+      expect(openTabMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'note',
+          title: 'Source note',
+          entityId: 'note-1'
+        })
+      )
+    )
+    expect(onDismiss).toHaveBeenCalled()
+
+    rerender(
+      <CalendarTaskPopover
+        item={{ ...baseItem, sourceId: 'missing' }}
+        anchorRect={baseAnchor}
+        onDismiss={vi.fn()}
+      />
+    )
+    expect(screen.queryByTestId('calendar-task-popover')).not.toBeInTheDocument()
+  })
+
+  it('covers repeat summary variants', () => {
+    for (const frequency of ['daily', 'weekly', 'monthly', 'yearly'] as const) {
+      mockTask.repeatConfig = { frequency, interval: 1, endType: 'never' }
+      const { unmount } = render(
+        <CalendarTaskPopover item={baseItem} anchorRect={baseAnchor} onDismiss={vi.fn()} />
+      )
+      expect(screen.getByTestId('calendar-task-popover')).toBeInTheDocument()
+      unmount()
     }
   })
 })

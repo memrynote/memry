@@ -1,0 +1,80 @@
+{
+  "generic": {
+    "somethingWentWrong": "Er is iets misgegaan. Probeer het opnieuw.",
+    "operationFailed": "Operatie mislukt",
+    "unknown": "Er is een onbekende fout opgetreden",
+    "validationFailed": "Validatie mislukt",
+    "actionFailed": "Actie mislukt"
+  },
+  "ipc": {
+    "noVaultOpen": "Er is geen kluis open. Open eerst een kluis."
+  },
+  "vault": {
+    "notFound": "Kluis niet gevonden. Mogelijk is deze verplaatst of verwijderd.",
+    "notInitialized": "Er is geen kluis open. Open of maak een kluis om door te gaan.",
+    "invalidPath": "Het geselecteerde pad is geen geldige kluislocatie.",
+    "permissionDenied": "Toestemming geweigerd. Controleer of u toegang heeft tot deze map.",
+    "alreadyExists": "Er bestaat al een kluis op deze locatie.",
+    "corrupted": "Deze kluis lijkt beschadigd te zijn. Probeer te herstellen vanaf een back-up."
+  },
+  "note": {
+    "notFound": "Deze notitie kon niet worden gevonden. Mogelijk is deze verwijderd.",
+    "invalidFrontmatter": "Deze notitie bevat ongeldige metagegevens en kan niet worden gelezen.",
+    "duplicateId": "Er bestaat al een notitie met deze ID.",
+    "writeFailed": "Kan deze notitie niet opslaan. Controleer schijfruimte en machtigingen.",
+    "readFailed": "Kan deze notitie niet lezen. Het bestand is mogelijk vergrendeld of beschadigd.",
+    "deleteFailed": "Kan deze notitie niet verwijderen. Controleer bestandsrechten.",
+    "invalidPath": "Het notitiepad is ongeldig."
+  },
+  "database": {
+    "connectionFailed": "Kan geen verbinding maken met de lokale database. Probeer de app opnieuw te starten.",
+    "migrationFailed": "Database-upgrade is mislukt. Probeer de app opnieuw te starten.",
+    "queryFailed": "Een databasebewerking is mislukt. Probeer het opnieuw.",
+    "notInitialized": "Database niet gereed. Probeer de app opnieuw te starten.",
+    "constraintViolation": "Er heeft zich een gegevensconflict voorgedaan. Probeer het opnieuw.",
+    "corrupted": "De lokale database is beschadigd. Mogelijk moet u het opnieuw instellen."
+  },
+  "watcher": {
+    "startFailed": "Kan niet beginnen met zoeken naar bestandswijzigingen.",
+    "stopFailed": "Kan de bestandswatcher niet stoppen.",
+    "eventError": "Er is een fout opgetreden bij het zoeken naar bestandswijzigingen."
+  },
+  "attachment": {
+    "fileTooLarge": "Dit bestand is te groot om bij te voegen.",
+    "unsupportedType": "Dit bestandstype wordt niet ondersteund.",
+    "writeFailed": "Kan de bijlage niet opslaan. Controleer schijfruimte.",
+    "deleteFailed": "Kan de bijlage niet verwijderen."
+  },
+  "encryption": {
+    "failed": "Kan gegevens niet coderen. Mogelijk moeten uw sleutels opnieuw worden gegenereerd.",
+    "decryptionFailed": "Kan de gegevens niet ontsleutelen. Uw coderingssleutels zijn mogelijk verouderd.",
+    "invalidKeyLength": "Ongeldige coderingssleutel. Probeer uit en weer in te loggen.",
+    "invalidNonceLength": "Encryptiefout. Probeer de bewerking opnieuw."
+  },
+  "inboxAttachment": {
+    "writeFailed": "Kan de bijlage bij het postvak IN niet opslaan.",
+    "deleteFailed": "Kan de bijlage bij het postvak IN niet verwijderen."
+  },
+  "sync": {
+    "networkOffline": "Je bent offline. Wijzigingen worden gesynchroniseerd wanneer u opnieuw verbinding maakt.",
+    "networkTimeout": "Het duurde te lang voordat de synchronisatieserver reageerde. Zal het binnenkort opnieuw proberen.",
+    "serverError": "Er is een fout opgetreden op de synchronisatieserver. Zal het automatisch opnieuw proberen.",
+    "authExpired": "Uw sessie is verlopen. Meld u opnieuw aan om door te gaan met synchroniseren.",
+    "deviceRevoked": "Dit apparaat is uit uw account verwijderd.",
+    "rateLimited": "Te veel verzoeken. Het synchroniseren wordt binnenkort hervat.",
+    "cryptoFailure": "Kan de synchronisatiegegevens niet coderen of decoderen. Probeer uit en weer in te loggen.",
+    "versionIncompatible": "Deze versie van Memry wordt niet langer ondersteund. Update alstublieft.",
+    "storageQuotaExceeded": "Uw synchronisatieopslag is vol. Maak ruimte vrij of upgrade uw abonnement.",
+    "certificatePinFailed": "Beveiligde verbinding mislukt. Controleer uw netwerkverbinding.",
+    "unknown": "Er is een onverwachte synchronisatiefout opgetreden. Zal het automatisch opnieuw proberen.",
+    "statusFetchFailed": "Kan de synchronisatiestatus niet ophalen",
+    "engineNotInitialized": "Synchronisatie-engine niet geïnitialiseerd. Open een kluis om de synchronisatie te starten.",
+    "triggerFailed": "Synchronisatie mislukt",
+    "pauseFailed": "Kan de synchronisatie niet onderbreken",
+    "resumeFailed": "Kan de synchronisatie niet hervatten",
+    "settingsNotInitialized": "Synchronisatie van instellingen is niet geïnitialiseerd",
+    "securityQuarantinePermanent": "Een synchronisatie-item kan niet worden geverifieerd en is om veiligheidsredenen in quarantaine geplaatst.",
+    "securityQuarantineRetry": "Een synchronisatie-item heeft de handtekeningverificatie niet doorstaan en zal opnieuw worden geprobeerd.",
+    "certificatePinPaused": "De beveiligde verbinding met de synchronisatieserver kon niet worden geverifieerd. Voor uw veiligheid is de synchronisatie onderbroken."
+  }
+}

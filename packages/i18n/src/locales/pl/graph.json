@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Ładowanie wykresu...",
+    "load-failed": "Nie udało się załadować danych wykresu",
+    "try-again": "Spróbuj ponownie",
+    "aria-label": "Wykres wiedzy z {nodeCount, plural, one {Węzeł #} other {Węzły #}} i {edgeCount, plural, one {Połączenie #} other {Połączenia #}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Węzły wykresu",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Wykres Twojej wiedzy",
+    "description": "Połączenia pomiędzy Twoimi notatkami, zadaniami i projektami pojawią się tutaj w postaci interaktywnego wykresu.",
+    "link-title": "Połącz swoje notatki",
+    "link-description": "Użyj [[wikilinks]], aby połączyć pomysły w notatkach",
+    "discover-title": "Odkryj wzory",
+    "discover-description": "W miarę rozwoju powiązań klastry i tematy będą pojawiać się w sposób naturalny"
+  },
+  "entity": {
+    "note": "uwaga",
+    "notes": "notatki",
+    "journal": "dziennik",
+    "journals": "czasopisma",
+    "task": "zadanie",
+    "tasks": "zadania",
+    "project": "projekt",
+    "projects": "projekty",
+    "tag": "znacznik",
+    "tags": "tagi",
+    "orphan": "sierota",
+    "orphans": "sieroty",
+    "unresolved": "nierozwiązany"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Ustawienia wykresu",
+    "hide-settings": "Ukryj ustawienia",
+    "reset-filters": "Zresetuj filtry",
+    "filters": "Filtry",
+    "display": "Wyświetlacz",
+    "show-labels": "Pokaż etykiety",
+    "focus-depth": "głębokość {depth}",
+    "clear-focus": "Wyczyść skupiony węzeł"
+  },
+  "filter": {
+    "notes": "Notatki",
+    "journals": "Czasopisma",
+    "tasks": "Zadania",
+    "projects": "Projekty",
+    "tags": "Tagi",
+    "orphans": "Sieroty",
+    "toggle-entity": "Przełącz {label}",
+    "toggle-orphans": "Przełącz osierocone węzły"
+  },
+  "search": {
+    "placeholder": "Wyszukaj węzły...",
+    "clear": "Wyczyść wyszukiwanie wykresów"
+  },
+  "context-menu": {
+    "untitled": "Bez tytułu",
+    "focus-node": "Skoncentruj się na tym węźle",
+    "open-new-tab": "Otwórz w nowej karcie",
+    "create-note": "Utwórz notatkę",
+    "copy-title": "Skopiuj tytuł"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {Połączenie #} other {Połączenia #}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Ładowanie wykresu...",
+    "empty": "Nie znaleziono połączeń",
+    "open-full": "Otwórz pełny wykres",
+    "close": "Zamknij wykres"
+  }
+}

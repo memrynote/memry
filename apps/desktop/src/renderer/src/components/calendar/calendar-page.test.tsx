@@ -14,6 +14,10 @@ const {
   mockCreateEvent,
   mockUpdateEvent,
   mockDeleteEvent,
+  mockGetEvent,
+  mockPromoteExternal,
+  mockSnooze,
+  mockUnsnooze,
   mockOpenTab
 } = vi.hoisted(() => ({
   mockUseCalendarRange: vi.fn(),
@@ -21,6 +25,10 @@ const {
   mockCreateEvent: vi.fn(),
   mockUpdateEvent: vi.fn(),
   mockDeleteEvent: vi.fn(),
+  mockGetEvent: vi.fn(),
+  mockPromoteExternal: vi.fn(),
+  mockSnooze: vi.fn(),
+  mockUnsnooze: vi.fn(),
   mockOpenTab: vi.fn()
 }))
 
@@ -39,7 +47,7 @@ vi.mock('@/services/calendar-service', () => {
       createEvent: mockCreateEvent,
       updateEvent: mockUpdateEvent,
       deleteEvent: mockDeleteEvent,
-      getEvent: vi.fn(async () => null)
+      getEvent: mockGetEvent
     },
     onCalendarChanged: vi.fn(() => () => {}),
     listGoogleCalendars: vi.fn(async () => ({
@@ -47,10 +55,17 @@ vi.mock('@/services/calendar-service', () => {
       primary: null,
       currentDefaultId: null
     })),
-    promoteExternalCalendarEvent: vi.fn(async () => ({ success: true, eventId: null })),
+    promoteExternalCalendarEvent: mockPromoteExternal,
     setDefaultGoogleCalendar: vi.fn(async () => ({ success: true }))
   }
 })
+
+vi.mock('@/services/inbox-service', () => ({
+  inboxService: {
+    snooze: mockSnooze,
+    unsnooze: mockUnsnooze
+  }
+}))
 
 const SAMPLE_SOURCES: CalendarSourceRecord[] = [
   {
@@ -236,10 +251,24 @@ describe('CalendarPage', () => {
     mockCreateEvent.mockReset()
     mockUpdateEvent.mockReset()
     mockDeleteEvent.mockReset()
+    mockGetEvent.mockReset()
+    mockPromoteExternal.mockReset()
+    mockSnooze.mockReset()
+    mockUnsnooze.mockReset()
     mockListSources.mockReset()
     mockUseCalendarRange.mockReset()
 
     mockDeleteEvent.mockResolvedValue({ success: true })
+    mockGetEvent.mockResolvedValue(null)
+    mockPromoteExternal.mockResolvedValue({ success: true, eventId: null })
+    mockSnooze.mockResolvedValue({ success: true })
+    mockUnsnooze.mockResolvedValue({ success: true })
+    vi.mocked(window.api.settings.getCalendarGoogleSettings).mockResolvedValue({
+      defaultTargetCalendarId: null,
+      onboardingCompleted: true,
+      promoteConfirmDismissed: false
+    })
+    vi.mocked(window.api.settings.setCalendarGoogleSettings).mockResolvedValue({ success: true })
     mockListSources.mockResolvedValue({ sources: SAMPLE_SOURCES })
     mockUseCalendarRange.mockReturnValue({
       data: mockRangeResponse(SAMPLE_ITEMS),
@@ -267,6 +296,23 @@ describe('CalendarPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Year' }))
     expect(screen.getByTestId('calendar-view')).toHaveAttribute('data-view', 'year')
+  })
+
+  it('restores a persisted view and wires period navigation controls', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem('calendar-view', 'year')
+
+    renderWithProviders(<CalendarPage />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('calendar-view')).toHaveAttribute('data-view', 'year')
+    )
+
+    await user.click(screen.getByRole('button', { name: /previous/i }))
+    await user.click(screen.getByRole('button', { name: /next/i }))
+    await user.click(screen.getByRole('button', { name: /today/i }))
+
+    expect(mockUseCalendarRange).toHaveBeenCalled()
   })
 
   it('filters imported Google calendars separately from Memry items', async () => {
@@ -350,6 +396,62 @@ describe('CalendarPage', () => {
     expect(
       screen.getAllByText('Review investor email')[0].closest('[data-visual-type]')
     ).toHaveAttribute('data-visual-type', 'snooze')
+  })
+
+  it('opens inbox snooze actions from projected snooze items', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<CalendarPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Day' }))
+    await user.click((await screen.findAllByText('Review investor email'))[0])
+
+    await user.click(screen.getByRole('button', { name: 'Open in inbox' }))
+    expect(mockOpenTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'inbox',
+        viewState: expect.objectContaining({ focusInboxItemId: 'snooze-1' })
+      })
+    )
+
+    await user.click((await screen.findAllByText('Review investor email'))[0])
+    await user.click(screen.getByRole('button', { name: 'Unsnooze now' }))
+    await waitFor(() => expect(mockUnsnooze).toHaveBeenCalledWith('snooze-1'))
+  })
+
+  it('promotes external events directly when the confirmation is dismissed', async () => {
+    const user = userEvent.setup()
+    const api = window.api as typeof window.api & {
+      settings: {
+        getCalendarGoogleSettings: ReturnType<typeof vi.fn>
+        setCalendarGoogleSettings: ReturnType<typeof vi.fn>
+      }
+    }
+    api.settings.getCalendarGoogleSettings.mockResolvedValue({ promoteConfirmDismissed: true })
+    mockPromoteExternal.mockResolvedValue({ success: true, eventId: 'event-promoted' })
+    mockGetEvent.mockResolvedValue({
+      id: 'event-promoted',
+      title: 'Customer call',
+      description: 'Imported from Google',
+      location: 'Zoom',
+      isAllDay: false,
+      startAt: isoAtLocalTime(15, 0, 1),
+      endAt: isoAtLocalTime(16, 0, 1),
+      targetCalendarId: 'remote-work',
+      attendees: [],
+      reminders: { useDefault: true, overrides: [] },
+      visibility: 'default',
+      conferenceData: null
+    })
+
+    renderWithProviders(<CalendarPage />)
+
+    await user.click(await screen.findByText('Customer call'))
+
+    await waitFor(() =>
+      expect(mockPromoteExternal).toHaveBeenCalledWith({ externalEventId: 'external-1' })
+    )
+    expect(api.settings.setCalendarGoogleSettings).not.toHaveBeenCalled()
+    expect(await screen.findByRole('dialog', { name: 'Edit calendar event' })).toBeInTheDocument()
   })
 
   it('deletes a Memry-native event via the right-click menu without Google wording', async () => {

@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "Uložiť",
+    "cancel": "Zrušiť",
+    "close": "Koniec",
+    "ok": "Dobre",
+    "yes": "Áno",
+    "no": "Nie",
+    "delete": "Vymazať",
+    "confirm": "Potvrď",
+    "apply": "Prihláste sa",
+    "done": "Hotovo",
+    "discard": "Vyhodiť",
+    "dontSave": "Neukladaj",
+    "edit": "Edit",
+    "add": "Pridať",
+    "remove": "Odstrániť",
+    "retry": "Skús znova",
+    "submit": "Odoslať",
+    "back": "Späť",
+    "next": "Ďalej",
+    "continue": "Pokračovať",
+    "reset": "Reset",
+    "copy": "Rozumiem",
+    "paste": "Pasta",
+    "create": "Tvor",
+    "open": "Otvorené"
+  },
+  "state": {
+    "loading": "Načítavam...",
+    "saving": "Ukladanie...",
+    "deleting": "Vymazávam...",
+    "searching": "Hľadám...",
+    "error": "Chyba",
+    "success": "Úspech"
+  },
+  "empty": {
+    "noResults": "Žiadne výsledky",
+    "noItems": "Žiadne položky",
+    "noMatch": "Žiadne zápasy"
+  },
+  "action": {
+    "search": "Vyhľadávanie",
+    "edit": "Edit",
+    "delete": "Vymazať",
+    "close": "Koniec",
+    "expand": "Rozšíriť",
+    "collapse": "Kolaps",
+    "showMore": "+{count, plural, one {# viac} other {# viac}}",
+    "showLess": "Zobraziť menej"
+  },
+  "tabs": {
+    "pin": "Pripnúť kartu",
+    "unpin": "Odpnúť kartu",
+    "contextMenu": {
+      "close": "Koniec",
+      "closeOthers": "Zavrieť ostatné",
+      "closeToRight": "Zavrieť napravo",
+      "closeAll": "Zavrieť všetko",
+      "duplicate": "Duplikovať kartu",
+      "splitRight": "Rozdeliť napravo",
+      "splitDown": "Rozdeliť nadol",
+      "copyPath": "Kopírovať cestu",
+      "revealInSidebar": "Zobraziť v bočnom paneli"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {# položka} other {# položky}}",
+    "note": "{count, plural, one {# poznámka} other {# poznámky}}",
+    "folder": "{count, plural, one {# priečinok} other {# priečinky}}",
+    "task": "{count, plural, one {# úloha} other {# úlohy}}",
+    "project": "{count, plural, one {# projekt} other {# projekty}}",
+    "itemDelete": "{count, plural, one {Odstrániť # položku} other {Odstrániť # položky}}"
+  },
+  "toast": {
+    "actionFailed": "Akcia zlyhala",
+    "nothingToUndo": "Nič na vrátenie",
+    "undone": "Vrátené: {description}",
+    "undoFailed": "Nepodarilo sa vrátiť akciu späť",
+    "copied": "Skopírované",
+    "copyFailed": "Nepodarilo sa skopírovať"
+  },
+  "dateRelative": {
+    "today": "Dnes",
+    "yesterday": "Včera",
+    "daysAgo": "{count, plural, one {Pred # dňom} other {Pred # dňami}}"
+  },
+  "recurrence": {
+    "everyDay": "Každý deň",
+    "everyNDays": "{count, plural, one {Každý deň} other {Každých # dní}}",
+    "everyWeek": "Každý týždeň",
+    "everyNWeeks": "{count, plural, one {Každý týždeň} other {Každých # týždňov}}",
+    "everyWeekday": "Každý pracovný deň",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Každý pracovný deň} other {Každých # týždňov v pracovné dni}}",
+    "everyWeekend": "Každý víkend",
+    "everyNWeeksOnWeekends": "{count, plural, one {Každý víkend} other {Každých # týždňov cez víkend}}",
+    "everyWeekOnDays": "Každý týždeň v {days}",
+    "everyNWeeksOnDays": "{count, plural, one {Každý týždeň v {days}} other {Každých # týždňov v {days}}}",
+    "everyMonth": "Každý mesiac",
+    "everyNMonths": "{count, plural, one {Každý mesiac} other {Každých # mesiacov}}",
+    "everyMonthOnDay": "Každý mesiac dňa {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {Každý mesiac dňa {day}{suffix}} other {Každých # mesiacov dňa {day}{suffix}}}",
+    "everyMonthOnWeekDay": "Každý mesiac dňa {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Každý mesiac dňa {week} {day}} other {Každých # mesiacov v {week} {day}}}",
+    "everyYear": "Každý rok",
+    "everyNYears": "{count, plural, one {Každý rok} other {Každých # rokov}}",
+    "repeats": "Opakuje sa"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Kolekcie",
+      "newNote": "Nová poznámka",
+      "newNote2": "Nová poznámka",
+      "newFolder": "Nová zložka",
+      "newFolder2": "Nová zložka",
+      "bookmarks": "Záložky",
+      "tags": "Tagy",
+      "dropFilesToImport": "Pretiahnite súbory na import",
+      "newNoteN": "Nová poznámka (⌘N)",
+      "new": "Nové",
+      "syncDisabled": "Synchronizácia zakázaná",
+      "syncDisabled2": "Synchronizácia zakázaná"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Zmeniť veľkosť panelu dňa",
+      "dragToResizeDoubleClickToReset": "Potiahnutím zmeniť veľkosť · Dvojklikom obnoviť"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Nájsť, nahradiť, opýtať sa..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Preskočiť úvod",
+      "welcomeToMemry": "Vitajte v Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Vaša osobná databáza poznatkov. Poďme si vziať 2 minúty, aby sme vás uviedli do chodu.",
+      "getStarted": "Začať",
+      "createYourFirstNote": "Vytvorte svoju prvú poznámku",
+      "markdownBasedStoredLocallyAsPlainFiles": "Na báze Markdown, uložené lokálne ako obyčajné súbory.",
+      "eGMeetingNotesIdeasAnything": "napr. poznámky zo stretnutí, nápady, čokoľvek...",
+      "skip": "Preskočiť",
+      "createNote": "Vytvoriť poznámku ",
+      "addYourFirstTask": "Pridať svoju prvú úlohu",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Úlohy sa viažu na vaše poznámky, s prioritami a termínmi.",
+      "eGReviewProjectProposal": "napr. Skontrolovať návrh projektu...",
+      "skip2": "Preskočiť",
+      "createTask": "Vytvoriť úlohu ",
+      "syncAcrossDevices": "Synchronizovať medzi zariadeniami",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Majte svoje poznámky a úlohy synchronizované vo všetkých vašich zariadeniach. Toto môžete nastaviť kedykoľvek neskôr.",
+      "skipForNow": "Preskočiť teraz",
+      "doneLetSGo": "Hotovo — poďme na to!"
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Nastaviť ikonu priečinka"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "TIP"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Výber ikony",
+      "selectIcon": "Vybrať ikonu",
+      "closeIconPicker": "Zavrieť výber ikony",
+      "searchIcons": "Hľadať ikony...",
+      "all": "Všetko",
+      "clearIcon": "Vyčistiť ikonu",
+      "noIconsFoundFor": "Nenašli sa žiadne ikony pre \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Klávesové skratky",
+      "closeShortcutsHelp": "Zavrieť pomoc so skratkami",
+      "press": "Stlačiť",
+      "toClose": "na zatvorenie"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Nastaviť ikonu",
+      "clearIcon": "Vyčistiť ikonu"
+    },
+    "componentsNavMain": {
+      "platform": "Platforma"
+    },
+    "componentsNavProjects": {
+      "projects": "Projekty",
+      "more": "Viac",
+      "viewProject": "Zobraziť projekt",
+      "shareProject": "Zdieľať projekt",
+      "deleteProject": "Vymazať projekt",
+      "more2": "Viac"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Aktualizovať na Pro",
+      "account": "Účet",
+      "billing": "Fakturácia",
+      "notifications": "Oznámenia",
+      "logOut": "Odhlásiť sa"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Vyhľadávanie",
+      "searchNotesTasksJournalInbox": "Hľadať poznámky, úlohy, denník, doručenú poštu...",
+      "noResultsFor": "Žiadne výsledky pre “",
+      "rdquo": "rdquo;",
+      "result": "výsledok"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Hľadajte a klikajte na položky, aby ste vytvorili svoju stopu",
+      "reasons": "Dôvody",
+      "clear": "Vyčistiť"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Vyčistiť",
+      "tags": "Tagy",
+      "filterByTag": "Filtrovať podľa značky...",
+      "dateRange": "Rozsah dátumov"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Zobraziť všetky ",
+      "results": "výsledky"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "nejasné"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Žiadne otvorené záložky",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Otvorte stránku z postranného panela alebo vytvorte novú záložku, aby ste začali",
+      "openInbox": "Otvoriť doručenú poštu",
+      "closePane": "Zatvoriť panel"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Predvolené rozloženie",
+      "layoutPresets2": "Predvoľby rozloženia"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Zmeniť veľkosť panelov"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "Úlohy Kontext nie je dostupný",
+      "searchResults": "Výsledky vyhľadávania",
+      "unknownTabType": "Neznámy typ záložky:"
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "neuložené zmeny",
+      "preview": "náhľad"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Nová záložka",
+      "newTab2": "Nová záložka",
+      "newNote": "Nová poznámka",
+      "journal": "Denník",
+      "calendar": "Kalendár",
+      "inboxCapture": "Schránka Doručená pošta",
+      "tasks": "Úlohy"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Neuložené zmeny",
+      "unsaved": "neuložené)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Neuložené zmeny"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Zatvoriť všetky záložky"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Otvárané záložky",
+      "scrollTabsLeft": "Posunúť záložky doľava",
+      "scrollTabsRight": "Posunúť záložky doprava",
+      "graphG": "Graf (⌘G)",
+      "dayPanel": "Denný panel"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "Posunúť záložky doľava",
+      "scrollTabsRight": "Posunúť záložky doprava"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "Otvárané záložky",
+      "scrollTabsLeft": "Posunúť záložky doľava",
+      "scrollTabsRight": "Posunúť záložky doprava"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Niečo sa pokazilo",
+      "anErrorOccurredWhileRenderingThisTabContent": "Pri vykresľovaní obsahu tejto záložky došlo k chybe.",
+      "tryAgain": "Skúsiť znova"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Ikona poznámky"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Neuložené zmeny",
+      "quot": "quot;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; má neuložené zmeny. Čo chcete urobiť?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Nový pracovný priestor",
+      "darkMode": "Tmavý režim",
+      "settings": "Nastavenia",
+      "integrations": "Integrácie",
+      "signOut": "Odhlásiť sa",
+      "downloadOnIos": "Stiahnuť na iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Zatvoriť okno",
+      "minimizeWindow": "Minimalizovať okno",
+      "maximizeWindow": "Maximalizovať okno"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Návrhy",
+      "or": "alebo",
+      "enter": "Stlačte Enter",
+      "toInsert": "pre vloženie"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "strúhanku",
+      "more": "Viac"
+    },
+    "componentsUiDialog": {
+      "close": "Koniec"
+    },
+    "componentsUiSheet": {
+      "close": "Koniec"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Bočný panel",
+      "displaysTheMobileSidebar": "Zobrazuje mobilný bočný panel.",
+      "toggleSidebar": "Prepínač bočného panela",
+      "toggleSidebar2": "Prepínač bočného panela",
+      "dragToResizeDoubleClickToReset": "Potiahnutím zmeniť veľkosť · Dvojklikom obnoviť"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Vitajte v Memry",
+      "yourPersonalKnowledgeManagementSystem": "Váš osobný systém správy znalostí.",
+      "selectAFolderToStoreYourNotesAndTasks": "Vyberte priečinok pre uloženie poznámok a úloh.",
+      "opening": "Otváranie...",
+      "selectVaultFolder": "Vybrať priečinok trezoru",
+      "plainMarkdown": "Čistý Markdown",
+      "yourNotesStayPortable": "Vaše poznámky zostávajú prenosné",
+      "syncAnywhere": "Synchronizovať kdekoľvek",
+      "useDropboxIcloudGit": "Použite Dropbox, iCloud, Git",
+      "recentVaults": "Posledné trezory",
+      "notesLastOpened": "poznámky · Naposledy otvorené"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Žiadne trezory zatiaľ",
+      "openVault": "Otvoriť trezor",
+      "settings": "Nastavenia",
+      "logOut": "Odhlásiť sa",
+      "signInToSync": "Prihláste sa na synchronizáciu",
+      "remove": "Odstrániť",
+      "rdquoFromList": "rdquo; zo zoznamu?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Tento trezor bude odstránený z aplikácie, ale vaše súbory zostanú na disku. Vždy ho môžete neskôr znova pridať.",
+      "cancel": "Zrušiť",
+      "remove2": "Odstrániť"
+    },
+    "componentsWindowControls": {
+      "searchK": "Vyhľadávanie (⌘K)",
+      "browserBack": "Späť v prehliadači",
+      "back": "Späť",
+      "browserForward": "Dopredu v prehliadači",
+      "forward": "Dopredu"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Nepodarilo sa importovať súbory",
+      "failedToCreateNote": "Nepodarilo sa vytvoriť poznámku",
+      "failedToAccessMicrophone": "Nepodarilo sa získať prístup k mikrofónu"
+    },
+    "toasts": {
+      "undone": "Späť"
+    }
+  }
+}

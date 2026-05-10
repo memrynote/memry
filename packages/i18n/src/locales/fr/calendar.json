@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "Jour",
+    "week": "Semaine",
+    "month": "Mois",
+    "year": "Année"
+  },
+  "toolbar": {
+    "create-event": "Créer un événement",
+    "previous-period": "Période précédente",
+    "next-period": "Période suivante",
+    "previous-month": "Mois précédent",
+    "next-month": "Le mois prochain",
+    "today": "Aujourd'hui"
+  },
+  "filter": {
+    "filter-calendars": "Filtrer les calendriers",
+    "sources": "Sources",
+    "memry-items": "Articles Memry",
+    "imported-calendars": "Calendriers importés",
+    "event-types": "Types d'événements",
+    "google-calendars": "Calendriers Google",
+    "refresh-google-calendars": "Actualiser les agendas Google"
+  },
+  "visual-type": {
+    "event": "Événement",
+    "imported-event": "Événement importé",
+    "task": "Tâche",
+    "reminder": "Rappel",
+    "snooze": "Répéter"
+  },
+  "state": {
+    "loading-calendar": "Chargement du calendrier…",
+    "loading-calendars": "Chargement des calendriers…",
+    "preparing": "Préparation…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "Aucun calendrier importé pour l'instant.",
+    "no-events": "Aucun événement"
+  },
+  "time": {
+    "all-day": "Toute la journée",
+    "all-day-lower": "toute la journée",
+    "pick-a-date": "Choisissez une date",
+    "new-event": "Nouvel événement",
+    "more-events": "{count, plural, one {# plus d'événement} other {# plus d'événements}}"
+  },
+  "form": {
+    "create-calendar-event": "Créer un événement de calendrier",
+    "edit-calendar-event": "Modifier un événement d'agenda",
+    "quick-create-description": "Saisissez un titre et enregistrez pour créer un événement pour la plage horaire sélectionnée.",
+    "event-editor-description": "Mettez à jour le titre, le lieu, la date, l'heure et les notes de cet événement.",
+    "new-event-placeholder": "Nouvel événement",
+    "location-placeholder": "Ajouter un emplacement",
+    "notes-url-placeholder": "Ajouter des notes ou une URL",
+    "start": "Commencer",
+    "end": "Fin",
+    "add-details": "Ajouter des détails",
+    "google-calendar": "Calendrier Google",
+    "target-calendar": "Calendrier cible",
+    "use-default-calendar": "Utiliser le calendrier par défaut",
+    "use-default-calendar-with-name": "Utiliser la valeur par défaut ({calendar})",
+    "use-memry-calendar-default": "Utiliser le calendrier Memry (par défaut)",
+    "use-memry-managed-calendar": "Utiliser le calendrier géré par Memry",
+    "primary-suffix": "primaire"
+  },
+  "delete-dialog": {
+    "title": "Supprimer l'événement ?",
+    "local-description": "\"{title}\" sera définitivement supprimé. Cette action ne peut pas être annulée.",
+    "google-bound-description": "\"{title}\" sera supprimé de Memry et de Google Agenda. Cette action ne peut pas être annulée.",
+    "context-menu-delete-label": "Supprimer l'événement"
+  },
+  "promote-dialog": {
+    "aria": "Modifier un événement de calendrier externe",
+    "title": "Modifier cet événement dans Memry ?",
+    "body": "La modification de cet événement créera une copie liée dans Memry afin que les modifications soient synchronisées dans les deux sens. Continuer ?",
+    "do-not-ask-again": "Ne demande plus",
+    "confirm-label": "Modifier dans Memry"
+  },
+  "onboarding-dialog": {
+    "aria": "Choisissez votre agenda Google par défaut",
+    "title": "Dans quel calendrier les nouveaux événements Memry doivent-ils être placés ?",
+    "body": "Choisissez le calendrier Google que Memry doit utiliser par défaut. Vous pouvez toujours le remplacer par événement.",
+    "default-calendar-label": "Utiliser le calendrier géré par Memry",
+    "skip": "Sauter",
+    "use-this-calendar": "Utilisez ce calendrier"
+  },
+  "metadata": {
+    "attendees": "Participants",
+    "attendees-count": "Participants ({count})",
+    "reminders": "Rappels",
+    "default-reminders": "Rappels par défaut",
+    "visibility": "Visibilité :",
+    "optional": "Facultatif",
+    "join-meeting": "Rejoindre la réunion",
+    "response": {
+      "accepted": "Accepté",
+      "declined": "Refusé",
+      "tentative": "Provisoire",
+      "needs-action": "En attente"
+    },
+    "visibility-value": {
+      "private": "Privé",
+      "public": "Publique",
+      "confidential": "Confidentiel"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "minutes · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "Impossible d'enregistrer l'événement. Réessayez.",
+      "couldNotCreateEventTryAgain": "Impossible de créer l'événement. Réessayez.",
+      "couldNotSaveDefaultCalendarTryAgain": "Impossible d'enregistrer le calendrier par défaut. Réessayez.",
+      "failedToLoadCalendarPreferences": "Échec du chargement des préférences du calendrier",
+      "failedToUpdateCalendarPreferences": "Échec de la mise à jour des préférences du calendrier",
+      "couldNotEditThisEventTryAgain": "Impossible de modifier cet événement. Réessayez.",
+      "failedToDeleteEvent": "Échec de la suppression de l'événement",
+      "couldNotUnsnoozeInboxItem": "Je n'ai pas pu annuler la répétition.",
+      "couldNotRescheduleInboxItem": "Impossible de reprogrammer."
+    },
+    "inboxSnoozePopover": {
+      "title": "Élément de boîte de réception mis en attente",
+      "openInInbox": "Ouvrir dans la boîte de réception",
+      "unsnoozeNow": "Annuler la répétition maintenant",
+      "reschedule": "Reprogrammer"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "Détails de la tâche",
+    "open-task": "Tâche ouverte",
+    "source-note": "Note source",
+    "reschedule": "Reprogrammer",
+    "more-actions": "Plus de propositions",
+    "mark-done": "Marquer comme terminé",
+    "mark-not-done": "Marque pas fait",
+    "later-today": "Plus tard dans la journée",
+    "tomorrow": "Demain",
+    "next-week": "La semaine prochaine",
+    "next-week-mon": "La semaine prochaine · lundi",
+    "pick-date-time": "Choisissez la date et l’heure…",
+    "remove-due-date": "Supprimer la date d'échéance",
+    "subtasks-prefix": "Sous-tâches",
+    "subtasks-counter": "{done} de {total} terminé",
+    "today": "Aujourd'hui",
+    "overdue-one": "1 jour de retard",
+    "overdue-other": "{count} jours de retard",
+    "repeats": "Répétitions",
+    "repeats-daily": "Se répète quotidiennement",
+    "repeats-weekly": "Se répète chaque semaine",
+    "repeats-monthly": "Se répète mensuellement",
+    "repeats-yearly": "Se répète chaque année",
+    "priority-urgent": "Urgent",
+    "priority-high": "Élevé",
+    "priority-medium": "Moyen",
+    "errors": {
+      "could-not-save": "Impossible d'enregistrer la tâche",
+      "could-not-reschedule": "Impossible de replanifier la tâche",
+      "could-not-remove-due-date": "Impossible de supprimer la date d'échéance",
+      "could-not-open-note": "Impossible d'ouvrir la note"
+    }
+  }
+}

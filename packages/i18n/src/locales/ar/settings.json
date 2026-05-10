@@ -1,10 +1,1160 @@
 {
+  "toast": {
+    "exportNotImplemented": "لم يتم تنفيذ تصدير البيانات المحلية بعد"
+  },
+  "page": {
+    "title": "الإعدادات",
+    "nav": {
+      "groups": {
+        "workspace": "مساحة العمل",
+        "preferences": "التفضيلات",
+        "services": "الخدمات",
+        "data": "البيانات"
+      },
+      "items": {
+        "account": "الحساب",
+        "general": "عام",
+        "templates": "قوالب",
+        "editor": "محرر",
+        "journal": "مجلة",
+        "tasks": "المهام",
+        "calendar": "التقويم",
+        "appearance": "المظهر",
+        "shortcuts": "الاختصارات",
+        "ai": "مساعد الذكاء الاصطناعي",
+        "integrations": "التكامل",
+        "vault": "قبو",
+        "tags": "العلامات",
+        "properties": "خصائص"
+      }
+    }
+  },
   "general": {
+    "header": {
+      "title": "عام",
+      "subtitle": "بدء تشغيل التطبيق وسلوك علامة التبويب",
+      "loading": "جارٍ تحميل الإعدادات..."
+    },
+    "groups": {
+      "startup": "بدء التشغيل",
+      "updates": "التحديثات",
+      "languageRegion": "اللغة والمنطقة",
+      "tabBehavior": "سلوك علامة التبويب",
+      "fileCreation": "إنشاء الملف",
+      "privacy": "الخصوصية"
+    },
+    "startup": {
+      "launchAtLogin": {
+        "label": "إطلاق عند تسجيل الدخول",
+        "description": "ابدأ تشغيل Memry عند تسجيل الدخول",
+        "error": "فشل تحديث البداية عند التمهيد"
+      }
+    },
+    "updates": {
+      "appUpdates": "تحديثات التطبيق",
+      "installedVersion": "النسخة المثبتة {version}",
+      "availableVersion": "الإصدار المتاح {version}",
+      "unsupported": "يمكن للإصدارات المجمعة التحقق من التحديثات وتنزيلها وتثبيتها من إصدارات GitHub",
+      "available": "Memry {version} متاح للتنزيل",
+      "downloadingLatest": "تنزيل أحدث إصدار",
+      "downloadingLatestPercent": "تنزيل الإصدار الأخير ({percent}%)",
+      "downloaded": "Memry {version} جاهز للتثبيت",
+      "upToDate": "هذا التثبيت موجود على أحدث إصدار منشور",
+      "checking": "التحقق من إصدارات GitHub للحصول على إصدار أحدث",
+      "idle": "تحقق من وجود إصدارات جديدة وقم بتثبيتها دون مغادرة التطبيق",
+      "unsupportedToast": "تتوفر التحديثات التلقائية في الإصدارات المجمعة فقط",
+      "upToDateToast": "Memry {version} محدث",
+      "actionFailed": "فشل إجراء التحديث",
+      "actions": {
+        "checking": "جارٍ التحقق...",
+        "available": "تنزيل التحديث",
+        "downloading": "جارٍ التنزيل...",
+        "downloadingPercent": "تنزيل {percent}%",
+        "downloaded": "أعد التشغيل للتثبيت",
+        "idle": "التحقق من وجود تحديثات"
+      }
+    },
     "language": {
       "label": "اللغة",
       "helper": "يتم تحديث معظم التطبيق فوراً. يتم تحديث بعض النصوص على مستوى النظام بعد التشغيل التالي.",
       "changed": "تم تغيير اللغة إلى {nativeName}",
       "failed": "تعذر تغيير اللغة. يرجى المحاولة مرة أخرى."
+    },
+    "clockFormat": {
+      "label": "تنسيق الوقت",
+      "description": "نظام 12 ساعة أو 24 ساعة",
+      "options": {
+        "12h": "12 ساعة",
+        "24h": "24 ساعة"
+      },
+      "error": "فشل في تحديث تنسيق الوقت"
+    },
+    "tabs": {
+      "previewMode": {
+        "label": "وضع المعاينة",
+        "description": "نقرة واحدة تفتح المعاينة، والنقر المزدوج يظل مفتوحًا"
+      },
+      "restoreSession": {
+        "label": "استعادة الجلسة عند البدء",
+        "description": "أعد فتح علامات التبويب من جلستك الأخيرة"
+      },
+      "closeButton": {
+        "label": "زر إغلاق علامة التبويب",
+        "description": "متى يظهر زر الاغلاق",
+        "options": {
+          "always": "مرئية دائما",
+          "hover": "عرض عند التمرير",
+          "active": "فقط على علامة التبويب النشطة"
+        }
+      },
+      "error": "فشل تحديث الإعداد"
+    },
+    "fileCreation": {
+      "createInSelectedFolder": {
+        "label": "إنشاء في المجلد المحدد",
+        "description": "يتم إنشاء ملاحظات ومجلدات جديدة داخل المجلد المحدد حاليًا. عند إيقاف التشغيل، يتم دائمًا إنشاء العناصر في الجذر."
+      }
+    },
+    "privacy": {
+      "telemetry": {
+        "label": "مشاركة مقاييس الاستخدام المجهولة",
+        "description": "إنها مجرد مقاييس مجهولة - لا يتم إرسال محتوى الملاحظات أو استعلامات البحث أو مسارات الملفات أو رسائل البريد الإلكتروني أو المعرفات الأولية على الإطلاق.",
+        "error": "فشل تحديث إعداد القياس عن بعد"
+      }
+    }
+  },
+  "appearance": {
+    "header": {
+      "title": "المظهر",
+      "subtitle": "تخصيص الشكل والمظهر",
+      "loading": "جارٍ تحميل الإعدادات..."
+    },
+    "groups": {
+      "theme": "الموضوع",
+      "accentColor": "لون مميز",
+      "typography": "الطباعة"
+    },
+    "theme": {
+      "colorMode": {
+        "label": "وضع اللون",
+        "description": "اختر الموضوع المفضل لديك",
+        "aria": "وضع اللون"
+      },
+      "options": {
+        "light": "دافئ",
+        "white": "أبيض",
+        "dark": "الظلام",
+        "system": "النظام"
+      },
+      "error": "فشل تحديث الموضوع"
+    },
+    "accent": {
+      "pick": "اختر لونًا مميزًا",
+      "custom": {
+        "label": "لون مخصص",
+        "description": "أدخل قيمة سداسية عشرية",
+        "placeholder": "#000000"
+      },
+      "presets": {
+        "indigo": "نيلي",
+        "amber": "العنبر",
+        "emerald": "الزمرد",
+        "red": "أحمر",
+        "violet": "البنفسجي",
+        "cyan": "سماوي",
+        "pink": "وردي",
+        "orange": "برتقالي"
+      },
+      "error": "فشل تحديث لون التمييز"
+    },
+    "typography": {
+      "fontSize": {
+        "label": "حجم الخط",
+        "description": "ضبط حجم النص الأساسي",
+        "aria": "حجم الخط"
+      },
+      "fontFamily": {
+        "label": "عائلة الخطوط",
+        "description": "الخط الأساسي للواجهة",
+        "options": {
+          "system": "النظام الافتراضي",
+          "sansSerif": "بلا الرقيق",
+          "serif": "شريف (كريمسون برو)",
+          "gelasio": "جيلاسيو",
+          "geist": "جيست",
+          "inter": "انتر",
+          "monospace": "مونوسبيس"
+        }
+      },
+      "fontSizeError": "فشل تحديث حجم الخط",
+      "fontFamilyError": "فشل تحديث عائلة الخطوط"
+    }
+  },
+  "editor": {
+    "header": {
+      "title": "محرر",
+      "subtitle": "لاحظ إعدادات المحرر وتفضيلاته",
+      "loading": "جارٍ تحميل الإعدادات..."
+    },
+    "groups": {
+      "layout": "التخطيط",
+      "toolbar": "شريط الأدوات",
+      "writing": "الكتابة"
+    },
+    "width": {
+      "label": "عرض المحرر",
+      "description": "أقصى عرض لمنطقة الكتابة",
+      "options": {
+        "narrow": "ضيق",
+        "medium": "متوسط",
+        "wide": "واسعة"
+      },
+      "error": "فشل تحديث عرض المحرر"
+    },
+    "toolbarMode": {
+      "label": "شريط أدوات التنسيق اللاصق",
+      "description": "قم دائمًا بإظهار شريط الأدوات أعلى المحرر",
+      "error": "فشل تحديث وضع شريط الأدوات"
+    },
+    "spellCheck": {
+      "label": "التدقيق الإملائي",
+      "description": "ضع خطًا تحت الكلمات التي بها أخطاء إملائية أثناء الكتابة",
+      "error": "فشل في تحديث التدقيق الإملائي"
+    },
+    "autoSaveDelay": {
+      "label": "تأخير الحفظ التلقائي",
+      "description": "انتظر بعض الوقت بعد توقف الكتابة قبل الحفظ",
+      "seconds": "{seconds}s",
+      "error": "فشل تحديث تأخير الحفظ التلقائي"
+    },
+    "wordCount": {
+      "label": "عدد الكلمات",
+      "description": "إظهار عدد الكلمات في تذييل المحرر",
+      "error": "فشل تحديث عرض عدد الكلمات"
+    }
+  },
+  "templates": {
+    "header": {
+      "title": "قوالب",
+      "subtitle": "إدارة قوالب الملاحظات للإنشاء السريع"
+    },
+    "actions": {
+      "new": "قالب جديد",
+      "edit": "تحرير",
+      "duplicate": "مكررة",
+      "delete": "حذف"
+    },
+    "groups": {
+      "builtIn": "مدمج",
+      "myTemplates": "القوالب الخاصة بي"
+    },
+    "loading": "جارٍ تحميل النماذج...",
+    "newTemplateTitle": "قالب جديد",
+    "copySuffix": "{name} (نسخة)",
+    "empty": {
+      "title": "لا توجد قوالب مخصصة حتى الآن",
+      "description": "قم بإنشاء قالب للبدء"
+    },
+    "toasts": {
+      "deleted": "تم حذف القالب",
+      "deleteFailed": "فشل في حذف القالب",
+      "duplicated": "القالب مكرر",
+      "duplicateFailed": "فشل تكرار القالب"
+    },
+    "dialogs": {
+      "delete": {
+        "title": "حذف القالب",
+        "description": "هل أنت متأكد أنك تريد حذف هذا القالب؟ لا يمكن التراجع عن هذا الإجراء. لن تتأثر الملاحظات التي تم إنشاؤها من هذا القالب."
+      },
+      "duplicate": {
+        "title": "قالب مكرر",
+        "description": "أدخل اسمًا لنسخة القالب الجديد.",
+        "placeholder": "اسم القالب"
+      }
+    }
+  },
+  "journal": {
+    "header": {
+      "title": "مجلة",
+      "subtitle": "إعدادات المجلة والتفضيلات",
+      "loading": "جارٍ تحميل الإعدادات..."
+    },
+    "groups": {
+      "defaultTemplate": "القالب الافتراضي",
+      "sidebarVisibility": "رؤية الشريط الجانبي",
+      "footer": "تذييل"
+    },
+    "template": {
+      "label": "القالب",
+      "description": "الإدخالات الجديدة تبدأ بهذا القالب",
+      "placeholder": "حدد قالبًا",
+      "unknown": "قالب غير معروف",
+      "none": "لا شيء",
+      "noneAsk": "لا شيء (اسأل في كل مرة)",
+      "updated": "تم تحديث القالب الافتراضي",
+      "cleared": "تم مسح القالب الافتراضي",
+      "error": "فشل في تحديث القالب الافتراضي"
+    },
+    "showSchedule": {
+      "label": "عرض الجدول الزمني",
+      "description": "عرض أحداث اليوم والتقويم"
+    },
+    "showTasks": {
+      "label": "إظهار المهام",
+      "description": "عرض المهام المستحقة في اليوم المحدد"
+    },
+    "showAIConnections": {
+      "label": "إظهار اتصالات الذكاء الاصطناعي",
+      "description": "عرض الاتصالات المدعومة بالذكاء الاصطناعي للإدخالات ذات الصلة"
+    },
+    "showStatsFooter": {
+      "label": "إظهار تذييل الإحصائيات",
+      "description": "عدد الكلمات، وقت القراءة، الطوابع الزمنية"
+    },
+    "updateError": "فشل تحديث الإعداد"
+  },
+  "tasks": {
+    "header": {
+      "title": "المهام",
+      "subtitle": "تكوين الإعدادات الافتراضية للمهمة والسلوك",
+      "loading": "جارٍ تحميل الإعدادات..."
+    },
+    "groups": {
+      "defaults": "الافتراضيات",
+      "calendar": "التقويم",
+      "inbox": "البريد الوارد"
+    },
+    "defaultProject": {
+      "label": "المشروع الافتراضي",
+      "description": "يتم تعيينه عند عدم تحديد أي مشروع",
+      "placeholder": "لا يوجد مشروع افتراضي",
+      "none": "لا يوجد افتراضي (استخدم شخصي)",
+      "error": "فشل في تحديث المشروع الافتراضي"
+    },
+    "sortOrder": {
+      "label": "ترتيب الفرز الافتراضي",
+      "description": "كيفية ترتيب المهام في عرض القائمة",
+      "options": {
+        "manual": "يدوي (السحب والإفلات)",
+        "dueDate": "تاريخ الاستحقاق",
+        "priority": "الأولوية",
+        "createdAt": "تاريخ الإنشاء"
+      },
+      "error": "فشل تحديث ترتيب الفرز"
+    },
+    "weekStart": {
+      "label": "يبدأ الأسبوع في",
+      "description": "اليوم الأول من الأسبوع في طرق عرض التقويم",
+      "options": {
+        "sunday": "الأحد",
+        "monday": "الاثنين"
+      },
+      "error": "فشل تحديث بداية الأسبوع"
+    },
+    "staleInbox": {
+      "label": "عتبة علبة الوارد التي لا معنى لها",
+      "description": "يتم تمييز المهام الأقدم من هذه على أنها قديمة",
+      "unit": "أيام",
+      "error": "فشل تحديث حد البريد الوارد القديم"
+    }
+  },
+  "calendar": {
+    "header": {
+      "title": "التقويم",
+      "subtitle": "قم بتكوين سلوك الخلية النهارية في لوحة اليوم",
+      "loading": "جارٍ تحميل الإعدادات..."
+    },
+    "groups": {
+      "dayCellClick": "انقر فوق خلية اليوم"
+    },
+    "defaultBehavior": {
+      "label": "السلوك الافتراضي",
+      "description": "عند النقر على يوم في تقويم لوحة اليوم من أي علامة تبويب غير تابعة للتقويم",
+      "error": "فشل تحديث سلوك النقر اليومي"
+    },
+    "pageOverride": {
+      "label": "تجاوز صفحة التقويم",
+      "description": "السلوك عندما تكون علامة تبويب التقويم نشطة (الإعداد الافتراضي هو فتح التقويم)",
+      "error": "فشل تحديث تجاوز صفحة التقويم"
+    },
+    "options": {
+      "openJournal": "افتح المجلة",
+      "openCalendar": "افتح التقويم",
+      "useGlobal": "استخدم الإعداد العالمي"
+    }
+  },
+  "account": {
+    "header": {
+      "title": "الحساب",
+      "subtitle": "حسابك والمزامنة والأمن",
+      "loading": "جار التحميل..."
+    },
+    "groups": {
+      "identity": "الهوية",
+      "sync": "مزامنة",
+      "storage": "التخزين",
+      "devices": "الأجهزة",
+      "security": "الأمن"
+    },
+    "identity": {
+      "unknown": "غير معروف",
+      "plan": "خطة احترافية"
+    },
+    "sync": {
+      "lastSynced": "آخر مزامنة لـ {time}",
+      "pending": "{count, plural, one {# معلق} other {# معلق}}",
+      "statuses": {
+        "synced": "تمت المزامنة",
+        "syncing": "جارٍ المزامنة...",
+        "paused": "متوقف مؤقتًا",
+        "syncError": "خطأ في المزامنة",
+        "offline": "غير متصل",
+        "connecting": "جارٍ الاتصال...",
+        "pushed": "{count, plural, one {تم دفع #} other {تم دفع #}}",
+        "pulled": "{count, plural, one {تم سحب #} other {تم سحب #}}",
+        "pushedPulled": "{parts}",
+        "changesPending": "{count, plural, one {تغيير # معلق} other {تغييرات # معلقة}}",
+        "offlinePending": "غير متصل ({count, plural, one {تغيير # معلق} other {تغييرات # معلقة}})",
+        "never": "أبدا"
+      }
+    },
+    "storage": {
+      "used": "تم استخدام {used} من {limit}",
+      "categories": {
+        "notes": "ملاحظات",
+        "attachments": "المرفقات",
+        "crdt": "CRDT",
+        "other": "أخرى",
+        "available": "متاح"
+      }
+    },
+    "security": {
+      "recoveryKey": {
+        "label": "مفتاح الاسترداد",
+        "description": "عرض مفتاح الاسترداد الخاص بك للوصول إلى البيانات",
+        "action": "عرض المفتاح"
+      },
+      "rotateKeys": {
+        "label": "تدوير مفاتيح التشفير",
+        "description": "إنشاء مفاتيح جديدة وإعادة تشفير كافة البيانات",
+        "action": "تدوير"
+      },
+      "signOut": {
+        "label": "تسجيل الخروج",
+        "description": "افصل هذا الجهاز عن المزامنة",
+        "action": "تسجيل الخروج"
+      }
+    },
+    "signOutDialog": {
+      "title": "هل تريد الخروج من المزامنة؟",
+      "description": "ستتوقف المزامنة وستتم إزالة مفاتيح التشفير من هذا الجهاز. ستبقى ملاحظاتك على هذا الجهاز. ستحتاج إلى عبارة الاسترداد لإعداد المزامنة مرة أخرى.",
+      "confirm": "تسجيل الخروج",
+      "signingOut": "تسجيل الخروج..."
+    },
+    "toasts": {
+      "signedOut": "تم تسجيل الخروج بنجاح",
+      "signOutFailed": "فشل تسجيل الخروج",
+      "deviceLinked": "تم ربط الجهاز بنجاح"
+    }
+  },
+  "setup": {
+    "steps": {
+      "signIn": "تسجيل الدخول",
+      "verify": "تحقق",
+      "link": "رابط"
+    },
+    "progress": "الخطوة {current} من {total}: {label}",
+    "signIn": {
+      "title": "قم بإعداد المزامنة",
+      "description": "أنشئ حسابًا لمزامنة بياناتك عبر الأجهزة باستخدام التشفير الشامل.",
+      "or": "أو",
+      "errors": {
+        "sendCode": "فشل في إرسال الرمز",
+        "googleStart": "فشل في بدء تسجيل الدخول إلى Google"
+      }
+    },
+    "email": {
+      "label": "عنوان البريد الإلكتروني",
+      "placeholder": "أدخل عنوان بريدك الإلكتروني...",
+      "invalid": "الرجاء إدخال عنوان بريد إلكتروني صالح",
+      "sending": "جارٍ إرسال الرمز..."
+    },
+    "oauth": {
+      "google": "تواصل مع جوجل"
+    },
+    "otp": {
+      "title": "أدخل رمز التحقق",
+      "sentTo": "لقد أرسلنا رمزًا مكونًا من 6 أرقام إلى ",
+      "aria": "رمز التحقق المكون من 6 أرقام",
+      "verifying": "جارٍ التحقق...",
+      "resending": "إعادة الإرسال...",
+      "resend": "إعادة إرسال الرمز",
+      "resendIn": "إعادة الإرسال في {time}",
+      "differentEmail": "استخدم بريدًا إلكترونيًا مختلفًا",
+      "error": "فشل التحقق",
+      "resendError": "فشل في إعادة الإرسال"
+    },
+    "recovery": {
+      "displayTitle": "احفظ عبارة الاسترداد الخاصة بك",
+      "displayDescription": "هذه هي الطريقة الوحيدة لاستعادة بياناتك المشفرة إذا فقدت الوصول إلى جميع أجهزتك.",
+      "warning": "اكتب هذا واحفظه في مكان آمن. لن تراه مرة أخرى.",
+      "wordsAria": "كلمات عبارة الاسترداد",
+      "wordAria": "كلمة {index}: {word}",
+      "copyAria": "انسخ عبارة الاسترداد إلى الحافظة",
+      "copiedAria": "تم نسخ عبارة الاسترداد",
+      "copied": "منقول",
+      "saved": "لقد قمت بحفظ عبارة الاسترداد الخاصة بي",
+      "confirmTitle": "قم بتأكيد عبارة الاسترداد",
+      "confirmDescription": "أدخل الكلمات المطلوبة للتحقق من حفظها بشكل صحيح.",
+      "wordPlaceholder": "أدخل الكلمة #{index}",
+      "verify": "تحقق",
+      "mustMatch": "يجب أن تتطابق جميع الكلمات الثلاث للمتابعة",
+      "inputTitle": "أدخل عبارة الاسترداد",
+      "inputDescription": "أدخل عبارة الاسترداد المكونة من 24 كلمة لاستعادة الوصول إلى بياناتك المشفرة.",
+      "inputLabel": "عبارة الاسترداد",
+      "count": "كلمات {count} / {total}",
+      "inputPlaceholder": "أدخل عبارة الاسترداد المكونة من 24 كلمة مفصولة بمسافات...",
+      "lengthHint": "أدخل جميع الكلمات الـ 24 لتمكين زر الاستعادة",
+      "restore": "استعادة الوصول",
+      "progress": {
+        "deriving": "جارٍ استخراج مفاتيح التشفير...",
+        "validating": "جارٍ التحقق من صحة عبارة الاسترداد...",
+        "registering": "تسجيل الجهاز..."
+      },
+      "failed": "فشل الاسترداد",
+      "confirmationFailed": "فشل التأكيد"
+    },
+    "linking": {
+      "choiceTitle": "ربط هذا الجهاز",
+      "choiceDescription": "قم بنقل مفاتيح التشفير من جهاز آخر أو استعادتها من عبارة الاسترداد.",
+      "qrChoice": "الرابط عبر رمز الاستجابة السريعة",
+      "qrChoiceDescription": "قم بمسح الرمز الظاهر على جهازك الآخر",
+      "recoveryChoice": "عبارة الاسترداد",
+      "recoveryChoiceDescription": "أدخل عبارة الاسترداد المكونة من 24 كلمة",
+      "codeTitle": "أدخل رمز الربط",
+      "codeDescription": "الصق رمز الربط من جهازك الآخر لنقل مفاتيح التشفير الخاصة بك بشكل آمن.",
+      "codeLabel": "رمز الربط",
+      "valid": "صالح",
+      "invalid": "التنسيق غير صالح",
+      "codePlaceholder": "الصق الرمز من جهازك الآخر...",
+      "formatHint": "الصق رمز ربط JSON من جهازك الآخر",
+      "linking": "ربط...",
+      "linkDevice": "جهاز الارتباط",
+      "failed": "فشل الربط",
+      "deviceFailed": "فشل ربط الجهاز",
+      "pendingSuccess": "تم ربط الجهاز بنجاح",
+      "goBack": "ارجع",
+      "waitingTitle": "في انتظار الموافقة",
+      "waitingDescription": "افتح Memry على جهازك الآخر وقم بالموافقة على طلب الربط.",
+      "verificationCode": "رمز التحقق",
+      "confirmCode": "تأكد من أن هذا يطابق الرمز الموجود على جهازك الآخر",
+      "cancel": "إلغاء"
+    }
+  },
+  "devices": {
+    "loading": "جارٍ تحميل الأجهزة...",
+    "loadingAria": "أجهزة التحميل",
+    "none": "لم يتم ربط أي أجهزة حتى الآن",
+    "linkNew": "ربط الجهاز الجديد",
+    "thisDevice": "هذا الجهاز",
+    "lastSeen": "شوهد آخر مرة منذ {time}",
+    "linked": "تم ربطه منذ {time}",
+    "renameAria": "إعادة تسمية {name}",
+    "rename": "إعادة تسمية",
+    "revoke": "إبطال",
+    "showLess": "عرض أقل",
+    "showMore": "{count, plural, one {# المزيد من الأجهزة} other {# المزيد من الأجهزة}}",
+    "showMoreAria": "إظهار {count, plural, one {# المزيد من الأجهزة} other {# المزيد من الأجهزة}}",
+    "dialogs": {
+      "revokeTitle": "إلغاء \"{name}\"؟",
+      "revokeDescription": "سيفقد هذا الجهاز إمكانية الوصول إلى بياناتك المتزامنة. سيلزم ربطه مرة أخرى لاستعادة المزامنة. ستبقى البيانات المحلية على هذا الجهاز.",
+      "revokeDevice": "إبطال الجهاز",
+      "revoking": "جارٍ الإلغاء...",
+      "renameTitle": "إعادة تسمية الجهاز",
+      "renameDescription": "اختر اسمًا لتعريف هذا الجهاز.",
+      "namePlaceholder": "اسم الجهاز",
+      "renaming": "إعادة تسمية..."
+    },
+    "toasts": {
+      "loadFailed": "فشل في تحميل الأجهزة",
+      "removed": "تمت إزالة \"{name}\"",
+      "removeFailed": "فشل في إزالة الجهاز",
+      "renamed": "تمت إعادة تسميته إلى \"{name}\"",
+      "renameFailed": "فشلت إعادة تسمية الجهاز"
+    }
+  },
+  "qrLinking": {
+    "title": "ربط الجهاز الجديد",
+    "description": "قم بمسح رمز الاستجابة السريعة هذا ضوئيًا من الجهاز الذي تريد ربطه لنقل مفاتيح التشفير الخاصة بك بشكل آمن.",
+    "encrypted": "مشفرة من طرف إلى طرف",
+    "generating": "جارٍ إنشاء رمز الارتباط...",
+    "generatingAria": "توليد رمز الارتباط",
+    "generateFailed": "فشل في إنشاء رمز الربط",
+    "tryAgain": "حاول مرة أخرى",
+    "expired": "انتهت صلاحية رمز الارتباط",
+    "generateNew": "توليد رمز جديد",
+    "qrAria": "رمز الاستجابة السريعة لربط الجهاز",
+    "qrImageAria": "ربط الجهاز برمز QR",
+    "expiresIn": "تنتهي صلاحيته في {time}",
+    "or": "أو",
+    "codeLabel": "رمز الربط",
+    "copyAria": "انسخ رمز الربط",
+    "copiedAria": "منقول",
+    "copied": "منسوخ!"
+  },
+  "linkingApproval": {
+    "title": "يريد الجهاز الجديد الارتباط",
+    "description": "يطلب أحد الأجهزة الوصول إلى بياناتك المشفرة. لا توافق إلا إذا بدأت هذا الطلب.",
+    "unknownDevice": "جهاز غير معروف",
+    "unknownPlatform": "منصة غير معروفة",
+    "verificationCode": "رمز التحقق",
+    "computing": "الحوسبة...",
+    "unavailable": "غير متاح",
+    "confirmCode": "تأكد من تطابق هذا الرمز مع الرمز الموضح على الجهاز الجديد",
+    "reject": "رفض",
+    "approve": "موافقة",
+    "approving": "جارٍ الموافقة...",
+    "approvalFailed": "فشلت الموافقة",
+    "failedToApprove": "فشل في الموافقة على الجهاز"
+  },
+  "recoveryKey": {
+    "title": "مفتاح الاسترداد",
+    "description": "قم بتخزين هذا المفتاح بشكل آمن. يمكنه استعادة قبوتك إذا فقدت الوصول إلى جميع الأجهزة.",
+    "loading": "جار التحميل...",
+    "retrieveFailed": "فشل في استرداد مفتاح الاسترداد",
+    "copied": "تم نسخ مفتاح الاسترداد إلى الحافظة",
+    "copyFailed": "فشل النسخ إلى الحافظة",
+    "clickToReveal": "انقر للكشف",
+    "hide": "إخفاء",
+    "reveal": "كشف",
+    "copy": "نسخ",
+    "sessionHint": "يظهر هذا المفتاح مرة واحدة في كل جلسة. أغلق مربع الحوار هذا لمسحه من الذاكرة."
+  },
+  "keyRotation": {
+    "title": "تدوير مفاتيح التشفير",
+    "descriptions": {
+      "confirm": "قم بإنشاء مفاتيح تشفير جديدة لخزنتك.",
+      "rotating": "إعادة تشفير بياناتك بمفاتيح جديدة...",
+      "phrase": "احفظ عبارة الاسترداد الجديدة.",
+      "complete": "اكتمل تدوير المفتاح.",
+      "error": "واجه تدوير المفتاح خطأ."
+    },
+    "warningTitle": "هذا الإجراء سوف:",
+    "warningItems": {
+      "keyPair": "قم بإنشاء زوج مفاتيح تشفير جديد",
+      "rewrap": "أعد تغليف كافة العناصر المتزامنة باستخدام المفتاح الجديد",
+      "phrase": "إنتاج عبارة استرداد جديدة (تصبح العبارة القديمة غير صالحة)",
+      "pause": "قم بإيقاف المزامنة مؤقتًا أثناء العملية"
+    },
+    "explanation": "لا يتم إعادة تشفير محتوى بياناتك مطلقًا - فقط يتم تغيير مغلفات المفاتيح. هذه عملية سريعة وآمنة.",
+    "start": "بدء دوران المفتاح",
+    "starting": "جارٍ البدء...",
+    "phases": {
+      "preparing": "جارٍ التحضير...",
+      "reencrypting": "إعادة تغليف المفاتيح ({processed}/{total})",
+      "finalizing": "جارٍ الانتهاء...",
+      "working": "جاري العمل..."
+    },
+    "progressAria": "دوران المفتاح: {phaseLabel} {pct}%",
+    "progressLabel": "تقدم دوران المفتاح",
+    "doNotClose": "لا تغلق التطبيق أثناء هذه العملية.",
+    "complete": "تم تدوير كافة مفاتيح التشفير. تم حفظ عبارة الاسترداد الجديدة. سيتم استئناف المزامنة تلقائيًا.",
+    "unknownError": "حدث خطأ غير معروف أثناء تدوير المفتاح.",
+    "errorHint": "تظل مفاتيحك الحالية صالحة. تم استئناف المزامنة. يمكنك إعادة المحاولة في أي وقت.",
+    "closeConfirm": {
+      "title": "التناوب قيد التقدم",
+      "description": "لا يزال تدوير المفاتيح قيد التشغيل. لن يؤدي إغلاق مربع الحوار هذا إلى إيقاف العملية، ولكنك لن ترى عبارة الاسترداد الجديدة حتى تكتمل.",
+      "stay": "البقاء",
+      "closeAnyway": "إغلاق على أي حال"
+    },
+    "failed": "فشل تدوير المفتاح"
+  },
+  "ai": {
+    "header": {
+      "title": "مساعد الذكاء الاصطناعي",
+      "subtitle": "يتم تشغيل عمليات التضمين محليًا. يمكن للمذكرات الصوتية استخدام Whisper Small أو مفتاح OpenAI الخاص بك.",
+      "loading": "جارٍ تحميل الإعدادات..."
+    },
+    "enable": {
+      "label": "تمكين ميزات الذكاء الاصطناعي",
+      "description": "اقتراحات حفظ الملفات الذكية واتصالات الملاحظات",
+      "enabled": "تم تمكين ميزات الذكاء الاصطناعي",
+      "disabled": "تم تعطيل ميزات الذكاء الاصطناعي",
+      "error": "فشل تحديث الإعداد"
+    },
+    "unknownError": "خطأ غير معروف",
+    "groups": {
+      "voice": "النسخ الصوتي",
+      "embeddingModel": "نموذج التضمين المحلي",
+      "embeddingIndex": "فهرس التضمين",
+      "inline": "التحرير المضمن بالذكاء الاصطناعي"
+    },
+    "voice": {
+      "provider": "مزود",
+      "providerDescription": "مزود خدمة تحويل الكلام إلى نص للمذكرات الصوتية",
+      "providers": {
+        "local": "محلي (افتراضي)",
+        "openai": "أوبن آي (BYOK)"
+      },
+      "localModel": "النموذج المحلي",
+      "localModelDescription": "يتم تنزيل تطبيق Whisper Small عند الطلب ويظل مخزّنًا محليًا",
+      "status": {
+        "ready": "جاهز",
+        "downloading": "جارٍ التنزيل",
+        "downloaded": "تم التنزيل",
+        "notDownloaded": "لم يتم تحميلها"
+      },
+      "cacheHint": "غير مرفق مع التطبيق · تم تنزيله من الإعدادات · تم تخزينه مؤقتًا على هذا الجهاز",
+      "preparing": "تحضير همس صغير...",
+      "download": "تحميل همس صغير",
+      "apiKey": "مفتاح واجهة برمجة تطبيقات OpenAI",
+      "apiKeyDescription": "يتم تخزينها في سلسلة مفاتيح نظام التشغيل لديك وتستخدم فقط للنسخ الصوتي",
+      "replaceKey": "استبدل مفتاح OpenAI المحفوظ",
+      "enterKey": "أدخل مفتاح OpenAI API",
+      "saveKey": "حفظ المفتاح",
+      "keySaved": "تم حفظ مفتاح API في سلسلة المفاتيح",
+      "providerError": "فشل تحديث موفر الصوت",
+      "downloadedToast": "تم تنزيل Whisper Small",
+      "downloadError": "فشل في تنزيل Whisper Small",
+      "keySavedToast": "تم حفظ مفتاح OpenAI",
+      "keySaveError": "فشل في حفظ مفتاح OpenAI"
+    },
+    "embedding": {
+      "loaded": "محملة",
+      "loading": "جاري التحميل",
+      "cacheHint": "~23 ميغابايت · مخبأة محليًا · الكل على الجهاز",
+      "dimensions": "الأبعاد",
+      "embeddings": "التضمين",
+      "downloadLoad": "تحميل وتحميل النموذج",
+      "downloadingModel": "جارٍ تنزيل النموذج...",
+      "loadingModel": "جارٍ تحميل النموذج...",
+      "loadSuccess": "تم تحميل النموذج بنجاح",
+      "loadFailed": "فشل تحميل النموذج",
+      "rebuildIndex": "إعادة بناء الفهرس",
+      "rebuildDescription": "إعادة إنشاء التضمينات لجميع الملاحظات",
+      "rebuild": "إعادة بناء",
+      "scanning": "جارٍ مسح الملاحظات...",
+      "generating": "جارٍ إنشاء التضمينات...",
+      "complete": "كامل!",
+      "reindexed": "تمت إعادة فهرسة التضمينات: تم حساب {computed}، وتم تخطي {skipped}",
+      "reindexFailed": "فشل في إعادة فهرسة التضمينات"
+    },
+    "inline": {
+      "loading": "جار التحميل...",
+      "title": "التحرير المضمن بالذكاء الاصطناعي",
+      "enable": "تمكين الذكاء الاصطناعي المضمن",
+      "enableDescription": "إظهار قائمة AI عند تحرير الملاحظات",
+      "enabled": "تم تمكين التحرير المضمن بالذكاء الاصطناعي",
+      "disabled": "تم تعطيل تحرير الذكاء الاصطناعي المضمن",
+      "provider": "مزود",
+      "providerDescription": "خدمة الذكاء الاصطناعي للعمليات النصية",
+      "providers": {
+        "ollama": "أولاما (محلي)",
+        "openai": "OpenAI",
+        "anthropic": "أنثروبي"
+      },
+      "model": "نموذج",
+      "modelDescription": "نموذج اللغة لإعادة الكتابة والتلخيص",
+      "selectModel": "حدد نموذجًا",
+      "apiKey": "مفتاح واجهة برمجة التطبيقات",
+      "apiKeyDescription": "مخزنة محليا، ترسل فقط إلى المزود",
+      "apiKeyPlaceholder": "أدخل مفتاح واجهة برمجة التطبيقات {provider}",
+      "ollamaUrl": "عنوان URL لأولاما",
+      "ollamaUrlDescription": "عنوان الخادم المحلي",
+      "connection": "اتصال",
+      "activePort": "نشط على المنفذ {port}",
+      "notConnected": "غير متصل",
+      "test": "اختبار",
+      "stopFailed": "فشل في إيقاف الخادم الموجود",
+      "connected": "متصل! الخادم يعمل على المنفذ {port}",
+      "connectFailed": "فشل الاتصال",
+      "testFailed": "فشل اختبار الاتصال",
+      "updateFailed": "فشل تحديث الإعداد"
+    }
+  },
+  "integrations": {
+    "header": {
+      "title": "التكامل",
+      "subtitle": "قم بتوصيل الخدمات الخارجية لإثراء سير عملك"
+    },
+    "auth": {
+      "oauth2": "أووث 2.0",
+      "apiKey": "مفتاح واجهة برمجة التطبيقات",
+      "none": "النظام"
+    },
+    "comingSoon": "قريبا",
+    "connect": "الاتصال",
+    "googleCalendar": {
+      "name": "تقويم جوجل",
+      "description": "مزامنة ثنائية الاتجاه لأحداث Memry وتقويمات Google المستوردة.",
+      "statuses": {
+        "connected": "متصل",
+        "notConnected": "غير متصل",
+        "reconnectRequired": "إعادة الاتصال مطلوبة"
+      },
+      "accountReconnect": "أعد الاتصال بجوجل",
+      "importedCalendars": "التقويمات المستوردة",
+      "selected": "تم تحديد {count}",
+      "syncNow": "مزامنة الآن",
+      "disconnect": "قطع الاتصال",
+      "reconnect": "أعد الاتصال بجوجل",
+      "syncFailed": "حدث خطأ ما",
+      "connectFailed": "فشل في ربط تقويم Google",
+      "refreshFailed": "فشل تحديث تقويم Google",
+      "disconnectFailed": "فشل في قطع اتصال تقويم Google",
+      "selectionFailed": "فشل تحديث تحديد التقويم",
+      "retryFailed": "فشلت إعادة محاولة مزامنة التقويم"
+    },
+    "sourcePicker": {
+      "empty": "لا تتوفر تقاويم Google المستوردة على هذا الجهاز حتى الآن.",
+      "statuses": {
+        "synced": "تمت المزامنة",
+        "error": "خطأ",
+        "pending": "في انتظار",
+        "idle": "خامل"
+      },
+      "retrying": "جارٍ إعادة المحاولة...",
+      "retryNow": "أعد المحاولة الآن"
+    },
+    "registry": {
+      "googleCalendar": {
+        "name": "تقويم جوجل",
+        "description": "مزامنة ثنائية الاتجاه لأحداث ومهام وتذكيرات Memry والتقويمات المستوردة"
+      },
+      "appleCalendar": {
+        "name": "تقويم أبل",
+        "description": "تكامل التقويم المحلي عبر واجهات برمجة تطبيقات النظام"
+      },
+      "notion": {
+        "name": "فكرة",
+        "description": "استيراد الصفحة لمرة واحدة إلى مخزنك"
+      },
+      "readwise": {
+        "name": "قراءة حكيمة",
+        "description": "مزامنة النقاط البارزة في قبوتك"
+      },
+      "todoist": {
+        "name": "تودويست",
+        "description": "مزامنة المهام في اتجاهين"
+      }
+    }
+  },
+  "vault": {
+    "header": {
+      "title": "قبو",
+      "subtitle": "تكوين القبو والتخزين"
+    },
+    "groups": {
+      "storageUsage": "استخدام التخزين",
+      "location": "الموقع"
+    },
+    "loadingStorage": "جارٍ تحميل معلومات التخزين...",
+    "signInStorage": "قم بتسجيل الدخول لعرض استخدام التخزين",
+    "vaultPath": "مسار المدفن",
+    "reveal": "كشف",
+    "storage": {
+      "title": "التخزين",
+      "used": "تم استخدام {used} من {limit}",
+      "ratio": "{used} / {limit}",
+      "refreshAria": "تحديث استخدام التخزين",
+      "usageAria": "استخدام التخزين: {used} من {limit}",
+      "available": "متاح {available}",
+      "categories": {
+        "notes": "ملاحظات",
+        "attachments": "المرفقات",
+        "crdt": "CRDT",
+        "other": "أخرى"
+      },
+      "warningTitle": "التخزين ممتلئ تقريبًا",
+      "warningDescription": "قم بتحرير مساحة أو قم بترقية خطتك لتجنب مشكلات المزامنة."
+    }
+  },
+  "tags": {
+    "header": {
+      "title": "العلامات",
+      "subtitle": "إدارة العلامات عبر الملاحظات واليوميات والمهام"
+    },
+    "loading": "جارٍ تحميل العلامات...",
+    "empty": "لا توجد علامات حتى الآن. ستظهر العلامات هنا عند إضافتها إلى الملاحظات والمهام.",
+    "filterPlaceholder": "تصفية العلامات...",
+    "noMatch": "لا توجد علامات مطابقة \"{query}\"",
+    "summary": "{count, plural, one {علامة #} other {علامات #}} عبر الملاحظات والمهام",
+    "actions": {
+      "rename": "إعادة تسمية",
+      "changeColor": "تغيير اللون",
+      "mergeInto": "دمج في...",
+      "merge": "دمج",
+      "delete": "حذف"
+    },
+    "dialogs": {
+      "deleteTitle": "حذف العلامة",
+      "deleteDescription": "هل تريد إزالة \"{name}\" من {count, plural, one {عنصر #} other {عناصر #}}؟ لا يمكن التراجع عن هذا.",
+      "mergeTitle": "دمج العلامة",
+      "mergeDescription": "ستتم إعادة وضع علامة على جميع العناصر الموسومة بـ \"{source}\" بالعلامة المستهدفة. سيتم حذف علامة المصدر.",
+      "targetPlaceholder": "حدد العلامة المستهدفة...",
+      "colorTitle": "تغيير اللون لـ \"{name}\""
+    },
+    "toasts": {
+      "renamed": "تمت إعادة تسمية \"{oldName}\" إلى \"{newName}\"",
+      "renameFailed": "فشلت إعادة تسمية العلامة",
+      "deleteFailed": "فشل حذف العلامة",
+      "deleted": "تم حذف \"{name}\" من {count, plural, one {عنصر #} other {عناصر #}}",
+      "mergeFailed": "فشل دمج العلامات",
+      "merged": "تم دمج \"{source}\" في \"{target}\" ({count, plural, one {عنصر #} other {عناصر #}})",
+      "colorUpdated": "تم تحديث اللون لـ \"{name}\"",
+      "colorFailed": "فشل في تحديث اللون"
+    }
+  },
+  "properties": {
+    "header": {
+      "title": "خصائص",
+      "subtitle": "إدارة تعريفات الخاصية عبر جميع الملاحظات"
+    },
+    "loading": "جارٍ تحميل الخصائص...",
+    "empty": "لا توجد تعريفات الملكية حتى الآن. أضف خاصية الحالة أو التحديد أو التحديد المتعدد إلى أي ملاحظة للبدء.",
+    "filterPlaceholder": "خصائص التصفية...",
+    "noMatch": "لا توجد خصائص تطابق \"{query}\"",
+    "summary": "{count, plural, one {تعريف خاصية #} other {تعريفات خاصية #}}",
+    "optionCount": "{count, plural, one {الخيار #} other {خيارات #}}",
+    "optionNamePlaceholder": "اسم الخيار",
+    "addOption": "إضافة خيار",
+    "changeColorTitle": "تغيير اللون",
+    "renameTitle": "إعادة تسمية",
+    "removeTitle": "إزالة",
+    "actions": {
+      "deleteProperty": "حذف الممتلكات"
+    },
+    "types": {
+      "status": "الحالة",
+      "select": "اختر",
+      "multiselect": "تحديد متعدد",
+      "text": "نص",
+      "number": "رقم",
+      "date": "التاريخ",
+      "checkbox": "خانة الاختيار",
+      "url": "عنوان URL"
+    },
+    "dialogs": {
+      "deleteTitle": "حذف الممتلكات",
+      "deleteDescription": "هل تريد إزالة تعريف الخاصية \"{name}\"؟ الملاحظات التي تستخدم هذه الخاصية ستحتفظ بقيمها كنص عادي.",
+      "colorTitle": "تغيير اللون لـ \"{name}\""
+    },
+    "toasts": {
+      "renamed": "تمت إعادة تسمية \"{oldValue}\" إلى \"{newValue}\"",
+      "renameFailed": "فشل في إعادة تسمية الخيار",
+      "removed": "تمت إزالة \"{value}\"",
+      "removeFailed": "فشل في إزالة الخيار",
+      "colorFailed": "فشل في تحديث اللون",
+      "deleteFailed": "فشل في حذف الخاصية",
+      "deleted": "الخاصية المحذوفة \"{name}\"",
+      "addFailed": "فشل في إضافة الخيار"
+    }
+  },
+  "shortcuts": {
+    "header": {
+      "title": "اختصارات لوحة المفاتيح",
+      "subtitle": "انقر فوق أي اختصار لإعادة ربطه",
+      "loading": "جارٍ تحميل الإعدادات..."
+    },
+    "searchPlaceholder": "اختصارات البحث...",
+    "resetAll": "إعادة ضبط الكل",
+    "custom": "مخصص",
+    "pressShortcut": "اضغط على الاختصار...",
+    "cancelTitle": "إلغاء",
+    "rebindTitle": "انقر لإعادة الربط",
+    "resetTitle": "إعادة التعيين إلى الوضع الافتراضي",
+    "clearTitle": "مسح الاختصار",
+    "clickToSet": "انقر لتعيين",
+    "noMatch": "لا توجد اختصارات تطابق بحثك",
+    "conflict": "يتعارض مع: {labels}",
+    "globalCapture": {
+      "title": "الالتقاط العالمي",
+      "description": "التقط ملاحظة من أي مكان",
+      "permissionNeeded": "الإذن مطلوب",
+      "active": "نشط",
+      "permissionHint": "تتطلب الاختصارات العامة إذن الوصول. انتقل إلى إعدادات النظام → الخصوصية → إمكانية الوصول وقم بتمكين Memry."
+    },
+    "toasts": {
+      "saveGlobalFailed": "فشل في حفظ اختصار الالتقاط الشامل",
+      "saveFailed": "فشل حفظ الاختصار",
+      "resetFailed": "فشلت إعادة تعيين الاختصار",
+      "resetAllSuccess": "يتم إعادة تعيين كافة الاختصارات إلى الإعدادات الافتراضية",
+      "resetAllFailed": "فشل في إعادة تعيين الاختصارات"
+    },
+    "categories": {
+      "navigation": "الملاحة",
+      "tabs": "علامات التبويب",
+      "editor": "محرر",
+      "view": "عرض"
+    },
+    "entries": {
+      "nav": {
+        "newNote": {
+          "label": "ملاحظة جديدة",
+          "description": "إنشاء ملاحظة جديدة"
+        },
+        "newTask": {
+          "label": "مهمة جديدة",
+          "description": "إنشاء مهمة جديدة"
+        },
+        "inbox": {
+          "label": "انتقل إلى البريد الوارد",
+          "description": "انتقل إلى البريد الوارد"
+        },
+        "notes": {
+          "label": "انتقل إلى الملاحظات",
+          "description": "انتقل إلى الملاحظات"
+        },
+        "tasks": {
+          "label": "انتقل إلى المهام",
+          "description": "انتقل إلى المهام"
+        },
+        "search": {
+          "label": "بحث",
+          "description": "فتح البحث العالمي"
+        },
+        "settings": {
+          "label": "افتح الإعدادات",
+          "description": "افتح لوحة الإعدادات"
+        }
+      },
+      "tabs": {
+        "close": {
+          "label": "إغلاق علامة التبويب",
+          "description": "أغلق علامة التبويب الحالية"
+        },
+        "next": {
+          "label": "علامة التبويب التالية",
+          "description": "قم بالتبديل إلى علامة التبويب التالية"
+        },
+        "previous": {
+          "label": "علامة التبويب السابقة",
+          "description": "قم بالتبديل إلى علامة التبويب السابقة"
+        },
+        "reopen": {
+          "label": "إعادة فتح علامة التبويب الأخيرة",
+          "description": "أعد فتح علامة التبويب المغلقة مؤخرًا"
+        },
+        "navBack": {
+          "label": "انتقل إلى الخلف",
+          "description": "أعد تنشيط علامة التبويب النشطة سابقًا"
+        },
+        "navForward": {
+          "label": "انتقل إلى الأمام",
+          "description": "إعادة التنقل الخلفي"
+        }
+      },
+      "editor": {
+        "save": {
+          "label": "حفظ",
+          "description": "احفظ الملاحظة الحالية"
+        },
+        "bold": {
+          "label": "جريئة",
+          "description": "تبديل التنسيق الغامق"
+        },
+        "italic": {
+          "label": "مائل",
+          "description": "تبديل التنسيق المائل"
+        },
+        "underline": {
+          "label": "تسطير",
+          "description": "تبديل تنسيق التسطير"
+        }
+      },
+      "view": {
+        "toggleSidebar": {
+          "label": "تبديل الشريط الجانبي",
+          "description": "إظهار الشريط الجانبي أو إخفاؤه"
+        },
+        "shortcuts": {
+          "label": "مساعدة في اختصارات لوحة المفاتيح",
+          "description": "إظهار مرجع اختصارات لوحة المفاتيح"
+        }
+      }
+    }
+  },
+  "phaseF": {
+    "componentsKeyboardChordIndicator": {
+      "pressedWaitingForSecondKey": "تم الضغط عليه - في انتظار المفتاح الثاني..."
+    },
+    "componentsKeyboardKeyboardShortcutsDialog": {
+      "keyboardShortcuts": "اختصارات لوحة المفاتيح",
+      "press": "اضغط ",
+      "toToggleThisDialog": "لتبديل مربع الحوار هذا"
+    },
+    "componentsSyncDeviceList": {
+      "middot": "ميدوت;"
+    },
+    "componentsSyncDeviceRevokedDialog": {
+      "thisDeviceHasBeenRemoved": "تمت إزالة هذا الجهاز",
+      "exporting": "جارٍ التصدير...",
+      "signOut": "تسجيل الخروج"
+    },
+    "componentsSyncSyncHistory": {
+      "middot": "ميدوت; ",
+      "activity": "النشاط",
+      "filterBySyncType": "التصفية حسب نوع المزامنة",
+      "allTypes": "جميع الأنواع",
+      "pushed": "دفعت",
+      "pulled": "انسحبت",
+      "errors": "أخطاء",
+      "filterByTimePeriod": "تصفية حسب الفترة الزمنية",
+      "allTime": "كل الوقت",
+      "today": "اليوم",
+      "last7Days": "آخر 7 أيام",
+      "last30Days": "آخر 30 يومًا",
+      "loadingSyncHistory": "جارٍ تحميل سجل المزامنة",
+      "noSyncActivityYet": "لا يوجد نشاط مزامنة حتى الآن",
+      "loadMore": "تحميل المزيد"
+    },
+    "componentsSyncSyncStatus": {
+      "lastSynced": "آخر مزامنة ",
+      "pending": "في انتظار",
+      "localOnly": "محلي فقط",
+      "detected": "تم الكشف عنها",
+      "clockSkewDetected": "تم اكتشاف انحراف الساعة",
+      "items": "العناصر",
+      "willSyncWhenBackOnline": "ستتم المزامنة عند معاودة الاتصال بالإنترنت",
+      "openSyncSettings": "افتح إعدادات المزامنة"
+    },
+    "pagesSettingsAiInlineSection": {
+      "httpLocalhost11434V1": "http://localhost:11434/v1"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToUpdateTagColor": "فشل تحديث لون العلامة",
+      "googleSignInFailed": "فشل تسجيل الدخول إلى Google",
+      "failedToSendVerificationCode": "فشل في إرسال رمز التحقق",
+      "invalidVerificationCode": "رمز التحقق غير صالح",
+      "accountSetupFailed": "فشل إعداد الحساب",
+      "failedToResendCode": "فشلت إعادة إرسال الرمز",
+      "failedToSetUpDevice": "فشل في إعداد الجهاز",
+      "failedToConfirmRecoveryPhrase": "فشل في تأكيد عبارة الاسترداد",
+      "failedToAnalyzeContent": "فشل في تحليل المحتوى",
+      "failedToLoadUpdaterState": "فشل تحميل حالة المحدث",
+      "failedToCheckForUpdates": "فشل التحقق من وجود تحديثات",
+      "failedToDownloadUpdate": "فشل تنزيل التحديث",
+      "failedToInstallUpdate": "فشل تثبيت التحديث",
+      "failedToLoadEditorSettings": "فشل تحميل إعدادات المحرر",
+      "failedToUpdateEditorSettings": "فشل في تحديث إعدادات المحرر",
+      "failedToLoadGeneralSettings": "فشل تحميل الإعدادات العامة",
+      "failedToUpdateGeneralSettings": "فشل في تحديث الإعدادات العامة",
+      "failedToLoadKeyboardSettings": "فشل تحميل إعدادات لوحة المفاتيح",
+      "failedToUpdateKeyboardSettings": "فشل في تحديث إعدادات لوحة المفاتيح",
+      "failedToResetKeyboardSettings": "فشل في إعادة ضبط إعدادات لوحة المفاتيح",
+      "failedToLoadNoteEditorSettings": "فشل تحميل إعدادات محرر الملاحظات",
+      "failedToUpdateSettings": "فشل في تحديث الإعدادات",
+      "failedToLoadTabSettings": "فشل تحميل إعدادات علامة التبويب",
+      "failedToLoadNotes": "فشل تحميل الملاحظات",
+      "failedToLoadTags": "فشل تحميل العلامات",
+      "failedToLoadVaultStatus": "فشل تحميل حالة المخزن",
+      "failedToSelectVault": "فشل في تحديد المخزن",
+      "failedToCloseVault": "فشل في إغلاق الخزنة",
+      "failedToSwitchVault": "فشل في تبديل المخزن",
+      "failedToUpdateConfig": "فشل في تحديث التكوين",
+      "failedToReindex": "فشلت إعادة الفهرسة"
     }
   }
 }

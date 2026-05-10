@@ -43,7 +43,7 @@ const ToggleSwitch = ({
       onToggle()
     }}
     className={cn(
-      'w-8 h-[18px] ml-auto flex items-center rounded-sm shrink-0 p-0.5 transition-colors',
+      'w-8 h-[18px] ms-auto flex items-center rounded-sm shrink-0 p-0.5 transition-colors',
       enabled ? 'bg-foreground justify-end' : 'bg-border'
     )}
     role="switch"
@@ -137,16 +137,12 @@ export const MoreFiltersDropdown = ({
                     ({selectedStatusIds.length})
                   </span>
                 )}
-                <ChevronRight className="size-2.5 text-text-tertiary ml-auto" />
+                <ChevronRight className="size-2.5 text-text-tertiary ms-auto" />
               </button>
             )}
 
             {/* Has time */}
-            <button
-              type="button"
-              onClick={() => setShowStatusPanel(false)}
-              className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-accent focus:outline-none transition-colors"
-            >
+            <div className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-accent focus:outline-none transition-colors">
               <Calendar className="size-3.5 text-muted-foreground/60" />
               <span className="text-[13px] text-foreground leading-4">
                 {tPhaseF('phaseF.componentsTasksFiltersMoreFiltersDropdown.hasTimeSet')}
@@ -155,16 +151,13 @@ export const MoreFiltersDropdown = ({
                 enabled={hasTime === 'with-time'}
                 onToggle={() => onHasTimeChange(hasTime === 'with-time' ? 'all' : 'with-time')}
               />
-            </button>
+            </div>
 
             {/* Divider */}
             <div className="h-px bg-border shrink-0 my-1 mx-4" />
 
             {/* Recurring only */}
-            <button
-              type="button"
-              className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-accent focus:outline-none transition-colors"
-            >
+            <div className="flex items-center py-[9px] px-4 gap-2.5 hover:bg-accent focus:outline-none transition-colors">
               <RefreshCw className="size-3.5 text-muted-foreground/60" />
               <span className="text-[13px] text-foreground leading-4">
                 {tPhaseF('phaseF.componentsTasksFiltersMoreFiltersDropdown.recurringOnly')}
@@ -175,7 +168,7 @@ export const MoreFiltersDropdown = ({
                   onRepeatTypeChange(repeatType === 'repeating' ? 'all' : 'repeating')
                 }
               />
-            </button>
+            </div>
           </div>
         ) : (
           /* Status sub-panel */
@@ -220,7 +213,7 @@ export const MoreFiltersDropdown = ({
                       style={{ backgroundColor: status.color }}
                     />
                     <span className="text-[13px] text-foreground leading-4">{status.name}</span>
-                    <span className="text-[11px] ml-auto text-text-tertiary leading-[14px]">
+                    <span className="text-[11px] ms-auto text-text-tertiary leading-[14px]">
                       {taskCount}
                     </span>
                   </button>

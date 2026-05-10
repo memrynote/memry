@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "ボルトフォルダの選択",
+      "button": "保管庫の選択"
+    },
+    "exportPdf": {
+      "title": "PDFとしてエクスポート",
+      "filterName": "PDFドキュメント"
+    },
+    "exportHtml": {
+      "title": "HTMLとしてエクスポート",
+      "filterName": "HTMLドキュメント"
+    },
+    "import": {
+      "filterSupported": "サポートされているファイル",
+      "filterAll": "すべてのファイル"
+    },
+    "exportCancelled": "エクスポートがキャンセルされました",
+    "update": {
+      "availableTitle": "利用可能なアップデート",
+      "availableMessage": "Memry {version}が利用可能です。",
+      "availableDetailFallback": "今すぐアップデートをダウンロードしますか?",
+      "buttonDownload": "ダウンロード",
+      "buttonLater": "後で",
+      "readyTitle": "アップデートの準備ができました",
+      "readyMessage": "Memry {version} がダウンロードされました。",
+      "readyDetailFallback": "Memry を再起動して、アップデートのインストールを完了します。",
+      "buttonRestartNow": "今すぐ再起動してください",
+      "releaseNotesLabel": "リリースノート:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "リマインダーに注意してください",
+      "journal": "日記リマインダー",
+      "highlight": "ハイライトリマインダー",
+      "fallback": "リマインダーの期限",
+      "default": "リマインダー"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "リマインダーの時刻は将来の時刻である必要があります",
+    "definitionNotFound": "定義が見つかりません",
+    "noteNotFound": "メモが見つかりません",
+    "updateFailed": "アップデートに失敗しました"
+  }
+}

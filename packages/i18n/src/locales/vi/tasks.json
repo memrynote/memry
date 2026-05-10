@@ -1,0 +1,651 @@
+{
+  "page": {
+    "tabs": {
+      "label": " Chế độ xem nhiệm vụ ",
+      "today": "Hôm nay",
+      "all": "Tất cả"
+    },
+    "viewMode": {
+      "label": " Chế độ xem ",
+      "list": " Chế độ xem danh sách ",
+      "kanban": " Chế độ xem Kanban "
+    },
+    "projectScope": {
+      "allProjects": " Tất cả dự án ",
+      "searchProjects": " Tìm kiếm dự án… ",
+      "editProject": " Chỉnh sửa {name} ",
+      "unstarSavedFilter": " Bỏ dấu sao {name} "
+    }
+  },
+  "task": {
+    "add": " Thêm Nhiệm vụ ",
+    "title": " Tiêu đề ",
+    "titleRequired": " Yêu cầu nhập tiêu đề",
+    "titlePlaceholder": "Cần làm gì?",
+    "namePlaceholder": "Tên công việc",
+    "description": "Mô tả",
+    "descriptionPlaceholder": "Thêm mô tả…",
+    "details": "Chi tiết công việc",
+    "status": "Trạng thái",
+    "priority": "  \nƯu tiên  ",
+    "dueDate": "Hạn chót",
+    "project": "  \nDự án  ",
+    "repeat": "Lặp lại",
+    "createAnother": "Tạo thêm",
+    "delete": "Xóa công việc",
+    "created": "Được tạo {date}"
+  },
+  "project": {
+    "create": "Tạo dự án",
+    "edit": "Chỉnh sửa dự án",
+    "delete": "Xóa Dự Án",
+    "iconAndName": "Biểu tượng & Tên",
+    "namePlaceholder": "Tên dự án",
+    "select": "Chọn dự án",
+    "selectIcon": "Chọn biểu tượng",
+    "clickIconToChange": "Nhấn vào biểu tượng để thay đổi",
+    "color": "Màu sắc",
+    "descriptionOptional": "Mô tả (tùy chọn)",
+    "descriptionPlaceholder": "Mô tả ngắn gọn về dự án này…",
+    "statuses": "Trạng thái",
+    "statusesHelp": "Cấu hình các giai đoạn quy trình cho dự án này.",
+    "createDescription": "Tạo một dự án mới với tên, biểu tượng, màu sắc và các trạng thái quy trình.",
+    "editDescription": "Chỉnh sửa tên dự án, biểu tượng, màu sắc và các trạng thái quy trình."
+  },
+  "status": {
+    "select": "Chọn trạng thái",
+    "todo": "Cần làm",
+    "inProgress": "Đang tiến hành",
+    "done": "Hoàn tất"
+  },
+  "priority": {
+    "select": "Chọn mức ưu tiên",
+    "none": "Không ưu tiên",
+    "noneShort": "Không có",
+    "low": "Thấp",
+    "medium": " Trung bình ",
+    "high": " Cao ",
+    "urgent": " Khẩn cấp "
+  },
+  "filters": {
+    "filter": "  \nBộ lọc  ",
+    "emptyTitle": "Không có nhiệm vụ nào phù hợp với bộ lọc của bạn",
+    "emptyHelp": "Hãy thử điều chỉnh bộ lọc của bạn hoặc",
+    "groupBy": "Nhóm theo",
+    "groupByOptions": "Tùy chọn nhóm",
+    "sortAscending": "Sắp xếp theo thứ tự tăng dần",
+    "sortDescending": "Sắp xếp theo thứ tự giảm dần"
+  },
+  "quickAdd": {
+    "label": "Thêm nhiệm vụ nhanh",
+    "focusDescription": "Tập trung vào ô thêm nhanh"
+  },
+  "drawer": {
+    "close": "Đóng chi tiết nhiệm vụ",
+    "subIssues": "Các vấn đề con",
+    "addSubIssue": "Thêm vấn đề con",
+    "subIssuePlaceholder": "Thêm vấn đề con…",
+    "noSubIssues": "Chưa có vấn đề con nào",
+    "linkedNotes": "Ghi chú liên kết",
+    "linkNote": "Liên kết một ghi chú",
+    "loading": "Đang tải…",
+    "searchNotes": "Tìm kiếm ghi chú…",
+    "noMatchingNotes": "Không có ghi chú phù hợp",
+    "noNotesAvailable": "Không có ghi chú nào",
+    "noLinkedNotes": "Chưa có ghi chú liên kết",
+    "removeLinkTo": "Xóa liên kết đến {title}",
+    "removeLinkFallback": "ghi chú"
+  },
+  "kanban": {
+    "board": "Bảng Kanban"
+  },
+  "toasts": {
+    "projectUpdated": "Dự án đã được cập nhật",
+    "projectCreated": "Dự án đã được tạo",
+    "projectSaveError": "Lưu dự án thất bại",
+    "projectArchived": "Dự án đã được lưu trữ",
+    "projectArchiveError": "Lưu trữ dự án thất bại",
+    "projectDeleted": "Dự án đã bị xóa",
+    "projectDeleteError": "Không thể xóa dự án",
+    "filtersCleared": "Bộ lọc đã được xóa",
+    "filterSaved": "Bộ lọc đã được lưu",
+    "filterDeleted": "Bộ lọc đã bị xóa",
+    "filterApplied": "Đã áp dụng \"{name}\"",
+    "deleted": "  \nTác vụ đã bị xóa  ",
+    "deletedSeries": "Chuỗi hoàn tất!",
+    "deletedNext": "Sự kiện tiếp theo",
+    "completed": "Nhiệm vụ hoàn thành!",
+    "archived": "Nhiệm vụ đã được lưu trữ",
+    "undoNotAvailableForDelete": "Hoàn tác không khả dụng cho xóa",
+    "alreadyAllComplete": "Tất cả các nhiệm vụ đã chọn đều đã hoàn thành",
+    "noCompletedSelected": "Không có nhiệm vụ hoàn thành nào được chọn",
+    "completeFailed": "Không thể hoàn thành các nhiệm vụ",
+    "reopenFailed": "Không thể mở lại các nhiệm vụ",
+    "deleteFailed": "Không thể xóa các nhiệm vụ",
+    "moveFailed": "Không thể di chuyển các nhiệm vụ"
+  },
+  "phaseF": {
+    "componentsTasksAddSubtaskInput": {
+      "addSubtask": "Thêm nhiệm vụ phụ...",
+      "addSubtask2": "Thêm nhiệm vụ phụ",
+      "enterToAdd": "Nhấn Enter để thêm"
+    },
+    "componentsTasksBulkActionsBulkActionDropdown": {
+      "for": "cho",
+      "task": "nhiệm vụ"
+    },
+    "componentsTasksBulkActionsBulkActionToolbar": {
+      "bulkActions": "Hành động hàng loạt",
+      "selected": "đã chọn",
+      "complete": "Hoàn thành",
+      "priority": "  \nƯu tiên  ",
+      "dueDate": "Hạn chót",
+      "moveTo": "Chuyển đến",
+      "status": "Trạng thái",
+      "archive": "Lưu trữ",
+      "delete": "Xóa",
+      "cancelSelection": "Hủy chọn",
+      "cancel": "Hủy"
+    },
+    "componentsTasksBulkActionsBulkDeleteDialog": {
+      "delete": "  \nXóa  ",
+      "task": "nhiệm vụ",
+      "youReAboutToDelete": "Bạn sắp xóa",
+      "task2": "nhiệm vụ",
+      "and": "và ",
+      "moreTask": "nhiều nhiệm vụ hơn",
+      "thisActionCanBeUndoneForAShortTimeAfterDeletion": "Hành động này có thể được hoàn tác trong thời gian ngắn sau khi xóa.",
+      "cancel": "Hủy",
+      "delete2": "  \nXóa  ",
+      "task3": "nhiệm vụ"
+    },
+    "componentsTasksBulkActionsBulkDueDatePicker": {
+      "setDueDateFor": "Đặt ngày đến hạn cho",
+      "task": "nhiệm vụ",
+      "selectADateToSetAsTheDueDateForAllSelectedTasks": "Chọn một ngày để đặt làm ngày đến hạn cho tất cả các nhiệm vụ đã chọn.",
+      "alsoSetTime": "Cũng đặt giờ",
+      "cancel": "Hủy",
+      "setDueDate": "Đặt Ngày Đến Hạn"
+    },
+    "componentsTasksCelebrationProgress": {
+      "complete": "Hoàn thành"
+    },
+    "componentsTasksColorPicker": {
+      "selectColor": "Chọn màu"
+    },
+    "componentsTasksCustomRepeatDialog": {
+      "onTheseDays": "Vào những ngày này",
+      "repeatOn": "Lặp lại vào",
+      "day": "Ngày",
+      "ofTheMonth": "của tháng",
+      "the": "Cái",
+      "ofTheMonth2": "của tháng",
+      "ends": "Kết thúc",
+      "never": "Không bao giờ",
+      "onDate": "Vào ngày",
+      "after": "Sau",
+      "occurrences": "lần xuất hiện",
+      "preview": "Xem trước",
+      "of": "của",
+      "andMore": "và nhiều hơn nữa",
+      "frequency": "Tần suất",
+      "repeatEvery": "Lặp lại mỗi",
+      "day2": "ngày",
+      "week": "tuần",
+      "month": "tháng",
+      "year": "năm",
+      "cancel": "Hủy",
+      "save": "Lưu",
+      "customRepeat": "Lặp lại Tuỳ chỉnh"
+    },
+    "componentsTasksDatePickerCalendar": {
+      "previousMonth": "Tháng trước",
+      "nextMonth": "Tháng sau",
+      "goToToday": "Đi đến hôm nay",
+      "today": "Hôm nay",
+      "w": "W"
+    },
+    "componentsTasksDatePickerContent": {
+      "removeDate": "Xóa ngày",
+      "clearTime": "Xóa giờ",
+      "addTime": "Thêm giờ"
+    },
+    "componentsTasksDeleteProjectDialog": {
+      "delete": "Xóa",
+      "thisProjectHas": "Dự án này có ",
+      "task": "nhiệm vụ",
+      "whatWouldYouLikeToDoWithThem": "Bạn muốn làm gì với chúng?",
+      "moveTasksToPersonalProject": "Chuyển các nhiệm vụ sang dự án Cá nhân",
+      "deleteAllTasksPermanently": "Xóa tất cả các nhiệm vụ vĩnh viễn",
+      "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Dự án này không có nhiệm vụ và sẽ bị xóa vĩnh viễn.",
+      "thisActionCannotBeUndone": "  \nHành động này không thể hoàn tác.  ",
+      "cancel": "Hủy",
+      "deleteProject": "Xóa Dự Án"
+    },
+    "componentsTasksDeleteTaskDialog": {
+      "deleteTask": "Xóa nhiệm vụ?",
+      "ldquo": "ldquo;",
+      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "” sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.",
+      "deleteTask2": "Xóa nhiệm vụ"
+    },
+    "componentsTasksDialogsAllSubtasksCompleteDialog": {
+      "allSubtasksComplete": "Tất cả các nhiệm vụ con đã hoàn thành!",
+      "ldquo": "ldquo;",
+      "rdquoHasAll": "” có tất cả ",
+      "subtask": "nhiệm vụ con",
+      "done": "đã xong.",
+      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Bạn có muốn đánh dấu nhiệm vụ chính là đã hoàn thành không?",
+      "keepTaskOpen": "Giữ nhiệm vụ mở",
+      "completeTask": "Hoàn thành nhiệm vụ ✓"
+    },
+    "componentsTasksDialogsBulkDueDateDialog": {
+      "setDueDateForAllSubtasks": "Đặt ngày hoàn thành cho tất cả nhiệm vụ con",
+      "setDueDateFor": "Đặt ngày đến hạn cho",
+      "subtask": "nhiệm vụ con",
+      "in": "trong “",
+      "rdquo": "rdquo;",
+      "alsoApplyToCompletedSubtasks": "Áp dụng cả cho các nhiệm vụ con đã hoàn thành (",
+      "clearDate": "Xóa ngày",
+      "cancel": "Hủy",
+      "apply": "Áp dụng"
+    },
+    "componentsTasksDialogsBulkPriorityDialog": {
+      "setPriorityForAllSubtasks": "Đặt mức ưu tiên cho tất cả nhiệm vụ con",
+      "setPriorityFor": "Đặt mức ưu tiên cho ",
+      "subtask": "nhiệm vụ con",
+      "in": "trong “",
+      "rdquo": "rdquo;",
+      "alsoApplyToCompletedSubtasks": "Áp dụng cả cho các nhiệm vụ con đã hoàn thành (",
+      "cancel": "Hủy",
+      "apply": "Áp dụng"
+    },
+    "componentsTasksDialogsCompleteParentDialog": {
+      "completeTaskWithIncompleteSubtasks": "Hoàn thành nhiệm vụ với các nhiệm vụ con chưa hoàn thành?",
+      "has": "có ",
+      "incompleteSubtask": "công việc phụ chưa hoàn thành",
+      "and": "và ",
+      "more": "thêm",
+      "whatWouldYouLikeToDo": "Bạn muốn làm gì?",
+      "completeAllParentSubtasks": "Hoàn thành tất cả (công việc chính + công việc phụ)",
+      "markTheParentAndAllSubtasksAsComplete": "Đánh dấu công việc chính và tất cả công việc phụ là hoàn thành",
+      "completeParentOnlyKeepSubtasksIncomplete": "Chỉ hoàn thành công việc chính, giữ các công việc phụ chưa hoàn thành",
+      "onlyMarkTheParentTaskAsComplete": "Chỉ đánh dấu công việc chính là hoàn thành",
+      "cancel": "Hủy",
+      "complete": "Hoàn thành"
+    },
+    "componentsTasksDialogsDeleteAllSubtasksDialog": {
+      "deleteAllSubtasks": "Xóa tất cả các công việc phụ?",
+      "thisWillDelete": "Điều này sẽ xóa ",
+      "subtask": "nhiệm vụ con",
+      "from": "từ “",
+      "rdquo": "rdquo”.",
+      "thisActionCannotBeUndone": "  \nHành động này không thể hoàn tác.  ",
+      "cancel": "Hủy",
+      "deleteAll": "Xóa tất cả"
+    },
+    "componentsTasksDialogsDeleteParentDialog": {
+      "deleteTaskWithSubtasks": "Xóa công việc có công việc phụ?",
+      "has": "có ",
+      "subtask": "nhiệm vụ con",
+      "whatWouldYouLikeToDo": "Bạn muốn làm gì?",
+      "deleteTaskAndAllSubtasks": "Xóa công việc và tất cả các công việc phụ",
+      "permanentlyRemovesEverything": "Xóa vĩnh viễn mọi thứ",
+      "deleteTaskKeepSubtasksAsStandaloneTasks": "Xóa công việc, giữ các công việc phụ là công việc độc lập",
+      "subtasksBecomeTopLevelTasks": "Công việc phụ trở thành công việc cấp cao",
+      "cancel": "Hủy",
+      "delete": "Xóa"
+    },
+    "componentsTasksDialogsDuplicateWithSubtasksDialog": {
+      "duplicateTask": "Nhân bản công việc",
+      "createACopyOf": "Tạo một bản sao của “",
+      "rdquo": "rdquo;",
+      "alsoDuplicateSubtasks": "Cũng nhân bản các công việc phụ (",
+      "cancel": "Hủy",
+      "duplicate": "Nhân bản "
+    },
+    "componentsTasksDialogsParentPickerDialog": {
+      "makeSubtaskOf": "Biến thành công việc phụ của...",
+      "selectATaskToMake": "Chọn một công việc để làm ",
+      "aSubtaskOf": "một nhiệm vụ phụ của.",
+      "searchTasks": "Tìm kiếm nhiệm vụ...",
+      "sameProject": "Cùng Dự án",
+      "otherProjects": "Các Dự án Khác"
+    },
+    "componentsTasksDragDropInsertionIndicator": {
+      "dropToRescheduleTo": "Kéo để sắp xếp lại vào"
+    },
+    "componentsTasksDragDropMoveMenu": {
+      "moveTask": "Di chuyển nhiệm vụ",
+      "move": "Di chuyển",
+      "reschedule": "Sắp xếp lại",
+      "today": "Hôm nay",
+      "tomorrow": "Ngày mai",
+      "nextWeek": "Tuần tới",
+      "removeDate": "Xóa ngày",
+      "moveToProject": "Di chuyển đến dự án",
+      "current": "Hiện tại",
+      "changeStatus": "Thay đổi trạng thái",
+      "current2": "Hiện tại",
+      "reorder": "Sắp xếp lại"
+    },
+    "componentsTasksDragDropMultiDragOverlay": {
+      "moreTask": "nhiều nhiệm vụ hơn",
+      "task": "nhiệm vụ"
+    },
+    "componentsTasksDragDropSidebarDropZones": {
+      "dropHere": "Thả vào đây"
+    },
+    "componentsTasksDragDropTaskRow": {
+      "priority": "ưu tiên: "
+    },
+    "componentsTasksDueDatePicker": {
+      "selectDueDate": "Chọn ngày đến hạn",
+      "overdue": "Quá hạn",
+      "setDueDate": "Đặt ngày đến hạn",
+      "suggestions": "Gợi ý",
+      "pickADate": "Chọn một ngày...",
+      "addTime": "Thêm giờ",
+      "time": "Thời gian",
+      "clearDate": "Xóa ngày",
+      "backToOptions": "Quay lại tùy chọn"
+    },
+    "componentsTasksEditRepeatingTaskDialog": {
+      "editRepeatingTask": "Chỉnh sửa Nhiệm vụ Lặp lại",
+      "youReEditingARepeatingTaskApplyChangesTo": "Bạn đang chỉnh sửa một nhiệm vụ lặp lại. Áp dụng thay đổi cho:",
+      "onlyThisOccurrence": "Chỉ lần này",
+      "onlyFutureTasksUnchanged": "chỉ — các nhiệm vụ trong tương lai không thay đổi",
+      "thisAndAllFutureOccurrences": "Lần này và tất cả các lần xảy ra trong tương lai",
+      "andBeyond": "và các lần tiếp theo",
+      "cancel": "Hủy",
+      "continue": "Tiếp tục"
+    },
+    "componentsTasksEmptyStatesCollapsedEmptySection": {
+      "add": "Thêm"
+    },
+    "componentsTasksEmptyStatesSectionEmptyStates": {
+      "noTasksScheduled": "Không có nhiệm vụ nào được lên lịch",
+      "addTaskFor": "Thêm nhiệm vụ cho",
+      "nothingScheduled": "Không có gì được lên lịch",
+      "addTasksWithDueDatesToPlanYourWeek": "Thêm các nhiệm vụ có ngày đến hạn để lên kế hoạch cho tuần của bạn.",
+      "addTask": "Thêm nhiệm vụ",
+      "viewCalendar": "Xem lịch"
+    },
+    "componentsTasksFiltersActiveFiltersBar": {
+      "priorityIs": "Mức ưu tiên là",
+      "priority": "ưu tiên",
+      "statusIs": "Trạng thái là",
+      "status": "trạng thái",
+      "projectIs": "Dự án là",
+      "project": "dự án",
+      "due": "Hạn chót",
+      "dueDate": "ngày đến hạn",
+      "search": "tìm kiếm",
+      "clearAll": "Xóa tất cả"
+    },
+    "componentsTasksFiltersDueDateFilter": {
+      "filterByDueDate": "Lọc theo ngày đến hạn",
+      "customRange": "Khoảng tùy chỉnh",
+      "clear": "Xóa",
+      "apply": "Áp dụng"
+    },
+    "componentsTasksFiltersFilterDropdown": {
+      "filterBy": "Lọc theo..."
+    },
+    "componentsTasksFiltersFilterEmptyState": {
+      "activeFilters": "Bộ lọc đang dùng: ",
+      "clearAllFilters": "Xóa tất cả bộ lọc"
+    },
+    "componentsTasksFiltersFilterPanelsDueDatePanel": {
+      "dueDate": "  \nNgày hết hạn  "
+    },
+    "componentsTasksFiltersFilterPanelsPriorityPanel": {
+      "priority": "  \nƯu tiên  ",
+      "is": "là",
+      "search": "  \nTìm kiếm...  ",
+      "selected": "đã chọn"
+    },
+    "componentsTasksFiltersFilterPanelsProjectPanel": {
+      "project": "  \nDự án  ",
+      "noProject": "Không có dự án"
+    },
+    "componentsTasksFiltersFilterPanelsStatusPanel": {
+      "status": "Trạng thái"
+    },
+    "componentsTasksFiltersFilterPanelsStatusProjectPickerPan": {
+      "status": "Trạng thái",
+      "pickAProject": "Chọn một dự án"
+    },
+    "componentsTasksFiltersMoreFiltersDropdown": {
+      "moreFilters": "Thêm bộ lọc",
+      "more": "Thêm",
+      "status": "Trạng thái",
+      "hasTimeSet": "Đã đặt thời gian",
+      "recurringOnly": "Chỉ lặp lại",
+      "status2": "Trạng thái"
+    },
+    "componentsTasksFiltersPriorityFilter": {
+      "filterByPriority": "Lọc theo mức ưu tiên",
+      "priority": "  \nƯu tiên  "
+    },
+    "componentsTasksFiltersProjectFilter": {
+      "filterByProject": "Lọc theo dự án",
+      "project": "  \nDự án  ",
+      "allProjects": "Tất cả dự án",
+      "clear": "Xóa"
+    },
+    "componentsTasksFiltersQuickFilters": {
+      "quickFilters": "Bộ lọc nhanh:"
+    },
+    "componentsTasksFiltersSaveFilterDialog": {
+      "saveFilter": "Lưu bộ lọc",
+      "saveYourCurrentFilterSettingsForQuickAccessLater": "Lưu cài đặt bộ lọc hiện tại của bạn để truy cập nhanh sau này.",
+      "filterName": "Tên bộ lọc",
+      "eGHighPriorityThisWeek": "ví dụ, Ưu tiên cao trong tuần này",
+      "currentFilters": "Bộ lọc hiện tại:",
+      "noFiltersApplied": "Chưa áp dụng bộ lọc nào",
+      "cancel": "Hủy",
+      "saveFilter2": "Lưu bộ lọc"
+    },
+    "componentsTasksFiltersSavedFiltersDropdown": {
+      "savedFilters": "Bộ lọc đã lưu",
+      "saved": "Đã lưu",
+      "noSavedFiltersYet": "Chưa có bộ lọc nào được lưu",
+      "saveCurrentFilters": "Lưu bộ lọc hiện tại",
+      "saveCurrentFilters2": "Lưu bộ lọc hiện tại"
+    },
+    "componentsTasksFiltersSavedFiltersSection": {
+      "filterName": "Tên bộ lọc",
+      "saveFilter": "Lưu bộ lọc",
+      "save": "Lưu"
+    },
+    "componentsTasksFiltersSearchInput": {
+      "searchTasks": "Tìm kiếm nhiệm vụ",
+      "clearSearch": "Xóa tìm kiếm"
+    },
+    "componentsTasksKanbanKanbanColumn": {
+      "dropHere": "Thả vào đây",
+      "releaseToMoveTaskToThisColumn": "Thả để di chuyển nhiệm vụ vào cột này",
+      "moreCompleted": "nhiều nhiệm vụ đã hoàn thành hơn",
+      "showFewer": "Hiển thị ít hơn",
+      "taskTitle": "Tiêu đề nhiệm vụ..."
+    },
+    "componentsTasksNaturalDateInput": {
+      "typeADateInNaturalLanguage": "Nhập ngày theo ngôn ngữ tự nhiên",
+      "select": "Chọn"
+    },
+    "componentsTasksParentTaskRow": {
+      "priority": "ưu tiên: "
+    },
+    "componentsTasksPrioritySelect": {
+      "selectPriority": "Chọn mức ưu tiên",
+      "navigate": "điều hướng",
+      "select": "chọn"
+    },
+    "componentsTasksProjectModal": {
+      "iconName": "Biểu tượng & Tên",
+      "selectIcon": "Chọn biểu tượng",
+      "projectName": "Tên dự án",
+      "clickIconToChange": "Nhấn vào biểu tượng để thay đổi",
+      "color": "Màu sắc",
+      "descriptionOptional": "Mô tả (tùy chọn)",
+      "briefDescriptionOfThisProject": "Mô tả ngắn gọn về dự án này...",
+      "statuses": "Trạng thái",
+      "configureTheWorkflowStagesForThisProject": "Cấu hình các giai đoạn quy trình cho dự án này.",
+      "deleteProject": "Xóa Dự Án",
+      "cancel": "Hủy",
+      "unsavedChanges": "Thay đổi chưa lưu",
+      "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Bạn có các thay đổi chưa lưu. Bạn có chắc chắn muốn bỏ chúng không?",
+      "cancel2": "Hủy",
+      "discard": "Bỏ qua"
+    },
+    "componentsTasksProjectSelect": {
+      "selectProject": "Chọn dự án",
+      "selectProject2": "Chọn dự án"
+    },
+    "componentsTasksProjectsProjectSelector": {
+      "editProject": "Chỉnh sửa dự án",
+      "archiveProject": "Lưu trữ dự án",
+      "deleteProject": "Xóa dự án",
+      "selectProject": "Chọn dự án",
+      "noProjectsYet": "  \nChưa có dự án nào  ",
+      "createProject": "Tạo dự án"
+    },
+    "componentsTasksProjectsProjectsTabContent": {
+      "noProjectSelected": "Chưa chọn dự án",
+      "selectAProjectFromTheDropdownOrCreateANewOne": "Chọn một dự án từ menu thả xuống hoặc tạo dự án mới",
+      "createYourFirstProject": "  \nTạo dự án đầu tiên của bạn  "
+    },
+    "componentsTasksQuickAddQuickAddHelp": {
+      "quickAddShortcutsHelp": "Trợ giúp các phím tắt thêm nhanh",
+      "quickAddShortcuts": "Phím tắt Thêm Nhanh",
+      "exampleBuyMilkTomorrowHighPersonal": "Ví dụ: \"Mua sữa !tomorrow !! #personal cao\""
+    },
+    "componentsTasksQuickAddQuickOptionsBar": {
+      "quickOptions": "Tùy chọn nhanh:"
+    },
+    "componentsTasksQuickAddInput": {
+      "q": "Q",
+      "q2": "Q"
+    },
+    "componentsTasksRepeatIndicator": {
+      "of": "của",
+      "completed": "đã hoàn thành"
+    },
+    "componentsTasksRepeatPicker": {
+      "selectRepeatFrequency": "Chọn tần số lặp lại",
+      "doesNotRepeat": "Không lặp lại",
+      "custom": "Tùy chỉnh..."
+    },
+    "componentsTasksStatusEditor": {
+      "changeStatusColor": "Thay đổi màu trạng thái",
+      "dragToReorder": "Kéo để sắp xếp lại",
+      "statusName": "Tên trạng thái",
+      "addStatus": "Thêm trạng thái"
+    },
+    "componentsTasksStatusSelect": {
+      "selectStatus": "Chọn trạng thái",
+      "selectStatus2": "Chọn trạng thái"
+    },
+    "componentsTasksStopRepeatingDialog": {
+      "stopRepeating": "Ngừng lặp lại",
+      "isSetToRepeat": "được đặt để lặp lại ",
+      "whatWouldYouLikeToDo": "Bạn muốn làm gì?",
+      "keepThisTaskStopFutureOccurrences": "Giữ nhiệm vụ này, ngăn chặn các sự cố xảy ra trong tương lai",
+      "taskWillBecomeAOneTimeTask": "Nhiệm vụ sẽ trở thành nhiệm vụ một lần",
+      "deleteThisAndAllFutureOccurrences": "Xóa điều này và tất cả các lần xuất hiện trong tương lai",
+      "taskWillBeRemovedEntirely": "Nhiệm vụ sẽ bị xóa hoàn toàn",
+      "cancel": "Hủy",
+      "confirm": "Xác nhận"
+    },
+    "componentsTasksSubtaskDots": {
+      "of": "của",
+      "subtasksComplete": "Nhiệm vụ con hoàn thành (",
+      "clickTo": "Bấm để ",
+      "of2": "của",
+      "subtasksComplete2": "Hoàn thành nhiệm vụ phụ",
+      "clickTo2": "Bấm để "
+    },
+    "componentsTasksSubtaskProgressBadge": {
+      "of": "của",
+      "subtasksComplete": "Nhiệm vụ con hoàn thành (",
+      "clickTo": "Bấm để "
+    },
+    "componentsTasksTaskBadges": {
+      "priority": "ưu tiên",
+      "repeatingTask": "Nhiệm vụ lặp lại",
+      "d": "d"
+    },
+    "componentsTasksTaskEmptyState": {
+      "addTask": " Thêm Nhiệm vụ "
+    },
+    "componentsTasksTaskIcons": {
+      "noPriority": "Không ưu tiên"
+    },
+    "componentsTasksTaskRepeatSection": {
+      "repeat": "Lặp lại",
+      "addRepeat": "Thêm lặp lại",
+      "edit": "Chỉnh sửa",
+      "edit2": "Chỉnh sửa",
+      "stopRepeating": "Ngừng lặp lại",
+      "stopRepeating2": "Ngừng lặp lại"
+    },
+    "componentsTasksTaskSection": {
+      "addTask": "Thêm nhiệm vụ"
+    },
+    "componentsTasksTimePicker": {
+      "selectTime": "Chọn thời gian",
+      "selectTime2": "Chọn thời gian",
+      "clearTime": "Xóa giờ"
+    },
+    "componentsTasksTodayEmptyState": {
+      "nothingScheduledForToday": "Không có gì được lên lịch cho ngày hôm nay",
+      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "Bạn có các nhiệm vụ quá hạn ở trên. Thêm một vài nhiệm vụ cho hôm nay hoặc kiểm tra danh sách sắp tới của bạn.",
+      "addTaskForToday": "Thêm nhiệm vụ cho hôm nay",
+      "allCaughtUpForToday": "Đã hoàn tất mọi việc cho hôm nay",
+      "youHaveNothingScheduledEnjoyTheClarity": "Bạn không có gì được lên lịch. Thưởng thức sự rõ ràng.",
+      "addTaskForToday2": "Thêm nhiệm vụ cho hôm nay"
+    },
+    "componentsTasksUpcomingEmptyState": {
+      "nothingScheduledForTheNext7Days": "Không có gì được lên lịch trong 7 ngày tới",
+      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "Bạn có các nhiệm vụ quá hạn ở trên. Lên kế hoạch trước bằng cách thêm các nhiệm vụ cho tuần tới.",
+      "addTask": "Thêm nhiệm vụ",
+      "noUpcomingTasks": "Không có nhiệm vụ sắp tới",
+      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Các nhiệm vụ đến hạn trong 7 ngày tới sẽ xuất hiện ở đây. Lên kế hoạch tuần của bạn bằng cách thêm một số nhiệm vụ.",
+      "addTask2": "Thêm nhiệm vụ"
+    }
+  },
+  "phaseI": {
+    "toasts": {
+      "changesUndone": "Thay đổi đã được hoàn tác",
+      "projectNotFound": "Không tìm thấy dự án",
+      "failedToArchiveTasks": "Không thể lưu trữ nhiệm vụ",
+      "tasksRestoredFromArchive": "Nhiệm vụ được khôi phục từ kho lưu trữ",
+      "subtaskAdded": "Đã thêm nhiệm vụ phụ",
+      "subtaskDeleted": "Đã xóa nhiệm vụ phụ",
+      "taskCompleted": "Nhiệm vụ đã hoàn thành",
+      "allSubtasksCompleteTaskMarkedAsDone": "🎉 Tất cả các nhiệm vụ phụ đã hoàn thành! Nhiệm vụ được đánh dấu là đã xong.",
+      "taskReopened": "Nhiệm vụ đã được mở lại",
+      "taskKeptOpen": "Nhiệm vụ giữ mở",
+      "taskMarkedAsDone": "🎉 Nhiệm vụ được đánh dấu là đã xong!"
+    },
+    "errors": {
+      "failedToArchiveTasks": "Không thể lưu trữ nhiệm vụ",
+      "failedToAddSubtask": "Thêm công việc phụ thất bại",
+      "failedToAddSubtasks": "Thêm các công việc phụ thất bại",
+      "failedToReorderSubtasks": "Sắp xếp lại các công việc phụ thất bại",
+      "failedToPromoteSubtask": "Thăng cấp công việc phụ thất bại",
+      "failedToDeleteSubtask": "Xóa công việc phụ thất bại",
+      "failedToDeleteTask": "Xóa công việc thất bại",
+      "failedToCompleteTask": "Hoàn thành công việc thất bại",
+      "failedToMakeSubtask": "Tạo công việc phụ thất bại",
+      "failedToCompleteSubtasks": "Hoàn thành các công việc phụ thất bại",
+      "failedToMarkSubtasksIncomplete": "Đánh dấu các công việc phụ chưa hoàn thành thất bại",
+      "failedToSetDueDate": "Đặt ngày đến hạn thất bại",
+      "failedToSetPriority": "Đặt mức độ ưu tiên thất bại",
+      "failedToDeleteSubtasks": "Xóa các công việc phụ thất bại",
+      "failedToLoadTaskPreferences": "Tải sở thích công việc thất bại",
+      "failedToUpdateTaskPreferences": "Cập nhật sở thích công việc thất bại",
+      "failedToLoadLinkedTasks": "Tải các công việc liên kết thất bại"
+    }
+  }
+}

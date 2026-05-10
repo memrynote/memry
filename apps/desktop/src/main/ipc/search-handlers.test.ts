@@ -185,6 +185,8 @@ vi.mock('@main/database/fts-rebuild', () => ({
   rebuildAllIndexes: vi.fn()
 }))
 
+import { rebuildAllIndexes } from '@main/database/fts-rebuild'
+import { getIndexDatabase } from '../database'
 import { registerSearchHandlers, unregisterSearchHandlers } from './search-handlers'
 
 describe('search-handlers: reasons', () => {
@@ -236,6 +238,115 @@ describe('search-handlers: reasons', () => {
           dimensions: { result_bucket: 'one_to_five' }
         })
       )
+    })
+
+    it('records zero-result and failure buckets for search handlers', async () => {
+      searchQueriesMock.searchAll.mockReturnValue({
+        groups: [],
+        totalCount: 0,
+        queryTimeMs: 4
+      })
+      await expect(
+        invokeHandler(SearchChannels.invoke.QUERY, { text: 'nothing' })
+      ).resolves.toEqual({ groups: [], totalCount: 0, queryTimeMs: 4 })
+      expect(trackMainEventMock).toHaveBeenCalledWith(
+        'search_performed',
+        expect.objectContaining({
+          dimensions: { result_bucket: 'zero' }
+        })
+      )
+
+      searchQueriesMock.quickSearch.mockImplementationOnce(() => {
+        throw new Error('quick failed')
+      })
+      await expect(invokeHandler(SearchChannels.invoke.QUICK, 'budget')).resolves.toEqual({
+        results: [],
+        queryTimeMs: 0
+      })
+      expect(trackMainEventMock).toHaveBeenCalledWith(
+        'search_performed',
+        expect.objectContaining({ result: 'failed' })
+      )
+
+      searchQueriesMock.searchAll.mockImplementationOnce(() => {
+        throw new Error('query failed')
+      })
+      await expect(invokeHandler(SearchChannels.invoke.QUERY, { text: 'budget' })).resolves.toEqual(
+        {
+          groups: [],
+          totalCount: 0,
+          queryTimeMs: 0
+        }
+      )
+    })
+  })
+
+  describe('stats, rebuild, and tag channels', () => {
+    it('returns search stats and fallback stats when queries fail', async () => {
+      searchQueriesMock.getSearchStats.mockReturnValueOnce({
+        totalNotes: 1,
+        totalJournals: 2,
+        totalTasks: 3,
+        totalInboxItems: 4,
+        totalIndexed: 10,
+        lastIndexedAt: '2026-05-10T00:00:00.000Z'
+      })
+      await expect(invokeHandler(SearchChannels.invoke.GET_STATS)).resolves.toEqual({
+        totalNotes: 1,
+        totalJournals: 2,
+        totalTasks: 3,
+        totalInboxItems: 4,
+        totalIndexed: 10,
+        lastIndexedAt: '2026-05-10T00:00:00.000Z'
+      })
+
+      searchQueriesMock.getSearchStats.mockImplementationOnce(() => {
+        throw new Error('stats failed')
+      })
+      await expect(invokeHandler(SearchChannels.invoke.GET_STATS)).resolves.toEqual({
+        totalNotes: 0,
+        totalJournals: 0,
+        totalTasks: 0,
+        totalInboxItems: 0,
+        totalIndexed: 0,
+        lastIndexedAt: null
+      })
+    })
+
+    it('rebuilds indexes and returns failure shape when rebuilding throws', async () => {
+      vi.mocked(rebuildAllIndexes).mockResolvedValueOnce({ notes: 1, tasks: 2 } as never)
+      await expect(invokeHandler(SearchChannels.invoke.REBUILD_INDEX)).resolves.toEqual({
+        started: true,
+        notes: 1,
+        tasks: 2
+      })
+
+      vi.mocked(rebuildAllIndexes).mockRejectedValueOnce(new Error('rebuild failed'))
+      await expect(invokeHandler(SearchChannels.invoke.REBUILD_INDEX)).resolves.toEqual({
+        started: false,
+        error: 'Rebuild failed'
+      })
+    })
+
+    it('merges note, task, and inbox tags and falls back to an empty list on failure', async () => {
+      vi.mocked(getIndexDatabase).mockReturnValueOnce({
+        all: vi.fn(() => [{ tag: 'alpha' }, { tag: 'shared' }])
+      } as never)
+      mockDb.all
+        .mockReturnValueOnce([{ tag: 'task' }, { tag: 'shared' }])
+        .mockReturnValueOnce([{ tag: 'inbox' }])
+
+      await expect(invokeHandler(SearchChannels.invoke.GET_ALL_TAGS)).resolves.toEqual([
+        'alpha',
+        'inbox',
+        'shared',
+        'task'
+      ])
+
+      vi.mocked(getIndexDatabase).mockImplementationOnce(() => {
+        throw new Error('tags failed')
+      })
+      await expect(invokeHandler(SearchChannels.invoke.GET_ALL_TAGS)).resolves.toEqual([])
     })
   })
 
@@ -293,6 +404,29 @@ describe('search-handlers: reasons', () => {
 
       // #then — verify the insert was called
       expect(mockDb.insert).toHaveBeenCalled()
+    })
+
+    it('updates existing reasons and trims the oldest reason above the limit', async () => {
+      rows = Array.from({ length: 21 }, (_, index) => ({
+        id: `r-${index}`,
+        itemId: `note-${index}`,
+        itemType: 'note',
+        itemTitle: `Note ${index}`,
+        searchQuery: 'old',
+        visitedAt: new Date(Date.UTC(2026, 0, index + 1)).toISOString()
+      }))
+
+      const result = await invokeHandler<{ itemId: string }>(SearchChannels.invoke.ADD_REASON, {
+        itemId: 'note-42',
+        itemType: 'note',
+        itemTitle: 'Fresh',
+        itemIcon: '*',
+        searchQuery: 'fresh'
+      })
+
+      expect(result.itemId).toBe('note-42')
+      expect(mockDb.delete).toHaveBeenCalled()
+      expect(rows.some((row) => row.id === 'r-0')).toBe(false)
     })
 
     it('rejects invalid input — empty itemId', async () => {

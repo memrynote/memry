@@ -1,0 +1,483 @@
+{
+  "view": {
+    "tabs": {
+      "inbox": "Bandeja de entrada",
+      "archived": "Archivado",
+      "insights": "Perspectivas",
+      "ariaLabel": "Selección de vista de bandeja de entrada"
+    },
+    "triageButton": "Triaje",
+    "processInboxTitle": "Bandeja de entrada de procesos (Cmd+P)",
+    "itemCaptured": "Artículo capturado",
+    "searchArchivedTitle": "Buscar elementos archivados",
+    "searchPlaceholder": "Buscar...",
+    "archivedItemsAria": "Artículos archivados",
+    "snoozed": {
+      "show": "Mostrar elementos pospuestos",
+      "showWithCount": "Mostrar elementos pospuestos ({count})",
+      "hide": "Ocultar elementos pospuestos"
+    },
+    "filter": {
+      "button": "Filtrar",
+      "byType": "Filtrar por tipo",
+      "active": "{count, plural, one {Filtrado por tipo #} other {Filtrado por tipos #}}",
+      "clearAll": "Borrar todo"
+    },
+    "jobs": {
+      "running": "{count, plural, one {Trabajo en segundo plano # ejecutándose} other {Trabajos en segundo plano # ejecutándose}}",
+      "failed": "{count} falló"
+    }
+  },
+  "type": {
+    "link": "Enlace",
+    "links": "Enlaces",
+    "note": "Nota",
+    "notes": "Notas",
+    "image": "Imagen",
+    "images": "Imágenes",
+    "voice": "Voz",
+    "video": "Vídeo",
+    "clip": "Clip",
+    "clips": "clips",
+    "pdf": "PDF",
+    "pdfs": "PDF",
+    "social": "sociales",
+    "reminder": "Recordatorio",
+    "reminders": "Recordatorios",
+    "text": "Texto",
+    "other": "Otro"
+  },
+  "empty": {
+    "successAria": "Éxito, la bandeja de entrada está vacía.",
+    "title": "Bandeja de entrada cero",
+    "body": "Todo está procesado. Capture algo nuevo con la entrada anterior o pegue un enlace para comenzar.",
+    "filedThisWeek": "{count, plural, one {# presentado esta semana} other {# presentado esta semana}}",
+    "dayStreak": "{count, plural, one {Racha de días #} other {Racha de días #}}",
+    "tipPrefix": "Consejo: utilizar",
+    "tipSuffix": "para realizar capturas rápidas desde el portapapeles",
+    "archivedNone": "No hay elementos archivados",
+    "archivedNoMatches": "No hay elementos archivados coincidentes",
+    "noItemsYet": "Aún no hay artículos",
+    "noItemsFiled": "Aún no se han archivado artículos",
+    "noItemTypes": "No hay tipos de elementos para mostrar",
+    "noFolders": "No se encontraron carpetas",
+    "noFolderMatch": "Ninguna carpeta coincide con \"{query}\"",
+    "noNotes": "No se encontraron notas",
+    "allMatchesLinked": "Todos los partidos ya vinculados"
+  },
+  "list": {
+    "ariaLabel": "Elementos de la bandeja de entrada",
+    "section": {
+      "today": "hoy",
+      "yesterday": "ayer",
+      "older": "mayor"
+    },
+    "selectItem": "Seleccione {title}",
+    "itemAria": "{type}: {title}",
+    "untitled": "Sin título",
+    "untitledItem": "Artículo sin título",
+    "transcribing": "Transcribiendo...",
+    "transcriptionFailed": "Error de transcripción",
+    "retryTranscription": "Reintentar",
+    "pageCount": "{count, plural, one {Página #} other {Páginas #}}",
+    "snoozedUntilShort": "pospuesto hasta {date}",
+    "capturedAgo": "{time} capturado"
+  },
+  "loading": {
+    "inbox": "Cargando bandeja de entrada...",
+    "failed": "No se pudo cargar la bandeja de entrada",
+    "tryAgain": "Inténtalo de nuevo",
+    "capturingImage": "Capturando imagen...",
+    "dropImageTitle": "Soltar imagen para capturar",
+    "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
+    "unsupportedImageType": "Tipo de imagen no compatible: {type}",
+    "imageTooLarge": "Imagen demasiado grande (máximo 50 MB)"
+  },
+  "toast": {
+    "failedArchiveItem": "No se pudo archivar el elemento",
+    "failedArchiveItems": "No se pudieron archivar elementos",
+    "failedFile": "No se pudo presentar",
+    "failedFileItem": "No se pudo archivar el artículo",
+    "failedFileItems": "No se pudieron archivar los elementos",
+    "failedSnooze": "No se pudo posponer",
+    "failedSnoozeItem": "No se pudo posponer el elemento",
+    "failedApplyTags": "No se pudieron aplicar etiquetas",
+    "failedCaptureImage": "No se pudo capturar la imagen",
+    "linkedToNote": "Vinculado a la nota",
+    "linkedToNotes": "Vinculado a notas de {count}",
+    "filedTo": "Archivado en {folder}",
+    "filedItemsTo": "Elementos {count} archivados en {folder}",
+    "filedPartial": "{processed} archivado de elementos {total}",
+    "appliedTags": "{tagCount, plural, one {Etiqueta # aplicada} other {Etiquetas # aplicadas}} a {itemCount, plural, one {# artículo} other {Artículos #}}",
+    "archivedItems": "{count, plural, one {Artículo # archivado} other {Artículos # archivados}}",
+    "snoozedUntil": "Pospuesto hasta {time}",
+    "snoozedItemsUntil": "{count, plural, one {Elemento # pospuesto hasta {time}} other {Elementos # pospuestos hasta {time}}}"
+  },
+  "triage": {
+    "modeTitle": "Modo de clasificación",
+    "exitHint": "Esc para salir",
+    "exitAria": "Salir del modo de clasificación",
+    "position": "{current} de {total}",
+    "action": {
+      "discard": "Descartar",
+      "archive": "Archivo",
+      "open": "Abierto",
+      "toTask": "A la tarea",
+      "toNote": "Para tener en cuenta",
+      "file": "Archivo",
+      "snooze": "posponer",
+      "cancel": "Cancelar"
+    },
+    "snoozeUntil": "Posponer hasta...",
+    "complete": {
+      "title": "Bandeja de entrada cero",
+      "processed": "{count, plural, one {Elemento # procesado} other {Elementos # procesados}}",
+      "streak": "racha",
+      "streakCount": "Racha {count}",
+      "dayProcessingStreak": "{count, plural, one {Racha de procesamiento diario de #} other {Racha de procesamiento diario de #}}",
+      "back": "Volver a la bandeja de entrada",
+      "motivation0": "Tu yo futuro te lo agradece.",
+      "motivation1": "Todo en su lugar.",
+      "motivation2": "Bandeja de entrada clara, mente clara.",
+      "motivation3": "Deuda de decisión: pagada en su totalidad.",
+      "motivation4": "Eso se sintió bien, ¿no?"
+    }
+  },
+  "bulk": {
+    "selected": "{count} seleccionado",
+    "deselectAll": "Deseleccionar todo",
+    "ariaLabel": "Acciones masivas para elementos seleccionados de {count}",
+    "file": "Archivo",
+    "tag": "Etiqueta",
+    "snooze": "posponer",
+    "archive": "Archivo",
+    "add": "Añadir",
+    "dismissSuggestion": "Descartar sugerencia",
+    "hint": {
+      "file": "archivo",
+      "tag": "etiqueta",
+      "snooze": "posponer",
+      "archive": "archivo",
+      "deselect": "deseleccionar"
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {¿Archivar elemento #?} other {¿Archivar elementos #?}}",
+      "description": "Estos elementos serán archivados. Podrás ver los elementos archivados más tarde.",
+      "confirm": "{count, plural, one {Archivar elemento #} other {Archivar elementos #}}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {Archivo # Artículo} other {Archivo # Elementos}}",
+      "itemsToFile": "Artículos a presentar",
+      "multipleNoteLinksUnavailable": "Nota: No se pueden agregar enlaces a otras notas al presentar varios elementos.",
+      "filing": "Archivando...",
+      "submit": "{count, plural, one {Archivo elemento #} other {Archivo de elementos #}}",
+      "macHint": "⌘⏎ archivar · Esc para cerrar",
+      "ctrlHint": "Ctrl+Enter para archivo · Esc para cerrar"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {Etiqueta # Artículo} other {Etiqueta # Artículos}}",
+      "placeholder": "Escribe para buscar etiquetas...",
+      "applying": "Aplicando...",
+      "apply": "{count, plural, one {Aplicar al artículo #} other {Aplicar a artículos #}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "Acciones rápidas",
+    "archiveItem": "Elemento de archivo",
+    "archive": "Archivo",
+    "snooze": "posponer"
+  },
+  "detail": {
+    "ariaLabel": "Detalles del artículo",
+    "closePanel": "Cerrar panel",
+    "resizeFiling": "Cambiar el tamaño de la sección de archivo",
+    "restore": "Restaurar",
+    "restoreToInbox": "Restaurar a la bandeja de entrada",
+    "delete": "Eliminar",
+    "deletePermanently": "Eliminar permanentemente",
+    "archive": "Archivo",
+    "file": "Archivo",
+    "keyboardHint": "Archivo {modifier}⏎ · Carpeta 1-5 · Esc cerrar",
+    "voiceTitlePlaceholder": "Ponle un nombre a esta nota de voz...",
+    "fileTo": "Archivo a",
+    "ai": "IA",
+    "selectFolder": "Seleccionar carpeta",
+    "searchOrCreateFolder": "Buscar o crear con /...",
+    "suggested": "sugerido",
+    "notesRoot": "Notas",
+    "notesRootLabel": "Notas (raíz)",
+    "createFolder": "Crear \"{name}\"",
+    "addTags": "Añadir etiquetas...",
+    "linkToNote": "Enlace a la nota",
+    "linkNotesPlaceholder": "Notas de enlace...",
+    "searchNotesAria": "Buscar notas para vincular",
+    "linkedNotesAria": "Notas vinculadas",
+    "removeLinkTo": "Eliminar enlace a {title}",
+    "contentEditorAria": "editor de contenido",
+    "notePlaceholder": "Escribe tu nota...",
+    "textPlaceholder": "Edita tu texto capturado..."
+  },
+  "content": {
+    "capturedAt": "{date} capturado",
+    "todayAt": "hoy en {time}",
+    "yesterdayAt": "ayer en {time}",
+    "dateAt": "{date} y {time}",
+    "words": "{count, plural, one {Palabra #} other {# palabras}}",
+    "duration": "Duración: {duration}",
+    "dimensions": "Dimensiones",
+    "format": "Formato",
+    "size": "Tamaño",
+    "voiceMemo": "nota de voz",
+    "play": "Jugar",
+    "pause": "Pausa",
+    "audioPosition": "Posición de audio",
+    "transcription": "Transcripción",
+    "processing": "procesamiento",
+    "pending": "pendiente",
+    "failed": "falló",
+    "copyTranscription": "Copiar transcripción",
+    "transcribingAudio": "Transcribiendo audio...",
+    "awaitingTranscription": "Esperando transcripción...",
+    "noTranscription": "No hay transcripción disponible",
+    "failedPlayAudio": "No se pudo reproducir el audio",
+    "failedLoadAudio": "No se pudo cargar el audio",
+    "video": "Vídeo",
+    "unsupportedVideo": "Su navegador no soporta la etiqueta de video."
+  },
+  "reminder": {
+    "dataUnavailable": "Los datos del recordatorio no están disponibles.",
+    "triggered": "Recordatorio activado",
+    "noteLabel": "Nota recordatoria",
+    "source": "Fuente",
+    "journalTitle": "Diario — {date}",
+    "noteFallback": "Nota",
+    "journalFallback": "Diario",
+    "highlighted": "Resaltado: \"{text}\"",
+    "viewed": "Visto",
+    "markViewed": "Marcar como visto",
+    "notYetViewed": "Aún no visto",
+    "snooze": "posponer",
+    "presetInOneHour": "1 hora",
+    "presetTomorrow": "mañana",
+    "presetNextWeek": "La próxima semana",
+    "custom": "Personalizado..."
+  },
+  "insights": {
+    "loading": "Cargando información...",
+    "captureActivity": "Capturar actividad",
+    "byType": "Por tipo",
+    "itemTypes": "Tipos de artículos",
+    "itemTypesDescription": "Distribución de formatos de contenidos.",
+    "recentFilings": "Presentaciones recientes",
+    "recentlyFiled": "Presentado recientemente",
+    "recentlyFiledDescription": "Últimas acciones en tu bandeja de entrada",
+    "captured": "capturado",
+    "capturedThisWeek": "+{count} esta semana",
+    "processed": "Procesado",
+    "processRate": "{rate}% tasa",
+    "stale": "rancio",
+    "needsAttention": "necesita atencion",
+    "allClear": "todo claro",
+    "avgTimeToFile": "Tiempo promedio para presentar la solicitud",
+    "noCapturesYet": "Aún no hay capturas",
+    "captures": "{count, plural, one {Captura #} other {Capturas #}}",
+    "peak": "Pico: {day} {start}–{end}",
+    "convertedToTask": "Convertido en tarea",
+    "linked": "vinculado",
+    "now": "ahora",
+    "timeAgoMinutes": "Hace {count} min",
+    "timeAgoHours": "Hace {count}h",
+    "timeAgoDays": "Hace {count}d"
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "IA detectada: \"",
+      "addToSelection": "Añadir a la selección",
+      "dismiss": "Descartar"
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "Eliminar ",
+      "item": "artículo",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Estos elementos se eliminarán de su bandeja de entrada. Puedes deshacer esta acción inmediatamente después."
+    },
+    "componentsCaptureInput": {
+      "captureInput": "Capturar entrada",
+      "attachFile": "Adjuntar archivo",
+      "attachFileImagesAudioVideoPdf": "Adjuntar archivo (Imágenes, Audio, Vídeo, PDF)",
+      "recordVoiceMemo": "Grabar nota de voz",
+      "recordVoiceMemo2": "Grabar nota de voz",
+      "alreadyCaptured": "Ya capturado: “",
+      "rdquo": "rdquo;",
+      "captureAnyway": "Capturar de todos modos"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "Elige carpeta",
+      "searchFolders": "Buscar carpetas...",
+      "searchFolders2": "Buscar carpetas",
+      "searchResults": "Resultados de la búsqueda",
+      "create": "Crear \"",
+      "suggested": "sugerido",
+      "recent": "Reciente",
+      "allFolders": "Todas las carpetas",
+      "allFolders2": "Todas las carpetas"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "Enlace a",
+      "optional": "opcional)",
+      "searchNotesToLink": "Buscar notas para vincular...",
+      "searchNotesToLink2": "Buscar notas para vincular",
+      "searching": "Buscando...",
+      "noNotesFound": "No se encontraron notas",
+      "linkedNotes": "Notas vinculadas",
+      "noLinksAdded": "No se agregaron enlaces"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "sugerido",
+      "ai": "IA",
+      "create": "crear",
+      "tags": "Etiquetas",
+      "selectedTags": "Etiquetas seleccionadas",
+      "addTags": "Agregar etiquetas",
+      "tagSuggestions": "Sugerencias de etiquetas"
+    },
+    "componentsFilingTagInput": {
+      "tags": "Etiquetas",
+      "optional": "opcional)",
+      "addTags": "Añadir etiquetas...",
+      "addTags2": "Agregar etiquetas",
+      "selectedTags": "Etiquetas seleccionadas",
+      "suggested": "sugerido"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "Capturar actividad"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "Aún no se han archivado artículos",
+      "recentlyFiled": "Presentado recientemente",
+      "latestActionsOnYourInbox": "Últimas acciones en tu bandeja de entrada",
+      "linked": "vinculado"
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "Cargando información..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "No hay tipos de elementos para mostrar",
+      "itemTypes": "Tipos de artículos",
+      "distributionOfContentFormats": "Distribución de formatos de contenidos."
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "capturado "
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "x "
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "editor de contenido"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "punto medio; "
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "Tweet no disponible",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Es posible que este tweet haya sido eliminado o sea de una cuenta privada.",
+      "openOnXCom": "Abrir en x.com",
+      "views": "vistas",
+      "xCom": "x.com",
+      "viewOnX": "Ver en X"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "Escriba el nombre de la carpeta...",
+      "quickFileFolderSearch": "Búsqueda rápida de carpetas de archivos"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "cerrar",
+      "capture": "capturar"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "Quitar archivo adjunto"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "Entrada de captura rápida",
+      "recordVoiceMemo": "Grabar nota de voz",
+      "attachFile": "Adjuntar archivo"
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "ENLACE"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "capturado",
+      "dismissError": "Descartar error",
+      "alreadyCaptured": "Ya capturado",
+      "ldquo": "ldquo;",
+      "rdquoMiddot": "rdquo; · ",
+      "captureAnyway": "Capturar de todos modos",
+      "close": "Cerrar"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "Soltar para capturar",
+      "capturing": "Capturando..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "sugerencias de carpetas",
+      "noFoldersMatch": "Ninguna carpeta coincide \""
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "Establecer recordatorio para este texto",
+      "remindMeAboutThis": "Recuérdame esto",
+      "selectedText": "Texto seleccionado:"
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "Recordar",
+      "remindMe": "Recuérdame",
+      "pickDateTime": "Elige fecha y hora",
+      "addANoteOptional": "Agregar una nota (opcional)",
+      "backToPresets": "Volver a ajustes preestablecidos",
+      "time": "tiempo",
+      "noteOptional": "Nota (opcional)",
+      "whyAreYouSettingThisReminder": "¿Por qué estás configurando este recordatorio?"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "posponer",
+      "snooze2": "posponer",
+      "pickDateTime": "Elija fecha y hora",
+      "pickDateTime2": "Elija fecha y hora",
+      "selectWhenToBeRemindedAboutThisItem": "Seleccione cuándo recibir un recordatorio sobre este elemento",
+      "snooze3": "posponer",
+      "snooze4": "posponer",
+      "snooze5": "posponer"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "Cargando publicación...",
+      "failedToLoad": "No se pudo cargar",
+      "loadingPostContent": "Cargando contenido de la publicación...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "No se pudo cargar el contenido de la publicación. La publicación puede ser privada o eliminada.",
+      "viewOn": "Ver en "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "Iniciar grabación de voz",
+      "requestingMicrophoneAccess": "Solicitando acceso al micrófono...",
+      "settings": "Configuración",
+      "processing": "Procesando...",
+      "cancelRecording": "Cancelar grabación",
+      "cancel": "Cancelar",
+      "stopRecording": "dejar de grabar",
+      "stop": "Detener"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCaptureLink": "No se pudo capturar el enlace",
+      "failedToCaptureNote": "No se pudo capturar la nota",
+      "captureFailed": "Error de captura",
+      "failedToCaptureVoiceMemo": "No se pudo capturar la nota de voz",
+      "voiceCaptureFailed": "Error en la captura de voz",
+      "failedToCaptureFile": "No se pudo capturar el archivo",
+      "fileCaptureFailed": "Falló la captura del archivo",
+      "failedToCaptureAudio": "No se pudo capturar el audio",
+      "failedToCaptureVoice": "No se pudo capturar la voz"
+    },
+    "toasts": {
+      "inboxRefreshed": "Bandeja de entrada actualizada"
+    }
+  }
+}

@@ -1,0 +1,1160 @@
+{
+  "toast": {
+    "exportNotImplemented": "Hindi pa ipinapatupad ang pag-export ng lokal na data"
+  },
+  "page": {
+    "title": "Mga setting",
+    "nav": {
+      "groups": {
+        "workspace": "Workspace",
+        "preferences": "Mga Kagustuhan",
+        "services": "Mga serbisyo",
+        "data": "Data"
+      },
+      "items": {
+        "account": "Account",
+        "general": "Heneral",
+        "templates": "Mga template",
+        "editor": "Editor",
+        "journal": "Journal",
+        "tasks": "Mga gawain",
+        "calendar": "Kalendaryo",
+        "appearance": "Hitsura",
+        "shortcuts": "Mga shortcut",
+        "ai": "AI Assistant",
+        "integrations": "Mga pagsasama",
+        "vault": "Vault",
+        "tags": "Mga tag",
+        "properties": "Mga Katangian"
+      }
+    }
+  },
+  "general": {
+    "header": {
+      "title": "Heneral",
+      "subtitle": "Pagsisimula ng application at gawi ng tab",
+      "loading": "Nilo-load ang mga setting..."
+    },
+    "groups": {
+      "startup": "Startup",
+      "updates": "Mga update",
+      "languageRegion": "Wika at Rehiyon",
+      "tabBehavior": "Gawi ng Tab",
+      "fileCreation": "Paglikha ng File",
+      "privacy": "Pagkapribado"
+    },
+    "startup": {
+      "launchAtLogin": {
+        "label": "Ilunsad sa Login",
+        "description": "Simulan ang Memry kapag nag-log in ka",
+        "error": "Nabigong i-update ang simula sa boot"
+      }
+    },
+    "updates": {
+      "appUpdates": "Mga Update sa App",
+      "installedVersion": "Naka-install na bersyon {version}",
+      "availableVersion": "Magagamit na bersyon {version}",
+      "unsupported": "Maaaring suriin, i-download, at i-install ng mga naka-package na build ang mga update mula sa Mga Paglabas ng GitHub",
+      "available": "Memry {version} ay magagamit upang i-download",
+      "downloadingLatest": "Dina-download ang pinakabagong release",
+      "downloadingLatestPercent": "Dina-download ang pinakabagong release ({percent}%)",
+      "downloaded": "Memry {version} ay handa nang i-install",
+      "upToDate": "Ang pag-install na ito ay nasa pinakabagong nai-publish na release",
+      "checking": "Sinusuri ang Mga Paglabas ng GitHub para sa isang mas bagong bersyon",
+      "idle": "Tingnan kung may mga bagong release at i-install ang mga ito nang hindi umaalis sa app",
+      "unsupportedToast": "Available lang ang mga auto-update sa mga naka-package na release",
+      "upToDateToast": "Napapanahon ang Memry {version}",
+      "actionFailed": "Nabigo ang pagkilos sa pag-update",
+      "actions": {
+        "checking": "Sinusuri...",
+        "available": "I-download ang Update",
+        "downloading": "Dina-download...",
+        "downloadingPercent": "Dina-download ang {percent}%",
+        "downloaded": "I-restart upang I-install",
+        "idle": "Tingnan ang Mga Update"
+      }
+    },
+    "language": {
+      "label": "Wika",
+      "helper": "Karamihan sa mga app ay nag-a-update kaagad. Ilang system-level na text — naipakita na ang mga notification, dock label, window title bar — nagre-refresh pagkatapos ng susunod na paglulunsad.",
+      "changed": "Ginawang {nativeName} ang wika",
+      "failed": "Nabigong baguhin ang wika. Pakisubukang muli."
+    },
+    "clockFormat": {
+      "label": "Format ng Oras",
+      "description": "12-oras o 24-oras na orasan",
+      "options": {
+        "12h": "12-oras",
+        "24h": "24 na oras"
+      },
+      "error": "Nabigong i-update ang format ng oras"
+    },
+    "tabs": {
+      "previewMode": {
+        "label": "Preview Mode",
+        "description": "Ang isang pag-click ay nagbubukas ng preview, ang pag-double click ay nananatiling bukas"
+      },
+      "restoreSession": {
+        "label": "I-restore ang Session sa Start",
+        "description": "Muling buksan ang mga tab mula sa iyong huling session"
+      },
+      "closeButton": {
+        "label": "Button ng Tab Close",
+        "description": "Kailan ipapakita ang close button",
+        "options": {
+          "always": "Laging nakikita",
+          "hover": "Ipakita sa hover",
+          "active": "Sa aktibong tab lang"
+        }
+      },
+      "error": "Nabigong i-update ang setting"
+    },
+    "fileCreation": {
+      "createInSelectedFolder": {
+        "label": "Lumikha sa Napiling Folder",
+        "description": "Ang mga bagong tala at folder ay nilikha sa loob ng kasalukuyang napiling folder. Kapag naka-off, ang mga item ay palaging ginagawa sa root."
+      }
+    },
+    "privacy": {
+      "telemetry": {
+        "label": "Ibahagi ang Anonymous na Sukatan sa Paggamit",
+        "description": "Anon metrics lang ito — walang ipinapadalang nilalaman ng tala, mga query sa paghahanap, path ng file, email, o raw ID.",
+        "error": "Nabigong i-update ang setting ng telemetry"
+      }
+    }
+  },
+  "appearance": {
+    "header": {
+      "title": "Hitsura",
+      "subtitle": "I-customize ang hitsura at pakiramdam",
+      "loading": "Nilo-load ang mga setting..."
+    },
+    "groups": {
+      "theme": "Tema",
+      "accentColor": "Kulay ng Accent",
+      "typography": "Typography"
+    },
+    "theme": {
+      "colorMode": {
+        "label": "Mode ng Kulay",
+        "description": "Piliin ang iyong gustong tema",
+        "aria": "Mode ng kulay"
+      },
+      "options": {
+        "light": "Mainit",
+        "white": "Puti",
+        "dark": "Madilim",
+        "system": "Sistema"
+      },
+      "error": "Nabigong i-update ang tema"
+    },
+    "accent": {
+      "pick": "Pumili ng kulay ng accent",
+      "custom": {
+        "label": "Custom na Kulay",
+        "description": "Maglagay ng hex value",
+        "placeholder": "#000000"
+      },
+      "presets": {
+        "indigo": "Indigo",
+        "amber": "Amber",
+        "emerald": "Emerald",
+        "red": "Pula",
+        "violet": "Violet",
+        "cyan": "Cyan",
+        "pink": "Rosas",
+        "orange": "Kahel"
+      },
+      "error": "Nabigong i-update ang kulay ng accent"
+    },
+    "typography": {
+      "fontSize": {
+        "label": "Laki ng Font",
+        "description": "Ayusin ang batayang laki ng teksto",
+        "aria": "Laki ng font"
+      },
+      "fontFamily": {
+        "label": "Pamilya ng Font",
+        "description": "Pangunahing typeface para sa interface",
+        "options": {
+          "system": "Default ng System",
+          "sansSerif": "Sans-serif",
+          "serif": "Serif (Crimson Pro)",
+          "gelasio": "Gelasio",
+          "geist": "Geist",
+          "inter": "Inter",
+          "monospace": "Monospace"
+        }
+      },
+      "fontSizeError": "Nabigong i-update ang laki ng font",
+      "fontFamilyError": "Nabigong i-update ang pamilya ng font"
+    }
+  },
+  "editor": {
+    "header": {
+      "title": "Editor",
+      "subtitle": "Mga setting at kagustuhan ng editor ng tala",
+      "loading": "Nilo-load ang mga setting..."
+    },
+    "groups": {
+      "layout": "Layout",
+      "toolbar": "Toolbar",
+      "writing": "Pagsusulat"
+    },
+    "width": {
+      "label": "Lapad ng Editor",
+      "description": "Pinakamataas na lapad ng lugar ng pagsusulat",
+      "options": {
+        "narrow": "Makitid",
+        "medium": "Katamtaman",
+        "wide": "Malapad"
+      },
+      "error": "Nabigong i-update ang lapad ng editor"
+    },
+    "toolbarMode": {
+      "label": "Sticky Formatting Toolbar",
+      "description": "Palaging ipakita ang toolbar sa itaas ng editor",
+      "error": "Nabigong i-update ang toolbar mode"
+    },
+    "spellCheck": {
+      "label": "Spell Check",
+      "description": "Salungguhitan ang mga salitang mali ang spelling habang nagta-type",
+      "error": "Nabigong i-update ang spell check"
+    },
+    "autoSaveDelay": {
+      "label": "Pagkaantala ng Auto-Save",
+      "description": "Ang oras ng paghihintay pagkatapos huminto ang pag-type bago i-save",
+      "seconds": "{seconds}s",
+      "error": "Nabigong i-update ang pagkaantala ng auto-save"
+    },
+    "wordCount": {
+      "label": "Bilang ng Salita",
+      "description": "Ipakita ang bilang ng salita sa footer ng editor",
+      "error": "Nabigong i-update ang display ng bilang ng salita"
+    }
+  },
+  "templates": {
+    "header": {
+      "title": "Mga template",
+      "subtitle": "Pamahalaan ang mga template ng tala para sa mabilis na paggawa"
+    },
+    "actions": {
+      "new": "Bagong Template",
+      "edit": "I-edit",
+      "duplicate": "Duplicate",
+      "delete": "Tanggalin"
+    },
+    "groups": {
+      "builtIn": "Built-in",
+      "myTemplates": "Aking Mga Template"
+    },
+    "loading": "Naglo-load ng mga template...",
+    "newTemplateTitle": "Bagong Template",
+    "copySuffix": "{name} (Kopyahin)",
+    "empty": {
+      "title": "Wala pang custom na template",
+      "description": "Gumawa ng template para makapagsimula"
+    },
+    "toasts": {
+      "deleted": "Tinanggal ang template",
+      "deleteFailed": "Nabigong tanggalin ang template",
+      "duplicated": "Nadoble ang template",
+      "duplicateFailed": "Nabigong i-duplicate ang template"
+    },
+    "dialogs": {
+      "delete": {
+        "title": "Tanggalin ang Template",
+        "description": "Sigurado ka bang gusto mong tanggalin ang template na ito? Ang pagkilos na ito ay hindi maaaring i-undo. Ang mga tala na ginawa mula sa template na ito ay hindi maaapektuhan."
+      },
+      "duplicate": {
+        "title": "Duplicate na Template",
+        "description": "Maglagay ng pangalan para sa bagong kopya ng template.",
+        "placeholder": "Pangalan ng template"
+      }
+    }
+  },
+  "journal": {
+    "header": {
+      "title": "Journal",
+      "subtitle": "Mga setting at kagustuhan sa journal",
+      "loading": "Nilo-load ang mga setting..."
+    },
+    "groups": {
+      "defaultTemplate": "Default na Template",
+      "sidebarVisibility": "Sidebar Visibility",
+      "footer": "Footer"
+    },
+    "template": {
+      "label": "Template",
+      "description": "Ang mga bagong entry ay nagsisimula sa template na ito",
+      "placeholder": "Pumili ng template",
+      "unknown": "Hindi kilalang template",
+      "none": "wala",
+      "noneAsk": "Wala (magtanong sa bawat oras)",
+      "updated": "Na-update ang default na template",
+      "cleared": "Na-clear ang default na template",
+      "error": "Nabigong i-update ang default na template"
+    },
+    "showSchedule": {
+      "label": "Ipakita ang Iskedyul",
+      "description": "Ipakita ang mga kaganapan at kalendaryo ngayon"
+    },
+    "showTasks": {
+      "label": "Ipakita ang mga Gawain",
+      "description": "Ipakita ang mga gawaing dapat bayaran sa napiling araw"
+    },
+    "showAIConnections": {
+      "label": "Ipakita ang AI Connections",
+      "description": "Ipakita ang mga koneksyon na pinapagana ng AI sa mga nauugnay na entry"
+    },
+    "showStatsFooter": {
+      "label": "Ipakita ang Stats Footer",
+      "description": "Bilang ng salita, oras ng pagbabasa, mga timestamp"
+    },
+    "updateError": "Nabigong i-update ang setting"
+  },
+  "tasks": {
+    "header": {
+      "title": "Mga gawain",
+      "subtitle": "I-configure ang mga default at gawi ng gawain",
+      "loading": "Nilo-load ang mga setting..."
+    },
+    "groups": {
+      "defaults": "Mga Default",
+      "calendar": "Kalendaryo",
+      "inbox": "Inbox"
+    },
+    "defaultProject": {
+      "label": "Default na Proyekto",
+      "description": "Itinalaga kapag walang napiling proyekto",
+      "placeholder": "Walang default na proyekto",
+      "none": "Walang default (gamitin ang Personal)",
+      "error": "Nabigong i-update ang default na proyekto"
+    },
+    "sortOrder": {
+      "label": "Default na Pag-uuri ng Order",
+      "description": "Paano inaayos ang mga gawain sa view ng listahan",
+      "options": {
+        "manual": "Manwal (i-drag at i-drop)",
+        "dueDate": "Takdang Petsa",
+        "priority": "Priyoridad",
+        "createdAt": "Petsa ng Paggawa"
+      },
+      "error": "Nabigong i-update ang pagkakasunud-sunod ng pag-uuri"
+    },
+    "weekStart": {
+      "label": "Nagsisimula ang Linggo",
+      "description": "Unang araw ng linggo sa mga view sa kalendaryo",
+      "options": {
+        "sunday": "Linggo",
+        "monday": "Lunes"
+      },
+      "error": "Nabigong i-update ang simula ng linggo"
+    },
+    "staleInbox": {
+      "label": "Stale Inbox Threshold",
+      "description": "Ang mga gawaing mas matanda pa rito ay naka-highlight bilang lipas",
+      "unit": "araw",
+      "error": "Nabigong i-update ang lipas na threshold ng inbox"
+    }
+  },
+  "calendar": {
+    "header": {
+      "title": "Kalendaryo",
+      "subtitle": "I-configure ang day-cell na gawi sa Day Panel",
+      "loading": "Nilo-load ang mga setting..."
+    },
+    "groups": {
+      "dayCellClick": "Pang-araw na Cell Click"
+    },
+    "defaultBehavior": {
+      "label": "Default na pag-uugali",
+      "description": "Kapag nag-click sa isang araw sa kalendaryo ng Day Panel mula sa anumang tab na hindi kalendaryo",
+      "error": "Nabigong i-update ang gawi sa pag-click sa araw"
+    },
+    "pageOverride": {
+      "label": "Override sa pahina ng kalendaryo",
+      "description": "Pag-uugali kapag aktibo ang tab na Kalendaryo (mga default sa Buksan ang Kalendaryo)",
+      "error": "Nabigong i-update ang pag-override sa pahina ng kalendaryo"
+    },
+    "options": {
+      "openJournal": "Buksan ang Journal",
+      "openCalendar": "Buksan ang Kalendaryo",
+      "useGlobal": "Gumamit ng pandaigdigang setting"
+    }
+  },
+  "account": {
+    "header": {
+      "title": "Account",
+      "subtitle": "Ang iyong account, pag-sync, at seguridad",
+      "loading": "Naglo-load..."
+    },
+    "groups": {
+      "identity": "Pagkakakilanlan",
+      "sync": "I-sync",
+      "storage": "Imbakan",
+      "devices": "Mga device",
+      "security": "Seguridad"
+    },
+    "identity": {
+      "unknown": "Hindi alam",
+      "plan": "Pro plan"
+    },
+    "sync": {
+      "lastSynced": "Huling na-sync ang {time}",
+      "pending": "{count, plural, one {Nakabinbin ang #} other {Nakabinbin ang #}}",
+      "statuses": {
+        "synced": "Naka-sync",
+        "syncing": "Sini-sync...",
+        "paused": "Naka-pause",
+        "syncError": "Error sa Pag-sync",
+        "offline": "Offline",
+        "connecting": "Kumokonekta...",
+        "pushed": "{count, plural, one {Itinulak ang #} other {Itinulak ang #}}",
+        "pulled": "{count, plural, one {Hinila si #} other {Hinila si #}}",
+        "pushedPulled": "{parts}",
+        "changesPending": "{count, plural, one {Nakabinbin ang pagbabago ng #} other {Nakabinbin ang mga pagbabago sa #}}",
+        "offlinePending": "Offline ({count, plural, one {Nakabinbin ang pagbabago ng #} other {Nakabinbin ang mga pagbabago sa #}})",
+        "never": "Hindi kailanman"
+      }
+    },
+    "storage": {
+      "used": "{used} ng {limit} ang ginamit",
+      "categories": {
+        "notes": "Mga Tala",
+        "attachments": "Mga kalakip",
+        "crdt": "CRDT",
+        "other": "Iba pa",
+        "available": "Available"
+      }
+    },
+    "security": {
+      "recoveryKey": {
+        "label": "Susi sa Pagbawi",
+        "description": "Tingnan ang iyong recovery key para sa pag-access ng data",
+        "action": "Tingnan ang Key"
+      },
+      "rotateKeys": {
+        "label": "I-rotate ang Encryption Keys",
+        "description": "Bumuo ng mga bagong key at muling i-encrypt ang lahat ng data",
+        "action": "Iikot"
+      },
+      "signOut": {
+        "label": "Mag-sign Out",
+        "description": "Idiskonekta ang device na ito sa pag-sync",
+        "action": "Mag-sign Out"
+      }
+    },
+    "signOutDialog": {
+      "title": "Mag-sign out sa pag-sync?",
+      "description": "Hihinto ang pag-sync at aalisin ang mga encryption key sa device na ito. Mananatili ang iyong mga tala sa device na ito. Kakailanganin mo ang iyong parirala sa pagbawi upang i-set up muli ang pag-sync.",
+      "confirm": "Mag-sign out",
+      "signingOut": "Nagsa-sign out..."
+    },
+    "toasts": {
+      "signedOut": "Matagumpay na naka-sign out",
+      "signOutFailed": "Nabigong mag-sign out",
+      "deviceLinked": "Matagumpay na na-link ang device"
+    }
+  },
+  "setup": {
+    "steps": {
+      "signIn": "Mag-sign In",
+      "verify": "I-verify",
+      "link": "Link"
+    },
+    "progress": "Hakbang {current} ng {total}: {label}",
+    "signIn": {
+      "title": "I-set up ang Pag-sync",
+      "description": "Gumawa ng account para i-sync ang iyong data sa mga device na may end-to-end na pag-encrypt.",
+      "or": "o",
+      "errors": {
+        "sendCode": "Nabigong magpadala ng code",
+        "googleStart": "Nabigong simulan ang pag-sign in sa Google"
+      }
+    },
+    "email": {
+      "label": "Email address",
+      "placeholder": "Ilagay ang iyong email address...",
+      "invalid": "Mangyaring magpasok ng wastong email address",
+      "sending": "Nagpapadala ng code..."
+    },
+    "oauth": {
+      "google": "Magpatuloy sa Google"
+    },
+    "otp": {
+      "title": "Ilagay ang verification code",
+      "sentTo": "Nagpadala kami ng 6 na digit na code sa ",
+      "aria": "6 na digit na verification code",
+      "verifying": "Bine-verify...",
+      "resending": "Muling ipinapadala...",
+      "resend": "Muling ipadala ang code",
+      "resendIn": "Muling ipadala sa {time}",
+      "differentEmail": "Gumamit ng ibang email",
+      "error": "Nabigo ang pag-verify",
+      "resendError": "Nabigong ipadala muli"
+    },
+    "recovery": {
+      "displayTitle": "I-save ang iyong parirala sa pagbawi",
+      "displayDescription": "Ito ang tanging paraan para mabawi ang iyong naka-encrypt na data kung mawalan ka ng access sa lahat ng iyong device.",
+      "warning": "Isulat ito at itabi sa isang lugar na ligtas. Hindi mo na muling makikita.",
+      "wordsAria": "Mga salitang parirala sa pagbawi",
+      "wordAria": "Salita {index}: {word}",
+      "copyAria": "Kopyahin ang parirala sa pagbawi sa clipboard",
+      "copiedAria": "Nakopya ang parirala sa pagbawi",
+      "copied": "Kinopya",
+      "saved": "Na-save ko ang aking parirala sa pagbawi",
+      "confirmTitle": "Kumpirmahin ang iyong parirala sa pagbawi",
+      "confirmDescription": "Ilagay ang mga hiniling na salita upang i-verify na nai-save mo ito nang tama.",
+      "wordPlaceholder": "Ilagay ang salitang #{index}",
+      "verify": "I-verify",
+      "mustMatch": "Dapat magkatugma ang lahat ng 3 salita upang magpatuloy",
+      "inputTitle": "Ipasok ang parirala sa pagbawi",
+      "inputDescription": "Ilagay ang iyong 24-salitang parirala sa pagbawi upang maibalik ang access sa iyong naka-encrypt na data.",
+      "inputLabel": "Parirala sa pagbawi",
+      "count": "{count} / {total} salita",
+      "inputPlaceholder": "Ilagay ang iyong 24-salitang parirala sa pagbawi na pinaghihiwalay ng mga puwang...",
+      "lengthHint": "Ipasok ang lahat ng 24 na salita para paganahin ang restore button",
+      "restore": "Ibalik ang access",
+      "progress": {
+        "deriving": "Kinukuha ang mga encryption key...",
+        "validating": "Pinapatunayan ang parirala sa pagbawi...",
+        "registering": "Nirerehistro ang device..."
+      },
+      "failed": "Nabigo ang pagbawi",
+      "confirmationFailed": "Nabigo ang pagkumpirma"
+    },
+    "linking": {
+      "choiceTitle": "I-link ang device na ito",
+      "choiceDescription": "Maglipat ng mga encryption key mula sa isa pang device o mag-restore mula sa iyong parirala sa pagbawi.",
+      "qrChoice": "Mag-link sa pamamagitan ng QR code",
+      "qrChoiceDescription": "I-scan ang code na ipinapakita sa iyong iba pang device",
+      "recoveryChoice": "Parirala sa pagbawi",
+      "recoveryChoiceDescription": "Ilagay ang iyong 24-salitang parirala sa pagbawi",
+      "codeTitle": "Ilagay ang linking code",
+      "codeDescription": "I-paste ang linking code mula sa iyong iba pang device para ligtas na ilipat ang iyong mga encryption key.",
+      "codeLabel": "Pag-uugnay ng code",
+      "valid": "Wasto",
+      "invalid": "Di-wastong format",
+      "codePlaceholder": "I-paste ang code mula sa iyong iba pang device...",
+      "formatHint": "I-paste ang JSON linking code mula sa iyong iba pang device",
+      "linking": "Nili-link...",
+      "linkDevice": "I-link ang device",
+      "failed": "Nabigo ang pag-link",
+      "deviceFailed": "Nabigong i-link ang device",
+      "pendingSuccess": "Matagumpay na na-link ang device",
+      "goBack": "Bumalik ka",
+      "waitingTitle": "Naghihintay ng pag-apruba",
+      "waitingDescription": "Buksan ang Memry sa iyong iba pang device at aprubahan ang kahilingan sa pag-link.",
+      "verificationCode": "Verification code",
+      "confirmCode": "Kumpirmahin na tumutugma ito sa code sa iyong iba pang device",
+      "cancel": "Kanselahin"
+    }
+  },
+  "devices": {
+    "loading": "Naglo-load ng mga device...",
+    "loadingAria": "Naglo-load ng mga device",
+    "none": "Wala pang naka-link na device",
+    "linkNew": "I-link ang bagong device",
+    "thisDevice": "Ang device na ito",
+    "lastSeen": "Huling nakita {time} ang nakalipas",
+    "linked": "Na-link {time} ang nakalipas",
+    "renameAria": "Palitan ang pangalan ng {name}",
+    "rename": "Palitan ang pangalan",
+    "revoke": "Bawiin",
+    "showLess": "Magpakita ng mas kaunti",
+    "showMore": "{count, plural, one {# pang device} other {# pang device}}",
+    "showMoreAria": "Ipakita ang {count, plural, one {# pang device} other {# pang device}}",
+    "dialogs": {
+      "revokeTitle": "Bawiin ang \"{name}\"?",
+      "revokeDescription": "Mawawalan ng access ang device na ito sa iyong naka-sync na data. Kakailanganin itong i-link muli upang maibalik ang pag-sync. Mananatili ang lokal na data sa device na iyon.",
+      "revokeDevice": "Bawiin ang device",
+      "revoking": "Binawi...",
+      "renameTitle": "Palitan ang pangalan ng device",
+      "renameDescription": "Pumili ng pangalan para matukoy ang device na ito.",
+      "namePlaceholder": "Pangalan ng device",
+      "renaming": "Pinapalitan ang pangalan..."
+    },
+    "toasts": {
+      "loadFailed": "Nabigong i-load ang mga device",
+      "removed": "Inalis ang \"{name}\"",
+      "removeFailed": "Nabigong alisin ang device",
+      "renamed": "Pinalitan ng pangalan sa \"{name}\"",
+      "renameFailed": "Nabigong palitan ang pangalan ng device"
+    }
+  },
+  "qrLinking": {
+    "title": "I-link ang bagong device",
+    "description": "I-scan ang QR code na ito mula sa device na gusto mong i-link para ligtas na ilipat ang iyong mga encryption key.",
+    "encrypted": "End-to-end na naka-encrypt",
+    "generating": "Bumubuo ng linking code...",
+    "generatingAria": "Pagbuo ng linking code",
+    "generateFailed": "Nabigong bumuo ng linking code",
+    "tryAgain": "Subukan muli",
+    "expired": "Nag-expire ang code sa pag-link",
+    "generateNew": "Bumuo ng bagong code",
+    "qrAria": "QR code para sa pag-link ng device",
+    "qrImageAria": "Nagli-link ang device sa QR code",
+    "expiresIn": "Mag-e-expire sa {time}",
+    "or": "o",
+    "codeLabel": "Pag-uugnay ng code",
+    "copyAria": "Kopyahin ang linking code",
+    "copiedAria": "Kinopya",
+    "copied": "Kinopya!"
+  },
+  "linkingApproval": {
+    "title": "Gustong mag-link ng bagong device",
+    "description": "Ang isang device ay humihiling ng access sa iyong naka-encrypt na data. Aprubahan lang kung sinimulan mo ang kahilingang ito.",
+    "unknownDevice": "Hindi kilalang device",
+    "unknownPlatform": "Hindi kilalang platform",
+    "verificationCode": "Verification code",
+    "computing": "Nagko-compute...",
+    "unavailable": "Hindi magagamit",
+    "confirmCode": "Kumpirmahin na tumutugma ang code na ito sa ipinapakita sa bagong device",
+    "reject": "Tanggihan",
+    "approve": "Aprubahan",
+    "approving": "Inaprubahan...",
+    "approvalFailed": "Nabigo ang pag-apruba",
+    "failedToApprove": "Nabigong aprubahan ang device"
+  },
+  "recoveryKey": {
+    "title": "Susi sa Pagbawi",
+    "description": "Itago ang susi na ito nang ligtas. Maaari nitong i-restore ang iyong vault kung mawawalan ka ng access sa lahat ng device.",
+    "loading": "Naglo-load...",
+    "retrieveFailed": "Nabigong makuha ang recovery key",
+    "copied": "Nakopya ang recovery key sa clipboard",
+    "copyFailed": "Nabigong kopyahin sa clipboard",
+    "clickToReveal": "I-click para ibunyag",
+    "hide": "Magtago",
+    "reveal": "Ibunyag",
+    "copy": "Kopyahin",
+    "sessionHint": "Ang key na ito ay ipinapakita nang isang beses bawat session. Isara ang dialog na ito upang i-clear ito sa memorya."
+  },
+  "keyRotation": {
+    "title": "I-rotate ang Encryption Keys",
+    "descriptions": {
+      "confirm": "Bumuo ng mga bagong encryption key para sa iyong vault.",
+      "rotating": "Muling ine-encrypt ang iyong data gamit ang mga bagong key...",
+      "phrase": "I-save ang iyong bagong parirala sa pagbawi.",
+      "complete": "Kumpleto na ang pag-ikot ng key.",
+      "error": "Nagkaroon ng error ang pag-ikot ng key."
+    },
+    "warningTitle": "Ang pagkilos na ito ay:",
+    "warningItems": {
+      "keyPair": "Bumuo ng bagong pares ng encryption key",
+      "rewrap": "I-wrap muli ang lahat ng naka-sync na item gamit ang bagong key",
+      "phrase": "Gumawa ng bagong parirala sa pagbawi (magiging di-wasto ang luma)",
+      "pause": "Pansamantalang i-pause ang pag-sync sa panahon ng proseso"
+    },
+    "explanation": "Ang nilalaman ng iyong data ay hindi kailanman muling na-encrypt - tanging ang mga pangunahing sobre ang nagbabago. Ito ay isang mabilis, ligtas na operasyon.",
+    "start": "Simulan ang Pag-ikot ng Key",
+    "starting": "Nagsisimula...",
+    "phases": {
+      "preparing": "Inihahanda...",
+      "reencrypting": "Muling pag-wrap ng mga key ({processed}/{total})",
+      "finalizing": "Tinatapos...",
+      "working": "Nagtatrabaho..."
+    },
+    "progressAria": "Pag-ikot ng key: {phaseLabel} {pct}%",
+    "progressLabel": "Pag-unlad ng key rotation",
+    "doNotClose": "Huwag isara ang aplikasyon sa panahon ng prosesong ito.",
+    "complete": "Naiikot na ang lahat ng encryption key. Na-save na ang iyong bagong parirala sa pagbawi. Awtomatikong magpapatuloy ang pag-sync.",
+    "unknownError": "Isang hindi kilalang error ang naganap sa panahon ng pag-ikot ng key.",
+    "errorHint": "Nananatiling wasto ang iyong mga kasalukuyang key. Ipinagpatuloy ang pag-sync. Maaari mong subukang muli anumang oras.",
+    "closeConfirm": {
+      "title": "Kasalukuyang umiikot",
+      "description": "Gumagana pa rin ang pag-ikot ng key. Ang pagsasara sa dialog na ito ay hindi hihinto sa proseso, ngunit hindi mo makikita ang iyong bagong parirala sa pagbawi hanggang sa makumpleto ito.",
+      "stay": "Manatili",
+      "closeAnyway": "Isara pa rin"
+    },
+    "failed": "Nabigo ang pag-ikot ng key"
+  },
+  "ai": {
+    "header": {
+      "title": "AI Assistant",
+      "subtitle": "Ang mga pag-embed ay tumatakbo nang lokal. Maaaring gamitin ng mga voice memo ang Whisper Small o ang iyong OpenAI key.",
+      "loading": "Nilo-load ang mga setting..."
+    },
+    "enable": {
+      "label": "Paganahin ang Mga Tampok ng AI",
+      "description": "Mga suhestiyon ng matalinong pag-file at mga koneksyon sa tala",
+      "enabled": "Pinagana ang mga feature ng AI",
+      "disabled": "Na-disable ang mga feature ng AI",
+      "error": "Nabigong i-update ang setting"
+    },
+    "unknownError": "Hindi kilalang error",
+    "groups": {
+      "voice": "Transkripsyon ng Boses",
+      "embeddingModel": "Lokal na Modelo sa Pag-embed",
+      "embeddingIndex": "Pag-embed ng Index",
+      "inline": "Inline na Pag-edit ng AI"
+    },
+    "voice": {
+      "provider": "Provider",
+      "providerDescription": "Speech-to-text provider para sa mga voice memo",
+      "providers": {
+        "local": "Lokal (default)",
+        "openai": "OpenAI (BYOK)"
+      },
+      "localModel": "Lokal na Modelo",
+      "localModelDescription": "Whisper Small download on demand at nananatiling naka-cache nang lokal",
+      "status": {
+        "ready": "handa na",
+        "downloading": "Nagda-download",
+        "downloaded": "Na-download",
+        "notDownloaded": "Hindi na-download"
+      },
+      "cacheHint": "Hindi kasama ng app · Na-download mula sa Mga Setting · Naka-cach sa device na ito",
+      "preparing": "Inihahanda ang Whisper Small...",
+      "download": "I-download ang Whisper Small",
+      "apiKey": "OpenAI API Key",
+      "apiKeyDescription": "Naka-store sa iyong OS keychain at ginagamit lang para sa voice transcription",
+      "replaceKey": "Palitan ang naka-save na OpenAI key",
+      "enterKey": "Ipasok ang OpenAI API key",
+      "saveKey": "I-save ang Key",
+      "keySaved": "Na-save ang API key sa keychain",
+      "providerError": "Nabigong i-update ang voice provider",
+      "downloadedToast": "Na-download ang Whisper Small",
+      "downloadError": "Nabigong i-download ang Whisper Small",
+      "keySavedToast": "Na-save ang OpenAI key",
+      "keySaveError": "Nabigong i-save ang OpenAI key"
+    },
+    "embedding": {
+      "loaded": "Na-load",
+      "loading": "Naglo-load",
+      "cacheHint": "~23MB · Lokal na naka-cache · Lahat sa device",
+      "dimensions": "Mga sukat",
+      "embeddings": "Mga pag-embed",
+      "downloadLoad": "I-download at I-load ang Modelo",
+      "downloadingModel": "Dina-download ang modelo...",
+      "loadingModel": "Nilo-load ang modelo...",
+      "loadSuccess": "Matagumpay na na-load ang modelo",
+      "loadFailed": "Nabigong i-load ang modelo",
+      "rebuildIndex": "Muling Buuin ang Index",
+      "rebuildDescription": "Buuin muli ang mga pag-embed para sa lahat ng mga tala",
+      "rebuild": "Muling itayo",
+      "scanning": "Ini-scan ang mga tala...",
+      "generating": "Bumubuo ng mga pag-embed...",
+      "complete": "Kumpleto na!",
+      "reindexed": "Muling na-index ang mga pag-embed: {computed} na-compute, {skipped} ay nilaktawan",
+      "reindexFailed": "Nabigong muling i-index ang mga pag-embed"
+    },
+    "inline": {
+      "loading": "Naglo-load...",
+      "title": "Inline na Pag-edit ng AI",
+      "enable": "Paganahin ang Inline AI",
+      "enableDescription": "Ipakita ang AI menu kapag nag-e-edit ng mga tala",
+      "enabled": "Naka-enable ang inline na pag-edit ng AI",
+      "disabled": "Na-disable ang inline na pag-edit ng AI",
+      "provider": "Provider",
+      "providerDescription": "Serbisyo ng AI para sa mga pagpapatakbo ng text",
+      "providers": {
+        "ollama": "Ollama (Lokal)",
+        "openai": "OpenAI",
+        "anthropic": "Antropiko"
+      },
+      "model": "Modelo",
+      "modelDescription": "Modelo ng wika para sa muling pagsulat at pagbubuod",
+      "selectModel": "Pumili ng modelo",
+      "apiKey": "API Key",
+      "apiKeyDescription": "Lokal na nakaimbak, ipinadala lamang sa provider",
+      "apiKeyPlaceholder": "Ilagay ang {provider} API key",
+      "ollamaUrl": "Ollama URL",
+      "ollamaUrlDescription": "Lokal na address ng server",
+      "connection": "Koneksyon",
+      "activePort": "Aktibo sa port {port}",
+      "notConnected": "Hindi konektado",
+      "test": "Pagsubok",
+      "stopFailed": "Nabigong ihinto ang kasalukuyang server",
+      "connected": "Konektado! Tumatakbo ang server sa port {port}",
+      "connectFailed": "Nabigong kumonekta",
+      "testFailed": "Nabigo ang pagsubok sa koneksyon",
+      "updateFailed": "Nabigong i-update ang setting"
+    }
+  },
+  "integrations": {
+    "header": {
+      "title": "Mga pagsasama",
+      "subtitle": "Ikonekta ang mga panlabas na serbisyo upang pagbutihin ang iyong daloy ng trabaho"
+    },
+    "auth": {
+      "oauth2": "OAuth 2.0",
+      "apiKey": "API Key",
+      "none": "Sistema"
+    },
+    "comingSoon": "Malapit na",
+    "connect": "Kumonekta",
+    "googleCalendar": {
+      "name": "Google Calendar",
+      "description": "Two-way na pag-sync para sa Memry na mga kaganapan at na-import na mga kalendaryo ng Google.",
+      "statuses": {
+        "connected": "Nakakonekta",
+        "notConnected": "Hindi Konektado",
+        "reconnectRequired": "Kailangang kumonekta muli"
+      },
+      "accountReconnect": "Ikonekta muli ang Google",
+      "importedCalendars": "Mga na-import na Kalendaryo",
+      "selected": "{count} ang napili",
+      "syncNow": "I-sync Ngayon",
+      "disconnect": "Idiskonekta",
+      "reconnect": "Ikonekta muli ang Google",
+      "syncFailed": "Nagkaproblema",
+      "connectFailed": "Nabigong ikonekta ang Google Calendar",
+      "refreshFailed": "Nabigong i-refresh ang Google Calendar",
+      "disconnectFailed": "Nabigong idiskonekta ang Google Calendar",
+      "selectionFailed": "Nabigong i-update ang pagpili ng kalendaryo",
+      "retryFailed": "Nabigong subukang muli ang pag-sync ng kalendaryo"
+    },
+    "sourcePicker": {
+      "empty": "Wala pang na-import na mga kalendaryo ng Google sa device na ito.",
+      "statuses": {
+        "synced": "Naka-sync",
+        "error": "Error",
+        "pending": "Nakabinbin",
+        "idle": "Idle"
+      },
+      "retrying": "Sinusubukang muli…",
+      "retryNow": "Subukan muli ngayon"
+    },
+    "registry": {
+      "googleCalendar": {
+        "name": "Google Calendar",
+        "description": "Two-way na pag-sync para sa Memry na mga kaganapan, gawain, paalala, at na-import na mga kalendaryo"
+      },
+      "appleCalendar": {
+        "name": "Apple Calendar",
+        "description": "Pagsasama ng lokal na kalendaryo sa pamamagitan ng mga system API"
+      },
+      "notion": {
+        "name": "paniwala",
+        "description": "Isang beses na pag-import ng page sa iyong vault"
+      },
+      "readwise": {
+        "name": "Readwise",
+        "description": "I-sync ang mga highlight sa iyong vault"
+      },
+      "todoist": {
+        "name": "Todoist",
+        "description": "Two-way na pag-sync ng gawain"
+      }
+    }
+  },
+  "vault": {
+    "header": {
+      "title": "Vault",
+      "subtitle": "Configuration at storage ng Vault"
+    },
+    "groups": {
+      "storageUsage": "Paggamit ng Imbakan",
+      "location": "Lokasyon"
+    },
+    "loadingStorage": "Nilo-load ang impormasyon ng storage...",
+    "signInStorage": "Mag-sign in para tingnan ang paggamit ng storage",
+    "vaultPath": "Vault Path",
+    "reveal": "Ibunyag",
+    "storage": {
+      "title": "Imbakan",
+      "used": "{used} ng {limit} ang ginamit",
+      "ratio": "{used} / {limit}",
+      "refreshAria": "I-refresh ang paggamit ng storage",
+      "usageAria": "Paggamit ng storage: {used} ng {limit}",
+      "available": "Available ang {available}",
+      "categories": {
+        "notes": "Mga Tala",
+        "attachments": "Mga kalakip",
+        "crdt": "CRDT",
+        "other": "Iba pa"
+      },
+      "warningTitle": "Halos puno na ang storage",
+      "warningDescription": "Magbakante ng espasyo o i-upgrade ang iyong plano para maiwasan ang mga isyu sa pag-sync."
+    }
+  },
+  "tags": {
+    "header": {
+      "title": "Mga tag",
+      "subtitle": "Pamahalaan ang mga tag sa mga tala, journal, at gawain"
+    },
+    "loading": "Naglo-load ng mga tag...",
+    "empty": "Wala pang tag. Lalabas dito ang mga tag habang idinaragdag mo ang mga ito sa mga tala at gawain.",
+    "filterPlaceholder": "I-filter ang mga tag...",
+    "noMatch": "Walang mga tag na tumutugma sa \"{query}\"",
+    "summary": "{count, plural, one {# tag} other {# tag}} sa mga tala at gawain",
+    "actions": {
+      "rename": "Palitan ang pangalan",
+      "changeColor": "Baguhin ang kulay",
+      "mergeInto": "Pagsamahin sa...",
+      "merge": "Pagsamahin",
+      "delete": "Tanggalin"
+    },
+    "dialogs": {
+      "deleteTitle": "Tanggalin ang tag",
+      "deleteDescription": "Alisin ang \"{name}\" sa {count, plural, one {# item} other {# item}}? Hindi na ito maaaring bawiin.",
+      "mergeTitle": "Pagsamahin ang tag",
+      "mergeDescription": "Lahat ng mga item na may tag na \"{source}\" ay muling ita-tag gamit ang target na tag. Made-delete ang source tag.",
+      "targetPlaceholder": "Piliin ang target na tag...",
+      "colorTitle": "Baguhin ang kulay para sa \"{name}\""
+    },
+    "toasts": {
+      "renamed": "Pinalitan ang pangalan ng \"{oldName}\" sa \"{newName}\"",
+      "renameFailed": "Nabigong palitan ang pangalan ng tag",
+      "deleteFailed": "Nabigong tanggalin ang tag",
+      "deleted": "Tinanggal ang \"{name}\" mula sa {count, plural, one {# item} other {# item}}",
+      "mergeFailed": "Nabigong pagsamahin ang mga tag",
+      "merged": "Pinagsama ang \"{source}\" sa \"{target}\" ({count, plural, one {# item} other {# item}})",
+      "colorUpdated": "Na-update na kulay para sa \"{name}\"",
+      "colorFailed": "Nabigong i-update ang kulay"
+    }
+  },
+  "properties": {
+    "header": {
+      "title": "Mga Katangian",
+      "subtitle": "Pamahalaan ang mga kahulugan ng property sa lahat ng tala"
+    },
+    "loading": "Nilo-load ang mga katangian...",
+    "empty": "Wala pang mga kahulugan ng ari-arian. Magdagdag ng Status, Piliin, o Multiselect na property sa anumang tala upang makapagsimula.",
+    "filterPlaceholder": "I-filter ang mga katangian...",
+    "noMatch": "Walang mga property na tumutugma sa \"{query}\"",
+    "summary": "{count, plural, one {# na kahulugan ng ari-arian} other {Mga kahulugan ng ari-arian ng #}}",
+    "optionCount": "{count, plural, one {# na opsyon} other {Mga pagpipilian sa #}}",
+    "optionNamePlaceholder": "Pangalan ng opsyon",
+    "addOption": "Magdagdag ng opsyon",
+    "changeColorTitle": "Baguhin ang kulay",
+    "renameTitle": "Palitan ang pangalan",
+    "removeTitle": "Alisin",
+    "actions": {
+      "deleteProperty": "Tanggalin ang ari-arian"
+    },
+    "types": {
+      "status": "Katayuan",
+      "select": "Pumili",
+      "multiselect": "Multiselect",
+      "text": "Text",
+      "number": "Numero",
+      "date": "Petsa",
+      "checkbox": "Checkbox",
+      "url": "URL"
+    },
+    "dialogs": {
+      "deleteTitle": "Tanggalin ang ari-arian",
+      "deleteDescription": "Alisin ang kahulugan ng property na \"{name}\"? Pananatilihin ng mga tala na gumagamit ng property na ito ang kanilang mga value bilang plain text.",
+      "colorTitle": "Baguhin ang kulay para sa \"{name}\""
+    },
+    "toasts": {
+      "renamed": "Pinalitan ang pangalan ng \"{oldValue}\" sa \"{newValue}\"",
+      "renameFailed": "Nabigong palitan ang pangalan ng opsyon",
+      "removed": "Inalis ang \"{value}\"",
+      "removeFailed": "Nabigong alisin ang opsyon",
+      "colorFailed": "Nabigong i-update ang kulay",
+      "deleteFailed": "Nabigong tanggalin ang ari-arian",
+      "deleted": "Tinanggal ang property na \"{name}\"",
+      "addFailed": "Nabigong magdagdag ng opsyon"
+    }
+  },
+  "shortcuts": {
+    "header": {
+      "title": "Mga Keyboard Shortcut",
+      "subtitle": "I-click ang anumang shortcut para i-rebind ito",
+      "loading": "Nilo-load ang mga setting..."
+    },
+    "searchPlaceholder": "Maghanap ng mga shortcut...",
+    "resetAll": "I-reset Lahat",
+    "custom": "Custom",
+    "pressShortcut": "Pindutin ang shortcut...",
+    "cancelTitle": "Kanselahin",
+    "rebindTitle": "I-click para i-rebind",
+    "resetTitle": "I-reset sa default",
+    "clearTitle": "I-clear ang shortcut",
+    "clickToSet": "I-click upang itakda",
+    "noMatch": "Walang mga shortcut na tumutugma sa iyong paghahanap",
+    "conflict": "Mga salungatan sa: {labels}",
+    "globalCapture": {
+      "title": "Global Capture",
+      "description": "Kumuha ng tala mula sa kahit saan",
+      "permissionNeeded": "Kailangan ng pahintulot",
+      "active": "Aktibo",
+      "permissionHint": "Ang mga pandaigdigang shortcut ay nangangailangan ng pahintulot sa Accessibility. Pumunta sa Mga Setting ng System → Privacy → Accessibility at paganahin ang Memry."
+    },
+    "toasts": {
+      "saveGlobalFailed": "Nabigong i-save ang global capture shortcut",
+      "saveFailed": "Nabigong i-save ang shortcut",
+      "resetFailed": "Nabigong i-reset ang shortcut",
+      "resetAllSuccess": "Ni-reset ang lahat ng shortcut sa mga default",
+      "resetAllFailed": "Nabigong i-reset ang mga shortcut"
+    },
+    "categories": {
+      "navigation": "Pag-navigate",
+      "tabs": "Mga tab",
+      "editor": "Editor",
+      "view": "Tingnan"
+    },
+    "entries": {
+      "nav": {
+        "newNote": {
+          "label": "Bagong Tala",
+          "description": "Gumawa ng bagong tala"
+        },
+        "newTask": {
+          "label": "Bagong Gawain",
+          "description": "Gumawa ng bagong gawain"
+        },
+        "inbox": {
+          "label": "Pumunta sa Inbox",
+          "description": "Mag-navigate sa inbox"
+        },
+        "notes": {
+          "label": "Pumunta sa Mga Tala",
+          "description": "Mag-navigate sa mga tala"
+        },
+        "tasks": {
+          "label": "Pumunta sa Tasks",
+          "description": "Mag-navigate sa mga gawain"
+        },
+        "search": {
+          "label": "Maghanap",
+          "description": "Buksan ang pandaigdigang paghahanap"
+        },
+        "settings": {
+          "label": "Buksan ang Mga Setting",
+          "description": "Buksan ang panel ng mga setting"
+        }
+      },
+      "tabs": {
+        "close": {
+          "label": "Isara ang Tab",
+          "description": "Isara ang kasalukuyang tab"
+        },
+        "next": {
+          "label": "Susunod na Tab",
+          "description": "Lumipat sa susunod na tab"
+        },
+        "previous": {
+          "label": "Nakaraang Tab",
+          "description": "Lumipat sa nakaraang tab"
+        },
+        "reopen": {
+          "label": "Muling buksan ang Huling Tab",
+          "description": "Muling buksan ang pinakakamakailang saradong tab"
+        },
+        "navBack": {
+          "label": "Mag-navigate Pabalik",
+          "description": "Muling i-activate ang dating aktibong tab"
+        },
+        "navForward": {
+          "label": "Mag-navigate sa Pasulong",
+          "description": "Gawin muli ang back navigation"
+        }
+      },
+      "editor": {
+        "save": {
+          "label": "I-save",
+          "description": "I-save ang kasalukuyang tala"
+        },
+        "bold": {
+          "label": "Matapang",
+          "description": "I-toggle ang bold na pag-format"
+        },
+        "italic": {
+          "label": "Italic",
+          "description": "I-toggle ang italic na pag-format"
+        },
+        "underline": {
+          "label": "Salungguhitan",
+          "description": "I-toggle ang underline na pag-format"
+        }
+      },
+      "view": {
+        "toggleSidebar": {
+          "label": "I-toggle ang Sidebar",
+          "description": "Ipakita o itago ang sidebar"
+        },
+        "shortcuts": {
+          "label": "Tulong sa Mga Keyboard Shortcut",
+          "description": "Ipakita ang sanggunian ng mga keyboard shortcut"
+        }
+      }
+    }
+  },
+  "phaseF": {
+    "componentsKeyboardChordIndicator": {
+      "pressedWaitingForSecondKey": "pinindot — naghihintay ng pangalawang key..."
+    },
+    "componentsKeyboardKeyboardShortcutsDialog": {
+      "keyboardShortcuts": "Mga Keyboard Shortcut",
+      "press": "Pindutin ",
+      "toToggleThisDialog": "upang i-toggle ang dialog na ito"
+    },
+    "componentsSyncDeviceList": {
+      "middot": "middot;"
+    },
+    "componentsSyncDeviceRevokedDialog": {
+      "thisDeviceHasBeenRemoved": "Inalis na ang device na ito",
+      "exporting": "Ini-export...",
+      "signOut": "Mag-sign Out"
+    },
+    "componentsSyncSyncHistory": {
+      "middot": "middot; ",
+      "activity": "Aktibidad",
+      "filterBySyncType": "I-filter ayon sa uri ng pag-sync",
+      "allTypes": "Lahat ng uri",
+      "pushed": "Itinulak",
+      "pulled": "Hinila",
+      "errors": "Mga pagkakamali",
+      "filterByTimePeriod": "I-filter ayon sa yugto ng panahon",
+      "allTime": "Sa lahat ng oras",
+      "today": "Ngayong araw",
+      "last7Days": "Huling 7 araw",
+      "last30Days": "Huling 30 araw",
+      "loadingSyncHistory": "Nilo-load ang kasaysayan ng pag-sync",
+      "noSyncActivityYet": "Wala pang aktibidad sa pag-sync",
+      "loadMore": "Mag-load pa"
+    },
+    "componentsSyncSyncStatus": {
+      "lastSynced": "Huling na-sync ",
+      "pending": "nakabinbin",
+      "localOnly": "lokal lamang",
+      "detected": "nakita",
+      "clockSkewDetected": "Nakita ang skew ng orasan",
+      "items": "mga bagay",
+      "willSyncWhenBackOnline": "Magsi-sync kapag online na ulit",
+      "openSyncSettings": "Buksan ang mga setting ng pag-sync"
+    },
+    "pagesSettingsAiInlineSection": {
+      "httpLocalhost11434V1": "http://localhost:11434/v1"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToUpdateTagColor": "Nabigong i-update ang kulay ng tag",
+      "googleSignInFailed": "Nabigo ang pag-sign in sa Google",
+      "failedToSendVerificationCode": "Nabigong ipadala ang verification code",
+      "invalidVerificationCode": "Di-wastong verification code",
+      "accountSetupFailed": "Nabigo ang pag-setup ng account",
+      "failedToResendCode": "Nabigong ipadala muli ang code",
+      "failedToSetUpDevice": "Nabigong i-set up ang device",
+      "failedToConfirmRecoveryPhrase": "Nabigong kumpirmahin ang parirala sa pagbawi",
+      "failedToAnalyzeContent": "Nabigong suriin ang nilalaman",
+      "failedToLoadUpdaterState": "Nabigong i-load ang status ng updater",
+      "failedToCheckForUpdates": "Nabigong suriin ang mga update",
+      "failedToDownloadUpdate": "Nabigong i-download ang update",
+      "failedToInstallUpdate": "Nabigong i-install ang update",
+      "failedToLoadEditorSettings": "Nabigong i-load ang mga setting ng editor",
+      "failedToUpdateEditorSettings": "Nabigong i-update ang mga setting ng editor",
+      "failedToLoadGeneralSettings": "Nabigong i-load ang mga pangkalahatang setting",
+      "failedToUpdateGeneralSettings": "Nabigong i-update ang mga pangkalahatang setting",
+      "failedToLoadKeyboardSettings": "Nabigong i-load ang mga setting ng keyboard",
+      "failedToUpdateKeyboardSettings": "Nabigong i-update ang mga setting ng keyboard",
+      "failedToResetKeyboardSettings": "Nabigong i-reset ang mga setting ng keyboard",
+      "failedToLoadNoteEditorSettings": "Nabigong i-load ang mga setting ng editor ng tala",
+      "failedToUpdateSettings": "Nabigong i-update ang mga setting",
+      "failedToLoadTabSettings": "Nabigong i-load ang mga setting ng tab",
+      "failedToLoadNotes": "Nabigong i-load ang mga tala",
+      "failedToLoadTags": "Nabigong i-load ang mga tag",
+      "failedToLoadVaultStatus": "Nabigong i-load ang status ng vault",
+      "failedToSelectVault": "Nabigong pumili ng vault",
+      "failedToCloseVault": "Nabigong isara ang vault",
+      "failedToSwitchVault": "Nabigong lumipat ng vault",
+      "failedToUpdateConfig": "Nabigong i-update ang config",
+      "failedToReindex": "Nabigong muling i-index"
+    }
+  }
+}

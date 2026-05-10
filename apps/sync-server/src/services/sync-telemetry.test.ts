@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { logCrdtTraffic, logRecordPushBatch, logRecordQueryBatch } from './sync-telemetry'
+import {
+  logCrdtTraffic,
+  logRecordPushBatch,
+  logRecordQueryBatch,
+  logSyncValidationFailure
+} from './sync-telemetry'
 
 describe('sync telemetry', () => {
   beforeEach(() => {
@@ -51,6 +56,47 @@ describe('sync telemetry', () => {
     })
   })
 
+  it('logs every record domain and rejection reason bucket', () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+
+    logRecordPushBatch({
+      endpoint: '/sync/records/push',
+      latencyMs: 1_500,
+      outcomes: [
+        { id: 'project-1', type: 'project', accepted: true },
+        { id: 'settings-1', type: 'settings', accepted: true },
+        { id: 'inbox-1', type: 'inbox', accepted: true },
+        { id: 'filter-1', type: 'filter', accepted: true },
+        { id: 'attachment-1', type: 'attachment', accepted: true },
+        { id: 'tag-1', type: 'tag_definition', accepted: true },
+        { id: 'folder-1', type: 'folder_config', accepted: true },
+        { id: 'calendar-source-1', type: 'calendar_source', accepted: true },
+        { id: 'calendar-binding-1', type: 'calendar_binding', accepted: true },
+        { id: 'project-2', type: 'project', accepted: false, reason: 'SYNC_VERSION_CONFLICT' },
+        {
+          id: 'attachment-2',
+          type: 'attachment',
+          accepted: false,
+          reason: 'STORAGE_QUOTA_EXCEEDED'
+        },
+        { id: 'filter-2', type: 'filter', accepted: false, reason: undefined }
+      ]
+    })
+
+    const payload = JSON.parse(String(infoSpy.mock.calls[0][0])) as Record<string, unknown>
+    expect(payload.latencyBucket).toBe('1s_plus')
+    expect(payload.domains).toMatchObject({
+      projects: { accepted: 1, rejected: 1, conflictRejected: 1 },
+      settings: { accepted: 1 },
+      inbox: { accepted: 1 },
+      filters: { accepted: 1, rejected: 1, otherRejected: 1 },
+      attachments: { accepted: 1, rejected: 1, quotaRejected: 1 },
+      tags: { accepted: 1 },
+      folders: { accepted: 1 },
+      calendar: { accepted: 2 }
+    })
+  })
+
   it('logs record query metrics with exact record domain types', () => {
     const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
 
@@ -93,5 +139,19 @@ describe('sync telemetry', () => {
     const payload = JSON.parse(String(infoSpy.mock.calls[0][0])) as Record<string, unknown>
     expect(payload.transport).toBe('crdt')
     expect(payload.domainType).toBe('note')
+  })
+
+  it('logs validation failures through the warning logger', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    logSyncValidationFailure({
+      transport: 'record',
+      endpoint: '/sync/push',
+      issue: 'bad payload'
+    })
+
+    expect(warnSpy).toHaveBeenCalledTimes(1)
+    const payload = JSON.parse(String(warnSpy.mock.calls[0][0])) as Record<string, unknown>
+    expect(payload.issue).toBe('bad payload')
   })
 })

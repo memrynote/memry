@@ -1,0 +1,483 @@
+{
+  "view": {
+    "tabs": {
+      "inbox": "Inbox",
+      "archived": "Arhivirano",
+      "insights": "Uvidi",
+      "ariaLabel": "Odabir prikaza pristigle pošte"
+    },
+    "triageButton": "Trijaža",
+    "processInboxTitle": "Obradi ulaznu poštu (Cmd+P)",
+    "itemCaptured": "Stavka snimljena",
+    "searchArchivedTitle": "Pretraživanje arhiviranih stavki",
+    "searchPlaceholder": "Traži...",
+    "archivedItemsAria": "Arhivirane stavke",
+    "snoozed": {
+      "show": "Prikaži odgođene stavke",
+      "showWithCount": "Prikaži odgođene stavke ({count})",
+      "hide": "Sakrij odgođene stavke"
+    },
+    "filter": {
+      "button": "Filter",
+      "byType": "Filtriraj po vrsti",
+      "active": "{count, plural, one {Filtriranje prema vrsti #} other {Filtriranje po vrstama #}}",
+      "clearAll": "Obriši sve"
+    },
+    "jobs": {
+      "running": "{count, plural, one {# pozadinski posao se izvodi} other {# pozadinski poslovi se izvode}}",
+      "failed": "{count} nije uspio"
+    }
+  },
+  "type": {
+    "link": "Link",
+    "links": "Linkovi",
+    "note": "Napomena",
+    "notes": "Bilješke",
+    "image": "Slika",
+    "images": "Slike",
+    "voice": "Glas",
+    "video": "video",
+    "clip": "Isječak",
+    "clips": "Isječci",
+    "pdf": "PDF",
+    "pdfs": "PDF datoteke",
+    "social": "Društveni",
+    "reminder": "Podsjetnik",
+    "reminders": "Podsjetnici",
+    "text": "Tekst",
+    "other": "ostalo"
+  },
+  "empty": {
+    "successAria": "Uspjeh, inbox je prazan",
+    "title": "Inbox Zero",
+    "body": "Sve je obrađeno. Snimite nešto novo s gornjim unosom ili zalijepite vezu da biste započeli.",
+    "filedThisWeek": "{count, plural, one {# podnio ovaj tjedan} other {# podnio ovaj tjedan}}",
+    "dayStreak": "{count, plural, one {# dnevni niz} other {# dnevni niz}}",
+    "tipPrefix": "Savjet: koristite",
+    "tipSuffix": "za brzo snimanje iz međuspremnika",
+    "archivedNone": "Nema arhiviranih stavki",
+    "archivedNoMatches": "Nema odgovarajućih arhiviranih stavki",
+    "noItemsYet": "Još nema stavki",
+    "noItemsFiled": "Još nije zavedena nijedna stavka",
+    "noItemTypes": "Nema vrsta stavki za prikaz",
+    "noFolders": "Nema pronađenih mapa",
+    "noFolderMatch": "Nijedna mapa ne odgovara \"{query}\"",
+    "noNotes": "Nisu pronađene bilješke",
+    "allMatchesLinked": "Sve utakmice su već povezane"
+  },
+  "list": {
+    "ariaLabel": "Stavke ulazne pošte",
+    "section": {
+      "today": "Danas",
+      "yesterday": "jučer",
+      "older": "Starije"
+    },
+    "selectItem": "Odaberite {title}",
+    "itemAria": "{type}: {title}",
+    "untitled": "Bez naslova",
+    "untitledItem": "Stavka bez naslova",
+    "transcribing": "Prijepis...",
+    "transcriptionFailed": "Transkripcija nije uspjela",
+    "retryTranscription": "Pokušaj ponovo",
+    "pageCount": "{count, plural, one {# stranica} other {# stranice}}",
+    "snoozedUntilShort": "odgođeno do {date}",
+    "capturedAgo": "Uhvaćen {time}"
+  },
+  "loading": {
+    "inbox": "Učitavanje pristigle pošte...",
+    "failed": "Učitavanje pristigle pošte nije uspjelo",
+    "tryAgain": "Pokušajte ponovno",
+    "capturingImage": "Snimanje slike...",
+    "dropImageTitle": "Ispustite sliku za snimanje",
+    "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
+    "unsupportedImageType": "Nepodržana vrsta slike: {type}",
+    "imageTooLarge": "Slika je prevelika (maks. 50 MB)"
+  },
+  "toast": {
+    "failedArchiveItem": "Arhiviranje stavke nije uspjelo",
+    "failedArchiveItems": "Arhiviranje stavki nije uspjelo",
+    "failedFile": "Podnošenje nije uspjelo",
+    "failedFileItem": "Podnošenje stavke nije uspjelo",
+    "failedFileItems": "Nije uspjelo arhiviranje stavki",
+    "failedSnooze": "Odgoda nije uspjela",
+    "failedSnoozeItem": "Odgoda stavke nije uspjela",
+    "failedApplyTags": "Primjena oznaka nije uspjela",
+    "failedCaptureImage": "Snimanje slike nije uspjelo",
+    "linkedToNote": "Povezano s bilješkom",
+    "linkedToNotes": "Povezano s bilješkama {count}",
+    "filedTo": "Podneseno na {folder}",
+    "filedItemsTo": "Predao {count} stavke na {folder}",
+    "filedPartial": "Spremljeno {processed} od {total} stavki",
+    "appliedTags": "{tagCount, plural, one {Primijenjena oznaka #} other {Primijenjene oznake #}} do {itemCount, plural, one {# stavka} other {# stavke}}",
+    "archivedItems": "{count, plural, one {Arhivirana stavka #} other {Arhivirane stavke #}}",
+    "snoozedUntil": "Odgođeno do {time}",
+    "snoozedItemsUntil": "{count, plural, one {Stavka # odgođena do {time}} other {Stavke # odgođene do {time}}}"
+  },
+  "triage": {
+    "modeTitle": "Način trijaže",
+    "exitHint": "Esc za izlaz",
+    "exitAria": "Izađite iz moda trijaže",
+    "position": "{current} od {total}",
+    "action": {
+      "discard": "Odbaciti",
+      "archive": "Arhiva",
+      "open": "Otvoreno",
+      "toTask": "Na zadatak",
+      "toNote": "Za napomenu",
+      "file": "File",
+      "snooze": "Odgoditi",
+      "cancel": "Odustani"
+    },
+    "snoozeUntil": "Odgodi do...",
+    "complete": {
+      "title": "Inbox Zero",
+      "processed": "{count, plural, one {# stavka obrađena} other {Obrađene stavke #}}",
+      "streak": "nizati",
+      "streakCount": "{count} niz",
+      "dayProcessingStreak": "{count, plural, one {# dnevni niz obrade} other {# dnevni niz obrade}}",
+      "back": "Natrag u Inbox",
+      "motivation0": "Vaše buduće ja vam se zahvaljuje.",
+      "motivation1": "Sve na svom mjestu.",
+      "motivation2": "Čist inbox, bistar um.",
+      "motivation3": "Rješenjem dug: plaćen u cijelosti.",
+      "motivation4": "To je bilo dobro, zar ne?"
+    }
+  },
+  "bulk": {
+    "selected": "{count} odabran",
+    "deselectAll": "Poništi odabir svih",
+    "ariaLabel": "Skupne akcije za {count} odabrane stavke",
+    "file": "File",
+    "tag": "Oznaka",
+    "snooze": "Odgoditi",
+    "archive": "Arhiva",
+    "add": "Dodaj",
+    "dismissSuggestion": "Odbaci prijedlog",
+    "hint": {
+      "file": "datoteka",
+      "tag": "oznaka",
+      "snooze": "drijemati",
+      "archive": "arhiva",
+      "deselect": "poništi odabir"
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {Arhivirati stavku #?} other {Arhivirati # stavke?}}",
+      "description": "Ove stavke će biti arhivirane. Kasnije možete pogledati arhivirane stavke.",
+      "confirm": "{count, plural, one {Arhivirajte stavku #} other {Arhivirajte # stavke}}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {Datoteka # Stavka} other {Datoteka # Stavke}}",
+      "itemsToFile": "Predmeti za arhiviranje",
+      "multipleNoteLinksUnavailable": "Napomena: Poveznice na druge bilješke ne mogu se dodavati prilikom arhiviranja više stavki.",
+      "filing": "Podnošenje...",
+      "submit": "{count, plural, one {Datoteka # stavka} other {Datoteka # stavki}}",
+      "macHint": "⌘⏎ za datoteku · Esc za zatvaranje",
+      "ctrlHint": "Ctrl+Enter za datoteku · Esc za zatvaranje"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {Označite stavku #} other {Označite stavke #}}",
+      "placeholder": "Upišite za pretraživanje oznaka...",
+      "applying": "Primjena...",
+      "apply": "{count, plural, one {Primijeni na stavku #} other {Primijeni na stavke #}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "Brze akcije",
+    "archiveItem": "Arhivska stavka",
+    "archive": "Arhiva",
+    "snooze": "Odgoditi"
+  },
+  "detail": {
+    "ariaLabel": "Detalji stavke",
+    "closePanel": "Zatvori ploču",
+    "resizeFiling": "Promjena veličine odjeljka arhiviranja",
+    "restore": "Vratiti",
+    "restoreToInbox": "Vrati u pristiglu poštu",
+    "delete": "Izbriši",
+    "deletePermanently": "Izbriši trajno",
+    "archive": "Arhiva",
+    "file": "File",
+    "keyboardHint": "{modifier}⏎ datoteka · 1-5 mapa · Esc zatvori",
+    "voiceTitlePlaceholder": "Imenuj ovaj glasovni zapis...",
+    "fileTo": "Datoteka u",
+    "ai": "AI",
+    "selectFolder": "Odaberite mapu",
+    "searchOrCreateFolder": "Pretražujte ili stvarajte pomoću /...",
+    "suggested": "Predloženo",
+    "notesRoot": "Bilješke",
+    "notesRootLabel": "Bilješke (korijen)",
+    "createFolder": "Izradi \"{name}\"",
+    "addTags": "Dodaj oznake...",
+    "linkToNote": "Link na bilješku",
+    "linkNotesPlaceholder": "Bilješke o vezi...",
+    "searchNotesAria": "Pretražite bilješke za povezivanje",
+    "linkedNotesAria": "Povezane bilješke",
+    "removeLinkTo": "Ukloni vezu na {title}",
+    "contentEditorAria": "Urednik sadržaja",
+    "notePlaceholder": "Napišite svoju bilješku...",
+    "textPlaceholder": "Uredite svoj snimljeni tekst..."
+  },
+  "content": {
+    "capturedAt": "Uhvaćen {date}",
+    "todayAt": "danas u {time}",
+    "yesterdayAt": "jučer u {time}",
+    "dateAt": "{date} na {time}",
+    "words": "{count, plural, one {# riječ} other {# riječi}}",
+    "duration": "Trajanje: {duration}",
+    "dimensions": "Dimenzije",
+    "format": "Format",
+    "size": "Veličina",
+    "voiceMemo": "Glasovni zapis",
+    "play": "igrati",
+    "pause": "Pauza",
+    "audioPosition": "Audio pozicija",
+    "transcription": "Transkripcija",
+    "processing": "obrada",
+    "pending": "na čekanju",
+    "failed": "nije uspio",
+    "copyTranscription": "Kopiraj transkripciju",
+    "transcribingAudio": "Transkripcija zvuka...",
+    "awaitingTranscription": "Čeka se transkripcija...",
+    "noTranscription": "Nema dostupnih prijepisa",
+    "failedPlayAudio": "Reprodukcija zvuka nije uspjela",
+    "failedLoadAudio": "Učitavanje zvuka nije uspjelo",
+    "video": "video",
+    "unsupportedVideo": "Vaš preglednik ne podržava oznaku video."
+  },
+  "reminder": {
+    "dataUnavailable": "Podaci podsjetnika nisu dostupni.",
+    "triggered": "Podsjetnik je aktiviran",
+    "noteLabel": "Napomena podsjetnika",
+    "source": "Izvor",
+    "journalTitle": "Dnevnik — {date}",
+    "noteFallback": "Napomena",
+    "journalFallback": "časopis",
+    "highlighted": "Istaknuto: \"{text}\"",
+    "viewed": "Gledano",
+    "markViewed": "Označi kao pregledano",
+    "notYetViewed": "Još nije pregledano",
+    "snooze": "Odgoditi",
+    "presetInOneHour": "1 sat",
+    "presetTomorrow": "Sutra",
+    "presetNextWeek": "Sljedeći tjedan",
+    "custom": "Prilagođeno..."
+  },
+  "insights": {
+    "loading": "Učitavanje uvida...",
+    "captureActivity": "Snimi aktivnost",
+    "byType": "Po vrsti",
+    "itemTypes": "Vrste predmeta",
+    "itemTypesDescription": "Distribucija formata sadržaja",
+    "recentFilings": "Nedavne prijave",
+    "recentlyFiled": "Nedavno podneseno",
+    "recentlyFiledDescription": "Najnovije akcije u vašem sandučiću",
+    "captured": "Zarobljen",
+    "capturedThisWeek": "+{count} ovaj tjedan",
+    "processed": "Obrađeno",
+    "processRate": "{rate}% stopa",
+    "stale": "Ustajao",
+    "needsAttention": "treba pozornost",
+    "allClear": "sve jasno",
+    "avgTimeToFile": "Prosječno vrijeme do datoteke",
+    "noCapturesYet": "Još nema snimanja",
+    "captures": "{count, plural, one {# snimanje} other {# snima}}",
+    "peak": "Vrhunac: {day} {start}–{end}",
+    "convertedToTask": "Pretvoreno u zadatak",
+    "linked": "Povezano",
+    "now": "sada",
+    "timeAgoMinutes": "{count}m prije",
+    "timeAgoHours": "Prije {count}h",
+    "timeAgoDays": "Prije {count}d"
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "Otkrivena umjetna inteligencija: \"",
+      "addToSelection": "Dodaj u izbor",
+      "dismiss": "Odbaciti"
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "Izbriši ",
+      "item": "predmet",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Ove će stavke biti uklonjene iz vaše pristigle pošte. Ovu radnju možete poništiti odmah nakon toga."
+    },
+    "componentsCaptureInput": {
+      "captureInput": "Snimite unos",
+      "attachFile": "Priloži datoteku",
+      "attachFileImagesAudioVideoPdf": "Priloži datoteku (slike, audio, video, PDF)",
+      "recordVoiceMemo": "Snimite glasovni zapis",
+      "recordVoiceMemo2": "Snimite glasovni zapis",
+      "alreadyCaptured": "Već snimljeno: “",
+      "rdquo": "rdquo;",
+      "captureAnyway": "Svejedno uhvati"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "Odaberite mapu",
+      "searchFolders": "Traži mape...",
+      "searchFolders2": "Traži mape",
+      "searchResults": "Rezultati pretraživanja",
+      "create": "Stvori \"",
+      "suggested": "Predloženo",
+      "recent": "Nedavno",
+      "allFolders": "Sve mape",
+      "allFolders2": "Sve mape"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "Veza na",
+      "optional": "izborno)",
+      "searchNotesToLink": "Pretraži bilješke za povezivanje...",
+      "searchNotesToLink2": "Pretražite bilješke za povezivanje",
+      "searching": "Pretraživanje...",
+      "noNotesFound": "Nisu pronađene bilješke",
+      "linkedNotes": "Povezane bilješke",
+      "noLinksAdded": "Nema dodanih veza"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "Predloženo",
+      "ai": "AI",
+      "create": "Stvorite",
+      "tags": "oznake",
+      "selectedTags": "Odabrane oznake",
+      "addTags": "Dodajte oznake",
+      "tagSuggestions": "Prijedlozi oznaka"
+    },
+    "componentsFilingTagInput": {
+      "tags": "oznake",
+      "optional": "izborno)",
+      "addTags": "Dodaj oznake...",
+      "addTags2": "Dodajte oznake",
+      "selectedTags": "Odabrane oznake",
+      "suggested": "Predloženo"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "Snimi aktivnost"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "Još nije zavedena nijedna stavka",
+      "recentlyFiled": "Nedavno podneseno",
+      "latestActionsOnYourInbox": "Najnovije akcije u vašem sandučiću",
+      "linked": "Povezano"
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "Učitavanje uvida..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "Nema vrsta stavki za prikaz",
+      "itemTypes": "Vrste predmeta",
+      "distributionOfContentFormats": "Distribucija formata sadržaja"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "Zarobljen "
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "x "
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "Urednik sadržaja"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "middot; "
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "Tweet nedostupan",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Ovaj tweet je možda izbrisan ili je s privatnog računa.",
+      "openOnXCom": "Otvorite na x.com",
+      "views": "pogleda",
+      "xCom": "x.com",
+      "viewOnX": "Pogledaj na X"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "Upišite naziv mape...",
+      "quickFileFolderSearch": "Brzo pretraživanje mape datoteka"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "zatvoriti",
+      "capture": "uhvatiti"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "Ukloni privitak"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "Brzi unos za snimanje",
+      "recordVoiceMemo": "Snimite glasovni zapis",
+      "attachFile": "Priloži datoteku"
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "LINK"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "Zarobljen",
+      "dismissError": "Odbaci pogrešku",
+      "alreadyCaptured": "Već zarobljen",
+      "ldquo": "ldquo;",
+      "rdquoMiddot": "rdquo; · ",
+      "captureAnyway": "Svejedno uhvati",
+      "close": "Zatvori"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "Ispustite za snimanje",
+      "capturing": "Snimanje..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "Prijedlozi mapa",
+      "noFoldersMatch": "Nijedna mapa ne odgovara \""
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "Postavite podsjetnik za ovaj tekst",
+      "remindMeAboutThis": "Podsjeti me na ovo",
+      "selectedText": "Odabrani tekst:"
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "podsjetiti",
+      "remindMe": "podsjeti me",
+      "pickDateTime": "Odaberite datum i vrijeme",
+      "addANoteOptional": "Dodajte bilješku (nije obavezno)",
+      "backToPresets": "Povratak na unaprijed postavljene postavke",
+      "time": "Vrijeme",
+      "noteOptional": "Napomena (nije obavezno)",
+      "whyAreYouSettingThisReminder": "Zašto postavljate ovaj podsjetnik?"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "Odgoditi",
+      "snooze2": "Odgoditi",
+      "pickDateTime": "Odaberite datum i vrijeme",
+      "pickDateTime2": "Odaberite datum i vrijeme",
+      "selectWhenToBeRemindedAboutThisItem": "Odaberite kada želite dobiti podsjetnik o ovoj stavci",
+      "snooze3": "Odgoditi",
+      "snooze4": "Odgoditi",
+      "snooze5": "Odgoditi"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "Učitavanje objave...",
+      "failedToLoad": "Učitavanje nije uspjelo",
+      "loadingPostContent": "Učitavanje sadržaja posta...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Učitavanje sadržaja posta nije uspjelo. Objava može biti privatna ili izbrisana.",
+      "viewOn": "Pogledaj na "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "Započnite snimanje glasa",
+      "requestingMicrophoneAccess": "Traženje pristupa mikrofonu...",
+      "settings": "postavke",
+      "processing": "Obrada...",
+      "cancelRecording": "Otkaži snimanje",
+      "cancel": "Odustani",
+      "stopRecording": "Zaustavi snimanje",
+      "stop": "Stani"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCaptureLink": "Snimanje veze nije uspjelo",
+      "failedToCaptureNote": "Snimanje bilješke nije uspjelo",
+      "captureFailed": "Snimanje nije uspjelo",
+      "failedToCaptureVoiceMemo": "Snimanje glasovnog zapisa nije uspjelo",
+      "voiceCaptureFailed": "Snimanje glasa nije uspjelo",
+      "failedToCaptureFile": "Nije uspjelo snimanje datoteke",
+      "fileCaptureFailed": "Snimanje datoteke nije uspjelo",
+      "failedToCaptureAudio": "Snimanje zvuka nije uspjelo",
+      "failedToCaptureVoice": "Snimanje glasa nije uspjelo"
+    },
+    "toasts": {
+      "inboxRefreshed": "Inbox osvježen"
+    }
+  }
+}

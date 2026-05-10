@@ -1,0 +1,28 @@
+{
+  "app": {
+    "quit": "Odustati"
+  },
+  "file": {
+    "label": "File",
+    "newNote": "Nova bilješka",
+    "close": "Zatvori prozor"
+  },
+  "navigation": {
+    "back": "natrag",
+    "forward": "Naprijed"
+  },
+  "edit": {
+    "label": "Uredi",
+    "undo": "Poništi",
+    "redo": "Ponovi",
+    "cut": "rezati",
+    "copy": "Kopiraj",
+    "paste": "Zalijepite"
+  },
+  "view": {
+    "label": "pogled",
+    "reload": "Ponovno učitaj",
+    "toggleDevTools": "Uključi/isključi alate za razvojne programere",
+    "toggleFullscreen": "Uključi/isključi cijeli zaslon"
+  }
+}

@@ -19,30 +19,43 @@ vi.mock('../../vault/notes', () => ({
 }))
 
 vi.mock('../../vault/frontmatter', () => ({
-  serializeNote: vi.fn(() => '---\n---\ncontent')
+  parseNote: vi.fn(() => ({
+    frontmatter: { id: 'note-1', title: 'a1', tags: ['local'] },
+    content: 'old content'
+  })),
+  serializeNote: vi.fn(() => '---\n---\ncontent'),
+  inferPropertyType: vi.fn(() => 'number')
 }))
 
 vi.mock('../../vault/note-sync', () => ({
   syncNoteToCache: vi.fn(),
+  syncFileToCache: vi.fn(),
   deleteNoteFromCache: vi.fn()
 }))
 
 const mockGetNoteMetadataById = vi.fn(() => undefined)
+const mockUpdateNoteMetadata = vi.fn()
+const mockGetPropertyDefinition = vi.fn()
 
 vi.mock('@main/database/queries/notes', () => ({
   getNoteCacheById: vi.fn(() => undefined),
   getNoteCacheByPath: vi.fn(() => undefined),
-  updateNoteCache: vi.fn()
+  getNoteTags: vi.fn(() => []),
+  setNoteTags: vi.fn(),
+  updateNoteCache: vi.fn(),
+  setNoteProperties: vi.fn()
 }))
 
 vi.mock('@memry/storage-data', () => ({
   getNoteMetadataById: (...args: unknown[]) => mockGetNoteMetadataById(...args),
-  updateNoteMetadata: vi.fn(),
-  getPropertyDefinition: vi.fn()
+  updateNoteMetadata: (...args: unknown[]) => mockUpdateNoteMetadata(...args),
+  getPropertyDefinition: (...args: unknown[]) => mockGetPropertyDefinition(...args)
 }))
 
+const mockSaveCanonicalPropertyDefinition = vi.fn()
 vi.mock('@memry/domain-notes', () => ({
-  saveCanonicalPropertyDefinition: vi.fn()
+  saveCanonicalPropertyDefinition: (...args: unknown[]) =>
+    mockSaveCanonicalPropertyDefinition(...args)
 }))
 
 vi.mock('../../lib/logger', () => ({
@@ -58,6 +71,27 @@ vi.mock('../note-sync', () => ({
   extractFolderFromPath: vi.fn(() => null)
 }))
 
+const mockFlushProjectionEvents = vi.fn()
+vi.mock('../../projections', () => ({
+  flushProjectionEvents: (...args: unknown[]) => mockFlushProjectionEvents(...args)
+}))
+
+const mockMarkWritebackIgnored = vi.fn()
+vi.mock('../crdt-writeback', () => ({
+  markWritebackIgnored: (...args: unknown[]) => mockMarkWritebackIgnored(...args)
+}))
+
+const mockApplyPinnedTags = vi.fn()
+vi.mock('./note-pin-helpers', () => ({
+  applyPinnedTags: (...args: unknown[]) => mockApplyPinnedTags(...args)
+}))
+
+vi.mock('./note-handler-sync-helpers', () => ({
+  buildNotePushPayload: vi.fn(),
+  fetchLocalNote: vi.fn(),
+  seedUnclockedNotes: vi.fn()
+}))
+
 vi.mock('../../vault/file-ops', async () => {
   const actual =
     await vi.importActual<typeof import('../../vault/file-ops')>('../../vault/file-ops')
@@ -69,8 +103,23 @@ vi.mock('../../vault/file-ops', async () => {
 })
 
 import { noteHandler } from './note-handler'
-import { syncNoteToCache } from '../../vault/note-sync'
-import { getNoteCacheByPath } from '@main/database/queries/notes'
+import { deleteFile } from '../../vault/file-ops'
+import { parseNote, serializeNote } from '../../vault/frontmatter'
+import { deleteNoteFromCache, syncFileToCache, syncNoteToCache } from '../../vault/note-sync'
+import {
+  getNoteCacheByPath,
+  setNoteProperties,
+  setNoteTags,
+  updateNoteCache
+} from '@main/database/queries/notes'
+import { NotesChannels } from '@memry/contracts/ipc-channels'
+import { attachmentEvents } from '../attachment-events'
+import { extractFolderFromPath } from '../note-sync'
+import {
+  buildNotePushPayload,
+  fetchLocalNote,
+  seedUnclockedNotes
+} from './note-handler-sync-helpers'
 
 describe('noteHandler.applyUpsert — path collision', () => {
   let ctx: ApplyContext
@@ -84,6 +133,8 @@ describe('noteHandler.applyUpsert — path collision', () => {
     vi.clearAllMocks()
     ctx = makeCtx()
     takenRelPaths.clear()
+    mockGetNoteMetadataById.mockReturnValue(undefined)
+    mockGetPropertyDefinition.mockReturnValue(undefined)
 
     fs.rmSync(VAULT_ROOT, { recursive: true, force: true })
     fs.mkdirSync(NOTES_DIR, { recursive: true })
@@ -97,6 +148,11 @@ describe('noteHandler.applyUpsert — path collision', () => {
     vi.mocked(syncNoteToCache).mockImplementation((_db, data, _opts) => {
       takenRelPaths.add(data.path)
       return {} as ReturnType<typeof syncNoteToCache>
+    })
+    vi.mocked(setNoteProperties).mockImplementation((_db, _itemId, properties, getType) => {
+      for (const [name, value] of Object.entries(properties)) {
+        getType(name, value)
+      }
     })
   })
 
@@ -149,5 +205,356 @@ describe('noteHandler.applyUpsert — path collision', () => {
 
     const calls = vi.mocked(syncNoteToCache).mock.calls
     expect(calls[0][1].path).toBe(path.join('notes', 'a1', 'a1 2.md'))
+  })
+
+  it('updates existing markdown note tags, properties, emoji, cache metadata, and events', () => {
+    // #given — remote metadata is newer for an existing markdown note
+    mockGetNoteMetadataById.mockReturnValue({
+      id: 'note-1',
+      title: 'a1',
+      path: path.join('notes', 'a1', 'a1.md'),
+      emoji: null,
+      fileType: 'markdown',
+      mimeType: null,
+      fileSize: null,
+      attachmentId: null,
+      clock: { dev1: 1 },
+      createdAt: '2024-01-01T00:00:00.000Z',
+      modifiedAt: '2024-01-01T00:00:00.000Z'
+    })
+    fs.mkdirSync(path.join(NOTES_DIR, 'a1'), { recursive: true })
+    fs.writeFileSync(path.join(NOTES_DIR, 'a1', 'a1.md'), '---\n---\nold content')
+
+    // #when
+    const result = noteHandler.applyUpsert(
+      ctx,
+      'note-1',
+      makeNotePayload({
+        title: 'a1',
+        tags: ['remote'],
+        properties: { Rating: 5 },
+        pinnedTags: ['remote'],
+        emoji: 'sparkles'
+      }),
+      { dev1: 2 }
+    )
+
+    // #then
+    expect(result).toBe('applied')
+    expect(setNoteTags).toHaveBeenCalledWith({}, 'note-1', ['remote'])
+    expect(setNoteProperties).toHaveBeenCalledWith(
+      {},
+      'note-1',
+      { Rating: 5 },
+      expect.any(Function)
+    )
+    expect(mockSaveCanonicalPropertyDefinition).toHaveBeenCalledWith(ctx.db, {
+      name: 'Rating',
+      type: 'number'
+    })
+    expect(mockApplyPinnedTags).toHaveBeenCalledWith({}, 'note-1', ['remote'])
+    expect(mockUpdateNoteMetadata).toHaveBeenCalledWith(
+      ctx.db,
+      'note-1',
+      expect.objectContaining({
+        title: 'a1',
+        emoji: 'sparkles',
+        clock: { dev1: 2 },
+        propertyDefinitionNames: ['Rating']
+      })
+    )
+    expect(ctx.emit).toHaveBeenCalledWith(NotesChannels.events.UPDATED, {
+      id: 'note-1',
+      source: 'sync'
+    })
+    expect(ctx.emit).toHaveBeenCalledWith('notes:tags-changed', {})
+  })
+
+  it('renames an existing markdown note and removes empty parent folders', () => {
+    mockGetNoteMetadataById.mockReturnValue({
+      id: 'note-1',
+      title: 'a1',
+      path: path.join('notes', 'Old', 'a1.md'),
+      emoji: null,
+      fileType: 'markdown',
+      mimeType: null,
+      fileSize: null,
+      attachmentId: null,
+      clock: { dev1: 1 },
+      createdAt: '2024-01-01T00:00:00.000Z',
+      modifiedAt: '2024-01-01T00:00:00.000Z'
+    })
+    vi.mocked(extractFolderFromPath).mockReturnValueOnce('Old')
+    fs.mkdirSync(path.join(NOTES_DIR, 'Old'), { recursive: true })
+    fs.writeFileSync(path.join(NOTES_DIR, 'Old', 'a1.md'), '---\n---\nold content')
+    fs.writeFileSync(path.join(NOTES_DIR, 'Old', '.DS_Store'), '')
+
+    const result = noteHandler.applyUpsert(
+      ctx,
+      'note-1',
+      makeNotePayload({
+        title: 'Renamed',
+        folderPath: 'New',
+        tags: ['remote'],
+        properties: {},
+        emoji: 'memo'
+      }),
+      { dev1: 2 }
+    )
+
+    expect(result).toBe('applied')
+    expect(serializeNote).toHaveBeenCalled()
+    expect(updateNoteCache).toHaveBeenCalledWith(
+      {},
+      'note-1',
+      expect.objectContaining({ path: path.join('notes', 'New', 'Renamed.md') })
+    )
+    expect(ctx.emit).toHaveBeenCalledWith(NotesChannels.events.RENAMED, {
+      id: 'note-1',
+      oldPath: path.join('notes', 'Old', 'a1.md'),
+      newPath: path.join('notes', 'New', 'Renamed.md'),
+      oldTitle: 'a1',
+      newTitle: 'Renamed',
+      source: 'sync'
+    })
+    expect(ctx.emit).toHaveBeenCalledWith(NotesChannels.events.MOVED, {
+      id: 'note-1',
+      oldPath: path.join('notes', 'Old', 'a1.md'),
+      newPath: path.join('notes', 'New', 'Renamed.md'),
+      source: 'sync'
+    })
+  })
+
+  it('returns conflict for concurrent markdown updates and tolerates frontmatter write failures', () => {
+    mockGetNoteMetadataById.mockReturnValue({
+      id: 'note-1',
+      title: 'a1',
+      path: path.join('notes', 'a1', 'a1.md'),
+      emoji: null,
+      fileType: 'markdown',
+      mimeType: null,
+      fileSize: null,
+      attachmentId: null,
+      clock: { dev1: 1 },
+      createdAt: '2024-01-01T00:00:00.000Z',
+      modifiedAt: '2024-01-01T00:00:00.000Z'
+    })
+    vi.mocked(parseNote).mockImplementationOnce(() => {
+      throw new Error('bad yaml')
+    })
+
+    const result = noteHandler.applyUpsert(
+      ctx,
+      'note-1',
+      makeNotePayload({
+        title: 'a1',
+        tags: ['remote'],
+        properties: null,
+        emoji: 'sparkles'
+      }),
+      { dev2: 1 }
+    )
+
+    expect(result).toBe('conflict')
+    expect(updateNoteCache).toHaveBeenCalledWith(
+      {},
+      'note-1',
+      expect.objectContaining({ emoji: 'sparkles', clock: { dev1: 1, dev2: 1 } })
+    )
+    expect(ctx.emit).toHaveBeenCalledWith(NotesChannels.events.UPDATED, {
+      id: 'note-1',
+      source: 'sync'
+    })
+  })
+
+  it('skips an existing markdown note when the local clock is newer', () => {
+    // #given
+    mockGetNoteMetadataById.mockReturnValue({
+      id: 'note-1',
+      title: 'a1',
+      path: path.join('notes', 'a1', 'a1.md'),
+      fileType: 'markdown',
+      clock: { dev1: 3 }
+    })
+
+    // #when
+    const result = noteHandler.applyUpsert(ctx, 'note-1', makeNotePayload(), { dev1: 2 })
+
+    // #then
+    expect(result).toBe('skipped')
+    expect(mockUpdateNoteMetadata).not.toHaveBeenCalled()
+    expect(ctx.emit).not.toHaveBeenCalled()
+  })
+
+  it('creates a binary note placeholder and emits an attachment download request', () => {
+    // #given
+    const downloads: unknown[] = []
+    const handler = (event: unknown) => downloads.push(event)
+    attachmentEvents.onDownloadNeeded(handler)
+
+    try {
+      // #when
+      const result = noteHandler.applyUpsert(
+        ctx,
+        'file-1',
+        makeNotePayload({
+          title: 'Report',
+          content: undefined,
+          fileType: 'pdf',
+          mimeType: 'application/pdf',
+          attachmentId: 'att-1',
+          folderPath: 'Files'
+        }),
+        { dev1: 1 }
+      )
+
+      // #then
+      expect(result).toBe('applied')
+      expect(syncFileToCache).toHaveBeenCalledWith(
+        {},
+        expect.objectContaining({
+          id: 'file-1',
+          title: 'Report',
+          fileType: 'pdf',
+          mimeType: 'application/pdf'
+        })
+      )
+      expect(downloads).toEqual([
+        expect.objectContaining({
+          noteId: 'file-1',
+          attachmentId: 'att-1',
+          diskPath: path.join(NOTES_DIR, 'Files', 'Report.pdf')
+        })
+      ])
+      expect(ctx.emit).toHaveBeenCalledWith(NotesChannels.events.CREATED, {
+        note: {
+          id: 'file-1',
+          path: path.join('notes', 'Files', 'Report.pdf'),
+          title: 'Report'
+        },
+        source: 'sync'
+      })
+    } finally {
+      attachmentEvents.offDownloadNeeded(handler)
+    }
+  })
+
+  it('updates and moves an existing binary note without touching frontmatter', () => {
+    mockGetNoteMetadataById.mockReturnValue({
+      id: 'file-1',
+      title: 'Report',
+      path: path.join('notes', 'Old', 'Report.pdf'),
+      emoji: null,
+      fileType: 'pdf',
+      mimeType: 'application/pdf',
+      fileSize: 1024,
+      attachmentId: 'att-old',
+      clock: { dev1: 1 },
+      createdAt: '2024-01-01T00:00:00.000Z',
+      modifiedAt: '2024-01-01T00:00:00.000Z'
+    })
+    vi.mocked(extractFolderFromPath).mockReturnValueOnce('Old')
+    fs.mkdirSync(path.join(NOTES_DIR, 'Old'), { recursive: true })
+    fs.writeFileSync(path.join(NOTES_DIR, 'Old', 'Report.pdf'), 'pdf')
+
+    const result = noteHandler.applyUpsert(
+      ctx,
+      'file-1',
+      makeNotePayload({
+        title: 'Quarterly',
+        fileType: 'pdf',
+        mimeType: 'application/pdf',
+        attachmentId: 'att-new',
+        folderPath: 'Archive',
+        emoji: 'file'
+      }),
+      { dev1: 2 }
+    )
+
+    expect(result).toBe('applied')
+    expect(updateNoteCache).toHaveBeenCalledWith(
+      {},
+      'file-1',
+      expect.objectContaining({
+        path: path.join('notes', 'Archive', 'Quarterly.pdf'),
+        title: 'Quarterly',
+        emoji: 'file'
+      })
+    )
+    expect(mockUpdateNoteMetadata).toHaveBeenCalledWith(
+      ctx.db,
+      'file-1',
+      expect.objectContaining({
+        path: path.join('notes', 'Archive', 'Quarterly.pdf'),
+        title: 'Quarterly',
+        attachmentId: 'att-new'
+      })
+    )
+    expect(ctx.emit).toHaveBeenCalledWith(NotesChannels.events.RENAMED, expect.any(Object))
+    expect(ctx.emit).toHaveBeenCalledWith(NotesChannels.events.MOVED, expect.any(Object))
+  })
+
+  it('applies remote delete only when the remote clock is newer', () => {
+    // #given
+    mockGetNoteMetadataById.mockReturnValue({
+      id: 'note-1',
+      title: 'a1',
+      path: path.join('notes', 'a1', 'a1.md'),
+      fileType: 'markdown',
+      clock: { dev1: 1 }
+    })
+
+    // #when
+    const applied = noteHandler.applyDelete(ctx, 'note-1', { dev1: 2 })
+
+    // #then
+    expect(applied).toBe('applied')
+    expect(deleteNoteFromCache).toHaveBeenCalledWith({}, 'note-1')
+    expect(deleteFile).toHaveBeenCalledWith(path.join(VAULT_ROOT, 'notes', 'a1', 'a1.md'))
+    expect(ctx.emit).toHaveBeenCalledWith(NotesChannels.events.DELETED, {
+      id: 'note-1',
+      path: path.join('notes', 'a1', 'a1.md'),
+      source: 'sync'
+    })
+
+    vi.clearAllMocks()
+    mockGetNoteMetadataById.mockReturnValue({
+      id: 'note-1',
+      path: path.join('notes', 'a1', 'a1.md'),
+      clock: { dev1: 3 }
+    })
+
+    expect(noteHandler.applyDelete(ctx, 'note-1', { dev1: 2 })).toBe('skipped')
+    expect(deleteNoteFromCache).not.toHaveBeenCalled()
+  })
+
+  it('skips delete for missing notes and deletes without a remote clock', () => {
+    mockGetNoteMetadataById.mockReturnValueOnce(undefined)
+    expect(noteHandler.applyDelete(ctx, 'missing')).toBe('skipped')
+
+    mockGetNoteMetadataById.mockReturnValueOnce({
+      id: 'note-1',
+      title: 'a1',
+      path: path.join('notes', 'a1', 'a1.md'),
+      fileType: 'markdown',
+      clock: { dev1: 1 }
+    })
+
+    expect(noteHandler.applyDelete(ctx, 'note-1')).toBe('applied')
+    expect(deleteNoteFromCache).toHaveBeenCalledWith({}, 'note-1')
+  })
+
+  it('delegates local fetch, push payload build, and seeding to sync helpers', () => {
+    vi.mocked(fetchLocalNote).mockReturnValueOnce({ title: 'Local' })
+    vi.mocked(buildNotePushPayload).mockReturnValueOnce('{"title":"Local"}')
+    vi.mocked(seedUnclockedNotes).mockReturnValueOnce(2)
+    const queue = {} as Parameters<typeof noteHandler.seedUnclocked>[2]
+
+    expect(noteHandler.fetchLocal(ctx.db, 'note-1')).toEqual({ title: 'Local' })
+    expect(noteHandler.buildPushPayload(ctx.db, 'note-1', 'dev1', 'update')).toBe(
+      '{"title":"Local"}'
+    )
+    expect(noteHandler.seedUnclocked(ctx.db, 'dev1', queue)).toBe(2)
+    expect(seedUnclockedNotes).toHaveBeenCalledWith('dev1', queue)
   })
 })

@@ -1,0 +1,303 @@
+{
+  "title": "Tagebuch",
+  "section": {
+    "journal": "Tagebuch",
+    "aiConnections": "KI-Verbindungen",
+    "todaysNotes": "Heutige Notizen",
+    "todaysSchedule": "Der heutige Zeitplan",
+    "todaysTasks": "Heutige Aufgaben",
+    "schedule": "Zeitplan",
+    "tasks": "Aufgaben",
+    "calendarEvents": "Kalenderereignisse",
+    "overdueTasks": "Überfällige Aufgaben",
+    "technicalDetails": "Technische Details"
+  },
+  "action": {
+    "versionHistory": "Versionsgeschichte",
+    "export": "Exportieren",
+    "fullWidth": "Volle Breite",
+    "journalSettings": "Journaleinstellungen",
+    "fullMode": "Vollmodus",
+    "compactMode": "Kompaktmodus",
+    "focusMode": "Fokusmodus",
+    "exitFocusMode": "Verlassen Sie den Fokusmodus",
+    "enterFocusMode": "Rufen Sie den Fokusmodus auf",
+    "createNote": "Notiz erstellen",
+    "createNewNote": "Neue Notiz erstellen",
+    "showLess": "Weniger anzeigen",
+    "showMoreNotes": "{count} weitere Notiz anzeigen",
+    "showMoreNotes_plural": "{count} weitere Notizen anzeigen",
+    "showFewerNotes": "Weniger Notizen anzeigen",
+    "startBlank": "Beginnen Sie stattdessen leer",
+    "changeTemplate": "Vorlage ändern",
+    "dismissIndicator": "Indikator verwerfen",
+    "refreshConnections": "Verbindungen aktualisieren",
+    "reloadJournal": "Journal neu laden",
+    "goToToday": "Gehen Sie zu Heute",
+    "copyUnsavedContent": "Kopieren Sie nicht gespeicherte Inhalte in die Zwischenablage",
+    "openNoteFullPage": "Notiz ganzseitig öffnen",
+    "closeNoteDrawer": "Notizschublade schließen",
+    "addBookmark": "Lesezeichen hinzufügen",
+    "removeBookmark": "Lesezeichen entfernen",
+    "tryAgain": "Versuchen Sie es erneut"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "Was planen Sie...",
+      "today": "Was beschäftigt Sie heute?",
+      "past": "Denken Sie über diesen Tag nach...",
+      "default": "Fangen Sie an zu schreiben..."
+    },
+    "toolbar": {
+      "ariaLabel": "Textformatierung",
+      "bold": "Fett",
+      "italic": "Kursiv",
+      "underline": "Unterstreichen",
+      "strikethrough": "Durchgestrichen",
+      "link": "Link",
+      "image": "Bild",
+      "moreOptions": "Weitere Optionen",
+      "heading1": "Überschrift 1",
+      "heading2": "Überschrift 2",
+      "heading3": "Überschrift 3",
+      "bulletList": "Aufzählungsliste",
+      "numberedList": "Nummerierte Liste",
+      "checklist": "Checkliste",
+      "quote": "Zitat",
+      "divider": "Teiler",
+      "codeBlock": "Codeblock"
+    },
+    "prompt": {
+      "enterUrl": "URL eingeben:"
+    },
+    "upload": {
+      "noEntry": "Bild kann nicht hochgeladen werden: Kein Journaleintrag ausgewählt",
+      "failed": "Bild konnte nicht hochgeladen werden"
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "Heute",
+      "yesterday": "Gestern",
+      "tomorrow": "Morgen",
+      "future": "Zukunft"
+    },
+    "weekday": {
+      "sunday": "Sonntag",
+      "monday": "Montag",
+      "tuesday": "Dienstag",
+      "wednesday": "Mittwoch",
+      "thursday": "Donnerstag",
+      "friday": "Freitag",
+      "saturday": "Samstag"
+    },
+    "weekdayShort": {
+      "sunday": "Sonne",
+      "monday": "Mo",
+      "tuesday": "Di",
+      "wednesday": "Mi",
+      "thursday": "Do",
+      "friday": "Fr",
+      "saturday": "Sa"
+    },
+    "month": {
+      "january": "Januar",
+      "february": "Februar",
+      "march": "März",
+      "april": "April",
+      "may": "Mai",
+      "june": "Juni",
+      "july": "Juli",
+      "august": "August",
+      "september": "September",
+      "october": "Oktober",
+      "november": "November",
+      "december": "Dezember"
+    },
+    "monthShort": {
+      "january": "Jan",
+      "february": "Febr",
+      "march": "März",
+      "april": "Apr",
+      "may": "Mai",
+      "june": "Jun",
+      "july": "Juli",
+      "august": "Aug",
+      "september": "Sept",
+      "october": "Okt",
+      "november": "Nov",
+      "december": "Dez"
+    },
+    "greeting": {
+      "morning": "Guten Morgen",
+      "afternoon": "Guten Tag",
+      "evening": "Guten Abend",
+      "night": "Gute Nacht"
+    },
+    "allDay": "Den ganzen Tag"
+  },
+  "nav": {
+    "previousDay": "Vorheriger Tag",
+    "nextDay": "Am nächsten Tag",
+    "previousMonth": "Vorheriger Monat",
+    "nextMonth": "Nächsten Monat",
+    "previousYear": "Vorheriges Jahr",
+    "nextYear": "Nächstes Jahr",
+    "journalBack": "Tagebuch zurück",
+    "journalNavigation": "Journalnavigation",
+    "dateNavigation": "Navigation nach Journaldatum",
+    "goToYearView": "Gehen Sie zur Jahresansicht",
+    "previousView": "Vorherige Ansicht",
+    "nextView": "Nächste Ansicht"
+  },
+  "aria": {
+    "moreOptions": "Weitere Optionen",
+    "documentStatistics": "Dokumentstatistiken",
+    "dayContext": "Tageskontext: Aufgaben und Zeitplan",
+    "scheduleEvents": "Planen Sie Veranstaltungen",
+    "tasks": "Aufgaben",
+    "notesCreatedToday": "{count}-Notizen wurden heute erstellt"
+  },
+  "empty": {
+    "noEntry": "Kein Eintrag",
+    "noDaysInMonth": "Keine Tage in diesem Monat",
+    "noEventsScheduled": "Keine Veranstaltungen geplant",
+    "noEventsScheduledToday": "Heute sind keine Veranstaltungen geplant",
+    "noEventsWereScheduled": "Es waren keine Veranstaltungen geplant",
+    "noTasksDue": "Keine Aufgaben fällig",
+    "noTasksDueToday": "Heute sind keine Aufgaben fällig",
+    "noTasksWereDue": "Es waren keine Aufgaben fällig",
+    "noNotesToday": "Heute wurden keine Notizen erstellt",
+    "startDocumenting": "Beginnen Sie mit der Dokumentation Ihrer Gedanken und Ideen"
+  },
+  "ai": {
+    "loading": "Analysiere deinen Eintrag...",
+    "empty": {
+      "willAppear": "Ihre Verbindungen werden hier angezeigt",
+      "noneYet": "Noch keine Verbindungen gefunden",
+      "moreJournaling": "Wenn Sie mehr Tagebuch schreiben, findet die KI verwandte Einträge",
+      "keepWriting": "Schreiben Sie weiter, um verwandte Einträge zu entdecken"
+    },
+    "error": {
+      "loadFailed": "Verbindungen konnten nicht geladen werden"
+    },
+    "connectionAria": "Verbindung zu {label}, {scorePercent} % Übereinstimmung"
+  },
+  "count": {
+    "item": "Artikel",
+    "items": "Artikel",
+    "note": "Hinweis",
+    "notes": "Notizen",
+    "day": "Tag",
+    "days": "Tage",
+    "event": "Ereignis",
+    "events": "Ereignisse",
+    "meeting": "Treffen",
+    "meetings": "Treffen",
+    "task": "Aufgabe",
+    "tasks": "Aufgaben",
+    "todo": "zu tun",
+    "people": "{count} Personen",
+    "moreConnections": "+ {count} mehr Verbindung",
+    "moreConnections_plural": "+ {count} mehr Verbindungen",
+    "moreNotes": "+ {count} weitere Notiz",
+    "moreNotes_plural": "+ {count} weitere Notizen",
+    "daysWithEntries": "Tage mit Einträgen",
+    "charactersWritten": "Zeichen geschrieben",
+    "words": "{count} Wörter",
+    "characters": "{count} Zeichen",
+    "completed": "{count} abgeschlossen",
+    "overdue": "{count} überfällig"
+  },
+  "stats": {
+    "wordCount": "Wortanzahl",
+    "characterCount": "Anzahl der Zeichen",
+    "readingTime": "Geschätzte Lesezeit",
+    "lastModified": "Zuletzt geändert",
+    "lessThanOneMinute": "< 1 Min",
+    "minutes": "{minutes} min",
+    "read": "{readingTime} gelesen",
+    "modified": "Geändert {date}"
+  },
+  "task": {
+    "completed": "Abgeschlossen",
+    "notCompleted": "Nicht abgeschlossen",
+    "priority": "{priority}-Priorität",
+    "overdue": "überfällig",
+    "markComplete": "Markieren Sie „{title}“ als abgeschlossen",
+    "markNotComplete": "Markieren Sie „{title}“ als nicht abgeschlossen"
+  },
+  "template": {
+    "using": "Verwendung von „{templateName}“"
+  },
+  "reminder": {
+    "hasReminders": "Hat Erinnerungen",
+    "setToRevisit": "Erinnerung für einen erneuten Besuch festlegen",
+    "tooltip": "Erinnerung: {date}",
+    "tooltipMore": "Erinnerung: {date} (+{count} mehr)",
+    "success": {
+      "set": "Für diesen Journaleintrag wurde eine Erinnerung festgelegt",
+      "deleted": "Erinnerung gelöscht",
+      "dismissed": "Mahnung abgewiesen",
+      "snoozed": "Erinnerung wurde deaktiviert"
+    },
+    "error": {
+      "set": "Erinnerung konnte nicht eingerichtet werden",
+      "delete": "Erinnerung konnte nicht gelöscht werden",
+      "dismiss": "Die Erinnerung konnte nicht abgewiesen werden",
+      "snooze": "Schlummerfunktion der Erinnerung fehlgeschlagen"
+    }
+  },
+  "toast": {
+    "unsavedRetry": "Ihre Inhalte sind noch im Gedächtnis. Klicken Sie hier, um den Speichervorgang erneut zu versuchen.",
+    "noteNotFound": "Hinweis „{target}“ nicht gefunden",
+    "fileNotFound": "Datei nicht gefunden: {target}",
+    "openLinkedItemFailed": "Verlinktes Element konnte nicht geöffnet werden",
+    "errorPrefix": "Fehler:"
+  },
+  "export": {
+    "noteTitle": "Journal - {month} {day}, {year}"
+  },
+  "note": {
+    "generatedTitle": "Hinweis – {date}",
+    "openAria": "Öffnen Sie {title}, erstellt bei {time}"
+  },
+  "tag": {
+    "suggestionsAria": "Tag-Vorschläge",
+    "empty": {
+      "title": "Noch keine Tags",
+      "description": "Geben Sie ein, um ein neues Tag zu erstellen"
+    },
+    "groupTitle": "Schlagworte",
+    "create": "Erstellen Sie #{query}",
+    "ariaLabel": "Tag: {tag}, klicken Sie zum Filtern"
+  },
+  "wiki": {
+    "suggestionsAria": "Seitenvorschläge",
+    "empty": {
+      "title": "Keine Seiten gefunden"
+    },
+    "groupRecent": "Neu",
+    "groupAllPages": "Alle Seiten",
+    "createNewPage": "Neue Seite erstellen",
+    "ariaLabel": "Link zu {title}"
+  },
+  "error": {
+    "title": "Journalfehler",
+    "description": "Im Journal ist ein Fehler für {date} aufgetreten. Ihre letzten Änderungen wurden möglicherweise nicht gespeichert.",
+    "descriptionNoDate": "Im Journal ist ein Fehler aufgetreten. Ihre letzten Änderungen wurden möglicherweise nicht gespeichert.",
+    "unsavedContent": "Nicht gespeicherter Inhalt erkannt ({length} Zeichen)"
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "k"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveJournalEntry": "Journaleintrag konnte nicht gespeichert werden",
+      "failedToLoadJournalSettings": "Die Journaleinstellungen konnten nicht geladen werden",
+      "failedToUpdateSettings": "Die Einstellungen konnten nicht aktualisiert werden"
+    }
+  }
+}

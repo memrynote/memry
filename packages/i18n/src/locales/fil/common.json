@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "I-save",
+    "cancel": "Kanselahin",
+    "close": "Isara",
+    "ok": "OK",
+    "yes": "Oo",
+    "no": "Hindi",
+    "delete": "Tanggalin",
+    "confirm": "Kumpirmahin",
+    "apply": "Mag-apply",
+    "done": "Tapos na",
+    "discard": "Itapon",
+    "dontSave": "Huwag I-save",
+    "edit": "I-edit",
+    "add": "Idagdag",
+    "remove": "Alisin",
+    "retry": "Subukan muli",
+    "submit": "Isumite",
+    "back": "Bumalik",
+    "next": "Susunod",
+    "continue": "Magpatuloy",
+    "reset": "I-reset",
+    "copy": "Kopyahin",
+    "paste": "Idikit",
+    "create": "Lumikha",
+    "open": "Bukas"
+  },
+  "state": {
+    "loading": "Naglo-load…",
+    "saving": "Sine-save...",
+    "deleting": "Tinatanggal…",
+    "searching": "Naghahanap…",
+    "error": "Error",
+    "success": "Tagumpay"
+  },
+  "empty": {
+    "noResults": "Walang resulta",
+    "noItems": "Walang item",
+    "noMatch": "Walang tugma"
+  },
+  "action": {
+    "search": "Maghanap",
+    "edit": "I-edit",
+    "delete": "Tanggalin",
+    "close": "Isara",
+    "expand": "Palawakin",
+    "collapse": "I-collapse",
+    "showMore": "+{count, plural, one {# pa} other {# pa}}",
+    "showLess": "Magpakita ng mas kaunti"
+  },
+  "tabs": {
+    "pin": "Pin Tab",
+    "unpin": "I-unpin ang Tab",
+    "contextMenu": {
+      "close": "Isara",
+      "closeOthers": "Isara ang Iba",
+      "closeToRight": "Malapit sa Kanan",
+      "closeAll": "Isara Lahat",
+      "duplicate": "Duplicate na Tab",
+      "splitRight": "Hatiin sa Kanan",
+      "splitDown": "Hatiin",
+      "copyPath": "Kopyahin ang Landas",
+      "revealInSidebar": "Ibunyag sa Sidebar"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {# item} other {# item}}",
+    "note": "{count, plural, one {# tala} other {# na tala}}",
+    "folder": "{count, plural, one {# folder} other {# na mga folder}}",
+    "task": "{count, plural, one {# gawain} other {# na mga gawain}}",
+    "project": "{count, plural, one {# proyekto} other {# na mga proyekto}}",
+    "itemDelete": "{count, plural, one {Tanggalin ang # item} other {Tanggalin ang # item}}"
+  },
+  "toast": {
+    "actionFailed": "Nabigo ang pagkilos",
+    "nothingToUndo": "Walang dapat i-undo",
+    "undone": "Na-undo: {description}",
+    "undoFailed": "Nabigong i-undo ang pagkilos",
+    "copied": "Kinopya",
+    "copyFailed": "Nabigong kopyahin"
+  },
+  "dateRelative": {
+    "today": "Ngayong araw",
+    "yesterday": "Kahapon",
+    "daysAgo": "{count, plural, one {# araw ang nakalipas} other {# araw ang nakalipas}}"
+  },
+  "recurrence": {
+    "everyDay": "Araw-araw",
+    "everyNDays": "{count, plural, one {Araw-araw} other {Tuwing # araw}}",
+    "everyWeek": "Linggo-linggo",
+    "everyNWeeks": "{count, plural, one {Linggo-linggo} other {Tuwing # na linggo}}",
+    "everyWeekday": "Tuwing weekday",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Tuwing weekday} other {Tuwing # na linggo tuwing karaniwang araw}}",
+    "everyWeekend": "Tuwing katapusan ng linggo",
+    "everyNWeeksOnWeekends": "{count, plural, one {Tuwing katapusan ng linggo} other {Tuwing # na linggo tuwing weekend}}",
+    "everyWeekOnDays": "Linggo-linggo sa {days}",
+    "everyNWeeksOnDays": "{count, plural, one {Linggo-linggo sa {days}} other {Tuwing # na linggo sa {days}}}",
+    "everyMonth": "Bawat buwan",
+    "everyNMonths": "{count, plural, one {Bawat buwan} other {Tuwing # na buwan}}",
+    "everyMonthOnDay": "Bawat buwan sa {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {Bawat buwan sa {day}{suffix}} other {Tuwing # na buwan sa {day}{suffix}}}",
+    "everyMonthOnWeekDay": "Bawat buwan sa {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Bawat buwan sa {week} {day}} other {Tuwing # na buwan sa {week} {day}}}",
+    "everyYear": "Bawat taon",
+    "everyNYears": "{count, plural, one {Bawat taon} other {Bawat # taon}}",
+    "repeats": "Inuulit"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Mga koleksyon",
+      "newNote": "Bagong tala",
+      "newNote2": "Bagong tala",
+      "newFolder": "Bagong folder",
+      "newFolder2": "Bagong folder",
+      "bookmarks": "Mga bookmark",
+      "tags": "Mga tag",
+      "dropFilesToImport": "I-drop ang mga file upang i-import",
+      "newNoteN": "Bagong tala (⌘N)",
+      "new": "Bago",
+      "syncDisabled": "Hindi pinagana ang pag-sync",
+      "syncDisabled2": "Hindi pinagana ang pag-sync"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Baguhin ang laki ng Day Panel",
+      "dragToResizeDoubleClickToReset": "I-drag upang baguhin ang laki · I-double click upang i-reset"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Hanapin, palitan, tanungin..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Laktawan ang onboarding",
+      "welcomeToMemry": "Maligayang pagdating sa Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Ang iyong personal na base ng kaalaman. Maglaan tayo ng 2 minuto para makapagsimula ka.",
+      "getStarted": "Magsimula ",
+      "createYourFirstNote": "Lumikha ng iyong unang tala",
+      "markdownBasedStoredLocallyAsPlainFiles": "Markdown-based, lokal na nakaimbak bilang plain file.",
+      "eGMeetingNotesIdeasAnything": "hal. Mga tala sa pagpupulong, ideya, anuman...",
+      "skip": "Laktawan",
+      "createNote": "Lumikha ng tala ",
+      "addYourFirstTask": "Idagdag ang iyong unang gawain",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Ang mga gawain ay naka-link sa iyong mga tala, na may mga priyoridad at takdang petsa.",
+      "eGReviewProjectProposal": "hal. Suriin ang panukala sa proyekto...",
+      "skip2": "Laktawan",
+      "createTask": "Lumikha ng gawain ",
+      "syncAcrossDevices": "Mag-sync sa mga device",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Panatilihing naka-sync ang iyong mga tala at gawain sa lahat ng iyong device. Maaari mong i-set up ito anumang oras sa ibang pagkakataon.",
+      "skipForNow": "Laktawan sa ngayon",
+      "doneLetSGo": "Tapos na — tara na! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Itakda ang icon ng folder"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "HINT"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Tagapili ng icon",
+      "selectIcon": "Piliin ang Icon",
+      "closeIconPicker": "Isara ang tagapili ng icon",
+      "searchIcons": "Mga icon ng paghahanap...",
+      "all": "Lahat",
+      "clearIcon": "I-clear ang Icon",
+      "noIconsFoundFor": "Walang nakitang icon para sa \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Mga Keyboard Shortcut",
+      "closeShortcutsHelp": "Nakakatulong ang mga close shortcut",
+      "press": "Pindutin",
+      "toClose": "para isara"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Itakda ang Icon",
+      "clearIcon": "I-clear ang Icon"
+    },
+    "componentsNavMain": {
+      "platform": "Plataporma"
+    },
+    "componentsNavProjects": {
+      "projects": "Mga proyekto",
+      "more": "Higit pa",
+      "viewProject": "Tingnan ang Proyekto",
+      "shareProject": "Ibahagi ang Proyekto",
+      "deleteProject": "Tanggalin ang Proyekto",
+      "more2": "Higit pa"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Mag-upgrade sa Pro",
+      "account": "Account",
+      "billing": "Pagsingil",
+      "notifications": "Mga abiso",
+      "logOut": "Log out"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Maghanap",
+      "searchNotesTasksJournalInbox": "Maghanap ng mga tala, gawain, journal, inbox...",
+      "noResultsFor": "Walang mga resulta para sa \"",
+      "rdquo": "rdquo;",
+      "result": "resulta"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Maghanap at mag-click ng mga item para buuin ang iyong trail",
+      "reasons": "Mga dahilan",
+      "clear": "Maaliwalas"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Maaliwalas",
+      "tags": "Mga tag",
+      "filterByTag": "I-filter ayon sa tag...",
+      "dateRange": "Saklaw ng Petsa"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Tingnan lahat ",
+      "results": "resulta"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "malabo"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Walang bukas na tab",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Magbukas ng page mula sa sidebar o gumawa ng bagong tab para makapagsimula",
+      "openInbox": "Buksan ang Inbox",
+      "closePane": "Isara ang Pane"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Mga preset ng layout",
+      "layoutPresets2": "Mga Preset ng Layout"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Baguhin ang laki ng mga pane"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "Hindi available ang TasksContext",
+      "searchResults": "Mga Resulta ng Paghahanap",
+      "unknownTabType": "Hindi kilalang uri ng tab: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "hindi na-save na mga pagbabago",
+      "preview": "silipin"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Bagong Tab",
+      "newTab2": "Bagong Tab",
+      "newNote": "Bagong Tala",
+      "journal": "Journal",
+      "calendar": "Kalendaryo",
+      "inboxCapture": "Pagkuha ng Inbox",
+      "tasks": "Mga gawain"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Mga hindi na-save na pagbabago",
+      "unsaved": "hindi na-save)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Mga hindi na-save na pagbabago"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Isara ang Lahat ng Tab"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Buksan ang mga tab",
+      "scrollTabsLeft": "Mag-scroll pakaliwa ng mga tab",
+      "scrollTabsRight": "I-scroll pakanan ang mga tab",
+      "graphG": "Graph (⌘G)",
+      "dayPanel": "Panel ng Araw"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "Mag-scroll pakaliwa ng mga tab",
+      "scrollTabsRight": "I-scroll pakanan ang mga tab"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "Buksan ang mga tab",
+      "scrollTabsLeft": "Mag-scroll pakaliwa ng mga tab",
+      "scrollTabsRight": "I-scroll pakanan ang mga tab"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Nagkaproblema",
+      "anErrorOccurredWhileRenderingThisTabContent": "Nagkaroon ng error habang nire-render ang content ng tab na ito.",
+      "tryAgain": "Subukan Muli"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Icon ng tala"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Mga Hindi Na-save na Pagbabago",
+      "quot": "quot;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; ay may mga hindi na-save na pagbabago. Ano ang gusto mong gawin?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Bagong workspace",
+      "darkMode": "Dark mode",
+      "settings": "Mga setting",
+      "integrations": "Mga pagsasama",
+      "signOut": "Mag-sign Out",
+      "downloadOnIos": "I-download sa iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Isara ang bintana",
+      "minimizeWindow": "I-minimize ang window",
+      "maximizeWindow": "I-maximize ang window"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Mga mungkahi",
+      "or": "o",
+      "enter": "Pumasok",
+      "toInsert": "upang ipasok"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "mumo ng tinapay",
+      "more": "Higit pa"
+    },
+    "componentsUiDialog": {
+      "close": "Isara"
+    },
+    "componentsUiSheet": {
+      "close": "Isara"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Sidebar",
+      "displaysTheMobileSidebar": "Ipinapakita ang mobile sidebar.",
+      "toggleSidebar": "I-toggle ang Sidebar",
+      "toggleSidebar2": "I-toggle ang Sidebar",
+      "dragToResizeDoubleClickToReset": "I-drag upang baguhin ang laki · I-double click upang i-reset"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Maligayang pagdating sa Memry",
+      "yourPersonalKnowledgeManagementSystem": "Ang iyong sistema ng pamamahala ng personal na kaalaman.",
+      "selectAFolderToStoreYourNotesAndTasks": "Pumili ng folder upang iimbak ang iyong mga tala at gawain.",
+      "opening": "Binubuksan...",
+      "selectVaultFolder": "Piliin ang Vault Folder",
+      "plainMarkdown": "Plain Markdown",
+      "yourNotesStayPortable": "Ang iyong mga tala ay mananatiling portable",
+      "syncAnywhere": "I-sync Kahit Saan",
+      "useDropboxIcloudGit": "Gumamit ng Dropbox, iCloud, Git",
+      "recentVaults": "Mga Kamakailang Vault",
+      "notesLastOpened": "mga tala · Huling binuksan"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Wala pang vault",
+      "openVault": "Buksan ang vault",
+      "settings": "Mga setting",
+      "logOut": "Log out",
+      "signInToSync": "Mag-sign in para mag-sync",
+      "remove": "Tanggalin \"",
+      "rdquoFromList": "rdquo; mula sa listahan?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Aalisin ang vault na ito sa app, ngunit mananatili ang iyong mga file sa disk. Maaari mo itong muling idagdag sa ibang pagkakataon.",
+      "cancel": "Kanselahin",
+      "remove2": "Alisin"
+    },
+    "componentsWindowControls": {
+      "searchK": "Maghanap (⌘K)",
+      "browserBack": "Bumalik ang browser",
+      "back": "Bumalik",
+      "browserForward": "Pasulong ang browser",
+      "forward": "Pasulong"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Nabigong mag-import ng mga file",
+      "failedToCreateNote": "Nabigong gumawa ng tala",
+      "failedToAccessMicrophone": "Nabigong ma-access ang mikropono"
+    },
+    "toasts": {
+      "undone": "Inalis na"
+    }
+  }
+}

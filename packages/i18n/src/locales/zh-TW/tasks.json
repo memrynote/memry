@@ -1,0 +1,651 @@
+{
+  "page": {
+    "tabs": {
+      "label": "任務視圖",
+      "today": "今天",
+      "all": "全部"
+    },
+    "viewMode": {
+      "label": "檢視模式",
+      "list": "清單檢視",
+      "kanban": "看板檢視"
+    },
+    "projectScope": {
+      "allProjects": "所有專案",
+      "searchProjects": "搜尋專案…",
+      "editProject": "編輯 {name}",
+      "unstarSavedFilter": "取消標星 {name}"
+    }
+  },
+  "task": {
+    "add": "新增任務",
+    "title": "標題",
+    "titleRequired": "標題為必填",
+    "titlePlaceholder": "需要做什麼？",
+    "namePlaceholder": "任務名稱",
+    "description": "描述",
+    "descriptionPlaceholder": "新增描述…",
+    "details": "工作詳細資訊",
+    "status": "狀態",
+    "priority": "優先事項",
+    "dueDate": "截止日期",
+    "project": "專案",
+    "repeat": "重複",
+    "createAnother": "創建另一個",
+    "delete": "刪除任務",
+    "created": "已創建 {date}"
+  },
+  "project": {
+    "create": "創建專案",
+    "edit": "編輯專案",
+    "delete": "刪除專案",
+    "iconAndName": "圖示與名稱",
+    "namePlaceholder": "專案名稱",
+    "select": "選擇專案",
+    "selectIcon": "選擇圖示",
+    "clickIconToChange": "點擊圖示以更換",
+    "color": "顏色",
+    "descriptionOptional": "描述（可選）",
+    "descriptionPlaceholder": "此專案的簡短描述…",
+    "statuses": "狀態",
+    "statusesHelp": "配置此專案的工作流程階段。",
+    "createDescription": "建立一個新專案，包含名稱、圖示、顏色和工作流程狀態。",
+    "editDescription": "編輯專案名稱、圖示、顏色和工作流程狀態。"
+  },
+  "status": {
+    "select": "選擇狀態",
+    "todo": "待辦",
+    "inProgress": "進行中",
+    "done": "完成"
+  },
+  "priority": {
+    "select": "選擇優先順序",
+    "none": "無優先順序",
+    "noneShort": "無",
+    "low": "低",
+    "medium": "中",
+    "high": "高",
+    "urgent": "緊急"
+  },
+  "filters": {
+    "filter": "篩選",
+    "emptyTitle": "沒有任務符合您的篩選條件",
+    "emptyHelp": "試著調整您的篩選條件或",
+    "groupBy": "分組方式",
+    "groupByOptions": "分組選項",
+    "sortAscending": "升序排列",
+    "sortDescending": "降序排列"
+  },
+  "quickAdd": {
+    "label": "快速新增任務",
+    "focusDescription": "聚焦快速新增輸入框"
+  },
+  "drawer": {
+    "close": "關閉任務詳情",
+    "subIssues": "子問題",
+    "addSubIssue": "新增子問題",
+    "subIssuePlaceholder": "新增子問題…",
+    "noSubIssues": "尚無子問題",
+    "linkedNotes": "已連結筆記",
+    "linkNote": "連結一個筆記",
+    "loading": "載入中…",
+    "searchNotes": "搜尋筆記…",
+    "noMatchingNotes": "無符合的筆記",
+    "noNotesAvailable": "沒有可用的筆記",
+    "noLinkedNotes": "尚無已連結的筆記",
+    "removeLinkTo": "移除與 {title} 的連結",
+    "removeLinkFallback": "筆記"
+  },
+  "kanban": {
+    "board": "看板"
+  },
+  "toasts": {
+    "projectUpdated": "專案已更新",
+    "projectCreated": "專案已建立",
+    "projectSaveError": "儲存專案失敗",
+    "projectArchived": "專案已封存",
+    "projectArchiveError": "封存專案失敗",
+    "projectDeleted": "專案已刪除",
+    "projectDeleteError": "刪除專案失敗",
+    "filtersCleared": "篩選器已清除",
+    "filterSaved": "篩選器已儲存",
+    "filterDeleted": "篩選器已刪除",
+    "filterApplied": "已套用\"{name}\"",
+    "deleted": "任務已刪除",
+    "deletedSeries": "系列完成！",
+    "deletedNext": "下一個發生",
+    "completed": "任務完成！",
+    "archived": "任務已存檔",
+    "undoNotAvailableForDelete": "刪除無法復原",
+    "alreadyAllComplete": "所有已選任務均已完成",
+    "noCompletedSelected": "未選擇已完成任務",
+    "completeFailed": "完成任務失敗",
+    "reopenFailed": "重新開啟任務失敗",
+    "deleteFailed": "刪除任務失敗",
+    "moveFailed": "移動任務失敗"
+  },
+  "phaseF": {
+    "componentsTasksAddSubtaskInput": {
+      "addSubtask": "新增子任務...",
+      "addSubtask2": "新增子任務",
+      "enterToAdd": "按 Enter 鍵新增"
+    },
+    "componentsTasksBulkActionsBulkActionDropdown": {
+      "for": "對於",
+      "task": "任務"
+    },
+    "componentsTasksBulkActionsBulkActionToolbar": {
+      "bulkActions": "批次操作",
+      "selected": "已選",
+      "complete": "完成",
+      "priority": "優先事項",
+      "dueDate": "截止日期",
+      "moveTo": "移動到",
+      "status": "狀態",
+      "archive": "封存",
+      "delete": "刪除",
+      "cancelSelection": "取消選取",
+      "cancel": "取消"
+    },
+    "componentsTasksBulkActionsBulkDeleteDialog": {
+      "delete": "  \n刪除  ",
+      "task": "任務",
+      "youReAboutToDelete": "您即將刪除",
+      "task2": "任務",
+      "and": "和 ",
+      "moreTask": "更多任務",
+      "thisActionCanBeUndoneForAShortTimeAfterDeletion": "此操作在刪除後短時間內可以撤銷。",
+      "cancel": "取消",
+      "delete2": "  \n刪除  ",
+      "task3": "任務"
+    },
+    "componentsTasksBulkActionsBulkDueDatePicker": {
+      "setDueDateFor": "設置截止日期於",
+      "task": "任務",
+      "selectADateToSetAsTheDueDateForAllSelectedTasks": "選擇日期以設為所有選定任務的截止日期。",
+      "alsoSetTime": "同時設定時間",
+      "cancel": "取消",
+      "setDueDate": "設置截止日期"
+    },
+    "componentsTasksCelebrationProgress": {
+      "complete": "完成"
+    },
+    "componentsTasksColorPicker": {
+      "selectColor": "選擇顏色"
+    },
+    "componentsTasksCustomRepeatDialog": {
+      "onTheseDays": "在這些日子",
+      "repeatOn": "重複於",
+      "day": "天",
+      "ofTheMonth": "本月的",
+      "the": "第",
+      "ofTheMonth2": "本月的",
+      "ends": "結束",
+      "never": "永不",
+      "onDate": "在日期",
+      "after": "之後",
+      "occurrences": "次數",
+      "preview": "預覽",
+      "of": "的",
+      "andMore": "及更多",
+      "frequency": "頻率",
+      "repeatEvery": "每隔",
+      "day2": "天",
+      "week": "週",
+      "month": "月",
+      "year": "年",
+      "cancel": "取消",
+      "save": "儲存",
+      "customRepeat": "自定義重複"
+    },
+    "componentsTasksDatePickerCalendar": {
+      "previousMonth": "前一個月",
+      "nextMonth": "下一個月",
+      "goToToday": "回到今天",
+      "today": "今天",
+      "w": "週"
+    },
+    "componentsTasksDatePickerContent": {
+      "removeDate": "移除日期",
+      "clearTime": "清除時間",
+      "addTime": "新增時間"
+    },
+    "componentsTasksDeleteProjectDialog": {
+      "delete": "刪除",
+      "thisProjectHas": "這個項目已有",
+      "task": "任務",
+      "whatWouldYouLikeToDoWithThem": "你想對它們做什麼？",
+      "moveTasksToPersonalProject": "將任務移動到個人專案",
+      "deleteAllTasksPermanently": "永久刪除所有任務",
+      "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "此專案沒有任何任務，將被永久刪除。",
+      "thisActionCannotBeUndone": "此操作無法還原。",
+      "cancel": "取消",
+      "deleteProject": "刪除專案"
+    },
+    "componentsTasksDeleteTaskDialog": {
+      "deleteTask": "刪除任務？",
+      "ldquo": "ldquo;",
+      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; 將被永久刪除。此操作無法撤銷。",
+      "deleteTask2": "刪除任務"
+    },
+    "componentsTasksDialogsAllSubtasksCompleteDialog": {
+      "allSubtasksComplete": "所有子任務已完成！",
+      "ldquo": "ldquo;",
+      "rdquoHasAll": "rdquo; 擁有所有",
+      "subtask": "子任務",
+      "done": "完成。",
+      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "你也想將父任務標記為完成嗎？",
+      "keepTaskOpen": "保持任務未完成",
+      "completeTask": "完成任務 ✓"
+    },
+    "componentsTasksDialogsBulkDueDateDialog": {
+      "setDueDateForAllSubtasks": "為所有子任務設定到期日",
+      "setDueDateFor": "設置截止日期於",
+      "subtask": "子任務",
+      "in": "在「",
+      "rdquo": "rdquo;",
+      "alsoApplyToCompletedSubtasks": "也適用於已完成的子任務（",
+      "clearDate": "清除日期",
+      "cancel": "取消",
+      "apply": "應用"
+    },
+    "componentsTasksDialogsBulkPriorityDialog": {
+      "setPriorityForAllSubtasks": "設定所有子任務的優先順序",
+      "setPriorityFor": "設定優先順序",
+      "subtask": "子任務",
+      "in": "在「",
+      "rdquo": "rdquo;",
+      "alsoApplyToCompletedSubtasks": "也適用於已完成的子任務（",
+      "cancel": "取消",
+      "apply": "應用"
+    },
+    "componentsTasksDialogsCompleteParentDialog": {
+      "completeTaskWithIncompleteSubtasks": "完成具有未完成子任務的任務？",
+      "has": "有",
+      "incompleteSubtask": "未完成的子任務",
+      "and": "和 ",
+      "more": "更多",
+      "whatWouldYouLikeToDo": "你想做什麼？",
+      "completeAllParentSubtasks": "完成所有（父任務 + 子任務）",
+      "markTheParentAndAllSubtasksAsComplete": "將父任務和所有子任務標記為完成",
+      "completeParentOnlyKeepSubtasksIncomplete": "僅完成父任務，保留子任務未完成",
+      "onlyMarkTheParentTaskAsComplete": "僅標記父任務為完成",
+      "cancel": "取消",
+      "complete": "完成"
+    },
+    "componentsTasksDialogsDeleteAllSubtasksDialog": {
+      "deleteAllSubtasks": "刪除所有子任務？",
+      "thisWillDelete": "這將刪除",
+      "subtask": "子任務",
+      "from": "從「",
+      "rdquo": "rdquo;.",
+      "thisActionCannotBeUndone": "此操作無法還原。",
+      "cancel": "取消",
+      "deleteAll": "全部刪除"
+    },
+    "componentsTasksDialogsDeleteParentDialog": {
+      "deleteTaskWithSubtasks": "刪除包含子任務的任務嗎？",
+      "has": "有",
+      "subtask": "子任務",
+      "whatWouldYouLikeToDo": "你想做什麼？",
+      "deleteTaskAndAllSubtasks": "刪除任務及所有子任務",
+      "permanentlyRemovesEverything": "永久刪除所有內容",
+      "deleteTaskKeepSubtasksAsStandaloneTasks": "刪除任務，將子任務保留為獨立任務",
+      "subtasksBecomeTopLevelTasks": "子任務變成頂層任務",
+      "cancel": "取消",
+      "delete": "刪除"
+    },
+    "componentsTasksDialogsDuplicateWithSubtasksDialog": {
+      "duplicateTask": "重複任務",
+      "createACopyOf": "建立「的副本",
+      "rdquo": "rdquo;",
+      "alsoDuplicateSubtasks": "也複製子任務（",
+      "cancel": "取消",
+      "duplicate": "重複"
+    },
+    "componentsTasksDialogsParentPickerDialog": {
+      "makeSubtaskOf": "建立子任務於...",
+      "selectATaskToMake": "選擇一個任務來製作",
+      "aSubtaskOf": "子任務。",
+      "searchTasks": "搜尋任務...",
+      "sameProject": "相同專案",
+      "otherProjects": "其他專案"
+    },
+    "componentsTasksDragDropInsertionIndicator": {
+      "dropToRescheduleTo": "拖動以重新安排至"
+    },
+    "componentsTasksDragDropMoveMenu": {
+      "moveTask": "移動任務",
+      "move": "移動",
+      "reschedule": "重新安排",
+      "today": "今天",
+      "tomorrow": "明天",
+      "nextWeek": "下週",
+      "removeDate": "移除日期",
+      "moveToProject": "移動至專案",
+      "current": "目前",
+      "changeStatus": "更改狀態",
+      "current2": "目前",
+      "reorder": "重新排序"
+    },
+    "componentsTasksDragDropMultiDragOverlay": {
+      "moreTask": "更多任務",
+      "task": "任務"
+    },
+    "componentsTasksDragDropSidebarDropZones": {
+      "dropHere": "拖放到此處"
+    },
+    "componentsTasksDragDropTaskRow": {
+      "priority": "優先順序："
+    },
+    "componentsTasksDueDatePicker": {
+      "selectDueDate": "選擇到期日期",
+      "overdue": "已逾期",
+      "setDueDate": "設定到期日期",
+      "suggestions": "建議",
+      "pickADate": "選擇日期...",
+      "addTime": "新增時間",
+      "time": "時間",
+      "clearDate": "清除日期",
+      "backToOptions": "返回選項"
+    },
+    "componentsTasksEditRepeatingTaskDialog": {
+      "editRepeatingTask": "編輯重複任務",
+      "youReEditingARepeatingTaskApplyChangesTo": "您正在編輯重複任務。套用更改至：",
+      "onlyThisOccurrence": "僅此發生",
+      "onlyFutureTasksUnchanged": "僅此 — 未來任務不變",
+      "thisAndAllFutureOccurrences": "此及所有未來發生",
+      "andBeyond": "及之後",
+      "cancel": "取消",
+      "continue": "繼續"
+    },
+    "componentsTasksEmptyStatesCollapsedEmptySection": {
+      "add": "新增"
+    },
+    "componentsTasksEmptyStatesSectionEmptyStates": {
+      "noTasksScheduled": "沒有排定任務",
+      "addTaskFor": "為...新增任務",
+      "nothingScheduled": "沒有排程",
+      "addTasksWithDueDatesToPlanYourWeek": "新增具有到期日期的任務以規劃您的週計劃。",
+      "addTask": "新增任務",
+      "viewCalendar": "查看行事曆"
+    },
+    "componentsTasksFiltersActiveFiltersBar": {
+      "priorityIs": "優先順序為",
+      "priority": "優先順序",
+      "statusIs": "狀態為",
+      "status": "狀態",
+      "projectIs": "專案為",
+      "project": "專案",
+      "due": "截止日期",
+      "dueDate": "截止日期",
+      "search": "搜尋",
+      "clearAll": "清除全部"
+    },
+    "componentsTasksFiltersDueDateFilter": {
+      "filterByDueDate": "依截止日期篩選",
+      "customRange": "自訂範圍",
+      "clear": "清除",
+      "apply": "應用"
+    },
+    "componentsTasksFiltersFilterDropdown": {
+      "filterBy": "依…篩選"
+    },
+    "componentsTasksFiltersFilterEmptyState": {
+      "activeFilters": "目前篩選條件：",
+      "clearAllFilters": "清除所有篩選"
+    },
+    "componentsTasksFiltersFilterPanelsDueDatePanel": {
+      "dueDate": "截止日期"
+    },
+    "componentsTasksFiltersFilterPanelsPriorityPanel": {
+      "priority": "優先事項",
+      "is": "是",
+      "search": "搜尋...",
+      "selected": "已選"
+    },
+    "componentsTasksFiltersFilterPanelsProjectPanel": {
+      "project": "專案",
+      "noProject": "無專案"
+    },
+    "componentsTasksFiltersFilterPanelsStatusPanel": {
+      "status": "狀態"
+    },
+    "componentsTasksFiltersFilterPanelsStatusProjectPickerPan": {
+      "status": "狀態",
+      "pickAProject": "選擇專案"
+    },
+    "componentsTasksFiltersMoreFiltersDropdown": {
+      "moreFilters": "更多篩選條件",
+      "more": "更多",
+      "status": "狀態",
+      "hasTimeSet": "已設定時間",
+      "recurringOnly": "僅重複性",
+      "status2": "狀態"
+    },
+    "componentsTasksFiltersPriorityFilter": {
+      "filterByPriority": "依優先順序篩選",
+      "priority": "優先事項"
+    },
+    "componentsTasksFiltersProjectFilter": {
+      "filterByProject": "依專案篩選",
+      "project": "專案",
+      "allProjects": "所有專案",
+      "clear": "清除"
+    },
+    "componentsTasksFiltersQuickFilters": {
+      "quickFilters": "快速篩選："
+    },
+    "componentsTasksFiltersSaveFilterDialog": {
+      "saveFilter": "儲存篩選條件",
+      "saveYourCurrentFilterSettingsForQuickAccessLater": "儲存目前的篩選設定以便日後快速存取。",
+      "filterName": "篩選名稱",
+      "eGHighPriorityThisWeek": "例如，本週高優先順序",
+      "currentFilters": "當前篩選器：",
+      "noFiltersApplied": "尚未應用篩選器",
+      "cancel": "取消",
+      "saveFilter2": "儲存篩選條件"
+    },
+    "componentsTasksFiltersSavedFiltersDropdown": {
+      "savedFilters": "已保存的篩選器",
+      "saved": "已保存",
+      "noSavedFiltersYet": "尚無已保存的篩選器",
+      "saveCurrentFilters": "保存當前篩選器",
+      "saveCurrentFilters2": "保存當前篩選器"
+    },
+    "componentsTasksFiltersSavedFiltersSection": {
+      "filterName": "篩選器名稱",
+      "saveFilter": "保存篩選器",
+      "save": "儲存"
+    },
+    "componentsTasksFiltersSearchInput": {
+      "searchTasks": "搜尋任務",
+      "clearSearch": "清除搜尋"
+    },
+    "componentsTasksKanbanKanbanColumn": {
+      "dropHere": "拖放到此處",
+      "releaseToMoveTaskToThisColumn": "釋放以將任務移動到此欄",
+      "moreCompleted": "更多已完成",
+      "showFewer": "顯示較少",
+      "taskTitle": "任務標題..."
+    },
+    "componentsTasksNaturalDateInput": {
+      "typeADateInNaturalLanguage": "以自然語言輸入日期",
+      "select": "選擇"
+    },
+    "componentsTasksParentTaskRow": {
+      "priority": "優先順序："
+    },
+    "componentsTasksPrioritySelect": {
+      "selectPriority": "選擇優先順序",
+      "navigate": "導航",
+      "select": "選擇"
+    },
+    "componentsTasksProjectModal": {
+      "iconName": "圖示與名稱",
+      "selectIcon": "選擇圖示",
+      "projectName": "專案名稱",
+      "clickIconToChange": "點擊圖示以更換",
+      "color": "顏色",
+      "descriptionOptional": "描述（可選）",
+      "briefDescriptionOfThisProject": "此專案的簡要描述...",
+      "statuses": "狀態",
+      "configureTheWorkflowStagesForThisProject": "配置此專案的工作流程階段。",
+      "deleteProject": "刪除專案",
+      "cancel": "取消",
+      "unsavedChanges": "未儲存的變更",
+      "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "您有未保存的更改。您確定要放棄它們嗎？",
+      "cancel2": "取消",
+      "discard": "捨棄"
+    },
+    "componentsTasksProjectSelect": {
+      "selectProject": "選擇專案",
+      "selectProject2": "選擇專案"
+    },
+    "componentsTasksProjectsProjectSelector": {
+      "editProject": "編輯專案",
+      "archiveProject": "封存專案",
+      "deleteProject": "刪除專案",
+      "selectProject": "選擇專案",
+      "noProjectsYet": "尚未有專案",
+      "createProject": "建立專案"
+    },
+    "componentsTasksProjectsProjectsTabContent": {
+      "noProjectSelected": "未選擇任何專案",
+      "selectAProjectFromTheDropdownOrCreateANewOne": "從下拉選單中選擇專案或建立新專案",
+      "createYourFirstProject": "建立你的第一個專案"
+    },
+    "componentsTasksQuickAddQuickAddHelp": {
+      "quickAddShortcutsHelp": "快速新增捷徑幫助",
+      "quickAddShortcuts": "快速新增捷徑",
+      "exampleBuyMilkTomorrowHighPersonal": "範例：「明天買牛奶!!高 #個人」"
+    },
+    "componentsTasksQuickAddQuickOptionsBar": {
+      "quickOptions": "快速選項："
+    },
+    "componentsTasksQuickAddInput": {
+      "q": "Q",
+      "q2": "Q"
+    },
+    "componentsTasksRepeatIndicator": {
+      "of": "的",
+      "completed": "已完成"
+    },
+    "componentsTasksRepeatPicker": {
+      "selectRepeatFrequency": "選擇重複頻率",
+      "doesNotRepeat": "不重複",
+      "custom": "自訂......"
+    },
+    "componentsTasksStatusEditor": {
+      "changeStatusColor": "更改狀態顏色",
+      "dragToReorder": "拖曳以重新排序",
+      "statusName": "狀態名稱",
+      "addStatus": "新增狀態"
+    },
+    "componentsTasksStatusSelect": {
+      "selectStatus": "選擇狀態",
+      "selectStatus2": "選擇狀態"
+    },
+    "componentsTasksStopRepeatingDialog": {
+      "stopRepeating": "停止重複",
+      "isSetToRepeat": "設定為重複",
+      "whatWouldYouLikeToDo": "你想做什麼？",
+      "keepThisTaskStopFutureOccurrences": "保留此任務，停止未來發生",
+      "taskWillBecomeAOneTimeTask": "任務將變為一次性任務",
+      "deleteThisAndAllFutureOccurrences": "刪除此任務及所有未來發生",
+      "taskWillBeRemovedEntirely": "任務將完全被移除",
+      "cancel": "取消",
+      "confirm": "確認"
+    },
+    "componentsTasksSubtaskDots": {
+      "of": "的",
+      "subtasksComplete": "子任務完成 (",
+      "clickTo": "點擊以",
+      "of2": "的",
+      "subtasksComplete2": "子任務完成",
+      "clickTo2": "點擊以"
+    },
+    "componentsTasksSubtaskProgressBadge": {
+      "of": "的",
+      "subtasksComplete": "子任務完成 (",
+      "clickTo": "點擊以"
+    },
+    "componentsTasksTaskBadges": {
+      "priority": "優先順序",
+      "repeatingTask": "重複任務",
+      "d": "d"
+    },
+    "componentsTasksTaskEmptyState": {
+      "addTask": "新增任務"
+    },
+    "componentsTasksTaskIcons": {
+      "noPriority": "無優先順序"
+    },
+    "componentsTasksTaskRepeatSection": {
+      "repeat": "重複",
+      "addRepeat": "新增重複",
+      "edit": "編輯",
+      "edit2": "編輯",
+      "stopRepeating": "停止重複",
+      "stopRepeating2": "停止重複"
+    },
+    "componentsTasksTaskSection": {
+      "addTask": "新增任務"
+    },
+    "componentsTasksTimePicker": {
+      "selectTime": "選擇時間",
+      "selectTime2": "選擇時間",
+      "clearTime": "清除時間"
+    },
+    "componentsTasksTodayEmptyState": {
+      "nothingScheduledForToday": "今天沒有行程",
+      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "你有逾期的任務。新增一些今天的任務或查看即將到來的清單。",
+      "addTaskForToday": "新增今天的任務",
+      "allCaughtUpForToday": "今天的任務已全部完成",
+      "youHaveNothingScheduledEnjoyTheClarity": "你目前沒有排定的任務。享受清爽的一天。",
+      "addTaskForToday2": "新增今天的任務"
+    },
+    "componentsTasksUpcomingEmptyState": {
+      "nothingScheduledForTheNext7Days": "未來七天沒有排定的任務",
+      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "你有逾期的任務。提前規劃，新增下週的任務。",
+      "addTask": "新增任務",
+      "noUpcomingTasks": "沒有即將到來的任務",
+      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "未來七天到期的任務將顯示在這裡。透過新增任務來規劃你的一週。",
+      "addTask2": "新增任務"
+    }
+  },
+  "phaseI": {
+    "toasts": {
+      "changesUndone": "已取消變更",
+      "projectNotFound": "找不到專案",
+      "failedToArchiveTasks": "任務歸檔失敗",
+      "tasksRestoredFromArchive": "任務已從歸檔中還原",
+      "subtaskAdded": "子任務已新增",
+      "subtaskDeleted": "子任務已刪除",
+      "taskCompleted": "任務已完成",
+      "allSubtasksCompleteTaskMarkedAsDone": "🎉 全部子任務完成！任務已標記為完成。",
+      "taskReopened": "任務重新開啟",
+      "taskKeptOpen": "任務保持開啟",
+      "taskMarkedAsDone": "🎉 任務已標記為完成！"
+    },
+    "errors": {
+      "failedToArchiveTasks": "任務歸檔失敗",
+      "failedToAddSubtask": "新增子任務失敗",
+      "failedToAddSubtasks": "新增子任務失敗",
+      "failedToReorderSubtasks": "重新排序子任務失敗",
+      "failedToPromoteSubtask": "升級子任務失敗",
+      "failedToDeleteSubtask": "刪除子任務失敗",
+      "failedToDeleteTask": "刪除任務失敗",
+      "failedToCompleteTask": "完成任務失敗",
+      "failedToMakeSubtask": "建立子任務失敗",
+      "failedToCompleteSubtasks": "完成子任務失敗",
+      "failedToMarkSubtasksIncomplete": "標記子任務為未完成失敗",
+      "failedToSetDueDate": "設定截止日期失敗",
+      "failedToSetPriority": "設定優先順序失敗",
+      "failedToDeleteSubtasks": "刪除子任務失敗",
+      "failedToLoadTaskPreferences": "載入任務偏好設定失敗",
+      "failedToUpdateTaskPreferences": "更新任務偏好設定失敗",
+      "failedToLoadLinkedTasks": "載入關聯任務失敗"
+    }
+  }
+}

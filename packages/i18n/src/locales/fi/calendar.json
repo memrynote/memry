@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "päivä",
+    "week": "Viikko",
+    "month": "Kuukausi",
+    "year": "vuosi"
+  },
+  "toolbar": {
+    "create-event": "Luo tapahtuma",
+    "previous-period": "Edellinen kausi",
+    "next-period": "Seuraava kausi",
+    "previous-month": "Edellinen kuukausi",
+    "next-month": "Ensi kuussa",
+    "today": "Tänään"
+  },
+  "filter": {
+    "filter-calendars": "Suodata kalentereita",
+    "sources": "Lähteet",
+    "memry-items": "Memry tuotteet",
+    "imported-calendars": "Tuodut kalenterit",
+    "event-types": "Tapahtumatyypit",
+    "google-calendars": "Google kalenterit",
+    "refresh-google-calendars": "Päivitä Google-kalenterit"
+  },
+  "visual-type": {
+    "event": "Tapahtuma",
+    "imported-event": "Tuotu tapahtuma",
+    "task": "Tehtävä",
+    "reminder": "Muistutus",
+    "snooze": "Torkku"
+  },
+  "state": {
+    "loading-calendar": "Ladataan kalenteria…",
+    "loading-calendars": "Ladataan kalentereita…",
+    "preparing": "Valmistellaan…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "Ei vielä tuotuja kalentereita.",
+    "no-events": "Ei tapahtumia"
+  },
+  "time": {
+    "all-day": "Koko päivän",
+    "all-day-lower": "koko päivän",
+    "pick-a-date": "Valitse päivämäärä",
+    "new-event": "Uusi Tapahtuma",
+    "more-events": "{count, plural, one {# lisää tapahtumaa} other {# lisää tapahtumia}}"
+  },
+  "form": {
+    "create-calendar-event": "Luo kalenteritapahtuma",
+    "edit-calendar-event": "Muokkaa kalenteritapahtumaa",
+    "quick-create-description": "Kirjoita otsikko ja tallenna luodaksesi tapahtuman valitulla aikavälillä.",
+    "event-editor-description": "Päivitä tämän tapahtuman otsikko, sijainti, päivämäärä, aika ja muistiinpanot.",
+    "new-event-placeholder": "Uusi Tapahtuma",
+    "location-placeholder": "Lisää sijainti",
+    "notes-url-placeholder": "Lisää muistiinpanoja tai URL-osoite",
+    "start": "Aloita",
+    "end": "Loppu",
+    "add-details": "Lisää tiedot",
+    "google-calendar": "Google kalenteri",
+    "target-calendar": "Kohdekalenteri",
+    "use-default-calendar": "Käytä oletuskalenteria",
+    "use-default-calendar-with-name": "Käytä oletusarvoa ({calendar})",
+    "use-memry-calendar-default": "Käytä Memry-kalenteria (oletus)",
+    "use-memry-managed-calendar": "Käytä Memry-hallittua kalenteria",
+    "primary-suffix": "ensisijainen"
+  },
+  "delete-dialog": {
+    "title": "Poistetaanko tapahtuma?",
+    "local-description": "\"{title}\" poistetaan pysyvästi. Tätä toimintoa ei voi kumota.",
+    "google-bound-description": "\"{title}\" poistetaan Memry:stä ja Google-kalenterista. Tätä toimintoa ei voi kumota.",
+    "context-menu-delete-label": "Poista tapahtuma"
+  },
+  "promote-dialog": {
+    "aria": "Muokkaa ulkoista kalenteritapahtumaa",
+    "title": "Muokkaa tätä tapahtumaa Memry:ssä?",
+    "body": "Tämän tapahtuman muokkaaminen luo linkitetyn kopion Memry:ssä, joten muutokset synkronoidaan molempiin suuntiin. Jatketaanko?",
+    "do-not-ask-again": "Älä kysy uudelleen",
+    "confirm-label": "Muokkaa Memry:ssä"
+  },
+  "onboarding-dialog": {
+    "aria": "Valitse oletusarvoinen Google-kalenteri",
+    "title": "Mihin kalenteriin uusien Memry-tapahtumien pitäisi mennä?",
+    "body": "Valitse Google-kalenteri, jota Memry tulee käyttää oletuksena. Voit silti ohittaa sen tapahtumakohtaisesti.",
+    "default-calendar-label": "Käytä Memry-hallittua kalenteria",
+    "skip": "Ohita",
+    "use-this-calendar": "Käytä tätä kalenteria"
+  },
+  "metadata": {
+    "attendees": "Osallistujat",
+    "attendees-count": "Osallistujat ({count})",
+    "reminders": "Muistutukset",
+    "default-reminders": "Oletusmuistutukset",
+    "visibility": "Näkyvyys:",
+    "optional": "Valinnainen",
+    "join-meeting": "Liity kokoukseen",
+    "response": {
+      "accepted": "Hyväksytty",
+      "declined": "Hylätty",
+      "tentative": "Alustava",
+      "needs-action": "Odottaa"
+    },
+    "visibility-value": {
+      "private": "Yksityinen",
+      "public": "Julkinen",
+      "confidential": "Luottamuksellinen"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "min · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "Tapahtumaa ei voitu tallentaa. Yritä uudelleen.",
+      "couldNotCreateEventTryAgain": "Tapahtumaa ei voitu luoda. Yritä uudelleen.",
+      "couldNotSaveDefaultCalendarTryAgain": "Oletuskalenteria ei voitu tallentaa. Yritä uudelleen.",
+      "failedToLoadCalendarPreferences": "Kalenteriasetusten lataaminen epäonnistui",
+      "failedToUpdateCalendarPreferences": "Kalenteriasetusten päivittäminen epäonnistui",
+      "couldNotEditThisEventTryAgain": "Tätä tapahtumaa ei voitu muokata. Yritä uudelleen.",
+      "failedToDeleteEvent": "Tapahtuman poistaminen epäonnistui",
+      "couldNotUnsnoozeInboxItem": "Torkkua ei voitu poistaa.",
+      "couldNotRescheduleInboxItem": "Ei voitu ajoittaa uudelleen."
+    },
+    "inboxSnoozePopover": {
+      "title": "Torkutettu postilaatikon kohde",
+      "openInInbox": "Avaa postilaatikossa",
+      "unsnoozeNow": "Poista torkku nyt",
+      "reschedule": "Aikatauluta uudelleen"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "Tehtävän tiedot",
+    "open-task": "Avoin tehtävä",
+    "source-note": "Lähdehuomautus",
+    "reschedule": "Aikatauluta uudelleen",
+    "more-actions": "Lisää toimintoja",
+    "mark-done": "Merkitse valmiiksi",
+    "mark-not-done": "Merkitse tekemättä",
+    "later-today": "Myöhemmin tänään",
+    "tomorrow": "Huomenna",
+    "next-week": "Ensi viikolla",
+    "next-week-mon": "Ensi viikolla · Ma",
+    "pick-date-time": "Valitse päivämäärä ja aika…",
+    "remove-due-date": "Poista eräpäivä",
+    "subtasks-prefix": "Alitehtävät",
+    "subtasks-counter": "{done}/{total} tehty",
+    "today": "Tänään",
+    "overdue-one": "1 päivä myöhässä",
+    "overdue-other": "{count} päivää myöhässä",
+    "repeats": "Toistaa",
+    "repeats-daily": "Toistuu päivittäin",
+    "repeats-weekly": "Toistuu viikoittain",
+    "repeats-monthly": "Toistuu kuukausittain",
+    "repeats-yearly": "Toistuu vuosittain",
+    "priority-urgent": "Kiireellinen",
+    "priority-high": "Korkea",
+    "priority-medium": "Keskikokoinen",
+    "errors": {
+      "could-not-save": "Tehtävää ei voitu tallentaa",
+      "could-not-reschedule": "Tehtävää ei voitu ajoittaa uudelleen",
+      "could-not-remove-due-date": "Eräpäivää ei voitu poistaa",
+      "could-not-open-note": "Muistiinpanoa ei voitu avata"
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "Selectați dosarul seifului",
+      "button": "Selectați Seif"
+    },
+    "exportPdf": {
+      "title": "Exportați ca PDF",
+      "filterName": "Document PDF"
+    },
+    "exportHtml": {
+      "title": "Exportați ca HTML",
+      "filterName": "Document HTML"
+    },
+    "import": {
+      "filterSupported": "Fișiere acceptate",
+      "filterAll": "Toate Fișierele"
+    },
+    "exportCancelled": "Export anulat",
+    "update": {
+      "availableTitle": "Actualizare disponibilă",
+      "availableMessage": "Memry {version} este disponibil.",
+      "availableDetailFallback": "Descărcați actualizarea acum?",
+      "buttonDownload": "Descărcați",
+      "buttonLater": "mai târziu",
+      "readyTitle": "Actualizare gata",
+      "readyMessage": "Memry {version} a fost descărcat.",
+      "readyDetailFallback": "Reporniți Memry pentru a finaliza instalarea actualizării.",
+      "buttonRestartNow": "Reporniți acum",
+      "releaseNotesLabel": "Note de lansare:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "Notă de memento",
+      "journal": "Memento de jurnal",
+      "highlight": "Evidențiați memento",
+      "fallback": "Memento scadent",
+      "default": "Memento"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "Ora de memento trebuie să fie în viitor",
+    "definitionNotFound": "Definiția nu a fost găsită",
+    "noteNotFound": "Nota nu a fost găsită",
+    "updateFailed": "Actualizarea a eșuat"
+  }
+}

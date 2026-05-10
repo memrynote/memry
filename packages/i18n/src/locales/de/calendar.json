@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "Tag",
+    "week": "Woche",
+    "month": "Monat",
+    "year": "Jahr"
+  },
+  "toolbar": {
+    "create-event": "Veranstaltung erstellen",
+    "previous-period": "Vorheriger Zeitraum",
+    "next-period": "Nächste Periode",
+    "previous-month": "Vorheriger Monat",
+    "next-month": "Nächsten Monat",
+    "today": "Heute"
+  },
+  "filter": {
+    "filter-calendars": "Kalender filtern",
+    "sources": "Quellen",
+    "memry-items": "Memry-Elemente",
+    "imported-calendars": "Importierte Kalender",
+    "event-types": "Veranstaltungstypen",
+    "google-calendars": "Google-Kalender",
+    "refresh-google-calendars": "Aktualisieren Sie Google-Kalender"
+  },
+  "visual-type": {
+    "event": "Veranstaltung",
+    "imported-event": "Importiertes Ereignis",
+    "task": "Aufgabe",
+    "reminder": "Erinnerung",
+    "snooze": "Schlummern"
+  },
+  "state": {
+    "loading-calendar": "Kalender wird geladen…",
+    "loading-calendars": "Kalender werden geladen…",
+    "preparing": "Vorbereiten…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "Noch keine importierten Kalender.",
+    "no-events": "Keine Veranstaltungen"
+  },
+  "time": {
+    "all-day": "Den ganzen Tag",
+    "all-day-lower": "den ganzen Tag",
+    "pick-a-date": "Wählen Sie ein Datum",
+    "new-event": "Neue Veranstaltung",
+    "more-events": "{count, plural, one {# weiteres Ereignis} other {# weitere Ereignisse}}"
+  },
+  "form": {
+    "create-calendar-event": "Kalenderereignis erstellen",
+    "edit-calendar-event": "Kalenderereignis bearbeiten",
+    "quick-create-description": "Geben Sie einen Titel ein und speichern Sie, um ein Ereignis im ausgewählten Zeitraum zu erstellen.",
+    "event-editor-description": "Aktualisieren Sie Titel, Ort, Datum, Uhrzeit und Notizen für dieses Ereignis.",
+    "new-event-placeholder": "Neue Veranstaltung",
+    "location-placeholder": "Standort hinzufügen",
+    "notes-url-placeholder": "Fügen Sie Notizen oder URL hinzu",
+    "start": "Start",
+    "end": "Ende",
+    "add-details": "Details hinzufügen",
+    "google-calendar": "Google-Kalender",
+    "target-calendar": "Zielkalender",
+    "use-default-calendar": "Standardkalender verwenden",
+    "use-default-calendar-with-name": "Standard verwenden ({calendar})",
+    "use-memry-calendar-default": "Memry-Kalender verwenden (Standard)",
+    "use-memry-managed-calendar": "Verwenden Sie den von Memry verwalteten Kalender",
+    "primary-suffix": "primär"
+  },
+  "delete-dialog": {
+    "title": "Veranstaltung löschen?",
+    "local-description": "„{title}“ wird dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+    "google-bound-description": "„{title}“ wird aus Memry und Google Kalender entfernt. Diese Aktion kann nicht rückgängig gemacht werden.",
+    "context-menu-delete-label": "Veranstaltung löschen"
+  },
+  "promote-dialog": {
+    "aria": "Externes Kalenderereignis bearbeiten",
+    "title": "Dieses Ereignis in Memry bearbeiten?",
+    "body": "Durch die Bearbeitung dieses Ereignisses wird eine verknüpfte Kopie in Memry erstellt, sodass Änderungen in beide Richtungen synchronisiert werden. Weitermachen?",
+    "do-not-ask-again": "Fragen Sie nicht noch einmal",
+    "confirm-label": "Bearbeiten in Memry"
+  },
+  "onboarding-dialog": {
+    "aria": "Wählen Sie Ihren Standard-Google-Kalender",
+    "title": "In welchen Kalender sollen neue Memry-Ereignisse verschoben werden?",
+    "body": "Wählen Sie den Google-Kalender aus, den Memry standardmäßig verwenden soll. Sie können es immer noch pro Ereignis überschreiben.",
+    "default-calendar-label": "Verwenden Sie den von Memry verwalteten Kalender",
+    "skip": "Überspringen",
+    "use-this-calendar": "Nutzen Sie diesen Kalender"
+  },
+  "metadata": {
+    "attendees": "Teilnehmer",
+    "attendees-count": "Teilnehmer ({count})",
+    "reminders": "Erinnerungen",
+    "default-reminders": "Standarderinnerungen",
+    "visibility": "Sichtbarkeit:",
+    "optional": "Optional",
+    "join-meeting": "Nehmen Sie an der Besprechung teil",
+    "response": {
+      "accepted": "Akzeptiert",
+      "declined": "Abgelehnt",
+      "tentative": "Vorläufig",
+      "needs-action": "Ausstehend"
+    },
+    "visibility-value": {
+      "private": "Privat",
+      "public": "Öffentlich",
+      "confidential": "Vertraulich"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "min · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "Ereignis konnte nicht gespeichert werden. Versuchen Sie es erneut.",
+      "couldNotCreateEventTryAgain": "Ereignis konnte nicht erstellt werden. Versuchen Sie es erneut.",
+      "couldNotSaveDefaultCalendarTryAgain": "Der Standardkalender konnte nicht gespeichert werden. Versuchen Sie es erneut.",
+      "failedToLoadCalendarPreferences": "Kalendereinstellungen konnten nicht geladen werden",
+      "failedToUpdateCalendarPreferences": "Die Kalendereinstellungen konnten nicht aktualisiert werden",
+      "couldNotEditThisEventTryAgain": "Dieses Ereignis konnte nicht bearbeitet werden. Versuchen Sie es erneut.",
+      "failedToDeleteEvent": "Ereignis konnte nicht gelöscht werden",
+      "couldNotUnsnoozeInboxItem": "Der Schlaf konnte nicht aufgehoben werden.",
+      "couldNotRescheduleInboxItem": "Konnte nicht verschoben werden."
+    },
+    "inboxSnoozePopover": {
+      "title": "Posteingangselement zurückgestellt",
+      "openInInbox": "Im Posteingang öffnen",
+      "unsnoozeNow": "Jetzt ausschlafen",
+      "reschedule": "Neu planen"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "Aufgabendetails",
+    "open-task": "Aufgabe öffnen",
+    "source-note": "Quellenanmerkung",
+    "reschedule": "Neu planen",
+    "more-actions": "Weitere Aktionen",
+    "mark-done": "Mark fertig",
+    "mark-not-done": "Mark nicht fertig",
+    "later-today": "Später heute",
+    "tomorrow": "Morgen",
+    "next-week": "Nächste Woche",
+    "next-week-mon": "Nächste Woche · Mo",
+    "pick-date-time": "Datum und Uhrzeit auswählen…",
+    "remove-due-date": "Fälligkeitsdatum entfernen",
+    "subtasks-prefix": "Unteraufgaben",
+    "subtasks-counter": "{done} von {total} fertig",
+    "today": "Heute",
+    "overdue-one": "1 Tag überfällig",
+    "overdue-other": "{count} Tage überfällig",
+    "repeats": "Wiederholt",
+    "repeats-daily": "Wird täglich wiederholt",
+    "repeats-weekly": "Wird wöchentlich wiederholt",
+    "repeats-monthly": "Wird monatlich wiederholt",
+    "repeats-yearly": "Wird jährlich wiederholt",
+    "priority-urgent": "Dringend",
+    "priority-high": "Hoch",
+    "priority-medium": "Mittel",
+    "errors": {
+      "could-not-save": "Aufgabe konnte nicht gespeichert werden",
+      "could-not-reschedule": "Aufgabe konnte nicht neu geplant werden",
+      "could-not-remove-due-date": "Das Fälligkeitsdatum konnte nicht entfernt werden",
+      "could-not-open-note": "Notiz konnte nicht geöffnet werden"
+    }
+  }
+}

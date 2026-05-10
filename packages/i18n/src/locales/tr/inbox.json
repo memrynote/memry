@@ -466,15 +466,15 @@
   },
   "phaseI": {
     "errors": {
-      "captureFailed": "Yakalama başarısız oldu",
-      "failedToCaptureAudio": "Ses yakalanamadı",
-      "failedToCaptureFile": "Dosya yakalanamadı",
       "failedToCaptureLink": "Bağlantı yakalanamadı",
       "failedToCaptureNote": "Not yakalanamadı",
-      "failedToCaptureVoice": "Ses yakalanamadı",
+      "captureFailed": "Yakalama başarısız oldu",
       "failedToCaptureVoiceMemo": "Sesli not yakalanamadı",
+      "voiceCaptureFailed": "Ses yakalama başarısız oldu",
+      "failedToCaptureFile": "Dosya yakalanamadı",
       "fileCaptureFailed": "Dosya yakalama başarısız oldu",
-      "voiceCaptureFailed": "Ses yakalama başarısız oldu"
+      "failedToCaptureAudio": "Ses yakalanamadı",
+      "failedToCaptureVoice": "Ses yakalanamadı"
     },
     "toasts": {
       "inboxRefreshed": "Gelen kutusu yenilendi"

@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "日",
+    "week": "週",
+    "month": "月",
+    "year": "年"
+  },
+  "toolbar": {
+    "create-event": "イベントの作成",
+    "previous-period": "前期",
+    "next-period": "次の期間",
+    "previous-month": "前月",
+    "next-month": "来月",
+    "today": "今日"
+  },
+  "filter": {
+    "filter-calendars": "カレンダーのフィルタリング",
+    "sources": "情報源",
+    "memry-items": "Memry アイテム",
+    "imported-calendars": "インポートされたカレンダー",
+    "event-types": "イベントの種類",
+    "google-calendars": "Googleカレンダー",
+    "refresh-google-calendars": "Googleカレンダーを更新する"
+  },
+  "visual-type": {
+    "event": "イベント",
+    "imported-event": "インポートされたイベント",
+    "task": "タスク",
+    "reminder": "リマインダー",
+    "snooze": "スヌーズ"
+  },
+  "state": {
+    "loading-calendar": "カレンダーを読み込み中…",
+    "loading-calendars": "カレンダーを読み込み中…",
+    "preparing": "準備中…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "インポートされたカレンダーはまだありません。",
+    "no-events": "イベントはありません"
+  },
+  "time": {
+    "all-day": "一日中",
+    "all-day-lower": "一日中",
+    "pick-a-date": "日付を選択してください",
+    "new-event": "新しいイベント",
+    "more-events": "{count, plural, one {# その他のイベント} other {# その他のイベント}}"
+  },
+  "form": {
+    "create-calendar-event": "カレンダーイベントを作成する",
+    "edit-calendar-event": "カレンダーイベントを編集する",
+    "quick-create-description": "タイトルを入力して保存すると、選択した時間範囲でイベントが作成されます。",
+    "event-editor-description": "このイベントのタイトル、場所、日付、時刻、メモを更新します。",
+    "new-event-placeholder": "新しいイベント",
+    "location-placeholder": "場所を追加",
+    "notes-url-placeholder": "メモまたは URL を追加する",
+    "start": "スタート",
+    "end": "終了",
+    "add-details": "詳細を追加",
+    "google-calendar": "Googleカレンダー",
+    "target-calendar": "ターゲットカレンダー",
+    "use-default-calendar": "デフォルトのカレンダーを使用する",
+    "use-default-calendar-with-name": "デフォルト ({calendar}) を使用します",
+    "use-memry-calendar-default": "Memry カレンダーを使用する (デフォルト)",
+    "use-memry-managed-calendar": "Memry 管理のカレンダーを使用する",
+    "primary-suffix": "プライマリー"
+  },
+  "delete-dialog": {
+    "title": "イベントを削除しますか?",
+    "local-description": "「{title}」は完全に削除されます。この操作は元に戻すことができません。",
+    "google-bound-description": "「{title}」はMemryおよびGoogleカレンダーから削除されます。この操作は元に戻すことができません。",
+    "context-menu-delete-label": "イベントの削除"
+  },
+  "promote-dialog": {
+    "aria": "外部カレンダーイベントを編集する",
+    "title": "このイベントを Memry で編集しますか?",
+    "body": "このイベントを編集すると、Memry にリンクされたコピーが作成されるため、変更は双方向で同期されます。続けますか？",
+    "do-not-ask-again": "二度と聞かないでください",
+    "confirm-label": "Memry で編集する"
+  },
+  "onboarding-dialog": {
+    "aria": "デフォルトの Google カレンダーを選択してください",
+    "title": "新しい Memry イベントはどのカレンダーに移動する必要がありますか?",
+    "body": "Memry がデフォルトで使用する Google カレンダーを選択します。イベントごとにオーバーライドすることもできます。",
+    "default-calendar-label": "Memry 管理のカレンダーを使用する",
+    "skip": "スキップ",
+    "use-this-calendar": "このカレンダーを使用してください"
+  },
+  "metadata": {
+    "attendees": "出席者",
+    "attendees-count": "出席者 ({count})",
+    "reminders": "リマインダー",
+    "default-reminders": "デフォルトのリマインダー",
+    "visibility": "可視性:",
+    "optional": "オプション",
+    "join-meeting": "ミーティングに参加する",
+    "response": {
+      "accepted": "承認されました",
+      "declined": "拒否されました",
+      "tentative": "暫定",
+      "needs-action": "保留中"
+    },
+    "visibility-value": {
+      "private": "プライベート",
+      "public": "公共",
+      "confidential": "機密"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "分・ "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "イベントを保存できませんでした。もう一度試してください。",
+      "couldNotCreateEventTryAgain": "イベントを作成できませんでした。もう一度試してください。",
+      "couldNotSaveDefaultCalendarTryAgain": "デフォルトのカレンダーを保存できませんでした。もう一度試してください。",
+      "failedToLoadCalendarPreferences": "カレンダー設定のロードに失敗しました",
+      "failedToUpdateCalendarPreferences": "カレンダーの設定を更新できませんでした",
+      "couldNotEditThisEventTryAgain": "このイベントを編集できませんでした。もう一度試してください。",
+      "failedToDeleteEvent": "イベントの削除に失敗しました",
+      "couldNotUnsnoozeInboxItem": "スヌーズを解除できませんでした。",
+      "couldNotRescheduleInboxItem": "再スケジュールできませんでした。"
+    },
+    "inboxSnoozePopover": {
+      "title": "スヌーズされた受信箱アイテム",
+      "openInInbox": "受信箱で開く",
+      "unsnoozeNow": "今すぐスヌーズを解除してください",
+      "reschedule": "スケジュールを変更する"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "タスクの詳細",
+    "open-task": "タスクを開く",
+    "source-note": "ソースノート",
+    "reschedule": "スケジュールを変更する",
+    "more-actions": "さらなるアクション",
+    "mark-done": "完了マークを付ける",
+    "mark-not-done": "未完了のマークを付ける",
+    "later-today": "今日遅くに",
+    "tomorrow": "明日",
+    "next-week": "来週",
+    "next-week-mon": "来週・月",
+    "pick-date-time": "日付と時刻を選択してください…",
+    "remove-due-date": "期限を削除する",
+    "subtasks-prefix": "サブタスク",
+    "subtasks-counter": "{total} の {done} が完了しました",
+    "today": "今日",
+    "overdue-one": "1日遅れ",
+    "overdue-other": "{count} 日超過",
+    "repeats": "繰り返し",
+    "repeats-daily": "毎日繰り返す",
+    "repeats-weekly": "毎週繰り返す",
+    "repeats-monthly": "毎月繰り返す",
+    "repeats-yearly": "毎年繰り返す",
+    "priority-urgent": "緊急",
+    "priority-high": "高",
+    "priority-medium": "中",
+    "errors": {
+      "could-not-save": "タスクを保存できませんでした",
+      "could-not-reschedule": "タスクを再スケジュールできませんでした",
+      "could-not-remove-due-date": "期日を削除できませんでした",
+      "could-not-open-note": "メモを開けませんでした"
+    }
+  }
+}

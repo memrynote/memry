@@ -1,0 +1,1160 @@
+{
+  "toast": {
+    "exportNotImplemented": "Ekspor data lokal belum diterapkan"
+  },
+  "page": {
+    "title": "Pengaturan",
+    "nav": {
+      "groups": {
+        "workspace": "Ruang kerja",
+        "preferences": "Preferensi",
+        "services": "Layanan",
+        "data": "Data"
+      },
+      "items": {
+        "account": "Akun",
+        "general": "Umum",
+        "templates": "Templat",
+        "editor": "Penyunting",
+        "journal": "Jurnal",
+        "tasks": "Tugas",
+        "calendar": "Kalender",
+        "appearance": "Penampilan",
+        "shortcuts": "Jalan pintas",
+        "ai": "Asisten AI",
+        "integrations": "Integrasi",
+        "vault": "Gudang",
+        "tags": "Tag",
+        "properties": "Properti"
+      }
+    }
+  },
+  "general": {
+    "header": {
+      "title": "Umum",
+      "subtitle": "Startup aplikasi dan perilaku tab",
+      "loading": "Memuat setelan..."
+    },
+    "groups": {
+      "startup": "Memulai",
+      "updates": "Pembaruan",
+      "languageRegion": "Bahasa & Wilayah",
+      "tabBehavior": "Perilaku Tab",
+      "fileCreation": "Pembuatan File",
+      "privacy": "Privasi"
+    },
+    "startup": {
+      "launchAtLogin": {
+        "label": "Luncurkan saat Login",
+        "description": "Mulai Memry saat Anda masuk",
+        "error": "Gagal memperbarui awal saat boot"
+      }
+    },
+    "updates": {
+      "appUpdates": "Pembaruan Aplikasi",
+      "installedVersion": "Versi terinstal {version}",
+      "availableVersion": "Tersedia versi {version}",
+      "unsupported": "Build terpaket dapat memeriksa, mengunduh, dan menginstal pembaruan dari Rilis GitHub",
+      "available": "Memry {version} tersedia untuk diunduh",
+      "downloadingLatest": "Mengunduh rilis terbaru",
+      "downloadingLatestPercent": "Mengunduh rilis terbaru ({percent}%)",
+      "downloaded": "Memry {version} siap dipasang",
+      "upToDate": "Instalasi ini ada pada rilis terbaru yang diterbitkan",
+      "checking": "Memeriksa Rilis GitHub untuk versi yang lebih baru",
+      "idle": "Periksa rilis baru dan instal tanpa meninggalkan aplikasi",
+      "unsupportedToast": "Pembaruan otomatis hanya tersedia dalam rilis paket",
+      "upToDateToast": "Memry {version} adalah yang terbaru",
+      "actionFailed": "Tindakan pembaruan gagal",
+      "actions": {
+        "checking": "Memeriksa...",
+        "available": "Unduh Pembaruan",
+        "downloading": "Mengunduh...",
+        "downloadingPercent": "Mengunduh {percent}%",
+        "downloaded": "Mulai ulang untuk Menginstal",
+        "idle": "Periksa Pembaruan"
+      }
+    },
+    "language": {
+      "label": "Bahasa",
+      "helper": "Sebagian besar aplikasi segera diperbarui. Beberapa teks tingkat sistem — pemberitahuan yang sudah ditampilkan, label dok, bilah judul jendela — disegarkan setelah peluncuran berikutnya.",
+      "changed": "Bahasa diubah menjadi {nativeName}",
+      "failed": "Gagal mengubah bahasa. Silakan coba lagi."
+    },
+    "clockFormat": {
+      "label": "Format Waktu",
+      "description": "Jam 12 jam atau 24 jam",
+      "options": {
+        "12h": "12 jam",
+        "24h": "24 jam"
+      },
+      "error": "Gagal memperbarui format waktu"
+    },
+    "tabs": {
+      "previewMode": {
+        "label": "Mode Pratinjau",
+        "description": "Klik sekali membuka pratinjau, klik dua kali tetap terbuka"
+      },
+      "restoreSession": {
+        "label": "Pulihkan Sesi saat Mulai",
+        "description": "Buka kembali tab dari sesi terakhir Anda"
+      },
+      "closeButton": {
+        "label": "Tombol Tutup Tab",
+        "description": "Kapan menampilkan tombol tutup",
+        "options": {
+          "always": "Selalu terlihat",
+          "hover": "Tampilkan saat melayang",
+          "active": "Hanya di tab aktif"
+        }
+      },
+      "error": "Gagal memperbarui setelan"
+    },
+    "fileCreation": {
+      "createInSelectedFolder": {
+        "label": "Buat di Folder yang Dipilih",
+        "description": "Catatan dan folder baru dibuat di dalam folder yang dipilih saat ini. Jika tidak aktif, item selalu dibuat di root."
+      }
+    },
+    "privacy": {
+      "telemetry": {
+        "label": "Bagikan Metrik Penggunaan Anonim",
+        "description": "Ini hanya metrik langsung — tidak ada konten catatan, permintaan pencarian, jalur file, email, atau ID mentah yang pernah dikirim.",
+        "error": "Gagal memperbarui setelan telemetri"
+      }
+    }
+  },
+  "appearance": {
+    "header": {
+      "title": "Penampilan",
+      "subtitle": "Sesuaikan tampilan dan nuansa",
+      "loading": "Memuat setelan..."
+    },
+    "groups": {
+      "theme": "Tema",
+      "accentColor": "Warna Aksen",
+      "typography": "Tipografi"
+    },
+    "theme": {
+      "colorMode": {
+        "label": "Modus Warna",
+        "description": "Pilih tema pilihan Anda",
+        "aria": "Modus warna"
+      },
+      "options": {
+        "light": "Hangat",
+        "white": "Putih",
+        "dark": "Gelap",
+        "system": "Sistem"
+      },
+      "error": "Gagal memperbarui tema"
+    },
+    "accent": {
+      "pick": "Pilih warna aksen",
+      "custom": {
+        "label": "Warna Khusus",
+        "description": "Masukkan nilai hex",
+        "placeholder": "#000000"
+      },
+      "presets": {
+        "indigo": "nila",
+        "amber": "kuning",
+        "emerald": "Zamrud",
+        "red": "Merah",
+        "violet": "ungu",
+        "cyan": "Sian",
+        "pink": "Merah Jambu",
+        "orange": "Oranye"
+      },
+      "error": "Gagal memperbarui warna aksen"
+    },
+    "typography": {
+      "fontSize": {
+        "label": "Ukuran Huruf",
+        "description": "Sesuaikan ukuran teks dasar",
+        "aria": "Ukuran huruf"
+      },
+      "fontFamily": {
+        "label": "Keluarga Font",
+        "description": "Jenis huruf utama untuk antarmuka",
+        "options": {
+          "system": "Bawaan Sistem",
+          "sansSerif": "Sans-serif",
+          "serif": "Serif (Crimson Pro)",
+          "gelasio": "Gelasio",
+          "geist": "Geist",
+          "inter": "Antar",
+          "monospace": "Ruang tunggal"
+        }
+      },
+      "fontSizeError": "Gagal memperbarui ukuran font",
+      "fontFamilyError": "Gagal memperbarui jenis font"
+    }
+  },
+  "editor": {
+    "header": {
+      "title": "Penyunting",
+      "subtitle": "Catatan pengaturan dan preferensi editor",
+      "loading": "Memuat setelan..."
+    },
+    "groups": {
+      "layout": "Tata Letak",
+      "toolbar": "Bilah Alat",
+      "writing": "Menulis"
+    },
+    "width": {
+      "label": "Lebar Penyunting",
+      "description": "Lebar maksimum area penulisan",
+      "options": {
+        "narrow": "Sempit",
+        "medium": "Sedang",
+        "wide": "Lebar"
+      },
+      "error": "Gagal memperbarui lebar editor"
+    },
+    "toolbarMode": {
+      "label": "Bilah Alat Pemformatan Lengket",
+      "description": "Selalu tampilkan toolbar di atas editor",
+      "error": "Gagal memperbarui mode bilah alat"
+    },
+    "spellCheck": {
+      "label": "Periksa Ejaan",
+      "description": "Garis bawahi kata-kata yang salah eja saat mengetik",
+      "error": "Gagal memperbarui pemeriksaan ejaan"
+    },
+    "autoSaveDelay": {
+      "label": "Penundaan Simpan Otomatis",
+      "description": "Tunggu beberapa saat setelah pengetikan berhenti sebelum menyimpan",
+      "seconds": "{seconds}s",
+      "error": "Gagal memperbarui penundaan penyimpanan otomatis"
+    },
+    "wordCount": {
+      "label": "Jumlah Kata",
+      "description": "Tampilkan jumlah kata di footer editor",
+      "error": "Gagal memperbarui tampilan jumlah kata"
+    }
+  },
+  "templates": {
+    "header": {
+      "title": "Templat",
+      "subtitle": "Kelola templat catatan untuk pembuatan cepat"
+    },
+    "actions": {
+      "new": "Templat Baru",
+      "edit": "Sunting",
+      "duplicate": "Duplikat",
+      "delete": "Hapus"
+    },
+    "groups": {
+      "builtIn": "Bawaan",
+      "myTemplates": "Templat Saya"
+    },
+    "loading": "Memuat template...",
+    "newTemplateTitle": "Templat Baru",
+    "copySuffix": "{name} (Salinan)",
+    "empty": {
+      "title": "Belum ada templat khusus",
+      "description": "Buat templat untuk memulai"
+    },
+    "toasts": {
+      "deleted": "Templat dihapus",
+      "deleteFailed": "Gagal menghapus templat",
+      "duplicated": "Templat diduplikasi",
+      "duplicateFailed": "Gagal menduplikasi template"
+    },
+    "dialogs": {
+      "delete": {
+        "title": "Hapus Templat",
+        "description": "Apakah Anda yakin ingin menghapus templat ini? Tindakan ini tidak dapat dibatalkan. Catatan yang dibuat dari templat ini tidak akan terpengaruh."
+      },
+      "duplicate": {
+        "title": "Templat Duplikat",
+        "description": "Masukkan nama untuk salinan templat baru.",
+        "placeholder": "Nama templat"
+      }
+    }
+  },
+  "journal": {
+    "header": {
+      "title": "Jurnal",
+      "subtitle": "Pengaturan dan preferensi jurnal",
+      "loading": "Memuat setelan..."
+    },
+    "groups": {
+      "defaultTemplate": "Templat Bawaan",
+      "sidebarVisibility": "Visibilitas Bilah Sisi",
+      "footer": "catatan kaki"
+    },
+    "template": {
+      "label": "Templat",
+      "description": "Entri baru dimulai dengan templat ini",
+      "placeholder": "Pilih templat",
+      "unknown": "Templat tidak dikenal",
+      "none": "Tidak ada",
+      "noneAsk": "Tidak ada (tanyakan setiap kali)",
+      "updated": "Templat default diperbarui",
+      "cleared": "Templat default dihapus",
+      "error": "Gagal memperbarui template default"
+    },
+    "showSchedule": {
+      "label": "Jadwal Pertunjukan",
+      "description": "Menampilkan acara dan kalender hari ini"
+    },
+    "showTasks": {
+      "label": "Tampilkan Tugas",
+      "description": "Tampilkan tugas yang harus diselesaikan pada hari yang dipilih"
+    },
+    "showAIConnections": {
+      "label": "Tampilkan Koneksi AI",
+      "description": "Tampilkan koneksi bertenaga AI ke entri terkait"
+    },
+    "showStatsFooter": {
+      "label": "Tampilkan Statistik Footer",
+      "description": "Jumlah kata, waktu membaca, cap waktu"
+    },
+    "updateError": "Gagal memperbarui setelan"
+  },
+  "tasks": {
+    "header": {
+      "title": "Tugas",
+      "subtitle": "Konfigurasikan default dan perilaku tugas",
+      "loading": "Memuat setelan..."
+    },
+    "groups": {
+      "defaults": "Default",
+      "calendar": "Kalender",
+      "inbox": "Kotak masuk"
+    },
+    "defaultProject": {
+      "label": "Proyek Bawaan",
+      "description": "Ditugaskan ketika tidak ada proyek yang dipilih",
+      "placeholder": "Tidak ada proyek default",
+      "none": "Tidak ada default (gunakan Pribadi)",
+      "error": "Gagal memperbarui proyek default"
+    },
+    "sortOrder": {
+      "label": "Urutan Pengurutan Default",
+      "description": "Bagaimana tugas diurutkan dalam tampilan daftar",
+      "options": {
+        "manual": "Manual (seret & lepas)",
+        "dueDate": "Tanggal Jatuh Tempo",
+        "priority": "Prioritas",
+        "createdAt": "Tanggal Dibuat"
+      },
+      "error": "Gagal memperbarui susunan pengurutan"
+    },
+    "weekStart": {
+      "label": "Minggu Dimulai",
+      "description": "Hari pertama dalam seminggu dalam tampilan kalender",
+      "options": {
+        "sunday": "Minggu",
+        "monday": "Senin"
+      },
+      "error": "Gagal memperbarui awal minggu"
+    },
+    "staleInbox": {
+      "label": "Ambang Batas Kotak Masuk yang Kedaluwarsa",
+      "description": "Tugas yang lebih lama dari ini akan disorot sebagai tugas yang sudah basi",
+      "unit": "hari",
+      "error": "Gagal memperbarui ambang batas kotak masuk yang sudah usang"
+    }
+  },
+  "calendar": {
+    "header": {
+      "title": "Kalender",
+      "subtitle": "Konfigurasikan perilaku sel hari di Panel Hari",
+      "loading": "Memuat setelan..."
+    },
+    "groups": {
+      "dayCellClick": "Klik Sel Hari"
+    },
+    "defaultBehavior": {
+      "label": "Perilaku bawaan",
+      "description": "Saat mengklik hari di kalender Panel Hari dari tab non-kalender mana pun",
+      "error": "Gagal memperbarui perilaku klik hari"
+    },
+    "pageOverride": {
+      "label": "Penggantian halaman kalender",
+      "description": "Perilaku saat tab Kalender aktif (default pada Buka Kalender)",
+      "error": "Gagal memperbarui penggantian halaman kalender"
+    },
+    "options": {
+      "openJournal": "Buka Jurnal",
+      "openCalendar": "Buka Kalender",
+      "useGlobal": "Gunakan pengaturan global"
+    }
+  },
+  "account": {
+    "header": {
+      "title": "Akun",
+      "subtitle": "Akun Anda, sinkronisasi, dan keamanan",
+      "loading": "Memuat..."
+    },
+    "groups": {
+      "identity": "Identitas",
+      "sync": "Sinkronisasi",
+      "storage": "Penyimpanan",
+      "devices": "Perangkat",
+      "security": "Keamanan"
+    },
+    "identity": {
+      "unknown": "Tidak diketahui",
+      "plan": "Rencana profesional"
+    },
+    "sync": {
+      "lastSynced": "{time} yang terakhir disinkronkan",
+      "pending": "{count, plural, one {# tertunda} other {# tertunda}}",
+      "statuses": {
+        "synced": "Disinkronkan",
+        "syncing": "Menyinkronkan...",
+        "paused": "Dijeda",
+        "syncError": "Kesalahan Sinkronisasi",
+        "offline": "Luring",
+        "connecting": "Menghubungkan...",
+        "pushed": "{count, plural, one {# didorong} other {# didorong}}",
+        "pulled": "{count, plural, one {# ditarik} other {# ditarik}}",
+        "pushedPulled": "{parts}",
+        "changesPending": "{count, plural, one {Perubahan # tertunda} other {Perubahan # tertunda}}",
+        "offlinePending": "Offline ({count, plural, one {Perubahan # tertunda} other {Perubahan # tertunda}})",
+        "never": "Tidak pernah"
+      }
+    },
+    "storage": {
+      "used": "{used} dari {limit} digunakan",
+      "categories": {
+        "notes": "Catatan",
+        "attachments": "Lampiran",
+        "crdt": "CRDT",
+        "other": "Lainnya",
+        "available": "Tersedia"
+      }
+    },
+    "security": {
+      "recoveryKey": {
+        "label": "Kunci Pemulihan",
+        "description": "Lihat kunci pemulihan Anda untuk akses data",
+        "action": "Lihat Kunci"
+      },
+      "rotateKeys": {
+        "label": "Putar Kunci Enkripsi",
+        "description": "Hasilkan kunci baru dan enkripsi ulang semua data",
+        "action": "Putar"
+      },
+      "signOut": {
+        "label": "Keluar",
+        "description": "Putuskan sambungan perangkat ini dari sinkronisasi",
+        "action": "Keluar"
+      }
+    },
+    "signOutDialog": {
+      "title": "Keluar dari sinkronisasi?",
+      "description": "Sinkronisasi akan berhenti dan kunci enkripsi akan dihapus dari perangkat ini. Catatan Anda akan tetap ada di perangkat ini. Anda memerlukan frasa pemulihan untuk menyiapkan sinkronisasi lagi.",
+      "confirm": "Keluar",
+      "signingOut": "Keluar..."
+    },
+    "toasts": {
+      "signedOut": "Berhasil keluar",
+      "signOutFailed": "Gagal keluar",
+      "deviceLinked": "Perangkat berhasil ditautkan"
+    }
+  },
+  "setup": {
+    "steps": {
+      "signIn": "Masuk",
+      "verify": "Verifikasi",
+      "link": "Tautan"
+    },
+    "progress": "Langkah {current} dari {total}: {label}",
+    "signIn": {
+      "title": "Siapkan Sinkronisasi",
+      "description": "Buat akun untuk menyinkronkan data Anda di seluruh perangkat dengan enkripsi ujung ke ujung.",
+      "or": "atau",
+      "errors": {
+        "sendCode": "Gagal mengirim kode",
+        "googleStart": "Gagal memulai proses masuk dengan Google"
+      }
+    },
+    "email": {
+      "label": "Alamat email",
+      "placeholder": "Masukkan alamat email Anda...",
+      "invalid": "Silakan masukkan alamat email yang valid",
+      "sending": "Mengirim kode..."
+    },
+    "oauth": {
+      "google": "Lanjutkan dengan Google"
+    },
+    "otp": {
+      "title": "Masukkan kode verifikasi",
+      "sentTo": "Kami mengirimkan kode 6 digit ke ",
+      "aria": "Kode verifikasi 6 digit",
+      "verifying": "Memverifikasi...",
+      "resending": "Mengirim ulang...",
+      "resend": "Kirim ulang kode",
+      "resendIn": "Kirim ulang dalam {time}",
+      "differentEmail": "Gunakan email lain",
+      "error": "Verifikasi gagal",
+      "resendError": "Gagal mengirim ulang"
+    },
+    "recovery": {
+      "displayTitle": "Simpan frase pemulihan Anda",
+      "displayDescription": "Ini adalah satu-satunya cara untuk memulihkan data terenkripsi Anda jika Anda kehilangan akses ke semua perangkat Anda.",
+      "warning": "Tuliskan ini dan simpan di tempat yang aman. Anda tidak akan melihatnya lagi.",
+      "wordsAria": "Kata-kata frase pemulihan",
+      "wordAria": "Kata {index}: {word}",
+      "copyAria": "Salin frase pemulihan ke clipboard",
+      "copiedAria": "Frasa pemulihan disalin",
+      "copied": "Disalin",
+      "saved": "Saya telah menyimpan frase pemulihan saya",
+      "confirmTitle": "Konfirmasikan frasa pemulihan Anda",
+      "confirmDescription": "Masukkan kata-kata yang diminta untuk memverifikasi bahwa Anda telah menyimpannya dengan benar.",
+      "wordPlaceholder": "Masukkan kata #{index}",
+      "verify": "Verifikasi",
+      "mustMatch": "Ketiga kata tersebut harus cocok untuk melanjutkan",
+      "inputTitle": "Masukkan frase pemulihan",
+      "inputDescription": "Masukkan frasa pemulihan 24 kata Anda untuk memulihkan akses ke data terenkripsi Anda.",
+      "inputLabel": "Frase pemulihan",
+      "count": "{count} / {total} kata",
+      "inputPlaceholder": "Masukkan frasa pemulihan 24 kata Anda dengan dipisahkan spasi...",
+      "lengthHint": "Masukkan 24 kata untuk mengaktifkan tombol pemulihan",
+      "restore": "Pulihkan akses",
+      "progress": {
+        "deriving": "Mendapatkan kunci enkripsi...",
+        "validating": "Memvalidasi frasa pemulihan...",
+        "registering": "Mendaftarkan perangkat..."
+      },
+      "failed": "Pemulihan gagal",
+      "confirmationFailed": "Konfirmasi gagal"
+    },
+    "linking": {
+      "choiceTitle": "Tautkan perangkat ini",
+      "choiceDescription": "Transfer kunci enkripsi dari perangkat lain atau pulihkan dari frase pemulihan Anda.",
+      "qrChoice": "Tautan melalui kode QR",
+      "qrChoiceDescription": "Pindai kode yang ditampilkan di perangkat Anda yang lain",
+      "recoveryChoice": "Frase pemulihan",
+      "recoveryChoiceDescription": "Masukkan frase pemulihan 24 kata Anda",
+      "codeTitle": "Masukkan kode tautan",
+      "codeDescription": "Tempelkan kode tautan dari perangkat Anda yang lain untuk mentransfer kunci enkripsi Anda dengan aman.",
+      "codeLabel": "Menghubungkan kode",
+      "valid": "Sah",
+      "invalid": "Formatnya tidak valid",
+      "codePlaceholder": "Tempelkan kode dari perangkat Anda yang lain...",
+      "formatHint": "Tempelkan kode tautan JSON dari perangkat Anda yang lain",
+      "linking": "Menghubungkan...",
+      "linkDevice": "Perangkat tautan",
+      "failed": "Penautan gagal",
+      "deviceFailed": "Gagal menautkan perangkat",
+      "pendingSuccess": "Perangkat berhasil ditautkan",
+      "goBack": "Kembali",
+      "waitingTitle": "Menunggu persetujuan",
+      "waitingDescription": "Buka Memry di perangkat Anda yang lain dan setujui permintaan penautan.",
+      "verificationCode": "Kode verifikasi",
+      "confirmCode": "Konfirmasikan ini cocok dengan kode di perangkat Anda yang lain",
+      "cancel": "Batalkan"
+    }
+  },
+  "devices": {
+    "loading": "Memuat perangkat...",
+    "loadingAria": "Memuat perangkat",
+    "none": "Belum ada perangkat yang ditautkan",
+    "linkNew": "Tautkan perangkat baru",
+    "thisDevice": "Perangkat ini",
+    "lastSeen": "Terakhir terlihat {time} yang lalu",
+    "linked": "Tertaut {time} yang lalu",
+    "renameAria": "Ganti nama {name}",
+    "rename": "Ganti nama",
+    "revoke": "Cabut",
+    "showLess": "Tampilkan lebih sedikit",
+    "showMore": "{count, plural, one {# lebih banyak perangkat} other {# lebih banyak perangkat}}",
+    "showMoreAria": "Tampilkan {count, plural, one {# lebih banyak perangkat} other {# lebih banyak perangkat}}",
+    "dialogs": {
+      "revokeTitle": "Cabut \"{name}\"?",
+      "revokeDescription": "Perangkat ini akan kehilangan akses ke data Anda yang disinkronkan. Itu perlu ditautkan lagi untuk memulihkan sinkronisasi. Data lokal di perangkat itu akan tetap ada.",
+      "revokeDevice": "Cabut perangkat",
+      "revoking": "Mencabut...",
+      "renameTitle": "Ganti nama perangkat",
+      "renameDescription": "Pilih nama untuk mengidentifikasi perangkat ini.",
+      "namePlaceholder": "Nama perangkat",
+      "renaming": "Mengganti nama..."
+    },
+    "toasts": {
+      "loadFailed": "Gagal memuat perangkat",
+      "removed": "Menghapus \"{name}\"",
+      "removeFailed": "Gagal menghapus perangkat",
+      "renamed": "Berganti nama menjadi \"{name}\"",
+      "renameFailed": "Gagal mengganti nama perangkat"
+    }
+  },
+  "qrLinking": {
+    "title": "Tautkan perangkat baru",
+    "description": "Pindai kode QR ini dari perangkat yang ingin Anda tautkan untuk mentransfer kunci enkripsi Anda dengan aman.",
+    "encrypted": "Dienkripsi ujung ke ujung",
+    "generating": "Menghasilkan kode tautan...",
+    "generatingAria": "Menghasilkan kode tautan",
+    "generateFailed": "Gagal membuat kode penautan",
+    "tryAgain": "Coba lagi",
+    "expired": "Kode penautan sudah habis masa berlakunya",
+    "generateNew": "Hasilkan kode baru",
+    "qrAria": "Kode QR untuk menghubungkan perangkat",
+    "qrImageAria": "Perangkat menghubungkan kode QR",
+    "expiresIn": "Kedaluwarsa dalam {time}",
+    "or": "atau",
+    "codeLabel": "Menghubungkan kode",
+    "copyAria": "Salin kode tautan",
+    "copiedAria": "Disalin",
+    "copied": "Disalin!"
+  },
+  "linkingApproval": {
+    "title": "Perangkat baru ingin ditautkan",
+    "description": "Perangkat meminta akses ke data terenkripsi Anda. Hanya setujui jika Anda memulai permintaan ini.",
+    "unknownDevice": "Perangkat tidak dikenal",
+    "unknownPlatform": "Platform tidak dikenal",
+    "verificationCode": "Kode verifikasi",
+    "computing": "Menghitung...",
+    "unavailable": "Tidak tersedia",
+    "confirmCode": "Konfirmasikan kode ini cocok dengan yang ditampilkan pada perangkat baru",
+    "reject": "Tolak",
+    "approve": "Menyetujui",
+    "approving": "Menyetujui...",
+    "approvalFailed": "Persetujuan gagal",
+    "failedToApprove": "Gagal menyetujui perangkat"
+  },
+  "recoveryKey": {
+    "title": "Kunci Pemulihan",
+    "description": "Simpan kunci ini dengan aman. Itu dapat memulihkan brankas Anda jika Anda kehilangan akses ke semua perangkat.",
+    "loading": "Memuat...",
+    "retrieveFailed": "Gagal mengambil kunci pemulihan",
+    "copied": "Kunci pemulihan disalin ke papan klip",
+    "copyFailed": "Gagal menyalin ke papan klip",
+    "clickToReveal": "Klik untuk mengungkapkan",
+    "hide": "Sembunyikan",
+    "reveal": "Mengungkapkan",
+    "copy": "Salin",
+    "sessionHint": "Kunci ini ditampilkan sekali per sesi. Tutup dialog ini untuk menghapusnya dari memori."
+  },
+  "keyRotation": {
+    "title": "Putar Kunci Enkripsi",
+    "descriptions": {
+      "confirm": "Hasilkan kunci enkripsi baru untuk brankas Anda.",
+      "rotating": "Mengenkripsi ulang data Anda dengan kunci baru...",
+      "phrase": "Simpan frase pemulihan baru Anda.",
+      "complete": "Rotasi kunci selesai.",
+      "error": "Rotasi kunci mengalami kesalahan."
+    },
+    "warningTitle": "Tindakan ini akan:",
+    "warningItems": {
+      "keyPair": "Hasilkan pasangan kunci enkripsi baru",
+      "rewrap": "Bungkus ulang semua item yang disinkronkan dengan kunci baru",
+      "phrase": "Menghasilkan frase pemulihan baru (yang lama menjadi tidak valid)",
+      "pause": "Jeda sementara sinkronisasi selama proses berlangsung"
+    },
+    "explanation": "Konten data Anda tidak pernah dienkripsi ulang - hanya sampul kunci yang berubah. Ini adalah operasi yang cepat dan aman.",
+    "start": "Mulai Rotasi Kunci",
+    "starting": "Mulai...",
+    "phases": {
+      "preparing": "Mempersiapkan...",
+      "reencrypting": "Membungkus ulang kunci ({processed}/{total})",
+      "finalizing": "Menyelesaikan...",
+      "working": "Bekerja..."
+    },
+    "progressAria": "Rotasi kunci: {phaseLabel} {pct}%",
+    "progressLabel": "Kemajuan rotasi kunci",
+    "doNotClose": "Jangan tutup aplikasi selama proses ini.",
+    "complete": "Semua kunci enkripsi telah diputar. Frase pemulihan baru Anda telah disimpan. Sinkronisasi akan dilanjutkan secara otomatis.",
+    "unknownError": "Terjadi kesalahan yang tidak diketahui selama rotasi kunci.",
+    "errorHint": "Kunci Anda yang ada tetap valid. Sinkronisasi telah dilanjutkan. Anda dapat mencoba lagi kapan saja.",
+    "closeConfirm": {
+      "title": "Rotasi sedang berlangsung",
+      "description": "Rotasi kunci masih berjalan. Menutup dialog ini tidak akan menghentikan proses, namun Anda tidak akan melihat frasa pemulihan baru hingga proses selesai.",
+      "stay": "Tinggal",
+      "closeAnyway": "Tutup saja"
+    },
+    "failed": "Rotasi kunci gagal"
+  },
+  "ai": {
+    "header": {
+      "title": "Asisten AI",
+      "subtitle": "Penyematan dijalankan secara lokal. Memo suara dapat menggunakan Whisper Small atau kunci OpenAI Anda.",
+      "loading": "Memuat setelan..."
+    },
+    "enable": {
+      "label": "Aktifkan Fitur AI",
+      "description": "Saran pengarsipan cerdas dan koneksi catatan",
+      "enabled": "Fitur AI diaktifkan",
+      "disabled": "Fitur AI dinonaktifkan",
+      "error": "Gagal memperbarui setelan"
+    },
+    "unknownError": "Kesalahan tidak diketahui",
+    "groups": {
+      "voice": "Transkripsi Suara",
+      "embeddingModel": "Model Penyematan Lokal",
+      "embeddingIndex": "Indeks Penyematan",
+      "inline": "Pengeditan AI sebaris"
+    },
+    "voice": {
+      "provider": "Penyedia",
+      "providerDescription": "Penyedia ucapan-ke-teks untuk memo suara",
+      "providers": {
+        "local": "Lokal (standar)",
+        "openai": "OpenAI (BYOK)"
+      },
+      "localModel": "Model Lokal",
+      "localModelDescription": "Whisper Unduhan kecil sesuai permintaan dan tetap di-cache secara lokal",
+      "status": {
+        "ready": "Siap",
+        "downloading": "Mengunduh",
+        "downloaded": "Diunduh",
+        "notDownloaded": "Tidak diunduh"
+      },
+      "cacheHint": "Tidak dibundel dengan aplikasi · Diunduh dari Pengaturan · Di-cache di perangkat ini",
+      "preparing": "Mempersiapkan Bisikan Kecil...",
+      "download": "Unduh Bisikan Kecil",
+      "apiKey": "Kunci API OpenAI",
+      "apiKeyDescription": "Disimpan di gantungan kunci OS Anda dan hanya digunakan untuk transkripsi suara",
+      "replaceKey": "Ganti kunci OpenAI yang disimpan",
+      "enterKey": "Masukkan kunci API OpenAI",
+      "saveKey": "Simpan Kunci",
+      "keySaved": "Kunci API disimpan di gantungan kunci",
+      "providerError": "Gagal memperbarui penyedia suara",
+      "downloadedToast": "Whisper Kecil diunduh",
+      "downloadError": "Gagal mengunduh Whisper Small",
+      "keySavedToast": "Kunci OpenAI disimpan",
+      "keySaveError": "Gagal menyimpan kunci OpenAI"
+    },
+    "embedding": {
+      "loaded": "Dimuat",
+      "loading": "Memuat",
+      "cacheHint": "~23MB · Di-cache secara lokal · Semua di perangkat",
+      "dimensions": "Dimensi",
+      "embeddings": "Penyematan",
+      "downloadLoad": "Unduh & Muat Model",
+      "downloadingModel": "Mengunduh model...",
+      "loadingModel": "Memuat model...",
+      "loadSuccess": "Model berhasil dimuat",
+      "loadFailed": "Gagal memuat model",
+      "rebuildIndex": "Membangun kembali Indeks",
+      "rebuildDescription": "Buat ulang penyematan untuk semua catatan",
+      "rebuild": "Membangun kembali",
+      "scanning": "Memindai catatan...",
+      "generating": "Menghasilkan embeddings...",
+      "complete": "Selesai!",
+      "reindexed": "Penyematan diindeks ulang: {computed} dihitung, {skipped} dilewati",
+      "reindexFailed": "Gagal mengindeks ulang penyematan"
+    },
+    "inline": {
+      "loading": "Memuat...",
+      "title": "Pengeditan AI sebaris",
+      "enable": "Aktifkan AI Sebaris",
+      "enableDescription": "Tampilkan menu AI saat mengedit catatan",
+      "enabled": "Pengeditan AI sebaris diaktifkan",
+      "disabled": "Pengeditan AI sebaris dinonaktifkan",
+      "provider": "Penyedia",
+      "providerDescription": "Layanan AI untuk operasi teks",
+      "providers": {
+        "ollama": "Ollama (Lokal)",
+        "openai": "OpenAI",
+        "anthropic": "Antropis"
+      },
+      "model": "Model",
+      "modelDescription": "Model bahasa untuk menulis ulang dan meringkas",
+      "selectModel": "Pilih model",
+      "apiKey": "Kunci API",
+      "apiKeyDescription": "Disimpan secara lokal, dikirim hanya ke penyedia",
+      "apiKeyPlaceholder": "Masukkan kunci API {provider}",
+      "ollamaUrl": "URL Ollama",
+      "ollamaUrlDescription": "Alamat server lokal",
+      "connection": "Koneksi",
+      "activePort": "Aktif pada port {port}",
+      "notConnected": "Tidak terhubung",
+      "test": "Tes",
+      "stopFailed": "Gagal menghentikan server yang ada",
+      "connected": "Terhubung! Server berjalan pada port {port}",
+      "connectFailed": "Gagal terhubung",
+      "testFailed": "Uji koneksi gagal",
+      "updateFailed": "Gagal memperbarui setelan"
+    }
+  },
+  "integrations": {
+    "header": {
+      "title": "Integrasi",
+      "subtitle": "Hubungkan layanan eksternal untuk memperkaya alur kerja Anda"
+    },
+    "auth": {
+      "oauth2": "OAuth 2.0",
+      "apiKey": "Kunci API",
+      "none": "Sistem"
+    },
+    "comingSoon": "Segera Hadir",
+    "connect": "Hubungkan",
+    "googleCalendar": {
+      "name": "Google Kalender",
+      "description": "Sinkronisasi dua arah untuk acara Memry dan kalender Google yang diimpor.",
+      "statuses": {
+        "connected": "Terhubung",
+        "notConnected": "Tidak Terhubung",
+        "reconnectRequired": "Diperlukan Sambungan Kembali"
+      },
+      "accountReconnect": "Hubungkan kembali Google",
+      "importedCalendars": "Kalender yang Diimpor",
+      "selected": "{count} dipilih",
+      "syncNow": "Sinkronkan Sekarang",
+      "disconnect": "Putuskan sambungan",
+      "reconnect": "Hubungkan kembali Google",
+      "syncFailed": "Ada yang tidak beres",
+      "connectFailed": "Gagal menghubungkan Google Kalender",
+      "refreshFailed": "Gagal menyegarkan Google Kalender",
+      "disconnectFailed": "Gagal memutuskan sambungan Google Kalender",
+      "selectionFailed": "Gagal memperbarui pilihan kalender",
+      "retryFailed": "Gagal mencoba lagi sinkronisasi kalender"
+    },
+    "sourcePicker": {
+      "empty": "Belum ada kalender Google yang diimpor yang tersedia di perangkat ini.",
+      "statuses": {
+        "synced": "Disinkronkan",
+        "error": "Kesalahan",
+        "pending": "Tertunda",
+        "idle": "Menganggur"
+      },
+      "retrying": "Mencoba lagi…",
+      "retryNow": "Coba lagi sekarang"
+    },
+    "registry": {
+      "googleCalendar": {
+        "name": "Google Kalender",
+        "description": "Sinkronisasi dua arah untuk acara Memry, tugas, pengingat, dan kalender yang diimpor"
+      },
+      "appleCalendar": {
+        "name": "Kalender Apple",
+        "description": "Integrasi kalender lokal melalui API sistem"
+      },
+      "notion": {
+        "name": "Gagasan",
+        "description": "Impor halaman satu kali ke brankas Anda"
+      },
+      "readwise": {
+        "name": "Bacalah",
+        "description": "Sinkronkan sorotan ke brankas Anda"
+      },
+      "todoist": {
+        "name": "Todois",
+        "description": "Sinkronisasi tugas dua arah"
+      }
+    }
+  },
+  "vault": {
+    "header": {
+      "title": "Gudang",
+      "subtitle": "Konfigurasi dan penyimpanan Vault"
+    },
+    "groups": {
+      "storageUsage": "Penggunaan Penyimpanan",
+      "location": "Lokasi"
+    },
+    "loadingStorage": "Memuat info penyimpanan...",
+    "signInStorage": "Masuk untuk melihat penggunaan penyimpanan",
+    "vaultPath": "Jalur Gudang",
+    "reveal": "Mengungkapkan",
+    "storage": {
+      "title": "Penyimpanan",
+      "used": "{used} dari {limit} digunakan",
+      "ratio": "{used} / {limit}",
+      "refreshAria": "Segarkan penggunaan penyimpanan",
+      "usageAria": "Penggunaan penyimpanan: {used} dari {limit}",
+      "available": "Tersedia {available}",
+      "categories": {
+        "notes": "Catatan",
+        "attachments": "Lampiran",
+        "crdt": "CRDT",
+        "other": "Lainnya"
+      },
+      "warningTitle": "Penyimpanan hampir penuh",
+      "warningDescription": "Kosongkan ruang atau tingkatkan paket Anda untuk menghindari masalah sinkronisasi."
+    }
+  },
+  "tags": {
+    "header": {
+      "title": "Tag",
+      "subtitle": "Kelola tag di seluruh catatan, jurnal, dan tugas"
+    },
+    "loading": "Memuat tag...",
+    "empty": "Belum ada tag. Tag akan muncul di sini saat Anda menambahkannya ke catatan dan tugas.",
+    "filterPlaceholder": "Filter tag...",
+    "noMatch": "Tidak ada tag yang cocok dengan \"{query}\"",
+    "summary": "{count, plural, one {Tag #} other {Tag #}} di seluruh catatan dan tugas",
+    "actions": {
+      "rename": "Ganti nama",
+      "changeColor": "Ubah warna",
+      "mergeInto": "Gabungkan menjadi...",
+      "merge": "Gabungkan",
+      "delete": "Hapus"
+    },
+    "dialogs": {
+      "deleteTitle": "Hapus tanda",
+      "deleteDescription": "Hapus \"{name}\" dari {count, plural, one {Barang #} other {Barang #}}? Hal ini tidak dapat dibatalkan.",
+      "mergeTitle": "Gabungkan tag",
+      "mergeDescription": "Semua item yang diberi tag \"{source}\" akan diberi tag ulang dengan tag target. Tag sumber akan dihapus.",
+      "targetPlaceholder": "Pilih tag sasaran...",
+      "colorTitle": "Ubah warna untuk \"{name}\""
+    },
+    "toasts": {
+      "renamed": "Mengganti nama \"{oldName}\" menjadi \"{newName}\"",
+      "renameFailed": "Gagal mengganti nama tag",
+      "deleteFailed": "Gagal menghapus tag",
+      "deleted": "Menghapus \"{name}\" dari {count, plural, one {Barang #} other {Barang #}}",
+      "mergeFailed": "Gagal menggabungkan tag",
+      "merged": "Menggabungkan \"{source}\" menjadi \"{target}\" ({count, plural, one {Barang #} other {Barang #}})",
+      "colorUpdated": "Warna yang diperbarui untuk \"{name}\"",
+      "colorFailed": "Gagal memperbarui warna"
+    }
+  },
+  "properties": {
+    "header": {
+      "title": "Properti",
+      "subtitle": "Kelola definisi properti di semua catatan"
+    },
+    "loading": "Memuat properti...",
+    "empty": "Belum ada definisi properti. Tambahkan properti Status, Pilih, atau Multipilih ke catatan mana pun untuk memulai.",
+    "filterPlaceholder": "Filter properti...",
+    "noMatch": "Tidak ada properti yang cocok dengan \"{query}\"",
+    "summary": "{count, plural, one {Definisi properti #} other {Definisi properti #}}",
+    "optionCount": "{count, plural, one {Opsi #} other {Opsi #}}",
+    "optionNamePlaceholder": "Nama opsi",
+    "addOption": "Tambahkan opsi",
+    "changeColorTitle": "Ubah warna",
+    "renameTitle": "Ganti nama",
+    "removeTitle": "Hapus",
+    "actions": {
+      "deleteProperty": "Hapus properti"
+    },
+    "types": {
+      "status": "Status",
+      "select": "Pilih",
+      "multiselect": "Pilih banyak",
+      "text": "Teks",
+      "number": "Nomor",
+      "date": "Tanggal",
+      "checkbox": "kotak centang",
+      "url": "URL"
+    },
+    "dialogs": {
+      "deleteTitle": "Hapus properti",
+      "deleteDescription": "Hapus definisi properti \"{name}\"? Catatan yang menggunakan properti ini akan mempertahankan nilainya sebagai teks biasa.",
+      "colorTitle": "Ubah warna untuk \"{name}\""
+    },
+    "toasts": {
+      "renamed": "Mengganti nama \"{oldValue}\" menjadi \"{newValue}\"",
+      "renameFailed": "Gagal mengganti nama opsi",
+      "removed": "Menghapus \"{value}\"",
+      "removeFailed": "Gagal menghapus opsi",
+      "colorFailed": "Gagal memperbarui warna",
+      "deleteFailed": "Gagal menghapus properti",
+      "deleted": "Properti \"{name}\" yang dihapus",
+      "addFailed": "Gagal menambahkan opsi"
+    }
+  },
+  "shortcuts": {
+    "header": {
+      "title": "Pintasan Papan Ketik",
+      "subtitle": "Klik pintasan apa pun untuk mengikatnya kembali",
+      "loading": "Memuat setelan..."
+    },
+    "searchPlaceholder": "Telusuri pintasan...",
+    "resetAll": "Atur Ulang Semua",
+    "custom": "Adat",
+    "pressShortcut": "Tekan pintasan…",
+    "cancelTitle": "Batalkan",
+    "rebindTitle": "Klik untuk mengikat ulang",
+    "resetTitle": "Atur ulang ke default",
+    "clearTitle": "Hapus pintasan",
+    "clickToSet": "Klik untuk mengatur",
+    "noMatch": "Tidak ada pintasan yang cocok dengan penelusuran Anda",
+    "conflict": "Konflik dengan: {labels}",
+    "globalCapture": {
+      "title": "Penangkapan Global",
+      "description": "Ambil catatan dari mana saja",
+      "permissionNeeded": "Diperlukan izin",
+      "active": "Aktif",
+      "permissionHint": "Pintasan global memerlukan izin Aksesibilitas. Buka Pengaturan Sistem → Privasi → Aksesibilitas dan aktifkan Memry."
+    },
+    "toasts": {
+      "saveGlobalFailed": "Gagal menyimpan pintasan pengambilan global",
+      "saveFailed": "Gagal menyimpan pintasan",
+      "resetFailed": "Gagal menyetel ulang pintasan",
+      "resetAllSuccess": "Semua pintasan disetel ulang ke default",
+      "resetAllFailed": "Gagal menyetel ulang pintasan"
+    },
+    "categories": {
+      "navigation": "Navigasi",
+      "tabs": "tab",
+      "editor": "Penyunting",
+      "view": "Lihat"
+    },
+    "entries": {
+      "nav": {
+        "newNote": {
+          "label": "Catatan Baru",
+          "description": "Buat catatan baru"
+        },
+        "newTask": {
+          "label": "Tugas Baru",
+          "description": "Buat tugas baru"
+        },
+        "inbox": {
+          "label": "Buka Kotak Masuk",
+          "description": "Arahkan ke kotak masuk"
+        },
+        "notes": {
+          "label": "Buka Catatan",
+          "description": "Navigasi ke catatan"
+        },
+        "tasks": {
+          "label": "Buka Tugas",
+          "description": "Navigasi ke tugas"
+        },
+        "search": {
+          "label": "Cari",
+          "description": "Buka pencarian global"
+        },
+        "settings": {
+          "label": "Buka Pengaturan",
+          "description": "Buka panel pengaturan"
+        }
+      },
+      "tabs": {
+        "close": {
+          "label": "Tutup Tab",
+          "description": "Tutup tab saat ini"
+        },
+        "next": {
+          "label": "Tab Berikutnya",
+          "description": "Beralih ke tab berikutnya"
+        },
+        "previous": {
+          "label": "Tab Sebelumnya",
+          "description": "Beralih ke tab sebelumnya"
+        },
+        "reopen": {
+          "label": "Buka kembali Tab Terakhir",
+          "description": "Buka kembali tab yang terakhir ditutup"
+        },
+        "navBack": {
+          "label": "Navigasi Kembali",
+          "description": "Aktifkan kembali tab yang sebelumnya aktif"
+        },
+        "navForward": {
+          "label": "Navigasi ke Depan",
+          "description": "Ulangi navigasi kembali"
+        }
+      },
+      "editor": {
+        "save": {
+          "label": "Simpan",
+          "description": "Simpan catatan saat ini"
+        },
+        "bold": {
+          "label": "Berani",
+          "description": "Alihkan pemformatan tebal"
+        },
+        "italic": {
+          "label": "miring",
+          "description": "Alihkan pemformatan miring"
+        },
+        "underline": {
+          "label": "Garis bawahi",
+          "description": "Alihkan pemformatan garis bawah"
+        }
+      },
+      "view": {
+        "toggleSidebar": {
+          "label": "Alihkan Bilah Sisi",
+          "description": "Menampilkan atau menyembunyikan sidebar"
+        },
+        "shortcuts": {
+          "label": "Bantuan Pintasan Keyboard",
+          "description": "Tampilkan referensi pintasan keyboard"
+        }
+      }
+    }
+  },
+  "phaseF": {
+    "componentsKeyboardChordIndicator": {
+      "pressedWaitingForSecondKey": "ditekan — menunggu kunci kedua..."
+    },
+    "componentsKeyboardKeyboardShortcutsDialog": {
+      "keyboardShortcuts": "Pintasan Papan Ketik",
+      "press": "Tekan ",
+      "toToggleThisDialog": "untuk mengaktifkan dialog ini"
+    },
+    "componentsSyncDeviceList": {
+      "middot": "titik tengah;"
+    },
+    "componentsSyncDeviceRevokedDialog": {
+      "thisDeviceHasBeenRemoved": "Perangkat ini telah dihapus",
+      "exporting": "Mengekspor...",
+      "signOut": "Keluar"
+    },
+    "componentsSyncSyncHistory": {
+      "middot": "titik tengah; ",
+      "activity": "Aktivitas",
+      "filterBySyncType": "Filter menurut jenis sinkronisasi",
+      "allTypes": "Semua tipe",
+      "pushed": "Didorong",
+      "pulled": "Ditarik",
+      "errors": "Kesalahan",
+      "filterByTimePeriod": "Filter berdasarkan periode waktu",
+      "allTime": "Sepanjang waktu",
+      "today": "Hari ini",
+      "last7Days": "7 hari terakhir",
+      "last30Days": "30 hari terakhir",
+      "loadingSyncHistory": "Memuat riwayat sinkronisasi",
+      "noSyncActivityYet": "Belum ada aktivitas sinkronisasi",
+      "loadMore": "Muat lebih banyak"
+    },
+    "componentsSyncSyncStatus": {
+      "lastSynced": "Terakhir disinkronkan ",
+      "pending": "tertunda",
+      "localOnly": "khusus lokal",
+      "detected": "terdeteksi",
+      "clockSkewDetected": "Kemiringan jam terdeteksi",
+      "items": "item",
+      "willSyncWhenBackOnline": "Akan disinkronkan ketika kembali online",
+      "openSyncSettings": "Buka pengaturan sinkronisasi"
+    },
+    "pagesSettingsAiInlineSection": {
+      "httpLocalhost11434V1": "http://localhost:11434/v1"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToUpdateTagColor": "Gagal memperbarui warna tag",
+      "googleSignInFailed": "Gagal masuk ke Google",
+      "failedToSendVerificationCode": "Gagal mengirim kode verifikasi",
+      "invalidVerificationCode": "Kode verifikasi tidak valid",
+      "accountSetupFailed": "Penyiapan akun gagal",
+      "failedToResendCode": "Gagal mengirim ulang kode",
+      "failedToSetUpDevice": "Gagal menyiapkan perangkat",
+      "failedToConfirmRecoveryPhrase": "Gagal mengonfirmasi frasa pemulihan",
+      "failedToAnalyzeContent": "Gagal menganalisis konten",
+      "failedToLoadUpdaterState": "Gagal memuat status pembaru",
+      "failedToCheckForUpdates": "Gagal memeriksa pembaruan",
+      "failedToDownloadUpdate": "Gagal mengunduh pembaruan",
+      "failedToInstallUpdate": "Gagal menginstal pembaruan",
+      "failedToLoadEditorSettings": "Gagal memuat pengaturan editor",
+      "failedToUpdateEditorSettings": "Gagal memperbarui pengaturan editor",
+      "failedToLoadGeneralSettings": "Gagal memuat pengaturan umum",
+      "failedToUpdateGeneralSettings": "Gagal memperbarui pengaturan umum",
+      "failedToLoadKeyboardSettings": "Gagal memuat pengaturan keyboard",
+      "failedToUpdateKeyboardSettings": "Gagal memperbarui pengaturan keyboard",
+      "failedToResetKeyboardSettings": "Gagal menyetel ulang setelan keyboard",
+      "failedToLoadNoteEditorSettings": "Gagal memuat pengaturan editor catatan",
+      "failedToUpdateSettings": "Gagal memperbarui pengaturan",
+      "failedToLoadTabSettings": "Gagal memuat pengaturan tab",
+      "failedToLoadNotes": "Gagal memuat catatan",
+      "failedToLoadTags": "Gagal memuat tag",
+      "failedToLoadVaultStatus": "Gagal memuat status brankas",
+      "failedToSelectVault": "Gagal memilih brankas",
+      "failedToCloseVault": "Gagal menutup brankas",
+      "failedToSwitchVault": "Gagal mengganti brankas",
+      "failedToUpdateConfig": "Gagal memperbarui konfigurasi",
+      "failedToReindex": "Gagal mengindeks ulang"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "app": {
+    "quit": "Afslut"
+  },
+  "file": {
+    "label": "Fil",
+    "newNote": "Ny note",
+    "close": "Luk vinduet"
+  },
+  "navigation": {
+    "back": "Tilbage",
+    "forward": "Fremad"
+  },
+  "edit": {
+    "label": "Rediger",
+    "undo": "Fortryd",
+    "redo": "Gentag",
+    "cut": "Klip",
+    "copy": "Kopiér",
+    "paste": "Indsæt"
+  },
+  "view": {
+    "label": "Visning",
+    "reload": "Genindlæs",
+    "toggleDevTools": "Skift udviklerværktøjer",
+    "toggleFullscreen": "Skift fuld skærm"
+  }
+}

@@ -1,0 +1,483 @@
+{
+  "view": {
+    "tabs": {
+      "inbox": "Inbox",
+      "archived": "Arhivat",
+      "insights": "Perspective",
+      "ariaLabel": "Selectare vizualizare inbox"
+    },
+    "triageButton": "Triajul",
+    "processInboxTitle": "Procesați căsuța de e-mail (Cmd+P)",
+    "itemCaptured": "Element capturat",
+    "searchArchivedTitle": "Căutați articole arhivate",
+    "searchPlaceholder": "Cauta...",
+    "archivedItemsAria": "Elemente arhivate",
+    "snoozed": {
+      "show": "Afișați articolele amânate",
+      "showWithCount": "Afișați articolele amânate ({count})",
+      "hide": "Ascunde elementele amânate"
+    },
+    "filter": {
+      "button": "Filtru",
+      "byType": "Filtrați după tip",
+      "active": "{count, plural, one {Filtrarea după tipul #} other {Filtrarea după tipuri #}}",
+      "clearAll": "Ștergeți totul"
+    },
+    "jobs": {
+      "running": "{count, plural, one {Lucrarea de fundal # rulează} other {# se execută lucrări de fundal}}",
+      "failed": "{count} a eșuat"
+    }
+  },
+  "type": {
+    "link": "Link",
+    "links": "Legături",
+    "note": "Notă",
+    "notes": "Note",
+    "image": "Imagine",
+    "images": "Imagini",
+    "voice": "Vocea",
+    "video": "Videoclip",
+    "clip": "Clip",
+    "clips": "Clipuri",
+    "pdf": "PDF",
+    "pdfs": "PDF-uri",
+    "social": "Social",
+    "reminder": "Memento",
+    "reminders": "Mementouri",
+    "text": "Text",
+    "other": "Altele"
+  },
+  "empty": {
+    "successAria": "Succes, căsuța de e-mail este goală",
+    "title": "Inbox Zero",
+    "body": "Totul este procesat. Capturați ceva nou cu introducerea de mai sus sau inserați un link pentru a începe.",
+    "filedThisWeek": "{count, plural, one {# a fost depusă săptămâna aceasta} other {# a fost depusă săptămâna aceasta}}",
+    "dayStreak": "{count, plural, one {# serie de zile} other {# serie de zile}}",
+    "tipPrefix": "Sfat: folosiți",
+    "tipSuffix": "pentru a captura rapid din clipboard",
+    "archivedNone": "Niciun articol arhivat",
+    "archivedNoMatches": "Nu există elemente arhivate care se potrivesc",
+    "noItemsYet": "Niciun articol încă",
+    "noItemsFiled": "Încă nu au fost înregistrate articole",
+    "noItemTypes": "Nu există tipuri de articole de afișat",
+    "noFolders": "Nu s-au găsit dosare",
+    "noFolderMatch": "Niciun folder nu se potrivește cu „{query}”",
+    "noNotes": "Nu s-au găsit note",
+    "allMatchesLinked": "Toate meciurile sunt deja legate"
+  },
+  "list": {
+    "ariaLabel": "Articole primite",
+    "section": {
+      "today": "Astăzi",
+      "yesterday": "Ieri",
+      "older": "Mai în vârstă"
+    },
+    "selectItem": "Selectați {title}",
+    "itemAria": "{type}: {title}",
+    "untitled": "Fără titlu",
+    "untitledItem": "Articol fără titlu",
+    "transcribing": "Se transcrie...",
+    "transcriptionFailed": "Transcrierea eșuată",
+    "retryTranscription": "Reîncercați",
+    "pageCount": "{count, plural, one {Pagina #} other {# pagini}}",
+    "snoozedUntilShort": "amânat până la {date}",
+    "capturedAgo": "{time} capturat"
+  },
+  "loading": {
+    "inbox": "Se încarcă inbox...",
+    "failed": "Nu s-a încărcat căsuța de e-mail",
+    "tryAgain": "Încercați din nou",
+    "capturingImage": "Se captează imaginea...",
+    "dropImageTitle": "Aruncă imaginea pentru a captura",
+    "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
+    "unsupportedImageType": "Tip de imagine neacceptat: {type}",
+    "imageTooLarge": "Imaginea este prea mare (maxim 50 MB)"
+  },
+  "toast": {
+    "failedArchiveItem": "Elementul nu a putut fi arhivat",
+    "failedArchiveItems": "Elementele nu au putut fi arhivate",
+    "failedFile": "Nu s-a putut depune",
+    "failedFileItem": "Elementul nu a fost înregistrat",
+    "failedFileItems": "Elementele nu au fost înregistrate",
+    "failedSnooze": "Nu s-a putut amâna",
+    "failedSnoozeItem": "Elementul nu a fost amânat",
+    "failedApplyTags": "Nu s-au putut aplica etichetele",
+    "failedCaptureImage": "Nu s-a putut capta imaginea",
+    "linkedToNote": "Legat de notă",
+    "linkedToNotes": "Conectat la notele {count}",
+    "filedTo": "Depus la {folder}",
+    "filedItemsTo": "A depus articole {count} la {folder}",
+    "filedPartial": "{processed} de articole {total} depuse",
+    "appliedTags": "{tagCount, plural, one {Eticheta # aplicată} other {Etichetele # aplicate}} la {itemCount, plural, one {articol #} other {articole #}}",
+    "archivedItems": "{count, plural, one {Articol # arhivat} other {Articole # arhivate}}",
+    "snoozedUntil": "Amânat până la {time}",
+    "snoozedItemsUntil": "{count, plural, one {Elementul # amânat până la {time}} other {Articole # amânate până la {time}}}"
+  },
+  "triage": {
+    "modeTitle": "Modul de triaj",
+    "exitHint": "Esc pentru a ieși",
+    "exitAria": "Ieșiți din modul de triaj",
+    "position": "{current} din {total}",
+    "action": {
+      "discard": "Aruncă",
+      "archive": "Arhiva",
+      "open": "Deschide",
+      "toTask": "La Sarcină",
+      "toNote": "De notat",
+      "file": "Fișier",
+      "snooze": "Amână",
+      "cancel": "Anulează"
+    },
+    "snoozeUntil": "Amânați până...",
+    "complete": {
+      "title": "Inbox Zero",
+      "processed": "{count, plural, one {articol # procesat} other {# articole procesate}}",
+      "streak": "dâră",
+      "streakCount": "{count} serie",
+      "dayProcessingStreak": "{count, plural, one {# zi de procesare} other {# zi de procesare}}",
+      "back": "Înapoi la Mesaje primite",
+      "motivation0": "Sinele tău viitor îți mulțumește.",
+      "motivation1": "Totul la locul lui.",
+      "motivation2": "Cutie primită clară, mintea limpede.",
+      "motivation3": "Datoria de decizie: plătită integral.",
+      "motivation4": "S-a simțit bine, nu-i așa?"
+    }
+  },
+  "bulk": {
+    "selected": "{count} selectat",
+    "deselectAll": "Deselectați toate",
+    "ariaLabel": "Acțiuni în bloc pentru articolele selectate {count}",
+    "file": "Fișier",
+    "tag": "Etichetați",
+    "snooze": "Amână",
+    "archive": "Arhiva",
+    "add": "Adăugați",
+    "dismissSuggestion": "Respinge sugestia",
+    "hint": {
+      "file": "dosar",
+      "tag": "eticheta",
+      "snooze": "amână",
+      "archive": "arhiva",
+      "deselect": "deselectați"
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {Arhivați elementul #?} other {Arhivați articole #?}}",
+      "description": "Aceste articole vor fi arhivate. Puteți vizualiza articolele arhivate mai târziu.",
+      "confirm": "{count, plural, one {Arhivați articolul #} other {Arhivați articolele #}}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {Fișier # Articol} other {Fișier # Elemente}}",
+      "itemsToFile": "Elemente de depus",
+      "multipleNoteLinksUnavailable": "Notă: Link-urile către alte note nu pot fi adăugate la depunerea mai multor articole.",
+      "filing": "Se depune...",
+      "submit": "{count, plural, one {Fișier articol #} other {Fișier articole #}}",
+      "macHint": "⌘⏎ pentru a fișier · Esc pentru a închide",
+      "ctrlHint": "Ctrl+Enter în fișier · Esc pentru a închide"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {Etichetați articolul #} other {Etichetați articolele #}}",
+      "placeholder": "Tastați pentru a căuta etichete...",
+      "applying": "Se aplică...",
+      "apply": "{count, plural, one {Aplicați la articolul #} other {Aplicați la articolele #}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "Acțiuni rapide",
+    "archiveItem": "Element de arhivare",
+    "archive": "Arhiva",
+    "snooze": "Amână"
+  },
+  "detail": {
+    "ariaLabel": "Detalii articol",
+    "closePanel": "Închideți panoul",
+    "resizeFiling": "Redimensionați secțiunea de depunere",
+    "restore": "Restaurați",
+    "restoreToInbox": "Restaurați în inbox",
+    "delete": "Ștergeți",
+    "deletePermanently": "Ștergeți definitiv",
+    "archive": "Arhiva",
+    "file": "Fișier",
+    "keyboardHint": "{modifier}⏎ fișier · 1-5 folder · Esc close",
+    "voiceTitlePlaceholder": "Denumiți această notă vocală...",
+    "fileTo": "File to",
+    "ai": "AI",
+    "selectFolder": "Selectați folderul",
+    "searchOrCreateFolder": "Căutați sau creați cu /...",
+    "suggested": "Sugerat",
+    "notesRoot": "Note",
+    "notesRootLabel": "Note (rădăcină)",
+    "createFolder": "Creați „{name}”",
+    "addTags": "Adăugați etichete...",
+    "linkToNote": "Link către notă",
+    "linkNotesPlaceholder": "Link note...",
+    "searchNotesAria": "Căutați note pentru a face legătura",
+    "linkedNotesAria": "Note legate",
+    "removeLinkTo": "Eliminați linkul către {title}",
+    "contentEditorAria": "Editor de conținut",
+    "notePlaceholder": "Scrie-ți nota...",
+    "textPlaceholder": "Editați textul capturat..."
+  },
+  "content": {
+    "capturedAt": "{date} capturat",
+    "todayAt": "astăzi la {time}",
+    "yesterdayAt": "ieri la {time}",
+    "dateAt": "{date} la {time}",
+    "words": "{count, plural, one {# cuvânt} other {# cuvinte}}",
+    "duration": "Durată: {duration}",
+    "dimensions": "Dimensiuni",
+    "format": "Format",
+    "size": "Dimensiune",
+    "voiceMemo": "Notă vocală",
+    "play": "Joacă",
+    "pause": "Pauză",
+    "audioPosition": "Poziția audio",
+    "transcription": "Transcriere",
+    "processing": "prelucrare",
+    "pending": "în așteptare",
+    "failed": "a eșuat",
+    "copyTranscription": "Copiați transcrierea",
+    "transcribingAudio": "Se transcrie sunetul...",
+    "awaitingTranscription": "Se așteaptă transcrierea...",
+    "noTranscription": "Nu este disponibilă nicio transcriere",
+    "failedPlayAudio": "Audio eșuat",
+    "failedLoadAudio": "Nu s-a încărcat sunetul",
+    "video": "Videoclip",
+    "unsupportedVideo": "Browserul dvs. nu acceptă eticheta video."
+  },
+  "reminder": {
+    "dataUnavailable": "Datele de memento nu sunt disponibile.",
+    "triggered": "S-a declanșat memento",
+    "noteLabel": "Notă de memento",
+    "source": "Sursa",
+    "journalTitle": "Jurnal — {date}",
+    "noteFallback": "Notă",
+    "journalFallback": "Jurnal",
+    "highlighted": "Evidențiat: „{text}”",
+    "viewed": "Vizualizat",
+    "markViewed": "Marcați ca vizualizat",
+    "notYetViewed": "Nu a fost încă vizualizat",
+    "snooze": "Amână",
+    "presetInOneHour": "1 oră",
+    "presetTomorrow": "Mâine",
+    "presetNextWeek": "Săptămâna viitoare",
+    "custom": "Personalizat..."
+  },
+  "insights": {
+    "loading": "Se încarcă statistici...",
+    "captureActivity": "Captură activitate",
+    "byType": "După Tip",
+    "itemTypes": "Tipuri de articole",
+    "itemTypesDescription": "Distribuirea formatelor de conținut",
+    "recentFilings": "Depuneri recente",
+    "recentlyFiled": "Depus recent",
+    "recentlyFiledDescription": "Cele mai recente acțiuni în căsuța dvs. de e-mail",
+    "captured": "Capturat",
+    "capturedThisWeek": "+{count} săptămâna aceasta",
+    "processed": "Procesat",
+    "processRate": "Rata {rate}%.",
+    "stale": "Învechit",
+    "needsAttention": "are nevoie de atenție",
+    "allClear": "totul clar",
+    "avgTimeToFile": "Timp mediu de depunere",
+    "noCapturesYet": "Nicio captură încă",
+    "captures": "{count, plural, one {Captură #} other {# captează}}",
+    "peak": "Vârf: {day} {start}–{end}",
+    "convertedToTask": "Transformat în sarcină",
+    "linked": "Legat",
+    "now": "acum",
+    "timeAgoMinutes": "{count}m în urmă",
+    "timeAgoHours": "{count}h în urmă",
+    "timeAgoDays": "{count}d în urmă"
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "AI detectat: \"",
+      "addToSelection": "Adăugați la selecție",
+      "dismiss": "Respingeți"
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "Ștergeți ",
+      "item": "articol",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Aceste articole vor fi eliminate din căsuța dvs. de e-mail. Puteți anula această acțiune imediat după."
+    },
+    "componentsCaptureInput": {
+      "captureInput": "Captură intrare",
+      "attachFile": "Atașați fișierul",
+      "attachFileImagesAudioVideoPdf": "Atașați fișier (imagini, audio, video, PDF)",
+      "recordVoiceMemo": "Înregistrați notă vocală",
+      "recordVoiceMemo2": "Înregistrați notă vocală",
+      "alreadyCaptured": "Deja capturat: „",
+      "rdquo": "rdquo;",
+      "captureAnyway": "Captură oricum"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "Alegeți folderul",
+      "searchFolders": "Căutați dosare...",
+      "searchFolders2": "Căutați dosare",
+      "searchResults": "Rezultatele căutării",
+      "create": "Creați \"",
+      "suggested": "Sugerat",
+      "recent": "Recent",
+      "allFolders": "Toate folderele",
+      "allFolders2": "Toate folderele"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "Link către",
+      "optional": "optional)",
+      "searchNotesToLink": "Căutați note la link...",
+      "searchNotesToLink2": "Căutați note pentru a face legătura",
+      "searching": "Se caută...",
+      "noNotesFound": "Nu s-au găsit note",
+      "linkedNotes": "Note legate",
+      "noLinksAdded": "Nu au adăugat linkuri"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "Sugerat",
+      "ai": "AI",
+      "create": "Creați",
+      "tags": "Etichete",
+      "selectedTags": "Etichete selectate",
+      "addTags": "Adăugați etichete",
+      "tagSuggestions": "Sugestii de etichete"
+    },
+    "componentsFilingTagInput": {
+      "tags": "Etichete",
+      "optional": "optional)",
+      "addTags": "Adăugați etichete...",
+      "addTags2": "Adăugați etichete",
+      "selectedTags": "Etichete selectate",
+      "suggested": "Sugerat"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "Captură activitate"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "Încă nu au fost înregistrate articole",
+      "recentlyFiled": "Depus recent",
+      "latestActionsOnYourInbox": "Cele mai recente acțiuni în căsuța dvs. de e-mail",
+      "linked": "Legat"
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "Se încarcă statistici..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "Nu există tipuri de articole de afișat",
+      "itemTypes": "Tipuri de articole",
+      "distributionOfContentFormats": "Distribuirea formatelor de conținut"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "Capturat "
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "x "
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "Editor de conținut"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "punct mijlociu; "
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "Tweetul indisponibil",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Este posibil ca acest tweet să fi fost șters sau să provină dintr-un cont privat.",
+      "openOnXCom": "Deschide pe x.com",
+      "views": "vederi",
+      "xCom": "x.com",
+      "viewOnX": "Vezi pe X"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "Tastați numele folderului...",
+      "quickFileFolderSearch": "Căutare rapidă în foldere de fișiere"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "aproape",
+      "capture": "captura"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "Scoateți atașamentul"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "Intrare rapidă de captură",
+      "recordVoiceMemo": "Înregistrați notă vocală",
+      "attachFile": "Atașați fișierul"
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "LINK"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "Capturat",
+      "dismissError": "Închideți eroarea",
+      "alreadyCaptured": "Deja capturat",
+      "ldquo": "ldquo;",
+      "rdquoMiddot": "rdquo; · ",
+      "captureAnyway": "Captură oricum",
+      "close": "Închide"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "Aruncă pentru a captura",
+      "capturing": "Se captează..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "Sugestii de foldere",
+      "noFoldersMatch": "Niciun folder nu se potrivește cu \""
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "Setați un memento pentru acest text",
+      "remindMeAboutThis": "Amintește-mi despre asta",
+      "selectedText": "Textul selectat:"
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "Amintiți-vă",
+      "remindMe": "Amintește-mi",
+      "pickDateTime": "Alegeți data și ora",
+      "addANoteOptional": "Adăugați o notă (opțional)",
+      "backToPresets": "Înapoi la presetări",
+      "time": "timpul",
+      "noteOptional": "Notă (opțional)",
+      "whyAreYouSettingThisReminder": "De ce setați acest memento?"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "Amână",
+      "snooze2": "Amână",
+      "pickDateTime": "Alegeți Data și Ora",
+      "pickDateTime2": "Alegeți Data și Ora",
+      "selectWhenToBeRemindedAboutThisItem": "Selectați când vi se va reaminti despre acest articol",
+      "snooze3": "Amână",
+      "snooze4": "Amână",
+      "snooze5": "Amână"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "Se încarcă postarea...",
+      "failedToLoad": "Nu s-a putut încărca",
+      "loadingPostContent": "Se încarcă conținutul postării...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Nu s-a putut încărca conținutul postării. Postarea poate fi privată sau ștearsă.",
+      "viewOn": "Vizualizare pe "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "Începeți înregistrarea vocală",
+      "requestingMicrophoneAccess": "Se solicită acces la microfon...",
+      "settings": "Setări",
+      "processing": "Se procesează...",
+      "cancelRecording": "Anulați înregistrarea",
+      "cancel": "Anulează",
+      "stopRecording": "Opriți înregistrarea",
+      "stop": "Opreste-te"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCaptureLink": "Nu s-a putut captura linkul",
+      "failedToCaptureNote": "Nu s-a putut captura nota",
+      "captureFailed": "Captura nu a reușit",
+      "failedToCaptureVoiceMemo": "Nu s-a putut capta nota vocală",
+      "voiceCaptureFailed": "Captura vocală a eșuat",
+      "failedToCaptureFile": "Nu s-a putut captura fișierul",
+      "fileCaptureFailed": "Captura fișierului a eșuat",
+      "failedToCaptureAudio": "Nu s-a putut capta sunetul",
+      "failedToCaptureVoice": "Nu s-a putut capta vocea"
+    },
+    "toasts": {
+      "inboxRefreshed": "Inbox a fost reîmprospătat"
+    }
+  }
+}

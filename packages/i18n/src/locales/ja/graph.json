@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "グラフを読み込んでいます...",
+    "load-failed": "グラフデータの読み込みに失敗しました",
+    "try-again": "もう一度試してください",
+    "aria-label": "{nodeCount, plural, one {# ノード} other {# ノード}} および {edgeCount, plural, one {#接続} other {# 接続}}{summary, select, none {。} other {: {summary}。}} を使用したナレッジ グラフ",
+    "nodes-list-label": "グラフノード",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "あなたのナレッジグラフ",
+    "description": "メモ、タスク、プロジェクト間のつながりが、インタラクティブなグラフとしてここに表示されます。",
+    "link-title": "メモをリンクする",
+    "link-description": "[[wikilinks]] を使用してメモ間でアイデアを結び付ける",
+    "discover-title": "パターンを発見する",
+    "discover-description": "つながりが増えると、クラスターとテーマが自然に現れます"
+  },
+  "entity": {
+    "note": "メモ",
+    "notes": "メモ",
+    "journal": "日記",
+    "journals": "雑誌",
+    "task": "タスク",
+    "tasks": "タスク",
+    "project": "プロジェクト",
+    "projects": "プロジェクト",
+    "tag": "タグ",
+    "tags": "タグ",
+    "orphan": "孤児",
+    "orphans": "孤児",
+    "unresolved": "未解決"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "グラフ設定",
+    "hide-settings": "設定を非表示にする",
+    "reset-filters": "フィルターをリセットする",
+    "filters": "フィルター",
+    "display": "ディスプレイ",
+    "show-labels": "ラベルを表示する",
+    "focus-depth": "深さ {depth}",
+    "clear-focus": "フォーカスされたノードをクリアする"
+  },
+  "filter": {
+    "notes": "注意事項",
+    "journals": "雑誌",
+    "tasks": "タスク",
+    "projects": "プロジェクト",
+    "tags": "タグ",
+    "orphans": "孤児たち",
+    "toggle-entity": "{label} を切り替え",
+    "toggle-orphans": "孤立ノードの切り替え"
+  },
+  "search": {
+    "placeholder": "ノードを検索...",
+    "clear": "グラフ検索をクリアする"
+  },
+  "context-menu": {
+    "untitled": "無題",
+    "focus-node": "このノードに注目",
+    "open-new-tab": "新しいタブで開く",
+    "create-note": "メモを作成する",
+    "copy-title": "タイトルをコピー"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {#接続} other {# 接続}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "グラフを読み込んでいます...",
+    "empty": "接続が見つかりません",
+    "open-full": "グラフ全体を開く",
+    "close": "グラフを閉じる"
+  }
+}

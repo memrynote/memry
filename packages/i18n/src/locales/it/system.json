@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "Seleziona la cartella del Vault",
+      "button": "Seleziona Cassaforte"
+    },
+    "exportPdf": {
+      "title": "Esporta come PDF",
+      "filterName": "Documento PDF"
+    },
+    "exportHtml": {
+      "title": "Esporta come HTML",
+      "filterName": "Documento HTML"
+    },
+    "import": {
+      "filterSupported": "File supportati",
+      "filterAll": "Tutti i file"
+    },
+    "exportCancelled": "Esportazione annullata",
+    "update": {
+      "availableTitle": "Aggiornamento disponibile",
+      "availableMessage": "Memry {version} è disponibile.",
+      "availableDetailFallback": "Scaricare l'aggiornamento adesso?",
+      "buttonDownload": "Scarica",
+      "buttonLater": "Più tardi",
+      "readyTitle": "Aggiornamento pronto",
+      "readyMessage": "Memry {version} è stato scaricato.",
+      "readyDetailFallback": "Riavvia Memry per completare l'installazione dell'aggiornamento.",
+      "buttonRestartNow": "Ricomincia adesso",
+      "releaseNotesLabel": "Note sulla versione:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "Promemoria nota",
+      "journal": "Promemoria del diario",
+      "highlight": "Evidenzia promemoria",
+      "fallback": "Promemoria dovuto",
+      "default": "Promemoria"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "L'ora del promemoria deve essere nel futuro",
+    "definitionNotFound": "Definizione non trovata",
+    "noteNotFound": "Nota non trovata",
+    "updateFailed": "Aggiornamento non riuscito"
+  }
+}

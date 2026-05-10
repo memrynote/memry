@@ -1,0 +1,28 @@
+{
+  "app": {
+    "quit": "quit"
+  },
+  "file": {
+    "label": "file",
+    "newNote": "Bagong Tala",
+    "close": "Isara ang Window"
+  },
+  "navigation": {
+    "back": "Bumalik",
+    "forward": "Pasulong"
+  },
+  "edit": {
+    "label": "I-edit",
+    "undo": "I-undo",
+    "redo": "Gawin muli",
+    "cut": "Putulin",
+    "copy": "Kopyahin",
+    "paste": "Idikit"
+  },
+  "view": {
+    "label": "Tingnan",
+    "reload": "I-reload",
+    "toggleDevTools": "I-toggle ang Mga Tool ng Developer",
+    "toggleFullscreen": "I-toggle ang Buong Screen"
+  }
+}

@@ -1,0 +1,663 @@
+{
+  "page": {
+    "empty": {
+      "title": "Keine Notiz ausgewählt",
+      "body": "Wählen Sie in der Seitenleiste eine Notiz aus, um sie anzuzeigen"
+    },
+    "error": {
+      "title": "Notiz konnte nicht geladen werden"
+    },
+    "toast": {
+      "cannotSaveDeleted": "Speichern nicht möglich – Notiz wurde gelöscht",
+      "cannotRenameDeleted": "Umbenennen nicht möglich – Notiz wurde gelöscht",
+      "createLinkedFailed": "Die verknüpfte Notiz konnte nicht erstellt werden",
+      "openLinkedFailed": "Verlinktes Element konnte nicht geöffnet werden",
+      "localOnly": "Hinweis auf „Nur lokal“ eingestellt",
+      "willSync": "Notiz wird mit der Cloud synchronisiert",
+      "saveFailed": "Notiz konnte nicht gespeichert werden",
+      "renameFailed": "Notiz konnte nicht umbenannt werden",
+      "toggleLocalOnlyFailed": "Nur lokal umschalten fehlgeschlagen",
+      "toggleFullWidthFailed": "Das Umschalten auf die volle Breite ist fehlgeschlagen"
+    },
+    "deleteDialogTitle": "{count, plural, one {Notiz löschen} other {Löschen Sie #-Notizen}}"
+  },
+  "tree": {
+    "aria": {
+      "tree": "Notizenbaum",
+      "openFolderView": "Ordneransicht öffnen"
+    },
+    "empty": {
+      "title": "Noch keine Notizen",
+      "body": "Erstellen Sie zunächst eine Notiz",
+      "newNote": "Neue Notiz"
+    },
+    "loadingError": "Notizen konnten nicht geladen werden",
+    "actions": {
+      "newNote": "Neue Notiz",
+      "newFolder": "Neuer Ordner",
+      "rename": "Umbenennen",
+      "openExternal": "Im externen Editor öffnen",
+      "revealInFinder": "Im Finder anzeigen",
+      "setDefaultTemplate": "Standardvorlage festlegen",
+      "clearDefaultTemplate": "Standardvorlage löschen",
+      "setIcon": "Symbol festlegen",
+      "removeIcon": "Symbol entfernen",
+      "deleteSelectedNotes": "Löschen Sie {count}-Notizen",
+      "deleteSelectedItems": "Löschen Sie {count}-Elemente"
+    },
+    "deleteDialog": {
+      "noteTitle": "Notiz löschen",
+      "folderTitle": "Ordner löschen",
+      "itemsTitle": "Löschen Sie {count}-Elemente",
+      "noteBody": "Sind Sie sicher, dass Sie „{name}“ löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "folderBody": "Sind Sie sicher, dass Sie „{name}“ und alle darin enthaltenen Notizen löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "itemsBody": "Sind Sie sicher, dass Sie {count}-Elemente löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "folderSuffix": "Ordner",
+      "moreItems": "...und {count} mehr",
+      "deleting": "Löschen...",
+      "deleteCount": "Löschen Sie {count}"
+    }
+  },
+  "editor": {
+    "title": {
+      "untitled": "Ohne Titel",
+      "aria": "Titel der Notiz"
+    },
+    "content": {
+      "placeholder": "Beginnen Sie mit dem Schreiben oder drücken Sie „/“, um Befehle zu erhalten ...",
+      "regionAria": "Notizeditor",
+      "richTextAria": "Rich-Text-Editor",
+      "headingPlaceholder": "Überschrift",
+      "listPlaceholder": "Listenelement",
+      "todoPlaceholder": "To-Do-Element"
+    },
+    "toolbar": {
+      "reminderSet": "Erinnerung eingestellt",
+      "setReminder": "Erinnerung festlegen",
+      "removeBookmark": "Lesezeichen entfernen",
+      "addBookmark": "Lesezeichen hinzufügen",
+      "hideLocalGraph": "Lokales Diagramm ausblenden",
+      "showLocalGraph": "Lokales Diagramm anzeigen",
+      "versionHistory": "Versionsgeschichte",
+      "export": "Exportieren",
+      "fullWidth": "Volle Breite",
+      "disableLocalOnly": "Nur lokal deaktivieren",
+      "setLocalOnly": "Nur lokal einstellen"
+    },
+    "breadcrumb": {
+      "locationAria": "Standort notieren",
+      "parentFolderAria": "Gehen Sie zum übergeordneten Ordner"
+    },
+    "errorBoundary": {
+      "title": "Editorfehler",
+      "body": "Der Editor hat einen Fehler festgestellt. Der Inhalt Ihrer Notiz ist sicher.",
+      "technicalDetails": "Technische Details",
+      "reloadAria": "Editor neu laden",
+      "reload": "Editor neu laden"
+    },
+    "callout": {
+      "title": "Hinweis",
+      "group": "Grundblöcke",
+      "subtext": "Heben Sie wichtige Informationen hervor",
+      "changeType": "Callout-Typ ändern",
+      "menuLabel": "Callout-Typ",
+      "info": "Infos",
+      "warning": "Warnung",
+      "error": "Fehler",
+      "success": "Erfolg"
+    }
+  },
+  "menus": {
+    "wiki": {
+      "aria": "Hinweise beachten",
+      "loading": "Notizen werden geladen...",
+      "empty": "Keine Notizen gefunden",
+      "create": "Neue Notiz erstellen"
+    },
+    "tags": {
+      "aria": "Tag-Vorschläge",
+      "loading": "Tags werden geladen...",
+      "empty": "Geben Sie ein, um ein neues Tag zu erstellen",
+      "create": "Erstellen Sie #{tag}"
+    },
+    "pasteLink": {
+      "title": "Einfügen als",
+      "url": "URL",
+      "mention": "Erwähnung",
+      "embedVideo": "Video einbetten"
+    },
+    "emoji": {
+      "aria": "Emoji- und Symbolauswahl",
+      "emojiTab": "Emoji",
+      "iconsTab": "Symbole",
+      "searchPlaceholder": "Suchen",
+      "noIcons": "Keine Symbole gefunden",
+      "clearSearch": "Suche löschen"
+    }
+  },
+  "detail": {
+    "bodyPlaceholder": "Schreiben Sie Ihre Notiz..."
+  },
+  "outline": {
+    "title": "Gliederung",
+    "aria": "Dokumentübersicht",
+    "empty": "Keine Überschriften",
+    "emptyYet": "Noch keine Überschriften",
+    "readTime": "{count} min. gelesen",
+    "words": "{count} Wörter",
+    "created": "Erstellt",
+    "modified": "Geändert"
+  },
+  "backlinks": {
+    "title": "Backlinks",
+    "sortRecent": "Neu",
+    "sortAlpha": "A-Z",
+    "sortMentions": "Die meisten Erwähnungen",
+    "sortBy": "Sortieren Sie die Backlinks nach {sort}",
+    "summary": "{notes}-Notizen · {references}-Referenzen",
+    "sectionAria": "Backlinks",
+    "listAria": "Liste der Backlinks",
+    "fromAria": "Backlinks von {title}",
+    "collapse": "Zusammenbruch",
+    "expand": "Erweitern",
+    "collapseSection": "Abschnitt „Backlinks“ ausblenden",
+    "expandSection": "Erweitern Sie den Abschnitt „Backlinks“.",
+    "showMore": "{count} weitere Backlinks anzeigen",
+    "more": "{count} mehr"
+  },
+  "tagsRow": {
+    "aria": "Schlagworte",
+    "empty": "Fügen Sie Tags hinzu",
+    "add": "Tag hinzufügen",
+    "removeAria": "Tag entfernen: {tag}",
+    "inputPlaceholder": "Tag-Namen eingeben...",
+    "recent": "Neu",
+    "matching": "Passend",
+    "all": "Alle Tags",
+    "none": "Keine Tags gefunden",
+    "createTag": "Tag erstellen: „{tag}“",
+    "chooseColor": "Farbe wählen:",
+    "preview": "Vorschau:",
+    "colorAria": "Wählen Sie die Farbe {color}"
+  },
+  "properties": {
+    "title": "Eigenschaften",
+    "noteAria": "Eigenschaften beachten",
+    "workspaceAria": "Arbeitsbereichseigenschaften",
+    "listAria": "Eigenschaftenliste",
+    "add": "Eigenschaft hinzufügen",
+    "addDescription": "Fügen Sie dieser Notiz eine neue Eigenschaft hinzu",
+    "namePlaceholder": "Eigenschaftsname",
+    "nameAria": "Eigenschaftsname",
+    "typeSection": "Typ",
+    "empty": "Leer",
+    "dragAria": "Ziehen Sie, um die Eigenschaft neu anzuordnen",
+    "editName": "Eigenschaftsnamen bearbeiten",
+    "delete": "Eigenschaft löschen",
+    "searchOptions": "Suchoptionen...",
+    "noOptions": "Noch keine Optionen",
+    "optionName": "Optionsname",
+    "newOption": "Neue Option",
+    "ratingAria": "Bewertung",
+    "openUrlAria": "URL öffnen",
+    "types": {
+      "text": "Text",
+      "number": "Nummer",
+      "date": "Datum",
+      "checkbox": "Kontrollkästchen",
+      "url": "URL",
+      "status": "Status",
+      "select": "Auswählen",
+      "multiselect": "Mehrfachauswahl"
+    }
+  },
+  "templateSelector": {
+    "title": "Wählen Sie Ihre Leinwand",
+    "description": "Wählen Sie eine Vorlage aus, um mit Ihrer Notiz zu beginnen",
+    "searchPlaceholder": "Suchvorlagen...",
+    "loading": "Vorlagen werden geladen...",
+    "empty": "Keine Vorlagen gefunden",
+    "myTemplates": "Meine Vorlagen",
+    "essentials": "Wesentliches",
+    "setFolderDefault": "Als Standardordner festlegen",
+    "useTemplate": "Vorlage verwenden",
+    "createNote": "Notiz erstellen"
+  },
+  "exportDialog": {
+    "title": "Notiz exportieren",
+    "description": "Exportieren Sie „{title}“ in eine Datei",
+    "format": "Formatieren",
+    "pdfDescription": "Druckfertiges Dokument",
+    "htmlDescription": "Webfähige Datei",
+    "pageSize": "Seitengröße",
+    "selectPageSize": "Wählen Sie die Seitengröße aus",
+    "options": "Optionen",
+    "includeMetadata": "Metadaten einschließen (Tags, Daten)",
+    "exporting": "Exportieren...",
+    "exported": "Exportiert!",
+    "export": "Exportieren",
+    "toast": {
+      "failed": "Der Export ist fehlgeschlagen"
+    }
+  },
+  "versionHistory": {
+    "title": "Versionsgeschichte",
+    "description": "Frühere Versionen von „{title}“ anzeigen und wiederherstellen",
+    "hidePreview": "Vorschau ausblenden",
+    "showPreview": "Vorschau anzeigen",
+    "empty": "Noch keine Versionen gespeichert",
+    "emptyDescription": "Versionen werden automatisch gespeichert, wenn Sie wesentliche Änderungen vornehmen",
+    "latest": "Neueste",
+    "autoSaved": "Automatisch gespeichert",
+    "words": "{count} Wörter",
+    "selectPrompt": "Wählen Sie eine Version zur Vorschau aus",
+    "restore": "Wiederherstellen",
+    "deleteTitle": "Diese Version löschen?",
+    "deleteDescription": "Diese Aktion kann nicht rückgängig gemacht werden. Diese Version wird dauerhaft gelöscht.",
+    "restoreTitle": "Diese Version wiederherstellen?",
+    "restoreDescription": "Dadurch wird der aktuelle Notizinhalt durch diese Version ersetzt. Zunächst wird ein Schnappschuss des aktuellen Zustands gespeichert, sodass Sie diese Aktion rückgängig machen können.",
+    "restoring": "Wiederherstellung...",
+    "toast": {
+      "loadPreviewFailed": "Die Versionsvorschau konnte nicht geladen werden",
+      "restored": "Hinweis auf vorherige Version zurückgesetzt",
+      "deleted": "Version gelöscht"
+    }
+  },
+  "templateEditor": {
+    "title": {
+      "new": "Neue Vorlage",
+      "view": "Vorlage anzeigen",
+      "edit": "Vorlage bearbeiten"
+    },
+    "toast": {
+      "nameRequired": "Der Name der Vorlage ist erforderlich",
+      "created": "Vorlage erstellt",
+      "createFailed": "Vorlage konnte nicht erstellt werden",
+      "saved": "Vorlage gespeichert",
+      "saveFailed": "Vorlage konnte nicht gespeichert werden",
+      "duplicateFailed": "Die Vorlage konnte nicht dupliziert werden",
+      "deleteFailed": "Vorlage konnte nicht gelöscht werden"
+    }
+  },
+  "reminders": {
+    "summary": "Erinnerung: {date}",
+    "summaryWithMore": "Erinnerung: {date} (+{count} mehr)",
+    "hasReminders": "Hat Erinnerungen",
+    "setReminder": "Erinnerung festlegen",
+    "toast": {
+      "set": "Erinnerung eingestellt",
+      "setForHighlight": "Erinnerung für hervorgehobenen Text eingestellt",
+      "setFailed": "Erinnerung konnte nicht eingerichtet werden",
+      "deleted": "Erinnerung gelöscht",
+      "deleteFailed": "Erinnerung konnte nicht gelöscht werden",
+      "dismissed": "Mahnung abgewiesen",
+      "dismissFailed": "Die Erinnerung konnte nicht abgewiesen werden"
+    }
+  },
+  "linkedTasks": {
+    "title": "Verknüpfte Aufgaben",
+    "loading": "Verknüpfte Aufgaben werden geladen..."
+  },
+  "phaseF": {
+    "componentsFolderViewColumnHeader": {
+      "dragToReorderColumn": "Ziehen Sie, um die Spalte neu anzuordnen"
+    },
+    "componentsFolderViewColumnSelector": {
+      "properties": "Eigenschaften",
+      "searchColumns": "Suchspalten...",
+      "noMatchingColumns": "Keine passenden Spalten",
+      "formulas": "FORMELN",
+      "noFormulasDefined": "Keine Formeln definiert",
+      "addFormula": "Formel hinzufügen",
+      "deleteFormula": "Formel löschen",
+      "areYouSureYouWantToDeleteTheFormula": "Sind Sie sicher, dass Sie die Formel löschen möchten?",
+      "quotThisActionCannotBeUndone": "quot;? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "cancel": "Abbrechen",
+      "delete": "Löschen",
+      "none": "Keine",
+      "edit": "Bearbeiten",
+      "delete2": "Löschen"
+    },
+    "componentsFolderViewFilterBuilder": {
+      "filter": "Filtern",
+      "filters": "Filter",
+      "clearAll": "Alles löschen",
+      "noFiltersApplied": "Keine Filter angewendet",
+      "addFiltersToNarrowDownYourNotes": "Fügen Sie Filter hinzu, um Ihre Notizen einzugrenzen",
+      "match": "Spiel",
+      "allAnd": "Alle (UND)",
+      "anyOr": "Beliebig (ODER)",
+      "ofTheFollowing": "von Folgendem:",
+      "match2": "Spiel",
+      "all": "Alle",
+      "any": "Irgendein",
+      "of": "von:",
+      "addCondition": "Bedingung hinzufügen",
+      "addFilter": "Filter hinzufügen",
+      "addGroup": "Gruppe hinzufügen"
+    },
+    "componentsFolderViewFilterRow": {
+      "builtIn": "Eingebaut",
+      "properties": "Eigenschaften",
+      "placeholderProperty": "Eigentum",
+      "placeholderOperator": "Betreiber",
+      "placeholderValue": "Wert"
+    },
+    "componentsFolderViewFolderTableView": {
+      "notesTable": "Notizentabelle"
+    },
+    "componentsFolderViewFolderViewToolbar": {
+      "searchNotes": "Notizen durchsuchen...",
+      "clearSearch": "Suche löschen"
+    },
+    "componentsFolderViewFormulaEditorModal": {
+      "defineAComputedColumnUsingAnExpression": "Definieren Sie eine berechnete Spalte mithilfe eines Ausdrucks.",
+      "name": "Name",
+      "expression": "Ausdruck",
+      "available": "Verfügbar: ",
+      "preview": "Vorschau",
+      "fixExpressionErrorsToSeePreview": "Beheben Sie Ausdrucksfehler, um eine Vorschau anzuzeigen",
+      "usingNote": "Verwendungshinweis: „",
+      "quot": "quot;",
+      "cancel": "Abbrechen",
+      "namePlaceholder": "Tage_bis_fällig",
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")"
+    },
+    "componentsFolderViewGroupBySelector": {
+      "clearGrouping": "Klare Gruppierung",
+      "searchProperties": "Eigenschaften durchsuchen...",
+      "builtIn": "Eingebaut",
+      "properties": "Eigenschaften",
+      "noGroupablePropertiesFound": "Keine gruppierbaren Eigenschaften gefunden",
+      "sortDirection": "Sortierrichtung",
+      "collapseGroupsByDefault": "Gruppen standardmäßig ausblenden",
+      "showGroupSummaries": "Gruppenzusammenfassungen anzeigen",
+      "clearGrouping2": "Klare Gruppierung"
+    },
+    "componentsFolderViewGroupedTable": {
+      "groupedNotesTable": "Tabelle mit gruppierten Notizen",
+      "more": "mehr"
+    },
+    "componentsFolderViewMoveToFolderDialog": {
+      "searchFolders": "Ordner durchsuchen...",
+      "loadingFolders": "Ordner werden geladen...",
+      "suggested": "EMPFOHLEN",
+      "bestMatch": "Beste Übereinstimmung",
+      "current": "aktuell)",
+      "allFolders": "ALLE ORDNER",
+      "current2": "aktuell)",
+      "noFoldersMatch": "Keine Ordner passen zu „",
+      "quot": "quot;",
+      "create": "Erstellen \"",
+      "quot2": "quot;",
+      "cancel": "Abbrechen"
+    },
+    "componentsFolderViewRowContextMenu": {
+      "delete": "Löschen ",
+      "notes": "Notizen",
+      "open": "Offen",
+      "openInExternalEditor": "Im externen Editor öffnen",
+      "revealInFinder": "Im Finder anzeigen",
+      "revealInSidebar": "In der Seitenleiste anzeigen",
+      "copyLink": "Link kopieren",
+      "delete2": "Löschen"
+    },
+    "componentsFolderViewSortableColumnHeader": {
+      "dragToReorderColumn": "Ziehen Sie, um die Spalte neu anzuordnen",
+      "resizeColumn": "Größe der Spalte ändern"
+    },
+    "componentsFolderViewViewSwitcher": {
+      "default": "Standard",
+      "rename": "Umbenennen",
+      "duplicate": "Duplizieren",
+      "setAsDefault": "Als Standard festlegen",
+      "delete": "Löschen",
+      "createNewView": "Neue Ansicht erstellen",
+      "createNewView2": "Neue Ansicht erstellen",
+      "createANewViewWithCustomColumnsFiltersAndSorting": "Erstellen Sie eine neue Ansicht mit benutzerdefinierten Spalten, Filtern und Sortierung.",
+      "viewName": "Name anzeigen",
+      "myCustomView": "Meine benutzerdefinierte Ansicht",
+      "baseConfiguration": "Basiskonfiguration",
+      "copyFromCurrentView": "Aus aktueller Ansicht kopieren",
+      "startFreshDefaultColumns": "Neu beginnen (Standardspalten)",
+      "cancel": "Abbrechen",
+      "renameView": "Ansicht umbenennen",
+      "enterANewNameForThisView": "Geben Sie einen neuen Namen für diese Ansicht ein.",
+      "viewName2": "Name anzeigen",
+      "viewName3": "Name anzeigen",
+      "cancel2": "Abbrechen",
+      "deleteView": "Ansicht löschen",
+      "areYouSureYouWantToDelete": "Sind Sie sicher, dass Sie löschen möchten?",
+      "thisActionCannotBeUndone": "Diese Aktion kann nicht rückgängig gemacht werden.",
+      "cancel3": "Abbrechen"
+    },
+    "componentsNoteContentAreaFileBlock": {
+      "failedToLoadPdf": "PDF konnte nicht geladen werden: ",
+      "download": "Herunterladen",
+      "download2": "Herunterladen",
+      "noFileAttached": "Keine Datei angehängt"
+    },
+    "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
+      "openInTaskPanel": "Im Aufgabenbereich öffnen",
+      "taskName": "Aufgabenname...",
+      "taskDeleted": "Aufgabe gelöscht",
+      "loading": "Laden..."
+    },
+    "componentsNoteContentAreaTaskBlockTaskCreationPopover": {
+      "project": "Projekt",
+      "priority": "Priorität",
+      "dueDate": "Fälligkeitsdatum",
+      "cancel": "Abbrechen"
+    },
+    "componentsNoteContentAreaYoutubeEmbedBlock": {
+      "noVideoUrl": "Keine Video-URL"
+    },
+    "componentsNoteExportDialog": {
+      "pdf": "PDF",
+      "html": "HTML",
+      "a4210X297Mm": "A4 (210 x 297 mm)",
+      "letter85X11In": "Letter (8,5 x 11 Zoll)",
+      "legal85X14In": "Legal (8,5 x 14 Zoll)"
+    },
+    "componentsNoteInfoSectionEditorsDateeditor": {
+      "ddMmYyyy": "TT.MM.JJJJ"
+    },
+    "componentsNoteNoteHeader": {
+      "synced": "Synchronisiert"
+    },
+    "componentsSharedDocumentInfoTab": {
+      "words": "Worte",
+      "characters": "Charaktere",
+      "readingTime": "Lesezeit",
+      "created": "Erstellt",
+      "modified": "Geändert"
+    },
+    "componentsSidebarProjectsEmptyState": {
+      "noProjectsYet": "Noch keine Projekte",
+      "createYourFirstProject": "Erstellen Sie Ihr erstes Projekt",
+      "createYourFirstProject2": "Erstellen Sie Ihr erstes Projekt"
+    },
+    "componentsSidebarSidebarBookmarkList": {
+      "loadingBookmarks": "Lesezeichen werden geladen...",
+      "failedToLoadBookmarks": "Lesezeichen konnten nicht geladen werden",
+      "noBookmarksYet": "Noch keine Lesezeichen",
+      "moreOptions": "Weitere Optionen",
+      "remove": "Entfernen"
+    },
+    "componentsSidebarSidebarItemContextMenu": {
+      "open": "Offen",
+      "openToTheSide": "Zur Seite offen",
+      "pinToTabs": "An Tabs anheften",
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "copyLink": "Link kopieren"
+    },
+    "componentsSidebarSidebarTagList": {
+      "loadingTags": "Tags werden geladen...",
+      "failedToLoadTags": "Tags konnten nicht geladen werden",
+      "noTagsYet": "Noch keine Tags",
+      "filterTags": "Tags filtern...",
+      "noMatchingTags": "Keine passenden Tags"
+    },
+    "componentsSidebarSortableProjectItem": {
+      "dropHere": "Kommen Sie hier vorbei",
+      "editProject": "Projekt bearbeiten"
+    },
+    "componentsSidebarTagDeleteDialog": {
+      "deleteTag": "Tag # löschen",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "Notizen mit diesem Tag werden nicht gelöscht, nur die Tags werden entfernt.",
+      "cancel": "Abbrechen"
+    },
+    "componentsSidebarTagDetailView": {
+      "goBack": "Geh zurück",
+      "notes": "Notizen",
+      "loadingNotes": "Notizen werden geladen...",
+      "noNotesWithThisTag": "Keine Notizen mit diesem Tag",
+      "addThisTagToANoteToSeeItHere": "Fügen Sie dieses Tag zu einer Notiz hinzu, um es hier anzuzeigen",
+      "pinned": "GEPINNT",
+      "allNotes": "ALLE NOTIZEN",
+      "allNotesArePinned": "Alle Notizen sind angeheftet",
+      "unpinFromTag": "Vom Tag lösen",
+      "unpin": "Lösen",
+      "pinToTag": "An Tag anpinnen",
+      "pin": "Pin",
+      "tagActions": "Markieren Sie Aktionen",
+      "editTagName": "Bearbeiten Sie den Tag-Namen",
+      "changeColor": "Farbe ändern",
+      "deleteTag": "Tag löschen",
+      "recent": "Neu",
+      "created": "Erstellt",
+      "alphabetical": "Alphabetisch"
+    },
+    "componentsSidebarTagRenameDialog": {
+      "renameTag": "Tag umbenennen",
+      "rename": "Umbenennen ",
+      "acrossEveryNoteThatUsesIt": "über jede Note, die es verwendet.",
+      "newName": "Neuer Name",
+      "cancel": "Abbrechen"
+    },
+    "componentsViewersAudioPlayer": {
+      "failedToLoadAudio": "Audio konnte nicht geladen werden",
+      "theAudioFileCouldNotBePlayed": "Die Audiodatei konnte nicht abgespielt werden.",
+      "skipBack10s": "Springe 10 Sekunden zurück",
+      "skipForward10s": "10 Sekunden vorwärts springen"
+    },
+    "componentsViewersImageViewer": {
+      "failedToLoadImage": "Bild konnte nicht geladen werden",
+      "theImageCouldNotBeDisplayed": "Das Bild konnte nicht angezeigt werden.",
+      "resetZoom": "Zoom zurücksetzen",
+      "rotate": "Drehen",
+      "dragToPan": "Zum Schwenken ziehen"
+    },
+    "componentsViewersPdfViewer": {
+      "failedToLoadPdf": "PDF konnte nicht geladen werden",
+      "previousPage": "Vorherige Seite",
+      "nextPage": "Nächste Seite",
+      "zoomOut": "Herauszoomen",
+      "zoomIn": "Vergrößern",
+      "fitToWidth": "Auf Breite anpassen",
+      "rotate": "Drehen"
+    },
+    "componentsViewersVideoPlayer": {
+      "failedToLoadVideo": "Video konnte nicht geladen werden",
+      "theVideoFileCouldNotBePlayed": "Die Videodatei konnte nicht abgespielt werden."
+    },
+    "pagesFile": {
+      "failedToLoadFile": "Datei konnte nicht geladen werden",
+      "tryAgain": "Versuchen Sie es erneut",
+      "noFileSelected": "Keine Datei ausgewählt",
+      "selectAFileFromTheSidebarToViewIt": "Wählen Sie in der Seitenleiste eine Datei aus, um sie anzuzeigen",
+      "loadingFile": "Datei wird geladen...",
+      "openInDefaultApp": "In der Standard-App öffnen",
+      "open": "Offen",
+      "revealInFinder": "Im Finder anzeigen",
+      "reveal": "Enthüllen",
+      "unsupportedFileType": "Nicht unterstützter Dateityp"
+    },
+    "pagesFolderView": {
+      "createNewNote": "Neue Notiz erstellen",
+      "viewSettings": "Einstellungen anzeigen",
+      "displayDensity": "Anzeigedichte",
+      "comfortable": "Bequem",
+      "compact": "Kompakt",
+      "showSummaries": "Zusammenfassungen anzeigen",
+      "cancel": "Abbrechen"
+    },
+    "pagesTemplateEditor": {
+      "loadingTemplate": "Vorlage wird geladen...",
+      "builtInTemplatesCannotBeModified": "Integrierte Vorlagen können nicht geändert werden",
+      "description": "Beschreibung",
+      "briefDescriptionOfThisTemplate": "Kurze Beschreibung dieser Vorlage...",
+      "templateContent": "Vorlageninhalt",
+      "use": "Benutzen ",
+      "toInsertTheNoteTitleWhenCreatingANote": ", um den Notiztitel beim Erstellen einer Notiz einzufügen.",
+      "templateName": "Vorlagenname",
+      "defaultContentForNotesCreatedFromThisTemplate": "Standardinhalt für Notizen, die aus dieser Vorlage erstellt wurden ..."
+    },
+    "pagesTemplates": {
+      "loadingCollection": "Sammlung wird geladen...",
+      "templateCollection": "Vorlagensammlung",
+      "templates": "Vorlagen",
+      "curatedStructuresForYourNotes": "Kuratierte Strukturen für Ihre Notizen.",
+      "newTemplate": "Neue Vorlage",
+      "myTemplates": "Meine Vorlagen",
+      "builtIn": "Eingebaut",
+      "deleteTemplate": "Vorlage löschen",
+      "areYouSureYouWantToDelete": "Sind Sie sicher, dass Sie löschen möchten?",
+      "notesCreatedFromThisTemplateWillNotBeAffected": "Notizen, die mit dieser Vorlage erstellt wurden, sind nicht betroffen.",
+      "cancel": "Abbrechen",
+      "builtIn2": "Eingebaut",
+      "duplicate": "Duplizieren",
+      "delete": "Löschen",
+      "startYourCollection": "Starten Sie Ihre Sammlung",
+      "templatesHelpYouCreateNotesWithConsistentStructure": "Mithilfe von Vorlagen können Sie Notizen mit einheitlicher Struktur erstellen.",
+      "createTemplate": "Vorlage erstellen"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveFormula": "Formel konnte nicht gespeichert werden",
+      "failedToOpenInExternalEditor": "Öffnen im externen Editor fehlgeschlagen",
+      "failedToRevealInFinder": "Im Finder konnte es nicht angezeigt werden",
+      "failedToCopyLink": "Link konnte nicht kopiert werden",
+      "failedToCreateView": "Ansicht konnte nicht erstellt werden",
+      "failedToRenameFolder": "Ordner konnte nicht umbenannt werden",
+      "failedToCreateTask": "Aufgabe konnte nicht erstellt werden",
+      "failedToLoadVersionHistory": "Der Versionsverlauf konnte nicht geladen werden",
+      "failedToRestoreVersion": "Die Version konnte nicht wiederhergestellt werden",
+      "failedToDeleteVersion": "Die Version konnte nicht gelöscht werden",
+      "failedToCreateNote": "Notiz konnte nicht erstellt werden",
+      "failedToLoadMoreBookmarks": "Es konnten keine weiteren Lesezeichen geladen werden",
+      "failedToToggleBookmark": "Lesezeichen konnte nicht umgeschaltet werden",
+      "failedToRemoveBookmark": "Lesezeichen konnte nicht entfernt werden",
+      "failedToReorderBookmarks": "Lesezeichen konnten nicht neu angeordnet werden",
+      "failedToSave": "Speichern fehlgeschlagen",
+      "failedToRename": "Umbenennen fehlgeschlagen",
+      "failedToUpdateEmoji": "Emoji konnte nicht aktualisiert werden",
+      "failedToUpdateTags": "Tags konnten nicht aktualisiert werden",
+      "failedToSnoozeReminder": "Schlummerfunktion der Erinnerung fehlgeschlagen",
+      "failedToCreateFolder": "Fehler beim Erstellen des Ordners",
+      "failedToLoadProperties": "Eigenschaften konnten nicht geladen werden",
+      "failedToLoadPropertyDefinitions": "Eigenschaftsdefinitionen konnten nicht geladen werden",
+      "failedToLoadTemplates": "Vorlagen konnten nicht geladen werden"
+    },
+    "toasts": {
+      "noteExportedSuccessfully": "Notiz erfolgreich exportiert",
+      "failedToUpdateProperty": "Die Eigenschaft konnte nicht aktualisiert werden",
+      "failedToUpdateTags": "Tags konnten nicht aktualisiert werden",
+      "reminderSnoozed": "Erinnerung wurde deaktiviert",
+      "failedToSnoozeReminder": "Schlummerfunktion der Erinnerung fehlgeschlagen",
+      "defaultTemplateSet": "Standardvorlagensatz",
+      "failedToSetDefaultTemplate": "Standardvorlage konnte nicht festgelegt werden",
+      "defaultTemplateCleared": "Standardvorlage gelöscht",
+      "failedToClearDefaultTemplate": "Die Standardvorlage konnte nicht gelöscht werden",
+      "failedToAddProperty": "Eigenschaft konnte nicht hinzugefügt werden",
+      "failedToDeleteProperty": "Die Eigenschaft konnte nicht gelöscht werden",
+      "failedToRenameProperty": "Die Eigenschaft konnte nicht umbenannt werden",
+      "failedToReorderProperties": "Eigenschaften konnten nicht neu angeordnet werden",
+      "cannotAddTagThisNoteWasDeleted": "Tag kann nicht hinzugefügt werden – diese Notiz wurde gelöscht",
+      "cannotRemoveTagThisNoteWasDeleted": "Tag kann nicht entfernt werden – diese Notiz wurde gelöscht",
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "Kann nicht nur lokal geändert werden – diese Notiz wurde gelöscht"
+    }
+  }
+}

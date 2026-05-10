@@ -2,7 +2,40 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-export const SUPPORTED_LOCALES = ['en', 'tr', 'ar']
+export const SUPPORTED_LOCALES = [
+  'ar',
+  'cs',
+  'da',
+  'en',
+  'de',
+  'el',
+  'es',
+  'fi',
+  'fil',
+  'fr',
+  'he',
+  'hr',
+  'hu',
+  'id',
+  'it',
+  'ja',
+  'ko',
+  'ms',
+  'nl',
+  'no',
+  'pl',
+  'pt',
+  'ro',
+  'ru',
+  'sk',
+  'sv',
+  'th',
+  'tr',
+  'uk',
+  'vi',
+  'zh-CN',
+  'zh-TW'
+]
 export const FALLBACK_LOCALE = 'en'
 
 const CONFIG_ARRAY_RE = /I18N_NAMESPACES\s*=\s*\[([\s\S]*?)\]\s+as const/m

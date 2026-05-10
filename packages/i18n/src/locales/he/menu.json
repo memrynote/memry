@@ -1,0 +1,28 @@
+{
+  "app": {
+    "quit": "עזוב"
+  },
+  "file": {
+    "label": "קובץ",
+    "newNote": "הערה חדשה",
+    "close": "סגור חלון"
+  },
+  "navigation": {
+    "back": "חזרה",
+    "forward": "קדימה"
+  },
+  "edit": {
+    "label": "ערוך",
+    "undo": "בטל",
+    "redo": "בצע מחדש",
+    "cut": "גזור",
+    "copy": "העתק",
+    "paste": "הדבק"
+  },
+  "view": {
+    "label": "הצג",
+    "reload": "טען מחדש",
+    "toggleDevTools": "החלף את כלי המפתחים",
+    "toggleFullscreen": "החלף מסך מלא"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "app": {
+    "quit": "종료"
+  },
+  "file": {
+    "label": "파일",
+    "newNote": "새 메모",
+    "close": "창 닫기"
+  },
+  "navigation": {
+    "back": "뒤로",
+    "forward": "앞으로"
+  },
+  "edit": {
+    "label": "편집",
+    "undo": "실행 취소",
+    "redo": "다시 실행",
+    "cut": "컷",
+    "copy": "복사",
+    "paste": "붙여넣기"
+  },
+  "view": {
+    "label": "보기",
+    "reload": "새로고침",
+    "toggleDevTools": "개발자 도구 전환",
+    "toggleFullscreen": "전체 화면 전환"
+  }
+}

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { SettingsChannels } from '@memry/contracts/ipc-channels'
 
 const appOnMock = vi.fn()
 const whenReadyMock = vi.fn(() => new Promise<void>(() => {}))
@@ -6,18 +7,140 @@ const requestSingleInstanceLockMock = vi.fn(() => true)
 const getPathMock = vi.fn((name: string) => `/mock/${name}`)
 const setPathMock = vi.fn()
 const dotenvConfigMock = vi.fn(() => ({ error: undefined }))
+const registerAllHandlersMock = vi.fn()
+const applyGlobalCaptureShortcutMock = vi.fn(() => ({ registered: true }))
+const autoOpenLastVaultMock = vi.fn(async () => undefined)
+const closeVaultMock = vi.fn(async () => undefined)
+const createMainI18nMock = vi.fn(async () => ({ t: (key: string) => key }))
+const setMainI18nMock = vi.fn()
+const buildAppMenuMock = vi.fn(() => ({ id: 'menu' }))
+const getCurrentVaultPathMock = vi.fn(() => null as string | null)
+const readPreferencesMock = vi.fn(() => ({ language: 'en' }))
+const initializeTelemetryRuntimeMock = vi.fn()
+const disposeTelemetryRuntimeMock = vi.fn(async () => undefined)
+const initPersistenceMock = vi.fn(async () => undefined)
+const getOpenNoteIdsMock = vi.fn(() => [] as string[])
+const getProviderDocMock = vi.fn()
+const getCrdtProviderMock = vi.fn(() => ({
+  initPersistence: initPersistenceMock,
+  getOpenNoteIds: getOpenNoteIdsMock,
+  getDoc: getProviderDocMock
+}))
+const stopSyncRuntimeMock = vi.fn(async () => undefined)
+const startGoogleCalendarSyncRunnerMock = vi.fn(async () => undefined)
+const stopGoogleCalendarSyncRunnerMock = vi.fn()
+const triggerGoogleCalendarSyncNowMock = vi.fn()
+const computeSpkiHashFromPemMock = vi.fn(() => 'hash')
+const isPinningDisabledMock = vi.fn(() => true)
+const getPinnedCertificateHashesMock = vi.fn(() => [] as string[])
+const initializeUpdaterMock = vi.fn()
+const sendAppNavigationCommandMock = vi.fn()
+const sendAppNavigationKeyboardCommandMock = vi.fn(() => false)
+const sendAppNavigationSwipeCommandMock = vi.fn()
+const isDevMock = { dev: false }
+const existsSyncMock = vi.fn(() => false)
+const readdirSyncMock = vi.fn(() => [])
+const statSyncMock = vi.fn(() => ({ size: 10 }))
+const createReadStreamMock = vi.fn()
+const webRequestOnHeadersReceivedMock = vi.fn()
+const protocolHandleMock = vi.fn()
+const protocolRegisterSchemesMock = vi.fn()
+const ipcMainOnMock = vi.fn()
+const ipcMainHandleMock = vi.fn()
+const setCertificateVerifyProcMock = vi.fn()
+const globalShortcutRegisterMock = vi.fn(() => true)
+const globalShortcutUnregisterAllMock = vi.fn()
+const menuSetApplicationMenuMock = vi.fn()
+const netFetchMock = vi.fn(async () => new Response('file'))
+const getNoteCacheByIdMock = vi.fn(() => null as { path: string; title: string } | null)
+const toAbsolutePathMock = vi.fn((path: string) => path)
+const createSnapshotMock = vi.fn(() => null as unknown)
+const safeReadMock = vi.fn(async () => null as string | null)
+const browserWindows: Array<ReturnType<typeof createBrowserWindowMock>> = []
+
+function createBrowserWindowMock() {
+  const eventHandlers = new Map<string, (...args: unknown[]) => void>()
+  const window = {
+    id: browserWindows.length + 1,
+    webContents: {
+      send: vi.fn(),
+      setWindowOpenHandler: vi.fn(),
+      on: vi.fn()
+    },
+    on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+      eventHandlers.set(event, handler)
+      return window
+    }),
+    once: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+      eventHandlers.set(event, handler)
+      return window
+    }),
+    show: vi.fn(),
+    focus: vi.fn(),
+    loadURL: vi.fn(async () => undefined),
+    loadFile: vi.fn(async () => undefined),
+    isDestroyed: vi.fn(() => false),
+    isMinimized: vi.fn(() => false),
+    isVisible: vi.fn(() => true),
+    restore: vi.fn(),
+    close: vi.fn(),
+    minimize: vi.fn(),
+    maximize: vi.fn(),
+    unmaximize: vi.fn(),
+    isMaximized: vi.fn(() => false),
+    getSize: vi.fn(() => [480, 82] as [number, number]),
+    setSize: vi.fn(),
+    emitTestEvent: (event: string, ...args: unknown[]) => eventHandlers.get(event)?.(...args)
+  }
+  browserWindows.push(window)
+  return window
+}
+
+const BrowserWindowMock = Object.assign(
+  vi.fn(function BrowserWindowConstructor() {
+    return createBrowserWindowMock()
+  }),
+  {
+    getAllWindows: vi.fn(() => browserWindows),
+    getFocusedWindow: vi.fn(() => browserWindows[0] ?? null)
+  }
+)
 
 vi.mock('dotenv', () => ({
   config: dotenvConfigMock
 }))
 
 vi.mock('./ipc', () => ({
-  registerAllHandlers: vi.fn()
+  registerAllHandlers: registerAllHandlersMock
+}))
+
+vi.mock('./ipc/settings-handlers', () => ({
+  applyGlobalCaptureShortcut: applyGlobalCaptureShortcutMock
 }))
 
 vi.mock('./vault', () => ({
-  autoOpenLastVault: vi.fn(async () => undefined),
-  closeVault: vi.fn(async () => undefined)
+  autoOpenLastVault: autoOpenLastVaultMock,
+  closeVault: closeVaultMock
+}))
+
+vi.mock('./store', () => ({
+  getCurrentVaultPath: getCurrentVaultPathMock
+}))
+
+vi.mock('./vault/vault-preferences', () => ({
+  readPreferences: readPreferencesMock
+}))
+
+vi.mock('@memry/i18n/main', () => ({
+  createMainI18n: createMainI18nMock
+}))
+
+vi.mock('./lib/main-i18n', () => ({
+  setMainI18n: setMainI18nMock
+}))
+
+vi.mock('./menu', () => ({
+  buildAppMenu: buildAppMenuMock
 }))
 
 vi.mock('./inbox/snooze', () => ({
@@ -31,15 +154,92 @@ vi.mock('./lib/reminders', () => ({
   stopReminderScheduler: vi.fn()
 }))
 
+vi.mock('./inbox/voice-model', () => ({
+  stopVoiceModel: vi.fn(async () => undefined)
+}))
+
+vi.mock('./telemetry/runtime', () => ({
+  initializeTelemetryRuntime: initializeTelemetryRuntimeMock,
+  disposeTelemetryRuntime: disposeTelemetryRuntimeMock
+}))
+
+vi.mock('./telemetry/state', () => ({
+  getTelemetryAuthState: vi.fn(() => null),
+  getTelemetrySyncState: vi.fn(() => null)
+}))
+
 vi.mock('./calendar/google/sync-service', () => ({
-  startGoogleCalendarSyncRunner: vi.fn(),
-  stopGoogleCalendarSyncRunner: vi.fn()
+  startGoogleCalendarSyncRunner: startGoogleCalendarSyncRunnerMock,
+  stopGoogleCalendarSyncRunner: stopGoogleCalendarSyncRunnerMock,
+  triggerGoogleCalendarSyncNow: triggerGoogleCalendarSyncNowMock
+}))
+
+vi.mock('./sync/certificate-pinning', () => ({
+  computeSpkiHashFromPem: computeSpkiHashFromPemMock,
+  isPinningDisabled: isPinningDisabledMock,
+  getPinnedCertificateHashes: getPinnedCertificateHashesMock
+}))
+
+vi.mock('./sync/crdt-provider', () => ({
+  getCrdtProvider: getCrdtProviderMock
+}))
+
+vi.mock('./sync/runtime', () => ({
+  stopSyncRuntime: stopSyncRuntimeMock
+}))
+
+vi.mock('./database/client', () => ({
+  getIndexDatabase: vi.fn(() => ({}))
+}))
+
+vi.mock('@main/database/queries/notes', () => ({
+  getNoteCacheById: getNoteCacheByIdMock
+}))
+
+vi.mock('./vault/notes', () => ({
+  toAbsolutePath: toAbsolutePathMock,
+  createSnapshot: createSnapshotMock
+}))
+
+vi.mock('./vault/file-ops', () => ({
+  safeRead: safeReadMock
+}))
+
+vi.mock('./updater', () => ({
+  initializeUpdater: initializeUpdaterMock
+}))
+
+vi.mock('./app-navigation-command', () => ({
+  sendAppNavigationCommand: sendAppNavigationCommandMock,
+  sendAppNavigationKeyboardCommand: sendAppNavigationKeyboardCommandMock,
+  sendAppNavigationSwipeCommand: sendAppNavigationSwipeCommandMock
+}))
+
+vi.mock('./lib/logger', () => {
+  const scopedLogger = {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn()
+  }
+  return {
+    log: { initialize: vi.fn() },
+    createLogger: vi.fn(() => scopedLogger),
+    disableConsoleTransport: vi.fn()
+  }
+})
+
+vi.mock('node:fs', () => ({
+  existsSync: existsSyncMock,
+  readdirSync: readdirSyncMock,
+  statSync: statSyncMock,
+  createReadStream: createReadStreamMock
 }))
 
 vi.mock('@electron-toolkit/utils', () => ({
   electronApp: { setAppUserModelId: vi.fn() },
   optimizer: { watchWindowShortcuts: vi.fn() },
-  is: { dev: false }
+  is: isDevMock
 }))
 
 vi.mock('electron', () => ({
@@ -53,28 +253,29 @@ vi.mock('electron', () => ({
     whenReady: whenReadyMock,
     isDefaultProtocolClient: vi.fn(() => true),
     setAsDefaultProtocolClient: vi.fn(),
+    getVersion: vi.fn(() => '1.0.0'),
+    getLocale: vi.fn(() => 'en-US'),
     quit: vi.fn(),
-    exit: vi.fn()
+    exit: vi.fn(),
+    dock: { setIcon: vi.fn() }
   },
   shell: { openExternal: vi.fn() },
-  BrowserWindow: {
-    getAllWindows: vi.fn(() => []),
-    getFocusedWindow: vi.fn(() => null)
-  },
+  BrowserWindow: BrowserWindowMock,
   ipcMain: {
-    on: vi.fn(),
-    handle: vi.fn()
+    on: ipcMainOnMock,
+    handle: ipcMainHandleMock,
+    removeListener: vi.fn()
   },
   protocol: {
-    registerSchemesAsPrivileged: vi.fn(),
-    handle: vi.fn()
+    registerSchemesAsPrivileged: protocolRegisterSchemesMock,
+    handle: protocolHandleMock
   },
   net: {
-    fetch: vi.fn()
+    fetch: netFetchMock
   },
   globalShortcut: {
-    register: vi.fn(() => true),
-    unregisterAll: vi.fn()
+    register: globalShortcutRegisterMock,
+    unregisterAll: globalShortcutUnregisterAllMock
   },
   clipboard: {
     readText: vi.fn(() => '')
@@ -83,10 +284,32 @@ vi.mock('electron', () => ({
     getPrimaryDisplay: vi.fn(() => ({ workAreaSize: { width: 1440, height: 900 } }))
   },
   session: {
-    defaultSession: {}
+    defaultSession: {
+      webRequest: {
+        onHeadersReceived: webRequestOnHeadersReceivedMock
+      },
+      setCertificateVerifyProc: setCertificateVerifyProcMock,
+      extensions: {
+        loadExtension: vi.fn(async () => ({ name: 'React DevTools' }))
+      }
+    }
   },
-  Menu: vi.fn(),
-  MenuItem: vi.fn()
+  nativeImage: {
+    createFromPath: vi.fn(() => ({ id: 'icon' }))
+  },
+  Menu: Object.assign(
+    vi.fn(function MenuConstructor() {
+      return {
+        append: vi.fn(),
+        once: vi.fn(),
+        popup: vi.fn()
+      }
+    }),
+    { setApplicationMenu: menuSetApplicationMenuMock }
+  ),
+  MenuItem: vi.fn(function MenuItemConstructor(config) {
+    return config
+  })
 }))
 
 const ORIGINAL_ENV = { ...process.env }
@@ -95,12 +318,39 @@ async function importMainModule() {
   return import('./index')
 }
 
+async function flushReadyWork() {
+  await Promise.resolve()
+  await Promise.resolve()
+  await Promise.resolve()
+}
+
 describe('main index phase2 exports', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
+    browserWindows.length = 0
     getPathMock.mockImplementation((name: string) => `/mock/${name}`)
+    whenReadyMock.mockImplementation(() => new Promise<void>(() => {}))
+    requestSingleInstanceLockMock.mockReturnValue(true)
+    applyGlobalCaptureShortcutMock.mockReturnValue({ registered: true })
+    getCurrentVaultPathMock.mockReturnValue(null)
+    readPreferencesMock.mockReturnValue({ language: 'en' })
+    isPinningDisabledMock.mockReturnValue(true)
+    getPinnedCertificateHashesMock.mockReturnValue([])
+    computeSpkiHashFromPemMock.mockReturnValue('hash')
+    getOpenNoteIdsMock.mockReturnValue([])
+    getProviderDocMock.mockReturnValue(undefined)
+    getNoteCacheByIdMock.mockReturnValue(null)
+    toAbsolutePathMock.mockImplementation((filePath: string) => filePath)
+    createSnapshotMock.mockReturnValue(null)
+    safeReadMock.mockResolvedValue(null)
+    existsSyncMock.mockReturnValue(false)
+    readdirSyncMock.mockReturnValue([])
+    statSyncMock.mockReturnValue({ size: 10 })
+    BrowserWindowMock.getAllWindows.mockImplementation(() => browserWindows)
+    BrowserWindowMock.getFocusedWindow.mockImplementation(() => browserWindows[0] ?? null)
     process.env = { ...ORIGINAL_ENV }
+    isDevMock.dev = false
   })
 
   afterEach(() => {
@@ -135,6 +385,17 @@ describe('main index phase2 exports', () => {
     expect(module.envConfig.embeddingModel).toBe('embed-test')
   })
 
+  it('applies device-scoped userData and falls back to cwd dotenv when app env fails', async () => {
+    process.env.MEMRY_DEVICE = 'B'
+    dotenvConfigMock.mockReturnValueOnce({ error: new Error('missing env') })
+
+    await importMainModule()
+
+    expect(setPathMock).toHaveBeenCalledWith('userData', '/mock/userData-B')
+    expect(dotenvConfigMock).toHaveBeenCalledWith({ path: '/mock/app/.env', quiet: true })
+    expect(dotenvConfigMock).toHaveBeenCalledWith({ quiet: true })
+  })
+
   it('skips the single-instance lock for multi-device test launches', async () => {
     process.env.NODE_ENV = 'test'
     process.env.MEMRY_DEVICE = 'A'
@@ -142,6 +403,24 @@ describe('main index phase2 exports', () => {
     await importMainModule()
 
     expect(requestSingleInstanceLockMock).not.toHaveBeenCalled()
+  })
+
+  it('boots i18n from vault preferences and rebuilds the app menu', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    getCurrentVaultPathMock.mockReturnValue('/vault')
+    readPreferencesMock.mockReturnValue({ language: 'tr' })
+
+    await importMainModule()
+    await flushReadyWork()
+
+    expect(readPreferencesMock).toHaveBeenCalledWith('/vault')
+    expect(createMainI18nMock).toHaveBeenCalledWith({ locale: 'tr' })
+
+    const registration = registerAllHandlersMock.mock.calls.at(-1)?.[0] as {
+      rebuildMenu: (locale: string) => void
+    }
+    registration.rebuildMenu('tr')
+    expect(menuSetApplicationMenuMock).toHaveBeenCalledWith({ id: 'menu' })
   })
 
   it('registerOAuthState schedules expiry cleanup at 10 minutes', async () => {
@@ -153,5 +432,622 @@ describe('main index phase2 exports', () => {
     module.registerOAuthState('state-1')
 
     expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 10 * 60 * 1000)
+  })
+
+  it('wires ready-time desktop startup without touching real Electron state', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+
+    expect(registerAllHandlersMock).toHaveBeenCalledWith({
+      i18n: expect.any(Object),
+      rebuildMenu: expect.any(Function)
+    })
+    expect(initializeTelemetryRuntimeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appVersion: '1.0.0',
+        locale: 'en-US'
+      })
+    )
+    expect(protocolHandleMock).toHaveBeenCalledWith('memry-file', expect.any(Function))
+    expect(webRequestOnHeadersReceivedMock).toHaveBeenCalledWith(expect.any(Function))
+    expect(initPersistenceMock).toHaveBeenCalled()
+    expect(applyGlobalCaptureShortcutMock).toHaveBeenCalled()
+    expect(BrowserWindowMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        width: 1550,
+        height: 900,
+        show: false
+      })
+    )
+    expect(initializeUpdaterMock).toHaveBeenCalled()
+    expect(autoOpenLastVaultMock).toHaveBeenCalled()
+
+    const createdWindow = browserWindows[0]
+    createdWindow.emitTestEvent('focus')
+    expect(triggerGoogleCalendarSyncNowMock).toHaveBeenCalledWith('window-focus')
+  })
+
+  it('covers dev-only startup paths for CSP, renderer URL loading, and React DevTools', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    isDevMock.dev = true
+    process.env.ELECTRON_RENDERER_URL = 'http://localhost:5173/'
+    existsSyncMock.mockReturnValue(true)
+    readdirSyncMock.mockReturnValue(['1.0.0', '.DS_Store', '2.0.0'])
+
+    await importMainModule()
+    await flushReadyWork()
+
+    expect(browserWindows[0].loadURL).toHaveBeenCalledWith('http://localhost:5173/')
+
+    const cspCallback = webRequestOnHeadersReceivedMock.mock.calls.at(-1)?.[0] as (
+      details: { url: string; responseHeaders?: Record<string, string[]> },
+      callback: (response: { responseHeaders?: Record<string, string[]> }) => void
+    ) => void
+    const callback = vi.fn()
+    cspCallback({ url: 'http://localhost:5173/index.html', responseHeaders: {} }, callback)
+    expect(callback).toHaveBeenCalledWith({
+      responseHeaders: expect.objectContaining({
+        'Content-Security-Policy': [expect.stringContaining("'unsafe-eval'")]
+      })
+    })
+  })
+
+  it('serves memry-file protocol only from allowed paths', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const protocolHandler = protocolHandleMock.mock.calls
+      .find(([scheme]) => scheme === 'memry-file')
+      ?.at(1) as (request: Request) => Promise<Response>
+    expect(protocolHandler).toBeTypeOf('function')
+
+    const blocked = await protocolHandler(new Request('memry-file://local/tmp/secret.txt'))
+    expect(blocked.status).toBe(403)
+
+    const missingImage = await protocolHandler(
+      new Request('memry-file://local/mock/userData/thumb.png')
+    )
+    expect(missingImage.status).toBe(200)
+    expect(missingImage.headers.get('Content-Type')).toBe('image/png')
+
+    const missingText = await protocolHandler(
+      new Request('memry-file://local/mock/userData/missing.txt')
+    )
+    expect(missingText.status).toBe(404)
+  })
+
+  it('serves existing memry-file requests with full and ranged responses', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    existsSyncMock.mockReturnValue(true)
+    statSyncMock.mockReturnValue({ size: 10 })
+    createReadStreamMock.mockReturnValue([Buffer.from('range')])
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const protocolHandler = protocolHandleMock.mock.calls
+      .find(([scheme]) => scheme === 'memry-file')
+      ?.at(1) as (request: Request) => Promise<Response>
+
+    const full = await protocolHandler(new Request('memry-file://local/mock/userData/file.txt'))
+    expect(full.status).toBe(200)
+    expect(netFetchMock).toHaveBeenCalledWith('file:///mock/userData/file.txt')
+
+    const ranged = await protocolHandler(
+      new Request('memry-file://local/mock/userData/audio.mp3', {
+        headers: { Range: 'bytes=2-6' }
+      })
+    )
+    expect(ranged.status).toBe(206)
+    expect(ranged.headers.get('Content-Range')).toBe('bytes 2-6/10')
+    expect(await ranged.text()).toBe('range')
+    expect(createReadStreamMock).toHaveBeenCalledWith('/mock/userData/audio.mp3', {
+      start: 2,
+      end: 6
+    })
+
+    statSyncMock.mockImplementationOnce(() => {
+      throw new Error('stat failed')
+    })
+    const statFailed = await protocolHandler(
+      new Request('memry-file://local/mock/userData/broken.txt')
+    )
+    expect(statFailed.status).toBe(404)
+  })
+
+  it('serves memry-file paths with the vault allow-list and open-ended ranges', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    getCurrentVaultPathMock.mockReturnValue('/vault')
+    existsSyncMock.mockReturnValue(true)
+    statSyncMock.mockReturnValue({ size: 10 })
+    createReadStreamMock.mockReturnValue([Buffer.from('tail')])
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const protocolHandler = protocolHandleMock.mock.calls
+      .find(([scheme]) => scheme === 'memry-file')
+      ?.at(1) as (request: Request) => Promise<Response>
+
+    const allowed = await protocolHandler(
+      new Request('memry-file://local/vault/media/audio.mp3', {
+        headers: { Range: 'bytes=4-' }
+      })
+    )
+
+    expect(allowed.status).toBe(206)
+    expect(createReadStreamMock).toHaveBeenCalledWith('/vault/media/audio.mp3', {
+      start: 4,
+      end: 9
+    })
+  })
+
+  it('applies CSP only to app-owned pages', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const cspCallback = webRequestOnHeadersReceivedMock.mock.calls.at(-1)?.[0] as (
+      details: { url: string; responseHeaders?: Record<string, string[]> },
+      callback: (response: { responseHeaders?: Record<string, string[]> }) => void
+    ) => void
+
+    const ownCallback = vi.fn()
+    cspCallback(
+      { url: 'memry-file://local/mock/userData/file.png', responseHeaders: {} },
+      ownCallback
+    )
+    expect(ownCallback).toHaveBeenCalledWith({
+      responseHeaders: expect.objectContaining({
+        'Content-Security-Policy': [expect.stringContaining("default-src 'self' memry-file:")]
+      })
+    })
+
+    const externalCallback = vi.fn()
+    cspCallback({ url: 'https://example.com/script.js', responseHeaders: {} }, externalCallback)
+    expect(externalCallback).toHaveBeenCalledWith({})
+  })
+
+  it('configures certificate pinning callbacks when pins are available', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    isPinningDisabledMock.mockReturnValue(false)
+    getPinnedCertificateHashesMock.mockReturnValue(['hash'])
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const verify = setCertificateVerifyProcMock.mock.calls[0][0] as (
+      request: { certificate: { data?: string }; hostname: string },
+      callback: (result: number) => void
+    ) => void
+
+    const callback = vi.fn()
+    verify({ certificate: {}, hostname: 'api.memrynote.com' }, callback)
+    expect(callback).toHaveBeenLastCalledWith(-2)
+
+    computeSpkiHashFromPemMock.mockReturnValueOnce('wrong-hash')
+    verify({ certificate: { data: 'pem' }, hostname: 'api.memrynote.com' }, callback)
+    expect(callback).toHaveBeenLastCalledWith(-2)
+
+    computeSpkiHashFromPemMock.mockImplementationOnce(() => {
+      throw new Error('bad pem')
+    })
+    verify({ certificate: { data: 'bad' }, hostname: 'api.memrynote.com' }, callback)
+    expect(callback).toHaveBeenLastCalledWith(-2)
+
+    verify({ certificate: { data: 'pem' }, hostname: 'api.memrynote.com' }, callback)
+    expect(callback).toHaveBeenLastCalledWith(0)
+  })
+
+  it('leaves certificate verification unset when pinning has no pins', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    isPinningDisabledMock.mockReturnValue(false)
+    getPinnedCertificateHashesMock.mockReturnValue([])
+
+    await importMainModule()
+    await flushReadyWork()
+
+    expect(setCertificateVerifyProcMock).not.toHaveBeenCalled()
+  })
+
+  it('wires BrowserWindow navigation, ready, and external-link handlers', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const createdWindow = browserWindows[0]
+    createdWindow.emitTestEvent('ready-to-show')
+    expect(createdWindow.show).toHaveBeenCalled()
+
+    const openHandler = createdWindow.webContents.setWindowOpenHandler.mock
+      .calls[0][0] as (details: { url: string }) => { action: string }
+    expect(openHandler({ url: 'https://memrynote.com' })).toEqual({ action: 'deny' })
+
+    createdWindow.emitTestEvent('app-command', {}, 'browser-backward')
+    expect(sendAppNavigationCommandMock).toHaveBeenCalledWith(
+      createdWindow.webContents,
+      'browser-backward'
+    )
+
+    createdWindow.emitTestEvent('swipe', {}, 'left')
+    expect(sendAppNavigationSwipeCommandMock).toHaveBeenCalledWith(
+      createdWindow.webContents,
+      'left'
+    )
+
+    sendAppNavigationKeyboardCommandMock.mockReturnValueOnce(true)
+    const beforeInput = createdWindow.webContents.on.mock.calls.find(
+      ([event]) => event === 'before-input-event'
+    )?.[1] as (event: { preventDefault: () => void }, input: unknown) => void
+    const preventDefault = vi.fn()
+    beforeInput({ preventDefault }, { key: 'BrowserBack' })
+    expect(preventDefault).toHaveBeenCalled()
+  })
+
+  it('handles OAuth deep links for registered states', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+
+    const module = await importMainModule()
+    await flushReadyWork()
+    module.registerOAuthState('oauth-state')
+
+    const openUrlHandler = appOnMock.mock.calls.find(([event]) => event === 'open-url')?.[1] as (
+      event: { preventDefault: () => void },
+      url: string
+    ) => void
+    const preventDefault = vi.fn()
+    openUrlHandler({ preventDefault }, 'memry://oauth/callback?code=auth-code&state=oauth-state')
+
+    expect(preventDefault).toHaveBeenCalled()
+    expect(browserWindows[0].webContents.send).toHaveBeenCalledWith('auth:oauth-callback', {
+      code: 'auth-code',
+      state: 'oauth-state'
+    })
+    expect(browserWindows[0].focus).toHaveBeenCalled()
+
+    const secondInstanceHandler = appOnMock.mock.calls.find(
+      ([event]) => event === 'second-instance'
+    )?.[1] as (_event: unknown, commandLine: string[]) => void
+    module.registerOAuthState('second-state')
+    secondInstanceHandler({}, ['--flag', 'memry://oauth/callback?code=second&state=second-state'])
+    expect(browserWindows[0].webContents.send).toHaveBeenCalledWith('auth:oauth-callback', {
+      code: 'second',
+      state: 'second-state'
+    })
+
+    expect(() => openUrlHandler({ preventDefault }, 'not a valid url')).not.toThrow()
+  })
+
+  it('handles window control IPC and native context menu resolution', async () => {
+    vi.useFakeTimers()
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const mainWindow = browserWindows[0]
+    const pingHandler = ipcMainOnMock.mock.calls.find(
+      ([event]) => event === 'ping'
+    )?.[1] as () => void
+    pingHandler()
+
+    const minimizeHandler = ipcMainOnMock.mock.calls.find(
+      ([event]) => event === 'window-minimize'
+    )?.[1] as () => void
+    minimizeHandler()
+    expect(mainWindow.minimize).toHaveBeenCalled()
+
+    const maximizeHandler = ipcMainOnMock.mock.calls.find(
+      ([event]) => event === 'window-maximize'
+    )?.[1] as () => void
+    maximizeHandler()
+    expect(mainWindow.maximize).toHaveBeenCalled()
+    mainWindow.isMaximized.mockReturnValueOnce(true)
+    maximizeHandler()
+    expect(mainWindow.unmaximize).toHaveBeenCalled()
+
+    const closeHandler = ipcMainOnMock.mock.calls.find(
+      ([event]) => event === 'window-close'
+    )?.[1] as () => void
+    BrowserWindowMock.getFocusedWindow.mockReturnValueOnce(null)
+    closeHandler()
+    BrowserWindowMock.getFocusedWindow.mockReturnValueOnce(mainWindow)
+    closeHandler()
+    const flushHandler = ipcMainOnMock.mock.calls.find(
+      ([event]) => event === 'app:flush-done'
+    )?.[1] as () => void
+    flushHandler()
+    await flushReadyWork()
+    expect(mainWindow.close).toHaveBeenCalled()
+
+    const contextHandler = ipcMainHandleMock.mock.calls.find(
+      ([event]) => event === 'context-menu:show'
+    )?.[1] as (_event: unknown, items: Array<Record<string, unknown>>) => Promise<string | null>
+    const { Menu, MenuItem } = await import('electron')
+    const selected = contextHandler({}, [
+      { id: 'copy', label: 'Copy', accelerator: 'CmdOrCtrl+C' },
+      { id: 'sep', label: '', type: 'separator' },
+      { id: 'disabled', label: 'Disabled', disabled: true }
+    ])
+    const copyItem = vi
+      .mocked(MenuItem)
+      .mock.calls.find(([config]) => (config as { label?: string }).label === 'Copy')?.[0] as {
+      click: () => void
+    }
+    copyItem.click()
+    await expect(selected).resolves.toBe('copy')
+
+    const closed = contextHandler({}, [])
+    const menuInstance = vi.mocked(Menu).mock.results.at(-1)?.value as {
+      once: ReturnType<typeof vi.fn>
+    }
+    const menuWillClose = menuInstance.once.mock.calls.find(
+      ([event]) => event === 'menu-will-close'
+    )?.[1] as () => void
+    menuWillClose()
+    vi.advanceTimersByTime(100)
+    await expect(closed).resolves.toBeNull()
+  })
+
+  it('falls back to the global quick-capture shortcut and manages the quick window', async () => {
+    vi.useFakeTimers()
+    whenReadyMock.mockResolvedValue(undefined)
+    applyGlobalCaptureShortcutMock.mockReturnValue({ registered: false })
+
+    await importMainModule()
+    await flushReadyWork()
+
+    expect(globalShortcutRegisterMock).toHaveBeenCalledWith(
+      'CommandOrControl+Shift+Space',
+      expect.any(Function)
+    )
+    const shortcutHandler = globalShortcutRegisterMock.mock.calls[0][1] as () => void
+    shortcutHandler()
+
+    const quickWindow = browserWindows.at(-1)!
+    expect(BrowserWindowMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        width: 480,
+        height: 82,
+        alwaysOnTop: true,
+        skipTaskbar: true
+      })
+    )
+    quickWindow.emitTestEvent('ready-to-show')
+    expect(quickWindow.show).toHaveBeenCalled()
+    expect(quickWindow.focus).toHaveBeenCalled()
+
+    shortcutHandler()
+    expect(quickWindow.focus).toHaveBeenCalledTimes(2)
+
+    const resizeHandler = ipcMainOnMock.mock.calls.find(
+      ([event]) => event === 'quick-capture:resize'
+    )?.[1] as (_event: unknown, height: number) => void
+    resizeHandler({}, 999)
+    expect(quickWindow.setSize).toHaveBeenCalledWith(480, 400)
+
+    const closeHandler = ipcMainOnMock.mock.calls.find(
+      ([event]) => event === 'quick-capture:close'
+    )?.[1] as () => void
+    closeHandler()
+    expect(quickWindow.close).toHaveBeenCalled()
+
+    quickWindow.emitTestEvent('blur')
+    vi.advanceTimersByTime(100)
+    expect(quickWindow.close).toHaveBeenCalled()
+
+    quickWindow.emitTestEvent('closed')
+    shortcutHandler()
+    expect(BrowserWindowMock).toHaveBeenCalledTimes(3)
+  })
+
+  it('loads quick capture from the dev renderer URL and wires load-failure logging', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    isDevMock.dev = true
+    process.env.ELECTRON_RENDERER_URL = 'http://localhost:5173/'
+    applyGlobalCaptureShortcutMock.mockReturnValue({ registered: false })
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const shortcutHandler = globalShortcutRegisterMock.mock.calls[0][1] as () => void
+    shortcutHandler()
+
+    const quickWindow = browserWindows.at(-1)!
+    expect(quickWindow.loadURL).toHaveBeenCalledWith('http://localhost:5173/#/quick-capture')
+
+    const failLoadHandler = quickWindow.webContents.on.mock.calls.find(
+      ([event]) => event === 'did-fail-load'
+    )?.[1] as (_event: unknown, code: number, description: string) => void
+    expect(() => failLoadHandler({}, -3, 'aborted')).not.toThrow()
+  })
+
+  it('routes quick capture settings to the main window before closing the capture window', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    applyGlobalCaptureShortcutMock.mockReturnValue({ registered: false })
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const shortcutHandler = globalShortcutRegisterMock.mock.calls[0][1] as () => void
+    shortcutHandler()
+    const quickWindow = browserWindows.at(-1)!
+    const mainWindow = browserWindows[0]
+    mainWindow.isMinimized.mockReturnValueOnce(true)
+    mainWindow.isVisible.mockReturnValueOnce(false)
+
+    const openSettingsHandler = ipcMainOnMock.mock.calls.find(
+      ([event]) => event === 'quick-capture:open-settings'
+    )?.[1] as (_event: unknown, section?: string) => void
+    openSettingsHandler({}, 'sync')
+
+    expect(mainWindow.restore).toHaveBeenCalled()
+    expect(mainWindow.show).toHaveBeenCalled()
+    expect(mainWindow.focus).toHaveBeenCalled()
+    expect(mainWindow.webContents.send).toHaveBeenCalledWith(
+      SettingsChannels.events.OPEN_SECTION,
+      'sync'
+    )
+    expect(quickWindow.close).toHaveBeenCalled()
+  })
+
+  it('runs graceful shutdown cleanup from before-quit', async () => {
+    vi.useFakeTimers()
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const beforeQuitHandler = appOnMock.mock.calls.find(
+      ([event]) => event === 'before-quit'
+    )?.[1] as (event: { preventDefault: () => void }) => void
+    const preventDefault = vi.fn()
+    beforeQuitHandler({ preventDefault })
+    const duplicatePreventDefault = vi.fn()
+    beforeQuitHandler({ preventDefault: duplicatePreventDefault })
+    expect(duplicatePreventDefault).not.toHaveBeenCalled()
+
+    const flushHandler = ipcMainOnMock.mock.calls.find(
+      ([event]) => event === 'app:flush-done'
+    )?.[1] as () => void
+    flushHandler()
+    for (let i = 0; i < 20; i++) {
+      await Promise.resolve()
+    }
+
+    expect(preventDefault).toHaveBeenCalled()
+    expect(disposeTelemetryRuntimeMock).toHaveBeenCalled()
+    expect(stopSyncRuntimeMock).toHaveBeenCalled()
+    expect(closeVaultMock).toHaveBeenCalled()
+  })
+
+  it('creates close snapshots for open CRDT notes during graceful shutdown', async () => {
+    vi.useFakeTimers()
+    whenReadyMock.mockResolvedValue(undefined)
+    getOpenNoteIdsMock.mockReturnValue(['note-a', 'note-b', 'missing-note', 'empty-note'])
+    getNoteCacheByIdMock.mockImplementation((_db, noteId: string) => {
+      const rows: Record<string, { path: string; title: string }> = {
+        'note-a': { path: 'notes/a.md', title: 'Alpha' },
+        'note-b': { path: 'notes/b.md', title: 'Beta' },
+        'empty-note': { path: 'notes/empty.md', title: 'Empty' }
+      }
+      return rows[noteId] ?? null
+    })
+    safeReadMock.mockImplementation(async (filePath: string) =>
+      filePath.includes('empty') ? null : `content for ${filePath}`
+    )
+    createSnapshotMock.mockReturnValueOnce({ id: 'snap-a' }).mockReturnValueOnce(null)
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const beforeQuitHandler = appOnMock.mock.calls.find(
+      ([event]) => event === 'before-quit'
+    )?.[1] as (event: { preventDefault: () => void }) => void
+    beforeQuitHandler({ preventDefault: vi.fn() })
+
+    const flushHandler = ipcMainOnMock.mock.calls.find(
+      ([event]) => event === 'app:flush-done'
+    )?.[1] as () => void
+    flushHandler()
+    for (let i = 0; i < 30; i++) {
+      await Promise.resolve()
+    }
+
+    expect(toAbsolutePathMock).toHaveBeenCalledWith('notes/a.md')
+    expect(safeReadMock).toHaveBeenCalledWith('notes/a.md')
+    expect(createSnapshotMock).toHaveBeenCalledWith(
+      'note-a',
+      'content for notes/a.md',
+      'Alpha',
+      expect.any(String)
+    )
+    expect(createSnapshotMock).toHaveBeenCalledWith(
+      'note-b',
+      'content for notes/b.md',
+      'Beta',
+      expect.any(String)
+    )
+    expect(createSnapshotMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('forces exit on graceful shutdown timeout', async () => {
+    vi.useFakeTimers()
+    whenReadyMock.mockResolvedValue(undefined)
+    closeVaultMock.mockImplementationOnce(() => new Promise(() => {}))
+
+    await importMainModule()
+    await flushReadyWork()
+    const { app } = await import('electron')
+
+    const beforeQuitHandler = appOnMock.mock.calls.find(
+      ([event]) => event === 'before-quit'
+    )?.[1] as (event: { preventDefault: () => void }) => void
+    beforeQuitHandler({ preventDefault: vi.fn() })
+
+    const flushHandler = ipcMainOnMock.mock.calls.find(
+      ([event]) => event === 'app:flush-done'
+    )?.[1] as () => void
+    flushHandler()
+    for (let i = 0; i < 20; i++) {
+      await Promise.resolve()
+    }
+    vi.advanceTimersByTime(5000)
+
+    expect(app.exit).toHaveBeenCalledWith(1)
+  })
+
+  it('exits with failure when graceful cleanup rejects', async () => {
+    vi.useFakeTimers()
+    whenReadyMock.mockResolvedValue(undefined)
+    closeVaultMock.mockRejectedValueOnce(new Error('close failed'))
+
+    await importMainModule()
+    await flushReadyWork()
+    const { app } = await import('electron')
+
+    const beforeQuitHandler = appOnMock.mock.calls.find(
+      ([event]) => event === 'before-quit'
+    )?.[1] as (event: { preventDefault: () => void }) => void
+    beforeQuitHandler({ preventDefault: vi.fn() })
+
+    const flushHandler = ipcMainOnMock.mock.calls.find(
+      ([event]) => event === 'app:flush-done'
+    )?.[1] as () => void
+    flushHandler()
+    for (let i = 0; i < 30; i++) {
+      await Promise.resolve()
+    }
+
+    expect(app.exit).toHaveBeenCalledWith(1)
+  })
+
+  it('handles app close lifecycle events', async () => {
+    await importMainModule()
+    const { app } = await import('electron')
+
+    const windowAllClosedHandler = appOnMock.mock.calls.find(
+      ([event]) => event === 'window-all-closed'
+    )?.[1] as () => void
+    const originalPlatform = process.platform
+    Object.defineProperty(process, 'platform', { value: 'linux' })
+    try {
+      windowAllClosedHandler()
+      expect(app.quit).toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(process, 'platform', { value: originalPlatform })
+    }
+
+    const willQuitHandler = appOnMock.mock.calls.find(
+      ([event]) => event === 'will-quit'
+    )?.[1] as () => void
+    willQuitHandler()
+    expect(globalShortcutUnregisterAllMock).toHaveBeenCalled()
   })
 })

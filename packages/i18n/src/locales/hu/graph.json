@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Grafikon betöltése...",
+    "load-failed": "Nem sikerült betölteni a grafikon adatait",
+    "try-again": "Próbáld újra",
+    "aria-label": "Tudásgráf {nodeCount, plural, one {# csomópont} other {# csomópontok}} és {edgeCount, plural, one {# csatlakozás} other {# csatlakozások}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Grafikon csomópontok",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "A tudás grafikonja",
+    "description": "A jegyzetei, feladatai és projektjei közötti kapcsolatok interaktív grafikonként jelennek meg itt.",
+    "link-title": "Kapcsolja össze a jegyzeteit",
+    "link-description": "Használja a [[wikilinks]]-et az ötletek összekapcsolásához a jegyzetek között",
+    "discover-title": "Fedezze fel a mintákat",
+    "discover-description": "Ahogy a kapcsolatok növekednek, a klaszterek és a témák természetesen jelennek meg"
+  },
+  "entity": {
+    "note": "megjegyzés",
+    "notes": "jegyzetek",
+    "journal": "folyóirat",
+    "journals": "folyóiratok",
+    "task": "feladatot",
+    "tasks": "feladatokat",
+    "project": "projekt",
+    "projects": "projektek",
+    "tag": "címke",
+    "tags": "címkéket",
+    "orphan": "árva",
+    "orphans": "árvák",
+    "unresolved": "megoldatlan"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Grafikon beállításai",
+    "hide-settings": "Beállítások elrejtése",
+    "reset-filters": "Szűrők visszaállítása",
+    "filters": "Szűrők",
+    "display": "Kijelző",
+    "show-labels": "Címkék megjelenítése",
+    "focus-depth": "mélység {depth}",
+    "clear-focus": "Tiszta fókuszált csomópont"
+  },
+  "filter": {
+    "notes": "Megjegyzések",
+    "journals": "Folyóiratok",
+    "tasks": "Feladatok",
+    "projects": "Projektek",
+    "tags": "Címkék",
+    "orphans": "Árvák",
+    "toggle-entity": "Váltás: {label}",
+    "toggle-orphans": "Árva csomópontok váltása"
+  },
+  "search": {
+    "placeholder": "Csomópontok keresése...",
+    "clear": "Grafikonkeresés törlése"
+  },
+  "context-menu": {
+    "untitled": "Cím nélkül",
+    "focus-node": "Koncentráljon erre a csomópontra",
+    "open-new-tab": "Megnyitás új lapon",
+    "create-note": "Jegyzet létrehozása",
+    "copy-title": "Cím másolása"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {# csatlakozás} other {# csatlakozások}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Grafikon betöltése...",
+    "empty": "Nem találhatók kapcsolatok",
+    "open-full": "Teljes grafikon megnyitása",
+    "close": "Grafikon bezárása"
+  }
+}

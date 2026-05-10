@@ -1,0 +1,303 @@
+{
+  "title": "Nhật ký",
+  "section": {
+    "journal": "Nhật ký",
+    "aiConnections": "Kết nối AI",
+    "todaysNotes": "Ghi chú hôm nay",
+    "todaysSchedule": "Lịch trình hôm nay",
+    "todaysTasks": "Nhiệm vụ hôm nay",
+    "schedule": "Lịch trình",
+    "tasks": "Nhiệm vụ",
+    "calendarEvents": "Sự kiện Lịch",
+    "overdueTasks": "Nhiệm vụ quá hạn",
+    "technicalDetails": "Chi tiết kỹ thuật"
+  },
+  "action": {
+    "versionHistory": "Lịch sử phiên bản",
+    "export": "Xuất",
+    "fullWidth": "Toàn bộ chiều rộng",
+    "journalSettings": "Cài đặt Nhật ký",
+    "fullMode": "Chế độ đầy đủ",
+    "compactMode": "Chế độ gọn",
+    "focusMode": "Chế độ tập trung",
+    "exitFocusMode": "Thoát Chế Độ Tập Trung",
+    "enterFocusMode": "Vào Chế Độ Tập Trung",
+    "createNote": "Tạo ghi chú",
+    "createNewNote": "Tạo ghi chú mới",
+    "showLess": "Hiển thị ít hơn",
+    "showMoreNotes": "Hiển thị thêm ghi chú {count}",
+    "showMoreNotes_plural": "Hiển thị thêm nhiều ghi chú {count}",
+    "showFewerNotes": "Hiển thị ít ghi chú hơn",
+    "startBlank": "Bắt đầu với trang trắng thay thế",
+    "changeTemplate": "Thay đổi mẫu",
+    "dismissIndicator": "Đóng chỉ số",
+    "refreshConnections": "Làm mới kết nối",
+    "reloadJournal": "Tải lại Nhật ký",
+    "goToToday": "Đi đến Hôm nay",
+    "copyUnsavedContent": "Sao chép nội dung chưa lưu vào clipboard",
+    "openNoteFullPage": "Mở ghi chú ở trang đầy đủ",
+    "closeNoteDrawer": "Đóng ngăn ghi chú",
+    "addBookmark": "Thêm đánh dấu trang",
+    "removeBookmark": "Xóa đánh dấu trang",
+    "tryAgain": "Thử Lại"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "Bạn đang lên kế hoạch gì...",
+      "today": "Hôm nay bạn đang nghĩ gì...",
+      "past": "Suy ngẫm về ngày hôm nay...",
+      "default": "Bắt đầu viết..."
+    },
+    "toolbar": {
+      "ariaLabel": "Định dạng văn bản",
+      "bold": "Đậm",
+      "italic": "Nghiêng",
+      "underline": "Gạch chân",
+      "strikethrough": "Gạch ngang",
+      "link": "Liên kết",
+      "image": "Hình ảnh",
+      "moreOptions": "  \nThêm tùy chọn  ",
+      "heading1": "Tiêu đề 1",
+      "heading2": "Tiêu đề 2",
+      "heading3": "Tiêu đề 3",
+      "bulletList": "Danh sách dấu đầu dòng",
+      "numberedList": "Danh sách đánh số",
+      "checklist": "Danh sách kiểm tra",
+      "quote": "Trích dẫn",
+      "divider": "Vạch phân cách",
+      "codeBlock": "Khối mã"
+    },
+    "prompt": {
+      "enterUrl": "Nhập URL:"
+    },
+    "upload": {
+      "noEntry": "Không thể tải hình ảnh lên: không có ghi chú nhật ký nào được chọn",
+      "failed": "Tải hình ảnh thất bại"
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "Hôm nay",
+      "yesterday": "Hôm qua",
+      "tomorrow": "Ngày mai",
+      "future": "Tương lai"
+    },
+    "weekday": {
+      "sunday": "Chủ nhật",
+      "monday": "Thứ hai",
+      "tuesday": "Thứ ba",
+      "wednesday": "Thứ tư",
+      "thursday": "Thứ năm",
+      "friday": "Thứ sáu",
+      "saturday": "Thứ bảy"
+    },
+    "weekdayShort": {
+      "sunday": "CN",
+      "monday": "T2",
+      "tuesday": "T3",
+      "wednesday": "T4",
+      "thursday": "T5",
+      "friday": "T6",
+      "saturday": "T7"
+    },
+    "month": {
+      "january": "Tháng Một",
+      "february": "Tháng Hai",
+      "march": "Tháng Ba",
+      "april": "Tháng Tư",
+      "may": "Tháng Năm",
+      "june": "Tháng Sáu",
+      "july": "Tháng Bảy",
+      "august": "Tháng Tám",
+      "september": "Tháng Chín",
+      "october": "Tháng Mười",
+      "november": "Tháng Mười Một",
+      "december": "Tháng Mười Hai"
+    },
+    "monthShort": {
+      "january": "Thg 1",
+      "february": "Thg 2",
+      "march": "Tháng Ba",
+      "april": "Tháng Tư",
+      "may": "Tháng Năm",
+      "june": "Tháng Sáu",
+      "july": "Tháng Bảy",
+      "august": "Tháng Tám",
+      "september": "Tháng Chín",
+      "october": "Tháng Mười",
+      "november": "Tháng Mười Một",
+      "december": "Tháng Mười Hai"
+    },
+    "greeting": {
+      "morning": "Chào buổi sáng",
+      "afternoon": "Chào buổi chiều",
+      "evening": "Chào buổi tối",
+      "night": "Chúc ngủ ngon"
+    },
+    "allDay": "Cả ngày"
+  },
+  "nav": {
+    "previousDay": "Ngày trước",
+    "nextDay": "Ngày kế tiếp",
+    "previousMonth": "Tháng trước",
+    "nextMonth": "Tháng sau",
+    "previousYear": "Năm trước",
+    "nextYear": "Năm sau",
+    "journalBack": "Quay lại nhật ký",
+    "journalNavigation": "Điều hướng nhật ký",
+    "dateNavigation": "Điều hướng theo ngày nhật ký",
+    "goToYearView": "Đi tới chế độ xem theo năm",
+    "previousView": "Chế độ xem trước",
+    "nextView": "Chế độ xem tiếp theo"
+  },
+  "aria": {
+    "moreOptions": "  \nThêm tùy chọn  ",
+    "documentStatistics": "Thống kê tài liệu",
+    "dayContext": "Nội dung ngày: công việc và lịch trình",
+    "scheduleEvents": "Sắp xếp sự kiện",
+    "tasks": "Nhiệm vụ",
+    "notesCreatedToday": "{count} ghi chú được tạo hôm nay"
+  },
+  "empty": {
+    "noEntry": "Không có mục nào",
+    "noDaysInMonth": "Không có ngày nào trong tháng này",
+    "noEventsScheduled": "Không có sự kiện nào được lên lịch",
+    "noEventsScheduledToday": "Không có sự kiện nào được lên lịch hôm nay",
+    "noEventsWereScheduled": "Không có sự kiện nào đã được lên lịch",
+    "noTasksDue": "Không có nhiệm vụ nào cần hoàn thành",
+    "noTasksDueToday": "Không có nhiệm vụ nào cần hoàn thành hôm nay",
+    "noTasksWereDue": "Không có nhiệm vụ nào đã đến hạn",
+    "noNotesToday": "Không có ghi chú nào được tạo hôm nay",
+    "startDocumenting": "Bắt đầu ghi chép suy nghĩ và ý tưởng của bạn"
+  },
+  "ai": {
+    "loading": "Đang phân tích mục nhập của bạn...",
+    "empty": {
+      "willAppear": "Các kết nối của bạn sẽ xuất hiện ở đây",
+      "noneYet": "Chưa tìm thấy kết nối nào",
+      "moreJournaling": "Khi bạn ghi nhật ký nhiều hơn, AI sẽ tìm các mục nhập liên quan",
+      "keepWriting": "Tiếp tục viết để khám phá các mục nhập liên quan"
+    },
+    "error": {
+      "loadFailed": "Không thể tải kết nối"
+    },
+    "connectionAria": "Kết nối với {label}, {scorePercent}% khớp"
+  },
+  "count": {
+    "item": "  \nmục  ",
+    "items": "mục",
+    "note": "ghi chú",
+    "notes": "ghi chú",
+    "day": "ngày",
+    "days": "ngày",
+    "event": "sự kiện",
+    "events": "các sự kiện",
+    "meeting": "cuộc họp",
+    "meetings": "các cuộc họp",
+    "task": "nhiệm vụ",
+    "tasks": "các nhiệm vụ",
+    "todo": "cần làm",
+    "people": "Người {count}",
+    "moreConnections": "+ {count} kết nối thêm",
+    "moreConnections_plural": "+ {count} kết nối thêm",
+    "moreNotes": "+ {count} ghi chú thêm",
+    "moreNotes_plural": "+ {count} ghi chú thêm",
+    "daysWithEntries": "ngày có mục nhập",
+    "charactersWritten": "ký tự đã viết",
+    "words": "{count} từ",
+    "characters": "{count} ký tự",
+    "completed": "{count} đã hoàn thành",
+    "overdue": "{count} quá hạn"
+  },
+  "stats": {
+    "wordCount": "Số từ",
+    "characterCount": "Số ký tự",
+    "readingTime": "Thời gian đọc ước tính",
+    "lastModified": "Lần sửa cuối",
+    "lessThanOneMinute": "< 1 phút",
+    "minutes": "{minutes} phút",
+    "read": "{readingTime} đã đọc",
+    "modified": "Đã sửa {date}"
+  },
+  "task": {
+    "completed": "Đã hoàn thành",
+    "notCompleted": "Chưa hoàn thành",
+    "priority": "Ưu tiên {priority}",
+    "overdue": "quá hạn",
+    "markComplete": "Đánh dấu \"{title}\" là đã hoàn thành",
+    "markNotComplete": "Đánh dấu \"{title}\" là chưa hoàn thành"
+  },
+  "template": {
+    "using": "Sử dụng \"{templateName}\""
+  },
+  "reminder": {
+    "hasReminders": "Có nhắc nhở",
+    "setToRevisit": "Đặt lời nhắc để xem lại",
+    "tooltip": "Nhắc nhở: {date}",
+    "tooltipMore": "Nhắc nhở: {date} (+{count} khác)",
+    "success": {
+      "set": "Lời nhắc đã được đặt cho mục nhật ký này",
+      "deleted": "Nhắc nhở đã xóa",
+      "dismissed": "Nhắc nhở đã bị hủy",
+      "snoozed": "Nhắc nhở đã được hoãn"
+    },
+    "error": {
+      "set": "Không đặt được nhắc nhở",
+      "delete": "Không xóa được nhắc nhở",
+      "dismiss": "Không hủy được nhắc nhở",
+      "snooze": "Không thể hoãn nhắc nhở"
+    }
+  },
+  "toast": {
+    "unsavedRetry": "Nội dung của bạn vẫn đang ở trong bộ nhớ. Nhấp để thử lưu lại.",
+    "noteNotFound": "Không tìm thấy ghi chú \"{target}\"",
+    "fileNotFound": "Không tìm thấy tệp: {target}",
+    "openLinkedItemFailed": "Không thể mở mục liên kết",
+    "errorPrefix": "Lỗi:"
+  },
+  "export": {
+    "noteTitle": "Nhật ký - {month} {day}, {year}"
+  },
+  "note": {
+    "generatedTitle": "Ghi chú - {date}",
+    "openAria": "Mở {title}, được tạo vào {time}"
+  },
+  "tag": {
+    "suggestionsAria": "Gợi ý thẻ",
+    "empty": {
+      "title": "Chưa có thẻ nào",
+      "description": "Gõ để tạo thẻ mới"
+    },
+    "groupTitle": "Thẻ",
+    "create": "Tạo #{query}",
+    "ariaLabel": "Thẻ: {tag}, nhấp để lọc"
+  },
+  "wiki": {
+    "suggestionsAria": "Gợi ý trang",
+    "empty": {
+      "title": "Không tìm thấy trang nào"
+    },
+    "groupRecent": "Gần đây",
+    "groupAllPages": "Tất cả các trang",
+    "createNewPage": "Tạo trang mới",
+    "ariaLabel": "Liên kết đến {title}"
+  },
+  "error": {
+    "title": "Lỗi nhật ký",
+    "description": "Nhật ký đã gặp lỗi cho {date}. Các thay đổi gần đây của bạn có thể chưa được lưu.",
+    "descriptionNoDate": "Nhật ký đã gặp lỗi. Các thay đổi gần đây của bạn có thể chưa được lưu.",
+    "unsavedContent": "Phát hiện nội dung chưa lưu ({length} ký tự)"
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "k"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveJournalEntry": "Không thể lưu nhật ký",
+      "failedToLoadJournalSettings": "Không thể tải cài đặt nhật ký",
+      "failedToUpdateSettings": "Không thể cập nhật cài đặt"
+    }
+  }
+}

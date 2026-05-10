@@ -1,0 +1,1160 @@
+{
+  "toast": {
+    "exportNotImplemented": "ローカル データ エクスポートはまだ実装されていません"
+  },
+  "page": {
+    "title": "設定",
+    "nav": {
+      "groups": {
+        "workspace": "ワークスペース",
+        "preferences": "設定",
+        "services": "サービス",
+        "data": "データ"
+      },
+      "items": {
+        "account": "アカウント",
+        "general": "一般",
+        "templates": "テンプレート",
+        "editor": "編集者",
+        "journal": "日記",
+        "tasks": "タスク",
+        "calendar": "カレンダー",
+        "appearance": "外観",
+        "shortcuts": "ショートカット",
+        "ai": "AIアシスタント",
+        "integrations": "統合",
+        "vault": "保管庫",
+        "tags": "タグ",
+        "properties": "プロパティ"
+      }
+    }
+  },
+  "general": {
+    "header": {
+      "title": "一般",
+      "subtitle": "アプリケーションの起動とタブの動作",
+      "loading": "設定を読み込んでいます..."
+    },
+    "groups": {
+      "startup": "スタートアップ",
+      "updates": "アップデート",
+      "languageRegion": "言語と地域",
+      "tabBehavior": "タブの動作",
+      "fileCreation": "ファイルの作成",
+      "privacy": "プライバシー"
+    },
+    "startup": {
+      "launchAtLogin": {
+        "label": "ログイン時に起動",
+        "description": "ログイン時にMemryを起動します",
+        "error": "起動時の更新開始に失敗しました"
+      }
+    },
+    "updates": {
+      "appUpdates": "アプリのアップデート",
+      "installedVersion": "インストールされているバージョン {version}",
+      "availableVersion": "利用可能なバージョン {version}",
+      "unsupported": "パッケージ化されたビルドは、GitHub リリースからアップデートを確認、ダウンロード、インストールできます",
+      "available": "Memry {version} はダウンロードできます",
+      "downloadingLatest": "最新リリースのダウンロード",
+      "downloadingLatestPercent": "最新リリース ({percent}%) をダウンロードしています",
+      "downloaded": "Memry {version} をインストールする準備ができました",
+      "upToDate": "このインストールは最新の公開リリースに含まれています",
+      "checking": "GitHub リリースで新しいバージョンを確認する",
+      "idle": "新しいリリースを確認し、アプリを終了せずにインストールします",
+      "unsupportedToast": "自動更新はパッケージ化されたリリースでのみ利用可能です",
+      "upToDateToast": "Memry {version} は最新です",
+      "actionFailed": "更新アクションが失敗しました",
+      "actions": {
+        "checking": "確認中...",
+        "available": "アップデートをダウンロード",
+        "downloading": "ダウンロード中...",
+        "downloadingPercent": "{percent}%をダウンロード中",
+        "downloaded": "再起動してインストールする",
+        "idle": "アップデートをチェックする"
+      }
+    },
+    "language": {
+      "label": "言語",
+      "helper": "ほとんどのアプリはすぐに更新されます。一部のシステム レベルのテキスト (すでに表示されている通知、ドック ラベル、ウィンドウのタイトル バー) は、次回の起動後に更新されます。",
+      "changed": "言語が {nativeName} に変更されました",
+      "failed": "言語の変更に失敗しました。もう一度試してください。"
+    },
+    "clockFormat": {
+      "label": "時間の形式",
+      "description": "12 時間制または 24 時間制",
+      "options": {
+        "12h": "12時間",
+        "24h": "24時間対応"
+      },
+      "error": "時刻形式の更新に失敗しました"
+    },
+    "tabs": {
+      "previewMode": {
+        "label": "プレビューモード",
+        "description": "シングルクリックするとプレビューが開き、ダブルクリックすると開いたままになります"
+      },
+      "restoreSession": {
+        "label": "開始時にセッションを復元する",
+        "description": "前回のセッションからタブを再度開く"
+      },
+      "closeButton": {
+        "label": "タブを閉じるボタン",
+        "description": "閉じるボタンを表示するタイミング",
+        "options": {
+          "always": "常に表示される",
+          "hover": "ホバー時に表示",
+          "active": "アクティブなタブのみ"
+        }
+      },
+      "error": "設定の更新に失敗しました"
+    },
+    "fileCreation": {
+      "createInSelectedFolder": {
+        "label": "選択したフォルダーに作成",
+        "description": "現在選択されているフォルダー内に新しいメモとフォルダーが作成されます。オフの場合、項目は常にルートに作成されます。"
+      }
+    },
+    "privacy": {
+      "telemetry": {
+        "label": "匿名使用状況メトリクスを共有する",
+        "description": "これは単なるメトリクスであり、メモの内容、検索クエリ、ファイル パス、電子メール、または生の ID は送信されません。",
+        "error": "テレメトリ設定の更新に失敗しました"
+      }
+    }
+  },
+  "appearance": {
+    "header": {
+      "title": "外観",
+      "subtitle": "外観と操作感をカスタマイズする",
+      "loading": "設定を読み込んでいます..."
+    },
+    "groups": {
+      "theme": "テーマ",
+      "accentColor": "アクセントカラー",
+      "typography": "タイポグラフィー"
+    },
+    "theme": {
+      "colorMode": {
+        "label": "カラーモード",
+        "description": "好みのテーマを選択してください",
+        "aria": "カラーモード"
+      },
+      "options": {
+        "light": "暖かい",
+        "white": "ホワイト",
+        "dark": "暗い",
+        "system": "システム"
+      },
+      "error": "テーマの更新に失敗しました"
+    },
+    "accent": {
+      "pick": "アクセントカラーを選ぶ",
+      "custom": {
+        "label": "カスタムカラー",
+        "description": "16 進数値を入力してください",
+        "placeholder": "#000000"
+      },
+      "presets": {
+        "indigo": "インディゴ",
+        "amber": "アンバー",
+        "emerald": "エメラルド",
+        "red": "赤",
+        "violet": "バイオレット",
+        "cyan": "シアン",
+        "pink": "ピンク",
+        "orange": "オレンジ"
+      },
+      "error": "アクセントカラーの更新に失敗しました"
+    },
+    "typography": {
+      "fontSize": {
+        "label": "フォントサイズ",
+        "description": "基本テキストのサイズを調整する",
+        "aria": "フォントサイズ"
+      },
+      "fontFamily": {
+        "label": "フォントファミリー",
+        "description": "インターフェイスの主な書体",
+        "options": {
+          "system": "システムのデフォルト",
+          "sansSerif": "サンセリフ",
+          "serif": "セリフ(クリムゾンプロ)",
+          "gelasio": "ジェラシオ",
+          "geist": "ガイスト",
+          "inter": "インテル",
+          "monospace": "等空間"
+        }
+      },
+      "fontSizeError": "フォントサイズの更新に失敗しました",
+      "fontFamilyError": "フォントファミリーの更新に失敗しました"
+    }
+  },
+  "editor": {
+    "header": {
+      "title": "編集者",
+      "subtitle": "メモエディタの設定と環境設定",
+      "loading": "設定を読み込んでいます..."
+    },
+    "groups": {
+      "layout": "レイアウト",
+      "toolbar": "ツールバー",
+      "writing": "執筆"
+    },
+    "width": {
+      "label": "エディターの幅",
+      "description": "書き込みエリアの最大幅",
+      "options": {
+        "narrow": "狭い",
+        "medium": "中",
+        "wide": "ワイド"
+      },
+      "error": "エディターの幅を更新できませんでした"
+    },
+    "toolbarMode": {
+      "label": "スティッキー書式設定ツールバー",
+      "description": "ツールバーを常にエディターの上に表示する",
+      "error": "ツールバーモードの更新に失敗しました"
+    },
+    "spellCheck": {
+      "label": "スペルチェック",
+      "description": "入力中にスペルミスの単語に下線を引く",
+      "error": "スペルチェックの更新に失敗しました"
+    },
+    "autoSaveDelay": {
+      "label": "自動保存の遅延",
+      "description": "入力を停止してから保存するまでの待ち時間",
+      "seconds": "{seconds}",
+      "error": "自動保存の遅延を更新できませんでした"
+    },
+    "wordCount": {
+      "label": "単語数",
+      "description": "エディターのフッターに単語数を表示する",
+      "error": "単語数表示の更新に失敗しました"
+    }
+  },
+  "templates": {
+    "header": {
+      "title": "テンプレート",
+      "subtitle": "メモテンプレートを管理して迅速に作成"
+    },
+    "actions": {
+      "new": "新しいテンプレート",
+      "edit": "編集",
+      "duplicate": "重複",
+      "delete": "削除"
+    },
+    "groups": {
+      "builtIn": "内蔵",
+      "myTemplates": "私のテンプレート"
+    },
+    "loading": "テンプレートを読み込んでいます...",
+    "newTemplateTitle": "新しいテンプレート",
+    "copySuffix": "{name} (コピー)",
+    "empty": {
+      "title": "カスタム テンプレートはまだありません",
+      "description": "始めるにはテンプレートを作成してください"
+    },
+    "toasts": {
+      "deleted": "テンプレートが削除されました",
+      "deleteFailed": "テンプレートの削除に失敗しました",
+      "duplicated": "テンプレートが複製されました",
+      "duplicateFailed": "テンプレートの複製に失敗しました"
+    },
+    "dialogs": {
+      "delete": {
+        "title": "テンプレートの削除",
+        "description": "このテンプレートを削除してもよろしいですか?この操作は元に戻すことができません。このテンプレートから作成されたメモは影響を受けません。"
+      },
+      "duplicate": {
+        "title": "テンプレートの複製",
+        "description": "新しいテンプレートのコピーの名前を入力します。",
+        "placeholder": "テンプレート名"
+      }
+    }
+  },
+  "journal": {
+    "header": {
+      "title": "日記",
+      "subtitle": "ジャーナルの設定と環境設定",
+      "loading": "設定を読み込んでいます..."
+    },
+    "groups": {
+      "defaultTemplate": "デフォルトのテンプレート",
+      "sidebarVisibility": "サイドバーの可視性",
+      "footer": "フッター"
+    },
+    "template": {
+      "label": "テンプレート",
+      "description": "新しいエントリはこのテンプレートから始まります",
+      "placeholder": "テンプレートを選択してください",
+      "unknown": "不明なテンプレート",
+      "none": "なし",
+      "noneAsk": "なし（都度問い合わせ）",
+      "updated": "デフォルトのテンプレートが更新されました",
+      "cleared": "デフォルトのテンプレートがクリアされました",
+      "error": "デフォルトのテンプレートを更新できませんでした"
+    },
+    "showSchedule": {
+      "label": "ショースケジュール",
+      "description": "今日のイベントやカレンダーを表示します"
+    },
+    "showTasks": {
+      "label": "タスクの表示",
+      "description": "選択した日に期限が切れるタスクを表示する"
+    },
+    "showAIConnections": {
+      "label": "AI 接続を表示する",
+      "description": "AI を利用した関連エントリへの接続を表示する"
+    },
+    "showStatsFooter": {
+      "label": "統計フッターを表示",
+      "description": "単語数、読了時間、タイムスタンプ"
+    },
+    "updateError": "設定の更新に失敗しました"
+  },
+  "tasks": {
+    "header": {
+      "title": "タスク",
+      "subtitle": "タスクのデフォルトと動作を構成する",
+      "loading": "設定を読み込んでいます..."
+    },
+    "groups": {
+      "defaults": "デフォルト",
+      "calendar": "カレンダー",
+      "inbox": "受信箱"
+    },
+    "defaultProject": {
+      "label": "デフォルトのプロジェクト",
+      "description": "プロジェクトが選択されていない場合に割り当てられます",
+      "placeholder": "デフォルトのプロジェクトはありません",
+      "none": "デフォルトなし (個人用を使用)",
+      "error": "デフォルトプロジェクトの更新に失敗しました"
+    },
+    "sortOrder": {
+      "label": "デフォルトの並べ替え順序",
+      "description": "リストビューでのタスクの順序付け方法",
+      "options": {
+        "manual": "手動（ドラッグ＆ドロップ）",
+        "dueDate": "期限",
+        "priority": "優先順位",
+        "createdAt": "作成日"
+      },
+      "error": "並べ替え順序の更新に失敗しました"
+    },
+    "weekStart": {
+      "label": "週の開始日",
+      "description": "カレンダービューの週の最初の日",
+      "options": {
+        "sunday": "日曜日",
+        "monday": "月曜日"
+      },
+      "error": "週の始まりを更新できませんでした"
+    },
+    "staleInbox": {
+      "label": "古い受信トレイのしきい値",
+      "description": "これより古いタスクは古いものとして強調表示されます",
+      "unit": "日",
+      "error": "古い受信トレイのしきい値を更新できませんでした"
+    }
+  },
+  "calendar": {
+    "header": {
+      "title": "カレンダー",
+      "subtitle": "日パネルで日セルの動作を構成する",
+      "loading": "設定を読み込んでいます..."
+    },
+    "groups": {
+      "dayCellClick": "日のセルのクリック"
+    },
+    "defaultBehavior": {
+      "label": "デフォルトの動作",
+      "description": "カレンダー以外のタブから [日] パネル カレンダーの日付をクリックしたとき",
+      "error": "日のクリック動作を更新できませんでした"
+    },
+    "pageOverride": {
+      "label": "カレンダーページの上書き",
+      "description": "[カレンダー] タブがアクティブな場合の動作 (デフォルトは [カレンダーを開く])",
+      "error": "カレンダーページのオーバーライドを更新できませんでした"
+    },
+    "options": {
+      "openJournal": "オープンジャーナル",
+      "openCalendar": "カレンダーを開く",
+      "useGlobal": "グローバル設定を使用する"
+    }
+  },
+  "account": {
+    "header": {
+      "title": "アカウント",
+      "subtitle": "アカウント、同期、セキュリティ",
+      "loading": "読み込み中..."
+    },
+    "groups": {
+      "identity": "アイデンティティ",
+      "sync": "同期",
+      "storage": "ストレージ",
+      "devices": "デバイス",
+      "security": "セキュリティ"
+    },
+    "identity": {
+      "unknown": "不明",
+      "plan": "プロプラン"
+    },
+    "sync": {
+      "lastSynced": "最後に同期された {time}",
+      "pending": "{count, plural, one {# 保留中} other {# 保留中}}",
+      "statuses": {
+        "synced": "同期済み",
+        "syncing": "同期中...",
+        "paused": "一時停止中",
+        "syncError": "同期エラー",
+        "offline": "オフライン",
+        "connecting": "接続中...",
+        "pushed": "{count, plural, one {# がプッシュされました} other {# がプッシュされました}}",
+        "pulled": "{count, plural, one {# がプルされました} other {# がプルされました}}",
+        "pushedPulled": "{parts}",
+        "changesPending": "{count, plural, one {# 変更保留中} other {# の変更は保留中です}}",
+        "offlinePending": "オフライン ({count, plural, one {# 変更保留中} other {# の変更は保留中です}})",
+        "never": "決してしない"
+      }
+    },
+    "storage": {
+      "used": "{limit} の {used} が使用されました",
+      "categories": {
+        "notes": "注意事項",
+        "attachments": "添付ファイル",
+        "crdt": "CRDT",
+        "other": "その他",
+        "available": "利用可能"
+      }
+    },
+    "security": {
+      "recoveryKey": {
+        "label": "回復キー",
+        "description": "データアクセス用の回復キーを表示する",
+        "action": "ビューキー"
+      },
+      "rotateKeys": {
+        "label": "暗号化キーのローテーション",
+        "description": "新しいキーを生成し、すべてのデータを再暗号化します",
+        "action": "回転"
+      },
+      "signOut": {
+        "label": "サインアウト",
+        "description": "このデバイスを同期から切断します",
+        "action": "サインアウト"
+      }
+    },
+    "signOutDialog": {
+      "title": "同期からサインアウトしますか?",
+      "description": "同期が停止し、暗号化キーがこのデバイスから削除されます。メモはこのデバイスに残ります。同期を再度設定するには、回復フレーズが必要になります。",
+      "confirm": "サインアウト",
+      "signingOut": "サインアウト中..."
+    },
+    "toasts": {
+      "signedOut": "正常にサインアウトしました",
+      "signOutFailed": "サインアウトに失敗しました",
+      "deviceLinked": "デバイスが正常にリンクされました"
+    }
+  },
+  "setup": {
+    "steps": {
+      "signIn": "サインイン",
+      "verify": "検証する",
+      "link": "リンク"
+    },
+    "progress": "{total} のステップ {current}: {label}",
+    "signIn": {
+      "title": "同期をセットアップする",
+      "description": "アカウントを作成して、エンドツーエンドの暗号化を使用してデバイス間でデータを同期します。",
+      "or": "または",
+      "errors": {
+        "sendCode": "コードの送信に失敗しました",
+        "googleStart": "Google サインインの開始に失敗しました"
+      }
+    },
+    "email": {
+      "label": "メールアドレス",
+      "placeholder": "メールアドレスを入力してください...",
+      "invalid": "有効なメールアドレスを入力してください",
+      "sending": "コードを送信中..."
+    },
+    "oauth": {
+      "google": "Google を続ける"
+    },
+    "otp": {
+      "title": "確認コードを入力してください",
+      "sentTo": "6桁のコードを送信しました ",
+      "aria": "6桁の認証コード",
+      "verifying": "確認中...",
+      "resending": "再送信中...",
+      "resend": "コードを再送信する",
+      "resendIn": "{time}で再送信",
+      "differentEmail": "別のメールアドレスを使用する",
+      "error": "検証に失敗しました",
+      "resendError": "再送信に失敗しました"
+    },
+    "recovery": {
+      "displayTitle": "リカバリフレーズを保存する",
+      "displayDescription": "すべてのデバイスにアクセスできなくなった場合、これが暗号化されたデータを回復する唯一の方法です。",
+      "warning": "これを書き留めて安全な場所に保管してください。もう二度と見ることはありません。",
+      "wordsAria": "回復フレーズの単語",
+      "wordAria": "Word {index}: {word}",
+      "copyAria": "リカバリフレーズをクリップボードにコピー",
+      "copiedAria": "リカバリフレーズをコピーしました",
+      "copied": "コピーされました",
+      "saved": "リカバリフレーズを保存しました",
+      "confirmTitle": "リカバリフレーズを確認してください",
+      "confirmDescription": "要求された単語を入力して、正しく保存されたことを確認します。",
+      "wordPlaceholder": "単語 #{index} を入力してください",
+      "verify": "検証する",
+      "mustMatch": "続行するには 3 つの単語すべてが一致する必要があります",
+      "inputTitle": "回復フレーズを入力してください",
+      "inputDescription": "24 単語の回復フレーズを入力して、暗号化されたデータへのアクセスを復元します。",
+      "inputLabel": "回復フレーズ",
+      "count": "{count} / {total} ワード",
+      "inputPlaceholder": "24 単語のリカバリ フレーズをスペースで区切って入力してください...",
+      "lengthHint": "24 単語すべてを入力して復元ボタンを有効にします",
+      "restore": "アクセスを復元する",
+      "progress": {
+        "deriving": "暗号化キーを取得しています...",
+        "validating": "リカバリフレーズを検証しています...",
+        "registering": "デバイスを登録中..."
+      },
+      "failed": "回復に失敗しました",
+      "confirmationFailed": "確認に失敗しました"
+    },
+    "linking": {
+      "choiceTitle": "このデバイスをリンクする",
+      "choiceDescription": "別のデバイスから暗号化キーを転送するか、リカバリフレーズから復元します。",
+      "qrChoice": "QRコードからリンク",
+      "qrChoiceDescription": "他のデバイスに表示されているコードをスキャンします",
+      "recoveryChoice": "回復フレーズ",
+      "recoveryChoiceDescription": "24 単語のリカバリフレーズを入力してください",
+      "codeTitle": "リンクコードを入力してください",
+      "codeDescription": "他のデバイスからリンク コードを貼り付けて、暗号化キーを安全に転送します。",
+      "codeLabel": "リンクコード",
+      "valid": "有効",
+      "invalid": "無効な形式",
+      "codePlaceholder": "他のデバイスからコードを貼り付けます...",
+      "formatHint": "他のデバイスから JSON リンク コードを貼り付けます",
+      "linking": "リンク中...",
+      "linkDevice": "リンクデバイス",
+      "failed": "リンクに失敗しました",
+      "deviceFailed": "デバイスのリンクに失敗しました",
+      "pendingSuccess": "デバイスが正常にリンクされました",
+      "goBack": "戻る",
+      "waitingTitle": "承認待ち",
+      "waitingDescription": "他のデバイスで Memry を開き、リンク要求を承認します。",
+      "verificationCode": "認証コード",
+      "confirmCode": "これが他のデバイスのコードと一致することを確認します",
+      "cancel": "キャンセル"
+    }
+  },
+  "devices": {
+    "loading": "デバイスを読み込んでいます...",
+    "loadingAria": "デバイスの読み込み",
+    "none": "まだデバイスがリンクされていません",
+    "linkNew": "新しいデバイスをリンクする",
+    "thisDevice": "このデバイス",
+    "lastSeen": "最後に見たのは {time} 前",
+    "linked": "{time} 前にリンク済み",
+    "renameAria": "{name} の名前を変更",
+    "rename": "名前の変更",
+    "revoke": "取り消し",
+    "showLess": "表示を少なくする",
+    "showMore": "{count, plural, one {# その他のデバイス} other {# 個以上のデバイス}}",
+    "showMoreAria": "{count, plural, one {# その他のデバイス} other {# 個以上のデバイス}}を表示",
+    "dialogs": {
+      "revokeTitle": "「{name}」を取り消しますか?",
+      "revokeDescription": "このデバイスは同期されたデータにアクセスできなくなります。同期を復元するには、再度リンクする必要があります。そのデバイス上のローカル データは残ります。",
+      "revokeDevice": "デバイスを取り消します",
+      "revoking": "取り消し中...",
+      "renameTitle": "デバイスの名前を変更する",
+      "renameDescription": "このデバイスを識別する名前を選択してください。",
+      "namePlaceholder": "デバイス名",
+      "renaming": "名前を変更しています..."
+    },
+    "toasts": {
+      "loadFailed": "デバイスのロードに失敗しました",
+      "removed": "「{name}」を削除しました",
+      "removeFailed": "デバイスの削除に失敗しました",
+      "renamed": "「{name}」に名前変更",
+      "renameFailed": "デバイス名の変更に失敗しました"
+    }
+  },
+  "qrLinking": {
+    "title": "新しいデバイスをリンクする",
+    "description": "リンクするデバイスからこの QR コードをスキャンして、暗号化キーを安全に転送します。",
+    "encrypted": "エンドツーエンド暗号化",
+    "generating": "リンクコードを生成しています...",
+    "generatingAria": "リンクコードの生成",
+    "generateFailed": "リンクコードの生成に失敗しました",
+    "tryAgain": "もう一度試してください",
+    "expired": "リンクコードの有効期限が切れました",
+    "generateNew": "新しいコードを生成する",
+    "qrAria": "デバイスリンク用のQRコード",
+    "qrImageAria": "デバイスリンク用QRコード",
+    "expiresIn": "{time} で期限切れになります",
+    "or": "または",
+    "codeLabel": "リンクコード",
+    "copyAria": "リンクコードをコピーする",
+    "copiedAria": "コピーされました",
+    "copied": "コピーしました！"
+  },
+  "linkingApproval": {
+    "title": "新しいデバイスがリンクしたい",
+    "description": "デバイスが暗号化されたデータへのアクセスを要求しています。このリクエストを開始した場合のみ承認してください。",
+    "unknownDevice": "不明なデバイス",
+    "unknownPlatform": "不明なプラットフォーム",
+    "verificationCode": "認証コード",
+    "computing": "コンピューティング中...",
+    "unavailable": "利用不可",
+    "confirmCode": "このコードが新しいデバイスに表示されるコードと一致することを確認します",
+    "reject": "拒否する",
+    "approve": "承認する",
+    "approving": "承認中...",
+    "approvalFailed": "承認に失敗しました",
+    "failedToApprove": "デバイスの承認に失敗しました"
+  },
+  "recoveryKey": {
+    "title": "回復キー",
+    "description": "このキーは安全に保管してください。すべてのデバイスにアクセスできなくなった場合でも、保管庫を復元できます。",
+    "loading": "読み込み中...",
+    "retrieveFailed": "回復キーの取得に失敗しました",
+    "copied": "回復キーがクリップボードにコピーされました",
+    "copyFailed": "クリップボードへのコピーに失敗しました",
+    "clickToReveal": "クリックして表示",
+    "hide": "隠す",
+    "reveal": "明らかにする",
+    "copy": "コピー",
+    "sessionHint": "このキーはセッションごとに 1 回表示されます。メモリからダイアログを消去するには、このダイアログを閉じます。"
+  },
+  "keyRotation": {
+    "title": "暗号化キーのローテーション",
+    "descriptions": {
+      "confirm": "ボールトの新しい暗号化キーを生成します。",
+      "rotating": "新しいキーでデータを再暗号化しています...",
+      "phrase": "新しいリカバリフレーズを保存します。",
+      "complete": "キーのローテーションが完了しました。",
+      "error": "キーのローテーションでエラーが発生しました。"
+    },
+    "warningTitle": "このアクションにより次のことが行われます。",
+    "warningItems": {
+      "keyPair": "新しい暗号化キーのペアを生成する",
+      "rewrap": "同期されたすべてのアイテムを新しいキーで再ラップします",
+      "phrase": "新しいリカバリフレーズを作成します（古いリカバリフレーズは無効になります）",
+      "pause": "プロセス中に同期を一時的に停止します"
+    },
+    "explanation": "データ コンテンツが再暗号化されることはなく、キー エンベロープのみが変更されます。これは迅速かつ安全な操作です。",
+    "start": "キーローテーションの開始",
+    "starting": "開始中...",
+    "phases": {
+      "preparing": "準備中...",
+      "reencrypting": "キーの再ラッピング ({processed}/{total})",
+      "finalizing": "仕上げ中...",
+      "working": "働いています..."
+    },
+    "progressAria": "キーのローテーション: {phaseLabel} {pct}%",
+    "progressLabel": "キーローテーションの進行状況",
+    "doNotClose": "このプロセス中にアプリケーションを閉じないでください。",
+    "complete": "すべての暗号化キーがローテーションされました。新しい回復フレーズが保存されました。同期は自動的に再開されます。",
+    "unknownError": "キーのローテーション中に不明なエラーが発生しました。",
+    "errorHint": "既存のキーは引き続き有効です。同期が再開されました。いつでも再試行できます。",
+    "closeConfirm": {
+      "title": "回転中です",
+      "description": "キーのローテーションはまだ実行中です。このダイアログを閉じてもプロセスは停止しませんが、完了するまで新しい回復フレーズは表示されません。",
+      "stay": "泊まる",
+      "closeAnyway": "とにかく閉じてください"
+    },
+    "failed": "キーのローテーションに失敗しました"
+  },
+  "ai": {
+    "header": {
+      "title": "AIアシスタント",
+      "subtitle": "埋め込みはローカルで実行されます。ボイスメモには、Whisper Small または OpenAI キーを使用できます。",
+      "loading": "設定を読み込んでいます..."
+    },
+    "enable": {
+      "label": "AI 機能を有効にする",
+      "description": "スマートなファイリング提案とメモの接続",
+      "enabled": "AI機能が有効になっている",
+      "disabled": "AI機能が無効になっている",
+      "error": "設定の更新に失敗しました"
+    },
+    "unknownError": "不明なエラー",
+    "groups": {
+      "voice": "音声文字起こし",
+      "embeddingModel": "ローカル埋め込みモデル",
+      "embeddingIndex": "インデックスの埋め込み",
+      "inline": "インラインAI編集"
+    },
+    "voice": {
+      "provider": "プロバイダー",
+      "providerDescription": "ボイスメモ用の Speech-to-Text プロバイダー",
+      "providers": {
+        "local": "ローカル (デフォルト)",
+        "openai": "OpenAI (BYOK)"
+      },
+      "localModel": "ローカルモデル",
+      "localModelDescription": "Whisper Small はオンデマンドでダウンロードされ、ローカルにキャッシュされたままになります",
+      "status": {
+        "ready": "準備完了",
+        "downloading": "ダウンロード中",
+        "downloaded": "ダウンロード済み",
+        "notDownloaded": "ダウンロードされていません"
+      },
+      "cacheHint": "アプリにバンドルされていない · 設定からダウンロード · このデバイスにキャッシュされている",
+      "preparing": "ウィスパースモールを準備中...",
+      "download": "ダウンロード ウィスパー スモール",
+      "apiKey": "OpenAI APIキー",
+      "apiKeyDescription": "OS キーチェーンに保存され、音声転写のみに使用されます",
+      "replaceKey": "保存されている OpenAI キーを置き換えます",
+      "enterKey": "OpenAI APIキーを入力してください",
+      "saveKey": "キーの保存",
+      "keySaved": "キーチェーンに保存された API キー",
+      "providerError": "音声プロバイダーの更新に失敗しました",
+      "downloadedToast": "ウィスパースモールをダウンロードしました",
+      "downloadError": "ウィスパー小のダウンロードに失敗しました",
+      "keySavedToast": "OpenAI キーが保存されました",
+      "keySaveError": "OpenAI キーの保存に失敗しました"
+    },
+    "embedding": {
+      "loaded": "ロード済み",
+      "loading": "読み込み中",
+      "cacheHint": "~23MB · ローカルにキャッシュ · すべてオンデバイス",
+      "dimensions": "寸法",
+      "embeddings": "埋め込み",
+      "downloadLoad": "モデルのダウンロードとロード",
+      "downloadingModel": "モデルをダウンロード中...",
+      "loadingModel": "モデルを読み込み中...",
+      "loadSuccess": "モデルは正常にロードされました",
+      "loadFailed": "モデルのロードに失敗しました",
+      "rebuildIndex": "インデックスの再構築",
+      "rebuildDescription": "すべてのノートの埋め込みを再生成する",
+      "rebuild": "再構築",
+      "scanning": "メモをスキャン中...",
+      "generating": "埋め込みを生成しています...",
+      "complete": "完成！",
+      "reindexed": "エンベディングの再インデックス化: {computed} が計算され、{skipped} がスキップされました",
+      "reindexFailed": "埋め込みの再インデックスに失敗しました"
+    },
+    "inline": {
+      "loading": "読み込み中...",
+      "title": "インラインAI編集",
+      "enable": "インライン AI を有効にする",
+      "enableDescription": "ノート編集時に AI メニューを表示する",
+      "enabled": "インライン AI 編集が有効になりました",
+      "disabled": "インライン AI 編集が無効になっています",
+      "provider": "プロバイダー",
+      "providerDescription": "テキスト操作向けAIサービス",
+      "providers": {
+        "ollama": "オラマ (地元)",
+        "openai": "OpenAI",
+        "anthropic": "人間的"
+      },
+      "model": "モデル",
+      "modelDescription": "書き換えと要約のための言語モデル",
+      "selectModel": "モデルを選択してください",
+      "apiKey": "APIキー",
+      "apiKeyDescription": "ローカルに保存され、プロバイダーにのみ送信されます",
+      "apiKeyPlaceholder": "{provider} API キーを入力してください",
+      "ollamaUrl": "オラマのURL",
+      "ollamaUrlDescription": "ローカルサーバーアドレス",
+      "connection": "接続",
+      "activePort": "ポート {port} でアクティブです",
+      "notConnected": "接続されていません",
+      "test": "テスト",
+      "stopFailed": "既存のサーバーの停止に失敗しました",
+      "connected": "つながりました！ポート {port} で実行されているサーバー",
+      "connectFailed": "接続に失敗しました",
+      "testFailed": "接続テストに失敗しました",
+      "updateFailed": "設定の更新に失敗しました"
+    }
+  },
+  "integrations": {
+    "header": {
+      "title": "統合",
+      "subtitle": "外部サービスを接続してワークフローを充実させる"
+    },
+    "auth": {
+      "oauth2": "OAuth 2.0",
+      "apiKey": "APIキー",
+      "none": "システム"
+    },
+    "comingSoon": "近日公開予定",
+    "connect": "接続する",
+    "googleCalendar": {
+      "name": "Googleカレンダー",
+      "description": "Memry イベントとインポートされた Google カレンダーの双方向同期。",
+      "statuses": {
+        "connected": "接続済み",
+        "notConnected": "接続されていません",
+        "reconnectRequired": "再接続が必要です"
+      },
+      "accountReconnect": "Google を再接続する",
+      "importedCalendars": "インポートされたカレンダー",
+      "selected": "{count} が選択されました",
+      "syncNow": "今すぐ同期",
+      "disconnect": "切断する",
+      "reconnect": "Google を再接続する",
+      "syncFailed": "何か問題が発生しました",
+      "connectFailed": "Googleカレンダーに接続できませんでした",
+      "refreshFailed": "Google カレンダーを更新できませんでした",
+      "disconnectFailed": "Google カレンダーの接続を解除できませんでした",
+      "selectionFailed": "カレンダーの選択を更新できませんでした",
+      "retryFailed": "カレンダー同期の再試行に失敗しました"
+    },
+    "sourcePicker": {
+      "empty": "このデバイスでは、インポートされた Google カレンダーをまだ使用できません。",
+      "statuses": {
+        "synced": "同期済み",
+        "error": "エラー",
+        "pending": "保留中",
+        "idle": "アイドル状態"
+      },
+      "retrying": "再試行中…",
+      "retryNow": "今すぐ再試行してください"
+    },
+    "registry": {
+      "googleCalendar": {
+        "name": "Googleカレンダー",
+        "description": "Memry イベント、タスク、リマインダー、インポートされたカレンダーの双方向同期"
+      },
+      "appleCalendar": {
+        "name": "アップルカレンダー",
+        "description": "システム API を介したローカル カレンダーの統合"
+      },
+      "notion": {
+        "name": "概念",
+        "description": "ボールトへの 1 回限りのページのインポート"
+      },
+      "readwise": {
+        "name": "リードワイズ",
+        "description": "ハイライトをボールトに同期する"
+      },
+      "todoist": {
+        "name": "Todoist",
+        "description": "双方向のタスク同期"
+      }
+    }
+  },
+  "vault": {
+    "header": {
+      "title": "保管庫",
+      "subtitle": "ボールトの構成とストレージ"
+    },
+    "groups": {
+      "storageUsage": "ストレージの使用量",
+      "location": "場所"
+    },
+    "loadingStorage": "ストレージ情報を読み込んでいます...",
+    "signInStorage": "サインインしてストレージ使用量を表示する",
+    "vaultPath": "ボールトパス",
+    "reveal": "明らかにする",
+    "storage": {
+      "title": "ストレージ",
+      "used": "{limit} の {used} が使用されました",
+      "ratio": "{used} / {limit}",
+      "refreshAria": "ストレージ使用量を更新する",
+      "usageAria": "ストレージ使用量: {used}/{limit}",
+      "available": "利用可能 {available}",
+      "categories": {
+        "notes": "注意事項",
+        "attachments": "添付ファイル",
+        "crdt": "CRDT",
+        "other": "その他"
+      },
+      "warningTitle": "ストレージがほぼ満杯",
+      "warningDescription": "同期の問題を回避するには、スペースを解放するか、プランをアップグレードしてください。"
+    }
+  },
+  "tags": {
+    "header": {
+      "title": "タグ",
+      "subtitle": "メモ、日記、タスク全体でタグを管理"
+    },
+    "loading": "タグを読み込んでいます...",
+    "empty": "まだタグがありません。タグをメモやタスクに追加すると、ここにタグが表示されます。",
+    "filterPlaceholder": "タグをフィルタリング...",
+    "noMatch": "「{query}」に一致するタグはありません",
+    "summary": "メモとタスク全体で {count, plural, one {#タグ} other {#のタグ}}",
+    "actions": {
+      "rename": "名前の変更",
+      "changeColor": "色を変更する",
+      "mergeInto": "マージ...",
+      "merge": "マージ",
+      "delete": "削除"
+    },
+    "dialogs": {
+      "deleteTitle": "タグの削除",
+      "deleteDescription": "{count, plural, one {# アイテム} other {# アイテム}} から「{name}」を削除しますか?これを元に戻すことはできません。",
+      "mergeTitle": "タグを結合",
+      "mergeDescription": "「{source}」タグが付けられた全てのアイテムが対象のタグで再タグ付けされます。ソースタグが削除されます。",
+      "targetPlaceholder": "対象のタグを選択してください...",
+      "colorTitle": "「{name}」の色を変更"
+    },
+    "toasts": {
+      "renamed": "「{oldName}」を「{newName}」に名前変更しました",
+      "renameFailed": "タグの名前変更に失敗しました",
+      "deleteFailed": "タグの削除に失敗しました",
+      "deleted": "{count, plural, one {# アイテム} other {# アイテム}}から「{name}」を削除",
+      "mergeFailed": "タグの結合に失敗しました",
+      "merged": "「{source}」を「{target}」（{count, plural, one {# アイテム} other {# アイテム}}）に統合",
+      "colorUpdated": "「{name}」のカラーを更新しました。",
+      "colorFailed": "色の更新に失敗しました"
+    }
+  },
+  "properties": {
+    "header": {
+      "title": "プロパティ",
+      "subtitle": "すべてのノートにわたるプロパティ定義を管理する"
+    },
+    "loading": "プロパティを読み込んでいます...",
+    "empty": "プロパティ定義はまだありません。まず、ステータス、選択、または複数選択プロパティをメモに追加します。",
+    "filterPlaceholder": "フィルターのプロパティ...",
+    "noMatch": "「{query}」に一致するプロパティはありません",
+    "summary": "{count, plural, one {# プロパティ定義} other {# プロパティの定義}}",
+    "optionCount": "{count, plural, one {# オプション} other {# のオプション}}",
+    "optionNamePlaceholder": "オプション名",
+    "addOption": "オプションを追加",
+    "changeColorTitle": "色を変更する",
+    "renameTitle": "名前の変更",
+    "removeTitle": "削除",
+    "actions": {
+      "deleteProperty": "プロパティの削除"
+    },
+    "types": {
+      "status": "ステータス",
+      "select": "選択",
+      "multiselect": "複数選択",
+      "text": "テキスト",
+      "number": "番号",
+      "date": "日付",
+      "checkbox": "チェックボックス",
+      "url": "URL"
+    },
+    "dialogs": {
+      "deleteTitle": "プロパティの削除",
+      "deleteDescription": "「{name}」プロパティ定義を削除しますか?このプロパティを使用するメモは、値をプレーン テキストとして保持します。",
+      "colorTitle": "「{name}」の色を変更"
+    },
+    "toasts": {
+      "renamed": "「{oldValue}」を「{newValue}」に名前変更しました",
+      "renameFailed": "オプションの名前変更に失敗しました",
+      "removed": "「{value}」を削除しました",
+      "removeFailed": "オプションの削除に失敗しました",
+      "colorFailed": "色の更新に失敗しました",
+      "deleteFailed": "プロパティの削除に失敗しました",
+      "deleted": "削除されたプロパティ「{name}」",
+      "addFailed": "オプションの追加に失敗しました"
+    }
+  },
+  "shortcuts": {
+    "header": {
+      "title": "キーボードショートカット",
+      "subtitle": "ショートカットをクリックして再バインドします",
+      "loading": "設定を読み込んでいます..."
+    },
+    "searchPlaceholder": "ショートカットを検索...",
+    "resetAll": "すべてリセット",
+    "custom": "カスタム",
+    "pressShortcut": "ショートカットを押して…",
+    "cancelTitle": "キャンセル",
+    "rebindTitle": "クリックして再バインドします",
+    "resetTitle": "デフォルトにリセットする",
+    "clearTitle": "ショートカットをクリアする",
+    "clickToSet": "クリックして設定します",
+    "noMatch": "検索に一致するショートカットはありません",
+    "conflict": "競合するもの: {labels}",
+    "globalCapture": {
+      "title": "グローバルキャプチャー",
+      "description": "どこからでもメモを取り込む",
+      "permissionNeeded": "許可が必要です",
+      "active": "アクティブ",
+      "permissionHint": "グローバル ショートカットにはアクセシビリティ権限が必要です。 [システム設定] → [プライバシー] → [アクセシビリティ] に移動し、Memry を有効にします。"
+    },
+    "toasts": {
+      "saveGlobalFailed": "グローバル キャプチャ ショートカットの保存に失敗しました",
+      "saveFailed": "ショートカットの保存に失敗しました",
+      "resetFailed": "ショートカットのリセットに失敗しました",
+      "resetAllSuccess": "すべてのショートカットがデフォルトにリセットされる",
+      "resetAllFailed": "ショートカットのリセットに失敗しました"
+    },
+    "categories": {
+      "navigation": "ナビゲーション",
+      "tabs": "タブ",
+      "editor": "編集者",
+      "view": "見る"
+    },
+    "entries": {
+      "nav": {
+        "newNote": {
+          "label": "新しいメモ",
+          "description": "新しいメモを作成する"
+        },
+        "newTask": {
+          "label": "新しいタスク",
+          "description": "新しいタスクを作成する"
+        },
+        "inbox": {
+          "label": "受信箱に移動",
+          "description": "受信トレイに移動します"
+        },
+        "notes": {
+          "label": "メモに移動",
+          "description": "メモに移動する"
+        },
+        "tasks": {
+          "label": "タスクに移動",
+          "description": "タスクに移動する"
+        },
+        "search": {
+          "label": "検索",
+          "description": "グローバル検索を開く"
+        },
+        "settings": {
+          "label": "設定を開く",
+          "description": "設定パネルを開く"
+        }
+      },
+      "tabs": {
+        "close": {
+          "label": "タブを閉じる",
+          "description": "現在のタブを閉じます"
+        },
+        "next": {
+          "label": "次のタブ",
+          "description": "次のタブに切り替えます"
+        },
+        "previous": {
+          "label": "前のタブ",
+          "description": "前のタブに切り替える"
+        },
+        "reopen": {
+          "label": "最後のタブを再度開く",
+          "description": "最後に閉じたタブを再度開きます"
+        },
+        "navBack": {
+          "label": "戻るに移動",
+          "description": "以前にアクティブだったタブを再度アクティブにする"
+        },
+        "navForward": {
+          "label": "前に進む",
+          "description": "戻るナビゲーションをやり直す"
+        }
+      },
+      "editor": {
+        "save": {
+          "label": "保存",
+          "description": "現在のメモを保存する"
+        },
+        "bold": {
+          "label": "太字",
+          "description": "太字の書式設定を切り替える"
+        },
+        "italic": {
+          "label": "イタリック体",
+          "description": "斜体の書式設定を切り替えます"
+        },
+        "underline": {
+          "label": "下線",
+          "description": "下線の書式設定を切り替える"
+        }
+      },
+      "view": {
+        "toggleSidebar": {
+          "label": "サイドバーの切り替え",
+          "description": "サイドバーを表示または非表示にする"
+        },
+        "shortcuts": {
+          "label": "キーボード ショートカットのヘルプ",
+          "description": "キーボード ショートカットのリファレンスを表示"
+        }
+      }
+    }
+  },
+  "phaseF": {
+    "componentsKeyboardChordIndicator": {
+      "pressedWaitingForSecondKey": "押されました - 2 番目のキーを待っています..."
+    },
+    "componentsKeyboardKeyboardShortcutsDialog": {
+      "keyboardShortcuts": "キーボードショートカット",
+      "press": "プレス ",
+      "toToggleThisDialog": "このダイアログを切り替えるには"
+    },
+    "componentsSyncDeviceList": {
+      "middot": "ミッドドット;"
+    },
+    "componentsSyncDeviceRevokedDialog": {
+      "thisDeviceHasBeenRemoved": "このデバイスは削除されました",
+      "exporting": "エクスポート中...",
+      "signOut": "サインアウト"
+    },
+    "componentsSyncSyncHistory": {
+      "middot": "ミッドドット; ",
+      "activity": "アクティビティ",
+      "filterBySyncType": "同期タイプでフィルタリングする",
+      "allTypes": "全種類",
+      "pushed": "プッシュされました",
+      "pulled": "引っ張られた",
+      "errors": "エラー",
+      "filterByTimePeriod": "期間でフィルタリングする",
+      "allTime": "ずっと",
+      "today": "今日",
+      "last7Days": "過去 7 日間",
+      "last30Days": "過去 30 日間",
+      "loadingSyncHistory": "同期履歴を読み込んでいます",
+      "noSyncActivityYet": "まだ同期アクティビティはありません",
+      "loadMore": "さらにロードする"
+    },
+    "componentsSyncSyncStatus": {
+      "lastSynced": "最後に同期しました ",
+      "pending": "保留中",
+      "localOnly": "ローカルのみ",
+      "detected": "検出されました",
+      "clockSkewDetected": "クロックスキューが検出されました",
+      "items": "アイテム",
+      "willSyncWhenBackOnline": "オンラインに戻ると同期されます",
+      "openSyncSettings": "同期設定を開く"
+    },
+    "pagesSettingsAiInlineSection": {
+      "httpLocalhost11434V1": "http://localhost:11434/v1"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToUpdateTagColor": "タグの色の更新に失敗しました",
+      "googleSignInFailed": "Google サインインに失敗しました",
+      "failedToSendVerificationCode": "確認コードの送信に失敗しました",
+      "invalidVerificationCode": "無効な確認コード",
+      "accountSetupFailed": "アカウント設定に失敗しました",
+      "failedToResendCode": "コードの再送信に失敗しました",
+      "failedToSetUpDevice": "デバイスのセットアップに失敗しました",
+      "failedToConfirmRecoveryPhrase": "リカバリフレーズの確認に失敗しました",
+      "failedToAnalyzeContent": "コンテンツの分析に失敗しました",
+      "failedToLoadUpdaterState": "アップデーターの状態をロードできませんでした",
+      "failedToCheckForUpdates": "アップデートの確認に失敗しました",
+      "failedToDownloadUpdate": "アップデートのダウンロードに失敗しました",
+      "failedToInstallUpdate": "アップデートのインストールに失敗しました",
+      "failedToLoadEditorSettings": "エディタ設定のロードに失敗しました",
+      "failedToUpdateEditorSettings": "エディタ設定の更新に失敗しました",
+      "failedToLoadGeneralSettings": "一般設定のロードに失敗しました",
+      "failedToUpdateGeneralSettings": "一般設定の更新に失敗しました",
+      "failedToLoadKeyboardSettings": "キーボード設定のロードに失敗しました",
+      "failedToUpdateKeyboardSettings": "キーボード設定の更新に失敗しました",
+      "failedToResetKeyboardSettings": "キーボード設定のリセットに失敗しました",
+      "failedToLoadNoteEditorSettings": "ノートエディタ設定のロードに失敗しました",
+      "failedToUpdateSettings": "設定の更新に失敗しました",
+      "failedToLoadTabSettings": "タブ設定の読み込みに失敗しました",
+      "failedToLoadNotes": "メモのロードに失敗しました",
+      "failedToLoadTags": "タグの読み込みに失敗しました",
+      "failedToLoadVaultStatus": "ボールトのステータスをロードできませんでした",
+      "failedToSelectVault": "ボールトの選択に失敗しました",
+      "failedToCloseVault": "ボールトを閉じることができませんでした",
+      "failedToSwitchVault": "ボールトの切り替えに失敗しました",
+      "failedToUpdateConfig": "構成の更新に失敗しました",
+      "failedToReindex": "インデックスの再作成に失敗しました"
+    }
+  }
+}

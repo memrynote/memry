@@ -26,11 +26,11 @@ describe('menu namespace', () => {
     expect(i18n.t('menu:view.reload')).toBe('Yeniden yükle')
   })
 
-  it('preserves Phase A Arabic seed labels and falls back for new keys', async () => {
+  it('translates current Arabic app-menu labels', async () => {
     const i18n = await createMainI18n({ locale: 'ar' })
 
     expect(i18n.t('menu:file.label')).toBe('ملف')
-    expect(i18n.t('menu:view.reload')).toBe('Reload')
+    expect(i18n.t('menu:view.reload')).toBe('إعادة تحميل')
   })
 
   it('keeps the namespace on missing menu keys', async () => {

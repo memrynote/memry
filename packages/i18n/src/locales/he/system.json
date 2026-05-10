@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "בחר תיקיית כספת",
+      "button": "בחר בכספת"
+    },
+    "exportPdf": {
+      "title": "ייצוא כ-PDF",
+      "filterName": "מסמך PDF"
+    },
+    "exportHtml": {
+      "title": "ייצוא כ-HTML",
+      "filterName": "מסמך HTML"
+    },
+    "import": {
+      "filterSupported": "קבצים נתמכים",
+      "filterAll": "כל הקבצים"
+    },
+    "exportCancelled": "הייצוא בוטל",
+    "update": {
+      "availableTitle": "עדכון זמין",
+      "availableMessage": "Memry {version} זמין.",
+      "availableDetailFallback": "להוריד את העדכון עכשיו?",
+      "buttonDownload": "הורד",
+      "buttonLater": "מאוחר יותר",
+      "readyTitle": "עדכון מוכן",
+      "readyMessage": "Memry {version} הורד.",
+      "readyDetailFallback": "הפעל מחדש את Memry כדי לסיים את התקנת העדכון.",
+      "buttonRestartNow": "הפעל מחדש עכשיו",
+      "releaseNotesLabel": "הערות שחרור:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "תזכורת הערה",
+      "journal": "תזכורת ביומן",
+      "highlight": "הדגש תזכורת",
+      "fallback": "תזכורת בשל",
+      "default": "תזכורת"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "זמן התזכורת חייב להיות בעתיד",
+    "definitionNotFound": "ההגדרה לא נמצאה",
+    "noteNotFound": "הערה לא נמצאה",
+    "updateFailed": "העדכון נכשל"
+  }
+}

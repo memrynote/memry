@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import { SUPPORTED_LOCALES } from './locale-api'
 import {
   GeneralSettingsSchema,
   GENERAL_SETTINGS_DEFAULTS,
@@ -84,18 +85,55 @@ describe('GeneralSettingsSchema', () => {
     }
   })
 
-  it('accepts a supported non-default locale', () => {
-    const result = GeneralSettingsSchema.safeParse({
-      ...GENERAL_SETTINGS_DEFAULTS,
-      language: 'tr'
-    })
-    expect(result.success).toBe(true)
+  it('accepts every supported locale', () => {
+    expect(SUPPORTED_LOCALES).toEqual([
+      'ar',
+      'cs',
+      'da',
+      'en',
+      'de',
+      'el',
+      'es',
+      'fi',
+      'fil',
+      'fr',
+      'he',
+      'hr',
+      'hu',
+      'id',
+      'it',
+      'ja',
+      'ko',
+      'ms',
+      'nl',
+      'no',
+      'pl',
+      'pt',
+      'ro',
+      'ru',
+      'sk',
+      'sv',
+      'th',
+      'tr',
+      'uk',
+      'vi',
+      'zh-CN',
+      'zh-TW'
+    ])
+
+    for (const language of SUPPORTED_LOCALES) {
+      const result = GeneralSettingsSchema.safeParse({
+        ...GENERAL_SETTINGS_DEFAULTS,
+        language
+      })
+      expect(result.success, language).toBe(true)
+    }
   })
 
   it('rejects unsupported locale', () => {
     const result = GeneralSettingsSchema.safeParse({
       ...GENERAL_SETTINGS_DEFAULTS,
-      language: 'de'
+      language: 'xx'
     })
     expect(result.success).toBe(false)
     if (!result.success) {

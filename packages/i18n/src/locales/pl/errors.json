@@ -1,0 +1,80 @@
+{
+  "generic": {
+    "somethingWentWrong": "Coś poszło nie tak. Spróbuj ponownie.",
+    "operationFailed": "Operacja nie powiodła się",
+    "unknown": "Wystąpił nieznany błąd",
+    "validationFailed": "Walidacja nie powiodła się",
+    "actionFailed": "Akcja nie powiodła się"
+  },
+  "ipc": {
+    "noVaultOpen": "Żaden skarbiec nie jest otwarty. Proszę najpierw otworzyć skarbiec."
+  },
+  "vault": {
+    "notFound": "Nie znaleziono skarbca. Być może został przeniesiony lub usunięty.",
+    "notInitialized": "Żaden skarbiec nie jest otwarty. Aby kontynuować, otwórz lub utwórz skarbiec.",
+    "invalidPath": "Wybrana ścieżka nie jest prawidłową lokalizacją skarbca.",
+    "permissionDenied": "Odmowa pozwolenia. Sprawdź, czy masz dostęp do tego folderu.",
+    "alreadyExists": "Skarbiec już istnieje w tej lokalizacji.",
+    "corrupted": "Wygląda na to, że ten skarbiec jest uszkodzony. Spróbuj przywrócić z kopii zapasowej."
+  },
+  "note": {
+    "notFound": "Nie udało się znaleźć tej notatki. Być może został usunięty.",
+    "invalidFrontmatter": "Ta notatka zawiera nieprawidłowe metadane i nie można jej odczytać.",
+    "duplicateId": "Notatka o tym identyfikatorze już istnieje.",
+    "writeFailed": "Nie udało się zapisać tej notatki. Sprawdź miejsce na dysku i uprawnienia.",
+    "readFailed": "Nie udało się odczytać tej notatki. Plik może być zablokowany lub uszkodzony.",
+    "deleteFailed": "Nie udało się usunąć tej notatki. Sprawdź uprawnienia do plików.",
+    "invalidPath": "Ścieżka notatki jest nieprawidłowa."
+  },
+  "database": {
+    "connectionFailed": "Nie można połączyć się z lokalną bazą danych. Spróbuj ponownie uruchomić aplikację.",
+    "migrationFailed": "Aktualizacja bazy danych nie powiodła się. Spróbuj ponownie uruchomić aplikację.",
+    "queryFailed": "Operacja na bazie danych nie powiodła się. Spróbuj ponownie.",
+    "notInitialized": "Baza danych nie jest gotowa. Spróbuj ponownie uruchomić aplikację.",
+    "constraintViolation": "Wystąpił konflikt danych. Spróbuj ponownie.",
+    "corrupted": "Lokalna baza danych jest uszkodzona. Może być konieczne jego zresetowanie."
+  },
+  "watcher": {
+    "startFailed": "Nie można rozpocząć sprawdzania zmian w plikach.",
+    "stopFailed": "Nie można zatrzymać obserwatora plików.",
+    "eventError": "Wystąpił błąd podczas sprawdzania zmian w plikach."
+  },
+  "attachment": {
+    "fileTooLarge": "Ten plik jest zbyt duży, aby go załączyć.",
+    "unsupportedType": "Ten typ pliku nie jest obsługiwany.",
+    "writeFailed": "Nie udało się zapisać załącznika. Sprawdź miejsce na dysku.",
+    "deleteFailed": "Nie udało się usunąć załącznika."
+  },
+  "encryption": {
+    "failed": "Nie udało się zaszyfrować danych. Twoje klucze mogą wymagać regeneracji.",
+    "decryptionFailed": "Nie udało się odszyfrować danych. Twoje klucze szyfrowania mogą być nieaktualne.",
+    "invalidKeyLength": "Nieprawidłowy klucz szyfrowania. Spróbuj się wylogować i zalogować ponownie.",
+    "invalidNonceLength": "Błąd szyfrowania. Spróbuj wykonać operację ponownie."
+  },
+  "inboxAttachment": {
+    "writeFailed": "Nie udało się zapisać załącznika do skrzynki odbiorczej.",
+    "deleteFailed": "Nie udało się usunąć załącznika ze skrzynki odbiorczej."
+  },
+  "sync": {
+    "networkOffline": "Jesteś offline. Zmiany zostaną zsynchronizowane po ponownym połączeniu.",
+    "networkTimeout": "Serwer synchronizacji potrzebował zbyt dużo czasu, aby odpowiedzieć. Wkrótce spróbuję ponownie.",
+    "serverError": "Serwer synchronizacji napotkał błąd. Spróbuje ponownie automatycznie.",
+    "authExpired": "Twoja sesja wygasła. Zaloguj się ponownie, aby kontynuować synchronizację.",
+    "deviceRevoked": "To urządzenie zostało usunięte z Twojego konta.",
+    "rateLimited": "Zbyt wiele żądań. Synchronizacja zostanie wkrótce wznowiona.",
+    "cryptoFailure": "Nie udało się zaszyfrować lub odszyfrować synchronizowanych danych. Spróbuj się wylogować i zalogować ponownie.",
+    "versionIncompatible": "Ta wersja Memry nie jest już obsługiwana. Proszę zaktualizować.",
+    "storageQuotaExceeded": "Pamięć synchronizacji jest pełna. Zwolnij miejsce lub uaktualnij swój plan.",
+    "certificatePinFailed": "Bezpieczne połączenie nie powiodło się. Sprawdź połączenie sieciowe.",
+    "unknown": "Wystąpił nieoczekiwany błąd synchronizacji. Spróbuje ponownie automatycznie.",
+    "statusFetchFailed": "Nie udało się pobrać stanu synchronizacji",
+    "engineNotInitialized": "Silnik synchronizacji nie został zainicjowany. Otwórz skarbiec, aby rozpocząć synchronizację.",
+    "triggerFailed": "Synchronizacja nie powiodła się",
+    "pauseFailed": "Nie udało się wstrzymać synchronizacji",
+    "resumeFailed": "Nie udało się wznowić synchronizacji",
+    "settingsNotInitialized": "Synchronizacja ustawień nie została zainicjowana",
+    "securityQuarantinePermanent": "Nie można zweryfikować elementu synchronizacji i ze względów bezpieczeństwa został on poddany kwarantannie.",
+    "securityQuarantineRetry": "Weryfikacja podpisu elementu synchronizowanego nie powiodła się i zostanie ponowiona.",
+    "certificatePinPaused": "Nie można zweryfikować bezpiecznego połączenia z serwerem synchronizacji. Ze względu na Twoje bezpieczeństwo synchronizacja została wstrzymana."
+  }
+}

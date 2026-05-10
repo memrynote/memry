@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "Επιλέξτε Φάκελος Vault",
+      "button": "Επιλέξτε Vault"
+    },
+    "exportPdf": {
+      "title": "Εξαγωγή ως PDF",
+      "filterName": "Έγγραφο PDF"
+    },
+    "exportHtml": {
+      "title": "Εξαγωγή ως HTML",
+      "filterName": "Έγγραφο HTML"
+    },
+    "import": {
+      "filterSupported": "Υποστηριζόμενα Αρχεία",
+      "filterAll": "Όλα τα Αρχεία"
+    },
+    "exportCancelled": "Η εξαγωγή ακυρώθηκε",
+    "update": {
+      "availableTitle": "Διαθέσιμη ενημέρωση",
+      "availableMessage": "Memry Το {version} είναι διαθέσιμο.",
+      "availableDetailFallback": "Λήψη της ενημέρωσης τώρα;",
+      "buttonDownload": "Λήψη",
+      "buttonLater": "Αργότερα",
+      "readyTitle": "Έτοιμη η ενημέρωση",
+      "readyMessage": "Έγινε λήψη του Memry Το {version}.",
+      "readyDetailFallback": "Επανεκκινήστε το Memry για να ολοκληρώσετε την εγκατάσταση της ενημέρωσης.",
+      "buttonRestartNow": "Κάντε επανεκκίνηση τώρα",
+      "releaseNotesLabel": "Σημειώσεις έκδοσης:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "Υπενθύμιση σημείωσης",
+      "journal": "Υπενθύμιση ημερολογίου",
+      "highlight": "Επισήμανση υπενθύμισης",
+      "fallback": "Οφειλόμενη υπενθύμιση",
+      "default": "Υπενθύμιση"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "Ο χρόνος υπενθύμισης πρέπει να είναι στο μέλλον",
+    "definitionNotFound": "Ο ορισμός δεν βρέθηκε",
+    "noteNotFound": "Η σημείωση δεν βρέθηκε",
+    "updateFailed": "Η ενημέρωση απέτυχε"
+  }
+}

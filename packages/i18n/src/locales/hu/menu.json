@@ -1,0 +1,28 @@
+{
+  "app": {
+    "quit": "Kilép"
+  },
+  "file": {
+    "label": "Fájl",
+    "newNote": "Új megjegyzés",
+    "close": "Zárja be az ablakot"
+  },
+  "navigation": {
+    "back": "Vissza",
+    "forward": "Előre"
+  },
+  "edit": {
+    "label": "Szerkesztés",
+    "undo": "Visszavonás",
+    "redo": "Újra",
+    "cut": "Vágás",
+    "copy": "Másolás",
+    "paste": "Beillesztés"
+  },
+  "view": {
+    "label": "Megtekintés",
+    "reload": "Újratöltés",
+    "toggleDevTools": "Kapcsolja be a Fejlesztői eszközöket",
+    "toggleFullscreen": "Teljes képernyő váltás"
+  }
+}
