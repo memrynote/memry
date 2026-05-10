@@ -46,6 +46,22 @@ describe('staged secret scanner', () => {
     assert.equal(findings.length, 0)
   })
 
+  it('does not flag TypeScript token fields and code references', () => {
+    const findings = scanTextForSecrets(
+      'apps/desktop/src/main/test-hooks.ts',
+      [
+        'setupToken: string',
+        'clientSecret: string | null',
+        'token: string',
+        'signingSecretKey = keyPair.secretKey',
+        'refresh_token: creds.refreshToken',
+        'refreshToken: input.refreshToken'
+      ].join('\n')
+    )
+
+    assert.equal(findings.length, 0)
+  })
+
   it('does not scan binary asset paths', () => {
     const findings = scanTextForSecrets(
       'apps/landing/public/demos/inbox.mp4',

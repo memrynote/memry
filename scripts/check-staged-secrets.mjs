@@ -12,6 +12,7 @@ const ignoredPathPatterns = [
 
 const binaryPathPattern =
   /\.(?:avif|br|dmg|eot|flac|gif|gz|icns|ico|jpe?g|m4v|mov|mp3|mp4|ogg|otf|pdf|png|tgz|ttf|wav|webm|webp|woff2?|zip)$/i
+const sourceCodePathPattern = /\.[cm]?[jt]sx?$/i
 
 const secretAssignmentPattern =
   /^\s*(?:export\s+)?([A-Z0-9_]*(?:SECRET|TOKEN|PRIVATE_KEY|API_KEY|PASSWORD|HMAC_KEY|CSC_LINK|KEY_PASSWORD)[A-Z0-9_]*)\s*[:=]\s*["']?([^"'\s#][^#\n]*)/i
@@ -53,10 +54,40 @@ function normalizeValue(value) {
     .trim()
 }
 
-function isCodeDeclarationValue(value) {
+function isQuotedValue(value) {
+  const trimmed = value.trim()
+  return trimmed.startsWith('"') || trimmed.startsWith("'") || trimmed.startsWith('`')
+}
+
+function isTypeScriptTypeValue(value) {
+  const typeAtom =
+    '(?:string|number|boolean|bigint|symbol|unknown|never|void|object|null|undefined|Uint8Array|ArrayBuffer|Buffer|Date|Promise<[^>]+>|Record<[^>]+>|Array<[^>]+>|[A-Z][A-Za-z0-9_$]*(?:<[^>]+>)?)'
+  return new RegExp(`^${typeAtom}(?:\\s*\\|\\s*${typeAtom})*$`).test(value)
+}
+
+function isSourceCodeReferenceValue(filePath, value) {
+  if (!sourceCodePathPattern.test(filePath) || isQuotedValue(value)) {
+    return false
+  }
+
   const normalized = normalizeValue(value)
 
-  return normalized.startsWith('() =>') || /^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/i.test(normalized)
+  return (
+    isTypeScriptTypeValue(normalized) ||
+    /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+$/.test(normalized) ||
+    /^[A-Za-z_$][\w$]*(?:\[[^\]]+\])+$/.test(normalized) ||
+    /^[A-Za-z_$][\w$]*\([^;]*\)$/.test(normalized)
+  )
+}
+
+function isCodeDeclarationValue(filePath, value) {
+  const normalized = normalizeValue(value)
+
+  return (
+    normalized.startsWith('() =>') ||
+    /^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/i.test(normalized) ||
+    isSourceCodeReferenceValue(filePath, value)
+  )
 }
 
 function isPlaceholderValue(value) {
@@ -128,7 +159,7 @@ export function scanTextForSecrets(filePath, text) {
     if (
       tokenLines.has(index + 1) ||
       key.toUpperCase().includes('PUBLIC_KEY') ||
-      isCodeDeclarationValue(value) ||
+      isCodeDeclarationValue(filePath, value) ||
       isPlaceholderValue(value)
     ) {
       return
