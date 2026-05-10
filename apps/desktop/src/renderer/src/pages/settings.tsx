@@ -13,7 +13,8 @@ import {
   List,
   Key,
   User,
-  CalendarDays
+  CalendarDays,
+  Server
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { GeneralSettings } from './settings/general-section'
@@ -30,6 +31,7 @@ import { TasksSettings } from './settings/tasks-section'
 import { CalendarSettingsSection } from './settings/calendar-section'
 import { ShortcutsSettings } from './settings/shortcuts-section'
 import { AccountSettings } from './settings/account-section'
+import { AgentMcpSection } from './settings/agent-mcp-section'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { useT } from '@memry/i18n/renderer'
 
@@ -114,6 +116,12 @@ export function SettingsPage() {
             onClick={() => setActiveSection('ai')}
           />
           <SettingsNavItem
+            icon={<Server className="w-3.5 h-3.5" />}
+            label="Agent MCP"
+            isActive={activeSection === 'agent-mcp'}
+            onClick={() => setActiveSection('agent-mcp')}
+          />
+          <SettingsNavItem
             icon={<Plug className="w-3.5 h-3.5" />}
             label={t('page.nav.items.integrations')}
             isActive={activeSection === 'integrations'}
@@ -155,6 +163,7 @@ export function SettingsPage() {
             {activeSection === 'vault' && <VaultSettings />}
             {activeSection === 'appearance' && <AppearanceSettings />}
             {activeSection === 'ai' && <AISettings />}
+            {activeSection === 'agent-mcp' && <AgentMcpSection />}
             {activeSection === 'integrations' && <IntegrationsSettings />}
             {activeSection === 'tags' && <TagsSettings />}
             {activeSection === 'properties' && <PropertiesSettings />}
