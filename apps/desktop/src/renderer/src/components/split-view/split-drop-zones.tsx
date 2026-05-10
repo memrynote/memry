@@ -24,16 +24,26 @@ export const SplitDropZones = ({
   return (
     <div className="absolute inset-0 pointer-events-none z-50">
       {/* Left zone - 25% width */}
-      <DropZone zone="left" groupId={groupId} className="absolute left-0 top-0 bottom-0 w-1/4" />
+      <DropZone zone="left" groupId={groupId} className="absolute start-0 inset-y-0 w-1/4" />
 
       {/* Right zone - 25% width */}
-      <DropZone zone="right" groupId={groupId} className="absolute right-0 top-0 bottom-0 w-1/4" />
+      <DropZone zone="right" groupId={groupId} className="absolute end-0 inset-y-0 w-1/4" />
+
+      {/* Top zone - 25% height */}
+      <DropZone zone="top" groupId={groupId} className="absolute top-0 start-1/4 end-1/4 h-1/4" />
+
+      {/* Bottom zone - 25% height */}
+      <DropZone
+        zone="bottom"
+        groupId={groupId}
+        className="absolute bottom-0 start-1/4 end-1/4 h-1/4"
+      />
 
       {/* Center zone - move to this group without splitting */}
       <DropZone
         zone="center"
         groupId={groupId}
-        className="absolute top-0 bottom-0 left-1/4 right-1/4"
+        className="absolute top-1/4 bottom-1/4 start-1/4 end-1/4"
       />
     </div>
   )

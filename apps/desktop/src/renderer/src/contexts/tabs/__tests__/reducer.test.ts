@@ -385,6 +385,42 @@ describe('tabReducer', () => {
         }
       }
     })
+
+    it('splits the requested target group instead of the source group', () => {
+      const tab1 = makeTab({ title: 'Source Keep' })
+      const tab2 = makeTab({ title: 'Move Me' })
+      const targetTab = makeTab({ title: 'Target' })
+      const g1 = makeGroup([tab1, tab2])
+      const g2 = makeGroup([targetTab], { isActive: false })
+      const layout: SplitLayout = {
+        type: 'split',
+        direction: 'horizontal',
+        ratio: 0.5,
+        first: { type: 'leaf', tabGroupId: g1.id },
+        second: { type: 'leaf', tabGroupId: g2.id }
+      }
+      const state = makeState([g1, g2], layout)
+
+      const result = tabReducer(state, {
+        type: 'MOVE_TAB_TO_NEW_SPLIT',
+        payload: {
+          tabId: tab2.id,
+          fromGroupId: g1.id,
+          targetGroupId: g2.id,
+          direction: 'down'
+        }
+      })
+
+      expect(result.layout.type).toBe('split')
+      if (result.layout.type === 'split') {
+        expect(result.layout.first).toEqual({ type: 'leaf', tabGroupId: g1.id })
+        expect(result.layout.second.type).toBe('split')
+        if (result.layout.second.type === 'split') {
+          expect(result.layout.second.direction).toBe('vertical')
+          expect(result.layout.second.first).toEqual({ type: 'leaf', tabGroupId: g2.id })
+        }
+      }
+    })
   })
 
   describe('TOGGLE_MAXIMIZE_GROUP', () => {
