@@ -59,6 +59,8 @@ describe('agent IPC handlers', () => {
       resolveApproval: vi.fn(),
       trackSubprocess: vi.fn(),
       untrackSubprocess: vi.fn(),
+      acquireTurnLock: vi.fn(),
+      releaseTurnLock: vi.fn(),
       getPendingApproval: vi.fn(() => ({
         conversationId: 'conversation-1',
         toolCallId: 'tool-1',
@@ -144,6 +146,42 @@ describe('agent IPC handlers', () => {
         ]
       })
     )
+  })
+
+  it('returns a busy result when another window already has a turn in flight', async () => {
+    deps.runtime.acquireTurnLock.mockImplementationOnce(() => {
+      throw new Error('There is already a turn in flight for conversation conversation-1')
+    })
+    registerAgentHandlers(deps)
+
+    const result = await findHandler(AgentChannels.invoke.SEND_TURN)(null, {
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'hi',
+      attachments: []
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'There is already a turn in flight for conversation conversation-1'
+    })
+    expect(mocks.snapshotAttachments).not.toHaveBeenCalled()
+    expect(mocks.runTurn).not.toHaveBeenCalled()
+  })
+
+  it('releases the conversation lock after the turn settles', async () => {
+    registerAgentHandlers(deps)
+
+    await findHandler(AgentChannels.invoke.SEND_TURN)(null, {
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'hi',
+      attachments: []
+    })
+    await Promise.resolve()
+
+    expect(deps.runtime.acquireTurnLock).toHaveBeenCalledWith('conversation-1')
+    expect(deps.runtime.releaseTurnLock).toHaveBeenCalledWith('conversation-1')
   })
 
   it('tracks and untracks subprocesses spawned for a turn', async () => {

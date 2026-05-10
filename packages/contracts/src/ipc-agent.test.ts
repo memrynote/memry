@@ -7,6 +7,7 @@ import {
   BinaryStatusSchema,
   PreviewDiffRequestSchema,
   PreviewDiffResponseSchema,
+  SendTurnResponseSchema,
   SendTurnRequestSchema,
   type AgentEvent
 } from './ipc-agent'
@@ -43,6 +44,16 @@ describe('agent IPC schemas', () => {
         sourceWindowId: '1',
         text: 'Create a task',
         attachments: [{ kind: 'current_note', ref_id: 'current', label: 'Current note' }]
+      }).success
+    ).toBe(true)
+  })
+
+  it('validates send-turn busy responses', () => {
+    expect(SendTurnResponseSchema.safeParse({ ok: true }).success).toBe(true)
+    expect(
+      SendTurnResponseSchema.safeParse({
+        ok: false,
+        error: 'There is already a turn in flight for this conversation.'
       }).success
     ).toBe(true)
   })

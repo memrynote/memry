@@ -11,7 +11,8 @@ import type {
   BinaryStatus,
   PreviewDiffRequest,
   PreviewDiffResponse,
-  SendTurnRequest
+  SendTurnRequest,
+  SendTurnResponse
 } from '@memry/contracts/ipc-agent'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
@@ -1613,7 +1614,7 @@ interface AgentClientAPI {
     conversation: Conversation | null
     messages: Message[]
   }>
-  sendTurn: (input: SendTurnRequest) => Promise<{ ok: boolean }>
+  sendTurn: (input: SendTurnRequest) => Promise<SendTurnResponse>
   cancelTurn: (input: { conversationId: string }) => Promise<{ ok: boolean }>
   approveTool: (input: ApproveToolRequest) => Promise<{ ok: boolean }>
   previewDiff: (input: PreviewDiffRequest) => Promise<PreviewDiffResponse>

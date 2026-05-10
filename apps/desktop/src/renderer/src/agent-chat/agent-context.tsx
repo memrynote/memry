@@ -6,6 +6,7 @@ import type {
   ApproveToolRequest,
   AttachmentInput,
   BinaryStatus,
+  SendTurnResponse,
   SendTurnRequest
 } from '@memry/contracts/ipc-agent'
 import type { Conversation, Message } from '@main/agent/storage/types'
@@ -29,7 +30,7 @@ interface AgentClientApi {
     conversation: Conversation | null
     messages: Message[]
   }>
-  sendTurn: (input: SendTurnRequest) => Promise<{ ok: boolean }>
+  sendTurn: (input: SendTurnRequest) => Promise<SendTurnResponse>
   cancelTurn: (input: { conversationId: string }) => Promise<{ ok: boolean }>
   approveTool: (input: ApproveToolRequest) => Promise<{ ok: boolean }>
   editTrustList: (input: {
@@ -122,12 +123,18 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
       dispatch({ type: 'set_error', error: null })
 
       try {
-        await getAgentApi().sendTurn({
+        const result = await getAgentApi().sendTurn({
           conversationId: input.conversationId,
           sourceWindowId: input.sourceWindowId,
           text: input.text,
           attachments: input.attachments ?? []
         })
+        if (!result.ok) {
+          const message =
+            result.error ??
+            'Another window is mid-turn for this conversation. Wait for it to finish or stop it from there.'
+          throw new Error(message)
+        }
       } catch (error) {
         dispatch({ type: 'set_in_flight', conversationId: input.conversationId, inFlight: false })
         const message = extractErrorMessage(error, 'Could not send agent turn')

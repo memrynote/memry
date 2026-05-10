@@ -4,7 +4,8 @@ import type {
   BinaryStatus,
   PreviewDiffRequest,
   PreviewDiffResponse,
-  SendTurnRequest
+  SendTurnRequest,
+  SendTurnResponse
 } from '@memry/contracts/ipc-agent'
 import { AgentChannels } from '@memry/contracts/ipc-agent'
 import type { Conversation, Message } from '../../main/agent/storage/types'
@@ -21,7 +22,7 @@ export const agentApi = {
     conversation: Conversation | null
     messages: Message[]
   }> => invoke(AgentChannels.invoke.LOAD_CONVERSATION, input),
-  sendTurn: (input: SendTurnRequest): Promise<{ ok: boolean }> =>
+  sendTurn: (input: SendTurnRequest): Promise<SendTurnResponse> =>
     invoke(AgentChannels.invoke.SEND_TURN, input),
   cancelTurn: (input: { conversationId: string }): Promise<{ ok: boolean }> =>
     invoke(AgentChannels.invoke.CANCEL_TURN, input),

@@ -43,6 +43,7 @@ export class AgentRuntime {
   private inFlight = new Map<string, AbortController>()
   private pending = new Map<string, PendingApproval>()
   private subprocesses = new Map<number, TrackedSubprocess>()
+  private turnLocks = new Set<string>()
 
   constructor(private deps: AgentRuntimeDeps) {}
 
@@ -128,6 +129,19 @@ export class AgentRuntime {
     }
   }
 
+  acquireTurnLock(conversationId: string): void {
+    if (this.turnLocks.has(conversationId)) {
+      throw new Error(
+        `There is already a turn in flight for conversation ${conversationId}; another window may be mid-turn.`
+      )
+    }
+    this.turnLocks.add(conversationId)
+  }
+
+  releaseTurnLock(conversationId: string): void {
+    this.turnLocks.delete(conversationId)
+  }
+
   trackSubprocess(
     conversationId: string,
     subprocess: {
@@ -160,6 +174,7 @@ export class AgentRuntime {
       controller.abort()
     }
     this.inFlight.clear()
+    this.turnLocks.clear()
   }
 
   private waitForApproval(input: PendingApprovalSnapshot): Promise<ApproveToolDecision> {
