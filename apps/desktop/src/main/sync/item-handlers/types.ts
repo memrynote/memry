@@ -12,6 +12,7 @@ export type ApplyResult = 'applied' | 'skipped' | 'conflict' | 'parse_error'
 export interface ApplyContext {
   db: DrizzleDb
   emit: EmitToWindows
+  vaultKey?: Uint8Array
 }
 
 export interface SyncItemHandler<T = unknown> {
@@ -25,7 +26,8 @@ export interface SyncItemHandler<T = unknown> {
     db: DrizzleDb,
     itemId: string,
     deviceId: string,
-    operation: string
+    operation: string,
+    vaultKey?: Uint8Array
   ): string | null
   markPushSynced?(db: DrizzleDb, itemId: string): void
 }

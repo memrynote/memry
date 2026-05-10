@@ -33,10 +33,17 @@ export interface RemoteSyncAdapter<TDb = unknown, TEmit = unknown, TPayload = un
     operation: SyncOperation
     data?: TPayload
     clock?: VectorClock
+    vaultKey?: Uint8Array
   }): RemoteApplyResult
   fetchLocal?(db: TDb, itemId: string): Record<string, unknown> | undefined
   seedUnclocked?(db: TDb, deviceId: string, queue: QueueLike): number
-  buildPushPayload?(db: TDb, itemId: string, deviceId: string, operation: string): string | null
+  buildPushPayload?(
+    db: TDb,
+    itemId: string,
+    deviceId: string,
+    operation: string,
+    vaultKey?: Uint8Array
+  ): string | null
   markPushSynced?(db: TDb, itemId: string): void
 }
 

@@ -203,6 +203,103 @@ export const CalendarExternalEventSyncPayloadSchema = z.object({
   modifiedAt: z.string().optional()
 })
 
+const AgentMessageContentSchema = z.discriminatedUnion('role', [
+  z.object({ role: z.literal('user'), data: z.object({ text: z.string() }) }),
+  z.object({ role: z.literal('assistant'), data: z.object({ text: z.string() }) }),
+  z.object({
+    role: z.literal('tool_call'),
+    data: z.object({
+      tool: z.string(),
+      args: z.record(z.string(), z.unknown()),
+      status: z.enum(['pending', 'approved', 'denied', 'completed', 'failed']),
+      approvedArgs: z.record(z.string(), z.unknown()).optional()
+    })
+  }),
+  z.object({
+    role: z.literal('tool_result'),
+    data: z.object({
+      ok: z.boolean(),
+      data: z.unknown().optional(),
+      error: z.object({ code: z.string(), message: z.string() }).optional()
+    })
+  }),
+  z.object({
+    role: z.literal('system'),
+    data: z.object({
+      kind: z.enum(['context_attached', 'compacted', 'backend_changed']),
+      payload: z.record(z.string(), z.unknown())
+    })
+  })
+])
+
+const AgentAttachmentSnapshotSchema = z.discriminatedUnion('mode', [
+  z.object({
+    mode: z.literal('inline_note'),
+    title: z.string(),
+    contentMarkdown: z.string(),
+    truncated: z.boolean()
+  }),
+  z.object({
+    mode: z.literal('inline_journal'),
+    date: z.string(),
+    contentMarkdown: z.string(),
+    truncated: z.boolean()
+  }),
+  z.object({
+    mode: z.literal('inline_task'),
+    title: z.string(),
+    status: z.string(),
+    due: z.string().optional(),
+    project: z.string().optional(),
+    notes: z.string().optional()
+  }),
+  z.object({
+    mode: z.literal('inline_project'),
+    name: z.string(),
+    status: z.string().optional(),
+    taskCount: z.number().optional()
+  }),
+  z.object({
+    mode: z.literal('reference_only'),
+    path: z.string().optional(),
+    id: z.string().optional()
+  })
+])
+
+const AgentMessageAttachmentSchema = z.object({
+  kind: z.enum(['note', 'folder', 'task', 'project', 'journal', 'current_note']),
+  refId: z.string(),
+  label: z.string(),
+  snapshotAt: z.number(),
+  snapshot: AgentAttachmentSnapshotSchema
+})
+
+export const AgentConversationSyncPayloadSchema = z.object({
+  vaultId: z.string(),
+  title: z.string(),
+  backend: z.string(),
+  trustList: z.array(z.string()),
+  pinned: z.boolean(),
+  clock: VectorClockSchema.optional(),
+  fieldClocks: FieldClocksSchema,
+  createdAt: z.number().int().min(0),
+  updatedAt: z.number().int().min(0),
+  deletedAt: z.number().int().min(0).nullable().optional()
+})
+
+export const AgentMessageSyncPayloadSchema = z.object({
+  conversationId: z.string(),
+  role: z.enum(['user', 'assistant', 'tool_call', 'tool_result', 'system']),
+  content: AgentMessageContentSchema,
+  attachments: z.array(AgentMessageAttachmentSchema),
+  toolCallId: z.string().nullable(),
+  status: z.enum(['completed', 'cancelled', 'error']),
+  clock: VectorClockSchema.optional(),
+  createdAt: z.number().int().min(0),
+  updatedAt: z.number().int().min(0),
+  deletedAt: z.number().int().min(0).nullable().optional()
+})
+
 export type FolderConfigSyncPayload = z.infer<typeof FolderConfigSyncPayloadSchema>
 export type CalendarEventSyncPayload = z.infer<typeof CalendarEventSyncPayloadSchema>
 export type CalendarSourceSyncPayload = z.infer<typeof CalendarSourceSyncPayloadSchema>
@@ -219,3 +316,5 @@ export type StatusSync = z.infer<typeof StatusSyncSchema>
 export type NoteSyncPayload = z.infer<typeof NoteSyncPayloadSchema>
 export type JournalSyncPayload = z.infer<typeof JournalSyncPayloadSchema>
 export type TagDefinitionSyncPayload = z.infer<typeof TagDefinitionSyncPayloadSchema>
+export type AgentConversationSyncPayload = z.infer<typeof AgentConversationSyncPayloadSchema>
+export type AgentMessageSyncPayload = z.infer<typeof AgentMessageSyncPayloadSchema>

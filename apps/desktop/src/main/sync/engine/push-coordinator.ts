@@ -70,7 +70,7 @@ export class PushCoordinator {
     let lastServerTime = 0
     let lastMaxCursor = 0
     let vaultKey: Uint8Array | null = null
-    let signingSecretKey: Uint8Array | null = null
+    let signingKeyBytes: Uint8Array | null = null
 
     try {
       this.stateManager.setState('syncing')
@@ -88,7 +88,7 @@ export class PushCoordinator {
         log.debug('Push aborted: no signing keys')
         return
       }
-      signingSecretKey = signingKeys.secretKey
+      signingKeyBytes = signingKeys.secretKey
 
       vaultKey = await this.ctx.deps.getVaultKey()
       if (!vaultKey) {
@@ -153,7 +153,8 @@ export class PushCoordinator {
               workerBridge: this.ctx.deps.workerBridge,
               queue: this.ctx.deps.queue,
               extractPayloadMetadata: (p) => this.extractPayloadMetadata(p),
-              resolvePushPayload: (item, deviceId) => this.resolvePushPayload(item, deviceId)
+              resolvePushPayload: (item, deviceId, key) =>
+                this.resolvePushPayload(item, deviceId, key)
             }
           )
           timer.endPhase(dedupedItems.length)
@@ -273,12 +274,12 @@ export class PushCoordinator {
       }
     } finally {
       try {
-        if (vaultKey && signingSecretKey) {
-          secureCleanup(vaultKey, signingSecretKey)
+        if (vaultKey && signingKeyBytes) {
+          secureCleanup(vaultKey, signingKeyBytes)
         } else if (vaultKey) {
           secureCleanup(vaultKey)
-        } else if (signingSecretKey) {
-          secureCleanup(signingSecretKey)
+        } else if (signingKeyBytes) {
+          secureCleanup(signingKeyBytes)
         }
       } finally {
         cleanup()
@@ -387,7 +388,8 @@ export class PushCoordinator {
 
   private resolvePushPayload(
     item: { itemId: string; type: string; operation: string; payload: string },
-    deviceId: string
+    deviceId: string,
+    vaultKey: Uint8Array
   ): string {
     if (item.operation === 'delete') return item.payload
 
@@ -396,12 +398,19 @@ export class PushCoordinator {
         this.ctx.deps.adapters?.getRemote(item.type as SyncItemType) ??
         getRemoteSyncAdapter(item.type as SyncItemType)
       const fresh =
-        adapter?.buildPushPayload?.(this.ctx.deps.db, item.itemId, deviceId, item.operation) ??
+        adapter?.buildPushPayload?.(
+          this.ctx.deps.db,
+          item.itemId,
+          deviceId,
+          item.operation,
+          vaultKey
+        ) ??
         getHandler(item.type as SyncItemType)?.buildPushPayload?.(
           this.ctx.deps.db,
           item.itemId,
           deviceId,
-          item.operation
+          item.operation,
+          vaultKey
         )
       if (!fresh) {
         log.debug('Push: item no longer exists locally, using frozen payload', {

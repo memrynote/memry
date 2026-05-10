@@ -15,6 +15,7 @@ export interface ApplyItemInput {
   content: Uint8Array
   clock?: VectorClock
   deletedAt?: number
+  vaultKey?: Uint8Array
 }
 
 export class ItemApplier {
@@ -25,7 +26,7 @@ export class ItemApplier {
   ) {}
 
   apply(input: ApplyItemInput): ApplyResult {
-    const ctx = { db: this.db, emit: this.emitToWindows }
+    const ctx = { db: this.db, emit: this.emitToWindows, vaultKey: input.vaultKey }
     const adapter = this.adapters?.getRemote(input.type) ?? getRemoteSyncAdapter(input.type)
     const handler = adapter ? null : getHandler(input.type)
 
@@ -41,7 +42,8 @@ export class ItemApplier {
             emit: this.emitToWindows,
             itemId: input.itemId,
             operation: 'delete',
-            clock: input.clock
+            clock: input.clock,
+            vaultKey: input.vaultKey
           })
         : handler!.applyDelete(ctx, input.itemId, input.clock)
     }
@@ -70,7 +72,8 @@ export class ItemApplier {
           itemId: input.itemId,
           operation: input.operation,
           data,
-          clock: input.clock ?? {}
+          clock: input.clock ?? {},
+          vaultKey: input.vaultKey
         })
       : handler!.applyUpsert(ctx, input.itemId, data, input.clock ?? {})
   }
