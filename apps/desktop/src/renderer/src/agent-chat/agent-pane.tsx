@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import { useAgentOptional } from './agent-context'
+import { ConversationHeader } from './conversation-header'
 import { EmptyState } from './empty-state'
 import { Enablement } from './enablement'
 
@@ -50,11 +51,29 @@ export function AgentPane(): React.JSX.Element {
     )
   }
 
+  const activeConversation = state.conversations[state.activeConversationId]
+  if (!activeConversation) {
+    return (
+      <div className="flex h-full items-start p-5 text-sm text-muted-foreground">
+        Conversation loading...
+      </div>
+    )
+  }
+
+  const conversations = Object.values(state.conversations).sort((left, right) => {
+    return right.updatedAt - left.updatedAt
+  })
+
   return (
     <section className="flex h-full min-h-0 flex-col bg-sidebar" aria-label="Agent chat">
-      <div className="border-b border-sidebar-border px-4 py-3">
-        <h2 className="text-sm font-semibold text-foreground">Agent chat</h2>
-      </div>
+      <ConversationHeader
+        conversation={activeConversation}
+        conversations={conversations}
+        onCreateConversation={async () => {
+          await agent.createConversation()
+        }}
+        onSelectConversation={agent.loadConversation}
+      />
       <div className="min-h-0 flex-1 p-5 text-sm text-muted-foreground">
         Conversation loading...
       </div>
