@@ -96,6 +96,7 @@ export {
   getJournalYearStats,
   getJournalStreak,
   listJournalEntries,
+  listJournalEntriesInRange,
   countJournalEntries,
   clearJournalCache
 } from './journal-queries'

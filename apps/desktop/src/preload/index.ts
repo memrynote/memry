@@ -7,7 +7,7 @@ import {
 } from '@memry/contracts/ipc-channels'
 import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
 import { createLogger } from './lib/logger'
-import { invoke, invokeSync, subscribe } from './lib/ipc'
+import { invoke, invokeSync, send, subscribe } from './lib/ipc'
 import { applyStartupTheme, getStartupThemeSync, THEME_STORAGE_KEY } from './lib/startup-theme'
 import { createGeneratedRpcApi } from './generated-rpc'
 import { windowApi, getFileDropPaths, contextMenuApi, quickCaptureApi, flushApi } from './api/core'
@@ -23,8 +23,17 @@ import { syncAuth, syncSetup, syncLinking, accountApi, syncDevices } from './api
 import { syncOps, cryptoApi, syncAttachments, syncCrdt, onCrdtStateChanged } from './api/sync-ops'
 import { syncEvents } from './api/sync-events'
 import { updaterApi, updaterEvents } from './api/updater'
+import { agentMcpApi } from './api/agent-mcp'
 
 const logger = createLogger('Preload')
+const MAIN_INVOKE_CHANNEL = 'main:invoke'
+const MAIN_INVOKE_RESPONSE_CHANNEL_PREFIX = 'main:invoke:response:'
+
+export interface MainInvokePayload {
+  requestId: string
+  channel: string
+  payload?: unknown
+}
 
 if (typeof globalThis.window !== 'undefined') {
   const startupTheme = getStartupThemeSync()
@@ -92,6 +101,7 @@ export const api = {
   syncAttachments,
   syncCrdt,
   updater: updaterApi,
+  agentMcp: agentMcpApi,
 
   onCrdtStateChanged,
   ...syncEvents,
@@ -101,7 +111,13 @@ export const api = {
   onAppNavigationCommand: (callback: (command: AppNavigationCommandEvent) => void) =>
     subscribe<AppNavigationCommandEvent>(AppChannels.events.NAVIGATION_COMMAND, callback),
   onLocaleChanged: (callback: (locale: Locale) => void) =>
-    subscribe<Locale>(LocaleChannels.Changed, callback)
+    subscribe<Locale>(LocaleChannels.Changed, callback),
+  onMainInvoke: (callback: (payload: MainInvokePayload) => void | Promise<void>) =>
+    subscribe<MainInvokePayload>(MAIN_INVOKE_CHANNEL, (payload) => {
+      void callback(payload)
+    }),
+  respondToMainInvoke: (requestId: string, response: unknown) =>
+    send(`${MAIN_INVOKE_RESPONSE_CHANNEL_PREFIX}${requestId}`, response)
 }
 
 if (process.contextIsolated) {

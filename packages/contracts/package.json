@@ -46,6 +46,7 @@
     "./telemetry-api": "./src/telemetry-api.ts",
     "./templates-api": "./src/templates-api.ts",
     "./ai-inline-channels": "./src/ai-inline-channels.ts",
+    "./agent-mcp-channels": "./src/agent-mcp-channels.ts",
     "./vault-api": "./src/vault-api.ts"
   },
   "types": "./src/index.ts",

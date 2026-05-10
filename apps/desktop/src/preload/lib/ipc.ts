@@ -18,6 +18,10 @@ export function invokeSync(channel: string): unknown {
   return ipcRenderer.sendSync(channel)
 }
 
+export function send(channel: string, ...args: unknown[]): void {
+  ipcRenderer.send(channel, ...args)
+}
+
 export function subscribe<T>(channel: string, callback: (payload: T) => void): () => void {
   const handler = (_event: Electron.IpcRendererEvent, payload: T): void => callback(payload)
   ipcRenderer.on(channel, handler)
