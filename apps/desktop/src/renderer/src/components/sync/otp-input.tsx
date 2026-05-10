@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
 import { Loader2, Clock } from '@/lib/icons'
 import { useT } from '@memry/i18n/renderer'
@@ -28,37 +28,21 @@ function useCountdown(
   reset: () => void
 } {
   const [seconds, setSeconds] = useState(initialSeconds)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  const clearTimer = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
-  }, [])
 
   useEffect(() => {
-    if (seconds <= 0 || intervalRef.current) return clearTimer
+    if (seconds <= 0) return
 
-    intervalRef.current = setInterval(() => {
-      setSeconds((prev) => {
-        if (prev <= 1) {
-          clearTimer()
-          return 0
-        }
-
-        return prev - 1
-      })
+    const countdownTimeout = setTimeout(() => {
+      setSeconds((prev) => Math.max(prev - 1, 0))
     }, 1000)
 
-    return clearTimer
-  }, [seconds, clearTimer])
+    return () => clearTimeout(countdownTimeout)
+  }, [seconds])
 
   const reset = useCallback(() => {
     onResend()
-    clearTimer()
     setSeconds(60)
-  }, [onResend, clearTimer])
+  }, [onResend])
 
   return { seconds, canResend: seconds === 0, reset }
 }

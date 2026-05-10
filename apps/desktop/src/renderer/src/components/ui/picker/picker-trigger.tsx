@@ -34,7 +34,7 @@ export interface PickerTriggerProps
 
 export const PickerTrigger = React.forwardRef<HTMLButtonElement, PickerTriggerProps>(
   ({ variant, chevron = false, asChild = false, className, children, onClick, ...props }, ref) => {
-    const { open } = usePickerContext()
+    const { open, contentId } = usePickerContext()
 
     const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
@@ -51,6 +51,7 @@ export const PickerTrigger = React.forwardRef<HTMLButtonElement, PickerTriggerPr
           ref={ref}
           type="button"
           role="combobox"
+          aria-controls={contentId}
           aria-expanded={open}
           data-slot="picker-trigger"
           className={cn(pickerTriggerVariants({ variant }), className)}
