@@ -13,6 +13,7 @@ import { getConfig } from '../../../vault'
 import { getAllTagsWithCounts } from '../../../tags/store'
 import { generateId } from '../../../lib/id'
 import type { DataDb, IndexDb } from '../../../database'
+import { snapshotCurrentNoteFromWindow } from './current-note'
 import type {
   FolderEntry,
   InboxSummary,
@@ -398,8 +399,8 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
       }
     },
     windows: {
-      async snapshotCurrentNote() {
-        return null
+      async snapshotCurrentNote(windowId) {
+        return snapshotCurrentNoteFromWindow(windowId)
       }
     }
   }
