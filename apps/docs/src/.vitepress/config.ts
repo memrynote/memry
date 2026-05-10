@@ -115,7 +115,7 @@ function unifiedSidebar() {
           items: [
             { text: 'Inline AI Menu', link: '/user-guide/ai/inline-menu' },
             { text: 'Embeddings & Semantic Search', link: '/user-guide/ai/embeddings-search' },
-            { text: 'Agent MCP Server', link: '/user-guide/ai/agent-mcp' },
+            { text: 'Agent Chat & MCP Server', link: '/user-guide/ai/agent-mcp' },
             { text: 'Voice Transcription', link: '/user-guide/ai/voice-transcription' },
             { text: 'Provider Setup', link: '/user-guide/ai/provider-setup' }
           ]
