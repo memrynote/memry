@@ -22,6 +22,16 @@ import type { HeadingInfo } from '../types'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Hook:EditorSync')
+const activeNoteEditors = new Map<string, any>()
+
+export async function extractMarkdownFromActiveEditor(noteId?: string): Promise<string | null> {
+  if (!noteId) return null
+
+  const editor = activeNoteEditors.get(noteId)
+  if (!editor) return null
+
+  return serializeBlocksPreservingBlanks(editor, editor.document as Block[])
+}
 
 function hydrateLinkMentionFavicons(editor: any): void {
   const mentions: { block: any; index: number; url: string }[] = []
@@ -85,6 +95,7 @@ interface EditorSyncResult {
 
 export function useEditorSync({
   editor,
+  noteId,
   initialContent,
   contentType = 'html',
   yjsFragment,
@@ -113,6 +124,15 @@ export function useEditorSync({
       if (inlineTagsDebounceRef.current) clearTimeout(inlineTagsDebounceRef.current)
     }
   }, [])
+
+  useEffect(() => {
+    if (!noteId) return
+
+    activeNoteEditors.set(noteId, editor)
+    return () => {
+      if (activeNoteEditors.get(noteId) === editor) activeNoteEditors.delete(noteId)
+    }
+  }, [editor, noteId])
 
   // Parse content on initial mount (uncontrolled component pattern).
   // Cancellation flag + cleanup return mark this as a synchronization effect

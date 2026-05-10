@@ -63,6 +63,7 @@ import { getStartupTheme, THEME_STORAGE_KEY } from '@/lib/startup-theme'
 import { useTaskWorkspaceData, useTaskWorkspaceMutations } from '@/features/tasks/use-task-queries'
 import { useTaskUiStore } from '@/features/tasks/use-task-ui-store'
 import { getFilteredTasks } from '@/lib/task-utils'
+import { useAgentMcpCurrentNoteResponder } from '@/agent-mcp/current-note-handler'
 
 const log = createLogger('App')
 const startupTheme = getStartupTheme()
@@ -132,6 +133,7 @@ const AppContent = (): React.JSX.Element => {
   // Fire `page_viewed` whenever the active tab type changes. Only ever surface enums,
   // never tab titles, file paths, or note IDs.
   const activeTab = useActiveTab()
+  useAgentMcpCurrentNoteResponder()
   const lastTrackedTabTypeRef = useRef<TabType | null>(null)
   useEffect(() => {
     if (!activeTab) return
