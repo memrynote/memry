@@ -1,0 +1,483 @@
+{
+  "view": {
+    "tabs": {
+      "inbox": "收件箱",
+      "archived": "已归档",
+      "insights": "洞察",
+      "ariaLabel": "收件箱视图选择"
+    },
+    "triageButton": "分类处理",
+    "processInboxTitle": "处理收件箱 (Cmd+P)",
+    "itemCaptured": "项目已捕获",
+    "searchArchivedTitle": "搜索已归档项目",
+    "searchPlaceholder": "搜索...",
+    "archivedItemsAria": "已归档的项目",
+    "snoozed": {
+      "show": "显示延迟处理的项目",
+      "showWithCount": "显示延迟处理的项目 ({count})",
+      "hide": "隐藏延迟处理的项目"
+    },
+    "filter": {
+      "button": "筛选",
+      "byType": "按类型筛选",
+      "active": "{count, plural, one {按 # 类型过滤} other {按 # 类型过滤}}",
+      "clearAll": "清除所有"
+    },
+    "jobs": {
+      "running": "{count, plural, one {# 后台任务正在运行} other {# 后台任务正在运行}}",
+      "failed": "{count} 失败"
+    }
+  },
+  "type": {
+    "link": "链接",
+    "links": "链接",
+    "note": "笔记",
+    "notes": "笔记",
+    "image": "图片",
+    "images": "图片",
+    "voice": "语音",
+    "video": "视频",
+    "clip": "剪辑",
+    "clips": "剪辑",
+    "pdf": "PDF",
+    "pdfs": "PDF 文件",
+    "social": "社交",
+    "reminder": "提醒",
+    "reminders": "提醒事项",
+    "text": "文本",
+    "other": "其他"
+  },
+  "empty": {
+    "successAria": "成功，收件箱为空",
+    "title": "收件箱清零",
+    "body": "所有内容已处理。使用上方输入捕获新内容，或粘贴链接开始。",
+    "filedThisWeek": "{count, plural, one {# 本周归档} other {# 本周归档}}",
+    "dayStreak": "{count, plural, one {# 连续天数} other {# 连续天数}}",
+    "tipPrefix": "提示：使用",
+    "tipSuffix": "从剪贴板快速捕获",
+    "archivedNone": "没有存档项目",
+    "archivedNoMatches": "没有匹配的存档项目",
+    "noItemsYet": "还没有项目",
+    "noItemsFiled": "还没有归档的项目",
+    "noItemTypes": "没有可显示的项目类型",
+    "noFolders": "未找到文件夹",
+    "noFolderMatch": "没有文件夹匹配 \"{query}\"",
+    "noNotes": "未找到笔记",
+    "allMatchesLinked": "所有匹配项已链接"
+  },
+  "list": {
+    "ariaLabel": "收件箱项目",
+    "section": {
+      "today": "今天",
+      "yesterday": "昨天",
+      "older": "较旧"
+    },
+    "selectItem": "选择 {title}",
+    "itemAria": "{type}: {title}",
+    "untitled": "未命名",
+    "untitledItem": "未命名项目",
+    "transcribing": "转录中...",
+    "transcriptionFailed": "转录失败",
+    "retryTranscription": "重试",
+    "pageCount": "{count, plural, one {# 页面} other {# 页}}",
+    "snoozedUntilShort": "已延迟至 {date}",
+    "capturedAgo": "已捕获 {time}"
+  },
+  "loading": {
+    "inbox": "加载收件箱中...",
+    "failed": "加载收件箱失败",
+    "tryAgain": "请重试",
+    "capturingImage": "正在捕获图像...",
+    "dropImageTitle": "拖放图像以捕获",
+    "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
+    "unsupportedImageType": "不支持的图像类型：{type}",
+    "imageTooLarge": "图像过大（最大 50MB）"
+  },
+  "toast": {
+    "failedArchiveItem": "归档项目失败",
+    "failedArchiveItems": "归档项目失败",
+    "failedFile": "归档失败",
+    "failedFileItem": "归档项目失败",
+    "failedFileItems": "归档项目失败",
+    "failedSnooze": "延迟操作失败",
+    "failedSnoozeItem": "延迟操作项目失败",
+    "failedApplyTags": "应用标签失败",
+    "failedCaptureImage": "捕获图像失败",
+    "linkedToNote": "已链接到笔记",
+    "linkedToNotes": "已链接到 {count} 个笔记",
+    "filedTo": "已归档到 {folder}",
+    "filedItemsTo": "已将 {count} 个项目归档到 {folder}",
+    "filedPartial": "已归档 {processed} 个中的 {total} 个项目",
+    "appliedTags": "{tagCount, plural, one {已应用 # 标签} other {已应用 # 个标签}} 到 {itemCount, plural, one {# 项} other {# 项目}}",
+    "archivedItems": "{count, plural, one {已归档 # 项目} other {已归档 # 项目}}",
+    "snoozedUntil": "已延迟至 {time}",
+    "snoozedItemsUntil": "{count, plural, one {已将 # 项目延迟至 {time}} other {已将 # 项目延迟至 {time}}}"
+  },
+  "triage": {
+    "modeTitle": "分类模式",
+    "exitHint": "按 Esc 键退出",
+    "exitAria": "退出分类模式",
+    "position": "{current} / {total}",
+    "action": {
+      "discard": "放弃",
+      "archive": "归档",
+      "open": "打开",
+      "toTask": "转为任务",
+      "toNote": "转为笔记",
+      "file": "文件",
+      "snooze": "延迟",
+      "cancel": "取消"
+    },
+    "snoozeUntil": "延迟至...",
+    "complete": {
+      "title": "收件箱清零",
+      "processed": "{count, plural, one {已处理 # 项目} other {已处理 # 项目}}",
+      "streak": "连胜",
+      "streakCount": "{count} 连胜",
+      "dayProcessingStreak": "{count, plural, one {# 天处理连胜} other {# 天处理连胜}}",
+      "back": "返回收件箱",
+      "motivation0": "你的未来的自己会感谢你。",
+      "motivation1": "万物归位。",
+      "motivation2": "清空收件箱，清爽心情。",
+      "motivation3": "决策债务：已全部偿清。 ",
+      "motivation4": "感觉不错，是吧？ "
+    }
+  },
+  "bulk": {
+    "selected": "已选择 {count} ",
+    "deselectAll": "取消全选 ",
+    "ariaLabel": "对已选择的 {count} 项进行批量操作 ",
+    "file": "文件",
+    "tag": "标签 ",
+    "snooze": "延迟",
+    "archive": "归档",
+    "add": "添加",
+    "dismissSuggestion": "忽略建议 ",
+    "hint": {
+      "file": "归档 ",
+      "tag": "标签 ",
+      "snooze": "稍后提醒 ",
+      "archive": "存档 ",
+      "deselect": "取消选择 "
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {要存档 # 项吗？ } other {要存档 # 项吗？ }}",
+      "description": "这些项目将被存档。您可以稍后查看已存档的项目。 ",
+      "confirm": "{count, plural, one {存档 # 项 } other {存档 # 项 }}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {归档 # 项 } other {归档 # 项 }}",
+      "itemsToFile": "要归档的项目 ",
+      "multipleNoteLinksUnavailable": "注意：同时归档多个项目时，不能添加与其他笔记的链接。 ",
+      "filing": "正在归档... ",
+      "submit": "{count, plural, one {归档 # 项} other {文件 # 项目}}",
+      "macHint": "⌘⏎ 存档 · Esc 关闭",
+      "ctrlHint": "Ctrl+Enter 存档 · Esc 关闭"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {标记 # 项目} other {标记 # 项目}}",
+      "placeholder": "输入以搜索标签...",
+      "applying": "应用中...",
+      "apply": "{count, plural, one {应用到 # 项目} other {应用到 # 项目}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "快速操作",
+    "archiveItem": "存档项目",
+    "archive": "归档",
+    "snooze": "延迟"
+  },
+  "detail": {
+    "ariaLabel": "项目详情",
+    "closePanel": "关闭面板",
+    "resizeFiling": "调整存档区域大小",
+    "restore": "恢复",
+    "restoreToInbox": "恢复到收件箱",
+    "delete": "删除",
+    "deletePermanently": "永久删除",
+    "archive": "归档",
+    "file": "文件",
+    "keyboardHint": "{modifier}⏎ 存档 · 1-5 文件夹 · Esc 关闭",
+    "voiceTitlePlaceholder": "为此语音备忘录命名...",
+    "fileTo": "存档到",
+    "ai": "AI",
+    "selectFolder": "选择文件夹",
+    "searchOrCreateFolder": "使用 / 搜索或创建...",
+    "suggested": "推荐",
+    "notesRoot": "笔记",
+    "notesRootLabel": "笔记（根目录）",
+    "createFolder": "创建 \"{name}\"",
+    "addTags": "添加标签...",
+    "linkToNote": "笔记链接",
+    "linkNotesPlaceholder": "链接笔记...",
+    "searchNotesAria": "搜索要链接的笔记",
+    "linkedNotesAria": "已链接的笔记",
+    "removeLinkTo": "移除与 {title} 的链接",
+    "contentEditorAria": "内容编辑器",
+    "notePlaceholder": "写下你的笔记...",
+    "textPlaceholder": "编辑你捕获的文本..."
+  },
+  "content": {
+    "capturedAt": "已捕获 {date}",
+    "todayAt": "今天在 {time}",
+    "yesterdayAt": "昨天在 {time}",
+    "dateAt": "{date} 在 {time}",
+    "words": "{count, plural, one {# 字} other {# 个字}}",
+    "duration": "持续时间：{duration}",
+    "dimensions": "尺寸",
+    "format": "格式",
+    "size": "大小",
+    "voiceMemo": "语音备忘",
+    "play": "播放",
+    "pause": "暂停",
+    "audioPosition": "音频位置",
+    "transcription": "文字记录",
+    "processing": "处理中",
+    "pending": "待处理",
+    "failed": "失败",
+    "copyTranscription": "复制文字记录",
+    "transcribingAudio": "正在转录音频...",
+    "awaitingTranscription": "正在等待转录...",
+    "noTranscription": "没有可用的转录",
+    "failedPlayAudio": "音频播放失败",
+    "failedLoadAudio": "音频加载失败",
+    "video": "视频",
+    "unsupportedVideo": "您的浏览器不支持视频标签。"
+  },
+  "reminder": {
+    "dataUnavailable": "提醒数据不可用。",
+    "triggered": "提醒已触发",
+    "noteLabel": "提醒备注",
+    "source": "来源",
+    "journalTitle": "日记 — {date}",
+    "noteFallback": "笔记",
+    "journalFallback": "日记",
+    "highlighted": "已高亮: \"{text}\"",
+    "viewed": "已查看",
+    "markViewed": "标记为已查看",
+    "notYetViewed": "尚未查看",
+    "snooze": "延迟",
+    "presetInOneHour": "1 小时",
+    "presetTomorrow": "明天",
+    "presetNextWeek": "下周",
+    "custom": "自定义..."
+  },
+  "insights": {
+    "loading": "正在加载洞察...",
+    "captureActivity": "捕获活动",
+    "byType": "按类型",
+    "itemTypes": "项目类型",
+    "itemTypesDescription": "内容格式分布",
+    "recentFilings": "最近的提交",
+    "recentlyFiled": "最近提交",
+    "recentlyFiledDescription": "收件箱的最新操作",
+    "captured": "已捕获",
+    "capturedThisWeek": "+{count} 本周",
+    "processed": "已处理",
+    "processRate": "{rate}% 率",
+    "stale": "过期",
+    "needsAttention": "需要关注",
+    "allClear": "一切正常",
+    "avgTimeToFile": "平均提交时间",
+    "noCapturesYet": "尚未捕获",
+    "captures": "{count, plural, one {# 捕获} other {# 捕获次数}}",
+    "peak": "峰值：{day} {start}–{end}",
+    "convertedToTask": "已转换为任务",
+    "linked": "已关联",
+    "now": "现在",
+    "timeAgoMinutes": "{count} 分钟前",
+    "timeAgoHours": "{count} 小时前",
+    "timeAgoDays": "{count} 天前"
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "AI 检测：",
+      "addToSelection": "添加到选择",
+      "dismiss": "忽略"
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "删除",
+      "item": "项目",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "这些项目将从您的收件箱中移除。您可以在此操作后立即撤销。"
+    },
+    "componentsCaptureInput": {
+      "captureInput": "捕获输入",
+      "attachFile": "附加文件",
+      "attachFileImagesAudioVideoPdf": "附加文件（图片、音频、视频、PDF）",
+      "recordVoiceMemo": "录制语音备忘",
+      "recordVoiceMemo2": "录制语音备忘",
+      "alreadyCaptured": "已捕获：“",
+      "rdquo": "rdquo;",
+      "captureAnyway": "仍要捕获"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "选择文件夹",
+      "searchFolders": "搜索文件夹...",
+      "searchFolders2": "搜索文件夹",
+      "searchResults": "搜索结果",
+      "create": "创建",
+      "suggested": "推荐",
+      "recent": "最近",
+      "allFolders": "所有文件夹",
+      "allFolders2": "所有文件夹"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "链接到",
+      "optional": "可选)",
+      "searchNotesToLink": "搜索要链接的笔记...",
+      "searchNotesToLink2": "搜索要链接的笔记",
+      "searching": "搜索中...",
+      "noNotesFound": "未找到笔记",
+      "linkedNotes": "已链接的笔记",
+      "noLinksAdded": "未添加链接"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "推荐",
+      "ai": "AI",
+      "create": "创建",
+      "tags": "标签",
+      "selectedTags": "已选标签",
+      "addTags": "添加标签",
+      "tagSuggestions": "标签建议"
+    },
+    "componentsFilingTagInput": {
+      "tags": "标签",
+      "optional": "可选)",
+      "addTags": "添加标签...",
+      "addTags2": "添加标签",
+      "selectedTags": "已选标签",
+      "suggested": "推荐"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "捕获活动"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "还没有归档的项目",
+      "recentlyFiled": "最近提交",
+      "latestActionsOnYourInbox": "收件箱的最新操作",
+      "linked": "已关联"
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "正在加载洞察..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "没有可显示的项目类型",
+      "itemTypes": "项目类型",
+      "distributionOfContentFormats": "内容格式分布"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "已捕获"
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "x"
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "内容编辑器"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "中点·"
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "推文不可用",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "该推文可能已被删除或来自私人账户。",
+      "openOnXCom": "在 x.com 打开",
+      "views": "查看次数",
+      "xCom": "x.com",
+      "viewOnX": "在 X 上查看"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "输入文件夹名称...",
+      "quickFileFolderSearch": "快速文件夹搜索"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "关闭",
+      "capture": "捕获"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "移除附件"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "快速捕获输入",
+      "recordVoiceMemo": "录制语音备忘",
+      "attachFile": "附加文件"
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "链接"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "已捕获",
+      "dismissError": "忽略错误",
+      "alreadyCaptured": "已捕获",
+      "ldquo": "ldquo;",
+      "rdquoMiddot": "rdquo; &middot; ",
+      "captureAnyway": "仍要捕获",
+      "close": "关闭"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "拖动以捕获",
+      "capturing": "正在捕获..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "文件夹建议",
+      "noFoldersMatch": "没有匹配的文件夹"
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "为此文本设置提醒",
+      "remindMeAboutThis": "提醒我关于此事项",
+      "selectedText": "所选文本："
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "提醒",
+      "remindMe": "提醒我",
+      "pickDateTime": "选择日期和时间",
+      "addANoteOptional": "添加备注（可选）",
+      "backToPresets": "返回预设",
+      "time": "时间",
+      "noteOptional": "备注（可选）",
+      "whyAreYouSettingThisReminder": "你为什么要设置这个提醒？"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "延迟",
+      "snooze2": "延迟",
+      "pickDateTime": "选择日期和时间",
+      "pickDateTime2": "选择日期和时间",
+      "selectWhenToBeRemindedAboutThisItem": "选择何时提醒此事项",
+      "snooze3": "延迟",
+      "snooze4": "延迟",
+      "snooze5": "延迟"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "正在加载帖子...",
+      "failedToLoad": "加载失败",
+      "loadingPostContent": "正在加载帖子内容...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "加载帖子内容失败。该帖子可能是私密或者已被删除。",
+      "viewOn": "在查看 "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "开始语音录制",
+      "requestingMicrophoneAccess": "请求麦克风权限...",
+      "settings": "设置",
+      "processing": "处理中...",
+      "cancelRecording": "取消录制",
+      "cancel": "取消",
+      "stopRecording": "停止录制",
+      "stop": "停止"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCaptureLink": "捕获链接失败",
+      "failedToCaptureNote": "捕获笔记失败",
+      "captureFailed": "捕获失败",
+      "failedToCaptureVoiceMemo": "捕获语音备忘失败",
+      "voiceCaptureFailed": "语音捕获失败",
+      "failedToCaptureFile": "捕获文件失败",
+      "fileCaptureFailed": "文件捕获失败",
+      "failedToCaptureAudio": "捕获音频失败",
+      "failedToCaptureVoice": "捕获语音失败"
+    },
+    "toasts": {
+      "inboxRefreshed": "收件箱已刷新"
+    }
+  }
+}

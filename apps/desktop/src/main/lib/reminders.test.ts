@@ -33,6 +33,13 @@ vi.mock('../calendar/google/local-sync-effects', () => ({
 }))
 
 const notificationInstances: MockNotification[] = []
+const getStatusMock = vi.fn(() => ({
+  isOpen: true,
+  path: '/test-vault',
+  isIndexing: false,
+  indexProgress: 0,
+  error: null
+}))
 
 class MockNotification {
   static isSupported = vi.fn(() => true)
@@ -119,6 +126,14 @@ describe('reminders service', () => {
     reminderCounter = 0
     emitCalendarProjectionChanged.mockClear()
     scheduleGoogleCalendarSourceSync.mockClear()
+    getStatusMock.mockReset()
+    getStatusMock.mockReturnValue({
+      isOpen: true,
+      path: '/test-vault',
+      isIndexing: false,
+      indexProgress: 0,
+      error: null
+    })
 
     vi.resetModules()
     vi.doMock('electron', () => ({
@@ -132,13 +147,7 @@ describe('reminders service', () => {
       getIndexDatabase: vi.fn()
     }))
     vi.doMock('../vault', () => ({
-      getStatus: vi.fn(() => ({
-        isOpen: true,
-        path: '/test-vault',
-        isIndexing: false,
-        indexProgress: 0,
-        error: null
-      }))
+      getStatus: getStatusMock
     }))
     vi.doMock('./main-i18n', () => {
       const systemTranslations: Record<string, string> = {
@@ -442,6 +451,153 @@ describe('reminders service', () => {
       sourceType: 'reminder',
       sourceId: 'rem-b2'
     })
+  })
+
+  it('validates reminder mutations, missing rows, and pending count fallbacks', () => {
+    const pastDate = '2000-01-01T00:00:00.000Z'
+    const futureDate = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+    const laterFutureDate = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
+
+    expect(() =>
+      remindersService.createReminder({
+        targetType: 'note',
+        targetId: 'note-1',
+        remindAt: pastDate
+      })
+    ).toThrow('Reminder time must be in the future')
+
+    const created = remindersService.createReminder({
+      targetType: 'highlight',
+      targetId: 'note-1',
+      remindAt: futureDate,
+      highlightText: 'important passage',
+      highlightStart: 4,
+      highlightEnd: 21
+    })
+    expect(created.highlightText).toBe('important passage')
+    expect(created.highlightStart).toBe(4)
+
+    expect(() => remindersService.updateReminder({ id: created.id, remindAt: pastDate })).toThrow(
+      'Reminder time must be in the future'
+    )
+
+    const rescheduled = remindersService.updateReminder({
+      id: created.id,
+      remindAt: laterFutureDate,
+      title: 'Later',
+      note: 'Bring context'
+    })
+    expect(rescheduled).toEqual(
+      expect.objectContaining({
+        status: reminderStatus.PENDING,
+        remindAt: laterFutureDate,
+        title: 'Later',
+        note: 'Bring context',
+        triggeredAt: null,
+        snoozedUntil: null
+      })
+    )
+
+    expect(remindersService.updateReminder({ id: 'missing', title: 'No row' })).toBeNull()
+    expect(remindersService.deleteReminder('missing')).toBe(false)
+    expect(remindersService.dismissReminder('missing')).toBeNull()
+    expect(() =>
+      remindersService.snoozeReminder({ id: created.id, snoozeUntil: pastDate })
+    ).toThrow('Snooze time must be in the future')
+    expect(
+      remindersService.snoozeReminder({ id: 'missing', snoozeUntil: laterFutureDate })
+    ).toBeNull()
+
+    seedReminder({ id: 'rem-count-snoozed', status: reminderStatus.SNOOZED })
+    seedReminder({ id: 'rem-count-dismissed', status: reminderStatus.DISMISSED })
+    expect(remindersService.countPendingReminders()).toBe(2)
+
+    vi.mocked(getDatabase).mockImplementationOnce(() => {
+      throw new Error('db offline')
+    })
+    expect(remindersService.countPendingReminders()).toBe(0)
+  })
+
+  it('skips scheduler processing when the vault is closed or no reminders are due', () => {
+    getStatusMock.mockReturnValueOnce({
+      isOpen: false,
+      path: '/test-vault',
+      isIndexing: false,
+      indexProgress: 0,
+      error: null
+    })
+
+    remindersService.startReminderScheduler()
+    remindersService.stopReminderScheduler()
+    expect(notificationInstances).toEqual([])
+
+    seedReminder({
+      id: 'future-reminder',
+      remindAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      status: reminderStatus.PENDING
+    })
+
+    remindersService.startReminderScheduler()
+    remindersService.stopReminderScheduler()
+    expect(notificationInstances).toEqual([])
+  })
+
+  it('uses fallback notification labels for due journal reminders', () => {
+    seedReminder({
+      id: 'journal-due',
+      targetType: 'journal',
+      targetId: '2026-05-10',
+      remindAt: '2000-01-01T00:00:00.000Z',
+      status: reminderStatus.PENDING
+    })
+
+    remindersService.startReminderScheduler()
+    remindersService.stopReminderScheduler()
+
+    expect(notificationInstances).toHaveLength(1)
+    expect(notificationInstances[0]?.options.title).toContain('2026-05-10')
+    expect(notificationInstances[0]?.options.body).toBe('Journal reminder')
+
+    const inboxRow = dataDb.db.select().from(inboxItems).all()[0]
+    expect(inboxRow?.metadata).toEqual(
+      expect.objectContaining({
+        reminderId: 'journal-due',
+        targetType: 'journal',
+        targetId: '2026-05-10',
+        targetTitle: '2026-05-10'
+      })
+    )
+  })
+
+  it('still creates inbox reminder items when desktop notifications are unsupported', () => {
+    MockNotification.isSupported.mockReturnValue(false)
+    const highlightText = 'a'.repeat(120)
+    seedReminder({
+      id: 'highlight-due',
+      targetType: 'highlight',
+      targetId: 'note-highlight',
+      remindAt: '2000-01-01T00:00:00.000Z',
+      highlightText,
+      highlightStart: 2,
+      highlightEnd: 122,
+      status: reminderStatus.PENDING
+    })
+
+    remindersService.startReminderScheduler()
+    remindersService.stopReminderScheduler()
+
+    expect(notificationInstances).toEqual([])
+    const inboxRow = dataDb.db.select().from(inboxItems).all()[0]
+    expect(inboxRow?.content).toBe(highlightText)
+    expect(inboxRow?.metadata).toEqual(
+      expect.objectContaining({
+        reminderId: 'highlight-due',
+        targetType: 'highlight',
+        highlightText,
+        highlightStart: 2,
+        highlightEnd: 122
+      })
+    )
   })
 
   describe('target title resolution', () => {

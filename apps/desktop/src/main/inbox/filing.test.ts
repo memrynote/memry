@@ -7,6 +7,8 @@ import {
   seedInboxItemTags,
   type TestDatabaseResult
 } from '../../../tests/utils/test-db'
+import { inboxItems } from '@memry/db-schema/schema/inbox'
+import { eq } from 'drizzle-orm'
 
 // Mock the database module
 vi.mock('../database', () => ({
@@ -15,11 +17,30 @@ vi.mock('../database', () => ({
 }))
 
 const mockSend = vi.fn()
+const mockRename = vi.fn()
+const mockCopyFile = vi.fn()
+const mockUnlink = vi.fn()
+const mockExistsSync = vi.fn()
+const mockSyncTaskCreate = vi.fn()
+const mockInsertTask = vi.fn()
+const mockGetNextTaskPosition = vi.fn()
+const mockSetTaskTags = vi.fn()
+const mockGetInboxProject = vi.fn()
 
 vi.mock('electron', () => ({
   BrowserWindow: {
     getAllWindows: vi.fn(() => [{ webContents: { send: mockSend } }])
   }
+}))
+
+vi.mock('fs/promises', () => ({
+  rename: (...args: unknown[]) => mockRename(...args),
+  copyFile: (...args: unknown[]) => mockCopyFile(...args),
+  unlink: (...args: unknown[]) => mockUnlink(...args)
+}))
+
+vi.mock('fs', () => ({
+  existsSync: (...args: unknown[]) => mockExistsSync(...args)
 }))
 
 const mockCreateNote = vi.fn()
@@ -55,11 +76,37 @@ vi.mock('../lib/logger', () => ({
   })
 }))
 
+vi.mock('../tasks/runtime-effects', () => ({
+  syncTaskCreate: (...args: unknown[]) => mockSyncTaskCreate(...args)
+}))
+
+vi.mock('../database/queries/tasks', () => ({
+  insertTask: (...args: unknown[]) => mockInsertTask(...args),
+  getNextTaskPosition: (...args: unknown[]) => mockGetNextTaskPosition(...args),
+  setTaskTags: (...args: unknown[]) => mockSetTaskTags(...args)
+}))
+
+vi.mock('../database/queries/projects', () => ({
+  getInboxProject: (...args: unknown[]) => mockGetInboxProject(...args)
+}))
+
 import { getDatabase, requireDatabase } from '../database'
-import { fileToFolder, convertToNote, linkToNote, linkToNotes, bulkFileToFolder } from './filing'
+import { getStatus } from '../vault/index'
+import {
+  fileToFolder,
+  convertToNote,
+  convertToTask,
+  linkToNote,
+  linkToNotes,
+  bulkFileToFolder
+} from './filing'
 
 describe('Inbox Filing Operations', () => {
   let testDb: TestDatabaseResult
+
+  function updateInboxItem(id: string, values: Partial<typeof inboxItems.$inferInsert>): void {
+    testDb.db.update(inboxItems).set(values).where(eq(inboxItems.id, id)).run()
+  }
 
   beforeEach(() => {
     testDb = createTestDatabase()
@@ -72,6 +119,16 @@ describe('Inbox Filing Operations', () => {
     mockCreateFolder.mockReset()
     mockGetFolders.mockResolvedValue([])
     mockSend.mockClear()
+    mockRename.mockReset().mockResolvedValue(undefined)
+    mockCopyFile.mockReset().mockResolvedValue(undefined)
+    mockUnlink.mockReset().mockResolvedValue(undefined)
+    mockExistsSync.mockReset().mockReturnValue(false)
+    mockSyncTaskCreate.mockReset()
+    mockInsertTask.mockReset().mockImplementation((_db, input) => ({ ...input }))
+    mockGetNextTaskPosition.mockReset().mockReturnValue(42)
+    mockSetTaskTags.mockReset()
+    mockGetInboxProject.mockReset().mockReturnValue({ id: 'project-inbox' })
+    vi.mocked(getStatus).mockReturnValue({ isOpen: true, path: '/mock-vault' } as never)
 
     mockCreateNote.mockResolvedValue({
       id: 'note-123',
@@ -200,6 +257,120 @@ describe('Inbox Filing Operations', () => {
 
       expect(result.success).toBe(true)
       expect(mockCreateFolder).not.toHaveBeenCalled()
+    })
+
+    it('should move binary attachments directly into the target folder', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'image-1',
+        type: 'image',
+        title: 'Screenshot'
+      })
+      updateInboxItem(itemId, { attachmentPath: 'attachments/inbox/image-1/screenshot.png' })
+
+      const result = await fileToFolder(itemId, 'projects')
+
+      expect(result).toEqual({ success: true, filedTo: 'notes/projects/screenshot.png' })
+      expect(mockRename).toHaveBeenCalledWith(
+        '/mock-vault/attachments/inbox/image-1/screenshot.png',
+        '/mock-vault/notes/projects/screenshot.png'
+      )
+      expect(mockCreateNote).not.toHaveBeenCalled()
+      expect(mockSend).toHaveBeenCalledWith(
+        'inbox:filed',
+        expect.objectContaining({ id: itemId, filedAction: 'folder' })
+      )
+    })
+
+    it('should fall back to copy and unlink when binary rename crosses devices', async () => {
+      mockRename.mockRejectedValueOnce(Object.assign(new Error('cross-device'), { code: 'EXDEV' }))
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'voice-1',
+        type: 'voice',
+        title: 'Memo'
+      })
+      updateInboxItem(itemId, { attachmentPath: 'attachments/inbox/voice-1/memo.m4a' })
+
+      const result = await fileToFolder(itemId, 'audio')
+
+      expect(result.success).toBe(true)
+      expect(mockCopyFile).toHaveBeenCalledWith(
+        '/mock-vault/attachments/inbox/voice-1/memo.m4a',
+        '/mock-vault/notes/audio/memo.m4a'
+      )
+      expect(mockUnlink).toHaveBeenCalledWith('/mock-vault/attachments/inbox/voice-1/memo.m4a')
+    })
+
+    it('should fail binary filing when the attachment path is missing', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'pdf-1',
+        type: 'pdf',
+        title: 'Missing PDF'
+      })
+
+      const result = await fileToFolder(itemId, 'docs')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('No attachment')
+      expect(mockRename).not.toHaveBeenCalled()
+    })
+
+    it('should avoid filename collisions when moving binary attachments', async () => {
+      mockExistsSync
+        .mockReturnValueOnce(true)
+        .mockReturnValueOnce(true)
+        .mockReturnValueOnce(true)
+        .mockReturnValueOnce(false)
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'image-collision',
+        type: 'image',
+        title: 'Screenshot'
+      })
+      updateInboxItem(itemId, {
+        attachmentPath: 'attachments/inbox/image-collision/screenshot.png'
+      })
+
+      const result = await fileToFolder(itemId, 'projects')
+
+      expect(result.filedTo).toBe('notes/projects/screenshot-2.png')
+      expect(mockRename).toHaveBeenCalledWith(
+        '/mock-vault/attachments/inbox/image-collision/screenshot.png',
+        '/mock-vault/notes/projects/screenshot-2.png'
+      )
+    })
+
+    it('returns vault and filesystem failures as filing errors', async () => {
+      vi.mocked(getStatus).mockReturnValue({ isOpen: false, path: null } as never)
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'image-no-vault',
+        type: 'image',
+        title: 'Screenshot'
+      })
+      updateInboxItem(itemId, { attachmentPath: 'attachments/inbox/image-no-vault/screenshot.png' })
+
+      await expect(fileToFolder(itemId, 'projects')).resolves.toEqual(
+        expect.objectContaining({
+          success: false,
+          error: expect.stringContaining('No vault is open')
+        })
+      )
+
+      vi.mocked(getStatus).mockReturnValue({ isOpen: true, path: '/mock-vault' } as never)
+      mockRename.mockRejectedValueOnce(
+        Object.assign(new Error('permission denied'), { code: 'EACCES' })
+      )
+
+      const failingItemId = seedInboxItem(testDb.db, {
+        id: 'image-failing-rename',
+        type: 'image',
+        title: 'Screenshot'
+      })
+      updateInboxItem(failingItemId, {
+        attachmentPath: 'attachments/inbox/image-failing-rename/screenshot.png'
+      })
+
+      await expect(fileToFolder(failingItemId, 'projects')).resolves.toEqual(
+        expect.objectContaining({ success: false, error: 'permission denied' })
+      )
     })
   })
 
@@ -367,6 +538,98 @@ describe('Inbox Filing Operations', () => {
       expect(mockSend).toHaveBeenCalledWith(
         'inbox:filed',
         expect.objectContaining({ id: itemId, filedAction: 'folder' })
+      )
+    })
+
+    it('should embed YouTube links instead of rendering a mention link', async () => {
+      const url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'link-youtube',
+        type: 'link',
+        title: 'Video',
+        sourceUrl: url
+      })
+
+      await fileToFolder(itemId, 'videos')
+
+      const noteContent = mockCreateNote.mock.calls[0][0].content as string
+      expect(noteContent).toContain(`![embed](${url})`)
+      expect(noteContent).not.toContain('"mention"')
+    })
+
+    it('should format social captures with author and quoted post content', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'social-1',
+        type: 'social',
+        title: 'Tweet by @ada',
+        content: 'fallback content',
+        sourceUrl: 'https://x.com/ada/status/1',
+        metadata: {
+          authorHandle: '@ada',
+          authorName: 'Ada',
+          postContent: 'Line one\nLine two'
+        }
+      })
+
+      await fileToFolder(itemId, 'social')
+
+      const noteContent = mockCreateNote.mock.calls[0][0].content as string
+      expect(noteContent).toContain('[Open Original](https://x.com/ada/status/1)')
+      expect(noteContent).toContain('**@ada** (Ada)')
+      expect(noteContent).toContain('> Line one\n> Line two')
+    })
+
+    it('should include clip source and thumbnail references in created note content', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'clip-1',
+        type: 'clip',
+        title: 'Clip title',
+        content: 'Highlighted text',
+        sourceUrl: 'https://example.com/source'
+      })
+      updateInboxItem(itemId, {
+        sourceTitle: 'Source page',
+        thumbnailPath: 'attachments/inbox/clip-1/thumb.jpg'
+      })
+
+      await fileToFolder(itemId, 'clips')
+
+      const noteContent = mockCreateNote.mock.calls[0][0].content as string
+      expect(noteContent).toContain('**Source:** [Source page](https://example.com/source)')
+      expect(noteContent).toContain('![Thumbnail](memry-file://attachments/inbox/clip-1/thumb.jpg)')
+    })
+
+    it('falls back for malformed link URLs and long first-line note content', async () => {
+      const badLinkId = seedInboxItem(testDb.db, {
+        id: 'bad-link-title',
+        type: 'link',
+        title: 'notaurl',
+        sourceUrl: 'notaurl'
+      })
+
+      await fileToFolder(badLinkId, 'links')
+
+      expect(mockCreateNote).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          title: expect.stringMatching(/Inbox Note - \d{4}-\d{2}-\d{2}/)
+        })
+      )
+
+      mockCreateNote.mockClear()
+      const longLineId = seedInboxItem(testDb.db, {
+        id: 'long-line-note',
+        type: 'note',
+        title: 'Temporary title',
+        content: `${'x'.repeat(120)}\nsecond line`
+      })
+      updateInboxItem(longLineId, { title: '' })
+
+      await fileToFolder(longLineId, 'notes')
+
+      expect(mockCreateNote).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: expect.stringMatching(/Inbox Note - \d{4}-\d{2}-\d{2}/)
+        })
       )
     })
   })
@@ -556,6 +819,86 @@ describe('Inbox Filing Operations', () => {
     })
   })
 
+  describe('convertToTask', () => {
+    it('should create an inbox project task from an inbox item', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'task-source',
+        type: 'note',
+        title: 'Follow up',
+        content: 'Email Alex'
+      })
+      seedInboxItemTags(testDb.db, itemId, ['followup'])
+
+      const result = await convertToTask(itemId)
+
+      expect(result.success).toBe(true)
+      expect(result.taskId).toEqual(expect.any(String))
+      expect(mockInsertTask).toHaveBeenCalledWith(
+        testDb.db,
+        expect.objectContaining({
+          projectId: 'project-inbox',
+          title: 'Follow up',
+          description: 'Email Alex',
+          position: 42
+        })
+      )
+      expect(mockSetTaskTags).toHaveBeenCalledWith(
+        testDb.db,
+        result.taskId,
+        expect.arrayContaining(['followup', 'inbox'])
+      )
+      expect(mockSend).toHaveBeenCalledWith(
+        'tasks:created',
+        expect.objectContaining({ task: expect.objectContaining({ title: 'Follow up' }) })
+      )
+      expect(mockSyncTaskCreate).toHaveBeenCalledWith(result.taskId)
+    })
+
+    it('should fail task conversion when no inbox project exists', async () => {
+      mockGetInboxProject.mockReturnValue(null)
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'task-no-project',
+        title: 'No project'
+      })
+
+      const result = await convertToTask(itemId)
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('No inbox project')
+      expect(mockInsertTask).not.toHaveBeenCalled()
+    })
+
+    it('rejects missing, filed, and failed task conversion inputs', async () => {
+      await expect(convertToTask('missing-task-source')).resolves.toEqual(
+        expect.objectContaining({ success: false, error: expect.stringContaining('not found') })
+      )
+
+      const filedItemId = seedInboxItem(testDb.db, {
+        id: 'task-already-filed',
+        title: 'Already filed',
+        filedAt: new Date().toISOString()
+      })
+      await expect(convertToTask(filedItemId)).resolves.toEqual(
+        expect.objectContaining({
+          success: false,
+          error: expect.stringContaining('already been filed')
+        })
+      )
+
+      const failingItemId = seedInboxItem(testDb.db, {
+        id: 'task-insert-fails',
+        title: 'Insert fails'
+      })
+      mockInsertTask.mockImplementationOnce(() => {
+        throw new Error('insert failed')
+      })
+
+      await expect(convertToTask(failingItemId)).resolves.toEqual(
+        expect.objectContaining({ success: false, error: 'insert failed' })
+      )
+    })
+  })
+
   // ==========================================================================
   // linkToNote and linkToNotes (text types)
   // ==========================================================================
@@ -688,6 +1031,116 @@ describe('Inbox Filing Operations', () => {
       await linkToNotes(itemId, ['note-1'], [], 'references')
 
       expect(mockCreateNote).toHaveBeenCalledWith(expect.objectContaining({ folder: 'references' }))
+    })
+
+    it('should link binary items by moving the attachment and updating target notes', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'image-link-1',
+        type: 'image',
+        title: 'Screenshot'
+      })
+      updateInboxItem(itemId, {
+        attachmentPath: 'attachments/inbox/image-link-1/screenshot.png'
+      })
+      mockGetNoteById
+        .mockResolvedValueOnce({ id: 'note-1', content: '# Note 1', path: 'projects/note1.md' })
+        .mockResolvedValueOnce({
+          id: 'note-2',
+          content: '# Note 2\n\n## Inbox Captures\n\n- [[Old]]',
+          path: 'projects/note2.md'
+        })
+
+      const result = await linkToNotes(itemId, ['note-1', 'note-2'])
+
+      expect(result).toEqual({ success: true, linkedCount: 2 })
+      expect(mockRename).toHaveBeenCalledWith(
+        '/mock-vault/attachments/inbox/image-link-1/screenshot.png',
+        '/mock-vault/notes/projects/screenshot.png'
+      )
+      expect(mockUpdateNote).toHaveBeenCalledTimes(2)
+      expect(mockUpdateNote.mock.calls[0][0].content).toContain('## Inbox Captures')
+      expect(mockUpdateNote.mock.calls[1][0].content).toContain('[[Old]]')
+      expect(mockUpdateNote.mock.calls[1][0].content).toContain('[[screenshot]]')
+      expect(mockCreateNote).not.toHaveBeenCalled()
+    })
+
+    it('should fail binary linking when any target note is missing', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'image-link-2',
+        type: 'image',
+        title: 'Missing target'
+      })
+      updateInboxItem(itemId, {
+        attachmentPath: 'attachments/inbox/image-link-2/screenshot.png'
+      })
+      mockGetNoteById.mockResolvedValueOnce(null)
+
+      const result = await linkToNotes(itemId, ['missing'])
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('Target note not found')
+      expect(mockRename).not.toHaveBeenCalled()
+    })
+
+    it('should reject binary linking without an attachment and handle explicit folders plus copy fallback', async () => {
+      const missingAttachmentId = seedInboxItem(testDb.db, {
+        id: 'image-link-no-attachment',
+        type: 'image',
+        title: 'No file'
+      })
+
+      await expect(linkToNotes(missingAttachmentId, ['note-1'])).resolves.toEqual(
+        expect.objectContaining({ success: false, error: expect.stringContaining('No attachment') })
+      )
+
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'pdf-link-exdev',
+        type: 'pdf',
+        title: 'Report'
+      })
+      updateInboxItem(itemId, {
+        attachmentPath: 'attachments/inbox/pdf-link-exdev/report.pdf'
+      })
+      mockGetNoteById.mockResolvedValue({
+        id: 'note-1',
+        content: '# Target',
+        path: 'notes/target.md'
+      })
+      mockRename.mockRejectedValueOnce(Object.assign(new Error('cross-device'), { code: 'EXDEV' }))
+
+      const result = await linkToNotes(itemId, ['note-1'], [], 'references')
+
+      expect(result).toEqual({ success: true, linkedCount: 1 })
+      expect(mockCreateFolder).toHaveBeenCalledWith('references')
+      expect(mockCopyFile).toHaveBeenCalledWith(
+        '/mock-vault/attachments/inbox/pdf-link-exdev/report.pdf',
+        '/mock-vault/notes/references/report.pdf'
+      )
+      expect(mockUnlink).toHaveBeenCalledWith(
+        '/mock-vault/attachments/inbox/pdf-link-exdev/report.pdf'
+      )
+      expect(mockUpdateNote.mock.calls.at(-1)?.[0].content).toContain('[[report]]')
+    })
+
+    it('returns binary linking filesystem failures', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'image-link-failure',
+        type: 'image',
+        title: 'Bad move'
+      })
+      updateInboxItem(itemId, {
+        attachmentPath: 'attachments/inbox/image-link-failure/screenshot.png'
+      })
+      mockGetNoteById.mockResolvedValue({
+        id: 'note-1',
+        content: '# Target',
+        path: 'notes/target.md'
+      })
+      mockRename.mockRejectedValueOnce(Object.assign(new Error('disk full'), { code: 'ENOSPC' }))
+
+      await expect(linkToNotes(itemId, ['note-1'])).resolves.toEqual(
+        expect.objectContaining({ success: false, error: 'disk full' })
+      )
     })
   })
 

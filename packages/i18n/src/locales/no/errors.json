@@ -1,0 +1,80 @@
+{
+  "generic": {
+    "somethingWentWrong": "Noe gikk galt. Vennligst prøv igjen.",
+    "operationFailed": "Operasjonen mislyktes",
+    "unknown": "Det oppstod en ukjent feil",
+    "validationFailed": "Validering mislyktes",
+    "actionFailed": "Handlingen mislyktes"
+  },
+  "ipc": {
+    "noVaultOpen": "Ingen hvelv er åpen. Vennligst åpne et hvelv først."
+  },
+  "vault": {
+    "notFound": "Finner ikke hvelv. Det kan ha blitt flyttet eller slettet.",
+    "notInitialized": "Ingen hvelv er åpen. Åpne eller opprett et hvelv for å fortsette.",
+    "invalidPath": "Den valgte banen er ikke en gyldig hvelvplassering.",
+    "permissionDenied": "Tillatelse nektet. Sjekk at du har tilgang til denne mappen.",
+    "alreadyExists": "Det finnes allerede et hvelv på dette stedet.",
+    "corrupted": "Dette hvelvet ser ut til å være ødelagt. Prøv å gjenopprette fra en sikkerhetskopi."
+  },
+  "note": {
+    "notFound": "Dette notatet ble ikke funnet. Det kan ha blitt slettet.",
+    "invalidFrontmatter": "Dette notatet har ugyldige metadata og kan ikke leses.",
+    "duplicateId": "Et notat med denne ID-en finnes allerede.",
+    "writeFailed": "Kunne ikke lagre dette notatet. Sjekk diskplass og tillatelser.",
+    "readFailed": "Kunne ikke lese dette notatet. Filen kan være låst eller ødelagt.",
+    "deleteFailed": "Kunne ikke slette dette notatet. Sjekk filtillatelser.",
+    "invalidPath": "Notatbanen er ugyldig."
+  },
+  "database": {
+    "connectionFailed": "Kunne ikke koble til den lokale databasen. Prøv å starte appen på nytt.",
+    "migrationFailed": "Databaseoppgradering mislyktes. Prøv å starte appen på nytt.",
+    "queryFailed": "En databaseoperasjon mislyktes. Prøv igjen.",
+    "notInitialized": "Databasen er ikke klar. Prøv å starte appen på nytt.",
+    "constraintViolation": "Det oppsto en datakonflikt. Prøv igjen.",
+    "corrupted": "Den lokale databasen er ødelagt. Du må kanskje tilbakestille den."
+  },
+  "watcher": {
+    "startFailed": "Kunne ikke begynne å se etter filendringer.",
+    "stopFailed": "Kunne ikke stoppe filovervåkingen.",
+    "eventError": "Det oppsto en feil mens du så etter filendringer."
+  },
+  "attachment": {
+    "fileTooLarge": "Denne filen er for stor til å legge ved.",
+    "unsupportedType": "Denne filtypen støttes ikke.",
+    "writeFailed": "Kunne ikke lagre vedlegget. Sjekk diskplass.",
+    "deleteFailed": "Kunne ikke slette vedlegget."
+  },
+  "encryption": {
+    "failed": "Kunne ikke kryptere data. Det kan hende at nøklene dine må regenereres.",
+    "decryptionFailed": "Kunne ikke dekryptere data. Krypteringsnøklene dine kan være utdaterte.",
+    "invalidKeyLength": "Ugyldig krypteringsnøkkel. Prøv å logge av og på igjen.",
+    "invalidNonceLength": "Krypteringsfeil. Prøv operasjonen på nytt."
+  },
+  "inboxAttachment": {
+    "writeFailed": "Kunne ikke lagre innboksvedlegget.",
+    "deleteFailed": "Kunne ikke slette innboksvedlegget."
+  },
+  "sync": {
+    "networkOffline": "Du er frakoblet. Endringer synkroniseres når du kobler til igjen.",
+    "networkTimeout": "Synkroniseringsserveren tok for lang tid å svare. Vil prøve igjen snart.",
+    "serverError": "Synkroniseringsserveren oppdaget en feil. Vil prøve på nytt automatisk.",
+    "authExpired": "Økten din er utløpt. Logg på igjen for å fortsette synkroniseringen.",
+    "deviceRevoked": "Denne enheten er fjernet fra kontoen din.",
+    "rateLimited": "For mange forespørsler. Synkroniseringen gjenopptas snart.",
+    "cryptoFailure": "Kunne ikke kryptere eller dekryptere synkroniseringsdata. Prøv å logge av og på igjen.",
+    "versionIncompatible": "Denne versjonen av Memry støttes ikke lenger. Vennligst oppdater.",
+    "storageQuotaExceeded": "Synkroniseringslagringen din er full. Frigjør plass eller oppgrader planen din.",
+    "certificatePinFailed": "Sikker tilkobling mislyktes. Sjekk nettverkstilkoblingen.",
+    "unknown": "Det oppstod en uventet synkroniseringsfeil. Vil prøve på nytt automatisk.",
+    "statusFetchFailed": "Kunne ikke hente synkroniseringsstatus",
+    "engineNotInitialized": "Synkroniseringsmotoren er ikke initialisert. Åpne et hvelv for å starte synkronisering.",
+    "triggerFailed": "Synkronisering mislyktes",
+    "pauseFailed": "Kunne ikke sette synkroniseringen på pause",
+    "resumeFailed": "Kunne ikke gjenoppta synkroniseringen",
+    "settingsNotInitialized": "Innstillingssynkronisering er ikke initialisert",
+    "securityQuarantinePermanent": "Et synkroniseringselement kunne ikke bekreftes og har blitt satt i karantene for sikkerhets skyld.",
+    "securityQuarantineRetry": "Et synkroniseringselement mislyktes med signaturverifisering og vil bli forsøkt på nytt.",
+    "certificatePinPaused": "Sikker tilkobling til synkroniseringsserver kunne ikke bekreftes. Synkroniseringen er satt på pause for å beskytte deg."
+  }
+}

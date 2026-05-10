@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "Seleccionar carpeta de almacén",
+      "button": "Seleccionar bóveda"
+    },
+    "exportPdf": {
+      "title": "Exportar como PDF",
+      "filterName": "Documento PDF"
+    },
+    "exportHtml": {
+      "title": "Exportar como HTML",
+      "filterName": "Documento HTML"
+    },
+    "import": {
+      "filterSupported": "Archivos compatibles",
+      "filterAll": "Todos los archivos"
+    },
+    "exportCancelled": "Exportación cancelada",
+    "update": {
+      "availableTitle": "Actualización disponible",
+      "availableMessage": "Memry {version} está disponible.",
+      "availableDetailFallback": "¿Descargar la actualización ahora?",
+      "buttonDownload": "Descargar",
+      "buttonLater": "Más tarde",
+      "readyTitle": "Actualización lista",
+      "readyMessage": "Se ha descargado Memry {version}.",
+      "readyDetailFallback": "Reinicie Memry para finalizar la instalación de la actualización.",
+      "buttonRestartNow": "Reiniciar ahora",
+      "releaseNotesLabel": "Notas de la versión:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "Recordatorio de notas",
+      "journal": "Recordatorio de diario",
+      "highlight": "Recordatorio destacado",
+      "fallback": "Recordatorio pendiente",
+      "default": "Recordatorio"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "La hora del recordatorio debe ser en el futuro.",
+    "definitionNotFound": "Definición no encontrada",
+    "noteNotFound": "Nota no encontrada",
+    "updateFailed": "La actualización falló"
+  }
+}

@@ -1,11 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
-import { createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
+import { asSyncDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { CalendarExternalEventSyncPayloadSchema } from '@memry/contracts/sync-payloads'
+import { SyncQueueManager } from '../queue'
 import { getHandler } from './index'
 import type { ApplyContext, DrizzleDb } from './types'
+
+vi.mock('../../lib/logger', () => ({
+  createLogger: () => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn()
+  })
+}))
 
 function makeCtx(testDb: TestDatabaseResult): ApplyContext {
   return {
@@ -148,5 +158,186 @@ describe('calendar external event handler — rich fields (M5 Codex P2c)', () =>
     expect(row?.conferenceData).toEqual(conferenceData)
 
     freshDb.close()
+  })
+
+  it('applies defaults, preserves omitted rich fields, and clears explicit nullable fields', () => {
+    const handler = getHandler('calendar_external_event')
+    expect(handler?.applyUpsert(ctx, 'external-defaults', { sourceId: 'source-rich' }, {})).toBe(
+      'applied'
+    )
+
+    expect(
+      testDb.db
+        .select()
+        .from(calendarExternalEvents)
+        .where(eq(calendarExternalEvents.id, 'external-defaults'))
+        .get()
+    ).toMatchObject({
+      sourceId: 'source-rich',
+      remoteEventId: 'external-defaults',
+      title: 'Untitled imported event',
+      isAllDay: false,
+      status: 'confirmed'
+    })
+
+    const attendees = [{ email: 'existing@example.com', optional: true }]
+    const conferenceData = { conferenceId: 'existing-meet', entryPoints: [] }
+    testDb.db
+      .insert(calendarExternalEvents)
+      .values({
+        id: 'external-update',
+        sourceId: 'source-rich',
+        remoteEventId: 'google-update',
+        title: 'Existing',
+        startAt: '2026-04-20T09:00:00.000Z',
+        isAllDay: false,
+        status: 'confirmed',
+        attendees,
+        visibility: 'private',
+        colorId: '9',
+        conferenceData,
+        rawPayload: { old: true },
+        clock: { 'device-a': 1 }
+      })
+      .run()
+
+    expect(
+      handler?.applyUpsert(
+        ctx,
+        'external-update',
+        {
+          sourceId: 'source-rich',
+          title: 'Updated',
+          location: 'Office',
+          rawPayload: { newer: true }
+        },
+        { 'device-a': 2 }
+      )
+    ).toBe('applied')
+
+    expect(
+      testDb.db
+        .select()
+        .from(calendarExternalEvents)
+        .where(eq(calendarExternalEvents.id, 'external-update'))
+        .get()
+    ).toMatchObject({
+      title: 'Updated',
+      location: 'Office',
+      attendees,
+      visibility: 'private',
+      colorId: '9',
+      conferenceData,
+      rawPayload: { newer: true },
+      clock: { 'device-a': 2 }
+    })
+
+    expect(
+      handler?.applyUpsert(
+        ctx,
+        'external-update',
+        {
+          sourceId: 'source-rich',
+          attendees: null,
+          reminders: null,
+          visibility: null,
+          colorId: null,
+          conferenceData: null
+        },
+        { 'device-a': 3 }
+      )
+    ).toBe('applied')
+
+    expect(
+      testDb.db
+        .select()
+        .from(calendarExternalEvents)
+        .where(eq(calendarExternalEvents.id, 'external-update'))
+        .get()
+    ).toMatchObject({
+      attendees: null,
+      reminders: null,
+      visibility: null,
+      colorId: null,
+      conferenceData: null
+    })
+  })
+
+  it('handles stale/concurrent clocks, delete guards, fetch, null payload, and seed queueing', () => {
+    const handler = getHandler('calendar_external_event')
+    testDb.db
+      .insert(calendarExternalEvents)
+      .values([
+        {
+          id: 'external-synced',
+          sourceId: 'source-rich',
+          remoteEventId: 'google-synced',
+          title: 'Synced',
+          startAt: '2026-04-20T09:00:00.000Z',
+          isAllDay: false,
+          status: 'confirmed',
+          clock: { 'device-a': 2 }
+        },
+        {
+          id: 'external-local',
+          sourceId: 'source-rich',
+          remoteEventId: 'google-local',
+          title: 'Local',
+          startAt: '2026-04-21T09:00:00.000Z',
+          isAllDay: false,
+          status: 'confirmed'
+        }
+      ])
+      .run()
+
+    expect(
+      handler?.applyUpsert(
+        ctx,
+        'external-synced',
+        { sourceId: 'source-rich', title: 'Stale' },
+        { 'device-a': 1 }
+      )
+    ).toBe('skipped')
+    expect(
+      handler?.applyUpsert(
+        ctx,
+        'external-synced',
+        { sourceId: 'source-rich', title: 'Concurrent' },
+        { 'device-b': 1 }
+      )
+    ).toBe('conflict')
+    expect(handler?.fetchLocal(testDb.db as unknown as DrizzleDb, 'external-synced')).toMatchObject(
+      {
+        title: 'Concurrent',
+        clock: { 'device-a': 2, 'device-b': 1 }
+      }
+    )
+    expect(handler?.fetchLocal(testDb.db as unknown as DrizzleDb, 'missing')).toBeUndefined()
+    expect(
+      handler?.buildPushPayload?.(testDb.db as unknown as DrizzleDb, 'missing', 'd', 'u')
+    ).toBeNull()
+
+    expect(handler?.applyDelete(ctx, 'missing')).toBe('skipped')
+    expect(handler?.applyDelete(ctx, 'external-synced', { 'device-c': 1 })).toBe('skipped')
+    expect(
+      handler?.applyDelete(ctx, 'external-synced', {
+        'device-a': 2,
+        'device-b': 1,
+        'device-c': 1
+      })
+    ).toBe('applied')
+
+    const queue = new SyncQueueManager(asSyncDb(testDb.db))
+    expect(handler?.seedUnclocked(testDb.db as unknown as DrizzleDb, 'device-a', queue)).toBe(1)
+    const [queued] = queue.dequeue(1)
+    expect(queued).toMatchObject({
+      type: 'calendar_external_event',
+      itemId: 'external-local',
+      operation: 'create'
+    })
+    expect(JSON.parse(queued.payload)).toMatchObject({
+      id: 'external-local',
+      clock: { 'device-a': 1 }
+    })
   })
 })

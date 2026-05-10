@@ -1,0 +1,663 @@
+{
+  "page": {
+    "empty": {
+      "title": "Nessuna nota selezionata",
+      "body": "Seleziona una nota dalla barra laterale per visualizzarla"
+    },
+    "error": {
+      "title": "Impossibile caricare la nota"
+    },
+    "toast": {
+      "cannotSaveDeleted": "Impossibile salvare: la nota è stata eliminata",
+      "cannotRenameDeleted": "Impossibile rinominare: la nota è stata eliminata",
+      "createLinkedFailed": "Impossibile creare la nota collegata",
+      "openLinkedFailed": "Impossibile aprire l'elemento collegato",
+      "localOnly": "Nota impostata solo su locale",
+      "willSync": "La nota verrà sincronizzata sul cloud",
+      "saveFailed": "Impossibile salvare la nota",
+      "renameFailed": "Impossibile rinominare la nota",
+      "toggleLocalOnlyFailed": "Impossibile attivare/disattivare solo locale",
+      "toggleFullWidthFailed": "Impossibile attivare/disattivare la larghezza intera"
+    },
+    "deleteDialogTitle": "{count, plural, one {Elimina nota} other {Elimina le note #}}"
+  },
+  "tree": {
+    "aria": {
+      "tree": "Albero delle note",
+      "openFolderView": "Apri la visualizzazione delle cartelle"
+    },
+    "empty": {
+      "title": "Nessuna nota ancora",
+      "body": "Crea una nota per iniziare",
+      "newNote": "Nuova nota"
+    },
+    "loadingError": "Impossibile caricare le note",
+    "actions": {
+      "newNote": "Nuova nota",
+      "newFolder": "Nuova cartella",
+      "rename": "Rinominare",
+      "openExternal": "Apri nell'editor esterno",
+      "revealInFinder": "Rivela nel Finder",
+      "setDefaultTemplate": "Imposta modello predefinito",
+      "clearDefaultTemplate": "Cancella modello predefinito",
+      "setIcon": "Imposta icona",
+      "removeIcon": "Rimuovi icona",
+      "deleteSelectedNotes": "Elimina le note {count}",
+      "deleteSelectedItems": "Elimina elementi {count}"
+    },
+    "deleteDialog": {
+      "noteTitle": "Elimina nota",
+      "folderTitle": "Elimina cartella",
+      "itemsTitle": "Elimina elementi {count}",
+      "noteBody": "Sei sicuro di voler eliminare \"{name}\"? Questa azione non può essere annullata.",
+      "folderBody": "Sei sicuro di voler eliminare \"{name}\" e tutte le note al suo interno? Questa azione non può essere annullata.",
+      "itemsBody": "Sei sicuro di voler eliminare gli elementi {count}? Questa azione non può essere annullata.",
+      "folderSuffix": "cartella",
+      "moreItems": "...e {count} altro ancora",
+      "deleting": "Eliminazione...",
+      "deleteCount": "Elimina {count}"
+    }
+  },
+  "editor": {
+    "title": {
+      "untitled": "Senza titolo",
+      "aria": "Titolo della nota"
+    },
+    "content": {
+      "placeholder": "Inizia a scrivere o premi \"/\" per i comandi...",
+      "regionAria": "Redattore di note",
+      "richTextAria": "Editor di testo ricco",
+      "headingPlaceholder": "Intestazione",
+      "listPlaceholder": "Voce dell'elenco",
+      "todoPlaceholder": "Oggetto da fare"
+    },
+    "toolbar": {
+      "reminderSet": "Insieme di promemoria",
+      "setReminder": "Imposta promemoria",
+      "removeBookmark": "Rimuovi segnalibro",
+      "addBookmark": "Aggiungi segnalibro",
+      "hideLocalGraph": "Nascondi il grafico locale",
+      "showLocalGraph": "Mostra il grafico locale",
+      "versionHistory": "Cronologia delle versioni",
+      "export": "Esportazione",
+      "fullWidth": "Tutta la larghezza",
+      "disableLocalOnly": "Disabilita solo locale",
+      "setLocalOnly": "Imposta solo locale"
+    },
+    "breadcrumb": {
+      "locationAria": "Nota la posizione",
+      "parentFolderAria": "Vai alla cartella principale"
+    },
+    "errorBoundary": {
+      "title": "Errore dell'editore",
+      "body": "L'editor ha riscontrato un errore. Il contenuto della tua nota è al sicuro.",
+      "technicalDetails": "Dettagli tecnici",
+      "reloadAria": "Ricarica l'editor",
+      "reload": "Ricarica l'editor"
+    },
+    "callout": {
+      "title": "Richiamo",
+      "group": "Blocchi fondamentali",
+      "subtext": "Evidenzia le informazioni importanti",
+      "changeType": "Modifica il tipo di callout",
+      "menuLabel": "Tipo di callout",
+      "info": "Informazioni",
+      "warning": "Avvertimento",
+      "error": "Errore",
+      "success": "Successo"
+    }
+  },
+  "menus": {
+    "wiki": {
+      "aria": "Nota suggerimenti",
+      "loading": "Caricamento note...",
+      "empty": "Nessuna nota trovata",
+      "create": "Crea nuova nota"
+    },
+    "tags": {
+      "aria": "Suggerimenti per i tag",
+      "loading": "Caricamento tag...",
+      "empty": "Digita per creare un nuovo tag",
+      "create": "Crea #{tag}"
+    },
+    "pasteLink": {
+      "title": "Incolla come",
+      "url": "URL",
+      "mention": "Menzione",
+      "embedVideo": "Incorpora video"
+    },
+    "emoji": {
+      "aria": "Selezionatore di emoji e icone",
+      "emojiTab": "Emoji",
+      "iconsTab": "Icone",
+      "searchPlaceholder": "Cerca",
+      "noIcons": "Nessuna icona trovata",
+      "clearSearch": "Cancella ricerca"
+    }
+  },
+  "detail": {
+    "bodyPlaceholder": "Scrivi la tua nota..."
+  },
+  "outline": {
+    "title": "Contorno",
+    "aria": "Schema del documento",
+    "empty": "Nessuna intestazione",
+    "emptyYet": "Ancora nessuna intestazione",
+    "readTime": "{count} lettura minima",
+    "words": "Parole {count}",
+    "created": "Creato",
+    "modified": "Modificato"
+  },
+  "backlinks": {
+    "title": "Backlink",
+    "sortRecent": "Recente",
+    "sortAlpha": "A-Z",
+    "sortMentions": "La maggior parte delle menzioni",
+    "sortBy": "Ordina i backlink per {sort}",
+    "summary": "Note {notes} · Riferimenti {references}",
+    "sectionAria": "Backlink",
+    "listAria": "Elenco dei backlink",
+    "fromAria": "Backlink da {title}",
+    "collapse": "Crollo",
+    "expand": "Espandi",
+    "collapseSection": "Comprimi la sezione dei backlink",
+    "expandSection": "Espandi la sezione dei backlink",
+    "showMore": "Mostra a {count} più backlink",
+    "more": "{count} altro"
+  },
+  "tagsRow": {
+    "aria": "Tag",
+    "empty": "Aggiungi tag",
+    "add": "Aggiungi etichetta",
+    "removeAria": "Rimuovi etichetta: {tag}",
+    "inputPlaceholder": "Digita il nome del tag...",
+    "recent": "Recente",
+    "matching": "Corrispondenza",
+    "all": "Tutti i tag",
+    "none": "Nessun tag trovato",
+    "createTag": "Crea tag: \"{tag}\"",
+    "chooseColor": "Scegli il colore:",
+    "preview": "Anteprima:",
+    "colorAria": "Seleziona il colore {color}"
+  },
+  "properties": {
+    "title": "Proprietà",
+    "noteAria": "Proprietà della nota",
+    "workspaceAria": "Proprietà dell'area di lavoro",
+    "listAria": "Elenco delle proprietà",
+    "add": "Aggiungi proprietà",
+    "addDescription": "Aggiungi una nuova proprietà a questa nota",
+    "namePlaceholder": "Nome della proprietà",
+    "nameAria": "Nome della proprietà",
+    "typeSection": "Digitare",
+    "empty": "Vuoto",
+    "dragAria": "Trascina per riordinare la proprietà",
+    "editName": "Modifica il nome della proprietà",
+    "delete": "Elimina proprietà",
+    "searchOptions": "Opzioni di ricerca...",
+    "noOptions": "Nessuna opzione ancora",
+    "optionName": "Nome dell'opzione",
+    "newOption": "Nuova opzione",
+    "ratingAria": "Valutazione",
+    "openUrlAria": "Apri l'URL",
+    "types": {
+      "text": "Testo",
+      "number": "Numero",
+      "date": "Data",
+      "checkbox": "Casella di controllo",
+      "url": "URL",
+      "status": "Stato",
+      "select": "Seleziona",
+      "multiselect": "Selezione multipla"
+    }
+  },
+  "templateSelector": {
+    "title": "Scegli la tua tela",
+    "description": "Seleziona un modello per iniziare la nota",
+    "searchPlaceholder": "Cerca modelli...",
+    "loading": "Caricamento modelli...",
+    "empty": "Nessun modello trovato",
+    "myTemplates": "I miei modelli",
+    "essentials": "Elementi essenziali",
+    "setFolderDefault": "Imposta come cartella predefinita",
+    "useTemplate": "Usa modello",
+    "createNote": "Crea nota"
+  },
+  "exportDialog": {
+    "title": "Nota sull'esportazione",
+    "description": "Esporta \"{title}\" in un file",
+    "format": "Formato",
+    "pdfDescription": "Documento pronto per la stampa",
+    "htmlDescription": "File pronto per il Web",
+    "pageSize": "Dimensioni della pagina",
+    "selectPageSize": "Seleziona la dimensione della pagina",
+    "options": "Opzioni",
+    "includeMetadata": "Includi metadati (tag, date)",
+    "exporting": "Esportazione...",
+    "exported": "Esportato!",
+    "export": "Esportazione",
+    "toast": {
+      "failed": "Esportazione non riuscita"
+    }
+  },
+  "versionHistory": {
+    "title": "Cronologia delle versioni",
+    "description": "Visualizza e ripristina le versioni precedenti di \"{title}\"",
+    "hidePreview": "Nascondi anteprima",
+    "showPreview": "Mostra anteprima",
+    "empty": "Nessuna versione ancora salvata",
+    "emptyDescription": "Le versioni vengono salvate automaticamente quando apporti modifiche significative",
+    "latest": "Ultimi",
+    "autoSaved": "Salvato automaticamente",
+    "words": "Parole {count}",
+    "selectPrompt": "Seleziona una versione da visualizzare in anteprima",
+    "restore": "Ripristina",
+    "deleteTitle": "Eliminare questa versione?",
+    "deleteDescription": "Questa azione non può essere annullata. Questa versione verrà eliminata definitivamente.",
+    "restoreTitle": "Ripristinare questa versione?",
+    "restoreDescription": "Ciò sostituirà il contenuto della nota corrente con questa versione. Per prima cosa verrà salvata un'istantanea dello stato corrente, quindi puoi annullare questa azione.",
+    "restoring": "Ripristino...",
+    "toast": {
+      "loadPreviewFailed": "Impossibile caricare l'anteprima della versione",
+      "restored": "Nota ripristinata alla versione precedente",
+      "deleted": "Versione eliminata"
+    }
+  },
+  "templateEditor": {
+    "title": {
+      "new": "Nuovo modello",
+      "view": "Visualizza modello",
+      "edit": "Modifica modello"
+    },
+    "toast": {
+      "nameRequired": "Il nome del modello è obbligatorio",
+      "created": "Modello creato",
+      "createFailed": "Impossibile creare il modello",
+      "saved": "Modello salvato",
+      "saveFailed": "Impossibile salvare il modello",
+      "duplicateFailed": "Impossibile duplicare il modello",
+      "deleteFailed": "Impossibile eliminare il modello"
+    }
+  },
+  "reminders": {
+    "summary": "Promemoria: {date}",
+    "summaryWithMore": "Promemoria: {date} (+{count} altro)",
+    "hasReminders": "Ha promemoria",
+    "setReminder": "Imposta promemoria",
+    "toast": {
+      "set": "Insieme di promemoria",
+      "setForHighlight": "Promemoria impostato per il testo evidenziato",
+      "setFailed": "Impossibile impostare il promemoria",
+      "deleted": "Promemoria eliminato",
+      "deleteFailed": "Impossibile eliminare il promemoria",
+      "dismissed": "Promemoria respinto",
+      "dismissFailed": "Impossibile ignorare il promemoria"
+    }
+  },
+  "linkedTasks": {
+    "title": "Attività collegate",
+    "loading": "Caricamento attività collegate..."
+  },
+  "phaseF": {
+    "componentsFolderViewColumnHeader": {
+      "dragToReorderColumn": "Trascina per riordinare la colonna"
+    },
+    "componentsFolderViewColumnSelector": {
+      "properties": "Proprietà",
+      "searchColumns": "Cerca colonne...",
+      "noMatchingColumns": "Nessuna colonna corrispondente",
+      "formulas": "FORMULE",
+      "noFormulasDefined": "Nessuna formula definita",
+      "addFormula": "Aggiungi formula",
+      "deleteFormula": "Elimina formula",
+      "areYouSureYouWantToDeleteTheFormula": "Sei sicuro di voler eliminare la formula \"",
+      "quotThisActionCannotBeUndone": "quot;? Questa azione non può essere annullata.",
+      "cancel": "Annulla",
+      "delete": "Elimina",
+      "none": "Nessuno",
+      "edit": "Modifica",
+      "delete2": "Elimina"
+    },
+    "componentsFolderViewFilterBuilder": {
+      "filter": "Filtra",
+      "filters": "Filtri",
+      "clearAll": "Cancella tutto",
+      "noFiltersApplied": "Nessun filtro applicato",
+      "addFiltersToNarrowDownYourNotes": "Aggiungi filtri per restringere il campo delle note",
+      "match": "Partita",
+      "allAnd": "Tutti (E)",
+      "anyOr": "Qualsiasi (OR)",
+      "ofTheFollowing": "dei seguenti:",
+      "match2": "Partita",
+      "all": "Tutto",
+      "any": "Qualunque",
+      "of": "di:",
+      "addCondition": "Aggiungi condizione",
+      "addFilter": "Aggiungi filtro",
+      "addGroup": "Aggiungi gruppo"
+    },
+    "componentsFolderViewFilterRow": {
+      "builtIn": "Integrato",
+      "properties": "Proprietà",
+      "placeholderProperty": "Proprietà",
+      "placeholderOperator": "Operatore",
+      "placeholderValue": "Valore"
+    },
+    "componentsFolderViewFolderTableView": {
+      "notesTable": "Tabella delle note"
+    },
+    "componentsFolderViewFolderViewToolbar": {
+      "searchNotes": "Cerca note...",
+      "clearSearch": "Cancella ricerca"
+    },
+    "componentsFolderViewFormulaEditorModal": {
+      "defineAComputedColumnUsingAnExpression": "Definire una colonna calcolata utilizzando un'espressione.",
+      "name": "Nome",
+      "expression": "Espressione",
+      "available": "Disponibile: ",
+      "preview": "Anteprima",
+      "fixExpressionErrorsToSeePreview": "Correggi gli errori di espressione per vedere l'anteprima",
+      "usingNote": "Usando la nota: \"",
+      "quot": "quot;",
+      "cancel": "Annulla",
+      "namePlaceholder": "giorni_fino_alla_scadenza",
+      "expressionPlaceholder": "dateDiff(data_scadenza, oggi(), \"giorni\")"
+    },
+    "componentsFolderViewGroupBySelector": {
+      "clearGrouping": "Raggruppamento chiaro",
+      "searchProperties": "Cerca immobili...",
+      "builtIn": "Integrato",
+      "properties": "Proprietà",
+      "noGroupablePropertiesFound": "Nessuna proprietà raggruppabile trovata",
+      "sortDirection": "Direzione dell'ordinamento",
+      "collapseGroupsByDefault": "Comprimi i gruppi per impostazione predefinita",
+      "showGroupSummaries": "Mostra riepiloghi del gruppo",
+      "clearGrouping2": "Raggruppamento chiaro"
+    },
+    "componentsFolderViewGroupedTable": {
+      "groupedNotesTable": "Tabella delle note raggruppate",
+      "more": "di più"
+    },
+    "componentsFolderViewMoveToFolderDialog": {
+      "searchFolders": "Cerca cartelle...",
+      "loadingFolders": "Caricamento cartelle...",
+      "suggested": "CONSIGLIATO",
+      "bestMatch": "Migliore abbinamento",
+      "current": "corrente)",
+      "allFolders": "TUTTE LE CARTELLE",
+      "current2": "corrente)",
+      "noFoldersMatch": "Nessuna cartella corrisponde a \"",
+      "quot": "quot;",
+      "create": "Crea\"",
+      "quot2": "quot;",
+      "cancel": "Annulla"
+    },
+    "componentsFolderViewRowContextMenu": {
+      "delete": "Elimina ",
+      "notes": "Note",
+      "open": "Aperto",
+      "openInExternalEditor": "Apri nell'editor esterno",
+      "revealInFinder": "Rivela nel Finder",
+      "revealInSidebar": "Rivela nella barra laterale",
+      "copyLink": "Copia collegamento",
+      "delete2": "Elimina"
+    },
+    "componentsFolderViewSortableColumnHeader": {
+      "dragToReorderColumn": "Trascina per riordinare la colonna",
+      "resizeColumn": "Ridimensiona colonna"
+    },
+    "componentsFolderViewViewSwitcher": {
+      "default": "predefinito",
+      "rename": "Rinominare",
+      "duplicate": "Duplicato",
+      "setAsDefault": "Imposta come predefinito",
+      "delete": "Elimina",
+      "createNewView": "Crea nuova vista",
+      "createNewView2": "Crea nuova vista",
+      "createANewViewWithCustomColumnsFiltersAndSorting": "Crea una nuova visualizzazione con colonne, filtri e ordinamento personalizzati.",
+      "viewName": "Visualizza nome",
+      "myCustomView": "La mia visualizzazione personalizzata",
+      "baseConfiguration": "Configurazione di base",
+      "copyFromCurrentView": "Copia dalla vista corrente",
+      "startFreshDefaultColumns": "Inizia da capo (colonne predefinite)",
+      "cancel": "Annulla",
+      "renameView": "Rinomina vista",
+      "enterANewNameForThisView": "Inserisci un nuovo nome per questa vista.",
+      "viewName2": "Visualizza nome",
+      "viewName3": "Visualizza nome",
+      "cancel2": "Annulla",
+      "deleteView": "Elimina vista",
+      "areYouSureYouWantToDelete": "Sei sicuro di voler eliminare \"",
+      "thisActionCannotBeUndone": "Questa azione non può essere annullata.",
+      "cancel3": "Annulla"
+    },
+    "componentsNoteContentAreaFileBlock": {
+      "failedToLoadPdf": "Impossibile caricare il PDF: ",
+      "download": "Scarica",
+      "download2": "Scarica",
+      "noFileAttached": "Nessun file allegato"
+    },
+    "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
+      "openInTaskPanel": "Apri nel pannello delle attività",
+      "taskName": "Nome dell'attività...",
+      "taskDeleted": "Attività eliminata",
+      "loading": "Caricamento..."
+    },
+    "componentsNoteContentAreaTaskBlockTaskCreationPopover": {
+      "project": "Progetto",
+      "priority": "Priorità",
+      "dueDate": "Data di scadenza",
+      "cancel": "Annulla"
+    },
+    "componentsNoteContentAreaYoutubeEmbedBlock": {
+      "noVideoUrl": "Nessun URL del video"
+    },
+    "componentsNoteExportDialog": {
+      "pdf": "PDF",
+      "html": "HTML",
+      "a4210X297Mm": "A4 (210 x 297 mm)",
+      "letter85X11In": "Lettera (8,5 x 11 pollici)",
+      "legal85X14In": "Legale (8,5 x 14 pollici)"
+    },
+    "componentsNoteInfoSectionEditorsDateeditor": {
+      "ddMmYyyy": "gg.mm.aaaa"
+    },
+    "componentsNoteNoteHeader": {
+      "synced": "Sincronizzato"
+    },
+    "componentsSharedDocumentInfoTab": {
+      "words": "Parole",
+      "characters": "Personaggi",
+      "readingTime": "Tempo di lettura",
+      "created": "Creato",
+      "modified": "Modificato"
+    },
+    "componentsSidebarProjectsEmptyState": {
+      "noProjectsYet": "Nessun progetto ancora",
+      "createYourFirstProject": "Crea il tuo primo progetto",
+      "createYourFirstProject2": "Crea il tuo primo progetto"
+    },
+    "componentsSidebarSidebarBookmarkList": {
+      "loadingBookmarks": "Caricamento segnalibri...",
+      "failedToLoadBookmarks": "Impossibile caricare i segnalibri",
+      "noBookmarksYet": "Nessun segnalibro ancora",
+      "moreOptions": "Più opzioni",
+      "remove": "Rimuovi"
+    },
+    "componentsSidebarSidebarItemContextMenu": {
+      "open": "Aperto",
+      "openToTheSide": "Aperto lateralmente",
+      "pinToTabs": "Aggiungi alle schede",
+      "edit": "Modifica",
+      "delete": "Elimina",
+      "copyLink": "Copia collegamento"
+    },
+    "componentsSidebarSidebarTagList": {
+      "loadingTags": "Caricamento tag...",
+      "failedToLoadTags": "Impossibile caricare i tag",
+      "noTagsYet": "Nessun tag ancora",
+      "filterTags": "Filtra tag...",
+      "noMatchingTags": "Nessun tag corrispondente"
+    },
+    "componentsSidebarSortableProjectItem": {
+      "dropHere": "Lasciami qui",
+      "editProject": "Modifica progetto"
+    },
+    "componentsSidebarTagDeleteDialog": {
+      "deleteTag": "Elimina il tag #",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "Le note con questo tag non verranno eliminate, ma semplicemente prive di tag.",
+      "cancel": "Annulla"
+    },
+    "componentsSidebarTagDetailView": {
+      "goBack": "Torna indietro",
+      "notes": "note",
+      "loadingNotes": "Caricamento note...",
+      "noNotesWithThisTag": "Nessuna nota con questo tag",
+      "addThisTagToANoteToSeeItHere": "Aggiungi questo tag a una nota per vederlo qui",
+      "pinned": "APPUNTATO",
+      "allNotes": "TUTTE LE NOTE",
+      "allNotesArePinned": "Tutte le note sono appuntate",
+      "unpinFromTag": "Sblocca dal tag",
+      "unpin": "Sblocca",
+      "pinToTag": "Appunta per taggare",
+      "pin": "Perno",
+      "tagActions": "Tagga le azioni",
+      "editTagName": "Modifica il nome dell'etichetta",
+      "changeColor": "Cambia colore",
+      "deleteTag": "Elimina etichetta",
+      "recent": "Recente",
+      "created": "Creato",
+      "alphabetical": "Alfabetico"
+    },
+    "componentsSidebarTagRenameDialog": {
+      "renameTag": "Rinomina etichetta",
+      "rename": "Rinominare ",
+      "acrossEveryNoteThatUsesIt": "in ogni nota che lo utilizza.",
+      "newName": "Nuovo nome",
+      "cancel": "Annulla"
+    },
+    "componentsViewersAudioPlayer": {
+      "failedToLoadAudio": "Impossibile caricare l'audio",
+      "theAudioFileCouldNotBePlayed": "Non è stato possibile riprodurre il file audio.",
+      "skipBack10s": "Torna indietro di 10 secondi",
+      "skipForward10s": "Salta avanti di 10 secondi"
+    },
+    "componentsViewersImageViewer": {
+      "failedToLoadImage": "Impossibile caricare l'immagine",
+      "theImageCouldNotBeDisplayed": "Impossibile visualizzare l'immagine.",
+      "resetZoom": "Reimposta lo zoom",
+      "rotate": "Ruota",
+      "dragToPan": "Trascina per eseguire la panoramica"
+    },
+    "componentsViewersPdfViewer": {
+      "failedToLoadPdf": "Impossibile caricare il PDF",
+      "previousPage": "Pagina precedente",
+      "nextPage": "Pagina successiva",
+      "zoomOut": "Rimpicciolisci",
+      "zoomIn": "Ingrandisci",
+      "fitToWidth": "Adatta alla larghezza",
+      "rotate": "Ruota"
+    },
+    "componentsViewersVideoPlayer": {
+      "failedToLoadVideo": "Impossibile caricare il video",
+      "theVideoFileCouldNotBePlayed": "Non è stato possibile riprodurre il file video."
+    },
+    "pagesFile": {
+      "failedToLoadFile": "Impossibile caricare il file",
+      "tryAgain": "Riprova",
+      "noFileSelected": "Nessun file selezionato",
+      "selectAFileFromTheSidebarToViewIt": "Seleziona un file dalla barra laterale per visualizzarlo",
+      "loadingFile": "Caricamento file...",
+      "openInDefaultApp": "Apri nell'app predefinita",
+      "open": "Aperto",
+      "revealInFinder": "Rivela nel Finder",
+      "reveal": "Rivela",
+      "unsupportedFileType": "Tipo di file non supportato"
+    },
+    "pagesFolderView": {
+      "createNewNote": "Crea nuova nota",
+      "viewSettings": "Visualizza le impostazioni",
+      "displayDensity": "Visualizza densità",
+      "comfortable": "Confortevole",
+      "compact": "Compatto",
+      "showSummaries": "Mostra riepiloghi",
+      "cancel": "Annulla"
+    },
+    "pagesTemplateEditor": {
+      "loadingTemplate": "Caricamento modello...",
+      "builtInTemplatesCannotBeModified": "I modelli incorporati non possono essere modificati",
+      "description": "Descrizione",
+      "briefDescriptionOfThisTemplate": "Breve descrizione di questo modello...",
+      "templateContent": "Contenuto del modello",
+      "use": "Utilizzare ",
+      "toInsertTheNoteTitleWhenCreatingANote": "per inserire il titolo della nota durante la creazione di una nota.",
+      "templateName": "Nome del modello",
+      "defaultContentForNotesCreatedFromThisTemplate": "Contenuto predefinito per le note create da questo modello..."
+    },
+    "pagesTemplates": {
+      "loadingCollection": "Caricamento raccolta...",
+      "templateCollection": "Raccolta di modelli",
+      "templates": "Modelli",
+      "curatedStructuresForYourNotes": "Strutture curate per i tuoi appunti.",
+      "newTemplate": "Nuovo modello",
+      "myTemplates": "I miei modelli",
+      "builtIn": "Integrato",
+      "deleteTemplate": "Elimina modello",
+      "areYouSureYouWantToDelete": "Sei sicuro di voler eliminare \"",
+      "notesCreatedFromThisTemplateWillNotBeAffected": "Le note create da questo modello non saranno interessate.",
+      "cancel": "Annulla",
+      "builtIn2": "Integrato",
+      "duplicate": "Duplicato",
+      "delete": "Elimina",
+      "startYourCollection": "Inizia la tua collezione",
+      "templatesHelpYouCreateNotesWithConsistentStructure": "I modelli ti aiutano a creare note con una struttura coerente.",
+      "createTemplate": "Crea modello"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveFormula": "Impossibile salvare la formula",
+      "failedToOpenInExternalEditor": "Impossibile aprire nell'editor esterno",
+      "failedToRevealInFinder": "Impossibile rivelare nel Finder",
+      "failedToCopyLink": "Impossibile copiare il collegamento",
+      "failedToCreateView": "Impossibile creare la vista",
+      "failedToRenameFolder": "Impossibile rinominare la cartella",
+      "failedToCreateTask": "Impossibile creare l'attività",
+      "failedToLoadVersionHistory": "Impossibile caricare la cronologia delle versioni",
+      "failedToRestoreVersion": "Impossibile ripristinare la versione",
+      "failedToDeleteVersion": "Impossibile eliminare la versione",
+      "failedToCreateNote": "Impossibile creare la nota",
+      "failedToLoadMoreBookmarks": "Impossibile caricare altri segnalibri",
+      "failedToToggleBookmark": "Impossibile attivare/disattivare il segnalibro",
+      "failedToRemoveBookmark": "Impossibile rimuovere il segnalibro",
+      "failedToReorderBookmarks": "Impossibile riordinare i segnalibri",
+      "failedToSave": "Impossibile salvare",
+      "failedToRename": "Impossibile rinominare",
+      "failedToUpdateEmoji": "Impossibile aggiornare le emoji",
+      "failedToUpdateTags": "Impossibile aggiornare i tag",
+      "failedToSnoozeReminder": "Impossibile posticipare il promemoria",
+      "failedToCreateFolder": "Impossibile creare la cartella",
+      "failedToLoadProperties": "Impossibile caricare le proprietà",
+      "failedToLoadPropertyDefinitions": "Impossibile caricare le definizioni delle proprietà",
+      "failedToLoadTemplates": "Impossibile caricare i modelli"
+    },
+    "toasts": {
+      "noteExportedSuccessfully": "Nota esportata con successo",
+      "failedToUpdateProperty": "Impossibile aggiornare la proprietà",
+      "failedToUpdateTags": "Impossibile aggiornare i tag",
+      "reminderSnoozed": "Promemoria posticipato",
+      "failedToSnoozeReminder": "Impossibile posticipare il promemoria",
+      "defaultTemplateSet": "Insieme di modelli predefiniti",
+      "failedToSetDefaultTemplate": "Impossibile impostare il modello predefinito",
+      "defaultTemplateCleared": "Modello predefinito cancellato",
+      "failedToClearDefaultTemplate": "Impossibile cancellare il modello predefinito",
+      "failedToAddProperty": "Impossibile aggiungere la proprietà",
+      "failedToDeleteProperty": "Impossibile eliminare la proprietà",
+      "failedToRenameProperty": "Impossibile rinominare la proprietà",
+      "failedToReorderProperties": "Impossibile riordinare le proprietà",
+      "cannotAddTagThisNoteWasDeleted": "Impossibile aggiungere il tag: questa nota è stata eliminata",
+      "cannotRemoveTagThisNoteWasDeleted": "Impossibile rimuovere il tag: questa nota è stata eliminata",
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "Impossibile modificare solo in locale: questa nota è stata eliminata"
+    }
+  }
+}

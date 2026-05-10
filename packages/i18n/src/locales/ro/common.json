@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "Salvați",
+    "cancel": "Anulează",
+    "close": "Închide",
+    "ok": "OK",
+    "yes": "Da",
+    "no": "Nu",
+    "delete": "Ștergeți",
+    "confirm": "Confirmați",
+    "apply": "Aplicați",
+    "done": "Gata",
+    "discard": "Aruncă",
+    "dontSave": "Nu salvați",
+    "edit": "Editați",
+    "add": "Adăugați",
+    "remove": "Eliminați",
+    "retry": "Reîncercați",
+    "submit": "Trimiteți",
+    "back": "Înapoi",
+    "next": "În continuare",
+    "continue": "Continuă",
+    "reset": "Resetați",
+    "copy": "Copiere",
+    "paste": "Lipiți",
+    "create": "Creați",
+    "open": "Deschide"
+  },
+  "state": {
+    "loading": "Se încarcă…",
+    "saving": "Se salvează…",
+    "deleting": "Se șterge…",
+    "searching": "Se caută…",
+    "error": "Eroare",
+    "success": "Succes"
+  },
+  "empty": {
+    "noResults": "Niciun rezultat",
+    "noItems": "Fără articole",
+    "noMatch": "Fără meciuri"
+  },
+  "action": {
+    "search": "Caută",
+    "edit": "Editați",
+    "delete": "Ștergeți",
+    "close": "Închide",
+    "expand": "Extindeți",
+    "collapse": "Colaps",
+    "showMore": "+{count, plural, one {# mai mult} other {# mai mult}}",
+    "showLess": "Arată mai puțin"
+  },
+  "tabs": {
+    "pin": "Fila Pin",
+    "unpin": "Anulați fixarea filei",
+    "contextMenu": {
+      "close": "Închide",
+      "closeOthers": "Închide Alții",
+      "closeToRight": "Aproape la Dreapta",
+      "closeAll": "Închideți totul",
+      "duplicate": "Duplicați fila",
+      "splitRight": "Split dreapta",
+      "splitDown": "Split Down",
+      "copyPath": "Copiați calea",
+      "revealInSidebar": "Dezvăluie în bara laterală"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {articol #} other {articole #}}",
+    "note": "{count, plural, one {Notă #} other {Note #}}",
+    "folder": "{count, plural, one {folderul #} other {folderele #}}",
+    "task": "{count, plural, one {Sarcina #} other {Sarcini #}}",
+    "project": "{count, plural, one {Proiectul #} other {proiecte #}}",
+    "itemDelete": "{count, plural, one {Ștergeți elementul #} other {Ștergeți elementele #}}"
+  },
+  "toast": {
+    "actionFailed": "Acțiunea eșuată",
+    "nothingToUndo": "Nimic de anulat",
+    "undone": "Anulat: {description}",
+    "undoFailed": "Acțiunea nu a fost anulată",
+    "copied": "Copiat",
+    "copyFailed": "Copierea eșuată"
+  },
+  "dateRelative": {
+    "today": "Astăzi",
+    "yesterday": "Ieri",
+    "daysAgo": "{count, plural, one {# zi în urmă} other {# zile în urmă}}"
+  },
+  "recurrence": {
+    "everyDay": "În fiecare zi",
+    "everyNDays": "{count, plural, one {În fiecare zi} other {La fiecare # zile}}",
+    "everyWeek": "În fiecare săptămână",
+    "everyNWeeks": "{count, plural, one {În fiecare săptămână} other {La fiecare # săptămâni}}",
+    "everyWeekday": "În fiecare zi a săptămânii",
+    "everyNWeeksOnWeekdays": "{count, plural, one {În fiecare zi a săptămânii} other {La fiecare # săptămâni în zilele lucrătoare}}",
+    "everyWeekend": "În fiecare weekend",
+    "everyNWeeksOnWeekends": "{count, plural, one {În fiecare weekend} other {La fiecare # săptămâni în weekend}}",
+    "everyWeekOnDays": "În fiecare săptămână pe {days}",
+    "everyNWeeksOnDays": "{count, plural, one {În fiecare săptămână pe {days}} other {La fiecare # săptămâni pe {days}}}",
+    "everyMonth": "În fiecare lună",
+    "everyNMonths": "{count, plural, one {În fiecare lună} other {La fiecare # luni}}",
+    "everyMonthOnDay": "În fiecare lună pe {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {În fiecare lună pe {day}{suffix}} other {La fiecare # luni pe {day}{suffix}}}",
+    "everyMonthOnWeekDay": "În fiecare lună pe {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {În fiecare lună pe {week} {day}} other {La fiecare # luni pe {week} {day}}}",
+    "everyYear": "În fiecare an",
+    "everyNYears": "{count, plural, one {În fiecare an} other {La fiecare # ani}}",
+    "repeats": "Se repetă"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Colecții",
+      "newNote": "Notă nouă",
+      "newNote2": "Notă nouă",
+      "newFolder": "Dosar nou",
+      "newFolder2": "Dosar nou",
+      "bookmarks": "Marcaje",
+      "tags": "Etichete",
+      "dropFilesToImport": "Aruncă fișierele de importat",
+      "newNoteN": "Notă nouă (⌘N)",
+      "new": "Nou",
+      "syncDisabled": "Sincronizarea este dezactivată",
+      "syncDisabled2": "Sincronizarea este dezactivată"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Redimensionați panoul de zi",
+      "dragToResizeDoubleClickToReset": "Trageți pentru a redimensiona · Faceți dublu clic pentru a reseta"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Găsiți, înlocuiți, întrebați..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Omite la îmbarcare",
+      "welcomeToMemry": "Bun venit la Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Baza ta de cunoștințe personale. Să luăm 2 minute pentru a începe.",
+      "getStarted": "Începeți ",
+      "createYourFirstNote": "Creați prima notă",
+      "markdownBasedStoredLocallyAsPlainFiles": "Bazat pe markdown, stocat local ca fișiere simple.",
+      "eGMeetingNotesIdeasAnything": "de ex. Note de întâlnire, idei, orice...",
+      "skip": "Sari peste",
+      "createNote": "Creați o notă ",
+      "addYourFirstTask": "Adăugați prima sarcină",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Sarcinile se leagă de notele dvs., cu priorități și date limită.",
+      "eGReviewProjectProposal": "de ex. Examinați propunerea de proiect...",
+      "skip2": "Sari peste",
+      "createTask": "Creați sarcină ",
+      "syncAcrossDevices": "Sincronizare între dispozitive",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Păstrați notele și sarcinile sincronizate pe toate dispozitivele dvs. Puteți configura oricând acest lucru mai târziu.",
+      "skipForNow": "Sari peste moment",
+      "doneLetSGo": "Gata — hai să mergem! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Setați pictograma folderului"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "SUGESTIE"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Selector de pictograme",
+      "selectIcon": "Selectați pictograma",
+      "closeIconPicker": "Închideți selectorul de pictograme",
+      "searchIcons": "Căutare pictograme...",
+      "all": "Toate",
+      "clearIcon": "Șterge pictograma",
+      "noIconsFoundFor": "Nu s-au găsit pictograme pentru \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Comenzi rapide de la tastatură",
+      "closeShortcutsHelp": "Închideți comenzile rapide de ajutor",
+      "press": "Apăsați",
+      "toClose": "a inchide"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Set icon",
+      "clearIcon": "Șterge pictograma"
+    },
+    "componentsNavMain": {
+      "platform": "Platformă"
+    },
+    "componentsNavProjects": {
+      "projects": "Proiecte",
+      "more": "Mai mult",
+      "viewProject": "Vedeți proiectul",
+      "shareProject": "Partajați proiectul",
+      "deleteProject": "Ștergeți proiectul",
+      "more2": "Mai mult"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Faceți upgrade la Pro",
+      "account": "Cont",
+      "billing": "Facturare",
+      "notifications": "Notificări",
+      "logOut": "Deconectați-vă"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Caută",
+      "searchNotesTasksJournalInbox": "Căutați note, sarcini, jurnal, inbox...",
+      "noResultsFor": "Nu există rezultate pentru „",
+      "rdquo": "rdquo;",
+      "result": "rezultat"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Căutați și faceți clic pe elemente pentru a vă construi traseul",
+      "reasons": "Motive",
+      "clear": "Clar"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Clar",
+      "tags": "Etichete",
+      "filterByTag": "Filtrați după etichetă...",
+      "dateRange": "Interval de date"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Vezi toate ",
+      "results": "rezultate"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "neclară"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Nicio filă deschisă",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Deschideți o pagină din bara laterală sau creați o filă nouă pentru a începe",
+      "openInbox": "Deschide Inbox",
+      "closePane": "Închideți panoul"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Presetări de aspect",
+      "layoutPresets2": "Presetări de aspect"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Redimensionați panourile"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TasksContext nu este disponibil",
+      "searchResults": "Rezultatele căutării",
+      "unknownTabType": "Tip de filă necunoscut: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "modificări nesalvate",
+      "preview": "previzualizare"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Filă nouă",
+      "newTab2": "Filă nouă",
+      "newNote": "Notă nouă",
+      "journal": "Jurnal",
+      "calendar": "Calendar",
+      "inboxCapture": "Captură inbox",
+      "tasks": "Sarcini"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Modificări nesalvate",
+      "unsaved": "nesalvat)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Modificări nesalvate"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Închideți toate filele"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Deschideți filele",
+      "scrollTabsLeft": "Derulați filele la stânga",
+      "scrollTabsRight": "Derulați filele la dreapta",
+      "graphG": "Grafic (⌘G)",
+      "dayPanel": "Panoul de zi"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "Derulați filele la stânga",
+      "scrollTabsRight": "Derulați filele la dreapta"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "Deschideți filele",
+      "scrollTabsLeft": "Derulați filele la stânga",
+      "scrollTabsRight": "Derulați filele la dreapta"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Ceva a mers prost",
+      "anErrorOccurredWhileRenderingThisTabContent": "A apărut o eroare la redarea conținutului acestei file.",
+      "tryAgain": "Încercați din nou"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Pictograma notă"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Modificări nesalvate",
+      "quot": "quot;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; are modificări nesalvate. Ce ai vrea sa faci?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Nou spațiu de lucru",
+      "darkMode": "Modul întunecat",
+      "settings": "Setări",
+      "integrations": "Integrari",
+      "signOut": "Deconectați-vă",
+      "downloadOnIos": "Descărcați pe iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Închide fereastra",
+      "minimizeWindow": "Minimizați fereastra",
+      "maximizeWindow": "Maximizați fereastra"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Sugestii",
+      "or": "sau",
+      "enter": "Intră",
+      "toInsert": "a introduce"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "pesmet",
+      "more": "Mai mult"
+    },
+    "componentsUiDialog": {
+      "close": "Închide"
+    },
+    "componentsUiSheet": {
+      "close": "Închide"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Bara laterală",
+      "displaysTheMobileSidebar": "Afișează bara laterală mobilă.",
+      "toggleSidebar": "Comutați bara laterală",
+      "toggleSidebar2": "Comutați bara laterală",
+      "dragToResizeDoubleClickToReset": "Trageți pentru a redimensiona · Faceți dublu clic pentru a reseta"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Bun venit la Memry",
+      "yourPersonalKnowledgeManagementSystem": "Sistemul dvs. personal de management al cunoștințelor.",
+      "selectAFolderToStoreYourNotesAndTasks": "Selectați un dosar pentru a vă stoca notele și sarcinile.",
+      "opening": "Deschidere...",
+      "selectVaultFolder": "Selectați dosarul seifului",
+      "plainMarkdown": "Markdown simplu",
+      "yourNotesStayPortable": "Notele dvs. rămân portabile",
+      "syncAnywhere": "Sincronizați oriunde",
+      "useDropboxIcloudGit": "Utilizați Dropbox, iCloud, Git",
+      "recentVaults": "Seifuri recente",
+      "notesLastOpened": "note · Ultima deschidere"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Nu există încă seifuri",
+      "openVault": "Seif deschis",
+      "settings": "Setări",
+      "logOut": "Deconectați-vă",
+      "signInToSync": "Conectați-vă pentru sincronizare",
+      "remove": "Eliminați „",
+      "rdquoFromList": "rdquo; din lista?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Acest seif va fi eliminat din aplicație, dar fișierele dvs. vor rămâne pe disc. Îl poți adăuga oricând din nou mai târziu.",
+      "cancel": "Anulează",
+      "remove2": "Eliminați"
+    },
+    "componentsWindowControls": {
+      "searchK": "Căutați (⌘K)",
+      "browserBack": "Browser înapoi",
+      "back": "Înapoi",
+      "browserForward": "Browser înainte",
+      "forward": "Înainte"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Nu s-au putut importa fișiere",
+      "failedToCreateNote": "Nu s-a putut crea nota",
+      "failedToAccessMicrophone": "Nu s-a putut accesa microfonul"
+    },
+    "toasts": {
+      "undone": "Anulat"
+    }
+  }
+}

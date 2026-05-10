@@ -1,0 +1,303 @@
+{
+  "title": "日記",
+  "section": {
+    "journal": "日記",
+    "aiConnections": "AIとのつながり",
+    "todaysNotes": "今日のメモ",
+    "todaysSchedule": "今日のスケジュール",
+    "todaysTasks": "今日のタスク",
+    "schedule": "スケジュール",
+    "tasks": "タスク",
+    "calendarEvents": "カレンダーイベント",
+    "overdueTasks": "期限を過ぎたタスク",
+    "technicalDetails": "技術的な詳細"
+  },
+  "action": {
+    "versionHistory": "バージョン履歴",
+    "export": "エクスポート",
+    "fullWidth": "全幅",
+    "journalSettings": "ジャーナル設定",
+    "fullMode": "フルモード",
+    "compactMode": "コンパクトモード",
+    "focusMode": "フォーカスモード",
+    "exitFocusMode": "フォーカスモードを終了する",
+    "enterFocusMode": "フォーカスモードに入る",
+    "createNote": "メモの作成",
+    "createNewNote": "新しいメモを作成する",
+    "showLess": "表示を少なくする",
+    "showMoreNotes": "{count} のその他のメモを表示",
+    "showMoreNotes_plural": "{count} のメモをさらに表示",
+    "showFewerNotes": "表示するメモの数を減らす",
+    "startBlank": "代わりに空白から始めてください",
+    "changeTemplate": "テンプレートの変更",
+    "dismissIndicator": "インジケーターを閉じる",
+    "refreshConnections": "接続を更新する",
+    "reloadJournal": "ジャーナルをリロード",
+    "goToToday": "今日に行く",
+    "copyUnsavedContent": "保存されていないコンテンツをクリップボードにコピーする",
+    "openNoteFullPage": "ノートを全ページで開く",
+    "closeNoteDrawer": "メモ引き出しを閉じます",
+    "addBookmark": "ブックマークを追加する",
+    "removeBookmark": "ブックマークを削除する",
+    "tryAgain": "もう一度試してください"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "何を計画しているのですか...",
+      "today": "今日は何を考えていますか...",
+      "past": "この日を振り返って…",
+      "default": "書き始めてください..."
+    },
+    "toolbar": {
+      "ariaLabel": "テキストの書式設定",
+      "bold": "太字",
+      "italic": "イタリック体",
+      "underline": "下線",
+      "strikethrough": "取り消し線",
+      "link": "リンク",
+      "image": "画像",
+      "moreOptions": "その他のオプション",
+      "heading1": "見出し1",
+      "heading2": "見出し2",
+      "heading3": "見出し 3",
+      "bulletList": "箇条書きリスト",
+      "numberedList": "番号付きリスト",
+      "checklist": "チェックリスト",
+      "quote": "引用",
+      "divider": "ディバイダー",
+      "codeBlock": "コードブロック"
+    },
+    "prompt": {
+      "enterUrl": "URLを入力してください:"
+    },
+    "upload": {
+      "noEntry": "画像をアップロードできません: 日記エントリが選択されていません",
+      "failed": "画像のアップロードに失敗しました"
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "今日",
+      "yesterday": "昨日",
+      "tomorrow": "明日",
+      "future": "未来"
+    },
+    "weekday": {
+      "sunday": "日曜日",
+      "monday": "月曜日",
+      "tuesday": "火曜日",
+      "wednesday": "水曜日",
+      "thursday": "木曜日",
+      "friday": "金曜日",
+      "saturday": "土曜日"
+    },
+    "weekdayShort": {
+      "sunday": "太陽",
+      "monday": "月",
+      "tuesday": "火",
+      "wednesday": "水",
+      "thursday": "木",
+      "friday": "金",
+      "saturday": "土"
+    },
+    "month": {
+      "january": "1月",
+      "february": "2月",
+      "march": "3月",
+      "april": "4月",
+      "may": "5月",
+      "june": "6月",
+      "july": "7月",
+      "august": "8月",
+      "september": "9月",
+      "october": "10月",
+      "november": "11月",
+      "december": "12月"
+    },
+    "monthShort": {
+      "january": "1月",
+      "february": "2月",
+      "march": "3月",
+      "april": "4月",
+      "may": "5月",
+      "june": "ジュン",
+      "july": "7月",
+      "august": "8月",
+      "september": "9月",
+      "october": "10月",
+      "november": "11月",
+      "december": "12月"
+    },
+    "greeting": {
+      "morning": "おはようございます",
+      "afternoon": "こんにちは",
+      "evening": "こんばんは。",
+      "night": "おやすみ"
+    },
+    "allDay": "一日中"
+  },
+  "nav": {
+    "previousDay": "前日",
+    "nextDay": "翌日",
+    "previousMonth": "前月",
+    "nextMonth": "来月",
+    "previousYear": "前年",
+    "nextYear": "来年",
+    "journalBack": "ジャーナルバック",
+    "journalNavigation": "ジャーナルナビゲーション",
+    "dateNavigation": "日記の日付ナビゲーション",
+    "goToYearView": "年ビューに移動",
+    "previousView": "前のビュー",
+    "nextView": "次のビュー"
+  },
+  "aria": {
+    "moreOptions": "その他のオプション",
+    "documentStatistics": "文書統計",
+    "dayContext": "一日の状況: タスクとスケジュール",
+    "scheduleEvents": "イベントのスケジュールを設定する",
+    "tasks": "タスク",
+    "notesCreatedToday": "今日作成された {count} ノート"
+  },
+  "empty": {
+    "noEntry": "立ち入り禁止",
+    "noDaysInMonth": "今月は日がありません",
+    "noEventsScheduled": "予定されているイベントはありません",
+    "noEventsScheduledToday": "今日はイベントの予定はありません",
+    "noEventsWereScheduled": "イベントは予定されていませんでした",
+    "noTasksDue": "期限のタスクはありません",
+    "noTasksDueToday": "今日期限のタスクはありません",
+    "noTasksWereDue": "期限切れのタスクはありませんでした",
+    "noNotesToday": "今日はメモが作成されていません",
+    "startDocumenting": "自分の考えやアイデアを文書化し始めます"
+  },
+  "ai": {
+    "loading": "入力内容を分析中...",
+    "empty": {
+      "willAppear": "接続がここに表示されます",
+      "noneYet": "まだ接続が見つかりません",
+      "moreJournaling": "さらに日記を書くと、AI が関連するエントリを見つけます",
+      "keepWriting": "書き続けて関連エントリを見つけてください"
+    },
+    "error": {
+      "loadFailed": "接続を読み込めませんでした"
+    },
+    "connectionAria": "{label} への接続、{scorePercent}% 一致"
+  },
+  "count": {
+    "item": "アイテム",
+    "items": "アイテム",
+    "note": "メモ",
+    "notes": "メモ",
+    "day": "日",
+    "days": "日",
+    "event": "イベント",
+    "events": "イベント",
+    "meeting": "会議",
+    "meetings": "会議",
+    "task": "タスク",
+    "tasks": "タスク",
+    "todo": "すること",
+    "people": "{count} 人",
+    "moreConnections": "+ {count} より多くの接続",
+    "moreConnections_plural": "+ {count} 個の接続数が増加",
+    "moreNotes": "+ {count} さらにメモ",
+    "moreNotes_plural": "+ {count} より多くのメモ",
+    "daysWithEntries": "エントリーのある日",
+    "charactersWritten": "書かれた文字",
+    "words": "{count} ワード",
+    "characters": "{count} 文字",
+    "completed": "{count}完了",
+    "overdue": "{count} 期限切れ"
+  },
+  "stats": {
+    "wordCount": "単語数",
+    "characterCount": "文字数",
+    "readingTime": "推定読書時間",
+    "lastModified": "最終更新日",
+    "lessThanOneMinute": "1分未満",
+    "minutes": "{minutes} 分",
+    "read": "{readingTime} 読み取り",
+    "modified": "変更された{date}"
+  },
+  "task": {
+    "completed": "完了",
+    "notCompleted": "未完了",
+    "priority": "{priority} 優先度",
+    "overdue": "期限を過ぎた",
+    "markComplete": "「{title}」を完了としてマークします",
+    "markNotComplete": "「{title}」を未完了としてマークします"
+  },
+  "template": {
+    "using": "「{templateName}」を使用する"
+  },
+  "reminder": {
+    "hasReminders": "リマインダーあり",
+    "setToRevisit": "再訪問するリマインダーを設定する",
+    "tooltip": "リマインダー: {date}",
+    "tooltipMore": "リマインダー: {date} (+{count} 以上)",
+    "success": {
+      "set": "この日記エントリに設定されたリマインダー",
+      "deleted": "リマインダーが削除されました",
+      "dismissed": "リマインダーが却下されました",
+      "snoozed": "リマインダーがスヌーズされました"
+    },
+    "error": {
+      "set": "リマインダーの設定に失敗しました",
+      "delete": "リマインダーの削除に失敗しました",
+      "dismiss": "リマインダーを無視できませんでした",
+      "snooze": "リマインダーのスヌーズに失敗しました"
+    }
+  },
+  "toast": {
+    "unsavedRetry": "コンテンツはまだメモリ内にあります。クリックして保存を再試行します。",
+    "noteNotFound": "「{target}」が見つからないことに注意してください",
+    "fileNotFound": "ファイルが見つかりません: {target}",
+    "openLinkedItemFailed": "リンクされたアイテムを開けませんでした",
+    "errorPrefix": "エラー:"
+  },
+  "export": {
+    "noteTitle": "ジャーナル - {month} {day}、{year}"
+  },
+  "note": {
+    "generatedTitle": "注 - {date}",
+    "openAria": "{time} で作成された {title} を開きます"
+  },
+  "tag": {
+    "suggestionsAria": "タグの提案",
+    "empty": {
+      "title": "まだタグがありません",
+      "description": "入力して新しいタグを作成します"
+    },
+    "groupTitle": "タグ",
+    "create": "#{query} を作成する",
+    "ariaLabel": "タグ: {tag}、クリックしてフィルタリングします"
+  },
+  "wiki": {
+    "suggestionsAria": "ページの提案",
+    "empty": {
+      "title": "ページが見つかりませんでした"
+    },
+    "groupRecent": "最近の",
+    "groupAllPages": "すべてのページ",
+    "createNewPage": "新しいページを作成する",
+    "ariaLabel": "{title} へのリンク"
+  },
+  "error": {
+    "title": "ジャーナルエラー",
+    "description": "ジャーナルで {date} のエラーが発生しました。最近の変更が保存されていない可能性があります。",
+    "descriptionNoDate": "ジャーナルでエラーが発生しました。最近の変更が保存されていない可能性があります。",
+    "unsavedContent": "未保存のコンテンツが検出されました ({length} 文字)"
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "k"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveJournalEntry": "仕訳入力の保存に失敗しました",
+      "failedToLoadJournalSettings": "ジャーナル設定のロードに失敗しました",
+      "failedToUpdateSettings": "設定の更新に失敗しました"
+    }
+  }
+}

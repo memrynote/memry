@@ -1,0 +1,320 @@
+import * as Y from 'yjs'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { JournalChannels, NotesChannels } from '@memry/contracts/ipc-channels'
+
+const mocks = vi.hoisted(() => ({
+  yDocToMarkdown: vi.fn(),
+  getNoteCacheById: vi.fn(),
+  atomicWrite: vi.fn(),
+  safeRead: vi.fn(),
+  fileExists: vi.fn(),
+  generateNotePath: vi.fn(),
+  ensureDirectory: vi.fn(),
+  deleteFile: vi.fn(),
+  parseNote: vi.fn(),
+  serializeNote: vi.fn(),
+  getNotesDir: vi.fn(),
+  toRelativePath: vi.fn(),
+  toAbsolutePath: vi.fn(),
+  maybeCreateSignificantSnapshot: vi.fn(),
+  getJournalPath: vi.fn(),
+  syncNoteToCache: vi.fn(),
+  deleteNoteFromCache: vi.fn(),
+  flushProjectionEvents: vi.fn(),
+  closeDoc: vi.fn(),
+  sent: [] as Array<{ channel: string; payload: unknown }>,
+  logger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn()
+  }
+}))
+
+vi.mock('electron', () => ({
+  BrowserWindow: {
+    getAllWindows: () => [
+      {
+        webContents: {
+          send: (channel: string, payload: unknown) => mocks.sent.push({ channel, payload })
+        }
+      }
+    ]
+  }
+}))
+
+vi.mock('../lib/logger', () => ({
+  createLogger: () => mocks.logger
+}))
+
+vi.mock('./crdt-provider', () => ({
+  getCrdtProvider: () => ({ close: mocks.closeDoc })
+}))
+
+vi.mock('./blocknote-converter', () => ({
+  yDocToMarkdown: (...args: unknown[]) => mocks.yDocToMarkdown(...args)
+}))
+
+vi.mock('@memry/shared/utc', () => ({
+  utcNow: () => '2026-01-01T00:00:00.000Z'
+}))
+
+vi.mock('../vault/file-ops', () => ({
+  atomicWrite: (...args: unknown[]) => mocks.atomicWrite(...args),
+  safeRead: (...args: unknown[]) => mocks.safeRead(...args),
+  fileExists: (...args: unknown[]) => mocks.fileExists(...args),
+  generateNotePath: (...args: unknown[]) => mocks.generateNotePath(...args),
+  ensureDirectory: (...args: unknown[]) => mocks.ensureDirectory(...args),
+  deleteFile: (...args: unknown[]) => mocks.deleteFile(...args)
+}))
+
+vi.mock('../vault/frontmatter', () => ({
+  parseNote: (...args: unknown[]) => mocks.parseNote(...args),
+  serializeNote: (...args: unknown[]) => mocks.serializeNote(...args)
+}))
+
+vi.mock('../vault/notes', () => ({
+  getNotesDir: (...args: unknown[]) => mocks.getNotesDir(...args),
+  toRelativePath: (...args: unknown[]) => mocks.toRelativePath(...args),
+  toAbsolutePath: (...args: unknown[]) => mocks.toAbsolutePath(...args),
+  maybeCreateSignificantSnapshot: (...args: unknown[]) =>
+    mocks.maybeCreateSignificantSnapshot(...args)
+}))
+
+vi.mock('../vault/journal', () => ({
+  getJournalPath: (...args: unknown[]) => mocks.getJournalPath(...args)
+}))
+
+vi.mock('../vault/note-sync', () => ({
+  syncNoteToCache: (...args: unknown[]) => mocks.syncNoteToCache(...args),
+  deleteNoteFromCache: (...args: unknown[]) => mocks.deleteNoteFromCache(...args)
+}))
+
+vi.mock('../projections', () => ({
+  flushProjectionEvents: (...args: unknown[]) => mocks.flushProjectionEvents(...args)
+}))
+
+vi.mock('../database/client', () => ({
+  getIndexDatabase: () => ({ kind: 'index-db' })
+}))
+
+vi.mock('@main/database/queries/notes', () => ({
+  getNoteCacheById: (...args: unknown[]) => mocks.getNoteCacheById(...args)
+}))
+
+import {
+  cancelPendingWritebacks,
+  getWritebackDebugState,
+  handleSyncDeletion,
+  isWritebackIgnored,
+  markWritebackIgnored,
+  recordNetworkUpdate,
+  scheduleWriteback,
+  wasRecentNetworkUpdate
+} from './crdt-writeback'
+
+function makeDoc(title = 'Synced title', tags: string[] = []): Y.Doc {
+  const doc = new Y.Doc()
+  doc.getMap('meta').set('title', title)
+  doc.getMap('meta').set('date', '2026-01-01T00:00:00.000Z')
+  const tagArray = doc.getArray('tags')
+  for (const tag of tags) tagArray.push([tag])
+  return doc
+}
+
+describe('crdt writeback', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'))
+    vi.clearAllMocks()
+    mocks.sent = []
+    mocks.yDocToMarkdown.mockResolvedValue('updated markdown')
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'note-1',
+      path: 'notes/Existing.md',
+      title: 'Existing'
+    })
+    mocks.safeRead.mockResolvedValue('---\ntitle: Existing\n---\nold markdown')
+    mocks.parseNote.mockReturnValue({
+      frontmatter: { id: 'note-1', title: 'Existing', tags: ['old'] },
+      content: 'old markdown'
+    })
+    mocks.serializeNote.mockImplementation((frontmatter, markdown) =>
+      JSON.stringify({ frontmatter, markdown })
+    )
+    mocks.toAbsolutePath.mockImplementation((relative: string) => `/vault/${relative}`)
+    mocks.toRelativePath.mockImplementation((absolute: string) => absolute.replace('/vault/', ''))
+    mocks.getNotesDir.mockReturnValue('/vault/notes')
+    mocks.generateNotePath.mockReturnValue('/vault/notes/New.md')
+    mocks.getJournalPath.mockImplementation((date: string) => `/vault/journal/${date}.md`)
+    mocks.fileExists.mockResolvedValue(false)
+    mocks.atomicWrite.mockResolvedValue(undefined)
+    mocks.deleteFile.mockResolvedValue(undefined)
+    mocks.ensureDirectory.mockResolvedValue(undefined)
+    mocks.closeDoc.mockResolvedValue(undefined)
+    mocks.maybeCreateSignificantSnapshot.mockReturnValue({ id: 'snap-1' })
+  })
+
+  afterEach(() => {
+    cancelPendingWritebacks()
+    vi.useRealTimers()
+  })
+
+  it('tracks ignored write and recent network update TTL windows', () => {
+    markWritebackIgnored('/vault/notes/A.md')
+    expect(isWritebackIgnored('/vault/notes/A.md')).toBe(true)
+
+    vi.advanceTimersByTime(5000)
+    expect(isWritebackIgnored('/vault/notes/A.md')).toBe(false)
+
+    recordNetworkUpdate('note-1')
+    expect(wasRecentNetworkUpdate('note-1')).toBe(true)
+
+    vi.advanceTimersByTime(2000)
+    expect(wasRecentNetworkUpdate('note-1')).toBe(false)
+  })
+
+  it('debounces and writes back an existing markdown note with merged frontmatter', async () => {
+    scheduleWriteback('note-1', makeDoc('Yjs title', ['new-tag']))
+    scheduleWriteback('note-1', makeDoc('Latest title', ['new-tag']))
+
+    expect(getWritebackDebugState('note-1')).toMatchObject({
+      pending: true,
+      scheduledCount: 2
+    })
+
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(mocks.yDocToMarkdown).toHaveBeenCalledTimes(1)
+    expect(mocks.maybeCreateSignificantSnapshot).toHaveBeenCalledWith(
+      'note-1',
+      expect.any(String),
+      'old markdown',
+      'updated markdown',
+      'Existing'
+    )
+    expect(mocks.atomicWrite).toHaveBeenCalledWith(
+      '/vault/notes/Existing.md',
+      expect.stringContaining('updated markdown')
+    )
+    expect(mocks.syncNoteToCache).toHaveBeenCalledWith(
+      { kind: 'index-db' },
+      expect.objectContaining({ id: 'note-1', path: 'notes/Existing.md' }),
+      { isNew: false }
+    )
+    expect(mocks.sent).toContainEqual({
+      channel: NotesChannels.events.UPDATED,
+      payload: { id: 'note-1', source: 'sync' }
+    })
+    expect(getWritebackDebugState('note-1')).toMatchObject({
+      pending: false,
+      performedCount: 1,
+      lastMarkdown: 'updated markdown'
+    })
+  })
+
+  it('creates a new markdown note when cache has no path for the synced id', async () => {
+    mocks.getNoteCacheById.mockReturnValue(undefined)
+
+    scheduleWriteback('note-new', makeDoc('New Note', ['tag-a']))
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(mocks.generateNotePath).toHaveBeenCalledWith('/vault/notes', 'New Note')
+    expect(mocks.atomicWrite).toHaveBeenCalledWith(
+      '/vault/notes/New.md',
+      expect.stringContaining('updated markdown')
+    )
+    expect(mocks.syncNoteToCache).toHaveBeenCalledWith(
+      { kind: 'index-db' },
+      expect.objectContaining({ id: 'note-new', path: 'notes/New.md' }),
+      { isNew: true }
+    )
+    expect(mocks.sent).toContainEqual({
+      channel: NotesChannels.events.CREATED,
+      payload: {
+        note: { id: 'note-new', path: 'notes/New.md', title: 'New Note' },
+        source: 'sync'
+      }
+    })
+  })
+
+  it('writes journal entries and emits a journal-created event for uncached journals', async () => {
+    mocks.getNoteCacheById.mockReturnValue(undefined)
+
+    scheduleWriteback('j2026-01-02', makeDoc('Ignored', ['journal']))
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(mocks.ensureDirectory).toHaveBeenCalledWith('/vault/journal')
+    expect(mocks.atomicWrite).toHaveBeenCalledWith(
+      '/vault/journal/2026-01-02.md',
+      expect.stringContaining('2026-01-02')
+    )
+    expect(mocks.sent).toContainEqual({
+      channel: JournalChannels.events.ENTRY_CREATED,
+      payload: { date: '2026-01-02', source: 'sync' }
+    })
+  })
+
+  it('writes a collision file when a synced journal date already belongs to another id', async () => {
+    mocks.getNoteCacheById.mockReturnValue(undefined)
+    mocks.fileExists.mockResolvedValue(true)
+    mocks.safeRead.mockResolvedValue('---\nid: local-journal\n---\nlocal')
+    mocks.parseNote.mockReturnValue({
+      frontmatter: { id: 'local-journal' },
+      content: 'local'
+    })
+
+    scheduleWriteback('j2026-01-03', makeDoc('Collision'))
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(mocks.atomicWrite).toHaveBeenCalledWith(
+      '/vault/journal/2026-01-03-j2026-01.md',
+      expect.stringContaining('updated markdown')
+    )
+    expect(mocks.sent).toContainEqual({
+      channel: 'sync:journal-conflict',
+      payload: {
+        date: '2026-01-03',
+        incomingId: 'j2026-01-03',
+        existingId: 'local-journal',
+        collisionPath: 'journal/2026-01-03-j2026-01.md'
+      }
+    })
+  })
+
+  it('deletes synced note files, closes CRDT docs, and emits note or journal deletion events', async () => {
+    await handleSyncDeletion('note-1')
+
+    expect(mocks.deleteNoteFromCache).toHaveBeenCalledWith({ kind: 'index-db' }, 'note-1')
+    expect(mocks.deleteFile).toHaveBeenCalledWith('/vault/notes/Existing.md')
+    expect(mocks.closeDoc).toHaveBeenCalledWith('note-1')
+    expect(mocks.sent).toContainEqual({
+      channel: NotesChannels.events.DELETED,
+      payload: {
+        id: 'note-1',
+        path: 'notes/Existing.md',
+        date: undefined,
+        source: 'sync'
+      }
+    })
+
+    mocks.sent = []
+    mocks.getNoteCacheById.mockReturnValue({
+      id: 'j2026-01-04',
+      path: 'journal/2026-01-04.md',
+      title: 'Journal'
+    })
+
+    await handleSyncDeletion('j2026-01-04')
+
+    expect(mocks.sent).toContainEqual({
+      channel: JournalChannels.events.ENTRY_DELETED,
+      payload: {
+        id: 'j2026-01-04',
+        path: 'journal/2026-01-04.md',
+        date: '2026-01-04',
+        source: 'sync'
+      }
+    })
+  })
+})

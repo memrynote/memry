@@ -91,6 +91,77 @@ const createDragState = (overrides: Partial<DragState> = {}): DragState => ({
 })
 
 describe('useDragHandlers', () => {
+  it('ignores missing drop targets and exposes no-op drag lifecycle handlers', () => {
+    const onUpdateTask = vi.fn()
+    const onDeleteTask = vi.fn()
+    const onReorder = vi.fn()
+
+    const { result } = renderHook(() =>
+      useDragHandlers({
+        tasks: [createTask()],
+        projects: [createProject()],
+        onUpdateTask,
+        onDeleteTask,
+        onReorder
+      })
+    )
+
+    act(() => {
+      result.current.handleDragEnd(createDragEvent({ over: null }), createDragState())
+      result.current.handleDragStart({} as never, createDragState())
+      result.current.handleDragOver({} as never, createDragState())
+      result.current.undo()
+    })
+
+    expect(onUpdateTask).not.toHaveBeenCalled()
+    expect(onDeleteTask).not.toHaveBeenCalled()
+    expect(onReorder).not.toHaveBeenCalled()
+    expect(result.current.canUndo).toBe(false)
+  })
+
+  it('inserts active task ids that are missing from the known same-section order', () => {
+    const onReorder = vi.fn()
+
+    const { result } = renderHook(() =>
+      useDragHandlers({
+        tasks: [createTask({ id: 'task-new' }), createTask({ id: 'task-1' })],
+        projects: [createProject()],
+        onUpdateTask: vi.fn(),
+        onDeleteTask: vi.fn(),
+        onReorder
+      })
+    )
+
+    act(() => {
+      result.current.handleDragEnd(
+        createDragEvent({
+          active: {
+            id: 'task-new',
+            data: { current: { sectionTaskIds: ['task-1', 'task-2'] } }
+          },
+          over: {
+            id: 'task-1',
+            data: {
+              current: {
+                type: 'task',
+                columnId: 'same-column',
+                sectionTaskIds: ['task-1', 'task-2']
+              }
+            }
+          }
+        }),
+        createDragState({
+          activeId: 'task-new',
+          activeIds: ['task-new'],
+          sourceContainerId: 'same-column',
+          overTaskEdge: 'after'
+        })
+      )
+    })
+
+    expect(onReorder).toHaveBeenCalledWith({ 'same-column': ['task-new', 'task-1', 'task-2'] })
+  })
+
   it('reorders within a section using the full section task order, not only active/over ids', () => {
     const project = createProject()
     const tasks = [
@@ -151,6 +222,129 @@ describe('useDragHandlers', () => {
     })
 
     expect(onReorder).toHaveBeenCalledWith({ high: ['task-2', 'task-1', 'task-3'] })
+  })
+
+  it('falls back to active and over ids when same-section order metadata is absent', () => {
+    const project = createProject()
+    const tasks = [createTask({ id: 'task-1' }), createTask({ id: 'task-2' })]
+    const onReorder = vi.fn()
+
+    const { result } = renderHook(() =>
+      useDragHandlers({
+        tasks,
+        projects: [project],
+        onUpdateTask: vi.fn(),
+        onDeleteTask: vi.fn(),
+        onReorder
+      })
+    )
+
+    act(() => {
+      result.current.handleDragEnd(
+        createDragEvent({
+          active: {
+            id: 'task-1',
+            data: { current: { sectionTaskIds: [] } }
+          },
+          over: {
+            id: 'task-2',
+            data: {
+              current: {
+                type: 'task',
+                sectionId: 'todo',
+                sectionTaskIds: [],
+                task: tasks[1]
+              }
+            }
+          }
+        }),
+        createDragState({
+          activeIds: ['task-1'],
+          sourceContainerId: 'todo',
+          overSectionId: 'todo'
+        })
+      )
+    })
+
+    expect(onReorder).toHaveBeenCalledWith({ todo: ['task-1', 'task-2'] })
+  })
+
+  it('places same-section moves after the hovered task and ignores unknown hover ids', () => {
+    const project = createProject()
+    const tasks = [
+      createTask({ id: 'task-1' }),
+      createTask({ id: 'task-2' }),
+      createTask({ id: 'task-3' })
+    ]
+    const onReorder = vi.fn()
+
+    const { result } = renderHook(() =>
+      useDragHandlers({
+        tasks,
+        projects: [project],
+        onUpdateTask: vi.fn(),
+        onDeleteTask: vi.fn(),
+        onReorder
+      })
+    )
+
+    act(() => {
+      result.current.handleDragEnd(
+        createDragEvent({
+          active: {
+            id: 'task-1',
+            data: { current: { sectionTaskIds: ['task-1', 'task-2', 'task-3'] } }
+          },
+          over: {
+            id: 'task-2',
+            data: {
+              current: {
+                type: 'task',
+                sectionId: 'todo',
+                sectionTaskIds: ['task-1', 'task-2', 'task-3'],
+                task: tasks[1]
+              }
+            }
+          }
+        }),
+        createDragState({
+          activeIds: ['task-1'],
+          sourceContainerId: 'todo',
+          overSectionId: 'todo',
+          overTaskEdge: 'after'
+        })
+      )
+    })
+
+    expect(onReorder).toHaveBeenLastCalledWith({ todo: ['task-2', 'task-1', 'task-3'] })
+
+    act(() => {
+      result.current.handleDragEnd(
+        createDragEvent({
+          active: {
+            id: 'task-1',
+            data: { current: { sectionTaskIds: ['task-1', 'task-2', 'task-3'] } }
+          },
+          over: {
+            id: 'missing-task',
+            data: {
+              current: {
+                type: 'task',
+                sectionId: 'todo',
+                sectionTaskIds: ['task-1', 'task-2', 'task-3']
+              }
+            }
+          }
+        }),
+        createDragState({
+          activeIds: ['task-1'],
+          sourceContainerId: 'todo',
+          overSectionId: 'todo'
+        })
+      )
+    })
+
+    expect(onReorder).toHaveBeenLastCalledWith({ todo: ['task-1', 'task-2', 'task-3'] })
   })
 
   it('handles task-over-task priority drops by the explicit list column id', () => {
@@ -231,6 +425,81 @@ describe('useDragHandlers', () => {
     })
 
     expect(onUpdateTask).toHaveBeenCalledWith('task-1', { dueDate: null })
+  })
+
+  it('handles multi-task cross-section due-date drops and restores previous dates on undo', () => {
+    const project = createProject()
+    const tasks = [
+      createTask({ id: 'task-1', dueDate: null }),
+      createTask({ id: 'task-2', dueDate: new Date('2026-04-11T00:00:00.000Z') }),
+      createTask({ id: 'task-3', dueDate: new Date('2026-04-20T00:00:00.000Z') })
+    ]
+    const onUpdateTask = vi.fn()
+    const onReorder = vi.fn()
+
+    const { result } = renderHook(() =>
+      useDragHandlers({
+        tasks,
+        projects: [project],
+        onUpdateTask,
+        onDeleteTask: vi.fn(),
+        onReorder,
+        getOrder: vi.fn()
+      })
+    )
+
+    act(() => {
+      result.current.handleDragEnd(
+        createDragEvent({
+          active: {
+            id: 'task-1',
+            data: {
+              current: {
+                sectionTaskIds: ['task-1', 'task-2']
+              }
+            }
+          },
+          over: {
+            id: 'due-tomorrow',
+            data: {
+              current: {
+                type: 'column',
+                sectionId: 'tomorrow',
+                sectionTaskIds: ['task-3'],
+                columnId: 'due-tomorrow'
+              }
+            }
+          }
+        }),
+        createDragState({
+          activeIds: ['task-1', 'task-2'],
+          sourceContainerId: 'today',
+          overType: 'column',
+          overSectionId: 'tomorrow',
+          overColumnId: 'due-tomorrow',
+          sectionDropPosition: 'end'
+        })
+      )
+    })
+
+    expect(onUpdateTask).toHaveBeenCalledWith('task-1', { dueDate: expect.any(Date) })
+    expect(onUpdateTask).toHaveBeenCalledWith('task-2', { dueDate: expect.any(Date) })
+    expect(onReorder).toHaveBeenCalledWith({
+      today: [],
+      tomorrow: ['task-3', 'task-1', 'task-2']
+    })
+
+    onUpdateTask.mockClear()
+    onReorder.mockClear()
+    act(() => {
+      result.current.undo()
+    })
+
+    expect(onUpdateTask).toHaveBeenCalledWith('task-1', { dueDate: null })
+    expect(onUpdateTask).toHaveBeenCalledWith('task-2', {
+      dueDate: new Date('2026-04-11T00:00:00.000Z')
+    })
+    expect(onReorder).toHaveBeenCalledWith({ today: null, tomorrow: null })
   })
 
   it('updates the task due datetime when a calendar task is dropped onto a date cell', () => {
@@ -451,6 +720,197 @@ describe('useDragHandlers', () => {
     })
   })
 
+  it('clears and replaces the dropped-priority flash when another priority drop happens', () => {
+    vi.useFakeTimers()
+    const project = createProject()
+    const tasks = [createTask({ id: 'task-1', priority: 'low' })]
+    const onUpdateTask = vi.fn()
+
+    const { result } = renderHook(() =>
+      useDragHandlers({
+        tasks,
+        projects: [project],
+        onUpdateTask,
+        onDeleteTask: vi.fn(),
+        onReorder: vi.fn()
+      })
+    )
+
+    act(() => {
+      result.current.handleDragEnd(
+        createDragEvent({
+          over: {
+            id: 'priority-none',
+            data: { current: { type: 'column', columnId: 'priority-none' } }
+          }
+        }),
+        createDragState({ sourceContainerId: 'priority-low' })
+      )
+    })
+    expect(result.current.droppedPriorities.get('task-1')).toBe('none')
+
+    act(() => {
+      result.current.handleDragEnd(
+        createDragEvent({
+          over: {
+            id: 'priority-high',
+            data: { current: { type: 'column', columnId: 'priority-high' } }
+          }
+        }),
+        createDragState({ sourceContainerId: 'priority-none' })
+      )
+    })
+    expect(result.current.droppedPriorities.get('task-1')).toBe('high')
+
+    act(() => {
+      vi.advanceTimersByTime(2500)
+    })
+    expect(result.current.droppedPriorities.size).toBe(0)
+    vi.useRealTimers()
+    expect(onUpdateTask).toHaveBeenCalledWith('task-1', { priority: 'none' })
+    expect(onUpdateTask).toHaveBeenCalledWith('task-1', { priority: 'high' })
+  })
+
+  it('handles cross-section canonical and project-status drops, including completion toggles', () => {
+    const project = createProject()
+    const tasks = [
+      createTask({ id: 'task-1', statusId: 'p1-todo', completedAt: null }),
+      createTask({
+        id: 'task-2',
+        statusId: 'p1-done',
+        completedAt: new Date('2026-04-10T00:00:00.000Z')
+      })
+    ]
+    const onUpdateTask = vi.fn()
+
+    const { result } = renderHook(() =>
+      useDragHandlers({
+        tasks,
+        projects: [project],
+        onUpdateTask,
+        onDeleteTask: vi.fn(),
+        onReorder: vi.fn()
+      })
+    )
+
+    act(() => {
+      result.current.handleDragEnd(
+        createDragEvent({
+          active: {
+            id: 'task-1',
+            data: { current: { sectionTaskIds: ['task-1'] } }
+          },
+          over: {
+            id: 'done',
+            data: {
+              current: {
+                type: 'column',
+                sectionId: 'done',
+                columnId: 'done',
+                sectionTaskIds: []
+              }
+            }
+          }
+        }),
+        createDragState({
+          activeIds: ['task-1'],
+          sourceContainerId: 'todo',
+          overType: 'column',
+          overSectionId: 'done',
+          overColumnId: 'done'
+        })
+      )
+    })
+    expect(onUpdateTask).toHaveBeenCalledWith(
+      'task-1',
+      expect.objectContaining({ statusId: 'p1-done', completedAt: expect.any(Date) })
+    )
+
+    act(() => {
+      result.current.handleDragEnd(
+        createDragEvent({
+          active: {
+            id: 'task-2',
+            data: { current: { sectionTaskIds: ['task-2'] } }
+          },
+          over: {
+            id: 'p1-progress',
+            data: {
+              current: {
+                type: 'column',
+                sectionId: 'p1-progress',
+                columnId: 'p1-progress',
+                sectionTaskIds: []
+              }
+            }
+          }
+        }),
+        createDragState({
+          activeIds: ['task-2'],
+          sourceContainerId: 'p1-done',
+          overType: 'column',
+          overSectionId: 'p1-progress',
+          overColumnId: 'p1-progress'
+        })
+      )
+    })
+    expect(onUpdateTask).toHaveBeenCalledWith('task-2', {
+      statusId: 'p1-progress',
+      completedAt: null
+    })
+  })
+
+  it('reschedules cross-section task drops from the hovered task when no column mapping exists', () => {
+    const project = createProject()
+    const targetDueDate = new Date('2026-04-25T00:00:00.000Z')
+    const tasks = [
+      createTask({ id: 'task-1', dueDate: null }),
+      createTask({ id: 'task-2', dueDate: targetDueDate })
+    ]
+    const onUpdateTask = vi.fn()
+    const onReorder = vi.fn()
+
+    const { result } = renderHook(() =>
+      useDragHandlers({
+        tasks,
+        projects: [project],
+        onUpdateTask,
+        onDeleteTask: vi.fn(),
+        onReorder
+      })
+    )
+
+    act(() => {
+      result.current.handleDragEnd(
+        createDragEvent({
+          active: {
+            id: 'task-1',
+            data: { current: { sectionTaskIds: ['task-1'] } }
+          },
+          over: {
+            id: 'task-2',
+            data: {
+              current: {
+                type: 'task',
+                sectionId: 'later',
+                sectionTaskIds: ['task-2'],
+                task: tasks[1]
+              }
+            }
+          }
+        }),
+        createDragState({
+          sourceContainerId: 'today',
+          overSectionId: 'later',
+          overTaskEdge: 'after'
+        })
+      )
+    })
+
+    expect(onUpdateTask).toHaveBeenCalledWith('task-1', { dueDate: targetDueDate })
+    expect(onReorder).toHaveBeenCalledWith({ today: [], later: ['task-1', 'task-2'] })
+  })
+
   it('inserts at the top when dropping on a target section header', () => {
     const project = createProject()
     const tasks = [
@@ -661,6 +1121,273 @@ describe('useDragHandlers', () => {
     expect(onReorder).toHaveBeenCalledWith({
       medium: ['task-1'],
       high: ['task-2', 'task-3']
+    })
+  })
+
+  it('handles section, weekday, trash, and archive drops with undo for archived tasks', () => {
+    const project = createProject()
+    const tasks = [
+      createTask({ id: 'task-1', dueDate: new Date('2026-04-14T00:00:00.000Z') }),
+      createTask({ id: 'task-2', dueDate: null })
+    ]
+    const onUpdateTask = vi.fn()
+    const onDeleteTask = vi.fn()
+
+    const { result } = renderHook(() =>
+      useDragHandlers({
+        tasks,
+        projects: [project],
+        onUpdateTask,
+        onDeleteTask,
+        onReorder: vi.fn()
+      })
+    )
+
+    act(() => {
+      result.current.handleDragEnd(
+        createDragEvent({
+          over: {
+            id: 'section-no-date',
+            data: { current: { type: 'section', date: null, label: 'No date' } }
+          }
+        }),
+        createDragState({ overType: 'section' })
+      )
+    })
+    expect(onUpdateTask).toHaveBeenCalledWith('task-1', { dueDate: null })
+
+    act(() => {
+      result.current.handleDragEnd(
+        createDragEvent({
+          over: {
+            id: 'weekday-tomorrow',
+            data: {
+              current: {
+                type: 'weekday',
+                date: new Date('2026-04-20T00:00:00.000Z'),
+                label: 'Tomorrow'
+              }
+            }
+          }
+        }),
+        createDragState({ activeIds: ['task-2'], overType: 'date' })
+      )
+    })
+    expect(onUpdateTask).toHaveBeenCalledWith('task-2', {
+      dueDate: new Date('2026-04-20T00:00:00.000Z')
+    })
+
+    act(() => {
+      result.current.handleDragEnd(
+        createDragEvent({
+          over: { id: 'trash', data: { current: { type: 'trash' } } }
+        }),
+        createDragState({ activeIds: ['task-2'], overType: 'trash' })
+      )
+    })
+    expect(onDeleteTask).toHaveBeenCalledWith('task-2')
+
+    act(() => {
+      result.current.handleDragEnd(
+        createDragEvent({
+          over: { id: 'archive', data: { current: { type: 'archive' } } }
+        }),
+        createDragState({ activeIds: ['task-2'], overType: 'archive' })
+      )
+    })
+    expect(onUpdateTask).toHaveBeenCalledWith('task-2', { archivedAt: expect.any(Date) })
+    expect(result.current.canUndo).toBe(true)
+
+    onUpdateTask.mockClear()
+    act(() => {
+      result.current.undo()
+    })
+    expect(onUpdateTask).toHaveBeenCalledWith('task-2', { archivedAt: null })
+  })
+
+  it('undoes project moves, status changes, priority changes, and reschedules', () => {
+    const projectOne = createProject()
+    const projectTwo = createProject({
+      id: 'project-2',
+      name: 'Project 2',
+      statuses: [
+        createStatus({ id: 'p2-todo', type: 'todo', name: 'To Do', order: 0 }),
+        createStatus({ id: 'p2-done', type: 'done', name: 'Done', order: 1 })
+      ]
+    })
+    const tasks = [
+      createTask({ id: 'task-1', projectId: 'project-1', statusId: 'p1-todo' }),
+      createTask({
+        id: 'task-2',
+        projectId: 'project-1',
+        statusId: 'p1-progress',
+        priority: 'low',
+        dueDate: new Date('2026-04-14T00:00:00.000Z')
+      })
+    ]
+    const onUpdateTask = vi.fn()
+
+    const { result } = renderHook(() =>
+      useDragHandlers({
+        tasks,
+        projects: [projectOne, projectTwo],
+        onUpdateTask,
+        onDeleteTask: vi.fn(),
+        onReorder: vi.fn()
+      })
+    )
+
+    act(() => {
+      result.current.handleDragEnd(
+        createDragEvent({
+          over: {
+            id: 'project-2',
+            data: { current: { type: 'project', projectId: 'project-2' } }
+          }
+        }),
+        createDragState({ activeIds: ['task-1'], overType: 'project' })
+      )
+    })
+    expect(onUpdateTask).toHaveBeenCalledWith('task-1', {
+      projectId: 'project-2',
+      statusId: 'p2-todo'
+    })
+
+    onUpdateTask.mockClear()
+    act(() => {
+      result.current.undo()
+    })
+    expect(onUpdateTask).toHaveBeenCalledWith('task-1', {
+      projectId: 'project-1',
+      statusId: 'p1-todo'
+    })
+
+    act(() => {
+      result.current.handleDragEnd(
+        createDragEvent({
+          over: { id: 'done', data: { current: { type: 'column', columnId: 'done' } } }
+        }),
+        createDragState({ activeIds: ['task-2'], sourceContainerId: 'todo', overType: 'column' })
+      )
+    })
+    expect(onUpdateTask).toHaveBeenCalledWith(
+      'task-2',
+      expect.objectContaining({ statusId: 'p1-done', completedAt: expect.any(Date) })
+    )
+
+    onUpdateTask.mockClear()
+    act(() => {
+      result.current.undo()
+    })
+    expect(onUpdateTask).toHaveBeenCalledWith('task-2', { statusId: 'p1-progress' })
+
+    act(() => {
+      result.current.handleDragEnd(
+        createDragEvent({
+          over: {
+            id: 'priority-urgent',
+            data: { current: { type: 'column', columnId: 'priority-urgent' } }
+          }
+        }),
+        createDragState({ activeIds: ['task-2'], sourceContainerId: 'priority-low' })
+      )
+    })
+    expect(onUpdateTask).toHaveBeenCalledWith('task-2', { priority: 'urgent' })
+
+    onUpdateTask.mockClear()
+    act(() => {
+      result.current.undo()
+    })
+    expect(onUpdateTask).toHaveBeenCalledWith('task-2', { priority: 'low' })
+
+    act(() => {
+      result.current.handleDragEnd(
+        createDragEvent({
+          over: {
+            id: 'due-today',
+            data: {
+              current: {
+                type: 'column',
+                columnId: 'due-today',
+                label: 'Today'
+              }
+            }
+          }
+        }),
+        createDragState({ activeIds: ['task-2'], sourceContainerId: 'due-overdue' })
+      )
+    })
+    expect(onUpdateTask).toHaveBeenCalledWith('task-2', { dueDate: expect.any(Date) })
+
+    onUpdateTask.mockClear()
+    act(() => {
+      result.current.undo()
+    })
+    expect(onUpdateTask).toHaveBeenCalledWith('task-2', {
+      dueDate: new Date('2026-04-14T00:00:00.000Z')
+    })
+  })
+
+  it('handles direct project-status column drops and undo status restoration', () => {
+    const project = createProject()
+    const tasks = [
+      createTask({ id: 'task-1', statusId: 'p1-todo', completedAt: null }),
+      createTask({
+        id: 'task-2',
+        statusId: 'p1-done',
+        completedAt: new Date('2026-04-10T00:00:00.000Z')
+      })
+    ]
+    const onUpdateTask = vi.fn()
+
+    const { result } = renderHook(() =>
+      useDragHandlers({
+        tasks,
+        projects: [project],
+        onUpdateTask,
+        onDeleteTask: vi.fn(),
+        onReorder: vi.fn()
+      })
+    )
+
+    act(() => {
+      result.current.handleDragEnd(
+        createDragEvent({
+          over: {
+            id: 'p1-done',
+            data: { current: { type: 'column', columnId: 'p1-done' } }
+          }
+        }),
+        createDragState({ activeIds: ['task-1'], sourceContainerId: 'p1-todo' })
+      )
+    })
+
+    expect(onUpdateTask).toHaveBeenCalledWith(
+      'task-1',
+      expect.objectContaining({ statusId: 'p1-done', completedAt: expect.any(Date) })
+    )
+
+    onUpdateTask.mockClear()
+    act(() => {
+      result.current.undo()
+    })
+    expect(onUpdateTask).toHaveBeenCalledWith('task-1', { statusId: 'p1-todo' })
+
+    act(() => {
+      result.current.handleDragEnd(
+        createDragEvent({
+          over: {
+            id: 'p1-progress',
+            data: { current: { type: 'column', columnId: 'p1-progress' } }
+          }
+        }),
+        createDragState({ activeIds: ['task-2'], sourceContainerId: 'p1-done' })
+      )
+    })
+
+    expect(onUpdateTask).toHaveBeenCalledWith('task-2', {
+      statusId: 'p1-progress',
+      completedAt: null
     })
   })
 

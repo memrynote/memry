@@ -1,0 +1,663 @@
+{
+  "page": {
+    "empty": {
+      "title": "Nincs kiválasztva jegyzet",
+      "body": "A megtekintéséhez válasszon egy jegyzetet az oldalsávon"
+    },
+    "error": {
+      "title": "Nem sikerült betölteni a jegyzetet"
+    },
+    "toast": {
+      "cannotSaveDeleted": "Nem menthető – a jegyzet törölve",
+      "cannotRenameDeleted": "Nem lehet átnevezni – a jegyzet törölve",
+      "createLinkedFailed": "Nem sikerült létrehozni a kapcsolódó jegyzetet",
+      "openLinkedFailed": "Nem sikerült megnyitni a hivatkozott elemet",
+      "localOnly": "Megjegyzés csak helyire van állítva",
+      "willSync": "A jegyzet szinkronizálódik a felhőbe",
+      "saveFailed": "Nem sikerült menteni a jegyzetet",
+      "renameFailed": "A jegyzet átnevezése nem sikerült",
+      "toggleLocalOnlyFailed": "Nem sikerült a csak helyi váltás váltása",
+      "toggleFullWidthFailed": "Nem sikerült váltani a teljes szélességben"
+    },
+    "deleteDialogTitle": "{count, plural, one {Jegyzet törlése} other {Törölje az # megjegyzéseket}}"
+  },
+  "tree": {
+    "aria": {
+      "tree": "Jegyzetek fa",
+      "openFolderView": "Mappanézet megnyitása"
+    },
+    "empty": {
+      "title": "Még nincsenek jegyzetek",
+      "body": "A kezdéshez hozzon létre egy jegyzetet",
+      "newNote": "Új megjegyzés"
+    },
+    "loadingError": "Nem sikerült betölteni a jegyzeteket",
+    "actions": {
+      "newNote": "Új megjegyzés",
+      "newFolder": "Új mappa",
+      "rename": "Átnevezés",
+      "openExternal": "Megnyitás a Külső szerkesztőben",
+      "revealInFinder": "Fedezd fel a Finderben",
+      "setDefaultTemplate": "Állítsa be az alapértelmezett sablont",
+      "clearDefaultTemplate": "Alapértelmezett sablon törlése",
+      "setIcon": "Állítsa be az ikont",
+      "removeIcon": "Ikon eltávolítása",
+      "deleteSelectedNotes": "Törölje az {count} megjegyzéseket",
+      "deleteSelectedItems": "Törölje az {count} elemeket"
+    },
+    "deleteDialog": {
+      "noteTitle": "Jegyzet törlése",
+      "folderTitle": "Mappa törlése",
+      "itemsTitle": "Törölje az {count} elemeket",
+      "noteBody": "Biztosan törölni kívánja az \"{name}\" fájlt? Ez a művelet nem vonható vissza.",
+      "folderBody": "Biztosan törli az \"{name}\" fájlt és a benne lévő összes jegyzetet? Ez a művelet nem vonható vissza.",
+      "itemsBody": "Biztosan törölni szeretné az {count} elemeket? Ez a művelet nem vonható vissza.",
+      "folderSuffix": "mappát",
+      "moreItems": "...és még {count}",
+      "deleting": "Törlés...",
+      "deleteCount": "{count} törlése"
+    }
+  },
+  "editor": {
+    "title": {
+      "untitled": "Cím nélkül",
+      "aria": "Megjegyzés címe"
+    },
+    "content": {
+      "placeholder": "Kezdjen el írni, vagy nyomja meg a '/' gombot a parancsokhoz...",
+      "regionAria": "Jegyzetszerkesztő",
+      "richTextAria": "Gazdag szövegszerkesztő",
+      "headingPlaceholder": "Címsor",
+      "listPlaceholder": "Listaelem",
+      "todoPlaceholder": "Teendő elem"
+    },
+    "toolbar": {
+      "reminderSet": "Emlékeztető beállítva",
+      "setReminder": "Emlékeztető beállítása",
+      "removeBookmark": "Könyvjelző eltávolítása",
+      "addBookmark": "Könyvjelző hozzáadása",
+      "hideLocalGraph": "Helyi grafikon elrejtése",
+      "showLocalGraph": "Helyi grafikon megjelenítése",
+      "versionHistory": "Verzióelőzmények",
+      "export": "Exportálás",
+      "fullWidth": "Teljes szélességben",
+      "disableLocalOnly": "Csak helyi letiltása",
+      "setLocalOnly": "Csak helyi beállítás"
+    },
+    "breadcrumb": {
+      "locationAria": "Jegyezze fel a helyet",
+      "parentFolderAria": "Lépjen a szülő mappába"
+    },
+    "errorBoundary": {
+      "title": "Szerkesztői hiba",
+      "body": "A szerkesztő hibát észlelt. A jegyzet tartalma biztonságban van.",
+      "technicalDetails": "Műszaki részletek",
+      "reloadAria": "Szerkesztő újratöltése",
+      "reload": "Szerkesztő újratöltése"
+    },
+    "callout": {
+      "title": "Felirat",
+      "group": "Alap blokkok",
+      "subtext": "Emelje ki a fontos információkat",
+      "changeType": "A kiemelés típusának módosítása",
+      "menuLabel": "Felirat típusa",
+      "info": "Info",
+      "warning": "Figyelmeztetés",
+      "error": "Hiba",
+      "success": "Siker"
+    }
+  },
+  "menus": {
+    "wiki": {
+      "aria": "Jegyezze fel a javaslatokat",
+      "loading": "Jegyzetek betöltése...",
+      "empty": "Nem található jegyzet",
+      "create": "Új jegyzet létrehozása"
+    },
+    "tags": {
+      "aria": "Címkejavaslatok",
+      "loading": "Címkék betöltése...",
+      "empty": "Új címke létrehozásához írja be",
+      "create": "Hozzon létre #{tag}"
+    },
+    "pasteLink": {
+      "title": "Beillesztés másként",
+      "url": "URL",
+      "mention": "Említés",
+      "embedVideo": "Videó beágyazása"
+    },
+    "emoji": {
+      "aria": "Emoji és ikonválasztó",
+      "emojiTab": "Emoji",
+      "iconsTab": "Ikonok",
+      "searchPlaceholder": "Keresés",
+      "noIcons": "Nem található ikon",
+      "clearSearch": "Keresés törlése"
+    }
+  },
+  "detail": {
+    "bodyPlaceholder": "Írd meg a jegyzetedet..."
+  },
+  "outline": {
+    "title": "Vázlat",
+    "aria": "Dokumentum vázlat",
+    "empty": "Nincsenek címsorok",
+    "emptyYet": "Még nincsenek címsorok",
+    "readTime": "{count} perc leolvasás",
+    "words": "{count} szó",
+    "created": "Létrehozva",
+    "modified": "Módosítva"
+  },
+  "backlinks": {
+    "title": "Visszamutató linkek",
+    "sortRecent": "Legutóbbi",
+    "sortAlpha": "A-Z",
+    "sortMentions": "A legtöbb említés",
+    "sortBy": "A visszamutató linkek rendezése {sort} szerint",
+    "summary": "{notes} jegyzetek · {references} hivatkozások",
+    "sectionAria": "Visszamutató linkek",
+    "listAria": "Visszamutató linkek listája",
+    "fromAria": "Visszamutató linkek az {title}-ről",
+    "collapse": "Összeomlás",
+    "expand": "Bontsa ki",
+    "collapseSection": "A visszamutató linkek szakasz összecsukása",
+    "expandSection": "A visszamutató linkek szakasz kibontása",
+    "showMore": "Mutasson {count} további backlinkeket",
+    "more": "{count} több"
+  },
+  "tagsRow": {
+    "aria": "Címkék",
+    "empty": "Címkék hozzáadása",
+    "add": "Címke hozzáadása",
+    "removeAria": "Címke eltávolítása: {tag}",
+    "inputPlaceholder": "Írja be a címke nevét...",
+    "recent": "Legutóbbi",
+    "matching": "Illesztés",
+    "all": "Minden címke",
+    "none": "Nem találhatók címkék",
+    "createTag": "Címke létrehozása: \"{tag}\"",
+    "chooseColor": "Válassz színt:",
+    "preview": "Előnézet:",
+    "colorAria": "Válassza ki az {color} színt"
+  },
+  "properties": {
+    "title": "Tulajdonságok",
+    "noteAria": "Megjegyzés tulajdonságok",
+    "workspaceAria": "Munkaterület tulajdonságai",
+    "listAria": "Tulajdonságok listája",
+    "add": "Tulajdon hozzáadása",
+    "addDescription": "Adjon hozzá egy új tulajdonságot ehhez a megjegyzéshez",
+    "namePlaceholder": "Az ingatlan neve",
+    "nameAria": "Az ingatlan neve",
+    "typeSection": "Írja be",
+    "empty": "Üres",
+    "dragAria": "Húzza a tulajdonság átrendezéséhez",
+    "editName": "Szerkessze a tulajdonság nevét",
+    "delete": "Tulajdonság törlése",
+    "searchOptions": "Keresési lehetőségek...",
+    "noOptions": "Még nincs lehetőség",
+    "optionName": "Opció neve",
+    "newOption": "Új lehetőség",
+    "ratingAria": "Értékelés",
+    "openUrlAria": "Nyissa meg az URL-t",
+    "types": {
+      "text": "Szöveg",
+      "number": "Szám",
+      "date": "Dátum",
+      "checkbox": "Jelölőnégyzet",
+      "url": "URL",
+      "status": "Állapot",
+      "select": "Válassza ki",
+      "multiselect": "Többszörös kijelölés"
+    }
+  },
+  "templateSelector": {
+    "title": "Válassza ki a vásznat",
+    "description": "A jegyzet megkezdéséhez válasszon sablont",
+    "searchPlaceholder": "Keresési sablonok...",
+    "loading": "Sablonok betöltése...",
+    "empty": "Nem található sablon",
+    "myTemplates": "Saját sablonok",
+    "essentials": "Essentials",
+    "setFolderDefault": "Beállítás alapértelmezett mappaként",
+    "useTemplate": "Sablon használata",
+    "createNote": "Jegyzet létrehozása"
+  },
+  "exportDialog": {
+    "title": "Exportálási megjegyzés",
+    "description": "Exportálja az „{title}” fájlt egy fájlba",
+    "format": "Formátum",
+    "pdfDescription": "Nyomtatásra kész dokumentum",
+    "htmlDescription": "Web-kész fájl",
+    "pageSize": "Oldalméret",
+    "selectPageSize": "Válassza ki az oldal méretét",
+    "options": "Opciók",
+    "includeMetadata": "Metaadatok (címkék, dátumok) szerepeltetése",
+    "exporting": "Exportálás...",
+    "exported": "Exportált!",
+    "export": "Exportálás",
+    "toast": {
+      "failed": "Nem sikerült exportálni"
+    }
+  },
+  "versionHistory": {
+    "title": "Verziótörténet",
+    "description": "Az \"{title}\" korábbi verzióinak megtekintése és visszaállítása",
+    "hidePreview": "Előnézet elrejtése",
+    "showPreview": "Előnézet megjelenítése",
+    "empty": "Még nincs mentett verzió",
+    "emptyDescription": "A verziók automatikusan mentésre kerülnek, ha jelentős változtatásokat hajt végre",
+    "latest": "Legújabb",
+    "autoSaved": "Automatikusan mentve",
+    "words": "{count} szó",
+    "selectPrompt": "Válasszon egy verziót az előnézethez",
+    "restore": "Visszaállítás",
+    "deleteTitle": "Törli ezt a verziót?",
+    "deleteDescription": "Ez a művelet nem vonható vissza. Ez a verzió véglegesen törlődik.",
+    "restoreTitle": "Visszaállítja ezt a verziót?",
+    "restoreDescription": "Ez lecseréli a jelenlegi jegyzet tartalmát erre a verzióra. Először az aktuális állapot pillanatképe kerül mentésre, így visszavonhatja ezt a műveletet.",
+    "restoring": "Visszaállítás...",
+    "toast": {
+      "loadPreviewFailed": "Nem sikerült betölteni a verzió előnézetét",
+      "restored": "Megjegyzés visszaállítva az előző verzióra",
+      "deleted": "Verzió törölve"
+    }
+  },
+  "templateEditor": {
+    "title": {
+      "new": "Új sablon",
+      "view": "Sablon megtekintése",
+      "edit": "Sablon szerkesztése"
+    },
+    "toast": {
+      "nameRequired": "A sablonnév megadása kötelező",
+      "created": "Sablon létrehozva",
+      "createFailed": "Nem sikerült létrehozni a sablont",
+      "saved": "Sablon mentve",
+      "saveFailed": "Nem sikerült menteni a sablont",
+      "duplicateFailed": "Nem sikerült a sablon másolása",
+      "deleteFailed": "Nem sikerült törölni a sablont"
+    }
+  },
+  "reminders": {
+    "summary": "Emlékeztető: {date}",
+    "summaryWithMore": "Emlékeztető: {date} (+{count} több)",
+    "hasReminders": "Emlékeztetők vannak",
+    "setReminder": "Emlékeztető beállítása",
+    "toast": {
+      "set": "Emlékeztető beállítva",
+      "setForHighlight": "Emlékeztető beállítva a kiemelt szöveghez",
+      "setFailed": "Nem sikerült beállítani az emlékeztetőt",
+      "deleted": "Emlékeztető törölve",
+      "deleteFailed": "Nem sikerült törölni az emlékeztetőt",
+      "dismissed": "Emlékeztető elvetve",
+      "dismissFailed": "Nem sikerült elvetni az emlékeztetőt"
+    }
+  },
+  "linkedTasks": {
+    "title": "Kapcsolt feladatok",
+    "loading": "Kapcsolt feladatok betöltése..."
+  },
+  "phaseF": {
+    "componentsFolderViewColumnHeader": {
+      "dragToReorderColumn": "Húzza az oszlop átrendezéséhez"
+    },
+    "componentsFolderViewColumnSelector": {
+      "properties": "Tulajdonságok",
+      "searchColumns": "Oszlopok keresése...",
+      "noMatchingColumns": "Nincsenek megfelelő oszlopok",
+      "formulas": "KÉPLETEK",
+      "noFormulasDefined": "Nincsenek meghatározott képletek",
+      "addFormula": "Képlet hozzáadása",
+      "deleteFormula": "Képlet törlése",
+      "areYouSureYouWantToDeleteTheFormula": "Biztosan törli a képletet \"",
+      "quotThisActionCannotBeUndone": "quot;? Ez a művelet nem vonható vissza.",
+      "cancel": "Mégsem",
+      "delete": "Törölje",
+      "none": "Egyik sem",
+      "edit": "Szerkesztés",
+      "delete2": "Törölje"
+    },
+    "componentsFolderViewFilterBuilder": {
+      "filter": "Szűrés",
+      "filters": "Szűrők",
+      "clearAll": "Minden törlése",
+      "noFiltersApplied": "Nincsenek szűrők",
+      "addFiltersToNarrowDownYourNotes": "Adjon hozzá szűrőket a jegyzetek szűkítéséhez",
+      "match": "Match",
+      "allAnd": "Mind (ÉS)",
+      "anyOr": "Bármilyen (VAGY)",
+      "ofTheFollowing": "az alábbiak közül:",
+      "match2": "Match",
+      "all": "Mind",
+      "any": "Bármelyik",
+      "of": "/:",
+      "addCondition": "Feltétel hozzáadása",
+      "addFilter": "Szűrő hozzáadása",
+      "addGroup": "Csoport hozzáadása lehetőségre"
+    },
+    "componentsFolderViewFilterRow": {
+      "builtIn": "Beépített",
+      "properties": "Tulajdonságok",
+      "placeholderProperty": "Tulajdon",
+      "placeholderOperator": "Üzemeltető",
+      "placeholderValue": "Érték"
+    },
+    "componentsFolderViewFolderTableView": {
+      "notesTable": "Jegyzettáblázat"
+    },
+    "componentsFolderViewFolderViewToolbar": {
+      "searchNotes": "Jegyzetek keresése...",
+      "clearSearch": "Keresés törlése"
+    },
+    "componentsFolderViewFormulaEditorModal": {
+      "defineAComputedColumnUsingAnExpression": "Határozzon meg egy számított oszlopot egy kifejezés segítségével.",
+      "name": "Név",
+      "expression": "Kifejezés",
+      "available": "Elérhető: ",
+      "preview": "Előnézet",
+      "fixExpressionErrorsToSeePreview": "Az előnézet megtekintéséhez javítsa ki a kifejezési hibákat",
+      "usingNote": "Megjegyzés használatával: \"",
+      "quot": "quot;",
+      "cancel": "Mégsem",
+      "namePlaceholder": "napok_esedékességig",
+      "expressionPlaceholder": "dateDiff(esedékes_dátum, mai(), \"napok\")"
+    },
+    "componentsFolderViewGroupBySelector": {
+      "clearGrouping": "Tiszta csoportosítás",
+      "searchProperties": "Tulajdonságok keresése...",
+      "builtIn": "Beépített",
+      "properties": "Tulajdonságok",
+      "noGroupablePropertiesFound": "Nem található csoportosítható tulajdonság",
+      "sortDirection": "Rendezési irány",
+      "collapseGroupsByDefault": "Alapértelmezés szerint csoportok összecsukása",
+      "showGroupSummaries": "Csoportösszefoglalók megjelenítése",
+      "clearGrouping2": "Tiszta csoportosítás"
+    },
+    "componentsFolderViewGroupedTable": {
+      "groupedNotesTable": "Csoportos jegyzettáblázat",
+      "more": "több"
+    },
+    "componentsFolderViewMoveToFolderDialog": {
+      "searchFolders": "Mappák keresése...",
+      "loadingFolders": "Mappák betöltése...",
+      "suggested": "JAVASOLT",
+      "bestMatch": "Legjobb meccs",
+      "current": "jelenlegi)",
+      "allFolders": "MINDEN MAPPA",
+      "current2": "jelenlegi)",
+      "noFoldersMatch": "Egyik mappa sem egyezik",
+      "quot": "quot;",
+      "create": "Létrehoz",
+      "quot2": "quot;",
+      "cancel": "Mégsem"
+    },
+    "componentsFolderViewRowContextMenu": {
+      "delete": "Törölje ",
+      "notes": "Megjegyzések",
+      "open": "Nyissa meg",
+      "openInExternalEditor": "Megnyitás a Külső szerkesztőben",
+      "revealInFinder": "Fedezd fel a Finderben",
+      "revealInSidebar": "Felfedés az oldalsávban",
+      "copyLink": "Link másolása",
+      "delete2": "Törölje"
+    },
+    "componentsFolderViewSortableColumnHeader": {
+      "dragToReorderColumn": "Húzza az oszlop átrendezéséhez",
+      "resizeColumn": "Oszlop átméretezése"
+    },
+    "componentsFolderViewViewSwitcher": {
+      "default": "alapértelmezett",
+      "rename": "Átnevezés",
+      "duplicate": "Megkettőzés",
+      "setAsDefault": "Beállítás alapértelmezettként",
+      "delete": "Törölje",
+      "createNewView": "Új nézet létrehozása",
+      "createNewView2": "Új nézet létrehozása",
+      "createANewViewWithCustomColumnsFiltersAndSorting": "Hozzon létre egy új nézetet egyéni oszlopokkal, szűrőkkel és rendezéssel.",
+      "viewName": "Nézet Név",
+      "myCustomView": "Saját nézet",
+      "baseConfiguration": "Alapkonfiguráció",
+      "copyFromCurrentView": "Másolás az aktuális nézetből",
+      "startFreshDefaultColumns": "Kezdje újra (alapértelmezett oszlopok)",
+      "cancel": "Mégsem",
+      "renameView": "Nézet átnevezése",
+      "enterANewNameForThisView": "Adjon meg egy új nevet ennek a nézetnek.",
+      "viewName2": "Nézet Név",
+      "viewName3": "Név megtekintése",
+      "cancel2": "Mégsem",
+      "deleteView": "Nézet törlése",
+      "areYouSureYouWantToDelete": "Biztosan törölni szeretnéd",
+      "thisActionCannotBeUndone": "Ez a művelet nem vonható vissza.",
+      "cancel3": "Mégsem"
+    },
+    "componentsNoteContentAreaFileBlock": {
+      "failedToLoadPdf": "Nem sikerült betölteni a PDF-et: ",
+      "download": "Letöltés",
+      "download2": "Letöltés",
+      "noFileAttached": "Nincs fájl csatolva"
+    },
+    "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
+      "openInTaskPanel": "Megnyitás a feladatpanelen",
+      "taskName": "Feladat neve...",
+      "taskDeleted": "Feladat törölve",
+      "loading": "Betöltés..."
+    },
+    "componentsNoteContentAreaTaskBlockTaskCreationPopover": {
+      "project": "Projekt",
+      "priority": "Prioritás",
+      "dueDate": "Esedékesség",
+      "cancel": "Mégsem"
+    },
+    "componentsNoteContentAreaYoutubeEmbedBlock": {
+      "noVideoUrl": "Nincs videó URL-je"
+    },
+    "componentsNoteExportDialog": {
+      "pdf": "PDF",
+      "html": "HTML",
+      "a4210X297Mm": "A4 (210 x 297 mm)",
+      "letter85X11In": "Letter (8,5 x 11 hüvelyk)",
+      "legal85X14In": "Legal (8,5 x 14 hüvelyk)"
+    },
+    "componentsNoteInfoSectionEditorsDateeditor": {
+      "ddMmYyyy": "nn.hh.yyyy"
+    },
+    "componentsNoteNoteHeader": {
+      "synced": "Szinkronizálva"
+    },
+    "componentsSharedDocumentInfoTab": {
+      "words": "Szavak",
+      "characters": "Karakterek",
+      "readingTime": "Olvasási idő",
+      "created": "Létrehozva",
+      "modified": "Módosítva"
+    },
+    "componentsSidebarProjectsEmptyState": {
+      "noProjectsYet": "Még nincsenek projektek",
+      "createYourFirstProject": "Hozd létre az első projektedet",
+      "createYourFirstProject2": "Hozd létre az első projektedet"
+    },
+    "componentsSidebarSidebarBookmarkList": {
+      "loadingBookmarks": "Könyvjelzők betöltése...",
+      "failedToLoadBookmarks": "Nem sikerült betölteni a könyvjelzőket",
+      "noBookmarksYet": "Még nincsenek könyvjelzők",
+      "moreOptions": "További lehetőségek",
+      "remove": "Távolítsa el"
+    },
+    "componentsSidebarSidebarItemContextMenu": {
+      "open": "Nyissa meg",
+      "openToTheSide": "Oldalra nyitott",
+      "pinToTabs": "Rögzítés a lapokhoz",
+      "edit": "Szerkesztés",
+      "delete": "Törölje",
+      "copyLink": "Link másolása"
+    },
+    "componentsSidebarSidebarTagList": {
+      "loadingTags": "Címkék betöltése...",
+      "failedToLoadTags": "Nem sikerült betölteni a címkéket",
+      "noTagsYet": "Még nincsenek címkék",
+      "filterTags": "Címkék szűrése...",
+      "noMatchingTags": "Nincsenek megfelelő címkék"
+    },
+    "componentsSidebarSortableProjectItem": {
+      "dropHere": "Dobj ide",
+      "editProject": "Projekt szerkesztése"
+    },
+    "componentsSidebarTagDeleteDialog": {
+      "deleteTag": "# címke törlése",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "Az ezzel a címkével ellátott jegyzetek nem törlődnek, csak eltávolítják a címkéket.",
+      "cancel": "Mégsem"
+    },
+    "componentsSidebarTagDetailView": {
+      "goBack": "Menj vissza",
+      "notes": "jegyzetek",
+      "loadingNotes": "Jegyzetek betöltése...",
+      "noNotesWithThisTag": "Nincsenek jegyzetek ezzel a címkével",
+      "addThisTagToANoteToSeeItHere": "Adja hozzá ezt a címkét egy jegyzethez, hogy itt megtekinthesse",
+      "pinned": "TŰZVE",
+      "allNotes": "MINDEN MEGJEGYZÉS",
+      "allNotesArePinned": "Minden jegyzet rögzítve van",
+      "unpinFromTag": "Oldja fel a címkét",
+      "unpin": "Oldja fel",
+      "pinToTag": "Rögzítés a címkéhez",
+      "pin": "Pin",
+      "tagActions": "Címkeműveletek",
+      "editTagName": "Címke nevének szerkesztése",
+      "changeColor": "Szín módosítása",
+      "deleteTag": "Címke törlése",
+      "recent": "Legutóbbi",
+      "created": "Létrehozva",
+      "alphabetical": "ABC sorrendben"
+    },
+    "componentsSidebarTagRenameDialog": {
+      "renameTag": "Címke átnevezése",
+      "rename": "Átnevezés ",
+      "acrossEveryNoteThatUsesIt": "minden hangjegyen, amely ezt használja.",
+      "newName": "Új név",
+      "cancel": "Mégsem"
+    },
+    "componentsViewersAudioPlayer": {
+      "failedToLoadAudio": "Nem sikerült betölteni a hangot",
+      "theAudioFileCouldNotBePlayed": "Az audiofájlt nem lehetett lejátszani.",
+      "skipBack10s": "Ugrás vissza 10 mp-et",
+      "skipForward10s": "Ugrás előre 10 másodperccel"
+    },
+    "componentsViewersImageViewer": {
+      "failedToLoadImage": "Nem sikerült betölteni a képet",
+      "theImageCouldNotBeDisplayed": "A kép nem jeleníthető meg.",
+      "resetZoom": "Zoom visszaállítása",
+      "rotate": "Forgatás",
+      "dragToPan": "Húzza a pásztázáshoz"
+    },
+    "componentsViewersPdfViewer": {
+      "failedToLoadPdf": "Nem sikerült betölteni a PDF-et",
+      "previousPage": "Előző oldal",
+      "nextPage": "Következő oldal",
+      "zoomOut": "Kicsinyítés",
+      "zoomIn": "Nagyítás",
+      "fitToWidth": "A szélességhez illeszkedik",
+      "rotate": "Forgatás"
+    },
+    "componentsViewersVideoPlayer": {
+      "failedToLoadVideo": "Nem sikerült betölteni a videót",
+      "theVideoFileCouldNotBePlayed": "A videofájlt nem lehetett lejátszani."
+    },
+    "pagesFile": {
+      "failedToLoadFile": "Nem sikerült betölteni a fájlt",
+      "tryAgain": "Próbáld újra",
+      "noFileSelected": "Nincs kiválasztva fájl",
+      "selectAFileFromTheSidebarToViewIt": "A megtekintéséhez válasszon egy fájlt az oldalsávról",
+      "loadingFile": "Fájl betöltése...",
+      "openInDefaultApp": "Megnyitás az alapértelmezett alkalmazásban",
+      "open": "Nyissa meg",
+      "revealInFinder": "Fedezd fel a Finderben",
+      "reveal": "Felfedni",
+      "unsupportedFileType": "Nem támogatott fájltípus"
+    },
+    "pagesFolderView": {
+      "createNewNote": "Új jegyzet létrehozása",
+      "viewSettings": "Beállítások megtekintése",
+      "displayDensity": "Megjelenítési sűrűség",
+      "comfortable": "Kényelmes",
+      "compact": "Kompakt",
+      "showSummaries": "Összefoglalók megjelenítése",
+      "cancel": "Mégsem"
+    },
+    "pagesTemplateEditor": {
+      "loadingTemplate": "Sablon betöltése...",
+      "builtInTemplatesCannotBeModified": "A beépített sablonok nem módosíthatók",
+      "description": "Leírás",
+      "briefDescriptionOfThisTemplate": "A sablon rövid leírása...",
+      "templateContent": "Sablon tartalma",
+      "use": "Használja ",
+      "toInsertTheNoteTitleWhenCreatingANote": "a jegyzet címének beszúrásához jegyzet létrehozásakor.",
+      "templateName": "Sablon neve",
+      "defaultContentForNotesCreatedFromThisTemplate": "Az ebből a sablonból létrehozott jegyzetek alapértelmezett tartalma..."
+    },
+    "pagesTemplates": {
+      "loadingCollection": "Gyűjtemény betöltése...",
+      "templateCollection": "Sablon gyűjtemény",
+      "templates": "Sablonok",
+      "curatedStructuresForYourNotes": "Válogatott szerkezetek a jegyzeteihez.",
+      "newTemplate": "Új sablon",
+      "myTemplates": "Saját sablonok",
+      "builtIn": "Beépített",
+      "deleteTemplate": "Sablon törlése",
+      "areYouSureYouWantToDelete": "Biztosan törölni szeretnéd",
+      "notesCreatedFromThisTemplateWillNotBeAffected": "Az ebből a sablonból létrehozott jegyzeteket ez nem érinti.",
+      "cancel": "Mégsem",
+      "builtIn2": "Beépített",
+      "duplicate": "Megkettőzés",
+      "delete": "Törölje",
+      "startYourCollection": "Indítsa el a gyűjteményt",
+      "templatesHelpYouCreateNotesWithConsistentStructure": "A sablonok segítségével egységes szerkezetű jegyzeteket hozhat létre.",
+      "createTemplate": "Sablon létrehozása"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveFormula": "Nem sikerült menteni a képletet",
+      "failedToOpenInExternalEditor": "Nem sikerült megnyitni a külső szerkesztőben",
+      "failedToRevealInFinder": "Nem sikerült felfedni a Finderben",
+      "failedToCopyLink": "Nem sikerült a link másolása",
+      "failedToCreateView": "Nem sikerült létrehozni a nézetet",
+      "failedToRenameFolder": "Nem sikerült átnevezni a mappát",
+      "failedToCreateTask": "Nem sikerült létrehozni a feladatot",
+      "failedToLoadVersionHistory": "Nem sikerült betölteni a verzióelőzményeket",
+      "failedToRestoreVersion": "Nem sikerült visszaállítani a verziót",
+      "failedToDeleteVersion": "Nem sikerült törölni a verziót",
+      "failedToCreateNote": "Nem sikerült létrehozni a jegyzetet",
+      "failedToLoadMoreBookmarks": "Nem sikerült betölteni további könyvjelzőket",
+      "failedToToggleBookmark": "Nem sikerült a könyvjelző váltása",
+      "failedToRemoveBookmark": "Nem sikerült eltávolítani a könyvjelzőt",
+      "failedToReorderBookmarks": "Nem sikerült átrendezni a könyvjelzőket",
+      "failedToSave": "Nem sikerült menteni",
+      "failedToRename": "Nem sikerült átnevezni",
+      "failedToUpdateEmoji": "Nem sikerült frissíteni a hangulatjelet",
+      "failedToUpdateTags": "Nem sikerült frissíteni a címkéket",
+      "failedToSnoozeReminder": "Nem sikerült elhalasztani az emlékeztetőt",
+      "failedToCreateFolder": "Nem sikerült létrehozni a mappát",
+      "failedToLoadProperties": "Nem sikerült betölteni a tulajdonságokat",
+      "failedToLoadPropertyDefinitions": "Nem sikerült betölteni a tulajdonságdefiníciókat",
+      "failedToLoadTemplates": "Nem sikerült betölteni a sablonokat"
+    },
+    "toasts": {
+      "noteExportedSuccessfully": "Jegyzet sikeresen exportálva",
+      "failedToUpdateProperty": "Nem sikerült frissíteni a tulajdonságot",
+      "failedToUpdateTags": "Nem sikerült frissíteni a címkéket",
+      "reminderSnoozed": "Az emlékeztető elhalasztva",
+      "failedToSnoozeReminder": "Nem sikerült elhalasztani az emlékeztetőt",
+      "defaultTemplateSet": "Alapértelmezett sablonkészlet",
+      "failedToSetDefaultTemplate": "Nem sikerült beállítani az alapértelmezett sablont",
+      "defaultTemplateCleared": "Az alapértelmezett sablon törölve",
+      "failedToClearDefaultTemplate": "Nem sikerült törölni az alapértelmezett sablont",
+      "failedToAddProperty": "Nem sikerült hozzáadni a tulajdont",
+      "failedToDeleteProperty": "Nem sikerült törölni a tulajdont",
+      "failedToRenameProperty": "Nem sikerült átnevezni a tulajdont",
+      "failedToReorderProperties": "A tulajdonságok átrendezése nem sikerült",
+      "cannotAddTagThisNoteWasDeleted": "Nem lehet címkét hozzáadni – ezt a megjegyzést törölték",
+      "cannotRemoveTagThisNoteWasDeleted": "A címke nem távolítható el – ez a jegyzet törölve lett",
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "Nem módosítható csak helyileg – ez a megjegyzés törölve lett"
+    }
+  }
+}

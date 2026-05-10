@@ -1,0 +1,28 @@
+{
+  "app": {
+    "quit": "Avslutt"
+  },
+  "file": {
+    "label": "Fil",
+    "newNote": "Ny merknad",
+    "close": "Lukk vinduet"
+  },
+  "navigation": {
+    "back": "Tilbake",
+    "forward": "Fremover"
+  },
+  "edit": {
+    "label": "Rediger",
+    "undo": "Angre",
+    "redo": "Gjenta",
+    "cut": "Kutt",
+    "copy": "Kopier",
+    "paste": "Lim inn"
+  },
+  "view": {
+    "label": "Visning",
+    "reload": "Last inn på nytt",
+    "toggleDevTools": "Slå av/på utviklerverktøy",
+    "toggleFullscreen": "Slå på fullskjerm"
+  }
+}

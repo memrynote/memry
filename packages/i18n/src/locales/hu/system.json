@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "Válassza ki a Vault mappát",
+      "button": "Válassza a Vault lehetőséget"
+    },
+    "exportPdf": {
+      "title": "Exportálás PDF-ként",
+      "filterName": "PDF dokumentum"
+    },
+    "exportHtml": {
+      "title": "Exportálás HTML-ként",
+      "filterName": "HTML dokumentum"
+    },
+    "import": {
+      "filterSupported": "Támogatott fájlok",
+      "filterAll": "Minden fájl"
+    },
+    "exportCancelled": "Exportálás megszakítva",
+    "update": {
+      "availableTitle": "Frissítés elérhető",
+      "availableMessage": "Memry Az {version} elérhető.",
+      "availableDetailFallback": "Töltse le most a frissítést?",
+      "buttonDownload": "Letöltés",
+      "buttonLater": "Később",
+      "readyTitle": "Frissítés kész",
+      "readyMessage": "Memry Az {version} letöltve.",
+      "readyDetailFallback": "A frissítés telepítésének befejezéséhez indítsa újra az Memry programot.",
+      "buttonRestartNow": "Indítsa újra most",
+      "releaseNotesLabel": "Kiadási megjegyzések:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "Megjegyzés emlékeztető",
+      "journal": "Napló emlékeztető",
+      "highlight": "Emlékeztető kiemelése",
+      "fallback": "Emlékeztető esedékes",
+      "default": "Emlékeztető"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "Az emlékeztető időpontjának a jövőben kell lennie",
+    "definitionNotFound": "A definíció nem található",
+    "noteNotFound": "Megjegyzés nem található",
+    "updateFailed": "A frissítés nem sikerült"
+  }
+}

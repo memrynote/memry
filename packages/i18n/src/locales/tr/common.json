@@ -49,11 +49,6 @@
     "showMore": "+{count, plural, one {# tane daha} other {# tane daha}}",
     "showLess": "Daha az göster"
   },
-  "dateRelative": {
-    "today": "Bugün",
-    "yesterday": "Dün",
-    "daysAgo": "{count, plural, one {# gün önce} other {# gün önce}}"
-  },
   "tabs": {
     "pin": "Sekmeyi sabitle",
     "unpin": "Sekme sabitlemesini kaldır",
@@ -84,6 +79,11 @@
     "undoFailed": "İşlem geri alınamadı",
     "copied": "Kopyalandı",
     "copyFailed": "Kopyalanamadı"
+  },
+  "dateRelative": {
+    "today": "Bugün",
+    "yesterday": "Dün",
+    "daysAgo": "{count, plural, one {# gün önce} other {# gün önce}}"
   },
   "recurrence": {
     "everyDay": "Her gün",
@@ -360,9 +360,9 @@
   },
   "phaseI": {
     "errors": {
-      "failedToAccessMicrophone": "Mikrofona erişilemedi",
+      "failedToImportFiles": "Dosyalar içe aktarılamadı",
       "failedToCreateNote": "Not oluşturulamadı",
-      "failedToImportFiles": "Dosyalar içe aktarılamadı"
+      "failedToAccessMicrophone": "Mikrofona erişilemedi"
     },
     "toasts": {
       "undone": "Geri alındı"

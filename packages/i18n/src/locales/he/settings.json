@@ -1,0 +1,1160 @@
+{
+  "toast": {
+    "exportNotImplemented": "ייצוא נתונים מקומי עדיין לא מיושם"
+  },
+  "page": {
+    "title": "הגדרות",
+    "nav": {
+      "groups": {
+        "workspace": "סביבת עבודה",
+        "preferences": "העדפות",
+        "services": "שירותים",
+        "data": "נתונים"
+      },
+      "items": {
+        "account": "חשבון",
+        "general": "כללי",
+        "templates": "תבניות",
+        "editor": "עורך",
+        "journal": "יומן",
+        "tasks": "משימות",
+        "calendar": "לוח שנה",
+        "appearance": "מראה",
+        "shortcuts": "קיצורי דרך",
+        "ai": "עוזר AI",
+        "integrations": "אינטגרציות",
+        "vault": "כספת",
+        "tags": "תגים",
+        "properties": "נכסים"
+      }
+    }
+  },
+  "general": {
+    "header": {
+      "title": "כללי",
+      "subtitle": "אתחול האפליקציה והתנהגות הכרטיסיות",
+      "loading": "טוען הגדרות..."
+    },
+    "groups": {
+      "startup": "הפעלה",
+      "updates": "עדכונים",
+      "languageRegion": "שפה ואזור",
+      "tabBehavior": "התנהגות כרטיסיות",
+      "fileCreation": "יצירת קבצים",
+      "privacy": "פרטיות"
+    },
+    "startup": {
+      "launchAtLogin": {
+        "label": "השקה בכניסה",
+        "description": "הפעל את Memry כאשר אתה מתחבר",
+        "error": "עדכון ההתחלה באתחול נכשל"
+      }
+    },
+    "updates": {
+      "appUpdates": "עדכוני אפליקציה",
+      "installedVersion": "גרסה מותקנת {version}",
+      "availableVersion": "גרסה זמינה {version}",
+      "unsupported": "בנייה ארוזה יכולה לבדוק, להוריד ולהתקין עדכונים מ-GitHub מהדורות",
+      "available": "Memry {version} זמין להורדה",
+      "downloadingLatest": "מוריד את המהדורה האחרונה",
+      "downloadingLatestPercent": "הורדת המהדורה האחרונה ({percent}%)",
+      "downloaded": "Memry {version} מוכן להתקנה",
+      "upToDate": "התקנה זו נמצאת במהדורה האחרונה שפורסמה",
+      "checking": "בדיקת מהדורות GitHub עבור גרסה חדשה יותר",
+      "idle": "בדוק אם יש מהדורות חדשות והתקן אותן מבלי לצאת מהאפליקציה",
+      "unsupportedToast": "עדכונים אוטומטיים זמינים במהדורות ארוזות בלבד",
+      "upToDateToast": "Memry {version} מעודכן",
+      "actionFailed": "פעולת העדכון נכשלה",
+      "actions": {
+        "checking": "בודק...",
+        "available": "הורד עדכון",
+        "downloading": "מוריד...",
+        "downloadingPercent": "מוריד את {percent}%",
+        "downloaded": "הפעל מחדש כדי להתקין",
+        "idle": "בדוק אם קיימים עדכונים"
+      }
+    },
+    "language": {
+      "label": "שפה",
+      "helper": "רוב האפליקציה מתעדכנת באופן מיידי. חלק מהטקסטים ברמת המערכת - התראות שכבר מוצגות, תווית המזח, שורת הכותרת של החלון - מתרענן לאחר ההשקה הבאה.",
+      "changed": "השפה שונתה ל-{nativeName}",
+      "failed": "שינוי השפה נכשל. אנא נסה שוב."
+    },
+    "clockFormat": {
+      "label": "פורמט זמן",
+      "description": "שעון 12 שעות או 24 שעות",
+      "options": {
+        "12h": "12 שעות",
+        "24h": "24 שעות"
+      },
+      "error": "עדכון פורמט הזמן נכשל"
+    },
+    "tabs": {
+      "previewMode": {
+        "label": "מצב תצוגה מקדימה",
+        "description": "לחיצה אחת פותחת תצוגה מקדימה, לחיצה כפולה נשארת פתוחה"
+      },
+      "restoreSession": {
+        "label": "שחזר הפעלה בהתחלה",
+        "description": "פתח מחדש כרטיסיות מההפעלה האחרונה שלך"
+      },
+      "closeButton": {
+        "label": "לחצן סגירת כרטיסיות",
+        "description": "מתי להציג את כפתור הסגירה",
+        "options": {
+          "always": "תמיד גלוי",
+          "hover": "הצג עם ריחוף",
+          "active": "רק בכרטיסייה פעילה"
+        }
+      },
+      "error": "עדכון ההגדרה נכשל"
+    },
+    "fileCreation": {
+      "createInSelectedFolder": {
+        "label": "צור בתיקייה שנבחרה",
+        "description": "הערות ותיקיות חדשות נוצרות בתוך התיקיה שנבחרה כעת. כאשר כבוי, פריטים נוצרים תמיד בשורש."
+      }
+    },
+    "privacy": {
+      "telemetry": {
+        "label": "שתף מדדי שימוש אנונימיים",
+        "description": "זה רק מדדים אנוניים - אף פעם לא נשלחים תוכן הערות, שאילתות חיפוש, נתיבי קבצים, מיילים או מזהים גולמיים.",
+        "error": "עדכון הגדרת הטלמטריה נכשל"
+      }
+    }
+  },
+  "appearance": {
+    "header": {
+      "title": "מראה",
+      "subtitle": "התאם אישית את המראה והתחושה",
+      "loading": "טוען הגדרות..."
+    },
+    "groups": {
+      "theme": "נושא",
+      "accentColor": "צבע מבטא",
+      "typography": "טיפוגרפיה"
+    },
+    "theme": {
+      "colorMode": {
+        "label": "מצב צבע",
+        "description": "בחר את הנושא המועדף עליך",
+        "aria": "מצב צבע"
+      },
+      "options": {
+        "light": "חם",
+        "white": "לבן",
+        "dark": "כהה",
+        "system": "מערכת"
+      },
+      "error": "עדכון העיצוב נכשל"
+    },
+    "accent": {
+      "pick": "בחר צבע מבטא",
+      "custom": {
+        "label": "צבע מותאם אישית",
+        "description": "הזן ערך משושה",
+        "placeholder": "#000000"
+      },
+      "presets": {
+        "indigo": "אינדיגו",
+        "amber": "ענבר",
+        "emerald": "אמרלד",
+        "red": "אדום",
+        "violet": "ויולט",
+        "cyan": "ציאן",
+        "pink": "ורוד",
+        "orange": "כתום"
+      },
+      "error": "עדכון צבע הדגשה נכשל"
+    },
+    "typography": {
+      "fontSize": {
+        "label": "גודל גופן",
+        "description": "התאם את גודל הטקסט הבסיסי",
+        "aria": "גודל גופן"
+      },
+      "fontFamily": {
+        "label": "משפחת גופנים",
+        "description": "גופן ראשי עבור הממשק",
+        "options": {
+          "system": "מערכת ברירת מחדל",
+          "sansSerif": "סנסריף",
+          "serif": "Serif (Crimson Pro)",
+          "gelasio": "ג'לסיו",
+          "geist": "גיסט",
+          "inter": "אינטר",
+          "monospace": "מונוספייס"
+        }
+      },
+      "fontSizeError": "עדכון גודל הגופן נכשל",
+      "fontFamilyError": "עדכון משפחת הגופנים נכשל"
+    }
+  },
+  "editor": {
+    "header": {
+      "title": "עורך",
+      "subtitle": "הערה להגדרות והעדפות עורך",
+      "loading": "טוען הגדרות..."
+    },
+    "groups": {
+      "layout": "פריסה",
+      "toolbar": "סרגל כלים",
+      "writing": "כתיבה"
+    },
+    "width": {
+      "label": "רוחב עורך",
+      "description": "רוחב מרבי של אזור הכתיבה",
+      "options": {
+        "narrow": "צר",
+        "medium": "בינוני",
+        "wide": "רחב"
+      },
+      "error": "עדכון רוחב העורך נכשל"
+    },
+    "toolbarMode": {
+      "label": "סרגל הכלים לעיצוב דביק",
+      "description": "הצג תמיד את סרגל הכלים מעל העורך",
+      "error": "עדכון מצב סרגל הכלים נכשל"
+    },
+    "spellCheck": {
+      "label": "בדיקת איות",
+      "description": "סמן תחתון של מילים באיות שגוי בזמן ההקלדה",
+      "error": "נכשל עדכון בדיקת האיות"
+    },
+    "autoSaveDelay": {
+      "label": "השהיית שמירה אוטומטית",
+      "description": "זמן המתנה לאחר הפסקת ההקלדה לפני השמירה",
+      "seconds": "{seconds}s",
+      "error": "נכשל עדכון השהיית השמירה האוטומטית"
+    },
+    "wordCount": {
+      "label": "ספירת מילים",
+      "description": "הצג ספירת מילים בכותרת התחתונה של העורך",
+      "error": "נכשל עדכון תצוגת ספירת המילים"
+    }
+  },
+  "templates": {
+    "header": {
+      "title": "תבניות",
+      "subtitle": "נהל תבניות הערות ליצירה מהירה"
+    },
+    "actions": {
+      "new": "תבנית חדשה",
+      "edit": "ערוך",
+      "duplicate": "שכפול",
+      "delete": "מחק"
+    },
+    "groups": {
+      "builtIn": "מובנה",
+      "myTemplates": "התבניות שלי"
+    },
+    "loading": "טוען תבניות...",
+    "newTemplateTitle": "תבנית חדשה",
+    "copySuffix": "{name} (העתק)",
+    "empty": {
+      "title": "עדיין אין תבניות מותאמות אישית",
+      "description": "צור תבנית כדי להתחיל"
+    },
+    "toasts": {
+      "deleted": "התבנית נמחקה",
+      "deleteFailed": "מחיקת התבנית נכשלה",
+      "duplicated": "התבנית שוכפלה",
+      "duplicateFailed": "שכפול התבנית נכשל"
+    },
+    "dialogs": {
+      "delete": {
+        "title": "מחק תבנית",
+        "description": "האם אתה בטוח שברצונך למחוק תבנית זו? לא ניתן לבטל פעולה זו. הערות שנוצרו מתבנית זו לא יושפעו."
+      },
+      "duplicate": {
+        "title": "שכפל תבנית",
+        "description": "הזן שם עבור עותק התבנית החדש.",
+        "placeholder": "שם התבנית"
+      }
+    }
+  },
+  "journal": {
+    "header": {
+      "title": "יומן",
+      "subtitle": "הגדרות והעדפות יומן",
+      "loading": "טוען הגדרות..."
+    },
+    "groups": {
+      "defaultTemplate": "תבנית ברירת מחדל",
+      "sidebarVisibility": "נראות של סרגל צד",
+      "footer": "כותרת תחתונה"
+    },
+    "template": {
+      "label": "תבנית",
+      "description": "ערכים חדשים מתחילים בתבנית זו",
+      "placeholder": "בחר תבנית",
+      "unknown": "תבנית לא ידועה",
+      "none": "אין",
+      "noneAsk": "אין (שאל בכל פעם)",
+      "updated": "תבנית ברירת המחדל עודכנה",
+      "cleared": "תבנית ברירת המחדל נוקתה",
+      "error": "עדכון תבנית ברירת המחדל נכשל"
+    },
+    "showSchedule": {
+      "label": "הצג לוח זמנים",
+      "description": "הצג את האירועים והיומן של היום"
+    },
+    "showTasks": {
+      "label": "הצג משימות",
+      "description": "הצגת משימות המועדות ביום שנבחר"
+    },
+    "showAIConnections": {
+      "label": "הצג חיבורי AI",
+      "description": "הצג חיבורים המופעלים על ידי AI לערכים קשורים"
+    },
+    "showStatsFooter": {
+      "label": "הצג כותרת תחתונה של סטטיסטיקות",
+      "description": "ספירת מילים, זמן קריאה, חותמות זמן"
+    },
+    "updateError": "עדכון ההגדרה נכשל"
+  },
+  "tasks": {
+    "header": {
+      "title": "משימות",
+      "subtitle": "הגדר את ברירת המחדל של משימות והתנהגות",
+      "loading": "טוען הגדרות..."
+    },
+    "groups": {
+      "defaults": "ברירות מחדל",
+      "calendar": "לוח שנה",
+      "inbox": "תיבת דואר נכנס"
+    },
+    "defaultProject": {
+      "label": "פרויקט ברירת מחדל",
+      "description": "מוקצה כאשר לא נבחר פרויקט",
+      "placeholder": "אין פרויקט ברירת מחדל",
+      "none": "אין ברירת מחדל (השתמש ב'אישי')",
+      "error": "נכשל עדכון פרויקט ברירת המחדל"
+    },
+    "sortOrder": {
+      "label": "סדר מיון ברירת מחדל",
+      "description": "כיצד מסודרות משימות בתצוגת רשימה",
+      "options": {
+        "manual": "ידני (גרור ושחרר)",
+        "dueDate": "תאריך יעד",
+        "priority": "עדיפות",
+        "createdAt": "תאריך יצירה"
+      },
+      "error": "עדכון סדר המיון נכשל"
+    },
+    "weekStart": {
+      "label": "השבוע מתחיל ב",
+      "description": "היום הראשון בשבוע בתצוגות לוח שנה",
+      "options": {
+        "sunday": "יום ראשון",
+        "monday": "יום שני"
+      },
+      "error": "עדכון תחילת השבוע נכשל"
+    },
+    "staleInbox": {
+      "label": "סף תיבת דואר נכנס מעופש",
+      "description": "משימות ישנות יותר מזה מסומנות כמיושנות",
+      "unit": "ימים",
+      "error": "עדכון סף תיבת הדואר הנכנס נכשל"
+    }
+  },
+  "calendar": {
+    "header": {
+      "title": "לוח שנה",
+      "subtitle": "הגדר את התנהגות תאי היום בחלונית היום",
+      "loading": "טוען הגדרות..."
+    },
+    "groups": {
+      "dayCellClick": "קליק על תא יום"
+    },
+    "defaultBehavior": {
+      "label": "התנהגות ברירת מחדל",
+      "description": "בעת לחיצה על יום בלוח השנה של חלונית היום מכל כרטיסייה שאינה לוח שנה",
+      "error": "נכשל עדכון התנהגות הקליקים ביום"
+    },
+    "pageOverride": {
+      "label": "עקיפה של דף לוח שנה",
+      "description": "התנהגות כאשר הכרטיסייה לוח שנה פעילה (ברירת המחדל היא פתיחת יומן)",
+      "error": "עדכון עקיפה של דף היומן נכשל"
+    },
+    "options": {
+      "openJournal": "פתח יומן",
+      "openCalendar": "פתח את לוח השנה",
+      "useGlobal": "השתמש בהגדרה גלובלית"
+    }
+  },
+  "account": {
+    "header": {
+      "title": "חשבון",
+      "subtitle": "החשבון, הסנכרון והאבטחה שלך",
+      "loading": "טוען..."
+    },
+    "groups": {
+      "identity": "זהות",
+      "sync": "סנכרון",
+      "storage": "אחסון",
+      "devices": "מכשירים",
+      "security": "אבטחה"
+    },
+    "identity": {
+      "unknown": "לא ידוע",
+      "plan": "תוכנית פרו"
+    },
+    "sync": {
+      "lastSynced": "סנכרון אחרון {time}",
+      "pending": "{count, plural, one {# בהמתנה} other {# בהמתנה}}",
+      "statuses": {
+        "synced": "מסונכרן",
+        "syncing": "מסנכרן...",
+        "paused": "מושהה",
+        "syncError": "שגיאת סנכרון",
+        "offline": "לא מקוון",
+        "connecting": "מתחבר...",
+        "pushed": "{count, plural, one {# נדחף} other {# נדחף}}",
+        "pulled": "{count, plural, one {# משך} other {# משך}}",
+        "pushedPulled": "{parts}",
+        "changesPending": "{count, plural, one {שינוי # בהמתנה} other {שינויים ב-# בהמתנה}}",
+        "offlinePending": "לא מקוון ({count, plural, one {שינוי # בהמתנה} other {שינויים ב-# בהמתנה}})",
+        "never": "לעולם לא"
+      }
+    },
+    "storage": {
+      "used": "{used} של {limit} בשימוש",
+      "categories": {
+        "notes": "הערות",
+        "attachments": "קבצים מצורפים",
+        "crdt": "CRDT",
+        "other": "אחר",
+        "available": "זמין"
+      }
+    },
+    "security": {
+      "recoveryKey": {
+        "label": "מפתח שחזור",
+        "description": "הצג את מפתח השחזור שלך לגישה לנתונים",
+        "action": "מפתח תצוגה"
+      },
+      "rotateKeys": {
+        "label": "סובב מפתחות הצפנה",
+        "description": "צור מפתחות חדשים והצפין מחדש את כל הנתונים",
+        "action": "סובב"
+      },
+      "signOut": {
+        "label": "צא",
+        "description": "נתק את המכשיר מהסנכרון",
+        "action": "צא"
+      }
+    },
+    "signOutDialog": {
+      "title": "לצאת מסנכרון?",
+      "description": "הסנכרון ייפסק ומפתחות הצפנה יוסרו מהמכשיר הזה. ההערות שלך יישארו במכשיר הזה. תזדקק לביטוי השחזור שלך כדי להגדיר שוב סנכרון.",
+      "confirm": "צא",
+      "signingOut": "יוצא..."
+    },
+    "toasts": {
+      "signedOut": "יצא בהצלחה",
+      "signOutFailed": "היציאה נכשלה",
+      "deviceLinked": "המכשיר קושר בהצלחה"
+    }
+  },
+  "setup": {
+    "steps": {
+      "signIn": "היכנס",
+      "verify": "אמת",
+      "link": "קישור"
+    },
+    "progress": "שלב {current} של {total}: {label}",
+    "signIn": {
+      "title": "הגדר סנכרון",
+      "description": "צור חשבון כדי לסנכרן את הנתונים שלך בין מכשירים עם הצפנה מקצה לקצה.",
+      "or": "או",
+      "errors": {
+        "sendCode": "שליחת הקוד נכשלה",
+        "googleStart": "הפעלת הכניסה של Google נכשלה"
+      }
+    },
+    "email": {
+      "label": "כתובת אימייל",
+      "placeholder": "הזן את כתובת המייל שלך...",
+      "invalid": "נא להזין כתובת אימייל חוקית",
+      "sending": "שולח קוד..."
+    },
+    "oauth": {
+      "google": "המשך עם גוגל"
+    },
+    "otp": {
+      "title": "הזן קוד אימות",
+      "sentTo": "שלחנו קוד בן 6 ספרות ל ",
+      "aria": "קוד אימות בן 6 ספרות",
+      "verifying": "מאמת...",
+      "resending": "שליחה מחדש...",
+      "resend": "שלח שוב קוד",
+      "resendIn": "שלח שוב ב-{time}",
+      "differentEmail": "השתמש באימייל אחר",
+      "error": "האימות נכשל",
+      "resendError": "השליחה מחדש נכשלה"
+    },
+    "recovery": {
+      "displayTitle": "שמור את ביטוי השחזור שלך",
+      "displayDescription": "זו הדרך היחידה לשחזר את הנתונים המוצפנים שלך אם תאבד גישה לכל המכשירים שלך.",
+      "warning": "רשום את זה ואחסן אותו במקום בטוח. אתה לא תראה את זה שוב.",
+      "wordsAria": "מילות ביטוי שחזור",
+      "wordAria": "המילה {index}: {word}",
+      "copyAria": "העתק את ביטוי השחזור ללוח",
+      "copiedAria": "ביטוי השחזור הועתק",
+      "copied": "הועתק",
+      "saved": "שמרתי את משפט ההתאוששות שלי",
+      "confirmTitle": "אשר את ביטוי השחזור שלך",
+      "confirmDescription": "הזן את המילים המבוקשות כדי לוודא ששמרת אותה כהלכה.",
+      "wordPlaceholder": "הזן את המילה #{index}",
+      "verify": "אמת",
+      "mustMatch": "כל 3 המילים חייבות להתאים כדי להמשיך",
+      "inputTitle": "הזן ביטוי שחזור",
+      "inputDescription": "הזן את ביטוי השחזור שלך בן 24 מילים כדי לשחזר את הגישה לנתונים המוצפנים שלך.",
+      "inputLabel": "ביטוי התאוששות",
+      "count": "מילים {count} / {total}",
+      "inputPlaceholder": "הזן את ביטוי השחזור שלך בן 24 מילים מופרד ברווחים...",
+      "lengthHint": "הזן את כל 24 המילים כדי להפעיל את כפתור השחזור",
+      "restore": "שחזר גישה",
+      "progress": {
+        "deriving": "גוזר מפתחות הצפנה...",
+        "validating": "מאמת את ביטוי השחזור...",
+        "registering": "רושם מכשיר..."
+      },
+      "failed": "השחזור נכשל",
+      "confirmationFailed": "האישור נכשל"
+    },
+    "linking": {
+      "choiceTitle": "קשר את המכשיר הזה",
+      "choiceDescription": "העבר מפתחות הצפנה ממכשיר אחר או שחזר מביטוי השחזור שלך.",
+      "qrChoice": "קישור באמצעות קוד QR",
+      "qrChoiceDescription": "סרוק את הקוד המוצג במכשיר השני שלך",
+      "recoveryChoice": "ביטוי התאוששות",
+      "recoveryChoiceDescription": "הזן את ביטוי השחזור שלך בן 24 מילים",
+      "codeTitle": "הזן קוד קישור",
+      "codeDescription": "הדבק את קוד הקישור מהמכשיר השני שלך כדי להעביר בצורה מאובטחת את מפתחות ההצפנה שלך.",
+      "codeLabel": "קוד קישור",
+      "valid": "תקף",
+      "invalid": "פורמט לא חוקי",
+      "codePlaceholder": "הדבק את הקוד מהמכשיר השני שלך...",
+      "formatHint": "הדבק את קוד הקישור של JSON מהמכשיר האחר שלך",
+      "linking": "מקשר...",
+      "linkDevice": "קישור מכשיר",
+      "failed": "הקישור נכשל",
+      "deviceFailed": "קישור המכשיר נכשל",
+      "pendingSuccess": "המכשיר קושר בהצלחה",
+      "goBack": "תחזור אחורה",
+      "waitingTitle": "מחכה לאישור",
+      "waitingDescription": "פתח את Memry במכשיר השני שלך ואשר את בקשת הקישור.",
+      "verificationCode": "קוד אימות",
+      "confirmCode": "אשר שזה תואם לקוד במכשיר השני שלך",
+      "cancel": "בטל"
+    }
+  },
+  "devices": {
+    "loading": "טוען מכשירים...",
+    "loadingAria": "טעינת מכשירים",
+    "none": "אין מכשירים מקושרים עדיין",
+    "linkNew": "קשר מכשיר חדש",
+    "thisDevice": "המכשיר הזה",
+    "lastSeen": "נראה לאחרונה {time} לפני",
+    "linked": "מקושר ל-{time} לפני",
+    "renameAria": "שנה את שם {name}",
+    "rename": "שנה שם",
+    "revoke": "בטל",
+    "showLess": "הצג פחות",
+    "showMore": "{count, plural, one {מכשיר # נוסף} other {# מכשירים נוספים}}",
+    "showMoreAria": "הצג את {count, plural, one {מכשיר # נוסף} other {# מכשירים נוספים}}",
+    "dialogs": {
+      "revokeTitle": "לבטל את \"{name}\"?",
+      "revokeDescription": "המכשיר הזה יאבד את הגישה לנתונים המסונכרנים שלך. יהיה צורך לקשר אותו שוב כדי לשחזר את הסנכרון. הנתונים המקומיים במכשיר זה יישארו.",
+      "revokeDevice": "בטל מכשיר",
+      "revoking": "מבטל...",
+      "renameTitle": "שנה את שם המכשיר",
+      "renameDescription": "בחר שם לזיהוי המכשיר הזה.",
+      "namePlaceholder": "שם המכשיר",
+      "renaming": "משנה את השם..."
+    },
+    "toasts": {
+      "loadFailed": "טעינת המכשירים נכשלה",
+      "removed": "הוסר \"{name}\"",
+      "removeFailed": "הסרת המכשיר נכשלה",
+      "renamed": "השם שונה ל-\"{name}\"",
+      "renameFailed": "שינוי שם המכשיר נכשל"
+    }
+  },
+  "qrLinking": {
+    "title": "קשר מכשיר חדש",
+    "description": "סרוק את קוד ה-QR הזה מהמכשיר שברצונך לקשר כדי להעביר את מפתחות ההצפנה שלך בצורה מאובטחת.",
+    "encrypted": "מוצפן מקצה לקצה",
+    "generating": "יוצר קוד קישור...",
+    "generatingAria": "יצירת קוד קישור",
+    "generateFailed": "יצירת קוד קישור נכשלה",
+    "tryAgain": "נסה שוב",
+    "expired": "קוד הקישור פג",
+    "generateNew": "צור קוד חדש",
+    "qrAria": "קוד QR לקישור המכשיר",
+    "qrImageAria": "קוד QR מקשר מכשיר",
+    "expiresIn": "יפוג ב-{time}",
+    "or": "או",
+    "codeLabel": "קוד קישור",
+    "copyAria": "העתק את קוד הקישור",
+    "copiedAria": "הועתק",
+    "copied": "הועתק!"
+  },
+  "linkingApproval": {
+    "title": "מכשיר חדש רוצה לקשר",
+    "description": "מכשיר מבקש גישה לנתונים המוצפנים שלך. אשר רק אם יזמת את הבקשה הזו.",
+    "unknownDevice": "מכשיר לא ידוע",
+    "unknownPlatform": "פלטפורמה לא ידועה",
+    "verificationCode": "קוד אימות",
+    "computing": "מחשוב...",
+    "unavailable": "לא זמין",
+    "confirmCode": "אשר את הקוד הזה תואם לזה שמוצג במכשיר החדש",
+    "reject": "דחה",
+    "approve": "לאשר",
+    "approving": "מאשר...",
+    "approvalFailed": "האישור נכשל",
+    "failedToApprove": "אישור המכשיר נכשל"
+  },
+  "recoveryKey": {
+    "title": "מפתח שחזור",
+    "description": "אחסן מפתח זה בצורה מאובטחת. זה יכול לשחזר את הכספת שלך אם תאבד גישה לכל המכשירים.",
+    "loading": "טוען...",
+    "retrieveFailed": "אחזור מפתח השחזור נכשל",
+    "copied": "מפתח השחזור הועתק ללוח",
+    "copyFailed": "ההעתקה ללוח נכשלה",
+    "clickToReveal": "לחץ כדי לחשוף",
+    "hide": "הסתר",
+    "reveal": "לחשוף",
+    "copy": "העתק",
+    "sessionHint": "מפתח זה מוצג פעם אחת בכל הפעלה. סגור דו-שיח זה כדי לנקות אותו מהזיכרון."
+  },
+  "keyRotation": {
+    "title": "סובב מפתחות הצפנה",
+    "descriptions": {
+      "confirm": "צור מפתחות הצפנה חדשים עבור הכספת שלך.",
+      "rotating": "מצפין מחדש את הנתונים שלך עם מפתחות חדשים...",
+      "phrase": "שמור את ביטוי השחזור החדש שלך.",
+      "complete": "סיבוב המפתח הושלם.",
+      "error": "סיבוב מפתח נתקל בשגיאה."
+    },
+    "warningTitle": "פעולה זו תעשה:",
+    "warningItems": {
+      "keyPair": "צור זוג מפתחות הצפנה חדש",
+      "rewrap": "עטפו מחדש את כל הפריטים המסונכרנים עם המפתח החדש",
+      "phrase": "צור ביטוי שחזור חדש (הישן הופך לבלתי חוקי)",
+      "pause": "השהה זמנית את הסנכרון במהלך התהליך"
+    },
+    "explanation": "תוכן הנתונים שלך לעולם אינו מוצפן מחדש - רק מעטפות המפתח משתנות. זוהי פעולה מהירה ובטוחה.",
+    "start": "התחל סיבוב מפתח",
+    "starting": "מתחיל...",
+    "phases": {
+      "preparing": "מתכונן...",
+      "reencrypting": "עטיפה מחדש של מפתחות ({processed}/{total})",
+      "finalizing": "מסיים...",
+      "working": "עובד..."
+    },
+    "progressAria": "סיבוב מפתח: {phaseLabel} {pct}%",
+    "progressLabel": "התקדמות סיבוב מפתח",
+    "doNotClose": "אל תסגור את האפליקציה במהלך תהליך זה.",
+    "complete": "כל מפתחות ההצפנה חולפו. ביטוי השחזור החדש שלך נשמר. הסנכרון יתחדש באופן אוטומטי.",
+    "unknownError": "אירעה שגיאה לא ידועה במהלך סיבוב המפתח.",
+    "errorHint": "המפתחות הקיימים שלך נשארים תקפים. הסנכרון חודש. אתה יכול לנסות שוב בכל עת.",
+    "closeConfirm": {
+      "title": "סיבוב מתבצע",
+      "description": "סיבוב המפתח עדיין פועל. סגירת תיבת דו-שיח זו לא תעצור את התהליך, אך לא תראה את ביטוי השחזור החדש שלך עד להשלמתו.",
+      "stay": "הישארו",
+      "closeAnyway": "סגור בכל מקרה"
+    },
+    "failed": "סיבוב המפתח נכשל"
+  },
+  "ai": {
+    "header": {
+      "title": "עוזר AI",
+      "subtitle": "הטבעות פועלות באופן מקומי. תזכירים קוליים יכולים להשתמש ב- Whisper Small או במפתח OpenAI שלך.",
+      "loading": "טוען הגדרות..."
+    },
+    "enable": {
+      "label": "אפשר תכונות AI",
+      "description": "הצעות תיוק חכמות וחיבורי הערות",
+      "enabled": "תכונות AI מופעלות",
+      "disabled": "תכונות AI מושבתות",
+      "error": "עדכון ההגדרה נכשל"
+    },
+    "unknownError": "שגיאה לא ידועה",
+    "groups": {
+      "voice": "תמלול קולי",
+      "embeddingModel": "מודל הטבעה מקומי",
+      "embeddingIndex": "אינדקס הטמעה",
+      "inline": "עריכת AI מוטבעת"
+    },
+    "voice": {
+      "provider": "ספק",
+      "providerDescription": "ספק דיבור לטקסט עבור תזכירים קוליים",
+      "providers": {
+        "local": "מקומי (ברירת מחדל)",
+        "openai": "OpenAI (BYOK)"
+      },
+      "localModel": "דגם מקומי",
+      "localModelDescription": "Whisper Small מוריד לפי דרישה ונשאר שמור במטמון מקומי",
+      "status": {
+        "ready": "מוכן",
+        "downloading": "מוריד",
+        "downloaded": "הורד",
+        "notDownloaded": "לא הורד"
+      },
+      "cacheHint": "לא מצורף לאפליקציה · הורד מהגדרות · שמור במכשיר זה",
+      "preparing": "מכין Whisper Small...",
+      "download": "הורד Whisper Small",
+      "apiKey": "מפתח API של OpenAI",
+      "apiKeyDescription": "מאוחסן במחזיק מפתחות מערכת ההפעלה שלך ומשמש רק לתמלול קולי",
+      "replaceKey": "החלף מפתח OpenAI שמור",
+      "enterKey": "הזן מפתח API של OpenAI",
+      "saveKey": "מפתח שמור",
+      "keySaved": "מפתח API נשמר במחזיק מפתחות",
+      "providerError": "עדכון ספק הקול נכשל",
+      "downloadedToast": "Whisper Small הורד",
+      "downloadError": "הורדת Whisper Small נכשלה",
+      "keySavedToast": "מפתח OpenAI נשמר",
+      "keySaveError": "שמירת מפתח OpenAI נכשלה"
+    },
+    "embedding": {
+      "loaded": "טעון",
+      "loading": "טוען",
+      "cacheHint": "~23MB · מאוחסן במטמון מקומי · הכל במכשיר",
+      "dimensions": "מידות",
+      "embeddings": "הטבעות",
+      "downloadLoad": "הורד וטען דגם",
+      "downloadingModel": "מוריד דגם...",
+      "loadingModel": "טוען דגם...",
+      "loadSuccess": "הדגם נטען בהצלחה",
+      "loadFailed": "טעינת הדגם נכשלה",
+      "rebuildIndex": "בניית אינדקס מחדש",
+      "rebuildDescription": "צור מחדש הטבעות עבור כל ההערות",
+      "rebuild": "לבנות מחדש",
+      "scanning": "סורק הערות...",
+      "generating": "יוצר הטבעות...",
+      "complete": "השלם!",
+      "reindexed": "הטמעות נוספו מחדש לאינדקס: {computed} מחושב, {skipped} דילגה",
+      "reindexFailed": "נכשל לאינדקס מחדש של הטבעות"
+    },
+    "inline": {
+      "loading": "טוען...",
+      "title": "עריכת AI מוטבעת",
+      "enable": "אפשר AI מוטבע",
+      "enableDescription": "הצג תפריט AI בעת עריכת הערות",
+      "enabled": "עריכת AI מוטבע מופעלת",
+      "disabled": "עריכת AI מושבתת",
+      "provider": "ספק",
+      "providerDescription": "שירות AI לפעולות טקסט",
+      "providers": {
+        "ollama": "אולמה (מקומי)",
+        "openai": "OpenAI",
+        "anthropic": "אנתרופית"
+      },
+      "model": "דגם",
+      "modelDescription": "מודל שפה לשכתוב וסיכום",
+      "selectModel": "בחר דגם",
+      "apiKey": "מפתח API",
+      "apiKeyDescription": "מאוחסן באופן מקומי, נשלח רק לספק",
+      "apiKeyPlaceholder": "הזן מפתח API {provider}",
+      "ollamaUrl": "כתובת URL של אולמה",
+      "ollamaUrlDescription": "כתובת שרת מקומי",
+      "connection": "חיבור",
+      "activePort": "פעיל ביציאה {port}",
+      "notConnected": "לא מחובר",
+      "test": "מבחן",
+      "stopFailed": "עצירת השרת הקיים נכשלה",
+      "connected": "מחובר! שרת פועל ביציאה {port}",
+      "connectFailed": "החיבור נכשל",
+      "testFailed": "בדיקת החיבור נכשלה",
+      "updateFailed": "עדכון ההגדרה נכשל"
+    }
+  },
+  "integrations": {
+    "header": {
+      "title": "אינטגרציות",
+      "subtitle": "חבר שירותים חיצוניים כדי להעשיר את זרימת העבודה שלך"
+    },
+    "auth": {
+      "oauth2": "OAuth 2.0",
+      "apiKey": "מפתח API",
+      "none": "מערכת"
+    },
+    "comingSoon": "בקרוב",
+    "connect": "התחבר",
+    "googleCalendar": {
+      "name": "יומן גוגל",
+      "description": "סנכרון דו-כיווני עבור אירועי Memry ויומנים מיובאים של Google.",
+      "statuses": {
+        "connected": "מחובר",
+        "notConnected": "לא מחובר",
+        "reconnectRequired": "דרוש חיבור מחדש"
+      },
+      "accountReconnect": "חבר מחדש את גוגל",
+      "importedCalendars": "יומנים מיובאים",
+      "selected": "{count} נבחר",
+      "syncNow": "סנכרן עכשיו",
+      "disconnect": "התנתק",
+      "reconnect": "חבר מחדש את גוגל",
+      "syncFailed": "משהו השתבש",
+      "connectFailed": "חיבור יומן Google נכשל",
+      "refreshFailed": "רענון יומן Google נכשל",
+      "disconnectFailed": "ניתוק יומן Google נכשל",
+      "selectionFailed": "עדכון בחירת היומן נכשל",
+      "retryFailed": "נכשל הניסיון לסנכרן לוח שנה"
+    },
+    "sourcePicker": {
+      "empty": "אין עדיין יומנים מיובאים של Google זמינים במכשיר זה.",
+      "statuses": {
+        "synced": "מסונכרן",
+        "error": "שגיאה",
+        "pending": "בהמתנה",
+        "idle": "בטלה"
+      },
+      "retrying": "מנסה שוב...",
+      "retryNow": "נסה שוב עכשיו"
+    },
+    "registry": {
+      "googleCalendar": {
+        "name": "יומן גוגל",
+        "description": "סנכרון דו-כיווני עבור אירועים, משימות, תזכורות ולוחות שנה מיובאים של Memry"
+      },
+      "appleCalendar": {
+        "name": "לוח שנה של אפל",
+        "description": "שילוב לוח שנה מקומי באמצעות ממשקי API של מערכת"
+      },
+      "notion": {
+        "name": "מושג",
+        "description": "ייבוא עמוד חד פעמי לכספת שלך"
+      },
+      "readwise": {
+        "name": "Readwise",
+        "description": "סנכרן דגשים לכספת שלך"
+      },
+      "todoist": {
+        "name": "Todoist",
+        "description": "סנכרון משימות דו כיווני"
+      }
+    }
+  },
+  "vault": {
+    "header": {
+      "title": "כספת",
+      "subtitle": "תצורה ואחסון של כספת"
+    },
+    "groups": {
+      "storageUsage": "שימוש באחסון",
+      "location": "מיקום"
+    },
+    "loadingStorage": "טוען מידע אחסון...",
+    "signInStorage": "היכנס כדי להציג את השימוש באחסון",
+    "vaultPath": "נתיב הכספת",
+    "reveal": "לחשוף",
+    "storage": {
+      "title": "אחסון",
+      "used": "{used} של {limit} בשימוש",
+      "ratio": "{used} / {limit}",
+      "refreshAria": "רענן את השימוש באחסון",
+      "usageAria": "שימוש באחסון: {used} של {limit}",
+      "available": "{available} זמין",
+      "categories": {
+        "notes": "הערות",
+        "attachments": "קבצים מצורפים",
+        "crdt": "CRDT",
+        "other": "אחר"
+      },
+      "warningTitle": "אחסון כמעט מלא",
+      "warningDescription": "פנה מקום או שדרג את התוכנית שלך כדי למנוע בעיות סנכרון."
+    }
+  },
+  "tags": {
+    "header": {
+      "title": "תגים",
+      "subtitle": "נהל תגים בין הערות, יומנים ומשימות"
+    },
+    "loading": "טוען תגים...",
+    "empty": "עדיין אין תגים. תגיות יופיעו כאן כשתוסיפו אותן להערות ולמשימות.",
+    "filterPlaceholder": "סינון תגיות...",
+    "noMatch": "אין תגים תואמים ל-\"{query}\"",
+    "summary": "{count, plural, one {תג #} other {תגיות #}} על פני הערות ומשימות",
+    "actions": {
+      "rename": "שנה שם",
+      "changeColor": "שנה צבע",
+      "mergeInto": "התמזג לתוך...",
+      "merge": "מיזוג",
+      "delete": "מחק"
+    },
+    "dialogs": {
+      "deleteTitle": "מחק תג",
+      "deleteDescription": "להסיר את \"{name}\" מ-{count, plural, one {פריט #} other {פריטי #}}? לא ניתן לבטל זאת.",
+      "mergeTitle": "מיזוג תג",
+      "mergeDescription": "כל הפריטים המתויגים עם \"{source}\" יתויגו מחדש עם תג היעד. תג המקור יימחק.",
+      "targetPlaceholder": "בחר תג יעד...",
+      "colorTitle": "שנה צבע עבור \"{name}\""
+    },
+    "toasts": {
+      "renamed": "השם \"{oldName}\" שונה ל-\"{newName}\"",
+      "renameFailed": "שינוי שם התג נכשל",
+      "deleteFailed": "מחיקת התג נכשלה",
+      "deleted": "\"{name}\" נמחק מ-{count, plural, one {פריט #} other {פריטי #}}",
+      "mergeFailed": "מיזוג התגים נכשל",
+      "merged": "מיזוג את \"{source}\" לתוך \"{target}\" ({count, plural, one {פריט #} other {פריטי #}})",
+      "colorUpdated": "צבע מעודכן עבור \"{name}\"",
+      "colorFailed": "עדכון הצבע נכשל"
+    }
+  },
+  "properties": {
+    "header": {
+      "title": "נכסים",
+      "subtitle": "נהל הגדרות נכס בכל ההערות"
+    },
+    "loading": "טוען מאפיינים...",
+    "empty": "אין עדיין הגדרות נכסים. הוסף מאפיין Status, Select או Multiselect לכל הערה כדי להתחיל.",
+    "filterPlaceholder": "מאפייני סינון...",
+    "noMatch": "אין נכסים התואמים את \"{query}\"",
+    "summary": "{count, plural, one {הגדרת מאפיין #} other {הגדרות מאפיין #}}",
+    "optionCount": "{count, plural, one {אפשרות #} other {אפשרויות #}}",
+    "optionNamePlaceholder": "שם האופציה",
+    "addOption": "הוסף אפשרות",
+    "changeColorTitle": "שנה צבע",
+    "renameTitle": "שנה שם",
+    "removeTitle": "הסר",
+    "actions": {
+      "deleteProperty": "מחק נכס"
+    },
+    "types": {
+      "status": "סטטוס",
+      "select": "בחר",
+      "multiselect": "בחירה מרובה",
+      "text": "טקסט",
+      "number": "מספר",
+      "date": "תאריך",
+      "checkbox": "תיבת סימון",
+      "url": "כתובת אתר"
+    },
+    "dialogs": {
+      "deleteTitle": "מחק נכס",
+      "deleteDescription": "להסיר את הגדרת המאפיין \"{name}\"? הערות המשתמשות במאפיין זה ישמרו על הערכים שלהן כטקסט רגיל.",
+      "colorTitle": "שנה צבע עבור \"{name}\""
+    },
+    "toasts": {
+      "renamed": "השם \"{oldValue}\" שונה ל-\"{newValue}\"",
+      "renameFailed": "שינוי שם האפשרות נכשל",
+      "removed": "הוסר \"{value}\"",
+      "removeFailed": "הסרת האפשרות נכשלה",
+      "colorFailed": "עדכון הצבע נכשל",
+      "deleteFailed": "מחיקת הנכס נכשלה",
+      "deleted": "הנכס \"{name}\" נמחק",
+      "addFailed": "הוספת האפשרות נכשלה"
+    }
+  },
+  "shortcuts": {
+    "header": {
+      "title": "קיצורי מקלדת",
+      "subtitle": "לחץ על קיצור כלשהו כדי לאגד אותו מחדש",
+      "loading": "טוען הגדרות..."
+    },
+    "searchPlaceholder": "חיפוש קיצורי דרך...",
+    "resetAll": "אפס הכל",
+    "custom": "מותאם אישית",
+    "pressShortcut": "הקש על קיצור…",
+    "cancelTitle": "בטל",
+    "rebindTitle": "לחץ כדי לאגד מחדש",
+    "resetTitle": "אפס לברירת המחדל",
+    "clearTitle": "קיצור דרך נקה",
+    "clickToSet": "לחץ כדי להגדיר",
+    "noMatch": "אין קיצורי דרך שתואמים לחיפוש שלך",
+    "conflict": "מתנגשים עם: {labels}",
+    "globalCapture": {
+      "title": "לכידה עולמית",
+      "description": "צלם הערה מכל מקום",
+      "permissionNeeded": "צריך רשות",
+      "active": "פעיל",
+      "permissionHint": "קיצורי דרך גלובליים דורשים הרשאת נגישות. עבור אל הגדרות מערכת ← פרטיות ← נגישות והפעל את Memry."
+    },
+    "toasts": {
+      "saveGlobalFailed": "שמירת קיצור הדרך לצילום גלובלי נכשלה",
+      "saveFailed": "שמירת קיצור הדרך נכשלה",
+      "resetFailed": "איפוס קיצור הדרך נכשל",
+      "resetAllSuccess": "כל קיצורי הדרך מאופסים לברירות המחדל",
+      "resetAllFailed": "איפוס קיצורי הדרך נכשל"
+    },
+    "categories": {
+      "navigation": "ניווט",
+      "tabs": "כרטיסיות",
+      "editor": "עורך",
+      "view": "הצג"
+    },
+    "entries": {
+      "nav": {
+        "newNote": {
+          "label": "הערה חדשה",
+          "description": "צור הערה חדשה"
+        },
+        "newTask": {
+          "label": "משימה חדשה",
+          "description": "צור משימה חדשה"
+        },
+        "inbox": {
+          "label": "עבור אל תיבת הדואר הנכנס",
+          "description": "נווט לתיבת הדואר הנכנס"
+        },
+        "notes": {
+          "label": "עבור אל הערות",
+          "description": "נווט אל הערות"
+        },
+        "tasks": {
+          "label": "עבור אל משימות",
+          "description": "נווט למשימות"
+        },
+        "search": {
+          "label": "חפש",
+          "description": "פתח את החיפוש הגלובלי"
+        },
+        "settings": {
+          "label": "פתח את ההגדרות",
+          "description": "פתח את חלונית ההגדרות"
+        }
+      },
+      "tabs": {
+        "close": {
+          "label": "סגור כרטיסייה",
+          "description": "סגור את הכרטיסייה הנוכחית"
+        },
+        "next": {
+          "label": "הכרטיסייה הבאה",
+          "description": "עבור ללשונית הבאה"
+        },
+        "previous": {
+          "label": "הכרטיסייה הקודמת",
+          "description": "עבור ללשונית הקודמת"
+        },
+        "reopen": {
+          "label": "פתח מחדש את הכרטיסייה האחרונה",
+          "description": "פתח מחדש את הכרטיסייה האחרונה שנסגרה"
+        },
+        "navBack": {
+          "label": "נווט חזרה",
+          "description": "הפעל מחדש את הכרטיסייה הפעילה בעבר"
+        },
+        "navForward": {
+          "label": "נווט קדימה",
+          "description": "בצע שוב ניווט אחורה"
+        }
+      },
+      "editor": {
+        "save": {
+          "label": "שמור",
+          "description": "שמור את ההערה הנוכחית"
+        },
+        "bold": {
+          "label": "נועז",
+          "description": "החלף עיצוב מודגש"
+        },
+        "italic": {
+          "label": "נטוי",
+          "description": "החלף עיצוב נטוי"
+        },
+        "underline": {
+          "label": "קו תחתון",
+          "description": "החלף את העיצוב של קו תחתון"
+        }
+      },
+      "view": {
+        "toggleSidebar": {
+          "label": "החלף את הסרגל הצידי",
+          "description": "הצג או הסתר את סרגל הצד"
+        },
+        "shortcuts": {
+          "label": "קיצורי מקשים עזרה",
+          "description": "הצג הפניה לקיצורי מקלדת"
+        }
+      }
+    }
+  },
+  "phaseF": {
+    "componentsKeyboardChordIndicator": {
+      "pressedWaitingForSecondKey": "לחוץ - מחכה למקש השני..."
+    },
+    "componentsKeyboardKeyboardShortcutsDialog": {
+      "keyboardShortcuts": "קיצורי מקלדת",
+      "press": "לחץ ",
+      "toToggleThisDialog": "כדי להחליף את הדו-שיח הזה"
+    },
+    "componentsSyncDeviceList": {
+      "middot": "middot;"
+    },
+    "componentsSyncDeviceRevokedDialog": {
+      "thisDeviceHasBeenRemoved": "מכשיר זה הוסר",
+      "exporting": "מייצא...",
+      "signOut": "צא"
+    },
+    "componentsSyncSyncHistory": {
+      "middot": "middot; ",
+      "activity": "פעילות",
+      "filterBySyncType": "סנן לפי סוג סנכרון",
+      "allTypes": "כל הסוגים",
+      "pushed": "דחף",
+      "pulled": "משך",
+      "errors": "שגיאות",
+      "filterByTimePeriod": "סנן לפי פרק זמן",
+      "allTime": "כל הזמן",
+      "today": "היום",
+      "last7Days": "7 ימים אחרונים",
+      "last30Days": "30 הימים האחרונים",
+      "loadingSyncHistory": "טוען היסטוריית סנכרון",
+      "noSyncActivityYet": "עדיין אין פעילות סנכרון",
+      "loadMore": "טען עוד"
+    },
+    "componentsSyncSyncStatus": {
+      "lastSynced": "סנכרון אחרון ",
+      "pending": "בהמתנה",
+      "localOnly": "מקומי בלבד",
+      "detected": "זוהה",
+      "clockSkewDetected": "זוהתה הטיית שעון",
+      "items": "פריטים",
+      "willSyncWhenBackOnline": "יסונכרן כשיחזור להיות מקוון",
+      "openSyncSettings": "פתח את הגדרות הסנכרון"
+    },
+    "pagesSettingsAiInlineSection": {
+      "httpLocalhost11434V1": "http://localhost:11434/v1"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToUpdateTagColor": "עדכון צבע התג נכשל",
+      "googleSignInFailed": "הכניסה של Google נכשלה",
+      "failedToSendVerificationCode": "שליחת קוד האימות נכשלה",
+      "invalidVerificationCode": "קוד אימות לא חוקי",
+      "accountSetupFailed": "הגדרת החשבון נכשלה",
+      "failedToResendCode": "השליחה מחדש של הקוד נכשלה",
+      "failedToSetUpDevice": "הגדרת המכשיר נכשלה",
+      "failedToConfirmRecoveryPhrase": "אימות ביטוי השחזור נכשל",
+      "failedToAnalyzeContent": "ניתוח התוכן נכשל",
+      "failedToLoadUpdaterState": "טעינת מצב העדכון נכשלה",
+      "failedToCheckForUpdates": "נכשל בדיקת העדכונים",
+      "failedToDownloadUpdate": "הורדת העדכון נכשלה",
+      "failedToInstallUpdate": "התקנת העדכון נכשלה",
+      "failedToLoadEditorSettings": "טעינת הגדרות העורך נכשלה",
+      "failedToUpdateEditorSettings": "עדכון הגדרות העורך נכשל",
+      "failedToLoadGeneralSettings": "טעינת ההגדרות הכלליות נכשלה",
+      "failedToUpdateGeneralSettings": "עדכון ההגדרות הכלליות נכשל",
+      "failedToLoadKeyboardSettings": "טעינת הגדרות המקלדת נכשלה",
+      "failedToUpdateKeyboardSettings": "עדכון הגדרות המקלדת נכשל",
+      "failedToResetKeyboardSettings": "איפוס הגדרות המקלדת נכשל",
+      "failedToLoadNoteEditorSettings": "טעינת הגדרות עורך הערות נכשלה",
+      "failedToUpdateSettings": "עדכון ההגדרות נכשל",
+      "failedToLoadTabSettings": "טעינת הגדרות הכרטיסייה נכשלה",
+      "failedToLoadNotes": "טעינת ההערות נכשלה",
+      "failedToLoadTags": "טעינת התגים נכשלה",
+      "failedToLoadVaultStatus": "טעינת סטטוס הכספת נכשלה",
+      "failedToSelectVault": "בחירת הכספת נכשלה",
+      "failedToCloseVault": "סגירת הכספת נכשלה",
+      "failedToSwitchVault": "החלפת כספת נכשלה",
+      "failedToUpdateConfig": "עדכון התצורה נכשל",
+      "failedToReindex": "לאינדקס מחדש נכשל"
+    }
+  }
+}

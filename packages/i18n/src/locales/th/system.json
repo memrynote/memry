@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "เลือกโฟลเดอร์เก็บ Vault",
+      "button": "เลือกคลังเก็บ"
+    },
+    "exportPdf": {
+      "title": "ส่งออกเป็น PDF",
+      "filterName": "เอกสาร PDF"
+    },
+    "exportHtml": {
+      "title": "ส่งออกเป็น HTML",
+      "filterName": "เอกสาร HTML"
+    },
+    "import": {
+      "filterSupported": "ไฟล์ที่รองรับ",
+      "filterAll": "ทุกไฟล์"
+    },
+    "exportCancelled": "การส่งออกถูกยกเลิก",
+    "update": {
+      "availableTitle": "มีการอัปเดตใหม่",
+      "availableMessage": "Memry {version} พร้อมใช้งาน",
+      "availableDetailFallback": "ดาวน์โหลดการอัปเดตตอนนี้หรือไม่?",
+      "buttonDownload": "ดาวน์โหลด",
+      "buttonLater": "ภายหลัง",
+      "readyTitle": "พร้อมอัปเดต",
+      "readyMessage": "Memry {version} ถูกดาวน์โหลดแล้ว",
+      "readyDetailFallback": "เริ่มต้น Memry ใหม่เพื่อเสร็จสิ้นการติดตั้งการอัปเดต",
+      "buttonRestartNow": "เริ่มต้นทันที",
+      "releaseNotesLabel": "บันทึกประจำรุ่น:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "เตือนความจำเกี่ยวกับบันทึก",
+      "journal": "เตือนความจำในสมุดบันทึก",
+      "highlight": "เตือนความจำสำคัญ",
+      "fallback": "ถึงกำหนดเตือนความจำ",
+      "default": "การเตือน"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "เวลาของเตือนความจำต้องอยู่ในอนาคต",
+    "definitionNotFound": "ไม่พบคำจำกัดความ",
+    "noteNotFound": "ไม่พบบันทึก",
+    "updateFailed": "การอัปเดตล้มเหลว"
+  }
+}

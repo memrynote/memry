@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "Välj valvmapp",
+      "button": "Välj valv"
+    },
+    "exportPdf": {
+      "title": "Exportera som PDF",
+      "filterName": "PDF-dokument"
+    },
+    "exportHtml": {
+      "title": "Exportera som HTML",
+      "filterName": "HTML-dokument"
+    },
+    "import": {
+      "filterSupported": "Stödda filer",
+      "filterAll": "Alla filer"
+    },
+    "exportCancelled": "Export avbruten",
+    "update": {
+      "availableTitle": "Uppdatering tillgänglig",
+      "availableMessage": "Memry {version} är tillgänglig.",
+      "availableDetailFallback": "Ladda ner uppdateringen nu?",
+      "buttonDownload": "Ladda ner",
+      "buttonLater": "Senare",
+      "readyTitle": "Uppdatering redo",
+      "readyMessage": "Memry {version} har laddats ner.",
+      "readyDetailFallback": "Starta om Memry för att slutföra installationen av uppdateringen.",
+      "buttonRestartNow": "Starta om nu",
+      "releaseNotesLabel": "Versionsinformation:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "Noteringspåminnelse",
+      "journal": "Dagbokspåminnelse",
+      "highlight": "Markering påminnelse",
+      "fallback": "Påminnelse förfaller",
+      "default": "Påminnelse"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "Påminnelsetiden måste vara i framtiden",
+    "definitionNotFound": "Definition hittades inte",
+    "noteNotFound": "Anteckning hittades inte",
+    "updateFailed": "Uppdateringen misslyckades"
+  }
+}

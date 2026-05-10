@@ -33,12 +33,11 @@ test('missing English key exits 1 and reports key plus file path', () => {
   assert.match(result.stdout, /missing-key\.tsx/)
 })
 
-test('missing ar keys warn but Turkish is complete', () => {
+test('all locale resources are complete', () => {
   const result = runCheck(['--paths', path.join(fixtureRoot, 'pass.tsx')])
 
   assert.equal(result.status, 0)
-  assert.doesNotMatch(result.stdout, /warn: \d+ keys missing in tr\/\*/)
-  assert.match(result.stdout, /warn: \d+ keys missing in ar\/\*/)
+  assert.doesNotMatch(result.stdout, /warn: \d+ keys missing in [^/]+\/\*/)
 })
 
 test('orphan English keys warn but do not fail', () => {

@@ -1,0 +1,663 @@
+{
+  "page": {
+    "empty": {
+      "title": "לא נבחרה הערה",
+      "body": "בחר הערה מהסרגל הצידי כדי להציג אותה"
+    },
+    "error": {
+      "title": "טעינת ההערה נכשלה"
+    },
+    "toast": {
+      "cannotSaveDeleted": "לא ניתן לשמור - ההערה נמחקה",
+      "cannotRenameDeleted": "לא ניתן לשנות את השם - ההערה נמחקה",
+      "createLinkedFailed": "יצירת הערה מקושרת נכשלה",
+      "openLinkedFailed": "פתיחת הפריט המקושר נכשלה",
+      "localOnly": "הערה מוגדרת למקומית בלבד",
+      "willSync": "הערה תסתנכרן לענן",
+      "saveFailed": "שמירת ההערה נכשלה",
+      "renameFailed": "שינוי שם ההערה נכשל",
+      "toggleLocalOnlyFailed": "החלפת מקומית בלבד נכשלה",
+      "toggleFullWidthFailed": "החלפת הרוחב המלא נכשלה"
+    },
+    "deleteDialogTitle": "{count, plural, one {מחק הערה} other {מחק הערות #}}"
+  },
+  "tree": {
+    "aria": {
+      "tree": "עץ הערות",
+      "openFolderView": "פתח את תצוגת התיקיה"
+    },
+    "empty": {
+      "title": "עדיין אין הערות",
+      "body": "צור הערה כדי להתחיל",
+      "newNote": "הערה חדשה"
+    },
+    "loadingError": "טעינת ההערות נכשלה",
+    "actions": {
+      "newNote": "הערה חדשה",
+      "newFolder": "תיקיה חדשה",
+      "rename": "שנה שם",
+      "openExternal": "פתח בעורך חיצוני",
+      "revealInFinder": "חשוף ב-Finder",
+      "setDefaultTemplate": "הגדר תבנית ברירת מחדל",
+      "clearDefaultTemplate": "נקה תבנית ברירת מחדל",
+      "setIcon": "הגדר אייקון",
+      "removeIcon": "הסר סמל",
+      "deleteSelectedNotes": "מחק הערות {count}",
+      "deleteSelectedItems": "מחק פריטי {count}"
+    },
+    "deleteDialog": {
+      "noteTitle": "מחק הערה",
+      "folderTitle": "מחק תיקייה",
+      "itemsTitle": "מחק פריטי {count}",
+      "noteBody": "האם אתה בטוח שברצונך למחוק את \"{name}\"? לא ניתן לבטל פעולה זו.",
+      "folderBody": "האם אתה בטוח שברצונך למחוק את \"{name}\" ואת כל ההערות שבתוכו? לא ניתן לבטל פעולה זו.",
+      "itemsBody": "האם אתה בטוח שברצונך למחוק פריטי {count}? לא ניתן לבטל פעולה זו.",
+      "folderSuffix": "תיקייה",
+      "moreItems": "...ועוד {count}",
+      "deleting": "מוחק...",
+      "deleteCount": "מחק את {count}"
+    }
+  },
+  "editor": {
+    "title": {
+      "untitled": "ללא כותרת",
+      "aria": "הערה כותרת"
+    },
+    "content": {
+      "placeholder": "התחל לכתוב, או לחץ על '/' עבור פקודות...",
+      "regionAria": "עורך הערות",
+      "richTextAria": "עורך טקסט עשיר",
+      "headingPlaceholder": "כותרת",
+      "listPlaceholder": "פריט רשימה",
+      "todoPlaceholder": "פריט מטלה"
+    },
+    "toolbar": {
+      "reminderSet": "תזכורת מוגדרת",
+      "setReminder": "הגדר תזכורת",
+      "removeBookmark": "הסר את הסימניה",
+      "addBookmark": "הוסף סימניה",
+      "hideLocalGraph": "הסתר גרף מקומי",
+      "showLocalGraph": "הצג גרף מקומי",
+      "versionHistory": "היסטוריית גרסאות",
+      "export": "ייצוא",
+      "fullWidth": "רוחב מלא",
+      "disableLocalOnly": "השבת מקומי בלבד",
+      "setLocalOnly": "הגדר מקומי בלבד"
+    },
+    "breadcrumb": {
+      "locationAria": "שימו לב למיקום",
+      "parentFolderAria": "עבור אל תיקיית האב"
+    },
+    "errorBoundary": {
+      "title": "שגיאת עורך",
+      "body": "העורך נתקל בשגיאה. תוכן ההערה שלך בטוח.",
+      "technicalDetails": "פרטים טכניים",
+      "reloadAria": "טען מחדש את העורך",
+      "reload": "עורך טען מחדש"
+    },
+    "callout": {
+      "title": "הסבר",
+      "group": "בלוקים בסיסיים",
+      "subtext": "הדגש מידע חשוב",
+      "changeType": "שנה את סוג ההסבר",
+      "menuLabel": "סוג הסבר",
+      "info": "מידע",
+      "warning": "אזהרה",
+      "error": "שגיאה",
+      "success": "הצלחה"
+    }
+  },
+  "menus": {
+    "wiki": {
+      "aria": "שימו לב להצעות",
+      "loading": "טוען הערות...",
+      "empty": "לא נמצאו הערות",
+      "create": "צור הערה חדשה"
+    },
+    "tags": {
+      "aria": "הצעות לתייג",
+      "loading": "טוען תגים...",
+      "empty": "הקלד כדי ליצור תג חדש",
+      "create": "צור #{tag}"
+    },
+    "pasteLink": {
+      "title": "הדבק כמו",
+      "url": "כתובת אתר",
+      "mention": "להזכיר",
+      "embedVideo": "הטמעת וידאו"
+    },
+    "emoji": {
+      "aria": "בוחר אמוג'י וסמלים",
+      "emojiTab": "אימוג'י",
+      "iconsTab": "אייקונים",
+      "searchPlaceholder": "חפש",
+      "noIcons": "לא נמצאו אייקונים",
+      "clearSearch": "נקה חיפוש"
+    }
+  },
+  "detail": {
+    "bodyPlaceholder": "כתוב את ההערה שלך..."
+  },
+  "outline": {
+    "title": "מתאר",
+    "aria": "מתאר מסמך",
+    "empty": "אין כותרות",
+    "emptyYet": "עדיין אין כותרות",
+    "readTime": "{count} דקות קריאה",
+    "words": "מילים {count}",
+    "created": "נוצר",
+    "modified": "שונה"
+  },
+  "backlinks": {
+    "title": "קישורים נכנסים",
+    "sortRecent": "לאחרונה",
+    "sortAlpha": "א-ז",
+    "sortMentions": "רוב האזכורים",
+    "sortBy": "מיין קישורים נכנסים לפי {sort}",
+    "summary": "הערות {notes} · הפניות ל-{references}",
+    "sectionAria": "קישורים נכנסים",
+    "listAria": "רשימת קישורים נכנסים",
+    "fromAria": "קישורים נכנסים מ-{title}",
+    "collapse": "התמוטט",
+    "expand": "הרחב",
+    "collapseSection": "כווץ קטע קישורים נכנסים",
+    "expandSection": "הרחב את קטע קישורים נכנסים",
+    "showMore": "הצג {count} קישורים נכנסים נוספים",
+    "more": "{count} יותר"
+  },
+  "tagsRow": {
+    "aria": "תגים",
+    "empty": "הוסף תגים",
+    "add": "הוסף תג",
+    "removeAria": "הסר תג: {tag}",
+    "inputPlaceholder": "הקלד שם תג...",
+    "recent": "לאחרונה",
+    "matching": "התאמה",
+    "all": "כל התגים",
+    "none": "לא נמצאו תגים",
+    "createTag": "צור תג: \"{tag}\"",
+    "chooseColor": "בחר צבע:",
+    "preview": "תצוגה מקדימה:",
+    "colorAria": "בחר צבע {color}"
+  },
+  "properties": {
+    "title": "נכסים",
+    "noteAria": "שימו לב למאפיינים",
+    "workspaceAria": "מאפייני סביבת עבודה",
+    "listAria": "רשימת נכסים",
+    "add": "הוסף נכס",
+    "addDescription": "הוסף נכס חדש להערה זו",
+    "namePlaceholder": "שם הנכס",
+    "nameAria": "שם הנכס",
+    "typeSection": "הקלד",
+    "empty": "ריק",
+    "dragAria": "גרור כדי לסדר מחדש את הנכס",
+    "editName": "ערוך את שם הנכס",
+    "delete": "מחק נכס",
+    "searchOptions": "אפשרויות חיפוש...",
+    "noOptions": "עדיין אין אפשרויות",
+    "optionName": "שם האופציה",
+    "newOption": "אפשרות חדשה",
+    "ratingAria": "דירוג",
+    "openUrlAria": "פתח את כתובת האתר",
+    "types": {
+      "text": "טקסט",
+      "number": "מספר",
+      "date": "תאריך",
+      "checkbox": "תיבת סימון",
+      "url": "כתובת אתר",
+      "status": "סטטוס",
+      "select": "בחר",
+      "multiselect": "בחירה מרובה"
+    }
+  },
+  "templateSelector": {
+    "title": "בחר את הקנבס שלך",
+    "description": "בחר תבנית כדי להתחיל את ההערה",
+    "searchPlaceholder": "חפש תבניות...",
+    "loading": "טוען תבניות...",
+    "empty": "לא נמצאו תבניות",
+    "myTemplates": "התבניות שלי",
+    "essentials": "יסודות",
+    "setFolderDefault": "הגדר כברירת מחדל של תיקיה",
+    "useTemplate": "השתמש בתבנית",
+    "createNote": "צור הערה"
+  },
+  "exportDialog": {
+    "title": "ייצוא הערה",
+    "description": "ייצא את \"{title}\" לקובץ",
+    "format": "פורמט",
+    "pdfDescription": "מסמך מוכן להדפסה",
+    "htmlDescription": "קובץ מוכן לאינטרנט",
+    "pageSize": "גודל עמוד",
+    "selectPageSize": "בחר גודל עמוד",
+    "options": "אפשרויות",
+    "includeMetadata": "כלול מטא נתונים (תגים, תאריכים)",
+    "exporting": "מייצא...",
+    "exported": "מיוצא!",
+    "export": "ייצוא",
+    "toast": {
+      "failed": "הייצוא נכשל"
+    }
+  },
+  "versionHistory": {
+    "title": "היסטוריית גרסאות",
+    "description": "הצג ושחזר גרסאות קודמות של \"{title}\"",
+    "hidePreview": "הסתר תצוגה מקדימה",
+    "showPreview": "הצג תצוגה מקדימה",
+    "empty": "עדיין לא נשמרו גרסאות",
+    "emptyDescription": "גרסאות נשמרות באופן אוטומטי כאשר אתה מבצע שינויים משמעותיים",
+    "latest": "אחרון",
+    "autoSaved": "נשמר אוטומטית",
+    "words": "מילים {count}",
+    "selectPrompt": "בחר גרסה לתצוגה מקדימה",
+    "restore": "שחזר",
+    "deleteTitle": "למחוק את הגרסה הזו?",
+    "deleteDescription": "לא ניתן לבטל פעולה זו. גרסה זו תימחק לצמיתות.",
+    "restoreTitle": "לשחזר את הגרסה הזו?",
+    "restoreDescription": "זה יחליף את תוכן ההערה הנוכחי בגרסה זו. תמונת מצב של המצב הנוכחי תישמר תחילה, כך שתוכל לבטל פעולה זו.",
+    "restoring": "משחזר...",
+    "toast": {
+      "loadPreviewFailed": "טעינת התצוגה המקדימה של הגרסה נכשלה",
+      "restored": "הערה שוחזרה לגרסה הקודמת",
+      "deleted": "הגרסה נמחקה"
+    }
+  },
+  "templateEditor": {
+    "title": {
+      "new": "תבנית חדשה",
+      "view": "הצג תבנית",
+      "edit": "ערוך תבנית"
+    },
+    "toast": {
+      "nameRequired": "נדרש שם תבנית",
+      "created": "התבנית נוצרה",
+      "createFailed": "יצירת התבנית נכשלה",
+      "saved": "התבנית נשמרה",
+      "saveFailed": "שמירת התבנית נכשלה",
+      "duplicateFailed": "שכפול התבנית נכשל",
+      "deleteFailed": "מחיקת התבנית נכשלה"
+    }
+  },
+  "reminders": {
+    "summary": "תזכורת: {date}",
+    "summaryWithMore": "תזכורת: {date} (+{count} יותר)",
+    "hasReminders": "יש תזכורות",
+    "setReminder": "הגדר תזכורת",
+    "toast": {
+      "set": "תזכורת מוגדרת",
+      "setForHighlight": "תזכורת מוגדרת עבור טקסט מודגש",
+      "setFailed": "הגדרת התזכורת נכשלה",
+      "deleted": "התזכורת נמחקה",
+      "deleteFailed": "מחיקת התזכורת נכשלה",
+      "dismissed": "התזכורת נדחתה",
+      "dismissFailed": "ביטול התזכורת נכשל"
+    }
+  },
+  "linkedTasks": {
+    "title": "משימות מקושרות",
+    "loading": "טוען משימות מקושרות..."
+  },
+  "phaseF": {
+    "componentsFolderViewColumnHeader": {
+      "dragToReorderColumn": "גרור כדי לסדר מחדש את העמודה"
+    },
+    "componentsFolderViewColumnSelector": {
+      "properties": "נכסים",
+      "searchColumns": "חפש עמודות...",
+      "noMatchingColumns": "אין עמודות תואמות",
+      "formulas": "נוסחאות",
+      "noFormulasDefined": "לא הוגדרו נוסחאות",
+      "addFormula": "הוסף נוסחה",
+      "deleteFormula": "מחק את הנוסחה",
+      "areYouSureYouWantToDeleteTheFormula": "האם אתה בטוח שברצונך למחוק את הנוסחה \"",
+      "quotThisActionCannotBeUndone": "quot;? לא ניתן לבטל פעולה זו.",
+      "cancel": "בטל",
+      "delete": "מחק",
+      "none": "אין",
+      "edit": "ערוך",
+      "delete2": "מחק"
+    },
+    "componentsFolderViewFilterBuilder": {
+      "filter": "מסנן",
+      "filters": "מסננים",
+      "clearAll": "נקה הכל",
+      "noFiltersApplied": "לא הוחלו מסננים",
+      "addFiltersToNarrowDownYourNotes": "הוסף מסננים כדי לצמצם את ההערות שלך",
+      "match": "התאמה",
+      "allAnd": "הכל (AND)",
+      "anyOr": "כל (OR)",
+      "ofTheFollowing": "מבין הדברים הבאים:",
+      "match2": "התאמה",
+      "all": "הכל",
+      "any": "כל",
+      "of": "של:",
+      "addCondition": "הוסף תנאי",
+      "addFilter": "הוסף מסנן",
+      "addGroup": "הוסף קבוצה"
+    },
+    "componentsFolderViewFilterRow": {
+      "builtIn": "מובנה",
+      "properties": "נכסים",
+      "placeholderProperty": "רכוש",
+      "placeholderOperator": "מפעיל",
+      "placeholderValue": "ערך"
+    },
+    "componentsFolderViewFolderTableView": {
+      "notesTable": "טבלת הערות"
+    },
+    "componentsFolderViewFolderViewToolbar": {
+      "searchNotes": "חפש הערות...",
+      "clearSearch": "נקה חיפוש"
+    },
+    "componentsFolderViewFormulaEditorModal": {
+      "defineAComputedColumnUsingAnExpression": "הגדר עמודה מחושבת באמצעות ביטוי.",
+      "name": "שם",
+      "expression": "ביטוי",
+      "available": "זמין: ",
+      "preview": "תצוגה מקדימה",
+      "fixExpressionErrorsToSeePreview": "תקן שגיאות ביטוי כדי לראות תצוגה מקדימה",
+      "usingNote": "שימוש בהערה: \"",
+      "quot": "quot;",
+      "cancel": "בטל",
+      "namePlaceholder": "ימים_עד_מועד",
+      "expressionPlaceholder": "dateDiff(due_date, today(), \"ימים\")"
+    },
+    "componentsFolderViewGroupBySelector": {
+      "clearGrouping": "קיבוץ ברור",
+      "searchProperties": "חפש נכסים...",
+      "builtIn": "מובנה",
+      "properties": "נכסים",
+      "noGroupablePropertiesFound": "לא נמצאו נכסים הניתנים לקיבוץ",
+      "sortDirection": "כיוון מיון",
+      "collapseGroupsByDefault": "כיווץ קבוצות כברירת מחדל",
+      "showGroupSummaries": "הצג סיכומים קבוצתיים",
+      "clearGrouping2": "קיבוץ ברור"
+    },
+    "componentsFolderViewGroupedTable": {
+      "groupedNotesTable": "טבלת הערות מקובצות",
+      "more": "יותר"
+    },
+    "componentsFolderViewMoveToFolderDialog": {
+      "searchFolders": "חפש תיקיות...",
+      "loadingFolders": "טוען תיקיות...",
+      "suggested": "מוצע",
+      "bestMatch": "ההתאמה הטובה ביותר",
+      "current": "נוכחי)",
+      "allFolders": "כל התיקיות",
+      "current2": "נוכחי)",
+      "noFoldersMatch": "אין תיקיות תואמות \"",
+      "quot": "quot;",
+      "create": "צור \"",
+      "quot2": "quot;",
+      "cancel": "בטל"
+    },
+    "componentsFolderViewRowContextMenu": {
+      "delete": "מחק ",
+      "notes": "הערות",
+      "open": "פתוח",
+      "openInExternalEditor": "פתח בעורך חיצוני",
+      "revealInFinder": "חשוף ב-Finder",
+      "revealInSidebar": "חשוף בסרגל הצד",
+      "copyLink": "העתק קישור",
+      "delete2": "מחק"
+    },
+    "componentsFolderViewSortableColumnHeader": {
+      "dragToReorderColumn": "גרור כדי לסדר מחדש את העמודה",
+      "resizeColumn": "שנה את גודל העמודה"
+    },
+    "componentsFolderViewViewSwitcher": {
+      "default": "ברירת מחדל",
+      "rename": "שנה שם",
+      "duplicate": "שכפול",
+      "setAsDefault": "הגדר כברירת מחדל",
+      "delete": "מחק",
+      "createNewView": "צור תצוגה חדשה",
+      "createNewView2": "צור תצוגה חדשה",
+      "createANewViewWithCustomColumnsFiltersAndSorting": "צור תצוגה חדשה עם עמודות מותאמות אישית, מסננים ומיון.",
+      "viewName": "הצג שם",
+      "myCustomView": "התצוגה המותאמת אישית שלי",
+      "baseConfiguration": "תצורת בסיס",
+      "copyFromCurrentView": "העתק מהתצוגה הנוכחית",
+      "startFreshDefaultColumns": "התחל מחדש (עמודות ברירת מחדל)",
+      "cancel": "בטל",
+      "renameView": "שנה שם תצוגה",
+      "enterANewNameForThisView": "הזן שם חדש לתצוגה זו.",
+      "viewName2": "הצג שם",
+      "viewName3": "הצג שם",
+      "cancel2": "בטל",
+      "deleteView": "מחק תצוגה",
+      "areYouSureYouWantToDelete": "האם אתה בטוח שאתה רוצה למחוק \"",
+      "thisActionCannotBeUndone": "לא ניתן לבטל פעולה זו.",
+      "cancel3": "בטל"
+    },
+    "componentsNoteContentAreaFileBlock": {
+      "failedToLoadPdf": "טעינת PDF נכשלה: ",
+      "download": "הורד",
+      "download2": "הורד",
+      "noFileAttached": "לא מצורף קובץ"
+    },
+    "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
+      "openInTaskPanel": "פתח בלוח המשימות",
+      "taskName": "שם המשימה...",
+      "taskDeleted": "המשימה נמחקה",
+      "loading": "טוען..."
+    },
+    "componentsNoteContentAreaTaskBlockTaskCreationPopover": {
+      "project": "פרויקט",
+      "priority": "עדיפות",
+      "dueDate": "תאריך יעד",
+      "cancel": "בטל"
+    },
+    "componentsNoteContentAreaYoutubeEmbedBlock": {
+      "noVideoUrl": "אין כתובת אתר של סרטון"
+    },
+    "componentsNoteExportDialog": {
+      "pdf": "PDF",
+      "html": "HTML",
+      "a4210X297Mm": "A4 (210 x 297 מ\"מ)",
+      "letter85X11In": "אותיות (8.5 x 11 אינץ')",
+      "legal85X14In": "חוקי (8.5 x 14 אינץ')"
+    },
+    "componentsNoteInfoSectionEditorsDateeditor": {
+      "ddMmYyyy": "dd.mm.yyyy"
+    },
+    "componentsNoteNoteHeader": {
+      "synced": "מסונכרן"
+    },
+    "componentsSharedDocumentInfoTab": {
+      "words": "מילים",
+      "characters": "דמויות",
+      "readingTime": "זמן קריאה",
+      "created": "נוצר",
+      "modified": "שונה"
+    },
+    "componentsSidebarProjectsEmptyState": {
+      "noProjectsYet": "עדיין אין פרויקטים",
+      "createYourFirstProject": "צור את הפרויקט הראשון שלך",
+      "createYourFirstProject2": "צור את הפרויקט הראשון שלך"
+    },
+    "componentsSidebarSidebarBookmarkList": {
+      "loadingBookmarks": "טוען סימניות...",
+      "failedToLoadBookmarks": "טעינת הסימניות נכשלה",
+      "noBookmarksYet": "עדיין אין סימניות",
+      "moreOptions": "אפשרויות נוספות",
+      "remove": "הסר"
+    },
+    "componentsSidebarSidebarItemContextMenu": {
+      "open": "פתוח",
+      "openToTheSide": "פתוח לצד",
+      "pinToTabs": "הצמד לכרטיסיות",
+      "edit": "ערוך",
+      "delete": "מחק",
+      "copyLink": "העתק קישור"
+    },
+    "componentsSidebarSidebarTagList": {
+      "loadingTags": "טוען תגים...",
+      "failedToLoadTags": "טעינת התגים נכשלה",
+      "noTagsYet": "עדיין אין תגים",
+      "filterTags": "סינון תגיות...",
+      "noMatchingTags": "אין תגים תואמים"
+    },
+    "componentsSidebarSortableProjectItem": {
+      "dropHere": "זרוק כאן",
+      "editProject": "ערוך פרויקט"
+    },
+    "componentsSidebarTagDeleteDialog": {
+      "deleteTag": "מחק תג #",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "הערות עם תג זה לא יימחקו, רק יבוטלו.",
+      "cancel": "בטל"
+    },
+    "componentsSidebarTagDetailView": {
+      "goBack": "תחזור אחורה",
+      "notes": "הערות",
+      "loadingNotes": "טוען הערות...",
+      "noNotesWithThisTag": "אין הערות עם התג הזה",
+      "addThisTagToANoteToSeeItHere": "הוסף את התג הזה להערה כדי לראות אותו כאן",
+      "pinned": "מוצמד",
+      "allNotes": "כל ההערות",
+      "allNotesArePinned": "כל ההערות מוצמדות",
+      "unpinFromTag": "בטל את ההצמדה מהתג",
+      "unpin": "בטל את ההצמדה",
+      "pinToTag": "הצמד כדי לתייג",
+      "pin": "סיכה",
+      "tagActions": "תיוג פעולות",
+      "editTagName": "ערוך את שם התג",
+      "changeColor": "שנה צבע",
+      "deleteTag": "מחק תג",
+      "recent": "לאחרונה",
+      "created": "נוצר",
+      "alphabetical": "אלפביתי"
+    },
+    "componentsSidebarTagRenameDialog": {
+      "renameTag": "שנה שם תג",
+      "rename": "שנה שם ",
+      "acrossEveryNoteThatUsesIt": "על פני כל פתק שמשתמש בו.",
+      "newName": "שם חדש",
+      "cancel": "בטל"
+    },
+    "componentsViewersAudioPlayer": {
+      "failedToLoadAudio": "טעינת האודיו נכשלה",
+      "theAudioFileCouldNotBePlayed": "לא ניתן היה להפעיל את קובץ האודיו.",
+      "skipBack10s": "דלג אחורה 10 שניות",
+      "skipForward10s": "דלג קדימה 10 שניות"
+    },
+    "componentsViewersImageViewer": {
+      "failedToLoadImage": "טעינת התמונה נכשלה",
+      "theImageCouldNotBeDisplayed": "לא ניתן היה להציג את התמונה.",
+      "resetZoom": "אפס זום",
+      "rotate": "סובב",
+      "dragToPan": "גרור כדי להזיז"
+    },
+    "componentsViewersPdfViewer": {
+      "failedToLoadPdf": "טעינת PDF נכשלה",
+      "previousPage": "העמוד הקודם",
+      "nextPage": "העמוד הבא",
+      "zoomOut": "זום החוצה",
+      "zoomIn": "התקרב",
+      "fitToWidth": "התאמה לרוחב",
+      "rotate": "סובב"
+    },
+    "componentsViewersVideoPlayer": {
+      "failedToLoadVideo": "טעינת הסרטון נכשלה",
+      "theVideoFileCouldNotBePlayed": "לא ניתן היה להפעיל את קובץ הווידאו."
+    },
+    "pagesFile": {
+      "failedToLoadFile": "טעינת הקובץ נכשלה",
+      "tryAgain": "נסה שוב",
+      "noFileSelected": "לא נבחר קובץ",
+      "selectAFileFromTheSidebarToViewIt": "בחר קובץ מהסרגל הצידי כדי להציג אותו",
+      "loadingFile": "טוען קובץ...",
+      "openInDefaultApp": "פתח באפליקציית ברירת המחדל",
+      "open": "פתוח",
+      "revealInFinder": "חשוף ב-Finder",
+      "reveal": "לחשוף",
+      "unsupportedFileType": "סוג קובץ לא נתמך"
+    },
+    "pagesFolderView": {
+      "createNewNote": "צור הערה חדשה",
+      "viewSettings": "הצג הגדרות",
+      "displayDensity": "צפיפות תצוגה",
+      "comfortable": "נוח",
+      "compact": "קומפקטי",
+      "showSummaries": "הצג סיכומים",
+      "cancel": "בטל"
+    },
+    "pagesTemplateEditor": {
+      "loadingTemplate": "טוען תבנית...",
+      "builtInTemplatesCannotBeModified": "לא ניתן לשנות תבניות מובנות",
+      "description": "תיאור",
+      "briefDescriptionOfThisTemplate": "תיאור קצר של תבנית זו...",
+      "templateContent": "תוכן תבנית",
+      "use": "השתמש ",
+      "toInsertTheNoteTitleWhenCreatingANote": "כדי להוסיף את כותרת ההערה בעת יצירת הערה.",
+      "templateName": "שם התבנית",
+      "defaultContentForNotesCreatedFromThisTemplate": "תוכן ברירת מחדל להערות שנוצרו מתבנית זו..."
+    },
+    "pagesTemplates": {
+      "loadingCollection": "טוען אוסף...",
+      "templateCollection": "אוסף תבניות",
+      "templates": "תבניות",
+      "curatedStructuresForYourNotes": "מבנים אוצרים עבור ההערות שלך.",
+      "newTemplate": "תבנית חדשה",
+      "myTemplates": "התבניות שלי",
+      "builtIn": "מובנה",
+      "deleteTemplate": "מחק תבנית",
+      "areYouSureYouWantToDelete": "האם אתה בטוח שאתה רוצה למחוק \"",
+      "notesCreatedFromThisTemplateWillNotBeAffected": "הערות שנוצרו מתבנית זו לא יושפעו.",
+      "cancel": "בטל",
+      "builtIn2": "מובנה",
+      "duplicate": "שכפול",
+      "delete": "מחק",
+      "startYourCollection": "התחל את האוסף שלך",
+      "templatesHelpYouCreateNotesWithConsistentStructure": "תבניות עוזרות לך ליצור הערות עם מבנה עקבי.",
+      "createTemplate": "צור תבנית"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveFormula": "שמירת הנוסחה נכשלה",
+      "failedToOpenInExternalEditor": "הפתיחה בעורך חיצוני נכשלה",
+      "failedToRevealInFinder": "החשיפה ב-Finder נכשלה",
+      "failedToCopyLink": "העתקת הקישור נכשלה",
+      "failedToCreateView": "יצירת התצוגה נכשלה",
+      "failedToRenameFolder": "שינוי שם התיקיה נכשל",
+      "failedToCreateTask": "יצירת המשימה נכשלה",
+      "failedToLoadVersionHistory": "טעינת היסטוריית הגרסאות נכשלה",
+      "failedToRestoreVersion": "שחזור הגרסה נכשל",
+      "failedToDeleteVersion": "מחיקת הגרסה נכשלה",
+      "failedToCreateNote": "יצירת הערה נכשלה",
+      "failedToLoadMoreBookmarks": "טעינת סימניות נוספות נכשלה",
+      "failedToToggleBookmark": "החלפת סימניה נכשלה",
+      "failedToRemoveBookmark": "הסרת הסימניה נכשלה",
+      "failedToReorderBookmarks": "הסדר מחדש של הסימניות נכשל",
+      "failedToSave": "השמירה נכשלה",
+      "failedToRename": "שינוי השם נכשל",
+      "failedToUpdateEmoji": "עדכון האימוג'י נכשל",
+      "failedToUpdateTags": "עדכון התגים נכשל",
+      "failedToSnoozeReminder": "השהיית התזכורת נכשלה",
+      "failedToCreateFolder": "יצירת התיקיה נכשלה",
+      "failedToLoadProperties": "טעינת המאפיינים נכשלה",
+      "failedToLoadPropertyDefinitions": "טעינת הגדרות הנכס נכשלה",
+      "failedToLoadTemplates": "טעינת התבניות נכשלה"
+    },
+    "toasts": {
+      "noteExportedSuccessfully": "הערה יצאה בהצלחה",
+      "failedToUpdateProperty": "עדכון הנכס נכשל",
+      "failedToUpdateTags": "עדכון התגים נכשל",
+      "reminderSnoozed": "התזכורת הושהה",
+      "failedToSnoozeReminder": "השהיית התזכורת נכשלה",
+      "defaultTemplateSet": "ערכת תבנית ברירת מחדל",
+      "failedToSetDefaultTemplate": "הגדרת תבנית ברירת המחדל נכשלה",
+      "defaultTemplateCleared": "תבנית ברירת המחדל נוקתה",
+      "failedToClearDefaultTemplate": "נכשל ניקוי תבנית ברירת המחדל",
+      "failedToAddProperty": "הוספת הנכס נכשלה",
+      "failedToDeleteProperty": "מחיקת הנכס נכשלה",
+      "failedToRenameProperty": "שינוי שם הנכס נכשל",
+      "failedToReorderProperties": "הסדר מחדש של המאפיינים נכשל",
+      "cannotAddTagThisNoteWasDeleted": "לא ניתן להוסיף תג - הערה זו נמחקה",
+      "cannotRemoveTagThisNoteWasDeleted": "לא ניתן להסיר תג - הערה זו נמחקה",
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "לא ניתן לשנות רק מקומי - הערה זו נמחקה"
+    }
+  }
+}

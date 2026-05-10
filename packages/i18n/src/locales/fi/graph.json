@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Ladataan kaaviota...",
+    "load-failed": "Kaavion tietojen lataaminen epäonnistui",
+    "try-again": "Yritä uudelleen",
+    "aria-label": "Tietokaavio, jossa on {nodeCount, plural, one {#-solmu} other {# solmut}} ja {edgeCount, plural, one {#-liitäntä} other {# liitännät}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Graafin solmut",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Tietokaaviosi",
+    "description": "Muistiinpanojesi, tehtäviesi ja projektiesi väliset yhteydet näkyvät tässä interaktiivisena kaaviona.",
+    "link-title": "Linkitä muistiinpanosi",
+    "link-description": "Käytä [[wikilinkkejä]] yhdistääksesi ideat muistiinpanojen välillä",
+    "discover-title": "Tutustu kuvioihin",
+    "discover-description": "Yhteyksien kasvaessa klustereita ja teemoja syntyy luonnollisesti"
+  },
+  "entity": {
+    "note": "huomautus",
+    "notes": "muistiinpanoja",
+    "journal": "päiväkirja",
+    "journals": "lehtiä",
+    "task": "tehtävä",
+    "tasks": "tehtäviä",
+    "project": "hanke",
+    "projects": "hankkeita",
+    "tag": "-tunniste",
+    "tags": "tunnisteet",
+    "orphan": "orpo",
+    "orphans": "orvot",
+    "unresolved": "ratkaisematta"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Kaavion asetukset",
+    "hide-settings": "Piilota asetukset",
+    "reset-filters": "Nollaa suodattimet",
+    "filters": "Suodattimet",
+    "display": "Näyttö",
+    "show-labels": "Näytä tunnisteet",
+    "focus-depth": "syvyys {depth}",
+    "clear-focus": "Selkeä fokusoitu solmu"
+  },
+  "filter": {
+    "notes": "Huomautuksia",
+    "journals": "Lehdet",
+    "tasks": "Tehtävät",
+    "projects": "Projektit",
+    "tags": "Tunnisteet",
+    "orphans": "Orvot",
+    "toggle-entity": "Vaihda {label}",
+    "toggle-orphans": "Vaihda orvot solmut"
+  },
+  "search": {
+    "placeholder": "Hae solmut...",
+    "clear": "Tyhjennä kaaviohaku"
+  },
+  "context-menu": {
+    "untitled": "Nimetön",
+    "focus-node": "Keskity tähän solmuun",
+    "open-new-tab": "Avaa uudessa välilehdessä",
+    "create-note": "Luo muistiinpano",
+    "copy-title": "Kopioi otsikko"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {#-liitäntä} other {# liitännät}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Ladataan kaaviota...",
+    "empty": "Yhteyksiä ei löytynyt",
+    "open-full": "Avaa koko kaavio",
+    "close": "Sulje kaavio"
+  }
+}

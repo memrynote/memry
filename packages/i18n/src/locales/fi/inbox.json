@@ -1,0 +1,483 @@
+{
+  "view": {
+    "tabs": {
+      "inbox": "Saapuneet",
+      "archived": "Arkistoitu",
+      "insights": "Näkemyksiä",
+      "ariaLabel": "Saapuneet-kansionäkymän valinta"
+    },
+    "triageButton": "Triage",
+    "processInboxTitle": "Käsittele postilaatikko (Cmd+P)",
+    "itemCaptured": "Kohde otettu",
+    "searchArchivedTitle": "Hae arkistoituja kohteita",
+    "searchPlaceholder": "Hae...",
+    "archivedItemsAria": "Arkistoidut kohteet",
+    "snoozed": {
+      "show": "Näytä torkutetut kohteet",
+      "showWithCount": "Näytä torkutetut kohteet ({count})",
+      "hide": "Piilota torkutetut kohteet"
+    },
+    "filter": {
+      "button": "Suodata",
+      "byType": "Suodata tyypin mukaan",
+      "active": "{count, plural, one {Suodatus #-tyypin mukaan} other {Suodatus #-tyyppien mukaan}}",
+      "clearAll": "Tyhjennä kaikki"
+    },
+    "jobs": {
+      "running": "{count, plural, one {# taustatyö käynnissä} other {# taustatyöt käynnissä}}",
+      "failed": "{count} epäonnistui"
+    }
+  },
+  "type": {
+    "link": "Linkki",
+    "links": "Linkit",
+    "note": "Huom",
+    "notes": "Huomautuksia",
+    "image": "Kuva",
+    "images": "Kuvat",
+    "voice": "Ääni",
+    "video": "Video",
+    "clip": "Leike",
+    "clips": "Leikkeet",
+    "pdf": "PDF",
+    "pdfs": "PDF-tiedostoja",
+    "social": "Sosiaalinen",
+    "reminder": "Muistutus",
+    "reminders": "Muistutukset",
+    "text": "Teksti",
+    "other": "Muut"
+  },
+  "empty": {
+    "successAria": "Onnistui, postilaatikko on tyhjä",
+    "title": "Saapuneet Nolla",
+    "body": "Kaikki on käsitelty. Tallenna jotain uutta yllä olevan syötteen avulla tai aloita liittämällä linkki.",
+    "filedThisWeek": "{count, plural, one {# jätetty tällä viikolla} other {# jätetty tällä viikolla}}",
+    "dayStreak": "{count, plural, one {# päiväputki} other {# päiväputki}}",
+    "tipPrefix": "Vinkki: käytä",
+    "tipSuffix": "pikakaappaus leikepöydältä",
+    "archivedNone": "Ei arkistoituja kohteita",
+    "archivedNoMatches": "Ei vastaavia arkistoituja kohteita",
+    "noItemsYet": "Ei kohteita vielä",
+    "noItemsFiled": "Kohteita ei ole vielä tallennettu",
+    "noItemTypes": "Ei näytettävää kohdetyyppiä",
+    "noFolders": "Kansioita ei löytynyt",
+    "noFolderMatch": "Yksikään kansio ei vastaa hakua \"{query}\"",
+    "noNotes": "Muistiinpanoja ei löytynyt",
+    "allMatchesLinked": "Kaikki ottelut on jo linkitetty"
+  },
+  "list": {
+    "ariaLabel": "Saapuneet-kansion kohteet",
+    "section": {
+      "today": "Tänään",
+      "yesterday": "eilen",
+      "older": "Vanhempi"
+    },
+    "selectItem": "Valitse {title}",
+    "itemAria": "{type}: {title}",
+    "untitled": "Nimetön",
+    "untitledItem": "Nimetön kohde",
+    "transcribing": "Litteroidaan...",
+    "transcriptionFailed": "Transkriptio epäonnistui",
+    "retryTranscription": "Yritä uudelleen",
+    "pageCount": "{count, plural, one {# sivu} other {# sivua}}",
+    "snoozedUntilShort": "torkutettu {date} asti",
+    "capturedAgo": "Kuvattu {time}"
+  },
+  "loading": {
+    "inbox": "Ladataan postilaatikkoa...",
+    "failed": "Postilaatikon lataaminen epäonnistui",
+    "tryAgain": "Yritä uudelleen",
+    "capturingImage": "Otetaan kuvaa...",
+    "dropImageTitle": "Pudota kuva kaapattavaksi",
+    "dropImageTypes": "PNG, JPEG, GIF, WebP, SVG",
+    "unsupportedImageType": "Kuvatyyppiä ei tueta: {type}",
+    "imageTooLarge": "Kuva liian suuri (enintään 50 Mt)"
+  },
+  "toast": {
+    "failedArchiveItem": "Kohteen arkistointi epäonnistui",
+    "failedArchiveItems": "Kohteiden arkistointi epäonnistui",
+    "failedFile": "Arkistointi epäonnistui",
+    "failedFileItem": "Kohteen arkistointi epäonnistui",
+    "failedFileItems": "Kohteiden arkistointi epäonnistui",
+    "failedSnooze": "Torkkuminen epäonnistui",
+    "failedSnoozeItem": "Kohteen torkuttaminen epäonnistui",
+    "failedApplyTags": "Tunnisteiden lisääminen epäonnistui",
+    "failedCaptureImage": "Kuvan ottaminen epäonnistui",
+    "linkedToNote": "Linkitetty muistiinpanoon",
+    "linkedToNotes": "Linkitetty {count} muistiinpanoihin",
+    "filedTo": "Arkistoitu osoitteeseen {folder}",
+    "filedItemsTo": "Arkistoitu {count} kohteet osoitteeseen {folder}",
+    "filedPartial": "Arkistoitu {processed}/{total} kohteista",
+    "appliedTags": "{tagCount, plural, one {#-tunniste kiinnitetty} other {#-tunnisteet kiinnitetty}} - {itemCount, plural, one {# tuote} other {# tuotteet}}",
+    "archivedItems": "{count, plural, one {Arkistoitu kohde #} other {Arkistoidut # kohteet}}",
+    "snoozedUntil": "Torkutettu {time} asti",
+    "snoozedItemsUntil": "{count, plural, one {Torkutettu # kohde {time} asti} other {Torkutettu # kohdetta {time} asti}}"
+  },
+  "triage": {
+    "modeTitle": "Triage-tila",
+    "exitHint": "Esc poistuaksesi",
+    "exitAria": "Poistu triage-tilasta",
+    "position": "{current}/{total}",
+    "action": {
+      "discard": "Hävitä",
+      "archive": "Arkisto",
+      "open": "Avaa",
+      "toTask": "Tehtävään",
+      "toNote": "Huomioon",
+      "file": "Tiedosto",
+      "snooze": "Torkku",
+      "cancel": "Peruuta"
+    },
+    "snoozeUntil": "Torkku kunnes...",
+    "complete": {
+      "title": "Saapuneet Nolla",
+      "processed": "{count, plural, one {# tuote käsitelty} other {# tuotteet käsitelty}}",
+      "streak": "putki",
+      "streakCount": "{count}-putki",
+      "dayProcessingStreak": "{count, plural, one {# päivän käsittelyputki} other {# päivän käsittelyputki}}",
+      "back": "Takaisin postilaatikkoon",
+      "motivation0": "Tulevaisuuden itsesi kiittää sinua.",
+      "motivation1": "Kaikki paikoillaan.",
+      "motivation2": "Selkeä postilaatikko, selkeä mieli.",
+      "motivation3": "Päätösvelka: maksettu kokonaisuudessaan.",
+      "motivation4": "Se tuntui hyvältä, eikö niin?"
+    }
+  },
+  "bulk": {
+    "selected": "{count} valittu",
+    "deselectAll": "Poista kaikki valinnat",
+    "ariaLabel": "Joukkotoiminnot {count} valituille kohteille",
+    "file": "Tiedosto",
+    "tag": "Tag",
+    "snooze": "Torkku",
+    "archive": "Arkisto",
+    "add": "Lisää",
+    "dismissSuggestion": "Hylkää ehdotus",
+    "hint": {
+      "file": "tiedosto",
+      "tag": "-tunniste",
+      "snooze": "torkku",
+      "archive": "arkisto",
+      "deselect": "poista valinta"
+    },
+    "archiveDialog": {
+      "title": "{count, plural, one {Arkistoidaanko # kohde?} other {Arkistoidaanko # kohteet?}}",
+      "description": "Nämä kohteet arkistoidaan. Voit tarkastella arkistoituja kohteita myöhemmin.",
+      "confirm": "{count, plural, one {Arkistoi kohde #} other {Arkistoi # kohteet}}"
+    },
+    "filePanel": {
+      "title": "{count, plural, one {Tiedosto # Tuote} other {Tiedosto # kohteet}}",
+      "itemsToFile": "Arkistoitavat kohteet",
+      "multipleNoteLinksUnavailable": "Huomautus: Linkkejä muihin muistiinpanoihin ei voi lisätä, kun arkistoidaan useita kohteita.",
+      "filing": "Arkistoidaan...",
+      "submit": "{count, plural, one {Tiedosto # kohde} other {Tiedosto # kohteet}}",
+      "macHint": "⌘⏎ arkistoida · Esc sulkea",
+      "ctrlHint": "Ctrl+Enter tiedostoon · Esc sulkeaksesi"
+    },
+    "tagPopover": {
+      "title": "{count, plural, one {Tag # Tuote} other {Merkitse # tuotteet}}",
+      "placeholder": "Hae tunnisteita kirjoittamalla...",
+      "applying": "Haetaan...",
+      "apply": "{count, plural, one {Käytä #-kohteeseen} other {Käytä #-tuotteisiin}}"
+    }
+  },
+  "quickActions": {
+    "groupAria": "Nopeita toimia",
+    "archiveItem": "Arkistoi kohde",
+    "archive": "Arkisto",
+    "snooze": "Torkku"
+  },
+  "detail": {
+    "ariaLabel": "Tuotteen tiedot",
+    "closePanel": "Sulje paneeli",
+    "resizeFiling": "Muuta arkistointiosion kokoa",
+    "restore": "Palauta",
+    "restoreToInbox": "Palauta postilaatikkoon",
+    "delete": "Poista",
+    "deletePermanently": "Poista pysyvästi",
+    "archive": "Arkisto",
+    "file": "Tiedosto",
+    "keyboardHint": "{modifier}⏎ tiedosto · 1-5 kansiota · Esc sulkea",
+    "voiceTitlePlaceholder": "Nimeä tämä äänimuistio...",
+    "fileTo": "Tiedosto kohteeseen",
+    "ai": "AI",
+    "selectFolder": "Valitse kansio",
+    "searchOrCreateFolder": "Hae tai luo /...",
+    "suggested": "Ehdotettu",
+    "notesRoot": "Huomautuksia",
+    "notesRootLabel": "Muistiinpanot (juuri)",
+    "createFolder": "Luo \"{name}\"",
+    "addTags": "Lisää tunnisteita...",
+    "linkToNote": "Linkki muistiinpanoon",
+    "linkNotesPlaceholder": "Linkin muistiinpanot...",
+    "searchNotesAria": "Hae linkitettävät muistiinpanot",
+    "linkedNotesAria": "Linkitetyt muistiinpanot",
+    "removeLinkTo": "Poista linkki {title}",
+    "contentEditorAria": "Sisällön editori",
+    "notePlaceholder": "Kirjoita muistiinpanosi...",
+    "textPlaceholder": "Muokkaa kaapattua tekstiä..."
+  },
+  "content": {
+    "capturedAt": "Kuvattu {date}",
+    "todayAt": "tänään {time}",
+    "yesterdayAt": "eilen klo {time}",
+    "dateAt": "{date} osoitteessa {time}",
+    "words": "{count, plural, one {# sana} other {# sanat}}",
+    "duration": "Kesto: {duration}",
+    "dimensions": "Mitat",
+    "format": "Muoto",
+    "size": "Koko",
+    "voiceMemo": "Äänimuistio",
+    "play": "Pelaa",
+    "pause": "Tauko",
+    "audioPosition": "Äänen sijainti",
+    "transcription": "Transkriptio",
+    "processing": "käsittelyä",
+    "pending": "vireillä",
+    "failed": "epäonnistunut",
+    "copyTranscription": "Kopioi transkriptio",
+    "transcribingAudio": "Transkriptoidaan ääntä...",
+    "awaitingTranscription": "Odotetaan transkriptiota...",
+    "noTranscription": "Transkriptiota ei ole saatavilla",
+    "failedPlayAudio": "Äänen toistaminen epäonnistui",
+    "failedLoadAudio": "Äänen lataaminen epäonnistui",
+    "video": "Video",
+    "unsupportedVideo": "Selaimesi ei tue videotunnistetta."
+  },
+  "reminder": {
+    "dataUnavailable": "Muistutustiedot eivät ole saatavilla.",
+    "triggered": "Muistutus aktivoitu",
+    "noteLabel": "Muistutushuomautus",
+    "source": "lähde",
+    "journalTitle": "Päiväkirja — {date}",
+    "noteFallback": "Huom",
+    "journalFallback": "Journal",
+    "highlighted": "Korostettu: \"{text}\"",
+    "viewed": "Katsottu",
+    "markViewed": "Merkitse katsotuksi",
+    "notYetViewed": "Ei vielä katsottu",
+    "snooze": "Torkku",
+    "presetInOneHour": "1 tunti",
+    "presetTomorrow": "Huomenna",
+    "presetNextWeek": "Ensi viikolla",
+    "custom": "Mukautettu..."
+  },
+  "insights": {
+    "loading": "Ladataan tietoja...",
+    "captureActivity": "Capture Activity",
+    "byType": "Tyypin mukaan",
+    "itemTypes": "Tuotetyypit",
+    "itemTypesDescription": "Sisältömuotojen jakelu",
+    "recentFilings": "Viimeaikaiset hakemukset",
+    "recentlyFiled": "Äskettäin tehty",
+    "recentlyFiledDescription": "Viimeisimmät toimet postilaatikossasi",
+    "captured": "Vangittu",
+    "capturedThisWeek": "+{count} tällä viikolla",
+    "processed": "Käsitelty",
+    "processRate": "{rate}% korko",
+    "stale": "Vanhentunut",
+    "needsAttention": "tarvitsee huomiota",
+    "allClear": "kaikki selvä",
+    "avgTimeToFile": "Keskimääräinen arkistointiaika",
+    "noCapturesYet": "Ei vielä kaappauksia",
+    "captures": "{count, plural, one {# sieppaus} other {# kaappaa}}",
+    "peak": "Huippu: {day} {start}–{end}",
+    "convertedToTask": "Muunnettu tehtäväksi",
+    "linked": "Linkitetty",
+    "now": "nyt",
+    "timeAgoMinutes": "{count}m sitten",
+    "timeAgoHours": "{count}h sitten",
+    "timeAgoDays": "{count}p sitten"
+  },
+  "phaseF": {
+    "componentsBulkAiClusterSuggestion": {
+      "aiDetected": "AI havaitsi: \"",
+      "addToSelection": "Lisää valintaan",
+      "dismiss": "Hylkää"
+    },
+    "componentsBulkDeleteConfirmationDialog": {
+      "delete": "Poista ",
+      "item": "kohde",
+      "theseItemsWillBeRemovedFromYourInboxYouCanUndoThisAction": "Nämä kohteet poistetaan postilaatikostasi. Voit peruuttaa tämän toiminnon heti sen jälkeen."
+    },
+    "componentsCaptureInput": {
+      "captureInput": "Kaappaa sisääntulo",
+      "attachFile": "Liitä tiedosto",
+      "attachFileImagesAudioVideoPdf": "Liitä tiedosto (kuvat, ääni, video, PDF)",
+      "recordVoiceMemo": "Nauhoita äänimuistio",
+      "recordVoiceMemo2": "Nauhoita äänimuistio",
+      "alreadyCaptured": "Jo otettu: \"",
+      "rdquo": "rdquo;",
+      "captureAnyway": "Kaappaa joka tapauksessa"
+    },
+    "componentsFilingFolderSelector": {
+      "chooseFolder": "Valitse kansio",
+      "searchFolders": "Hae kansioita...",
+      "searchFolders2": "Hae kansioita",
+      "searchResults": "Hakutulokset",
+      "create": "Luo \"",
+      "suggested": "Ehdotettu",
+      "recent": "Viimeaikaiset",
+      "allFolders": "Kaikki kansiot",
+      "allFolders2": "Kaikki kansiot"
+    },
+    "componentsFilingLinkSearch": {
+      "linkTo": "Linkki kohteeseen",
+      "optional": "valinnainen)",
+      "searchNotesToLink": "Hae linkitettävät muistiinpanot...",
+      "searchNotesToLink2": "Hae linkitettävät muistiinpanot",
+      "searching": "Haetaan...",
+      "noNotesFound": "Muistiinpanoja ei löytynyt",
+      "linkedNotes": "Linkitetyt muistiinpanot",
+      "noLinksAdded": "Ei lisätty linkkejä"
+    },
+    "componentsFilingTagAutocomplete": {
+      "suggested": "Ehdotettu",
+      "ai": "AI",
+      "create": "Luo",
+      "tags": "Tunnisteet",
+      "selectedTags": "Valitut tunnisteet",
+      "addTags": "Lisää tunnisteita",
+      "tagSuggestions": "Tunnisteehdotukset"
+    },
+    "componentsFilingTagInput": {
+      "tags": "Tunnisteet",
+      "optional": "valinnainen)",
+      "addTags": "Lisää tunnisteita...",
+      "addTags2": "Lisää tunnisteita",
+      "selectedTags": "Valitut tunnisteet",
+      "suggested": "Ehdotettu"
+    },
+    "componentsInboxInboxCaptureHeatmap": {
+      "captureActivity": "Capture Activity"
+    },
+    "componentsInboxInboxFilingHistory": {
+      "noItemsFiledYet": "Kohteita ei ole vielä tallennettu",
+      "recentlyFiled": "Äskettäin tehty",
+      "latestActionsOnYourInbox": "Viimeisimmät toimet postilaatikossasi",
+      "linked": "Linkitetty"
+    },
+    "componentsInboxInboxInsightsView": {
+      "loadingInsights": "Ladataan tietoja..."
+    },
+    "componentsInboxInboxTypeDistribution": {
+      "noItemTypesToDisplay": "Ei näytettävää kohdetyyppiä",
+      "itemTypes": "Tuotetyypit",
+      "distributionOfContentFormats": "Sisältömuotojen jakelu"
+    },
+    "componentsInboxTriageItemCard": {
+      "captured": "Vangittu "
+    },
+    "componentsInboxDetailContentSection": {
+      "x": "x "
+    },
+    "componentsInboxDetailInboxContentEditor": {
+      "contentEditor": "Sisällön editori"
+    },
+    "componentsInboxDetailReminderDetail": {
+      "middot": "keskipiste; "
+    },
+    "componentsInboxDetailTweetCard": {
+      "tweetUnavailable": "Tweet ei ole saatavilla",
+      "thisTweetMayHaveBeenDeletedOrIsFromAPrivateAccount": "Tämä twiitti on ehkä poistettu tai se on peräisin yksityiseltä tililtä.",
+      "openOnXCom": "Avaa osoitteessa x.com",
+      "views": "näkymät",
+      "xCom": "x.com",
+      "viewOnX": "Katso X:stä"
+    },
+    "componentsInlineQuickFile": {
+      "typeFolderName": "Kirjoita kansion nimi...",
+      "quickFileFolderSearch": "Nopea tiedostokansiohaku"
+    },
+    "componentsQuickCaptureFooter": {
+      "close": "sulje",
+      "capture": "vangita"
+    },
+    "componentsQuickCaptureImagePreview": {
+      "removeAttachment": "Poista liite"
+    },
+    "componentsQuickCaptureInput": {
+      "quickCaptureInput": "Nopea sieppaussyöttö",
+      "recordVoiceMemo": "Nauhoita äänimuistio",
+      "attachFile": "Liitä tiedosto"
+    },
+    "componentsQuickCaptureLinkPreview": {
+      "link": "LINKKI"
+    },
+    "componentsQuickCaptureStates": {
+      "captured": "Vangittu",
+      "dismissError": "Hylkää virhe",
+      "alreadyCaptured": "Jo vangittu",
+      "ldquo": "ldquo;",
+      "rdquoMiddot": "rdquo; · ",
+      "captureAnyway": "Kaappaa joka tapauksessa",
+      "close": "Sulje"
+    },
+    "componentsQuickCapture": {
+      "dropToCapture": "Kuvaa pudottamalla",
+      "capturing": "Tallennetaan..."
+    },
+    "componentsQuickFileDropdown": {
+      "folderSuggestions": "Kansioehdotukset",
+      "noFoldersMatch": "Yksikään kansio ei vastaa \""
+    },
+    "componentsReminderHighlightReminderPopover": {
+      "setReminderForThisText": "Aseta muistutus tälle tekstille",
+      "remindMeAboutThis": "Muistuta minua tästä",
+      "selectedText": "Valittu teksti:"
+    },
+    "componentsReminderReminderPicker": {
+      "remind": "Muistuta",
+      "remindMe": "Muistuta minua",
+      "pickDateTime": "Valitse päivämäärä ja aika",
+      "addANoteOptional": "Lisää muistiinpano (valinnainen)",
+      "backToPresets": "Takaisin esiasetuksiin",
+      "time": "Aika",
+      "noteOptional": "Huomautus (valinnainen)",
+      "whyAreYouSettingThisReminder": "Miksi asetat tämän muistutuksen?"
+    },
+    "componentsSnoozeSnoozePicker": {
+      "snooze": "Torkku",
+      "snooze2": "Torkku",
+      "pickDateTime": "Valitse päivämäärä ja aika",
+      "pickDateTime2": "Valitse päivämäärä ja aika",
+      "selectWhenToBeRemindedAboutThisItem": "Valitse, milloin haluat saada muistutuksen tästä kohteesta",
+      "snooze3": "Torkku",
+      "snooze4": "Torkku",
+      "snooze5": "Torkku"
+    },
+    "componentsSocialCard": {
+      "loadingPost": "Ladataan viestiä...",
+      "failedToLoad": "Lataus epäonnistui",
+      "loadingPostContent": "Ladataan viestin sisältöä...",
+      "failedToLoadPostContentThePostMayBePrivateOrDeleted": "Viestin sisällön lataaminen epäonnistui. Viesti voi olla yksityinen tai poistettu.",
+      "viewOn": "Katso päälle "
+    },
+    "componentsVoiceRecorder": {
+      "startVoiceRecording": "Aloita äänen tallennus",
+      "requestingMicrophoneAccess": "Pyydetään mikrofonin käyttöoikeutta...",
+      "settings": "Asetukset",
+      "processing": "Käsitellään...",
+      "cancelRecording": "Peruuta tallennus",
+      "cancel": "Peruuta",
+      "stopRecording": "Lopeta tallennus",
+      "stop": "Pysähdy"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToCaptureLink": "Linkin kaappaus epäonnistui",
+      "failedToCaptureNote": "Muistiinpano epäonnistui",
+      "captureFailed": "Sieppaus epäonnistui",
+      "failedToCaptureVoiceMemo": "Äänimuistion kaappaaminen epäonnistui",
+      "voiceCaptureFailed": "Äänenkaappaus epäonnistui",
+      "failedToCaptureFile": "Tiedoston sieppaus epäonnistui",
+      "fileCaptureFailed": "Tiedoston sieppaus epäonnistui",
+      "failedToCaptureAudio": "Äänen sieppaus epäonnistui",
+      "failedToCaptureVoice": "Äänen sieppaus epäonnistui"
+    },
+    "toasts": {
+      "inboxRefreshed": "Postilaatikko päivitetty"
+    }
+  }
+}

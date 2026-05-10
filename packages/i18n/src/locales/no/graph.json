@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Laster inn graf...",
+    "load-failed": "Kunne ikke laste inn grafdata",
+    "try-again": "Prøv igjen",
+    "aria-label": "Kunnskapsgraf med {nodeCount, plural, one {# node} other {# noder}} og {edgeCount, plural, one {#-tilkobling} other {#-tilkoblinger}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Grafisk noder",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Kunnskapsgrafen din",
+    "description": "Forbindelser mellom notatene, oppgavene og prosjektene dine vises her som en interaktiv graf.",
+    "link-title": "Koble til notatene dine",
+    "link-description": "Bruk [[wikilinks]] for å koble ideer på tvers av notater",
+    "discover-title": "Oppdag mønstre",
+    "discover-description": "Etter hvert som forbindelser vokser, vil klynger og temaer dukke opp naturlig"
+  },
+  "entity": {
+    "note": "merk",
+    "notes": "notater",
+    "journal": "journal",
+    "journals": "journaler",
+    "task": "oppgave",
+    "tasks": "oppgaver",
+    "project": "prosjekt",
+    "projects": "prosjekter",
+    "tag": "tag",
+    "tags": "tagger",
+    "orphan": "foreldreløs",
+    "orphans": "foreldreløse barn",
+    "unresolved": "uløst"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Grafinnstillinger",
+    "hide-settings": "Skjul innstillinger",
+    "reset-filters": "Tilbakestill filtre",
+    "filters": "Filtre",
+    "display": "Skjerm",
+    "show-labels": "Vis etiketter",
+    "focus-depth": "dybde {depth}",
+    "clear-focus": "Tydelig fokusert node"
+  },
+  "filter": {
+    "notes": "Notater",
+    "journals": "Journaler",
+    "tasks": "Oppgaver",
+    "projects": "Prosjekter",
+    "tags": "Tagger",
+    "orphans": "Foreldreløse",
+    "toggle-entity": "Slå av/på {label}",
+    "toggle-orphans": "Slå på foreldreløse noder"
+  },
+  "search": {
+    "placeholder": "Søk noder...",
+    "clear": "Tøm grafsøk"
+  },
+  "context-menu": {
+    "untitled": "Uten tittel",
+    "focus-node": "Fokuser på denne noden",
+    "open-new-tab": "Åpne i ny fane",
+    "create-note": "Opprett notat",
+    "copy-title": "Kopier tittel"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {#-tilkobling} other {#-tilkoblinger}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Laster inn graf...",
+    "empty": "Ingen tilkoblinger funnet",
+    "open-full": "Åpne hele grafen",
+    "close": "Lukk grafen"
+  }
+}

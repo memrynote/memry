@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "Pilih Folder Bilik Kebal",
+      "button": "Pilih Bilik Kebal"
+    },
+    "exportPdf": {
+      "title": "Eksport sebagai PDF",
+      "filterName": "Dokumen PDF"
+    },
+    "exportHtml": {
+      "title": "Eksport sebagai HTML",
+      "filterName": "Dokumen HTML"
+    },
+    "import": {
+      "filterSupported": "Fail yang Disokong",
+      "filterAll": "Semua Fail"
+    },
+    "exportCancelled": "Eksport dibatalkan",
+    "update": {
+      "availableTitle": "Kemas kini tersedia",
+      "availableMessage": "Memry {version} tersedia.",
+      "availableDetailFallback": "Muat turun kemas kini sekarang?",
+      "buttonDownload": "Muat turun",
+      "buttonLater": "Nanti",
+      "readyTitle": "Kemas kini sedia",
+      "readyMessage": "Memry {version} telah dimuat turun.",
+      "readyDetailFallback": "Mulakan semula Memry untuk menyelesaikan pemasangan kemas kini.",
+      "buttonRestartNow": "Mulakan semula sekarang",
+      "releaseNotesLabel": "Nota keluaran:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "Peringatan nota",
+      "journal": "Peringatan jurnal",
+      "highlight": "Serlahkan peringatan",
+      "fallback": "Peringatan perlu dibayar",
+      "default": "Peringatan"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "Masa peringatan mestilah pada masa hadapan",
+    "definitionNotFound": "Definisi tidak ditemui",
+    "noteNotFound": "Nota tidak ditemui",
+    "updateFailed": "Kemas kini gagal"
+  }
+}

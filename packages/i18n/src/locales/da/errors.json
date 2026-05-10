@@ -1,0 +1,80 @@
+{
+  "generic": {
+    "somethingWentWrong": "Noget gik galt. Prøv venligst igen.",
+    "operationFailed": "Handlingen mislykkedes",
+    "unknown": "Der opstod en ukendt fejl",
+    "validationFailed": "Validering mislykkedes",
+    "actionFailed": "Handlingen mislykkedes"
+  },
+  "ipc": {
+    "noVaultOpen": "Ingen boks er åben. Åbn venligst en boks først."
+  },
+  "vault": {
+    "notFound": "Vault ikke fundet. Det kan være blevet flyttet eller slettet.",
+    "notInitialized": "Ingen boks er åben. Åbn eller opret en boks for at fortsætte.",
+    "invalidPath": "Den valgte sti er ikke en gyldig boksplacering.",
+    "permissionDenied": "Tilladelse nægtet. Tjek, at du har adgang til denne mappe.",
+    "alreadyExists": "Der findes allerede en boks på dette sted.",
+    "corrupted": "Denne boks ser ud til at være beskadiget. Prøv at gendanne fra en sikkerhedskopi."
+  },
+  "note": {
+    "notFound": "Denne note kunne ikke findes. Det kan være blevet slettet.",
+    "invalidFrontmatter": "Denne note har ugyldige metadata og kan ikke læses.",
+    "duplicateId": "Der findes allerede en note med dette id.",
+    "writeFailed": "Kunne ikke gemme denne note. Tjek diskplads og tilladelser.",
+    "readFailed": "Kunne ikke læse denne note. Filen kan være låst eller beskadiget.",
+    "deleteFailed": "Kunne ikke slette denne note. Tjek filtilladelser.",
+    "invalidPath": "Notestien er ugyldig."
+  },
+  "database": {
+    "connectionFailed": "Kunne ikke oprette forbindelse til den lokale database. Prøv at genstarte appen.",
+    "migrationFailed": "Databaseopgradering mislykkedes. Prøv at genstarte appen.",
+    "queryFailed": "En databasehandling mislykkedes. Prøv igen.",
+    "notInitialized": "Databasen er ikke klar. Prøv at genstarte appen.",
+    "constraintViolation": "Der opstod en datakonflikt. Prøv igen.",
+    "corrupted": "Den lokale database er beskadiget. Du skal muligvis nulstille den."
+  },
+  "watcher": {
+    "startFailed": "Kunne ikke begynde at se efter filændringer.",
+    "stopFailed": "Kunne ikke stoppe filovervågningen.",
+    "eventError": "Der opstod en fejl under overvågning af filændringer."
+  },
+  "attachment": {
+    "fileTooLarge": "Denne fil er for stor til at vedhæfte.",
+    "unsupportedType": "Denne filtype understøttes ikke.",
+    "writeFailed": "Kunne ikke gemme den vedhæftede fil. Tjek diskplads.",
+    "deleteFailed": "Kunne ikke slette den vedhæftede fil."
+  },
+  "encryption": {
+    "failed": "Kunne ikke kryptere data. Dine nøgler skal muligvis regenereres.",
+    "decryptionFailed": "Kunne ikke dekryptere data. Dine krypteringsnøgler kan være forældede.",
+    "invalidKeyLength": "Ugyldig krypteringsnøgle. Prøv at logge ud og ind igen.",
+    "invalidNonceLength": "Krypteringsfejl. Prøv handlingen igen."
+  },
+  "inboxAttachment": {
+    "writeFailed": "Kunne ikke gemme den vedhæftede indbakke.",
+    "deleteFailed": "Kunne ikke slette den vedhæftede indbakke."
+  },
+  "sync": {
+    "networkOffline": "Du er offline. Ændringer synkroniseres, når du genopretter forbindelsen.",
+    "networkTimeout": "Synkroniseringsserveren tog for lang tid at svare. Vil prøve igen snart.",
+    "serverError": "Synkroniseringsserveren stødte på en fejl. Vil prøve igen automatisk.",
+    "authExpired": "Din session er udløbet. Log ind igen for at fortsætte synkroniseringen.",
+    "deviceRevoked": "Denne enhed er blevet fjernet fra din konto.",
+    "rateLimited": "For mange anmodninger. Synkronisering genoptages snart.",
+    "cryptoFailure": "Kunne ikke kryptere eller dekryptere synkroniseringsdata. Prøv at logge ud og ind igen.",
+    "versionIncompatible": "Denne version af Memry understøttes ikke længere. Opdater venligst.",
+    "storageQuotaExceeded": "Dit synkroniseringslager er fuldt. Frigør plads eller opgrader din plan.",
+    "certificatePinFailed": "Sikker forbindelse mislykkedes. Tjek din netværksforbindelse.",
+    "unknown": "Der opstod en uventet synkroniseringsfejl. Vil prøve igen automatisk.",
+    "statusFetchFailed": "Synkroniseringsstatus kunne ikke hentes",
+    "engineNotInitialized": "Synkroniseringsmotor ikke initialiseret. Åbn en boks for at starte synkronisering.",
+    "triggerFailed": "Synkronisering mislykkedes",
+    "pauseFailed": "Synkronisering kunne ikke standses",
+    "resumeFailed": "Synkroniseringen kunne ikke genoptages",
+    "settingsNotInitialized": "Synkronisering af indstillinger ikke initialiseret",
+    "securityQuarantinePermanent": "Et synkroniseringselement kunne ikke bekræftes og er blevet sat i karantæne af sikkerhedsmæssige årsager.",
+    "securityQuarantineRetry": "Et synkroniseringselement mislykkedes signaturbekræftelsen og vil blive forsøgt igen.",
+    "certificatePinPaused": "Sikker forbindelse til synkroniseringsserver kunne ikke bekræftes. Synkronisering er blevet sat på pause for din beskyttelse."
+  }
+}

@@ -11,6 +11,19 @@ import { TagsChannels } from '@memry/contracts/ipc-channels'
 const handleCalls: unknown[][] = []
 const removeHandlerCalls: string[] = []
 const mockSend = vi.fn()
+const fileMocks = vi.hoisted(() => ({
+  readFile: vi.fn(),
+  toAbsolutePath: vi.fn(),
+  parseNote: vi.fn(),
+  serializeNote: vi.fn(),
+  atomicWrite: vi.fn(),
+  syncMergedTagDefinitions: vi.fn(),
+  syncTaggedNote: vi.fn(),
+  syncTaggedTasks: vi.fn(),
+  syncTagDefinitionDelete: vi.fn(),
+  syncTagDefinitionRename: vi.fn(),
+  syncTagDefinitionUpdate: vi.fn()
+}))
 
 vi.mock('electron', () => ({
   ipcMain: {
@@ -34,6 +47,10 @@ vi.mock('../database', () => ({
   requireDatabase: vi.fn()
 }))
 
+vi.mock('fs/promises', () => ({
+  readFile: fileMocks.readFile
+}))
+
 vi.mock('@main/database/queries/notes', () => ({
   findNotesWithTagInfo: vi.fn(),
   pinNoteToTag: vi.fn(),
@@ -49,9 +66,38 @@ vi.mock('@main/database/queries/notes', () => ({
   getNoteCacheById: vi.fn()
 }))
 
-import { registerTagsHandlers } from './tags-handlers'
+vi.mock('@main/database/queries/tags', () => ({
+  getAllTagsWithCounts: vi.fn(),
+  mergeTagInNotes: vi.fn(),
+  mergeTagInTasks: vi.fn()
+}))
+
+vi.mock('../vault/notes', () => ({
+  toAbsolutePath: fileMocks.toAbsolutePath
+}))
+
+vi.mock('../vault/frontmatter', () => ({
+  parseNote: fileMocks.parseNote,
+  serializeNote: fileMocks.serializeNote
+}))
+
+vi.mock('../vault/file-ops', () => ({
+  atomicWrite: fileMocks.atomicWrite
+}))
+
+vi.mock('../tags/runtime-effects', () => ({
+  syncMergedTagDefinitions: fileMocks.syncMergedTagDefinitions,
+  syncTaggedNote: fileMocks.syncTaggedNote,
+  syncTaggedTasks: fileMocks.syncTaggedTasks,
+  syncTagDefinitionDelete: fileMocks.syncTagDefinitionDelete,
+  syncTagDefinitionRename: fileMocks.syncTagDefinitionRename,
+  syncTagDefinitionUpdate: fileMocks.syncTagDefinitionUpdate
+}))
+
+import { registerTagsHandlers, unregisterTagsHandlers } from './tags-handlers'
 import { getIndexDatabase, getDatabase, requireDatabase } from '../database'
 import * as notesQueries from '@main/database/queries/notes'
+import * as tagQueries from '@main/database/queries/tags'
 
 function createDbMock(options?: { allResult?: unknown[]; getResult?: unknown }) {
   return {
@@ -76,6 +122,15 @@ describe('tags-handlers', () => {
     ;(getIndexDatabase as Mock).mockReturnValue(createDbMock())
     ;(getDatabase as Mock).mockReturnValue(createDbMock())
     ;(requireDatabase as Mock).mockReturnValue(createDbMock())
+    fileMocks.readFile.mockResolvedValue('---\ntags: [old, keep]\n---\nBody')
+    fileMocks.toAbsolutePath.mockImplementation((notePath: string) => `/vault/${notePath}`)
+    fileMocks.parseNote.mockReturnValue({
+      frontmatter: { tags: ['old', 'keep'] },
+      content: 'Body'
+    })
+    fileMocks.serializeNote.mockReturnValue('serialized note')
+    fileMocks.atomicWrite.mockResolvedValue(undefined)
+    ;(notesQueries.getNoteCacheById as Mock).mockReturnValue(undefined)
   })
 
   afterEach(() => {
@@ -200,5 +255,95 @@ describe('tags-handlers', () => {
       expect.objectContaining({ action: 'removed', tag: 'focus', noteId: 'note-1' })
     )
     expect(mockSend).toHaveBeenCalledWith('notes:tags-changed', {})
+  })
+
+  it('updates markdown frontmatter and sync metadata when renaming or deleting tags', async () => {
+    const indexDb = createDbMock({ allResult: [{ noteId: 'note-1' }] })
+    const dataDb = createDbMock({ getResult: { name: 'old', color: 'red' } })
+    ;(getIndexDatabase as Mock).mockReturnValue(indexDb)
+    ;(requireDatabase as Mock).mockReturnValue(dataDb)
+    ;(notesQueries.getNoteCacheById as Mock).mockReturnValue({ path: 'notes/a.md' })
+    ;(notesQueries.renameTag as Mock).mockReturnValue(1)
+    registerTagsHandlers()
+
+    const renameResult = await invokeHandler(TagsChannels.invoke.RENAME_TAG, {
+      oldName: ' old ',
+      newName: ' New '
+    })
+
+    expect(renameResult).toEqual({ success: true, affectedNotes: 1 })
+    expect(fileMocks.toAbsolutePath).toHaveBeenCalledWith('notes/a.md')
+    expect(fileMocks.readFile).toHaveBeenCalledWith('/vault/notes/a.md', 'utf-8')
+    expect(fileMocks.serializeNote).toHaveBeenCalledWith({ tags: ['new', 'keep'] }, 'Body')
+    expect(fileMocks.atomicWrite).toHaveBeenCalledWith('/vault/notes/a.md', 'serialized note')
+    expect(fileMocks.syncTaggedNote).toHaveBeenCalledWith('note-1')
+    expect(fileMocks.syncTagDefinitionRename).toHaveBeenCalledWith(' old ', ' New ', {
+      name: 'old',
+      color: 'red'
+    })
+
+    fileMocks.parseNote.mockReturnValueOnce({
+      frontmatter: { tags: ['old'] },
+      content: 'Body'
+    })
+    ;(notesQueries.deleteTag as Mock).mockReturnValue(1)
+
+    const deleteResult = await invokeHandler(TagsChannels.invoke.DELETE_TAG, ' old ')
+
+    expect(deleteResult).toEqual({ success: true, affectedNotes: 1 })
+    expect(fileMocks.serializeNote).toHaveBeenLastCalledWith({}, 'Body')
+    expect(fileMocks.syncTagDefinitionDelete).toHaveBeenCalledWith('old', {
+      name: 'old',
+      color: 'red'
+    })
+  })
+
+  it('aggregates, merges, and unregisters tag handlers', async () => {
+    const indexDb = createDbMock({ allResult: [{ noteId: 'note-1' }] })
+    const dataDb = createDbMock({ getResult: { name: 'source', color: 'blue' } })
+    ;(getIndexDatabase as Mock).mockReturnValue(indexDb)
+    ;(requireDatabase as Mock).mockReturnValue(dataDb)
+    ;(notesQueries.getNoteCacheById as Mock).mockReturnValue({ path: 'notes/a.md' })
+    ;(tagQueries.getAllTagsWithCounts as Mock).mockReturnValue([{ name: 'focus', count: 2 }])
+    ;(tagQueries.mergeTagInNotes as Mock).mockReturnValue({
+      affected: 2,
+      noteIds: ['note-1']
+    })
+    ;(tagQueries.mergeTagInTasks as Mock).mockReturnValue({
+      affected: 1,
+      taskIds: ['task-1']
+    })
+    registerTagsHandlers()
+
+    expect(await invokeHandler(TagsChannels.invoke.GET_ALL_WITH_COUNTS)).toEqual({
+      tags: [{ name: 'focus', count: 2 }]
+    })
+
+    expect(
+      await invokeHandler(TagsChannels.invoke.MERGE_TAG, {
+        source: 'Focus',
+        target: ' focus '
+      })
+    ).toEqual({ success: false, error: 'Source and target tags are the same' })
+
+    fileMocks.parseNote.mockReturnValueOnce({
+      frontmatter: { tags: ['source', 'target'] },
+      content: 'Body'
+    })
+    const mergeResult = await invokeHandler(TagsChannels.invoke.MERGE_TAG, {
+      source: ' source ',
+      target: ' target '
+    })
+
+    expect(mergeResult).toEqual({ success: true, affectedItems: 3 })
+    expect(fileMocks.serializeNote).toHaveBeenCalledWith({ tags: ['target'] }, 'Body')
+    expect(fileMocks.syncMergedTagDefinitions).toHaveBeenCalledWith('source', 'target', {
+      name: 'source',
+      color: 'blue'
+    })
+    expect(fileMocks.syncTaggedTasks).toHaveBeenCalledWith(['task-1'])
+
+    unregisterTagsHandlers()
+    expect(removeHandlerCalls).toEqual(Object.values(TagsChannels.invoke))
   })
 })

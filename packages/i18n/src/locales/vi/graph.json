@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Đang tải đồ thị...",
+    "load-failed": "Tải dữ liệu đồ thị thất bại",
+    "try-again": "Thử lại",
+    "aria-label": "Đồ thị tri thức với {nodeCount, plural, one {# nút} other {# các nút}} và {edgeCount, plural, one {# kết nối} other {# các kết nối}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Các nút của đồ thị",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Đồ thị tri thức của bạn",
+    "description": "Các kết nối giữa ghi chú, nhiệm vụ và dự án của bạn sẽ xuất hiện ở đây dưới dạng đồ thị tương tác.",
+    "link-title": "Liên kết ghi chú của bạn",
+    "link-description": "Sử dụng [[wikilinks]] để kết nối các ý tưởng giữa các ghi chú",
+    "discover-title": "Khám phá các mẫu",
+    "discover-description": "Khi các kết nối phát triển, các cụm và chủ đề sẽ tự nhiên xuất hiện"
+  },
+  "entity": {
+    "note": "ghi chú",
+    "notes": "ghi chú",
+    "journal": "nhật ký",
+    "journals": "nhật ký",
+    "task": "nhiệm vụ",
+    "tasks": "các nhiệm vụ",
+    "project": "dự án",
+    "projects": "dự án",
+    "tag": "Gắn thẻ",
+    "tags": "thẻ",
+    "orphan": "mồ côi",
+    "orphans": "những mồ côi",
+    "unresolved": "chưa giải quyết"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Cài đặt đồ thị",
+    "hide-settings": "Ẩn cài đặt",
+    "reset-filters": "Đặt lại bộ lọc",
+    "filters": "Bộ lọc",
+    "display": "Hiển thị",
+    "show-labels": "Hiển thị nhãn",
+    "focus-depth": "độ sâu {depth}",
+    "clear-focus": "Xóa nút đang tập trung"
+  },
+  "filter": {
+    "notes": "Các ghi chú",
+    "journals": "Nhật ký",
+    "tasks": "Nhiệm vụ",
+    "projects": "Dự án",
+    "tags": "Thẻ",
+    "orphans": "Các nút mồ côi",
+    "toggle-entity": "Chuyển đổi {label}",
+    "toggle-orphans": "Chuyển đổi các nút mồ côi"
+  },
+  "search": {
+    "placeholder": "Tìm kiếm các nút...",
+    "clear": "Xóa tìm kiếm đồ thị"
+  },
+  "context-menu": {
+    "untitled": "Chưa đặt tiêu đề",
+    "focus-node": "Tập trung vào nút này",
+    "open-new-tab": "Mở trong tab mới",
+    "create-note": "Tạo ghi chú",
+    "copy-title": "Sao chép tiêu đề"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {# kết nối} other {# các kết nối}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Đang tải đồ thị...",
+    "empty": "Không tìm thấy kết nối nào",
+    "open-full": "Mở đồ thị đầy đủ",
+    "close": "Đóng đồ thị"
+  }
+}

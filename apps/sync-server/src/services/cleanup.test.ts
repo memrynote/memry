@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  cleanupConsumedSetupTokens,
   cleanupExpiredGoogleCalendarChannels,
   cleanupExpiredLinkingSessions,
   cleanupExpiredOtpCodes,
@@ -35,6 +36,15 @@ describe('cleanup services', () => {
     await expect(cleanupExpiredOtpCodes(db)).resolves.toBe(3)
     expect(prepare).toHaveBeenCalledWith('DELETE FROM otp_codes WHERE expires_at < ?')
     expect(bind).toHaveBeenCalledWith(1_700_000_000)
+  })
+
+  it('returns 0 when D1 omits changes metadata for simple cleanup queries', async () => {
+    const run = vi.fn(async () => ({ meta: {} }))
+    const bind = vi.fn(() => ({ run }))
+    const prepare = vi.fn(() => ({ bind }))
+    const db = { prepare } as unknown as D1Database
+
+    await expect(cleanupExpiredOtpCodes(db)).resolves.toBe(0)
   })
 
   it('cleans up expired linking sessions', async () => {
@@ -83,6 +93,37 @@ describe('cleanup services', () => {
     expect(abortFn).toHaveBeenCalledOnce()
   })
 
+  it('continues deleting expired upload sessions when multipart abort fails', async () => {
+    // #given
+    const abortFn = vi.fn().mockRejectedValue(new Error('already gone'))
+    const storage = {
+      resumeMultipartUpload: vi.fn().mockReturnValue({ abort: abortFn })
+    } as unknown as R2Bucket
+
+    const selectAll = vi.fn().mockResolvedValue({
+      results: [{ id: 's1', r2_upload_id: 'up1', r2_key: 'k1' }]
+    })
+    const selectBind = vi.fn().mockReturnValue({ all: selectAll })
+
+    const deleteRun = vi.fn().mockResolvedValue({ meta: {} })
+    const deleteBind = vi.fn().mockReturnValue({ run: deleteRun })
+
+    const db = {
+      prepare: vi
+        .fn()
+        .mockReturnValueOnce({ bind: selectBind })
+        .mockReturnValueOnce({ bind: deleteBind })
+    } as unknown as D1Database
+
+    // #when
+    const result = await cleanupExpiredUploadSessions(db, storage)
+
+    // #then
+    expect(result).toBe(0)
+    expect(abortFn).toHaveBeenCalledOnce()
+    expect(deleteRun).toHaveBeenCalledOnce()
+  })
+
   it('cleans up expired Google Calendar push channels', async () => {
     // #given
     const { db, prepare, bind } = createDbWithChanges(4)
@@ -95,6 +136,19 @@ describe('cleanup services', () => {
     expect(prepare).toHaveBeenCalledWith(
       'DELETE FROM google_calendar_channels WHERE expires_at < ?'
     )
+    expect(bind).toHaveBeenCalledWith(1_700_000_000)
+  })
+
+  it('cleans up consumed setup tokens', async () => {
+    // #given
+    const { db, prepare, bind } = createDbWithChanges(6)
+
+    // #when
+    const result = await cleanupConsumedSetupTokens(db)
+
+    // #then
+    expect(result).toBe(6)
+    expect(prepare).toHaveBeenCalledWith('DELETE FROM consumed_setup_tokens WHERE expires_at < ?')
     expect(bind).toHaveBeenCalledWith(1_700_000_000)
   })
 
@@ -145,6 +199,33 @@ describe('cleanup services', () => {
       expect(storage.delete).toHaveBeenCalledWith('blob/t1')
       expect(storage.delete).toHaveBeenCalledWith('blob/t2')
       expect(deleteBind).toHaveBeenCalledWith('t1', 't2')
+    })
+
+    it('returns 0 when D1 delete omits tombstone changes metadata', async () => {
+      // #given
+      const storage = { delete: vi.fn().mockResolvedValue(undefined) } as unknown as R2Bucket
+
+      const selectAll = vi.fn().mockResolvedValue({
+        results: [{ id: 't1', blob_key: 'blob/t1' }]
+      })
+      const selectBind = vi.fn().mockReturnValue({ all: selectAll })
+
+      const deleteRun = vi.fn().mockResolvedValue({ meta: {} })
+      const deleteBind = vi.fn().mockReturnValue({ run: deleteRun })
+
+      const db = {
+        prepare: vi
+          .fn()
+          .mockReturnValueOnce({ bind: selectBind })
+          .mockReturnValueOnce({ bind: deleteBind })
+      } as unknown as D1Database
+
+      // #when
+      const result = await cleanupExpiredTombstones(db, storage)
+
+      // #then
+      expect(result).toBe(0)
+      expect(storage.delete).toHaveBeenCalledWith('blob/t1')
     })
 
     it('returns 0 when no expired tombstones exist', async () => {
@@ -250,6 +331,34 @@ describe('cleanup services', () => {
       expect(storage.delete).toHaveBeenCalledWith('chunks/c1')
       expect(storage.delete).toHaveBeenCalledWith('chunks/c2')
       expect(deleteBind).toHaveBeenCalledWith('c1', 'c2')
+    })
+
+    it('still deletes orphaned chunk rows when R2 delete fails and D1 changes are omitted', async () => {
+      // #given
+      const storage = {
+        delete: vi.fn().mockRejectedValue(new Error('missing'))
+      } as unknown as R2Bucket
+
+      const selectAll = vi.fn().mockResolvedValue({
+        results: [{ id: 'c1', r2_key: 'chunks/c1' }]
+      })
+
+      const deleteRun = vi.fn().mockResolvedValue({ meta: {} })
+      const deleteBind = vi.fn().mockReturnValue({ run: deleteRun })
+
+      const db = {
+        prepare: vi
+          .fn()
+          .mockReturnValueOnce({ all: selectAll })
+          .mockReturnValueOnce({ bind: deleteBind })
+      } as unknown as D1Database
+
+      // #when
+      const result = await cleanupOrphanedBlobChunks(db, storage)
+
+      // #then
+      expect(result).toBe(0)
+      expect(deleteBind).toHaveBeenCalledWith('c1')
     })
 
     it('returns 0 when no orphaned chunks exist', async () => {

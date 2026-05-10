@@ -1,1 +1,166 @@
-{}
+{
+  "view": {
+    "day": "يوم",
+    "week": "الأسبوع",
+    "month": "شهر",
+    "year": "سنة"
+  },
+  "toolbar": {
+    "create-event": "إنشاء حدث",
+    "previous-period": "الفترة السابقة",
+    "next-period": "الفترة القادمة",
+    "previous-month": "الشهر السابق",
+    "next-month": "الشهر القادم",
+    "today": "اليوم"
+  },
+  "filter": {
+    "filter-calendars": "تصفية التقويمات",
+    "sources": "المصادر",
+    "memry-items": "عناصر Memry",
+    "imported-calendars": "التقويمات المستوردة",
+    "event-types": "أنواع الأحداث",
+    "google-calendars": "تقاويم جوجل",
+    "refresh-google-calendars": "قم بتحديث تقاويم جوجل"
+  },
+  "visual-type": {
+    "event": "حدث",
+    "imported-event": "حدث مستورد",
+    "task": "المهمة",
+    "reminder": "تذكير",
+    "snooze": "غفوة"
+  },
+  "state": {
+    "loading-calendar": "جارٍ تحميل التقويم…",
+    "loading-calendars": "جارٍ تحميل التقاويم…",
+    "preparing": "جارٍ التحضير…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "لا توجد تقاويم مستوردة حتى الآن.",
+    "no-events": "لا توجد أحداث"
+  },
+  "time": {
+    "all-day": "طوال اليوم",
+    "all-day-lower": "طوال اليوم",
+    "pick-a-date": "اختر موعدًا",
+    "new-event": "حدث جديد",
+    "more-events": "{count, plural, one {# المزيد من الأحداث} other {# المزيد من الأحداث}}"
+  },
+  "form": {
+    "create-calendar-event": "إنشاء حدث التقويم",
+    "edit-calendar-event": "تحرير حدث التقويم",
+    "quick-create-description": "أدخل عنوانًا واحفظه لإنشاء حدث في النطاق الزمني المحدد.",
+    "event-editor-description": "قم بتحديث العنوان والموقع والتاريخ والوقت والملاحظات لهذا الحدث.",
+    "new-event-placeholder": "حدث جديد",
+    "location-placeholder": "أضف الموقع",
+    "notes-url-placeholder": "أضف ملاحظات أو عنوان URL",
+    "start": "ابدأ",
+    "end": "نهاية",
+    "add-details": "أضف التفاصيل",
+    "google-calendar": "تقويم جوجل",
+    "target-calendar": "التقويم المستهدف",
+    "use-default-calendar": "استخدم التقويم الافتراضي",
+    "use-default-calendar-with-name": "استخدم الافتراضي ({calendar})",
+    "use-memry-calendar-default": "استخدم تقويم Memry (افتراضي)",
+    "use-memry-managed-calendar": "استخدم التقويم المُدار بواسطة Memry",
+    "primary-suffix": "الابتدائي"
+  },
+  "delete-dialog": {
+    "title": "هل تريد حذف الحدث؟",
+    "local-description": "سيتم حذف \"{title}\" نهائيًا. لا يمكن التراجع عن هذا الإجراء.",
+    "google-bound-description": "ستتم إزالة \"{title}\" من Memry وتقويم Google. لا يمكن التراجع عن هذا الإجراء.",
+    "context-menu-delete-label": "حذف الحدث"
+  },
+  "promote-dialog": {
+    "aria": "تحرير حدث التقويم الخارجي",
+    "title": "هل تريد تحرير هذا الحدث في Memry؟",
+    "body": "سيؤدي تحرير هذا الحدث إلى إنشاء نسخة مرتبطة في Memry بحيث تتم مزامنة التغييرات في كلا الاتجاهين. هل تريد المتابعة؟",
+    "do-not-ask-again": "لا تسأل مرة أخرى",
+    "confirm-label": "تحرير في Memry"
+  },
+  "onboarding-dialog": {
+    "aria": "اختر تقويم Google الافتراضي الخاص بك",
+    "title": "ما التقويم الذي يجب أن تنتقل إليه أحداث Memry الجديدة؟",
+    "body": "اختر تقويم Google الذي يجب أن يستخدمه Memry افتراضيًا. لا يزال بإمكانك تجاوزه لكل حدث.",
+    "default-calendar-label": "استخدم التقويم المُدار بواسطة Memry",
+    "skip": "تخطي",
+    "use-this-calendar": "استخدم هذا التقويم"
+  },
+  "metadata": {
+    "attendees": "الحضور",
+    "attendees-count": "الحضور ({count})",
+    "reminders": "تذكيرات",
+    "default-reminders": "التذكيرات الافتراضية",
+    "visibility": "الرؤية:",
+    "optional": "اختياري",
+    "join-meeting": "الانضمام إلى الاجتماع",
+    "response": {
+      "accepted": "مقبول",
+      "declined": "مرفوض",
+      "tentative": "مؤقت",
+      "needs-action": "في انتظار"
+    },
+    "visibility-value": {
+      "private": "خاص",
+      "public": "عام",
+      "confidential": "سري"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "دقيقة · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "لا يمكن حفظ الحدث. حاول مرة أخرى.",
+      "couldNotCreateEventTryAgain": "لا يمكن إنشاء الحدث. حاول مرة أخرى.",
+      "couldNotSaveDefaultCalendarTryAgain": "لا يمكن حفظ التقويم الافتراضي. حاول مرة أخرى.",
+      "failedToLoadCalendarPreferences": "فشل تحميل تفضيلات التقويم",
+      "failedToUpdateCalendarPreferences": "فشل في تحديث تفضيلات التقويم",
+      "couldNotEditThisEventTryAgain": "تعذر تعديل هذا الحدث. حاول مرة أخرى.",
+      "failedToDeleteEvent": "فشل في حذف الحدث",
+      "couldNotUnsnoozeInboxItem": "تعذر إلغاء التأجيل.",
+      "couldNotRescheduleInboxItem": "لا يمكن إعادة الجدولة."
+    },
+    "inboxSnoozePopover": {
+      "title": "تم تأجيل عنصر البريد الوارد",
+      "openInInbox": "فتح في البريد الوارد",
+      "unsnoozeNow": "قم بإلغاء التأجيل الآن",
+      "reschedule": "إعادة جدولة"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "تفاصيل المهمة",
+    "open-task": "مهمة مفتوحة",
+    "source-note": "ملاحظة المصدر",
+    "reschedule": "إعادة جدولة",
+    "more-actions": "المزيد من الإجراءات",
+    "mark-done": "ضع علامة على الانتهاء",
+    "mark-not-done": "علامة لم يتم",
+    "later-today": "في وقت لاحق اليوم",
+    "tomorrow": "غدا",
+    "next-week": "الاسبوع القادم",
+    "next-week-mon": "الأسبوع القادم · الإثنين",
+    "pick-date-time": "اختر التاريخ والوقت…",
+    "remove-due-date": "إزالة تاريخ الاستحقاق",
+    "subtasks-prefix": "المهام الفرعية",
+    "subtasks-counter": "تم الانتهاء من {done} من {total}",
+    "today": "اليوم",
+    "overdue-one": "1 يوم متأخر",
+    "overdue-other": "{count} أيام متأخرة",
+    "repeats": "يكرر",
+    "repeats-daily": "يكرر يوميا",
+    "repeats-weekly": "يتكرر اسبوعيا",
+    "repeats-monthly": "يتكرر شهريا",
+    "repeats-yearly": "يتكرر سنويا",
+    "priority-urgent": "عاجل",
+    "priority-high": "عالية",
+    "priority-medium": "متوسط",
+    "errors": {
+      "could-not-save": "لا يمكن حفظ المهمة",
+      "could-not-reschedule": "لا يمكن إعادة جدولة المهمة",
+      "could-not-remove-due-date": "لا يمكن إزالة تاريخ الاستحقاق",
+      "could-not-open-note": "لا يمكن فتح الملاحظة"
+    }
+  }
+}

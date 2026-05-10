@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "Ημέρα",
+    "week": "Εβδομάδα",
+    "month": "Μήνας",
+    "year": "έτος"
+  },
+  "toolbar": {
+    "create-event": "Δημιουργία εκδήλωσης",
+    "previous-period": "Προηγούμενη περίοδος",
+    "next-period": "Επόμενη περίοδος",
+    "previous-month": "Προηγούμενος μήνας",
+    "next-month": "Τον επόμενο μήνα",
+    "today": "Σήμερα"
+  },
+  "filter": {
+    "filter-calendars": "Φιλτράρισμα ημερολογίων",
+    "sources": "Πηγές",
+    "memry-items": "Memry αντικείμενα",
+    "imported-calendars": "Εισαγόμενα ημερολόγια",
+    "event-types": "Τύποι συμβάντων",
+    "google-calendars": "Ημερολόγια Google",
+    "refresh-google-calendars": "Ανανεώστε τα ημερολόγια Google"
+  },
+  "visual-type": {
+    "event": "Εκδήλωση",
+    "imported-event": "Εισαγόμενο συμβάν",
+    "task": "Εργασία",
+    "reminder": "Υπενθύμιση",
+    "snooze": "Αναβολή"
+  },
+  "state": {
+    "loading-calendar": "Φόρτωση ημερολογίου…",
+    "loading-calendars": "Φόρτωση ημερολογίων…",
+    "preparing": "Προετοιμασία…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "Δεν υπάρχουν ακόμη εισαγόμενα ημερολόγια.",
+    "no-events": "Δεν υπάρχουν εκδηλώσεις"
+  },
+  "time": {
+    "all-day": "Όλη μέρα",
+    "all-day-lower": "ολοήμερο",
+    "pick-a-date": "Επιλέξτε μια ημερομηνία",
+    "new-event": "Νέα Εκδήλωση",
+    "more-events": "{count, plural, one {# ακόμη εκδήλωση} other {# περισσότερα συμβάντα}}"
+  },
+  "form": {
+    "create-calendar-event": "Δημιουργία συμβάντος ημερολογίου",
+    "edit-calendar-event": "Επεξεργασία συμβάντος ημερολογίου",
+    "quick-create-description": "Εισαγάγετε έναν τίτλο και αποθηκεύστε για να δημιουργήσετε ένα συμβάν στο επιλεγμένο χρονικό εύρος.",
+    "event-editor-description": "Ενημερώστε τον τίτλο, την τοποθεσία, την ημερομηνία, την ώρα και τις σημειώσεις για αυτό το συμβάν.",
+    "new-event-placeholder": "Νέα Εκδήλωση",
+    "location-placeholder": "Προσθήκη τοποθεσίας",
+    "notes-url-placeholder": "Προσθέστε σημειώσεις ή URL",
+    "start": "Έναρξη",
+    "end": "Τέλος",
+    "add-details": "Προσθέστε λεπτομέρειες",
+    "google-calendar": "Ημερολόγιο Google",
+    "target-calendar": "Ημερολόγιο στόχου",
+    "use-default-calendar": "Χρησιμοποιήστε το προεπιλεγμένο ημερολόγιο",
+    "use-default-calendar-with-name": "Χρήση προεπιλογής ({calendar})",
+    "use-memry-calendar-default": "Χρήση ημερολογίου Memry (προεπιλογή)",
+    "use-memry-managed-calendar": "Χρησιμοποιήστε το ημερολόγιο που διαχειρίζεται το Memry",
+    "primary-suffix": "πρωτοβάθμιας"
+  },
+  "delete-dialog": {
+    "title": "Διαγραφή συμβάντος;",
+    "local-description": "Το \"{title}\" θα διαγραφεί οριστικά. Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.",
+    "google-bound-description": "Το \"{title}\" θα καταργηθεί από το Memry και το Ημερολόγιο Google. Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.",
+    "context-menu-delete-label": "Διαγραφή συμβάντος"
+  },
+  "promote-dialog": {
+    "aria": "Επεξεργασία εξωτερικού συμβάντος ημερολογίου",
+    "title": "Επεξεργασία αυτού του συμβάντος στο Memry;",
+    "body": "Η επεξεργασία αυτού του συμβάντος θα δημιουργήσει ένα συνδεδεμένο αντίγραφο στο Memry, επομένως οι αλλαγές συγχρονίζονται και με τους δύο τρόπους. Συνέχεια;",
+    "do-not-ask-again": "Μην ξαναρωτήσεις",
+    "confirm-label": "Επεξεργασία στο Memry"
+  },
+  "onboarding-dialog": {
+    "aria": "Επιλέξτε το προεπιλεγμένο ημερολόγιο Google",
+    "title": "Σε ποιο ημερολόγιο πρέπει να πηγαίνουν τα νέα συμβάντα Memry;",
+    "body": "Επιλέξτε το ημερολόγιο Google που πρέπει να χρησιμοποιεί το Memry από προεπιλογή. Μπορείτε ακόμα να το παρακάμψετε ανά συμβάν.",
+    "default-calendar-label": "Χρησιμοποιήστε το ημερολόγιο που διαχειρίζεται το Memry",
+    "skip": "Παράλειψη",
+    "use-this-calendar": "Χρησιμοποιήστε αυτό το ημερολόγιο"
+  },
+  "metadata": {
+    "attendees": "παρευρισκόμενοι",
+    "attendees-count": "Συμμετέχοντες ({count})",
+    "reminders": "Υπενθυμίσεις",
+    "default-reminders": "Προεπιλεγμένες υπενθυμίσεις",
+    "visibility": "Ορατότητα:",
+    "optional": "Προαιρετικό",
+    "join-meeting": "Συμμετοχή στη συνάντηση",
+    "response": {
+      "accepted": "Αποδεκτό",
+      "declined": "Απορρίφθηκε",
+      "tentative": "Δοκιμαστικό",
+      "needs-action": "Σε εκκρεμότητα"
+    },
+    "visibility-value": {
+      "private": "Ιδιωτικό",
+      "public": "Δημόσιο",
+      "confidential": "Εμπιστευτικό"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "min · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "Δεν ήταν δυνατή η αποθήκευση του συμβάντος. Προσπαθήστε ξανά.",
+      "couldNotCreateEventTryAgain": "Δεν ήταν δυνατή η δημιουργία συμβάντος. Προσπαθήστε ξανά.",
+      "couldNotSaveDefaultCalendarTryAgain": "Δεν ήταν δυνατή η αποθήκευση του προεπιλεγμένου ημερολογίου. Προσπαθήστε ξανά.",
+      "failedToLoadCalendarPreferences": "Η φόρτωση των προτιμήσεων ημερολογίου απέτυχε",
+      "failedToUpdateCalendarPreferences": "Η ενημέρωση των προτιμήσεων ημερολογίου απέτυχε",
+      "couldNotEditThisEventTryAgain": "Δεν ήταν δυνατή η επεξεργασία αυτού του συμβάντος. Προσπαθήστε ξανά.",
+      "failedToDeleteEvent": "Αποτυχία διαγραφής συμβάντος",
+      "couldNotUnsnoozeInboxItem": "Δεν ήταν δυνατή η αναίρεση της αναβολής.",
+      "couldNotRescheduleInboxItem": "Δεν ήταν δυνατός ο επαναπρογραμματισμός."
+    },
+    "inboxSnoozePopover": {
+      "title": "Στοιχείο εισερχομένων σε αναβολή",
+      "openInInbox": "Άνοιγμα στα εισερχόμενα",
+      "unsnoozeNow": "Κατάργηση αναβολής τώρα",
+      "reschedule": "Επαναπρογραμματισμός"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "Λεπτομέρειες εργασίας",
+    "open-task": "Άνοιγμα εργασίας",
+    "source-note": "Σημείωση πηγής",
+    "reschedule": "Επαναπρογραμματισμός",
+    "more-actions": "Περισσότερες ενέργειες",
+    "mark-done": "Σημειώστε ότι έγινε",
+    "mark-not-done": "Σημειώστε ότι δεν έγινε",
+    "later-today": "Αργότερα σήμερα",
+    "tomorrow": "Αύριο",
+    "next-week": "Την επόμενη εβδομάδα",
+    "next-week-mon": "Την επόμενη εβδομάδα · Δευτ",
+    "pick-date-time": "Επιλέξτε ημερομηνία και ώρα…",
+    "remove-due-date": "Κατάργηση ημερομηνίας λήξης",
+    "subtasks-prefix": "Υποεργασίες",
+    "subtasks-counter": "Ολοκληρώθηκε το {done} του {total}",
+    "today": "Σήμερα",
+    "overdue-one": "1 ημέρα καθυστέρηση",
+    "overdue-other": "{count} ημέρες καθυστέρηση",
+    "repeats": "Επαναλαμβάνει",
+    "repeats-daily": "Επαναλαμβάνεται καθημερινά",
+    "repeats-weekly": "Επαναλαμβάνεται εβδομαδιαία",
+    "repeats-monthly": "Επαναλαμβάνεται κάθε μήνα",
+    "repeats-yearly": "Επαναλαμβάνεται ετησίως",
+    "priority-urgent": "Επείγον",
+    "priority-high": "Ψηλά",
+    "priority-medium": "Μεσαίο",
+    "errors": {
+      "could-not-save": "Δεν ήταν δυνατή η αποθήκευση της εργασίας",
+      "could-not-reschedule": "Δεν ήταν δυνατός ο επαναπρογραμματισμός της εργασίας",
+      "could-not-remove-due-date": "Δεν ήταν δυνατή η κατάργηση της ημερομηνίας λήξης",
+      "could-not-open-note": "Δεν ήταν δυνατό το άνοιγμα της σημείωσης"
+    }
+  }
+}

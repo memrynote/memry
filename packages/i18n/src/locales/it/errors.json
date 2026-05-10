@@ -1,0 +1,80 @@
+{
+  "generic": {
+    "somethingWentWrong": "Qualcosa è andato storto. Per favore riprova.",
+    "operationFailed": "Operazione fallita",
+    "unknown": "Si è verificato un errore sconosciuto",
+    "validationFailed": "Convalida non riuscita",
+    "actionFailed": "Azione fallita"
+  },
+  "ipc": {
+    "noVaultOpen": "Nessun caveau è aperto. Per favore apri prima un caveau."
+  },
+  "vault": {
+    "notFound": "Deposito non trovato. Potrebbe essere stato spostato o eliminato.",
+    "notInitialized": "Nessun caveau è aperto. Apri o crea un deposito per continuare.",
+    "invalidPath": "Il percorso selezionato non è una posizione del vault valida.",
+    "permissionDenied": "Autorizzazione negata. Verifica di avere accesso a questa cartella.",
+    "alreadyExists": "Esiste già un deposito in questa posizione.",
+    "corrupted": "Questo deposito sembra essere danneggiato. Prova a ripristinare da un backup."
+  },
+  "note": {
+    "notFound": "Impossibile trovare questa nota. Potrebbe essere stato cancellato.",
+    "invalidFrontmatter": "Questa nota contiene metadati non validi e non può essere letta.",
+    "duplicateId": "Esiste già una nota con questo ID.",
+    "writeFailed": "Impossibile salvare questa nota. Controlla lo spazio su disco e le autorizzazioni.",
+    "readFailed": "Impossibile leggere questa nota. Il file potrebbe essere bloccato o danneggiato.",
+    "deleteFailed": "Impossibile eliminare questa nota. Controlla i permessi dei file.",
+    "invalidPath": "Il percorso della nota non è valido."
+  },
+  "database": {
+    "connectionFailed": "Impossibile connettersi al database locale. Prova a riavviare l'app.",
+    "migrationFailed": "Aggiornamento del database non riuscito. Prova a riavviare l'app.",
+    "queryFailed": "Un'operazione sul database non è riuscita. Riprova.",
+    "notInitialized": "Database non pronto. Prova a riavviare l'app.",
+    "constraintViolation": "Si è verificato un conflitto di dati. Riprova.",
+    "corrupted": "Il database locale è danneggiato. Potrebbe essere necessario reimpostarlo."
+  },
+  "watcher": {
+    "startFailed": "Impossibile avviare la ricerca delle modifiche ai file.",
+    "stopFailed": "Impossibile arrestare il controllo file.",
+    "eventError": "Si è verificato un errore durante la ricerca delle modifiche al file."
+  },
+  "attachment": {
+    "fileTooLarge": "Questo file è troppo grande per essere allegato.",
+    "unsupportedType": "Questo tipo di file non è supportato.",
+    "writeFailed": "Impossibile salvare l'allegato. Controlla lo spazio su disco.",
+    "deleteFailed": "Impossibile eliminare l'allegato."
+  },
+  "encryption": {
+    "failed": "Impossibile crittografare i dati. Potrebbe essere necessario rigenerare le chiavi.",
+    "decryptionFailed": "Impossibile decrittografare i dati. Le tue chiavi di crittografia potrebbero non essere aggiornate.",
+    "invalidKeyLength": "Chiave di crittografia non valida. Prova a uscire e rientrare.",
+    "invalidNonceLength": "Errore di crittografia. Riprovare l'operazione."
+  },
+  "inboxAttachment": {
+    "writeFailed": "Impossibile salvare l'allegato della posta in arrivo.",
+    "deleteFailed": "Impossibile eliminare l'allegato della posta in arrivo."
+  },
+  "sync": {
+    "networkOffline": "Sei offline. Le modifiche verranno sincronizzate quando ti ricollegherai.",
+    "networkTimeout": "Il server di sincronizzazione ha impiegato troppo tempo per rispondere. Riproveremo a breve.",
+    "serverError": "Il server di sincronizzazione ha riscontrato un errore. Riproverà automaticamente.",
+    "authExpired": "La tua sessione è scaduta. Accedi di nuovo per continuare la sincronizzazione.",
+    "deviceRevoked": "Questo dispositivo è stato rimosso dal tuo account.",
+    "rateLimited": "Troppe richieste. La sincronizzazione riprenderà a breve.",
+    "cryptoFailure": "Impossibile crittografare o decrittografare i dati di sincronizzazione. Prova a uscire e rientrare.",
+    "versionIncompatible": "Questa versione di Memry non è più supportata. Per favore aggiorna.",
+    "storageQuotaExceeded": "Lo spazio di archiviazione della sincronizzazione è pieno. Libera spazio o aggiorna il tuo piano.",
+    "certificatePinFailed": "Connessione protetta non riuscita. Controlla la tua connessione di rete.",
+    "unknown": "Si è verificato un errore di sincronizzazione imprevisto. Riproverà automaticamente.",
+    "statusFetchFailed": "Impossibile recuperare lo stato di sincronizzazione",
+    "engineNotInitialized": "Motore di sincronizzazione non inizializzato. Apri un vault per avviare la sincronizzazione.",
+    "triggerFailed": "Sincronizzazione non riuscita",
+    "pauseFailed": "Impossibile mettere in pausa la sincronizzazione",
+    "resumeFailed": "Impossibile riprendere la sincronizzazione",
+    "settingsNotInitialized": "Sincronizzazione delle impostazioni non inizializzata",
+    "securityQuarantinePermanent": "Non è stato possibile verificare un elemento sincronizzato ed è stato messo in quarantena per motivi di sicurezza.",
+    "securityQuarantineRetry": "Un elemento di sincronizzazione non ha superato la verifica della firma e verrà ritentato.",
+    "certificatePinPaused": "Impossibile verificare la connessione protetta al server di sincronizzazione. La sincronizzazione è stata sospesa per la tua protezione."
+  }
+}

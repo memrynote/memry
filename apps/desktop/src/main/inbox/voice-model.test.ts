@@ -57,6 +57,7 @@ vi.mock('electron', () => ({
 import {
   downloadVoiceModel,
   getVoiceModelStatus,
+  stopVoiceModel,
   transcribeWithLocalModel,
   unloadVoiceModel
 } from './voice-model'
@@ -76,8 +77,23 @@ describe('voice model', () => {
 
   afterEach(() => {
     unloadVoiceModel()
+    vi.useRealTimers()
     fs.rmSync(tempDir, { recursive: true, force: true })
     vi.clearAllMocks()
+  })
+
+  it('reports the model as downloaded when the marker file exists', () => {
+    const markerDir = path.join(tempDir, 'models', 'voice-transcription')
+    fs.mkdirSync(markerDir, { recursive: true })
+    fs.writeFileSync(path.join(markerDir, 'whisper-small.json'), '{}')
+
+    expect(getVoiceModelStatus()).toEqual(
+      expect.objectContaining({
+        downloaded: true,
+        loaded: false
+      })
+    )
+    expect(mockFork).not.toHaveBeenCalled()
   })
 
   it('loads whisper through a utility process and forwards progress', async () => {
@@ -172,6 +188,125 @@ describe('voice model', () => {
     })
 
     await expect(transcribePromise).resolves.toBe('voice memo')
+  })
+
+  it('returns false for worker errors and unexpected download responses', async () => {
+    const failedDownload = downloadVoiceModel()
+
+    mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+    await vi.waitFor(() => {
+      expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(1)
+    })
+    const failedRequest = mockUtilityProcessInstance.postMessage.mock.calls[0]?.[0] as {
+      requestId: string
+    }
+    mockUtilityProcessInstance.simulateMessage({
+      type: 'error',
+      requestId: failedRequest.requestId,
+      error: 'download failed'
+    })
+
+    await expect(failedDownload).resolves.toBe(false)
+    expect(getVoiceModelStatus().error).toBe('download failed')
+
+    unloadVoiceModel()
+    mockFork.mockClear()
+    const unexpectedDownload = downloadVoiceModel()
+
+    mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+    await vi.waitFor(() => {
+      expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(1)
+    })
+    const unexpectedRequest = mockUtilityProcessInstance.postMessage.mock.calls[0]?.[0] as {
+      requestId: string
+    }
+    mockUtilityProcessInstance.simulateMessage({
+      type: 'transcribe-result',
+      requestId: unexpectedRequest.requestId,
+      transcription: 'not a download'
+    })
+
+    await expect(unexpectedDownload).resolves.toBe(false)
+  })
+
+  it('rejects start, request, and fatal utility failures', async () => {
+    vi.useFakeTimers()
+    const startTimeout = transcribeWithLocalModel(Buffer.from('audio'))
+    const startTimeoutExpectation = expect(startTimeout).rejects.toThrow(
+      'Voice transcription utility failed to start within timeout'
+    )
+
+    await vi.advanceTimersByTimeAsync(10_000)
+    await startTimeoutExpectation
+    expect(getVoiceModelStatus().error).toBe(
+      'Voice transcription utility failed to start within timeout'
+    )
+
+    unloadVoiceModel()
+    const fatalBeforeReady = transcribeWithLocalModel(Buffer.from('audio'))
+    const fatalExpectation = expect(fatalBeforeReady).rejects.toThrow(
+      'Voice transcription utility fatal error: SIGSEGV at worker.cc:10'
+    )
+    mockUtilityProcessInstance.emit('error', 'SIGSEGV', 'worker.cc:10', 'report')
+
+    await fatalExpectation
+
+    unloadVoiceModel()
+    const requestTimeout = transcribeWithLocalModel(Buffer.from('audio'))
+    mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+    await vi.waitFor(() => {
+      expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(1)
+    })
+
+    const requestTimeoutExpectation = expect(requestTimeout).rejects.toThrow(
+      'Voice transcription request timed out: transcribe'
+    )
+    await vi.advanceTimersByTimeAsync(5 * 60_000)
+
+    await requestTimeoutExpectation
+  })
+
+  it('stops a running utility process via graceful shutdown or timeout kill', async () => {
+    vi.useFakeTimers()
+    const downloadPromise = downloadVoiceModel()
+
+    mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+    await vi.waitFor(() => {
+      expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(1)
+    })
+    const requestMessage = mockUtilityProcessInstance.postMessage.mock.calls[0]?.[0] as {
+      requestId: string
+    }
+    mockUtilityProcessInstance.simulateMessage({
+      type: 'download-model-result',
+      requestId: requestMessage.requestId
+    })
+    await expect(downloadPromise).resolves.toBe(true)
+
+    const stopPromise = stopVoiceModel()
+    expect(mockUtilityProcessInstance.postMessage).toHaveBeenLastCalledWith({ type: 'shutdown' })
+    mockUtilityProcessInstance.simulateExit(0)
+    await expect(stopPromise).resolves.toBeUndefined()
+
+    const secondDownload = downloadVoiceModel()
+    mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+    await vi.waitFor(() => {
+      expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(1)
+    })
+    const secondRequest = mockUtilityProcessInstance.postMessage.mock.calls[0]?.[0] as {
+      requestId: string
+    }
+    mockUtilityProcessInstance.simulateMessage({
+      type: 'download-model-result',
+      requestId: secondRequest.requestId
+    })
+    await expect(secondDownload).resolves.toBe(true)
+
+    const timeoutStop = stopVoiceModel()
+    await vi.advanceTimersByTimeAsync(3_000)
+
+    expect(mockUtilityProcessInstance.kill).toHaveBeenCalled()
+    await expect(timeoutStop).resolves.toBeUndefined()
   })
 
   it('rejects instead of crashing when the utility process exits unexpectedly', async () => {

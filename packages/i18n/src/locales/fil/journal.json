@@ -1,0 +1,303 @@
+{
+  "title": "Journal",
+  "section": {
+    "journal": "Journal",
+    "aiConnections": "Mga Koneksyon sa AI",
+    "todaysNotes": "Mga Tala Ngayon",
+    "todaysSchedule": "Iskedyul Ngayon",
+    "todaysTasks": "Mga Gawain Ngayon",
+    "schedule": "Iskedyul",
+    "tasks": "Mga gawain",
+    "calendarEvents": "Mga Kaganapan sa Kalendaryo",
+    "overdueTasks": "Mga Overdue na Gawain",
+    "technicalDetails": "Mga teknikal na detalye"
+  },
+  "action": {
+    "versionHistory": "Kasaysayan ng Bersyon",
+    "export": "I-export",
+    "fullWidth": "Buong lapad",
+    "journalSettings": "Mga Setting ng Journal",
+    "fullMode": "Buong Mode",
+    "compactMode": "Compact na Mode",
+    "focusMode": "Focus Mode",
+    "exitFocusMode": "Lumabas sa Focus Mode",
+    "enterFocusMode": "Ipasok ang Focus Mode",
+    "createNote": "Lumikha ng Tala",
+    "createNewNote": "Gumawa ng bagong tala",
+    "showLess": "Magpakita ng mas kaunti",
+    "showMoreNotes": "Magpakita pa ng {count} na tala",
+    "showMoreNotes_plural": "Magpakita ng {count} ng higit pang mga tala",
+    "showFewerNotes": "Magpakita ng mas kaunting mga tala",
+    "startBlank": "Magsimulang blangko sa halip",
+    "changeTemplate": "Baguhin ang template",
+    "dismissIndicator": "I-dismiss ang indicator",
+    "refreshConnections": "I-refresh ang mga koneksyon",
+    "reloadJournal": "I-reload ang Journal",
+    "goToToday": "Pumunta sa Ngayon",
+    "copyUnsavedContent": "Kopyahin ang hindi na-save na nilalaman sa clipboard",
+    "openNoteFullPage": "Buksan ang tala sa buong pahina",
+    "closeNoteDrawer": "Isara ang note drawer",
+    "addBookmark": "Magdagdag ng bookmark",
+    "removeBookmark": "Alisin ang bookmark",
+    "tryAgain": "Subukan Muli"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "Anong balak mo...",
+      "today": "Ano ang nasa isip mo ngayon...",
+      "past": "Magmuni-muni sa araw na ito...",
+      "default": "Magsimulang magsulat..."
+    },
+    "toolbar": {
+      "ariaLabel": "Pag-format ng teksto",
+      "bold": "Matapang",
+      "italic": "Italic",
+      "underline": "Salungguhitan",
+      "strikethrough": "Strikethrough",
+      "link": "Link",
+      "image": "Imahe",
+      "moreOptions": "Higit pang mga pagpipilian",
+      "heading1": "Pamagat 1",
+      "heading2": "Pamagat 2",
+      "heading3": "Pamagat 3",
+      "bulletList": "Listahan ng Bullet",
+      "numberedList": "Listahan ng Numero",
+      "checklist": "Checklist",
+      "quote": "Quote",
+      "divider": "Divider",
+      "codeBlock": "Code Block"
+    },
+    "prompt": {
+      "enterUrl": "Ilagay ang URL:"
+    },
+    "upload": {
+      "noEntry": "Hindi makapag-upload ng larawan: walang piniling entry sa journal",
+      "failed": "Nabigong mag-upload ng larawan"
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "Ngayong araw",
+      "yesterday": "Kahapon",
+      "tomorrow": "Bukas",
+      "future": "Kinabukasan"
+    },
+    "weekday": {
+      "sunday": "Linggo",
+      "monday": "Lunes",
+      "tuesday": "Martes",
+      "wednesday": "Miyerkules",
+      "thursday": "Huwebes",
+      "friday": "Biyernes",
+      "saturday": "Sabado"
+    },
+    "weekdayShort": {
+      "sunday": "Araw",
+      "monday": "Mon",
+      "tuesday": "Tue",
+      "wednesday": "Wed",
+      "thursday": "Huwebes",
+      "friday": "Biyernes",
+      "saturday": "Sab"
+    },
+    "month": {
+      "january": "Enero",
+      "february": "Pebrero",
+      "march": "Marso",
+      "april": "Abril",
+      "may": "May",
+      "june": "Hunyo",
+      "july": "Hulyo",
+      "august": "Agosto",
+      "september": "Setyembre",
+      "october": "Oktubre",
+      "november": "Nobyembre",
+      "december": "Disyembre"
+    },
+    "monthShort": {
+      "january": "Jan",
+      "february": "Feb",
+      "march": "Mar",
+      "april": "Apr",
+      "may": "May",
+      "june": "Si Jun",
+      "july": "Hul",
+      "august": "Aug",
+      "september": "Sep",
+      "october": "Oct",
+      "november": "Nob",
+      "december": "Dec"
+    },
+    "greeting": {
+      "morning": "Magandang umaga po",
+      "afternoon": "Magandang hapon po",
+      "evening": "Magandang gabi po",
+      "night": "Magandang gabi"
+    },
+    "allDay": "Buong araw"
+  },
+  "nav": {
+    "previousDay": "Nakaraang araw",
+    "nextDay": "Sa susunod na araw",
+    "previousMonth": "Nakaraang buwan",
+    "nextMonth": "Sa susunod na buwan",
+    "previousYear": "Nakaraang taon",
+    "nextYear": "Sa susunod na taon",
+    "journalBack": "Bumalik sa journal",
+    "journalNavigation": "Pag-navigate sa journal",
+    "dateNavigation": "Pag-navigate sa petsa ng journal",
+    "goToYearView": "Pumunta sa view ng taon",
+    "previousView": "Nakaraang view",
+    "nextView": "Susunod na view"
+  },
+  "aria": {
+    "moreOptions": "Higit pang mga pagpipilian",
+    "documentStatistics": "Mga istatistika ng dokumento",
+    "dayContext": "Konteksto ng araw: mga gawain at iskedyul",
+    "scheduleEvents": "Mag-iskedyul ng mga kaganapan",
+    "tasks": "Mga gawain",
+    "notesCreatedToday": "{count} tala na ginawa ngayon"
+  },
+  "empty": {
+    "noEntry": "Walang pasok",
+    "noDaysInMonth": "Walang araw sa buwang ito",
+    "noEventsScheduled": "Walang nakaiskedyul na mga kaganapan",
+    "noEventsScheduledToday": "Walang nakaiskedyul na mga kaganapan ngayong araw",
+    "noEventsWereScheduled": "Walang nakaiskedyul na mga kaganapan",
+    "noTasksDue": "Walang dapat na gawain",
+    "noTasksDueToday": "Walang mga gawain ngayong araw",
+    "noTasksWereDue": "Walang nakatakdang gawain",
+    "noNotesToday": "Walang ginawang tala ngayon",
+    "startDocumenting": "Simulan ang pagdodokumento ng iyong mga saloobin at ideya"
+  },
+  "ai": {
+    "loading": "Sinusuri ang iyong entry...",
+    "empty": {
+      "willAppear": "Lalabas dito ang iyong mga koneksyon",
+      "noneYet": "Wala pang nakitang koneksyon",
+      "moreJournaling": "Habang nag-journal ka pa, makakahanap ang AI ng mga nauugnay na entry",
+      "keepWriting": "Patuloy na magsulat upang matuklasan ang mga nauugnay na entry"
+    },
+    "error": {
+      "loadFailed": "Hindi ma-load ang mga koneksyon"
+    },
+    "connectionAria": "Koneksyon sa {label}, {scorePercent}% na tugma"
+  },
+  "count": {
+    "item": "aytem",
+    "items": "mga bagay",
+    "note": "tala",
+    "notes": "mga tala",
+    "day": "araw",
+    "days": "araw",
+    "event": "kaganapan",
+    "events": "mga pangyayari",
+    "meeting": "pagpupulong",
+    "meetings": "mga pagpupulong",
+    "task": "gawain",
+    "tasks": "mga gawain",
+    "todo": "gawin",
+    "people": "{count} tao",
+    "moreConnections": "+ {count} pang koneksyon",
+    "moreConnections_plural": "+ {count} pang mga koneksyon",
+    "moreNotes": "+ {count} pang tala",
+    "moreNotes_plural": "+ {count} pang tala",
+    "daysWithEntries": "araw na may mga entry",
+    "charactersWritten": "mga karakter na nakasulat",
+    "words": "{count} salita",
+    "characters": "{count} na mga character",
+    "completed": "Nakumpleto ang {count}",
+    "overdue": "{count} overdue"
+  },
+  "stats": {
+    "wordCount": "Bilang ng salita",
+    "characterCount": "Bilang ng karakter",
+    "readingTime": "Tinatayang oras ng pagbabasa",
+    "lastModified": "Huling binago",
+    "lessThanOneMinute": "< 1 min",
+    "minutes": "{minutes} min",
+    "read": "{readingTime} basahin",
+    "modified": "Binagong {date}"
+  },
+  "task": {
+    "completed": "Nakumpleto",
+    "notCompleted": "Hindi natapos",
+    "priority": "{priority} priyoridad",
+    "overdue": "overdue na",
+    "markComplete": "Markahan ang \"{title}\" bilang nakumpleto",
+    "markNotComplete": "Markahan ang \"{title}\" bilang hindi kumpleto"
+  },
+  "template": {
+    "using": "Gamit ang \"{templateName}\""
+  },
+  "reminder": {
+    "hasReminders": "May mga paalala",
+    "setToRevisit": "Magtakda ng paalala na muling bisitahin",
+    "tooltip": "Paalala: {date}",
+    "tooltipMore": "Paalala: {date} (+{count} pa)",
+    "success": {
+      "set": "Nakatakda ang paalala para sa entry sa journal na ito",
+      "deleted": "Tinanggal ang paalala",
+      "dismissed": "Na-dismiss ang paalala",
+      "snoozed": "Naka-snooze ang paalala"
+    },
+    "error": {
+      "set": "Nabigong itakda ang paalala",
+      "delete": "Nabigong tanggalin ang paalala",
+      "dismiss": "Nabigong i-dismiss ang paalala",
+      "snooze": "Nabigong i-snooze ang paalala"
+    }
+  },
+  "toast": {
+    "unsavedRetry": "Ang iyong nilalaman ay nasa memorya pa rin. I-click upang subukang muli ang pag-save.",
+    "noteNotFound": "Ang tala na \"{target}\" ay hindi nahanap",
+    "fileNotFound": "Hindi nahanap ang file: {target}",
+    "openLinkedItemFailed": "Nabigong buksan ang naka-link na item",
+    "errorPrefix": "Error:"
+  },
+  "export": {
+    "noteTitle": "Journal - {month} {day}, {year}"
+  },
+  "note": {
+    "generatedTitle": "Tandaan - {date}",
+    "openAria": "Buksan ang {title}, ginawa sa {time}"
+  },
+  "tag": {
+    "suggestionsAria": "I-tag ang mga mungkahi",
+    "empty": {
+      "title": "Wala pang tag",
+      "description": "Mag-type para gumawa ng bagong tag"
+    },
+    "groupTitle": "Mga tag",
+    "create": "Lumikha ng #{query}",
+    "ariaLabel": "Tag: {tag}, i-click upang i-filter"
+  },
+  "wiki": {
+    "suggestionsAria": "Mga mungkahi sa pahina",
+    "empty": {
+      "title": "Walang nakitang pahina"
+    },
+    "groupRecent": "Kamakailan",
+    "groupAllPages": "Lahat ng Pahina",
+    "createNewPage": "Gumawa ng bagong page",
+    "ariaLabel": "Link sa {title}"
+  },
+  "error": {
+    "title": "Error sa Journal",
+    "description": "Nakatagpo ng error ang journal para sa {date}. Maaaring hindi na-save ang iyong mga kamakailang pagbabago.",
+    "descriptionNoDate": "Nagkaroon ng error ang journal. Maaaring hindi na-save ang iyong mga kamakailang pagbabago.",
+    "unsavedContent": "Nakita ang hindi naka-save na content ({length} character)"
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "k"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveJournalEntry": "Nabigong i-save ang entry sa journal",
+      "failedToLoadJournalSettings": "Nabigong i-load ang mga setting ng journal",
+      "failedToUpdateSettings": "Nabigong i-update ang mga setting"
+    }
+  }
+}

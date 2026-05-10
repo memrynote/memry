@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "close": "Đóng",
+    "ok": "OK",
+    "yes": "Có",
+    "no": "Không",
+    "delete": "Xóa",
+    "confirm": "Xác nhận",
+    "apply": "Áp dụng",
+    "done": "Hoàn tất",
+    "discard": "Bỏ qua",
+    "dontSave": "Không lưu",
+    "edit": "Chỉnh sửa",
+    "add": "Thêm",
+    "remove": "Gỡ bỏ",
+    "retry": "Thử lại",
+    "submit": "Gửi",
+    "back": "Quay lại",
+    "next": "Tiếp theo",
+    "continue": "Tiếp tục",
+    "reset": "Đặt lại",
+    "copy": "Sao chép",
+    "paste": "Dán",
+    "create": "Tạo",
+    "open": "Mở"
+  },
+  "state": {
+    "loading": "Đang tải…",
+    "saving": "Đang lưu…",
+    "deleting": "Đang xóa…",
+    "searching": "Đang tìm kiếm…",
+    "error": "Lỗi",
+    "success": "Thành công"
+  },
+  "empty": {
+    "noResults": "Không có kết quả",
+    "noItems": "Không có mục",
+    "noMatch": "Không khớp"
+  },
+  "action": {
+    "search": "Tìm kiếm",
+    "edit": "Chỉnh sửa",
+    "delete": "Xóa",
+    "close": "Đóng",
+    "expand": "Mở rộng",
+    "collapse": "Thu gọn",
+    "showMore": "+{count, plural, one {# hơn} other {# hơn}}",
+    "showLess": "Hiển thị ít hơn"
+  },
+  "tabs": {
+    "pin": "Ghim Tab",
+    "unpin": "Bỏ ghim Tab",
+    "contextMenu": {
+      "close": "Đóng",
+      "closeOthers": "Đóng các tab khác",
+      "closeToRight": "Đóng các tab bên phải",
+      "closeAll": "Đóng tất cả",
+      "duplicate": "Nhân bản Tab",
+      "splitRight": "Chia sang phải",
+      "splitDown": "Chia xuống",
+      "copyPath": "Sao chép Đường dẫn",
+      "revealInSidebar": "Hiển thị trong Thanh bên"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {# mục} other {# mục}}",
+    "note": "{count, plural, one {# ghi chú} other {# ghi chú}}",
+    "folder": "{count, plural, one {# thư mục} other {# thư mục}}",
+    "task": "{count, plural, one {# nhiệm vụ} other {# nhiệm vụ}}",
+    "project": "{count, plural, one {# dự án} other {# dự án}}",
+    "itemDelete": "{count, plural, one {Xóa # mục} other {Xóa # mục}}"
+  },
+  "toast": {
+    "actionFailed": "Thao tác thất bại",
+    "nothingToUndo": "Không có gì để hoàn tác",
+    "undone": "Đã hoàn tác: {description}",
+    "undoFailed": "Không thể hoàn tác hành động",
+    "copied": "Đã sao chép",
+    "copyFailed": "Không thể sao chép"
+  },
+  "dateRelative": {
+    "today": "Hôm nay",
+    "yesterday": "Hôm qua",
+    "daysAgo": "{count, plural, one {Cách đây # ngày} other {Cách đây # ngày}}"
+  },
+  "recurrence": {
+    "everyDay": "Mỗi ngày",
+    "everyNDays": "{count, plural, one {Mỗi ngày} other {Mỗi # ngày}}",
+    "everyWeek": "Mỗi tuần",
+    "everyNWeeks": "{count, plural, one {Mỗi tuần} other {Mỗi # tuần}}",
+    "everyWeekday": "Mỗi ngày trong tuần",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Mỗi ngày trong tuần} other {Mỗi # tuần vào các ngày trong tuần}}",
+    "everyWeekend": "Mỗi cuối tuần",
+    "everyNWeeksOnWeekends": "{count, plural, one {Mỗi cuối tuần} other {Mỗi # tuần vào cuối tuần}}",
+    "everyWeekOnDays": "Mỗi tuần vào {days}",
+    "everyNWeeksOnDays": "{count, plural, one {Mỗi tuần vào {days}} other {Mỗi # tuần vào {days}}}",
+    "everyMonth": "Mỗi tháng",
+    "everyNMonths": "{count, plural, one {Mỗi tháng} other {Mỗi # tháng}}",
+    "everyMonthOnDay": "Mỗi tháng vào ngày {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {Mỗi tháng vào ngày {day}{suffix}} other {Mỗi # tháng vào ngày {day}{suffix}}}",
+    "everyMonthOnWeekDay": "Mỗi tháng vào {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Mỗi tháng vào {week} {day}} other {Mỗi # tháng vào {week} {day}}}",
+    "everyYear": "Hàng năm",
+    "everyNYears": "{count, plural, one {Hàng năm} other {Mỗi # năm}}",
+    "repeats": "Lặp lại"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Bộ sưu tập",
+      "newNote": "Ghi chú mới",
+      "newNote2": "Ghi chú mới",
+      "newFolder": "Thư mục mới",
+      "newFolder2": "Thư mục mới",
+      "bookmarks": "Đánh dấu trang",
+      "tags": "Thẻ",
+      "dropFilesToImport": "Thả tệp để nhập",
+      "newNoteN": "Ghi chú mới (⌘N)",
+      "new": "Mới",
+      "syncDisabled": "Đồng bộ bị tắt",
+      "syncDisabled2": "Đồng bộ bị tắt"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Thay đổi kích thước Bảng Ngày",
+      "dragToResizeDoubleClickToReset": "Kéo để thay đổi kích thước · Nhấp đúp để đặt lại"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Tìm, thay thế, hỏi..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Bỏ qua hướng dẫn",
+      "welcomeToMemry": "Chào mừng đến với Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Cơ sở tri thức cá nhân của bạn. Hãy dành 2 phút để bắt đầu.",
+      "getStarted": "Bắt đầu",
+      "createYourFirstNote": "Tạo ghi chú đầu tiên của bạn",
+      "markdownBasedStoredLocallyAsPlainFiles": "Dựa trên Markdown, lưu trữ cục bộ dưới dạng tệp thuần.",
+      "eGMeetingNotesIdeasAnything": "Ví dụ: Ghi chú cuộc họp, ý tưởng, bất cứ điều gì...",
+      "skip": "Bỏ qua",
+      "createNote": "Tạo ghi chú ",
+      "addYourFirstTask": "Thêm công việc đầu tiên của bạn",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Công việc liên kết với ghi chú của bạn, với mức độ ưu tiên và hạn chót.",
+      "eGReviewProjectProposal": "ví dụ: Xem lại đề xuất dự án...",
+      "skip2": "Bỏ qua",
+      "createTask": "Tạo công việc ",
+      "syncAcrossDevices": "Đồng bộ trên các thiết bị",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Giữ ghi chú và công việc của bạn đồng bộ trên tất cả các thiết bị. Bạn luôn có thể thiết lập điều này sau.",
+      "skipForNow": "Bỏ qua bây giờ",
+      "doneLetSGo": "Xong — bắt đầu thôi!"
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Đặt biểu tượng thư mục"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "GỢI Ý"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Công cụ chọn biểu tượng",
+      "selectIcon": "Chọn biểu tượng",
+      "closeIconPicker": "Đóng công cụ chọn biểu tượng",
+      "searchIcons": "Tìm kiếm biểu tượng...",
+      "all": "Tất cả",
+      "clearIcon": "Xóa biểu tượng",
+      "noIconsFoundFor": "Không tìm thấy biểu tượng cho \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Phím tắt bàn phím",
+      "closeShortcutsHelp": "Đóng trợ giúp phím tắt",
+      "press": "Nhấn",
+      "toClose": "để đóng"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Đặt biểu tượng",
+      "clearIcon": "Xóa biểu tượng"
+    },
+    "componentsNavMain": {
+      "platform": "Nền tảng"
+    },
+    "componentsNavProjects": {
+      "projects": "Dự án",
+      "more": "Thêm",
+      "viewProject": "Xem Dự Án",
+      "shareProject": "Chia sẻ Dự Án",
+      "deleteProject": "Xóa Dự Án",
+      "more2": "Thêm"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Nâng cấp lên Pro",
+      "account": "Tài khoản",
+      "billing": "Thanh toán",
+      "notifications": "Thông báo",
+      "logOut": "Đăng xuất"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Tìm kiếm",
+      "searchNotesTasksJournalInbox": "Tìm kiếm ghi chú, công việc, nhật ký, hộp thư đến...",
+      "noResultsFor": "Không có kết quả cho “",
+      "rdquo": "rdquo;",
+      "result": "kết quả"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Tìm kiếm và nhấp vào các mục để xây dựng dấu vết của bạn",
+      "reasons": "Lý do",
+      "clear": "Xóa"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Xóa",
+      "tags": "Thẻ",
+      "filterByTag": "Lọc theo thẻ...",
+      "dateRange": "Khoảng thời gian"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Xem tất cả",
+      "results": "kết quả"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "mờ"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Không có tab nào đang mở",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Mở một trang từ thanh bên hoặc tạo tab mới để bắt đầu",
+      "openInbox": "Mở Hộp thư đến",
+      "closePane": "Đóng Ngăn"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Bố cục cài sẵn",
+      "layoutPresets2": "Bố cục Cài sẵn"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Thay đổi kích thước các ngăn"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TasksContext không khả dụng",
+      "searchResults": "Kết quả tìm kiếm",
+      "unknownTabType": "Loại tab không xác định: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "thay đổi chưa lưu",
+      "preview": "xem trước"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Tab Mới",
+      "newTab2": "Tab Mới",
+      "newNote": "Ghi chú Mới",
+      "journal": "Nhật ký",
+      "calendar": "Lịch",
+      "inboxCapture": "Thu thập Hộp thư đến",
+      "tasks": "Nhiệm vụ"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Thay đổi chưa lưu",
+      "unsaved": "chưa lưu)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Thay đổi chưa lưu"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Đóng Tất cả Tabs"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Tabs mở",
+      "scrollTabsLeft": "Cuộn tab sang trái",
+      "scrollTabsRight": "Cuộn tab sang phải",
+      "graphG": "Biểu đồ (⌘G)",
+      "dayPanel": "Bảng Ngày"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "Cuộn tab sang trái",
+      "scrollTabsRight": "Cuộn tab sang phải"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "Tabs mở",
+      "scrollTabsLeft": "Cuộn tab sang trái",
+      "scrollTabsRight": "Cuộn tab sang phải"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Đã xảy ra sự cố",
+      "anErrorOccurredWhileRenderingThisTabContent": "Đã xảy ra lỗi khi hiển thị nội dung tab này.",
+      "tryAgain": "Thử Lại"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Biểu tượng ghi chú"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Thay đổi Chưa lưu",
+      "quot": "quot;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; có thay đổi chưa lưu. Bạn muốn làm gì?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Không gian làm việc mới",
+      "darkMode": "Chế độ tối",
+      "settings": "Cài đặt",
+      "integrations": "Tích hợp",
+      "signOut": "Đăng xuất",
+      "downloadOnIos": "Tải xuống trên iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Đóng cửa sổ",
+      "minimizeWindow": "Thu nhỏ cửa sổ",
+      "maximizeWindow": "Phóng to cửa sổ"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Gợi ý",
+      "or": "hoặc",
+      "enter": "Nhập",
+      "toInsert": "để chèn"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "dấu mẩu thực",
+      "more": "Thêm"
+    },
+    "componentsUiDialog": {
+      "close": "Đóng"
+    },
+    "componentsUiSheet": {
+      "close": "Đóng"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Thanh bên",
+      "displaysTheMobileSidebar": "Hiển thị thanh bên trên thiết bị di động.",
+      "toggleSidebar": "Chuyển đổi Thanh bên",
+      "toggleSidebar2": "Chuyển đổi Thanh bên",
+      "dragToResizeDoubleClickToReset": "Kéo để thay đổi kích thước · Nhấp đúp để đặt lại"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Chào mừng đến với Memry",
+      "yourPersonalKnowledgeManagementSystem": "Hệ thống quản lý kiến thức cá nhân của bạn.",
+      "selectAFolderToStoreYourNotesAndTasks": "Chọn một thư mục để lưu ghi chú và nhiệm vụ của bạn.",
+      "opening": "Đang mở...",
+      "selectVaultFolder": "Chọn Thư mục Kho dữ liệu",
+      "plainMarkdown": "Markdown Thường",
+      "yourNotesStayPortable": "Ghi chú của bạn luôn di động",
+      "syncAnywhere": "Đồng bộ ở bất cứ đâu",
+      "useDropboxIcloudGit": "Sử dụng Dropbox, iCloud, Git",
+      "recentVaults": "Các Kho dữ liệu Gần đây",
+      "notesLastOpened": "ghi chú · Mở lần cuối"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Chưa có kho dữ liệu nào",
+      "openVault": "Mở kho dữ liệu",
+      "settings": "Cài đặt",
+      "logOut": "Đăng xuất",
+      "signInToSync": "Đăng nhập để đồng bộ",
+      "remove": "Xóa “",
+      "rdquoFromList": "rdquo; từ danh sách?  ",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "  \nKho lưu trữ này sẽ bị xóa khỏi ứng dụng, nhưng các tệp của bạn sẽ vẫn còn trên ổ đĩa. Bạn luôn có thể thêm lại sau.  ",
+      "cancel": "Hủy",
+      "remove2": "Gỡ bỏ"
+    },
+    "componentsWindowControls": {
+      "searchK": "  \nTìm kiếm (⌘K)  ",
+      "browserBack": "  \nQuay lại trình duyệt  ",
+      "back": "Quay lại",
+      "browserForward": "  \nTiến trình duyệt  ",
+      "forward": "  \nTiến lên  "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "  \nKhông thể nhập tệp  ",
+      "failedToCreateNote": "  \nKhông thể tạo ghi chú  ",
+      "failedToAccessMicrophone": "  \nKhông thể truy cập micro  "
+    },
+    "toasts": {
+      "undone": "  \nHoàn tác  "
+    }
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "generic": {
+    "somethingWentWrong": "Sesuatu telah berlaku. Sila cuba lagi.",
+    "operationFailed": "Operasi gagal",
+    "unknown": "Ralat tidak diketahui berlaku",
+    "validationFailed": "Pengesahan gagal",
+    "actionFailed": "Tindakan gagal"
+  },
+  "ipc": {
+    "noVaultOpen": "Tiada peti besi dibuka. Sila buka peti besi dahulu."
+  },
+  "vault": {
+    "notFound": "Bilik kebal tidak ditemui. Ia mungkin telah dialihkan atau dipadamkan.",
+    "notInitialized": "Tiada peti besi dibuka. Buka atau buat peti besi untuk meneruskan.",
+    "invalidPath": "Laluan yang dipilih bukan lokasi peti besi yang sah.",
+    "permissionDenied": "Kebenaran ditolak. Semak sama ada anda mempunyai akses kepada folder ini.",
+    "alreadyExists": "Bilik kebal sudah wujud di lokasi ini.",
+    "corrupted": "Bilik kebal ini nampaknya telah rosak. Cuba pulihkan daripada sandaran."
+  },
+  "note": {
+    "notFound": "Nota ini tidak ditemui. Ia mungkin telah dipadamkan.",
+    "invalidFrontmatter": "Nota ini mempunyai metadata tidak sah dan tidak boleh dibaca.",
+    "duplicateId": "Nota dengan ID ini sudah wujud.",
+    "writeFailed": "Gagal menyimpan nota ini. Semak ruang cakera dan kebenaran.",
+    "readFailed": "Gagal membaca nota ini. Fail mungkin dikunci atau rosak.",
+    "deleteFailed": "Gagal memadamkan nota ini. Semak kebenaran fail.",
+    "invalidPath": "Laluan nota tidak sah."
+  },
+  "database": {
+    "connectionFailed": "Tidak dapat menyambung ke pangkalan data tempatan. Cuba mulakan semula apl.",
+    "migrationFailed": "Peningkatan pangkalan data gagal. Cuba mulakan semula apl.",
+    "queryFailed": "Operasi pangkalan data gagal. Cuba lagi.",
+    "notInitialized": "Pangkalan data tidak sedia. Cuba mulakan semula apl.",
+    "constraintViolation": "Konflik data berlaku. Cuba lagi.",
+    "corrupted": "Pangkalan data tempatan rosak. Anda mungkin perlu menetapkan semula."
+  },
+  "watcher": {
+    "startFailed": "Tidak dapat mula melihat perubahan fail.",
+    "stopFailed": "Tidak dapat menghentikan pemerhati fail.",
+    "eventError": "Ralat berlaku semasa melihat perubahan fail."
+  },
+  "attachment": {
+    "fileTooLarge": "Fail ini terlalu besar untuk dilampirkan.",
+    "unsupportedType": "Jenis fail ini tidak disokong.",
+    "writeFailed": "Gagal menyimpan lampiran. Semak ruang cakera.",
+    "deleteFailed": "Gagal memadamkan lampiran."
+  },
+  "encryption": {
+    "failed": "Gagal menyulitkan data. Kunci anda mungkin perlu dijana semula.",
+    "decryptionFailed": "Gagal menyahsulit data. Kunci penyulitan anda mungkin sudah lapuk.",
+    "invalidKeyLength": "Kunci penyulitan tidak sah. Cuba log keluar dan masuk semula.",
+    "invalidNonceLength": "Ralat penyulitan. Cuba operasi sekali lagi."
+  },
+  "inboxAttachment": {
+    "writeFailed": "Gagal menyimpan lampiran peti masuk.",
+    "deleteFailed": "Gagal memadamkan lampiran peti masuk."
+  },
+  "sync": {
+    "networkOffline": "Anda berada di luar talian. Perubahan akan disegerakkan apabila anda menyambung semula.",
+    "networkTimeout": "Pelayan penyegerakan mengambil masa terlalu lama untuk bertindak balas. Akan mencuba semula sebentar lagi.",
+    "serverError": "Pelayan penyegerakan mengalami ralat. Akan mencuba semula secara automatik.",
+    "authExpired": "Sesi anda telah tamat tempoh. Log masuk sekali lagi untuk meneruskan penyegerakan.",
+    "deviceRevoked": "Peranti ini telah dialih keluar daripada akaun anda.",
+    "rateLimited": "Terlalu banyak permintaan. Penyegerakan akan disambung semula sebentar lagi.",
+    "cryptoFailure": "Gagal menyulitkan atau menyahsulit data penyegerakan. Cuba log keluar dan masuk semula.",
+    "versionIncompatible": "Versi Memry ini tidak lagi disokong. Sila kemas kini.",
+    "storageQuotaExceeded": "Storan penyegerakan anda penuh. Kosongkan ruang atau tingkatkan pelan anda.",
+    "certificatePinFailed": "Sambungan selamat gagal. Semak sambungan rangkaian anda.",
+    "unknown": "Ralat penyegerakan yang tidak dijangka berlaku. Akan mencuba semula secara automatik.",
+    "statusFetchFailed": "Gagal mengambil status penyegerakan",
+    "engineNotInitialized": "Enjin penyegerakan tidak dimulakan. Buka peti besi untuk memulakan penyegerakan.",
+    "triggerFailed": "Penyegerakan gagal",
+    "pauseFailed": "Gagal menjeda penyegerakan",
+    "resumeFailed": "Gagal menyambung semula penyegerakan",
+    "settingsNotInitialized": "Penyegerakan tetapan tidak dimulakan",
+    "securityQuarantinePermanent": "Item penyegerakan tidak dapat disahkan dan telah dikuarantin untuk keselamatan.",
+    "securityQuarantineRetry": "Item penyegerakan gagal pengesahan tandatangan dan akan dicuba semula.",
+    "certificatePinPaused": "Sambungan selamat ke pelayan penyegerakan tidak dapat disahkan. Penyegerakan telah dijeda untuk perlindungan anda."
+  }
+}

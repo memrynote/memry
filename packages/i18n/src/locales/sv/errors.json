@@ -1,0 +1,80 @@
+{
+  "generic": {
+    "somethingWentWrong": "Något gick fel. Försök igen.",
+    "operationFailed": "Operationen misslyckades",
+    "unknown": "Ett okänt fel uppstod",
+    "validationFailed": "Validering misslyckades",
+    "actionFailed": "Åtgärden misslyckades"
+  },
+  "ipc": {
+    "noVaultOpen": "Inget valv är öppet. Vänligen öppna ett valv först."
+  },
+  "vault": {
+    "notFound": "Valvet hittades inte. Det kan ha flyttats eller raderats.",
+    "notInitialized": "Inget valv är öppet. Öppna eller skapa ett valv för att fortsätta.",
+    "invalidPath": "Den valda sökvägen är inte en giltig valvplats.",
+    "permissionDenied": "Behörighet nekad. Kontrollera att du har åtkomst till denna mapp.",
+    "alreadyExists": "Ett valv finns redan på denna plats.",
+    "corrupted": "Detta valv verkar vara skadat. Försök återställa från en säkerhetskopia."
+  },
+  "note": {
+    "notFound": "Denna anteckning kunde inte hittas. Den kan ha blivit raderad.",
+    "invalidFrontmatter": "Denna anteckning har ogiltig metadata och kan inte läsas.",
+    "duplicateId": "En anteckning med detta ID finns redan.",
+    "writeFailed": "Misslyckades med att spara denna anteckning. Kontrollera diskutrymme och behörigheter.",
+    "readFailed": "Misslyckades med att läsa denna anteckning. Filen kan vara låst eller korrupt.",
+    "deleteFailed": "Misslyckades med att radera denna anteckning. Kontrollera filbehörigheter.",
+    "invalidPath": "Anteckningsvägen är ogiltig."
+  },
+  "database": {
+    "connectionFailed": "Kunde inte ansluta till den lokala databasen. Försök att starta om appen.",
+    "migrationFailed": "Databasuppgradering misslyckades. Försök att starta om appen.",
+    "queryFailed": "En databasåtgärd misslyckades. Försök igen.",
+    "notInitialized": "Databasen är inte redo. Försök att starta om appen.",
+    "constraintViolation": "En datakonflikt uppstod. Försök igen.",
+    "corrupted": "Den lokala databasen är korrupt. Du kan behöva återställa den."
+  },
+  "watcher": {
+    "startFailed": "Kunde inte börja övervaka filändringar.",
+    "stopFailed": "Kunde inte stoppa filövervakaren.",
+    "eventError": "Ett fel uppstod vid övervakning av filändringar."
+  },
+  "attachment": {
+    "fileTooLarge": "Denna fil är för stor för att bifoga.",
+    "unsupportedType": "Denna filtyp stöds inte.",
+    "writeFailed": "Misslyckades med att spara bilagan. Kontrollera diskutrymme.",
+    "deleteFailed": "Misslyckades med att ta bort bilagan."
+  },
+  "encryption": {
+    "failed": "Misslyckades med att kryptera data. Dina nycklar kan behöva regenereras.",
+    "decryptionFailed": "Misslyckades med att dekryptera data. Dina krypteringsnycklar kan vara föråldrade.",
+    "invalidKeyLength": "Ogiltig krypteringsnyckel. Försök att logga ut och in igen.",
+    "invalidNonceLength": "Krypteringsfel. Försök igen."
+  },
+  "inboxAttachment": {
+    "writeFailed": "Misslyckades med att spara inkorgsbilagan.",
+    "deleteFailed": "Misslyckades med att ta bort inkorgsbilagan."
+  },
+  "sync": {
+    "networkOffline": "Du är offline. Ändringar kommer att synkroniseras när du återansluter.",
+    "networkTimeout": "Synkroniseringsservern tog för lång tid på sig att svara. Försöker igen snart.",
+    "serverError": "Synkroniseringsservern stötte på ett fel. Försöker automatiskt igen.",
+    "authExpired": "Din session har gått ut. Logga in igen för att fortsätta synkronisera.",
+    "deviceRevoked": "Denna enhet har tagits bort från ditt konto.",
+    "rateLimited": "För många förfrågningar. Synkronisering kommer att återupptas snart.",
+    "cryptoFailure": "Misslyckades med att kryptera eller dekryptera synkroniseringsdata. Försök logga ut och in igen.",
+    "versionIncompatible": "Denna version av Memry stöds inte längre. Uppdatera den.",
+    "storageQuotaExceeded": "Ditt synkroniseringslagringsutrymme är fullt. Frigör utrymme eller uppgradera din plan.",
+    "certificatePinFailed": "Säker anslutning misslyckades. Kontrollera din nätverksanslutning.",
+    "unknown": "Ett oväntat synkroniseringsfel uppstod. Försöker igen automatiskt.",
+    "statusFetchFailed": "Misslyckades med att hämta synkstatus",
+    "engineNotInitialized": "Synkmotorn är inte initierad. Öppna ett valv för att starta synkronisering.",
+    "triggerFailed": "Synkronisering misslyckades",
+    "pauseFailed": "Misslyckades med att pausa synkronisering",
+    "resumeFailed": "Misslyckades med att återuppta synkronisering",
+    "settingsNotInitialized": "Inställningssynkronisering är inte initierad",
+    "securityQuarantinePermanent": "Ett synkroniseringsobjekt kunde inte verifieras och har satts i karantän av säkerhetsskäl.",
+    "securityQuarantineRetry": "Ett synkroniseringsobjekt misslyckades med signaturverifiering och kommer att försöka igen.",
+    "certificatePinPaused": "Säker anslutning till synkroniseringsserver kunde inte verifieras. Synkronisering har pausats för din säkerhet."
+  }
+}

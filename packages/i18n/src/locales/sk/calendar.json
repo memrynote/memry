@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "Deň",
+    "week": "Týždeň",
+    "month": "Mesiac",
+    "year": "Rok"
+  },
+  "toolbar": {
+    "create-event": "Vytvoriť udalosť",
+    "previous-period": "Predchádzajúce obdobie",
+    "next-period": "Nasledujúce obdobie",
+    "previous-month": "Predchádzajúci mesiac",
+    "next-month": "Nasledujúci mesiac",
+    "today": "Dnes"
+  },
+  "filter": {
+    "filter-calendars": "Filtrovať kalendáre",
+    "sources": "Zdroj",
+    "memry-items": "Memry položky",
+    "imported-calendars": "Importované kalendáre",
+    "event-types": "Typy udalostí",
+    "google-calendars": "Google kalendáre",
+    "refresh-google-calendars": "Obnoviť Google kalendáre"
+  },
+  "visual-type": {
+    "event": "Udalosť",
+    "imported-event": "Importovaná udalosť",
+    "task": "Úloha",
+    "reminder": "Pripomienka",
+    "snooze": "Odložiť"
+  },
+  "state": {
+    "loading-calendar": "Načítava sa kalendár…",
+    "loading-calendars": "Načítavajú sa kalendáre…",
+    "preparing": "Príprava…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "Zatiaľ žiadne importované kalendáre.",
+    "no-events": "Žiadne udalosti"
+  },
+  "time": {
+    "all-day": "Celý deň",
+    "all-day-lower": "celý deň",
+    "pick-a-date": "Vyberte dátum",
+    "new-event": "Nová udalosť",
+    "more-events": "{count, plural, one {# viac udalostí} other {# viac udalostí}}"
+  },
+  "form": {
+    "create-calendar-event": "Vytvoriť udalosť v kalendári",
+    "edit-calendar-event": "Upraviť udalosť v kalendári",
+    "quick-create-description": "Zadajte názov a uložte, aby ste vytvorili udalosť v zvolenom časovom rozsahu.",
+    "event-editor-description": "Aktualizovať názov, miesto, dátum, čas a poznámky pre túto udalosť.",
+    "new-event-placeholder": "Nová udalosť",
+    "location-placeholder": "Pridať miesto",
+    "notes-url-placeholder": "Pridať poznámky alebo URL",
+    "start": "Začiatok",
+    "end": "Koniec",
+    "add-details": "Pridať detaily",
+    "google-calendar": "Google kalendár",
+    "target-calendar": "Cieľový kalendár",
+    "use-default-calendar": "Použiť predvolený kalendár",
+    "use-default-calendar-with-name": "Použiť predvolený ({calendar})",
+    "use-memry-calendar-default": "Použiť kalendár Memry (predvolené)",
+    "use-memry-managed-calendar": "Použiť kalendár spravovaný Memry",
+    "primary-suffix": "primárny"
+  },
+  "delete-dialog": {
+    "title": "Odstrániť udalosť?",
+    "local-description": "\"{title}\" bude trvalo odstránený. Túto akciu nie je možné vrátiť späť.",
+    "google-bound-description": "\"{title}\" bude odstránený z Memry a Google Kalendára. Túto akciu nie je možné vrátiť späť.  ",
+    "context-menu-delete-label": "  \nOdstrániť udalosť  "
+  },
+  "promote-dialog": {
+    "aria": "  \nUpraviť udalosť v externom kalendári  ",
+    "title": "  \nUpraviť túto udalosť v Memry?  ",
+    "body": "  \nÚpravou tejto udalosti sa vytvorí prepojená kópia v Memry, takže zmeny sa synchronizujú obojstranne. Pokračovať?  ",
+    "do-not-ask-again": "  \nNepýtať sa znova  ",
+    "confirm-label": "  \nUpraviť v Memry  "
+  },
+  "onboarding-dialog": {
+    "aria": "  \nVyberte svoj predvolený Google kalendár  ",
+    "title": "  \nDo ktorého kalendára by mali ísť nové udalosti Memry?  ",
+    "body": "  \nVyberte Google kalendár, ktorý má Memry používať ako predvolený. Stále ho môžete pre každý udalosť meniť.  ",
+    "default-calendar-label": "Použiť kalendár spravovaný Memry",
+    "skip": "Preskočiť",
+    "use-this-calendar": "  \nPoužiť tento kalendár  "
+  },
+  "metadata": {
+    "attendees": "  \nÚčastníci  ",
+    "attendees-count": "  \nÚčastníci ({count})  ",
+    "reminders": "Pripomienky",
+    "default-reminders": "  \nPredvolené pripomienky  ",
+    "visibility": "  \nViditeľnosť:  ",
+    "optional": "  \nNepovinné  ",
+    "join-meeting": "  \nPripojiť sa k stretnutiu  ",
+    "response": {
+      "accepted": "  \nPrijaté  ",
+      "declined": "  \nOdmietnuté",
+      "tentative": "Navrhované",
+      "needs-action": "Čakajúce"
+    },
+    "visibility-value": {
+      "private": "Súkromné",
+      "public": "Verejné",
+      "confidential": "Dôverné"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "min · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "Nepodarilo sa uložiť udalosť. Skúste znova.",
+      "couldNotCreateEventTryAgain": "Nepodarilo sa vytvoriť udalosť. Skúste znova.",
+      "couldNotSaveDefaultCalendarTryAgain": "Nepodarilo sa uložiť predvolený kalendár. Skúste znova.",
+      "failedToLoadCalendarPreferences": "Nepodarilo sa načítať nastavenia kalendára",
+      "failedToUpdateCalendarPreferences": "Nepodarilo sa aktualizovať nastavenia kalendára",
+      "couldNotEditThisEventTryAgain": "Nepodarilo sa upraviť túto udalosť. Skúste znova.",
+      "failedToDeleteEvent": "Nepodarilo sa vymazať udalosť",
+      "couldNotUnsnoozeInboxItem": "Nepodarilo sa zrušiť odloženie.",
+      "couldNotRescheduleInboxItem": "Nepodarilo sa preplánovať."
+    },
+    "inboxSnoozePopover": {
+      "title": "Odložená položka doručenej pošty",
+      "openInInbox": "Otvoriť v doručenej pošte",
+      "unsnoozeNow": "Zrušiť odloženie teraz",
+      "reschedule": "Preplánovať"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "Podrobnosti úlohy",
+    "open-task": "Otvoriť úlohu",
+    "source-note": "Zdrojová poznámka",
+    "reschedule": "Preplánovať",
+    "more-actions": "Viac akcií",
+    "mark-done": "Označiť ako dokončené",
+    "mark-not-done": "Označiť ako nedokončené",
+    "later-today": "Neskôr dnes",
+    "tomorrow": "Zajtra",
+    "next-week": "Budúci týždeň",
+    "next-week-mon": "Budúci týždeň · Po",
+    "pick-date-time": "Vyberte dátum a čas...",
+    "remove-due-date": "Odstrániť termín",
+    "subtasks-prefix": "Podúlohy",
+    "subtasks-counter": "{done} z {total} dokončené",
+    "today": "Dnes",
+    "overdue-one": "Mešká 1 deň",
+    "overdue-other": "{count} dní po termíne",
+    "repeats": "Opakuje sa",
+    "repeats-daily": "Opakuje sa denne",
+    "repeats-weekly": "Opakuje sa týždenne",
+    "repeats-monthly": "Opakuje sa mesačne",
+    "repeats-yearly": "Opakuje sa ročne",
+    "priority-urgent": "Urgentné",
+    "priority-high": "Vysoká",
+    "priority-medium": "Stredná",
+    "errors": {
+      "could-not-save": "Nepodarilo sa uložiť úlohu",
+      "could-not-reschedule": "Nepodarilo sa preplánovať úlohu",
+      "could-not-remove-due-date": "Nepodarilo sa odstrániť termín",
+      "could-not-open-note": "Nepodarilo sa otvoriť poznámku"
+    }
+  }
+}

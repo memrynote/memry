@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "Uložit",
+    "cancel": "Zrušit",
+    "close": "Zavřít",
+    "ok": "OK",
+    "yes": "Ano",
+    "no": "Ne",
+    "delete": "Smazat",
+    "confirm": "Potvrďte",
+    "apply": "Použít",
+    "done": "Hotovo",
+    "discard": "Zahodit",
+    "dontSave": "Neukládat",
+    "edit": "Upravit",
+    "add": "Přidat",
+    "remove": "Odebrat",
+    "retry": "Zkuste to znovu",
+    "submit": "Odeslat",
+    "back": "Zpět",
+    "next": "Další",
+    "continue": "Pokračovat",
+    "reset": "Resetovat",
+    "copy": "Kopírovat",
+    "paste": "Vložit",
+    "create": "Vytvořit",
+    "open": "Otevřít"
+  },
+  "state": {
+    "loading": "Načítání…",
+    "saving": "Ukládání…",
+    "deleting": "Mazání…",
+    "searching": "Vyhledávání…",
+    "error": "Chyba",
+    "success": "Úspěch"
+  },
+  "empty": {
+    "noResults": "Žádné výsledky",
+    "noItems": "Žádné položky",
+    "noMatch": "Žádné zápasy"
+  },
+  "action": {
+    "search": "Hledat",
+    "edit": "Upravit",
+    "delete": "Smazat",
+    "close": "Zavřít",
+    "expand": "Rozbalit",
+    "collapse": "kolaps",
+    "showMore": "+{count, plural, one {# více} other {# více}}",
+    "showLess": "Ukažte méně"
+  },
+  "tabs": {
+    "pin": "Pin Tab",
+    "unpin": "Odepnout kartu",
+    "contextMenu": {
+      "close": "Zavřít",
+      "closeOthers": "Zavřít Ostatní",
+      "closeToRight": "Blízko doprava",
+      "closeAll": "Zavřít vše",
+      "duplicate": "Duplikovat kartu",
+      "splitRight": "Rozdělit vpravo",
+      "splitDown": "Rozdělit dolů",
+      "copyPath": "Kopírovat cestu",
+      "revealInSidebar": "Odhalit v postranním panelu"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {položka #} other {položky #}}",
+    "note": "{count, plural, one {# pozn} other {Poznámky #}}",
+    "folder": "{count, plural, one {složka #} other {složky #}}",
+    "task": "{count, plural, one {Úkol #} other {Úkoly #}}",
+    "project": "{count, plural, one {Projekt #} other {Projekty #}}",
+    "itemDelete": "{count, plural, one {Smazat položku #} other {Smazat položky #}}"
+  },
+  "toast": {
+    "actionFailed": "Akce se nezdařila",
+    "nothingToUndo": "Není co vrátit",
+    "undone": "Vráceno: {description}",
+    "undoFailed": "Akci se nepodařilo vrátit zpět",
+    "copied": "Zkopírováno",
+    "copyFailed": "Kopírování se nezdařilo"
+  },
+  "dateRelative": {
+    "today": "dnes",
+    "yesterday": "včera",
+    "daysAgo": "{count, plural, one {Před # dnem} other {Před # dny}}"
+  },
+  "recurrence": {
+    "everyDay": "Každý den",
+    "everyNDays": "{count, plural, one {Každý den} other {Každých # dní}}",
+    "everyWeek": "Každý týden",
+    "everyNWeeks": "{count, plural, one {Každý týden} other {Každých # týdnů}}",
+    "everyWeekday": "Každý všední den",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Každý všední den} other {Každých # týdnů ve všední dny}}",
+    "everyWeekend": "Každý víkend",
+    "everyNWeeksOnWeekends": "{count, plural, one {Každý víkend} other {Každých # týdnů o víkendech}}",
+    "everyWeekOnDays": "Každý týden na {days}",
+    "everyNWeeksOnDays": "{count, plural, one {Každý týden na {days}} other {Každých # týdnů na {days}}}",
+    "everyMonth": "Každý měsíc",
+    "everyNMonths": "{count, plural, one {Každý měsíc} other {Každých # měsíců}}",
+    "everyMonthOnDay": "Každý měsíc na {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {Každý měsíc na {day}{suffix}} other {Každých # měsíců na {day}{suffix}}}",
+    "everyMonthOnWeekDay": "Každý měsíc na {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Každý měsíc na {week} {day}} other {Každých # měsíců na {week} {day}}}",
+    "everyYear": "Každý rok",
+    "everyNYears": "{count, plural, one {Každý rok} other {Každých # let}}",
+    "repeats": "Opakuje se"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Sbírky",
+      "newNote": "Nová poznámka",
+      "newNote2": "Nová poznámka",
+      "newFolder": "Nová složka",
+      "newFolder2": "Nová složka",
+      "bookmarks": "Záložky",
+      "tags": "Tagy",
+      "dropFilesToImport": "Přetáhněte soubory k importu",
+      "newNoteN": "Nová poznámka (⌘N)",
+      "new": "Nové",
+      "syncDisabled": "Synchronizace zakázána",
+      "syncDisabled2": "Synchronizace zakázána"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Změna velikosti denního panelu",
+      "dragToResizeDoubleClickToReset": "Přetažením změníte velikost · Dvojitým kliknutím obnovíte"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Najít, vyměnit, zeptat se..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Přeskočit registraci",
+      "welcomeToMemry": "Vítejte v Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Vaše osobní znalostní báze. Udělejte si 2 minuty, abyste mohli začít.",
+      "getStarted": "Začněte ",
+      "createYourFirstNote": "Vytvořte svou první poznámku",
+      "markdownBasedStoredLocallyAsPlainFiles": "Na bázi Markdown, uložené lokálně jako prosté soubory.",
+      "eGMeetingNotesIdeasAnything": "např. Poznámky ze setkání, nápady, cokoliv...",
+      "skip": "Přeskočit",
+      "createNote": "Vytvořte poznámku ",
+      "addYourFirstTask": "Přidejte svůj první úkol",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Úkoly odkazují na vaše poznámky s prioritami a termíny dokončení.",
+      "eGReviewProjectProposal": "např. Zkontrolovat návrh projektu...",
+      "skip2": "Přeskočit",
+      "createTask": "Vytvořit úkol ",
+      "syncAcrossDevices": "Synchronizace napříč zařízeními",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Udržujte své poznámky a úkoly synchronizované na všech svých zařízeních. Vždy to můžete nastavit později.",
+      "skipForNow": "Zatím přeskočte",
+      "doneLetSGo": "Hotovo – jdeme na to! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Nastavit ikonu složky"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "TIP"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Výběr ikon",
+      "selectIcon": "Vyberte ikonu",
+      "closeIconPicker": "Zavřete výběr ikony",
+      "searchIcons": "Hledat ikony...",
+      "all": "všechny",
+      "clearIcon": "Jasná ikona",
+      "noIconsFoundFor": "Nebyly nalezeny žádné ikony pro „"
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Klávesové zkratky",
+      "closeShortcutsHelp": "Zavřít nápovědu ke zkratkám",
+      "press": "Stiskněte",
+      "toClose": "zavřít"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Nastavit ikonu",
+      "clearIcon": "Jasná ikona"
+    },
+    "componentsNavMain": {
+      "platform": "Platforma"
+    },
+    "componentsNavProjects": {
+      "projects": "Projekty",
+      "more": "více",
+      "viewProject": "Zobrazit projekt",
+      "shareProject": "Sdílet projekt",
+      "deleteProject": "Smazat projekt",
+      "more2": "více"
+    },
+    "componentsNavUser": {
+      "cn": "CN",
+      "cn2": "CN",
+      "upgradeToPro": "Upgradujte na Pro",
+      "account": "účet",
+      "billing": "Fakturace",
+      "notifications": "Oznámení",
+      "logOut": "Odhlaste se"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Hledat",
+      "searchNotesTasksJournalInbox": "Hledat poznámky, úkoly, deník, doručenou poštu...",
+      "noResultsFor": "Žádné výsledky pro „",
+      "rdquo": "rdquo;",
+      "result": "výsledek"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Vyhledejte a klikněte na položky a vytvořte si svou stezku",
+      "reasons": "Důvody",
+      "clear": "Jasný"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Jasný",
+      "tags": "Tagy",
+      "filterByTag": "Filtrovat podle značky...",
+      "dateRange": "Časové období"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Zobrazit vše ",
+      "results": "výsledky"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "P",
+      "fuzzy": "neostrý"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Nejsou otevřené žádné karty",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Chcete-li začít, otevřete stránku z postranního panelu nebo vytvořte novou kartu",
+      "openInbox": "Otevřete doručenou poštu",
+      "closePane": "Zavřít podokno"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Předvolby rozložení",
+      "layoutPresets2": "Předvolby rozvržení"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Změňte velikost panelů"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "TasksContext není k dispozici",
+      "searchResults": "Výsledky vyhledávání",
+      "unknownTabType": "Neznámý typ karty: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "neuložené změny",
+      "preview": "náhled"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Nová karta",
+      "newTab2": "Nová karta",
+      "newNote": "Nová poznámka",
+      "journal": "Deník",
+      "calendar": "Kalendář",
+      "inboxCapture": "Zachycení doručené pošty",
+      "tasks": "Úkoly"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Neuložené změny",
+      "unsaved": "neuloženo)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Neuložené změny"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Zavřete všechny karty"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Otevřít karty",
+      "scrollTabsLeft": "Posuňte karty doleva",
+      "scrollTabsRight": "Posuňte karty doprava",
+      "graphG": "Graf (⌘G)",
+      "dayPanel": "Denní panel"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "Posuňte karty doleva",
+      "scrollTabsRight": "Posuňte karty doprava"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "Otevřít karty",
+      "scrollTabsLeft": "Posuňte karty doleva",
+      "scrollTabsRight": "Posuňte karty doprava"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Něco se pokazilo",
+      "anErrorOccurredWhileRenderingThisTabContent": "Při vykreslování obsahu této karty došlo k chybě.",
+      "tryAgain": "Zkuste to znovu"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Ikona poznámky"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Neuložené změny",
+      "quot": "quot;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; má neuložené změny. co bys chtěl dělat?"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Nový pracovní prostor",
+      "darkMode": "Tmavý režim",
+      "settings": "Nastavení",
+      "integrations": "Integrace",
+      "signOut": "Odhlásit se",
+      "downloadOnIos": "Stáhnout na iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Zavřít okno",
+      "minimizeWindow": "Minimalizovat okno",
+      "maximizeWindow": "Maximalizovat okno"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Návrhy",
+      "or": "nebo",
+      "enter": "Vstupte",
+      "toInsert": "vložit"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "strouhanka",
+      "more": "více"
+    },
+    "componentsUiDialog": {
+      "close": "Zavřít"
+    },
+    "componentsUiSheet": {
+      "close": "Zavřít"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Postranní panel",
+      "displaysTheMobileSidebar": "Zobrazí postranní panel pro mobilní zařízení.",
+      "toggleSidebar": "Přepnout postranní panel",
+      "toggleSidebar2": "Přepnout postranní panel",
+      "dragToResizeDoubleClickToReset": "Přetažením změníte velikost · Dvojitým kliknutím obnovíte"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Vítejte v Memry",
+      "yourPersonalKnowledgeManagementSystem": "Váš systém řízení osobních znalostí.",
+      "selectAFolderToStoreYourNotesAndTasks": "Vyberte složku pro ukládání poznámek a úkolů.",
+      "opening": "Otevírání...",
+      "selectVaultFolder": "Vyberte složku Vault",
+      "plainMarkdown": "Plain Markdown",
+      "yourNotesStayPortable": "Vaše poznámky zůstanou přenosné",
+      "syncAnywhere": "Synchronizovat kdekoli",
+      "useDropboxIcloudGit": "Použijte Dropbox, iCloud, Git",
+      "recentVaults": "Nedávné trezory",
+      "notesLastOpened": "poznámky · Naposledy otevřeno"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Zatím žádné trezory",
+      "openVault": "Otevřený trezor",
+      "settings": "Nastavení",
+      "logOut": "Odhlaste se",
+      "signInToSync": "Pro synchronizaci se přihlaste",
+      "remove": "Odebrat \"",
+      "rdquoFromList": "rdquo; ze seznamu?",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Tento trezor bude z aplikace odstraněn, ale vaše soubory zůstanou na disku. Vždy jej můžete znovu přidat později.",
+      "cancel": "Zrušit",
+      "remove2": "Odebrat"
+    },
+    "componentsWindowControls": {
+      "searchK": "Hledat (⌘K)",
+      "browserBack": "Prohlížeč zpět",
+      "back": "Zpět",
+      "browserForward": "Prohlížeč vpřed",
+      "forward": "Vpřed"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Import souborů se nezdařil",
+      "failedToCreateNote": "Vytvoření poznámky se nezdařilo",
+      "failedToAccessMicrophone": "Nepodařilo se získat přístup k mikrofonu"
+    },
+    "toasts": {
+      "undone": "Nedokončeno"
+    }
+  }
+}

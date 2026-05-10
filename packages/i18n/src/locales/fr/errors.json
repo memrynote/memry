@@ -1,0 +1,80 @@
+{
+  "generic": {
+    "somethingWentWrong": "Quelque chose s'est mal passé. Veuillez réessayer.",
+    "operationFailed": "L'opération a échoué",
+    "unknown": "Une erreur inconnue s'est produite",
+    "validationFailed": "Échec de la validation",
+    "actionFailed": "L'action a échoué"
+  },
+  "ipc": {
+    "noVaultOpen": "Aucun coffre-fort n'est ouvert. Veuillez d'abord ouvrir un coffre-fort."
+  },
+  "vault": {
+    "notFound": "Coffre introuvable. Il a peut-être été déplacé ou supprimé.",
+    "notInitialized": "Aucun coffre-fort n'est ouvert. Ouvrez ou créez un coffre-fort pour continuer.",
+    "invalidPath": "Le chemin sélectionné n'est pas un emplacement de coffre-fort valide.",
+    "permissionDenied": "Autorisation refusée. Vérifiez que vous avez accès à ce dossier.",
+    "alreadyExists": "Un coffre-fort existe déjà à cet emplacement.",
+    "corrupted": "Ce coffre-fort semble être corrompu. Essayez de restaurer à partir d'une sauvegarde."
+  },
+  "note": {
+    "notFound": "Cette note est introuvable. Il a peut-être été supprimé.",
+    "invalidFrontmatter": "Cette note contient des métadonnées non valides et ne peut pas être lue.",
+    "duplicateId": "Une note avec cet ID existe déjà.",
+    "writeFailed": "Échec de l'enregistrement de cette note. Vérifiez l'espace disque et les autorisations.",
+    "readFailed": "Échec de la lecture de cette note. Le fichier est peut-être verrouillé ou corrompu.",
+    "deleteFailed": "Échec de la suppression de cette note. Vérifiez les autorisations des fichiers.",
+    "invalidPath": "Le chemin de la note n'est pas valide."
+  },
+  "database": {
+    "connectionFailed": "Impossible de se connecter à la base de données locale. Essayez de redémarrer l'application.",
+    "migrationFailed": "La mise à niveau de la base de données a échoué. Essayez de redémarrer l'application.",
+    "queryFailed": "Une opération de base de données a échoué. Essayer à nouveau.",
+    "notInitialized": "La base de données n'est pas prête. Essayez de redémarrer l'application.",
+    "constraintViolation": "Un conflit de données s'est produit. Essayer à nouveau.",
+    "corrupted": "La base de données locale est corrompue. Vous devrez peut-être le réinitialiser."
+  },
+  "watcher": {
+    "startFailed": "Impossible de commencer à surveiller les modifications de fichiers.",
+    "stopFailed": "Impossible d'arrêter l'observateur de fichiers.",
+    "eventError": "Une erreur s'est produite lors de la surveillance des modifications de fichiers."
+  },
+  "attachment": {
+    "fileTooLarge": "Ce fichier est trop volumineux pour être joint.",
+    "unsupportedType": "Ce type de fichier n'est pas pris en charge.",
+    "writeFailed": "Échec de l'enregistrement de la pièce jointe. Vérifiez l'espace disque.",
+    "deleteFailed": "Échec de la suppression de la pièce jointe."
+  },
+  "encryption": {
+    "failed": "Échec du chiffrement des données. Vos clés devront peut-être être régénérées.",
+    "decryptionFailed": "Échec du déchiffrement des données. Vos clés de cryptage sont peut-être obsolètes.",
+    "invalidKeyLength": "Clé de cryptage invalide. Essayez de vous déconnecter, puis de vous reconnecter.",
+    "invalidNonceLength": "Erreur de cryptage. Réessayez l'opération."
+  },
+  "inboxAttachment": {
+    "writeFailed": "Échec de l'enregistrement de la pièce jointe de la boîte de réception.",
+    "deleteFailed": "Échec de la suppression de la pièce jointe de la boîte de réception."
+  },
+  "sync": {
+    "networkOffline": "Vous êtes hors ligne. Les modifications seront synchronisées lorsque vous vous reconnecterez.",
+    "networkTimeout": "Le serveur de synchronisation a mis trop de temps à répondre. Je réessaierai sous peu.",
+    "serverError": "Le serveur de synchronisation a rencontré une erreur. Réessayera automatiquement.",
+    "authExpired": "Votre session a expiré. Connectez-vous à nouveau pour continuer la synchronisation.",
+    "deviceRevoked": "Cet appareil a été supprimé de votre compte.",
+    "rateLimited": "Trop de demandes. La synchronisation reprendra sous peu.",
+    "cryptoFailure": "Échec du chiffrement ou du déchiffrement des données de synchronisation. Essayez de vous déconnecter, puis de vous reconnecter.",
+    "versionIncompatible": "Cette version de Memry n'est plus prise en charge. Veuillez mettre à jour.",
+    "storageQuotaExceeded": "Votre stockage de synchronisation est plein. Libérez de l'espace ou mettez à niveau votre forfait.",
+    "certificatePinFailed": "La connexion sécurisée a échoué. Vérifiez votre connexion réseau.",
+    "unknown": "Une erreur de synchronisation inattendue s'est produite. Réessayera automatiquement.",
+    "statusFetchFailed": "Échec de la récupération de l'état de synchronisation",
+    "engineNotInitialized": "Le moteur de synchronisation n'est pas initialisé. Ouvrez un coffre-fort pour démarrer la synchronisation.",
+    "triggerFailed": "La synchronisation a échoué",
+    "pauseFailed": "Échec de la suspension de la synchronisation",
+    "resumeFailed": "Échec de la reprise de la synchronisation",
+    "settingsNotInitialized": "La synchronisation des paramètres n'est pas initialisée",
+    "securityQuarantinePermanent": "Un élément de synchronisation n'a pas pu être vérifié et a été mis en quarantaine pour des raisons de sécurité.",
+    "securityQuarantineRetry": "Un élément de synchronisation a échoué à la vérification de la signature et sera réessayé.",
+    "certificatePinPaused": "La connexion sécurisée au serveur de synchronisation n'a pas pu être vérifiée. La synchronisation a été suspendue pour votre protection."
+  }
+}

@@ -8,6 +8,8 @@ Vitest for unit and integration tests, Playwright for E2E (Electron). Tests run 
 pnpm test                              # all packages
 pnpm --filter @memry/desktop test      # desktop only
 pnpm --filter @memry/sync-server test  # sync server only
+pnpm --filter @memry/desktop test:coverage
+pnpm --filter @memry/sync-server exec vitest run --coverage --coverage.reporter=json-summary --coverage.reporter=text-summary
 pnpm test:e2e                          # Playwright
 ```
 
@@ -93,11 +95,15 @@ Using the Node fix for Electron (or vice versa) leaves the app silently broken �
 
 ## Coverage Targets
 
-Memry is pre-production, so coverage is pragmatic:
+Memry is pre-production, but desktop and sync-server coverage are now ratcheted.
+Keep new coverage feature-scoped and avoid catch-all test files.
 
-- **Required** — sync, CRDT, and crypto paths
-- **Encouraged** — IPC handlers, settings, anything user data-shaped
-- **Optional** — pure UI
+- **Desktop** — configured in `apps/desktop/config/vitest.config.ts`; current floor is
+  88% statements, 75% branches, 88% functions, and 90% lines.
+- **Sync-server** — configured in `apps/sync-server/vitest.config.ts`; current floor is
+  90% for statements, branches, functions, and lines.
+- **PRs** — include the relevant coverage command output when raising or defending a
+  threshold change.
 
 ## Known Test Files With Known Errors
 

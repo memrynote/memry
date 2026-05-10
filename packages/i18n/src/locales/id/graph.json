@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Memuat grafik...",
+    "load-failed": "Gagal memuat data grafik",
+    "try-again": "Coba lagi",
+    "aria-label": "Grafik pengetahuan dengan {nodeCount, plural, one {simpul #} other {Node #}} dan {edgeCount, plural, one {Koneksi #} other {Koneksi #}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Node grafik",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Grafik pengetahuan Anda",
+    "description": "Koneksi antara catatan, tugas, dan proyek Anda akan muncul di sini sebagai grafik interaktif.",
+    "link-title": "Tautkan catatan Anda",
+    "link-description": "Gunakan [[wikilinks]] untuk menghubungkan ide-ide di seluruh catatan",
+    "discover-title": "Temukan pola",
+    "discover-description": "Ketika koneksi tumbuh, kelompok dan tema akan muncul secara alami"
+  },
+  "entity": {
+    "note": "catatan",
+    "notes": "catatan",
+    "journal": "jurnal",
+    "journals": "jurnal",
+    "task": "tugas",
+    "tasks": "tugas",
+    "project": "proyek",
+    "projects": "proyek",
+    "tag": "menandai",
+    "tags": "tag",
+    "orphan": "yatim piatu",
+    "orphans": "anak yatim piatu",
+    "unresolved": "belum terselesaikan"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Pengaturan grafik",
+    "hide-settings": "Sembunyikan pengaturan",
+    "reset-filters": "Setel ulang filter",
+    "filters": "Filter",
+    "display": "Tampilan",
+    "show-labels": "Tampilkan label",
+    "focus-depth": "kedalaman {depth}",
+    "clear-focus": "Hapus simpul fokus"
+  },
+  "filter": {
+    "notes": "Catatan",
+    "journals": "Jurnal",
+    "tasks": "Tugas",
+    "projects": "Proyek",
+    "tags": "Tag",
+    "orphans": "anak yatim",
+    "toggle-entity": "Alihkan {label}",
+    "toggle-orphans": "Alihkan node yatim piatu"
+  },
+  "search": {
+    "placeholder": "Node pencarian...",
+    "clear": "Hapus pencarian grafik"
+  },
+  "context-menu": {
+    "untitled": "Tanpa judul",
+    "focus-node": "Fokus pada simpul ini",
+    "open-new-tab": "Buka di tab baru",
+    "create-note": "Buat catatan",
+    "copy-title": "Salin judul"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {Koneksi #} other {Koneksi #}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Memuat grafik...",
+    "empty": "Tidak ada koneksi yang ditemukan",
+    "open-full": "Buka grafik penuh",
+    "close": "Tutup grafik"
+  }
+}

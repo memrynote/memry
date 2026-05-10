@@ -1,0 +1,80 @@
+{
+  "generic": {
+    "somethingWentWrong": "Ceva a mers prost. Vă rugăm să încercați din nou.",
+    "operationFailed": "Operațiunea a eșuat",
+    "unknown": "A apărut o eroare necunoscută",
+    "validationFailed": "Validarea a eșuat",
+    "actionFailed": "Acțiunea eșuată"
+  },
+  "ipc": {
+    "noVaultOpen": "Niciun seif nu este deschis. Vă rugăm să deschideți mai întâi un seif."
+  },
+  "vault": {
+    "notFound": "Seif nu a fost găsit. Este posibil să fi fost mutat sau șters.",
+    "notInitialized": "Niciun seif nu este deschis. Deschideți sau creați un seif pentru a continua.",
+    "invalidPath": "Calea selectată nu este o locație validă pentru seif.",
+    "permissionDenied": "Permisiune refuzată. Verificați dacă aveți acces la acest folder.",
+    "alreadyExists": "Există deja un seif în această locație.",
+    "corrupted": "Acest seif pare a fi corupt. Încercați să restaurați dintr-o copie de rezervă."
+  },
+  "note": {
+    "notFound": "Această notă nu a putut fi găsită. Este posibil să fi fost șters.",
+    "invalidFrontmatter": "Această notă are metadate nevalide și nu poate fi citită.",
+    "duplicateId": "O notă cu acest ID există deja.",
+    "writeFailed": "Nu s-a salvat această notă. Verificați spațiul pe disc și permisiunile.",
+    "readFailed": "Nu s-a putut citi această notă. Fișierul poate fi blocat sau corupt.",
+    "deleteFailed": "Această notă a eșuat. Verificați permisiunile fișierelor.",
+    "invalidPath": "Calea notei este nevalidă."
+  },
+  "database": {
+    "connectionFailed": "Nu s-a putut conecta la baza de date locală. Încercați să reporniți aplicația.",
+    "migrationFailed": "Actualizarea bazei de date a eșuat. Încercați să reporniți aplicația.",
+    "queryFailed": "O operațiune de bază de date a eșuat. Încearcă din nou.",
+    "notInitialized": "Baza de date nu este pregătită. Încercați să reporniți aplicația.",
+    "constraintViolation": "A avut loc un conflict de date. Încearcă din nou.",
+    "corrupted": "Baza de date locală este coruptă. Poate fi necesar să-l resetați."
+  },
+  "watcher": {
+    "startFailed": "Nu s-a putut începe urmărirea modificărilor fișierelor.",
+    "stopFailed": "Nu s-a putut opri monitorul de fișiere.",
+    "eventError": "A apărut o eroare la urmărirea modificărilor fișierului."
+  },
+  "attachment": {
+    "fileTooLarge": "Acest fișier este prea mare pentru a fi atașat.",
+    "unsupportedType": "Acest tip de fișier nu este acceptat.",
+    "writeFailed": "Atașamentul nu a fost salvat. Verificați spațiul pe disc.",
+    "deleteFailed": "Atașamentul nu a fost șters."
+  },
+  "encryption": {
+    "failed": "Nu s-au putut cripta datele. Este posibil ca cheile dvs. să fie regenerate.",
+    "decryptionFailed": "Nu s-au putut decripta datele. Cheile dvs. de criptare pot fi învechite.",
+    "invalidKeyLength": "Cheie de criptare nevalidă. Încercați să vă deconectați și să vă reconectați.",
+    "invalidNonceLength": "Eroare de criptare. Încercați din nou operația."
+  },
+  "inboxAttachment": {
+    "writeFailed": "Nu s-a salvat atașamentul căsuței primite.",
+    "deleteFailed": "Nu s-a șters atașamentul căsuței primite."
+  },
+  "sync": {
+    "networkOffline": "Ești offline. Modificările se vor sincroniza când vă reconectați.",
+    "networkTimeout": "Serverul de sincronizare a durat prea mult să răspundă. Va reîncerca în scurt timp.",
+    "serverError": "Serverul de sincronizare a întâmpinat o eroare. Se va reîncerca automat.",
+    "authExpired": "Sesiunea dvs. a expirat. Conectați-vă din nou pentru a continua sincronizarea.",
+    "deviceRevoked": "Acest dispozitiv a fost eliminat din contul dvs.",
+    "rateLimited": "Prea multe cereri. Sincronizarea va fi reluată în curând.",
+    "cryptoFailure": "Nu s-au criptat sau decriptat datele de sincronizare. Încercați să vă deconectați și să vă reconectați.",
+    "versionIncompatible": "Această versiune de Memry nu mai este acceptată. Vă rugăm să actualizați.",
+    "storageQuotaExceeded": "Spațiul de stocare de sincronizare este plin. Eliberați spațiu sau actualizați-vă planul.",
+    "certificatePinFailed": "Conexiunea securizată a eșuat. Verificați conexiunea la rețea.",
+    "unknown": "A apărut o eroare de sincronizare neașteptată. Se va reîncerca automat.",
+    "statusFetchFailed": "Nu s-a putut prelua starea de sincronizare",
+    "engineNotInitialized": "Motorul de sincronizare nu este inițializat. Deschideți un seif pentru a începe sincronizarea.",
+    "triggerFailed": "Sincronizarea a eșuat",
+    "pauseFailed": "Sincronizarea nu a putut fi întreruptă",
+    "resumeFailed": "Nu s-a reluat sincronizarea",
+    "settingsNotInitialized": "Sincronizarea setărilor nu a fost inițializată",
+    "securityQuarantinePermanent": "Un element de sincronizare nu a putut fi verificat și a fost pus în carantină pentru securitate.",
+    "securityQuarantineRetry": "Un element de sincronizare nu a reușit verificarea semnăturii și va fi reîncercat.",
+    "certificatePinPaused": "Conexiunea securizată la serverul de sincronizare nu a putut fi verificată. Sincronizarea a fost întreruptă pentru a vă proteja."
+  }
+}

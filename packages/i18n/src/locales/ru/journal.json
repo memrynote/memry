@@ -1,0 +1,303 @@
+{
+  "title": "Журнал",
+  "section": {
+    "journal": "Журнал",
+    "aiConnections": "AI-соединения",
+    "todaysNotes": "Сегодняшние заметки",
+    "todaysSchedule": "Расписание на сегодня",
+    "todaysTasks": "Сегодняшние задачи",
+    "schedule": "Расписание",
+    "tasks": "Задачи",
+    "calendarEvents": "Календарные события",
+    "overdueTasks": "Просроченные задачи",
+    "technicalDetails": "Технические детали"
+  },
+  "action": {
+    "versionHistory": "История версий",
+    "export": "Экспорт",
+    "fullWidth": "Полная ширина",
+    "journalSettings": "Настройки журнала",
+    "fullMode": "Полный режим",
+    "compactMode": "Компактный режим",
+    "focusMode": "Режим фокусировки",
+    "exitFocusMode": "Выйти из режима фокусировки",
+    "enterFocusMode": "Войдите в режим фокусировки",
+    "createNote": "Создать заметку",
+    "createNewNote": "Создать новую заметку",
+    "showLess": "Показать меньше",
+    "showMoreNotes": "Показать {count} больше примечаний",
+    "showMoreNotes_plural": "Показать {count} больше заметок",
+    "showFewerNotes": "Показать меньше заметок",
+    "startBlank": "Вместо этого начните с пустого места",
+    "changeTemplate": "Изменить шаблон",
+    "dismissIndicator": "Индикатор закрытия",
+    "refreshConnections": "Обновить соединения",
+    "reloadJournal": "Перезагрузить журнал",
+    "goToToday": "Перейти к сегодняшнему дню",
+    "copyUnsavedContent": "Скопировать несохраненный контент в буфер обмена",
+    "openNoteFullPage": "Открыть заметку на всю страницу",
+    "closeNoteDrawer": "Закрыть ящик для заметок",
+    "addBookmark": "Добавить закладку",
+    "removeBookmark": "Удалить закладку",
+    "tryAgain": "Попробуйте еще раз"
+  },
+  "editor": {
+    "placeholder": {
+      "future": "Что ты планируешь...",
+      "today": "Что у тебя на уме сегодня...",
+      "past": "Вспомните этот день...",
+      "default": "Начни писать..."
+    },
+    "toolbar": {
+      "ariaLabel": "Форматирование текста",
+      "bold": "Жирный",
+      "italic": "Курсив",
+      "underline": "Подчеркнуть",
+      "strikethrough": "Зачеркивание",
+      "link": "Ссылка",
+      "image": "Изображение",
+      "moreOptions": "Больше возможностей",
+      "heading1": "Заголовок 1",
+      "heading2": "Заголовок 2",
+      "heading3": "Заголовок 3",
+      "bulletList": "Маркированный список",
+      "numberedList": "Нумерованный список",
+      "checklist": "Контрольный список",
+      "quote": "Цитата",
+      "divider": "Разделитель",
+      "codeBlock": "Кодовый блок"
+    },
+    "prompt": {
+      "enterUrl": "Введите URL:"
+    },
+    "upload": {
+      "noEntry": "Невозможно загрузить изображение: запись журнала не выбрана",
+      "failed": "Не удалось загрузить изображение"
+    }
+  },
+  "date": {
+    "relative": {
+      "today": "Сегодня",
+      "yesterday": "Вчера",
+      "tomorrow": "Завтра",
+      "future": "Будущее"
+    },
+    "weekday": {
+      "sunday": "воскресенье",
+      "monday": "понедельник",
+      "tuesday": "вторник",
+      "wednesday": "среда",
+      "thursday": "Четверг",
+      "friday": "пятница",
+      "saturday": "Суббота"
+    },
+    "weekdayShort": {
+      "sunday": "Солнце",
+      "monday": "Пн.",
+      "tuesday": "Вт",
+      "wednesday": "ср.",
+      "thursday": "Чт",
+      "friday": "Пт",
+      "saturday": "Суббота"
+    },
+    "month": {
+      "january": "январь",
+      "february": "февраль",
+      "march": "март",
+      "april": "апрель",
+      "may": "май",
+      "june": "июнь",
+      "july": "июль",
+      "august": "август",
+      "september": "сентябрь",
+      "october": "Октябрь",
+      "november": "ноябрь",
+      "december": "декабрь"
+    },
+    "monthShort": {
+      "january": "Ян",
+      "february": "февраль",
+      "march": "Мар",
+      "april": "апрель",
+      "may": "май",
+      "june": "июнь",
+      "july": "июль",
+      "august": "август",
+      "september": "Сентябрь",
+      "october": "октябрь",
+      "november": "ноябрь",
+      "december": "декабрь"
+    },
+    "greeting": {
+      "morning": "Доброе утро",
+      "afternoon": "Добрый день",
+      "evening": "Добрый вечер",
+      "night": "Спокойной ночи"
+    },
+    "allDay": "Весь день"
+  },
+  "nav": {
+    "previousDay": "Предыдущий день",
+    "nextDay": "На следующий день",
+    "previousMonth": "Предыдущий месяц",
+    "nextMonth": "В следующем месяце",
+    "previousYear": "Предыдущий год",
+    "nextYear": "В следующем году",
+    "journalBack": "Журнал назад",
+    "journalNavigation": "Навигация по журналу",
+    "dateNavigation": "Навигация по дате журнала",
+    "goToYearView": "Перейти к просмотру года",
+    "previousView": "Предыдущий вид",
+    "nextView": "Следующий просмотр"
+  },
+  "aria": {
+    "moreOptions": "Больше возможностей",
+    "documentStatistics": "Статистика документа",
+    "dayContext": "Контекст дня: задачи и график",
+    "scheduleEvents": "Планирование событий",
+    "tasks": "Задачи",
+    "notesCreatedToday": "Заметки {count}, созданные сегодня"
+  },
+  "empty": {
+    "noEntry": "Нет записи",
+    "noDaysInMonth": "Нет дней в этом месяце",
+    "noEventsScheduled": "Мероприятий не запланировано",
+    "noEventsScheduledToday": "Сегодня нет запланированных мероприятий",
+    "noEventsWereScheduled": "Никаких мероприятий не было запланировано",
+    "noTasksDue": "Нет задач",
+    "noTasksDueToday": "Нет задач на сегодня",
+    "noTasksWereDue": "Никаких задач не было",
+    "noNotesToday": "Сегодня заметок не создано",
+    "startDocumenting": "Начните документировать свои мысли и идеи"
+  },
+  "ai": {
+    "loading": "Анализ вашей записи...",
+    "empty": {
+      "willAppear": "Ваши связи появятся здесь",
+      "noneYet": "Связей пока не найдено",
+      "moreJournaling": "По мере того, как вы ведете дневник, ИИ будет находить связанные записи.",
+      "keepWriting": "Продолжайте писать, чтобы найти похожие записи"
+    },
+    "error": {
+      "loadFailed": "Не удалось загрузить подключения"
+    },
+    "connectionAria": "Подключение к {label}, совпадение {scorePercent}%."
+  },
+  "count": {
+    "item": "предмет",
+    "items": "предметы",
+    "note": "Примечание",
+    "notes": "заметки",
+    "day": "день",
+    "days": "дни",
+    "event": "событие",
+    "events": "события",
+    "meeting": "встреча",
+    "meetings": "встречи",
+    "task": "задача",
+    "tasks": "задачи",
+    "todo": "делать",
+    "people": "{count} человек",
+    "moreConnections": "+ {count} больше соединений",
+    "moreConnections_plural": "+ {count} больше подключений",
+    "moreNotes": "+ {count} еще примечание",
+    "moreNotes_plural": "+ {count} еще примечания",
+    "daysWithEntries": "дни с записями",
+    "charactersWritten": "персонажи написаны",
+    "words": "{count} слов",
+    "characters": "Символы {count}",
+    "completed": "{count} завершено",
+    "overdue": "{count} просрочен"
+  },
+  "stats": {
+    "wordCount": "Количество слов",
+    "characterCount": "Количество символов",
+    "readingTime": "Примерное время чтения",
+    "lastModified": "Последнее изменение",
+    "lessThanOneMinute": "< 1 мин.",
+    "minutes": "{minutes} мин.",
+    "read": "{readingTime} читать",
+    "modified": "Измененный {date}"
+  },
+  "task": {
+    "completed": "Завершено",
+    "notCompleted": "Не завершено",
+    "priority": "Приоритет {priority}",
+    "overdue": "просроченный",
+    "markComplete": "Отметить «{title}» как завершенное.",
+    "markNotComplete": "Отметить «{title}» как незавершенное."
+  },
+  "template": {
+    "using": "Использование «{templateName}»"
+  },
+  "reminder": {
+    "hasReminders": "Есть напоминания",
+    "setToRevisit": "Установить напоминание о повторном посещении",
+    "tooltip": "Напоминание: {date}",
+    "tooltipMore": "Напоминание: {date} (+ еще {count})",
+    "success": {
+      "set": "Напоминание установлено для этой записи журнала",
+      "deleted": "Напоминание удалено.",
+      "dismissed": "Напоминание закрыто",
+      "snoozed": "Напоминание отложено"
+    },
+    "error": {
+      "set": "Не удалось установить напоминание.",
+      "delete": "Не удалось удалить напоминание.",
+      "dismiss": "Не удалось закрыть напоминание.",
+      "snooze": "Не удалось отложить напоминание."
+    }
+  },
+  "toast": {
+    "unsavedRetry": "Ваш контент все еще находится в памяти. Нажмите, чтобы повторить попытку сохранения.",
+    "noteNotFound": "Примечание «{target}» не найдено.",
+    "fileNotFound": "Файл не найден: {target}",
+    "openLinkedItemFailed": "Не удалось открыть связанный элемент",
+    "errorPrefix": "Ошибка:"
+  },
+  "export": {
+    "noteTitle": "Журнал - {month} {day}, {year}"
+  },
+  "note": {
+    "generatedTitle": "Примечание — {date}",
+    "openAria": "Откройте {title}, созданный в {time}."
+  },
+  "tag": {
+    "suggestionsAria": "Предложения по тегам",
+    "empty": {
+      "title": "Тегов пока нет",
+      "description": "Введите, чтобы создать новый тег"
+    },
+    "groupTitle": "Теги",
+    "create": "Создать #{query}",
+    "ariaLabel": "Тег: {tag}, нажмите, чтобы отфильтровать"
+  },
+  "wiki": {
+    "suggestionsAria": "Предложения страниц",
+    "empty": {
+      "title": "Страницы не найдены"
+    },
+    "groupRecent": "Недавние",
+    "groupAllPages": "Все страницы",
+    "createNewPage": "Создать новую страницу",
+    "ariaLabel": "Ссылка на {title}"
+  },
+  "error": {
+    "title": "Ошибка журнала",
+    "description": "В журнале обнаружена ошибка {date}. Возможно, ваши недавние изменения не были сохранены.",
+    "descriptionNoDate": "В журнале произошла ошибка. Возможно, ваши недавние изменения не были сохранены.",
+    "unsavedContent": "Обнаружен несохраненный контент (символы {length})"
+  },
+  "phaseF": {
+    "componentsJournalJournalYearView": {
+      "k": "к"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveJournalEntry": "Не удалось сохранить запись журнала.",
+      "failedToLoadJournalSettings": "Не удалось загрузить настройки журнала.",
+      "failedToUpdateSettings": "Не удалось обновить настройки"
+    }
+  }
+}

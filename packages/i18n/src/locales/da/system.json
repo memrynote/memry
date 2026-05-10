@@ -1,0 +1,48 @@
+{
+  "dialog": {
+    "vault": {
+      "title": "Vælg Vault Folder",
+      "button": "Vælg Vault"
+    },
+    "exportPdf": {
+      "title": "Eksporter som PDF",
+      "filterName": "PDF-dokument"
+    },
+    "exportHtml": {
+      "title": "Eksporter som HTML",
+      "filterName": "HTML-dokument"
+    },
+    "import": {
+      "filterSupported": "Understøttede filer",
+      "filterAll": "Alle filer"
+    },
+    "exportCancelled": "Eksporten blev annulleret",
+    "update": {
+      "availableTitle": "Opdatering tilgængelig",
+      "availableMessage": "Memry {version} er tilgængelig.",
+      "availableDetailFallback": "Vil du downloade opdateringen nu?",
+      "buttonDownload": "Download",
+      "buttonLater": "Senere",
+      "readyTitle": "Opdatering klar",
+      "readyMessage": "Memry {version} er blevet downloadet.",
+      "readyDetailFallback": "Genstart Memry for at afslutte installationen af opdateringen.",
+      "buttonRestartNow": "Genstart nu",
+      "releaseNotesLabel": "Udgivelsesbemærkninger:"
+    }
+  },
+  "notification": {
+    "reminder": {
+      "note": "Bemærk påmindelse",
+      "journal": "Journal påmindelse",
+      "highlight": "Fremhæv påmindelse",
+      "fallback": "Påmindelse forfalder",
+      "default": "Påmindelse"
+    }
+  },
+  "error": {
+    "reminderTimeMustBeFuture": "Påmindelsestidspunkt skal ligge i fremtiden",
+    "definitionNotFound": "Definition ikke fundet",
+    "noteNotFound": "Bemærk ikke fundet",
+    "updateFailed": "Opdatering mislykkedes"
+  }
+}

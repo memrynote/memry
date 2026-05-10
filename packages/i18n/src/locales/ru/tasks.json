@@ -1,0 +1,651 @@
+{
+  "page": {
+    "tabs": {
+      "label": "Представления задач",
+      "today": "Сегодня",
+      "all": "Все"
+    },
+    "viewMode": {
+      "label": "Режим просмотра",
+      "list": "Просмотр списка",
+      "kanban": "Канбан-представление"
+    },
+    "projectScope": {
+      "allProjects": "Все проекты",
+      "searchProjects": "Поиск проектов…",
+      "editProject": "Редактировать {name}",
+      "unstarSavedFilter": "Снять звездочку с {name}"
+    }
+  },
+  "task": {
+    "add": "Добавить задачу",
+    "title": "Название",
+    "titleRequired": "Требуется название",
+    "titlePlaceholder": "Что нужно сделать?",
+    "namePlaceholder": "Название задачи",
+    "description": "Описание",
+    "descriptionPlaceholder": "Добавить описание…",
+    "details": "Подробности задачи",
+    "status": "Статус",
+    "priority": "Приоритет",
+    "dueDate": "Срок сдачи",
+    "project": "Проект",
+    "repeat": "Повторить",
+    "createAnother": "Создать еще один",
+    "delete": "Удалить задачу",
+    "created": "Создано {date}"
+  },
+  "project": {
+    "create": "Создать проект",
+    "edit": "Редактировать проект",
+    "delete": "Удалить проект",
+    "iconAndName": "Значок и имя",
+    "namePlaceholder": "Название проекта",
+    "select": "Выберите проект",
+    "selectIcon": "Выберите значок",
+    "clickIconToChange": "Нажмите значок, чтобы изменить",
+    "color": "Цвет",
+    "descriptionOptional": "Описание (необязательно)",
+    "descriptionPlaceholder": "Краткое описание этого проекта…",
+    "statuses": "Статусы",
+    "statusesHelp": "Настройте этапы рабочего процесса для этого проекта.",
+    "createDescription": "Создайте новый проект с именем, значком, цветом и статусами рабочего процесса.",
+    "editDescription": "Отредактируйте имя проекта, значок, цвет и статусы рабочего процесса."
+  },
+  "status": {
+    "select": "Выберите статус",
+    "todo": "Сделать",
+    "inProgress": "В процессе",
+    "done": "Готово"
+  },
+  "priority": {
+    "select": "Выберите приоритет",
+    "none": "Нет приоритета",
+    "noneShort": "Нет",
+    "low": "Низкий",
+    "medium": "Средний",
+    "high": "Высокий",
+    "urgent": "Срочно"
+  },
+  "filters": {
+    "filter": "Фильтр",
+    "emptyTitle": "Нет задач, соответствующих вашим фильтрам",
+    "emptyHelp": "Попробуйте настроить фильтры или",
+    "groupBy": "Группировать по",
+    "groupByOptions": "Группировать по параметрам",
+    "sortAscending": "Сортировать по возрастанию",
+    "sortDescending": "Сортировать по убыванию"
+  },
+  "quickAdd": {
+    "label": "Быстрое добавление задачи",
+    "focusDescription": "Фокус быстрого добавления ввода"
+  },
+  "drawer": {
+    "close": "Закрыть детали задачи",
+    "subIssues": "Подвопросы",
+    "addSubIssue": "Добавить подвопрос",
+    "subIssuePlaceholder": "Добавить подвопрос…",
+    "noSubIssues": "Подвопросов пока нет",
+    "linkedNotes": "Связанные заметки",
+    "linkNote": "Связать заметку",
+    "loading": "Загрузка…",
+    "searchNotes": "Поиск заметок…",
+    "noMatchingNotes": "Нет подходящих заметок",
+    "noNotesAvailable": "Нет доступных заметок",
+    "noLinkedNotes": "Связанных заметок пока нет",
+    "removeLinkTo": "Удалить ссылку на {title}",
+    "removeLinkFallback": "Примечание"
+  },
+  "kanban": {
+    "board": "Канбан-доска"
+  },
+  "toasts": {
+    "projectUpdated": "Проект обновлен",
+    "projectCreated": "Проект создан",
+    "projectSaveError": "Не удалось сохранить проект",
+    "projectArchived": "Проект в архиве",
+    "projectArchiveError": "Не удалось заархивировать проект.",
+    "projectDeleted": "Проект удален",
+    "projectDeleteError": "Не удалось удалить проект",
+    "filtersCleared": "Фильтры очищены",
+    "filterSaved": "Фильтр сохранен.",
+    "filterDeleted": "Фильтр удален.",
+    "filterApplied": "Применил \"{name}\"",
+    "deleted": "Задача удалена",
+    "deletedSeries": "Серия завершена!",
+    "deletedNext": "Следующее событие",
+    "completed": "Задача выполнена!",
+    "archived": "Задача заархивирована",
+    "undoNotAvailableForDelete": "Отмена недоступна для удаления",
+    "alreadyAllComplete": "Все выбранные задачи уже выполнены",
+    "noCompletedSelected": "Выполненных задач не выбрано",
+    "completeFailed": "Не удалось выполнить задачи",
+    "reopenFailed": "Не удалось повторно открыть задачи.",
+    "deleteFailed": "Не удалось удалить задачи.",
+    "moveFailed": "Не удалось переместить задачи."
+  },
+  "phaseF": {
+    "componentsTasksAddSubtaskInput": {
+      "addSubtask": "Добавить подзадачу...",
+      "addSubtask2": "Добавить подзадачу",
+      "enterToAdd": "Войдите, чтобы добавить"
+    },
+    "componentsTasksBulkActionsBulkActionDropdown": {
+      "for": "для ",
+      "task": "задача"
+    },
+    "componentsTasksBulkActionsBulkActionToolbar": {
+      "bulkActions": "Массовые действия",
+      "selected": "выбрано",
+      "complete": "Завершить",
+      "priority": "Приоритет",
+      "dueDate": "Срок сдачи",
+      "moveTo": "Перейти к",
+      "status": "Статус",
+      "archive": "Архив",
+      "delete": "Удалить",
+      "cancelSelection": "Отменить выбор",
+      "cancel": "Отмена"
+    },
+    "componentsTasksBulkActionsBulkDeleteDialog": {
+      "delete": "Удалить ",
+      "task": "задача",
+      "youReAboutToDelete": "Вы собираетесь удалить ",
+      "task2": "задача",
+      "and": "и ",
+      "moreTask": "больше задач",
+      "thisActionCanBeUndoneForAShortTimeAfterDeletion": "Это действие можно отменить в течение короткого времени после удаления.",
+      "cancel": "Отмена",
+      "delete2": "Удалить ",
+      "task3": "задача"
+    },
+    "componentsTasksBulkActionsBulkDueDatePicker": {
+      "setDueDateFor": "Установите срок выполнения ",
+      "task": "задача",
+      "selectADateToSetAsTheDueDateForAllSelectedTasks": "Выберите дату, которую необходимо установить в качестве срока выполнения для всех выбранных задач.",
+      "alsoSetTime": "Также установите время",
+      "cancel": "Отмена",
+      "setDueDate": "Установить дату сдачи"
+    },
+    "componentsTasksCelebrationProgress": {
+      "complete": "Завершить"
+    },
+    "componentsTasksColorPicker": {
+      "selectColor": "Выберите цвет"
+    },
+    "componentsTasksCustomRepeatDialog": {
+      "onTheseDays": "В эти дни",
+      "repeatOn": "Повторить дальше",
+      "day": "День",
+      "ofTheMonth": "месяца",
+      "the": "",
+      "ofTheMonth2": "месяца",
+      "ends": "Заканчивается",
+      "never": "Никогда",
+      "onDate": "Дата",
+      "after": "После",
+      "occurrences": "явления",
+      "preview": "Предварительный просмотр",
+      "of": "из ",
+      "andMore": "и многое другое",
+      "frequency": "Частота",
+      "repeatEvery": "Повторяйте каждые",
+      "day2": "день",
+      "week": "неделя",
+      "month": "месяц",
+      "year": "год",
+      "cancel": "Отмена",
+      "save": "Сохранить",
+      "customRepeat": "Пользовательский повтор"
+    },
+    "componentsTasksDatePickerCalendar": {
+      "previousMonth": "Предыдущий месяц",
+      "nextMonth": "В следующем месяце",
+      "goToToday": "Перейти к сегодняшнему дню",
+      "today": "Сегодня",
+      "w": "Вт"
+    },
+    "componentsTasksDatePickerContent": {
+      "removeDate": "Удалить дату",
+      "clearTime": "Очистить время",
+      "addTime": "Добавить время"
+    },
+    "componentsTasksDeleteProjectDialog": {
+      "delete": "Удалить \"",
+      "thisProjectHas": "Этот проект имеет ",
+      "task": "задача",
+      "whatWouldYouLikeToDoWithThem": "Что бы вы хотели с ними сделать?",
+      "moveTasksToPersonalProject": "Перенести задачи в Личный проект",
+      "deleteAllTasksPermanently": "Удалить все задачи навсегда",
+      "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "В этом проекте нет задач, и он будет удален без возможности восстановления.",
+      "thisActionCannotBeUndone": "Это действие невозможно отменить.",
+      "cancel": "Отмена",
+      "deleteProject": "Удалить проект"
+    },
+    "componentsTasksDeleteTaskDialog": {
+      "deleteTask": "Удалить задачу?",
+      "ldquo": "«Дкво»;",
+      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "рдкво; будут удалены навсегда. Это действие невозможно отменить.",
+      "deleteTask2": "Удалить задачу"
+    },
+    "componentsTasksDialogsAllSubtasksCompleteDialog": {
+      "allSubtasksComplete": "Все подзадачи выполнены!",
+      "ldquo": "«Дкво»;",
+      "rdquoHasAll": "рдкво; есть все ",
+      "subtask": "подзадача",
+      "done": "сделано.",
+      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "Хотите также пометить родительскую задачу как выполненную?",
+      "keepTaskOpen": "Оставить задачу открытой",
+      "completeTask": "Выполнить задание ✓"
+    },
+    "componentsTasksDialogsBulkDueDateDialog": {
+      "setDueDateForAllSubtasks": "Установите срок выполнения для всех подзадач",
+      "setDueDateFor": "Установите срок выполнения ",
+      "subtask": "подзадача",
+      "in": "в «",
+      "rdquo": "рдкво;",
+      "alsoApplyToCompletedSubtasks": "Также применяется к завершенным подзадачам (",
+      "clearDate": "Очистить дату",
+      "cancel": "Отмена",
+      "apply": "Применить"
+    },
+    "componentsTasksDialogsBulkPriorityDialog": {
+      "setPriorityForAllSubtasks": "Установить приоритет для всех подзадач",
+      "setPriorityFor": "Установить приоритет для ",
+      "subtask": "подзадача",
+      "in": "в «",
+      "rdquo": "рдкво;",
+      "alsoApplyToCompletedSubtasks": "Также применяется к завершенным подзадачам (",
+      "cancel": "Отмена",
+      "apply": "Применить"
+    },
+    "componentsTasksDialogsCompleteParentDialog": {
+      "completeTaskWithIncompleteSubtasks": "Завершить задачу с невыполненными подзадачами?",
+      "has": "имеет ",
+      "incompleteSubtask": "неполная подзадача",
+      "and": "и ",
+      "more": "больше",
+      "whatWouldYouLikeToDo": "Что бы вы хотели сделать?",
+      "completeAllParentSubtasks": "Завершить все (родительские + подзадачи)",
+      "markTheParentAndAllSubtasksAsComplete": "Отметить родительскую задачу и все подзадачи как выполненные",
+      "completeParentOnlyKeepSubtasksIncomplete": "Завершить только родительский элемент, оставить подзадачи незавершенными",
+      "onlyMarkTheParentTaskAsComplete": "Отмечайте только родительскую задачу как выполненную",
+      "cancel": "Отмена",
+      "complete": "Завершить"
+    },
+    "componentsTasksDialogsDeleteAllSubtasksDialog": {
+      "deleteAllSubtasks": "Удалить все подзадачи?",
+      "thisWillDelete": "Это удалит ",
+      "subtask": "подзадача",
+      "from": "из «",
+      "rdquo": "рдкво;.",
+      "thisActionCannotBeUndone": "Это действие невозможно отменить.",
+      "cancel": "Отмена",
+      "deleteAll": "Удалить все"
+    },
+    "componentsTasksDialogsDeleteParentDialog": {
+      "deleteTaskWithSubtasks": "Удалить задачу с подзадачами?",
+      "has": "имеет ",
+      "subtask": "подзадача",
+      "whatWouldYouLikeToDo": "Что бы вы хотели сделать?",
+      "deleteTaskAndAllSubtasks": "Удалить задачу и все подзадачи",
+      "permanentlyRemovesEverything": "Удаляет все навсегда",
+      "deleteTaskKeepSubtasksAsStandaloneTasks": "Удалить задачу, сохранить подзадачи как отдельные задачи",
+      "subtasksBecomeTopLevelTasks": "Подзадачи становятся задачами верхнего уровня.",
+      "cancel": "Отмена",
+      "delete": "Удалить"
+    },
+    "componentsTasksDialogsDuplicateWithSubtasksDialog": {
+      "duplicateTask": "Повторяющаяся задача",
+      "createACopyOf": "Создайте копию «",
+      "rdquo": "рдкво;",
+      "alsoDuplicateSubtasks": "Также дублируйте подзадачи (",
+      "cancel": "Отмена",
+      "duplicate": "Дублировать "
+    },
+    "componentsTasksDialogsParentPickerDialog": {
+      "makeSubtaskOf": "Сделать подзадачу...",
+      "selectATaskToMake": "Выберите задачу для выполнения \"",
+      "aSubtaskOf": "подзадача.",
+      "searchTasks": "Поиск задач...",
+      "sameProject": "Тот же проект",
+      "otherProjects": "Другие проекты"
+    },
+    "componentsTasksDragDropInsertionIndicator": {
+      "dropToRescheduleTo": "Отбросьте, чтобы перенести на "
+    },
+    "componentsTasksDragDropMoveMenu": {
+      "moveTask": "Переместить задачу",
+      "move": "Переместить",
+      "reschedule": "Перенести",
+      "today": "Сегодня",
+      "tomorrow": "Завтра",
+      "nextWeek": "На следующей неделе",
+      "removeDate": "Удалить дату",
+      "moveToProject": "Перейти в проект",
+      "current": "Текущий",
+      "changeStatus": "Изменить статус",
+      "current2": "Текущий",
+      "reorder": "Изменить порядок"
+    },
+    "componentsTasksDragDropMultiDragOverlay": {
+      "moreTask": "больше задач",
+      "task": "задача"
+    },
+    "componentsTasksDragDropSidebarDropZones": {
+      "dropHere": "Перетащите сюда"
+    },
+    "componentsTasksDragDropTaskRow": {
+      "priority": "приоритет: "
+    },
+    "componentsTasksDueDatePicker": {
+      "selectDueDate": "Выберите дату сдачи",
+      "overdue": "Просрочено",
+      "setDueDate": "Установить дату сдачи",
+      "suggestions": "Предложения",
+      "pickADate": "Выберите дату...",
+      "addTime": "Добавить время",
+      "time": "Время",
+      "clearDate": "Очистить дату",
+      "backToOptions": "Вернуться к опциям"
+    },
+    "componentsTasksEditRepeatingTaskDialog": {
+      "editRepeatingTask": "Редактировать повторяющуюся задачу",
+      "youReEditingARepeatingTaskApplyChangesTo": "Вы редактируете повторяющуюся задачу. Применить изменения к:",
+      "onlyThisOccurrence": "Только это явление",
+      "onlyFutureTasksUnchanged": "only — будущие задачи без изменений",
+      "thisAndAllFutureOccurrences": "Это и все будущие события",
+      "andBeyond": "и за его пределами",
+      "cancel": "Отмена",
+      "continue": "Продолжить"
+    },
+    "componentsTasksEmptyStatesCollapsedEmptySection": {
+      "add": "Добавить"
+    },
+    "componentsTasksEmptyStatesSectionEmptyStates": {
+      "noTasksScheduled": "Нет запланированных задач",
+      "addTaskFor": "Добавить задачу для ",
+      "nothingScheduled": "Ничего не запланировано",
+      "addTasksWithDueDatesToPlanYourWeek": "Добавляйте задачи со сроками выполнения, чтобы спланировать свою неделю.",
+      "addTask": "Добавить задачу",
+      "viewCalendar": "Посмотреть календарь"
+    },
+    "componentsTasksFiltersActiveFiltersBar": {
+      "priorityIs": "Приоритет",
+      "priority": "приоритет",
+      "statusIs": "Статус",
+      "status": "статус",
+      "projectIs": "Проект",
+      "project": "проект",
+      "due": "Срок погашения",
+      "dueDate": "срок платежа",
+      "search": "поиск",
+      "clearAll": "Очистить все"
+    },
+    "componentsTasksFiltersDueDateFilter": {
+      "filterByDueDate": "Фильтровать по дате сдачи",
+      "customRange": "Пользовательский диапазон",
+      "clear": "Очистить",
+      "apply": "Применить"
+    },
+    "componentsTasksFiltersFilterDropdown": {
+      "filterBy": "Фильтровать по..."
+    },
+    "componentsTasksFiltersFilterEmptyState": {
+      "activeFilters": "Активные фильтры: ",
+      "clearAllFilters": "Очистить все фильтры"
+    },
+    "componentsTasksFiltersFilterPanelsDueDatePanel": {
+      "dueDate": "Срок сдачи"
+    },
+    "componentsTasksFiltersFilterPanelsPriorityPanel": {
+      "priority": "Приоритет",
+      "is": "есть",
+      "search": "Искать...",
+      "selected": "выбрано"
+    },
+    "componentsTasksFiltersFilterPanelsProjectPanel": {
+      "project": "Проект",
+      "noProject": "Нет проекта"
+    },
+    "componentsTasksFiltersFilterPanelsStatusPanel": {
+      "status": "Статус"
+    },
+    "componentsTasksFiltersFilterPanelsStatusProjectPickerPan": {
+      "status": "Статус",
+      "pickAProject": "Выберите проект"
+    },
+    "componentsTasksFiltersMoreFiltersDropdown": {
+      "moreFilters": "Больше фильтров",
+      "more": "Подробнее",
+      "status": "Статус",
+      "hasTimeSet": "Установлено время",
+      "recurringOnly": "Только повторяющиеся",
+      "status2": "Статус"
+    },
+    "componentsTasksFiltersPriorityFilter": {
+      "filterByPriority": "Фильтровать по приоритету",
+      "priority": "Приоритет"
+    },
+    "componentsTasksFiltersProjectFilter": {
+      "filterByProject": "Фильтровать по проекту",
+      "project": "Проект",
+      "allProjects": "Все проекты",
+      "clear": "Очистить"
+    },
+    "componentsTasksFiltersQuickFilters": {
+      "quickFilters": "Быстрые фильтры:"
+    },
+    "componentsTasksFiltersSaveFilterDialog": {
+      "saveFilter": "Сохранить фильтр",
+      "saveYourCurrentFilterSettingsForQuickAccessLater": "Сохраните текущие настройки фильтра для быстрого доступа позже.",
+      "filterName": "Имя фильтра",
+      "eGHighPriorityThisWeek": "например, Высокий приоритет на этой неделе",
+      "currentFilters": "Текущие фильтры:",
+      "noFiltersApplied": "Фильтры не применены",
+      "cancel": "Отмена",
+      "saveFilter2": "Сохранить фильтр"
+    },
+    "componentsTasksFiltersSavedFiltersDropdown": {
+      "savedFilters": "Сохраненные фильтры",
+      "saved": "Сохранено",
+      "noSavedFiltersYet": "Сохраненных фильтров пока нет.",
+      "saveCurrentFilters": "Сохранить текущие фильтры",
+      "saveCurrentFilters2": "Сохранить текущие фильтры"
+    },
+    "componentsTasksFiltersSavedFiltersSection": {
+      "filterName": "Название фильтра",
+      "saveFilter": "Сохранить фильтр",
+      "save": "Сохранить"
+    },
+    "componentsTasksFiltersSearchInput": {
+      "searchTasks": "Поиск задач",
+      "clearSearch": "Очистить поиск"
+    },
+    "componentsTasksKanbanKanbanColumn": {
+      "dropHere": "Перетащите сюда",
+      "releaseToMoveTaskToThisColumn": "Отпустите, чтобы переместить задачу в этот столбец.",
+      "moreCompleted": "более завершенный",
+      "showFewer": "Показать меньше",
+      "taskTitle": "Название задачи..."
+    },
+    "componentsTasksNaturalDateInput": {
+      "typeADateInNaturalLanguage": "Введите дату на естественном языке",
+      "select": "Выбрать"
+    },
+    "componentsTasksParentTaskRow": {
+      "priority": "приоритет: "
+    },
+    "componentsTasksPrioritySelect": {
+      "selectPriority": "Выберите приоритет",
+      "navigate": "перемещаться",
+      "select": "выбрать"
+    },
+    "componentsTasksProjectModal": {
+      "iconName": "Значок и имя",
+      "selectIcon": "Выберите значок",
+      "projectName": "Название проекта",
+      "clickIconToChange": "Нажмите значок, чтобы изменить",
+      "color": "Цвет",
+      "descriptionOptional": "Описание (необязательно)",
+      "briefDescriptionOfThisProject": "Краткое описание этого проекта...",
+      "statuses": "Статусы",
+      "configureTheWorkflowStagesForThisProject": "Настройте этапы рабочего процесса для этого проекта.",
+      "deleteProject": "Удалить проект",
+      "cancel": "Отмена",
+      "unsavedChanges": "Несохраненные изменения",
+      "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "У вас есть несохраненные изменения. Вы уверены, что хотите их удалить?",
+      "cancel2": "Отмена",
+      "discard": "Отбросить"
+    },
+    "componentsTasksProjectSelect": {
+      "selectProject": "Выберите проект",
+      "selectProject2": "Выберите проект"
+    },
+    "componentsTasksProjectsProjectSelector": {
+      "editProject": "Редактировать проект",
+      "archiveProject": "Архив проекта",
+      "deleteProject": "Удалить проект",
+      "selectProject": "Выберите проект",
+      "noProjectsYet": "Пока нет проектов",
+      "createProject": "Создать проект"
+    },
+    "componentsTasksProjectsProjectsTabContent": {
+      "noProjectSelected": "Проект не выбран",
+      "selectAProjectFromTheDropdownOrCreateANewOne": "Выберите проект из раскрывающегося списка или создайте новый.",
+      "createYourFirstProject": "Создайте свой первый проект"
+    },
+    "componentsTasksQuickAddQuickAddHelp": {
+      "quickAddShortcutsHelp": "Быстрое добавление ярлыков. Помощь",
+      "quickAddShortcuts": "Быстрое добавление ярлыков",
+      "exampleBuyMilkTomorrowHighPersonal": "Пример: «Купи молоко !завтра !!высокая #personal»"
+    },
+    "componentsTasksQuickAddQuickOptionsBar": {
+      "quickOptions": "Быстрые варианты:"
+    },
+    "componentsTasksQuickAddInput": {
+      "q": "вопрос",
+      "q2": "вопрос"
+    },
+    "componentsTasksRepeatIndicator": {
+      "of": "из ",
+      "completed": "завершено"
+    },
+    "componentsTasksRepeatPicker": {
+      "selectRepeatFrequency": "Выберите частоту повторения",
+      "doesNotRepeat": "Не повторяется",
+      "custom": "Пользовательский..."
+    },
+    "componentsTasksStatusEditor": {
+      "changeStatusColor": "Изменить цвет статуса",
+      "dragToReorder": "Перетащите, чтобы изменить порядок",
+      "statusName": "Название статуса",
+      "addStatus": "Добавить статус"
+    },
+    "componentsTasksStatusSelect": {
+      "selectStatus": "Выберите статус",
+      "selectStatus2": "Выберите статус"
+    },
+    "componentsTasksStopRepeatingDialog": {
+      "stopRepeating": "Хватит повторять",
+      "isSetToRepeat": "настроен на повтор ",
+      "whatWouldYouLikeToDo": "Что бы вы хотели сделать?",
+      "keepThisTaskStopFutureOccurrences": "Сохраните эту задачу, остановите будущие происшествия.",
+      "taskWillBecomeAOneTimeTask": "Задача станет одноразовой.",
+      "deleteThisAndAllFutureOccurrences": "Удалить это и все будущие вхождения",
+      "taskWillBeRemovedEntirely": "Задача будет полностью удалена",
+      "cancel": "Отмена",
+      "confirm": "Подтвердить"
+    },
+    "componentsTasksSubtaskDots": {
+      "of": "из ",
+      "subtasksComplete": "подзадачи выполнены(",
+      "clickTo": "Нажмите, чтобы ",
+      "of2": "из ",
+      "subtasksComplete2": "подзадачи завершены",
+      "clickTo2": "Нажмите, чтобы "
+    },
+    "componentsTasksSubtaskProgressBadge": {
+      "of": "из ",
+      "subtasksComplete": "подзадачи выполнены(",
+      "clickTo": "Нажмите, чтобы "
+    },
+    "componentsTasksTaskBadges": {
+      "priority": "приоритет",
+      "repeatingTask": "Повторяющаяся задача",
+      "d": "д"
+    },
+    "componentsTasksTaskEmptyState": {
+      "addTask": "Добавить задачу"
+    },
+    "componentsTasksTaskIcons": {
+      "noPriority": "нет приоритета"
+    },
+    "componentsTasksTaskRepeatSection": {
+      "repeat": "Повторить",
+      "addRepeat": "Добавить повтор",
+      "edit": "Редактировать",
+      "edit2": "Редактировать",
+      "stopRepeating": "Хватит повторять",
+      "stopRepeating2": "Хватит повторять"
+    },
+    "componentsTasksTaskSection": {
+      "addTask": "Добавить задачу"
+    },
+    "componentsTasksTimePicker": {
+      "selectTime": "Выберите время",
+      "selectTime2": "Выберите время",
+      "clearTime": "Очистить время"
+    },
+    "componentsTasksTodayEmptyState": {
+      "nothingScheduledForToday": "На сегодня ничего не запланировано",
+      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "У вас есть просроченные задачи выше. Добавьте несколько задач на сегодня или проверьте список предстоящих.",
+      "addTaskForToday": "Добавить задачу на сегодня",
+      "allCaughtUpForToday": "Все на сегодня схвачено",
+      "youHaveNothingScheduledEnjoyTheClarity": "У вас ничего не запланировано. Наслаждайтесь ясностью.",
+      "addTaskForToday2": "Добавить задачу на сегодня"
+    },
+    "componentsTasksUpcomingEmptyState": {
+      "nothingScheduledForTheNext7Days": "На ближайшие 7 дней ничего не запланировано",
+      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "У вас есть просроченные задачи выше. Планируйте заранее, добавляя задачи на предстоящую неделю.",
+      "addTask": "Добавить задачу",
+      "noUpcomingTasks": "Нет предстоящих задач",
+      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Здесь появятся задачи, которые необходимо выполнить в течение следующих 7 дней. Спланируйте свою неделю, добавив несколько задач.",
+      "addTask2": "Добавить задачу"
+    }
+  },
+  "phaseI": {
+    "toasts": {
+      "changesUndone": "Изменения отменены",
+      "projectNotFound": "Проект не найден",
+      "failedToArchiveTasks": "Не удалось архивировать задачи.",
+      "tasksRestoredFromArchive": "Задачи восстановлены из архива",
+      "subtaskAdded": "Подзадача добавлена",
+      "subtaskDeleted": "Подзадача удалена",
+      "taskCompleted": "Задача выполнена",
+      "allSubtasksCompleteTaskMarkedAsDone": "🎉Все подзадачи выполнены! Задача отмечена как выполненная.",
+      "taskReopened": "Задача открыта повторно",
+      "taskKeptOpen": "Задача остается открытой",
+      "taskMarkedAsDone": "🎉 Задача отмечена как выполненная!"
+    },
+    "errors": {
+      "failedToArchiveTasks": "Не удалось архивировать задачи.",
+      "failedToAddSubtask": "Не удалось добавить подзадачу",
+      "failedToAddSubtasks": "Не удалось добавить подзадачи",
+      "failedToReorderSubtasks": "Не удалось изменить порядок подзадач.",
+      "failedToPromoteSubtask": "Не удалось продвинуть подзадачу",
+      "failedToDeleteSubtask": "Не удалось удалить подзадачу",
+      "failedToDeleteTask": "Не удалось удалить задачу",
+      "failedToCompleteTask": "Не удалось выполнить задачу",
+      "failedToMakeSubtask": "Не удалось выполнить подзадачу",
+      "failedToCompleteSubtasks": "Не удалось выполнить подзадачи",
+      "failedToMarkSubtasksIncomplete": "Не удалось пометить подзадачи как незавершенные",
+      "failedToSetDueDate": "Не удалось установить срок выполнения",
+      "failedToSetPriority": "Не удалось установить приоритет",
+      "failedToDeleteSubtasks": "Не удалось удалить подзадачи",
+      "failedToLoadTaskPreferences": "Не удалось загрузить настройки задачи.",
+      "failedToUpdateTaskPreferences": "Не удалось обновить настройки задачи.",
+      "failedToLoadLinkedTasks": "Не удалось загрузить связанные задачи."
+    }
+  }
+}

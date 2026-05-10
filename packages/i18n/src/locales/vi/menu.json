@@ -1,0 +1,28 @@
+{
+  "app": {
+    "quit": "Thoát"
+  },
+  "file": {
+    "label": "Tập tin",
+    "newNote": "Ghi chú Mới",
+    "close": "Đóng cửa sổ"
+  },
+  "navigation": {
+    "back": "Quay lại",
+    "forward": "  \nTiến lên  "
+  },
+  "edit": {
+    "label": "Chỉnh sửa",
+    "undo": "Hoàn tác",
+    "redo": "Làm lại",
+    "cut": "Cắt",
+    "copy": "Sao chép",
+    "paste": "Dán"
+  },
+  "view": {
+    "label": "Xem",
+    "reload": "Tải lại",
+    "toggleDevTools": "Chuyển đổi Công cụ Phát triển",
+    "toggleFullscreen": "Chuyển đổi Toàn màn hình"
+  }
+}

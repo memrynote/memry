@@ -1,0 +1,28 @@
+{
+  "app": {
+    "quit": "Esci"
+  },
+  "file": {
+    "label": "Archivio",
+    "newNote": "Nuova nota",
+    "close": "Chiudi finestra"
+  },
+  "navigation": {
+    "back": "Indietro",
+    "forward": "Avanti"
+  },
+  "edit": {
+    "label": "Modifica",
+    "undo": "Annulla",
+    "redo": "Rifare",
+    "cut": "Taglia",
+    "copy": "Copia",
+    "paste": "Incolla"
+  },
+  "view": {
+    "label": "Visualizza",
+    "reload": "Ricarica",
+    "toggleDevTools": "Attiva/disattiva gli Strumenti per sviluppatori",
+    "toggleFullscreen": "Attiva/Disattiva schermo intero"
+  }
+}

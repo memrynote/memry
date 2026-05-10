@@ -1,0 +1,371 @@
+{
+  "button": {
+    "save": "Αποθήκευση",
+    "cancel": "Ακύρωση",
+    "close": "Κλείσιμο",
+    "ok": "ΟΚ",
+    "yes": "Ναι",
+    "no": "Όχι",
+    "delete": "Διαγραφή",
+    "confirm": "Επιβεβαίωση",
+    "apply": "Εφαρμογή",
+    "done": "Έγινε",
+    "discard": "Απορρίψτε",
+    "dontSave": "Μην Αποθήκευση",
+    "edit": "Επεξεργασία",
+    "add": "Προσθήκη",
+    "remove": "Αφαίρεση",
+    "retry": "Επανάληψη",
+    "submit": "Υποβολή",
+    "back": "Πίσω",
+    "next": "Επόμενο",
+    "continue": "Συνέχεια",
+    "reset": "Επαναφορά",
+    "copy": "Αντιγραφή",
+    "paste": "Επικόλληση",
+    "create": "Δημιουργία",
+    "open": "Ανοίξτε"
+  },
+  "state": {
+    "loading": "Φόρτωση…",
+    "saving": "Αποθήκευση…",
+    "deleting": "Διαγραφή…",
+    "searching": "Αναζήτηση…",
+    "error": "Σφάλμα",
+    "success": "Επιτυχία"
+  },
+  "empty": {
+    "noResults": "Κανένα αποτέλεσμα",
+    "noItems": "Δεν υπάρχουν στοιχεία",
+    "noMatch": "Χωρίς αγώνες"
+  },
+  "action": {
+    "search": "Αναζήτηση",
+    "edit": "Επεξεργασία",
+    "delete": "Διαγραφή",
+    "close": "Κλείσιμο",
+    "expand": "Ανάπτυξη",
+    "collapse": "Κατάρρευση",
+    "showMore": "+{count, plural, one {# περισσότερα} other {# περισσότερα}}",
+    "showLess": "Δείξτε λιγότερα"
+  },
+  "tabs": {
+    "pin": "Καρφίτσωμα καρτέλας",
+    "unpin": "Ξεκαρφιτσώστε την καρτέλα",
+    "contextMenu": {
+      "close": "Κλείσιμο",
+      "closeOthers": "Κλείστε τους Άλλους",
+      "closeToRight": "Κοντά στα δεξιά",
+      "closeAll": "Κλείσιμο όλων",
+      "duplicate": "Διπλότυπη καρτέλα",
+      "splitRight": "Διαίρεση δεξιά",
+      "splitDown": "Split Down",
+      "copyPath": "Αντιγραφή διαδρομής",
+      "revealInSidebar": "Αποκάλυψη στο Sidebar"
+    }
+  },
+  "count": {
+    "item": "{count, plural, one {Στοιχείο #} other {# αντικείμενα}}",
+    "note": "{count, plural, one {Σημείωση #} other {Σημειώσεις #}}",
+    "folder": "{count, plural, one {Φάκελος #} other {φακέλους #}}",
+    "task": "{count, plural, one {Εργασία #} other {Εργασίες #}}",
+    "project": "{count, plural, one {Έργο #} other {Έργα #}}",
+    "itemDelete": "{count, plural, one {Διαγραφή στοιχείου #} other {Διαγραφή στοιχείων #}}"
+  },
+  "toast": {
+    "actionFailed": "Η ενέργεια απέτυχε",
+    "nothingToUndo": "Δεν υπάρχει τίποτα για αναίρεση",
+    "undone": "Αναίρεση: {description}",
+    "undoFailed": "Η αναίρεση της ενέργειας απέτυχε",
+    "copied": "Αντιγράφηκε",
+    "copyFailed": "Αποτυχία αντιγραφής"
+  },
+  "dateRelative": {
+    "today": "Σήμερα",
+    "yesterday": "Χθες",
+    "daysAgo": "{count, plural, one {# πριν από μια μέρα} other {# πριν από μέρες}}"
+  },
+  "recurrence": {
+    "everyDay": "Κάθε μέρα",
+    "everyNDays": "{count, plural, one {Κάθε μέρα} other {Κάθε # ημέρες}}",
+    "everyWeek": "Κάθε εβδομάδα",
+    "everyNWeeks": "{count, plural, one {Κάθε εβδομάδα} other {Κάθε # εβδομάδες}}",
+    "everyWeekday": "Κάθε καθημερινή",
+    "everyNWeeksOnWeekdays": "{count, plural, one {Κάθε καθημερινή} other {Κάθε # εβδομάδες τις καθημερινές}}",
+    "everyWeekend": "Κάθε Σαββατοκύριακο",
+    "everyNWeeksOnWeekends": "{count, plural, one {Κάθε Σαββατοκύριακο} other {Κάθε # εβδομάδες τα Σαββατοκύριακα}}",
+    "everyWeekOnDays": "Κάθε εβδομάδα στο {days}",
+    "everyNWeeksOnDays": "{count, plural, one {Κάθε εβδομάδα στο {days}} other {Κάθε # εβδομάδες στο {days}}}",
+    "everyMonth": "Κάθε μήνα",
+    "everyNMonths": "{count, plural, one {Κάθε μήνα} other {Κάθε # μήνες}}",
+    "everyMonthOnDay": "Κάθε μήνα στο {day}{suffix}",
+    "everyNMonthsOnDay": "{count, plural, one {Κάθε μήνα στο {day}{suffix}} other {Κάθε # μήνες στο {day}{suffix}}}",
+    "everyMonthOnWeekDay": "Κάθε μήνα στο {week} {day}",
+    "everyNMonthsOnWeekDay": "{count, plural, one {Κάθε μήνα στο {week} {day}} other {Κάθε # μήνες στο {week} {day}}}",
+    "everyYear": "Κάθε χρόνο",
+    "everyNYears": "{count, plural, one {Κάθε χρόνο} other {Κάθε # χρόνια}}",
+    "repeats": "Επαναλαμβάνει"
+  },
+  "phaseF": {
+    "componentsAppSidebar": {
+      "collections": "Συλλογές",
+      "newNote": "Νέα σημείωση",
+      "newNote2": "Νέα σημείωση",
+      "newFolder": "Νέος φάκελος",
+      "newFolder2": "Νέος φάκελος",
+      "bookmarks": "Σελιδοδείκτες",
+      "tags": "Ετικέτες",
+      "dropFilesToImport": "Απόθεση αρχείων για εισαγωγή",
+      "newNoteN": "Νέα σημείωση (⌘N)",
+      "new": "Νέο",
+      "syncDisabled": "Ο συγχρονισμός απενεργοποιήθηκε",
+      "syncDisabled2": "Ο συγχρονισμός απενεργοποιήθηκε"
+    },
+    "componentsDayPanelGlobalDayPanel": {
+      "resizeDayPanel": "Αλλαγή μεγέθους πίνακα ημέρας",
+      "dragToResizeDoubleClickToReset": "Σύρετε για αλλαγή μεγέθους · Κάντε διπλό κλικ για επαναφορά"
+    },
+    "componentsFindBarFindBar": {
+      "findReplaceAsk": "Βρείτε, αντικαταστήστε, ρωτήστε..."
+    },
+    "componentsFirstRunOnboarding": {
+      "skipOnboarding": "Παράλειψη ενσωμάτωσης",
+      "welcomeToMemry": "Καλώς ήρθατε στο Memry",
+      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Η προσωπική σας βάση γνώσεων. Ας αφιερώσουμε 2 λεπτά για να ξεκινήσετε.",
+      "getStarted": "Ξεκινήστε ",
+      "createYourFirstNote": "Δημιουργήστε την πρώτη σας σημείωση",
+      "markdownBasedStoredLocallyAsPlainFiles": "Βασισμένο σε Markdown, αποθηκευμένο τοπικά ως απλά αρχεία.",
+      "eGMeetingNotesIdeasAnything": "π.χ. Σημειώσεις συνάντησης, ιδέες, οτιδήποτε...",
+      "skip": "Παράλειψη",
+      "createNote": "Δημιουργία σημείωσης ",
+      "addYourFirstTask": "Προσθέστε την πρώτη σας εργασία",
+      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Οι εργασίες συνδέονται με τις σημειώσεις σας, με προτεραιότητες και ημερομηνίες λήξης.",
+      "eGReviewProjectProposal": "π.χ. Εξέταση πρότασης έργου...",
+      "skip2": "Παράλειψη",
+      "createTask": "Δημιουργία εργασίας ",
+      "syncAcrossDevices": "Συγχρονισμός μεταξύ συσκευών",
+      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Διατηρήστε τις σημειώσεις και τις εργασίες σας συγχρονισμένες σε όλες τις συσκευές σας. Μπορείτε πάντα να το ρυθμίσετε αργότερα.",
+      "skipForNow": "Παράλειψη προς το παρόν",
+      "doneLetSGo": "Έγινε — πάμε! "
+    },
+    "componentsFolderIconButton": {
+      "setFolderIcon": "Ορισμός εικονιδίου φακέλου"
+    },
+    "componentsHintOverlayHintIndicator": {
+      "hint": "ΣΥΜΒΟΥΛΗ"
+    },
+    "componentsIconPicker": {
+      "iconPicker": "Επιλογέας εικονιδίων",
+      "selectIcon": "Επιλέξτε Εικονίδιο",
+      "closeIconPicker": "Κλείσιμο εργαλείου επιλογής εικονιδίων",
+      "searchIcons": "Εικονίδια αναζήτησης...",
+      "all": "Όλα",
+      "clearIcon": "Διαγραφή εικονιδίου",
+      "noIconsFoundFor": "Δεν βρέθηκαν εικονίδια για το \""
+    },
+    "componentsKeyboardShortcutsModal": {
+      "keyboardShortcuts": "Συντομεύσεις πληκτρολογίου",
+      "closeShortcutsHelp": "Βοήθεια για το κλείσιμο συντομεύσεων",
+      "press": "Πατήστε",
+      "toClose": "να κλείσει"
+    },
+    "componentsKiboUiTreeIndex": {
+      "setIcon": "Σετ εικονίδιο",
+      "clearIcon": "Διαγραφή εικονιδίου"
+    },
+    "componentsNavMain": {
+      "platform": "Πλατφόρμα"
+    },
+    "componentsNavProjects": {
+      "projects": "Έργα",
+      "more": "Περισσότερα",
+      "viewProject": "Προβολή έργου",
+      "shareProject": "Κοινή χρήση έργου",
+      "deleteProject": "Διαγραφή έργου",
+      "more2": "Περισσότερα"
+    },
+    "componentsNavUser": {
+      "cn": "ΣΟ",
+      "cn2": "ΣΟ",
+      "upgradeToPro": "Αναβάθμιση σε Pro",
+      "account": "Λογαριασμός",
+      "billing": "Χρέωση",
+      "notifications": "Ειδοποιήσεις",
+      "logOut": "Αποσυνδεθείτε"
+    },
+    "componentsSearchCommandPalette": {
+      "search": "Αναζήτηση",
+      "searchNotesTasksJournalInbox": "Αναζήτηση σημειώσεων, εργασιών, ημερολογίου, εισερχομένων...",
+      "noResultsFor": "Δεν υπάρχουν αποτελέσματα για \"",
+      "rdquo": "rdquo;",
+      "result": "αποτέλεσμα"
+    },
+    "componentsSearchRecentReasons": {
+      "searchAndClickItemsToBuildYourTrail": "Αναζητήστε και κάντε κλικ σε στοιχεία για να δημιουργήσετε το μονοπάτι σας",
+      "reasons": "Λόγοι",
+      "clear": "Καθαρό"
+    },
+    "componentsSearchSearchFilters": {
+      "clear": "Καθαρό",
+      "tags": "Ετικέτες",
+      "filterByTag": "Φιλτράρισμα ανά ετικέτα...",
+      "dateRange": "Εύρος ημερομηνιών"
+    },
+    "componentsSearchSearchResultGroup": {
+      "viewAll": "Προβολή όλων ",
+      "results": "αποτελέσματα"
+    },
+    "componentsSearchSearchResultItem": {
+      "p": "Π",
+      "fuzzy": "ασαφής"
+    },
+    "componentsSplitViewEmptyPaneState": {
+      "noTabsOpen": "Δεν υπάρχουν ανοιχτές καρτέλες",
+      "openAPageFromTheSidebarOrCreateANewTabToGetStarted": "Ανοίξτε μια σελίδα από την πλαϊνή γραμμή ή δημιουργήστε μια νέα καρτέλα για να ξεκινήσετε",
+      "openInbox": "Ανοίξτε τα Εισερχόμενα",
+      "closePane": "Κλείσιμο παραθύρου"
+    },
+    "componentsSplitViewLayoutPicker": {
+      "layoutPresets": "Προεπιλογές διάταξης",
+      "layoutPresets2": "Προεπιλογές διάταξης"
+    },
+    "componentsSplitViewResizeHandle": {
+      "resizePanes": "Αλλαγή μεγέθους τζαμιών"
+    },
+    "componentsSplitViewTabContent": {
+      "taskscontextNotAvailable": "Το TasksContext δεν είναι διαθέσιμο",
+      "searchResults": "Αποτελέσματα αναζήτησης",
+      "unknownTabType": "Άγνωστος τύπος καρτέλας: "
+    },
+    "componentsTabsAccessibleTab": {
+      "unsavedChanges": "μη αποθηκευμένες αλλαγές",
+      "preview": "προεπισκόπηση"
+    },
+    "componentsTabsNewTabMenu": {
+      "newTab": "Νέα καρτέλα",
+      "newTab2": "Νέα καρτέλα",
+      "newNote": "Νέα Σημείωση",
+      "journal": "Εφημερίδα",
+      "calendar": "Ημερολόγιο",
+      "inboxCapture": "Λήψη εισερχομένων",
+      "tasks": "Καθήκοντα"
+    },
+    "componentsTabsPinnedTab": {
+      "unsavedChanges": "Μη αποθηκευμένες αλλαγές",
+      "unsaved": "μη αποθηκευμένο)"
+    },
+    "componentsTabsRegularTab": {
+      "unsavedChanges": "Μη αποθηκευμένες αλλαγές"
+    },
+    "componentsTabsTabBarContextMenu": {
+      "closeAllTabs": "Κλείστε όλες τις καρτέλες"
+    },
+    "componentsTabsTabBarWithDrag": {
+      "openTabs": "Ανοίξτε τις καρτέλες",
+      "scrollTabsLeft": "Κάντε κύλιση στις καρτέλες αριστερά",
+      "scrollTabsRight": "Κάντε κύλιση στις καρτέλες δεξιά",
+      "graphG": "Γράφημα (⌘G)",
+      "dayPanel": "Πάνελ ημέρας"
+    },
+    "componentsTabsTabBarWithOverflow": {
+      "scrollTabsLeft": "Κάντε κύλιση στις καρτέλες αριστερά",
+      "scrollTabsRight": "Κάντε κύλιση στις καρτέλες δεξιά"
+    },
+    "componentsTabsTabBar": {
+      "openTabs": "Ανοίξτε τις καρτέλες",
+      "scrollTabsLeft": "Κάντε κύλιση στις καρτέλες αριστερά",
+      "scrollTabsRight": "Κάντε κύλιση στις καρτέλες δεξιά"
+    },
+    "componentsTabsTabErrorBoundary": {
+      "somethingWentWrong": "Κάτι πήγε στραβά",
+      "anErrorOccurredWhileRenderingThisTabContent": "Παρουσιάστηκε σφάλμα κατά την απόδοση του περιεχομένου αυτής της καρτέλας.",
+      "tryAgain": "Δοκιμάστε ξανά"
+    },
+    "componentsTabsTabPreviewCard": {
+      "noteIcon": "Σημείωση εικονίδιο"
+    },
+    "componentsTabsUnsavedChangesDialog": {
+      "unsavedChanges": "Μη αποθηκευμένες αλλαγές",
+      "quot": "quot;",
+      "quotHasUnsavedChangesWhatWouldYouLikeToDo": "quot; έχει μη αποθηκευμένες αλλαγές. Τι θα ήθελες να κάνεις;"
+    },
+    "componentsTeamSwitcher": {
+      "newWorkspace": "Νέος χώρος εργασίας",
+      "darkMode": "Σκοτεινή λειτουργία",
+      "settings": "Ρυθμίσεις",
+      "integrations": "Ενσωματώσεις",
+      "signOut": "Αποσύνδεση",
+      "downloadOnIos": "Λήψη σε iOS"
+    },
+    "componentsTrafficLights": {
+      "closeWindow": "Κλείσιμο παραθύρου",
+      "minimizeWindow": "Ελαχιστοποίηση παραθύρου",
+      "maximizeWindow": "Μεγιστοποίηση παραθύρου"
+    },
+    "componentsUiAutocompleteDropdown": {
+      "suggestions": "Προτάσεις",
+      "or": "ή",
+      "enter": "Εισαγάγετε",
+      "toInsert": "να εισάγετε"
+    },
+    "componentsUiBreadcrumb": {
+      "breadcrumb": "φρυγανιά",
+      "more": "Περισσότερα"
+    },
+    "componentsUiDialog": {
+      "close": "Κλείσιμο"
+    },
+    "componentsUiSheet": {
+      "close": "Κλείσιμο"
+    },
+    "componentsUiSidebar": {
+      "sidebar": "Πλαϊνή γραμμή",
+      "displaysTheMobileSidebar": "Εμφανίζει την πλαϊνή γραμμή του κινητού.",
+      "toggleSidebar": "Εναλλαγή πλευρικής γραμμής",
+      "toggleSidebar2": "Εναλλαγή πλευρικής γραμμής",
+      "dragToResizeDoubleClickToReset": "Σύρετε για αλλαγή μεγέθους · Κάντε διπλό κλικ για επαναφορά"
+    },
+    "componentsVaultOnboarding": {
+      "welcomeToMemry": "Καλώς ήρθατε στο Memry",
+      "yourPersonalKnowledgeManagementSystem": "Το προσωπικό σας σύστημα διαχείρισης γνώσεων.",
+      "selectAFolderToStoreYourNotesAndTasks": "Επιλέξτε ένα φάκελο για να αποθηκεύσετε τις σημειώσεις και τις εργασίες σας.",
+      "opening": "Άνοιγμα...",
+      "selectVaultFolder": "Επιλέξτε Φάκελος Vault",
+      "plainMarkdown": "Απλό Markdown",
+      "yourNotesStayPortable": "Οι σημειώσεις σας παραμένουν φορητές",
+      "syncAnywhere": "Συγχρονισμός οπουδήποτε",
+      "useDropboxIcloudGit": "Χρησιμοποιήστε Dropbox, iCloud, Git",
+      "recentVaults": "Πρόσφατα θησαυροφυλάκια",
+      "notesLastOpened": "σημειώσεις · Τελευταίο άνοιγμα"
+    },
+    "componentsVaultSwitcher": {
+      "noVaultsYet": "Δεν υπάρχουν ακόμη θησαυροφυλάκια",
+      "openVault": "Ανοιχτό θησαυροφυλάκιο",
+      "settings": "Ρυθμίσεις",
+      "logOut": "Αποσυνδεθείτε",
+      "signInToSync": "Συνδεθείτε για συγχρονισμό",
+      "remove": "Αφαίρεση \"",
+      "rdquoFromList": "rdquo; από τη λίστα;",
+      "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Αυτό το θησαυροφυλάκιο θα αφαιρεθεί από την εφαρμογή, αλλά τα αρχεία σας θα παραμείνουν στο δίσκο. Μπορείτε πάντα να το προσθέσετε ξανά αργότερα.",
+      "cancel": "Ακύρωση",
+      "remove2": "Αφαίρεση"
+    },
+    "componentsWindowControls": {
+      "searchK": "Αναζήτηση (⌘K)",
+      "browserBack": "Επιστροφή προγράμματος περιήγησης",
+      "back": "Πίσω",
+      "browserForward": "Προώθηση προγράμματος περιήγησης",
+      "forward": "Εμπρός"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToImportFiles": "Αποτυχία εισαγωγής αρχείων",
+      "failedToCreateNote": "Η δημιουργία σημείωσης απέτυχε",
+      "failedToAccessMicrophone": "Αποτυχία πρόσβασης στο μικρόφωνο"
+    },
+    "toasts": {
+      "undone": "Αναίρεση"
+    }
+  }
+}

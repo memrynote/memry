@@ -1,0 +1,663 @@
+{
+  "page": {
+    "empty": {
+      "title": "Нотатку не вибрано",
+      "body": "Виберіть нотатку з бічної панелі, щоб переглянути її"
+    },
+    "error": {
+      "title": "Не вдалося завантажити нотатку"
+    },
+    "toast": {
+      "cannotSaveDeleted": "Не можна зберегти - нотатку видалено",
+      "cannotRenameDeleted": "Не вдалося перейменувати - нотатку видалено",
+      "createLinkedFailed": "Не вдалося створити пов'язану нотатку",
+      "openLinkedFailed": "Не вдалося відкрити пов'язаний елемент",
+      "localOnly": "Нотатку встановлено лише локально",
+      "willSync": "Нотатка синхронізується з хмарою",
+      "saveFailed": "Не вдалося зберегти нотатку",
+      "renameFailed": "Не вдалося перейменувати нотатку",
+      "toggleLocalOnlyFailed": "Не вдалося перемкнути локальний режим",
+      "toggleFullWidthFailed": "Не вдалося перемкнути повну ширину"
+    },
+    "deleteDialogTitle": "{count, plural, one {Видалити нотатку} other {Видалити нотатки #}}"
+  },
+  "tree": {
+    "aria": {
+      "tree": "Дерево нотаток",
+      "openFolderView": "Відкрити перегляд папок"
+    },
+    "empty": {
+      "title": "Нотаток ще немає",
+      "body": "Створіть нотатку, щоб почати",
+      "newNote": "Нова нотатка"
+    },
+    "loadingError": "Не вдалося завантажити нотатки",
+    "actions": {
+      "newNote": "Нова нотатка",
+      "newFolder": "Нова папка",
+      "rename": "Перейменувати",
+      "openExternal": "Відкрити у зовнішньому редакторі",
+      "revealInFinder": "Показати у Finder",
+      "setDefaultTemplate": "Встановити шаблон за замовчуванням",
+      "clearDefaultTemplate": "Очистити шаблон за замовчуванням",
+      "setIcon": "Встановити значок",
+      "removeIcon": "Видалити іконку",
+      "deleteSelectedNotes": "Видалити нотатки {count}",
+      "deleteSelectedItems": "Видалити {count} елементи"
+    },
+    "deleteDialog": {
+      "noteTitle": "Видалити нотатку",
+      "folderTitle": "Видалити папку",
+      "itemsTitle": "Видалити елементи {count}",
+      "noteBody": "Ви впевнені, що хочете видалити \"{name}\"? Цю дію неможливо скасувати.",
+      "folderBody": "Ви впевнені, що хочете видалити \"{name}\" та всі нотатки всередині нього? Цю дію неможливо скасувати.",
+      "itemsBody": "Ви впевнені, що хочете видалити елементи {count}? Цю дію неможливо скасувати.",
+      "folderSuffix": "папка",
+      "moreItems": "...і ще {count}",
+      "deleting": "Видалення...",
+      "deleteCount": "Видалити {count}"
+    }
+  },
+  "editor": {
+    "title": {
+      "untitled": "Без назви",
+      "aria": "Назва нотатки"
+    },
+    "content": {
+      "placeholder": "Почніть писати або натисніть '/' для команд...",
+      "regionAria": "Редактор нотаток",
+      "richTextAria": "Редактор форматованого тексту",
+      "headingPlaceholder": "Заголовок",
+      "listPlaceholder": "Елемент списку",
+      "todoPlaceholder": "Елемент завдання"
+    },
+    "toolbar": {
+      "reminderSet": "Нагадування встановлено",
+      "setReminder": "Встановити нагадування",
+      "removeBookmark": "Видалити закладку",
+      "addBookmark": "Додати закладку",
+      "hideLocalGraph": "Сховати локальний граф",
+      "showLocalGraph": "Показати локальний граф",
+      "versionHistory": "Історія версій",
+      "export": "Експорт",
+      "fullWidth": "Повна ширина",
+      "disableLocalOnly": "Вимкнути лише локально",
+      "setLocalOnly": "Встановити лише локально"
+    },
+    "breadcrumb": {
+      "locationAria": "Розташування нотатки",
+      "parentFolderAria": "Перейти до батьківської папки"
+    },
+    "errorBoundary": {
+      "title": "Помилка редактора",
+      "body": "У редактора виникла помилка. Вміст вашої нотатки збережено.",
+      "technicalDetails": "Технічні деталі",
+      "reloadAria": "Перезавантажити редактор",
+      "reload": "Перезавантажити редактор"
+    },
+    "callout": {
+      "title": "Виноска",
+      "group": "Основні блоки",
+      "subtext": "Виділити важливу інформацію",
+      "changeType": "Змінити тип виноски",
+      "menuLabel": "Тип виноски",
+      "info": "Інформація",
+      "warning": "Попередження",
+      "error": "Помилка",
+      "success": "Успішно"
+    }
+  },
+  "menus": {
+    "wiki": {
+      "aria": "Пропозиції щодо нотаток",
+      "loading": "Завантаження нотаток...",
+      "empty": "Нотатки не знайдено",
+      "create": "Створити нову нотатку"
+    },
+    "tags": {
+      "aria": "Пропозиції тегів",
+      "loading": "Завантаження тегів...",
+      "empty": "Введіть, щоб створити новий тег",
+      "create": "Створити #{tag}"
+    },
+    "pasteLink": {
+      "title": "Вставити як",
+      "url": "URL",
+      "mention": "Згадати",
+      "embedVideo": "Вбудувати відео"
+    },
+    "emoji": {
+      "aria": "Вибір емодзі та іконок",
+      "emojiTab": "Емодзі",
+      "iconsTab": "Іконки",
+      "searchPlaceholder": "Пошук",
+      "noIcons": "Іконки не знайдено",
+      "clearSearch": "Очистити пошук"
+    }
+  },
+  "detail": {
+    "bodyPlaceholder": "Напишіть свою нотатку..."
+  },
+  "outline": {
+    "title": "Контур",
+    "aria": "Контур документа",
+    "empty": "Заголовків немає",
+    "emptyYet": "Заголовків ще немає",
+    "readTime": "{count} хв читання",
+    "words": "слова {count}",
+    "created": "Створено",
+    "modified": "Змінено"
+  },
+  "backlinks": {
+    "title": "Зворотні посилання",
+    "sortRecent": "Недавні",
+    "sortAlpha": "A-Z",
+    "sortMentions": "Найбільше згадок",
+    "sortBy": "Сортувати зворотні посилання за {sort}",
+    "summary": "Нотатки {notes} · посилання {references}",
+    "sectionAria": "Зворотні посилання",
+    "listAria": "Список зворотних посилань",
+    "fromAria": "Зворотні посилання з {title}",
+    "collapse": "Згорнути",
+    "expand": "Розгорнути",
+    "collapseSection": "Згорнути розділ зворотних посилань",
+    "expandSection": "Розгорнути розділ зворотних посилань",
+    "showMore": "Показати ще {count} зворотних посилань",
+    "more": "{count} більше"
+  },
+  "tagsRow": {
+    "aria": "Теги",
+    "empty": "Додати теги",
+    "add": "Додати тег",
+    "removeAria": "Вилучити тег: {tag}",
+    "inputPlaceholder": "Введіть назву тегу...",
+    "recent": "Недавні",
+    "matching": "Відповідні",
+    "all": "Всі теги",
+    "none": "Теги не знайдено",
+    "createTag": "Створити тег: \"{tag}\"",
+    "chooseColor": "Виберіть колір:",
+    "preview": "Попередній перегляд:",
+    "colorAria": "Виберіть колір {color}"
+  },
+  "properties": {
+    "title": "Властивості",
+    "noteAria": "Властивості нотатки",
+    "workspaceAria": "Властивості робочого простору",
+    "listAria": "Список властивостей",
+    "add": "Додати властивість",
+    "addDescription": "Додати нову властивість до цієї нотатки",
+    "namePlaceholder": "Назва властивості",
+    "nameAria": "Назва властивості",
+    "typeSection": "Тип",
+    "empty": "Порожньо",
+    "dragAria": "Перетягніть щоб змінити порядок властивості",
+    "editName": "Редагувати назву властивості",
+    "delete": "Видалити властивість",
+    "searchOptions": "Параметри пошуку...",
+    "noOptions": "Поки що немає параметрів",
+    "optionName": "Назва опції",
+    "newOption": "Нова опція",
+    "ratingAria": "Рейтинг",
+    "openUrlAria": "Відкрити URL",
+    "types": {
+      "text": "Текст",
+      "number": "Число",
+      "date": "Дата",
+      "checkbox": "Прапорець",
+      "url": "URL",
+      "status": "Статус",
+      "select": "Вибрати",
+      "multiselect": "Мультивибір"
+    }
+  },
+  "templateSelector": {
+    "title": "Виберіть вашу канву",
+    "description": "Виберіть шаблон, щоб почати вашу нотатку",
+    "searchPlaceholder": "Пошук шаблонів...",
+    "loading": "Завантаження шаблонів...",
+    "empty": "Шаблони не знайдено",
+    "myTemplates": "Мої шаблони",
+    "essentials": "Основні",
+    "setFolderDefault": "Встановити як шаблон за замовчуванням для папки",
+    "useTemplate": "Використати шаблон",
+    "createNote": "Створити нотатку"
+  },
+  "exportDialog": {
+    "title": "Експортувати нотатку",
+    "description": "Експортувати \"{title}\" у файл",
+    "format": "Формат",
+    "pdfDescription": "Документ, готовий до друку",
+    "htmlDescription": "Файл, готовий для веб",
+    "pageSize": "Розмір сторінки",
+    "selectPageSize": "Виберіть розмір сторінки",
+    "options": "Параметри",
+    "includeMetadata": "Включати метадані (теги, дати)",
+    "exporting": "Експорт...",
+    "exported": "Експортовано!",
+    "export": "Експорт",
+    "toast": {
+      "failed": "Не вдалося експортувати"
+    }
+  },
+  "versionHistory": {
+    "title": "Історія версій",
+    "description": "Переглянути та відновити попередні версії \"{title}\"",
+    "hidePreview": "Сховати превʼю",
+    "showPreview": "Показати превʼю",
+    "empty": "Версії ще не збережено",
+    "emptyDescription": "Версії зберігаються автоматично, коли ви вносите значні зміни",
+    "latest": "Остання",
+    "autoSaved": "Автозбереження",
+    "words": "слова {count}",
+    "selectPrompt": "Виберіть версію для перегляду",
+    "restore": "Відновити",
+    "deleteTitle": "Видалити цю версію?",
+    "deleteDescription": "Цю дію неможливо скасувати. Ця версія буде остаточно видалена.",
+    "restoreTitle": "Відновити цю версію?",
+    "restoreDescription": "Це замінить поточний вміст нотатки цією версією. Спочатку буде збережено знімок поточного стану, щоб ви могли скасувати цю дію.",
+    "restoring": "Відновлення...",
+    "toast": {
+      "loadPreviewFailed": "Не вдалося завантажити попередній перегляд версії",
+      "restored": "Нотатку відновлено до попередньої версії",
+      "deleted": "Версію видалено"
+    }
+  },
+  "templateEditor": {
+    "title": {
+      "new": "Новий шаблон",
+      "view": "Переглянути шаблон",
+      "edit": "Редагувати шаблон"
+    },
+    "toast": {
+      "nameRequired": "Потрібна назва шаблону",
+      "created": "Шаблон створено",
+      "createFailed": "Не вдалося створити шаблон",
+      "saved": "Шаблон збережено",
+      "saveFailed": "Не вдалося зберегти шаблон",
+      "duplicateFailed": "Не вдалося дублювати шаблон",
+      "deleteFailed": "Не вдалося видалити шаблон"
+    }
+  },
+  "reminders": {
+    "summary": "Нагадування: {date}",
+    "summaryWithMore": "Нагадування: {date} (+{count} більше)",
+    "hasReminders": "Є нагадування",
+    "setReminder": "Встановити нагадування",
+    "toast": {
+      "set": "Нагадування встановлено",
+      "setForHighlight": "Нагадування встановлено для виділеного тексту",
+      "setFailed": "Не вдалося встановити нагадування",
+      "deleted": "Нагадування видалено",
+      "deleteFailed": "Не вдалося видалити нагадування",
+      "dismissed": "Нагадування відхилено",
+      "dismissFailed": "Не вдалося відхилити нагадування"
+    }
+  },
+  "linkedTasks": {
+    "title": "Пов’язані завдання",
+    "loading": "Завантаження пов’язаних завдань..."
+  },
+  "phaseF": {
+    "componentsFolderViewColumnHeader": {
+      "dragToReorderColumn": "Перетягніть, щоб змінити порядок стовпців"
+    },
+    "componentsFolderViewColumnSelector": {
+      "properties": "Властивості",
+      "searchColumns": "Пошук стовпців...",
+      "noMatchingColumns": "Стовпців, що відповідають пошуку, немає",
+      "formulas": "ФОРМУЛИ",
+      "noFormulasDefined": "Формули не визначені",
+      "addFormula": "Додати формулу",
+      "deleteFormula": "Видалити формулу",
+      "areYouSureYouWantToDeleteTheFormula": "Ви впевнені, що хочете видалити формулу ",
+      "quotThisActionCannotBeUndone": "\"? Цю дію не можна скасувати.",
+      "cancel": "Скасувати",
+      "delete": "Видалити",
+      "none": "Немає",
+      "edit": "Редагувати",
+      "delete2": "Видалити"
+    },
+    "componentsFolderViewFilterBuilder": {
+      "filter": "Фільтр",
+      "filters": "Фільтри",
+      "clearAll": "Очистити все",
+      "noFiltersApplied": "Фільтрів не застосовують",
+      "addFiltersToNarrowDownYourNotes": "Додайте фільтри, щоб звузити коло нотаток",
+      "match": "Матч",
+      "allAnd": "Всі (І)",
+      "anyOr": "Будь-яка (АБО)",
+      "ofTheFollowing": "з наступних:",
+      "match2": "Матч",
+      "all": "Всі",
+      "any": "Будь-які",
+      "of": "з:",
+      "addCondition": "Додай умову",
+      "addFilter": "Додати фільтр",
+      "addGroup": "Додати групу"
+    },
+    "componentsFolderViewFilterRow": {
+      "builtIn": "Вбудовані",
+      "properties": "Властивості",
+      "placeholderProperty": "Власність",
+      "placeholderOperator": "Оператор",
+      "placeholderValue": "Вартість"
+    },
+    "componentsFolderViewFolderTableView": {
+      "notesTable": "Таблиця нотаток"
+    },
+    "componentsFolderViewFolderViewToolbar": {
+      "searchNotes": "Пошукові нотатки...",
+      "clearSearch": "Очистити пошук"
+    },
+    "componentsFolderViewFormulaEditorModal": {
+      "defineAComputedColumnUsingAnExpression": "Визначимо обчислений стовпець за допомогою виразу.",
+      "name": "Ім'я",
+      "expression": "Вираз",
+      "available": "Доступні: ",
+      "preview": "Анонс",
+      "fixExpressionErrorsToSeePreview": "Виправте помилки виразів, щоб побачити попередній перегляд",
+      "usingNote": "Використовуючи нотатку: \"",
+      "quot": "\";",
+      "cancel": "Скасувати",
+      "namePlaceholder": "days_until_due",
+      "expressionPlaceholder": "dateDiff(due_date, today(), «days»)"
+    },
+    "componentsFolderViewGroupBySelector": {
+      "clearGrouping": "Чітке групування",
+      "searchProperties": "Пошук об'єктів...",
+      "builtIn": "Вбудовані",
+      "properties": "Властивості",
+      "noGroupablePropertiesFound": "Не знайдено властивостей для групування",
+      "sortDirection": "Напрямок сортування",
+      "collapseGroupsByDefault": "Згортати групи за замовчуванням",
+      "showGroupSummaries": "Показати підсумки груп",
+      "clearGrouping2": "Чітке групування"
+    },
+    "componentsFolderViewGroupedTable": {
+      "groupedNotesTable": "Таблиця нотаток за групами",
+      "more": "більше"
+    },
+    "componentsFolderViewMoveToFolderDialog": {
+      "searchFolders": "Пошук папок...",
+      "loadingFolders": "Завантаження папок...",
+      "suggested": "ПРОПОНУЄТЬСЯ",
+      "bestMatch": "Найкраще співпадіння",
+      "current": "поточний)",
+      "allFolders": "УСІ ПАПКИ",
+      "current2": "поточний)",
+      "noFoldersMatch": "Немає відповідних папок",
+      "quot": "\";",
+      "create": "Створити ",
+      "quot2": "\";",
+      "cancel": "Скасувати"
+    },
+    "componentsFolderViewRowContextMenu": {
+      "delete": "Видалити ",
+      "notes": "Примітки",
+      "open": "Відкрити",
+      "openInExternalEditor": "Відкрити у зовнішньому редакторі",
+      "revealInFinder": "Показати у Finder",
+      "revealInSidebar": "Показати в боковій панелі",
+      "copyLink": "Скопіювати посилання",
+      "delete2": "Видалити"
+    },
+    "componentsFolderViewSortableColumnHeader": {
+      "dragToReorderColumn": "Перетягніть, щоб змінити порядок стовпців",
+      "resizeColumn": "Змінити розмір стовпця"
+    },
+    "componentsFolderViewViewSwitcher": {
+      "default": "за замовчуванням",
+      "rename": "Перейменувати",
+      "duplicate": "Дублювати",
+      "setAsDefault": "Встановити за замовчуванням",
+      "delete": "Видалити",
+      "createNewView": "Створити новий перегляд",
+      "createNewView2": "Створити новий перегляд",
+      "createANewViewWithCustomColumnsFiltersAndSorting": "Створіть новий перегляд з користувацькими стовпцями, фільтрами та сортуванням.",
+      "viewName": "Назва перегляду",
+      "myCustomView": "Мій користувацький перегляд",
+      "baseConfiguration": "Базова конфігурація",
+      "copyFromCurrentView": "Скопіювати з поточного перегляду",
+      "startFreshDefaultColumns": "Почати з початку (стовпці за замовчуванням)",
+      "cancel": "Скасувати",
+      "renameView": "Перейменувати перегляд",
+      "enterANewNameForThisView": "Введіть нову назву для цього перегляду.",
+      "viewName2": "Назва перегляду",
+      "viewName3": "Назва перегляду",
+      "cancel2": "Скасувати",
+      "deleteView": "Видалити перегляд",
+      "areYouSureYouWantToDelete": "Ви впевнені, що хочете видалити",
+      "thisActionCannotBeUndone": "Цю дію неможливо скасувати.",
+      "cancel3": "Скасувати"
+    },
+    "componentsNoteContentAreaFileBlock": {
+      "failedToLoadPdf": "Не вдалося завантажити PDF:",
+      "download": "Завантажити",
+      "download2": "Завантажити",
+      "noFileAttached": "Файл не прикріплено"
+    },
+    "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
+      "openInTaskPanel": "Відкрити в панелі завдань",
+      "taskName": "Назва завдання...",
+      "taskDeleted": "Завдання видалено",
+      "loading": "Завантаження..."
+    },
+    "componentsNoteContentAreaTaskBlockTaskCreationPopover": {
+      "project": "Проєкт",
+      "priority": "Пріоритет",
+      "dueDate": "Дата здачі",
+      "cancel": "Скасувати"
+    },
+    "componentsNoteContentAreaYoutubeEmbedBlock": {
+      "noVideoUrl": "Немає URL відео"
+    },
+    "componentsNoteExportDialog": {
+      "pdf": "PDF",
+      "html": "HTML",
+      "a4210X297Mm": "A4 (210 x 297 мм)",
+      "letter85X11In": "Лист (8,5 x 11 дюймів)",
+      "legal85X14In": "Юридичний (8,5 x 14 дюймів)"
+    },
+    "componentsNoteInfoSectionEditorsDateeditor": {
+      "ddMmYyyy": "дд.мм.рррр"
+    },
+    "componentsNoteNoteHeader": {
+      "synced": "Синхронізовано"
+    },
+    "componentsSharedDocumentInfoTab": {
+      "words": "Слова",
+      "characters": "Персонажі",
+      "readingTime": "Час читання",
+      "created": "Створено",
+      "modified": "Змінено"
+    },
+    "componentsSidebarProjectsEmptyState": {
+      "noProjectsYet": "Ще немає проектів",
+      "createYourFirstProject": "Створіть свій перший проєкт",
+      "createYourFirstProject2": "Створіть свій перший проєкт"
+    },
+    "componentsSidebarSidebarBookmarkList": {
+      "loadingBookmarks": "Завантаження закладок...",
+      "failedToLoadBookmarks": "Не вдалося завантажити закладки",
+      "noBookmarksYet": "Поки що немає закладок",
+      "moreOptions": "Більше опцій",
+      "remove": "Видалити"
+    },
+    "componentsSidebarSidebarItemContextMenu": {
+      "open": "Відкрити",
+      "openToTheSide": "Відкрито вбік",
+      "pinToTabs": "Закріпити у вкладках",
+      "edit": "Редагувати",
+      "delete": "Видалити",
+      "copyLink": "Скопіювати посилання"
+    },
+    "componentsSidebarSidebarTagList": {
+      "loadingTags": "Завантаження тегів...",
+      "failedToLoadTags": "Не вдалося завантажити теги",
+      "noTagsYet": "Поки що немає тегів",
+      "filterTags": "Фільтрувати теги...",
+      "noMatchingTags": "Співпадінь тегів не знайдено"
+    },
+    "componentsSidebarSortableProjectItem": {
+      "dropHere": "Перетягніть сюди",
+      "editProject": "Редагувати проєкт"
+    },
+    "componentsSidebarTagDeleteDialog": {
+      "deleteTag": "Видалити тег #",
+      "notesWithThisTagWonTBeDeletedJustUntagged": "Нотатки з цим тегом не будуть видалені, лише буде знято тег.",
+      "cancel": "Скасувати"
+    },
+    "componentsSidebarTagDetailView": {
+      "goBack": "Повернутися назад",
+      "notes": "нотатки",
+      "loadingNotes": "Завантаження нотаток...",
+      "noNotesWithThisTag": "Немає нотаток з цим тегом",
+      "addThisTagToANoteToSeeItHere": "Додайте цей тег до нотатки, щоб побачити її тут",
+      "pinned": "ЗАКРІПЛЕНО",
+      "allNotes": "ВСІ НОТАТКИ",
+      "allNotesArePinned": "Усі нотатки закріплені",
+      "unpinFromTag": "Відкріпити від тегу",
+      "unpin": "Відкріпити",
+      "pinToTag": "Закріпити до тегу",
+      "pin": "Закріпити",
+      "tagActions": "Дії з тегом",
+      "editTagName": "Редагувати назву тегу",
+      "changeColor": "Змінити колір",
+      "deleteTag": "Видалити тег",
+      "recent": "Недавні",
+      "created": "Створено",
+      "alphabetical": "За алфавітом"
+    },
+    "componentsSidebarTagRenameDialog": {
+      "renameTag": "Перейменувати тег",
+      "rename": "Перейменувати",
+      "acrossEveryNoteThatUsesIt": "у всіх нотатках, що його використовують.",
+      "newName": "Нова назва",
+      "cancel": "Скасувати"
+    },
+    "componentsViewersAudioPlayer": {
+      "failedToLoadAudio": "Не вдалося завантажити аудіо",
+      "theAudioFileCouldNotBePlayed": "Не вдалося відтворити аудіофайл.",
+      "skipBack10s": "Перемотати назад на 10 с",
+      "skipForward10s": "Перемотати вперед на 10 с"
+    },
+    "componentsViewersImageViewer": {
+      "failedToLoadImage": "Не вдалося завантажити зображення",
+      "theImageCouldNotBeDisplayed": "Зображення не може бути відображене.",
+      "resetZoom": "Скинути масштаб",
+      "rotate": "Повернути",
+      "dragToPan": "Тягніть для панорамування"
+    },
+    "componentsViewersPdfViewer": {
+      "failedToLoadPdf": "Не вдалося завантажити PDF",
+      "previousPage": "Попередня сторінка",
+      "nextPage": "Наступна сторінка",
+      "zoomOut": "Зменшити масштаб",
+      "zoomIn": "Збільшити масштаб",
+      "fitToWidth": "Підігнати за шириною",
+      "rotate": "Повернути"
+    },
+    "componentsViewersVideoPlayer": {
+      "failedToLoadVideo": "Не вдалося завантажити відео",
+      "theVideoFileCouldNotBePlayed": "Не вдалося відтворити відеофайл."
+    },
+    "pagesFile": {
+      "failedToLoadFile": "Не вдалося завантажити файл",
+      "tryAgain": "Спробуйте ще раз",
+      "noFileSelected": "Файл не обрано",
+      "selectAFileFromTheSidebarToViewIt": "Виберіть файл з бічної панелі, щоб переглянути його",
+      "loadingFile": "Завантаження файлу...",
+      "openInDefaultApp": "Відкрити у стандартному додатку",
+      "open": "Відкрити",
+      "revealInFinder": "Показати у Finder",
+      "reveal": "Показати",
+      "unsupportedFileType": "Тип файлу не підтримується"
+    },
+    "pagesFolderView": {
+      "createNewNote": "Створити нову нотатку",
+      "viewSettings": "Налаштування перегляду",
+      "displayDensity": "Щільність відображення",
+      "comfortable": "Комфортна",
+      "compact": "Компактна",
+      "showSummaries": "Показати резюме",
+      "cancel": "Скасувати"
+    },
+    "pagesTemplateEditor": {
+      "loadingTemplate": "Завантаження шаблону...",
+      "builtInTemplatesCannotBeModified": "Вбудовані шаблони не можна змінювати",
+      "description": "Опис",
+      "briefDescriptionOfThisTemplate": "Короткий опис цього шаблону...",
+      "templateContent": "Вміст шаблону",
+      "use": "Використовуйте ",
+      "toInsertTheNoteTitleWhenCreatingANote": "щоб вставити назву нотатки при створенні нотатки.",
+      "templateName": "Назва шаблону",
+      "defaultContentForNotesCreatedFromThisTemplate": "Зміст за замовчуванням для нотаток, створених з цього шаблону..."
+    },
+    "pagesTemplates": {
+      "loadingCollection": "Завантаження колекції...",
+      "templateCollection": "Колекція шаблонів",
+      "templates": "Шаблони",
+      "curatedStructuresForYourNotes": "Ретельно підібрані структури для ваших нотаток.",
+      "newTemplate": "Новий шаблон",
+      "myTemplates": "Мої шаблони",
+      "builtIn": "Вбудовані",
+      "deleteTemplate": "Видалити шаблон",
+      "areYouSureYouWantToDelete": "Ви впевнені, що хочете видалити",
+      "notesCreatedFromThisTemplateWillNotBeAffected": "Нотатки, створені з цього шаблону, не будуть змінені.",
+      "cancel": "Скасувати",
+      "builtIn2": "Вбудовані",
+      "duplicate": "Дублювати",
+      "delete": "Видалити",
+      "startYourCollection": "Розпочати вашу колекцію",
+      "templatesHelpYouCreateNotesWithConsistentStructure": "Шаблони допомагають створювати нотатки з послідовною структурою.",
+      "createTemplate": "Створити шаблон"
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "failedToSaveFormula": "Не вдалося зберегти формулу",
+      "failedToOpenInExternalEditor": "Не вдалося відкрити у зовнішньому редакторі",
+      "failedToRevealInFinder": "Не вдалося відкрити у Finder",
+      "failedToCopyLink": "Не вдалося скопіювати посилання",
+      "failedToCreateView": "Не вдалося створити перегляд",
+      "failedToRenameFolder": "Не вдалося перейменувати папку",
+      "failedToCreateTask": "Не вдалося створити завдання",
+      "failedToLoadVersionHistory": "Не вдалося завантажити історію версій",
+      "failedToRestoreVersion": "Не вдалося відновити версію",
+      "failedToDeleteVersion": "Не вдалося видалити версію",
+      "failedToCreateNote": "Не вдалося створити нотатку",
+      "failedToLoadMoreBookmarks": "Не вдалося завантажити більше закладок",
+      "failedToToggleBookmark": "Не вдалося перемкнути закладку",
+      "failedToRemoveBookmark": "Не вдалося видалити закладку",
+      "failedToReorderBookmarks": "Не вдалося змінити порядок закладок",
+      "failedToSave": "Не вдалося зберегти",
+      "failedToRename": "Не вдалося перейменувати",
+      "failedToUpdateEmoji": "Не вдалося оновити емодзі",
+      "failedToUpdateTags": "Не вдалося оновити теги",
+      "failedToSnoozeReminder": "Не вдалося відкласти нагадування",
+      "failedToCreateFolder": "Не вдалося створити папку",
+      "failedToLoadProperties": "Не вдалося завантажити властивості",
+      "failedToLoadPropertyDefinitions": "Не вдалося завантажити визначення властивостей",
+      "failedToLoadTemplates": "Не вдалося завантажити шаблони"
+    },
+    "toasts": {
+      "noteExportedSuccessfully": "Нотатку успішно експортовано",
+      "failedToUpdateProperty": "Не вдалося оновити властивість",
+      "failedToUpdateTags": "Не вдалося оновити теги",
+      "reminderSnoozed": "Нагадування відкладено",
+      "failedToSnoozeReminder": "Не вдалося відкласти нагадування",
+      "defaultTemplateSet": "Встановлено шаблон за замовчуванням",
+      "failedToSetDefaultTemplate": "Не вдалося встановити шаблон за замовчуванням",
+      "defaultTemplateCleared": "Шаблон за замовчуванням очищено",
+      "failedToClearDefaultTemplate": "Не вдалося очистити шаблон за замовчуванням",
+      "failedToAddProperty": "Не вдалося додати властивість",
+      "failedToDeleteProperty": "Не вдалося видалити властивість",
+      "failedToRenameProperty": "Не вдалося перейменувати властивість",
+      "failedToReorderProperties": "Не вдалося змінити порядок властивостей",
+      "cannotAddTagThisNoteWasDeleted": "Не вдалося додати тег - ця замітка була видалена",
+      "cannotRemoveTagThisNoteWasDeleted": "Не вдалося видалити тег - ця замітка була видалена",
+      "cannotChangeLocalOnlyThisNoteWasDeleted": "Не можна змінити лише локальні дані — ця замітка була видалена"
+    }
+  }
+}

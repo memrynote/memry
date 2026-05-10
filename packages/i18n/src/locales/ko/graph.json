@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "그래프 로드 중...",
+    "load-failed": "그래프 데이터를 로드하지 못했습니다.",
+    "try-again": "다시 시도하세요",
+    "aria-label": "{nodeCount, plural, one {# 노드} other {# 노드}} 및 {edgeCount, plural, one {# 연결} other {# 연결}}{summary, select, none {.} other {: {summary}.}}를 사용한 지식 그래프",
+    "nodes-list-label": "그래프 노드",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "당신의 지식 그래프",
+    "description": "노트, 작업, 프로젝트 간의 연결이 여기에 대화형 그래프로 표시됩니다.",
+    "link-title": "노트 연결",
+    "link-description": "[[wikilinks]]를 사용하여 노트 전반에 걸쳐 아이디어를 연결하세요",
+    "discover-title": "패턴 발견",
+    "discover-description": "연결이 증가함에 따라 클러스터와 테마가 자연스럽게 나타납니다."
+  },
+  "entity": {
+    "note": "참고",
+    "notes": "메모",
+    "journal": "일지",
+    "journals": "저널",
+    "task": "작업",
+    "tasks": "작업",
+    "project": "프로젝트",
+    "projects": "프로젝트",
+    "tag": "태그",
+    "tags": "태그",
+    "orphan": "고아",
+    "orphans": "고아",
+    "unresolved": "해결되지 않은"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "그래프 설정",
+    "hide-settings": "설정 숨기기",
+    "reset-filters": "필터 재설정",
+    "filters": "필터",
+    "display": "디스플레이",
+    "show-labels": "라벨 표시",
+    "focus-depth": "깊이 {depth}",
+    "clear-focus": "집중된 노드 지우기"
+  },
+  "filter": {
+    "notes": "메모",
+    "journals": "저널",
+    "tasks": "작업",
+    "projects": "프로젝트",
+    "tags": "태그",
+    "orphans": "고아",
+    "toggle-entity": "{label} 전환",
+    "toggle-orphans": "고아 노드 전환"
+  },
+  "search": {
+    "placeholder": "노드 검색...",
+    "clear": "그래프 검색 지우기"
+  },
+  "context-menu": {
+    "untitled": "제목 없음",
+    "focus-node": "이 노드에 집중하세요",
+    "open-new-tab": "새 탭에서 열기",
+    "create-note": "메모 만들기",
+    "copy-title": "제목 복사"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {# 연결} other {# 연결}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "그래프 로드 중...",
+    "empty": "연결을 찾을 수 없습니다.",
+    "open-full": "전체 그래프 열기",
+    "close": "그래프 닫기"
+  }
+}

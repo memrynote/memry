@@ -1,16 +1,28 @@
 {
+  "app": {
+    "quit": "استقال"
+  },
   "file": {
     "label": "ملف",
-    "newNote": "ملاحظة جديدة"
+    "newNote": "ملاحظة جديدة",
+    "close": "إغلاق النافذة"
   },
   "navigation": {
     "back": "رجوع",
     "forward": "تقدم"
   },
   "edit": {
-    "label": "تحرير"
+    "label": "تحرير",
+    "undo": "تراجع",
+    "redo": "إعادة",
+    "cut": "قطع",
+    "copy": "نسخ",
+    "paste": "لصق"
   },
   "view": {
-    "label": "عرض"
+    "label": "عرض",
+    "reload": "إعادة تحميل",
+    "toggleDevTools": "تبديل أدوات المطور",
+    "toggleFullscreen": "تبديل الشاشة الكاملة"
   }
 }

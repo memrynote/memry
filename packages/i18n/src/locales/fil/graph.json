@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Nilo-load ang graph...",
+    "load-failed": "Nabigong i-load ang data ng graph",
+    "try-again": "Subukan muli",
+    "aria-label": "Knowledge graph na may {nodeCount, plural, one {# node} other {# node}} at {edgeCount, plural, one {Koneksyon ng #} other {# na mga koneksyon}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Mga graph node",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Ang iyong graph ng kaalaman",
+    "description": "Ang mga koneksyon sa pagitan ng iyong mga tala, gawain, at proyekto ay lalabas dito bilang isang interactive na graph.",
+    "link-title": "I-link ang iyong mga tala",
+    "link-description": "Gamitin ang [[wikilinks]] upang ikonekta ang mga ideya sa mga tala",
+    "discover-title": "Tumuklas ng mga pattern",
+    "discover-description": "Habang lumalaki ang mga koneksyon, natural na lalabas ang mga kumpol at tema"
+  },
+  "entity": {
+    "note": "tala",
+    "notes": "mga tala",
+    "journal": "journal",
+    "journals": "mga journal",
+    "task": "gawain",
+    "tasks": "mga gawain",
+    "project": "proyekto",
+    "projects": "mga proyekto",
+    "tag": "tag",
+    "tags": "mga tag",
+    "orphan": "ulila",
+    "orphans": "mga ulila",
+    "unresolved": "hindi nalutas"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Mga setting ng graph",
+    "hide-settings": "Itago ang mga setting",
+    "reset-filters": "I-reset ang mga filter",
+    "filters": "Mga filter",
+    "display": "Display",
+    "show-labels": "Ipakita ang mga label",
+    "focus-depth": "lalim {depth}",
+    "clear-focus": "I-clear ang nakatutok na node"
+  },
+  "filter": {
+    "notes": "Mga Tala",
+    "journals": "Mga journal",
+    "tasks": "Mga gawain",
+    "projects": "Mga proyekto",
+    "tags": "Mga tag",
+    "orphans": "Mga ulila",
+    "toggle-entity": "I-toggle ang {label}",
+    "toggle-orphans": "I-toggle ang mga orphan node"
+  },
+  "search": {
+    "placeholder": "Maghanap ng mga node...",
+    "clear": "I-clear ang paghahanap sa graph"
+  },
+  "context-menu": {
+    "untitled": "Walang pamagat",
+    "focus-node": "Tumutok sa node na ito",
+    "open-new-tab": "Buksan sa bagong tab",
+    "create-note": "Lumikha ng tala",
+    "copy-title": "Kopyahin ang pamagat"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {Koneksyon ng #} other {# na mga koneksyon}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Nilo-load ang graph...",
+    "empty": "Walang nakitang koneksyon",
+    "open-full": "Buksan ang buong graph",
+    "close": "Isara ang graph"
+  }
+}

@@ -1,0 +1,651 @@
+{
+  "page": {
+    "tabs": {
+      "label": "Feladat nézetek",
+      "today": "Ma",
+      "all": "Mind"
+    },
+    "viewMode": {
+      "label": "Nézet mód",
+      "list": "Lista nézet",
+      "kanban": "Kanban nézet"
+    },
+    "projectScope": {
+      "allProjects": "Minden projekt",
+      "searchProjects": "Projektek keresése…",
+      "editProject": "{name} szerkesztése",
+      "unstarSavedFilter": "Csillag eltávolítása {name}"
+    }
+  },
+  "task": {
+    "add": "Feladat hozzáadása",
+    "title": "Cím",
+    "titleRequired": "A cím kötelező",
+    "titlePlaceholder": "Mit kell tenni?",
+    "namePlaceholder": "Feladat neve",
+    "description": "Leírás",
+    "descriptionPlaceholder": "Leírás hozzáadása…",
+    "details": "A feladat részletei",
+    "status": "Állapot",
+    "priority": "Prioritás",
+    "dueDate": "Esedékesség dátuma",
+    "project": "Projekt",
+    "repeat": "Ismételje meg",
+    "createAnother": "Hozzon létre egy másikat",
+    "delete": "Feladat törlése",
+    "created": "Létrehozva: {date}"
+  },
+  "project": {
+    "create": "Projekt létrehozása",
+    "edit": "Projekt szerkesztése",
+    "delete": "Projekt törlése",
+    "iconAndName": "Ikon és név",
+    "namePlaceholder": "Projekt neve",
+    "select": "Válassza ki a projektet",
+    "selectIcon": "Válassza ki az ikont",
+    "clickIconToChange": "Kattintson az ikonra a módosításhoz",
+    "color": "Szín",
+    "descriptionOptional": "Leírás (nem kötelező)",
+    "descriptionPlaceholder": "A projekt rövid leírása…",
+    "statuses": "Állapotok",
+    "statusesHelp": "Konfigurálja a munkafolyamat szakaszait ehhez a projekthez.",
+    "createDescription": "Hozzon létre egy új projektet névvel, ikonnal, színnel és munkafolyamat-állapotokkal.",
+    "editDescription": "Szerkessze a projekt nevét, ikonját, színét és munkafolyamat-állapotait."
+  },
+  "status": {
+    "select": "Válassza ki az állapotot",
+    "todo": "To Do",
+    "inProgress": "Folyamatban",
+    "done": "Kész"
+  },
+  "priority": {
+    "select": "Válassza ki a prioritást",
+    "none": "Nincs prioritás",
+    "noneShort": "Egyik sem",
+    "low": "Alacsony",
+    "medium": "Közepes",
+    "high": "Magas",
+    "urgent": "Sürgős"
+  },
+  "filters": {
+    "filter": "Szűrés",
+    "emptyTitle": "Egyetlen feladat sem felel meg a szűrőknek",
+    "emptyHelp": "Próbálja meg beállítani a szűrőket, ill",
+    "groupBy": "Csoportosítás szerint",
+    "groupByOptions": "Csoportosítás opciók szerint",
+    "sortAscending": "Növekvő rendezés",
+    "sortDescending": "Csökkenő rendezés"
+  },
+  "quickAdd": {
+    "label": "Gyors hozzáadási feladat",
+    "focusDescription": "Fókuszálás a gyors hozzáadási bemenetre"
+  },
+  "drawer": {
+    "close": "Zárja be a feladat részleteit",
+    "subIssues": "Alkérdések",
+    "addSubIssue": "Alkérdés hozzáadása",
+    "subIssuePlaceholder": "Alprobléma hozzáadása…",
+    "noSubIssues": "Még nincs részkérdés",
+    "linkedNotes": "Kapcsolt jegyzetek",
+    "linkNote": "Jegyzet csatolása",
+    "loading": "Betöltés…",
+    "searchNotes": "Jegyzetek keresése…",
+    "noMatchingNotes": "Nincsenek megfelelő jegyzetek",
+    "noNotesAvailable": "Nincsenek jegyzetek",
+    "noLinkedNotes": "Még nincsenek linkelt jegyzetek",
+    "removeLinkTo": "Távolítsa el az {title} linket",
+    "removeLinkFallback": "megjegyzés"
+  },
+  "kanban": {
+    "board": "Kanban tábla"
+  },
+  "toasts": {
+    "projectUpdated": "Projekt frissítve",
+    "projectCreated": "Projekt létrehozva",
+    "projectSaveError": "Nem sikerült menteni a projektet",
+    "projectArchived": "Projekt archiválva",
+    "projectArchiveError": "Nem sikerült archiválni a projektet",
+    "projectDeleted": "Projekt törölve",
+    "projectDeleteError": "Nem sikerült törölni a projektet",
+    "filtersCleared": "A szűrők törölve",
+    "filterSaved": "Szűrő mentve",
+    "filterDeleted": "Szűrő törölve",
+    "filterApplied": "Alkalmazott \"{name}\"",
+    "deleted": "Feladat törölve",
+    "deletedSeries": "Kész a sorozat!",
+    "deletedNext": "Következő előfordulás",
+    "completed": "Feladat teljesítve!",
+    "archived": "Feladat archiválva",
+    "undoNotAvailableForDelete": "A visszavonás nem törölhető",
+    "alreadyAllComplete": "Az összes kiválasztott feladat már elkészült",
+    "noCompletedSelected": "Nincsenek befejezett feladatok kiválasztva",
+    "completeFailed": "Nem sikerült végrehajtani a feladatokat",
+    "reopenFailed": "Nem sikerült újra megnyitni a feladatokat",
+    "deleteFailed": "Nem sikerült törölni a feladatokat",
+    "moveFailed": "Nem sikerült áthelyezni a feladatokat"
+  },
+  "phaseF": {
+    "componentsTasksAddSubtaskInput": {
+      "addSubtask": "Részfeladat hozzáadása...",
+      "addSubtask2": "Részfeladat hozzáadása",
+      "enterToAdd": "Írja be a hozzáadáshoz"
+    },
+    "componentsTasksBulkActionsBulkActionDropdown": {
+      "for": "számára ",
+      "task": "feladatot"
+    },
+    "componentsTasksBulkActionsBulkActionToolbar": {
+      "bulkActions": "Tömeges műveletek",
+      "selected": "kiválasztott",
+      "complete": "Teljes",
+      "priority": "Prioritás",
+      "dueDate": "Esedékesség dátuma",
+      "moveTo": "Áthelyezés ide",
+      "status": "Állapot",
+      "archive": "Archívum",
+      "delete": "Törölje",
+      "cancelSelection": "Kiválasztás visszavonása",
+      "cancel": "Mégsem"
+    },
+    "componentsTasksBulkActionsBulkDeleteDialog": {
+      "delete": "Törölje ",
+      "task": "feladatot",
+      "youReAboutToDelete": "Törölni készül ",
+      "task2": "feladatot",
+      "and": "és ",
+      "moreTask": "több feladat",
+      "thisActionCanBeUndoneForAShortTimeAfterDeletion": "Ez a művelet a törlés után rövid ideig visszavonható.",
+      "cancel": "Mégsem",
+      "delete2": "Törölje ",
+      "task3": "feladatot"
+    },
+    "componentsTasksBulkActionsBulkDueDatePicker": {
+      "setDueDateFor": "Állítsa be a határidőt ",
+      "task": "feladatot",
+      "selectADateToSetAsTheDueDateForAllSelectedTasks": "Válasszon egy dátumot az összes kiválasztott feladat esedékességi dátumaként.",
+      "alsoSetTime": "Állítsa be az időt is",
+      "cancel": "Mégsem",
+      "setDueDate": "Állítsa be a határidőt"
+    },
+    "componentsTasksCelebrationProgress": {
+      "complete": "Teljes"
+    },
+    "componentsTasksColorPicker": {
+      "selectColor": "Válasszon színt"
+    },
+    "componentsTasksCustomRepeatDialog": {
+      "onTheseDays": "Ezeken a napokon",
+      "repeatOn": "Ismételje meg",
+      "day": "nap",
+      "ofTheMonth": "a hónap",
+      "the": "A",
+      "ofTheMonth2": "a hónap",
+      "ends": "Véget ér",
+      "never": "Soha",
+      "onDate": "A dátumon",
+      "after": "Utána",
+      "occurrences": "előfordulások",
+      "preview": "Előnézet",
+      "of": "a ",
+      "andMore": "és több",
+      "frequency": "Frekvencia",
+      "repeatEvery": "Ismételje meg minden",
+      "day2": "napon",
+      "week": "héten",
+      "month": "hónapban",
+      "year": "évben",
+      "cancel": "Mégsem",
+      "save": "Mentés",
+      "customRepeat": "Egyéni ismétlés"
+    },
+    "componentsTasksDatePickerCalendar": {
+      "previousMonth": "Előző hónap",
+      "nextMonth": "Következő hónapban",
+      "goToToday": "Menj a mai napra",
+      "today": "Ma",
+      "w": "W"
+    },
+    "componentsTasksDatePickerContent": {
+      "removeDate": "Dátum eltávolítása",
+      "clearTime": "Tiszta idő",
+      "addTime": "Add hozzá az időt"
+    },
+    "componentsTasksDeleteProjectDialog": {
+      "delete": "Törlés \"",
+      "thisProjectHas": "Ennek a projektnek van ",
+      "task": "feladatot",
+      "whatWouldYouLikeToDoWithThem": "mit szeretnél csinálni velük?",
+      "moveTasksToPersonalProject": "A feladatok áthelyezése a személyes projektbe",
+      "deleteAllTasksPermanently": "Az összes feladat végleges törlése",
+      "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Ennek a projektnek nincsenek feladatai, ezért véglegesen töröljük.",
+      "thisActionCannotBeUndone": "Ez a művelet nem vonható vissza.",
+      "cancel": "Mégsem",
+      "deleteProject": "Projekt törlése"
+    },
+    "componentsTasksDeleteTaskDialog": {
+      "deleteTask": "Törli a feladatot?",
+      "ldquo": "ldquo;",
+      "rdquoWillBePermanentlyDeletedThisActionCannotBeUndone": "rdquo; véglegesen törlésre kerül. Ez a művelet nem vonható vissza.",
+      "deleteTask2": "Feladat törlése"
+    },
+    "componentsTasksDialogsAllSubtasksCompleteDialog": {
+      "allSubtasksComplete": "Minden részfeladat kész!",
+      "ldquo": "ldquo;",
+      "rdquoHasAll": "rdquo; minden megvan ",
+      "subtask": "részfeladat",
+      "done": "kész.",
+      "wouldYouLikeToMarkTheParentTaskAsCompleteToo": "A szülői feladatot is készként szeretné megjelölni?",
+      "keepTaskOpen": "Tartsa nyitva a feladatot",
+      "completeTask": "Fejezd be a feladatot ✓"
+    },
+    "componentsTasksDialogsBulkDueDateDialog": {
+      "setDueDateForAllSubtasks": "Állítsa be az összes részfeladat határidejét",
+      "setDueDateFor": "Állítsa be a határidőt ",
+      "subtask": "részfeladat",
+      "in": "a \"",
+      "rdquo": "rdquo;",
+      "alsoApplyToCompletedSubtasks": "Alkalmas az elvégzett részfeladatokra is (",
+      "clearDate": "Tiszta dátum",
+      "cancel": "Mégsem",
+      "apply": "Alkalmazni"
+    },
+    "componentsTasksDialogsBulkPriorityDialog": {
+      "setPriorityForAllSubtasks": "Állítsa be az összes részfeladat prioritását",
+      "setPriorityFor": "Állítsa be a prioritást ",
+      "subtask": "részfeladat",
+      "in": "a \"",
+      "rdquo": "rdquo;",
+      "alsoApplyToCompletedSubtasks": "Alkalmas az elvégzett részfeladatokra is (",
+      "cancel": "Mégsem",
+      "apply": "Alkalmazni"
+    },
+    "componentsTasksDialogsCompleteParentDialog": {
+      "completeTaskWithIncompleteSubtasks": "Befejezett feladat hiányos részfeladatokkal?",
+      "has": "rendelkezik ",
+      "incompleteSubtask": "hiányos részfeladat",
+      "and": "és ",
+      "more": "több",
+      "whatWouldYouLikeToDo": "mit szeretnél csinálni?",
+      "completeAllParentSubtasks": "Az összes végrehajtása (szülő + részfeladatok)",
+      "markTheParentAndAllSubtasksAsComplete": "Jelölje meg a szülőt és az összes részfeladatot befejezettként",
+      "completeParentOnlyKeepSubtasksIncomplete": "Csak teljes szülő, a részfeladatok ne legyenek befejezve",
+      "onlyMarkTheParentTaskAsComplete": "Csak a szülői feladatot jelölje meg készként",
+      "cancel": "Mégsem",
+      "complete": "Teljes"
+    },
+    "componentsTasksDialogsDeleteAllSubtasksDialog": {
+      "deleteAllSubtasks": "Törli az összes részfeladatot?",
+      "thisWillDelete": "Ez törli ",
+      "subtask": "részfeladat",
+      "from": "innen: \"",
+      "rdquo": "rdquo;.",
+      "thisActionCannotBeUndone": "Ez a művelet nem vonható vissza.",
+      "cancel": "Mégsem",
+      "deleteAll": "Összes törlése"
+    },
+    "componentsTasksDialogsDeleteParentDialog": {
+      "deleteTaskWithSubtasks": "Törli a feladatot részfeladatokkal?",
+      "has": "rendelkezik ",
+      "subtask": "részfeladat",
+      "whatWouldYouLikeToDo": "mit szeretnél csinálni?",
+      "deleteTaskAndAllSubtasks": "Feladat és az összes részfeladat törlése",
+      "permanentlyRemovesEverything": "Véglegesen eltávolít mindent",
+      "deleteTaskKeepSubtasksAsStandaloneTasks": "Feladat törlése, részfeladatok megtartása önálló feladatként",
+      "subtasksBecomeTopLevelTasks": "A részfeladatok legfelső szintű feladatokká válnak",
+      "cancel": "Mégsem",
+      "delete": "Törölje"
+    },
+    "componentsTasksDialogsDuplicateWithSubtasksDialog": {
+      "duplicateTask": "Ismétlődő feladat",
+      "createACopyOf": "Hozzon létre egy másolatot a \"",
+      "rdquo": "rdquo;",
+      "alsoDuplicateSubtasks": "A részfeladatok megkettőzése is (",
+      "cancel": "Mégsem",
+      "duplicate": "Megkettőzés "
+    },
+    "componentsTasksDialogsParentPickerDialog": {
+      "makeSubtaskOf": "Készítsen részfeladatot...",
+      "selectATaskToMake": "Válassza ki az elkészítendő feladatot \"",
+      "aSubtaskOf": "részfeladata.",
+      "searchTasks": "Feladatok keresése...",
+      "sameProject": "Ugyanaz a projekt",
+      "otherProjects": "Egyéb projektek"
+    },
+    "componentsTasksDragDropInsertionIndicator": {
+      "dropToRescheduleTo": "Csökkentse az átütemezéshez "
+    },
+    "componentsTasksDragDropMoveMenu": {
+      "moveTask": "Feladat áthelyezése",
+      "move": "Mozgás",
+      "reschedule": "Átütemezés",
+      "today": "Ma",
+      "tomorrow": "Holnap",
+      "nextWeek": "Jövő héten",
+      "removeDate": "Dátum eltávolítása",
+      "moveToProject": "Ugrás a projekthez",
+      "current": "Aktuális",
+      "changeStatus": "Állapot módosítása",
+      "current2": "Aktuális",
+      "reorder": "Újrarendelés"
+    },
+    "componentsTasksDragDropMultiDragOverlay": {
+      "moreTask": "több feladat",
+      "task": "feladatot"
+    },
+    "componentsTasksDragDropSidebarDropZones": {
+      "dropHere": "Dobj ide"
+    },
+    "componentsTasksDragDropTaskRow": {
+      "priority": "prioritás: "
+    },
+    "componentsTasksDueDatePicker": {
+      "selectDueDate": "Válassza ki a határidőt",
+      "overdue": "Lejárt",
+      "setDueDate": "Állítsa be a határidőt",
+      "suggestions": "Javaslatok",
+      "pickADate": "Válassz időpontot...",
+      "addTime": "Add hozzá az időt",
+      "time": "Idő",
+      "clearDate": "Tiszta dátum",
+      "backToOptions": "Vissza a lehetőségekhez"
+    },
+    "componentsTasksEditRepeatingTaskDialog": {
+      "editRepeatingTask": "Ismétlődő feladat szerkesztése",
+      "youReEditingARepeatingTaskApplyChangesTo": "Ismétlődő feladatot szerkeszt. Módosítások alkalmazása a következőkre:",
+      "onlyThisOccurrence": "Csak ez az esemény",
+      "onlyFutureTasksUnchanged": "csak – a jövőbeni feladatok változatlanok",
+      "thisAndAllFutureOccurrences": "Ez és minden jövőbeli esemény",
+      "andBeyond": "és azon túl",
+      "cancel": "Mégsem",
+      "continue": "Folytatás"
+    },
+    "componentsTasksEmptyStatesCollapsedEmptySection": {
+      "add": "Hozzáadás"
+    },
+    "componentsTasksEmptyStatesSectionEmptyStates": {
+      "noTasksScheduled": "Nincs ütemezett feladat",
+      "addTaskFor": "Feladat hozzáadása ehhez ",
+      "nothingScheduled": "Semmi nincs ütemezve",
+      "addTasksWithDueDatesToPlanYourWeek": "Adjon hozzá feladatokat határidővel a hét megtervezéséhez.",
+      "addTask": "Feladat hozzáadása",
+      "viewCalendar": "Naptár megtekintése"
+    },
+    "componentsTasksFiltersActiveFiltersBar": {
+      "priorityIs": "A prioritás az",
+      "priority": "prioritás",
+      "statusIs": "Az állapot az",
+      "status": "állapotát",
+      "projectIs": "A projekt az",
+      "project": "projekt",
+      "due": "esedékes",
+      "dueDate": "esedékessége",
+      "search": "keresés",
+      "clearAll": "Minden törlése"
+    },
+    "componentsTasksFiltersDueDateFilter": {
+      "filterByDueDate": "Szűrés határidő szerint",
+      "customRange": "Egyedi tartomány",
+      "clear": "Világos",
+      "apply": "Alkalmazni"
+    },
+    "componentsTasksFiltersFilterDropdown": {
+      "filterBy": "Szűrés..."
+    },
+    "componentsTasksFiltersFilterEmptyState": {
+      "activeFilters": "Aktív szűrők: ",
+      "clearAllFilters": "Törölje az összes szűrőt"
+    },
+    "componentsTasksFiltersFilterPanelsDueDatePanel": {
+      "dueDate": "Esedékesség"
+    },
+    "componentsTasksFiltersFilterPanelsPriorityPanel": {
+      "priority": "Prioritás",
+      "is": "van",
+      "search": "Keresés...",
+      "selected": "kiválasztott"
+    },
+    "componentsTasksFiltersFilterPanelsProjectPanel": {
+      "project": "Projekt",
+      "noProject": "Nincs projekt"
+    },
+    "componentsTasksFiltersFilterPanelsStatusPanel": {
+      "status": "Állapot"
+    },
+    "componentsTasksFiltersFilterPanelsStatusProjectPickerPan": {
+      "status": "Állapot",
+      "pickAProject": "Válasszon egy projektet"
+    },
+    "componentsTasksFiltersMoreFiltersDropdown": {
+      "moreFilters": "További szűrők",
+      "more": "Többet",
+      "status": "Állapot",
+      "hasTimeSet": "Be van állítva az idő",
+      "recurringOnly": "Csak ismétlődő",
+      "status2": "Állapot"
+    },
+    "componentsTasksFiltersPriorityFilter": {
+      "filterByPriority": "Szűrés prioritás szerint",
+      "priority": "Prioritás"
+    },
+    "componentsTasksFiltersProjectFilter": {
+      "filterByProject": "Szűrés projekt szerint",
+      "project": "Projekt",
+      "allProjects": "Minden projekt",
+      "clear": "Világos"
+    },
+    "componentsTasksFiltersQuickFilters": {
+      "quickFilters": "Gyors szűrők:"
+    },
+    "componentsTasksFiltersSaveFilterDialog": {
+      "saveFilter": "Szűrő mentése",
+      "saveYourCurrentFilterSettingsForQuickAccessLater": "Mentse el jelenlegi szűrőbeállításait a későbbi gyors eléréshez.",
+      "filterName": "Szűrő neve",
+      "eGHighPriorityThisWeek": "például kiemelten fontos ezen a héten",
+      "currentFilters": "Jelenlegi szűrők:",
+      "noFiltersApplied": "Nincsenek szűrők",
+      "cancel": "Mégsem",
+      "saveFilter2": "Szűrő mentése"
+    },
+    "componentsTasksFiltersSavedFiltersDropdown": {
+      "savedFilters": "Mentett szűrők",
+      "saved": "Mentve",
+      "noSavedFiltersYet": "Még nincsenek mentett szűrők",
+      "saveCurrentFilters": "Az aktuális szűrők mentése",
+      "saveCurrentFilters2": "Az aktuális szűrők mentése"
+    },
+    "componentsTasksFiltersSavedFiltersSection": {
+      "filterName": "Szűrő neve",
+      "saveFilter": "Szűrő mentése",
+      "save": "Mentés"
+    },
+    "componentsTasksFiltersSearchInput": {
+      "searchTasks": "Keresési feladatok",
+      "clearSearch": "Keresés törlése"
+    },
+    "componentsTasksKanbanKanbanColumn": {
+      "dropHere": "Dobj ide",
+      "releaseToMoveTaskToThisColumn": "Engedje fel a feladat ebbe az oszlopba helyezéséhez",
+      "moreCompleted": "befejezettebb",
+      "showFewer": "Mutass kevesebbet",
+      "taskTitle": "Feladat címe..."
+    },
+    "componentsTasksNaturalDateInput": {
+      "typeADateInNaturalLanguage": "Írjon be egy dátumot természetes nyelven",
+      "select": "Válassza ki"
+    },
+    "componentsTasksParentTaskRow": {
+      "priority": "prioritás: "
+    },
+    "componentsTasksPrioritySelect": {
+      "selectPriority": "Válassza ki a prioritást",
+      "navigate": "navigáljon",
+      "select": "válassza ki"
+    },
+    "componentsTasksProjectModal": {
+      "iconName": "Ikon és név",
+      "selectIcon": "Válassza ki az ikont",
+      "projectName": "Projekt neve",
+      "clickIconToChange": "Kattintson az ikonra a módosításhoz",
+      "color": "Szín",
+      "descriptionOptional": "Leírás (nem kötelező)",
+      "briefDescriptionOfThisProject": "A projekt rövid leírása...",
+      "statuses": "Állapotok",
+      "configureTheWorkflowStagesForThisProject": "Konfigurálja a munkafolyamat szakaszait ehhez a projekthez.",
+      "deleteProject": "Projekt törlése",
+      "cancel": "Mégsem",
+      "unsavedChanges": "Nem mentett módosítások",
+      "youHaveUnsavedChangesAreYouSureYouWantToDiscardThem": "Nem mentett módosításai vannak. Biztosan el akarja dobni őket?",
+      "cancel2": "Mégsem",
+      "discard": "Eldobni"
+    },
+    "componentsTasksProjectSelect": {
+      "selectProject": "Válassza ki a projektet",
+      "selectProject2": "Válassza ki a projektet"
+    },
+    "componentsTasksProjectsProjectSelector": {
+      "editProject": "Projekt szerkesztése",
+      "archiveProject": "Archív projekt",
+      "deleteProject": "Projekt törlése",
+      "selectProject": "Válassza ki a projektet",
+      "noProjectsYet": "Még nincsenek projektek",
+      "createProject": "Projekt létrehozása"
+    },
+    "componentsTasksProjectsProjectsTabContent": {
+      "noProjectSelected": "Nincs kiválasztva projekt",
+      "selectAProjectFromTheDropdownOrCreateANewOne": "Válasszon ki egy projektet a legördülő menüből, vagy hozzon létre egy újat",
+      "createYourFirstProject": "Hozd létre az első projektedet"
+    },
+    "componentsTasksQuickAddQuickAddHelp": {
+      "quickAddShortcutsHelp": "Gyors billentyűparancsok hozzáadása",
+      "quickAddShortcuts": "Gyorsbillentyűk hozzáadása",
+      "exampleBuyMilkTomorrowHighPersonal": "Példa: \"Vegyél tejet !holnap !!high #personal\""
+    },
+    "componentsTasksQuickAddQuickOptionsBar": {
+      "quickOptions": "Gyors lehetőségek:"
+    },
+    "componentsTasksQuickAddInput": {
+      "q": "K",
+      "q2": "K"
+    },
+    "componentsTasksRepeatIndicator": {
+      "of": "a ",
+      "completed": "elkészült"
+    },
+    "componentsTasksRepeatPicker": {
+      "selectRepeatFrequency": "Válassza ki az ismétlési frekvenciát",
+      "doesNotRepeat": "Nem ismétlődik",
+      "custom": "Egyedi..."
+    },
+    "componentsTasksStatusEditor": {
+      "changeStatusColor": "Állapotszín módosítása",
+      "dragToReorder": "Húzza át az átrendezéshez",
+      "statusName": "Állapot neve",
+      "addStatus": "Állapot hozzáadása"
+    },
+    "componentsTasksStatusSelect": {
+      "selectStatus": "Válassza ki az állapotot",
+      "selectStatus2": "Válassza ki az állapotot"
+    },
+    "componentsTasksStopRepeatingDialog": {
+      "stopRepeating": "Hagyd abba az ismétlést",
+      "isSetToRepeat": "ismétlésre van beállítva ",
+      "whatWouldYouLikeToDo": "mit szeretnél csinálni?",
+      "keepThisTaskStopFutureOccurrences": "Tartsa meg ezt a feladatot, állítsa le a jövőbeni eseményeket",
+      "taskWillBecomeAOneTimeTask": "A feladat egyszeri feladattá válik",
+      "deleteThisAndAllFutureOccurrences": "Törölje ezt és az összes jövőbeni előfordulást",
+      "taskWillBeRemovedEntirely": "A feladat teljesen el lesz távolítva",
+      "cancel": "Mégsem",
+      "confirm": "Erősítse meg"
+    },
+    "componentsTasksSubtaskDots": {
+      "of": "a ",
+      "subtasksComplete": "részfeladatok készen (",
+      "clickTo": "Kattintson ide ",
+      "of2": "a ",
+      "subtasksComplete2": "részfeladatok elkészültek",
+      "clickTo2": "Kattintson ide "
+    },
+    "componentsTasksSubtaskProgressBadge": {
+      "of": "a ",
+      "subtasksComplete": "részfeladatok készen (",
+      "clickTo": "Kattintson ide "
+    },
+    "componentsTasksTaskBadges": {
+      "priority": "prioritás",
+      "repeatingTask": "Ismétlődő feladat",
+      "d": "d"
+    },
+    "componentsTasksTaskEmptyState": {
+      "addTask": "Feladat hozzáadása"
+    },
+    "componentsTasksTaskIcons": {
+      "noPriority": "nincs prioritás"
+    },
+    "componentsTasksTaskRepeatSection": {
+      "repeat": "Ismételje meg",
+      "addRepeat": "Ismétlés hozzáadása",
+      "edit": "Szerkesztés",
+      "edit2": "Szerkesztés",
+      "stopRepeating": "Hagyd abba az ismétlést",
+      "stopRepeating2": "Hagyd abba az ismétlést"
+    },
+    "componentsTasksTaskSection": {
+      "addTask": "Feladat hozzáadása"
+    },
+    "componentsTasksTimePicker": {
+      "selectTime": "Válassza ki az időt",
+      "selectTime2": "Válassza ki az időt",
+      "clearTime": "Tiszta idő"
+    },
+    "componentsTasksTodayEmptyState": {
+      "nothingScheduledForToday": "Mára semmi nincs betervezve",
+      "youHaveOverdueTasksAboveAddSomeTasksForTodayOrCheckYourU": "Lejárt feladatai vannak fent. Adjon hozzá néhány feladatot a mai napra, vagy ellenőrizze a soron következő listát.",
+      "addTaskForToday": "Feladat hozzáadása a mai napra",
+      "allCaughtUpForToday": "A mai napra mindenki felkapott",
+      "youHaveNothingScheduledEnjoyTheClarity": "Nincs semmi ütemezésed. Élvezze a tisztaságot.",
+      "addTaskForToday2": "Feladat hozzáadása a mai napra"
+    },
+    "componentsTasksUpcomingEmptyState": {
+      "nothingScheduledForTheNext7Days": "Semmi nincs betervezve a következő 7 napra",
+      "youHaveOverdueTasksAbovePlanAheadByAddingTasksForTheComi": "Lejárt feladatai vannak fent. Tervezze meg előre a következő hét feladatainak hozzáadásával.",
+      "addTask": "Feladat hozzáadása",
+      "noUpcomingTasks": "Nincsenek közelgő feladatok",
+      "tasksDueInTheNext7DaysWillAppearHerePlanYourWeekByAdding": "Itt jelennek meg a következő 7 napban esedékes feladatok. Tervezze meg hetét néhány feladat hozzáadásával.",
+      "addTask2": "Feladat hozzáadása"
+    }
+  },
+  "phaseI": {
+    "toasts": {
+      "changesUndone": "Változások visszavonva",
+      "projectNotFound": "Projekt nem található",
+      "failedToArchiveTasks": "Nem sikerült archiválni a feladatokat",
+      "tasksRestoredFromArchive": "A feladatok az archívumból visszaállítva",
+      "subtaskAdded": "Részfeladat hozzáadva",
+      "subtaskDeleted": "Részfeladat törölve",
+      "taskCompleted": "Feladat befejezve",
+      "allSubtasksCompleteTaskMarkedAsDone": "🎉 Minden részfeladat kész! A feladat készként megjelölve.",
+      "taskReopened": "Feladat újra megnyitva",
+      "taskKeptOpen": "A feladat nyitva maradt",
+      "taskMarkedAsDone": "🎉 A feladat készként megjelölve!"
+    },
+    "errors": {
+      "failedToArchiveTasks": "Nem sikerült archiválni a feladatokat",
+      "failedToAddSubtask": "Nem sikerült hozzáadni a részfeladatot",
+      "failedToAddSubtasks": "Nem sikerült hozzáadni a részfeladatokat",
+      "failedToReorderSubtasks": "Nem sikerült átrendezni a részfeladatokat",
+      "failedToPromoteSubtask": "Nem sikerült előléptetni a részfeladatot",
+      "failedToDeleteSubtask": "Nem sikerült törölni a részfeladatot",
+      "failedToDeleteTask": "Nem sikerült törölni a feladatot",
+      "failedToCompleteTask": "A feladat végrehajtása nem sikerült",
+      "failedToMakeSubtask": "Nem sikerült végrehajtani a részfeladatot",
+      "failedToCompleteSubtasks": "Nem sikerült végrehajtani a részfeladatokat",
+      "failedToMarkSubtasksIncomplete": "Nem sikerült a részfeladatokat befejezettként megjelölni",
+      "failedToSetDueDate": "Nem sikerült beállítani a határidőt",
+      "failedToSetPriority": "Nem sikerült beállítani a prioritást",
+      "failedToDeleteSubtasks": "Nem sikerült törölni a részfeladatokat",
+      "failedToLoadTaskPreferences": "Nem sikerült betölteni a feladatbeállításokat",
+      "failedToUpdateTaskPreferences": "Nem sikerült frissíteni a feladatbeállításokat",
+      "failedToLoadLinkedTasks": "Nem sikerült betölteni a kapcsolódó feladatokat"
+    }
+  }
+}

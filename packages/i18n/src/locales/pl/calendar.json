@@ -1,0 +1,166 @@
+{
+  "view": {
+    "day": "Dzień",
+    "week": "Tydzień",
+    "month": "Miesiąc",
+    "year": "Rok"
+  },
+  "toolbar": {
+    "create-event": "Utwórz wydarzenie",
+    "previous-period": "Poprzedni okres",
+    "next-period": "Następny okres",
+    "previous-month": "Poprzedni miesiąc",
+    "next-month": "Następny miesiąc",
+    "today": "Dzisiaj"
+  },
+  "filter": {
+    "filter-calendars": "Filtruj kalendarze",
+    "sources": "Źródła",
+    "memry-items": "Elementy Memry",
+    "imported-calendars": "Importowane kalendarze",
+    "event-types": "Typy wydarzeń",
+    "google-calendars": "Kalendarze Google",
+    "refresh-google-calendars": "Odśwież kalendarze Google"
+  },
+  "visual-type": {
+    "event": "Wydarzenie",
+    "imported-event": "Zaimportowane wydarzenie",
+    "task": "Zadanie",
+    "reminder": "Przypomnienie",
+    "snooze": "Odłóż"
+  },
+  "state": {
+    "loading-calendar": "Ładowanie kalendarza…",
+    "loading-calendars": "Ładowanie kalendarzy…",
+    "preparing": "Przygotowanie…"
+  },
+  "empty": {
+    "no-imported-calendars-yet": "Nie zaimportowano jeszcze żadnych kalendarzy.",
+    "no-events": "Brak wydarzeń"
+  },
+  "time": {
+    "all-day": "Cały dzień",
+    "all-day-lower": "cały dzień",
+    "pick-a-date": "Wybierz datę",
+    "new-event": "Nowe wydarzenie",
+    "more-events": "{count, plural, one {# więcej wydarzeń} other {# więcej wydarzeń}}"
+  },
+  "form": {
+    "create-calendar-event": "Utwórz wydarzenie w kalendarzu",
+    "edit-calendar-event": "Edytuj wydarzenie w kalendarzu",
+    "quick-create-description": "Wpisz tytuł i zapisz, aby utworzyć wydarzenie w wybranym przedziale czasowym.",
+    "event-editor-description": "Zaktualizuj tytuł, lokalizację, datę, godzinę i notatki dotyczące tego wydarzenia.",
+    "new-event-placeholder": "Nowe wydarzenie",
+    "location-placeholder": "Dodaj lokalizację",
+    "notes-url-placeholder": "Dodaj notatki lub adres URL",
+    "start": "Zacznij",
+    "end": "Koniec",
+    "add-details": "Dodaj szczegóły",
+    "google-calendar": "Kalendarz Google",
+    "target-calendar": "Kalendarz docelowy",
+    "use-default-calendar": "Użyj domyślnego kalendarza",
+    "use-default-calendar-with-name": "Użyj domyślnego ({calendar})",
+    "use-memry-calendar-default": "Użyj kalendarza Memry (domyślnie)",
+    "use-memry-managed-calendar": "Użyj kalendarza zarządzanego za pomocą Memry",
+    "primary-suffix": "podstawowy"
+  },
+  "delete-dialog": {
+    "title": "Usunąć wydarzenie?",
+    "local-description": "„{title}” zostanie trwale usunięty. Tej akcji nie można cofnąć.",
+    "google-bound-description": "„{title}” zostanie usunięty z Memry i Kalendarza Google. Tej akcji nie można cofnąć.",
+    "context-menu-delete-label": "Usuń wydarzenie"
+  },
+  "promote-dialog": {
+    "aria": "Edytuj wydarzenie w kalendarzu zewnętrznym",
+    "title": "Edytować to wydarzenie w Memry?",
+    "body": "Edycja tego zdarzenia spowoduje utworzenie połączonej kopii w Memry, więc zmiany będą synchronizowane w obie strony. Kontynuować?",
+    "do-not-ask-again": "Nie pytaj ponownie",
+    "confirm-label": "Edytuj w Memry"
+  },
+  "onboarding-dialog": {
+    "aria": "Wybierz domyślny kalendarz Google",
+    "title": "Do jakiego kalendarza powinny trafiać nowe wydarzenia Memry?",
+    "body": "Wybierz kalendarz Google, którego Memry powinien używać domyślnie. Nadal możesz zastąpić to ustawienie dla każdego zdarzenia.",
+    "default-calendar-label": "Użyj kalendarza zarządzanego za pomocą Memry",
+    "skip": "Pomiń",
+    "use-this-calendar": "Skorzystaj z tego kalendarza"
+  },
+  "metadata": {
+    "attendees": "Uczestnicy",
+    "attendees-count": "Uczestnicy ({count})",
+    "reminders": "Przypomnienia",
+    "default-reminders": "Domyślne przypomnienia",
+    "visibility": "Widoczność:",
+    "optional": "Opcjonalne",
+    "join-meeting": "Dołącz do spotkania",
+    "response": {
+      "accepted": "Zaakceptowano",
+      "declined": "Odrzucono",
+      "tentative": "Wstępne",
+      "needs-action": "Oczekujące"
+    },
+    "visibility-value": {
+      "private": "Prywatny",
+      "public": "Publiczne",
+      "confidential": "Poufne"
+    }
+  },
+  "phaseF": {
+    "componentsCalendarCalendarEventMetadata": {
+      "min": "min · "
+    }
+  },
+  "phaseI": {
+    "errors": {
+      "couldNotSaveEventTryAgain": "Nie udało się zapisać wydarzenia. Spróbuj ponownie.",
+      "couldNotCreateEventTryAgain": "Nie udało się utworzyć wydarzenia. Spróbuj ponownie.",
+      "couldNotSaveDefaultCalendarTryAgain": "Nie można zapisać domyślnego kalendarza. Spróbuj ponownie.",
+      "failedToLoadCalendarPreferences": "Nie udało się załadować preferencji kalendarza",
+      "failedToUpdateCalendarPreferences": "Nie udało się zaktualizować preferencji kalendarza",
+      "couldNotEditThisEventTryAgain": "Nie można edytować tego wydarzenia. Spróbuj ponownie.",
+      "failedToDeleteEvent": "Nie udało się usunąć wydarzenia",
+      "couldNotUnsnoozeInboxItem": "Nie udało się wyłączyć drzemki.",
+      "couldNotRescheduleInboxItem": "Nie udało się przełożyć terminu."
+    },
+    "inboxSnoozePopover": {
+      "title": "Odłożony element skrzynki odbiorczej",
+      "openInInbox": "Otwórz w skrzynce odbiorczej",
+      "unsnoozeNow": "Odłóż teraz",
+      "reschedule": "Zmień termin"
+    }
+  },
+  "task-popover": {
+    "title-fallback": "Szczegóły zadania",
+    "open-task": "Otwórz zadanie",
+    "source-note": "Notatka źródłowa",
+    "reschedule": "Zmień termin",
+    "more-actions": "Więcej akcji",
+    "mark-done": "Oznacz gotowe",
+    "mark-not-done": "Oznacz jako nieskończone",
+    "later-today": "Później dzisiaj",
+    "tomorrow": "Jutro",
+    "next-week": "Następny tydzień",
+    "next-week-mon": "W przyszłym tygodniu · Pon",
+    "pick-date-time": "Wybierz datę i godzinę…",
+    "remove-due-date": "Usuń termin",
+    "subtasks-prefix": "Podzadania",
+    "subtasks-counter": "Wykonano {done} z {total}",
+    "today": "Dzisiaj",
+    "overdue-one": "1 dzień opóźnienia",
+    "overdue-other": "{count} dni opóźnienia",
+    "repeats": "Powtarza",
+    "repeats-daily": "Powtarza się codziennie",
+    "repeats-weekly": "Powtarza się co tydzień",
+    "repeats-monthly": "Powtarza się co miesiąc",
+    "repeats-yearly": "Powtarza się co roku",
+    "priority-urgent": "Pilne",
+    "priority-high": "Wysoka",
+    "priority-medium": "Średni",
+    "errors": {
+      "could-not-save": "Nie udało się zapisać zadania",
+      "could-not-reschedule": "Nie można przełożyć zadania",
+      "could-not-remove-due-date": "Nie można usunąć terminu",
+      "could-not-open-note": "Nie można otworzyć notatki"
+    }
+  }
+}

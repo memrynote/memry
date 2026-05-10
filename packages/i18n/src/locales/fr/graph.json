@@ -1,0 +1,77 @@
+{
+  "page": {
+    "loading": "Chargement du graphique...",
+    "load-failed": "Échec du chargement des données du graphique",
+    "try-again": "Réessayez",
+    "aria-label": "Graphique de connaissances avec {nodeCount, plural, one {Nœud #} other {Nœuds #}} et {edgeCount, plural, one {Connexion #} other {Connexions #}}{summary, select, none {.} other {: {summary}.}}",
+    "nodes-list-label": "Nœuds de graphique",
+    "node-list-item": "{label} ({type})"
+  },
+  "empty": {
+    "title": "Votre graphe de connaissances",
+    "description": "Les connexions entre vos notes, tâches et projets apparaîtront ici sous forme de graphique interactif.",
+    "link-title": "Liez vos notes",
+    "link-description": "Utilisez [[wikilinks]] pour relier les idées dans les notes",
+    "discover-title": "Découvrez les modèles",
+    "discover-description": "À mesure que les connexions se développent, des clusters et des thèmes émergeront naturellement"
+  },
+  "entity": {
+    "note": "remarque",
+    "notes": "remarques",
+    "journal": "journal",
+    "journals": "journaux",
+    "task": "tâche",
+    "tasks": "tâches",
+    "project": "projet",
+    "projects": "projets",
+    "tag": "étiquette",
+    "tags": "balises",
+    "orphan": "orphelin",
+    "orphans": "orphelins",
+    "unresolved": "non résolu"
+  },
+  "summary": {
+    "node-type-count": "{count} {label}"
+  },
+  "control": {
+    "show-settings": "Paramètres du graphique",
+    "hide-settings": "Masquer les paramètres",
+    "reset-filters": "Réinitialiser les filtres",
+    "filters": "Filtres",
+    "display": "Affichage",
+    "show-labels": "Afficher les étiquettes",
+    "focus-depth": "profondeur {depth}",
+    "clear-focus": "Effacer le nœud focalisé"
+  },
+  "filter": {
+    "notes": "Remarques",
+    "journals": "Journaux",
+    "tasks": "Tâches",
+    "projects": "Projets",
+    "tags": "Balises",
+    "orphans": "Orphelins",
+    "toggle-entity": "Basculer {label}",
+    "toggle-orphans": "Basculer les nœuds orphelins"
+  },
+  "search": {
+    "placeholder": "Rechercher des nœuds...",
+    "clear": "Recherche graphique claire"
+  },
+  "context-menu": {
+    "untitled": "Sans titre",
+    "focus-node": "Focus sur ce nœud",
+    "open-new-tab": "Ouvrir dans un nouvel onglet",
+    "create-note": "Créer une note",
+    "copy-title": "Copier le titre"
+  },
+  "tooltip": {
+    "connection-count": "{count, plural, one {Connexion #} other {Connexions #}}",
+    "more-tags": "+{count}"
+  },
+  "local-panel": {
+    "loading": "Chargement du graphique...",
+    "empty": "Aucune connexion trouvée",
+    "open-full": "Ouvrir le graphique complet",
+    "close": "Fermer le graphique"
+  }
+}

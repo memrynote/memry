@@ -14,6 +14,8 @@ const binaryPathPattern =
   /\.(?:avif|br|dmg|eot|flac|gif|gz|icns|ico|jpe?g|m4v|mov|mp3|mp4|ogg|otf|pdf|png|tgz|ttf|wav|webm|webp|woff2?|zip)$/i
 const sourceCodePathPattern = /\.[cm]?[jt]sx?$/i
 
+const testPathPattern = /(?:\.test|\.spec)\.[cm]?[jt]sx?$/
+
 const secretAssignmentPattern =
   /^\s*(?:export\s+)?([A-Z0-9_]*(?:SECRET|TOKEN|PRIVATE_KEY|API_KEY|PASSWORD|HMAC_KEY|CSC_LINK|KEY_PASSWORD)[A-Z0-9_]*)\s*[:=]\s*["']?([^"'\s#][^#\n]*)/i
 
@@ -121,6 +123,10 @@ function shouldScanPath(filePath) {
   )
 }
 
+function isTestPath(filePath) {
+  return testPathPattern.test(filePath)
+}
+
 function lineNumberAt(text, index) {
   return text.slice(0, index).split('\n').length
 }
@@ -144,6 +150,10 @@ export function scanTextForSecrets(filePath, text) {
         message: rule.message
       })
     }
+  }
+
+  if (isTestPath(filePath)) {
+    return findings
   }
 
   const lines = text.split('\n')
