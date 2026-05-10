@@ -4,10 +4,10 @@ Encrypted payloads move between devices through a Cloudflare Workers API backed 
 
 ## Storage Split
 
-| Storage | Holds |
-| --- | --- |
-| **D1** | Sync item metadata: id, type, vector clock, blob key, size, content hash, timestamps |
-| **R2** | Encrypted payload blobs (avoids the 1 MB D1 row limit) |
+| Storage | Holds                                                                                |
+| ------- | ------------------------------------------------------------------------------------ |
+| **D1**  | Sync item metadata: id, type, vector clock, blob key, size, content hash, timestamps |
+| **R2**  | Encrypted payload blobs (avoids the 1 MB D1 row limit)                               |
 
 Splitting metadata from blob saves cost and lets the server reason about ordering without ever touching ciphertext.
 
@@ -20,7 +20,7 @@ Every domain object syncs as a `sync_item`. The server sees:
   id: string
   user_id: string
   device_id: string         // last writer
-  type: 'note' | 'task' | ...
+  type: 'note' | 'task' | 'agent_conversation' | 'agent_message' | ...
   vector_clock: VectorClock // doc-level
   blob_key: string          // R2 path
   size_bytes: number
@@ -41,12 +41,28 @@ Used by the server to order changes across devices. The server itself never insp
 
 ## Field-Level Merge (Tasks & Projects)
 
-Inside the encrypted blob, tasks and projects carry per-field vector clocks (`field_clocks`).
+Inside the encrypted blob, tasks, projects, and agent conversations carry per-field vector clocks
+(`field_clocks`).
 
 - Concurrent edits to **non-overlapping** fields merge cleanly.
 - Concurrent edits to **the same field** resolve last-writer-wins by the sum of device ticks (`tickSum`). Ties favor the remote write (deterministic).
 
-See `apps/desktop/src/main/sync/field-merge.ts` for the merge implementation. `TASK_SYNCABLE_FIELDS` is 15 fields; `PROJECT_SYNCABLE_FIELDS` is 8.
+See `apps/desktop/src/main/sync/field-merge.ts` for the merge implementation.
+`TASK_SYNCABLE_FIELDS` is 15 fields; `PROJECT_SYNCABLE_FIELDS` is 8; agent conversations merge
+`title`, `backend`, `trustList`, and `pinned`.
+
+## Agent Chat Items
+
+Agent chat adds two encrypted record sync item types:
+
+| Type                 | Merge behavior                                                     |
+| -------------------- | ------------------------------------------------------------------ |
+| `agent_conversation` | Field-level merge for title, backend, trust list, and pinned state |
+| `agent_message`      | Append-only by message id; duplicate ids are idempotent            |
+
+Conversation titles, message bodies, and attachments are stored as purpose-bound encrypted JSON
+envelopes before sync encoding. Streaming messages are not eligible for sync until they reach a
+terminal status.
 
 ## Cursors
 
@@ -58,24 +74,24 @@ Deletions include `deleted_at` inside the **Ed25519-signed** payload — prevent
 
 ## Endpoints
 
-| Path | Direction | Purpose |
-| --- | --- | --- |
-| `POST /sync/push` | up | Upload new sync items (metadata + blob refs) |
-| `POST /sync/pull` | down | Fetch updates since cursor |
-| `POST /sync/crdt/updates` | both | Incremental Yjs binary updates |
-| `POST /auth/*` | mixed | OTP, sign-in, refresh, sign-out |
-| `POST /devices/*` | mixed | Linking, listing, revoking |
-| `POST /keys/*` | mixed | Key sealing during link, rotation |
+| Path                      | Direction | Purpose                                      |
+| ------------------------- | --------- | -------------------------------------------- |
+| `POST /sync/push`         | up        | Upload new sync items (metadata + blob refs) |
+| `POST /sync/pull`         | down      | Fetch updates since cursor                   |
+| `POST /sync/crdt/updates` | both      | Incremental Yjs binary updates               |
+| `POST /auth/*`            | mixed     | OTP, sign-in, refresh, sign-out              |
+| `POST /devices/*`         | mixed     | Linking, listing, revoking                   |
+| `POST /keys/*`            | mixed     | Key sealing during link, rotation            |
 
 ## Error Modes
 
-| Failure | Behavior |
-| --- | --- |
-| Offline | Outbox queues; retry with backoff |
-| Auth expired | Refresh token; if rotation failed, prompt sign-in |
-| Quota exceeded | Surfaces in [Settings → Vault](/user-guide/settings#vault) |
-| Server unavailable | Exponential backoff; status indicator turns yellow |
-| Blob hash mismatch | Reject the item; log; alert health view |
+| Failure            | Behavior                                                   |
+| ------------------ | ---------------------------------------------------------- |
+| Offline            | Outbox queues; retry with backoff                          |
+| Auth expired       | Refresh token; if rotation failed, prompt sign-in          |
+| Quota exceeded     | Surfaces in [Settings → Vault](/user-guide/settings#vault) |
+| Server unavailable | Exponential backoff; status indicator turns yellow         |
+| Blob hash mismatch | Reject the item; log; alert health view                    |
 
 ## Encryption Stays End-to-End
 
