@@ -13,6 +13,8 @@ const ignoredPathPatterns = [
 const binaryPathPattern =
   /\.(?:avif|br|dmg|eot|flac|gif|gz|icns|ico|jpe?g|m4v|mov|mp3|mp4|ogg|otf|pdf|png|tgz|ttf|wav|webm|webp|woff2?|zip)$/i
 
+const markdownPathPattern = /\.md$/i
+
 const secretAssignmentPattern =
   /^\s*(?:export\s+)?([A-Z0-9_]*(?:SECRET|TOKEN|PRIVATE_KEY|API_KEY|PASSWORD|HMAC_KEY|CSC_LINK|KEY_PASSWORD)[A-Z0-9_]*)\s*[:=]\s*["']?([^"'\s#][^#\n]*)/i
 
@@ -86,7 +88,8 @@ function isPlaceholderValue(value) {
 function shouldScanPath(filePath) {
   return (
     !ignoredPathPatterns.some((pattern) => pattern.test(filePath)) &&
-    !binaryPathPattern.test(filePath)
+    !binaryPathPattern.test(filePath) &&
+    !markdownPathPattern.test(filePath)
   )
 }
 
