@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 import { eq } from 'drizzle-orm'
-import { NotesChannels } from '@memry/contracts/ipc-channels'
+import { JournalChannels, NotesChannels } from '@memry/contracts/ipc-channels'
 import { noteCache, noteTags, noteLinks } from '@memry/db-schema/schema/notes-cache'
 import { noteMetadata } from '@memry/db-schema/data-schema'
 import { createTestVault, createTestNote } from '@tests/utils/test-vault'
@@ -41,6 +41,23 @@ vi.mock('../database', () => ({
 
 vi.mock('../inbox/suggestions', () => ({
   updateNoteEmbedding: vi.fn()
+}))
+
+vi.mock('../journal/runtime-effects', () => ({
+  enqueueJournalCreate: vi.fn(),
+  enqueueJournalDelete: vi.fn(),
+  initializeJournalCrdt: vi.fn()
+}))
+
+vi.mock('../notes/runtime-effects', () => ({
+  syncNoteCreate: vi.fn(),
+  syncNoteDelete: vi.fn(),
+  syncNoteUpdate: vi.fn()
+}))
+
+vi.mock('../sync/crdt-provider', () => ({
+  ORIGIN_LOCAL: 'local',
+  getCrdtProvider: vi.fn(() => ({ getDoc: vi.fn(() => null) }))
 }))
 
 vi.mock('./index', () => ({
@@ -326,6 +343,176 @@ describe('vault watcher', () => {
     expect(mockWatcher.close).toHaveBeenCalled()
     expect(getWatcher().isWatching()).toBe(false)
     expect(hasPendingDeletes()).toBe(false)
+  })
+
+  it('applies watcher ignore rules and forwards watcher errors', async () => {
+    const listeners = new Map<string, Array<(...args: unknown[]) => void>>()
+    const addListener = (event: string, handler: (...args: unknown[]) => void) => {
+      listeners.set(event, [...(listeners.get(event) ?? []), handler])
+    }
+    const trigger = (event: string, ...args: unknown[]) => {
+      for (const handler of listeners.get(event) ?? []) handler(...args)
+    }
+
+    const mockWatcher = {
+      on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+        addListener(event, handler)
+        return mockWatcher
+      }),
+      once: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+        addListener(event, handler)
+        return mockWatcher
+      }),
+      close: vi.fn().mockResolvedValue(undefined)
+    }
+    mockWatch.mockReturnValue(mockWatcher)
+
+    const watcher = new VaultWatcher()
+    const onError = vi.fn()
+    const startPromise = watcher.start({
+      vaultPath: vault.path,
+      excludePatterns: ['ignored'],
+      onError
+    })
+
+    const ignored = mockWatch.mock.calls[0][1].ignored as (
+      filePath: string,
+      stats?: { isFile: () => boolean }
+    ) => boolean
+    expect(ignored(path.join(vault.path, '.hidden'))).toBe(true)
+    expect(ignored(path.join(vault.path, 'notes', 'ignored', 'note.md'))).toBe(true)
+    expect(ignored(path.join(vault.path, 'notes', 'draft.tmp'), { isFile: () => true })).toBe(true)
+    expect(ignored(path.join(vault.path, 'notes', 'draft.md'), { isFile: () => true })).toBe(false)
+    expect(ignored(path.join(vault.path, 'notes'), { isFile: () => false })).toBe(false)
+
+    trigger('error', 'watch failed')
+    expect(onError).toHaveBeenCalledWith(expect.any(Error))
+
+    trigger('ready')
+    await startPromise
+    await watcher.stop()
+  })
+
+  it('adds and updates non-markdown files as attachment notes', async () => {
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    const imagePath = path.join(vault.notesDir, 'photo.png')
+    fs.writeFileSync(imagePath, Buffer.from('image'))
+
+    await watcher.handleFileAdd(imagePath)
+
+    const createdCall = window.webContents.send.mock.calls.find(
+      ([channel, payload]) =>
+        channel === NotesChannels.events.CREATED &&
+        (payload as { fileType?: string }).fileType === 'image'
+    )
+    expect(createdCall?.[1]).toMatchObject({
+      note: expect.objectContaining({
+        path: 'notes/photo.png',
+        title: 'photo',
+        tags: [],
+        wordCount: 0
+      }),
+      source: 'external',
+      fileType: 'image'
+    })
+
+    const createdId = (createdCall?.[1] as { note: { id: string } }).note.id
+    window.webContents.send.mockClear()
+    fs.writeFileSync(imagePath, Buffer.from('updated-image'))
+
+    await watcher.handleFileChange(imagePath)
+
+    expect(window.webContents.send).toHaveBeenCalledWith(
+      NotesChannels.events.UPDATED,
+      expect.objectContaining({
+        id: createdId,
+        source: 'external',
+        fileType: 'image',
+        changes: expect.objectContaining({ fileSize: Buffer.byteLength('updated-image') })
+      })
+    )
+  })
+
+  it('emits journal create, update, and delete events for direct journal files', async () => {
+    vi.useFakeTimers()
+    const watcher = new VaultWatcher() as any
+    watcher.vaultPath = vault.path
+    const journalPath = path.join(vault.journalDir, '2026-05-10.md')
+    fs.writeFileSync(
+      journalPath,
+      [
+        '---',
+        'id: "journal-direct"',
+        'title: "2026-05-10"',
+        'created: "2026-05-10T00:00:00.000Z"',
+        'modified: "2026-05-10T00:00:00.000Z"',
+        'tags:',
+        '  - daily',
+        '---',
+        '',
+        'First entry'
+      ].join('\n'),
+      'utf8'
+    )
+
+    await watcher.handleFileAdd(journalPath)
+
+    expect(window.webContents.send).toHaveBeenCalledWith(
+      JournalChannels.events.ENTRY_CREATED,
+      expect.objectContaining({
+        date: '2026-05-10',
+        source: 'external',
+        entry: expect.objectContaining({
+          content: 'First entry',
+          tags: ['daily']
+        })
+      })
+    )
+
+    window.webContents.send.mockClear()
+    fs.writeFileSync(
+      journalPath,
+      [
+        '---',
+        'id: "journal-direct"',
+        'title: "2026-05-10"',
+        'created: "2026-05-10T00:00:00.000Z"',
+        'modified: "2026-05-10T01:00:00.000Z"',
+        'tags:',
+        '  - daily',
+        '---',
+        '',
+        'Updated entry'
+      ].join('\n'),
+      'utf8'
+    )
+
+    await watcher.handleFileChange(journalPath)
+
+    expect(window.webContents.send).toHaveBeenCalledWith(
+      JournalChannels.events.ENTRY_UPDATED,
+      expect.objectContaining({
+        date: '2026-05-10',
+        source: 'external',
+        entry: expect.objectContaining({
+          content: 'Updated entry',
+          tags: ['daily']
+        })
+      })
+    )
+
+    window.webContents.send.mockClear()
+    watcher.handleFileDelete(journalPath)
+    await vi.advanceTimersByTimeAsync(500)
+
+    expect(window.webContents.send).toHaveBeenCalledWith(
+      JournalChannels.events.ENTRY_DELETED,
+      expect.objectContaining({
+        date: '2026-05-10',
+        source: 'external'
+      })
+    )
   })
 
   // ==========================================================================

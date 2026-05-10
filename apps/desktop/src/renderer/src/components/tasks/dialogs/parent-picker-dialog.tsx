@@ -11,7 +11,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
-import { TaskCheckbox } from '@/components/tasks/task-badges'
 import { getPotentialParents } from '@/lib/subtask-utils'
 import type { Task } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
@@ -102,12 +101,31 @@ export const ParentPickerDialog = ({
         type="button"
         onClick={() => handleSelect(potentialParent.id)}
         className={cn(
-          'w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-left',
+          'w-full flex items-center gap-3 px-3 py-2.5 rounded-sm text-start',
           'hover:bg-accent transition-colors',
           'focus-visible:outline-none'
         )}
       >
-        <TaskCheckbox checked={isCompleted} onChange={() => {}} />
+        <span
+          aria-hidden="true"
+          className="shrink-0 rounded-full transition-all duration-200 size-4"
+        >
+          {isCompleted ? (
+            <span className="size-full rounded-full bg-[#7B9E87] flex items-center justify-center">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <path
+                  d="M2 5l2.5 2.5L8 3"
+                  stroke="#FAFAF8"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+          ) : (
+            <span className="block size-full rounded-full border-[1.5px] border-[#DAD9D4]" />
+          )}
+        </span>
         <span
           className={cn(
             'flex-1 truncate text-sm',
@@ -148,12 +166,12 @@ export const ParentPickerDialog = ({
 
         {/* Search input */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder={tPhaseF('phaseF.componentsTasksDialogsParentPickerDialog.searchTasks')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
+            className="ps-9"
             autoFocus
           />
         </div>

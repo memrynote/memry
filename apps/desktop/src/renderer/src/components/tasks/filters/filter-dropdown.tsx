@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react'
 
 import { ChevronRight } from '@/lib/icons'
+import { FilterSearchHeader } from '@/components/ui/filter-search-header'
 import { Picker } from '@/components/ui/picker'
 import type { TaskFilters, Project, Status, DueDateFilterType } from '@/data/tasks-data'
 import type { Priority, Task } from '@/data/task-model'
@@ -204,7 +205,9 @@ export const FilterDropdown = ({
       >
         {activePanel === null && (
           <>
-            <Picker.Search
+            <FilterSearchHeader
+              value={searchQuery}
+              onChange={setSearchQuery}
               placeholder={tPhaseF('phaseF.componentsTasksFiltersFilterDropdown.filterBy')}
             />
             <Picker.List>
@@ -223,7 +226,7 @@ export const FilterDropdown = ({
                 >
                   {CATEGORY_ICONS[cat.key]}
                   <span className="text-muted-foreground">{cat.label}</span>
-                  <ChevronRight size={10} className="ml-auto text-muted-foreground/60" />
+                  <ChevronRight size={10} className="ms-auto text-muted-foreground/60" />
                 </button>
               ))}
             </Picker.List>

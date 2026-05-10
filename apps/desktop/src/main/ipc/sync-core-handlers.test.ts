@@ -136,8 +136,9 @@ vi.mock('../sync/runtime', () => ({
   getNetworkMonitor: vi.fn().mockReturnValue(null)
 }))
 
+const mockTeardownSession = vi.fn().mockResolvedValue({ success: true, keychainFailures: [] })
 vi.mock('../sync/session-teardown', () => ({
-  teardownSession: vi.fn().mockResolvedValue({ success: true, keychainFailures: [] })
+  teardownSession: (...args: unknown[]) => mockTeardownSession(...args)
 }))
 
 vi.mock('../sync/device-registration', () => ({
@@ -230,6 +231,10 @@ describe('sync IPC handlers', () => {
     mockGetValidAccessToken.mockResolvedValue('mock-access-token')
     mockRefreshAccessToken.mockResolvedValue(true)
     mockGetSettingsSyncManager.mockReturnValue(null)
+    mockIsDatabaseInitialized.mockReturnValue(true)
+    mockSelectGet.mockReturnValue(undefined)
+    mockRetrieveKey.mockReset()
+    mockTeardownSession.mockResolvedValue({ success: true, keychainFailures: [] })
   })
 
   afterEach(() => {
@@ -267,6 +272,78 @@ describe('sync IPC handlers', () => {
     })
   })
 
+  it('delegates core status, sync, queue, pause, resume, quarantine, device, and wipe handlers', async () => {
+    const engine = {
+      getStatus: vi.fn(() => ({ status: 'syncing', pendingCount: 2 })),
+      fullSync: vi.fn(async () => undefined),
+      getQueueStats: vi.fn(() => ({ pending: 3, failed: 1 })),
+      pause: vi.fn(() => ({ success: true, wasPaused: false })),
+      resume: vi.fn(() => ({ success: true, pendingCount: 3 })),
+      getQuarantinedItems: vi.fn(() => [{ id: 'bad-item' }]),
+      checkDeviceStatus: vi.fn(async () => 'active'),
+      performEmergencyWipe: vi.fn(async () => undefined)
+    }
+    registerSyncHandlers(engine as never)
+
+    await expect(invokeHandler(SYNC_CHANNELS.GET_STATUS)).resolves.toEqual({
+      status: 'syncing',
+      pendingCount: 2
+    })
+    await expect(invokeHandler(SYNC_CHANNELS.TRIGGER_SYNC)).resolves.toEqual({ success: true })
+    expect(engine.fullSync).toHaveBeenCalledTimes(1)
+    await expect(invokeHandler(SYNC_CHANNELS.GET_QUEUE_SIZE)).resolves.toEqual({
+      pending: 3,
+      failed: 1
+    })
+    await expect(invokeHandler(SYNC_CHANNELS.PAUSE)).resolves.toEqual({
+      success: true,
+      wasPaused: false
+    })
+    await expect(invokeHandler(SYNC_CHANNELS.RESUME)).resolves.toEqual({
+      success: true,
+      pendingCount: 3
+    })
+    await expect(invokeHandler(SYNC_CHANNELS.GET_QUARANTINED_ITEMS)).resolves.toEqual([
+      { id: 'bad-item' }
+    ])
+    await expect(invokeHandler(SYNC_CHANNELS.CHECK_DEVICE_STATUS)).resolves.toEqual({
+      status: 'active'
+    })
+    await expect(invokeHandler(SYNC_CHANNELS.EMERGENCY_WIPE)).resolves.toEqual({
+      success: true
+    })
+    expect(engine.performEmergencyWipe).toHaveBeenCalledTimes(1)
+    expect(mockTeardownSession).toHaveBeenCalledWith('integrity')
+  })
+
+  it('returns fallback values for core handlers when no engine exists', async () => {
+    registerSyncHandlers()
+
+    await expect(invokeHandler(SYNC_CHANNELS.GET_STATUS)).resolves.toEqual({
+      status: 'idle',
+      pendingCount: 0
+    })
+    await expect(invokeHandler(SYNC_CHANNELS.GET_QUEUE_SIZE)).resolves.toEqual({
+      pending: 0,
+      failed: 0
+    })
+    await expect(invokeHandler(SYNC_CHANNELS.PAUSE)).resolves.toEqual({
+      success: false,
+      wasPaused: false
+    })
+    await expect(invokeHandler(SYNC_CHANNELS.RESUME)).resolves.toEqual({
+      success: false,
+      pendingCount: 0
+    })
+    await expect(invokeHandler(SYNC_CHANNELS.GET_QUARANTINED_ITEMS)).resolves.toEqual([])
+    await expect(invokeHandler(SYNC_CHANNELS.CHECK_DEVICE_STATUS)).resolves.toEqual({
+      status: 'unknown'
+    })
+    await expect(invokeHandler(SYNC_CHANNELS.EMERGENCY_WIPE)).resolves.toEqual({
+      success: true
+    })
+  })
+
   it('returns the settings sync error key when settings sync is not initialized', async () => {
     registerSyncHandlers()
 
@@ -278,6 +355,119 @@ describe('sync IPC handlers', () => {
     expect(result).toEqual({
       success: false,
       error: 'errors:sync.settingsNotInitialized'
+    })
+  })
+
+  it('updates and reads synced settings when the settings manager exists', async () => {
+    const manager = {
+      updateField: vi.fn(),
+      getSettings: vi.fn(() => ({ general: { locale: 'en' } }))
+    }
+    mockGetSettingsSyncManager.mockReturnValue(manager)
+    registerSyncHandlers()
+
+    await expect(
+      invokeHandler(SYNC_CHANNELS.UPDATE_SYNCED_SETTING, {
+        fieldPath: 'general.locale',
+        value: 'tr'
+      })
+    ).resolves.toEqual({ success: true })
+    expect(manager.updateField).toHaveBeenCalledWith('general.locale', 'tr', 'local')
+
+    await expect(invokeHandler(SYNC_CHANNELS.GET_SYNCED_SETTINGS)).resolves.toEqual({
+      general: { locale: 'en' }
+    })
+  })
+
+  it('returns null synced settings and storage when dependencies are missing', async () => {
+    registerSyncHandlers()
+    mockGetValidAccessToken.mockResolvedValueOnce(null)
+
+    await expect(invokeHandler(SYNC_CHANNELS.GET_SYNCED_SETTINGS)).resolves.toBeNull()
+    await expect(invokeHandler(SYNC_CHANNELS.GET_STORAGE_BREAKDOWN)).resolves.toBeNull()
+  })
+
+  it('fetches storage breakdown with a valid access token', async () => {
+    registerSyncHandlers()
+    mockGetFromServer.mockResolvedValueOnce({ usedBytes: 10, quotaBytes: 100 })
+
+    await expect(invokeHandler(SYNC_CHANNELS.GET_STORAGE_BREAKDOWN)).resolves.toEqual({
+      usedBytes: 10,
+      quotaBytes: 100
+    })
+    expect(mockGetFromServer).toHaveBeenCalledWith('/sync/storage', 'mock-access-token')
+  })
+
+  it('returns paginated sync history and parses JSON details when available', async () => {
+    registerSyncHandlers()
+    const row = {
+      id: 'history-1',
+      type: 'pull',
+      itemCount: 2,
+      direction: null,
+      details: '{"items":2}',
+      durationMs: null,
+      createdAt: new Date('2026-05-01T10:00:00.000Z')
+    }
+    const errorRow = {
+      id: 'history-2',
+      type: 'error',
+      itemCount: 0,
+      direction: 'down',
+      details: 'plain failure',
+      durationMs: 25,
+      createdAt: new Date('2026-05-01T11:00:00.000Z')
+    }
+    mockDb.select
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          orderBy: vi.fn().mockReturnValue({
+            limit: vi.fn().mockReturnValue({
+              offset: vi.fn().mockReturnValue({ all: vi.fn().mockReturnValue([row, errorRow]) })
+            })
+          })
+        })
+      })
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          all: vi.fn().mockReturnValue([{ total: 2 }])
+        })
+      })
+
+    await expect(
+      invokeHandler(SYNC_CHANNELS.GET_HISTORY, { limit: 10, offset: 5 })
+    ).resolves.toEqual({
+      entries: [
+        {
+          id: 'history-1',
+          type: 'pull',
+          itemCount: 2,
+          direction: undefined,
+          details: { items: 2 },
+          durationMs: undefined,
+          createdAt: new Date('2026-05-01T10:00:00.000Z').getTime()
+        },
+        {
+          id: 'history-2',
+          type: 'error',
+          itemCount: 0,
+          direction: 'down',
+          details: 'plain failure',
+          durationMs: 25,
+          createdAt: new Date('2026-05-01T11:00:00.000Z').getTime()
+        }
+      ],
+      total: 2
+    })
+  })
+
+  it('returns empty sync history when no vault is open', async () => {
+    registerSyncHandlers()
+    mockIsDatabaseInitialized.mockReturnValueOnce(false)
+
+    await expect(invokeHandler(SYNC_CHANNELS.GET_HISTORY, {})).resolves.toEqual({
+      entries: [],
+      total: 0
     })
   })
 
@@ -343,6 +533,40 @@ describe('sync IPC handlers', () => {
       expect(mockDb.update).toHaveBeenCalled()
       expect(mockUpdateSet).toHaveBeenCalledWith({ signingPublicKey: 'base64-encoded' })
       expect(mockStoreSet).not.toHaveBeenCalled()
+    })
+
+    it('cleans up local sync state when master or signing keys are missing', async () => {
+      mockIsDatabaseInitialized.mockReturnValue(true)
+      mockSelectGet.mockReturnValue({ id: 'dev-1', signingPublicKey: 'base64-encoded' })
+      mockRetrieveKey.mockResolvedValueOnce(null)
+
+      await checkSyncIntegrity()
+      expect(mockTeardownSession).toHaveBeenCalledWith('integrity')
+
+      mockTeardownSession.mockClear()
+      mockRetrieveKey.mockResolvedValueOnce(new Uint8Array(32).fill(1)).mockResolvedValueOnce(null)
+
+      await checkSyncIntegrity()
+      expect(mockTeardownSession).toHaveBeenCalledWith('integrity')
+    })
+
+    it('leaves matching signing keys alone and swallows integrity errors', async () => {
+      mockIsDatabaseInitialized.mockReturnValue(true)
+      mockSelectGet.mockReturnValue({ id: 'dev-1', signingPublicKey: 'base64-encoded' })
+      const fakeSigningKey = new Uint8Array(64).fill(9)
+      mockRetrieveKey
+        .mockResolvedValueOnce(new Uint8Array(32).fill(1))
+        .mockResolvedValueOnce(fakeSigningKey)
+      mockGetDevicePublicKey.mockReturnValue(new Uint8Array(32).fill(8))
+
+      await checkSyncIntegrity()
+      expect(mockSecureCleanup).toHaveBeenCalledWith(fakeSigningKey)
+      expect(mockUpdateSet).not.toHaveBeenCalled()
+
+      mockDb.select.mockImplementationOnce(() => {
+        throw new Error('db unavailable')
+      })
+      await expect(checkSyncIntegrity()).resolves.toBeUndefined()
     })
   })
 })

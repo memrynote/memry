@@ -39,10 +39,20 @@ export default defineConfig({
           environment: 'node',
           include: ['src/main/**/*.{test,spec}.{ts,tsx}'],
           setupFiles: ['tests/setup.ts'],
-          testTimeout: 15000,
-          hookTimeout: 15000,
+          testTimeout: 30000,
+          hookTimeout: 30000,
           pool: 'forks',
           isolate: true
+        }
+      },
+      {
+        extends: true,
+        test: {
+          name: 'preload',
+          root: appRoot,
+          environment: 'node',
+          include: ['src/preload/**/*.{test,spec}.{ts,tsx}'],
+          setupFiles: ['tests/setup.ts']
         }
       },
       {
@@ -55,6 +65,8 @@ export default defineConfig({
           include: ['src/renderer/**/*.{test,spec}.{ts,tsx}'],
           setupFiles: ['tests/setup.ts', 'tests/setup-dom.ts'],
           css: true,
+          testTimeout: 30000,
+          hookTimeout: 30000,
           environmentOptions: {
             jsdom: {
               resources: 'usable'
@@ -91,16 +103,15 @@ export default defineConfig({
         '../../packages/storage-vault/src/**/*.ts',
         '../../packages/sync-core/src/**/*.ts'
       ],
-      // Coverage ratchet baseline (2026-04-15, base 75c466db):
-      //   statements 37.49  branches 28.58  functions 34.60  lines 38.36
+      // Coverage ratchet baseline (2026-05-10, test-coverage):
+      //   statements 88.08  branches 75.02  functions 88.10  lines 90.00
       // Thresholds pinned at floor(actual) so suite passes today but any regression
-      // trips the ratchet. Bump these upward as coverage improves; never lower
-      // without recording a new baseline here. Targets: 80 / 70 / 75 / 80.
+      // trips the ratchet. Lines are held at the 90% target for desktop coverage.
       thresholds: {
-        statements: 37,
-        branches: 28,
-        functions: 34,
-        lines: 38
+        statements: 88,
+        branches: 75,
+        functions: 88,
+        lines: 90
       }
     },
     reporters: ['verbose'],

@@ -1,0 +1,362 @@
+import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { NoteBreadcrumb, SIDEBAR_REVEAL_FOLDER_EVENT } from '@/components/note/note-breadcrumb'
+import { NoteHeader } from '@/components/note/note-header'
+import { NoteLayout } from '@/components/note/note-layout'
+import { NoteOutlineSidebar } from '@/components/note/note-outline-sidebar'
+import { ProjectsEmptyState } from '@/components/sidebar/projects-empty-state'
+import { ProjectsSkeleton } from '@/components/sidebar/projects-skeleton'
+import { SortableProjectItem } from '@/components/sidebar/sortable-project-item'
+import type { Project } from '@/data/tasks-data'
+
+const mocks = vi.hoisted(() => ({
+  openTab: vi.fn(),
+  setActiveHeading: vi.fn(),
+  sortableState: {
+    attributes: { 'data-sortable': 'true' },
+    listeners: { onPointerDown: vi.fn() },
+    transform: { x: 4, y: 8, scaleX: 1, scaleY: 1 },
+    transition: 'transform 120ms',
+    isDragging: false
+  },
+  droppableState: {
+    isOver: false
+  },
+  dragState: {
+    isDragging: false
+  }
+}))
+
+vi.mock('@memry/i18n/renderer', () => ({
+  useT: () => ({
+    t: (key: string) => key
+  })
+}))
+
+vi.mock('@/components/note/note-reminder-button', () => ({
+  NoteReminderButton: ({ noteId, disabled }: { noteId: string; disabled?: boolean }) => (
+    <button type="button" disabled={disabled}>
+      reminder {noteId}
+    </button>
+  )
+}))
+
+vi.mock('@/components/ui/dropdown-menu', () => ({
+  DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuItem: ({
+    children,
+    onClick
+  }: {
+    children: React.ReactNode
+    onClick?: () => void
+  }) => (
+    <button type="button" onClick={onClick}>
+      {children}
+    </button>
+  ),
+  DropdownMenuSeparator: () => <hr />
+}))
+
+vi.mock('@/contexts/tabs', () => ({
+  useTabs: () => ({
+    openTab: mocks.openTab
+  })
+}))
+
+vi.mock('@/hooks/use-active-heading', () => ({
+  useActiveHeading: () => ({
+    activeHeadingId: 'intro',
+    setActiveHeading: mocks.setActiveHeading
+  })
+}))
+
+vi.mock('@dnd-kit/sortable', () => ({
+  useSortable: () => ({
+    attributes: mocks.sortableState.attributes,
+    listeners: mocks.sortableState.listeners,
+    setNodeRef: vi.fn(),
+    transform: mocks.sortableState.transform,
+    transition: mocks.sortableState.transition,
+    isDragging: mocks.sortableState.isDragging
+  })
+}))
+
+vi.mock('@dnd-kit/core', () => ({
+  useDroppable: () => ({
+    setNodeRef: vi.fn(),
+    isOver: mocks.droppableState.isOver
+  })
+}))
+
+vi.mock('@dnd-kit/utilities', () => ({
+  CSS: {
+    Transform: {
+      toString: (transform: { x: number; y: number } | null) =>
+        transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined
+    }
+  }
+}))
+
+vi.mock('@/contexts/drag-context', () => ({
+  useDragContext: () => ({
+    dragState: mocks.dragState
+  })
+}))
+
+vi.mock('@/components/ui/sidebar', () => ({
+  SidebarMenuItem: ({
+    children,
+    className,
+    style,
+    ...props
+  }: React.HTMLAttributes<HTMLLIElement>) => (
+    <li className={className} style={style} {...props}>
+      {children}
+    </li>
+  ),
+  SidebarMenuButton: ({
+    children,
+    isActive,
+    onClick,
+    tooltip
+  }: {
+    children: React.ReactNode
+    isActive?: boolean
+    onClick?: React.MouseEventHandler
+    tooltip?: string
+  }) => (
+    <button type="button" data-active={String(isActive)} title={tooltip} onClick={onClick}>
+      {children}
+    </button>
+  ),
+  SidebarMenuBadge: ({
+    children,
+    className
+  }: {
+    children: React.ReactNode
+    className?: string
+  }) => <span className={className}>{children}</span>,
+  SidebarMenuAction: ({
+    children,
+    className,
+    onClick
+  }: {
+    children: React.ReactNode
+    className?: string
+    onClick?: React.MouseEventHandler
+  }) => (
+    <button type="button" className={className} onClick={onClick}>
+      {children}
+    </button>
+  ),
+  useSidebar: () => ({ isMobile: false })
+}))
+
+const project: Project = {
+  id: 'project-1',
+  name: 'Writing',
+  color: '#f59e0b',
+  statusDefinitions: [],
+  taskCount: 3,
+  archivedAt: null,
+  createdAt: '2026-05-01T00:00:00.000Z',
+  updatedAt: '2026-05-01T00:00:00.000Z'
+}
+
+describe('note and sidebar cold surfaces', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.sortableState.isDragging = false
+    mocks.droppableState.isOver = false
+    mocks.dragState.isDragging = false
+  })
+
+  it('drives note header actions and disabled/bookmarked variants', async () => {
+    const user = userEvent.setup()
+    const handlers = {
+      onToggleBookmark: vi.fn(),
+      onToggleLocalGraph: vi.fn(),
+      onToggleLocalOnly: vi.fn(),
+      onOpenVersionHistory: vi.fn(),
+      onOpenExport: vi.fn()
+    }
+
+    const { rerender } = render(
+      <NoteHeader
+        noteId="note-1"
+        isBookmarked={false}
+        isLocalGraphOpen={false}
+        isLocalOnly={false}
+        isDeleted={false}
+        {...handlers}
+      />
+    )
+
+    await user.click(screen.getByTitle('editor.toolbar.addBookmark'))
+    await user.click(screen.getByText('editor.toolbar.showLocalGraph'))
+    await user.click(screen.getByText('editor.toolbar.versionHistory'))
+    await user.click(screen.getByText('editor.toolbar.export'))
+    await user.click(screen.getByText('editor.toolbar.setLocalOnly'))
+
+    expect(handlers.onToggleBookmark).toHaveBeenCalledOnce()
+    expect(handlers.onToggleLocalGraph).toHaveBeenCalledOnce()
+    expect(handlers.onOpenVersionHistory).toHaveBeenCalledOnce()
+    expect(handlers.onOpenExport).toHaveBeenCalledOnce()
+    expect(handlers.onToggleLocalOnly).toHaveBeenCalledOnce()
+
+    rerender(
+      <NoteHeader
+        noteId="note-1"
+        isBookmarked
+        isLocalGraphOpen
+        isLocalOnly
+        isDeleted
+        {...handlers}
+      />
+    )
+
+    expect(screen.getByTitle('editor.toolbar.removeBookmark')).toBeDisabled()
+    expect(screen.getByText('reminder note-1')).toBeDisabled()
+    expect(screen.getByText('editor.toolbar.hideLocalGraph')).toBeInTheDocument()
+    expect(screen.getByText('editor.toolbar.disableLocalOnly')).toBeInTheDocument()
+  })
+
+  it('opens note breadcrumb folders, dispatches sidebar reveal, and skips root notes', async () => {
+    const user = userEvent.setup()
+    const revealSpy = vi.fn()
+    window.addEventListener(SIDEBAR_REVEAL_FOLDER_EVENT, revealSpy)
+
+    const { rerender } = render(
+      <NoteBreadcrumb notePath="notes/Projects/Research/Deep Work.md" noteTitle="Deep Work" />
+    )
+
+    await user.click(screen.getByText('Projects'))
+    expect(revealSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: { folderPath: 'Projects' }
+      })
+    )
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'folder',
+        title: 'Projects',
+        path: '/folder/Projects',
+        entityId: 'Projects',
+        isPreview: true
+      })
+    )
+
+    await user.click(screen.getByLabelText('editor.breadcrumb.parentFolderAria'))
+    expect(mocks.openTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        title: 'Research',
+        entityId: 'Projects/Research'
+      })
+    )
+
+    rerender(<NoteBreadcrumb notePath="notes/Root.md" noteTitle="Root" />)
+    expect(screen.queryByLabelText('editor.breadcrumb.locationAria')).toBeNull()
+    window.removeEventListener(SIDEBAR_REVEAL_FOLDER_EVENT, revealSpy)
+  })
+
+  it('renders outline, layout chrome, heading callbacks, and empty outline states', async () => {
+    const user = userEvent.setup()
+    const onHeadingClick = vi.fn()
+    const headings = [
+      { id: 'intro', level: 2, text: 'Intro', position: 0 },
+      { id: 'details', level: 3, text: 'Details', position: 40 }
+    ]
+
+    render(
+      <NoteOutlineSidebar
+        headings={headings}
+        activeHeadingId="intro"
+        onHeadingClick={onHeadingClick}
+      />
+    )
+    await user.click(screen.getByText('Details'))
+    expect(onHeadingClick).toHaveBeenCalledWith('details')
+
+    render(<NoteOutlineSidebar headings={[]} />)
+    expect(screen.getByText('outline.emptyYet')).toBeInTheDocument()
+
+    const marqueeRef = vi.fn()
+    render(
+      <NoteLayout
+        headings={headings}
+        onHeadingClick={onHeadingClick}
+        breadcrumb={<span>Breadcrumb</span>}
+        actions={<button type="button">Action</button>}
+        topBar={<div>Top bar</div>}
+        stats={{ wordCount: 10, characterCount: 50, readingTime: 1 }}
+        fullWidth
+        marqueeZoneRef={marqueeRef}
+      >
+        <article>Note body</article>
+      </NoteLayout>
+    )
+
+    expect(screen.getByText('Breadcrumb')).toBeInTheDocument()
+    expect(screen.getByText('Action')).toBeInTheDocument()
+    expect(screen.getByText('Top bar')).toBeInTheDocument()
+    expect(screen.getByText('Note body')).toBeInTheDocument()
+    expect(marqueeRef).toHaveBeenCalled()
+  })
+
+  it('renders project empty, skeleton, and sortable drop/edit states', async () => {
+    const user = userEvent.setup()
+    const onCreateProject = vi.fn()
+    render(<ProjectsEmptyState onCreateProject={onCreateProject} className="custom-empty" />)
+    await user.click(
+      screen.getByText('phaseF.componentsSidebarProjectsEmptyState.createYourFirstProject2')
+    )
+    fireEvent.keyDown(
+      screen.getByLabelText('phaseF.componentsSidebarProjectsEmptyState.createYourFirstProject'),
+      { key: 'Enter' }
+    )
+    fireEvent.keyDown(
+      screen.getByLabelText('phaseF.componentsSidebarProjectsEmptyState.createYourFirstProject'),
+      { key: ' ' }
+    )
+    expect(onCreateProject).toHaveBeenCalledTimes(3)
+
+    const { container, rerender } = render(
+      <ProjectsSkeleton count={4} className="loading-projects" />
+    )
+    expect(container.querySelectorAll('.animate-pulse').length).toBe(12)
+
+    const handlers = {
+      onClick: vi.fn(),
+      onEdit: vi.fn(),
+      onArchive: vi.fn(),
+      onDelete: vi.fn()
+    }
+    rerender(<SortableProjectItem project={project} isActive={false} {...handlers} />)
+    await user.click(screen.getByTitle('Writing'))
+    await user.click(screen.getByText('phaseF.componentsSidebarSortableProjectItem.editProject'))
+    expect(handlers.onClick).toHaveBeenCalledOnce()
+    expect(handlers.onEdit).toHaveBeenCalledWith(project)
+    expect(screen.getByText('3')).toBeInTheDocument()
+
+    mocks.dragState.isDragging = true
+    rerender(<SortableProjectItem project={{ ...project, taskCount: 0 }} isActive {...handlers} />)
+    expect(container.querySelector('.border-dotted')).toBeInTheDocument()
+    expect(screen.queryByText('phaseF.componentsSidebarSortableProjectItem.editProject')).toBeNull()
+
+    mocks.droppableState.isOver = true
+    rerender(<SortableProjectItem project={project} isActive={false} {...handlers} />)
+    expect(
+      screen.getByText('phaseF.componentsSidebarSortableProjectItem.dropHere')
+    ).toBeInTheDocument()
+    expect(screen.queryByText('3')).toBeNull()
+
+    mocks.sortableState.isDragging = true
+    mocks.droppableState.isOver = false
+    rerender(<SortableProjectItem project={project} isActive={false} {...handlers} />)
+    expect(container.querySelector('.opacity-50')).toBeInTheDocument()
+  })
+})

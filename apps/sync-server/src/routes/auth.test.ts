@@ -33,11 +33,24 @@ vi.mock('../services/auth', () => ({
     accessToken: 'mock-access-token',
     refreshToken: 'mock-refresh-token'
   }),
+  revokeDeviceTokens: vi.fn().mockResolvedValue(undefined),
   rotateRefreshToken: vi.fn().mockResolvedValue({
     accessToken: 'new-access-token',
     refreshToken: 'new-refresh-token'
   }),
   signSetupToken: vi.fn().mockResolvedValue('mock-setup-token')
+}))
+
+vi.mock('../services/device', () => ({
+  listDevices: vi.fn().mockResolvedValue([
+    {
+      id: 'device-1',
+      name: 'Mac',
+      platform: 'macos',
+      auth_public_key: 'public-key-1',
+      revoked_at: null
+    }
+  ])
 }))
 
 vi.mock('../services/email', () => ({
@@ -110,9 +123,9 @@ vi.mock('jose', () => ({
 }))
 
 import { auth } from './auth'
-import { checkEmailRateLimit } from '../services/otp'
+import { checkEmailRateLimit, hasPendingOtp } from '../services/otp'
 import { getOrCreateUserByEmail, getUserByEmail, getUserById, updateUser } from '../services/user'
-import { rotateRefreshToken } from '../services/auth'
+import { revokeDeviceTokens, rotateRefreshToken } from '../services/auth'
 import { jwtVerify } from 'jose'
 
 // ============================================================================
@@ -243,6 +256,30 @@ describe('auth routes', () => {
       const json = await res.json()
       expect(json).toEqual({ success: true, expiresIn: 600 })
     })
+
+    it('should return 400 for invalid resend email', async () => {
+      const res = await app.request(
+        '/auth/otp/resend',
+        jsonPost('/auth/otp/resend', { email: 'bad' }),
+        env
+      )
+
+      expect(res.status).toBe(400)
+    })
+
+    it('should not send a new email when no OTP is pending', async () => {
+      vi.mocked(hasPendingOtp).mockResolvedValueOnce(false)
+
+      const res = await app.request(
+        '/auth/otp/resend',
+        jsonPost('/auth/otp/resend', { email: 'test@example.com' }),
+        env
+      )
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ success: true, expiresIn: 600 })
+      expect(checkEmailRateLimit).not.toHaveBeenCalled()
+    })
   })
 
   // ==========================================================================
@@ -327,6 +364,18 @@ describe('auth routes', () => {
       expect(res.status).toBe(400)
       const json = (await res.json()) as { error: { code: string } }
       expect(json.error.code).toBe(ErrorCodes.AUTH_INVALID_PROVIDER)
+    })
+
+    it('should reject non-loopback client redirect URIs', async () => {
+      const res = await app.request(
+        '/auth/oauth/google?redirect_uri=https://evil.example/callback',
+        { method: 'GET' },
+        env
+      )
+
+      expect(res.status).toBe(400)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
     })
   })
 
@@ -416,6 +465,56 @@ describe('auth routes', () => {
       )
 
       // #then
+      expect(res.status).toBe(401)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.AUTH_INVALID_TOKEN)
+    })
+
+    it('should return 400 for unsupported OAuth callback provider', async () => {
+      const res = await app.request(
+        '/auth/oauth/github/callback',
+        jsonPost('/auth/oauth/github/callback', { code: 'auth-code', state: 'valid-state' }),
+        env
+      )
+
+      expect(res.status).toBe(400)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.AUTH_INVALID_PROVIDER)
+    })
+
+    it('should return 401 when token exchange omits id_token', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({})
+        })
+      )
+
+      const res = await app.request(
+        '/auth/oauth/google/callback',
+        jsonPost('/auth/oauth/google/callback', { code: 'auth-code', state: 'valid-state' }),
+        env
+      )
+
+      expect(res.status).toBe(401)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.AUTH_INVALID_TOKEN)
+    })
+
+    it('should return 401 when Google email is not verified', async () => {
+      vi.mocked(jwtVerify)
+        .mockResolvedValueOnce({ payload: { type: 'oauth_state' } } as never)
+        .mockResolvedValueOnce({
+          payload: { email: 'test@example.com', email_verified: false, sub: 'sub-1' }
+        } as never)
+
+      const res = await app.request(
+        '/auth/oauth/google/callback',
+        jsonPost('/auth/oauth/google/callback', { code: 'auth-code', state: 'valid-state' }),
+        env
+      )
+
       expect(res.status).toBe(401)
       const json = (await res.json()) as { error: { code: string } }
       expect(json.error.code).toBe(ErrorCodes.AUTH_INVALID_TOKEN)
@@ -524,6 +623,112 @@ describe('auth routes', () => {
       const json = (await res.json()) as { error: { code: string } }
       expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
     })
+
+    it('should reject reused setup tokens', async () => {
+      const consumedStmt = createD1Statement()
+      consumedStmt.run.mockResolvedValue({ success: true, meta: { changes: 0 } })
+      ;(env.DB.prepare as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce(consumedStmt)
+
+      const res = await app.request(
+        '/auth/devices',
+        jsonPost('/auth/devices', validDeviceBody),
+        env
+      )
+
+      expect(res.status).toBe(401)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.AUTH_INVALID_TOKEN)
+    })
+
+    it('should reject registration when the user has too many active devices', async () => {
+      const consumedStmt = createD1Statement()
+      const countStmt = createD1Statement()
+      countStmt.first.mockResolvedValue({ cnt: 50 })
+      ;(env.DB.prepare as unknown as ReturnType<typeof vi.fn>)
+        .mockReturnValueOnce(consumedStmt)
+        .mockReturnValueOnce(countStmt)
+
+      const res = await app.request(
+        '/auth/devices',
+        jsonPost('/auth/devices', validDeviceBody),
+        env
+      )
+
+      expect(res.status).toBe(409)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+    })
+
+    it('should reject device metadata that becomes empty after sanitization', async () => {
+      const res = await app.request(
+        '/auth/devices',
+        jsonPost('/auth/devices', {
+          ...validDeviceBody,
+          name: '<>&',
+          platform: '<>&'
+        }),
+        env
+      )
+
+      expect(res.status).toBe(400)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+    })
+
+    it('should store null osVersion when the client omits it', async () => {
+      const prepareMock = env.DB.prepare as unknown as ReturnType<typeof vi.fn>
+      const statements: ReturnType<typeof createD1Statement>[] = []
+      prepareMock.mockImplementation(() => {
+        const statement = createD1Statement()
+        statements.push(statement)
+        return statement
+      })
+      const { osVersion: _osVersion, ...body } = validDeviceBody
+
+      const res = await app.request('/auth/devices', jsonPost('/auth/devices', body), env)
+
+      expect(res.status).toBe(200)
+      const deviceInsertIndex = prepareMock.mock.calls.findIndex(([sql]) =>
+        String(sql).includes('INSERT INTO devices')
+      )
+      expect(statements[deviceInsertIndex].bind.mock.calls[0][4]).toBeNull()
+    })
+  })
+
+  describe('GET /auth/recovery-info', () => {
+    it('should return configured recovery info', async () => {
+      vi.mocked(getUserById).mockResolvedValueOnce({
+        id: 'user-1',
+        kdf_salt: 'salt-1',
+        key_verifier: 'verifier-1'
+      } as ReturnType<typeof getUserById> extends Promise<infer T> ? T : never)
+
+      const res = await app.request('/auth/recovery-info', { method: 'GET' }, env)
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ kdfSalt: 'salt-1', keyVerifier: 'verifier-1' })
+    })
+
+    it('should return 404 when recovery user is missing', async () => {
+      vi.mocked(getUserById).mockResolvedValueOnce(
+        null as unknown as Awaited<ReturnType<typeof getUserById>>
+      )
+
+      const res = await app.request('/auth/recovery-info', { method: 'GET' }, env)
+
+      expect(res.status).toBe(404)
+    })
+
+    it('should return 400 when encryption keys are not configured', async () => {
+      vi.mocked(getUserById).mockResolvedValueOnce({
+        id: 'user-1',
+        kdf_salt: null
+      } as ReturnType<typeof getUserById> extends Promise<infer T> ? T : never)
+
+      const res = await app.request('/auth/recovery-info', { method: 'GET' }, env)
+
+      expect(res.status).toBe(400)
+    })
   })
 
   // ==========================================================================
@@ -587,6 +792,25 @@ describe('auth routes', () => {
       const thirdJson = await third.json()
 
       expect(thirdJson).not.toEqual(firstJson)
+    })
+
+    it('should return 400 for missing or invalid recovery email', async () => {
+      const res = await app.request('/auth/recovery?email=bad', { method: 'GET' }, env)
+
+      expect(res.status).toBe(400)
+    })
+
+    it('should return real recovery data when the account has keys', async () => {
+      vi.mocked(getUserByEmail).mockResolvedValueOnce({
+        id: 'user-1',
+        kdf_salt: 'real-salt',
+        key_verifier: 'real-verifier'
+      } as Awaited<ReturnType<typeof getUserByEmail>>)
+
+      const res = await app.request('/auth/recovery?email=test@example.com', { method: 'GET' }, env)
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ kdfSalt: 'real-salt', keyVerifier: 'real-verifier' })
     })
   })
 
@@ -652,6 +876,33 @@ describe('auth routes', () => {
       const json = (await res.json()) as { error: { code: string } }
       expect(json.error.code).toBe(ErrorCodes.NOT_FOUND)
     })
+
+    it('should return 400 for invalid setup body', async () => {
+      const res = await app.request('/auth/setup', jsonPost('/auth/setup', { kdfSalt: '' }), env)
+
+      expect(res.status).toBe(400)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+    })
+  })
+
+  describe('GET /auth/devices', () => {
+    it('should list active devices for the authenticated user', async () => {
+      const res = await app.request('/auth/devices', { method: 'GET' }, env)
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({
+        devices: [
+          {
+            id: 'device-1',
+            name: 'Mac',
+            platform: 'macos',
+            signingPublicKey: 'public-key-1',
+            revokedAt: null
+          }
+        ]
+      })
+    })
   })
 
   // ==========================================================================
@@ -702,6 +953,20 @@ describe('auth routes', () => {
       expect(json.error.code).toBe(ErrorCodes.AUTH_INVALID_TOKEN)
     })
 
+    it('should return 401 when the refresh token is expired', async () => {
+      vi.mocked(jwtVerify).mockRejectedValueOnce(new Error('token expired'))
+
+      const res = await app.request(
+        '/auth/refresh',
+        jsonPost('/auth/refresh', { refreshToken: 'expired-token' }),
+        env
+      )
+
+      expect(res.status).toBe(401)
+      const json = (await res.json()) as { error: { code: string } }
+      expect(json.error.code).toBe(ErrorCodes.AUTH_TOKEN_EXPIRED)
+    })
+
     it('should return 401 when token claims are invalid', async () => {
       // #given - missing type field
       vi.mocked(jwtVerify).mockResolvedValueOnce({
@@ -722,6 +987,31 @@ describe('auth routes', () => {
       expect(res.status).toBe(401)
       const json = (await res.json()) as { error: { code: string } }
       expect(json.error.code).toBe(ErrorCodes.AUTH_INVALID_TOKEN)
+    })
+
+    it('should return 400 for invalid refresh bodies', async () => {
+      const res = await app.request('/auth/refresh', jsonPost('/auth/refresh', {}), env)
+
+      expect(res.status).toBe(400)
+    })
+  })
+
+  describe('POST /auth/logout', () => {
+    it('should revoke device tokens and return success', async () => {
+      const res = await app.request('/auth/logout', { method: 'POST' }, env)
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ success: true })
+      expect(revokeDeviceTokens).toHaveBeenCalledWith(env.DB, 'device-1')
+    })
+
+    it('should still return success when token revocation logging handles an error', async () => {
+      vi.mocked(revokeDeviceTokens).mockRejectedValueOnce(new Error('db unavailable'))
+
+      const res = await app.request('/auth/logout', { method: 'POST' }, env)
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ success: true })
     })
   })
 })

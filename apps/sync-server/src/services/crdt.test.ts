@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  getBatchUpdates,
   getSnapshot,
   getUpdates,
   pruneUpdatesBeforeSnapshot,
@@ -43,7 +44,7 @@ function createD1Database(): D1Database {
   const getCombinedMax = (userId: string, noteId: string): number =>
     Math.max(getUpdateMax(userId, noteId), getSnapshotMax(userId, noteId))
 
-  return {
+  const db = {
     prepare(sql: string) {
       let params: unknown[] = []
 
@@ -86,7 +87,9 @@ function createD1Database(): D1Database {
             return { sequence_num: row.sequence_num } as T
           }
 
-          if (sql.startsWith('SELECT blob_key, sequence_num, signer_device_id FROM crdt_snapshots')) {
+          if (
+            sql.startsWith('SELECT blob_key, sequence_num, signer_device_id FROM crdt_snapshots')
+          ) {
             const row = snapshots.get(snapshotKey(params[0] as string, params[1] as string))
             if (!row) return null
             return {
@@ -154,6 +157,13 @@ function createD1Database(): D1Database {
       }
 
       return prepared as unknown as D1PreparedStatement
+    }
+  }
+
+  return {
+    ...db,
+    async batch(statements: D1PreparedStatement[]) {
+      return Promise.all(statements.map((statement) => statement.all()))
     }
   } as unknown as D1Database
 }
@@ -233,5 +243,64 @@ describe('CRDT service sequencing', () => {
 
     const pulled = await getUpdates(db, 'user-1', 'note-1', 2, 10)
     expect(pulled.updates.map((update) => update.sequence_num)).toEqual([3, 4])
+  })
+
+  it('reports hasMore when a note has more updates than the requested limit', async () => {
+    const db = createD1Database()
+
+    await storeUpdates(db, 'user-1', 'note-1', 'device-a', [bytes('a1'), bytes('a2'), bytes('a3')])
+
+    const pulled = await getUpdates(db, 'user-1', 'note-1', 0, 2)
+
+    expect(pulled.hasMore).toBe(true)
+    expect(pulled.updates.map((update) => update.sequence_num)).toEqual([1, 2])
+  })
+
+  it('gets batch updates per note and preserves hasMore per note', async () => {
+    const db = createD1Database()
+
+    await storeUpdates(db, 'user-1', 'note-1', 'device-a', [bytes('a1'), bytes('a2'), bytes('a3')])
+    await storeUpdates(db, 'user-1', 'note-2', 'device-a', [bytes('b1')])
+
+    const result = await getBatchUpdates(
+      db,
+      'user-1',
+      [
+        { noteId: 'note-1', since: 0 },
+        { noteId: 'note-2', since: 0 }
+      ],
+      2
+    )
+
+    expect(result['note-1'].hasMore).toBe(true)
+    expect(result['note-1'].updates.map((update) => update.sequence_num)).toEqual([1, 2])
+    expect(result['note-2'].hasMore).toBe(false)
+    expect(result['note-2'].updates.map((update) => update.sequence_num)).toEqual([1])
+  })
+
+  it('returns an empty batch result when no notes are requested', async () => {
+    const db = createD1Database()
+
+    await expect(getBatchUpdates(db, 'user-1', [], 10)).resolves.toEqual({})
+  })
+
+  it('returns null when a snapshot row or object is missing', async () => {
+    const db = createD1Database()
+    const storage = createMemoryBucket()
+
+    await expect(getSnapshot(db, storage, 'user-1', 'note-1')).resolves.toBeNull()
+
+    await storeSnapshot(db, storage, 'user-1', 'note-1', 'device-a', bytes('snapshot-a'))
+
+    const missingStorage = { get: async () => null } as unknown as R2Bucket
+    await expect(getSnapshot(db, missingStorage, 'user-1', 'note-1')).resolves.toBeNull()
+  })
+
+  it('does not prune updates when no snapshot exists', async () => {
+    const db = createD1Database()
+
+    await storeUpdates(db, 'user-1', 'note-1', 'device-a', [bytes('a1')])
+
+    await expect(pruneUpdatesBeforeSnapshot(db, 'user-1', 'note-1')).resolves.toBe(0)
   })
 })
