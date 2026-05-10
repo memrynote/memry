@@ -27,6 +27,7 @@ export * from './schema/sync-queue.ts'
 export * from './schema/sync-state.ts'
 export * from './schema/sync-history.ts'
 export * from './schema/search-reasons.ts'
+export * from './schema/vault-metadata.ts'
 export {
   propertyDefinitions,
   type PropertyDefinition,
