@@ -15,6 +15,8 @@ import { calendarEventHandler } from './calendar-event-handler'
 import { calendarSourceHandler } from './calendar-source-handler'
 import { calendarBindingHandler } from './calendar-binding-handler'
 import { calendarExternalEventHandler } from './calendar-external-event-handler'
+import { agentConversationHandler } from './agent-conversation-handler'
+import { agentMessageHandler } from './agent-message-handler'
 
 export type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb, EmitToWindows } from './types'
 export { resolveClockConflict } from './types'
@@ -32,7 +34,9 @@ const handlers = new Map<SyncItemType, SyncItemHandler>([
   ['calendar_event', calendarEventHandler],
   ['calendar_source', calendarSourceHandler],
   ['calendar_binding', calendarBindingHandler],
-  ['calendar_external_event', calendarExternalEventHandler]
+  ['calendar_external_event', calendarExternalEventHandler],
+  ['agent_conversation', agentConversationHandler],
+  ['agent_message', agentMessageHandler]
 ])
 
 type DesktopRemoteSyncAdapter = RemoteSyncAdapter<DrizzleDb, EmitToWindows>
