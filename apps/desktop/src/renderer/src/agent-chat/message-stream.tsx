@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-import type { Message } from '@main/agent/storage/types'
+import type { Message } from '@memry/contracts/ipc-agent'
 
 import { AssistantMessage } from './messages/assistant-message'
 import { SystemMessage } from './messages/system-message'

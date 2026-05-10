@@ -1,4 +1,4 @@
-import type { Message } from '@main/agent/storage/types'
+import type { Message } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
 
 import { formatUnknown } from './format'

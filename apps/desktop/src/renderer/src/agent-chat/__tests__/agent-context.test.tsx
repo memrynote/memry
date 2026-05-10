@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { AgentEvent, BinaryStatus } from '@memry/contracts/ipc-agent'
-import type { Conversation, Message } from '@main/agent/storage/types'
+import type { AgentEvent, BinaryStatus, Conversation, Message } from '@memry/contracts/ipc-agent'
 
 import { agentReducer, initialAgentState, type AgentState } from '../agent-context.reducer'
 

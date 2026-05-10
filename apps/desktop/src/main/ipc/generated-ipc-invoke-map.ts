@@ -10,13 +10,13 @@ export interface MainIpcInvokeHandlers {
   "agent:acceptDisclosure": (...args: []) => Awaited<import("../agent/runtime/disclosure-state").DisclosureState>
   "agent:approveTool": (...args: [unknown]) => Awaited<Promise<{ ok: boolean; }>>
   "agent:cancelTurn": (...args: [unknown]) => Awaited<Promise<{ ok: boolean; }>>
-  "agent:createConversation": (...args: [unknown]) => Awaited<Promise<import("../agent/storage/types").Conversation>>
-  "agent:editTrustList": (...args: [unknown]) => Awaited<Promise<import("../agent/storage/types").Conversation | null>>
+  "agent:createConversation": (...args: [unknown]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-agent").Conversation>>
+  "agent:editTrustList": (...args: [unknown]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-agent").Conversation | null>>
   "agent:getBinaryStatus": (...args: []) => Awaited<Promise<{ detected: boolean; version: string | null; meetsMinimum: boolean; minimumRequired: string; installHint: string | null; }>>
   "agent:getDisclosureState": (...args: []) => Awaited<import("../agent/runtime/disclosure-state").DisclosureState>
   "agent:getWindowId": (...args: []) => Awaited<{ windowId: string | null; }>
-  "agent:listConversations": (...args: [unknown]) => Awaited<Promise<import("../agent/storage/types").Conversation[]>>
-  "agent:loadConversation": (...args: [unknown]) => Awaited<Promise<{ conversation: import("../agent/storage/types").Conversation | null; messages: import("../agent/storage/types").Message[]; }>>
+  "agent:listConversations": (...args: [unknown]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-agent").Conversation[]>>
+  "agent:loadConversation": (...args: [unknown]) => Awaited<Promise<{ conversation: import("../../../../../packages/contracts/src/ipc-agent").Conversation | null; messages: import("../../../../../packages/contracts/src/ipc-agent").Message[]; }>>
   "agent:previewDiff": (...args: [unknown]) => Awaited<Promise<{ title: string; current: string; candidate: string; }>>
   "agent:sendTurn": (...args: [unknown]) => Awaited<Promise<{ ok: boolean; error: string; } | { ok: boolean; error?: undefined; }>>
   "ai-inline:get-server-port": (...args: []) => Awaited<number | null>
