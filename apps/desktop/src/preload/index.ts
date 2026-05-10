@@ -23,6 +23,7 @@ import { syncAuth, syncSetup, syncLinking, accountApi, syncDevices } from './api
 import { syncOps, cryptoApi, syncAttachments, syncCrdt, onCrdtStateChanged } from './api/sync-ops'
 import { syncEvents } from './api/sync-events'
 import { updaterApi, updaterEvents } from './api/updater'
+import { agentMcpApi } from './api/agent-mcp'
 
 const logger = createLogger('Preload')
 const MAIN_INVOKE_CHANNEL = 'main:invoke'
@@ -100,6 +101,7 @@ export const api = {
   syncAttachments,
   syncCrdt,
   updater: updaterApi,
+  agentMcp: agentMcpApi,
 
   onCrdtStateChanged,
   ...syncEvents,
