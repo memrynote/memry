@@ -24,6 +24,7 @@ import { syncOps, cryptoApi, syncAttachments, syncCrdt, onCrdtStateChanged } fro
 import { syncEvents } from './api/sync-events'
 import { updaterApi, updaterEvents } from './api/updater'
 import { agentMcpApi } from './api/agent-mcp'
+import { agentApi } from './api/agent'
 
 const logger = createLogger('Preload')
 const MAIN_INVOKE_CHANNEL = 'main:invoke'
@@ -102,6 +103,7 @@ export const api = {
   syncCrdt,
   updater: updaterApi,
   agentMcp: agentMcpApi,
+  agent: agentApi,
 
   onCrdtStateChanged,
   ...syncEvents,

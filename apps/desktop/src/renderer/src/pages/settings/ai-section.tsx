@@ -103,6 +103,8 @@ export function AISettings() {
   }, [])
 
   useEffect(() => {
+    let completeTimeout: ReturnType<typeof setTimeout> | null = null
+
     const unsubscribe = window.api.onEmbeddingProgress((event) => {
       if (event.phase === 'downloading' || event.phase === 'loading') {
         setIsLoadingModel(true)
@@ -124,7 +126,8 @@ export function AISettings() {
       } else {
         setReindexProgress(event)
         if (event.phase === 'complete') {
-          setTimeout(() => {
+          if (completeTimeout) clearTimeout(completeTimeout)
+          completeTimeout = setTimeout(() => {
             setIsReindexing(false)
             setReindexProgress(null)
             void window.api.settings.getAIModelStatus().then(setModelStatus)
@@ -132,7 +135,11 @@ export function AISettings() {
         }
       }
     })
-    return unsubscribe
+
+    return () => {
+      if (completeTimeout) clearTimeout(completeTimeout)
+      unsubscribe()
+    }
   }, [t])
 
   useEffect(() => {

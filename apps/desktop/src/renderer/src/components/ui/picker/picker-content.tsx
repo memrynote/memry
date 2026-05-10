@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { PopoverContent } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+import { usePickerContext } from './types'
 
 export interface PickerContentProps extends React.ComponentPropsWithoutRef<typeof PopoverContent> {
   width?: 'auto' | 'trigger' | number
@@ -10,6 +11,7 @@ export const PickerContent = React.forwardRef<
   React.ComponentRef<typeof PopoverContent>,
   PickerContentProps
 >(({ width, className, children, ...props }, ref) => {
+  const { contentId } = usePickerContext()
   const widthClass =
     width === 'auto'
       ? 'w-auto'
@@ -22,6 +24,7 @@ export const PickerContent = React.forwardRef<
   return (
     <PopoverContent
       ref={ref}
+      id={props.id ?? contentId}
       data-slot="picker-content"
       className={cn(
         'p-0 rounded-md overflow-clip shadow-[var(--shadow-card-hover)]',

@@ -64,6 +64,7 @@ import { useTaskWorkspaceData, useTaskWorkspaceMutations } from '@/features/task
 import { useTaskUiStore } from '@/features/tasks/use-task-ui-store'
 import { getFilteredTasks } from '@/lib/task-utils'
 import { useAgentMcpCurrentNoteResponder } from '@/agent-mcp/current-note-handler'
+import { AgentProvider } from '@/agent-chat/agent-context'
 
 const log = createLogger('App')
 const startupTheme = getStartupTheme()
@@ -469,19 +470,21 @@ function App(): React.JSX.Element {
             <AIInlineProvider>
               <HintModeProvider>
                 <TabProvider>
-                  <TabPersistenceManager>
-                    <SettingsModalProvider>
-                      <SelectedFolderProvider>
-                        <SidebarDrillDownProvider>
-                          <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
-                          <SidebarInset className="flex flex-col overflow-hidden">
-                            <AppContent />
-                          </SidebarInset>
-                        </SidebarDrillDownProvider>
-                        <TaskDragOverlay projects={projectsWithCounts} />
-                      </SelectedFolderProvider>
-                    </SettingsModalProvider>
-                  </TabPersistenceManager>
+                  <AgentProvider>
+                    <TabPersistenceManager>
+                      <SettingsModalProvider>
+                        <SelectedFolderProvider>
+                          <SidebarDrillDownProvider>
+                            <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
+                            <SidebarInset className="flex flex-col overflow-hidden">
+                              <AppContent />
+                            </SidebarInset>
+                          </SidebarDrillDownProvider>
+                          <TaskDragOverlay projects={projectsWithCounts} />
+                        </SelectedFolderProvider>
+                      </SettingsModalProvider>
+                    </TabPersistenceManager>
+                  </AgentProvider>
                 </TabProvider>
               </HintModeProvider>
             </AIInlineProvider>

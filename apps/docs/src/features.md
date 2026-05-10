@@ -48,10 +48,11 @@ A global command palette (<kbd>Cmd</kbd>+<kbd>K</kbd>) with scoped filters, tag 
 
 ## AI Features
 
-Inline AI menu in the editor, on-device embedding model for semantic search, voice transcription,
-a localhost MCP server for vault read tools, and pluggable providers (Ollama / OpenAI / Anthropic).
+Inline AI menu in the editor, Agent Chat with approval-gated vault writes, on-device embedding model
+for semantic search, voice transcription, a localhost MCP server for vault tools, and pluggable
+providers (Ollama / OpenAI / Anthropic).
 
-→ [AI Features](/user-guide/ai/inline-menu) · [Agent MCP Server](/user-guide/ai/agent-mcp)
+→ [AI Features](/user-guide/ai/inline-menu) · [Agent Chat & MCP Server](/user-guide/ai/agent-mcp)
 
 ## Sync & Devices
 
