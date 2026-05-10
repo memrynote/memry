@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import type { Message } from '@main/agent/storage/types'
+import type { Message } from '@memry/contracts/ipc-agent'
 
 import { MessageStream } from '../message-stream'
 

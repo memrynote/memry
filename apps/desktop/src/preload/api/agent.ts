@@ -5,10 +5,11 @@ import type {
   PreviewDiffRequest,
   PreviewDiffResponse,
   SendTurnRequest,
-  SendTurnResponse
+  SendTurnResponse,
+  Conversation,
+  Message
 } from '@memry/contracts/ipc-agent'
 import { AgentChannels } from '@memry/contracts/ipc-agent'
-import type { Conversation, Message } from '../../main/agent/storage/types'
 import { invoke, subscribe } from '../lib/ipc'
 
 export const agentApi = {

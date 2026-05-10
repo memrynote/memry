@@ -1,4 +1,4 @@
-import type { Conversation } from '@main/agent/storage/types'
+import type { Conversation } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
 
 import { Check, Plus } from '@/lib/icons'

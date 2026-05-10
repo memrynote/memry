@@ -6,11 +6,12 @@ import type {
   ApproveToolRequest,
   AttachmentInput,
   BinaryStatus,
+  Conversation,
+  Message,
   SendTurnResponse,
   SendTurnRequest
 } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
-import type { Conversation, Message } from '@main/agent/storage/types'
 
 import { extractErrorMessage } from '@/lib/ipc-error'
 import {

@@ -12,11 +12,12 @@ import type {
   PreviewDiffRequest,
   PreviewDiffResponse,
   SendTurnRequest,
-  SendTurnResponse
+  SendTurnResponse,
+  Conversation,
+  Message
 } from '@memry/contracts/ipc-agent'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
-import type { Conversation, Message } from '../main/agent/storage/types'
 import type {
   SyncStatusChangedEvent,
   ItemSyncedEvent,

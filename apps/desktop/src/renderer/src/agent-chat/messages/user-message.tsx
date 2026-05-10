@@ -1,4 +1,4 @@
-import type { Message } from '@main/agent/storage/types'
+import type { Message } from '@memry/contracts/ipc-agent'
 
 export function UserMessage({ message }: { message: Message }): React.JSX.Element | null {
   if (message.content.role !== 'user') return null

@@ -2,7 +2,7 @@ import userEvent from '@testing-library/user-event'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
-import type { Conversation } from '@main/agent/storage/types'
+import type { Conversation } from '@memry/contracts/ipc-agent'
 
 import { ConversationHeader } from '../conversation-header'
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import type { Conversation } from '@main/agent/storage/types'
+import type { Conversation } from '@memry/contracts/ipc-agent'
 
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'

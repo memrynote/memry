@@ -1,5 +1,4 @@
-import type { AgentEvent, BinaryStatus } from '@memry/contracts/ipc-agent'
-import type { Conversation, Message } from '@main/agent/storage/types'
+import type { AgentEvent, BinaryStatus, Conversation, Message } from '@memry/contracts/ipc-agent'
 
 export type PendingToolApproval = Extract<AgentEvent, { kind: 'tool_call_pending_approval' }>
 

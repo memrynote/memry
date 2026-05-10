@@ -1,4 +1,4 @@
-import type { Message } from '@main/agent/storage/types'
+import type { Message } from '@memry/contracts/ipc-agent'
 
 export function AssistantMessage({ message }: { message: Message }): React.JSX.Element | null {
   if (message.content.role !== 'assistant') return null
