@@ -870,7 +870,8 @@ describe('SyncEngine', () => {
         deps.db,
         'task-fresh',
         'device-1',
-        'update'
+        'update',
+        expect.any(Uint8Array)
       )
       expect(capturedContent).toBe(freshPayload)
 

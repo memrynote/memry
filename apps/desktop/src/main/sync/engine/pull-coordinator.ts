@@ -37,7 +37,7 @@ interface PullRunState {
   totalConflictsResolved: number
   processedIds: Set<string>
   crdtNoteIds: string[]
-  token: string
+  accessJwt: string
   vaultKey: Uint8Array
 }
 
@@ -83,7 +83,7 @@ export class PullCoordinator {
       vaultKey = credentials.vaultKey
 
       const runState = this.createPullRunState(
-        credentials.token,
+        credentials.accessJwt,
         credentials.vaultKey,
         pullStartedAt
       )
@@ -140,17 +140,21 @@ export class PullCoordinator {
     }
   }
 
-  private async getPullCredentials(): Promise<{ token: string; vaultKey: Uint8Array } | null> {
-    const token = await this.ctx.deps.getAccessToken()
-    if (!token) return null
+  private async getPullCredentials(): Promise<{ accessJwt: string; vaultKey: Uint8Array } | null> {
+    const accessJwt = await this.ctx.deps.getAccessToken()
+    if (!accessJwt) return null
 
     const vaultKey = await this.ctx.deps.getVaultKey()
     if (!vaultKey) return null
 
-    return { token, vaultKey }
+    return { accessJwt, vaultKey }
   }
 
-  private createPullRunState(token: string, vaultKey: Uint8Array, startTime: number): PullRunState {
+  private createPullRunState(
+    accessJwt: string,
+    vaultKey: Uint8Array,
+    startTime: number
+  ): PullRunState {
     return {
       timer: new SyncTimer(),
       startTime,
@@ -158,7 +162,7 @@ export class PullCoordinator {
       totalConflictsResolved: 0,
       processedIds: new Set<string>(),
       crdtNoteIds: [],
-      token,
+      accessJwt,
       vaultKey
     }
   }
@@ -178,7 +182,7 @@ export class PullCoordinator {
         changesResult = await prefetchedNext
         prefetchedNext = null
       } else {
-        changesResult = await this.fetchChangesPage(runState.token, cursor)
+        changesResult = await this.fetchChangesPage(runState.accessJwt, cursor)
       }
 
       const changes = changesResult.value
@@ -192,14 +196,14 @@ export class PullCoordinator {
       if (shouldStop) break
 
       if (hasMore && !this.ctx.abortController?.signal.aborted) {
-        prefetchedNext = this.fetchChangesPage(runState.token, cursor)
+        prefetchedNext = this.fetchChangesPage(runState.accessJwt, cursor)
         prefetchedNext.catch(() => {})
       }
     }
   }
 
   private async fetchChangesPage(
-    token: string,
+    accessJwt: string,
     pageCursor: string | null | undefined
   ): ReturnType<typeof withRetry<RecordChangesResponse>> {
     return withRetry(
@@ -207,7 +211,7 @@ export class PullCoordinator {
         const cp = pageCursor ? `&cursor=${pageCursor}` : ''
         return getFromServer<RecordChangesResponse>(
           `/sync/changes?limit=${this.ctx.options.pullPageLimit}${cp}`,
-          token
+          accessJwt
         )
       },
       {
@@ -228,7 +232,7 @@ export class PullCoordinator {
 
     const pageResult = await this.processPage(
       itemIds,
-      runState.token,
+      runState.accessJwt,
       runState.vaultKey,
       runState.timer,
       runState.processedIds,
@@ -245,7 +249,7 @@ export class PullCoordinator {
     if (runState.crdtNoteIds.length === 0 || !this.ctx.deps.crdtProvider) return
 
     runState.timer.startPhase('crdt-batch')
-    await this.crdtSync.applyCrdtBatch(runState.crdtNoteIds, runState.token, runState.vaultKey)
+    await this.crdtSync.applyCrdtBatch(runState.crdtNoteIds, runState.accessJwt, runState.vaultKey)
     runState.timer.endPhase(runState.crdtNoteIds.length)
     runState.crdtNoteIds.length = 0
   }
@@ -323,14 +327,14 @@ export class PullCoordinator {
 
   private async processPage(
     itemIds: string[],
-    token: string,
+    accessJwt: string,
     vaultKey: Uint8Array,
     timer: SyncTimer,
     processedIds: Set<string>,
     crdtNoteIds: string[]
   ): Promise<{ applied: number; conflicts: number; allCryptoFailed: boolean }> {
     const pullResult = await withRetry(
-      () => postToServer<{ items: RecordPullItemResponse[] }>('/sync/pull', { itemIds }, token),
+      () => postToServer<{ items: RecordPullItemResponse[] }>('/sync/pull', { itemIds }, accessJwt),
       { signal: this.ctx.abortController!.signal, isOnline: () => this.ctx.deps.network.online }
     )
 
@@ -414,7 +418,8 @@ export class PullCoordinator {
             operation: itemOp,
             content: contentBytes,
             clock: dec.clock,
-            deletedAt: dec.deletedAt
+            deletedAt: dec.deletedAt,
+            vaultKey
           })
 
           if (result === 'parse_error') {
@@ -468,7 +473,7 @@ export class PullCoordinator {
       this.corruptTracker.clearExpired()
       const { recovered, permanentFailures } = await this.corruptTracker.refetch(
         allRefetchIds,
-        token,
+        accessJwt,
         vaultKey
       )
 
@@ -482,7 +487,8 @@ export class PullCoordinator {
             operation: itemOp,
             content: contentBytes,
             clock: dec.clock,
-            deletedAt: dec.deletedAt
+            deletedAt: dec.deletedAt,
+            vaultKey
           })
           if (result === 'applied' || result === 'conflict') {
             processedIds.add(dec.id)

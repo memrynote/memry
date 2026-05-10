@@ -16,12 +16,12 @@ Sync is **opt-in**. If you never sign in, nothing leaves your device.
 
 A small indicator in the app chrome shows the current state:
 
-| Color | Meaning |
-| --- | --- |
-| Green | Idle, in sync |
-| Blue | Syncing right now |
+| Color  | Meaning                                           |
+| ------ | ------------------------------------------------- |
+| Green  | Idle, in sync                                     |
+| Blue   | Syncing right now                                 |
 | Yellow | Paused, retrying with backoff, or temporary error |
-| Red | Authentication or quota issue requiring action |
+| Red    | Authentication or quota issue requiring action    |
 
 Click the indicator for details, recent activity, and a pause toggle.
 
@@ -37,18 +37,19 @@ Resume sync to push and pull queued changes. Outgoing changes queue locally unti
 
 ## What Gets Synced
 
-| Item | Sync? |
-| --- | --- |
-| Notes (Yjs CRDT) | ✓ |
-| Journal entries | ✓ |
-| Tasks (field-level vector clocks) | ✓ |
-| Projects | ✓ |
-| Inbox items | ✓ |
-| Templates (custom) | ✓ |
-| Tags and properties | ✓ |
-| Settings (selected, opt-in) | ✓ |
-| Bookmarks and reminders | ✓ |
-| Attachments (encrypted blobs) | ✓ |
+| Item                                                           | Sync? |
+| -------------------------------------------------------------- | ----- |
+| Notes (Yjs CRDT)                                               | ✓     |
+| Journal entries                                                | ✓     |
+| Tasks (field-level vector clocks)                              | ✓     |
+| Projects                                                       | ✓     |
+| Inbox items                                                    | ✓     |
+| Templates (custom)                                             | ✓     |
+| Tags and properties                                            | ✓     |
+| Settings (selected, opt-in)                                    | ✓     |
+| Bookmarks and reminders                                        | ✓     |
+| Attachments (encrypted blobs)                                  | ✓     |
+| Agent chat conversations and terminal messages (paid accounts) | ✓     |
 
 ## What Does **Not** Get Synced
 
@@ -56,6 +57,7 @@ Resume sync to push and pull queued changes. Outgoing changes queue locally unti
 - Cached AI models and embedding vectors
 - Voice transcription model files
 - AI provider API keys
+- In-progress agent streaming tokens
 - Built-in templates (baked into the app version)
 - Local logs
 
@@ -78,6 +80,10 @@ Before any data leaves your device, it's encrypted with:
 - **Argon2id** key derivation from your passphrase
 
 The server stores the ciphertext, signatures, and metadata — but cannot decrypt anything. See [Cryptography](/architecture/cryptography) for the details.
+
+Agent chat follows the same rule: conversation titles, message bodies, and message attachments stay
+encrypted on disk and in sync payloads. Sync only uploads completed agent messages, so a partially
+streaming response remains local until it reaches a terminal status.
 
 ## Where the Server Lives
 

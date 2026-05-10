@@ -104,7 +104,7 @@ describe('sync telemetry', () => {
       endpoint: '/sync/records/changes',
       operation: 'changes',
       latencyMs: 35,
-      itemTypes: ['task', 'task', 'journal', 'calendar_external_event'],
+      itemTypes: ['task', 'task', 'journal', 'calendar_external_event', 'agent_message'],
       deletedCount: 1
     })
 
@@ -114,12 +114,14 @@ describe('sync telemetry', () => {
     expect(payload.domainTypes).toEqual({
       task: 2,
       journal: 1,
-      calendar_external_event: 1
+      calendar_external_event: 1,
+      agent_message: 1
     })
     expect(payload.domains).toEqual({
       tasks: 2,
       notes: 1,
-      calendar: 1
+      calendar: 1,
+      agent_chat: 1
     })
   })
 

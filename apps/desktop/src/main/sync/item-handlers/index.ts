@@ -15,6 +15,8 @@ import { calendarEventHandler } from './calendar-event-handler'
 import { calendarSourceHandler } from './calendar-source-handler'
 import { calendarBindingHandler } from './calendar-binding-handler'
 import { calendarExternalEventHandler } from './calendar-external-event-handler'
+import { agentConversationHandler } from './agent-conversation-handler'
+import { agentMessageHandler } from './agent-message-handler'
 
 export type { SyncItemHandler, ApplyContext, ApplyResult, DrizzleDb, EmitToWindows } from './types'
 export { resolveClockConflict } from './types'
@@ -32,7 +34,9 @@ const handlers = new Map<SyncItemType, SyncItemHandler>([
   ['calendar_event', calendarEventHandler],
   ['calendar_source', calendarSourceHandler],
   ['calendar_binding', calendarBindingHandler],
-  ['calendar_external_event', calendarExternalEventHandler]
+  ['calendar_external_event', calendarExternalEventHandler],
+  ['agent_conversation', agentConversationHandler],
+  ['agent_message', agentMessageHandler]
 ])
 
 type DesktopRemoteSyncAdapter = RemoteSyncAdapter<DrizzleDb, EmitToWindows>
@@ -41,8 +45,8 @@ function toRemoteSyncAdapter(handler: SyncItemHandler): DesktopRemoteSyncAdapter
   return {
     type: handler.type,
     schema: handler.schema,
-    applyRemoteMutation: ({ db, emit, itemId, operation, data, clock }) => {
-      const ctx = { db, emit }
+    applyRemoteMutation: ({ db, emit, itemId, operation, data, clock, vaultKey }) => {
+      const ctx = { db, emit, vaultKey }
       if (operation === 'delete') {
         return handler.applyDelete(ctx, itemId, clock)
       }
@@ -55,8 +59,8 @@ function toRemoteSyncAdapter(handler: SyncItemHandler): DesktopRemoteSyncAdapter
           handler.seedUnclocked?.(db, deviceId, queue as SyncQueueManager) ?? 0
       : undefined,
     buildPushPayload: handler.buildPushPayload
-      ? (db, itemId, deviceId, operation) =>
-          handler.buildPushPayload?.(db, itemId, deviceId, operation) ?? null
+      ? (db, itemId, deviceId, operation, vaultKey) =>
+          handler.buildPushPayload?.(db, itemId, deviceId, operation, vaultKey) ?? null
       : undefined,
     markPushSynced: handler.markPushSynced
       ? (db, itemId) => handler.markPushSynced?.(db, itemId)

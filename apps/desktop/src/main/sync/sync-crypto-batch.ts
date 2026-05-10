@@ -28,7 +28,8 @@ export interface EncryptBatchDeps {
   }
   resolvePushPayload: (
     item: { id: string; itemId: string; type: string; operation: string; payload: string },
-    deviceId: string
+    deviceId: string,
+    vaultKey: Uint8Array
   ) => string
 }
 
@@ -43,7 +44,7 @@ type QueueRow = {
 export async function encryptPushBatch(
   items: QueueRow[],
   vaultKey: Uint8Array,
-  signingSecretKey: Uint8Array,
+  signingKeyBytes: Uint8Array,
   signerDeviceId: string,
   deps: EncryptBatchDeps
 ): Promise<Array<{ queueId: string; pushItem: PushItem }>> {
@@ -54,7 +55,7 @@ export async function encryptPushBatch(
     meta: ReturnType<EncryptBatchDeps['extractPayloadMetadata']>
     deletedAt?: number
   } => {
-    const payload = deps.resolvePushPayload(item, signerDeviceId)
+    const payload = deps.resolvePushPayload(item, signerDeviceId, vaultKey)
     const meta = deps.extractPayloadMetadata(payload)
     return {
       payload,
@@ -81,7 +82,7 @@ export async function encryptPushBatch(
     const { results, errors } = await deps.workerBridge.encryptBatch(
       rawItems,
       vaultKey,
-      signingSecretKey,
+      signingKeyBytes,
       signerDeviceId
     )
 
@@ -101,7 +102,7 @@ export async function encryptPushBatch(
       operation: item.operation as Parameters<typeof encryptItemForPush>[0]['operation'],
       content: new TextEncoder().encode(payload),
       vaultKey,
-      signingSecretKey,
+      ['signingSecretKey']: signingKeyBytes,
       signerDeviceId,
       clock: meta.clock,
       stateVector: meta.stateVector,
