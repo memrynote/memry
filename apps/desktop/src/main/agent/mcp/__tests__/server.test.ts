@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { z } from 'zod'
 import { startAgentMcpServer, type AgentMcpServerHandle } from '../server'
 
 describe('Agent MCP HTTP server', () => {
@@ -50,5 +51,43 @@ describe('Agent MCP HTTP server', () => {
       headers: { authorization: `Bearer ${previous}` }
     })
     expect(r.status).toBe(401)
+  })
+})
+
+describe('Agent MCP server tool round-trip', () => {
+  it('routes a registered tool call through the SDK', async () => {
+    const handle = await startAgentMcpServer({
+      toolRegistrations: [
+        {
+          name: 'echo_tool',
+          description: 'echo input',
+          inputSchema: z.object({ msg: z.string() }),
+          handler: async (input) => ({ echoed: (input as { msg: string }).msg })
+        }
+      ]
+    })
+
+    try {
+      const r = await fetch(`${handle.url}/mcp`, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${handle.token}`,
+          'content-type': 'application/json',
+          accept: 'application/json, text/event-stream'
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: { name: 'echo_tool', arguments: { msg: 'hi' } }
+        })
+      })
+
+      expect(r.status).toBe(200)
+      const text = await r.text()
+      expect(text).toContain('"echoed":"hi"')
+    } finally {
+      await handle.stop()
+    }
   })
 })

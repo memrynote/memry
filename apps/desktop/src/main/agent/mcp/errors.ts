@@ -13,6 +13,7 @@ export class AgentToolError extends Error {
 }
 
 export interface McpErrorContent {
+  [key: string]: unknown
   isError: true
   content: Array<{ type: 'text'; text: string }>
 }
