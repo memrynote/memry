@@ -47,6 +47,13 @@ pnpm test:e2e -- tests/notes.spec.ts    # one file
 >
 > Skipping the rebuild is the #1 source of "passes locally, fails in CI" surprises.
 
+### E2E Test Hooks
+
+Desktop E2E helpers live behind `globalThis.__memryTestHooks` and only register when
+`NODE_ENV=test`. Keep hooks deterministic and limited to test control surfaces such as seeded
+sync data, secondary windows, or Quick Capture shortcut probes. If a flow can be tested through
+normal user-visible UI, prefer that path before adding a hook.
+
 ### Virtualized UI Tests
 
 `@tanstack/react-virtual` doesn't render any items inside jsdom (heights are zero, virtualization sees no scrollable area). Cover virtualized calendar / week / list UIs at the **Playwright** layer only.
@@ -77,9 +84,9 @@ pnpm typecheck:web      # renderer only
 
 `better-sqlite3` is the most common source of test failures. If you see `ERR_DLOPEN_FAILED` or `NODE_MODULE_VERSION` mismatches:
 
-| Target | Fix |
-| --- | --- |
-| Node tests | `pnpm rebuild better-sqlite3` |
+| Target             | Fix                                                   |
+| ------------------ | ----------------------------------------------------- |
+| Node tests         | `pnpm rebuild better-sqlite3`                         |
 | Electron app / E2E | `bash apps/desktop/scripts/ensure-native.sh electron` |
 
 Using the Node fix for Electron (or vice versa) leaves the app silently broken — see [Common Gotchas](/contribute/gotchas).
