@@ -67,9 +67,11 @@ export function RevealHandler({
       }
     }
 
-    setTimeout(() => {
+    const revealTimeout = setTimeout(() => {
       onReveal(pendingRevealNoteId)
     }, 50)
+
+    return () => clearTimeout(revealTimeout)
   }, [pendingRevealNoteId, noteMap, expandNode, onReveal, onClear])
 
   return null

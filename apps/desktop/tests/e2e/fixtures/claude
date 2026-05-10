@@ -1,0 +1,70 @@
+#!/usr/bin/env node
+const fs = require('node:fs')
+
+if (process.argv.includes('--version')) {
+  process.stdout.write('2.1.138 (Claude Code)\n')
+  process.exit(0)
+}
+
+function emit(event) {
+  process.stdout.write(`${JSON.stringify(event)}\n`)
+}
+
+function readMcpConfig() {
+  const index = process.argv.indexOf('--mcp-config')
+  if (index === -1 || !process.argv[index + 1]) {
+    throw new Error('missing --mcp-config')
+  }
+  return JSON.parse(fs.readFileSync(process.argv[index + 1], 'utf8')).mcpServers.memry
+}
+
+async function callCreateTask() {
+  const server = readMcpConfig()
+  const response = await fetch(server.url, {
+    method: 'POST',
+    headers: {
+      ...server.headers,
+      accept: 'application/json, text/event-stream',
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: {
+        name: 'vault_create_task',
+        arguments: {
+          title: 'Buy milk',
+          notes: 'Created from the current note.'
+        }
+      }
+    })
+  })
+
+  if (!response.ok) {
+    throw new Error(`MCP create task failed with HTTP ${response.status}`)
+  }
+  const text = await response.text()
+  if (text.includes('PERMISSION_DENIED') || text.includes('"isError":true')) {
+    throw new Error(`MCP create task was denied: ${text}`)
+  }
+}
+
+async function main() {
+  process.stdin.resume()
+  emit({
+    type: 'content_block_delta',
+    delta: { type: 'text_delta', text: "I'll create that task after approval." }
+  })
+  await callCreateTask()
+  emit({
+    type: 'content_block_delta',
+    delta: { type: 'text_delta', text: ' Created Buy milk.' }
+  })
+  emit({ type: 'message_stop' })
+}
+
+main().catch((error) => {
+  process.stderr.write(`${error instanceof Error ? error.stack : String(error)}\n`)
+  process.exit(1)
+})

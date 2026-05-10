@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useId } from 'react'
 import { RefreshCw, ChevronDown, Check } from '@/lib/icons'
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -37,6 +37,7 @@ export const RepeatPicker = ({
   const { t: tPhaseF } = useT('tasks')
   const { t } = useT('common')
   const [isOpen, setIsOpen] = useState(false)
+  const optionsId = useId()
 
   // Generate presets based on due date
   const presets = useMemo(() => getRepeatPresets(dueDate), [dueDate])
@@ -80,6 +81,7 @@ export const RepeatPicker = ({
         <Button
           variant="outline"
           role="combobox"
+          aria-controls={optionsId}
           aria-expanded={isOpen}
           aria-label={tPhaseF('phaseF.componentsTasksRepeatPicker.selectRepeatFrequency')}
           disabled={disabled}
@@ -103,7 +105,7 @@ export const RepeatPicker = ({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[280px] p-1" align="start">
+      <PopoverContent id={optionsId} className="w-[280px] p-1" align="start">
         {/* Does not repeat option */}
         <button
           type="button"

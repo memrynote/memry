@@ -4,6 +4,7 @@ export type PickerMode = 'single' | 'multi'
 
 export interface PickerContextValue {
   open: boolean
+  contentId: string
   onOpenChange: (open: boolean) => void
   mode: PickerMode
   value: string | string[] | null
