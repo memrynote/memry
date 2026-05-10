@@ -9,6 +9,7 @@ import type {
   SendTurnResponse,
   SendTurnRequest
 } from '@memry/contracts/ipc-agent'
+import { useT } from '@memry/i18n/renderer'
 import type { Conversation, Message } from '@main/agent/storage/types'
 
 import { extractErrorMessage } from '@/lib/ipc-error'
@@ -98,6 +99,7 @@ async function invokeWhenAgentReady<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 export function AgentProvider({ children }: { children: ReactNode }): React.JSX.Element {
+  const { t } = useT('common')
   const [state, dispatch] = useReducer(agentReducer, initialAgentState)
 
   const refreshConversations = useCallback(async () => {
@@ -107,22 +109,25 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
     } catch (error) {
       dispatch({
         type: 'set_error',
-        error: extractErrorMessage(error, 'Could not load agent conversations')
+        error: extractErrorMessage(error, t('agentChat.errors.loadConversations'))
       })
     }
-  }, [])
+  }, [t])
 
-  const loadConversation = useCallback(async (id: string) => {
-    try {
-      const { conversation, messages } = await getAgentApi().loadConversation({ id })
-      dispatch({ type: 'set_active_conversation', conversation, messages })
-    } catch (error) {
-      dispatch({
-        type: 'set_error',
-        error: extractErrorMessage(error, 'Could not load agent conversation')
-      })
-    }
-  }, [])
+  const loadConversation = useCallback(
+    async (id: string) => {
+      try {
+        const { conversation, messages } = await getAgentApi().loadConversation({ id })
+        dispatch({ type: 'set_active_conversation', conversation, messages })
+      } catch (error) {
+        dispatch({
+          type: 'set_error',
+          error: extractErrorMessage(error, t('agentChat.errors.loadConversation'))
+        })
+      }
+    },
+    [t]
+  )
 
   const createConversation = useCallback(async () => {
     try {
@@ -130,11 +135,11 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
       dispatch({ type: 'set_active_conversation', conversation, messages: [] })
       return conversation
     } catch (error) {
-      const message = extractErrorMessage(error, 'Could not create agent conversation')
+      const message = extractErrorMessage(error, t('agentChat.errors.createConversation'))
       dispatch({ type: 'set_error', error: message })
       throw new Error(message)
     }
-  }, [])
+  }, [t])
 
   const sendTurn = useCallback(
     async (input: {
@@ -154,44 +159,48 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
           attachments: input.attachments ?? []
         })
         if (!result.ok) {
-          const message =
-            result.error ??
-            'Another window is mid-turn for this conversation. Wait for it to finish or stop it from there.'
+          const message = result.error ?? t('agentChat.errors.busy')
           throw new Error(message)
         }
       } catch (error) {
         dispatch({ type: 'set_in_flight', conversationId: input.conversationId, inFlight: false })
-        const message = extractErrorMessage(error, 'Could not send agent turn')
+        const message = extractErrorMessage(error, t('agentChat.errors.sendTurn'))
         dispatch({ type: 'set_error', error: message })
         throw new Error(message)
       }
     },
-    []
+    [t]
   )
 
-  const cancelTurn = useCallback(async (conversationId: string) => {
-    try {
-      await getAgentApi().cancelTurn({ conversationId })
-      dispatch({ type: 'set_in_flight', conversationId, inFlight: false })
-    } catch (error) {
-      dispatch({
-        type: 'set_error',
-        error: extractErrorMessage(error, 'Could not cancel agent turn')
-      })
-    }
-  }, [])
+  const cancelTurn = useCallback(
+    async (conversationId: string) => {
+      try {
+        await getAgentApi().cancelTurn({ conversationId })
+        dispatch({ type: 'set_in_flight', conversationId, inFlight: false })
+      } catch (error) {
+        dispatch({
+          type: 'set_error',
+          error: extractErrorMessage(error, t('agentChat.errors.cancelTurn'))
+        })
+      }
+    },
+    [t]
+  )
 
-  const approveTool = useCallback(async (input: ApproveToolRequest) => {
-    try {
-      await getAgentApi().approveTool(input)
-      dispatch({ type: 'clear_pending', toolCallId: input.toolCallId })
-    } catch (error) {
-      dispatch({
-        type: 'set_error',
-        error: extractErrorMessage(error, 'Could not submit tool approval')
-      })
-    }
-  }, [])
+  const approveTool = useCallback(
+    async (input: ApproveToolRequest) => {
+      try {
+        await getAgentApi().approveTool(input)
+        dispatch({ type: 'clear_pending', toolCallId: input.toolCallId })
+      } catch (error) {
+        dispatch({
+          type: 'set_error',
+          error: extractErrorMessage(error, t('agentChat.errors.submitApproval'))
+        })
+      }
+    },
+    [t]
+  )
 
   const editTrustList = useCallback(
     async (input: { conversationId: string; add?: string[]; remove?: string[] }) => {
@@ -207,11 +216,11 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
       } catch (error) {
         dispatch({
           type: 'set_error',
-          error: extractErrorMessage(error, 'Could not update trusted tools')
+          error: extractErrorMessage(error, t('agentChat.errors.updateTrust'))
         })
       }
     },
-    [state.messagesByConversation]
+    [state.messagesByConversation, t]
   )
 
   const acceptDisclosure = useCallback(async () => {
@@ -221,10 +230,10 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
     } catch (error) {
       dispatch({
         type: 'set_error',
-        error: extractErrorMessage(error, 'Could not save disclosure state')
+        error: extractErrorMessage(error, t('agentChat.errors.saveDisclosure'))
       })
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     const api = getAgentApi()
@@ -240,7 +249,7 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
         if (cancelled) return
         dispatch({
           type: 'set_error',
-          error: extractErrorMessage(error, 'Could not resolve agent source window')
+          error: extractErrorMessage(error, t('agentChat.errors.resolveWindow'))
         })
       })
 
@@ -252,7 +261,7 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
         if (cancelled) return
         dispatch({
           type: 'set_error',
-          error: extractErrorMessage(error, 'Could not detect Claude CLI')
+          error: extractErrorMessage(error, t('agentChat.errors.detectCli'))
         })
       })
 
@@ -264,7 +273,7 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
         if (cancelled) return
         dispatch({
           type: 'set_error',
-          error: extractErrorMessage(error, 'Could not load disclosure state')
+          error: extractErrorMessage(error, t('agentChat.errors.loadDisclosure'))
         })
       })
 
@@ -276,7 +285,7 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
         if (cancelled) return
         dispatch({
           type: 'set_error',
-          error: extractErrorMessage(error, 'Could not load agent conversations')
+          error: extractErrorMessage(error, t('agentChat.errors.loadConversations'))
         })
       })
 
@@ -285,7 +294,7 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
       cancelled = true
       unsubscribe()
     }
-  }, [])
+  }, [t])
 
   const value = useMemo<AgentContextValue>(
     () => ({

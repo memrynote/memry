@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import type { ApproveToolDecision } from '@memry/contracts/ipc-agent'
+import { useT } from '@memry/i18n/renderer'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -24,6 +25,7 @@ function formatArgs(args: unknown): string {
 }
 
 export function ApprovalModal(): React.JSX.Element | null {
+  const { t } = useT('common')
   const agent = useAgentOptional()
   const pending = agent?.state.pendingApprovals[0]
   const [editing, setEditing] = useState(false)
@@ -35,8 +37,12 @@ export function ApprovalModal(): React.JSX.Element | null {
   const currentAgent = agent
   const currentPending = pending
   const updateTool = isUpdateTool(currentPending.name)
-  const approvalLabel = updateTool ? 'Apply once' : 'Allow once'
-  const editLabel = updateTool ? 'Edit and apply' : 'Edit and allow'
+  const approvalLabel = updateTool
+    ? t('agentChat.approval.applyOnce')
+    : t('agentChat.approval.allowOnce')
+  const editLabel = updateTool
+    ? t('agentChat.approval.editAndApply')
+    : t('agentChat.approval.editAndAllow')
 
   function startEditing(): void {
     setEditing(true)
@@ -59,7 +65,7 @@ export function ApprovalModal(): React.JSX.Element | null {
     try {
       void respond({ kind: 'edit_allow', editedArgs: JSON.parse(edited) })
     } catch {
-      setParseError('Enter valid JSON before applying edits.')
+      setParseError(t('agentChat.approval.invalidJson'))
     }
   }
 
@@ -72,9 +78,9 @@ export function ApprovalModal(): React.JSX.Element | null {
     >
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Allow {currentPending.name}?</DialogTitle>
+          <DialogTitle>{t('agentChat.approval.title', { name: currentPending.name })}</DialogTitle>
           <DialogDescription>
-            The agent wants to call <code>{currentPending.name}</code> with these arguments.
+            {t('agentChat.approval.description', { name: currentPending.name })}
           </DialogDescription>
         </DialogHeader>
 
@@ -107,7 +113,7 @@ export function ApprovalModal(): React.JSX.Element | null {
               variant="secondary"
               onClick={() => void respond({ kind: 'allow_always' })}
             >
-              Allow always
+              {t('agentChat.approval.allowAlways')}
             </Button>
           )}
           <Button
@@ -115,14 +121,14 @@ export function ApprovalModal(): React.JSX.Element | null {
             variant="secondary"
             onClick={editing ? submitEditedArgs : startEditing}
           >
-            {editing ? 'Apply edits' : editLabel}
+            {editing ? t('agentChat.approval.applyEdits') : editLabel}
           </Button>
           <Button
             type="button"
             variant="destructive"
             onClick={() => void respond({ kind: 'deny' })}
           >
-            Deny
+            {t('agentChat.approval.deny')}
           </Button>
         </div>
       </DialogContent>

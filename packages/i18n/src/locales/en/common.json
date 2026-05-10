@@ -106,6 +106,87 @@
     "everyNYears": "{count, plural, one {Every year} other {Every # years}}",
     "repeats": "Repeats"
   },
+  "agentChat": {
+    "title": "Agent chat",
+    "loading": "Loading agent chat...",
+    "conversationLoading": "Conversation loading...",
+    "startTitle": "Start chatting with your vault",
+    "newConversation": "New conversation",
+    "stop": "Stop",
+    "binary": {
+      "checking": "Checking Claude CLI...",
+      "notFound": "claude not found. {hint}",
+      "tooOld": "claude {version} is too old. Need {minimumRequired}. {hint}",
+      "ready": "claude {version} detected and ready."
+    },
+    "enable": {
+      "title": "Enable Memry Agent",
+      "description": "Memry Agent uses your local Claude CLI subscription to chat about your vault. Each turn sends your message, attached references, prior conversation context, and tool results to Anthropic under your Claude account.",
+      "remote": "Memry encrypts your local and synced chat history, but model inference is remote.",
+      "readTools": "Read tools run automatically.",
+      "writeTools": "Create and update tools require approval.",
+      "diff": "Update tools show a diff or preview.",
+      "button": "Enable Claude CLI chat"
+    },
+    "approval": {
+      "title": "Allow {name}?",
+      "description": "The agent wants to call {name} with these arguments.",
+      "applyOnce": "Apply once",
+      "allowOnce": "Allow once",
+      "editAndApply": "Edit and apply",
+      "editAndAllow": "Edit and allow",
+      "allowAlways": "Allow always",
+      "applyEdits": "Apply edits",
+      "deny": "Deny",
+      "invalidJson": "Enter valid JSON before applying edits."
+    },
+    "diff": {
+      "previewError": "Could not preview note diff",
+      "title": "Review note update",
+      "description": "The agent wants to update {title}. Review the current and candidate content before applying it.",
+      "fallbackTitle": "this note",
+      "current": "Current",
+      "candidate": "Candidate",
+      "loading": "Loading...",
+      "apply": "Apply",
+      "applyEdited": "Apply edited"
+    },
+    "composer": {
+      "currentNote": "Current note",
+      "removeAttachment": "Remove {label}",
+      "placeholder": "Ask Agent",
+      "send": "Send"
+    },
+    "refPicker": {
+      "noMatches": "No matches"
+    },
+    "toolResult": {
+      "label": "Tool result",
+      "ok": "ok",
+      "failed": "failed"
+    },
+    "sidebar": {
+      "label": "Right sidebar",
+      "day": "Day",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# pending approval} other {# pending approvals}}",
+      "inProgress": "Agent turn in progress"
+    },
+    "errors": {
+      "loadConversations": "Could not load agent conversations",
+      "loadConversation": "Could not load agent conversation",
+      "createConversation": "Could not create agent conversation",
+      "busy": "Another window is mid-turn for this conversation. Wait for it to finish or stop it from there.",
+      "sendTurn": "Could not send agent turn",
+      "cancelTurn": "Could not cancel agent turn",
+      "submitApproval": "Could not submit tool approval",
+      "updateTrust": "Could not update trusted tools",
+      "saveDisclosure": "Could not save disclosure state",
+      "resolveWindow": "Could not resolve agent source window",
+      "detectCli": "Could not detect Claude CLI",
+      "loadDisclosure": "Could not load disclosure state"
+    }
+  },
   "phaseF": {
     "componentsAppSidebar": {
       "collections": "Collections",

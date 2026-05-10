@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import type { AttachmentInput } from '@memry/contracts/ipc-agent'
+import { useT } from '@memry/i18n/renderer'
 
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -20,6 +21,7 @@ function getRefQuery(text: string): string | null {
 }
 
 export function Composer({ conversationId, sourceWindowId }: ComposerProps): React.JSX.Element {
+  const { t } = useT('common')
   const agent = useAgentOptional()
   const activeTab = useActiveTab()
   const [text, setText] = useState('')
@@ -29,7 +31,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   useEffect(() => {
     if (activeTab?.type !== 'note' || !activeTab.entityId) return
     setAttachments((current) => {
-      const label = activeTab.title || 'Current note'
+      const label = activeTab.title || t('agentChat.composer.currentNote')
       const currentNote = current.find((attachment) => attachment.kind === 'current_note')
       if (currentNote) {
         if (currentNote.label === label) return current
@@ -46,7 +48,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
         }
       ]
     })
-  }, [activeTab?.entityId, activeTab?.title, activeTab?.type])
+  }, [activeTab?.entityId, activeTab?.title, activeTab?.type, t])
 
   const inFlight = agent?.state.inFlight?.[conversationId] === true
   const canSend = Boolean(agent) && Boolean(sourceWindowId) && text.trim().length > 0 && !inFlight
@@ -82,7 +84,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
               <span className="truncate">{attachment.label}</span>
               <button
                 type="button"
-                aria-label={`Remove ${attachment.label}`}
+                aria-label={t('agentChat.composer.removeAttachment', { label: attachment.label })}
                 onClick={() => removeAttachment(attachment.ref_id)}
                 className="rounded-full text-muted-foreground hover:text-foreground"
               >
@@ -130,10 +132,16 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
           }}
           rows={3}
           disabled={inFlight || !agent}
-          placeholder="Ask Agent"
+          placeholder={t('agentChat.composer.placeholder')}
           className="min-h-20 resize-none bg-background text-sm"
         />
-        <Button type="button" size="icon-sm" aria-label="Send" disabled={!canSend} onClick={submit}>
+        <Button
+          type="button"
+          size="icon-sm"
+          aria-label={t('agentChat.composer.send')}
+          disabled={!canSend}
+          onClick={submit}
+        >
           <Send className="size-4" aria-hidden="true" />
         </Button>
       </div>
