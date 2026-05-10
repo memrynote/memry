@@ -117,7 +117,7 @@ export function SettingsPage() {
           />
           <SettingsNavItem
             icon={<Server className="w-3.5 h-3.5" />}
-            label="Agent MCP"
+            label={t('page.nav.items.agentMcp')}
             isActive={activeSection === 'agent-mcp'}
             onClick={() => setActiveSection('agent-mcp')}
           />

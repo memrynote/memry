@@ -34,10 +34,9 @@ export async function mainToRendererInvoke<T>(
 
   return new Promise((resolve) => {
     let settled = false
-    let timeout: ReturnType<typeof setTimeout> | undefined
 
     const cleanup = (): void => {
-      if (timeout) clearTimeout(timeout)
+      clearTimeout(timeout)
       ipcMain.removeListener(responseChannel, handleResponse)
     }
 
@@ -54,7 +53,7 @@ export async function mainToRendererInvoke<T>(
     }
 
     ipcMain.on(responseChannel, handleResponse)
-    timeout = setTimeout(() => settle(null), timeoutMs)
+    const timeout = setTimeout(() => settle(null), timeoutMs)
 
     try {
       const message: MainInvokePayload = { requestId, channel, payload }

@@ -38,7 +38,7 @@ describe('AgentMcpSection', () => {
     await user.click(screen.getByRole('button', { name: 'Copy URL' }))
     expect(writeTextMock).toHaveBeenCalledWith('http://127.0.0.1:1234')
 
-    await user.click(screen.getByRole('button', { name: 'Copy bearer token' }))
+    await user.click(screen.getByRole('button', { name: 'Copy Bearer token' }))
     expect(writeTextMock).toHaveBeenCalledWith('local-token-placeholder')
 
     await user.click(screen.getByRole('button', { name: 'Rotate token' }))

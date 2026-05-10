@@ -25,7 +25,8 @@
         "integrations": "אינטגרציות",
         "vault": "כספת",
         "tags": "תגים",
-        "properties": "נכסים"
+        "properties": "נכסים",
+        "agentMcp": "Agent MCP"
       }
     }
   },
@@ -1156,5 +1157,34 @@
       "failedToUpdateConfig": "עדכון התצורה נכשל",
       "failedToReindex": "לאינדקס מחדש נכשל"
     }
+  },
+  "agentMcp": {
+    "header": {
+      "title": "Agent MCP",
+      "subtitle": "Local server access for external MCP clients."
+    },
+    "groups": {
+      "connection": "Connection",
+      "access": "Access"
+    },
+    "fields": {
+      "url": {
+        "label": "URL",
+        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+      },
+      "bearer": {
+        "label": "Bearer token",
+        "description": "In-memory credential for this app launch."
+      }
+    },
+    "actions": {
+      "rotate": {
+        "label": "Rotate token",
+        "description": "Invalidate existing external-client sessions."
+      }
+    },
+    "copyLabel": "Copy {label}",
+    "notRunning": "Not running",
+    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
   }
 }

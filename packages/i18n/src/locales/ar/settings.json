@@ -25,7 +25,8 @@
         "integrations": "التكامل",
         "vault": "قبو",
         "tags": "العلامات",
-        "properties": "خصائص"
+        "properties": "خصائص",
+        "agentMcp": "Agent MCP"
       }
     }
   },
@@ -1156,5 +1157,34 @@
       "failedToUpdateConfig": "فشل في تحديث التكوين",
       "failedToReindex": "فشلت إعادة الفهرسة"
     }
+  },
+  "agentMcp": {
+    "header": {
+      "title": "Agent MCP",
+      "subtitle": "Local server access for external MCP clients."
+    },
+    "groups": {
+      "connection": "Connection",
+      "access": "Access"
+    },
+    "fields": {
+      "url": {
+        "label": "URL",
+        "description": "Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
+      },
+      "bearer": {
+        "label": "Bearer token",
+        "description": "In-memory credential for this app launch."
+      }
+    },
+    "actions": {
+      "rotate": {
+        "label": "Rotate token",
+        "description": "Invalidate existing external-client sessions."
+      }
+    },
+    "copyLabel": "Copy {label}",
+    "notRunning": "Not running",
+    "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
   }
 }

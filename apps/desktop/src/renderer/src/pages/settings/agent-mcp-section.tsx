@@ -8,10 +8,10 @@ import {
   SettingRow,
   SettingRowTall
 } from '@/components/settings/settings-primitives'
-
-const UNAVAILABLE = 'Not running'
+import { useT } from '@memry/i18n/renderer'
 
 export function AgentMcpSection() {
+  const { t } = useT('settings')
   const [status, setStatus] = useState<AgentMcpStatus | null>(null)
   const [isRotating, setIsRotating] = useState(false)
 
@@ -37,52 +37,49 @@ export function AgentMcpSection() {
   }, [])
 
   const toolCount = status?.toolCount ?? 0
-  const url = status?.url ?? UNAVAILABLE
-  const bearer = status?.token ?? UNAVAILABLE
+  const unavailable = t('agentMcp.notRunning')
+  const url = status?.url ?? unavailable
+  const bearer = status?.token ?? unavailable
+  const urlLabel = t('agentMcp.fields.url.label')
+  const bearerLabel = t('agentMcp.fields.bearer.label')
 
   return (
     <div>
       <SettingsHeader
-        title="Agent MCP"
-        subtitle="Local server access for external MCP clients."
+        title={t('agentMcp.header.title')}
+        subtitle={t('agentMcp.header.subtitle')}
         action={
           status && (
             <span className="rounded-md border border-border bg-muted/50 px-2 py-1 text-xs/4 text-muted-foreground">
-              {toolCount} tools
+              {t('agentMcp.toolsBadge', { count: toolCount })}
             </span>
           )
         }
       />
 
-      <SettingsGroup label="Connection">
-        <SettingRowTall
-          label="URL"
-          description="Use this localhost endpoint from Cursor, Claude Desktop, or Zed."
-        >
-          <ValueLine label="URL" value={url} />
+      <SettingsGroup label={t('agentMcp.groups.connection')}>
+        <SettingRowTall label={urlLabel} description={t('agentMcp.fields.url.description')}>
+          <ValueLine label={urlLabel} value={url} canCopy={status !== null} />
         </SettingRowTall>
-        <SettingRowTall
-          label="Bearer token"
-          description="In-memory credential for this app launch."
-        >
-          <ValueLine label="bearer token" value={bearer} />
+        <SettingRowTall label={bearerLabel} description={t('agentMcp.fields.bearer.description')}>
+          <ValueLine label={bearerLabel} value={bearer} canCopy={status !== null} />
         </SettingRowTall>
       </SettingsGroup>
 
-      <SettingsGroup label="Access">
+      <SettingsGroup label={t('agentMcp.groups.access')}>
         <SettingRow
-          label="Rotate token"
-          description="Invalidate existing external-client sessions."
+          label={t('agentMcp.actions.rotate.label')}
+          description={t('agentMcp.actions.rotate.description')}
         >
           <Button
             type="button"
             variant="secondary"
             size="sm"
-            onClick={handleRotate}
+            onClick={() => void handleRotate()}
             disabled={isRotating}
           >
             <RefreshCw className="size-3.5" />
-            Rotate token
+            {t('agentMcp.actions.rotate.label')}
           </Button>
         </SettingRow>
       </SettingsGroup>
@@ -90,8 +87,9 @@ export function AgentMcpSection() {
   )
 }
 
-function ValueLine({ label, value }: { label: string; value: string }) {
-  const canCopy = value !== UNAVAILABLE
+function ValueLine({ label, value, canCopy }: { label: string; value: string; canCopy: boolean }) {
+  const { t } = useT('settings')
+  const copyLabel = t('agentMcp.copyLabel', { label })
 
   return (
     <div className="flex min-w-0 items-center gap-2 rounded-md border border-border bg-muted/30 px-2 py-1.5">
@@ -100,8 +98,8 @@ function ValueLine({ label, value }: { label: string; value: string }) {
         type="button"
         variant="ghost"
         size="icon-sm"
-        aria-label={`Copy ${label}`}
-        title={`Copy ${label}`}
+        aria-label={copyLabel}
+        title={copyLabel}
         disabled={!canCopy}
         onClick={() => void navigator.clipboard.writeText(value)}
       >
