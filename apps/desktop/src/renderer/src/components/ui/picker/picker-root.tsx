@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useId } from 'react'
 import { Popover } from '@/components/ui/popover'
 import { PickerContext, type PickerMode } from './types'
 
@@ -26,6 +26,7 @@ export function PickerRoot({
   const [internalOpen, setInternalOpen] = useState(defaultOpen)
   const [searchQuery, setSearchQuery] = useState('')
   const [activePanel, setActivePanel] = useState<string | null>(null)
+  const contentId = useId()
 
   const isControlled = controlledOpen !== undefined
   const open = isControlled ? controlledOpen : internalOpen
@@ -55,6 +56,7 @@ export function PickerRoot({
   const ctx = useMemo(
     () => ({
       open,
+      contentId,
       onOpenChange: handleOpenChange,
       mode,
       value,
@@ -64,7 +66,7 @@ export function PickerRoot({
       activePanel,
       onPanelChange: setActivePanel
     }),
-    [open, handleOpenChange, mode, value, handleValueChange, searchQuery, activePanel]
+    [open, contentId, handleOpenChange, mode, value, handleValueChange, searchQuery, activePanel]
   )
 
   return (
