@@ -13,6 +13,10 @@ vi.mock('../agent-context', () => ({
   useAgentOptional: mockUseAgentOptional
 }))
 
+vi.mock('@/contexts/tabs', () => ({
+  useActiveTab: () => null
+}))
+
 import { AgentPane } from '../agent-pane'
 
 const readyBinary: BinaryStatus = {
