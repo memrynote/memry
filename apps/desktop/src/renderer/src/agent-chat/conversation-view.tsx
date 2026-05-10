@@ -1,3 +1,4 @@
+import { Composer } from './composer'
 import { ConversationHeader } from './conversation-header'
 import { useAgentOptional } from './agent-context'
 import { MessageStream } from './message-stream'
@@ -44,6 +45,7 @@ export function ConversationView({ conversationId }: ConversationViewProps): Rea
         onSelectConversation={agent.loadConversation}
       />
       <MessageStream messages={messages} />
+      <Composer conversationId={conversationId} sourceWindowId="agent-pane" />
     </section>
   )
 }

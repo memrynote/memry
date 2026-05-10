@@ -7,6 +7,10 @@ vi.mock('../agent-context', () => ({
   useAgentOptional: mockUseAgentOptional
 }))
 
+vi.mock('@/contexts/tabs', () => ({
+  useActiveTab: () => null
+}))
+
 import { ConversationView } from '../conversation-view'
 
 describe('ConversationView', () => {
