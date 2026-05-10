@@ -46,7 +46,9 @@ const hoisted = vi.hoisted(() => ({
   unregisterUpdaterHandlers: vi.fn(),
   registerCrdtIpcHandlers: vi.fn(),
   registerTelemetryHandlers: vi.fn(),
-  unregisterTelemetryHandlers: vi.fn()
+  unregisterTelemetryHandlers: vi.fn(),
+  registerAgentMcpHandlers: vi.fn(),
+  unregisterAgentMcpHandlers: vi.fn()
 }))
 
 vi.mock('./vault-handlers', () => ({
@@ -141,6 +143,10 @@ vi.mock('./telemetry-handlers', () => ({
   registerTelemetryHandlers: hoisted.registerTelemetryHandlers,
   unregisterTelemetryHandlers: hoisted.unregisterTelemetryHandlers
 }))
+vi.mock('./agent-mcp-handlers', () => ({
+  registerAgentMcpHandlers: hoisted.registerAgentMcpHandlers,
+  unregisterAgentMcpHandlers: hoisted.unregisterAgentMcpHandlers
+}))
 
 import { areHandlersRegistered, registerAllHandlers, unregisterAllHandlers } from './index'
 
@@ -161,6 +167,7 @@ describe('ipc index registration lifecycle', () => {
     expect(hoisted.registerUpdaterHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerCrdtIpcHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerTelemetryHandlers).toHaveBeenCalledTimes(1)
+    expect(hoisted.registerAgentMcpHandlers).toHaveBeenCalledTimes(1)
   })
 
   it('prevents duplicate registration', () => {
@@ -171,6 +178,7 @@ describe('ipc index registration lifecycle', () => {
     expect(hoisted.registerSyncHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerCryptoHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.registerUpdaterHandlers).toHaveBeenCalledTimes(1)
+    expect(hoisted.registerAgentMcpHandlers).toHaveBeenCalledTimes(1)
   })
 
   it('unregisters all handlers and resets state', () => {
@@ -183,6 +191,7 @@ describe('ipc index registration lifecycle', () => {
     expect(hoisted.unregisterSyncHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.unregisterCryptoHandlers).toHaveBeenCalledTimes(1)
     expect(hoisted.unregisterUpdaterHandlers).toHaveBeenCalledTimes(1)
+    expect(hoisted.unregisterAgentMcpHandlers).toHaveBeenCalledTimes(1)
   })
 
   it('is a no-op to unregister when handlers are not registered', () => {
@@ -192,6 +201,7 @@ describe('ipc index registration lifecycle', () => {
     expect(hoisted.unregisterSyncHandlers).not.toHaveBeenCalled()
     expect(hoisted.unregisterCryptoHandlers).not.toHaveBeenCalled()
     expect(hoisted.unregisterUpdaterHandlers).not.toHaveBeenCalled()
+    expect(hoisted.unregisterAgentMcpHandlers).not.toHaveBeenCalled()
     expect(areHandlersRegistered()).toBe(false)
   })
 })
