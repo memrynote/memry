@@ -5,6 +5,8 @@ export interface MainIpcInvokeHandlers {
   "account:getInfo": (...args: []) => Awaited<import("./account-handlers").AccountInfo>
   "account:getRecoveryKey": (...args: []) => Awaited<Promise<{ success: boolean; error: string; key?: undefined; } | { success: boolean; key: string; error?: undefined; }>>
   "account:signOut": (...args: []) => Awaited<Promise<{ keychainWarning?: string | undefined; success: boolean; }>>
+  "agent_mcp:get_status": (...args: []) => Awaited<{ url: string | null; token: string | null; toolCount: number; }>
+  "agent_mcp:rotate_token": (...args: []) => Awaited<{ url: string | null; token: string | null; toolCount: number; }>
   "ai-inline:get-server-port": (...args: []) => Awaited<number | null>
   "ai-inline:get-settings": (...args: []) => Awaited<import("../../../../../packages/contracts/src/ai-inline-channels").AIInlineSettings>
   "ai-inline:set-settings": (...args: [Partial<import("../../../../../packages/contracts/src/ai-inline-channels").AIInlineSettings>]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>

@@ -4,6 +4,7 @@ import type * as InboxRpc from '@memry/rpc/inbox'
 import type * as NotesRpc from '@memry/rpc/notes'
 import type * as TasksRpc from '@memry/rpc/tasks'
 import type { AppNavigationCommandEvent } from '@memry/contracts/ipc-channels'
+import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
 import type {
@@ -1591,6 +1592,11 @@ interface WindowAPI {
   windowClose: () => void
 }
 
+interface AgentMcpClientAPI {
+  getStatus: () => Promise<AgentMcpStatus>
+  rotateToken: () => Promise<AgentMcpStatus>
+}
+
 interface MainInvokePayload {
   requestId: string
   channel: string
@@ -1621,6 +1627,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   syncOps: SyncOpsClientAPI
   crypto: CryptoClientAPI
   syncAttachments: SyncAttachmentsClientAPI
+  agentMcp: AgentMcpClientAPI
   updater: {
     getState: () => Promise<AppUpdateState>
     checkForUpdates: () => Promise<AppUpdateState>
