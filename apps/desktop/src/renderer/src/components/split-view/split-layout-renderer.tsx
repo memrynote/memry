@@ -1,7 +1,7 @@
 import { useTabs } from '@/contexts/tabs'
 import type { SplitDirection, SplitLayout } from '@/contexts/tabs/types'
 import { SplitPane } from './split-pane'
-import { TabPane } from './tab-pane'
+import { TabPaneWithDropZones } from './tab-pane-with-drop-zones'
 
 interface SplitLayoutRendererProps {
   layout: SplitLayout
@@ -32,7 +32,7 @@ export const SplitLayoutRenderer = ({
     if (!group) return null
 
     return (
-      <TabPane
+      <TabPaneWithDropZones
         groupId={layout.tabGroupId}
         isActive={state.activeGroupId === layout.tabGroupId}
         showSidebarToggle={showSidebarToggle}

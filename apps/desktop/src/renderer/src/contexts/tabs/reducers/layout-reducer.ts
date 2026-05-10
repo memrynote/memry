@@ -1,6 +1,10 @@
 import type { SplitDirection, SplitLayout, TabAction, TabGroup, TabSystemState } from '../types'
 import { generateId, createDefaultTab } from '../helpers'
-import { insertSplitAtGroup } from '@/components/split-view/layout-helpers'
+import {
+  hasGroupInLayout,
+  insertSplitAtGroup,
+  removeGroupFromLayout
+} from '@/components/split-view/layout-helpers'
 import { closeGroup } from './tab-crud-reducer'
 import { pruneHistory } from './history-helpers'
 
@@ -90,10 +94,23 @@ export function layoutReducer(state: TabSystemState, action: LayoutAction): TabS
     }
 
     case 'MOVE_TAB_TO_NEW_SPLIT': {
-      const { tabId, fromGroupId, direction } = action.payload
+      const {
+        tabId,
+        fromGroupId,
+        targetGroupId = fromGroupId,
+        direction,
+        position
+      } = action.payload
       const fromGroup = state.tabGroups[fromGroupId]
+      const targetGroup = state.tabGroups[targetGroupId]
 
-      if (!fromGroup) return state
+      if (!fromGroup || !targetGroup) return state
+      if (
+        !hasGroupInLayout(state.layout, fromGroupId) ||
+        !hasGroupInLayout(state.layout, targetGroupId)
+      ) {
+        return state
+      }
 
       const tab = fromGroup.tabs.find((t) => t.id === tabId)
       if (!tab) return state
@@ -116,42 +133,34 @@ export function layoutReducer(state: TabSystemState, action: LayoutAction): TabS
 
       // Map direction to split type
       const splitDirection: SplitDirection =
-        direction === 'up' || direction === 'down' ? 'vertical' : 'horizontal'
+        direction === 'up' || direction === 'down' || direction === 'vertical'
+          ? 'vertical'
+          : 'horizontal'
 
-      const isFirst = direction === 'left' || direction === 'up'
-
-      const insertSplit = (layout: typeof state.layout): typeof state.layout => {
-        if (layout.type === 'leaf' && layout.tabGroupId === fromGroupId) {
-          return {
-            type: 'split',
-            direction: splitDirection,
-            ratio: 0.5,
-            first: isFirst
-              ? { type: 'leaf', tabGroupId: newGroup.id }
-              : { type: 'leaf', tabGroupId: fromGroupId },
-            second: isFirst
-              ? { type: 'leaf', tabGroupId: fromGroupId }
-              : { type: 'leaf', tabGroupId: newGroup.id }
-          }
-        }
-        if (layout.type === 'split') {
-          return {
-            ...layout,
-            first: insertSplit(layout.first),
-            second: insertSplit(layout.second)
-          }
-        }
-        return layout
-      }
+      const insertPosition =
+        position ?? (direction === 'left' || direction === 'up' ? 'first' : 'second')
 
       if (newFromTabs.length === 0) {
+        if (targetGroupId === fromGroupId) return state
+
+        const layoutWithoutSource = removeGroupFromLayout(state.layout, fromGroupId)
+        if (!layoutWithoutSource || !hasGroupInLayout(layoutWithoutSource, targetGroupId))
+          return state
+
+        const nextTabGroups = { ...state.tabGroups }
+        delete nextTabGroups[fromGroupId]
+        nextTabGroups[newGroup.id] = { ...newGroup, isActive: true }
+
         return {
           ...state,
-          tabGroups: {
-            ...state.tabGroups,
-            [newGroup.id]: { ...newGroup, isActive: true }
-          },
-          layout: { type: 'leaf', tabGroupId: newGroup.id },
+          tabGroups: nextTabGroups,
+          layout: insertSplitAtGroup(
+            layoutWithoutSource,
+            targetGroupId,
+            newGroup.id,
+            splitDirection,
+            insertPosition
+          ),
           activeGroupId: newGroup.id
         }
       }
@@ -174,7 +183,13 @@ export function layoutReducer(state: TabSystemState, action: LayoutAction): TabS
           },
           [newGroup.id]: newGroup
         },
-        layout: insertSplit(state.layout),
+        layout: insertSplitAtGroup(
+          state.layout,
+          targetGroupId,
+          newGroup.id,
+          splitDirection,
+          insertPosition
+        ),
         activeGroupId: newGroup.id
       }
     }

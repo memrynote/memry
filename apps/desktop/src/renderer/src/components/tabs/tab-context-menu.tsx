@@ -92,7 +92,7 @@ export const TabContextMenu = ({
         case 'split-down':
           dispatch({
             type: 'MOVE_TAB_TO_NEW_SPLIT',
-            payload: { tabId: tab.id, fromGroupId: groupId, direction: 'horizontal' }
+            payload: { tabId: tab.id, fromGroupId: groupId, direction: 'down' }
           })
           break
         case 'copy-path':

@@ -174,7 +174,20 @@ const createCollisionDetection = (): CollisionDetection => {
   return (args) => {
     // First check for sidebar drop zones (project, trash, archive)
     const pointerCollisions = pointerWithin(args)
+    const activeType = args.active?.data?.current?.type
     const activeSourceType = args.active?.data?.current?.sourceType
+
+    if (activeType === 'tab') {
+      const splitZoneCollision = pointerCollisions.find((collision) => {
+        const type = collision.data?.droppableContainer?.data?.current?.type
+        return type === 'split-zone'
+      })
+
+      if (splitZoneCollision) {
+        return [splitZoneCollision]
+      }
+    }
+
     const sidebarCollision = pointerCollisions.find((collision) => {
       const type = collision.data?.droppableContainer?.data?.current?.type
       return type === 'project' || type === 'trash' || type === 'archive'

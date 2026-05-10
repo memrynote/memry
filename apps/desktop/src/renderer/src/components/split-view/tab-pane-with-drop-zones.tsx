@@ -20,6 +20,8 @@ interface TabPaneWithDropZonesProps {
   groupId: string
   /** Whether this is the active/focused pane */
   isActive: boolean
+  /** Whether to show the sidebar collapse toggle (hidden in split panes) */
+  showSidebarToggle?: boolean
   /** Additional CSS classes */
   className?: string
 }
@@ -30,6 +32,7 @@ interface TabPaneWithDropZonesProps {
 export const TabPaneWithDropZones = ({
   groupId,
   isActive,
+  showSidebarToggle = true,
   className
 }: TabPaneWithDropZonesProps): React.JSX.Element | null => {
   const { dispatch } = useTabs()
@@ -154,7 +157,7 @@ export const TabPaneWithDropZones = ({
       data-pane-active={isActive}
     >
       {/* Tab bar */}
-      <TabBarWithDrag groupId={groupId} />
+      <TabBarWithDrag groupId={groupId} showSidebarToggle={showSidebarToggle} />
 
       {/* Content area */}
       <div
