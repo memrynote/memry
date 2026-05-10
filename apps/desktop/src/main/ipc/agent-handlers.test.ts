@@ -57,6 +57,8 @@ describe('agent IPC handlers', () => {
     runtime: {
       cancelTurn: vi.fn(),
       resolveApproval: vi.fn(),
+      trackSubprocess: vi.fn(),
+      untrackSubprocess: vi.fn(),
       getPendingApproval: vi.fn(() => ({
         conversationId: 'conversation-1',
         toolCallId: 'tool-1',
@@ -124,7 +126,7 @@ describe('agent IPC handlers', () => {
       expect.objectContaining({
         conversations: deps.conversations,
         messages: deps.messages,
-        spawnSubprocess: deps.spawn,
+        spawnSubprocess: expect.any(Function),
         toolHandlers: { routeToolCall: deps.routeToolCall }
       }),
       expect.objectContaining({
@@ -142,6 +144,45 @@ describe('agent IPC handlers', () => {
         ]
       })
     )
+  })
+
+  it('tracks and untracks subprocesses spawned for a turn', async () => {
+    const cleanup = vi.fn()
+    const kill = vi.fn()
+    deps.spawn.mockResolvedValue({
+      stdout: (async function* () {})(),
+      stderr: (async function* () {})(),
+      pid: 9,
+      kill,
+      waitExit: vi.fn(),
+      cleanup
+    })
+    registerAgentHandlers(deps)
+
+    await findHandler(AgentChannels.invoke.SEND_TURN)(null, {
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'hi',
+      attachments: []
+    })
+    const turnDeps = mocks.runTurn.mock.calls[0][0]
+    const subprocess = await turnDeps.spawnSubprocess({
+      prompt: 'prompt',
+      conversationId: 'conversation-1',
+      windowId: 'window-1'
+    })
+    await subprocess.cleanup()
+
+    expect(deps.runtime.trackSubprocess).toHaveBeenCalledWith('conversation-1', {
+      stdout: expect.any(Object),
+      stderr: expect.any(Object),
+      pid: 9,
+      kill,
+      waitExit: expect.any(Function),
+      cleanup
+    })
+    expect(cleanup).toHaveBeenCalled()
+    expect(deps.runtime.untrackSubprocess).toHaveBeenCalledWith(9)
   })
 
   it('forwards approval decisions to the runtime', async () => {

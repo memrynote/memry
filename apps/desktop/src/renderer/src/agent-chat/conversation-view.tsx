@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button'
+import { Square } from '@/lib/icons'
 import { Composer } from './composer'
 import { ConversationHeader } from './conversation-header'
 import { useAgentOptional } from './agent-context'
@@ -33,17 +35,40 @@ export function ConversationView({ conversationId }: ConversationViewProps): Rea
     return right.updatedAt - left.updatedAt
   })
   const messages = state.messagesByConversation[conversationId] ?? []
+  const inFlight = state.inFlight[conversationId] === true
+  const currentAgent = agent
+
+  function cancelTurn(): void {
+    void currentAgent.cancelTurn(conversationId)
+  }
 
   return (
-    <section className="flex h-full min-h-0 flex-col bg-sidebar" aria-label="Agent chat">
+    <section
+      className="flex h-full min-h-0 flex-col bg-sidebar"
+      aria-label="Agent chat"
+      tabIndex={-1}
+      onKeyDown={(event) => {
+        if (!inFlight || event.key !== 'Escape') return
+        event.preventDefault()
+        cancelTurn()
+      }}
+    >
       <ConversationHeader
         conversation={conversation}
         conversations={conversations}
         onCreateConversation={async () => {
-          await agent.createConversation()
+          await currentAgent.createConversation()
         }}
-        onSelectConversation={agent.loadConversation}
+        onSelectConversation={currentAgent.loadConversation}
       />
+      {inFlight && (
+        <div className="flex items-center justify-end border-b border-sidebar-border px-3 py-2">
+          <Button type="button" variant="secondary" size="sm" onClick={cancelTurn}>
+            <Square className="size-3" aria-hidden="true" />
+            Stop
+          </Button>
+        </div>
+      )}
       <MessageStream messages={messages} />
       <Composer conversationId={conversationId} sourceWindowId={state.sourceWindowId} />
     </section>

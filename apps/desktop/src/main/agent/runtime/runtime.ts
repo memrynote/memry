@@ -18,6 +18,12 @@ interface PendingApproval {
   requiresDiff: boolean
 }
 
+interface TrackedSubprocess {
+  conversationId: string
+  pid: number
+  kill: () => void
+}
+
 export interface AgentRuntimeDeps {
   conversations: ConversationStore
   messages: MessageStore
@@ -36,7 +42,7 @@ export type PendingApprovalSnapshot = Omit<PendingApproval, 'resolve'>
 export class AgentRuntime {
   private inFlight = new Map<string, AbortController>()
   private pending = new Map<string, PendingApproval>()
-  private subprocesses = new Set<{ pid: number; kill: () => void }>()
+  private subprocesses = new Map<number, TrackedSubprocess>()
 
   constructor(private deps: AgentRuntimeDeps) {}
 
@@ -112,10 +118,36 @@ export class AgentRuntime {
 
   cancelTurn(conversationId: string): void {
     this.inFlight.get(conversationId)?.abort()
+    for (const sub of this.subprocesses.values()) {
+      if (sub.conversationId !== conversationId) continue
+      try {
+        sub.kill()
+      } catch (error) {
+        logger.warn('Failed to kill subprocess', error)
+      }
+    }
+  }
+
+  trackSubprocess(
+    conversationId: string,
+    subprocess: {
+      pid: number
+      kill: () => void
+    }
+  ): void {
+    this.subprocesses.set(subprocess.pid, {
+      conversationId,
+      pid: subprocess.pid,
+      kill: subprocess.kill
+    })
+  }
+
+  untrackSubprocess(pid: number): void {
+    this.subprocesses.delete(pid)
   }
 
   async killAll(): Promise<void> {
-    for (const sub of this.subprocesses) {
+    for (const sub of this.subprocesses.values()) {
       try {
         sub.kill()
       } catch (error) {
