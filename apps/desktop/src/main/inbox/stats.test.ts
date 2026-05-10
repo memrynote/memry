@@ -20,8 +20,12 @@ import {
   incrementArchivedCount,
   getTodayStats,
   getTodayActivity,
-  getAverageTimeToProcess
+  getAverageTimeToProcess,
+  rebuildInboxStatsTable,
+  getProcessingStreak,
+  getInboxHealthMetrics
 } from './stats'
+import { inboxStats } from '@memry/db-schema/schema/inbox'
 import {
   createTestDatabase,
   cleanupTestDatabase,
@@ -487,6 +491,180 @@ describe('Inbox Stats Module', () => {
       })
 
       expect(getAverageTimeToProcess()).toBe(0)
+    })
+  })
+
+  describe('rebuildInboxStatsTable', () => {
+    it('rebuilds capture, processed, and archived counts from inbox item history', () => {
+      seedInboxItems(testDb.db, [
+        {
+          id: 'link-1',
+          type: 'link',
+          createdAt: '2026-01-01T10:00:00.000Z',
+          filedAt: '2026-01-02T10:00:00.000Z'
+        },
+        {
+          id: 'note-1',
+          type: 'note',
+          createdAt: '2026-01-01T11:00:00.000Z',
+          archivedAt: '2026-01-03T10:00:00.000Z'
+        },
+        {
+          id: 'reminder-1',
+          type: 'reminder',
+          createdAt: '2026-01-02T12:00:00.000Z'
+        }
+      ])
+
+      const result = rebuildInboxStatsTable(testDb.db)
+      const rows = testDb.db.select().from(inboxStats).all()
+
+      expect(result.rows).toBe(3)
+      expect(rows).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            date: '2026-01-01',
+            captureCountLink: 1,
+            captureCountNote: 1
+          }),
+          expect.objectContaining({
+            date: '2026-01-02',
+            captureCountReminder: 1,
+            processedCount: 1
+          }),
+          expect.objectContaining({
+            date: '2026-01-03',
+            archivedCount: 1
+          })
+        ])
+      )
+    })
+
+    it('clears old stats and leaves the table empty when there are no inbox items', () => {
+      incrementCaptureCount('link')
+
+      const result = rebuildInboxStatsTable(testDb.db)
+
+      expect(result.rows).toBe(0)
+      expect(testDb.db.select().from(inboxStats).all()).toEqual([])
+    })
+  })
+
+  describe('getProcessingStreak', () => {
+    it('counts consecutive processed days including today', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-01-10T12:00:00.000Z'))
+
+      try {
+        testDb.db
+          .insert(inboxStats)
+          .values([
+            { id: 's-today', date: '2026-01-10', processedCount: 2 },
+            { id: 's-yesterday', date: '2026-01-09', processedCount: 1 },
+            { id: 's-two-days', date: '2026-01-08', processedCount: 1 },
+            { id: 's-gap', date: '2026-01-07', processedCount: 0 }
+          ])
+          .run()
+
+        expect(getProcessingStreak()).toBe(3)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('starts from yesterday when today has no processed items', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-01-10T12:00:00.000Z'))
+
+      try {
+        testDb.db
+          .insert(inboxStats)
+          .values([
+            { id: 's-today', date: '2026-01-10', processedCount: 0 },
+            { id: 's-yesterday', date: '2026-01-09', processedCount: 1 },
+            { id: 's-two-days', date: '2026-01-08', processedCount: 1 }
+          ])
+          .run()
+
+        expect(getProcessingStreak()).toBe(2)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+  })
+
+  describe('getInboxHealthMetrics', () => {
+    it('summarizes weekly activity, age buckets, oldest item age, and streak', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-01-10T12:00:00.000Z'))
+
+      try {
+        setStaleThreshold(7)
+        testDb.db
+          .insert(inboxStats)
+          .values([
+            {
+              id: 'week-1',
+              date: '2026-01-09',
+              captureCountLink: 2,
+              captureCountNote: 1,
+              processedCount: 1
+            },
+            {
+              id: 'week-2',
+              date: '2026-01-08',
+              captureCountImage: 1,
+              processedCount: 1
+            }
+          ])
+          .run()
+
+        seedInboxItems(testDb.db, [
+          {
+            id: 'fresh',
+            createdAt: '2026-01-09T12:00:00.000Z'
+          },
+          {
+            id: 'aging',
+            createdAt: '2026-01-05T12:00:00.000Z'
+          },
+          {
+            id: 'stale',
+            createdAt: '2025-12-31T12:00:00.000Z'
+          },
+          {
+            id: 'filed-stale',
+            createdAt: '2025-12-30T12:00:00.000Z',
+            filedAt: '2026-01-02T12:00:00.000Z'
+          }
+        ])
+
+        expect(getInboxHealthMetrics()).toEqual({
+          capturedThisWeek: 4,
+          processedThisWeek: 2,
+          captureProcessRatio: 2,
+          ageDistribution: { fresh: 1, aging: 1, stale: 1 },
+          oldestItemDays: 10,
+          currentStreak: 2
+        })
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('returns zeroed health metrics when the database is not available', () => {
+      vi.mocked(getDatabase).mockImplementation(() => {
+        throw new Error('No database')
+      })
+
+      expect(getInboxHealthMetrics()).toEqual({
+        capturedThisWeek: 0,
+        processedThisWeek: 0,
+        captureProcessRatio: 0,
+        ageDistribution: { fresh: 0, aging: 0, stale: 0 },
+        oldestItemDays: 0,
+        currentStreak: 0
+      })
     })
   })
 })

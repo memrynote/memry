@@ -40,7 +40,6 @@ export const DeleteAllSubtasksDialog = ({
   const { t: tPhaseF } = useT('tasks')
   const handleConfirm = (): void => {
     onConfirm()
-    onClose()
   }
 
   return (

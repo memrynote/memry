@@ -106,11 +106,13 @@ export const syncFetch = async <T>(
 
   if (!response.ok) {
     const errorBody = responseBody as ServerErrorResponse
+    const errorCode = typeof errorBody?.error === 'object' ? errorBody.error.code : undefined
     const message =
       (typeof errorBody?.error === 'string' ? errorBody.error : errorBody?.error?.message) ||
       errorBody?.message ||
       `Server error (${response.status})`
-    throw new SyncServerError(message, response.status, message)
+    const serverError = errorCode ? `${errorCode}: ${message}` : message
+    throw new SyncServerError(message, response.status, serverError)
   }
 
   return responseBody as T

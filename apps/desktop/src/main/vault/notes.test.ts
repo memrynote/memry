@@ -240,6 +240,22 @@ describe('notes operations', () => {
         })
       )
     })
+
+    it('applies template content, tags, and properties', async () => {
+      const result = await notes.createNote({
+        title: 'Weekly Sync',
+        template: 'meeting-notes',
+        tags: ['work'],
+        properties: { owner: 'Kaan' }
+      })
+
+      expect(result.content).toContain('## Attendees')
+      expect(result.tags).toEqual(expect.arrayContaining(['meeting', 'work']))
+      expect(result.properties).toMatchObject({
+        status: 'scheduled',
+        owner: 'Kaan'
+      })
+    })
   })
 
   // ==========================================================================
@@ -287,6 +303,28 @@ describe('notes operations', () => {
       const secondGet = await notes.getNoteById(created.id)
       expect(secondGet).toBeNull()
     })
+
+    it('repairs duplicate frontmatter IDs found on disk', async () => {
+      const first = await notes.createNote({
+        title: 'Duplicate A',
+        content: 'Original note.'
+      })
+      const second = await notes.createNote({
+        title: 'Duplicate B',
+        content: 'Copied note.'
+      })
+
+      const secondPath = path.join(tempVault.path, second.path)
+      const raw = fs.readFileSync(secondPath, 'utf-8')
+      fs.writeFileSync(secondPath, raw.replace(`id: ${second.id}`, `id: ${first.id}`))
+
+      const repaired = await notes.getNoteById(second.id)
+
+      expect(repaired).not.toBeNull()
+      expect(repaired!.id).not.toBe(first.id)
+      expect(repaired!.id).not.toBe(second.id)
+      expect(repaired!.title).toBe('Duplicate B')
+    })
   })
 
   describe('getNoteByPath', () => {
@@ -307,6 +345,31 @@ describe('notes operations', () => {
       const result = await notes.getNoteByPath('notes/does-not-exist.md')
 
       expect(result).toBeNull()
+    })
+
+    it('syncs an uncached markdown file when loaded by path', async () => {
+      const externalPath = path.join(tempVault.notesDir, 'External.md')
+      fs.writeFileSync(
+        externalPath,
+        [
+          '---',
+          'id: external-note-1',
+          'title: External',
+          'created: 2026-01-15T12:00:00.000Z',
+          'modified: 2026-01-15T12:00:00.000Z',
+          'tags:',
+          '  - external',
+          '---',
+          '',
+          'External content.'
+        ].join('\n')
+      )
+
+      const retrieved = await notes.getNoteByPath('notes/External.md')
+
+      expect(retrieved).not.toBeNull()
+      expect(retrieved!.id).toBe('external-note-1')
+      expect(retrieved!.tags).toContain('external')
     })
   })
 
@@ -527,6 +590,20 @@ describe('notes operations', () => {
 
       // #then — explicit tags win, no reconciliation
       expect(updated.tags).toEqual(['explicit'])
+    })
+
+    it('skips snapshot work when content is unchanged', async () => {
+      const created = await notes.createNote({
+        title: 'Unchanged Content',
+        content: 'Same content.'
+      })
+
+      const updated = await notes.updateNote({
+        id: created.id,
+        content: 'Same content.'
+      })
+
+      expect(updated.content).toBe('Same content.')
     })
   })
 
@@ -1041,6 +1118,25 @@ describe('notes operations', () => {
         expect(folderPaths).toContain('folder2')
         expect(folderPaths).toContain('folder1/nested')
       })
+
+      it('includes folder icons from database config rows', async () => {
+        const { folderConfigs } = await import('@memry/db-schema/schema/folder-configs')
+        await notes.createFolder('configured')
+        dataDb.db
+          .insert(folderConfigs)
+          .values({
+            path: 'configured',
+            icon: '📁',
+            clock: {},
+            createdAt: '2026-01-15T12:00:00.000Z',
+            modifiedAt: '2026-01-15T12:00:00.000Z'
+          })
+          .run()
+
+        const folders = await notes.getFolders()
+
+        expect(folders.find((folder) => folder.path === 'configured')?.icon).toBe('📁')
+      })
     })
 
     describe('createFolder', () => {
@@ -1108,6 +1204,96 @@ describe('notes operations', () => {
     it('T371: returns false for non-existent', async () => {
       const exists = await notes.noteExists('Does Not Exist')
       expect(exists).toBe(false)
+    })
+  })
+
+  describe('file metadata and external utilities', () => {
+    it('returns file metadata for cached non-markdown files and clears missing files', async () => {
+      const { insertNoteCache } = await import('@main/database/queries/notes')
+      const imagePath = path.join(tempVault.notesDir, 'photo.png')
+      fs.writeFileSync(imagePath, Buffer.from([0x89, 0x50, 0x4e, 0x47]))
+      insertNoteCache(testDb.db, {
+        id: 'image-file-1',
+        path: 'notes/photo.png',
+        title: 'photo',
+        fileType: 'image',
+        mimeType: 'image/png',
+        fileSize: 4,
+        createdAt: '2026-01-15T12:00:00.000Z',
+        modifiedAt: '2026-01-15T12:00:00.000Z'
+      })
+
+      const file = await notes.getFileById('image-file-1')
+      expect(file).toMatchObject({
+        id: 'image-file-1',
+        fileType: 'image',
+        mimeType: 'image/png',
+        fileSize: 4
+      })
+
+      fs.unlinkSync(imagePath)
+      await expect(notes.getFileById('image-file-1')).resolves.toBeNull()
+      await expect(notes.getFileById('missing-file')).resolves.toBeNull()
+
+      const markdown = await notes.createNote({ title: 'Markdown File', content: 'C.' })
+      await expect(notes.getFileById(markdown.id)).resolves.toBeNull()
+    })
+
+    it('opens and reveals cached files, and rejects missing IDs', async () => {
+      const { shell } = await import('electron')
+      const created = await notes.createNote({
+        title: 'External Open',
+        content: 'Open me.'
+      })
+      const absolutePath = path.join(tempVault.path, created.path)
+
+      await notes.openExternal(created.id)
+      expect(shell.openPath).toHaveBeenCalledWith(absolutePath)
+
+      notes.revealInFinder(created.id)
+      expect(shell.showItemInFolder).toHaveBeenCalledWith(absolutePath)
+
+      await expect(notes.openExternal('missing-note')).rejects.toThrow('Note not found')
+      expect(() => notes.revealInFinder('missing-note')).toThrow('Note not found')
+    })
+  })
+
+  describe('importFiles', () => {
+    it('imports files with unique names and reports per-file failures', async () => {
+      const targetDir = path.join(tempVault.notesDir, 'imports')
+      fs.mkdirSync(targetDir, { recursive: true })
+      fs.writeFileSync(path.join(targetDir, 'capture.png'), Buffer.from([0x00]))
+
+      const sourcePath = path.join(tempVault.path, 'capture.png')
+      const missingPath = path.join(tempVault.path, 'missing.png')
+      fs.writeFileSync(sourcePath, Buffer.from([0x89, 0x50, 0x4e, 0x47]))
+
+      const result = await notes.importFiles({
+        sourcePaths: [sourcePath, missingPath],
+        targetFolder: 'imports'
+      })
+
+      expect(result.success).toBe(false)
+      expect(result.imported).toBe(1)
+      expect(result.failed).toBe(1)
+      expect(path.basename(result.importedFiles[0].destPath)).toBe('capture (1).png')
+      expect(result.importedFiles[0]).toMatchObject({
+        filename: 'capture.png',
+        fileType: 'image'
+      })
+      expect(result.errors[0]).toContain('missing.png')
+    })
+
+    it('rejects imports when no vault is open', async () => {
+      vi.spyOn(vaultIndex, 'getStatus').mockReturnValueOnce({
+        isOpen: false,
+        path: null,
+        isIndexing: false,
+        indexProgress: 0,
+        error: null
+      } satisfies VaultStatus)
+
+      await expect(notes.importFiles({ sourcePaths: [] })).rejects.toThrow('No vault is open')
     })
   })
 

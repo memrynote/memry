@@ -43,6 +43,15 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock
 })
 
+const savedFilterEvents = vi.hoisted(() => ({
+  created: [] as Array<(event: { savedFilter: any }) => void>,
+  updated: [] as Array<(event: { id: string; savedFilter: any }) => void>,
+  deleted: [] as Array<(event: { id: string }) => void>,
+  unsubCreated: vi.fn(),
+  unsubUpdated: vi.fn(),
+  unsubDeleted: vi.fn()
+}))
+
 // Mock savedFiltersService
 vi.mock('@/services/saved-filters-service', () => ({
   savedFiltersService: {
@@ -51,9 +60,18 @@ vi.mock('@/services/saved-filters-service', () => ({
     update: vi.fn().mockResolvedValue({ success: true }),
     delete: vi.fn().mockResolvedValue({ success: true })
   },
-  onSavedFilterCreated: vi.fn(() => () => {}),
-  onSavedFilterUpdated: vi.fn(() => () => {}),
-  onSavedFilterDeleted: vi.fn(() => () => {})
+  onSavedFilterCreated: vi.fn((callback) => {
+    savedFilterEvents.created.push(callback)
+    return savedFilterEvents.unsubCreated
+  }),
+  onSavedFilterUpdated: vi.fn((callback) => {
+    savedFilterEvents.updated.push(callback)
+    return savedFilterEvents.unsubUpdated
+  }),
+  onSavedFilterDeleted: vi.fn((callback) => {
+    savedFilterEvents.deleted.push(callback)
+    return savedFilterEvents.unsubDeleted
+  })
 }))
 
 // Mock applyFiltersAndSort
@@ -108,6 +126,42 @@ const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   ],
   ...overrides
 })
+
+const createDbSavedFilter = (
+  overrides: Partial<{
+    id: string
+    name: string
+    filters: TaskFilters
+    sort: TaskSort
+    starred: boolean
+  }> = {}
+) => {
+  const filters = overrides.filters ?? defaultFilters
+  return {
+    id: overrides.id ?? 'filter-1',
+    name: overrides.name ?? 'My Filter',
+    config: {
+      filters: {
+        search: filters.search,
+        projectIds: filters.projectIds,
+        priorities: filters.priorities,
+        dueDate: {
+          type: filters.dueDate.type,
+          customStart: filters.dueDate.customStart?.toISOString() ?? null,
+          customEnd: filters.dueDate.customEnd?.toISOString() ?? null
+        },
+        statusIds: filters.statusIds,
+        completion: filters.completion,
+        repeatType: filters.repeatType,
+        hasTime: filters.hasTime
+      },
+      sort: overrides.sort,
+      starred: overrides.starred
+    },
+    createdAt: new Date().toISOString(),
+    position: 0
+  }
+}
 
 // ============================================================================
 // useDebouncedValue Tests
@@ -180,6 +234,9 @@ describe('useFilterState', () => {
   beforeEach(() => {
     localStorageMock.clear()
     vi.clearAllMocks()
+    localStorageMock.setItem.mockImplementation((key: string, value: string) => {
+      localStorageMock.store[key] = value
+    })
   })
 
   const defaultOptions = {
@@ -234,6 +291,32 @@ describe('useFilterState', () => {
       )
 
       expect(result.current.filters.search).toBe('')
+    })
+
+    it('falls back when persisted JSON is corrupt and keeps state when writes fail', () => {
+      localStorageMock.setItem('taskFilters', '{bad')
+      localStorageMock.setItem('taskSortPrefs', '{bad')
+
+      const { result } = renderHook(() => useFilterState(defaultOptions))
+
+      expect(result.current.filters).toEqual(defaultFilters)
+      expect(result.current.sort).toEqual(defaultSort)
+
+      localStorageMock.setItem.mockImplementationOnce(() => {
+        throw new Error('quota')
+      })
+      act(() => {
+        result.current.updateFilters({ search: 'still updates state' })
+      })
+      expect(result.current.filters.search).toBe('still updates state')
+
+      localStorageMock.setItem.mockImplementationOnce(() => {
+        throw new Error('quota')
+      })
+      act(() => {
+        result.current.updateSort({ field: 'priority', direction: 'desc' })
+      })
+      expect(result.current.sort).toEqual({ field: 'priority', direction: 'desc' })
     })
   })
 
@@ -718,6 +801,9 @@ describe('useSavedFilters', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorageMock.clear()
+    savedFilterEvents.created.length = 0
+    savedFilterEvents.updated.length = 0
+    savedFilterEvents.deleted.length = 0
   })
 
   it('should load saved filters on mount', async () => {
@@ -853,5 +939,144 @@ describe('useSavedFilters', () => {
         name: 'New Name'
       })
     )
+  })
+
+  it('responds to saved-filter events and unsubscribes on cleanup', async () => {
+    const { savedFiltersService } = await import('@/services/saved-filters-service')
+    vi.mocked(savedFiltersService.list).mockResolvedValue({
+      savedFilters: [],
+      total: 0,
+      hasMore: false
+    })
+    const { result, unmount } = renderHook(() => useSavedFilters())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    act(() => {
+      savedFilterEvents.created[0]({
+        savedFilter: createDbSavedFilter({ id: 'filter-event', name: 'Created' })
+      })
+    })
+    expect(result.current.savedFilters.map((filter) => filter.name)).toContain('Created')
+
+    act(() => {
+      savedFilterEvents.updated[0]({
+        id: 'filter-event',
+        savedFilter: createDbSavedFilter({ id: 'filter-event', name: 'Updated' })
+      })
+    })
+    expect(result.current.savedFilters.find((filter) => filter.id === 'filter-event')?.name).toBe(
+      'Updated'
+    )
+
+    act(() => {
+      savedFilterEvents.deleted[0]({ id: 'filter-event' })
+    })
+    expect(result.current.savedFilters).toEqual([])
+
+    unmount()
+    expect(savedFilterEvents.unsubCreated).toHaveBeenCalled()
+    expect(savedFilterEvents.unsubUpdated).toHaveBeenCalled()
+    expect(savedFilterEvents.unsubDeleted).toHaveBeenCalled()
+  })
+
+  it('updates saved-filter configs and persists starred toggles', async () => {
+    const { savedFiltersService } = await import('@/services/saved-filters-service')
+    vi.mocked(savedFiltersService.list).mockResolvedValue({
+      savedFilters: [
+        createDbSavedFilter({
+          id: 'filter-1',
+          name: 'Existing',
+          sort: { field: 'dueDate', direction: 'asc' },
+          starred: false
+        })
+      ],
+      total: 1,
+      hasMore: false
+    })
+
+    const { result } = renderHook(() => useSavedFilters())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    act(() => {
+      result.current.updateFilter('filter-1', {
+        filters: { ...defaultFilters, search: 'updated search' },
+        sort: { field: 'priority', direction: 'desc' }
+      })
+    })
+
+    await waitFor(() =>
+      expect(savedFiltersService.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'filter-1',
+          config: expect.objectContaining({
+            filters: expect.objectContaining({ search: 'updated search' }),
+            sort: { field: 'priority', direction: 'desc' }
+          })
+        })
+      )
+    )
+
+    act(() => {
+      result.current.toggleStar('filter-1')
+    })
+
+    expect(result.current.savedFilters[0].starred).toBe(true)
+    await waitFor(() =>
+      expect(savedFiltersService.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'filter-1',
+          config: expect.objectContaining({ starred: true })
+        })
+      )
+    )
+  })
+
+  it('handles saved-filter service failures and rolls back starred state', async () => {
+    const { savedFiltersService } = await import('@/services/saved-filters-service')
+    vi.mocked(savedFiltersService.list).mockResolvedValue({
+      savedFilters: [createDbSavedFilter({ id: 'filter-1', name: 'Existing', starred: false })],
+      total: 1,
+      hasMore: false
+    })
+    vi.mocked(savedFiltersService.create).mockRejectedValueOnce(new Error('create failed'))
+    vi.mocked(savedFiltersService.delete).mockRejectedValueOnce(new Error('delete failed'))
+    vi.mocked(savedFiltersService.update).mockRejectedValueOnce(new Error('update failed'))
+    vi.mocked(savedFiltersService.update).mockRejectedValueOnce(new Error('star failed'))
+
+    const { result } = renderHook(() => useSavedFilters())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    act(() => {
+      result.current.saveFilter('Bad Save', defaultFilters)
+      result.current.deleteFilter('filter-1')
+      result.current.updateFilter('filter-1', { name: 'Bad Update' })
+    })
+
+    await waitFor(() => expect(savedFiltersService.create).toHaveBeenCalled())
+    await waitFor(() => expect(savedFiltersService.delete).toHaveBeenCalled())
+    await waitFor(() =>
+      expect(savedFiltersService.update).toHaveBeenCalledWith({
+        id: 'filter-1',
+        name: 'Bad Update'
+      })
+    )
+
+    act(() => {
+      result.current.toggleStar('filter-1')
+    })
+    expect(result.current.savedFilters[0].starred).toBe(true)
+
+    await waitFor(() => {
+      expect(result.current.savedFilters[0].starred).toBe(false)
+    })
   })
 })

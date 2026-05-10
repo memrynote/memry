@@ -153,4 +153,147 @@ describe('useTimeGridMarquee', () => {
     })
     expect(result.current.selection).toBeNull()
   })
+
+  it('ignores non-left clicks and clicks starting on event chips', () => {
+    const ref = createMockGridRef()
+    const { result } = renderHook(() =>
+      useTimeGridMarquee({ gridRef: ref, dateForColumn: () => '2026-04-14' })
+    )
+    const chip = document.createElement('button')
+    chip.dataset.visualType = 'event'
+
+    act(() => {
+      result.current.handlers.onMouseDown({
+        button: 1,
+        clientY: 96,
+        target: ref.current,
+        preventDefault: vi.fn()
+      } as unknown as React.MouseEvent)
+      result.current.handlers.onMouseDown({
+        button: 0,
+        clientY: 96,
+        target: chip,
+        preventDefault: vi.fn()
+      } as unknown as React.MouseEvent)
+    })
+
+    expect(result.current.isDragging).toBe(false)
+    expect(result.current.selection).toBeNull()
+  })
+
+  it('tracks drag selection, column fallback geometry, autoscroll, and mouseup cleanup', () => {
+    vi.useFakeTimers()
+    const rafCallbacks: FrameRequestCallback[] = []
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      rafCallbacks.push(callback)
+      return rafCallbacks.length
+    })
+    vi.stubGlobal('cancelAnimationFrame', vi.fn())
+    const grid = document.createElement('div')
+    Object.defineProperty(grid, 'scrollTop', { value: 10, writable: true })
+    grid.getBoundingClientRect = vi.fn(
+      () =>
+        ({
+          top: 100,
+          left: 20,
+          bottom: 300,
+          right: 420,
+          width: 400,
+          height: 200,
+          x: 20,
+          y: 100,
+          toJSON: () => ({})
+        }) as DOMRect
+    )
+    const gutter = document.createElement('div')
+    const column = document.createElement('div')
+    column.getBoundingClientRect = vi.fn(
+      () =>
+        ({
+          top: 100,
+          left: 120,
+          bottom: 300,
+          right: 220,
+          width: 100,
+          height: 200,
+          x: 120,
+          y: 100,
+          toJSON: () => ({})
+        }) as DOMRect
+    )
+    grid.append(gutter, column)
+    const ref = { current: grid } as React.RefObject<HTMLDivElement | null>
+    const { result, unmount } = renderHook(() =>
+      useTimeGridMarquee({
+        gridRef: ref,
+        dateForColumn: (index) => `2026-04-${String(14 + index).padStart(2, '0')}`,
+        columnCount: 2
+      })
+    )
+
+    act(() => {
+      result.current.handlers.onMouseDown(
+        {
+          button: 0,
+          clientY: 148,
+          target: grid,
+          preventDefault: vi.fn()
+        } as unknown as React.MouseEvent,
+        0
+      )
+    })
+    expect(result.current.isDragging).toBe(true)
+
+    act(() => {
+      document.dispatchEvent(new MouseEvent('mousemove', { clientY: 296 }))
+    })
+    expect(result.current.selection).toEqual(
+      expect.objectContaining({
+        date: '2026-04-14',
+        startAt: '2026-04-14T01:15',
+        endAt: '2026-04-14T04:15',
+        columnIndex: 0,
+        anchorRect: expect.objectContaining({ x: 120, width: 100 })
+      })
+    )
+    expect(rafCallbacks.length).toBeGreaterThan(0)
+
+    act(() => {
+      rafCallbacks.at(-1)?.(0)
+      document.dispatchEvent(new MouseEvent('mouseup'))
+    })
+    expect(result.current.isDragging).toBe(false)
+    expect(result.current.selection).not.toBeNull()
+
+    unmount()
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  it('clears click-only drags on mouseup', () => {
+    const ref = createMockGridRef()
+    const { result } = renderHook(() =>
+      useTimeGridMarquee({ gridRef: ref, dateForColumn: () => '2026-04-14' })
+    )
+
+    act(() => {
+      result.current.handlers.onMouseDown(
+        {
+          button: 0,
+          clientY: 96,
+          target: ref.current,
+          preventDefault: vi.fn()
+        } as unknown as React.MouseEvent,
+        0
+      )
+    })
+    expect(result.current.isDragging).toBe(true)
+
+    act(() => {
+      document.dispatchEvent(new MouseEvent('mouseup'))
+    })
+
+    expect(result.current.isDragging).toBe(false)
+    expect(result.current.selection).toBeNull()
+  })
 })

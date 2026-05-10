@@ -1,0 +1,436 @@
+import type React from 'react'
+import { createRef } from 'react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import {
+  VirtualizedNotesTree,
+  type VirtualizedTreeActions,
+  type MoveOperation
+} from './virtualized-notes-tree'
+import type { TreeStructure } from '@/lib/virtualized-tree-utils'
+
+const mocks = vi.hoisted(() => ({
+  openTab: vi.fn()
+}))
+
+vi.mock('@/contexts/tabs', () => ({
+  useTabActions: () => ({ openTab: mocks.openTab })
+}))
+
+vi.mock('@tanstack/react-virtual', () => ({
+  useVirtualizer: ({ count }: { count: number }) => ({
+    getVirtualItems: () =>
+      Array.from({ length: count }, (_, index) => ({
+        index,
+        key: index,
+        start: index * 28,
+        size: 28
+      })),
+    getTotalSize: () => count * 28
+  })
+}))
+
+vi.mock('@/components/ui/context-menu', () => ({
+  ContextMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  ContextMenuTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  ContextMenuContent: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="context-menu">{children}</div>
+  ),
+  ContextMenuItem: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
+    <button type="button" onClick={onClick}>
+      {children}
+    </button>
+  ),
+  ContextMenuSeparator: () => <hr />
+}))
+
+vi.mock('@/components/folder-icon-button', () => ({
+  FolderIconButton: ({
+    icon,
+    onToggleExpand,
+    onIconChange
+  }: {
+    icon: string | null
+    onToggleExpand: () => void
+    onIconChange: (icon: string | null) => void
+  }) => (
+    <button
+      type="button"
+      aria-label="folder icon"
+      onClick={(event) => {
+        event.stopPropagation()
+        onToggleExpand()
+        onIconChange(icon ? null : 'folder')
+      }}
+    >
+      {icon ?? 'folder'}
+    </button>
+  )
+}))
+
+const note = (id: string, path: string, overrides: Record<string, unknown> = {}) =>
+  ({
+    id,
+    title:
+      path
+        .split('/')
+        .pop()
+        ?.replace(/\.[^.]+$/, '') ?? id,
+    path,
+    fileType: 'markdown',
+    emoji: null,
+    tags: [],
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+    ...overrides
+  }) as any
+
+const workNote = note('note-work', 'notes/Work/Alpha.md', { emoji: '*' })
+const rootNote = note('note-root', 'notes/Root.pdf', { fileType: 'pdf' })
+
+const tree: TreeStructure = {
+  folders: [
+    {
+      name: 'Work',
+      path: 'Work',
+      icon: null,
+      children: [],
+      notes: [workNote]
+    }
+  ],
+  rootNotes: [rootNote]
+}
+
+const iconTree: TreeStructure = {
+  folders: [
+    {
+      name: 'Work',
+      path: 'Work',
+      icon: 'briefcase',
+      children: [],
+      notes: [workNote]
+    }
+  ],
+  rootNotes: [rootNote]
+}
+
+const noteMap = new Map([
+  [workNote.id, workNote],
+  [rootNote.id, rootNote]
+])
+
+const renderTree = (overrides: Partial<React.ComponentProps<typeof VirtualizedNotesTree>> = {}) => {
+  const props: React.ComponentProps<typeof VirtualizedNotesTree> = {
+    tree,
+    selectedIds: [],
+    onSelectionChange: vi.fn(),
+    noteMap,
+    onMove: vi.fn(),
+    onBulkDelete: vi.fn(),
+    onRenameNote: vi.fn(),
+    onDeleteNote: vi.fn(),
+    onOpenExternal: vi.fn(),
+    onRevealInFinder: vi.fn(),
+    onCreateNote: vi.fn(),
+    onCreateFolder: vi.fn(),
+    onRenameFolder: vi.fn(),
+    onDeleteFolder: vi.fn(),
+    onSetFolderTemplate: vi.fn(),
+    onClearFolderTemplate: vi.fn(),
+    onSetFolderIcon: vi.fn(),
+    folderTemplateNames: new Map([['Work', 'Daily']]),
+    ...overrides
+  }
+
+  render(<VirtualizedNotesTree {...props} />)
+  return props
+}
+
+describe('VirtualizedNotesTree', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    localStorage.setItem('sidebar-tree-expanded', JSON.stringify(['folder-Work']))
+  })
+
+  it('renders expanded folders, selects notes, and opens preview/non-preview tabs', async () => {
+    const user = userEvent.setup()
+    const props = renderTree()
+
+    expect(screen.getByRole('tree')).toBeInTheDocument()
+    expect(screen.getByText('Work')).toBeInTheDocument()
+    expect(screen.getByText('Alpha')).toBeInTheDocument()
+
+    await user.click(screen.getByText('Alpha'))
+    expect(props.onSelectionChange).toHaveBeenLastCalledWith(['note-work'])
+    expect(mocks.openTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        entityId: 'note-work',
+        isPreview: true,
+        type: 'note'
+      })
+    )
+
+    fireEvent.doubleClick(screen.getByText('Alpha'))
+    expect(mocks.openTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        entityId: 'note-work',
+        isPreview: false,
+        type: 'note'
+      })
+    )
+
+    await user.click(screen.getByText('Root'))
+    expect(mocks.openTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        entityId: 'note-root',
+        isPreview: true,
+        type: 'file'
+      })
+    )
+  })
+
+  it('supports folder actions, imperative expansion, and bulk delete keyboard shortcuts', async () => {
+    const user = userEvent.setup()
+    const actionsRef = createRef<VirtualizedTreeActions | null>()
+    const props = renderTree({ selectedIds: ['note-work', 'note-root'], actionsRef })
+
+    await user.click(screen.getByRole('button', { name: /open folder view/i }))
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'folder',
+        entityId: 'Work'
+      })
+    )
+
+    await user.click(screen.getByRole('button', { name: 'folder icon' }))
+    expect(props.onSetFolderIcon).toHaveBeenCalledWith('Work', 'folder')
+
+    fireEvent.keyDown(screen.getByRole('tree'), { key: 'Delete' })
+    expect(props.onBulkDelete).toHaveBeenCalledTimes(1)
+
+    act(() => actionsRef.current?.collapseAll())
+    expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
+
+    act(() => actionsRef.current?.expandAll())
+    expect(screen.getByText('Alpha')).toBeInTheDocument()
+  })
+
+  it('emits range selections and drag move operations', () => {
+    const onMove = vi.fn<(operation: MoveOperation) => void>()
+    const props = renderTree({ onMove })
+
+    fireEvent.click(screen.getByText('Alpha'))
+    fireEvent.click(screen.getByText('Root'), { shiftKey: true })
+    expect(props.onSelectionChange).toHaveBeenLastCalledWith(['note-work', 'note-root'])
+
+    const dataTransfer = {
+      effectAllowed: '',
+      dropEffect: '',
+      setData: vi.fn(),
+      getData: vi.fn()
+    }
+    const source = screen.getByText('Alpha').closest('[role="treeitem"]') as HTMLElement
+    const target = screen.getByText('Root').closest('[role="treeitem"]') as HTMLElement
+
+    vi.spyOn(target, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 100,
+      bottom: 30,
+      width: 100,
+      height: 30,
+      toJSON: () => ({})
+    } as DOMRect)
+
+    fireEvent.dragStart(source, { dataTransfer })
+    fireEvent.dragOver(target, { dataTransfer, clientY: 28 })
+    fireEvent.drop(target, { dataTransfer })
+
+    expect(onMove).toHaveBeenCalledWith({
+      draggedId: 'note-work',
+      targetId: 'note-root',
+      position: 'after'
+    })
+  })
+
+  it('runs folder and note keyboard plus context-menu actions', async () => {
+    const user = userEvent.setup()
+    const props = renderTree({ tree: iconTree, selectedIds: ['note-work'] })
+
+    const folderRow = screen.getByText('Work').closest('[role="treeitem"]') as HTMLElement
+    fireEvent.keyDown(folderRow, { key: ' ' })
+    expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
+
+    fireEvent.keyDown(folderRow, { key: 'Enter' })
+    expect(screen.getByText('Alpha')).toBeInTheDocument()
+
+    const noteRow = screen.getByText('Alpha').closest('[role="treeitem"]') as HTMLElement
+    fireEvent.keyDown(noteRow, { key: 'Enter' })
+    expect(mocks.openTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        entityId: 'note-work',
+        isPreview: false
+      })
+    )
+
+    await user.click(screen.getByRole('button', { name: 'New Note' }))
+    expect(props.onCreateNote).toHaveBeenCalledWith('Work')
+
+    await user.click(screen.getByRole('button', { name: 'New Folder' }))
+    expect(props.onCreateFolder).toHaveBeenCalledWith('Work')
+
+    await user.click(screen.getByRole('button', { name: /Set Default Template/ }))
+    expect(props.onSetFolderTemplate).toHaveBeenCalledWith('Work')
+
+    await user.click(screen.getByRole('button', { name: 'Clear Default Template' }))
+    expect(props.onClearFolderTemplate).toHaveBeenCalledWith('Work')
+
+    await user.click(screen.getByRole('button', { name: 'Remove Icon' }))
+    expect(props.onSetFolderIcon).toHaveBeenCalledWith('Work', null)
+
+    const renameButtons = screen.getAllByRole('button', { name: 'Rename' })
+    await user.click(renameButtons[0])
+    expect(props.onRenameFolder).toHaveBeenCalledWith('Work')
+    await user.click(renameButtons[1])
+    expect(props.onRenameNote).toHaveBeenCalledWith(workNote)
+
+    await user.click(screen.getAllByRole('button', { name: 'Open in External Editor' })[0])
+    expect(props.onOpenExternal).toHaveBeenCalledWith(workNote)
+
+    await user.click(screen.getAllByRole('button', { name: 'Reveal in Finder' })[0])
+    expect(props.onRevealInFinder).toHaveBeenCalledWith(workNote)
+
+    const deleteButtons = screen.getAllByRole('button', { name: 'Delete' })
+    await user.click(deleteButtons[0])
+    expect(props.onDeleteFolder).toHaveBeenCalledWith('Work')
+    await user.click(deleteButtons[1])
+    expect(props.onDeleteNote).toHaveBeenCalledWith(workNote)
+  })
+
+  it('handles storage failures and disabled drag without moving items', () => {
+    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('storage blocked')
+    })
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('storage blocked')
+    })
+    const onMove = vi.fn<(operation: MoveOperation) => void>()
+    const props = renderTree({ isDragDisabled: true, onMove })
+
+    const dataTransfer = {
+      effectAllowed: '',
+      dropEffect: '',
+      setData: vi.fn(),
+      getData: vi.fn()
+    }
+    const source = screen.getByText('Work').closest('[role="treeitem"]') as HTMLElement
+    const target = screen.getByText('Root').closest('[role="treeitem"]') as HTMLElement
+
+    fireEvent.dragStart(source, { dataTransfer })
+    fireEvent.dragOver(target, { dataTransfer, clientY: 15 })
+    fireEvent.drop(target, { dataTransfer })
+    fireEvent.keyDown(screen.getByRole('tree'), { key: 'Backspace' })
+
+    expect(dataTransfer.setData).not.toHaveBeenCalled()
+    expect(onMove).not.toHaveBeenCalled()
+    expect(props.onBulkDelete).not.toHaveBeenCalled()
+
+    getItemSpy.mockRestore()
+    setItemSpy.mockRestore()
+  })
+
+  it('handles external scroll, imperative node expansion, ctrl selection, and folder drop edges', () => {
+    const observed: Element[] = []
+    class ResizeObserverStub {
+      observe = vi.fn((element: Element) => {
+        observed.push(element)
+      })
+      disconnect = vi.fn()
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+    const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      callback(0)
+      return 1
+    })
+    const cancelSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined)
+    const externalScroll = document.createElement('div')
+    Object.defineProperty(externalScroll, 'scrollTop', { configurable: true, value: 12 })
+    vi.spyOn(externalScroll, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 10,
+      left: 0,
+      right: 100,
+      bottom: 110,
+      width: 100,
+      height: 100,
+      toJSON: () => ({})
+    } as DOMRect)
+
+    const actionsRef = createRef<VirtualizedTreeActions | null>()
+    const onMove = vi.fn<(operation: MoveOperation) => void>()
+    const props = renderTree({
+      actionsRef,
+      onMove,
+      selectedIds: ['note-work'],
+      scrollContainerRef: { current: externalScroll }
+    })
+
+    expect(observed.length).toBeGreaterThan(0)
+
+    act(() => actionsRef.current?.expandNodes([]))
+    expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
+
+    act(() => actionsRef.current?.expandNode('folder-Work'))
+    expect(screen.getByText('Alpha')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Root'), { ctrlKey: true })
+    expect(props.onSelectionChange).toHaveBeenLastCalledWith(['note-work', 'note-root'])
+
+    const dataTransfer = {
+      effectAllowed: '',
+      dropEffect: '',
+      setData: vi.fn(),
+      getData: vi.fn()
+    }
+    const source = screen.getByText('Root').closest('[role="treeitem"]') as HTMLElement
+    const folderTarget = screen.getByText('Work').closest('[role="treeitem"]') as HTMLElement
+    let folderRect = {
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 100,
+      bottom: 300,
+      width: 100,
+      height: 300,
+      toJSON: () => ({})
+    } as DOMRect
+    Object.defineProperty(folderTarget, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => folderRect
+    })
+
+    fireEvent.dragStart(source, { dataTransfer })
+    fireEvent.dragOver(folderTarget, { dataTransfer, clientY: 1 })
+    fireEvent.drop(folderTarget, { dataTransfer })
+    expect(onMove).toHaveBeenCalledWith({
+      draggedId: 'note-root',
+      targetId: 'folder-Work',
+      position: 'inside'
+    })
+
+    fireEvent.dragStart(source, { dataTransfer })
+    fireEvent.dragOver(folderTarget, { dataTransfer, clientY: 15 })
+    fireEvent.dragLeave(folderTarget, { relatedTarget: document.body })
+    fireEvent.dragEnd(source)
+
+    rafSpy.mockRestore()
+    cancelSpy.mockRestore()
+  })
+})

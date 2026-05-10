@@ -46,6 +46,32 @@ describe('staged secret scanner', () => {
     assert.equal(findings.length, 0)
   })
 
+  it('does not flag generic secret-shaped assignments in test files', () => {
+    const findings = scanTextForSecrets(
+      'apps/sync-server/src/routes/auth.test.ts',
+      [
+        "JWT_PRIVATE_KEY: 'mock-private-key'",
+        "accessToken: 'mock-access-token'",
+        'issueTokens: vi.fn()'
+      ].join('\n')
+    )
+
+    assert.equal(findings.length, 0)
+  })
+
+  it('still flags real token patterns in test files', () => {
+    const privateKeyMarker = '-----BEGIN ' + 'PRIVATE KEY-----abc'
+    const findings = scanTextForSecrets(
+      'apps/sync-server/src/routes/auth.test.ts',
+      [`JWT_PRIVATE_KEY="${privateKeyMarker}"`, 'accessToken: "mock-access-token"'].join('\n')
+    )
+
+    assert.deepEqual(
+      findings.map((finding) => finding.rule),
+      ['private-key-block']
+    )
+  })
+
   it('does not scan binary asset paths', () => {
     const findings = scanTextForSecrets(
       'apps/landing/public/demos/inbox.mp4',
