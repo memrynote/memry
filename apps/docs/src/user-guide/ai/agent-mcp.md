@@ -1,10 +1,32 @@
-# Agent MCP Server
+# Agent Chat & MCP Server
 
-Memry can expose a local MCP endpoint so desktop AI clients can read your vault through
-approved tools. The server runs inside the desktop app on `127.0.0.1` with a random port.
+Memry can run an in-app Agent Chat backed by the Claude Code CLI. The desktop app starts a local
+MCP endpoint on `127.0.0.1` with a random port, then launches Claude with a strict MCP config for the
+current conversation.
+
+The same MCP endpoint can also be copied into other desktop AI clients for vault read tools.
 
 Open [Settings -> Agent MCP](/user-guide/settings#agent-mcp) to copy the current endpoint and
 bearer token.
+
+## Agent Chat
+
+Open the right sidebar, choose **Agent**, and enable Claude CLI chat. Memry checks that `claude` is
+available on `PATH`, that it reports version `2.1.0` or newer, and that the Agent disclosure has been
+accepted.
+
+Agent Chat can:
+
+- keep local conversation history in the vault database
+- attach the active note as context for a turn
+- stream assistant text back into the sidebar
+- stop an in-flight turn
+- compact older conversation history when a prompt grows too large
+
+Conversation rows, message bodies, and message attachments are encrypted at rest before they are
+written to SQLite. Free accounts keep agent chat history local-only. Paid accounts can sync finalized
+conversations and terminal messages through Memry Sync; in-progress streaming messages are not
+enqueued until the turn finishes.
 
 ## Connection
 
@@ -24,11 +46,12 @@ The token is generated in memory for the current app launch. It is not saved to 
 Memry restarts, and can be rotated manually from settings. Missing or stale tokens receive `401`.
 
 Client-specific config keys vary. Use the copied URL as the MCP server URL and the copied token as a
-Bearer authorization header.
+Bearer authorization header. Plain external clients can use read tools, but they do not get the
+in-app conversation/window context that approved writes require.
 
 ## Tools
 
-Read tools are active:
+Read tools are available to Agent Chat and external MCP clients:
 
 - `vault_search_notes`
 - `vault_read_note`
@@ -41,8 +64,7 @@ Read tools are active:
 - `vault_list_inbox_items`
 - `vault_get_tags`
 
-Create and update tools are registered so clients can see the full planned surface, but they return
-`PERMISSION_DENIED` until the in-app approval flow ships:
+Create and update tools require Agent Chat context and explicit approval:
 
 - `vault_create_note`
 - `vault_create_task`
@@ -54,9 +76,10 @@ Create and update tools are registered so clients can see the full planned surfa
 - `vault_remove_tag`
 - `vault_move_to_folder`
 
-Plain external clients cannot enable these write tools by themselves. When Memry Agent conversations
-provide an in-app approval gate, the same running MCP server can route approved writes for that
-conversation while unauthenticated or context-free write requests continue to be denied.
+When Claude requests one of these tools from Agent Chat, Memry pauses the turn and shows an approval
+modal. You can allow the request once, allow the tool always for that conversation, deny it, or edit
+the arguments before allowing. Note updates show a before/after diff before the write is applied.
+Unauthenticated or context-free write requests continue to be denied.
 
 ## Current Note
 
@@ -64,18 +87,8 @@ conversation while unauthenticated or context-free write requests continue to be
 window. Plain external clients do not have that window context, so the tool returns `null` instead
 of guessing.
 
-## Conversation Storage
-
-Memry Agent conversations are stored in the local vault database. Conversation titles, message
-bodies, and message attachments are encrypted at rest before they are written to SQLite.
-
-Free accounts keep agent chat history local-only. Paid accounts can sync finalized conversations and
-terminal messages through Memry Sync; in-progress streaming messages are not enqueued until the turn
-finishes. If sync is enabled after local conversations already exist, Memry backfills the existing
-conversation rows and terminal messages into the sync outbox.
-
 ## Privacy
 
 The MCP server binds only to localhost. Read tools still expose the content they return to the
 client you configure, so only paste the token into clients you trust on this machine. Write tools are
-not active until Memry can show an approval prompt for each create or update request.
+only applied after the in-app approval gate resolves for the active Agent Chat conversation.
