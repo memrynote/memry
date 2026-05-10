@@ -61,7 +61,11 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
 
   for (const reg of opts.toolRegistrations) bindTool(reg)
 
-  const server = http.createServer(async (req, res) => {
+  const server = http.createServer((req, res) => {
+    void handleRequest(req, res)
+  })
+
+  async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
     const auth = req.headers.authorization
     const bearer = auth?.startsWith('Bearer ') ? auth.slice('Bearer '.length) : undefined
     if (!session.verifyToken(bearer)) {
@@ -96,7 +100,7 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
 
     res.writeHead(404, { 'content-type': 'application/json' })
     res.end(JSON.stringify({ error: 'not_found' }))
-  })
+  }
 
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject)
