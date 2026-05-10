@@ -66,10 +66,80 @@ describe('runTurn against a stub backend', () => {
       })
     )
   })
+
+  it('compacts oversized history before assembling the turn prompt', async () => {
+    const messages = createFakeMessageStore([
+      seedMessage({
+        id: 'old-1',
+        role: 'user',
+        content: { role: 'user', data: { text: 'a'.repeat(210_000) } },
+        createdAt: 1
+      }),
+      seedMessage({
+        id: 'old-2',
+        role: 'assistant',
+        content: { role: 'assistant', data: { text: 'b'.repeat(210_000) } },
+        createdAt: 2
+      })
+    ])
+    const conversations = {} as ConversationStore
+    const spawnSubprocess = vi
+      .fn()
+      .mockResolvedValueOnce({
+        stdout: (async function* () {
+          yield Buffer.from(
+            `${JSON.stringify({
+              type: 'content_block_delta',
+              delta: { type: 'text_delta', text: 'Earlier in this conversation: old summary' }
+            })}\n`
+          )
+          yield Buffer.from(`${JSON.stringify({ type: 'message_stop' })}\n`)
+        })(),
+        stderr: (async function* () {})(),
+        pid: 1,
+        kill: vi.fn(),
+        waitExit: async () => 0,
+        cleanup: vi.fn()
+      })
+      .mockResolvedValueOnce({
+        stdout: (async function* () {
+          yield Buffer.from(`${JSON.stringify({ type: 'message_stop' })}\n`)
+        })(),
+        stderr: (async function* () {})(),
+        pid: 2,
+        kill: vi.fn(),
+        waitExit: async () => 0,
+        cleanup: vi.fn()
+      })
+
+    await runTurn(
+      {
+        conversations,
+        messages,
+        spawnSubprocess,
+        toolHandlers: { routeToolCall: vi.fn() }
+      },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'continue',
+        attachments: []
+      }
+    )
+
+    expect(spawnSubprocess).toHaveBeenCalledTimes(2)
+    expect(spawnSubprocess.mock.calls[0][0].prompt).toContain('Earlier in this conversation')
+    expect(spawnSubprocess.mock.calls[1][0].prompt).toContain(
+      'Earlier in this conversation: old summary'
+    )
+    expect(
+      messages.listByConversation('conversation-1').some((message) => message.role === 'system')
+    ).toBe(true)
+  })
 })
 
-function createFakeMessageStore(): MessageStore {
-  const messages: Message[] = []
+function createFakeMessageStore(seed: Message[] = []): MessageStore {
+  const messages: Message[] = [...seed]
   let nextId = 1
 
   const makeMessage = (input: {
@@ -117,5 +187,26 @@ function createFakeMessageStore(): MessageStore {
       Object.assign(message, patch, { status, updatedAt: message.updatedAt + 1 })
       return message
     }
+  }
+}
+
+function seedMessage(input: {
+  id: string
+  role: MessageRole
+  content: MessageContent
+  createdAt: number
+}): Message {
+  return {
+    id: input.id,
+    conversationId: 'conversation-1',
+    role: input.role,
+    content: input.content,
+    toolCallId: null,
+    attachments: [],
+    status: 'completed',
+    vectorClock: { d: 1 },
+    createdAt: input.createdAt,
+    updatedAt: input.createdAt,
+    deletedAt: null
   }
 }

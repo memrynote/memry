@@ -128,4 +128,53 @@ describe('Prompt assembler', () => {
     expect(out).toContain('vault_create_task')
     expect(out).toContain('"id":"t1"')
   })
+
+  it('renders the latest compaction summary in place of the summarized prefix', () => {
+    const out = assemblePrompt({
+      history: [
+        baseMessage({
+          id: 'old-1',
+          role: 'user',
+          content: { role: 'user', data: { text: 'summarized user text' } },
+          createdAt: 1
+        }),
+        baseMessage({
+          id: 'old-2',
+          role: 'assistant',
+          content: { role: 'assistant', data: { text: 'summarized assistant text' } },
+          createdAt: 2
+        }),
+        baseMessage({
+          id: 'keep-1',
+          role: 'user',
+          content: { role: 'user', data: { text: 'kept user text' } },
+          createdAt: 3
+        }),
+        baseMessage({
+          id: 'compact-1',
+          role: 'system',
+          content: {
+            role: 'system',
+            data: {
+              kind: 'compacted',
+              payload: {
+                summary: 'Earlier in this conversation: old decisions',
+                summarizedThroughId: 'old-2',
+                summarizedAt: 1
+              }
+            }
+          },
+          createdAt: 4
+        })
+      ],
+      userMessage: 'now',
+      attachments: []
+    })
+
+    expect(out).toContain('Earlier in this conversation: old decisions')
+    expect(out).toContain('kept user text')
+    expect(out).not.toContain('summarized user text')
+    expect(out).not.toContain('summarized assistant text')
+    expect(out.indexOf('Earlier in this conversation')).toBeLessThan(out.indexOf('kept user text'))
+  })
 })
