@@ -6,6 +6,7 @@ export type PendingToolApproval = Extract<AgentEvent, { kind: 'tool_call_pending
 export interface AgentState {
   binaryStatus: BinaryStatus | null
   disclosureAccepted: boolean | null
+  sourceWindowId: string | null
   activeConversationId: string | null
   conversations: Record<string, Conversation>
   messagesByConversation: Record<string, Message[]>
@@ -17,6 +18,7 @@ export interface AgentState {
 export type AgentAction =
   | { type: 'set_binary_status'; status: BinaryStatus }
   | { type: 'set_disclosure'; accepted: boolean }
+  | { type: 'set_source_window_id'; sourceWindowId: string | null }
   | { type: 'set_conversations'; conversations: Conversation[] }
   | {
       type: 'set_active_conversation'
@@ -31,6 +33,7 @@ export type AgentAction =
 export const initialAgentState: AgentState = {
   binaryStatus: null,
   disclosureAccepted: null,
+  sourceWindowId: null,
   activeConversationId: null,
   conversations: {},
   messagesByConversation: {},
@@ -67,6 +70,8 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
       return { ...state, binaryStatus: action.status }
     case 'set_disclosure':
       return { ...state, disclosureAccepted: action.accepted }
+    case 'set_source_window_id':
+      return { ...state, sourceWindowId: action.sourceWindowId }
     case 'set_conversations':
       return {
         ...state,

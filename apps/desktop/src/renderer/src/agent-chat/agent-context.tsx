@@ -40,6 +40,7 @@ interface AgentClientApi {
   getBinaryStatus: () => Promise<BinaryStatus>
   getDisclosureState: () => Promise<DisclosureState>
   acceptDisclosure: () => Promise<DisclosureState>
+  getWindowId: () => Promise<{ windowId: string | null }>
   onEvent: (callback: (event: AgentEvent) => void) => () => void
 }
 
@@ -196,6 +197,16 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
 
   useEffect(() => {
     const api = getAgentApi()
+
+    void api
+      .getWindowId()
+      .then((result) => dispatch({ type: 'set_source_window_id', sourceWindowId: result.windowId }))
+      .catch((error) =>
+        dispatch({
+          type: 'set_error',
+          error: extractErrorMessage(error, 'Could not resolve agent source window')
+        })
+      )
 
     void api
       .getBinaryStatus()

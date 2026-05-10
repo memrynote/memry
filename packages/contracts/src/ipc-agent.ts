@@ -12,7 +12,8 @@ export const AgentChannels = {
     EDIT_TRUST_LIST: 'agent:editTrustList',
     GET_BINARY_STATUS: 'agent:getBinaryStatus',
     ACCEPT_DISCLOSURE: 'agent:acceptDisclosure',
-    GET_DISCLOSURE_STATE: 'agent:getDisclosureState'
+    GET_DISCLOSURE_STATE: 'agent:getDisclosureState',
+    GET_WINDOW_ID: 'agent:getWindowId'
   },
   events: {
     AGENT_EVENT: 'agent:event'

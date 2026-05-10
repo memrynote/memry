@@ -11,7 +11,7 @@ import { RefPicker } from './ref-picker'
 
 interface ComposerProps {
   conversationId: string
-  sourceWindowId: string
+  sourceWindowId: string | null
 }
 
 function getRefQuery(text: string): string | null {
@@ -49,11 +49,11 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   }, [activeTab?.entityId, activeTab?.title, activeTab?.type])
 
   const inFlight = agent?.state.inFlight?.[conversationId] === true
-  const canSend = Boolean(agent) && text.trim().length > 0 && !inFlight
+  const canSend = Boolean(agent) && Boolean(sourceWindowId) && text.trim().length > 0 && !inFlight
   const pickerQuery = pickerOpen ? (getRefQuery(text) ?? '') : ''
 
   function submit(): void {
-    if (!agent || !text.trim() || inFlight) return
+    if (!agent || !sourceWindowId || !text.trim() || inFlight) return
     const currentText = text
     const currentAttachments = attachments
     void agent.sendTurn({

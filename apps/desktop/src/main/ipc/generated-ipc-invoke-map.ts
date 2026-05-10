@@ -14,6 +14,7 @@ export interface MainIpcInvokeHandlers {
   "agent:editTrustList": (...args: [unknown]) => Awaited<Promise<import("../agent/storage/types").Conversation | null>>
   "agent:getBinaryStatus": (...args: []) => Awaited<Promise<{ detected: boolean; version: string | null; meetsMinimum: boolean; minimumRequired: string; installHint: string | null; }>>
   "agent:getDisclosureState": (...args: []) => Awaited<import("../agent/runtime/disclosure-state").DisclosureState>
+  "agent:getWindowId": (...args: []) => Awaited<{ windowId: string | null; }>
   "agent:listConversations": (...args: [unknown]) => Awaited<Promise<import("../agent/storage/types").Conversation[]>>
   "agent:loadConversation": (...args: [unknown]) => Awaited<Promise<{ conversation: import("../agent/storage/types").Conversation | null; messages: import("../agent/storage/types").Message[]; }>>
   "agent:previewDiff": (...args: [unknown]) => Awaited<Promise<{ title: string; current: string; candidate: string; }>>
