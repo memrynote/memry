@@ -1,4 +1,5 @@
 import { BrowserWindow } from 'electron'
+import { join } from 'node:path'
 import { store } from './store'
 import { persistKeysAndRegisterDevice } from './sync/device-registration'
 import { yDocToMarkdown } from './sync/blocknote-converter'
@@ -142,6 +143,15 @@ interface MemryTestHooks {
   pushMemryEventToGoogleForE2E(input: { sourceId: string }): Promise<PushMemryEventToGoogleResult>
   fetchGoogleEventForE2E(input: FetchGoogleEventInput): Promise<GoogleEventProbe>
   translateInMain(key: string): Promise<string>
+  createSecondaryWindowForE2E(): Promise<number>
+  triggerQuickCaptureShortcutForE2E?(): Promise<number>
+  getQuickCaptureShortcutRegistrationForE2E?(): {
+    shortcut: string
+    configuredRegistered: boolean
+    fallbackAttempted: boolean
+    fallbackRegistered: boolean
+    registered: boolean
+  }
 }
 
 interface GoogleTestCredentials {
@@ -783,6 +793,29 @@ export function registerTestHooks(): void {
 
     async translateInMain(key: string): Promise<string> {
       return getMainI18n().t(key)
+    },
+
+    async createSecondaryWindowForE2E(): Promise<number> {
+      const win = new BrowserWindow({
+        width: 1200,
+        height: 800,
+        show: false,
+        autoHideMenuBar: true,
+        webPreferences: {
+          preload: join(__dirname, '../preload/index.js'),
+          sandbox: false
+        }
+      })
+
+      win.on('ready-to-show', () => win.show())
+
+      if (process.env['ELECTRON_RENDERER_URL']) {
+        await win.loadURL(process.env['ELECTRON_RENDERER_URL'])
+      } else {
+        await win.loadFile(join(__dirname, '../renderer/index.html'))
+      }
+
+      return win.id
     }
   }
 }

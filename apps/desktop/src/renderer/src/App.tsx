@@ -239,6 +239,29 @@ const AppContent = (): React.JSX.Element => {
   }, [openTab])
 
   useEffect(() => {
+    const openTestFolder = (event: CustomEvent<{ path?: string; title?: string }>) => {
+      const { path, title } = event.detail ?? {}
+      if (!path) return
+
+      openTab({
+        type: 'folder',
+        title: title ?? path.split('/').pop() ?? 'Folder',
+        icon: 'folder',
+        path: `/folder/${encodeURIComponent(path)}`,
+        entityId: path,
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false
+      })
+    }
+
+    window.addEventListener('memry:test-open-folder', openTestFolder as EventListener)
+    return () =>
+      window.removeEventListener('memry:test-open-folder', openTestFolder as EventListener)
+  }, [openTab])
+
+  useEffect(() => {
     return window.api.onSettingsOpenRequested((section) => {
       openSettings(section)
     })

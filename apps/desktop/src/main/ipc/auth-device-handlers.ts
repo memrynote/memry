@@ -365,10 +365,6 @@ export function registerAuthDeviceHandlers(): void {
         db.delete(syncDevices).where(eq(syncDevices.id, input.deviceId)).run()
       }
 
-      for (const win of BrowserWindow.getAllWindows()) {
-        win.webContents.send(SYNC_EVENTS.DEVICE_REMOVED, { deviceId: input.deviceId })
-      }
-
       logger.info(`Device removed: ${input.deviceId}`)
       return { success: true }
     },

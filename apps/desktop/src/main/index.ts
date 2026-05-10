@@ -23,7 +23,7 @@ import { LocaleSchema, FALLBACK_LOCALE, type Locale } from '@memry/contracts/loc
 import { createMainI18n, type I18nInstance } from '@memry/i18n/main'
 import { registerAllHandlers } from './ipc'
 import { applyGlobalCaptureShortcut } from './ipc/settings-handlers'
-import { autoOpenLastVault, closeVault } from './vault'
+import { autoOpenLastVault, closeVault, getStatus as getVaultStatus } from './vault'
 import { readPreferences } from './vault/vault-preferences'
 import { getCurrentVaultPath } from './store'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
@@ -470,8 +470,13 @@ void app.whenReady().then(async () => {
     filePath = resolve(normalize(filePath))
 
     const allowedDirs: string[] = [app.getPath('userData')]
-    const vaultPath = getCurrentVaultPath()
-    if (vaultPath) allowedDirs.push(resolve(vaultPath))
+    const vaultPaths = [getCurrentVaultPath(), getVaultStatus().path].filter(
+      (vaultPath): vaultPath is string => Boolean(vaultPath)
+    )
+    for (const vaultPath of vaultPaths) {
+      const resolvedVaultPath = resolve(vaultPath)
+      if (!allowedDirs.includes(resolvedVaultPath)) allowedDirs.push(resolvedVaultPath)
+    }
 
     const isAllowed = allowedDirs.some((dir) => filePath.startsWith(dir + '/') || filePath === dir)
     if (!isAllowed) {
@@ -653,6 +658,25 @@ void app.whenReady().then(async () => {
         type?: 'normal' | 'separator'
       }>
     ) => {
+      if (process.env.NODE_ENV === 'test') {
+        const globals = globalThis as typeof globalThis & {
+          __memryNextContextMenuSelection?: string | null
+          __memryLastContextMenuItems?: Array<{
+            id: string
+            label: string
+            accelerator?: string
+            disabled?: boolean
+            type?: 'normal' | 'separator'
+          }>
+        }
+        globals.__memryLastContextMenuItems = items
+        if (globals.__memryNextContextMenuSelection !== undefined) {
+          const selection = globals.__memryNextContextMenuSelection
+          delete globals.__memryNextContextMenuSelection
+          return selection
+        }
+      }
+
       return new Promise<string | null>((resolve) => {
         const menu = new Menu()
         let resolved = false
@@ -700,9 +724,12 @@ void app.whenReady().then(async () => {
 
   // Register global shortcut for quick capture from keyboard settings (fallback: hardcoded default)
   const globalCaptureResult = applyGlobalCaptureShortcut()
+  quickCaptureShortcutRegistration.configuredRegistered = globalCaptureResult.registered
+  quickCaptureShortcutRegistration.registered = globalCaptureResult.registered
   if (!globalCaptureResult.registered) {
     registerQuickCaptureShortcut()
   }
+  registerQuickCaptureTestHooks()
 
   // Configure CSP and cert pinning before the window loads
   configureCsp()
@@ -750,6 +777,16 @@ void app.whenReady().then(async () => {
 
 /** Reference to the quick capture window instance */
 let quickCaptureWindow: BrowserWindow | null = null
+
+const QUICK_CAPTURE_SHORTCUT = 'CommandOrControl+Shift+Space'
+
+const quickCaptureShortcutRegistration = {
+  shortcut: QUICK_CAPTURE_SHORTCUT,
+  configuredRegistered: false,
+  fallbackAttempted: false,
+  fallbackRegistered: false,
+  registered: false
+}
 
 /**
  * Show the quick capture window centered on screen.
@@ -850,18 +887,43 @@ function closeQuickCaptureWindow(): void {
 /**
  * Register the global shortcut for quick capture
  */
-function registerQuickCaptureShortcut(): void {
-  const shortcut = 'CommandOrControl+Shift+Space'
+function handleQuickCaptureShortcut(): void {
+  showQuickCaptureWindow()
+}
 
-  const registered = globalShortcut.register(shortcut, () => {
-    showQuickCaptureWindow()
-  })
+function registerQuickCaptureShortcut(): void {
+  const registered = globalShortcut.register(QUICK_CAPTURE_SHORTCUT, handleQuickCaptureShortcut)
+
+  quickCaptureShortcutRegistration.fallbackAttempted = true
+  quickCaptureShortcutRegistration.fallbackRegistered = registered
+  quickCaptureShortcutRegistration.registered =
+    quickCaptureShortcutRegistration.configuredRegistered || registered
 
   if (!registered) {
     quickCaptureLog.warn(
-      `failed to register global shortcut: ${shortcut}. It may be in use by another application.`
+      `failed to register global shortcut: ${QUICK_CAPTURE_SHORTCUT}. It may be in use by another application.`
     )
   }
+}
+
+function registerQuickCaptureTestHooks(): void {
+  if (process.env.NODE_ENV !== 'test') return
+  const hooks = globalThis.__memryTestHooks
+  if (!hooks) return
+
+  Object.assign(hooks, {
+    async triggerQuickCaptureShortcutForE2E(): Promise<number> {
+      handleQuickCaptureShortcut()
+      if (!quickCaptureWindow || quickCaptureWindow.isDestroyed()) {
+        throw new Error('Quick Capture window was not created')
+      }
+      return quickCaptureWindow.id
+    },
+
+    getQuickCaptureShortcutRegistrationForE2E(): typeof quickCaptureShortcutRegistration {
+      return { ...quickCaptureShortcutRegistration }
+    }
+  })
 }
 
 // ============================================================================
