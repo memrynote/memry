@@ -3,9 +3,12 @@ import { ipcMain } from 'electron'
 import {
   AgentChannels,
   ApproveToolRequestSchema,
+  PreviewDiffRequestSchema,
+  type PreviewDiffResponse,
   SendTurnRequestSchema
 } from '@memry/contracts/ipc-agent'
 
+import { TOOL_SCHEMAS } from '../agent/mcp/tools/schemas'
 import { detectClaudeBinary } from '../agent/cli/claude-binary'
 import type { AgentRuntime } from '../agent/runtime/runtime'
 import { acceptDisclosure, getDisclosureState } from '../agent/runtime/disclosure-state'
@@ -18,9 +21,14 @@ import { createLogger } from '../lib/logger'
 const logger = createLogger('IPC:Agent')
 
 interface AgentHandlerDeps {
-  runtime: Pick<AgentRuntime, 'cancelTurn' | 'resolveApproval'>
+  runtime: Pick<AgentRuntime, 'cancelTurn' | 'resolveApproval' | 'getPendingApproval'>
   conversations: ConversationStore
   messages: MessageStore
+  previewNoteUpdate: (input: {
+    id: string
+    mode: 'append' | 'prepend' | 'replace'
+    content_markdown: string
+  }) => Promise<PreviewDiffResponse>
   spawn: TurnDeps['spawnSubprocess']
   routeToolCall: TurnDeps['toolHandlers']['routeToolCall']
   vaultId: string
@@ -85,6 +93,24 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
     const request = ApproveToolRequestSchema.parse(payload)
     deps.runtime.resolveApproval(request.toolCallId, request.decision)
     return { ok: true }
+  })
+
+  ipcMain.handle(AgentChannels.invoke.PREVIEW_DIFF, async (_event, payload: unknown) => {
+    const request = PreviewDiffRequestSchema.parse(payload)
+    const pending = deps.runtime.getPendingApproval(request.toolCallId)
+    if (!pending || pending.conversationId !== request.conversationId) {
+      throw new Error('No pending approval found for diff preview')
+    }
+    if (pending.name !== 'vault_update_note' || !pending.requiresDiff) {
+      throw new Error('Diff preview is only available for vault_update_note approvals')
+    }
+
+    const parsed = TOOL_SCHEMAS.vault_update_note.input.safeParse(pending.args)
+    if (!parsed.success) {
+      throw new Error('Pending approval has invalid vault_update_note arguments')
+    }
+
+    return deps.previewNoteUpdate(parsed.data)
   })
 
   ipcMain.handle(AgentChannels.invoke.EDIT_TRUST_LIST, async (_event, payload: unknown) => {

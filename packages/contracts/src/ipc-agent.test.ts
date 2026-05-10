@@ -5,6 +5,8 @@ import {
   AgentEventSchema,
   ApproveToolRequestSchema,
   BinaryStatusSchema,
+  PreviewDiffRequestSchema,
+  PreviewDiffResponseSchema,
   SendTurnRequestSchema,
   type AgentEvent
 } from './ipc-agent'
@@ -19,6 +21,7 @@ describe('AgentChannels', () => {
         SEND_TURN: 'agent:sendTurn',
         CANCEL_TURN: 'agent:cancelTurn',
         APPROVE_TOOL: 'agent:approveTool',
+        PREVIEW_DIFF: 'agent:previewDiff',
         EDIT_TRUST_LIST: 'agent:editTrustList',
         GET_BINARY_STATUS: 'agent:getBinaryStatus',
         ACCEPT_DISCLOSURE: 'agent:acceptDisclosure',
@@ -59,6 +62,23 @@ describe('agent IPC schemas', () => {
         meetsMinimum: true,
         minimumRequired: '1.0.0',
         installHint: null
+      }).success
+    ).toBe(true)
+  })
+
+  it('validates diff preview requests and responses', () => {
+    expect(
+      PreviewDiffRequestSchema.safeParse({
+        conversationId: 'conversation-1',
+        toolCallId: 'tool-1'
+      }).success
+    ).toBe(true)
+
+    expect(
+      PreviewDiffResponseSchema.safeParse({
+        title: 'Note',
+        current: 'old',
+        candidate: 'old\n\nnew'
       }).success
     ).toBe(true)
   })

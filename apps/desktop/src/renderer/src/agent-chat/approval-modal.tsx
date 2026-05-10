@@ -30,7 +30,7 @@ export function ApprovalModal(): React.JSX.Element | null {
   const [edited, setEdited] = useState('')
   const [parseError, setParseError] = useState<string | null>(null)
 
-  if (!agent || !pending) return null
+  if (!agent || !pending || pending.requiresDiff) return null
 
   const currentAgent = agent
   const currentPending = pending

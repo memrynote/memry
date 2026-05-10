@@ -16,6 +16,7 @@ export interface MainIpcInvokeHandlers {
   "agent:getDisclosureState": (...args: []) => Awaited<import("../agent/runtime/disclosure-state").DisclosureState>
   "agent:listConversations": (...args: [unknown]) => Awaited<Promise<import("../agent/storage/types").Conversation[]>>
   "agent:loadConversation": (...args: [unknown]) => Awaited<Promise<{ conversation: import("../agent/storage/types").Conversation | null; messages: import("../agent/storage/types").Message[]; }>>
+  "agent:previewDiff": (...args: [unknown]) => Awaited<Promise<{ title: string; current: string; candidate: string; }>>
   "agent:sendTurn": (...args: [unknown]) => Awaited<Promise<{ ok: boolean; }>>
   "ai-inline:get-server-port": (...args: []) => Awaited<number | null>
   "ai-inline:get-settings": (...args: []) => Awaited<import("../../../../../packages/contracts/src/ai-inline-channels").AIInlineSettings>

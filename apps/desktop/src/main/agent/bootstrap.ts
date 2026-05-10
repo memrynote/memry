@@ -1,10 +1,11 @@
 import { getOrDeriveVaultKey, secureCleanup } from '../crypto'
-import { getDatabase } from '../database'
+import { getDatabase, getIndexDatabase } from '../database'
 import { registerAgentHandlers, unregisterAgentHandlers } from '../ipc/agent-handlers'
 import { createLogger } from '../lib/logger'
 import { detectClaudeBinary } from './cli/claude-binary'
 import { spawnClaudeTurn } from './cli/spawn'
 import { getPublicStatus } from './mcp/lifecycle'
+import { createVaultServiceHandles } from './mcp/tools/handles-adapter'
 import { ALL_TOOL_NAMES } from './mcp/tools/schemas'
 import { AgentRuntime } from './runtime/runtime'
 import { createConversationStore } from './storage/conversation-store'
@@ -14,17 +15,30 @@ import { getOrCreateVaultUuid } from './storage/vault-id'
 const logger = createLogger('AgentBootstrap')
 const ALLOWED_AGENT_TOOLS = ALL_TOOL_NAMES.map((name) => `mcp__memry__${name}`).join(',')
 
+function mergeContent(
+  current: string,
+  mode: 'append' | 'prepend' | 'replace',
+  next: string
+): string {
+  if (mode === 'replace') return next
+  if (!current) return next
+  if (!next) return current
+  return mode === 'append' ? `${current}\n\n${next}` : `${next}\n\n${current}`
+}
+
 export interface AgentHandle {
   shutdown: () => Promise<void>
 }
 
 export async function startAgent(): Promise<AgentHandle> {
   const db = getDatabase()
+  const indexDb = getIndexDatabase()
   const vaultKey = await getOrDeriveVaultKey()
   const deviceId = process.env.MEMRY_DEVICE ?? 'desktop'
   const vaultId = getOrCreateVaultUuid(db)
   const conversations = createConversationStore({ db, vaultKey, deviceId })
   const messages = createMessageStore({ db, vaultKey, deviceId })
+  const handles = createVaultServiceHandles({ dataDb: db, indexDb })
 
   const spawnAdapter = async ({
     prompt,
@@ -81,6 +95,15 @@ export async function startAgent(): Promise<AgentHandle> {
     runtime,
     conversations,
     messages,
+    previewNoteUpdate: async (input) => {
+      const note = await handles.notes.read(input.id)
+      if (!note) throw new Error(`Note not found: ${input.id}`)
+      return {
+        title: note.title,
+        current: note.content_markdown,
+        candidate: mergeContent(note.content_markdown, input.mode, input.content_markdown)
+      }
+    },
     spawn: spawnAdapter,
     routeToolCall: async () => ({ ok: true, data: null }),
     vaultId

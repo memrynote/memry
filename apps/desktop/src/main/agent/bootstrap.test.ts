@@ -2,11 +2,20 @@ import { describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   getDatabase: vi.fn(() => ({ db: true })),
+  getIndexDatabase: vi.fn(() => ({ indexDb: true })),
   getOrDeriveVaultKey: vi.fn(async () => new Uint8Array(32).fill(1)),
   secureCleanup: vi.fn(),
   getOrCreateVaultUuid: vi.fn(() => 'vault-1'),
   createConversationStore: vi.fn(() => ({ store: 'conversations' })),
   createMessageStore: vi.fn(() => ({ store: 'messages' })),
+  createVaultServiceHandles: vi.fn(() => ({
+    notes: {
+      read: vi.fn(async () => ({
+        title: 'Note',
+        content_markdown: 'old'
+      }))
+    }
+  })),
   registerAgentHandlers: vi.fn(),
   unregisterAgentHandlers: vi.fn(),
   getPublicStatus: vi.fn(() => ({
@@ -35,7 +44,10 @@ const mocks = vi.hoisted(() => ({
   runtimeKillAll: vi.fn(async () => {})
 }))
 
-vi.mock('../database', () => ({ getDatabase: mocks.getDatabase }))
+vi.mock('../database', () => ({
+  getDatabase: mocks.getDatabase,
+  getIndexDatabase: mocks.getIndexDatabase
+}))
 vi.mock('../crypto', () => ({
   getOrDeriveVaultKey: mocks.getOrDeriveVaultKey,
   secureCleanup: mocks.secureCleanup
@@ -50,6 +62,9 @@ vi.mock('../ipc/agent-handlers', () => ({
   unregisterAgentHandlers: mocks.unregisterAgentHandlers
 }))
 vi.mock('./mcp/lifecycle', () => ({ getPublicStatus: mocks.getPublicStatus }))
+vi.mock('./mcp/tools/handles-adapter', () => ({
+  createVaultServiceHandles: mocks.createVaultServiceHandles
+}))
 vi.mock('./cli/claude-binary', () => ({ detectClaudeBinary: mocks.detectClaudeBinary }))
 vi.mock('./cli/spawn', () => ({ spawnClaudeTurn: mocks.spawnClaudeTurn }))
 vi.mock('./runtime/runtime', () => ({
@@ -72,6 +87,10 @@ describe('startAgent', () => {
       db: { db: true },
       vaultKey: expect.any(Uint8Array),
       deviceId: 'desktop'
+    })
+    expect(mocks.createVaultServiceHandles).toHaveBeenCalledWith({
+      dataDb: { db: true },
+      indexDb: { indexDb: true }
     })
     expect(mocks.runtimeInstall).toHaveBeenCalled()
     expect(mocks.registerAgentHandlers).toHaveBeenCalledWith(
@@ -103,6 +122,23 @@ describe('startAgent', () => {
         prompt: 'hello'
       })
     )
+  })
+
+  it('previews note updates for agent diff approvals', async () => {
+    await startAgent()
+    const deps = mocks.registerAgentHandlers.mock.calls[0][0]
+
+    const preview = await deps.previewNoteUpdate({
+      id: 'note-1',
+      mode: 'append',
+      content_markdown: 'new'
+    })
+
+    expect(preview).toEqual({
+      title: 'Note',
+      current: 'old',
+      candidate: 'old\n\nnew'
+    })
   })
 
   it('kills runtime and unregisters handlers on shutdown', async () => {

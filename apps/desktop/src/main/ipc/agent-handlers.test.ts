@@ -55,7 +55,18 @@ describe('agent IPC handlers', () => {
   const deps = {
     runtime: {
       cancelTurn: vi.fn(),
-      resolveApproval: vi.fn()
+      resolveApproval: vi.fn(),
+      getPendingApproval: vi.fn(() => ({
+        conversationId: 'conversation-1',
+        toolCallId: 'tool-1',
+        name: 'vault_update_note',
+        args: {
+          id: 'note-1',
+          mode: 'append',
+          content_markdown: 'new'
+        },
+        requiresDiff: true
+      }))
     },
     conversations: {
       listByVault: vi.fn(() => [{ id: 'conversation-1' }]),
@@ -67,6 +78,11 @@ describe('agent IPC handlers', () => {
     messages: {
       listByConversation: vi.fn(() => [{ id: 'message-1' }])
     },
+    previewNoteUpdate: vi.fn(() => ({
+      title: 'Note',
+      current: 'old',
+      candidate: 'old\n\nnew'
+    })),
     spawn: vi.fn(),
     routeToolCall: vi.fn(),
     vaultId: 'vault-1'
@@ -136,5 +152,25 @@ describe('agent IPC handlers', () => {
     })
 
     expect(deps.runtime.resolveApproval).toHaveBeenCalledWith('tool-1', { kind: 'allow' })
+  })
+
+  it('previews pending vault_update_note diffs', async () => {
+    registerAgentHandlers(deps)
+
+    const result = await findHandler(AgentChannels.invoke.PREVIEW_DIFF)(null, {
+      conversationId: 'conversation-1',
+      toolCallId: 'tool-1'
+    })
+
+    expect(deps.previewNoteUpdate).toHaveBeenCalledWith({
+      id: 'note-1',
+      mode: 'append',
+      content_markdown: 'new'
+    })
+    expect(result).toEqual({
+      title: 'Note',
+      current: 'old',
+      candidate: 'old\n\nnew'
+    })
   })
 })

@@ -11,6 +11,11 @@ const logger = createLogger('AgentRuntime')
 
 interface PendingApproval {
   resolve: (decision: ApproveToolDecision) => void
+  conversationId: string
+  toolCallId: string
+  name: string
+  args: unknown
+  requiresDiff: boolean
 }
 
 export interface AgentRuntimeDeps {
@@ -25,6 +30,8 @@ export interface AgentRuntimeDeps {
     cleanup: () => Promise<void>
   }>
 }
+
+export type PendingApprovalSnapshot = Omit<PendingApproval, 'resolve'>
 
 export class AgentRuntime {
   private inFlight = new Map<string, AbortController>()
@@ -50,16 +57,23 @@ export class AgentRuntime {
       }
 
       const toolCallId = `gate-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      const requiresDiff = decision.outcome === 'await_user' ? decision.requiresDiff : false
       broadcastAgentEvent({
         kind: 'tool_call_pending_approval',
         conversationId: ctx.conversationId,
         toolCallId,
         name: ctx.toolName,
         args: ctx.parsedArgs,
-        requiresDiff: decision.outcome === 'await_user' ? decision.requiresDiff : false
+        requiresDiff
       })
 
-      const userDecision = await this.waitForApproval(toolCallId)
+      const userDecision = await this.waitForApproval({
+        conversationId: ctx.conversationId,
+        toolCallId,
+        name: ctx.toolName,
+        args: ctx.parsedArgs,
+        requiresDiff
+      })
       if (userDecision.kind === 'deny') {
         return { approved: false, reason: 'User denied request.' }
       }
@@ -84,6 +98,18 @@ export class AgentRuntime {
     this.pending.delete(toolCallId)
   }
 
+  getPendingApproval(toolCallId: string): PendingApprovalSnapshot | null {
+    const pending = this.pending.get(toolCallId)
+    if (!pending) return null
+    return {
+      conversationId: pending.conversationId,
+      toolCallId: pending.toolCallId,
+      name: pending.name,
+      args: pending.args,
+      requiresDiff: pending.requiresDiff
+    }
+  }
+
   cancelTurn(conversationId: string): void {
     this.inFlight.get(conversationId)?.abort()
   }
@@ -104,9 +130,9 @@ export class AgentRuntime {
     this.inFlight.clear()
   }
 
-  private waitForApproval(toolCallId: string): Promise<ApproveToolDecision> {
+  private waitForApproval(input: PendingApprovalSnapshot): Promise<ApproveToolDecision> {
     return new Promise((resolve) => {
-      this.pending.set(toolCallId, { resolve })
+      this.pending.set(input.toolCallId, { ...input, resolve })
     })
   }
 }
