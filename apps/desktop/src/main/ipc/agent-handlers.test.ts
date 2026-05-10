@@ -96,6 +96,7 @@ describe('agent IPC handlers', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockElectron.BrowserWindow.fromWebContents.mockReturnValue(null)
+    mockElectron.BrowserWindow.getAllWindows.mockReturnValue([])
   })
 
   afterEach(() => {
@@ -265,5 +266,18 @@ describe('agent IPC handlers', () => {
 
     expect(mockElectron.BrowserWindow.fromWebContents).toHaveBeenCalledWith({ id: 123 })
     expect(result).toEqual({ windowId: '42' })
+  })
+
+  it('falls back to matching sender webContents when resolving window id', async () => {
+    registerAgentHandlers(deps)
+    mockElectron.BrowserWindow.getAllWindows.mockReturnValue([
+      { id: 7, webContents: { id: 123 } }
+    ] as never)
+
+    const result = await findHandler(AgentChannels.invoke.GET_WINDOW_ID)({
+      sender: { id: 123 }
+    })
+
+    expect(result).toEqual({ windowId: '7' })
   })
 })

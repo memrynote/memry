@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { BrowserWindow, ipcMain, type WebContents } from 'electron'
 
 import {
   AgentChannels,
@@ -167,7 +167,7 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
   ipcMain.handle(AgentChannels.invoke.GET_DISCLOSURE_STATE, () => getDisclosureState())
   ipcMain.handle(AgentChannels.invoke.ACCEPT_DISCLOSURE, () => acceptDisclosure())
   ipcMain.handle(AgentChannels.invoke.GET_WINDOW_ID, (event) => ({
-    windowId: BrowserWindow.fromWebContents(event.sender)?.id.toString() ?? null
+    windowId: resolveSenderWindowId(event.sender)
   }))
 }
 
@@ -179,4 +179,15 @@ export function unregisterAgentHandlers(): void {
 
 function extractErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback
+}
+
+function resolveSenderWindowId(sender: WebContents): string | null {
+  const direct = BrowserWindow.fromWebContents(sender)
+  if (direct) return direct.id.toString()
+
+  const windows = BrowserWindow.getAllWindows()
+  const matchingWindow = windows.find((win) => win.webContents.id === sender.id)
+  if (matchingWindow) return matchingWindow.id.toString()
+  if (windows.length === 1) return windows[0].id.toString()
+  return null
 }

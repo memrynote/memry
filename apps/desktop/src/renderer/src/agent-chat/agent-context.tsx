@@ -68,9 +68,33 @@ interface AgentContextValue {
 }
 
 const AgentContext = createContext<AgentContextValue | null>(null)
+const AGENT_BOOTSTRAP_ATTEMPTS = 40
+const AGENT_BOOTSTRAP_RETRY_MS = 250
 
 function getAgentApi(): AgentClientApi {
   return (window.api as typeof window.api & { agent: AgentClientApi }).agent
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function shouldRetryAgentBootstrap(error: unknown): boolean {
+  return extractErrorMessage(error, '').includes('No handler registered')
+}
+
+async function invokeWhenAgentReady<T>(fn: () => Promise<T>): Promise<T> {
+  let lastError: unknown
+  for (let attempt = 0; attempt < AGENT_BOOTSTRAP_ATTEMPTS; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error
+      if (!shouldRetryAgentBootstrap(error)) break
+      await sleep(AGENT_BOOTSTRAP_RETRY_MS)
+    }
+  }
+  throw lastError
 }
 
 export function AgentProvider({ children }: { children: ReactNode }): React.JSX.Element {
@@ -204,48 +228,63 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
 
   useEffect(() => {
     const api = getAgentApi()
+    let cancelled = false
 
-    void api
-      .getWindowId()
-      .then((result) => dispatch({ type: 'set_source_window_id', sourceWindowId: result.windowId }))
-      .catch((error) =>
+    void invokeWhenAgentReady(() => api.getWindowId())
+      .then((result) => {
+        if (!cancelled) {
+          dispatch({ type: 'set_source_window_id', sourceWindowId: result.windowId })
+        }
+      })
+      .catch((error) => {
+        if (cancelled) return
         dispatch({
           type: 'set_error',
           error: extractErrorMessage(error, 'Could not resolve agent source window')
         })
-      )
+      })
 
-    void api
-      .getBinaryStatus()
-      .then((status) => dispatch({ type: 'set_binary_status', status }))
-      .catch((error) =>
+    void invokeWhenAgentReady(() => api.getBinaryStatus())
+      .then((status) => {
+        if (!cancelled) dispatch({ type: 'set_binary_status', status })
+      })
+      .catch((error) => {
+        if (cancelled) return
         dispatch({
           type: 'set_error',
           error: extractErrorMessage(error, 'Could not detect Claude CLI')
         })
-      )
+      })
 
-    void api
-      .getDisclosureState()
-      .then((result) => dispatch({ type: 'set_disclosure', accepted: result.accepted }))
-      .catch((error) =>
+    void invokeWhenAgentReady(() => api.getDisclosureState())
+      .then((result) => {
+        if (!cancelled) dispatch({ type: 'set_disclosure', accepted: result.accepted })
+      })
+      .catch((error) => {
+        if (cancelled) return
         dispatch({
           type: 'set_error',
           error: extractErrorMessage(error, 'Could not load disclosure state')
         })
-      )
+      })
 
-    void api
-      .listConversations()
-      .then((conversations) => dispatch({ type: 'set_conversations', conversations }))
-      .catch((error) =>
+    void invokeWhenAgentReady(() => api.listConversations())
+      .then((conversations) => {
+        if (!cancelled) dispatch({ type: 'set_conversations', conversations })
+      })
+      .catch((error) => {
+        if (cancelled) return
         dispatch({
           type: 'set_error',
           error: extractErrorMessage(error, 'Could not load agent conversations')
         })
-      )
+      })
 
-    return api.onEvent((event) => dispatch({ type: 'event', event }))
+    const unsubscribe = api.onEvent((event) => dispatch({ type: 'event', event }))
+    return () => {
+      cancelled = true
+      unsubscribe()
+    }
   }, [])
 
   const value = useMemo<AgentContextValue>(
