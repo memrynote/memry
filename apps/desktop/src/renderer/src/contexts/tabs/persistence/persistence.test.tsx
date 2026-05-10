@@ -1,0 +1,411 @@
+import { act, render, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { useManualPersistence, useSessionRestore, useTabPersistence } from './hooks'
+import { indexedDBAdapter, localStorageAdapter, saveSync } from './storage'
+import { deserializeTabState, extractPinnedTabs, serializeTabState } from './serialization'
+import { STORAGE_KEY, type PersistedTabState, type TabStorage } from './types'
+import type { Tab, TabSystemState } from '@/contexts/tabs/types'
+
+const mocks = vi.hoisted(() => ({
+  tabsState: null as TabSystemState | null,
+  dispatch: vi.fn(),
+  pendingSave: null as null | (() => void),
+  registerPendingSave: vi.fn((_: string, callback: () => void) => {
+    mocks.pendingSave = callback
+  }),
+  unregisterPendingSave: vi.fn()
+}))
+
+vi.mock('@/contexts/tabs', () => ({
+  useTabs: () => ({
+    state: mocks.tabsState,
+    dispatch: mocks.dispatch
+  })
+}))
+
+vi.mock('@/lib/save-registry', () => ({
+  registerPendingSave: mocks.registerPendingSave,
+  unregisterPendingSave: mocks.unregisterPendingSave
+}))
+
+vi.mock('@/lib/logger', () => ({
+  createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })
+}))
+
+const tab = (overrides: Partial<Tab> = {}): Tab =>
+  ({
+    id: 'tab-1',
+    type: 'note',
+    title: 'Roadmap',
+    icon: 'file-text',
+    emoji: null,
+    path: '/note/tab-1',
+    entityId: 'tab-1',
+    isPinned: false,
+    isModified: false,
+    isPreview: false,
+    isDeleted: false,
+    openedAt: 1,
+    lastAccessedAt: 2,
+    scrollPosition: 42,
+    viewState: { cursor: 'top' },
+    ...overrides
+  }) as Tab
+
+const state = (overrides: Partial<TabSystemState> = {}): TabSystemState =>
+  ({
+    activeGroupId: 'group-1',
+    tabGroups: {
+      'group-1': {
+        id: 'group-1',
+        activeTabId: 'tab-1',
+        tabs: [
+          tab(),
+          tab({
+            id: 'preview-1',
+            title: 'Preview',
+            isPreview: true
+          }),
+          tab({
+            id: 'pin-1',
+            type: 'inbox',
+            title: 'Inbox',
+            icon: 'inbox',
+            path: '/inbox',
+            entityId: undefined,
+            isPinned: true
+          })
+        ],
+        isActive: true,
+        back: [],
+        forward: []
+      },
+      'empty-group': {
+        id: 'empty-group',
+        activeTabId: null,
+        tabs: [],
+        isActive: false,
+        back: [],
+        forward: []
+      }
+    },
+    layout: { type: 'leaf', tabGroupId: 'group-1' },
+    settings: {
+      restoreSessionOnStart: true,
+      previewMode: true,
+      tabCloseButton: 'active',
+      maxTabs: 20,
+      showTabNumbers: false,
+      enableTabHistory: true
+    },
+    ...overrides
+  }) as TabSystemState
+
+const persisted = (overrides: Partial<PersistedTabState> = {}): PersistedTabState => ({
+  version: 2,
+  tabGroups: {
+    'group-1': {
+      id: 'group-1',
+      activeTabId: 'pin-1',
+      tabs: [
+        {
+          id: 'pin-1',
+          type: 'inbox',
+          title: 'Inbox',
+          icon: 'inbox',
+          path: '/inbox',
+          isPinned: true,
+          viewState: { filter: 'today' }
+        },
+        {
+          id: 'note-1',
+          type: 'note',
+          title: 'Note',
+          icon: 'file-text',
+          path: '/note/note-1',
+          entityId: 'note-1',
+          isPinned: false
+        }
+      ]
+    }
+  },
+  layout: { type: 'leaf', tabGroupId: 'group-1' },
+  activeGroupId: 'group-1',
+  settings: state().settings,
+  savedAt: 123,
+  ...overrides
+})
+
+function withQueryClient(children: React.ReactNode) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } }
+  })
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+}
+
+function TabPersistenceProbe({
+  storage,
+  debounceMs = 5,
+  enabled = true
+}: {
+  storage: TabStorage
+  debounceMs?: number
+  enabled?: boolean
+}) {
+  useTabPersistence({ storage, debounceMs, enabled })
+  return null
+}
+
+let sessionSnapshot: ReturnType<typeof useSessionRestore> | null = null
+function SessionRestoreProbe({
+  storage,
+  autoRestore = true
+}: {
+  storage: TabStorage
+  autoRestore?: boolean
+}) {
+  sessionSnapshot = useSessionRestore({ storage, autoRestore })
+  return null
+}
+
+let manualSnapshot: ReturnType<typeof useManualPersistence> | null = null
+function ManualPersistenceProbe({ storage }: { storage: TabStorage }) {
+  manualSnapshot = useManualPersistence(storage)
+  return null
+}
+
+function installIndexedDbMock(): void {
+  let value: PersistedTabState | null = null
+  const createRequest = <T,>(result: T) => {
+    const request = {
+      error: null,
+      result,
+      onsuccess: null as null | (() => void),
+      onerror: null as null | (() => void)
+    }
+    setTimeout(() => request.onsuccess?.(), 0)
+    return request
+  }
+  const store = {
+    put: vi.fn((nextValue: PersistedTabState) => {
+      value = nextValue
+      return createRequest(undefined)
+    }),
+    get: vi.fn(() => createRequest(value)),
+    delete: vi.fn(() => {
+      value = null
+      return createRequest(undefined)
+    })
+  }
+  const db = {
+    objectStoreNames: { contains: vi.fn(() => false) },
+    createObjectStore: vi.fn(),
+    transaction: vi.fn(() => ({
+      objectStore: vi.fn(() => store)
+    }))
+  }
+
+  Object.defineProperty(globalThis, 'indexedDB', {
+    configurable: true,
+    value: {
+      open: vi.fn(() => {
+        const request = {
+          error: null,
+          result: db,
+          onsuccess: null as null | (() => void),
+          onerror: null as null | (() => void),
+          onupgradeneeded: null as null | ((event: { target: { result: typeof db } }) => void)
+        }
+        setTimeout(() => {
+          request.onupgradeneeded?.({ target: { result: db } })
+          request.onsuccess?.()
+        }, 0)
+        return request
+      })
+    }
+  })
+}
+
+describe('tab persistence serialization and storage', () => {
+  beforeEach(() => {
+    vi.useRealTimers()
+    vi.clearAllMocks()
+    localStorage.clear()
+    mocks.tabsState = state()
+    mocks.pendingSave = null
+    sessionSnapshot = null
+    manualSnapshot = null
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('serializes durable tabs and deserializes invalid persisted layouts safely', () => {
+    const serialized = serializeTabState(state())
+
+    expect(Object.keys(serialized.tabGroups)).toEqual(['group-1'])
+    expect(serialized.tabGroups['group-1'].tabs.map((item) => item.id)).toEqual(['tab-1', 'pin-1'])
+
+    const restored = deserializeTabState(
+      persisted({
+        layout: { type: 'leaf', tabGroupId: 'missing-group' },
+        activeGroupId: 'missing-group',
+        tabGroups: {
+          'group-1': {
+            id: 'group-1',
+            activeTabId: 'missing-tab',
+            tabs: persisted().tabGroups['group-1'].tabs
+          }
+        }
+      })
+    )
+
+    expect(restored.activeGroupId).toBe('group-1')
+    expect(restored.layout).toEqual({ type: 'leaf', tabGroupId: 'group-1' })
+    expect(restored.tabGroups?.['group-1'].activeTabId).toBe('pin-1')
+    expect(restored.tabGroups?.['group-1'].tabs[0]).toMatchObject({
+      isModified: false,
+      isPreview: false,
+      isDeleted: false
+    })
+
+    const emptyRestore = deserializeTabState(
+      persisted({
+        tabGroups: {},
+        activeGroupId: 'missing'
+      })
+    )
+    expect(Object.keys(emptyRestore.tabGroups ?? {})).toHaveLength(1)
+  })
+
+  it('extracts pinned tabs and handles localStorage failures defensively', async () => {
+    const pinned = extractPinnedTabs(persisted())
+    expect(pinned).toHaveLength(1)
+    expect(pinned[0]).toMatchObject({ id: 'pin-1', isPinned: true, isModified: false })
+
+    await localStorageAdapter.save(persisted())
+    await expect(localStorageAdapter.load()).resolves.toMatchObject({ version: 2 })
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 2 }))
+    await expect(localStorageAdapter.load()).resolves.toBeNull()
+    localStorage.setItem(STORAGE_KEY, '{')
+    await expect(localStorageAdapter.load()).resolves.toBeNull()
+
+    await localStorageAdapter.clear()
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull()
+
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('quota')
+    })
+    expect(() => saveSync(persisted())).not.toThrow()
+    setItem.mockRestore()
+  })
+
+  it('saves, loads, and clears via indexedDB adapter', async () => {
+    installIndexedDbMock()
+
+    await indexedDBAdapter.save(persisted())
+    await expect(indexedDBAdapter.load()).resolves.toMatchObject({ version: 2 })
+    await indexedDBAdapter.clear()
+    await expect(indexedDBAdapter.load()).resolves.toBeNull()
+  })
+})
+
+describe('tab persistence hooks', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.clearAllMocks()
+    localStorage.clear()
+    mocks.tabsState = state()
+    mocks.pendingSave = null
+    sessionSnapshot = null
+    manualSnapshot = null
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('debounces auto-save, flushes on demand, and unregisters cleanly', async () => {
+    const storage: TabStorage = {
+      save: vi.fn().mockResolvedValue(undefined),
+      load: vi.fn(),
+      clear: vi.fn()
+    }
+
+    const { rerender, unmount } = render(<TabPersistenceProbe storage={storage} debounceMs={25} />)
+
+    expect(mocks.registerPendingSave).toHaveBeenCalledWith('tab-state', expect.any(Function))
+    expect(storage.save).not.toHaveBeenCalled()
+
+    act(() => vi.advanceTimersByTime(25))
+    await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
+
+    mocks.tabsState = state({ activeGroupId: 'group-1' })
+    rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />)
+    act(() => window.dispatchEvent(new Event('beforeunload')))
+    expect(localStorage.getItem(STORAGE_KEY)).toContain('group-1')
+
+    act(() => mocks.pendingSave?.())
+    expect(localStorage.getItem(STORAGE_KEY)).toContain('pin-1')
+
+    unmount()
+    expect(mocks.unregisterPendingSave).toHaveBeenCalledWith('tab-state')
+  })
+
+  it('restores full sessions, pinned-only sessions, errors, and manual operations', async () => {
+    const storage: TabStorage = {
+      save: vi.fn().mockResolvedValue(undefined),
+      load: vi.fn().mockResolvedValue(persisted()),
+      clear: vi.fn().mockResolvedValue(undefined)
+    }
+
+    render(withQueryClient(<SessionRestoreProbe storage={storage} />))
+    await waitFor(() =>
+      expect(mocks.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'RESTORE_SESSION' })
+      )
+    )
+    expect(sessionSnapshot?.isRestoring).toBe(false)
+
+    mocks.dispatch.mockClear()
+    mocks.tabsState = state({
+      settings: { ...state().settings, restoreSessionOnStart: false }
+    })
+    render(withQueryClient(<SessionRestoreProbe storage={storage} />))
+    await waitFor(() =>
+      expect(mocks.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'OPEN_TAB',
+          payload: expect.objectContaining({
+            tab: expect.objectContaining({ type: 'inbox', isPinned: true }),
+            background: true
+          })
+        })
+      )
+    )
+
+    const failingStorage: TabStorage = {
+      save: vi.fn(),
+      load: vi.fn().mockRejectedValue(new Error('restore failed')),
+      clear: vi.fn()
+    }
+    render(withQueryClient(<SessionRestoreProbe storage={failingStorage} />))
+    await waitFor(() => expect(sessionSnapshot?.restoreError?.message).toBe('restore failed'))
+
+    mocks.dispatch.mockClear()
+    render(withQueryClient(<ManualPersistenceProbe storage={storage} />))
+    await act(async () => manualSnapshot?.save())
+    expect(storage.save).toHaveBeenCalled()
+    await expect(manualSnapshot?.load()).resolves.toBe(true)
+    expect(mocks.dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'RESTORE_SESSION' })
+    )
+    await act(async () => manualSnapshot?.clear())
+    expect(storage.clear).toHaveBeenCalled()
+  })
+})

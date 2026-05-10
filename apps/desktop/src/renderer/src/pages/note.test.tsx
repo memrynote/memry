@@ -1,0 +1,847 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithProviders } from '@tests/utils/render'
+import { NotePage } from './note'
+import { toast } from 'sonner'
+import type React from 'react'
+
+const mocks = vi.hoisted(() => ({
+  noteState: {
+    note: null as Record<string, unknown> | null,
+    isLoading: false,
+    error: null as Error | null
+  },
+  refetchNote: vi.fn(),
+  createNote: vi.fn(),
+  updateNote: vi.fn(),
+  renameNote: vi.fn(),
+  openTab: vi.fn(),
+  setTabDeleted: vi.fn(),
+  updateTabTitleByEntityId: vi.fn(),
+  openTag: vi.fn(),
+  invalidateQueries: vi.fn(),
+  handleAddProperty: vi.fn(),
+  handleDeleteProperty: vi.fn(),
+  handlePropertyChange: vi.fn(),
+  handlePropertyNameChange: vi.fn(),
+  handlePropertyOrderChange: vi.fn(),
+  propertyOnBlocked: null as
+    | ((action: 'update' | 'add' | 'remove' | 'rename' | 'reorder') => void)
+    | null,
+  setPropertiesCollapsed: vi.fn(),
+  togglePropertiesCollapsed: vi.fn(),
+  toggleBookmark: vi.fn(),
+  setReminder: vi.fn(),
+  setLocalOnly: vi.fn(),
+  notesUpdate: vi.fn(),
+  resolveWikiLink: vi.fn(),
+  registerPendingSave: vi.fn(),
+  unregisterPendingSave: vi.fn(),
+  pickerOnValueChange: null as ((value: string) => void) | null,
+  onDeleted: vi.fn(),
+  onUpdated: vi.fn(),
+  onRenamed: vi.fn(),
+  deletedHandler: null as ((event: { id: string }) => void) | null,
+  updatedHandler: null as
+    | ((event: { id: string; changes: Record<string, unknown>; source?: string }) => void)
+    | null,
+  renamedHandler: null as ((event: { id: string; newTitle: string }) => void) | null,
+  findInPage: {
+    isOpen: true,
+    query: 'ship',
+    matchCount: 2,
+    currentIndex: 1,
+    inputRef: { current: null },
+    setQuery: vi.fn(),
+    next: vi.fn(),
+    prev: vi.fn(),
+    close: vi.fn()
+  }
+}))
+
+vi.mock('@memry/i18n/renderer', () => ({
+  useT: () => ({ t: (key: string) => key })
+}))
+
+vi.mock('react-i18next', () => ({
+  getI18n: () => ({ getFixedT: () => (key: string) => key })
+}))
+
+vi.mock('sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn()
+  }
+}))
+
+vi.mock('@/lib/logger', () => ({
+  createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() })
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries })
+  }
+})
+
+vi.mock('@/hooks/use-notes-query', () => ({
+  graphKeys: { local: (id: string) => ['graph', id] },
+  notesKeys: { note: (id: string) => ['notes', 'note', id] },
+  useNote: () => ({
+    note: mocks.noteState.note,
+    isLoading: mocks.noteState.isLoading,
+    error: mocks.noteState.error,
+    refetch: mocks.refetchNote
+  }),
+  useNoteMutations: () => ({
+    createNote: { mutateAsync: mocks.createNote },
+    updateNote: { mutateAsync: mocks.updateNote },
+    renameNote: { mutateAsync: mocks.renameNote }
+  }),
+  useNoteLinksQuery: () => ({
+    incoming: [
+      {
+        sourceId: 'backlink-1',
+        sourceTitle: 'Backlink Note',
+        sourcePath: 'notes/Work/backlink.md',
+        contexts: [{ snippet: 'See [[Test Note]]', linkStart: 4, linkEnd: 17 }]
+      }
+    ],
+    isLoading: false
+  }),
+  useNoteTagsQuery: () => ({
+    tags: [
+      { tag: 'work', color: 'blue' },
+      { tag: 'later', color: 'green' }
+    ]
+  })
+}))
+
+vi.mock('@/hooks/use-property-section', () => ({
+  usePropertySection: ({
+    onBlocked
+  }: {
+    onBlocked: (action: 'update' | 'add' | 'remove' | 'rename' | 'reorder') => void
+  }) => {
+    mocks.propertyOnBlocked = onBlocked
+    return {
+      properties: [{ id: 'p1', name: 'Status', value: 'Draft', type: 'text' }],
+      newlyAddedPropertyId: null,
+      handlePropertyChange: mocks.handlePropertyChange,
+      handleAddProperty: mocks.handleAddProperty,
+      handleDeleteProperty: mocks.handleDeleteProperty,
+      handlePropertyNameChange: mocks.handlePropertyNameChange,
+      handlePropertyOrderChange: mocks.handlePropertyOrderChange
+    }
+  }
+}))
+
+vi.mock('@/hooks/use-properties-collapsed', () => ({
+  usePropertiesCollapsed: () => [
+    false,
+    mocks.togglePropertiesCollapsed,
+    mocks.setPropertiesCollapsed
+  ]
+}))
+
+vi.mock('@/hooks/use-tasks-linked-to-note', () => ({
+  useTasksLinkedToNote: () => ({
+    tasks: [{ id: 'task-1', title: 'Linked task', projectId: 'project-1' }],
+    isLoading: false
+  })
+}))
+
+vi.mock('@/services/notes-service', () => ({
+  notesService: {
+    setLocalOnly: mocks.setLocalOnly,
+    update: mocks.notesUpdate
+  },
+  onNoteDeleted: (handler: (event: { id: string }) => void) => {
+    mocks.deletedHandler = handler
+    mocks.onDeleted(handler)
+    return vi.fn()
+  },
+  onNoteUpdated: (
+    handler: (event: { id: string; changes: Record<string, unknown>; source?: string }) => void
+  ) => {
+    mocks.updatedHandler = handler
+    mocks.onUpdated(handler)
+    return vi.fn()
+  },
+  onNoteRenamed: (handler: (event: { id: string; newTitle: string }) => void) => {
+    mocks.renamedHandler = handler
+    mocks.onRenamed(handler)
+    return vi.fn()
+  }
+}))
+
+vi.mock('@/lib/wikilink-resolver', () => ({
+  resolveWikiLink: mocks.resolveWikiLink
+}))
+
+vi.mock('@/contexts/tabs', () => ({
+  useTabs: () => ({
+    openTab: mocks.openTab,
+    setTabDeleted: mocks.setTabDeleted,
+    updateTabTitleByEntityId: mocks.updateTabTitleByEntityId
+  }),
+  useActiveTab: () => ({
+    entityId: 'note-1',
+    viewState: { highlightText: 'Important', highlightStart: 1, highlightEnd: 10 }
+  })
+}))
+
+vi.mock('@/contexts/sidebar-drill-down', () => ({
+  useSidebarDrillDown: () => ({ openTag: mocks.openTag })
+}))
+
+vi.mock('@/hooks/use-note-reminders', () => ({
+  useNoteReminders: () => ({
+    hasActiveReminder: false,
+    actions: { setReminder: mocks.setReminder }
+  })
+}))
+
+vi.mock('@/hooks/use-bookmarks', () => ({
+  useIsBookmarked: () => ({ isBookmarked: false, toggle: mocks.toggleBookmark })
+}))
+
+vi.mock('@/hooks/use-editor-settings', () => ({
+  useEditorSettings: () => ({
+    settings: { toolbarMode: 'floating', spellCheck: true, autoSaveDelay: 25, width: 'medium' }
+  })
+}))
+
+vi.mock('@/hooks/use-find-in-page', () => ({
+  useFindInPage: () => mocks.findInPage
+}))
+
+vi.mock('@/hooks/use-graph-data', () => ({
+  graphKeys: { local: (id: string) => ['graph', id] }
+}))
+
+vi.mock('@/lib/save-registry', () => ({
+  registerPendingSave: mocks.registerPendingSave,
+  unregisterPendingSave: mocks.unregisterPendingSave
+}))
+
+vi.mock('@/components/note', () => ({
+  NoteLayout: ({
+    children,
+    headings,
+    actions,
+    topBar,
+    breadcrumb,
+    stats,
+    marqueeZoneRef,
+    onHeadingClick
+  }: {
+    children: React.ReactNode
+    headings: Array<{ id: string }>
+    actions: React.ReactNode
+    topBar: React.ReactNode
+    breadcrumb: React.ReactNode
+    stats?: { wordCount?: number }
+    marqueeZoneRef: (element: HTMLDivElement | null) => void
+    onHeadingClick: (id: string) => void
+  }) => (
+    <div>
+      <div ref={marqueeZoneRef} data-testid="marquee-zone" />
+      <div data-testid="heading-count">{headings.length}</div>
+      <div data-testid="word-count">{stats?.wordCount}</div>
+      <button type="button" onClick={() => onHeadingClick('heading-1')}>
+        Jump heading
+      </button>
+      {topBar}
+      {breadcrumb}
+      {actions}
+      {children}
+    </div>
+  ),
+  ContentArea: ({
+    onMarkdownChange,
+    onHeadingsChange,
+    onLinkClick,
+    onInternalLinkClick,
+    onInlineTagsChange,
+    focusAtEndRef
+  }: {
+    onMarkdownChange: (markdown: string) => void
+    onHeadingsChange: (
+      headings: Array<{ id: string; level: number; text: string; position: number }>
+    ) => void
+    onLinkClick: (href: string) => void
+    onInternalLinkClick: (target: string) => void
+    onInlineTagsChange: (tags: string[]) => void
+    focusAtEndRef: React.MutableRefObject<(() => void) | null>
+  }) => {
+    focusAtEndRef.current = mocks.refetchNote
+    return (
+      <div>
+        <div data-id="heading-1" />
+        <button type="button" onClick={() => onMarkdownChange('# Changed')}>
+          Change markdown
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            onHeadingsChange([{ id: 'heading-1', level: 1, text: 'Intro', position: 0 }])
+          }
+        >
+          Change headings
+        </button>
+        <button type="button" onClick={() => onLinkClick('https://memry.test')}>
+          External link
+        </button>
+        <button type="button" onClick={() => onInternalLinkClick('Existing Note')}>
+          Internal note link
+        </button>
+        <button type="button" onClick={() => onInternalLinkClick('Diagram.pdf')}>
+          Internal file link
+        </button>
+        <button type="button" onClick={() => onInternalLinkClick('New Note')}>
+          Internal create link
+        </button>
+        <button type="button" onClick={() => onInternalLinkClick('Missing.png')}>
+          Internal missing file
+        </button>
+        <button type="button" onClick={() => onInlineTagsChange(['work', 'urgent'])}>
+          Sync inline tags
+        </button>
+        <button type="button" onClick={() => onInlineTagsChange([])}>
+          Clear inline tags
+        </button>
+      </div>
+    )
+  }
+}))
+
+vi.mock('@/components/note/note-title', () => ({
+  NoteTitle: ({
+    title,
+    onTitleChange
+  }: {
+    title: string
+    onTitleChange: (title: string) => void
+  }) => (
+    <button type="button" onClick={() => onTitleChange('Renamed Note')}>
+      {title}
+    </button>
+  )
+}))
+
+vi.mock('@/components/note/tags-row', () => ({
+  TagsRow: ({
+    tags,
+    onAddTag,
+    onCreateTag,
+    onRemoveTag,
+    onTagClick
+  }: {
+    tags: Array<{ id: string; name: string; color: string }>
+    onAddTag: (id: string) => void
+    onCreateTag: (name: string, color: string) => void
+    onRemoveTag: (id: string) => void
+    onTagClick: (tag: { name: string; color: string }) => void
+  }) => (
+    <div>
+      <span>{tags.map((tag) => tag.name).join(',')}</span>
+      <button type="button" onClick={() => onAddTag('later')}>
+        Add tag
+      </button>
+      <button type="button" onClick={() => onCreateTag('urgent', 'red')}>
+        Create tag
+      </button>
+      <button type="button" onClick={() => onRemoveTag('work')}>
+        Remove tag
+      </button>
+      <button type="button" onClick={() => onTagClick({ name: 'work', color: 'blue' })}>
+        Open tag
+      </button>
+    </div>
+  )
+}))
+
+vi.mock('@/components/note/info-section', () => ({
+  InfoSection: ({
+    onToggleExpand,
+    onAddProperty,
+    onPropertyChange
+  }: {
+    onToggleExpand: () => void
+    onAddProperty: (property: unknown) => void
+    onPropertyChange: (id: string, value: unknown) => void
+  }) => (
+    <div>
+      <button type="button" onClick={onToggleExpand}>
+        Toggle properties
+      </button>
+      <button type="button" onClick={() => onAddProperty({ name: 'Mood', type: 'text' })}>
+        Add property
+      </button>
+      <button type="button" onClick={() => onPropertyChange('p1', 'Done')}>
+        Change property
+      </button>
+    </div>
+  )
+}))
+
+vi.mock('@/components/note/ghost-affordance-row', () => ({
+  GhostAffordanceRow: ({ onAddProperty }: { onAddProperty: (property: unknown) => void }) => (
+    <button type="button" onClick={() => onAddProperty({ name: 'Ghost', type: 'text' })}>
+      Ghost property
+    </button>
+  )
+}))
+
+vi.mock('@/components/note/backlinks', () => ({
+  BacklinksSection: ({
+    onBacklinkClick
+  }: {
+    onBacklinkClick: (noteId: string, mention?: { snippet: string }) => void
+  }) => (
+    <button
+      type="button"
+      onClick={() => onBacklinkClick('backlink-1', { snippet: '[[Test Note]]' })}
+    >
+      Open backlink
+    </button>
+  )
+}))
+
+vi.mock('@/components/note/linked-tasks', () => ({
+  LinkedTasksSection: ({ onTaskClick }: { onTaskClick: (id: string) => void }) => (
+    <button type="button" onClick={() => onTaskClick('task-1')}>
+      Open linked task
+    </button>
+  )
+}))
+
+vi.mock('@/components/reminder', () => ({
+  ReminderPicker: ({
+    trigger,
+    onSelect
+  }: {
+    trigger: React.ReactNode
+    onSelect: (date: Date) => void
+  }) => (
+    <div>
+      {trigger}
+      <button type="button" onClick={() => onSelect(new Date('2026-05-10'))}>
+        Pick reminder
+      </button>
+    </div>
+  )
+}))
+
+vi.mock('@/components/ui/button', () => ({
+  Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type="button" {...props}>
+      {children}
+    </button>
+  )
+}))
+
+vi.mock('@/components/ui/picker', () => ({
+  Picker: Object.assign(
+    ({
+      children,
+      onValueChange
+    }: {
+      children: React.ReactNode
+      onValueChange?: (value: string) => void
+    }) => {
+      mocks.pickerOnValueChange = onValueChange ?? null
+      return <div>{children}</div>
+    },
+    {
+      Trigger: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+      Content: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+      List: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+      Item: ({
+        label,
+        value,
+        icon,
+        trailing
+      }: {
+        label: string
+        value: string
+        icon?: React.ReactNode
+        trailing?: React.ReactNode
+      }) => (
+        <button type="button" data-value={value} onClick={() => mocks.pickerOnValueChange?.(value)}>
+          {icon}
+          {label}
+          {trailing}
+        </button>
+      ),
+      Separator: () => <hr />
+    }
+  )
+}))
+
+vi.mock('@/components/ui/switch', () => ({
+  Switch: () => <span data-testid="switch" />
+}))
+
+vi.mock('@/components/note/export-dialog', () => ({
+  ExportDialog: ({ open, noteTitle }: { open: boolean; noteTitle: string }) =>
+    open ? <div>Export {noteTitle}</div> : null
+}))
+
+vi.mock('@/components/note/version-history', () => ({
+  VersionHistory: ({ open, noteTitle }: { open: boolean; noteTitle: string }) =>
+    open ? <div>Version {noteTitle}</div> : null
+}))
+
+vi.mock('@/components/note/editor-error-boundary', () => ({
+  EditorErrorBoundary: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+}))
+
+vi.mock('@/components/graph/local-graph-panel', () => ({
+  LocalGraphPanel: ({
+    onClose,
+    onOpenFullGraph
+  }: {
+    onClose: () => void
+    onOpenFullGraph: () => void
+  }) => (
+    <div>
+      Local graph
+      <button type="button" onClick={onClose}>
+        Close local graph
+      </button>
+      <button type="button" onClick={onOpenFullGraph}>
+        Open full graph
+      </button>
+    </div>
+  )
+}))
+
+vi.mock('@/components/note/note-breadcrumb', () => ({
+  NoteBreadcrumb: ({ noteTitle }: { noteTitle: string }) => <span>{noteTitle}</span>
+}))
+
+vi.mock('@/components/find-bar/find-bar', () => ({
+  FindBar: ({
+    onClose,
+    onNext,
+    onPrev
+  }: {
+    onClose: () => void
+    onNext: () => void
+    onPrev: () => void
+  }) => (
+    <div>
+      <button type="button" onClick={onNext}>
+        Find next
+      </button>
+      <button type="button" onClick={onPrev}>
+        Find prev
+      </button>
+      <button type="button" onClick={onClose}>
+        Close find
+      </button>
+    </div>
+  )
+}))
+
+const note = {
+  id: 'note-1',
+  title: 'Test Note',
+  path: 'notes/Test Note.md',
+  content: 'Original body',
+  tags: ['work'],
+  frontmatter: { localOnly: false, fullWidth: false },
+  wordCount: 2,
+  created: new Date('2026-05-01'),
+  modified: new Date('2026-05-09')
+}
+
+describe('NotePage', () => {
+  beforeEach(() => {
+    vi.useRealTimers()
+    vi.clearAllMocks()
+    mocks.noteState.note = note
+    mocks.noteState.isLoading = false
+    mocks.noteState.error = null
+    mocks.updateNote.mockResolvedValue({ success: true })
+    mocks.renameNote.mockResolvedValue({ success: true })
+    mocks.createNote.mockResolvedValue({
+      success: true,
+      note: { id: 'created-note', title: 'New Note' }
+    })
+    mocks.setLocalOnly.mockResolvedValue({ success: true })
+    mocks.notesUpdate.mockResolvedValue({ success: true })
+    mocks.pickerOnValueChange = null
+    mocks.propertyOnBlocked = null
+    Element.prototype.scrollIntoView = vi.fn()
+    mocks.resolveWikiLink.mockImplementation((target: string) => {
+      if (target === 'Existing Note')
+        return Promise.resolve({ type: 'note', id: 'existing-note', title: 'Existing Note' })
+      if (target === 'Diagram.pdf')
+        return Promise.resolve({ type: 'file', id: 'file-1', title: 'Diagram.pdf', icon: 'file' })
+      if (target === 'New Note') return Promise.resolve({ type: 'create' })
+      return Promise.resolve({ type: 'not-found' })
+    })
+  })
+
+  it('renders empty, loading, and error states', async () => {
+    const { rerender } = renderWithProviders(<NotePage />)
+    expect(screen.getByText('page.empty.title')).toBeInTheDocument()
+
+    mocks.noteState.isLoading = true
+    rerender(<NotePage noteId="note-1" />)
+    expect(screen.queryByText('Test Note')).not.toBeInTheDocument()
+
+    mocks.noteState.isLoading = false
+    mocks.noteState.error = new Error('load failed')
+    rerender(<NotePage noteId="note-1" />)
+    expect(screen.getByText('load failed')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('button.retry'))
+    expect(mocks.refetchNote).toHaveBeenCalled()
+  })
+
+  it('saves title, tags, properties, backlinks, and linked task navigation', async () => {
+    renderWithProviders(<NotePage noteId="note-1" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Test Note' }))
+    expect(mocks.renameNote).toHaveBeenCalledWith({ id: 'note-1', newTitle: 'Renamed Note' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add tag' }))
+    expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', tags: ['work', 'later'] })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create tag' }))
+    expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', tags: ['work', 'urgent'] })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove tag' }))
+    expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', tags: [] })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open tag' }))
+    expect(mocks.openTag).toHaveBeenCalledWith('work', 'blue')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add property' }))
+    expect(mocks.setPropertiesCollapsed).toHaveBeenCalledWith(false)
+    expect(mocks.handleAddProperty).toHaveBeenCalledWith({ name: 'Mood', type: 'text' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open backlink' }))
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'note', entityId: 'backlink-1' })
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open linked task' }))
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'tasks',
+        viewState: expect.objectContaining({ openTaskId: 'task-1', selectedProjectId: 'project-1' })
+      })
+    )
+  })
+
+  it('debounces markdown saves and syncs inline tags', async () => {
+    vi.useFakeTimers()
+    renderWithProviders(<NotePage noteId="note-1" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.showLocalGraph' }))
+    expect(screen.getByText('Local graph')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change markdown' }))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(25)
+    })
+
+    expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: '# Changed' })
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['graph', 'note-1'] })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sync inline tags' }))
+    await waitFor(() =>
+      expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', tags: ['work', 'urgent'] })
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear inline tags' }))
+    await waitFor(() => expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', tags: [] }))
+  })
+
+  it('flushes pending markdown saves through the registry and unmount cleanup', async () => {
+    vi.useFakeTimers()
+    const first = renderWithProviders(<NotePage noteId="note-1" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change markdown' }))
+    const flush = mocks.registerPendingSave.mock.calls[0]?.[1] as (() => Promise<void>) | undefined
+    await act(async () => {
+      await flush?.()
+    })
+
+    expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: '# Changed' })
+    first.unmount()
+    expect(mocks.unregisterPendingSave).toHaveBeenCalledWith('note-page:note-1')
+
+    vi.clearAllMocks()
+    mocks.updateNote.mockResolvedValue({ success: true })
+    const second = renderWithProviders(<NotePage noteId="note-1" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change markdown' }))
+    second.unmount()
+
+    expect(mocks.updateNote).toHaveBeenCalledWith({ id: 'note-1', content: '# Changed' })
+    expect(mocks.unregisterPendingSave).toHaveBeenCalledWith('note-page:note-1')
+  })
+
+  it('handles toolbar actions, external links, headings, and marquee focus', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    renderWithProviders(<NotePage noteId="note-1" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pick reminder' }))
+    expect(mocks.setReminder).toHaveBeenCalledWith(new Date('2026-05-10'), undefined)
+
+    fireEvent.click(screen.getByTitle('editor.toolbar.addBookmark'))
+    expect(mocks.toggleBookmark).toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'External link' }))
+    expect(openSpy).toHaveBeenCalledWith('https://memry.test', '_blank', 'noopener,noreferrer')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Jump heading' }))
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      block: 'start'
+    })
+
+    mocks.refetchNote.mockClear()
+    fireEvent.mouseDown(screen.getByTestId('marquee-zone'), { button: 0 })
+    expect(mocks.refetchNote).toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.showLocalGraph' }))
+    expect(screen.getByText('Local graph')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open full graph' }))
+    expect(mocks.openTab).toHaveBeenCalledWith(expect.objectContaining({ type: 'graph' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close local graph' }))
+    expect(screen.queryByText('Local graph')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.versionHistory' }))
+    expect(screen.getByText('Version Test Note')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.export' }))
+    expect(screen.getByText('Export Test Note')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.fullWidth' }))
+    await waitFor(() =>
+      expect(mocks.notesUpdate).toHaveBeenCalledWith({
+        id: 'note-1',
+        frontmatter: { fullWidth: true }
+      })
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.setLocalOnly' }))
+    await waitFor(() => expect(mocks.setLocalOnly).toHaveBeenCalledWith('note-1', true))
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['notes', 'localOnlyCount'] })
+
+    openSpy.mockRestore()
+  })
+
+  it('routes wiki links to notes, files, creation, and missing-file errors', async () => {
+    renderWithProviders(<NotePage noteId="note-1" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Internal note link' }))
+    await waitFor(() =>
+      expect(mocks.openTab).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'note', entityId: 'existing-note' })
+      )
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Internal file link' }))
+    await waitFor(() =>
+      expect(mocks.openTab).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'file', entityId: 'file-1' })
+      )
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Internal create link' }))
+    await waitFor(() =>
+      expect(mocks.openTab).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'note', entityId: 'created-note' })
+      )
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Internal missing file' }))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('File not found: Missing.png'))
+
+    mocks.createNote.mockResolvedValueOnce({ success: false })
+    fireEvent.click(screen.getByRole('button', { name: 'Internal create link' }))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('page.toast.createLinkedFailed'))
+
+    mocks.resolveWikiLink.mockRejectedValueOnce(new Error('resolve failed'))
+    fireEvent.click(screen.getByRole('button', { name: 'Internal note link' }))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('page.toast.openLinkedFailed'))
+  })
+
+  it('reacts to note events and find controls', async () => {
+    renderWithProviders(<NotePage noteId="note-1" />)
+
+    expect(mocks.registerPendingSave).toHaveBeenCalledWith('note-page:note-1', expect.any(Function))
+
+    act(() => {
+      mocks.deletedHandler?.({ id: 'note-1' })
+      mocks.renamedHandler?.({ id: 'note-1', newTitle: 'Remote title' })
+      mocks.updatedHandler?.({
+        id: 'note-1',
+        source: 'external',
+        changes: { content: 'Remote body' }
+      })
+    })
+
+    expect(mocks.setTabDeleted).toHaveBeenCalledWith('note-1', true)
+    expect(mocks.updateTabTitleByEntityId).toHaveBeenCalledWith('note-1', 'Remote title')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Find next' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Find prev' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Close find' }))
+    expect(mocks.findInPage.next).toHaveBeenCalled()
+    expect(mocks.findInPage.prev).toHaveBeenCalled()
+    expect(mocks.findInPage.close).toHaveBeenCalled()
+  })
+
+  it('blocks mutations after the note is deleted', async () => {
+    renderWithProviders(<NotePage noteId="note-1" />)
+
+    act(() => {
+      mocks.deletedHandler?.({ id: 'note-1' })
+    })
+
+    vi.clearAllMocks()
+    mocks.updateNote.mockResolvedValue({ success: true })
+    mocks.renameNote.mockResolvedValue({ success: true })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Test Note' }))
+    expect(mocks.renameNote).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('page.toast.cannotRenameDeleted')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change markdown' }))
+    expect(mocks.updateNote).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('page.toast.cannotSaveDeleted')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add tag' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Create tag' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove tag' }))
+    expect(mocks.updateNote).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith('phaseI.toasts.cannotAddTagThisNoteWasDeleted')
+    expect(toast.error).toHaveBeenCalledWith('phaseI.toasts.cannotRemoveTagThisNoteWasDeleted')
+
+    fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.setLocalOnly' }))
+    expect(mocks.setLocalOnly).not.toHaveBeenCalled()
+    expect(toast.error).toHaveBeenCalledWith(
+      'phaseI.toasts.cannotChangeLocalOnlyThisNoteWasDeleted'
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'editor.toolbar.fullWidth' }))
+    expect(mocks.notesUpdate).not.toHaveBeenCalled()
+
+    act(() => {
+      mocks.propertyOnBlocked?.('remove')
+    })
+    expect(toast.error).toHaveBeenCalledWith('Cannot delete property - this note was deleted')
+  })
+})

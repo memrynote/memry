@@ -1,122 +1,106 @@
-import { describe, expect, it, vi } from 'vitest'
-import {
-  InboxChannels,
-  NotesChannels,
-  SettingsChannels,
-  TasksChannels
-} from '@memry/contracts/ipc-channels'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import { createGeneratedRpcApi } from './generated-rpc'
 
+const sampleInput = {
+  id: 'id-1',
+  itemId: 'inbox-1',
+  itemType: 'link',
+  suggestedTo: 'Notes',
+  actualTo: 'Archive',
+  confidence: 0.75,
+  suggestedTags: ['suggested'],
+  actualTags: ['actual'],
+  days: 14,
+  enabled: true,
+  title: 'Title'
+}
+
+const createFileLike = () => ({
+  name: 'attachment.bin',
+  arrayBuffer: vi.fn(async () => new Uint8Array([1, 2, 3]).buffer)
+})
+
+const collectFunctionPaths = (value: unknown, prefix: string[] = []): string[][] => {
+  if (!value || typeof value !== 'object') return []
+
+  const paths: string[][] = []
+  for (const [key, child] of Object.entries(value)) {
+    const nextPath = [...prefix, key]
+    if (typeof child === 'function') {
+      paths.push(nextPath)
+    } else {
+      paths.push(...collectFunctionPaths(child, nextPath))
+    }
+  }
+  return paths
+}
+
 describe('createGeneratedRpcApi', () => {
-  it('routes generated invoke clients through the provided invoke helpers', async () => {
-    const invoke = vi.fn(async () => ({ success: true }))
-    const invokeSync = vi.fn(() => ({ theme: 'dark' }))
-    const subscribe = vi.fn()
-
-    const api = createGeneratedRpcApi({
-      invoke,
-      invokeSync,
-      subscribe
-    })
-
-    await api.tasks.create({ projectId: 'project-1', title: 'Task' })
-    expect(invoke).toHaveBeenCalledWith(TasksChannels.invoke.CREATE, {
-      projectId: 'project-1',
-      title: 'Task'
-    })
-
-    await api.notes.rename('note-1', 'Renamed')
-    expect(invoke).toHaveBeenCalledWith(NotesChannels.invoke.RENAME, {
-      id: 'note-1',
-      newTitle: 'Renamed'
-    })
-
-    await api.inbox.linkToNote('item-1', 'note-1', ['tag-a'])
-    expect(invoke).toHaveBeenCalledWith(InboxChannels.invoke.LINK_TO_NOTE, 'item-1', 'note-1', [
-      'tag-a'
-    ])
-
-    await api.inbox.trackSuggestion({
-      itemId: 'item-1',
-      itemType: 'link',
-      suggestedTo: 'projects',
-      actualTo: 'inbox',
-      confidence: 0.7
-    })
-    expect(invoke).toHaveBeenCalledWith(
-      InboxChannels.invoke.TRACK_SUGGESTION,
-      'item-1',
-      'link',
-      'projects',
-      'inbox',
-      0.7,
-      [],
-      []
-    )
-
-    await api.inbox.getJobs({ itemIds: ['item-1'] })
-    expect(invoke).toHaveBeenCalledWith(InboxChannels.invoke.GET_JOBS, {
-      itemIds: ['item-1']
-    })
-
-    const file = new File(['hello'], 'note.txt', { type: 'text/plain' })
-    await api.notes.uploadAttachment('note-1', file)
-    expect(invoke).toHaveBeenCalledWith(NotesChannels.invoke.UPLOAD_ATTACHMENT, {
-      noteId: 'note-1',
-      filename: 'note.txt',
-      data: Array.from(new TextEncoder().encode('hello'))
-    })
-
-    await api.notes.deleteAttachment('note-1', 'note.txt')
-    expect(invoke).toHaveBeenCalledWith(NotesChannels.invoke.DELETE_ATTACHMENT, {
-      noteId: 'note-1',
-      filename: 'note.txt'
-    })
-
-    await api.notes.getPositions('projects')
-    expect(invoke).toHaveBeenCalledWith(NotesChannels.invoke.GET_POSITIONS, {
-      folderPath: 'projects'
-    })
-
-    await api.notes.importFiles(['/tmp/a.md'], 'projects')
-    expect(invoke).toHaveBeenCalledWith(NotesChannels.invoke.IMPORT_FILES, {
-      sourcePaths: ['/tmp/a.md'],
-      targetFolder: 'projects'
-    })
-
-    await api.settings.setTaskSettings({ staleInboxDays: 14 })
-    expect(invoke).toHaveBeenCalledWith(SettingsChannels.invoke.SET_TASK_SETTINGS, {
-      staleInboxDays: 14
-    })
-
-    expect(api.settings.getStartupThemeSync()).toBe('dark')
-    expect(invokeSync).toHaveBeenCalledWith(SettingsChannels.sync.GET_STARTUP_THEME)
+  const invoke = vi.fn(async (channel: string, ...args: unknown[]) => ({ channel, args }))
+  const invokeSync = vi.fn(() => ({ theme: 'white' }))
+  const subscribe = vi.fn((_channel: string, callback: (payload: unknown) => void) => {
+    callback({ delivered: true })
+    return vi.fn()
   })
 
-  it('routes generated event subscriptions through the provided subscribe helper', () => {
-    const unsubscribe = vi.fn()
-    const invoke = vi.fn()
-    const invokeSync = vi.fn(() => 'system')
-    const subscribe = vi.fn(() => unsubscribe)
-    const noteCreated = vi.fn()
-    const taskUpdated = vi.fn()
-    const inboxCaptured = vi.fn()
-    const settingsChanged = vi.fn()
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
 
-    const api = createGeneratedRpcApi({
-      invoke,
-      invokeSync,
-      subscribe
+  it('routes every generated wrapper through invoke, invokeSync, or subscribe', async () => {
+    const api = createGeneratedRpcApi({ invoke: invoke as any, invokeSync, subscribe }) as any
+    const callback = vi.fn()
+
+    for (const path of collectFunctionPaths(api)) {
+      const fn = path.reduce((current, key) => current[key], api)
+      const dotted = path.join('.')
+      const args =
+        dotted === 'notes.uploadAttachment'
+          ? ['note-1', createFileLike()]
+          : dotted.startsWith('on')
+            ? [callback]
+            : [sampleInput, sampleInput, sampleInput, sampleInput, sampleInput, sampleInput]
+
+      await Promise.resolve(fn(...args))
+    }
+
+    expect(invoke).toHaveBeenCalledWith('notes:rename', {
+      id: sampleInput,
+      newTitle: sampleInput
     })
+    expect(invoke).toHaveBeenCalledWith('notes:upload-attachment', {
+      noteId: 'note-1',
+      filename: 'attachment.bin',
+      data: [1, 2, 3]
+    })
+    expect(invoke).toHaveBeenCalledWith(
+      'inbox:track-suggestion',
+      'inbox-1',
+      'link',
+      'Notes',
+      'Archive',
+      0.75,
+      ['suggested'],
+      ['actual']
+    )
+    expect(invoke).toHaveBeenCalledWith('tasks:get-upcoming', { days: sampleInput })
+    expect(invokeSync).toHaveBeenCalledWith('settings:getStartupThemeSync')
+    expect(subscribe).toHaveBeenCalledWith('notes:created', callback)
+    expect(subscribe).toHaveBeenCalledWith('calendar:changed', callback)
+    expect(callback).toHaveBeenCalledWith({ delivered: true })
+  })
 
-    expect(api.onNoteCreated(noteCreated)).toBe(unsubscribe)
-    expect(api.onTaskUpdated(taskUpdated)).toBe(unsubscribe)
-    expect(api.onInboxCaptured(inboxCaptured)).toBe(unsubscribe)
-    expect(api.onSettingsChanged(settingsChanged)).toBe(unsubscribe)
+  it('normalizes startup theme sync fallbacks', () => {
+    const api = createGeneratedRpcApi({ invoke: invoke as any, invokeSync, subscribe })
 
-    expect(subscribe).toHaveBeenNthCalledWith(1, NotesChannels.events.CREATED, noteCreated)
-    expect(subscribe).toHaveBeenNthCalledWith(2, TasksChannels.events.UPDATED, taskUpdated)
-    expect(subscribe).toHaveBeenNthCalledWith(3, InboxChannels.events.CAPTURED, inboxCaptured)
-    expect(subscribe).toHaveBeenNthCalledWith(4, SettingsChannels.events.CHANGED, settingsChanged)
+    invokeSync.mockReturnValueOnce('dark')
+    expect(api.settings.getStartupThemeSync()).toBe('dark')
+
+    invokeSync.mockReturnValueOnce({ theme: 'light' })
+    expect(api.settings.getStartupThemeSync()).toBe('light')
+
+    invokeSync.mockReturnValueOnce(null)
+    expect(api.settings.getStartupThemeSync()).toBe('system')
   })
 })

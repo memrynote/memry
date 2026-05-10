@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
@@ -15,6 +15,12 @@ let uploadProgressListeners: EventCallback[] = []
 let downloadProgressListeners: EventCallback[] = []
 let linkingRequestListeners: EventCallback[] = []
 let linkingApprovedListeners: EventCallback[] = []
+let conflictDetectedListeners: EventCallback[] = []
+let itemSyncedListeners: EventCallback[] = []
+let initialSyncProgressListeners: EventCallback[] = []
+let keyRotationProgressListeners: EventCallback[] = []
+let queueClearedListeners: VoidCallback[] = []
+let clockSkewWarningListeners: VoidCallback[] = []
 let sessionExpiredListeners: VoidCallback[] = []
 let deviceRevokedListeners: EventCallback[] = []
 let securityWarningListeners: EventCallback[] = []
@@ -26,15 +32,38 @@ const toastMock = vi.hoisted(() => ({
   info: vi.fn()
 }))
 
+const logoutMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+
 vi.mock('./auth-context', () => ({
   useAuth: vi.fn().mockReturnValue({
     state: { status: 'authenticated' },
-    logout: vi.fn().mockResolvedValue(undefined)
+    logout: logoutMock
   })
 }))
 
 vi.mock('@/components/sync/device-revoked-dialog', () => ({
-  DeviceRevokedDialog: () => null
+  DeviceRevokedDialog: ({
+    open,
+    unsyncedCount,
+    onExport,
+    onSignOut
+  }: {
+    open: boolean
+    unsyncedCount: number
+    onExport: () => void
+    onSignOut: () => void
+  }) =>
+    open ? (
+      <div>
+        <p>revoked:{unsyncedCount}</p>
+        <button type="button" onClick={onExport}>
+          export
+        </button>
+        <button type="button" onClick={onSignOut}>
+          sign out
+        </button>
+      </div>
+    ) : null
 }))
 
 vi.mock('sonner', () => ({
@@ -74,10 +103,21 @@ beforeEach(async () => {
   downloadProgressListeners = []
   linkingRequestListeners = []
   linkingApprovedListeners = []
+  conflictDetectedListeners = []
+  itemSyncedListeners = []
+  initialSyncProgressListeners = []
+  keyRotationProgressListeners = []
+  queueClearedListeners = []
+  clockSkewWarningListeners = []
   sessionExpiredListeners = []
   deviceRevokedListeners = []
   securityWarningListeners = []
   certificatePinFailedListeners = []
+  logoutMock.mockClear()
+  vi.mocked(useAuth).mockReturnValue({
+    state: { status: 'authenticated' },
+    logout: logoutMock
+  } as never)
 
   const api = (window as unknown as { api: Record<string, unknown> }).api as Record<string, unknown>
   api.syncOps = mockSyncOps
@@ -135,12 +175,42 @@ beforeEach(async () => {
       deviceRevokedListeners = deviceRevokedListeners.filter((l) => l !== cb)
     }
   })
-  api.onConflictDetected = vi.fn(() => () => {})
-  api.onQueueCleared = vi.fn(() => () => {})
-  api.onClockSkewWarning = vi.fn(() => () => {})
-  api.onItemSynced = vi.fn(() => () => {})
-  api.onInitialSyncProgress = vi.fn(() => () => {})
-  api.onKeyRotationProgress = vi.fn(() => () => {})
+  api.onConflictDetected = vi.fn((cb: EventCallback) => {
+    conflictDetectedListeners.push(cb)
+    return () => {
+      conflictDetectedListeners = conflictDetectedListeners.filter((l) => l !== cb)
+    }
+  })
+  api.onQueueCleared = vi.fn((cb: VoidCallback) => {
+    queueClearedListeners.push(cb)
+    return () => {
+      queueClearedListeners = queueClearedListeners.filter((l) => l !== cb)
+    }
+  })
+  api.onClockSkewWarning = vi.fn((cb: VoidCallback) => {
+    clockSkewWarningListeners.push(cb)
+    return () => {
+      clockSkewWarningListeners = clockSkewWarningListeners.filter((l) => l !== cb)
+    }
+  })
+  api.onItemSynced = vi.fn((cb: EventCallback) => {
+    itemSyncedListeners.push(cb)
+    return () => {
+      itemSyncedListeners = itemSyncedListeners.filter((l) => l !== cb)
+    }
+  })
+  api.onInitialSyncProgress = vi.fn((cb: EventCallback) => {
+    initialSyncProgressListeners.push(cb)
+    return () => {
+      initialSyncProgressListeners = initialSyncProgressListeners.filter((l) => l !== cb)
+    }
+  })
+  api.onKeyRotationProgress = vi.fn((cb: EventCallback) => {
+    keyRotationProgressListeners.push(cb)
+    return () => {
+      keyRotationProgressListeners = keyRotationProgressListeners.filter((l) => l !== cb)
+    }
+  })
   api.onSecurityWarning = vi.fn((cb: EventCallback) => {
     securityWarningListeners.push(cb)
     return () => {
@@ -155,6 +225,7 @@ beforeEach(async () => {
   })
 })
 
+import { useAuth } from './auth-context'
 import { SyncProvider, useSync } from './sync-context'
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -313,6 +384,143 @@ describe('SyncProvider', () => {
       await vi.waitFor(() =>
         expect(result.current.state.error).toBe('This device has been removed from your account.')
       )
+    })
+
+    it('#then records conflicts, queue clears, item activity, and initial sync progress', async () => {
+      const { result } = renderHook(() => useSync(), { wrapper })
+      await vi.waitFor(() => expect(conflictDetectedListeners.length).toBeGreaterThan(0))
+
+      act(() => {
+        for (const cb of syncStatusListeners) cb({ status: 'syncing', pendingCount: 4 })
+        for (const cb of conflictDetectedListeners) cb({ itemId: 'note-1', type: 'note' })
+        for (const cb of itemSyncedListeners) cb({ operation: 'push' })
+        for (const cb of itemSyncedListeners) cb({ operation: 'pull' })
+        for (const cb of initialSyncProgressListeners) {
+          cb({ phase: 'notes', processedItems: 2, totalItems: 5 })
+        }
+      })
+
+      expect(result.current.state.conflicts).toEqual([
+        expect.objectContaining({ itemId: 'note-1', itemType: 'note' })
+      ])
+      expect(result.current.state.syncActivity).toEqual({ pushCount: 1, pullCount: 1 })
+      expect(result.current.state.initialSyncProgress).toEqual({
+        phase: 'notes',
+        current: 2,
+        total: 5
+      })
+
+      act(() => {
+        for (const cb of queueClearedListeners) cb()
+        for (const cb of clockSkewWarningListeners) cb()
+        for (const cb of initialSyncProgressListeners) {
+          cb({ phase: 'complete', processedItems: 5, totalItems: 5 })
+        }
+        for (const cb of syncStatusListeners) cb({ status: 'idle', pendingCount: 9 })
+      })
+
+      expect(result.current.state.pendingCount).toBe(9)
+      expect(result.current.state.clockSkewDetected).toBe(true)
+      expect(result.current.state.initialSyncProgress).toBeNull()
+      expect(result.current.state.syncActivity).toEqual({ pushCount: 0, pullCount: 0 })
+    })
+
+    it('#then handles linking lifecycle, key-rotation errors, and clear/dismiss actions', async () => {
+      const { result } = renderHook(() => useSync(), { wrapper })
+      await vi.waitFor(() => expect(linkingRequestListeners.length).toBeGreaterThan(0))
+
+      act(() => {
+        for (const cb of linkingRequestListeners) cb({ code: 'ABCD', deviceName: 'Laptop' })
+      })
+      expect(result.current.linkingRequest).toEqual({ code: 'ABCD', deviceName: 'Laptop' })
+
+      act(() => result.current.clearLinkingRequest())
+      expect(result.current.linkingRequest).toBeNull()
+
+      act(() => {
+        for (const cb of linkingRequestListeners) cb({ code: 'EFGH', deviceName: 'Phone' })
+        for (const cb of linkingApprovedListeners) cb({})
+      })
+      expect(result.current.linkingRequest).toBeNull()
+
+      act(() => {
+        for (const cb of keyRotationProgressListeners) cb({ error: 'rotation failed' })
+      })
+      expect(result.current.state.status).toBe('error')
+      expect(result.current.state.error).toBe('rotation failed')
+
+      act(() => {
+        for (const cb of keyRotationProgressListeners) cb({ phase: 'complete' })
+      })
+      expect(result.current.state.status).toBe('idle')
+      expect(result.current.state.error).toBeNull()
+
+      act(() => {
+        for (const cb of deviceRevokedListeners) cb({ unsyncedCount: 7 })
+      })
+      expect(result.current.state.deviceRevoked).toEqual({ unsyncedCount: 7 })
+
+      act(() => result.current.dismissDeviceRevoked())
+      expect(result.current.state.deviceRevoked).toBeNull()
+      expect(result.current.state.status).toBe('unknown')
+    })
+
+    it('#then surfaces command failures and ignores commands when signed out', async () => {
+      const { result, rerender } = renderHook(() => useSync(), { wrapper })
+      await vi.waitFor(() => expect(result.current.state.status).toBe('idle'))
+
+      mockSyncOps.triggerSync.mockRejectedValueOnce(new Error('trigger broke'))
+      await act(async () => {
+        await result.current.triggerSync()
+      })
+      expect(result.current.state.error).toBe('trigger broke')
+
+      act(() => result.current.clearError())
+      expect(result.current.state.status).toBe('idle')
+
+      mockSyncOps.pause.mockRejectedValueOnce(new Error('pause broke'))
+      await act(async () => {
+        await result.current.pause()
+      })
+      expect(result.current.state.error).toBe('pause broke')
+
+      mockSyncOps.resume.mockRejectedValueOnce(new Error('resume broke'))
+      await act(async () => {
+        await result.current.resume()
+      })
+      expect(result.current.state.error).toBe('resume broke')
+
+      vi.mocked(useAuth).mockReturnValue({
+        state: { status: 'unauthenticated' },
+        logout: logoutMock
+      } as never)
+      rerender()
+      await act(async () => {
+        await result.current.triggerSync()
+        await result.current.pause()
+        await result.current.resume()
+      })
+      expect(mockSyncOps.triggerSync).toHaveBeenCalledTimes(1)
+      expect(mockSyncOps.pause).toHaveBeenCalledTimes(1)
+      expect(mockSyncOps.resume).toHaveBeenCalledTimes(1)
+    })
+
+    it('#then exposes device revoked export and sign-out actions through the dialog', async () => {
+      renderHook(() => useSync(), { wrapper })
+      await vi.waitFor(() => expect(deviceRevokedListeners.length).toBeGreaterThan(0))
+
+      act(() => {
+        for (const cb of deviceRevokedListeners) cb({ unsyncedCount: 3 })
+      })
+
+      await vi.waitFor(() => expect(document.body).toHaveTextContent('revoked:3'))
+      screen.getByText('export').click()
+      screen.getByText('sign out').click()
+
+      expect(toastMock.info).toHaveBeenCalledWith('Local data export is not yet implemented', {
+        duration: 5000
+      })
+      expect(logoutMock).toHaveBeenCalled()
     })
 
     it('#then uses errors namespace messages for security warning toasts', async () => {

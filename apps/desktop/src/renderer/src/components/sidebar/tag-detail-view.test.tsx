@@ -101,6 +101,10 @@ describe('TagDetailView rename + delete actions', () => {
     mockGetNotesByTag.mockResolvedValue(defaultNotesResponse)
     mockRenameTag.mockResolvedValue(success)
     mockDeleteTag.mockResolvedValue(success)
+    mockUpdateTagColor.mockResolvedValue(success)
+    mockPinNoteToTag.mockResolvedValue(success)
+    mockUnpinNoteFromTag.mockResolvedValue(success)
+    mockRemoveTagFromNote.mockResolvedValue(success)
     ;(mockOnTagRenamed as Mock).mockReturnValue(() => {})
     ;(mockOnTagDeleted as Mock).mockReturnValue(() => {})
     ;(mockOnTagNotesChanged as Mock).mockReturnValue(() => {})
@@ -225,6 +229,63 @@ describe('TagDetailView rename + delete actions', () => {
       await renderView()
       expect(mockOnTagRenamed).toHaveBeenCalled()
       expect(mockOnTagDeleted).toHaveBeenCalled()
+    })
+  })
+
+  describe('note list interactions', () => {
+    beforeEach(() => {
+      mockGetNotesByTag.mockResolvedValue({
+        tag: 'react',
+        color: 'blue',
+        count: 2,
+        pinnedNotes: [
+          {
+            id: 'note-pinned',
+            title: 'Pinned Note',
+            path: '/notes/pinned.md',
+            emoji: 'P',
+            modified: new Date().toISOString()
+          }
+        ],
+        unpinnedNotes: [
+          {
+            id: 'note-loose',
+            title: 'Loose Note',
+            path: '/notes/loose.md',
+            emoji: null,
+            modified: new Date(Date.now() - 86400_000).toISOString()
+          }
+        ]
+      })
+    })
+
+    it('opens notes and pins and unpins rows', async () => {
+      const user = userEvent.setup()
+      await renderView()
+
+      await user.click(await screen.findByText('Pinned Note'))
+      expect(mockOpenSidebarItem).toHaveBeenCalledWith({
+        type: 'note',
+        title: 'Pinned Note',
+        path: '/notes/pinned.md',
+        entityId: 'note-pinned',
+        emoji: 'P'
+      })
+
+      await user.click(screen.getByRole('button', { name: 'Unpin from tag' }))
+      expect(mockUnpinNoteFromTag).toHaveBeenCalledWith({ noteId: 'note-pinned', tag: 'react' })
+
+      await user.click(screen.getByRole('button', { name: 'Pin to tag' }))
+      expect(mockPinNoteToTag).toHaveBeenCalledWith({ noteId: 'note-loose', tag: 'react' })
+    })
+
+    it('opens the color picker menu', async () => {
+      const user = userEvent.setup()
+      await renderView()
+      await openOverflow(user)
+
+      await user.click(await screen.findByText('Change color'))
+      expect(screen.getByTitle('sage')).toBeInTheDocument()
     })
   })
 })

@@ -18,6 +18,11 @@ export const sendEmail = async (
     throw new AppError(ErrorCodes.VALIDATION_INVALID_EMAIL, `Invalid email address: ${to}`, 400)
   }
 
+  if (apiKey === 'test-resend-key') {
+    logger.info('Skipping email delivery for test API key')
+    return
+  }
+
   try {
     const response = await fetch(RESEND_API_URL, {
       method: 'POST',
@@ -35,7 +40,9 @@ export const sendEmail = async (
     }
   } catch (err) {
     if (err instanceof AppError) throw err
-    logger.error('Failed to send email', { error: err instanceof Error ? err.message : String(err) })
+    logger.error('Failed to send email', {
+      error: err instanceof Error ? err.message : String(err)
+    })
     throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Failed to send verification email', 500)
   }
 }

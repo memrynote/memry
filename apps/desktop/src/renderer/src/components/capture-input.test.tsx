@@ -1,0 +1,222 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { forwardRef, useImperativeHandle } from 'react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { CaptureInput } from './capture-input'
+
+const mocks = vi.hoisted(() => ({
+  captureText: vi.fn(),
+  captureLink: vi.fn(),
+  captureVoice: vi.fn(),
+  captureImage: vi.fn(),
+  openSettings: vi.fn(),
+  ensureReady: vi.fn(),
+  prepareAudio: vi.fn(),
+  recorderStart: vi.fn()
+}))
+
+vi.mock('@memry/i18n/renderer', () => ({
+  useT: () => ({ t: (key: string) => key.split('.').at(-1) || key })
+}))
+
+vi.mock('@/hooks/use-inbox', () => ({
+  useCaptureText: () => ({ mutateAsync: mocks.captureText, isPending: false }),
+  useCaptureLink: () => ({ mutateAsync: mocks.captureLink, isPending: false }),
+  useCaptureVoice: () => ({ mutateAsync: mocks.captureVoice, isPending: false }),
+  useCaptureImage: () => ({ mutateAsync: mocks.captureImage, isPending: false })
+}))
+
+vi.mock('@/contexts/settings-modal-context', () => ({
+  useSettingsModal: () => ({ open: mocks.openSettings })
+}))
+
+vi.mock('@/lib/voice-recording-readiness', () => ({
+  ensureVoiceRecordingReady: (...args: unknown[]) => mocks.ensureReady(...args)
+}))
+
+vi.mock('@/lib/voice-memo-audio', () => ({
+  prepareVoiceMemoAudio: (...args: unknown[]) => mocks.prepareAudio(...args)
+}))
+
+vi.mock('./voice-recorder', () => ({
+  VoiceRecorder: forwardRef(
+    (
+      {
+        onRecordingComplete,
+        onCancel
+      }: {
+        onRecordingComplete: (blob: Blob, duration: number) => void
+        onCancel: () => void
+      },
+      ref
+    ) => {
+      useImperativeHandle(ref, () => ({ start: mocks.recorderStart }))
+      return (
+        <div>
+          <button
+            type="button"
+            onClick={() => onRecordingComplete(new Blob(['audio'], { type: 'audio/webm' }), 31)}
+          >
+            complete voice
+          </button>
+          <button type="button" onClick={onCancel}>
+            cancel voice
+          </button>
+        </div>
+      )
+    }
+  )
+}))
+
+describe('CaptureInput', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.captureText.mockResolvedValue({ success: true })
+    mocks.captureLink.mockResolvedValue({ success: true })
+    mocks.captureVoice.mockResolvedValue({ success: true })
+    mocks.captureImage.mockResolvedValue({ success: true })
+    mocks.ensureReady.mockResolvedValue(true)
+    mocks.prepareAudio.mockResolvedValue({
+      data: new ArrayBuffer(4),
+      duration: 12,
+      format: 'webm'
+    })
+  })
+
+  it('captures notes, shows duplicate recovery, and supports force submit', async () => {
+    const user = userEvent.setup()
+    const onCaptureSuccess = vi.fn()
+    mocks.captureText
+      .mockResolvedValueOnce({
+        duplicate: true,
+        existingItem: {
+          id: 'existing',
+          title: 'Existing captured thought',
+          createdAt: '2026-05-10T00:00:00.000Z'
+        }
+      })
+      .mockResolvedValueOnce({ success: true })
+
+    render(<CaptureInput onCaptureSuccess={onCaptureSuccess} />)
+
+    fireEvent.change(screen.getByLabelText('captureInput'), {
+      target: { value: 'First line\nsecond line' }
+    })
+    await user.click(screen.getByRole('button', { name: 'Capture note' }))
+
+    await waitFor(() =>
+      expect(mocks.captureText).toHaveBeenCalledWith({
+        content: 'First line\nsecond line',
+        title: 'First line...',
+        force: false,
+        source: 'inline'
+      })
+    )
+    expect(screen.getByText(/Existing captured thought/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'captureAnyway' }))
+
+    await waitFor(() =>
+      expect(mocks.captureText).toHaveBeenLastCalledWith({
+        content: 'First line\nsecond line',
+        title: 'First line...',
+        force: true,
+        source: 'inline'
+      })
+    )
+    expect(onCaptureSuccess).toHaveBeenCalledTimes(1)
+  })
+
+  it('normalizes URL captures and reports failed results', async () => {
+    const user = userEvent.setup()
+    const onCaptureError = vi.fn()
+    mocks.captureLink.mockResolvedValueOnce({ success: false, error: new Error('network down') })
+
+    render(<CaptureInput onCaptureError={onCaptureError} />)
+
+    await user.type(screen.getByLabelText('captureInput'), 'example.com/path')
+    await user.click(screen.getByRole('button', { name: 'Capture link' }))
+
+    await waitFor(() =>
+      expect(mocks.captureLink).toHaveBeenCalledWith({
+        url: 'https://example.com/path',
+        force: false,
+        source: 'inline'
+      })
+    )
+    expect(onCaptureError).toHaveBeenCalledWith('network down')
+  })
+
+  it('captures supported attachments and rejects unsupported file types', async () => {
+    const onCaptureSuccess = vi.fn()
+    const onCaptureError = vi.fn()
+    const { container } = render(
+      <CaptureInput onCaptureSuccess={onCaptureSuccess} onCaptureError={onCaptureError} />
+    )
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement
+
+    const image = new File(['image-bytes'], 'image.png', { type: 'image/png' })
+    Object.defineProperty(image, 'arrayBuffer', {
+      value: vi.fn().mockResolvedValue(new ArrayBuffer(4))
+    })
+    fireEvent.change(input, { target: { files: [image] } })
+
+    await waitFor(() =>
+      expect(mocks.captureImage).toHaveBeenCalledWith({
+        data: expect.any(ArrayBuffer),
+        filename: 'image.png',
+        mimeType: 'image/png',
+        source: 'inline'
+      })
+    )
+    expect(onCaptureSuccess).toHaveBeenCalledTimes(1)
+
+    const zip = new File(['zip'], 'archive.zip', { type: 'application/zip' })
+    fireEvent.change(input, { target: { files: [zip] } })
+    expect(onCaptureError).toHaveBeenCalledWith('Unsupported file type: application/zip')
+  })
+
+  it('checks readiness, starts the recorder, captures prepared audio, and cancels recording', async () => {
+    const user = userEvent.setup()
+    const onCaptureSuccess = vi.fn()
+
+    render(<CaptureInput onCaptureSuccess={onCaptureSuccess} />)
+
+    await user.click(screen.getByRole('button', { name: 'recordVoiceMemo' }))
+    expect(mocks.ensureReady).toHaveBeenCalledWith(expect.any(Function))
+    expect(mocks.recorderStart).toHaveBeenCalledTimes(1)
+
+    await user.click(screen.getByRole('button', { name: 'complete voice' }))
+
+    await waitFor(() =>
+      expect(mocks.captureVoice).toHaveBeenCalledWith({
+        data: expect.any(ArrayBuffer),
+        duration: 31,
+        format: 'webm',
+        transcribe: true,
+        source: 'inline'
+      })
+    )
+    expect(onCaptureSuccess).toHaveBeenCalledTimes(1)
+
+    await user.click(screen.getByRole('button', { name: 'recordVoiceMemo' }))
+    await user.click(screen.getByRole('button', { name: 'cancel voice' }))
+    expect(screen.queryByRole('button', { name: 'cancel voice' })).not.toBeInTheDocument()
+  })
+
+  it('opens AI settings instead of recording when voice capture is not ready', async () => {
+    const user = userEvent.setup()
+    mocks.ensureReady.mockImplementationOnce(async (openSettings: () => void) => {
+      openSettings()
+      return false
+    })
+
+    render(<CaptureInput />)
+
+    await user.click(screen.getByRole('button', { name: 'recordVoiceMemo' }))
+
+    expect(mocks.openSettings).toHaveBeenCalledWith('ai')
+    expect(mocks.recorderStart).not.toHaveBeenCalled()
+  })
+})

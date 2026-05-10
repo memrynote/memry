@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
+  createHashTagInlinePlugin,
   matchHashTagImmediate,
   matchTrailingTagChars,
   isTagChar,
@@ -169,6 +170,228 @@ describe('hash-tag-inline-plugin', () => {
 
     it('returns null if chars end with space', () => {
       expect(matchTrailingTagChars('\ufffcabc ')).toBeNull()
+    })
+  })
+
+  describe('createHashTagInlinePlugin', () => {
+    function createTransaction() {
+      return {
+        delete: vi.fn().mockReturnThis(),
+        replaceWith: vi.fn().mockReturnThis(),
+        setMeta: vi.fn().mockReturnThis()
+      }
+    }
+
+    function createHashTagNode(tag: string, nodeSize = 1) {
+      return {
+        type: { name: 'hashTag' },
+        attrs: { tag },
+        nodeSize
+      }
+    }
+
+    it('shrinks and deletes hashTag nodes on Backspace before the cursor', () => {
+      const plugin = createHashTagInlinePlugin((tag) => `color-${tag}`)
+      const hashTagNodeType = { create: vi.fn((attrs) => ({ type: 'hashTag', attrs })) }
+      const dispatch = vi.fn()
+      const tr = createTransaction()
+      const state = {
+        selection: {
+          $from: {
+            parentOffset: 1,
+            nodeBefore: createHashTagNode('abc', 3),
+            pos: 8
+          }
+        },
+        schema: {
+          nodes: {
+            hashTag: hashTagNodeType
+          }
+        },
+        tr
+      }
+      const view = { state, dispatch }
+
+      expect(
+        plugin.props.handleKeyDown?.(
+          view as never,
+          new KeyboardEvent('keydown', {
+            key: 'Enter'
+          })
+        )
+      ).toBe(false)
+      expect(
+        plugin.props.handleKeyDown?.(
+          view as never,
+          new KeyboardEvent('keydown', {
+            key: 'Backspace'
+          })
+        )
+      ).toBe(true)
+
+      expect(hashTagNodeType.create).toHaveBeenCalledWith({ tag: 'ab', color: 'color-ab' })
+      expect(tr.replaceWith).toHaveBeenCalledWith(5, 8, {
+        type: 'hashTag',
+        attrs: { tag: 'ab', color: 'color-ab' }
+      })
+      expect(dispatch).toHaveBeenCalledWith(tr)
+
+      const deleteTr = createTransaction()
+      state.tr = deleteTr
+      state.selection.$from.nodeBefore = createHashTagNode('a', 2)
+      state.selection.$from.pos = 12
+
+      expect(
+        plugin.props.handleKeyDown?.(
+          view as never,
+          new KeyboardEvent('keydown', {
+            key: 'Backspace'
+          })
+        )
+      ).toBe(true)
+      expect(deleteTr.delete).toHaveBeenCalledWith(10, 12)
+    })
+
+    it('creates a hashTag node from #x typed in normal text', () => {
+      const plugin = createHashTagInlinePlugin((tag) => `color-${tag}`)
+      const tr = createTransaction()
+      const hashTagNode = { type: 'hashTag', attrs: { tag: 'a', color: 'color-a' } }
+      const newState = {
+        selection: {
+          $from: {
+            parentOffset: 2,
+            start: () => 10,
+            parent: {
+              type: { spec: { code: false } },
+              textBetween: () => '#A'
+            }
+          }
+        },
+        schema: {
+          nodes: {
+            hashTag: { create: vi.fn(() => hashTagNode) }
+          }
+        },
+        tr
+      }
+
+      const result = plugin.spec.appendTransaction?.(
+        [{ docChanged: true, getMeta: () => false }] as never,
+        {} as never,
+        newState as never
+      )
+
+      expect(result).toBe(tr)
+      expect(tr.replaceWith).toHaveBeenCalledWith(10, 12, expect.anything())
+      expect(tr.setMeta).toHaveBeenCalled()
+    })
+
+    it('extends a hashTag node with trailing tag characters', () => {
+      const plugin = createHashTagInlinePlugin((tag) => `color-${tag}`)
+      const tr = createTransaction()
+      const currentNode = createHashTagNode('alpha')
+      const newNode = { type: 'hashTag', attrs: { tag: 'alphabeta', color: 'color-alphabeta' } }
+      const newState = {
+        selection: {
+          $from: {
+            parentOffset: 5,
+            start: () => 20,
+            parent: {
+              type: { spec: { code: false } },
+              textBetween: () => '\ufffcbeta'
+            }
+          }
+        },
+        doc: {
+          nodeAt: vi.fn(() => currentNode)
+        },
+        schema: {
+          nodes: {
+            hashTag: { create: vi.fn(() => newNode) }
+          }
+        },
+        tr
+      }
+
+      const result = plugin.spec.appendTransaction?.(
+        [{ docChanged: true, getMeta: () => false }] as never,
+        {} as never,
+        newState as never
+      )
+
+      expect(result).toBe(tr)
+      expect(newState.doc.nodeAt).toHaveBeenCalledWith(20)
+      expect(tr.replaceWith).toHaveBeenCalledWith(20, 25, expect.anything())
+    })
+
+    it('ignores non-document transactions, code blocks, missing node types, and non-tag trailing nodes', () => {
+      const plugin = createHashTagInlinePlugin(() => 'color')
+      const baseState = {
+        selection: {
+          $from: {
+            parentOffset: 2,
+            start: () => 1,
+            parent: {
+              type: { spec: { code: false } },
+              textBetween: () => '#a'
+            }
+          }
+        },
+        schema: { nodes: {} },
+        tr: createTransaction()
+      }
+
+      expect(
+        plugin.spec.appendTransaction?.(
+          [{ docChanged: false, getMeta: () => false }] as never,
+          {} as never,
+          baseState as never
+        )
+      ).toBeNull()
+
+      expect(
+        plugin.spec.appendTransaction?.(
+          [{ docChanged: true, getMeta: () => false }] as never,
+          {} as never,
+          {
+            ...baseState,
+            selection: {
+              $from: {
+                ...baseState.selection.$from,
+                parent: { type: { spec: { code: true } }, textBetween: () => '#a' }
+              }
+            },
+            schema: { nodes: { hashTag: { create: vi.fn() } } }
+          } as never
+        )
+      ).toBeNull()
+
+      expect(
+        plugin.spec.appendTransaction?.(
+          [{ docChanged: true, getMeta: () => false }] as never,
+          {} as never,
+          baseState as never
+        )
+      ).toBeNull()
+
+      expect(
+        plugin.spec.appendTransaction?.(
+          [{ docChanged: true, getMeta: () => false }] as never,
+          {} as never,
+          {
+            ...baseState,
+            selection: {
+              $from: {
+                ...baseState.selection.$from,
+                parentOffset: 5,
+                parent: { type: { spec: { code: false } }, textBetween: () => '\ufffcbeta' }
+              }
+            },
+            schema: { nodes: { hashTag: { create: vi.fn() } } },
+            doc: { nodeAt: vi.fn(() => ({ type: { name: 'paragraph' } })) }
+          } as never
+        )
+      ).toBeNull()
     })
   })
 })
