@@ -18,6 +18,7 @@
     "./inbox-api": "./src/inbox-api.ts",
     "./ipc-attachments": "./src/ipc-attachments.ts",
     "./ipc-auth": "./src/ipc-auth.ts",
+    "./ipc-agent": "./src/ipc-agent.ts",
     "./ipc-channels": "./src/ipc-channels.ts",
     "./ipc-crdt": "./src/ipc-crdt.ts",
     "./ipc-crypto": "./src/ipc-crypto.ts",
