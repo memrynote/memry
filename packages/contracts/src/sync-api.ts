@@ -18,7 +18,9 @@ export const SYNC_ITEM_TYPES = [
   'calendar_event',
   'calendar_source',
   'calendar_binding',
-  'calendar_external_event'
+  'calendar_external_event',
+  'agent_conversation',
+  'agent_message'
 ] as const
 
 export const RECORD_SYNC_ITEM_TYPES = [
@@ -34,7 +36,9 @@ export const RECORD_SYNC_ITEM_TYPES = [
   'calendar_event',
   'calendar_source',
   'calendar_binding',
-  'calendar_external_event'
+  'calendar_external_event',
+  'agent_conversation',
+  'agent_message'
 ] as const
 
 export const RECORD_CLOCK_REQUIRED_ITEM_TYPES = [
@@ -49,7 +53,9 @@ export const RECORD_CLOCK_REQUIRED_ITEM_TYPES = [
   'calendar_event',
   'calendar_source',
   'calendar_binding',
-  'calendar_external_event'
+  'calendar_external_event',
+  'agent_conversation',
+  'agent_message'
 ] as const
 
 export const CRDT_SYNC_ITEM_TYPES = ['note'] as const
@@ -69,7 +75,9 @@ export const ENCRYPTABLE_ITEM_TYPES = [
   'calendar_event',
   'calendar_source',
   'calendar_binding',
-  'calendar_external_event'
+  'calendar_external_event',
+  'agent_conversation',
+  'agent_message'
 ] as const
 export type EncryptableItemType = (typeof ENCRYPTABLE_ITEM_TYPES)[number]
 
@@ -314,10 +322,12 @@ export const SyncItemRefSchema = z.object({
   stateVector: z.string().optional()
 })
 
-export const RecordSyncItemRefSchema = SyncItemRefSchema.omit({ type: true, stateVector: true })
-  .extend({
-    type: z.enum(RECORD_SYNC_ITEM_TYPES)
-  })
+export const RecordSyncItemRefSchema = SyncItemRefSchema.omit({
+  type: true,
+  stateVector: true
+}).extend({
+  type: z.enum(RECORD_SYNC_ITEM_TYPES)
+})
 
 export const SyncManifestSchema = z.object({
   items: z.array(SyncItemRefSchema),
