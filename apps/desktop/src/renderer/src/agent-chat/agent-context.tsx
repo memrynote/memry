@@ -264,3 +264,7 @@ export function useAgent(): AgentContextValue {
   if (!context) throw new Error('useAgent must be used within AgentProvider')
   return context
 }
+
+export function useAgentOptional(): AgentContextValue | null {
+  return useContext(AgentContext)
+}
