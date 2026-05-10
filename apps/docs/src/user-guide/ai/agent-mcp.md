@@ -54,6 +54,10 @@ Create and update tools are registered so clients can see the full planned surfa
 - `vault_remove_tag`
 - `vault_move_to_folder`
 
+Plain external clients cannot enable these write tools by themselves. When Memry Agent conversations
+provide an in-app approval gate, the same running MCP server can route approved writes for that
+conversation while unauthenticated or context-free write requests continue to be denied.
+
 ## Current Note
 
 `vault_get_current_note` can snapshot the active note when the request is associated with a Memry
