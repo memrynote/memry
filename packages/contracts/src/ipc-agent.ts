@@ -8,6 +8,7 @@ export const AgentChannels = {
     SEND_TURN: 'agent:sendTurn',
     CANCEL_TURN: 'agent:cancelTurn',
     APPROVE_TOOL: 'agent:approveTool',
+    PREVIEW_DIFF: 'agent:previewDiff',
     EDIT_TRUST_LIST: 'agent:editTrustList',
     GET_BINARY_STATUS: 'agent:getBinaryStatus',
     ACCEPT_DISCLOSURE: 'agent:acceptDisclosure',
@@ -50,6 +51,19 @@ export const ApproveToolRequestSchema = z.object({
   decision: ApproveToolDecisionSchema
 })
 export type ApproveToolRequest = z.infer<typeof ApproveToolRequestSchema>
+
+export const PreviewDiffRequestSchema = z.object({
+  conversationId: z.string(),
+  toolCallId: z.string()
+})
+export type PreviewDiffRequest = z.infer<typeof PreviewDiffRequestSchema>
+
+export const PreviewDiffResponseSchema = z.object({
+  title: z.string(),
+  current: z.string(),
+  candidate: z.string()
+})
+export type PreviewDiffResponse = z.infer<typeof PreviewDiffResponseSchema>
 
 export const BinaryStatusSchema = z.object({
   detected: z.boolean(),
