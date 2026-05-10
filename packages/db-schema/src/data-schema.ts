@@ -28,6 +28,8 @@ export * from './schema/sync-state.ts'
 export * from './schema/sync-history.ts'
 export * from './schema/search-reasons.ts'
 export * from './schema/vault-metadata.ts'
+export * from './schema/agent-conversations.ts'
+export * from './schema/agent-messages.ts'
 export {
   propertyDefinitions,
   type PropertyDefinition,
