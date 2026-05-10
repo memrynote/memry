@@ -64,6 +64,16 @@ conversation while unauthenticated or context-free write requests continue to be
 window. Plain external clients do not have that window context, so the tool returns `null` instead
 of guessing.
 
+## Conversation Storage
+
+Memry Agent conversations are stored in the local vault database. Conversation titles, message
+bodies, and message attachments are encrypted at rest before they are written to SQLite.
+
+Free accounts keep agent chat history local-only. Paid accounts can sync finalized conversations and
+terminal messages through Memry Sync; in-progress streaming messages are not enqueued until the turn
+finishes. If sync is enabled after local conversations already exist, Memry backfills the existing
+conversation rows and terminal messages into the sync outbox.
+
 ## Privacy
 
 The MCP server binds only to localhost. Read tools still expose the content they return to the
