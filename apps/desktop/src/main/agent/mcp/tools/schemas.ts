@@ -140,7 +140,7 @@ export const TOOL_SCHEMAS = {
 
 export type ToolName = keyof typeof TOOL_SCHEMAS
 
-export const READ_TOOL_NAMES: ToolName[] = [
+export const READ_TOOL_NAMES = [
   'vault_search_notes',
   'vault_read_note',
   'vault_list_folder',
@@ -151,9 +151,9 @@ export const READ_TOOL_NAMES: ToolName[] = [
   'vault_list_journal_entries',
   'vault_list_inbox_items',
   'vault_get_tags'
-]
+] as const satisfies readonly ToolName[]
 
-export const WRITE_TOOL_NAMES: ToolName[] = [
+export const WRITE_TOOL_NAMES = [
   'vault_create_note',
   'vault_create_task',
   'vault_create_journal_entry',
@@ -163,21 +163,21 @@ export const WRITE_TOOL_NAMES: ToolName[] = [
   'vault_add_tag',
   'vault_remove_tag',
   'vault_move_to_folder'
-]
+] as const satisfies readonly ToolName[]
 
-export const CREATE_TOOL_NAMES: ToolName[] = [
+export const CREATE_TOOL_NAMES = [
   'vault_create_note',
   'vault_create_task',
   'vault_create_journal_entry',
   'vault_add_to_inbox'
-]
+] as const satisfies readonly ToolName[]
 
-export const UPDATE_TOOL_NAMES: ToolName[] = [
+export const UPDATE_TOOL_NAMES = [
   'vault_update_note',
   'vault_update_task',
   'vault_add_tag',
   'vault_remove_tag',
   'vault_move_to_folder'
-]
+] as const satisfies readonly ToolName[]
 
-export const ALL_TOOL_NAMES: ToolName[] = [...READ_TOOL_NAMES, ...WRITE_TOOL_NAMES]
+export const ALL_TOOL_NAMES = [...READ_TOOL_NAMES, ...WRITE_TOOL_NAMES] as const
