@@ -22,6 +22,8 @@ interface TabPaneWithDropZonesProps {
   isActive: boolean
   /** Whether to show the sidebar collapse toggle (hidden in split panes) */
   showSidebarToggle?: boolean
+  /** Whether this pane should reserve space for the fixed day panel */
+  reserveDayPanelSpace?: boolean
   /** Additional CSS classes */
   className?: string
 }
@@ -33,6 +35,7 @@ export const TabPaneWithDropZones = ({
   groupId,
   isActive,
   showSidebarToggle = true,
+  reserveDayPanelSpace = true,
   className
 }: TabPaneWithDropZonesProps): React.JSX.Element | null => {
   const { dispatch } = useTabs()
@@ -165,7 +168,9 @@ export const TabPaneWithDropZones = ({
           'flex-1 overflow-hidden relative',
           !dayPanelResizing && 'transition-[margin] duration-200 ease-linear'
         )}
-        style={{ marginRight: isDayPanelOpen ? `${dayPanelWidth}px` : 0 }}
+        style={{
+          marginInlineEnd: reserveDayPanelSpace && isDayPanelOpen ? `${dayPanelWidth}px` : 0
+        }}
       >
         {activeTab ? (
           <TabContent tab={activeTab} groupId={groupId} />
