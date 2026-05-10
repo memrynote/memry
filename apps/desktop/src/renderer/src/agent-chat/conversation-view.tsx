@@ -45,7 +45,7 @@ export function ConversationView({ conversationId }: ConversationViewProps): Rea
         onSelectConversation={agent.loadConversation}
       />
       <MessageStream messages={messages} />
-      <Composer conversationId={conversationId} sourceWindowId="agent-pane" />
+      <Composer conversationId={conversationId} sourceWindowId={state.sourceWindowId} />
     </section>
   )
 }

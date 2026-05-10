@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('electron', () => ({
+  BrowserWindow: mockElectron.BrowserWindow,
   ipcMain: mockElectron.ipcMain
 }))
 vi.mock('../agent/cli/claude-binary', () => ({
@@ -90,6 +91,7 @@ describe('agent IPC handlers', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockElectron.BrowserWindow.fromWebContents.mockReturnValue(null)
   })
 
   afterEach(() => {
@@ -172,5 +174,17 @@ describe('agent IPC handlers', () => {
       current: 'old',
       candidate: 'old\n\nnew'
     })
+  })
+
+  it('returns the calling BrowserWindow id for agent turns', async () => {
+    registerAgentHandlers(deps)
+    mockElectron.BrowserWindow.fromWebContents.mockReturnValue({ id: 42 } as never)
+
+    const result = await findHandler(AgentChannels.invoke.GET_WINDOW_ID)({
+      sender: { id: 123 }
+    })
+
+    expect(mockElectron.BrowserWindow.fromWebContents).toHaveBeenCalledWith({ id: 123 })
+    expect(result).toEqual({ windowId: '42' })
   })
 })

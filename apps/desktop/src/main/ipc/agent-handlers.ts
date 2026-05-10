@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { BrowserWindow, ipcMain } from 'electron'
 
 import {
   AgentChannels,
@@ -131,6 +131,9 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
   ipcMain.handle(AgentChannels.invoke.GET_BINARY_STATUS, () => detectClaudeBinary())
   ipcMain.handle(AgentChannels.invoke.GET_DISCLOSURE_STATE, () => getDisclosureState())
   ipcMain.handle(AgentChannels.invoke.ACCEPT_DISCLOSURE, () => acceptDisclosure())
+  ipcMain.handle(AgentChannels.invoke.GET_WINDOW_ID, (event) => ({
+    windowId: BrowserWindow.fromWebContents(event.sender)?.id.toString() ?? null
+  }))
 }
 
 export function unregisterAgentHandlers(): void {

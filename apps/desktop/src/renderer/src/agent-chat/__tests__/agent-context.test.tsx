@@ -65,6 +65,15 @@ describe('agentReducer', () => {
     expect(next.disclosureAccepted).toBe(true)
   })
 
+  it('stores the source window id for MCP current-note calls', () => {
+    const next = agentReducer(initialAgentState, {
+      type: 'set_source_window_id',
+      sourceWindowId: '42'
+    })
+
+    expect(next.sourceWindowId).toBe('42')
+  })
+
   it('sets the active conversation with loaded messages', () => {
     const assistant = message({
       id: 'message-1',

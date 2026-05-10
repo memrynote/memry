@@ -5,8 +5,17 @@ import type * as NotesRpc from '@memry/rpc/notes'
 import type * as TasksRpc from '@memry/rpc/tasks'
 import type { AppNavigationCommandEvent } from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
+import type {
+  AgentEvent,
+  ApproveToolRequest,
+  BinaryStatus,
+  PreviewDiffRequest,
+  PreviewDiffResponse,
+  SendTurnRequest
+} from '@memry/contracts/ipc-agent'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import type { Locale, LocaleApi } from '@memry/contracts/locale-api'
+import type { Conversation, Message } from '../main/agent/storage/types'
 import type {
   SyncStatusChangedEvent,
   ItemSyncedEvent,
@@ -1597,6 +1606,29 @@ interface AgentMcpClientAPI {
   rotateToken: () => Promise<AgentMcpStatus>
 }
 
+interface AgentClientAPI {
+  listConversations: (input?: { vaultId?: string }) => Promise<Conversation[]>
+  createConversation: (input?: { vaultId?: string; backend?: string }) => Promise<Conversation>
+  loadConversation: (input: { id: string }) => Promise<{
+    conversation: Conversation | null
+    messages: Message[]
+  }>
+  sendTurn: (input: SendTurnRequest) => Promise<{ ok: boolean }>
+  cancelTurn: (input: { conversationId: string }) => Promise<{ ok: boolean }>
+  approveTool: (input: ApproveToolRequest) => Promise<{ ok: boolean }>
+  previewDiff: (input: PreviewDiffRequest) => Promise<PreviewDiffResponse>
+  editTrustList: (input: {
+    conversationId: string
+    add?: string[]
+    remove?: string[]
+  }) => Promise<Conversation | null>
+  getBinaryStatus: () => Promise<BinaryStatus>
+  acceptDisclosure: () => Promise<{ accepted: boolean }>
+  getDisclosureState: () => Promise<{ accepted: boolean }>
+  getWindowId: () => Promise<{ windowId: string | null }>
+  onEvent: (callback: (event: AgentEvent) => void) => () => void
+}
+
 interface MainInvokePayload {
   requestId: string
   channel: string
@@ -1628,6 +1660,7 @@ interface API extends WindowAPI, GeneratedRpcApi {
   crypto: CryptoClientAPI
   syncAttachments: SyncAttachmentsClientAPI
   agentMcp: AgentMcpClientAPI
+  agent: AgentClientAPI
   updater: {
     getState: () => Promise<AppUpdateState>
     checkForUpdates: () => Promise<AppUpdateState>

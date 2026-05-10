@@ -374,6 +374,29 @@ const createMockApi = () => ({
     reorder: vi.fn().mockResolvedValue({ success: true })
   },
 
+  // Agent Chat API
+  agent: {
+    listConversations: vi.fn().mockResolvedValue([]),
+    createConversation: vi.fn().mockResolvedValue(null),
+    loadConversation: vi.fn().mockResolvedValue({ conversation: null, messages: [] }),
+    sendTurn: vi.fn().mockResolvedValue({ ok: true }),
+    cancelTurn: vi.fn().mockResolvedValue({ ok: true }),
+    approveTool: vi.fn().mockResolvedValue({ ok: true }),
+    previewDiff: vi.fn().mockResolvedValue({ title: '', current: '', candidate: '' }),
+    editTrustList: vi.fn().mockResolvedValue(null),
+    getBinaryStatus: vi.fn().mockResolvedValue({
+      detected: false,
+      version: null,
+      meetsMinimum: false,
+      minimumRequired: '2.1.0',
+      installHint: null
+    }),
+    acceptDisclosure: vi.fn().mockResolvedValue({ accepted: true }),
+    getDisclosureState: vi.fn().mockResolvedValue({ accepted: false }),
+    getWindowId: vi.fn().mockResolvedValue({ windowId: '1' }),
+    onEvent: vi.fn().mockReturnValue(() => {})
+  },
+
   // Telemetry API
   telemetry: {
     track: vi.fn().mockResolvedValue({ success: true }),
