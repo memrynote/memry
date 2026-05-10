@@ -15,6 +15,7 @@ const createMainI18nMock = vi.fn(async () => ({ t: (key: string) => key }))
 const setMainI18nMock = vi.fn()
 const buildAppMenuMock = vi.fn(() => ({ id: 'menu' }))
 const getCurrentVaultPathMock = vi.fn(() => null as string | null)
+const getVaultStatusMock = vi.fn(() => ({ path: null as string | null }))
 const readPreferencesMock = vi.fn(() => ({ language: 'en' }))
 const initializeTelemetryRuntimeMock = vi.fn()
 const disposeTelemetryRuntimeMock = vi.fn(async () => undefined)
@@ -120,7 +121,8 @@ vi.mock('./ipc/settings-handlers', () => ({
 
 vi.mock('./vault', () => ({
   autoOpenLastVault: autoOpenLastVaultMock,
-  closeVault: closeVaultMock
+  closeVault: closeVaultMock,
+  getStatus: getVaultStatusMock
 }))
 
 vi.mock('./store', () => ({
@@ -334,6 +336,7 @@ describe('main index phase2 exports', () => {
     requestSingleInstanceLockMock.mockReturnValue(true)
     applyGlobalCaptureShortcutMock.mockReturnValue({ registered: true })
     getCurrentVaultPathMock.mockReturnValue(null)
+    getVaultStatusMock.mockReturnValue({ path: null })
     readPreferencesMock.mockReturnValue({ language: 'en' })
     isPinningDisabledMock.mockReturnValue(true)
     getPinnedCertificateHashesMock.mockReturnValue([])

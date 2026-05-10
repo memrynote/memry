@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { JournalDayPanel } from './journal-day-panel'
 
 const mocks = vi.hoisted(() => ({
@@ -102,6 +102,8 @@ vi.mock('@/components/tasks/subtask-progress-indicator', () => ({
 describe('JournalDayPanel extra coverage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-10T12:00:00.000Z'))
     mocks.overdueCount = 2
     mocks.scheduleItems = [
       {
@@ -177,6 +179,10 @@ describe('JournalDayPanel extra coverage', () => {
         completedSubtaskCount: 0
       }
     ]
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('renders schedule/task rows and drives task/navigation actions', () => {

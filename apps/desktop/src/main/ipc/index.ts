@@ -28,6 +28,7 @@ import { registerAccountHandlers, unregisterAccountHandlers } from './account-ha
 import { registerCrdtIpcHandlers } from './crdt-handlers'
 import { registerTelemetryHandlers, unregisterTelemetryHandlers } from './telemetry-handlers'
 import { registerUpdaterHandlers, unregisterUpdaterHandlers } from './updater-handlers'
+import { registerAgentMcpHandlers, unregisterAgentMcpHandlers } from './agent-mcp-handlers'
 import { registerLocaleHandlers, type RebuildMenuFn } from './locale-handler'
 import type { I18nInstance } from '@memry/i18n/main'
 import { createLogger } from '../lib/logger'
@@ -137,6 +138,9 @@ export function registerAllHandlers(deps?: IpcDeps): void {
   // Register telemetry handlers (anonymous-safe, no auth required)
   registerTelemetryHandlers()
 
+  // Register Agent MCP settings/status handlers
+  registerAgentMcpHandlers()
+
   handlersRegistered = true
 }
 
@@ -171,6 +175,7 @@ export function unregisterAllHandlers(): void {
   unregisterAccountHandlers()
   unregisterUpdaterHandlers()
   unregisterTelemetryHandlers()
+  unregisterAgentMcpHandlers()
 
   handlersRegistered = false
   ipcLog.info('all handlers unregistered')
@@ -208,4 +213,5 @@ export { registerGraphHandlers, unregisterGraphHandlers } from './graph-handlers
 export { registerAIInlineHandlers, unregisterAIInlineHandlers } from './ai-inline-handlers'
 export { registerUpdaterHandlers, unregisterUpdaterHandlers } from './updater-handlers'
 export { registerTelemetryHandlers, unregisterTelemetryHandlers } from './telemetry-handlers'
+export { registerAgentMcpHandlers, unregisterAgentMcpHandlers } from './agent-mcp-handlers'
 export { registerLocaleHandlers, type RebuildMenuFn } from './locale-handler'

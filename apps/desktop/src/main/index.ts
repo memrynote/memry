@@ -45,6 +45,7 @@ import {
 } from './sync/certificate-pinning'
 import { getCrdtProvider } from './sync/crdt-provider'
 import { stopSyncRuntime } from './sync/runtime'
+import { startAgentMcpLifecycle, stopAgentMcpLifecycle } from './agent/mcp/lifecycle'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { getIndexDatabase } from './database/client'
 import { toAbsolutePath, createSnapshot } from './vault/notes'
@@ -747,6 +748,10 @@ void app.whenReady().then(async () => {
   // The renderer subscribes to vault status events and updates automatically.
   void autoOpenLastVault()
     .then(() => {
+      void startAgentMcpLifecycle().catch((error) => {
+        mainLog.warn('Agent MCP lifecycle failed to start:', error)
+      })
+
       try {
         checkDueItemsOnStartup()
         startSnoozeScheduler()
@@ -1041,7 +1046,10 @@ app.on('before-quit', (event) => {
       shutdownLog.info('stopping sync runtime...')
       return stopSyncRuntime()
     })
-
+    .then(() => {
+      shutdownLog.info('stopping agent MCP server...')
+      return stopAgentMcpLifecycle()
+    })
     .then(() => {
       shutdownLog.info('closing vault and stopping watcher...')
       return closeVault()

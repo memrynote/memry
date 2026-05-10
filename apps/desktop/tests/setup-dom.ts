@@ -383,6 +383,8 @@ const createMockApi = () => ({
   },
 
   // Event subscriptions (return unsubscribe function)
+  onMainInvoke: vi.fn().mockReturnValue(() => {}),
+  respondToMainInvoke: vi.fn(),
   onVaultStatusChanged: vi.fn().mockReturnValue(() => {}),
   onVaultIndexProgress: vi.fn().mockReturnValue(() => {}),
   onVaultError: vi.fn().mockReturnValue(() => {}),
