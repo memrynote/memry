@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import type React from 'react'
 
 const { AIExtensionMock, DefaultChatTransportMock } = vi.hoisted(() => ({
@@ -36,7 +36,8 @@ function createEditor(options?: { registerCreatesExtension?: boolean }) {
       }
     }),
     focus: vi.fn(),
-    document: []
+    setTextCursorPosition: vi.fn(),
+    document: [] as Array<{ id: string }>
   }
 
   return { editor, getAIExtension: () => aiExtension }
@@ -47,7 +48,15 @@ describe('useBlockNoteSetup', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useRealTimers()
     editorContainerRef = { current: document.createElement('div') }
+    document.body.innerHTML = ''
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    document.body.innerHTML = ''
+    delete (window as unknown as { __memryEditor?: unknown }).__memryEditor
   })
 
   it('keeps aiReady false until the editor exposes the ai extension', async () => {
@@ -92,5 +101,154 @@ describe('useBlockNoteSetup', () => {
     unmount()
 
     expect(editor.unregisterExtension).toHaveBeenCalledWith('ai')
+  })
+
+  it('exposes and clears the active editor for e2e instrumentation', () => {
+    const { editor } = createEditor()
+
+    const { result, unmount } = renderHook(() =>
+      useBlockNoteSetup({
+        editor,
+        aiPort: null,
+        editorContainerRef
+      })
+    )
+
+    expect(result.current.aiReady).toBe(false)
+    expect((window as unknown as { __memryEditor?: unknown }).__memryEditor).toBe(editor)
+
+    unmount()
+
+    expect((window as unknown as { __memryEditor?: unknown }).__memryEditor).toBeUndefined()
+    expect(editor.registerExtension).not.toHaveBeenCalled()
+  })
+
+  it('syncs spellcheck and focus-at-end behavior into the editor DOM', () => {
+    const { editor } = createEditor()
+    const contentEditable = document.createElement('div')
+    contentEditable.setAttribute('contenteditable', 'true')
+    editorContainerRef.current!.appendChild(contentEditable)
+    editor.document = [{ id: 'first' }, { id: 'last' }]
+    editor.setTextCursorPosition = vi.fn()
+    const focusAtEndRef: React.RefObject<(() => void) | null> = { current: null }
+
+    renderHook(() =>
+      useBlockNoteSetup({
+        editor,
+        spellCheck: true,
+        focusAtEndRef,
+        editorContainerRef
+      })
+    )
+
+    expect(contentEditable.spellcheck).toBe(true)
+
+    focusAtEndRef.current?.()
+
+    expect(editor.focus).toHaveBeenCalled()
+    expect(editor.setTextCursorPosition).toHaveBeenCalledWith('last', 'end')
+  })
+
+  it('routes external and wiki-link clicks from the editor surface', () => {
+    const { editor } = createEditor()
+    const onLinkClick = vi.fn()
+    const onInternalLinkClick = vi.fn()
+    const wikiEvent = vi.fn()
+    const editorElement = document.createElement('div')
+    editorElement.className = 'bn-editor'
+    editorElement.innerHTML = `
+      <button data-wiki-link data-target=" Launch Plan ">wiki</button>
+      <a href="https://memry.app">external</a>
+      <a href="#local">local</a>
+    `
+    document.body.appendChild(editorElement)
+    window.addEventListener('wikilink:click', wikiEvent)
+
+    const { unmount } = renderHook(() =>
+      useBlockNoteSetup({
+        editor,
+        editorContainerRef,
+        onLinkClick,
+        onInternalLinkClick
+      })
+    )
+
+    editorElement
+      .querySelector('[data-wiki-link]')!
+      .dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    editorElement
+      .querySelector('a[href="https://memry.app"]')!
+      .dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    editorElement
+      .querySelector('a[href="#local"]')!
+      .dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+
+    expect(onInternalLinkClick).toHaveBeenCalledWith('Launch Plan')
+    expect(wikiEvent).toHaveBeenCalled()
+    expect(onLinkClick).toHaveBeenCalledWith('https://memry.app')
+    expect(onLinkClick).toHaveBeenCalledTimes(1)
+
+    unmount()
+    window.removeEventListener('wikilink:click', wikiEvent)
+  })
+
+  it('opens the AI menu with the keyboard shortcut when a block is selected', async () => {
+    vi.useFakeTimers()
+    const aiExtension = { openAIMenuAtBlock: vi.fn() }
+    const editor = {
+      getExtension: vi.fn(() => aiExtension),
+      registerExtension: vi.fn(),
+      unregisterExtension: vi.fn(),
+      getTextCursorPosition: vi.fn(() => ({ block: { id: 'block-1' } })),
+      focus: vi.fn(),
+      document: []
+    }
+
+    renderHook(() =>
+      useBlockNoteSetup({
+        editor,
+        aiPort: 4315,
+        editorContainerRef
+      })
+    )
+
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'j', metaKey: true }))
+    })
+
+    expect(aiExtension.openAIMenuAtBlock).toHaveBeenCalledWith('block-1')
+  })
+
+  it('scrolls to and highlights initial text matches', () => {
+    vi.useFakeTimers()
+    const { editor } = createEditor()
+    const paragraph = document.createElement('p')
+    paragraph.textContent = 'Ship the launch memo today'
+    paragraph.scrollIntoView = vi.fn()
+    editorContainerRef.current!.appendChild(paragraph)
+
+    renderHook(() =>
+      useBlockNoteSetup({
+        editor,
+        editorContainerRef,
+        initialHighlight: { text: 'launch memo' }
+      })
+    )
+
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
+
+    expect(paragraph.scrollIntoView).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      block: 'center'
+    })
+    expect(paragraph.style.backgroundColor).toBe('rgba(251, 191, 36, 0.4)')
+
+    act(() => {
+      vi.advanceTimersByTime(3000)
+    })
+
+    expect(paragraph.style.backgroundColor).toBe('')
   })
 })

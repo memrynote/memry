@@ -474,7 +474,7 @@ export function getProcessingStreak(): number {
         const yStr = yesterday.toISOString().split('T')[0]
         const yStats = recentStats.find((r) => r.date === yStr)
         if (yStats && (yStats.processedCount || 0) > 0) {
-          checkDate.setDate(checkDate.getDate() - 1)
+          checkDate.setDate(checkDate.getDate() - 2)
           streak++
           continue
         }

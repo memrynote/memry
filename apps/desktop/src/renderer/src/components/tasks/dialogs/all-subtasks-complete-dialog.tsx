@@ -40,12 +40,10 @@ export const AllSubtasksCompleteDialog = ({
   const { t: tPhaseF } = useT('tasks')
   const handleKeepOpen = (): void => {
     onKeepOpen()
-    onClose()
   }
 
   const handleComplete = (): void => {
     onCompleteParent()
-    onClose()
   }
 
   return (
@@ -62,21 +60,23 @@ export const AllSubtasksCompleteDialog = ({
               )}
             </AlertDialogTitle>
           </div>
-          <AlertDialogDescription className="space-y-2">
-            <p>
-              &{tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.ldquo')}
-              {parentTitle}&
-              {tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.rdquoHasAll')}
-              {subtaskCount}{' '}
-              {tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.subtask')}
-              {subtaskCount !== 1 ? 's' : ''}{' '}
-              {tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.done')}
-            </p>
-            <p className="text-muted-foreground">
-              {tPhaseF(
-                'phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.wouldYouLikeToMarkTheParentTaskAsCompleteToo'
-              )}
-            </p>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2">
+              <p>
+                &{tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.ldquo')}
+                {parentTitle}&
+                {tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.rdquoHasAll')}
+                {subtaskCount}{' '}
+                {tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.subtask')}
+                {subtaskCount !== 1 ? 's' : ''}{' '}
+                {tPhaseF('phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.done')}
+              </p>
+              <p className="text-muted-foreground">
+                {tPhaseF(
+                  'phaseF.componentsTasksDialogsAllSubtasksCompleteDialog.wouldYouLikeToMarkTheParentTaskAsCompleteToo'
+                )}
+              </p>
+            </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

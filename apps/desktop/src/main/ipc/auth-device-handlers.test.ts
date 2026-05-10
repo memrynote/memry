@@ -59,30 +59,43 @@ vi.mock('../sync/device-registration', () => ({
   persistKeysAndRegisterDevice: (...args: unknown[]) => mockPersistKeysAndRegisterDevice(...args)
 }))
 
+const mockApproveDeviceLinking = vi.fn().mockResolvedValue({ success: true })
+const mockCompleteLinkingQr = vi.fn().mockResolvedValue({ success: true })
+const mockGetLinkingVerificationCode = vi.fn().mockResolvedValue({ code: '000000' })
+const mockInitiateDeviceLinking = vi.fn().mockResolvedValue({ qrData: 'qr' })
+const mockLinkViaQr = vi.fn().mockResolvedValue({ success: true })
 vi.mock('../sync/linking-service', () => ({
-  approveDeviceLinking: vi.fn().mockResolvedValue({ success: true }),
-  completeLinkingQr: vi.fn().mockResolvedValue({ success: true }),
-  getLinkingVerificationCode: vi.fn().mockResolvedValue({ code: '000000' }),
-  initiateDeviceLinking: vi.fn().mockResolvedValue({ qrData: 'qr' }),
-  linkViaQr: vi.fn().mockResolvedValue({ success: true })
+  approveDeviceLinking: (...args: unknown[]) => mockApproveDeviceLinking(...args),
+  completeLinkingQr: (...args: unknown[]) => mockCompleteLinkingQr(...args),
+  getLinkingVerificationCode: (...args: unknown[]) => mockGetLinkingVerificationCode(...args),
+  initiateDeviceLinking: (...args: unknown[]) => mockInitiateDeviceLinking(...args),
+  linkViaQr: (...args: unknown[]) => mockLinkViaQr(...args)
 }))
 
 const mockSelectGet = vi.fn().mockReturnValue(undefined)
+let mockSelectRows: unknown[] | null = null
+const mockSelectWhere = vi.fn().mockReturnValue({
+  get: mockSelectGet
+})
+const mockSelectFrom = vi.fn(() => {
+  if (mockSelectRows) return mockSelectRows
+  return {
+    where: mockSelectWhere,
+    all: vi.fn().mockReturnValue([])
+  }
+})
+const mockDeleteRun = vi.fn()
+const mockUpdateRun = vi.fn()
 const mockDb = {
   select: vi.fn().mockReturnValue({
-    from: vi.fn().mockReturnValue({
-      where: vi.fn().mockReturnValue({
-        get: mockSelectGet
-      }),
-      all: vi.fn().mockReturnValue([])
-    })
+    from: mockSelectFrom
   }),
   delete: vi.fn().mockReturnValue({
-    where: vi.fn().mockReturnValue({ run: vi.fn() })
+    where: vi.fn().mockReturnValue({ run: mockDeleteRun })
   }),
   update: vi.fn().mockReturnValue({
     set: vi.fn().mockReturnValue({
-      where: vi.fn().mockReturnValue({ run: vi.fn() })
+      where: vi.fn().mockReturnValue({ run: mockUpdateRun })
     })
   })
 }
@@ -139,6 +152,7 @@ describe('auth-device handlers', () => {
     mockValidateKeyVerifier.mockReturnValue(true)
     mockValidateRecoveryPhrase.mockReturnValue(true)
     mockSelectGet.mockReturnValue(undefined)
+    mockSelectRows = null
     mockIsDatabaseInitialized.mockReturnValue(true)
   })
 
@@ -450,6 +464,220 @@ describe('auth-device handlers', () => {
   })
 
   // --------------------------------------------------------------------------
+  // Device linking
+  // --------------------------------------------------------------------------
+
+  describe('device linking', () => {
+    it('generates QR linking sessions and blocks unauthenticated devices', async () => {
+      registerAuthDeviceHandlers()
+
+      await expect(invokeHandler(SYNC_CHANNELS.GENERATE_LINKING_QR)).resolves.toEqual({
+        qrData: 'qr'
+      })
+      expect(mockInitiateDeviceLinking).toHaveBeenCalledWith('mock-access-token')
+
+      mockGetValidAccessToken.mockResolvedValueOnce(null)
+
+      await expect(invokeHandler(SYNC_CHANNELS.GENERATE_LINKING_QR)).rejects.toThrow(
+        'Not authenticated'
+      )
+    })
+
+    it('links via QR with OAuth token, setup token fallback, and missing-token failure', async () => {
+      registerAuthDeviceHandlers()
+
+      await expect(
+        invokeHandler(SYNC_CHANNELS.LINK_VIA_QR, {
+          qrData: 'qr-payload',
+          oauthToken: 'oauth-token',
+          provider: 'google'
+        })
+      ).resolves.toEqual({ success: true })
+      expect(mockLinkViaQr).toHaveBeenLastCalledWith('qr-payload', 'oauth-token')
+
+      await expect(
+        invokeHandler(SYNC_CHANNELS.LINK_VIA_QR, { qrData: 'qr-fallback' })
+      ).resolves.toEqual({ success: true })
+      expect(mockLinkViaQr).toHaveBeenLastCalledWith('qr-fallback', 'mock-access-token')
+
+      mockRetrieveToken.mockResolvedValueOnce(null)
+
+      await expect(
+        invokeHandler(SYNC_CHANNELS.LINK_VIA_QR, { qrData: 'qr-missing-token' })
+      ).resolves.toEqual({
+        success: false,
+        error: 'No auth token available for device linking'
+      })
+    })
+
+    it('completes QR linking, approval, and SAS flows', async () => {
+      registerAuthDeviceHandlers()
+
+      await expect(
+        invokeHandler(SYNC_CHANNELS.COMPLETE_LINKING_QR, { sessionId: 'session-1' })
+      ).resolves.toEqual({ success: true })
+      expect(mockCompleteLinkingQr).toHaveBeenCalledWith('session-1')
+
+      await expect(
+        invokeHandler(SYNC_CHANNELS.APPROVE_LINKING, { sessionId: 'session-2' })
+      ).resolves.toEqual({ success: true })
+      expect(mockApproveDeviceLinking).toHaveBeenCalledWith('session-2', 'mock-access-token')
+
+      await expect(
+        invokeHandler(SYNC_CHANNELS.GET_LINKING_SAS, { sessionId: 'session-3' })
+      ).resolves.toEqual({ code: '000000' })
+      expect(mockGetLinkingVerificationCode).toHaveBeenCalledWith('session-3', 'mock-access-token')
+
+      mockGetValidAccessToken.mockResolvedValueOnce(null)
+      await expect(
+        invokeHandler(SYNC_CHANNELS.APPROVE_LINKING, { sessionId: 'session-4' })
+      ).resolves.toEqual({ success: false, error: 'Not authenticated' })
+
+      mockGetValidAccessToken.mockResolvedValueOnce(null)
+      await expect(
+        invokeHandler(SYNC_CHANNELS.GET_LINKING_SAS, { sessionId: 'session-5' })
+      ).resolves.toEqual({ success: false, error: 'Not authenticated' })
+    })
+
+    it('links via recovery phrase and cleans up derived secrets', async () => {
+      registerAuthDeviceHandlers()
+      const masterKey = new Uint8Array(32).fill(7)
+      const signingSecretKey = new Uint8Array(64).fill(8)
+
+      mockGetFromServer.mockResolvedValueOnce({ kdfSalt: 'salt', keyVerifier: 'verifier' })
+      mockRecoverMasterKeyFromPhrase.mockResolvedValueOnce({
+        masterKey,
+        kdfSalt: 'salt',
+        keyVerifier: 'verifier'
+      })
+      mockGetOrCreateSigningKeyPair.mockResolvedValueOnce({
+        publicKey: new Uint8Array(32),
+        secretKey: signingSecretKey
+      })
+      mockPersistKeysAndRegisterDevice.mockResolvedValueOnce('recovered-device')
+
+      const result = await invokeHandler(SYNC_CHANNELS.LINK_VIA_RECOVERY, {
+        recoveryPhrase: 'correct horse battery staple'
+      })
+
+      expect(result).toEqual({ success: true, deviceId: 'recovered-device' })
+      expect(mockGetFromServer).toHaveBeenCalledWith('/auth/recovery-info', 'mock-access-token')
+      expect(mockPersistKeysAndRegisterDevice).toHaveBeenCalledWith(
+        masterKey,
+        signingSecretKey,
+        'mock-access-token',
+        'salt',
+        'verifier',
+        true
+      )
+      expect(mockSecureCleanup).toHaveBeenCalledWith(masterKey)
+      expect(mockSecureCleanup).toHaveBeenCalledWith(signingSecretKey)
+    })
+
+    it('returns recovery-linking validation and verifier failures without registering a device', async () => {
+      registerAuthDeviceHandlers()
+
+      mockValidateRecoveryPhrase.mockReturnValueOnce(false)
+      await expect(
+        invokeHandler(SYNC_CHANNELS.LINK_VIA_RECOVERY, { recoveryPhrase: 'bad' })
+      ).resolves.toEqual({ success: false, error: 'Invalid recovery phrase format' })
+
+      mockRetrieveToken.mockResolvedValueOnce(null)
+      await expect(
+        invokeHandler(SYNC_CHANNELS.LINK_VIA_RECOVERY, {
+          recoveryPhrase: 'correct horse battery staple'
+        })
+      ).resolves.toEqual({ success: false, error: 'Session expired. Please sign in again.' })
+
+      mockGetFromServer.mockResolvedValueOnce({ kdfSalt: 'salt', keyVerifier: 'verifier' })
+      mockRecoverMasterKeyFromPhrase.mockResolvedValueOnce({
+        masterKey: new Uint8Array(32).fill(9),
+        kdfSalt: 'salt',
+        keyVerifier: 'wrong-verifier'
+      })
+      mockValidateKeyVerifier.mockReturnValueOnce(false)
+
+      await expect(
+        invokeHandler(SYNC_CHANNELS.LINK_VIA_RECOVERY, {
+          recoveryPhrase: 'correct horse battery staple'
+        })
+      ).resolves.toEqual({
+        success: false,
+        error: 'Recovery phrase does not match. Please try again.'
+      })
+      expect(mockPersistKeysAndRegisterDevice).not.toHaveBeenCalledWith(
+        expect.any(Uint8Array),
+        expect.any(Uint8Array),
+        expect.any(String),
+        expect.any(String),
+        'wrong-verifier',
+        true
+      )
+    })
+  })
+
+  // --------------------------------------------------------------------------
+  // GET_DEVICES
+  // --------------------------------------------------------------------------
+
+  describe('GET_DEVICES', () => {
+    it('returns an empty device list when the database is not initialized', async () => {
+      registerAuthDeviceHandlers()
+      mockIsDatabaseInitialized.mockReturnValueOnce(false)
+
+      await expect(invokeHandler(SYNC_CHANNELS.GET_DEVICES)).resolves.toEqual({
+        devices: [],
+        email: undefined
+      })
+    })
+
+    it('maps persisted devices and sync email for the renderer', async () => {
+      registerAuthDeviceHandlers()
+      mockStoreGet.mockReturnValueOnce({ email: 'user@example.com' })
+      mockSelectRows = [
+        {
+          id: 'dev-1',
+          name: 'Kaan MBP',
+          platform: 'macos',
+          linkedAt: new Date('2026-05-01T10:00:00.000Z'),
+          lastSyncAt: new Date('2026-05-02T10:00:00.000Z'),
+          isCurrentDevice: true
+        },
+        {
+          id: 'dev-2',
+          name: 'Linux box',
+          platform: 'linux',
+          linkedAt: new Date('2026-05-03T10:00:00.000Z'),
+          lastSyncAt: null,
+          isCurrentDevice: false
+        }
+      ]
+
+      await expect(invokeHandler(SYNC_CHANNELS.GET_DEVICES)).resolves.toEqual({
+        email: 'user@example.com',
+        devices: [
+          {
+            id: 'dev-1',
+            name: 'Kaan MBP',
+            platform: 'macos',
+            linkedAt: new Date('2026-05-01T10:00:00.000Z').getTime(),
+            lastSyncAt: new Date('2026-05-02T10:00:00.000Z').getTime(),
+            isCurrentDevice: true
+          },
+          {
+            id: 'dev-2',
+            name: 'Linux box',
+            platform: 'linux',
+            linkedAt: new Date('2026-05-03T10:00:00.000Z').getTime(),
+            lastSyncAt: undefined,
+            isCurrentDevice: false
+          }
+        ]
+      })
+    })
+  })
+
+  // --------------------------------------------------------------------------
   // REMOVE_DEVICE
   // --------------------------------------------------------------------------
 
@@ -478,6 +706,87 @@ describe('auth-device handlers', () => {
 
       // #then
       expect(result).toEqual({ success: false, error: 'Not authenticated' })
+    })
+
+    it('removes remote devices locally, broadcasts removal, and tolerates server 404s', async () => {
+      registerAuthDeviceHandlers()
+      const send = vi.fn()
+      mockGetAllWindows.mockReturnValue([{ webContents: { send } }])
+
+      await expect(
+        invokeHandler(SYNC_CHANNELS.REMOVE_DEVICE, { deviceId: 'dev-remote' })
+      ).resolves.toEqual({ success: true })
+
+      expect(mockDeleteFromServer).toHaveBeenCalledWith('/devices/dev-remote', 'mock-access-token')
+      expect(mockDeleteRun).toHaveBeenCalled()
+      expect(send).toHaveBeenCalledWith('sync:device-removed', { deviceId: 'dev-remote' })
+
+      mockDeleteFromServer.mockRejectedValueOnce(new Error('404 not found'))
+
+      await expect(
+        invokeHandler(SYNC_CHANNELS.REMOVE_DEVICE, { deviceId: 'already-gone' })
+      ).resolves.toEqual({ success: true })
+    })
+
+    it('returns a server error for non-404 remove failures', async () => {
+      registerAuthDeviceHandlers()
+      mockDeleteFromServer.mockRejectedValueOnce(new Error('500 unavailable'))
+
+      await expect(
+        invokeHandler(SYNC_CHANNELS.REMOVE_DEVICE, { deviceId: 'dev-remote' })
+      ).resolves.toEqual({ success: false, error: 'Server error: 500 unavailable' })
+      expect(mockDeleteRun).not.toHaveBeenCalled()
+    })
+  })
+
+  // --------------------------------------------------------------------------
+  // RENAME_DEVICE
+  // --------------------------------------------------------------------------
+
+  describe('RENAME_DEVICE', () => {
+    it('renames a device locally and broadcasts the new name', async () => {
+      registerAuthDeviceHandlers()
+      const send = vi.fn()
+      mockGetAllWindows.mockReturnValue([{ webContents: { send } }])
+
+      await expect(
+        invokeHandler(SYNC_CHANNELS.RENAME_DEVICE, {
+          deviceId: 'dev-remote',
+          newName: 'Travel laptop'
+        })
+      ).resolves.toEqual({ success: true })
+
+      expect(mockPatchToServer).toHaveBeenCalledWith(
+        '/devices/dev-remote',
+        { name: 'Travel laptop' },
+        'mock-access-token'
+      )
+      expect(mockUpdateRun).toHaveBeenCalled()
+      expect(send).toHaveBeenCalledWith('sync:device-renamed', {
+        deviceId: 'dev-remote',
+        name: 'Travel laptop'
+      })
+    })
+
+    it('returns auth and server errors without local updates', async () => {
+      registerAuthDeviceHandlers()
+
+      mockGetValidAccessToken.mockResolvedValueOnce(null)
+      await expect(
+        invokeHandler(SYNC_CHANNELS.RENAME_DEVICE, {
+          deviceId: 'dev-remote',
+          newName: 'Travel laptop'
+        })
+      ).resolves.toEqual({ success: false, error: 'Not authenticated' })
+
+      mockPatchToServer.mockRejectedValueOnce(new Error('503 unavailable'))
+      await expect(
+        invokeHandler(SYNC_CHANNELS.RENAME_DEVICE, {
+          deviceId: 'dev-remote',
+          newName: 'Travel laptop'
+        })
+      ).resolves.toEqual({ success: false, error: 'Server error: 503 unavailable' })
+      expect(mockUpdateRun).not.toHaveBeenCalled()
     })
   })
 })

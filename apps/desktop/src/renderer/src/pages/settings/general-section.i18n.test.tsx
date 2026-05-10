@@ -75,11 +75,13 @@ describe('GeneralSettings i18n', () => {
       createInSelectedFolder: true,
       clockFormat: '12h'
     })
+    api.settings.setGeneralSettings = vi.fn().mockResolvedValue({ success: true })
     api.settings.getTabSettings = vi.fn().mockResolvedValue({
       previewMode: true,
       restoreSessionOnStart: true,
       tabCloseButton: 'hover'
     })
+    api.settings.setTabSettings = vi.fn().mockResolvedValue({ success: true })
     api.updater = {
       getState: vi.fn().mockResolvedValue(updateState),
       checkForUpdates: vi.fn().mockResolvedValue(updateState),
@@ -90,6 +92,8 @@ describe('GeneralSettings i18n', () => {
     api.locale = {
       set: vi.fn().mockRejectedValue(new Error('locale failed'))
     }
+    api.telemetry.getSettings = vi.fn().mockResolvedValue({ enabled: true })
+    api.telemetry.setEnabled = vi.fn().mockResolvedValue({ success: true })
   })
 
   it('renders language and clock labels from the settings namespace', async () => {
@@ -144,5 +148,115 @@ describe('GeneralSettings i18n', () => {
 
     expect(await screen.findByText('Installed version v2026-05-06')).toBeInTheDocument()
     expect(screen.getByText('Available version v2026-05-06.2')).toBeInTheDocument()
+  })
+
+  it('updates startup, tabs, file creation, telemetry, clock, and downloaded updater actions', async () => {
+    const user = userEvent.setup()
+    api.updater.getState = vi.fn().mockResolvedValue({
+      ...updateState,
+      currentVersion: 'v2026-05-06',
+      status: 'downloaded',
+      updateSupported: true,
+      availableVersion: 'v2026-05-06.2'
+    })
+
+    renderGeneral(i18n)
+
+    await screen.findByText('Launch at Login')
+    const switches = screen.getAllByRole('switch')
+
+    await user.click(switches[0])
+    await waitFor(() =>
+      expect(api.settings.setGeneralSettings).toHaveBeenCalledWith({ startOnBoot: true })
+    )
+
+    await user.click(switches[1])
+    await waitFor(() =>
+      expect(api.settings.setTabSettings).toHaveBeenCalledWith({ previewMode: false })
+    )
+
+    await user.click(switches[2])
+    await waitFor(() =>
+      expect(api.settings.setTabSettings).toHaveBeenCalledWith({ restoreSessionOnStart: false })
+    )
+
+    await user.click(switches[3])
+    await waitFor(() =>
+      expect(api.settings.setGeneralSettings).toHaveBeenCalledWith({
+        createInSelectedFolder: false
+      })
+    )
+
+    await user.click(switches[4])
+    await waitFor(() => expect(api.telemetry.setEnabled).toHaveBeenCalledWith(false))
+
+    const selects = screen.getAllByRole('combobox')
+    await user.click(selects[1])
+    await user.click(await screen.findByText('24-hour'))
+    await waitFor(() =>
+      expect(api.settings.setGeneralSettings).toHaveBeenCalledWith({ clockFormat: '24h' })
+    )
+
+    await user.click(selects[2])
+    await user.click(await screen.findByText('Always visible'))
+    await waitFor(() =>
+      expect(api.settings.setTabSettings).toHaveBeenCalledWith({ tabCloseButton: 'always' })
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Restart to Install' }))
+    await waitFor(() => expect(api.updater.quitAndInstall).toHaveBeenCalled())
+  })
+
+  it('runs updater check/download branches and reports unsupported update checks', async () => {
+    const user = userEvent.setup()
+
+    const unsupported = renderGeneral(i18n)
+
+    await screen.findByText('Check for Updates')
+    await user.click(screen.getByRole('button', { name: 'Check for Updates' }))
+    expect(toast.info).toHaveBeenCalledWith('Auto-updates are available in packaged releases only')
+    unsupported.unmount()
+
+    api.updater.getState = vi.fn().mockResolvedValue({
+      ...updateState,
+      status: 'available',
+      updateSupported: true,
+      currentVersion: 'v2026-05-06',
+      availableVersion: 'v2026-05-06.2'
+    })
+    api.updater.downloadUpdate = vi.fn().mockResolvedValue({
+      ...updateState,
+      status: 'downloading',
+      updateSupported: true,
+      currentVersion: 'v2026-05-06',
+      availableVersion: 'v2026-05-06.2',
+      downloadProgressPercent: 42
+    })
+
+    const available = renderGeneral(i18n)
+    await screen.findByText('Memry v2026-05-06.2 is available to download')
+    await user.click(screen.getByRole('button', { name: 'Download Update' }))
+    await waitFor(() => expect(api.updater.downloadUpdate).toHaveBeenCalled())
+    available.unmount()
+
+    api.updater.getState = vi.fn().mockResolvedValue({
+      ...updateState,
+      status: 'idle',
+      updateSupported: true,
+      currentVersion: 'v2026-05-06'
+    })
+    api.updater.checkForUpdates = vi.fn().mockResolvedValue({
+      ...updateState,
+      status: 'up-to-date',
+      updateSupported: true,
+      currentVersion: 'v2026-05-06'
+    })
+
+    renderGeneral(i18n)
+    await screen.findByText('Check for new releases and install them without leaving the app')
+    await user.click(screen.getByRole('button', { name: 'Check for Updates' }))
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith('Memry v2026-05-06 is up to date')
+    )
   })
 })
