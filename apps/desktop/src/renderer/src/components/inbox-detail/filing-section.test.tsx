@@ -1,0 +1,180 @@
+import { act, renderHook, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithProviders, getMockApi, resetMockApi } from '@tests/utils/render'
+
+import { FilingSection, useFilingState } from './filing-section'
+
+vi.mock('@memry/i18n/renderer', () => ({
+  useT: () => ({
+    t: (key: string, values?: Record<string, unknown>) =>
+      values?.name ? `${key}:${values.name}` : key.split('.').at(-1) || key
+  })
+}))
+
+vi.mock('@/components/ui/popover', () => ({
+  Popover: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  PopoverTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  PopoverContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+}))
+
+vi.mock('@/components/ui/scroll-area', () => ({
+  ScrollArea: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+}))
+
+vi.mock('@/components/filing/tag-autocomplete', () => ({
+  TagAutocomplete: ({
+    tags,
+    onTagsChange,
+    aiSuggestedTags
+  }: {
+    tags: string[]
+    onTagsChange: (tags: string[]) => void
+    aiSuggestedTags: string[]
+  }) => (
+    <div>
+      <span>tags {tags.join(',')}</span>
+      <span>ai tags {aiSuggestedTags.join(',')}</span>
+      <button type="button" onClick={() => onTagsChange([...tags, 'review'])}>
+        add tag
+      </button>
+    </div>
+  )
+}))
+
+vi.mock('./link-input', () => ({
+  LinkInput: ({
+    linkedNotes,
+    onLinkedNotesChange
+  }: {
+    linkedNotes: Array<{ id: string; title: string; type: string }>
+    onLinkedNotesChange: (notes: Array<{ id: string; title: string; type: string }>) => void
+  }) => (
+    <div>
+      <span>linked {linkedNotes.map((note) => note.title).join(',')}</span>
+      <button
+        type="button"
+        onClick={() =>
+          onLinkedNotesChange([...linkedNotes, { id: 'manual', title: 'Manual', type: 'note' }])
+        }
+      >
+        link manual
+      </button>
+    </div>
+  )
+}))
+
+vi.mock('@/lib/render-note-icon', () => ({
+  NoteIconDisplay: ({ value }: { value: string }) => <span>{value}</span>
+}))
+
+const item = {
+  id: 'inbox-1',
+  type: 'link',
+  title: 'Interesting link',
+  tags: ['inbox']
+} as any
+
+describe('FilingSection', () => {
+  beforeEach(() => {
+    resetMockApi()
+  })
+
+  it('loads folders and AI suggestions, then drives folder, tag, and note-link changes', async () => {
+    const api = getMockApi() as any
+    api.notes.getFolders.mockResolvedValue([
+      { path: 'Projects/Memry', icon: 'M' },
+      { path: 'Archive' }
+    ])
+    api.inbox.getSuggestions.mockResolvedValue({
+      suggestions: [
+        {
+          destination: { type: 'folder', path: 'Projects/Memry' },
+          confidence: 0.91,
+          reason: 'similar captures',
+          suggestedTags: ['research']
+        },
+        {
+          destination: { type: 'note' },
+          confidence: 0.73,
+          reason: 'related note',
+          suggestedTags: ['link'],
+          suggestedNote: { id: 'note-1', title: 'Memry research', emoji: 'R' }
+        }
+      ]
+    })
+
+    const onFolderSelect = vi.fn()
+    const onTagsChange = vi.fn()
+    const onLinkedNotesChange = vi.fn()
+
+    renderWithProviders(
+      <FilingSection
+        item={item}
+        selectedFolder={null}
+        tags={['inbox']}
+        linkedNotes={[]}
+        onFolderSelect={onFolderSelect}
+        onTagsChange={onTagsChange}
+        onLinkedNotesChange={onLinkedNotesChange}
+      />
+    )
+
+    await waitFor(() =>
+      expect(onFolderSelect).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'Projects/Memry', aiConfidence: 0.91 })
+      )
+    )
+
+    expect(await screen.findAllByText('Projects / Memry')).not.toHaveLength(0)
+    expect(screen.getByText('Memry research')).toBeInTheDocument()
+    expect(screen.getByText('ai tags research,link')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'add tag' }))
+    expect(onTagsChange).toHaveBeenCalledWith(['inbox', 'review'])
+
+    await userEvent.click(screen.getByRole('button', { name: /Memry research/ }))
+    expect(onLinkedNotesChange).toHaveBeenCalledWith([
+      { id: 'note-1', title: 'Memry research', type: 'note' }
+    ])
+
+    await userEvent.clear(screen.getByPlaceholderText('searchOrCreateFolder'))
+    await userEvent.type(screen.getByPlaceholderText('searchOrCreateFolder'), 'Areas/Writing')
+    await userEvent.click(screen.getByRole('button', { name: 'detail.createFolder:Areas/Writing' }))
+
+    await waitFor(() => expect(api.notes.createFolder).toHaveBeenCalledWith('Areas/Writing'))
+    expect(onFolderSelect).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: 'Areas/Writing', path: 'Areas/Writing', parent: 'Areas' })
+    )
+  })
+
+  it('keeps filing state scoped to the active item session', () => {
+    const { result, rerender } = renderHook(
+      ({ currentItem, isOpen }: { currentItem: typeof item | null; isOpen: boolean }) =>
+        useFilingState({ item: currentItem, isOpen }),
+      { initialProps: { currentItem: item, isOpen: true } }
+    )
+
+    expect(result.current.tags).toEqual(['inbox'])
+    expect(result.current.canFile).toBe(false)
+
+    act(() => {
+      result.current.setSelectedFolder({ id: 'Archive', name: 'Archive', path: 'Archive' } as any)
+      result.current.setTags(['done'])
+      result.current.setLinkedNotes([{ id: 'note-1', title: 'Note', type: 'note' } as any])
+    })
+
+    expect(result.current.canFile).toBe(true)
+    expect(result.current.tags).toEqual(['done'])
+    expect(result.current.linkedNotes).toHaveLength(1)
+
+    rerender({ currentItem: { ...item, id: 'inbox-2', tags: ['fresh'] }, isOpen: true })
+
+    expect(result.current.selectedFolder).toBeNull()
+    expect(result.current.tags).toEqual(['fresh'])
+
+    act(() => result.current.resetFilingState())
+    expect(result.current.tags).toEqual([])
+    expect(result.current.canFile).toBe(false)
+  })
+})

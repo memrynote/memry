@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-import { ErrorCodes, errorHandler } from '../lib/errors'
+import { AppError, ErrorCodes, errorHandler } from '../lib/errors'
 import type { AppContext } from '../types'
 
 // ============================================================================
@@ -82,6 +82,14 @@ vi.mock('../services/quota', () => ({
   checkQuota: vi.fn().mockResolvedValue(undefined)
 }))
 
+vi.mock('../services/storage', () => ({
+  getStorageBreakdown: vi.fn().mockResolvedValue({
+    usedBytes: 10,
+    quotaBytes: 100,
+    remainingBytes: 90
+  })
+}))
+
 import { sync } from './sync'
 import {
   getSyncStatus,
@@ -92,9 +100,18 @@ import {
   getItem,
   updateDeviceCursor
 } from '../services/sync'
-import { storeUpdates } from '../services/crdt'
+import {
+  storeUpdates,
+  getUpdates,
+  getBatchUpdates,
+  storeSnapshot,
+  getSnapshot,
+  pruneUpdatesBeforeSnapshot
+} from '../services/crdt'
 import { authMiddleware } from '../middleware/auth'
 import { updateDevice } from '../services/device'
+import { checkQuota } from '../services/quota'
+import { getStorageBreakdown } from '../services/storage'
 
 // ============================================================================
 // Helpers
@@ -109,6 +126,13 @@ const createApp = () => {
 
 const mockDoStub = {
   fetch: vi.fn().mockResolvedValue(Response.json({ sent: 0 }))
+}
+
+function bytes(value: string): ArrayBuffer {
+  const encoded = new TextEncoder().encode(value)
+  const copy = new Uint8Array(encoded.byteLength)
+  copy.set(encoded)
+  return copy.buffer
 }
 
 const createEnv = () => ({
@@ -225,6 +249,44 @@ describe('sync routes', () => {
 
       // #then
       expect(getSyncStatus).toHaveBeenCalledWith(env.DB, 'user-1', 'device-1')
+    })
+  })
+
+  describe('GET /sync/ws and /sync/storage', () => {
+    it('requires a websocket upgrade header before forwarding to the durable object', async () => {
+      const res = await app.request(
+        'http://localhost/sync/ws',
+        { method: 'GET' },
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(426)
+      expect(mockDoStub.fetch).not.toHaveBeenCalled()
+    })
+
+    it('forwards websocket upgrade requests to the user sync durable object', async () => {
+      mockDoStub.fetch.mockResolvedValueOnce(Response.json({ connected: true }))
+
+      const res = await app.request(
+        'http://localhost/sync/ws',
+        { method: 'GET', headers: { Upgrade: 'websocket' } },
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ connected: true })
+      expect(env.USER_SYNC_STATE.idFromName).toHaveBeenCalledWith('user-1')
+      expect(mockDoStub.fetch).toHaveBeenCalledWith(expect.any(Request))
+    })
+
+    it('returns storage usage for the authenticated user', async () => {
+      const res = await app.request('/sync/storage', { method: 'GET' }, env, executionCtx)
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ usedBytes: 10, quotaBytes: 100, remainingBytes: 90 })
+      expect(getStorageBreakdown).toHaveBeenCalledWith(env.DB, 'user-1')
     })
   })
 
@@ -569,7 +631,12 @@ describe('sync routes', () => {
     it('should pass the parsed record batch to processRecordPushBatch', async () => {
       const body = { items: [makePushItem()] }
 
-      await app.request('http://localhost/sync/push', jsonPost('/sync/push', body), env, executionCtx)
+      await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', body),
+        env,
+        executionCtx
+      )
 
       expect(processRecordPushBatch).toHaveBeenCalledWith(
         env.DB,
@@ -629,9 +696,30 @@ describe('sync routes', () => {
       )
 
       expect(res.status).toBe(200)
-      expect(processRecordPushBatch).toHaveBeenCalledWith(env.DB, env.STORAGE, 'user-1', 'device-1', [
-        makePushItem({ type: 'settings', clock: undefined })
-      ])
+      expect(processRecordPushBatch).toHaveBeenCalledWith(
+        env.DB,
+        env.STORAGE,
+        'user-1',
+        'device-1',
+        [makePushItem({ type: 'settings', clock: undefined })]
+      )
+    })
+
+    it('logs and returns quota errors thrown while processing a record push', async () => {
+      vi.mocked(processRecordPushBatch).mockRejectedValueOnce(
+        new AppError(ErrorCodes.STORAGE_QUOTA_EXCEEDED, 'Storage quota exceeded', 413)
+      )
+
+      const res = await app.request(
+        'http://localhost/sync/push',
+        jsonPost('/sync/push', { items: [makePushItem()] }),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(413)
+      expect(updateDeviceCursor).not.toHaveBeenCalled()
+      expect(updateDevice).not.toHaveBeenCalled()
     })
   })
 
@@ -817,6 +905,238 @@ describe('sync routes', () => {
       expect(res.status).toBe(400)
       const json = (await res.json()) as { error: { code: string } }
       expect(json.error.code).toBe(ErrorCodes.VALIDATION_ERROR)
+    })
+
+    it('returns encoded CRDT updates and caps oversized limits at 500', async () => {
+      vi.mocked(getUpdates).mockResolvedValueOnce({
+        updates: [
+          {
+            id: 'update-7',
+            user_id: 'user-1',
+            note_id: 'note_1',
+            sequence_num: 7,
+            update_data: bytes('hello'),
+            signer_device_id: 'device-2',
+            created_at: 111
+          }
+        ],
+        hasMore: true
+      })
+
+      const res = await app.request(
+        'http://localhost/sync/crdt/updates?note_id=note_1&since=3&limit=999',
+        { method: 'GET' },
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({
+        updates: [
+          {
+            sequenceNum: 7,
+            data: btoa('hello'),
+            signerDeviceId: 'device-2',
+            createdAt: 111
+          }
+        ],
+        hasMore: true
+      })
+      expect(getUpdates).toHaveBeenCalledWith(env.DB, 'user-1', 'note_1', 3, 500)
+    })
+
+    it('validates CRDT update query params', async () => {
+      let res = await app.request(
+        'http://localhost/sync/crdt/updates',
+        { method: 'GET' },
+        env,
+        executionCtx
+      )
+      expect(res.status).toBe(400)
+
+      res = await app.request(
+        'http://localhost/sync/crdt/updates?note_id=note_1&since=-1',
+        { method: 'GET' },
+        env,
+        executionCtx
+      )
+      expect(res.status).toBe(400)
+
+      res = await app.request(
+        'http://localhost/sync/crdt/updates?note_id=note_1&limit=0',
+        { method: 'GET' },
+        env,
+        executionCtx
+      )
+      expect(res.status).toBe(400)
+    })
+
+    it('returns encoded batch CRDT updates', async () => {
+      vi.mocked(getBatchUpdates).mockResolvedValueOnce({
+        note_1: {
+          updates: [
+            {
+              id: 'update-8',
+              user_id: 'user-1',
+              note_id: 'note_1',
+              sequence_num: 8,
+              update_data: bytes('batch'),
+              signer_device_id: 'device-2',
+              created_at: 222
+            }
+          ],
+          hasMore: false
+        }
+      })
+
+      const res = await app.request(
+        'http://localhost/sync/crdt/updates/batch',
+        jsonPost('/sync/crdt/updates/batch', {
+          notes: [{ noteId: 'note_1', since: 4 }],
+          limit: 10
+        }),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({
+        notes: {
+          note_1: {
+            updates: [
+              {
+                sequenceNum: 8,
+                data: btoa('batch'),
+                signerDeviceId: 'device-2',
+                createdAt: 222
+              }
+            ],
+            hasMore: false
+          }
+        }
+      })
+      expect(getBatchUpdates).toHaveBeenCalledWith(
+        env.DB,
+        'user-1',
+        [{ noteId: 'note_1', since: 4 }],
+        10
+      )
+    })
+
+    it('rejects duplicate note ids in CRDT batch pulls', async () => {
+      const res = await app.request(
+        'http://localhost/sync/crdt/updates/batch',
+        jsonPost('/sync/crdt/updates/batch', {
+          notes: [
+            { noteId: 'note_1', since: 0 },
+            { noteId: 'note_1', since: 1 }
+          ],
+          limit: 10
+        }),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(400)
+      expect(getBatchUpdates).not.toHaveBeenCalled()
+    })
+
+    it('stores CRDT snapshots and prunes prior updates', async () => {
+      vi.mocked(storeSnapshot).mockResolvedValueOnce({ sequenceNum: 12 })
+
+      const res = await app.request(
+        'http://localhost/sync/crdt/snapshot',
+        jsonPost('/sync/crdt/snapshot', {
+          noteId: 'note_1',
+          snapshot: btoa('snapshot')
+        }),
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ sequenceNum: 12 })
+      expect(storeSnapshot).toHaveBeenCalledWith(
+        env.DB,
+        env.STORAGE,
+        'user-1',
+        'note_1',
+        'device-1',
+        expect.any(ArrayBuffer)
+      )
+      expect(pruneUpdatesBeforeSnapshot).toHaveBeenCalledWith(env.DB, 'user-1', 'note_1')
+    })
+
+    it('logs and returns quota errors for CRDT update and snapshot writes', async () => {
+      vi.mocked(checkQuota).mockRejectedValueOnce(
+        new AppError(ErrorCodes.STORAGE_QUOTA_EXCEEDED, 'Storage quota exceeded', 413)
+      )
+
+      let res = await app.request(
+        'http://localhost/sync/crdt/updates',
+        jsonPost('/sync/crdt/updates', { noteId: 'note_1', updates: [btoa('hello')] }),
+        env,
+        executionCtx
+      )
+      expect(res.status).toBe(413)
+      expect(storeUpdates).not.toHaveBeenCalled()
+
+      vi.mocked(checkQuota).mockRejectedValueOnce(
+        new AppError(ErrorCodes.STORAGE_QUOTA_EXCEEDED, 'Storage quota exceeded', 413)
+      )
+
+      res = await app.request(
+        'http://localhost/sync/crdt/snapshot',
+        jsonPost('/sync/crdt/snapshot', { noteId: 'note_1', snapshot: btoa('snapshot') }),
+        env,
+        executionCtx
+      )
+      expect(res.status).toBe(413)
+      expect(storeSnapshot).not.toHaveBeenCalled()
+    })
+
+    it('returns null when no CRDT snapshot exists', async () => {
+      vi.mocked(getSnapshot).mockResolvedValueOnce(null)
+
+      const res = await app.request(
+        'http://localhost/sync/crdt/snapshot/note_1',
+        { method: 'GET' },
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ snapshot: null, sequenceNum: 0, signerDeviceId: null })
+    })
+
+    it('returns encoded CRDT snapshots and validates snapshot ids', async () => {
+      vi.mocked(getSnapshot).mockResolvedValueOnce({
+        snapshotData: bytes('snapshot'),
+        sequenceNum: 20,
+        signerDeviceId: 'device-2'
+      })
+
+      let res = await app.request(
+        'http://localhost/sync/crdt/snapshot/note_1',
+        { method: 'GET' },
+        env,
+        executionCtx
+      )
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({
+        snapshot: btoa('snapshot'),
+        sequenceNum: 20,
+        signerDeviceId: 'device-2'
+      })
+
+      res = await app.request(
+        'http://localhost/sync/crdt/snapshot/bad%20note',
+        { method: 'GET' },
+        env,
+        executionCtx
+      )
+      expect(res.status).toBe(400)
     })
   })
 })

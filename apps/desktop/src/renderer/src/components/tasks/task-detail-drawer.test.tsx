@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
@@ -414,6 +414,84 @@ describe('TaskDetailDrawer — editable properties', () => {
       await user.click(row)
 
       expect(onNoteClick).toHaveBeenCalledWith('note-1')
+    })
+
+    it('searches notes, links a selected note, removes fallback-note rows, and supports keyboard open', async () => {
+      const user = userEvent.setup()
+      const onUpdateTask = vi.fn()
+      const onNoteClick = vi.fn()
+      vi.mocked(notesService.get).mockRejectedValueOnce(new Error('missing note'))
+      vi.mocked(notesService.list).mockResolvedValueOnce({
+        notes: [
+          { id: 'note-2', title: 'Second Note', emoji: null },
+          { id: 'note-3', title: 'Third Note', emoji: 'T' }
+        ]
+      } as never)
+
+      renderWithI18n(
+        <TaskDetailDrawer
+          {...defaultProps}
+          task={createTask({ linkedNoteIds: ['note-1'] })}
+          onUpdateTask={onUpdateTask}
+          onNoteClick={onNoteClick}
+        />
+      )
+
+      await screen.findByText('Loading…')
+      fireEvent.keyDown(screen.getByText('Loading…').closest('[role="button"]')!, { key: 'Enter' })
+      expect(onNoteClick).toHaveBeenCalledWith('note-1')
+
+      await user.click(screen.getByRole('button', { name: /link a note/i }))
+      await screen.findByPlaceholderText('Search notes…')
+      await user.type(screen.getByPlaceholderText('Search notes…'), 'third')
+      await user.click(await screen.findByText('Third Note'))
+
+      expect(onUpdateTask).toHaveBeenCalledWith('task-1', {
+        linkedNoteIds: ['note-1', 'note-3']
+      })
+    })
+  })
+
+  describe('subtasks and keyboard dismissal', () => {
+    it('adds subtasks, toggles existing subtasks, and handles Escape states', async () => {
+      const user = userEvent.setup()
+      const onAddSubtask = vi.fn()
+      const onToggleComplete = vi.fn()
+      const onClose = vi.fn()
+      vi.mocked(notesService.list).mockResolvedValueOnce({ notes: [] } as never)
+      const parentTask = createTask({ subtaskIds: ['sub-1'] })
+      const subtask = createTask({
+        id: 'sub-1',
+        title: 'Existing subtask',
+        statusId: 'done',
+        completedAt: new Date('2026-05-10')
+      })
+
+      renderWithI18n(
+        <TaskDetailDrawer
+          {...defaultProps}
+          onAddSubtask={onAddSubtask}
+          onToggleComplete={onToggleComplete}
+          onClose={onClose}
+          tasks={[parentTask, subtask]}
+          task={parentTask}
+        />
+      )
+
+      await user.click(screen.getByText('Existing subtask'))
+      expect(onToggleComplete).toHaveBeenCalledWith('sub-1')
+
+      await user.click(screen.getByRole('button', { name: /add sub-issue/i }))
+      const subtaskInput = screen.getByPlaceholderText('Add sub-issue…')
+      await user.type(subtaskInput, 'New subtask{enter}')
+      expect(onAddSubtask).toHaveBeenCalledWith('task-1', 'New subtask')
+
+      await user.click(screen.getByRole('button', { name: /link a note/i }))
+      fireEvent.keyDown(document, { key: 'Escape' })
+      expect(screen.queryByPlaceholderText('Search notes…')).not.toBeInTheDocument()
+
+      fireEvent.keyDown(document, { key: 'Escape' })
+      expect(onClose).toHaveBeenCalled()
     })
   })
 })
