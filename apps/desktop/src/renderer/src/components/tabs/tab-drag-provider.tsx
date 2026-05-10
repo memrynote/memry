@@ -45,6 +45,7 @@ export const TabDragProvider = ({ children }: TabDragProviderProps): React.JSX.E
       setActiveTab(null)
 
       if (!over || active.id === over.id) return
+      if (over.data.current?.type === 'split-zone') return
 
       // Get source and target group info
       const sourceGroupId = active.data.current?.groupId as string | undefined
