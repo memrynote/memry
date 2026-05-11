@@ -1,6 +1,10 @@
-import { getOrDeriveVaultKey, secureCleanup } from '../crypto'
+import { getOrInitializeLocalVaultKey, secureCleanup } from '../crypto'
 import { getDatabase, getIndexDatabase } from '../database'
-import { registerAgentHandlers, unregisterAgentHandlers } from '../ipc/agent-handlers'
+import {
+  registerAgentHandlers,
+  registerUnavailableAgentHandlers,
+  unregisterAgentHandlers
+} from '../ipc/agent-handlers'
 import { createLogger } from '../lib/logger'
 import { detectClaudeBinary } from './cli/claude-binary'
 import { spawnClaudeTurn } from './cli/spawn'
@@ -32,10 +36,23 @@ export interface AgentHandle {
 
 export async function startAgent(): Promise<AgentHandle> {
   const db = getDatabase()
-  const indexDb = getIndexDatabase()
-  const vaultKey = await getOrDeriveVaultKey()
-  const deviceId = process.env.MEMRY_DEVICE ?? 'desktop'
   const vaultId = getOrCreateVaultUuid(db)
+  let vaultKey: Uint8Array
+  try {
+    vaultKey = await getOrInitializeLocalVaultKey(db, vaultId)
+  } catch (error) {
+    const reason = extractErrorMessage(error, 'Vault key unavailable')
+    logger.warn(`Agent runtime unavailable: ${reason}`)
+    registerUnavailableAgentHandlers(reason)
+    return {
+      shutdown: async () => {
+        unregisterAgentHandlers()
+      }
+    }
+  }
+
+  const indexDb = getIndexDatabase()
+  const deviceId = process.env.MEMRY_DEVICE ?? 'desktop'
   const conversations = createConversationStore({ db, vaultKey, deviceId })
   const messages = createMessageStore({ db, vaultKey, deviceId })
   const handles = createVaultServiceHandles({ dataDb: db, indexDb })
@@ -118,4 +135,8 @@ export async function startAgent(): Promise<AgentHandle> {
       secureCleanup(vaultKey)
     }
   }
+}
+
+function extractErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback
 }

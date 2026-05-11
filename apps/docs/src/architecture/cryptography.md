@@ -4,13 +4,13 @@ Memry's threat model treats the device as the trusted boundary. The server store
 
 ## Primitives (libsodium)
 
-| Use | Algorithm |
-| --- | --- |
+| Use                                | Algorithm                 |
+| ---------------------------------- | ------------------------- |
 | Authenticated symmetric encryption | XChaCha20-Poly1305 (AEAD) |
-| Asymmetric signing | Ed25519 |
-| Asymmetric key sealing | X25519 (sealed boxes) |
-| Password key derivation | Argon2id |
-| Random | `sodium.randombytes_buf` |
+| Asymmetric signing                 | Ed25519                   |
+| Asymmetric key sealing             | X25519 (sealed boxes)     |
+| Password key derivation            | Argon2id                  |
+| Random                             | `sodium.randombytes_buf`  |
 
 ## Key Hierarchy
 
@@ -27,6 +27,11 @@ passphrase ──Argon2id(salt)──▶ wrapping key
 ```
 
 **Per-vault salt** is stored alongside the vault and is unique to that user. **Per-device sealing**: when a device links, the vault key is sealed for its X25519 public key — revoking that device cuts access without rotating the vault.
+
+Local-only development vaults can create a device master key without sign-in. Memry stores a
+non-secret verifier in the local settings table so the SQLite vault stays bound to the keychain
+master key that produced it. If that verifier exists and the keychain key is missing or produces a
+different vault key, encrypted surfaces fail closed instead of silently creating a replacement key.
 
 ## Nonces
 
@@ -80,7 +85,8 @@ When to rotate:
 
 ```
 apps/desktop/src/main/crypto/
-├─ vault-key.ts          # passphrase → vault key
+├─ keys.ts               # master key derivation and vault key derivation
+├─ vault-key-state.ts    # local vault key binding and verifier checks
 ├─ encrypt.ts            # AEAD wrapper
 ├─ sign.ts               # Ed25519 signing
 ├─ nonce.ts              # 24-byte random nonces (T029b)

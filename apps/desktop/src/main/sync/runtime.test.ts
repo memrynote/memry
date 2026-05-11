@@ -115,7 +115,8 @@ const runtimeMocks = vi.hoisted(() => {
     getValidAccessToken: vi.fn(),
     refreshAccessToken: vi.fn(),
     retrieveKey: vi.fn(),
-    getOrDeriveVaultKey: vi.fn(),
+    getOrInitializeLocalVaultKey: vi.fn(),
+    getOrCreateVaultUuid: vi.fn(() => 'vault-1'),
     deriveDevicePublicKey: vi.fn(),
     secureCleanup: vi.fn(),
     encryptCrdtUpdate: vi.fn(),
@@ -173,9 +174,13 @@ vi.mock('../database/client', () => ({
 
 vi.mock('../crypto', () => ({
   getDevicePublicKey: runtimeMocks.deriveDevicePublicKey,
-  getOrDeriveVaultKey: runtimeMocks.getOrDeriveVaultKey,
+  getOrInitializeLocalVaultKey: runtimeMocks.getOrInitializeLocalVaultKey,
   retrieveKey: runtimeMocks.retrieveKey,
   secureCleanup: runtimeMocks.secureCleanup
+}))
+
+vi.mock('../agent/storage/vault-id', () => ({
+  getOrCreateVaultUuid: runtimeMocks.getOrCreateVaultUuid
 }))
 
 vi.mock('../calendar/google/sync-service', () => ({
@@ -343,7 +348,7 @@ describe('sync runtime', () => {
     runtimeMocks.getIndexDatabase.mockReturnValue(createIndexDb())
     runtimeMocks.retrieveToken.mockResolvedValue('refresh-token')
     runtimeMocks.getValidAccessToken.mockResolvedValue('access-token')
-    runtimeMocks.getOrDeriveVaultKey.mockResolvedValue(new Uint8Array([1, 2, 3]))
+    runtimeMocks.getOrInitializeLocalVaultKey.mockResolvedValue(new Uint8Array([1, 2, 3]))
     runtimeMocks.retrieveKey.mockResolvedValue(new Uint8Array([4, 5, 6]))
     runtimeMocks.deriveDevicePublicKey.mockReturnValue(new Uint8Array([7, 8, 9]))
     runtimeMocks.encryptCrdtUpdate.mockReturnValue(new Uint8Array([10, 11]))

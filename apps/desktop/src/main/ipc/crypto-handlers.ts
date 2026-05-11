@@ -39,7 +39,7 @@ import {
   encrypt,
   decrypt,
   generateFileKey,
-  getOrDeriveVaultKey,
+  getOrInitializeLocalVaultKey,
   deriveKey,
   generateSalt,
   generateRecoveryPhrase,
@@ -50,7 +50,8 @@ import {
   verifySignature,
   retrieveKey,
   storeKey,
-  secureCleanup
+  secureCleanup,
+  storeVaultKeyVerifier
 } from '../crypto'
 import { KEY_DERIVATION_CONTEXTS } from '@memry/contracts/crypto'
 import { eq } from 'drizzle-orm'
@@ -60,6 +61,7 @@ import { getSyncEngine } from '../sync/runtime'
 import { getFromServer, postToServer } from '../sync/http-client'
 import { getValidAccessToken } from '../sync/token-manager'
 import { performKeyRotation, type RotationState } from '../crypto/rotation'
+import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 
 const logger = createLogger('IPC:Crypto')
 
@@ -104,6 +106,11 @@ async function ensureSodiumReady(): Promise<void> {
   await sodium.ready
 }
 
+async function getVerifiedVaultKey(): Promise<Uint8Array> {
+  const db = getDatabase()
+  return getOrInitializeLocalVaultKey(db, getOrCreateVaultUuid(db))
+}
+
 function decodeBase64(value: string): Uint8Array | null {
   try {
     return sodium.from_base64(value, BASE64_VARIANT)
@@ -115,7 +122,7 @@ function decodeBase64(value: string): Uint8Array | null {
 async function handleEncryptItem(input: EncryptItemInput): Promise<EncryptItemResult> {
   await ensureSodiumReady()
 
-  const vaultKey = await getOrDeriveVaultKey()
+  const vaultKey = await getVerifiedVaultKey()
 
   const signingKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
   if (!signingKey) {
@@ -200,7 +207,7 @@ async function handleDecryptItem(input: DecryptItemInput): Promise<DecryptItemRe
 
   let vaultKey: Uint8Array
   try {
-    vaultKey = await getOrDeriveVaultKey()
+    vaultKey = await getVerifiedVaultKey()
   } catch {
     return { success: false, error: 'Failed to derive vault key — master key missing' }
   }
@@ -317,8 +324,10 @@ async function handleRotateKeys(input: RotateKeysInput): Promise<RotateKeysResul
 
     const result = await performKeyRotation(
       {
-        getAccessToken: getValidAccessToken,
-        getVaultKey: async () => getOrDeriveVaultKey(),
+        getAccessToken() {
+          return getValidAccessToken()
+        },
+        getVaultKey: getVerifiedVaultKey,
         getSigningKeys: async () => {
           const sk = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
           if (!sk) return null
@@ -385,6 +394,10 @@ async function handleRotateKeys(input: RotateKeysInput): Promise<RotateKeysResul
         },
         storeNewMasterKey: async (mk) => {
           await storeKey(KEYCHAIN_ENTRIES.MASTER_KEY, mk)
+          if (newVaultKey) {
+            const db = getDatabase()
+            storeVaultKeyVerifier(db, getOrCreateVaultUuid(db), newVaultKey)
+          }
         },
         onProgress: (rotationState) => {
           currentRotationState = rotationState
