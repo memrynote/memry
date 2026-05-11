@@ -161,6 +161,9 @@ describe('small zero-line renderer surfaces', () => {
         onItemClick={onItemClick}
       />
     )
+    const existingOption = screen.getByRole('option', { name: 'Existing Note' })
+    expect(existingOption.querySelector('svg')).toBeNull()
+
     fireEvent.click(screen.getByText('Existing Note'))
     fireEvent.click(screen.getByText('create'))
 
