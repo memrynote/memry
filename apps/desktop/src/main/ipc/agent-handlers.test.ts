@@ -44,7 +44,11 @@ vi.mock('../agent/runtime/disclosure-state', () => ({
 
 import { AgentChannels } from '@memry/contracts/ipc-agent'
 
-import { registerAgentHandlers, unregisterAgentHandlers } from './agent-handlers'
+import {
+  registerAgentHandlers,
+  registerUnavailableAgentHandlers,
+  unregisterAgentHandlers
+} from './agent-handlers'
 
 function findHandler(channel: string): (...args: unknown[]) => unknown {
   const call = mockElectron.ipcMain.handle.mock.calls.find(([registered]) => registered === channel)
@@ -109,6 +113,20 @@ describe('agent IPC handlers', () => {
     for (const channel of Object.values(AgentChannels.invoke)) {
       expect(mockElectron.ipcMain.handle).toHaveBeenCalledWith(channel, expect.any(Function))
     }
+  })
+
+  it('registers graceful unavailable handlers for every agent invoke channel', async () => {
+    registerUnavailableAgentHandlers('missing key')
+
+    for (const channel of Object.values(AgentChannels.invoke)) {
+      expect(mockElectron.ipcMain.handle).toHaveBeenCalledWith(channel, expect.any(Function))
+    }
+
+    await expect(findHandler(AgentChannels.invoke.LIST_CONVERSATIONS)(null)).resolves.toEqual([])
+    await expect(findHandler(AgentChannels.invoke.SEND_TURN)(null)).resolves.toEqual({
+      ok: false,
+      error: 'Agent runtime unavailable: missing key'
+    })
   })
 
   it('runs a turn with snapshotted attachments', async () => {

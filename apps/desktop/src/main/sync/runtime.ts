@@ -8,7 +8,7 @@ import { getDatabase, type DataDb } from '../database'
 import { createLogger } from '../lib/logger'
 import {
   getDevicePublicKey as deriveDevicePublicKey,
-  getOrDeriveVaultKey,
+  getOrInitializeLocalVaultKey,
   retrieveKey,
   secureCleanup
 } from '../crypto'
@@ -59,6 +59,7 @@ import {
   setOnTokenRefreshed
 } from './token-manager'
 import { SyncWorkerBridge } from './worker-bridge'
+import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 
 const log = createLogger('SyncRuntime')
 
@@ -72,6 +73,10 @@ interface SyncRuntimeState {
 }
 
 const SYNC_SERVER_URL = process.env.SYNC_SERVER_URL || 'http://localhost:8787'
+
+function getVerifiedVaultKey(db: DataDb): Promise<Uint8Array> {
+  return getOrInitializeLocalVaultKey(db, getOrCreateVaultUuid(db))
+}
 
 function emitQuotaExceeded(): void {
   const event: SyncStatusChangedEvent = {
@@ -290,7 +295,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const crdtQueue = new CrdtUpdateQueue()
       crdtQueue.start(async (noteId, updates) => {
         const token = await getValidAccessToken()
-        const vaultKey = await getOrDeriveVaultKey().catch(() => null)
+        const vaultKey = await getVerifiedVaultKey(db).catch(() => null)
         const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
         if (!token || !vaultKey || !signingSecretKey) return
 
@@ -342,12 +347,12 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       const snapshotPushFn = async (noteId: string, state: Uint8Array): Promise<void> => {
         const token = await getValidAccessToken()
-        const vaultKey = await getOrDeriveVaultKey().catch(() => null)
+        const vaultKey = await getVerifiedVaultKey(db).catch(() => null)
         const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
         if (!token || !vaultKey || !signingSecretKey) {
           log.warn('Missing credentials for CRDT snapshot push', {
             noteId,
-            hasToken: !!token,
+            authAvailable: !!token,
             hasVaultKey: !!vaultKey,
             hasSigningKey: !!signingSecretKey
           })
@@ -422,7 +427,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         ws,
         db: runtimeSyncDb,
         getAccessToken: () => getValidAccessToken(),
-        getVaultKey: () => getOrDeriveVaultKey().catch(() => null),
+        getVaultKey: () => getVerifiedVaultKey(db).catch(() => null),
         getSigningKeys: async () => {
           const secretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
           if (!secretKey) return null

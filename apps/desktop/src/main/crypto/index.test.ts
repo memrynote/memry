@@ -47,6 +47,10 @@ const expectedFunctions = [
   'deleteKey',
   'retrieveKey',
   'storeKey',
+  // vault key state
+  'computeVaultKeyVerifier',
+  'getOrInitializeLocalVaultKey',
+  'storeVaultKeyVerifier',
   // primitives
   'secureCleanup',
   // memory-lock

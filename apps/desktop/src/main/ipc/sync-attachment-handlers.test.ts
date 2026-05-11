@@ -85,9 +85,13 @@ vi.mock('../vault/index', () => ({
 
 vi.mock('../crypto', () => ({
   getDevicePublicKey: vi.fn(() => new Uint8Array(32)),
-  getOrDeriveVaultKey: vi.fn().mockResolvedValue(new Uint8Array(32)),
+  getOrInitializeLocalVaultKey: vi.fn().mockResolvedValue(new Uint8Array(32)),
   secureCleanup: vi.fn(),
   retrieveKey: vi.fn().mockResolvedValue(new Uint8Array(64))
+}))
+
+vi.mock('../agent/storage/vault-id', () => ({
+  getOrCreateVaultUuid: vi.fn(() => 'vault-1')
 }))
 
 vi.mock('../database/client', () => ({

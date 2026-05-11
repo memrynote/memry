@@ -152,7 +152,13 @@ export function createConversationStore(deps: StoreDeps): ConversationStore {
         .orderBy(desc(schema.agentConversations.updatedAt))
         .all()
 
-      return rows.map((row) => agentConversationRowToModel(row, vaultKey))
+      return rows.flatMap((row) => {
+        try {
+          return [agentConversationRowToModel(row, vaultKey)]
+        } catch {
+          return []
+        }
+      })
     },
 
     update(id, patch, changedFields) {

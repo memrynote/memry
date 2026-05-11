@@ -20,7 +20,12 @@ import { attachmentEvents } from '../sync/attachment-events'
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { getStatus as getVaultStatus } from '../vault/index'
 
-import { getDevicePublicKey, getOrDeriveVaultKey, secureCleanup, retrieveKey } from '../crypto'
+import {
+  getDevicePublicKey,
+  getOrInitializeLocalVaultKey,
+  secureCleanup,
+  retrieveKey
+} from '../crypto'
 import { getDatabase, isDatabaseInitialized } from '../database/client'
 import { createLogger } from '../lib/logger'
 import {
@@ -30,6 +35,7 @@ import {
 import { registerCommand } from './lib/register-command'
 import { getNetworkMonitor } from '../sync/runtime'
 import { getValidAccessToken } from '../sync/token-manager'
+import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 
 const logger = createLogger('IPC:Sync:Attachments')
 
@@ -73,7 +79,11 @@ const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
 
   attachmentService = new AttachmentSyncService({
     getAccessToken: () => getValidAccessToken(),
-    getVaultKey: () => getOrDeriveVaultKey().catch(() => null),
+    getVaultKey: async () => {
+      if (!isDatabaseInitialized()) return null
+      const db = getDatabase()
+      return getOrInitializeLocalVaultKey(db, getOrCreateVaultUuid(db)).catch(() => null)
+    },
     getSigningKeys: async () => {
       const secretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
       if (!secretKey) return null
