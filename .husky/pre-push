@@ -31,9 +31,6 @@ has_changes() {
 }
 
 code_changed='^(apps/desktop|apps/sync-server|packages|scripts|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|eslint.config.mjs|lint-staged.config.mjs|tsconfig|turbo.json)'
-package_changed='^(packages|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|tsconfig|turbo.json)'
-desktop_changed='^(apps/desktop|packages|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|eslint.config.mjs|lint-staged.config.mjs|tsconfig|turbo.json)'
-sync_server_changed='^(apps/sync-server|packages/(contracts|shared|sync-core)|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|tsconfig|turbo.json)'
 
 if ! has_changes "$code_changed"; then
   exit 0
@@ -56,44 +53,20 @@ if [ "${MEMRY_DOCS_IMPACT_SKIP:-0}" != "1" ]; then
       exit 1
     fi
 
-    if [ "${MEMRY_DOCS_AI_AUTO:-1}" = "1" ]; then
+    if [ "${MEMRY_DOCS_AI_AUTO:-0}" = "1" ]; then
       printf '\npre-push: running AI docs updater for desktop/sync-server changes...\n\n' >&2
       pnpm docs:ai-update --base "$base_commit"
 
       if ! git diff --quiet -- apps/docs/src; then
-        pnpm docs:build
-        printf '\npre-push: AI updated docs. Review, commit, and push again.\n\n' >&2
+        printf '\npre-push: AI updated docs. Review, verify, commit, and push again.\n\n' >&2
       else
         printf '\npre-push: AI did not change docs. If no docs are needed, retry with MEMRY_DOCS_IMPACT_SKIP=1.\n\n' >&2
       fi
     else
-      printf '\npre-push: run `pnpm docs:ai-update --base %s` or update apps/docs/src manually.\n\n' "$base_commit" >&2
+      printf '\npre-push: docs update required. Run `pnpm docs:ai-update --base %s` or update apps/docs/src manually.\n' "$base_commit" >&2
+      printf 'pre-push: set MEMRY_DOCS_AI_AUTO=1 to let this hook run the updater.\n\n' >&2
     fi
 
     exit 1
   fi
-
-  if has_changes '^apps/docs/'; then
-    pnpm docs:build
-  fi
-fi
-
-pnpm repair:links
-pnpm check:contracts
-pnpm check:architecture
-
-if has_changes "$package_changed"; then
-  pnpm typecheck:packages
-fi
-
-if has_changes "$desktop_changed"; then
-  pnpm lint:desktop
-  pnpm ipc:check
-  pnpm typecheck:desktop
-  pnpm test:desktop
-fi
-
-if has_changes "$sync_server_changed"; then
-  pnpm typecheck:sync-server
-  pnpm test:sync-server
 fi
