@@ -26,6 +26,23 @@ describe('Claude stream-json parser', () => {
     ])
   })
 
+  it('unwraps Claude Code stream_event envelopes', () => {
+    const events: unknown[] = []
+    const parser = createStreamParser((event) => events.push(event))
+
+    parser.feed(
+      `${JSON.stringify({
+        type: 'stream_event',
+        event: {
+          type: 'content_block_delta',
+          delta: { type: 'text_delta', text: 'wrapped' }
+        }
+      })}\n`
+    )
+
+    expect(events).toEqual([{ kind: 'assistant_delta', text: 'wrapped' }])
+  })
+
   it('handles split-line buffering across feed() calls', () => {
     const events: unknown[] = []
     const parser = createStreamParser((event) => events.push(event))
@@ -114,6 +131,48 @@ describe('Claude stream-json parser', () => {
     parser.feed(`${JSON.stringify({ type: 'message_stop' })}\n`)
 
     expect(events[0]).toEqual({ kind: 'message_stop' })
+  })
+
+  it('emits assistant_delta for Claude Code result text', () => {
+    const events: unknown[] = []
+    const parser = createStreamParser((event) => events.push(event))
+
+    parser.feed(
+      `${JSON.stringify({
+        type: 'result',
+        subtype: 'success',
+        result: 'The note was created.'
+      })}\n`
+    )
+
+    expect(events[0]).toEqual({ kind: 'assistant_delta', text: 'The note was created.' })
+  })
+
+  it('ignores known Claude Code lifecycle events', () => {
+    const events: unknown[] = []
+    const parser = createStreamParser((event) => events.push(event))
+
+    parser.feed(`${JSON.stringify({ type: 'system', subtype: 'status', status: 'requesting' })}\n`)
+    parser.feed(`${JSON.stringify({ type: 'message_start', message: { role: 'assistant' } })}\n`)
+    parser.feed(
+      `${JSON.stringify({
+        type: 'content_block_start',
+        index: 0,
+        content_block: { type: 'text', text: '' }
+      })}\n`
+    )
+    parser.feed(`${JSON.stringify({ type: 'content_block_stop', index: 0 })}\n`)
+    parser.feed(
+      `${JSON.stringify({ type: 'message_delta', delta: { stop_reason: 'end_turn' } })}\n`
+    )
+
+    expect(events).toEqual([
+      { kind: 'noop' },
+      { kind: 'noop' },
+      { kind: 'noop' },
+      { kind: 'noop' },
+      { kind: 'noop' }
+    ])
   })
 
   it('falls through to unknown for malformed JSON instead of crashing', () => {

@@ -1,11 +1,13 @@
 import type { Message } from '@memry/contracts/ipc-agent'
 
+import { Message as AIMessage, MessageContent } from '@/components/ai-elements/message'
+
 export function UserMessage({ message }: { message: Message }): React.JSX.Element | null {
   if (message.content.role !== 'user') return null
 
   return (
-    <article className="flex justify-end">
-      <div className="max-w-[85%] rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground">
+    <AIMessage from="user" className="max-w-[85%]">
+      <MessageContent className="bg-primary text-primary-foreground">
         <p className="whitespace-pre-wrap break-words">{message.content.data.text}</p>
         {message.attachments.length > 0 && (
           <div className="mt-2 flex flex-wrap justify-end gap-1">
@@ -19,7 +21,7 @@ export function UserMessage({ message }: { message: Message }): React.JSX.Elemen
             ))}
           </div>
         )}
-      </div>
-    </article>
+      </MessageContent>
+    </AIMessage>
   )
 }

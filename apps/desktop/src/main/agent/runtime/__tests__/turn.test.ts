@@ -7,6 +7,7 @@ vi.mock('../event-bus', () => ({
 import type { ConversationStore } from '../../storage/conversation-store'
 import type { MessageStore } from '../../storage/message-store'
 import type { Message, MessageContent, MessageRole, MessageStatus } from '../../storage/types'
+import { broadcastAgentEvent } from '../event-bus'
 import { runTurn } from '../turn'
 
 describe('runTurn against a stub backend', () => {
@@ -65,6 +66,55 @@ describe('runTurn against a stub backend', () => {
         prompt: expect.stringContaining('User: hi')
       })
     )
+    expect(broadcastAgentEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'message_upserted', message: all[0] })
+    )
+    expect(broadcastAgentEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'message_upserted', message: all[1] })
+    )
+  })
+
+  it('marks the assistant message as errored when the subprocess exits non-zero', async () => {
+    const messages = createFakeMessageStore()
+    const conversations = {} as ConversationStore
+    const spawnSubprocess = vi.fn(async () => ({
+      stdout: (async function* () {})(),
+      stderr: (async function* () {
+        yield Buffer.from('Claude auth failed\n')
+      })(),
+      pid: 1,
+      kill: vi.fn(),
+      waitExit: async () => 1,
+      cleanup: vi.fn()
+    }))
+
+    await runTurn(
+      {
+        conversations,
+        messages,
+        spawnSubprocess,
+        toolHandlers: { routeToolCall: vi.fn() }
+      },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'hi',
+        attachments: []
+      }
+    )
+
+    const all = messages.listByConversation('conversation-1')
+    expect(all[1].status).toBe('error')
+    expect(all[1].content).toEqual({
+      role: 'assistant',
+      data: { text: 'Claude auth failed' }
+    })
+    expect(broadcastAgentEvent).toHaveBeenCalledWith({
+      kind: 'turn_error',
+      conversationId: 'conversation-1',
+      turnId: expect.any(String),
+      message: 'Claude auth failed'
+    })
   })
 
   it('compacts oversized history before assembling the turn prompt', async () => {

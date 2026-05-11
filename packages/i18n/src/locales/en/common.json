@@ -113,6 +113,7 @@
     "startTitle": "Start chatting with your vault",
     "newConversation": "New conversation",
     "stop": "Stop",
+    "thinking": "Agent is thinking",
     "binary": {
       "checking": "Checking Claude CLI...",
       "notFound": "claude not found. {hint}",
@@ -164,6 +165,10 @@
       "label": "Tool result",
       "ok": "ok",
       "failed": "failed"
+    },
+    "toolCall": {
+      "editedArgs": "Edited arguments",
+      "parameters": "Parameters"
     },
     "sidebar": {
       "label": "Right sidebar",

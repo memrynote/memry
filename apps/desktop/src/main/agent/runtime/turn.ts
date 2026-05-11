@@ -49,12 +49,16 @@ export interface RunTurnInput {
 export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ turnId: string }> {
   const turnId = randomUUID()
 
-  const user = await deps.messages.append({
+  const user = deps.messages.append({
     conversationId: input.conversationId,
     role: 'user',
     content: { role: 'user', data: { text: input.text } },
     attachments: input.attachments,
     status: 'completed'
+  })
+  broadcastAgentEvent({
+    kind: 'message_upserted',
+    message: user
   })
 
   let history = deps.messages
@@ -93,13 +97,18 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     conversationId: input.conversationId,
     windowId: input.sourceWindowId
   })
+  const stderrTextPromise = collectStreamText(sub.stderr)
 
-  const assistant = await deps.messages.append({
+  const assistant = deps.messages.append({
     conversationId: input.conversationId,
     role: 'assistant',
     content: { role: 'assistant', data: { text: '' } },
     attachments: [],
     status: 'streaming'
+  })
+  broadcastAgentEvent({
+    kind: 'message_upserted',
+    message: assistant
   })
 
   let buffered = ''
@@ -130,10 +139,34 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     }
     parser.flush()
     await drainEvents()
-    await sub.waitExit()
+    const exitCode = await sub.waitExit()
+    const stderrText = (await stderrTextPromise).trim()
 
-    await deps.messages.markTerminal(assistant.id, 'completed', {
+    if (exitCode !== 0) {
+      const message = stderrText || `Claude exited with code ${exitCode}`
+      logger.warn('Claude subprocess exited non-zero', { exitCode, stderr: stderrText })
+      const errored = deps.messages.markTerminal(assistant.id, 'error', {
+        content: { role: 'assistant', data: { text: message } }
+      })
+      broadcastAgentEvent({
+        kind: 'message_upserted',
+        message: errored
+      })
+      broadcastAgentEvent({
+        kind: 'turn_error',
+        conversationId: input.conversationId,
+        turnId,
+        message
+      })
+      return { turnId }
+    }
+
+    const completed = deps.messages.markTerminal(assistant.id, 'completed', {
       content: { role: 'assistant', data: { text: buffered } }
+    })
+    broadcastAgentEvent({
+      kind: 'message_upserted',
+      message: completed
     })
 
     broadcastAgentEvent({
@@ -184,6 +217,14 @@ async function summarizeWithSubprocess(
   } finally {
     await sub.cleanup()
   }
+}
+
+async function collectStreamText(stream: AsyncIterable<Buffer>): Promise<string> {
+  let text = ''
+  for await (const chunk of stream) {
+    text += chunk.toString('utf8')
+  }
+  return text
 }
 
 async function handleBackendEvent(

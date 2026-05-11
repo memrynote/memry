@@ -199,9 +199,11 @@ describe('Calendar workspace navigation', () => {
     const user = userEvent.setup()
 
     renderWithProviders(
-      <TabProvider>
-        <NewTabMenuHarness />
-      </TabProvider>
+      <SidebarProvider>
+        <TabProvider>
+          <NewTabMenuHarness />
+        </TabProvider>
+      </SidebarProvider>
     )
 
     await user.click(screen.getByRole('button', { name: 'New Tab' }))

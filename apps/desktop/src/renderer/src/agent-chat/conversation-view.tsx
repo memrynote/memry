@@ -1,7 +1,5 @@
 import { useT } from '@memry/i18n/renderer'
 
-import { Button } from '@/components/ui/button'
-import { Square } from '@/lib/icons'
 import { Composer } from './composer'
 import { ConversationHeader } from './conversation-header'
 import { useAgentOptional } from './agent-context'
@@ -64,14 +62,6 @@ export function ConversationView({ conversationId }: ConversationViewProps): Rea
         }}
         onSelectConversation={currentAgent.loadConversation}
       />
-      {inFlight && (
-        <div className="flex items-center justify-end border-b border-sidebar-border px-3 py-2">
-          <Button type="button" variant="secondary" size="sm" onClick={cancelTurn}>
-            <Square className="size-3" aria-hidden="true" />
-            {t('agentChat.stop')}
-          </Button>
-        </div>
-      )}
       <MessageStream messages={messages} />
       <Composer conversationId={conversationId} sourceWindowId={state.sourceWindowId} />
     </section>

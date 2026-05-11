@@ -2,6 +2,7 @@
 
 /* BlockNote shadcn styles source */
 @source "../../../node_modules/@blocknote/shadcn";
+@source "../../../node_modules/streamdown/dist/*.js";
 
 @custom-variant dark (&:is(.dark *));
 

@@ -3,6 +3,7 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '@tests/utils/render'
 import { NotePage } from './note'
 import { toast } from 'sonner'
+import { useState } from 'react'
 import type React from 'react'
 
 const mocks = vi.hoisted(() => ({
@@ -261,6 +262,7 @@ vi.mock('@/components/note', () => ({
     </div>
   ),
   ContentArea: ({
+    initialContent,
     onMarkdownChange,
     onHeadingsChange,
     onLinkClick,
@@ -268,6 +270,7 @@ vi.mock('@/components/note', () => ({
     onInlineTagsChange,
     focusAtEndRef
   }: {
+    initialContent: string
     onMarkdownChange: (markdown: string) => void
     onHeadingsChange: (
       headings: Array<{ id: string; level: number; text: string; position: number }>
@@ -277,9 +280,11 @@ vi.mock('@/components/note', () => ({
     onInlineTagsChange: (tags: string[]) => void
     focusAtEndRef: React.MutableRefObject<(() => void) | null>
   }) => {
+    const [content] = useState(initialContent)
     focusAtEndRef.current = mocks.refetchNote
     return (
       <div>
+        <div data-testid="editor-content">{content}</div>
         <div data-id="heading-1" />
         <button type="button" onClick={() => onMarkdownChange('# Changed')}>
           Change markdown
@@ -802,6 +807,21 @@ describe('NotePage', () => {
     expect(mocks.findInPage.next).toHaveBeenCalled()
     expect(mocks.findInPage.prev).toHaveBeenCalled()
     expect(mocks.findInPage.close).toHaveBeenCalled()
+  })
+
+  it('remounts the editor for agent-driven note content updates', () => {
+    renderWithProviders(<NotePage noteId="note-1" />)
+    expect(screen.getByTestId('editor-content')).toHaveTextContent('Original body')
+
+    act(() => {
+      mocks.updatedHandler?.({
+        id: 'note-1',
+        source: 'internal',
+        changes: { content: 'Agent edited body' }
+      })
+    })
+
+    expect(screen.getByTestId('editor-content')).toHaveTextContent('Agent edited body')
   })
 
   it('blocks mutations after the note is deleted', async () => {
