@@ -58,24 +58,20 @@ pnpm docs:impact --strict
 pnpm docs:build
 ```
 
-`docs:ai-update` uses the Codex CLI to inspect the branch diff and update only `apps/docs/src`. The pre-push hook runs the same impact check; when docs are missing, it stops the push and points you to the manual updater. Set `MEMRY_DOCS_AI_AUTO=1` only when you want the hook to run the updater for that push.
+`docs:ai-update` uses the Codex CLI to inspect the branch diff and update only `apps/docs/src`. The pre-push hook only runs the docs impact check; when docs are missing, it stops the push and points you to the manual updater. Set `MEMRY_DOCS_AI_AUTO=1` only when you want the hook to run the updater for that push. Lint, typecheck, and test suites run in GitHub Actions.
 
 If a change truly has no docs impact, use the `docs:not-needed` PR label for CI and `MEMRY_DOCS_IMPACT_SKIP=1 git push` for the local hook.
 
 ## Pre-Land Checks
 
-Before opening a PR:
+Before opening a PR, make sure docs are current:
 
 ```bash
-pnpm lint
-pnpm typecheck
-pnpm test
 pnpm docs:impact --strict
 pnpm docs:build
-pnpm ipc:check     # if you touched the renderer/main boundary
 ```
 
-For desktop-only changes, focused checks are faster:
+GitHub Actions run lint, typecheck, and test suites. For faster local feedback before pushing, run focused checks for the area you touched:
 
 ```bash
 pnpm typecheck:node     # main process
