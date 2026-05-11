@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
+import type { ClaudeEffort } from '@memry/contracts/ipc-agent'
+
 import { createLogger } from '../../lib/logger'
 import { createStreamParser } from '../cli/stream-parser'
 import type { BackendEvent } from '../cli/types'
@@ -20,6 +22,7 @@ export interface TurnDeps {
     prompt: string
     conversationId: string
     windowId: string
+    effort: ClaudeEffort
     purpose?: 'turn' | 'summary' | 'title'
   }) => Promise<{
     stdout: AsyncIterable<Buffer>
@@ -46,6 +49,7 @@ export interface RunTurnInput {
   conversationId: string
   sourceWindowId: string
   text: string
+  claudeEffort: ClaudeEffort
   attachments: MessageAttachment[]
 }
 
@@ -74,7 +78,8 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
         conversationId: input.conversationId,
         windowId: input.sourceWindowId,
         text: input.text,
-        attachments: input.attachments
+        attachments: input.attachments,
+        effort: input.claudeEffort
       })
     : Promise.resolve()
 
@@ -94,7 +99,8 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
       summarizeWithSubprocess(deps, {
         prompt: toSummarize,
         conversationId: input.conversationId,
-        windowId: input.sourceWindowId
+        windowId: input.sourceWindowId,
+        effort: input.claudeEffort
       }),
     estimateLimit: COMPACTION_THRESHOLD,
     currentEstimate: estimateTokens(prompt)
@@ -113,6 +119,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     prompt: compactedPrompt,
     conversationId: input.conversationId,
     windowId: input.sourceWindowId,
+    effort: input.claudeEffort,
     purpose: 'turn'
   })
   const stderrTextPromise = collectStreamText(sub.stderr)
@@ -207,13 +214,15 @@ async function maybeGenerateConversationTitle(
     windowId: string
     text: string
     attachments: MessageAttachment[]
+    effort: ClaudeEffort
   }
 ): Promise<void> {
   try {
     const title = await generateTitleWithSubprocess(deps, {
       prompt: assembleTitlePrompt(input.text, input.attachments),
       conversationId: input.conversationId,
-      windowId: input.windowId
+      windowId: input.windowId,
+      effort: input.effort
     })
     if (!title) return
 
@@ -229,7 +238,7 @@ async function maybeGenerateConversationTitle(
 
 async function generateTitleWithSubprocess(
   deps: TurnDeps,
-  input: { prompt: string; conversationId: string; windowId: string }
+  input: { prompt: string; conversationId: string; windowId: string; effort: ClaudeEffort }
 ): Promise<string | null> {
   const sub = await deps.spawnSubprocess({ ...input, purpose: 'title' })
   const events: BackendEvent[] = []
@@ -314,7 +323,7 @@ function sanitizeGeneratedTitle(value: string): string | null {
 
 async function summarizeWithSubprocess(
   deps: TurnDeps,
-  input: { prompt: string; conversationId: string; windowId: string }
+  input: { prompt: string; conversationId: string; windowId: string; effort: ClaudeEffort }
 ): Promise<string> {
   const sub = await deps.spawnSubprocess({ ...input, purpose: 'summary' })
   const events: BackendEvent[] = []

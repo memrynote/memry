@@ -127,7 +127,8 @@ describe('startAgent', () => {
     await deps.spawn({
       prompt: 'hello',
       conversationId: 'conversation-1',
-      windowId: 'window-1'
+      windowId: 'window-1',
+      effort: 'low'
     })
 
     expect(mocks.spawnClaudeTurn).toHaveBeenCalledWith(
@@ -137,6 +138,7 @@ describe('startAgent', () => {
         authorizationValue: 'local-auth-value',
         conversationId: 'conversation-1',
         windowId: 'window-1',
+        effort: 'low',
         prompt: 'hello'
       })
     )

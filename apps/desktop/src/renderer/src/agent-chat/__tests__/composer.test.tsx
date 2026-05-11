@@ -57,7 +57,8 @@ describe('Composer', () => {
       conversationId: 'conversation-1',
       sourceWindowId: 'window-1',
       text: 'hello',
-      attachments: []
+      attachments: [],
+      claudeEffort: 'xhigh'
     })
   })
 
@@ -87,34 +88,53 @@ describe('Composer', () => {
     expect(screen.getByRole('menuitem', { name: /local/i })).toHaveAttribute('data-disabled', '')
   })
 
-  it('shows Claude-specific settings next to the selected provider', () => {
+  it('shows supported Claude effort settings next to the selected provider', () => {
     render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
 
     const settingsTrigger = screen.getByRole('button', {
-      name: 'Agent settings: Extra High · 1M'
+      name: 'Agent settings: Extra High'
     })
     expect(settingsTrigger).toHaveClass('rounded-full')
 
     fireEvent.pointerDown(settingsTrigger)
 
     expect(screen.getByText('Reasoning')).toBeInTheDocument()
-    expect(screen.getByText('Context Window')).toBeInTheDocument()
     expect(screen.getByRole('menuitemcheckbox', { name: 'Extra High (default)' })).toHaveAttribute(
       'aria-checked',
       'true'
     )
-    expect(screen.getByRole('menuitemcheckbox', { name: '1M' })).toHaveAttribute(
-      'aria-checked',
-      'true'
-    )
+    expect(screen.queryByText('Context Window')).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitemcheckbox', { name: 'Ultrathink' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Low' }))
 
     expect(
       screen.getByRole('button', {
-        name: 'Agent settings: Low · 1M'
+        name: 'Agent settings: Low'
       })
     ).toBeInTheDocument()
+  })
+
+  it('passes the selected Claude effort with the prompt', async () => {
+    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent settings: Extra High' }))
+    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Low' }))
+
+    const textbox = screen.getByRole('textbox')
+    fireEvent.change(textbox, { target: { value: 'quick answer' } })
+    await act(async () => {
+      fireEvent.keyDown(textbox, { key: 'Enter' })
+      await Promise.resolve()
+    })
+
+    expect(mockSendTurn).toHaveBeenCalledWith({
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'quick answer',
+      attachments: [],
+      claudeEffort: 'low'
+    })
   })
 
   it('creates a conversation before sending the first empty-chat prompt', async () => {
@@ -133,7 +153,8 @@ describe('Composer', () => {
         conversationId: 'conversation-2',
         sourceWindowId: 'window-1',
         text: 'draft a plan',
-        attachments: []
+        attachments: [],
+        claudeEffort: 'xhigh'
       })
     })
   })
@@ -207,7 +228,8 @@ describe('Composer', () => {
       conversationId: 'conversation-1',
       sourceWindowId: 'window-1',
       text: 'summarize this',
-      attachments: [{ kind: 'note', ref_id: 'note-1', label: 'Planning note' }]
+      attachments: [{ kind: 'note', ref_id: 'note-1', label: 'Planning note' }],
+      claudeEffort: 'xhigh'
     })
   })
 
@@ -231,7 +253,8 @@ describe('Composer', () => {
       conversationId: 'conversation-1',
       sourceWindowId: 'window-1',
       text: 'summarize',
-      attachments: [{ kind: 'current_note', ref_id: '__current__', label: 'Current brief' }]
+      attachments: [{ kind: 'current_note', ref_id: '__current__', label: 'Current brief' }],
+      claudeEffort: 'xhigh'
     })
   })
 

@@ -367,5 +367,30 @@
     "toasts": {
       "undone": "실행 취소됨"
     }
+  },
+  "agentChat": {
+    "composer": {
+      "providerLabel": "Agent provider: {provider}",
+      "settingsLabel": "Agent settings: {settings}",
+      "settingsSummary": "{reasoning}",
+      "providers": {
+        "claude": "Claude",
+        "codex": "Codex",
+        "local": "Local"
+      },
+      "settings": {
+        "reasoning": "Reasoning"
+      },
+      "claudeSettings": {
+        "reasoning": {
+          "low": "Low",
+          "medium": "Medium",
+          "high": "High",
+          "extraHigh": "Extra High",
+          "extraHighDefault": "Extra High (default)",
+          "max": "Max"
+        }
+      }
+    }
   }
 }

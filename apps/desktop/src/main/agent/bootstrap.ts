@@ -1,3 +1,5 @@
+import type { ClaudeEffort } from '@memry/contracts/ipc-agent'
+
 import { getOrInitializeLocalVaultKey, secureCleanup } from '../crypto'
 import { getDatabase, getIndexDatabase } from '../database'
 import {
@@ -61,11 +63,13 @@ export async function startAgent(): Promise<AgentHandle> {
     prompt,
     conversationId,
     windowId,
+    effort,
     purpose = 'turn'
   }: {
     prompt: string
     conversationId: string
     windowId: string
+    effort: ClaudeEffort
     purpose?: 'turn' | 'summary' | 'title'
   }) => {
     const binary = await detectClaudeBinary()
@@ -85,6 +89,7 @@ export async function startAgent(): Promise<AgentHandle> {
       conversationId,
       windowId,
       allowedTools: purpose === 'title' ? '' : ALLOWED_AGENT_TOOLS,
+      effort,
       prompt
     })
 

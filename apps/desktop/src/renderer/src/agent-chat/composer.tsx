@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
-import type { AttachmentInput } from '@memry/contracts/ipc-agent'
+import type { AttachmentInput, ClaudeEffort } from '@memry/contracts/ipc-agent'
+import { DEFAULT_CLAUDE_EFFORT } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
 
 import {
@@ -9,22 +10,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { useActiveTab } from '@/contexts/tabs'
-import {
-  ChatGptIcon,
-  Check,
-  ChevronDown,
-  ClaudeIcon,
-  ComputerIcon,
-  Send,
-  Square,
-  X
-} from '@/lib/icons'
+import { Bot, Check, ChevronDown, Code, Monitor, Send, Square, X } from '@/lib/icons'
 import { useAgentOptional } from './agent-context'
 import { RefPicker } from './ref-picker'
 
@@ -34,11 +25,9 @@ interface ComposerProps {
 }
 
 type AgentProvider = 'claude' | 'codex' | 'local'
-type ClaudeReasoning = 'low' | 'medium' | 'high' | 'extraHigh' | 'max' | 'ultrathink'
-type ClaudeContextWindow = '200k' | '1m'
 
 const claudeReasoningOptions: Array<{
-  value: ClaudeReasoning
+  value: ClaudeEffort
   labelKey: string
   summaryKey: string
 }> = [
@@ -58,7 +47,7 @@ const claudeReasoningOptions: Array<{
     summaryKey: 'agentChat.composer.claudeSettings.reasoning.high'
   },
   {
-    value: 'extraHigh',
+    value: 'xhigh',
     labelKey: 'agentChat.composer.claudeSettings.reasoning.extraHighDefault',
     summaryKey: 'agentChat.composer.claudeSettings.reasoning.extraHigh'
   },
@@ -66,28 +55,6 @@ const claudeReasoningOptions: Array<{
     value: 'max',
     labelKey: 'agentChat.composer.claudeSettings.reasoning.max',
     summaryKey: 'agentChat.composer.claudeSettings.reasoning.max'
-  },
-  {
-    value: 'ultrathink',
-    labelKey: 'agentChat.composer.claudeSettings.reasoning.ultrathink',
-    summaryKey: 'agentChat.composer.claudeSettings.reasoning.ultrathink'
-  }
-]
-
-const claudeContextWindowOptions: Array<{
-  value: ClaudeContextWindow
-  labelKey: string
-  summaryKey: string
-}> = [
-  {
-    value: '200k',
-    labelKey: 'agentChat.composer.claudeSettings.contextWindow.twoHundredKDefault',
-    summaryKey: 'agentChat.composer.claudeSettings.contextWindow.twoHundredK'
-  },
-  {
-    value: '1m',
-    labelKey: 'agentChat.composer.claudeSettings.contextWindow.oneM',
-    summaryKey: 'agentChat.composer.claudeSettings.contextWindow.oneM'
   }
 ]
 
@@ -111,8 +78,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const [pickerOpen, setPickerOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState<AgentProvider>('claude')
-  const [claudeReasoning, setClaudeReasoning] = useState<ClaudeReasoning>('extraHigh')
-  const [claudeContextWindow, setClaudeContextWindow] = useState<ClaudeContextWindow>('1m')
+  const [claudeReasoning, setClaudeReasoning] = useState<ClaudeEffort>(DEFAULT_CLAUDE_EFFORT)
 
   useEffect(() => {
     if (activeTab?.type !== 'note' || !activeTab.entityId) return
@@ -156,12 +122,8 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const selectedClaudeReasoning =
     claudeReasoningOptions.find((option) => option.value === claudeReasoning) ??
     claudeReasoningOptions[3]
-  const selectedClaudeContextWindow =
-    claudeContextWindowOptions.find((option) => option.value === claudeContextWindow) ??
-    claudeContextWindowOptions[1]
   const claudeSettingsSummary = t('agentChat.composer.settingsSummary', {
-    reasoning: t(selectedClaudeReasoning.summaryKey),
-    contextWindow: t(selectedClaudeContextWindow.summaryKey)
+    reasoning: t(selectedClaudeReasoning.summaryKey)
   })
 
   async function submit(): Promise<void> {
@@ -175,6 +137,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
         conversationId: targetConversationId,
         sourceWindowId,
         text: currentText,
+        claudeEffort: claudeReasoning,
         attachments: currentAttachments
       })
       setText('')
@@ -275,7 +238,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                 })}
                 className="inline-flex h-8 items-center gap-1.5 rounded-full bg-transparent px-1.5 text-xs text-muted-foreground transition-colors hover:bg-transparent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
-                <ClaudeIcon className="size-4" aria-hidden="true" />
+                <Bot className="size-4" aria-hidden="true" />
                 <span>{selectedProviderLabel}</span>
                 <ChevronDown className="size-3" aria-hidden="true" />
               </button>
@@ -285,7 +248,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                 onSelect={() => setSelectedProvider('claude')}
                 className="text-xs focus:bg-transparent focus:text-foreground"
               >
-                <ClaudeIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+                <Bot className="size-4 text-muted-foreground" aria-hidden="true" />
                 <span>{claudeProviderLabel}</span>
                 {selectedProvider === 'claude' && (
                   <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
@@ -295,14 +258,14 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                 disabled
                 className="text-xs focus:bg-transparent focus:text-foreground"
               >
-                <ChatGptIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+                <Code className="size-4 text-muted-foreground" aria-hidden="true" />
                 <span>{codexProviderLabel}</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled
                 className="text-xs focus:bg-transparent focus:text-foreground"
               >
-                <ComputerIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+                <Monitor className="size-4 text-muted-foreground" aria-hidden="true" />
                 <span>{localProviderLabel}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -330,20 +293,6 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                     key={option.value}
                     checked={claudeReasoning === option.value}
                     onCheckedChange={() => setClaudeReasoning(option.value)}
-                    className="text-xs"
-                  >
-                    {t(option.labelKey)}
-                  </DropdownMenuCheckboxItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
-                  {t('agentChat.composer.settings.contextWindow')}
-                </DropdownMenuLabel>
-                {claudeContextWindowOptions.map((option) => (
-                  <DropdownMenuCheckboxItem
-                    key={option.value}
-                    checked={claudeContextWindow === option.value}
-                    onCheckedChange={() => setClaudeContextWindow(option.value)}
                     className="text-xs"
                   >
                     {t(option.labelKey)}

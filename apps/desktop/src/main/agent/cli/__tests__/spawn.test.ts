@@ -24,6 +24,7 @@ describe('spawnClaudeTurn', () => {
       conversationId: 'conv-1',
       windowId: 'win-1',
       allowedTools: 'mcp__memry__vault_read_note',
+      effort: 'xhigh',
       prompt: 'hello'
     })
 
@@ -46,6 +47,7 @@ describe('spawnClaudeTurn', () => {
       conversationId: 'c',
       windowId: 'w',
       allowedTools: 'mcp__memry__vault_read_note',
+      effort: 'low',
       prompt: 'p'
     })
 
@@ -64,6 +66,8 @@ describe('spawnClaudeTurn', () => {
     expect(args).toContain('--allowed-tools')
     expect(args).toContain('mcp__memry__vault_read_note')
     expect(args).toContain('--mcp-config')
+    expect(args).toContain('--effort')
+    expect(args).toContain('low')
   })
 
   it('writes the prompt to stdin and closes it', async () => {
@@ -77,6 +81,7 @@ describe('spawnClaudeTurn', () => {
       conversationId: 'c',
       windowId: 'w',
       allowedTools: 'a',
+      effort: 'xhigh',
       prompt: 'PROMPT BODY'
     })
 
