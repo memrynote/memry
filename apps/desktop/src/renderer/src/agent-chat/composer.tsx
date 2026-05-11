@@ -15,7 +15,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { useActiveTab } from '@/contexts/tabs'
-import { Bot, Check, ChevronDown, Code, Monitor, Send, Square, X } from '@/lib/icons'
+import { ChatGpt, Check, ChevronDown, Claude, Computer, Send, Square, X } from '@/lib/icons'
 import { useAgentOptional } from './agent-context'
 import { RefPicker } from './ref-picker'
 
@@ -238,7 +238,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                 })}
                 className="inline-flex h-8 items-center gap-1.5 rounded-full bg-transparent px-1.5 text-xs text-muted-foreground transition-colors hover:bg-transparent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
-                <Bot className="size-4" aria-hidden="true" />
+                <Claude className="size-4" aria-hidden="true" />
                 <span>{selectedProviderLabel}</span>
                 <ChevronDown className="size-3" aria-hidden="true" />
               </button>
@@ -248,7 +248,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                 onSelect={() => setSelectedProvider('claude')}
                 className="text-xs focus:bg-transparent focus:text-foreground"
               >
-                <Bot className="size-4 text-muted-foreground" aria-hidden="true" />
+                <Claude className="size-4 text-muted-foreground" aria-hidden="true" />
                 <span>{claudeProviderLabel}</span>
                 {selectedProvider === 'claude' && (
                   <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
@@ -258,14 +258,14 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                 disabled
                 className="text-xs focus:bg-transparent focus:text-foreground"
               >
-                <Code className="size-4 text-muted-foreground" aria-hidden="true" />
+                <ChatGpt className="size-4 text-muted-foreground" aria-hidden="true" />
                 <span>{codexProviderLabel}</span>
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled
                 className="text-xs focus:bg-transparent focus:text-foreground"
               >
-                <Monitor className="size-4 text-muted-foreground" aria-hidden="true" />
+                <Computer className="size-4 text-muted-foreground" aria-hidden="true" />
                 <span>{localProviderLabel}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
