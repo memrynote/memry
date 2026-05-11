@@ -20,8 +20,12 @@ Agent Chat can:
 - keep local conversation history in the vault database
 - attach the active note as context for a turn
 - stream assistant text back into the sidebar
+- show tool calls, tool results, and approvals inline in the chat stream
 - stop an in-flight turn
 - compact older conversation history when a prompt grows too large
+
+Press <kbd>Enter</kbd> to send the prompt. Press <kbd>Shift</kbd>+<kbd>Enter</kbd> to insert a
+new line in the prompt box.
 
 Conversation rows, message bodies, and message attachments are encrypted at rest before they are
 written to SQLite. Free accounts keep agent chat history local-only. Paid accounts can sync finalized
@@ -81,10 +85,10 @@ Create and update tools require Agent Chat context and explicit approval:
 - `vault_remove_tag`
 - `vault_move_to_folder`
 
-When Claude requests one of these tools from Agent Chat, Memry pauses the turn and shows an approval
-modal. You can allow the request once, allow the tool always for that conversation, deny it, or edit
-the arguments before allowing. Note updates show a before/after diff before the write is applied.
-Unauthenticated or context-free write requests continue to be denied.
+When Claude requests one of these tools from Agent Chat, Memry pauses the turn and shows an inline
+approval card in the conversation. You can allow the request once, allow create tools always for that
+conversation, deny it, or edit the arguments before allowing. Note updates load a before/after diff
+before the write is applied. Unauthenticated or context-free write requests continue to be denied.
 
 ## Current Note
 

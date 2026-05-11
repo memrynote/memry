@@ -27,7 +27,7 @@ export type AgentAction =
   | { type: 'set_in_flight'; conversationId: string; inFlight: boolean }
   | { type: 'set_error'; error: string | null }
   | { type: 'event'; event: AgentEvent }
-  | { type: 'clear_pending'; toolCallId: string }
+  | { type: 'clear_pending'; toolCallId: string; status?: 'approved' | 'denied' }
 
 export const initialAgentState: AgentState = {
   binaryStatus: null,
@@ -56,6 +56,84 @@ function appendAssistantDelta(messages: Message[], event: AgentEvent): Message[]
       }
     }
   })
+}
+
+function upsertMessage(messages: Message[], nextMessage: Message): Message[] {
+  const existing = messages.findIndex((message) => message.id === nextMessage.id)
+  const next =
+    existing === -1
+      ? [...messages, nextMessage]
+      : messages.map((message, index) => (index === existing ? nextMessage : message))
+  return [...next].sort((left, right) => left.createdAt - right.createdAt)
+}
+
+function upsertToolCallMessage(
+  messages: Message[],
+  input: {
+    conversationId: string
+    toolCallId: string
+    name: string
+    args: unknown
+  }
+): Message[] {
+  const newest = messages.reduce((max, message) => Math.max(max, message.createdAt), 0)
+  return upsertMessage(messages, {
+    id: `tool-call-${input.toolCallId}`,
+    conversationId: input.conversationId,
+    role: 'tool_call',
+    content: {
+      role: 'tool_call',
+      data: {
+        tool: input.name,
+        args:
+          input.args && typeof input.args === 'object' && !Array.isArray(input.args)
+            ? (input.args as Record<string, unknown>)
+            : {},
+        status: 'pending'
+      }
+    },
+    toolCallId: input.toolCallId,
+    attachments: [],
+    status: 'streaming',
+    vectorClock: {},
+    createdAt: newest + 1,
+    updatedAt: newest + 1,
+    deletedAt: null
+  })
+}
+
+function updateToolCallStatus(
+  messages: Message[],
+  toolCallId: string,
+  status: 'approved' | 'completed' | 'denied' | 'failed'
+): Message[] {
+  return messages.map((message) => {
+    if (message.toolCallId !== toolCallId || message.content.role !== 'tool_call') return message
+    return {
+      ...message,
+      status: status === 'completed' ? 'completed' : status === 'failed' ? 'error' : message.status,
+      content: {
+        role: 'tool_call',
+        data: {
+          ...message.content.data,
+          status
+        }
+      }
+    }
+  })
+}
+
+function updateToolCallStatusEverywhere(
+  messagesByConversation: AgentState['messagesByConversation'],
+  toolCallId: string,
+  status: 'approved' | 'completed' | 'denied' | 'failed'
+): AgentState['messagesByConversation'] {
+  return Object.fromEntries(
+    Object.entries(messagesByConversation).map(([conversationId, messages]) => [
+      conversationId,
+      updateToolCallStatus(messages, toolCallId, status)
+    ])
+  )
 }
 
 function withoutInFlight(state: AgentState, conversationId: string): Record<string, boolean> {
@@ -108,10 +186,29 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
         ...state,
         pendingApprovals: state.pendingApprovals.filter(
           (pending) => pending.toolCallId !== action.toolCallId
-        )
+        ),
+        messagesByConversation: action.status
+          ? updateToolCallStatusEverywhere(
+              state.messagesByConversation,
+              action.toolCallId,
+              action.status
+            )
+          : state.messagesByConversation
       }
     case 'event': {
       const event = action.event
+      if (event.kind === 'message_upserted') {
+        return {
+          ...state,
+          messagesByConversation: {
+            ...state.messagesByConversation,
+            [event.message.conversationId]: upsertMessage(
+              state.messagesByConversation[event.message.conversationId] ?? [],
+              event.message
+            )
+          }
+        }
+      }
       if (event.kind === 'assistant_text_delta') {
         return {
           ...state,
@@ -127,7 +224,19 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
       if (event.kind === 'tool_call_pending_approval') {
         return {
           ...state,
-          pendingApprovals: upsertPendingApproval(state.pendingApprovals, event)
+          pendingApprovals: upsertPendingApproval(state.pendingApprovals, event),
+          messagesByConversation: {
+            ...state.messagesByConversation,
+            [event.conversationId]: upsertToolCallMessage(
+              state.messagesByConversation[event.conversationId] ?? [],
+              {
+                conversationId: event.conversationId,
+                toolCallId: event.toolCallId,
+                name: event.name,
+                args: event.args
+              }
+            )
+          }
         }
       }
       if (event.kind === 'tool_call_completed' || event.kind === 'tool_call_failed') {
@@ -135,6 +244,11 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
           ...state,
           pendingApprovals: state.pendingApprovals.filter(
             (pending) => pending.toolCallId !== event.toolCallId
+          ),
+          messagesByConversation: updateToolCallStatusEverywhere(
+            state.messagesByConversation,
+            event.toolCallId,
+            event.kind === 'tool_call_completed' ? 'completed' : 'failed'
           )
         }
       }

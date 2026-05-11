@@ -65,7 +65,7 @@ test.describe('Agent chat create-task flow', () => {
     const composer = page.locator('textarea[placeholder="Ask Agent"]')
     await expect(composer).toBeEnabled()
     await composer.fill('Create a task from the current note')
-    await composer.press(process.platform === 'darwin' ? 'Meta+Enter' : 'Control+Enter')
+    await composer.press('Enter')
 
     await expect(page.getByRole('dialog').filter({ hasText: 'vault_create_task' })).toBeVisible()
     await page.getByRole('button', { name: 'Allow once' }).click()

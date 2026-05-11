@@ -40,16 +40,17 @@ function emitLine(line: string, onEvent: (event: BackendEvent) => void): void {
 }
 
 function translate(obj: Record<string, unknown>): BackendEvent {
-  const type = obj.type
+  const event = unwrapClaudeCodeEvent(obj)
+  const type = event.type
   if (type === 'content_block_delta') {
-    const delta = obj.delta as { type?: string; text?: string } | undefined
+    const delta = event.delta as { type?: string; text?: string } | undefined
     if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
       return { kind: 'assistant_delta', text: delta.text }
     }
   }
 
   if (type === 'content_block_start') {
-    const block = obj.content_block as
+    const block = event.content_block as
       | { type?: string; id?: string; name?: string; input?: unknown }
       | undefined
     if (block?.type === 'tool_use' && block.id && block.name) {
@@ -60,12 +61,15 @@ function translate(obj: Record<string, unknown>): BackendEvent {
         args: block.input ?? {}
       }
     }
+    if (block?.type === 'text') {
+      return { kind: 'noop' }
+    }
   }
 
   if (type === 'tool_result') {
-    const toolUseId = String(obj.tool_use_id ?? '')
-    const isError = Boolean(obj.is_error)
-    const content = obj.content as Array<{ type?: string; text?: string }> | undefined
+    const toolUseId = eventId(event.tool_use_id)
+    const isError = Boolean(event.is_error)
+    const content = event.content as Array<{ type?: string; text?: string }> | undefined
     const text = content?.find((entry) => entry.type === 'text')?.text ?? ''
     let parsed: unknown = text
     try {
@@ -97,5 +101,35 @@ function translate(obj: Record<string, unknown>): BackendEvent {
     return { kind: 'message_stop' }
   }
 
-  return { kind: 'unknown', raw: obj }
+  if (type === 'result' && typeof event.result === 'string') {
+    return { kind: 'assistant_delta', text: event.result }
+  }
+
+  if (
+    type === 'system' ||
+    type === 'user' ||
+    type === 'assistant' ||
+    type === 'message_start' ||
+    type === 'message_delta' ||
+    type === 'content_block_stop'
+  ) {
+    return { kind: 'noop' }
+  }
+
+  return { kind: 'unknown', raw: event }
+}
+
+function unwrapClaudeCodeEvent(obj: Record<string, unknown>): Record<string, unknown> {
+  if (obj.type !== 'stream_event' || !isRecord(obj.event)) return obj
+  return obj.event
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function eventId(value: unknown): string {
+  if (typeof value === 'string') return value
+  if (typeof value === 'number') return String(value)
+  return ''
 }
