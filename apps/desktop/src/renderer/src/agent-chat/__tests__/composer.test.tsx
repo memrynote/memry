@@ -61,6 +61,62 @@ describe('Composer', () => {
     })
   })
 
+  it('renders the ai-02 prompt surface', () => {
+    const { container } = render(
+      <Composer conversationId="conversation-1" sourceWindowId="window-1" />
+    )
+
+    expect(container.firstElementChild).not.toHaveClass('border-t')
+    expect(screen.getByRole('textbox')).toHaveClass('min-h-[48.4px]')
+    expect(screen.getByRole('button', { name: 'Send' })).toHaveClass('rounded-full')
+    expect(screen.queryByText('Agent')).not.toBeInTheDocument()
+  })
+
+  it('opens a borderless provider dropdown from the cloud slot', () => {
+    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+
+    const providerTrigger = screen.getByRole('button', { name: 'Agent provider: Claude' })
+    expect(providerTrigger).not.toHaveClass('border')
+    expect(providerTrigger).toHaveClass('hover:bg-transparent')
+    expect(providerTrigger).toHaveClass('hover:text-foreground')
+
+    fireEvent.pointerDown(providerTrigger)
+
+    expect(screen.getByRole('menuitem', { name: /claude/i })).toHaveClass('focus:bg-transparent')
+    expect(screen.getByRole('menuitem', { name: /codex/i })).toHaveAttribute('data-disabled', '')
+    expect(screen.getByRole('menuitem', { name: /local/i })).toHaveAttribute('data-disabled', '')
+  })
+
+  it('shows Claude-specific settings next to the selected provider', () => {
+    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+
+    const settingsTrigger = screen.getByRole('button', {
+      name: 'Agent settings: Extra High · 1M'
+    })
+    expect(settingsTrigger).toHaveClass('rounded-full')
+
+    fireEvent.pointerDown(settingsTrigger)
+
+    expect(screen.getByText('Reasoning')).toBeInTheDocument()
+    expect(screen.getByText('Context Window')).toBeInTheDocument()
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Extra High (default)' })).toHaveAttribute(
+      'aria-checked',
+      'true'
+    )
+    expect(screen.getByRole('menuitemcheckbox', { name: '1M' })).toHaveAttribute(
+      'aria-checked',
+      'true'
+    )
+
+    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Low' }))
+
+    expect(
+      screen.getByRole('button', {
+        name: 'Agent settings: Low · 1M'
+      })
+    ).toBeInTheDocument()
+  })
+
   it('creates a conversation before sending the first empty-chat prompt', async () => {
     render(<Composer conversationId={null} sourceWindowId="window-1" />)
 
