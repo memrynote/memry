@@ -1,14 +1,24 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Message } from '@memry/contracts/ipc-agent'
 
+const mockUseAgentOptional = vi.hoisted(() => vi.fn())
+
+vi.mock('../agent-context', () => ({
+  useAgentOptional: mockUseAgentOptional
+}))
+
 import { MessageStream } from '../message-stream'
+
+const mockApproveTool = vi.fn()
+const mockPreviewDiff = vi.fn()
 
 function message(input: {
   id: string
   role: Message['role']
   content: Message['content']
+  status?: Message['status']
   toolCallId?: string | null
 }): Message {
   return {
@@ -18,7 +28,7 @@ function message(input: {
     content: input.content,
     toolCallId: input.toolCallId ?? null,
     attachments: [],
-    status: 'completed',
+    status: input.status ?? 'completed',
     vectorClock: {},
     createdAt: 100,
     updatedAt: 100,
@@ -27,6 +37,21 @@ function message(input: {
 }
 
 describe('MessageStream', () => {
+  beforeEach(() => {
+    mockApproveTool.mockReset()
+    mockPreviewDiff.mockReset()
+    mockPreviewDiff.mockResolvedValue({
+      title: 'Planning note',
+      current: 'old',
+      candidate: 'old\n\nnew'
+    })
+    mockUseAgentOptional.mockReturnValue(null)
+    ;(window.api as typeof window.api & { agent?: { previewDiff: typeof mockPreviewDiff } }).agent =
+      {
+        previewDiff: mockPreviewDiff
+      }
+  })
+
   it('renders all stored agent message roles', () => {
     render(
       <MessageStream
@@ -80,5 +105,251 @@ describe('MessageStream', () => {
     expect(screen.getByText('vault_create_task')).toBeInTheDocument()
     expect(screen.getByText('Tool result')).toBeInTheDocument()
     expect(screen.getByText('context_attached')).toBeInTheDocument()
+  })
+
+  it('allows chat text selection', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'assistant-1',
+            role: 'assistant',
+            content: { role: 'assistant', data: { text: 'Highlight me' } }
+          })
+        ]}
+      />
+    )
+
+    expect(screen.getByRole('log')).toHaveClass('select-text')
+  })
+
+  it('renders assistant markdown as rich message content', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'assistant-1',
+            role: 'assistant',
+            content: { role: 'assistant', data: { text: '# Plan\n\n- Create the task' } }
+          })
+        ]}
+      />
+    )
+
+    expect(screen.getByRole('heading', { name: 'Plan' })).toBeInTheDocument()
+    expect(screen.getByText('Create the task')).toBeInTheDocument()
+  })
+
+  it('renders a waiting indicator for an empty streaming assistant message', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'assistant-1',
+            role: 'assistant',
+            status: 'streaming',
+            content: { role: 'assistant', data: { text: '' } }
+          })
+        ]}
+      />
+    )
+
+    expect(screen.getByRole('status', { name: 'Agent is thinking' })).toBeInTheDocument()
+  })
+
+  it('renders tool calls as collapsible tool details', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'tool-call-1',
+            role: 'tool_call',
+            toolCallId: 'tool-1',
+            content: {
+              role: 'tool_call',
+              data: {
+                tool: 'vault_create_task',
+                args: { title: 'Buy milk' },
+                status: 'pending'
+              }
+            }
+          })
+        ]}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: /vault_create_task/i })).toBeInTheDocument()
+    expect(screen.getByText('Parameters')).toBeInTheDocument()
+  })
+
+  it('approves pending tool calls inline without a dialog', async () => {
+    mockUseAgentOptional.mockReturnValue({
+      state: {
+        pendingApprovals: [
+          {
+            kind: 'tool_call_pending_approval',
+            conversationId: 'conversation-1',
+            toolCallId: 'tool-1',
+            name: 'vault_create_task',
+            args: { title: 'Buy milk' },
+            requiresDiff: false
+          }
+        ]
+      },
+      approveTool: mockApproveTool
+    })
+
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'tool-call-1',
+            role: 'tool_call',
+            toolCallId: 'tool-1',
+            content: {
+              role: 'tool_call',
+              data: {
+                tool: 'vault_create_task',
+                args: { title: 'Buy milk' },
+                status: 'pending'
+              }
+            }
+          })
+        ]}
+      />
+    )
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Allow once' }))
+
+    await waitFor(() => {
+      expect(mockApproveTool).toHaveBeenCalledWith({
+        conversationId: 'conversation-1',
+        toolCallId: 'tool-1',
+        decision: { kind: 'allow' }
+      })
+    })
+  })
+
+  it('submits edited pending tool args inline', async () => {
+    mockUseAgentOptional.mockReturnValue({
+      state: {
+        pendingApprovals: [
+          {
+            kind: 'tool_call_pending_approval',
+            conversationId: 'conversation-1',
+            toolCallId: 'tool-1',
+            name: 'vault_create_task',
+            args: { title: 'Buy milk' },
+            requiresDiff: false
+          }
+        ]
+      },
+      approveTool: mockApproveTool
+    })
+
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'tool-call-1',
+            role: 'tool_call',
+            toolCallId: 'tool-1',
+            content: {
+              role: 'tool_call',
+              data: {
+                tool: 'vault_create_task',
+                args: { title: 'Buy milk' },
+                status: 'pending'
+              }
+            }
+          })
+        ]}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit and allow' }))
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '{"title":"Edited"}' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Apply edits' }))
+
+    await waitFor(() => {
+      expect(mockApproveTool).toHaveBeenCalledWith({
+        conversationId: 'conversation-1',
+        toolCallId: 'tool-1',
+        decision: { kind: 'edit_allow', editedArgs: { title: 'Edited' } }
+      })
+    })
+  })
+
+  it('loads and applies diff approvals inline without a dialog', async () => {
+    mockUseAgentOptional.mockReturnValue({
+      state: {
+        pendingApprovals: [
+          {
+            kind: 'tool_call_pending_approval',
+            conversationId: 'conversation-1',
+            toolCallId: 'tool-1',
+            name: 'vault_update_note',
+            args: {
+              id: 'note-1',
+              mode: 'append',
+              content_markdown: 'new'
+            },
+            requiresDiff: true
+          }
+        ]
+      },
+      approveTool: mockApproveTool
+    })
+
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'tool-call-1',
+            role: 'tool_call',
+            toolCallId: 'tool-1',
+            content: {
+              role: 'tool_call',
+              data: {
+                tool: 'vault_update_note',
+                args: {
+                  id: 'note-1',
+                  mode: 'append',
+                  content_markdown: 'new'
+                },
+                status: 'pending'
+              }
+            }
+          })
+        ]}
+      />
+    )
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    const candidate = await screen.findByRole('textbox', { name: 'Candidate' })
+    fireEvent.change(candidate, { target: { value: 'edited full note' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Apply edited' }))
+
+    expect(mockPreviewDiff).toHaveBeenCalledWith({
+      conversationId: 'conversation-1',
+      toolCallId: 'tool-1'
+    })
+    await waitFor(() => {
+      expect(mockApproveTool).toHaveBeenCalledWith({
+        conversationId: 'conversation-1',
+        toolCallId: 'tool-1',
+        decision: {
+          kind: 'edit_allow',
+          editedArgs: {
+            id: 'note-1',
+            mode: 'replace',
+            content_markdown: 'edited full note'
+          }
+        }
+      })
+    })
   })
 })

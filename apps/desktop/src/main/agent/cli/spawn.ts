@@ -49,6 +49,7 @@ export async function spawnClaudeTurn(opts: SpawnOptions): Promise<ClaudeSubproc
     '--output-format',
     'stream-json',
     '--include-partial-messages',
+    '--verbose',
     '--mcp-config',
     configPath,
     '--strict-mcp-config',

@@ -177,6 +177,14 @@ vi.mock('./split-view/tab-pane', () => ({
   )
 }))
 
+vi.mock('./split-view/tab-pane-with-drop-zones', () => ({
+  TabPaneWithDropZones: ({ groupId, isActive, showSidebarToggle }: any) => (
+    <div>
+      pane:{groupId}:{String(isActive)}:{String(showSidebarToggle)}
+    </div>
+  )
+}))
+
 vi.mock('@/components/ui/alert-dialog', () => ({
   AlertDialog: ({ open, children }: { open: boolean; children: ReactNode }) =>
     open ? <div>{children}</div> : null,

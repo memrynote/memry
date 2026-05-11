@@ -49,7 +49,7 @@ export class AgentRuntime {
 
   install(): void {
     setMcpWriteGate(async (ctx) => {
-      const conversation = await this.deps.conversations.getById(ctx.conversationId)
+      const conversation = this.deps.conversations.getById(ctx.conversationId)
       if (!conversation) {
         return { approved: false, reason: 'Unknown conversation' }
       }
@@ -86,7 +86,7 @@ export class AgentRuntime {
       }
 
       if (userDecision.kind === 'allow_always') {
-        await this.deps.conversations.addToTrustList(ctx.conversationId, ctx.toolName)
+        this.deps.conversations.addToTrustList(ctx.conversationId, ctx.toolName)
       }
 
       const args = userDecision.kind === 'edit_allow' ? userDecision.editedArgs : ctx.parsedArgs

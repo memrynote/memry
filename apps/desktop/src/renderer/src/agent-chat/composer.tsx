@@ -3,10 +3,14 @@ import { useEffect, useState } from 'react'
 import type { AttachmentInput } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
 
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
+import {
+  PromptInput,
+  PromptInputActions,
+  PromptInputSubmit,
+  PromptInputTextarea
+} from '@/components/ai-elements/prompt-input'
 import { useActiveTab } from '@/contexts/tabs'
-import { Send, X } from '@/lib/icons'
+import { Send, Square, X } from '@/lib/icons'
 import { useAgentOptional } from './agent-context'
 import { RefPicker } from './ref-picker'
 
@@ -68,6 +72,12 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     setAttachments((current) => current.filter((attachment) => attachment.kind === 'current_note'))
   }
 
+  function cancelTurn(): void {
+    if (!agent || !inFlight) return
+
+    void agent.cancelTurn(conversationId)
+  }
+
   function removeAttachment(refId: string): void {
     setAttachments((current) => current.filter((attachment) => attachment.ref_id !== refId))
   }
@@ -115,36 +125,43 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
           onClose={() => setPickerOpen(false)}
         />
       )}
-      <div className="flex items-end gap-2">
-        <Textarea
-          value={text}
-          onChange={(event) => {
-            const nextText = event.target.value
-            setText(nextText)
-            setPickerOpen(getRefQuery(nextText) !== null)
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-              event.preventDefault()
-              submit()
-            }
-            if (event.key === 'Escape') setPickerOpen(false)
-          }}
-          rows={3}
-          disabled={inFlight || !agent}
-          placeholder={t('agentChat.composer.placeholder')}
-          className="min-h-20 resize-none bg-background text-sm"
-        />
-        <Button
-          type="button"
-          size="icon-sm"
-          aria-label={t('agentChat.composer.send')}
-          disabled={!canSend}
-          onClick={submit}
-        >
-          <Send className="size-4" aria-hidden="true" />
-        </Button>
-      </div>
+      <PromptInput onSubmit={() => submit()}>
+        <PromptInputActions>
+          <PromptInputTextarea
+            value={text}
+            onChange={(event) => {
+              const nextText = event.target.value
+              setText(nextText)
+              setPickerOpen(getRefQuery(nextText) !== null)
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault()
+                submit()
+              }
+              if (event.key === 'Escape') setPickerOpen(false)
+            }}
+            rows={3}
+            disabled={inFlight || !agent}
+            placeholder={t('agentChat.composer.placeholder')}
+            className="flex-1"
+          />
+          {inFlight ? (
+            <PromptInputSubmit
+              type="button"
+              aria-label={t('agentChat.stop')}
+              disabled={!agent}
+              onClick={cancelTurn}
+            >
+              <Square className="size-4" aria-hidden="true" />
+            </PromptInputSubmit>
+          ) : (
+            <PromptInputSubmit aria-label={t('agentChat.composer.send')} disabled={!canSend}>
+              <Send className="size-4" aria-hidden="true" />
+            </PromptInputSubmit>
+          )}
+        </PromptInputActions>
+      </PromptInput>
     </div>
   )
 }

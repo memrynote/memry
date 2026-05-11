@@ -98,6 +98,22 @@ describe('agent IPC schemas', () => {
   it('type-checks all renderer event variants', () => {
     const events: AgentEvent[] = [
       {
+        kind: 'message_upserted',
+        message: {
+          id: 'message-1',
+          conversationId: 'conversation-1',
+          role: 'assistant',
+          content: { role: 'assistant', data: { text: 'hello' } },
+          toolCallId: null,
+          attachments: [],
+          status: 'streaming',
+          vectorClock: {},
+          createdAt: 100,
+          updatedAt: 100,
+          deletedAt: null
+        }
+      },
+      {
         kind: 'assistant_text_delta',
         conversationId: 'conversation-1',
         messageId: 'message-1',
