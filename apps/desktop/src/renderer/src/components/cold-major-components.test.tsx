@@ -946,6 +946,9 @@ describe('cold major renderer components', () => {
         command={wikiCommand}
       />
     )
+    const pageFourOption = screen.getByRole('option', { name: 'Page four' })
+    expect(pageFourOption.querySelector('svg')).toBeNull()
+
     fireEvent.click(screen.getByText('Page four'))
     expect(wikiCommand).toHaveBeenCalledWith({ href: 'p4', title: 'Page four', exists: false })
     act(() => {
