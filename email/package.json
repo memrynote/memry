@@ -1,0 +1,28 @@
+{
+  "name": "memry-marketing-emails",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Pre-launch marketing emails for Memry. React Email + Resend.",
+  "scripts": {
+    "dev": "email dev",
+    "build": "email build",
+    "export": "email export --pretty --outDir ./out",
+    "send": "tsx scripts/send.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@react-email/components": "^1.0.12",
+    "@react-email/render": "^1.3.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "resend": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "react-email": "^6.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.7.2"
+  }
+}
