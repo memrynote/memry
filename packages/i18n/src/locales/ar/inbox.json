@@ -421,11 +421,6 @@
       "folderSuggestions": "اقتراحات المجلدات",
       "noFoldersMatch": "لا توجد مجلدات متطابقة \""
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "تعيين تذكير لهذا النص",
-      "remindMeAboutThis": "ذكرني بهذا",
-      "selectedText": "النص المحدد:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "تذكير",
       "remindMe": "ذكرني",

@@ -286,7 +286,6 @@
     "setReminder": "Emlékeztető beállítása",
     "toast": {
       "set": "Emlékeztető beállítva",
-      "setForHighlight": "Emlékeztető beállítva a kiemelt szöveghez",
       "setFailed": "Nem sikerült beállítani az emlékeztetőt",
       "deleted": "Emlékeztető törölve",
       "deleteFailed": "Nem sikerült törölni az emlékeztetőt",

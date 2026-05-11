@@ -421,11 +421,6 @@
       "folderSuggestions": "Gợi ý thư mục",
       "noFoldersMatch": "Không có thư mục nào phù hợp"
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "Đặt lời nhắc cho văn bản này",
-      "remindMeAboutThis": "Nhắc tôi về điều này",
-      "selectedText": "Văn bản đã chọn:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "Nhắc",
       "remindMe": "Nhắc tôi",

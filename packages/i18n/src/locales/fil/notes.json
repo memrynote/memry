@@ -286,7 +286,6 @@
     "setReminder": "Itakda ang paalala",
     "toast": {
       "set": "Nakatakda ang paalala",
-      "setForHighlight": "Nakatakda ang paalala para sa naka-highlight na text",
       "setFailed": "Nabigong itakda ang paalala",
       "deleted": "Tinanggal ang paalala",
       "deleteFailed": "Nabigong tanggalin ang paalala",

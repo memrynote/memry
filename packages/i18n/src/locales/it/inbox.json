@@ -421,11 +421,6 @@
       "folderSuggestions": "Suggerimenti per le cartelle",
       "noFoldersMatch": "Nessuna cartella corrisponde a \""
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "Imposta promemoria per questo testo",
-      "remindMeAboutThis": "Ricordamelo",
-      "selectedText": "Testo selezionato:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "Ricordare",
       "remindMe": "Ricordamelo",

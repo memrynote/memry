@@ -286,7 +286,6 @@
     "setReminder": "Erinnerung festlegen",
     "toast": {
       "set": "Erinnerung eingestellt",
-      "setForHighlight": "Erinnerung für hervorgehobenen Text eingestellt",
       "setFailed": "Erinnerung konnte nicht eingerichtet werden",
       "deleted": "Erinnerung gelöscht",
       "deleteFailed": "Erinnerung konnte nicht gelöscht werden",

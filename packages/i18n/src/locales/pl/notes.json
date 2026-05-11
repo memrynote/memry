@@ -286,7 +286,6 @@
     "setReminder": "Ustaw przypomnienie",
     "toast": {
       "set": "Zestaw przypomnień",
-      "setForHighlight": "Przypomnienie ustawione dla zaznaczonego tekstu",
       "setFailed": "Nie udało się ustawić przypomnienia",
       "deleted": "Przypomnienie zostało usunięte",
       "deleteFailed": "Nie udało się usunąć przypomnienia",

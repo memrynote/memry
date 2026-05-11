@@ -421,11 +421,6 @@
       "folderSuggestions": "Пропозиції папок",
       "noFoldersMatch": "Немає відповідних папок"
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "Встановити нагадування для цього тексту",
-      "remindMeAboutThis": "Нагадайте мені про це",
-      "selectedText": "Вибраний текст:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "Нагадати",
       "remindMe": "Нагадайте мені",

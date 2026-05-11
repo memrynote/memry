@@ -421,11 +421,6 @@
       "folderSuggestions": "คำแนะนำโฟลเดอร์",
       "noFoldersMatch": "ไม่มีโฟลเดอร์ที่ตรงกัน"
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "ตั้งค่าการเตือนสำหรับข้อความนี้",
-      "remindMeAboutThis": "เตือนฉันเกี่ยวกับสิ่งนี้",
-      "selectedText": "ข้อความที่เลือก:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "เตือน",
       "remindMe": "เตือนฉัน",

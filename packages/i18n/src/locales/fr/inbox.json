@@ -421,11 +421,6 @@
       "folderSuggestions": "Suggestions de dossiers",
       "noFoldersMatch": "Aucun dossier ne correspond à \""
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "Définir un rappel pour ce texte",
-      "remindMeAboutThis": "Rappelle-moi ça",
-      "selectedText": "Texte sélectionné :"
-    },
     "componentsReminderReminderPicker": {
       "remind": "Rappeler",
       "remindMe": "Rappelle-moi",

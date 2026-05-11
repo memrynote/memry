@@ -4,7 +4,6 @@ import {
   reminderService,
   createNoteReminder,
   createJournalReminder,
-  createHighlightReminder,
   onReminderCreated,
   onReminderUpdated,
   onReminderDeleted,
@@ -105,18 +104,6 @@ describe('reminder-service', () => {
       targetType: 'journal',
       targetId: '2025-01-02',
       remindAt: '2025-01-03',
-      title: undefined,
-      note: undefined
-    })
-
-    await createHighlightReminder('note-2', 'Highlight', 1, 5, '2025-01-04')
-    expect(api.reminders.create).toHaveBeenCalledWith({
-      targetType: 'highlight',
-      targetId: 'note-2',
-      remindAt: '2025-01-04',
-      highlightText: 'Highlight',
-      highlightStart: 1,
-      highlightEnd: 5,
       title: undefined,
       note: undefined
     })

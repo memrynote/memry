@@ -421,11 +421,6 @@
       "folderSuggestions": "Sugestões de pastas",
       "noFoldersMatch": "Nenhuma pasta corresponde a \""
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "Definir lembrete para este texto",
-      "remindMeAboutThis": "Lembre-me disso",
-      "selectedText": "Texto selecionado:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "Lembrar",
       "remindMe": "Lembre-me",

@@ -182,29 +182,6 @@ export async function createJournalReminder(
   })
 }
 
-/**
- * Create a highlight reminder
- */
-export async function createHighlightReminder(
-  noteId: string,
-  highlightText: string,
-  highlightStart: number,
-  highlightEnd: number,
-  remindAt: string,
-  options?: { title?: string; note?: string }
-): Promise<ReminderCreateResponse> {
-  return reminderService.create({
-    targetType: 'highlight',
-    targetId: noteId,
-    remindAt,
-    highlightText,
-    highlightStart,
-    highlightEnd,
-    title: options?.title,
-    note: options?.note
-  })
-}
-
 // ============================================================================
 // Event Subscriptions
 // ============================================================================

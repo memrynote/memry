@@ -421,11 +421,6 @@
       "folderSuggestions": "Návrhy složek",
       "noFoldersMatch": "Žádné složky neodpovídají \""
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "Nastavit připomenutí pro tento text",
-      "remindMeAboutThis": "Připomeňte mi to",
-      "selectedText": "Vybraný text:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "Připomeňte",
       "remindMe": "Připomeňte mi",

@@ -421,11 +421,6 @@
       "folderSuggestions": "הצעות לתיקיות",
       "noFoldersMatch": "אין תיקיות תואמות \""
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "הגדר תזכורת עבור הטקסט הזה",
-      "remindMeAboutThis": "תזכיר לי את זה",
-      "selectedText": "טקסט נבחר:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "להזכיר",
       "remindMe": "תזכיר לי",

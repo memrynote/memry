@@ -421,11 +421,6 @@
       "folderSuggestions": "sugerencias de carpetas",
       "noFoldersMatch": "Ninguna carpeta coincide \""
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "Establecer recordatorio para este texto",
-      "remindMeAboutThis": "Recuérdame esto",
-      "selectedText": "Texto seleccionado:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "Recordar",
       "remindMe": "Recuérdame",

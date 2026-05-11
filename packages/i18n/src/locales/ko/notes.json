@@ -286,7 +286,6 @@
     "setReminder": "알림 설정",
     "toast": {
       "set": "알림 설정",
-      "setForHighlight": "강조표시된 텍스트에 대한 알림 설정",
       "setFailed": "알림을 설정하지 못했습니다.",
       "deleted": "알림이 삭제되었습니다.",
       "deleteFailed": "알림을 삭제하지 못했습니다.",

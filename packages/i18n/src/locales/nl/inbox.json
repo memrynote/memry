@@ -421,11 +421,6 @@
       "folderSuggestions": "Mapsuggesties",
       "noFoldersMatch": "Er komen geen mappen overeen \""
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "Stel een herinnering in voor deze tekst",
-      "remindMeAboutThis": "Herinner mij hieraan",
-      "selectedText": "Geselecteerde tekst:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "Herinner",
       "remindMe": "Herinner mij eraan",

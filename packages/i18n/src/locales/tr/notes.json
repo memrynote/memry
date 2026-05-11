@@ -286,7 +286,6 @@
     "setReminder": "Hatırlatıcı ayarla",
     "toast": {
       "set": "Hatırlatıcı ayarlandı",
-      "setForHighlight": "Vurgulanan metin için hatırlatıcı ayarlandı",
       "setFailed": "Hatırlatıcı ayarlanamadı",
       "deleted": "Hatırlatıcı silindi",
       "deleteFailed": "Hatırlatıcı silinemedi",
