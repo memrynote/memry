@@ -6,14 +6,20 @@ vi.mock('../event-bus', () => ({
 
 import type { ConversationStore } from '../../storage/conversation-store'
 import type { MessageStore } from '../../storage/message-store'
-import type { Message, MessageContent, MessageRole, MessageStatus } from '../../storage/types'
+import type {
+  Conversation,
+  Message,
+  MessageContent,
+  MessageRole,
+  MessageStatus
+} from '../../storage/types'
 import { broadcastAgentEvent } from '../event-bus'
 import { runTurn } from '../turn'
 
 describe('runTurn against a stub backend', () => {
   it('persists user and assistant messages from stream-json output', async () => {
     const messages = createFakeMessageStore()
-    const conversations = {} as ConversationStore
+    const conversations = createFakeConversationStore({ title: 'Existing conversation' })
     const stdout = (async function* () {
       yield Buffer.from(
         `${JSON.stringify({
@@ -76,7 +82,7 @@ describe('runTurn against a stub backend', () => {
 
   it('marks the assistant message as errored when the subprocess exits non-zero', async () => {
     const messages = createFakeMessageStore()
-    const conversations = {} as ConversationStore
+    const conversations = createFakeConversationStore({ title: 'Existing conversation' })
     const spawnSubprocess = vi.fn(async () => ({
       stdout: (async function* () {})(),
       stderr: (async function* () {
@@ -132,7 +138,7 @@ describe('runTurn against a stub backend', () => {
         createdAt: 2
       })
     ])
-    const conversations = {} as ConversationStore
+    const conversations = createFakeConversationStore()
     const spawnSubprocess = vi
       .fn()
       .mockResolvedValueOnce({
@@ -186,7 +192,105 @@ describe('runTurn against a stub backend', () => {
       messages.listByConversation('conversation-1').some((message) => message.role === 'system')
     ).toBe(true)
   })
+
+  it('uses the selected backend subprocess to title a default conversation from the first prompt', async () => {
+    const messages = createFakeMessageStore()
+    const conversations = createFakeConversationStore()
+    const spawnSubprocess = vi
+      .fn()
+      .mockResolvedValueOnce({
+        stdout: (async function* () {
+          yield Buffer.from(
+            `${JSON.stringify({
+              type: 'content_block_delta',
+              delta: { type: 'text_delta', text: 'Project Roadmap' }
+            })}\n`
+          )
+          yield Buffer.from(`${JSON.stringify({ type: 'message_stop' })}\n`)
+        })(),
+        stderr: (async function* () {})(),
+        pid: 1,
+        kill: vi.fn(),
+        waitExit: async () => 0,
+        cleanup: vi.fn()
+      })
+      .mockResolvedValueOnce({
+        stdout: (async function* () {
+          yield Buffer.from(`${JSON.stringify({ type: 'message_stop' })}\n`)
+        })(),
+        stderr: (async function* () {})(),
+        pid: 2,
+        kill: vi.fn(),
+        waitExit: async () => 0,
+        cleanup: vi.fn()
+      })
+
+    await runTurn(
+      {
+        conversations,
+        messages,
+        spawnSubprocess,
+        toolHandlers: { routeToolCall: vi.fn() }
+      },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'Create a roadmap from my project notes',
+        attachments: []
+      }
+    )
+
+    expect(spawnSubprocess).toHaveBeenCalledTimes(2)
+    expect(spawnSubprocess.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        conversationId: 'conversation-1',
+        windowId: 'window-1',
+        purpose: 'title',
+        prompt: expect.stringContaining('Create a roadmap from my project notes')
+      })
+    )
+    expect(conversations.update).toHaveBeenCalledWith(
+      'conversation-1',
+      { title: 'Project Roadmap' },
+      ['title']
+    )
+    expect(broadcastAgentEvent).toHaveBeenCalledWith({
+      kind: 'conversation_updated',
+      conversation: expect.objectContaining({
+        id: 'conversation-1',
+        title: 'Project Roadmap'
+      })
+    })
+  })
 })
+
+function createFakeConversationStore(overrides: Partial<Conversation> = {}): ConversationStore {
+  const conversation = {
+    id: 'conversation-1',
+    vaultId: 'vault-1',
+    title: 'New conversation',
+    backend: 'claude_cli',
+    trustList: [],
+    pinned: false,
+    vectorClock: {},
+    fieldClocks: {},
+    createdAt: 1,
+    updatedAt: 1,
+    deletedAt: null,
+    lastSyncedAt: null,
+    ...overrides
+  }
+
+  return {
+    create: vi.fn(),
+    getById: vi.fn(() => conversation),
+    listByVault: vi.fn(() => [conversation]),
+    update: vi.fn((_id, patch) => ({ ...conversation, ...patch, updatedAt: 2 })),
+    softDelete: vi.fn(),
+    addToTrustList: vi.fn(),
+    removeFromTrustList: vi.fn()
+  }
+}
 
 function createFakeMessageStore(seed: Message[] = []): MessageStore {
   const messages: Message[] = [...seed]
