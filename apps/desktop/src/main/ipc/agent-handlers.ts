@@ -44,6 +44,8 @@ interface AgentHandlerDeps {
 }
 
 export function registerAgentHandlers(deps: AgentHandlerDeps): void {
+  unregisterAgentHandlers()
+
   ipcMain.handle(AgentChannels.invoke.LIST_CONVERSATIONS, async (_event, payload: unknown) => {
     const { vaultId = deps.vaultId } = (payload ?? {}) as { vaultId?: string }
     return deps.conversations.listByVault(vaultId)
@@ -171,10 +173,44 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
   }))
 }
 
+export function registerUnavailableAgentHandlers(reason: string): void {
+  const message = `Agent runtime unavailable: ${reason}`
+  const unavailable = (): never => {
+    throw new Error(message)
+  }
+
+  unregisterAgentHandlers()
+
+  registerUnavailableHandler(AgentChannels.invoke.LIST_CONVERSATIONS, async () => [])
+  registerUnavailableHandler(AgentChannels.invoke.CREATE_CONVERSATION, async () => unavailable())
+  registerUnavailableHandler(AgentChannels.invoke.LOAD_CONVERSATION, async () => unavailable())
+  registerUnavailableHandler(AgentChannels.invoke.SEND_TURN, async () => ({
+    ok: false,
+    error: message
+  }))
+  registerUnavailableHandler(AgentChannels.invoke.CANCEL_TURN, async () => unavailable())
+  registerUnavailableHandler(AgentChannels.invoke.APPROVE_TOOL, async () => unavailable())
+  registerUnavailableHandler(AgentChannels.invoke.PREVIEW_DIFF, async () => unavailable())
+  registerUnavailableHandler(AgentChannels.invoke.EDIT_TRUST_LIST, async () => unavailable())
+  registerUnavailableHandler(AgentChannels.invoke.GET_BINARY_STATUS, () => detectClaudeBinary())
+  registerUnavailableHandler(AgentChannels.invoke.GET_DISCLOSURE_STATE, () => getDisclosureState())
+  registerUnavailableHandler(AgentChannels.invoke.ACCEPT_DISCLOSURE, () => acceptDisclosure())
+  registerUnavailableHandler(AgentChannels.invoke.GET_WINDOW_ID, (event) => ({
+    windowId: resolveSenderWindowId(event.sender)
+  }))
+}
+
 export function unregisterAgentHandlers(): void {
   for (const channel of Object.values(AgentChannels.invoke)) {
     ipcMain.removeHandler(channel)
   }
+}
+
+function registerUnavailableHandler(
+  channel: string,
+  handler: Parameters<typeof ipcMain.handle>[1]
+): void {
+  ipcMain.handle(channel, handler)
 }
 
 function extractErrorMessage(error: unknown, fallback: string): string {

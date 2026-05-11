@@ -61,7 +61,7 @@ const hoisted = vi.hoisted(() => {
     }),
     verifySignatureMock: vi.fn(() => true),
     decryptMock: vi.fn(() => new TextEncoder().encode(JSON.stringify({ title: 'Decrypted' }))),
-    getOrDeriveVaultKeyMock: vi.fn(async () => new Uint8Array(32)),
+    getVerifiedVaultKeyMock: vi.fn(async () => new Uint8Array(32)),
     retrieveKeyMock: vi.fn(async () => new Uint8Array(64)),
     generateRecoveryPhraseMock: vi.fn(async () => ({
       phrase: 'new recovery phrase',
@@ -75,8 +75,10 @@ const hoisted = vi.hoisted(() => {
     })),
     deriveKeyMock: vi.fn(async () => new Uint8Array(32)),
     storeKeyMock: vi.fn(async () => undefined),
+    storeVaultKeyVerifierMock: vi.fn(),
     performKeyRotationMock: vi.fn(async () => ({ success: true })),
     getDatabaseMock: vi.fn(),
+    getOrCreateVaultUuidMock: vi.fn(() => 'vault-1'),
     getSyncEngineMock: vi.fn(() => null),
     getFromServerMock: vi.fn(),
     postToServerMock: vi.fn(),
@@ -122,7 +124,7 @@ vi.mock('../crypto', () => ({
   encrypt: vi.fn(() => ({ ciphertext: new Uint8Array(1), nonce: new Uint8Array(24) })),
   decrypt: (...args: unknown[]) => hoisted.decryptMock(...args),
   generateFileKey: vi.fn(() => new Uint8Array(32)),
-  getOrDeriveVaultKey: (...args: unknown[]) => hoisted.getOrDeriveVaultKeyMock(...args),
+  getOrInitializeLocalVaultKey: (...args: unknown[]) => hoisted.getVerifiedVaultKeyMock(...args),
   wrapFileKey: vi.fn(() => ({ wrappedKey: new Uint8Array(48), nonce: new Uint8Array(24) })),
   unwrapFileKey: vi.fn(() => new Uint8Array(32)),
   signPayload: vi.fn(() => new Uint8Array(64)),
@@ -133,7 +135,12 @@ vi.mock('../crypto', () => ({
   deriveMasterKey: hoisted.deriveMasterKeyMock,
   deriveKey: hoisted.deriveKeyMock,
   storeKey: hoisted.storeKeyMock,
+  storeVaultKeyVerifier: hoisted.storeVaultKeyVerifierMock,
   secureCleanup: vi.fn()
+}))
+
+vi.mock('../agent/storage/vault-id', () => ({
+  getOrCreateVaultUuid: hoisted.getOrCreateVaultUuidMock
 }))
 
 vi.mock('../crypto/rotation', () => ({
@@ -188,7 +195,7 @@ describe('crypto-handlers', () => {
     hoisted.decryptMock.mockReturnValue(
       new TextEncoder().encode(JSON.stringify({ title: 'Decrypted' }))
     )
-    hoisted.getOrDeriveVaultKeyMock.mockResolvedValue(new Uint8Array(32))
+    hoisted.getVerifiedVaultKeyMock.mockResolvedValue(new Uint8Array(32))
     hoisted.retrieveKeyMock.mockResolvedValue(new Uint8Array(64))
     hoisted.generateRecoveryPhraseMock.mockResolvedValue({
       phrase: 'new recovery phrase',
@@ -261,7 +268,7 @@ describe('crypto-handlers', () => {
       keyNonce: 'encoded',
       signature: 'encoded'
     })
-    expect(hoisted.getOrDeriveVaultKeyMock).toHaveBeenCalled()
+    expect(hoisted.getVerifiedVaultKeyMock).toHaveBeenCalled()
     expect(hoisted.retrieveKeyMock).toHaveBeenCalled()
   })
 
@@ -298,7 +305,7 @@ describe('crypto-handlers', () => {
       error: 'Signature verification failed'
     })
 
-    hoisted.getOrDeriveVaultKeyMock.mockRejectedValueOnce(new Error('missing key'))
+    hoisted.getVerifiedVaultKeyMock.mockRejectedValueOnce(new Error('missing key'))
     await expect(invokeHandler(SYNC_CHANNELS.DECRYPT_ITEM, createDecryptInput())).resolves.toEqual({
       success: false,
       error: 'Failed to derive vault key — master key missing'

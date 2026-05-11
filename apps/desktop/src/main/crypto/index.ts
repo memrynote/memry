@@ -45,6 +45,12 @@ export { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
 
 export { deleteKey, retrieveKey, storeKey } from './keychain'
 
+export {
+  computeVaultKeyVerifier,
+  getOrInitializeLocalVaultKey,
+  storeVaultKeyVerifier
+} from './vault-key-state'
+
 export { secureCleanup } from './primitives'
 export { lockKeyMaterial, unlockKeyMaterial } from './memory-lock'
 

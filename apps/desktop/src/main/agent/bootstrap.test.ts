@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   getDatabase: vi.fn(() => ({ db: true })),
   getIndexDatabase: vi.fn(() => ({ indexDb: true })),
-  getOrDeriveVaultKey: vi.fn(async () => new Uint8Array(32).fill(1)),
+  getOrInitializeLocalVaultKey: vi.fn(async () => new Uint8Array(32).fill(1)),
   secureCleanup: vi.fn(),
   getOrCreateVaultUuid: vi.fn(() => 'vault-1'),
   createConversationStore: vi.fn(() => ({ store: 'conversations' })),
@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
     }
   })),
   registerAgentHandlers: vi.fn(),
+  registerUnavailableAgentHandlers: vi.fn(),
   unregisterAgentHandlers: vi.fn(),
   getPublicStatus: vi.fn(() => ({
     url: 'http://127.0.0.1:54321',
@@ -49,7 +50,7 @@ vi.mock('../database', () => ({
   getIndexDatabase: mocks.getIndexDatabase
 }))
 vi.mock('../crypto', () => ({
-  getOrDeriveVaultKey: mocks.getOrDeriveVaultKey,
+  getOrInitializeLocalVaultKey: mocks.getOrInitializeLocalVaultKey,
   secureCleanup: mocks.secureCleanup
 }))
 vi.mock('./storage/vault-id', () => ({ getOrCreateVaultUuid: mocks.getOrCreateVaultUuid }))
@@ -59,6 +60,7 @@ vi.mock('./storage/conversation-store', () => ({
 vi.mock('./storage/message-store', () => ({ createMessageStore: mocks.createMessageStore }))
 vi.mock('../ipc/agent-handlers', () => ({
   registerAgentHandlers: mocks.registerAgentHandlers,
+  registerUnavailableAgentHandlers: mocks.registerUnavailableAgentHandlers,
   unregisterAgentHandlers: mocks.unregisterAgentHandlers
 }))
 vi.mock('./mcp/lifecycle', () => ({ getPublicStatus: mocks.getPublicStatus }))
@@ -79,9 +81,25 @@ vi.mock('./runtime/runtime', () => ({
 import { startAgent } from './bootstrap'
 
 describe('startAgent', () => {
+  it('registers unavailable IPC handlers when the local vault key cannot be created', async () => {
+    mocks.getOrInitializeLocalVaultKey.mockRejectedValueOnce(new Error('keychain locked'))
+
+    const agent = await startAgent()
+
+    expect(mocks.registerUnavailableAgentHandlers).toHaveBeenCalledWith('keychain locked')
+    expect(mocks.getOrCreateVaultUuid).toHaveBeenCalledWith({ db: true })
+    expect(mocks.createConversationStore).not.toHaveBeenCalled()
+    expect(mocks.runtimeInstall).not.toHaveBeenCalled()
+
+    await agent.shutdown()
+
+    expect(mocks.unregisterAgentHandlers).toHaveBeenCalled()
+  })
+
   it('creates stores, installs runtime, and registers IPC handlers', async () => {
     await startAgent()
 
+    expect(mocks.getOrInitializeLocalVaultKey).toHaveBeenCalledWith({ db: true }, 'vault-1')
     expect(mocks.getOrCreateVaultUuid).toHaveBeenCalledWith({ db: true })
     expect(mocks.createConversationStore).toHaveBeenCalledWith({
       db: { db: true },
