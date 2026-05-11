@@ -5,7 +5,6 @@
 import type { SuggestionMenuProps } from '@blocknote/react'
 import { FileText, Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { formatRelativeTime } from '@/lib/wiki-link-utils'
 import { useT } from '@memry/i18n/renderer'
 
 export type WikiLinkSuggestionItem = {
@@ -62,7 +61,7 @@ export function WikiLinkMenu({
             key={`${item.type}-${item.id}-${item.target}`}
             className={cn(
               'wiki-link-menu-item',
-              'relative flex w-full cursor-pointer select-none items-start gap-2 rounded-sm px-2 py-1.5 text-sm outline-none',
+              'relative flex w-full cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none',
               'hover:bg-accent hover:text-accent-foreground',
               isSelected && 'bg-accent text-accent-foreground'
             )}
@@ -70,26 +69,15 @@ export function WikiLinkMenu({
             role="option"
             aria-selected={isSelected}
           >
-            {item.type === 'create' ? (
-              <Plus className="mt-0.5 h-4 w-4 shrink-0" />
-            ) : (
-              <FileText className="mt-0.5 h-4 w-4 shrink-0 opacity-70" />
-            )}
-            <div className="flex flex-1 flex-col gap-0.5 text-left">
+            {item.type === 'create' ? <Plus className="mt-0.5 h-4 w-4 shrink-0" /> : null}
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-start">
               {item.type === 'create' ? (
                 <>
                   <div className="font-medium">{t('menus.wiki.create')}</div>
                   <div className="text-xs text-muted-foreground">{item.target}</div>
                 </>
               ) : (
-                <>
-                  <div className="font-medium">{item.title}</div>
-                  {item.lastEdited && (
-                    <div className="text-xs text-muted-foreground">
-                      {formatRelativeTime(item.lastEdited)}
-                    </div>
-                  )}
-                </>
+                <div className="truncate font-medium">{item.title}</div>
               )}
             </div>
           </button>
