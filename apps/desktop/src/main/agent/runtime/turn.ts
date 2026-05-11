@@ -20,6 +20,7 @@ export interface TurnDeps {
     prompt: string
     conversationId: string
     windowId: string
+    purpose?: 'turn' | 'summary' | 'title'
   }) => Promise<{
     stdout: AsyncIterable<Buffer>
     stderr: AsyncIterable<Buffer>
@@ -39,6 +40,8 @@ export interface TurnDeps {
   }
 }
 
+const DEFAULT_CONVERSATION_TITLE = 'New conversation'
+
 export interface RunTurnInput {
   conversationId: string
   sourceWindowId: string
@@ -48,6 +51,11 @@ export interface RunTurnInput {
 
 export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ turnId: string }> {
   const turnId = randomUUID()
+  const existingMessages = deps.messages.listByConversation(input.conversationId)
+  const existingConversation = deps.conversations.getById(input.conversationId)
+  const shouldGenerateTitle =
+    existingConversation?.title.trim() === DEFAULT_CONVERSATION_TITLE &&
+    !existingMessages.some((message) => message.role === 'user')
 
   const user = deps.messages.append({
     conversationId: input.conversationId,
@@ -60,6 +68,15 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     kind: 'message_upserted',
     message: user
   })
+
+  const titlePromise = shouldGenerateTitle
+    ? maybeGenerateConversationTitle(deps, {
+        conversationId: input.conversationId,
+        windowId: input.sourceWindowId,
+        text: input.text,
+        attachments: input.attachments
+      })
+    : Promise.resolve()
 
   let history = deps.messages
     .listByConversation(input.conversationId)
@@ -95,7 +112,8 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
   const sub = await deps.spawnSubprocess({
     prompt: compactedPrompt,
     conversationId: input.conversationId,
-    windowId: input.sourceWindowId
+    windowId: input.sourceWindowId,
+    purpose: 'turn'
   })
   const stderrTextPromise = collectStreamText(sub.stderr)
 
@@ -176,16 +194,129 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     })
   } finally {
     await sub.cleanup()
+    await titlePromise
   }
 
   return { turnId }
+}
+
+async function maybeGenerateConversationTitle(
+  deps: TurnDeps,
+  input: {
+    conversationId: string
+    windowId: string
+    text: string
+    attachments: MessageAttachment[]
+  }
+): Promise<void> {
+  try {
+    const title = await generateTitleWithSubprocess(deps, {
+      prompt: assembleTitlePrompt(input.text, input.attachments),
+      conversationId: input.conversationId,
+      windowId: input.windowId
+    })
+    if (!title) return
+
+    const updated = deps.conversations.update(input.conversationId, { title }, ['title'])
+    broadcastAgentEvent({
+      kind: 'conversation_updated',
+      conversation: updated
+    })
+  } catch (error) {
+    logger.warn('Conversation title generation failed', error)
+  }
+}
+
+async function generateTitleWithSubprocess(
+  deps: TurnDeps,
+  input: { prompt: string; conversationId: string; windowId: string }
+): Promise<string | null> {
+  const sub = await deps.spawnSubprocess({ ...input, purpose: 'title' })
+  const events: BackendEvent[] = []
+  const parser = createStreamParser((event) => {
+    events.push(event)
+  })
+  const stderrTextPromise = collectStreamText(sub.stderr)
+  let raw = ''
+  let title = ''
+
+  try {
+    for await (const chunk of sub.stdout) {
+      const text = chunk.toString('utf8')
+      raw += text
+      parser.feed(text)
+      while (events.length > 0) {
+        const event = events.shift()
+        if (event?.kind === 'assistant_delta') {
+          title += event.text
+        }
+      }
+    }
+    parser.flush()
+    while (events.length > 0) {
+      const event = events.shift()
+      if (event?.kind === 'assistant_delta') {
+        title += event.text
+      }
+    }
+
+    const exitCode = await sub.waitExit()
+    if (exitCode !== 0) {
+      const stderrText = (await stderrTextPromise).trim()
+      logger.warn('Conversation title subprocess exited non-zero', { exitCode, stderr: stderrText })
+      return null
+    }
+
+    return sanitizeGeneratedTitle(title || raw)
+  } finally {
+    await sub.cleanup()
+  }
+}
+
+function assembleTitlePrompt(text: string, attachments: MessageAttachment[]): string {
+  const lines = [
+    'Generate a short title for this Memry Agent Chat conversation.',
+    'Rules:',
+    '- Use 2 to 6 words.',
+    '- Preserve the user language.',
+    '- Do not use quotes or trailing punctuation.',
+    '- Return only the title.',
+    '',
+    `User message: ${text}`
+  ]
+
+  if (attachments.length > 0) {
+    lines.push('', 'Attached references:')
+    for (const attachment of attachments) {
+      lines.push(`- ${attachment.kind}: ${attachment.label}`)
+    }
+  }
+
+  return lines.join('\n')
+}
+
+function sanitizeGeneratedTitle(value: string): string | null {
+  const firstLine = value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find(Boolean)
+  if (!firstLine) return null
+
+  const title = firstLine
+    .replace(/^["'`]+|["'`]+$/g, '')
+    .replace(/[.!?:;]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (!title || title === DEFAULT_CONVERSATION_TITLE) return null
+  return title.length > 80 ? title.slice(0, 80).trim() : title
 }
 
 async function summarizeWithSubprocess(
   deps: TurnDeps,
   input: { prompt: string; conversationId: string; windowId: string }
 ): Promise<string> {
-  const sub = await deps.spawnSubprocess(input)
+  const sub = await deps.spawnSubprocess({ ...input, purpose: 'summary' })
   const events: BackendEvent[] = []
   const parser = createStreamParser((event) => {
     events.push(event)

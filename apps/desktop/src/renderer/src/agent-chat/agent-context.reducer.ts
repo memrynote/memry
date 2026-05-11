@@ -209,6 +209,15 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
           }
         }
       }
+      if (event.kind === 'conversation_updated') {
+        return {
+          ...state,
+          conversations: {
+            ...state.conversations,
+            [event.conversation.id]: event.conversation
+          }
+        }
+      }
       if (event.kind === 'assistant_text_delta') {
         return {
           ...state,
