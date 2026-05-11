@@ -58,7 +58,7 @@ pnpm docs:impact --strict
 pnpm docs:build
 ```
 
-`docs:ai-update` uses the Codex CLI to inspect the branch diff and update only `apps/docs/src`. The pre-push hook runs the same impact check; when docs are missing, it runs the AI updater, stops the push, and leaves the docs patch for review and commit.
+`docs:ai-update` uses the Codex CLI to inspect the branch diff and update only `apps/docs/src`. The pre-push hook runs the same impact check; when docs are missing, it stops the push and points you to the manual updater. Set `MEMRY_DOCS_AI_AUTO=1` only when you want the hook to run the updater for that push.
 
 If a change truly has no docs impact, use the `docs:not-needed` PR label for CI and `MEMRY_DOCS_IMPACT_SKIP=1 git push` for the local hook.
 
@@ -94,7 +94,7 @@ The `/ship` and `/merge` skills wrap the standard PR + CI + merge flow:
 
 ## Don'ts
 
-- Never `--no-verify`
+- Use `--no-verify` only for urgent bypasses after focused checks pass
 - Never `--amend` after a hook failure (creates a new commit instead)
 - Never `git add -A` or `git add .` (stage explicit paths)
 - Never commit `.env` or anything that looks like a secret

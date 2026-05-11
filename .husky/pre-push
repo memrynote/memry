@@ -56,26 +56,33 @@ if [ "${MEMRY_DOCS_IMPACT_SKIP:-0}" != "1" ]; then
       exit 1
     fi
 
-    if [ "${MEMRY_DOCS_AI_AUTO:-1}" = "1" ]; then
+    if [ "${MEMRY_DOCS_AI_AUTO:-0}" = "1" ]; then
       printf '\npre-push: running AI docs updater for desktop/sync-server changes...\n\n' >&2
       pnpm docs:ai-update --base "$base_commit"
 
       if ! git diff --quiet -- apps/docs/src; then
-        pnpm docs:build
-        printf '\npre-push: AI updated docs. Review, commit, and push again.\n\n' >&2
+        printf '\npre-push: AI updated docs. Review, verify, commit, and push again.\n\n' >&2
       else
         printf '\npre-push: AI did not change docs. If no docs are needed, retry with MEMRY_DOCS_IMPACT_SKIP=1.\n\n' >&2
       fi
     else
-      printf '\npre-push: run `pnpm docs:ai-update --base %s` or update apps/docs/src manually.\n\n' "$base_commit" >&2
+      printf '\npre-push: docs update required. Run `pnpm docs:ai-update --base %s` or update apps/docs/src manually.\n' "$base_commit" >&2
+      printf 'pre-push: set MEMRY_DOCS_AI_AUTO=1 to let this hook run the updater.\n\n' >&2
     fi
 
     exit 1
   fi
+fi
 
-  if has_changes '^apps/docs/'; then
-    pnpm docs:build
-  fi
+if [ "${MEMRY_HOOK_STRICT:-0}" != "1" ]; then
+  printf '\npre-push: quick checks passed. Full lint/typecheck/test/docs build run in CI.\n' >&2
+  printf 'pre-push: use `MEMRY_HOOK_STRICT=1 git push` for full local verification.\n' >&2
+  printf 'pre-push: use `git push --no-verify` only after focused checks for an urgent bypass.\n\n' >&2
+  exit 0
+fi
+
+if has_changes '^apps/docs/'; then
+  pnpm docs:build
 fi
 
 pnpm repair:links
