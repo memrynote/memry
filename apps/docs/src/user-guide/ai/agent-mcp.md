@@ -27,6 +27,10 @@ Agent Chat can:
 Press <kbd>Enter</kbd> to send the prompt. Press <kbd>Shift</kbd>+<kbd>Enter</kbd> to insert a
 new line in the prompt box.
 
+The prompt bar shows the selected agent provider. Claude also exposes prompt-time settings for
+reasoning level and context window, with provider-specific settings shown only for the active
+provider.
+
 When no conversation is selected yet, the prompt box stays available. Sending the first prompt
 creates a new Agent Chat conversation, attaches the active note when one is open, and streams the
 reply into the sidebar.
