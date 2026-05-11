@@ -31,9 +31,6 @@ has_changes() {
 }
 
 code_changed='^(apps/desktop|apps/sync-server|packages|scripts|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|eslint.config.mjs|lint-staged.config.mjs|tsconfig|turbo.json)'
-package_changed='^(packages|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|tsconfig|turbo.json)'
-desktop_changed='^(apps/desktop|packages|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|eslint.config.mjs|lint-staged.config.mjs|tsconfig|turbo.json)'
-sync_server_changed='^(apps/sync-server|packages/(contracts|shared|sync-core)|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|tsconfig|turbo.json)'
 
 if ! has_changes "$code_changed"; then
   exit 0
@@ -72,35 +69,4 @@ if [ "${MEMRY_DOCS_IMPACT_SKIP:-0}" != "1" ]; then
 
     exit 1
   fi
-fi
-
-if [ "${MEMRY_HOOK_STRICT:-0}" != "1" ]; then
-  printf '\npre-push: quick checks passed. Full lint/typecheck/test/docs build run in CI.\n' >&2
-  printf 'pre-push: use `MEMRY_HOOK_STRICT=1 git push` for full local verification.\n' >&2
-  printf 'pre-push: use `git push --no-verify` only after focused checks for an urgent bypass.\n\n' >&2
-  exit 0
-fi
-
-if has_changes '^apps/docs/'; then
-  pnpm docs:build
-fi
-
-pnpm repair:links
-pnpm check:contracts
-pnpm check:architecture
-
-if has_changes "$package_changed"; then
-  pnpm typecheck:packages
-fi
-
-if has_changes "$desktop_changed"; then
-  pnpm lint:desktop
-  pnpm ipc:check
-  pnpm typecheck:desktop
-  pnpm test:desktop
-fi
-
-if has_changes "$sync_server_changed"; then
-  pnpm typecheck:sync-server
-  pnpm test:sync-server
 fi

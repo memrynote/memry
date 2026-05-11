@@ -5,13 +5,9 @@ import { describe, it } from 'node:test'
 const prePush = readFileSync(new URL('../.husky/pre-push', import.meta.url), 'utf8')
 
 describe('pre-push hook policy', () => {
-  it('keeps heavy checks behind explicit strict mode', () => {
-    assert.match(prePush, /MEMRY_HOOK_STRICT/)
+  it('leaves lint, typecheck, and test suites to GitHub Actions', () => {
+    assert.doesNotMatch(prePush, /MEMRY_HOOK_STRICT/)
 
-    const strictModeStart = prePush.indexOf('MEMRY_HOOK_STRICT')
-    assert.notEqual(strictModeStart, -1)
-
-    const strictModeSection = prePush.slice(strictModeStart)
     for (const command of [
       'pnpm repair:links',
       'pnpm check:contracts',
@@ -24,7 +20,7 @@ describe('pre-push hook policy', () => {
       'pnpm typecheck:sync-server',
       'pnpm test:sync-server'
     ]) {
-      assert.match(strictModeSection, new RegExp(command.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+      assert.doesNotMatch(prePush, new RegExp(command.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
     }
   })
 
@@ -38,11 +34,8 @@ describe('pre-push hook policy', () => {
     assert.ok(docsUpdaterCommand > docsAutoStart)
   })
 
-  it('does not build docs unless strict mode is requested', () => {
-    const strictModeStart = prePush.indexOf('MEMRY_HOOK_STRICT')
-    assert.notEqual(strictModeStart, -1)
-
-    const quickModeSection = prePush.slice(0, strictModeStart)
-    assert.doesNotMatch(quickModeSection, /pnpm docs:build/)
+  it('keeps the docs impact gate in the pre-push hook', () => {
+    assert.match(prePush, /pnpm docs:impact --base "\$base_commit" --strict/)
+    assert.doesNotMatch(prePush, /pnpm docs:build/)
   })
 })
