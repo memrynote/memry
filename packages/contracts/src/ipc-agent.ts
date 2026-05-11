@@ -39,6 +39,10 @@ export const AttachmentInputSchema = z.object({
 })
 export type AttachmentInput = z.infer<typeof AttachmentInputSchema>
 
+export const ClaudeEffortSchema = z.enum(['low', 'medium', 'high', 'xhigh', 'max'])
+export type ClaudeEffort = z.infer<typeof ClaudeEffortSchema>
+export const DEFAULT_CLAUDE_EFFORT: ClaudeEffort = 'xhigh'
+
 export const MessageRoleSchema = z.enum(['user', 'assistant', 'tool_call', 'tool_result', 'system'])
 export type MessageRole = z.infer<typeof MessageRoleSchema>
 
@@ -183,7 +187,8 @@ export const SendTurnRequestSchema = z.object({
   conversationId: z.string(),
   sourceWindowId: z.string(),
   text: z.string(),
-  attachments: z.array(AttachmentInputSchema)
+  attachments: z.array(AttachmentInputSchema),
+  claudeEffort: ClaudeEffortSchema.default(DEFAULT_CLAUDE_EFFORT)
 })
 export type SendTurnRequest = z.infer<typeof SendTurnRequestSchema>
 

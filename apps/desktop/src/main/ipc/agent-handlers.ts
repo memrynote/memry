@@ -107,6 +107,7 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
         conversationId: request.conversationId,
         sourceWindowId: request.sourceWindowId,
         text: request.text,
+        claudeEffort: request.claudeEffort,
         attachments
       }
     )

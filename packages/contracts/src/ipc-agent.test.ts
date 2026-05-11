@@ -43,9 +43,19 @@ describe('agent IPC schemas', () => {
         conversationId: 'conversation-1',
         sourceWindowId: '1',
         text: 'Create a task',
-        attachments: [{ kind: 'current_note', ref_id: 'current', label: 'Current note' }]
+        attachments: [{ kind: 'current_note', ref_id: 'current', label: 'Current note' }],
+        claudeEffort: 'xhigh'
       }).success
     ).toBe(true)
+    expect(
+      SendTurnRequestSchema.safeParse({
+        conversationId: 'conversation-1',
+        sourceWindowId: '1',
+        text: 'Create a task',
+        attachments: [],
+        claudeEffort: 'ultrathink'
+      }).success
+    ).toBe(false)
   })
 
   it('validates send-turn busy responses', () => {

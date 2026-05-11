@@ -159,15 +159,14 @@
       "send": "Send",
       "providerLabel": "Agent provider: {provider}",
       "settingsLabel": "Agent settings: {settings}",
-      "settingsSummary": "{reasoning} · {contextWindow}",
+      "settingsSummary": "{reasoning}",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "Local"
       },
       "settings": {
-        "reasoning": "Reasoning",
-        "contextWindow": "Context Window"
+        "reasoning": "Reasoning"
       },
       "claudeSettings": {
         "reasoning": {
@@ -176,13 +175,7 @@
           "high": "High",
           "extraHigh": "Extra High",
           "extraHighDefault": "Extra High (default)",
-          "max": "Max",
-          "ultrathink": "Ultrathink"
-        },
-        "contextWindow": {
-          "twoHundredK": "200k",
-          "twoHundredKDefault": "200k (default)",
-          "oneM": "1M"
+          "max": "Max"
         }
       }
     },

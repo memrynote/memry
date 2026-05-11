@@ -62,7 +62,8 @@ describe('runTurn against a stub backend', () => {
         conversationId: 'conversation-1',
         sourceWindowId: 'window-1',
         text: 'hi',
-        attachments: []
+        attachments: [],
+        claudeEffort: 'low'
       }
     )
 
@@ -76,6 +77,7 @@ describe('runTurn against a stub backend', () => {
       expect.objectContaining({
         conversationId: 'conversation-1',
         windowId: 'window-1',
+        effort: 'low',
         prompt: expect.stringContaining('User: hi')
       })
     )
@@ -112,7 +114,8 @@ describe('runTurn against a stub backend', () => {
         conversationId: 'conversation-1',
         sourceWindowId: 'window-1',
         text: 'hi',
-        attachments: []
+        attachments: [],
+        claudeEffort: 'xhigh'
       }
     )
 
@@ -186,11 +189,14 @@ describe('runTurn against a stub backend', () => {
         conversationId: 'conversation-1',
         sourceWindowId: 'window-1',
         text: 'continue',
-        attachments: []
+        attachments: [],
+        claudeEffort: 'high'
       }
     )
 
     expect(spawnSubprocess).toHaveBeenCalledTimes(2)
+    expect(spawnSubprocess.mock.calls[0][0].effort).toBe('high')
+    expect(spawnSubprocess.mock.calls[1][0].effort).toBe('high')
     expect(spawnSubprocess.mock.calls[0][0].prompt).toContain('Earlier in this conversation')
     expect(spawnSubprocess.mock.calls[1][0].prompt).toContain(
       'Earlier in this conversation: old summary'
@@ -250,7 +256,8 @@ describe('runTurn against a stub backend', () => {
         conversationId: 'conversation-1',
         sourceWindowId: 'window-1',
         text: 'Create a roadmap from my project notes',
-        attachments: []
+        attachments: [],
+        claudeEffort: 'medium'
       }
     )
 
@@ -259,6 +266,7 @@ describe('runTurn against a stub backend', () => {
       expect.objectContaining({
         conversationId: 'conversation-1',
         windowId: 'window-1',
+        effort: 'medium',
         purpose: 'title',
         prompt: expect.stringContaining('Create a roadmap from my project notes')
       })

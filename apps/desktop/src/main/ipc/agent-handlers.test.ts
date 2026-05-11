@@ -136,7 +136,8 @@ describe('agent IPC handlers', () => {
       conversationId: 'conversation-1',
       sourceWindowId: 'window-1',
       text: 'hi',
-      attachments: [{ kind: 'current_note', ref_id: 'current', label: 'Current note' }]
+      attachments: [{ kind: 'current_note', ref_id: 'current', label: 'Current note' }],
+      claudeEffort: 'low'
     })
 
     expect(result).toEqual({ ok: true })
@@ -154,6 +155,7 @@ describe('agent IPC handlers', () => {
         conversationId: 'conversation-1',
         sourceWindowId: 'window-1',
         text: 'hi',
+        claudeEffort: 'low',
         attachments: [
           {
             kind: 'current_note',
@@ -226,9 +228,19 @@ describe('agent IPC handlers', () => {
     const subprocess = await turnDeps.spawnSubprocess({
       prompt: 'prompt',
       conversationId: 'conversation-1',
-      windowId: 'window-1'
+      windowId: 'window-1',
+      effort: 'max'
     })
     await subprocess.cleanup()
+
+    expect(deps.spawn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: 'prompt',
+        conversationId: 'conversation-1',
+        windowId: 'window-1',
+        effort: 'max'
+      })
+    )
 
     expect(deps.runtime.trackSubprocess).toHaveBeenCalledWith('conversation-1', {
       stdout: expect.any(Object),

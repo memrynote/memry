@@ -3,6 +3,8 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
+import type { ClaudeEffort } from '@memry/contracts/ipc-agent'
+
 import { createLogger } from '../../lib/logger'
 
 const logger = createLogger('AgentCli:Spawn')
@@ -14,6 +16,7 @@ export interface SpawnOptions {
   conversationId: string
   windowId: string
   allowedTools: string
+  effort: ClaudeEffort
   prompt: string
 }
 
@@ -57,7 +60,9 @@ export async function spawnClaudeTurn(opts: SpawnOptions): Promise<ClaudeSubproc
     '--tools',
     '',
     '--allowed-tools',
-    opts.allowedTools
+    opts.allowedTools,
+    '--effort',
+    opts.effort
   ]
 
   logger.info(`Spawning claude with strict MCP config`)

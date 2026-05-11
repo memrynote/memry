@@ -6,6 +6,7 @@ import type {
   ApproveToolRequest,
   AttachmentInput,
   BinaryStatus,
+  ClaudeEffort,
   Conversation,
   Message,
   SendTurnResponse,
@@ -57,6 +58,7 @@ interface AgentContextValue {
     conversationId: string
     sourceWindowId: string
     text: string
+    claudeEffort: ClaudeEffort
     attachments?: AttachmentInput[]
   }) => Promise<void>
   cancelTurn: (conversationId: string) => Promise<void>
@@ -147,6 +149,7 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
       conversationId: string
       sourceWindowId: string
       text: string
+      claudeEffort: ClaudeEffort
       attachments?: AttachmentInput[]
     }) => {
       dispatch({ type: 'set_in_flight', conversationId: input.conversationId, inFlight: true })
@@ -157,6 +160,7 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
           conversationId: input.conversationId,
           sourceWindowId: input.sourceWindowId,
           text: input.text,
+          claudeEffort: input.claudeEffort,
           attachments: input.attachments ?? []
         })
         if (!result.ok) {
