@@ -145,7 +145,9 @@ vi.mock('@/components/list-view', () => ({
     onFocusedItemChange: (id: string | null) => void
   }) => (
     <div>
-      <span>{items[0]?.title}</span>
+      {items.map((item) => (
+        <span key={item.id}>{item.title}</span>
+      ))}
       <button type="button" onClick={() => onPreview('item-1')}>
         Preview item
       </button>
@@ -396,6 +398,30 @@ describe('InboxListView', () => {
     mocks.inboxState.items = []
     rerender(<InboxListView selectedTypes={new Set()} showSnoozedItems={false} />)
     expect(screen.getByText('Empty 2/7/3')).toBeInTheDocument()
+  })
+
+  it('shows snoozed inbox rows and reminder rows in the snoozed view', () => {
+    mocks.inboxState.items = [
+      item,
+      {
+        ...item,
+        id: 'snoozed-1',
+        title: 'Snoozed Link',
+        snoozedUntil: new Date('2026-05-12T09:00:00.000Z')
+      },
+      {
+        ...item,
+        id: 'reminder-1',
+        type: 'reminder',
+        title: 'Reminder Note'
+      }
+    ]
+
+    renderWithProviders(<InboxListView selectedTypes={new Set()} showSnoozedItems />)
+
+    expect(screen.queryByText('Saved Link')).not.toBeInTheDocument()
+    expect(screen.getByText('Snoozed Link')).toBeInTheDocument()
+    expect(screen.getByText('Reminder Note')).toBeInTheDocument()
   })
 
   it('previews, files, archives, and snoozes individual items', async () => {

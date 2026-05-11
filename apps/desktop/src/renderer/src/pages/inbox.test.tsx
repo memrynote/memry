@@ -221,6 +221,15 @@ describe('InboxPage', () => {
     expect(screen.getByTestId('inbox-list')).toHaveAttribute('data-types', '')
   })
 
+  it('counts reminder inbox items in the snoozed view button', () => {
+    mocks.items = [{ id: 'reminder-1', type: 'reminder' }]
+    mocks.snoozedItems = []
+
+    render(<InboxPage />)
+
+    expect(screen.getByTitle('view.snoozed.showWithCount:1')).toBeInTheDocument()
+  })
+
   it('switches views, searches archived items, and closes search when leaving archive', () => {
     render(<InboxPage />)
 

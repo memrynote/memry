@@ -75,7 +75,11 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
   const { activeCount: activeJobCount, failedCount: failedJobCount } = useInboxJobs(
     items.map((item) => item.id)
   )
-  const snoozedCount = snoozedItems.length
+  const reminderCount = useMemo(
+    () => items.filter((item) => item.type === 'reminder').length,
+    [items]
+  )
+  const snoozedViewCount = snoozedItems.length + reminderCount
 
   const activeTab = useActiveTab()
   const focusInboxItemId =
@@ -286,8 +290,8 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                   title={
                     showSnoozedItems
                       ? t('view.snoozed.hide')
-                      : snoozedCount > 0
-                        ? t('view.snoozed.showWithCount', { count: snoozedCount })
+                      : snoozedViewCount > 0
+                        ? t('view.snoozed.showWithCount', { count: snoozedViewCount })
                         : t('view.snoozed.show')
                   }
                   className={cn(
@@ -298,7 +302,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                   )}
                 >
                   <AlarmClock className="size-3" />
-                  {snoozedCount > 0 && (
+                  {snoozedViewCount > 0 && (
                     <span
                       className={cn(
                         'flex items-center justify-center size-[14px] rounded-full text-[9px] font-bold',
@@ -307,7 +311,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                           : 'bg-foreground/15 text-text-secondary'
                       )}
                     >
-                      {snoozedCount}
+                      {snoozedViewCount}
                     </span>
                   )}
                 </button>
