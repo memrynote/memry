@@ -102,6 +102,7 @@
     "@streamdown/code": "^1.1.1",
     "@streamdown/math": "^1.0.2",
     "@streamdown/mermaid": "^1.0.2",
+    "@tabler/icons-react": "^3.44.0",
     "@tiptap/extension-link": "^3.14.0",
     "@tiptap/react": "^3.14.0",
     "ai": "^6.0.116",

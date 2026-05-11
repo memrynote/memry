@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockUseAgentOptional = vi.hoisted(() => vi.fn())
@@ -16,12 +16,15 @@ import { Composer } from '../composer'
 
 const mockSendTurn = vi.fn()
 const mockCancelTurn = vi.fn()
+const mockCreateConversation = vi.fn()
 const mockSearchQuery = vi.fn()
 
 describe('Composer', () => {
   beforeEach(() => {
     mockSendTurn.mockReset()
     mockCancelTurn.mockReset()
+    mockCreateConversation.mockReset()
+    mockCreateConversation.mockResolvedValue({ id: 'conversation-2' })
     mockSearchQuery.mockReset()
     mockSearchQuery.mockResolvedValue({
       groups: [],
@@ -33,18 +36,22 @@ describe('Composer', () => {
       state: {
         inFlight: {}
       },
+      createConversation: mockCreateConversation,
       sendTurn: mockSendTurn,
       cancelTurn: mockCancelTurn
     })
     vi.mocked(window.api.search.query).mockImplementation(mockSearchQuery)
   })
 
-  it('submits on Enter', () => {
+  it('submits on Enter', async () => {
     render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
 
     const textbox = screen.getByRole('textbox')
     fireEvent.change(textbox, { target: { value: 'hello' } })
-    fireEvent.keyDown(textbox, { key: 'Enter' })
+    await act(async () => {
+      fireEvent.keyDown(textbox, { key: 'Enter' })
+      await Promise.resolve()
+    })
 
     expect(mockSendTurn).toHaveBeenCalledWith({
       conversationId: 'conversation-1',
@@ -52,6 +59,41 @@ describe('Composer', () => {
       text: 'hello',
       attachments: []
     })
+  })
+
+  it('creates a conversation before sending the first empty-chat prompt', async () => {
+    render(<Composer conversationId={null} sourceWindowId="window-1" />)
+
+    const textbox = screen.getByRole('textbox')
+    fireEvent.change(textbox, { target: { value: 'draft a plan' } })
+    await act(async () => {
+      fireEvent.keyDown(textbox, { key: 'Enter' })
+      await Promise.resolve()
+    })
+
+    expect(mockCreateConversation).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(mockSendTurn).toHaveBeenCalledWith({
+        conversationId: 'conversation-2',
+        sourceWindowId: 'window-1',
+        text: 'draft a plan',
+        attachments: []
+      })
+    })
+  })
+
+  it('keeps the first prompt on the send control while the conversation is being created', () => {
+    mockCreateConversation.mockReturnValue(new Promise(() => {}))
+    render(<Composer conversationId={null} sourceWindowId="window-1" />)
+
+    const textbox = screen.getByRole('textbox')
+    fireEvent.change(textbox, { target: { value: 'draft a plan' } })
+    act(() => {
+      fireEvent.keyDown(textbox, { key: 'Enter' })
+    })
+
+    expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled()
   })
 
   it('allows Shift+Enter to create a newline without submitting', () => {
@@ -99,7 +141,10 @@ describe('Composer', () => {
     fireEvent.change(textbox, { target: { value: 'summarize @plan' } })
     fireEvent.click(await screen.findByRole('option', { name: /planning note/i }))
     fireEvent.change(textbox, { target: { value: 'summarize this' } })
-    fireEvent.keyDown(textbox, { key: 'Enter' })
+    await act(async () => {
+      fireEvent.keyDown(textbox, { key: 'Enter' })
+      await Promise.resolve()
+    })
 
     expect(mockSearchQuery).toHaveBeenCalledWith({ text: 'plan', limit: 20 })
     expect(mockSendTurn).toHaveBeenCalledWith({
@@ -110,7 +155,7 @@ describe('Composer', () => {
     })
   })
 
-  it('auto-attaches the current note', () => {
+  it('auto-attaches the current note', async () => {
     mockUseActiveTab.mockReturnValue({
       id: 'tab-1',
       type: 'note',
@@ -121,7 +166,10 @@ describe('Composer', () => {
 
     const textbox = screen.getByRole('textbox')
     fireEvent.change(textbox, { target: { value: 'summarize' } })
-    fireEvent.keyDown(textbox, { key: 'Enter' })
+    await act(async () => {
+      fireEvent.keyDown(textbox, { key: 'Enter' })
+      await Promise.resolve()
+    })
 
     expect(mockSendTurn).toHaveBeenCalledWith({
       conversationId: 'conversation-1',

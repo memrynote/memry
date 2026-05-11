@@ -15,7 +15,7 @@ import { useAgentOptional } from './agent-context'
 import { RefPicker } from './ref-picker'
 
 interface ComposerProps {
-  conversationId: string
+  conversationId: string | null
   sourceWindowId: string | null
 }
 
@@ -31,6 +31,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<AttachmentInput[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (activeTab?.type !== 'note' || !activeTab.entityId) return
@@ -54,26 +55,37 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     })
   }, [activeTab?.entityId, activeTab?.title, activeTab?.type, t])
 
-  const inFlight = agent?.state.inFlight?.[conversationId] === true
-  const canSend = Boolean(agent) && Boolean(sourceWindowId) && text.trim().length > 0 && !inFlight
+  const turnInFlight = conversationId ? agent?.state.inFlight?.[conversationId] === true : false
+  const busy = turnInFlight || submitting
+  const canSend = Boolean(agent) && Boolean(sourceWindowId) && text.trim().length > 0 && !busy
   const pickerQuery = pickerOpen ? (getRefQuery(text) ?? '') : ''
 
-  function submit(): void {
-    if (!agent || !sourceWindowId || !text.trim() || inFlight) return
+  async function submit(): Promise<void> {
+    if (!agent || !sourceWindowId || !text.trim() || busy) return
     const currentText = text
     const currentAttachments = attachments
-    void agent.sendTurn({
-      conversationId,
-      sourceWindowId,
-      text: currentText,
-      attachments: currentAttachments
-    })
-    setText('')
-    setAttachments((current) => current.filter((attachment) => attachment.kind === 'current_note'))
+    setSubmitting(true)
+    try {
+      const targetConversationId = conversationId ?? (await agent.createConversation()).id
+      await agent.sendTurn({
+        conversationId: targetConversationId,
+        sourceWindowId,
+        text: currentText,
+        attachments: currentAttachments
+      })
+      setText('')
+      setAttachments((current) =>
+        current.filter((attachment) => attachment.kind === 'current_note')
+      )
+    } catch {
+      // Agent context owns the user-facing error; leave the draft text in place.
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   function cancelTurn(): void {
-    if (!agent || !inFlight) return
+    if (!agent || !conversationId || !turnInFlight) return
 
     void agent.cancelTurn(conversationId)
   }
@@ -125,7 +137,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
           onClose={() => setPickerOpen(false)}
         />
       )}
-      <PromptInput onSubmit={() => submit()}>
+      <PromptInput onSubmit={() => void submit()}>
         <PromptInputActions>
           <PromptInputTextarea
             value={text}
@@ -137,16 +149,16 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault()
-                submit()
+                void submit()
               }
               if (event.key === 'Escape') setPickerOpen(false)
             }}
             rows={3}
-            disabled={inFlight || !agent}
+            disabled={busy || !agent}
             placeholder={t('agentChat.composer.placeholder')}
             className="flex-1"
           />
-          {inFlight ? (
+          {turnInFlight ? (
             <PromptInputSubmit
               type="button"
               aria-label={t('agentChat.stop')}

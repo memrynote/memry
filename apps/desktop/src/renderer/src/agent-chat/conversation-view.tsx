@@ -6,7 +6,7 @@ import { useAgentOptional } from './agent-context'
 import { MessageStream } from './message-stream'
 
 interface ConversationViewProps {
-  conversationId: string
+  conversationId: string | null
 }
 
 export function ConversationView({ conversationId }: ConversationViewProps): React.JSX.Element {
@@ -22,9 +22,9 @@ export function ConversationView({ conversationId }: ConversationViewProps): Rea
   }
 
   const { state } = agent
-  const conversation = state.conversations[conversationId]
+  const conversation = conversationId ? state.conversations[conversationId] : null
 
-  if (!conversation) {
+  if (conversationId && !conversation) {
     return (
       <div className="flex h-full items-start p-5 text-sm text-muted-foreground">
         {t('agentChat.conversationLoading')}
@@ -35,11 +35,12 @@ export function ConversationView({ conversationId }: ConversationViewProps): Rea
   const conversations = Object.values(state.conversations).sort((left, right) => {
     return right.updatedAt - left.updatedAt
   })
-  const messages = state.messagesByConversation[conversationId] ?? []
-  const inFlight = state.inFlight[conversationId] === true
+  const messages = conversationId ? (state.messagesByConversation[conversationId] ?? []) : []
+  const inFlight = conversationId ? state.inFlight[conversationId] === true : false
   const currentAgent = agent
 
   function cancelTurn(): void {
+    if (!conversationId) return
     void currentAgent.cancelTurn(conversationId)
   }
 
@@ -54,14 +55,16 @@ export function ConversationView({ conversationId }: ConversationViewProps): Rea
         cancelTurn()
       }}
     >
-      <ConversationHeader
-        conversation={conversation}
-        conversations={conversations}
-        onCreateConversation={async () => {
-          await currentAgent.createConversation()
-        }}
-        onSelectConversation={currentAgent.loadConversation}
-      />
+      {conversation && (
+        <ConversationHeader
+          conversation={conversation}
+          conversations={conversations}
+          onCreateConversation={async () => {
+            await currentAgent.createConversation()
+          }}
+          onSelectConversation={currentAgent.loadConversation}
+        />
+      )}
       <MessageStream messages={messages} />
       <Composer conversationId={conversationId} sourceWindowId={state.sourceWindowId} />
     </section>
