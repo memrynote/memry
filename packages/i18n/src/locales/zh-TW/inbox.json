@@ -421,11 +421,6 @@
       "folderSuggestions": "資料夾建議",
       "noFoldersMatch": "沒有符合的資料夾"
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "為此文本設定提醒",
-      "remindMeAboutThis": "提醒我這件事",
-      "selectedText": "選取的文本："
-    },
     "componentsReminderReminderPicker": {
       "remind": "提醒",
       "remindMe": "提醒我",

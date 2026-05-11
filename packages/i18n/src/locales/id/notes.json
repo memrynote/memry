@@ -286,7 +286,6 @@
     "setReminder": "Setel pengingat",
     "toast": {
       "set": "Kumpulan pengingat",
-      "setForHighlight": "Pengingat disetel untuk teks yang disorot",
       "setFailed": "Gagal menyetel pengingat",
       "deleted": "Pengingat dihapus",
       "deleteFailed": "Gagal menghapus pengingat",

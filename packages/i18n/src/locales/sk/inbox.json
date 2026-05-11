@@ -421,11 +421,6 @@
       "folderSuggestions": "Návrhy na zložky",
       "noFoldersMatch": "Žiadne zložky sa nezhodujú.\""
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "Nastavte pripomienku pre tento text",
-      "remindMeAboutThis": "Pripomeň mi to",
-      "selectedText": "Vybraný text:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "Pripomenúť",
       "remindMe": "Pripomeň mi",

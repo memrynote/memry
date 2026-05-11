@@ -286,7 +286,6 @@
     "setReminder": "Definir lembrete",
     "toast": {
       "set": "Conjunto de lembretes",
-      "setForHighlight": "Lembrete definido para texto destacado",
       "setFailed": "Falha ao definir lembrete",
       "deleted": "Lembrete excluído",
       "deleteFailed": "Falha ao excluir lembrete",

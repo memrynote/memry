@@ -21,6 +21,8 @@ Open the reminder picker from the note toolbar. Pick a date and time:
 - A relative button (in 1 hour, tomorrow morning, next week)
 - A custom date and time picker
 
+Selecting text in the editor does not open a separate reminder action; reminders are set at the note level.
+
 When the reminder fires, Memry shows an in-app toast with:
 
 - The note title
@@ -29,13 +31,13 @@ When the reminder fires, Memry shows an in-app toast with:
 
 ### Toast Actions
 
-| Action | What it does |
-| --- | --- |
-| Snooze 5 min | Reminder reappears in 5 minutes |
+| Action        | What it does                     |
+| ------------- | -------------------------------- |
+| Snooze 5 min  | Reminder reappears in 5 minutes  |
 | Snooze 10 min | Reminder reappears in 10 minutes |
-| Custom snooze | Pick a new time |
-| Open | Open the note in a tab |
-| Dismiss | Mark as handled; don't reappear |
+| Custom snooze | Pick a new time                  |
+| Open          | Open the note in a tab           |
+| Dismiss       | Mark as handled; don't reappear  |
 
 ## Reminder Badge
 

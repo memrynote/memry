@@ -286,7 +286,6 @@
     "setReminder": "Nastaviť pripomenutie",
     "toast": {
       "set": "Nastavené pripomenutie",
-      "setForHighlight": "Pripomienka nastavená na zvýraznený text",
       "setFailed": "Nepodarilo sa nastaviť pripomienku",
       "deleted": "Pripomienka vymazaná",
       "deleteFailed": "Nepodarilo sa vymazať pripomienku",

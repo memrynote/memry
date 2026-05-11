@@ -421,11 +421,6 @@
       "folderSuggestions": "폴더 제안",
       "noFoldersMatch": "\"와(과) 일치하는 폴더가 없습니다."
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "이 문자 메시지에 대한 알림 설정",
-      "remindMeAboutThis": "이에 대해 알림",
-      "selectedText": "선택한 텍스트:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "알림",
       "remindMe": "알림",

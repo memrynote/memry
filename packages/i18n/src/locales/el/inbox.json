@@ -421,11 +421,6 @@
       "folderSuggestions": "Προτάσεις φακέλων",
       "noFoldersMatch": "Δεν ταιριάζουν φάκελοι \""
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "Ορίστε υπενθύμιση για αυτό το κείμενο",
-      "remindMeAboutThis": "Θύμισέ μου αυτό",
-      "selectedText": "Επιλεγμένο κείμενο:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "Υπενθύμιση",
       "remindMe": "Θύμισέ μου",

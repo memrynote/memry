@@ -20,7 +20,6 @@ import {
 export interface ReminderPickerProps {
   onSelect: (date: Date, title?: string, note?: string) => void
   presetType?: 'standard' | 'journal'
-  variant?: 'default' | 'highlight'
   trigger?: React.ReactNode
   size?: 'sm' | 'md' | 'lg'
   showNote?: boolean
@@ -35,7 +34,6 @@ type PickerMode = 'presets' | 'custom'
 export function ReminderPicker({
   onSelect,
   presetType = 'standard',
-  variant: _variant = 'default',
   trigger,
   size = 'md',
   showNote = false,

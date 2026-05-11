@@ -30,14 +30,6 @@ const log = createLogger('Hook:NoteReminders')
 export interface NoteReminderActions {
   /** Create a reminder for the note */
   setReminder: (remindAt: Date, note?: string) => Promise<boolean>
-  /** Create a reminder for highlighted text */
-  setHighlightReminder: (
-    highlightText: string,
-    highlightStart: number,
-    highlightEnd: number,
-    remindAt: Date,
-    note?: string
-  ) => Promise<boolean>
   /** Delete a reminder */
   deleteReminder: (reminderId: string) => Promise<boolean>
   /** Dismiss a reminder */
@@ -130,43 +122,6 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
     [noteId, createReminderMutation, t]
   )
 
-  const setHighlightReminder = useCallback(
-    async (
-      highlightText: string,
-      highlightStart: number,
-      highlightEnd: number,
-      remindAt: Date,
-      note?: string
-    ): Promise<boolean> => {
-      if (!noteId) return false
-
-      try {
-        const result = await createReminderMutation.mutateAsync({
-          targetType: 'highlight',
-          targetId: noteId,
-          remindAt: remindAt.toISOString(),
-          highlightText,
-          highlightStart,
-          highlightEnd,
-          note
-        })
-
-        if (result.success) {
-          toast.success(t('reminders.toast.setForHighlight'))
-          return true
-        } else {
-          toast.error(extractErrorMessage(result.error, t('reminders.toast.setFailed')))
-          return false
-        }
-      } catch (err) {
-        log.error('Failed to set highlight reminder:', err)
-        toast.error(t('reminders.toast.setFailed'))
-        return false
-      }
-    },
-    [noteId, createReminderMutation, t]
-  )
-
   const deleteReminderAction = useCallback(
     async (reminderId: string): Promise<boolean> => {
       try {
@@ -241,18 +196,11 @@ export function useNoteReminders(noteId: string | null): UseNoteRemindersResult 
   const actions: NoteReminderActions = useMemo(
     () => ({
       setReminder,
-      setHighlightReminder,
       deleteReminder: deleteReminderAction,
       dismissReminder: dismissReminderAction,
       snoozeReminder: snoozeReminderAction
     }),
-    [
-      setReminder,
-      setHighlightReminder,
-      deleteReminderAction,
-      dismissReminderAction,
-      snoozeReminderAction
-    ]
+    [setReminder, deleteReminderAction, dismissReminderAction, snoozeReminderAction]
   )
 
   return {

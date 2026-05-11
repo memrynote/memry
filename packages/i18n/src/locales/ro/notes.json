@@ -286,7 +286,6 @@
     "setReminder": "Setați memento",
     "toast": {
       "set": "Set de mementouri",
-      "setForHighlight": "Setat memento pentru textul evidențiat",
       "setFailed": "Nu s-a putut seta mementoul",
       "deleted": "Memento a fost șters",
       "deleteFailed": "Mementoul nu a fost șters",

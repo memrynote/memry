@@ -421,11 +421,6 @@
       "folderSuggestions": "Sugestii de foldere",
       "noFoldersMatch": "Niciun folder nu se potrivește cu \""
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "Setați un memento pentru acest text",
-      "remindMeAboutThis": "Amintește-mi despre asta",
-      "selectedText": "Textul selectat:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "Amintiți-vă",
       "remindMe": "Amintește-mi",
