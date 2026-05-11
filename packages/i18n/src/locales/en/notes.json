@@ -286,7 +286,6 @@
     "setReminder": "Set reminder",
     "toast": {
       "set": "Reminder set",
-      "setForHighlight": "Reminder set for highlighted text",
       "setFailed": "Failed to set reminder",
       "deleted": "Reminder deleted",
       "deleteFailed": "Failed to delete reminder",

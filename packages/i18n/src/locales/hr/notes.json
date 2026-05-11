@@ -286,7 +286,6 @@
     "setReminder": "Postavi podsjetnik",
     "toast": {
       "set": "Podsjetnik postavljen",
-      "setForHighlight": "Podsjetnik postavljen za istaknuti tekst",
       "setFailed": "Postavljanje podsjetnika nije uspjelo",
       "deleted": "Podsjetnik izbrisan",
       "deleteFailed": "Brisanje podsjetnika nije uspjelo",

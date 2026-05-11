@@ -421,11 +421,6 @@
       "folderSuggestions": "Saran folder",
       "noFoldersMatch": "Tidak ada folder yang cocok \""
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "Setel pengingat untuk teks ini",
-      "remindMeAboutThis": "Ingatkan saya tentang ini",
-      "selectedText": "Teks yang dipilih:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "Ingatkan",
       "remindMe": "Ingatkan saya",

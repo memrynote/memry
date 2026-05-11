@@ -7,12 +7,6 @@
 export { ReminderPicker } from './reminder-picker'
 export type { ReminderPickerProps } from './reminder-picker'
 export {
-  HighlightReminderPopover,
-  useTextSelection,
-  type HighlightSelection,
-  type HighlightReminderPopoverProps
-} from './highlight-reminder-popover'
-export {
   standardPresets,
   journalPresets,
   snoozePresets,

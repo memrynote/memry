@@ -286,7 +286,6 @@
     "setReminder": "Tetapkan peringatan",
     "toast": {
       "set": "Set peringatan",
-      "setForHighlight": "Peringatan ditetapkan untuk teks yang diserlahkan",
       "setFailed": "Gagal menetapkan peringatan",
       "deleted": "Peringatan dipadamkan",
       "deleteFailed": "Gagal memadamkan peringatan",

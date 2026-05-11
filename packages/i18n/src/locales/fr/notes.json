@@ -286,7 +286,6 @@
     "setReminder": "Définir un rappel",
     "toast": {
       "set": "Ensemble de rappel",
-      "setForHighlight": "Rappel défini pour le texte en surbrillance",
       "setFailed": "Échec de la définition du rappel",
       "deleted": "Rappel supprimé",
       "deleteFailed": "Échec de la suppression du rappel",

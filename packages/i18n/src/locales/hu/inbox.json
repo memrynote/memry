@@ -421,11 +421,6 @@
       "folderSuggestions": "Mappajavaslatok",
       "noFoldersMatch": "Egyik mappa sem egyezik"
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "Emlékeztető beállítása ehhez a szöveghez",
-      "remindMeAboutThis": "Emlékeztessen erre",
-      "selectedText": "Kiválasztott szöveg:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "Emlékeztesd",
       "remindMe": "Emlékeztessen",

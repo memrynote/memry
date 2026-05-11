@@ -286,7 +286,6 @@
     "setReminder": "Establecer recordatorio",
     "toast": {
       "set": "Conjunto de recordatorio",
-      "setForHighlight": "Recordatorio establecido para el texto resaltado",
       "setFailed": "No se pudo configurar el recordatorio",
       "deleted": "Recordatorio eliminado",
       "deleteFailed": "No se pudo eliminar el recordatorio",

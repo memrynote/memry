@@ -65,7 +65,7 @@ describe('useNoteReminders', () => {
     mocks.snoozeReminder.mockResolvedValue({ success: true })
   })
 
-  it('combines note and highlight reminders, sorts them, and exposes successful actions', async () => {
+  it('combines note and existing highlight reminders, sorts them, and exposes successful actions', async () => {
     const { result } = renderHook(() => useNoteReminders('note-1'))
 
     expect(result.current.reminders.map((reminder) => reminder.id)).toEqual([
@@ -81,15 +81,6 @@ describe('useNoteReminders', () => {
       expect(
         await result.current.actions.setReminder(new Date('2026-05-13T00:00:00Z'), 'note')
       ).toBe(true)
-      expect(
-        await result.current.actions.setHighlightReminder(
-          'text',
-          1,
-          4,
-          new Date('2026-05-14T00:00:00Z'),
-          'highlight'
-        )
-      ).toBe(true)
       expect(await result.current.actions.deleteReminder('later')).toBe(true)
       expect(await result.current.actions.dismissReminder('soon')).toBe(true)
       expect(
@@ -99,15 +90,6 @@ describe('useNoteReminders', () => {
 
     expect(mocks.createReminder).toHaveBeenCalledWith(
       expect.objectContaining({ targetType: 'note', targetId: 'note-1', note: 'note' })
-    )
-    expect(mocks.createReminder).toHaveBeenCalledWith(
-      expect.objectContaining({
-        targetType: 'highlight',
-        targetId: 'note-1',
-        highlightText: 'text',
-        highlightStart: 1,
-        highlightEnd: 4
-      })
     )
     expect(mocks.deleteReminder).toHaveBeenCalledWith('later')
     expect(mocks.dismissReminder).toHaveBeenCalledWith('soon')
@@ -128,7 +110,6 @@ describe('useNoteReminders', () => {
 
     await act(async () => {
       expect(await result.current.actions.setReminder(new Date())).toBe(false)
-      expect(await result.current.actions.setHighlightReminder('x', 0, 1, new Date())).toBe(false)
     })
     expect(mocks.createReminder).not.toHaveBeenCalled()
 

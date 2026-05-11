@@ -421,11 +421,6 @@
       "folderSuggestions": "文件夹建议",
       "noFoldersMatch": "没有匹配的文件夹"
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "为此文本设置提醒",
-      "remindMeAboutThis": "提醒我关于此事项",
-      "selectedText": "所选文本："
-    },
     "componentsReminderReminderPicker": {
       "remind": "提醒",
       "remindMe": "提醒我",

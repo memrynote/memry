@@ -38,11 +38,6 @@ import { parseQuickAdd } from '@/lib/quick-add-parser'
 import { formatDateKey } from '@/lib/task-utils'
 import { editorSchema } from './editor-schema'
 import { analyzeTaskIntents } from './scan-task-intents'
-import {
-  HighlightReminderPopover,
-  useTextSelection,
-  type HighlightSelection
-} from '@/components/reminder'
 import { useSidebarDrillDown } from '@/contexts/sidebar-drill-down'
 
 import {
@@ -122,7 +117,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const resolvedPlaceholder = placeholder ?? t('editor.content.placeholder')
 
   const tasksCtx = useTasksOptional()
-  const [highlightSelection, setHighlightSelection] = useState<HighlightSelection | null>(null)
   const dismissedBlocksRef = useRef(new Set<string>())
   const knownTaskBlockIdsRef = useRef<Set<string>>(new Set())
   // Debounced standalone-task auto-convert. Holds the timer + the blockId we
@@ -289,14 +283,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     onSelect: handlePasteLinkSelect
   })
 
-  // Text selection for highlight reminders
-  useTextSelection({
-    containerRef: editorContainerRef,
-    onSelectionChange: setHighlightSelection,
-    minLength: 10,
-    enabled: editable && !!noteId
-  })
-
   const [innerContainerEl, setInnerContainerEl] = useState<HTMLDivElement | null>(null)
   const setEditorContainerRef = useCallback((el: HTMLDivElement | null) => {
     editorContainerRef.current = el
@@ -314,11 +300,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     triggerContainerEl: triggerEl,
     enabled: editable
   })
-
-  const handleHighlightReminderCreated = useCallback(() => {
-    setHighlightSelection(null)
-    window.getSelection()?.removeAllRanges()
-  }, [])
 
   const convertCheckboxToTask = useCallback(
     (blockId: string) => {
@@ -823,16 +804,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           editorContainerRef={editorContainerRef}
           onSelect={handleTagSuggestionSelect}
         />
-
-        {editable && noteId && highlightSelection && (
-          <HighlightReminderPopover
-            noteId={noteId}
-            selection={highlightSelection}
-            onClose={() => setHighlightSelection(null)}
-            onReminderCreated={handleHighlightReminderCreated}
-            containerRef={editorContainerRef}
-          />
-        )}
 
         {wikiLinkHover.isVisible && wikiLinkHover.preview && wikiLinkHover.position && (
           <WikiLinkPreviewCard

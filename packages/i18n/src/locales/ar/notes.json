@@ -286,7 +286,6 @@
     "setReminder": "ضبط التذكير",
     "toast": {
       "set": "مجموعة تذكير",
-      "setForHighlight": "تم تعيين التذكير للنص المميز",
       "setFailed": "فشل تعيين التذكير",
       "deleted": "تم حذف التذكير",
       "deleteFailed": "فشل حذف التذكير",

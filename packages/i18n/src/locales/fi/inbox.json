@@ -421,11 +421,6 @@
       "folderSuggestions": "Kansioehdotukset",
       "noFoldersMatch": "Yksikään kansio ei vastaa \""
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "Aseta muistutus tälle tekstille",
-      "remindMeAboutThis": "Muistuta minua tästä",
-      "selectedText": "Valittu teksti:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "Muistuta",
       "remindMe": "Muistuta minua",

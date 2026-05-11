@@ -286,7 +286,6 @@
     "setReminder": "Ställ in påminnelse",
     "toast": {
       "set": "Påminnelse inställd",
-      "setForHighlight": "Påminnelse satt för markerad text",
       "setFailed": "Misslyckades med att sätta påminnelse",
       "deleted": "Påminnelse borttagen",
       "deleteFailed": "Misslyckades med att ta bort påminnelse",

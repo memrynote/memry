@@ -286,7 +286,6 @@
     "setReminder": "Aseta muistutus",
     "toast": {
       "set": "Muistutus asetettu",
-      "setForHighlight": "Muistutus asetettu korostetulle tekstille",
       "setFailed": "Muistutuksen asettaminen epäonnistui",
       "deleted": "Muistutus poistettu",
       "deleteFailed": "Muistutuksen poistaminen epäonnistui",

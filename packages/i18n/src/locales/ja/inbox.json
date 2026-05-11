@@ -421,11 +421,6 @@
       "folderSuggestions": "フォルダーの提案",
       "noFoldersMatch": "一致するフォルダーはありません。」"
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "このテキストのリマインダーを設定する",
-      "remindMeAboutThis": "これについて思い出させてください",
-      "selectedText": "選択したテキスト:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "リマインド",
       "remindMe": "思い出させて",

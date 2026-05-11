@@ -286,7 +286,6 @@
     "setReminder": "设置提醒",
     "toast": {
       "set": "提醒已设",
-      "setForHighlight": "为高亮文本设置提醒",
       "setFailed": "无法设置提醒",
       "deleted": "提醒已删除",
       "deleteFailed": "无法删除提醒",
