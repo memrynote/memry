@@ -38,6 +38,7 @@ function mockAgentState(
     state: {
       binaryStatus: readyBinary,
       disclosureAccepted: true,
+      sourceWindowId: 'window-1',
       activeConversationId: null,
       conversations: {},
       messagesByConversation: {},
@@ -73,7 +74,18 @@ describe('AgentPane', () => {
     expect(mockAcceptDisclosure).toHaveBeenCalledTimes(1)
   })
 
-  it('disables new conversation when the Claude CLI is unavailable', () => {
+  it('renders an empty chat composer instead of the startup status', () => {
+    mockAgentState({})
+
+    render(<AgentPane />)
+
+    expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', 'Ask Agent')
+    expect(screen.queryByText('Start chatting with your vault')).not.toBeInTheDocument()
+    expect(screen.queryByText(/claude .*detected and ready/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'New conversation' })).not.toBeInTheDocument()
+  })
+
+  it('keeps the empty chat composer visible when the Claude CLI is unavailable', () => {
     mockAgentState({
       binaryStatus: {
         detected: false,
@@ -86,20 +98,9 @@ describe('AgentPane', () => {
 
     render(<AgentPane />)
 
-    expect(screen.getByText(/claude not found/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'New conversation' })).toBeDisabled()
-  })
-
-  it('creates a conversation from the empty state', async () => {
-    const user = userEvent.setup()
-    mockCreateConversation.mockResolvedValue({ id: 'conversation-1' })
-    mockAgentState({})
-
-    render(<AgentPane />)
-
-    await user.click(screen.getByRole('button', { name: 'New conversation' }))
-
-    expect(mockCreateConversation).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', 'Ask Agent')
+    expect(screen.queryByText(/claude not found/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'New conversation' })).not.toBeInTheDocument()
   })
 
   it('renders the active conversation header and switches conversations', async () => {

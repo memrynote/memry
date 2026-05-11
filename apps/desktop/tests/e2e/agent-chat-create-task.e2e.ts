@@ -60,7 +60,6 @@ test.describe('Agent chat create-task flow', () => {
     await page.getByRole('button', { name: 'Day Panel' }).click()
     await page.getByRole('tab', { name: 'Agent', exact: true }).click()
     await page.getByRole('button', { name: 'Enable Claude CLI chat' }).click()
-    await page.getByRole('button', { name: 'New conversation' }).click()
 
     const composer = page.locator('textarea[placeholder="Ask Agent"]')
     await expect(composer).toBeEnabled()

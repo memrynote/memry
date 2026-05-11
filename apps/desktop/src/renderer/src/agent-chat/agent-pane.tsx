@@ -1,15 +1,12 @@
-import { useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 
 import { useAgentOptional } from './agent-context'
 import { ConversationView } from './conversation-view'
-import { EmptyState } from './empty-state'
 import { Enablement } from './enablement'
 
 export function AgentPane(): React.JSX.Element {
   const { t } = useT('common')
   const agent = useAgentOptional()
-  const [creating, setCreating] = useState(false)
 
   if (!agent) {
     return (
@@ -37,23 +34,6 @@ export function AgentPane(): React.JSX.Element {
 
   if (!state.disclosureAccepted) {
     return <Enablement onAccept={agent.acceptDisclosure} />
-  }
-
-  if (!state.activeConversationId) {
-    return (
-      <EmptyState
-        binaryStatus={state.binaryStatus}
-        creating={creating}
-        onCreateConversation={async () => {
-          setCreating(true)
-          try {
-            await agent.createConversation()
-          } finally {
-            setCreating(false)
-          }
-        }}
-      />
-    )
   }
 
   return <ConversationView conversationId={state.activeConversationId} />
