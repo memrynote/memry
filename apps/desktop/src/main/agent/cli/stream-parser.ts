@@ -7,6 +7,15 @@ export interface StreamParser {
 
 export function createStreamParser(onEvent: (event: BackendEvent) => void): StreamParser {
   let buffer = ''
+  let emittedAssistantText = false
+
+  const emitBufferedLine = (line: string): void => {
+    const event = parseLine(line, emittedAssistantText)
+    if (event.kind === 'assistant_delta') {
+      emittedAssistantText = true
+    }
+    onEvent(event)
+  }
 
   return {
     feed(chunk) {
@@ -18,28 +27,28 @@ export function createStreamParser(onEvent: (event: BackendEvent) => void): Stre
         if (!line) {
           continue
         }
-        emitLine(line, onEvent)
+        emitBufferedLine(line)
       }
     },
     flush() {
       if (buffer.trim()) {
-        emitLine(buffer, onEvent)
+        emitBufferedLine(buffer)
       }
       buffer = ''
     }
   }
 }
 
-function emitLine(line: string, onEvent: (event: BackendEvent) => void): void {
+function parseLine(line: string, emittedAssistantText: boolean): BackendEvent {
   try {
     const obj = JSON.parse(line) as Record<string, unknown>
-    onEvent(translate(obj))
+    return translate(obj, emittedAssistantText)
   } catch {
-    onEvent({ kind: 'unknown', raw: line })
+    return { kind: 'unknown', raw: line }
   }
 }
 
-function translate(obj: Record<string, unknown>): BackendEvent {
+function translate(obj: Record<string, unknown>, emittedAssistantText: boolean): BackendEvent {
   const event = unwrapClaudeCodeEvent(obj)
   const type = event.type
   if (type === 'content_block_delta') {
@@ -102,6 +111,7 @@ function translate(obj: Record<string, unknown>): BackendEvent {
   }
 
   if (type === 'result' && typeof event.result === 'string') {
+    if (emittedAssistantText) return { kind: 'noop' }
     return { kind: 'assistant_delta', text: event.result }
   }
 
