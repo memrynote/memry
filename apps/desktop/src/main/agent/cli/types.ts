@@ -9,4 +9,5 @@ export type BackendEvent =
       error?: { code: string; message: string }
     }
   | { kind: 'message_stop' }
+  | { kind: 'noop' }
   | { kind: 'unknown'; raw: unknown }

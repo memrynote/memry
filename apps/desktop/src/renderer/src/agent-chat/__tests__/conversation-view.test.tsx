@@ -105,7 +105,11 @@ describe('ConversationView', () => {
 
     render(<ConversationView conversationId="conversation-1" />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
+    const stopButton = screen.getByRole('button', { name: 'Stop' })
+    expect(stopButton.closest('form')).not.toBeNull()
+    expect(screen.queryByRole('button', { name: 'Send' })).not.toBeInTheDocument()
+
+    fireEvent.click(stopButton)
     fireEvent.keyDown(screen.getByLabelText('Agent chat'), { key: 'Escape' })
 
     expect(cancelTurn).toHaveBeenCalledTimes(2)

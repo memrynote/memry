@@ -56,6 +56,7 @@ describe('spawnClaudeTurn', () => {
     expect(args).toContain('--output-format')
     expect(args).toContain('stream-json')
     expect(args).toContain('--include-partial-messages')
+    expect(args).toContain('--verbose')
     expect(args).toContain('--strict-mcp-config')
     expect(args).toContain('--no-session-persistence')
     expect(args).toContain('--tools')

@@ -91,16 +91,16 @@ export async function startAgent(): Promise<AgentHandle> {
     if (!stdout || !stderr) {
       throw new Error('Claude subprocess stdio unavailable')
     }
+    const exitCodePromise = new Promise<number>((resolve) => {
+      sub.proc.once('exit', (code) => resolve(code ?? 0))
+    })
 
     return {
       stdout,
       stderr,
       pid: sub.pid,
       kill: () => sub.proc.kill('SIGTERM'),
-      waitExit: () =>
-        new Promise<number>((resolve) => {
-          sub.proc.once('exit', (code) => resolve(code ?? 0))
-        }),
+      waitExit: () => exitCodePromise,
       cleanup: sub.cleanup
     }
   }

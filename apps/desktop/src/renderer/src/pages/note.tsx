@@ -160,6 +160,11 @@ export function NotePage({ noteId }: NotePageProps) {
   const [isLocalGraphOpen, setIsLocalGraphOpen] = useState(false)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [externalUpdateCount, setExternalUpdateCount] = useState(0)
+  const [eventContentOverride, setEventContentOverride] = useState<{
+    noteId: string
+    content: string
+  } | null>(null)
+  const [storedNoteIdForContent, setStoredNoteIdForContent] = useState(noteId)
 
   const handlePropertyBlocked = useCallback((action: PropertySectionAction) => {
     const messages: Record<PropertySectionAction, string> = {
@@ -256,15 +261,25 @@ export function NotePage({ noteId }: NotePageProps) {
   )
 
   // Content tracking for change detection
+  if (storedNoteIdForContent !== noteId) {
+    setStoredNoteIdForContent(noteId)
+    setEventContentOverride(null)
+  }
+
+  let editorInitialContent = note?.content ?? ''
+  if (eventContentOverride !== null && eventContentOverride.noteId === noteId) {
+    editorInitialContent = eventContentOverride.content
+  }
+
   const documentStats = useMemo(() => {
     if (!note) return undefined
     return {
       wordCount: note.wordCount ?? 0,
-      characterCount: note.content?.length ?? 0,
+      characterCount: editorInitialContent.length,
       createdAt: note.created ?? null,
       modifiedAt: note.modified ?? null
     }
-  }, [note])
+  }, [editorInitialContent.length, note])
 
   const lastSavedContent = useRef<string>('')
 
@@ -276,12 +291,14 @@ export function NotePage({ noteId }: NotePageProps) {
   // Sync lastSavedContent with note data from query
   // ============================================================================
 
+  const noteContentForLastSaved = note?.content
+
   // Update lastSavedContent when note data changes (from cache or fresh fetch)
   useEffect(() => {
-    if (note?.content) {
-      lastSavedContent.current = note.content
+    if (noteContentForLastSaved !== undefined) {
+      lastSavedContent.current = noteContentForLastSaved
     }
-  }, [note?.id, note?.content])
+  }, [noteContentForLastSaved])
 
   // Reset deleted state during render when switching to a new note.
   const [storedNoteIdForDelete, setStoredNoteIdForDelete] = useState(note?.id)
@@ -356,7 +373,7 @@ export function NotePage({ noteId }: NotePageProps) {
     return unsub
   }, [noteId, updateTabTitleByEntityId])
 
-  // Listen for external note updates (file changed outside app)
+  // Listen for note updates that did not originate from this editor instance.
   // Track if we're currently saving to ignore our own updates
   const isSavingRef = useRef(false)
 
@@ -364,20 +381,18 @@ export function NotePage({ noteId }: NotePageProps) {
     if (!noteId) return
 
     const handleUpdated = (event: { id: string; changes: Partial<Note>; source?: string }) => {
-      // Only handle external updates for this note
       if (event.id !== noteId) return
-      // Ignore our own saves (source won't be 'external')
-      if (event.source !== 'external') return
-      // Ignore if we're currently saving
+
       if (isSavingRef.current) return
 
       // TanStack Query will handle the cache invalidation and refetch.
       // We just need to update lastSavedContent and force editor remount.
-      if (event.changes.content !== undefined) {
-        lastSavedContent.current = event.changes.content
-      }
+      if (typeof event.changes.content !== 'string') return
+      if (event.changes.content === lastSavedContent.current) return
 
-      // Increment counter to force editor remount with new content
+      lastSavedContent.current = event.changes.content
+      setEventContentOverride({ noteId, content: event.changes.content })
+
       setExternalUpdateCount((c) => c + 1)
     }
 
@@ -501,6 +516,7 @@ export function NotePage({ noteId }: NotePageProps) {
           try {
             await updateNote.mutateAsync({ id: noteId, content: markdown })
             lastSavedContent.current = markdown
+            setEventContentOverride(null)
             pendingMarkdownRef.current = null
             if (isLocalGraphOpen) {
               void queryClient.invalidateQueries({ queryKey: graphKeys.local(noteId) })
@@ -1065,7 +1081,7 @@ export function NotePage({ noteId }: NotePageProps) {
             <ContentArea
               key={`${noteId}-${externalUpdateCount}`}
               noteId={noteId}
-              initialContent={note.content}
+              initialContent={editorInitialContent}
               contentType="markdown"
               placeholder={t('editor.content.placeholder')}
               stickyToolbar={editorSettings.toolbarMode === 'sticky'}

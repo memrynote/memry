@@ -192,7 +192,11 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
     async (input: ApproveToolRequest) => {
       try {
         await getAgentApi().approveTool(input)
-        dispatch({ type: 'clear_pending', toolCallId: input.toolCallId })
+        dispatch({
+          type: 'clear_pending',
+          toolCallId: input.toolCallId,
+          status: input.decision.kind === 'deny' ? 'denied' : 'approved'
+        })
       } catch (error) {
         dispatch({
           type: 'set_error',

@@ -105,11 +105,13 @@ describe('TabPaneWithDropZones', () => {
 
   it('renders active content, empty panes, and day-panel margin state', () => {
     mocks.dayPanel = { isOpen: true, width: 280, isResizing: false }
-    const { container, rerender } = render(<TabPaneWithDropZones groupId="main" isActive />)
+    const { rerender } = render(<TabPaneWithDropZones groupId="main" isActive />)
 
     expect(screen.getByText('tab bar main')).toBeInTheDocument()
     expect(screen.getByText('tab content One')).toBeInTheDocument()
-    expect(container.querySelector('[style*="margin-right: 280px"]')).toBeTruthy()
+    expect(screen.getByText('tab content One').parentElement).toHaveStyle({
+      marginInlineEnd: '280px'
+    })
 
     mocks.groups.set('main', {
       id: 'main',

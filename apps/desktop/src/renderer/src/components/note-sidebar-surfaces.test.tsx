@@ -104,6 +104,9 @@ vi.mock('@dnd-kit/utilities', () => ({
 vi.mock('@/contexts/drag-context', () => ({
   useDragContext: () => ({
     dragState: mocks.dragState
+  }),
+  useOptionalDragContext: () => ({
+    dragState: mocks.dragState
   })
 }))
 

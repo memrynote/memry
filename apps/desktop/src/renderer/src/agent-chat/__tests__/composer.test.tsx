@@ -15,11 +15,13 @@ vi.mock('@/contexts/tabs', () => ({
 import { Composer } from '../composer'
 
 const mockSendTurn = vi.fn()
+const mockCancelTurn = vi.fn()
 const mockSearchQuery = vi.fn()
 
 describe('Composer', () => {
   beforeEach(() => {
     mockSendTurn.mockReset()
+    mockCancelTurn.mockReset()
     mockSearchQuery.mockReset()
     mockSearchQuery.mockResolvedValue({
       groups: [],
@@ -31,17 +33,18 @@ describe('Composer', () => {
       state: {
         inFlight: {}
       },
-      sendTurn: mockSendTurn
+      sendTurn: mockSendTurn,
+      cancelTurn: mockCancelTurn
     })
     vi.mocked(window.api.search.query).mockImplementation(mockSearchQuery)
   })
 
-  it('submits on Cmd+Enter', () => {
+  it('submits on Enter', () => {
     render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
 
     const textbox = screen.getByRole('textbox')
     fireEvent.change(textbox, { target: { value: 'hello' } })
-    fireEvent.keyDown(textbox, { key: 'Enter', metaKey: true })
+    fireEvent.keyDown(textbox, { key: 'Enter' })
 
     expect(mockSendTurn).toHaveBeenCalledWith({
       conversationId: 'conversation-1',
@@ -51,14 +54,19 @@ describe('Composer', () => {
     })
   })
 
-  it('does not submit on plain Enter', () => {
+  it('allows Shift+Enter to create a newline without submitting', () => {
     render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
 
     const textbox = screen.getByRole('textbox')
     fireEvent.change(textbox, { target: { value: 'hello' } })
-    fireEvent.keyDown(textbox, { key: 'Enter' })
+    const wasNotPrevented = fireEvent.keyDown(textbox, {
+      key: 'Enter',
+      shiftKey: true,
+      cancelable: true
+    })
 
     expect(mockSendTurn).not.toHaveBeenCalled()
+    expect(wasNotPrevented).toBe(true)
   })
 
   it('adds picked refs to the submitted attachments', async () => {
@@ -91,7 +99,7 @@ describe('Composer', () => {
     fireEvent.change(textbox, { target: { value: 'summarize @plan' } })
     fireEvent.click(await screen.findByRole('option', { name: /planning note/i }))
     fireEvent.change(textbox, { target: { value: 'summarize this' } })
-    fireEvent.keyDown(textbox, { key: 'Enter', metaKey: true })
+    fireEvent.keyDown(textbox, { key: 'Enter' })
 
     expect(mockSearchQuery).toHaveBeenCalledWith({ text: 'plan', limit: 20 })
     expect(mockSendTurn).toHaveBeenCalledWith({
@@ -113,7 +121,7 @@ describe('Composer', () => {
 
     const textbox = screen.getByRole('textbox')
     fireEvent.change(textbox, { target: { value: 'summarize' } })
-    fireEvent.keyDown(textbox, { key: 'Enter', metaKey: true })
+    fireEvent.keyDown(textbox, { key: 'Enter' })
 
     expect(mockSendTurn).toHaveBeenCalledWith({
       conversationId: 'conversation-1',
@@ -121,5 +129,24 @@ describe('Composer', () => {
       text: 'summarize',
       attachments: [{ kind: 'current_note', ref_id: '__current__', label: 'Current brief' }]
     })
+  })
+
+  it('replaces send with stop while a turn is in flight', () => {
+    mockUseAgentOptional.mockReturnValue({
+      state: {
+        inFlight: { 'conversation-1': true }
+      },
+      sendTurn: mockSendTurn,
+      cancelTurn: mockCancelTurn
+    })
+
+    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+
+    expect(screen.queryByRole('button', { name: 'Send' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
+
+    expect(mockCancelTurn).toHaveBeenCalledWith('conversation-1')
+    expect(mockSendTurn).not.toHaveBeenCalled()
   })
 })

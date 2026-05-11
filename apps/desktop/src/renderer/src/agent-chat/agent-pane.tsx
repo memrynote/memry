@@ -1,10 +1,8 @@
 import { useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 
-import { ApprovalModal } from './approval-modal'
 import { useAgentOptional } from './agent-context'
 import { ConversationView } from './conversation-view'
-import { DiffModal } from './diff-modal'
 import { EmptyState } from './empty-state'
 import { Enablement } from './enablement'
 
@@ -58,13 +56,7 @@ export function AgentPane(): React.JSX.Element {
     )
   }
 
-  return (
-    <>
-      <ConversationView conversationId={state.activeConversationId} />
-      <ApprovalModal />
-      <DiffModal />
-    </>
-  )
+  return <ConversationView conversationId={state.activeConversationId} />
 }
 
 export default AgentPane
