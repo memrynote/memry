@@ -286,7 +286,6 @@
     "setReminder": "Đặt nhắc nhở",
     "toast": {
       "set": "Nhắc nhở đã đặt",
-      "setForHighlight": "Nhắc nhở đã được đặt cho văn bản được đánh dấu",
       "setFailed": "Không đặt được nhắc nhở",
       "deleted": "Nhắc nhở đã xóa",
       "deleteFailed": "Không xóa được nhắc nhở",

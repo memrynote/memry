@@ -286,7 +286,6 @@
     "setReminder": "Imposta promemoria",
     "toast": {
       "set": "Insieme di promemoria",
-      "setForHighlight": "Promemoria impostato per il testo evidenziato",
       "setFailed": "Impossibile impostare il promemoria",
       "deleted": "Promemoria eliminato",
       "deleteFailed": "Impossibile eliminare il promemoria",

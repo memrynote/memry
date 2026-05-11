@@ -286,7 +286,6 @@
     "setReminder": "Indstil påmindelse",
     "toast": {
       "set": "Påmindelse sat",
-      "setForHighlight": "Påmindelse indstillet til fremhævet tekst",
       "setFailed": "Kunne ikke indstille påmindelsen",
       "deleted": "Påmindelsen er slettet",
       "deleteFailed": "Kunne ikke slette påmindelsen",

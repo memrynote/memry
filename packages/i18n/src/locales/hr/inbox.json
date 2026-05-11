@@ -421,11 +421,6 @@
       "folderSuggestions": "Prijedlozi mapa",
       "noFoldersMatch": "Nijedna mapa ne odgovara \""
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "Postavite podsjetnik za ovaj tekst",
-      "remindMeAboutThis": "Podsjeti me na ovo",
-      "selectedText": "Odabrani tekst:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "podsjetiti",
       "remindMe": "podsjeti me",

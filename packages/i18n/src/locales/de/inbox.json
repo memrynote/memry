@@ -421,11 +421,6 @@
       "folderSuggestions": "Ordnervorschläge",
       "noFoldersMatch": "Keine Ordner passen zu „"
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "Erinnerung für diesen Text festlegen",
-      "remindMeAboutThis": "Erinnern Sie mich daran",
-      "selectedText": "Ausgewählter Text:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "Erinnern",
       "remindMe": "Erinnere mich daran",

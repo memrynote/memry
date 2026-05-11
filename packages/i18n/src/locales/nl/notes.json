@@ -286,7 +286,6 @@
     "setReminder": "Herinnering instellen",
     "toast": {
       "set": "Herinnering ingesteld",
-      "setForHighlight": "Herinnering ingesteld voor gemarkeerde tekst",
       "setFailed": "Kan herinnering niet instellen",
       "deleted": "Herinnering verwijderd",
       "deleteFailed": "Kan herinnering niet verwijderen",

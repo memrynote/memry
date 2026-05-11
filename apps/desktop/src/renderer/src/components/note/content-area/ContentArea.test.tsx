@@ -235,11 +235,6 @@ vi.mock('./paste-link-menu', () => ({
     isOpen ? <div data-testid="paste-link-menu" /> : null
 }))
 
-vi.mock('@/components/reminder', () => ({
-  HighlightReminderPopover: () => <div data-testid="highlight-popover" />,
-  useTextSelection: vi.fn()
-}))
-
 vi.mock('./ai-menu', () => ({
   CustomAIMenu: () => null
 }))

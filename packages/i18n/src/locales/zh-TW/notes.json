@@ -286,7 +286,6 @@
     "setReminder": "設定提醒",
     "toast": {
       "set": "提醒組",
-      "setForHighlight": "已為選取的文字設定提醒",
       "setFailed": "無法設定提醒",
       "deleted": "提醒已刪除",
       "deleteFailed": "無法刪除提醒",

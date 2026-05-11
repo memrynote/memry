@@ -421,11 +421,6 @@
       "folderSuggestions": "Предложения папок",
       "noFoldersMatch": "Ни одна папка не соответствует \""
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "Установить напоминание для этого текста",
-      "remindMeAboutThis": "Напомни мне об этом",
-      "selectedText": "Выделенный текст:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "Напомнить",
       "remindMe": "Напомни мне",

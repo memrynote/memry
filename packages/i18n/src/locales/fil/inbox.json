@@ -421,11 +421,6 @@
       "folderSuggestions": "Mga mungkahi sa folder",
       "noFoldersMatch": "Walang mga folder na tumutugma \""
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "Magtakda ng paalala para sa tekstong ito",
-      "remindMeAboutThis": "Paalalahanan mo ako tungkol dito",
-      "selectedText": "Napiling teksto:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "Paalalahanan",
       "remindMe": "Paalalahanan mo ako",

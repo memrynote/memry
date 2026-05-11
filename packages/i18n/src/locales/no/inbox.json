@@ -421,11 +421,6 @@
       "folderSuggestions": "Mappeforslag",
       "noFoldersMatch": "Ingen mapper samsvarer \""
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "Angi påminnelse for denne teksten",
-      "remindMeAboutThis": "Minn meg på dette",
-      "selectedText": "Valgt tekst:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "Påminn",
       "remindMe": "Minn meg på det",

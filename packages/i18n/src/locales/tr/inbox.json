@@ -421,11 +421,6 @@
       "folderSuggestions": "Klasör önerileri",
       "noFoldersMatch": "Eşleşen klasör yok: \""
     },
-    "componentsReminderHighlightReminderPopover": {
-      "setReminderForThisText": "Bu metin için hatırlatıcı ayarla",
-      "remindMeAboutThis": "Bana bunu hatırlat",
-      "selectedText": "Seçilen metin:"
-    },
     "componentsReminderReminderPicker": {
       "remind": "Hatırlat",
       "remindMe": "Bana hatırlat",
