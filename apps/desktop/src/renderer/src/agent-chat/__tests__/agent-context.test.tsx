@@ -178,6 +178,30 @@ describe('agentReducer', () => {
     })
   })
 
+  it('updates conversation titles broadcast by the agent runtime', () => {
+    const state: AgentState = {
+      ...initialAgentState,
+      activeConversationId: conversation.id,
+      conversations: { [conversation.id]: conversation },
+      messagesByConversation: { [conversation.id]: [] }
+    }
+
+    const next = agentReducer(state, {
+      type: 'event',
+      event: {
+        kind: 'conversation_updated',
+        conversation: {
+          ...conversation,
+          title: 'Project Roadmap',
+          updatedAt: 200
+        }
+      } as AgentEvent
+    })
+
+    expect(next.conversations[conversation.id].title).toBe('Project Roadmap')
+    expect(next.activeConversationId).toBe(conversation.id)
+  })
+
   it('queues pending approvals and clears them by tool call id', () => {
     const event: AgentEvent = {
       kind: 'tool_call_pending_approval',

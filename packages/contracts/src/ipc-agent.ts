@@ -1,6 +1,11 @@
 import { z } from 'zod'
 
-import { VectorClockSchema, type FieldClocks, type VectorClock } from './sync-api'
+import {
+  FieldClocksSchema,
+  VectorClockSchema,
+  type FieldClocks,
+  type VectorClock
+} from './sync-api'
 
 export type { FieldClocks, VectorClock }
 
@@ -131,6 +136,21 @@ export interface Conversation {
   lastSyncedAt: number | null
 }
 
+export const ConversationSchema = z.object({
+  id: z.string(),
+  vaultId: z.string(),
+  title: z.string(),
+  backend: z.string(),
+  trustList: z.array(z.string()),
+  pinned: z.boolean(),
+  vectorClock: VectorClockSchema,
+  fieldClocks: FieldClocksSchema,
+  createdAt: z.number(),
+  updatedAt: z.number(),
+  deletedAt: z.number().nullable(),
+  lastSyncedAt: z.number().nullable()
+})
+
 export interface Message {
   id: string
   conversationId: string
@@ -214,6 +234,10 @@ export const AgentEventSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('message_upserted'),
     message: MessageSchema
+  }),
+  z.object({
+    kind: z.literal('conversation_updated'),
+    conversation: ConversationSchema
   }),
   z.object({
     kind: z.literal('assistant_text_delta'),

@@ -31,6 +31,11 @@ When no conversation is selected yet, the prompt box stays available. Sending th
 creates a new Agent Chat conversation, attaches the active note when one is open, and streams the
 reply into the sidebar.
 
+New conversations start with a temporary title. When you send the first prompt, the selected chat
+backend also generates a short conversation title. Memry stores that title on the encrypted
+conversation row and refreshes the sidebar title without giving the title-generation subprocess
+access to Memry MCP tools.
+
 Conversation rows, message bodies, and message attachments are encrypted at rest before they are
 written to SQLite. Free accounts keep agent chat history local-only. Paid accounts can sync finalized
 conversations and terminal messages through Memry Sync; in-progress streaming messages are not
