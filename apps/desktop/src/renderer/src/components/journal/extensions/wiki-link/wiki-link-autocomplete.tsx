@@ -14,7 +14,6 @@ import {
 import type { SuggestionProps } from '@tiptap/suggestion'
 import { FileText, Plus } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { formatRelativeTime } from '@/lib/wiki-link-utils'
 import type { Page } from '@/hooks/use-pages'
 import { useT } from '@memry/i18n/renderer'
 
@@ -135,7 +134,7 @@ export const WikiLinkAutocomplete = forwardRef<
                   key={item.id}
                   className={cn(
                     'wiki-link-autocomplete-item',
-                    'relative flex w-full cursor-pointer select-none items-start gap-2 rounded-sm px-2 py-1.5 text-sm outline-none',
+                    'relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none',
                     'hover:bg-accent hover:text-accent-foreground',
                     selectedIndex === index &&
                       'bg-accent text-accent-foreground wiki-link-autocomplete-item-selected'
@@ -144,13 +143,7 @@ export const WikiLinkAutocomplete = forwardRef<
                   role="option"
                   aria-selected={selectedIndex === index}
                 >
-                  <FileText className="mt-0.5 h-4 w-4 shrink-0 opacity-70" />
-                  <div className="flex flex-1 flex-col gap-0.5">
-                    <div className="font-medium">{item.title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatRelativeTime(item.lastEdited)}
-                    </div>
-                  </div>
+                  <div className="min-w-0 flex-1 truncate text-start font-medium">{item.title}</div>
                 </button>
               ))}
             </div>
@@ -169,7 +162,7 @@ export const WikiLinkAutocomplete = forwardRef<
                     key={item.id}
                     className={cn(
                       'wiki-link-autocomplete-item',
-                      'relative flex w-full cursor-pointer select-none items-start gap-2 rounded-sm px-2 py-1.5 text-sm outline-none',
+                      'relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none',
                       'hover:bg-accent hover:text-accent-foreground',
                       selectedIndex === actualIndex &&
                         'bg-accent text-accent-foreground wiki-link-autocomplete-item-selected'
@@ -178,12 +171,8 @@ export const WikiLinkAutocomplete = forwardRef<
                     role="option"
                     aria-selected={selectedIndex === actualIndex}
                   >
-                    <FileText className="mt-0.5 h-4 w-4 shrink-0 opacity-70" />
-                    <div className="flex flex-1 flex-col gap-0.5">
-                      <div className="font-medium">{item.title}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {formatRelativeTime(item.lastEdited)}
-                      </div>
+                    <div className="min-w-0 flex-1 truncate text-start font-medium">
+                      {item.title}
                     </div>
                   </button>
                 )
