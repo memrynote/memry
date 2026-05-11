@@ -22,12 +22,14 @@ import {
   Calendar01Icon,
   Calendar02Icon,
   Camera01Icon,
+  ChatGptIcon,
   CircleIcon,
   ClipboardIcon,
   Clock01Icon,
   CloudIcon,
   CloudOffIcon,
   CloudSavingDone01Icon,
+  ClaudeIcon,
   CodeIcon,
   CogIcon,
   CopyIcon,
@@ -538,6 +540,9 @@ export const Paperclip = createIcon(Attachment01Icon)
 export const Smile = createIcon(SmileIcon)
 export const Sparkles = createIcon(SparklesIcon)
 export const Bot = createIcon(BotIcon)
+export const Claude = createIcon(ClaudeIcon)
+export const ChatGpt = createIcon(ChatGptIcon)
+export const Computer = createIcon(ComputerIcon)
 export const Brain = createIcon(BrainIcon)
 export const History = createIcon(WorkHistoryIcon)
 export const LogOut = createIcon(Logout01Icon)
