@@ -24,7 +24,7 @@ The custom dialog accepts any future date and time. Past times are rejected.
 
 ### Snoozed View
 
-A separate view tab lists currently snoozed items with a wakes-in countdown. From a snoozed row you can:
+A separate view tab lists currently snoozed items and reminder rows generated from fired note reminders. Snoozed rows show a wakes-in countdown. From a snoozed row you can:
 
 - **Wake now** — return to the inbox immediately
 - **Reschedule** — pick a different wake time

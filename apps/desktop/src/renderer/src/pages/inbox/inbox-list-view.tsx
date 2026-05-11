@@ -90,12 +90,16 @@ export function InboxListView({
 
   // Filtered items
   const items = useMemo(() => {
-    return backendItems.filter((item) => {
+    const visibleItems = showSnoozedItems
+      ? backendItems.filter((item) => item.snoozedUntil || item.type === 'reminder')
+      : backendItems
+
+    return visibleItems.filter((item) => {
       if (pendingArchiveIds.has(item.id)) return false
       if (selectedTypes.size > 0 && !selectedTypes.has(item.type)) return false
       return true
     })
-  }, [backendItems, pendingArchiveIds, selectedTypes])
+  }, [backendItems, pendingArchiveIds, selectedTypes, showSnoozedItems])
 
   // Empty state data
   const { stats: inboxStats } = useInboxStats()
