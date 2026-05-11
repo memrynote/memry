@@ -60,11 +60,13 @@ export async function startAgent(): Promise<AgentHandle> {
   const spawnAdapter = async ({
     prompt,
     conversationId,
-    windowId
+    windowId,
+    purpose = 'turn'
   }: {
     prompt: string
     conversationId: string
     windowId: string
+    purpose?: 'turn' | 'summary' | 'title'
   }) => {
     const binary = await detectClaudeBinary()
     if (!binary.detected || !binary.meetsMinimum) {
@@ -82,7 +84,7 @@ export async function startAgent(): Promise<AgentHandle> {
       authorizationValue: status['token'],
       conversationId,
       windowId,
-      allowedTools: ALLOWED_AGENT_TOOLS,
+      allowedTools: purpose === 'title' ? '' : ALLOWED_AGENT_TOOLS,
       prompt
     })
 

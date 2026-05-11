@@ -114,6 +114,23 @@ describe('agent IPC schemas', () => {
         }
       },
       {
+        kind: 'conversation_updated',
+        conversation: {
+          id: 'conversation-1',
+          vaultId: 'vault-1',
+          title: 'Project Roadmap',
+          backend: 'claude_cli',
+          trustList: [],
+          pinned: false,
+          vectorClock: {},
+          fieldClocks: {},
+          createdAt: 100,
+          updatedAt: 200,
+          deletedAt: null,
+          lastSyncedAt: null
+        }
+      },
+      {
         kind: 'assistant_text_delta',
         conversationId: 'conversation-1',
         messageId: 'message-1',
