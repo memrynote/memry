@@ -28,6 +28,11 @@ written to SQLite. Free accounts keep agent chat history local-only. Paid accoun
 conversations and terminal messages through Memry Sync; in-progress streaming messages are not
 enqueued until the turn finishes.
 
+If Memry cannot verify the local vault key for the current database, Agent Chat stays unavailable
+instead of opening unreadable conversation history. A fresh local vault can initialize a new local key
+without sign-in; an existing vault with a mismatched or missing keychain key must be recovered through
+the normal vault recovery flow.
+
 ## Connection
 
 The endpoint is:

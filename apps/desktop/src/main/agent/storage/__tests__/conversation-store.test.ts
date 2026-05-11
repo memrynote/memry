@@ -81,6 +81,17 @@ describe('Conversation store', () => {
     expect(list.map((conversation) => conversation.title)).toEqual(['New', 'Old'])
   })
 
+  it('skips undecryptable conversations when listing a vault', () => {
+    const otherKey = sodium.randombytes_buf(sodium.crypto_aead_xchacha20poly1305_ietf_KEYBYTES)
+    const otherStore = createConversationStore({ db, vaultKey: otherKey, deviceId: 'device-2' })
+    otherStore.create({ vaultId: 'v', title: 'Unreadable', backend: 'claude_cli' })
+    store.create({ vaultId: 'v', title: 'Readable', backend: 'claude_cli' })
+
+    const list = store.listByVault('v')
+
+    expect(list.map((conversation) => conversation.title)).toEqual(['Readable'])
+  })
+
   it('updates pinned status and bumps the field clock for pinned only', () => {
     const conversation = store.create({ vaultId: 'v', title: 'X', backend: 'claude_cli' })
     const before = conversation.fieldClocks
