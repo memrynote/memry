@@ -148,6 +148,33 @@ describe('Claude stream-json parser', () => {
     expect(events[0]).toEqual({ kind: 'assistant_delta', text: 'The note was created.' })
   })
 
+  it('does not replay Claude Code final result after streaming partial text', () => {
+    const events: unknown[] = []
+    const parser = createStreamParser((event) => events.push(event))
+
+    parser.feed(
+      `${JSON.stringify({
+        type: 'stream_event',
+        event: {
+          type: 'content_block_delta',
+          delta: { type: 'text_delta', text: '12 notes in /tech' }
+        }
+      })}\n`
+    )
+    parser.feed(
+      `${JSON.stringify({
+        type: 'result',
+        subtype: 'success',
+        result: '12 notes in /tech'
+      })}\n`
+    )
+
+    expect(events).toEqual([
+      { kind: 'assistant_delta', text: '12 notes in /tech' },
+      { kind: 'noop' }
+    ])
+  })
+
   it('ignores known Claude Code lifecycle events', () => {
     const events: unknown[] = []
     const parser = createStreamParser((event) => events.push(event))

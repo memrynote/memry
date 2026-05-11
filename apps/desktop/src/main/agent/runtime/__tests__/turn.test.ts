@@ -34,6 +34,13 @@ describe('runTurn against a stub backend', () => {
         })}\n`
       )
       yield Buffer.from(`${JSON.stringify({ type: 'message_stop' })}\n`)
+      yield Buffer.from(
+        `${JSON.stringify({
+          type: 'result',
+          subtype: 'success',
+          result: 'Hello world'
+        })}\n`
+      )
     })()
     const spawnSubprocess = vi.fn(async () => ({
       stdout,
@@ -207,6 +214,13 @@ describe('runTurn against a stub backend', () => {
             })}\n`
           )
           yield Buffer.from(`${JSON.stringify({ type: 'message_stop' })}\n`)
+          yield Buffer.from(
+            `${JSON.stringify({
+              type: 'result',
+              subtype: 'success',
+              result: 'Project Roadmap'
+            })}\n`
+          )
         })(),
         stderr: (async function* () {})(),
         pid: 1,
