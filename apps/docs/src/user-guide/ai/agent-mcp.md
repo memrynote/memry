@@ -27,6 +27,10 @@ Agent Chat can:
 Press <kbd>Enter</kbd> to send the prompt. Press <kbd>Shift</kbd>+<kbd>Enter</kbd> to insert a
 new line in the prompt box.
 
+When no conversation is selected yet, the prompt box stays available. Sending the first prompt
+creates a new Agent Chat conversation, attaches the active note when one is open, and streams the
+reply into the sidebar.
+
 Conversation rows, message bodies, and message attachments are encrypted at rest before they are
 written to SQLite. Free accounts keep agent chat history local-only. Paid accounts can sync finalized
 conversations and terminal messages through Memry Sync; in-progress streaming messages are not
