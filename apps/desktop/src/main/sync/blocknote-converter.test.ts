@@ -4,6 +4,17 @@ import * as Y from 'yjs'
 import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
 
 describe('blocknote-converter code block language', () => {
+  it('returns empty markdown for an empty Yjs fragment', async () => {
+    // #given
+    const doc = new Y.Doc()
+
+    // #when
+    const result = await yDocToMarkdown(doc)
+
+    // #then
+    expect(result).toBe('')
+  })
+
   it('preserves language when parsing markdown code fences to blocks', async () => {
     // #given
     const markdown = '```typescript\nconst x = 1\n```'
@@ -71,5 +82,30 @@ describe('blocknote-converter code block language', () => {
     expect(blocks).not.toBeNull()
     const codeBlock = blocks!.find((b) => b.type === 'codeBlock')
     expect(codeBlock).toBeDefined()
+  })
+
+  it('preserves extra blank lines through markdown to Yjs round-trip', async () => {
+    // #given
+    const markdown = 'Alpha\n\n\nBeta'
+    const doc = new Y.Doc()
+    const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    const { markdownToYFragment, yFragmentToBlocks } = await import('./blocknote-converter')
+
+    // #when
+    const ok = await markdownToYFragment(markdown, fragment)
+    const blocks = await yFragmentToBlocks(fragment)
+    const result = await yDocToMarkdown(doc)
+
+    // #then
+    expect(ok).toBe(true)
+    expect(blocks).not.toBeNull()
+    expect(
+      blocks!.some(
+        (block) => block.type === 'paragraph' && (block.content as unknown[]).length === 0
+      )
+    ).toBe(true)
+    expect(result).toContain('Alpha')
+    expect(result).toContain('Beta')
+    expect(result).toContain('\n\n\n\n')
   })
 })
