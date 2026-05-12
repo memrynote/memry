@@ -18,7 +18,7 @@ export function LegalLayout({ eyebrow, title, intro, lastUpdated, children }: Le
       <section className="relative overflow-hidden pt-32 pb-12 sm:pt-40 sm:pb-16">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[360px] bg-[radial-gradient(ellipse_at_top,rgba(199,91,57,0.08),transparent_60%)]"
+          className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[360px] bg-[radial-gradient(ellipse_at_top,rgba(255,103,26,0.08),transparent_60%)]"
         />
         <Container size="sm">
           <motion.div
