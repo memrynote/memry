@@ -4,13 +4,11 @@ import type { ReactNode } from 'react'
 import type {
   AgentEvent,
   AgentBackendId,
+  AgentBackendOptions,
   ApproveToolRequest,
   AttachmentInput,
   BackendStatusesResponse,
-  BinaryStatus,
-  ClaudeEffort,
   Conversation,
-  CreateConversationRequest,
   Message,
   SendTurnResponse,
   SendTurnRequest
@@ -31,7 +29,11 @@ interface DisclosureState {
 
 interface AgentClientApi {
   listConversations: (input?: { vaultId?: string }) => Promise<Conversation[]>
-  createConversation: (input?: CreateConversationRequest) => Promise<Conversation>
+  createConversation: (input?: {
+    vaultId?: string
+    backend?: AgentBackendId
+    backendModel?: string | null
+  }) => Promise<Conversation>
   loadConversation: (input: { id: string }) => Promise<{
     conversation: Conversation | null
     messages: Message[]
@@ -44,7 +46,6 @@ interface AgentClientApi {
     add?: string[]
     remove?: string[]
   }) => Promise<Conversation | null>
-  getBinaryStatus: () => Promise<BinaryStatus>
   getBackendStatuses: () => Promise<BackendStatusesResponse>
   getDisclosureState: () => Promise<DisclosureState>
   acceptDisclosure: () => Promise<DisclosureState>
@@ -57,15 +58,15 @@ interface AgentContextValue {
   dispatch: React.Dispatch<AgentAction>
   refreshConversations: () => Promise<void>
   createConversation: (input?: {
-    vaultId?: string
     backend?: AgentBackendId
+    backendModel?: string | null
   }) => Promise<Conversation>
   loadConversation: (id: string) => Promise<void>
   sendTurn: (input: {
     conversationId: string
     sourceWindowId: string
     text: string
-    claudeEffort: ClaudeEffort
+    backendOptions: AgentBackendOptions
     attachments?: AttachmentInput[]
   }) => Promise<void>
   cancelTurn: (conversationId: string) => Promise<void>
@@ -140,7 +141,7 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
   )
 
   const createConversation = useCallback(
-    async (input?: CreateConversationRequest) => {
+    async (input?: { backend?: AgentBackendId; backendModel?: string | null }) => {
       try {
         const conversation = await getAgentApi().createConversation(input)
         dispatch({ type: 'set_active_conversation', conversation, messages: [] })
@@ -159,7 +160,7 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
       conversationId: string
       sourceWindowId: string
       text: string
-      claudeEffort: ClaudeEffort
+      backendOptions: AgentBackendOptions
       attachments?: AttachmentInput[]
     }) => {
       dispatch({ type: 'set_in_flight', conversationId: input.conversationId, inFlight: true })
@@ -170,7 +171,7 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
           conversationId: input.conversationId,
           sourceWindowId: input.sourceWindowId,
           text: input.text,
-          claudeEffort: input.claudeEffort,
+          backendOptions: input.backendOptions,
           attachments: input.attachments ?? []
         })
         if (!result.ok) {

@@ -14,11 +14,17 @@ vi.mock('@/contexts/tabs', () => ({
 import { ConversationView } from '../conversation-view'
 
 describe('ConversationView', () => {
+  const backendStatuses = {
+    claude_cli: { backend: 'claude_cli', available: true },
+    codex_cli: { backend: 'codex_cli', available: true },
+    local_openai_compatible: { backend: 'local_openai_compatible', available: true }
+  }
+
   it('renders the active conversation header and stored messages', () => {
     const cancelTurn = vi.fn()
     mockUseAgentOptional.mockReturnValue({
       state: {
-        binaryStatus: null,
+        backendStatuses,
         disclosureAccepted: true,
         activeConversationId: 'conversation-1',
         conversations: {
@@ -27,6 +33,7 @@ describe('ConversationView', () => {
             vaultId: 'vault-1',
             title: 'Planning',
             backend: 'claude_cli',
+            backendModel: null,
             trustList: [],
             pinned: false,
             vectorClock: {},
@@ -73,7 +80,7 @@ describe('ConversationView', () => {
     const cancelTurn = vi.fn()
     mockUseAgentOptional.mockReturnValue({
       state: {
-        binaryStatus: null,
+        backendStatuses,
         disclosureAccepted: true,
         sourceWindowId: '42',
         activeConversationId: 'conversation-1',
@@ -83,6 +90,7 @@ describe('ConversationView', () => {
             vaultId: 'vault-1',
             title: 'Planning',
             backend: 'claude_cli',
+            backendModel: null,
             trustList: [],
             pinned: false,
             vectorClock: {},

@@ -1,4 +1,4 @@
-import type { AgentBackendId, ApproveToolDecision, ClaudeEffort } from '@memry/contracts/ipc-agent'
+import type { ApproveToolDecision } from '@memry/contracts/ipc-agent'
 
 import { createLogger } from '../../lib/logger'
 import { setWriteGate as setMcpWriteGate } from '../mcp/lifecycle'
@@ -27,20 +27,6 @@ interface TrackedSubprocess {
 export interface AgentRuntimeDeps {
   conversations: ConversationStore
   messages: MessageStore
-  spawn: (input: {
-    prompt: string
-    conversationId: string
-    windowId: string
-    backend: AgentBackendId
-    effort: ClaudeEffort
-  }) => Promise<{
-    stdout: AsyncIterable<Buffer>
-    stderr: AsyncIterable<Buffer>
-    pid: number
-    kill: () => void
-    waitExit: () => Promise<number>
-    cleanup: () => Promise<void>
-  }>
 }
 
 export type PendingApprovalSnapshot = Omit<PendingApproval, 'resolve'>

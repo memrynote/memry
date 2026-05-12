@@ -3,8 +3,8 @@ import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type {
+  AgentBackendStatus,
   BackendStatusesResponse,
-  BinaryStatus,
   Conversation,
   Message
 } from '@memry/contracts/ipc-agent'
@@ -17,22 +17,30 @@ vi.mock('@memry/i18n/renderer', () => ({
 
 import { AgentProvider, useAgent } from '../agent-context'
 
-const binaryStatus: BinaryStatus = {
-  detected: true,
+const claudeStatus: AgentBackendStatus = {
+  backend: 'claude_cli',
+  available: true,
   version: '2.1.0',
-  meetsMinimum: true,
   minimumRequired: '2.1.0',
-  installHint: null
+  reason: null,
+  detail: null
 }
 
 const backendStatuses: BackendStatusesResponse = {
-  claude_cli: binaryStatus,
+  claude_cli: claudeStatus,
   codex_cli: {
-    detected: true,
+    backend: 'codex_cli',
+    available: true,
     version: '0.130.0',
-    meetsMinimum: true,
     minimumRequired: '0.130.0',
-    installHint: null
+    reason: null,
+    detail: null
+  },
+  local_openai_compatible: {
+    backend: 'local_openai_compatible',
+    available: true,
+    reason: null,
+    detail: 'http://localhost:11434/v1'
   }
 }
 
@@ -41,6 +49,7 @@ const conversation: Conversation = {
   vaultId: 'vault-1',
   title: 'Planning',
   backend: 'claude_cli',
+  backendModel: null,
   trustList: [],
   pinned: false,
   vectorClock: {},
@@ -80,7 +89,6 @@ describe('AgentProvider', () => {
     cancelTurn: ReturnType<typeof vi.fn>
     approveTool: ReturnType<typeof vi.fn>
     editTrustList: ReturnType<typeof vi.fn>
-    getBinaryStatus: ReturnType<typeof vi.fn>
     getBackendStatuses: ReturnType<typeof vi.fn>
     getDisclosureState: ReturnType<typeof vi.fn>
     acceptDisclosure: ReturnType<typeof vi.fn>
@@ -102,7 +110,6 @@ describe('AgentProvider', () => {
         ...conversation,
         trustList: ['vault_create_task']
       }),
-      getBinaryStatus: vi.fn().mockResolvedValue(binaryStatus),
       getBackendStatuses: vi.fn().mockResolvedValue(backendStatuses),
       getDisclosureState: vi.fn().mockResolvedValue({ accepted: false }),
       acceptDisclosure: vi.fn().mockResolvedValue({ accepted: true }),
@@ -123,7 +130,6 @@ describe('AgentProvider', () => {
 
     await waitFor(() => {
       expect(result.current.state.sourceWindowId).toBe('window-1')
-      expect(result.current.state.binaryStatus).toEqual(binaryStatus)
       expect(result.current.state.backendStatuses).toEqual(backendStatuses)
       expect(result.current.state.disclosureAccepted).toBe(false)
       expect(result.current.state.conversations[conversation.id]).toEqual(conversation)
@@ -163,7 +169,7 @@ describe('AgentProvider', () => {
         conversationId: conversation.id,
         sourceWindowId: 'window-1',
         text: 'Ship it',
-        claudeEffort: 'medium'
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'medium' }
       })
     })
     expect(agentApi.sendTurn).toHaveBeenCalledWith(
@@ -231,7 +237,7 @@ describe('AgentProvider', () => {
           conversationId: conversation.id,
           sourceWindowId: 'window-1',
           text: 'Retry',
-          claudeEffort: 'medium'
+          backendOptions: { backend: 'claude_cli', claudeEffort: 'medium' }
         })
       } catch (error) {
         thrown = error

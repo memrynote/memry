@@ -5,6 +5,8 @@ vi.mock('../event-bus', () => ({
 }))
 
 import type { ConversationStore } from '../../storage/conversation-store'
+import type { AgentBackendRegistry } from '../../backends/registry'
+import type { AgentBackend, BackendRunHandle } from '../../backends/types'
 import type { MessageStore } from '../../storage/message-store'
 import type {
   Conversation,
@@ -20,50 +22,26 @@ describe('runTurn against a stub backend', () => {
   it('persists user and assistant messages from stream-json output', async () => {
     const messages = createFakeMessageStore()
     const conversations = createFakeConversationStore({ title: 'Existing conversation' })
-    const stdout = (async function* () {
-      yield Buffer.from(
-        `${JSON.stringify({
-          type: 'content_block_delta',
-          delta: { type: 'text_delta', text: 'Hello ' }
-        })}\n`
-      )
-      yield Buffer.from(
-        `${JSON.stringify({
-          type: 'content_block_delta',
-          delta: { type: 'text_delta', text: 'world' }
-        })}\n`
-      )
-      yield Buffer.from(`${JSON.stringify({ type: 'message_stop' })}\n`)
-      yield Buffer.from(
-        `${JSON.stringify({
-          type: 'result',
-          subtype: 'success',
-          result: 'Hello world'
-        })}\n`
-      )
-    })()
-    const spawnSubprocess = vi.fn(async () => ({
-      stdout,
-      stderr: (async function* () {})(),
-      pid: 1,
-      kill: vi.fn(),
-      waitExit: async () => 0,
-      cleanup: vi.fn()
-    }))
+    const backend = createFakeBackend({
+      turn: [
+        { kind: 'assistant_delta', text: 'Hello ' },
+        { kind: 'assistant_delta', text: 'world' },
+        { kind: 'message_stop' }
+      ]
+    })
 
     await runTurn(
       {
         conversations,
         messages,
-        spawnSubprocess,
-        toolHandlers: { routeToolCall: vi.fn() }
+        backends: createFakeRegistry(backend)
       },
       {
         conversationId: 'conversation-1',
         sourceWindowId: 'window-1',
         text: 'hi',
         attachments: [],
-        claudeEffort: 'low'
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'low' }
       }
     )
 
@@ -73,11 +51,11 @@ describe('runTurn against a stub backend', () => {
     expect(all[1].role).toBe('assistant')
     expect(all[1].status).toBe('completed')
     expect(all[1].content).toEqual({ role: 'assistant', data: { text: 'Hello world' } })
-    expect(spawnSubprocess).toHaveBeenCalledWith(
+    expect(backend.runTurn).toHaveBeenCalledWith(
       expect.objectContaining({
         conversationId: 'conversation-1',
         windowId: 'window-1',
-        effort: 'low',
+        options: { backend: 'claude_cli', claudeEffort: 'low' },
         prompt: expect.stringContaining('User: hi')
       })
     )
@@ -92,30 +70,24 @@ describe('runTurn against a stub backend', () => {
   it('marks the assistant message as errored when the subprocess exits non-zero', async () => {
     const messages = createFakeMessageStore()
     const conversations = createFakeConversationStore({ title: 'Existing conversation' })
-    const spawnSubprocess = vi.fn(async () => ({
-      stdout: (async function* () {})(),
-      stderr: (async function* () {
-        yield Buffer.from('Claude auth failed\n')
-      })(),
-      pid: 1,
-      kill: vi.fn(),
-      waitExit: async () => 1,
-      cleanup: vi.fn()
-    }))
+    const backend = createFakeBackend({
+      turn: [],
+      exitCode: 1,
+      stderr: 'Claude auth failed\n'
+    })
 
     await runTurn(
       {
         conversations,
         messages,
-        spawnSubprocess,
-        toolHandlers: { routeToolCall: vi.fn() }
+        backends: createFakeRegistry(backend)
       },
       {
         conversationId: 'conversation-1',
         sourceWindowId: 'window-1',
         text: 'hi',
         attachments: [],
-        claudeEffort: 'xhigh'
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh' }
       }
     )
 
@@ -133,89 +105,67 @@ describe('runTurn against a stub backend', () => {
     })
   })
 
-  it('dispatches Codex conversations through the Codex parser and subprocess backend', async () => {
+  it('dispatches Codex conversations through the selected backend contract', async () => {
     const messages = createFakeMessageStore()
     const conversations = createFakeConversationStore({
       title: 'Existing conversation',
       backend: 'codex_cli'
     })
-    const stdout = (async function* () {
-      yield Buffer.from(
-        `${JSON.stringify({
-          type: 'item.completed',
-          item: { type: 'agent_message', text: 'Codex says hi' }
-        })}\n`
-      )
-      yield Buffer.from(`${JSON.stringify({ type: 'turn.completed' })}\n`)
-    })()
-    const spawnSubprocess = vi.fn(async () => ({
-      stdout,
-      stderr: (async function* () {})(),
-      pid: 1,
-      kill: vi.fn(),
-      waitExit: async () => 0,
-      cleanup: vi.fn()
-    }))
+    const backend = createFakeBackend({
+      id: 'codex_cli',
+      turn: [{ kind: 'assistant_delta', text: 'Codex says hi' }, { kind: 'message_stop' }]
+    })
 
     await runTurn(
       {
         conversations,
         messages,
-        spawnSubprocess,
-        toolHandlers: { routeToolCall: vi.fn() }
+        backends: createFakeRegistry(backend)
       },
       {
         conversationId: 'conversation-1',
         sourceWindowId: 'window-1',
         text: 'hi',
         attachments: [],
-        claudeEffort: 'xhigh'
+        backendOptions: { backend: 'codex_cli', reasoningEffort: 'high' }
       }
     )
 
     const all = messages.listByConversation('conversation-1')
     expect(all[1].content).toEqual({ role: 'assistant', data: { text: 'Codex says hi' } })
-    expect(spawnSubprocess).toHaveBeenCalledWith(
+    expect(backend.runTurn).toHaveBeenCalledWith(
       expect.objectContaining({
-        backend: 'codex_cli',
         conversationId: 'conversation-1',
-        windowId: 'window-1'
+        windowId: 'window-1',
+        options: { backend: 'codex_cli', reasoningEffort: 'high' },
+        purpose: 'turn'
       })
     )
   })
 
-  it('marks the assistant message as errored when Codex emits an error event', async () => {
+  it('marks the assistant message as errored when a backend emits an error event', async () => {
     const messages = createFakeMessageStore()
     const conversations = createFakeConversationStore({
       title: 'Existing conversation',
       backend: 'codex_cli'
     })
-    const stdout = (async function* () {
-      yield Buffer.from(`${JSON.stringify({ type: 'error', message: 'Codex auth failed' })}\n`)
-      yield Buffer.from(`${JSON.stringify({ type: 'turn.completed' })}\n`)
-    })()
-    const spawnSubprocess = vi.fn(async () => ({
-      stdout,
-      stderr: (async function* () {})(),
-      pid: 1,
-      kill: vi.fn(),
-      waitExit: async () => 0,
-      cleanup: vi.fn()
-    }))
+    const backend = createFakeBackend({
+      id: 'codex_cli',
+      turn: [{ kind: 'error', message: 'Codex auth failed' }, { kind: 'message_stop' }]
+    })
 
     await runTurn(
       {
         conversations,
         messages,
-        spawnSubprocess,
-        toolHandlers: { routeToolCall: vi.fn() }
+        backends: createFakeRegistry(backend)
       },
       {
         conversationId: 'conversation-1',
         sourceWindowId: 'window-1',
         text: 'hi',
         attachments: [],
-        claudeEffort: 'xhigh'
+        backendOptions: { backend: 'codex_cli', reasoningEffort: 'medium' }
       }
     )
 
@@ -249,56 +199,38 @@ describe('runTurn against a stub backend', () => {
       })
     ])
     const conversations = createFakeConversationStore()
-    const spawnSubprocess = vi
-      .fn()
-      .mockResolvedValueOnce({
-        stdout: (async function* () {
-          yield Buffer.from(
-            `${JSON.stringify({
-              type: 'content_block_delta',
-              delta: { type: 'text_delta', text: 'Earlier in this conversation: old summary' }
-            })}\n`
-          )
-          yield Buffer.from(`${JSON.stringify({ type: 'message_stop' })}\n`)
-        })(),
-        stderr: (async function* () {})(),
-        pid: 1,
-        kill: vi.fn(),
-        waitExit: async () => 0,
-        cleanup: vi.fn()
-      })
-      .mockResolvedValueOnce({
-        stdout: (async function* () {
-          yield Buffer.from(`${JSON.stringify({ type: 'message_stop' })}\n`)
-        })(),
-        stderr: (async function* () {})(),
-        pid: 2,
-        kill: vi.fn(),
-        waitExit: async () => 0,
-        cleanup: vi.fn()
-      })
+    const backend = createFakeBackend({
+      summary: [{ kind: 'assistant_delta', text: 'Earlier in this conversation: old summary' }],
+      turn: [{ kind: 'message_stop' }]
+    })
 
     await runTurn(
       {
         conversations,
         messages,
-        spawnSubprocess,
-        toolHandlers: { routeToolCall: vi.fn() }
+        backends: createFakeRegistry(backend)
       },
       {
         conversationId: 'conversation-1',
         sourceWindowId: 'window-1',
         text: 'continue',
         attachments: [],
-        claudeEffort: 'high'
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'high' }
       }
     )
 
-    expect(spawnSubprocess).toHaveBeenCalledTimes(2)
-    expect(spawnSubprocess.mock.calls[0][0].effort).toBe('high')
-    expect(spawnSubprocess.mock.calls[1][0].effort).toBe('high')
-    expect(spawnSubprocess.mock.calls[0][0].prompt).toContain('Earlier in this conversation')
-    expect(spawnSubprocess.mock.calls[1][0].prompt).toContain(
+    expect(backend.summarize).toHaveBeenCalledTimes(1)
+    expect(backend.runTurn).toHaveBeenCalledTimes(1)
+    expect(backend.summarize.mock.calls[0][0].options).toEqual({
+      backend: 'claude_cli',
+      claudeEffort: 'high'
+    })
+    expect(backend.runTurn.mock.calls[0][0].options).toEqual({
+      backend: 'claude_cli',
+      claudeEffort: 'high'
+    })
+    expect(backend.summarize.mock.calls[0][0].prompt).toContain('Earlier in this conversation')
+    expect(backend.runTurn.mock.calls[0][0].prompt).toContain(
       'Earlier in this conversation: old summary'
     )
     expect(
@@ -309,64 +241,33 @@ describe('runTurn against a stub backend', () => {
   it('uses the selected backend subprocess to title a default conversation from the first prompt', async () => {
     const messages = createFakeMessageStore()
     const conversations = createFakeConversationStore()
-    const spawnSubprocess = vi
-      .fn()
-      .mockResolvedValueOnce({
-        stdout: (async function* () {
-          yield Buffer.from(
-            `${JSON.stringify({
-              type: 'content_block_delta',
-              delta: { type: 'text_delta', text: 'Project Roadmap' }
-            })}\n`
-          )
-          yield Buffer.from(`${JSON.stringify({ type: 'message_stop' })}\n`)
-          yield Buffer.from(
-            `${JSON.stringify({
-              type: 'result',
-              subtype: 'success',
-              result: 'Project Roadmap'
-            })}\n`
-          )
-        })(),
-        stderr: (async function* () {})(),
-        pid: 1,
-        kill: vi.fn(),
-        waitExit: async () => 0,
-        cleanup: vi.fn()
-      })
-      .mockResolvedValueOnce({
-        stdout: (async function* () {
-          yield Buffer.from(`${JSON.stringify({ type: 'message_stop' })}\n`)
-        })(),
-        stderr: (async function* () {})(),
-        pid: 2,
-        kill: vi.fn(),
-        waitExit: async () => 0,
-        cleanup: vi.fn()
-      })
+    const backend = createFakeBackend({
+      title: [{ kind: 'assistant_delta', text: 'Project Roadmap' }],
+      turn: [{ kind: 'message_stop' }]
+    })
 
     await runTurn(
       {
         conversations,
         messages,
-        spawnSubprocess,
-        toolHandlers: { routeToolCall: vi.fn() }
+        backends: createFakeRegistry(backend)
       },
       {
         conversationId: 'conversation-1',
         sourceWindowId: 'window-1',
         text: 'Create a roadmap from my project notes',
         attachments: [],
-        claudeEffort: 'medium'
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'medium' }
       }
     )
 
-    expect(spawnSubprocess).toHaveBeenCalledTimes(2)
-    expect(spawnSubprocess.mock.calls[0][0]).toEqual(
+    expect(backend.generateTitle).toHaveBeenCalledTimes(1)
+    expect(backend.runTurn).toHaveBeenCalledTimes(1)
+    expect(backend.generateTitle.mock.calls[0][0]).toEqual(
       expect.objectContaining({
         conversationId: 'conversation-1',
         windowId: 'window-1',
-        effort: 'medium',
+        options: { backend: 'claude_cli', claudeEffort: 'medium' },
         purpose: 'title',
         prompt: expect.stringContaining('Create a roadmap from my project notes')
       })
@@ -385,51 +286,39 @@ describe('runTurn against a stub backend', () => {
     })
   })
 
-  it('does not spawn a separate title subprocess for a new Codex conversation', async () => {
+  it('uses the selected Codex backend to title a default conversation', async () => {
     const messages = createFakeMessageStore()
     const conversations = createFakeConversationStore({ backend: 'codex_cli' })
-    const stdout = (async function* () {
-      yield Buffer.from(
-        `${JSON.stringify({
-          type: 'item.completed',
-          item: { type: 'agent_message', text: 'Codex answer' }
-        })}\n`
-      )
-      yield Buffer.from(`${JSON.stringify({ type: 'turn.completed' })}\n`)
-    })()
-    const spawnSubprocess = vi.fn(async () => ({
-      stdout,
-      stderr: (async function* () {})(),
-      pid: 1,
-      kill: vi.fn(),
-      waitExit: async () => 0,
-      cleanup: vi.fn()
-    }))
+    const backend = createFakeBackend({
+      id: 'codex_cli',
+      title: [{ kind: 'assistant_delta', text: 'Book Notes' }],
+      turn: [{ kind: 'assistant_delta', text: 'Codex answer' }, { kind: 'message_stop' }]
+    })
 
     await runTurn(
       {
         conversations,
         messages,
-        spawnSubprocess,
-        toolHandlers: { routeToolCall: vi.fn() }
+        backends: createFakeRegistry(backend)
       },
       {
         conversationId: 'conversation-1',
         sourceWindowId: 'window-1',
         text: 'How many book notes do I have?',
         attachments: [],
-        claudeEffort: 'medium'
+        backendOptions: { backend: 'codex_cli', reasoningEffort: 'medium' }
       }
     )
 
-    expect(spawnSubprocess).toHaveBeenCalledTimes(1)
-    expect(spawnSubprocess).toHaveBeenCalledWith(
+    expect(backend.generateTitle).toHaveBeenCalledWith(
       expect.objectContaining({
-        backend: 'codex_cli',
-        purpose: 'turn'
+        options: { backend: 'codex_cli', reasoningEffort: 'medium' },
+        purpose: 'title'
       })
     )
-    expect(conversations.update).not.toHaveBeenCalled()
+    expect(conversations.update).toHaveBeenCalledWith('conversation-1', { title: 'Book Notes' }, [
+      'title'
+    ])
   })
 })
 
@@ -439,6 +328,7 @@ function createFakeConversationStore(overrides: Partial<Conversation> = {}): Con
     vaultId: 'vault-1',
     title: 'New conversation',
     backend: 'claude_cli',
+    backendModel: null,
     trustList: [],
     pinned: false,
     vectorClock: {},
@@ -458,6 +348,57 @@ function createFakeConversationStore(overrides: Partial<Conversation> = {}): Con
     softDelete: vi.fn(),
     addToTrustList: vi.fn(),
     removeFromTrustList: vi.fn()
+  }
+}
+
+function createFakeRegistry(backend: AgentBackend): AgentBackendRegistry {
+  return {
+    get: vi.fn(() => backend),
+    list: vi.fn(() => [backend])
+  }
+}
+
+function createFakeBackend(input: {
+  id?: AgentBackend['id']
+  turn?: BackendRunHandle['events'] extends AsyncIterable<infer Event> ? Event[] : never
+  title?: BackendRunHandle['events'] extends AsyncIterable<infer Event> ? Event[] : never
+  summary?: BackendRunHandle['events'] extends AsyncIterable<infer Event> ? Event[] : never
+  exitCode?: number
+  stderr?: string
+}): AgentBackend & {
+  runTurn: ReturnType<typeof vi.fn>
+  generateTitle: ReturnType<typeof vi.fn>
+  summarize: ReturnType<typeof vi.fn>
+} {
+  const id = input.id ?? 'claude_cli'
+  return {
+    id,
+    runTurn: vi.fn(async () =>
+      createRunHandle(input.turn ?? [], { exitCode: input.exitCode ?? 0, stderr: input.stderr })
+    ),
+    generateTitle: vi.fn(async () => createRunHandle(input.title ?? [])),
+    summarize: vi.fn(async () => createRunHandle(input.summary ?? [])),
+    cancel: vi.fn(),
+    getStatus: vi.fn(async () => ({ backend: id, available: true })),
+    probeCapabilities: vi.fn()
+  }
+}
+
+function createRunHandle(
+  events: BackendRunHandle['events'] extends AsyncIterable<infer Event> ? Event[] : never,
+  opts: { exitCode?: number; stderr?: string } = {}
+): BackendRunHandle {
+  return {
+    events: (async function* () {
+      yield* events
+    })(),
+    stderr: (async function* () {
+      if (opts.stderr) yield Buffer.from(opts.stderr)
+    })(),
+    pid: Math.floor(Math.random() * 1000) + 1,
+    kill: vi.fn(),
+    waitExit: vi.fn(async () => opts.exitCode ?? 0),
+    cleanup: vi.fn(async () => {})
   }
 }
 

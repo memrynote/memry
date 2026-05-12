@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 
-import type { AgentBackendId, AttachmentInput, ClaudeEffort } from '@memry/contracts/ipc-agent'
-import { DEFAULT_AGENT_BACKEND, DEFAULT_CLAUDE_EFFORT } from '@memry/contracts/ipc-agent'
+import type {
+  AgentBackendId,
+  AgentBackendOptions,
+  AttachmentInput,
+  ClaudeEffort
+} from '@memry/contracts/ipc-agent'
+import { DEFAULT_CLAUDE_EFFORT } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
 
 import {
@@ -24,11 +29,7 @@ interface ComposerProps {
   sourceWindowId: string | null
 }
 
-type AgentProvider = AgentBackendId | 'local'
-interface SelectedProviderState {
-  conversationId: string | null
-  provider: AgentProvider
-}
+type AgentProvider = 'claude_cli' | 'codex_cli' | 'local_openai_compatible'
 
 const claudeReasoningOptions: Array<{
   value: ClaudeEffort
@@ -81,13 +82,8 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const [attachments, setAttachments] = useState<AttachmentInput[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [selectedProviderState, setSelectedProviderState] = useState<SelectedProviderState>({
-    conversationId: null,
-    provider: DEFAULT_AGENT_BACKEND
-  })
+  const [selectedProvider, setSelectedProvider] = useState<AgentProvider>('claude_cli')
   const [claudeReasoning, setClaudeReasoning] = useState<ClaudeEffort>(DEFAULT_CLAUDE_EFFORT)
-  const activeConversation =
-    agent && conversationId ? agent.state.conversations[conversationId] : null
 
   useEffect(() => {
     if (activeTab?.type !== 'note' || !activeTab.entityId) return
@@ -112,51 +108,74 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   }, [activeTab?.entityId, activeTab?.title, activeTab?.type, t])
 
   useEffect(() => {
+    const activeConversation = conversationId ? agent?.state.conversations[conversationId] : null
+    if (activeConversation) setSelectedProvider(activeConversation.backend)
+  }, [agent?.state.conversations, conversationId])
+
+  useEffect(() => {
     if (textareaRef.current) resizePromptTextarea(textareaRef.current)
   }, [text])
 
-  const turnInFlight = conversationId ? agent?.state.inFlight?.[conversationId] === true : false
-  const busy = turnInFlight || submitting
-  const canSend = Boolean(agent) && Boolean(sourceWindowId) && text.trim().length > 0 && !busy
-  const pickerQuery = pickerOpen ? (getRefQuery(text) ?? '') : ''
   const claudeProviderLabel = t('agentChat.composer.providers.claude')
   const codexProviderLabel = t('agentChat.composer.providers.codex')
   const localProviderLabel = t('agentChat.composer.providers.local')
+  const backendStatuses = agent?.state.backendStatuses
+  const claudeDisabled = backendStatuses?.claude_cli.available === false
+  const codexDisabled = backendStatuses?.codex_cli.available === false
+  const turnInFlight = conversationId ? agent?.state.inFlight?.[conversationId] === true : false
+  const busy = turnInFlight || submitting
+  const providerReady =
+    selectedProvider === 'local_openai_compatible' ||
+    backendStatuses?.[selectedProvider]?.available !== false
+  const canSend =
+    Boolean(agent) && Boolean(sourceWindowId) && text.trim().length > 0 && !busy && providerReady
+  const pickerQuery = pickerOpen ? (getRefQuery(text) ?? '') : ''
   const providerLabelById: Record<AgentProvider, string> = {
     claude_cli: claudeProviderLabel,
     codex_cli: codexProviderLabel,
-    local: localProviderLabel
+    local_openai_compatible: localProviderLabel
   }
-  const selectedProvider =
-    selectedProviderState.conversationId === conversationId
-      ? selectedProviderState.provider
-      : (activeConversation?.backend ?? DEFAULT_AGENT_BACKEND)
   const selectedProviderLabel = providerLabelById[selectedProvider]
   const SelectedProviderIcon =
-    selectedProvider === 'codex_cli' ? ChatGpt : selectedProvider === 'local' ? Computer : Claude
+    selectedProvider === 'local_openai_compatible'
+      ? Computer
+      : selectedProvider === 'codex_cli'
+        ? ChatGpt
+        : Claude
   const selectedClaudeReasoning =
     claudeReasoningOptions.find((option) => option.value === claudeReasoning) ??
     claudeReasoningOptions[3]
   const claudeSettingsSummary = t('agentChat.composer.settingsSummary', {
     reasoning: t(selectedClaudeReasoning.summaryKey)
   })
+  const backendOptions = (): AgentBackendOptions => {
+    if (selectedProvider === 'local_openai_compatible') {
+      return { backend: 'local_openai_compatible', toolsEnabled: true }
+    }
+    if (selectedProvider === 'codex_cli') {
+      return { backend: 'codex_cli', reasoningEffort: 'medium' }
+    }
+    return { backend: 'claude_cli', claudeEffort: claudeReasoning }
+  }
 
   async function submit(): Promise<void> {
     if (!agent || !sourceWindowId || !text.trim() || busy) return
     const currentText = text
     const currentAttachments = attachments
-    const selectedBackend = selectedProvider === 'local' ? DEFAULT_AGENT_BACKEND : selectedProvider
     setSubmitting(true)
     try {
       const targetConversationId =
-        conversationId && activeConversation?.backend === selectedBackend
-          ? conversationId
-          : (await agent.createConversation({ backend: selectedBackend })).id
+        conversationId ??
+        (
+          await agent.createConversation({
+            backend: selectedProvider as AgentBackendId
+          })
+        ).id
       await agent.sendTurn({
         conversationId: targetConversationId,
         sourceWindowId,
         text: currentText,
-        claudeEffort: claudeReasoning,
+        backendOptions: backendOptions(),
         attachments: currentAttachments
       })
       setText('')
@@ -168,15 +187,6 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     } finally {
       setSubmitting(false)
     }
-  }
-
-  function selectProvider(provider: AgentProvider): void {
-    if (provider === 'local') return
-    setSelectedProviderState({ conversationId, provider })
-    if (!agent || !conversationId || !activeConversation) return
-    if (activeConversation.backend === provider) return
-
-    void agent.createConversation({ backend: provider })
   }
 
   function cancelTurn(): void {
@@ -273,7 +283,8 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="min-w-36 border-0">
               <DropdownMenuItem
-                onSelect={() => selectProvider('claude_cli')}
+                disabled={claudeDisabled}
+                onSelect={() => setSelectedProvider('claude_cli')}
                 className="text-xs focus:bg-transparent focus:text-foreground"
               >
                 <Claude className="size-4 text-muted-foreground" aria-hidden="true" />
@@ -283,7 +294,8 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                 )}
               </DropdownMenuItem>
               <DropdownMenuItem
-                onSelect={() => selectProvider('codex_cli')}
+                disabled={codexDisabled}
+                onSelect={() => setSelectedProvider('codex_cli')}
                 className="text-xs focus:bg-transparent focus:text-foreground"
               >
                 <ChatGpt className="size-4 text-muted-foreground" aria-hidden="true" />
@@ -293,11 +305,14 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                 )}
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled
+                onSelect={() => setSelectedProvider('local_openai_compatible')}
                 className="text-xs focus:bg-transparent focus:text-foreground"
               >
                 <Computer className="size-4 text-muted-foreground" aria-hidden="true" />
                 <span>{localProviderLabel}</span>
+                {selectedProvider === 'local_openai_compatible' && (
+                  <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
+                )}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

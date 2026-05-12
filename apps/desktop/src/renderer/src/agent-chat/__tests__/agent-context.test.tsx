@@ -2,30 +2,38 @@ import { describe, expect, it } from 'vitest'
 
 import type {
   AgentEvent,
+  AgentBackendStatus,
   BackendStatusesResponse,
-  BinaryStatus,
   Conversation,
   Message
 } from '@memry/contracts/ipc-agent'
 
 import { agentReducer, initialAgentState, type AgentState } from '../agent-context.reducer'
 
-const binaryStatus: BinaryStatus = {
-  detected: true,
+const claudeStatus: AgentBackendStatus = {
+  backend: 'claude_cli',
+  available: true,
   version: '2.1.0',
-  meetsMinimum: true,
   minimumRequired: '2.1.0',
-  installHint: null
+  reason: null,
+  detail: null
 }
 
 const backendStatuses: BackendStatusesResponse = {
-  claude_cli: binaryStatus,
+  claude_cli: claudeStatus,
   codex_cli: {
-    detected: true,
+    backend: 'codex_cli',
+    available: true,
     version: '0.130.0',
-    meetsMinimum: true,
     minimumRequired: '0.130.0',
-    installHint: null
+    reason: null,
+    detail: null
+  },
+  local_openai_compatible: {
+    backend: 'local_openai_compatible',
+    available: true,
+    reason: null,
+    detail: 'http://localhost:11434/v1'
   }
 }
 
@@ -34,6 +42,7 @@ const conversation: Conversation = {
   vaultId: 'vault-1',
   title: 'New conversation',
   backend: 'claude_cli',
+  backendModel: null,
   trustList: [],
   pinned: false,
   vectorClock: {},
@@ -70,14 +79,9 @@ function message(input: {
 }
 
 describe('agentReducer', () => {
-  it('stores binary and disclosure state', () => {
-    const withBinary = agentReducer(initialAgentState, {
-      type: 'set_binary_status',
-      status: binaryStatus
-    })
-    const next = agentReducer(withBinary, { type: 'set_disclosure', accepted: true })
+  it('stores disclosure state', () => {
+    const next = agentReducer(initialAgentState, { type: 'set_disclosure', accepted: true })
 
-    expect(next.binaryStatus).toEqual(binaryStatus)
     expect(next.disclosureAccepted).toBe(true)
   })
 
@@ -88,7 +92,6 @@ describe('agentReducer', () => {
     })
 
     expect(next.backendStatuses).toEqual(backendStatuses)
-    expect(next.binaryStatus).toEqual(binaryStatus)
   })
 
   it('stores the source window id for MCP current-note calls', () => {

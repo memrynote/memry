@@ -10,6 +10,7 @@ export type SettingsSection =
   | 'vault'
   | 'appearance'
   | 'ai'
+  | 'agent-providers'
   | 'agent-mcp'
   | 'integrations'
   | 'tags'

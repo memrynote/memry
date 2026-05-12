@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  AgentChannels,
   AgentBackendIdSchema,
-  AgentEventSchema,
-  ApproveToolRequestSchema,
   BackendStatusesResponseSchema,
+  AgentBackendOptionsSchema,
+  AgentChannels,
+  AgentEventSchema,
+  AgentLocalProviderProbeResultSchema,
+  AgentLocalProviderSettingsSchema,
+  ApproveToolRequestSchema,
   BinaryStatusSchema,
-  CreateConversationRequestSchema,
+  ConversationSchema,
   PreviewDiffRequestSchema,
   PreviewDiffResponseSchema,
   SendTurnResponseSchema,
@@ -27,8 +30,12 @@ describe('AgentChannels', () => {
         APPROVE_TOOL: 'agent:approveTool',
         PREVIEW_DIFF: 'agent:previewDiff',
         EDIT_TRUST_LIST: 'agent:editTrustList',
-        GET_BINARY_STATUS: 'agent:getBinaryStatus',
         GET_BACKEND_STATUSES: 'agent:getBackendStatuses',
+        GET_LOCAL_PROVIDER_SETTINGS: 'agent:getLocalProviderSettings',
+        SET_LOCAL_PROVIDER_SETTINGS: 'agent:setLocalProviderSettings',
+        LIST_LOCAL_MODELS: 'agent:listLocalModels',
+        TEST_LOCAL_PROVIDER: 'agent:testLocalProvider',
+        PROBE_LOCAL_PROVIDER: 'agent:probeLocalProvider',
         ACCEPT_DISCLOSURE: 'agent:acceptDisclosure',
         GET_DISCLOSURE_STATE: 'agent:getDisclosureState',
         GET_WINDOW_ID: 'agent:getWindowId'
@@ -41,36 +48,39 @@ describe('AgentChannels', () => {
 })
 
 describe('agent IPC schemas', () => {
-  it('validates backend ids, create-conversation requests, and backend statuses', () => {
+  it('validates supported backend ids and rejects unknown providers', () => {
     expect(AgentBackendIdSchema.safeParse('claude_cli').success).toBe(true)
     expect(AgentBackendIdSchema.safeParse('codex_cli').success).toBe(true)
-    expect(AgentBackendIdSchema.safeParse('local').success).toBe(false)
+    expect(AgentBackendIdSchema.safeParse('local_openai_compatible').success).toBe(true)
+    expect(AgentBackendIdSchema.safeParse('ollama').success).toBe(false)
+  })
 
+  it('validates provider-specific backend options', () => {
     expect(
-      CreateConversationRequestSchema.safeParse({
-        vaultId: 'vault-1',
-        backend: 'codex_cli'
+      AgentBackendOptionsSchema.safeParse({
+        backend: 'claude_cli',
+        claudeEffort: 'xhigh'
       }).success
     ).toBe(true)
-
     expect(
-      BackendStatusesResponseSchema.safeParse({
-        claude_cli: {
-          detected: true,
-          version: '2.1.138',
-          meetsMinimum: true,
-          minimumRequired: '2.1.0',
-          installHint: null
-        },
-        codex_cli: {
-          detected: true,
-          version: '0.130.0',
-          meetsMinimum: true,
-          minimumRequired: '0.130.0',
-          installHint: null
-        }
+      AgentBackendOptionsSchema.safeParse({
+        backend: 'codex_cli',
+        reasoningEffort: 'high'
       }).success
     ).toBe(true)
+    expect(
+      AgentBackendOptionsSchema.safeParse({
+        backend: 'local_openai_compatible',
+        model: 'llama3.2',
+        toolsEnabled: true
+      }).success
+    ).toBe(true)
+    expect(
+      AgentBackendOptionsSchema.safeParse({
+        backend: 'local_openai_compatible',
+        claudeEffort: 'xhigh'
+      }).success
+    ).toBe(false)
   })
 
   it('validates send-turn requests with attachments', () => {
@@ -80,7 +90,7 @@ describe('agent IPC schemas', () => {
         sourceWindowId: '1',
         text: 'Create a task',
         attachments: [{ kind: 'current_note', ref_id: 'current', label: 'Current note' }],
-        claudeEffort: 'xhigh'
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh' }
       }).success
     ).toBe(true)
     expect(
@@ -89,7 +99,95 @@ describe('agent IPC schemas', () => {
         sourceWindowId: '1',
         text: 'Create a task',
         attachments: [],
-        claudeEffort: 'ultrathink'
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'ultrathink' }
+      }).success
+    ).toBe(false)
+  })
+
+  it('validates conversation backend model metadata', () => {
+    expect(
+      ConversationSchema.safeParse({
+        id: 'conversation-1',
+        vaultId: 'vault-1',
+        title: 'Local chat',
+        backend: 'local_openai_compatible',
+        backendModel: 'llama3.2',
+        trustList: [],
+        pinned: false,
+        vectorClock: {},
+        fieldClocks: {},
+        createdAt: 100,
+        updatedAt: 100,
+        deletedAt: null,
+        lastSyncedAt: null
+      }).success
+    ).toBe(true)
+  })
+
+  it('validates local provider settings and probe results', () => {
+    expect(
+      AgentLocalProviderSettingsSchema.safeParse({
+        preset: 'ollama',
+        baseUrl: 'http://localhost:11434/v1',
+        model: 'llama3.2',
+        apiKeyConfigured: false,
+        allowNonLoopback: false
+      }).success
+    ).toBe(true)
+    expect(
+      AgentLocalProviderSettingsSchema.safeParse({
+        preset: 'custom',
+        baseUrl: 'https://models.example.com/v1',
+        model: 'my-model',
+        apiKeyConfigured: true,
+        allowNonLoopback: true
+      }).success
+    ).toBe(true)
+    expect(
+      AgentLocalProviderProbeResultSchema.safeParse({
+        connected: true,
+        modelAvailable: true,
+        streamingSupported: true,
+        toolCallingSupported: true,
+        toolContinuationSupported: true,
+        toolsEnabled: true,
+        detail: null
+      }).success
+    ).toBe(true)
+  })
+
+  it('validates backend status maps for all providers', () => {
+    expect(
+      BackendStatusesResponseSchema.safeParse({
+        claude_cli: {
+          backend: 'claude_cli',
+          available: true,
+          reason: null,
+          detail: null,
+          version: '2.1.138',
+          minimumRequired: '2.1.0'
+        },
+        codex_cli: {
+          backend: 'codex_cli',
+          available: true,
+          reason: null,
+          detail: null,
+          version: '0.130.0',
+          minimumRequired: '0.130.0'
+        },
+        local_openai_compatible: {
+          backend: 'local_openai_compatible',
+          available: true,
+          reason: null,
+          detail: 'http://localhost:11434/v1'
+        }
+      }).success
+    ).toBe(true)
+
+    expect(
+      BackendStatusesResponseSchema.safeParse({
+        claude_cli: { backend: 'claude_cli', available: true },
+        codex_cli: { backend: 'codex_cli', available: true }
       }).success
     ).toBe(false)
   })
@@ -165,7 +263,8 @@ describe('agent IPC schemas', () => {
           id: 'conversation-1',
           vaultId: 'vault-1',
           title: 'Project Roadmap',
-          backend: 'codex_cli',
+          backend: 'claude_cli',
+          backendModel: null,
           trustList: [],
           pinned: false,
           vectorClock: {},

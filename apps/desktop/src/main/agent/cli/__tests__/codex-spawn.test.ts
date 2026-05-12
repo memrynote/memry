@@ -17,11 +17,14 @@ describe('spawnCodexTurn', () => {
 
     await spawnCodexTurn({
       binaryPath: '/opt/homebrew/bin/codex',
-      mcpServerUrl: 'http://127.0.0.1:54321',
-      authorizationValue: 'test-token',
-      conversationId: 'conversation-1',
-      windowId: 'window-1',
-      prompt: 'hello'
+      prompt: 'hello',
+      reasoningEffort: 'high',
+      mcp: {
+        serverUrl: 'http://127.0.0.1:54321',
+        authorizationValue: 'test-token',
+        conversationId: 'conversation-1',
+        windowId: 'window-1'
+      }
     })
 
     const args = vi.mocked(spawn).mock.calls[0][1] as string[]
@@ -36,6 +39,7 @@ describe('spawnCodexTurn', () => {
     expect(args).toContain('--skip-git-repo-check')
     expect(args).toContain('-C')
     expect(args).toContain('/tmp/memry-codex-test')
+    expect(args).toContain('model_reasoning_effort="high"')
     expect(args).toContain('mcp_servers.memry.url="http://127.0.0.1:54321/mcp"')
     expect(args).toContain('mcp_servers.memry.bearer_token_env_var="MEMRY_AGENT_TOKEN"')
     expect(args).toContain(
@@ -61,15 +65,33 @@ describe('spawnCodexTurn', () => {
 
     await spawnCodexTurn({
       binaryPath: 'codex',
-      mcpServerUrl: 'http://127.0.0.1:54321',
-      authorizationValue: 'token',
-      conversationId: 'c',
-      windowId: 'w',
+      reasoningEffort: 'medium',
       prompt: 'PROMPT BODY'
     })
 
     const args = vi.mocked(spawn).mock.calls[0][1] as string[]
     expect(args.at(-1)).toBe('PROMPT BODY')
+  })
+
+  it('omits MCP config and Memry env vars for title and summary prompts', async () => {
+    const fakeProc = makeFakeProc()
+    vi.mocked(spawn).mockReturnValue(fakeProc)
+
+    await spawnCodexTurn({
+      binaryPath: 'codex',
+      reasoningEffort: 'medium',
+      prompt: 'Title this'
+    })
+
+    const args = vi.mocked(spawn).mock.calls[0][1] as string[]
+    expect(args.some((arg) => arg.startsWith('mcp_servers.memry.'))).toBe(false)
+
+    const options = vi.mocked(spawn).mock.calls[0][2] as {
+      env: NodeJS.ProcessEnv
+    }
+    expect(options.env.MEMRY_AGENT_TOKEN).toBeUndefined()
+    expect(options.env.MEMRY_AGENT_CONVERSATION).toBeUndefined()
+    expect(options.env.MEMRY_AGENT_WINDOW).toBeUndefined()
   })
 })
 

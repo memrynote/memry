@@ -1,0 +1,402 @@
+import { createOpenAI } from '@ai-sdk/openai'
+import {
+  type AgentBackendStatus,
+  type AgentLocalProviderProbeResult,
+  type AgentLocalProviderSettings
+} from '@memry/contracts/ipc-agent'
+import { stepCountIs, streamText } from 'ai'
+
+import type { BackendEvent } from '../cli/types'
+import { AgentToolBridge, createAiSdkToolSet } from './tool-bridge'
+import type { AgentBackend, AgentBackendRunInput, BackendRunHandle } from './types'
+
+let nextLocalRunPid = -1
+
+export class LocalOpenAICompatibleBackend implements AgentBackend {
+  readonly id = 'local_openai_compatible' as const
+
+  constructor(
+    private readonly deps: {
+      getSettings: () => Promise<AgentLocalProviderSettings>
+      getApiKey: () => Promise<string | null>
+      toolBridge: AgentToolBridge
+      fetch?: typeof fetch
+    }
+  ) {}
+
+  async runTurn(input: AgentBackendRunInput): Promise<BackendRunHandle> {
+    return this.run(input, true)
+  }
+
+  async generateTitle(input: AgentBackendRunInput): Promise<BackendRunHandle> {
+    return this.run(input, false)
+  }
+
+  async summarize(input: AgentBackendRunInput): Promise<BackendRunHandle> {
+    return this.run(input, false)
+  }
+
+  cancel(): void {}
+
+  async getStatus(): Promise<AgentBackendStatus> {
+    const settings = await this.deps.getSettings()
+    const apiKey = await this.deps.getApiKey()
+    const result = await testOpenAiCompatibleConnection(settings, this.deps.fetch ?? fetch, apiKey)
+    return {
+      backend: this.id,
+      available: result.connected && result.modelAvailable,
+      reason: result.connected ? null : 'connection_failed',
+      detail: result.detail
+    }
+  }
+
+  async probeCapabilities(): Promise<AgentLocalProviderProbeResult> {
+    const settings = await this.deps.getSettings()
+    const apiKey = await this.deps.getApiKey()
+    return probeLocalProvider(settings, this.deps.fetch ?? fetch, apiKey)
+  }
+
+  private async run(input: AgentBackendRunInput, allowTools: boolean): Promise<BackendRunHandle> {
+    const settings = await this.deps.getSettings()
+    const apiKey = await this.deps.getApiKey()
+    const options = input.options.backend === this.id ? input.options : null
+    const modelName = options?.model || settings.model
+    const model = createOpenAI({
+      baseURL: settings.baseUrl,
+      apiKey: apiKey || 'local'
+    }).chat(modelName)
+    const controller = new AbortController()
+    const toolsEnabled =
+      allowTools &&
+      (options?.toolsEnabled ?? true) &&
+      (await probeLocalProvider(settings, this.deps.fetch ?? fetch, apiKey)).toolsEnabled
+    const result = streamText({
+      model,
+      prompt: input.prompt,
+      abortSignal: controller.signal,
+      stopWhen: stepCountIs(8),
+      ...(toolsEnabled
+        ? {
+            tools: createAiSdkToolSet(this.deps.toolBridge, {
+              conversationId: input.conversationId,
+              windowId: input.windowId
+            })
+          }
+        : {})
+    })
+    let exitCode = 0
+    let stderr = ''
+
+    return {
+      events: mapAiSdkEvents(result.fullStream, (error) => {
+        exitCode = 1
+        stderr = errorMessage(error)
+      }),
+      stderr: textToStream(() => stderr),
+      pid: nextLocalRunPid--,
+      kill: () => controller.abort(),
+      waitExit: async () => exitCode,
+      cleanup: async () => {}
+    }
+  }
+}
+
+async function* mapAiSdkEvents(
+  stream: AsyncIterable<unknown>,
+  onError: (error: unknown) => void
+): AsyncIterable<BackendEvent> {
+  try {
+    for await (const part of stream) {
+      const event = partToBackendEvent(part)
+      if (event) yield event
+    }
+  } catch (error) {
+    onError(error)
+  }
+}
+
+function partToBackendEvent(part: unknown): BackendEvent | null {
+  if (!part || typeof part !== 'object' || !('type' in part)) return null
+  const typed = part as Record<string, unknown>
+
+  if (typed.type === 'text-delta' && typeof typed.text === 'string') {
+    return { kind: 'assistant_delta', text: typed.text }
+  }
+
+  if (typed.type === 'tool-call') {
+    return {
+      kind: 'tool_use',
+      toolUseId: String(typed.toolCallId),
+      name: String(typed.toolName),
+      args: typed.input
+    }
+  }
+
+  if (typed.type === 'tool-result') {
+    const output = typed.output as { ok?: boolean; data?: unknown; error?: unknown } | undefined
+    const error = toToolError(output?.error)
+    return {
+      kind: 'tool_result',
+      toolUseId: String(typed.toolCallId),
+      ok: output?.ok !== false,
+      data: typed.output,
+      ...(error ? { error } : {})
+    }
+  }
+
+  if (typed.type === 'tool-error') {
+    return {
+      kind: 'tool_result',
+      toolUseId: String(typed.toolCallId),
+      ok: false,
+      error: { code: 'TOOL_ERROR', message: errorMessage(typed.error) }
+    }
+  }
+
+  if (typed.type === 'finish') return { kind: 'message_stop' }
+  return null
+}
+
+async function* textToStream(getText: () => string): AsyncIterable<Buffer> {
+  const text = getText()
+  if (text) yield Buffer.from(text)
+}
+
+export async function testOpenAiCompatibleConnection(
+  settings: AgentLocalProviderSettings,
+  fetchImpl: typeof fetch,
+  apiKey: string | null = null
+): Promise<AgentLocalProviderProbeResult> {
+  try {
+    const models = await listOpenAiCompatibleModels(settings.baseUrl, fetchImpl, apiKey)
+    const modelAvailable = !settings.model || models.includes(settings.model)
+    return {
+      connected: true,
+      modelAvailable,
+      streamingSupported: true,
+      toolCallingSupported: false,
+      toolContinuationSupported: false,
+      toolsEnabled: false,
+      detail: modelAvailable ? null : `Model ${settings.model} was not returned by /v1/models.`
+    }
+  } catch (error) {
+    return {
+      connected: false,
+      modelAvailable: false,
+      streamingSupported: false,
+      toolCallingSupported: false,
+      toolContinuationSupported: false,
+      toolsEnabled: false,
+      detail: errorMessage(error)
+    }
+  }
+}
+
+async function probeLocalProvider(
+  settings: AgentLocalProviderSettings,
+  fetchImpl: typeof fetch,
+  apiKey: string | null
+): Promise<AgentLocalProviderProbeResult> {
+  const connection = await testOpenAiCompatibleConnection(settings, fetchImpl, apiKey)
+  if (!connection.connected || !connection.modelAvailable) return connection
+
+  const streaming = await probeStreaming(settings, fetchImpl, apiKey)
+  if (!streaming.streamingSupported) {
+    return {
+      ...connection,
+      ...streaming,
+      toolsEnabled: false
+    }
+  }
+
+  const toolProbe = await probeToolCalling(settings, fetchImpl, apiKey)
+  return {
+    ...connection,
+    ...streaming,
+    ...toolProbe,
+    toolsEnabled:
+      streaming.streamingSupported &&
+      toolProbe.toolCallingSupported &&
+      toolProbe.toolContinuationSupported
+  }
+}
+
+export async function listOpenAiCompatibleModels(
+  baseUrl: string,
+  fetchImpl: typeof fetch = fetch,
+  apiKey: string | null = null
+): Promise<string[]> {
+  const response = await fetchImpl(new URL('models', ensureTrailingSlash(baseUrl)), {
+    headers: authHeaders(apiKey)
+  })
+  if (!response.ok) throw new Error(`/v1/models returned HTTP ${response.status}`)
+  const payload = (await response.json()) as { data?: Array<{ id?: string }> }
+  return (payload.data ?? []).flatMap((model) => (model.id ? [model.id] : []))
+}
+
+async function probeStreaming(
+  settings: AgentLocalProviderSettings,
+  fetchImpl: typeof fetch,
+  apiKey: string | null
+): Promise<Pick<AgentLocalProviderProbeResult, 'streamingSupported' | 'detail'>> {
+  try {
+    const response = await fetchImpl(
+      new URL('chat/completions', ensureTrailingSlash(settings.baseUrl)),
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...authHeaders(apiKey)
+        },
+        body: JSON.stringify({
+          model: settings.model,
+          stream: true,
+          messages: [{ role: 'user', content: 'Reply with ok.' }]
+        })
+      }
+    )
+    if (!response.ok)
+      throw new Error(`/v1/chat/completions streaming returned HTTP ${response.status}`)
+    if (!response.body) {
+      return { streamingSupported: false, detail: 'Streaming response body was empty.' }
+    }
+    const chunk = await readFirstStreamChunk(response.body)
+    return {
+      streamingSupported: Boolean(chunk),
+      detail: chunk ? null : 'Streaming response ended before sending a chunk.'
+    }
+  } catch (error) {
+    return { streamingSupported: false, detail: errorMessage(error) }
+  }
+}
+
+async function probeToolCalling(
+  settings: AgentLocalProviderSettings,
+  fetchImpl: typeof fetch,
+  apiKey: string | null
+): Promise<
+  Pick<
+    AgentLocalProviderProbeResult,
+    'toolCallingSupported' | 'toolContinuationSupported' | 'detail'
+  >
+> {
+  try {
+    const first = await postChatCompletion(settings, fetchImpl, apiKey, {
+      model: settings.model,
+      messages: [{ role: 'user', content: 'Call the echo tool with text "ok".' }],
+      tools: [
+        {
+          type: 'function',
+          function: {
+            name: 'memry_probe_echo',
+            description: 'Echo a probe string.',
+            parameters: {
+              type: 'object',
+              properties: { text: { type: 'string' } },
+              required: ['text'],
+              additionalProperties: false
+            }
+          }
+        }
+      ],
+      tool_choice: { type: 'function', function: { name: 'memry_probe_echo' } }
+    })
+    const assistant = first.choices?.[0]?.message
+    const toolCall = assistant?.tool_calls?.[0]
+    if (!toolCall?.id) {
+      return {
+        toolCallingSupported: false,
+        toolContinuationSupported: false,
+        detail: 'Model did not emit the synthetic memry_probe_echo tool call.'
+      }
+    }
+
+    const second = await postChatCompletion(settings, fetchImpl, apiKey, {
+      model: settings.model,
+      messages: [
+        { role: 'user', content: 'Call the echo tool with text "ok".' },
+        assistant,
+        {
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          content: JSON.stringify({ ok: true, data: { text: 'ok' } })
+        }
+      ]
+    })
+    return {
+      toolCallingSupported: true,
+      toolContinuationSupported: Boolean(second.choices?.[0]?.message),
+      detail: null
+    }
+  } catch (error) {
+    return {
+      toolCallingSupported: false,
+      toolContinuationSupported: false,
+      detail: errorMessage(error)
+    }
+  }
+}
+
+async function postChatCompletion(
+  settings: AgentLocalProviderSettings,
+  fetchImpl: typeof fetch,
+  apiKey: string | null,
+  body: unknown
+): Promise<{
+  choices?: Array<{
+    message?: {
+      role?: string
+      content?: string | null
+      tool_calls?: Array<{
+        id?: string
+        type?: string
+        function?: { name?: string; arguments?: string }
+      }>
+    }
+  }>
+}> {
+  const response = await fetchImpl(
+    new URL('chat/completions', ensureTrailingSlash(settings.baseUrl)),
+    {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...authHeaders(apiKey)
+      },
+      body: JSON.stringify(body)
+    }
+  )
+  if (!response.ok) throw new Error(`/v1/chat/completions returned HTTP ${response.status}`)
+  return response.json()
+}
+
+function authHeaders(apiKey: string | null): Record<string, string> {
+  return apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
+}
+
+function ensureTrailingSlash(value: string): string {
+  return value.endsWith('/') ? value : `${value}/`
+}
+
+async function readFirstStreamChunk(body: ReadableStream<Uint8Array>): Promise<boolean> {
+  const reader = body.getReader()
+  try {
+    const { done, value } = await reader.read()
+    return !done && Boolean(value?.byteLength)
+  } finally {
+    reader.releaseLock()
+  }
+}
+
+function toToolError(value: unknown): { code: string; message: string } | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const input = value as { code?: unknown; message?: unknown }
+  return {
+    code: typeof input.code === 'string' ? input.code : 'TOOL_ERROR',
+    message: typeof input.message === 'string' ? input.message : 'Tool call failed.'
+  }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}

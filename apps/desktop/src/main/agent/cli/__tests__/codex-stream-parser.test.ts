@@ -35,7 +35,7 @@ describe('Codex JSONL stream parser', () => {
     expect(events).toEqual([{ kind: 'error', message: 'Codex auth failed' }])
   })
 
-  it('treats Codex MCP tool call lifecycle events as known events', () => {
+  it('maps Codex MCP tool call lifecycle events to backend tool events', () => {
     const events: unknown[] = []
     const parser = createCodexStreamParser((event) => events.push(event))
 
@@ -68,10 +68,23 @@ describe('Codex JSONL stream parser', () => {
       })}\n`
     )
 
-    expect(events).toEqual([{ kind: 'noop' }, { kind: 'noop' }])
+    expect(events).toEqual([
+      {
+        kind: 'tool_use',
+        toolUseId: 'item_0',
+        name: 'vault_list_folder',
+        args: { path: 'books', recursive: false }
+      },
+      {
+        kind: 'tool_result',
+        toolUseId: 'item_0',
+        ok: true,
+        data: { content: [] }
+      }
+    ])
   })
 
-  it('emits backend errors from failed Codex MCP tool calls', () => {
+  it('emits failed Codex MCP tool calls as tool results', () => {
     const events: unknown[] = []
     const parser = createCodexStreamParser((event) => events.push(event))
 
@@ -89,7 +102,14 @@ describe('Codex JSONL stream parser', () => {
       })}\n`
     )
 
-    expect(events).toEqual([{ kind: 'error', message: 'user cancelled MCP tool call' }])
+    expect(events).toEqual([
+      {
+        kind: 'tool_result',
+        toolUseId: 'item_0',
+        ok: false,
+        error: { code: 'MCP_TOOL_ERROR', message: 'user cancelled MCP tool call' }
+      }
+    ])
   })
 
   it('buffers split JSONL lines and preserves malformed lines as unknown', () => {
