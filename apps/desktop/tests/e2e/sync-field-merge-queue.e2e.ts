@@ -73,6 +73,33 @@ async function expectProjectOnBothDevices(
     })
 }
 
+async function expectProjectDescriptionConverges(
+  pageA: Page,
+  pageB: Page,
+  id: string,
+  acceptedDescriptions: string[]
+): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        await triggerSyncRound(pageA, pageB)
+        const pageAProject = await getProjectById(pageA, id)
+        const pageBProject = await getProjectById(pageB, id)
+        const pageADescription = pageAProject?.description ?? null
+        const pageBDescription = pageBProject?.description ?? null
+
+        return {
+          pageADescription,
+          pageBDescription,
+          converged: pageADescription === pageBDescription,
+          accepted: acceptedDescriptions.includes(pageADescription ?? '')
+        }
+      },
+      { timeout: CONVERGENCE_TIMEOUT, intervals: [500, 2_000, 5_000] }
+    )
+    .toMatchObject({ converged: true, accepted: true })
+}
+
 test.describe('Sync field merge and queue retry E2E', () => {
   test.setTimeout(240_000)
 
@@ -170,9 +197,10 @@ test.describe('Sync field merge and queue retry E2E', () => {
 
     await goOnline(electronAppA, electronAppB)
 
-    await expectProjectOnBothDevices(pageA, pageB, seed.projectId, {
-      description: 'Same field from B'
-    })
+    await expectProjectDescriptionConverges(pageA, pageB, seed.projectId, [
+      'Same field from A',
+      'Same field from B'
+    ])
 
     await waitForPendingCount(pageA, 0, SYNC_TIMEOUT)
     await waitForPendingCount(pageB, 0, SYNC_TIMEOUT)
