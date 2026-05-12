@@ -1,0 +1,572 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const mocks = vi.hoisted(() => ({
+  searchAll: vi.fn(),
+  listJournalEntriesInRange: vi.fn(),
+  getInboxProject: vi.fn(),
+  createDesktopInboxDomain: vi.fn(),
+  readJournalEntry: vi.fn(),
+  writeJournalEntry: vi.fn(),
+  createNoteCommand: vi.fn(),
+  moveNoteCommand: vi.fn(),
+  updateNoteCommand: vi.fn(),
+  createDesktopTasksDomain: vi.fn(),
+  createTasksPublisher: vi.fn(),
+  getFolders: vi.fn(),
+  getNoteById: vi.fn(),
+  listNotes: vi.fn(),
+  getConfig: vi.fn(),
+  getAllTagsWithCounts: vi.fn(),
+  generateId: vi.fn(),
+  snapshotCurrentNoteFromWindow: vi.fn()
+}))
+
+vi.mock('../../../database/queries/search', () => ({
+  searchAll: mocks.searchAll
+}))
+
+vi.mock('../../../database/queries/notes', () => ({
+  listJournalEntriesInRange: mocks.listJournalEntriesInRange
+}))
+
+vi.mock('../../../database/queries/projects', () => ({
+  getInboxProject: mocks.getInboxProject
+}))
+
+vi.mock('../../../inbox/domain', () => ({
+  createDesktopInboxDomain: mocks.createDesktopInboxDomain
+}))
+
+vi.mock('../../../vault/journal', () => ({
+  readJournalEntry: mocks.readJournalEntry,
+  writeJournalEntry: mocks.writeJournalEntry
+}))
+
+vi.mock('../../../notes/domain', () => ({
+  createNoteCommand: mocks.createNoteCommand,
+  moveNoteCommand: mocks.moveNoteCommand,
+  updateNoteCommand: mocks.updateNoteCommand
+}))
+
+vi.mock('../../../tasks/domain', () => ({
+  createDesktopTasksDomain: mocks.createDesktopTasksDomain
+}))
+
+vi.mock('../../../tasks/publisher', () => ({
+  createTasksPublisher: mocks.createTasksPublisher
+}))
+
+vi.mock('../../../vault/notes', () => ({
+  getFolders: mocks.getFolders,
+  getNoteById: mocks.getNoteById,
+  listNotes: mocks.listNotes
+}))
+
+vi.mock('../../../vault', () => ({
+  getConfig: mocks.getConfig
+}))
+
+vi.mock('../../../tags/store', () => ({
+  getAllTagsWithCounts: mocks.getAllTagsWithCounts
+}))
+
+vi.mock('../../../lib/id', () => ({
+  generateId: mocks.generateId
+}))
+
+vi.mock('./current-note', () => ({
+  snapshotCurrentNoteFromWindow: mocks.snapshotCurrentNoteFromWindow
+}))
+
+import { createVaultServiceHandles } from './handles-adapter'
+
+const deps = {
+  dataDb: {} as never,
+  indexDb: {} as never
+}
+
+describe('createVaultServiceHandles', () => {
+  let taskDomain: {
+    listTasks: ReturnType<typeof vi.fn>
+    createTask: ReturnType<typeof vi.fn>
+    completeTask: ReturnType<typeof vi.fn>
+    uncompleteTask: ReturnType<typeof vi.fn>
+    updateTask: ReturnType<typeof vi.fn>
+    getTask: ReturnType<typeof vi.fn>
+    listProjects: ReturnType<typeof vi.fn>
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+
+    mocks.getConfig.mockReturnValue({ defaultNoteFolder: 'notes' })
+    mocks.searchAll.mockReturnValue({ groups: [] })
+    mocks.getFolders.mockResolvedValue([])
+    mocks.listNotes.mockReturnValue({ notes: [] })
+    mocks.createTasksPublisher.mockReturnValue({})
+    mocks.generateId.mockReturnValue('generated-id')
+    mocks.getInboxProject.mockReturnValue({ id: 'inbox-project' })
+
+    taskDomain = {
+      listTasks: vi.fn().mockReturnValue({ tasks: [] }),
+      createTask: vi.fn().mockResolvedValue({ success: true, task: { id: 'task-created' } }),
+      completeTask: vi.fn().mockResolvedValue({ success: true }),
+      uncompleteTask: vi.fn().mockResolvedValue({ success: true }),
+      updateTask: vi.fn().mockResolvedValue({ success: true }),
+      getTask: vi.fn(),
+      listProjects: vi.fn().mockReturnValue({ projects: [] })
+    }
+    mocks.createDesktopTasksDomain.mockReturnValue(taskDomain)
+  })
+
+  it('maps note search, read, create, update, tag, and move handles', async () => {
+    const handles = createVaultServiceHandles(deps)
+
+    mocks.searchAll.mockReturnValue({
+      groups: [
+        {
+          type: 'note',
+          results: [
+            {
+              id: 'note-1',
+              title: 'Alpha',
+              snippet: null,
+              metadata: { type: 'note', path: 'notes/work/alpha.md' }
+            },
+            {
+              id: 'note-2',
+              title: 'Loose',
+              snippet: 'loose snippet',
+              metadata: { type: 'task' }
+            }
+          ]
+        }
+      ]
+    })
+
+    await expect(
+      handles.notes.search({ query: 'alpha', folderId: '/work', limit: 5 })
+    ).resolves.toEqual([
+      { id: 'note-1', title: 'Alpha', snippet: '', folder_path: '/work' },
+      { id: 'note-2', title: 'Loose', snippet: 'loose snippet', folder_path: null }
+    ])
+    expect(mocks.searchAll).toHaveBeenCalledWith(
+      deps.indexDb,
+      deps.dataDb,
+      expect.objectContaining({ folderPath: 'notes/work', limit: 5 })
+    )
+
+    mocks.getNoteById.mockResolvedValue({
+      id: 'note-1',
+      title: 'Alpha',
+      content: 'Current',
+      tags: ['Team'],
+      path: 'notes/work/alpha.md',
+      frontmatter: { owner: 'Kaan' }
+    })
+    await expect(handles.notes.read('note-1')).resolves.toEqual({
+      id: 'note-1',
+      title: 'Alpha',
+      content_markdown: 'Current',
+      tags: ['Team'],
+      folder_path: '/work',
+      frontmatter: { owner: 'Kaan' }
+    })
+
+    mocks.createNoteCommand.mockResolvedValue({ id: 'note-created' })
+    await expect(
+      handles.notes.create({
+        title: 'New',
+        content_markdown: 'Body',
+        folder_path: '/work',
+        tags: ['focus']
+      })
+    ).resolves.toEqual({ id: 'note-created' })
+    expect(mocks.createNoteCommand).toHaveBeenCalledWith({
+      title: 'New',
+      content: 'Body',
+      folder: 'work',
+      tags: ['focus']
+    })
+
+    await handles.notes.update({ id: 'note-1', mode: 'append', content_markdown: 'Next' })
+    expect(mocks.updateNoteCommand).toHaveBeenLastCalledWith({
+      id: 'note-1',
+      content: 'Current\n\nNext'
+    })
+
+    await handles.notes.addTag({ id: 'note-1', tag: ' Team ' })
+    expect(mocks.updateNoteCommand).toHaveBeenLastCalledWith({ id: 'note-1', tags: ['Team'] })
+
+    await handles.notes.addTag({ id: 'note-1', tag: 'Review' })
+    expect(mocks.updateNoteCommand).toHaveBeenLastCalledWith({
+      id: 'note-1',
+      tags: ['Team', 'Review']
+    })
+
+    await handles.notes.removeTag({ id: 'note-1', tag: 'team' })
+    expect(mocks.updateNoteCommand).toHaveBeenLastCalledWith({ id: 'note-1', tags: [] })
+
+    await handles.notes.moveToFolder({ id: 'note-1', folder_path: '/archive' })
+    expect(mocks.moveNoteCommand).toHaveBeenCalledWith('note-1', 'archive')
+
+    mocks.getNoteById.mockResolvedValueOnce(null)
+    await expect(
+      handles.notes.update({ id: 'missing', mode: 'replace', content_markdown: 'Body' })
+    ).rejects.toThrow('Note not found: missing')
+
+    mocks.getNoteById.mockResolvedValueOnce({
+      id: 'note-root',
+      title: 'Root',
+      content: '',
+      tags: [],
+      path: 'notes/root.md',
+      frontmatter: {}
+    })
+    await expect(handles.notes.read('note-root')).resolves.toMatchObject({ folder_path: null })
+
+    mocks.getNoteById.mockResolvedValueOnce(null)
+    await expect(handles.notes.read('missing')).resolves.toBeNull()
+    mocks.getNoteById.mockResolvedValueOnce(null)
+    await expect(handles.notes.addTag({ id: 'missing', tag: 'tag' })).rejects.toThrow(
+      'Note not found: missing'
+    )
+    mocks.getNoteById.mockResolvedValueOnce(null)
+    await expect(handles.notes.removeTag({ id: 'missing', tag: 'tag' })).rejects.toThrow(
+      'Note not found: missing'
+    )
+
+    mocks.getNoteById.mockResolvedValueOnce({
+      id: 'empty',
+      content: '',
+      tags: [],
+      path: 'notes/a.md'
+    })
+    await handles.notes.update({ id: 'empty', mode: 'append', content_markdown: 'Next' })
+    expect(mocks.updateNoteCommand).toHaveBeenLastCalledWith({ id: 'empty', content: 'Next' })
+
+    mocks.getNoteById.mockResolvedValueOnce({
+      id: 'prepend',
+      content: 'Current',
+      tags: [],
+      path: 'notes/a.md'
+    })
+    await handles.notes.update({ id: 'prepend', mode: 'prepend', content_markdown: 'Before' })
+    expect(mocks.updateNoteCommand).toHaveBeenLastCalledWith({
+      id: 'prepend',
+      content: 'Before\n\nCurrent'
+    })
+
+    await handles.notes.moveToFolder({ id: 'note-1', folder_path: '/' })
+    expect(mocks.moveNoteCommand).toHaveBeenLastCalledWith('note-1', '')
+  })
+
+  it('lists direct and recursive folder entries using tool paths', async () => {
+    const handles = createVaultServiceHandles(deps)
+
+    mocks.getFolders.mockResolvedValue([
+      { path: 'work' },
+      { path: 'work/client' },
+      { path: 'work/client/archive' },
+      { path: 'personal' }
+    ])
+    mocks.listNotes.mockReturnValue({
+      notes: [
+        { id: 'note-1', title: 'Client', path: 'notes/work/client.md' },
+        { id: 'note-2', title: 'Deep', path: 'notes/work/client/deep.md' }
+      ]
+    })
+
+    await expect(handles.folders.list({ path: '/work', recursive: false })).resolves.toEqual([
+      { kind: 'folder', id: '/work/client', name: 'client', path: '/work/client' },
+      { kind: 'note', id: 'note-1', name: 'Client', path: '/work/client.md' }
+    ])
+    expect(mocks.listNotes).toHaveBeenCalledWith({
+      folder: 'notes/work',
+      limit: 1000,
+      offset: 0
+    })
+
+    await expect(handles.folders.list({ path: '/', recursive: true })).resolves.toEqual([
+      { kind: 'folder', id: '/work', name: 'work', path: '/work' },
+      { kind: 'folder', id: '/work/client', name: 'client', path: '/work/client' },
+      {
+        kind: 'folder',
+        id: '/work/client/archive',
+        name: 'archive',
+        path: '/work/client/archive'
+      },
+      { kind: 'folder', id: '/personal', name: 'personal', path: '/personal' },
+      { kind: 'note', id: 'note-1', name: 'Client', path: '/work/client.md' },
+      { kind: 'note', id: 'note-2', name: 'Deep', path: '/work/client/deep.md' }
+    ])
+
+    await expect(handles.folders.list({ path: '/', recursive: false })).resolves.toEqual([
+      { kind: 'folder', id: '/work', name: 'work', path: '/work' },
+      { kind: 'folder', id: '/personal', name: 'personal', path: '/personal' }
+    ])
+  })
+
+  it('maps task and project handles through the task domain', async () => {
+    const handles = createVaultServiceHandles(deps)
+
+    taskDomain.listTasks.mockReturnValue({
+      tasks: [
+        {
+          id: 'task-1',
+          title: 'Open task',
+          statusId: 'todo',
+          completedAt: null,
+          dueDate: '2026-05-12',
+          projectId: 'project-1',
+          tags: ['focus']
+        },
+        {
+          id: 'task-2',
+          title: 'Done task',
+          statusId: 'done',
+          completedAt: '2026-05-11',
+          dueDate: null,
+          projectId: null,
+          tags: null
+        }
+      ]
+    })
+
+    await expect(
+      handles.tasks.list({ status: 'open', project_id: 'project-1', tag: 'focus', limit: 3 })
+    ).resolves.toEqual([
+      {
+        id: 'task-1',
+        title: 'Open task',
+        status: 'todo',
+        due: '2026-05-12',
+        project: 'project-1',
+        tags: ['focus']
+      }
+    ])
+    expect(taskDomain.listTasks).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectId: 'project-1',
+        statusId: undefined,
+        includeCompleted: false,
+        tags: ['focus'],
+        limit: 3
+      })
+    )
+
+    await expect(handles.tasks.list({ status: 'completed' })).resolves.toEqual([
+      {
+        id: 'task-2',
+        title: 'Done task',
+        status: 'completed',
+        due: null,
+        project: null,
+        tags: []
+      }
+    ])
+
+    await expect(handles.tasks.list({ status: 'todo' })).resolves.toEqual([
+      expect.objectContaining({ id: 'task-1' }),
+      expect.objectContaining({ id: 'task-2' })
+    ])
+
+    await expect(handles.tasks.create({ title: 'New task', tags: ['inbox'] })).resolves.toEqual({
+      id: 'task-created'
+    })
+    expect(taskDomain.createTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'New task',
+        projectId: 'inbox-project',
+        dueDate: null,
+        description: null,
+        tags: ['inbox']
+      })
+    )
+
+    mocks.getInboxProject.mockReturnValueOnce(null)
+    await expect(handles.tasks.create({ title: 'No project' })).rejects.toThrow(
+      'No project available for task creation'
+    )
+
+    taskDomain.createTask.mockResolvedValueOnce({ success: false, task: null })
+    await expect(
+      handles.tasks.create({ title: 'Bad task', project_id: 'project-1' })
+    ).rejects.toThrow('Failed to create task')
+
+    await handles.tasks.update('task-1', { status: 'completed' })
+    expect(taskDomain.completeTask).toHaveBeenCalledWith({ id: 'task-1' })
+
+    taskDomain.completeTask.mockResolvedValueOnce({ success: false, error: 'complete failed' })
+    await expect(handles.tasks.update('task-1', { status: 'completed' })).rejects.toThrow(
+      'complete failed'
+    )
+
+    await handles.tasks.update('task-1', { status: 'open' })
+    expect(taskDomain.uncompleteTask).toHaveBeenCalledWith('task-1')
+
+    taskDomain.uncompleteTask.mockResolvedValueOnce({ success: false, error: 'reopen failed' })
+    await expect(handles.tasks.update('task-1', { status: 'open' })).rejects.toThrow(
+      'reopen failed'
+    )
+
+    await handles.tasks.update('task-1', { title: 'Renamed', project_id: null, due: null })
+    expect(taskDomain.updateTask).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        id: 'task-1',
+        title: 'Renamed',
+        projectId: undefined,
+        dueDate: null
+      })
+    )
+
+    taskDomain.updateTask.mockResolvedValueOnce({ success: false, error: 'update failed' })
+    await expect(handles.tasks.update('task-1', { title: 'Bad' })).rejects.toThrow('update failed')
+
+    taskDomain.getTask.mockReturnValue({ id: 'task-1', tags: ['focus'] })
+    await handles.tasks.addTag({ id: 'task-1', tag: 'focus' })
+    expect(taskDomain.updateTask).toHaveBeenLastCalledWith({ id: 'task-1', tags: ['focus'] })
+    await handles.tasks.addTag({ id: 'task-1', tag: 'ship' })
+    expect(taskDomain.updateTask).toHaveBeenLastCalledWith({
+      id: 'task-1',
+      tags: ['focus', 'ship']
+    })
+    await handles.tasks.removeTag({ id: 'task-1', tag: 'FOCUS' })
+    expect(taskDomain.updateTask).toHaveBeenLastCalledWith({ id: 'task-1', tags: [] })
+
+    taskDomain.getTask.mockReturnValueOnce(null)
+    await expect(handles.tasks.addTag({ id: 'missing', tag: 'focus' })).rejects.toThrow(
+      'Task not found: missing'
+    )
+    taskDomain.getTask.mockReturnValueOnce(null)
+    await expect(handles.tasks.removeTag({ id: 'missing', tag: 'focus' })).rejects.toThrow(
+      'Task not found: missing'
+    )
+    taskDomain.getTask.mockReturnValueOnce({ id: 'task-2', tags: null })
+    await handles.tasks.removeTag({ id: 'task-2', tag: 'focus' })
+    expect(taskDomain.updateTask).toHaveBeenLastCalledWith({ id: 'task-2', tags: [] })
+
+    taskDomain.getTask.mockReturnValueOnce({ id: 'task-3', tags: [] })
+    taskDomain.updateTask.mockResolvedValueOnce({ success: false, error: 'tag failed' })
+    await expect(handles.tasks.addTag({ id: 'task-3', tag: 'focus' })).rejects.toThrow('tag failed')
+    taskDomain.getTask.mockReturnValueOnce({ id: 'task-4', tags: ['focus'] })
+    taskDomain.updateTask.mockResolvedValueOnce({ success: false, error: 'untag failed' })
+    await expect(handles.tasks.removeTag({ id: 'task-4', tag: 'focus' })).rejects.toThrow(
+      'untag failed'
+    )
+
+    taskDomain.listProjects.mockReturnValue({
+      projects: [
+        { id: 'project-1', name: 'Active', archivedAt: null, taskCount: 2 },
+        { id: 'project-2', name: 'Archived', archivedAt: '2026-05-11', taskCount: 0 }
+      ]
+    })
+    await expect(handles.projects.list()).resolves.toEqual([
+      { id: 'project-1', name: 'Active', status: 'active', task_count: 2 },
+      { id: 'project-2', name: 'Archived', status: 'archived', task_count: 0 }
+    ])
+  })
+
+  it('maps journal, inbox, tag, and window handles', async () => {
+    const handles = createVaultServiceHandles(deps)
+
+    mocks.readJournalEntry.mockResolvedValueOnce({
+      id: 'journal-1',
+      date: '2026-05-12',
+      content: 'Today'
+    })
+    await expect(handles.journal.getByDate('2026-05-12')).resolves.toEqual({
+      id: 'journal-1',
+      date: '2026-05-12',
+      content_markdown: 'Today'
+    })
+
+    mocks.readJournalEntry.mockResolvedValueOnce(null)
+    await expect(handles.journal.getByDate('2026-05-10')).resolves.toBeNull()
+
+    mocks.listJournalEntriesInRange.mockReturnValue([
+      { id: 'journal-1', date: null, title: 'Untitled' }
+    ])
+    await expect(
+      handles.journal.listInRange({ from: '2026-05-01', to: '2026-05-31' })
+    ).resolves.toEqual([{ id: 'journal-1', date: '', title: 'Untitled' }])
+
+    mocks.readJournalEntry.mockResolvedValueOnce(null)
+    mocks.writeJournalEntry.mockResolvedValue({ id: 'journal-created' })
+    await expect(
+      handles.journal.createIfMissing({ date: '2026-05-13', content_markdown: 'Tomorrow' })
+    ).resolves.toEqual({ id: 'journal-created', created: true })
+
+    mocks.readJournalEntry.mockResolvedValueOnce({ id: 'journal-existing' })
+    await expect(
+      handles.journal.createIfMissing({ date: '2026-05-13', content_markdown: 'Tomorrow' })
+    ).resolves.toEqual({ id: 'journal-existing', created: false })
+
+    mocks.createDesktopInboxDomain.mockReturnValue({
+      list: vi.fn().mockResolvedValue({
+        items: [
+          {
+            id: 'inbox-1',
+            sourceUrl: 'https://example.com',
+            captureSource: null,
+            type: 'text',
+            title: 'Unread',
+            content: null,
+            transcription: null,
+            excerpt: 'Excerpt',
+            viewedAt: null,
+            createdAt: new Date('2026-05-12T00:00:00Z')
+          },
+          {
+            id: 'inbox-2',
+            sourceUrl: null,
+            captureSource: 'share',
+            type: 'text',
+            title: 'Read',
+            content: 'Read body',
+            transcription: null,
+            excerpt: null,
+            viewedAt: new Date('2026-05-12T01:00:00Z'),
+            createdAt: new Date('2026-05-12T01:00:00Z')
+          }
+        ]
+      }),
+      captureText: vi.fn().mockResolvedValue({ success: true, item: { id: 'inbox-created' } })
+    })
+    await expect(handles.inbox.list({ unread_only: true })).resolves.toEqual([
+      {
+        id: 'inbox-1',
+        source: 'https://example.com',
+        title: 'Unread',
+        snippet: 'Excerpt',
+        captured_at: new Date('2026-05-12T00:00:00Z').getTime()
+      }
+    ])
+    await expect(handles.inbox.list({ unread_only: false })).resolves.toEqual([
+      expect.objectContaining({ id: 'inbox-1', snippet: 'Excerpt' }),
+      expect.objectContaining({ id: 'inbox-2', source: 'share', snippet: 'Read body' })
+    ])
+    await expect(
+      handles.inbox.add({ source: 'api', title: 'Captured', content: 'Body' })
+    ).resolves.toEqual({ id: 'inbox-created' })
+
+    await expect(
+      handles.inbox.add({ source: 'inline', title: 'Captured', content: 'Body' })
+    ).resolves.toEqual({ id: 'inbox-created' })
+
+    mocks.createDesktopInboxDomain.mockReturnValueOnce({
+      captureText: vi
+        .fn()
+        .mockResolvedValue({ success: false, item: null, error: 'capture failed' })
+    })
+    await expect(
+      handles.inbox.add({ source: 'inline', title: 'Bad', content: 'Body' })
+    ).rejects.toThrow('capture failed')
+
+    mocks.getAllTagsWithCounts.mockReturnValue([{ name: 'focus', count: 3 }])
+    await expect(handles.tags.listAll()).resolves.toEqual([{ name: 'focus', count: 3 }])
+
+    mocks.snapshotCurrentNoteFromWindow.mockResolvedValue({ id: 'note-1' })
+    await expect(handles.windows.snapshotCurrentNote('window-1')).resolves.toEqual({ id: 'note-1' })
+  })
+})

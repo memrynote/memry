@@ -515,6 +515,74 @@ describe('subtask-bulk-utils', () => {
   // ==========================================================================
 
   describe('T140: parent completion helpers', () => {
+    it('returns clear errors for missing parents and empty subtask lists', () => {
+      const parent = createMockTask({ id: 'parent-1', subtaskIds: [] })
+      const completedSubtask = createMockTask({
+        id: 'sub-1',
+        parentId: 'parent-2',
+        completedAt: new Date(2026, 0, 10)
+      })
+
+      expect(completeAllSubtasks('missing', [])).toEqual({
+        success: false,
+        error: 'Parent task not found'
+      })
+      expect(completeAllSubtasks('parent-1', [parent])).toEqual({
+        success: false,
+        error: 'No subtasks to complete'
+      })
+      expect(markAllSubtasksIncomplete('missing', [])).toEqual({
+        success: false,
+        error: 'Parent task not found'
+      })
+      expect(markAllSubtasksIncomplete('parent-1', [parent])).toEqual({
+        success: false,
+        error: 'No subtasks to mark incomplete'
+      })
+      expect(setDueDateForAllSubtasks('missing', null, false, [])).toEqual({
+        success: false,
+        error: 'Parent task not found'
+      })
+      expect(setDueDateForAllSubtasks('parent-1', null, false, [parent])).toEqual({
+        success: false,
+        error: 'No subtasks to update'
+      })
+      expect(setPriorityForAllSubtasks('missing', 'high', false, [])).toEqual({
+        success: false,
+        error: 'Parent task not found'
+      })
+      expect(setPriorityForAllSubtasks('parent-1', 'high', false, [parent])).toEqual({
+        success: false,
+        error: 'No subtasks to update'
+      })
+      expect(
+        setPriorityForAllSubtasks('parent-2', 'high', false, [
+          createMockTask({ id: 'parent-2', subtaskIds: ['sub-1'] }),
+          completedSubtask
+        ])
+      ).toEqual({ success: false, error: 'No matching subtasks to update' })
+      expect(deleteAllSubtasks('missing', [])).toEqual({
+        success: false,
+        error: 'Parent task not found'
+      })
+      expect(deleteAllSubtasks('parent-1', [parent])).toEqual({
+        success: false,
+        error: 'No subtasks to delete'
+      })
+      expect(duplicateTaskWithSubtasks('missing', true, [])).toEqual({
+        success: false,
+        error: 'Task not found'
+      })
+      expect(completeParentTask('missing', [])).toEqual({
+        success: false,
+        error: 'Parent task not found'
+      })
+      expect(uncompleteParentTask('missing', [])).toEqual({
+        success: false,
+        error: 'Parent task not found'
+      })
+    })
+
     it('completes the parent task when incomplete', () => {
       const parent = createMockTask({
         id: 'parent-1',

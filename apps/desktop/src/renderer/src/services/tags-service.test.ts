@@ -22,6 +22,8 @@ describe('tags-service', () => {
     api.tags.updateTagColor = vi.fn().mockResolvedValue({ success: true })
     api.tags.deleteTag = vi.fn().mockResolvedValue({ success: true, affectedNotes: 0 })
     api.tags.removeTagFromNote = vi.fn().mockResolvedValue({ success: true })
+    api.tags.getAllWithCounts = vi.fn().mockResolvedValue({ tags: [] })
+    api.tags.mergeTag = vi.fn().mockResolvedValue({ success: true, affectedNotes: 0 })
 
     api.onTagRenamed = vi.fn().mockReturnValue(() => {})
     api.onTagColorUpdated = vi.fn().mockReturnValue(() => {})
@@ -51,6 +53,12 @@ describe('tags-service', () => {
 
     await tagsService.removeTagFromNote({ noteId: 'note-2', tag: 'focus' })
     expect(api.tags.removeTagFromNote).toHaveBeenCalledWith({ noteId: 'note-2', tag: 'focus' })
+
+    await tagsService.getAllWithCounts()
+    expect(api.tags.getAllWithCounts).toHaveBeenCalled()
+
+    await tagsService.mergeTag({ source: 'old', target: 'new' })
+    expect(api.tags.mergeTag).toHaveBeenCalledWith({ source: 'old', target: 'new' })
   })
 
   it('registers tag event subscriptions', () => {

@@ -11,6 +11,8 @@ pnpm --filter @memry/sync-server test  # sync server only
 pnpm --filter @memry/desktop test:coverage
 pnpm --filter @memry/sync-server exec vitest run --coverage --coverage.reporter=json-summary --coverage.reporter=text-summary
 pnpm test:e2e                          # Playwright
+node apps/desktop/scripts/build-packaged-app.js --dir
+node apps/desktop/scripts/check-packaged-runtime-deps.js
 ```
 
 ## Unit + Integration (Vitest)
@@ -92,6 +94,21 @@ pnpm typecheck:web      # renderer only
 | Electron app / E2E | `bash apps/desktop/scripts/ensure-native.sh electron` |
 
 Using the Node fix for Electron (or vice versa) leaves the app silently broken — see [Common Gotchas](/contribute/gotchas).
+
+## Packaged Runtime Smoke
+
+The packaged smoke check builds the app into `apps/desktop/dist/mac-arm64/Memry.app` from an
+isolated dependency tree, then verifies runtime dependencies resolve from the packaged Resources
+directory:
+
+```bash
+node apps/desktop/scripts/build-packaged-app.js --dir
+node apps/desktop/scripts/check-packaged-runtime-deps.js
+```
+
+The macOS signing patch in `apps/desktop/scripts/patch-osx-sign-walk.js` walks the packaged app
+serially. Keep that traversal bounded; unbounded parallel file reads can exhaust CI file descriptors
+while scanning large dependency trees.
 
 ## Coverage Targets
 

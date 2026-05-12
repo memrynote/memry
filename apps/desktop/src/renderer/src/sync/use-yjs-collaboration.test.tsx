@@ -41,6 +41,47 @@ vi.mock('@/lib/logger', () => ({
 import { useYjsCollaboration } from './use-yjs-collaboration'
 
 describe('useYjsCollaboration', () => {
+  it('stays disabled when note id is missing or collaboration is disabled', () => {
+    const { result, rerender } = renderHook((props) => useYjsCollaboration(props), {
+      initialProps: { noteId: undefined as string | undefined }
+    })
+
+    expect(result.current.isReady).toBe(false)
+    expect(result.current.fragment).toBeNull()
+    expect(result.current.provider).toBeNull()
+    expect(mockOpenDoc).not.toHaveBeenCalled()
+
+    rerender({ noteId: 'note-disabled', enabled: false })
+
+    expect(result.current.isReady).toBe(false)
+    expect(result.current.fragment).toBeNull()
+    expect(result.current.provider).toBeNull()
+    expect(mockOpenDoc).not.toHaveBeenCalled()
+  })
+
+  it('returns a synced fragment and cleans up when note id changes', async () => {
+    const closeCleanup = vi.fn()
+    mockOnCrdtStateChanged.mockReturnValueOnce(closeCleanup)
+    const { result, rerender, unmount } = renderHook((props) => useYjsCollaboration(props), {
+      initialProps: { noteId: 'note-1' as string | undefined }
+    })
+
+    await waitFor(() => expect(result.current.isReady).toBe(true))
+
+    expect(result.current.fragment).not.toBeNull()
+    expect(result.current.provider?.isSynced).toBe(true)
+    expect(result.current.isRemoteUpdateRef.current).toBe(false)
+
+    rerender({ noteId: 'note-2' })
+
+    await waitFor(() => expect(mockCloseDoc).toHaveBeenCalledWith({ noteId: 'note-1' }))
+    await waitFor(() => expect(result.current.isReady).toBe(true))
+    expect(result.current.provider?.noteId).toBe('note-2')
+
+    unmount()
+    expect(closeCleanup).toHaveBeenCalled()
+  })
+
   it('fails open without a Yjs fragment when the CRDT doc cannot open', async () => {
     mockOpenDoc.mockResolvedValueOnce({ success: false, error: 'Note not found' })
 

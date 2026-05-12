@@ -9,7 +9,7 @@ import {
 } from './vault-service'
 
 describe('vault-service', () => {
-  let api: ReturnType<typeof createMockApi>
+  let api: any
 
   beforeEach(() => {
     api = createMockApi()
@@ -23,6 +23,7 @@ describe('vault-service', () => {
     api.vault.switch = vi.fn().mockResolvedValue({ success: true })
     api.vault.remove = vi.fn().mockResolvedValue({ success: true })
     api.vault.reindex = vi.fn().mockResolvedValue({ success: true })
+    api.vault.reveal = vi.fn().mockResolvedValue(undefined)
 
     api.onVaultStatusChanged = vi.fn().mockReturnValue(() => {})
     api.onVaultIndexProgress = vi.fn().mockReturnValue(() => {})
@@ -61,6 +62,9 @@ describe('vault-service', () => {
 
     await vaultService.reindex()
     expect(api.vault.reindex).toHaveBeenCalled()
+
+    await vaultService.reveal()
+    expect(api.vault.reveal).toHaveBeenCalled()
   })
 
   it('registers vault event subscriptions', () => {

@@ -5,7 +5,12 @@ import {
   onJournalEntryCreated,
   onJournalEntryUpdated,
   onJournalEntryDeleted,
-  onJournalExternalChange
+  onJournalExternalChange,
+  getTodayDate,
+  formatJournalDate,
+  isToday,
+  isPastDate,
+  isFutureDate
 } from './journal-service'
 
 describe('journal-service', () => {
@@ -80,5 +85,21 @@ describe('journal-service', () => {
     expect(onJournalEntryUpdated(vi.fn())).toBe(unsubscribe)
     expect(onJournalEntryDeleted(vi.fn())).toBe(unsubscribe)
     expect(onJournalExternalChange(vi.fn())).toBe(unsubscribe)
+  })
+
+  it('formats and compares journal dates', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-12T10:00:00.000Z'))
+
+    expect(getTodayDate()).toBe('2026-05-12')
+    expect(formatJournalDate('2026-05-12')).toBe('Tuesday, May 12, 2026')
+    expect(isToday('2026-05-12')).toBe(true)
+    expect(isToday('2026-05-11')).toBe(false)
+    expect(isPastDate('2026-05-11')).toBe(true)
+    expect(isPastDate('2026-05-13')).toBe(false)
+    expect(isFutureDate('2026-05-13')).toBe(true)
+    expect(isFutureDate('2026-05-11')).toBe(false)
+
+    vi.useRealTimers()
   })
 })

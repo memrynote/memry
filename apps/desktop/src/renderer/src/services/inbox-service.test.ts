@@ -14,6 +14,7 @@ import {
   getInboxItemIcon,
   getInboxItemColor,
   formatCompactDate,
+  formatTimeAgo,
   isItemStale
 } from './inbox-service'
 
@@ -142,7 +143,26 @@ describe('inbox-service', () => {
 
   it('returns expected utility outputs', () => {
     expect(getInboxItemIcon('link')).toBe('Link')
+    expect(getInboxItemIcon('note')).toBe('FileText')
+    expect(getInboxItemIcon('image')).toBe('Image')
+    expect(getInboxItemIcon('voice')).toBe('Mic')
+    expect(getInboxItemIcon('video')).toBe('Video')
+    expect(getInboxItemIcon('clip')).toBe('Scissors')
+    expect(getInboxItemIcon('pdf')).toBe('FileText')
+    expect(getInboxItemIcon('social')).toBe('Share2')
+    expect(getInboxItemIcon('reminder')).toBe('Bell')
+    expect(getInboxItemIcon('unknown' as never)).toBe('File')
+
     expect(getInboxItemColor('image')).toBe('text-purple-500')
+    expect(getInboxItemColor('link')).toBe('text-blue-500')
+    expect(getInboxItemColor('note')).toBe('text-amber-500')
+    expect(getInboxItemColor('voice')).toBe('text-red-500')
+    expect(getInboxItemColor('video')).toBe('text-indigo-500')
+    expect(getInboxItemColor('clip')).toBe('text-green-500')
+    expect(getInboxItemColor('pdf')).toBe('text-orange-500')
+    expect(getInboxItemColor('social')).toBe('text-cyan-500')
+    expect(getInboxItemColor('reminder')).toBe('text-amber-500')
+    expect(getInboxItemColor('unknown' as never)).toBe('text-muted-foreground')
 
     expect(formatCompactDate('2024-07-04T12:00:00Z')).toBe('4 Jul 2024')
     const currentYear = new Date().getFullYear()
@@ -152,5 +172,20 @@ describe('inbox-service', () => {
     const recentDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
     expect(isItemStale(oldDate, 7)).toBe(true)
     expect(isItemStale(recentDate, 7)).toBe(false)
+  })
+
+  it('formats relative inbox times', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-12T12:00:00.000Z'))
+
+    expect(formatTimeAgo('2026-05-12T11:59:30.000Z')).toBe('just now')
+    expect(formatTimeAgo('2026-05-12T11:59:00.000Z')).toBe('1 minute ago')
+    expect(formatTimeAgo('2026-05-12T11:45:00.000Z')).toBe('15 minutes ago')
+    expect(formatTimeAgo('2026-05-12T11:00:00.000Z')).toBe('1 hour ago')
+    expect(formatTimeAgo('2026-05-12T09:00:00.000Z')).toBe('3 hours ago')
+    expect(formatTimeAgo('2026-05-11T12:00:00.000Z')).toBe('yesterday')
+    expect(formatTimeAgo('2026-05-09T12:00:00.000Z')).toBe('3 days ago')
+    expect(formatTimeAgo('2026-05-01T12:00:00.000Z')).toBe('1 May')
+    expect(formatTimeAgo(new Date('2025-05-01T12:00:00.000Z'))).toBe('1 May 2025')
   })
 })

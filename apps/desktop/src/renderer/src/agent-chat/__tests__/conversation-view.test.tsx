@@ -106,7 +106,7 @@ describe('ConversationView', () => {
     render(<ConversationView conversationId="conversation-1" />)
 
     const stopButton = screen.getByRole('button', { name: 'Stop' })
-    expect(stopButton.closest('form')).not.toBeNull()
+    expect(stopButton).toHaveAttribute('type', 'button')
     expect(screen.queryByRole('button', { name: 'Send' })).not.toBeInTheDocument()
 
     fireEvent.click(stopButton)

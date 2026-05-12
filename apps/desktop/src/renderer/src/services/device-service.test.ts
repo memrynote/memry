@@ -103,4 +103,13 @@ describe('setup-service', () => {
     expect(api.syncSetup.confirmRecoveryPhrase).toHaveBeenCalledWith({ confirmed: true })
     expect(result).toEqual({ success: true })
   })
+
+  it('forwards setupNewAccount to window.api.syncSetup', async () => {
+    api.syncSetup.setupNewAccount = vi.fn().mockResolvedValue({ success: true })
+
+    const result = await setupService.setupNewAccount()
+
+    expect(api.syncSetup.setupNewAccount).toHaveBeenCalled()
+    expect(result).toEqual({ success: true })
+  })
 })

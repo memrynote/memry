@@ -1,0 +1,229 @@
+import { act, renderHook, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import type { BinaryStatus, Conversation, Message } from '@memry/contracts/ipc-agent'
+
+const t = (key: string) => key
+
+vi.mock('@memry/i18n/renderer', () => ({
+  useT: () => ({ t })
+}))
+
+import { AgentProvider, useAgent } from '../agent-context'
+
+const binaryStatus: BinaryStatus = {
+  detected: true,
+  version: '2.1.0',
+  meetsMinimum: true,
+  minimumRequired: '2.1.0',
+  installHint: null
+}
+
+const conversation: Conversation = {
+  id: 'conversation-1',
+  vaultId: 'vault-1',
+  title: 'Planning',
+  backend: 'claude_cli',
+  trustList: [],
+  pinned: false,
+  vectorClock: {},
+  fieldClocks: {},
+  createdAt: 100,
+  updatedAt: 100,
+  deletedAt: null,
+  lastSyncedAt: null
+}
+
+const message: Message = {
+  id: 'message-1',
+  conversationId: conversation.id,
+  role: 'assistant',
+  content: { role: 'assistant', data: { text: 'Ready' } },
+  toolCallId: null,
+  attachments: [],
+  status: 'completed',
+  vectorClock: {},
+  createdAt: 100,
+  updatedAt: 100,
+  deletedAt: null
+}
+
+function wrapper({ children }: { children: ReactNode }) {
+  return <AgentProvider>{children}</AgentProvider>
+}
+
+describe('AgentProvider', () => {
+  let eventHandler: ((event: unknown) => void) | null
+  let unsubscribe: ReturnType<typeof vi.fn>
+  let agentApi: {
+    listConversations: ReturnType<typeof vi.fn>
+    createConversation: ReturnType<typeof vi.fn>
+    loadConversation: ReturnType<typeof vi.fn>
+    sendTurn: ReturnType<typeof vi.fn>
+    cancelTurn: ReturnType<typeof vi.fn>
+    approveTool: ReturnType<typeof vi.fn>
+    editTrustList: ReturnType<typeof vi.fn>
+    getBinaryStatus: ReturnType<typeof vi.fn>
+    getDisclosureState: ReturnType<typeof vi.fn>
+    acceptDisclosure: ReturnType<typeof vi.fn>
+    getWindowId: ReturnType<typeof vi.fn>
+    onEvent: ReturnType<typeof vi.fn>
+  }
+
+  beforeEach(() => {
+    eventHandler = null
+    unsubscribe = vi.fn()
+    agentApi = {
+      listConversations: vi.fn().mockResolvedValue([conversation]),
+      createConversation: vi.fn().mockResolvedValue({ ...conversation, id: 'conversation-2' }),
+      loadConversation: vi.fn().mockResolvedValue({ conversation, messages: [message] }),
+      sendTurn: vi.fn().mockResolvedValue({ ok: true }),
+      cancelTurn: vi.fn().mockResolvedValue({ ok: true }),
+      approveTool: vi.fn().mockResolvedValue({ ok: true }),
+      editTrustList: vi.fn().mockResolvedValue({
+        ...conversation,
+        trustList: ['vault_create_task']
+      }),
+      getBinaryStatus: vi.fn().mockResolvedValue(binaryStatus),
+      getDisclosureState: vi.fn().mockResolvedValue({ accepted: false }),
+      acceptDisclosure: vi.fn().mockResolvedValue({ accepted: true }),
+      getWindowId: vi.fn().mockResolvedValue({ windowId: 'window-1' }),
+      onEvent: vi.fn((callback: (event: unknown) => void) => {
+        eventHandler = callback
+        return unsubscribe
+      })
+    }
+    ;(window as typeof window & { api: unknown }).api = {
+      ...(window.api ?? {}),
+      agent: agentApi
+    }
+  })
+
+  it('bootstraps state from the agent IPC API', async () => {
+    const { result, unmount } = renderHook(() => useAgent(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.state.sourceWindowId).toBe('window-1')
+      expect(result.current.state.binaryStatus).toEqual(binaryStatus)
+      expect(result.current.state.disclosureAccepted).toBe(false)
+      expect(result.current.state.conversations[conversation.id]).toEqual(conversation)
+    })
+
+    unmount()
+    expect(unsubscribe).toHaveBeenCalled()
+  })
+
+  it('routes conversation actions through the agent IPC API', async () => {
+    const { result } = renderHook(() => useAgent(), { wrapper })
+
+    await waitFor(() => expect(result.current.state.sourceWindowId).toBe('window-1'))
+
+    await act(async () => {
+      await result.current.refreshConversations()
+    })
+    expect(agentApi.listConversations).toHaveBeenCalledTimes(2)
+
+    let created: Conversation | undefined
+    await act(async () => {
+      created = await result.current.createConversation()
+    })
+    expect(created?.id).toBe('conversation-2')
+    await waitFor(() => expect(result.current.state.activeConversationId).toBe('conversation-2'))
+
+    await act(async () => {
+      await result.current.loadConversation(conversation.id)
+    })
+    await waitFor(() =>
+      expect(result.current.state.messagesByConversation[conversation.id]).toEqual([message])
+    )
+
+    await act(async () => {
+      await result.current.sendTurn({
+        conversationId: conversation.id,
+        sourceWindowId: 'window-1',
+        text: 'Ship it',
+        claudeEffort: 'medium'
+      })
+    })
+    expect(agentApi.sendTurn).toHaveBeenCalledWith(
+      expect.objectContaining({ conversationId: conversation.id, attachments: [] })
+    )
+  })
+
+  it('routes approval, trust, disclosure, and cancel actions through the agent IPC API', async () => {
+    const { result } = renderHook(() => useAgent(), { wrapper })
+
+    await waitFor(() => expect(result.current.state.sourceWindowId).toBe('window-1'))
+
+    act(() => {
+      eventHandler?.({
+        kind: 'tool_call_pending_approval',
+        conversationId: conversation.id,
+        toolCallId: 'tool-1',
+        name: 'vault_create_task',
+        args: { title: 'Task' },
+        requiresDiff: false
+      })
+    })
+    expect(result.current.state.pendingApprovals).toHaveLength(1)
+
+    await act(async () => {
+      await result.current.approveTool({
+        conversationId: conversation.id,
+        toolCallId: 'tool-1',
+        decision: { kind: 'allow' }
+      })
+    })
+    expect(result.current.state.pendingApprovals).toEqual([])
+
+    await act(async () => {
+      await result.current.editTrustList({
+        conversationId: conversation.id,
+        add: ['vault_create_task']
+      })
+    })
+    expect(result.current.state.conversations[conversation.id].trustList).toEqual([
+      'vault_create_task'
+    ])
+
+    await act(async () => {
+      await result.current.acceptDisclosure()
+    })
+    expect(result.current.state.disclosureAccepted).toBe(true)
+
+    await act(async () => {
+      await result.current.cancelTurn(conversation.id)
+    })
+    expect(agentApi.cancelTurn).toHaveBeenCalledWith({ conversationId: conversation.id })
+  })
+
+  it('surfaces send errors and clears the in-flight flag', async () => {
+    agentApi.sendTurn.mockResolvedValueOnce({ ok: false, error: 'busy' })
+    const { result } = renderHook(() => useAgent(), { wrapper })
+
+    await waitFor(() => expect(result.current.state.sourceWindowId).toBe('window-1'))
+
+    let thrown: unknown
+    await act(async () => {
+      try {
+        await result.current.sendTurn({
+          conversationId: conversation.id,
+          sourceWindowId: 'window-1',
+          text: 'Retry',
+          claudeEffort: 'medium'
+        })
+      } catch (error) {
+        thrown = error
+      }
+    })
+
+    expect(thrown).toEqual(new Error('busy'))
+    expect(result.current.state.inFlight[conversation.id]).toBeUndefined()
+    expect(result.current.state.error).toBe('busy')
+  })
+
+  it('requires an AgentProvider', () => {
+    expect(() => renderHook(() => useAgent())).toThrow('useAgent must be used within AgentProvider')
+  })
+})
