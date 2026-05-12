@@ -1,45 +1,31 @@
 import type { Conversation } from '@memry/contracts/ipc-agent'
-import { useT } from '@memry/i18n/renderer'
 
-import { Check, Plus } from '@/lib/icons'
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import { Check } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 interface ConversationListProps {
   conversations: Conversation[]
-  activeConversationId: string
-  onCreateConversation: () => void | Promise<void>
+  activeConversationId: string | null
   onSelectConversation: (id: string) => void | Promise<void>
 }
 
 export function ConversationList({
   conversations,
   activeConversationId,
-  onCreateConversation,
   onSelectConversation
 }: ConversationListProps): React.JSX.Element {
-  const { t } = useT('common')
-
   return (
-    <div className="flex max-h-80 flex-col overflow-y-auto p-1">
-      <button
-        type="button"
-        onClick={() => void onCreateConversation()}
-        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm font-medium hover:bg-accent hover:text-accent-foreground"
-      >
-        <Plus className="size-4 text-muted-foreground" aria-hidden="true" />
-        <span className="truncate">{t('agentChat.newConversation')}</span>
-      </button>
-      {conversations.length > 0 && <div className="my-1 h-px bg-border" />}
+    <div className="flex max-h-80 flex-col overflow-y-auto">
       {conversations.map((conversation) => {
         const active = conversation.id === activeConversationId
         return (
-          <button
+          <DropdownMenuItem
             key={conversation.id}
-            type="button"
             aria-current={active ? 'true' : undefined}
-            onClick={() => void onSelectConversation(conversation.id)}
+            onSelect={() => void onSelectConversation(conversation.id)}
             className={cn(
-              'flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm hover:bg-accent hover:text-accent-foreground',
+              'min-w-0 text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
               active && 'bg-accent/70 text-accent-foreground'
             )}
           >
@@ -47,7 +33,7 @@ export function ConversationList({
             {active && (
               <Check className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             )}
-          </button>
+          </DropdownMenuItem>
         )
       })}
     </div>

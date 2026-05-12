@@ -104,6 +104,17 @@ describe('AgentPane', () => {
     expect(screen.queryByRole('button', { name: 'New conversation' })).not.toBeInTheDocument()
   })
 
+  it('uses the main layout background for the agent shell', () => {
+    mockUseAgentOptional.mockReturnValue(null)
+
+    render(<AgentPane />)
+
+    const shell = screen.getByLabelText('Agent chat')
+
+    expect(shell).toHaveClass('bg-background')
+    expect(shell).not.toHaveClass('bg-sidebar')
+  })
+
   it('keeps the empty chat composer visible when the Claude CLI is unavailable', () => {
     mockAgentState({
       backendStatuses: {
@@ -126,8 +137,7 @@ describe('AgentPane', () => {
     expect(screen.queryByRole('button', { name: 'New conversation' })).not.toBeInTheDocument()
   })
 
-  it('renders the active conversation header and switches conversations', async () => {
-    const user = userEvent.setup()
+  it('renders the active conversation header', () => {
     mockUseAgentOptional.mockReturnValue({
       state: {
         backendStatuses: readyStatuses,
@@ -177,9 +187,7 @@ describe('AgentPane', () => {
 
     render(<AgentPane />)
 
-    await user.click(screen.getByRole('button', { name: /Planning/ }))
-    await user.click(screen.getByRole('button', { name: 'Inbox cleanup' }))
-
-    expect(mockLoadConversation).toHaveBeenCalledWith('conversation-2')
+    expect(screen.getByText('Planning')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Conversation history' })).not.toBeInTheDocument()
   })
 })

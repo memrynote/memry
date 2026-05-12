@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => ({
     width: 320,
     isResizing: false
   },
+  tabBars: [] as Array<{ reserveDayPanelSpace?: boolean }>,
   dispatch: vi.fn()
 }))
 
@@ -48,7 +49,10 @@ vi.mock('@/contexts/day-panel-context', () => ({
 }))
 
 vi.mock('@/components/tabs', () => ({
-  TabBarWithDrag: () => <div data-testid="tab-bar" />
+  TabBarWithDrag: (props: { reserveDayPanelSpace?: boolean }) => {
+    mocks.tabBars.push(props)
+    return <div data-testid="tab-bar" />
+  }
 }))
 
 vi.mock('../tab-content', () => ({
@@ -73,6 +77,7 @@ describe('TabPaneWithDropZones day panel spacing', () => {
     mocks.dayPanel.isOpen = true
     mocks.dayPanel.width = 320
     mocks.dayPanel.isResizing = false
+    mocks.tabBars = []
   })
 
   it('reserves day panel width only when the pane is allowed to reserve it', () => {
@@ -81,9 +86,11 @@ describe('TabPaneWithDropZones day panel spacing', () => {
     expect(screen.getByTestId('tab-content').parentElement).toHaveStyle({
       marginInlineEnd: '320px'
     })
+    expect(mocks.tabBars[0]).toEqual(expect.objectContaining({ reserveDayPanelSpace: true }))
 
     rerender(<TabPaneWithDropZones groupId="g1" isActive reserveDayPanelSpace={false} />)
 
     expect(screen.getByTestId('tab-content').parentElement?.style.marginInlineEnd).not.toBe('320px')
+    expect(mocks.tabBars[1]).toEqual(expect.objectContaining({ reserveDayPanelSpace: false }))
   })
 })

@@ -51,7 +51,7 @@ export const TabPane = ({
           'flex-1 overflow-hidden',
           !dayPanelResizing && 'transition-[margin] duration-200 ease-linear'
         )}
-        style={{ marginRight: isDayPanelOpen ? `${dayPanelWidth}px` : 0 }}
+        style={{ marginInlineEnd: isDayPanelOpen ? `${dayPanelWidth}px` : 0 }}
       >
         {activeTab ? (
           <TabContent tab={activeTab} groupId={groupId} />

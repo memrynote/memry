@@ -467,7 +467,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                 aria-label={t('agentChat.composer.providerLabel', {
                   provider: selectedProviderLabel
                 })}
-                className="inline-flex h-8 items-center gap-1.5 rounded-full bg-transparent px-1.5 text-xs text-muted-foreground transition-colors hover:bg-transparent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="inline-flex h-8 items-center gap-1.5 rounded-full bg-transparent px-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
               >
                 <SelectedProviderIcon className="size-4" aria-hidden="true" />
                 <span>{selectedProviderLabel}</span>
@@ -478,7 +478,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
               <DropdownMenuItem
                 disabled={claudeDisabled}
                 onSelect={() => selectProvider('claude_cli')}
-                className="text-xs focus:bg-transparent focus:text-foreground"
+                className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
               >
                 <Claude className="size-4 text-muted-foreground" aria-hidden="true" />
                 <span>{claudeProviderLabel}</span>
@@ -489,7 +489,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
               <DropdownMenuItem
                 disabled={codexDisabled}
                 onSelect={() => selectProvider('codex_cli')}
-                className="text-xs focus:bg-transparent focus:text-foreground"
+                className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
               >
                 <ChatGpt className="size-4 text-muted-foreground" aria-hidden="true" />
                 <span>{codexProviderLabel}</span>
@@ -499,7 +499,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() => selectProvider('local_openai_compatible')}
-                className="text-xs focus:bg-transparent focus:text-foreground"
+                className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
               >
                 <Computer className="size-4 text-muted-foreground" aria-hidden="true" />
                 <span>{localProviderLabel}</span>

@@ -72,8 +72,55 @@ describe('ConversationView', () => {
 
     render(<ConversationView conversationId="conversation-1" />)
 
-    expect(screen.getByRole('button', { name: /Planning/ })).toBeInTheDocument()
+    const shell = screen.getByLabelText('Agent chat')
+
+    expect(shell).toHaveClass('bg-background')
+    expect(shell).not.toHaveClass('bg-sidebar')
+    expect(screen.getByText('Planning')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Conversation history' })).not.toBeInTheDocument()
     expect(screen.getByText('Hello from agent')).toBeInTheDocument()
+  })
+
+  it('keeps the empty conversation view passive before the first prompt is sent', () => {
+    const loadConversation = vi.fn()
+    mockUseAgentOptional.mockReturnValue({
+      state: {
+        backendStatuses,
+        disclosureAccepted: true,
+        sourceWindowId: '42',
+        activeConversationId: null,
+        conversations: {
+          'conversation-1': {
+            id: 'conversation-1',
+            vaultId: 'vault-1',
+            title: 'Planning',
+            backend: 'claude_cli',
+            backendModel: null,
+            trustList: [],
+            pinned: false,
+            vectorClock: {},
+            fieldClocks: {},
+            createdAt: 100,
+            updatedAt: 100,
+            deletedAt: null,
+            lastSyncedAt: null
+          }
+        },
+        messagesByConversation: {},
+        pendingApprovals: [],
+        inFlight: {},
+        error: null
+      },
+      createConversation: vi.fn(),
+      loadConversation,
+      cancelTurn: vi.fn()
+    })
+
+    render(<ConversationView conversationId={null} />)
+
+    expect(screen.queryByText('New conversation')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Conversation history' })).not.toBeInTheDocument()
+    expect(loadConversation).not.toHaveBeenCalled()
   })
 
   it('cancels an in-flight turn from Stop and Escape', () => {

@@ -161,7 +161,11 @@ export const TabPaneWithDropZones = ({
       data-pane-active={isActive}
     >
       {/* Tab bar */}
-      <TabBarWithDrag groupId={groupId} showSidebarToggle={showSidebarToggle} />
+      <TabBarWithDrag
+        groupId={groupId}
+        showSidebarToggle={showSidebarToggle}
+        reserveDayPanelSpace={reserveDayPanelSpace}
+      />
 
       {/* Content area */}
       <div
