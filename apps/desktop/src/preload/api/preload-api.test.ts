@@ -130,6 +130,34 @@ describe('preload api wrappers', () => {
     unsubscribeFlush()
   })
 
+  it('fans out same-channel subscriptions through one Electron listener', () => {
+    const first = vi.fn()
+    const second = vi.fn()
+
+    const unsubscribeFirst = subscribe('settings:changed', first)
+    const unsubscribeSecond = subscribe('settings:changed', second)
+
+    expect(electronMock.ipcRenderer.on).toHaveBeenCalledTimes(1)
+    const [[channel, handler]] = electronMock.ipcRenderer.on.mock.calls
+    expect(channel).toBe('settings:changed')
+
+    handler({}, { key: 'general', value: { theme: 'dark' } })
+    expect(first).toHaveBeenCalledWith({ key: 'general', value: { theme: 'dark' } })
+    expect(second).toHaveBeenCalledWith({ key: 'general', value: { theme: 'dark' } })
+
+    unsubscribeFirst()
+    handler({}, { key: 'general', value: { theme: 'light' } })
+    expect(first).toHaveBeenCalledTimes(1)
+    expect(second).toHaveBeenLastCalledWith({ key: 'general', value: { theme: 'light' } })
+    expect(electronMock.ipcRenderer.removeListener).not.toHaveBeenCalled()
+
+    unsubscribeSecond()
+    expect(electronMock.ipcRenderer.removeListener).toHaveBeenCalledWith(
+      'settings:changed',
+      handler
+    )
+  })
+
   it('normalizes startup theme cache, sync fallback, and root classes', () => {
     const classList = {
       values: new Set<string>(),
