@@ -30,6 +30,10 @@ Agent Chat can:
 Press <kbd>Enter</kbd> to send the prompt. Press <kbd>Shift</kbd>+<kbd>Enter</kbd> to insert a
 new line in the prompt box.
 
+Stop requests are scoped to the active conversation across Claude, Codex, and local providers.
+Automatic title generation and conversation summaries run through the selected backend without
+exposing Memry MCP tools.
+
 The prompt bar shows the selected agent provider. The provider is pinned per conversation; changing
 it after messages exist updates the conversation and records the switch in the chat history. Claude
 also exposes prompt-time reasoning effort settings, with provider-specific settings shown only for

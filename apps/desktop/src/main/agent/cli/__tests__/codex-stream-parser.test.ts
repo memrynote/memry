@@ -35,6 +35,21 @@ describe('Codex JSONL stream parser', () => {
     expect(events).toEqual([{ kind: 'error', message: 'Codex auth failed' }])
   })
 
+  it('extracts fallback messages from Codex error events', () => {
+    const events: unknown[] = []
+    const parser = createCodexStreamParser((event) => events.push(event))
+
+    parser.feed(`${JSON.stringify({ type: 'error', error: 'network unavailable' })}\n`)
+    parser.feed(`${JSON.stringify({ type: 'error', error: { message: 'model missing' } })}\n`)
+    parser.feed(`${JSON.stringify({ type: 'error', error: {} })}\n`)
+
+    expect(events).toEqual([
+      { kind: 'error', message: 'network unavailable' },
+      { kind: 'error', message: 'model missing' },
+      { kind: 'error', message: 'Codex backend reported an error' }
+    ])
+  })
+
   it('maps Codex MCP tool call lifecycle events to backend tool events', () => {
     const events: unknown[] = []
     const parser = createCodexStreamParser((event) => events.push(event))
@@ -112,6 +127,68 @@ describe('Codex JSONL stream parser', () => {
     ])
   })
 
+  it('extracts fallback errors from failed Codex MCP tool calls', () => {
+    const events: unknown[] = []
+    const parser = createCodexStreamParser((event) => events.push(event))
+
+    parser.feed(
+      `${JSON.stringify({
+        type: 'item.completed',
+        item: {
+          id: 'item_1',
+          type: 'mcp_tool_call',
+          tool: 'vault_create_task',
+          error: { code: 'BAD_REQUEST' },
+          status: 'failed'
+        }
+      })}\n`
+    )
+    parser.feed(
+      `${JSON.stringify({
+        type: 'item.completed',
+        item: {
+          id: 'item_2',
+          type: 'mcp_tool_call',
+          tool: 'vault_create_task',
+          error: 'approval denied',
+          status: 'failed'
+        }
+      })}\n`
+    )
+    parser.feed(
+      `${JSON.stringify({
+        type: 'item.completed',
+        item: {
+          id: 'item_3',
+          type: 'mcp_tool_call',
+          tool: 'vault_create_task',
+          status: 'failed'
+        }
+      })}\n`
+    )
+
+    expect(events).toEqual([
+      {
+        kind: 'tool_result',
+        toolUseId: 'item_1',
+        ok: false,
+        error: { code: 'MCP_TOOL_ERROR', message: 'Codex MCP tool call failed' }
+      },
+      {
+        kind: 'tool_result',
+        toolUseId: 'item_2',
+        ok: false,
+        error: { code: 'MCP_TOOL_ERROR', message: 'approval denied' }
+      },
+      {
+        kind: 'tool_result',
+        toolUseId: 'item_3',
+        ok: false,
+        error: { code: 'MCP_TOOL_ERROR', message: 'Codex MCP tool call failed' }
+      }
+    ])
+  })
+
   it('buffers split JSONL lines and preserves malformed lines as unknown', () => {
     const events: unknown[] = []
     const parser = createCodexStreamParser((event) => events.push(event))
@@ -126,5 +203,22 @@ describe('Codex JSONL stream parser', () => {
 
     expect(events[0]).toEqual({ kind: 'assistant_delta', text: 'split' })
     expect(events[1]).toMatchObject({ kind: 'unknown' })
+  })
+
+  it('ignores lifecycle noise and preserves unknown JSON events', () => {
+    const events: unknown[] = []
+    const parser = createCodexStreamParser((event) => events.push(event))
+
+    parser.feed(`${JSON.stringify({ type: 'thread.started' })}\n`)
+    parser.feed(`${JSON.stringify({ type: 'turn.started' })}\n`)
+    parser.feed(`${JSON.stringify({ type: 'item.completed', item: { type: 'reasoning' } })}\n`)
+    parser.feed(`${JSON.stringify({ type: 'unexpected.event', value: 1 })}\n`)
+
+    expect(events).toEqual([
+      { kind: 'noop' },
+      { kind: 'noop' },
+      { kind: 'noop' },
+      { kind: 'unknown', raw: { type: 'unexpected.event', value: 1 } }
+    ])
   })
 })

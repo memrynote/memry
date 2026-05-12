@@ -12,7 +12,9 @@ import {
 } from '@memry/contracts/ipc-channels'
 import { UpdaterChannels } from '@memry/contracts/ipc-updater'
 import { SYNC_CHANNELS, SYNC_EVENTS } from '@memry/contracts/ipc-sync'
+import { AgentChannels } from '@memry/contracts/ipc-agent'
 import { invoke, invokeSync, subscribe } from '../lib/ipc'
+import { agentApi } from './agent'
 import { bookmarksApi, bookmarkEvents } from './bookmarks'
 import { propertiesApi, templatesApi, savedFiltersApi, contentEvents } from './content'
 import { windowApi, getFileDropPaths, contextMenuApi, quickCaptureApi, flushApi } from './core'
@@ -763,6 +765,126 @@ describe('preload api wrappers', () => {
       SYNC_CHANNELS.SYNC_STEP_2,
       { noteId: 'note-1', diff: [1] }
     )
+  })
+
+  it('routes agent preload APIs through their IPC channels', async () => {
+    await expectInvoke(
+      () => agentApi.listConversations({ vaultId: 'vault-1' }),
+      AgentChannels.invoke.LIST_CONVERSATIONS,
+      { vaultId: 'vault-1' }
+    )
+    await expectInvoke(
+      () =>
+        agentApi.createConversation({
+          vaultId: 'vault-1',
+          backend: 'local_openai_compatible',
+          backendModel: 'llama3'
+        }),
+      AgentChannels.invoke.CREATE_CONVERSATION,
+      {
+        vaultId: 'vault-1',
+        backend: 'local_openai_compatible',
+        backendModel: 'llama3'
+      }
+    )
+    await expectInvoke(
+      () => agentApi.loadConversation({ id: 'conversation-1' }),
+      AgentChannels.invoke.LOAD_CONVERSATION,
+      { id: 'conversation-1' }
+    )
+    await expectInvoke(
+      () =>
+        agentApi.sendTurn({
+          conversationId: 'conversation-1',
+          sourceWindowId: 'window-1',
+          text: 'Create a task',
+          attachments: [],
+          backendOptions: { backend: 'codex_cli', reasoningEffort: 'medium' }
+        }),
+      AgentChannels.invoke.SEND_TURN,
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'Create a task',
+        attachments: [],
+        backendOptions: { backend: 'codex_cli', reasoningEffort: 'medium' }
+      }
+    )
+    await expectInvoke(
+      () => agentApi.cancelTurn({ conversationId: 'conversation-1' }),
+      AgentChannels.invoke.CANCEL_TURN,
+      { conversationId: 'conversation-1' }
+    )
+    await expectInvoke(
+      () =>
+        agentApi.approveTool({
+          conversationId: 'conversation-1',
+          callId: 'call-1',
+          approved: true
+        }),
+      AgentChannels.invoke.APPROVE_TOOL,
+      { conversationId: 'conversation-1', callId: 'call-1', approved: true }
+    )
+    await expectInvoke(
+      () =>
+        agentApi.previewDiff({
+          conversationId: 'conversation-1',
+          callId: 'call-1'
+        }),
+      AgentChannels.invoke.PREVIEW_DIFF,
+      { conversationId: 'conversation-1', callId: 'call-1' }
+    )
+    await expectInvoke(
+      () =>
+        agentApi.editTrustList({
+          conversationId: 'conversation-1',
+          add: ['vault_create_task'],
+          remove: ['vault_create_note']
+        }),
+      AgentChannels.invoke.EDIT_TRUST_LIST,
+      {
+        conversationId: 'conversation-1',
+        add: ['vault_create_task'],
+        remove: ['vault_create_note']
+      }
+    )
+    await expectInvoke(
+      () => agentApi.getBackendStatuses(),
+      AgentChannels.invoke.GET_BACKEND_STATUSES
+    )
+    await expectInvoke(
+      () => agentApi.getLocalProviderSettings(),
+      AgentChannels.invoke.GET_LOCAL_PROVIDER_SETTINGS
+    )
+    await expectInvoke(
+      () =>
+        agentApi.setLocalProviderSettings({
+          preset: 'ollama',
+          baseUrl: 'http://localhost:11434/v1',
+          model: 'llama3',
+          apiKey: 'key'
+        }),
+      AgentChannels.invoke.SET_LOCAL_PROVIDER_SETTINGS,
+      {
+        preset: 'ollama',
+        baseUrl: 'http://localhost:11434/v1',
+        model: 'llama3',
+        apiKey: 'key'
+      }
+    )
+    await expectInvoke(() => agentApi.listLocalModels(), AgentChannels.invoke.LIST_LOCAL_MODELS)
+    await expectInvoke(() => agentApi.testLocalProvider(), AgentChannels.invoke.TEST_LOCAL_PROVIDER)
+    await expectInvoke(
+      () => agentApi.probeLocalProvider(),
+      AgentChannels.invoke.PROBE_LOCAL_PROVIDER
+    )
+    await expectInvoke(() => agentApi.acceptDisclosure(), AgentChannels.invoke.ACCEPT_DISCLOSURE)
+    await expectInvoke(
+      () => agentApi.getDisclosureState(),
+      AgentChannels.invoke.GET_DISCLOSURE_STATE
+    )
+    await expectInvoke(() => agentApi.getWindowId(), AgentChannels.invoke.GET_WINDOW_ID)
+    expectSubscribe(() => agentApi.onEvent(callback), AgentChannels.events.AGENT_EVENT)
   })
 
   it('routes preload event subscriptions', () => {
