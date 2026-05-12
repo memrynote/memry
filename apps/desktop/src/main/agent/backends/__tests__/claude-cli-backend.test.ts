@@ -50,7 +50,7 @@ describe('ClaudeCliBackend', () => {
       prompt: 'User: create a task',
       conversationId: 'conversation-1',
       windowId: 'window-1',
-      options: { backend: 'claude_cli', claudeEffort: 'sonnet' }
+      options: { backend: 'claude_cli', claudeEffort: 'high', model: 'sonnet' }
     })
 
     const events = []
@@ -60,7 +60,8 @@ describe('ClaudeCliBackend', () => {
       prompt: 'User: create a task',
       conversationId: 'conversation-1',
       windowId: 'window-1',
-      effort: 'sonnet',
+      effort: 'high',
+      model: 'sonnet',
       purpose: 'turn'
     })
     expect(events).toEqual([
@@ -84,7 +85,7 @@ describe('ClaudeCliBackend', () => {
       prompt: 'Title this conversation',
       conversationId: 'conversation-1',
       windowId: 'window-1',
-      options: { backend: 'claude_cli', claudeEffort: 'opus' }
+      options: { backend: 'claude_cli', claudeEffort: 'low', model: 'opus' }
     })
     await backend.summarize({
       prompt: 'Summarize this conversation',
@@ -94,7 +95,10 @@ describe('ClaudeCliBackend', () => {
     })
     backend.cancel('conversation-1')
 
-    expect(spawn).toHaveBeenNthCalledWith(1, expect.objectContaining({ purpose: 'title' }))
+    expect(spawn).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ purpose: 'title', model: 'opus' })
+    )
     expect(spawn).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({ purpose: 'summary', effort: DEFAULT_CLAUDE_EFFORT })

@@ -13,6 +13,7 @@ export interface CodexSpawnOptions {
   binaryPath: string
   prompt: string
   reasoningEffort: CodexReasoningEffort
+  model?: string
   mcp?: {
     serverUrl: string
     authorizationValue: string
@@ -49,6 +50,9 @@ export async function spawnCodexTurn(opts: CodexSpawnOptions): Promise<CodexSubp
     '-c',
     `model_reasoning_effort="${opts.reasoningEffort}"`
   ]
+  if (opts.model) {
+    args.push('--model', opts.model)
+  }
 
   if (opts.mcp) {
     args.push(

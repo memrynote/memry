@@ -68,6 +68,28 @@ describe('spawnClaudeTurn', () => {
     expect(args).toContain('--mcp-config')
     expect(args).toContain('--effort')
     expect(args).toContain('low')
+    expect(args).not.toContain('--model')
+  })
+
+  it('passes an explicit Claude model when selected', async () => {
+    const fakeProc = makeFakeProc()
+    vi.mocked(spawn).mockReturnValue(fakeProc)
+
+    await spawnClaudeTurn({
+      binaryPath: '/usr/local/bin/claude',
+      mcpServerUrl: 'http://127.0.0.1:54321',
+      authorizationValue: 'test-auth-value',
+      conversationId: 'c',
+      windowId: 'w',
+      allowedTools: 'a',
+      effort: 'xhigh',
+      model: 'opus',
+      prompt: 'p'
+    })
+
+    const args = vi.mocked(spawn).mock.calls[0][1] as string[]
+    expect(args).toContain('--model')
+    expect(args).toContain('opus')
   })
 
   it('writes the prompt to stdin and closes it', async () => {

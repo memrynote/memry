@@ -27,7 +27,7 @@ describe('CodexCliBackend', () => {
       prompt: 'User: ping',
       conversationId: 'conversation-1',
       windowId: 'window-1',
-      options: { backend: 'codex_cli', reasoningEffort: 'high' }
+      options: { backend: 'codex_cli', reasoningEffort: 'high', model: 'gpt-5.5' }
     })
 
     const events = []
@@ -38,6 +38,7 @@ describe('CodexCliBackend', () => {
       conversationId: 'conversation-1',
       windowId: 'window-1',
       reasoningEffort: 'high',
+      model: 'gpt-5.5',
       purpose: 'turn'
     })
     expect(events).toEqual([{ kind: 'assistant_delta', text: 'pong' }])

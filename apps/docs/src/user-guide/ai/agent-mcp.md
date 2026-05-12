@@ -39,8 +39,13 @@ exposing Memry MCP tools.
 
 The prompt bar shows the selected agent provider. The provider is pinned per conversation; changing
 it after messages exist updates the conversation and records the switch in the chat history. Claude
-also exposes prompt-time reasoning effort settings, with provider-specific settings shown only for
-the active provider.
+and Codex expose prompt-time reasoning effort settings, with provider-specific settings shown only
+for the active provider.
+
+Claude and Codex conversations also have a per-conversation model selector. Memry starts Claude on
+`opus` and Codex on the highest suggested GPT version, then passes the selected model through to the
+CLI for each turn. The built-in model list is only a shortcut for common CLI aliases; type a custom
+model ID when you want to pin another CLI-supported model.
 
 Local model support uses OpenAI-compatible HTTP APIs. Memry ships presets for Ollama, LM Studio, and
 llama.cpp server, plus a Custom endpoint. Local tool access is gated by a capability probe. If the

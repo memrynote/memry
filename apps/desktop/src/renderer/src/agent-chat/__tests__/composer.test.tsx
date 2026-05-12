@@ -48,6 +48,22 @@ describe('Composer', () => {
       cancelTurn: mockCancelTurn
     })
     vi.mocked(window.api.search.query).mockImplementation(mockSearchQuery)
+    vi.mocked(window.api.agent.listBackendModels).mockImplementation(async ({ backend }) => ({
+      backend,
+      supportsCustomModel: true,
+      models:
+        backend === 'claude_cli'
+          ? [
+              { id: 'sonnet', label: 'Sonnet' },
+              { id: 'haiku', label: 'Haiku' },
+              { id: 'opus', label: 'Opus' }
+            ]
+          : [
+              { id: 'gpt-5.4', label: 'GPT-5.4' },
+              { id: 'gpt-5.5', label: 'GPT-5.5' },
+              { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini' }
+            ]
+    }))
   })
 
   it('submits on Enter', async () => {
@@ -65,7 +81,7 @@ describe('Composer', () => {
       sourceWindowId: 'window-1',
       text: 'hello',
       attachments: [],
-      backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh' }
+      backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh', model: 'opus' }
     })
   })
 
@@ -166,7 +182,30 @@ describe('Composer', () => {
       sourceWindowId: 'window-1',
       text: 'quick answer',
       attachments: [],
-      backendOptions: { backend: 'claude_cli', claudeEffort: 'low' }
+      backendOptions: { backend: 'claude_cli', claudeEffort: 'low', model: 'opus' }
+    })
+  })
+
+  it('passes the selected Claude model with the prompt', async () => {
+    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Agent model: Opus' }))
+    expect(screen.queryByRole('menuitem', { name: 'Default' })).not.toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Sonnet' }))
+
+    const textbox = screen.getByRole('textbox')
+    fireEvent.change(textbox, { target: { value: 'deep answer' } })
+    await act(async () => {
+      fireEvent.keyDown(textbox, { key: 'Enter' })
+      await Promise.resolve()
+    })
+
+    expect(mockSendTurn).toHaveBeenCalledWith({
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'deep answer',
+      attachments: [],
+      backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh', model: 'sonnet' }
     })
   })
 
@@ -188,7 +227,150 @@ describe('Composer', () => {
       sourceWindowId: 'window-1',
       text: 'create a task',
       attachments: [],
-      backendOptions: { backend: 'codex_cli', reasoningEffort: 'medium' }
+      backendOptions: { backend: 'codex_cli', reasoningEffort: 'medium', model: 'gpt-5.5' }
+    })
+  })
+
+  it('shows supported Codex reasoning settings next to the selected provider', async () => {
+    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent provider: Claude' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
+    await screen.findByRole('button', { name: 'Agent model: GPT-5.5' })
+
+    const settingsTrigger = screen.getByRole('button', {
+      name: 'Agent settings: Medium'
+    })
+    expect(settingsTrigger).toHaveClass('rounded-full')
+
+    fireEvent.pointerDown(settingsTrigger)
+
+    expect(screen.getByText('Reasoning')).toBeInTheDocument()
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Medium (default)' })).toHaveAttribute(
+      'aria-checked',
+      'true'
+    )
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Low' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitemcheckbox', { name: 'High' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Extra High' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitemcheckbox', { name: 'Max' })).not.toBeInTheDocument()
+  })
+
+  it('passes the selected Codex reasoning with the prompt', async () => {
+    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent provider: Claude' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent settings: Medium' }))
+    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'High' }))
+
+    const textbox = screen.getByRole('textbox')
+    fireEvent.change(textbox, { target: { value: 'create a task' } })
+    await act(async () => {
+      fireEvent.keyDown(textbox, { key: 'Enter' })
+      await Promise.resolve()
+    })
+
+    expect(mockSendTurn).toHaveBeenCalledWith({
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'create a task',
+      attachments: [],
+      backendOptions: { backend: 'codex_cli', reasoningEffort: 'high', model: 'gpt-5.5' }
+    })
+  })
+
+  it('passes the selected Codex model with the prompt', async () => {
+    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent provider: Claude' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Agent model: GPT-5.5' }))
+    expect(screen.queryByRole('menuitem', { name: 'Default' })).not.toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'GPT-5.4' }))
+
+    const textbox = screen.getByRole('textbox')
+    fireEvent.change(textbox, { target: { value: 'create a task' } })
+    await act(async () => {
+      fireEvent.keyDown(textbox, { key: 'Enter' })
+      await Promise.resolve()
+    })
+
+    expect(mockSendTurn).toHaveBeenCalledWith({
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'create a task',
+      attachments: [],
+      backendOptions: { backend: 'codex_cli', reasoningEffort: 'medium', model: 'gpt-5.4' }
+    })
+  })
+
+  it('uses the highest suggested Codex model as the Memry default', async () => {
+    vi.mocked(window.api.agent.listBackendModels).mockImplementation(async ({ backend }) => ({
+      backend,
+      supportsCustomModel: true,
+      models:
+        backend === 'codex_cli'
+          ? [
+              { id: 'gpt-5.4', label: 'GPT-5.4' },
+              { id: 'gpt-5.6', label: 'GPT-5.6' },
+              { id: 'gpt-5.5', label: 'GPT-5.5' }
+            ]
+          : [
+              { id: 'sonnet', label: 'Sonnet' },
+              { id: 'haiku', label: 'Haiku' },
+              { id: 'opus', label: 'Opus' }
+            ]
+    }))
+    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent provider: Claude' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
+
+    expect(await screen.findByRole('button', { name: 'Agent model: GPT-5.6' })).toBeInTheDocument()
+
+    const textbox = screen.getByRole('textbox')
+    fireEvent.change(textbox, { target: { value: 'create a task' } })
+    await act(async () => {
+      fireEvent.keyDown(textbox, { key: 'Enter' })
+      await Promise.resolve()
+    })
+
+    expect(mockSendTurn).toHaveBeenCalledWith({
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'create a task',
+      attachments: [],
+      backendOptions: { backend: 'codex_cli', reasoningEffort: 'medium', model: 'gpt-5.6' }
+    })
+  })
+
+  it('allows a custom Claude model id', async () => {
+    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Agent model: Opus' }))
+    fireEvent.change(screen.getByLabelText('Custom model ID'), {
+      target: { value: 'claude-sonnet-4-6' }
+    })
+    fireEvent.keyDown(screen.getByLabelText('Custom model ID'), { key: 'Enter' })
+
+    const textbox = screen.getByRole('textbox')
+    fireEvent.change(textbox, { target: { value: 'custom model' } })
+    await act(async () => {
+      fireEvent.keyDown(textbox, { key: 'Enter' })
+      await Promise.resolve()
+    })
+
+    expect(mockSendTurn).toHaveBeenCalledWith({
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'custom model',
+      attachments: [],
+      backendOptions: {
+        backend: 'claude_cli',
+        claudeEffort: 'xhigh',
+        model: 'claude-sonnet-4-6'
+      }
     })
   })
 
@@ -202,15 +384,37 @@ describe('Composer', () => {
       await Promise.resolve()
     })
 
-    expect(mockCreateConversation).toHaveBeenCalledWith({ backend: 'claude_cli' })
+    expect(mockCreateConversation).toHaveBeenCalledWith({
+      backend: 'claude_cli',
+      backendModel: 'opus'
+    })
     await waitFor(() => {
       expect(mockSendTurn).toHaveBeenCalledWith({
         conversationId: 'conversation-2',
         sourceWindowId: 'window-1',
         text: 'draft a plan',
         attachments: [],
-        backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh' }
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh', model: 'opus' }
       })
+    })
+  })
+
+  it('creates a new conversation with selected backend model metadata', async () => {
+    render(<Composer conversationId={null} sourceWindowId="window-1" />)
+
+    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Agent model: Opus' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Sonnet' }))
+
+    const textbox = screen.getByRole('textbox')
+    fireEvent.change(textbox, { target: { value: 'draft a plan' } })
+    await act(async () => {
+      fireEvent.keyDown(textbox, { key: 'Enter' })
+      await Promise.resolve()
+    })
+
+    expect(mockCreateConversation).toHaveBeenCalledWith({
+      backend: 'claude_cli',
+      backendModel: 'sonnet'
     })
   })
 
@@ -284,7 +488,7 @@ describe('Composer', () => {
       sourceWindowId: 'window-1',
       text: 'summarize this',
       attachments: [{ kind: 'note', ref_id: 'note-1', label: 'Planning note' }],
-      backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh' }
+      backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh', model: 'opus' }
     })
   })
 
@@ -309,7 +513,7 @@ describe('Composer', () => {
       sourceWindowId: 'window-1',
       text: 'summarize',
       attachments: [{ kind: 'current_note', ref_id: '__current__', label: 'Current brief' }],
-      backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh' }
+      backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh', model: 'opus' }
     })
   })
 

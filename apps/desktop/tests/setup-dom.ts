@@ -408,6 +408,21 @@ const createMockApi = () => ({
         detail: null
       }
     }),
+    listBackendModels: vi.fn().mockImplementation(async ({ backend }) => ({
+      backend,
+      supportsCustomModel: true,
+      models:
+        backend === 'claude_cli'
+          ? [
+              { id: 'sonnet', label: 'Sonnet' },
+              { id: 'opus', label: 'Opus' }
+            ]
+          : [
+              { id: 'gpt-5.5', label: 'GPT-5.5' },
+              { id: 'gpt-5.4', label: 'GPT-5.4' },
+              { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini' }
+            ]
+    })),
     getLocalProviderSettings: vi.fn().mockResolvedValue({
       preset: 'ollama',
       baseUrl: 'http://localhost:11434/v1',

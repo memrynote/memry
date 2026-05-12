@@ -147,7 +147,7 @@ describe('startAgent', () => {
       prompt: 'hello',
       conversationId: 'conversation-1',
       windowId: 'window-1',
-      options: { backend: 'claude_cli', claudeEffort: 'low' }
+      options: { backend: 'claude_cli', claudeEffort: 'low', model: 'sonnet' }
     })
 
     expect(mocks.spawnClaudeTurn).toHaveBeenCalledWith(
@@ -158,6 +158,7 @@ describe('startAgent', () => {
         conversationId: 'conversation-1',
         windowId: 'window-1',
         effort: 'low',
+        model: 'sonnet',
         prompt: 'hello'
       })
     )
@@ -171,7 +172,7 @@ describe('startAgent', () => {
       prompt: 'hello',
       conversationId: 'conversation-1',
       windowId: 'window-1',
-      options: { backend: 'codex_cli', reasoningEffort: 'high' }
+      options: { backend: 'codex_cli', reasoningEffort: 'high', model: 'gpt-5.5' }
     })
     await deps.backends.get('codex_cli').generateTitle({
       prompt: 'title',
@@ -186,6 +187,7 @@ describe('startAgent', () => {
         binaryPath: 'codex',
         prompt: 'hello',
         reasoningEffort: 'high',
+        model: 'gpt-5.5',
         mcp: {
           serverUrl: 'http://127.0.0.1:54321',
           authorizationValue: 'local-auth-value',

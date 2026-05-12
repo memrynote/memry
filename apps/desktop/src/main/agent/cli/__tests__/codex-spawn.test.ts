@@ -71,6 +71,23 @@ describe('spawnCodexTurn', () => {
 
     const args = vi.mocked(spawn).mock.calls[0][1] as string[]
     expect(args.at(-1)).toBe('PROMPT BODY')
+    expect(args).not.toContain('--model')
+  })
+
+  it('passes an explicit Codex model when selected', async () => {
+    const fakeProc = makeFakeProc()
+    vi.mocked(spawn).mockReturnValue(fakeProc)
+
+    await spawnCodexTurn({
+      binaryPath: 'codex',
+      reasoningEffort: 'medium',
+      model: 'gpt-5.5',
+      prompt: 'PROMPT BODY'
+    })
+
+    const args = vi.mocked(spawn).mock.calls[0][1] as string[]
+    expect(args).toContain('--model')
+    expect(args).toContain('gpt-5.5')
   })
 
   it('omits MCP config and Memry env vars for title and summary prompts', async () => {
