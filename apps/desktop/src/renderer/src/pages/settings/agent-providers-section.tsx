@@ -30,7 +30,11 @@ const PRESET_DEFAULTS: Record<Exclude<AgentLocalProviderPreset, 'custom'>, strin
   llama_cpp: 'http://127.0.0.1:8080/v1'
 }
 
-export function AgentProvidersSection(): React.JSX.Element | null {
+export function AgentProvidersSection({
+  embedded = false
+}: {
+  embedded?: boolean
+}): React.JSX.Element | null {
   const { t } = useT('settings')
   const [settings, setSettings] = useState<AgentLocalProviderSettings | null>(null)
   const [apiKey, setApiKey] = useState('')
@@ -123,11 +127,13 @@ export function AgentProvidersSection(): React.JSX.Element | null {
 
   return (
     <div>
-      <SettingsHeader
-        title={t('agentProviders.header.title')}
-        subtitle={t('agentProviders.header.subtitle')}
-        action={<StatusBadge status={status} />}
-      />
+      {!embedded && (
+        <SettingsHeader
+          title={t('agentProviders.header.title')}
+          subtitle={t('agentProviders.header.subtitle')}
+          action={<StatusBadge status={status} />}
+        />
+      )}
 
       <SettingsGroup label={t('agentProviders.groups.local')}>
         <SettingRow label={t('agentProviders.fields.preset.label')}>

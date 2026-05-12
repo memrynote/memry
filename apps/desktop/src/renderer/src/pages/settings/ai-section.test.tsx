@@ -16,6 +16,14 @@ vi.mock('./ai-inline-section', () => ({
   AIInlineSettings: () => <div>Inline AI panel</div>
 }))
 
+vi.mock('./agent-providers-section', () => ({
+  AgentProvidersSection: () => <div data-testid="agent-providers-panel" />
+}))
+
+vi.mock('./agent-mcp-section', () => ({
+  AgentMcpSection: () => <div data-testid="agent-mcp-panel" />
+}))
+
 type EmbeddingProgressEvent = {
   phase: string
   progress?: number
@@ -112,6 +120,27 @@ describe('AISettings', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Rebuild' }))
     expect(api.settings.reindexEmbeddings).toHaveBeenCalled()
     expect(toast.success).toHaveBeenCalledWith('Embeddings reindexed: 3 computed, 1 skipped')
+  })
+
+  it('keeps agent provider and MCP controls collapsed inside AI settings', async () => {
+    render(<AISettings />)
+
+    await waitFor(() => expect(screen.getByText('Agent Providers')).toBeInTheDocument())
+    expect(screen.queryByTestId('agent-providers-panel')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('agent-mcp-panel')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /Agent Providers/ }))
+    expect(screen.getByTestId('agent-providers-panel')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /Agent MCP/ }))
+    expect(screen.getByTestId('agent-mcp-panel')).toBeInTheDocument()
+  })
+
+  it('opens the matching advanced panel for legacy agent settings sections', async () => {
+    render(<AISettings initialOpenPanel="agent-mcp" />)
+
+    await waitFor(() => expect(screen.getByTestId('agent-mcp-panel')).toBeInTheDocument())
+    expect(screen.queryByTestId('agent-providers-panel')).not.toBeInTheDocument()
   })
 
   it('handles voice OpenAI key saving, model download, and progress events', async () => {

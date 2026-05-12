@@ -13,8 +13,7 @@ import {
   List,
   Key,
   User,
-  CalendarDays,
-  Server
+  CalendarDays
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { GeneralSettings } from './settings/general-section'
@@ -24,7 +23,6 @@ import { JournalSettings } from './settings/journal-section'
 import { VaultSettings } from './settings/vault-section'
 import { AppearanceSettings } from './settings/appearance-section'
 import { AISettings } from './settings/ai-section'
-import { AgentProvidersSection } from './settings/agent-providers-section'
 import { IntegrationsSettings } from './settings/integrations-section'
 import { TagsSettings } from './settings/tags-section'
 import { PropertiesSettings } from './settings/properties-section'
@@ -32,13 +30,16 @@ import { TasksSettings } from './settings/tasks-section'
 import { CalendarSettingsSection } from './settings/calendar-section'
 import { ShortcutsSettings } from './settings/shortcuts-section'
 import { AccountSettings } from './settings/account-section'
-import { AgentMcpSection } from './settings/agent-mcp-section'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { useT } from '@memry/i18n/renderer'
 
 export function SettingsPage() {
   const { activeSection, setActiveSection } = useSettingsModal()
   const { t } = useT('settings')
+  const isAssistantSection =
+    activeSection === 'ai' || activeSection === 'agent-providers' || activeSection === 'agent-mcp'
+  const initialAssistantPanel =
+    activeSection === 'agent-providers' || activeSection === 'agent-mcp' ? activeSection : undefined
 
   return (
     <div className="flex-1 min-h-0 flex">
@@ -113,20 +114,8 @@ export function SettingsPage() {
           <SettingsNavItem
             icon={<Brain className="w-3.5 h-3.5" />}
             label={t('page.nav.items.ai')}
-            isActive={activeSection === 'ai'}
+            isActive={isAssistantSection}
             onClick={() => setActiveSection('ai')}
-          />
-          <SettingsNavItem
-            icon={<Server className="w-3.5 h-3.5" />}
-            label={t('page.nav.items.agentProviders')}
-            isActive={activeSection === 'agent-providers'}
-            onClick={() => setActiveSection('agent-providers')}
-          />
-          <SettingsNavItem
-            icon={<Server className="w-3.5 h-3.5" />}
-            label={t('page.nav.items.agentMcp')}
-            isActive={activeSection === 'agent-mcp'}
-            onClick={() => setActiveSection('agent-mcp')}
           />
           <SettingsNavItem
             icon={<Plug className="w-3.5 h-3.5" />}
@@ -169,9 +158,7 @@ export function SettingsPage() {
             {activeSection === 'calendar' && <CalendarSettingsSection />}
             {activeSection === 'vault' && <VaultSettings />}
             {activeSection === 'appearance' && <AppearanceSettings />}
-            {activeSection === 'ai' && <AISettings />}
-            {activeSection === 'agent-providers' && <AgentProvidersSection />}
-            {activeSection === 'agent-mcp' && <AgentMcpSection />}
+            {isAssistantSection && <AISettings initialOpenPanel={initialAssistantPanel} />}
             {activeSection === 'integrations' && <IntegrationsSettings />}
             {activeSection === 'tags' && <TagsSettings />}
             {activeSection === 'properties' && <PropertiesSettings />}

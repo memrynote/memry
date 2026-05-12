@@ -6,7 +6,7 @@ Settings are organized into four groups:
 
 - **Workspace** — how Memry behaves day-to-day (Account, General, Templates, Editor, Journal, Tasks, Calendar)
 - **Preferences** — your personal taste (Appearance, Keyboard Shortcuts)
-- **Services** — external integrations and AI (AI, Agent Providers, Agent MCP, Integrations)
+- **Services** — external integrations and AI (AI Assistant, Integrations)
 - **Data** — what's on disk and metadata (Vault, Tags, Properties)
 
 <!-- screenshot: settings modal with sidebar of sections -->
@@ -213,9 +213,10 @@ Inline editor AI menu (grammar, tone, length, custom prompt).
 - **Base URL** — defaults to `http://localhost:11434/v1` for Ollama
 - **Test Connection** — verifies URL + key
 
-## Agent Providers
+### Agent Providers
 
-Agent Chat backend settings. These are machine-local and are not synced between devices.
+Agent Chat backend settings are now collapsed inside the AI Assistant page. These are machine-local
+and are not synced between devices.
 
 - **Preset** — Ollama, LM Studio, llama.cpp, or Custom
 - **Base URL** — OpenAI-compatible endpoint, such as `http://localhost:11434/v1`
@@ -227,9 +228,9 @@ Agent Chat backend settings. These are machine-local and are not synced between 
 Loopback endpoints are treated as local. Custom non-loopback endpoints require an explicit
 not-fully-local acknowledgement because prompts and tool results are sent to that server.
 
-## Agent MCP
+### Agent MCP
 
-Local MCP server controls for external desktop AI clients.
+Local MCP server controls are also collapsed inside AI Assistant for external desktop AI clients.
 
 - **Server URL** — localhost endpoint copied into an MCP client
 - **Bearer Token** — per-launch in-memory token copied as an authorization header
