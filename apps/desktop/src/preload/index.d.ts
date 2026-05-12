@@ -8,6 +8,8 @@ import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
 import type {
   AgentEvent,
   AgentBackendId,
+  AgentBackendModelList,
+  AgentBackendModelListRequest,
   AgentLocalModelList,
   AgentLocalProviderProbeResult,
   AgentLocalProviderSettings,
@@ -1634,6 +1636,7 @@ interface AgentClientAPI {
     remove?: string[]
   }) => Promise<Conversation | null>
   getBackendStatuses: () => Promise<BackendStatusesResponse>
+  listBackendModels: (input: AgentBackendModelListRequest) => Promise<AgentBackendModelList>
   getLocalProviderSettings: () => Promise<AgentLocalProviderSettings>
   setLocalProviderSettings: (
     input: AgentLocalProviderSettingsUpdate

@@ -41,6 +41,7 @@ export interface ClaudeCliSpawnInput {
   conversationId: string
   windowId: string
   effort: ClaudeEffort
+  model?: string
   purpose?: 'turn' | 'summary' | 'title'
 }
 
@@ -49,6 +50,7 @@ export interface CodexCliSpawnInput {
   conversationId: string
   windowId: string
   reasoningEffort: CodexReasoningEffort
+  model?: string
   purpose?: 'turn' | 'summary' | 'title'
 }
 

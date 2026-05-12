@@ -158,12 +158,18 @@
       "placeholder": "Ask Agent",
       "send": "Send",
       "providerLabel": "Agent provider: {provider}",
+      "modelLabel": "Agent model: {model}",
       "settingsLabel": "Agent settings: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "Custom model ID",
+      "customModelPlaceholder": "Custom model ID",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "Local"
+      },
+      "models": {
+        "default": "Default"
       },
       "settings": {
         "reasoning": "Reasoning"
@@ -176,6 +182,15 @@
           "extraHigh": "Extra High",
           "extraHighDefault": "Extra High (default)",
           "max": "Max"
+        }
+      },
+      "codexSettings": {
+        "reasoning": {
+          "low": "Low",
+          "medium": "Medium",
+          "mediumDefault": "Medium (default)",
+          "high": "High",
+          "extraHigh": "Extra High"
         }
       }
     },
