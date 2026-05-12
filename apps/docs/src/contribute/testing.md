@@ -61,8 +61,15 @@ normal user-visible UI, prefer that path before adding a hook.
 Sync E2E bootstrap opens local vault state before attaching shared sync credentials. Keep
 `bootstrapSyncDevice` responsible for rebinding the test vault key and starting the sync runtime
 before sync assertions run; otherwise queued records can fail before they reach the test backend.
+Account-sync E2E should wait until both bootstrapped devices see the complete device list before
+revoking a remote device. Removing another device must not emit the current-device revoked event
+back into the renderer that initiated the removal.
 Split-view E2E locators depend on the pane root exposing `data-testid="tab-pane"`, so keep that
 test id stable when changing pane/drop-zone markup.
+
+Agent Chat approval cards render inline in the chat stream, not as modal dialogs. Scope approval
+selectors to the Agent chat region, and scope post-approval assertions to the destination surface
+instead of broad text that can still appear in the chat transcript or tool arguments.
 
 ### Virtualized UI Tests
 

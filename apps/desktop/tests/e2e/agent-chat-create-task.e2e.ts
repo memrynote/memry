@@ -66,8 +66,9 @@ test.describe('Agent chat create-task flow', () => {
     await composer.fill('Create a task from the current note')
     await composer.press('Enter')
 
-    await expect(page.getByRole('dialog').filter({ hasText: 'vault_create_task' })).toBeVisible()
-    await page.getByRole('button', { name: 'Allow once' }).click()
+    const agentChat = page.getByRole('region', { name: 'Agent chat' })
+    await expect(agentChat.getByRole('button', { name: /vault_create_task/i })).toBeVisible()
+    await agentChat.getByRole('button', { name: 'Allow once' }).click()
 
     await expect
       .poll(
@@ -81,6 +82,6 @@ test.describe('Agent chat create-task flow', () => {
 
     await navigateTo(page, 'tasks')
     await page.getByRole('tab', { name: /^All\b/ }).click()
-    await expect(page.getByText('Buy milk')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Task: Buy milk' })).toBeVisible()
   })
 })
