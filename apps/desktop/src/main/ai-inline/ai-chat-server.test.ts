@@ -92,6 +92,29 @@ describe('AI inline chat server', () => {
     expect(getServerPort()).toBeNull()
   })
 
+  it('returns the running port instead of restarting when settings are unchanged', async () => {
+    const firstPort = await startChatServer(settings)
+    mocks.logInfo.mockClear()
+
+    const secondPort = await startChatServer({ ...settings })
+
+    expect(secondPort).toBe(firstPort)
+    expect(getServerPort()).toBe(firstPort)
+    expect(mocks.createLanguageModel).toHaveBeenCalledTimes(1)
+    expect(mocks.logInfo).not.toHaveBeenCalledWith('Stopped')
+  })
+
+  it('coalesces concurrent starts when settings are unchanged', async () => {
+    const [firstPort, secondPort] = await Promise.all([
+      startChatServer(settings),
+      startChatServer({ ...settings })
+    ])
+
+    expect(secondPort).toBe(firstPort)
+    expect(getServerPort()).toBe(firstPort)
+    expect(mocks.createLanguageModel).toHaveBeenCalledTimes(1)
+  })
+
   it('streams valid chat requests through the model and returns 404 for other paths', async () => {
     const port = await startChatServer(settings)
 
