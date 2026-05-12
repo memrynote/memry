@@ -36,8 +36,8 @@ exposing Memry MCP tools.
 
 The prompt bar shows the selected agent provider. The provider is pinned per conversation; changing
 it after messages exist updates the conversation and records the switch in the chat history. Claude
-also exposes prompt-time reasoning effort settings, with provider-specific settings shown only for
-the active provider.
+and Codex expose prompt-time reasoning effort settings, with provider-specific settings shown only
+for the active provider.
 
 Claude and Codex conversations also have a per-conversation model selector. Memry starts Claude on
 `opus` and Codex on the highest suggested GPT version, then passes the selected model through to the
