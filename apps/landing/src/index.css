@@ -5,7 +5,17 @@
   --font-serif: 'Instrument Serif', serif;
   --font-mono: 'JetBrains Mono', monospace;
 
-  --color-ink: #1a1a1a;
+  --color-primary: #ff671a;
+  --color-brand-800: #4d1a00;
+  --color-brand-700: #802b00;
+  --color-brand-600: #b33c00;
+  --color-brand-500: #e64d00;
+  --color-brand-400: #ff671a;
+  --color-brand-300: #ff894d;
+  --color-brand-200: #ffaa80;
+  --color-brand-100: #ffccb3;
+
+  --color-ink: #1f2937;
   --color-ink-inverted: #f5f0ea;
   --color-paper: #fffcf7;
   --color-paper-alt: #f7f4ee;
@@ -14,9 +24,9 @@
   --color-dark-surface: #1e1b18;
   --color-dark-border: #2e2a25;
   --color-dark-muted: #8a8279;
-  --color-terracotta: #c75b39;
-  --color-terracotta-dark: #a64b2e;
-  --color-terracotta-glow: #c75b39;
+  --color-terracotta: var(--color-primary);
+  --color-terracotta-dark: var(--color-brand-600);
+  --color-terracotta-glow: var(--color-brand-300);
   --color-sage: #5b7f6a;
   --color-muted: #6b6560;
   --color-border: #e8e4dd;
@@ -32,7 +42,7 @@
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-card: 0 4px 12px -2px rgb(26 26 26 / 0.08);
   --shadow-elevated: 0 12px 24px -4px rgb(26 26 26 / 0.12);
-  --shadow-glow-terracotta: 0 0 30px -5px rgb(199 91 57 / 0.3);
+  --shadow-glow-terracotta: 0 0 30px -5px rgb(255 103 26 / 0.3);
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -219,10 +229,10 @@ h6 {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent, rgb(199 91 57 / 0.04), transparent);
+  background: linear-gradient(180deg, transparent, rgb(255 103 26 / 0.04), transparent);
   pointer-events: none;
-  border-left: 2px solid rgb(199 91 57 / 0.2);
-  border-right: 2px solid rgb(199 91 57 / 0.08);
+  border-left: 2px solid rgb(255 103 26 / 0.2);
+  border-right: 2px solid rgb(255 103 26 / 0.08);
 }
 
 /* Ruled paper lines for founder story */
@@ -230,7 +240,7 @@ h6 {
   background-image: repeating-linear-gradient(
     transparent,
     transparent 27px,
-    rgb(199 91 57 / 0.08) 28px
+    rgb(255 103 26 / 0.08) 28px
   );
   background-position: 0 8px;
 }

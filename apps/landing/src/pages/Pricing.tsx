@@ -64,7 +64,7 @@ function Hero({ cadence, setCadence }: { cadence: Cadence; setCadence: (c: Caden
     <section className="relative overflow-hidden pt-32 pb-16 sm:pt-40 sm:pb-20">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px] bg-[radial-gradient(ellipse_at_top,rgba(199,91,57,0.10),transparent_60%)]"
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px] bg-[radial-gradient(ellipse_at_top,rgba(255,103,26,0.10),transparent_60%)]"
       />
       <Container size="md">
         <motion.div
@@ -187,7 +187,7 @@ function TierCard({ tier, cadence }: { tier: SyncPlanTier; cadence: Cadence }) {
         isFounding
           ? 'border-dark-border bg-dark text-ink-inverted shadow-[0_24px_60px_-30px_rgba(20,18,16,0.55)]'
           : isRecommended
-            ? 'border-terracotta/35 bg-card shadow-[0_20px_60px_-32px_rgba(199,91,57,0.45)] lg:scale-[1.015]'
+            ? 'border-terracotta/35 bg-card shadow-[0_20px_60px_-32px_rgba(255,103,26,0.45)] lg:scale-[1.015]'
             : 'border-border/60 bg-card shadow-card'
       )}
     >
@@ -197,7 +197,7 @@ function TierCard({ tier, cadence }: { tier: SyncPlanTier; cadence: Cadence }) {
             'absolute right-6 top-6 inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-mono-accent text-[10px] uppercase tracking-[0.2em]',
             isFounding
               ? 'bg-terracotta/15 text-terracotta'
-              : 'bg-terracotta text-paper shadow-[0_8px_22px_-8px_rgba(199,91,57,0.6)]'
+              : 'bg-terracotta text-paper shadow-[0_8px_22px_-8px_rgba(255,103,26,0.6)]'
           )}
         >
           {isFounding ? <Heart className="h-3 w-3" aria-hidden /> : null}
@@ -442,8 +442,8 @@ function BelieverNarrative() {
 const TONE_DOT_CLASS: Record<LifecycleTone, string> = {
   sage: 'bg-sage shadow-[0_0_0_5px_rgba(91,127,106,0.15)]',
   amber: 'bg-amber-500 shadow-[0_0_0_5px_rgba(217,119,6,0.18)]',
-  terracotta: 'bg-terracotta shadow-[0_0_0_5px_rgba(199,91,57,0.22)]',
-  'terracotta-dim': 'bg-terracotta/55 shadow-[0_0_0_5px_rgba(199,91,57,0.12)]',
+  terracotta: 'bg-terracotta shadow-[0_0_0_5px_rgba(255,103,26,0.22)]',
+  'terracotta-dim': 'bg-terracotta/55 shadow-[0_0_0_5px_rgba(255,103,26,0.12)]',
   ink: 'bg-ink/80 shadow-[0_0_0_5px_rgba(26,26,26,0.12)]'
 }
 
@@ -648,7 +648,7 @@ function FinalCta() {
     <section className="relative overflow-hidden py-28">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,rgba(199,91,57,0.10),transparent_55%)]"
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,rgba(255,103,26,0.10),transparent_55%)]"
       />
       <Container size="md">
         <motion.div {...fadeUp} className="text-center">
