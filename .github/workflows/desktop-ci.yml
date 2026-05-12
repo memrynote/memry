@@ -3,6 +3,8 @@ name: Desktop CI
 on:
   pull_request:
   push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -124,6 +126,7 @@ jobs:
 
   e2e-smoke:
     name: Electron E2E smoke
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -183,6 +186,7 @@ jobs:
 
   e2e-full:
     name: Electron E2E full (${{ matrix.shard }})
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:

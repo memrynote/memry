@@ -40,13 +40,14 @@ One **logical** change per commit. Use the atomic-commit skill (`/atomic-commit`
 - Body has **Summary** and **Test plan** as a checklist.
 - Push with `-u` on the first push to set upstream.
 
-Use `gh pr create` to keep formatting clean. The repo enforces:
+Use `gh pr create` to keep formatting clean. PR CI enforces:
 
 - Lint + typecheck CI gate
 - Tests (vitest) gate
-- E2E (Playwright) gate
 - IPC contract check gate
 - Visual review for renderer changes
+
+Full E2E (Playwright) runs on `main` pushes.
 
 ## Docs Updates
 
