@@ -17,7 +17,8 @@
     "redo": "Làm lại",
     "cut": "Cắt",
     "copy": "Sao chép",
-    "paste": "Dán"
+    "paste": "Dán",
+    "selectAll": "Chọn tất cả"
   },
   "view": {
     "label": "Xem",

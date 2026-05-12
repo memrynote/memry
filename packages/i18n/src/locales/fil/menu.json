@@ -17,7 +17,8 @@
     "redo": "Gawin muli",
     "cut": "Putulin",
     "copy": "Kopyahin",
-    "paste": "Idikit"
+    "paste": "Idikit",
+    "selectAll": "Piliin lahat"
   },
   "view": {
     "label": "Tingnan",

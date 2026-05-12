@@ -17,7 +17,8 @@
     "redo": "Gör om",
     "cut": "Klipp ut",
     "copy": "Kopiera",
-    "paste": "Klistra in"
+    "paste": "Klistra in",
+    "selectAll": "Markera alla"
   },
   "view": {
     "label": "Visa",

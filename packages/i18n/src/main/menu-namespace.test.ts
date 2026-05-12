@@ -13,6 +13,7 @@ describe('menu namespace', () => {
     expect(i18n.t('menu:edit.cut')).toBe('Cut')
     expect(i18n.t('menu:edit.copy')).toBe('Copy')
     expect(i18n.t('menu:edit.paste')).toBe('Paste')
+    expect(i18n.t('menu:edit.selectAll')).toBe('Select All')
     expect(i18n.t('menu:view.reload')).toBe('Reload')
     expect(i18n.t('menu:view.toggleDevTools')).toBe('Toggle Developer Tools')
     expect(i18n.t('menu:view.toggleFullscreen')).toBe('Toggle Full Screen')

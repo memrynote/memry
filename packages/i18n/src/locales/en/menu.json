@@ -17,7 +17,8 @@
     "redo": "Redo",
     "cut": "Cut",
     "copy": "Copy",
-    "paste": "Paste"
+    "paste": "Paste",
+    "selectAll": "Select All"
   },
   "view": {
     "label": "View",

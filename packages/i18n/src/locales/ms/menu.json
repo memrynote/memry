@@ -17,7 +17,8 @@
     "redo": "Buat semula",
     "cut": "potong",
     "copy": "salin",
-    "paste": "Tampal"
+    "paste": "Tampal",
+    "selectAll": "Pilih semua"
   },
   "view": {
     "label": "Lihat",

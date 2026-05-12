@@ -17,7 +17,8 @@
     "redo": "Refazer",
     "cut": "Cortar",
     "copy": "Copiar",
-    "paste": "Colar"
+    "paste": "Colar",
+    "selectAll": "Selecionar tudo"
   },
   "view": {
     "label": "Ver",
