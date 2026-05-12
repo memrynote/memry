@@ -40,7 +40,9 @@ export function ConfirmationActions({
   className,
   ...props
 }: ConfirmationActionsProps): React.JSX.Element {
-  return <div className={cn('flex items-center justify-end gap-2', className)} {...props} />
+  return (
+    <div className={cn('flex flex-wrap items-center justify-end gap-2', className)} {...props} />
+  )
 }
 
 export type ConfirmationActionProps = ComponentProps<typeof Button>

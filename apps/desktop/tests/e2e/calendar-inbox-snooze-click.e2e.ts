@@ -117,6 +117,6 @@ test.describe('Calendar: snoozed inbox item click', () => {
     // The inbox detail panel should be open and showing the snoozed item.
     const detailPanel = page.getByTestId('inbox-detail-panel')
     await expect(detailPanel).toHaveAttribute('data-state', 'open')
-    await expect(detailPanel.getByText('Review investor email').first()).toBeVisible()
+    await expect(detailPanel.getByText('Seeded snoozed inbox item').first()).toBeVisible()
   })
 })

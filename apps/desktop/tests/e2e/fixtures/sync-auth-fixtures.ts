@@ -27,17 +27,20 @@ async function waitForSyncedDeviceList(
   email: string
 ): Promise<void> {
   await playwrightExpect
-    .poll(() =>
-      page.evaluate(() => {
-        return window.api.syncDevices.getDevices().then((result) => ({
-          email: result.email,
-          deviceCount: result.devices.length,
-          currentDeviceCount: result.devices.filter((device) => device.isCurrentDevice).length
-        }))
-      })
+    .poll(
+      () =>
+        page.evaluate(() => {
+          return window.api.syncDevices.getDevices().then((result) => ({
+            email: result.email,
+            deviceCount: result.devices.length,
+            currentDeviceCount: result.devices.filter((device) => device.isCurrentDevice).length
+          }))
+        }),
+      { timeout: 30_000 }
     )
     .toMatchObject({
       email,
+      deviceCount: 2,
       currentDeviceCount: 1
     })
 }

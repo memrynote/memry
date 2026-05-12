@@ -708,7 +708,7 @@ describe('auth-device handlers', () => {
       expect(result).toEqual({ success: false, error: 'Not authenticated' })
     })
 
-    it('removes remote devices locally, broadcasts removal, and tolerates server 404s', async () => {
+    it('removes remote devices locally without revoking the current renderer, and tolerates server 404s', async () => {
       registerAuthDeviceHandlers()
       const send = vi.fn()
       mockGetAllWindows.mockReturnValue([{ webContents: { send } }])
@@ -719,7 +719,7 @@ describe('auth-device handlers', () => {
 
       expect(mockDeleteFromServer).toHaveBeenCalledWith('/devices/dev-remote', 'mock-access-token')
       expect(mockDeleteRun).toHaveBeenCalled()
-      expect(send).toHaveBeenCalledWith('sync:device-removed', { deviceId: 'dev-remote' })
+      expect(send).not.toHaveBeenCalled()
 
       mockDeleteFromServer.mockRejectedValueOnce(new Error('404 not found'))
 
