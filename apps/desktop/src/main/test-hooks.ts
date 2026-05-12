@@ -5,7 +5,7 @@ import { persistKeysAndRegisterDevice } from './sync/device-registration'
 import { yDocToMarkdown } from './sync/blocknote-converter'
 import { getCrdtProvider, resetCrdtProvider } from './sync/crdt-provider'
 import { getWritebackDebugState } from './sync/crdt-writeback'
-import { getCrdtQueue, getNetworkMonitor } from './sync/runtime'
+import { getCrdtQueue, getNetworkMonitor, startSyncRuntime } from './sync/runtime'
 import { getDatabase } from './database'
 import { sql } from 'drizzle-orm'
 import { getNoteMetadataById } from '@memry/storage-data'
@@ -21,6 +21,8 @@ import {
 import { listCalendarExternalEventsBySource } from './calendar/repositories/calendar-external-events-repository'
 import { calendarEvents } from '@memry/db-schema/schema/calendar-events'
 import { getMainI18n } from './lib/main-i18n'
+import { getOrInitializeLocalVaultKey, VAULT_KEY_VERIFIER_SETTING } from './crypto/vault-key-state'
+import { getOrCreateVaultUuid } from './agent/storage/vault-id'
 
 export interface SyncTestBootstrapInput {
   email: string
@@ -249,13 +251,18 @@ export function registerTestHooks(): void {
 
   globalThis.__memryTestHooks = {
     async bootstrapSyncDevice(input: SyncTestBootstrapInput): Promise<{ deviceId: string }> {
+      // E2E fixtures open an empty local vault before sync credentials exist. Clear that
+      // test-only local key binding so the shared sync master key can bind this vault.
+      getDatabase().run(sql`DELETE FROM settings WHERE key = ${VAULT_KEY_VERIFIER_SETTING}`)
+
       const deviceId = await persistKeysAndRegisterDevice(
         Buffer.from(input.masterKeyBase64, 'base64'),
         Buffer.from(input.signingSecretKeyBase64, 'base64'),
         input.setupToken,
         input.kdfSalt,
         input.keyVerifier,
-        input.skipSetup ?? false
+        input.skipSetup ?? false,
+        true
       )
 
       store.set('sync', {
@@ -263,6 +270,9 @@ export function registerTestHooks(): void {
         email: input.email,
         recoveryPhraseConfirmed: true
       })
+
+      await getOrInitializeLocalVaultKey(getDatabase(), getOrCreateVaultUuid(getDatabase()))
+      await startSyncRuntime()
 
       return { deviceId }
     },

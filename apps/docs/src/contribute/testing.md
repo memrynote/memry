@@ -58,6 +58,12 @@ Desktop E2E helpers live behind `globalThis.__memryTestHooks` and only register 
 sync data, secondary windows, or Quick Capture shortcut probes. If a flow can be tested through
 normal user-visible UI, prefer that path before adding a hook.
 
+Sync E2E bootstrap opens local vault state before attaching shared sync credentials. Keep
+`bootstrapSyncDevice` responsible for rebinding the test vault key and starting the sync runtime
+before sync assertions run; otherwise queued records can fail before they reach the test backend.
+Split-view E2E locators depend on the pane root exposing `data-testid="tab-pane"`, so keep that
+test id stable when changing pane/drop-zone markup.
+
 ### Virtualized UI Tests
 
 `@tanstack/react-virtual` doesn't render any items inside jsdom (heights are zero, virtualization sees no scrollable area). Cover virtualized calendar / week / list UIs at the **Playwright** layer only.

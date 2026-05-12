@@ -156,6 +156,7 @@ export const TabPaneWithDropZones = ({
     <div
       className={cn('relative flex flex-col h-full w-full', className)}
       onClick={handleFocus}
+      data-testid="tab-pane"
       data-pane-id={groupId}
       data-pane-active={isActive}
     >
