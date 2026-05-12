@@ -31,6 +31,18 @@ describe('ai-connections-service', () => {
     await expect(promise).rejects.toThrow('Aborted')
   })
 
+  it('rejects when aborted after the analysis timer resolves', async () => {
+    vi.useFakeTimers()
+
+    const controller = new AbortController()
+    const promise = getAIConnections('x'.repeat(MIN_CONTENT_LENGTH), controller.signal)
+
+    vi.advanceTimersByTime(2000)
+    controller.abort()
+
+    await expect(promise).rejects.toThrow('Aborted')
+  })
+
   it('parses connection dates when possible', () => {
     expect(parseConnectionDate('Nov 15, 2024')).toBe('2024-11-15')
     expect(parseConnectionDate('not-a-date')).toBeNull()

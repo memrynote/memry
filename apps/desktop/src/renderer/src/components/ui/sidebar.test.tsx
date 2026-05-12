@@ -1,7 +1,32 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { isMac } from '@/hooks/use-keyboard-shortcuts-base'
-import { Sidebar, SidebarProvider, SidebarRail, useSidebar } from './sidebar'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupAction,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInput,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuAction,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSkeleton,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarSeparator,
+  SidebarTrigger,
+  useSidebar
+} from './sidebar'
 
 function SidebarStateProbe(): React.JSX.Element {
   const { state } = useSidebar()
@@ -70,5 +95,74 @@ describe('SidebarProvider shortcuts', () => {
     expect(screen.getByTestId('sidebar-width')).toHaveTextContent('244')
 
     fireEvent.mouseUp(document)
+  })
+
+  it('renders the exported desktop sidebar building blocks', () => {
+    const { container } = render(
+      <SidebarProvider defaultOpen={false}>
+        <Sidebar side="right" variant="floating" collapsible="icon">
+          <SidebarHeader>
+            <SidebarInput aria-label="Search" />
+          </SidebarHeader>
+          <SidebarSeparator />
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupLabel asChild>
+                <span>Group</span>
+              </SidebarGroupLabel>
+              <SidebarGroupAction asChild aria-label="Add">
+                <button type="button">+</button>
+              </SidebarGroupAction>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="Open notes" isActive size="lg" variant="outline">
+                      <span>Notes</span>
+                    </SidebarMenuButton>
+                    <SidebarMenuAction showOnHover aria-label="More" />
+                    <SidebarMenuBadge>2</SidebarMenuBadge>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuSkeleton showIcon />
+                  </SidebarMenuItem>
+                  <SidebarMenuSub>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton href="#sub" size="sm" isActive>
+                        Sub
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  </SidebarMenuSub>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+          <SidebarFooter>Footer</SidebarFooter>
+          <SidebarRail />
+        </Sidebar>
+        <SidebarInset>Inset</SidebarInset>
+        <SidebarTrigger aria-label="Toggle" />
+      </SidebarProvider>
+    )
+
+    expect(container.querySelector('[data-slot="sidebar-input"]')).not.toBeNull()
+    expect(container.querySelector('[data-slot="sidebar-separator"]')).not.toBeNull()
+    expect(container.querySelector('[data-slot="sidebar-menu-badge"]')).toHaveTextContent('2')
+    expect(container.querySelector('[data-slot="sidebar-menu-skeleton"]')).not.toBeNull()
+    expect(container.querySelector('[data-slot="sidebar-menu-sub-button"]')).toHaveTextContent(
+      'Sub'
+    )
+    expect(container.querySelector('[data-slot="sidebar-inset"]')).toHaveTextContent('Inset')
+
+    fireEvent.click(screen.getByLabelText('Toggle'))
+    expect(container.querySelector('[data-slot="sidebar"]')).toHaveAttribute(
+      'data-state',
+      'expanded'
+    )
+  })
+
+  it('throws when useSidebar is read outside a provider', () => {
+    expect(() => render(<SidebarStateProbe />)).toThrow(
+      'useSidebar must be used within a SidebarProvider.'
+    )
   })
 })

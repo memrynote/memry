@@ -7,11 +7,13 @@ import {
   onNoteDeleted,
   onNoteRenamed,
   onNoteMoved,
-  onNoteExternalChange
+  onNoteExternalChange,
+  onTagsChanged,
+  onFolderConfigUpdated
 } from './notes-service'
 
 describe('notes-service', () => {
-  let api: ReturnType<typeof createMockApi>
+  let api: any
 
   beforeEach(() => {
     api = createMockApi()
@@ -95,6 +97,8 @@ describe('notes-service', () => {
     api.onNoteRenamed = vi.fn(() => unsubscribe)
     api.onNoteMoved = vi.fn(() => unsubscribe)
     api.onNoteExternalChange = vi.fn(() => unsubscribe)
+    api.onTagsChanged = vi.fn(() => unsubscribe)
+    api.onFolderConfigUpdated = vi.fn(() => unsubscribe)
 
     const createdHandler = vi.fn()
     const updatedHandler = vi.fn()
@@ -120,6 +124,12 @@ describe('notes-service', () => {
 
     expect(onNoteExternalChange(externalHandler)).toBe(unsubscribe)
     expect(api.onNoteExternalChange).toHaveBeenCalledWith(externalHandler)
+
+    expect(onTagsChanged(createdHandler)).toBe(unsubscribe)
+    expect(api.onTagsChanged).toHaveBeenCalledWith(createdHandler)
+
+    expect(onFolderConfigUpdated(updatedHandler)).toBe(unsubscribe)
+    expect(api.onFolderConfigUpdated).toHaveBeenCalledWith(updatedHandler)
   })
 
   describe('position operations', () => {

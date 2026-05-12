@@ -62,6 +62,101 @@ describe('YjsIpcProvider.connect', () => {
     provider.destroy()
     doc.destroy()
   })
+
+  it('opens the CRDT doc, applies remote state, and sends local sync state', async () => {
+    const remoteDoc = new Y.Doc()
+    remoteDoc.getMap('meta').set('title', 'Remote title')
+    const emptyDoc = new Y.Doc()
+    mockSyncStep1.mockResolvedValueOnce({
+      diff: Array.from(Y.encodeStateAsUpdate(remoteDoc)),
+      stateVector: Array.from(Y.encodeStateVector(emptyDoc))
+    })
+
+    const doc = new Y.Doc()
+    doc.getMap('local').set('draft', true)
+    const provider = new YjsIpcProvider({ noteId: 'note-42', doc })
+
+    await provider.connect()
+
+    expect(mockOpenDoc).toHaveBeenCalledWith({ noteId: 'note-42' })
+    expect(mockSyncStep1).toHaveBeenCalledWith({
+      noteId: 'note-42',
+      stateVector: expect.any(Array)
+    })
+    expect(doc.getMap('meta').get('title')).toBe('Remote title')
+    expect(mockSyncStep2).toHaveBeenCalledWith({
+      noteId: 'note-42',
+      diff: expect.any(Array)
+    })
+    expect(provider.isSynced).toBe(true)
+
+    provider.destroy()
+    doc.destroy()
+    emptyDoc.destroy()
+    remoteDoc.destroy()
+  })
+
+  it('applies matching IPC updates and forwards local document updates', async () => {
+    let stateChanged:
+      | ((data: { noteId: string; update: number[]; origin: string }) => void)
+      | null = null
+    mockOnCrdtStateChanged.mockImplementationOnce((callback) => {
+      stateChanged = callback
+      return vi.fn()
+    })
+
+    const doc = new Y.Doc()
+    const provider = new YjsIpcProvider({ noteId: 'note-42', doc })
+
+    await provider.connect()
+
+    const otherDoc = new Y.Doc()
+    otherDoc.getMap('meta').set('remote', true)
+    stateChanged?.({
+      noteId: 'other-note',
+      update: Array.from(Y.encodeStateAsUpdate(otherDoc)),
+      origin: 'remote'
+    })
+    expect(doc.getMap('meta').get('remote')).toBeUndefined()
+
+    stateChanged?.({
+      noteId: 'note-42',
+      update: Array.from(Y.encodeStateAsUpdate(otherDoc)),
+      origin: 'remote'
+    })
+    expect(doc.getMap('meta').get('remote')).toBe(true)
+
+    mockApplyUpdate.mockClear()
+    doc.getMap('meta').set('local', true)
+    expect(mockApplyUpdate).toHaveBeenCalledWith({
+      noteId: 'note-42',
+      update: expect.any(Array)
+    })
+
+    mockApplyUpdate.mockClear()
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(otherDoc), 'remote')
+    expect(mockApplyUpdate).not.toHaveBeenCalled()
+
+    provider.destroy()
+    doc.destroy()
+    otherDoc.destroy()
+  })
+
+  it('does not perform the handshake after being destroyed mid-connect', async () => {
+    let resolveOpen: (value: { success: boolean }) => void = () => {}
+    mockOpenDoc.mockReturnValueOnce(new Promise((resolve) => (resolveOpen = resolve)))
+    const doc = new Y.Doc()
+    const provider = new YjsIpcProvider({ noteId: 'note-42', doc })
+
+    const connect = provider.connect()
+    provider.destroy()
+    resolveOpen({ success: true })
+    await connect
+
+    expect(mockSyncStep1).not.toHaveBeenCalled()
+
+    doc.destroy()
+  })
 })
 
 describe('YjsIpcProvider.disconnect', () => {
