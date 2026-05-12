@@ -18,7 +18,7 @@ export function Footer() {
           <div className="col-span-2 md:col-span-2 pe-8">
             <Link to="/" className="inline-block mb-6 group">
               <span className="font-serif text-3xl font-medium text-ink group-hover:text-terracotta transition-colors">
-                Memry.
+                memry
               </span>
             </Link>
             <p className="text-lg text-muted font-sans leading-relaxed max-w-sm">

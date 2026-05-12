@@ -8,7 +8,7 @@ export function FinalCTA() {
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(circle at 50% 40%, rgb(199 91 57 / 0.08), transparent 60%)'
+          background: 'radial-gradient(circle at 50% 40%, rgb(255 103 26 / 0.08), transparent 60%)'
         }}
       />
 

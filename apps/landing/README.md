@@ -75,14 +75,15 @@ set the Vercel project Root Directory to `apps/landing` so Vercel reads this pac
 
 ## Design Tokens
 
-| Token        | Value            | Usage                         |
-| ------------ | ---------------- | ----------------------------- |
-| Background   | `#fffcf7`        | Warm paper base               |
-| Accent       | `#c75b39`        | Terracotta — CTAs, highlights |
-| Success      | `#5b7f6a`        | Sage — confirmation states    |
-| Heading font | Instrument Serif | Display typography            |
-| Body font    | Satoshi          | Interface text                |
-| Mono font    | JetBrains Mono   | Data, labels, code            |
+| Token        | Value            | Usage                                            |
+| ------------ | ---------------- | ------------------------------------------------ |
+| Background   | `#fffcf7`        | Warm paper base                                  |
+| Accent       | `#FF671A`        | Generated brand orange — CTAs, highlights        |
+| Hover accent | `#B33C00`        | Generated dark orange — pressed and hover states |
+| Success      | `#5b7f6a`        | Sage — confirmation states                       |
+| Heading font | Instrument Serif | Display typography                               |
+| Body font    | Satoshi          | Interface text                                   |
+| Mono font    | JetBrains Mono   | Data, labels, code                               |
 
 ## License
 

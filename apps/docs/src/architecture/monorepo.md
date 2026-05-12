@@ -4,19 +4,26 @@ Memry is a pnpm + Turborepo monorepo. Three apps, three shared packages, one sou
 
 ## Apps
 
-| Path | Purpose | Stack |
-| --- | --- | --- |
-| `apps/desktop` | Electron desktop app | Electron 39, React 19, Vite, BlockNote, Yjs |
-| `apps/sync-server` | Cloudflare Workers sync API | Workers + Hono, D1, R2 |
-| `apps/docs` | This documentation site | VitePress 1.6 |
+| Path               | Purpose                     | Stack                                       |
+| ------------------ | --------------------------- | ------------------------------------------- |
+| `apps/desktop`     | Electron desktop app        | Electron 39, React 19, Vite, BlockNote, Yjs |
+| `apps/sync-server` | Cloudflare Workers sync API | Workers + Hono, D1, R2                      |
+| `apps/docs`        | This documentation site     | VitePress 1.6                               |
 
 ## Packages
 
-| Path | Purpose |
-| --- | --- |
+| Path                 | Purpose                                                                                                          |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `packages/contracts` | Zod-typed IPC and HTTP API contracts. The single source of truth for renderer↔main and client↔server boundaries. |
-| `packages/db-schema` | Drizzle ORM schemas for the data and index databases plus migration files. |
-| `packages/shared` | Tiny set of shared utilities. Kept intentionally small to avoid coupling. |
+| `packages/db-schema` | Drizzle ORM schemas for the data and index databases plus migration files.                                       |
+| `packages/shared`    | Tiny set of shared utilities. Kept intentionally small to avoid coupling.                                        |
+
+## Shared Assets
+
+Reusable brand files live in `assets/brand/memry`. The desktop icon generator reads
+`assets/brand/memry/icon-color.png` and writes the packaged app icons under
+`apps/desktop/build/`, while landing and social surfaces should reuse the shared logo and icon
+sources instead of keeping app-local copies.
 
 ## Tooling
 
@@ -50,6 +57,7 @@ pnpm db:studio          # Drizzle Studio GUI
 ## Why Turborepo
 
 Most actions can be cached and parallelized:
+
 - `lint`, `typecheck`, `test` per package
 - Builds can fan out
 - The cache is keyed on inputs, so unchanged packages are skipped

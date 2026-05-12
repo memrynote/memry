@@ -6,7 +6,7 @@ export const SOCIAL_IMAGE_URL = `${BASE_URL}${SOCIAL_IMAGE_PATH}`
 export const SOCIAL_IMAGE_WIDTH = '1200'
 export const SOCIAL_IMAGE_HEIGHT = '630'
 export const SOCIAL_IMAGE_ALT =
-  'Memry app preview showing notes, tasks, and journal in one local-first workspace.'
+  'memry social preview with the headline Your thoughts, beautifully organized.'
 
 interface PageMeta {
   title: string
