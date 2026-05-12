@@ -1,5 +1,5 @@
 import userEvent from '@testing-library/user-event'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockUseAgentOptional = vi.hoisted(() => vi.fn())
@@ -10,9 +10,9 @@ vi.mock('../agent-context', () => ({
 
 import { SidebarTabs } from '../sidebar-tabs'
 
-function renderTabs() {
+function renderTabs(props: { dayLabel?: string; agentLabel?: string } = {}) {
   return render(
-    <SidebarTabs>
+    <SidebarTabs {...props}>
       {{
         day: <div>Day content</div>,
         agent: <div>Agent content</div>
@@ -37,6 +37,23 @@ describe('SidebarTabs', () => {
 
     expect(screen.getByText('Agent content')).toBeInTheDocument()
     expect(localStorage.getItem('right-sidebar-tab')).toBe('agent')
+  })
+
+  it('keeps the switch compact with icon-only tab buttons and one active label', async () => {
+    const user = userEvent.setup()
+    renderTabs({ dayLabel: 'Today' })
+
+    const dayTab = screen.getByRole('tab', { name: 'Day' })
+    const agentTab = screen.getByRole('tab', { name: 'Agent' })
+
+    expect(within(dayTab).queryByText('Day')).not.toBeInTheDocument()
+    expect(within(agentTab).queryByText('Agent')).not.toBeInTheDocument()
+    expect(screen.getByText('Today')).toBeInTheDocument()
+
+    await user.click(agentTab)
+
+    expect(screen.getByText('Agent')).toBeInTheDocument()
+    expect(within(agentTab).queryByText('Agent')).not.toBeInTheDocument()
   })
 
   it('restores the persisted active tab', () => {

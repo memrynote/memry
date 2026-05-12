@@ -13,6 +13,8 @@ const RIGHT_SIDEBAR_TABS: RightSidebarTab[] = ['day', 'agent']
 interface SidebarTabsProps {
   children: { day: ReactNode; agent: ReactNode }
   defaultTab?: RightSidebarTab
+  dayLabel?: string
+  agentLabel?: string
 }
 
 function readInitialTab(defaultTab: RightSidebarTab): RightSidebarTab {
@@ -25,10 +27,18 @@ function readInitialTab(defaultTab: RightSidebarTab): RightSidebarTab {
   return defaultTab
 }
 
-export function SidebarTabs({ children, defaultTab = 'day' }: SidebarTabsProps): React.JSX.Element {
+export function SidebarTabs({
+  children,
+  defaultTab = 'day',
+  dayLabel,
+  agentLabel
+}: SidebarTabsProps): React.JSX.Element {
   const { t } = useT('common')
   const [active, setActive] = useState<RightSidebarTab>(() => readInitialTab(defaultTab))
   const agent = useAgentOptional()
+  const dayTabLabel = t('agentChat.sidebar.day')
+  const agentTabLabel = t('agentChat.sidebar.agent')
+  const activeLabel = active === 'day' ? (dayLabel ?? dayTabLabel) : (agentLabel ?? agentTabLabel)
 
   useEffect(() => {
     try {
@@ -52,22 +62,31 @@ export function SidebarTabs({ children, defaultTab = 'day' }: SidebarTabsProps):
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="border-b border-sidebar-border px-3 py-2">
+      <div className="flex h-9 shrink-0 items-center justify-between gap-3 border-b border-sidebar-border px-3">
+        <span className="min-w-0 truncate text-xs font-semibold text-sidebar-foreground">
+          {activeLabel}
+        </span>
         <div
           role="tablist"
           aria-label={t('agentChat.sidebar.label')}
-          className="grid h-8 grid-cols-2 rounded-md border border-sidebar-border bg-sidebar-accent/30 p-0.5"
+          className="inline-flex h-7 shrink-0 items-center gap-0.5 rounded-md border border-transparent bg-[#212021] p-0.5 hover:border-sidebar-border focus-within:border-sidebar-border"
         >
-          <SidebarTabButton active={active === 'day'} onClick={() => setActive('day')}>
-            <CalendarDays className="size-3.5" aria-hidden="true" />
-            <span>{t('agentChat.sidebar.day')}</span>
+          <SidebarTabButton
+            active={active === 'day'}
+            label={dayTabLabel}
+            onClick={() => setActive('day')}
+          >
+            <CalendarDays className="size-4" aria-hidden="true" />
           </SidebarTabButton>
-          <SidebarTabButton active={active === 'agent'} onClick={() => setActive('agent')}>
-            <Bot className="size-3.5" aria-hidden="true" />
-            <span>{t('agentChat.sidebar.agent')}</span>
+          <SidebarTabButton
+            active={active === 'agent'}
+            label={agentTabLabel}
+            onClick={() => setActive('agent')}
+          >
+            <Bot className="size-4" aria-hidden="true" />
             {hasBackgroundActivity && (
               <span
-                className="ms-1 size-1.5 rounded-full bg-primary"
+                className="absolute end-1 top-1 size-1.5 rounded-full bg-primary"
                 aria-label={
                   pendingApprovalCount > 0
                     ? t('agentChat.sidebar.pendingApproval', { count: pendingApprovalCount })
@@ -87,10 +106,12 @@ export function SidebarTabs({ children, defaultTab = 'day' }: SidebarTabsProps):
 
 function SidebarTabButton({
   active,
+  label,
   onClick,
   children
 }: {
   active: boolean
+  label: string
   onClick: () => void
   children: ReactNode
 }): React.JSX.Element {
@@ -98,13 +119,15 @@ function SidebarTabButton({
     <button
       type="button"
       role="tab"
+      aria-label={label}
       aria-selected={active}
+      title={label}
       onClick={onClick}
       className={cn(
-        'inline-flex min-w-0 items-center justify-center gap-1.5 rounded-[5px] px-2 text-xs font-medium transition-colors',
+        'relative inline-flex size-6 items-center justify-center rounded-[5px] transition-colors',
         active
-          ? 'bg-background text-foreground shadow-sm'
-          : 'text-muted-foreground hover:bg-background/60 hover:text-foreground'
+          ? 'bg-[#303030] text-[color-mix(in_srgb,var(--foreground)_35%,white)] shadow-sm'
+          : 'text-muted-foreground hover:bg-[#303030] hover:text-[color-mix(in_srgb,var(--foreground)_35%,white)]'
       )}
     >
       {children}
