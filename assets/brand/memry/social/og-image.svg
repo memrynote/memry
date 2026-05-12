@@ -1,106 +1,84 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#fff8f2" />
-      <stop offset="0.52" stop-color="#f8f5ef" />
-      <stop offset="1" stop-color="#eef7f1" />
-    </linearGradient>
-    <linearGradient id="mark" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ff8a4a" />
-      <stop offset="0.52" stop-color="#ff671a" />
-      <stop offset="1" stop-color="#ef4f0b" />
-    </linearGradient>
-    <filter id="markShadow" x="-18%" y="-18%" width="136%" height="150%" color-interpolation-filters="sRGB">
-      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#91330f" flood-opacity="0.24" />
-      <feDropShadow dx="0" dy="3" stdDeviation="2" flood-color="#fff3ea" flood-opacity="0.7" />
+    <filter id="markShadow" x="-18%" y="-18%" width="136%" height="145%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#91330f" flood-opacity="0.18" />
     </filter>
-    <filter id="cardShadow" x="-16%" y="-16%" width="132%" height="140%" color-interpolation-filters="sRGB">
-      <feDropShadow dx="0" dy="22" stdDeviation="28" flood-color="#1f2937" flood-opacity="0.12" />
+    <filter id="panelShadow" x="-18%" y="-18%" width="136%" height="145%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="28" flood-color="#1f2937" flood-opacity="0.08" />
     </filter>
   </defs>
 
-  <rect width="1200" height="630" fill="url(#bg)" />
-  <circle cx="991" cy="94" r="234" fill="#ff671a" opacity="0.08" />
-  <circle cx="979" cy="525" r="188" fill="#2d6a4f" opacity="0.07" />
-  <path
-    d="M0 454C158 391 270 502 415 446C560 389 610 267 772 325C934 383 1010 271 1200 315V630H0V454Z"
-    fill="#ffffff"
-    opacity="0.54"
-  />
-  <path
-    d="M70 522H1128"
-    fill="none"
-    stroke="#ff671a"
-    stroke-linecap="round"
-    stroke-width="2"
-    opacity="0.16"
-  />
+  <rect width="1200" height="630" fill="#fffcf7" />
+  <rect width="1200" height="630" fill="#ffffff" opacity="0.38" />
+  <circle cx="1050" cy="80" r="214" fill="#ff671a" opacity="0.045" />
+  <circle cx="1015" cy="545" r="178" fill="#5b7f6a" opacity="0.045" />
 
-  <g transform="translate(94 70) scale(0.095)" filter="url(#markShadow)">
-    <path
-      d="M637.44 648L1.28 304.64C5.20707 223.285 40.0147 146.493 98.5973 89.9066C157.18 33.3199 235.144 1.2039 316.571 0.103899C398.013 -1.00026 476.811 28.9946 536.904 83.9732C596.997 138.952 633.863 214.776 639.992 296C646.154 215.041 682.856 139.453 742.669 84.5466C802.481 29.6399 880.936 -0.480104 962.123 0.295896C1043.31 1.06672 1121.18 32.6759 1179.92 88.7119C1238.68 144.748 1273.94 221.024 1278.56 302.085L637.44 648ZM0 650.239V1031.04H1280V650.239H0Z"
-      fill="url(#mark)"
-    />
-  </g>
-
-  <text
-    x="238"
-    y="158"
-    fill="#1f2937"
-    font-family="Arial, Helvetica, sans-serif"
-    font-size="86"
-    font-weight="800"
-    letter-spacing="0"
-  >
-    memry
-  </text>
-  <text
-    x="98"
-    y="286"
-    fill="#1f2937"
-    font-family="Arial, Helvetica, sans-serif"
-    font-size="52"
-    font-weight="760"
-    letter-spacing="0"
-  >
-    Notes, tasks &amp; journal
-  </text>
-  <text
-    x="100"
-    y="348"
-    fill="#49515d"
-    font-family="Arial, Helvetica, sans-serif"
-    font-size="36"
-    font-weight="500"
-    letter-spacing="0"
-  >
-    in one local-first workspace.
-  </text>
-
-  <g transform="translate(99 434)">
-    <rect width="286" height="54" rx="27" fill="#1f2937" opacity="0.92" />
-    <circle cx="34" cy="27" r="7" fill="#ff671a" />
+  <g transform="translate(72 62)">
+    <g transform="translate(0 0) scale(0.042)" filter="url(#markShadow)">
+      <path
+        d="M637.44 648L1.28 304.64C5.20707 223.285 40.0147 146.493 98.5973 89.9066C157.18 33.3199 235.144 1.2039 316.571 0.103899C398.013 -1.00026 476.811 28.9946 536.904 83.9732C596.997 138.952 633.863 214.776 639.992 296C646.154 215.041 682.856 139.453 742.669 84.5466C802.481 29.6399 880.936 -0.480104 962.123 0.295896C1043.31 1.06672 1121.18 32.6759 1179.92 88.7119C1238.68 144.748 1273.94 221.024 1278.56 302.085L637.44 648ZM0 650.239V1031.04H1280V650.239H0Z"
+        fill="#ff671a"
+      />
+    </g>
     <text
-      x="55"
-      y="35"
-      fill="#fffaf4"
-      font-family="Arial, Helvetica, sans-serif"
-      font-size="18"
-      font-weight="700"
-      letter-spacing="1.8"
+      x="66"
+      y="45"
+      fill="#141210"
+      font-family="Satoshi, Arial, Helvetica, sans-serif"
+      font-size="46"
+      font-weight="800"
+      letter-spacing="0"
     >
-      MEMRYNOTE.COM
+      memry
     </text>
   </g>
 
-  <g transform="translate(705 110)" filter="url(#cardShadow)">
-    <rect width="340" height="340" rx="76" fill="#fffdfa" />
-    <rect x="1.5" y="1.5" width="337" height="337" rx="74.5" fill="none" stroke="#ffffff" stroke-width="3" />
-    <g transform="translate(70 63) scale(0.157)" filter="url(#markShadow)">
-      <path
-        d="M637.44 648L1.28 304.64C5.20707 223.285 40.0147 146.493 98.5973 89.9066C157.18 33.3199 235.144 1.2039 316.571 0.103899C398.013 -1.00026 476.811 28.9946 536.904 83.9732C596.997 138.952 633.863 214.776 639.992 296C646.154 215.041 682.856 139.453 742.669 84.5466C802.481 29.6399 880.936 -0.480104 962.123 0.295896C1043.31 1.06672 1121.18 32.6759 1179.92 88.7119C1238.68 144.748 1273.94 221.024 1278.56 302.085L637.44 648ZM0 650.239V1031.04H1280V650.239H0Z"
-        fill="url(#mark)"
-      />
+  <g transform="translate(72 220)">
+    <text
+      x="0"
+      y="0"
+      fill="#1f2937"
+      font-family="'Instrument Serif', Georgia, serif"
+      font-size="88"
+      font-weight="400"
+      letter-spacing="0"
+    >
+      <tspan x="0" dy="0">Your thoughts,</tspan>
+      <tspan x="0" dy="92" fill="#ff671a" font-size="75" font-style="italic">beautifully organized.</tspan>
+    </text>
+    <path
+      d="M6 183C106 166 178 194 282 176S430 162 610 181"
+      fill="none"
+      stroke="#ff671a"
+      stroke-linecap="round"
+      stroke-width="4"
+      opacity="0.3"
+    />
+  </g>
+
+  <g
+    transform="translate(850 208)"
+    fill="#1f2937"
+    font-family="Satoshi, Arial, Helvetica, sans-serif"
+    font-size="34"
+    font-weight="700"
+    letter-spacing="0"
+  >
+    <g transform="translate(0 0)">
+      <circle cx="0" cy="-10" r="6" fill="#ff671a" />
+      <text x="28" y="0">note taking</text>
+    </g>
+    <g transform="translate(0 70)">
+      <circle cx="0" cy="-10" r="6" fill="#ff671a" />
+      <text x="28" y="0">inbox</text>
+    </g>
+    <g transform="translate(0 140)">
+      <circle cx="0" cy="-10" r="6" fill="#ff671a" />
+      <text x="28" y="0">task</text>
+    </g>
+    <g transform="translate(0 210)">
+      <circle cx="0" cy="-10" r="6" fill="#ff671a" />
+      <text x="28" y="0">local-first</text>
     </g>
   </g>
 </svg>
