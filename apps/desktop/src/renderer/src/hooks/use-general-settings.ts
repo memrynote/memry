@@ -1,19 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
+import { GENERAL_SETTINGS_DEFAULTS } from '@memry/contracts/settings-schemas'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import type { GeneralSettingsDTO } from '../../../preload/index.d'
 import { getI18n } from 'react-i18next'
 
-const DEFAULTS: GeneralSettingsDTO = {
-  theme: 'system',
-  fontSize: 'medium',
-  fontFamily: 'system',
-  accentColor: '#6366f1',
-  startOnBoot: false,
-  language: 'en',
-  onboardingCompleted: false,
-  createInSelectedFolder: true,
-  clockFormat: '12h'
-}
+const DEFAULTS: GeneralSettingsDTO = GENERAL_SETTINGS_DEFAULTS
 
 interface UseGeneralSettingsReturn {
   settings: GeneralSettingsDTO
