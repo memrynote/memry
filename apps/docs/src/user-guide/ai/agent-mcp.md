@@ -8,15 +8,15 @@ conversation.
 
 The same MCP endpoint can also be copied into other desktop AI clients for vault read tools.
 
-Open [Settings -> Agent MCP](/user-guide/settings#agent-mcp) to copy the current endpoint and
-bearer token.
+Open [Settings -> AI Assistant -> Agent MCP](/user-guide/settings#agent-mcp) to copy the current
+endpoint and bearer token.
 
 ## Agent Chat
 
 Open the right sidebar, choose **Agent**, and pick a provider. For Claude CLI, Memry checks that
 `claude` is available on `PATH`, that it reports version `2.1.0` or newer, and that the Agent
 disclosure has been accepted. For local models, configure a compatible server in
-[Settings -> Agent Providers](/user-guide/settings#agent-providers) first.
+[Settings -> AI Assistant -> Agent Providers](/user-guide/settings#agent-providers) first.
 
 Agent Chat can:
 
