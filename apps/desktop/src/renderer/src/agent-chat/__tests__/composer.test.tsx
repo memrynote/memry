@@ -34,7 +34,10 @@ describe('Composer', () => {
     mockUseActiveTab.mockReturnValue(null)
     mockUseAgentOptional.mockReturnValue({
       state: {
-        inFlight: {}
+        inFlight: {},
+        conversations: {
+          'conversation-1': { id: 'conversation-1', backend: 'claude_cli' }
+        }
       },
       createConversation: mockCreateConversation,
       sendTurn: mockSendTurn,
@@ -84,8 +87,52 @@ describe('Composer', () => {
     fireEvent.pointerDown(providerTrigger)
 
     expect(screen.getByRole('menuitem', { name: /claude/i })).toHaveClass('focus:bg-transparent')
-    expect(screen.getByRole('menuitem', { name: /codex/i })).toHaveAttribute('data-disabled', '')
+    expect(screen.getByRole('menuitem', { name: /codex/i })).not.toHaveAttribute('data-disabled')
     expect(screen.getByRole('menuitem', { name: /local/i })).toHaveAttribute('data-disabled', '')
+  })
+
+  it('creates a Codex conversation before sending a Codex first prompt', async () => {
+    mockCreateConversation.mockResolvedValue({ id: 'conversation-codex', backend: 'codex_cli' })
+    render(<Composer conversationId={null} sourceWindowId="window-1" />)
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent provider: Claude' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
+
+    const textbox = screen.getByRole('textbox')
+    fireEvent.change(textbox, { target: { value: 'use codex' } })
+    await act(async () => {
+      fireEvent.keyDown(textbox, { key: 'Enter' })
+      await Promise.resolve()
+    })
+
+    expect(mockCreateConversation).toHaveBeenCalledWith({ backend: 'codex_cli' })
+    expect(mockSendTurn).toHaveBeenCalledWith({
+      conversationId: 'conversation-codex',
+      sourceWindowId: 'window-1',
+      text: 'use codex',
+      attachments: [],
+      claudeEffort: 'xhigh'
+    })
+  })
+
+  it('creates a new Codex conversation when switching providers from an active Claude chat', async () => {
+    mockUseAgentOptional.mockReturnValue({
+      state: {
+        inFlight: {},
+        conversations: {
+          'conversation-1': { id: 'conversation-1', backend: 'claude_cli' }
+        }
+      },
+      createConversation: mockCreateConversation,
+      sendTurn: mockSendTurn,
+      cancelTurn: mockCancelTurn
+    })
+    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent provider: Claude' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
+
+    expect(mockCreateConversation).toHaveBeenCalledWith({ backend: 'codex_cli' })
   })
 
   it('shows supported Claude effort settings next to the selected provider', () => {
@@ -261,7 +308,10 @@ describe('Composer', () => {
   it('replaces send with stop while a turn is in flight', () => {
     mockUseAgentOptional.mockReturnValue({
       state: {
-        inFlight: { 'conversation-1': true }
+        inFlight: { 'conversation-1': true },
+        conversations: {
+          'conversation-1': { id: 'conversation-1', backend: 'claude_cli' }
+        }
       },
       sendTurn: mockSendTurn,
       cancelTurn: mockCancelTurn

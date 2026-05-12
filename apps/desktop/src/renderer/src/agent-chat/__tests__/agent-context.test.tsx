@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import type { AgentEvent, BinaryStatus, Conversation, Message } from '@memry/contracts/ipc-agent'
+import type {
+  AgentEvent,
+  BackendStatusesResponse,
+  BinaryStatus,
+  Conversation,
+  Message
+} from '@memry/contracts/ipc-agent'
 
 import { agentReducer, initialAgentState, type AgentState } from '../agent-context.reducer'
 
@@ -10,6 +16,17 @@ const binaryStatus: BinaryStatus = {
   meetsMinimum: true,
   minimumRequired: '2.1.0',
   installHint: null
+}
+
+const backendStatuses: BackendStatusesResponse = {
+  claude_cli: binaryStatus,
+  codex_cli: {
+    detected: true,
+    version: '0.130.0',
+    meetsMinimum: true,
+    minimumRequired: '0.130.0',
+    installHint: null
+  }
 }
 
 const conversation: Conversation = {
@@ -62,6 +79,16 @@ describe('agentReducer', () => {
 
     expect(next.binaryStatus).toEqual(binaryStatus)
     expect(next.disclosureAccepted).toBe(true)
+  })
+
+  it('stores provider backend statuses', () => {
+    const next = agentReducer(initialAgentState, {
+      type: 'set_backend_statuses',
+      statuses: backendStatuses
+    })
+
+    expect(next.backendStatuses).toEqual(backendStatuses)
+    expect(next.binaryStatus).toEqual(binaryStatus)
   })
 
   it('stores the source window id for MCP current-note calls', () => {

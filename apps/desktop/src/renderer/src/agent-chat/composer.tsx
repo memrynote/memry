@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
-import type { AttachmentInput, ClaudeEffort } from '@memry/contracts/ipc-agent'
-import { DEFAULT_CLAUDE_EFFORT } from '@memry/contracts/ipc-agent'
+import type { AgentBackendId, AttachmentInput, ClaudeEffort } from '@memry/contracts/ipc-agent'
+import { DEFAULT_AGENT_BACKEND, DEFAULT_CLAUDE_EFFORT } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
 
 import {
@@ -24,7 +24,11 @@ interface ComposerProps {
   sourceWindowId: string | null
 }
 
-type AgentProvider = 'claude' | 'codex' | 'local'
+type AgentProvider = AgentBackendId | 'local'
+interface SelectedProviderState {
+  conversationId: string | null
+  provider: AgentProvider
+}
 
 const claudeReasoningOptions: Array<{
   value: ClaudeEffort
@@ -77,8 +81,13 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const [attachments, setAttachments] = useState<AttachmentInput[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [selectedProvider, setSelectedProvider] = useState<AgentProvider>('claude')
+  const [selectedProviderState, setSelectedProviderState] = useState<SelectedProviderState>({
+    conversationId: null,
+    provider: DEFAULT_AGENT_BACKEND
+  })
   const [claudeReasoning, setClaudeReasoning] = useState<ClaudeEffort>(DEFAULT_CLAUDE_EFFORT)
+  const activeConversation =
+    agent && conversationId ? agent.state.conversations[conversationId] : null
 
   useEffect(() => {
     if (activeTab?.type !== 'note' || !activeTab.entityId) return
@@ -114,11 +123,17 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const codexProviderLabel = t('agentChat.composer.providers.codex')
   const localProviderLabel = t('agentChat.composer.providers.local')
   const providerLabelById: Record<AgentProvider, string> = {
-    claude: claudeProviderLabel,
-    codex: codexProviderLabel,
+    claude_cli: claudeProviderLabel,
+    codex_cli: codexProviderLabel,
     local: localProviderLabel
   }
+  const selectedProvider =
+    selectedProviderState.conversationId === conversationId
+      ? selectedProviderState.provider
+      : (activeConversation?.backend ?? DEFAULT_AGENT_BACKEND)
   const selectedProviderLabel = providerLabelById[selectedProvider]
+  const SelectedProviderIcon =
+    selectedProvider === 'codex_cli' ? ChatGpt : selectedProvider === 'local' ? Computer : Claude
   const selectedClaudeReasoning =
     claudeReasoningOptions.find((option) => option.value === claudeReasoning) ??
     claudeReasoningOptions[3]
@@ -130,9 +145,13 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     if (!agent || !sourceWindowId || !text.trim() || busy) return
     const currentText = text
     const currentAttachments = attachments
+    const selectedBackend = selectedProvider === 'local' ? DEFAULT_AGENT_BACKEND : selectedProvider
     setSubmitting(true)
     try {
-      const targetConversationId = conversationId ?? (await agent.createConversation()).id
+      const targetConversationId =
+        conversationId && activeConversation?.backend === selectedBackend
+          ? conversationId
+          : (await agent.createConversation({ backend: selectedBackend })).id
       await agent.sendTurn({
         conversationId: targetConversationId,
         sourceWindowId,
@@ -149,6 +168,15 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     } finally {
       setSubmitting(false)
     }
+  }
+
+  function selectProvider(provider: AgentProvider): void {
+    if (provider === 'local') return
+    setSelectedProviderState({ conversationId, provider })
+    if (!agent || !conversationId || !activeConversation) return
+    if (activeConversation.backend === provider) return
+
+    void agent.createConversation({ backend: provider })
   }
 
   function cancelTurn(): void {
@@ -238,28 +266,31 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                 })}
                 className="inline-flex h-8 items-center gap-1.5 rounded-full bg-transparent px-1.5 text-xs text-muted-foreground transition-colors hover:bg-transparent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
-                <Claude className="size-4" aria-hidden="true" />
+                <SelectedProviderIcon className="size-4" aria-hidden="true" />
                 <span>{selectedProviderLabel}</span>
                 <ChevronDown className="size-3" aria-hidden="true" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="min-w-36 border-0">
               <DropdownMenuItem
-                onSelect={() => setSelectedProvider('claude')}
+                onSelect={() => selectProvider('claude_cli')}
                 className="text-xs focus:bg-transparent focus:text-foreground"
               >
                 <Claude className="size-4 text-muted-foreground" aria-hidden="true" />
                 <span>{claudeProviderLabel}</span>
-                {selectedProvider === 'claude' && (
+                {selectedProvider === 'claude_cli' && (
                   <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
                 )}
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled
+                onSelect={() => selectProvider('codex_cli')}
                 className="text-xs focus:bg-transparent focus:text-foreground"
               >
                 <ChatGpt className="size-4 text-muted-foreground" aria-hidden="true" />
                 <span>{codexProviderLabel}</span>
+                {selectedProvider === 'codex_cli' && (
+                  <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
+                )}
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled
@@ -270,7 +301,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          {selectedProvider === 'claude' && (
+          {selectedProvider === 'claude_cli' && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button

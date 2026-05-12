@@ -12,6 +12,7 @@ export interface MainIpcInvokeHandlers {
   "agent:cancelTurn": (...args: [unknown]) => Awaited<Promise<{ ok: boolean; }>>
   "agent:createConversation": (...args: [unknown]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-agent").Conversation>>
   "agent:editTrustList": (...args: [unknown]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-agent").Conversation | null>>
+  "agent:getBackendStatuses": (...args: []) => Awaited<Promise<{ claude_cli: { detected: boolean; version: string | null; meetsMinimum: boolean; minimumRequired: string; installHint: string | null; }; codex_cli: { detected: boolean; version: string | null; meetsMinimum: boolean; minimumRequired: string; installHint: string | null; }; }>>
   "agent:getBinaryStatus": (...args: []) => Awaited<Promise<{ detected: boolean; version: string | null; meetsMinimum: boolean; minimumRequired: string; installHint: string | null; }>>
   "agent:getDisclosureState": (...args: []) => Awaited<import("../agent/runtime/disclosure-state").DisclosureState>
   "agent:getWindowId": (...args: []) => Awaited<{ windowId: string | null; }>

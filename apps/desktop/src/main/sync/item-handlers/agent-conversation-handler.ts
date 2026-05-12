@@ -146,7 +146,9 @@ export class AgentConversationHandler extends BaseItemHandler<AgentConversationS
         const nextPayload: AgentConversationSyncPayload = {
           ...localPayload,
           title: (merged.merged.title as string | undefined) ?? localPayload.title,
-          backend: (merged.merged.backend as string | undefined) ?? localPayload.backend,
+          backend:
+            (merged.merged.backend as AgentConversationSyncPayload['backend'] | undefined) ??
+            localPayload.backend,
           trustList: (merged.merged.trustList as string[] | undefined) ?? localPayload.trustList,
           pinned: (merged.merged.pinned as boolean | undefined) ?? localPayload.pinned,
           clock: resolution.mergedClock,

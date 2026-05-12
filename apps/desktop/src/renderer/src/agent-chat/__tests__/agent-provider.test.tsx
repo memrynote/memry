@@ -2,7 +2,12 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { BinaryStatus, Conversation, Message } from '@memry/contracts/ipc-agent'
+import type {
+  BackendStatusesResponse,
+  BinaryStatus,
+  Conversation,
+  Message
+} from '@memry/contracts/ipc-agent'
 
 const t = (key: string) => key
 
@@ -18,6 +23,17 @@ const binaryStatus: BinaryStatus = {
   meetsMinimum: true,
   minimumRequired: '2.1.0',
   installHint: null
+}
+
+const backendStatuses: BackendStatusesResponse = {
+  claude_cli: binaryStatus,
+  codex_cli: {
+    detected: true,
+    version: '0.130.0',
+    meetsMinimum: true,
+    minimumRequired: '0.130.0',
+    installHint: null
+  }
 }
 
 const conversation: Conversation = {
@@ -65,6 +81,7 @@ describe('AgentProvider', () => {
     approveTool: ReturnType<typeof vi.fn>
     editTrustList: ReturnType<typeof vi.fn>
     getBinaryStatus: ReturnType<typeof vi.fn>
+    getBackendStatuses: ReturnType<typeof vi.fn>
     getDisclosureState: ReturnType<typeof vi.fn>
     acceptDisclosure: ReturnType<typeof vi.fn>
     getWindowId: ReturnType<typeof vi.fn>
@@ -86,6 +103,7 @@ describe('AgentProvider', () => {
         trustList: ['vault_create_task']
       }),
       getBinaryStatus: vi.fn().mockResolvedValue(binaryStatus),
+      getBackendStatuses: vi.fn().mockResolvedValue(backendStatuses),
       getDisclosureState: vi.fn().mockResolvedValue({ accepted: false }),
       acceptDisclosure: vi.fn().mockResolvedValue({ accepted: true }),
       getWindowId: vi.fn().mockResolvedValue({ windowId: 'window-1' }),
@@ -106,6 +124,7 @@ describe('AgentProvider', () => {
     await waitFor(() => {
       expect(result.current.state.sourceWindowId).toBe('window-1')
       expect(result.current.state.binaryStatus).toEqual(binaryStatus)
+      expect(result.current.state.backendStatuses).toEqual(backendStatuses)
       expect(result.current.state.disclosureAccepted).toBe(false)
       expect(result.current.state.conversations[conversation.id]).toEqual(conversation)
     })
@@ -126,9 +145,10 @@ describe('AgentProvider', () => {
 
     let created: Conversation | undefined
     await act(async () => {
-      created = await result.current.createConversation()
+      created = await result.current.createConversation({ backend: 'codex_cli' })
     })
     expect(created?.id).toBe('conversation-2')
+    expect(agentApi.createConversation).toHaveBeenCalledWith({ backend: 'codex_cli' })
     await waitFor(() => expect(result.current.state.activeConversationId).toBe('conversation-2'))
 
     await act(async () => {

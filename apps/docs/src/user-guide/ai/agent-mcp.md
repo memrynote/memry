@@ -1,8 +1,8 @@
 # Agent Chat & MCP Server
 
-Memry can run an in-app Agent Chat backed by the Claude Code CLI. The desktop app starts a local
-MCP endpoint on `127.0.0.1` with a random port, then launches Claude with a strict MCP config for the
-current conversation.
+Memry can run an in-app Agent Chat backed by a local AI CLI. The desktop app starts a local MCP
+endpoint on `127.0.0.1` with a random port, then launches the selected provider with an ephemeral MCP
+config for the current conversation.
 
 The same MCP endpoint can also be copied into other desktop AI clients for vault read tools.
 
@@ -11,9 +11,15 @@ bearer token.
 
 ## Agent Chat
 
-Open the right sidebar, choose **Agent**, and enable Claude CLI chat. Memry checks that `claude` is
-available on `PATH`, that it reports version `2.1.0` or newer, and that the Agent disclosure has been
-accepted.
+Open the right sidebar, choose **Agent**, and enable Agent Chat. Memry checks the selected provider
+binary before a turn starts:
+
+- **Claude CLI** uses `claude` on `PATH`, version `2.1.0` or newer.
+- **Codex CLI** uses `codex` on `PATH`, version `0.130.0` or newer.
+
+The Agent disclosure must also be accepted before chat starts. Claude sends prompts and tool context
+to Anthropic through the Claude CLI. Codex sends prompts and tool context to OpenAI through the Codex
+CLI. Memry stores only encrypted local/synced chat history.
 
 Agent Chat can:
 
@@ -28,16 +34,18 @@ Press <kbd>Enter</kbd> to send the prompt. Press <kbd>Shift</kbd>+<kbd>Enter</kb
 new line in the prompt box.
 
 The prompt bar shows the selected agent provider. Claude also exposes prompt-time reasoning effort
-settings, with provider-specific settings shown only for the active provider.
+settings, with provider-specific settings shown only for the active provider. Switching providers
+from an active conversation creates a new empty conversation for that provider; existing
+conversations keep their stored backend.
 
 When no conversation is selected yet, the prompt box stays available. Sending the first prompt
 creates a new Agent Chat conversation, attaches the active note when one is open, and streams the
 reply into the sidebar.
 
-New conversations start with a temporary title. When you send the first prompt, the selected chat
-backend also generates a short conversation title. Memry stores that title on the encrypted
-conversation row and refreshes the sidebar title without giving the title-generation subprocess
-access to Memry MCP tools.
+New conversations start with a temporary title. Claude conversations generate a short title after the
+first prompt without giving the title-generation subprocess access to Memry MCP tools. Codex
+conversations keep the temporary title in the first version to avoid starting a second Codex
+subprocess for title generation.
 
 Conversation rows, message bodies, and message attachments are encrypted at rest before they are
 written to SQLite. Free accounts keep agent chat history local-only. Paid accounts can sync finalized
@@ -97,7 +105,7 @@ Create and update tools require Agent Chat context and explicit approval:
 - `vault_remove_tag`
 - `vault_move_to_folder`
 
-When Claude requests one of these tools from Agent Chat, Memry pauses the turn and shows an inline
+When the selected provider requests one of these tools from Agent Chat, Memry pauses the turn and shows an inline
 approval card in the conversation. You can allow the request once, allow create tools always for that
 conversation, deny it, or edit the arguments before allowing. Note updates load a before/after diff
 before the write is applied. Unauthenticated or context-free write requests continue to be denied.

@@ -10,6 +10,13 @@ const mocks = vi.hoisted(() => ({
     minimumRequired: '2.1.0',
     installHint: null
   })),
+  detectCodexBinary: vi.fn(async () => ({
+    detected: true,
+    version: '0.130.0',
+    meetsMinimum: true,
+    minimumRequired: '0.130.0',
+    installHint: null
+  })),
   runTurn: vi.fn(async () => ({ turnId: 'turn-1' })),
   snapshotAttachments: vi.fn(async () => [
     {
@@ -30,6 +37,9 @@ vi.mock('electron', () => ({
 }))
 vi.mock('../agent/cli/claude-binary', () => ({
   detectClaudeBinary: mocks.detectClaudeBinary
+}))
+vi.mock('../agent/cli/codex-binary', () => ({
+  detectCodexBinary: mocks.detectCodexBinary
 }))
 vi.mock('../agent/runtime/turn', () => ({
   runTurn: mocks.runTurn
@@ -169,6 +179,38 @@ describe('agent IPC handlers', () => {
     )
   })
 
+  it('creates Codex conversations and returns both backend statuses', async () => {
+    registerAgentHandlers(deps)
+
+    await findHandler(AgentChannels.invoke.CREATE_CONVERSATION)(null, {
+      vaultId: 'vault-1',
+      backend: 'codex_cli'
+    })
+    const statuses = await findHandler(AgentChannels.invoke.GET_BACKEND_STATUSES)(null)
+
+    expect(deps.conversations.create).toHaveBeenCalledWith({
+      vaultId: 'vault-1',
+      title: 'New conversation',
+      backend: 'codex_cli'
+    })
+    expect(statuses).toEqual({
+      claude_cli: {
+        detected: true,
+        version: '2.1.138',
+        meetsMinimum: true,
+        minimumRequired: '2.1.0',
+        installHint: null
+      },
+      codex_cli: {
+        detected: true,
+        version: '0.130.0',
+        meetsMinimum: true,
+        minimumRequired: '0.130.0',
+        installHint: null
+      }
+    })
+  })
+
   it('returns a busy result when another window already has a turn in flight', async () => {
     deps.runtime.acquireTurnLock.mockImplementationOnce(() => {
       throw new Error('There is already a turn in flight for conversation conversation-1')
@@ -229,6 +271,7 @@ describe('agent IPC handlers', () => {
       prompt: 'prompt',
       conversationId: 'conversation-1',
       windowId: 'window-1',
+      backend: 'codex_cli',
       effort: 'max'
     })
     await subprocess.cleanup()
@@ -238,6 +281,7 @@ describe('agent IPC handlers', () => {
         prompt: 'prompt',
         conversationId: 'conversation-1',
         windowId: 'window-1',
+        backend: 'codex_cli',
         effort: 'max'
       })
     )
