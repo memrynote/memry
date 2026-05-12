@@ -14,6 +14,24 @@ const logger = createLogger('AI:ChatServer')
 
 let server: http.Server | null = null
 let currentPort: number | null = null
+let currentSettingsKey: string | null = null
+let startInFlight: { key: string; promise: Promise<number> } | null = null
+
+function getSettingsKey(settings: AIInlineSettings): string {
+  return JSON.stringify({
+    enabled: settings.enabled,
+    provider: settings.provider,
+    model: settings.model,
+    apiKey: settings.apiKey,
+    baseUrl: settings.baseUrl
+  })
+}
+
+function getRunningPortFor(settingsKey: string): number | null {
+  if (!server?.listening) return null
+  if (currentPort === null || currentSettingsKey !== settingsKey) return null
+  return currentPort
+}
 
 export function getServerPort(): number | null {
   if (!server?.listening) return null
@@ -21,14 +39,31 @@ export function getServerPort(): number | null {
 }
 
 export async function startChatServer(settings: AIInlineSettings): Promise<number> {
+  const settingsKey = getSettingsKey(settings)
+  const runningPort = getRunningPortFor(settingsKey)
+  if (runningPort !== null) {
+    return runningPort
+  }
+
+  if (startInFlight) {
+    if (startInFlight.key === settingsKey) {
+      return startInFlight.promise
+    }
+
+    await startInFlight.promise.catch(() => undefined)
+    const portAfterPendingStart = getRunningPortFor(settingsKey)
+    if (portAfterPendingStart !== null) {
+      return portAfterPendingStart
+    }
+  }
+
   if (server) {
     await stopChatServer()
   }
 
   const model = createLanguageModel(settings)
-
-  return new Promise((resolve, reject) => {
-    server = http.createServer((req, res) => {
+  const startPromise = new Promise<number>((resolve, reject) => {
+    const nextServer = http.createServer((req, res) => {
       res.setHeader('Access-Control-Allow-Origin', '*')
       res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
@@ -54,10 +89,15 @@ export async function startChatServer(settings: AIInlineSettings): Promise<numbe
       res.end('Not found')
     })
 
-    server.listen(0, '127.0.0.1', () => {
-      const addr = server!.address()
+    server = nextServer
+    currentPort = null
+    currentSettingsKey = null
+
+    nextServer.listen(0, '127.0.0.1', () => {
+      const addr = nextServer.address()
       if (addr && typeof addr === 'object') {
         currentPort = addr.port
+        currentSettingsKey = settingsKey
         logger.info(`Started on port ${currentPort}`)
         resolve(currentPort)
       } else {
@@ -65,22 +105,59 @@ export async function startChatServer(settings: AIInlineSettings): Promise<numbe
       }
     })
 
-    server.on('error', (err) => {
+    nextServer.on('error', (err) => {
+      if (server === nextServer) {
+        server = null
+        currentPort = null
+        currentSettingsKey = null
+      }
       logger.error('Server error:', err)
       reject(err)
     })
   })
+
+  startInFlight = { key: settingsKey, promise: startPromise }
+
+  try {
+    return await startPromise
+  } finally {
+    if (startInFlight?.promise === startPromise) {
+      startInFlight = null
+    }
+  }
 }
 
 export async function stopChatServer(): Promise<void> {
+  const pendingStart = startInFlight?.promise
+  if (pendingStart) {
+    await pendingStart.catch(() => undefined)
+  }
+
   return new Promise((resolve) => {
     if (!server) {
+      currentPort = null
+      currentSettingsKey = null
       resolve()
       return
     }
-    server.close(() => {
-      server = null
-      currentPort = null
+
+    const closingServer = server
+    if (!closingServer.listening) {
+      if (server === closingServer) {
+        server = null
+        currentPort = null
+        currentSettingsKey = null
+      }
+      resolve()
+      return
+    }
+
+    closingServer.close(() => {
+      if (server === closingServer) {
+        server = null
+        currentPort = null
+        currentSettingsKey = null
+      }
       logger.info('Stopped')
       resolve()
     })

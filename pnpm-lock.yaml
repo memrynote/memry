@@ -696,8 +696,8 @@ importers:
         specifier: ^3.4.0
         version: 3.4.0
       vercel:
-        specifier: ^52.2.0
-        version: 52.2.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.8.1)(encoding@0.1.13)(rollup@4.60.1)(typescript@5.9.3)
+        specifier: ^52.0.0
+        version: 52.2.1(@emnapi/core@1.10.0)(@emnapi/runtime@1.8.1)(encoding@0.1.13)(rollup@4.60.1)(typescript@5.9.3)
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.1
@@ -4882,8 +4882,8 @@ packages:
   '@vercel/python-analysis@0.11.1':
     resolution: {integrity: sha512-EPPLuXJQhIDUx08H9nG76AR2HSgBquwe3OAX5s2w20M923iaWeGGVkhX/4yZ89CJfXEZgE1Aj/mX7lVHOVIcYA==}
 
-  '@vercel/python@6.36.0':
-    resolution: {integrity: sha512-GLCX2JV2zfjGoSaANWi6gfL1z1IO02ulFhDOGYlOwBmVb1qQFLLssTnbN5uDO5heWm5Owi2/eqBG+l2E7TXiVQ==}
+  '@vercel/python@6.36.1':
+    resolution: {integrity: sha512-N/vgn3G0k8MW3TgdYSCrKoe8vWI49vUjDZYl3dqPt7sSD8wwPalp2Us/0uwY/oUyI1pFdY0uHvR17HOuMhZEbg==}
 
   '@vercel/redwood@2.4.12':
     resolution: {integrity: sha512-8kJ7eEerI4iMpKVRxQCsnxiIwRVsWtyirEbYb4erCqqsJymTu/xrjhsfAUuzeP8qkuYGP82MJVK+hpKlFtsjGw==}
@@ -10604,8 +10604,8 @@ packages:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
 
-  vercel@52.2.0:
-    resolution: {integrity: sha512-iwFQ7kMudNlu8/LTAFnxRgyaAHeEcK2AEo9TBGSudGugjcz0PoqVRlaoj2B5SGefE87nNSi0ky+T6yGMuYKcOg==}
+  vercel@52.2.1:
+    resolution: {integrity: sha512-/SabFfhZUp3uTqrCHzTZSPDFZU4cwKlCLF3McN9vrA5Gyk0ldvHruBqZNuFtW5Y3J8aSIiREzLxbmL3H8uTquw==}
     engines: {node: '>= 18'}
     hasBin: true
 
@@ -22089,7 +22089,7 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vercel@52.2.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.8.1)(encoding@0.1.13)(rollup@4.60.1)(typescript@5.9.3):
+  vercel@52.2.1(@emnapi/core@1.10.0)(@emnapi/runtime@1.8.1)(encoding@0.1.13)(rollup@4.60.1)(typescript@5.9.3):
     dependencies:
       '@vercel/backends': 0.2.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.8.1)(encoding@0.1.13)(rollup@4.60.1)(typescript@5.9.3)
       '@vercel/blob': 2.3.0
@@ -22109,7 +22109,7 @@ snapshots:
       '@vercel/next': 4.16.8(encoding@0.1.13)(rollup@4.60.1)
       '@vercel/node': 5.7.13(encoding@0.1.13)(rollup@4.60.1)
       '@vercel/prepare-flags-definitions': 0.2.1
-      '@vercel/python': 6.36.0
+      '@vercel/python': 6.36.1
       '@vercel/redwood': 2.4.12(encoding@0.1.13)(rollup@4.60.1)
       '@vercel/remix-builder': 5.7.2(encoding@0.1.13)(rollup@4.60.1)
       '@vercel/ruby': 2.3.2

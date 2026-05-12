@@ -6,11 +6,11 @@ Configure the LLM provider used by the inline AI menu in the editor. Open from [
 
 ## Supported Providers
 
-| Provider | Runs | Needs |
-| --- | --- | --- |
-| **Ollama** | Locally on your machine | Ollama installed and running |
-| **OpenAI** | OpenAI cloud | API key |
-| **Anthropic** | Anthropic cloud | API key |
+| Provider      | Runs                    | Needs                        |
+| ------------- | ----------------------- | ---------------------------- |
+| **Ollama**    | Locally on your machine | Ollama installed and running |
+| **OpenAI**    | OpenAI cloud            | API key                      |
+| **Anthropic** | Anthropic cloud         | API key                      |
 
 Each provider has its own model presets in the dropdown.
 
@@ -77,6 +77,8 @@ A status indicator (green / yellow / red) shows the most recent test result.
 
 You can change provider at any time. Memory of past prompts is local — switching doesn't carry conversation state.
 
+Memry keeps one local inline-AI bridge running for the active provider settings. Re-opening the editor or another window reuses that bridge when settings are unchanged; changing provider, model, base URL, or API key restarts it with the new configuration.
+
 ## Where Keys Live
 
 API keys are stored **locally**, in the vault, encrypted with the vault key. They:
@@ -89,12 +91,12 @@ Rotating a key in the provider's dashboard requires updating it here too.
 
 ## Troubleshooting
 
-| Symptom | Likely cause |
-| --- | --- |
-| "Cannot connect" with Ollama | Ollama not running; check `http://localhost:11434/v1/models` |
-| "Unauthorized" with OpenAI / Anthropic | Wrong key, expired, or rate-limited |
-| "Model not found" | Model name typo or not pulled (Ollama) / not enabled in your account |
-| Test passes but inline menu doesn't appear | AI Inline toggle off in settings |
+| Symptom                                    | Likely cause                                                         |
+| ------------------------------------------ | -------------------------------------------------------------------- |
+| "Cannot connect" with Ollama               | Ollama not running; check `http://localhost:11434/v1/models`         |
+| "Unauthorized" with OpenAI / Anthropic     | Wrong key, expired, or rate-limited                                  |
+| "Model not found"                          | Model name typo or not pulled (Ollama) / not enabled in your account |
+| Test passes but inline menu doesn't appear | AI Inline toggle off in settings                                     |
 
 ## See Also
 
