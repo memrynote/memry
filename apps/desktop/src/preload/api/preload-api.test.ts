@@ -853,6 +853,11 @@ describe('preload api wrappers', () => {
       AgentChannels.invoke.GET_BACKEND_STATUSES
     )
     await expectInvoke(
+      () => agentApi.listBackendModels({ backend: 'codex_cli' }),
+      AgentChannels.invoke.LIST_BACKEND_MODELS,
+      { backend: 'codex_cli' }
+    )
+    await expectInvoke(
       () => agentApi.getLocalProviderSettings(),
       AgentChannels.invoke.GET_LOCAL_PROVIDER_SETTINGS
     )

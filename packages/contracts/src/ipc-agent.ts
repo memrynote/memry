@@ -20,6 +20,7 @@ export const AgentChannels = {
     PREVIEW_DIFF: 'agent:previewDiff',
     EDIT_TRUST_LIST: 'agent:editTrustList',
     GET_BACKEND_STATUSES: 'agent:getBackendStatuses',
+    LIST_BACKEND_MODELS: 'agent:listBackendModels',
     GET_LOCAL_PROVIDER_SETTINGS: 'agent:getLocalProviderSettings',
     SET_LOCAL_PROVIDER_SETTINGS: 'agent:setLocalProviderSettings',
     LIST_LOCAL_MODELS: 'agent:listLocalModels',
@@ -52,6 +53,9 @@ export const AgentBackendIdSchema = z.enum(['claude_cli', 'codex_cli', 'local_op
 export type AgentBackendId = z.infer<typeof AgentBackendIdSchema>
 export const DEFAULT_AGENT_BACKEND_ID: AgentBackendId = 'claude_cli'
 
+export const AgentCliBackendIdSchema = z.enum(['claude_cli', 'codex_cli'])
+export type AgentCliBackendId = z.infer<typeof AgentCliBackendIdSchema>
+
 export const CodexReasoningEffortSchema = z.enum(['low', 'medium', 'high', 'xhigh'])
 export type CodexReasoningEffort = z.infer<typeof CodexReasoningEffortSchema>
 
@@ -63,13 +67,15 @@ export const AgentBackendOptionsSchema = z
     z
       .object({
         backend: z.literal('claude_cli'),
-        claudeEffort: ClaudeEffortSchema.default(DEFAULT_CLAUDE_EFFORT)
+        claudeEffort: ClaudeEffortSchema.default(DEFAULT_CLAUDE_EFFORT),
+        model: z.string().min(1).optional()
       })
       .strict(),
     z
       .object({
         backend: z.literal('codex_cli'),
-        reasoningEffort: CodexReasoningEffortSchema.default('medium')
+        reasoningEffort: CodexReasoningEffortSchema.default('medium'),
+        model: z.string().min(1).optional()
       })
       .strict(),
     z
@@ -82,6 +88,30 @@ export const AgentBackendOptionsSchema = z
   ])
   .default({ backend: 'claude_cli', claudeEffort: DEFAULT_CLAUDE_EFFORT })
 export type AgentBackendOptions = z.infer<typeof AgentBackendOptionsSchema>
+
+export const AgentBackendModelListRequestSchema = z
+  .object({
+    backend: AgentCliBackendIdSchema
+  })
+  .strict()
+export type AgentBackendModelListRequest = z.infer<typeof AgentBackendModelListRequestSchema>
+
+export const AgentBackendModelOptionSchema = z
+  .object({
+    id: z.string().min(1),
+    label: z.string().min(1)
+  })
+  .strict()
+export type AgentBackendModelOption = z.infer<typeof AgentBackendModelOptionSchema>
+
+export const AgentBackendModelListSchema = z
+  .object({
+    backend: AgentCliBackendIdSchema,
+    supportsCustomModel: z.boolean(),
+    models: z.array(AgentBackendModelOptionSchema)
+  })
+  .strict()
+export type AgentBackendModelList = z.infer<typeof AgentBackendModelListSchema>
 
 export const AgentLocalProviderSettingsSchema = z
   .object({

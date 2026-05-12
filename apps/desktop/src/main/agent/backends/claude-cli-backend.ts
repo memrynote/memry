@@ -49,11 +49,13 @@ export class ClaudeCliBackend implements AgentBackend {
   private async run(input: AgentBackendRunInput, purpose: 'turn' | 'summary' | 'title') {
     const effort =
       input.options.backend === 'claude_cli' ? input.options.claudeEffort : DEFAULT_CLAUDE_EFFORT
+    const model = input.options.backend === 'claude_cli' ? input.options.model : undefined
     const subprocess = await this.deps.spawn({
       prompt: input.prompt,
       conversationId: input.conversationId,
       windowId: input.windowId,
       effort,
+      model,
       purpose
     })
 

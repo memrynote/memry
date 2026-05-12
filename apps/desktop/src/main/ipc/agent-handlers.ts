@@ -2,11 +2,13 @@ import { BrowserWindow, ipcMain, type WebContents } from 'electron'
 
 import {
   AgentBackendIdSchema,
+  AgentBackendModelListRequestSchema,
   AgentChannels,
   AgentLocalProviderSettingsUpdateSchema,
   ApproveToolRequestSchema,
   PreviewDiffRequestSchema,
   type AgentBackendOptions,
+  type AgentBackendModelList,
   type AgentLocalModelList,
   type AgentLocalProviderProbeResult,
   type AgentLocalProviderSettings,
@@ -29,6 +31,27 @@ import { broadcastAgentEvent } from '../agent/runtime/event-bus'
 import { createLogger } from '../lib/logger'
 
 const logger = createLogger('IPC:Agent')
+
+const CLI_MODEL_OPTIONS: Record<'claude_cli' | 'codex_cli', AgentBackendModelList> = {
+  claude_cli: {
+    backend: 'claude_cli',
+    supportsCustomModel: true,
+    models: [
+      { id: 'sonnet', label: 'Sonnet' },
+      { id: 'haiku', label: 'Haiku' },
+      { id: 'opus', label: 'Opus' }
+    ]
+  },
+  codex_cli: {
+    backend: 'codex_cli',
+    supportsCustomModel: true,
+    models: [
+      { id: 'gpt-5.5', label: 'GPT-5.5' },
+      { id: 'gpt-5.4', label: 'GPT-5.4' },
+      { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini' }
+    ]
+  }
+}
 
 interface AgentHandlerDeps {
   runtime: Pick<
@@ -227,6 +250,10 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
   })
 
   ipcMain.handle(AgentChannels.invoke.GET_BACKEND_STATUSES, () => getBackendStatuses(deps))
+  ipcMain.handle(AgentChannels.invoke.LIST_BACKEND_MODELS, async (_event, payload: unknown) => {
+    const request = AgentBackendModelListRequestSchema.parse(payload)
+    return CLI_MODEL_OPTIONS[request.backend]
+  })
   ipcMain.handle(AgentChannels.invoke.GET_LOCAL_PROVIDER_SETTINGS, () =>
     deps.localProvider.getSettings()
   )
@@ -284,6 +311,10 @@ export function registerUnavailableAgentHandlers(reason: string): void {
       detail: message
     }
   }))
+  registerUnavailableHandler(AgentChannels.invoke.LIST_BACKEND_MODELS, (_event, payload) => {
+    const request = AgentBackendModelListRequestSchema.parse(payload)
+    return CLI_MODEL_OPTIONS[request.backend]
+  })
   registerUnavailableHandler(AgentChannels.invoke.GET_LOCAL_PROVIDER_SETTINGS, async () =>
     unavailable()
   )
@@ -321,7 +352,9 @@ async function backendModelFromOptions(
   options: AgentBackendOptions,
   deps: AgentHandlerDeps
 ): Promise<string | null> {
-  if (options.backend !== 'local_openai_compatible') return null
+  if (options.backend === 'claude_cli' || options.backend === 'codex_cli') {
+    return options.model ?? null
+  }
   if (options.model) return options.model
   const settings = await deps.localProvider.getSettings()
   return settings.model || null

@@ -16,6 +16,7 @@ export interface MainIpcInvokeHandlers {
   "agent:getDisclosureState": (...args: []) => Awaited<import("../agent/runtime/disclosure-state").DisclosureState>
   "agent:getLocalProviderSettings": (...args: []) => Awaited<Promise<{ preset: "custom" | "ollama" | "lm_studio" | "llama_cpp"; baseUrl: string; model: string; apiKeyConfigured: boolean; allowNonLoopback: boolean; }>>
   "agent:getWindowId": (...args: []) => Awaited<{ windowId: string | null; }>
+  "agent:listBackendModels": (...args: [unknown]) => Awaited<Promise<{ backend: "claude_cli" | "codex_cli"; supportsCustomModel: boolean; models: { id: string; label: string; }[]; }>>
   "agent:listConversations": (...args: [unknown]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-agent").Conversation[]>>
   "agent:listLocalModels": (...args: []) => Awaited<Promise<{ models: string[]; }>>
   "agent:loadConversation": (...args: [unknown]) => Awaited<Promise<{ conversation: import("../../../../../packages/contracts/src/ipc-agent").Conversation | null; messages: import("../../../../../packages/contracts/src/ipc-agent").Message[]; }>>
