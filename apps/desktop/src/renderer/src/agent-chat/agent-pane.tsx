@@ -11,7 +11,7 @@ export function AgentPane(): React.JSX.Element {
   if (!agent) {
     return (
       <section
-        className="flex h-full min-h-0 flex-col bg-sidebar"
+        className="flex h-full min-h-0 flex-col bg-background"
         aria-label={t('agentChat.title')}
       >
         <div className="border-b border-sidebar-border px-4 py-3">

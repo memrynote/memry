@@ -6,10 +6,9 @@
 
 import { useRef, useState, useLayoutEffect, useCallback } from 'react'
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
-import { ChevronLeft, ChevronRight, LayoutAlignRightIcon, PanelRightIcon } from '@/lib/icons'
-import { SidebarGraph } from '@/lib/icons/sidebar-nav-icons'
+import { ChevronLeft, ChevronRight, LayoutAlignRightIcon } from '@/lib/icons'
 import { useDayPanel } from '@/contexts/day-panel-context'
-import { useTabGroup, useTabs } from '@/contexts/tabs'
+import { useTabGroup } from '@/contexts/tabs'
 import { useSidebar } from '@/components/ui/sidebar'
 import { SortableTab } from './sortable-tab'
 import { PinnedTab } from './pinned-tab'
@@ -25,6 +24,8 @@ interface TabBarWithDragProps {
   groupId: string
   /** Whether to show the sidebar collapse toggle (hidden in split panes) */
   showSidebarToggle?: boolean
+  /** Whether this tab bar should reserve space for the fixed day panel */
+  reserveDayPanelSpace?: boolean
   /** Additional CSS classes */
   className?: string
 }
@@ -36,30 +37,20 @@ interface TabBarWithDragProps {
 export const TabBarWithDrag = ({
   groupId,
   showSidebarToggle = true,
+  reserveDayPanelSpace = true,
   className
 }: TabBarWithDragProps): React.JSX.Element | null => {
   const { t: tPhaseF } = useT('common')
   const group = useTabGroup(groupId)
-  const { toggle: toggleDayPanel, isOpen: isDayPanelOpen } = useDayPanel()
-  const { openTab, getActiveTab } = useTabs()
+  const {
+    toggle: toggleDayPanel,
+    isOpen: isDayPanelOpen,
+    width: dayPanelWidth,
+    isResizing: isDayPanelResizing
+  } = useDayPanel()
   const { state: sidebarState } = useSidebar()
   const needsChromeSpacer = sidebarState === 'collapsed' && showSidebarToggle
-
-  const isGraphActive = getActiveTab()?.type === 'graph'
-  const DayPanelIcon = isDayPanelOpen ? PanelRightIcon : LayoutAlignRightIcon
-
-  const handleGraphClick = useCallback(() => {
-    openTab({
-      type: 'graph',
-      title: 'Graph',
-      icon: 'graph',
-      path: '/graph',
-      isPinned: false,
-      isModified: false,
-      isPreview: false,
-      isDeleted: false
-    })
-  }, [openTab])
+  const shouldReserveDayPanelSpace = reserveDayPanelSpace && isDayPanelOpen
 
   // Scroll state
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -118,10 +109,13 @@ export const TabBarWithDrag = ({
           'bg-transparent',
           'relative',
           'border-b border-border',
-          'transition-[padding-left] duration-200 ease-linear',
-          needsChromeSpacer && 'pl-[var(--chrome-width)]',
+          isDayPanelResizing
+            ? 'transition-[padding-inline-start] duration-200 ease-linear'
+            : 'transition-[padding-inline-start,margin-inline-end] duration-200 ease-linear',
+          needsChromeSpacer && 'ps-[var(--chrome-width)]',
           className
         )}
+        style={{ marginInlineEnd: shouldReserveDayPanelSpace ? `${dayPanelWidth}px` : 0 }}
         role="tablist"
         aria-label={tPhaseF('phaseF.componentsTabsTabBarWithDrag.openTabs')}
         aria-orientation="horizontal"
@@ -154,7 +148,7 @@ export const TabBarWithDrag = ({
               'bg-gradient-to-r from-muted/95 via-muted/70 to-transparent',
               'hover:from-surface-active/95',
               'transition-all duration-150 ease-out z-20',
-              'absolute left-0 bottom-px'
+              'absolute start-0 bottom-px'
             )}
             aria-label={tPhaseF('phaseF.componentsTabsTabBarWithDrag.scrollTabsLeft')}
           >
@@ -170,8 +164,8 @@ export const TabBarWithDrag = ({
             'scroll-smooth',
             'scrollbar-none [&::-webkit-scrollbar]:hidden',
             '[-ms-overflow-style:none] [scrollbar-width:none]',
-            canScrollLeft && 'pl-7',
-            canScrollRight && 'pr-7'
+            canScrollLeft && 'ps-7',
+            canScrollRight && 'pe-7'
           )}
         >
           <SortableContext
@@ -207,7 +201,7 @@ export const TabBarWithDrag = ({
               'bg-gradient-to-l from-muted/95 via-muted/70 to-transparent',
               'hover:from-surface-active/95',
               'transition-all duration-150 ease-out z-20',
-              'absolute right-[72px] bottom-px'
+              isDayPanelOpen ? 'absolute end-0 bottom-px' : 'absolute end-[48px] bottom-px'
             )}
             aria-label={tPhaseF('phaseF.componentsTabsTabBarWithDrag.scrollTabsRight')}
           >
@@ -216,40 +210,15 @@ export const TabBarWithDrag = ({
         )}
 
         {/* Tab actions */}
-        <div
-          className={cn(
-            'no-drag flex items-center pr-[13px] pl-2 gap-1 ml-auto',
-            isDayPanelOpen
-              ? 'self-stretch bg-sidebar border-l border-sidebar-border rounded-tl-md relative z-10 mb-[-1px] pb-px'
-              : 'self-center'
-          )}
-        >
-          <TabBarAction
-            icon={
-              <SidebarGraph
-                className={cn(
-                  'w-4 h-4 transition-colors duration-150',
-                  isGraphActive && 'text-tint'
-                )}
-              />
-            }
-            tooltip={tPhaseF('phaseF.componentsTabsTabBarWithDrag.graphG')}
-            onClick={handleGraphClick}
-          />
-          <TabBarAction
-            icon={
-              <DayPanelIcon
-                className={cn(
-                  'w-4 h-4 transition-colors duration-150',
-                  isDayPanelOpen && 'text-tint'
-                )}
-              />
-            }
-            tooltip={tPhaseF('phaseF.componentsTabsTabBarWithDrag.dayPanel')}
-            onClick={toggleDayPanel}
-            isActive={isDayPanelOpen}
-          />
-        </div>
+        {!isDayPanelOpen && (
+          <div className="no-drag ms-auto flex items-center gap-1 self-center pe-[13px] ps-2">
+            <TabBarAction
+              icon={<LayoutAlignRightIcon className="w-4 h-4 transition-colors duration-150" />}
+              tooltip={tPhaseF('phaseF.componentsTabsTabBarWithDrag.dayPanel')}
+              onClick={toggleDayPanel}
+            />
+          </div>
+        )}
       </div>
     </TabBarContextMenu>
   )
