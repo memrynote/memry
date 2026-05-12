@@ -202,6 +202,33 @@ describe('agent IPC handlers', () => {
     expect(deps.backends.get).toHaveBeenCalledWith('local_openai_compatible')
   })
 
+  it('returns suggested CLI backend models with custom model support', async () => {
+    registerAgentHandlers(deps)
+
+    await expect(
+      findHandler(AgentChannels.invoke.LIST_BACKEND_MODELS)(null, { backend: 'claude_cli' })
+    ).resolves.toEqual({
+      backend: 'claude_cli',
+      supportsCustomModel: true,
+      models: [
+        { id: 'sonnet', label: 'Sonnet' },
+        { id: 'haiku', label: 'Haiku' },
+        { id: 'opus', label: 'Opus' }
+      ]
+    })
+    await expect(
+      findHandler(AgentChannels.invoke.LIST_BACKEND_MODELS)(null, { backend: 'codex_cli' })
+    ).resolves.toEqual({
+      backend: 'codex_cli',
+      supportsCustomModel: true,
+      models: [
+        { id: 'gpt-5.5', label: 'GPT-5.5' },
+        { id: 'gpt-5.4', label: 'GPT-5.4' },
+        { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini' }
+      ]
+    })
+  })
+
   it('runs a turn with snapshotted attachments', async () => {
     registerAgentHandlers(deps)
 
@@ -239,6 +266,24 @@ describe('agent IPC handlers', () => {
           }
         ]
       })
+    )
+  })
+
+  it('stores selected CLI model metadata on the conversation before running a turn', async () => {
+    registerAgentHandlers(deps)
+
+    await findHandler(AgentChannels.invoke.SEND_TURN)(null, {
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'hi',
+      attachments: [],
+      backendOptions: { backend: 'claude_cli', claudeEffort: 'low', model: 'sonnet' }
+    })
+
+    expect(deps.conversations.update).toHaveBeenCalledWith(
+      'conversation-1',
+      { backend: 'claude_cli', backendModel: 'sonnet' },
+      ['backendModel']
     )
   })
 

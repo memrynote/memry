@@ -17,6 +17,7 @@ export interface SpawnOptions {
   windowId: string
   allowedTools: string
   effort: ClaudeEffort
+  model?: string
   prompt: string
 }
 
@@ -64,6 +65,9 @@ export async function spawnClaudeTurn(opts: SpawnOptions): Promise<ClaudeSubproc
     '--effort',
     opts.effort
   ]
+  if (opts.model) {
+    args.push('--model', opts.model)
+  }
 
   logger.info(`Spawning claude with strict MCP config`)
   const proc = spawn(opts.binaryPath, args, {

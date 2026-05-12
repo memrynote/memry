@@ -1,6 +1,8 @@
 import type {
   AgentEvent,
   AgentBackendId,
+  AgentBackendModelList,
+  AgentBackendModelListRequest,
   AgentLocalModelList,
   AgentLocalProviderProbeResult,
   AgentLocalProviderSettings,
@@ -46,6 +48,8 @@ export const agentApi = {
   }): Promise<Conversation | null> => invoke(AgentChannels.invoke.EDIT_TRUST_LIST, input),
   getBackendStatuses: (): Promise<BackendStatusesResponse> =>
     invoke(AgentChannels.invoke.GET_BACKEND_STATUSES),
+  listBackendModels: (input: AgentBackendModelListRequest): Promise<AgentBackendModelList> =>
+    invoke(AgentChannels.invoke.LIST_BACKEND_MODELS, input),
   getLocalProviderSettings: (): Promise<AgentLocalProviderSettings> =>
     invoke(AgentChannels.invoke.GET_LOCAL_PROVIDER_SETTINGS),
   setLocalProviderSettings: (

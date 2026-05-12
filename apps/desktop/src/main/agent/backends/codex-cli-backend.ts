@@ -47,11 +47,13 @@ export class CodexCliBackend implements AgentBackend {
   private async run(input: AgentBackendRunInput, purpose: 'turn' | 'summary' | 'title') {
     const reasoningEffort =
       input.options.backend === 'codex_cli' ? input.options.reasoningEffort : 'medium'
+    const model = input.options.backend === 'codex_cli' ? input.options.model : undefined
     const subprocess = await this.deps.spawn({
       prompt: input.prompt,
       conversationId: input.conversationId,
       windowId: input.windowId,
       reasoningEffort,
+      model,
       purpose
     })
 

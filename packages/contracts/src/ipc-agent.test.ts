@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   AgentBackendIdSchema,
+  AgentBackendModelListSchema,
   BackendStatusesResponseSchema,
   AgentBackendOptionsSchema,
   AgentChannels,
@@ -31,6 +32,7 @@ describe('AgentChannels', () => {
         PREVIEW_DIFF: 'agent:previewDiff',
         EDIT_TRUST_LIST: 'agent:editTrustList',
         GET_BACKEND_STATUSES: 'agent:getBackendStatuses',
+        LIST_BACKEND_MODELS: 'agent:listBackendModels',
         GET_LOCAL_PROVIDER_SETTINGS: 'agent:getLocalProviderSettings',
         SET_LOCAL_PROVIDER_SETTINGS: 'agent:setLocalProviderSettings',
         LIST_LOCAL_MODELS: 'agent:listLocalModels',
@@ -59,13 +61,15 @@ describe('agent IPC schemas', () => {
     expect(
       AgentBackendOptionsSchema.safeParse({
         backend: 'claude_cli',
-        claudeEffort: 'xhigh'
+        claudeEffort: 'xhigh',
+        model: 'sonnet'
       }).success
     ).toBe(true)
     expect(
       AgentBackendOptionsSchema.safeParse({
         backend: 'codex_cli',
-        reasoningEffort: 'high'
+        reasoningEffort: 'high',
+        model: 'gpt-5.5'
       }).success
     ).toBe(true)
     expect(
@@ -79,6 +83,34 @@ describe('agent IPC schemas', () => {
       AgentBackendOptionsSchema.safeParse({
         backend: 'local_openai_compatible',
         claudeEffort: 'xhigh'
+      }).success
+    ).toBe(false)
+    expect(
+      AgentBackendOptionsSchema.safeParse({
+        backend: 'claude_cli',
+        claudeEffort: 'xhigh',
+        reasoningEffort: 'medium'
+      }).success
+    ).toBe(false)
+  })
+
+  it('validates CLI backend model suggestion lists with custom entry support', () => {
+    expect(
+      AgentBackendModelListSchema.safeParse({
+        backend: 'codex_cli',
+        supportsCustomModel: true,
+        models: [
+          { id: 'gpt-5.5', label: 'GPT-5.5' },
+          { id: 'gpt-5.4', label: 'GPT-5.4' }
+        ]
+      }).success
+    ).toBe(true)
+
+    expect(
+      AgentBackendModelListSchema.safeParse({
+        backend: 'local_openai_compatible',
+        supportsCustomModel: true,
+        models: []
       }).success
     ).toBe(false)
   })

@@ -79,6 +79,7 @@ export async function startAgent(): Promise<AgentHandle> {
     conversationId,
     windowId,
     effort,
+    model,
     purpose = 'turn'
   }: ClaudeCliSpawnInput) => {
     const binary = await detectClaudeBinary()
@@ -99,6 +100,7 @@ export async function startAgent(): Promise<AgentHandle> {
       windowId,
       allowedTools: purpose === 'turn' ? ALLOWED_AGENT_TOOLS : '',
       effort,
+      model,
       prompt
     })
 
@@ -126,6 +128,7 @@ export async function startAgent(): Promise<AgentHandle> {
     conversationId,
     windowId,
     reasoningEffort,
+    model,
     purpose = 'turn'
   }: CodexCliSpawnInput) => {
     const binary = await detectCodexBinary()
@@ -142,6 +145,7 @@ export async function startAgent(): Promise<AgentHandle> {
       binaryPath: 'codex',
       prompt,
       reasoningEffort,
+      model,
       ...(status?.url && status['token']
         ? {
             mcp: {

@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 
 import type {
   AgentBackendId,
+  AgentBackendModelList,
+  AgentCliBackendId,
   AgentBackendOptions,
   AttachmentInput,
   ClaudeEffort
@@ -18,6 +20,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useActiveTab } from '@/contexts/tabs'
 import { ChatGpt, Check, ChevronDown, Claude, Computer, Send, Square, X } from '@/lib/icons'
@@ -30,6 +33,31 @@ interface ComposerProps {
 }
 
 type AgentProvider = 'claude_cli' | 'codex_cli' | 'local_openai_compatible'
+
+const DEFAULT_CLAUDE_MODEL = 'opus'
+
+const DEFAULT_SELECTED_MODELS: Record<AgentCliBackendId, string | null> = {
+  claude_cli: DEFAULT_CLAUDE_MODEL,
+  codex_cli: null
+}
+
+const EMPTY_MODEL_OPTIONS: Record<AgentCliBackendId, AgentBackendModelList | null> = {
+  claude_cli: null,
+  codex_cli: null
+}
+
+const MODEL_LABEL_FALLBACKS: Record<AgentCliBackendId, Record<string, string>> = {
+  claude_cli: {
+    sonnet: 'Sonnet',
+    haiku: 'Haiku',
+    opus: 'Opus'
+  },
+  codex_cli: {
+    'gpt-5.5': 'GPT-5.5',
+    'gpt-5.4': 'GPT-5.4',
+    'gpt-5.4-mini': 'GPT-5.4 Mini'
+  }
+}
 
 const claudeReasoningOptions: Array<{
   value: ClaudeEffort
@@ -73,16 +101,68 @@ function resizePromptTextarea(textarea: HTMLTextAreaElement): void {
   textarea.style.height = `${textarea.scrollHeight}px`
 }
 
+function isCliProvider(provider: AgentProvider): provider is AgentCliBackendId {
+  return provider === 'claude_cli' || provider === 'codex_cli'
+}
+
+function codexModelVersion(modelId: string): number[] | null {
+  const match = /^gpt[-_]?(\d+(?:[.-]\d+)*)(?:-.+)?$/i.exec(modelId)
+  if (!match) return null
+  return match[1].split(/[.-]/).map((segment) => Number(segment))
+}
+
+function compareCodexModels(left: string, right: string): number {
+  const leftVersion = codexModelVersion(left)
+  const rightVersion = codexModelVersion(right)
+  if (!leftVersion && !rightVersion) return 0
+  if (leftVersion && !rightVersion) return 1
+  if (!leftVersion && rightVersion) return -1
+
+  const maxLength = Math.max(leftVersion!.length, rightVersion!.length)
+  for (let index = 0; index < maxLength; index += 1) {
+    const leftPart = leftVersion![index] ?? 0
+    const rightPart = rightVersion![index] ?? 0
+    if (leftPart !== rightPart) return leftPart - rightPart
+  }
+  return 0
+}
+
+function latestCodexModel(modelIds: string[]): string | null {
+  return modelIds.reduce<string | null>((latest, modelId) => {
+    if (!latest) return modelId
+    return compareCodexModels(modelId, latest) > 0 ? modelId : latest
+  }, null)
+}
+
+function defaultModelForProvider(
+  provider: AgentCliBackendId,
+  modelOptions: AgentBackendModelList | null
+): string | null {
+  if (provider === 'claude_cli') return DEFAULT_CLAUDE_MODEL
+  const codexModelIds =
+    modelOptions?.models.length === 0 || !modelOptions
+      ? Object.keys(MODEL_LABEL_FALLBACKS.codex_cli)
+      : modelOptions.models.map((model) => model.id)
+  return latestCodexModel(codexModelIds)
+}
+
 export function Composer({ conversationId, sourceWindowId }: ComposerProps): React.JSX.Element {
   const { t } = useT('common')
   const agent = useAgentOptional()
   const activeTab = useActiveTab()
+  const customModelInputId = useId()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<AttachmentInput[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState<AgentProvider>('claude_cli')
+  const [modelMenuOpen, setModelMenuOpen] = useState(false)
+  const [selectedModels, setSelectedModels] =
+    useState<Record<AgentCliBackendId, string | null>>(DEFAULT_SELECTED_MODELS)
+  const [modelOptions, setModelOptions] =
+    useState<Record<AgentCliBackendId, AgentBackendModelList | null>>(EMPTY_MODEL_OPTIONS)
+  const [customModelDraft, setCustomModelDraft] = useState('')
   const [claudeReasoning, setClaudeReasoning] = useState<ClaudeEffort>(DEFAULT_CLAUDE_EFFORT)
 
   useEffect(() => {
@@ -109,8 +189,20 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
 
   useEffect(() => {
     const activeConversation = conversationId ? agent?.state.conversations[conversationId] : null
-    if (activeConversation) setSelectedProvider(activeConversation.backend)
+    if (activeConversation) {
+      setSelectedProvider(activeConversation.backend)
+      if (isCliProvider(activeConversation.backend)) {
+        setSelectedModels((current) => ({
+          ...current,
+          [activeConversation.backend]: activeConversation.backendModel
+        }))
+      }
+    }
   }, [agent?.state.conversations, conversationId])
+
+  const selectedModelOptions = isCliProvider(selectedProvider)
+    ? modelOptions[selectedProvider]
+    : null
 
   useEffect(() => {
     if (textareaRef.current) resizePromptTextarea(textareaRef.current)
@@ -136,6 +228,15 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     local_openai_compatible: localProviderLabel
   }
   const selectedProviderLabel = providerLabelById[selectedProvider]
+  const selectedBackendModel = isCliProvider(selectedProvider)
+    ? (selectedModels[selectedProvider] ??
+      defaultModelForProvider(selectedProvider, selectedModelOptions))
+    : null
+  const selectedModelLabel = selectedBackendModel
+    ? (selectedModelOptions?.models.find((model) => model.id === selectedBackendModel)?.label ??
+      MODEL_LABEL_FALLBACKS[selectedProvider as AgentCliBackendId][selectedBackendModel] ??
+      selectedBackendModel)
+    : t('agentChat.composer.models.default')
   const SelectedProviderIcon =
     selectedProvider === 'local_openai_compatible'
       ? Computer
@@ -153,9 +254,56 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
       return { backend: 'local_openai_compatible', toolsEnabled: true }
     }
     if (selectedProvider === 'codex_cli') {
-      return { backend: 'codex_cli', reasoningEffort: 'medium' }
+      return {
+        backend: 'codex_cli',
+        reasoningEffort: 'medium',
+        ...(selectedBackendModel ? { model: selectedBackendModel } : {})
+      }
     }
-    return { backend: 'claude_cli', claudeEffort: claudeReasoning }
+    return {
+      backend: 'claude_cli',
+      claudeEffort: claudeReasoning,
+      ...(selectedBackendModel ? { model: selectedBackendModel } : {})
+    }
+  }
+  const selectModel = (model: string | null): void => {
+    if (!isCliProvider(selectedProvider)) return
+    setSelectedModels((current) => ({ ...current, [selectedProvider]: model }))
+  }
+  const applyCustomModel = (): void => {
+    const model = customModelDraft.trim()
+    if (!model) return
+    selectModel(model)
+    setCustomModelDraft('')
+    setModelMenuOpen(false)
+  }
+  const loadModelOptions = async (provider: AgentCliBackendId): Promise<void> => {
+    if (modelOptions[provider]) return
+    try {
+      const result = await window.api.agent.listBackendModels({ backend: provider })
+      setModelOptions((current) => ({ ...current, [provider]: result }))
+    } catch {
+      setModelOptions((current) => ({
+        ...current,
+        [provider]: {
+          backend: provider,
+          supportsCustomModel: true,
+          models: []
+        }
+      }))
+    }
+  }
+  const handleModelMenuOpenChange = (open: boolean): void => {
+    setModelMenuOpen(open)
+    if (open && isCliProvider(selectedProvider)) {
+      void loadModelOptions(selectedProvider)
+    }
+  }
+  const selectProvider = (provider: AgentProvider): void => {
+    setSelectedProvider(provider)
+    if (isCliProvider(provider)) {
+      void loadModelOptions(provider)
+    }
   }
 
   async function submit(): Promise<void> {
@@ -168,7 +316,8 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
         conversationId ??
         (
           await agent.createConversation({
-            backend: selectedProvider as AgentBackendId
+            backend: selectedProvider as AgentBackendId,
+            ...(selectedBackendModel ? { backendModel: selectedBackendModel } : {})
           })
         ).id
       await agent.sendTurn({
@@ -284,7 +433,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
             <DropdownMenuContent align="start" className="min-w-36 border-0">
               <DropdownMenuItem
                 disabled={claudeDisabled}
-                onSelect={() => setSelectedProvider('claude_cli')}
+                onSelect={() => selectProvider('claude_cli')}
                 className="text-xs focus:bg-transparent focus:text-foreground"
               >
                 <Claude className="size-4 text-muted-foreground" aria-hidden="true" />
@@ -295,7 +444,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={codexDisabled}
-                onSelect={() => setSelectedProvider('codex_cli')}
+                onSelect={() => selectProvider('codex_cli')}
                 className="text-xs focus:bg-transparent focus:text-foreground"
               >
                 <ChatGpt className="size-4 text-muted-foreground" aria-hidden="true" />
@@ -305,7 +454,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                 )}
               </DropdownMenuItem>
               <DropdownMenuItem
-                onSelect={() => setSelectedProvider('local_openai_compatible')}
+                onSelect={() => selectProvider('local_openai_compatible')}
                 className="text-xs focus:bg-transparent focus:text-foreground"
               >
                 <Computer className="size-4 text-muted-foreground" aria-hidden="true" />
@@ -316,6 +465,58 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          {isCliProvider(selectedProvider) && (
+            <DropdownMenu open={modelMenuOpen} onOpenChange={handleModelMenuOpenChange}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={t('agentChat.composer.modelLabel', {
+                    model: selectedModelLabel
+                  })}
+                  className="inline-flex h-8 max-w-28 items-center gap-1 rounded-full bg-muted px-2 text-xs text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <span className="truncate">{selectedModelLabel}</span>
+                  <ChevronDown className="size-3 shrink-0" aria-hidden="true" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-52 border-border/60 p-1.5">
+                {(selectedModelOptions?.models ?? []).map((model) => (
+                  <DropdownMenuItem
+                    key={model.id}
+                    onSelect={() => selectModel(model.id)}
+                    className="text-xs focus:bg-transparent focus:text-foreground"
+                  >
+                    <span>{model.label}</span>
+                    {selectedBackendModel === model.id && (
+                      <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
+                    )}
+                  </DropdownMenuItem>
+                ))}
+                <div
+                  className="mt-1 border-t border-border/60 pt-1"
+                  onKeyDown={(event) => event.stopPropagation()}
+                  onPointerDown={(event) => event.stopPropagation()}
+                >
+                  <label htmlFor={customModelInputId} className="sr-only">
+                    {t('agentChat.composer.customModelLabel')}
+                  </label>
+                  <Input
+                    id={customModelInputId}
+                    value={customModelDraft}
+                    onChange={(event) => setCustomModelDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        applyCustomModel()
+                      }
+                    }}
+                    placeholder={t('agentChat.composer.customModelPlaceholder')}
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           {selectedProvider === 'claude_cli' && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

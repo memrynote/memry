@@ -158,12 +158,18 @@
       "placeholder": "Ask Agent",
       "send": "Send",
       "providerLabel": "Agent provider: {provider}",
+      "modelLabel": "Agent model: {model}",
       "settingsLabel": "Agent settings: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "Custom model ID",
+      "customModelPlaceholder": "Custom model ID",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "Local"
+      },
+      "models": {
+        "default": "Default"
       },
       "settings": {
         "reasoning": "Reasoning"
