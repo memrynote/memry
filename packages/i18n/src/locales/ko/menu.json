@@ -17,7 +17,8 @@
     "redo": "다시 실행",
     "cut": "컷",
     "copy": "복사",
-    "paste": "붙여넣기"
+    "paste": "붙여넣기",
+    "selectAll": "모두 선택"
   },
   "view": {
     "label": "보기",

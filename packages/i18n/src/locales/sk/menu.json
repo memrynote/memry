@@ -17,7 +17,8 @@
     "redo": "Znovu",
     "cut": "Vystrihnúť",
     "copy": "Rozumiem",
-    "paste": "Pasta"
+    "paste": "Pasta",
+    "selectAll": "Vybrať všetko"
   },
   "view": {
     "label": "Zobraziť",

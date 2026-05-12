@@ -17,7 +17,8 @@
     "redo": "Gentag",
     "cut": "Klip",
     "copy": "Kopiér",
-    "paste": "Indsæt"
+    "paste": "Indsæt",
+    "selectAll": "Vælg alle"
   },
   "view": {
     "label": "Visning",

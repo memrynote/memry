@@ -17,7 +17,8 @@
     "redo": "Újra",
     "cut": "Vágás",
     "copy": "Másolás",
-    "paste": "Beillesztés"
+    "paste": "Beillesztés",
+    "selectAll": "Összes kijelölése"
   },
   "view": {
     "label": "Megtekintés",

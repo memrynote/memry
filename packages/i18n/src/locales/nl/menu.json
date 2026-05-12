@@ -17,7 +17,8 @@
     "redo": "Opnieuw uitvoeren",
     "cut": "Knippen",
     "copy": "Kopieer",
-    "paste": "Plakken"
+    "paste": "Plakken",
+    "selectAll": "Alles selecteren"
   },
   "view": {
     "label": "Bekijk",
