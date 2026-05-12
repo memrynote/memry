@@ -59,6 +59,7 @@ describe('CodexCliBackend', () => {
       windowId: 'window-1',
       options: { backend: 'codex_cli', reasoningEffort: 'medium' }
     })
+    backend.cancel('conversation-1')
 
     expect(spawn).toHaveBeenNthCalledWith(1, expect.objectContaining({ purpose: 'title' }))
     expect(spawn).toHaveBeenNthCalledWith(2, expect.objectContaining({ purpose: 'summary' }))

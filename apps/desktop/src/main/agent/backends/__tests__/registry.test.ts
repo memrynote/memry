@@ -37,6 +37,7 @@ describe('agent backend registry', () => {
     expect(registry.get('claude_cli')).toBe(claude)
     expect(registry.get('local_openai_compatible')).toBe(local)
     expect(registry.get('codex_cli')).toBe(codex)
+    expect(registry.list()).toEqual([claude, codex, local])
     expect(() => registry.get('ollama' as never)).toThrow(/Unknown agent backend/)
   })
 })

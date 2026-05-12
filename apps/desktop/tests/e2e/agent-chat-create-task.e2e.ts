@@ -157,9 +157,9 @@ async function startFakeLocalOpenAiServer(): Promise<{ server: http.Server; base
 
       response.writeHead(404)
       response.end()
-    } catch (error) {
+    } catch {
       response.writeHead(500, { 'content-type': 'text/plain' })
-      response.end(error instanceof Error ? error.message : String(error))
+      response.end('Fake local OpenAI server error')
     }
   })
 
