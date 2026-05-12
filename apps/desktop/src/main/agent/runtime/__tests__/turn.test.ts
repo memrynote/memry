@@ -133,6 +133,106 @@ describe('runTurn against a stub backend', () => {
     })
   })
 
+  it('dispatches Codex conversations through the Codex parser and subprocess backend', async () => {
+    const messages = createFakeMessageStore()
+    const conversations = createFakeConversationStore({
+      title: 'Existing conversation',
+      backend: 'codex_cli'
+    })
+    const stdout = (async function* () {
+      yield Buffer.from(
+        `${JSON.stringify({
+          type: 'item.completed',
+          item: { type: 'agent_message', text: 'Codex says hi' }
+        })}\n`
+      )
+      yield Buffer.from(`${JSON.stringify({ type: 'turn.completed' })}\n`)
+    })()
+    const spawnSubprocess = vi.fn(async () => ({
+      stdout,
+      stderr: (async function* () {})(),
+      pid: 1,
+      kill: vi.fn(),
+      waitExit: async () => 0,
+      cleanup: vi.fn()
+    }))
+
+    await runTurn(
+      {
+        conversations,
+        messages,
+        spawnSubprocess,
+        toolHandlers: { routeToolCall: vi.fn() }
+      },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'hi',
+        attachments: [],
+        claudeEffort: 'xhigh'
+      }
+    )
+
+    const all = messages.listByConversation('conversation-1')
+    expect(all[1].content).toEqual({ role: 'assistant', data: { text: 'Codex says hi' } })
+    expect(spawnSubprocess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        backend: 'codex_cli',
+        conversationId: 'conversation-1',
+        windowId: 'window-1'
+      })
+    )
+  })
+
+  it('marks the assistant message as errored when Codex emits an error event', async () => {
+    const messages = createFakeMessageStore()
+    const conversations = createFakeConversationStore({
+      title: 'Existing conversation',
+      backend: 'codex_cli'
+    })
+    const stdout = (async function* () {
+      yield Buffer.from(`${JSON.stringify({ type: 'error', message: 'Codex auth failed' })}\n`)
+      yield Buffer.from(`${JSON.stringify({ type: 'turn.completed' })}\n`)
+    })()
+    const spawnSubprocess = vi.fn(async () => ({
+      stdout,
+      stderr: (async function* () {})(),
+      pid: 1,
+      kill: vi.fn(),
+      waitExit: async () => 0,
+      cleanup: vi.fn()
+    }))
+
+    await runTurn(
+      {
+        conversations,
+        messages,
+        spawnSubprocess,
+        toolHandlers: { routeToolCall: vi.fn() }
+      },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'hi',
+        attachments: [],
+        claudeEffort: 'xhigh'
+      }
+    )
+
+    const all = messages.listByConversation('conversation-1')
+    expect(all[1].status).toBe('error')
+    expect(all[1].content).toEqual({
+      role: 'assistant',
+      data: { text: 'Codex auth failed' }
+    })
+    expect(broadcastAgentEvent).toHaveBeenCalledWith({
+      kind: 'turn_error',
+      conversationId: 'conversation-1',
+      turnId: expect.any(String),
+      message: 'Codex auth failed'
+    })
+  })
+
   it('compacts oversized history before assembling the turn prompt', async () => {
     const messages = createFakeMessageStore([
       seedMessage({
@@ -283,6 +383,53 @@ describe('runTurn against a stub backend', () => {
         title: 'Project Roadmap'
       })
     })
+  })
+
+  it('does not spawn a separate title subprocess for a new Codex conversation', async () => {
+    const messages = createFakeMessageStore()
+    const conversations = createFakeConversationStore({ backend: 'codex_cli' })
+    const stdout = (async function* () {
+      yield Buffer.from(
+        `${JSON.stringify({
+          type: 'item.completed',
+          item: { type: 'agent_message', text: 'Codex answer' }
+        })}\n`
+      )
+      yield Buffer.from(`${JSON.stringify({ type: 'turn.completed' })}\n`)
+    })()
+    const spawnSubprocess = vi.fn(async () => ({
+      stdout,
+      stderr: (async function* () {})(),
+      pid: 1,
+      kill: vi.fn(),
+      waitExit: async () => 0,
+      cleanup: vi.fn()
+    }))
+
+    await runTurn(
+      {
+        conversations,
+        messages,
+        spawnSubprocess,
+        toolHandlers: { routeToolCall: vi.fn() }
+      },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'How many book notes do I have?',
+        attachments: [],
+        claudeEffort: 'medium'
+      }
+    )
+
+    expect(spawnSubprocess).toHaveBeenCalledTimes(1)
+    expect(spawnSubprocess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        backend: 'codex_cli',
+        purpose: 'turn'
+      })
+    )
+    expect(conversations.update).not.toHaveBeenCalled()
   })
 })
 

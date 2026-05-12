@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest'
 
 import {
   AgentChannels,
+  AgentBackendIdSchema,
   AgentEventSchema,
   ApproveToolRequestSchema,
+  BackendStatusesResponseSchema,
   BinaryStatusSchema,
+  CreateConversationRequestSchema,
   PreviewDiffRequestSchema,
   PreviewDiffResponseSchema,
   SendTurnResponseSchema,
@@ -25,6 +28,7 @@ describe('AgentChannels', () => {
         PREVIEW_DIFF: 'agent:previewDiff',
         EDIT_TRUST_LIST: 'agent:editTrustList',
         GET_BINARY_STATUS: 'agent:getBinaryStatus',
+        GET_BACKEND_STATUSES: 'agent:getBackendStatuses',
         ACCEPT_DISCLOSURE: 'agent:acceptDisclosure',
         GET_DISCLOSURE_STATE: 'agent:getDisclosureState',
         GET_WINDOW_ID: 'agent:getWindowId'
@@ -37,6 +41,38 @@ describe('AgentChannels', () => {
 })
 
 describe('agent IPC schemas', () => {
+  it('validates backend ids, create-conversation requests, and backend statuses', () => {
+    expect(AgentBackendIdSchema.safeParse('claude_cli').success).toBe(true)
+    expect(AgentBackendIdSchema.safeParse('codex_cli').success).toBe(true)
+    expect(AgentBackendIdSchema.safeParse('local').success).toBe(false)
+
+    expect(
+      CreateConversationRequestSchema.safeParse({
+        vaultId: 'vault-1',
+        backend: 'codex_cli'
+      }).success
+    ).toBe(true)
+
+    expect(
+      BackendStatusesResponseSchema.safeParse({
+        claude_cli: {
+          detected: true,
+          version: '2.1.138',
+          meetsMinimum: true,
+          minimumRequired: '2.1.0',
+          installHint: null
+        },
+        codex_cli: {
+          detected: true,
+          version: '0.130.0',
+          meetsMinimum: true,
+          minimumRequired: '0.130.0',
+          installHint: null
+        }
+      }).success
+    ).toBe(true)
+  })
+
   it('validates send-turn requests with attachments', () => {
     expect(
       SendTurnRequestSchema.safeParse({
@@ -129,7 +165,7 @@ describe('agent IPC schemas', () => {
           id: 'conversation-1',
           vaultId: 'vault-1',
           title: 'Project Roadmap',
-          backend: 'claude_cli',
+          backend: 'codex_cli',
           trustList: [],
           pinned: false,
           vectorClock: {},

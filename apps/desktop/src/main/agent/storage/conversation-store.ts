@@ -3,6 +3,11 @@ import { and, desc, eq, isNull } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 
 import * as schema from '@memry/db-schema/data-schema'
+import {
+  AgentBackendIdSchema,
+  DEFAULT_AGENT_BACKEND,
+  type AgentBackendId
+} from '@memry/contracts/ipc-agent'
 
 import {
   AGENT_CONVERSATION_SYNCABLE_FIELDS,
@@ -18,7 +23,7 @@ interface StoreDeps {
 }
 
 export interface ConversationStore {
-  create(input: { vaultId: string; title: string; backend: string }): Conversation
+  create(input: { vaultId: string; title: string; backend: AgentBackendId }): Conversation
   getById(id: string): Conversation | null
   listByVault(vaultId: string, opts?: { includeDeleted?: boolean }): Conversation[]
   update(
@@ -53,7 +58,7 @@ export function agentConversationRowToModel(
     id: row.id,
     vaultId: row.vaultId,
     title: decryptConversationTitle(row.titleCiphertext, vaultKey),
-    backend: row.backend,
+    backend: parseBackend(row.backend),
     trustList: parseJsonColumn(row.trustList, []),
     pinned: Boolean(row.pinned),
     vectorClock: parseJsonColumn(row.vectorClock, {}),
@@ -63,6 +68,11 @@ export function agentConversationRowToModel(
     deletedAt: row.deletedAt,
     lastSyncedAt: row.lastSyncedAt
   }
+}
+
+function parseBackend(value: string): AgentBackendId {
+  const parsed = AgentBackendIdSchema.safeParse(value)
+  return parsed.success ? parsed.data : DEFAULT_AGENT_BACKEND
 }
 
 function parseJsonColumn<T>(value: T | string | null, fallback: T): T {

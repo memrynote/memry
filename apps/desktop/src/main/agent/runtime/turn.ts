@@ -1,9 +1,13 @@
 import { randomUUID } from 'node:crypto'
 
-import type { ClaudeEffort } from '@memry/contracts/ipc-agent'
+import {
+  DEFAULT_AGENT_BACKEND,
+  type AgentBackendId,
+  type ClaudeEffort
+} from '@memry/contracts/ipc-agent'
 
 import { createLogger } from '../../lib/logger'
-import { createStreamParser } from '../cli/stream-parser'
+import { createBackendStreamParser } from '../cli/backend'
 import type { BackendEvent } from '../cli/types'
 import type { ConversationStore } from '../storage/conversation-store'
 import type { MessageStore } from '../storage/message-store'
@@ -22,6 +26,7 @@ export interface TurnDeps {
     prompt: string
     conversationId: string
     windowId: string
+    backend: AgentBackendId
     effort: ClaudeEffort
     purpose?: 'turn' | 'summary' | 'title'
   }) => Promise<{
@@ -57,7 +62,9 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
   const turnId = randomUUID()
   const existingMessages = deps.messages.listByConversation(input.conversationId)
   const existingConversation = deps.conversations.getById(input.conversationId)
+  const backend = existingConversation?.backend ?? DEFAULT_AGENT_BACKEND
   const shouldGenerateTitle =
+    backend === 'claude_cli' &&
     existingConversation?.title.trim() === DEFAULT_CONVERSATION_TITLE &&
     !existingMessages.some((message) => message.role === 'user')
 
@@ -77,6 +84,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     ? maybeGenerateConversationTitle(deps, {
         conversationId: input.conversationId,
         windowId: input.sourceWindowId,
+        backend,
         text: input.text,
         attachments: input.attachments,
         effort: input.claudeEffort
@@ -100,6 +108,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
         prompt: toSummarize,
         conversationId: input.conversationId,
         windowId: input.sourceWindowId,
+        backend,
         effort: input.claudeEffort
       }),
     estimateLimit: COMPACTION_THRESHOLD,
@@ -119,6 +128,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     prompt: compactedPrompt,
     conversationId: input.conversationId,
     windowId: input.sourceWindowId,
+    backend,
     effort: input.claudeEffort,
     purpose: 'turn'
   })
@@ -137,8 +147,9 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
   })
 
   let buffered = ''
+  let backendError: string | null = null
   const events: BackendEvent[] = []
-  const parser = createStreamParser((event) => {
+  const parser = createBackendStreamParser(backend, (event) => {
     events.push(event)
   })
 
@@ -146,6 +157,10 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     while (events.length > 0) {
       const event = events.shift()
       if (!event) continue
+      if (event.kind === 'error') {
+        backendError ??= event.message
+        continue
+      }
       await handleBackendEvent(deps, event, {
         conversationId: input.conversationId,
         windowId: input.sourceWindowId,
@@ -167,9 +182,14 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     const exitCode = await sub.waitExit()
     const stderrText = (await stderrTextPromise).trim()
 
-    if (exitCode !== 0) {
-      const message = stderrText || `Claude exited with code ${exitCode}`
-      logger.warn('Claude subprocess exited non-zero', { exitCode, stderr: stderrText })
+    if (backendError || exitCode !== 0) {
+      const message = (backendError ?? stderrText) || `Agent backend exited with code ${exitCode}`
+      logger.warn('Agent backend turn failed', {
+        backend,
+        exitCode,
+        stderr: stderrText,
+        backendError
+      })
       const errored = deps.messages.markTerminal(assistant.id, 'error', {
         content: { role: 'assistant', data: { text: message } }
       })
@@ -212,6 +232,7 @@ async function maybeGenerateConversationTitle(
   input: {
     conversationId: string
     windowId: string
+    backend: AgentBackendId
     text: string
     attachments: MessageAttachment[]
     effort: ClaudeEffort
@@ -222,6 +243,7 @@ async function maybeGenerateConversationTitle(
       prompt: assembleTitlePrompt(input.text, input.attachments),
       conversationId: input.conversationId,
       windowId: input.windowId,
+      backend: input.backend,
       effort: input.effort
     })
     if (!title) return
@@ -238,11 +260,17 @@ async function maybeGenerateConversationTitle(
 
 async function generateTitleWithSubprocess(
   deps: TurnDeps,
-  input: { prompt: string; conversationId: string; windowId: string; effort: ClaudeEffort }
+  input: {
+    prompt: string
+    conversationId: string
+    windowId: string
+    backend: AgentBackendId
+    effort: ClaudeEffort
+  }
 ): Promise<string | null> {
   const sub = await deps.spawnSubprocess({ ...input, purpose: 'title' })
   const events: BackendEvent[] = []
-  const parser = createStreamParser((event) => {
+  const parser = createBackendStreamParser(input.backend, (event) => {
     events.push(event)
   })
   const stderrTextPromise = collectStreamText(sub.stderr)
@@ -323,11 +351,17 @@ function sanitizeGeneratedTitle(value: string): string | null {
 
 async function summarizeWithSubprocess(
   deps: TurnDeps,
-  input: { prompt: string; conversationId: string; windowId: string; effort: ClaudeEffort }
+  input: {
+    prompt: string
+    conversationId: string
+    windowId: string
+    backend: AgentBackendId
+    effort: ClaudeEffort
+  }
 ): Promise<string> {
   const sub = await deps.spawnSubprocess({ ...input, purpose: 'summary' })
   const events: BackendEvent[] = []
-  const parser = createStreamParser((event) => {
+  const parser = createBackendStreamParser(input.backend, (event) => {
     events.push(event)
   })
   let raw = ''

@@ -8,7 +8,9 @@ import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
 import type {
   AgentEvent,
   ApproveToolRequest,
+  BackendStatusesResponse,
   BinaryStatus,
+  CreateConversationRequest,
   PreviewDiffRequest,
   PreviewDiffResponse,
   SendTurnRequest,
@@ -1610,7 +1612,7 @@ interface AgentMcpClientAPI {
 
 interface AgentClientAPI {
   listConversations: (input?: { vaultId?: string }) => Promise<Conversation[]>
-  createConversation: (input?: { vaultId?: string; backend?: string }) => Promise<Conversation>
+  createConversation: (input?: CreateConversationRequest) => Promise<Conversation>
   loadConversation: (input: { id: string }) => Promise<{
     conversation: Conversation | null
     messages: Message[]
@@ -1625,6 +1627,7 @@ interface AgentClientAPI {
     remove?: string[]
   }) => Promise<Conversation | null>
   getBinaryStatus: () => Promise<BinaryStatus>
+  getBackendStatuses: () => Promise<BackendStatusesResponse>
   acceptDisclosure: () => Promise<{ accepted: boolean }>
   getDisclosureState: () => Promise<{ accepted: boolean }>
   getWindowId: () => Promise<{ windowId: string | null }>

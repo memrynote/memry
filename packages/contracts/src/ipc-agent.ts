@@ -20,6 +20,7 @@ export const AgentChannels = {
     PREVIEW_DIFF: 'agent:previewDiff',
     EDIT_TRUST_LIST: 'agent:editTrustList',
     GET_BINARY_STATUS: 'agent:getBinaryStatus',
+    GET_BACKEND_STATUSES: 'agent:getBackendStatuses',
     ACCEPT_DISCLOSURE: 'agent:acceptDisclosure',
     GET_DISCLOSURE_STATE: 'agent:getDisclosureState',
     GET_WINDOW_ID: 'agent:getWindowId'
@@ -42,6 +43,10 @@ export type AttachmentInput = z.infer<typeof AttachmentInputSchema>
 export const ClaudeEffortSchema = z.enum(['low', 'medium', 'high', 'xhigh', 'max'])
 export type ClaudeEffort = z.infer<typeof ClaudeEffortSchema>
 export const DEFAULT_CLAUDE_EFFORT: ClaudeEffort = 'xhigh'
+
+export const AgentBackendIdSchema = z.enum(['claude_cli', 'codex_cli'])
+export type AgentBackendId = z.infer<typeof AgentBackendIdSchema>
+export const DEFAULT_AGENT_BACKEND: AgentBackendId = 'claude_cli'
 
 export const MessageRoleSchema = z.enum(['user', 'assistant', 'tool_call', 'tool_result', 'system'])
 export type MessageRole = z.infer<typeof MessageRoleSchema>
@@ -129,7 +134,7 @@ export interface Conversation {
   id: string
   vaultId: string
   title: string
-  backend: string
+  backend: AgentBackendId
   trustList: string[]
   pinned: boolean
   vectorClock: VectorClock
@@ -144,7 +149,7 @@ export const ConversationSchema = z.object({
   id: z.string(),
   vaultId: z.string(),
   title: z.string(),
-  backend: z.string(),
+  backend: AgentBackendIdSchema,
   trustList: z.array(z.string()),
   pinned: z.boolean(),
   vectorClock: VectorClockSchema,
@@ -154,6 +159,12 @@ export const ConversationSchema = z.object({
   deletedAt: z.number().nullable(),
   lastSyncedAt: z.number().nullable()
 })
+
+export const CreateConversationRequestSchema = z.object({
+  vaultId: z.string().optional(),
+  backend: AgentBackendIdSchema.default(DEFAULT_AGENT_BACKEND)
+})
+export type CreateConversationRequest = z.input<typeof CreateConversationRequestSchema>
 
 export interface Message {
   id: string
@@ -234,6 +245,12 @@ export const BinaryStatusSchema = z.object({
   installHint: z.string().nullable()
 })
 export type BinaryStatus = z.infer<typeof BinaryStatusSchema>
+
+export const BackendStatusesResponseSchema = z.object({
+  claude_cli: BinaryStatusSchema,
+  codex_cli: BinaryStatusSchema
+})
+export type BackendStatusesResponse = z.infer<typeof BackendStatusesResponseSchema>
 
 export const AgentEventSchema = z.discriminatedUnion('kind', [
   z.object({

@@ -115,19 +115,19 @@
     "stop": "Stop",
     "thinking": "Agent is thinking",
     "binary": {
-      "checking": "Checking Claude CLI...",
-      "notFound": "claude not found. {hint}",
-      "tooOld": "claude {version} is too old. Need {minimumRequired}. {hint}",
-      "ready": "claude {version} detected and ready."
+      "checking": "Checking agent backends...",
+      "notFound": "Agent backend not found. {hint}",
+      "tooOld": "Agent backend {version} is too old. Need {minimumRequired}. {hint}",
+      "ready": "Agent backend {version} detected and ready."
     },
     "enable": {
       "title": "Enable Memry Agent",
-      "description": "Memry Agent uses your local Claude CLI subscription to chat about your vault. Each turn sends your message, attached references, prior conversation context, and tool results to Anthropic under your Claude account.",
-      "remote": "Memry encrypts your local and synced chat history, but model inference is remote.",
+      "description": "Memry Agent uses your selected local agent CLI to chat about your vault. Claude sends turns to Anthropic; Codex sends turns to OpenAI.",
+      "remote": "Memry encrypts your local and synced chat history, but model inference happens with the selected provider.",
       "readTools": "Read tools run automatically.",
       "writeTools": "Create and update tools require approval.",
       "diff": "Update tools show a diff or preview.",
-      "button": "Enable Claude CLI chat"
+      "button": "Enable Agent chat"
     },
     "approval": {
       "title": "Allow {name}?",
@@ -209,7 +209,7 @@
       "updateTrust": "Could not update trusted tools",
       "saveDisclosure": "Could not save disclosure state",
       "resolveWindow": "Could not resolve agent source window",
-      "detectCli": "Could not detect Claude CLI",
+      "detectCli": "Could not detect agent backends",
       "loadDisclosure": "Could not load disclosure state"
     }
   },

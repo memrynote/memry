@@ -1,9 +1,16 @@
-import type { AgentEvent, BinaryStatus, Conversation, Message } from '@memry/contracts/ipc-agent'
+import type {
+  AgentEvent,
+  BackendStatusesResponse,
+  BinaryStatus,
+  Conversation,
+  Message
+} from '@memry/contracts/ipc-agent'
 
 export type PendingToolApproval = Extract<AgentEvent, { kind: 'tool_call_pending_approval' }>
 
 export interface AgentState {
   binaryStatus: BinaryStatus | null
+  backendStatuses: BackendStatusesResponse | null
   disclosureAccepted: boolean | null
   sourceWindowId: string | null
   activeConversationId: string | null
@@ -16,6 +23,7 @@ export interface AgentState {
 
 export type AgentAction =
   | { type: 'set_binary_status'; status: BinaryStatus }
+  | { type: 'set_backend_statuses'; statuses: BackendStatusesResponse }
   | { type: 'set_disclosure'; accepted: boolean }
   | { type: 'set_source_window_id'; sourceWindowId: string | null }
   | { type: 'set_conversations'; conversations: Conversation[] }
@@ -31,6 +39,7 @@ export type AgentAction =
 
 export const initialAgentState: AgentState = {
   binaryStatus: null,
+  backendStatuses: null,
   disclosureAccepted: null,
   sourceWindowId: null,
   activeConversationId: null,
@@ -145,6 +154,12 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
   switch (action.type) {
     case 'set_binary_status':
       return { ...state, binaryStatus: action.status }
+    case 'set_backend_statuses':
+      return {
+        ...state,
+        backendStatuses: action.statuses,
+        binaryStatus: action.statuses.claude_cli
+      }
     case 'set_disclosure':
       return { ...state, disclosureAccepted: action.accepted }
     case 'set_source_window_id':

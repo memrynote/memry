@@ -2,7 +2,7 @@ import userEvent from '@testing-library/user-event'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { BinaryStatus } from '@memry/contracts/ipc-agent'
+import type { BackendStatusesResponse, BinaryStatus } from '@memry/contracts/ipc-agent'
 
 const mockUseAgentOptional = vi.hoisted(() => vi.fn())
 const mockAcceptDisclosure = vi.hoisted(() => vi.fn())
@@ -27,6 +27,17 @@ const readyBinary: BinaryStatus = {
   installHint: null
 }
 
+const readyStatuses: BackendStatusesResponse = {
+  claude_cli: readyBinary,
+  codex_cli: {
+    detected: true,
+    version: '0.130.0',
+    meetsMinimum: true,
+    minimumRequired: '0.130.0',
+    installHint: null
+  }
+}
+
 function mockAgentState(
   overrides: Partial<{
     binaryStatus: BinaryStatus | null
@@ -37,6 +48,7 @@ function mockAgentState(
   mockUseAgentOptional.mockReturnValue({
     state: {
       binaryStatus: readyBinary,
+      backendStatuses: readyStatuses,
       disclosureAccepted: true,
       sourceWindowId: 'window-1',
       activeConversationId: null,
@@ -69,7 +81,7 @@ describe('AgentPane', () => {
 
     expect(screen.getByText('Enable Memry Agent')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Enable Claude CLI chat' }))
+    await user.click(screen.getByRole('button', { name: 'Enable Agent chat' }))
 
     expect(mockAcceptDisclosure).toHaveBeenCalledTimes(1)
   })
@@ -108,6 +120,7 @@ describe('AgentPane', () => {
     mockUseAgentOptional.mockReturnValue({
       state: {
         binaryStatus: readyBinary,
+        backendStatuses: readyStatuses,
         disclosureAccepted: true,
         activeConversationId: 'conversation-1',
         conversations: {

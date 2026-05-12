@@ -3,6 +3,7 @@ import { BrowserWindow, ipcMain, type WebContents } from 'electron'
 import {
   AgentChannels,
   ApproveToolRequestSchema,
+  CreateConversationRequestSchema,
   PreviewDiffRequestSchema,
   type PreviewDiffResponse,
   SendTurnRequestSchema
@@ -10,6 +11,7 @@ import {
 
 import { TOOL_SCHEMAS } from '../agent/mcp/tools/schemas'
 import { detectClaudeBinary } from '../agent/cli/claude-binary'
+import { detectCodexBinary } from '../agent/cli/codex-binary'
 import type { AgentRuntime } from '../agent/runtime/runtime'
 import { acceptDisclosure, getDisclosureState } from '../agent/runtime/disclosure-state'
 import { snapshotAttachments } from '../agent/runtime/attachment-snapshotter'
@@ -52,14 +54,11 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
   })
 
   ipcMain.handle(AgentChannels.invoke.CREATE_CONVERSATION, async (_event, payload: unknown) => {
-    const { vaultId = deps.vaultId, backend = 'claude_cli' } = (payload ?? {}) as {
-      vaultId?: string
-      backend?: string
-    }
+    const request = CreateConversationRequestSchema.parse(payload ?? {})
     return deps.conversations.create({
-      vaultId,
+      vaultId: request.vaultId ?? deps.vaultId,
       title: 'New conversation',
-      backend
+      backend: request.backend
     })
   })
 
@@ -167,6 +166,10 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
   })
 
   ipcMain.handle(AgentChannels.invoke.GET_BINARY_STATUS, () => detectClaudeBinary())
+  ipcMain.handle(AgentChannels.invoke.GET_BACKEND_STATUSES, async () => ({
+    claude_cli: await detectClaudeBinary(),
+    codex_cli: await detectCodexBinary()
+  }))
   ipcMain.handle(AgentChannels.invoke.GET_DISCLOSURE_STATE, () => getDisclosureState())
   ipcMain.handle(AgentChannels.invoke.ACCEPT_DISCLOSURE, () => acceptDisclosure())
   ipcMain.handle(AgentChannels.invoke.GET_WINDOW_ID, (event) => ({
@@ -194,6 +197,10 @@ export function registerUnavailableAgentHandlers(reason: string): void {
   registerUnavailableHandler(AgentChannels.invoke.PREVIEW_DIFF, async () => unavailable())
   registerUnavailableHandler(AgentChannels.invoke.EDIT_TRUST_LIST, async () => unavailable())
   registerUnavailableHandler(AgentChannels.invoke.GET_BINARY_STATUS, () => detectClaudeBinary())
+  registerUnavailableHandler(AgentChannels.invoke.GET_BACKEND_STATUSES, async () => ({
+    claude_cli: await detectClaudeBinary(),
+    codex_cli: await detectCodexBinary()
+  }))
   registerUnavailableHandler(AgentChannels.invoke.GET_DISCLOSURE_STATE, () => getDisclosureState())
   registerUnavailableHandler(AgentChannels.invoke.ACCEPT_DISCLOSURE, () => acceptDisclosure())
   registerUnavailableHandler(AgentChannels.invoke.GET_WINDOW_ID, (event) => ({

@@ -3,11 +3,14 @@ import type { ReactNode } from 'react'
 
 import type {
   AgentEvent,
+  AgentBackendId,
   ApproveToolRequest,
   AttachmentInput,
+  BackendStatusesResponse,
   BinaryStatus,
   ClaudeEffort,
   Conversation,
+  CreateConversationRequest,
   Message,
   SendTurnResponse,
   SendTurnRequest
@@ -28,7 +31,7 @@ interface DisclosureState {
 
 interface AgentClientApi {
   listConversations: (input?: { vaultId?: string }) => Promise<Conversation[]>
-  createConversation: (input?: { vaultId?: string; backend?: string }) => Promise<Conversation>
+  createConversation: (input?: CreateConversationRequest) => Promise<Conversation>
   loadConversation: (input: { id: string }) => Promise<{
     conversation: Conversation | null
     messages: Message[]
@@ -42,6 +45,7 @@ interface AgentClientApi {
     remove?: string[]
   }) => Promise<Conversation | null>
   getBinaryStatus: () => Promise<BinaryStatus>
+  getBackendStatuses: () => Promise<BackendStatusesResponse>
   getDisclosureState: () => Promise<DisclosureState>
   acceptDisclosure: () => Promise<DisclosureState>
   getWindowId: () => Promise<{ windowId: string | null }>
@@ -52,7 +56,10 @@ interface AgentContextValue {
   state: AgentState
   dispatch: React.Dispatch<AgentAction>
   refreshConversations: () => Promise<void>
-  createConversation: () => Promise<Conversation>
+  createConversation: (input?: {
+    vaultId?: string
+    backend?: AgentBackendId
+  }) => Promise<Conversation>
   loadConversation: (id: string) => Promise<void>
   sendTurn: (input: {
     conversationId: string
@@ -132,17 +139,20 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
     [t]
   )
 
-  const createConversation = useCallback(async () => {
-    try {
-      const conversation = await getAgentApi().createConversation()
-      dispatch({ type: 'set_active_conversation', conversation, messages: [] })
-      return conversation
-    } catch (error) {
-      const message = extractErrorMessage(error, t('agentChat.errors.createConversation'))
-      dispatch({ type: 'set_error', error: message })
-      throw new Error(message)
-    }
-  }, [t])
+  const createConversation = useCallback(
+    async (input?: CreateConversationRequest) => {
+      try {
+        const conversation = await getAgentApi().createConversation(input)
+        dispatch({ type: 'set_active_conversation', conversation, messages: [] })
+        return conversation
+      } catch (error) {
+        const message = extractErrorMessage(error, t('agentChat.errors.createConversation'))
+        dispatch({ type: 'set_error', error: message })
+        throw new Error(message)
+      }
+    },
+    [t]
+  )
 
   const sendTurn = useCallback(
     async (input: {
@@ -262,9 +272,9 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
         })
       })
 
-    void invokeWhenAgentReady(() => api.getBinaryStatus())
-      .then((status) => {
-        if (!cancelled) dispatch({ type: 'set_binary_status', status })
+    void invokeWhenAgentReady(() => api.getBackendStatuses())
+      .then((statuses) => {
+        if (!cancelled) dispatch({ type: 'set_backend_statuses', statuses })
       })
       .catch((error) => {
         if (cancelled) return

@@ -24,7 +24,7 @@ export function AgentPane(): React.JSX.Element {
 
   const { state } = agent
 
-  if (state.disclosureAccepted === null || state.binaryStatus === null) {
+  if (state.disclosureAccepted === null || state.backendStatuses === null) {
     return (
       <div className="flex h-full items-start p-5 text-sm text-muted-foreground">
         {t('agentChat.loading')}

@@ -1,4 +1,4 @@
-import type { ClaudeEffort } from '@memry/contracts/ipc-agent'
+import type { AgentBackendId, ClaudeEffort } from '@memry/contracts/ipc-agent'
 
 import { getOrInitializeLocalVaultKey, secureCleanup } from '../crypto'
 import { getDatabase, getIndexDatabase } from '../database'
@@ -9,6 +9,8 @@ import {
 } from '../ipc/agent-handlers'
 import { createLogger } from '../lib/logger'
 import { detectClaudeBinary } from './cli/claude-binary'
+import { detectCodexBinary } from './cli/codex-binary'
+import { spawnCodexTurn } from './cli/codex-spawn'
 import { spawnClaudeTurn } from './cli/spawn'
 import { getPublicStatus } from './mcp/lifecycle'
 import { createVaultServiceHandles } from './mcp/tools/handles-adapter'
@@ -63,18 +65,20 @@ export async function startAgent(): Promise<AgentHandle> {
     prompt,
     conversationId,
     windowId,
+    backend,
     effort,
     purpose = 'turn'
   }: {
     prompt: string
     conversationId: string
     windowId: string
+    backend: AgentBackendId
     effort: ClaudeEffort
     purpose?: 'turn' | 'summary' | 'title'
   }) => {
-    const binary = await detectClaudeBinary()
+    const binary = backend === 'codex_cli' ? await detectCodexBinary() : await detectClaudeBinary()
     if (!binary.detected || !binary.meetsMinimum) {
-      throw new Error(binary.installHint ?? 'Claude CLI unavailable')
+      throw new Error(binary.installHint ?? 'Agent backend unavailable')
     }
 
     const status = getPublicStatus()
@@ -82,21 +86,31 @@ export async function startAgent(): Promise<AgentHandle> {
       throw new Error('Agent MCP server not running')
     }
 
-    const sub = await spawnClaudeTurn({
-      binaryPath: 'claude',
-      mcpServerUrl: status.url,
-      authorizationValue: status['token'],
-      conversationId,
-      windowId,
-      allowedTools: purpose === 'title' ? '' : ALLOWED_AGENT_TOOLS,
-      effort,
-      prompt
-    })
+    const sub =
+      backend === 'codex_cli'
+        ? await spawnCodexTurn({
+            binaryPath: 'codex',
+            mcpServerUrl: status.url,
+            authorizationValue: status['token'],
+            conversationId,
+            windowId,
+            prompt
+          })
+        : await spawnClaudeTurn({
+            binaryPath: 'claude',
+            mcpServerUrl: status.url,
+            authorizationValue: status['token'],
+            conversationId,
+            windowId,
+            allowedTools: purpose === 'title' ? '' : ALLOWED_AGENT_TOOLS,
+            effort,
+            prompt
+          })
 
     const stdout = sub.proc.stdout
     const stderr = sub.proc.stderr
     if (!stdout || !stderr) {
-      throw new Error('Claude subprocess stdio unavailable')
+      throw new Error('Agent backend subprocess stdio unavailable')
     }
     const exitCodePromise = new Promise<number>((resolve) => {
       sub.proc.once('exit', (code) => resolve(code ?? 0))

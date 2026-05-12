@@ -15,12 +15,12 @@ import {
   waitForVaultReady
 } from './utils/electron-helpers'
 
-test.describe('Agent chat create-task flow', () => {
+test.describe('Agent chat Codex create-task flow', () => {
   let launched: LaunchedElectron | null = null
   let testVaultPath = ''
 
   test.beforeEach(async () => {
-    testVaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-agent-e2e-'))
+    testVaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-agent-codex-e2e-'))
     fs.mkdirSync(path.join(testVaultPath, '.memry'), { recursive: true })
     fs.mkdirSync(path.join(testVaultPath, 'notes'), { recursive: true })
     fs.mkdirSync(path.join(testVaultPath, 'journal'), { recursive: true })
@@ -49,7 +49,7 @@ test.describe('Agent chat create-task flow', () => {
     testVaultPath = ''
   })
 
-  test('creates a task through the approval gate from an active note', async () => {
+  test('creates a task through the Codex approval gate from an active note', async () => {
     if (!launched) throw new Error('Electron app was not launched')
     const { page } = launched
 
@@ -60,6 +60,8 @@ test.describe('Agent chat create-task flow', () => {
     await page.getByRole('button', { name: 'Day Panel' }).click()
     await page.getByRole('tab', { name: 'Agent', exact: true }).click()
     await page.getByRole('button', { name: 'Enable Agent chat' }).click()
+    await page.getByRole('button', { name: 'Agent provider: Claude' }).click()
+    await page.getByRole('menuitem', { name: /codex/i }).click()
 
     const composer = page.locator('textarea[placeholder="Ask Agent"]')
     await expect(composer).toBeEnabled()

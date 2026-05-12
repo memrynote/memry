@@ -1,7 +1,9 @@
 import type {
   AgentEvent,
   ApproveToolRequest,
+  BackendStatusesResponse,
   BinaryStatus,
+  CreateConversationRequest,
   PreviewDiffRequest,
   PreviewDiffResponse,
   SendTurnRequest,
@@ -15,7 +17,7 @@ import { invoke, subscribe } from '../lib/ipc'
 export const agentApi = {
   listConversations: (input?: { vaultId?: string }): Promise<Conversation[]> =>
     invoke(AgentChannels.invoke.LIST_CONVERSATIONS, input),
-  createConversation: (input?: { vaultId?: string; backend?: string }): Promise<Conversation> =>
+  createConversation: (input?: CreateConversationRequest): Promise<Conversation> =>
     invoke(AgentChannels.invoke.CREATE_CONVERSATION, input),
   loadConversation: (input: {
     id: string
@@ -37,6 +39,8 @@ export const agentApi = {
     remove?: string[]
   }): Promise<Conversation | null> => invoke(AgentChannels.invoke.EDIT_TRUST_LIST, input),
   getBinaryStatus: (): Promise<BinaryStatus> => invoke(AgentChannels.invoke.GET_BINARY_STATUS),
+  getBackendStatuses: (): Promise<BackendStatusesResponse> =>
+    invoke(AgentChannels.invoke.GET_BACKEND_STATUSES),
   acceptDisclosure: (): Promise<{ accepted: boolean }> =>
     invoke(AgentChannels.invoke.ACCEPT_DISCLOSURE),
   getDisclosureState: (): Promise<{ accepted: boolean }> =>
