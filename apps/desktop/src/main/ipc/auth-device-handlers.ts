@@ -52,6 +52,73 @@ interface FirstDeviceSetupResult {
   deviceId: string
 }
 
+interface LocalDeviceRow {
+  id: string
+  name: string
+  platform: string
+  linkedAt: Date
+  lastSyncAt: Date | null
+  isCurrentDevice: boolean
+}
+
+interface RemoteDeviceRow {
+  id: string
+  name: string
+  platform: string
+  createdAt: number
+  lastSyncAt: number | null
+}
+
+function toTimestampMs(value: number | null | undefined): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined
+  return value < 10_000_000_000 ? value * 1000 : value
+}
+
+function parseRemoteDevices(raw: unknown): RemoteDeviceRow[] | null {
+  if (!raw || typeof raw !== 'object' || !Array.isArray((raw as { devices?: unknown }).devices)) {
+    return null
+  }
+
+  const devices: RemoteDeviceRow[] = []
+  for (const device of (raw as { devices: unknown[] }).devices) {
+    if (!device || typeof device !== 'object') return null
+    const row = device as Record<string, unknown>
+    if (
+      typeof row.id !== 'string' ||
+      typeof row.name !== 'string' ||
+      typeof row.platform !== 'string' ||
+      typeof row.createdAt !== 'number' ||
+      !Number.isFinite(row.createdAt) ||
+      (row.lastSyncAt !== null &&
+        row.lastSyncAt !== undefined &&
+        (typeof row.lastSyncAt !== 'number' || !Number.isFinite(row.lastSyncAt)))
+    ) {
+      return null
+    }
+
+    devices.push({
+      id: row.id,
+      name: row.name,
+      platform: row.platform,
+      createdAt: row.createdAt,
+      lastSyncAt: row.lastSyncAt ?? null
+    })
+  }
+
+  return devices
+}
+
+function mapLocalDevice(row: LocalDeviceRow) {
+  return {
+    id: row.id,
+    name: row.name,
+    platform: row.platform as 'macos' | 'windows' | 'linux' | 'ios' | 'android',
+    linkedAt: row.linkedAt.getTime(),
+    lastSyncAt: row.lastSyncAt?.getTime(),
+    isCurrentDevice: row.isCurrentDevice
+  }
+}
+
 // ============================================================================
 // Pending Recovery Phrase
 // ============================================================================
@@ -318,16 +385,36 @@ export function registerAuthDeviceHandlers(): void {
   ipcMain.handle(SYNC_CHANNELS.GET_DEVICES, async () => {
     if (!isDatabaseInitialized()) return { devices: [], email: undefined }
     const db = getDatabase()
-    const rows = await db.select().from(syncDevices)
-    const devices = rows.map((d) => ({
-      id: d.id,
-      name: d.name,
-      platform: d.platform as 'macos' | 'windows' | 'linux' | 'ios' | 'android',
-      linkedAt: d.linkedAt.getTime(),
-      lastSyncAt: d.lastSyncAt?.getTime(),
-      isCurrentDevice: d.isCurrentDevice
-    }))
+    const rows = (await db.select().from(syncDevices)) as LocalDeviceRow[]
     const syncData = store.get('sync')
+    const currentDeviceId = rows.find((device) => device.isCurrentDevice)?.id
+    const accessToken = await getValidAccessToken()
+
+    if (accessToken) {
+      try {
+        const remoteResponse = await getFromServer<unknown>('/devices', accessToken)
+        const remoteDevices = parseRemoteDevices(remoteResponse)
+        if (remoteDevices) {
+          return {
+            devices: remoteDevices.map((device) => ({
+              id: device.id,
+              name: device.name,
+              platform: device.platform as 'macos' | 'windows' | 'linux' | 'ios' | 'android',
+              linkedAt: toTimestampMs(device.createdAt)!,
+              lastSyncAt: toTimestampMs(device.lastSyncAt),
+              isCurrentDevice: device.id === currentDeviceId
+            })),
+            email: syncData.email
+          }
+        }
+
+        logger.warn('Invalid remote device list response; using local device cache')
+      } catch (err) {
+        logger.warn('Failed to refresh remote device list; using local device cache', err)
+      }
+    }
+
+    const devices = rows.map(mapLocalDevice)
     return { devices, email: syncData.email }
   })
 

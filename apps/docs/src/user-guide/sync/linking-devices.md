@@ -63,6 +63,10 @@ Settings → Account → Devices shows every linked device:
 - Platform
 - Public key fingerprint
 
+When signed in, Memry refreshes this list from the sync server so newly linked or revoked
+devices appear without waiting for another sync item to pull their keys. If the server is
+unreachable, the local cached device list remains available.
+
 ## Revoking a Device
 
 From the device list, click **Revoke**. Effects:
