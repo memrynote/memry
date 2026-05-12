@@ -204,9 +204,9 @@ export function SavingsCalculator() {
                     className="py-4 px-5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/30"
                     animate={{
                       boxShadow: [
-                        '0 0 20px -5px rgb(199 91 57 / 0.3)',
-                        '0 0 30px -5px rgb(199 91 57 / 0.6)',
-                        '0 0 20px -5px rgb(199 91 57 / 0.3)'
+                        '0 0 20px -5px rgb(255 103 26 / 0.3)',
+                        '0 0 30px -5px rgb(255 103 26 / 0.6)',
+                        '0 0 20px -5px rgb(255 103 26 / 0.3)'
                       ]
                     }}
                     transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}

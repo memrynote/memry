@@ -32,13 +32,13 @@ export function Header() {
       <Container size="full">
         <nav className="mx-auto flex max-w-6xl items-center justify-between rounded-[28px] border border-white/70 bg-paper/60 px-4 py-2 shadow-[0_4px_30px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-2xl backdrop-saturate-150 sm:px-5">
           <Link to="/" className="flex items-center gap-3 group">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-terracotta/20 bg-white/80 shadow-sm">
+            <span className="flex h-9 w-9 items-center justify-center">
               <img src="/favicon.svg" alt="" className="w-5 h-5" />
             </span>
             <div className="leading-none">
               <span className="flex items-center gap-2">
                 <span className="block font-serif text-2xl font-medium tracking-tight text-ink transition-colors group-hover:text-terracotta">
-                  Memry.
+                  memry
                 </span>
                 <span className="rounded-full bg-terracotta/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-terracotta">
                   Preview

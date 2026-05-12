@@ -1,74 +1,71 @@
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const BUILD_DIR = join(__dirname, '..', 'build')
+const BRAND_DIR = join(__dirname, '..', '..', '..', 'assets', 'brand', 'memry')
+const SOURCE_ICON_PATH = join(BRAND_DIR, 'icon-color.png')
+const CANVAS_SIZE = 1024
+const TILE_INSET = 64
+const TILE_SIZE = CANVAS_SIZE - TILE_INSET * 2
+const TILE_RADIUS = 210
+const LOGO_SIZE = 632
+const LOGO_INSET = Math.round((CANVAS_SIZE - LOGO_SIZE) / 2)
+let sourceIconDataUri
 
-const ICON_SVG = `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="1024" height="1024" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+function getSourceIconDataUri() {
+  sourceIconDataUri ??= `data:image/png;base64,${readFileSync(SOURCE_ICON_PATH).toString('base64')}`
+  return sourceIconDataUri
+}
+
+function renderIconSvg() {
+  const sourceIcon = getSourceIconDataUri()
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${CANVAS_SIZE}" height="${CANVAS_SIZE}" viewBox="0 0 ${CANVAS_SIZE} ${CANVAS_SIZE}" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="50" y1="10" x2="50" y2="90" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#2a2a2a"/>
-      <stop offset="1" stop-color="#111111"/>
+    <linearGradient id="bg" x1="512" y1="${TILE_INSET}" x2="512" y2="${CANVAS_SIZE - TILE_INSET}" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fffdf8"/>
+      <stop offset="1" stop-color="#f2eee6"/>
     </linearGradient>
-    <linearGradient id="topShine" x1="50" y1="10" x2="50" y2="30" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.12"/>
+    <linearGradient id="shine" x1="512" y1="${TILE_INSET}" x2="512" y2="430" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.72"/>
       <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
-    <linearGradient id="borderGrad" x1="50" y1="10" x2="50" y2="90" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.15"/>
-      <stop offset="1" stop-color="#000000" stop-opacity="0.3"/>
-    </linearGradient>
-    <filter id="logoShadow" x="-10%" y="-10%" width="130%" height="130%">
-      <feDropShadow dx="0" dy="1.5" stdDeviation="1.8" flood-color="#000000" flood-opacity="0.55"/>
+    <filter id="shadow" x="0" y="0" width="1024" height="1024" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="26" flood-color="#000000" flood-opacity="0.22"/>
     </filter>
-    <filter id="cardShadow" x="-5%" y="-5%" width="115%" height="118%">
-      <feDropShadow dx="0" dy="1.5" stdDeviation="2" flood-color="#000000" flood-opacity="0.4"/>
+    <filter id="logoDepth" x="${LOGO_INSET - 96}" y="${LOGO_INSET - 96}" width="${LOGO_SIZE + 192}" height="${LOGO_SIZE + 192}" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#8f2f05" flood-opacity="0.26"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.18"/>
     </filter>
-
-    <linearGradient id="borderTop" x1="10" y1="10" x2="90" y2="10" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#4a9e8e"/>
-      <stop offset="0.5" stop-color="#6366f1"/>
-      <stop offset="1" stop-color="#8b5cf6"/>
+    <linearGradient id="logoHighlight" x1="${LOGO_INSET}" y1="${LOGO_INSET}" x2="${LOGO_INSET}" y2="${LOGO_INSET + LOGO_SIZE}" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.34"/>
+      <stop offset="0.42" stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
-    <linearGradient id="borderRight" x1="90" y1="10" x2="90" y2="90" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#8b5cf6"/>
-      <stop offset="1" stop-color="#d4944a"/>
+    <linearGradient id="logoShade" x1="${LOGO_INSET}" y1="${LOGO_INSET}" x2="${LOGO_INSET}" y2="${LOGO_INSET + LOGO_SIZE}" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="0.58" stop-color="#5b1700" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#5b1700" stop-opacity="0.20"/>
     </linearGradient>
-    <linearGradient id="borderBottom" x1="90" y1="90" x2="10" y2="90" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#d4944a"/>
-      <stop offset="0.5" stop-color="#d4944a"/>
-      <stop offset="1" stop-color="#4a9e8e"/>
-    </linearGradient>
-    <linearGradient id="borderLeft" x1="10" y1="90" x2="10" y2="10" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#4a9e8e"/>
-      <stop offset="1" stop-color="#4a9e8e"/>
-    </linearGradient>
-    <mask id="topMask"><rect x="10" y="8" width="80" height="20" fill="white"/></mask>
-    <mask id="rightMask"><rect x="70" y="10" width="22" height="80" fill="white"/></mask>
-    <mask id="bottomMask"><rect x="10" y="72" width="80" height="20" fill="white"/></mask>
-    <mask id="leftMask"><rect x="8" y="10" width="20" height="80" fill="white"/></mask>
+    <mask id="logoMask" maskUnits="userSpaceOnUse" x="${LOGO_INSET}" y="${LOGO_INSET}" width="${LOGO_SIZE}" height="${LOGO_SIZE}" mask-type="alpha">
+      <image href="${sourceIcon}" x="${LOGO_INSET}" y="${LOGO_INSET}" width="${LOGO_SIZE}" height="${LOGO_SIZE}" preserveAspectRatio="xMidYMid meet"/>
+    </mask>
   </defs>
-
-  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="url(#bg)" filter="url(#cardShadow)"/>
-  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderGrad)" stroke-width="0.8"/>
-  <rect x="10" y="10" width="80" height="20" rx="16" ry="16" fill="url(#topShine)"/>
-
-  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderTop)" stroke-width="2.5" mask="url(#topMask)"/>
-  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderRight)" stroke-width="2.5" mask="url(#rightMask)"/>
-  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderBottom)" stroke-width="2.5" mask="url(#bottomMask)"/>
-  <rect x="10" y="10" width="80" height="80" rx="16" ry="16" fill="none" stroke="url(#borderLeft)" stroke-width="2.5" mask="url(#leftMask)"/>
-
-  <g transform="translate(10, 10) scale(0.8)" filter="url(#logoShadow)">
-    <path d="M20 70 L20 30 L35 45 L50 25 L65 45 L80 30 L80 70 L50 70"
-          stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-    <path d="M50 70 L50 85 L80 70"
-          stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <rect x="${TILE_INSET}" y="${TILE_INSET}" width="${TILE_SIZE}" height="${TILE_SIZE}" rx="${TILE_RADIUS}" fill="url(#bg)" filter="url(#shadow)"/>
+  <rect x="${TILE_INSET + 2}" y="${TILE_INSET + 2}" width="${TILE_SIZE - 4}" height="${TILE_SIZE - 4}" rx="${TILE_RADIUS - 2}" fill="none" stroke="#ffffff" stroke-opacity="0.85" stroke-width="4"/>
+  <rect x="${TILE_INSET}" y="${TILE_INSET}" width="${TILE_SIZE}" height="${TILE_SIZE * 0.45}" rx="${TILE_RADIUS}" fill="url(#shine)"/>
+  <g filter="url(#logoDepth)">
+    <image href="${sourceIcon}" x="${LOGO_INSET}" y="${LOGO_INSET}" width="${LOGO_SIZE}" height="${LOGO_SIZE}" preserveAspectRatio="xMidYMid meet"/>
+    <rect x="${LOGO_INSET}" y="${LOGO_INSET}" width="${LOGO_SIZE}" height="${LOGO_SIZE}" fill="url(#logoHighlight)" mask="url(#logoMask)"/>
+    <rect x="${LOGO_INSET}" y="${LOGO_INSET}" width="${LOGO_SIZE}" height="${LOGO_SIZE}" fill="url(#logoShade)" mask="url(#logoMask)"/>
   </g>
 </svg>`
+}
 
 const ICONSET_SIZES = [
   { name: 'icon_16x16.png', size: 16 },
@@ -86,7 +83,7 @@ const ICONSET_SIZES = [
 const ICO_SIZES = [16, 32, 48, 64, 128, 256]
 
 async function renderPng(size) {
-  return sharp(Buffer.from(ICON_SVG)).resize(size, size).png().toBuffer()
+  return sharp(Buffer.from(renderIconSvg())).resize(size, size).png().toBuffer()
 }
 
 function buildIco(pngBuffers, sizes) {
