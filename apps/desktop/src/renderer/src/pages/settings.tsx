@@ -24,6 +24,7 @@ import { JournalSettings } from './settings/journal-section'
 import { VaultSettings } from './settings/vault-section'
 import { AppearanceSettings } from './settings/appearance-section'
 import { AISettings } from './settings/ai-section'
+import { AgentProvidersSection } from './settings/agent-providers-section'
 import { IntegrationsSettings } from './settings/integrations-section'
 import { TagsSettings } from './settings/tags-section'
 import { PropertiesSettings } from './settings/properties-section'
@@ -117,6 +118,12 @@ export function SettingsPage() {
           />
           <SettingsNavItem
             icon={<Server className="w-3.5 h-3.5" />}
+            label={t('page.nav.items.agentProviders')}
+            isActive={activeSection === 'agent-providers'}
+            onClick={() => setActiveSection('agent-providers')}
+          />
+          <SettingsNavItem
+            icon={<Server className="w-3.5 h-3.5" />}
             label={t('page.nav.items.agentMcp')}
             isActive={activeSection === 'agent-mcp'}
             onClick={() => setActiveSection('agent-mcp')}
@@ -163,6 +170,7 @@ export function SettingsPage() {
             {activeSection === 'vault' && <VaultSettings />}
             {activeSection === 'appearance' && <AppearanceSettings />}
             {activeSection === 'ai' && <AISettings />}
+            {activeSection === 'agent-providers' && <AgentProvidersSection />}
             {activeSection === 'agent-mcp' && <AgentMcpSection />}
             {activeSection === 'integrations' && <IntegrationsSettings />}
             {activeSection === 'tags' && <TagsSettings />}

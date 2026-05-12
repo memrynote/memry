@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { buildWriteTools, type WriteToolGate } from '../write-tools'
 import { WRITE_TOOL_NAMES } from '../schemas'
 import type { VaultServiceHandles } from '../handles'
@@ -110,6 +110,83 @@ describe('Write tools — P1 deny-by-default', () => {
       { conversationId: 'c1', windowId: 'w1' }
     )
     expect(received).toEqual({ title: 'EDITED', content_markdown: 'EDITED-BODY' })
+  })
+
+  it('forwards approved write tools to the matching vault handles', async () => {
+    const localHandles: VaultServiceHandles = {
+      ...handles,
+      notes: {
+        ...handles.notes,
+        update: vi.fn(async () => {}),
+        addTag: vi.fn(async () => {}),
+        removeTag: vi.fn(async () => {}),
+        moveToFolder: vi.fn(async () => {})
+      },
+      tasks: {
+        ...handles.tasks,
+        create: vi.fn(async () => ({ id: 'task-created' })),
+        update: vi.fn(async () => {}),
+        addTag: vi.fn(async () => {}),
+        removeTag: vi.fn(async () => {})
+      },
+      journal: {
+        ...handles.journal,
+        createIfMissing: vi.fn(async () => ({ id: 'jrnl', created: true }))
+      },
+      inbox: {
+        ...handles.inbox,
+        add: vi.fn(async () => ({ id: 'inbox-created' }))
+      }
+    }
+    const withGate = buildWriteTools(localHandles, async () => ({ approved: true }))
+    const run = async (name: string, input: unknown) => {
+      const tool = withGate.find((x) => x.name === name)!
+      return tool.handler(input, { conversationId: 'c1', windowId: 'w1' })
+    }
+
+    await expect(run('vault_create_task', { title: 'Task' })).resolves.toEqual({
+      id: 'task-created'
+    })
+    await expect(
+      run('vault_create_journal_entry', { date: '2026-05-10', content_markdown: 'Entry' })
+    ).resolves.toEqual({ id: 'jrnl', created: true })
+    await expect(
+      run('vault_add_to_inbox', { source: 'agent', title: 'Inbox', content: 'Body' })
+    ).resolves.toEqual({ id: 'inbox-created' })
+    await expect(
+      run('vault_update_note', { id: 'note-1', mode: 'append', content_markdown: 'More' })
+    ).resolves.toEqual({ id: 'note-1' })
+    await expect(run('vault_update_task', { id: 'task-1', title: 'Updated' })).resolves.toEqual({
+      id: 'task-1'
+    })
+    await expect(
+      run('vault_add_tag', { id: 'task-1', kind: 'task', tag: 'work' })
+    ).resolves.toEqual({ id: 'task-1' })
+    await expect(
+      run('vault_remove_tag', { id: 'task-1', kind: 'task', tag: 'work' })
+    ).resolves.toEqual({ id: 'task-1' })
+    await expect(
+      run('vault_move_to_folder', { id: 'note-1', folder_path: '/Projects' })
+    ).resolves.toEqual({ id: 'note-1' })
+
+    expect(localHandles.notes.update).toHaveBeenCalledWith({
+      id: 'note-1',
+      mode: 'append',
+      content_markdown: 'More'
+    })
+    expect(localHandles.tasks.update).toHaveBeenCalledWith('task-1', { title: 'Updated' })
+    expect(localHandles.tasks.addTag).toHaveBeenCalledWith({
+      id: 'task-1',
+      tag: 'work'
+    })
+    expect(localHandles.tasks.removeTag).toHaveBeenCalledWith({
+      id: 'task-1',
+      tag: 'work'
+    })
+    expect(localHandles.notes.moveToFolder).toHaveBeenCalledWith({
+      id: 'note-1',
+      folder_path: '/Projects'
+    })
   })
 
   it('returns PERMISSION_DENIED when the gate denies', async () => {

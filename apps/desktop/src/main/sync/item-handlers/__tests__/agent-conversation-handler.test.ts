@@ -15,6 +15,7 @@ function freshDb() {
       vault_id TEXT NOT NULL,
       title_ciphertext TEXT NOT NULL,
       backend TEXT NOT NULL,
+      backend_model TEXT,
       trust_list TEXT NOT NULL DEFAULT '[]',
       pinned INTEGER NOT NULL DEFAULT 0,
       vector_clock TEXT NOT NULL,
@@ -49,11 +50,13 @@ describe('AgentConversationHandler', () => {
         vaultId: 'v',
         title: 'Hello from remote',
         backend: 'claude_cli',
+        backendModel: null,
         trustList: [],
         pinned: false,
         fieldClocks: {
           title: { 'device-1': 1 },
           backend: { 'device-1': 1 },
+          backendModel: { 'device-1': 1 },
           trustList: { 'device-1': 1 },
           pinned: { 'device-1': 1 }
         },
@@ -82,11 +85,13 @@ describe('AgentConversationHandler', () => {
         vaultId: 'v',
         title: 'NewTitleFromDevice1',
         backend: 'claude_cli',
+        backendModel: null,
         trustList: [],
         pinned: false,
         fieldClocks: {
           title: { 'device-1': 5 },
           backend: { 'device-1': 1 },
+          backendModel: { 'device-1': 1 },
           trustList: { 'device-1': 1 },
           pinned: { 'device-1': 1 }
         },
@@ -117,11 +122,13 @@ describe('AgentConversationHandler', () => {
         vaultId: 'v',
         title: 'Stale',
         backend: 'claude_cli',
+        backendModel: null,
         trustList: [],
         pinned: false,
         fieldClocks: {
           title: { 'device-1': 1 },
           backend: { 'device-1': 1 },
+          backendModel: { 'device-1': 1 },
           trustList: { 'device-1': 1 },
           pinned: { 'device-1': 1 }
         },

@@ -1,5 +1,3 @@
-import type { ClaudeEffort } from '@memry/contracts/ipc-agent'
-
 import { getOrInitializeLocalVaultKey, secureCleanup } from '../crypto'
 import { getDatabase, getIndexDatabase } from '../database'
 import {
@@ -8,7 +6,24 @@ import {
   unregisterAgentHandlers
 } from '../ipc/agent-handlers'
 import { createLogger } from '../lib/logger'
+import { ClaudeCliBackend } from './backends/claude-cli-backend'
+import { CodexCliBackend } from './backends/codex-cli-backend'
+import { getLocalProviderApiKey } from './backends/local-provider-keychain'
+import {
+  getLocalProviderSettings,
+  setLocalProviderSettings
+} from './backends/local-provider-settings'
+import {
+  listOpenAiCompatibleModels,
+  LocalOpenAICompatibleBackend,
+  testOpenAiCompatibleConnection
+} from './backends/local-openai-compatible-backend'
+import { createAgentBackendRegistry } from './backends/registry'
+import { AgentToolBridge } from './backends/tool-bridge'
+import type { ClaudeCliSpawnInput, CodexCliSpawnInput } from './backends/types'
 import { detectClaudeBinary } from './cli/claude-binary'
+import { detectCodexBinary } from './cli/codex-binary'
+import { spawnCodexTurn } from './cli/codex-spawn'
 import { spawnClaudeTurn } from './cli/spawn'
 import { getPublicStatus } from './mcp/lifecycle'
 import { createVaultServiceHandles } from './mcp/tools/handles-adapter'
@@ -59,19 +74,13 @@ export async function startAgent(): Promise<AgentHandle> {
   const messages = createMessageStore({ db, vaultKey, deviceId })
   const handles = createVaultServiceHandles({ dataDb: db, indexDb })
 
-  const spawnAdapter = async ({
+  const spawnClaudeAdapter = async ({
     prompt,
     conversationId,
     windowId,
     effort,
     purpose = 'turn'
-  }: {
-    prompt: string
-    conversationId: string
-    windowId: string
-    effort: ClaudeEffort
-    purpose?: 'turn' | 'summary' | 'title'
-  }) => {
+  }: ClaudeCliSpawnInput) => {
     const binary = await detectClaudeBinary()
     if (!binary.detected || !binary.meetsMinimum) {
       throw new Error(binary.installHint ?? 'Claude CLI unavailable')
@@ -88,7 +97,7 @@ export async function startAgent(): Promise<AgentHandle> {
       authorizationValue: status['token'],
       conversationId,
       windowId,
-      allowedTools: purpose === 'title' ? '' : ALLOWED_AGENT_TOOLS,
+      allowedTools: purpose === 'turn' ? ALLOWED_AGENT_TOOLS : '',
       effort,
       prompt
     })
@@ -112,13 +121,78 @@ export async function startAgent(): Promise<AgentHandle> {
     }
   }
 
-  const runtime = new AgentRuntime({ conversations, messages, spawn: spawnAdapter })
+  const spawnCodexAdapter = async ({
+    prompt,
+    conversationId,
+    windowId,
+    reasoningEffort,
+    purpose = 'turn'
+  }: CodexCliSpawnInput) => {
+    const binary = await detectCodexBinary()
+    if (!binary.detected || !binary.meetsMinimum) {
+      throw new Error(binary.installHint ?? 'Codex CLI unavailable')
+    }
+
+    const status = purpose === 'turn' ? getPublicStatus() : null
+    if (purpose === 'turn' && (!status?.url || !status['token'])) {
+      throw new Error('Agent MCP server not running')
+    }
+
+    const sub = await spawnCodexTurn({
+      binaryPath: 'codex',
+      prompt,
+      reasoningEffort,
+      ...(status?.url && status['token']
+        ? {
+            mcp: {
+              serverUrl: status.url,
+              authorizationValue: status['token'],
+              conversationId,
+              windowId
+            }
+          }
+        : {})
+    })
+
+    const stdout = sub.proc.stdout
+    const stderr = sub.proc.stderr
+    if (!stdout || !stderr) {
+      throw new Error('Codex subprocess stdio unavailable')
+    }
+    const exitCodePromise = new Promise<number>((resolve) => {
+      sub.proc.once('exit', (code) => resolve(code ?? 0))
+    })
+
+    return {
+      stdout,
+      stderr,
+      pid: sub.pid,
+      kill: () => sub.proc.kill('SIGTERM'),
+      waitExit: () => exitCodePromise,
+      cleanup: sub.cleanup
+    }
+  }
+
+  const toolBridge = new AgentToolBridge()
+  const localBackend = new LocalOpenAICompatibleBackend({
+    getSettings: getLocalProviderSettings,
+    getApiKey: getLocalProviderApiKey,
+    toolBridge
+  })
+  const backends = createAgentBackendRegistry({
+    claude: new ClaudeCliBackend({ spawn: spawnClaudeAdapter }),
+    codex: new CodexCliBackend({ spawn: spawnCodexAdapter }),
+    local: localBackend
+  })
+
+  const runtime = new AgentRuntime({ conversations, messages })
   runtime.install()
 
   registerAgentHandlers({
     runtime,
     conversations,
     messages,
+    backends,
     previewNoteUpdate: async (input) => {
       const note = await handles.notes.read(input.id)
       if (!note) throw new Error(`Note not found: ${input.id}`)
@@ -128,8 +202,25 @@ export async function startAgent(): Promise<AgentHandle> {
         candidate: mergeContent(note.content_markdown, input.mode, input.content_markdown)
       }
     },
-    spawn: spawnAdapter,
-    routeToolCall: async () => ({ ok: true, data: null }),
+    localProvider: {
+      getSettings: getLocalProviderSettings,
+      setSettings: setLocalProviderSettings,
+      listModels: async () => {
+        const settings = await getLocalProviderSettings()
+        return {
+          models: await listOpenAiCompatibleModels(
+            settings.baseUrl,
+            fetch,
+            await getLocalProviderApiKey()
+          )
+        }
+      },
+      testConnection: async () => {
+        const settings = await getLocalProviderSettings()
+        return testOpenAiCompatibleConnection(settings, fetch, await getLocalProviderApiKey())
+      },
+      probeTools: () => localBackend.probeCapabilities()
+    },
     vaultId
   })
 

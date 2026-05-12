@@ -19,7 +19,12 @@ export const AgentChannels = {
     APPROVE_TOOL: 'agent:approveTool',
     PREVIEW_DIFF: 'agent:previewDiff',
     EDIT_TRUST_LIST: 'agent:editTrustList',
-    GET_BINARY_STATUS: 'agent:getBinaryStatus',
+    GET_BACKEND_STATUSES: 'agent:getBackendStatuses',
+    GET_LOCAL_PROVIDER_SETTINGS: 'agent:getLocalProviderSettings',
+    SET_LOCAL_PROVIDER_SETTINGS: 'agent:setLocalProviderSettings',
+    LIST_LOCAL_MODELS: 'agent:listLocalModels',
+    TEST_LOCAL_PROVIDER: 'agent:testLocalProvider',
+    PROBE_LOCAL_PROVIDER: 'agent:probeLocalProvider',
     ACCEPT_DISCLOSURE: 'agent:acceptDisclosure',
     GET_DISCLOSURE_STATE: 'agent:getDisclosureState',
     GET_WINDOW_ID: 'agent:getWindowId'
@@ -42,6 +47,101 @@ export type AttachmentInput = z.infer<typeof AttachmentInputSchema>
 export const ClaudeEffortSchema = z.enum(['low', 'medium', 'high', 'xhigh', 'max'])
 export type ClaudeEffort = z.infer<typeof ClaudeEffortSchema>
 export const DEFAULT_CLAUDE_EFFORT: ClaudeEffort = 'xhigh'
+
+export const AgentBackendIdSchema = z.enum(['claude_cli', 'codex_cli', 'local_openai_compatible'])
+export type AgentBackendId = z.infer<typeof AgentBackendIdSchema>
+export const DEFAULT_AGENT_BACKEND_ID: AgentBackendId = 'claude_cli'
+
+export const CodexReasoningEffortSchema = z.enum(['low', 'medium', 'high', 'xhigh'])
+export type CodexReasoningEffort = z.infer<typeof CodexReasoningEffortSchema>
+
+export const AgentLocalProviderPresetSchema = z.enum(['ollama', 'lm_studio', 'llama_cpp', 'custom'])
+export type AgentLocalProviderPreset = z.infer<typeof AgentLocalProviderPresetSchema>
+
+export const AgentBackendOptionsSchema = z
+  .discriminatedUnion('backend', [
+    z
+      .object({
+        backend: z.literal('claude_cli'),
+        claudeEffort: ClaudeEffortSchema.default(DEFAULT_CLAUDE_EFFORT)
+      })
+      .strict(),
+    z
+      .object({
+        backend: z.literal('codex_cli'),
+        reasoningEffort: CodexReasoningEffortSchema.default('medium')
+      })
+      .strict(),
+    z
+      .object({
+        backend: z.literal('local_openai_compatible'),
+        model: z.string().min(1).optional(),
+        toolsEnabled: z.boolean().optional()
+      })
+      .strict()
+  ])
+  .default({ backend: 'claude_cli', claudeEffort: DEFAULT_CLAUDE_EFFORT })
+export type AgentBackendOptions = z.infer<typeof AgentBackendOptionsSchema>
+
+export const AgentLocalProviderSettingsSchema = z
+  .object({
+    preset: AgentLocalProviderPresetSchema,
+    baseUrl: z.string().url(),
+    model: z.string(),
+    apiKeyConfigured: z.boolean(),
+    allowNonLoopback: z.boolean()
+  })
+  .strict()
+export type AgentLocalProviderSettings = z.infer<typeof AgentLocalProviderSettingsSchema>
+
+export const AgentLocalProviderSettingsUpdateSchema = z
+  .object({
+    preset: AgentLocalProviderPresetSchema,
+    baseUrl: z.string().url(),
+    model: z.string(),
+    allowNonLoopback: z.boolean(),
+    apiKey: z.string().optional().nullable(),
+    clearApiKey: z.boolean().optional()
+  })
+  .strict()
+export type AgentLocalProviderSettingsUpdate = z.infer<
+  typeof AgentLocalProviderSettingsUpdateSchema
+>
+
+export const AgentLocalProviderProbeResultSchema = z
+  .object({
+    connected: z.boolean(),
+    modelAvailable: z.boolean(),
+    streamingSupported: z.boolean(),
+    toolCallingSupported: z.boolean(),
+    toolContinuationSupported: z.boolean(),
+    toolsEnabled: z.boolean(),
+    detail: z.string().nullable()
+  })
+  .strict()
+export type AgentLocalProviderProbeResult = z.infer<typeof AgentLocalProviderProbeResultSchema>
+
+export const AgentLocalModelListSchema = z.object({
+  models: z.array(z.string())
+})
+export type AgentLocalModelList = z.infer<typeof AgentLocalModelListSchema>
+
+export const AgentBackendStatusSchema = z.object({
+  backend: AgentBackendIdSchema,
+  available: z.boolean(),
+  reason: z.string().nullable().optional(),
+  detail: z.string().nullable().optional(),
+  version: z.string().nullable().optional(),
+  minimumRequired: z.string().nullable().optional()
+})
+export type AgentBackendStatus = z.infer<typeof AgentBackendStatusSchema>
+
+export const BackendStatusesResponseSchema = z.object({
+  claude_cli: AgentBackendStatusSchema,
+  codex_cli: AgentBackendStatusSchema,
+  local_openai_compatible: AgentBackendStatusSchema
+})
+export type BackendStatusesResponse = z.infer<typeof BackendStatusesResponseSchema>
 
 export const MessageRoleSchema = z.enum(['user', 'assistant', 'tool_call', 'tool_result', 'system'])
 export type MessageRole = z.infer<typeof MessageRoleSchema>
@@ -129,7 +229,8 @@ export interface Conversation {
   id: string
   vaultId: string
   title: string
-  backend: string
+  backend: AgentBackendId
+  backendModel: string | null
   trustList: string[]
   pinned: boolean
   vectorClock: VectorClock
@@ -144,7 +245,8 @@ export const ConversationSchema = z.object({
   id: z.string(),
   vaultId: z.string(),
   title: z.string(),
-  backend: z.string(),
+  backend: AgentBackendIdSchema,
+  backendModel: z.string().nullable(),
   trustList: z.array(z.string()),
   pinned: z.boolean(),
   vectorClock: VectorClockSchema,
@@ -188,7 +290,7 @@ export const SendTurnRequestSchema = z.object({
   sourceWindowId: z.string(),
   text: z.string(),
   attachments: z.array(AttachmentInputSchema),
-  claudeEffort: ClaudeEffortSchema.default(DEFAULT_CLAUDE_EFFORT)
+  backendOptions: AgentBackendOptionsSchema
 })
 export type SendTurnRequest = z.infer<typeof SendTurnRequestSchema>
 

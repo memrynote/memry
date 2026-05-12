@@ -1,13 +1,14 @@
 import { randomUUID } from 'node:crypto'
 
-import type { ClaudeEffort } from '@memry/contracts/ipc-agent'
+import type { AgentBackendOptions } from '@memry/contracts/ipc-agent'
 
 import { createLogger } from '../../lib/logger'
-import { createStreamParser } from '../cli/stream-parser'
 import type { BackendEvent } from '../cli/types'
 import type { ConversationStore } from '../storage/conversation-store'
 import type { MessageStore } from '../storage/message-store'
 import type { MessageAttachment } from '../storage/types'
+import type { AgentBackend, BackendRunHandle } from '../backends/types'
+import type { AgentBackendRegistry } from '../backends/registry'
 import { broadcastAgentEvent } from './event-bus'
 import { maybeCompact } from './compactor'
 import { assemblePrompt } from './prompt-assembler'
@@ -18,29 +19,8 @@ const logger = createLogger('AgentRuntime:Turn')
 export interface TurnDeps {
   conversations: ConversationStore
   messages: MessageStore
-  spawnSubprocess: (input: {
-    prompt: string
-    conversationId: string
-    windowId: string
-    effort: ClaudeEffort
-    purpose?: 'turn' | 'summary' | 'title'
-  }) => Promise<{
-    stdout: AsyncIterable<Buffer>
-    stderr: AsyncIterable<Buffer>
-    pid: number
-    kill: () => void
-    waitExit: () => Promise<number>
-    cleanup: () => Promise<void>
-  }>
-  toolHandlers: {
-    routeToolCall: (input: {
-      conversationId: string
-      windowId: string
-      toolUseId: string
-      name: string
-      args: unknown
-    }) => Promise<{ ok: boolean; data?: unknown; error?: { code: string; message: string } }>
-  }
+  backends: AgentBackendRegistry
+  trackRunHandle?: (conversationId: string, handle: BackendRunHandle) => BackendRunHandle
 }
 
 const DEFAULT_CONVERSATION_TITLE = 'New conversation'
@@ -49,7 +29,7 @@ export interface RunTurnInput {
   conversationId: string
   sourceWindowId: string
   text: string
-  claudeEffort: ClaudeEffort
+  backendOptions: AgentBackendOptions
   attachments: MessageAttachment[]
 }
 
@@ -57,6 +37,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
   const turnId = randomUUID()
   const existingMessages = deps.messages.listByConversation(input.conversationId)
   const existingConversation = deps.conversations.getById(input.conversationId)
+  const backend = deps.backends.get(input.backendOptions.backend)
   const shouldGenerateTitle =
     existingConversation?.title.trim() === DEFAULT_CONVERSATION_TITLE &&
     !existingMessages.some((message) => message.role === 'user')
@@ -79,7 +60,8 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
         windowId: input.sourceWindowId,
         text: input.text,
         attachments: input.attachments,
-        effort: input.claudeEffort
+        backend,
+        options: input.backendOptions
       })
     : Promise.resolve()
 
@@ -96,11 +78,12 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     conversationId: input.conversationId,
     messages: deps.messages,
     summarize: (toSummarize) =>
-      summarizeWithSubprocess(deps, {
+      summarizeWithBackend(deps, {
         prompt: toSummarize,
         conversationId: input.conversationId,
         windowId: input.sourceWindowId,
-        effort: input.claudeEffort
+        backend,
+        options: input.backendOptions
       }),
     estimateLimit: COMPACTION_THRESHOLD,
     currentEstimate: estimateTokens(prompt)
@@ -115,14 +98,15 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     attachments: input.attachments
   })
 
-  const sub = await deps.spawnSubprocess({
+  const rawSub = await backend.runTurn({
     prompt: compactedPrompt,
     conversationId: input.conversationId,
     windowId: input.sourceWindowId,
-    effort: input.claudeEffort,
+    options: input.backendOptions,
     purpose: 'turn'
   })
-  const stderrTextPromise = collectStreamText(sub.stderr)
+  const sub = deps.trackRunHandle?.(input.conversationId, rawSub) ?? rawSub
+  const stderrTextPromise = sub.stderr ? collectStreamText(sub.stderr) : Promise.resolve('')
 
   const assistant = deps.messages.append({
     conversationId: input.conversationId,
@@ -137,39 +121,32 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
   })
 
   let buffered = ''
-  const events: BackendEvent[] = []
-  const parser = createStreamParser((event) => {
-    events.push(event)
-  })
-
-  const drainEvents = async (): Promise<void> => {
-    while (events.length > 0) {
-      const event = events.shift()
-      if (!event) continue
-      await handleBackendEvent(deps, event, {
+  let backendError: string | null = null
+  try {
+    for await (const event of sub.events) {
+      if (event.kind === 'error') {
+        backendError ??= event.message
+        continue
+      }
+      await handleBackendEvent(event, {
         conversationId: input.conversationId,
-        windowId: input.sourceWindowId,
         assistantMessageId: assistant.id,
         onAssistantText: (text) => {
           buffered += text
         }
       })
     }
-  }
-
-  try {
-    for await (const chunk of sub.stdout) {
-      parser.feed(chunk.toString('utf8'))
-      await drainEvents()
-    }
-    parser.flush()
-    await drainEvents()
     const exitCode = await sub.waitExit()
     const stderrText = (await stderrTextPromise).trim()
 
-    if (exitCode !== 0) {
-      const message = stderrText || `Claude exited with code ${exitCode}`
-      logger.warn('Claude subprocess exited non-zero', { exitCode, stderr: stderrText })
+    if (backendError || exitCode !== 0) {
+      const message = backendError ?? (stderrText || `${backend.id} exited with code ${exitCode}`)
+      logger.warn('Agent backend exited non-zero', {
+        backend: backend.id,
+        exitCode,
+        stderr: stderrText,
+        backendError
+      })
       const errored = deps.messages.markTerminal(assistant.id, 'error', {
         content: { role: 'assistant', data: { text: message } }
       })
@@ -214,16 +191,19 @@ async function maybeGenerateConversationTitle(
     windowId: string
     text: string
     attachments: MessageAttachment[]
-    effort: ClaudeEffort
+    backend: AgentBackend
+    options: AgentBackendOptions
   }
 ): Promise<void> {
   try {
-    const title = await generateTitleWithSubprocess(deps, {
-      prompt: assembleTitlePrompt(input.text, input.attachments),
-      conversationId: input.conversationId,
-      windowId: input.windowId,
-      effort: input.effort
-    })
+    const title =
+      (await generateTitleWithBackend(deps, {
+        prompt: assembleTitlePrompt(input.text, input.attachments),
+        conversationId: input.conversationId,
+        windowId: input.windowId,
+        backend: input.backend,
+        options: input.options
+      })) ?? deterministicTitle(input.text)
     if (!title) return
 
     const updated = deps.conversations.update(input.conversationId, { title }, ['title'])
@@ -233,46 +213,52 @@ async function maybeGenerateConversationTitle(
     })
   } catch (error) {
     logger.warn('Conversation title generation failed', error)
+    const title = deterministicTitle(input.text)
+    if (!title) return
+    const updated = deps.conversations.update(input.conversationId, { title }, ['title'])
+    broadcastAgentEvent({
+      kind: 'conversation_updated',
+      conversation: updated
+    })
   }
 }
 
-async function generateTitleWithSubprocess(
-  deps: TurnDeps,
-  input: { prompt: string; conversationId: string; windowId: string; effort: ClaudeEffort }
+async function generateTitleWithBackend(
+  _deps: TurnDeps,
+  input: {
+    prompt: string
+    conversationId: string
+    windowId: string
+    backend: AgentBackend
+    options: AgentBackendOptions
+  }
 ): Promise<string | null> {
-  const sub = await deps.spawnSubprocess({ ...input, purpose: 'title' })
-  const events: BackendEvent[] = []
-  const parser = createStreamParser((event) => {
-    events.push(event)
+  const sub = await input.backend.generateTitle({
+    prompt: input.prompt,
+    conversationId: input.conversationId,
+    windowId: input.windowId,
+    options: input.options,
+    purpose: 'title'
   })
-  const stderrTextPromise = collectStreamText(sub.stderr)
   let raw = ''
   let title = ''
 
   try {
-    for await (const chunk of sub.stdout) {
-      const text = chunk.toString('utf8')
-      raw += text
-      parser.feed(text)
-      while (events.length > 0) {
-        const event = events.shift()
-        if (event?.kind === 'assistant_delta') {
-          title += event.text
-        }
-      }
-    }
-    parser.flush()
-    while (events.length > 0) {
-      const event = events.shift()
-      if (event?.kind === 'assistant_delta') {
+    for await (const event of sub.events) {
+      if (event.kind === 'assistant_delta') {
+        raw += event.text
         title += event.text
       }
     }
 
     const exitCode = await sub.waitExit()
     if (exitCode !== 0) {
-      const stderrText = (await stderrTextPromise).trim()
-      logger.warn('Conversation title subprocess exited non-zero', { exitCode, stderr: stderrText })
+      const stderrText = sub.stderr ? (await collectStreamText(sub.stderr)).trim() : ''
+      logger.warn('Conversation title backend exited non-zero', {
+        backend: input.backend.id,
+        exitCode,
+        stderr: stderrText
+      })
       return null
     }
 
@@ -321,58 +307,52 @@ function sanitizeGeneratedTitle(value: string): string | null {
   return title.length > 80 ? title.slice(0, 80).trim() : title
 }
 
-async function summarizeWithSubprocess(
-  deps: TurnDeps,
-  input: { prompt: string; conversationId: string; windowId: string; effort: ClaudeEffort }
+function deterministicTitle(text: string): string | null {
+  return sanitizeGeneratedTitle(text.split(/\s+/).slice(0, 6).join(' '))
+}
+
+async function summarizeWithBackend(
+  _deps: TurnDeps,
+  input: {
+    prompt: string
+    conversationId: string
+    windowId: string
+    backend: AgentBackend
+    options: AgentBackendOptions
+  }
 ): Promise<string> {
-  const sub = await deps.spawnSubprocess({ ...input, purpose: 'summary' })
-  const events: BackendEvent[] = []
-  const parser = createStreamParser((event) => {
-    events.push(event)
+  const sub = await input.backend.summarize({
+    prompt: input.prompt,
+    conversationId: input.conversationId,
+    windowId: input.windowId,
+    options: input.options,
+    purpose: 'summary'
   })
-  let raw = ''
   let summary = ''
 
   try {
-    for await (const chunk of sub.stdout) {
-      const text = chunk.toString('utf8')
-      raw += text
-      parser.feed(text)
-      while (events.length > 0) {
-        const event = events.shift()
-        if (event?.kind === 'assistant_delta') {
-          summary += event.text
-        }
-      }
-    }
-    parser.flush()
-    while (events.length > 0) {
-      const event = events.shift()
-      if (event?.kind === 'assistant_delta') {
-        summary += event.text
-      }
+    for await (const event of sub.events) {
+      if (event.kind === 'assistant_delta') summary += event.text
     }
     await sub.waitExit()
-    return summary.trim() || raw.trim()
+    return summary.trim()
   } finally {
     await sub.cleanup()
   }
 }
 
-async function collectStreamText(stream: AsyncIterable<Buffer>): Promise<string> {
+async function collectStreamText(stream: AsyncIterable<Buffer | string>): Promise<string> {
   let text = ''
   for await (const chunk of stream) {
-    text += chunk.toString('utf8')
+    text += typeof chunk === 'string' ? chunk : chunk.toString('utf8')
   }
   return text
 }
 
 async function handleBackendEvent(
-  deps: TurnDeps,
   event: BackendEvent,
   ctx: {
     conversationId: string
-    windowId: string
     assistantMessageId: string
     onAssistantText: (text: string) => void
   }
@@ -396,26 +376,23 @@ async function handleBackendEvent(
       name: event.name,
       args: event.args
     })
-    const result = await deps.toolHandlers.routeToolCall({
-      conversationId: ctx.conversationId,
-      windowId: ctx.windowId,
-      toolUseId: event.toolUseId,
-      name: event.name,
-      args: event.args
-    })
-    if (result.ok) {
+    return
+  }
+
+  if (event.kind === 'tool_result') {
+    if (event.ok) {
       broadcastAgentEvent({
         kind: 'tool_call_completed',
         conversationId: ctx.conversationId,
         toolCallId: event.toolUseId,
-        result: result.data
+        result: event.data
       })
     } else {
       broadcastAgentEvent({
         kind: 'tool_call_failed',
         conversationId: ctx.conversationId,
         toolCallId: event.toolUseId,
-        error: result.error ?? { code: 'INTERNAL', message: 'unknown' }
+        error: event.error ?? { code: 'INTERNAL', message: 'unknown' }
       })
     }
     return

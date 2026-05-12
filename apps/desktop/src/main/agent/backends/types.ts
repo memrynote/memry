@@ -1,0 +1,62 @@
+import type {
+  AgentBackendId,
+  AgentBackendOptions,
+  AgentBackendStatus,
+  AgentLocalProviderProbeResult,
+  ClaudeEffort,
+  CodexReasoningEffort
+} from '@memry/contracts/ipc-agent'
+
+import type { BackendEvent } from '../cli/types'
+
+export interface BackendRunHandle {
+  events: AsyncIterable<BackendEvent>
+  stderr?: AsyncIterable<Buffer | string>
+  pid: number
+  kill: () => void
+  waitExit: () => Promise<number>
+  cleanup: () => Promise<void>
+}
+
+export interface AgentBackendRunInput {
+  prompt: string
+  conversationId: string
+  windowId: string
+  options: AgentBackendOptions
+  purpose?: 'turn' | 'summary' | 'title'
+}
+
+export interface AgentBackend {
+  id: AgentBackendId
+  runTurn(input: AgentBackendRunInput): Promise<BackendRunHandle>
+  generateTitle(input: AgentBackendRunInput): Promise<BackendRunHandle>
+  summarize(input: AgentBackendRunInput): Promise<BackendRunHandle>
+  cancel(conversationId: string): void
+  getStatus(): Promise<AgentBackendStatus>
+  probeCapabilities?(): Promise<AgentLocalProviderProbeResult>
+}
+
+export interface ClaudeCliSpawnInput {
+  prompt: string
+  conversationId: string
+  windowId: string
+  effort: ClaudeEffort
+  purpose?: 'turn' | 'summary' | 'title'
+}
+
+export interface CodexCliSpawnInput {
+  prompt: string
+  conversationId: string
+  windowId: string
+  reasoningEffort: CodexReasoningEffort
+  purpose?: 'turn' | 'summary' | 'title'
+}
+
+export interface RawSubprocessHandle {
+  stdout: AsyncIterable<Buffer>
+  stderr: AsyncIterable<Buffer>
+  pid: number
+  kill: () => void
+  waitExit: () => Promise<number>
+  cleanup: () => Promise<void>
+}

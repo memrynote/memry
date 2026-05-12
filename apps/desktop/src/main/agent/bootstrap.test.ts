@@ -31,8 +31,25 @@ const mocks = vi.hoisted(() => ({
     minimumRequired: '2.1.0',
     installHint: null
   })),
+  detectCodexBinary: vi.fn(async () => ({
+    detected: true,
+    version: '0.130.0',
+    meetsMinimum: true,
+    minimumRequired: '0.130.0',
+    installHint: null
+  })),
   spawnClaudeTurn: vi.fn(async () => ({
     pid: 7,
+    proc: {
+      stdout: (async function* () {})(),
+      stderr: (async function* () {})(),
+      kill: vi.fn(),
+      once: vi.fn()
+    },
+    cleanup: vi.fn()
+  })),
+  spawnCodexTurn: vi.fn(async () => ({
+    pid: 8,
     proc: {
       stdout: (async function* () {})(),
       stderr: (async function* () {})(),
@@ -68,7 +85,9 @@ vi.mock('./mcp/tools/handles-adapter', () => ({
   createVaultServiceHandles: mocks.createVaultServiceHandles
 }))
 vi.mock('./cli/claude-binary', () => ({ detectClaudeBinary: mocks.detectClaudeBinary }))
+vi.mock('./cli/codex-binary', () => ({ detectCodexBinary: mocks.detectCodexBinary }))
 vi.mock('./cli/spawn', () => ({ spawnClaudeTurn: mocks.spawnClaudeTurn }))
+vi.mock('./cli/codex-spawn', () => ({ spawnCodexTurn: mocks.spawnCodexTurn }))
 vi.mock('./runtime/runtime', () => ({
   AgentRuntime: vi.fn().mockImplementation(function AgentRuntime() {
     return {
@@ -124,11 +143,11 @@ describe('startAgent', () => {
     await startAgent()
     const deps = mocks.registerAgentHandlers.mock.calls[0][0]
 
-    await deps.spawn({
+    await deps.backends.get('claude_cli').runTurn({
       prompt: 'hello',
       conversationId: 'conversation-1',
       windowId: 'window-1',
-      effort: 'low'
+      options: { backend: 'claude_cli', claudeEffort: 'low' }
     })
 
     expect(mocks.spawnClaudeTurn).toHaveBeenCalledWith(
@@ -141,6 +160,43 @@ describe('startAgent', () => {
         effort: 'low',
         prompt: 'hello'
       })
+    )
+  })
+
+  it('adapts Codex subprocess spawn with native MCP only for normal turns', async () => {
+    await startAgent()
+    const deps = mocks.registerAgentHandlers.mock.calls[0][0]
+
+    await deps.backends.get('codex_cli').runTurn({
+      prompt: 'hello',
+      conversationId: 'conversation-1',
+      windowId: 'window-1',
+      options: { backend: 'codex_cli', reasoningEffort: 'high' }
+    })
+    await deps.backends.get('codex_cli').generateTitle({
+      prompt: 'title',
+      conversationId: 'conversation-1',
+      windowId: 'window-1',
+      options: { backend: 'codex_cli', reasoningEffort: 'medium' }
+    })
+
+    expect(mocks.spawnCodexTurn).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        binaryPath: 'codex',
+        prompt: 'hello',
+        reasoningEffort: 'high',
+        mcp: {
+          serverUrl: 'http://127.0.0.1:54321',
+          authorizationValue: 'local-auth-value',
+          conversationId: 'conversation-1',
+          windowId: 'window-1'
+        }
+      })
+    )
+    expect(mocks.spawnCodexTurn).toHaveBeenNthCalledWith(
+      2,
+      expect.not.objectContaining({ mcp: expect.anything() })
     )
   })
 

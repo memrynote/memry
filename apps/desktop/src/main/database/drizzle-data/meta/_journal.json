@@ -211,6 +211,13 @@
       "when": 1778379938967,
       "tag": "0029_agent_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1778547600000,
+      "tag": "0030_agent_conversation_backend_model",
+      "breakpoints": true
     }
   ]
 }
