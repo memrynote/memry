@@ -69,6 +69,16 @@ function isTypeScriptTypeValue(value) {
   return new RegExp(`^${typeAtom}(?:\\s*\\|\\s*${typeAtom})*$`).test(value)
 }
 
+function isChainedCodeCallValue(value) {
+  const parts = value.split('.')
+
+  return (
+    parts.length > 1 &&
+    /^[A-Za-z_$][\w$]*$/.test(parts[0]) &&
+    parts.slice(1).every((part) => /^[A-Za-z_$][\w$]*(?:\([^;\n]*\))?$/.test(part))
+  )
+}
+
 function isSourceCodeReferenceValue(filePath, value) {
   if (!sourceCodePathPattern.test(filePath) || isQuotedValue(value)) {
     return false
@@ -79,7 +89,7 @@ function isSourceCodeReferenceValue(filePath, value) {
   return (
     isTypeScriptTypeValue(normalized) ||
     /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+$/.test(normalized) ||
-    /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*(?:\([^;]*\))?)+$/.test(normalized) ||
+    isChainedCodeCallValue(normalized) ||
     /^[A-Za-z_$][\w$]*(?:\[[^\]]+\])+$/.test(normalized) ||
     /^[A-Za-z_$][\w$]*\([^;]*\)$/.test(normalized)
   )
