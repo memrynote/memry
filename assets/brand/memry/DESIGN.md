@@ -84,6 +84,9 @@ pnpm --dir apps/desktop generate:icons
 
 - Use `social-icon.png` for light profile/avatar slots.
 - Use `inverse-avatar.png` when a colored avatar reads better.
+- Use `social/og-image.svg` as the source for the 1200x630 social preview.
+- Copy the generated `social/og-image.png` to `apps/landing/public/og-image.png` so both
+  `og:image` and `twitter:image` resolve to the current brand preview.
 - Keep new channel-specific banners under `assets/brand/memry/social/` so they stay with the brand kit.
 
 ## Colors
