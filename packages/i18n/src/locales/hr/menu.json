@@ -17,7 +17,8 @@
     "redo": "Ponovi",
     "cut": "rezati",
     "copy": "Kopiraj",
-    "paste": "Zalijepite"
+    "paste": "Zalijepite",
+    "selectAll": "Odaberi sve"
   },
   "view": {
     "label": "pogled",

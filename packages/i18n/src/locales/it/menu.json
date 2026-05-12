@@ -17,7 +17,8 @@
     "redo": "Rifare",
     "cut": "Taglia",
     "copy": "Copia",
-    "paste": "Incolla"
+    "paste": "Incolla",
+    "selectAll": "Seleziona tutto"
   },
   "view": {
     "label": "Visualizza",

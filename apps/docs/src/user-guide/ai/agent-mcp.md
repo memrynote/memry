@@ -30,6 +30,9 @@ Agent Chat can:
 Press <kbd>Enter</kbd> to send the prompt. Press <kbd>Shift</kbd>+<kbd>Enter</kbd> to insert a
 new line in the prompt box.
 
+The prompt box uses the operating-system text editing menu, so Cut, Copy, Paste, Select All, and
+native right-click editing work like other text fields.
+
 Stop requests are scoped to the active conversation across Claude, Codex, and local providers.
 Automatic title generation and conversation summaries run through the selected backend without
 exposing Memry MCP tools.

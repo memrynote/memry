@@ -17,7 +17,8 @@
     "redo": "Toista",
     "cut": "Leikkaa",
     "copy": "Kopioi",
-    "paste": "Liitä"
+    "paste": "Liitä",
+    "selectAll": "Valitse kaikki"
   },
   "view": {
     "label": "Näytä",

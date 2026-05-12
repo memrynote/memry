@@ -14,6 +14,8 @@ const closeVaultMock = vi.fn(async () => undefined)
 const createMainI18nMock = vi.fn(async () => ({ t: (key: string) => key }))
 const setMainI18nMock = vi.fn()
 const buildAppMenuMock = vi.fn(() => ({ id: 'menu' }))
+const editableContextMenuPopupMock = vi.fn()
+const buildEditableTextContextMenuMock = vi.fn(() => ({ popup: editableContextMenuPopupMock }))
 const getCurrentVaultPathMock = vi.fn(() => null as string | null)
 const getVaultStatusMock = vi.fn(() => ({ path: null as string | null }))
 const readPreferencesMock = vi.fn(() => ({ language: 'en' }))
@@ -142,7 +144,8 @@ vi.mock('./lib/main-i18n', () => ({
 }))
 
 vi.mock('./menu', () => ({
-  buildAppMenu: buildAppMenuMock
+  buildAppMenu: buildAppMenuMock,
+  buildEditableTextContextMenu: buildEditableTextContextMenuMock
 }))
 
 vi.mock('./inbox/snooze', () => ({
@@ -796,6 +799,44 @@ describe('main index phase2 exports', () => {
     menuWillClose()
     vi.advanceTimersByTime(100)
     await expect(closed).resolves.toBeNull()
+  })
+
+  it('shows the native editable context menu for text fields only', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const mainWindow = browserWindows[0]
+    const contextMenuHandler = mainWindow.webContents.on.mock.calls.find(
+      ([event]) => event === 'context-menu'
+    )?.[1] as (_event: unknown, params: Record<string, unknown>) => void
+    const editableParams = {
+      isEditable: true,
+      frame: { id: 'frame-1' },
+      editFlags: {
+        canUndo: false,
+        canRedo: false,
+        canCut: true,
+        canCopy: true,
+        canPaste: true,
+        canSelectAll: true
+      }
+    }
+
+    contextMenuHandler({}, editableParams)
+
+    expect(buildEditableTextContextMenuMock).toHaveBeenCalledWith(expect.anything(), editableParams)
+    expect(editableContextMenuPopupMock).toHaveBeenCalledWith({
+      window: mainWindow,
+      frame: editableParams.frame
+    })
+
+    editableContextMenuPopupMock.mockClear()
+    buildEditableTextContextMenuMock.mockReturnValueOnce(null)
+    contextMenuHandler({}, { isEditable: false, editFlags: {} })
+
+    expect(editableContextMenuPopupMock).not.toHaveBeenCalled()
   })
 
   it('falls back to the global quick-capture shortcut and manages the quick window', async () => {

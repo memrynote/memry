@@ -17,7 +17,8 @@
     "redo": "Reface",
     "cut": "Tăiați",
     "copy": "Copiere",
-    "paste": "Lipiți"
+    "paste": "Lipiți",
+    "selectAll": "Selectează tot"
   },
   "view": {
     "label": "Vedeți",
