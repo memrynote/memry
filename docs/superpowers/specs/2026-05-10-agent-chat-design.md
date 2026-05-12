@@ -1,33 +1,33 @@
 # Agent Chat — Design Spec
 
 **Date:** 2026-05-10
-**Status:** Approved (brainstorming phase complete; awaiting implementation plan)
+**Status:** Approved; updated for unified backend implementation
 **Owner:** Kaan Karaca
-**Scope:** Phases P1 + P2 + P3 (Vault MCP server, Conversation storage + sync, Agent Chat UI with Claude CLI backend). Phases P4 (Codex CLI), P5 (cloud Anthropic / OpenAI / Ollama) acknowledged in _Future Phases_; designed-for, not designed-here.
+**Scope:** Vault MCP server, conversation storage + sync, Agent Chat UI, and provider-neutral backends for Claude CLI, Codex CLI, and local OpenAI-compatible servers. Cloud API backends remain future work.
 
 ## Summary
 
-Add a co-pilot agent chat panel to memry. Users converse with an LLM agent that can read vault content broadly and can create/update a deliberately narrow write set — notes, tasks, journal entries, inbox items, tags, and note moves — through a single, audited tool surface. v1 ships with Claude CLI as the only backend, billed against the user's existing Claude Pro/Max subscription (no API key required). The chat panel lives in the existing right sidebar as a tab next to the Day panel.
+Add a co-pilot agent chat panel to memry. Users converse with an LLM agent that can read vault content broadly and can create/update a deliberately narrow write set — notes, tasks, journal entries, inbox items, tags, and note moves — through a single, audited tool surface. The provider layer supports Claude CLI, Codex CLI, and BYO local OpenAI-compatible servers behind one AgentBackend contract. The chat panel lives in the existing right sidebar as a tab next to the Day panel.
 
-The architectural commitment is **MCP-first**: memry's main process exposes vault operations as a localhost MCP server, and every backend (now Claude CLI; later Codex CLI, cloud Anthropic, cloud OpenAI, Ollama) consumes the same tool surface. The vault MCP server is itself a useful standalone artifact — Cursor, Claude Desktop, Zed, and other MCP clients can connect to memry directly. In v1, external clients are read-only by default; write calls require an active Memry Agent conversation so the app can show the approval UI.
+The architectural commitment is **MCP-first**: memry's main process exposes vault operations as a localhost MCP server, and every backend consumes the same tool surface. Claude CLI and Codex CLI receive native MCP config. Local OpenAI-compatible models use an internal tool bridge that converts the same schemas to provider-native tools and executes calls through the same Vault MCP server. The vault MCP server is itself a useful standalone artifact — Cursor, Claude Desktop, Zed, and other MCP clients can connect to memry directly. External clients are read-only by default; write calls require an active Memry Agent conversation so the app can show the approval UI.
 
-Conversation history is owned by memry, not the CLI: each user turn assembles the full conversation and spawns `claude` stateless. This makes the system backend-agnostic, lets memry control compaction, and lets history follow the user across devices via the existing E2E sync pipeline. Free users get full chat with local-only persistence; sync is gated to paid tiers.
+Conversation history is owned by memry, not the provider: each user turn assembles the full conversation, resolves the pinned backend, and delegates to that backend statelessly. This makes the system backend-agnostic, lets memry control compaction, and lets history follow the user across devices via the existing E2E sync pipeline. Free users get full chat with local-only persistence; sync is gated to paid tiers.
 
-Important privacy boundary: Claude CLI still sends the assembled prompt, selected vault excerpts, tool results, and the user's message to Anthropic under the user's Claude account. Memry encrypts local/synced conversation history at rest, but it cannot make remote model inference local or zero-knowledge. The Agent tab must show a first-use disclosure and require explicit enablement before any prompt is sent.
+Important privacy boundary: Claude and Codex CLI providers may send the assembled prompt, selected vault excerpts, tool results, and the user's message through that provider. Local loopback providers keep model prompts on this machine, while custom non-loopback endpoints send data to the configured endpoint and require an explicit not-fully-local warning. Memry encrypts local/synced conversation history at rest, but it cannot make remote model inference local or zero-knowledge.
 
 ## Goals
 
 - Ship a useful agent chat that solves both stated example flows: "create tasks from `@project` folder" and "draft a landing-page pitch from the current note"
-- Zero API key required for v1 — Claude Pro/Max subscription via local `claude` CLI is sufficient
-- Single tool surface (MCP) reusable across every future backend and across third-party MCP clients
+- Zero API key required for Claude/Codex CLI paths; local models use BYO OpenAI-compatible servers
+- Single tool surface (MCP) reusable across every backend and across third-party MCP clients
 - Free-tier parity for the chat experience itself; sync is the paid differentiator
 - Memry stays the sole gatekeeper of vault writes — agent never touches raw `.md` files via the CLI's built-in tools
 - Encrypted-at-rest conversation history, consistent with memry's "your data, your encryption" promise
-- Clear provider disclosure: before first use, user sees exactly that Claude CLI sends prompt context to Anthropic; attached refs and tool results stay visible in the UI before/during the turn
+- Clear provider disclosure: users see whether prompts go through Claude/Codex, stay on loopback local servers, or go to a custom endpoint
 
 ## Non-Goals (out of scope for this spec)
 
-- Codex CLI backend, cloud-API backends (Anthropic, OpenAI), local-LLM backend (Ollama, LM Studio) — Phase 4 / 5
+- Cloud-API backends (Anthropic, OpenAI) — later
 - Plan-first / autonomous task-runner mode (background agents) — later
 - Embedding / RAG pipeline for semantic context auto-injection — later
 - Agent chat search across conversations
@@ -40,19 +40,19 @@ Important privacy boundary: Claude CLI still sends the assembled prompt, selecte
 
 ## Decisions Log (from brainstorming)
 
-| #   | Decision                                                                                                                                                                             | Rationale                                                                                                                                                                          |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Co-pilot panel (turn-by-turn), not background task runner                                                                                                                            | Both example flows are seconds-to-minutes, not multi-minute autonomous runs                                                                                                        |
-| 2   | MCP-first: vault MCP server is the single tool layer for all backends                                                                                                                | Avoids per-backend tool reimplementation; usable as standalone integration; Claude CLI / Codex CLI both speak MCP natively                                                         |
-| 3   | Tool tier C — broad reads + narrow create/update set                                                                                                                                 | "Create tasks from folder" needs create; "edit current note" needs update. Project/folder writes and delete/archive deferred to avoid building destructive-undo before v1          |
-| 4   | Permission model B — reads never prompt; create tools can be trusted per conversation; update tools always show approval + diff/before-after                                         | Proven Cursor/Claude-Code pattern while preserving the explicit "review every mutation" safety bar for edits                                                                       |
-| 5   | Context model B — manual `@` references + auto-attach current note; folder refs are reference-style (not inlined)                                                                    | Matches both example flows; avoids token explosion on large folders; agent uses `list_folder` + `read_note` MCP tools to drill in                                                  |
-| 6   | Conversation persistence: local tables plus `agent_conversation` / `agent_message` sync items, paid-gated sync                                                                       | Free users get the full feature with local-only durability; paid tier is "your chats follow you across devices." Chat sync waits for entitlement checks before enqueueing rows     |
-| 7   | MCP transport: localhost HTTP/SSE                                                                                                                                                    | Memry main process is long-lived; multiple backends + external clients (Cursor, Zed, etc.) need to share the same server; stdio doesn't fit                                        |
-| 8   | Subprocess lifecycle: spawn `claude` per turn, stateless, conversation history serialized into prompt                                                                                | Backend-agnostic; memry controls compaction; ~200-400 ms cold start hidden by streaming; subscription billing makes re-prompt cost zero                                            |
-| 9   | Claude CLI's built-in tools (`Read`, `Write`, `Edit`, `Bash`, etc.) disabled per-launch via `--tools ""`, exact MCP allowlist, `--strict-mcp-config`, and `--no-session-persistence` | Memry stays sole gatekeeper of vault writes; prevents agent from poking raw `.md` files/running shell, loading unrelated MCP servers, or persisting Claude-side transcript history |
-| 10  | UI surface: right-sidebar tab next to existing Day panel; activity badge when chat is in background                                                                                  | Reuses existing layout slot; no new resize/collapse infra; co-located with the note user is editing for current-note attach                                                        |
-| 11  | Backend choice: schema stores per-conversation backend now; visible picker waits until P4                                                                                            | v1 has one backend, so a dropdown is speculative UI. Storing the backend keeps the migration path clean without adding dead controls                                               |
+| #   | Decision                                                                                                                                     | Rationale                                                                                                                                                                            |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | Co-pilot panel (turn-by-turn), not background task runner                                                                                    | Both example flows are seconds-to-minutes, not multi-minute autonomous runs                                                                                                          |
+| 2   | MCP-first: vault MCP server is the single tool layer for all backends                                                                        | Avoids per-backend tool reimplementation; usable as standalone integration; Claude CLI / Codex CLI both speak MCP natively                                                           |
+| 3   | Tool tier C — broad reads + narrow create/update set                                                                                         | "Create tasks from folder" needs create; "edit current note" needs update. Project/folder writes and delete/archive deferred to avoid building destructive-undo before v1            |
+| 4   | Permission model B — reads never prompt; create tools can be trusted per conversation; update tools always show approval + diff/before-after | Proven Cursor/Claude-Code pattern while preserving the explicit "review every mutation" safety bar for edits                                                                         |
+| 5   | Context model B — manual `@` references + auto-attach current note; folder refs are reference-style (not inlined)                            | Matches both example flows; avoids token explosion on large folders; agent uses `list_folder` + `read_note` MCP tools to drill in                                                    |
+| 6   | Conversation persistence: local tables plus `agent_conversation` / `agent_message` sync items, paid-gated sync                               | Free users get the full feature with local-only durability; paid tier is "your chats follow you across devices." Chat sync waits for entitlement checks before enqueueing rows       |
+| 7   | MCP transport: localhost HTTP/SSE                                                                                                            | Memry main process is long-lived; multiple backends + external clients (Cursor, Zed, etc.) need to share the same server; stdio doesn't fit                                          |
+| 8   | Subprocess lifecycle: spawn `claude` per turn, stateless, conversation history serialized into prompt                                        | Backend-agnostic; memry controls compaction; ~200-400 ms cold start hidden by streaming; subscription billing makes re-prompt cost zero                                              |
+| 9   | CLI-provider built-in tools are disabled or sandboxed; only Memry MCP tools are exposed for normal turns                                     | Memry stays sole gatekeeper of vault writes; prevents agent from poking raw `.md` files/running shell, loading unrelated MCP servers, or persisting provider-side transcript history |
+| 10  | UI surface: right-sidebar tab next to existing Day panel; activity badge when chat is in background                                          | Reuses existing layout slot; no new resize/collapse infra; co-located with the note user is editing for current-note attach                                                          |
+| 11  | Backend choice: provider dropdown is real UI, pinned per conversation, backed by `AgentBackend`                                              | Claude, Codex, and local providers share runtime/tool code while keeping provider-specific options isolated                                                                          |
 
 ## High-Level Architecture
 
@@ -208,7 +208,7 @@ Dependency: current desktop vault identity is path-based. Before adding chat row
   id: text PRIMARY KEY,                  // UUID
   vault_id: text NOT NULL,               // stable local vault UUID; maps to paid-sync vaults.id
   title: text NOT NULL,                  // user-editable; auto-generated from first user message
-  backend: text NOT NULL,                // 'claude_cli' (only one in v1)
+  backend: text NOT NULL,                // 'claude_cli' | 'codex_cli' | 'local_openai_compatible'
   trust_list: text NOT NULL,             // JSON array of tool names trusted in this conv
   pinned: integer NOT NULL DEFAULT 0,
   vector_clock: text NOT NULL,           // JSON
@@ -306,7 +306,7 @@ The sync engine queries entitlement before enqueueing. Free users' rows simply n
 - Sync integration test: free user's mutations don't enqueue; flipping entitlement enqueues backfill
 - Encryption test: rows on disk don't contain plaintext message bodies
 
-## Phase 3 — Agent Chat UI (Claude CLI)
+## Phase 3 — Agent Chat UI And Backend Providers
 
 ### Right-sidebar tab
 
@@ -320,7 +320,7 @@ The existing right sidebar gets a tabbed header:
 └──────────────────┘
 ```
 
-Tab state persists per window. Switching to Agent for the first time on a fresh install shows an enablement screen, not the composer. It says Claude CLI sends the user's message, attached refs, prior chat context, and tool results to Anthropic under the user's Claude account; local/synced chat history is encrypted by Memry. User must click **Enable Claude CLI chat** before any `claude` subprocess can run. After enablement, empty state shows "Start chatting with your vault" + a Claude-CLI-status line ("`claude` detected and ready" / "`claude` not found — install instructions"). Once a chat exists, default view is the most recently active conversation.
+Tab state persists per window. Switching to Agent for the first time on a fresh install shows an enablement screen, not a provider subprocess. The disclosure is provider-specific: Claude/Codex can send prompts, attached refs, prior chat context, and tool results through that provider; local loopback keeps prompts on the machine; custom non-loopback sends data to the configured endpoint. After enablement, the composer is ready immediately and provider availability is shown through the provider dropdown/settings. Once a chat exists, default view is the most recently active conversation.
 
 ### Conversation list
 
@@ -355,7 +355,7 @@ Picker drives off the existing search infra (FTS over notes + folders + tasks + 
 
 Submit on `Cmd/Ctrl+Enter`. `Enter` is newline. (Many users prefer the inverse — make this a setting later.)
 
-The conversation row stores `backend = 'claude_cli'`, but v1 does not show a backend dropdown because there is only one usable option. P4 can add the per-conversation / per-turn backend picker when a second backend exists.
+The conversation row stores `backend` and optional `backend_model`. The composer shows Claude, Codex, and Local in the provider dropdown. The provider is pinned per conversation; changing it after messages exist updates the conversation and adds a `backend_changed` system note.
 
 ### Permission flow (trust-list, conversation-scoped)
 
@@ -482,7 +482,7 @@ Smarter strategies (sliding windows, semantic relevance picking, prompt-cache aw
 - Tool args are validated server-side by Zod schemas before mutation; agent can't smuggle SQL or path traversal.
 - Trust list lives in the conversation row only; never honored cross-conversation, never persists in claude CLI's own session files.
 - All renderer↔main payloads go through the existing IPC contract validators.
-- First-use Agent enablement is required before remote model calls. The disclosure states that prompts and selected context go to Anthropic through Claude CLI; Memry's encryption covers local/synced storage, not remote inference.
+- First-use Agent enablement is required before model calls. The disclosure states where prompts and selected context go for Claude, Codex, local loopback, and custom non-loopback endpoints; Memry's encryption covers local/synced storage, not remote inference.
 
 ### Logging and telemetry
 
@@ -502,9 +502,9 @@ Smarter strategies (sliding windows, semantic relevance picking, prompt-cache aw
 
 ## Future Phases (acknowledged, not designed here)
 
-**P4 — Codex CLI backend.** Generalize `AgentRuntime`'s subprocess manager into a backend trait (`spawn`, `parseStream`, `assemblePrompt`). Add Codex as a second implementation. Per-conversation backend pin in the UI starts being a real choice. Codex's MCP support and stream-json output format will need a parallel of the Claude integration but should reuse the entire Vault MCP server unchanged.
+**Cloud Anthropic / OpenAI backends.** Add hosted API-key providers only if product direction needs them. They should plug into the same `AgentBackend` seam, reuse the same Vault MCP tool surface, and keep provider-specific API keys in local secure storage.
 
-**P5 — Cloud Anthropic / OpenAI / Ollama backends.** Add AI SDK driven backends. They consume the same Vault MCP server via `experimental_createMCPClient`. Adds API-key settings UI for cloud paths (encrypted at rest in the existing settings store) and base-URL config for Ollama. Tool-calling discipline and small-LLM fallback ("if model can't reliably tool-call, drop tool offering and keep chat-only") are real concerns at this phase but not before.
+**Managed local runtimes.** Memry currently supports BYO OpenAI-compatible local servers. Downloading, installing, updating, or supervising model runtimes is separate product work and should not be mixed into the provider seam.
 
 **Later.** Plan-first / autonomous mode (Q4 option D). Background long-running tasks (Q1 option B). Agent chat search across conversations. RAG / embeddings for auto-context. Custom user-defined MCP tools. Voice input/output. Mobile app surface.
 
@@ -525,7 +525,7 @@ Smarter strategies (sliding windows, semantic relevance picking, prompt-cache aw
 
 1. **P1 first** — MCP server, all tool schemas, read tool execution, auth, and external read-only MCP-client smoke test. Write tools validate args and deny without active approval context. Lands a useful artifact even before any chat UI exists.
 2. **P2 second** — local vault UUID, schema, encryption-at-rest, `agent_conversation` + `agent_message` sync handlers. Unit-level only; no UI yet. If paid-sync entitlement is not available, chat rows remain local-only.
-3. **P3 third** — chat UI, ties P1 + P2 together. Ship to alpha users on Claude CLI only.
-4. P4, P5, Later — separate specs.
+3. **P3 third** — chat UI plus unified Claude/Codex/local backend support behind `AgentBackend`.
+4. Later provider/runtime work — separate specs.
 
 Each phase = its own implementation plan + PR series. Don't wedge them into one giant branch.

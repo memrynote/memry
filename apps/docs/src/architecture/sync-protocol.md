@@ -49,16 +49,16 @@ Inside the encrypted blob, tasks, projects, and agent conversations carry per-fi
 
 See `apps/desktop/src/main/sync/field-merge.ts` for the merge implementation.
 `TASK_SYNCABLE_FIELDS` is 15 fields; `PROJECT_SYNCABLE_FIELDS` is 8; agent conversations merge
-`title`, `backend`, `trustList`, and `pinned`.
+`title`, `backend`, `backendModel`, `trustList`, and `pinned`.
 
 ## Agent Chat Items
 
 Agent chat adds two encrypted record sync item types:
 
-| Type                 | Merge behavior                                                     |
-| -------------------- | ------------------------------------------------------------------ |
-| `agent_conversation` | Field-level merge for title, backend, trust list, and pinned state |
-| `agent_message`      | Append-only by message id; duplicate ids are idempotent            |
+| Type                 | Merge behavior                                                                    |
+| -------------------- | --------------------------------------------------------------------------------- |
+| `agent_conversation` | Field-level merge for title, backend, backend model, trust list, and pinned state |
+| `agent_message`      | Append-only by message id; duplicate ids are idempotent                           |
 
 Conversation titles, message bodies, and attachments are stored as purpose-bound encrypted JSON
 envelopes before sync encoding. Streaming messages are not eligible for sync until they reach a

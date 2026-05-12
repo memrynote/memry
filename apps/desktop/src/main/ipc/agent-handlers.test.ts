@@ -3,20 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mockElectron } from '@tests/utils/mock-electron'
 
 const mocks = vi.hoisted(() => ({
-  detectClaudeBinary: vi.fn(async () => ({
-    detected: true,
-    version: '2.1.138',
-    meetsMinimum: true,
-    minimumRequired: '2.1.0',
-    installHint: null
-  })),
-  detectCodexBinary: vi.fn(async () => ({
-    detected: true,
-    version: '0.130.0',
-    meetsMinimum: true,
-    minimumRequired: '0.130.0',
-    installHint: null
-  })),
   runTurn: vi.fn(async () => ({ turnId: 'turn-1' })),
   snapshotAttachments: vi.fn(async () => [
     {
@@ -34,12 +20,6 @@ const mocks = vi.hoisted(() => ({
 vi.mock('electron', () => ({
   BrowserWindow: mockElectron.BrowserWindow,
   ipcMain: mockElectron.ipcMain
-}))
-vi.mock('../agent/cli/claude-binary', () => ({
-  detectClaudeBinary: mocks.detectClaudeBinary
-}))
-vi.mock('../agent/cli/codex-binary', () => ({
-  detectCodexBinary: mocks.detectCodexBinary
 }))
 vi.mock('../agent/runtime/turn', () => ({
   runTurn: mocks.runTurn
@@ -67,6 +47,30 @@ function findHandler(channel: string): (...args: unknown[]) => unknown {
 }
 
 describe('agent IPC handlers', () => {
+  const backendStatuses = {
+    claude_cli: {
+      backend: 'claude_cli',
+      available: true,
+      reason: null,
+      detail: null,
+      version: '2.1.138',
+      minimumRequired: '2.1.0'
+    },
+    codex_cli: {
+      backend: 'codex_cli',
+      available: true,
+      reason: null,
+      detail: null,
+      version: '0.130.0',
+      minimumRequired: '0.130.0'
+    },
+    local_openai_compatible: {
+      backend: 'local_openai_compatible',
+      available: true,
+      reason: null,
+      detail: 'http://localhost:11434/v1'
+    }
+  }
   const deps = {
     runtime: {
       cancelTurn: vi.fn(),
@@ -90,20 +94,60 @@ describe('agent IPC handlers', () => {
     conversations: {
       listByVault: vi.fn(() => [{ id: 'conversation-1' }]),
       create: vi.fn(() => ({ id: 'conversation-2' })),
-      getById: vi.fn(() => ({ id: 'conversation-1', trustList: [] })),
+      getById: vi.fn(() => ({
+        id: 'conversation-1',
+        backend: 'claude_cli',
+        backendModel: null,
+        trustList: []
+      })),
+      update: vi.fn((id, patch) => ({ id, ...patch, trustList: [] })),
       addToTrustList: vi.fn(),
       removeFromTrustList: vi.fn()
     },
     messages: {
-      listByConversation: vi.fn(() => [{ id: 'message-1' }])
+      listByConversation: vi.fn(() => []),
+      append: vi.fn((input) => ({ id: 'message-2', ...input }))
+    },
+    backends: {
+      get: vi.fn((id: keyof typeof backendStatuses) => ({
+        getStatus: vi.fn(async () => backendStatuses[id])
+      })),
+      list: vi.fn(() => [])
     },
     previewNoteUpdate: vi.fn(() => ({
       title: 'Note',
       current: 'old',
       candidate: 'old\n\nnew'
     })),
-    spawn: vi.fn(),
-    routeToolCall: vi.fn(),
+    localProvider: {
+      getSettings: vi.fn(async () => ({
+        preset: 'ollama',
+        baseUrl: 'http://localhost:11434/v1',
+        model: '',
+        apiKeyConfigured: false,
+        allowNonLoopback: false
+      })),
+      setSettings: vi.fn(async (input) => ({ ...input, apiKeyConfigured: false })),
+      listModels: vi.fn(async () => ({ models: [] })),
+      testConnection: vi.fn(async () => ({
+        connected: true,
+        modelAvailable: true,
+        streamingSupported: true,
+        toolCallingSupported: false,
+        toolContinuationSupported: false,
+        toolsEnabled: false,
+        detail: null
+      })),
+      probeTools: vi.fn(async () => ({
+        connected: true,
+        modelAvailable: true,
+        streamingSupported: true,
+        toolCallingSupported: true,
+        toolContinuationSupported: true,
+        toolsEnabled: true,
+        detail: null
+      }))
+    },
     vaultId: 'vault-1'
   } as never
 
@@ -137,6 +181,25 @@ describe('agent IPC handlers', () => {
       ok: false,
       error: 'Agent runtime unavailable: missing key'
     })
+    await expect(findHandler(AgentChannels.invoke.GET_BACKEND_STATUSES)(null)).resolves.toEqual({
+      claude_cli: expect.objectContaining({ backend: 'claude_cli', available: false }),
+      codex_cli: expect.objectContaining({ backend: 'codex_cli', available: false }),
+      local_openai_compatible: expect.objectContaining({
+        backend: 'local_openai_compatible',
+        available: false
+      })
+    })
+  })
+
+  it('returns unified backend statuses keyed by backend id', async () => {
+    registerAgentHandlers(deps)
+
+    await expect(findHandler(AgentChannels.invoke.GET_BACKEND_STATUSES)(null)).resolves.toEqual(
+      backendStatuses
+    )
+    expect(deps.backends.get).toHaveBeenCalledWith('claude_cli')
+    expect(deps.backends.get).toHaveBeenCalledWith('codex_cli')
+    expect(deps.backends.get).toHaveBeenCalledWith('local_openai_compatible')
   })
 
   it('runs a turn with snapshotted attachments', async () => {
@@ -147,7 +210,7 @@ describe('agent IPC handlers', () => {
       sourceWindowId: 'window-1',
       text: 'hi',
       attachments: [{ kind: 'current_note', ref_id: 'current', label: 'Current note' }],
-      claudeEffort: 'low'
+      backendOptions: { backend: 'claude_cli', claudeEffort: 'low' }
     })
 
     expect(result).toEqual({ ok: true })
@@ -158,14 +221,14 @@ describe('agent IPC handlers', () => {
       expect.objectContaining({
         conversations: deps.conversations,
         messages: deps.messages,
-        spawnSubprocess: expect.any(Function),
-        toolHandlers: { routeToolCall: deps.routeToolCall }
+        backends: deps.backends,
+        trackRunHandle: expect.any(Function)
       }),
       expect.objectContaining({
         conversationId: 'conversation-1',
         sourceWindowId: 'window-1',
         text: 'hi',
-        claudeEffort: 'low',
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'low' },
         attachments: [
           {
             kind: 'current_note',
@@ -177,38 +240,6 @@ describe('agent IPC handlers', () => {
         ]
       })
     )
-  })
-
-  it('creates Codex conversations and returns both backend statuses', async () => {
-    registerAgentHandlers(deps)
-
-    await findHandler(AgentChannels.invoke.CREATE_CONVERSATION)(null, {
-      vaultId: 'vault-1',
-      backend: 'codex_cli'
-    })
-    const statuses = await findHandler(AgentChannels.invoke.GET_BACKEND_STATUSES)(null)
-
-    expect(deps.conversations.create).toHaveBeenCalledWith({
-      vaultId: 'vault-1',
-      title: 'New conversation',
-      backend: 'codex_cli'
-    })
-    expect(statuses).toEqual({
-      claude_cli: {
-        detected: true,
-        version: '2.1.138',
-        meetsMinimum: true,
-        minimumRequired: '2.1.0',
-        installHint: null
-      },
-      codex_cli: {
-        detected: true,
-        version: '0.130.0',
-        meetsMinimum: true,
-        minimumRequired: '0.130.0',
-        installHint: null
-      }
-    })
   })
 
   it('returns a busy result when another window already has a turn in flight', async () => {
@@ -250,14 +281,14 @@ describe('agent IPC handlers', () => {
   it('tracks and untracks subprocesses spawned for a turn', async () => {
     const cleanup = vi.fn()
     const kill = vi.fn()
-    deps.spawn.mockResolvedValue({
-      stdout: (async function* () {})(),
+    const handle = {
+      events: (async function* () {})(),
       stderr: (async function* () {})(),
       pid: 9,
       kill,
       waitExit: vi.fn(),
       cleanup
-    })
+    }
     registerAgentHandlers(deps)
 
     await findHandler(AgentChannels.invoke.SEND_TURN)(null, {
@@ -267,33 +298,19 @@ describe('agent IPC handlers', () => {
       attachments: []
     })
     const turnDeps = mocks.runTurn.mock.calls[0][0]
-    const subprocess = await turnDeps.spawnSubprocess({
-      prompt: 'prompt',
-      conversationId: 'conversation-1',
-      windowId: 'window-1',
-      backend: 'codex_cli',
-      effort: 'max'
-    })
+    const subprocess = turnDeps.trackRunHandle('conversation-1', handle)
     await subprocess.cleanup()
 
-    expect(deps.spawn).toHaveBeenCalledWith(
+    expect(deps.runtime.trackSubprocess).toHaveBeenCalledWith(
+      'conversation-1',
       expect.objectContaining({
-        prompt: 'prompt',
-        conversationId: 'conversation-1',
-        windowId: 'window-1',
-        backend: 'codex_cli',
-        effort: 'max'
+        events: expect.any(Object),
+        stderr: expect.any(Object),
+        pid: 9,
+        kill,
+        waitExit: expect.any(Function)
       })
     )
-
-    expect(deps.runtime.trackSubprocess).toHaveBeenCalledWith('conversation-1', {
-      stdout: expect.any(Object),
-      stderr: expect.any(Object),
-      pid: 9,
-      kill,
-      waitExit: expect.any(Function),
-      cleanup
-    })
     expect(cleanup).toHaveBeenCalled()
     expect(deps.runtime.untrackSubprocess).toHaveBeenCalledWith(9)
   })

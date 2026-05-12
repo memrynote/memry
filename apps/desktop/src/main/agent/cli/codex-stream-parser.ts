@@ -43,12 +43,32 @@ function parseLine(line: string): BackendEvent {
 
 function translate(obj: Record<string, unknown>): BackendEvent {
   if (isMcpToolCallEvent(obj)) {
-    if (obj.type === 'item.completed' && isRecord(obj.item)) {
-      const errorMessage = extractMcpToolErrorMessage(obj.item)
-      if (errorMessage) {
-        return { kind: 'error', message: errorMessage }
+    const item = obj.item as Record<string, unknown>
+    const toolUseId = typeof item.id === 'string' ? item.id : ''
+    const name = typeof item.tool === 'string' ? item.tool : ''
+    const args = item.arguments ?? {}
+
+    if (obj.type === 'item.started') {
+      return { kind: 'tool_use', toolUseId, name, args }
+    }
+
+    if (obj.type === 'item.completed') {
+      if (item.status === 'failed') {
+        return {
+          kind: 'tool_result',
+          toolUseId,
+          ok: false,
+          error: extractMcpToolError(item)
+        }
+      }
+      return {
+        kind: 'tool_result',
+        toolUseId,
+        ok: true,
+        data: item.result ?? null
       }
     }
+
     return { kind: 'noop' }
   }
 
@@ -82,21 +102,22 @@ function isMcpToolCallEvent(obj: Record<string, unknown>): boolean {
   )
 }
 
-function extractMcpToolErrorMessage(item: Record<string, unknown>): string | null {
-  if (item.status !== 'failed') return null
-
+function extractMcpToolError(item: Record<string, unknown>): { code: string; message: string } {
   if (isRecord(item.error)) {
     if (typeof item.error.message === 'string' && item.error.message.trim()) {
-      return item.error.message
+      return {
+        code: typeof item.error.code === 'string' ? item.error.code : 'MCP_TOOL_ERROR',
+        message: item.error.message
+      }
     }
-    return 'Codex MCP tool call failed'
+    return { code: 'MCP_TOOL_ERROR', message: 'Codex MCP tool call failed' }
   }
 
   if (typeof item.error === 'string' && item.error.trim()) {
-    return item.error
+    return { code: 'MCP_TOOL_ERROR', message: item.error }
   }
 
-  return 'Codex MCP tool call failed'
+  return { code: 'MCP_TOOL_ERROR', message: 'Codex MCP tool call failed' }
 }
 
 function extractErrorMessage(obj: Record<string, unknown>): string {

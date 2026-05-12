@@ -3,17 +3,22 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
+import type { CodexReasoningEffort } from '@memry/contracts/ipc-agent'
+
 import { createLogger } from '../../lib/logger'
 
 const logger = createLogger('AgentCli:CodexSpawn')
 
 export interface CodexSpawnOptions {
   binaryPath: string
-  mcpServerUrl: string
-  authorizationValue: string
-  conversationId: string
-  windowId: string
   prompt: string
+  reasoningEffort: CodexReasoningEffort
+  mcp?: {
+    serverUrl: string
+    authorizationValue: string
+    conversationId: string
+    windowId: string
+  }
 }
 
 export interface CodexSubprocess {
@@ -42,15 +47,22 @@ export async function spawnCodexTurn(opts: CodexSpawnOptions): Promise<CodexSubp
     '-C',
     dir,
     '-c',
-    `mcp_servers.memry.url="${opts.mcpServerUrl}/mcp"`,
-    '-c',
-    'mcp_servers.memry.bearer_token_env_var="MEMRY_AGENT_TOKEN"',
-    '-c',
-    'mcp_servers.memry.env_http_headers={"X-Memry-Conversation"="MEMRY_AGENT_CONVERSATION","X-Memry-Window"="MEMRY_AGENT_WINDOW"}',
-    '-c',
-    'mcp_servers.memry.default_tools_approval_mode="approve"',
-    opts.prompt
+    `model_reasoning_effort="${opts.reasoningEffort}"`
   ]
+
+  if (opts.mcp) {
+    args.push(
+      '-c',
+      `mcp_servers.memry.url="${opts.mcp.serverUrl}/mcp"`,
+      '-c',
+      'mcp_servers.memry.bearer_token_env_var="MEMRY_AGENT_TOKEN"',
+      '-c',
+      'mcp_servers.memry.env_http_headers={"X-Memry-Conversation"="MEMRY_AGENT_CONVERSATION","X-Memry-Window"="MEMRY_AGENT_WINDOW"}',
+      '-c',
+      'mcp_servers.memry.default_tools_approval_mode="approve"'
+    )
+  }
+  args.push(opts.prompt)
 
   logger.info('Spawning codex with ephemeral MCP config')
   const proc = spawn(opts.binaryPath, args, {
@@ -58,9 +70,13 @@ export async function spawnCodexTurn(opts: CodexSpawnOptions): Promise<CodexSubp
     stdio: ['ignore', 'pipe', 'pipe'],
     env: {
       ...process.env,
-      MEMRY_AGENT_TOKEN: opts.authorizationValue,
-      MEMRY_AGENT_CONVERSATION: opts.conversationId,
-      MEMRY_AGENT_WINDOW: opts.windowId
+      ...(opts.mcp
+        ? {
+            MEMRY_AGENT_TOKEN: opts.mcp.authorizationValue,
+            MEMRY_AGENT_CONVERSATION: opts.mcp.conversationId,
+            MEMRY_AGENT_WINDOW: opts.mcp.windowId
+          }
+        : {})
     }
   })
 

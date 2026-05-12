@@ -1,23 +1,31 @@
 import { BrowserWindow, ipcMain, type WebContents } from 'electron'
 
 import {
+  AgentBackendIdSchema,
   AgentChannels,
+  AgentLocalProviderSettingsUpdateSchema,
   ApproveToolRequestSchema,
-  CreateConversationRequestSchema,
   PreviewDiffRequestSchema,
+  type AgentBackendOptions,
+  type AgentLocalModelList,
+  type AgentLocalProviderProbeResult,
+  type AgentLocalProviderSettings,
+  type AgentLocalProviderSettingsUpdate,
+  type BackendStatusesResponse,
   type PreviewDiffResponse,
   SendTurnRequestSchema
 } from '@memry/contracts/ipc-agent'
 
 import { TOOL_SCHEMAS } from '../agent/mcp/tools/schemas'
-import { detectClaudeBinary } from '../agent/cli/claude-binary'
-import { detectCodexBinary } from '../agent/cli/codex-binary'
 import type { AgentRuntime } from '../agent/runtime/runtime'
 import { acceptDisclosure, getDisclosureState } from '../agent/runtime/disclosure-state'
 import { snapshotAttachments } from '../agent/runtime/attachment-snapshotter'
-import { runTurn, type TurnDeps } from '../agent/runtime/turn'
+import { runTurn } from '../agent/runtime/turn'
+import type { AgentBackendRegistry } from '../agent/backends/registry'
 import type { ConversationStore } from '../agent/storage/conversation-store'
 import type { MessageStore } from '../agent/storage/message-store'
+import type { Conversation, Message } from '../agent/storage/types'
+import { broadcastAgentEvent } from '../agent/runtime/event-bus'
 import { createLogger } from '../lib/logger'
 
 const logger = createLogger('IPC:Agent')
@@ -35,13 +43,19 @@ interface AgentHandlerDeps {
   >
   conversations: ConversationStore
   messages: MessageStore
+  backends: AgentBackendRegistry
   previewNoteUpdate: (input: {
     id: string
     mode: 'append' | 'prepend' | 'replace'
     content_markdown: string
   }) => Promise<PreviewDiffResponse>
-  spawn: TurnDeps['spawnSubprocess']
-  routeToolCall: TurnDeps['toolHandlers']['routeToolCall']
+  localProvider: {
+    getSettings: () => Promise<AgentLocalProviderSettings>
+    setSettings: (input: AgentLocalProviderSettingsUpdate) => Promise<AgentLocalProviderSettings>
+    listModels: () => Promise<AgentLocalModelList>
+    testConnection: () => Promise<AgentLocalProviderProbeResult>
+    probeTools: () => Promise<AgentLocalProviderProbeResult>
+  }
   vaultId: string
 }
 
@@ -54,11 +68,20 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
   })
 
   ipcMain.handle(AgentChannels.invoke.CREATE_CONVERSATION, async (_event, payload: unknown) => {
-    const request = CreateConversationRequestSchema.parse(payload ?? {})
+    const {
+      vaultId = deps.vaultId,
+      backend = 'claude_cli',
+      backendModel = null
+    } = (payload ?? {}) as {
+      vaultId?: string
+      backend?: string
+      backendModel?: string | null
+    }
     return deps.conversations.create({
-      vaultId: request.vaultId ?? deps.vaultId,
+      vaultId,
       title: 'New conversation',
-      backend: request.backend
+      backend: AgentBackendIdSchema.parse(backend),
+      backendModel
     })
   })
 
@@ -81,14 +104,53 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
     }
 
     const attachments = await snapshotAttachments(request.attachments)
+    const conversation = deps.conversations.getById(request.conversationId)
+    const backendModel = await backendModelFromOptions(request.backendOptions, deps)
+    if (
+      conversation &&
+      (conversation.backend !== request.backendOptions.backend ||
+        conversation.backendModel !== backendModel)
+    ) {
+      const messages = deps.messages.listByConversation(request.conversationId)
+      const changedFields =
+        conversation.backend !== request.backendOptions.backend
+          ? (['backend', 'backendModel'] as const)
+          : (['backendModel'] as const)
+      const updated = deps.conversations.update(
+        request.conversationId,
+        { backend: request.backendOptions.backend, backendModel },
+        [...changedFields]
+      )
+      if (messages.length > 0) {
+        const systemMessage = deps.messages.append({
+          conversationId: request.conversationId,
+          role: 'system',
+          content: {
+            role: 'system',
+            data: {
+              kind: 'backend_changed',
+              payload: {
+                from: conversation.backend,
+                to: request.backendOptions.backend,
+                model: backendModel
+              }
+            }
+          },
+          attachments: [],
+          status: 'completed'
+        })
+        broadcastMessage(systemMessage)
+      }
+      broadcastConversation(updated)
+    }
 
     void runTurn(
       {
         conversations: deps.conversations,
         messages: deps.messages,
-        spawnSubprocess: async (input) => {
-          const subprocess = await deps.spawn(input)
-          deps.runtime.trackSubprocess(input.conversationId, subprocess)
+        backends: deps.backends,
+        trackRunHandle: (conversationId, subprocess) => {
+          deps.runtime.trackSubprocess(conversationId, subprocess)
           return {
             ...subprocess,
             cleanup: async () => {
@@ -99,14 +161,13 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
               }
             }
           }
-        },
-        toolHandlers: { routeToolCall: deps.routeToolCall }
+        }
       },
       {
         conversationId: request.conversationId,
         sourceWindowId: request.sourceWindowId,
         text: request.text,
-        claudeEffort: request.claudeEffort,
+        backendOptions: request.backendOptions,
         attachments
       }
     )
@@ -165,11 +226,18 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
     return deps.conversations.getById(conversationId)
   })
 
-  ipcMain.handle(AgentChannels.invoke.GET_BINARY_STATUS, () => detectClaudeBinary())
-  ipcMain.handle(AgentChannels.invoke.GET_BACKEND_STATUSES, async () => ({
-    claude_cli: await detectClaudeBinary(),
-    codex_cli: await detectCodexBinary()
-  }))
+  ipcMain.handle(AgentChannels.invoke.GET_BACKEND_STATUSES, () => getBackendStatuses(deps))
+  ipcMain.handle(AgentChannels.invoke.GET_LOCAL_PROVIDER_SETTINGS, () =>
+    deps.localProvider.getSettings()
+  )
+  ipcMain.handle(AgentChannels.invoke.SET_LOCAL_PROVIDER_SETTINGS, (_event, payload: unknown) => {
+    return deps.localProvider.setSettings(AgentLocalProviderSettingsUpdateSchema.parse(payload))
+  })
+  ipcMain.handle(AgentChannels.invoke.LIST_LOCAL_MODELS, () => deps.localProvider.listModels())
+  ipcMain.handle(AgentChannels.invoke.TEST_LOCAL_PROVIDER, () =>
+    deps.localProvider.testConnection()
+  )
+  ipcMain.handle(AgentChannels.invoke.PROBE_LOCAL_PROVIDER, () => deps.localProvider.probeTools())
   ipcMain.handle(AgentChannels.invoke.GET_DISCLOSURE_STATE, () => getDisclosureState())
   ipcMain.handle(AgentChannels.invoke.ACCEPT_DISCLOSURE, () => acceptDisclosure())
   ipcMain.handle(AgentChannels.invoke.GET_WINDOW_ID, (event) => ({
@@ -196,11 +264,35 @@ export function registerUnavailableAgentHandlers(reason: string): void {
   registerUnavailableHandler(AgentChannels.invoke.APPROVE_TOOL, async () => unavailable())
   registerUnavailableHandler(AgentChannels.invoke.PREVIEW_DIFF, async () => unavailable())
   registerUnavailableHandler(AgentChannels.invoke.EDIT_TRUST_LIST, async () => unavailable())
-  registerUnavailableHandler(AgentChannels.invoke.GET_BINARY_STATUS, () => detectClaudeBinary())
   registerUnavailableHandler(AgentChannels.invoke.GET_BACKEND_STATUSES, async () => ({
-    claude_cli: await detectClaudeBinary(),
-    codex_cli: await detectCodexBinary()
+    claude_cli: {
+      backend: 'claude_cli',
+      available: false,
+      reason: 'agent_unavailable',
+      detail: message
+    },
+    codex_cli: {
+      backend: 'codex_cli',
+      available: false,
+      reason: 'agent_unavailable',
+      detail: message
+    },
+    local_openai_compatible: {
+      backend: 'local_openai_compatible',
+      available: false,
+      reason: 'agent_unavailable',
+      detail: message
+    }
   }))
+  registerUnavailableHandler(AgentChannels.invoke.GET_LOCAL_PROVIDER_SETTINGS, async () =>
+    unavailable()
+  )
+  registerUnavailableHandler(AgentChannels.invoke.SET_LOCAL_PROVIDER_SETTINGS, async () =>
+    unavailable()
+  )
+  registerUnavailableHandler(AgentChannels.invoke.LIST_LOCAL_MODELS, async () => unavailable())
+  registerUnavailableHandler(AgentChannels.invoke.TEST_LOCAL_PROVIDER, async () => unavailable())
+  registerUnavailableHandler(AgentChannels.invoke.PROBE_LOCAL_PROVIDER, async () => unavailable())
   registerUnavailableHandler(AgentChannels.invoke.GET_DISCLOSURE_STATE, () => getDisclosureState())
   registerUnavailableHandler(AgentChannels.invoke.ACCEPT_DISCLOSURE, () => acceptDisclosure())
   registerUnavailableHandler(AgentChannels.invoke.GET_WINDOW_ID, (event) => ({
@@ -223,6 +315,37 @@ function registerUnavailableHandler(
 
 function extractErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback
+}
+
+async function backendModelFromOptions(
+  options: AgentBackendOptions,
+  deps: AgentHandlerDeps
+): Promise<string | null> {
+  if (options.backend !== 'local_openai_compatible') return null
+  if (options.model) return options.model
+  const settings = await deps.localProvider.getSettings()
+  return settings.model || null
+}
+
+async function getBackendStatuses(deps: AgentHandlerDeps): Promise<BackendStatusesResponse> {
+  const [claude, codex, local] = await Promise.all([
+    deps.backends.get('claude_cli').getStatus(),
+    deps.backends.get('codex_cli').getStatus(),
+    deps.backends.get('local_openai_compatible').getStatus()
+  ])
+  return {
+    claude_cli: claude,
+    codex_cli: codex,
+    local_openai_compatible: local
+  }
+}
+
+function broadcastMessage(message: Message): void {
+  broadcastAgentEvent({ kind: 'message_upserted', message })
+}
+
+function broadcastConversation(conversation: Conversation): void {
+  broadcastAgentEvent({ kind: 'conversation_updated', conversation })
 }
 
 function resolveSenderWindowId(sender: WebContents): string | null {

@@ -44,6 +44,7 @@ function plainLocalPayload(
     vaultId: model.vaultId,
     title: model.title,
     backend: model.backend,
+    backendModel: model.backendModel,
     trustList: model.trustList,
     pinned: model.pinned,
     clock: model.vectorClock,
@@ -67,6 +68,7 @@ function fieldObject(input: AgentConversationSyncPayload): Record<AgentConversat
   return {
     title: input.title,
     backend: input.backend,
+    backendModel: input.backendModel,
     trustList: input.trustList,
     pinned: input.pinned
   }
@@ -114,6 +116,7 @@ export class AgentConversationHandler extends BaseItemHandler<AgentConversationS
             vaultId: data.vaultId,
             titleCiphertext: encryptConversationTitle(data.title, vaultKey),
             backend: data.backend,
+            backendModel: data.backendModel,
             trustList: data.trustList,
             pinned: data.pinned,
             vectorClock: remoteClock,
@@ -146,9 +149,10 @@ export class AgentConversationHandler extends BaseItemHandler<AgentConversationS
         const nextPayload: AgentConversationSyncPayload = {
           ...localPayload,
           title: (merged.merged.title as string | undefined) ?? localPayload.title,
-          backend:
-            (merged.merged.backend as AgentConversationSyncPayload['backend'] | undefined) ??
-            localPayload.backend,
+          backend: (merged.merged.backend as string | undefined) ?? localPayload.backend,
+          backendModel: Object.hasOwn(merged.merged, 'backendModel')
+            ? (merged.merged.backendModel as string | null)
+            : localPayload.backendModel,
           trustList: (merged.merged.trustList as string[] | undefined) ?? localPayload.trustList,
           pinned: (merged.merged.pinned as boolean | undefined) ?? localPayload.pinned,
           clock: resolution.mergedClock,
@@ -241,6 +245,7 @@ export class AgentConversationHandler extends BaseItemHandler<AgentConversationS
         vaultId: payload.vaultId,
         titleCiphertext: encryptConversationTitle(payload.title, vaultKey),
         backend: payload.backend,
+        backendModel: payload.backendModel,
         trustList: payload.trustList,
         pinned: payload.pinned,
         vectorClock: payload.clock ?? {},

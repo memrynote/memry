@@ -8,6 +8,7 @@ export const agentConversations = sqliteTable(
     vaultId: text('vault_id').notNull(),
     titleCiphertext: text('title_ciphertext').notNull(),
     backend: text('backend').notNull(),
+    backendModel: text('backend_model'),
     trustList: text('trust_list', { mode: 'json' }).$type<string[]>().notNull().default([]),
     pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false),
     vectorClock: text('vector_clock', { mode: 'json' }).$type<VectorClock>().notNull(),

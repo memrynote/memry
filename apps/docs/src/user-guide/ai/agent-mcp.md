@@ -1,8 +1,10 @@
 # Agent Chat & MCP Server
 
-Memry can run an in-app Agent Chat backed by a local AI CLI. The desktop app starts a local MCP
-endpoint on `127.0.0.1` with a random port, then launches the selected provider with an ephemeral MCP
-config for the current conversation.
+Memry can run an in-app Agent Chat backed by a provider-neutral agent backend. Claude CLI is the
+first full backend, local OpenAI-compatible servers can be used for BYO local models, and the Codex
+CLI backend uses the same contract when enabled. The desktop app starts a local MCP endpoint on
+`127.0.0.1` with a random port, then gives the selected backend only the vault tools for the current
+conversation.
 
 The same MCP endpoint can also be copied into other desktop AI clients for vault read tools.
 
@@ -11,15 +13,10 @@ bearer token.
 
 ## Agent Chat
 
-Open the right sidebar, choose **Agent**, and enable Agent Chat. Memry checks the selected provider
-binary before a turn starts:
-
-- **Claude CLI** uses `claude` on `PATH`, version `2.1.0` or newer.
-- **Codex CLI** uses `codex` on `PATH`, version `0.130.0` or newer.
-
-The Agent disclosure must also be accepted before chat starts. Claude sends prompts and tool context
-to Anthropic through the Claude CLI. Codex sends prompts and tool context to OpenAI through the Codex
-CLI. Memry stores only encrypted local/synced chat history.
+Open the right sidebar, choose **Agent**, and pick a provider. For Claude CLI, Memry checks that
+`claude` is available on `PATH`, that it reports version `2.1.0` or newer, and that the Agent
+disclosure has been accepted. For local models, configure a compatible server in
+[Settings -> Agent Providers](/user-guide/settings#agent-providers) first.
 
 Agent Chat can:
 
@@ -33,19 +30,25 @@ Agent Chat can:
 Press <kbd>Enter</kbd> to send the prompt. Press <kbd>Shift</kbd>+<kbd>Enter</kbd> to insert a
 new line in the prompt box.
 
-The prompt bar shows the selected agent provider. Claude also exposes prompt-time reasoning effort
-settings, with provider-specific settings shown only for the active provider. Switching providers
-from an active conversation creates a new empty conversation for that provider; existing
-conversations keep their stored backend.
+The prompt bar shows the selected agent provider. The provider is pinned per conversation; changing
+it after messages exist updates the conversation and records the switch in the chat history. Claude
+also exposes prompt-time reasoning effort settings, with provider-specific settings shown only for
+the active provider.
+
+Local model support uses OpenAI-compatible HTTP APIs. Memry ships presets for Ollama, LM Studio, and
+llama.cpp server, plus a Custom endpoint. Local tool access is gated by a capability probe. If the
+model can emit tool calls and continue after a tool result, Memry enables the full vault tool set. If
+the probe fails, local chat can still answer from attached context, but vault tool calls stay
+disabled.
 
 When no conversation is selected yet, the prompt box stays available. Sending the first prompt
 creates a new Agent Chat conversation, attaches the active note when one is open, and streams the
 reply into the sidebar.
 
-New conversations start with a temporary title. Claude conversations generate a short title after the
-first prompt without giving the title-generation subprocess access to Memry MCP tools. Codex
-conversations keep the temporary title in the first version to avoid starting a second Codex
-subprocess for title generation.
+New conversations start with a temporary title. When you send the first prompt, the selected chat
+backend also generates a short conversation title. Memry stores that title on the encrypted
+conversation row and refreshes the sidebar title without giving the title-generation subprocess
+access to Memry MCP tools.
 
 Conversation rows, message bodies, and message attachments are encrypted at rest before they are
 written to SQLite. Free accounts keep agent chat history local-only. Paid accounts can sync finalized
@@ -105,10 +108,11 @@ Create and update tools require Agent Chat context and explicit approval:
 - `vault_remove_tag`
 - `vault_move_to_folder`
 
-When the selected provider requests one of these tools from Agent Chat, Memry pauses the turn and shows an inline
-approval card in the conversation. You can allow the request once, allow create tools always for that
-conversation, deny it, or edit the arguments before allowing. Note updates load a before/after diff
-before the write is applied. Unauthenticated or context-free write requests continue to be denied.
+When a chat backend requests one of these tools from Agent Chat, Memry pauses the turn and shows an
+inline approval card in the conversation. You can allow the request once, allow create tools always
+for that conversation, deny it, or edit the arguments before allowing. Note updates load a
+before/after diff before the write is applied. Unauthenticated or context-free write requests
+continue to be denied.
 
 ## Current Note
 
@@ -121,3 +125,11 @@ of guessing.
 The MCP server binds only to localhost. Read tools still expose the content they return to the
 client you configure, so only paste the token into clients you trust on this machine. Write tools are
 only applied after the in-app approval gate resolves for the active Agent Chat conversation.
+
+Provider privacy depends on the selected backend:
+
+- Claude and Codex providers may send prompts, attachments, and tool results through that provider.
+- Local loopback providers keep model prompts on this machine, except for the actual tool effects
+  Memry applies inside the vault after approval.
+- Custom non-loopback endpoints send data to the configured endpoint and must be explicitly enabled
+  with the not-fully-local warning.
