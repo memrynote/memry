@@ -1,7 +1,12 @@
 import type {
   AgentEvent,
+  AgentBackendId,
+  AgentLocalModelList,
+  AgentLocalProviderProbeResult,
+  AgentLocalProviderSettings,
+  AgentLocalProviderSettingsUpdate,
   ApproveToolRequest,
-  BinaryStatus,
+  BackendStatusesResponse,
   PreviewDiffRequest,
   PreviewDiffResponse,
   SendTurnRequest,
@@ -15,8 +20,11 @@ import { invoke, subscribe } from '../lib/ipc'
 export const agentApi = {
   listConversations: (input?: { vaultId?: string }): Promise<Conversation[]> =>
     invoke(AgentChannels.invoke.LIST_CONVERSATIONS, input),
-  createConversation: (input?: { vaultId?: string; backend?: string }): Promise<Conversation> =>
-    invoke(AgentChannels.invoke.CREATE_CONVERSATION, input),
+  createConversation: (input?: {
+    vaultId?: string
+    backend?: AgentBackendId
+    backendModel?: string | null
+  }): Promise<Conversation> => invoke(AgentChannels.invoke.CREATE_CONVERSATION, input),
   loadConversation: (input: {
     id: string
   }): Promise<{
@@ -36,7 +44,20 @@ export const agentApi = {
     add?: string[]
     remove?: string[]
   }): Promise<Conversation | null> => invoke(AgentChannels.invoke.EDIT_TRUST_LIST, input),
-  getBinaryStatus: (): Promise<BinaryStatus> => invoke(AgentChannels.invoke.GET_BINARY_STATUS),
+  getBackendStatuses: (): Promise<BackendStatusesResponse> =>
+    invoke(AgentChannels.invoke.GET_BACKEND_STATUSES),
+  getLocalProviderSettings: (): Promise<AgentLocalProviderSettings> =>
+    invoke(AgentChannels.invoke.GET_LOCAL_PROVIDER_SETTINGS),
+  setLocalProviderSettings: (
+    input: AgentLocalProviderSettingsUpdate
+  ): Promise<AgentLocalProviderSettings> =>
+    invoke(AgentChannels.invoke.SET_LOCAL_PROVIDER_SETTINGS, input),
+  listLocalModels: (): Promise<AgentLocalModelList> =>
+    invoke(AgentChannels.invoke.LIST_LOCAL_MODELS),
+  testLocalProvider: (): Promise<AgentLocalProviderProbeResult> =>
+    invoke(AgentChannels.invoke.TEST_LOCAL_PROVIDER),
+  probeLocalProvider: (): Promise<AgentLocalProviderProbeResult> =>
+    invoke(AgentChannels.invoke.PROBE_LOCAL_PROVIDER),
   acceptDisclosure: (): Promise<{ accepted: boolean }> =>
     invoke(AgentChannels.invoke.ACCEPT_DISCLOSURE),
   getDisclosureState: (): Promise<{ accepted: boolean }> =>

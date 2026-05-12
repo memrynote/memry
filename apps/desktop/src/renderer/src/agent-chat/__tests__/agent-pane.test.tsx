@@ -2,7 +2,7 @@ import userEvent from '@testing-library/user-event'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { BinaryStatus } from '@memry/contracts/ipc-agent'
+import type { AgentBackendStatus, BackendStatusesResponse } from '@memry/contracts/ipc-agent'
 
 const mockUseAgentOptional = vi.hoisted(() => vi.fn())
 const mockAcceptDisclosure = vi.hoisted(() => vi.fn())
@@ -19,24 +19,43 @@ vi.mock('@/contexts/tabs', () => ({
 
 import { AgentPane } from '../agent-pane'
 
-const readyBinary: BinaryStatus = {
-  detected: true,
+const readyClaudeStatus: AgentBackendStatus = {
+  backend: 'claude_cli',
+  available: true,
   version: '2.1.0',
-  meetsMinimum: true,
   minimumRequired: '2.1.0',
-  installHint: null
+  reason: null,
+  detail: null
+}
+
+const readyStatuses: BackendStatusesResponse = {
+  claude_cli: readyClaudeStatus,
+  codex_cli: {
+    backend: 'codex_cli',
+    available: true,
+    version: '0.130.0',
+    minimumRequired: '0.130.0',
+    reason: null,
+    detail: null
+  },
+  local_openai_compatible: {
+    backend: 'local_openai_compatible',
+    available: true,
+    reason: null,
+    detail: 'http://localhost:11434/v1'
+  }
 }
 
 function mockAgentState(
   overrides: Partial<{
-    binaryStatus: BinaryStatus | null
+    backendStatuses: BackendStatusesResponse | null
     disclosureAccepted: boolean | null
     activeConversationId: string | null
   }>
 ) {
   mockUseAgentOptional.mockReturnValue({
     state: {
-      binaryStatus: readyBinary,
+      backendStatuses: readyStatuses,
       disclosureAccepted: true,
       sourceWindowId: 'window-1',
       activeConversationId: null,
@@ -69,7 +88,7 @@ describe('AgentPane', () => {
 
     expect(screen.getByText('Enable Memry Agent')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Enable Claude CLI chat' }))
+    await user.click(screen.getByRole('button', { name: 'Enable Agent chat' }))
 
     expect(mockAcceptDisclosure).toHaveBeenCalledTimes(1)
   })
@@ -87,12 +106,16 @@ describe('AgentPane', () => {
 
   it('keeps the empty chat composer visible when the Claude CLI is unavailable', () => {
     mockAgentState({
-      binaryStatus: {
-        detected: false,
-        version: null,
-        meetsMinimum: false,
-        minimumRequired: '2.1.0',
-        installHint: 'Install Claude Code.'
+      backendStatuses: {
+        ...readyStatuses,
+        claude_cli: {
+          backend: 'claude_cli',
+          available: false,
+          reason: 'missing_binary',
+          detail: 'Install Claude Code.',
+          version: null,
+          minimumRequired: '2.1.0'
+        }
       }
     })
 
@@ -107,7 +130,7 @@ describe('AgentPane', () => {
     const user = userEvent.setup()
     mockUseAgentOptional.mockReturnValue({
       state: {
-        binaryStatus: readyBinary,
+        backendStatuses: readyStatuses,
         disclosureAccepted: true,
         activeConversationId: 'conversation-1',
         conversations: {
@@ -116,6 +139,7 @@ describe('AgentPane', () => {
             vaultId: 'vault-1',
             title: 'Planning',
             backend: 'claude_cli',
+            backendModel: null,
             trustList: [],
             pinned: false,
             vectorClock: {},
@@ -130,6 +154,7 @@ describe('AgentPane', () => {
             vaultId: 'vault-1',
             title: 'Inbox cleanup',
             backend: 'claude_cli',
+            backendModel: null,
             trustList: [],
             pinned: false,
             vectorClock: {},

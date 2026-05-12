@@ -16,6 +16,7 @@ function freshDb() {
       vault_id TEXT NOT NULL,
       title_ciphertext TEXT NOT NULL,
       backend TEXT NOT NULL,
+      backend_model TEXT,
       trust_list TEXT NOT NULL DEFAULT '[]',
       pinned INTEGER NOT NULL DEFAULT 0,
       vector_clock TEXT NOT NULL,

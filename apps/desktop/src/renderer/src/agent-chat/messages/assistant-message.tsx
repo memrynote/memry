@@ -17,12 +17,12 @@ export function AssistantMessage({ message }: { message: Message }): React.JSX.E
         <MessageContent
           role="status"
           aria-label={t('agentChat.thinking')}
-          className="rounded-full border border-sidebar-border/70 bg-background/80 px-3 py-2 shadow-sm"
+          className="min-w-10 rounded-full border border-sidebar-border/70 bg-background/80 px-3 py-2 shadow-sm"
         >
           <span className="flex items-center gap-1.5" aria-hidden="true">
-            <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground/70" />
-            <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground/70 [animation-delay:150ms]" />
-            <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground/70 [animation-delay:300ms]" />
+            <span className="size-2 animate-pulse rounded-full bg-foreground/60" />
+            <span className="size-2 animate-pulse rounded-full bg-foreground/60 [animation-delay:150ms]" />
+            <span className="size-2 animate-pulse rounded-full bg-foreground/60 [animation-delay:300ms]" />
           </span>
         </MessageContent>
       </AIMessage>

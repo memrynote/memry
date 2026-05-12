@@ -278,6 +278,7 @@ export const AgentConversationSyncPayloadSchema = z.object({
   vaultId: z.string(),
   title: z.string(),
   backend: z.string(),
+  backendModel: z.string().nullable(),
   trustList: z.array(z.string()),
   pinned: z.boolean(),
   clock: VectorClockSchema.optional(),

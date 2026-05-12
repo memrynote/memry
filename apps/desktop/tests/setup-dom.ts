@@ -384,12 +384,62 @@ const createMockApi = () => ({
     approveTool: vi.fn().mockResolvedValue({ ok: true }),
     previewDiff: vi.fn().mockResolvedValue({ title: '', current: '', candidate: '' }),
     editTrustList: vi.fn().mockResolvedValue(null),
-    getBinaryStatus: vi.fn().mockResolvedValue({
-      detected: false,
-      version: null,
-      meetsMinimum: false,
-      minimumRequired: '2.1.0',
-      installHint: null
+    getBackendStatuses: vi.fn().mockResolvedValue({
+      claude_cli: {
+        backend: 'claude_cli',
+        available: false,
+        reason: 'missing_binary',
+        detail: null,
+        version: null,
+        minimumRequired: '2.1.0'
+      },
+      codex_cli: {
+        backend: 'codex_cli',
+        available: false,
+        reason: 'missing_binary',
+        detail: null,
+        version: null,
+        minimumRequired: '0.130.0'
+      },
+      local_openai_compatible: {
+        backend: 'local_openai_compatible',
+        available: true,
+        reason: null,
+        detail: null
+      }
+    }),
+    getLocalProviderSettings: vi.fn().mockResolvedValue({
+      preset: 'ollama',
+      baseUrl: 'http://localhost:11434/v1',
+      model: '',
+      apiKeyConfigured: false,
+      allowNonLoopback: false
+    }),
+    setLocalProviderSettings: vi.fn().mockResolvedValue({
+      preset: 'ollama',
+      baseUrl: 'http://localhost:11434/v1',
+      model: '',
+      apiKeyConfigured: false,
+      allowNonLoopback: false
+    }),
+    listLocalModels: vi.fn().mockResolvedValue({ models: [] }),
+    testLocalProvider: vi.fn().mockResolvedValue({
+      connected: false,
+      modelAvailable: false,
+      streamingSupported: false,
+      toolCallingSupported: false,
+      toolContinuationSupported: false,
+      toolsEnabled: false,
+      detail: null
+    }),
+    probeLocalProvider: vi.fn().mockResolvedValue({
+      connected: false,
+      modelAvailable: false,
+      streamingSupported: false,
+      toolCallingSupported: false,
+      toolContinuationSupported: false,
+      toolsEnabled: false,
+      detail: null
     }),
     acceptDisclosure: vi.fn().mockResolvedValue({ accepted: true }),
     getDisclosureState: vi.fn().mockResolvedValue({ accepted: false }),

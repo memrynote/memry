@@ -7,8 +7,13 @@ import type { AppNavigationCommandEvent } from '@memry/contracts/ipc-channels'
 import type { AgentMcpStatus } from '@memry/contracts/agent-mcp-channels'
 import type {
   AgentEvent,
+  AgentBackendId,
+  AgentLocalModelList,
+  AgentLocalProviderProbeResult,
+  AgentLocalProviderSettings,
+  AgentLocalProviderSettingsUpdate,
   ApproveToolRequest,
-  BinaryStatus,
+  BackendStatusesResponse,
   PreviewDiffRequest,
   PreviewDiffResponse,
   SendTurnRequest,
@@ -1610,7 +1615,11 @@ interface AgentMcpClientAPI {
 
 interface AgentClientAPI {
   listConversations: (input?: { vaultId?: string }) => Promise<Conversation[]>
-  createConversation: (input?: { vaultId?: string; backend?: string }) => Promise<Conversation>
+  createConversation: (input?: {
+    vaultId?: string
+    backend?: AgentBackendId
+    backendModel?: string | null
+  }) => Promise<Conversation>
   loadConversation: (input: { id: string }) => Promise<{
     conversation: Conversation | null
     messages: Message[]
@@ -1624,7 +1633,14 @@ interface AgentClientAPI {
     add?: string[]
     remove?: string[]
   }) => Promise<Conversation | null>
-  getBinaryStatus: () => Promise<BinaryStatus>
+  getBackendStatuses: () => Promise<BackendStatusesResponse>
+  getLocalProviderSettings: () => Promise<AgentLocalProviderSettings>
+  setLocalProviderSettings: (
+    input: AgentLocalProviderSettingsUpdate
+  ) => Promise<AgentLocalProviderSettings>
+  listLocalModels: () => Promise<AgentLocalModelList>
+  testLocalProvider: () => Promise<AgentLocalProviderProbeResult>
+  probeLocalProvider: () => Promise<AgentLocalProviderProbeResult>
   acceptDisclosure: () => Promise<{ accepted: boolean }>
   getDisclosureState: () => Promise<{ accepted: boolean }>
   getWindowId: () => Promise<{ windowId: string | null }>

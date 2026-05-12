@@ -26,7 +26,8 @@
         "vault": "Hvelv",
         "tags": "Tagger",
         "properties": "Egenskaper",
-        "agentMcp": "Agent MCP"
+        "agentMcp": "Agent MCP",
+        "agentProviders": "Agent Providers"
       }
     }
   },
@@ -1186,5 +1187,54 @@
     "copyLabel": "Copy {label}",
     "notRunning": "Not running",
     "toolsBadge": "{count, plural, one {# tool} other {# tools}}"
+  },
+  "agentProviders": {
+    "header": {
+      "title": "Agent Providers",
+      "subtitle": "Configure local OpenAI-compatible models for Agent Chat."
+    },
+    "groups": {
+      "local": "Local OpenAI-compatible provider",
+      "actions": "Connection checks"
+    },
+    "presets": {
+      "ollama": "Ollama",
+      "lmStudio": "LM Studio",
+      "llamaCpp": "llama.cpp",
+      "custom": "Custom"
+    },
+    "fields": {
+      "preset": {
+        "label": "Preset"
+      },
+      "baseUrl": {
+        "label": "Base URL",
+        "description": "OpenAI-compatible /v1 endpoint."
+      },
+      "allowNonLoopback": {
+        "label": "Allow non-loopback endpoint",
+        "description": "Data is sent to the configured endpoint."
+      },
+      "model": {
+        "label": "Model",
+        "description": "Pick a returned model or enter one manually."
+      },
+      "apiKey": {
+        "label": "API key",
+        "description": "Optional credential stored in the OS keychain.",
+        "configured": "An API key is already stored in the OS keychain."
+      }
+    },
+    "actions": {
+      "save": "Save",
+      "models": "Models",
+      "test": "Test connection",
+      "probe": "Probe tools"
+    },
+    "status": {
+      "disconnected": "Disconnected",
+      "toolsDisabled": "Tools disabled",
+      "fullTools": "Full tools enabled"
+    }
   }
 }

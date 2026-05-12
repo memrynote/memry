@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccountSettings } from './account-section'
+import { AgentProvidersSection } from './agent-providers-section'
 import { AIInlineSettings } from './ai-inline-section'
 import { AppearanceSettings } from './appearance-section'
 import { CalendarSettingsSection } from './calendar-section'
@@ -272,6 +273,41 @@ vi.mock('@/components/settings/recovery-key-dialog', () => ({
 function installWindowApi() {
   window.api = {
     ...window.api,
+    agent: {
+      getLocalProviderSettings: vi.fn().mockResolvedValue({
+        preset: 'ollama',
+        baseUrl: 'http://localhost:11434/v1',
+        model: 'llama3',
+        apiKeyConfigured: false,
+        allowNonLoopback: false
+      }),
+      setLocalProviderSettings: vi.fn(async (input) => ({
+        preset: input.preset,
+        baseUrl: input.baseUrl,
+        model: input.model,
+        apiKeyConfigured: Boolean(input.apiKey),
+        allowNonLoopback: input.allowNonLoopback
+      })),
+      listLocalModels: vi.fn().mockResolvedValue({ models: ['llama3', 'qwen2.5'] }),
+      testLocalProvider: vi.fn().mockResolvedValue({
+        connected: true,
+        modelAvailable: true,
+        streamingSupported: true,
+        toolCallingSupported: false,
+        toolContinuationSupported: false,
+        toolsEnabled: false,
+        detail: null
+      }),
+      probeLocalProvider: vi.fn().mockResolvedValue({
+        connected: true,
+        modelAvailable: true,
+        streamingSupported: true,
+        toolCallingSupported: true,
+        toolContinuationSupported: true,
+        toolsEnabled: true,
+        detail: null
+      })
+    },
     syncOps: {
       getStorageBreakdown: vi.fn().mockResolvedValue({
         used: 1536,
@@ -468,5 +504,46 @@ describe('settings section coverage', () => {
       })
     )
     expect(toast.success).toHaveBeenCalledWith('ai.inline.disabled')
+  })
+
+  it('loads and updates local agent provider settings', async () => {
+    render(<AgentProvidersSection />)
+
+    expect(await screen.findByText('agentProviders.header.title')).toBeInTheDocument()
+    expect(window.api.agent.getLocalProviderSettings).toHaveBeenCalled()
+
+    fireEvent.click(screen.getByText('agentProviders.presets.lmStudio'))
+    expect(screen.getByDisplayValue('http://localhost:1234/v1')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByDisplayValue('http://localhost:1234/v1'), {
+      target: { value: 'https://models.example.com/v1' }
+    })
+    expect(screen.getByText('agentProviders.fields.allowNonLoopback.label')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('button', { name: 'agentProviders.actions.models' }))
+    expect(await screen.findByText('qwen2.5')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'qwen2.5' }))
+    const apiKeyInput = document.querySelector('input[type="password"]')
+    expect(apiKeyInput).not.toBeNull()
+    fireEvent.change(apiKeyInput as HTMLInputElement, { target: { value: 'local-secret' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'agentProviders.actions.save' }))
+    await waitFor(() =>
+      expect(window.api.agent.setLocalProviderSettings).toHaveBeenCalledWith({
+        preset: 'lm_studio',
+        baseUrl: 'https://models.example.com/v1',
+        model: 'qwen2.5',
+        allowNonLoopback: true,
+        apiKey: 'local-secret'
+      })
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'agentProviders.actions.test' }))
+    await screen.findByText('agentProviders.status.toolsDisabled')
+
+    fireEvent.click(screen.getByRole('button', { name: 'agentProviders.actions.probe' }))
+    await screen.findByText('agentProviders.status.fullTools')
   })
 })

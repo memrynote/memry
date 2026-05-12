@@ -8,6 +8,7 @@ export type BackendEvent =
       data?: unknown
       error?: { code: string; message: string }
     }
+  | { kind: 'error'; message: string }
   | { kind: 'message_stop' }
   | { kind: 'noop' }
   | { kind: 'unknown'; raw: unknown }

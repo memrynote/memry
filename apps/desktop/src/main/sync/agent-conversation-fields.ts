@@ -1,6 +1,7 @@
 export const AGENT_CONVERSATION_SYNCABLE_FIELDS = [
   'title',
   'backend',
+  'backendModel',
   'trustList',
   'pinned'
 ] as const

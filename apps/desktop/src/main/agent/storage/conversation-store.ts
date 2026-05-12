@@ -9,6 +9,8 @@ import {
   type AgentConversationField
 } from '../../sync/agent-conversation-fields'
 import { decryptAgentJsonForVault, encryptAgentJsonForVault } from './encryption'
+import type { AgentBackendId } from '@memry/contracts/ipc-agent'
+
 import type { Conversation, FieldClocks, VectorClock } from './types'
 
 interface StoreDeps {
@@ -18,12 +20,19 @@ interface StoreDeps {
 }
 
 export interface ConversationStore {
-  create(input: { vaultId: string; title: string; backend: string }): Conversation
+  create(input: {
+    vaultId: string
+    title: string
+    backend: AgentBackendId
+    backendModel?: string | null
+  }): Conversation
   getById(id: string): Conversation | null
   listByVault(vaultId: string, opts?: { includeDeleted?: boolean }): Conversation[]
   update(
     id: string,
-    patch: Partial<Pick<Conversation, 'title' | 'pinned' | 'backend' | 'trustList'>>,
+    patch: Partial<
+      Pick<Conversation, 'title' | 'pinned' | 'backend' | 'backendModel' | 'trustList'>
+    >,
     changedFields: AgentConversationField[]
   ): Conversation
   softDelete(id: string): void
@@ -53,7 +62,8 @@ export function agentConversationRowToModel(
     id: row.id,
     vaultId: row.vaultId,
     title: decryptConversationTitle(row.titleCiphertext, vaultKey),
-    backend: row.backend,
+    backend: row.backend as AgentBackendId,
+    backendModel: row.backendModel ?? null,
     trustList: parseJsonColumn(row.trustList, []),
     pinned: Boolean(row.pinned),
     vectorClock: parseJsonColumn(row.vectorClock, {}),
@@ -89,7 +99,7 @@ export function createConversationStore(deps: StoreDeps): ConversationStore {
   const { db, vaultKey, deviceId } = deps
 
   return {
-    create({ vaultId, title, backend }) {
+    create({ vaultId, title, backend, backendModel = null }) {
       const id = randomUUID()
       const now = Date.now()
       const vectorClock: VectorClock = { [deviceId]: 1 }
@@ -101,6 +111,7 @@ export function createConversationStore(deps: StoreDeps): ConversationStore {
           vaultId,
           titleCiphertext: encryptConversationTitle(title, vaultKey),
           backend,
+          backendModel,
           trustList: [],
           pinned: false,
           vectorClock,
@@ -117,6 +128,7 @@ export function createConversationStore(deps: StoreDeps): ConversationStore {
         vaultId,
         title,
         backend,
+        backendModel,
         trustList: [],
         pinned: false,
         vectorClock,
@@ -185,6 +197,7 @@ export function createConversationStore(deps: StoreDeps): ConversationStore {
               ? existing.titleCiphertext
               : encryptConversationTitle(patch.title, vaultKey),
           backend: next.backend,
+          backendModel: next.backendModel,
           trustList: next.trustList,
           pinned: next.pinned,
           vectorClock: next.vectorClock,

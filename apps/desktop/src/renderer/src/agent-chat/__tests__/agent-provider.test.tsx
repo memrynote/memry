@@ -2,7 +2,12 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { BinaryStatus, Conversation, Message } from '@memry/contracts/ipc-agent'
+import type {
+  AgentBackendStatus,
+  BackendStatusesResponse,
+  Conversation,
+  Message
+} from '@memry/contracts/ipc-agent'
 
 const t = (key: string) => key
 
@@ -12,12 +17,31 @@ vi.mock('@memry/i18n/renderer', () => ({
 
 import { AgentProvider, useAgent } from '../agent-context'
 
-const binaryStatus: BinaryStatus = {
-  detected: true,
+const claudeStatus: AgentBackendStatus = {
+  backend: 'claude_cli',
+  available: true,
   version: '2.1.0',
-  meetsMinimum: true,
   minimumRequired: '2.1.0',
-  installHint: null
+  reason: null,
+  detail: null
+}
+
+const backendStatuses: BackendStatusesResponse = {
+  claude_cli: claudeStatus,
+  codex_cli: {
+    backend: 'codex_cli',
+    available: true,
+    version: '0.130.0',
+    minimumRequired: '0.130.0',
+    reason: null,
+    detail: null
+  },
+  local_openai_compatible: {
+    backend: 'local_openai_compatible',
+    available: true,
+    reason: null,
+    detail: 'http://localhost:11434/v1'
+  }
 }
 
 const conversation: Conversation = {
@@ -25,6 +49,7 @@ const conversation: Conversation = {
   vaultId: 'vault-1',
   title: 'Planning',
   backend: 'claude_cli',
+  backendModel: null,
   trustList: [],
   pinned: false,
   vectorClock: {},
@@ -64,7 +89,7 @@ describe('AgentProvider', () => {
     cancelTurn: ReturnType<typeof vi.fn>
     approveTool: ReturnType<typeof vi.fn>
     editTrustList: ReturnType<typeof vi.fn>
-    getBinaryStatus: ReturnType<typeof vi.fn>
+    getBackendStatuses: ReturnType<typeof vi.fn>
     getDisclosureState: ReturnType<typeof vi.fn>
     acceptDisclosure: ReturnType<typeof vi.fn>
     getWindowId: ReturnType<typeof vi.fn>
@@ -85,7 +110,7 @@ describe('AgentProvider', () => {
         ...conversation,
         trustList: ['vault_create_task']
       }),
-      getBinaryStatus: vi.fn().mockResolvedValue(binaryStatus),
+      getBackendStatuses: vi.fn().mockResolvedValue(backendStatuses),
       getDisclosureState: vi.fn().mockResolvedValue({ accepted: false }),
       acceptDisclosure: vi.fn().mockResolvedValue({ accepted: true }),
       getWindowId: vi.fn().mockResolvedValue({ windowId: 'window-1' }),
@@ -105,7 +130,7 @@ describe('AgentProvider', () => {
 
     await waitFor(() => {
       expect(result.current.state.sourceWindowId).toBe('window-1')
-      expect(result.current.state.binaryStatus).toEqual(binaryStatus)
+      expect(result.current.state.backendStatuses).toEqual(backendStatuses)
       expect(result.current.state.disclosureAccepted).toBe(false)
       expect(result.current.state.conversations[conversation.id]).toEqual(conversation)
     })
@@ -126,9 +151,10 @@ describe('AgentProvider', () => {
 
     let created: Conversation | undefined
     await act(async () => {
-      created = await result.current.createConversation()
+      created = await result.current.createConversation({ backend: 'codex_cli' })
     })
     expect(created?.id).toBe('conversation-2')
+    expect(agentApi.createConversation).toHaveBeenCalledWith({ backend: 'codex_cli' })
     await waitFor(() => expect(result.current.state.activeConversationId).toBe('conversation-2'))
 
     await act(async () => {
@@ -143,7 +169,7 @@ describe('AgentProvider', () => {
         conversationId: conversation.id,
         sourceWindowId: 'window-1',
         text: 'Ship it',
-        claudeEffort: 'medium'
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'medium' }
       })
     })
     expect(agentApi.sendTurn).toHaveBeenCalledWith(
@@ -211,7 +237,7 @@ describe('AgentProvider', () => {
           conversationId: conversation.id,
           sourceWindowId: 'window-1',
           text: 'Retry',
-          claudeEffort: 'medium'
+          backendOptions: { backend: 'claude_cli', claudeEffort: 'medium' }
         })
       } catch (error) {
         thrown = error

@@ -14,6 +14,7 @@ function freshDb() {
       vault_id TEXT NOT NULL,
       title_ciphertext TEXT NOT NULL,
       backend TEXT NOT NULL,
+      backend_model TEXT,
       trust_list TEXT NOT NULL DEFAULT '[]',
       pinned INTEGER NOT NULL DEFAULT 0,
       vector_clock TEXT NOT NULL,
@@ -46,12 +47,14 @@ describe('Conversation store', () => {
     const conv = store.create({
       vaultId: 'vault-uuid',
       title: 'My new chat',
-      backend: 'claude_cli'
+      backend: 'claude_cli',
+      backendModel: null
     })
 
     expect(conv.id).toBeDefined()
     expect(conv.title).toBe('My new chat')
     expect(conv.backend).toBe('claude_cli')
+    expect(conv.backendModel).toBeNull()
     expect(conv.trustList).toEqual([])
     expect(conv.pinned).toBe(false)
 
@@ -66,10 +69,13 @@ describe('Conversation store', () => {
     const created = store.create({
       vaultId: 'vault-uuid',
       title: 'Hello',
-      backend: 'claude_cli'
+      backend: 'local_openai_compatible',
+      backendModel: 'llama3.2'
     })
     const fetched = store.getById(created.id)
     expect(fetched?.title).toBe('Hello')
+    expect(fetched?.backend).toBe('local_openai_compatible')
+    expect(fetched?.backendModel).toBe('llama3.2')
   })
 
   it('lists conversations by vault, newest first', async () => {
@@ -110,6 +116,28 @@ describe('Conversation store', () => {
     expect(updated.title).toBe('B')
     const refetched = store.getById(conversation.id)
     expect(refetched?.title).toBe('B')
+  })
+
+  it('updates backend model metadata and bumps the field clock', () => {
+    const conversation = store.create({
+      vaultId: 'v',
+      title: 'X',
+      backend: 'claude_cli',
+      backendModel: null
+    })
+    const before = conversation.fieldClocks
+
+    const updated = store.update(
+      conversation.id,
+      { backend: 'local_openai_compatible', backendModel: 'llama3.2' },
+      ['backend', 'backendModel']
+    )
+
+    expect(updated.backend).toBe('local_openai_compatible')
+    expect(updated.backendModel).toBe('llama3.2')
+    expect(updated.fieldClocks.backendModel['device-1']).toBe(
+      (before.backendModel?.['device-1'] ?? 0) + 1
+    )
   })
 
   it('soft-deletes a conversation', () => {

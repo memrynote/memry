@@ -3,10 +3,11 @@ import type { ReactNode } from 'react'
 
 import type {
   AgentEvent,
+  AgentBackendId,
+  AgentBackendOptions,
   ApproveToolRequest,
   AttachmentInput,
-  BinaryStatus,
-  ClaudeEffort,
+  BackendStatusesResponse,
   Conversation,
   Message,
   SendTurnResponse,
@@ -28,7 +29,11 @@ interface DisclosureState {
 
 interface AgentClientApi {
   listConversations: (input?: { vaultId?: string }) => Promise<Conversation[]>
-  createConversation: (input?: { vaultId?: string; backend?: string }) => Promise<Conversation>
+  createConversation: (input?: {
+    vaultId?: string
+    backend?: AgentBackendId
+    backendModel?: string | null
+  }) => Promise<Conversation>
   loadConversation: (input: { id: string }) => Promise<{
     conversation: Conversation | null
     messages: Message[]
@@ -41,7 +46,7 @@ interface AgentClientApi {
     add?: string[]
     remove?: string[]
   }) => Promise<Conversation | null>
-  getBinaryStatus: () => Promise<BinaryStatus>
+  getBackendStatuses: () => Promise<BackendStatusesResponse>
   getDisclosureState: () => Promise<DisclosureState>
   acceptDisclosure: () => Promise<DisclosureState>
   getWindowId: () => Promise<{ windowId: string | null }>
@@ -52,13 +57,16 @@ interface AgentContextValue {
   state: AgentState
   dispatch: React.Dispatch<AgentAction>
   refreshConversations: () => Promise<void>
-  createConversation: () => Promise<Conversation>
+  createConversation: (input?: {
+    backend?: AgentBackendId
+    backendModel?: string | null
+  }) => Promise<Conversation>
   loadConversation: (id: string) => Promise<void>
   sendTurn: (input: {
     conversationId: string
     sourceWindowId: string
     text: string
-    claudeEffort: ClaudeEffort
+    backendOptions: AgentBackendOptions
     attachments?: AttachmentInput[]
   }) => Promise<void>
   cancelTurn: (conversationId: string) => Promise<void>
@@ -132,24 +140,27 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
     [t]
   )
 
-  const createConversation = useCallback(async () => {
-    try {
-      const conversation = await getAgentApi().createConversation()
-      dispatch({ type: 'set_active_conversation', conversation, messages: [] })
-      return conversation
-    } catch (error) {
-      const message = extractErrorMessage(error, t('agentChat.errors.createConversation'))
-      dispatch({ type: 'set_error', error: message })
-      throw new Error(message)
-    }
-  }, [t])
+  const createConversation = useCallback(
+    async (input?: { backend?: AgentBackendId; backendModel?: string | null }) => {
+      try {
+        const conversation = await getAgentApi().createConversation(input)
+        dispatch({ type: 'set_active_conversation', conversation, messages: [] })
+        return conversation
+      } catch (error) {
+        const message = extractErrorMessage(error, t('agentChat.errors.createConversation'))
+        dispatch({ type: 'set_error', error: message })
+        throw new Error(message)
+      }
+    },
+    [t]
+  )
 
   const sendTurn = useCallback(
     async (input: {
       conversationId: string
       sourceWindowId: string
       text: string
-      claudeEffort: ClaudeEffort
+      backendOptions: AgentBackendOptions
       attachments?: AttachmentInput[]
     }) => {
       dispatch({ type: 'set_in_flight', conversationId: input.conversationId, inFlight: true })
@@ -160,7 +171,7 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
           conversationId: input.conversationId,
           sourceWindowId: input.sourceWindowId,
           text: input.text,
-          claudeEffort: input.claudeEffort,
+          backendOptions: input.backendOptions,
           attachments: input.attachments ?? []
         })
         if (!result.ok) {
@@ -262,9 +273,9 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
         })
       })
 
-    void invokeWhenAgentReady(() => api.getBinaryStatus())
-      .then((status) => {
-        if (!cancelled) dispatch({ type: 'set_binary_status', status })
+    void invokeWhenAgentReady(() => api.getBackendStatuses())
+      .then((statuses) => {
+        if (!cancelled) dispatch({ type: 'set_backend_statuses', statuses })
       })
       .catch((error) => {
         if (cancelled) return

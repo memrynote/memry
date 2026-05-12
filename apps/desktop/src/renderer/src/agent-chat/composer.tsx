@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 
-import type { AttachmentInput, ClaudeEffort } from '@memry/contracts/ipc-agent'
+import type {
+  AgentBackendId,
+  AgentBackendOptions,
+  AttachmentInput,
+  ClaudeEffort
+} from '@memry/contracts/ipc-agent'
 import { DEFAULT_CLAUDE_EFFORT } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
 
@@ -24,7 +29,7 @@ interface ComposerProps {
   sourceWindowId: string | null
 }
 
-type AgentProvider = 'claude' | 'codex' | 'local'
+type AgentProvider = 'claude_cli' | 'codex_cli' | 'local_openai_compatible'
 
 const claudeReasoningOptions: Array<{
   value: ClaudeEffort
@@ -77,7 +82,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const [attachments, setAttachments] = useState<AttachmentInput[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [selectedProvider, setSelectedProvider] = useState<AgentProvider>('claude')
+  const [selectedProvider, setSelectedProvider] = useState<AgentProvider>('claude_cli')
   const [claudeReasoning, setClaudeReasoning] = useState<ClaudeEffort>(DEFAULT_CLAUDE_EFFORT)
 
   useEffect(() => {
@@ -103,28 +108,55 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   }, [activeTab?.entityId, activeTab?.title, activeTab?.type, t])
 
   useEffect(() => {
+    const activeConversation = conversationId ? agent?.state.conversations[conversationId] : null
+    if (activeConversation) setSelectedProvider(activeConversation.backend)
+  }, [agent?.state.conversations, conversationId])
+
+  useEffect(() => {
     if (textareaRef.current) resizePromptTextarea(textareaRef.current)
   }, [text])
 
-  const turnInFlight = conversationId ? agent?.state.inFlight?.[conversationId] === true : false
-  const busy = turnInFlight || submitting
-  const canSend = Boolean(agent) && Boolean(sourceWindowId) && text.trim().length > 0 && !busy
-  const pickerQuery = pickerOpen ? (getRefQuery(text) ?? '') : ''
   const claudeProviderLabel = t('agentChat.composer.providers.claude')
   const codexProviderLabel = t('agentChat.composer.providers.codex')
   const localProviderLabel = t('agentChat.composer.providers.local')
+  const backendStatuses = agent?.state.backendStatuses
+  const claudeDisabled = backendStatuses?.claude_cli.available === false
+  const codexDisabled = backendStatuses?.codex_cli.available === false
+  const turnInFlight = conversationId ? agent?.state.inFlight?.[conversationId] === true : false
+  const busy = turnInFlight || submitting
+  const providerReady =
+    selectedProvider === 'local_openai_compatible' ||
+    backendStatuses?.[selectedProvider]?.available !== false
+  const canSend =
+    Boolean(agent) && Boolean(sourceWindowId) && text.trim().length > 0 && !busy && providerReady
+  const pickerQuery = pickerOpen ? (getRefQuery(text) ?? '') : ''
   const providerLabelById: Record<AgentProvider, string> = {
-    claude: claudeProviderLabel,
-    codex: codexProviderLabel,
-    local: localProviderLabel
+    claude_cli: claudeProviderLabel,
+    codex_cli: codexProviderLabel,
+    local_openai_compatible: localProviderLabel
   }
   const selectedProviderLabel = providerLabelById[selectedProvider]
+  const SelectedProviderIcon =
+    selectedProvider === 'local_openai_compatible'
+      ? Computer
+      : selectedProvider === 'codex_cli'
+        ? ChatGpt
+        : Claude
   const selectedClaudeReasoning =
     claudeReasoningOptions.find((option) => option.value === claudeReasoning) ??
     claudeReasoningOptions[3]
   const claudeSettingsSummary = t('agentChat.composer.settingsSummary', {
     reasoning: t(selectedClaudeReasoning.summaryKey)
   })
+  const backendOptions = (): AgentBackendOptions => {
+    if (selectedProvider === 'local_openai_compatible') {
+      return { backend: 'local_openai_compatible', toolsEnabled: true }
+    }
+    if (selectedProvider === 'codex_cli') {
+      return { backend: 'codex_cli', reasoningEffort: 'medium' }
+    }
+    return { backend: 'claude_cli', claudeEffort: claudeReasoning }
+  }
 
   async function submit(): Promise<void> {
     if (!agent || !sourceWindowId || !text.trim() || busy) return
@@ -132,12 +164,18 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     const currentAttachments = attachments
     setSubmitting(true)
     try {
-      const targetConversationId = conversationId ?? (await agent.createConversation()).id
+      const targetConversationId =
+        conversationId ??
+        (
+          await agent.createConversation({
+            backend: selectedProvider as AgentBackendId
+          })
+        ).id
       await agent.sendTurn({
         conversationId: targetConversationId,
         sourceWindowId,
         text: currentText,
-        claudeEffort: claudeReasoning,
+        backendOptions: backendOptions(),
         attachments: currentAttachments
       })
       setText('')
@@ -238,39 +276,47 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                 })}
                 className="inline-flex h-8 items-center gap-1.5 rounded-full bg-transparent px-1.5 text-xs text-muted-foreground transition-colors hover:bg-transparent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
-                <Claude className="size-4" aria-hidden="true" />
+                <SelectedProviderIcon className="size-4" aria-hidden="true" />
                 <span>{selectedProviderLabel}</span>
                 <ChevronDown className="size-3" aria-hidden="true" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="min-w-36 border-0">
               <DropdownMenuItem
-                onSelect={() => setSelectedProvider('claude')}
+                disabled={claudeDisabled}
+                onSelect={() => setSelectedProvider('claude_cli')}
                 className="text-xs focus:bg-transparent focus:text-foreground"
               >
                 <Claude className="size-4 text-muted-foreground" aria-hidden="true" />
                 <span>{claudeProviderLabel}</span>
-                {selectedProvider === 'claude' && (
+                {selectedProvider === 'claude_cli' && (
                   <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
                 )}
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled
+                disabled={codexDisabled}
+                onSelect={() => setSelectedProvider('codex_cli')}
                 className="text-xs focus:bg-transparent focus:text-foreground"
               >
                 <ChatGpt className="size-4 text-muted-foreground" aria-hidden="true" />
                 <span>{codexProviderLabel}</span>
+                {selectedProvider === 'codex_cli' && (
+                  <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
+                )}
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled
+                onSelect={() => setSelectedProvider('local_openai_compatible')}
                 className="text-xs focus:bg-transparent focus:text-foreground"
               >
                 <Computer className="size-4 text-muted-foreground" aria-hidden="true" />
                 <span>{localProviderLabel}</span>
+                {selectedProvider === 'local_openai_compatible' && (
+                  <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
+                )}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          {selectedProvider === 'claude' && (
+          {selectedProvider === 'claude_cli' && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button

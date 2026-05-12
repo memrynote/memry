@@ -1,0 +1,78 @@
+#!/usr/bin/env node
+
+if (process.argv.includes('--version')) {
+  process.stdout.write('codex-cli 0.130.0\n')
+  process.exit(0)
+}
+
+function emit(event) {
+  process.stdout.write(`${JSON.stringify(event)}\n`)
+}
+
+function readMcpUrl() {
+  const configIndex = process.argv.findIndex((arg, index) => {
+    return arg === '-c' && process.argv[index + 1]?.startsWith('mcp_servers.memry.url=')
+  })
+  const value = configIndex === -1 ? null : process.argv[configIndex + 1]
+  const match = value?.match(/^mcp_servers\.memry\.url="(.+)"$/)
+  if (!match) {
+    throw new Error('missing Codex MCP url override')
+  }
+  return match[1]
+}
+
+async function callCreateTask() {
+  const token = process.env.MEMRY_AGENT_TOKEN
+  const conversation = process.env.MEMRY_AGENT_CONVERSATION
+  const windowId = process.env.MEMRY_AGENT_WINDOW
+  if (!token || !conversation || !windowId) {
+    throw new Error('missing Codex MCP environment')
+  }
+
+  const response = await fetch(readMcpUrl(), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'X-Memry-Conversation': conversation,
+      'X-Memry-Window': windowId,
+      accept: 'application/json, text/event-stream',
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: {
+        name: 'vault_create_task',
+        arguments: {
+          title: 'Buy milk',
+          notes: 'Created from Codex.'
+        }
+      }
+    })
+  })
+
+  if (!response.ok) {
+    throw new Error(`MCP create task failed with HTTP ${response.status}`)
+  }
+  const text = await response.text()
+  if (text.includes('PERMISSION_DENIED') || text.includes('"isError":true')) {
+    throw new Error(`MCP create task was denied: ${text}`)
+  }
+}
+
+async function main() {
+  emit({ type: 'thread.started', thread_id: 'stub-thread' })
+  emit({ type: 'turn.started' })
+  await callCreateTask()
+  emit({
+    type: 'item.completed',
+    item: { id: 'item-1', type: 'agent_message', text: 'Created Buy milk.' }
+  })
+  emit({ type: 'turn.completed' })
+}
+
+main().catch((error) => {
+  process.stderr.write(`${error instanceof Error ? error.stack : String(error)}\n`)
+  process.exit(1)
+})

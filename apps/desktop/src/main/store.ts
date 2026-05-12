@@ -27,6 +27,12 @@ export interface SyncStoreData {
 
 export interface AgentStoreData {
   disclosureAccepted?: boolean
+  localProvider?: {
+    preset?: 'ollama' | 'lm_studio' | 'llama_cpp' | 'custom'
+    baseUrl?: string
+    model?: string
+    allowNonLoopback?: boolean
+  }
 }
 
 /**
