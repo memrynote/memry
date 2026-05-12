@@ -17,7 +17,8 @@
     "redo": "Gjenta",
     "cut": "Kutt",
     "copy": "Kopier",
-    "paste": "Lim inn"
+    "paste": "Lim inn",
+    "selectAll": "Velg alle"
   },
   "view": {
     "label": "Visning",

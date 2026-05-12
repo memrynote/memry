@@ -17,7 +17,8 @@
     "redo": "Ulangi",
     "cut": "Potong",
     "copy": "Salin",
-    "paste": "Tempel"
+    "paste": "Tempel",
+    "selectAll": "Pilih semua"
   },
   "view": {
     "label": "Lihat",

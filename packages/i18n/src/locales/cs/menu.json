@@ -17,7 +17,8 @@
     "redo": "Znovu",
     "cut": "Řez",
     "copy": "Kopírovat",
-    "paste": "Vložit"
+    "paste": "Vložit",
+    "selectAll": "Vybrat vše"
   },
   "view": {
     "label": "Zobrazit",

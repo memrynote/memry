@@ -17,7 +17,8 @@
     "redo": "やり直し",
     "cut": "カット",
     "copy": "コピー",
-    "paste": "ペースト"
+    "paste": "ペースト",
+    "selectAll": "すべて選択"
   },
   "view": {
     "label": "見る",

@@ -54,7 +54,7 @@ import { safeRead } from './vault/file-ops'
 import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
 import { initializeUpdater } from './updater'
-import { buildAppMenu } from './menu'
+import { buildAppMenu, buildEditableTextContextMenu } from './menu'
 import { setMainI18n } from './lib/main-i18n'
 import {
   sendAppNavigationCommand,
@@ -334,6 +334,16 @@ function createWindow(): void {
     if (sendAppNavigationKeyboardCommand(mainWindow.webContents, input)) {
       event.preventDefault()
     }
+  })
+
+  mainWindow.webContents.on('context-menu', (_event, params) => {
+    const menu = buildEditableTextContextMenu(mainI18n, params)
+    if (!menu) return
+
+    menu.popup({
+      window: mainWindow,
+      ...(params.frame ? { frame: params.frame } : {})
+    })
   })
 
   // HMR for renderer base on electron-vite cli.

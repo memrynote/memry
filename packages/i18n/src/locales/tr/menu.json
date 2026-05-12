@@ -17,7 +17,8 @@
     "redo": "Yinele",
     "cut": "Kes",
     "copy": "Kopyala",
-    "paste": "Yapıştır"
+    "paste": "Yapıştır",
+    "selectAll": "Tümünü seç"
   },
   "view": {
     "label": "Görünüm",

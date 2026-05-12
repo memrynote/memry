@@ -17,7 +17,8 @@
     "redo": "Wiederholen",
     "cut": "Schneiden",
     "copy": "Kopieren",
-    "paste": "Einfügen"
+    "paste": "Einfügen",
+    "selectAll": "Alles auswählen"
   },
   "view": {
     "label": "Ansicht",
