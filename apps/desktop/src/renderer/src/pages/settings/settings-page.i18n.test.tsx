@@ -22,9 +22,6 @@ vi.mock('./appearance-section', () => ({
   AppearanceSettings: () => <div data-testid="appearance-panel" />
 }))
 vi.mock('./ai-section', () => ({ AISettings: () => <div data-testid="ai-panel" /> }))
-vi.mock('./agent-mcp-section', () => ({
-  AgentMcpSection: () => <div data-testid="agent-mcp-panel" />
-}))
 vi.mock('./integrations-section', () => ({
   IntegrationsSettings: () => <div data-testid="integrations-panel" />
 }))
@@ -71,7 +68,6 @@ describe('SettingsPage i18n', () => {
       'Appearance',
       'Shortcuts',
       'AI Assistant',
-      'Agent MCP',
       'Integrations',
       'Vault',
       'Tags',
@@ -79,6 +75,9 @@ describe('SettingsPage i18n', () => {
     ]) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
     }
+
+    expect(screen.queryByRole('button', { name: 'Agent Providers' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Agent MCP' })).not.toBeInTheDocument()
   })
 
   it('switches every settings section from the sidebar', async () => {
@@ -104,7 +103,6 @@ describe('SettingsPage i18n', () => {
       ['Appearance', 'appearance-panel'],
       ['Shortcuts', 'shortcuts-panel'],
       ['AI Assistant', 'ai-panel'],
-      ['Agent MCP', 'agent-mcp-panel'],
       ['Integrations', 'integrations-panel'],
       ['Vault', 'vault-panel'],
       ['Tags', 'tags-panel'],
