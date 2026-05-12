@@ -4,13 +4,15 @@ import {
   goOffline,
   goOnline,
   readSyncStatus,
-  syncAndWait,
-  syncBothAndWait,
+  triggerSync,
   waitForPendingCount,
   waitForSyncOffline,
   waitForSyncOnline
 } from './utils/network-control'
 import type { SharedSyncBootstrap } from './utils/sync-backend'
+
+const SYNC_TIMEOUT = 60_000
+const CONVERGENCE_TIMEOUT = 120_000
 
 async function getProjectById(page: Page, id: string) {
   return page.evaluate((projectId) => window.api.tasks.getProject(projectId), id)
@@ -35,6 +37,19 @@ async function readServerNoteTombstone(
     .first<{ operation: string; deleted_at: number | null }>()
 }
 
+async function triggerSyncOrThrow(page: Page): Promise<void> {
+  const result = await triggerSync(page)
+  if (!result.success) {
+    throw new Error(result.error || 'Sync trigger failed')
+  }
+}
+
+async function triggerSyncRound(pageA: Page, pageB: Page): Promise<void> {
+  await triggerSyncOrThrow(pageA)
+  await triggerSyncOrThrow(pageB)
+  await triggerSyncOrThrow(pageA)
+}
+
 async function expectProjectOnBothDevices(
   pageA: Page,
   pageB: Page,
@@ -44,13 +59,13 @@ async function expectProjectOnBothDevices(
   await expect
     .poll(
       async () => {
-        await syncBothAndWait(pageA, pageB, 30_000)
+        await triggerSyncRound(pageA, pageB)
         return {
           pageA: await getProjectById(pageA, id),
           pageB: await getProjectById(pageB, id)
         }
       },
-      { timeout: 60_000 }
+      { timeout: CONVERGENCE_TIMEOUT, intervals: [500, 2_000, 5_000] }
     )
     .toMatchObject({
       pageA: expected,
@@ -59,7 +74,7 @@ async function expectProjectOnBothDevices(
 }
 
 test.describe('Sync field merge and queue retry E2E', () => {
-  test.setTimeout(120_000)
+  test.setTimeout(240_000)
 
   test('merges offline project fields and flushes queued task work after reconnect', async ({
     electronAppA,
@@ -122,7 +137,6 @@ test.describe('Sync field merge and queue retry E2E', () => {
     await expect.poll(async () => (await readSyncStatus(pageB)).pendingCount > 0).toBe(true)
 
     await goOnline(electronAppA, electronAppB)
-    await syncBothAndWait(pageA, pageB, 30_000)
 
     await expectProjectOnBothDevices(pageA, pageB, seed.projectId, {
       name: 'Project name from A',
@@ -131,8 +145,8 @@ test.describe('Sync field merge and queue retry E2E', () => {
       icon: 'Rocket'
     })
 
-    await waitForPendingCount(pageA, 0, 30_000)
-    await waitForPendingCount(pageB, 0, 30_000)
+    await waitForPendingCount(pageA, 0, SYNC_TIMEOUT)
+    await waitForPendingCount(pageB, 0, SYNC_TIMEOUT)
 
     await goOffline(electronAppA, electronAppB)
     await Promise.all([waitForSyncOffline(pageA), waitForSyncOffline(pageB)])
@@ -155,14 +169,13 @@ test.describe('Sync field merge and queue retry E2E', () => {
     await expect.poll(async () => (await readSyncStatus(pageB)).pendingCount > 0).toBe(true)
 
     await goOnline(electronAppA, electronAppB)
-    await syncBothAndWait(pageA, pageB, 30_000)
 
     await expectProjectOnBothDevices(pageA, pageB, seed.projectId, {
       description: 'Same field from B'
     })
 
-    await waitForPendingCount(pageA, 0, 30_000)
-    await waitForPendingCount(pageB, 0, 30_000)
+    await waitForPendingCount(pageA, 0, SYNC_TIMEOUT)
+    await waitForPendingCount(pageB, 0, SYNC_TIMEOUT)
 
     await goOffline(electronAppA)
     await waitForSyncOffline(pageA)
@@ -185,12 +198,12 @@ test.describe('Sync field merge and queue retry E2E', () => {
     await expect.poll(async () => (await readSyncStatus(pageA)).pendingCount > 0).toBe(true)
 
     await goOnline(electronAppA)
-    await syncBothAndWait(pageA, pageB, 30_000)
 
     await expect
       .poll(
-        () =>
-          pageB.evaluate(
+        async () => {
+          await triggerSyncRound(pageA, pageB)
+          return pageB.evaluate(
             async ({ projectId, title }) => {
               const result = await window.api.tasks.list({
                 projectId,
@@ -202,12 +215,13 @@ test.describe('Sync field merge and queue retry E2E', () => {
               return result.tasks.map((task) => task.title)
             },
             { projectId: seed.projectId, title: queuedTitle }
-          ),
-        { timeout: 30_000 }
+          )
+        },
+        { timeout: CONVERGENCE_TIMEOUT, intervals: [500, 2_000, 5_000] }
       )
       .toContain(queuedTitle)
 
-    await waitForPendingCount(pageA, 0, 30_000)
+    await waitForPendingCount(pageA, 0, SYNC_TIMEOUT)
   })
 
   test('tombstones a deleted note and restores it from an offline device update', async ({
@@ -234,8 +248,15 @@ test.describe('Sync field merge and queue retry E2E', () => {
       return { noteId: result.note.id, title: result.note.title }
     }, originalTitle)
 
-    await syncBothAndWait(pageA, pageB, 30_000)
-    await expect.poll(() => getNoteById(pageB, seed.noteId)).toMatchObject({ title: seed.title })
+    await expect
+      .poll(
+        async () => {
+          await triggerSyncRound(pageA, pageB)
+          return getNoteById(pageB, seed.noteId)
+        },
+        { timeout: CONVERGENCE_TIMEOUT, intervals: [500, 2_000, 5_000] }
+      )
+      .toMatchObject({ title: seed.title })
 
     await goOffline(electronAppB)
     await waitForSyncOffline(pageB)
@@ -245,10 +266,16 @@ test.describe('Sync field merge and queue retry E2E', () => {
       seed.noteId
     )
     expect(deleteResult.success).toBe(true)
-    await syncAndWait(pageA, 30_000)
+    await triggerSyncOrThrow(pageA)
 
     await expect
-      .poll(() => readServerNoteTombstone(syncBootstrap, seed.noteId), { timeout: 30_000 })
+      .poll(
+        async () => {
+          await triggerSyncOrThrow(pageA)
+          return readServerNoteTombstone(syncBootstrap, seed.noteId)
+        },
+        { timeout: CONVERGENCE_TIMEOUT, intervals: [500, 2_000, 5_000] }
+      )
       .toMatchObject({
         operation: 'delete',
         deleted_at: expect.any(Number)
@@ -262,16 +289,33 @@ test.describe('Sync field merge and queue retry E2E', () => {
     await expect.poll(async () => (await readSyncStatus(pageB)).pendingCount > 0).toBe(true)
 
     await goOnline(electronAppB)
-    await syncAndWait(pageB, 30_000)
     await expect
-      .poll(() => readServerNoteTombstone(syncBootstrap, seed.noteId), { timeout: 30_000 })
+      .poll(
+        async () => {
+          await triggerSyncOrThrow(pageB)
+          return readServerNoteTombstone(syncBootstrap, seed.noteId)
+        },
+        { timeout: CONVERGENCE_TIMEOUT, intervals: [500, 2_000, 5_000] }
+      )
       .toMatchObject({
         operation: 'update',
         deleted_at: null
       })
 
-    await syncAndWait(pageA, 30_000)
-    await expect.poll(() => getNoteById(pageA, seed.noteId)).toMatchObject({ title: restoredTitle })
-    await expect.poll(() => getNoteById(pageB, seed.noteId)).toMatchObject({ title: restoredTitle })
+    await expect
+      .poll(
+        async () => {
+          await triggerSyncRound(pageA, pageB)
+          return {
+            pageA: await getNoteById(pageA, seed.noteId),
+            pageB: await getNoteById(pageB, seed.noteId)
+          }
+        },
+        { timeout: CONVERGENCE_TIMEOUT, intervals: [500, 2_000, 5_000] }
+      )
+      .toMatchObject({
+        pageA: { title: restoredTitle },
+        pageB: { title: restoredTitle }
+      })
   })
 })

@@ -18,6 +18,9 @@ const networkSetOnlineMock = vi.fn()
 const outstandingCountMock = vi.fn(() => 3)
 const getNetworkMonitorMock = vi.fn(() => ({ setOnlineForTests: networkSetOnlineMock }))
 const getCrdtQueueMock = vi.fn(() => ({ getOutstandingCount: outstandingCountMock }))
+const startSyncRuntimeMock = vi.fn(async () => ({}))
+const getOrInitializeLocalVaultKeyMock = vi.fn(async () => new Uint8Array([1]))
+const getOrCreateVaultUuidMock = vi.fn(() => 'vault-1')
 const dbRunMock = vi.fn()
 const dbGetMock = vi.fn(() => ({ id: 'project-1' }))
 const insertRunMock = vi.fn()
@@ -82,7 +85,17 @@ vi.mock('./sync/crdt-writeback', () => ({
 
 vi.mock('./sync/runtime', () => ({
   getCrdtQueue: getCrdtQueueMock,
-  getNetworkMonitor: getNetworkMonitorMock
+  getNetworkMonitor: getNetworkMonitorMock,
+  startSyncRuntime: startSyncRuntimeMock
+}))
+
+vi.mock('./crypto/vault-key-state', () => ({
+  getOrInitializeLocalVaultKey: getOrInitializeLocalVaultKeyMock,
+  VAULT_KEY_VERIFIER_SETTING: 'vault.crypto.verifier.v1'
+}))
+
+vi.mock('./agent/storage/vault-id', () => ({
+  getOrCreateVaultUuid: getOrCreateVaultUuidMock
 }))
 
 vi.mock('./database', () => ({
@@ -220,6 +233,9 @@ describe('main test hooks', () => {
         recoveryPhraseConfirmed: true
       })
     )
+    expect(dbRunMock).toHaveBeenCalled()
+    expect(getOrInitializeLocalVaultKeyMock).toHaveBeenCalled()
+    expect(startSyncRuntimeMock).toHaveBeenCalled()
 
     await hooks.setNetworkOnlineForTests(false)
     expect(networkSetOnlineMock).toHaveBeenCalledWith(false)
