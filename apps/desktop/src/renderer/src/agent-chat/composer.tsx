@@ -6,6 +6,7 @@ import type {
   AgentCliBackendId,
   AgentBackendOptions,
   AttachmentInput,
+  CodexReasoningEffort,
   ClaudeEffort
 } from '@memry/contracts/ipc-agent'
 import { DEFAULT_CLAUDE_EFFORT } from '@memry/contracts/ipc-agent'
@@ -35,6 +36,7 @@ interface ComposerProps {
 type AgentProvider = 'claude_cli' | 'codex_cli' | 'local_openai_compatible'
 
 const DEFAULT_CLAUDE_MODEL = 'opus'
+const DEFAULT_CODEX_REASONING: CodexReasoningEffort = 'medium'
 
 const DEFAULT_SELECTED_MODELS: Record<AgentCliBackendId, string | null> = {
   claude_cli: DEFAULT_CLAUDE_MODEL,
@@ -59,11 +61,13 @@ const MODEL_LABEL_FALLBACKS: Record<AgentCliBackendId, Record<string, string>> =
   }
 }
 
-const claudeReasoningOptions: Array<{
-  value: ClaudeEffort
+type ReasoningOption<Value extends string> = {
+  value: Value
   labelKey: string
   summaryKey: string
-}> = [
+}
+
+const claudeReasoningOptions: Array<ReasoningOption<ClaudeEffort>> = [
   {
     value: 'low',
     labelKey: 'agentChat.composer.claudeSettings.reasoning.low',
@@ -88,6 +92,29 @@ const claudeReasoningOptions: Array<{
     value: 'max',
     labelKey: 'agentChat.composer.claudeSettings.reasoning.max',
     summaryKey: 'agentChat.composer.claudeSettings.reasoning.max'
+  }
+]
+
+const codexReasoningOptions: Array<ReasoningOption<CodexReasoningEffort>> = [
+  {
+    value: 'low',
+    labelKey: 'agentChat.composer.codexSettings.reasoning.low',
+    summaryKey: 'agentChat.composer.codexSettings.reasoning.low'
+  },
+  {
+    value: 'medium',
+    labelKey: 'agentChat.composer.codexSettings.reasoning.mediumDefault',
+    summaryKey: 'agentChat.composer.codexSettings.reasoning.medium'
+  },
+  {
+    value: 'high',
+    labelKey: 'agentChat.composer.codexSettings.reasoning.high',
+    summaryKey: 'agentChat.composer.codexSettings.reasoning.high'
+  },
+  {
+    value: 'xhigh',
+    labelKey: 'agentChat.composer.codexSettings.reasoning.extraHigh',
+    summaryKey: 'agentChat.composer.codexSettings.reasoning.extraHigh'
   }
 ]
 
@@ -164,6 +191,8 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     useState<Record<AgentCliBackendId, AgentBackendModelList | null>>(EMPTY_MODEL_OPTIONS)
   const [customModelDraft, setCustomModelDraft] = useState('')
   const [claudeReasoning, setClaudeReasoning] = useState<ClaudeEffort>(DEFAULT_CLAUDE_EFFORT)
+  const [codexReasoning, setCodexReasoning] =
+    useState<CodexReasoningEffort>(DEFAULT_CODEX_REASONING)
 
   useEffect(() => {
     if (activeTab?.type !== 'note' || !activeTab.entityId) return
@@ -246,8 +275,16 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const selectedClaudeReasoning =
     claudeReasoningOptions.find((option) => option.value === claudeReasoning) ??
     claudeReasoningOptions[3]
-  const claudeSettingsSummary = t('agentChat.composer.settingsSummary', {
-    reasoning: t(selectedClaudeReasoning.summaryKey)
+  const selectedCodexReasoning =
+    codexReasoningOptions.find((option) => option.value === codexReasoning) ??
+    codexReasoningOptions[1]
+  const selectedReasoning =
+    selectedProvider === 'codex_cli' ? selectedCodexReasoning : selectedClaudeReasoning
+  const selectedReasoningOptions =
+    selectedProvider === 'codex_cli' ? codexReasoningOptions : claudeReasoningOptions
+  const selectedReasoningValue = selectedProvider === 'codex_cli' ? codexReasoning : claudeReasoning
+  const settingsSummary = t('agentChat.composer.settingsSummary', {
+    reasoning: t(selectedReasoning.summaryKey)
   })
   const backendOptions = (): AgentBackendOptions => {
     if (selectedProvider === 'local_openai_compatible') {
@@ -256,7 +293,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     if (selectedProvider === 'codex_cli') {
       return {
         backend: 'codex_cli',
-        reasoningEffort: 'medium',
+        reasoningEffort: codexReasoning,
         ...(selectedBackendModel ? { model: selectedBackendModel } : {})
       }
     }
@@ -276,6 +313,13 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     selectModel(model)
     setCustomModelDraft('')
     setModelMenuOpen(false)
+  }
+  const selectReasoning = (value: ClaudeEffort | CodexReasoningEffort): void => {
+    if (selectedProvider === 'codex_cli') {
+      setCodexReasoning(value as CodexReasoningEffort)
+      return
+    }
+    setClaudeReasoning(value as ClaudeEffort)
   }
   const loadModelOptions = async (provider: AgentCliBackendId): Promise<void> => {
     if (modelOptions[provider]) return
@@ -517,17 +561,17 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          {selectedProvider === 'claude_cli' && (
+          {isCliProvider(selectedProvider) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
                   aria-label={t('agentChat.composer.settingsLabel', {
-                    settings: claudeSettingsSummary
+                    settings: settingsSummary
                   })}
                   className="inline-flex h-8 min-w-0 items-center gap-1 rounded-full bg-muted px-2 text-xs text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
-                  <span className="truncate">{claudeSettingsSummary}</span>
+                  <span className="truncate">{settingsSummary}</span>
                   <ChevronDown className="size-3 shrink-0" aria-hidden="true" />
                 </button>
               </DropdownMenuTrigger>
@@ -535,11 +579,11 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                 <DropdownMenuLabel className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
                   {t('agentChat.composer.settings.reasoning')}
                 </DropdownMenuLabel>
-                {claudeReasoningOptions.map((option) => (
+                {selectedReasoningOptions.map((option) => (
                   <DropdownMenuCheckboxItem
                     key={option.value}
-                    checked={claudeReasoning === option.value}
-                    onCheckedChange={() => setClaudeReasoning(option.value)}
+                    checked={selectedReasoningValue === option.value}
+                    onCheckedChange={() => selectReasoning(option.value)}
                     className="text-xs"
                   >
                     {t(option.labelKey)}

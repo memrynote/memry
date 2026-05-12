@@ -390,6 +390,15 @@
           "extraHighDefault": "Extra High (default)",
           "max": "Max"
         }
+      },
+      "codexSettings": {
+        "reasoning": {
+          "low": "Low",
+          "medium": "Medium",
+          "mediumDefault": "Medium (default)",
+          "high": "High",
+          "extraHigh": "Extra High"
+        }
       }
     }
   }

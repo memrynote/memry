@@ -231,6 +231,55 @@ describe('Composer', () => {
     })
   })
 
+  it('shows supported Codex reasoning settings next to the selected provider', async () => {
+    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent provider: Claude' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
+    await screen.findByRole('button', { name: 'Agent model: GPT-5.5' })
+
+    const settingsTrigger = screen.getByRole('button', {
+      name: 'Agent settings: Medium'
+    })
+    expect(settingsTrigger).toHaveClass('rounded-full')
+
+    fireEvent.pointerDown(settingsTrigger)
+
+    expect(screen.getByText('Reasoning')).toBeInTheDocument()
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Medium (default)' })).toHaveAttribute(
+      'aria-checked',
+      'true'
+    )
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Low' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitemcheckbox', { name: 'High' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Extra High' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitemcheckbox', { name: 'Max' })).not.toBeInTheDocument()
+  })
+
+  it('passes the selected Codex reasoning with the prompt', async () => {
+    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent provider: Claude' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent settings: Medium' }))
+    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'High' }))
+
+    const textbox = screen.getByRole('textbox')
+    fireEvent.change(textbox, { target: { value: 'create a task' } })
+    await act(async () => {
+      fireEvent.keyDown(textbox, { key: 'Enter' })
+      await Promise.resolve()
+    })
+
+    expect(mockSendTurn).toHaveBeenCalledWith({
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'create a task',
+      attachments: [],
+      backendOptions: { backend: 'codex_cli', reasoningEffort: 'high', model: 'gpt-5.5' }
+    })
+  })
+
   it('passes the selected Codex model with the prompt', async () => {
     render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
 
