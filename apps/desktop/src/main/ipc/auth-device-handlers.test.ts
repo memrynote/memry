@@ -633,6 +633,7 @@ describe('auth-device handlers', () => {
 
     it('maps persisted devices and sync email for the renderer', async () => {
       registerAuthDeviceHandlers()
+      mockGetValidAccessToken.mockResolvedValue(null)
       mockStoreGet.mockReturnValueOnce({ email: 'user@example.com' })
       mockSelectRows = [
         {
@@ -674,6 +675,62 @@ describe('auth-device handlers', () => {
           }
         ]
       })
+    })
+
+    it('refreshes active devices from the sync server when authenticated', async () => {
+      registerAuthDeviceHandlers()
+      mockStoreGet.mockReturnValueOnce({ email: 'user@example.com' })
+      mockSelectRows = [
+        {
+          id: 'dev-1',
+          name: 'Kaan MBP',
+          platform: 'macos',
+          linkedAt: new Date('2026-05-01T10:00:00.000Z'),
+          lastSyncAt: null,
+          isCurrentDevice: true
+        }
+      ]
+      mockGetFromServer.mockResolvedValueOnce({
+        devices: [
+          {
+            id: 'dev-1',
+            name: 'Kaan MBP',
+            platform: 'macos',
+            createdAt: 1777629600,
+            lastSyncAt: 1777716000
+          },
+          {
+            id: 'dev-2',
+            name: 'Linux box',
+            platform: 'linux',
+            createdAt: 1777802400,
+            lastSyncAt: null
+          }
+        ]
+      })
+
+      await expect(invokeHandler(SYNC_CHANNELS.GET_DEVICES)).resolves.toEqual({
+        email: 'user@example.com',
+        devices: [
+          {
+            id: 'dev-1',
+            name: 'Kaan MBP',
+            platform: 'macos',
+            linkedAt: 1777629600000,
+            lastSyncAt: 1777716000000,
+            isCurrentDevice: true
+          },
+          {
+            id: 'dev-2',
+            name: 'Linux box',
+            platform: 'linux',
+            linkedAt: 1777802400000,
+            lastSyncAt: undefined,
+            isCurrentDevice: false
+          }
+        ]
+      })
+      expect(mockGetFromServer).toHaveBeenCalledWith('/devices', 'mock-access-token')
     })
   })
 
