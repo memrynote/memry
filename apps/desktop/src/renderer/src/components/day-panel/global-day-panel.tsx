@@ -90,6 +90,7 @@ function DayPanelResizeRail() {
 }
 
 export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
+  const { t, i18n } = useT('journal')
   const { isOpen, selectedDate, width, isResizing, setDate } = useDayPanel()
   const { openTab } = useTabs()
   const activeTab = useActiveTab()
@@ -114,6 +115,10 @@ export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
   )
 
   const selectedDateObj = parseISODate(selectedDate)
+  const dayPanelLabel =
+    selectedDate === getTodayString()
+      ? t('date.relative.today')
+      : selectedDateObj.toLocaleDateString(i18n.language, { month: 'short', day: 'numeric' })
   const currentYear = selectedDateObj.getFullYear()
   const { data: heatmapData } = useJournalHeatmap(currentYear)
 
@@ -223,7 +228,7 @@ export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
       >
         {isOpen && <DayPanelResizeRail />}
 
-        <SidebarTabs>
+        <SidebarTabs dayLabel={dayPanelLabel}>
           {{
             day: (
               <div className="h-full overflow-y-auto pt-3">
