@@ -10,7 +10,7 @@ import {
 } from '@/components/settings/settings-primitives'
 import { useT } from '@memry/i18n/renderer'
 
-export function AgentMcpSection() {
+export function AgentMcpSection({ embedded = false }: { embedded?: boolean }) {
   const { t } = useT('settings')
   const [status, setStatus] = useState<AgentMcpStatus | null>(null)
   const [isRotating, setIsRotating] = useState(false)
@@ -45,17 +45,19 @@ export function AgentMcpSection() {
 
   return (
     <div>
-      <SettingsHeader
-        title={t('agentMcp.header.title')}
-        subtitle={t('agentMcp.header.subtitle')}
-        action={
-          status && (
-            <span className="rounded-md border border-border bg-muted/50 px-2 py-1 text-xs/4 text-muted-foreground">
-              {t('agentMcp.toolsBadge', { count: toolCount })}
-            </span>
-          )
-        }
-      />
+      {!embedded && (
+        <SettingsHeader
+          title={t('agentMcp.header.title')}
+          subtitle={t('agentMcp.header.subtitle')}
+          action={
+            status && (
+              <span className="rounded-md border border-border bg-muted/50 px-2 py-1 text-xs/4 text-muted-foreground">
+                {t('agentMcp.toolsBadge', { count: toolCount })}
+              </span>
+            )
+          }
+        />
+      )}
 
       <SettingsGroup label={t('agentMcp.groups.connection')}>
         <SettingRowTall label={urlLabel} description={t('agentMcp.fields.url.description')}>

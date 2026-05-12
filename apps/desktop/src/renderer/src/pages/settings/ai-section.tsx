@@ -1,12 +1,26 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import { Brain, Loader2, CheckCircle, XCircle, RefreshCw, Mic, Eye, EyeOff } from '@/lib/icons'
+import {
+  Bot,
+  Brain,
+  ChevronRight,
+  Loader2,
+  CheckCircle,
+  XCircle,
+  RefreshCw,
+  Mic,
+  Eye,
+  EyeOff,
+  Server
+} from '@/lib/icons'
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { AIInlineSettings as AIInlineSettingsPanel } from './ai-inline-section'
+import { AgentProvidersSection } from './agent-providers-section'
+import { AgentMcpSection } from './agent-mcp-section'
 import { useT } from '@memry/i18n/renderer'
 import {
   Select,
@@ -23,6 +37,7 @@ import {
   COMPACT_SELECT,
   ACCENT_SWITCH
 } from '@/components/settings/settings-primitives'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 
 const log = createLogger('Page:Settings:AI')
 
@@ -47,7 +62,13 @@ interface VoiceModelStatus {
   error: string | null
 }
 
-export function AISettings() {
+type AssistantAdvancedPanel = 'agent-providers' | 'agent-mcp'
+
+interface AISettingsProps {
+  initialOpenPanel?: AssistantAdvancedPanel
+}
+
+export function AISettings({ initialOpenPanel }: AISettingsProps = {}) {
   const { t } = useT('settings')
   const [settings, setSettings] = useState<{ enabled: boolean }>({ enabled: false })
   const [modelStatus, setModelStatus] = useState<AIModelStatus | null>(null)
@@ -562,6 +583,58 @@ export function AISettings() {
       </SettingsGroup>
 
       <AIInlineSettingsPanel />
+
+      <div className="flex flex-col pb-6 gap-2">
+        <AssistantAdvancedPanel
+          title={t('agentProviders.header.title')}
+          description={t('agentProviders.header.subtitle')}
+          icon={<Bot className="size-3.5" />}
+          defaultOpen={initialOpenPanel === 'agent-providers'}
+        >
+          <AgentProvidersSection embedded />
+        </AssistantAdvancedPanel>
+
+        <AssistantAdvancedPanel
+          title={t('agentMcp.header.title')}
+          description={t('agentMcp.header.subtitle')}
+          icon={<Server className="size-3.5" />}
+          defaultOpen={initialOpenPanel === 'agent-mcp'}
+        >
+          <AgentMcpSection embedded />
+        </AssistantAdvancedPanel>
+      </div>
     </div>
+  )
+}
+
+function AssistantAdvancedPanel({
+  title,
+  description,
+  icon,
+  defaultOpen,
+  children
+}: {
+  title: string
+  description: string
+  icon: ReactNode
+  defaultOpen: boolean
+  children: ReactNode
+}) {
+  return (
+    <Collapsible defaultOpen={defaultOpen}>
+      <CollapsibleTrigger className="group flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border border-border bg-background px-4 py-3 text-start transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+            {icon}
+          </span>
+          <span className="flex min-w-0 flex-col gap-px">
+            <span className="font-medium text-[13px]/4 text-foreground">{title}</span>
+            <span className="truncate text-xs/4 text-muted-foreground">{description}</span>
+          </span>
+        </span>
+        <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="pt-3">{children}</CollapsibleContent>
+    </Collapsible>
   )
 }
