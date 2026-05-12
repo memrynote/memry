@@ -28,11 +28,13 @@ export const GeneralSettingsSchema = z.object({
 
 export type GeneralSettings = z.infer<typeof GeneralSettingsSchema>
 
+export const DEFAULT_ACCENT_COLOR = '#f97316'
+
 export const GENERAL_SETTINGS_DEFAULTS: GeneralSettings = {
   theme: 'system',
   fontSize: 'medium',
   fontFamily: 'system',
-  accentColor: '#6366f1',
+  accentColor: DEFAULT_ACCENT_COLOR,
   startOnBoot: false,
   language: 'en',
   onboardingCompleted: false,
