@@ -23,11 +23,5 @@ export function AgentConversationTab({
     void agent.loadConversation(conversationId, { activate: false })
   }, [agent, conversationId, hasConversation, hasMessages])
 
-  return (
-    <div className="mx-auto flex h-full min-h-0 w-full max-w-[64rem] flex-col bg-background px-8 pb-10 pt-6 transition-[max-width] duration-300 ease-in-out lg:px-24">
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-[640px] flex-col">
-        <ConversationView conversationId={conversationId ?? null} />
-      </div>
-    </div>
-  )
+  return <ConversationView conversationId={conversationId ?? null} layout="workspace" />
 }

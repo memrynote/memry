@@ -9,15 +9,23 @@ vi.mock('../agent-context', () => ({
 }))
 
 vi.mock('../conversation-view', () => ({
-  ConversationView: ({ conversationId }: { conversationId: string | null }) => (
-    <div data-testid="conversation-view">{conversationId}</div>
+  ConversationView: ({
+    conversationId,
+    layout
+  }: {
+    conversationId: string | null
+    layout?: string
+  }) => (
+    <div data-testid="conversation-view" data-layout={layout}>
+      {conversationId}
+    </div>
   )
 }))
 
 import { AgentConversationTab } from '../agent-conversation-tab'
 
 describe('AgentConversationTab', () => {
-  it('centers popped-out conversations using the note editor reading column', () => {
+  it('uses the workspace conversation layout for popped-out conversations', () => {
     mockUseAgentOptional.mockReturnValue({
       state: {
         conversations: {
@@ -30,14 +38,10 @@ describe('AgentConversationTab', () => {
       loadConversation: mockLoadConversation
     })
 
-    const { container } = render(<AgentConversationTab conversationId="conversation-1" />)
+    render(<AgentConversationTab conversationId="conversation-1" />)
 
-    const shell = container.firstElementChild
-    expect(shell).toHaveClass('mx-auto', 'max-w-[64rem]', 'px-8', 'lg:px-24')
-
-    const column = shell?.firstElementChild
-    expect(column).toHaveClass('mx-auto', 'max-w-[640px]')
     expect(screen.getByTestId('conversation-view')).toHaveTextContent('conversation-1')
+    expect(screen.getByTestId('conversation-view')).toHaveAttribute('data-layout', 'workspace')
     expect(mockLoadConversation).not.toHaveBeenCalled()
   })
 })
