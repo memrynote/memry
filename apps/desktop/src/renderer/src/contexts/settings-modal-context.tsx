@@ -16,6 +16,7 @@ export type SettingsSection =
   | 'tags'
   | 'properties'
   | 'shortcuts'
+  | 'command-line'
   | 'account'
 
 const DEFAULT_SECTION: SettingsSection = 'account'

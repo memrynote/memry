@@ -221,6 +221,9 @@ export function createGeneratedRpcApi({
       getCalendarSettings: (() => invoke("settings:getCalendarSettings")) as GeneratedRpcApi["settings"]["getCalendarSettings"],
       setCalendarSettings: ((settings) => invoke("settings:setCalendarSettings", settings)) as GeneratedRpcApi["settings"]["setCalendarSettings"],
       registerGlobalCapture: (() => invoke("settings:registerGlobalCapture")) as GeneratedRpcApi["settings"]["registerGlobalCapture"],
+      getTerminalCommandStatus: (() => invoke("settings:getTerminalCommandStatus")) as GeneratedRpcApi["settings"]["getTerminalCommandStatus"],
+      installTerminalCommand: (() => invoke("settings:installTerminalCommand")) as GeneratedRpcApi["settings"]["installTerminalCommand"],
+      uninstallTerminalCommand: (() => invoke("settings:uninstallTerminalCommand")) as GeneratedRpcApi["settings"]["uninstallTerminalCommand"],
     },
     calendar: {
       createEvent: ((input) => invoke("calendar:create-event", input)) as GeneratedRpcApi["calendar"]["createEvent"],

@@ -175,6 +175,8 @@
     "@headless-tree/react": "^1.6.1",
     "@hugeicons/core-free-icons": "^4.0.0",
     "@hugeicons/react": "^1.1.6",
+    "@memry/app-core": "workspace:*",
+    "@memry/cli": "workspace:*",
     "@memry/contracts": "workspace:*",
     "@memry/db-schema": "workspace:*",
     "@memry/domain-inbox": "workspace:*",

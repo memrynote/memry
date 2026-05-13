@@ -315,6 +315,12 @@ importers:
       '@hugeicons/react':
         specifier: ^1.1.6
         version: 1.1.6(react@19.2.4)
+      '@memry/app-core':
+        specifier: workspace:*
+        version: link:../../packages/app-core
+      '@memry/cli':
+        specifier: workspace:*
+        version: link:../cli
       '@memry/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
