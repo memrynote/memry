@@ -14,6 +14,11 @@ Format: weekly entries grouped by feature area.
 - Align right-sidebar background, borders, labels, and Day/Agent switch chrome with the main layout.
 
 ---
+## 2026-05-13 — Settings Panel Accent Polish
+
+### Changed
+
+- Use the active settings surface color for bordered settings sections, remove the redundant settings sidebar title, and make orange the default accent preset.
 
 ## 2026-05-07 — Notes and Journal Block Marquee Selection
 
