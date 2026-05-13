@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { getI18n } from 'react-i18next'
 import {
   AgentMcpDesktopApiChannel,
   AgentMcpDesktopApiRequestSchema,
@@ -47,7 +48,10 @@ export function useAgentMcpDesktopApiResponder(): void {
         const response: AgentMcpDesktopApiResponse = { ok: true, data }
         window.api.respondToMainInvoke(requestId, response)
       } catch (error) {
-        const message = extractErrorMessage(error, 'Desktop API operation failed.')
+        const message = extractErrorMessage(
+          error,
+          getI18n().getFixedT(null, 'errors')('generic.operationFailed')
+        )
         log.error('Desktop API operation failed', error)
         const response: AgentMcpDesktopApiResponse = {
           ok: false,

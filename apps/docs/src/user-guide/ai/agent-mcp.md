@@ -165,7 +165,8 @@ as templates, saved filters, bookmarks, reminders, calendar events, folder views
 search reasons, and settings. The write bridge uses the same in-app approval flow as named write
 tools. Security-sensitive and system operations stay outside the allowlist, including account/auth
 flows, provider connect/disconnect/refresh actions, app updater actions, external open/reveal
-actions, and raw secret writes.
+actions, and raw secret writes. Unsupported or unavailable desktop API operations return a structured
+MCP error instead of falling back to an arbitrary desktop call.
 
 When a chat backend requests one of these tools from Agent Chat, Memry pauses the turn and shows an
 inline approval card in the conversation. You can allow the request once, allow create tools always
