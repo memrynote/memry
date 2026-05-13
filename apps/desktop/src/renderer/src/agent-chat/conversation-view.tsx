@@ -14,6 +14,7 @@ interface ConversationViewProps {
 const workspaceOuterClassName =
   'mx-auto w-full max-w-[64rem] px-8 transition-[max-width] duration-300 ease-in-out lg:px-24'
 const workspaceColumnClassName = 'mx-auto w-full max-w-[640px]'
+const workspaceMessageListClassName = cn(workspaceColumnClassName, 'px-2')
 
 export function ConversationView({
   conversationId,
@@ -66,7 +67,7 @@ export function ConversationView({
       <MessageStream
         messages={messages}
         contentClassName={isWorkspace ? cn(workspaceOuterClassName, 'pb-3 pt-6') : undefined}
-        messageListClassName={isWorkspace ? workspaceColumnClassName : undefined}
+        messageListClassName={isWorkspace ? workspaceMessageListClassName : undefined}
       />
       {isWorkspace ? (
         <div className={cn(workspaceOuterClassName, 'shrink-0 pb-10')}>

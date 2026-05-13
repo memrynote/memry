@@ -44,7 +44,7 @@ describe('ConversationView', () => {
 
     const messageShell = scrollRegion.firstElementChild
     expect(messageShell).toHaveClass('max-w-[64rem]', 'px-8', 'lg:px-24')
-    expect(messageShell?.firstElementChild).toHaveClass('max-w-[640px]')
+    expect(messageShell?.firstElementChild).toHaveClass('max-w-[640px]', 'px-2')
 
     expect(screen.queryByTestId('conversation-header')).not.toBeInTheDocument()
 
@@ -53,7 +53,7 @@ describe('ConversationView', () => {
     expect(composer.parentElement?.parentElement).toHaveClass('max-w-[64rem]', 'pb-10')
   })
 
-  it('keeps the conversation title in the right sidebar layout', () => {
+  it('keeps the conversation title and aligns messages with the composer in the right sidebar layout', () => {
     mockUseAgentOptional.mockReturnValue({
       state: {
         sourceWindowId: 'window-1',
@@ -74,5 +74,8 @@ describe('ConversationView', () => {
     render(<ConversationView conversationId="conversation-1" />)
 
     expect(screen.getByTestId('conversation-header')).toBeInTheDocument()
+
+    const scrollRegion = screen.getByRole('log')
+    expect(scrollRegion.firstElementChild).toHaveClass('px-2')
   })
 })
