@@ -7,6 +7,8 @@ import type {
   AgentLocalProviderProbeResult,
   AgentLocalProviderSettings,
   AgentLocalProviderSettingsUpdate,
+  AgentPreferences,
+  AgentPreferencesUpdate,
   ApproveToolRequest,
   BackendStatusesResponse,
   PreviewDiffRequest,
@@ -56,6 +58,9 @@ export const agentApi = {
     input: AgentLocalProviderSettingsUpdate
   ): Promise<AgentLocalProviderSettings> =>
     invoke(AgentChannels.invoke.SET_LOCAL_PROVIDER_SETTINGS, input),
+  getPreferences: (): Promise<AgentPreferences> => invoke(AgentChannels.invoke.GET_PREFERENCES),
+  setPreferences: (input: AgentPreferencesUpdate): Promise<AgentPreferences> =>
+    invoke(AgentChannels.invoke.SET_PREFERENCES, input),
   listLocalModels: (): Promise<AgentLocalModelList> =>
     invoke(AgentChannels.invoke.LIST_LOCAL_MODELS),
   testLocalProvider: (): Promise<AgentLocalProviderProbeResult> =>

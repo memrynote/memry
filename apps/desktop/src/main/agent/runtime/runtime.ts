@@ -1,4 +1,4 @@
-import type { ApproveToolDecision } from '@memry/contracts/ipc-agent'
+import type { AgentPreferences, ApproveToolDecision } from '@memry/contracts/ipc-agent'
 
 import { createLogger } from '../../lib/logger'
 import { setWriteGate as setMcpWriteGate } from '../mcp/lifecycle'
@@ -27,6 +27,7 @@ interface TrackedSubprocess {
 export interface AgentRuntimeDeps {
   conversations: ConversationStore
   messages: MessageStore
+  getPreferences?: () => AgentPreferences
 }
 
 export type PendingApprovalSnapshot = Omit<PendingApproval, 'resolve'>
@@ -49,7 +50,8 @@ export class AgentRuntime {
       const decision = decideToolGate({
         toolName: ctx.toolName,
         trustList: conversation.trustList,
-        pendingDecision: null
+        pendingDecision: null,
+        toolApprovalMode: this.deps.getPreferences?.().toolApprovalMode
       })
       if (decision.outcome === 'auto_approve') {
         return { approved: true }

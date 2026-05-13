@@ -1197,6 +1197,12 @@
       "local": "Local OpenAI-compatible provider",
       "actions": "Connection checks"
     },
+    "approval": {
+      "label": "Tool confirmations",
+      "description": "Choose whether write tools run automatically or wait for approval in chat.",
+      "alwaysAccept": "Always accept",
+      "ask": "Ask first"
+    },
     "presets": {
       "ollama": "Ollama",
       "lmStudio": "LM Studio",

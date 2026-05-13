@@ -15,6 +15,7 @@ export interface MainIpcInvokeHandlers {
   "agent:getBackendStatuses": (...args: []) => Awaited<Promise<{ claude_cli: { backend: "claude_cli" | "codex_cli" | "local_openai_compatible"; available: boolean; reason?: string | null | undefined; detail?: string | null | undefined; version?: string | null | undefined; minimumRequired?: string | null | undefined; }; codex_cli: { backend: "claude_cli" | "codex_cli" | "local_openai_compatible"; available: boolean; reason?: string | null | undefined; detail?: string | null | undefined; version?: string | null | undefined; minimumRequired?: string | null | undefined; }; local_openai_compatible: { backend: "claude_cli" | "codex_cli" | "local_openai_compatible"; available: boolean; reason?: string | null | undefined; detail?: string | null | undefined; version?: string | null | undefined; minimumRequired?: string | null | undefined; }; }>>
   "agent:getDisclosureState": (...args: []) => Awaited<import("../agent/runtime/disclosure-state").DisclosureState>
   "agent:getLocalProviderSettings": (...args: []) => Awaited<Promise<{ preset: "custom" | "ollama" | "lm_studio" | "llama_cpp"; baseUrl: string; model: string; apiKeyConfigured: boolean; allowNonLoopback: boolean; }>>
+  "agent:getPreferences": (...args: []) => Awaited<Promise<{ toolApprovalMode: "always_accept" | "ask"; }>>
   "agent:getWindowId": (...args: []) => Awaited<{ windowId: string | null; }>
   "agent:listBackendModels": (...args: [unknown]) => Awaited<Promise<{ backend: "claude_cli" | "codex_cli"; supportsCustomModel: boolean; models: { id: string; label: string; }[]; }>>
   "agent:listConversations": (...args: [unknown]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-agent").Conversation[]>>
@@ -24,6 +25,7 @@ export interface MainIpcInvokeHandlers {
   "agent:probeLocalProvider": (...args: []) => Awaited<Promise<{ connected: boolean; modelAvailable: boolean; streamingSupported: boolean; toolCallingSupported: boolean; toolContinuationSupported: boolean; toolsEnabled: boolean; detail: string | null; }>>
   "agent:sendTurn": (...args: [unknown]) => Awaited<Promise<{ ok: boolean; error: string; } | { ok: boolean; error?: undefined; }>>
   "agent:setLocalProviderSettings": (...args: [unknown]) => Awaited<Promise<{ preset: "custom" | "ollama" | "lm_studio" | "llama_cpp"; baseUrl: string; model: string; apiKeyConfigured: boolean; allowNonLoopback: boolean; }>>
+  "agent:setPreferences": (...args: [unknown]) => Awaited<Promise<{ toolApprovalMode: "always_accept" | "ask"; }>>
   "agent:testLocalProvider": (...args: []) => Awaited<Promise<{ connected: boolean; modelAvailable: boolean; streamingSupported: boolean; toolCallingSupported: boolean; toolContinuationSupported: boolean; toolsEnabled: boolean; detail: string | null; }>>
   "ai-inline:get-server-port": (...args: []) => Awaited<number | null>
   "ai-inline:get-settings": (...args: []) => Awaited<import("../../../../../packages/contracts/src/ai-inline-channels").AIInlineSettings>

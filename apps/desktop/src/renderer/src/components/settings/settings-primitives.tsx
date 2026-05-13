@@ -38,7 +38,7 @@ export function SettingsGroup({ label, children }: SettingsGroupProps) {
           {label}
         </h4>
       )}
-      <div className="flex flex-col rounded-lg overflow-clip border border-border">
+      <div className="flex flex-col rounded-lg overflow-clip border border-border bg-surface-active">
         {items.map((child, i) => (
           <div key={i}>
             {i > 0 && <div className="h-px bg-border" />}

@@ -2,12 +2,15 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { AgentPane } from '@/agent-chat/agent-pane'
 import { SidebarTabs } from '@/agent-chat/sidebar-tabs'
+import { TabBarAction } from '@/components/tabs/tab-bar-action'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import {
   useDayPanel,
   DAY_PANEL_WIDTH_DEFAULT_PX,
   DAY_PANEL_WIDTH_MIN_PX,
   DAY_PANEL_WIDTH_MAX_PX
 } from '@/contexts/day-panel-context'
+import { PanelRightIcon } from '@/lib/icons'
 import { useTabs, useActiveTab } from '@/contexts/tabs'
 import { useCalendarView } from '@/contexts/calendar-view-context'
 import { DatePickerCalendar } from '@/components/tasks/date-picker-calendar'
@@ -91,7 +94,8 @@ function DayPanelResizeRail() {
 
 export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
   const { t, i18n } = useT('journal')
-  const { isOpen, selectedDate, width, isResizing, setDate } = useDayPanel()
+  const { t: tCommon } = useT('common')
+  const { isOpen, selectedDate, width, isResizing, setDate, toggle } = useDayPanel()
   const { openTab } = useTabs()
   const activeTab = useActiveTab()
   const { setAnchorDate } = useCalendarView()
@@ -211,9 +215,9 @@ export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
       data-slot="day-panel-container"
       style={{ width: isOpen ? `${width}px` : 0 }}
       className={cn(
-        'fixed top-[37px] bottom-0 end-0 z-10',
+        'fixed top-0 bottom-0 end-0 z-10',
         !isResizing && 'transition-[width] duration-200 ease-linear',
-        'flex flex-col bg-sidebar border-s border-sidebar-border',
+        'flex flex-col border-s border-border bg-background',
         className
       )}
     >
@@ -228,7 +232,23 @@ export function GlobalDayPanel({ className }: GlobalDayPanelProps) {
       >
         {isOpen && <DayPanelResizeRail />}
 
-        <SidebarTabs dayLabel={dayPanelLabel}>
+        <SidebarTabs
+          dayLabel={dayPanelLabel}
+          endAccessory={
+            isOpen ? (
+              <TooltipProvider delayDuration={300}>
+                <TabBarAction
+                  icon={
+                    <PanelRightIcon className="w-4 h-4 text-tint transition-colors duration-150" />
+                  }
+                  tooltip={tCommon('phaseF.componentsTabsTabBarWithDrag.dayPanel')}
+                  onClick={toggle}
+                  isActive
+                />
+              </TooltipProvider>
+            ) : null
+          }
+        >
           {{
             day: (
               <div className="h-full overflow-y-auto pt-3">

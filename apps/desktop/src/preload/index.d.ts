@@ -14,6 +14,8 @@ import type {
   AgentLocalProviderProbeResult,
   AgentLocalProviderSettings,
   AgentLocalProviderSettingsUpdate,
+  AgentPreferences,
+  AgentPreferencesUpdate,
   ApproveToolRequest,
   BackendStatusesResponse,
   PreviewDiffRequest,
@@ -1641,6 +1643,8 @@ interface AgentClientAPI {
   setLocalProviderSettings: (
     input: AgentLocalProviderSettingsUpdate
   ) => Promise<AgentLocalProviderSettings>
+  getPreferences: () => Promise<AgentPreferences>
+  setPreferences: (input: AgentPreferencesUpdate) => Promise<AgentPreferences>
   listLocalModels: () => Promise<AgentLocalModelList>
   testLocalProvider: () => Promise<AgentLocalProviderProbeResult>
   probeLocalProvider: () => Promise<AgentLocalProviderProbeResult>

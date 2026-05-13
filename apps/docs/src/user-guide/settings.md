@@ -156,7 +156,7 @@ Light, White, Dark, or System (follow OS).
 
 ### Accent Color
 
-Eight presets — indigo, amber, emerald, red, violet, cyan, pink, orange — plus a custom `#RRGGBB` input.
+Eight presets — indigo, amber, emerald, red, violet, cyan, pink, orange — plus a custom `#RRGGBB` input. Orange is the default accent.
 
 ### Typography
 
@@ -221,6 +221,7 @@ and are not synced between devices.
 - **Preset** — Ollama, LM Studio, llama.cpp, or Custom
 - **Base URL** — OpenAI-compatible endpoint, such as `http://localhost:11434/v1`
 - **Model** — choose from `/v1/models` when available or type a model manually
+- **Tool Confirmations** — always accept Agent Chat tool calls by default, or require inline approval first
 - **API Key** — optional, stored in the OS keychain
 - **Test Connection** — checks the endpoint and selected model
 - **Probe Tools** — verifies tool-call emission and tool-result continuation before vault tools are enabled
@@ -237,9 +238,10 @@ Local MCP server controls are also collapsed inside AI Assistant for external de
 - **Rotate Token** — immediately invalidates the previous token
 - **Registered Tools** — count of exposed vault tools
 
-Agent Chat backends use this same server for vault tools. Read tools do not prompt; create tools can
-be trusted per conversation; update tools always require the in-app approval and diff flow. Plain
-external clients can use read tools, but context-free writes are denied. See
+Agent Chat backends use this same server for vault tools. Read tools do not prompt. Create and
+update tools require active Agent Chat context; by default they are accepted automatically and shown
+as collapsed tool rows, or they can require inline approval when **Tool Confirmations** is set to
+**Ask first**. Plain external clients can use read tools, but context-free writes are denied. See
 [Agent MCP Server](/user-guide/ai/agent-mcp).
 
 ---

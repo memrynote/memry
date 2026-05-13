@@ -834,6 +834,12 @@ describe('preload api wrappers', () => {
       AgentChannels.invoke.PREVIEW_DIFF,
       { conversationId: 'conversation-1', callId: 'call-1' }
     )
+    await expectInvoke(() => agentApi.getPreferences(), AgentChannels.invoke.GET_PREFERENCES)
+    await expectInvoke(
+      () => agentApi.setPreferences({ toolApprovalMode: 'ask' }),
+      AgentChannels.invoke.SET_PREFERENCES,
+      { toolApprovalMode: 'ask' }
+    )
     await expectInvoke(
       () =>
         agentApi.editTrustList({

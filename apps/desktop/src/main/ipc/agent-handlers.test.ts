@@ -14,7 +14,11 @@ const mocks = vi.hoisted(() => ({
     }
   ]),
   getDisclosureState: vi.fn(() => ({ accepted: false })),
-  acceptDisclosure: vi.fn(() => ({ accepted: true }))
+  acceptDisclosure: vi.fn(() => ({ accepted: true })),
+  getAgentPreferences: vi.fn(() => ({ toolApprovalMode: 'always_accept' })),
+  setAgentPreferences: vi.fn((input: { toolApprovalMode?: 'always_accept' | 'ask' }) => ({
+    toolApprovalMode: input.toolApprovalMode ?? 'always_accept'
+  }))
 }))
 
 vi.mock('electron', () => ({
@@ -30,6 +34,10 @@ vi.mock('../agent/runtime/attachment-snapshotter', () => ({
 vi.mock('../agent/runtime/disclosure-state', () => ({
   getDisclosureState: mocks.getDisclosureState,
   acceptDisclosure: mocks.acceptDisclosure
+}))
+vi.mock('../agent/settings', () => ({
+  getAgentPreferences: mocks.getAgentPreferences,
+  setAgentPreferences: mocks.setAgentPreferences
 }))
 
 import { AgentChannels } from '@memry/contracts/ipc-agent'
@@ -148,6 +156,10 @@ describe('agent IPC handlers', () => {
         detail: null
       }))
     },
+    preferences: {
+      get: vi.fn(() => ({ toolApprovalMode: 'always_accept' })),
+      set: vi.fn((input) => input)
+    },
     vaultId: 'vault-1'
   } as never
 
@@ -189,6 +201,15 @@ describe('agent IPC handlers', () => {
         available: false
       })
     })
+    expect(findHandler(AgentChannels.invoke.GET_PREFERENCES)(null)).toEqual({
+      toolApprovalMode: 'always_accept'
+    })
+    expect(
+      findHandler(AgentChannels.invoke.SET_PREFERENCES)(null, { toolApprovalMode: 'ask' })
+    ).toEqual({
+      toolApprovalMode: 'ask'
+    })
+    expect(mocks.setAgentPreferences).toHaveBeenCalledWith({ toolApprovalMode: 'ask' })
   })
 
   it('returns unified backend statuses keyed by backend id', async () => {
@@ -227,6 +248,18 @@ describe('agent IPC handlers', () => {
         { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini' }
       ]
     })
+  })
+
+  it('gets and sets agent preferences', async () => {
+    registerAgentHandlers(deps)
+
+    await expect(findHandler(AgentChannels.invoke.GET_PREFERENCES)(null)).resolves.toEqual({
+      toolApprovalMode: 'always_accept'
+    })
+    await expect(
+      findHandler(AgentChannels.invoke.SET_PREFERENCES)(null, { toolApprovalMode: 'ask' })
+    ).resolves.toEqual({ toolApprovalMode: 'ask' })
+    expect(deps.preferences.set).toHaveBeenCalledWith({ toolApprovalMode: 'ask' })
   })
 
   it('runs a turn with snapshotted attachments', async () => {
