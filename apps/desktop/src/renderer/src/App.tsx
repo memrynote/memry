@@ -64,6 +64,7 @@ import { useTaskWorkspaceData, useTaskWorkspaceMutations } from '@/features/task
 import { useTaskUiStore } from '@/features/tasks/use-task-ui-store'
 import { getFilteredTasks } from '@/lib/task-utils'
 import { useAgentMcpCurrentNoteResponder } from '@/agent-mcp/current-note-handler'
+import { useAgentMcpDesktopApiResponder } from '@/agent-mcp/desktop-api-handler'
 import { AgentProvider } from '@/agent-chat/agent-context'
 
 const log = createLogger('App')
@@ -135,6 +136,7 @@ const AppContent = (): React.JSX.Element => {
   // never tab titles, file paths, or note IDs.
   const activeTab = useActiveTab()
   useAgentMcpCurrentNoteResponder()
+  useAgentMcpDesktopApiResponder()
   const lastTrackedTabTypeRef = useRef<TabType | null>(null)
   useEffect(() => {
     if (!activeTab) return

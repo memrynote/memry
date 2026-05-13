@@ -4,6 +4,7 @@ import { AgentToolError } from '../errors'
 import type { ToolRegistration } from '../server'
 import type { VaultServiceHandles } from './handles'
 import { TOOL_SCHEMAS, READ_TOOL_NAMES } from './schemas'
+import type { AgentMcpDesktopReadOperation } from '@memry/contracts/agent-mcp-channels'
 
 function parse<T>(schema: ZodTypeAny, input: unknown): T {
   const r = schema.safeParse(input)
@@ -74,11 +75,38 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
         return handles.tasks.list(a)
       }
     },
+    vault_get_task: {
+      name: 'vault_get_task',
+      description: TOOL_SCHEMAS.vault_get_task.description,
+      inputSchema: TOOL_SCHEMAS.vault_get_task.input,
+      handler: async (input) => {
+        const a = parse<{ id: string }>(TOOL_SCHEMAS.vault_get_task.input, input)
+        return handles.tasks.get(a.id)
+      }
+    },
     vault_list_projects: {
       name: 'vault_list_projects',
       description: TOOL_SCHEMAS.vault_list_projects.description,
       inputSchema: TOOL_SCHEMAS.vault_list_projects.input,
       handler: async () => handles.projects.list()
+    },
+    vault_get_project: {
+      name: 'vault_get_project',
+      description: TOOL_SCHEMAS.vault_get_project.description,
+      inputSchema: TOOL_SCHEMAS.vault_get_project.input,
+      handler: async (input) => {
+        const a = parse<{ id: string }>(TOOL_SCHEMAS.vault_get_project.input, input)
+        return handles.projects.get(a.id)
+      }
+    },
+    vault_list_statuses: {
+      name: 'vault_list_statuses',
+      description: TOOL_SCHEMAS.vault_list_statuses.description,
+      inputSchema: TOOL_SCHEMAS.vault_list_statuses.input,
+      handler: async (input) => {
+        const a = parse<{ project_id: string }>(TOOL_SCHEMAS.vault_list_statuses.input, input)
+        return handles.statuses.list(a.project_id)
+      }
     },
     vault_get_journal_entry: {
       name: 'vault_get_journal_entry',
@@ -110,11 +138,32 @@ export function buildReadTools(handles: VaultServiceHandles): ToolRegistration[]
         return handles.inbox.list(a)
       }
     },
+    vault_get_inbox_item: {
+      name: 'vault_get_inbox_item',
+      description: TOOL_SCHEMAS.vault_get_inbox_item.description,
+      inputSchema: TOOL_SCHEMAS.vault_get_inbox_item.input,
+      handler: async (input) => {
+        const a = parse<{ id: string }>(TOOL_SCHEMAS.vault_get_inbox_item.input, input)
+        return handles.inbox.get(a.id)
+      }
+    },
     vault_get_tags: {
       name: 'vault_get_tags',
       description: TOOL_SCHEMAS.vault_get_tags.description,
       inputSchema: TOOL_SCHEMAS.vault_get_tags.input,
       handler: async () => handles.tags.listAll()
+    },
+    vault_desktop_read: {
+      name: 'vault_desktop_read',
+      description: TOOL_SCHEMAS.vault_desktop_read.description,
+      inputSchema: TOOL_SCHEMAS.vault_desktop_read.input,
+      handler: async (input, ctx) => {
+        const a = parse<{ operation: AgentMcpDesktopReadOperation; args: unknown[] }>(
+          TOOL_SCHEMAS.vault_desktop_read.input,
+          input
+        )
+        return handles.desktop.read(a, ctx.windowId)
+      }
     }
   }
 

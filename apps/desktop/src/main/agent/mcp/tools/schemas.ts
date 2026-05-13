@@ -1,7 +1,78 @@
 import { z } from 'zod'
+import {
+  AgentMcpDesktopReadOperations,
+  AgentMcpDesktopWriteOperations
+} from '@memry/contracts/agent-mcp-channels'
 
 const idSchema = z.string().min(1)
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+const isoTimeSchema = z.string().regex(/^\d{2}:\d{2}$/)
+const colorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/)
+const unknownRecordSchema = z.record(z.string(), z.unknown())
+const repeatConfigSchema = unknownRecordSchema
+const statusDefinitionInputSchema = z.object({
+  id: idSchema.optional(),
+  name: z.string().min(1).max(50),
+  color: colorSchema.default('#6b7280'),
+  type: z.enum(['todo', 'in_progress', 'done']),
+  order: z.number().int().min(0)
+})
+const taskPatchSchema = z.object({
+  title: z.string().min(1).max(500).optional(),
+  status: z.string().optional(),
+  status_id: idSchema.nullish(),
+  project_id: idSchema.nullish(),
+  parent_id: idSchema.nullish(),
+  due: isoDateSchema.nullish(),
+  due_date: isoDateSchema.nullish(),
+  due_time: isoTimeSchema.nullish(),
+  start_date: isoDateSchema.nullish(),
+  priority: z.number().int().min(0).max(4).optional(),
+  notes: z.string().max(10000).nullish(),
+  description: z.string().max(10000).nullish(),
+  is_repeating: z.boolean().optional(),
+  repeat_config: repeatConfigSchema.nullish(),
+  repeat_from: z.enum(['due', 'completion']).nullish(),
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  linked_note_ids: z.array(idSchema).optional()
+})
+const projectCreateSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).nullish(),
+  color: colorSchema.default('#6366f1'),
+  icon: z.string().nullish(),
+  statuses: z.array(statusDefinitionInputSchema).min(2).optional()
+})
+const projectUpdateSchema = z.object({
+  id: idSchema,
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).nullish(),
+  color: colorSchema.optional(),
+  icon: z.string().nullish(),
+  statuses: z.array(statusDefinitionInputSchema).min(2).optional()
+})
+const statusCreateSchema = z.object({
+  project_id: idSchema,
+  name: z.string().min(1).max(50),
+  color: colorSchema.default('#6b7280'),
+  is_done: z.boolean().default(false)
+})
+const statusUpdateSchema = z.object({
+  id: idSchema,
+  name: z.string().min(1).max(50).optional(),
+  color: colorSchema.optional(),
+  position: z.number().int().optional(),
+  is_default: z.boolean().optional(),
+  is_done: z.boolean().optional()
+})
+const desktopReadSchema = z.object({
+  operation: z.enum(AgentMcpDesktopReadOperations),
+  args: z.array(z.unknown()).default([])
+})
+const desktopWriteSchema = z.object({
+  operation: z.enum(AgentMcpDesktopWriteOperations),
+  args: z.array(z.unknown()).default([])
+})
 
 export const TOOL_SCHEMAS = {
   vault_search_notes: {
@@ -38,9 +109,21 @@ export const TOOL_SCHEMAS = {
     }),
     description: 'List tasks with optional filters.'
   },
+  vault_get_task: {
+    input: z.object({ id: idSchema }),
+    description: 'Read a task by id.'
+  },
   vault_list_projects: {
     input: z.object({}).default({}),
     description: 'List all projects with task counts.'
+  },
+  vault_get_project: {
+    input: z.object({ id: idSchema }),
+    description: 'Read a project by id.'
+  },
+  vault_list_statuses: {
+    input: z.object({ project_id: idSchema }),
+    description: 'List statuses for a project.'
   },
   vault_get_journal_entry: {
     input: z.object({ date: isoDateSchema }),
@@ -57,9 +140,17 @@ export const TOOL_SCHEMAS = {
     input: z.object({ unread_only: z.boolean().optional() }),
     description: 'List inbox items (unread first by default).'
   },
+  vault_get_inbox_item: {
+    input: z.object({ id: idSchema }),
+    description: 'Read an inbox item by id.'
+  },
   vault_get_tags: {
     input: z.object({}).default({}),
     description: 'List all tags with usage counts.'
+  },
+  vault_desktop_read: {
+    input: desktopReadSchema,
+    description: 'Run an allowlisted read-only desktop API operation through the Memry window.'
   },
   vault_create_note: {
     input: z.object({
@@ -70,16 +161,126 @@ export const TOOL_SCHEMAS = {
     }),
     description: 'Create a new note. Requires user approval.'
   },
+  vault_rename_note: {
+    input: z.object({ id: idSchema, title: z.string().min(1).max(200) }),
+    description: 'Rename a note. Requires user approval.'
+  },
+  vault_delete_note: {
+    input: z.object({ id: idSchema }),
+    description: 'Delete a note. Requires user approval.'
+  },
+  vault_create_folder: {
+    input: z.object({ path: z.string().min(1) }),
+    description: 'Create a note folder. Requires user approval.'
+  },
+  vault_rename_folder: {
+    input: z.object({ old_path: z.string().min(1), new_path: z.string().min(1) }),
+    description: 'Rename a note folder. Requires user approval.'
+  },
+  vault_delete_folder: {
+    input: z.object({ path: z.string().min(1) }),
+    description: 'Delete a note folder and its contents. Requires user approval.'
+  },
   vault_create_task: {
-    input: z.object({
-      title: z.string().min(1),
-      project_id: idSchema.optional(),
-      due: z.string().optional(),
-      priority: z.number().int().min(0).max(3).optional(),
-      tags: z.array(z.string()).optional(),
-      notes: z.string().optional()
-    }),
+    input: taskPatchSchema
+      .extend({
+        title: z.string().min(1).max(500),
+        source_note_id: idSchema.nullish(),
+        position: z.number().int().optional()
+      })
+      .omit({ status: true }),
     description: 'Create a new task. Requires user approval.'
+  },
+  vault_delete_task: {
+    input: z.object({ id: idSchema }),
+    description: 'Delete a task. Requires user approval.'
+  },
+  vault_complete_task: {
+    input: z.object({ id: idSchema, completed_at: z.string().datetime().optional() }),
+    description: 'Complete a task. Requires user approval.'
+  },
+  vault_uncomplete_task: {
+    input: z.object({ id: idSchema }),
+    description: 'Reopen a completed task. Requires user approval.'
+  },
+  vault_archive_task: {
+    input: z.object({ id: idSchema }),
+    description: 'Archive a task. Requires user approval.'
+  },
+  vault_unarchive_task: {
+    input: z.object({ id: idSchema }),
+    description: 'Unarchive a task. Requires user approval.'
+  },
+  vault_move_task: {
+    input: z.object({
+      task_id: idSchema,
+      target_project_id: idSchema.optional(),
+      target_status_id: idSchema.nullish(),
+      target_parent_id: idSchema.nullish(),
+      position: z.number().int()
+    }),
+    description: 'Move a task between projects/statuses/parents. Requires user approval.'
+  },
+  vault_reorder_tasks: {
+    input: z.object({
+      task_ids: z.array(idSchema),
+      positions: z.array(z.number().int())
+    }),
+    description: 'Reorder tasks. Requires user approval.'
+  },
+  vault_duplicate_task: {
+    input: z.object({ id: idSchema }),
+    description: 'Duplicate a task with subtasks. Requires user approval.'
+  },
+  vault_convert_task_to_subtask: {
+    input: z.object({ task_id: idSchema, parent_id: idSchema }),
+    description: 'Convert a task into a subtask. Requires user approval.'
+  },
+  vault_convert_subtask_to_task: {
+    input: z.object({ id: idSchema }),
+    description: 'Convert a subtask back to a top-level task. Requires user approval.'
+  },
+  vault_create_project: {
+    input: projectCreateSchema,
+    description: 'Create a task project. Requires user approval.'
+  },
+  vault_update_project: {
+    input: projectUpdateSchema,
+    description: 'Update a task project. Requires user approval.'
+  },
+  vault_delete_project: {
+    input: z.object({ id: idSchema }),
+    description: 'Delete a task project. Requires user approval.'
+  },
+  vault_archive_project: {
+    input: z.object({ id: idSchema }),
+    description: 'Archive a task project. Requires user approval.'
+  },
+  vault_reorder_projects: {
+    input: z.object({
+      project_ids: z.array(idSchema),
+      positions: z.array(z.number().int())
+    }),
+    description: 'Reorder task projects. Requires user approval.'
+  },
+  vault_create_status: {
+    input: statusCreateSchema,
+    description: 'Create a project status. Requires user approval.'
+  },
+  vault_update_status: {
+    input: statusUpdateSchema,
+    description: 'Update a project status. Requires user approval.'
+  },
+  vault_delete_status: {
+    input: z.object({ id: idSchema }),
+    description: 'Delete a project status. Requires user approval.'
+  },
+  vault_reorder_statuses: {
+    input: z.object({
+      status_ids: z.array(idSchema),
+      positions: z.array(z.number().int())
+    }),
+    description: 'Reorder project statuses. Requires user approval.'
   },
   vault_create_journal_entry: {
     input: z.object({
@@ -88,6 +289,19 @@ export const TOOL_SCHEMAS = {
     }),
     description: 'Create or return existing journal entry for date. Requires user approval.'
   },
+  vault_update_journal_entry: {
+    input: z.object({
+      date: isoDateSchema,
+      content_markdown: z.string().optional(),
+      tags: z.array(z.string()).optional(),
+      properties: unknownRecordSchema.optional()
+    }),
+    description: 'Update or create a journal entry. Requires user approval.'
+  },
+  vault_delete_journal_entry: {
+    input: z.object({ date: isoDateSchema }),
+    description: 'Delete a journal entry. Requires user approval.'
+  },
   vault_add_to_inbox: {
     input: z.object({
       source: z.string().min(1),
@@ -95,6 +309,34 @@ export const TOOL_SCHEMAS = {
       content: z.string()
     }),
     description: 'Append a new inbox item. Requires user approval.'
+  },
+  vault_update_inbox_item: {
+    input: z.object({
+      id: idSchema,
+      title: z.string().min(1).max(200).optional(),
+      content: z.string().max(50000).optional()
+    }),
+    description: 'Update an inbox item. Requires user approval.'
+  },
+  vault_archive_inbox_item: {
+    input: z.object({ id: idSchema }),
+    description: 'Archive an inbox item. Requires user approval.'
+  },
+  vault_unarchive_inbox_item: {
+    input: z.object({ id: idSchema }),
+    description: 'Unarchive an inbox item. Requires user approval.'
+  },
+  vault_delete_inbox_item: {
+    input: z.object({ id: idSchema }),
+    description: 'Permanently delete an inbox item. Requires user approval.'
+  },
+  vault_add_inbox_tag: {
+    input: z.object({ id: idSchema, tag: z.string().min(1) }),
+    description: 'Add a tag to an inbox item. Requires user approval.'
+  },
+  vault_remove_inbox_tag: {
+    input: z.object({ id: idSchema, tag: z.string().min(1) }),
+    description: 'Remove a tag from an inbox item. Requires user approval.'
   },
   vault_update_note: {
     input: z.object({
@@ -105,15 +347,7 @@ export const TOOL_SCHEMAS = {
     description: 'Update note body. Requires user approval with diff preview.'
   },
   vault_update_task: {
-    input: z.object({
-      id: idSchema,
-      title: z.string().optional(),
-      status: z.string().optional(),
-      project_id: idSchema.nullish(),
-      due: z.string().nullish(),
-      priority: z.number().int().min(0).max(3).optional(),
-      notes: z.string().optional()
-    }),
+    input: taskPatchSchema.extend({ id: idSchema }),
     description: 'Update task fields. Requires user approval with before/after preview.'
   },
   vault_add_tag: {
@@ -135,6 +369,10 @@ export const TOOL_SCHEMAS = {
   vault_move_to_folder: {
     input: z.object({ id: idSchema, folder_path: z.string().min(1) }),
     description: 'Move a note to a folder. Requires user approval.'
+  },
+  vault_desktop_write: {
+    input: desktopWriteSchema,
+    description: 'Run an allowlisted desktop CRUD mutation. Requires user approval.'
   }
 } as const
 
@@ -146,38 +384,109 @@ export const READ_TOOL_NAMES = [
   'vault_list_folder',
   'vault_get_current_note',
   'vault_list_tasks',
+  'vault_get_task',
   'vault_list_projects',
+  'vault_get_project',
+  'vault_list_statuses',
   'vault_get_journal_entry',
   'vault_list_journal_entries',
   'vault_list_inbox_items',
-  'vault_get_tags'
+  'vault_get_inbox_item',
+  'vault_get_tags',
+  'vault_desktop_read'
 ] as const satisfies readonly ToolName[]
 
 export const WRITE_TOOL_NAMES = [
   'vault_create_note',
+  'vault_rename_note',
+  'vault_delete_note',
+  'vault_create_folder',
+  'vault_rename_folder',
+  'vault_delete_folder',
   'vault_create_task',
+  'vault_delete_task',
+  'vault_complete_task',
+  'vault_uncomplete_task',
+  'vault_archive_task',
+  'vault_unarchive_task',
+  'vault_move_task',
+  'vault_reorder_tasks',
+  'vault_duplicate_task',
+  'vault_convert_task_to_subtask',
+  'vault_convert_subtask_to_task',
+  'vault_create_project',
+  'vault_update_project',
+  'vault_delete_project',
+  'vault_archive_project',
+  'vault_reorder_projects',
+  'vault_create_status',
+  'vault_update_status',
+  'vault_delete_status',
+  'vault_reorder_statuses',
   'vault_create_journal_entry',
+  'vault_update_journal_entry',
+  'vault_delete_journal_entry',
   'vault_add_to_inbox',
+  'vault_update_inbox_item',
+  'vault_archive_inbox_item',
+  'vault_unarchive_inbox_item',
+  'vault_delete_inbox_item',
+  'vault_add_inbox_tag',
+  'vault_remove_inbox_tag',
   'vault_update_note',
   'vault_update_task',
   'vault_add_tag',
   'vault_remove_tag',
-  'vault_move_to_folder'
+  'vault_move_to_folder',
+  'vault_desktop_write'
 ] as const satisfies readonly ToolName[]
 
 export const CREATE_TOOL_NAMES = [
   'vault_create_note',
+  'vault_create_folder',
   'vault_create_task',
+  'vault_create_project',
+  'vault_create_status',
   'vault_create_journal_entry',
   'vault_add_to_inbox'
 ] as const satisfies readonly ToolName[]
 
 export const UPDATE_TOOL_NAMES = [
+  'vault_rename_note',
+  'vault_delete_note',
+  'vault_rename_folder',
+  'vault_delete_folder',
+  'vault_delete_task',
+  'vault_complete_task',
+  'vault_uncomplete_task',
+  'vault_archive_task',
+  'vault_unarchive_task',
+  'vault_move_task',
+  'vault_reorder_tasks',
+  'vault_duplicate_task',
+  'vault_convert_task_to_subtask',
+  'vault_convert_subtask_to_task',
+  'vault_update_project',
+  'vault_delete_project',
+  'vault_archive_project',
+  'vault_reorder_projects',
+  'vault_update_status',
+  'vault_delete_status',
+  'vault_reorder_statuses',
+  'vault_update_journal_entry',
+  'vault_delete_journal_entry',
+  'vault_update_inbox_item',
+  'vault_archive_inbox_item',
+  'vault_unarchive_inbox_item',
+  'vault_delete_inbox_item',
+  'vault_add_inbox_tag',
+  'vault_remove_inbox_tag',
   'vault_update_note',
   'vault_update_task',
   'vault_add_tag',
   'vault_remove_tag',
-  'vault_move_to_folder'
+  'vault_move_to_folder',
+  'vault_desktop_write'
 ] as const satisfies readonly ToolName[]
 
 export const ALL_TOOL_NAMES = [...READ_TOOL_NAMES, ...WRITE_TOOL_NAMES] as const
