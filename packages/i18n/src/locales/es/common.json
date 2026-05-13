@@ -337,6 +337,7 @@
     "conversationLoading": "Cargando conversación...",
     "newConversation": "Nueva conversación",
     "history": "Historial de conversaciones",
+    "openInTab": "Abrir conversación en pestaña",
     "stop": "Detener",
     "thinking": "Agent está pensando",
     "enable": {

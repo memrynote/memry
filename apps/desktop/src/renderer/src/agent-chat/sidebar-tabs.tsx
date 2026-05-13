@@ -3,13 +3,15 @@ import { History } from 'lucide-react'
 import { useT } from '@memry/i18n/renderer'
 
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
+import { useDayPanel } from '@/contexts/day-panel-context'
+import { useTabs } from '@/contexts/tabs'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Bot, CalendarDays, PlusSignIcon } from '@/lib/icons'
+import { Bot, CalendarDays, Expand, PlusSignIcon } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useAgentOptional } from './agent-context'
 import { ConversationList } from './conversation-list'
@@ -141,10 +143,35 @@ export function SidebarTabs({
 function AgentConversationActions(): React.JSX.Element | null {
   const { t } = useT('common')
   const agent = useAgentOptional()
+  const { openTab } = useTabs()
+  const { close } = useDayPanel()
 
   if (!agent || agent.state.disclosureAccepted !== true) return null
 
+  const currentAgent = agent
   const newConversationLabel = t('agentChat.newConversation')
+  const openInTabLabel = t('agentChat.openInTab')
+  const activeConversationId = currentAgent.state.activeConversationId
+  const activeConversation = activeConversationId
+    ? currentAgent.state.conversations[activeConversationId]
+    : null
+
+  function openActiveConversationInTab(): void {
+    if (!activeConversation) return
+    openTab({
+      type: 'agent-chat',
+      title: activeConversation.title,
+      icon: 'bot',
+      path: `/agent-chat/${activeConversation.id}`,
+      entityId: activeConversation.id,
+      isPinned: false,
+      isModified: false,
+      isPreview: false,
+      isDeleted: false
+    })
+    close()
+    currentAgent.clearActiveConversation()
+  }
 
   return (
     <div className="flex items-center gap-1">
@@ -155,7 +182,7 @@ function AgentConversationActions(): React.JSX.Element | null {
               type="button"
               aria-label={newConversationLabel}
               title={newConversationLabel}
-              onClick={() => void agent.createConversation()}
+              onClick={() => void currentAgent.createConversation()}
               className="inline-flex size-6 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <PlusSignIcon className="size-3.5" aria-hidden="true" />
@@ -166,6 +193,26 @@ function AgentConversationActions(): React.JSX.Element | null {
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
+      {activeConversation && (
+        <TooltipProvider delayDuration={300}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-label={openInTabLabel}
+                title={openInTabLabel}
+                onClick={openActiveConversationInTab}
+                className="inline-flex size-6 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <Expand className="size-3.5" aria-hidden="true" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {openInTabLabel}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
       <AgentHistoryMenu />
     </div>
   )

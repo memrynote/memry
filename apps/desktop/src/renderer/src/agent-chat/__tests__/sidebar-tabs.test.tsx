@@ -3,9 +3,19 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockUseAgentOptional = vi.hoisted(() => vi.fn())
+const mockOpenTab = vi.hoisted(() => vi.fn())
+const mockCloseDayPanel = vi.hoisted(() => vi.fn())
 
 vi.mock('../agent-context', () => ({
   useAgentOptional: mockUseAgentOptional
+}))
+
+vi.mock('@/contexts/tabs', () => ({
+  useTabs: () => ({ openTab: mockOpenTab })
+}))
+
+vi.mock('@/contexts/day-panel-context', () => ({
+  useDayPanel: () => ({ close: mockCloseDayPanel })
 }))
 
 import { SidebarTabs } from '../sidebar-tabs'
@@ -26,6 +36,7 @@ function renderTabs(
 function mockAgentWithConversations() {
   const loadConversation = vi.fn()
   const createConversation = vi.fn()
+  const clearActiveConversation = vi.fn()
 
   mockUseAgentOptional.mockReturnValue({
     state: {
@@ -68,16 +79,19 @@ function mockAgentWithConversations() {
       inFlight: {}
     },
     createConversation,
-    loadConversation
+    loadConversation,
+    clearActiveConversation
   })
 
-  return { createConversation, loadConversation }
+  return { createConversation, loadConversation, clearActiveConversation }
 }
 
 describe('SidebarTabs', () => {
   beforeEach(() => {
     localStorage.clear()
     mockUseAgentOptional.mockReturnValue(null)
+    mockOpenTab.mockReset()
+    mockCloseDayPanel.mockReset()
   })
 
   it('switches tabs and persists the active tab', async () => {
@@ -193,5 +207,49 @@ describe('SidebarTabs', () => {
     fireEvent.click(historyItem)
 
     expect(loadConversation).toHaveBeenCalledWith('conversation-2')
+  })
+
+  it('opens the active conversation in a workspace tab and resets the sidebar chat', () => {
+    const { clearActiveConversation } = mockAgentWithConversations()
+
+    renderTabs({ defaultTab: 'agent' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open conversation in tab' }))
+
+    expect(mockOpenTab).toHaveBeenCalledWith({
+      type: 'agent-chat',
+      title: 'Planning',
+      icon: 'bot',
+      path: '/agent-chat/conversation-1',
+      entityId: 'conversation-1',
+      isPinned: false,
+      isModified: false,
+      isPreview: false,
+      isDeleted: false
+    })
+    expect(mockCloseDayPanel).toHaveBeenCalledTimes(1)
+    expect(clearActiveConversation).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not show the pop-out action before a conversation exists', () => {
+    mockUseAgentOptional.mockReturnValue({
+      state: {
+        disclosureAccepted: true,
+        activeConversationId: null,
+        conversations: {},
+        pendingApprovals: [],
+        messagesByConversation: {},
+        inFlight: {}
+      },
+      createConversation: vi.fn(),
+      loadConversation: vi.fn(),
+      clearActiveConversation: vi.fn()
+    })
+
+    renderTabs({ defaultTab: 'agent' })
+
+    expect(
+      screen.queryByRole('button', { name: 'Open conversation in tab' })
+    ).not.toBeInTheDocument()
   })
 })

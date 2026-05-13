@@ -337,6 +337,7 @@
     "conversationLoading": "Konuşma yükleniyor...",
     "newConversation": "Yeni görüşme",
     "history": "Konuşma geçmişi",
+    "openInTab": "Konuşmayı sekmede aç",
     "stop": "Durdur",
     "thinking": "Agent düşünüyor",
     "enable": {

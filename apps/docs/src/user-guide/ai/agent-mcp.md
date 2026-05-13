@@ -18,10 +18,12 @@ endpoint and bearer token.
 
 Open the right sidebar, choose **Agent**, and pick a provider. The compact Day/Agent switch keeps
 the active view highlighted at the top of the right sidebar. The Agent header includes a
-new-conversation button and a history menu for switching back to recent conversations. For Claude
-CLI, Memry checks that `claude` is available on `PATH`, that it reports version `2.1.0` or newer,
-and that the Agent disclosure has been accepted. For local models, configure a compatible server in
-[Settings -> AI Assistant -> Agent Providers](/user-guide/settings#agent-providers) first.
+new-conversation button, a history menu for switching back to recent conversations, and a pop-out
+button for moving the current conversation into a workspace tab. Popped-out conversations keep the
+generated conversation title as the tab name and leave the right sidebar ready for a new chat. For
+Claude CLI, Memry checks that `claude` is available on `PATH`, that it reports version `2.1.0` or
+newer, and that the Agent disclosure has been accepted. For local models, configure a compatible
+server in [Settings -> AI Assistant -> Agent Providers](/user-guide/settings#agent-providers) first.
 If the global AI switch is off in [Settings -> AI](/user-guide/settings#ai), the Agent tab and Agent
 MCP current-note bridge are hidden and inactive.
 
