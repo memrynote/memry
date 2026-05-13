@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type React from 'react'
+import { AISettingsProvider } from '@/contexts/ai-settings-context'
 import { QuickCapture } from './quick-capture'
 
 const mocks = vi.hoisted(() => ({
@@ -474,5 +475,55 @@ describe('QuickCapture', () => {
 
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(mocks.close).toHaveBeenCalled()
+  })
+
+  it('blocks quick capture audio paths when AI is disabled', async () => {
+    let onSettingsChanged: ((event: { key: string; value: unknown }) => void) | undefined
+    const api = (window as any).api
+    api.settings = {
+      ...(api.settings ?? {}),
+      getAISettings: vi.fn().mockResolvedValue({ enabled: true })
+    }
+    api.onSettingsChanged = vi.fn((callback) => {
+      onSettingsChanged = callback
+      return vi.fn()
+    })
+
+    const { container } = render(
+      <AISettingsProvider>
+        <QuickCapture />
+      </AISettingsProvider>
+    )
+
+    await waitFor(() => expect(api.settings.getAISettings).toHaveBeenCalled())
+    await waitFor(() => expect(api.onSettingsChanged).toHaveBeenCalled())
+    act(() => {
+      onSettingsChanged?.({ key: 'ai', value: { enabled: true } })
+    })
+
+    const audio = new File(['audio'], 'memo.webm', { type: 'audio/webm' })
+    fireEvent.drop(container.firstElementChild as Element, {
+      dataTransfer: { files: [audio] }
+    })
+    await waitFor(() => expect(screen.getByTestId('detected-type')).toHaveTextContent('voice'))
+
+    act(() => {
+      onSettingsChanged?.({ key: 'ai', value: { enabled: false } })
+    })
+
+    fireEvent.click(screen.getByText('submit'))
+    await waitFor(() => expect(screen.getByTestId('capture-flags')).toHaveTextContent('idle'))
+    expect(mocks.captureVoice).not.toHaveBeenCalled()
+
+    fireEvent.drop(container.firstElementChild as Element, {
+      dataTransfer: { files: [audio] }
+    })
+    expect(screen.getByRole('alert')).toHaveTextContent('Unsupported file type: audio/webm')
+    fireEvent.click(screen.getByText('dismiss'))
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('quick-capture:file-selected', { detail: audio }))
+    })
+    expect(screen.getByRole('alert')).toHaveTextContent('Unsupported file type: audio/webm')
   })
 })
