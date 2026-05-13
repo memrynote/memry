@@ -337,6 +337,7 @@
     "conversationLoading": "Samtalen indlæses...",
     "newConversation": "Ny samtale",
     "history": "Samtalehistorik",
+    "openInTab": "Åbn samtale i fane",
     "stop": "Stop",
     "thinking": "Agent tænker",
     "enable": {

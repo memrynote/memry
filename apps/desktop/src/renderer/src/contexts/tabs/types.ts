@@ -27,6 +27,7 @@ export type TabType =
   | 'template-editor' // Template editing (Phase 15)
   | 'templates' // Template list/management (Phase 15)
   | 'graph' // Knowledge graph visualization
+  | 'agent-chat' // Agent conversation
 
 /**
  * Singleton tab types - only one instance allowed

@@ -337,6 +337,7 @@
     "conversationLoading": "جارٍ تحميل المحادثة...",
     "newConversation": "محادثة جديدة",
     "history": "سجل المحادثات",
+    "openInTab": "فتح المحادثة في علامة تبويب",
     "stop": "توقف",
     "thinking": "Agent يفكر",
     "enable": {

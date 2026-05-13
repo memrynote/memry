@@ -337,6 +337,7 @@
     "conversationLoading": "Φόρτωση συνομιλίας...",
     "newConversation": "Νέα συνομιλία",
     "history": "Ιστορικό συνομιλιών",
+    "openInTab": "Άνοιγμα συνομιλίας σε καρτέλα",
     "stop": "Σταματήστε",
     "thinking": "Το Agent σκέφτεται",
     "enable": {
