@@ -25,9 +25,7 @@
         "integrations": "Intégrations",
         "vault": "Coffre-fort",
         "tags": "Balises",
-        "properties": "Propriétés",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Propriétés"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Remarques",
         "attachments": "Pièces jointes",
         "crdt": "CRDT",
-        "other": "Autre",
-        "available": "Disponible"
+        "other": "Autre"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "En attente d'approbation",
       "waitingDescription": "Ouvrez Memry sur votre autre appareil et approuvez la demande d'association.",
       "verificationCode": "Code de vérification",
-      "confirmCode": "Confirmez que cela correspond au code sur votre autre appareil",
-      "cancel": "Annuler"
+      "confirmCode": "Confirmez que cela correspond au code sur votre autre appareil"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Clé de récupération",
     "description": "Conservez cette clé en toute sécurité. Il peut restaurer votre coffre-fort si vous perdez l'accès à tous les appareils.",
-    "loading": "Chargement...",
     "retrieveFailed": "Échec de la récupération de la clé de récupération",
     "copied": "Clé de récupération copiée dans le presse-papiers",
     "copyFailed": "Échec de la copie dans le presse-papiers",
     "clickToReveal": "Cliquez pour révéler",
     "hide": "Masquer",
     "reveal": "Révéler",
-    "copy": "Copier",
     "sessionHint": "Cette clé est affichée une fois par session. Fermez cette boîte de dialogue pour l'effacer de la mémoire."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Échec de la connexion à Google Agenda",
       "refreshFailed": "Échec de l'actualisation de Google Agenda",
       "disconnectFailed": "Échec de la déconnexion de Google Agenda",
-      "selectionFailed": "Échec de la mise à jour de la sélection du calendrier",
       "retryFailed": "Échec de la nouvelle tentative de synchronisation du calendrier"
     },
     "sourcePicker": {

@@ -43,9 +43,7 @@
     "pdfs": "PDF",
     "social": "sociales",
     "reminder": "Recordatorio",
-    "reminders": "Recordatorios",
-    "text": "Texto",
-    "other": "Otro"
+    "reminders": "Recordatorios"
   },
   "empty": {
     "successAria": "Éxito, la bandeja de entrada está vacía.",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "No hay elementos archivados coincidentes",
     "noItemsYet": "Aún no hay artículos",
     "noItemsFiled": "Aún no se han archivado artículos",
-    "noItemTypes": "No hay tipos de elementos para mostrar",
     "noFolders": "No se encontraron carpetas",
-    "noFolderMatch": "Ninguna carpeta coincide con \"{query}\"",
     "noNotes": "No se encontraron notas",
     "allMatchesLinked": "Todos los partidos ya vinculados"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Error de transcripción",
     "retryTranscription": "Reintentar",
     "pageCount": "{count, plural, one {Página #} other {Páginas #}}",
-    "snoozedUntilShort": "pospuesto hasta {date}",
-    "capturedAgo": "{time} capturado"
+    "snoozedUntilShort": "pospuesto hasta {date}"
   },
   "loading": {
     "inbox": "Cargando bandeja de entrada...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Acciones rápidas",
     "archiveItem": "Elemento de archivo",
-    "archive": "Archivo",
-    "snooze": "posponer"
+    "archive": "Archivo"
   },
   "detail": {
     "ariaLabel": "Detalles del artículo",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Buscar notas para vincular",
     "linkedNotesAria": "Notas vinculadas",
     "removeLinkTo": "Eliminar enlace a {title}",
-    "contentEditorAria": "editor de contenido",
     "notePlaceholder": "Escribe tu nota...",
     "textPlaceholder": "Edita tu texto capturado..."
   },
@@ -263,14 +256,9 @@
     "custom": "Personalizado..."
   },
   "insights": {
-    "loading": "Cargando información...",
     "captureActivity": "Capturar actividad",
     "byType": "Por tipo",
-    "itemTypes": "Tipos de artículos",
-    "itemTypesDescription": "Distribución de formatos de contenidos.",
     "recentFilings": "Presentaciones recientes",
-    "recentlyFiled": "Presentado recientemente",
-    "recentlyFiledDescription": "Últimas acciones en tu bandeja de entrada",
     "captured": "capturado",
     "capturedThisWeek": "+{count} esta semana",
     "processed": "Procesado",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {Captura #} other {Capturas #}}",
     "peak": "Pico: {day} {start}–{end}",
     "convertedToTask": "Convertido en tarea",
-    "linked": "vinculado",
     "now": "ahora",
     "timeAgoMinutes": "Hace {count} min",
     "timeAgoHours": "Hace {count}h",

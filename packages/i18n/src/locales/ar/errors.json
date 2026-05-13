@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
     "operationFailed": "فشلت العملية",
-    "unknown": "حدث خطأ غير معروف",
-    "validationFailed": "فشل التحقق من الصحة",
-    "actionFailed": "فشل الإجراء"
+    "unknown": "حدث خطأ غير معروف"
   },
   "ipc": {
     "noVaultOpen": "لا يوجد قبو مفتوح. يرجى فتح قبو أولا."

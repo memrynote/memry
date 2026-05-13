@@ -25,9 +25,7 @@
         "integrations": "การรวมระบบ",
         "vault": "คลัง",
         "tags": "แท็ก",
-        "properties": "คุณสมบัติ",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "คุณสมบัติ"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "บันทึก",
         "attachments": "ไฟล์แนบ",
         "crdt": "CRDT",
-        "other": "อื่น ๆ",
-        "available": "พร้อมใช้งาน"
+        "other": "อื่น ๆ"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "รอการอนุมัติ",
       "waitingDescription": "เปิด Memry บนอุปกรณ์อื่นของคุณและอนุมัติคำขอการเชื่อมโยง",
       "verificationCode": "รหัสยืนยัน",
-      "confirmCode": "ยืนยันว่านี่ตรงกับรหัสบนอุปกรณ์อื่นของคุณ",
-      "cancel": "ยกเลิก"
+      "confirmCode": "ยืนยันว่านี่ตรงกับรหัสบนอุปกรณ์อื่นของคุณ"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "กุญแจกู้คืน",
     "description": "เก็บกุญแจนี้อย่างปลอดภัย มันสามารถกู้คืนตู้เก็บของคุณได้หากคุณสูญเสียการเข้าถึงอุปกรณ์ทั้งหมด",
-    "loading": "กำลังโหลด...",
     "retrieveFailed": "ไม่สามารถดึงกุญแจกู้คืนได้",
     "copied": "คัดลอกกุญแจกู้คืนไปที่คลิปบอร์ดแล้ว",
     "copyFailed": "ไม่สามารถคัดลอกไปที่คลิปบอร์ดได้",
     "clickToReveal": "คลิกเพื่อแสดง",
     "hide": "ซ่อน",
     "reveal": "เปิดเผย",
-    "copy": "คัดลอก",
     "sessionHint": "กุญแจนี้จะแสดงเพียงครั้งเดียวต่อเซสชัน ปิดหน้าต่างนี้เพื่อเคลียร์จากหน่วยความจำ"
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "เชื่อมต่อ Google Calendar ล้มเหลว",
       "refreshFailed": "รีเฟรช Google Calendar ล้มเหลว",
       "disconnectFailed": "ตัดการเชื่อมต่อ Google Calendar ล้มเหลว",
-      "selectionFailed": "อัปเดตการเลือกปฏิทินล้มเหลว",
       "retryFailed": "ลองซิงค์ปฏิทินใหม่ล้มเหลว"
     },
     "sourcePicker": {

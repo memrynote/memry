@@ -3,47 +3,25 @@
     "save": "Tallenna",
     "cancel": "Peruuta",
     "close": "Sulje",
-    "ok": "OK",
-    "yes": "Kyllä",
-    "no": "Ei",
     "delete": "Poista",
-    "confirm": "Vahvista",
-    "apply": "Käytä",
     "done": "Valmis",
-    "discard": "Hävitä",
     "dontSave": "Älä Tallenna",
-    "edit": "Muokkaa",
     "add": "Lisää",
     "remove": "Poista",
     "retry": "Yritä uudelleen",
-    "submit": "Lähetä",
     "back": "Takaisin",
-    "next": "Seuraavaksi",
     "continue": "Jatka",
-    "reset": "Nollaa",
     "copy": "Kopioi",
-    "paste": "Liitä",
-    "create": "Luo",
-    "open": "Avaa"
+    "create": "Luo"
   },
   "state": {
     "loading": "Ladataan…",
     "saving": "Tallennetaan…",
     "deleting": "Poistetaan…",
-    "searching": "Haetaan…",
-    "error": "Virhe",
-    "success": "Menestystä"
-  },
-  "empty": {
-    "noResults": "Ei tuloksia",
-    "noItems": "Ei kohteita",
-    "noMatch": "Ei osumia"
+    "searching": "Haetaan…"
   },
   "action": {
     "search": "Etsi",
-    "edit": "Muokkaa",
-    "delete": "Poista",
-    "close": "Sulje",
     "expand": "Laajenna",
     "collapse": "Kutista",
     "showMore": "+{count, plural, one {# enemmän} other {# enemmän}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {# tuote} other {# tuotteet}}",
     "note": "{count, plural, one {# huomautus} other {# toteaa}}",
-    "folder": "{count, plural, one {#-kansio} other {# kansiot}}",
     "task": "{count, plural, one {# tehtävä} other {# tehtäviä}}",
-    "project": "{count, plural, one {# projekti} other {#-projektit}}",
     "itemDelete": "{count, plural, one {Poista # kohde} other {Poista # kohteet}}"
   },
   "toast": {
     "actionFailed": "Toiminto epäonnistui",
     "nothingToUndo": "Ei mitään peruttavaa",
     "undone": "Kumottu: {description}",
-    "undoFailed": "Toiminnon kumoaminen epäonnistui",
-    "copied": "Kopioitu",
-    "copyFailed": "Kopiointi epäonnistui"
+    "undoFailed": "Toiminnon kumoaminen epäonnistui"
   },
   "dateRelative": {
     "today": "Tänään",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {# päivä sitten} other {# päivää sitten}}"
   },
   "recurrence": {
-    "everyDay": "Joka päivä",
     "everyNDays": "{count, plural, one {Joka päivä} other {Joka # päivä}}",
-    "everyWeek": "Joka viikko",
     "everyNWeeks": "{count, plural, one {Joka viikko} other {Joka # viikko}}",
-    "everyWeekday": "Joka arkipäivä",
     "everyNWeeksOnWeekdays": "{count, plural, one {Joka arkipäivä} other {Joka # viikko arkisin}}",
-    "everyWeekend": "Joka viikonloppu",
     "everyNWeeksOnWeekends": "{count, plural, one {Joka viikonloppu} other {Joka # viikko viikonloppuisin}}",
-    "everyWeekOnDays": "Joka viikko {days}:llä",
     "everyNWeeksOnDays": "{count, plural, one {Joka viikko {days}:llä} other {Joka # viikko {days}}}",
-    "everyMonth": "Joka kuukausi",
     "everyNMonths": "{count, plural, one {Joka kuukausi} other {Joka # kuukausi}}",
-    "everyMonthOnDay": "Joka kuukausi {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {Joka kuukausi {day}{suffix}} other {Joka # kuukausi {day}{suffix}}}",
-    "everyMonthOnWeekDay": "Joka kuukausi {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Joka kuukausi {week} {day}} other {Joka # kuukausi {week} {day}}}",
-    "everyYear": "Joka vuosi",
     "everyNYears": "{count, plural, one {Joka vuosi} other {Joka # vuosi}}",
     "repeats": "Toistaa"
   },
@@ -264,7 +228,6 @@
       "openTabs": "Avaa välilehdet",
       "scrollTabsLeft": "Vieritä välilehtiä vasemmalle",
       "scrollTabsRight": "Vieritä välilehtiä oikealle",
-      "graphG": "Kaavio (⌘G)",
       "dayPanel": "Päivän paneeli"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Agent chat",
+    "loading": "Ladataan agentin keskustelua...",
+    "conversationLoading": "Keskustelua ladataan...",
+    "newConversation": "Uusi keskustelu",
+    "history": "Keskusteluhistoria",
+    "stop": "Pysähdy",
+    "thinking": "Agent ajattelee",
+    "enable": {
+      "title": "Ota Memry Agent käyttöön",
+      "description": "Memry Agent käyttää valitsemaasi paikallista agenttia CLI keskustellakseen holvistasi. Claude lähettää vuoroja Anthropic; Codex lähettää vuoroja OpenAI:lle.",
+      "remote": "Memry salaa paikallisen ja synkronoidun chat-historiasi, mutta mallin päättely tapahtuu valitun palveluntarjoajan kanssa.",
+      "readTools": "Lukutyökalut toimivat automaattisesti.",
+      "writeTools": "Työkalujen luonti ja päivitys vaatii hyväksynnän.",
+      "diff": "Päivitystyökalut näyttävät eron tai esikatselun.",
+      "button": "Ota Agent-chat käyttöön"
+    },
+    "approval": {
+      "description": "Agentti haluaa kutsua {name} näillä argumenteilla.",
+      "applyOnce": "Hae kerran",
+      "allowOnce": "Salli kerran",
+      "editAndApply": "Muokkaa ja käytä",
+      "editAndAllow": "Muokkaa ja salli",
+      "allowAlways": "Salli aina",
+      "applyEdits": "Ota muokkaukset käyttöön",
+      "deny": "Estä",
+      "invalidJson": "Syötä kelvollinen JSON ennen muokkausten käyttämistä."
+    },
+    "diff": {
+      "previewError": "Huomautuseron esikatselu epäonnistui",
+      "description": "Agentti haluaa päivittää {title}. Tarkista nykyinen ja ehdokassisältö ennen sen käyttämistä.",
+      "fallbackTitle": "tämä muistiinpano",
+      "current": "Nykyinen",
+      "candidate": "Ehdokas",
+      "loading": "Ladataan...",
+      "apply": "Hae",
+      "applyEdited": "Käytä muokattu"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "Nykyinen huomautus",
+      "removeAttachment": "Poista {label}",
+      "placeholder": "Kysy Agent",
+      "send": "Lähetä",
+      "providerLabel": "Agent -toimittaja: {provider}",
+      "modelLabel": "Agent malli: {model}",
+      "settingsLabel": "Agent-asetukset: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "Mukautetun mallin tunnus",
+      "customModelPlaceholder": "Mukautetun mallin tunnus",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "Paikallinen"
+      },
+      "models": {
+        "default": "Oletus"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "Päättely"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
-          "max": "Max"
+          "low": "Matala",
+          "medium": "Keskikokoinen",
+          "high": "Korkea",
+          "extraHigh": "Erittäin korkea",
+          "extraHighDefault": "Erittäin korkea (oletus)",
+          "max": "Maksimi"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "Matala",
+          "medium": "Keskitaso",
+          "mediumDefault": "Keskitaso (oletus)",
+          "high": "Korkea",
+          "extraHigh": "Erittäin korkea"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "Ei osumia"
+    },
+    "toolResult": {
+      "label": "Työkalun tulos"
+    },
+    "toolCall": {
+      "editedArgs": "Muokatut argumentit",
+      "parameters": "Parametrit"
+    },
+    "sidebar": {
+      "label": "Oikea sivupalkki",
+      "day": "Päivä",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# odottaa hyväksyntää} other {# odottavaa hyväksyntää}}",
+      "inProgress": "Agent käännös käynnissä"
+    },
+    "errors": {
+      "loadConversations": "Edustajakeskusteluja ei voitu ladata",
+      "loadConversation": "Edustajakeskustelun lataaminen epäonnistui",
+      "createConversation": "Edustajakeskustelun luominen epäonnistui",
+      "busy": "Toinen ikkuna on tämän keskustelun puolivälissä. Odota sen päättymistä tai lopeta se sieltä.",
+      "sendTurn": "Agentin vuoroa ei voitu lähettää",
+      "cancelTurn": "Edustajan vuoroa ei voitu peruuttaa",
+      "submitApproval": "Työkalun hyväksyntää ei voitu lähettää",
+      "updateTrust": "Luotettuja työkaluja ei voitu päivittää",
+      "saveDisclosure": "Ilmoitustilaa ei voitu tallentaa",
+      "resolveWindow": "Agentin lähdeikkunaa ei voitu ratkaista",
+      "detectCli": "Agentin taustaohjelmia ei voitu havaita",
+      "loadDisclosure": "Ilmoitustilaa ei voitu ladata"
     }
   }
 }

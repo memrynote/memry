@@ -3,47 +3,25 @@
     "save": "Jimat",
     "cancel": "Batal",
     "close": "tutup",
-    "ok": "OK",
-    "yes": "ya",
-    "no": "Tidak",
     "delete": "Padam",
-    "confirm": "sahkan",
-    "apply": "Mohon",
     "done": "Selesai",
-    "discard": "Buang",
     "dontSave": "Jangan Simpan",
-    "edit": "Sunting",
     "add": "Tambah",
     "remove": "Alih keluar",
     "retry": "Cuba semula",
-    "submit": "Hantar",
     "back": "belakang",
-    "next": "Seterusnya",
     "continue": "teruskan",
-    "reset": "Tetapkan semula",
     "copy": "salin",
-    "paste": "Tampal",
-    "create": "Buat",
-    "open": "Buka"
+    "create": "Buat"
   },
   "state": {
     "loading": "Memuatkan…",
     "saving": "Menyimpan…",
     "deleting": "Memadamkan…",
-    "searching": "Mencari…",
-    "error": "ralat",
-    "success": "Kejayaan"
-  },
-  "empty": {
-    "noResults": "Tiada hasil",
-    "noItems": "Tiada barang",
-    "noMatch": "Tiada padanan"
+    "searching": "Mencari…"
   },
   "action": {
     "search": "Cari",
-    "edit": "Sunting",
-    "delete": "Padam",
-    "close": "tutup",
     "expand": "Kembangkan",
     "collapse": "Runtuh",
     "showMore": "+{count, plural, one {# lagi} other {# lagi}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {Item #} other {Item #}}",
     "note": "{count, plural, one {Nota #} other {Nota #}}",
-    "folder": "{count, plural, one {Folder #} other {Folder #}}",
     "task": "{count, plural, one {Tugasan #} other {# tugasan}}",
-    "project": "{count, plural, one {Projek #} other {Projek #}}",
     "itemDelete": "{count, plural, one {Padamkan item #} other {Padamkan item #}}"
   },
   "toast": {
     "actionFailed": "Tindakan gagal",
     "nothingToUndo": "Tiada apa yang perlu dibuat asal",
     "undone": "Dibuat asal: {description}",
-    "undoFailed": "Gagal membuat asal tindakan",
-    "copied": "disalin",
-    "copyFailed": "Gagal menyalin"
+    "undoFailed": "Gagal membuat asal tindakan"
   },
   "dateRelative": {
     "today": "Hari ini",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {# hari yang lalu} other {# hari yang lalu}}"
   },
   "recurrence": {
-    "everyDay": "Setiap hari",
     "everyNDays": "{count, plural, one {Setiap hari} other {Setiap # hari}}",
-    "everyWeek": "Setiap minggu",
     "everyNWeeks": "{count, plural, one {Setiap minggu} other {Setiap # minggu}}",
-    "everyWeekday": "Setiap hari minggu",
     "everyNWeeksOnWeekdays": "{count, plural, one {Setiap hari minggu} other {Setiap # minggu pada hari bekerja}}",
-    "everyWeekend": "Setiap hujung minggu",
     "everyNWeeksOnWeekends": "{count, plural, one {Setiap hujung minggu} other {Setiap # minggu pada hujung minggu}}",
-    "everyWeekOnDays": "Setiap minggu pada {days}",
     "everyNWeeksOnDays": "{count, plural, one {Setiap minggu pada {days}} other {Setiap # minggu pada {days}}}",
-    "everyMonth": "Setiap bulan",
     "everyNMonths": "{count, plural, one {Setiap bulan} other {Setiap # bulan}}",
-    "everyMonthOnDay": "Setiap bulan pada {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {Setiap bulan pada {day}{suffix}} other {Setiap # bulan pada {day}{suffix}}}",
-    "everyMonthOnWeekDay": "Setiap bulan pada {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Setiap bulan pada {week} {day}} other {Setiap # bulan pada {week} {day}}}",
-    "everyYear": "Setiap tahun",
     "everyNYears": "{count, plural, one {Setiap tahun} other {Setiap # tahun}}",
     "repeats": "Berulang"
   },
@@ -264,7 +228,6 @@
       "openTabs": "Buka tab",
       "scrollTabsLeft": "Tatal tab ke kiri",
       "scrollTabsRight": "Tatal tab ke kanan",
-      "graphG": "Graf (⌘G)",
       "dayPanel": "Panel Harian"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Sembang Agent",
+    "loading": "Memuatkan sembang ejen...",
+    "conversationLoading": "Memuatkan perbualan...",
+    "newConversation": "Perbualan baharu",
+    "history": "Sejarah perbualan",
+    "stop": "Berhenti",
+    "thinking": "Agent sedang berfikir",
+    "enable": {
+      "title": "Dayakan Memry Agent",
+      "description": "Memry Agent menggunakan ejen tempatan pilihan anda CLI untuk bersembang tentang peti besi anda. Claude menghantar giliran kepada Anthropic; Codex menghantar giliran ke OpenAI.",
+      "remote": "Memry menyulitkan sejarah sembang setempat dan disegerakkan anda, tetapi inferens model berlaku dengan pembekal yang dipilih.",
+      "readTools": "Alat baca berjalan secara automatik.",
+      "writeTools": "Buat dan kemas kini alatan memerlukan kelulusan.",
+      "diff": "Alat kemas kini menunjukkan perbezaan atau pratonton.",
+      "button": "Dayakan sembang Agent"
+    },
+    "approval": {
+      "description": "Ejen ingin memanggil {name} dengan hujah ini.",
+      "applyOnce": "Mohon sekali",
+      "allowOnce": "Benarkan sekali",
+      "editAndApply": "Edit dan gunakan",
+      "editAndAllow": "Edit dan benarkan",
+      "allowAlways": "Benarkan sentiasa",
+      "applyEdits": "Gunakan pengeditan",
+      "deny": "Nafikan",
+      "invalidJson": "Masukkan JSON yang sah sebelum menggunakan suntingan."
+    },
+    "diff": {
+      "previewError": "Tidak dapat pratonton perbezaan nota",
+      "description": "Ejen ingin mengemas kini {title}. Semak kandungan semasa dan calon sebelum menggunakannya.",
+      "fallbackTitle": "nota ini",
+      "current": "Semasa",
+      "candidate": "Calon",
+      "loading": "Memuatkan...",
+      "apply": "Mohon",
+      "applyEdited": "Guna disunting"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "Nota semasa",
+      "removeAttachment": "Alih keluar {label}",
+      "placeholder": "Tanya Agent",
+      "send": "Hantar",
+      "providerLabel": "Pembekal Agent: {provider}",
+      "modelLabel": "Model Agent: {model}",
+      "settingsLabel": "Tetapan Agent: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "ID model tersuai",
+      "customModelPlaceholder": "ID model tersuai",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "Setempat"
+      },
+      "models": {
+        "default": "Lalai"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "Penaakulan"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
-          "max": "Max"
+          "low": "Rendah",
+          "medium": "Sederhana",
+          "high": "Tinggi",
+          "extraHigh": "Lebih Tinggi",
+          "extraHighDefault": "Lebih Tinggi (lalai)",
+          "max": "Maks"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "Rendah",
+          "medium": "Sederhana",
+          "mediumDefault": "Sederhana (lalai)",
+          "high": "Tinggi",
+          "extraHigh": "Lebih Tinggi"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "Tiada padanan"
+    },
+    "toolResult": {
+      "label": "Hasil alat"
+    },
+    "toolCall": {
+      "editedArgs": "Argumen yang disunting",
+      "parameters": "Parameter"
+    },
+    "sidebar": {
+      "label": "Bar sisi kanan",
+      "day": "Hari",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# menunggu kelulusan} other {# kelulusan belum selesai}}",
+      "inProgress": "Agent giliran sedang berjalan"
+    },
+    "errors": {
+      "loadConversations": "Tidak dapat memuatkan perbualan ejen",
+      "loadConversation": "Tidak dapat memuatkan perbualan ejen",
+      "createConversation": "Tidak dapat membuat perbualan ejen",
+      "busy": "Satu lagi tetingkap adalah pertengahan pusingan untuk perbualan ini. Tunggu ia selesai atau hentikan dari situ.",
+      "sendTurn": "Tidak dapat menghantar giliran ejen",
+      "cancelTurn": "Tidak dapat membatalkan giliran ejen",
+      "submitApproval": "Tidak dapat menyerahkan kelulusan alat",
+      "updateTrust": "Tidak dapat mengemas kini alat yang dipercayai",
+      "saveDisclosure": "Tidak dapat menyimpan keadaan pendedahan",
+      "resolveWindow": "Tidak dapat menyelesaikan tetingkap sumber ejen",
+      "detectCli": "Tidak dapat mengesan hujung belakang ejen",
+      "loadDisclosure": "Tidak dapat memuatkan keadaan pendedahan"
     }
   }
 }

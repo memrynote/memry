@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Quelque chose s'est mal passé. Veuillez réessayer.",
     "operationFailed": "L'opération a échoué",
-    "unknown": "Une erreur inconnue s'est produite",
-    "validationFailed": "Échec de la validation",
-    "actionFailed": "L'action a échoué"
+    "unknown": "Une erreur inconnue s'est produite"
   },
   "ipc": {
     "noVaultOpen": "Aucun coffre-fort n'est ouvert. Veuillez d'abord ouvrir un coffre-fort."

@@ -14,7 +14,6 @@
       "openLinkedFailed": "Propojenou položku se nepodařilo otevřít",
       "localOnly": "Poznámka nastavena pouze na místní",
       "willSync": "Poznámka se synchronizuje do cloudu",
-      "saveFailed": "Poznámku se nepodařilo uložit",
       "renameFailed": "Poznámku se nepodařilo přejmenovat",
       "toggleLocalOnlyFailed": "Nepodařilo se přepnout pouze místní",
       "toggleFullWidthFailed": "Nepodařilo se přepnout na celou šířku"
@@ -135,9 +134,6 @@
       "clearSearch": "Vymazat vyhledávání"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "Napište poznámku..."
-  },
   "outline": {
     "title": "Obrys",
     "aria": "Osnova dokumentu",
@@ -149,7 +145,6 @@
     "modified": "Upraveno"
   },
   "backlinks": {
-    "title": "Zpětné odkazy",
     "sortRecent": "Nedávné",
     "sortAlpha": "A-Z",
     "sortMentions": "Většina zmínek",

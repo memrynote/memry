@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Etwas ist schief gelaufen. Bitte versuchen Sie es erneut.",
     "operationFailed": "Der Vorgang ist fehlgeschlagen",
-    "unknown": "Es ist ein unbekannter Fehler aufgetreten",
-    "validationFailed": "Die Validierung ist fehlgeschlagen",
-    "actionFailed": "Aktion fehlgeschlagen"
+    "unknown": "Es ist ein unbekannter Fehler aufgetreten"
   },
   "ipc": {
     "noVaultOpen": "Kein Tresor ist geöffnet. Bitte öffnen Sie zuerst einen Tresor."

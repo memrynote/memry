@@ -25,9 +25,7 @@
         "integrations": "Integraties",
         "vault": "Kluis",
         "tags": "Labels",
-        "properties": "Eigenschappen",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Eigenschappen"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Opmerkingen",
         "attachments": "Bijlagen",
         "crdt": "CRDT",
-        "other": "Anders",
-        "available": "Beschikbaar"
+        "other": "Anders"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "Wachten op goedkeuring",
       "waitingDescription": "Open Memry op uw andere apparaat en keur het koppelingsverzoek goed.",
       "verificationCode": "Verificatiecode",
-      "confirmCode": "Controleer of dit overeenkomt met de code op uw andere apparaat",
-      "cancel": "Annuleer"
+      "confirmCode": "Controleer of dit overeenkomt met de code op uw andere apparaat"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Herstelsleutel",
     "description": "Bewaar deze sleutel veilig. Het kan uw kluis herstellen als u de toegang tot alle apparaten verliest.",
-    "loading": "Laden...",
     "retrieveFailed": "Kan de herstelsleutel niet ophalen",
     "copied": "Herstelsleutel gekopieerd naar klembord",
     "copyFailed": "Kopiëren naar klembord is mislukt",
     "clickToReveal": "Klik om te onthullen",
     "hide": "Verbergen",
     "reveal": "Onthullen",
-    "copy": "Kopieer",
     "sessionHint": "Deze sleutel wordt één keer per sessie getoond. Sluit dit dialoogvenster om het uit het geheugen te wissen."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Kan geen verbinding maken met Google Agenda",
       "refreshFailed": "Kan Google Agenda niet vernieuwen",
       "disconnectFailed": "Kan Google Agenda niet ontkoppelen",
-      "selectionFailed": "Kan agendaselectie niet updaten",
       "retryFailed": "Kan agendasynchronisatie niet opnieuw proberen"
     },
     "sourcePicker": {

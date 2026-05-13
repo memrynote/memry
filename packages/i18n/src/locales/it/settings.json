@@ -25,9 +25,7 @@
         "integrations": "Integrazioni",
         "vault": "Volta",
         "tags": "Tag",
-        "properties": "Proprietà",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Proprietà"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Note",
         "attachments": "Allegati",
         "crdt": "CRDT",
-        "other": "Altro",
-        "available": "Disponibile"
+        "other": "Altro"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "In attesa di approvazione",
       "waitingDescription": "Apri Memry sull'altro dispositivo e approva la richiesta di collegamento.",
       "verificationCode": "Codice di verifica",
-      "confirmCode": "Conferma che corrisponda al codice sull'altro dispositivo",
-      "cancel": "Annulla"
+      "confirmCode": "Conferma che corrisponda al codice sull'altro dispositivo"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Chiave di ripristino",
     "description": "Conserva questa chiave in modo sicuro. Può ripristinare il tuo caveau se perdi l'accesso a tutti i dispositivi.",
-    "loading": "Caricamento...",
     "retrieveFailed": "Impossibile recuperare la chiave di ripristino",
     "copied": "Chiave di ripristino copiata negli appunti",
     "copyFailed": "Impossibile copiare negli appunti",
     "clickToReveal": "Fare clic per rivelare",
     "hide": "Nasconditi",
     "reveal": "Rivela",
-    "copy": "Copia",
     "sessionHint": "Questa chiave viene visualizzata una volta per sessione. Chiudere questa finestra di dialogo per cancellarla dalla memoria."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Impossibile connettere Google Calendar",
       "refreshFailed": "Impossibile aggiornare Google Calendar",
       "disconnectFailed": "Impossibile disconnettere Google Calendar",
-      "selectionFailed": "Impossibile aggiornare la selezione del calendario",
       "retryFailed": "Impossibile riprovare la sincronizzazione del calendario"
     },
     "sourcePicker": {

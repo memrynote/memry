@@ -43,9 +43,7 @@
     "pdfs": "קובצי PDF",
     "social": "חברתי",
     "reminder": "תזכורת",
-    "reminders": "תזכורות",
-    "text": "טקסט",
-    "other": "אחר"
+    "reminders": "תזכורות"
   },
   "empty": {
     "successAria": "בהצלחה, תיבת הדואר הנכנס ריקה",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "אין פריטים תואמים בארכיון",
     "noItemsYet": "עדיין אין פריטים",
     "noItemsFiled": "עדיין לא הוגשו פריטים",
-    "noItemTypes": "אין סוגי פריטים להצגה",
     "noFolders": "לא נמצאו תיקיות",
-    "noFolderMatch": "אין תיקיות תואמות ל-\"{query}\"",
     "noNotes": "לא נמצאו הערות",
     "allMatchesLinked": "כל ההתאמות כבר מקושרות"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "התמלול נכשל",
     "retryTranscription": "נסה שוב",
     "pageCount": "{count, plural, one {עמוד #} other {דפי #}}",
-    "snoozedUntilShort": "נודניק עד {date}",
-    "capturedAgo": "מצולם {time}"
+    "snoozedUntilShort": "נודניק עד {date}"
   },
   "loading": {
     "inbox": "טוען תיבת דואר נכנס...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "פעולות מהירות",
     "archiveItem": "פריט ארכיון",
-    "archive": "ארכיון",
-    "snooze": "נודניק"
+    "archive": "ארכיון"
   },
   "detail": {
     "ariaLabel": "פרטי פריט",
@@ -213,7 +207,6 @@
     "searchNotesAria": "חפש הערות לקישור",
     "linkedNotesAria": "הערות מקושרות",
     "removeLinkTo": "הסר קישור ל-{title}",
-    "contentEditorAria": "עורך תוכן",
     "notePlaceholder": "כתוב את ההערה שלך...",
     "textPlaceholder": "ערוך את הטקסט שצולם..."
   },
@@ -263,14 +256,9 @@
     "custom": "מותאם אישית..."
   },
   "insights": {
-    "loading": "טוען תובנות...",
     "captureActivity": "פעילות לכידה",
     "byType": "לפי סוג",
-    "itemTypes": "סוגי פריטים",
-    "itemTypesDescription": "הפצת פורמטים של תוכן",
     "recentFilings": "הגשות אחרונות",
-    "recentlyFiled": "הוגש לאחרונה",
-    "recentlyFiledDescription": "הפעולות האחרונות בתיבת הדואר הנכנס שלך",
     "captured": "נלכד",
     "capturedThisWeek": "+{count} השבוע",
     "processed": "מעובד",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {לכידת #} other {מצלמת #}}",
     "peak": "שיא: {day} {start}–{end}",
     "convertedToTask": "הומר למשימה",
-    "linked": "מקושר",
     "now": "עכשיו",
     "timeAgoMinutes": "{count}m לפני",
     "timeAgoHours": "{count}h לפני",

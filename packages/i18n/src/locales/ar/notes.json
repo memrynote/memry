@@ -14,7 +14,6 @@
       "openLinkedFailed": "فشل في فتح العنصر المرتبط",
       "localOnly": "ملاحظة تم ضبطها على المستوى المحلي فقط",
       "willSync": "ستتم مزامنة الملاحظة مع السحابة",
-      "saveFailed": "فشل حفظ الملاحظة",
       "renameFailed": "فشلت إعادة تسمية الملاحظة",
       "toggleLocalOnlyFailed": "فشل التبديل المحلي فقط",
       "toggleFullWidthFailed": "فشل تبديل العرض الكامل"
@@ -135,9 +134,6 @@
       "clearSearch": "مسح البحث"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "أكتب مذكرتك..."
-  },
   "outline": {
     "title": "الخطوط العريضة",
     "aria": "الخطوط العريضة للوثيقة",
@@ -149,7 +145,6 @@
     "modified": "معدلة"
   },
   "backlinks": {
-    "title": "الروابط الخلفية",
     "sortRecent": "الأخيرة",
     "sortAlpha": "من الألف إلى الياء",
     "sortMentions": "معظم الإشارات",

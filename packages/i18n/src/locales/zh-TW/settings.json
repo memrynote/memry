@@ -25,9 +25,7 @@
         "integrations": "整合",
         "vault": "保險庫",
         "tags": "標籤",
-        "properties": "屬性",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "屬性"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "備註們",
         "attachments": "附件",
         "crdt": "CRDT",
-        "other": "其他",
-        "available": "可用"
+        "other": "其他"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "等待批准",
       "waitingDescription": "在您的其他裝置打開 Memry 並批准連結請求。",
       "verificationCode": "驗證碼",
-      "confirmCode": "確認此與您其他裝置上的代碼相符",
-      "cancel": "取消"
+      "confirmCode": "確認此與您其他裝置上的代碼相符"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "恢復金鑰",
     "description": "請妥善保存此金鑰。如果您失去對所有設備的存取，可以用它來恢復保險庫。",
-    "loading": "載入中...",
     "retrieveFailed": "無法檢索恢復金鑰",
     "copied": "恢復金鑰已複製到剪貼簿",
     "copyFailed": "無法複製到剪貼簿",
     "clickToReveal": "點擊以顯示",
     "hide": "隱藏",
     "reveal": "顯示",
-    "copy": "複製",
     "sessionHint": "此金鑰每次會話僅顯示一次。關閉此對話框可從記憶中清除它。"
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "連線 Google 行事曆失敗",
       "refreshFailed": "刷新 Google 行事曆失敗",
       "disconnectFailed": "斷開 Google 行事曆失敗",
-      "selectionFailed": "更新行事曆選擇失敗",
       "retryFailed": "重試行事曆同步失敗"
     },
     "sourcePicker": {

@@ -25,9 +25,7 @@
         "integrations": "Integraciones",
         "vault": "Bóveda",
         "tags": "Etiquetas",
-        "properties": "Propiedades",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Propiedades"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Notas",
         "attachments": "Adjuntos",
         "crdt": "CRDT",
-        "other": "Otro",
-        "available": "Disponible"
+        "other": "Otro"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "Esperando aprobación",
       "waitingDescription": "Abra Memry en su otro dispositivo y apruebe la solicitud de vinculación.",
       "verificationCode": "Código de verificación",
-      "confirmCode": "Confirma que esto coincide con el código de tu otro dispositivo",
-      "cancel": "Cancelar"
+      "confirmCode": "Confirma que esto coincide con el código de tu otro dispositivo"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Clave de recuperación",
     "description": "Guarde esta clave de forma segura. Puede restaurar su bóveda si pierde el acceso a todos los dispositivos.",
-    "loading": "Cargando...",
     "retrieveFailed": "No se pudo recuperar la clave de recuperación",
     "copied": "Clave de recuperación copiada al portapapeles",
     "copyFailed": "No se pudo copiar al portapapeles",
     "clickToReveal": "Haga clic para revelar",
     "hide": "Ocultar",
     "reveal": "revelar",
-    "copy": "Copiar",
     "sessionHint": "Esta clave se muestra una vez por sesión. Cierre este cuadro de diálogo para borrarlo de la memoria."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "No se pudo conectar Google Calendar",
       "refreshFailed": "No se pudo actualizar Google Calendar",
       "disconnectFailed": "No se pudo desconectar Google Calendar",
-      "selectionFailed": "No se pudo actualizar la selección del calendario",
       "retryFailed": "No se pudo volver a intentar sincronizar el calendario"
     },
     "sourcePicker": {

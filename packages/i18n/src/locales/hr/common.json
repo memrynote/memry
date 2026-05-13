@@ -3,47 +3,25 @@
     "save": "spremiti",
     "cancel": "Odustani",
     "close": "Zatvori",
-    "ok": "OK",
-    "yes": "da",
-    "no": "br",
     "delete": "Izbriši",
-    "confirm": "Potvrdi",
-    "apply": "primijeniti",
     "done": "Gotovo",
-    "discard": "Odbaciti",
     "dontSave": "Ne štedi",
-    "edit": "Uredi",
     "add": "Dodaj",
     "remove": "Ukloniti",
     "retry": "Pokušaj ponovo",
-    "submit": "Pošalji",
     "back": "natrag",
-    "next": "Dalje",
     "continue": "nastavi",
-    "reset": "Resetiraj",
     "copy": "Kopiraj",
-    "paste": "Zalijepite",
-    "create": "Stvorite",
-    "open": "Otvoreno"
+    "create": "Stvorite"
   },
   "state": {
     "loading": "učitavanje...",
     "saving": "Spremanje...",
     "deleting": "Brisanje...",
-    "searching": "Pretraživanje…",
-    "error": "Greška",
-    "success": "Uspjeh"
-  },
-  "empty": {
-    "noResults": "Nema rezultata",
-    "noItems": "Nema predmeta",
-    "noMatch": "Nema podudaranja"
+    "searching": "Pretraživanje…"
   },
   "action": {
     "search": "Traži",
-    "edit": "Uredi",
-    "delete": "Izbriši",
-    "close": "Zatvori",
     "expand": "Proširi",
     "collapse": "Sažimanje",
     "showMore": "+{count, plural, one {# više} other {# više}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {# stavka} other {# stavke}}",
     "note": "{count, plural, one {Napomena #} other {Bilješke #}}",
-    "folder": "{count, plural, one {Mapa #} other {# mape}}",
     "task": "{count, plural, one {# zadatak} other {# zadaci}}",
-    "project": "{count, plural, one {Projekt #} other {# projekti}}",
     "itemDelete": "{count, plural, one {Izbrišite stavku #} other {Izbrišite stavke #}}"
   },
   "toast": {
     "actionFailed": "Radnja nije uspjela",
     "nothingToUndo": "Ništa za poništiti",
     "undone": "Poništeno: {description}",
-    "undoFailed": "Poništavanje radnje nije uspjelo",
-    "copied": "Kopirano",
-    "copyFailed": "Kopiranje nije uspjelo"
+    "undoFailed": "Poništavanje radnje nije uspjelo"
   },
   "dateRelative": {
     "today": "Danas",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {# prije dan} other {# prije dana}}"
   },
   "recurrence": {
-    "everyDay": "Svaki dan",
     "everyNDays": "{count, plural, one {Svaki dan} other {Svakih # dana}}",
-    "everyWeek": "Svaki tjedan",
     "everyNWeeks": "{count, plural, one {Svaki tjedan} other {Svakih # tjedana}}",
-    "everyWeekday": "Svaki radni dan",
     "everyNWeeksOnWeekdays": "{count, plural, one {Svaki radni dan} other {Svakih # tjedana radnim danima}}",
-    "everyWeekend": "Svaki vikend",
     "everyNWeeksOnWeekends": "{count, plural, one {Svaki vikend} other {Svakih # tjedana vikendom}}",
-    "everyWeekOnDays": "Svaki tjedan na {days}",
     "everyNWeeksOnDays": "{count, plural, one {Svaki tjedan na {days}} other {Svakih # tjedana na {days}}}",
-    "everyMonth": "Svaki mjesec",
     "everyNMonths": "{count, plural, one {Svaki mjesec} other {Svakih # mjeseci}}",
-    "everyMonthOnDay": "Svaki mjesec na {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {Svaki mjesec na {day}{suffix}} other {Svakih # mjeseci na {day}{suffix}}}",
-    "everyMonthOnWeekDay": "Svaki mjesec na {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Svaki mjesec na {week} {day}} other {Svakih # mjeseci na {week} {day}}}",
-    "everyYear": "Svake godine",
     "everyNYears": "{count, plural, one {Svake godine} other {Svakih # godina}}",
     "repeats": "Ponavlja se"
   },
@@ -264,7 +228,6 @@
       "openTabs": "Otvorene kartice",
       "scrollTabsLeft": "Pomičite kartice lijevo",
       "scrollTabsRight": "Pomaknite kartice udesno",
-      "graphG": "Grafikon (⌘G)",
       "dayPanel": "Dnevni panel"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Agent chat",
+    "loading": "Učitavanje razgovora agenta...",
+    "conversationLoading": "Razgovor se učitava...",
+    "newConversation": "Novi razgovor",
+    "history": "Povijest razgovora",
+    "stop": "Stani",
+    "thinking": "Agent razmišlja",
+    "enable": {
+      "title": "Omogući Memry Agent",
+      "description": "Memry Agent koristi vašeg odabranog lokalnog agenta CLI za razgovor o vašem trezoru. Claude šalje skretanja na Anthropic; Codex šalje skretanje na OpenAI.",
+      "remote": "Memry kriptira vašu lokalnu i sinkroniziranu povijest razgovora, ali zaključivanje modela događa se s odabranim pružateljem usluga.",
+      "readTools": "Alati za čitanje pokreću se automatski.",
+      "writeTools": "Alati za izradu i ažuriranje zahtijevaju odobrenje.",
+      "diff": "Alati za ažuriranje prikazuju razliku ili pregled.",
+      "button": "Omogući Agent chat"
+    },
+    "approval": {
+      "description": "Agent želi pozvati {name} s ovim argumentima.",
+      "applyOnce": "Primijeni jednom",
+      "allowOnce": "Dopusti jednom",
+      "editAndApply": "Uredite i primijenite",
+      "editAndAllow": "Uredi i dopusti",
+      "allowAlways": "Dopusti uvijek",
+      "applyEdits": "Primijeni izmjene",
+      "deny": "Odbiti",
+      "invalidJson": "Unesite važeći JSON prije primjene izmjena."
+    },
+    "diff": {
+      "previewError": "Nije moguće pregledati razliku bilješke",
+      "description": "Agent želi ažurirati {title}. Pregledajte trenutni i kandidatski sadržaj prije nego što ga primijenite.",
+      "fallbackTitle": "ovu bilješku",
+      "current": "Trenutno",
+      "candidate": "Kandidat",
+      "loading": "Učitavanje...",
+      "apply": "Primijeni",
+      "applyEdited": "Primijeni uređeno"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "Trenutna bilješka",
+      "removeAttachment": "Ukloni {label}",
+      "placeholder": "Pitajte Agent",
+      "send": "Pošalji",
+      "providerLabel": "Agent pružatelj: {provider}",
+      "modelLabel": "Model Agent: {model}",
+      "settingsLabel": "Agent postavke: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "ID prilagođenog modela",
+      "customModelPlaceholder": "ID prilagođenog modela",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "Lokalno"
+      },
+      "models": {
+        "default": "Zadano"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "Obrazloženje"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
-          "max": "Max"
+          "low": "Nisko",
+          "medium": "Srednje",
+          "high": "Visoko",
+          "extraHigh": "Ekstra visoko",
+          "extraHighDefault": "Ekstra visoko (zadano)",
+          "max": "Maks"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "Nisko",
+          "medium": "Srednje",
+          "mediumDefault": "Srednje (zadano)",
+          "high": "Visoko",
+          "extraHigh": "Ekstra visoko"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "Nema podudaranja"
+    },
+    "toolResult": {
+      "label": "Rezultat alata"
+    },
+    "toolCall": {
+      "editedArgs": "Uređeni argumenti",
+      "parameters": "Parametri"
+    },
+    "sidebar": {
+      "label": "Desna bočna traka",
+      "day": "Dan",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# čeka odobrenje} other {# odobrenja na čekanju}}",
+      "inProgress": "Agent okret u tijeku"
+    },
+    "errors": {
+      "loadConversations": "Nije moguće učitati razgovore agenta",
+      "loadConversation": "Nije moguće učitati razgovor agenta",
+      "createConversation": "Nije moguće stvoriti razgovor agenta",
+      "busy": "Još jedan prozor je u sredini za ovaj razgovor. Pričekajte da završi ili ga zaustavite od tamo.",
+      "sendTurn": "Nije moguće poslati red agenta",
+      "cancelTurn": "Nije moguće otkazati red agenta",
+      "submitApproval": "Nije moguće poslati odobrenje alata",
+      "updateTrust": "Nije moguće ažurirati pouzdane alate",
+      "saveDisclosure": "Nije moguće spremiti stanje otkrivanja",
+      "resolveWindow": "Nije moguće riješiti prozor izvora agenta",
+      "detectCli": "Nije moguće otkriti pozadinu agenta",
+      "loadDisclosure": "Nije moguće učitati stanje otkrivanja"
     }
   }
 }

@@ -38,8 +38,7 @@
     "openNoteFullPage": "Otvori bilješku na cijeloj stranici",
     "closeNoteDrawer": "Zatvori ladicu za bilješke",
     "addBookmark": "Dodaj knjižnu oznaku",
-    "removeBookmark": "Ukloni oznaku",
-    "tryAgain": "Pokušajte ponovno"
+    "removeBookmark": "Ukloni oznaku"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "Dnevnik natrag",
     "journalNavigation": "Navigacija dnevnika",
     "dateNavigation": "Navigacija po datumu dnevnika",
-    "goToYearView": "Idi na prikaz godine",
-    "previousView": "Prethodni pogled",
-    "nextView": "Sljedeći pogled"
+    "goToYearView": "Idi na prikaz godine"
   },
   "aria": {
     "moreOptions": "Više mogućnosti",
@@ -184,10 +181,8 @@
     "connectionAria": "Povezivanje s {label}, {scorePercent}% odgovara"
   },
   "count": {
-    "item": "predmet",
     "items": "stavke",
     "note": "bilješka",
-    "notes": "bilješke",
     "day": "dan",
     "days": "dana",
     "event": "događaj",

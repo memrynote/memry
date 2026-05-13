@@ -43,9 +43,7 @@
     "pdfs": "PDF",
     "social": "Social",
     "reminder": "Rappel",
-    "reminders": "Rappels",
-    "text": "Texte",
-    "other": "Autre"
+    "reminders": "Rappels"
   },
   "empty": {
     "successAria": "Succès, la boîte de réception est vide",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "Aucun élément archivé correspondant",
     "noItemsYet": "Aucun article pour l'instant",
     "noItemsFiled": "Aucun élément déposé pour l'instant",
-    "noItemTypes": "Aucun type d'élément à afficher",
     "noFolders": "Aucun dossier trouvé",
-    "noFolderMatch": "Aucun dossier ne correspond à \"{query}\"",
     "noNotes": "Aucune note trouvée",
     "allMatchesLinked": "Tous les matchs déjà liés"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Échec de la transcription",
     "retryTranscription": "Réessayer",
     "pageCount": "{count, plural, one {Page #} other {Pages #}}",
-    "snoozedUntilShort": "mis en attente jusqu'à {date}",
-    "capturedAgo": "{time} capturé"
+    "snoozedUntilShort": "mis en attente jusqu'à {date}"
   },
   "loading": {
     "inbox": "Chargement de la boîte de réception...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Actions rapides",
     "archiveItem": "Élément d'archive",
-    "archive": "Archiver",
-    "snooze": "Répéter"
+    "archive": "Archiver"
   },
   "detail": {
     "ariaLabel": "Détails de l'article",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Rechercher des notes à lier",
     "linkedNotesAria": "Notes liées",
     "removeLinkTo": "Supprimer le lien vers {title}",
-    "contentEditorAria": "Éditeur de contenu",
     "notePlaceholder": "Écrivez votre note...",
     "textPlaceholder": "Modifiez votre texte capturé..."
   },
@@ -263,14 +256,9 @@
     "custom": "Personnalisé..."
   },
   "insights": {
-    "loading": "Chargement des informations...",
     "captureActivity": "Activité de capture",
     "byType": "Par type",
-    "itemTypes": "Types d'articles",
-    "itemTypesDescription": "Distribution des formats de contenu",
     "recentFilings": "Dépôts récents",
-    "recentlyFiled": "Récemment déposé",
-    "recentlyFiledDescription": "Dernières actions sur votre boîte de réception",
     "captured": "Capturé",
     "capturedThisWeek": "+{count} cette semaine",
     "processed": "Traité",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {Capture #} other {# capture}}",
     "peak": "Pic : {day} {start}–{end}",
     "convertedToTask": "Converti en tâche",
-    "linked": "Lié",
     "now": "maintenant",
     "timeAgoMinutes": "il y a {count} min",
     "timeAgoHours": "il y a {count} h",

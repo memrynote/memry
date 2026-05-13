@@ -35,38 +35,6 @@
     "delete": "Eliminar tarea",
     "created": "Creado {date}"
   },
-  "project": {
-    "create": "Crear proyecto",
-    "edit": "Editar proyecto",
-    "delete": "Eliminar proyecto",
-    "iconAndName": "Icono y nombre",
-    "namePlaceholder": "Nombre del proyecto",
-    "select": "Seleccionar proyecto",
-    "selectIcon": "Seleccionar icono",
-    "clickIconToChange": "Haga clic en el icono para cambiar",
-    "color": "Color",
-    "descriptionOptional": "Descripción (opcional)",
-    "descriptionPlaceholder": "Breve descripción de este proyecto…",
-    "statuses": "Estados",
-    "statusesHelp": "Configure las etapas del flujo de trabajo para este proyecto.",
-    "createDescription": "Cree un nuevo proyecto con nombre, icono, color y estados de flujo de trabajo.",
-    "editDescription": "Edite el nombre del proyecto, el icono, el color y los estados del flujo de trabajo."
-  },
-  "status": {
-    "select": "Seleccionar estado",
-    "todo": "Para hacer",
-    "inProgress": "En progreso",
-    "done": "hecho"
-  },
-  "priority": {
-    "select": "Seleccionar prioridad",
-    "none": "Sin prioridad",
-    "noneShort": "Ninguno",
-    "low": "Bajo",
-    "medium": "Medio",
-    "high": "Alto",
-    "urgent": "Urgente"
-  },
   "filters": {
     "filter": "Filtrar",
     "emptyTitle": "Ninguna tarea coincide con tus filtros",
@@ -113,14 +81,12 @@
     "filterApplied": "Aplicado \"{name}\"",
     "deleted": "Tarea eliminada",
     "deletedSeries": "¡Serie completa!",
-    "deletedNext": "Próxima ocurrencia",
     "completed": "¡Tarea completada!",
     "archived": "Tarea archivada",
     "undoNotAvailableForDelete": "Deshacer no disponible para eliminar",
     "alreadyAllComplete": "Todas las tareas seleccionadas ya están completas.",
     "noCompletedSelected": "No se han seleccionado tareas completadas",
     "completeFailed": "No se pudieron completar las tareas",
-    "reopenFailed": "No se pudieron reabrir las tareas",
     "deleteFailed": "No se pudieron eliminar tareas",
     "moveFailed": "No se pudieron mover las tareas"
   },

@@ -35,38 +35,6 @@
     "delete": "Ștergeți sarcina",
     "created": "S-a creat {date}"
   },
-  "project": {
-    "create": "Creați proiect",
-    "edit": "Editați proiectul",
-    "delete": "Ștergeți proiectul",
-    "iconAndName": "Pictogramă și nume",
-    "namePlaceholder": "Numele proiectului",
-    "select": "Selectați proiectul",
-    "selectIcon": "Selectați pictograma",
-    "clickIconToChange": "Faceți clic pe pictogramă pentru a schimba",
-    "color": "Culoare",
-    "descriptionOptional": "Descriere (opțional)",
-    "descriptionPlaceholder": "Scurtă descriere a acestui proiect...",
-    "statuses": "Statuturi",
-    "statusesHelp": "Configurați etapele fluxului de lucru pentru acest proiect.",
-    "createDescription": "Creați un proiect nou cu nume, pictogramă, culoare și stări ale fluxului de lucru.",
-    "editDescription": "Editați numele proiectului, pictograma, culoarea și stările fluxului de lucru."
-  },
-  "status": {
-    "select": "Selectați starea",
-    "todo": "De făcut",
-    "inProgress": "În curs",
-    "done": "Gata"
-  },
-  "priority": {
-    "select": "Selectați prioritate",
-    "none": "Nicio prioritate",
-    "noneShort": "Niciuna",
-    "low": "Scăzut",
-    "medium": "Mediu",
-    "high": "Înalt",
-    "urgent": "Urgent"
-  },
   "filters": {
     "filter": "Filtru",
     "emptyTitle": "Nicio sarcină nu se potrivește cu filtrele dvs",
@@ -113,14 +81,12 @@
     "filterApplied": "S-a aplicat „{name}”",
     "deleted": "Sarcina ștearsă",
     "deletedSeries": "Seria completă!",
-    "deletedNext": "Următoarea apariție",
     "completed": "Sarcina finalizată!",
     "archived": "Sarcina arhivată",
     "undoNotAvailableForDelete": "Anulare nu este disponibil pentru ștergere",
     "alreadyAllComplete": "Toate sarcinile selectate sunt deja finalizate",
     "noCompletedSelected": "Nu au fost selectate sarcini finalizate",
     "completeFailed": "Nu s-au finalizat sarcinile",
-    "reopenFailed": "Nu s-au redeschis sarcinile",
     "deleteFailed": "Nu s-au șters sarcinile",
     "moveFailed": "Nu s-au mutat sarcinile"
   },

@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Nagkaproblema. Pakisubukang muli.",
     "operationFailed": "Nabigo ang operasyon",
-    "unknown": "May naganap na hindi kilalang error",
-    "validationFailed": "Nabigo ang pagpapatunay",
-    "actionFailed": "Nabigo ang pagkilos"
+    "unknown": "May naganap na hindi kilalang error"
   },
   "ipc": {
     "noVaultOpen": "Walang bukas na vault. Mangyaring magbukas muna ng vault."

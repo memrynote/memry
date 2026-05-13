@@ -25,9 +25,7 @@
         "integrations": "التكامل",
         "vault": "قبو",
         "tags": "العلامات",
-        "properties": "خصائص",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "خصائص"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "ملاحظات",
         "attachments": "المرفقات",
         "crdt": "CRDT",
-        "other": "أخرى",
-        "available": "متاح"
+        "other": "أخرى"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "في انتظار الموافقة",
       "waitingDescription": "افتح Memry على جهازك الآخر وقم بالموافقة على طلب الربط.",
       "verificationCode": "رمز التحقق",
-      "confirmCode": "تأكد من أن هذا يطابق الرمز الموجود على جهازك الآخر",
-      "cancel": "إلغاء"
+      "confirmCode": "تأكد من أن هذا يطابق الرمز الموجود على جهازك الآخر"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "مفتاح الاسترداد",
     "description": "قم بتخزين هذا المفتاح بشكل آمن. يمكنه استعادة قبوتك إذا فقدت الوصول إلى جميع الأجهزة.",
-    "loading": "جار التحميل...",
     "retrieveFailed": "فشل في استرداد مفتاح الاسترداد",
     "copied": "تم نسخ مفتاح الاسترداد إلى الحافظة",
     "copyFailed": "فشل النسخ إلى الحافظة",
     "clickToReveal": "انقر للكشف",
     "hide": "إخفاء",
     "reveal": "كشف",
-    "copy": "نسخ",
     "sessionHint": "يظهر هذا المفتاح مرة واحدة في كل جلسة. أغلق مربع الحوار هذا لمسحه من الذاكرة."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "فشل في ربط تقويم Google",
       "refreshFailed": "فشل تحديث تقويم Google",
       "disconnectFailed": "فشل في قطع اتصال تقويم Google",
-      "selectionFailed": "فشل تحديث تحديد التقويم",
       "retryFailed": "فشلت إعادة محاولة مزامنة التقويم"
     },
     "sourcePicker": {

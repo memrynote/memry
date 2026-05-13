@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Něco se pokazilo. Zkuste to prosím znovu.",
     "operationFailed": "Operace se nezdařila",
-    "unknown": "Došlo k neznámé chybě",
-    "validationFailed": "Ověření se nezdařilo",
-    "actionFailed": "Akce se nezdařila"
+    "unknown": "Došlo k neznámé chybě"
   },
   "ipc": {
     "noVaultOpen": "Žádný trezor není otevřený. Nejprve prosím otevřete trezor."

@@ -38,8 +38,7 @@
     "openNoteFullPage": "Открыть заметку на всю страницу",
     "closeNoteDrawer": "Закрыть ящик для заметок",
     "addBookmark": "Добавить закладку",
-    "removeBookmark": "Удалить закладку",
-    "tryAgain": "Попробуйте еще раз"
+    "removeBookmark": "Удалить закладку"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "Журнал назад",
     "journalNavigation": "Навигация по журналу",
     "dateNavigation": "Навигация по дате журнала",
-    "goToYearView": "Перейти к просмотру года",
-    "previousView": "Предыдущий вид",
-    "nextView": "Следующий просмотр"
+    "goToYearView": "Перейти к просмотру года"
   },
   "aria": {
     "moreOptions": "Больше возможностей",
@@ -184,10 +181,8 @@
     "connectionAria": "Подключение к {label}, совпадение {scorePercent}%."
   },
   "count": {
-    "item": "предмет",
     "items": "предметы",
     "note": "Примечание",
-    "notes": "заметки",
     "day": "день",
     "days": "дни",
     "event": "событие",

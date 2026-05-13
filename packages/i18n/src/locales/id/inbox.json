@@ -43,9 +43,7 @@
     "pdfs": "PDF",
     "social": "Sosial",
     "reminder": "Pengingat",
-    "reminders": "Pengingat",
-    "text": "Teks",
-    "other": "Lainnya"
+    "reminders": "Pengingat"
   },
   "empty": {
     "successAria": "Berhasil, kotak masuk kosong",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "Tidak ada item arsip yang cocok",
     "noItemsYet": "Belum ada item",
     "noItemsFiled": "Belum ada barang yang diajukan",
-    "noItemTypes": "Tidak ada tipe item untuk ditampilkan",
     "noFolders": "Tidak ada folder yang ditemukan",
-    "noFolderMatch": "Tidak ada folder yang cocok dengan \"{query}\"",
     "noNotes": "Tidak ada catatan yang ditemukan",
     "allMatchesLinked": "Semua pertandingan sudah ditautkan"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Transkripsi gagal",
     "retryTranscription": "Coba lagi",
     "pageCount": "{count, plural, one {halaman #} other {# halaman}}",
-    "snoozedUntilShort": "ditunda hingga {date}",
-    "capturedAgo": "Menangkap {time}"
+    "snoozedUntilShort": "ditunda hingga {date}"
   },
   "loading": {
     "inbox": "Memuat kotak masuk...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Tindakan cepat",
     "archiveItem": "Barang arsip",
-    "archive": "Arsip",
-    "snooze": "Tunda"
+    "archive": "Arsip"
   },
   "detail": {
     "ariaLabel": "Detail barang",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Cari catatan untuk ditautkan",
     "linkedNotesAria": "Catatan tertaut",
     "removeLinkTo": "Hapus tautan ke {title}",
-    "contentEditorAria": "Editor konten",
     "notePlaceholder": "Tulis catatan Anda...",
     "textPlaceholder": "Edit teks yang Anda ambil..."
   },
@@ -263,14 +256,9 @@
     "custom": "Kustom..."
   },
   "insights": {
-    "loading": "Memuat wawasan...",
     "captureActivity": "Aktivitas Tangkap",
     "byType": "Berdasarkan Jenis",
-    "itemTypes": "Jenis Barang",
-    "itemTypesDescription": "Distribusi format konten",
     "recentFilings": "Pengajuan Terbaru",
-    "recentlyFiled": "Baru-baru ini Diajukan",
-    "recentlyFiledDescription": "Tindakan terbaru di kotak masuk Anda",
     "captured": "Ditangkap",
     "capturedThisWeek": "+{count} minggu ini",
     "processed": "Diproses",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {Pengambilan #} other {Pengambilan #}}",
     "peak": "Puncak: {day} {start}–{end}",
     "convertedToTask": "Dikonversi menjadi tugas",
-    "linked": "Tertaut",
     "now": "sekarang",
     "timeAgoMinutes": "{count}m yang lalu",
     "timeAgoHours": "{count}h yang lalu",

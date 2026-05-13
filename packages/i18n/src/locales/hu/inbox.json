@@ -43,9 +43,7 @@
     "pdfs": "PDF-ek",
     "social": "Társadalmi",
     "reminder": "Emlékeztető",
-    "reminders": "Emlékeztetők",
-    "text": "Szöveg",
-    "other": "Egyéb"
+    "reminders": "Emlékeztetők"
   },
   "empty": {
     "successAria": "Sikeres, a beérkező levelek mappája üres",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "Nincsenek megfelelő archivált elemek",
     "noItemsYet": "Még nincsenek tételek",
     "noItemsFiled": "Még nincsenek bejegyzések",
-    "noItemTypes": "Nincs megjeleníthető elemtípus",
     "noFolders": "Nem találhatók mappák",
-    "noFolderMatch": "Egyetlen mappa sem felel meg a következőnek: \"{query}\"",
     "noNotes": "Nem található jegyzet",
     "allMatchesLinked": "Az összes meccs már be van kapcsolva"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Az átírás nem sikerült",
     "retryTranscription": "Próbálja újra",
     "pageCount": "{count, plural, one {# oldal} other {# oldalak}}",
-    "snoozedUntilShort": "elhalasztva {date}-ig",
-    "capturedAgo": "Rögzített {time}"
+    "snoozedUntilShort": "elhalasztva {date}-ig"
   },
   "loading": {
     "inbox": "Beérkező levelek betöltése...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Gyors cselekvések",
     "archiveItem": "Archív elem",
-    "archive": "Archívum",
-    "snooze": "Szundi"
+    "archive": "Archívum"
   },
   "detail": {
     "ariaLabel": "A tétel részletei",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Keresés a jegyzetekben a hivatkozáshoz",
     "linkedNotesAria": "Kapcsolt jegyzetek",
     "removeLinkTo": "Távolítsa el az {title} linket",
-    "contentEditorAria": "Tartalomszerkesztő",
     "notePlaceholder": "Írd meg a jegyzetedet...",
     "textPlaceholder": "Szerkessze a rögzített szöveget..."
   },
@@ -263,14 +256,9 @@
     "custom": "Egyedi..."
   },
   "insights": {
-    "loading": "Statisztika betöltése...",
     "captureActivity": "Rögzítési tevékenység",
     "byType": "Típus szerint",
-    "itemTypes": "Tételtípusok",
-    "itemTypesDescription": "Tartalomformátumok terjesztése",
     "recentFilings": "Legutóbbi bejelentések",
-    "recentlyFiled": "Nemrég benyújtott",
-    "recentlyFiledDescription": "Legutóbbi műveletek a postaládájában",
     "captured": "Elfogták",
     "capturedThisWeek": "+{count} ezen a héten",
     "processed": "Feldolgozva",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {# rögzítés} other {# rögzít}}",
     "peak": "Csúcs: {day} {start}–{end}",
     "convertedToTask": "Feladattá konvertálva",
-    "linked": "Összekapcsolva",
     "now": "most",
     "timeAgoMinutes": "{count}m ezelőtt",
     "timeAgoHours": "{count}h ezelőtt",

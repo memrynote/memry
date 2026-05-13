@@ -3,47 +3,25 @@
     "save": "Salvar",
     "cancel": "Cancelar",
     "close": "Fechar",
-    "ok": "OK",
-    "yes": "Sim",
-    "no": "Não",
     "delete": "Excluir",
-    "confirm": "Confirmar",
-    "apply": "Aplicar",
     "done": "Concluído",
-    "discard": "Descartar",
     "dontSave": "Não salve",
-    "edit": "Editar",
     "add": "Adicionar",
     "remove": "Remover",
     "retry": "Tentar novamente",
-    "submit": "Enviar",
     "back": "Voltar",
-    "next": "Próximo",
     "continue": "Continuar",
-    "reset": "Redefinir",
     "copy": "Copiar",
-    "paste": "Colar",
-    "create": "Criar",
-    "open": "Abrir"
+    "create": "Criar"
   },
   "state": {
     "loading": "Carregando…",
     "saving": "Salvando…",
     "deleting": "Excluindo…",
-    "searching": "Procurando…",
-    "error": "Erro",
-    "success": "Sucesso"
-  },
-  "empty": {
-    "noResults": "Nenhum resultado",
-    "noItems": "Nenhum item",
-    "noMatch": "Nenhuma correspondência"
+    "searching": "Procurando…"
   },
   "action": {
     "search": "Pesquisar",
-    "edit": "Editar",
-    "delete": "Excluir",
-    "close": "Fechar",
     "expand": "Expandir",
     "collapse": "Recolher",
     "showMore": "+{count, plural, one {# mais} other {# mais}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {Item #} other {Itens #}}",
     "note": "{count, plural, one {Nota #} other {Notas #}}",
-    "folder": "{count, plural, one {Pasta #} other {Pastas #}}",
     "task": "{count, plural, one {Tarefa #} other {Tarefas #}}",
-    "project": "{count, plural, one {Projeto #} other {Projetos #}}",
     "itemDelete": "{count, plural, one {Excluir item #} other {Excluir itens #}}"
   },
   "toast": {
     "actionFailed": "Falha na ação",
     "nothingToUndo": "Nada para desfazer",
     "undone": "Desfeito: {description}",
-    "undoFailed": "Falha ao desfazer ação",
-    "copied": "Copiado",
-    "copyFailed": "Falha ao copiar"
+    "undoFailed": "Falha ao desfazer ação"
   },
   "dateRelative": {
     "today": "Hoje",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {# dia atrás} other {# dias atrás}}"
   },
   "recurrence": {
-    "everyDay": "Todos os dias",
     "everyNDays": "{count, plural, one {Todos os dias} other {A cada # dias}}",
-    "everyWeek": "Toda semana",
     "everyNWeeks": "{count, plural, one {Toda semana} other {A cada semana #}}",
-    "everyWeekday": "Todos os dias da semana",
     "everyNWeeksOnWeekdays": "{count, plural, one {Todos os dias da semana} other {Todas as semanas # durante a semana}}",
-    "everyWeekend": "Todo fim de semana",
     "everyNWeeksOnWeekends": "{count, plural, one {Todo fim de semana} other {Todas as semanas # nos finais de semana}}",
-    "everyWeekOnDays": "Toda semana em {days}",
     "everyNWeeksOnDays": "{count, plural, one {Toda semana em {days}} other {A cada semana # em {days}}}",
-    "everyMonth": "Todo mês",
     "everyNMonths": "{count, plural, one {Todo mês} other {A cada # meses}}",
-    "everyMonthOnDay": "Todo mês no {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {Todo mês no {day}{suffix}} other {A cada mês # no {day}{suffix}}}",
-    "everyMonthOnWeekDay": "Todos os meses no {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Todos os meses no {week} {day}} other {A cada mês # no {week} {day}}}",
-    "everyYear": "Todos os anos",
     "everyNYears": "{count, plural, one {Todos os anos} other {A cada # anos}}",
     "repeats": "Repete"
   },
@@ -264,7 +228,6 @@
       "openTabs": "Abas abertas",
       "scrollTabsLeft": "Rolar as guias para a esquerda",
       "scrollTabsRight": "Rolar as guias para a direita",
-      "graphG": "Gráfico (⌘G)",
       "dayPanel": "Painel do Dia"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Bate-papo Agent",
+    "loading": "Carregando chat do agente...",
+    "conversationLoading": "Conversa carregando...",
+    "newConversation": "Nova conversa",
+    "history": "Histórico de conversas",
+    "stop": "Parar",
+    "thinking": "Agent está pensando",
+    "enable": {
+      "title": "Habilitar Memry Agent",
+      "description": "Memry Agent usa seu agente local selecionado CLI para conversar sobre seu cofre. Claude envia turnos para Anthropic; Codex envia turnos para OpenAI.",
+      "remote": "Memry criptografa seu histórico de bate-papo local e sincronizado, mas a inferência do modelo ocorre com o provedor selecionado.",
+      "readTools": "As ferramentas de leitura são executadas automaticamente.",
+      "writeTools": "As ferramentas de criação e atualização requerem aprovação.",
+      "diff": "As ferramentas de atualização mostram uma comparação ou visualização.",
+      "button": "Ativar bate-papo Agent"
+    },
+    "approval": {
+      "description": "O agente deseja chamar {name} com estes argumentos.",
+      "applyOnce": "Inscreva-se uma vez",
+      "allowOnce": "Permitir uma vez",
+      "editAndApply": "Editar e aplicar",
+      "editAndAllow": "Editar e permitir",
+      "allowAlways": "Permitir sempre",
+      "applyEdits": "Aplicar edições",
+      "deny": "Negar",
+      "invalidJson": "Insira JSON válido antes de aplicar as edições."
+    },
+    "diff": {
+      "previewError": "Não foi possível visualizar a diferença de notas",
+      "description": "O agente deseja atualizar {title}. Revise o conteúdo atual e candidato antes de aplicá-lo.",
+      "fallbackTitle": "esta nota",
+      "current": "Atual",
+      "candidate": "Candidato",
+      "loading": "Carregando...",
+      "apply": "Aplicar",
+      "applyEdited": "Aplicar editado"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "Nota atual",
+      "removeAttachment": "Remover {label}",
+      "placeholder": "Pergunte a Agent",
+      "send": "Enviar",
+      "providerLabel": "Provedor Agent: {provider}",
+      "modelLabel": "Modelo Agent: {model}",
+      "settingsLabel": "Configurações Agent: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "ID do modelo personalizado",
+      "customModelPlaceholder": "ID do modelo personalizado",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "Locais"
+      },
+      "models": {
+        "default": "Padrão"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "Raciocínio"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
-          "max": "Max"
+          "low": "Baixo",
+          "medium": "Médio",
+          "high": "Alto",
+          "extraHigh": "Extra Alto",
+          "extraHighDefault": "Extra Alto (padrão)",
+          "max": "Máx."
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "Baixo",
+          "medium": "Médio",
+          "mediumDefault": "Médio (padrão)",
+          "high": "Alto",
+          "extraHigh": "Extra Alto"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "Sem correspondências"
+    },
+    "toolResult": {
+      "label": "Resultado da ferramenta"
+    },
+    "toolCall": {
+      "editedArgs": "Argumentos editados",
+      "parameters": "Parâmetros"
+    },
+    "sidebar": {
+      "label": "Barra lateral direita",
+      "day": "Dia",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# aprovação pendente} other {# aprovações pendentes}}",
+      "inProgress": "Turno Agent em andamento"
+    },
+    "errors": {
+      "loadConversations": "Não foi possível carregar as conversas do agente",
+      "loadConversation": "Não foi possível carregar a conversa do agente",
+      "createConversation": "Não foi possível criar a conversa do agente",
+      "busy": "Outra janela está no meio desta conversa. Espere que termine ou pare a partir daí.",
+      "sendTurn": "Não foi possível enviar a vez do agente",
+      "cancelTurn": "Não foi possível cancelar o turno do agente",
+      "submitApproval": "Não foi possível enviar a aprovação da ferramenta",
+      "updateTrust": "Não foi possível atualizar ferramentas confiáveis",
+      "saveDisclosure": "Não foi possível salvar o estado de divulgação",
+      "resolveWindow": "Não foi possível resolver a janela de origem do agente",
+      "detectCli": "Não foi possível detectar back-ends do agente",
+      "loadDisclosure": "Não foi possível carregar o estado de divulgação"
     }
   }
 }

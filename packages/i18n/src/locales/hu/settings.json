@@ -25,9 +25,7 @@
         "integrations": "Integrációk",
         "vault": "Vault",
         "tags": "Címkék",
-        "properties": "Tulajdonságok",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Tulajdonságok"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Megjegyzések",
         "attachments": "Mellékletek",
         "crdt": "CRDT",
-        "other": "Egyéb",
-        "available": "Elérhető"
+        "other": "Egyéb"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "Jóváhagyásra vár",
       "waitingDescription": "Nyissa meg az Memry alkalmazást másik eszközén, és hagyja jóvá az összekapcsolási kérelmet.",
       "verificationCode": "Ellenőrző kód",
-      "confirmCode": "Győződjön meg arról, hogy ez megegyezik a másik eszközén lévő kóddal",
-      "cancel": "Mégsem"
+      "confirmCode": "Győződjön meg arról, hogy ez megegyezik a másik eszközén lévő kóddal"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Helyreállítási kulcs",
     "description": "Tárolja biztonságosan ezt a kulcsot. Visszaállíthatja a trezort, ha elveszíti hozzáférését az összes eszközhöz.",
-    "loading": "Betöltés...",
     "retrieveFailed": "Nem sikerült lekérni a helyreállítási kulcsot",
     "copied": "A helyreállítási kulcs a vágólapra másolva",
     "copyFailed": "Nem sikerült a vágólapra másolni",
     "clickToReveal": "Kattintson a felfedéshez",
     "hide": "Elrejtés",
     "reveal": "Felfedni",
-    "copy": "Másolás",
     "sessionHint": "Ez a kulcs munkamenetenként egyszer jelenik meg. A memória törléséhez zárja be ezt a párbeszédpanelt."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Nem sikerült csatlakozni a Google Naptárhoz",
       "refreshFailed": "Nem sikerült frissíteni a Google Naptárat",
       "disconnectFailed": "Nem sikerült leválasztani a Google Naptárt",
-      "selectionFailed": "Nem sikerült frissíteni a naptárválasztást",
       "retryFailed": "Nem sikerült újrapróbálni a naptár szinkronizálását"
     },
     "sourcePicker": {

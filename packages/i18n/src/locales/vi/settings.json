@@ -25,9 +25,7 @@
         "integrations": "Tích hợp",
         "vault": "Kho lưu trữ",
         "tags": "Thẻ",
-        "properties": "Thuộc tính",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Thuộc tính"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Các ghi chú",
         "attachments": "Tệp đính kèm",
         "crdt": "CRDT",
-        "other": "Khác",
-        "available": "Có sẵn"
+        "other": "Khác"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "Đang chờ phê duyệt",
       "waitingDescription": "Mở Memry trên thiết bị khác của bạn và phê duyệt yêu cầu liên kết.",
       "verificationCode": "Mã xác minh",
-      "confirmCode": "Xác nhận điều này khớp với mã trên thiết bị khác của bạn",
-      "cancel": "Hủy"
+      "confirmCode": "Xác nhận điều này khớp với mã trên thiết bị khác của bạn"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Khóa khôi phục",
     "description": "Lưu khóa này một cách an toàn. Nó có thể khôi phục kho dữ liệu của bạn nếu bạn mất quyền truy cập tất cả thiết bị.",
-    "loading": "  \nĐang tải...  ",
     "retrieveFailed": "Không thể lấy khóa khôi phục",
     "copied": "Đã sao chép khóa khôi phục vào clipboard",
     "copyFailed": "Không thể sao chép vào clipboard",
     "clickToReveal": "Nhấp để hiển thị",
     "hide": "Ẩn",
     "reveal": "Hiện ra",
-    "copy": "Sao chép",
     "sessionHint": "Khóa này được hiển thị một lần mỗi phiên. Đóng hộp thoại này để xóa nó khỏi bộ nhớ."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Không thể kết nối Google Calendar",
       "refreshFailed": "Không thể làm mới Google Calendar",
       "disconnectFailed": "Không thể ngắt kết nối Google Calendar",
-      "selectionFailed": "Không thể cập nhật lựa chọn lịch",
       "retryFailed": "Không thể thử lại đồng bộ lịch"
     },
     "sourcePicker": {

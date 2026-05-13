@@ -25,9 +25,7 @@
         "integrations": "Integrationen",
         "vault": "Tresor",
         "tags": "Schlagworte",
-        "properties": "Eigenschaften",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Eigenschaften"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Notizen",
         "attachments": "Anhänge",
         "crdt": "CRDT",
-        "other": "Andere",
-        "available": "Verfügbar"
+        "other": "Andere"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "Warten auf Genehmigung",
       "waitingDescription": "Öffnen Sie Memry auf Ihrem anderen Gerät und genehmigen Sie die Verknüpfungsanfrage.",
       "verificationCode": "Bestätigungscode",
-      "confirmCode": "Bestätigen Sie, dass dieser mit dem Code auf Ihrem anderen Gerät übereinstimmt",
-      "cancel": "Abbrechen"
+      "confirmCode": "Bestätigen Sie, dass dieser mit dem Code auf Ihrem anderen Gerät übereinstimmt"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Wiederherstellungsschlüssel",
     "description": "Bewahren Sie diesen Schlüssel sicher auf. Es kann Ihren Tresor wiederherstellen, wenn Sie den Zugriff auf alle Geräte verlieren.",
-    "loading": "Laden...",
     "retrieveFailed": "Wiederherstellungsschlüssel konnte nicht abgerufen werden",
     "copied": "Wiederherstellungsschlüssel in die Zwischenablage kopiert",
     "copyFailed": "Kopieren in die Zwischenablage fehlgeschlagen",
     "clickToReveal": "Klicken Sie hier, um es anzuzeigen",
     "hide": "Verstecken",
     "reveal": "Enthüllen",
-    "copy": "Kopieren",
     "sessionHint": "Dieser Schlüssel wird einmal pro Sitzung angezeigt. Schließen Sie dieses Dialogfeld, um es aus dem Speicher zu löschen."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Verbindung mit Google Kalender fehlgeschlagen",
       "refreshFailed": "Google Kalender konnte nicht aktualisiert werden",
       "disconnectFailed": "Google Kalender konnte nicht getrennt werden",
-      "selectionFailed": "Die Kalenderauswahl konnte nicht aktualisiert werden",
       "retryFailed": "Die Kalendersynchronisierung konnte nicht wiederholt werden"
     },
     "sourcePicker": {

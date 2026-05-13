@@ -38,8 +38,7 @@
     "openNoteFullPage": "Open note in full page",
     "closeNoteDrawer": "Close note drawer",
     "addBookmark": "Add bookmark",
-    "removeBookmark": "Remove bookmark",
-    "tryAgain": "Try Again"
+    "removeBookmark": "Remove bookmark"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "Journal back",
     "journalNavigation": "Journal navigation",
     "dateNavigation": "Journal date navigation",
-    "goToYearView": "Go to year view",
-    "previousView": "Previous view",
-    "nextView": "Next view"
+    "goToYearView": "Go to year view"
   },
   "aria": {
     "moreOptions": "More options",
@@ -184,10 +181,8 @@
     "connectionAria": "Connection to {label}, {scorePercent}% match"
   },
   "count": {
-    "item": "item",
     "items": "items",
     "note": "note",
-    "notes": "notes",
     "day": "day",
     "days": "days",
     "event": "event",

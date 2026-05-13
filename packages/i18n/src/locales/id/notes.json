@@ -14,7 +14,6 @@
       "openLinkedFailed": "Gagal membuka item tertaut",
       "localOnly": "Catatan disetel ke lokal saja",
       "willSync": "Catatan akan disinkronkan ke cloud",
-      "saveFailed": "Gagal menyimpan catatan",
       "renameFailed": "Gagal mengganti nama catatan",
       "toggleLocalOnlyFailed": "Gagal beralih ke lokal saja",
       "toggleFullWidthFailed": "Gagal mengubah lebar penuh"
@@ -135,9 +134,6 @@
       "clearSearch": "Hapus pencarian"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "Tulis catatan Anda..."
-  },
   "outline": {
     "title": "Garis besar",
     "aria": "Garis besar dokumen",
@@ -149,7 +145,6 @@
     "modified": "Dimodifikasi"
   },
   "backlinks": {
-    "title": "Tautan Balik",
     "sortRecent": "Baru-baru ini",
     "sortAlpha": "A-Z",
     "sortMentions": "Paling banyak disebutkan",

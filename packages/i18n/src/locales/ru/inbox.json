@@ -43,9 +43,7 @@
     "pdfs": "PDF-файлы",
     "social": "Социальные",
     "reminder": "Напоминание",
-    "reminders": "Напоминания",
-    "text": "Текст",
-    "other": "Другое"
+    "reminders": "Напоминания"
   },
   "empty": {
     "successAria": "Успех, почтовый ящик пуст",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "Нет соответствующих заархивированных элементов.",
     "noItemsYet": "Товаров пока нет",
     "noItemsFiled": "Элементы еще не отправлены",
-    "noItemTypes": "Нет типов элементов для отображения",
     "noFolders": "Папки не найдены",
-    "noFolderMatch": "Нет папок, соответствующих «{query}».",
     "noNotes": "Заметки не найдены",
     "allMatchesLinked": "Все совпадения уже связаны"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Транскрипция не удалась",
     "retryTranscription": "Повторить попытку",
     "pageCount": "{count, plural, one {Страница #} other {Страницы #}}",
-    "snoozedUntilShort": "отложено до {date}",
-    "capturedAgo": "Захвачен {time}"
+    "snoozedUntilShort": "отложено до {date}"
   },
   "loading": {
     "inbox": "Загрузка входящих...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Быстрые действия",
     "archiveItem": "Архивный элемент",
-    "archive": "Архив",
-    "snooze": "Отложить"
+    "archive": "Архив"
   },
   "detail": {
     "ariaLabel": "Детали товара",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Поиск заметок для ссылки",
     "linkedNotesAria": "Связанные заметки",
     "removeLinkTo": "Удалить ссылку на {title}",
-    "contentEditorAria": "Редактор контента",
     "notePlaceholder": "Напишите свою заметку...",
     "textPlaceholder": "Отредактируйте захваченный текст..."
   },
@@ -263,14 +256,9 @@
     "custom": "Пользовательский..."
   },
   "insights": {
-    "loading": "Загрузка статистики...",
     "captureActivity": "Захват активности",
     "byType": "По типу",
-    "itemTypes": "Типы предметов",
-    "itemTypesDescription": "Распространение форматов контента",
     "recentFilings": "Недавние заявки",
-    "recentlyFiled": "Недавно подано",
-    "recentlyFiledDescription": "Последние действия в вашем почтовом ящике",
     "captured": "Захваченный",
     "capturedThisWeek": "+{count} на этой неделе",
     "processed": "Обработано",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {Захват #} other {# фиксирует}}",
     "peak": "Пик: {day} {start}–{end}",
     "convertedToTask": "Преобразовано в задачу",
-    "linked": "Связано",
     "now": "сейчас",
     "timeAgoMinutes": "{count}м назад",
     "timeAgoHours": "{count}ч назад",

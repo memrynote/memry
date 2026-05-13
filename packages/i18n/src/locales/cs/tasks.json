@@ -35,38 +35,6 @@
     "delete": "Smazat úkol",
     "created": "Vytvořeno {date}"
   },
-  "project": {
-    "create": "Vytvořit projekt",
-    "edit": "Upravit projekt",
-    "delete": "Smazat projekt",
-    "iconAndName": "Ikona a název",
-    "namePlaceholder": "Název projektu",
-    "select": "Vyberte projekt",
-    "selectIcon": "Vyberte ikonu",
-    "clickIconToChange": "Pro změnu klikněte na ikonu",
-    "color": "Barva",
-    "descriptionOptional": "Popis (volitelné)",
-    "descriptionPlaceholder": "Stručný popis tohoto projektu…",
-    "statuses": "Stavy",
-    "statusesHelp": "Nakonfigurujte fáze pracovního postupu pro tento projekt.",
-    "createDescription": "Vytvořte nový projekt s názvem, ikonou, barvou a stavy pracovního postupu.",
-    "editDescription": "Upravte název projektu, ikonu, barvu a stavy pracovního postupu."
-  },
-  "status": {
-    "select": "Vyberte stav",
-    "todo": "Chcete-li udělat",
-    "inProgress": "Probíhá",
-    "done": "Hotovo"
-  },
-  "priority": {
-    "select": "Vyberte prioritu",
-    "none": "Žádná priorita",
-    "noneShort": "žádný",
-    "low": "Nízká",
-    "medium": "Střední",
-    "high": "Vysoká",
-    "urgent": "Naléhavé"
-  },
   "filters": {
     "filter": "Filtr",
     "emptyTitle": "Vašim filtrům neodpovídají žádné úkoly",
@@ -113,14 +81,12 @@
     "filterApplied": "Použito \"{name}\"",
     "deleted": "Úkol smazán",
     "deletedSeries": "Série kompletní!",
-    "deletedNext": "Další výskyt",
     "completed": "Úkol splněn!",
     "archived": "Úkol archivován",
     "undoNotAvailableForDelete": "Vrátit zpět není k dispozici pro odstranění",
     "alreadyAllComplete": "Všechny vybrané úkoly jsou již dokončeny",
     "noCompletedSelected": "Nejsou vybrány žádné dokončené úkoly",
     "completeFailed": "Úkoly se nepodařilo dokončit",
-    "reopenFailed": "Úkoly se nepodařilo znovu otevřít",
     "deleteFailed": "Úkoly se nepodařilo smazat",
     "moveFailed": "Přesunutí úkolů se nezdařilo"
   },

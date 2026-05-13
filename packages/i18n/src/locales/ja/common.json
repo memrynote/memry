@@ -3,47 +3,25 @@
     "save": "保存",
     "cancel": "キャンセル",
     "close": "閉じる",
-    "ok": "OK",
-    "yes": "はい",
-    "no": "いいえ",
     "delete": "削除",
-    "confirm": "確認する",
-    "apply": "申し込む",
     "done": "完了",
-    "discard": "廃棄する",
     "dontSave": "保存しないでください",
-    "edit": "編集",
     "add": "追加",
     "remove": "削除",
     "retry": "再試行",
-    "submit": "送信する",
     "back": "戻る",
-    "next": "次へ",
     "continue": "続ける",
-    "reset": "リセット",
     "copy": "コピー",
-    "paste": "ペースト",
-    "create": "作成",
-    "open": "開く"
+    "create": "作成"
   },
   "state": {
     "loading": "読み込み中…",
     "saving": "保存中…",
     "deleting": "削除中…",
-    "searching": "検索中…",
-    "error": "エラー",
-    "success": "成功"
-  },
-  "empty": {
-    "noResults": "結果はありません",
-    "noItems": "アイテムがありません",
-    "noMatch": "一致しません"
+    "searching": "検索中…"
   },
   "action": {
     "search": "検索",
-    "edit": "編集",
-    "delete": "削除",
-    "close": "閉じる",
     "expand": "拡大する",
     "collapse": "崩壊する",
     "showMore": "+{count, plural, one {# もっと見る} other {# もっと見る}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {# アイテム} other {# アイテム}}",
     "note": "{count, plural, one {#メモ} other {# メモ}}",
-    "folder": "{count, plural, one {#フォルダー} other {# フォルダー}}",
     "task": "{count, plural, one {# タスク} other {# タスク}}",
-    "project": "{count, plural, one {# プロジェクト} other {# プロジェクト}}",
     "itemDelete": "{count, plural, one {# アイテムの削除} other {# アイテムを削除する}}"
   },
   "toast": {
     "actionFailed": "アクションが失敗しました",
     "nothingToUndo": "元に戻すものはありません",
     "undone": "元に戻す: {description}",
-    "undoFailed": "アクションを元に戻すことができませんでした",
-    "copied": "コピーされました",
-    "copyFailed": "コピーに失敗しました"
+    "undoFailed": "アクションを元に戻すことができませんでした"
   },
   "dateRelative": {
     "today": "今日",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {# 日前} other {# 日前}}"
   },
   "recurrence": {
-    "everyDay": "毎日",
     "everyNDays": "{count, plural, one {毎日} other {# 日ごと}}",
-    "everyWeek": "毎週",
     "everyNWeeks": "{count, plural, one {毎週} other {# 週間ごと}}",
-    "everyWeekday": "平日毎日",
     "everyNWeeksOnWeekdays": "{count, plural, one {平日毎日} other {平日は # 週間ごと}}",
-    "everyWeekend": "毎週末",
     "everyNWeeksOnWeekends": "{count, plural, one {毎週末} other {# 週間ごとの週末}}",
-    "everyWeekOnDays": "{days} で毎週",
     "everyNWeeksOnDays": "{count, plural, one {{days} で毎週} other {{days} で # 週間ごと}}",
-    "everyMonth": "毎月",
     "everyNMonths": "{count, plural, one {毎月} other {# か月ごと}}",
-    "everyMonthOnDay": "毎月 {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {毎月 {day}{suffix}} other {{day}{suffix} の # か月ごと}}",
-    "everyMonthOnWeekDay": "毎月 {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {毎月 {week} {day}} other {{week} {day} で # か月ごと}}",
-    "everyYear": "毎年",
     "everyNYears": "{count, plural, one {毎年} other {# 年ごと}}",
     "repeats": "繰り返し"
   },
@@ -264,7 +228,6 @@
       "openTabs": "タブを開く",
       "scrollTabsLeft": "タブを左にスクロール",
       "scrollTabsRight": "タブを右にスクロールする",
-      "graphG": "グラフ(⌘G)",
       "dayPanel": "曜日パネル"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Agent チャット",
+    "loading": "エージェント チャットを読み込み中...",
+    "conversationLoading": "会話を読み込み中...",
+    "newConversation": "新しい会話",
+    "history": "会話履歴",
+    "stop": "停止",
+    "thinking": "Agent は考えています",
+    "enable": {
+      "title": "Memry Agent を有効にする",
+      "description": "Memry Agent は、選択したローカル エージェント CLI を使用して、ボールトについてチャットします。 Claude は Anthropic にターンを送信します。 Codex は OpenAI にターンを送ります。",
+      "remote": "Memry はローカルおよび同期されたチャット履歴を暗号化しますが、モデル推論は選択したプロバイダーで行われます。",
+      "readTools": "読み取りツールは自動的に実行されます。",
+      "writeTools": "ツールの作成および更新には承認が必要です。",
+      "diff": "更新ツールには差分またはプレビューが表示されます。",
+      "button": "Agent チャットを有効にする"
+    },
+    "approval": {
+      "description": "エージェントは、これらの引数を使用して {name} を呼び出したいと考えています。",
+      "applyOnce": "1回お申込みください",
+      "allowOnce": "1 回許可する",
+      "editAndApply": "編集して適用",
+      "editAndAllow": "編集して許可する",
+      "allowAlways": "常に許可",
+      "applyEdits": "編集を適用する",
+      "deny": "拒否",
+      "invalidJson": "編集を適用する前に、有効な JSON を入力してください。"
+    },
+    "diff": {
+      "previewError": "ノートの差分をプレビューできませんでした",
+      "description": "エージェントは {title} を更新しようとしています。適用する前に、現在のコンテンツと候補コンテンツを確認してください。",
+      "fallbackTitle": "このメモ",
+      "current": "現在",
+      "candidate": "候補者",
+      "loading": "読み込み中...",
+      "apply": "申し込む",
+      "applyEdited": "編集済みを適用"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "現在のメモ",
+      "removeAttachment": "{label} を削除します",
+      "placeholder": "Agent に質問する",
+      "send": "送信",
+      "providerLabel": "Agent プロバイダ: {provider}",
+      "modelLabel": "Agent モデル: {model}",
+      "settingsLabel": "Agent 設定: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "カスタムモデル ID",
+      "customModelPlaceholder": "カスタムモデル ID",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "ローカル"
+      },
+      "models": {
+        "default": "デフォルト"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "推論"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
-          "max": "Max"
+          "low": "低",
+          "medium": "中",
+          "high": "高",
+          "extraHigh": "エクストラハイ",
+          "extraHighDefault": "エクストラハイ (デフォルト)",
+          "max": "最大"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "低い",
+          "medium": "中",
+          "mediumDefault": "中 (デフォルト)",
+          "high": "高",
+          "extraHigh": "エクストラハイ"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "一致しません"
+    },
+    "toolResult": {
+      "label": "ツールの結果"
+    },
+    "toolCall": {
+      "editedArgs": "編集された引数",
+      "parameters": "パラメータ"
+    },
+    "sidebar": {
+      "label": "右サイドバー",
+      "day": "日",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# 承認待ち} other {# 保留中の承認}}",
+      "inProgress": "Agent ターン進行中"
+    },
+    "errors": {
+      "loadConversations": "エージェントの会話を読み込めませんでした",
+      "loadConversation": "エージェントの会話を読み込めませんでした",
+      "createConversation": "エージェントの会話を作成できませんでした",
+      "busy": "この会話のターンの途中に別のウィンドウが表示されます。完了するまで待つか、そこから停止します。",
+      "sendTurn": "エージェントのターンを送信できませんでした",
+      "cancelTurn": "エージェントのターンをキャンセルできませんでした",
+      "submitApproval": "ツールの承認を送信できませんでした",
+      "updateTrust": "信頼できるツールを更新できませんでした",
+      "saveDisclosure": "開示状態を保存できませんでした",
+      "resolveWindow": "エージェント ソース ウィンドウを解決できませんでした",
+      "detectCli": "エージェント バックエンドを検出できませんでした",
+      "loadDisclosure": "開示状態をロードできませんでした"
     }
   }
 }

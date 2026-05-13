@@ -25,9 +25,7 @@
         "integrations": "Mga pagsasama",
         "vault": "Vault",
         "tags": "Mga tag",
-        "properties": "Mga Katangian",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Mga Katangian"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Mga Tala",
         "attachments": "Mga kalakip",
         "crdt": "CRDT",
-        "other": "Iba pa",
-        "available": "Available"
+        "other": "Iba pa"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "Naghihintay ng pag-apruba",
       "waitingDescription": "Buksan ang Memry sa iyong iba pang device at aprubahan ang kahilingan sa pag-link.",
       "verificationCode": "Verification code",
-      "confirmCode": "Kumpirmahin na tumutugma ito sa code sa iyong iba pang device",
-      "cancel": "Kanselahin"
+      "confirmCode": "Kumpirmahin na tumutugma ito sa code sa iyong iba pang device"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Susi sa Pagbawi",
     "description": "Itago ang susi na ito nang ligtas. Maaari nitong i-restore ang iyong vault kung mawawalan ka ng access sa lahat ng device.",
-    "loading": "Naglo-load...",
     "retrieveFailed": "Nabigong makuha ang recovery key",
     "copied": "Nakopya ang recovery key sa clipboard",
     "copyFailed": "Nabigong kopyahin sa clipboard",
     "clickToReveal": "I-click para ibunyag",
     "hide": "Magtago",
     "reveal": "Ibunyag",
-    "copy": "Kopyahin",
     "sessionHint": "Ang key na ito ay ipinapakita nang isang beses bawat session. Isara ang dialog na ito upang i-clear ito sa memorya."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Nabigong ikonekta ang Google Calendar",
       "refreshFailed": "Nabigong i-refresh ang Google Calendar",
       "disconnectFailed": "Nabigong idiskonekta ang Google Calendar",
-      "selectionFailed": "Nabigong i-update ang pagpili ng kalendaryo",
       "retryFailed": "Nabigong subukang muli ang pag-sync ng kalendaryo"
     },
     "sourcePicker": {

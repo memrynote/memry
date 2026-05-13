@@ -38,8 +38,7 @@
     "openNoteFullPage": "Otwórz notatkę na całej stronie",
     "closeNoteDrawer": "Zamknij szufladę na notatki",
     "addBookmark": "Dodaj zakładkę",
-    "removeBookmark": "Usuń zakładkę",
-    "tryAgain": "Spróbuj ponownie"
+    "removeBookmark": "Usuń zakładkę"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "Dziennik z powrotem",
     "journalNavigation": "Nawigacja dziennika",
     "dateNavigation": "Nawigacja po datach dziennika",
-    "goToYearView": "Przejdź do widoku roku",
-    "previousView": "Poprzedni widok",
-    "nextView": "Następny widok"
+    "goToYearView": "Przejdź do widoku roku"
   },
   "aria": {
     "moreOptions": "Więcej opcji",
@@ -184,10 +181,8 @@
     "connectionAria": "Połączenie z {label}, {scorePercent}% pasuje"
   },
   "count": {
-    "item": "przedmiot",
     "items": "przedmioty",
     "note": "uwaga",
-    "notes": "notatki",
     "day": "dzień",
     "days": "dni",
     "event": "wydarzenie",

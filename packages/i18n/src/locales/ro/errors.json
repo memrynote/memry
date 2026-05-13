@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Ceva a mers prost. Vă rugăm să încercați din nou.",
     "operationFailed": "Operațiunea a eșuat",
-    "unknown": "A apărut o eroare necunoscută",
-    "validationFailed": "Validarea a eșuat",
-    "actionFailed": "Acțiunea eșuată"
+    "unknown": "A apărut o eroare necunoscută"
   },
   "ipc": {
     "noVaultOpen": "Niciun seif nu este deschis. Vă rugăm să deschideți mai întâi un seif."

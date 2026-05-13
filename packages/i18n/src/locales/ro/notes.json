@@ -14,7 +14,6 @@
       "openLinkedFailed": "Nu s-a putut deschide elementul conectat",
       "localOnly": "Notă setată numai la local",
       "willSync": "Nota se va sincroniza cu cloud",
-      "saveFailed": "Nu s-a salvat nota",
       "renameFailed": "Nu s-a putut redenumi nota",
       "toggleLocalOnlyFailed": "Nu s-a putut comuta doar local",
       "toggleFullWidthFailed": "Nu s-a putut comuta lățimea completă"
@@ -135,9 +134,6 @@
       "clearSearch": "Ștergeți căutarea"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "Scrie-ți nota..."
-  },
   "outline": {
     "title": "Contur",
     "aria": "Schița documentului",
@@ -149,7 +145,6 @@
     "modified": "Modificat"
   },
   "backlinks": {
-    "title": "Backlink-uri",
     "sortRecent": "Recent",
     "sortAlpha": "A-Z",
     "sortMentions": "Cele mai multe mențiuni",

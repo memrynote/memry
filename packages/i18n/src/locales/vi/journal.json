@@ -38,8 +38,7 @@
     "openNoteFullPage": "Mở ghi chú ở trang đầy đủ",
     "closeNoteDrawer": "Đóng ngăn ghi chú",
     "addBookmark": "Thêm đánh dấu trang",
-    "removeBookmark": "Xóa đánh dấu trang",
-    "tryAgain": "Thử Lại"
+    "removeBookmark": "Xóa đánh dấu trang"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "Quay lại nhật ký",
     "journalNavigation": "Điều hướng nhật ký",
     "dateNavigation": "Điều hướng theo ngày nhật ký",
-    "goToYearView": "Đi tới chế độ xem theo năm",
-    "previousView": "Chế độ xem trước",
-    "nextView": "Chế độ xem tiếp theo"
+    "goToYearView": "Đi tới chế độ xem theo năm"
   },
   "aria": {
     "moreOptions": "  \nThêm tùy chọn  ",
@@ -184,10 +181,8 @@
     "connectionAria": "Kết nối với {label}, {scorePercent}% khớp"
   },
   "count": {
-    "item": "  \nmục  ",
     "items": "mục",
     "note": "ghi chú",
-    "notes": "ghi chú",
     "day": "ngày",
     "days": "ngày",
     "event": "sự kiện",

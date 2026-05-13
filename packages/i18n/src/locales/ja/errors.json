@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "何か問題が発生しました。もう一度試してください。",
     "operationFailed": "操作が失敗しました",
-    "unknown": "不明なエラーが発生しました",
-    "validationFailed": "検証に失敗しました",
-    "actionFailed": "アクションが失敗しました"
+    "unknown": "不明なエラーが発生しました"
   },
   "ipc": {
     "noVaultOpen": "開いている金庫はありません。まず金庫を開けてください。"

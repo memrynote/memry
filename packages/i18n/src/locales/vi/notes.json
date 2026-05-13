@@ -14,7 +14,6 @@
       "openLinkedFailed": "Không thể mở mục liên kết",
       "localOnly": "Ghi chú chỉ dành cho cục bộ",
       "willSync": "Ghi chú sẽ được đồng bộ lên đám mây",
-      "saveFailed": "Không thể lưu ghi chú",
       "renameFailed": "Không thể đổi tên ghi chú",
       "toggleLocalOnlyFailed": "Không thể chuyển đổi chỉ dành cho cục bộ",
       "toggleFullWidthFailed": "Không thể chuyển đổi toàn bộ chiều rộng"
@@ -135,9 +134,6 @@
       "clearSearch": "Xóa tìm kiếm"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "Viết ghi chú của bạn..."
-  },
   "outline": {
     "title": "Đường viền",
     "aria": "Phác thảo tài liệu",
@@ -149,7 +145,6 @@
     "modified": "Đã sửa đổi"
   },
   "backlinks": {
-    "title": "Liên kết ngược",
     "sortRecent": "Gần đây",
     "sortAlpha": "A-Z",
     "sortMentions": "Được nhắc đến nhiều nhất",

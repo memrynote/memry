@@ -43,9 +43,7 @@
     "pdfs": "PDF",
     "social": "ソーシャル",
     "reminder": "リマインダー",
-    "reminders": "リマインダー",
-    "text": "テキスト",
-    "other": "その他"
+    "reminders": "リマインダー"
   },
   "empty": {
     "successAria": "成功しました。受信箱は空です",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "一致するアーカイブ済みアイテムはありません",
     "noItemsYet": "まだアイテムがありません",
     "noItemsFiled": "まだ項目は登録されていません",
-    "noItemTypes": "表示する項目タイプがありません",
     "noFolders": "フォルダが見つかりません",
-    "noFolderMatch": "「{query}」に一致するフォルダーはありません",
     "noNotes": "メモが見つかりませんでした",
     "allMatchesLinked": "すべての一致はすでにリンクされています"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "転写に失敗しました",
     "retryTranscription": "再試行",
     "pageCount": "{count, plural, one {# ページ} other {# ページ}}",
-    "snoozedUntilShort": "{date}までスヌーズ",
-    "capturedAgo": "キャプチャされた {time}"
+    "snoozedUntilShort": "{date}までスヌーズ"
   },
   "loading": {
     "inbox": "受信箱を読み込んでいます...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "クイックアクション",
     "archiveItem": "アーカイブアイテム",
-    "archive": "アーカイブ",
-    "snooze": "スヌーズ"
+    "archive": "アーカイブ"
   },
   "detail": {
     "ariaLabel": "商品詳細",
@@ -213,7 +207,6 @@
     "searchNotesAria": "ノートを検索してリンクする",
     "linkedNotesAria": "リンクされたメモ",
     "removeLinkTo": "{title} へのリンクを削除",
-    "contentEditorAria": "コンテンツエディター",
     "notePlaceholder": "メモを書いてください...",
     "textPlaceholder": "キャプチャしたテキストを編集..."
   },
@@ -263,14 +256,9 @@
     "custom": "カスタム..."
   },
   "insights": {
-    "loading": "分析情報を読み込んでいます...",
     "captureActivity": "キャプチャアクティビティ",
     "byType": "タイプ別",
-    "itemTypes": "アイテムの種類",
-    "itemTypesDescription": "コンテンツフォーマットの配布",
     "recentFilings": "最近の出願",
-    "recentlyFiled": "最近提出された",
-    "recentlyFiledDescription": "受信トレイの最新のアクション",
     "captured": "捕らえられた",
     "capturedThisWeek": "今週の +{count}",
     "processed": "加工済み",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {# キャプチャ} other {# キャプチャ}}",
     "peak": "ピーク: {day} {start}–{end}",
     "convertedToTask": "タスクに変換されました",
-    "linked": "リンク済み",
     "now": "今",
     "timeAgoMinutes": "{count} 分前",
     "timeAgoHours": "{count} 時間前",

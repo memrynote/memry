@@ -43,9 +43,7 @@
     "pdfs": "PDF-файли",
     "social": "Соціальні мережі",
     "reminder": "Нагадування",
-    "reminders": "Нагадування",
-    "text": "Текст",
-    "other": "Інше"
+    "reminders": "Нагадування"
   },
   "empty": {
     "successAria": "Успіх, вхідна порожня",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "Немає відповідних архівованих елементів",
     "noItemsYet": "Ще немає елементів",
     "noItemsFiled": "Ще не відсортовано жодного елементу",
-    "noItemTypes": "Немає типів елементів для відображення",
     "noFolders": "Папки не знайдено",
-    "noFolderMatch": "Жодна папка не відповідає \"{query}\"",
     "noNotes": "Нотатки не знайдено",
     "allMatchesLinked": "Всі співпадіння вже пов'язані"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Не вдалося транскрибувати",
     "retryTranscription": "Спробувати знову",
     "pageCount": "{count, plural, one {Сторінка #} other {Сторінки #}}",
-    "snoozedUntilShort": "відкладено до {date}",
-    "capturedAgo": "Захоплено {time}"
+    "snoozedUntilShort": "відкладено до {date}"
   },
   "loading": {
     "inbox": "Завантаження вхідних...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Швидкі дії",
     "archiveItem": "Архівувати елемент",
-    "archive": "Архівувати",
-    "snooze": "Відкласти"
+    "archive": "Архівувати"
   },
   "detail": {
     "ariaLabel": "Деталі елемента",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Шукати нотатки для посилання",
     "linkedNotesAria": "Пов'язані нотатки",
     "removeLinkTo": "Видалити посилання на {title}",
-    "contentEditorAria": "Редактор вмісту",
     "notePlaceholder": "Напишіть свою нотатку...",
     "textPlaceholder": "Редагувати захоплений текст..."
   },
@@ -263,14 +256,9 @@
     "custom": "Власний..."
   },
   "insights": {
-    "loading": "Завантаження аналітики...",
     "captureActivity": "Фіксувати активність",
     "byType": "За типом",
-    "itemTypes": "Типи елементів",
-    "itemTypesDescription": "Розподіл форматів контенту",
     "recentFilings": "Останні подані документи",
-    "recentlyFiled": "Нещодавно подано",
-    "recentlyFiledDescription": "Останні дії у вашій поштовій скриньці",
     "captured": "Зафіксовано",
     "capturedThisWeek": "+{count} цього тижня",
     "processed": "Опрацьовано",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {Захоплення #} other {Захоплення #}}",
     "peak": "Пік: {day} {start}–{end}",
     "convertedToTask": "Перетворено на завдання",
-    "linked": "Пов’язано",
     "now": "зараз",
     "timeAgoMinutes": "{count}m тому",
     "timeAgoHours": "{count}h тому",

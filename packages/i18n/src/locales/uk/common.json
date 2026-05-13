@@ -3,47 +3,25 @@
     "save": "Зберегти",
     "cancel": "Скасувати",
     "close": "Закрити",
-    "ok": "OK",
-    "yes": "Так",
-    "no": "Ні",
     "delete": "Видалити",
-    "confirm": "Підтвердити",
-    "apply": "Застосувати",
     "done": "Готово",
-    "discard": "Відхилити",
     "dontSave": "Не зберігати",
-    "edit": "Редагувати",
     "add": "Додати",
     "remove": "Видалити",
     "retry": "Спробувати знову",
-    "submit": "Надіслати",
     "back": "Назад",
-    "next": "Далі",
     "continue": "Продовжити",
-    "reset": "Скинути",
     "copy": "Копіювати",
-    "paste": "Вставити",
-    "create": "Створити",
-    "open": "Відкрити"
+    "create": "Створити"
   },
   "state": {
     "loading": "Завантаження…",
     "saving": "Збереження…",
     "deleting": "Видалення…",
-    "searching": "Пошук…",
-    "error": "Помилка",
-    "success": "Успішно"
-  },
-  "empty": {
-    "noResults": "Немає результатів",
-    "noItems": "Немає елементів",
-    "noMatch": "Немає збігів"
+    "searching": "Пошук…"
   },
   "action": {
     "search": "Пошук",
-    "edit": "Редагувати",
-    "delete": "Видалити",
-    "close": "Закрити",
     "expand": "Розгорнути",
     "collapse": "Згорнути",
     "showMore": "+{count, plural, one {# більше} other {# більше}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {# елемент} other {# елементи}}",
     "note": "{count, plural, one {# нотатка} other {# нотатки}}",
-    "folder": "{count, plural, one {# папка} other {# папки}}",
     "task": "{count, plural, one {# завдання} other {# завдання}}",
-    "project": "{count, plural, one {# проєкт} other {# проєкти}}",
     "itemDelete": "{count, plural, one {Видалити # елемент} other {Видалити # елементи}}"
   },
   "toast": {
     "actionFailed": "Дія не вдалася",
     "nothingToUndo": "Немає що скасовувати",
     "undone": "Скасовано: {description}",
-    "undoFailed": "Не зміг скасувати дію",
-    "copied": "Скопійовано",
-    "copyFailed": "Не вдалося скопіювати"
+    "undoFailed": "Не зміг скасувати дію"
   },
   "dateRelative": {
     "today": "Сьогодні",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {# день тому} other {# днів тому}}"
   },
   "recurrence": {
-    "everyDay": "Щодня",
     "everyNDays": "{count, plural, one {Щодня} other {Кожні # дні}}",
-    "everyWeek": "Щотижня",
     "everyNWeeks": "{count, plural, one {Щотижня} other {Кожні # тижні}}",
-    "everyWeekday": "Щодня у будні",
     "everyNWeeksOnWeekdays": "{count, plural, one {Щодня у будні} other {Кожні # тижня у будні дні}}",
-    "everyWeekend": "Щовихідних",
     "everyNWeeksOnWeekends": "{count, plural, one {Щовихідних} other {Кожні # тижні у вихідні}}",
-    "everyWeekOnDays": "Щотижня на {days}",
     "everyNWeeksOnDays": "{count, plural, one {Щотижня на {days}} other {Кожні # тижні на {days}}}",
-    "everyMonth": "Щомісяця",
     "everyNMonths": "{count, plural, one {Щомісяця} other {Кожні # місяці}}",
-    "everyMonthOnDay": "Щомісяця на {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {Щомісяця на {day}{suffix}} other {Кожні # місяці на {day}{suffix}}}",
-    "everyMonthOnWeekDay": "Щомісяця на {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Щомісяця на {week} {day}} other {Що # місяці в {week} {day}}}",
-    "everyYear": "Щороку",
     "everyNYears": "{count, plural, one {Щороку} other {Що # років}}",
     "repeats": "Повторюється"
   },
@@ -264,7 +228,6 @@
       "openTabs": "Відкриті вкладки",
       "scrollTabsLeft": "Прокрутити вкладки вліво",
       "scrollTabsRight": "Прокрутити вкладки вправо",
-      "graphG": "Граф (⌘G)",
       "dayPanel": "Денна панель"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Чат Agent",
+    "loading": "Завантаження чату агента...",
+    "conversationLoading": "Розмова завантажується...",
+    "newConversation": "Нова розмова",
+    "history": "Історія розмов",
+    "stop": "Стоп",
+    "thinking": "Agent думає",
+    "enable": {
+      "title": "Увімкнути Memry Agent",
+      "description": "Memry Agent використовує вибраного вами місцевого агента CLI для спілкування про ваше сховище. Claude надсилає черги до Anthropic; Codex надсилає черги до OpenAI.",
+      "remote": "Memry шифрує вашу локальну та синхронізовану історію чату, але вибір моделі відбувається з вибраним постачальником.",
+      "readTools": "Інструменти читання запускаються автоматично.",
+      "writeTools": "Інструменти створення та оновлення потребують схвалення.",
+      "diff": "Інструменти оновлення показують різницю або попередній перегляд.",
+      "button": "Увімкнути чат Agent"
+    },
+    "approval": {
+      "description": "Агент хоче викликати {name} із цими аргументами.",
+      "applyOnce": "Застосувати один раз",
+      "allowOnce": "Дозволити один раз",
+      "editAndApply": "Відредагуйте та застосуйте",
+      "editAndAllow": "Редагувати та дозволити",
+      "allowAlways": "Дозволяти завжди",
+      "applyEdits": "Застосувати зміни",
+      "deny": "Відмовити",
+      "invalidJson": "Введіть дійсний JSON перед застосуванням змін."
+    },
+    "diff": {
+      "previewError": "Не вдалося переглянути різницю приміток",
+      "description": "Агент хоче оновити {title}. Перегляньте поточний і потенційний вміст, перш ніж застосовувати його.",
+      "fallbackTitle": "ця примітка",
+      "current": "Поточний",
+      "candidate": "Канд",
+      "loading": "Завантаження...",
+      "apply": "Застосувати",
+      "applyEdited": "Застосувати відред"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "Актуальна примітка",
+      "removeAttachment": "Видалити {label}",
+      "placeholder": "Запитайте Agent",
+      "send": "Надіслати",
+      "providerLabel": "Постачальник Agent: {provider}",
+      "modelLabel": "Модель Agent: {model}",
+      "settingsLabel": "Налаштування Agent: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "Спеціальний ідентифікатор моделі",
+      "customModelPlaceholder": "Спеціальний ідентифікатор моделі",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "Місцевий"
+      },
+      "models": {
+        "default": "За замовчуванням"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "Міркування"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
-          "max": "Max"
+          "low": "Низький",
+          "medium": "Середній",
+          "high": "Високий",
+          "extraHigh": "Надвисокий",
+          "extraHighDefault": "Дуже високий (за замовчуванням)",
+          "max": "Макс"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "Низький",
+          "medium": "Середній",
+          "mediumDefault": "Середній (за замовчуванням)",
+          "high": "Високий",
+          "extraHigh": "Надвисокий"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "Немає збігів"
+    },
+    "toolResult": {
+      "label": "Результат інструменту"
+    },
+    "toolCall": {
+      "editedArgs": "Відредаговані аргументи",
+      "parameters": "Параметри"
+    },
+    "sidebar": {
+      "label": "Права бічна панель",
+      "day": "День",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# очікує на затвердження} other {# очікують схвалення}}",
+      "inProgress": "Триває поворот Agent"
+    },
+    "errors": {
+      "loadConversations": "Не вдалося завантажити розмови агента",
+      "loadConversation": "Не вдалося завантажити розмову агента",
+      "createConversation": "Не вдалося створити розмову агента",
+      "busy": "Інше вікно є середнім для цієї розмови. Зачекайте, поки він закінчиться, або зупиніть його з цього моменту.",
+      "sendTurn": "Не вдалося надіслати чергу агента",
+      "cancelTurn": "Не вдалося скасувати чергу агента",
+      "submitApproval": "Не вдалося надіслати схвалення інструменту",
+      "updateTrust": "Не вдалося оновити довірені інструменти",
+      "saveDisclosure": "Не вдалося зберегти стан розкриття",
+      "resolveWindow": "Не вдалося вирішити вихідне вікно агента",
+      "detectCli": "Не вдалося виявити серверні частини агента",
+      "loadDisclosure": "Не вдалося завантажити стан розкриття"
     }
   }
 }

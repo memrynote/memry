@@ -38,8 +38,7 @@
     "openNoteFullPage": "ノートを全ページで開く",
     "closeNoteDrawer": "メモ引き出しを閉じます",
     "addBookmark": "ブックマークを追加する",
-    "removeBookmark": "ブックマークを削除する",
-    "tryAgain": "もう一度試してください"
+    "removeBookmark": "ブックマークを削除する"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "ジャーナルバック",
     "journalNavigation": "ジャーナルナビゲーション",
     "dateNavigation": "日記の日付ナビゲーション",
-    "goToYearView": "年ビューに移動",
-    "previousView": "前のビュー",
-    "nextView": "次のビュー"
+    "goToYearView": "年ビューに移動"
   },
   "aria": {
     "moreOptions": "その他のオプション",
@@ -184,10 +181,8 @@
     "connectionAria": "{label} への接続、{scorePercent}% 一致"
   },
   "count": {
-    "item": "アイテム",
     "items": "アイテム",
     "note": "メモ",
-    "notes": "メモ",
     "day": "日",
     "days": "日",
     "event": "イベント",

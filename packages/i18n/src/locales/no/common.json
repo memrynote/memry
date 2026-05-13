@@ -3,47 +3,25 @@
     "save": "Lagre",
     "cancel": "Avbryt",
     "close": "Lukk",
-    "ok": "OK",
-    "yes": "Ja",
-    "no": "Nei",
     "delete": "Slett",
-    "confirm": "Bekreft",
-    "apply": "Søk",
     "done": "Ferdig",
-    "discard": "Kast",
     "dontSave": "Ikke lagre",
-    "edit": "Rediger",
     "add": "Legg til",
     "remove": "Fjern",
     "retry": "Prøv på nytt",
-    "submit": "Send inn",
     "back": "Tilbake",
-    "next": "Neste",
     "continue": "Fortsett",
-    "reset": "Tilbakestill",
     "copy": "Kopier",
-    "paste": "Lim inn",
-    "create": "Opprett",
-    "open": "Åpne"
+    "create": "Opprett"
   },
   "state": {
     "loading": "Laster inn …",
     "saving": "Lagrer …",
     "deleting": "Sletter …",
-    "searching": "Søker …",
-    "error": "Feil",
-    "success": "Suksess"
-  },
-  "empty": {
-    "noResults": "Ingen resultater",
-    "noItems": "Ingen varer",
-    "noMatch": "Ingen treff"
+    "searching": "Søker …"
   },
   "action": {
     "search": "Søk",
-    "edit": "Rediger",
-    "delete": "Slett",
-    "close": "Lukk",
     "expand": "Utvid",
     "collapse": "Kollaps",
     "showMore": "+{count, plural, one {# mer} other {# mer}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {# vare} other {# varer}}",
     "note": "{count, plural, one {# merknad} other {# notater}}",
-    "folder": "{count, plural, one {# mappe} other {#-mapper}}",
     "task": "{count, plural, one {#-oppgave} other {# oppgaver}}",
-    "project": "{count, plural, one {#-prosjekt} other {#-prosjekter}}",
     "itemDelete": "{count, plural, one {Slett #-element} other {Slett #-elementer}}"
   },
   "toast": {
     "actionFailed": "Handlingen mislyktes",
     "nothingToUndo": "Ingenting å angre",
     "undone": "Angret: {description}",
-    "undoFailed": "Kunne ikke angre handlingen",
-    "copied": "Kopiert",
-    "copyFailed": "Kunne ikke kopiere"
+    "undoFailed": "Kunne ikke angre handlingen"
   },
   "dateRelative": {
     "today": "I dag",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {# dag siden} other {# dager siden}}"
   },
   "recurrence": {
-    "everyDay": "Hver dag",
     "everyNDays": "{count, plural, one {Hver dag} other {Hver # dag}}",
-    "everyWeek": "Hver uke",
     "everyNWeeks": "{count, plural, one {Hver uke} other {Hver # uke}}",
-    "everyWeekday": "Hver ukedag",
     "everyNWeeksOnWeekdays": "{count, plural, one {Hver ukedag} other {Hver # uke på ukedager}}",
-    "everyWeekend": "Hver helg",
     "everyNWeeksOnWeekends": "{count, plural, one {Hver helg} other {Hver # uke i helgene}}",
-    "everyWeekOnDays": "Hver uke på {days}",
     "everyNWeeksOnDays": "{count, plural, one {Hver uke på {days}} other {Hver # uke på {days}}}",
-    "everyMonth": "Hver måned",
     "everyNMonths": "{count, plural, one {Hver måned} other {Hver # måned}}",
-    "everyMonthOnDay": "Hver måned på {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {Hver måned på {day}{suffix}} other {Hver # måned på {day}{suffix}}}",
-    "everyMonthOnWeekDay": "Hver måned på {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Hver måned på {week} {day}} other {Hver # måned på {week} {day}}}",
-    "everyYear": "Hvert år",
     "everyNYears": "{count, plural, one {Hvert år} other {Hvert # år}}",
     "repeats": "Gjentas"
   },
@@ -264,7 +228,6 @@
       "openTabs": "Åpne faner",
       "scrollTabsLeft": "Rull til venstre i fanene",
       "scrollTabsRight": "Rull til høyre i fanene",
-      "graphG": "Graf (⌘G)",
       "dayPanel": "Dagpanel"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Agent chat",
+    "loading": "Laster agentchat...",
+    "conversationLoading": "Samtalen lastes inn...",
+    "newConversation": "Ny samtale",
+    "history": "Samtalehistorikk",
+    "stop": "Stopp",
+    "thinking": "Agent tenker",
+    "enable": {
+      "title": "Aktiver Memry Agent",
+      "description": "Memry Agent bruker den valgte lokale agenten CLI for å chatte om hvelvet ditt. Claude sender svinger til Anthropic; Codex sender svinger til OpenAI.",
+      "remote": "Memry krypterer din lokale og synkroniserte chat-historikk, men modellslutning skjer med den valgte leverandøren.",
+      "readTools": "Leseverktøy kjøres automatisk.",
+      "writeTools": "Oppretting og oppdatering av verktøy krever godkjenning.",
+      "diff": "Oppdateringsverktøy viser en diff eller forhåndsvisning.",
+      "button": "Aktiver Agent chat"
+    },
+    "approval": {
+      "description": "Agenten ønsker å kalle {name} med disse argumentene.",
+      "applyOnce": "Søk én gang",
+      "allowOnce": "Tillat én gang",
+      "editAndApply": "Rediger og bruk",
+      "editAndAllow": "Rediger og tillat",
+      "allowAlways": "Tillat alltid",
+      "applyEdits": "Bruk redigeringer",
+      "deny": "Avslå",
+      "invalidJson": "Skriv inn gyldig JSON før du bruker redigeringer."
+    },
+    "diff": {
+      "previewError": "Kunne ikke forhåndsvise notediff",
+      "description": "Agenten ønsker å oppdatere {title}. Gjennomgå gjeldende innhold og kandidatinnhold før du bruker det.",
+      "fallbackTitle": "denne merknaden",
+      "current": "Gjeldende",
+      "candidate": "Kandidat",
+      "loading": "Laster...",
+      "apply": "Søk",
+      "applyEdited": "Bruk redigert"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "Gjeldende merknad",
+      "removeAttachment": "Fjern {label}",
+      "placeholder": "Spør Agent",
+      "send": "Sende",
+      "providerLabel": "Agent-leverandør: {provider}",
+      "modelLabel": "Agent modell: {model}",
+      "settingsLabel": "Agent-innstillinger: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "Egendefinert modell-ID",
+      "customModelPlaceholder": "Egendefinert modell-ID",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "Lokalt"
+      },
+      "models": {
+        "default": "Standard"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "Begrunnelse"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
-          "max": "Max"
+          "low": "Lavt",
+          "medium": "Middels",
+          "high": "Høy",
+          "extraHigh": "Ekstra høy",
+          "extraHighDefault": "Ekstra høy (standard)",
+          "max": "Maks"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "Lavt",
+          "medium": "Middels",
+          "mediumDefault": "Middels (standard)",
+          "high": "Høy",
+          "extraHigh": "Ekstra høy"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "Ingen treff"
+    },
+    "toolResult": {
+      "label": "Verktøyresultat"
+    },
+    "toolCall": {
+      "editedArgs": "Redigerte argumenter",
+      "parameters": "Parametere"
+    },
+    "sidebar": {
+      "label": "Høyre sidefelt",
+      "day": "dag",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# venter på godkjenning} other {# venter på godkjenninger}}",
+      "inProgress": "Agent-tur pågår"
+    },
+    "errors": {
+      "loadConversations": "Kunne ikke laste agentsamtaler",
+      "loadConversation": "Kunne ikke laste agentsamtalen",
+      "createConversation": "Kunne ikke opprette agentsamtale",
+      "busy": "Et annet vindu er midt i svingen for denne samtalen. Vent til den er ferdig eller stopp den derfra.",
+      "sendTurn": "Kunne ikke sende agenttur",
+      "cancelTurn": "Kunne ikke avbryte agentturen",
+      "submitApproval": "Kunne ikke sende inn verktøygodkjenning",
+      "updateTrust": "Kunne ikke oppdatere klarerte verktøy",
+      "saveDisclosure": "Kunne ikke lagre avsløringstilstand",
+      "resolveWindow": "Kunne ikke løse agentkildevinduet",
+      "detectCli": "Kunne ikke oppdage agent-backends",
+      "loadDisclosure": "Kunne ikke laste avsløringstilstand"
     }
   }
 }

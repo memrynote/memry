@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Algo salió mal. Por favor inténtalo de nuevo.",
     "operationFailed": "Operación fallida",
-    "unknown": "Se produjo un error desconocido",
-    "validationFailed": "La validación falló",
-    "actionFailed": "La acción falló"
+    "unknown": "Se produjo un error desconocido"
   },
   "ipc": {
     "noVaultOpen": "No hay ninguna bóveda abierta. Primero abra una bóveda."

@@ -3,47 +3,25 @@
     "save": "I-save",
     "cancel": "Kanselahin",
     "close": "Isara",
-    "ok": "OK",
-    "yes": "Oo",
-    "no": "Hindi",
     "delete": "Tanggalin",
-    "confirm": "Kumpirmahin",
-    "apply": "Mag-apply",
     "done": "Tapos na",
-    "discard": "Itapon",
     "dontSave": "Huwag I-save",
-    "edit": "I-edit",
     "add": "Idagdag",
     "remove": "Alisin",
     "retry": "Subukan muli",
-    "submit": "Isumite",
     "back": "Bumalik",
-    "next": "Susunod",
     "continue": "Magpatuloy",
-    "reset": "I-reset",
     "copy": "Kopyahin",
-    "paste": "Idikit",
-    "create": "Lumikha",
-    "open": "Bukas"
+    "create": "Lumikha"
   },
   "state": {
     "loading": "Naglo-load…",
     "saving": "Sine-save...",
     "deleting": "Tinatanggal…",
-    "searching": "Naghahanap…",
-    "error": "Error",
-    "success": "Tagumpay"
-  },
-  "empty": {
-    "noResults": "Walang resulta",
-    "noItems": "Walang item",
-    "noMatch": "Walang tugma"
+    "searching": "Naghahanap…"
   },
   "action": {
     "search": "Maghanap",
-    "edit": "I-edit",
-    "delete": "Tanggalin",
-    "close": "Isara",
     "expand": "Palawakin",
     "collapse": "I-collapse",
     "showMore": "+{count, plural, one {# pa} other {# pa}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {# item} other {# item}}",
     "note": "{count, plural, one {# tala} other {# na tala}}",
-    "folder": "{count, plural, one {# folder} other {# na mga folder}}",
     "task": "{count, plural, one {# gawain} other {# na mga gawain}}",
-    "project": "{count, plural, one {# proyekto} other {# na mga proyekto}}",
     "itemDelete": "{count, plural, one {Tanggalin ang # item} other {Tanggalin ang # item}}"
   },
   "toast": {
     "actionFailed": "Nabigo ang pagkilos",
     "nothingToUndo": "Walang dapat i-undo",
     "undone": "Na-undo: {description}",
-    "undoFailed": "Nabigong i-undo ang pagkilos",
-    "copied": "Kinopya",
-    "copyFailed": "Nabigong kopyahin"
+    "undoFailed": "Nabigong i-undo ang pagkilos"
   },
   "dateRelative": {
     "today": "Ngayong araw",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {# araw ang nakalipas} other {# araw ang nakalipas}}"
   },
   "recurrence": {
-    "everyDay": "Araw-araw",
     "everyNDays": "{count, plural, one {Araw-araw} other {Tuwing # araw}}",
-    "everyWeek": "Linggo-linggo",
     "everyNWeeks": "{count, plural, one {Linggo-linggo} other {Tuwing # na linggo}}",
-    "everyWeekday": "Tuwing weekday",
     "everyNWeeksOnWeekdays": "{count, plural, one {Tuwing weekday} other {Tuwing # na linggo tuwing karaniwang araw}}",
-    "everyWeekend": "Tuwing katapusan ng linggo",
     "everyNWeeksOnWeekends": "{count, plural, one {Tuwing katapusan ng linggo} other {Tuwing # na linggo tuwing weekend}}",
-    "everyWeekOnDays": "Linggo-linggo sa {days}",
     "everyNWeeksOnDays": "{count, plural, one {Linggo-linggo sa {days}} other {Tuwing # na linggo sa {days}}}",
-    "everyMonth": "Bawat buwan",
     "everyNMonths": "{count, plural, one {Bawat buwan} other {Tuwing # na buwan}}",
-    "everyMonthOnDay": "Bawat buwan sa {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {Bawat buwan sa {day}{suffix}} other {Tuwing # na buwan sa {day}{suffix}}}",
-    "everyMonthOnWeekDay": "Bawat buwan sa {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Bawat buwan sa {week} {day}} other {Tuwing # na buwan sa {week} {day}}}",
-    "everyYear": "Bawat taon",
     "everyNYears": "{count, plural, one {Bawat taon} other {Bawat # taon}}",
     "repeats": "Inuulit"
   },
@@ -264,7 +228,6 @@
       "openTabs": "Buksan ang mga tab",
       "scrollTabsLeft": "Mag-scroll pakaliwa ng mga tab",
       "scrollTabsRight": "I-scroll pakanan ang mga tab",
-      "graphG": "Graph (⌘G)",
       "dayPanel": "Panel ng Araw"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Agent chat",
+    "loading": "Nilo-load ang chat ng ahente...",
+    "conversationLoading": "Naglo-load ang pag-uusap...",
+    "newConversation": "Bagong pag-uusap",
+    "history": "History ng pag-uusap",
+    "stop": "Tumigil ka",
+    "thinking": "Agent ay nag-iisip",
+    "enable": {
+      "title": "Paganahin ang Memry Agent",
+      "description": "Ginagamit ng Memry Agent ang iyong napiling lokal na ahente na CLI upang makipag-chat tungkol sa iyong vault. Ang Claude ay nagpapadala ng mga turn sa Anthropic; Ang Codex ay nagpapadala ng mga turn sa OpenAI.",
+      "remote": "Ine-encrypt ng Memry ang iyong lokal at naka-sync na kasaysayan ng chat, ngunit nangyayari ang hinuha ng modelo sa napiling provider.",
+      "readTools": "Awtomatikong tumatakbo ang mga tool sa pagbabasa.",
+      "writeTools": "Ang paggawa at pag-update ng mga tool ay nangangailangan ng pag-apruba.",
+      "diff": "Ang mga tool sa pag-update ay nagpapakita ng pagkakaiba o preview.",
+      "button": "Paganahin ang Agent chat"
+    },
+    "approval": {
+      "description": "Gustong tawagan ng ahente ang {name} kasama ang mga argumentong ito.",
+      "applyOnce": "Mag-apply nang isang beses",
+      "allowOnce": "Payagan nang isang beses",
+      "editAndApply": "I-edit at ilapat",
+      "editAndAllow": "I-edit at payagan",
+      "allowAlways": "Payagan palagi",
+      "applyEdits": "Ilapat ang mga pag-edit",
+      "deny": "Tanggihan",
+      "invalidJson": "Ipasok ang wastong JSON bago ilapat ang mga pag-edit."
+    },
+    "diff": {
+      "previewError": "Hindi ma-preview ang diff ng tala",
+      "description": "Nais i-update ng ahente ang {title}. Suriin ang kasalukuyan at nilalaman ng kandidato bago ito ilapat.",
+      "fallbackTitle": "ang talang ito",
+      "current": "Kasalukuyan",
+      "candidate": "Kandidato",
+      "loading": "Naglo-load...",
+      "apply": "Mag-apply",
+      "applyEdited": "Ilapat ang na-edit"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "Kasalukuyang tala",
+      "removeAttachment": "Alisin ang {label}",
+      "placeholder": "Tanungin ang Agent",
+      "send": "Ipadala",
+      "providerLabel": "Tagapagbigay ng Agent: {provider}",
+      "modelLabel": "Agent modelo: {model}",
+      "settingsLabel": "Mga setting ng Agent: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "Custom na ID ng modelo",
+      "customModelPlaceholder": "Custom na ID ng modelo",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "Lokal"
+      },
+      "models": {
+        "default": "Paunang setting"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "Pangangatwiran"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
-          "max": "Max"
+          "low": "Mababa",
+          "medium": "Katamtaman",
+          "high": "Mataas",
+          "extraHigh": "Napakataas",
+          "extraHighDefault": "Napakataas (paunang setting)",
+          "max": "Pinakamataas"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "Mababa",
+          "medium": "Katamtaman",
+          "mediumDefault": "Katamtaman (paunang setting)",
+          "high": "Mataas",
+          "extraHigh": "Napakataas"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "Walang tugma"
+    },
+    "toolResult": {
+      "label": "Resulta ng tool"
+    },
+    "toolCall": {
+      "editedArgs": "Mga na-edit na argumento",
+      "parameters": "Mga Parameter"
+    },
+    "sidebar": {
+      "label": "Kanang sidebar",
+      "day": "Araw",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# nakabinbing pag-apruba} other {# nakabinbing pag-apruba}}",
+      "inProgress": "Agent turn sa progreso"
+    },
+    "errors": {
+      "loadConversations": "Hindi ma-load ang mga pag-uusap ng ahente",
+      "loadConversation": "Hindi ma-load ang pag-uusap ng ahente",
+      "createConversation": "Hindi makalikha ng pag-uusap ng ahente",
+      "busy": "Ang isa pang window ay mid-turn para sa pag-uusap na ito. Hintayin itong matapos o itigil ito mula doon.",
+      "sendTurn": "Hindi maipadala ang turn ng ahente",
+      "cancelTurn": "Hindi makansela ang pagliko ng ahente",
+      "submitApproval": "Hindi maisumite ang pag-apruba ng tool",
+      "updateTrust": "Hindi ma-update ang mga pinagkakatiwalaang tool",
+      "saveDisclosure": "Hindi ma-save ang estado ng pagsisiwalat",
+      "resolveWindow": "Hindi malutas ang window ng pinagmulan ng ahente",
+      "detectCli": "Hindi matukoy ang mga backend ng ahente",
+      "loadDisclosure": "Hindi ma-load ang estado ng pagsisiwalat"
     }
   }
 }

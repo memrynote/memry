@@ -38,8 +38,7 @@
     "openNoteFullPage": "Avaa muistiinpano koko sivulta",
     "closeNoteDrawer": "Sulje muistiinpanolaatikko",
     "addBookmark": "Lisää kirjanmerkki",
-    "removeBookmark": "Poista kirjanmerkki",
-    "tryAgain": "Yritä uudelleen"
+    "removeBookmark": "Poista kirjanmerkki"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "Päiväkirja takaisin",
     "journalNavigation": "Lehden navigointi",
     "dateNavigation": "Päivämäärän navigointi",
-    "goToYearView": "Siirry vuosinäkymään",
-    "previousView": "Edellinen näkymä",
-    "nextView": "Seuraava näkymä"
+    "goToYearView": "Siirry vuosinäkymään"
   },
   "aria": {
     "moreOptions": "Lisää vaihtoehtoja",
@@ -184,10 +181,8 @@
     "connectionAria": "Yhteys {label}, {scorePercent} % vastaa"
   },
   "count": {
-    "item": "kohde",
     "items": "kohteita",
     "note": "huomautus",
-    "notes": "muistiinpanoja",
     "day": "päivä",
     "days": "päivää",
     "event": "tapahtuma",

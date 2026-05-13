@@ -14,7 +14,6 @@
       "openLinkedFailed": "연결된 항목을 열지 못했습니다.",
       "localOnly": "메모가 로컬로만 설정됨",
       "willSync": "메모가 클라우드에 동기화됩니다.",
-      "saveFailed": "메모를 저장하지 못했습니다.",
       "renameFailed": "메모 이름을 바꾸지 못했습니다.",
       "toggleLocalOnlyFailed": "로컬로만 전환하지 못했습니다.",
       "toggleFullWidthFailed": "전체 너비를 전환하지 못했습니다."
@@ -135,9 +134,6 @@
       "clearSearch": "검색 지우기"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "메모를 작성하세요..."
-  },
   "outline": {
     "title": "개요",
     "aria": "문서개요",
@@ -149,7 +145,6 @@
     "modified": "수정됨"
   },
   "backlinks": {
-    "title": "백링크",
     "sortRecent": "최근",
     "sortAlpha": "AZ",
     "sortMentions": "가장 많이 언급됨",
