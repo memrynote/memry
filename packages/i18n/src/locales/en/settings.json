@@ -445,6 +445,12 @@
         "action": "Sign Out"
       }
     },
+    "community": {
+      "prompt": "Love Memry?",
+      "star": "Star us on GitHub",
+      "and": "and",
+      "feedback": "share feedback"
+    },
     "signOutDialog": {
       "title": "Sign out of sync?",
       "description": "Sync will stop and encryption keys will be removed from this device. Your notes will remain on this device. You'll need your recovery phrase to set up sync again.",

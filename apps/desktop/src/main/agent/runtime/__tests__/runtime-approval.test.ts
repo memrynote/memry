@@ -166,4 +166,27 @@ describe('AgentRuntime approval gate', () => {
       reason: 'User denied request.'
     })
   })
+
+  it('denies pending approvals and clears the MCP write gate on shutdown', async () => {
+    const { runtime, conversations } = createRuntime('ask')
+    conversations.getById.mockReturnValue({ id: 'conversation-1', trustList: [] })
+
+    runtime.install()
+    const pending = installedGate()({
+      conversationId: 'conversation-1',
+      toolName: 'vault_create_task',
+      parsedArgs: { title: 'Task' }
+    })
+
+    await runtime.killAll()
+
+    const result = await Promise.race([
+      pending,
+      Promise.resolve({ approved: 'still-pending' as const })
+    ])
+
+    expect(result).toEqual({ approved: false, reason: 'User denied request.' })
+    expect(runtime.getPendingApproval('gate-100-i')).toBeNull()
+    expect(mocks.setWriteGate).toHaveBeenLastCalledWith(null)
+  })
 })
