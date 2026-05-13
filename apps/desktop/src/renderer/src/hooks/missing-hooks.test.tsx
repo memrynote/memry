@@ -26,6 +26,7 @@ import { useStorageUsage } from './use-storage-usage'
 import { useThrottledTabSwitch } from './use-throttled-tab-switch'
 import { useTriageQueue } from './use-triage-queue'
 import { useUndoableAction } from './use-undoable-action'
+import { AISettingsProvider } from '@/contexts/ai-settings-context'
 import { getAIConnections } from '@/services/ai-connections-service'
 import { toast } from 'sonner'
 
@@ -183,6 +184,12 @@ function queryWrapper(
 ) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  }
+}
+
+function aiSettingsWrapper() {
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return <AISettingsProvider>{children}</AISettingsProvider>
   }
 }
 
@@ -344,10 +351,64 @@ describe('AI hooks', () => {
     await waitFor(() => expect(result.current.connections).toEqual([{ id: 'c2' }]))
   })
 
+  it('aborts and clears AI connection analysis when AI is disabled', async () => {
+    vi.useFakeTimers()
+    let onSettingsChanged: ((event: { key: string; value: unknown }) => void) | undefined
+    const api = window.api as typeof window.api & {
+      onSettingsChanged: (callback: (event: { key: string; value: unknown }) => void) => () => void
+    }
+    vi.mocked(api.settings.getAISettings).mockResolvedValue({ enabled: true })
+    api.onSettingsChanged = vi.fn((callback) => {
+      onSettingsChanged = callback
+      return mocks.unsubscribe
+    })
+    vi.mocked(getAIConnections).mockImplementation(
+      (_content, signal) =>
+        new Promise((_, reject) => {
+          signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
+        }) as never
+    )
+
+    const { result } = renderHook(() => useAIConnections(longContent('first')), {
+      wrapper: aiSettingsWrapper()
+    })
+
+    await waitFor(() => expect(api.settings.getAISettings).toHaveBeenCalled())
+    await waitFor(() => expect(api.onSettingsChanged).toHaveBeenCalled())
+    act(() => {
+      onSettingsChanged?.({ key: 'ai', value: { enabled: true } })
+    })
+    act(() => {
+      vi.advanceTimersByTime(2500)
+    })
+    await waitFor(() => expect(getAIConnections).toHaveBeenCalled())
+
+    act(() => {
+      onSettingsChanged?.({ key: 'ai', value: { enabled: false } })
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(result.current.connections).toEqual([])
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.error).toBeNull()
+  })
+
   it('initializes AI inline from disabled, healthy, failed, and retry states', async () => {
     const invoke = vi.fn()
     window.electron.ipcRenderer.invoke = invoke
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: true }) as never
+
+    const globallyDisabled = renderHook(() => useAIInline(false))
+    await waitFor(() => expect(globallyDisabled.result.current.loading).toBe(false))
+    expect(globallyDisabled.result.current.port).toBeNull()
+    expect(invoke).toHaveBeenCalledWith('ai-inline:stop-server')
+    expect(invoke).not.toHaveBeenCalledWith('ai-inline:get-settings')
+    expect(invoke).not.toHaveBeenCalledWith('ai-inline:get-server-port')
+    expect(invoke).not.toHaveBeenCalledWith('ai-inline:start-server')
+    globallyDisabled.unmount()
+    invoke.mockClear()
 
     invoke.mockResolvedValueOnce({ enabled: false, provider: 'ollama' })
     const disabled = renderHook(() => useAIInline())

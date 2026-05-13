@@ -18,6 +18,8 @@ new-conversation button and a history menu for switching back to recent conversa
 CLI, Memry checks that `claude` is available on `PATH`, that it reports version `2.1.0` or newer,
 and that the Agent disclosure has been accepted. For local models, configure a compatible server in
 [Settings -> AI Assistant -> Agent Providers](/user-guide/settings#agent-providers) first.
+If the global AI switch is off in [Settings -> AI](/user-guide/settings#ai), the Agent tab and Agent
+MCP current-note bridge are hidden and inactive.
 
 Agent Chat can:
 

@@ -26,6 +26,7 @@ import {
   type InboxListInput
 } from '@/services/inbox-service'
 import { inboxKeys, DEFAULT_PAGE_SIZE, ITEM_STALE_TIME, STATS_STALE_TIME } from './inbox-query-keys'
+import { useAISettingsContext } from '@/contexts/ai-settings-context'
 
 // =============================================================================
 // Types
@@ -278,10 +279,12 @@ export function useInboxTags(): UseQueryResult<Array<{ tag: string; count: numbe
 export function useInboxSuggestions(
   itemId: string | null
 ): UseQueryResult<InboxSuggestionsResponse> {
+  const { enabled: aiEnabled } = useAISettingsContext()
+
   return useQuery({
     queryKey: inboxKeys.suggestions(itemId ?? ''),
     queryFn: () => inboxService.getSuggestions(itemId!),
-    enabled: !!itemId,
+    enabled: aiEnabled && !!itemId,
     staleTime: STATS_STALE_TIME
   })
 }

@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { notesService } from '@/services/notes-service'
+import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import { useT } from '@memry/i18n/renderer'
 
 // ============================================================================
@@ -131,6 +132,7 @@ function MoveToFolderDialogSession({
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [isMoving, setIsMoving] = useState(false)
+  const { enabled: aiEnabled } = useAISettingsContext()
 
   // Refs
   const inputRef = useRef<HTMLInputElement>(null)
@@ -150,10 +152,13 @@ function MoveToFolderDialogSession({
       if (!noteIds[0]) return { suggestions: [] }
       return window.api.folderView.getFolderSuggestions(noteIds[0])
     },
-    enabled: noteIds.length > 0
+    enabled: aiEnabled && noteIds.length > 0
   })
 
-  const suggestions = useMemo(() => suggestionsData?.suggestions ?? [], [suggestionsData])
+  const suggestions = useMemo(
+    () => (aiEnabled ? (suggestionsData?.suggestions ?? []) : []),
+    [aiEnabled, suggestionsData]
+  )
 
   // Build folder items list
   const folderItems = useMemo((): FolderItem[] => {
@@ -339,7 +344,7 @@ function MoveToFolderDialogSession({
         : 'Move to Folder'
       : `Move ${noteIds.length} Notes`
 
-  const isLoading = isLoadingFolders || isLoadingSuggestions
+  const isLoading = isLoadingFolders || (aiEnabled && isLoadingSuggestions)
 
   return (
     <DialogContent className="sm:max-w-md" onKeyDown={handleKeyDown}>
@@ -349,7 +354,7 @@ function MoveToFolderDialogSession({
 
       {/* Search Input */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           ref={inputRef}
           autoFocus
@@ -359,7 +364,7 @@ function MoveToFolderDialogSession({
             setSearchQuery(e.target.value)
             setSelectedIndex(0)
           }}
-          className="pl-9"
+          className="ps-9"
         />
       </div>
 
@@ -393,7 +398,7 @@ function MoveToFolderDialogSession({
                           disabled={isCurrent}
                           onClick={() => void (!isCurrent && handleMove(item.path))}
                           className={cn(
-                            'w-full flex items-center gap-2 px-2 py-2 rounded-md text-left',
+                            'w-full flex items-center gap-2 px-2 py-2 rounded-md text-start',
                             'transition-colors',
                             isSelected && !isCurrent && 'bg-accent',
                             isCurrent && 'opacity-50 cursor-not-allowed',
@@ -442,7 +447,7 @@ function MoveToFolderDialogSession({
                         disabled={isCurrent}
                         onClick={() => void (!isCurrent && handleMove(item.path))}
                         className={cn(
-                          'w-full flex items-center gap-2 px-2 py-2 rounded-md text-left',
+                          'w-full flex items-center gap-2 px-2 py-2 rounded-md text-start',
                           'transition-colors',
                           isSelected && !isCurrent && 'bg-accent',
                           isCurrent && 'opacity-50 cursor-not-allowed',
@@ -481,7 +486,7 @@ function MoveToFolderDialogSession({
                     data-selected={selectedIndex === folderItems.length}
                     onClick={() => void handleCreateAndMove()}
                     className={cn(
-                      'w-full flex items-center gap-2 px-2 py-2 rounded-md text-left',
+                      'w-full flex items-center gap-2 px-2 py-2 rounded-md text-start',
                       'transition-colors text-primary',
                       selectedIndex === folderItems.length && 'bg-accent',
                       selectedIndex !== folderItems.length && 'hover:bg-muted/50'

@@ -15,6 +15,7 @@ import { TagAutocomplete } from '@/components/filing/tag-autocomplete'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { LinkInput } from './link-input'
 import { cn } from '@/lib/utils'
+import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import type { InboxItem, InboxItemListItem, Folder as FolderType, LinkedNote } from '@/types'
 import { createLogger } from '@/lib/logger'
 
@@ -60,6 +61,7 @@ export const FilingSection = ({
   className
 }: FilingSectionProps): React.JSX.Element => {
   const { t } = useT('inbox')
+  const { enabled: aiEnabled } = useAISettingsContext()
   const queryClient = useQueryClient()
   const [showAllFolders, setShowAllFolders] = useState(false)
   const [folderSearch, setFolderSearch] = useState('')
@@ -103,13 +105,13 @@ export const FilingSection = ({
         return []
       }
     },
-    enabled: item !== null && !!item?.id,
+    enabled: aiEnabled && item !== null && !!item?.id,
     staleTime: 30000
   })
 
   // Convert AI suggestions to folder objects with confidence metadata
   const suggestedFolders = useMemo((): SuggestedFolder[] => {
-    if (aiSuggestions.length > 0) {
+    if (aiEnabled && aiSuggestions.length > 0) {
       return aiSuggestions
         .filter((s) => s.destination.type === 'folder' && s.destination.path)
         .slice(0, 3)
@@ -127,9 +129,10 @@ export const FilingSection = ({
         })
     }
     return vaultFolders.slice(0, 3).map((f) => ({ ...f }))
-  }, [aiSuggestions, vaultFolders, t])
+  }, [aiEnabled, aiSuggestions, vaultFolders, t])
 
   const noteSuggestions = useMemo(() => {
+    if (!aiEnabled) return []
     return aiSuggestions
       .filter((s) => s.destination.type === 'note' && s.suggestedNote)
       .slice(0, 3)
@@ -138,14 +141,15 @@ export const FilingSection = ({
         confidence: s.confidence,
         reason: s.reason
       }))
-  }, [aiSuggestions])
+  }, [aiEnabled, aiSuggestions])
 
   const aiSuggestedTags = useMemo(() => {
+    if (!aiEnabled) return []
     if (aiSuggestions.length === 0) return []
     return aiSuggestions.flatMap((s) => s.suggestedTags || []).filter(Boolean)
-  }, [aiSuggestions])
+  }, [aiEnabled, aiSuggestions])
 
-  const hasAISuggestions = aiSuggestions.length > 0
+  const hasAISuggestions = aiEnabled && aiSuggestions.length > 0
 
   // Track whether auto-selection already fired for this item
   const didAutoSelectFolder = useRef(false)
@@ -346,7 +350,7 @@ export const FilingSection = ({
                             setShowAllFolders(false)
                           }}
                           className={cn(
-                            'flex items-center gap-2 rounded-sm py-1.5 px-3 mx-1 text-left transition-colors',
+                            'flex items-center gap-2 rounded-sm py-1.5 px-3 mx-1 text-start transition-colors',
                             isSelected ? 'bg-[var(--tint)]/[0.05]' : 'hover:bg-foreground/[0.03]'
                           )}
                         >
@@ -380,7 +384,7 @@ export const FilingSection = ({
                     <button
                       onClick={() => void handleCreateFolder()}
                       disabled={isCreatingFolder}
-                      className="flex items-center gap-2 py-1.5 px-3 mx-1 text-left transition-colors hover:bg-[var(--tint)]/[0.06] rounded-sm disabled:opacity-50"
+                      className="flex items-center gap-2 py-1.5 px-3 mx-1 text-start transition-colors hover:bg-[var(--tint)]/[0.06] rounded-sm disabled:opacity-50"
                     >
                       {isCreatingFolder ? (
                         <Loader2 className="size-3.5 shrink-0 text-[var(--tint)] animate-spin" />
@@ -407,7 +411,7 @@ export const FilingSection = ({
                             setShowAllFolders(false)
                           }}
                           className={cn(
-                            'flex items-center gap-2 rounded-sm py-1.5 px-3 mx-1 text-left transition-colors',
+                            'flex items-center gap-2 rounded-sm py-1.5 px-3 mx-1 text-start transition-colors',
                             isSelected ? 'bg-foreground/[0.03]' : 'hover:bg-foreground/[0.03]'
                           )}
                         >
@@ -469,7 +473,7 @@ export const FilingSection = ({
                 <button
                   key={suggestion.note.id}
                   onClick={() => handleLinkSuggestedNote(suggestion.note)}
-                  className="w-full flex items-center gap-2 rounded-md px-3 py-2.5 text-left transition-colors border border-dashed"
+                  className="w-full flex items-center gap-2 rounded-md px-3 py-2.5 text-start transition-colors border border-dashed"
                   style={{
                     backgroundColor: `color-mix(in srgb, var(--tint) ${Math.round(bgOpacity * 100)}%, transparent)`,
                     borderColor: isLinked

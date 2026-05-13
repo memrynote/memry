@@ -27,8 +27,12 @@ function resolveDesktopApiOperation(operation: string): (...args: unknown[]) => 
   return target as (...args: unknown[]) => unknown
 }
 
-export function useAgentMcpDesktopApiResponder(): void {
+export function useAgentMcpDesktopApiResponder({
+  enabled = true
+}: { enabled?: boolean } = {}): void {
   useEffect(() => {
+    if (!enabled) return
+
     return window.api.onMainInvoke(async ({ requestId, channel, payload }) => {
       if (channel !== AgentMcpDesktopApiChannel) return
 
@@ -60,5 +64,5 @@ export function useAgentMcpDesktopApiResponder(): void {
         window.api.respondToMainInvoke(requestId, response)
       }
     })
-  }, [])
+  }, [enabled])
 }

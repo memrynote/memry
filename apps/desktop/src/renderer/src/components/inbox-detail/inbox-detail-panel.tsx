@@ -24,6 +24,7 @@ import { ContentSection, ContentSkeleton } from './content-section'
 import { DetailHeader } from './detail-header'
 import { NoteDetail } from './note-detail'
 import { FilingSection, useFilingState } from './filing-section'
+import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import { useRetryTranscription, useUpdateInboxItem } from '@/hooks/use-inbox'
 import { isMac, isInputFocused } from '@/hooks/use-keyboard-shortcuts'
 import type { InboxItem, InboxItemListItem, Folder } from '@/types'
@@ -66,6 +67,7 @@ export const InboxDetailPanel = ({
   onDelete
 }: InboxDetailPanelProps): React.JSX.Element => {
   const { t } = useT('inbox')
+  const { enabled: aiEnabled } = useAISettingsContext()
   const { isOpen: isDayPanelOpen, width: dayPanelWidth } = useDayPanel()
   const queryClient = useQueryClient()
 
@@ -91,13 +93,13 @@ export const InboxDetailPanel = ({
         return []
       }
     },
-    enabled: isOpen && !!item?.id,
+    enabled: aiEnabled && isOpen && !!item?.id,
     staleTime: 30000
   })
 
   // Get suggested folders for number shortcuts
   const suggestedFoldersForShortcut = useMemo(() => {
-    if (aiSuggestions.length > 0) {
+    if (aiEnabled && aiSuggestions.length > 0) {
       return aiSuggestions
         .filter((s) => s.destination.type === 'folder' && s.destination.path)
         .slice(0, 5)
@@ -111,7 +113,7 @@ export const InboxDetailPanel = ({
         })
     }
     return []
-  }, [aiSuggestions, t])
+  }, [aiEnabled, aiSuggestions, t])
 
   // Loading state for filing
   const [isFilingLoading, setIsFilingLoading] = useState(false)
@@ -168,7 +170,7 @@ export const InboxDetailPanel = ({
     setIsFilingLoading(true)
 
     // Track suggestion feedback if AI suggestions were available
-    if (aiSuggestions.length > 0) {
+    if (aiEnabled && aiSuggestions.length > 0) {
       const topSuggestion = aiSuggestions[0]
       const suggestedPath = topSuggestion?.destination?.path || ''
 
@@ -199,7 +201,7 @@ export const InboxDetailPanel = ({
 
     setIsFilingLoading(false)
     onClose()
-  }, [selectedFolder, item, tags, linkedNotes, aiSuggestions, onFile, onClose])
+  }, [selectedFolder, item, tags, linkedNotes, aiEnabled, aiSuggestions, onFile, onClose])
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -342,7 +344,7 @@ export const InboxDetailPanel = ({
       data-testid="inbox-detail-panel"
       data-state={isOpen ? 'open' : 'closed'}
       className={cn(
-        'fixed top-[37px] bottom-0 z-10 border-l bg-surface overflow-hidden',
+        'fixed top-[37px] bottom-0 z-10 border-s bg-surface overflow-hidden',
         'transition-[width,opacity,right] duration-200 ease-out',
         isOpen ? 'w-[380px] opacity-100 border-border' : 'w-0 opacity-0 border-transparent'
       )}
@@ -470,7 +472,7 @@ export const InboxDetailPanel = ({
                     onClick={() => item && onRestore?.(item.id)}
                     className="flex-1 text-muted-foreground border-border"
                   >
-                    <RotateCcw className="size-4 mr-1.5" aria-hidden="true" />
+                    <RotateCcw className="size-4 me-1.5" aria-hidden="true" />
                     {t('detail.restore')}
                   </Button>
                   <Button
@@ -478,7 +480,7 @@ export const InboxDetailPanel = ({
                     onClick={() => item && onDelete?.(item.id)}
                     className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10"
                   >
-                    <Trash2 className="size-4 mr-1.5" aria-hidden="true" />
+                    <Trash2 className="size-4 me-1.5" aria-hidden="true" />
                     {t('detail.delete')}
                   </Button>
                 </div>
@@ -488,7 +490,7 @@ export const InboxDetailPanel = ({
                   onClick={handleArchive}
                   className="w-full text-muted-foreground border-border"
                 >
-                  <Archive className="size-4 mr-1.5" aria-hidden="true" />
+                  <Archive className="size-4 me-1.5" aria-hidden="true" />
                   {t('detail.archive')}
                 </Button>
               ) : (
@@ -499,7 +501,7 @@ export const InboxDetailPanel = ({
                       onClick={handleArchive}
                       className="flex-1 text-muted-foreground border-border"
                     >
-                      <Archive className="size-4 mr-1.5" aria-hidden="true" />
+                      <Archive className="size-4 me-1.5" aria-hidden="true" />
                       {t('detail.archive')}
                     </Button>
                     <Button
@@ -508,12 +510,12 @@ export const InboxDetailPanel = ({
                       className="flex-1 bg-tint hover:bg-tint-hover text-tint-foreground border-0"
                     >
                       {isFilingLoading ? (
-                        <Loader2 className="size-4 animate-spin mr-1.5" aria-hidden="true" />
+                        <Loader2 className="size-4 animate-spin me-1.5" aria-hidden="true" />
                       ) : (
-                        <Check className="size-4 mr-1.5" aria-hidden="true" />
+                        <Check className="size-4 me-1.5" aria-hidden="true" />
                       )}
                       {t('detail.file')}
-                      <kbd className="ml-2 text-[11px] opacity-60">{modifierKeyDisplay}⏎</kbd>
+                      <kbd className="ms-2 text-[11px] opacity-60">{modifierKeyDisplay}⏎</kbd>
                     </Button>
                   </div>
                   <p className="text-[10px] text-muted-foreground/50 text-center w-full">

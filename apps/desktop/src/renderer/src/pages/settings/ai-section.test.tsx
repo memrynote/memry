@@ -48,7 +48,7 @@ describe('AISettings', () => {
     voiceCallbacks = []
 
     api = createMockApi() as SettingsApi
-    api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: false })
+    api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: true })
     api.settings.setAISettings = vi.fn().mockResolvedValue({ success: true })
     api.settings.getAIModelStatus = vi
       .fn()
@@ -104,14 +104,17 @@ describe('AISettings', () => {
   })
 
   it('loads settings, toggles AI, loads the embedding model, and rebuilds embeddings', async () => {
+    api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: false })
     render(<AISettings />)
 
     expect(screen.getByText('Loading settings...')).toBeInTheDocument()
-    await waitFor(() => expect(screen.getByText('Local Embedding Model')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Enable AI Features')).toBeInTheDocument())
+    expect(screen.queryByText('Local Embedding Model')).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('switch'))
     expect(api.settings.setAISettings).toHaveBeenCalledWith({ enabled: true })
     expect(toast.success).toHaveBeenCalledWith('AI features enabled')
+    await waitFor(() => expect(screen.getByText('Local Embedding Model')).toBeInTheDocument())
 
     await userEvent.click(screen.getByRole('button', { name: 'Download & Load Model' }))
     expect(api.settings.loadAIModel).toHaveBeenCalled()
