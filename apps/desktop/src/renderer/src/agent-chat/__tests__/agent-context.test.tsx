@@ -123,6 +123,64 @@ describe('agentReducer', () => {
     expect(next.messagesByConversation[conversation.id]).toEqual([assistant])
   })
 
+  it('stores loaded messages without activating the conversation', () => {
+    const existingConversation: Conversation = {
+      ...conversation,
+      id: 'conversation-existing',
+      title: 'Existing chat'
+    }
+    const loadedConversation: Conversation = {
+      ...conversation,
+      id: 'conversation-loaded',
+      title: 'Loaded chat'
+    }
+    const assistant = message({
+      id: 'message-1',
+      conversationId: loadedConversation.id,
+      role: 'assistant',
+      text: 'Loaded',
+      status: 'completed'
+    })
+    const state: AgentState = {
+      ...initialAgentState,
+      activeConversationId: existingConversation.id,
+      conversations: { [existingConversation.id]: existingConversation },
+      messagesByConversation: { [existingConversation.id]: [] }
+    }
+
+    const next = agentReducer(state, {
+      type: 'set_conversation_messages',
+      conversation: loadedConversation,
+      messages: [assistant]
+    })
+
+    expect(next.activeConversationId).toBe(existingConversation.id)
+    expect(next.conversations[loadedConversation.id]).toEqual(loadedConversation)
+    expect(next.messagesByConversation[loadedConversation.id]).toEqual([assistant])
+  })
+
+  it('clears the active conversation without dropping cached conversations or messages', () => {
+    const assistant = message({
+      id: 'message-1',
+      conversationId: conversation.id,
+      role: 'assistant',
+      text: 'Cached',
+      status: 'completed'
+    })
+    const state: AgentState = {
+      ...initialAgentState,
+      activeConversationId: conversation.id,
+      conversations: { [conversation.id]: conversation },
+      messagesByConversation: { [conversation.id]: [assistant] }
+    }
+
+    const next = agentReducer(state, { type: 'clear_active_conversation' })
+
+    expect(next.activeConversationId).toBeNull()
+    expect(next.conversations[conversation.id]).toEqual(conversation)
+    expect(next.messagesByConversation[conversation.id]).toEqual([assistant])
+  })
+
   it('appends assistant text deltas to an existing streaming message', () => {
     const state: AgentState = {
       ...initialAgentState,

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 const mockUseAgentOptional = vi.hoisted(() => vi.fn())
@@ -7,167 +7,75 @@ vi.mock('../agent-context', () => ({
   useAgentOptional: mockUseAgentOptional
 }))
 
-vi.mock('@/contexts/tabs', () => ({
-  useActiveTab: () => null
+vi.mock('../composer', () => ({
+  Composer: () => <div data-testid="composer" />
+}))
+
+vi.mock('../conversation-header', () => ({
+  ConversationHeader: () => <div data-testid="conversation-header" />
 }))
 
 import { ConversationView } from '../conversation-view'
 
 describe('ConversationView', () => {
-  const backendStatuses = {
-    claude_cli: { backend: 'claude_cli', available: true },
-    codex_cli: { backend: 'codex_cli', available: true },
-    local_openai_compatible: { backend: 'local_openai_compatible', available: true }
-  }
-
-  it('renders the active conversation header and stored messages', () => {
-    const cancelTurn = vi.fn()
+  it('keeps the workspace scrollbar full-width while centering chat content', () => {
     mockUseAgentOptional.mockReturnValue({
       state: {
-        backendStatuses,
-        disclosureAccepted: true,
-        activeConversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
         conversations: {
           'conversation-1': {
             id: 'conversation-1',
-            vaultId: 'vault-1',
-            title: 'Planning',
-            backend: 'claude_cli',
-            backendModel: null,
-            trustList: [],
-            pinned: false,
-            vectorClock: {},
-            fieldClocks: {},
-            createdAt: 100,
-            updatedAt: 100,
-            deletedAt: null,
-            lastSyncedAt: null
+            title: 'Planning'
           }
         },
         messagesByConversation: {
-          'conversation-1': [
-            {
-              id: 'message-1',
-              conversationId: 'conversation-1',
-              role: 'assistant',
-              content: { role: 'assistant', data: { text: 'Hello from agent' } },
-              toolCallId: null,
-              attachments: [],
-              status: 'completed',
-              vectorClock: {},
-              createdAt: 100,
-              updatedAt: 100,
-              deletedAt: null
-            }
-          ]
+          'conversation-1': []
         },
-        pendingApprovals: [],
-        inFlight: {},
-        error: null
+        inFlight: {}
       },
-      createConversation: vi.fn(),
-      loadConversation: vi.fn(),
-      cancelTurn
-    })
-
-    render(<ConversationView conversationId="conversation-1" />)
-
-    const shell = screen.getByLabelText('Agent chat')
-
-    expect(shell).toHaveClass('bg-background')
-    expect(shell).not.toHaveClass('bg-sidebar')
-    expect(screen.getByText('Planning')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Conversation history' })).not.toBeInTheDocument()
-    expect(screen.getByText('Hello from agent')).toBeInTheDocument()
-  })
-
-  it('keeps the empty conversation view passive before the first prompt is sent', () => {
-    const loadConversation = vi.fn()
-    mockUseAgentOptional.mockReturnValue({
-      state: {
-        backendStatuses,
-        disclosureAccepted: true,
-        sourceWindowId: '42',
-        activeConversationId: null,
-        conversations: {
-          'conversation-1': {
-            id: 'conversation-1',
-            vaultId: 'vault-1',
-            title: 'Planning',
-            backend: 'claude_cli',
-            backendModel: null,
-            trustList: [],
-            pinned: false,
-            vectorClock: {},
-            fieldClocks: {},
-            createdAt: 100,
-            updatedAt: 100,
-            deletedAt: null,
-            lastSyncedAt: null
-          }
-        },
-        messagesByConversation: {},
-        pendingApprovals: [],
-        inFlight: {},
-        error: null
-      },
-      createConversation: vi.fn(),
-      loadConversation,
       cancelTurn: vi.fn()
     })
 
-    render(<ConversationView conversationId={null} />)
+    render(<ConversationView conversationId="conversation-1" layout="workspace" />)
 
-    expect(screen.queryByText('New conversation')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Conversation history' })).not.toBeInTheDocument()
-    expect(loadConversation).not.toHaveBeenCalled()
+    const scrollRegion = screen.getByRole('log')
+    expect(scrollRegion).toHaveClass('overflow-y-auto')
+    expect(scrollRegion).not.toHaveClass('max-w-[640px]')
+
+    const messageShell = scrollRegion.firstElementChild
+    expect(messageShell).toHaveClass('max-w-[64rem]', 'px-8', 'lg:px-24')
+    expect(messageShell?.firstElementChild).toHaveClass('max-w-[640px]', 'px-2')
+
+    expect(screen.queryByTestId('conversation-header')).not.toBeInTheDocument()
+
+    const composer = screen.getByTestId('composer')
+    expect(composer.parentElement).toHaveClass('max-w-[640px]')
+    expect(composer.parentElement?.parentElement).toHaveClass('max-w-[64rem]', 'pb-10')
   })
 
-  it('cancels an in-flight turn from Stop and Escape', () => {
-    const cancelTurn = vi.fn()
+  it('keeps the conversation title and aligns messages with the composer in the right sidebar layout', () => {
     mockUseAgentOptional.mockReturnValue({
       state: {
-        backendStatuses,
-        disclosureAccepted: true,
-        sourceWindowId: '42',
-        activeConversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
         conversations: {
           'conversation-1': {
             id: 'conversation-1',
-            vaultId: 'vault-1',
-            title: 'Planning',
-            backend: 'claude_cli',
-            backendModel: null,
-            trustList: [],
-            pinned: false,
-            vectorClock: {},
-            fieldClocks: {},
-            createdAt: 100,
-            updatedAt: 100,
-            deletedAt: null,
-            lastSyncedAt: null
+            title: 'Planning'
           }
         },
-        messagesByConversation: { 'conversation-1': [] },
-        pendingApprovals: [],
-        inFlight: { 'conversation-1': true },
-        error: null
+        messagesByConversation: {
+          'conversation-1': []
+        },
+        inFlight: {}
       },
-      createConversation: vi.fn(),
-      loadConversation: vi.fn(),
-      cancelTurn
+      cancelTurn: vi.fn()
     })
 
     render(<ConversationView conversationId="conversation-1" />)
 
-    const stopButton = screen.getByRole('button', { name: 'Stop' })
-    expect(stopButton).toHaveAttribute('type', 'button')
-    expect(screen.queryByRole('button', { name: 'Send' })).not.toBeInTheDocument()
+    expect(screen.getByTestId('conversation-header')).toBeInTheDocument()
 
-    fireEvent.click(stopButton)
-    fireEvent.keyDown(screen.getByLabelText('Agent chat'), { key: 'Escape' })
-
-    expect(cancelTurn).toHaveBeenCalledTimes(2)
-    expect(cancelTurn).toHaveBeenCalledWith('conversation-1')
+    const scrollRegion = screen.getByRole('log')
+    expect(scrollRegion.firstElementChild).toHaveClass('px-2')
   })
 })

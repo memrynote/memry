@@ -337,6 +337,7 @@
     "conversationLoading": "Розмова завантажується...",
     "newConversation": "Нова розмова",
     "history": "Історія розмов",
+    "openInTab": "Відкрити розмову у вкладці",
     "stop": "Стоп",
     "thinking": "Agent думає",
     "enable": {

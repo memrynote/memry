@@ -337,6 +337,7 @@
     "conversationLoading": "Konversationen laddas...",
     "newConversation": "Ny konversation",
     "history": "Konversationshistorik",
+    "openInTab": "Öppna konversation i flik",
     "stop": "Stopp",
     "thinking": "Agent tänker",
     "enable": {

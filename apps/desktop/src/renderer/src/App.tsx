@@ -67,6 +67,7 @@ import { getFilteredTasks } from '@/lib/task-utils'
 import { useAgentMcpCurrentNoteResponder } from '@/agent-mcp/current-note-handler'
 import { useAgentMcpDesktopApiResponder } from '@/agent-mcp/desktop-api-handler'
 import { AgentProvider } from '@/agent-chat/agent-context'
+import { AgentTabTitleSync } from '@/agent-chat/agent-tab-title-sync'
 
 const log = createLogger('App')
 const startupTheme = getStartupTheme()
@@ -282,6 +283,7 @@ const AppContent = (): React.JSX.Element => {
 
   return (
     <TabDragProvider>
+      <AgentTabTitleSync />
       <div className="flex flex-1 overflow-hidden bg-background" id="main-content">
         <SplitViewContainer />
       </div>
