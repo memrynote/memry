@@ -35,38 +35,6 @@
     "delete": "Hapus tugas",
     "created": "Membuat {date}"
   },
-  "project": {
-    "create": "Buat Proyek",
-    "edit": "Sunting Proyek",
-    "delete": "Hapus Proyek",
-    "iconAndName": "Ikon & Nama",
-    "namePlaceholder": "Nama proyek",
-    "select": "Pilih proyek",
-    "selectIcon": "Pilih ikon",
-    "clickIconToChange": "Klik ikon untuk mengubah",
-    "color": "Warna",
-    "descriptionOptional": "Deskripsi (opsional)",
-    "descriptionPlaceholder": "Deskripsi singkat tentang proyek ini…",
-    "statuses": "Status",
-    "statusesHelp": "Konfigurasikan tahapan alur kerja untuk proyek ini.",
-    "createDescription": "Buat proyek baru dengan nama, ikon, warna, dan status alur kerja.",
-    "editDescription": "Edit nama proyek, ikon, warna, dan status alur kerja."
-  },
-  "status": {
-    "select": "Pilih status",
-    "todo": "Yang Harus Dilakukan",
-    "inProgress": "Sedang Berlangsung",
-    "done": "Selesai"
-  },
-  "priority": {
-    "select": "Pilih prioritas",
-    "none": "Tidak Ada Prioritas",
-    "noneShort": "Tidak ada",
-    "low": "Rendah",
-    "medium": "Sedang",
-    "high": "Tinggi",
-    "urgent": "Mendesak"
-  },
   "filters": {
     "filter": "Menyaring",
     "emptyTitle": "Tidak ada tugas yang cocok dengan filter Anda",
@@ -113,14 +81,12 @@
     "filterApplied": "Menerapkan \"{name}\"",
     "deleted": "Tugas dihapus",
     "deletedSeries": "Seri selesai!",
-    "deletedNext": "Kejadian selanjutnya",
     "completed": "Tugas selesai!",
     "archived": "Tugas diarsipkan",
     "undoNotAvailableForDelete": "Urungkan tidak tersedia untuk dihapus",
     "alreadyAllComplete": "Semua tugas yang dipilih sudah selesai",
     "noCompletedSelected": "Tidak ada tugas selesai yang dipilih",
     "completeFailed": "Gagal menyelesaikan tugas",
-    "reopenFailed": "Gagal membuka kembali tugas",
     "deleteFailed": "Gagal menghapus tugas",
     "moveFailed": "Gagal memindahkan tugas"
   },

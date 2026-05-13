@@ -38,8 +38,7 @@
     "openNoteFullPage": "Deschideți nota pe toată pagina",
     "closeNoteDrawer": "Închideți sertarul de note",
     "addBookmark": "Adăugați marcaj",
-    "removeBookmark": "Eliminați marcajul",
-    "tryAgain": "Încercați din nou"
+    "removeBookmark": "Eliminați marcajul"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "Jurnal înapoi",
     "journalNavigation": "Navigare în jurnal",
     "dateNavigation": "Navigare prin data jurnalului",
-    "goToYearView": "Accesați vizualizarea anului",
-    "previousView": "Vedere anterioară",
-    "nextView": "Următoarea vizualizare"
+    "goToYearView": "Accesați vizualizarea anului"
   },
   "aria": {
     "moreOptions": "Mai multe opțiuni",
@@ -184,10 +181,8 @@
     "connectionAria": "Conexiune la {label}, {scorePercent}% potrivire"
   },
   "count": {
-    "item": "articol",
     "items": "articole",
     "note": "notă",
-    "notes": "note",
     "day": "zi",
     "days": "zile",
     "event": "eveniment",

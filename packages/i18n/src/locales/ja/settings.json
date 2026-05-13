@@ -25,9 +25,7 @@
         "integrations": "統合",
         "vault": "保管庫",
         "tags": "タグ",
-        "properties": "プロパティ",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "プロパティ"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "注意事項",
         "attachments": "添付ファイル",
         "crdt": "CRDT",
-        "other": "その他",
-        "available": "利用可能"
+        "other": "その他"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "承認待ち",
       "waitingDescription": "他のデバイスで Memry を開き、リンク要求を承認します。",
       "verificationCode": "認証コード",
-      "confirmCode": "これが他のデバイスのコードと一致することを確認します",
-      "cancel": "キャンセル"
+      "confirmCode": "これが他のデバイスのコードと一致することを確認します"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "回復キー",
     "description": "このキーは安全に保管してください。すべてのデバイスにアクセスできなくなった場合でも、保管庫を復元できます。",
-    "loading": "読み込み中...",
     "retrieveFailed": "回復キーの取得に失敗しました",
     "copied": "回復キーがクリップボードにコピーされました",
     "copyFailed": "クリップボードへのコピーに失敗しました",
     "clickToReveal": "クリックして表示",
     "hide": "隠す",
     "reveal": "明らかにする",
-    "copy": "コピー",
     "sessionHint": "このキーはセッションごとに 1 回表示されます。メモリからダイアログを消去するには、このダイアログを閉じます。"
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Googleカレンダーに接続できませんでした",
       "refreshFailed": "Google カレンダーを更新できませんでした",
       "disconnectFailed": "Google カレンダーの接続を解除できませんでした",
-      "selectionFailed": "カレンダーの選択を更新できませんでした",
       "retryFailed": "カレンダー同期の再試行に失敗しました"
     },
     "sourcePicker": {

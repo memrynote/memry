@@ -38,8 +38,7 @@
     "openNoteFullPage": "Notiz ganzseitig öffnen",
     "closeNoteDrawer": "Notizschublade schließen",
     "addBookmark": "Lesezeichen hinzufügen",
-    "removeBookmark": "Lesezeichen entfernen",
-    "tryAgain": "Versuchen Sie es erneut"
+    "removeBookmark": "Lesezeichen entfernen"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "Tagebuch zurück",
     "journalNavigation": "Journalnavigation",
     "dateNavigation": "Navigation nach Journaldatum",
-    "goToYearView": "Gehen Sie zur Jahresansicht",
-    "previousView": "Vorherige Ansicht",
-    "nextView": "Nächste Ansicht"
+    "goToYearView": "Gehen Sie zur Jahresansicht"
   },
   "aria": {
     "moreOptions": "Weitere Optionen",
@@ -184,10 +181,8 @@
     "connectionAria": "Verbindung zu {label}, {scorePercent} % Übereinstimmung"
   },
   "count": {
-    "item": "Artikel",
     "items": "Artikel",
     "note": "Hinweis",
-    "notes": "Notizen",
     "day": "Tag",
     "days": "Tage",
     "event": "Ereignis",

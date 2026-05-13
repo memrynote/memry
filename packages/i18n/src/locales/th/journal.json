@@ -38,8 +38,7 @@
     "openNoteFullPage": "เปิดบันทึกในหน้าเต็ม",
     "closeNoteDrawer": "ปิดแถบบันทึก",
     "addBookmark": "เพิ่มบุ๊กมาร์ก",
-    "removeBookmark": "ลบบุ๊กมาร์ก",
-    "tryAgain": "ลองอีกครั้ง"
+    "removeBookmark": "ลบบุ๊กมาร์ก"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "กลับไปที่สมุดบันทึก",
     "journalNavigation": "การนำทางสมุดบันทึก",
     "dateNavigation": "การนำทางวันที่ในสมุดบันทึก",
-    "goToYearView": "ไปยังมุมมองรายปี",
-    "previousView": "มุมมองก่อนหน้า",
-    "nextView": "มุมมองถัดไป"
+    "goToYearView": "ไปยังมุมมองรายปี"
   },
   "aria": {
     "moreOptions": "ตัวเลือกเพิ่มเติม",
@@ -184,10 +181,8 @@
     "connectionAria": "การเชื่อมต่อกับ {label}, {scorePercent}% ตรงกัน"
   },
   "count": {
-    "item": "  \nรายการ  ",
     "items": "รายการ",
     "note": "บันทึก",
-    "notes": "โน้ต",
     "day": "วัน",
     "days": "วัน",
     "event": "เหตุการณ์",

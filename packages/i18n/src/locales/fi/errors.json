@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Jotain meni pieleen. Yritä uudelleen.",
     "operationFailed": "Toiminto epäonnistui",
-    "unknown": "Tapahtui tuntematon virhe",
-    "validationFailed": "Vahvistus epäonnistui",
-    "actionFailed": "Toiminto epäonnistui"
+    "unknown": "Tapahtui tuntematon virhe"
   },
   "ipc": {
     "noVaultOpen": "Mikään holvi ei ole auki. Avaa ensin holvi."

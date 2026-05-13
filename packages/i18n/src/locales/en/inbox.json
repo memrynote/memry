@@ -43,9 +43,7 @@
     "pdfs": "PDFs",
     "social": "Social",
     "reminder": "Reminder",
-    "reminders": "Reminders",
-    "text": "Text",
-    "other": "Other"
+    "reminders": "Reminders"
   },
   "empty": {
     "successAria": "Success, inbox is empty",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "No matching archived items",
     "noItemsYet": "No items yet",
     "noItemsFiled": "No items filed yet",
-    "noItemTypes": "No item types to display",
     "noFolders": "No folders found",
-    "noFolderMatch": "No folders match \"{query}\"",
     "noNotes": "No notes found",
     "allMatchesLinked": "All matches already linked"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Transcription failed",
     "retryTranscription": "Retry",
     "pageCount": "{count, plural, one {# page} other {# pages}}",
-    "snoozedUntilShort": "snoozed til {date}",
-    "capturedAgo": "Captured {time}"
+    "snoozedUntilShort": "snoozed til {date}"
   },
   "loading": {
     "inbox": "Loading inbox...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Quick actions",
     "archiveItem": "Archive item",
-    "archive": "Archive",
-    "snooze": "Snooze"
+    "archive": "Archive"
   },
   "detail": {
     "ariaLabel": "Item details",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Search notes to link",
     "linkedNotesAria": "Linked notes",
     "removeLinkTo": "Remove link to {title}",
-    "contentEditorAria": "Content editor",
     "notePlaceholder": "Write your note...",
     "textPlaceholder": "Edit your captured text..."
   },
@@ -263,14 +256,9 @@
     "custom": "Custom..."
   },
   "insights": {
-    "loading": "Loading insights...",
     "captureActivity": "Capture Activity",
     "byType": "By Type",
-    "itemTypes": "Item Types",
-    "itemTypesDescription": "Distribution of content formats",
     "recentFilings": "Recent Filings",
-    "recentlyFiled": "Recently Filed",
-    "recentlyFiledDescription": "Latest actions on your inbox",
     "captured": "Captured",
     "capturedThisWeek": "+{count} this week",
     "processed": "Processed",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {# capture} other {# captures}}",
     "peak": "Peak: {day} {start}–{end}",
     "convertedToTask": "Converted to task",
-    "linked": "Linked",
     "now": "now",
     "timeAgoMinutes": "{count}m ago",
     "timeAgoHours": "{count}h ago",

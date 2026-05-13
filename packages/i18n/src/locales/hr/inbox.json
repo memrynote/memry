@@ -43,9 +43,7 @@
     "pdfs": "PDF datoteke",
     "social": "Društveni",
     "reminder": "Podsjetnik",
-    "reminders": "Podsjetnici",
-    "text": "Tekst",
-    "other": "ostalo"
+    "reminders": "Podsjetnici"
   },
   "empty": {
     "successAria": "Uspjeh, inbox je prazan",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "Nema odgovarajućih arhiviranih stavki",
     "noItemsYet": "Još nema stavki",
     "noItemsFiled": "Još nije zavedena nijedna stavka",
-    "noItemTypes": "Nema vrsta stavki za prikaz",
     "noFolders": "Nema pronađenih mapa",
-    "noFolderMatch": "Nijedna mapa ne odgovara \"{query}\"",
     "noNotes": "Nisu pronađene bilješke",
     "allMatchesLinked": "Sve utakmice su već povezane"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Transkripcija nije uspjela",
     "retryTranscription": "Pokušaj ponovo",
     "pageCount": "{count, plural, one {# stranica} other {# stranice}}",
-    "snoozedUntilShort": "odgođeno do {date}",
-    "capturedAgo": "Uhvaćen {time}"
+    "snoozedUntilShort": "odgođeno do {date}"
   },
   "loading": {
     "inbox": "Učitavanje pristigle pošte...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Brze akcije",
     "archiveItem": "Arhivska stavka",
-    "archive": "Arhiva",
-    "snooze": "Odgoditi"
+    "archive": "Arhiva"
   },
   "detail": {
     "ariaLabel": "Detalji stavke",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Pretražite bilješke za povezivanje",
     "linkedNotesAria": "Povezane bilješke",
     "removeLinkTo": "Ukloni vezu na {title}",
-    "contentEditorAria": "Urednik sadržaja",
     "notePlaceholder": "Napišite svoju bilješku...",
     "textPlaceholder": "Uredite svoj snimljeni tekst..."
   },
@@ -263,14 +256,9 @@
     "custom": "Prilagođeno..."
   },
   "insights": {
-    "loading": "Učitavanje uvida...",
     "captureActivity": "Snimi aktivnost",
     "byType": "Po vrsti",
-    "itemTypes": "Vrste predmeta",
-    "itemTypesDescription": "Distribucija formata sadržaja",
     "recentFilings": "Nedavne prijave",
-    "recentlyFiled": "Nedavno podneseno",
-    "recentlyFiledDescription": "Najnovije akcije u vašem sandučiću",
     "captured": "Zarobljen",
     "capturedThisWeek": "+{count} ovaj tjedan",
     "processed": "Obrađeno",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {# snimanje} other {# snima}}",
     "peak": "Vrhunac: {day} {start}–{end}",
     "convertedToTask": "Pretvoreno u zadatak",
-    "linked": "Povezano",
     "now": "sada",
     "timeAgoMinutes": "{count}m prije",
     "timeAgoHours": "Prije {count}h",

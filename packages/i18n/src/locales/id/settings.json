@@ -25,9 +25,7 @@
         "integrations": "Integrasi",
         "vault": "Gudang",
         "tags": "Tag",
-        "properties": "Properti",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Properti"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Catatan",
         "attachments": "Lampiran",
         "crdt": "CRDT",
-        "other": "Lainnya",
-        "available": "Tersedia"
+        "other": "Lainnya"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "Menunggu persetujuan",
       "waitingDescription": "Buka Memry di perangkat Anda yang lain dan setujui permintaan penautan.",
       "verificationCode": "Kode verifikasi",
-      "confirmCode": "Konfirmasikan ini cocok dengan kode di perangkat Anda yang lain",
-      "cancel": "Batalkan"
+      "confirmCode": "Konfirmasikan ini cocok dengan kode di perangkat Anda yang lain"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Kunci Pemulihan",
     "description": "Simpan kunci ini dengan aman. Itu dapat memulihkan brankas Anda jika Anda kehilangan akses ke semua perangkat.",
-    "loading": "Memuat...",
     "retrieveFailed": "Gagal mengambil kunci pemulihan",
     "copied": "Kunci pemulihan disalin ke papan klip",
     "copyFailed": "Gagal menyalin ke papan klip",
     "clickToReveal": "Klik untuk mengungkapkan",
     "hide": "Sembunyikan",
     "reveal": "Mengungkapkan",
-    "copy": "Salin",
     "sessionHint": "Kunci ini ditampilkan sekali per sesi. Tutup dialog ini untuk menghapusnya dari memori."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Gagal menghubungkan Google Kalender",
       "refreshFailed": "Gagal menyegarkan Google Kalender",
       "disconnectFailed": "Gagal memutuskan sambungan Google Kalender",
-      "selectionFailed": "Gagal memperbarui pilihan kalender",
       "retryFailed": "Gagal mencoba lagi sinkronisasi kalender"
     },
     "sourcePicker": {

@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Noe gikk galt. Vennligst prøv igjen.",
     "operationFailed": "Operasjonen mislyktes",
-    "unknown": "Det oppstod en ukjent feil",
-    "validationFailed": "Validering mislyktes",
-    "actionFailed": "Handlingen mislyktes"
+    "unknown": "Det oppstod en ukjent feil"
   },
   "ipc": {
     "noVaultOpen": "Ingen hvelv er åpen. Vennligst åpne et hvelv først."

@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Något gick fel. Försök igen.",
     "operationFailed": "Operationen misslyckades",
-    "unknown": "Ett okänt fel uppstod",
-    "validationFailed": "Validering misslyckades",
-    "actionFailed": "Åtgärden misslyckades"
+    "unknown": "Ett okänt fel uppstod"
   },
   "ipc": {
     "noVaultOpen": "Inget valv är öppet. Vänligen öppna ett valv först."

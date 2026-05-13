@@ -35,38 +35,6 @@
     "delete": "Aufgabe löschen",
     "created": "{date} erstellt"
   },
-  "project": {
-    "create": "Projekt erstellen",
-    "edit": "Projekt bearbeiten",
-    "delete": "Projekt löschen",
-    "iconAndName": "Symbol und Name",
-    "namePlaceholder": "Projektname",
-    "select": "Projekt auswählen",
-    "selectIcon": "Symbol auswählen",
-    "clickIconToChange": "Klicken Sie zum Ändern auf das Symbol",
-    "color": "Farbe",
-    "descriptionOptional": "Beschreibung (optional)",
-    "descriptionPlaceholder": "Kurze Beschreibung dieses Projekts…",
-    "statuses": "Status",
-    "statusesHelp": "Konfigurieren Sie die Workflow-Phasen für dieses Projekt.",
-    "createDescription": "Erstellen Sie ein neues Projekt mit Namen, Symbol, Farbe und Workflow-Status.",
-    "editDescription": "Bearbeiten Sie den Projektnamen, das Symbol, die Farbe und den Workflow-Status."
-  },
-  "status": {
-    "select": "Status auswählen",
-    "todo": "Zu tun",
-    "inProgress": "In Bearbeitung",
-    "done": "Fertig"
-  },
-  "priority": {
-    "select": "Wählen Sie Priorität aus",
-    "none": "Keine Priorität",
-    "noneShort": "Keine",
-    "low": "Niedrig",
-    "medium": "Mittel",
-    "high": "Hoch",
-    "urgent": "Dringend"
-  },
   "filters": {
     "filter": "Filtern",
     "emptyTitle": "Keine Aufgabe entspricht Ihren Filtern",
@@ -113,14 +81,12 @@
     "filterApplied": "Angewendet „{name}“",
     "deleted": "Aufgabe gelöscht",
     "deletedSeries": "Serie komplett!",
-    "deletedNext": "Nächstes Ereignis",
     "completed": "Aufgabe erledigt!",
     "archived": "Aufgabe archiviert",
     "undoNotAvailableForDelete": "Rückgängig zum Löschen nicht verfügbar",
     "alreadyAllComplete": "Alle ausgewählten Aufgaben sind bereits abgeschlossen",
     "noCompletedSelected": "Keine abgeschlossenen Aufgaben ausgewählt",
     "completeFailed": "Aufgaben konnten nicht abgeschlossen werden",
-    "reopenFailed": "Aufgaben konnten nicht erneut geöffnet werden",
     "deleteFailed": "Aufgaben konnten nicht gelöscht werden",
     "moveFailed": "Aufgaben konnten nicht verschoben werden"
   },

@@ -3,47 +3,25 @@
     "save": "Uložit",
     "cancel": "Zrušit",
     "close": "Zavřít",
-    "ok": "OK",
-    "yes": "Ano",
-    "no": "Ne",
     "delete": "Smazat",
-    "confirm": "Potvrďte",
-    "apply": "Použít",
     "done": "Hotovo",
-    "discard": "Zahodit",
     "dontSave": "Neukládat",
-    "edit": "Upravit",
     "add": "Přidat",
     "remove": "Odebrat",
     "retry": "Zkuste to znovu",
-    "submit": "Odeslat",
     "back": "Zpět",
-    "next": "Další",
     "continue": "Pokračovat",
-    "reset": "Resetovat",
     "copy": "Kopírovat",
-    "paste": "Vložit",
-    "create": "Vytvořit",
-    "open": "Otevřít"
+    "create": "Vytvořit"
   },
   "state": {
     "loading": "Načítání…",
     "saving": "Ukládání…",
     "deleting": "Mazání…",
-    "searching": "Vyhledávání…",
-    "error": "Chyba",
-    "success": "Úspěch"
-  },
-  "empty": {
-    "noResults": "Žádné výsledky",
-    "noItems": "Žádné položky",
-    "noMatch": "Žádné zápasy"
+    "searching": "Vyhledávání…"
   },
   "action": {
     "search": "Hledat",
-    "edit": "Upravit",
-    "delete": "Smazat",
-    "close": "Zavřít",
     "expand": "Rozbalit",
     "collapse": "kolaps",
     "showMore": "+{count, plural, one {# více} other {# více}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {položka #} other {položky #}}",
     "note": "{count, plural, one {# pozn} other {Poznámky #}}",
-    "folder": "{count, plural, one {složka #} other {složky #}}",
     "task": "{count, plural, one {Úkol #} other {Úkoly #}}",
-    "project": "{count, plural, one {Projekt #} other {Projekty #}}",
     "itemDelete": "{count, plural, one {Smazat položku #} other {Smazat položky #}}"
   },
   "toast": {
     "actionFailed": "Akce se nezdařila",
     "nothingToUndo": "Není co vrátit",
     "undone": "Vráceno: {description}",
-    "undoFailed": "Akci se nepodařilo vrátit zpět",
-    "copied": "Zkopírováno",
-    "copyFailed": "Kopírování se nezdařilo"
+    "undoFailed": "Akci se nepodařilo vrátit zpět"
   },
   "dateRelative": {
     "today": "dnes",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {Před # dnem} other {Před # dny}}"
   },
   "recurrence": {
-    "everyDay": "Každý den",
     "everyNDays": "{count, plural, one {Každý den} other {Každých # dní}}",
-    "everyWeek": "Každý týden",
     "everyNWeeks": "{count, plural, one {Každý týden} other {Každých # týdnů}}",
-    "everyWeekday": "Každý všední den",
     "everyNWeeksOnWeekdays": "{count, plural, one {Každý všední den} other {Každých # týdnů ve všední dny}}",
-    "everyWeekend": "Každý víkend",
     "everyNWeeksOnWeekends": "{count, plural, one {Každý víkend} other {Každých # týdnů o víkendech}}",
-    "everyWeekOnDays": "Každý týden na {days}",
     "everyNWeeksOnDays": "{count, plural, one {Každý týden na {days}} other {Každých # týdnů na {days}}}",
-    "everyMonth": "Každý měsíc",
     "everyNMonths": "{count, plural, one {Každý měsíc} other {Každých # měsíců}}",
-    "everyMonthOnDay": "Každý měsíc na {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {Každý měsíc na {day}{suffix}} other {Každých # měsíců na {day}{suffix}}}",
-    "everyMonthOnWeekDay": "Každý měsíc na {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Každý měsíc na {week} {day}} other {Každých # měsíců na {week} {day}}}",
-    "everyYear": "Každý rok",
     "everyNYears": "{count, plural, one {Každý rok} other {Každých # let}}",
     "repeats": "Opakuje se"
   },
@@ -264,7 +228,6 @@
       "openTabs": "Otevřít karty",
       "scrollTabsLeft": "Posuňte karty doleva",
       "scrollTabsRight": "Posuňte karty doprava",
-      "graphG": "Graf (⌘G)",
       "dayPanel": "Denní panel"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Chat Agent",
+    "loading": "Načítání chatu agenta...",
+    "conversationLoading": "Načítání konverzace...",
+    "newConversation": "Nová konverzace",
+    "history": "Historie konverzace",
+    "stop": "Zastávka",
+    "thinking": "Agent přemýšlí",
+    "enable": {
+      "title": "Povolit Memry Agent",
+      "description": "Memry Agent používá vašeho vybraného místního agenta CLI k chatování o vašem trezoru. Claude posílá obraty na Anthropic; Codex posílá obraty na OpenAI.",
+      "remote": "Memry šifruje vaši místní a synchronizovanou historii chatu, ale odvození modelu se děje s vybraným poskytovatelem.",
+      "readTools": "Nástroje pro čtení se spouštějí automaticky.",
+      "writeTools": "Nástroje pro vytváření a aktualizaci vyžadují schválení.",
+      "diff": "Aktualizační nástroje zobrazují rozdíl nebo náhled.",
+      "button": "Povolit chat Agent"
+    },
+    "approval": {
+      "description": "Agent chce volat {name} s těmito argumenty.",
+      "applyOnce": "Použít jednou",
+      "allowOnce": "Povolit jednou",
+      "editAndApply": "Upravit a použít",
+      "editAndAllow": "Upravit a povolit",
+      "allowAlways": "Vždy povolit",
+      "applyEdits": "Použít úpravy",
+      "deny": "Odmítnout",
+      "invalidJson": "Před použitím úprav zadejte platné JSON."
+    },
+    "diff": {
+      "previewError": "Nelze zobrazit náhled rozdílu poznámky",
+      "description": "Agent chce aktualizovat {title}. Před použitím zkontrolujte aktuální a kandidátský obsah.",
+      "fallbackTitle": "tuto poznámku",
+      "current": "Aktuální",
+      "candidate": "Kandidát",
+      "loading": "Načítání...",
+      "apply": "Použít",
+      "applyEdited": "Použít upraveno"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "Aktuální poznámka",
+      "removeAttachment": "Odebrat {label}",
+      "placeholder": "Zeptejte se Agent",
+      "send": "Odeslat",
+      "providerLabel": "Poskytovatel Agent: {provider}",
+      "modelLabel": "Model Agent: {model}",
+      "settingsLabel": "Nastavení Agent: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "ID vlastního modelu",
+      "customModelPlaceholder": "ID vlastního modelu",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "Místní"
+      },
+      "models": {
+        "default": "Výchozí"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "Zdůvodnění"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
+          "low": "Nízká",
+          "medium": "Střední",
+          "high": "Vysoká",
+          "extraHigh": "Extra vysoká",
+          "extraHighDefault": "Extra vysoká (výchozí)",
           "max": "Max"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "Nízká",
+          "medium": "Střední",
+          "mediumDefault": "Střední (výchozí)",
+          "high": "Vysoká",
+          "extraHigh": "Extra vysoká"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "Žádné shody"
+    },
+    "toolResult": {
+      "label": "Výsledek nástroje"
+    },
+    "toolCall": {
+      "editedArgs": "Upravené argumenty",
+      "parameters": "Parametry"
+    },
+    "sidebar": {
+      "label": "Pravý postranní panel",
+      "day": "Den",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# čeká na schválení} other {# čekající na schválení}}",
+      "inProgress": "Probíhá kolo Agent"
+    },
+    "errors": {
+      "loadConversations": "Nelze načíst konverzace agenta",
+      "loadConversation": "Konverzaci agenta nelze načíst",
+      "createConversation": "Nelze vytvořit konverzaci agenta",
+      "busy": "V polovině kola této konverzace je další okno. Počkejte, až skončí, nebo jej zastavte.",
+      "sendTurn": "Nelze odeslat tah agenta",
+      "cancelTurn": "Nelze zrušit tah agenta",
+      "submitApproval": "Nelze odeslat schválení nástroje",
+      "updateTrust": "Nelze aktualizovat důvěryhodné nástroje",
+      "saveDisclosure": "Stav odhalení nelze uložit",
+      "resolveWindow": "Nelze vyřešit okno zdroje agenta",
+      "detectCli": "Nepodařilo se zjistit backendy agenta",
+      "loadDisclosure": "Nelze načíst stav odhalení"
     }
   }
 }

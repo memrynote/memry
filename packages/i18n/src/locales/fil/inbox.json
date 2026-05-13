@@ -43,9 +43,7 @@
     "pdfs": "mga PDF",
     "social": "Sosyal",
     "reminder": "Paalala",
-    "reminders": "Mga paalala",
-    "text": "Text",
-    "other": "Iba pa"
+    "reminders": "Mga paalala"
   },
   "empty": {
     "successAria": "Tagumpay, walang laman ang inbox",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "Walang tumutugmang mga naka-archive na item",
     "noItemsYet": "Wala pang mga item",
     "noItemsFiled": "Wala pang na-file na item",
-    "noItemTypes": "Walang mga uri ng item na ipapakita",
     "noFolders": "Walang nakitang mga folder",
-    "noFolderMatch": "Walang mga folder na tumutugma sa \"{query}\"",
     "noNotes": "Walang nakitang tala",
     "allMatchesLinked": "Naka-link na ang lahat ng laban"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Nabigo ang transkripsyon",
     "retryTranscription": "Subukan muli",
     "pageCount": "{count, plural, one {# page} other {# na mga pahina}}",
-    "snoozedUntilShort": "naka-snooze hanggang {date}",
-    "capturedAgo": "Nakuha ang {time}"
+    "snoozedUntilShort": "naka-snooze hanggang {date}"
   },
   "loading": {
     "inbox": "Nilo-load ang inbox...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Mabilis na pagkilos",
     "archiveItem": "I-archive ang item",
-    "archive": "Archive",
-    "snooze": "I-snooze"
+    "archive": "Archive"
   },
   "detail": {
     "ariaLabel": "Mga detalye ng item",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Maghanap ng mga tala upang i-link",
     "linkedNotesAria": "Mga naka-link na tala",
     "removeLinkTo": "Alisin ang link sa {title}",
-    "contentEditorAria": "Editor ng nilalaman",
     "notePlaceholder": "Isulat ang iyong tala...",
     "textPlaceholder": "I-edit ang iyong nakunan na text..."
   },
@@ -263,14 +256,9 @@
     "custom": "Custom..."
   },
   "insights": {
-    "loading": "Naglo-load ng mga insight...",
     "captureActivity": "Aktibidad sa Pagkuha",
     "byType": "Ayon sa Uri",
-    "itemTypes": "Mga Uri ng Item",
-    "itemTypesDescription": "Pamamahagi ng mga format ng nilalaman",
     "recentFilings": "Mga Kamakailang Pag-file",
-    "recentlyFiled": "Kamakailang Na-file",
-    "recentlyFiledDescription": "Mga pinakabagong aksyon sa iyong inbox",
     "captured": "Nakunan",
     "capturedThisWeek": "+{count} ngayong linggo",
     "processed": "Naproseso",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {Pagkuha ng #} other {Mga kinukunan ng #}}",
     "peak": "Tuktok: {day} {start}–{end}",
     "convertedToTask": "Na-convert sa gawain",
-    "linked": "Naka-link",
     "now": "ngayon",
     "timeAgoMinutes": "{count}m ang nakalipas",
     "timeAgoHours": "{count}h ang nakalipas",

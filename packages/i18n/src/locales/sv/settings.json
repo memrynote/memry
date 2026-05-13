@@ -25,9 +25,7 @@
         "integrations": "Integrationer",
         "vault": "Valv",
         "tags": "Taggar",
-        "properties": "Egenskaper",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Egenskaper"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Anteckningar",
         "attachments": "Bilagor",
         "crdt": "CRDT",
-        "other": "Annat",
-        "available": "Tillgänglig"
+        "other": "Annat"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "Väntar på godkännande",
       "waitingDescription": "Öppna Memry på din andra enhet och godkänn länkförfrågan.",
       "verificationCode": "Verifieringskod",
-      "confirmCode": "Bekräfta att detta matchar koden på din andra enhet",
-      "cancel": "Avbryt"
+      "confirmCode": "Bekräfta att detta matchar koden på din andra enhet"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Återställningsnyckel",
     "description": "Lagra denna nyckel säkert. Den kan återställa ditt valv om du förlorar tillgången till alla enheter.",
-    "loading": "Laddar...",
     "retrieveFailed": "Misslyckades med att hämta återställningsnyckel",
     "copied": "Återställningsnyckel kopierad till urklipp",
     "copyFailed": "Misslyckades med att kopiera till urklipp",
     "clickToReveal": "Klicka för att visa",
     "hide": "Dölj",
     "reveal": "Visa",
-    "copy": "Kopiera",
     "sessionHint": "Denna nyckel visas en gång per session. Stäng denna dialog för att rensa den från minnet."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Misslyckades med att ansluta Google Kalender",
       "refreshFailed": "Misslyckades med att uppdatera Google Kalender",
       "disconnectFailed": "Misslyckades med att koppla från Google Kalender",
-      "selectionFailed": "Misslyckades med att uppdatera kalenderurval",
       "retryFailed": "Misslyckades med att försöka igen med kalendersynk"
     },
     "sourcePicker": {

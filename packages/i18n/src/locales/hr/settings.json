@@ -25,9 +25,7 @@
         "integrations": "Integracije",
         "vault": "Trezor",
         "tags": "oznake",
-        "properties": "Svojstva",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Svojstva"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Bilješke",
         "attachments": "Prilozi",
         "crdt": "CRDT",
-        "other": "ostalo",
-        "available": "na raspolaganju"
+        "other": "ostalo"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "Čeka se odobrenje",
       "waitingDescription": "Otvorite Memry na svom drugom uređaju i odobrite zahtjev za povezivanje.",
       "verificationCode": "Kontrolni kod",
-      "confirmCode": "Provjerite odgovara li kod na vašem drugom uređaju",
-      "cancel": "Odustani"
+      "confirmCode": "Provjerite odgovara li kod na vašem drugom uređaju"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Ključ za oporavak",
     "description": "Čuvajte ovaj ključ na sigurnom mjestu. Može vratiti vaš trezor ako izgubite pristup svim uređajima.",
-    "loading": "Učitavanje...",
     "retrieveFailed": "Dohvaćanje ključa za oporavak nije uspjelo",
     "copied": "Ključ za oporavak kopiran je u međuspremnik",
     "copyFailed": "Kopiranje u međuspremnik nije uspjelo",
     "clickToReveal": "Kliknite za otkrivanje",
     "hide": "Sakrij se",
     "reveal": "otkriti",
-    "copy": "Kopiraj",
     "sessionHint": "Ovaj ključ se prikazuje jednom po sesiji. Zatvorite ovaj dijaloški okvir da biste ga izbrisali iz memorije."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Povezivanje Google kalendara nije uspjelo",
       "refreshFailed": "Osvježavanje Google kalendara nije uspjelo",
       "disconnectFailed": "Odspajanje Google kalendara nije uspjelo",
-      "selectionFailed": "Ažuriranje odabira kalendara nije uspjelo",
       "retryFailed": "Ponovni pokušaj sinkronizacije kalendara nije uspio"
     },
     "sourcePicker": {

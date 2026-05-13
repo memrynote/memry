@@ -43,9 +43,7 @@
     "pdfs": "PDF",
     "social": "sosial",
     "reminder": "Peringatan",
-    "reminders": "Peringatan",
-    "text": "Teks",
-    "other": "Lain-lain"
+    "reminders": "Peringatan"
   },
   "empty": {
     "successAria": "Berjaya, peti masuk kosong",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "Tiada item arkib yang sepadan",
     "noItemsYet": "Tiada item lagi",
     "noItemsFiled": "Tiada item difailkan lagi",
-    "noItemTypes": "Tiada jenis item untuk dipaparkan",
     "noFolders": "Tiada folder ditemui",
-    "noFolderMatch": "Tiada folder yang sepadan dengan \"{query}\"",
     "noNotes": "Tiada nota ditemui",
     "allMatchesLinked": "Semua perlawanan sudah dikaitkan"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Transkripsi gagal",
     "retryTranscription": "Cuba semula",
     "pageCount": "{count, plural, one {halaman #} other {# muka surat}}",
-    "snoozedUntilShort": "ditunda sehingga {date}",
-    "capturedAgo": "Ditangkap {time}"
+    "snoozedUntilShort": "ditunda sehingga {date}"
   },
   "loading": {
     "inbox": "Memuatkan peti masuk...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Tindakan pantas",
     "archiveItem": "Item arkib",
-    "archive": "Arkib",
-    "snooze": "Tunda"
+    "archive": "Arkib"
   },
   "detail": {
     "ariaLabel": "Butiran item",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Cari nota untuk dipautkan",
     "linkedNotesAria": "Nota terpaut",
     "removeLinkTo": "Alih keluar pautan ke {title}",
-    "contentEditorAria": "Penyunting kandungan",
     "notePlaceholder": "Tulis nota anda...",
     "textPlaceholder": "Edit teks tangkapan anda..."
   },
@@ -263,14 +256,9 @@
     "custom": "tersuai..."
   },
   "insights": {
-    "loading": "Memuatkan cerapan...",
     "captureActivity": "Aktiviti Tangkap",
     "byType": "Mengikut Jenis",
-    "itemTypes": "Jenis Barang",
-    "itemTypesDescription": "Pengedaran format kandungan",
     "recentFilings": "Pemfailan Terkini",
-    "recentlyFiled": "Difailkan Baru-baru ini",
-    "recentlyFiledDescription": "Tindakan terkini pada peti masuk anda",
     "captured": "Ditangkap",
     "capturedThisWeek": "+{count} minggu ini",
     "processed": "Diproses",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {Tangkapan #} other {# menangkap}}",
     "peak": "Puncak: {day} {start}–{end}",
     "convertedToTask": "Ditukar kepada tugasan",
-    "linked": "Dipautkan",
     "now": "sekarang",
     "timeAgoMinutes": "{count}m yang lalu",
     "timeAgoHours": "{count}h yang lalu",

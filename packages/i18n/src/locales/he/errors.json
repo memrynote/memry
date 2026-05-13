@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "משהו השתבש. אנא נסה שוב.",
     "operationFailed": "הפעולה נכשלה",
-    "unknown": "אירעה שגיאה לא ידועה",
-    "validationFailed": "האימות נכשל",
-    "actionFailed": "הפעולה נכשלה"
+    "unknown": "אירעה שגיאה לא ידועה"
   },
   "ipc": {
     "noVaultOpen": "שום כספת לא פתוחה. נא לפתוח כספת תחילה."

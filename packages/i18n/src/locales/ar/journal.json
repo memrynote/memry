@@ -38,8 +38,7 @@
     "openNoteFullPage": "افتح الملاحظة في صفحة كاملة",
     "closeNoteDrawer": "أغلق درج الملاحظات",
     "addBookmark": "إضافة إشارة مرجعية",
-    "removeBookmark": "إزالة الإشارة المرجعية",
-    "tryAgain": "حاول مرة أخرى"
+    "removeBookmark": "إزالة الإشارة المرجعية"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "مجلة العودة",
     "journalNavigation": "التنقل في المجلة",
     "dateNavigation": "الملاحة تاريخ المجلة",
-    "goToYearView": "انتقل إلى عرض السنة",
-    "previousView": "العرض السابق",
-    "nextView": "العرض التالي"
+    "goToYearView": "انتقل إلى عرض السنة"
   },
   "aria": {
     "moreOptions": "المزيد من الخيارات",
@@ -184,10 +181,8 @@
     "connectionAria": "الاتصال بـ {label}، تطابق {scorePercent}%"
   },
   "count": {
-    "item": "البند",
     "items": "العناصر",
     "note": "ملاحظة",
-    "notes": "ملاحظات",
     "day": "يوم",
     "days": "أيام",
     "event": "حدث",

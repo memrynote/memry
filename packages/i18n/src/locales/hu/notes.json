@@ -14,7 +14,6 @@
       "openLinkedFailed": "Nem sikerült megnyitni a hivatkozott elemet",
       "localOnly": "Megjegyzés csak helyire van állítva",
       "willSync": "A jegyzet szinkronizálódik a felhőbe",
-      "saveFailed": "Nem sikerült menteni a jegyzetet",
       "renameFailed": "A jegyzet átnevezése nem sikerült",
       "toggleLocalOnlyFailed": "Nem sikerült a csak helyi váltás váltása",
       "toggleFullWidthFailed": "Nem sikerült váltani a teljes szélességben"
@@ -135,9 +134,6 @@
       "clearSearch": "Keresés törlése"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "Írd meg a jegyzetedet..."
-  },
   "outline": {
     "title": "Vázlat",
     "aria": "Dokumentum vázlat",
@@ -149,7 +145,6 @@
     "modified": "Módosítva"
   },
   "backlinks": {
-    "title": "Visszamutató linkek",
     "sortRecent": "Legutóbbi",
     "sortAlpha": "A-Z",
     "sortMentions": "A legtöbb említés",

@@ -25,9 +25,7 @@
         "integrations": "Integrations",
         "vault": "Vault",
         "tags": "Tags",
-        "properties": "Properties",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Properties"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Notes",
         "attachments": "Attachments",
         "crdt": "CRDT",
-        "other": "Other",
-        "available": "Available"
+        "other": "Other"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "Waiting for approval",
       "waitingDescription": "Open Memry on your other device and approve the linking request.",
       "verificationCode": "Verification code",
-      "confirmCode": "Confirm this matches the code on your other device",
-      "cancel": "Cancel"
+      "confirmCode": "Confirm this matches the code on your other device"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Recovery Key",
     "description": "Store this key securely. It can restore your vault if you lose access to all devices.",
-    "loading": "Loading...",
     "retrieveFailed": "Failed to retrieve recovery key",
     "copied": "Recovery key copied to clipboard",
     "copyFailed": "Failed to copy to clipboard",
     "clickToReveal": "Click to reveal",
     "hide": "Hide",
     "reveal": "Reveal",
-    "copy": "Copy",
     "sessionHint": "This key is shown once per session. Close this dialog to clear it from memory."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Failed to connect Google Calendar",
       "refreshFailed": "Failed to refresh Google Calendar",
       "disconnectFailed": "Failed to disconnect Google Calendar",
-      "selectionFailed": "Failed to update calendar selection",
       "retryFailed": "Failed to retry calendar sync"
     },
     "sourcePicker": {

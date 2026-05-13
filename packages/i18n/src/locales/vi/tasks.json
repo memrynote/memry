@@ -35,38 +35,6 @@
     "delete": "Xóa công việc",
     "created": "Được tạo {date}"
   },
-  "project": {
-    "create": "Tạo dự án",
-    "edit": "Chỉnh sửa dự án",
-    "delete": "Xóa Dự Án",
-    "iconAndName": "Biểu tượng & Tên",
-    "namePlaceholder": "Tên dự án",
-    "select": "Chọn dự án",
-    "selectIcon": "Chọn biểu tượng",
-    "clickIconToChange": "Nhấn vào biểu tượng để thay đổi",
-    "color": "Màu sắc",
-    "descriptionOptional": "Mô tả (tùy chọn)",
-    "descriptionPlaceholder": "Mô tả ngắn gọn về dự án này…",
-    "statuses": "Trạng thái",
-    "statusesHelp": "Cấu hình các giai đoạn quy trình cho dự án này.",
-    "createDescription": "Tạo một dự án mới với tên, biểu tượng, màu sắc và các trạng thái quy trình.",
-    "editDescription": "Chỉnh sửa tên dự án, biểu tượng, màu sắc và các trạng thái quy trình."
-  },
-  "status": {
-    "select": "Chọn trạng thái",
-    "todo": "Cần làm",
-    "inProgress": "Đang tiến hành",
-    "done": "Hoàn tất"
-  },
-  "priority": {
-    "select": "Chọn mức ưu tiên",
-    "none": "Không ưu tiên",
-    "noneShort": "Không có",
-    "low": "Thấp",
-    "medium": " Trung bình ",
-    "high": " Cao ",
-    "urgent": " Khẩn cấp "
-  },
   "filters": {
     "filter": "  \nBộ lọc  ",
     "emptyTitle": "Không có nhiệm vụ nào phù hợp với bộ lọc của bạn",
@@ -113,14 +81,12 @@
     "filterApplied": "Đã áp dụng \"{name}\"",
     "deleted": "  \nTác vụ đã bị xóa  ",
     "deletedSeries": "Chuỗi hoàn tất!",
-    "deletedNext": "Sự kiện tiếp theo",
     "completed": "Nhiệm vụ hoàn thành!",
     "archived": "Nhiệm vụ đã được lưu trữ",
     "undoNotAvailableForDelete": "Hoàn tác không khả dụng cho xóa",
     "alreadyAllComplete": "Tất cả các nhiệm vụ đã chọn đều đã hoàn thành",
     "noCompletedSelected": "Không có nhiệm vụ hoàn thành nào được chọn",
     "completeFailed": "Không thể hoàn thành các nhiệm vụ",
-    "reopenFailed": "Không thể mở lại các nhiệm vụ",
     "deleteFailed": "Không thể xóa các nhiệm vụ",
     "moveFailed": "Không thể di chuyển các nhiệm vụ"
   },

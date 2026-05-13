@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Nešto nije u redu. Molimo pokušajte ponovo.",
     "operationFailed": "Operacija nije uspjela",
-    "unknown": "Došlo je do nepoznate pogreške",
-    "validationFailed": "Validacija nije uspjela",
-    "actionFailed": "Radnja nije uspjela"
+    "unknown": "Došlo je do nepoznate pogreške"
   },
   "ipc": {
     "noVaultOpen": "Nijedan trezor nije otvoren. Prvo otvorite trezor."

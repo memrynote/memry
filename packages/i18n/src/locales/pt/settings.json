@@ -25,9 +25,7 @@
         "integrations": "Integrações",
         "vault": "Cofre",
         "tags": "Etiquetas",
-        "properties": "Propriedades",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Propriedades"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Notas",
         "attachments": "Anexos",
         "crdt": "CRDT",
-        "other": "Outro",
-        "available": "Disponível"
+        "other": "Outro"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "Aguardando aprovação",
       "waitingDescription": "Abra Memry em seu outro dispositivo e aprove a solicitação de vinculação.",
       "verificationCode": "Código de verificação",
-      "confirmCode": "Confirme se este corresponde ao código no seu outro dispositivo",
-      "cancel": "Cancelar"
+      "confirmCode": "Confirme se este corresponde ao código no seu outro dispositivo"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Chave de recuperação",
     "description": "Armazene esta chave com segurança. Ele pode restaurar seu cofre se você perder o acesso a todos os dispositivos.",
-    "loading": "Carregando...",
     "retrieveFailed": "Falha ao recuperar a chave de recuperação",
     "copied": "Chave de recuperação copiada para a área de transferência",
     "copyFailed": "Falha ao copiar para a área de transferência",
     "clickToReveal": "Clique para revelar",
     "hide": "Esconder",
     "reveal": "Revelar",
-    "copy": "Copiar",
     "sessionHint": "Esta chave é mostrada uma vez por sessão. Feche esta caixa de diálogo para limpá-la da memória."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Falha ao conectar o Google Agenda",
       "refreshFailed": "Falha ao atualizar o Google Agenda",
       "disconnectFailed": "Falha ao desconectar o Google Agenda",
-      "selectionFailed": "Falha ao atualizar a seleção do calendário",
       "retryFailed": "Falha ao tentar novamente a sincronização do calendário"
     },
     "sourcePicker": {

@@ -3,47 +3,25 @@
     "save": "Simpan",
     "cancel": "Batalkan",
     "close": "Tutup",
-    "ok": "Oke",
-    "yes": "Ya",
-    "no": "Tidak",
     "delete": "Hapus",
-    "confirm": "Konfirmasikan",
-    "apply": "Terapkan",
     "done": "Selesai",
-    "discard": "Buang",
     "dontSave": "Jangan Simpan",
-    "edit": "Sunting",
     "add": "Tambahkan",
     "remove": "Hapus",
     "retry": "Coba lagi",
-    "submit": "Kirim",
     "back": "Kembali",
-    "next": "Selanjutnya",
     "continue": "Lanjutkan",
-    "reset": "Setel ulang",
     "copy": "Salin",
-    "paste": "Tempel",
-    "create": "Buat",
-    "open": "Buka"
+    "create": "Buat"
   },
   "state": {
     "loading": "Memuat…",
     "saving": "Menyimpan…",
     "deleting": "Menghapus…",
-    "searching": "Mencari…",
-    "error": "Kesalahan",
-    "success": "Sukses"
-  },
-  "empty": {
-    "noResults": "Tidak ada hasil",
-    "noItems": "Tidak ada item",
-    "noMatch": "Tidak ada kecocokan"
+    "searching": "Mencari…"
   },
   "action": {
     "search": "Cari",
-    "edit": "Sunting",
-    "delete": "Hapus",
-    "close": "Tutup",
     "expand": "Perluas",
     "collapse": "Runtuh",
     "showMore": "+{count, plural, one {# lebih banyak} other {# lebih banyak}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {Barang #} other {Barang #}}",
     "note": "{count, plural, one {Catatan #} other {Catatan #}}",
-    "folder": "{count, plural, one {folder #} other {folder #}}",
     "task": "{count, plural, one {Tugas #} other {Tugas #}}",
-    "project": "{count, plural, one {Proyek #} other {Proyek #}}",
     "itemDelete": "{count, plural, one {Hapus item #} other {Hapus item #}}"
   },
   "toast": {
     "actionFailed": "Tindakan gagal",
     "nothingToUndo": "Tidak ada yang perlu dibatalkan",
     "undone": "Dibatalkan: {description}",
-    "undoFailed": "Gagal mengurungkan tindakan",
-    "copied": "Disalin",
-    "copyFailed": "Gagal menyalin"
+    "undoFailed": "Gagal mengurungkan tindakan"
   },
   "dateRelative": {
     "today": "Hari ini",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {# hari yang lalu} other {# hari yang lalu}}"
   },
   "recurrence": {
-    "everyDay": "Setiap hari",
     "everyNDays": "{count, plural, one {Setiap hari} other {Setiap # hari}}",
-    "everyWeek": "Setiap minggu",
     "everyNWeeks": "{count, plural, one {Setiap minggu} other {Setiap # minggu}}",
-    "everyWeekday": "Setiap hari kerja",
     "everyNWeeksOnWeekdays": "{count, plural, one {Setiap hari kerja} other {Setiap # minggu pada hari kerja}}",
-    "everyWeekend": "Setiap akhir pekan",
     "everyNWeeksOnWeekends": "{count, plural, one {Setiap akhir pekan} other {Setiap # minggu di akhir pekan}}",
-    "everyWeekOnDays": "Setiap minggu di {days}",
     "everyNWeeksOnDays": "{count, plural, one {Setiap minggu di {days}} other {Setiap # minggu di {days}}}",
-    "everyMonth": "Setiap bulan",
     "everyNMonths": "{count, plural, one {Setiap bulan} other {Setiap # bulan}}",
-    "everyMonthOnDay": "Setiap bulan di {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {Setiap bulan di {day}{suffix}} other {Setiap # bulan di {day}{suffix}}}",
-    "everyMonthOnWeekDay": "Setiap bulan di {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Setiap bulan di {week} {day}} other {Setiap # bulan di {week} {day}}}",
-    "everyYear": "Setiap tahun",
     "everyNYears": "{count, plural, one {Setiap tahun} other {Setiap # tahun}}",
     "repeats": "Berulang"
   },
@@ -264,7 +228,6 @@
       "openTabs": "Buka tab",
       "scrollTabsLeft": "Gulir tab ke kiri",
       "scrollTabsRight": "Gulir tab ke kanan",
-      "graphG": "Grafik (⌘G)",
       "dayPanel": "Panel Hari"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Obrolan Agent",
+    "loading": "Memuat obrolan agen...",
+    "conversationLoading": "Percakapan sedang dimuat...",
+    "newConversation": "Percakapan baru",
+    "history": "Riwayat percakapan",
+    "stop": "Berhenti",
+    "thinking": "Agent sedang berpikir",
+    "enable": {
+      "title": "Aktifkan Memry Agent",
+      "description": "Memry Agent menggunakan agen lokal pilihan Anda CLI untuk mengobrol tentang brankas Anda. Claude mengirimkan giliran ke Anthropic; Codex mengirimkan giliran ke OpenAI.",
+      "remote": "Memry mengenkripsi riwayat obrolan lokal dan tersinkronisasi Anda, namun inferensi model terjadi pada penyedia yang dipilih.",
+      "readTools": "Alat baca berjalan secara otomatis.",
+      "writeTools": "Membuat dan memperbarui alat memerlukan persetujuan.",
+      "diff": "Alat pembaruan menampilkan perbedaan atau pratinjau.",
+      "button": "Aktifkan obrolan Agent"
+    },
+    "approval": {
+      "description": "Agen ingin memanggil {name} dengan argumen berikut.",
+      "applyOnce": "Terapkan sekali",
+      "allowOnce": "Izinkan sekali",
+      "editAndApply": "Edit dan terapkan",
+      "editAndAllow": "Edit dan izinkan",
+      "allowAlways": "Izinkan selalu",
+      "applyEdits": "Terapkan pengeditan",
+      "deny": "Tolak",
+      "invalidJson": "Masukkan JSON yang valid sebelum menerapkan pengeditan."
+    },
+    "diff": {
+      "previewError": "Tidak dapat melihat pratinjau perbedaan catatan",
+      "description": "Agen ingin memperbarui {title}. Tinjau konten saat ini dan konten kandidat sebelum menerapkannya.",
+      "fallbackTitle": "catatan ini",
+      "current": "Terkini",
+      "candidate": "Kandidat",
+      "loading": "Memuat...",
+      "apply": "Terapkan",
+      "applyEdited": "Terapkan yang telah diedit"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "Catatan terkini",
+      "removeAttachment": "Hapus {label}",
+      "placeholder": "Tanyakan Agent",
+      "send": "Kirim",
+      "providerLabel": "Penyedia Agent: {provider}",
+      "modelLabel": "Model Agent: {model}",
+      "settingsLabel": "Pengaturan Agent: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "ID model khusus",
+      "customModelPlaceholder": "ID model khusus",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "Lokal"
+      },
+      "models": {
+        "default": "Bawaan"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "Penalaran"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
-          "max": "Max"
+          "low": "Rendah",
+          "medium": "Sedang",
+          "high": "Tinggi",
+          "extraHigh": "Ekstra Tinggi",
+          "extraHighDefault": "Ekstra Tinggi (default)",
+          "max": "Maks"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "Rendah",
+          "medium": "Sedang",
+          "mediumDefault": "Sedang (default)",
+          "high": "Tinggi",
+          "extraHigh": "Ekstra Tinggi"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "Tidak ada kecocokan"
+    },
+    "toolResult": {
+      "label": "Hasil alat"
+    },
+    "toolCall": {
+      "editedArgs": "Argumen yang diedit",
+      "parameters": "Parameter"
+    },
+    "sidebar": {
+      "label": "Bilah sisi kanan",
+      "day": "Hari",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# menunggu persetujuan} other {# menunggu persetujuan}}",
+      "inProgress": "Putaran Agent sedang berlangsung"
+    },
+    "errors": {
+      "loadConversations": "Tidak dapat memuat percakapan agen",
+      "loadConversation": "Tidak dapat memuat percakapan agen",
+      "createConversation": "Tidak dapat membuat percakapan agen",
+      "busy": "Jendela lain berada di tengah-tengah percakapan ini. Tunggu sampai selesai atau hentikan dari sana.",
+      "sendTurn": "Tidak dapat mengirimkan giliran agen",
+      "cancelTurn": "Tidak dapat membatalkan giliran agen",
+      "submitApproval": "Tidak dapat mengirimkan persetujuan alat",
+      "updateTrust": "Tidak dapat memperbarui alat tepercaya",
+      "saveDisclosure": "Tidak dapat menyimpan status pengungkapan",
+      "resolveWindow": "Tidak dapat menyelesaikan jendela sumber agen",
+      "detectCli": "Tidak dapat mendeteksi backend agen",
+      "loadDisclosure": "Tidak dapat memuat status pengungkapan"
     }
   }
 }

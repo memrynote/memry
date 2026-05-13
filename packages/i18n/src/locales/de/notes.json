@@ -14,7 +14,6 @@
       "openLinkedFailed": "Verlinktes Element konnte nicht geöffnet werden",
       "localOnly": "Hinweis auf „Nur lokal“ eingestellt",
       "willSync": "Notiz wird mit der Cloud synchronisiert",
-      "saveFailed": "Notiz konnte nicht gespeichert werden",
       "renameFailed": "Notiz konnte nicht umbenannt werden",
       "toggleLocalOnlyFailed": "Nur lokal umschalten fehlgeschlagen",
       "toggleFullWidthFailed": "Das Umschalten auf die volle Breite ist fehlgeschlagen"
@@ -135,9 +134,6 @@
       "clearSearch": "Suche löschen"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "Schreiben Sie Ihre Notiz..."
-  },
   "outline": {
     "title": "Gliederung",
     "aria": "Dokumentübersicht",
@@ -149,7 +145,6 @@
     "modified": "Geändert"
   },
   "backlinks": {
-    "title": "Backlinks",
     "sortRecent": "Neu",
     "sortAlpha": "A-Z",
     "sortMentions": "Die meisten Erwähnungen",

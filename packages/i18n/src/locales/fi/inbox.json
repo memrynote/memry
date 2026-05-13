@@ -43,9 +43,7 @@
     "pdfs": "PDF-tiedostoja",
     "social": "Sosiaalinen",
     "reminder": "Muistutus",
-    "reminders": "Muistutukset",
-    "text": "Teksti",
-    "other": "Muut"
+    "reminders": "Muistutukset"
   },
   "empty": {
     "successAria": "Onnistui, postilaatikko on tyhjä",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "Ei vastaavia arkistoituja kohteita",
     "noItemsYet": "Ei kohteita vielä",
     "noItemsFiled": "Kohteita ei ole vielä tallennettu",
-    "noItemTypes": "Ei näytettävää kohdetyyppiä",
     "noFolders": "Kansioita ei löytynyt",
-    "noFolderMatch": "Yksikään kansio ei vastaa hakua \"{query}\"",
     "noNotes": "Muistiinpanoja ei löytynyt",
     "allMatchesLinked": "Kaikki ottelut on jo linkitetty"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Transkriptio epäonnistui",
     "retryTranscription": "Yritä uudelleen",
     "pageCount": "{count, plural, one {# sivu} other {# sivua}}",
-    "snoozedUntilShort": "torkutettu {date} asti",
-    "capturedAgo": "Kuvattu {time}"
+    "snoozedUntilShort": "torkutettu {date} asti"
   },
   "loading": {
     "inbox": "Ladataan postilaatikkoa...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Nopeita toimia",
     "archiveItem": "Arkistoi kohde",
-    "archive": "Arkisto",
-    "snooze": "Torkku"
+    "archive": "Arkisto"
   },
   "detail": {
     "ariaLabel": "Tuotteen tiedot",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Hae linkitettävät muistiinpanot",
     "linkedNotesAria": "Linkitetyt muistiinpanot",
     "removeLinkTo": "Poista linkki {title}",
-    "contentEditorAria": "Sisällön editori",
     "notePlaceholder": "Kirjoita muistiinpanosi...",
     "textPlaceholder": "Muokkaa kaapattua tekstiä..."
   },
@@ -263,14 +256,9 @@
     "custom": "Mukautettu..."
   },
   "insights": {
-    "loading": "Ladataan tietoja...",
     "captureActivity": "Capture Activity",
     "byType": "Tyypin mukaan",
-    "itemTypes": "Tuotetyypit",
-    "itemTypesDescription": "Sisältömuotojen jakelu",
     "recentFilings": "Viimeaikaiset hakemukset",
-    "recentlyFiled": "Äskettäin tehty",
-    "recentlyFiledDescription": "Viimeisimmät toimet postilaatikossasi",
     "captured": "Vangittu",
     "capturedThisWeek": "+{count} tällä viikolla",
     "processed": "Käsitelty",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {# sieppaus} other {# kaappaa}}",
     "peak": "Huippu: {day} {start}–{end}",
     "convertedToTask": "Muunnettu tehtäväksi",
-    "linked": "Linkitetty",
     "now": "nyt",
     "timeAgoMinutes": "{count}m sitten",
     "timeAgoHours": "{count}h sitten",

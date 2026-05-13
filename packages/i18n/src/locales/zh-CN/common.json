@@ -3,47 +3,25 @@
     "save": "保存",
     "cancel": "取消",
     "close": "关闭",
-    "ok": "确定",
-    "yes": "是",
-    "no": "否",
     "delete": "删除",
-    "confirm": "确认",
-    "apply": "应用",
     "done": "完成",
-    "discard": "放弃",
     "dontSave": "不保存",
-    "edit": "编辑",
     "add": "添加",
     "remove": "移除",
     "retry": "重试",
-    "submit": "提交",
     "back": "返回",
-    "next": "下一步",
     "continue": "继续",
-    "reset": "重置",
     "copy": "复制",
-    "paste": "粘贴",
-    "create": "创建",
-    "open": "打开"
+    "create": "创建"
   },
   "state": {
     "loading": "加载中…",
     "saving": "保存中…",
     "deleting": "删除中…",
-    "searching": "搜索中…",
-    "error": "错误",
-    "success": "成功"
-  },
-  "empty": {
-    "noResults": "没有结果",
-    "noItems": "没有项目",
-    "noMatch": "没有匹配项"
+    "searching": "搜索中…"
   },
   "action": {
     "search": "搜索",
-    "edit": "编辑",
-    "delete": "删除",
-    "close": "关闭",
     "expand": "展开",
     "collapse": "收起",
     "showMore": "+{count, plural, one {# 更多} other {# 更多}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {# 项} other {# 项目}}",
     "note": "{count, plural, one {# 笔记} other {# 笔记集合}}",
-    "folder": "{count, plural, one {# 文件夹} other {# 文件夹集合}}",
     "task": "{count, plural, one {# 任务} other {# 任务集合}}",
-    "project": "{count, plural, one {# 项目} other {# 项目集合}}",
     "itemDelete": "{count, plural, one {删除 # 项} other {删除 # 项目}}"
   },
   "toast": {
     "actionFailed": "操作失败",
     "nothingToUndo": "没有可撤销操作",
     "undone": "已撤销: {description}",
-    "undoFailed": "撤销操作失败",
-    "copied": "已复制",
-    "copyFailed": "复制失败"
+    "undoFailed": "撤销操作失败"
   },
   "dateRelative": {
     "today": "今天",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {# 天前} other {# 天前}}"
   },
   "recurrence": {
-    "everyDay": "每天",
     "everyNDays": "{count, plural, one {每天} other {每 # 天}}",
-    "everyWeek": "每周",
     "everyNWeeks": "{count, plural, one {每周} other {每 # 周}}",
-    "everyWeekday": "每个工作日",
     "everyNWeeksOnWeekdays": "{count, plural, one {每个工作日} other {每 # 周的工作日}}",
-    "everyWeekend": "每个周末",
     "everyNWeeksOnWeekends": "{count, plural, one {每个周末} other {每 # 周的周末}}",
-    "everyWeekOnDays": "每周的 {days}",
     "everyNWeeksOnDays": "{count, plural, one {每周的 {days}} other {每 # 周的 {days}}}",
-    "everyMonth": "每月",
     "everyNMonths": "{count, plural, one {每月} other {每 # 月}}",
-    "everyMonthOnDay": "每月的 {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {每月的 {day}{suffix}} other {每 # 月的 {day}{suffix}}}",
-    "everyMonthOnWeekDay": "每月的 {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {每月的 {week} {day}} other {每 # 个月在 {week} {day}}}",
-    "everyYear": "每年",
     "everyNYears": "{count, plural, one {每年} other {每 # 年}}",
     "repeats": "重复"
   },
@@ -264,7 +228,6 @@
       "openTabs": "打开的标签",
       "scrollTabsLeft": "向左滚动标签",
       "scrollTabsRight": "向右滚动标签",
-      "graphG": "图表 (⌘G)",
       "dayPanel": "日程面板"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Agent 聊天",
+    "loading": "正在加载代理聊天...",
+    "conversationLoading": "对话加载中...",
+    "newConversation": "新对话",
+    "history": "对话历史记录",
+    "stop": "停止",
+    "thinking": "Agent 正在思考",
+    "enable": {
+      "title": "启用 Memry Agent",
+      "description": "Memry Agent 使用您选择的本地代理 CLI 来讨论您的保管库。 Claude 轮流发送到 Anthropic； Codex 轮流发送到 OpenAI。",
+      "remote": "Memry 会加密您的本地和同步的聊天历史记录，但模型推断会在选定的提供程序中进行。",
+      "readTools": "读取工具自动运行。",
+      "writeTools": "创建和更新工具需要批准。",
+      "diff": "更新工具显示差异或预览。",
+      "button": "启用 Agent 聊天"
+    },
+    "approval": {
+      "description": "代理想要使用这些参数调用 {name}。",
+      "applyOnce": "申请一次",
+      "allowOnce": "允许一次",
+      "editAndApply": "编辑并应用",
+      "editAndAllow": "编辑并允许",
+      "allowAlways": "始终允许",
+      "applyEdits": "应用编辑",
+      "deny": "否认",
+      "invalidJson": "在应用编辑之前输入有效的 JSON。"
+    },
+    "diff": {
+      "previewError": "无法预览注释差异",
+      "description": "代理想要更新 {title}。在应用之前查看当前内容和候选内容。",
+      "fallbackTitle": "这个注释",
+      "current": "当前",
+      "candidate": "候选人",
+      "loading": "加载中...",
+      "apply": "申请",
+      "applyEdited": "应用已编辑的内容"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "当前注释",
+      "removeAttachment": "删除 {label}",
+      "placeholder": "询问Agent",
+      "send": "发送",
+      "providerLabel": "Agent 提供商：{provider}",
+      "modelLabel": "Agent 型号：{model}",
+      "settingsLabel": "Agent 设置：{settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "自定义模型 ID",
+      "customModelPlaceholder": "自定义模型 ID",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "本地"
+      },
+      "models": {
+        "default": "默认"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "推理"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
-          "max": "Max"
+          "low": "低",
+          "medium": "中",
+          "high": "高",
+          "extraHigh": "超高",
+          "extraHighDefault": "超高（默认）",
+          "max": "最大"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "低",
+          "medium": "中",
+          "mediumDefault": "中（默认）",
+          "high": "高",
+          "extraHigh": "超高"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "没有匹配项"
+    },
+    "toolResult": {
+      "label": "工具结果"
+    },
+    "toolCall": {
+      "editedArgs": "编辑参数",
+      "parameters": "参数"
+    },
+    "sidebar": {
+      "label": "右侧边栏",
+      "day": "日",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# 待批准} other {# 待批准}}",
+      "inProgress": "Agent 正在转弯"
+    },
+    "errors": {
+      "loadConversations": "无法加载代理对话",
+      "loadConversation": "无法加载代理对话",
+      "createConversation": "无法创建代理对话",
+      "busy": "另一个窗口正在进行此对话。等待它完成或从那里停止它。",
+      "sendTurn": "无法发送代理轮流",
+      "cancelTurn": "无法取消代理轮流",
+      "submitApproval": "无法提交工具批准",
+      "updateTrust": "无法更新受信任的工具",
+      "saveDisclosure": "无法保存披露状态",
+      "resolveWindow": "无法解析代理源窗口",
+      "detectCli": "无法检测代理后端",
+      "loadDisclosure": "无法加载披露状态"
     }
   }
 }

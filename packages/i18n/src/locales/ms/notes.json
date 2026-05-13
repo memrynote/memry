@@ -14,7 +14,6 @@
       "openLinkedFailed": "Gagal membuka item terpaut",
       "localOnly": "Nota ditetapkan kepada setempat sahaja",
       "willSync": "Nota akan disegerakkan ke awan",
-      "saveFailed": "Gagal menyimpan nota",
       "renameFailed": "Gagal menamakan semula nota",
       "toggleLocalOnlyFailed": "Gagal menogol tempatan sahaja",
       "toggleFullWidthFailed": "Gagal menogol lebar penuh"
@@ -135,9 +134,6 @@
       "clearSearch": "Kosongkan carian"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "Tulis nota anda..."
-  },
   "outline": {
     "title": "Garis besar",
     "aria": "Garis besar dokumen",
@@ -149,7 +145,6 @@
     "modified": "Diubah suai"
   },
   "backlinks": {
-    "title": "Pautan balik",
     "sortRecent": "Baru-baru ini",
     "sortAlpha": "A-Z",
     "sortMentions": "Kebanyakan sebutan",

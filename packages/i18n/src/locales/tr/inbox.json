@@ -43,9 +43,7 @@
     "pdfs": "PDF'ler",
     "social": "Sosyal",
     "reminder": "Hatırlatma",
-    "reminders": "Hatırlatıcılar",
-    "text": "Metin",
-    "other": "Diğer"
+    "reminders": "Hatırlatıcılar"
   },
   "empty": {
     "successAria": "Başarılı, gelen kutusu boş",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "Eşleşen arşivlenmiş öğe yok",
     "noItemsYet": "Henüz öğe yok",
     "noItemsFiled": "Henüz dosyalanmış öğe yok",
-    "noItemTypes": "Görüntülenecek öğe türü yok",
     "noFolders": "Klasör bulunamadı",
-    "noFolderMatch": "Eşleşen klasör yok \"{query}\"",
     "noNotes": "Hiçbir not bulunamadı",
     "allMatchesLinked": "Tüm eşleşmeler zaten bağlı"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Transkripsiyon başarısız oldu",
     "retryTranscription": "Yeniden dene",
     "pageCount": "{count, plural, one {# sayfa} other {# sayfa}}",
-    "snoozedUntilShort": "şu ana kadar ertelendi {date}",
-    "capturedAgo": "Yakalandı {time}"
+    "snoozedUntilShort": "şu ana kadar ertelendi {date}"
   },
   "loading": {
     "inbox": "Gelen kutusu yükleniyor...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Hızlı eylemler",
     "archiveItem": "Öğeyi arşivle",
-    "archive": "Arşiv",
-    "snooze": "Ertele"
+    "archive": "Arşiv"
   },
   "detail": {
     "ariaLabel": "Ürün ayrıntıları",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Bağlanacak notları arayın",
     "linkedNotesAria": "Bağlantılı notlar",
     "removeLinkTo": "Bağlantıyı kaldır {title}",
-    "contentEditorAria": "İçerik düzenleyici",
     "notePlaceholder": "Notunuzu yazın...",
     "textPlaceholder": "Yakalanan metninizi düzenleyin..."
   },
@@ -263,14 +256,9 @@
     "custom": "Özel..."
   },
   "insights": {
-    "loading": "Analizler yükleniyor...",
     "captureActivity": "Etkinliği Yakala",
     "byType": "Türe Göre",
-    "itemTypes": "Öğe Türleri",
-    "itemTypesDescription": "İçerik formatlarının dağıtımı",
     "recentFilings": "Son Başvurular",
-    "recentlyFiled": "Son zamanlarda dosyalanmış",
-    "recentlyFiledDescription": "Gelen kutunuzdaki son işlemler",
     "captured": "Yakalandı",
     "capturedThisWeek": "+{count} bu hafta",
     "processed": "İşlendi",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {# yakalama} other {# yakalama}}",
     "peak": "Zirve: {day} {start}–{end}",
     "convertedToTask": "Göreve dönüştürüldü",
-    "linked": "Bağlantılı",
     "now": "şimdi",
     "timeAgoMinutes": "{count} dk önce",
     "timeAgoHours": "{count} saat önce",

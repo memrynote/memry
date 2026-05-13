@@ -25,9 +25,7 @@
         "integrations": "Integrácie",
         "vault": "Trezor",
         "tags": "Tagy",
-        "properties": "Vlastnosti",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Vlastnosti"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Poznámky",
         "attachments": "Prílohy",
         "crdt": "CRDT",
-        "other": "Iné",
-        "available": "Dostupné"
+        "other": "Iné"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "Čaká sa na schválenie",
       "waitingDescription": "Otvorte Memry na vašom inom zariadení a schváľte žiadosť o prepojenie.",
       "verificationCode": "Overovací kód",
-      "confirmCode": "Potvrďte, že sa zhoduje s kódom na vašom inom zariadení",
-      "cancel": "Zrušiť"
+      "confirmCode": "Potvrďte, že sa zhoduje s kódom na vašom inom zariadení"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Obnovovací kľúč",
     "description": "Uchovajte tento kľúč bezpečne. Môže obnoviť váš trezor, ak stratíte prístup ku všetkým zariadeniam.",
-    "loading": "Načítavam...",
     "retrieveFailed": "Nepodarilo sa načítať kľúč na obnovu",
     "copied": "Kľúč na obnovu skopírovaný do schránky",
     "copyFailed": "Nepodarilo sa skopírovať do schránky",
     "clickToReveal": "Kliknite pre zobrazenie",
     "hide": "Skryť",
     "reveal": "Zobraziť",
-    "copy": "Rozumiem",
     "sessionHint": "Tento kľúč sa zobrazí raz za reláciu. Zatvorte tento dialóg na jeho vymazanie z pamäte."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Nepodarilo sa pripojiť Google Kalendár",
       "refreshFailed": "Nepodarilo sa aktualizovať Google Kalendár",
       "disconnectFailed": "Nepodarilo sa odpojiť Google Kalendár",
-      "selectionFailed": "Nepodarilo sa aktualizovať výber kalendára",
       "retryFailed": "Nepodarilo sa znova synchronizovať kalendár"
     },
     "sourcePicker": {

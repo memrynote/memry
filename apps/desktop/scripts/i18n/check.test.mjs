@@ -47,6 +47,13 @@ test('orphan English keys warn but do not fail', () => {
   assert.match(result.stdout, /English keys not referenced/)
 })
 
+test('default source check has no warnings', () => {
+  const result = runCheck([])
+
+  assert.equal(result.status, 0)
+  assert.doesNotMatch(result.stdout, /^warn:/m)
+})
+
 test('--format json emits parseable JSON', () => {
   const result = runCheck(['--paths', path.join(fixtureRoot, 'pass.tsx'), '--format', 'json'])
 

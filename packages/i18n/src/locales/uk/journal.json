@@ -38,8 +38,7 @@
     "openNoteFullPage": "Відкрити нотатку на повній сторінці",
     "closeNoteDrawer": "Закрити панель нотаток",
     "addBookmark": "Додати закладку",
-    "removeBookmark": "Видалити закладку",
-    "tryAgain": "Спробувати ще раз"
+    "removeBookmark": "Видалити закладку"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "Назад до журналу",
     "journalNavigation": "Навігація журналом",
     "dateNavigation": "Навігація за датою журналу",
-    "goToYearView": "Перейти до перегляду року",
-    "previousView": "Попередній перегляд",
-    "nextView": "Наступний перегляд"
+    "goToYearView": "Перейти до перегляду року"
   },
   "aria": {
     "moreOptions": "Більше опцій",
@@ -184,10 +181,8 @@
     "connectionAria": "Зв'язок з {label}, збіг {scorePercent}%"
   },
   "count": {
-    "item": "елемент",
     "items": "елементи",
     "note": "нотатка",
-    "notes": "нотатки",
     "day": "день",
     "days": "дні",
     "event": "подія",

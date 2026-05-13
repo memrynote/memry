@@ -35,38 +35,6 @@
     "delete": "删除任务",
     "created": "创建于 {date}"
   },
-  "project": {
-    "create": "创建项目",
-    "edit": "编辑项目",
-    "delete": "删除项目",
-    "iconAndName": "图标和名称",
-    "namePlaceholder": "项目名称",
-    "select": "选择项目",
-    "selectIcon": "选择图标",
-    "clickIconToChange": "点击图标以更改",
-    "color": "颜色",
-    "descriptionOptional": "描述（可选）",
-    "descriptionPlaceholder": "该项目的简要描述…",
-    "statuses": "状态",
-    "statusesHelp": "配置此项目的工作流程阶段。",
-    "createDescription": "创建一个新的项目，包括名称、图标、颜色和工作流程状态。",
-    "editDescription": "编辑项目名称、图标、颜色和工作流程状态。"
-  },
-  "status": {
-    "select": "选择状态",
-    "todo": "待办",
-    "inProgress": "进行中",
-    "done": "完成"
-  },
-  "priority": {
-    "select": "选择优先级",
-    "none": "无优先级",
-    "noneShort": "无",
-    "low": "低",
-    "medium": "中",
-    "high": "高",
-    "urgent": "紧急"
-  },
   "filters": {
     "filter": "筛选",
     "emptyTitle": "没有任务匹配您的筛选条件",
@@ -113,14 +81,12 @@
     "filterApplied": "已应用\"{name}\"",
     "deleted": "任务已删除",
     "deletedSeries": "系列完成！",
-    "deletedNext": "下一次发生",
     "completed": "任务完成！",
     "archived": "任务已归档",
     "undoNotAvailableForDelete": "删除操作不可撤销",
     "alreadyAllComplete": "所有选中的任务已完成",
     "noCompletedSelected": "未选择完成的任务",
     "completeFailed": "完成任务失败",
-    "reopenFailed": "重新打开任务失败",
     "deleteFailed": "删除任务失败",
     "moveFailed": "移动任务失败"
   },

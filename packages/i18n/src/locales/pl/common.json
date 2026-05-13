@@ -3,47 +3,25 @@
     "save": "Zapisz",
     "cancel": "Anuluj",
     "close": "Zamknij",
-    "ok": "OK",
-    "yes": "Tak",
-    "no": "Nie",
     "delete": "Usuń",
-    "confirm": "Potwierdź",
-    "apply": "Zastosuj",
     "done": "Gotowe",
-    "discard": "Odrzuć",
     "dontSave": "Nie zapisuj",
-    "edit": "Edytuj",
     "add": "Dodaj",
     "remove": "Usuń",
     "retry": "Spróbuj ponownie",
-    "submit": "Prześlij",
     "back": "Powrót",
-    "next": "Następny",
     "continue": "Kontynuuj",
-    "reset": "Zresetuj",
     "copy": "Kopiuj",
-    "paste": "Wklej",
-    "create": "Utwórz",
-    "open": "Otwórz"
+    "create": "Utwórz"
   },
   "state": {
     "loading": "Ładowanie…",
     "saving": "Zapisuję…",
     "deleting": "Usuwanie…",
-    "searching": "Wyszukiwanie…",
-    "error": "Błąd",
-    "success": "Sukces"
-  },
-  "empty": {
-    "noResults": "Brak wyników",
-    "noItems": "Brak przedmiotów",
-    "noMatch": "Brak dopasowań"
+    "searching": "Wyszukiwanie…"
   },
   "action": {
     "search": "Szukaj",
-    "edit": "Edytuj",
-    "delete": "Usuń",
-    "close": "Zamknij",
     "expand": "Rozwiń",
     "collapse": "Zwiń",
     "showMore": "+{count, plural, one {# więcej} other {# więcej}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {Element #} other {Elementy #}}",
     "note": "{count, plural, one {Uwaga #} other {Notatki #}}",
-    "folder": "{count, plural, one {Folder #} other {Foldery #}}",
     "task": "{count, plural, one {Zadanie #} other {Zadania #}}",
-    "project": "{count, plural, one {Projekt #} other {Projekty #}}",
     "itemDelete": "{count, plural, one {Usuń element #} other {Usuń elementy #}}"
   },
   "toast": {
     "actionFailed": "Akcja nie powiodła się",
     "nothingToUndo": "Nic do cofnięcia",
     "undone": "Cofnięto: {description}",
-    "undoFailed": "Nie udało się cofnąć działania",
-    "copied": "Skopiowano",
-    "copyFailed": "Nie udało się skopiować"
+    "undoFailed": "Nie udało się cofnąć działania"
   },
   "dateRelative": {
     "today": "Dzisiaj",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {# dzień temu} other {# dni temu}}"
   },
   "recurrence": {
-    "everyDay": "Każdego dnia",
     "everyNDays": "{count, plural, one {Każdego dnia} other {Co # dni}}",
-    "everyWeek": "Co tydzień",
     "everyNWeeks": "{count, plural, one {Co tydzień} other {Co # tygodni}}",
-    "everyWeekday": "Każdy dzień powszedni",
     "everyNWeeksOnWeekdays": "{count, plural, one {Każdy dzień powszedni} other {Co # tygodni w dni powszednie}}",
-    "everyWeekend": "W każdy weekend",
     "everyNWeeksOnWeekends": "{count, plural, one {W każdy weekend} other {Co # tygodni w weekendy}}",
-    "everyWeekOnDays": "Co tydzień na {days}",
     "everyNWeeksOnDays": "{count, plural, one {Co tydzień na {days}} other {Co tydzień # na {days}}}",
-    "everyMonth": "Co miesiąc",
     "everyNMonths": "{count, plural, one {Co miesiąc} other {Co # miesięcy}}",
-    "everyMonthOnDay": "Co miesiąc na {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {Co miesiąc na {day}{suffix}} other {Co # miesięcy na {day}{suffix}}}",
-    "everyMonthOnWeekDay": "Co miesiąc na {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Co miesiąc na {week} {day}} other {Co # miesięcy na {week} {day}}}",
-    "everyYear": "Co roku",
     "everyNYears": "{count, plural, one {Co roku} other {Co # lat}}",
     "repeats": "Powtarza"
   },
@@ -264,7 +228,6 @@
       "openTabs": "Otwórz karty",
       "scrollTabsLeft": "Przewiń karty w lewo",
       "scrollTabsRight": "Przewiń karty w prawo",
-      "graphG": "Wykres (⌘G)",
       "dayPanel": "Panel dzienny"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Czat Agent",
+    "loading": "Ładowanie czatu agenta...",
+    "conversationLoading": "Ładowanie rozmowy...",
+    "newConversation": "Nowa rozmowa",
+    "history": "Historia rozmów",
+    "stop": "Zatrzymaj się",
+    "thinking": "Agent myśli",
+    "enable": {
+      "title": "Włącz Memry Agent",
+      "description": "Memry Agent używa wybranego lokalnego agenta CLI do rozmów na temat Twojego skarbca. Claude wysyła zwroty do Anthropic; Codex wysyła zwroty do OpenAI.",
+      "remote": "Memry szyfruje lokalną i zsynchronizowaną historię czatów, ale wnioskowanie o modelu odbywa się w przypadku wybranego dostawcy.",
+      "readTools": "Narzędzia do odczytu działają automatycznie.",
+      "writeTools": "Narzędzia do tworzenia i aktualizowania wymagają zatwierdzenia.",
+      "diff": "Narzędzia aktualizacji pokazują różnicę lub podgląd.",
+      "button": "Włącz czat Agent"
+    },
+    "approval": {
+      "description": "Agent chce wywołać {name} z tymi argumentami.",
+      "applyOnce": "Zastosuj raz",
+      "allowOnce": "Zezwól raz",
+      "editAndApply": "Edytuj i zastosuj",
+      "editAndAllow": "Edytuj i zezwól",
+      "allowAlways": "Zawsze zezwalaj",
+      "applyEdits": "Zastosuj zmiany",
+      "deny": "Odmów",
+      "invalidJson": "Przed zastosowaniem zmian wprowadź prawidłowe JSON."
+    },
+    "diff": {
+      "previewError": "Nie można wyświetlić podglądu różnicy nut",
+      "description": "Agent chce zaktualizować {title}. Przed zastosowaniem przejrzyj aktualną i kandydującą treść.",
+      "fallbackTitle": "tę notatkę",
+      "current": "Aktualne",
+      "candidate": "Kandydat",
+      "loading": "Ładowanie...",
+      "apply": "Zastosuj",
+      "applyEdited": "Zastosowano edytowane"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "Aktualna notatka",
+      "removeAttachment": "Usuń {label}",
+      "placeholder": "Zapytaj Agent",
+      "send": "Wyślij",
+      "providerLabel": "Dostawca Agent: {provider}",
+      "modelLabel": "Model Agent: {model}",
+      "settingsLabel": "Ustawienia Agent: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "Niestandardowy identyfikator modelu",
+      "customModelPlaceholder": "Niestandardowy identyfikator modelu",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "Lokalnie"
+      },
+      "models": {
+        "default": "Domyślne"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "Rozumowanie"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
-          "max": "Max"
+          "low": "Niski",
+          "medium": "Średni",
+          "high": "Wysoki",
+          "extraHigh": "Bardzo wysoka",
+          "extraHighDefault": "Bardzo wysoka (domyślnie)",
+          "max": "Maks"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "Niski",
+          "medium": "Średni",
+          "mediumDefault": "Średni (domyślnie)",
+          "high": "Wysoki",
+          "extraHigh": "Bardzo wysoka"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "Brak dopasowań"
+    },
+    "toolResult": {
+      "label": "Wynik narzędzia"
+    },
+    "toolCall": {
+      "editedArgs": "Edytowane argumenty",
+      "parameters": "Parametry"
+    },
+    "sidebar": {
+      "label": "Prawy pasek boczny",
+      "day": "Dzień",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# oczekuje na zatwierdzenie} other {# oczekujące zatwierdzenia}}",
+      "inProgress": "Zakręt Agent w toku"
+    },
+    "errors": {
+      "loadConversations": "Nie można wczytać rozmów agentów",
+      "loadConversation": "Nie można wczytać rozmowy z agentem",
+      "createConversation": "Nie można utworzyć rozmowy z agentem",
+      "busy": "W połowie tury trwa kolejne okno na tę rozmowę. Poczekaj, aż się zakończy, lub zatrzymaj go.",
+      "sendTurn": "Nie można wysłać tury agenta",
+      "cancelTurn": "Nie można anulować tury agenta",
+      "submitApproval": "Nie można przesłać zatwierdzenia narzędzia",
+      "updateTrust": "Nie można zaktualizować zaufanych narzędzi",
+      "saveDisclosure": "Nie można zapisać stanu ujawnienia",
+      "resolveWindow": "Nie można znaleźć okna źródła agenta",
+      "detectCli": "Nie można wykryć zaplecza agenta",
+      "loadDisclosure": "Nie można wczytać stanu ujawnienia"
     }
   }
 }

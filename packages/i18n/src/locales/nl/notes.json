@@ -14,7 +14,6 @@
       "openLinkedFailed": "Kan het gekoppelde item niet openen",
       "localOnly": "Opmerking ingesteld op alleen lokaal",
       "willSync": "De notitie wordt gesynchroniseerd met de cloud",
-      "saveFailed": "Kan notitie niet opslaan",
       "renameFailed": "Kan de naam van de notitie niet wijzigen",
       "toggleLocalOnlyFailed": "Kan alleen lokaal niet inschakelen",
       "toggleFullWidthFailed": "Kan de volledige breedte niet wijzigen"
@@ -135,9 +134,6 @@
       "clearSearch": "Duidelijke zoekopdracht"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "Schrijf uw notitie..."
-  },
   "outline": {
     "title": "Overzicht",
     "aria": "Documentoverzicht",
@@ -149,7 +145,6 @@
     "modified": "Gewijzigd"
   },
   "backlinks": {
-    "title": "Backlinks",
     "sortRecent": "Recent",
     "sortAlpha": "A-Z",
     "sortMentions": "De meeste vermeldingen",

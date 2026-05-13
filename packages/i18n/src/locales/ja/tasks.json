@@ -35,38 +35,6 @@
     "delete": "タスクの削除",
     "created": "{date}を作成しました"
   },
-  "project": {
-    "create": "プロジェクトの作成",
-    "edit": "プロジェクトの編集",
-    "delete": "プロジェクトの削除",
-    "iconAndName": "アイコンと名前",
-    "namePlaceholder": "プロジェクト名",
-    "select": "プロジェクトの選択",
-    "selectIcon": "アイコンを選択",
-    "clickIconToChange": "アイコンをクリックして変更します",
-    "color": "色",
-    "descriptionOptional": "説明 (オプション)",
-    "descriptionPlaceholder": "このプロジェクトの簡単な説明…",
-    "statuses": "ステータス",
-    "statusesHelp": "このプロジェクトのワークフロー ステージを構成します。",
-    "createDescription": "名前、アイコン、色、ワークフロー ステータスを指定して新しいプロジェクトを作成します。",
-    "editDescription": "プロジェクト名、アイコン、色、ワークフローのステータスを編集します。"
-  },
-  "status": {
-    "select": "ステータスの選択",
-    "todo": "やるべきこと",
-    "inProgress": "進行中",
-    "done": "完了"
-  },
-  "priority": {
-    "select": "優先順位を選択してください",
-    "none": "優先度なし",
-    "noneShort": "なし",
-    "low": "低い",
-    "medium": "中",
-    "high": "高",
-    "urgent": "緊急"
-  },
   "filters": {
     "filter": "フィルター",
     "emptyTitle": "フィルターに一致するタスクはありません",
@@ -113,14 +81,12 @@
     "filterApplied": "「{name}」を適用",
     "deleted": "タスクが削除されました",
     "deletedSeries": "シリーズ完結！",
-    "deletedNext": "次の出現",
     "completed": "タスクが完了しました！",
     "archived": "タスクがアーカイブされました",
     "undoNotAvailableForDelete": "元に戻すは削除できません",
     "alreadyAllComplete": "選択したタスクはすべてすでに完了しています",
     "noCompletedSelected": "完了したタスクが選択されていません",
     "completeFailed": "タスクを完了できませんでした",
-    "reopenFailed": "タスクを再開できませんでした",
     "deleteFailed": "タスクの削除に失敗しました",
     "moveFailed": "タスクの移動に失敗しました"
   },

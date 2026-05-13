@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "出现问题。请重试。",
     "operationFailed": "操作失败",
-    "unknown": "发生未知错误",
-    "validationFailed": "验证失败",
-    "actionFailed": "操作失败"
+    "unknown": "发生未知错误"
   },
   "ipc": {
     "noVaultOpen": "没有打开的保险库。请先打开一个保险库。"

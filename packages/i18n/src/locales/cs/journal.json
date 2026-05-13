@@ -38,8 +38,7 @@
     "openNoteFullPage": "Otevřít poznámku na celou stránku",
     "closeNoteDrawer": "Zavřete zásuvku na poznámky",
     "addBookmark": "Přidat záložku",
-    "removeBookmark": "Odebrat záložku",
-    "tryAgain": "Zkuste to znovu"
+    "removeBookmark": "Odebrat záložku"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "Deník zpět",
     "journalNavigation": "Navigace v deníku",
     "dateNavigation": "Navigace podle data deníku",
-    "goToYearView": "Přejít na zobrazení roku",
-    "previousView": "Předchozí pohled",
-    "nextView": "Další pohled"
+    "goToYearView": "Přejít na zobrazení roku"
   },
   "aria": {
     "moreOptions": "Více možností",
@@ -184,10 +181,8 @@
     "connectionAria": "Připojení k {label}, {scorePercent} % se shoduje"
   },
   "count": {
-    "item": "položka",
     "items": "položky",
     "note": "poznámka",
-    "notes": "poznámky",
     "day": "den",
     "days": "dní",
     "event": "událost",

@@ -14,7 +14,6 @@
       "openLinkedFailed": "Échec de l'ouverture de l'élément lié",
       "localOnly": "Remarque définie sur local uniquement",
       "willSync": "La note sera synchronisée avec le cloud",
-      "saveFailed": "Échec de l'enregistrement de la note",
       "renameFailed": "Échec du renommage de la note",
       "toggleLocalOnlyFailed": "Échec de l'activation du mode local uniquement",
       "toggleFullWidthFailed": "Échec de l'activation de la pleine largeur"
@@ -135,9 +134,6 @@
       "clearSearch": "Effacer la recherche"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "Écrivez votre note..."
-  },
   "outline": {
     "title": "Aperçu",
     "aria": "Aperçu du document",
@@ -149,7 +145,6 @@
     "modified": "Modifié"
   },
   "backlinks": {
-    "title": "Liens retour",
     "sortRecent": "Récent",
     "sortAlpha": "A à Z",
     "sortMentions": "La plupart des mentions",

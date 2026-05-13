@@ -35,38 +35,6 @@
     "delete": "Odstrániť úlohu",
     "created": "Vytvorené {date}"
   },
-  "project": {
-    "create": "Vytvoriť projekt",
-    "edit": "Upraviť projekt",
-    "delete": "Vymazať projekt",
-    "iconAndName": "Ikona a názov",
-    "namePlaceholder": "Názov projektu",
-    "select": "Vybrať projekt",
-    "selectIcon": "Vybrať ikonu",
-    "clickIconToChange": "Kliknite na ikonu pre zmenu",
-    "color": "Farba",
-    "descriptionOptional": "Popis (voliteľné)",
-    "descriptionPlaceholder": "Stručný popis tohto projektu…",
-    "statuses": "Stavy",
-    "statusesHelp": "Konfigurujte fázy pracovného postupu pre tento projekt.",
-    "createDescription": "Vytvorte nový projekt s názvom, ikonou, farbou a stavmi pracovného postupu.",
-    "editDescription": "Upravte názov projektu, ikonu, farbu a stavy pracovného postupu."
-  },
-  "status": {
-    "select": "Vybrať stav",
-    "todo": "Na dokončenie",
-    "inProgress": "V procese",
-    "done": "Hotovo"
-  },
-  "priority": {
-    "select": "Vybrať prioritu",
-    "none": "Bez priority",
-    "noneShort": "Žiadna",
-    "low": "Nízka",
-    "medium": "Stredná",
-    "high": "Vysoká",
-    "urgent": "Urgentné"
-  },
   "filters": {
     "filter": "Filter",
     "emptyTitle": "Žiadne úlohy nezodpovedajú vašim filtrom",
@@ -113,14 +81,12 @@
     "filterApplied": "Aplikované \"{name}\"",
     "deleted": "Úloha odstránená",
     "deletedSeries": "Séria dokončená!",
-    "deletedNext": "Ďalší výskyt",
     "completed": "Úloha dokončená!",
     "archived": "Úloha archivovaná",
     "undoNotAvailableForDelete": "Spätné vrátenie nie je dostupné pre odstránenie",
     "alreadyAllComplete": "Všetky vybrané úlohy sú už dokončené",
     "noCompletedSelected": "Nie sú vybrané žiadne dokončené úlohy",
     "completeFailed": "Nepodarilo sa dokončiť úlohy",
-    "reopenFailed": "Nepodarilo sa znovu otvoriť úlohy",
     "deleteFailed": "Nepodarilo sa odstrániť úlohy",
     "moveFailed": "Nepodarilo sa presunúť úlohy"
   },

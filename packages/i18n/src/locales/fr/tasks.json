@@ -35,38 +35,6 @@
     "delete": "Supprimer la tâche",
     "created": "Créé {date}"
   },
-  "project": {
-    "create": "Créer un projet",
-    "edit": "Modifier le projet",
-    "delete": "Supprimer le projet",
-    "iconAndName": "Icône et nom",
-    "namePlaceholder": "Nom du projet",
-    "select": "Sélectionnez un projet",
-    "selectIcon": "Sélectionner l'icône",
-    "clickIconToChange": "Cliquez sur l'icône pour changer",
-    "color": "Couleur",
-    "descriptionOptional": "Description (facultatif)",
-    "descriptionPlaceholder": "Brève description de ce projet…",
-    "statuses": "Statuts",
-    "statusesHelp": "Configurez les étapes du flux de travail pour ce projet.",
-    "createDescription": "Créez un nouveau projet avec un nom, une icône, une couleur et des statuts de flux de travail.",
-    "editDescription": "Modifiez le nom du projet, l'icône, la couleur et les statuts du flux de travail."
-  },
-  "status": {
-    "select": "Sélectionnez le statut",
-    "todo": "À faire",
-    "inProgress": "En cours",
-    "done": "Terminé"
-  },
-  "priority": {
-    "select": "Sélectionnez la priorité",
-    "none": "Aucune priorité",
-    "noneShort": "Aucun",
-    "low": "Faible",
-    "medium": "Moyen",
-    "high": "Élevé",
-    "urgent": "Urgent"
-  },
   "filters": {
     "filter": "Filtrer",
     "emptyTitle": "Aucune tâche ne correspond à vos filtres",
@@ -113,14 +81,12 @@
     "filterApplied": "\"{name}\" appliqué",
     "deleted": "Tâche supprimée",
     "deletedSeries": "Série terminée !",
-    "deletedNext": "Prochaine occurrence",
     "completed": "Tâche terminée !",
     "archived": "Tâche archivée",
     "undoNotAvailableForDelete": "Annuler non disponible pour la suppression",
     "alreadyAllComplete": "Toutes les tâches sélectionnées sont déjà terminées",
     "noCompletedSelected": "Aucune tâche terminée sélectionnée",
     "completeFailed": "Échec de la réalisation des tâches",
-    "reopenFailed": "Échec de la réouverture des tâches",
     "deleteFailed": "Échec de la suppression des tâches",
     "moveFailed": "Échec du déplacement des tâches"
   },

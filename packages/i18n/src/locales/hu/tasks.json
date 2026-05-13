@@ -35,38 +35,6 @@
     "delete": "Feladat törlése",
     "created": "Létrehozva: {date}"
   },
-  "project": {
-    "create": "Projekt létrehozása",
-    "edit": "Projekt szerkesztése",
-    "delete": "Projekt törlése",
-    "iconAndName": "Ikon és név",
-    "namePlaceholder": "Projekt neve",
-    "select": "Válassza ki a projektet",
-    "selectIcon": "Válassza ki az ikont",
-    "clickIconToChange": "Kattintson az ikonra a módosításhoz",
-    "color": "Szín",
-    "descriptionOptional": "Leírás (nem kötelező)",
-    "descriptionPlaceholder": "A projekt rövid leírása…",
-    "statuses": "Állapotok",
-    "statusesHelp": "Konfigurálja a munkafolyamat szakaszait ehhez a projekthez.",
-    "createDescription": "Hozzon létre egy új projektet névvel, ikonnal, színnel és munkafolyamat-állapotokkal.",
-    "editDescription": "Szerkessze a projekt nevét, ikonját, színét és munkafolyamat-állapotait."
-  },
-  "status": {
-    "select": "Válassza ki az állapotot",
-    "todo": "To Do",
-    "inProgress": "Folyamatban",
-    "done": "Kész"
-  },
-  "priority": {
-    "select": "Válassza ki a prioritást",
-    "none": "Nincs prioritás",
-    "noneShort": "Egyik sem",
-    "low": "Alacsony",
-    "medium": "Közepes",
-    "high": "Magas",
-    "urgent": "Sürgős"
-  },
   "filters": {
     "filter": "Szűrés",
     "emptyTitle": "Egyetlen feladat sem felel meg a szűrőknek",
@@ -113,14 +81,12 @@
     "filterApplied": "Alkalmazott \"{name}\"",
     "deleted": "Feladat törölve",
     "deletedSeries": "Kész a sorozat!",
-    "deletedNext": "Következő előfordulás",
     "completed": "Feladat teljesítve!",
     "archived": "Feladat archiválva",
     "undoNotAvailableForDelete": "A visszavonás nem törölhető",
     "alreadyAllComplete": "Az összes kiválasztott feladat már elkészült",
     "noCompletedSelected": "Nincsenek befejezett feladatok kiválasztva",
     "completeFailed": "Nem sikerült végrehajtani a feladatokat",
-    "reopenFailed": "Nem sikerült újra megnyitni a feladatokat",
     "deleteFailed": "Nem sikerült törölni a feladatokat",
     "moveFailed": "Nem sikerült áthelyezni a feladatokat"
   },

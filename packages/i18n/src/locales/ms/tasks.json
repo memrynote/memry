@@ -35,38 +35,6 @@
     "delete": "Padam tugasan",
     "created": "Mencipta {date}"
   },
-  "project": {
-    "create": "Buat Projek",
-    "edit": "Edit Projek",
-    "delete": "Padamkan Projek",
-    "iconAndName": "Ikon & Nama",
-    "namePlaceholder": "Nama projek",
-    "select": "Pilih projek",
-    "selectIcon": "Pilih ikon",
-    "clickIconToChange": "Klik ikon untuk menukar",
-    "color": "warna",
-    "descriptionOptional": "Penerangan (pilihan)",
-    "descriptionPlaceholder": "Penerangan ringkas projek ini…",
-    "statuses": "Status",
-    "statusesHelp": "Konfigurasikan peringkat aliran kerja untuk projek ini.",
-    "createDescription": "Buat projek baharu dengan status nama, ikon, warna dan aliran kerja.",
-    "editDescription": "Edit nama projek, ikon, warna dan status aliran kerja."
-  },
-  "status": {
-    "select": "Pilih status",
-    "todo": "Untuk Dilakukan",
-    "inProgress": "Sedang Berlangsung",
-    "done": "Selesai"
-  },
-  "priority": {
-    "select": "Pilih keutamaan",
-    "none": "Tiada Keutamaan",
-    "noneShort": "tiada",
-    "low": "rendah",
-    "medium": "Sederhana",
-    "high": "tinggi",
-    "urgent": "mendesak"
-  },
   "filters": {
     "filter": "Penapis",
     "emptyTitle": "Tiada tugasan yang sepadan dengan penapis anda",
@@ -113,14 +81,12 @@
     "filterApplied": "Digunakan \"{name}\"",
     "deleted": "Tugasan dipadamkan",
     "deletedSeries": "Siri lengkap!",
-    "deletedNext": "Kejadian seterusnya",
     "completed": "Tugas selesai!",
     "archived": "Tugas diarkibkan",
     "undoNotAvailableForDelete": "Buat asal tidak tersedia untuk dipadamkan",
     "alreadyAllComplete": "Semua tugasan yang dipilih sudah selesai",
     "noCompletedSelected": "Tiada tugasan selesai dipilih",
     "completeFailed": "Gagal menyelesaikan tugasan",
-    "reopenFailed": "Gagal membuka semula tugasan",
     "deleteFailed": "Gagal memadamkan tugasan",
     "moveFailed": "Gagal mengalihkan tugas"
   },

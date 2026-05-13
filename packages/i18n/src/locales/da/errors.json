@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Noget gik galt. Prøv venligst igen.",
     "operationFailed": "Handlingen mislykkedes",
-    "unknown": "Der opstod en ukendt fejl",
-    "validationFailed": "Validering mislykkedes",
-    "actionFailed": "Handlingen mislykkedes"
+    "unknown": "Der opstod en ukendt fejl"
   },
   "ipc": {
     "noVaultOpen": "Ingen boks er åben. Åbn venligst en boks først."

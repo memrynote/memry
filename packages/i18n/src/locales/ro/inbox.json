@@ -43,9 +43,7 @@
     "pdfs": "PDF-uri",
     "social": "Social",
     "reminder": "Memento",
-    "reminders": "Mementouri",
-    "text": "Text",
-    "other": "Altele"
+    "reminders": "Mementouri"
   },
   "empty": {
     "successAria": "Succes, căsuța de e-mail este goală",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "Nu există elemente arhivate care se potrivesc",
     "noItemsYet": "Niciun articol încă",
     "noItemsFiled": "Încă nu au fost înregistrate articole",
-    "noItemTypes": "Nu există tipuri de articole de afișat",
     "noFolders": "Nu s-au găsit dosare",
-    "noFolderMatch": "Niciun folder nu se potrivește cu „{query}”",
     "noNotes": "Nu s-au găsit note",
     "allMatchesLinked": "Toate meciurile sunt deja legate"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Transcrierea eșuată",
     "retryTranscription": "Reîncercați",
     "pageCount": "{count, plural, one {Pagina #} other {# pagini}}",
-    "snoozedUntilShort": "amânat până la {date}",
-    "capturedAgo": "{time} capturat"
+    "snoozedUntilShort": "amânat până la {date}"
   },
   "loading": {
     "inbox": "Se încarcă inbox...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Acțiuni rapide",
     "archiveItem": "Element de arhivare",
-    "archive": "Arhiva",
-    "snooze": "Amână"
+    "archive": "Arhiva"
   },
   "detail": {
     "ariaLabel": "Detalii articol",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Căutați note pentru a face legătura",
     "linkedNotesAria": "Note legate",
     "removeLinkTo": "Eliminați linkul către {title}",
-    "contentEditorAria": "Editor de conținut",
     "notePlaceholder": "Scrie-ți nota...",
     "textPlaceholder": "Editați textul capturat..."
   },
@@ -263,14 +256,9 @@
     "custom": "Personalizat..."
   },
   "insights": {
-    "loading": "Se încarcă statistici...",
     "captureActivity": "Captură activitate",
     "byType": "După Tip",
-    "itemTypes": "Tipuri de articole",
-    "itemTypesDescription": "Distribuirea formatelor de conținut",
     "recentFilings": "Depuneri recente",
-    "recentlyFiled": "Depus recent",
-    "recentlyFiledDescription": "Cele mai recente acțiuni în căsuța dvs. de e-mail",
     "captured": "Capturat",
     "capturedThisWeek": "+{count} săptămâna aceasta",
     "processed": "Procesat",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {Captură #} other {# captează}}",
     "peak": "Vârf: {day} {start}–{end}",
     "convertedToTask": "Transformat în sarcină",
-    "linked": "Legat",
     "now": "acum",
     "timeAgoMinutes": "{count}m în urmă",
     "timeAgoHours": "{count}h în urmă",

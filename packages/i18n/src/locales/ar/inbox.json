@@ -43,9 +43,7 @@
     "pdfs": "ملفات PDF",
     "social": "اجتماعي",
     "reminder": "تذكير",
-    "reminders": "تذكيرات",
-    "text": "نص",
-    "other": "أخرى"
+    "reminders": "تذكيرات"
   },
   "empty": {
     "successAria": "تم بنجاح، صندوق الوارد فارغ",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "لا توجد عناصر مؤرشفة مطابقة",
     "noItemsYet": "لا توجد عناصر بعد",
     "noItemsFiled": "لم يتم تقديم أي عناصر حتى الآن",
-    "noItemTypes": "لا توجد أنواع عناصر لعرضها",
     "noFolders": "لم يتم العثور على مجلدات",
-    "noFolderMatch": "لا توجد مجلدات تطابق \"{query}\"",
     "noNotes": "لم يتم العثور على أي ملاحظات",
     "allMatchesLinked": "جميع المباريات مرتبطة بالفعل"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "فشل النسخ",
     "retryTranscription": "أعد المحاولة",
     "pageCount": "{count, plural, one {صفحة #} other {صفحات #}}",
-    "snoozedUntilShort": "تم التأجيل حتى {date}",
-    "capturedAgo": "تم التقاط {time}"
+    "snoozedUntilShort": "تم التأجيل حتى {date}"
   },
   "loading": {
     "inbox": "جارٍ تحميل البريد الوارد...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "إجراءات سريعة",
     "archiveItem": "عنصر الأرشيف",
-    "archive": "أرشيف",
-    "snooze": "غفوة"
+    "archive": "أرشيف"
   },
   "detail": {
     "ariaLabel": "تفاصيل السلعة",
@@ -213,7 +207,6 @@
     "searchNotesAria": "ملاحظات البحث للارتباط",
     "linkedNotesAria": "الملاحظات المرتبطة",
     "removeLinkTo": "قم بإزالة الرابط إلى {title}",
-    "contentEditorAria": "محرر المحتوى",
     "notePlaceholder": "أكتب مذكرتك...",
     "textPlaceholder": "تحرير النص الذي تم التقاطه..."
   },
@@ -263,14 +256,9 @@
     "custom": "مخصص..."
   },
   "insights": {
-    "loading": "جارٍ تحميل الرؤى...",
     "captureActivity": "التقاط النشاط",
     "byType": "حسب النوع",
-    "itemTypes": "أنواع العناصر",
-    "itemTypesDescription": "توزيع تنسيقات المحتوى",
     "recentFilings": "الإيداعات الأخيرة",
-    "recentlyFiled": "تم تقديمه مؤخرًا",
-    "recentlyFiledDescription": "أحدث الإجراءات على البريد الوارد الخاص بك",
     "captured": "تم التقاطها",
     "capturedThisWeek": "+{count} هذا الأسبوع",
     "processed": "تمت معالجتها",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {التقاط #} other {يلتقط #}}",
     "peak": "الذروة: {day} {start}–{end}",
     "convertedToTask": "تم تحويله إلى مهمة",
-    "linked": "مرتبط",
     "now": "الآن",
     "timeAgoMinutes": "منذ {count}m",
     "timeAgoHours": "منذ {count}h",

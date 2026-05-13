@@ -14,7 +14,6 @@
       "openLinkedFailed": "Misslyckades med att öppna länkad post",
       "localOnly": "Anteckning satt till endast lokal",
       "willSync": "Anteckning kommer att synkroniseras till molnet",
-      "saveFailed": "Misslyckades med att spara anteckning",
       "renameFailed": "Misslyckades med att byta namn på anteckning",
       "toggleLocalOnlyFailed": "Misslyckades med att växla endast lokal",
       "toggleFullWidthFailed": "Misslyckades med att växla full bredd"
@@ -135,9 +134,6 @@
       "clearSearch": "Rensa sökning"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "Skriv din anteckning..."
-  },
   "outline": {
     "title": "Omriss",
     "aria": "Dokumentomriss",
@@ -149,7 +145,6 @@
     "modified": "Ändrad"
   },
   "backlinks": {
-    "title": "Bakåtlänkar",
     "sortRecent": "Senaste",
     "sortAlpha": "A-Ö",
     "sortMentions": "Flest omnämnanden",

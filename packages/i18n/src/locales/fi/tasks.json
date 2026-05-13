@@ -35,38 +35,6 @@
     "delete": "Poista tehtävä",
     "created": "Luotu {date}"
   },
-  "project": {
-    "create": "Luo projekti",
-    "edit": "Muokkaa projektia",
-    "delete": "Poista projekti",
-    "iconAndName": "Kuvake ja nimi",
-    "namePlaceholder": "Projektin nimi",
-    "select": "Valitse projekti",
-    "selectIcon": "Valitse kuvake",
-    "clickIconToChange": "Napsauta kuvaketta muuttaaksesi",
-    "color": "Väri",
-    "descriptionOptional": "Kuvaus (valinnainen)",
-    "descriptionPlaceholder": "Lyhyt kuvaus tästä projektista…",
-    "statuses": "Tilat",
-    "statusesHelp": "Määritä tämän projektin työnkulun vaiheet.",
-    "createDescription": "Luo uusi projekti, jossa on nimi, kuvake, väri ja työnkulun tilat.",
-    "editDescription": "Muokkaa projektin nimeä, kuvaketta, väriä ja työnkulun tiloja."
-  },
-  "status": {
-    "select": "Valitse tila",
-    "todo": "Tehtävää",
-    "inProgress": "Meneillään",
-    "done": "Valmis"
-  },
-  "priority": {
-    "select": "Valitse prioriteetti",
-    "none": "Ei prioriteettia",
-    "noneShort": "Ei mitään",
-    "low": "Matala",
-    "medium": "Keskikokoinen",
-    "high": "Korkea",
-    "urgent": "Kiireellinen"
-  },
   "filters": {
     "filter": "Suodata",
     "emptyTitle": "Yksikään tehtävä ei vastaa suodattimiasi",
@@ -113,14 +81,12 @@
     "filterApplied": "Sovellettu \"{name}\"",
     "deleted": "Tehtävä poistettu",
     "deletedSeries": "Sarja valmis!",
-    "deletedNext": "Seuraava esiintyminen",
     "completed": "Tehtävä suoritettu!",
     "archived": "Tehtävä arkistoitu",
     "undoNotAvailableForDelete": "Kumoa ei ole poistettavissa",
     "alreadyAllComplete": "Kaikki valitut tehtävät on jo suoritettu",
     "noCompletedSelected": "Valmiita tehtäviä ei ole valittu",
     "completeFailed": "Tehtävien suorittaminen epäonnistui",
-    "reopenFailed": "Tehtävien avaaminen uudelleen epäonnistui",
     "deleteFailed": "Tehtävien poistaminen epäonnistui",
     "moveFailed": "Tehtävien siirtäminen epäonnistui"
   },

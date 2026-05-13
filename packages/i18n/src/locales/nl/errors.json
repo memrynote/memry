@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Er is iets misgegaan. Probeer het opnieuw.",
     "operationFailed": "Operatie mislukt",
-    "unknown": "Er is een onbekende fout opgetreden",
-    "validationFailed": "Validatie mislukt",
-    "actionFailed": "Actie mislukt"
+    "unknown": "Er is een onbekende fout opgetreden"
   },
   "ipc": {
     "noVaultOpen": "Er is geen kluis open. Open eerst een kluis."

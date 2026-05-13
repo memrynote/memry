@@ -14,7 +14,6 @@
       "openLinkedFailed": "Bağlantılı öğe açılamadı",
       "localOnly": "Not yalnızca yerel olarak ayarlandı",
       "willSync": "Not bulutla senkronize edilecek",
-      "saveFailed": "Not kaydedilemedi",
       "renameFailed": "Not yeniden adlandırılamadı",
       "toggleLocalOnlyFailed": "Yalnızca yerele geçiş yapılamadı",
       "toggleFullWidthFailed": "Tam genişliğe geçiş yapılamadı"
@@ -135,9 +134,6 @@
       "clearSearch": "Aramayı temizle"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "Notunuzu yazın..."
-  },
   "outline": {
     "title": "Taslak",
     "aria": "Belge taslağı",
@@ -149,7 +145,6 @@
     "modified": "Değiştirildi"
   },
   "backlinks": {
-    "title": "Geri bağlantılar",
     "sortRecent": "Son",
     "sortAlpha": "A-Z",
     "sortMentions": "En çok bahsedilen",
