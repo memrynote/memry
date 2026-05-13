@@ -442,6 +442,9 @@
       "resolveWindow": "Tidak dapat menyelesaikan tetingkap sumber ejen",
       "detectCli": "Tidak dapat mengesan hujung belakang ejen",
       "loadDisclosure": "Tidak dapat memuatkan keadaan pendedahan"
+    },
+    "sources": {
+      "used": "{count, plural, one {Menggunakan # sumber} other {Menggunakan # sumber}}"
     }
   }
 }

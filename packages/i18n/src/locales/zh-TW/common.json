@@ -442,6 +442,9 @@
       "resolveWindow": "無法解析代理程式來源視窗",
       "detectCli": "無法偵測代理後端",
       "loadDisclosure": "無法載入揭露狀態"
+    },
+    "sources": {
+      "used": "已使用 {count} 個來源"
     }
   }
 }

@@ -29,6 +29,11 @@ describe('Prompt assembler', () => {
     expect(out.startsWith(SYSTEM_PROMPT_HEADER)).toBe(true)
   })
 
+  it('instructs the agent to use provided Memry refs as exact markdown links', () => {
+    expect(SYSTEM_PROMPT_HEADER).toContain('use the exact markdown link')
+    expect(SYSTEM_PROMPT_HEADER).toContain('Do not invent memry:// links')
+  })
+
   it('appends user message at the end', () => {
     const out = assemblePrompt({
       history: [],

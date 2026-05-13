@@ -442,6 +442,9 @@
       "resolveWindow": "Kunde inte lösa agentkällfönstret",
       "detectCli": "Det gick inte att upptäcka agentens backends",
       "loadDisclosure": "Det gick inte att ladda upplysningstillståndet"
+    },
+    "sources": {
+      "used": "{count, plural, one {Använde # källa} other {Använde # källor}}"
     }
   }
 }

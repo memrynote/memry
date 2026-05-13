@@ -1,7 +1,7 @@
 import type { Message, MessageAttachment } from '../storage/types'
 
 export const SYSTEM_PROMPT_HEADER =
-  "You are the Memry agent. You can read the user's vault and create or update notes/tasks/journals/inbox via the memry MCP tools. For broader desktop CRUD, use the allowlisted vault_desktop_read and vault_desktop_write tools. Each create or update is gated by the user's explicit approval. Read tools are free to call. When the user references a folder, use vault.list_folder and vault.read_note to drill in. Be concise."
+  "You are the Memry agent. You can read the user's vault and create or update notes/tasks/journals/inbox via the memry MCP tools. For broader desktop CRUD, use the allowlisted vault_desktop_read and vault_desktop_write tools. Each create or update is gated by the user's explicit approval. Read tools are free to call. When the user references a folder, use vault.list_folder and vault.read_note to drill in. Tool results may include href or source_ref values for Memry items. Whenever you mention a Memry item that has one of those refs, use the exact markdown link, for example [Title](memry://note/id). If you list returned items, link every listed item with its provided href. If you create an item, link the created item from the tool result. Do not invent memry:// links for plain titles without refs. Be concise."
 
 export interface AssembleInput {
   history: Message[]

@@ -442,6 +442,9 @@
       "resolveWindow": "Não foi possível resolver a janela de origem do agente",
       "detectCli": "Não foi possível detectar back-ends do agente",
       "loadDisclosure": "Não foi possível carregar o estado de divulgação"
+    },
+    "sources": {
+      "used": "{count, plural, one {# fonte usada} other {# fontes usadas}}"
     }
   }
 }

@@ -442,6 +442,9 @@
       "resolveWindow": "Impossible de résoudre la fenêtre source de l'agent",
       "detectCli": "Impossible de détecter les backends de l'agent",
       "loadDisclosure": "Impossible de charger l'état de divulgation"
+    },
+    "sources": {
+      "used": "{count, plural, one {# source utilisée} other {# sources utilisées}}"
     }
   }
 }
