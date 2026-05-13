@@ -72,6 +72,8 @@ test id stable when changing pane/drop-zone markup.
 Agent Chat approval cards render inline in the chat stream, not as modal dialogs. Scope approval
 selectors to the Agent chat region, and scope post-approval assertions to the destination surface
 instead of broad text that can still appear in the chat transcript or tool arguments.
+Vault unit tests import the vault index with narrow Electron mocks. Keep Agent runtime startup behind
+vault open/close service functions so note and database tests do not need to load Agent IPC handlers.
 
 ### Virtualized UI Tests
 

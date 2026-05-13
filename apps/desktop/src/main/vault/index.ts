@@ -58,8 +58,7 @@ import { createEmbeddingProjector } from '../projections/projectors/embedding-pr
 import { createInboxStatsProjector } from '../projections/projectors/inbox-stats-projector'
 import { PropertyDefinitionsService } from './property-definitions'
 import { migrateSettingsToConfig } from './settings-cache'
-import { startAgent, type AgentHandle } from '../agent/bootstrap'
-import { startAgentMcpLifecycle, stopAgentMcpLifecycle } from '../agent/mcp/lifecycle'
+import type { AgentHandle } from '../agent/bootstrap'
 
 const logger = createLogger('Vault')
 
@@ -442,6 +441,11 @@ export async function closeVault(): Promise<void> {
 
 async function startVaultAgentServices(): Promise<void> {
   try {
+    const [{ startAgentMcpLifecycle }, { startAgent }] = await Promise.all([
+      import('../agent/mcp/lifecycle'),
+      import('../agent/bootstrap')
+    ])
+
     await startAgentMcpLifecycle()
     agentHandle = await startAgent()
   } catch (error) {
@@ -453,6 +457,8 @@ async function startVaultAgentServices(): Promise<void> {
 async function stopVaultAgentServices(): Promise<void> {
   const currentAgentHandle = agentHandle
   agentHandle = null
+
+  const { stopAgentMcpLifecycle } = await import('../agent/mcp/lifecycle')
 
   if (currentAgentHandle) {
     await currentAgentHandle.shutdown()
