@@ -10,6 +10,7 @@ import path from 'path'
 import fs from 'fs/promises'
 import { shell } from 'electron'
 import { eq } from 'drizzle-orm'
+import { getExtension } from '@memry/shared/file-types'
 import {
   parseNote,
   serializeNote,
@@ -44,13 +45,30 @@ import { NotesChannels } from '@memry/contracts/notes-api'
 import type { FolderInfo } from '@memry/contracts/templates-api'
 import { readFolderConfig } from './folders'
 import { createLogger } from '../lib/logger'
-import { getFileType, getExtension } from '@memry/shared/file-types'
-import { getStatus } from './index'
+import { getConfig, getStatus } from './index'
 import { emitNoteEvent, getNotesDir, toAbsolutePath, toRelativePath } from './notes-io'
 import { maybeCreateSignificantSnapshot } from './notes-versions'
 import { noteToListItem } from './notes-queries'
+import {
+  collectImportCandidates,
+  importCandidate,
+  type ImportedVaultFile,
+  type ImportSourceType
+} from './importer'
+import { indexVault } from './indexer'
 
 const logger = createLogger('VaultNotesCrud')
+
+function resolveImportSourceType(
+  sourcePath: string,
+  sourceType: ImportSourceType
+): ImportSourceType {
+  if (sourceType === 'files' && getExtension(sourcePath) === 'zip') {
+    return 'notion'
+  }
+
+  return sourceType
+}
 
 // ============================================================================
 // Types
@@ -162,13 +180,10 @@ export interface NoteLinksResponse {
 export interface ImportFilesInput {
   sourcePaths: string[]
   targetFolder?: string
+  sourceType?: ImportSourceType
 }
 
-export interface ImportedFileInfo {
-  destPath: string
-  filename: string
-  fileType: string
-}
+export type ImportedFileInfo = ImportedVaultFile
 
 export interface ImportFilesResult {
   success: boolean
@@ -676,16 +691,14 @@ export function revealInFinder(id: string): void {
 // ============================================================================
 
 export async function importFiles(input: ImportFilesInput): Promise<ImportFilesResult> {
-  const { sourcePaths, targetFolder = '' } = input
+  const { sourcePaths, targetFolder = '', sourceType = 'files' } = input
   const status = getStatus()
 
   if (!status.isOpen || !status.path) {
     throw new Error('No vault is open')
   }
 
-  const notesPath = path.join(status.path, 'notes', targetFolder)
-
-  await ensureDirectory(notesPath)
+  const defaultNoteFolder = getConfig().defaultNoteFolder
 
   const errors: string[] = []
   const importedFiles: ImportedFileInfo[] = []
@@ -693,38 +706,50 @@ export async function importFiles(input: ImportFilesInput): Promise<ImportFilesR
   let failed = 0
 
   for (const sourcePath of sourcePaths) {
+    const effectiveSourceType = resolveImportSourceType(sourcePath, sourceType)
+    const effectiveTargetFolder =
+      effectiveSourceType === 'obsidian' || effectiveSourceType === 'notion' ? '' : targetFolder
+    const notesPath = path.join(status.path, defaultNoteFolder, effectiveTargetFolder)
+    let candidates: Awaited<ReturnType<typeof collectImportCandidates>>
+
     try {
-      await fs.access(sourcePath)
-
-      const filename = path.basename(sourcePath)
-
-      let destFilename = filename
-      let destPath = path.join(notesPath, destFilename)
-      let counter = 1
-
-      while (true) {
-        try {
-          await fs.access(destPath)
-          const ext = path.extname(filename)
-          const base = path.basename(filename, ext)
-          destFilename = `${base} (${counter})${ext}`
-          destPath = path.join(notesPath, destFilename)
-          counter++
-        } catch {
-          break
-        }
-      }
-
-      await fs.copyFile(sourcePath, destPath)
-      imported++
-
-      const fileType = getFileType(getExtension(destPath)) ?? 'markdown'
-      importedFiles.push({ destPath, filename, fileType })
+      candidates = await collectImportCandidates(sourcePath, effectiveSourceType)
     } catch (error) {
       failed++
       const message = error instanceof Error ? error.message : 'Unknown error'
       errors.push(`Failed to import ${path.basename(sourcePath)}: ${message}`)
+      continue
     }
+
+    const cleanupRoots = new Set(
+      candidates
+        .map((candidate) => candidate.cleanupRoot)
+        .filter((cleanupRoot): cleanupRoot is string => typeof cleanupRoot === 'string')
+    )
+
+    try {
+      await ensureDirectory(notesPath)
+
+      for (const candidate of candidates) {
+        try {
+          const importedFile = await importCandidate(candidate, notesPath, effectiveSourceType)
+          importedFiles.push(importedFile)
+          imported++
+        } catch (error) {
+          failed++
+          const message = error instanceof Error ? error.message : 'Unknown error'
+          errors.push(`Failed to import ${path.basename(candidate.sourcePath)}: ${message}`)
+        }
+      }
+    } finally {
+      for (const cleanupRoot of cleanupRoots) {
+        await fs.rm(cleanupRoot, { recursive: true, force: true })
+      }
+    }
+  }
+
+  if (imported > 0) {
+    await indexVault(status.path)
   }
 
   return {

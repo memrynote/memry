@@ -8,12 +8,23 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'fs'
 import * as path from 'path'
+import { strToU8, zipSync } from 'fflate'
 import { createTestVault, readTestNote, type TestVaultResult } from '@tests/utils/test-vault'
 import { createTestDataDb, createTestIndexDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type { VaultStatus, VaultConfig } from '@memry/contracts/vault-api'
 import { startProjectionRuntime, stopProjectionRuntime } from '../projections'
 import { createNoteDerivedStateProjector } from '../projections/projectors/note-derived-state-projector'
 import * as projections from '../projections'
+
+function createZipArchive(entries: Record<string, string | Buffer>): Buffer {
+  const zipEntries = Object.fromEntries(
+    Object.entries(entries).map(([entryName, value]) => [
+      entryName,
+      Buffer.isBuffer(value) ? value : strToU8(value)
+    ])
+  )
+  return Buffer.from(zipSync(zipEntries, { level: 0 }))
+}
 
 // ============================================================================
 // Type-Safe Mocks
@@ -1294,6 +1305,152 @@ describe('notes operations', () => {
       } satisfies VaultStatus)
 
       await expect(notes.importFiles({ sourcePaths: [] })).rejects.toThrow('No vault is open')
+    })
+
+    it('imports an Obsidian vault recursively while preserving non-indexed source files', async () => {
+      const sourceRoot = path.join(tempVault.path, 'obsidian-source')
+      fs.mkdirSync(path.join(sourceRoot, '.obsidian'), { recursive: true })
+      fs.mkdirSync(path.join(sourceRoot, 'Research'), { recursive: true })
+      fs.mkdirSync(path.join(sourceRoot, 'Assets'), { recursive: true })
+      fs.writeFileSync(path.join(sourceRoot, '.obsidian', 'workspace.json'), '{}')
+      fs.writeFileSync(path.join(sourceRoot, '.hidden-source.md'), '# Hidden source note')
+      fs.writeFileSync(
+        path.join(sourceRoot, 'Research', 'Alpha.md'),
+        [
+          '---',
+          'tags:',
+          '  - inbox/to-read',
+          'aliases:',
+          '  - First alpha',
+          '---',
+          '# Alpha',
+          '',
+          'Links survive: [[Beta]] and ![[../Assets/diagram.canvas]].'
+        ].join('\n')
+      )
+      fs.writeFileSync(path.join(sourceRoot, 'Assets', 'diagram.canvas'), '{"nodes":[]}')
+      fs.writeFileSync(path.join(sourceRoot, 'Assets', 'photo.avif'), Buffer.from([0x00, 0x01]))
+
+      const result = await notes.importFiles({
+        sourcePaths: [sourceRoot],
+        sourceType: 'obsidian',
+        targetFolder: 'Imported/Obsidian'
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.imported).toBe(4)
+      expect(result.failed).toBe(0)
+      expect(fs.existsSync(path.join(tempVault.notesDir, '.obsidian'))).toBe(false)
+      expect(fs.existsSync(path.join(tempVault.notesDir, '.hidden-source.md'))).toBe(true)
+      expect(fs.existsSync(path.join(tempVault.notesDir, 'Research', 'Alpha.md'))).toBe(true)
+      expect(fs.existsSync(path.join(tempVault.notesDir, 'Assets', 'diagram.canvas'))).toBe(true)
+      expect(fs.existsSync(path.join(tempVault.notesDir, 'Imported', 'Obsidian'))).toBe(false)
+      expect(result.importedFiles).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ filename: 'Alpha.md', fileType: 'markdown' }),
+          expect.objectContaining({ filename: '.hidden-source.md', fileType: 'markdown' }),
+          expect.objectContaining({ filename: 'diagram.canvas', fileType: 'unsupported' }),
+          expect.objectContaining({ filename: 'photo.avif', fileType: 'unsupported' })
+        ])
+      )
+    })
+
+    it('imports a Notion Markdown and CSV export without dropping database rows', async () => {
+      const sourceRoot = path.join(tempVault.path, 'notion-source')
+      fs.mkdirSync(path.join(sourceRoot, 'Project assets'), { recursive: true })
+      fs.writeFileSync(path.join(sourceRoot, 'Project.md'), '# Project\n\n<div>Callout HTML</div>')
+      fs.writeFileSync(
+        path.join(sourceRoot, 'Tasks.csv'),
+        ['Name,Status,Notes', '"Import, now",Done,"Line 1', 'Line 2"', 'Pipe,Todo,"a | b"'].join(
+          '\n'
+        )
+      )
+      fs.writeFileSync(
+        path.join(sourceRoot, 'Escapes.csv'),
+        ['Name,Quote,Path,Empty', 'Backslash,"He said ""yes""","C:\\Users\\Kaan",'].join('\r\n')
+      )
+      fs.writeFileSync(path.join(sourceRoot, 'Project assets', 'hero.png'), Buffer.from([0x89]))
+
+      const result = await notes.importFiles({
+        sourcePaths: [sourceRoot],
+        sourceType: 'notion',
+        targetFolder: 'Imported/Notion'
+      })
+
+      const importedCsvNote = path.join(tempVault.notesDir, 'Tasks.md')
+      const importedEscapesNote = path.join(tempVault.notesDir, 'Escapes.md')
+
+      expect(result.success).toBe(true)
+      expect(result.imported).toBe(4)
+      expect(fs.existsSync(path.join(tempVault.notesDir, 'Project.md'))).toBe(true)
+      expect(fs.existsSync(importedCsvNote)).toBe(true)
+      expect(fs.existsSync(importedEscapesNote)).toBe(true)
+      expect(fs.existsSync(path.join(tempVault.notesDir, 'Tasks.csv'))).toBe(false)
+      expect(fs.readFileSync(importedCsvNote, 'utf8')).toContain(
+        '| Import, now | Done | Line 1<br>Line 2 |'
+      )
+      expect(fs.readFileSync(importedCsvNote, 'utf8')).toContain('| Pipe | Todo | a \\| b |')
+      expect(fs.readFileSync(importedEscapesNote, 'utf8')).toContain(
+        '| Backslash | He said "yes" | C:\\\\Users\\\\Kaan |'
+      )
+      expect(fs.existsSync(path.join(tempVault.notesDir, 'Project assets', 'hero.png'))).toBe(true)
+    })
+
+    it('imports a zipped Notion Markdown and CSV export', async () => {
+      vi.useRealTimers()
+      const zipPath = path.join(tempVault.path, 'notion-export.zip')
+      fs.writeFileSync(
+        zipPath,
+        createZipArchive({
+          'Workspace/Project.md': '# Project\n\nFrom ZIP',
+          'Workspace/Tasks.csv': 'Name,Status\nShip,Done',
+          'Workspace/Project assets/hero.png': Buffer.from([0x89])
+        })
+      )
+
+      const result = await notes.importFiles({
+        sourcePaths: [zipPath],
+        sourceType: 'notion',
+        targetFolder: 'Imported/Notion'
+      })
+
+      const importedCsvNote = path.join(tempVault.notesDir, 'Workspace', 'Tasks.md')
+
+      expect(result.success).toBe(true)
+      expect(result.imported).toBe(3)
+      expect(fs.existsSync(path.join(tempVault.notesDir, 'Workspace', 'Project.md'))).toBe(true)
+      expect(fs.existsSync(importedCsvNote)).toBe(true)
+      expect(fs.readFileSync(importedCsvNote, 'utf8')).toContain('| Ship | Done |')
+      expect(
+        fs.existsSync(path.join(tempVault.notesDir, 'Workspace', 'Project assets', 'hero.png'))
+      ).toBe(true)
+      expect(fs.existsSync(path.join(tempVault.notesDir, 'notion-export.zip'))).toBe(false)
+    })
+
+    it('treats a selected zip file as a Notion export even when source type is omitted', async () => {
+      vi.useRealTimers()
+      const zipPath = path.join(tempVault.path, 'notion-export.zip')
+      fs.writeFileSync(
+        zipPath,
+        createZipArchive({
+          'Workspace/Project.md': '# Project\n\nFrom ZIP',
+          'Workspace/Tasks.csv': 'Name,Status\nShip,Done'
+        })
+      )
+
+      const result = await notes.importFiles({
+        sourcePaths: [zipPath],
+        targetFolder: 'imports'
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.imported).toBe(2)
+      expect(fs.existsSync(path.join(tempVault.notesDir, 'Workspace', 'Project.md'))).toBe(true)
+      expect(fs.existsSync(path.join(tempVault.notesDir, 'Workspace', 'Tasks.md'))).toBe(true)
+      expect(fs.existsSync(path.join(tempVault.notesDir, 'notion-export.zip'))).toBe(false)
+      expect(fs.existsSync(path.join(tempVault.notesDir, 'imports', 'notion-export.zip'))).toBe(
+        false
+      )
     })
   })
 

@@ -262,6 +262,16 @@ Total usage vs. quota with a stacked bar by category (notes, attachments, CRDT, 
 
 The vault path on disk. **Reveal** opens it in Finder / Explorer.
 
+### Import
+
+Use **Import Obsidian Vault** to select a local Obsidian vault folder. Memry copies notes,
+attachments, and other vault files into the notes folder root, preserving the source folder layout
+while skipping Obsidian's own `.obsidian` configuration folder.
+
+Use **Import Notion Export** after exporting from Notion as Markdown & CSV. Select the downloaded
+`.zip`; Memry extracts Markdown pages and assets into the notes folder root, and CSV database
+exports are converted into Markdown table notes so database rows remain searchable in the vault.
+
 ---
 
 ## Tags

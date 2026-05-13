@@ -17,7 +17,9 @@ import {
   NoteListSchema,
   NoteReorderSchema,
   NoteGetPositionsSchema,
-  SetLocalOnlySchema
+  SetLocalOnlySchema,
+  ImportFilesSchema,
+  ShowImportDialogSchema
 } from '@memry/contracts/notes-api'
 import { PropertyTypes } from '@memry/contracts/property-types'
 import { RenameFolderSchema } from '@memry/contracts/tasks-api'
@@ -922,14 +924,11 @@ export function registerNotesHandlers(): void {
   // notes:import-files - Import files from external paths into the vault
   registerCommand(
     NotesChannels.invoke.IMPORT_FILES,
-    z.object({
-      sourcePaths: z.array(z.string()),
-      targetFolder: z.string().optional()
-    }),
+    ImportFilesSchema,
     async (input) => {
       const result = await importFiles(input)
       for (const file of result.importedFiles) {
-        if (file.fileType !== 'markdown') {
+        if (file.fileType !== 'markdown' && file.fileType !== 'unsupported') {
           emitNoteAttachmentSaved('vault-import', file.destPath)
         }
       }
@@ -941,15 +940,28 @@ export function registerNotesHandlers(): void {
   // notes:show-import-dialog - Open a file dialog to select files for import
   ipcMain.handle(
     NotesChannels.invoke.SHOW_IMPORT_DIALOG,
-    createHandler(async () => {
+    createValidatedHandler(ShowImportDialogSchema, async ({ sourceType = 'files' }) => {
       const t = getMainI18n().getFixedT(null, 'system')
       const extensions = getAllSupportedExtensions()
+      const isObsidianImport = sourceType === 'obsidian'
+      const isNotionImport = sourceType === 'notion'
       const result = await dialog.showOpenDialog({
-        properties: ['openFile', 'multiSelections'],
-        filters: [
-          { name: t('dialog.import.filterSupported'), extensions },
-          { name: t('dialog.import.filterAll'), extensions: ['*'] }
-        ]
+        properties: isObsidianImport
+          ? ['openDirectory']
+          : isNotionImport
+            ? ['openFile']
+            : ['openFile', 'multiSelections'],
+        filters: isObsidianImport
+          ? undefined
+          : isNotionImport
+            ? [
+                { name: t('dialog.import.filterSupported'), extensions: ['zip'] },
+                { name: t('dialog.import.filterAll'), extensions: ['*'] }
+              ]
+            : [
+                { name: t('dialog.import.filterSupported'), extensions },
+                { name: t('dialog.import.filterAll'), extensions: ['*'] }
+              ]
       })
 
       if (result.canceled || result.filePaths.length === 0) {

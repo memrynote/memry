@@ -124,6 +124,9 @@ importers:
       emoji-mart:
         specifier: ^5.6.0
         version: 5.6.0
+      extract-zip:
+        specifier: 2.0.1
+        version: 2.0.1
       fuzzysort:
         specifier: ^3.1.0
         version: 3.1.0
@@ -551,6 +554,9 @@ importers:
       eslint-plugin-react-you-might-not-need-an-effect:
         specifier: ^0.8.3
         version: 0.8.5(eslint@9.39.2(jiti@2.6.1))
+      fflate:
+        specifier: 0.8.2
+        version: 0.8.2
       framer-motion:
         specifier: ^12.23.26
         version: 12.34.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)

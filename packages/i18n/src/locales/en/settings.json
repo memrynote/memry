@@ -848,12 +848,38 @@
     },
     "groups": {
       "storageUsage": "Storage Usage",
-      "location": "Location"
+      "location": "Location",
+      "import": "Import"
     },
     "loadingStorage": "Loading storage info...",
     "signInStorage": "Sign in to view storage usage",
     "vaultPath": "Vault Path",
     "reveal": "Reveal",
+    "import": {
+      "importing": "Importing...",
+      "sources": {
+        "files": "files",
+        "obsidian": "Obsidian",
+        "notion": "Notion"
+      },
+      "obsidian": {
+        "label": "Obsidian Vault",
+        "description": "Import notes, folders, links, tags, and local attachments",
+        "action": "Import",
+        "aria": "Import Obsidian Vault"
+      },
+      "notion": {
+        "label": "Notion Export",
+        "description": "Import a downloaded Markdown & CSV zip with assets",
+        "action": "Import",
+        "aria": "Import Notion Export"
+      },
+      "toasts": {
+        "success": "Imported {count, plural, one {# item} other {# items}} from {source}",
+        "partial": "Failed to import {count, plural, one {# item} other {# items}} from {source}",
+        "failed": "Failed to import"
+      }
+    },
     "storage": {
       "title": "Storage",
       "used": "{used} of {limit} used",

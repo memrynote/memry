@@ -51,7 +51,16 @@ export const ExportNoteSchema = z.object({
   pageSize: z.enum(['A4', 'Letter', 'Legal']).default('A4')
 })
 
+export const ImportSourceSchema = z.enum(['files', 'obsidian', 'notion'])
+
 export const ImportFilesSchema = z.object({
   sourcePaths: z.array(z.string()),
-  targetFolder: z.string().optional()
+  targetFolder: z.string().optional(),
+  sourceType: ImportSourceSchema.optional()
 })
+
+export const ShowImportDialogSchema = z
+  .object({
+    sourceType: ImportSourceSchema.optional()
+  })
+  .default({})

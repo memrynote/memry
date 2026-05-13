@@ -444,6 +444,10 @@ describe('notes-handlers extra coverage', () => {
       sourcePaths: ['/tmp/Doc.md', '/tmp/photo.png'],
       targetFolder: 'Inbox'
     })
+    expect(mocks.importFiles).toHaveBeenCalledWith({
+      sourcePaths: ['/tmp/Doc.md', '/tmp/photo.png'],
+      targetFolder: 'Inbox'
+    })
     expect(mocks.emitNoteAttachmentSaved).toHaveBeenCalledWith(
       'vault-import',
       '/vault/notes/photo.png'
@@ -454,6 +458,13 @@ describe('notes-handlers extra coverage', () => {
       canceled: true,
       filePaths: []
     })
+    expect(mocks.dialog.showOpenDialog).toHaveBeenLastCalledWith({
+      properties: ['openFile', 'multiSelections'],
+      filters: expect.arrayContaining([
+        expect.objectContaining({ extensions: expect.any(Array) }),
+        { name: expect.any(String), extensions: ['*'] }
+      ])
+    })
 
     mocks.dialog.showOpenDialog.mockResolvedValueOnce({
       canceled: false,
@@ -462,6 +473,39 @@ describe('notes-handlers extra coverage', () => {
     await expect(invoke(NotesChannels.invoke.SHOW_IMPORT_DIALOG)).resolves.toEqual({
       canceled: false,
       filePaths: ['/tmp/Doc.md']
+    })
+
+    mocks.dialog.showOpenDialog.mockResolvedValueOnce({
+      canceled: false,
+      filePaths: ['/tmp/Obsidian Vault']
+    })
+    await expect(
+      invoke(NotesChannels.invoke.SHOW_IMPORT_DIALOG, { sourceType: 'obsidian' })
+    ).resolves.toEqual({
+      canceled: false,
+      filePaths: ['/tmp/Obsidian Vault']
+    })
+    expect(mocks.dialog.showOpenDialog).toHaveBeenLastCalledWith({
+      properties: ['openDirectory'],
+      filters: undefined
+    })
+
+    mocks.dialog.showOpenDialog.mockResolvedValueOnce({
+      canceled: false,
+      filePaths: ['/tmp/notion-export.zip']
+    })
+    await expect(
+      invoke(NotesChannels.invoke.SHOW_IMPORT_DIALOG, { sourceType: 'notion' })
+    ).resolves.toEqual({
+      canceled: false,
+      filePaths: ['/tmp/notion-export.zip']
+    })
+    expect(mocks.dialog.showOpenDialog).toHaveBeenLastCalledWith({
+      properties: ['openFile'],
+      filters: [
+        { name: expect.any(String), extensions: ['zip'] },
+        { name: expect.any(String), extensions: ['*'] }
+      ]
     })
   })
 

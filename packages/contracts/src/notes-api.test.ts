@@ -10,7 +10,9 @@ import {
   NoteUpdateSchema,
   NoteRenameSchema,
   NoteMoveSchema,
-  NoteListSchema
+  NoteListSchema,
+  ImportFilesSchema,
+  ShowImportDialogSchema
 } from './notes-api'
 
 // ============================================================================
@@ -537,6 +539,37 @@ describe('NoteListSchema', () => {
         tags: 'work'
       })
       expect(result.success).toBe(false)
+    })
+  })
+})
+
+describe('Import schemas', () => {
+  it('should accept source-aware import requests', () => {
+    const result = ImportFilesSchema.safeParse({
+      sourcePaths: ['/exports/obsidian'],
+      targetFolder: '',
+      sourceType: 'obsidian'
+    })
+
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.sourceType).toBe('obsidian')
+    }
+  })
+
+  it('should reject unknown import sources', () => {
+    const result = ImportFilesSchema.safeParse({
+      sourcePaths: ['/exports/source'],
+      sourceType: 'evernote'
+    })
+
+    expect(result.success).toBe(false)
+  })
+
+  it('should default the import dialog input and accept Notion source type', () => {
+    expect(ShowImportDialogSchema.parse(undefined)).toEqual({})
+    expect(ShowImportDialogSchema.parse({ sourceType: 'notion' })).toEqual({
+      sourceType: 'notion'
     })
   })
 })

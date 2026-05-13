@@ -311,6 +311,8 @@ export interface ImportFilesResponse {
   importedFiles: Array<{ destPath: string; filename: string; fileType: string }>
 }
 
+export type ImportSourceType = 'files' | 'obsidian' | 'notion'
+
 export interface ImportDialogResponse {
   canceled: boolean
   filePaths: string[]
@@ -557,14 +559,22 @@ export const notesRpc = defineDomain({
       invokeArgs: ['{ folderPath, notePaths }']
     }),
     importFiles: defineMethod<
-      (sourcePaths: string[], targetFolder?: string) => Promise<ImportFilesResponse>
+      (
+        sourcePaths: string[],
+        targetFolder?: string,
+        sourceType?: ImportSourceType
+      ) => Promise<ImportFilesResponse>
     >({
       channel: NotesChannels.invoke.IMPORT_FILES,
-      params: ['sourcePaths', 'targetFolder'],
-      invokeArgs: ['{ sourcePaths, targetFolder }']
+      params: ['sourcePaths', 'targetFolder', 'sourceType'],
+      invokeArgs: ['{ sourcePaths, targetFolder, sourceType }']
     }),
-    showImportDialog: defineMethod<() => Promise<ImportDialogResponse>>({
-      channel: NotesChannels.invoke.SHOW_IMPORT_DIALOG
+    showImportDialog: defineMethod<
+      (sourceType?: ImportSourceType) => Promise<ImportDialogResponse>
+    >({
+      channel: NotesChannels.invoke.SHOW_IMPORT_DIALOG,
+      params: ['sourceType'],
+      invokeArgs: ['{ sourceType }']
     }),
     setLocalOnly: defineMethod<
       (

@@ -125,6 +125,20 @@ export const SetLocalOnlySchema = z.object({
   localOnly: z.boolean()
 })
 
+export const ImportSourceSchema = z.enum(['files', 'obsidian', 'notion'])
+
+export const ImportFilesSchema = z.object({
+  sourcePaths: z.array(z.string()),
+  targetFolder: z.string().optional(),
+  sourceType: ImportSourceSchema.optional()
+})
+
+export const ShowImportDialogSchema = z
+  .object({
+    sourceType: ImportSourceSchema.optional()
+  })
+  .default({})
+
 // ============================================================================
 // Response Types
 // ============================================================================
@@ -150,6 +164,19 @@ export interface NoteListResponse {
 export interface NoteLinksResponse {
   outgoing: NoteLink[]
   incoming: Backlink[]
+}
+
+export interface ImportFilesResponse {
+  success: boolean
+  imported: number
+  failed: number
+  errors: string[]
+  importedFiles: Array<{ destPath: string; filename: string; fileType: string }>
+}
+
+export interface ImportDialogResponse {
+  canceled: boolean
+  filePaths: string[]
 }
 
 // ============================================================================
@@ -199,6 +226,14 @@ export interface NotesHandlers {
   [NotesChannels.invoke.OPEN_EXTERNAL]: (id: string) => Promise<void>
 
   [NotesChannels.invoke.REVEAL_IN_FINDER]: (id: string) => Promise<void>
+
+  [NotesChannels.invoke.IMPORT_FILES]: (
+    input: z.infer<typeof ImportFilesSchema>
+  ) => Promise<ImportFilesResponse>
+
+  [NotesChannels.invoke.SHOW_IMPORT_DIALOG]: (
+    input: z.infer<typeof ShowImportDialogSchema>
+  ) => Promise<ImportDialogResponse>
 }
 
 // ============================================================================
@@ -284,4 +319,10 @@ export interface NotesClientAPI {
   exists(titleOrPath: string): Promise<boolean>
   openExternal(id: string): Promise<void>
   revealInFinder(id: string): Promise<void>
+  importFiles(
+    sourcePaths: string[],
+    targetFolder?: string,
+    sourceType?: z.infer<typeof ImportSourceSchema>
+  ): Promise<ImportFilesResponse>
+  showImportDialog(sourceType?: z.infer<typeof ImportSourceSchema>): Promise<ImportDialogResponse>
 }
