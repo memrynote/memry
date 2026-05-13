@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useCaptureText, useCaptureLink, useCaptureVoice, useCaptureImage } from '@/hooks/use-inbox'
 import type { DisplayDensity } from '@/hooks/use-display-density'
+import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { ensureVoiceRecordingReady } from '@/lib/voice-recording-readiness'
 import { prepareVoiceMemoAudio } from '@/lib/voice-memo-audio'
@@ -113,6 +114,7 @@ export function CaptureInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const voiceRecorderRef = useRef<VoiceRecorderHandle | null>(null)
+  const { enabled: aiEnabled } = useAISettingsContext()
 
   const captureText = useCaptureText()
   const captureLink = useCaptureLink()
@@ -258,6 +260,8 @@ export function CaptureInput({
   }, [])
 
   const handleMicClick = useCallback(async () => {
+    if (!aiEnabled) return
+
     const ready = await ensureVoiceRecordingReady(() => {
       openSettings('ai')
     })
@@ -268,7 +272,7 @@ export function CaptureInput({
       })
       void voiceRecorderRef.current?.start()
     }
-  }, [openSettings])
+  }, [aiEnabled, openSettings])
 
   const handleAttachClick = useCallback(() => {
     fileInputRef.current?.click()
@@ -397,21 +401,23 @@ export function CaptureInput({
             <Paperclip className={compact ? 'size-3' : 'size-[15px]'} aria-hidden="true" />
           </button>
 
-          <button
-            onClick={() => void handleMicClick()}
-            disabled={isCapturing}
-            className={cn(
-              'flex items-center justify-center rounded-md',
-              'text-muted-foreground/50 transition-colors duration-200',
-              'hover:text-muted-foreground',
-              'disabled:opacity-30 disabled:cursor-not-allowed',
-              compact ? 'size-5' : 'size-7'
-            )}
-            aria-label={tPhaseF('phaseF.componentsCaptureInput.recordVoiceMemo')}
-            title={tPhaseF('phaseF.componentsCaptureInput.recordVoiceMemo2')}
-          >
-            <Mic className={compact ? 'size-3' : 'size-[15px]'} aria-hidden="true" />
-          </button>
+          {aiEnabled && (
+            <button
+              onClick={() => void handleMicClick()}
+              disabled={isCapturing}
+              className={cn(
+                'flex items-center justify-center rounded-md',
+                'text-muted-foreground/50 transition-colors duration-200',
+                'hover:text-muted-foreground',
+                'disabled:opacity-30 disabled:cursor-not-allowed',
+                compact ? 'size-5' : 'size-7'
+              )}
+              aria-label={tPhaseF('phaseF.componentsCaptureInput.recordVoiceMemo')}
+              title={tPhaseF('phaseF.componentsCaptureInput.recordVoiceMemo2')}
+            >
+              <Mic className={compact ? 'size-3' : 'size-[15px]'} aria-hidden="true" />
+            </button>
+          )}
 
           <input
             ref={fileInputRef}
@@ -469,7 +475,7 @@ export function CaptureInput({
         </div>
       )}
 
-      {isRecording && (
+      {aiEnabled && isRecording && (
         <VoiceRecorder
           ref={voiceRecorderRef}
           onRecordingComplete={(...args) => void handleRecordingComplete(...args)}

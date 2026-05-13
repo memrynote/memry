@@ -329,280 +329,295 @@ export function AISettings({ initialOpenPanel }: AISettingsProps = {}) {
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup label={t('ai.groups.voice')}>
-        <SettingRow label={t('ai.voice.provider')} description={t('ai.voice.providerDescription')}>
-          <Select
-            value={voiceSettings.provider}
-            onValueChange={(value) => void handleVoiceProviderChange(value as 'local' | 'openai')}
-          >
-            <SelectTrigger className={COMPACT_SELECT}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="local">{t('ai.voice.providers.local')}</SelectItem>
-              <SelectItem value="openai">{t('ai.voice.providers.openai')}</SelectItem>
-            </SelectContent>
-          </Select>
-        </SettingRow>
+      {settings.enabled && (
+        <>
+          <SettingsGroup label={t('ai.groups.voice')}>
+            <SettingRow
+              label={t('ai.voice.provider')}
+              description={t('ai.voice.providerDescription')}
+            >
+              <Select
+                value={voiceSettings.provider}
+                onValueChange={(value) =>
+                  void handleVoiceProviderChange(value as 'local' | 'openai')
+                }
+              >
+                <SelectTrigger className={COMPACT_SELECT}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="local">{t('ai.voice.providers.local')}</SelectItem>
+                  <SelectItem value="openai">{t('ai.voice.providers.openai')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </SettingRow>
 
-        <SettingRowTall
-          label={t('ai.voice.localModel')}
-          description={t('ai.voice.localModelDescription')}
-        >
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Mic className="w-4 h-4 text-muted-foreground" />
-                <span className="font-medium text-[13px]/4">
-                  {voiceModelStatus?.name || 'Whisper Small'}
-                </span>
-                {voiceModelStatus?.loaded ? (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-green-500/15 text-green-600">
-                    {t('ai.voice.status.ready')}
-                  </span>
-                ) : isDownloadingVoiceModel || voiceModelStatus?.loading ? (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-amber-500/15 text-amber-600">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    {t('ai.voice.status.downloading')}
-                  </span>
-                ) : voiceModelStatus?.downloaded ? (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-emerald-500/15 text-emerald-600">
-                    {t('ai.voice.status.downloaded')}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-muted text-muted-foreground">
-                    {t('ai.voice.status.notDownloaded')}
-                  </span>
+            <SettingRowTall
+              label={t('ai.voice.localModel')}
+              description={t('ai.voice.localModelDescription')}
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Mic className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium text-[13px]/4">
+                      {voiceModelStatus?.name || 'Whisper Small'}
+                    </span>
+                    {voiceModelStatus?.loaded ? (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-green-500/15 text-green-600">
+                        {t('ai.voice.status.ready')}
+                      </span>
+                    ) : isDownloadingVoiceModel || voiceModelStatus?.loading ? (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-amber-500/15 text-amber-600">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        {t('ai.voice.status.downloading')}
+                      </span>
+                    ) : voiceModelStatus?.downloaded ? (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-emerald-500/15 text-emerald-600">
+                        {t('ai.voice.status.downloaded')}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-muted text-muted-foreground">
+                        {t('ai.voice.status.notDownloaded')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="text-xs/4 text-muted-foreground">{t('ai.voice.cacheHint')}</div>
+
+                {voiceModelStatus?.error && (
+                  <div className="text-xs text-destructive flex items-center gap-1">
+                    <XCircle className="w-3.5 h-3.5" />
+                    {voiceModelStatus.error}
+                  </div>
+                )}
+
+                {voiceModelProgress && (
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-[10px]/3 text-muted-foreground">
+                      <span>{voiceModelProgress.status || t('ai.voice.preparing')}</span>
+                      <span>{Math.round(voiceModelProgress.progress)}%</span>
+                    </div>
+                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-[var(--tint)] transition-all duration-300 rounded-full"
+                        style={{ width: `${voiceModelProgress.progress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {!voiceModelStatus?.downloaded && !isDownloadingVoiceModel && (
+                  <Button
+                    onClick={() => void handleDownloadVoiceModel()}
+                    size="sm"
+                    className="w-full"
+                  >
+                    {t('ai.voice.download')}
+                  </Button>
                 )}
               </div>
-            </div>
+            </SettingRowTall>
 
-            <div className="text-xs/4 text-muted-foreground">{t('ai.voice.cacheHint')}</div>
+            {voiceSettings.provider === 'openai' && (
+              <SettingRowTall
+                label={t('ai.voice.apiKey')}
+                description={t('ai.voice.apiKeyDescription')}
+              >
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      type={showVoiceApiKey ? 'text' : 'password'}
+                      value={voiceApiKey}
+                      onChange={(event) => setVoiceApiKey(event.target.value)}
+                      placeholder={
+                        hasVoiceApiKey ? t('ai.voice.replaceKey') : t('ai.voice.enterKey')
+                      }
+                      className="flex-1 h-7 text-xs/4"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowVoiceApiKey((visible) => !visible)}
+                      tabIndex={-1}
+                      className="h-7 w-7 p-0"
+                    >
+                      {showVoiceApiKey ? (
+                        <EyeOff className="w-3.5 h-3.5" />
+                      ) : (
+                        <Eye className="w-3.5 h-3.5" />
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => void handleSaveVoiceApiKey()}
+                      disabled={!voiceApiKey.trim()}
+                      className="h-7 px-3"
+                    >
+                      {t('ai.voice.saveKey')}
+                    </Button>
+                  </div>
 
-            {voiceModelStatus?.error && (
-              <div className="text-xs text-destructive flex items-center gap-1">
-                <XCircle className="w-3.5 h-3.5" />
-                {voiceModelStatus.error}
-              </div>
-            )}
-
-            {voiceModelProgress && (
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-[10px]/3 text-muted-foreground">
-                  <span>{voiceModelProgress.status || t('ai.voice.preparing')}</span>
-                  <span>{Math.round(voiceModelProgress.progress)}%</span>
-                </div>
-                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-[var(--tint)] transition-all duration-300 rounded-full"
-                    style={{ width: `${voiceModelProgress.progress}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {!voiceModelStatus?.downloaded && !isDownloadingVoiceModel && (
-              <Button onClick={() => void handleDownloadVoiceModel()} size="sm" className="w-full">
-                {t('ai.voice.download')}
-              </Button>
-            )}
-          </div>
-        </SettingRowTall>
-
-        {voiceSettings.provider === 'openai' && (
-          <SettingRowTall
-            label={t('ai.voice.apiKey')}
-            description={t('ai.voice.apiKeyDescription')}
-          >
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <Input
-                  type={showVoiceApiKey ? 'text' : 'password'}
-                  value={voiceApiKey}
-                  onChange={(event) => setVoiceApiKey(event.target.value)}
-                  placeholder={hasVoiceApiKey ? t('ai.voice.replaceKey') : t('ai.voice.enterKey')}
-                  className="flex-1 h-7 text-xs/4"
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowVoiceApiKey((visible) => !visible)}
-                  tabIndex={-1}
-                  className="h-7 w-7 p-0"
-                >
-                  {showVoiceApiKey ? (
-                    <EyeOff className="w-3.5 h-3.5" />
-                  ) : (
-                    <Eye className="w-3.5 h-3.5" />
+                  {hasVoiceApiKey && (
+                    <div className="text-xs/4 text-muted-foreground flex items-center gap-1.5">
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                      {t('ai.voice.keySaved')}
+                    </div>
                   )}
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => void handleSaveVoiceApiKey()}
-                  disabled={!voiceApiKey.trim()}
-                  className="h-7 px-3"
-                >
-                  {t('ai.voice.saveKey')}
-                </Button>
+                </div>
+              </SettingRowTall>
+            )}
+          </SettingsGroup>
+
+          <SettingsGroup label={t('ai.groups.embeddingModel')}>
+            <div className="py-3 px-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Brain className="w-4 h-4 text-muted-foreground" />
+                  <span className="font-medium text-[13px]/4">
+                    {modelStatus?.name || 'all-MiniLM-L6-v2'}
+                  </span>
+                  {modelStatus?.loaded ? (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-green-500/15 text-green-600">
+                      {t('ai.embedding.loaded')}
+                    </span>
+                  ) : modelStatus?.loading || isLoadingModel ? (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-amber-500/15 text-amber-600">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      {t('ai.embedding.loading')}
+                    </span>
+                  ) : null}
+                </div>
               </div>
 
-              {hasVoiceApiKey && (
-                <div className="text-xs/4 text-muted-foreground flex items-center gap-1.5">
-                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                  {t('ai.voice.keySaved')}
+              <div className="text-xs/4 text-muted-foreground">{t('ai.embedding.cacheHint')}</div>
+
+              <div className="flex gap-6">
+                <div>
+                  <span className="uppercase text-[10px]/3 font-medium tracking-[0.05em] text-muted-foreground">
+                    {t('ai.embedding.dimensions')}
+                  </span>
+                  <p className="text-[13px]/4 font-semibold text-foreground">
+                    {modelStatus?.dimension || 384}
+                  </p>
+                </div>
+                <div>
+                  <span className="uppercase text-[10px]/3 font-medium tracking-[0.05em] text-muted-foreground">
+                    {t('ai.embedding.embeddings')}
+                  </span>
+                  <p className="text-[13px]/4 font-semibold text-foreground">
+                    {(modelStatus?.embeddingCount ?? 0).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+
+              {modelStatus?.error && (
+                <div className="text-xs text-destructive flex items-center gap-1">
+                  <XCircle className="w-3.5 h-3.5" />
+                  {modelStatus.error}
+                </div>
+              )}
+
+              {!modelStatus?.loaded && !isLoadingModel && (
+                <Button onClick={() => void handleLoadModel()} size="sm" className="w-full">
+                  {t('ai.embedding.downloadLoad')}
+                </Button>
+              )}
+
+              {isLoadingModel && reindexProgress && (
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-[10px]/3 text-muted-foreground">
+                    <span>
+                      {reindexProgress.phase === 'downloading'
+                        ? t('ai.embedding.downloadingModel')
+                        : t('ai.embedding.loadingModel')}
+                    </span>
+                    <span>{Math.round(reindexProgress.current)}%</span>
+                  </div>
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[var(--tint)] transition-all duration-300 rounded-full"
+                      style={{ width: `${reindexProgress.current}%` }}
+                    />
+                  </div>
                 </div>
               )}
             </div>
-          </SettingRowTall>
-        )}
-      </SettingsGroup>
+          </SettingsGroup>
 
-      <SettingsGroup label={t('ai.groups.embeddingModel')}>
-        <div className="py-3 px-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Brain className="w-4 h-4 text-muted-foreground" />
-              <span className="font-medium text-[13px]/4">
-                {modelStatus?.name || 'all-MiniLM-L6-v2'}
-              </span>
-              {modelStatus?.loaded ? (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-green-500/15 text-green-600">
-                  {t('ai.embedding.loaded')}
-                </span>
-              ) : modelStatus?.loading || isLoadingModel ? (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]/3 font-medium bg-amber-500/15 text-amber-600">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  {t('ai.embedding.loading')}
-                </span>
-              ) : null}
-            </div>
+          <SettingsGroup label={t('ai.groups.embeddingIndex')}>
+            <SettingRow
+              label={t('ai.embedding.rebuildIndex')}
+              description={t('ai.embedding.rebuildDescription')}
+            >
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleReindexEmbeddings()}
+                disabled={isReindexing || !modelStatus?.loaded || !settings.enabled}
+                className="gap-1.5"
+              >
+                {isReindexing ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-3.5 h-3.5" />
+                )}
+                {t('ai.embedding.rebuild')}
+              </Button>
+            </SettingRow>
+            {isReindexing &&
+              reindexProgress &&
+              reindexProgress.phase !== 'downloading' &&
+              reindexProgress.phase !== 'loading' && (
+                <div className="px-4 pb-3 space-y-1.5">
+                  <div className="flex justify-between text-[10px]/3 text-muted-foreground">
+                    <span>
+                      {reindexProgress.phase === 'scanning'
+                        ? t('ai.embedding.scanning')
+                        : reindexProgress.phase === 'embedding'
+                          ? t('ai.embedding.generating')
+                          : t('ai.embedding.complete')}
+                    </span>
+                    <span>
+                      {reindexProgress.current} / {reindexProgress.total}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[var(--tint)] transition-all duration-300 rounded-full"
+                      style={{
+                        width: `${reindexProgress.total > 0 ? (reindexProgress.current / reindexProgress.total) * 100 : 0}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+          </SettingsGroup>
+
+          <AIInlineSettingsPanel />
+
+          <div className="flex flex-col pb-6 gap-2">
+            <AssistantAdvancedPanel
+              title={t('agentProviders.header.title')}
+              description={t('agentProviders.header.subtitle')}
+              icon={<Bot className="size-3.5" />}
+              defaultOpen={initialOpenPanel === 'agent-providers'}
+            >
+              <AgentProvidersSection embedded />
+            </AssistantAdvancedPanel>
+
+            <AssistantAdvancedPanel
+              title={t('agentMcp.header.title')}
+              description={t('agentMcp.header.subtitle')}
+              icon={<Server className="size-3.5" />}
+              defaultOpen={initialOpenPanel === 'agent-mcp'}
+            >
+              <AgentMcpSection embedded />
+            </AssistantAdvancedPanel>
           </div>
-
-          <div className="text-xs/4 text-muted-foreground">{t('ai.embedding.cacheHint')}</div>
-
-          <div className="flex gap-6">
-            <div>
-              <span className="uppercase text-[10px]/3 font-medium tracking-[0.05em] text-muted-foreground">
-                {t('ai.embedding.dimensions')}
-              </span>
-              <p className="text-[13px]/4 font-semibold text-foreground">
-                {modelStatus?.dimension || 384}
-              </p>
-            </div>
-            <div>
-              <span className="uppercase text-[10px]/3 font-medium tracking-[0.05em] text-muted-foreground">
-                {t('ai.embedding.embeddings')}
-              </span>
-              <p className="text-[13px]/4 font-semibold text-foreground">
-                {(modelStatus?.embeddingCount ?? 0).toLocaleString()}
-              </p>
-            </div>
-          </div>
-
-          {modelStatus?.error && (
-            <div className="text-xs text-destructive flex items-center gap-1">
-              <XCircle className="w-3.5 h-3.5" />
-              {modelStatus.error}
-            </div>
-          )}
-
-          {!modelStatus?.loaded && !isLoadingModel && (
-            <Button onClick={() => void handleLoadModel()} size="sm" className="w-full">
-              {t('ai.embedding.downloadLoad')}
-            </Button>
-          )}
-
-          {isLoadingModel && reindexProgress && (
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-[10px]/3 text-muted-foreground">
-                <span>
-                  {reindexProgress.phase === 'downloading'
-                    ? t('ai.embedding.downloadingModel')
-                    : t('ai.embedding.loadingModel')}
-                </span>
-                <span>{Math.round(reindexProgress.current)}%</span>
-              </div>
-              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[var(--tint)] transition-all duration-300 rounded-full"
-                  style={{ width: `${reindexProgress.current}%` }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      </SettingsGroup>
-
-      <SettingsGroup label={t('ai.groups.embeddingIndex')}>
-        <SettingRow
-          label={t('ai.embedding.rebuildIndex')}
-          description={t('ai.embedding.rebuildDescription')}
-        >
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void handleReindexEmbeddings()}
-            disabled={isReindexing || !modelStatus?.loaded || !settings.enabled}
-            className="gap-1.5"
-          >
-            {isReindexing ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <RefreshCw className="w-3.5 h-3.5" />
-            )}
-            {t('ai.embedding.rebuild')}
-          </Button>
-        </SettingRow>
-        {isReindexing &&
-          reindexProgress &&
-          reindexProgress.phase !== 'downloading' &&
-          reindexProgress.phase !== 'loading' && (
-            <div className="px-4 pb-3 space-y-1.5">
-              <div className="flex justify-between text-[10px]/3 text-muted-foreground">
-                <span>
-                  {reindexProgress.phase === 'scanning'
-                    ? t('ai.embedding.scanning')
-                    : reindexProgress.phase === 'embedding'
-                      ? t('ai.embedding.generating')
-                      : t('ai.embedding.complete')}
-                </span>
-                <span>
-                  {reindexProgress.current} / {reindexProgress.total}
-                </span>
-              </div>
-              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[var(--tint)] transition-all duration-300 rounded-full"
-                  style={{
-                    width: `${reindexProgress.total > 0 ? (reindexProgress.current / reindexProgress.total) * 100 : 0}%`
-                  }}
-                />
-              </div>
-            </div>
-          )}
-      </SettingsGroup>
-
-      <AIInlineSettingsPanel />
-
-      <div className="flex flex-col pb-6 gap-2">
-        <AssistantAdvancedPanel
-          title={t('agentProviders.header.title')}
-          description={t('agentProviders.header.subtitle')}
-          icon={<Bot className="size-3.5" />}
-          defaultOpen={initialOpenPanel === 'agent-providers'}
-        >
-          <AgentProvidersSection embedded />
-        </AssistantAdvancedPanel>
-
-        <AssistantAdvancedPanel
-          title={t('agentMcp.header.title')}
-          description={t('agentMcp.header.subtitle')}
-          icon={<Server className="size-3.5" />}
-          defaultOpen={initialOpenPanel === 'agent-mcp'}
-        >
-          <AgentMcpSection embedded />
-        </AssistantAdvancedPanel>
-      </div>
+        </>
+      )}
     </div>
   )
 }

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders, getMockApi } from '@tests/utils/render'
 
+import { AISettingsProvider } from '@/contexts/ai-settings-context'
 import { MoveToFolderDialog } from './move-to-folder-dialog'
 import { notesService } from '@/services/notes-service'
 
@@ -85,6 +86,29 @@ describe('MoveToFolderDialog', () => {
 
     expect(onMove).toHaveBeenCalledWith('Projects/Memry')
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('does not request or render AI folder suggestions when AI is disabled', async () => {
+    const api = getMockApi() as any
+    api.settings.getAISettings.mockResolvedValue({ enabled: false })
+    const onMove = vi.fn()
+
+    renderWithProviders(
+      <AISettingsProvider>
+        <MoveToFolderDialog
+          open
+          onOpenChange={vi.fn()}
+          noteIds={['note-1']}
+          currentFolder="Writing"
+          noteTitle="Launch plan"
+          onMove={onMove}
+        />
+      </AISettingsProvider>
+    )
+
+    expect(await screen.findByText('Archive')).toBeInTheDocument()
+    expect(api.folderView.getFolderSuggestions).not.toHaveBeenCalled()
+    expect(screen.queryByText('bestMatch')).not.toBeInTheDocument()
   })
 
   it('searches folders, creates a new folder, and handles keyboard actions', async () => {

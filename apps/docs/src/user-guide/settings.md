@@ -188,6 +188,9 @@ For the full default list see [Keyboard Shortcuts](/user-guide/keyboard-shortcut
 ### Enable
 
 A master toggle for AI features. Off by default — Memry never reaches out to AI services until you turn this on.
+When off, Memry also hides AI entry points in the app: inline editor AI, Agent Chat in the right
+sidebar, AI tag/folder/note suggestions, journal AI connections, voice recording/transcription
+controls, and quick-capture voice capture.
 
 ### Voice Transcription
 

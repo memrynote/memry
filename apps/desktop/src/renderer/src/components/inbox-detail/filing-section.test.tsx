@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders, getMockApi, resetMockApi } from '@tests/utils/render'
 
+import { AISettingsProvider } from '@/contexts/ai-settings-context'
 import { FilingSection, useFilingState } from './filing-section'
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -34,7 +35,7 @@ vi.mock('@/components/filing/tag-autocomplete', () => ({
   }) => (
     <div>
       <span>tags {tags.join(',')}</span>
-      <span>ai tags {aiSuggestedTags.join(',')}</span>
+      {aiSuggestedTags.length > 0 && <span>ai tags {aiSuggestedTags.join(',')}</span>}
       <button type="button" onClick={() => onTagsChange([...tags, 'review'])}>
         add tag
       </button>
@@ -146,6 +147,45 @@ describe('FilingSection', () => {
     expect(onFolderSelect).toHaveBeenLastCalledWith(
       expect.objectContaining({ id: 'Areas/Writing', path: 'Areas/Writing', parent: 'Areas' })
     )
+  })
+
+  it('does not fetch or display AI filing suggestions when AI is disabled', async () => {
+    const api = getMockApi() as any
+    api.settings.getAISettings.mockResolvedValue({ enabled: false })
+    api.notes.getFolders.mockResolvedValue([
+      { path: 'Projects/Memry', icon: 'M' },
+      { path: 'Archive' }
+    ])
+    api.inbox.getSuggestions.mockResolvedValue({
+      suggestions: [
+        {
+          destination: { type: 'note' },
+          confidence: 0.73,
+          reason: 'related note',
+          suggestedTags: ['link'],
+          suggestedNote: { id: 'note-1', title: 'Memry research', emoji: 'R' }
+        }
+      ]
+    })
+
+    renderWithProviders(
+      <AISettingsProvider>
+        <FilingSection
+          item={item}
+          selectedFolder={null}
+          tags={['inbox']}
+          linkedNotes={[]}
+          onFolderSelect={vi.fn()}
+          onTagsChange={vi.fn()}
+          onLinkedNotesChange={vi.fn()}
+        />
+      </AISettingsProvider>
+    )
+
+    expect(await screen.findAllByText('Projects / Memry')).not.toHaveLength(0)
+    expect(api.inbox.getSuggestions).not.toHaveBeenCalled()
+    expect(screen.queryByText(/ai tags/i)).not.toBeInTheDocument()
+    expect(screen.queryByText('Memry research')).not.toBeInTheDocument()
   })
 
   it('keeps filing state scoped to the active item session', () => {

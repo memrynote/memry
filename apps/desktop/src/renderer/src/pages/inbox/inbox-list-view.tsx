@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useT } from '@memry/i18n/renderer'
 
 import { useTabs } from '@/contexts/tabs'
+import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import { Button } from '@/components/ui/button'
 import { ListView } from '@/components/list-view'
 import { InboxDetailPanel } from '@/components/inbox-detail'
@@ -53,6 +54,7 @@ export function InboxListView({
   const { t } = useT('inbox')
   const queryClient = useQueryClient()
   const { openTab } = useTabs()
+  const { enabled: aiEnabled } = useAISettingsContext()
 
   const density = 'compact'
   const densityConfig = DENSITY_CONFIG.compact
@@ -160,13 +162,14 @@ export function InboxListView({
   }, [activeDetailItemId, fullDetailItem, items])
 
   const aiSuggestion = useMemo((): ClusterSuggestion | null => {
+    if (!aiEnabled) return null
     if (selectedItems.length === 0) return null
     const suggestion = detectClusters(selectedItems, items)
     if (!suggestion) return null
     const key = getClusterKey(suggestion)
     if (dismissedSuggestionKeys.has(key)) return null
     return suggestion
-  }, [selectedItems, items, dismissedSuggestionKeys])
+  }, [aiEnabled, selectedItems, items, dismissedSuggestionKeys])
 
   // === OPTIMISTIC ARCHIVE HELPER ===
   const archiveWithAnimation = useCallback(

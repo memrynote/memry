@@ -7,19 +7,21 @@ Transform selected text in the editor without leaving it.
 ## Opening the Menu
 
 Select text in any note or journal entry. The formatting toolbar shows an **AI** affordance — click it (or press the AI shortcut) to open the prompt menu.
+If the global **Settings -> AI -> Enable** switch is off, Memry hides the inline AI menu and slash
+menu AI commands entirely.
 
 ## Built-in Actions
 
-| Action | Effect |
-| --- | --- |
-| **Fix grammar** | Correct typos and grammar without changing meaning |
-| **Adjust tone — formal** | Rewrite in a more professional register |
-| **Adjust tone — casual** | Rewrite in a more relaxed register |
-| **Adjust tone — friendly** | Rewrite warmly |
-| **Expand** | Add detail; aim for more concrete examples |
-| **Condense** | Tighten; remove redundancy without losing meaning |
-| **Summarize** | Reduce to bullet points or a tight paragraph |
-| **Rephrase** | Suggest alternative wording with the same meaning |
+| Action                     | Effect                                             |
+| -------------------------- | -------------------------------------------------- |
+| **Fix grammar**            | Correct typos and grammar without changing meaning |
+| **Adjust tone — formal**   | Rewrite in a more professional register            |
+| **Adjust tone — casual**   | Rewrite in a more relaxed register                 |
+| **Adjust tone — friendly** | Rewrite warmly                                     |
+| **Expand**                 | Add detail; aim for more concrete examples         |
+| **Condense**               | Tighten; remove redundancy without losing meaning  |
+| **Summarize**              | Reduce to bullet points or a tight paragraph       |
+| **Rephrase**               | Suggest alternative wording with the same meaning  |
 
 ## Custom Prompt
 
@@ -60,6 +62,7 @@ Memry never proxies these requests through the sync server. The connection is di
 
 ## When the Menu Doesn't Appear
 
+- AI is disabled globally in [Settings → AI](/user-guide/settings#ai)
 - AI Inline is disabled in [Settings → AI Inline](/user-guide/settings#ai-inline)
 - The provider isn't configured (Ollama not running, missing API key)
 - The selection is empty
