@@ -4,11 +4,11 @@ node_modules
 
 # Build output
 dist
-build
 out
 *.tsbuildinfo
 .turbo
 apps/docs/src/.vitepress/cache/
+email/.react-email/.next/
 
 # Test
 coverage

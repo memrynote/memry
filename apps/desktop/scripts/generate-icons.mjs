@@ -8,21 +8,26 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const BUILD_DIR = join(__dirname, '..', 'build')
 const BRAND_DIR = join(__dirname, '..', '..', '..', 'assets', 'brand', 'memry')
 const SOURCE_ICON_PATH = join(BRAND_DIR, 'icon-color.png')
+const PROFILE_IMAGE_PATH = join(BRAND_DIR, 'social', 'profile-image.png')
 const CANVAS_SIZE = 1024
 const TILE_INSET = 64
 const TILE_SIZE = CANVAS_SIZE - TILE_INSET * 2
 const TILE_RADIUS = 210
 const LOGO_SIZE = 632
 const LOGO_INSET = Math.round((CANVAS_SIZE - LOGO_SIZE) / 2)
-let sourceIconDataUri
+const imageDataUris = new Map()
 
-function getSourceIconDataUri() {
-  sourceIconDataUri ??= `data:image/png;base64,${readFileSync(SOURCE_ICON_PATH).toString('base64')}`
-  return sourceIconDataUri
+function getImageDataUri(imagePath) {
+  let dataUri = imageDataUris.get(imagePath)
+  if (!dataUri) {
+    dataUri = `data:image/png;base64,${readFileSync(imagePath).toString('base64')}`
+    imageDataUris.set(imagePath, dataUri)
+  }
+  return dataUri
 }
 
 function renderIconSvg() {
-  const sourceIcon = getSourceIconDataUri()
+  const sourceIcon = getImageDataUri(SOURCE_ICON_PATH)
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${CANVAS_SIZE}" height="${CANVAS_SIZE}" viewBox="0 0 ${CANVAS_SIZE} ${CANVAS_SIZE}" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -59,6 +64,43 @@ function renderIconSvg() {
   <rect x="${TILE_INSET}" y="${TILE_INSET}" width="${TILE_SIZE}" height="${TILE_SIZE}" rx="${TILE_RADIUS}" fill="url(#bg)" filter="url(#shadow)"/>
   <rect x="${TILE_INSET + 2}" y="${TILE_INSET + 2}" width="${TILE_SIZE - 4}" height="${TILE_SIZE - 4}" rx="${TILE_RADIUS - 2}" fill="none" stroke="#ffffff" stroke-opacity="0.85" stroke-width="4"/>
   <rect x="${TILE_INSET}" y="${TILE_INSET}" width="${TILE_SIZE}" height="${TILE_SIZE * 0.45}" rx="${TILE_RADIUS}" fill="url(#shine)"/>
+  <g filter="url(#logoDepth)">
+    <image href="${sourceIcon}" x="${LOGO_INSET}" y="${LOGO_INSET}" width="${LOGO_SIZE}" height="${LOGO_SIZE}" preserveAspectRatio="xMidYMid meet"/>
+    <rect x="${LOGO_INSET}" y="${LOGO_INSET}" width="${LOGO_SIZE}" height="${LOGO_SIZE}" fill="url(#logoHighlight)" mask="url(#logoMask)"/>
+    <rect x="${LOGO_INSET}" y="${LOGO_INSET}" width="${LOGO_SIZE}" height="${LOGO_SIZE}" fill="url(#logoShade)" mask="url(#logoMask)"/>
+  </g>
+</svg>`
+}
+
+function renderProfileImageSvg() {
+  const sourceIcon = getImageDataUri(SOURCE_ICON_PATH)
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${CANVAS_SIZE}" height="${CANVAS_SIZE}" viewBox="0 0 ${CANVAS_SIZE} ${CANVAS_SIZE}" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="512" y1="0" x2="512" y2="${CANVAS_SIZE}" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fffdf8"/>
+      <stop offset="1" stop-color="#f2eee6"/>
+    </linearGradient>
+    <filter id="logoDepth" x="${LOGO_INSET - 96}" y="${LOGO_INSET - 96}" width="${LOGO_SIZE + 192}" height="${LOGO_SIZE + 192}" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#8f2f05" flood-opacity="0.26"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.18"/>
+    </filter>
+    <linearGradient id="logoHighlight" x1="${LOGO_INSET}" y1="${LOGO_INSET}" x2="${LOGO_INSET}" y2="${LOGO_INSET + LOGO_SIZE}" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.34"/>
+      <stop offset="0.42" stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="logoShade" x1="${LOGO_INSET}" y1="${LOGO_INSET}" x2="${LOGO_INSET}" y2="${LOGO_INSET + LOGO_SIZE}" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="0.58" stop-color="#5b1700" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#5b1700" stop-opacity="0.20"/>
+    </linearGradient>
+    <mask id="logoMask" maskUnits="userSpaceOnUse" x="${LOGO_INSET}" y="${LOGO_INSET}" width="${LOGO_SIZE}" height="${LOGO_SIZE}" mask-type="alpha">
+      <image href="${sourceIcon}" x="${LOGO_INSET}" y="${LOGO_INSET}" width="${LOGO_SIZE}" height="${LOGO_SIZE}" preserveAspectRatio="xMidYMid meet"/>
+    </mask>
+  </defs>
+  <rect width="${CANVAS_SIZE}" height="${CANVAS_SIZE}" fill="url(#bg)"/>
   <g filter="url(#logoDepth)">
     <image href="${sourceIcon}" x="${LOGO_INSET}" y="${LOGO_INSET}" width="${LOGO_SIZE}" height="${LOGO_SIZE}" preserveAspectRatio="xMidYMid meet"/>
     <rect x="${LOGO_INSET}" y="${LOGO_INSET}" width="${LOGO_SIZE}" height="${LOGO_SIZE}" fill="url(#logoHighlight)" mask="url(#logoMask)"/>
@@ -155,10 +197,17 @@ async function generatePng() {
   console.log('  icon.png')
 }
 
+async function generateProfileImage() {
+  mkdirSync(dirname(PROFILE_IMAGE_PATH), { recursive: true })
+  const buf = await sharp(Buffer.from(renderProfileImageSvg())).png().toBuffer()
+  writeFileSync(PROFILE_IMAGE_PATH, buf)
+  console.log('  assets/brand/memry/social/profile-image.png')
+}
+
 async function main() {
   mkdirSync(BUILD_DIR, { recursive: true })
   console.log('Generating app icons...')
-  await Promise.all([generateIcns(), generateIco(), generatePng()])
+  await Promise.all([generateIcns(), generateIco(), generatePng(), generateProfileImage()])
   console.log('Done.')
 }
 
