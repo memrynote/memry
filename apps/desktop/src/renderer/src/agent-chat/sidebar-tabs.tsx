@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { History } from 'lucide-react'
 import { useT } from '@memry/i18n/renderer'
 
+import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,14 +41,18 @@ export function SidebarTabs({
   children,
   defaultTab = 'day',
   dayLabel,
+  agentLabel,
   endAccessory
 }: SidebarTabsProps): React.JSX.Element {
   const { t } = useT('common')
   const [active, setActive] = useState<RightSidebarTab>(() => readInitialTab(defaultTab))
+  const { enabled: aiEnabled } = useAISettingsContext()
   const agent = useAgentOptional()
   const dayTabLabel = t('agentChat.sidebar.day')
   const agentTabLabel = t('agentChat.sidebar.agent')
-  const activeLabel = dayLabel ?? dayTabLabel
+  const resolvedActive = aiEnabled ? active : 'day'
+  const activeLabel =
+    resolvedActive === 'day' ? (dayLabel ?? dayTabLabel) : (agentLabel ?? agentTabLabel)
 
   useEffect(() => {
     try {
@@ -67,7 +72,9 @@ export function SidebarTabs({
   )
   const hasInFlightTurn = Object.values(agent?.state.inFlight ?? {}).some(Boolean)
   const hasBackgroundActivity =
-    active !== 'agent' && (pendingApprovalCount > 0 || hasStreamingMessage || hasInFlightTurn)
+    aiEnabled &&
+    resolvedActive !== 'agent' &&
+    (pendingApprovalCount > 0 || hasStreamingMessage || hasInFlightTurn)
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -78,36 +85,38 @@ export function SidebarTabs({
           className="inline-flex h-7 shrink-0 items-center gap-0.5 rounded-md border border-transparent bg-[#212021] p-0.5 hover:border-sidebar-border focus-within:border-sidebar-border"
         >
           <SidebarTabButton
-            active={active === 'day'}
+            active={resolvedActive === 'day'}
             label={dayTabLabel}
             onClick={() => setActive('day')}
           >
             <CalendarDays className="size-4" aria-hidden="true" />
           </SidebarTabButton>
-          <SidebarTabButton
-            active={active === 'agent'}
-            label={agentTabLabel}
-            onClick={() => setActive('agent')}
-          >
-            <Bot className="size-4" aria-hidden="true" />
-            {hasBackgroundActivity && (
-              <span
-                className="absolute end-1 top-1 size-1.5 rounded-full bg-primary"
-                aria-label={
-                  pendingApprovalCount > 0
-                    ? t('agentChat.sidebar.pendingApproval', { count: pendingApprovalCount })
-                    : t('agentChat.sidebar.inProgress')
-                }
-              />
-            )}
-          </SidebarTabButton>
+          {aiEnabled && (
+            <SidebarTabButton
+              active={resolvedActive === 'agent'}
+              label={agentTabLabel}
+              onClick={() => setActive('agent')}
+            >
+              <Bot className="size-4" aria-hidden="true" />
+              {hasBackgroundActivity && (
+                <span
+                  className="absolute end-1 top-1 size-1.5 rounded-full bg-primary"
+                  aria-label={
+                    pendingApprovalCount > 0
+                      ? t('agentChat.sidebar.pendingApproval', { count: pendingApprovalCount })
+                      : t('agentChat.sidebar.inProgress')
+                  }
+                />
+              )}
+            </SidebarTabButton>
+          )}
         </div>
         <div
           data-slot="day-panel-header-actions"
           className="ms-auto flex shrink-0 items-center gap-2"
         >
           <div className="flex h-9 min-w-0 items-center gap-1.5 pt-0.5">
-            {active === 'day' ? (
+            {resolvedActive === 'day' ? (
               <span className="min-w-0 truncate text-[13px] font-medium tracking-[-0.01em] text-foreground transition-colors duration-150">
                 {activeLabel}
               </span>
@@ -123,7 +132,7 @@ export function SidebarTabs({
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
-        {active === 'day' ? children.day : children.agent}
+        {resolvedActive === 'day' ? children.day : children.agent}
       </div>
     </div>
   )

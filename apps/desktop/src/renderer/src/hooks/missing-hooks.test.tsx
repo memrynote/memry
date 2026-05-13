@@ -349,6 +349,16 @@ describe('AI hooks', () => {
     window.electron.ipcRenderer.invoke = invoke
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: true }) as never
 
+    const globallyDisabled = renderHook(() => useAIInline(false))
+    await waitFor(() => expect(globallyDisabled.result.current.loading).toBe(false))
+    expect(globallyDisabled.result.current.port).toBeNull()
+    expect(invoke).toHaveBeenCalledWith('ai-inline:stop-server')
+    expect(invoke).not.toHaveBeenCalledWith('ai-inline:get-settings')
+    expect(invoke).not.toHaveBeenCalledWith('ai-inline:get-server-port')
+    expect(invoke).not.toHaveBeenCalledWith('ai-inline:start-server')
+    globallyDisabled.unmount()
+    invoke.mockClear()
+
     invoke.mockResolvedValueOnce({ enabled: false, provider: 'ollama' })
     const disabled = renderHook(() => useAIInline())
     await waitFor(() => expect(disabled.result.current.loading).toBe(false))

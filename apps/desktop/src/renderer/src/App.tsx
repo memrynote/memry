@@ -10,6 +10,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { DragProvider, type DragState } from '@/contexts/drag-context'
 import { DroppedPriorityProvider } from '@/contexts/dropped-priority-context'
 import { AIInlineProvider } from '@/contexts/ai-inline-context'
+import { AISettingsProvider, useAISettingsContext } from '@/contexts/ai-settings-context'
 import { DayPanelProvider } from '@/contexts/day-panel-context'
 import { CalendarViewProvider } from '@/contexts/calendar-view-context'
 import { SidebarDrillDownProvider } from '@/contexts/sidebar-drill-down'
@@ -109,6 +110,12 @@ function TabPersistenceManager({ children }: { children: React.ReactNode }): Rea
   return <>{children}</>
 }
 
+function AgentFeatureProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
+  const { enabled } = useAISettingsContext()
+  if (!enabled) return <>{children}</>
+  return <AgentProvider>{children}</AgentProvider>
+}
+
 // =============================================================================
 // MAIN APP CONTENT (inside TabProvider)
 // =============================================================================
@@ -135,8 +142,9 @@ const AppContent = (): React.JSX.Element => {
   // Fire `page_viewed` whenever the active tab type changes. Only ever surface enums,
   // never tab titles, file paths, or note IDs.
   const activeTab = useActiveTab()
-  useAgentMcpCurrentNoteResponder()
-  useAgentMcpDesktopApiResponder()
+  const { enabled: aiEnabled } = useAISettingsContext()
+  useAgentMcpCurrentNoteResponder({ enabled: aiEnabled })
+  useAgentMcpDesktopApiResponder({ enabled: aiEnabled })
   const lastTrackedTabTypeRef = useRef<TabType | null>(null)
   useEffect(() => {
     if (!activeTab) return
@@ -469,27 +477,29 @@ function App(): React.JSX.Element {
       >
         <DayPanelProvider>
           <CalendarViewProvider>
-            <AIInlineProvider>
-              <HintModeProvider>
-                <TabProvider>
-                  <AgentProvider>
-                    <TabPersistenceManager>
-                      <SettingsModalProvider>
-                        <SelectedFolderProvider>
-                          <SidebarDrillDownProvider>
-                            <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
-                            <SidebarInset className="flex flex-col overflow-hidden">
-                              <AppContent />
-                            </SidebarInset>
-                          </SidebarDrillDownProvider>
-                          <TaskDragOverlay projects={projectsWithCounts} />
-                        </SelectedFolderProvider>
-                      </SettingsModalProvider>
-                    </TabPersistenceManager>
-                  </AgentProvider>
-                </TabProvider>
-              </HintModeProvider>
-            </AIInlineProvider>
+            <AISettingsProvider>
+              <AIInlineProvider>
+                <HintModeProvider>
+                  <TabProvider>
+                    <AgentFeatureProvider>
+                      <TabPersistenceManager>
+                        <SettingsModalProvider>
+                          <SelectedFolderProvider>
+                            <SidebarDrillDownProvider>
+                              <AppSidebar currentPage={currentPage} viewCounts={viewCounts} />
+                              <SidebarInset className="flex flex-col overflow-hidden">
+                                <AppContent />
+                              </SidebarInset>
+                            </SidebarDrillDownProvider>
+                            <TaskDragOverlay projects={projectsWithCounts} />
+                          </SelectedFolderProvider>
+                        </SettingsModalProvider>
+                      </TabPersistenceManager>
+                    </AgentFeatureProvider>
+                  </TabProvider>
+                </HintModeProvider>
+              </AIInlineProvider>
+            </AISettingsProvider>
           </CalendarViewProvider>
         </DayPanelProvider>
       </TasksProvider>

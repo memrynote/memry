@@ -12,6 +12,7 @@ import { LinkPreviewCard } from './quick-capture-link-preview'
 import { FilePreviewCard, formatFileSize } from './quick-capture-image-preview'
 import { detectPlatformFromUrl, extractHandleFromUrl } from './social-card'
 import { createLogger } from '@/lib/logger'
+import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import { ensureVoiceRecordingReady } from '@/lib/voice-recording-readiness'
 import { prepareVoiceMemoAudio } from '@/lib/voice-memo-audio'
 import { useT } from '@memry/i18n/renderer'
@@ -71,6 +72,7 @@ export function QuickCapture(): React.JSX.Element {
   } | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const voiceRecorderRef = useRef<VoiceRecorderHandle | null>(null)
+  const { enabled: aiEnabled } = useAISettingsContext()
 
   const captureText = useCaptureText()
   const captureLink = useCaptureLink()
@@ -103,10 +105,10 @@ export function QuickCapture(): React.JSX.Element {
     if (droppedFile?.type === 'application/pdf') {
       return 'pdf'
     }
-    if (droppedFile?.type.startsWith('audio/')) {
+    if (aiEnabled && droppedFile?.type.startsWith('audio/')) {
       return 'voice'
     }
-    if (isRecording) {
+    if (aiEnabled && isRecording) {
       return 'voice'
     }
     if (isLikelyUrl(value)) {
@@ -114,7 +116,7 @@ export function QuickCapture(): React.JSX.Element {
       return detectPlatformFromUrl(url) === 'twitter' ? 'social' : 'link'
     }
     return 'note'
-  }, [clipboardImage, droppedFile, isRecording, value])
+  }, [aiEnabled, clipboardImage, droppedFile, isRecording, value])
   const isLinkPreviewVisible = detectedType === 'link'
 
   useEffect(() => {
@@ -237,6 +239,11 @@ export function QuickCapture(): React.JSX.Element {
 
           if (droppedFile) {
             if (droppedFile.type.startsWith('audio/')) {
+              if (!aiEnabled) {
+                setCaptureState('idle')
+                return
+              }
+
               const ready = await ensureVoiceRecordingReady(() => {
                 window.api.quickCapture.openSettings('ai')
               })
@@ -358,7 +365,8 @@ export function QuickCapture(): React.JSX.Element {
       captureText,
       captureLink,
       captureImage,
-      captureVoice
+      captureVoice,
+      aiEnabled
     ]
   )
 
@@ -403,6 +411,12 @@ export function QuickCapture(): React.JSX.Element {
       const file = e.dataTransfer.files[0]
       if (!file) return
 
+      if (!aiEnabled && file.type.startsWith('audio/')) {
+        setErrorMessage(`Unsupported file type: ${file.type || 'unknown'}`)
+        setCaptureState('error')
+        return
+      }
+
       if (!DROPPABLE_TYPES.has(file.type)) {
         setErrorMessage(`Unsupported file type: ${file.type || 'unknown'}`)
         setCaptureState('error')
@@ -419,11 +433,17 @@ export function QuickCapture(): React.JSX.Element {
         setClipboardImageUrl(URL.createObjectURL(file))
       }
     },
-    [clipboardImageUrl]
+    [aiEnabled, clipboardImageUrl]
   )
 
   const handleRecordingComplete = useCallback(
     (audioBlob: Blob, duration: number): void => {
+      if (!aiEnabled) {
+        setIsRecording(false)
+        setCaptureState('idle')
+        return
+      }
+
       setIsRecording(false)
       setCaptureState('capturing')
       void (async () => {
@@ -458,13 +478,19 @@ export function QuickCapture(): React.JSX.Element {
         }
       })()
     },
-    [captureVoice]
+    [aiEnabled, captureVoice]
   )
 
   const handleFileSelected = useCallback(
     (e: Event) => {
       const file = (e as CustomEvent<File>).detail
       if (!file) return
+
+      if (!aiEnabled && file.type.startsWith('audio/')) {
+        setErrorMessage(`Unsupported file type: ${file.type || 'unknown'}`)
+        setCaptureState('error')
+        return
+      }
 
       if (!DROPPABLE_TYPES.has(file.type)) {
         setErrorMessage(`Unsupported file type: ${file.type || 'unknown'}`)
@@ -482,7 +508,7 @@ export function QuickCapture(): React.JSX.Element {
         setClipboardImageUrl(URL.createObjectURL(file))
       }
     },
-    [clipboardImageUrl]
+    [aiEnabled, clipboardImageUrl]
   )
 
   useEffect(() => {
@@ -575,6 +601,7 @@ export function QuickCapture(): React.JSX.Element {
               onChange={handleValueChange}
               onSubmit={() => handleSubmit()}
               onStartRecording={() => {
+                if (!aiEnabled) return
                 void ensureVoiceRecordingReady(() => {
                   window.api.quickCapture.openSettings('ai')
                 }).then((ready) => {
@@ -591,6 +618,7 @@ export function QuickCapture(): React.JSX.Element {
               detectedType={detectedType}
               isCapturing={isCapturing || isRecording}
               hasAttachment={hasAttachment}
+              voiceEnabled={aiEnabled}
               textareaRef={textareaRef}
             />
           )}
@@ -632,7 +660,7 @@ export function QuickCapture(): React.JSX.Element {
             />
           )}
 
-          {isRecording && (
+          {aiEnabled && isRecording && (
             <div className="px-3 py-2 border-t border-border/30 bg-foreground/[0.02]">
               <VoiceRecorder
                 ref={voiceRecorderRef}

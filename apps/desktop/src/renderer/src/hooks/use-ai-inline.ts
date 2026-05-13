@@ -7,6 +7,7 @@ const log = createLogger('Hook:AIInline')
 const AI_GET_SETTINGS_CHANNEL = 'ai-inline:get-settings'
 const AI_GET_PORT_CHANNEL = 'ai-inline:get-server-port'
 const AI_START_CHANNEL = 'ai-inline:start-server'
+const AI_STOP_CHANNEL = 'ai-inline:stop-server'
 
 export interface AIInlineState {
   port: number | null
@@ -29,7 +30,7 @@ function friendlyError(raw: string, provider: string): string {
   return raw
 }
 
-export function useAIInline(): AIInlineState {
+export function useAIInline(aiEnabled = true): AIInlineState {
   const [port, setPort] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -46,6 +47,20 @@ export function useAIInline(): AIInlineState {
     let cancelled = false
 
     async function init(): Promise<void> {
+      if (!aiEnabled) {
+        setPort(null)
+        setError(null)
+        setLoading(false)
+        try {
+          await window.electron.ipcRenderer.invoke(AI_STOP_CHANNEL)
+        } catch (err) {
+          log.warn('Failed to stop AI server after global AI disable:', err)
+        }
+        return
+      }
+
+      setLoading(true)
+
       try {
         const settings = (await window.electron.ipcRenderer.invoke(
           AI_GET_SETTINGS_CHANNEL
@@ -107,7 +122,7 @@ export function useAIInline(): AIInlineState {
     return () => {
       cancelled = true
     }
-  }, [attempt])
+  }, [attempt, aiEnabled])
 
   return { port, loading, error, retry }
 }
