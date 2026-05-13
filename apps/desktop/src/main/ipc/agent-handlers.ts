@@ -5,6 +5,7 @@ import {
   AgentBackendModelListRequestSchema,
   AgentChannels,
   AgentLocalProviderSettingsUpdateSchema,
+  AgentPreferencesUpdateSchema,
   ApproveToolRequestSchema,
   PreviewDiffRequestSchema,
   type AgentBackendOptions,
@@ -13,12 +14,15 @@ import {
   type AgentLocalProviderProbeResult,
   type AgentLocalProviderSettings,
   type AgentLocalProviderSettingsUpdate,
+  type AgentPreferences,
+  type AgentPreferencesUpdate,
   type BackendStatusesResponse,
   type PreviewDiffResponse,
   SendTurnRequestSchema
 } from '@memry/contracts/ipc-agent'
 
 import { TOOL_SCHEMAS } from '../agent/mcp/tools/schemas'
+import { getAgentPreferences, setAgentPreferences } from '../agent/settings'
 import type { AgentRuntime } from '../agent/runtime/runtime'
 import { acceptDisclosure, getDisclosureState } from '../agent/runtime/disclosure-state'
 import { snapshotAttachments } from '../agent/runtime/attachment-snapshotter'
@@ -78,6 +82,10 @@ interface AgentHandlerDeps {
     listModels: () => Promise<AgentLocalModelList>
     testConnection: () => Promise<AgentLocalProviderProbeResult>
     probeTools: () => Promise<AgentLocalProviderProbeResult>
+  }
+  preferences: {
+    get: () => AgentPreferences
+    set: (input: AgentPreferencesUpdate) => AgentPreferences
   }
   vaultId: string
 }
@@ -260,6 +268,10 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
   ipcMain.handle(AgentChannels.invoke.SET_LOCAL_PROVIDER_SETTINGS, (_event, payload: unknown) => {
     return deps.localProvider.setSettings(AgentLocalProviderSettingsUpdateSchema.parse(payload))
   })
+  ipcMain.handle(AgentChannels.invoke.GET_PREFERENCES, async () => deps.preferences.get())
+  ipcMain.handle(AgentChannels.invoke.SET_PREFERENCES, async (_event, payload: unknown) => {
+    return deps.preferences.set(AgentPreferencesUpdateSchema.parse(payload))
+  })
   ipcMain.handle(AgentChannels.invoke.LIST_LOCAL_MODELS, () => deps.localProvider.listModels())
   ipcMain.handle(AgentChannels.invoke.TEST_LOCAL_PROVIDER, () =>
     deps.localProvider.testConnection()
@@ -321,6 +333,10 @@ export function registerUnavailableAgentHandlers(reason: string): void {
   registerUnavailableHandler(AgentChannels.invoke.SET_LOCAL_PROVIDER_SETTINGS, async () =>
     unavailable()
   )
+  registerUnavailableHandler(AgentChannels.invoke.GET_PREFERENCES, () => getAgentPreferences())
+  registerUnavailableHandler(AgentChannels.invoke.SET_PREFERENCES, (_event, payload) => {
+    return setAgentPreferences(AgentPreferencesUpdateSchema.parse(payload))
+  })
   registerUnavailableHandler(AgentChannels.invoke.LIST_LOCAL_MODELS, async () => unavailable())
   registerUnavailableHandler(AgentChannels.invoke.TEST_LOCAL_PROVIDER, async () => unavailable())
   registerUnavailableHandler(AgentChannels.invoke.PROBE_LOCAL_PROVIDER, async () => unavailable())

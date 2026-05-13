@@ -2,7 +2,8 @@ import type {
   AgentEvent,
   BackendStatusesResponse,
   Conversation,
-  Message
+  Message,
+  ToolCallStatus
 } from '@memry/contracts/ipc-agent'
 
 export type PendingToolApproval = Extract<AgentEvent, { kind: 'tool_call_pending_approval' }>
@@ -79,6 +80,7 @@ function upsertToolCallMessage(
     toolCallId: string
     name: string
     args: unknown
+    status: ToolCallStatus
   }
 ): Message[] {
   const newest = messages.reduce((max, message) => Math.max(max, message.createdAt), 0)
@@ -94,7 +96,7 @@ function upsertToolCallMessage(
           input.args && typeof input.args === 'object' && !Array.isArray(input.args)
             ? (input.args as Record<string, unknown>)
             : {},
-        status: 'pending'
+        status: input.status
       }
     },
     toolCallId: input.toolCallId,
@@ -110,18 +112,25 @@ function upsertToolCallMessage(
 function updateToolCallStatus(
   messages: Message[],
   toolCallId: string,
-  status: 'approved' | 'completed' | 'denied' | 'failed'
+  status: ToolCallStatus,
+  patch?: { output?: unknown; error?: { code: string; message: string } }
 ): Message[] {
   return messages.map((message) => {
     if (message.toolCallId !== toolCallId || message.content.role !== 'tool_call') return message
     return {
       ...message,
-      status: status === 'completed' ? 'completed' : status === 'failed' ? 'error' : message.status,
+      status:
+        status === 'completed' || status === 'output-available'
+          ? 'completed'
+          : status === 'failed' || status === 'output-error' || status === 'output-denied'
+            ? 'error'
+            : message.status,
       content: {
         role: 'tool_call',
         data: {
           ...message.content.data,
-          status
+          status,
+          ...patch
         }
       }
     }
@@ -131,12 +140,13 @@ function updateToolCallStatus(
 function updateToolCallStatusEverywhere(
   messagesByConversation: AgentState['messagesByConversation'],
   toolCallId: string,
-  status: 'approved' | 'completed' | 'denied' | 'failed'
+  status: ToolCallStatus,
+  patch?: { output?: unknown; error?: { code: string; message: string } }
 ): AgentState['messagesByConversation'] {
   return Object.fromEntries(
     Object.entries(messagesByConversation).map(([conversationId, messages]) => [
       conversationId,
-      updateToolCallStatus(messages, toolCallId, status)
+      updateToolCallStatus(messages, toolCallId, status, patch)
     ])
   )
 }
@@ -199,7 +209,7 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
           ? updateToolCallStatusEverywhere(
               state.messagesByConversation,
               action.toolCallId,
-              action.status
+              action.status === 'denied' ? 'output-denied' : 'approval-responded'
             )
           : state.messagesByConversation
       }
@@ -250,13 +260,34 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
                 conversationId: event.conversationId,
                 toolCallId: event.toolCallId,
                 name: event.name,
-                args: event.args
+                args: event.args,
+                status: 'approval-requested'
+              }
+            )
+          }
+        }
+      }
+      if (event.kind === 'tool_call_started') {
+        return {
+          ...state,
+          messagesByConversation: {
+            ...state.messagesByConversation,
+            [event.conversationId]: upsertToolCallMessage(
+              state.messagesByConversation[event.conversationId] ?? [],
+              {
+                conversationId: event.conversationId,
+                toolCallId: event.toolCallId,
+                name: event.name,
+                args: event.args,
+                status: 'input-available'
               }
             )
           }
         }
       }
       if (event.kind === 'tool_call_completed' || event.kind === 'tool_call_failed') {
+        const failedAsDenied =
+          event.kind === 'tool_call_failed' && event.error.code === 'PERMISSION_DENIED'
         return {
           ...state,
           pendingApprovals: state.pendingApprovals.filter(
@@ -265,7 +296,12 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
           messagesByConversation: updateToolCallStatusEverywhere(
             state.messagesByConversation,
             event.toolCallId,
-            event.kind === 'tool_call_completed' ? 'completed' : 'failed'
+            event.kind === 'tool_call_completed'
+              ? 'output-available'
+              : failedAsDenied
+                ? 'output-denied'
+                : 'output-error',
+            event.kind === 'tool_call_completed' ? { output: event.result } : { error: event.error }
           )
         }
       }

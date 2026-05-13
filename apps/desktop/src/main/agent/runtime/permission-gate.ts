@@ -1,4 +1,4 @@
-import type { ApproveToolDecision } from '@memry/contracts/ipc-agent'
+import type { AgentToolApprovalMode, ApproveToolDecision } from '@memry/contracts/ipc-agent'
 
 import {
   CREATE_TOOL_NAMES,
@@ -15,6 +15,7 @@ export interface GateInput {
   toolName: string
   trustList: string[]
   pendingDecision: ApproveToolDecision | null
+  toolApprovalMode?: AgentToolApprovalMode
 }
 
 export type GateDecision =
@@ -25,6 +26,10 @@ export type GateDecision =
 export function decideToolGate(input: GateInput): GateDecision {
   if (input.pendingDecision) {
     return { outcome: 'apply_decision', decision: input.pendingDecision }
+  }
+
+  if ((input.toolApprovalMode ?? 'always_accept') === 'always_accept') {
+    return { outcome: 'auto_approve' }
   }
 
   if (READ_TOOLS.has(input.toolName)) {

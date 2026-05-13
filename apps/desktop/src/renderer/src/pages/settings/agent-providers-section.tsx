@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type {
   AgentLocalProviderPreset,
   AgentLocalProviderProbeResult,
-  AgentLocalProviderSettings
+  AgentLocalProviderSettings,
+  AgentPreferences,
+  AgentToolApprovalMode
 } from '@memry/contracts/ipc-agent'
 import { useT } from '@memry/i18n/renderer'
 
@@ -37,6 +39,7 @@ export function AgentProvidersSection({
 }): React.JSX.Element | null {
   const { t } = useT('settings')
   const [settings, setSettings] = useState<AgentLocalProviderSettings | null>(null)
+  const [preferences, setPreferences] = useState<AgentPreferences | null>(null)
   const [apiKey, setApiKey] = useState('')
   const [models, setModels] = useState<string[]>([])
   const [status, setStatus] = useState<AgentLocalProviderProbeResult | null>(null)
@@ -44,8 +47,13 @@ export function AgentProvidersSection({
 
   useEffect(() => {
     let cancelled = false
-    void window.api.agent.getLocalProviderSettings().then((next) => {
-      if (!cancelled) setSettings(next)
+    void Promise.all([
+      window.api.agent.getLocalProviderSettings(),
+      window.api.agent.getPreferences()
+    ]).then(([nextSettings, nextPreferences]) => {
+      if (cancelled) return
+      setSettings(nextSettings)
+      setPreferences(nextPreferences)
     })
     return () => {
       cancelled = true
@@ -95,6 +103,12 @@ export function AgentProvidersSection({
     }
   }, [apiKey, settings])
 
+  const changeToolApprovalMode = useCallback(async (toolApprovalMode: AgentToolApprovalMode) => {
+    setPreferences((current) => (current ? { ...current, toolApprovalMode } : current))
+    const saved = await window.api.agent.setPreferences({ toolApprovalMode })
+    setPreferences(saved)
+  }, [])
+
   const loadModels = useCallback(async () => {
     setBusy('models')
     try {
@@ -123,7 +137,7 @@ export function AgentProvidersSection({
     }
   }, [])
 
-  if (!settings) return null
+  if (!settings || !preferences) return null
 
   return (
     <div>
@@ -136,6 +150,25 @@ export function AgentProvidersSection({
       )}
 
       <SettingsGroup label={t('agentProviders.groups.local')}>
+        <SettingRow
+          label={t('agentProviders.approval.label')}
+          description={t('agentProviders.approval.description')}
+        >
+          <Select
+            value={preferences.toolApprovalMode}
+            onValueChange={(value) => void changeToolApprovalMode(value as AgentToolApprovalMode)}
+          >
+            <SelectTrigger className="h-8 w-44 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="always_accept">
+                {t('agentProviders.approval.alwaysAccept')}
+              </SelectItem>
+              <SelectItem value="ask">{t('agentProviders.approval.ask')}</SelectItem>
+            </SelectContent>
+          </Select>
+        </SettingRow>
         <SettingRow label={t('agentProviders.fields.preset.label')}>
           <Select
             value={settings.preset}
