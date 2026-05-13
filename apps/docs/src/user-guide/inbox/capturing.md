@@ -32,14 +32,19 @@ If voice transcription is enabled, Memry transcribes the audio in the background
 
 ## Web Clips and Browser Extension
 
-When the browser extension (or quick-share integrations) are available, sharing a page from your browser creates an inbox item with:
+The Chrome extension captures directly through a local native host. It does not use a cloud relay.
+If Memry is closed, Chrome writes the capture to a local pending folder and launches Memry; the item
+imports as soon as a vault opens.
 
-- The page title
-- The source URL
-- A snippet or selected text
-- Sometimes a screenshot
+From Chrome you can:
 
-Web clips appear under the **clips** content type filter.
+- Right-click highlighted text → **Send quote to Memry**
+- Right-click a page → **Capture page to Memry**
+- Right-click a link → **Send link to Memry**
+- Right-click a linked file, image, audio, video, or PDF → capture it as an inbox attachment
+
+Quotes and pages appear under the **clips** content type filter. Files keep their native inbox type
+where possible: image, voice, video, or PDF.
 
 ## Social Posts
 
@@ -64,7 +69,7 @@ Capture is fast on purpose. It does not:
 
 - Auto-tag items
 - Auto-file into projects (use [Triage](/user-guide/inbox/triage) for that)
-- Send anything to the network (until sync runs and uploads encrypted state)
+- Send browser captures through Memry cloud
 
 ## See Also
 

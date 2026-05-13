@@ -28,6 +28,7 @@ export default defineConfig(
       'apps/desktop/config/**',
       'scripts/**',
       'apps/desktop/scripts/**',
+      'apps/desktop/native-host/**',
       'specs/**',
       'docs/**',
       'apps/sync-server/**'
@@ -87,6 +88,9 @@ export default defineConfig(
   eslintConfigPrettier,
   reactYouMightNotNeedAnEffect.configs.recommended,
   {
+    plugins: {
+      'react-hooks': eslintPluginReactHooks
+    },
     rules: {
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',

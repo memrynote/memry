@@ -19,7 +19,15 @@
     "test": {
       "cache": true,
       "dependsOn": ["^test"],
-      "inputs": ["**/*.ts", "**/*.tsx", "**/*.test.*", "package.json", "vitest.config.*"],
+      "inputs": [
+        "**/*.ts",
+        "**/*.tsx",
+        "**/*.js",
+        "**/*.mjs",
+        "**/*.test.*",
+        "package.json",
+        "vitest.config.*"
+      ],
       "outputs": []
     },
     "lint": {

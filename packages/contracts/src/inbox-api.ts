@@ -407,10 +407,11 @@ export const CaptureClipSchema = z.object({
 })
 
 export const CapturePdfSchema = z.object({
-  data: z.instanceof(Buffer),
+  data: binaryDataSchema,
   filename: z.string().min(1).max(255),
   extractText: z.boolean().default(true),
-  tags: z.array(z.string().max(50)).max(20).optional()
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  source: z.enum(['quick-capture', 'inline', 'browser-extension', 'api', 'reminder']).optional()
 })
 
 export const InboxListSchema = z.object({

@@ -23,7 +23,7 @@ import { LocaleSchema, FALLBACK_LOCALE, type Locale } from '@memry/contracts/loc
 import { createMainI18n, type I18nInstance } from '@memry/i18n/main'
 import { registerAllHandlers } from './ipc'
 import { applyGlobalCaptureShortcut } from './ipc/settings-handlers'
-import { autoOpenLastVault, closeVault, getStatus as getVaultStatus } from './vault'
+import { autoOpenLastVault, closeVault, getStatus as getVaultStatus, onVaultOpened } from './vault'
 import { readPreferences } from './vault/vault-preferences'
 import { getCurrentVaultPath } from './store'
 import { startSnoozeScheduler, stopSnoozeScheduler, checkDueItemsOnStartup } from './inbox/snooze'
@@ -47,6 +47,11 @@ import { getCrdtProvider } from './sync/crdt-provider'
 import { stopSyncRuntime } from './sync/runtime'
 import { startAgentMcpLifecycle, stopAgentMcpLifecycle } from './agent/mcp/lifecycle'
 import { startAgent, type AgentHandle } from './agent/bootstrap'
+import {
+  importPendingCaptureHandoff,
+  startCaptureHandoffWatcher,
+  stopCaptureHandoffWatcher
+} from './capture-handoff/importer'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { getIndexDatabase } from './database/client'
 import { toAbsolutePath, createSnapshot } from './vault/notes'
@@ -581,6 +586,12 @@ void app.whenReady().then(async () => {
   })
 
   registerAllHandlers({ i18n: mainI18n, rebuildMenu })
+  onVaultOpened(() => {
+    void importPendingCaptureHandoff().catch((error) => {
+      mainLog.warn('extension capture handoff import failed:', error)
+    })
+  })
+  startCaptureHandoffWatcher()
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
@@ -1048,6 +1059,9 @@ app.on('before-quit', (event) => {
 
       shutdownLog.info('stopping Google Calendar sync runner...')
       stopGoogleCalendarSyncRunner()
+
+      shutdownLog.info('stopping extension capture handoff watcher...')
+      stopCaptureHandoffWatcher()
     })
     .then(() => {
       shutdownLog.info('stopping voice transcription utility...')

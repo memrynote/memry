@@ -14,6 +14,8 @@ const removeHandlerCalls: string[] = []
 const mockCaptureTextCommand = vi.hoisted(() => vi.fn())
 const mockCaptureLinkCommand = vi.hoisted(() => vi.fn())
 const mockCaptureImageCommand = vi.hoisted(() => vi.fn())
+const mockCaptureClipCommand = vi.hoisted(() => vi.fn())
+const mockCapturePdfCommand = vi.hoisted(() => vi.fn())
 const mockRetryTranscriptionCommand = vi.hoisted(() => vi.fn())
 const mockRetryMetadataCommand = vi.hoisted(() => vi.fn())
 
@@ -119,6 +121,8 @@ vi.mock('../inbox/domain', async () => {
         captureText: mockCaptureTextCommand,
         captureLink: mockCaptureLinkCommand,
         captureImage: mockCaptureImageCommand,
+        captureClip: mockCaptureClipCommand,
+        capturePdf: mockCapturePdfCommand,
         retryTranscription: mockRetryTranscriptionCommand,
         retryMetadata: mockRetryMetadataCommand
       }
@@ -360,6 +364,57 @@ describe('inbox-handlers', () => {
         data: { 0: 1, 1: 2, 2: 3 },
         filename: 'test.png',
         mimeType: 'image/png'
+      })
+    })
+  })
+
+  describe('CAPTURE_CLIP handler', () => {
+    beforeEach(() => {
+      registerInboxHandlers()
+      mockCaptureClipCommand.mockReset()
+    })
+
+    it('delegates clip capture to the inbox domain module', async () => {
+      const mockResult = { success: true, item: { id: 'clip-1', type: 'clip' } }
+      mockCaptureClipCommand.mockResolvedValue(mockResult)
+
+      const result = await invokeHandler(InboxChannels.invoke.CAPTURE_CLIP, {
+        html: '<p>quote</p>',
+        text: 'quote',
+        sourceUrl: 'https://example.com',
+        sourceTitle: 'Example'
+      })
+
+      expect(result.success).toBe(true)
+      expect(mockCaptureClipCommand).toHaveBeenCalledWith({
+        html: '<p>quote</p>',
+        text: 'quote',
+        sourceUrl: 'https://example.com',
+        sourceTitle: 'Example'
+      })
+    })
+  })
+
+  describe('CAPTURE_PDF handler', () => {
+    beforeEach(() => {
+      registerInboxHandlers()
+      mockCapturePdfCommand.mockReset()
+    })
+
+    it('delegates pdf capture to the inbox domain module', async () => {
+      const mockResult = { success: true, item: { id: 'pdf-1', type: 'pdf' } }
+      mockCapturePdfCommand.mockResolvedValue(mockResult)
+
+      const result = await invokeHandler(InboxChannels.invoke.CAPTURE_PDF, {
+        data: { 0: 37, 1: 80, 2: 68, 3: 70 },
+        filename: 'paper.pdf'
+      })
+
+      expect(result.success).toBe(true)
+      expect(mockCapturePdfCommand).toHaveBeenCalledWith({
+        data: { 0: 37, 1: 80, 2: 68, 3: 70 },
+        filename: 'paper.pdf',
+        extractText: true
       })
     })
   })

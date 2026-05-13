@@ -257,6 +257,62 @@ describe('createDesktopInboxDomain', () => {
     ).resolves.toMatchObject({ success: false, error: 'Empty file data' })
   })
 
+  it('captures web clips with source metadata for browser extension quotes', async () => {
+    const domain = createDesktopInboxDomain()
+
+    const result = await domain.captureClip({
+      html: '<p>quoted text</p>',
+      text: 'quoted text',
+      sourceUrl: 'https://example.com/article',
+      sourceTitle: 'Example Article',
+      source: 'browser-extension',
+      tags: ['quote']
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.item).toEqual(
+      expect.objectContaining({
+        type: 'clip',
+        title: 'Example Article',
+        content: 'quoted text',
+        sourceUrl: 'https://example.com/article',
+        sourceTitle: 'Example Article',
+        captureSource: 'browser-extension',
+        tags: ['quote'],
+        metadata: expect.objectContaining({
+          quotedText: 'quoted text',
+          hasFormatting: true
+        })
+      })
+    )
+    expect(mockSyncInboxCreate).toHaveBeenCalledWith(result.item?.id)
+  })
+
+  it('captures pdf binaries through the pdf command', async () => {
+    const domain = createDesktopInboxDomain()
+
+    const result = await domain.capturePdf({
+      data: Buffer.from('%PDF'),
+      filename: 'paper.pdf',
+      source: 'browser-extension'
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.item).toEqual(
+      expect.objectContaining({
+        type: 'pdf',
+        title: 'paper',
+        captureSource: 'browser-extension'
+      })
+    )
+    expect(mockStoreInboxAttachment).toHaveBeenCalledWith(
+      result.item?.id,
+      Buffer.from('%PDF'),
+      'paper.pdf',
+      'application/pdf'
+    )
+  })
+
   it('normalizes voice memo data and delegates capture to the voice pipeline', async () => {
     const domain = createDesktopInboxDomain()
 

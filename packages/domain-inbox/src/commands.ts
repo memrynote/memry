@@ -3,6 +3,8 @@ import type {
   CaptureTextInput,
   CaptureVoiceInput,
   CaptureImageInput,
+  CaptureClipInput,
+  CapturePdfInput,
   FileItemInput,
   InboxCaptureResponse,
   InboxDuplicateMatch,
@@ -30,6 +32,8 @@ export interface InboxCommandServices {
   captureLinkItem(input: CreateLinkCaptureItemInput): Promise<InboxCaptureResponse>
   captureImageItem(input: CaptureImageInput): Promise<InboxCaptureResponse>
   captureVoiceItem(input: CaptureVoiceInput): Promise<InboxCaptureResponse>
+  captureClipItem(input: CaptureClipInput): Promise<InboxCaptureResponse>
+  capturePdfItem(input: CapturePdfInput): Promise<InboxCaptureResponse>
   isSocialPost(url: string): boolean
   detectSocialPlatform(url: string): 'twitter' | 'other' | null
   storeSocialMetadata(itemId: string, url: string): void
@@ -67,9 +71,13 @@ export interface InboxCommands {
   captureLink(input: CaptureLinkInput): Promise<InboxCaptureResponse>
   captureImage(input: CaptureImageInput): Promise<InboxCaptureResponse>
   captureVoice(input: CaptureVoiceInput): Promise<InboxCaptureResponse>
+  captureClip(input: CaptureClipInput): Promise<InboxCaptureResponse>
+  capturePdf(input: CapturePdfInput): Promise<InboxCaptureResponse>
   fileItem(input: FileItemInput): Promise<InboxFileResponse>
   getSuggestions(itemId: string): Promise<{ suggestions: InboxFilingSuggestion[] }>
-  trackSuggestion(input: TrackSuggestionFeedbackInput): Promise<{ success: boolean; error?: string }>
+  trackSuggestion(
+    input: TrackSuggestionFeedbackInput
+  ): Promise<{ success: boolean; error?: string }>
   convertToNote(itemId: string): Promise<InboxFileResponse>
   convertToTask(
     itemId: string
@@ -154,7 +162,9 @@ export function createInboxCommands(services: InboxCommandServices): InboxComman
         tags: input.tags,
         source: input.source,
         itemType: isSocial ? 'social' : 'link',
-        metadata: isSocial ? createSocialMetadata(input.url, platform) : createLinkMetadata(input.url)
+        metadata: isSocial
+          ? createSocialMetadata(input.url, platform)
+          : createLinkMetadata(input.url)
       })
 
       if (!result.success || !result.item) {
@@ -176,6 +186,8 @@ export function createInboxCommands(services: InboxCommandServices): InboxComman
 
     captureImage: (input) => services.captureImageItem(input),
     captureVoice: (input) => services.captureVoiceItem(input),
+    captureClip: (input) => services.captureClipItem(input),
+    capturePdf: (input) => services.capturePdfItem(input),
 
     async fileItem(input) {
       const { itemId, destination, tags } = input

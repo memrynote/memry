@@ -283,6 +283,23 @@ export interface CaptureImageInput {
   source?: CaptureSource
 }
 
+export interface CaptureClipInput {
+  html?: string
+  text: string
+  sourceUrl: string
+  sourceTitle: string
+  tags?: string[]
+  source?: CaptureSource
+}
+
+export interface CapturePdfInput {
+  filename: string
+  data: Buffer | Uint8Array | ArrayBuffer | Record<string, unknown>
+  extractText?: boolean
+  tags?: string[]
+  source?: CaptureSource
+}
+
 export interface CaptureVoiceInput {
   data: Buffer | Uint8Array | ArrayBuffer | Record<string, unknown>
   duration: number

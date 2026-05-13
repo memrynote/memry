@@ -90,10 +90,10 @@ export interface MainIpcInvokeHandlers {
   "inbox:bulk-file": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").BulkResponse>>
   "inbox:bulk-snooze": (...args: [any]) => Awaited<Promise<{ success: boolean; processedCount: number; errors: { itemId: string; error: string; }[]; }>>
   "inbox:bulk-tag": (...args: [any]) => Awaited<Promise<import("../../../../../packages/contracts/src/inbox-api").BulkResponse>>
-  "inbox:capture-clip": (...args: [unknown]) => Awaited<Promise<{ success: boolean; item: null; error: string; }>>
+  "inbox:capture-clip": (...args: [any]) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").InboxCaptureResponse>>
   "inbox:capture-image": (...args: [any]) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").InboxCaptureResponse>>
   "inbox:capture-link": (...args: [any]) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").InboxCaptureResponse>>
-  "inbox:capture-pdf": (...args: [unknown]) => Awaited<Promise<{ success: boolean; item: null; error: string; }>>
+  "inbox:capture-pdf": (...args: [any]) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").InboxCaptureResponse>>
   "inbox:capture-text": (...args: [any]) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").InboxCaptureResponse>>
   "inbox:capture-voice": (...args: [any]) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").InboxCaptureResponse>>
   "inbox:convert-to-note": (...args: [any]) => Awaited<Promise<import("../../../../../packages/domain-inbox/src/types").InboxFileResponse>>

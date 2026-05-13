@@ -1,9 +1,5 @@
 import { describe, expect, test, vi } from 'vitest'
-import {
-  createInboxCommands,
-  type InboxCommandServices,
-  type InboxItem
-} from './index.ts'
+import { createInboxCommands, type InboxCommandServices, type InboxItem } from './index.ts'
 
 function createItem(overrides: Partial<InboxItem> = {}): InboxItem {
   return {
@@ -46,6 +42,8 @@ function createServices(overrides: Partial<InboxCommandServices> = {}): InboxCom
     captureLinkItem: vi.fn(async () => ({ success: true, item: createItem() })),
     captureImageItem: vi.fn(async () => ({ success: true, item: createItem({ type: 'image' }) })),
     captureVoiceItem: vi.fn(async () => ({ success: true, item: createItem({ type: 'voice' }) })),
+    captureClipItem: vi.fn(async () => ({ success: true, item: createItem({ type: 'clip' }) })),
+    capturePdfItem: vi.fn(async () => ({ success: true, item: createItem({ type: 'pdf' }) })),
     isSocialPost: vi.fn(() => false),
     detectSocialPlatform: vi.fn(() => null),
     storeSocialMetadata: vi.fn(),
@@ -53,7 +51,11 @@ function createServices(overrides: Partial<InboxCommandServices> = {}): InboxCom
     getSuggestions: vi.fn(async () => []),
     trackSuggestionFeedback: vi.fn(),
     fileToFolder: vi.fn(async () => ({ success: true, filedTo: 'Folder/Note.md' })),
-    convertToNote: vi.fn(async () => ({ success: true, filedTo: 'Inbox Note.md', noteId: 'note-1' })),
+    convertToNote: vi.fn(async () => ({
+      success: true,
+      filedTo: 'Inbox Note.md',
+      noteId: 'note-1'
+    })),
     convertToTask: vi.fn(async () => ({ success: true, taskId: 'task-1' })),
     linkToNote: vi.fn(async () => ({ success: true })),
     linkToNotes: vi.fn(async () => ({ success: true })),
@@ -112,6 +114,44 @@ describe('createInboxCommands', () => {
       'https://x.com/example/status/1'
     )
     expect(services.queueMetadataJob).not.toHaveBeenCalled()
+  })
+
+  test('captureClip delegates highlighted web content to the clip capture service', async () => {
+    const services = createServices()
+    const commands = createInboxCommands(services)
+
+    await commands.captureClip({
+      html: '<p>quote</p>',
+      text: 'quote',
+      sourceUrl: 'https://example.com',
+      sourceTitle: 'Example',
+      source: 'browser-extension'
+    })
+
+    expect(services.captureClipItem).toHaveBeenCalledWith({
+      html: '<p>quote</p>',
+      text: 'quote',
+      sourceUrl: 'https://example.com',
+      sourceTitle: 'Example',
+      source: 'browser-extension'
+    })
+  })
+
+  test('capturePdf delegates pdf binaries to the pdf capture service', async () => {
+    const services = createServices()
+    const commands = createInboxCommands(services)
+
+    await commands.capturePdf({
+      data: Buffer.from('%PDF'),
+      filename: 'paper.pdf',
+      source: 'browser-extension'
+    })
+
+    expect(services.capturePdfItem).toHaveBeenCalledWith({
+      data: Buffer.from('%PDF'),
+      filename: 'paper.pdf',
+      source: 'browser-extension'
+    })
   })
 
   test('fileItem requires at least one note id when linking to existing notes', async () => {

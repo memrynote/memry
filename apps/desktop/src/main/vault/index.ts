@@ -60,6 +60,7 @@ import { PropertyDefinitionsService } from './property-definitions'
 import { migrateSettingsToConfig } from './settings-cache'
 
 const logger = createLogger('Vault')
+const vaultOpenListeners = new Set<(vaultPath: string) => void | Promise<void>>()
 
 /**
  * Current vault status
@@ -144,6 +145,21 @@ function createVaultInfo(vaultPath: string): VaultInfo {
 export function updateStatus(updates: Partial<VaultStatus>): void {
   currentStatus = { ...currentStatus, ...updates }
   emitStatusChanged()
+}
+
+export function onVaultOpened(listener: (vaultPath: string) => void | Promise<void>): () => void {
+  vaultOpenListeners.add(listener)
+  return () => {
+    vaultOpenListeners.delete(listener)
+  }
+}
+
+function notifyVaultOpened(vaultPath: string): void {
+  for (const listener of vaultOpenListeners) {
+    Promise.resolve(listener(vaultPath)).catch((error) => {
+      logger.warn('Vault opened listener failed', error)
+    })
+  }
 }
 
 /**
@@ -298,6 +314,8 @@ async function openVault(vaultPath: string): Promise<void> {
     path: vaultPath,
     error: null
   })
+
+  notifyVaultOpened(vaultPath)
 
   await startSyncRuntime()
 

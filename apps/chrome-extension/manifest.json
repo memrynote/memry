@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Memry Capture",
+  "description": "Capture pages, quotes, links, images, videos, audio, and PDFs into Memry.",
+  "version": "0.1.0",
+  "permissions": ["activeTab", "contextMenus", "nativeMessaging", "scripting", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Capture to Memry",
+    "default_popup": "src/popup.html"
+  }
+}

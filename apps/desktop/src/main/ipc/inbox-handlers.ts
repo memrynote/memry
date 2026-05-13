@@ -2,6 +2,8 @@ import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 import {
   CaptureImageSchema,
   CaptureLinkSchema,
+  CaptureClipSchema,
+  CapturePdfSchema,
   CaptureTextSchema,
   CaptureVoiceSchema,
   FileItemSchema
@@ -25,14 +27,6 @@ import { trackMainEvent } from '../telemetry/track'
 
 const logger = createLogger('IPC:Inbox')
 
-async function stubCaptureClip(_input: unknown) {
-  return { success: false, item: null, error: 'Not implemented yet' }
-}
-
-async function stubCapturePdf(_input: unknown) {
-  return { success: false, item: null, error: 'Not implemented yet' }
-}
-
 const handleTrackSuggestion = withErrorHandler(
   async (
     itemId: string,
@@ -54,12 +48,6 @@ const handleTrackSuggestion = withErrorHandler(
     }),
   'Failed to track suggestion'
 )
-
-const handleCaptureClipIpc = async (_event: IpcMainInvokeEvent, input: unknown) =>
-  stubCaptureClip(input)
-
-const handleCapturePdfIpc = async (_event: IpcMainInvokeEvent, input: unknown) =>
-  stubCapturePdf(input)
 
 const handleTrackSuggestionIpc = (
   _event: IpcMainInvokeEvent,
@@ -119,8 +107,16 @@ export function registerInboxHandlers(): void {
     trackInboxCaptured('voice', Boolean(result?.success))
     return result
   })
-  ipcMain.handle(InboxChannels.invoke.CAPTURE_CLIP, handleCaptureClipIpc)
-  ipcMain.handle(InboxChannels.invoke.CAPTURE_PDF, handleCapturePdfIpc)
+  ipcMain.handle(InboxChannels.invoke.CAPTURE_CLIP, async (_, input) => {
+    const result = await inboxDomain.captureClip(CaptureClipSchema.parse(input))
+    trackInboxCaptured('clip', Boolean(result?.success))
+    return result
+  })
+  ipcMain.handle(InboxChannels.invoke.CAPTURE_PDF, async (_, input) => {
+    const result = await inboxDomain.capturePdf(CapturePdfSchema.parse(input))
+    trackInboxCaptured('pdf', Boolean(result?.success))
+    return result
+  })
 
   registerInboxCrudHandlers(crudHandlers)
   registerInboxQueryHandlers(queryHandlers)

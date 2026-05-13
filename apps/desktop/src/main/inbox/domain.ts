@@ -4,7 +4,9 @@ import sharp from 'sharp'
 import {
   createInboxCommands,
   createInboxQueries,
+  type CaptureClipInput,
   type CaptureImageInput,
+  type CapturePdfInput,
   type CaptureTextInput,
   type CaptureVoiceInput,
   type CreateLinkCaptureItemInput,
@@ -360,6 +362,58 @@ async function captureImageItem(input: CaptureImageInput): Promise<InboxCaptureR
   }
 }
 
+async function captureClipItem(input: CaptureClipInput): Promise<InboxCaptureResponse> {
+  try {
+    const db = requireDatabase()
+    const id = generateId()
+    const now = new Date().toISOString()
+    const title = input.sourceTitle || input.text.substring(0, 50)
+
+    const { row, tags } = insertItemWithTags(
+      db,
+      {
+        id,
+        type: 'clip',
+        title,
+        content: input.text,
+        sourceUrl: input.sourceUrl,
+        sourceTitle: input.sourceTitle,
+        createdAt: now,
+        modifiedAt: now,
+        processingStatus: 'complete',
+        captureSource: input.source ?? null,
+        metadata: {
+          sourceUrl: input.sourceUrl,
+          sourceTitle: input.sourceTitle,
+          quotedText: input.text,
+          capturedImages: [],
+          hasFormatting: Boolean(input.html && input.html !== input.text)
+        }
+      },
+      input.tags
+    )
+
+    logger.info(`Captured clip from ${input.sourceUrl}`)
+    return { success: true, item: emitCapturedAndSync(row, tags) }
+  } catch (error) {
+    return {
+      success: false,
+      item: null,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }
+  }
+}
+
+async function capturePdfItem(input: CapturePdfInput): Promise<InboxCaptureResponse> {
+  return captureImageItem({
+    data: input.data,
+    filename: input.filename,
+    mimeType: 'application/pdf',
+    tags: input.tags,
+    source: input.source
+  })
+}
+
 async function captureVoiceItem(input: CaptureVoiceInput): Promise<InboxCaptureResponse> {
   const audioBuffer = normalizeBinaryInput(input.data)
   if (!audioBuffer) {
@@ -477,6 +531,8 @@ export function createDesktopInboxDomain() {
       captureLinkItem,
       captureImageItem,
       captureVoiceItem,
+      captureClipItem,
+      capturePdfItem,
       isSocialPost,
       detectSocialPlatform,
       storeSocialMetadata,
