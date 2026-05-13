@@ -85,6 +85,7 @@ describe('agent IPC handlers', () => {
       resolveApproval: vi.fn(),
       trackSubprocess: vi.fn(),
       untrackSubprocess: vi.fn(),
+      trackTurn: vi.fn(),
       acquireTurnLock: vi.fn(),
       releaseTurnLock: vi.fn(),
       getPendingApproval: vi.fn(() => ({
@@ -300,6 +301,7 @@ describe('agent IPC handlers', () => {
         ]
       })
     )
+    expect(deps.runtime.trackTurn).toHaveBeenCalledWith('conversation-1', expect.any(Promise))
   })
 
   it('stores selected CLI model metadata on the conversation before running a turn', async () => {

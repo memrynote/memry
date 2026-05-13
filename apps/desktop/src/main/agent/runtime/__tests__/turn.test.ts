@@ -286,6 +286,38 @@ describe('runTurn against a stub backend', () => {
     })
   })
 
+  it('tracks title generation subprocesses with the same turn handle registry', async () => {
+    const messages = createFakeMessageStore()
+    const conversations = createFakeConversationStore()
+    const backend = createFakeBackend({
+      title: [{ kind: 'assistant_delta', text: 'Project Roadmap' }],
+      turn: [{ kind: 'message_stop' }]
+    })
+    const trackRunHandle = vi.fn((_conversationId, handle) => handle)
+
+    await runTurn(
+      {
+        conversations,
+        messages,
+        backends: createFakeRegistry(backend),
+        trackRunHandle
+      },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'Create a roadmap from my project notes',
+        attachments: [],
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'medium' }
+      }
+    )
+
+    expect(trackRunHandle).toHaveBeenCalledTimes(2)
+    expect(trackRunHandle).toHaveBeenCalledWith(
+      'conversation-1',
+      expect.objectContaining({ pid: expect.any(Number) })
+    )
+  })
+
   it('uses the selected Codex backend to title a default conversation', async () => {
     const messages = createFakeMessageStore()
     const conversations = createFakeConversationStore({ backend: 'codex_cli' })
