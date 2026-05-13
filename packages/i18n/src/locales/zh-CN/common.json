@@ -337,6 +337,7 @@
     "conversationLoading": "对话加载中...",
     "newConversation": "新对话",
     "history": "对话历史记录",
+    "openInTab": "在标签页中打开对话",
     "stop": "停止",
     "thinking": "Agent 正在思考",
     "enable": {

@@ -337,6 +337,7 @@
     "conversationLoading": "대화 로드 중...",
     "newConversation": "새 대화",
     "history": "대화 기록",
+    "openInTab": "대화를 탭에서 열기",
     "stop": "중지",
     "thinking": "Agent는 생각 중입니다.",
     "enable": {

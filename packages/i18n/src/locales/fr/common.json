@@ -337,6 +337,7 @@
     "conversationLoading": "Chargement de la conversation...",
     "newConversation": "Nouvelle conversation",
     "history": "Historique des conversations",
+    "openInTab": "Ouvrir la conversation dans un onglet",
     "stop": "Arrêter",
     "thinking": "Agent réfléchit",
     "enable": {

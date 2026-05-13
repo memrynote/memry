@@ -337,6 +337,7 @@
     "conversationLoading": "Gesprek wordt geladen...",
     "newConversation": "Nieuw gesprek",
     "history": "Gespreksgeschiedenis",
+    "openInTab": "Gesprek openen in tabblad",
     "stop": "Stoppen",
     "thinking": "Agent denkt na",
     "enable": {
