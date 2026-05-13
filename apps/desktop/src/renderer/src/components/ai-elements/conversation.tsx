@@ -33,5 +33,5 @@ export function ConversationContent({
   className,
   ...props
 }: ConversationContentProps): React.JSX.Element {
-  return <div className={cn('flex flex-col gap-3 px-4 py-3', className)} {...props} />
+  return <div className={cn('flex flex-col gap-3 px-2 py-3', className)} {...props} />
 }

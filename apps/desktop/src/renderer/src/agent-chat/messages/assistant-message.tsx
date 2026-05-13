@@ -15,17 +15,16 @@ const markdownComponents = { a: MemryLink }
 
 export function AssistantMessage({ message }: { message: Message }): React.JSX.Element | null {
   const { t } = useT('common')
-  const navigateMemryLink = useMemryLinkNavigation()
   if (message.content.role !== 'assistant') return null
   const sources = uniqueSources(message.content.data.sources)
 
   if (message.status === 'streaming' && message.content.data.text.trim().length === 0) {
     return (
-      <AIMessage from="assistant">
+      <AIMessage from="assistant" className="max-w-full">
         <MessageContent
           role="status"
           aria-label={t('agentChat.thinking')}
-          className="min-w-10 rounded-full border border-sidebar-border/70 bg-background/80 px-3 py-2 shadow-sm"
+          className="min-w-10 overflow-visible border-0 bg-transparent px-3 py-0 shadow-none"
         >
           <span className="flex items-center gap-1.5" aria-hidden="true">
             <span className="size-2 animate-pulse rounded-full bg-foreground/60" />
@@ -38,39 +37,46 @@ export function AssistantMessage({ message }: { message: Message }): React.JSX.E
   }
 
   return (
-    <AIMessage from="assistant">
-      <MessageContent className="max-w-[92%] rounded-lg border border-sidebar-border bg-background px-3 py-2">
+    <AIMessage from="assistant" className="max-w-full">
+      <MessageContent className="w-full max-w-none overflow-visible rounded-none border-0 bg-transparent px-3 py-0">
         <MessageResponse components={markdownComponents}>
           {message.content.data.text}
         </MessageResponse>
-        {sources.length > 0 && (
-          <Sources className="mb-0 mt-1">
-            <SourcesTrigger
-              count={sources.length}
-              label={t('agentChat.sources.used', {
-                count: sources.length,
-                defaultValue: `Used ${sources.length} sources`
-              })}
-              className={cn(memryLinkClassName, 'w-fit text-xs')}
-            />
-            <SourcesContent className="w-full">
-              {sources.map((source) => (
-                <Source
-                  key={source.href}
-                  className={cn('flex w-fit items-center gap-2 text-xs', memryLinkClassName)}
-                  href={source.href}
-                  onClick={(event) => {
-                    event.preventDefault()
-                    navigateMemryLink(source.href, source.title)
-                  }}
-                  title={source.title}
-                />
-              ))}
-            </SourcesContent>
-          </Sources>
-        )}
+        {sources.length > 0 && <AssistantSources sources={sources} />}
       </MessageContent>
     </AIMessage>
+  )
+}
+
+function AssistantSources({ sources }: { sources: AgentSourceRef[] }): React.JSX.Element {
+  const { t } = useT('common')
+  const navigateMemryLink = useMemryLinkNavigation()
+
+  return (
+    <Sources className="mb-0 mt-1">
+      <SourcesTrigger
+        count={sources.length}
+        label={t('agentChat.sources.used', {
+          count: sources.length,
+          defaultValue: `Used ${sources.length} sources`
+        })}
+        className={cn(memryLinkClassName, 'w-fit text-xs')}
+      />
+      <SourcesContent className="w-full">
+        {sources.map((source) => (
+          <Source
+            key={source.href}
+            className={cn('flex w-fit items-center gap-2 text-xs', memryLinkClassName)}
+            href={source.href}
+            onClick={(event) => {
+              event.preventDefault()
+              navigateMemryLink(source.href, source.title)
+            }}
+            title={source.title}
+          />
+        ))}
+      </SourcesContent>
+    </Sources>
   )
 }
 

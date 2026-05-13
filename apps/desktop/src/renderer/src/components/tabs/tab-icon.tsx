@@ -24,7 +24,8 @@ import {
   GitGraph,
   Image,
   Music,
-  Video
+  Video,
+  Bot
 } from '@/lib/icons'
 import type { TabType } from '@/contexts/tabs/types'
 import { cn } from '@/lib/utils'
@@ -65,7 +66,8 @@ const ICON_COMPONENTS: Record<string, React.ComponentType<{ className?: string }
   'file-image': Image,
   'file-audio': Music,
   'file-video': Video,
-  'git-graph': GitGraph
+  'git-graph': GitGraph,
+  bot: Bot
 }
 
 /**
@@ -87,7 +89,8 @@ const TYPE_TO_ICON: Record<TabType, string> = {
   collection: 'bookmark',
   'template-editor': 'layout-template',
   templates: 'layout-template',
-  graph: 'git-graph'
+  graph: 'git-graph',
+  'agent-chat': 'bot'
 }
 
 /**

@@ -26,6 +26,7 @@ import { TemplatesPage } from '@/pages/templates'
 import { GraphPage } from '@/components/graph/graph-page'
 import { useT } from '@memry/i18n/renderer'
 import { stringifyUnknown } from '@/lib/stringify-unknown'
+import { AgentConversationTab } from '@/agent-chat/agent-conversation-tab'
 
 // =============================================================================
 // MEMOIZED PAGE COMPONENTS
@@ -42,6 +43,7 @@ const MemoizedFolderViewPage = React.memo(FolderViewPage)
 const MemoizedTemplateEditorPage = React.memo(TemplateEditorPage)
 const MemoizedTemplatesPage = React.memo(TemplatesPage)
 const MemoizedGraphPage = React.memo(GraphPage)
+const MemoizedAgentConversationTab = React.memo(AgentConversationTab)
 
 interface TabContentProps {
   /** Tab data */
@@ -168,6 +170,9 @@ export const TabContent = ({ tab, groupId, className }: TabContentProps): React.
 
       case 'graph':
         return <MemoizedGraphPage />
+
+      case 'agent-chat':
+        return <MemoizedAgentConversationTab conversationId={tab.entityId} />
 
       case 'collection':
         return (

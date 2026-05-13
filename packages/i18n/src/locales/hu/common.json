@@ -337,6 +337,7 @@
     "conversationLoading": "Beszélgetés betöltése...",
     "newConversation": "Új beszélgetés",
     "history": "Beszélgetés előzményei",
+    "openInTab": "Beszélgetés megnyitása lapon",
     "stop": "Állj",
     "thinking": "Agent gondolkodik",
     "enable": {
