@@ -15,6 +15,7 @@ import {
   ApproveToolRequestSchema,
   BinaryStatusSchema,
   ConversationSchema,
+  MessageContentSchema,
   PreviewDiffRequestSchema,
   PreviewDiffResponseSchema,
   SendTurnResponseSchema,
@@ -280,6 +281,25 @@ describe('agent IPC schemas', () => {
         title: 'Note',
         current: 'old',
         candidate: 'old\n\nnew'
+      }).success
+    ).toBe(true)
+  })
+
+  it('validates assistant message source refs', () => {
+    expect(
+      MessageContentSchema.safeParse({
+        role: 'assistant',
+        data: {
+          text: 'See [Movies](memry://note/note-1)',
+          sources: [
+            {
+              kind: 'note',
+              id: 'note-1',
+              title: 'Movies',
+              href: 'memry://note/note-1'
+            }
+          ]
+        }
       }).success
     ).toBe(true)
   })

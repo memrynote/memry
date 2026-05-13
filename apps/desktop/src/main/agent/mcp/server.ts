@@ -5,6 +5,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import type { ZodTypeAny } from 'zod'
 
 import { createLogger } from '../../lib/logger'
+import { decorateToolResultWithAgentSources } from '../source-refs'
 import { toMcpToolErrorContent } from './errors'
 import { createMcpSession } from './session'
 
@@ -48,9 +49,10 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
         const ctx = session.contextFromHeaders(reqHeaders)
         try {
           const result = await reg.handler(input, ctx)
+          const decorated = decorateToolResultWithAgentSources(reg.name, input, result)
           return {
-            content: [{ type: 'text', text: JSON.stringify(result) }],
-            structuredContent: toStructuredContent(result)
+            content: [{ type: 'text', text: JSON.stringify(decorated) }],
+            structuredContent: toStructuredContent(decorated)
           }
         } catch (err) {
           logger.error(`Tool ${reg.name} failed`, err)

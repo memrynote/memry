@@ -91,6 +91,43 @@ describe('Agent MCP server tool round-trip', () => {
     }
   })
 
+  it('decorates Memry tool results with source refs for MCP clients', async () => {
+    const handle = await startAgentMcpServer({
+      toolRegistrations: [
+        {
+          name: 'vault_search_notes',
+          description: 'search notes',
+          inputSchema: z.object({}),
+          handler: async () => [{ id: 'note-1', title: 'Movies', snippet: '', folder_path: null }]
+        }
+      ]
+    })
+
+    try {
+      const r = await fetch(`${handle.url}/mcp`, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${handle.token}`,
+          'content-type': 'application/json',
+          accept: 'application/json, text/event-stream'
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: { name: 'vault_search_notes', arguments: {} }
+        })
+      })
+
+      expect(r.status).toBe(200)
+      const text = await r.text()
+      expect(text).toContain('"href":"memry://note/note-1"')
+      expect(text).toContain('"source_ref"')
+    } finally {
+      await handle.stop()
+    }
+  })
+
   it('replaces an existing tool registration for gate updates', async () => {
     const handle = await startAgentMcpServer({
       toolRegistrations: [

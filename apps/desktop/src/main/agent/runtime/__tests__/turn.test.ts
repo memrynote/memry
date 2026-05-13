@@ -143,6 +143,51 @@ describe('runTurn against a stub backend', () => {
     )
   })
 
+  it('persists assistant source refs collected from tool results', async () => {
+    const messages = createFakeMessageStore()
+    const conversations = createFakeConversationStore({ title: 'Existing conversation' })
+    const backend = createFakeBackend({
+      turn: [
+        { kind: 'tool_use', toolUseId: 'tool-1', name: 'vault_search_notes', args: {} },
+        {
+          kind: 'tool_result',
+          toolUseId: 'tool-1',
+          ok: true,
+          data: [{ id: 'note-1', title: 'Movies', snippet: '', folder_path: null }]
+        },
+        {
+          kind: 'assistant_delta',
+          text: 'Found [Movies](memry://note/note-1).'
+        },
+        { kind: 'message_stop' }
+      ]
+    })
+
+    await runTurn(
+      {
+        conversations,
+        messages,
+        backends: createFakeRegistry(backend)
+      },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'list movie notes',
+        attachments: [],
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'low' }
+      }
+    )
+
+    const all = messages.listByConversation('conversation-1')
+    expect(all[1].content).toEqual({
+      role: 'assistant',
+      data: {
+        text: 'Found [Movies](memry://note/note-1).',
+        sources: [{ kind: 'note', id: 'note-1', title: 'Movies', href: 'memry://note/note-1' }]
+      }
+    })
+  })
+
   it('marks the assistant message as errored when a backend emits an error event', async () => {
     const messages = createFakeMessageStore()
     const conversations = createFakeConversationStore({

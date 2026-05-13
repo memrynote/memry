@@ -4,9 +4,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Message } from '@memry/contracts/ipc-agent'
 
 const mockUseAgentOptional = vi.hoisted(() => vi.fn())
+const mockOpenTab = vi.hoisted(() => vi.fn())
 
 vi.mock('../agent-context', () => ({
   useAgentOptional: mockUseAgentOptional
+}))
+
+vi.mock('@/contexts/tabs', () => ({
+  useTabActions: () => ({ openTab: mockOpenTab })
 }))
 
 import { MessageStream } from '../message-stream'
@@ -39,6 +44,7 @@ function message(input: {
 describe('MessageStream', () => {
   beforeEach(() => {
     mockApproveTool.mockReset()
+    mockOpenTab.mockReset()
     mockPreviewDiff.mockReset()
     mockPreviewDiff.mockResolvedValue({
       title: 'Planning note',
@@ -138,6 +144,70 @@ describe('MessageStream', () => {
 
     expect(screen.getByRole('heading', { name: 'Plan' })).toBeInTheDocument()
     expect(screen.getByText('Create the task')).toBeInTheDocument()
+  })
+
+  it('renders assistant Memry refs as clickable links with a sources footer', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'assistant-1',
+            role: 'assistant',
+            content: {
+              role: 'assistant',
+              data: {
+                text: 'See [Movies](memry://note/note-1).',
+                sources: [
+                  {
+                    kind: 'note',
+                    id: 'note-1',
+                    title: 'Movies',
+                    href: 'memry://note/note-1'
+                  }
+                ]
+              }
+            }
+          })
+        ]}
+      />
+    )
+
+    const link = screen.getByRole('link', { name: 'Movies' })
+    expect(link).toHaveAttribute('href', 'memry://note/note-1')
+    expect(link).toHaveClass('text-sidebar-terracotta')
+    expect(link).toHaveClass('hover:decoration-dotted')
+    const sourcesTrigger = screen.getByRole('button', { name: /Used 1 sources/i })
+    expect(sourcesTrigger).toBeInTheDocument()
+
+    fireEvent.click(link)
+
+    expect(mockOpenTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'note',
+        title: 'Movies',
+        path: '/note/note-1',
+        entityId: 'note-1'
+      })
+    )
+
+    fireEvent.click(sourcesTrigger)
+    expect(screen.getAllByRole('link', { name: 'Movies' })).toHaveLength(2)
+  })
+
+  it('omits the assistant sources footer when no Memry refs exist', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'assistant-1',
+            role: 'assistant',
+            content: { role: 'assistant', data: { text: 'No linked items here.' } }
+          })
+        ]}
+      />
+    )
+
+    expect(screen.queryByRole('button', { name: /sources/i })).not.toBeInTheDocument()
   })
 
   it('renders a waiting indicator for an empty streaming assistant message', () => {

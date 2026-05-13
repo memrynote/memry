@@ -30,9 +30,20 @@ Agent Chat can:
 - keep local conversation history in the vault database
 - attach the active note as context for a turn
 - stream assistant text back into the sidebar
+- link returned or created Memry items directly in assistant replies, with a collapsible Sources
+  section for the same items
 - show collapsed tool calls, tool results, and optional approvals inline in the chat stream
 - stop an in-flight turn
 - compact older conversation history when a prompt grows too large
+
+When a tool result includes a real Memry reference, Agent Chat renders that item as a clickable
+mention instead of plain text. Lists link each returned note, task, inbox item, journal entry,
+calendar event, project, or folder that has a navigable reference. Create and update confirmations
+also link the affected item when the tool returns its ID or journal date. The reply footer shows a
+collapsible Sources section only when the assistant message contains those Memry item links.
+
+Memry only links explicit tool-provided references. Plain titles without an ID or date stay as
+normal text.
 
 Press <kbd>Enter</kbd> to send the prompt. Press <kbd>Shift</kbd>+<kbd>Enter</kbd> to insert a
 new line in the prompt box.
