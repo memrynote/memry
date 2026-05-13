@@ -174,7 +174,7 @@ describe('MessageStream', () => {
 
     const link = screen.getByRole('link', { name: 'Movies' })
     expect(link).toHaveAttribute('href', 'memry://note/note-1')
-    expect(link).toHaveClass('text-sidebar-terracotta')
+    expect(link).toHaveClass('text-[#81B4E5]')
     expect(link).toHaveClass('hover:decoration-dotted')
     const sourcesTrigger = screen.getByRole('button', { name: /Used 1 sources/i })
     expect(sourcesTrigger).toBeInTheDocument()

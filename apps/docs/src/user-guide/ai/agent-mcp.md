@@ -43,7 +43,8 @@ also link the affected item when the tool returns its ID or journal date. The re
 collapsible Sources section only when the assistant message contains those Memry item links.
 
 Memry only links explicit tool-provided references. Plain titles without an ID or date stay as
-normal text.
+normal text. Clickable item mentions use Memry's standard link color and show a dotted underline on
+hover.
 
 Press <kbd>Enter</kbd> to send the prompt. Press <kbd>Shift</kbd>+<kbd>Enter</kbd> to insert a
 new line in the prompt box.

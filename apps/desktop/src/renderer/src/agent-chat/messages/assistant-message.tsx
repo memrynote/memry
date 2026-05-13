@@ -44,7 +44,7 @@ export function AssistantMessage({ message }: { message: Message }): React.JSX.E
           {message.content.data.text}
         </MessageResponse>
         {sources.length > 0 && (
-          <Sources className="mb-0 mt-1 text-sidebar-terracotta">
+          <Sources className="mb-0 mt-1">
             <SourcesTrigger
               count={sources.length}
               label={t('agentChat.sources.used', {
