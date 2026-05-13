@@ -415,7 +415,9 @@ export const SettingsChannels = {
     /** Install the terminal `memry` command shim */
     INSTALL_TERMINAL_COMMAND: 'settings:installTerminalCommand',
     /** Uninstall the terminal `memry` command shim */
-    UNINSTALL_TERMINAL_COMMAND: 'settings:uninstallTerminalCommand'
+    UNINSTALL_TERMINAL_COMMAND: 'settings:uninstallTerminalCommand',
+    /** Set the default vault used by terminal `memry` commands */
+    SET_TERMINAL_COMMAND_DEFAULT_VAULT: 'settings:setTerminalCommandDefaultVault'
   },
   sync: {
     /** Get the saved startup theme synchronously for first-paint bootstrap */

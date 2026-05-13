@@ -327,7 +327,12 @@ function installWindowApi() {
         binDir: '/Users/kaan/.local/bin',
         targetPath: '/Applications/Memry.app/Contents/MacOS/Memry',
         inPath: true,
-        pathHint: null
+        pathHint: null,
+        defaultVaultPath: '/vaults/personal',
+        vaults: [
+          { path: '/vaults/personal', name: 'personal', isDefault: true },
+          { path: '/vaults/work', name: 'work', isDefault: false }
+        ]
       }),
       installTerminalCommand: vi.fn().mockResolvedValue({
         success: true,
@@ -340,7 +345,12 @@ function installWindowApi() {
           binDir: '/Users/kaan/.local/bin',
           targetPath: '/Applications/Memry.app/Contents/MacOS/Memry',
           inPath: true,
-          pathHint: null
+          pathHint: null,
+          defaultVaultPath: '/vaults/personal',
+          vaults: [
+            { path: '/vaults/personal', name: 'personal', isDefault: true },
+            { path: '/vaults/work', name: 'work', isDefault: false }
+          ]
         }
       }),
       uninstallTerminalCommand: vi.fn().mockResolvedValue({
@@ -354,7 +364,31 @@ function installWindowApi() {
           binDir: '/Users/kaan/.local/bin',
           targetPath: '/Applications/Memry.app/Contents/MacOS/Memry',
           inPath: true,
-          pathHint: null
+          pathHint: null,
+          defaultVaultPath: '/vaults/personal',
+          vaults: [
+            { path: '/vaults/personal', name: 'personal', isDefault: true },
+            { path: '/vaults/work', name: 'work', isDefault: false }
+          ]
+        }
+      }),
+      setTerminalCommandDefaultVault: vi.fn().mockResolvedValue({
+        success: true,
+        status: {
+          supported: true,
+          installed: false,
+          command: 'memry',
+          platform: 'darwin',
+          shimPath: '/Users/kaan/.local/bin/memry',
+          binDir: '/Users/kaan/.local/bin',
+          targetPath: '/Applications/Memry.app/Contents/MacOS/Memry',
+          inPath: true,
+          pathHint: null,
+          defaultVaultPath: '/vaults/work',
+          vaults: [
+            { path: '/vaults/personal', name: 'personal', isDefault: false },
+            { path: '/vaults/work', name: 'work', isDefault: true }
+          ]
         }
       })
     }
@@ -598,5 +632,19 @@ describe('settings section coverage', () => {
 
     await waitFor(() => expect(window.api.settings.installTerminalCommand).toHaveBeenCalled())
     expect(toast.success).toHaveBeenCalledWith('commandLine.status.installedToast')
+  })
+
+  it('sets the default CLI vault from command line settings', async () => {
+    render(<CommandLineSettings />)
+
+    await screen.findByText('work')
+    fireEvent.click(screen.getByText('work'))
+
+    await waitFor(() =>
+      expect(window.api.settings.setTerminalCommandDefaultVault).toHaveBeenCalledWith(
+        '/vaults/work'
+      )
+    )
+    expect(toast.success).toHaveBeenCalledWith('commandLine.status.defaultVaultUpdatedToast')
   })
 })

@@ -233,7 +233,7 @@ export interface MainIpcInvokeHandlers {
   "settings:getSyncSettings": (...args: []) => Awaited<{ enabled: boolean; autoSync: boolean; }>
   "settings:getTabSettings": (...args: []) => Awaited<import("./settings-handlers").TabSettings>
   "settings:getTaskSettings": (...args: []) => Awaited<{ defaultProjectId: string | null; defaultSortOrder: "createdAt" | "priority" | "dueDate" | "manual"; weekStartDay: "sunday" | "monday"; staleInboxDays: number; }>
-  "settings:getTerminalCommandStatus": (...args: []) => Awaited<Promise<import("../cli/terminal-command").TerminalCommandStatus>>
+  "settings:getTerminalCommandStatus": (...args: []) => Awaited<Promise<import("./settings-handlers").TerminalCommandStatus>>
   "settings:getVoiceModelStatus": (...args: []) => Awaited<import("../inbox/voice-model").VoiceModelStatus>
   "settings:getVoiceRecordingReadiness": (...args: []) => Awaited<Promise<import("../inbox/voice-transcription-settings").VoiceRecordingReadiness>>
   "settings:getVoiceTranscriptionOpenAIKeyStatus": (...args: []) => Awaited<Promise<import("./settings-handlers").VoiceTranscriptionOpenAIKeyStatus>>
@@ -257,6 +257,7 @@ export interface MainIpcInvokeHandlers {
   "settings:setSyncSettings": (...args: [Partial<{ enabled: boolean; autoSync: boolean; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
   "settings:setTabSettings": (...args: [Partial<import("./settings-handlers").TabSettings>]) => Awaited<{ success: boolean; error: string; } | { success: boolean; error?: undefined; }>
   "settings:setTaskSettings": (...args: [Partial<{ defaultProjectId: string | null; defaultSortOrder: "createdAt" | "priority" | "dueDate" | "manual"; weekStartDay: "sunday" | "monday"; staleInboxDays: number; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
+  "settings:setTerminalCommandDefaultVault": (...args: [string]) => Awaited<Promise<import("./settings-handlers").TerminalCommandMutationResult>>
   "settings:setVoiceTranscriptionOpenAIKey": (...args: [{ apiKey: string; }]) => Awaited<Promise<{ success: boolean; error?: undefined; } | { success: boolean; error: string; }>>
   "settings:setVoiceTranscriptionSettings": (...args: [Partial<{ provider: "local" | "openai"; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
   "settings:uninstallTerminalCommand": (...args: []) => Awaited<Promise<import("./settings-handlers").TerminalCommandMutationResult>>

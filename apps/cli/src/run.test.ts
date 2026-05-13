@@ -11,6 +11,38 @@ async function makeVault() {
   return fs.mkdtemp(path.join(os.tmpdir(), 'memry-cli-run-'))
 }
 
+function makeVaultRegistry(vaults: Array<{ path: string; name: string; isDefault?: boolean }>) {
+  return {
+    async listVaults() {
+      return vaults
+    },
+    async getDefaultVaultPath() {
+      return vaults.find((vault) => vault.isDefault)?.path ?? null
+    },
+    async setDefaultVaultPath(reference: string) {
+      const vault = vaults.find((item) => item.path === reference || item.name === reference)
+      if (!vault) throw new Error(`Unknown vault: ${reference}`)
+      vaults.splice(
+        0,
+        vaults.length,
+        ...vaults.map((item) => ({ ...item, isDefault: item.path === vault.path }))
+      )
+      return { ...vault, isDefault: true }
+    }
+  }
+}
+
+function makeVaultStatusApp(vaultPath: string) {
+  return {
+    vault: {
+      status() {
+        return { isOpen: true, path: vaultPath }
+      }
+    },
+    close() {}
+  } as never
+}
+
 async function runCliProcess(args: string[]): Promise<{
   code: number | null
   stdout: string
@@ -35,6 +67,85 @@ async function runCliProcess(args: string[]): Promise<{
     child.on('close', (code) => resolve({ code, stdout, stderr }))
   })
 }
+
+test('uses the configured default vault when --vault is omitted', async () => {
+  const vaultPath = await makeVault()
+  const stdout: string[] = []
+  const stderr: string[] = []
+
+  const code = await runCli(
+    ['--json', 'vault', 'status'],
+    {
+      stdout: (line) => stdout.push(line),
+      stderr: (line) => stderr.push(line)
+    },
+    {
+      createApp: async ({ vaultPath }) => makeVaultStatusApp(vaultPath),
+      vaultRegistry: makeVaultRegistry([{ path: vaultPath, name: 'Personal', isDefault: true }])
+    }
+  )
+
+  assert.equal(code, 0, stderr.join('\n'))
+  assert.equal(JSON.parse(stdout.at(-1) ?? '{}').path, vaultPath)
+})
+
+test('changes the default vault from the CLI', async () => {
+  const personalPath = await makeVault()
+  const workPath = await makeVault()
+  const registry = makeVaultRegistry([
+    { path: personalPath, name: 'personal', isDefault: true },
+    { path: workPath, name: 'work', isDefault: false }
+  ])
+  const stdout: string[] = []
+  const stderr: string[] = []
+
+  const useCode = await runCli(
+    ['--json', 'vault', 'use', 'work'],
+    {
+      stdout: (line) => stdout.push(line),
+      stderr: (line) => stderr.push(line)
+    },
+    { vaultRegistry: registry }
+  )
+
+  assert.equal(useCode, 0, stderr.join('\n'))
+  assert.equal(JSON.parse(stdout.at(-1) ?? '{}').path, workPath)
+
+  const currentCode = await runCli(
+    ['--json', 'vault', 'current'],
+    {
+      stdout: (line) => stdout.push(line),
+      stderr: (line) => stderr.push(line)
+    },
+    { vaultRegistry: registry }
+  )
+
+  assert.equal(currentCode, 0, stderr.join('\n'))
+  assert.equal(JSON.parse(stdout.at(-1) ?? '{}').path, workPath)
+})
+
+test('does not guess when multiple known vaults have no default', async () => {
+  const stdout: string[] = []
+  const stderr: string[] = []
+
+  const code = await runCli(
+    ['notes', 'list'],
+    {
+      stdout: (line) => stdout.push(line),
+      stderr: (line) => stderr.push(line)
+    },
+    {
+      vaultRegistry: makeVaultRegistry([
+        { path: '/vaults/personal', name: 'personal' },
+        { path: '/vaults/work', name: 'work' }
+      ])
+    }
+  )
+
+  assert.equal(code, 1)
+  assert.match(stderr.join('\n'), /Multiple vaults found/)
+  assert.equal(stdout.length, 0)
+})
 
 test('initializes a new vault when several CLI processes start concurrently', async () => {
   const vaultPath = await makeVault()

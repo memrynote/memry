@@ -40,7 +40,7 @@ import { withErrorHandler } from './validate'
 import { initEmbeddingModel, getModelInfo, isModelLoaded, isModelLoading } from '../lib/embeddings'
 import { rebuildProjections } from '../projections'
 import { writePreferences, PORTABLE_GENERAL_FIELDS } from '../vault/vault-preferences'
-import { getCurrentVaultPath } from '../store'
+import { getCurrentVaultPath, getDefaultVaultPath, getVaults, setDefaultVaultPath } from '../store'
 import { downloadVoiceModel, getVoiceModelStatus } from '../inbox/voice-model'
 import { getVoiceRecordingReadiness } from '../inbox/voice-transcription-settings'
 import {
@@ -52,7 +52,7 @@ import {
   getTerminalCommandStatus,
   installTerminalCommand,
   uninstallTerminalCommand,
-  type TerminalCommandStatus
+  type TerminalCommandStatus as BaseTerminalCommandStatus
 } from '../cli/terminal-command'
 
 // ============================================================================
@@ -121,6 +121,17 @@ const DEFAULT_AI_SETTINGS: AISettings = {
 
 export interface VoiceTranscriptionOpenAIKeyStatus {
   hasApiKey: boolean
+}
+
+export interface TerminalCommandVault {
+  path: string
+  name: string
+  isDefault: boolean
+}
+
+export interface TerminalCommandStatus extends BaseTerminalCommandStatus {
+  defaultVaultPath: string | null
+  vaults: TerminalCommandVault[]
 }
 
 export type TerminalCommandMutationResult =
@@ -208,9 +219,29 @@ function getStartupTheme(): { theme: GeneralSettings['theme']; accentColor?: str
   return result
 }
 
+function getTerminalCommandVaults(): TerminalCommandVault[] {
+  return getVaults().map((vault) => ({
+    path: vault.path,
+    name: vault.name,
+    isDefault: vault.isDefault
+  }))
+}
+
+async function getTerminalStatus(): Promise<TerminalCommandStatus> {
+  const status = await getTerminalCommandStatus({ executablePath: process.execPath })
+  const vaults = getTerminalCommandVaults()
+  const defaultVaultPath = getDefaultVaultPath() ?? (vaults.length === 1 ? vaults[0].path : null)
+
+  return {
+    ...status,
+    defaultVaultPath,
+    vaults
+  }
+}
+
 async function getTerminalStatusSafely(): Promise<TerminalCommandStatus | undefined> {
   try {
-    return await getTerminalCommandStatus({ executablePath: process.execPath })
+    return await getTerminalStatus()
   } catch {
     return undefined
   }
@@ -440,16 +471,17 @@ export function registerSettingsHandlers(): void {
   })
 
   ipcMain.handle(SettingsChannels.invoke.GET_TERMINAL_COMMAND_STATUS, async () => {
-    return getTerminalCommandStatus({ executablePath: process.execPath })
+    return getTerminalStatus()
   })
 
   ipcMain.handle(
     SettingsChannels.invoke.INSTALL_TERMINAL_COMMAND,
     async (): Promise<TerminalCommandMutationResult> => {
       try {
+        await installTerminalCommand({ executablePath: process.execPath })
         return {
           success: true,
-          status: await installTerminalCommand({ executablePath: process.execPath })
+          status: await getTerminalStatus()
         }
       } catch (error) {
         return {
@@ -465,9 +497,10 @@ export function registerSettingsHandlers(): void {
     SettingsChannels.invoke.UNINSTALL_TERMINAL_COMMAND,
     async (): Promise<TerminalCommandMutationResult> => {
       try {
+        await uninstallTerminalCommand({ executablePath: process.execPath })
         return {
           success: true,
-          status: await uninstallTerminalCommand({ executablePath: process.execPath })
+          status: await getTerminalStatus()
         }
       } catch (error) {
         return {
@@ -475,6 +508,25 @@ export function registerSettingsHandlers(): void {
           error: error instanceof Error ? error.message : 'Failed to uninstall terminal command',
           status: await getTerminalStatusSafely()
         }
+      }
+    }
+  )
+
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_TERMINAL_COMMAND_DEFAULT_VAULT,
+    async (_event, vaultPath: string): Promise<TerminalCommandMutationResult> => {
+      const vault = setDefaultVaultPath(vaultPath)
+      if (!vault) {
+        return {
+          success: false,
+          error: 'Unknown vault',
+          status: await getTerminalStatusSafely()
+        }
+      }
+
+      return {
+        success: true,
+        status: await getTerminalStatus()
       }
     }
   )

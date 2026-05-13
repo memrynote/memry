@@ -961,6 +961,13 @@
     "groups": {
       "terminal": "Terminal"
     },
+    "defaultVault": {
+      "label": "Default vault",
+      "placeholder": "Select vault",
+      "none": "No vault selected",
+      "description": "Choose the vault used when you run memry without --vault.",
+      "descriptionSelected": "Commands use {path} when --vault is omitted."
+    },
     "command": {
       "label": "memry command",
       "toggleLabel": "Install memry command",
@@ -971,7 +978,8 @@
       "loading": "Checking command status...",
       "loadFailed": "Failed to load command status",
       "installedToast": "memry command installed",
-      "uninstalledToast": "memry command removed"
+      "uninstalledToast": "memry command removed",
+      "defaultVaultUpdatedToast": "Default CLI vault updated"
     },
     "actions": {
       "refresh": "Refresh"
