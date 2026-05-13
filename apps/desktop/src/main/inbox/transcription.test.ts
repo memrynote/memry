@@ -115,14 +115,18 @@ describe('inbox transcription', () => {
     vi.clearAllMocks()
   })
 
-  function seedVoiceItem(id: string, attachmentPath: string) {
-    const now = new Date().toISOString()
+  function seedVoiceItem(
+    id: string,
+    attachmentPath: string,
+    options: { title?: string; createdAt?: string } = {}
+  ) {
+    const now = options.createdAt ?? new Date().toISOString()
     testDb.db
       .insert(inboxItems)
       .values({
         id,
         type: 'voice',
-        title: 'Voice memo',
+        title: options.title ?? 'Voice memo',
         content: null,
         createdAt: now,
         modifiedAt: now,
@@ -227,6 +231,97 @@ describe('inbox transcription', () => {
     expect(result).toEqual({ success: true, transcription: 'Cloud transcript' })
     expect(mockToFile).toHaveBeenCalledOnce()
     expect(mockCreate).toHaveBeenCalledOnce()
+  })
+
+  it('renames a default voice memo from the first transcript sentence', async () => {
+    mockGetVoiceTranscriptionSettings.mockReturnValue({
+      provider: 'local',
+      memoNameMode: 'transcript'
+    })
+    mockTranscribeWithLocalModel.mockResolvedValue('Roadmap launch notes. Keep this second part.')
+
+    const relativePath = 'attachments/inbox/item-title/audio.wav'
+    const fullPath = path.join(vaultPath, relativePath)
+    fs.mkdirSync(path.dirname(fullPath), { recursive: true })
+    fs.writeFileSync(fullPath, Buffer.from('audio'))
+
+    seedVoiceItem('item-title', relativePath, { title: 'Voice memo (0:31)' })
+
+    await transcribeAudio('item-title', relativePath)
+
+    const updated = testDb.db.select().from(inboxItems).where(eq(inboxItems.id, 'item-title')).get()
+    expect(updated?.title).toBe('Roadmap launch notes.')
+  })
+
+  it('renames a default voice memo from the capture timestamp when configured', async () => {
+    mockGetVoiceTranscriptionSettings.mockReturnValue({
+      provider: 'local',
+      memoNameMode: 'timestamp'
+    })
+    mockTranscribeWithLocalModel.mockResolvedValue('This should not become the title.')
+
+    const relativePath = 'attachments/inbox/item-timestamp/audio.wav'
+    const fullPath = path.join(vaultPath, relativePath)
+    fs.mkdirSync(path.dirname(fullPath), { recursive: true })
+    fs.writeFileSync(fullPath, Buffer.from('audio'))
+
+    seedVoiceItem('item-timestamp', relativePath, {
+      title: 'Voice memo (0:31)',
+      createdAt: '2026-05-13T09:08:00.000'
+    })
+
+    await transcribeAudio('item-timestamp', relativePath)
+
+    const updated = testDb.db
+      .select()
+      .from(inboxItems)
+      .where(eq(inboxItems.id, 'item-timestamp'))
+      .get()
+    expect(updated?.title).toBe('Voice memo 2026-05-13 09:08')
+  })
+
+  it('does not rename when automatic naming is disabled', async () => {
+    mockGetVoiceTranscriptionSettings.mockReturnValue({
+      provider: 'local',
+      memoNameMode: 'none'
+    })
+    mockTranscribeWithLocalModel.mockResolvedValue('Disabled title update.')
+
+    const disabledPath = 'attachments/inbox/item-no-rename/audio.wav'
+    const disabledFullPath = path.join(vaultPath, disabledPath)
+    fs.mkdirSync(path.dirname(disabledFullPath), { recursive: true })
+    fs.writeFileSync(disabledFullPath, Buffer.from('audio'))
+    seedVoiceItem('item-no-rename', disabledPath, { title: 'Voice memo (0:31)' })
+
+    await transcribeAudio('item-no-rename', disabledPath)
+    const disabled = testDb.db
+      .select()
+      .from(inboxItems)
+      .where(eq(inboxItems.id, 'item-no-rename'))
+      .get()
+    expect(disabled?.title).toBe('Voice memo (0:31)')
+  })
+
+  it('does not rename when the user already edited the title', async () => {
+    mockGetVoiceTranscriptionSettings.mockReturnValue({
+      provider: 'local',
+      memoNameMode: 'transcript'
+    })
+    mockTranscribeWithLocalModel.mockResolvedValue('Edited title should stay.')
+
+    const editedPath = 'attachments/inbox/item-edited-title/audio.wav'
+    const editedFullPath = path.join(vaultPath, editedPath)
+    fs.mkdirSync(path.dirname(editedFullPath), { recursive: true })
+    fs.writeFileSync(editedFullPath, Buffer.from('audio'))
+    seedVoiceItem('item-edited-title', editedPath, { title: 'Customer call' })
+
+    await transcribeAudio('item-edited-title', editedPath)
+    const edited = testDb.db
+      .select()
+      .from(inboxItems)
+      .where(eq(inboxItems.id, 'item-edited-title'))
+      .get()
+    expect(edited?.title).toBe('Customer call')
   })
 
   it('does not fall back when the selected local provider fails', async () => {

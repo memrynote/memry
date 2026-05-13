@@ -18,6 +18,7 @@ import {
 import { toast } from 'sonner'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
+import { cn } from '@/lib/utils'
 import { AIInlineSettings as AIInlineSettingsPanel } from './ai-inline-section'
 import { AgentProvidersSection } from './agent-providers-section'
 import { AgentMcpSection } from './agent-mcp-section'
@@ -52,6 +53,7 @@ interface AIModelStatus {
 
 interface VoiceTranscriptionSettings {
   provider: 'local' | 'openai'
+  memoNameMode: 'transcript' | 'timestamp' | 'none'
 }
 
 interface VoiceModelStatus {
@@ -63,17 +65,25 @@ interface VoiceModelStatus {
 }
 
 type AssistantAdvancedPanel = 'agent-providers' | 'agent-mcp'
+type AssistantFocusTarget = 'voice-local-model'
 
 interface AISettingsProps {
   initialOpenPanel?: AssistantAdvancedPanel
+  focusTarget?: AssistantFocusTarget | null
+  focusRequestId?: number
 }
 
-export function AISettings({ initialOpenPanel }: AISettingsProps = {}) {
+export function AISettings({
+  initialOpenPanel,
+  focusTarget = null,
+  focusRequestId = 0
+}: AISettingsProps = {}) {
   const { t } = useT('settings')
   const [settings, setSettings] = useState<{ enabled: boolean }>({ enabled: false })
   const [modelStatus, setModelStatus] = useState<AIModelStatus | null>(null)
   const [voiceSettings, setVoiceSettings] = useState<VoiceTranscriptionSettings>({
-    provider: 'local'
+    provider: 'local',
+    memoNameMode: 'transcript'
   })
   const [voiceModelStatus, setVoiceModelStatus] = useState<VoiceModelStatus | null>(null)
   const [voiceApiKey, setVoiceApiKey] = useState('')
@@ -93,6 +103,7 @@ export function AISettings({ initialOpenPanel }: AISettingsProps = {}) {
     total: number
     phase: string
   } | null>(null)
+  const [voiceModelFocusRequestId, setVoiceModelFocusRequestId] = useState<number | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -108,7 +119,10 @@ export function AISettings({ initialOpenPanel }: AISettingsProps = {}) {
         if (cancelled) return
         setSettings(aiSettings)
         setModelStatus(status)
-        setVoiceSettings(voiceConfig)
+        setVoiceSettings({
+          provider: voiceConfig.provider,
+          memoNameMode: voiceConfig.memoNameMode ?? 'transcript'
+        })
         setVoiceModelStatus(voiceStatus)
         setHasVoiceApiKey(voiceKeyStatus.hasApiKey)
       } catch (error) {
@@ -194,6 +208,19 @@ export function AISettings({ initialOpenPanel }: AISettingsProps = {}) {
     return unsubscribe
   }, [t])
 
+  useEffect(() => {
+    if (focusTarget !== 'voice-local-model') {
+      setVoiceModelFocusRequestId(null)
+      return
+    }
+
+    if (isLoading) return
+
+    setVoiceModelFocusRequestId(focusRequestId)
+    const timeout = window.setTimeout(() => setVoiceModelFocusRequestId(null), 2700)
+    return () => window.clearTimeout(timeout)
+  }, [focusTarget, focusRequestId, isLoading])
+
   const handleToggleEnabled = useCallback(
     async (enabled: boolean) => {
       try {
@@ -259,12 +286,28 @@ export function AISettings({ initialOpenPanel }: AISettingsProps = {}) {
       try {
         const result = await window.api.settings.setVoiceTranscriptionSettings({ provider })
         if (result.success) {
-          setVoiceSettings({ provider })
+          setVoiceSettings((prev) => ({ ...prev, provider }))
         } else {
           toast.error(extractErrorMessage(result.error, t('ai.voice.providerError')))
         }
       } catch (error) {
         toast.error(extractErrorMessage(error, t('ai.voice.providerError')))
+      }
+    },
+    [t]
+  )
+
+  const handleVoiceMemoNameModeChange = useCallback(
+    async (memoNameMode: VoiceTranscriptionSettings['memoNameMode']) => {
+      try {
+        const result = await window.api.settings.setVoiceTranscriptionSettings({ memoNameMode })
+        if (result.success) {
+          setVoiceSettings((prev) => ({ ...prev, memoNameMode }))
+        } else {
+          toast.error(extractErrorMessage(result.error, t('ai.voice.namingError')))
+        }
+      } catch (error) {
+        toast.error(extractErrorMessage(error, t('ai.voice.namingError')))
       }
     },
     [t]
@@ -352,7 +395,33 @@ export function AISettings({ initialOpenPanel }: AISettingsProps = {}) {
               </Select>
             </SettingRow>
 
+            <SettingRow
+              label={t('ai.voice.memoNameMode')}
+              description={t('ai.voice.memoNameModeDescription')}
+            >
+              <Select
+                value={voiceSettings.memoNameMode}
+                onValueChange={(value) =>
+                  void handleVoiceMemoNameModeChange(
+                    value as VoiceTranscriptionSettings['memoNameMode']
+                  )
+                }
+              >
+                <SelectTrigger className={COMPACT_SELECT}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="transcript">{t('ai.voice.naming.transcript')}</SelectItem>
+                  <SelectItem value="timestamp">{t('ai.voice.naming.timestamp')}</SelectItem>
+                  <SelectItem value="none">{t('ai.voice.naming.none')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </SettingRow>
+
             <SettingRowTall
+              key={voiceModelFocusRequestId ?? 'voice-local-model'}
+              data-testid="voice-local-model-row"
+              className={cn(voiceModelFocusRequestId !== null && 'settings-focus-heartbeat')}
               label={t('ai.voice.localModel')}
               description={t('ai.voice.localModelDescription')}
             >

@@ -151,13 +151,15 @@ export const AI_SETTINGS_DEFAULTS: AISettings = {
 // ============================================================================
 
 export const VoiceTranscriptionSettingsSchema = z.object({
-  provider: z.enum(['local', 'openai'])
+  provider: z.enum(['local', 'openai']),
+  memoNameMode: z.enum(['transcript', 'timestamp', 'none'])
 })
 
 export type VoiceTranscriptionSettings = z.infer<typeof VoiceTranscriptionSettingsSchema>
 
 export const VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS: VoiceTranscriptionSettings = {
-  provider: 'local'
+  provider: 'local',
+  memoNameMode: 'transcript'
 }
 
 // ============================================================================

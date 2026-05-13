@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { ensureVoiceRecordingReady } from './voice-recording-readiness'
+import {
+  ensureVoiceRecordingReady,
+  getVoiceRecordingSettingsTarget
+} from './voice-recording-readiness'
 
 describe('ensureVoiceRecordingReady', () => {
   beforeEach(() => {
@@ -24,19 +27,37 @@ describe('ensureVoiceRecordingReady', () => {
   })
 
   it('redirects when the selected provider is not ready', async () => {
+    const readiness = {
+      ready: false,
+      provider: 'local',
+      reason: 'missing-model',
+      message: 'Download Whisper Small in Settings to record voice memos.'
+    } as const
     ;(window.api.settings.getVoiceRecordingReadiness as ReturnType<typeof vi.fn>).mockResolvedValue(
-      {
-        ready: false,
-        provider: 'local',
-        reason: 'missing-model',
-        message: 'Download Whisper Small in Settings to record voice memos.'
-      }
+      readiness
     )
 
     const onBlocked = vi.fn()
     const ready = await ensureVoiceRecordingReady(onBlocked)
 
     expect(ready).toBe(false)
-    expect(onBlocked).toHaveBeenCalledOnce()
+    expect(onBlocked).toHaveBeenCalledWith(readiness)
+  })
+
+  it('only focuses the local model target for missing local models', () => {
+    expect(
+      getVoiceRecordingSettingsTarget({
+        ready: false,
+        provider: 'local',
+        reason: 'missing-model'
+      })
+    ).toBe('ai:voice-local-model')
+    expect(
+      getVoiceRecordingSettingsTarget({
+        ready: false,
+        provider: 'openai',
+        reason: 'missing-api-key'
+      })
+    ).toBe('ai')
   })
 })

@@ -36,7 +36,7 @@ import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { useT } from '@memry/i18n/renderer'
 
 export function SettingsPage() {
-  const { activeSection, setActiveSection } = useSettingsModal()
+  const { activeSection, focusTarget, focusRequestId, setActiveSection } = useSettingsModal()
   const { t } = useT('settings')
   const isAssistantSection =
     activeSection === 'ai' || activeSection === 'agent-providers' || activeSection === 'agent-mcp'
@@ -160,7 +160,13 @@ export function SettingsPage() {
             {activeSection === 'calendar' && <CalendarSettingsSection />}
             {activeSection === 'vault' && <VaultSettings />}
             {activeSection === 'appearance' && <AppearanceSettings />}
-            {isAssistantSection && <AISettings initialOpenPanel={initialAssistantPanel} />}
+            {isAssistantSection && (
+              <AISettings
+                initialOpenPanel={initialAssistantPanel}
+                focusTarget={focusTarget}
+                focusRequestId={focusRequestId}
+              />
+            )}
             {activeSection === 'integrations' && <IntegrationsSettings />}
             {activeSection === 'tags' && <TagsSettings />}
             {activeSection === 'properties' && <PropertiesSettings />}

@@ -208,6 +208,27 @@ function generateNoteTitle(item: InboxItemRow): string {
   }
 }
 
+function sanitizeFiledVoiceFilenameBase(title: string): string {
+  const sanitized = title
+    .replace(/[<>:"/\\|?*]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[.\s]+$/g, '')
+    .slice(0, 200)
+
+  return sanitized.length > 0 ? sanitized : 'Voice memo'
+}
+
+function getFiledBinaryFilename(item: InboxItemRow): string {
+  const storedFilename = path.basename(item.attachmentPath ?? '')
+  if (item.type !== 'voice') {
+    return storedFilename
+  }
+
+  const extension = path.extname(storedFilename)
+  return `${sanitizeFiledVoiceFilenameBase(generateNoteTitle(item))}${extension}`
+}
+
 /**
  * Generate note content based on inbox item type
  */
@@ -439,7 +460,7 @@ async function fileBinaryToFolder(itemId: string, folderPath: string): Promise<F
     const vaultPath = getVaultPath()
     const config = getConfig()
     const sourcePath = path.join(vaultPath, item.attachmentPath)
-    const filename = path.basename(item.attachmentPath)
+    const filename = getFiledBinaryFilename(item)
 
     // Destination is vault/notes/{folderPath}/ (or root of notes folder)
     const destFolder = path.join(vaultPath, config.defaultNoteFolder, folderPath || '')
@@ -767,7 +788,7 @@ async function linkBinaryToNotes(
     const vaultPath = getVaultPath()
     const config = getConfig()
     const sourcePath = path.join(vaultPath, item.attachmentPath)
-    const filename = path.basename(item.attachmentPath)
+    const filename = getFiledBinaryFilename(item)
 
     // Destination is vault/notes/{destFolder}/
     const destFolderPath = path.join(vaultPath, config.defaultNoteFolder, destFolder)

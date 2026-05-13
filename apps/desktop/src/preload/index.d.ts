@@ -873,6 +873,7 @@ export interface AIModelStatus {
 
 export interface VoiceTranscriptionSettings {
   provider: 'local' | 'openai'
+  memoNameMode: 'transcript' | 'timestamp' | 'none'
 }
 
 export interface VoiceModelStatus {

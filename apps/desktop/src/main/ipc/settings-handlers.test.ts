@@ -345,21 +345,21 @@ describe('settings-handlers', () => {
     const voiceSettings = await invokeHandler(
       SettingsChannels.invoke.GET_VOICE_TRANSCRIPTION_SETTINGS
     )
-    expect(voiceSettings).toEqual({ provider: 'openai' })
+    expect(voiceSettings).toEqual({ provider: 'openai', memoNameMode: 'transcript' })
 
     const setVoiceSettings = await invokeHandler(
       SettingsChannels.invoke.SET_VOICE_TRANSCRIPTION_SETTINGS,
-      { provider: 'openai' }
+      { provider: 'openai', memoNameMode: 'timestamp' }
     )
     expect(setVoiceSettings).toEqual({ success: true })
     expect(settingsQueries.setSetting).toHaveBeenCalledWith(
       {},
       'voiceTranscription',
-      JSON.stringify({ provider: 'openai' })
+      JSON.stringify({ provider: 'openai', memoNameMode: 'timestamp' })
     )
     expect(mockSend).toHaveBeenCalledWith(SettingsChannels.events.CHANGED, {
       key: 'voiceTranscription',
-      value: { provider: 'openai' }
+      value: { provider: 'openai', memoNameMode: 'timestamp' }
     })
   })
 
