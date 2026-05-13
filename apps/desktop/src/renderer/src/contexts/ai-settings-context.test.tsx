@@ -26,6 +26,11 @@ function Probe(): React.JSX.Element {
 describe('AISettingsProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    const api = window.api as typeof window.api & {
+      onSettingsChanged?: (callback: (event: { key: string; value: unknown }) => void) => () => void
+    }
+    api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: true })
+    api.onSettingsChanged = vi.fn(() => vi.fn())
   })
 
   it('uses enabled fallback settings outside the provider', async () => {
@@ -86,6 +91,62 @@ describe('AISettingsProvider', () => {
     expect(screen.getByTestId('enabled')).toHaveTextContent('false')
 
     await user.click(screen.getByText('reload'))
+    await waitFor(() => expect(screen.getByTestId('enabled')).toHaveTextContent('true'))
+  })
+
+  it('enables AI when the settings API is unavailable', async () => {
+    const user = userEvent.setup()
+    const api = window.api as typeof window.api & {
+      settings: typeof window.api.settings & {
+        getAISettings?: typeof window.api.settings.getAISettings
+      }
+    }
+    api.settings.getAISettings = undefined
+
+    render(
+      <AISettingsProvider>
+        <Probe />
+      </AISettingsProvider>
+    )
+
+    await waitFor(() => expect(screen.getByTestId('loading')).toHaveTextContent('false'))
+    expect(screen.getByTestId('enabled')).toHaveTextContent('true')
+
+    await user.click(screen.getByText('reload'))
+    expect(screen.getByTestId('enabled')).toHaveTextContent('true')
+  })
+
+  it('disables AI when a manual reload fails', async () => {
+    const user = userEvent.setup()
+    const api = window.api as typeof window.api
+    vi.mocked(api.settings.getAISettings)
+      .mockResolvedValueOnce({ enabled: true })
+      .mockRejectedValueOnce(new Error('reload failed'))
+
+    render(
+      <AISettingsProvider>
+        <Probe />
+      </AISettingsProvider>
+    )
+
+    await waitFor(() => expect(screen.getByTestId('enabled')).toHaveTextContent('true'))
+
+    await user.click(screen.getByText('reload'))
+    await waitFor(() => expect(screen.getByTestId('enabled')).toHaveTextContent('false'))
+  })
+
+  it('loads without a settings change listener', async () => {
+    const api = window.api as typeof window.api & {
+      onSettingsChanged?: (callback: (event: { key: string; value: unknown }) => void) => () => void
+    }
+    api.onSettingsChanged = undefined
+
+    render(
+      <AISettingsProvider>
+        <Probe />
+      </AISettingsProvider>
+    )
+
     await waitFor(() => expect(screen.getByTestId('enabled')).toHaveTextContent('true'))
   })
 })
