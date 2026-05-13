@@ -43,7 +43,7 @@ describe('AssistantMessage', () => {
       'overflow-visible',
       'border-0',
       'bg-transparent',
-      'px-0',
+      'px-3',
       'py-0'
     )
     expect(content).not.toHaveClass('rounded-lg', 'border-sidebar-border')
@@ -56,7 +56,7 @@ describe('AssistantMessage', () => {
     expect(message).toHaveClass('max-w-full')
 
     const content = screen.getByRole('status')
-    expect(content).toHaveClass('overflow-visible', 'border-0', 'bg-transparent', 'px-0', 'py-0')
+    expect(content).toHaveClass('overflow-visible', 'border-0', 'bg-transparent', 'px-3', 'py-0')
     expect(content).not.toHaveClass('rounded-full', 'border-sidebar-border/70', 'shadow-sm')
   })
 })

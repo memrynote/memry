@@ -17,7 +17,7 @@ export function AssistantMessage({ message }: { message: Message }): React.JSX.E
         <MessageContent
           role="status"
           aria-label={t('agentChat.thinking')}
-          className="min-w-10 overflow-visible border-0 bg-transparent px-0 py-0 shadow-none"
+          className="min-w-10 overflow-visible border-0 bg-transparent px-3 py-0 shadow-none"
         >
           <span className="flex items-center gap-1.5" aria-hidden="true">
             <span className="size-2 animate-pulse rounded-full bg-foreground/60" />
@@ -31,7 +31,7 @@ export function AssistantMessage({ message }: { message: Message }): React.JSX.E
 
   return (
     <AIMessage from="assistant" className="max-w-full">
-      <MessageContent className="w-full max-w-none overflow-visible rounded-none border-0 bg-transparent px-0 py-0">
+      <MessageContent className="w-full max-w-none overflow-visible rounded-none border-0 bg-transparent px-3 py-0">
         <MessageResponse>{message.content.data.text}</MessageResponse>
       </MessageContent>
     </AIMessage>
