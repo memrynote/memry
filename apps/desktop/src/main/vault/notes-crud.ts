@@ -9,7 +9,7 @@
 import path from 'path'
 import fs from 'fs/promises'
 import { shell } from 'electron'
-import { eq } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 import {
   parseNote,
   serializeNote,
@@ -37,6 +37,7 @@ import {
   resolveNoteByTitle
 } from '@main/database/queries/notes'
 import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
+import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { getDatabase, getIndexDatabase } from '../database'
 import { NoteError, NoteErrorCode } from '../lib/errors'
 import { generateNoteId } from '../lib/id'
@@ -98,6 +99,8 @@ export interface FileMetadata {
   fileSize: number | null
   created: Date
   modified: Date
+  transcription?: string | null
+  transcriptionStatus?: 'pending' | 'processing' | 'complete' | 'failed' | null
 }
 
 export interface NoteCreateInput {
@@ -362,6 +365,19 @@ export async function getFileById(id: string): Promise<FileMetadata | null> {
     return null
   }
 
+  const filedVoice =
+    fileType === 'audio'
+      ? getDatabase()
+          .select({
+            transcription: inboxItems.transcription,
+            transcriptionStatus: inboxItems.transcriptionStatus
+          })
+          .from(inboxItems)
+          .where(and(eq(inboxItems.type, 'voice'), eq(inboxItems.filedTo, cached.path)))
+          .orderBy(desc(inboxItems.filedAt))
+          .get()
+      : null
+
   return {
     id: cached.id,
     path: cached.path,
@@ -371,7 +387,10 @@ export async function getFileById(id: string): Promise<FileMetadata | null> {
     mimeType: cached.mimeType ?? null,
     fileSize: cached.fileSize ?? null,
     created: new Date(cached.createdAt),
-    modified: new Date(cached.modifiedAt)
+    modified: new Date(cached.modifiedAt),
+    transcription: filedVoice?.transcription ?? null,
+    transcriptionStatus:
+      (filedVoice?.transcriptionStatus as FileMetadata['transcriptionStatus'] | undefined) ?? null
   }
 }
 

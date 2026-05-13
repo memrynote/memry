@@ -33,10 +33,19 @@ vi.mock('@/components/viewers', () => ({
       {alt}
     </div>
   ),
-  AudioPlayer: ({ src, fileName }: { src: string; fileName: string }) => (
+  AudioPlayer: ({
+    src,
+    fileName,
+    transcription
+  }: {
+    src: string
+    fileName: string
+    transcription?: string | null
+  }) => (
     <div data-testid="audio-player">
       {src}
       {fileName}
+      {transcription}
     </div>
   ),
   VideoPlayer: ({ src }: { src: string }) => <div data-testid="video-player">{src}</div>
@@ -124,6 +133,24 @@ describe('FilePage', () => {
     renderWithProviders(<FilePage fileId="zip" />)
     expect(await screen.findByText('phaseF.pagesFile.unsupportedFileType')).toBeInTheDocument()
     expect(screen.getByText('Unknown size')).toBeInTheDocument()
+  })
+
+  it('passes filed voice transcripts to the audio viewer', async () => {
+    mocks.getFile.mockResolvedValue({
+      ...baseFile,
+      id: 'voice-file-1',
+      fileType: 'audio',
+      absolutePath: '/vault/notes/standup.webm',
+      title: 'standup',
+      transcription: 'We covered launch risks and pricing.',
+      transcriptionStatus: 'complete'
+    })
+
+    renderWithProviders(<FilePage fileId="voice-file-1" />)
+
+    expect(await screen.findByTestId('audio-player')).toHaveTextContent(
+      'We covered launch risks and pricing.'
+    )
   })
 
   it('shows retryable error and not-found states', async () => {

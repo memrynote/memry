@@ -167,8 +167,8 @@ describe('small zero-line renderer surfaces', () => {
     fireEvent.click(screen.getByText('Existing Note'))
     fireEvent.click(screen.getByText('create'))
 
-    expect(onItemClick).toHaveBeenCalledWith(items[0])
-    expect(onItemClick).toHaveBeenCalledWith(items[1])
+    expect(onItemClick).toHaveBeenCalledWith({ ...items[0], insertMode: 'wikiLink' })
+    expect(onItemClick).toHaveBeenCalledWith({ ...items[1], insertMode: 'wikiLink' })
   })
 
   it('renders wiki-link previews and forwards note, tag, and hover events', () => {

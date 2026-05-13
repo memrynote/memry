@@ -81,7 +81,7 @@ describe('file block helpers', () => {
     const Render = (createFileBlock as any).render
     const contentRef = vi.fn()
 
-    const { rerender } = render(
+    const { container, rerender } = render(
       <Render
         contentRef={contentRef}
         block={{ props: { url: '', name: '', size: 0, mimeType: '' } }}
@@ -110,6 +110,26 @@ describe('file block helpers', () => {
     expect(screen.getByText('manual.pdf')).toBeInTheDocument()
     expect(screen.getByText('2.0 KB')).toBeInTheDocument()
     expect(screen.getByText(/Uploading/)).toBeInTheDocument()
+
+    rerender(
+      <Render
+        contentRef={contentRef}
+        block={{
+          props: {
+            url: 'memry-file://local/Users/kaan/vault/notes/voice.wav',
+            name: 'voice.wav',
+            size: 4096,
+            mimeType: 'audio/wav'
+          }
+        }}
+      />
+    )
+    const audio = container.querySelector('audio')
+    expect(audio).toHaveAttribute('src', 'memry-file://local/Users/kaan/vault/notes/voice.wav')
+    expect(audio).toHaveAttribute('controls')
+    expect(screen.getByText('voice.wav')).toBeInTheDocument()
+    expect(screen.queryByText('4.0 KB')).not.toBeInTheDocument()
+    expect(container.querySelector('.file-audio a[download]')).toBeNull()
 
     rerender(
       <Render

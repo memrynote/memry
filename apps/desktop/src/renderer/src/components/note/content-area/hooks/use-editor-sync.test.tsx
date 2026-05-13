@@ -11,12 +11,6 @@ vi.mock('@/lib/url-metadata', () => ({
   })
 }))
 
-vi.mock('../file-block', () => ({
-  FILE_BLOCK_REGEX: /<!-- file:(\{[^}]+\}) -->/g,
-  createFileBlockContent: vi.fn((props) => ({ type: 'file', props })),
-  serializeFileBlock: vi.fn((props) => `<!-- file:${JSON.stringify(props)} -->`)
-}))
-
 function createEditor(parsedBlocks: any[] = []) {
   let document = [{ id: 'initial', type: 'paragraph', props: {}, content: [], children: [] }]
 
@@ -225,9 +219,9 @@ describe('useEditorSync', () => {
     })
 
     expect(onContentChange).toHaveBeenCalledWith(editor.document)
-    expect(onMarkdownChange).toHaveBeenCalledWith(
-      expect.stringContaining('<!-- file:{"url":"memry://files/spec.pdf"')
-    )
+    const savedMarkdown = onMarkdownChange.mock.calls[0][0] as string
+    expect(savedMarkdown).toContain('<!-- file:{"url":"memry://files/spec.pdf"')
+    expect(savedMarkdown.match(/<!-- file:/g)).toHaveLength(1)
 
     act(() => {
       vi.advanceTimersByTime(50)
