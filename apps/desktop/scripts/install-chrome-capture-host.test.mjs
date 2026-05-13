@@ -66,3 +66,37 @@ test('device option targets the matching Memry dev userData capture directory', 
     rmSync(manifestDir, { recursive: true, force: true })
   }
 })
+
+test('dia install writes the native host manifest to Dia and Chromium fallback locations', (t) => {
+  if (process.platform !== 'darwin') {
+    t.skip('Dia native messaging paths are macOS-only')
+    return
+  }
+
+  const homeDir = mkdtempSync(join(tmpdir(), 'memry-capture-install-home-'))
+
+  try {
+    execFileSync(
+      process.execPath,
+      [scriptPath, '--extension-id', 'testextensionid', '--browser', 'dia', '--device', 'dev'],
+      {
+        cwd: appDir,
+        env: { ...process.env, HOME: homeDir }
+      }
+    )
+
+    const supportRoot = join(homeDir, 'Library', 'Application Support')
+    const manifestPaths = [
+      join(supportRoot, 'Dia', 'User Data', 'NativeMessagingHosts', 'com.memry.capture.json'),
+      join(supportRoot, 'Google', 'Chrome', 'NativeMessagingHosts', 'com.memry.capture.json'),
+      join(supportRoot, 'Chromium', 'NativeMessagingHosts', 'com.memry.capture.json')
+    ]
+
+    for (const manifestPath of manifestPaths) {
+      const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+      assert.deepEqual(manifest.allowed_origins, ['chrome-extension://testextensionid/'])
+    }
+  } finally {
+    rmSync(homeDir, { recursive: true, force: true })
+  }
+})

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { PassThrough } from 'node:stream'
 import { test } from 'node:test'
 import {
   getPendingCaptureDir,
@@ -19,6 +20,18 @@ test('getPendingCaptureDir resolves a local app support pending folder', () => {
   })
 
   assert.equal(dir, '/Users/kaan/Library/Application Support/memry/capture-inbox/pending')
+})
+
+test('getPendingCaptureDir uses MEMRY_CAPTURE_DIR as the final pending folder', () => {
+  const dir = getPendingCaptureDir({
+    env: {
+      MEMRY_CAPTURE_DIR: '/Users/kaan/Library/Application Support/memry-dev/capture-inbox/pending'
+    },
+    platform: 'darwin',
+    homeDir: '/Users/kaan'
+  })
+
+  assert.equal(dir, '/Users/kaan/Library/Application Support/memry-dev/capture-inbox/pending')
 })
 
 test('writePendingCapture durably writes the capture before Memry imports it', async () => {
@@ -51,6 +64,24 @@ test('native messaging framing reads and writes one JSON message', async () => {
   const output = await readNativeMessage(frame)
 
   assert.deepEqual(output, input)
+})
+
+test('readNativeMessage resolves after one framed message without waiting for stdin EOF', async () => {
+  const input = { ok: true, captureId: 'capture-1' }
+  const frame = writeNativeMessage(input)
+  const stream = new PassThrough()
+  stream.write(frame)
+
+  try {
+    const output = await Promise.race([
+      readNativeMessage(stream),
+      new Promise((resolve) => setTimeout(() => resolve('timed out'), 50))
+    ])
+
+    assert.deepEqual(output, input)
+  } finally {
+    stream.destroy()
+  }
 })
 
 test('launchMemry ignores shell launch environment overrides', () => {

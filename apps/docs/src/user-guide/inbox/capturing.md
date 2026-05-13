@@ -43,6 +43,9 @@ node apps/desktop/scripts/install-chrome-capture-host.mjs --extension-id <id> --
 node apps/desktop/scripts/install-chrome-capture-host.mjs --extension-id <id> --browser dia
 ```
 
+The Dia installer writes the host manifest to Dia plus Chrome/Chromium native messaging locations,
+because Dia can resolve native hosts through Chromium-compatible fallback paths.
+
 When running the local desktop app with `pnpm dev`, target the dev userData folder too:
 
 ```bash

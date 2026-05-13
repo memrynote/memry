@@ -17,8 +17,6 @@ function appSupportDir({
   platform = process.platform,
   homeDir = homedir()
 } = {}) {
-  if (env.MEMRY_CAPTURE_DIR) return env.MEMRY_CAPTURE_DIR
-
   const appName =
     env.MEMRY_APP_SUPPORT_NAME || (env.MEMRY_DEVICE ? `memry-${env.MEMRY_DEVICE}` : 'memry')
 
@@ -28,6 +26,9 @@ function appSupportDir({
 }
 
 export function getPendingCaptureDir(options = {}) {
+  const env = options.env || process.env
+  if (env.MEMRY_CAPTURE_DIR) return env.MEMRY_CAPTURE_DIR
+
   return join(appSupportDir(options), 'capture-inbox', 'pending')
 }
 
@@ -117,9 +118,21 @@ export function launchMemry({
 }
 
 export async function readNativeMessage(input = process.stdin) {
-  const buffer = Buffer.isBuffer(input)
-    ? input
-    : Buffer.concat(await Array.fromAsync(input, (chunk) => Buffer.from(chunk)))
+  if (Buffer.isBuffer(input)) return parseNativeMessage(input)
+
+  let buffer = Buffer.alloc(0)
+  for await (const chunk of input) {
+    buffer = Buffer.concat([buffer, Buffer.from(chunk)])
+    if (buffer.length < 4) continue
+
+    const length = readUInt32LE(buffer)
+    if (buffer.length >= 4 + length) return parseNativeMessage(buffer.subarray(0, 4 + length))
+  }
+
+  return parseNativeMessage(buffer)
+}
+
+function parseNativeMessage(buffer) {
   const length = readUInt32LE(buffer)
   const payload = buffer.subarray(4, 4 + length)
   if (payload.length !== length) throw new Error('Native message ended before the declared length')

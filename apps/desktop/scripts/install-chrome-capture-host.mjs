@@ -35,6 +35,16 @@ function manifestDir(browser, platform = process.platform) {
   return join(home, '.config', 'google-chrome', 'NativeMessagingHosts')
 }
 
+function manifestDirs(browser, platform = process.platform) {
+  const dir = manifestDir(browser, platform)
+
+  if (platform === 'darwin' && browser === 'dia') {
+    return [dir, manifestDir('chrome', platform), manifestDir('chromium', platform)]
+  }
+
+  return [dir]
+}
+
 function supportDir(platform = process.platform) {
   const home = homedir()
   if (platform === 'darwin') return join(home, 'Library', 'Application Support', 'memry')
@@ -77,10 +87,9 @@ const scriptDir = dirname(fileURLToPath(import.meta.url))
 const hostScript = resolve(scriptDir, '../native-host/memry-capture-host.mjs')
 const wrapperDir = join(supportDir(), 'native-host')
 const wrapperPath = join(wrapperDir, 'memry-capture-host')
-const manifestPath = join(
-  manifestDirOverride ? resolve(manifestDirOverride) : manifestDir(browser),
-  `${HOST_NAME}.json`
-)
+const manifestPaths = (
+  manifestDirOverride ? [resolve(manifestDirOverride)] : manifestDirs(browser)
+).map((dir) => join(dir, `${HOST_NAME}.json`))
 const resolvedCaptureDir = captureDir
   ? resolve(captureDir)
   : userDataDir
@@ -104,21 +113,21 @@ await writeFile(
 )
 await chmod(wrapperPath, 0o755)
 
-await mkdir(dirname(manifestPath), { recursive: true })
-await writeFile(
-  manifestPath,
-  JSON.stringify(
-    {
-      name: HOST_NAME,
-      description: 'Memry local browser capture bridge',
-      path: wrapperPath,
-      type: 'stdio',
-      allowed_origins: [`chrome-extension://${extensionId}/`]
-    },
-    null,
-    2
-  ),
-  'utf8'
+const manifest = JSON.stringify(
+  {
+    name: HOST_NAME,
+    description: 'Memry local browser capture bridge',
+    path: wrapperPath,
+    type: 'stdio',
+    allowed_origins: [`chrome-extension://${extensionId}/`]
+  },
+  null,
+  2
 )
 
-console.log(`Installed ${HOST_NAME} for ${browser}: ${manifestPath}`)
+for (const manifestPath of manifestPaths) {
+  await mkdir(dirname(manifestPath), { recursive: true })
+  await writeFile(manifestPath, manifest, 'utf8')
+}
+
+console.log(`Installed ${HOST_NAME} for ${browser}: ${manifestPaths.join(', ')}`)
