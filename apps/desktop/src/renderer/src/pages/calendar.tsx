@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   CalendarShell,
@@ -34,7 +34,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { createLogger } from '@/lib/logger'
 import { useDayPanel } from '@/contexts/day-panel-context'
 import { useCalendarView } from '@/contexts/calendar-view-context'
-import { useTabActions } from '@/contexts/tabs'
+import { useActiveTab, useTabActions } from '@/contexts/tabs'
 import { DeleteCalendarEventDialog } from '@/components/calendar/delete-calendar-event-dialog'
 import { inboxService } from '@/services/inbox-service'
 import { getI18n } from 'react-i18next'
@@ -171,14 +171,14 @@ function filterItems(
 export function CalendarPage({ className: _className }: CalendarPageProps): React.JSX.Element {
   const queryClient = useQueryClient()
   const [view, setViewRaw] = useState<CalendarWorkspaceView>(getPersistedView)
-  const setView = (next: CalendarWorkspaceView) => {
+  const setView = useCallback((next: CalendarWorkspaceView) => {
     setViewRaw(next)
     try {
       localStorage.setItem(CALENDAR_VIEW_KEY, next)
     } catch {
       /* localStorage unavailable */
     }
-  }
+  }, [])
   const { anchorDate, setAnchorDate } = useCalendarView()
   const [todayRequestKey, setTodayRequestKey] = useState(0)
   const [showMemryItems, setShowMemryItems] = useState(true)
@@ -203,6 +203,17 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
     anchorRect: AnchorRect
   } | null>(null)
   const { openTab } = useTabActions()
+  const activeTab = useActiveTab()
+  const calendarFocusEventId =
+    typeof activeTab?.viewState?.focusCalendarEventId === 'string'
+      ? activeTab.viewState.focusCalendarEventId
+      : null
+  const calendarFocusDate =
+    typeof activeTab?.viewState?.focusDate === 'string' ? activeTab.viewState.focusDate : null
+  const calendarFocusToken =
+    typeof activeTab?.viewState?.focusedAt === 'number' ? activeTab.viewState.focusedAt : null
+  const consumedCalendarNavigationRef = useRef<number | null>(null)
+  const openedCalendarFocusRef = useRef<number | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [pendingPromote, setPendingPromote] = useState<{
     item: CalendarProjectionItem
@@ -285,6 +296,45 @@ export function CalendarPage({ className: _className }: CalendarPageProps): Reac
       showMemryItems
     ]
   )
+
+  // Agent Chat links arrive as tab view state; bridge that external navigation signal
+  // into Calendar's local view and popover state.
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-chain-state-updates */
+  useEffect(() => {
+    if (!calendarFocusEventId || !calendarFocusDate || calendarFocusToken === null) return
+    if (consumedCalendarNavigationRef.current === calendarFocusToken) return
+
+    consumedCalendarNavigationRef.current = calendarFocusToken
+    setView('day')
+    setAnchorDate(calendarFocusDate)
+    setShowMemryItems(true)
+  }, [calendarFocusDate, calendarFocusEventId, calendarFocusToken, setAnchorDate, setView])
+
+  useEffect(() => {
+    if (!calendarFocusEventId || calendarFocusToken === null) return
+    if (openedCalendarFocusRef.current === calendarFocusToken || rangeQuery.isLoading) return
+
+    const item = filteredItems.find(
+      (candidate) => candidate.sourceType === 'event' && candidate.sourceId === calendarFocusEventId
+    )
+    if (!item) return
+
+    openedCalendarFocusRef.current = calendarFocusToken
+    setTaskPopoverState(null)
+    setInboxSnoozePopoverState(null)
+    setPopoverState({
+      mode: 'edit',
+      eventId: item.sourceId,
+      draft: createDraftFromItem(item),
+      anchorRect: {
+        x: window.innerWidth / 2,
+        y: Math.max(120, window.innerHeight / 3),
+        width: 1,
+        height: 1
+      }
+    })
+  }, [calendarFocusEventId, calendarFocusToken, filteredItems, rangeQuery.isLoading])
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-chain-state-updates */
 
   const handlePrevious = () => {
     setAnchorDate((current) => {
