@@ -1,0 +1,11 @@
+{
+  "cleanUrls": true,
+  "redirects": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "docs.memrynote.com" }],
+      "destination": "/guide/install",
+      "permanent": false
+    }
+  ]
+}
