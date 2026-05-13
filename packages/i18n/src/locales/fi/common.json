@@ -442,6 +442,9 @@
       "resolveWindow": "Agentin lähdeikkunaa ei voitu ratkaista",
       "detectCli": "Agentin taustaohjelmia ei voitu havaita",
       "loadDisclosure": "Ilmoitustilaa ei voitu ladata"
+    },
+    "sources": {
+      "used": "{count, plural, one {Käytetty # lähde} other {Käytetty # lähdettä}}"
     }
   }
 }

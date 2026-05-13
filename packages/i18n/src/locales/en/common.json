@@ -181,6 +181,9 @@
       "resolveWindow": "Could not resolve agent source window",
       "detectCli": "Could not detect agent backends",
       "loadDisclosure": "Could not load disclosure state"
+    },
+    "sources": {
+      "used": "{count, plural, one {Used # source} other {Used # sources}}"
     }
   },
   "phaseF": {

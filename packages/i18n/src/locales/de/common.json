@@ -442,6 +442,9 @@
       "resolveWindow": "Das Agentenquellenfenster konnte nicht aufgelöst werden",
       "detectCli": "Agent-Backends konnten nicht erkannt werden",
       "loadDisclosure": "Offenlegungsstatus konnte nicht geladen werden"
+    },
+    "sources": {
+      "used": "{count, plural, one {# Quelle verwendet} other {# Quellen verwendet}}"
     }
   }
 }

@@ -442,6 +442,9 @@
       "resolveWindow": "Nu s-a putut rezolva fereastra sursă agent",
       "detectCli": "Nu s-au putut detecta backend-urile agentului",
       "loadDisclosure": "Nu s-a putut încărca starea dezvăluirii"
+    },
+    "sources": {
+      "used": "{count, plural, one {# sursă folosită} few {# surse folosite} other {# de surse folosite}}"
     }
   }
 }
