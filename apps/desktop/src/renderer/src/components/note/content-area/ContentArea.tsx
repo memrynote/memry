@@ -25,6 +25,7 @@ import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
 import { useSync } from '@/contexts/sync-context'
 import { useWikiLinkHover } from '@/hooks/use-wiki-link-hover'
 import { useAIInlineContext } from '@/contexts/ai-inline-context'
+import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import type { ContentAreaProps } from './types'
 import { WikiLinkMenu } from './wiki-link-menu'
 import { TagSuggestionPopover } from './tag-suggestion-popover'
@@ -113,6 +114,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   const { resolvedTheme } = useTheme()
   const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
   const { openTag } = useSidebarDrillDown()
+  const { enabled: aiEnabled } = useAISettingsContext()
   const { port: aiPort, error: aiError, retry: retryAI } = useAIInlineContext()
   const resolvedPlaceholder = placeholder ?? t('editor.content.placeholder')
 
@@ -170,7 +172,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
   // Hook #1: Editor setup (AI extension, spellcheck, links, highlight scroll)
   const { aiReady } = useBlockNoteSetup({
     editor,
-    aiPort,
+    aiPort: aiEnabled ? aiPort : null,
     spellCheck,
     focusAtEndRef,
     editorContainerRef,
@@ -677,7 +679,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       )}
       {isDragging && !dropTarget && <EmptyDocumentDropIndicator />}
 
-      {aiError && (
+      {aiEnabled && aiError && (
         <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800/40">
           <span className="truncate">{aiError}</span>
           <button onClick={retryAI} className="shrink-0 underline hover:no-underline">
@@ -769,12 +771,12 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           slashMenu={false}
         >
           {stickyToolbar && <FormattingToolbar />}
-          {aiReady && <AIMenuController aiMenu={CustomAIMenu} />}
+          {aiEnabled && aiReady && <AIMenuController aiMenu={CustomAIMenu} />}
           <SuggestionMenuController
             triggerCharacter="/"
             getItems={async (query) => {
               const defaults = getDefaultReactSlashMenuItems(editor)
-              const aiItems = aiReady ? getAISlashMenuItems(editor) : []
+              const aiItems = aiEnabled && aiReady ? getAISlashMenuItems(editor) : []
               const calloutItem = getCalloutSlashMenuItem(editor, {
                 title: t('editor.callout.title'),
                 group: t('editor.callout.group'),
@@ -799,11 +801,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
           />
         </BlockNoteView>
 
-        <TagSuggestionPopover
-          editor={editor}
-          editorContainerRef={editorContainerRef}
-          onSelect={handleTagSuggestionSelect}
-        />
+        {aiEnabled && (
+          <TagSuggestionPopover
+            editor={editor}
+            editorContainerRef={editorContainerRef}
+            onSelect={handleTagSuggestionSelect}
+          />
+        )}
 
         {wikiLinkHover.isVisible && wikiLinkHover.preview && wikiLinkHover.position && (
           <WikiLinkPreviewCard

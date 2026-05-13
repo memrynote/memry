@@ -3,6 +3,7 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import type { AIConnection } from '@/components/journal/ai-connections-panel'
 import { getAIConnections, MIN_CONTENT_LENGTH } from '@/services/ai-connections-service'
 import { getI18n } from 'react-i18next'
+import { useAISettingsContext } from '@/contexts/ai-settings-context'
 
 const AI_ANALYSIS_DEBOUNCE_MS = 2000
 
@@ -14,6 +15,7 @@ export interface UseAIConnectionsResult {
 }
 
 export function useAIConnections(content: string): UseAIConnectionsResult {
+  const { enabled: aiEnabled } = useAISettingsContext()
   const [connections, setConnections] = useState<AIConnection[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -27,52 +29,76 @@ export function useAIConnections(content: string): UseAIConnectionsResult {
     contentRef.current = content
   }, [content])
 
-  const analyzeContent = useCallback(async (contentToAnalyze: string) => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
-    }
-
-    if (contentToAnalyze.length < MIN_CONTENT_LENGTH) {
-      setConnections([])
-      setIsLoading(false)
-      setError(null)
-      lastAnalyzedContentRef.current = null
-      return
-    }
-
-    if (contentToAnalyze === lastAnalyzedContentRef.current) return
-
-    const abortController = new AbortController()
-    abortControllerRef.current = abortController
-
-    setIsLoading(true)
+  const clearResults = useCallback(() => {
+    setConnections([])
+    setIsLoading(false)
     setError(null)
-
-    try {
-      const result = await getAIConnections(contentToAnalyze, abortController.signal)
-
-      if (!abortController.signal.aborted) {
-        setConnections(result)
-        setIsLoading(false)
-        lastAnalyzedContentRef.current = contentToAnalyze
-      }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return
-
-      if (!abortController.signal.aborted) {
-        setError(
-          extractErrorMessage(
-            err,
-            getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToAnalyzeContent')
-          )
-        )
-        setIsLoading(false)
-      }
-    }
+    lastAnalyzedContentRef.current = null
   }, [])
+
+  const analyzeContent = useCallback(
+    async (contentToAnalyze: string) => {
+      if (!aiEnabled) {
+        abortControllerRef.current?.abort()
+        abortControllerRef.current = null
+        clearResults()
+        return
+      }
+
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+
+      if (contentToAnalyze.length < MIN_CONTENT_LENGTH) {
+        clearResults()
+        return
+      }
+
+      if (contentToAnalyze === lastAnalyzedContentRef.current) return
+
+      const abortController = new AbortController()
+      abortControllerRef.current = abortController
+
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        const result = await getAIConnections(contentToAnalyze, abortController.signal)
+
+        if (!abortController.signal.aborted) {
+          setConnections(result)
+          setIsLoading(false)
+          lastAnalyzedContentRef.current = contentToAnalyze
+        }
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+
+        if (!abortController.signal.aborted) {
+          lastAnalyzedContentRef.current = contentToAnalyze
+          setError(
+            extractErrorMessage(
+              err,
+              getI18n().getFixedT(null, 'settings')('phaseI.errors.failedToAnalyzeContent')
+            )
+          )
+          setIsLoading(false)
+        }
+      }
+    },
+    [aiEnabled, clearResults]
+  )
 
   // Interval-based polling to detect content changes without effect re-runs
   useEffect(() => {
+    if (!aiEnabled) {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+        abortControllerRef.current = null
+      }
+      queueMicrotask(clearResults)
+      return
+    }
+
     let lastCheckedContent = contentRef.current
     let pendingAnalysisTimeout: ReturnType<typeof setTimeout> | null = null
 
@@ -92,10 +118,7 @@ export function useAIConnections(content: string): UseAIConnectionsResult {
           abortControllerRef.current.abort()
           abortControllerRef.current = null
         }
-        setConnections([])
-        setIsLoading(false)
-        setError(null)
-        lastAnalyzedContentRef.current = null
+        clearResults()
         return
       }
 
@@ -118,7 +141,7 @@ export function useAIConnections(content: string): UseAIConnectionsResult {
         clearTimeout(pendingAnalysisTimeout)
       }
     }
-  }, [analyzeContent])
+  }, [aiEnabled, analyzeContent, clearResults])
 
   useEffect(() => {
     return () => {
@@ -132,6 +155,8 @@ export function useAIConnections(content: string): UseAIConnectionsResult {
   }, [])
 
   const refresh = useCallback(() => {
+    if (!aiEnabled) return
+
     lastAnalyzedContentRef.current = null
 
     if (debounceTimerRef.current) {
@@ -140,12 +165,12 @@ export function useAIConnections(content: string): UseAIConnectionsResult {
     }
 
     void analyzeContent(contentRef.current)
-  }, [analyzeContent])
+  }, [aiEnabled, analyzeContent])
 
   return {
-    connections,
-    isLoading,
-    error,
+    connections: aiEnabled ? connections : [],
+    isLoading: aiEnabled ? isLoading : false,
+    error: aiEnabled ? error : null,
     refresh
   }
 }

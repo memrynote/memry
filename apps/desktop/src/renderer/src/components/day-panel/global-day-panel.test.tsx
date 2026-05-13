@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 
 import { CalendarViewProvider } from '@/contexts/calendar-view-context'
+import { AISettingsProvider } from '@/contexts/ai-settings-context'
 import { DayPanelProvider } from '@/contexts/day-panel-context'
 import { TabProvider } from '@/contexts/tabs'
 import { createTestQueryClient } from '@tests/utils/render'
@@ -78,6 +79,26 @@ function renderPanel() {
   )
 }
 
+function renderPanelWithAISettings(aiEnabled: boolean) {
+  const queryClient = createTestQueryClient()
+  const api = window.api as typeof window.api
+  vi.mocked(api.settings.getAISettings).mockResolvedValue({ enabled: aiEnabled })
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <AISettingsProvider>
+        <TabProvider>
+          <DayPanelProvider defaultOpen>
+            <CalendarViewProvider>
+              <GlobalDayPanel />
+            </CalendarViewProvider>
+          </DayPanelProvider>
+        </TabProvider>
+      </AISettingsProvider>
+    </QueryClientProvider>
+  )
+}
+
 describe('GlobalDayPanel', () => {
   beforeEach(() => {
     localStorage.clear()
@@ -136,5 +157,13 @@ describe('GlobalDayPanel', () => {
     expect(headerActions).toHaveClass('ms-auto')
     expect(toggleSlot).toBeInTheDocument()
     expect(toggleSlot).toHaveClass('pe-[13px]')
+  })
+
+  it('hides the agent sidebar tab when AI is disabled', async () => {
+    renderPanelWithAISettings(false)
+
+    expect(await screen.findByRole('tab', { name: /Day/ })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByRole('tab', { name: /Agent/ })).not.toBeInTheDocument()
+    expect(screen.getByTestId('journal-day-panel')).toBeInTheDocument()
   })
 })

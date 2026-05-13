@@ -25,6 +25,7 @@ interface QuickCaptureInputProps {
   detectedType: DetectedType
   isCapturing: boolean
   hasAttachment: boolean
+  voiceEnabled?: boolean
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
 }
 
@@ -37,6 +38,7 @@ export function QuickCaptureInput({
   detectedType,
   isCapturing,
   hasAttachment,
+  voiceEnabled = true,
   textareaRef
 }: QuickCaptureInputProps): React.JSX.Element {
   const { t: tPhaseF } = useT('inbox')
@@ -104,20 +106,22 @@ export function QuickCaptureInput({
       />
 
       <div className="flex items-center gap-0.5 mt-[2px]">
-        <button
-          onClick={onStartRecording}
-          disabled={isCapturing}
-          className={cn(
-            'flex items-center justify-center size-8 rounded-lg',
-            'bg-foreground/[0.04] text-muted-foreground/40',
-            'transition-colors duration-150',
-            'hover:text-foreground/60 hover:bg-foreground/[0.07]',
-            'disabled:cursor-not-allowed disabled:opacity-30'
-          )}
-          aria-label={tPhaseF('phaseF.componentsQuickCaptureInput.recordVoiceMemo')}
-        >
-          <Mic className="size-[15px]" />
-        </button>
+        {voiceEnabled && (
+          <button
+            onClick={onStartRecording}
+            disabled={isCapturing}
+            className={cn(
+              'flex items-center justify-center size-8 rounded-lg',
+              'bg-foreground/[0.04] text-muted-foreground/40',
+              'transition-colors duration-150',
+              'hover:text-foreground/60 hover:bg-foreground/[0.07]',
+              'disabled:cursor-not-allowed disabled:opacity-30'
+            )}
+            aria-label={tPhaseF('phaseF.componentsQuickCaptureInput.recordVoiceMemo')}
+          >
+            <Mic className="size-[15px]" />
+          </button>
+        )}
 
         <button
           onClick={() => fileInputRef.current?.click()}
@@ -138,7 +142,7 @@ export function QuickCaptureInput({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*,audio/*,application/pdf"
+        accept={voiceEnabled ? 'image/*,audio/*,application/pdf' : 'image/*,application/pdf'}
         onChange={handleFileSelect}
         className="hidden"
         aria-hidden="true"

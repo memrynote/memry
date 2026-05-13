@@ -69,6 +69,12 @@ describe('useAgentMcpDesktopApiResponder', () => {
     })
   })
 
+  it('does not subscribe when disabled', () => {
+    renderHook(() => useAgentMcpDesktopApiResponder({ enabled: false }))
+
+    expect(window.api.onMainInvoke).not.toHaveBeenCalled()
+  })
+
   it('forwards allowlisted desktop write operations with args', async () => {
     renderHook(() => useAgentMcpDesktopApiResponder())
     await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())

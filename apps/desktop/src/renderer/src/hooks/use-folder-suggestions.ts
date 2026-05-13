@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createLogger } from '@/lib/logger'
+import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import type { FolderSuggestion } from '@memry/contracts/folder-view-api'
 
 const log = createLogger('Hook:FolderSuggestions')
@@ -50,13 +51,14 @@ const suggestionsCache = new Map<string, FolderSuggestion[]>()
  * ```
  */
 export function useFolderSuggestions(noteId: string | null): UseFolderSuggestionsResult {
+  const { enabled: aiEnabled } = useAISettingsContext()
   const [suggestions, setSuggestions] = useState<FolderSuggestion[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const mountedRef = useRef(true)
 
   const fetchSuggestions = useCallback(async () => {
-    if (!noteId) {
+    if (!aiEnabled || !noteId) {
       setSuggestions([])
       setIsLoading(false)
       setError(null)
@@ -93,7 +95,7 @@ export function useFolderSuggestions(noteId: string | null): UseFolderSuggestion
       setSuggestions([])
       setIsLoading(false)
     }
-  }, [noteId])
+  }, [aiEnabled, noteId])
 
   // Fetch on mount or noteId change
   useEffect(() => {
@@ -110,11 +112,13 @@ export function useFolderSuggestions(noteId: string | null): UseFolderSuggestion
 
   // Manual refetch (clears cache for this noteId)
   const refetch = useCallback(() => {
+    if (!aiEnabled) return
+
     if (noteId) {
       suggestionsCache.delete(noteId)
     }
     void fetchSuggestions()
-  }, [noteId, fetchSuggestions])
+  }, [aiEnabled, noteId, fetchSuggestions])
 
   return {
     suggestions,

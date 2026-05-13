@@ -1,10 +1,12 @@
 import { createContext, useContext, type ReactNode } from 'react'
+import { useAISettingsContext } from '@/contexts/ai-settings-context'
 import { useAIInline, type AIInlineState } from '@/hooks/use-ai-inline'
 
 const AIInlineContext = createContext<AIInlineState | null>(null)
 
 export function AIInlineProvider({ children }: { children: ReactNode }): React.JSX.Element {
-  const state = useAIInline()
+  const aiSettings = useAISettingsContext()
+  const state = useAIInline(aiSettings.enabled && !aiSettings.isLoading)
   return <AIInlineContext.Provider value={state}>{children}</AIInlineContext.Provider>
 }
 

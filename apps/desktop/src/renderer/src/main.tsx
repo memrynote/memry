@@ -24,6 +24,7 @@ import App from './App'
 import QuickCapture from './components/quick-capture'
 import { AuthProvider } from './contexts/auth-context'
 import { SyncProvider } from './contexts/sync-context'
+import { AISettingsProvider } from './contexts/ai-settings-context'
 import { getStartupTheme, THEME_STORAGE_KEY } from './lib/startup-theme'
 
 // Create a client with default options for the entire app
@@ -90,7 +91,9 @@ async function boot(): Promise<void> {
             themes={['light', 'dark', 'white', 'system']}
             storageKey={THEME_STORAGE_KEY}
           >
-            <QuickCapture />
+            <AISettingsProvider>
+              <QuickCapture />
+            </AISettingsProvider>
           </ThemeProvider>
         </QueryClientProvider>
       </I18nProvider>
