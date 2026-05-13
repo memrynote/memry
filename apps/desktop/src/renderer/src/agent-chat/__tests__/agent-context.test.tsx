@@ -427,6 +427,26 @@ describe('agentReducer', () => {
         error: { code: 'PERMISSION_DENIED', message: 'Denied' }
       }
     })
+
+    const errored = agentReducer(started, {
+      type: 'event',
+      event: {
+        kind: 'tool_call_failed',
+        conversationId: conversation.id,
+        toolCallId: 'tool-1',
+        error: { code: 'INTERNAL', message: 'Connection timeout' }
+      }
+    })
+
+    expect(errored.messagesByConversation[conversation.id][0]?.content).toEqual({
+      role: 'tool_call',
+      data: {
+        tool: 'vault_read_note',
+        args: { id: 'note-1' },
+        status: 'output-error',
+        error: { code: 'INTERNAL', message: 'Connection timeout' }
+      }
+    })
   })
 
   it('clears in-flight state when a turn ends', () => {
