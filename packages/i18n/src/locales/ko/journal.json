@@ -38,8 +38,7 @@
     "openNoteFullPage": "전체 페이지로 노트 열기",
     "closeNoteDrawer": "메모 창 닫기",
     "addBookmark": "북마크 추가",
-    "removeBookmark": "북마크 삭제",
-    "tryAgain": "다시 시도"
+    "removeBookmark": "북마크 삭제"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "저널백",
     "journalNavigation": "저널 탐색",
     "dateNavigation": "저널 날짜 탐색",
-    "goToYearView": "연도 보기로 이동",
-    "previousView": "이전 보기",
-    "nextView": "다음 보기"
+    "goToYearView": "연도 보기로 이동"
   },
   "aria": {
     "moreOptions": "추가 옵션",
@@ -184,10 +181,8 @@
     "connectionAria": "{label}, {scorePercent}% 일치에 연결"
   },
   "count": {
-    "item": "아이템",
     "items": "아이템",
     "note": "참고",
-    "notes": "메모",
     "day": "일",
     "days": "일",
     "event": "이벤트",

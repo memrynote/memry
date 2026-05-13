@@ -3,47 +3,25 @@
     "save": "Uložiť",
     "cancel": "Zrušiť",
     "close": "Koniec",
-    "ok": "Dobre",
-    "yes": "Áno",
-    "no": "Nie",
     "delete": "Vymazať",
-    "confirm": "Potvrď",
-    "apply": "Prihláste sa",
     "done": "Hotovo",
-    "discard": "Vyhodiť",
     "dontSave": "Neukladaj",
-    "edit": "Edit",
     "add": "Pridať",
     "remove": "Odstrániť",
     "retry": "Skús znova",
-    "submit": "Odoslať",
     "back": "Späť",
-    "next": "Ďalej",
     "continue": "Pokračovať",
-    "reset": "Reset",
     "copy": "Rozumiem",
-    "paste": "Pasta",
-    "create": "Tvor",
-    "open": "Otvorené"
+    "create": "Tvor"
   },
   "state": {
     "loading": "Načítavam...",
     "saving": "Ukladanie...",
     "deleting": "Vymazávam...",
-    "searching": "Hľadám...",
-    "error": "Chyba",
-    "success": "Úspech"
-  },
-  "empty": {
-    "noResults": "Žiadne výsledky",
-    "noItems": "Žiadne položky",
-    "noMatch": "Žiadne zápasy"
+    "searching": "Hľadám..."
   },
   "action": {
     "search": "Vyhľadávanie",
-    "edit": "Edit",
-    "delete": "Vymazať",
-    "close": "Koniec",
     "expand": "Rozšíriť",
     "collapse": "Kolaps",
     "showMore": "+{count, plural, one {# viac} other {# viac}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {# položka} other {# položky}}",
     "note": "{count, plural, one {# poznámka} other {# poznámky}}",
-    "folder": "{count, plural, one {# priečinok} other {# priečinky}}",
     "task": "{count, plural, one {# úloha} other {# úlohy}}",
-    "project": "{count, plural, one {# projekt} other {# projekty}}",
     "itemDelete": "{count, plural, one {Odstrániť # položku} other {Odstrániť # položky}}"
   },
   "toast": {
     "actionFailed": "Akcia zlyhala",
     "nothingToUndo": "Nič na vrátenie",
     "undone": "Vrátené: {description}",
-    "undoFailed": "Nepodarilo sa vrátiť akciu späť",
-    "copied": "Skopírované",
-    "copyFailed": "Nepodarilo sa skopírovať"
+    "undoFailed": "Nepodarilo sa vrátiť akciu späť"
   },
   "dateRelative": {
     "today": "Dnes",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {Pred # dňom} other {Pred # dňami}}"
   },
   "recurrence": {
-    "everyDay": "Každý deň",
     "everyNDays": "{count, plural, one {Každý deň} other {Každých # dní}}",
-    "everyWeek": "Každý týždeň",
     "everyNWeeks": "{count, plural, one {Každý týždeň} other {Každých # týždňov}}",
-    "everyWeekday": "Každý pracovný deň",
     "everyNWeeksOnWeekdays": "{count, plural, one {Každý pracovný deň} other {Každých # týždňov v pracovné dni}}",
-    "everyWeekend": "Každý víkend",
     "everyNWeeksOnWeekends": "{count, plural, one {Každý víkend} other {Každých # týždňov cez víkend}}",
-    "everyWeekOnDays": "Každý týždeň v {days}",
     "everyNWeeksOnDays": "{count, plural, one {Každý týždeň v {days}} other {Každých # týždňov v {days}}}",
-    "everyMonth": "Každý mesiac",
     "everyNMonths": "{count, plural, one {Každý mesiac} other {Každých # mesiacov}}",
-    "everyMonthOnDay": "Každý mesiac dňa {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {Každý mesiac dňa {day}{suffix}} other {Každých # mesiacov dňa {day}{suffix}}}",
-    "everyMonthOnWeekDay": "Každý mesiac dňa {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Každý mesiac dňa {week} {day}} other {Každých # mesiacov v {week} {day}}}",
-    "everyYear": "Každý rok",
     "everyNYears": "{count, plural, one {Každý rok} other {Každých # rokov}}",
     "repeats": "Opakuje sa"
   },
@@ -264,7 +228,6 @@
       "openTabs": "Otvárané záložky",
       "scrollTabsLeft": "Posunúť záložky doľava",
       "scrollTabsRight": "Posunúť záložky doprava",
-      "graphG": "Graf (⌘G)",
       "dayPanel": "Denný panel"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Chat Agent",
+    "loading": "Načítava sa chat agenta...",
+    "conversationLoading": "Načítava sa konverzácia...",
+    "newConversation": "Nová konverzácia",
+    "history": "História konverzácií",
+    "stop": "Stop",
+    "thinking": "Agent premýšľa",
+    "enable": {
+      "title": "Povoliť Memry Agent",
+      "description": "Memry Agent používa vášho vybratého miestneho agenta CLI na rozhovor o vašom trezore. Claude posiela obraty na Anthropic; Codex posiela obraty na OpenAI.",
+      "remote": "Memry šifruje vašu miestnu a synchronizovanú históriu rozhovorov, ale odvodenie modelu sa deje s vybraným poskytovateľom.",
+      "readTools": "Nástroje na čítanie sa spúšťajú automaticky.",
+      "writeTools": "Nástroje na vytváranie a aktualizáciu vyžadujú schválenie.",
+      "diff": "Aktualizačné nástroje zobrazujú rozdiel alebo náhľad.",
+      "button": "Povoliť chat Agent"
+    },
+    "approval": {
+      "description": "Agent chce volať {name} s týmito argumentmi.",
+      "applyOnce": "Použiť raz",
+      "allowOnce": "Povoliť raz",
+      "editAndApply": "Upraviť a použiť",
+      "editAndAllow": "Upraviť a povoliť",
+      "allowAlways": "Vždy povoliť",
+      "applyEdits": "Použiť úpravy",
+      "deny": "Zamietnuť",
+      "invalidJson": "Pred použitím úprav zadajte platný JSON."
+    },
+    "diff": {
+      "previewError": "Nepodarilo sa zobraziť ukážku rozdielu poznámky",
+      "description": "Agent chce aktualizovať {title}. Pred použitím skontrolujte aktuálny a kandidátsky obsah.",
+      "fallbackTitle": "túto poznámku",
+      "current": "Aktuálne",
+      "candidate": "Kandidát",
+      "loading": "Načítavam...",
+      "apply": "Použiť",
+      "applyEdited": "Použiť upravené"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "Aktuálna poznámka",
+      "removeAttachment": "Odstrániť {label}",
+      "placeholder": "Opýtajte sa Agent",
+      "send": "Odoslať",
+      "providerLabel": "Poskytovateľ Agent: {provider}",
+      "modelLabel": "Model Agent: {model}",
+      "settingsLabel": "Nastavenia Agent: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "ID vlastného modelu",
+      "customModelPlaceholder": "ID vlastného modelu",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "Miestne"
+      },
+      "models": {
+        "default": "Predvolené"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "Zdôvodnenie"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
+          "low": "Nízka",
+          "medium": "Stredné",
+          "high": "Vysoká",
+          "extraHigh": "Extra vysoká",
+          "extraHighDefault": "Extra vysoká (predvolené)",
           "max": "Max"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "Nízka",
+          "medium": "Stredné",
+          "mediumDefault": "Stredné (predvolené)",
+          "high": "Vysoká",
+          "extraHigh": "Extra vysoká"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "Žiadne zhody"
+    },
+    "toolResult": {
+      "label": "Výsledok nástroja"
+    },
+    "toolCall": {
+      "editedArgs": "Upravené argumenty",
+      "parameters": "Parametre"
+    },
+    "sidebar": {
+      "label": "Pravý bočný panel",
+      "day": "Deň",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# čaká na schválenie} other {# čakajúcich na schválenie}}",
+      "inProgress": "Prebieha ťah Agent"
+    },
+    "errors": {
+      "loadConversations": "Nepodarilo sa načítať konverzácie agenta",
+      "loadConversation": "Nepodarilo sa načítať konverzáciu agenta",
+      "createConversation": "Nepodarilo sa vytvoriť konverzáciu agenta",
+      "busy": "Ďalšie okno je v polovici tohto rozhovoru. Počkajte, kým to skončí, alebo to odtiaľ zastavte.",
+      "sendTurn": "Nepodarilo sa odoslať poradu agenta",
+      "cancelTurn": "Nepodarilo sa zrušiť ťah agenta",
+      "submitApproval": "Nepodarilo sa odoslať schválenie nástroja",
+      "updateTrust": "Nepodarilo sa aktualizovať dôveryhodné nástroje",
+      "saveDisclosure": "Stav zverejnenia sa nepodarilo uložiť",
+      "resolveWindow": "Nepodarilo sa vyriešiť okno zdroja agenta",
+      "detectCli": "Nepodarilo sa zistiť backendy agentov",
+      "loadDisclosure": "Nepodarilo sa načítať stav zverejnenia"
     }
   }
 }

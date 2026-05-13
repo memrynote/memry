@@ -35,38 +35,6 @@
     "delete": "Radera uppgift",
     "created": "Skapad {date}"
   },
-  "project": {
-    "create": "Skapa projekt",
-    "edit": "Redigera projekt",
-    "delete": "Ta bort projekt",
-    "iconAndName": "Ikon & namn",
-    "namePlaceholder": "Projektnamn",
-    "select": "Välj projekt",
-    "selectIcon": "Välj ikon",
-    "clickIconToChange": "Klicka på ikonen för att ändra",
-    "color": "Färg",
-    "descriptionOptional": "Beskrivning (valfritt)",
-    "descriptionPlaceholder": "Kort beskrivning av detta projekt…",
-    "statuses": "Statusar",
-    "statusesHelp": "Konfigurera arbetsflödets steg för detta projekt.",
-    "createDescription": "Skapa ett nytt projekt med namn, ikon, färg och arbetsflödesstatusar.",
-    "editDescription": "Redigera projektnamn, ikon, färg och arbetsflödesstatusar."
-  },
-  "status": {
-    "select": "Välj status",
-    "todo": "Att göra",
-    "inProgress": "Pågående",
-    "done": "Klart"
-  },
-  "priority": {
-    "select": "Välj prioritet",
-    "none": "Ingen prioritet",
-    "noneShort": "Inga",
-    "low": "Lågt",
-    "medium": "Medium",
-    "high": "Hög",
-    "urgent": "Brådskande"
-  },
   "filters": {
     "filter": "Filter",
     "emptyTitle": "Inga uppgifter matchar dina filter",
@@ -113,14 +81,12 @@
     "filterApplied": "Tillämpade \"{name}\"",
     "deleted": "Uppgift raderad",
     "deletedSeries": "Serie klar!",
-    "deletedNext": "Nästa förekomst",
     "completed": "Uppgift slutförd!",
     "archived": "Uppgift arkiverad",
     "undoNotAvailableForDelete": "Ångra inte tillgänglig för radering",
     "alreadyAllComplete": "Alla valda uppgifter är redan slutförda",
     "noCompletedSelected": "Inga slutförda uppgifter valda",
     "completeFailed": "Misslyckades med att slutföra uppgifter",
-    "reopenFailed": "Misslyckades med att återöppna uppgifter",
     "deleteFailed": "Misslyckades med att radera uppgifter",
     "moveFailed": "Misslyckades med att flytta uppgifter"
   },

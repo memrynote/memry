@@ -25,9 +25,7 @@
         "integrations": "Integracje",
         "vault": "Skarbiec",
         "tags": "Tagi",
-        "properties": "Właściwości",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Właściwości"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Notatki",
         "attachments": "Załączniki",
         "crdt": "CRDT",
-        "other": "Inne",
-        "available": "Dostępne"
+        "other": "Inne"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "Oczekiwanie na zatwierdzenie",
       "waitingDescription": "Otwórz Memry na drugim urządzeniu i zatwierdź prośbę o połączenie.",
       "verificationCode": "Kod weryfikacyjny",
-      "confirmCode": "Potwierdź, że pasuje to do kodu na Twoim drugim urządzeniu",
-      "cancel": "Anuluj"
+      "confirmCode": "Potwierdź, że pasuje to do kodu na Twoim drugim urządzeniu"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Klucz odzyskiwania",
     "description": "Przechowuj ten klucz w bezpiecznym miejscu. Może przywrócić skarbiec, jeśli utracisz dostęp do wszystkich urządzeń.",
-    "loading": "Ładowanie...",
     "retrieveFailed": "Nie udało się pobrać klucza odzyskiwania",
     "copied": "Klucz odzyskiwania skopiowany do schowka",
     "copyFailed": "Nie udało się skopiować do schowka",
     "clickToReveal": "Kliknij, aby odsłonić",
     "hide": "Ukryj",
     "reveal": "Ujawnij",
-    "copy": "Kopiuj",
     "sessionHint": "Ten klucz jest wyświetlany raz na sesję. Zamknij to okno dialogowe, aby usunąć je z pamięci."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Nie udało się połączyć Kalendarza Google",
       "refreshFailed": "Nie udało się odświeżyć Kalendarza Google",
       "disconnectFailed": "Nie udało się odłączyć Kalendarza Google",
-      "selectionFailed": "Nie udało się zaktualizować wyboru kalendarza",
       "retryFailed": "Nie udało się ponowić próby synchronizacji kalendarza"
     },
     "sourcePicker": {

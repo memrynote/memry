@@ -10,6 +10,8 @@ pnpm --filter @memry/desktop test      # desktop only
 pnpm --filter @memry/sync-server test  # sync server only
 pnpm --filter @memry/desktop test:coverage
 pnpm --filter @memry/sync-server exec vitest run --coverage --coverage.reporter=json-summary --coverage.reporter=text-summary
+pnpm i18n:check                        # hardcoded text + locale resource coverage
+pnpm test:i18n-tools                   # i18n scanner/check tool tests
 pnpm test:e2e                          # Playwright
 node apps/desktop/scripts/build-packaged-app.js --dir
 node apps/desktop/scripts/check-packaged-runtime-deps.js
@@ -87,6 +89,18 @@ When to run:
 - Any time you touch a Zod schema in `packages/contracts`
 - Any time you add or rename an IPC channel
 - Before opening a PR that touches the boundary
+
+## I18n Checks
+
+```bash
+pnpm i18n:check
+pnpm test:i18n-tools
+```
+
+The i18n check scans desktop source for untranslated UI text, verifies every referenced key exists
+in the English bundles, and keeps non-English locale files aligned with English resources. Run the
+tool tests when changing `apps/desktop/scripts/i18n/*` so scanner allowlists, JSON output, TODO
+limits, and locale-completeness behavior stay covered.
 
 ## Focused Typecheck
 

@@ -35,38 +35,6 @@
     "delete": "Elimina attività",
     "created": "Creato {date}"
   },
-  "project": {
-    "create": "Crea progetto",
-    "edit": "Modifica progetto",
-    "delete": "Elimina progetto",
-    "iconAndName": "Icona e nome",
-    "namePlaceholder": "Nome del progetto",
-    "select": "Seleziona progetto",
-    "selectIcon": "Seleziona l'icona",
-    "clickIconToChange": "Fare clic sull'icona per modificare",
-    "color": "Colore",
-    "descriptionOptional": "Descrizione (facoltativa)",
-    "descriptionPlaceholder": "Breve descrizione di questo progetto...",
-    "statuses": "Stati",
-    "statusesHelp": "Configura le fasi del flusso di lavoro per questo progetto.",
-    "createDescription": "Crea un nuovo progetto con nome, icona, colore e stati del flusso di lavoro.",
-    "editDescription": "Modifica il nome del progetto, l'icona, il colore e gli stati del flusso di lavoro."
-  },
-  "status": {
-    "select": "Seleziona lo stato",
-    "todo": "Da fare",
-    "inProgress": "In corso",
-    "done": "Fatto"
-  },
-  "priority": {
-    "select": "Seleziona la priorità",
-    "none": "Nessuna priorità",
-    "noneShort": "Nessuno",
-    "low": "Basso",
-    "medium": "Medio",
-    "high": "Alto",
-    "urgent": "Urgente"
-  },
   "filters": {
     "filter": "Filtra",
     "emptyTitle": "Nessuna attività corrisponde ai tuoi filtri",
@@ -113,14 +81,12 @@
     "filterApplied": "Applicato \"{name}\"",
     "deleted": "Attività eliminata",
     "deletedSeries": "Serie completa!",
-    "deletedNext": "Evento successivo",
     "completed": "Compito completato!",
     "archived": "Compito archiviato",
     "undoNotAvailableForDelete": "Annulla non disponibile per l'eliminazione",
     "alreadyAllComplete": "Tutte le attività selezionate sono già completate",
     "noCompletedSelected": "Nessuna attività completata selezionata",
     "completeFailed": "Impossibile completare le attività",
-    "reopenFailed": "Impossibile riaprire le attività",
     "deleteFailed": "Impossibile eliminare le attività",
     "moveFailed": "Impossibile spostare le attività"
   },

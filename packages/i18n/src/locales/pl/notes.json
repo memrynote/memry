@@ -14,7 +14,6 @@
       "openLinkedFailed": "Nie udało się otworzyć połączonego elementu",
       "localOnly": "Uwaga ustawiona tylko lokalnie",
       "willSync": "Notatka zostanie zsynchronizowana z chmurą",
-      "saveFailed": "Nie udało się zapisać notatki",
       "renameFailed": "Nie udało się zmienić nazwy notatki",
       "toggleLocalOnlyFailed": "Nie udało się przełączyć tylko lokalnie",
       "toggleFullWidthFailed": "Nie udało się przełączyć pełnej szerokości"
@@ -135,9 +134,6 @@
       "clearSearch": "Wyczyść wyszukiwanie"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "Napisz notatkę..."
-  },
   "outline": {
     "title": "Zarys",
     "aria": "Zarys dokumentu",
@@ -149,7 +145,6 @@
     "modified": "Zmodyfikowany"
   },
   "backlinks": {
-    "title": "Linki zwrotne",
     "sortRecent": "Najnowsze",
     "sortAlpha": "A-Z",
     "sortMentions": "Większość wzmianek",

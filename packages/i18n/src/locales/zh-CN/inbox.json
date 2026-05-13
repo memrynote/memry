@@ -43,9 +43,7 @@
     "pdfs": "PDF 文件",
     "social": "社交",
     "reminder": "提醒",
-    "reminders": "提醒事项",
-    "text": "文本",
-    "other": "其他"
+    "reminders": "提醒事项"
   },
   "empty": {
     "successAria": "成功，收件箱为空",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "没有匹配的存档项目",
     "noItemsYet": "还没有项目",
     "noItemsFiled": "还没有归档的项目",
-    "noItemTypes": "没有可显示的项目类型",
     "noFolders": "未找到文件夹",
-    "noFolderMatch": "没有文件夹匹配 \"{query}\"",
     "noNotes": "未找到笔记",
     "allMatchesLinked": "所有匹配项已链接"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "转录失败",
     "retryTranscription": "重试",
     "pageCount": "{count, plural, one {# 页面} other {# 页}}",
-    "snoozedUntilShort": "已延迟至 {date}",
-    "capturedAgo": "已捕获 {time}"
+    "snoozedUntilShort": "已延迟至 {date}"
   },
   "loading": {
     "inbox": "加载收件箱中...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "快速操作",
     "archiveItem": "存档项目",
-    "archive": "归档",
-    "snooze": "延迟"
+    "archive": "归档"
   },
   "detail": {
     "ariaLabel": "项目详情",
@@ -213,7 +207,6 @@
     "searchNotesAria": "搜索要链接的笔记",
     "linkedNotesAria": "已链接的笔记",
     "removeLinkTo": "移除与 {title} 的链接",
-    "contentEditorAria": "内容编辑器",
     "notePlaceholder": "写下你的笔记...",
     "textPlaceholder": "编辑你捕获的文本..."
   },
@@ -263,14 +256,9 @@
     "custom": "自定义..."
   },
   "insights": {
-    "loading": "正在加载洞察...",
     "captureActivity": "捕获活动",
     "byType": "按类型",
-    "itemTypes": "项目类型",
-    "itemTypesDescription": "内容格式分布",
     "recentFilings": "最近的提交",
-    "recentlyFiled": "最近提交",
-    "recentlyFiledDescription": "收件箱的最新操作",
     "captured": "已捕获",
     "capturedThisWeek": "+{count} 本周",
     "processed": "已处理",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {# 捕获} other {# 捕获次数}}",
     "peak": "峰值：{day} {start}–{end}",
     "convertedToTask": "已转换为任务",
-    "linked": "已关联",
     "now": "现在",
     "timeAgoMinutes": "{count} 分钟前",
     "timeAgoHours": "{count} 小时前",

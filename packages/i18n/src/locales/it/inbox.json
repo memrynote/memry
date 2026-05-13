@@ -43,9 +43,7 @@
     "pdfs": "PDF",
     "social": "Sociale",
     "reminder": "Promemoria",
-    "reminders": "Promemoria",
-    "text": "Testo",
-    "other": "Altro"
+    "reminders": "Promemoria"
   },
   "empty": {
     "successAria": "Operazione riuscita, la posta in arrivo è vuota",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "Nessun elemento archiviato corrispondente",
     "noItemsYet": "Nessun articolo ancora",
     "noItemsFiled": "Nessun elemento ancora archiviato",
-    "noItemTypes": "Nessun tipo di elemento da visualizzare",
     "noFolders": "Nessuna cartella trovata",
-    "noFolderMatch": "Nessuna cartella corrisponde a \"{query}\"",
     "noNotes": "Nessuna nota trovata",
     "allMatchesLinked": "Tutte le partite già collegate"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "La trascrizione non è riuscita",
     "retryTranscription": "Riprova",
     "pageCount": "{count, plural, one {Pagina #} other {# pagine}}",
-    "snoozedUntilShort": "posticipato fino a {date}",
-    "capturedAgo": "{time} catturato"
+    "snoozedUntilShort": "posticipato fino a {date}"
   },
   "loading": {
     "inbox": "Caricamento posta in arrivo...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Azioni rapide",
     "archiveItem": "Elemento di archivio",
-    "archive": "Archivio",
-    "snooze": "Posticipa"
+    "archive": "Archivio"
   },
   "detail": {
     "ariaLabel": "Dettagli dell'articolo",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Cerca note da collegare",
     "linkedNotesAria": "Note collegate",
     "removeLinkTo": "Rimuovere il collegamento a {title}",
-    "contentEditorAria": "Redattore di contenuti",
     "notePlaceholder": "Scrivi la tua nota...",
     "textPlaceholder": "Modifica il testo catturato..."
   },
@@ -263,14 +256,9 @@
     "custom": "Personalizzato..."
   },
   "insights": {
-    "loading": "Caricamento approfondimenti...",
     "captureActivity": "Cattura attività",
     "byType": "Per tipo",
-    "itemTypes": "Tipi di elementi",
-    "itemTypesDescription": "Distribuzione dei formati di contenuto",
     "recentFilings": "Archiviazioni recenti",
-    "recentlyFiled": "Archiviato di recente",
-    "recentlyFiledDescription": "Ultime azioni nella tua casella di posta",
     "captured": "Catturato",
     "capturedThisWeek": "+{count} questa settimana",
     "processed": "Elaborato",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {Cattura #} other {# acquisisce}}",
     "peak": "Picco: {day} {start}–{end}",
     "convertedToTask": "Convertito in compito",
-    "linked": "Collegato",
     "now": "ora",
     "timeAgoMinutes": "{count}m fa",
     "timeAgoHours": "{count}h fa",

@@ -43,9 +43,7 @@
     "pdfs": "ไฟล์ PDF",
     "social": "โซเชียล",
     "reminder": "การเตือน",
-    "reminders": "การเตือน",
-    "text": "ข้อความ",
-    "other": "อื่น ๆ"
+    "reminders": "การเตือน"
   },
   "empty": {
     "successAria": "สำเร็จ กล่องขาเข้าเป็นว่าง",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "ไม่มีรายการที่เก็บตรงกัน",
     "noItemsYet": "ยังไม่มีรายการ",
     "noItemsFiled": "ยังไม่มีการจัดเก็บรายการ",
-    "noItemTypes": "ไม่มีประเภทของรายการที่จะแสดง",
     "noFolders": "ไม่พบโฟลเดอร์",
-    "noFolderMatch": "ไม่มีโฟลเดอร์ตรงกับ \"{query}\"",
     "noNotes": "ไม่พบบันทึก",
     "allMatchesLinked": "การจับคู่ทั้งหมดลิงก์แล้ว"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "ถอดความล้มเหลว",
     "retryTranscription": "ลองใหม่",
     "pageCount": "{count, plural, one {หน้าของ #} other {หลายหน้าของ #}}",
-    "snoozedUntilShort": "เลื่อนแจ้งเตือนจนถึง {date}",
-    "capturedAgo": "จับภาพ {time}"
+    "snoozedUntilShort": "เลื่อนแจ้งเตือนจนถึง {date}"
   },
   "loading": {
     "inbox": "กำลังโหลดกล่องขาเข้า...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "การดำเนินการด่วน",
     "archiveItem": "จัดเก็บรายการ",
-    "archive": "เก็บถาวร",
-    "snooze": "เลื่อน"
+    "archive": "เก็บถาวร"
   },
   "detail": {
     "ariaLabel": "รายละเอียดรายการ",
@@ -213,7 +207,6 @@
     "searchNotesAria": "ค้นหาบันทึกเพื่อลิงก์",
     "linkedNotesAria": "บันทึกลิงก์",
     "removeLinkTo": "ลบลิงก์ไปยัง {title}",
-    "contentEditorAria": "ตัวแก้ไขเนื้อหา",
     "notePlaceholder": "เขียนบันทึกของคุณ...",
     "textPlaceholder": "แก้ไขข้อความที่บันทึกไว้..."
   },
@@ -263,14 +256,9 @@
     "custom": "กำหนดเอง..."
   },
   "insights": {
-    "loading": "กำลังโหลดข้อมูลเชิงลึก...",
     "captureActivity": "จับกิจกรรม",
     "byType": "ตามประเภท",
-    "itemTypes": "ประเภทของรายการ",
-    "itemTypesDescription": "การกระจายของรูปแบบเนื้อหา",
     "recentFilings": "เอกสารที่ยื่นเมื่อเร็ว ๆ นี้",
-    "recentlyFiled": "ยื่นล่าสุด",
-    "recentlyFiledDescription": "การดำเนินการล่าสุดในกล่องขาเข้าของคุณ",
     "captured": "จับแล้ว",
     "capturedThisWeek": "+{count} สัปดาห์นี้  ",
     "processed": "  \nประมวลผลแล้ว  ",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {  \nการจับของ #  } other {  \nการจับของ # หลายรายการ  }}",
     "peak": "  \nสูงสุด: {day} {start}–{end}  ",
     "convertedToTask": "  \nแปลงเป็นงาน  ",
-    "linked": "  \nเชื่อมโยงแล้ว  ",
     "now": "  \nตอนนี้  ",
     "timeAgoMinutes": "  \n{count} นาทีที่ผ่านมา  ",
     "timeAgoHours": "  \n{count} ชั่วโมงที่ผ่านมา  ",

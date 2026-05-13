@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Algo deu errado. Por favor, tente novamente.",
     "operationFailed": "Falha na operação",
-    "unknown": "Ocorreu um erro desconhecido",
-    "validationFailed": "Falha na validação",
-    "actionFailed": "Falha na ação"
+    "unknown": "Ocorreu um erro desconhecido"
   },
   "ipc": {
     "noVaultOpen": "Nenhum cofre está aberto. Por favor, abra um cofre primeiro."

@@ -38,8 +38,7 @@
     "openNoteFullPage": "在全屏页面中打开笔记",
     "closeNoteDrawer": "关闭笔记抽屉",
     "addBookmark": "添加书签",
-    "removeBookmark": "移除书签",
-    "tryAgain": "重试"
+    "removeBookmark": "移除书签"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "返回日记",
     "journalNavigation": "日记导航",
     "dateNavigation": "日记日期导航",
-    "goToYearView": "转到年份视图",
-    "previousView": "前一个视图",
-    "nextView": "下一个视图"
+    "goToYearView": "转到年份视图"
   },
   "aria": {
     "moreOptions": "更多选项",
@@ -184,10 +181,8 @@
     "connectionAria": "与 {label} 的关联，匹配度为 {scorePercent}%"
   },
   "count": {
-    "item": "项目",
     "items": "条目",
     "note": "笔记",
-    "notes": "笔记",
     "day": "天",
     "days": "天数",
     "event": "事件",

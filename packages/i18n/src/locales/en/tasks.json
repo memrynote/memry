@@ -35,38 +35,6 @@
     "delete": "Delete task",
     "created": "Created {date}"
   },
-  "project": {
-    "create": "Create Project",
-    "edit": "Edit Project",
-    "delete": "Delete Project",
-    "iconAndName": "Icon & Name",
-    "namePlaceholder": "Project name",
-    "select": "Select project",
-    "selectIcon": "Select icon",
-    "clickIconToChange": "Click icon to change",
-    "color": "Color",
-    "descriptionOptional": "Description (optional)",
-    "descriptionPlaceholder": "Brief description of this project…",
-    "statuses": "Statuses",
-    "statusesHelp": "Configure the workflow stages for this project.",
-    "createDescription": "Create a new project with a name, icon, color, and workflow statuses.",
-    "editDescription": "Edit the project name, icon, color, and workflow statuses."
-  },
-  "status": {
-    "select": "Select status",
-    "todo": "To Do",
-    "inProgress": "In Progress",
-    "done": "Done"
-  },
-  "priority": {
-    "select": "Select priority",
-    "none": "No Priority",
-    "noneShort": "None",
-    "low": "Low",
-    "medium": "Medium",
-    "high": "High",
-    "urgent": "Urgent"
-  },
   "filters": {
     "filter": "Filter",
     "emptyTitle": "No tasks match your filters",
@@ -113,14 +81,12 @@
     "filterApplied": "Applied \"{name}\"",
     "deleted": "Task deleted",
     "deletedSeries": "Series complete!",
-    "deletedNext": "Next occurrence",
     "completed": "Task completed!",
     "archived": "Task archived",
     "undoNotAvailableForDelete": "Undo not available for delete",
     "alreadyAllComplete": "All selected tasks are already complete",
     "noCompletedSelected": "No completed tasks selected",
     "completeFailed": "Failed to complete tasks",
-    "reopenFailed": "Failed to reopen tasks",
     "deleteFailed": "Failed to delete tasks",
     "moveFailed": "Failed to move tasks"
   },

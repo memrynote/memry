@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Sesuatu telah berlaku. Sila cuba lagi.",
     "operationFailed": "Operasi gagal",
-    "unknown": "Ralat tidak diketahui berlaku",
-    "validationFailed": "Pengesahan gagal",
-    "actionFailed": "Tindakan gagal"
+    "unknown": "Ralat tidak diketahui berlaku"
   },
   "ipc": {
     "noVaultOpen": "Tiada peti besi dibuka. Sila buka peti besi dahulu."

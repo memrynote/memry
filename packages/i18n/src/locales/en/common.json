@@ -3,47 +3,25 @@
     "save": "Save",
     "cancel": "Cancel",
     "close": "Close",
-    "ok": "OK",
-    "yes": "Yes",
-    "no": "No",
     "delete": "Delete",
-    "confirm": "Confirm",
-    "apply": "Apply",
     "done": "Done",
-    "discard": "Discard",
     "dontSave": "Don't Save",
-    "edit": "Edit",
     "add": "Add",
     "remove": "Remove",
     "retry": "Retry",
-    "submit": "Submit",
     "back": "Back",
-    "next": "Next",
     "continue": "Continue",
-    "reset": "Reset",
     "copy": "Copy",
-    "paste": "Paste",
-    "create": "Create",
-    "open": "Open"
+    "create": "Create"
   },
   "state": {
     "loading": "Loading…",
     "saving": "Saving…",
     "deleting": "Deleting…",
-    "searching": "Searching…",
-    "error": "Error",
-    "success": "Success"
-  },
-  "empty": {
-    "noResults": "No results",
-    "noItems": "No items",
-    "noMatch": "No matches"
+    "searching": "Searching…"
   },
   "action": {
     "search": "Search",
-    "edit": "Edit",
-    "delete": "Delete",
-    "close": "Close",
     "expand": "Expand",
     "collapse": "Collapse",
     "showMore": "+{count, plural, one {# more} other {# more}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {# item} other {# items}}",
     "note": "{count, plural, one {# note} other {# notes}}",
-    "folder": "{count, plural, one {# folder} other {# folders}}",
     "task": "{count, plural, one {# task} other {# tasks}}",
-    "project": "{count, plural, one {# project} other {# projects}}",
     "itemDelete": "{count, plural, one {Delete # item} other {Delete # items}}"
   },
   "toast": {
     "actionFailed": "Action failed",
     "nothingToUndo": "Nothing to undo",
     "undone": "Undone: {description}",
-    "undoFailed": "Failed to undo action",
-    "copied": "Copied",
-    "copyFailed": "Failed to copy"
+    "undoFailed": "Failed to undo action"
   },
   "dateRelative": {
     "today": "Today",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {# day ago} other {# days ago}}"
   },
   "recurrence": {
-    "everyDay": "Every day",
     "everyNDays": "{count, plural, one {Every day} other {Every # days}}",
-    "everyWeek": "Every week",
     "everyNWeeks": "{count, plural, one {Every week} other {Every # weeks}}",
-    "everyWeekday": "Every weekday",
     "everyNWeeksOnWeekdays": "{count, plural, one {Every weekday} other {Every # weeks on weekdays}}",
-    "everyWeekend": "Every weekend",
     "everyNWeeksOnWeekends": "{count, plural, one {Every weekend} other {Every # weeks on weekends}}",
-    "everyWeekOnDays": "Every week on {days}",
     "everyNWeeksOnDays": "{count, plural, one {Every week on {days}} other {Every # weeks on {days}}}",
-    "everyMonth": "Every month",
     "everyNMonths": "{count, plural, one {Every month} other {Every # months}}",
-    "everyMonthOnDay": "Every month on the {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {Every month on the {day}{suffix}} other {Every # months on the {day}{suffix}}}",
-    "everyMonthOnWeekDay": "Every month on the {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Every month on the {week} {day}} other {Every # months on the {week} {day}}}",
-    "everyYear": "Every year",
     "everyNYears": "{count, plural, one {Every year} other {Every # years}}",
     "repeats": "Repeats"
   },
@@ -110,17 +74,10 @@
     "title": "Agent chat",
     "loading": "Loading agent chat...",
     "conversationLoading": "Conversation loading...",
-    "startTitle": "Start chatting with your vault",
     "newConversation": "New conversation",
     "history": "Conversation history",
     "stop": "Stop",
     "thinking": "Agent is thinking",
-    "binary": {
-      "checking": "Checking agent backends...",
-      "notFound": "Agent backend not found. {hint}",
-      "tooOld": "Agent backend {version} is too old. Need {minimumRequired}. {hint}",
-      "ready": "Agent backend {version} detected and ready."
-    },
     "enable": {
       "title": "Enable Memry Agent",
       "description": "Memry Agent uses your selected local agent CLI to chat about your vault. Claude sends turns to Anthropic; Codex sends turns to OpenAI.",
@@ -131,7 +88,6 @@
       "button": "Enable Agent chat"
     },
     "approval": {
-      "title": "Allow {name}?",
       "description": "The agent wants to call {name} with these arguments.",
       "applyOnce": "Apply once",
       "allowOnce": "Allow once",
@@ -144,7 +100,6 @@
     },
     "diff": {
       "previewError": "Could not preview note diff",
-      "title": "Review note update",
       "description": "The agent wants to update {title}. Review the current and candidate content before applying it.",
       "fallbackTitle": "this note",
       "current": "Current",
@@ -199,9 +154,7 @@
       "noMatches": "No matches"
     },
     "toolResult": {
-      "label": "Tool result",
-      "ok": "ok",
-      "failed": "failed"
+      "label": "Tool result"
     },
     "toolCall": {
       "editedArgs": "Edited arguments",
@@ -387,7 +340,6 @@
       "openTabs": "Open tabs",
       "scrollTabsLeft": "Scroll tabs left",
       "scrollTabsRight": "Scroll tabs right",
-      "graphG": "Graph (⌘G)",
       "dayPanel": "Day Panel"
     },
     "componentsTabsTabBarWithOverflow": {

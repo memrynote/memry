@@ -25,9 +25,7 @@
         "integrations": "Integrari",
         "vault": "Seif",
         "tags": "Etichete",
-        "properties": "Proprietăți",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Proprietăți"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Note",
         "attachments": "Atasamente",
         "crdt": "CRDT",
-        "other": "Altele",
-        "available": "Disponibil"
+        "other": "Altele"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "În așteptarea aprobării",
       "waitingDescription": "Deschideți Memry pe celălalt dispozitiv și aprobați solicitarea de conectare.",
       "verificationCode": "Cod de verificare",
-      "confirmCode": "Confirmați că acesta se potrivește cu codul de pe celălalt dispozitiv",
-      "cancel": "Anulează"
+      "confirmCode": "Confirmați că acesta se potrivește cu codul de pe celălalt dispozitiv"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Cheie de recuperare",
     "description": "Păstrați această cheie în siguranță. Îți poate restabili seiful dacă pierzi accesul la toate dispozitivele.",
-    "loading": "Se încarcă...",
     "retrieveFailed": "Nu s-a putut prelua cheia de recuperare",
     "copied": "Cheia de recuperare a fost copiată în clipboard",
     "copyFailed": "Copierea eșuată în clipboard",
     "clickToReveal": "Faceți clic pentru a dezvălui",
     "hide": "Ascunde",
     "reveal": "Dezvăluie",
-    "copy": "Copiere",
     "sessionHint": "Această cheie este afișată o dată pe sesiune. Închideți acest dialog pentru a-l șterge din memorie."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Nu s-a putut conecta Google Calendar",
       "refreshFailed": "Nu s-a reîmprospătat Google Calendar",
       "disconnectFailed": "Nu s-a putut deconecta Google Calendar",
-      "selectionFailed": "Nu s-a putut actualiza selecția calendarului",
       "retryFailed": "Nu s-a reîncercat sincronizarea calendarului"
     },
     "sourcePicker": {

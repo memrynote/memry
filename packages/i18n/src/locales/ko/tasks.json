@@ -35,38 +35,6 @@
     "delete": "할 일 삭제",
     "created": "{date}를 생성했습니다."
   },
-  "project": {
-    "create": "프로젝트 생성",
-    "edit": "프로젝트 편집",
-    "delete": "프로젝트 삭제",
-    "iconAndName": "아이콘 및 이름",
-    "namePlaceholder": "프로젝트 이름",
-    "select": "프로젝트 선택",
-    "selectIcon": "아이콘 선택",
-    "clickIconToChange": "변경하려면 아이콘을 클릭하세요.",
-    "color": "색상",
-    "descriptionOptional": "설명(선택사항)",
-    "descriptionPlaceholder": "이 프로젝트에 대한 간략한 설명…",
-    "statuses": "상태",
-    "statusesHelp": "이 프로젝트의 워크플로 단계를 구성합니다.",
-    "createDescription": "이름, 아이콘, 색상 및 작업 흐름 상태를 사용하여 새 프로젝트를 만듭니다.",
-    "editDescription": "프로젝트 이름, 아이콘, 색상, 워크플로 상태를 편집합니다."
-  },
-  "status": {
-    "select": "상태 선택",
-    "todo": "할 일",
-    "inProgress": "진행 중",
-    "done": "완료"
-  },
-  "priority": {
-    "select": "우선순위 선택",
-    "none": "우선순위 없음",
-    "noneShort": "없음",
-    "low": "낮음",
-    "medium": "중간",
-    "high": "높음",
-    "urgent": "긴급"
-  },
   "filters": {
     "filter": "필터",
     "emptyTitle": "필터와 일치하는 작업이 없습니다.",
@@ -113,14 +81,12 @@
     "filterApplied": "\"{name}\" 적용",
     "deleted": "작업이 삭제되었습니다.",
     "deletedSeries": "시리즈 완성!",
-    "deletedNext": "다음 발생",
     "completed": "작업이 완료되었습니다!",
     "archived": "작업이 보관되었습니다.",
     "undoNotAvailableForDelete": "삭제 시 실행취소할 수 없습니다.",
     "alreadyAllComplete": "선택한 작업이 모두 이미 완료되었습니다.",
     "noCompletedSelected": "완료된 작업을 선택하지 않았습니다.",
     "completeFailed": "작업을 완료하지 못했습니다.",
-    "reopenFailed": "작업을 다시 열 수 없습니다.",
     "deleteFailed": "작업을 삭제하지 못했습니다.",
     "moveFailed": "작업을 이동하지 못했습니다."
   },

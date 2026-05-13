@@ -121,6 +121,38 @@ function stringLiteralValue(node) {
   return null
 }
 
+function looksLikeResourcePath(value) {
+  return value.includes('.') || value.includes(':')
+}
+
+function collectLiteralTranslationKeys(sourceFile, englishKeys, namespaces) {
+  const keys = new Set()
+
+  function addLiteral(value) {
+    if (!value || !looksLikeResourcePath(value)) return
+
+    if (englishKeys.has(value)) {
+      keys.add(value)
+    }
+
+    if (!value.includes(':')) {
+      for (const namespace of namespaces) {
+        const fullKey = `${namespace}:${value}`
+        if (englishKeys.has(fullKey)) keys.add(fullKey)
+      }
+    }
+  }
+
+  function visit(node) {
+    const value = stringLiteralValue(node)
+    if (value) addLiteral(value)
+    ts.forEachChild(node, visit)
+  }
+
+  visit(sourceFile)
+  return keys
+}
+
 function getPropertyNameText(name) {
   if (!name) return null
   if (ts.isIdentifier(name) || ts.isStringLiteral(name)) return name.text
@@ -255,6 +287,18 @@ function getTranslationCall(node, tBindings) {
     }
   }
 
+  if (
+    ts.isIdentifier(node.expression) &&
+    node.expression.text === 't' &&
+    ts.isTemplateExpression(node.arguments[0])
+  ) {
+    return {
+      namespace: null,
+      keyNode: node.arguments[0],
+      call: node
+    }
+  }
+
   if (ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === 't') {
     return {
       namespace: null,
@@ -295,6 +339,28 @@ function resolveTranslationKey(rawKey, boundNamespace) {
   }
 }
 
+function expandDynamicTranslationKeys(keyNode, boundNamespace, englishKeys) {
+  if (!keyNode || !ts.isTemplateExpression(keyNode)) return []
+
+  const rawPrefix = keyNode.head.text
+  const rawSuffix = keyNode.templateSpans.at(-1)?.literal.text ?? ''
+
+  if (!rawPrefix && !rawSuffix) return []
+
+  const fullPrefixes =
+    rawPrefix.includes(':') || boundNamespace
+      ? [rawPrefix.includes(':') ? rawPrefix : `${boundNamespace}:${rawPrefix}`]
+      : [...new Set([...englishKeys].map((key) => key.slice(0, key.indexOf(':') + 1)))].map(
+          (namespacePrefix) => `${namespacePrefix}${rawPrefix}`
+        )
+
+  return [...englishKeys]
+    .filter(
+      (key) => fullPrefixes.some((prefix) => key.startsWith(prefix)) && key.endsWith(rawSuffix)
+    )
+    .sort()
+}
+
 function createFinding(sourceFile, workspaceRoot, filePath, node, type, extras = {}) {
   return {
     type,
@@ -326,14 +392,20 @@ export function scanFile(filePath, options = {}) {
   const untranslated = []
   const todoFindings = []
 
+  for (const key of collectLiteralTranslationKeys(sourceFile, englishKeys, namespaces)) {
+    usedKeys.add(key)
+  }
+
   function recordTranslationCall(node, translationCall) {
     const rawKey = stringLiteralValue(translationCall.keyNode)
     if (!rawKey) {
-      dynamicKeyWarnings.push(
-        createFinding(sourceFile, workspaceRoot, filePath, translationCall.call, 'dynamic-key', {
-          message: 'Dynamic translation key skipped'
-        })
-      )
+      for (const key of expandDynamicTranslationKeys(
+        translationCall.keyNode,
+        translationCall.namespace,
+        englishKeys
+      )) {
+        usedKeys.add(key)
+      }
       return
     }
 

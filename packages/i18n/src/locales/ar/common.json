@@ -3,47 +3,25 @@
     "save": "حفظ",
     "cancel": "إلغاء",
     "close": "إغلاق",
-    "ok": "موافق",
-    "yes": "نعم",
-    "no": "لا",
     "delete": "حذف",
-    "confirm": "تأكيد",
-    "apply": "تطبيق",
     "done": "تم",
-    "discard": "تجاهل",
     "dontSave": "عدم الحفظ",
-    "edit": "تعديل",
     "add": "إضافة",
     "remove": "إزالة",
     "retry": "إعادة المحاولة",
-    "submit": "إرسال",
     "back": "رجوع",
-    "next": "التالي",
     "continue": "متابعة",
-    "reset": "إعادة تعيين",
     "copy": "نسخ",
-    "paste": "لصق",
-    "create": "إنشاء",
-    "open": "فتح"
+    "create": "إنشاء"
   },
   "state": {
     "loading": "جارٍ التحميل…",
     "saving": "جارٍ الحفظ…",
     "deleting": "جارٍ الحذف…",
-    "searching": "جارٍ البحث…",
-    "error": "خطأ",
-    "success": "نجح"
-  },
-  "empty": {
-    "noResults": "لا توجد نتائج",
-    "noItems": "لا توجد عناصر",
-    "noMatch": "لا توجد مطابقات"
+    "searching": "جارٍ البحث…"
   },
   "action": {
     "search": "بحث",
-    "edit": "تعديل",
-    "delete": "حذف",
-    "close": "إغلاق",
     "expand": "توسيع",
     "collapse": "طي",
     "showMore": "+{count, plural, one {# أكثر} other {# أكثر}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, zero {لا توجد عناصر} one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصراً} other {# عنصر}}",
     "note": "{count, plural, zero {لا توجد ملاحظات} one {ملاحظة واحدة} two {ملاحظتان} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}",
-    "folder": "{count, plural, zero {لا توجد مجلدات} one {مجلد واحد} two {مجلدان} few {# مجلدات} many {# مجلداً} other {# مجلد}}",
     "task": "{count, plural, zero {لا توجد مهام} one {مهمة واحدة} two {مهمتان} few {# مهام} many {# مهمة} other {# مهمة}}",
-    "project": "{count, plural, zero {لا توجد مشاريع} one {مشروع واحد} two {مشروعان} few {# مشاريع} many {# مشروعاً} other {# مشروع}}",
     "itemDelete": "{count, plural, zero {حذف العناصر} one {حذف عنصر واحد} two {حذف عنصرين} few {حذف # عناصر} many {حذف # عنصراً} other {حذف # عنصر}}"
   },
   "toast": {
     "actionFailed": "فشل الإجراء",
     "nothingToUndo": "لا يوجد شيء للتراجع عنه",
     "undone": "تم التراجع: {description}",
-    "undoFailed": "فشل التراجع عن الإجراء",
-    "copied": "منقول",
-    "copyFailed": "فشل النسخ"
+    "undoFailed": "فشل التراجع عن الإجراء"
   },
   "dateRelative": {
     "today": "اليوم",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, zero {اليوم} one {منذ يوم واحد} two {منذ يومين} few {منذ # أيام} many {منذ # يوماً} other {منذ # يوم}}"
   },
   "recurrence": {
-    "everyDay": "كل يوم",
     "everyNDays": "{count, plural, one {كل يوم} other {كل # أيام}}",
-    "everyWeek": "كل أسبوع",
     "everyNWeeks": "{count, plural, one {كل أسبوع} other {كل أسابيع #}}",
-    "everyWeekday": "كل يوم من أيام الأسبوع",
     "everyNWeeksOnWeekdays": "{count, plural, one {كل يوم من أيام الأسبوع} other {كل أسابيع # في أيام الأسبوع}}",
-    "everyWeekend": "في نهاية كل أسبوع",
     "everyNWeeksOnWeekends": "{count, plural, one {في نهاية كل أسبوع} other {كل أسابيع # في عطلات نهاية الأسبوع}}",
-    "everyWeekOnDays": "كل أسبوع على {days}",
     "everyNWeeksOnDays": "{count, plural, one {كل أسبوع على {days}} other {كل أسابيع # على {days}}}",
-    "everyMonth": "كل شهر",
     "everyNMonths": "{count, plural, one {كل شهر} other {كل # أشهر}}",
-    "everyMonthOnDay": "كل شهر على {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {كل شهر على {day}{suffix}} other {كل # أشهر على {day}{suffix}}}",
-    "everyMonthOnWeekDay": "كل شهر على {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {كل شهر على {week} {day}} other {كل # أشهر على {week} {day}}}",
-    "everyYear": "كل عام",
     "everyNYears": "{count, plural, one {كل عام} other {كل # سنة}}",
     "repeats": "يكرر"
   },
@@ -264,7 +228,6 @@
       "openTabs": "علامات التبويب المفتوحة",
       "scrollTabsLeft": "انتقل علامات التبويب إلى اليسار",
       "scrollTabsRight": "قم بتمرير علامات التبويب إلى اليمين",
-      "graphG": "الرسم البياني (⌘G)",
       "dayPanel": "لوحة اليوم"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "دردشة Agent",
+    "loading": "جارٍ تحميل دردشة الوكيل...",
+    "conversationLoading": "جارٍ تحميل المحادثة...",
+    "newConversation": "محادثة جديدة",
+    "history": "سجل المحادثات",
+    "stop": "توقف",
+    "thinking": "Agent يفكر",
+    "enable": {
+      "title": "قم بتمكين Memry Agent",
+      "description": "يستخدم Memry Agent الوكيل المحلي الذي حددته CLI للدردشة حول خزنتك. يرسل Claude المنعطفات إلى Anthropic؛ يرسل Codex المنعطفات إلى OpenAI.",
+      "remote": "يقوم Memry بتشفير سجل الدردشة المحلي والمتزامن، لكن استنتاج النموذج يحدث مع الموفر المحدد.",
+      "readTools": "تعمل أدوات القراءة تلقائيًا.",
+      "writeTools": "يتطلب إنشاء الأدوات وتحديثها الموافقة.",
+      "diff": "تعرض أدوات التحديث الفرق أو المعاينة.",
+      "button": "تمكين دردشة Agent"
+    },
+    "approval": {
+      "description": "يريد الوكيل الاتصال بـ {name} باستخدام هذه الوسائط.",
+      "applyOnce": "تقدم مرة واحدة",
+      "allowOnce": "السماح مرة واحدة",
+      "editAndApply": "التعديل والتطبيق",
+      "editAndAllow": "تحرير والسماح",
+      "allowAlways": "السماح دائمًا",
+      "applyEdits": "تطبيق التعديلات",
+      "deny": "رفض",
+      "invalidJson": "أدخل JSON صالحًا قبل تطبيق التعديلات."
+    },
+    "diff": {
+      "previewError": "تعذرت معاينة اختلافات الملاحظة",
+      "description": "يريد الوكيل تحديث {title}. قم بمراجعة المحتوى الحالي والمرشح قبل تطبيقه.",
+      "fallbackTitle": "هذه المذكرة",
+      "current": "الحالي",
+      "candidate": "المرشح",
+      "loading": "جاري التحميل...",
+      "apply": "تطبيق",
+      "applyEdited": "تطبيق تم التعديل"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "المذكرة الحالية",
+      "removeAttachment": "قم بإزالة {label}",
+      "placeholder": "اسأل Agent",
+      "send": "أرسل",
+      "providerLabel": "مزود Agent: {provider}",
+      "modelLabel": "موديل Agent: {model}",
+      "settingsLabel": "إعدادات Agent: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "معرف النموذج المخصص",
+      "customModelPlaceholder": "معرف النموذج المخصص",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "محلي"
+      },
+      "models": {
+        "default": "الافتراضي"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "الاستدلال"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
-          "max": "Max"
+          "low": "منخفض",
+          "medium": "متوسطة",
+          "high": "عالية",
+          "extraHigh": "ارتفاع إضافي",
+          "extraHighDefault": "عالي جدًا (افتراضي)",
+          "max": "ماكس"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "منخفض",
+          "medium": "متوسطة",
+          "mediumDefault": "متوسط (افتراضي)",
+          "high": "عالية",
+          "extraHigh": "ارتفاع إضافي"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "لا توجد تطابقات"
+    },
+    "toolResult": {
+      "label": "نتيجة الأداة"
+    },
+    "toolCall": {
+      "editedArgs": "الوسائط المعدلة",
+      "parameters": "المعلمات"
+    },
+    "sidebar": {
+      "label": "الشريط الجانبي الأيمن",
+      "day": "اليوم",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# في انتظار الموافقة} other {# الموافقات المعلقة}}",
+      "inProgress": "جارٍ تشغيل Agent"
+    },
+    "errors": {
+      "loadConversations": "تعذر تحميل محادثات الوكيل",
+      "loadConversation": "تعذر تحميل محادثة الوكيل",
+      "createConversation": "تعذر إنشاء محادثة الوكيل",
+      "busy": "هناك نافذة أخرى في منتصف هذه المحادثة. انتظر حتى ينتهي أو أوقفه من هناك.",
+      "sendTurn": "تعذر إرسال دور الوكيل",
+      "cancelTurn": "تعذر إلغاء دور الوكيل",
+      "submitApproval": "تعذر إرسال الموافقة على الأداة",
+      "updateTrust": "تعذر تحديث الأدوات الموثوقة",
+      "saveDisclosure": "تعذر حفظ حالة الكشف",
+      "resolveWindow": "تعذر حل نافذة مصدر الوكيل",
+      "detectCli": "تعذر اكتشاف الواجهات الخلفية للوكيل",
+      "loadDisclosure": "تعذر تحميل حالة الكشف"
     }
   }
 }

@@ -35,38 +35,6 @@
     "delete": "Slett oppgave",
     "created": "Opprettet {date}"
   },
-  "project": {
-    "create": "Opprett prosjekt",
-    "edit": "Rediger prosjekt",
-    "delete": "Slett prosjekt",
-    "iconAndName": "Ikon og navn",
-    "namePlaceholder": "Prosjektnavn",
-    "select": "Velg prosjekt",
-    "selectIcon": "Velg ikon",
-    "clickIconToChange": "Klikk på ikonet for å endre",
-    "color": "Farge",
-    "descriptionOptional": "Beskrivelse (valgfritt)",
-    "descriptionPlaceholder": "Kort beskrivelse av dette prosjektet...",
-    "statuses": "Statuser",
-    "statusesHelp": "Konfigurer arbeidsflytstadiene for dette prosjektet.",
-    "createDescription": "Opprett et nytt prosjekt med navn, ikon, farge og arbeidsflytstatuser.",
-    "editDescription": "Rediger prosjektnavn, ikon, farge og arbeidsflytstatuser."
-  },
-  "status": {
-    "select": "Velg status",
-    "todo": "Å gjøre",
-    "inProgress": "Pågår",
-    "done": "Ferdig"
-  },
-  "priority": {
-    "select": "Velg prioritet",
-    "none": "Ingen prioritet",
-    "noneShort": "Ingen",
-    "low": "Lavt",
-    "medium": "Middels",
-    "high": "Høy",
-    "urgent": "Haster"
-  },
   "filters": {
     "filter": "Filter",
     "emptyTitle": "Ingen oppgaver samsvarer med filtrene dine",
@@ -113,14 +81,12 @@
     "filterApplied": "Brukt \"{name}\"",
     "deleted": "Oppgave slettet",
     "deletedSeries": "Serien er ferdig!",
-    "deletedNext": "Neste hendelse",
     "completed": "Oppgave fullført!",
     "archived": "Oppgaven er arkivert",
     "undoNotAvailableForDelete": "Angre ikke tilgjengelig for sletting",
     "alreadyAllComplete": "Alle valgte oppgaver er allerede fullført",
     "noCompletedSelected": "Ingen fullførte oppgaver er valgt",
     "completeFailed": "Kunne ikke fullføre oppgaver",
-    "reopenFailed": "Kunne ikke åpne oppgaver på nytt",
     "deleteFailed": "Kunne ikke slette oppgaver",
     "moveFailed": "Kunne ikke flytte oppgaver"
   },

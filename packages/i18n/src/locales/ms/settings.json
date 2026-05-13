@@ -25,9 +25,7 @@
         "integrations": "Integrasi",
         "vault": "Bilik kebal",
         "tags": "Tag",
-        "properties": "Hartanah",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Hartanah"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Nota",
         "attachments": "Lampiran",
         "crdt": "CRDT",
-        "other": "Lain-lain",
-        "available": "Tersedia"
+        "other": "Lain-lain"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "Menunggu kelulusan",
       "waitingDescription": "Buka Memry pada peranti anda yang lain dan luluskan permintaan pemautan.",
       "verificationCode": "Kod pengesahan",
-      "confirmCode": "Sahkan ini sepadan dengan kod pada peranti anda yang lain",
-      "cancel": "Batal"
+      "confirmCode": "Sahkan ini sepadan dengan kod pada peranti anda yang lain"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Kunci Pemulihan",
     "description": "Simpan kunci ini dengan selamat. Ia boleh memulihkan peti besi anda jika anda kehilangan akses kepada semua peranti.",
-    "loading": "Memuatkan...",
     "retrieveFailed": "Gagal mendapatkan kunci pemulihan",
     "copied": "Kunci pemulihan disalin ke papan keratan",
     "copyFailed": "Gagal menyalin ke papan keratan",
     "clickToReveal": "Klik untuk mendedahkan",
     "hide": "Sembunyi",
     "reveal": "Dedahkan",
-    "copy": "salin",
     "sessionHint": "Kunci ini ditunjukkan sekali setiap sesi. Tutup dialog ini untuk mengosongkannya daripada ingatan."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Gagal menyambungkan Kalendar Google",
       "refreshFailed": "Gagal memuat semula Kalendar Google",
       "disconnectFailed": "Gagal memutuskan sambungan Kalendar Google",
-      "selectionFailed": "Gagal mengemas kini pilihan kalendar",
       "retryFailed": "Gagal mencuba semula penyegerakan kalendar"
     },
     "sourcePicker": {

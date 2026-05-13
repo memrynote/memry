@@ -38,8 +38,7 @@
     "openNoteFullPage": "Notu tam sayfada aç",
     "closeNoteDrawer": "Not çekmecesini kapat",
     "addBookmark": "Yer işareti ekle",
-    "removeBookmark": "Yer işaretini kaldır",
-    "tryAgain": "Tekrar Deneyin"
+    "removeBookmark": "Yer işaretini kaldır"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "Günlüğe dön",
     "journalNavigation": "Günlük gezinmesi",
     "dateNavigation": "Günlük tarihi gezinmesi",
-    "goToYearView": "Yıl görünümüne git",
-    "previousView": "Önceki görünüm",
-    "nextView": "Sonraki görünüm"
+    "goToYearView": "Yıl görünümüne git"
   },
   "aria": {
     "moreOptions": "Daha fazla seçenek",
@@ -184,10 +181,8 @@
     "connectionAria": "Bağlantı {label}, {scorePercent}% eşleşme"
   },
   "count": {
-    "item": "öğe",
     "items": "öğeler",
     "note": "not",
-    "notes": "notlar",
     "day": "gün",
     "days": "günler",
     "event": "etkinlik",

@@ -35,38 +35,6 @@
     "delete": "刪除任務",
     "created": "已創建 {date}"
   },
-  "project": {
-    "create": "創建專案",
-    "edit": "編輯專案",
-    "delete": "刪除專案",
-    "iconAndName": "圖示與名稱",
-    "namePlaceholder": "專案名稱",
-    "select": "選擇專案",
-    "selectIcon": "選擇圖示",
-    "clickIconToChange": "點擊圖示以更換",
-    "color": "顏色",
-    "descriptionOptional": "描述（可選）",
-    "descriptionPlaceholder": "此專案的簡短描述…",
-    "statuses": "狀態",
-    "statusesHelp": "配置此專案的工作流程階段。",
-    "createDescription": "建立一個新專案，包含名稱、圖示、顏色和工作流程狀態。",
-    "editDescription": "編輯專案名稱、圖示、顏色和工作流程狀態。"
-  },
-  "status": {
-    "select": "選擇狀態",
-    "todo": "待辦",
-    "inProgress": "進行中",
-    "done": "完成"
-  },
-  "priority": {
-    "select": "選擇優先順序",
-    "none": "無優先順序",
-    "noneShort": "無",
-    "low": "低",
-    "medium": "中",
-    "high": "高",
-    "urgent": "緊急"
-  },
   "filters": {
     "filter": "篩選",
     "emptyTitle": "沒有任務符合您的篩選條件",
@@ -113,14 +81,12 @@
     "filterApplied": "已套用\"{name}\"",
     "deleted": "任務已刪除",
     "deletedSeries": "系列完成！",
-    "deletedNext": "下一個發生",
     "completed": "任務完成！",
     "archived": "任務已存檔",
     "undoNotAvailableForDelete": "刪除無法復原",
     "alreadyAllComplete": "所有已選任務均已完成",
     "noCompletedSelected": "未選擇已完成任務",
     "completeFailed": "完成任務失敗",
-    "reopenFailed": "重新開啟任務失敗",
     "deleteFailed": "刪除任務失敗",
     "moveFailed": "移動任務失敗"
   },

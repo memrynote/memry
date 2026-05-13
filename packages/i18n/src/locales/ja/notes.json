@@ -14,7 +14,6 @@
       "openLinkedFailed": "リンクされたアイテムを開けませんでした",
       "localOnly": "ノートはローカルのみに設定されています",
       "willSync": "メモはクラウドに同期されます",
-      "saveFailed": "メモの保存に失敗しました",
       "renameFailed": "メモの名前を変更できませんでした",
       "toggleLocalOnlyFailed": "ローカルのみの切り替えに失敗しました",
       "toggleFullWidthFailed": "全幅の切り替えに失敗しました"
@@ -135,9 +134,6 @@
       "clearSearch": "検索をクリア"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "メモを書いてください..."
-  },
   "outline": {
     "title": "概要",
     "aria": "文書概要",
@@ -149,7 +145,6 @@
     "modified": "修正済み"
   },
   "backlinks": {
-    "title": "バックリンク",
     "sortRecent": "最近の",
     "sortAlpha": "A-Z",
     "sortMentions": "最も多くの言及",

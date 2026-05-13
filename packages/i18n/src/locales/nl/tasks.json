@@ -35,38 +35,6 @@
     "delete": "Taak verwijderen",
     "created": "{date} gemaakt"
   },
-  "project": {
-    "create": "Project maken",
-    "edit": "Project bewerken",
-    "delete": "Project verwijderen",
-    "iconAndName": "Icoon & Naam",
-    "namePlaceholder": "Projectnaam",
-    "select": "Selecteer project",
-    "selectIcon": "Selecteer pictogram",
-    "clickIconToChange": "Klik op het pictogram om te wijzigen",
-    "color": "Kleur",
-    "descriptionOptional": "Beschrijving (optioneel)",
-    "descriptionPlaceholder": "Korte beschrijving van dit project…",
-    "statuses": "Statussen",
-    "statusesHelp": "Configureer de workflowfasen voor dit project.",
-    "createDescription": "Maak een nieuw project met een naam, pictogram, kleur en workflowstatussen.",
-    "editDescription": "Bewerk de projectnaam, het pictogram, de kleur en de workflowstatus."
-  },
-  "status": {
-    "select": "Selecteer status",
-    "todo": "Te doen",
-    "inProgress": "In uitvoering",
-    "done": "Klaar"
-  },
-  "priority": {
-    "select": "Selecteer prioriteit",
-    "none": "Geen prioriteit",
-    "noneShort": "Geen",
-    "low": "Laag",
-    "medium": "Middelmatig",
-    "high": "Hoog",
-    "urgent": "Dringend"
-  },
   "filters": {
     "filter": "Filteren",
     "emptyTitle": "Er zijn geen taken die overeenkomen met uw filters",
@@ -113,14 +81,12 @@
     "filterApplied": "Toegepaste \"{name}\"",
     "deleted": "Taak verwijderd",
     "deletedSeries": "Serie compleet!",
-    "deletedNext": "Volgende gebeurtenis",
     "completed": "Taak voltooid!",
     "archived": "Taak gearchiveerd",
     "undoNotAvailableForDelete": "Ongedaan maken is niet beschikbaar voor verwijderen",
     "alreadyAllComplete": "Alle geselecteerde taken zijn al voltooid",
     "noCompletedSelected": "Geen voltooide taken geselecteerd",
     "completeFailed": "Kan taken niet voltooien",
-    "reopenFailed": "Kan taken niet opnieuw openen",
     "deleteFailed": "Kan taken niet verwijderen",
     "moveFailed": "Kan taken niet verplaatsen"
   },

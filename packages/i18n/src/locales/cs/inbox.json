@@ -43,9 +43,7 @@
     "pdfs": "PDF",
     "social": "Sociální",
     "reminder": "Připomenutí",
-    "reminders": "Připomenutí",
-    "text": "Text",
-    "other": "Jiné"
+    "reminders": "Připomenutí"
   },
   "empty": {
     "successAria": "Úspěch, doručená pošta je prázdná",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "Žádné odpovídající archivované položky",
     "noItemsYet": "Zatím žádné položky",
     "noItemsFiled": "Dosud nebyly vloženy žádné položky",
-    "noItemTypes": "Žádné typy položek k zobrazení",
     "noFolders": "Nebyly nalezeny žádné složky",
-    "noFolderMatch": "Žádné složky neodpovídají \"{query}\"",
     "noNotes": "Nebyly nalezeny žádné poznámky",
     "allMatchesLinked": "Všechny zápasy jsou již propojeny"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Přepis se nezdařil",
     "retryTranscription": "Zkuste to znovu",
     "pageCount": "{count, plural, one {Stránka #} other {Stránky #}}",
-    "snoozedUntilShort": "odloženo do {date}",
-    "capturedAgo": "Zachyceno {time}"
+    "snoozedUntilShort": "odloženo do {date}"
   },
   "loading": {
     "inbox": "Načítání doručené pošty...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Rychlé akce",
     "archiveItem": "Archivní položka",
-    "archive": "Archiv",
-    "snooze": "Odložit"
+    "archive": "Archiv"
   },
   "detail": {
     "ariaLabel": "Podrobnosti o položce",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Vyhledejte poznámky k propojení",
     "linkedNotesAria": "Propojené poznámky",
     "removeLinkTo": "Odebrat odkaz na {title}",
-    "contentEditorAria": "Editor obsahu",
     "notePlaceholder": "Napište poznámku...",
     "textPlaceholder": "Upravit zachycený text..."
   },
@@ -263,14 +256,9 @@
     "custom": "Vlastní..."
   },
   "insights": {
-    "loading": "Načítání statistik...",
     "captureActivity": "Aktivita zachycení",
     "byType": "Podle typu",
-    "itemTypes": "Typy položek",
-    "itemTypesDescription": "Distribuce obsahových formátů",
     "recentFilings": "Nedávná podání",
-    "recentlyFiled": "Nedávno podáno",
-    "recentlyFiledDescription": "Nejnovější akce ve vaší doručené poště",
     "captured": "Zajato",
     "capturedThisWeek": "+{count} tento týden",
     "processed": "Zpracováno",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {zachycení #} other {# zachycuje}}",
     "peak": "Vrchol: {day} {start}–{end}",
     "convertedToTask": "Převedeno na úkol",
-    "linked": "Propojeno",
     "now": "teď",
     "timeAgoMinutes": "Před {count}m",
     "timeAgoHours": "Před {count}h",

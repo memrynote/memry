@@ -38,8 +38,7 @@
     "openNoteFullPage": "在完整頁面中開啟筆記",
     "closeNoteDrawer": "關閉筆記抽屜",
     "addBookmark": "新增書籤",
-    "removeBookmark": "移除書籤",
-    "tryAgain": "再試一次"
+    "removeBookmark": "移除書籤"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "回到日記",
     "journalNavigation": "日記導覽",
     "dateNavigation": "日記日期導覽",
-    "goToYearView": "前往年份檢視",
-    "previousView": "前一檢視",
-    "nextView": "下一檢視"
+    "goToYearView": "前往年份檢視"
   },
   "aria": {
     "moreOptions": "更多選項",
@@ -184,10 +181,8 @@
     "connectionAria": "與 {label} 的連結，{scorePercent}% 匹配"
   },
   "count": {
-    "item": "  \n項目  ",
     "items": "項目",
     "note": "筆記",
-    "notes": "筆記",
     "day": "天",
     "days": "天數",
     "event": "活動",

@@ -25,9 +25,7 @@
         "integrations": "Entegrasyonlar",
         "vault": "Kasa",
         "tags": "Etiketler",
-        "properties": "Özellikler",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Özellikler"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Notlar",
         "attachments": "Ekler",
         "crdt": "CRDT",
-        "other": "Diğer",
-        "available": "Mevcut"
+        "other": "Diğer"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "Onay bekleniyor",
       "waitingDescription": "Diğer cihazınızda Memry'i açın ve bağlantı isteğini onaylayın.",
       "verificationCode": "Doğrulama kodu",
-      "confirmCode": "Bunun diğer cihazınızdaki kodla eşleştiğini doğrulayın",
-      "cancel": "İptal"
+      "confirmCode": "Bunun diğer cihazınızdaki kodla eşleştiğini doğrulayın"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Kurtarma Anahtarı",
     "description": "Bu anahtarı güvenli bir şekilde saklayın. Tüm cihazlara erişiminizi kaybederseniz kasanızı geri yükleyebilir.",
-    "loading": "Yükleniyor...",
     "retrieveFailed": "Kurtarma anahtarı alınamadı",
     "copied": "Kurtarma anahtarı panoya kopyalandı",
     "copyFailed": "Panoya kopyalanamadı",
     "clickToReveal": "Ortaya çıkarmak için tıklayın",
     "hide": "Gizle",
     "reveal": "Açıkla",
-    "copy": "Kopyala",
     "sessionHint": "Bu anahtar oturum başına bir kez gösterilir. Bellekten temizlemek için bu iletişim kutusunu kapatın."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Google Calendar'e bağlanılamadı",
       "refreshFailed": "Google Calendar yenilenemedi",
       "disconnectFailed": "Google Calendar'in bağlantısı kesilemedi",
-      "selectionFailed": "Takvim seçimi güncellenemedi",
       "retryFailed": "Takvim senkronizasyonu yeniden denenemedi"
     },
     "sourcePicker": {

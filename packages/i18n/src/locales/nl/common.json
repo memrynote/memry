@@ -3,47 +3,25 @@
     "save": "Opslaan",
     "cancel": "Annuleer",
     "close": "Sluiten",
-    "ok": "Oké",
-    "yes": "Ja",
-    "no": "Nee",
     "delete": "Verwijderen",
-    "confirm": "Bevestig",
-    "apply": "Toepassen",
     "done": "Klaar",
-    "discard": "Gooi weg",
     "dontSave": "Niet opslaan",
-    "edit": "Bewerken",
     "add": "Toevoegen",
     "remove": "Verwijderen",
     "retry": "Opnieuw proberen",
-    "submit": "Verzenden",
     "back": "Terug",
-    "next": "Volgende",
     "continue": "Ga door",
-    "reset": "Opnieuw instellen",
     "copy": "Kopieer",
-    "paste": "Plakken",
-    "create": "Creëer",
-    "open": "Openen"
+    "create": "Creëer"
   },
   "state": {
     "loading": "Laden…",
     "saving": "Opslaan…",
     "deleting": "Verwijderen…",
-    "searching": "Zoeken…",
-    "error": "Fout",
-    "success": "Succes"
-  },
-  "empty": {
-    "noResults": "Geen resultaten",
-    "noItems": "Geen artikelen",
-    "noMatch": "Geen overeenkomsten"
+    "searching": "Zoeken…"
   },
   "action": {
     "search": "Zoeken",
-    "edit": "Bewerken",
-    "delete": "Verwijderen",
-    "close": "Sluiten",
     "expand": "Uitbreiden",
     "collapse": "Samenvouwen",
     "showMore": "+{count, plural, one {# meer} other {# meer}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {#-artikel} other {#-artikelen}}",
     "note": "{count, plural, one {#-opmerking} other {#-opmerkingen}}",
-    "folder": "{count, plural, one {#-map} other {#-mappen}}",
     "task": "{count, plural, one {#-taak} other {#-taken}}",
-    "project": "{count, plural, one {#-project} other {#-projecten}}",
     "itemDelete": "{count, plural, one {#-item verwijderen} other {Verwijder #-items}}"
   },
   "toast": {
     "actionFailed": "Actie mislukt",
     "nothingToUndo": "Niets om ongedaan te maken",
     "undone": "Ongedaan gemaakt: {description}",
-    "undoFailed": "Kan actie niet ongedaan maken",
-    "copied": "Gekopieerd",
-    "copyFailed": "Kopiëren is niet gelukt"
+    "undoFailed": "Kan actie niet ongedaan maken"
   },
   "dateRelative": {
     "today": "Vandaag",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {# dag geleden} other {# dagen geleden}}"
   },
   "recurrence": {
-    "everyDay": "Elke dag",
     "everyNDays": "{count, plural, one {Elke dag} other {Elke #-dagen}}",
-    "everyWeek": "Elke week",
     "everyNWeeks": "{count, plural, one {Elke week} other {Elke #-weken}}",
-    "everyWeekday": "Elke weekdag",
     "everyNWeeksOnWeekdays": "{count, plural, one {Elke weekdag} other {Elke #-weken op weekdagen}}",
-    "everyWeekend": "Elk weekend",
     "everyNWeeksOnWeekends": "{count, plural, one {Elk weekend} other {Elke #-weken in het weekend}}",
-    "everyWeekOnDays": "Elke week op {days}",
     "everyNWeeksOnDays": "{count, plural, one {Elke week op {days}} other {Elke #-weken op {days}}}",
-    "everyMonth": "Elke maand",
     "everyNMonths": "{count, plural, one {Elke maand} other {Elke #-maanden}}",
-    "everyMonthOnDay": "Elke maand op de {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {Elke maand op de {day}{suffix}} other {Elke # maanden op de {day}{suffix}}}",
-    "everyMonthOnWeekDay": "Elke maand op de {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Elke maand op de {week} {day}} other {Elke # maanden op de {week} {day}}}",
-    "everyYear": "Elk jaar",
     "everyNYears": "{count, plural, one {Elk jaar} other {Elke #-jaar}}",
     "repeats": "Herhalingen"
   },
@@ -264,7 +228,6 @@
       "openTabs": "Tabbladen openen",
       "scrollTabsLeft": "Blader door de tabbladen naar links",
       "scrollTabsRight": "Blader door de tabbladen naar rechts",
-      "graphG": "Grafiek (⌘G)",
       "dayPanel": "Dagpaneel"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Agent-chat",
+    "loading": "Agentchat laden...",
+    "conversationLoading": "Gesprek wordt geladen...",
+    "newConversation": "Nieuw gesprek",
+    "history": "Gespreksgeschiedenis",
+    "stop": "Stoppen",
+    "thinking": "Agent denkt na",
+    "enable": {
+      "title": "Schakel Memry Agent in",
+      "description": "Memry Agent gebruikt uw geselecteerde lokale agent CLI om over uw kluis te chatten. Claude stuurt beurten naar Anthropic; Codex stuurt beurten naar OpenAI.",
+      "remote": "Memry codeert uw lokale en gesynchroniseerde chatgeschiedenis, maar modelinferentie vindt plaats bij de geselecteerde provider.",
+      "readTools": "Leestools worden automatisch uitgevoerd.",
+      "writeTools": "Voor het maken en bijwerken van tools is goedkeuring vereist.",
+      "diff": "Updatetools tonen een verschil of voorbeeld.",
+      "button": "Agent-chat inschakelen"
+    },
+    "approval": {
+      "description": "De agent wil {name} aanroepen met deze argumenten.",
+      "applyOnce": "Eenmalig aanvragen",
+      "allowOnce": "Eén keer toestaan",
+      "editAndApply": "Bewerken en toepassen",
+      "editAndAllow": "Bewerken en toestaan",
+      "allowAlways": "Altijd toestaan",
+      "applyEdits": "Bewerkingen toepassen",
+      "deny": "Weigeren",
+      "invalidJson": "Voer geldige JSON in voordat u bewerkingen toepast."
+    },
+    "diff": {
+      "previewError": "Kan notitieverschil niet bekijken",
+      "description": "De agent wil {title} bijwerken. Controleer de huidige en kandidaat-inhoud voordat u deze toepast.",
+      "fallbackTitle": "deze notitie",
+      "current": "Huidig",
+      "candidate": "Kandidaat",
+      "loading": "Bezig met laden...",
+      "apply": "Toepassen",
+      "applyEdited": "Bewerkt toepassen"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "Huidige opmerking",
+      "removeAttachment": "{label} verwijderen",
+      "placeholder": "Vraag Agent",
+      "send": "Verzenden",
+      "providerLabel": "Agent-aanbieder: {provider}",
+      "modelLabel": "Agent-model: {model}",
+      "settingsLabel": "Agent-instellingen: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "Aangepaste model-ID",
+      "customModelPlaceholder": "Aangepaste model-ID",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "Lokaal"
+      },
+      "models": {
+        "default": "Standaard"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "Redenering"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
+          "low": "Laag",
+          "medium": "Gemiddeld",
+          "high": "Hoog",
+          "extraHigh": "Extra hoog",
+          "extraHighDefault": "Extra hoog (standaard)",
           "max": "Max"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "Laag",
+          "medium": "Gemiddeld",
+          "mediumDefault": "Gemiddeld (standaard)",
+          "high": "Hoog",
+          "extraHigh": "Extra hoog"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "Geen overeenkomsten"
+    },
+    "toolResult": {
+      "label": "Gereedschapsresultaat"
+    },
+    "toolCall": {
+      "editedArgs": "Argumenten bewerkt",
+      "parameters": "Parameters"
+    },
+    "sidebar": {
+      "label": "Rechterzijbalk",
+      "day": "Dag",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# in afwachting van goedkeuring} other {# goedkeuringen in behandeling}}",
+      "inProgress": "Agent beurt bezig"
+    },
+    "errors": {
+      "loadConversations": "Kan agentgesprekken niet laden",
+      "loadConversation": "Kan agentgesprek niet laden",
+      "createConversation": "Kan agentgesprek niet tot stand brengen",
+      "busy": "Er is nog een venster halverwege dit gesprek. Wacht tot het klaar is of stop het vanaf daar.",
+      "sendTurn": "Kan agentbeurt niet verzenden",
+      "cancelTurn": "Kan agentbeurt niet annuleren",
+      "submitApproval": "Kan gereedschapsgoedkeuring niet verzenden",
+      "updateTrust": "Kan vertrouwde tools niet updaten",
+      "saveDisclosure": "Kan openbaarmakingsstatus niet opslaan",
+      "resolveWindow": "Kan agentbronvenster niet oplossen",
+      "detectCli": "Kan agent-backends niet detecteren",
+      "loadDisclosure": "Kan openbaarmakingsstatus niet laden"
     }
   }
 }

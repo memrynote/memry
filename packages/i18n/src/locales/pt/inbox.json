@@ -43,9 +43,7 @@
     "pdfs": "PDFs",
     "social": "Sociais",
     "reminder": "Lembrete",
-    "reminders": "Lembretes",
-    "text": "Texto",
-    "other": "Outro"
+    "reminders": "Lembretes"
   },
   "empty": {
     "successAria": "Sucesso, a caixa de entrada está vazia",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "Nenhum item arquivado correspondente",
     "noItemsYet": "Nenhum item ainda",
     "noItemsFiled": "Nenhum item registrado ainda",
-    "noItemTypes": "Nenhum tipo de item para exibir",
     "noFolders": "Nenhuma pasta encontrada",
-    "noFolderMatch": "Nenhuma pasta corresponde a \"{query}\"",
     "noNotes": "Nenhuma nota encontrada",
     "allMatchesLinked": "Todas as partidas já vinculadas"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Falha na transcrição",
     "retryTranscription": "Tentar novamente",
     "pageCount": "{count, plural, one {Página #} other {Páginas #}}",
-    "snoozedUntilShort": "adiado até {date}",
-    "capturedAgo": "{time} capturado"
+    "snoozedUntilShort": "adiado até {date}"
   },
   "loading": {
     "inbox": "Carregando caixa de entrada...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Ações rápidas",
     "archiveItem": "Item de arquivo",
-    "archive": "Arquivo",
-    "snooze": "Adiar"
+    "archive": "Arquivo"
   },
   "detail": {
     "ariaLabel": "Detalhes do item",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Notas de pesquisa para vincular",
     "linkedNotesAria": "Notas vinculadas",
     "removeLinkTo": "Remover link para {title}",
-    "contentEditorAria": "Editor de conteúdo",
     "notePlaceholder": "Escreva sua nota...",
     "textPlaceholder": "Edite seu texto capturado..."
   },
@@ -263,14 +256,9 @@
     "custom": "Personalizado..."
   },
   "insights": {
-    "loading": "Carregando informações...",
     "captureActivity": "Atividade de captura",
     "byType": "Por tipo",
-    "itemTypes": "Tipos de itens",
-    "itemTypesDescription": "Distribuição de formatos de conteúdo",
     "recentFilings": "Arquivos recentes",
-    "recentlyFiled": "Arquivado recentemente",
-    "recentlyFiledDescription": "Últimas ações na sua caixa de entrada",
     "captured": "Capturado",
     "capturedThisWeek": "+{count} esta semana",
     "processed": "Processado",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {Captura #} other {Capturas #}}",
     "peak": "Pico: {day} {start} –{end}",
     "convertedToTask": "Convertido em tarefa",
-    "linked": "Vinculado",
     "now": "agora",
     "timeAgoMinutes": "{count}m atrás",
     "timeAgoHours": "{count}h atrás",

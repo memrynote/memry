@@ -43,9 +43,7 @@
     "pdfs": "PDF-filer",
     "social": "Socialt",
     "reminder": "Påminnelse",
-    "reminders": "Påminnelser",
-    "text": "Text",
-    "other": "Annat"
+    "reminders": "Påminnelser"
   },
   "empty": {
     "successAria": "Klart, inkorgen är tom",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "Inga matchande arkiverade objekt",
     "noItemsYet": "Inga objekt ännu",
     "noItemsFiled": "Inga objekt arkiverade ännu",
-    "noItemTypes": "Inga objekttyper att visa",
     "noFolders": "Inga mappar hittades",
-    "noFolderMatch": "Inga mappar matchar \"{query}\"",
     "noNotes": "Inga anteckningar hittades",
     "allMatchesLinked": "Alla matchningar redan länkade"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Transkribering misslyckades",
     "retryTranscription": "Försök igen",
     "pageCount": "{count, plural, one {# sida} other {# sidor}}",
-    "snoozedUntilShort": "utsatt tills {date}",
-    "capturedAgo": "Fångad {time}"
+    "snoozedUntilShort": "utsatt tills {date}"
   },
   "loading": {
     "inbox": "Laddar inkorg...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Snabbåtgärder",
     "archiveItem": "Arkivera objekt",
-    "archive": "Arkiv",
-    "snooze": "Snooza"
+    "archive": "Arkiv"
   },
   "detail": {
     "ariaLabel": "Objektinformation",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Sök anteckningar att länka",
     "linkedNotesAria": "Länkade anteckningar",
     "removeLinkTo": "Ta bort länk till {title}",
-    "contentEditorAria": "Innehållsredigerare",
     "notePlaceholder": "Skriv din anteckning...",
     "textPlaceholder": "Redigera din inspelade text..."
   },
@@ -263,14 +256,9 @@
     "custom": "Anpassad..."
   },
   "insights": {
-    "loading": "Laddar insikter...",
     "captureActivity": "Fånga aktivitet",
     "byType": "Efter typ",
-    "itemTypes": "Objektstyper",
-    "itemTypesDescription": "Fördelning av innehållsformat",
     "recentFilings": "Senaste inlämningar",
-    "recentlyFiled": "Nyligen inlämnade",
-    "recentlyFiledDescription": "Senaste åtgärder i din inkorg",
     "captured": "Fångad",
     "capturedThisWeek": "+{count} denna vecka",
     "processed": "Bearbetad",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {# fångst} other {# fångster}}",
     "peak": "Topp: {day} {start}–{end}",
     "convertedToTask": "Omvandlad till uppgift",
-    "linked": "Länkad",
     "now": "nu",
     "timeAgoMinutes": "för {count}m sedan",
     "timeAgoHours": "för {count}h sedan",

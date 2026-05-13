@@ -3,47 +3,25 @@
     "save": "บันทึก",
     "cancel": "ยกเลิก",
     "close": "ปิด",
-    "ok": "ตกลง",
-    "yes": "ใช่",
-    "no": "ไม่ใช่",
     "delete": "ลบ",
-    "confirm": "ยืนยัน",
-    "apply": "ใช้",
     "done": "เสร็จสิ้น",
-    "discard": "ทิ้ง",
     "dontSave": "ไม่บันทึก",
-    "edit": "แก้ไข",
     "add": "เพิ่ม",
     "remove": "ลบออก",
     "retry": "ลองใหม่",
-    "submit": "ส่ง",
     "back": "ย้อนกลับ",
-    "next": "ถัดไป",
     "continue": "ดำเนินการต่อ",
-    "reset": "รีเซ็ต",
     "copy": "คัดลอก",
-    "paste": "วาง",
-    "create": "สร้าง",
-    "open": "เปิด"
+    "create": "สร้าง"
   },
   "state": {
     "loading": "กำลังโหลด…",
     "saving": "กำลังบันทึก…",
     "deleting": "กำลังลบ…",
-    "searching": "กำลังค้นหา…",
-    "error": "ข้อผิดพลาด",
-    "success": "สำเร็จ"
-  },
-  "empty": {
-    "noResults": "ไม่มีผลลัพธ์",
-    "noItems": "ไม่มีรายการ",
-    "noMatch": "ไม่มีรายการที่ตรงกัน"
+    "searching": "กำลังค้นหา…"
   },
   "action": {
     "search": "ค้นหา",
-    "edit": "แก้ไข",
-    "delete": "ลบ",
-    "close": "ปิด",
     "expand": "ขยาย",
     "collapse": "ย่อ",
     "showMore": "+{count, plural, one {# เพิ่มเติม} other {# เพิ่มเติม}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {# รายการ} other {# รายการ}}",
     "note": "{count, plural, one {# โน้ต} other {# โน้ต}}",
-    "folder": "{count, plural, one {# โฟลเดอร์} other {# โฟลเดอร์}}",
     "task": "{count, plural, one {# งาน} other {# งาน}}",
-    "project": "{count, plural, one {# โครงการ} other {# โครงการ}}",
     "itemDelete": "{count, plural, one {ลบ # รายการ} other {ลบ # รายการ}}"
   },
   "toast": {
     "actionFailed": "การทำงานล้มเหลว",
     "nothingToUndo": "ไม่มีอะไรให้เลิกทำ",
     "undone": "เลิกทำแล้ว: {description}",
-    "undoFailed": "ล้มเหลวในการเลิกทำการดำเนินการ",
-    "copied": "คัดลอกแล้ว",
-    "copyFailed": "คัดลอกไม่สำเร็จ"
+    "undoFailed": "ล้มเหลวในการเลิกทำการดำเนินการ"
   },
   "dateRelative": {
     "today": "วันนี้",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {# วันที่แล้ว} other {# วันก่อน}}"
   },
   "recurrence": {
-    "everyDay": "ทุกวัน",
     "everyNDays": "{count, plural, one {ทุกวัน} other {ทุก # วัน}}",
-    "everyWeek": "ทุกสัปดาห์",
     "everyNWeeks": "{count, plural, one {ทุกสัปดาห์} other {ทุก # สัปดาห์}}",
-    "everyWeekday": "ทุกวันในสัปดาห์",
     "everyNWeeksOnWeekdays": "{count, plural, one {ทุกวันในสัปดาห์} other {ทุก # สัปดาห์ในวันธรรมดา}}",
-    "everyWeekend": "ทุกวันหยุดสุดสัปดาห์",
     "everyNWeeksOnWeekends": "{count, plural, one {ทุกวันหยุดสุดสัปดาห์} other {ทุก # สัปดาห์ในวันหยุดสุดสัปดาห์}}",
-    "everyWeekOnDays": "ทุกสัปดาห์ใน {days}",
     "everyNWeeksOnDays": "{count, plural, one {ทุกสัปดาห์ใน {days}} other {ทุก # สัปดาห์ใน {days}}}",
-    "everyMonth": "ทุกเดือน",
     "everyNMonths": "{count, plural, one {ทุกเดือน} other {ทุก # เดือน}}",
-    "everyMonthOnDay": "ทุกเดือนในวันที่ {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {ทุกเดือนในวันที่ {day}{suffix}} other {ทุก # เดือนในวันที่ {day}{suffix}}}",
-    "everyMonthOnWeekDay": "ทุกเดือนใน {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {ทุกเดือนใน {week} {day}} other {ทุก # เดือน ใน {week} {day}}}",
-    "everyYear": "ทุกปี",
     "everyNYears": "{count, plural, one {ทุกปี} other {ทุก # ปี}}",
     "repeats": "ทำซ้ำ"
   },
@@ -264,7 +228,6 @@
       "openTabs": "เปิดแท็บ",
       "scrollTabsLeft": "เลื่อนแท็บไปทางซ้าย",
       "scrollTabsRight": "เลื่อนแท็บไปทางขวา",
-      "graphG": "กราฟ (⌘G)",
       "dayPanel": "แผงวัน"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Agent แชท",
+    "loading": "กำลังโหลดแชทตัวแทน...",
+    "conversationLoading": "กำลังโหลดการสนทนา...",
+    "newConversation": "บทสนทนาใหม่",
+    "history": "ประวัติการสนทนา",
+    "stop": "หยุด",
+    "thinking": "Agent กำลังคิด",
+    "enable": {
+      "title": "เปิดใช้งาน Memry Agent",
+      "description": "Memry Agent ใช้ตัวแทนท้องถิ่นที่คุณเลือก CLI เพื่อสนทนาเกี่ยวกับห้องนิรภัยของคุณ Claude ส่งเทิร์นไปที่ Anthropic; Codex ส่งเทิร์นไปที่ OpenAI",
+      "remote": "Memry เข้ารหัสประวัติการแชทในเครื่องและที่ซิงค์ของคุณ แต่การอนุมานโมเดลจะเกิดขึ้นกับผู้ให้บริการที่เลือก",
+      "readTools": "เครื่องมืออ่านทำงานโดยอัตโนมัติ",
+      "writeTools": "การสร้างและอัปเดตเครื่องมือต้องได้รับการอนุมัติ",
+      "diff": "เครื่องมืออัปเดตแสดงความแตกต่างหรือแสดงตัวอย่าง",
+      "button": "เปิดใช้งานการแชท Agent"
+    },
+    "approval": {
+      "description": "เอเจนต์ต้องการเรียก {name} ด้วยอาร์กิวเมนต์เหล่านี้",
+      "applyOnce": "สมัครครั้งเดียว",
+      "allowOnce": "อนุญาตครั้งเดียว",
+      "editAndApply": "แก้ไขและนำไปใช้",
+      "editAndAllow": "แก้ไขและอนุญาต",
+      "allowAlways": "อนุญาตเสมอ",
+      "applyEdits": "ใช้การแก้ไข",
+      "deny": "ปฏิเสธ",
+      "invalidJson": "ป้อน JSON ที่ถูกต้องก่อนทำการแก้ไข"
+    },
+    "diff": {
+      "previewError": "ไม่สามารถดูตัวอย่างบันทึกความแตกต่างได้",
+      "description": "เอเจนต์ต้องการอัพเดต {title} ตรวจสอบเนื้อหาปัจจุบันและผู้สมัครก่อนที่จะนำไปใช้",
+      "fallbackTitle": "บันทึกนี้",
+      "current": "ปัจจุบัน",
+      "candidate": "ผู้สมัคร",
+      "loading": "กำลังโหลด...",
+      "apply": "สมัคร",
+      "applyEdited": "ใช้แก้ไข"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "บันทึกปัจจุบัน",
+      "removeAttachment": "ลบ {label}",
+      "placeholder": "สอบถาม Agent",
+      "send": "ส่ง",
+      "providerLabel": "ผู้ให้บริการ Agent: {provider}",
+      "modelLabel": "รุ่น Agent: {model}",
+      "settingsLabel": "การตั้งค่า Agent: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "รหัสโมเดลที่กำหนดเอง",
+      "customModelPlaceholder": "รหัสโมเดลที่กำหนดเอง",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "ท้องถิ่น"
+      },
+      "models": {
+        "default": "ค่าเริ่มต้น"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "การใช้เหตุผล"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
-          "max": "Max"
+          "low": "ต่ำ",
+          "medium": "ปานกลาง",
+          "high": "สูง",
+          "extraHigh": "สูงพิเศษ",
+          "extraHighDefault": "สูงพิเศษ (ค่าเริ่มต้น)",
+          "max": "สูงสุด"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "ต่ำ",
+          "medium": "ปานกลาง",
+          "mediumDefault": "ปานกลาง (ค่าเริ่มต้น)",
+          "high": "สูง",
+          "extraHigh": "สูงพิเศษ"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "ไม่มีการแข่งขัน"
+    },
+    "toolResult": {
+      "label": "ผลลัพธ์ของเครื่องมือ"
+    },
+    "toolCall": {
+      "editedArgs": "ข้อโต้แย้งที่แก้ไข",
+      "parameters": "พารามิเตอร์"
+    },
+    "sidebar": {
+      "label": "แถบด้านข้างขวา",
+      "day": "วัน",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# อยู่ระหว่างการอนุมัติ} other {# รอการอนุมัติ}}",
+      "inProgress": "Agent กำลังดำเนินการเทิร์น"
+    },
+    "errors": {
+      "loadConversations": "ไม่สามารถโหลดการสนทนาของตัวแทนได้",
+      "loadConversation": "ไม่สามารถโหลดการสนทนาของตัวแทนได้",
+      "createConversation": "ไม่สามารถสร้างการสนทนาของตัวแทนได้",
+      "busy": "หน้าต่างอื่นอยู่ระหว่างเปิดการสนทนานี้ รอให้เสร็จสิ้นหรือหยุดจากตรงนั้น",
+      "sendTurn": "ไม่สามารถส่งการเทิร์นของตัวแทนได้",
+      "cancelTurn": "ไม่สามารถยกเลิกการเปลี่ยนตัวแทนได้",
+      "submitApproval": "ไม่สามารถส่งการอนุมัติเครื่องมือได้",
+      "updateTrust": "ไม่สามารถอัปเดตเครื่องมือที่เชื่อถือได้",
+      "saveDisclosure": "ไม่สามารถบันทึกสถานะการเปิดเผยได้",
+      "resolveWindow": "ไม่สามารถแก้ไขหน้าต่างต้นทางของตัวแทนได้",
+      "detectCli": "ตรวจไม่พบแบ็กเอนด์ของตัวแทน",
+      "loadDisclosure": "ไม่สามารถโหลดสถานะการเปิดเผยได้"
     }
   }
 }

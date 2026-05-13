@@ -3,47 +3,25 @@
     "save": "Salvați",
     "cancel": "Anulează",
     "close": "Închide",
-    "ok": "OK",
-    "yes": "Da",
-    "no": "Nu",
     "delete": "Ștergeți",
-    "confirm": "Confirmați",
-    "apply": "Aplicați",
     "done": "Gata",
-    "discard": "Aruncă",
     "dontSave": "Nu salvați",
-    "edit": "Editați",
     "add": "Adăugați",
     "remove": "Eliminați",
     "retry": "Reîncercați",
-    "submit": "Trimiteți",
     "back": "Înapoi",
-    "next": "În continuare",
     "continue": "Continuă",
-    "reset": "Resetați",
     "copy": "Copiere",
-    "paste": "Lipiți",
-    "create": "Creați",
-    "open": "Deschide"
+    "create": "Creați"
   },
   "state": {
     "loading": "Se încarcă…",
     "saving": "Se salvează…",
     "deleting": "Se șterge…",
-    "searching": "Se caută…",
-    "error": "Eroare",
-    "success": "Succes"
-  },
-  "empty": {
-    "noResults": "Niciun rezultat",
-    "noItems": "Fără articole",
-    "noMatch": "Fără meciuri"
+    "searching": "Se caută…"
   },
   "action": {
     "search": "Caută",
-    "edit": "Editați",
-    "delete": "Ștergeți",
-    "close": "Închide",
     "expand": "Extindeți",
     "collapse": "Colaps",
     "showMore": "+{count, plural, one {# mai mult} other {# mai mult}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {articol #} other {articole #}}",
     "note": "{count, plural, one {Notă #} other {Note #}}",
-    "folder": "{count, plural, one {folderul #} other {folderele #}}",
     "task": "{count, plural, one {Sarcina #} other {Sarcini #}}",
-    "project": "{count, plural, one {Proiectul #} other {proiecte #}}",
     "itemDelete": "{count, plural, one {Ștergeți elementul #} other {Ștergeți elementele #}}"
   },
   "toast": {
     "actionFailed": "Acțiunea eșuată",
     "nothingToUndo": "Nimic de anulat",
     "undone": "Anulat: {description}",
-    "undoFailed": "Acțiunea nu a fost anulată",
-    "copied": "Copiat",
-    "copyFailed": "Copierea eșuată"
+    "undoFailed": "Acțiunea nu a fost anulată"
   },
   "dateRelative": {
     "today": "Astăzi",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {# zi în urmă} other {# zile în urmă}}"
   },
   "recurrence": {
-    "everyDay": "În fiecare zi",
     "everyNDays": "{count, plural, one {În fiecare zi} other {La fiecare # zile}}",
-    "everyWeek": "În fiecare săptămână",
     "everyNWeeks": "{count, plural, one {În fiecare săptămână} other {La fiecare # săptămâni}}",
-    "everyWeekday": "În fiecare zi a săptămânii",
     "everyNWeeksOnWeekdays": "{count, plural, one {În fiecare zi a săptămânii} other {La fiecare # săptămâni în zilele lucrătoare}}",
-    "everyWeekend": "În fiecare weekend",
     "everyNWeeksOnWeekends": "{count, plural, one {În fiecare weekend} other {La fiecare # săptămâni în weekend}}",
-    "everyWeekOnDays": "În fiecare săptămână pe {days}",
     "everyNWeeksOnDays": "{count, plural, one {În fiecare săptămână pe {days}} other {La fiecare # săptămâni pe {days}}}",
-    "everyMonth": "În fiecare lună",
     "everyNMonths": "{count, plural, one {În fiecare lună} other {La fiecare # luni}}",
-    "everyMonthOnDay": "În fiecare lună pe {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {În fiecare lună pe {day}{suffix}} other {La fiecare # luni pe {day}{suffix}}}",
-    "everyMonthOnWeekDay": "În fiecare lună pe {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {În fiecare lună pe {week} {day}} other {La fiecare # luni pe {week} {day}}}",
-    "everyYear": "În fiecare an",
     "everyNYears": "{count, plural, one {În fiecare an} other {La fiecare # ani}}",
     "repeats": "Se repetă"
   },
@@ -264,7 +228,6 @@
       "openTabs": "Deschideți filele",
       "scrollTabsLeft": "Derulați filele la stânga",
       "scrollTabsRight": "Derulați filele la dreapta",
-      "graphG": "Grafic (⌘G)",
       "dayPanel": "Panoul de zi"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Chat Agent",
+    "loading": "Se încarcă chatul agentului...",
+    "conversationLoading": "Se încarcă conversația...",
+    "newConversation": "Conversație nouă",
+    "history": "Istoricul conversațiilor",
+    "stop": "Opriți",
+    "thinking": "Agent se gândește",
+    "enable": {
+      "title": "Activați Memry Agent",
+      "description": "Memry Agent folosește agentul local selectat de dvs. CLI pentru a discuta despre seiful dvs. Claude trimite ture către Anthropic; Codex trimite ture către OpenAI.",
+      "remote": "Memry criptează istoricul dvs. de chat local și sincronizat, dar deducerea modelului are loc cu furnizorul selectat.",
+      "readTools": "Instrumentele de citire rulează automat.",
+      "writeTools": "Crearea și actualizarea instrumentelor necesită aprobare.",
+      "diff": "Instrumentele de actualizare arată o diferență sau o previzualizare.",
+      "button": "Activează chatul Agent"
+    },
+    "approval": {
+      "description": "Agentul dorește să apeleze {name} cu aceste argumente.",
+      "applyOnce": "Aplicați o dată",
+      "allowOnce": "Permite o dată",
+      "editAndApply": "Editați și aplicați",
+      "editAndAllow": "Editați și permiteți",
+      "allowAlways": "Permite întotdeauna",
+      "applyEdits": "Aplicați editările",
+      "deny": "Negați",
+      "invalidJson": "Introduceți JSON valid înainte de a aplica modificări."
+    },
+    "diff": {
+      "previewError": "Nu s-a putut previzualiza diferența de nota",
+      "description": "Agentul dorește să actualizeze {title}. Examinați conținutul actual și candidat înainte de a-l aplica.",
+      "fallbackTitle": "această notă",
+      "current": "Actual",
+      "candidate": "Candidat",
+      "loading": "Se încarcă...",
+      "apply": "Aplicați",
+      "applyEdited": "Aplicați editat"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "Notă curentă",
+      "removeAttachment": "Eliminați {label}",
+      "placeholder": "Întrebați Agent",
+      "send": "Trimite",
+      "providerLabel": "Furnizor Agent: {provider}",
+      "modelLabel": "Model Agent: {model}",
+      "settingsLabel": "Setări Agent: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "ID model personalizat",
+      "customModelPlaceholder": "ID model personalizat",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "Local"
       },
+      "models": {
+        "default": "Implicit"
+      },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "Raționament"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
+          "low": "Scăzut",
+          "medium": "Mediu",
+          "high": "Mare",
+          "extraHigh": "Extra ridicat",
+          "extraHighDefault": "Extra mare (implicit)",
           "max": "Max"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "Scăzut",
+          "medium": "Mediu",
+          "mediumDefault": "Mediu (implicit)",
+          "high": "Mare",
+          "extraHigh": "Extra mare"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "Nicio potrivire"
+    },
+    "toolResult": {
+      "label": "Rezultatul instrumentului"
+    },
+    "toolCall": {
+      "editedArgs": "Argumente editate",
+      "parameters": "Parametri"
+    },
+    "sidebar": {
+      "label": "Bara laterală din dreapta",
+      "day": "Ziua",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# în așteptarea aprobării} other {# aprobări în așteptare}}",
+      "inProgress": "Agent turnare în curs"
+    },
+    "errors": {
+      "loadConversations": "Nu s-au putut încărca conversațiile cu agentul",
+      "loadConversation": "Nu s-a putut încărca conversația agentului",
+      "createConversation": "Nu s-a putut crea conversația cu agentul",
+      "busy": "O altă fereastră este la mijlocul acestei conversații. Așteptați să se termine sau opriți-l de acolo.",
+      "sendTurn": "Nu s-a putut trimite rândul agentului",
+      "cancelTurn": "Nu s-a putut anula turnarea agentului",
+      "submitApproval": "Nu s-a putut trimite aprobarea instrumentului",
+      "updateTrust": "Nu s-au putut actualiza instrumentele de încredere",
+      "saveDisclosure": "Nu s-a putut salva starea dezvăluirii",
+      "resolveWindow": "Nu s-a putut rezolva fereastra sursă agent",
+      "detectCli": "Nu s-au putut detecta backend-urile agentului",
+      "loadDisclosure": "Nu s-a putut încărca starea dezvăluirii"
     }
   }
 }

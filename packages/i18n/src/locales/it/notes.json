@@ -14,7 +14,6 @@
       "openLinkedFailed": "Impossibile aprire l'elemento collegato",
       "localOnly": "Nota impostata solo su locale",
       "willSync": "La nota verrà sincronizzata sul cloud",
-      "saveFailed": "Impossibile salvare la nota",
       "renameFailed": "Impossibile rinominare la nota",
       "toggleLocalOnlyFailed": "Impossibile attivare/disattivare solo locale",
       "toggleFullWidthFailed": "Impossibile attivare/disattivare la larghezza intera"
@@ -135,9 +134,6 @@
       "clearSearch": "Cancella ricerca"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "Scrivi la tua nota..."
-  },
   "outline": {
     "title": "Contorno",
     "aria": "Schema del documento",
@@ -149,7 +145,6 @@
     "modified": "Modificato"
   },
   "backlinks": {
-    "title": "Backlink",
     "sortRecent": "Recente",
     "sortAlpha": "A-Z",
     "sortMentions": "La maggior parte delle menzioni",

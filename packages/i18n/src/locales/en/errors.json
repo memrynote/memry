@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Something went wrong. Please try again.",
     "operationFailed": "Operation failed",
-    "unknown": "An unknown error occurred",
-    "validationFailed": "Validation failed",
-    "actionFailed": "Action failed"
+    "unknown": "An unknown error occurred"
   },
   "ipc": {
     "noVaultOpen": "No vault is open. Please open a vault first."

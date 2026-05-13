@@ -43,9 +43,7 @@
     "pdfs": "PDFs",
     "social": "Sozial",
     "reminder": "Erinnerung",
-    "reminders": "Erinnerungen",
-    "text": "Text",
-    "other": "Andere"
+    "reminders": "Erinnerungen"
   },
   "empty": {
     "successAria": "Erfolgreich, Posteingang ist leer",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "Keine passenden archivierten Elemente",
     "noItemsYet": "Noch keine Artikel",
     "noItemsFiled": "Noch keine Artikel eingereicht",
-    "noItemTypes": "Keine Elementtypen zum Anzeigen",
     "noFolders": "Keine Ordner gefunden",
-    "noFolderMatch": "Keine Ordner stimmen mit „{query}“ überein.",
     "noNotes": "Keine Notizen gefunden",
     "allMatchesLinked": "Alle Übereinstimmungen sind bereits verlinkt"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Die Transkription ist fehlgeschlagen",
     "retryTranscription": "Versuchen Sie es noch einmal",
     "pageCount": "{count, plural, one {#-Seite} other {#-Seiten}}",
-    "snoozedUntilShort": "Schlummert bis {date}",
-    "capturedAgo": "{time} erfasst"
+    "snoozedUntilShort": "Schlummert bis {date}"
   },
   "loading": {
     "inbox": "Posteingang wird geladen...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Schnelle Aktionen",
     "archiveItem": "Archivelement",
-    "archive": "Archiv",
-    "snooze": "Schlummern"
+    "archive": "Archiv"
   },
   "detail": {
     "ariaLabel": "Artikeldetails",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Suchen Sie nach Notizen, die Sie verlinken möchten",
     "linkedNotesAria": "Verlinkte Notizen",
     "removeLinkTo": "Link zu {title} entfernen",
-    "contentEditorAria": "Inhaltseditor",
     "notePlaceholder": "Schreiben Sie Ihre Notiz...",
     "textPlaceholder": "Bearbeiten Sie Ihren erfassten Text ..."
   },
@@ -263,14 +256,9 @@
     "custom": "Benutzerdefinierte..."
   },
   "insights": {
-    "loading": "Einblicke werden geladen...",
     "captureActivity": "Aktivität erfassen",
     "byType": "Nach Typ",
-    "itemTypes": "Artikeltypen",
-    "itemTypesDescription": "Verbreitung von Inhaltsformaten",
     "recentFilings": "Aktuelle Einreichungen",
-    "recentlyFiled": "Kürzlich eingereicht",
-    "recentlyFiledDescription": "Neueste Aktionen in Ihrem Posteingang",
     "captured": "Gefangen",
     "capturedThisWeek": "+{count} diese Woche",
     "processed": "Verarbeitet",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {#-Erfassung} other {# erfasst}}",
     "peak": "Spitzenwert: {day} {start}–{end}",
     "convertedToTask": "In Aufgabe umgewandelt",
-    "linked": "Verlinkt",
     "now": "jetzt",
     "timeAgoMinutes": "Vor {count}m",
     "timeAgoHours": "Vor {count}h",

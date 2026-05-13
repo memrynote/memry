@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "發生錯誤。請再試一次。",
     "operationFailed": "操作失敗",
-    "unknown": "發生未知錯誤",
-    "validationFailed": "驗證失敗",
-    "actionFailed": "操作失敗"
+    "unknown": "發生未知錯誤"
   },
   "ipc": {
     "noVaultOpen": "沒有打開的保險庫。請先打開保險庫。"

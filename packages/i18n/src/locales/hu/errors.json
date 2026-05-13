@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Valami elromlott. Kérjük, próbálja újra.",
     "operationFailed": "A művelet nem sikerült",
-    "unknown": "Ismeretlen hiba történt",
-    "validationFailed": "Az érvényesítés sikertelen",
-    "actionFailed": "A művelet nem sikerült"
+    "unknown": "Ismeretlen hiba történt"
   },
   "ipc": {
     "noVaultOpen": "Nincs páncélszekrény nyitva. Kérjük, először nyisson meg egy trezort."

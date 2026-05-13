@@ -38,8 +38,7 @@
     "openNoteFullPage": "פתח את ההערה בעמוד המלא",
     "closeNoteDrawer": "סגור את מגירת הפתקים",
     "addBookmark": "הוסף סימניה",
-    "removeBookmark": "הסר את הסימניה",
-    "tryAgain": "נסה שוב"
+    "removeBookmark": "הסר את הסימניה"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "יומן חזרה",
     "journalNavigation": "ניווט ביומן",
     "dateNavigation": "ניווט תאריך ביומן",
-    "goToYearView": "עבור לתצוגת שנה",
-    "previousView": "תצוגה קודמת",
-    "nextView": "התצוגה הבאה"
+    "goToYearView": "עבור לתצוגת שנה"
   },
   "aria": {
     "moreOptions": "אפשרויות נוספות",
@@ -184,10 +181,8 @@
     "connectionAria": "חיבור ל-{label}, התאמה של {scorePercent}"
   },
   "count": {
-    "item": "פריט",
     "items": "פריטים",
     "note": "הערה",
-    "notes": "הערות",
     "day": "יום",
     "days": "ימים",
     "event": "אירוע",

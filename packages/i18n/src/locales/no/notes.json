@@ -14,7 +14,6 @@
       "openLinkedFailed": "Kunne ikke åpne koblet element",
       "localOnly": "Merk satt til kun lokalt",
       "willSync": "Note vil synkroniseres til skyen",
-      "saveFailed": "Kunne ikke lagre notatet",
       "renameFailed": "Kunne ikke endre navn på notatet",
       "toggleLocalOnlyFailed": "Kunne ikke bytte bare lokalt",
       "toggleFullWidthFailed": "Kunne ikke bytte full bredde"
@@ -135,9 +134,6 @@
       "clearSearch": "Tøm søk"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "Skriv notatet ditt..."
-  },
   "outline": {
     "title": "Disposisjon",
     "aria": "Dokumentoversikt",
@@ -149,7 +145,6 @@
     "modified": "Modifisert"
   },
   "backlinks": {
-    "title": "Tilbakekoblinger",
     "sortRecent": "Nylig",
     "sortAlpha": "A-Å",
     "sortMentions": "De fleste nevner",

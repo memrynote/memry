@@ -3,47 +3,25 @@
     "save": "Сохранить",
     "cancel": "Отмена",
     "close": "Закрыть",
-    "ok": "ОК",
-    "yes": "Да",
-    "no": "Нет",
     "delete": "Удалить",
-    "confirm": "Подтвердить",
-    "apply": "Применить",
     "done": "Готово",
-    "discard": "Отбросить",
     "dontSave": "Не сохранять",
-    "edit": "Редактировать",
     "add": "Добавить",
     "remove": "Удалить",
     "retry": "Повторить попытку",
-    "submit": "Отправить",
     "back": "Назад",
-    "next": "Далее",
     "continue": "Продолжить",
-    "reset": "Сброс",
     "copy": "Копировать",
-    "paste": "Вставить",
-    "create": "Создать",
-    "open": "Открыть"
+    "create": "Создать"
   },
   "state": {
     "loading": "Загрузка…",
     "saving": "Сохранение…",
     "deleting": "Удаление…",
-    "searching": "Поиск…",
-    "error": "Ошибка",
-    "success": "Успех"
-  },
-  "empty": {
-    "noResults": "Нет результатов",
-    "noItems": "Нет товаров",
-    "noMatch": "Нет совпадений"
+    "searching": "Поиск…"
   },
   "action": {
     "search": "Поиск",
-    "edit": "Редактировать",
-    "delete": "Удалить",
-    "close": "Закрыть",
     "expand": "Развернуть",
     "collapse": "Свернуть",
     "showMore": "+{count, plural, one {# подробнее} other {# подробнее}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {# элемент} other {# элементов}}",
     "note": "{count, plural, one {Примечание #} other {Примечания к #}}",
-    "folder": "{count, plural, one {Папка #} other {Папки #}}",
     "task": "{count, plural, one {Задача #} other {Задачи #}}",
-    "project": "{count, plural, one {Проект #} other {Проекты #}}",
     "itemDelete": "{count, plural, one {Удалить элемент #} other {Удалить элементы #}}"
   },
   "toast": {
     "actionFailed": "Действие не выполнено",
     "nothingToUndo": "Ничего нельзя отменить",
     "undone": "Отменено: {description}",
-    "undoFailed": "Не удалось отменить действие.",
-    "copied": "Скопировано",
-    "copyFailed": "Не удалось скопировать"
+    "undoFailed": "Не удалось отменить действие."
   },
   "dateRelative": {
     "today": "Сегодня",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {# день назад} other {# дней назад}}"
   },
   "recurrence": {
-    "everyDay": "Каждый день",
     "everyNDays": "{count, plural, one {Каждый день} other {Каждые # дней}}",
-    "everyWeek": "Каждую неделю",
     "everyNWeeks": "{count, plural, one {Каждую неделю} other {Каждые # недель}}",
-    "everyWeekday": "Каждый будний день",
     "everyNWeeksOnWeekdays": "{count, plural, one {Каждый будний день} other {Каждые # недели по будням.}}",
-    "everyWeekend": "Каждые выходные",
     "everyNWeeksOnWeekends": "{count, plural, one {Каждые выходные} other {Каждые # недели по выходным.}}",
-    "everyWeekOnDays": "Каждую неделю на {days}",
     "everyNWeeksOnDays": "{count, plural, one {Каждую неделю на {days}} other {Каждые # недель на {days}}}",
-    "everyMonth": "Каждый месяц",
     "everyNMonths": "{count, plural, one {Каждый месяц} other {Каждые # месяцев}}",
-    "everyMonthOnDay": "Каждый месяц на {day}{suffix}.",
     "everyNMonthsOnDay": "{count, plural, one {Каждый месяц на {day}{suffix}.} other {Каждые # месяцев на {day}{suffix}}}",
-    "everyMonthOnWeekDay": "Каждый месяц на {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Каждый месяц на {week} {day}} other {Каждые # месяцев на {week} {day}}}",
-    "everyYear": "Каждый год",
     "everyNYears": "{count, plural, one {Каждый год} other {Каждые # лет}}",
     "repeats": "Повторы"
   },
@@ -264,7 +228,6 @@
       "openTabs": "Открытые вкладки",
       "scrollTabsLeft": "Прокручивать вкладки влево",
       "scrollTabsRight": "Прокручивать вкладки вправо",
-      "graphG": "График (⌘G)",
       "dayPanel": "Дневная панель"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Agent чат",
+    "loading": "Загрузка агентского чата...",
+    "conversationLoading": "Разговор загружается...",
+    "newConversation": "Новый разговор",
+    "history": "История разговора",
+    "stop": "Стоп",
+    "thinking": "Agent думает",
+    "enable": {
+      "title": "Включить Memry Agent",
+      "description": "Memry Agent использует выбранного вами местного агента CLI для общения о вашем хранилище. Claude отправляет ходы на Anthropic; Codex отправляет ходы OpenAI.",
+      "remote": "Memry шифрует вашу локальную и синхронизированную историю чата, но вывод модели происходит с выбранным провайдером.",
+      "readTools": "Инструменты чтения запускаются автоматически.",
+      "writeTools": "Инструменты создания и обновления требуют одобрения.",
+      "diff": "Инструменты обновления показывают разницу или предварительный просмотр.",
+      "button": "Включить чат Agent"
+    },
+    "approval": {
+      "description": "Агент хочет вызвать {name} с этими аргументами.",
+      "applyOnce": "Подать заявку один раз",
+      "allowOnce": "Разрешить один раз",
+      "editAndApply": "Редактировать и применить",
+      "editAndAllow": "Редактировать и разрешить",
+      "allowAlways": "Разрешать всегда",
+      "applyEdits": "Применить изменения",
+      "deny": "Запретить",
+      "invalidJson": "Введите действительный JSON перед применением изменений."
+    },
+    "diff": {
+      "previewError": "Не удалось просмотреть разницу примечаний",
+      "description": "Агент хочет обновить {title}. Прежде чем применять его, просмотрите текущий и потенциальный контент.",
+      "fallbackTitle": "эта заметка",
+      "current": "Текущий",
+      "candidate": "Кандидат",
+      "loading": "Загрузка...",
+      "apply": "Подать заявку",
+      "applyEdited": "Применить изменения"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "Текущая заметка",
+      "removeAttachment": "Удалить {label}",
+      "placeholder": "Спросить Agent",
+      "send": "Отправить",
+      "providerLabel": "Поставщик Agent: {provider}",
+      "modelLabel": "Модель Agent: {model}",
+      "settingsLabel": "Настройки Agent: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "Идентификатор пользовательской модели",
+      "customModelPlaceholder": "Идентификатор пользовательской модели",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "Местный"
+      },
+      "models": {
+        "default": "По умолчанию"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "Рассуждение"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
-          "max": "Max"
+          "low": "Низкий",
+          "medium": "Средний",
+          "high": "Высокий",
+          "extraHigh": "Очень высокий",
+          "extraHighDefault": "Очень высокий (по умолчанию)",
+          "max": "Макс"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "Низкий",
+          "medium": "Средний",
+          "mediumDefault": "Средний (по умолчанию)",
+          "high": "Высокий",
+          "extraHigh": "Очень высокий"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "Нет совпадений"
+    },
+    "toolResult": {
+      "label": "Результат инструмента"
+    },
+    "toolCall": {
+      "editedArgs": "Отредактированные аргументы",
+      "parameters": "Параметры"
+    },
+    "sidebar": {
+      "label": "Правая боковая панель",
+      "day": "День",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# ожидает одобрения} other {# ожидающих одобрения}}",
+      "inProgress": "Agent идет ход"
+    },
+    "errors": {
+      "loadConversations": "Не удалось загрузить разговоры с агентом.",
+      "loadConversation": "Не удалось загрузить разговор с агентом.",
+      "createConversation": "Не удалось создать разговор с агентом.",
+      "busy": "Еще одно окно в середине этого разговора. Подождите, пока он закончится, или остановите его.",
+      "sendTurn": "Не удалось отправить очередь агента",
+      "cancelTurn": "Не удалось отменить поворот агента",
+      "submitApproval": "Не удалось отправить утверждение инструмента.",
+      "updateTrust": "Не удалось обновить доверенные инструменты.",
+      "saveDisclosure": "Не удалось сохранить состояние раскрытия.",
+      "resolveWindow": "Не удалось разрешить окно исходного кода агента.",
+      "detectCli": "Не удалось обнаружить серверные части агента.",
+      "loadDisclosure": "Не удалось загрузить состояние раскрытия информации."
     }
   }
 }

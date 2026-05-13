@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Có gì đó đã xảy ra. Vui lòng thử lại.",
     "operationFailed": "Thao tác thất bại",
-    "unknown": "Đã xảy ra lỗi không xác định",
-    "validationFailed": "Xác thực thất bại",
-    "actionFailed": "Thao tác thất bại"
+    "unknown": "Đã xảy ra lỗi không xác định"
   },
   "ipc": {
     "noVaultOpen": "Chưa mở kho nào. Vui lòng mở kho trước."

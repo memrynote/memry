@@ -38,8 +38,7 @@
     "openNoteFullPage": "Öppna anteckning i full sida",
     "closeNoteDrawer": "Stäng anteckningsfack",
     "addBookmark": "Lägg till bokmärke",
-    "removeBookmark": "Ta bort bokmärke",
-    "tryAgain": "Försök igen"
+    "removeBookmark": "Ta bort bokmärke"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "Tillbaka till journal",
     "journalNavigation": "Journalnavigering",
     "dateNavigation": "Journaldatumnavigering",
-    "goToYearView": "Gå till årsvy",
-    "previousView": "Föregående vy",
-    "nextView": "Nästa vy"
+    "goToYearView": "Gå till årsvy"
   },
   "aria": {
     "moreOptions": "Fler alternativ",
@@ -184,10 +181,8 @@
     "connectionAria": "Koppling till {label}, {scorePercent}% match"
   },
   "count": {
-    "item": "objekt",
     "items": "artiklar",
     "note": "anteckning",
-    "notes": "anteckningar",
     "day": "dag",
     "days": "dagar",
     "event": "evenemang",

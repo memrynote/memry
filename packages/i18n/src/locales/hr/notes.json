@@ -14,7 +14,6 @@
       "openLinkedFailed": "Otvaranje povezane stavke nije uspjelo",
       "localOnly": "Napomena postavljena samo na lokalno",
       "willSync": "Napomena će se sinkronizirati s oblakom",
-      "saveFailed": "Spremanje bilješke nije uspjelo",
       "renameFailed": "Preimenovanje bilješke nije uspjelo",
       "toggleLocalOnlyFailed": "Nije uspjelo prebacivanje samo lokalno",
       "toggleFullWidthFailed": "Promjena pune širine nije uspjela"
@@ -135,9 +134,6 @@
       "clearSearch": "Očisti pretragu"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "Napišite svoju bilješku..."
-  },
   "outline": {
     "title": "Obris",
     "aria": "Pregled dokumenta",
@@ -149,7 +145,6 @@
     "modified": "Izmijenjeno"
   },
   "backlinks": {
-    "title": "Povratne veze",
     "sortRecent": "Nedavno",
     "sortAlpha": "A-Z",
     "sortMentions": "Većina spominjanja",

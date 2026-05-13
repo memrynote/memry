@@ -3,47 +3,25 @@
     "save": "Gem",
     "cancel": "Annuller",
     "close": "Luk",
-    "ok": "OK",
-    "yes": "Ja",
-    "no": "Nej",
     "delete": "Slet",
-    "confirm": "Bekræft",
-    "apply": "Ansøg",
     "done": "Færdig",
-    "discard": "Kassér",
     "dontSave": "Gem ikke",
-    "edit": "Rediger",
     "add": "Tilføj",
     "remove": "Fjern",
     "retry": "Prøv igen",
-    "submit": "Indsend",
     "back": "Tilbage",
-    "next": "Næste",
     "continue": "Fortsæt",
-    "reset": "Nulstil",
     "copy": "Kopiér",
-    "paste": "Indsæt",
-    "create": "Opret",
-    "open": "Åbn"
+    "create": "Opret"
   },
   "state": {
     "loading": "Indlæser...",
     "saving": "Gemmer...",
     "deleting": "Sletter...",
-    "searching": "Søger...",
-    "error": "Fejl",
-    "success": "Succes"
-  },
-  "empty": {
-    "noResults": "Ingen resultater",
-    "noItems": "Ingen varer",
-    "noMatch": "Ingen kampe"
+    "searching": "Søger..."
   },
   "action": {
     "search": "Søg",
-    "edit": "Rediger",
-    "delete": "Slet",
-    "close": "Luk",
     "expand": "Udvid",
     "collapse": "Kollaps",
     "showMore": "+{count, plural, one {# mere} other {# mere}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {# vare} other {# varer}}",
     "note": "{count, plural, one {# note} other {# noter}}",
-    "folder": "{count, plural, one {# mappe} other {# mapper}}",
     "task": "{count, plural, one {# opgave} other {# opgaver}}",
-    "project": "{count, plural, one {# projekt} other {# projekter}}",
     "itemDelete": "{count, plural, one {Slet # element} other {Slet # elementer}}"
   },
   "toast": {
     "actionFailed": "Handlingen mislykkedes",
     "nothingToUndo": "Intet at fortryde",
     "undone": "Fortryd: {description}",
-    "undoFailed": "Handlingen kunne ikke fortrydes",
-    "copied": "Kopieret",
-    "copyFailed": "Kunne ikke kopiere"
+    "undoFailed": "Handlingen kunne ikke fortrydes"
   },
   "dateRelative": {
     "today": "I dag",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {# dag siden} other {# dage siden}}"
   },
   "recurrence": {
-    "everyDay": "Hver dag",
     "everyNDays": "{count, plural, one {Hver dag} other {Hver # dag}}",
-    "everyWeek": "Hver uge",
     "everyNWeeks": "{count, plural, one {Hver uge} other {Hver # uge}}",
-    "everyWeekday": "Hver hverdag",
     "everyNWeeksOnWeekdays": "{count, plural, one {Hver hverdag} other {Hver # uge på hverdage}}",
-    "everyWeekend": "Hver weekend",
     "everyNWeeksOnWeekends": "{count, plural, one {Hver weekend} other {Hver # uge i weekenden}}",
-    "everyWeekOnDays": "Hver uge på {days}",
     "everyNWeeksOnDays": "{count, plural, one {Hver uge på {days}} other {Hver # uge på {days}}}",
-    "everyMonth": "Hver måned",
     "everyNMonths": "{count, plural, one {Hver måned} other {Hver # måned}}",
-    "everyMonthOnDay": "Hver måned på {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {Hver måned på {day}{suffix}} other {Hver # måned på {day}{suffix}}}",
-    "everyMonthOnWeekDay": "Hver måned på {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Hver måned på {week} {day}} other {Hver # måned på {week} {day}}}",
-    "everyYear": "Hvert år",
     "everyNYears": "{count, plural, one {Hvert år} other {Hvert # år}}",
     "repeats": "Gentager"
   },
@@ -264,7 +228,6 @@
       "openTabs": "Åbn faner",
       "scrollTabsLeft": "Rul faner til venstre",
       "scrollTabsRight": "Rul faner til højre",
-      "graphG": "Graf (⌘G)",
       "dayPanel": "Dagspanel"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Agent chat",
+    "loading": "Indlæser agentchat...",
+    "conversationLoading": "Samtalen indlæses...",
+    "newConversation": "Ny samtale",
+    "history": "Samtalehistorik",
+    "stop": "Stop",
+    "thinking": "Agent tænker",
+    "enable": {
+      "title": "Aktiver Memry Agent",
+      "description": "Memry Agent bruger din valgte lokale agent CLI til at chatte om din boks. Claude sender tur til Anthropic; Codex sender vendinger til OpenAI.",
+      "remote": "Memry krypterer din lokale og synkroniserede chathistorik, men modelinferens sker med den valgte udbyder.",
+      "readTools": "Læseværktøjer kører automatisk.",
+      "writeTools": "Opret og opdater værktøjer kræver godkendelse.",
+      "diff": "Opdateringsværktøjer viser en forskel eller forhåndsvisning.",
+      "button": "Aktiver Agent-chat"
+    },
+    "approval": {
+      "description": "Agenten ønsker at kalde {name} med disse argumenter.",
+      "applyOnce": "Ansøg én gang",
+      "allowOnce": "Tillad én gang",
+      "editAndApply": "Rediger og anvend",
+      "editAndAllow": "Rediger og tillad",
+      "allowAlways": "Tillad altid",
+      "applyEdits": "Anvend redigeringer",
+      "deny": "Afvis",
+      "invalidJson": "Indtast gyldig JSON, før du anvender redigeringer."
+    },
+    "diff": {
+      "previewError": "Kunne ikke forhåndsvise note diff",
+      "description": "Agenten ønsker at opdatere {title}. Gennemgå det aktuelle og kandidatindhold, før du anvender det.",
+      "fallbackTitle": "denne note",
+      "current": "Aktuel",
+      "candidate": "Kandidat",
+      "loading": "Indlæser...",
+      "apply": "Ansøg",
+      "applyEdited": "Anvend redigeret"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "Aktuel note",
+      "removeAttachment": "Fjern {label}",
+      "placeholder": "Spørg Agent",
+      "send": "Sende",
+      "providerLabel": "Agent udbyder: {provider}",
+      "modelLabel": "Agentmodel: {model}",
+      "settingsLabel": "Agent indstillinger: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "Brugerdefineret model-id",
+      "customModelPlaceholder": "Brugerdefineret model-id",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "Lokal"
+      },
+      "models": {
+        "default": "Standard"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "Begrundelse"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
+          "low": "Lav",
           "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
-          "max": "Max"
+          "high": "Høj",
+          "extraHigh": "Ekstra høj",
+          "extraHighDefault": "Ekstra høj (standard)",
+          "max": "Maks"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
+          "low": "Lav",
           "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "mediumDefault": "Medium (standard)",
+          "high": "Høj",
+          "extraHigh": "Ekstra høj"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "Ingen resultater"
+    },
+    "toolResult": {
+      "label": "Værktøjsresultat"
+    },
+    "toolCall": {
+      "editedArgs": "Redigerede argumenter",
+      "parameters": "Parametre"
+    },
+    "sidebar": {
+      "label": "Højre sidebjælke",
+      "day": "dag",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# afventer godkendelse} other {# afventende godkendelser}}",
+      "inProgress": "Agent tur i gang"
+    },
+    "errors": {
+      "loadConversations": "Kunne ikke indlæse agentsamtaler",
+      "loadConversation": "Kunne ikke indlæse agentsamtale",
+      "createConversation": "Kunne ikke oprette agentsamtale",
+      "busy": "Et andet vindue er midt i svinget for denne samtale. Vent til det er færdigt, eller stop det derfra.",
+      "sendTurn": "Kunne ikke sende agenttur",
+      "cancelTurn": "Kunne ikke annullere agentturen",
+      "submitApproval": "Kunne ikke indsende værktøjsgodkendelse",
+      "updateTrust": "Kunne ikke opdatere pålidelige værktøjer",
+      "saveDisclosure": "Kunne ikke gemme oplysningstilstand",
+      "resolveWindow": "Kunne ikke løse agentkildevinduet",
+      "detectCli": "Kunne ikke finde agent-backends",
+      "loadDisclosure": "Kunne ikke indlæse afsløringstilstand"
     }
   }
 }
