@@ -36,7 +36,14 @@ The Chrome extension captures directly through a local native host. It does not 
 If Memry is closed, Chrome writes the capture to a local pending folder and launches Memry; the item
 imports as soon as a vault opens.
 
-From Chrome you can:
+For Chromium-based browsers, install the native host for the browser that loads the extension:
+
+```bash
+node apps/desktop/scripts/install-chrome-capture-host.mjs --extension-id <id> --browser chrome
+node apps/desktop/scripts/install-chrome-capture-host.mjs --extension-id <id> --browser dia
+```
+
+From the browser you can:
 
 - Right-click highlighted text → **Send quote to Memry**
 - Right-click a page → **Capture page to Memry**

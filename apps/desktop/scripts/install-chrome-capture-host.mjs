@@ -20,6 +20,7 @@ function manifestDir(browser, platform = process.platform) {
 
   if (platform === 'darwin') {
     const root = join(home, 'Library', 'Application Support')
+    if (browser === 'dia') return join(root, 'Dia', 'User Data', 'NativeMessagingHosts')
     if (browser === 'edge') return join(root, 'Microsoft Edge', 'NativeMessagingHosts')
     if (browser === 'chromium') return join(root, 'Chromium', 'NativeMessagingHosts')
     return join(root, 'Google', 'Chrome', 'NativeMessagingHosts')
@@ -45,19 +46,23 @@ function supportDir(platform = process.platform) {
 const extensionId = readArg('extension-id')
 if (!extensionId) {
   console.error(
-    'Usage: node apps/desktop/scripts/install-chrome-capture-host.mjs --extension-id <id>'
+    'Usage: node apps/desktop/scripts/install-chrome-capture-host.mjs --extension-id <id> [--browser chrome|dia|edge|chromium] [--manifest-dir <dir>]'
   )
   process.exit(1)
 }
 
-const browser = readArg('browser') || 'chrome'
+const browser = (readArg('browser') || 'chrome').toLowerCase()
 const captureDir = readArg('capture-dir')
 const appSupportName = readArg('app-support-name')
+const manifestDirOverride = readArg('manifest-dir')
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const hostScript = resolve(scriptDir, '../native-host/memry-capture-host.mjs')
 const wrapperDir = join(supportDir(), 'native-host')
 const wrapperPath = join(wrapperDir, 'memry-capture-host')
-const manifestPath = join(manifestDir(browser), `${HOST_NAME}.json`)
+const manifestPath = join(
+  manifestDirOverride ? resolve(manifestDirOverride) : manifestDir(browser),
+  `${HOST_NAME}.json`
+)
 const envLines = [
   captureDir ? `export MEMRY_CAPTURE_DIR="${captureDir.replaceAll('"', '\\"')}"` : '',
   appSupportName ? `export MEMRY_APP_SUPPORT_NAME="${appSupportName.replaceAll('"', '\\"')}"` : ''
