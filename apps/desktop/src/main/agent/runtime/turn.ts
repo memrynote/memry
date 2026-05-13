@@ -224,7 +224,7 @@ async function maybeGenerateConversationTitle(
 }
 
 async function generateTitleWithBackend(
-  _deps: TurnDeps,
+  deps: TurnDeps,
   input: {
     prompt: string
     conversationId: string
@@ -233,13 +233,14 @@ async function generateTitleWithBackend(
     options: AgentBackendOptions
   }
 ): Promise<string | null> {
-  const sub = await input.backend.generateTitle({
+  const rawSub = await input.backend.generateTitle({
     prompt: input.prompt,
     conversationId: input.conversationId,
     windowId: input.windowId,
     options: input.options,
     purpose: 'title'
   })
+  const sub = deps.trackRunHandle?.(input.conversationId, rawSub) ?? rawSub
   let raw = ''
   let title = ''
 
@@ -312,7 +313,7 @@ function deterministicTitle(text: string): string | null {
 }
 
 async function summarizeWithBackend(
-  _deps: TurnDeps,
+  deps: TurnDeps,
   input: {
     prompt: string
     conversationId: string
@@ -321,13 +322,14 @@ async function summarizeWithBackend(
     options: AgentBackendOptions
   }
 ): Promise<string> {
-  const sub = await input.backend.summarize({
+  const rawSub = await input.backend.summarize({
     prompt: input.prompt,
     conversationId: input.conversationId,
     windowId: input.windowId,
     options: input.options,
     purpose: 'summary'
   })
+  const sub = deps.trackRunHandle?.(input.conversationId, rawSub) ?? rawSub
   let summary = ''
 
   try {

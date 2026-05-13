@@ -37,6 +37,8 @@ export class AgentRuntime {
   private pending = new Map<string, PendingApproval>()
   private subprocesses = new Map<number, TrackedSubprocess>()
   private turnLocks = new Set<string>()
+  private activeTurns = new Map<string, Set<Promise<unknown>>>()
+  private isShuttingDown = false
 
   constructor(private deps: AgentRuntimeDeps) {}
 
@@ -136,6 +138,22 @@ export class AgentRuntime {
     this.turnLocks.delete(conversationId)
   }
 
+  trackTurn(conversationId: string, turn: Promise<unknown>): void {
+    let turns = this.activeTurns.get(conversationId)
+    if (!turns) {
+      turns = new Set()
+      this.activeTurns.set(conversationId, turns)
+    }
+    turns.add(turn)
+
+    void turn
+      .finally(() => {
+        turns.delete(turn)
+        if (turns.size === 0) this.activeTurns.delete(conversationId)
+      })
+      .catch(() => {})
+  }
+
   trackSubprocess(
     conversationId: string,
     subprocess: {
@@ -148,6 +166,13 @@ export class AgentRuntime {
       pid: subprocess.pid,
       kill: subprocess.kill
     })
+    if (this.isShuttingDown) {
+      try {
+        subprocess.kill()
+      } catch (error) {
+        logger.warn('Failed to kill subprocess', error)
+      }
+    }
   }
 
   untrackSubprocess(pid: number): void {
@@ -155,6 +180,14 @@ export class AgentRuntime {
   }
 
   async killAll(): Promise<void> {
+    this.isShuttingDown = true
+    setMcpWriteGate(null)
+
+    for (const approval of this.pending.values()) {
+      approval.resolve({ kind: 'deny' })
+    }
+    this.pending.clear()
+
     for (const sub of this.subprocesses.values()) {
       try {
         sub.kill()
@@ -169,6 +202,12 @@ export class AgentRuntime {
     }
     this.inFlight.clear()
     this.turnLocks.clear()
+
+    const turns = [...this.activeTurns.values()].flatMap((entries) => [...entries])
+    if (turns.length > 0) {
+      await Promise.allSettled(turns)
+    }
+    this.activeTurns.clear()
   }
 
   private waitForApproval(input: PendingApprovalSnapshot): Promise<ApproveToolDecision> {
