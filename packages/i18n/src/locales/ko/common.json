@@ -442,6 +442,9 @@
       "resolveWindow": "에이전트 소스 창을 확인할 수 없습니다.",
       "detectCli": "에이전트 백엔드를 감지할 수 없습니다.",
       "loadDisclosure": "공개 상태를 로드할 수 없습니다."
+    },
+    "sources": {
+      "used": "소스 {count}개 사용"
     }
   }
 }

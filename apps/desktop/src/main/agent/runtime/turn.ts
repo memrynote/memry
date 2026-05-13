@@ -13,6 +13,8 @@ import { broadcastAgentEvent } from './event-bus'
 import { maybeCompact } from './compactor'
 import { assemblePrompt } from './prompt-assembler'
 import { COMPACTION_THRESHOLD, estimateTokens } from './token-estimator'
+import { extractAgentSourceRefs } from '../source-refs'
+import type { AgentSourceRef } from '@memry/contracts/ipc-agent'
 
 const logger = createLogger('AgentRuntime:Turn')
 
@@ -122,6 +124,8 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
 
   let buffered = ''
   let backendError: string | null = null
+  const toolCalls = new Map<string, { name: string; args: unknown }>()
+  const sourceRefs = new Map<string, AgentSourceRef>()
   try {
     for await (const event of sub.events) {
       if (event.kind === 'error') {
@@ -131,6 +135,16 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
       await handleBackendEvent(event, {
         conversationId: input.conversationId,
         assistantMessageId: assistant.id,
+        onToolUse: (toolUseId, name, args) => {
+          toolCalls.set(toolUseId, { name, args })
+        },
+        onToolResult: (toolUseId, data) => {
+          const toolCall = toolCalls.get(toolUseId)
+          if (!toolCall) return
+          for (const ref of extractAgentSourceRefs(toolCall.name, toolCall.args, data)) {
+            sourceRefs.set(ref.href, ref)
+          }
+        },
         onAssistantText: (text) => {
           buffered += text
         }
@@ -164,7 +178,13 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     }
 
     const completed = deps.messages.markTerminal(assistant.id, 'completed', {
-      content: { role: 'assistant', data: { text: buffered } }
+      content: {
+        role: 'assistant',
+        data: {
+          text: buffered,
+          ...(sourceRefs.size > 0 && { sources: [...sourceRefs.values()] })
+        }
+      }
     })
     broadcastAgentEvent({
       kind: 'message_upserted',
@@ -356,6 +376,8 @@ async function handleBackendEvent(
   ctx: {
     conversationId: string
     assistantMessageId: string
+    onToolUse: (toolUseId: string, name: string, args: unknown) => void
+    onToolResult: (toolUseId: string, data: unknown) => void
     onAssistantText: (text: string) => void
   }
 ): Promise<void> {
@@ -371,6 +393,7 @@ async function handleBackendEvent(
   }
 
   if (event.kind === 'tool_use') {
+    ctx.onToolUse(event.toolUseId, event.name, event.args)
     broadcastAgentEvent({
       kind: 'tool_call_started',
       conversationId: ctx.conversationId,
@@ -383,6 +406,7 @@ async function handleBackendEvent(
 
   if (event.kind === 'tool_result') {
     if (event.ok) {
+      ctx.onToolResult(event.toolUseId, event.data)
       broadcastAgentEvent({
         kind: 'tool_call_completed',
         conversationId: ctx.conversationId,

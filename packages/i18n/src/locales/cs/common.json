@@ -442,6 +442,9 @@
       "resolveWindow": "Nelze vyřešit okno zdroje agenta",
       "detectCli": "Nepodařilo se zjistit backendy agenta",
       "loadDisclosure": "Nelze načíst stav odhalení"
+    },
+    "sources": {
+      "used": "{count, plural, one {Použit # zdroj} few {Použity # zdroje} other {Použito # zdrojů}}"
     }
   }
 }

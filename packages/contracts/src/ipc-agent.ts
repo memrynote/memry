@@ -205,7 +205,31 @@ export const MessageStatusSchema = z.enum([
 export type MessageStatus = z.infer<typeof MessageStatusSchema>
 
 export const UserContentSchema = z.object({ text: z.string() })
-export const AssistantContentSchema = z.object({ text: z.string() })
+export const AgentSourceKindSchema = z.enum([
+  'note',
+  'task',
+  'inbox',
+  'journal',
+  'calendar_event',
+  'project',
+  'folder'
+])
+export type AgentSourceKind = z.infer<typeof AgentSourceKindSchema>
+
+export const AgentSourceRefSchema = z
+  .object({
+    kind: AgentSourceKindSchema,
+    id: z.string().min(1),
+    title: z.string().min(1),
+    href: z.string().min(1)
+  })
+  .strict()
+export type AgentSourceRef = z.infer<typeof AgentSourceRefSchema>
+
+export const AssistantContentSchema = z.object({
+  text: z.string(),
+  sources: z.array(AgentSourceRefSchema).optional()
+})
 export const ToolCallStatusSchema = z.enum([
   'pending',
   'approved',

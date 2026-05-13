@@ -4,7 +4,13 @@ import { cjk } from '@streamdown/cjk'
 import { code } from '@streamdown/code'
 import { math } from '@streamdown/math'
 import { mermaid } from '@streamdown/mermaid'
-import { Streamdown } from 'streamdown'
+import type { Pluggable, PluggableList, Plugin } from 'unified'
+import {
+  defaultRehypePlugins,
+  defaultUrlTransform,
+  Streamdown,
+  type UrlTransform
+} from 'streamdown'
 
 import { cn } from '@/lib/utils'
 
@@ -51,6 +57,29 @@ export function MessageContent({
 export type MessageResponseProps = ComponentProps<typeof Streamdown>
 
 const streamdownPlugins = { cjk, code, math, mermaid }
+const memryUrlTransform: UrlTransform = (url, key, node) => {
+  if (url.startsWith('memry://')) return url
+  return defaultUrlTransform(url, key, node)
+}
+const defaultSanitizePlugin = defaultRehypePlugins.sanitize as unknown as [
+  Plugin,
+  { protocols?: Record<string, string[]> }
+]
+const memrySanitizePlugin: Pluggable = [
+  defaultSanitizePlugin[0],
+  {
+    ...defaultSanitizePlugin[1],
+    protocols: {
+      ...defaultSanitizePlugin[1].protocols,
+      href: [...(defaultSanitizePlugin[1].protocols?.href ?? []), 'memry']
+    }
+  }
+] as Pluggable
+const streamdownRehypePlugins: PluggableList = [
+  defaultRehypePlugins.raw,
+  memrySanitizePlugin,
+  defaultRehypePlugins.harden
+]
 
 export const MessageResponse = memo(
   ({ className, ...props }: MessageResponseProps) => (
@@ -60,6 +89,8 @@ export const MessageResponse = memo(
         className
       )}
       plugins={streamdownPlugins}
+      rehypePlugins={streamdownRehypePlugins}
+      urlTransform={memryUrlTransform}
       {...props}
     />
   ),

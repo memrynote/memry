@@ -442,6 +442,9 @@
       "resolveWindow": "Hindi malutas ang window ng pinagmulan ng ahente",
       "detectCli": "Hindi matukoy ang mga backend ng ahente",
       "loadDisclosure": "Hindi ma-load ang estado ng pagsisiwalat"
+    },
+    "sources": {
+      "used": "{count, plural, one {Gumamit ng # source} other {Gumamit ng # sources}}"
     }
   }
 }

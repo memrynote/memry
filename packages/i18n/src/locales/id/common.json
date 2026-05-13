@@ -442,6 +442,9 @@
       "resolveWindow": "Tidak dapat menyelesaikan jendela sumber agen",
       "detectCli": "Tidak dapat mendeteksi backend agen",
       "loadDisclosure": "Tidak dapat memuat status pengungkapan"
+    },
+    "sources": {
+      "used": "{count, plural, one {Menggunakan # sumber} other {Menggunakan # sumber}}"
     }
   }
 }
