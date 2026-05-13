@@ -4,7 +4,8 @@ A high-level map of what Memry does. Each section links to dedicated pages in th
 
 ## Notes
 
-Rich-text editing with BlockNote, wiki links, backlinks, properties, attachments, reminders, and version history.
+Rich-text editing with BlockNote, wiki links, backlinks, properties, attachments, audio blocks,
+reminders, and version history.
 
 → [Notes](/user-guide/notes/editing)
 
@@ -16,7 +17,9 @@ A daily writing space with calendar navigation (day / month / year), heatmap, st
 
 ## Tasks & Projects
 
-Tasks live alongside notes. Multi-view (list / kanban), filters, saved filters, subtasks, recurrence, bulk actions, and drag-drop. Group tasks under projects with custom statuses.
+Tasks live alongside notes and filed audio. Multi-view (list / kanban), filters, saved filters,
+subtasks, recurrence, bulk actions, related items, and drag-drop. Group tasks under projects with
+custom statuses.
 
 → [Tasks](/user-guide/tasks/list-vs-kanban) · [Projects](/user-guide/projects)
 
