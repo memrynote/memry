@@ -1,9 +1,17 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { History } from 'lucide-react'
 import { useT } from '@memry/i18n/renderer'
 
-import { Bot, CalendarDays } from '@/lib/icons'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Bot, CalendarDays, PlusSignIcon } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { useAgentOptional } from './agent-context'
+import { ConversationList } from './conversation-list'
 
 export type RightSidebarTab = 'day' | 'agent'
 
@@ -15,6 +23,7 @@ interface SidebarTabsProps {
   defaultTab?: RightSidebarTab
   dayLabel?: string
   agentLabel?: string
+  endAccessory?: ReactNode
 }
 
 function readInitialTab(defaultTab: RightSidebarTab): RightSidebarTab {
@@ -31,14 +40,14 @@ export function SidebarTabs({
   children,
   defaultTab = 'day',
   dayLabel,
-  agentLabel
+  endAccessory
 }: SidebarTabsProps): React.JSX.Element {
   const { t } = useT('common')
   const [active, setActive] = useState<RightSidebarTab>(() => readInitialTab(defaultTab))
   const agent = useAgentOptional()
   const dayTabLabel = t('agentChat.sidebar.day')
   const agentTabLabel = t('agentChat.sidebar.agent')
-  const activeLabel = active === 'day' ? (dayLabel ?? dayTabLabel) : (agentLabel ?? agentTabLabel)
+  const activeLabel = dayLabel ?? dayTabLabel
 
   useEffect(() => {
     try {
@@ -62,10 +71,7 @@ export function SidebarTabs({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex h-9 shrink-0 items-center justify-between gap-3 border-b border-sidebar-border px-3">
-        <span className="min-w-0 truncate text-xs font-semibold text-sidebar-foreground">
-          {activeLabel}
-        </span>
+      <div className={cn('flex h-9 shrink-0 items-center gap-3 ps-3', !endAccessory && 'pe-3')}>
         <div
           role="tablist"
           aria-label={t('agentChat.sidebar.label')}
@@ -96,11 +102,106 @@ export function SidebarTabs({
             )}
           </SidebarTabButton>
         </div>
+        <div
+          data-slot="day-panel-header-actions"
+          className="ms-auto flex shrink-0 items-center gap-2"
+        >
+          <div className="flex h-9 min-w-0 items-center gap-1.5 pt-0.5">
+            {active === 'day' ? (
+              <span className="min-w-0 truncate text-[13px] font-medium tracking-[-0.01em] text-foreground transition-colors duration-150">
+                {activeLabel}
+              </span>
+            ) : (
+              <AgentConversationActions />
+            )}
+          </div>
+          {endAccessory && (
+            <div data-slot="day-panel-toggle-slot" className="flex shrink-0 items-center pe-[13px]">
+              {endAccessory}
+            </div>
+          )}
+        </div>
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
         {active === 'day' ? children.day : children.agent}
       </div>
     </div>
+  )
+}
+
+function AgentConversationActions(): React.JSX.Element | null {
+  const { t } = useT('common')
+  const agent = useAgentOptional()
+
+  if (!agent || agent.state.disclosureAccepted !== true) return null
+
+  const newConversationLabel = t('agentChat.newConversation')
+
+  return (
+    <div className="flex items-center gap-1">
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label={newConversationLabel}
+              title={newConversationLabel}
+              onClick={() => void agent.createConversation()}
+              className="inline-flex size-6 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-[#303030] hover:text-[color-mix(in_srgb,var(--foreground)_35%,white)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <PlusSignIcon className="size-3.5" aria-hidden="true" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            {newConversationLabel}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <AgentHistoryMenu />
+    </div>
+  )
+}
+
+function AgentHistoryMenu(): React.JSX.Element | null {
+  const { t } = useT('common')
+  const agent = useAgentOptional()
+
+  if (!agent || agent.state.disclosureAccepted !== true) return null
+
+  const conversations = Object.values(agent.state.conversations).sort((left, right) => {
+    return right.updatedAt - left.updatedAt
+  })
+  const historyLabel = t('agentChat.history')
+
+  return (
+    <TooltipProvider delayDuration={300}>
+      <DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label={historyLabel}
+                title={historyLabel}
+                className="inline-flex size-6 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-[#303030] hover:text-[color-mix(in_srgb,var(--foreground)_35%,white)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:bg-[#303030] data-[state=open]:text-[color-mix(in_srgb,var(--foreground)_35%,white)]"
+              >
+                <History className="size-3.5" aria-hidden="true" />
+              </button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            {historyLabel}
+          </TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent align="start" className="w-72 border-0 p-1">
+          <ConversationList
+            conversations={conversations}
+            activeConversationId={agent.state.activeConversationId}
+            onSelectConversation={(id) => void agent.loadConversation(id)}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </TooltipProvider>
   )
 }
 

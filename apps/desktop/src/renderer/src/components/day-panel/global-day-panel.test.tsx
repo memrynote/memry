@@ -104,4 +104,37 @@ describe('GlobalDayPanel', () => {
     expect(screen.getByText('Agent chat')).toBeInTheDocument()
     expect(screen.queryByTestId('journal-day-panel')).not.toBeInTheDocument()
   })
+
+  it('covers the tab bar instead of starting below it', () => {
+    renderPanel()
+
+    const container = document.querySelector('[data-slot="day-panel-container"]')
+
+    expect(container).toHaveClass('top-0')
+    expect(container).not.toHaveClass('top-[37px]')
+  })
+
+  it('renders with only a left border edge', () => {
+    renderPanel()
+
+    const container = document.querySelector('[data-slot="day-panel-container"]')
+
+    expect(container).toHaveClass('bg-background')
+    expect(container).not.toHaveClass('bg-sidebar')
+    expect(container).toHaveClass('border-s')
+    expect(container).toHaveClass('border-border')
+    expect(container).not.toHaveClass('border-b')
+  })
+
+  it('keeps the day panel toggle at the far edge when open', () => {
+    renderPanel()
+
+    const headerActions = document.querySelector('[data-slot="day-panel-header-actions"]')
+    const toggleSlot = document.querySelector('[data-slot="day-panel-toggle-slot"]')
+
+    expect(headerActions).toBeInTheDocument()
+    expect(headerActions).toHaveClass('ms-auto')
+    expect(toggleSlot).toBeInTheDocument()
+    expect(toggleSlot).toHaveClass('pe-[13px]')
+  })
 })
