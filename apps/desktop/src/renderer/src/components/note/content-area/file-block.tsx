@@ -15,6 +15,7 @@ import 'react-pdf/dist/Page/TextLayer.css'
 import {
   FileText,
   File,
+  FileAudio,
   Download,
   Upload,
   Loader2,
@@ -28,6 +29,10 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { useSync } from '@/contexts/sync-context'
 import { useT } from '@memry/i18n/renderer'
+import type { FileBlockProps } from './file-block-markers'
+
+export { FILE_BLOCK_REGEX, parseFileBlockMarker, serializeFileBlock } from './file-block-markers'
+export type { FileBlockProps } from './file-block-markers'
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -159,7 +164,7 @@ function PdfPreview({ url, name }: PdfPreviewProps) {
           )}
           <Button variant="ghost" size="sm" asChild className="h-7 text-xs">
             <a href={url} download={name}>
-              <Download className="mr-1 h-3 w-3" />
+              <Download className="me-1 h-3 w-3" />
 
               {tPhaseF('phaseF.componentsNoteContentAreaFileBlock.download')}
             </a>
@@ -171,7 +176,7 @@ function PdfPreview({ url, name }: PdfPreviewProps) {
       <div className="flex">
         {/* Sidebar with page thumbnails */}
         {sidebarOpen && numPages > 1 && (
-          <div className="w-[120px] border-r border-border bg-muted/30 flex-shrink-0">
+          <div className="w-[120px] border-e border-border bg-muted/30 flex-shrink-0">
             <ScrollArea className="h-[400px]">
               <div className="p-2 space-y-2">
                 <Document file={url}>
@@ -340,11 +345,47 @@ function FilePreview({ url, name, size, mimeType }: FilePreviewProps) {
       </div>
       <Button variant="ghost" size="sm" asChild className="h-8">
         <a href={url} download={name}>
-          <Download className="mr-1 h-4 w-4" />
+          <Download className="me-1 h-4 w-4" />
 
           {tPhaseF('phaseF.componentsNoteContentAreaFileBlock.download2')}
         </a>
       </Button>
+      {activeTransfer && activeTransfer.status !== 'completed' && (
+        <SyncProgressOverlay
+          progress={activeTransfer.progress}
+          status={activeTransfer.status}
+          direction={transferDirection}
+        />
+      )}
+    </div>
+  )
+}
+
+function AudioPreview({ url, name }: FilePreviewProps) {
+  const { state } = useSync()
+
+  const uploadEntry = state.uploadProgress
+    ? Object.entries(state.uploadProgress).find(([key]) => name && key.includes(name))?.[1]
+    : null
+
+  const downloadEntry = state.downloadProgress
+    ? Object.entries(state.downloadProgress).find(([key]) => name && key.includes(name))?.[1]
+    : null
+
+  const activeTransfer = uploadEntry ?? downloadEntry
+  const transferDirection: 'upload' | 'download' = uploadEntry ? 'upload' : 'download'
+
+  return (
+    <div className="file-audio relative rounded-md border border-border bg-muted/30 p-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <FileAudio className="h-5 w-5 shrink-0 text-muted-foreground" />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{name}</p>
+          </div>
+        </div>
+        <audio controls preload="metadata" src={url} className="h-9 w-full min-w-0 sm:max-w-xs" />
+      </div>
       {activeTransfer && activeTransfer.status !== 'completed' && (
         <SyncProgressOverlay
           progress={activeTransfer.progress}
@@ -375,6 +416,7 @@ function FileBlockRender({
   const { t: tPhaseF } = useT('notes')
   const { url, name, size, mimeType } = block.props
   const isPdf = mimeType === 'application/pdf'
+  const isAudio = mimeType.startsWith('audio/')
 
   // Don't render if no URL
   if (!url) {
@@ -389,6 +431,8 @@ function FileBlockRender({
     <div ref={contentRef} className="file-block my-2" contentEditable={false}>
       {isPdf ? (
         <PdfPreview url={url} name={name} />
+      ) : isAudio ? (
+        <AudioPreview url={url} name={name} size={size} mimeType={mimeType} />
       ) : (
         <FilePreview url={url} name={name} size={size} mimeType={mimeType} />
       )}
@@ -417,51 +461,9 @@ export const createFileBlock = createReactBlockSpec(
 // ============================================================================
 
 /**
- * Regex to match file block markers in markdown
- * Format: <!-- file:{"url":"...","name":"...","size":123,"mimeType":"..."} -->
- */
-export const FILE_BLOCK_REGEX = /<!-- file:(\{[^}]+\}) -->/g
-
-/**
- * Serialize file block props to markdown marker
- */
-export function serializeFileBlock(props: {
-  url: string
-  name: string
-  size: number
-  mimeType: string
-}): string {
-  return `<!-- file:${JSON.stringify(props)} -->`
-}
-
-/**
- * Parse file block marker from markdown
- */
-export function parseFileBlockMarker(
-  marker: string
-): { url: string; name: string; size: number; mimeType: string } | null {
-  const match = marker.match(/<!-- file:(\{[^}]+\}) -->/)
-  if (!match) return null
-  try {
-    return JSON.parse(match[1])
-  } catch {
-    return null
-  }
-}
-
-// ============================================================================
-// Helper to create FileBlock content
-// ============================================================================
-
-/**
  * Create a FileBlock content object for insertion
  */
-export function createFileBlockContent(props: {
-  url: string
-  name: string
-  size: number
-  mimeType: string
-}) {
+export function createFileBlockContent(props: FileBlockProps) {
   return {
     type: 'file' as const,
     props

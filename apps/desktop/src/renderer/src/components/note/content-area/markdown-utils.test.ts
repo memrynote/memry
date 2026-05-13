@@ -95,6 +95,48 @@ describe('parseMarkdownPreservingBlanks', () => {
       expect.stringContaining('https://example.com/not-youtube')
     )
   })
+
+  it('parses file block markers in place', async () => {
+    const editor = {
+      tryParseMarkdownToBlocks: vi.fn(async (markdown: string) => [
+        {
+          type: 'paragraph',
+          props: {},
+          content: [{ type: 'text', text: markdown, styles: {} }],
+          children: []
+        }
+      ])
+    }
+
+    const blocks = await parseMarkdownPreservingBlanks(
+      editor,
+      [
+        'Intro',
+        '<!-- file:{"url":"memry-file://local/voice.wav","name":"voice.wav","size":1572864,"mimeType":"audio/wav"} -->',
+        'Tail'
+      ].join('\n')
+    )
+
+    expect(blocks).toEqual([
+      expect.objectContaining({
+        type: 'paragraph',
+        content: [{ type: 'text', text: 'Intro', styles: {} }]
+      }),
+      {
+        type: 'file',
+        props: {
+          url: 'memry-file://local/voice.wav',
+          name: 'voice.wav',
+          size: 1572864,
+          mimeType: 'audio/wav'
+        }
+      },
+      expect.objectContaining({
+        type: 'paragraph',
+        content: [{ type: 'text', text: 'Tail', styles: {} }]
+      })
+    ])
+  })
 })
 
 describe('sanitizeBlockIds', () => {
@@ -212,6 +254,56 @@ describe('serializeBlocksPreservingBlanks', () => {
     expect(markdown).toContain('![embed](https://youtu.be/dQw4w9WgXcQ)')
     expect(markdown).toContain('> [!success]\n> Callout body')
     expect(markdown).toContain('Tail')
+  })
+
+  it('serializes file blocks as markers without leaking rendered UI text', async () => {
+    const editor = {
+      blocksToMarkdownLossy: vi.fn(async (blocks: any[]) =>
+        blocks
+          .map((block) => {
+            if (block.type === 'file') return 'voice.wav\n1.5 MB\nDownload'
+            return block.content?.[0]?.text ?? ''
+          })
+          .filter(Boolean)
+          .join('\n')
+      )
+    }
+
+    const markdown = await serializeBlocksPreservingBlanks(editor, [
+      {
+        type: 'paragraph',
+        props: {},
+        content: [{ type: 'text', text: 'Intro', styles: {} }],
+        children: []
+      },
+      {
+        type: 'file',
+        props: {
+          url: 'memry-file://local/voice.wav',
+          name: 'voice.wav',
+          size: 1572864,
+          mimeType: 'audio/wav'
+        },
+        children: []
+      },
+      {
+        type: 'paragraph',
+        props: {},
+        content: [{ type: 'text', text: 'Tail', styles: {} }],
+        children: []
+      }
+    ] as any[])
+
+    expect(markdown).toContain('Intro')
+    expect(markdown).toContain(
+      '<!-- file:{"url":"memry-file://local/voice.wav","name":"voice.wav","size":1572864,"mimeType":"audio/wav"} -->'
+    )
+    expect(markdown).toContain('Tail')
+    expect(markdown).not.toContain('1.5 MB')
+    expect(markdown).not.toContain('Download')
+    expect(editor.blocksToMarkdownLossy).not.toHaveBeenCalledWith([
+      expect.objectContaining({ type: 'file' })
+    ])
   })
 })
 

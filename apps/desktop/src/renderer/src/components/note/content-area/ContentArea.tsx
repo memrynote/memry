@@ -797,7 +797,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
             triggerCharacter="[["
             getItems={getWikiLinkItems}
             suggestionMenuComponent={WikiLinkMenu}
-            onItemClick={handleWikiLinkSelect}
+            onItemClick={(item) => void handleWikiLinkSelect(item)}
           />
         </BlockNoteView>
 
