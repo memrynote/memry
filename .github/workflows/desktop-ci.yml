@@ -48,6 +48,8 @@ jobs:
       - name: Typecheck workspace packages
         run: |
           for package in \
+            @memry/app-core \
+            @memry/cli \
             @memry/contracts \
             @memry/db-schema \
             @memry/domain-inbox \
@@ -110,6 +112,9 @@ jobs:
 
       - name: Rebuild native modules for Node
         run: bash apps/desktop/scripts/ensure-native.sh node
+
+      - name: Run CLI tests
+        run: pnpm test:cli
 
       - name: Run desktop tests with coverage
         run: pnpm --filter @memry/desktop exec vitest run --coverage --config config/vitest.config.ts

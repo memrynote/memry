@@ -1,0 +1,25 @@
+{
+  "name": "@memry/cli",
+  "version": "0.1.0",
+  "private": true,
+  "license": "GPL-3.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/run.ts"
+  },
+  "types": "./src/run.ts",
+  "bin": {
+    "memry": "./bin/memry.mjs"
+  },
+  "scripts": {
+    "test": "node --no-warnings --experimental-strip-types --experimental-transform-types --test src/*.test.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@memry/app-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@memry/typescript-config": "workspace:*",
+    "@types/node": "^25.0.3"
+  }
+}

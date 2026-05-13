@@ -21,6 +21,7 @@
         "calendar": "Calendar",
         "appearance": "Appearance",
         "shortcuts": "Shortcuts",
+        "commandLine": "Command Line",
         "ai": "AI Assistant",
         "integrations": "Integrations",
         "vault": "Vault",
@@ -943,6 +944,38 @@
       "deleteFailed": "Failed to delete property",
       "deleted": "Deleted property \"{name}\"",
       "addFailed": "Failed to add option"
+    }
+  },
+  "commandLine": {
+    "header": {
+      "title": "Command Line",
+      "subtitle": "Set up the memry command for your terminal"
+    },
+    "groups": {
+      "terminal": "Terminal"
+    },
+    "defaultVault": {
+      "label": "Default vault",
+      "placeholder": "Select vault",
+      "none": "No vault selected",
+      "description": "Choose the vault used when you run memry without --vault.",
+      "descriptionSelected": "Commands use {path} when --vault is omitted."
+    },
+    "command": {
+      "label": "memry command",
+      "toggleLabel": "Install memry command",
+      "descriptionInstalled": "Installed at {path}",
+      "descriptionNotInstalled": "Install the memry command so you can use your vault from any terminal."
+    },
+    "status": {
+      "loading": "Checking command status...",
+      "loadFailed": "Failed to load command status",
+      "installedToast": "memry command installed",
+      "uninstalledToast": "memry command removed",
+      "defaultVaultUpdatedToast": "Default CLI vault updated"
+    },
+    "actions": {
+      "refresh": "Refresh"
     }
   },
   "shortcuts": {

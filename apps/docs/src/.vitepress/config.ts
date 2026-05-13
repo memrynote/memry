@@ -102,6 +102,7 @@ function unifiedSidebar() {
             { text: 'Projects', link: '/user-guide/projects' },
             { text: 'Calendar', link: '/user-guide/calendar' },
             { text: 'Search & Command Palette', link: '/user-guide/search' },
+            { text: 'Command Line', link: '/user-guide/cli' },
             { text: 'Templates', link: '/user-guide/templates' },
             { text: 'Tabs & Split View', link: '/user-guide/tabs-split-view' },
             { text: 'Folder View', link: '/user-guide/folder-view' },

@@ -13,7 +13,8 @@ import {
   List,
   Key,
   User,
-  CalendarDays
+  CalendarDays,
+  Terminal
 } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { GeneralSettings } from './settings/general-section'
@@ -30,6 +31,7 @@ import { TasksSettings } from './settings/tasks-section'
 import { CalendarSettingsSection } from './settings/calendar-section'
 import { ShortcutsSettings } from './settings/shortcuts-section'
 import { AccountSettings } from './settings/account-section'
+import { CommandLineSettings } from './settings/command-line-section'
 import { useSettingsModal } from '@/contexts/settings-modal-context'
 import { useT } from '@memry/i18n/renderer'
 
@@ -102,6 +104,12 @@ export function SettingsPage() {
             isActive={activeSection === 'shortcuts'}
             onClick={() => setActiveSection('shortcuts')}
           />
+          <SettingsNavItem
+            icon={<Terminal className="w-3.5 h-3.5" />}
+            label={t('page.nav.items.commandLine')}
+            isActive={activeSection === 'command-line'}
+            onClick={() => setActiveSection('command-line')}
+          />
         </SettingsNavGroup>
 
         <SettingsNavGroup label={t('page.nav.groups.services')}>
@@ -157,6 +165,7 @@ export function SettingsPage() {
             {activeSection === 'tags' && <TagsSettings />}
             {activeSection === 'properties' && <PropertiesSettings />}
             {activeSection === 'shortcuts' && <ShortcutsSettings />}
+            {activeSection === 'command-line' && <CommandLineSettings />}
             {activeSection === 'account' && <AccountSettings />}
           </div>
         </ScrollArea>
