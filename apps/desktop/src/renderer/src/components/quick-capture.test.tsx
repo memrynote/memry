@@ -40,7 +40,9 @@ vi.mock('@/hooks/use-inbox', () => ({
 }))
 
 vi.mock('@/lib/voice-recording-readiness', () => ({
-  ensureVoiceRecordingReady: mocks.ensureVoiceReady
+  ensureVoiceRecordingReady: mocks.ensureVoiceReady,
+  getVoiceRecordingSettingsTarget: (readiness: { reason?: string }) =>
+    readiness.reason === 'missing-model' ? 'ai:voice-local-model' : 'ai'
 }))
 
 vi.mock('@/lib/voice-memo-audio', () => ({
@@ -414,7 +416,16 @@ describe('QuickCapture', () => {
   })
 
   it('handles selected and dropped audio readiness plus capture errors', async () => {
-    mocks.ensureVoiceReady.mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+    mocks.ensureVoiceReady
+      .mockImplementationOnce(async (openSettings: (readiness: unknown) => void) => {
+        openSettings({
+          ready: false,
+          provider: 'local',
+          reason: 'missing-model'
+        })
+        return false
+      })
+      .mockResolvedValueOnce(true)
     mocks.captureVoice.mockResolvedValueOnce({ success: false, error: 'audio failed' })
 
     const { container } = render(<QuickCapture />)
@@ -432,6 +443,7 @@ describe('QuickCapture', () => {
       await Promise.resolve()
     })
     await waitFor(() => expect(mocks.ensureVoiceReady).toHaveBeenCalledTimes(1))
+    expect(mocks.openSettings).toHaveBeenCalledWith('ai:voice-local-model')
     expect(mocks.captureVoice).not.toHaveBeenCalled()
     await waitFor(() => expect(screen.getByTestId('capture-flags')).toHaveTextContent('idle'))
 

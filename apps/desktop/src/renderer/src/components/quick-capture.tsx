@@ -13,7 +13,10 @@ import { FilePreviewCard, formatFileSize } from './quick-capture-image-preview'
 import { detectPlatformFromUrl, extractHandleFromUrl } from './social-card'
 import { createLogger } from '@/lib/logger'
 import { useAISettingsContext } from '@/contexts/ai-settings-context'
-import { ensureVoiceRecordingReady } from '@/lib/voice-recording-readiness'
+import {
+  ensureVoiceRecordingReady,
+  getVoiceRecordingSettingsTarget
+} from '@/lib/voice-recording-readiness'
 import { prepareVoiceMemoAudio } from '@/lib/voice-memo-audio'
 import { useT } from '@memry/i18n/renderer'
 import { getI18n } from 'react-i18next'
@@ -244,8 +247,8 @@ export function QuickCapture(): React.JSX.Element {
                 return
               }
 
-              const ready = await ensureVoiceRecordingReady(() => {
-                window.api.quickCapture.openSettings('ai')
+              const ready = await ensureVoiceRecordingReady((readiness) => {
+                window.api.quickCapture.openSettings(getVoiceRecordingSettingsTarget(readiness))
               })
 
               if (!ready) {
@@ -596,31 +599,64 @@ export function QuickCapture(): React.JSX.Element {
               onClose={() => window.api.quickCapture.close()}
             />
           ) : (
-            <QuickCaptureInput
-              value={value}
-              onChange={handleValueChange}
-              onSubmit={() => handleSubmit()}
-              onStartRecording={() => {
-                if (!aiEnabled) return
-                void ensureVoiceRecordingReady(() => {
-                  window.api.quickCapture.openSettings('ai')
-                }).then((ready) => {
-                  if (ready) {
-                    flushSync(() => {
-                      setIsRecording(true)
-                      setValue('Voice memo')
+            <div
+              className={cn(
+                'grid items-stretch overflow-hidden transition-[grid-template-columns] duration-300 ease-out motion-reduce:transition-none',
+                isRecording
+                  ? 'grid-cols-[minmax(0,60%)_minmax(0,40%)]'
+                  : 'grid-cols-[minmax(0,100%)_minmax(0,0%)]'
+              )}
+            >
+              <div className="min-w-0">
+                <QuickCaptureInput
+                  value={value}
+                  onChange={handleValueChange}
+                  onSubmit={() => handleSubmit()}
+                  onStartRecording={() => {
+                    if (!aiEnabled) return
+                    void ensureVoiceRecordingReady((readiness) => {
+                      window.api.quickCapture.openSettings(
+                        getVoiceRecordingSettingsTarget(readiness)
+                      )
+                    }).then((ready) => {
+                      if (ready) {
+                        flushSync(() => {
+                          setIsRecording(true)
+                          setValue('Voice memo')
+                        })
+                        void voiceRecorderRef.current?.start()
+                      }
                     })
-                    void voiceRecorderRef.current?.start()
-                  }
-                })
-              }}
-              onPaste={handlePaste}
-              detectedType={detectedType}
-              isCapturing={isCapturing || isRecording}
-              hasAttachment={hasAttachment}
-              voiceEnabled={aiEnabled}
-              textareaRef={textareaRef}
-            />
+                  }}
+                  onPaste={handlePaste}
+                  detectedType={detectedType}
+                  isCapturing={isCapturing || isRecording}
+                  hasAttachment={hasAttachment}
+                  voiceEnabled={aiEnabled}
+                  textareaRef={textareaRef}
+                />
+              </div>
+
+              <div
+                aria-hidden={!isRecording}
+                className={cn(
+                  'min-w-0 overflow-hidden transition-[opacity,transform,padding,border-color] duration-300 ease-out motion-reduce:transition-none',
+                  isRecording
+                    ? 'border-s border-border/30 bg-foreground/[0.02] py-3.5 pe-4 ps-3 opacity-100 translate-x-0'
+                    : 'pointer-events-none border-s border-transparent py-3.5 pe-0 ps-0 opacity-0 translate-x-2'
+                )}
+              >
+                {aiEnabled && isRecording && (
+                  <VoiceRecorder
+                    ref={voiceRecorderRef}
+                    onRecordingComplete={handleRecordingComplete}
+                    onCancel={() => setIsRecording(false)}
+                    maxDuration={300}
+                    className="w-full min-w-0"
+                  />
+                )}
+              </div>
+            </div>
           )}
 
           {(linkPreview || previewLoading) && detectedType === 'link' && (
@@ -658,18 +694,6 @@ export function QuickCapture(): React.JSX.Element {
               subtitle={SOCIAL_DOMAIN_LABEL}
               onClear={() => {}}
             />
-          )}
-
-          {aiEnabled && isRecording && (
-            <div className="px-3 py-2 border-t border-border/30 bg-foreground/[0.02]">
-              <VoiceRecorder
-                ref={voiceRecorderRef}
-                onRecordingComplete={handleRecordingComplete}
-                onCancel={() => setIsRecording(false)}
-                maxDuration={300}
-                className="w-full"
-              />
-            </div>
           )}
 
           {captureState === 'error' && errorMessage && (

@@ -25,8 +25,8 @@ export interface VoiceRecorderHandle {
 const DEFAULT_MAX_DURATION = 300
 const MIME_TYPE = 'audio/webm'
 const WAVEFORM_BAR_COUNT = 40
-const MIN_BAR_HEIGHT = 4
-const MAX_BAR_HEIGHT = 28
+const MIN_BAR_HEIGHT = 3
+const MAX_BAR_HEIGHT = 18
 
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60)
@@ -333,7 +333,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
           <span className="text-destructive/90 flex-1">{error}</span>
           {permissionDenied && (
             <Button variant="ghost" size="sm" onClick={openSettings} className="h-7 px-2 text-xs">
-              <Settings className="size-3 mr-1" />
+              <Settings className="size-3 me-1" />
 
               {tPhaseF('phaseF.componentsVoiceRecorder.settings')}
             </Button>
@@ -368,7 +368,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
     return (
       <div
         className={cn(
-          'flex items-center gap-3 rounded-[10px] py-2.5 px-3.5',
+          'flex max-h-10 min-w-0 items-center gap-2 overflow-hidden rounded-[10px] px-2.5 py-1.5',
           'bg-muted-foreground/[0.04] border border-muted-foreground/15',
           className
         )}
@@ -377,11 +377,11 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
           <div className="rounded-sm bg-muted-foreground shrink-0 size-2 animate-pulse" />
         </div>
 
-        <div className="shrink-0 w-11 font-mono font-medium text-sm/[18px] text-foreground tabular-nums">
+        <div className="w-10 shrink-0 font-mono text-xs/[16px] font-medium text-foreground tabular-nums">
           {formatTime(duration)}
         </div>
 
-        <div className="flex items-center grow h-7 gap-0.5">
+        <div className="flex h-5 min-w-0 grow items-center gap-0.5 overflow-hidden">
           {waveformBars.map((height, i) => (
             <div
               key={i}
@@ -397,31 +397,25 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
         <button
           onClick={handleCancel}
           className={cn(
-            'flex items-center shrink-0 rounded-md py-1 px-2.5 gap-1',
+            'flex size-7 shrink-0 items-center justify-center rounded-md',
             'border border-border/50 text-muted-foreground',
             'hover:bg-muted/50 transition-colors'
           )}
           aria-label={tPhaseF('phaseF.componentsVoiceRecorder.cancelRecording')}
         >
           <X className="size-3" />
-          <span className="text-[11px]/3.5 font-normal">
-            {tPhaseF('phaseF.componentsVoiceRecorder.cancel')}
-          </span>
         </button>
 
         <button
           onClick={handleStop}
           className={cn(
-            'flex items-center shrink-0 rounded-md py-1 px-3 gap-1.5',
+            'flex size-7 shrink-0 items-center justify-center rounded-md',
             'bg-foreground text-background',
             'hover:bg-foreground/90 transition-colors'
           )}
           aria-label={tPhaseF('phaseF.componentsVoiceRecorder.stopRecording')}
         >
           <Square className="size-2.5 fill-current" />
-          <span className="text-[11px]/3.5 font-medium">
-            {tPhaseF('phaseF.componentsVoiceRecorder.stop')}
-          </span>
         </button>
       </div>
     )

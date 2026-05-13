@@ -106,6 +106,25 @@ describe('VoiceRecorder', () => {
     expect(trackStop).toHaveBeenCalled()
   })
 
+  it('keeps the active recording controls within an inline header height', async () => {
+    render(
+      <VoiceRecorder
+        className="h-full w-full"
+        onRecordingComplete={onRecordingComplete}
+        onCancel={onCancel}
+      />
+    )
+
+    await userEvent.click(screen.getByLabelText('Start voice recording'))
+
+    const recordingShell = (await screen.findByLabelText('Stop recording')).parentElement
+
+    expect(recordingShell).toHaveClass('max-h-10')
+    expect(recordingShell).toHaveClass('py-1.5')
+    expect(recordingShell).toHaveClass('overflow-hidden')
+    expect(recordingShell).not.toHaveClass('py-2.5')
+  })
+
   it('cancels an active recording and clears chunks', async () => {
     MockMediaRecorder.emitDataOnStop = false
     render(<VoiceRecorder onRecordingComplete={onRecordingComplete} onCancel={onCancel} />)
