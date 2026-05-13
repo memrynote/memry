@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import {
   getPendingCaptureDir,
+  launchMemry,
   readNativeMessage,
   writeNativeMessage,
   writePendingCapture
@@ -50,4 +51,46 @@ test('native messaging framing reads and writes one JSON message', async () => {
   const output = await readNativeMessage(frame)
 
   assert.deepEqual(output, input)
+})
+
+test('launchMemry ignores shell launch environment overrides', () => {
+  const calls = []
+
+  launchMemry({
+    env: {
+      MEMRY_CAPTURE_OPEN_COMMAND: 'touch /tmp/memry-capture-owned',
+      SHELL: '/tmp/untrusted-shell'
+    },
+    platform: 'darwin',
+    spawnImpl: (command, args) => {
+      calls.push({ command, args })
+      return { unref() {} }
+    }
+  })
+
+  assert.deepEqual(calls, [{ command: 'open', args: ['-a', 'Memry'] }])
+})
+
+test('launchMemry accepts only absolute macOS app bundle paths from the environment', () => {
+  const calls = []
+  const spawnImpl = (command, args) => {
+    calls.push({ command, args })
+    return { unref() {} }
+  }
+
+  launchMemry({
+    env: { MEMRY_APP_PATH: '/Applications/Memry.app' },
+    platform: 'darwin',
+    spawnImpl
+  })
+  launchMemry({
+    env: { MEMRY_APP_PATH: 'Memry.app' },
+    platform: 'darwin',
+    spawnImpl
+  })
+
+  assert.deepEqual(calls, [
+    { command: 'open', args: ['/Applications/Memry.app'] },
+    { command: 'open', args: ['-a', 'Memry'] }
+  ])
 })

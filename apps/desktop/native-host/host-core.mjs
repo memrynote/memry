@@ -1,7 +1,7 @@
 import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { isAbsolute, join } from 'node:path'
 import { spawn } from 'node:child_process'
 
 const HOST_NAME = 'com.memry.capture'
@@ -86,19 +86,22 @@ function spawnDetached(command, args, spawnImpl = spawn) {
   child.unref?.()
 }
 
+function getSafeMacAppPath(env) {
+  const appPath = env.MEMRY_APP_PATH
+  if (typeof appPath !== 'string') return undefined
+  if (!isAbsolute(appPath) || appPath.includes('\0')) return undefined
+  return appPath.endsWith('.app') ? appPath : undefined
+}
+
 export function launchMemry({
   env = process.env,
   platform = process.platform,
   spawnImpl = spawn
 } = {}) {
-  if (env.MEMRY_CAPTURE_OPEN_COMMAND) {
-    spawnDetached(env.SHELL || '/bin/sh', ['-lc', env.MEMRY_CAPTURE_OPEN_COMMAND], spawnImpl)
-    return
-  }
-
   if (platform === 'darwin') {
-    if (env.MEMRY_APP_PATH) {
-      spawnDetached('open', [env.MEMRY_APP_PATH], spawnImpl)
+    const appPath = getSafeMacAppPath(env)
+    if (appPath) {
+      spawnDetached('open', [appPath], spawnImpl)
     } else {
       spawnDetached('open', ['-a', 'Memry'], spawnImpl)
     }
@@ -106,7 +109,7 @@ export function launchMemry({
   }
 
   if (platform === 'win32') {
-    spawnDetached('cmd', ['/c', 'start', '', env.MEMRY_APP_PATH || 'Memry'], spawnImpl)
+    spawnDetached('Memry.exe', [], spawnImpl)
     return
   }
 

@@ -11,6 +11,7 @@ const registerAllHandlersMock = vi.fn()
 const applyGlobalCaptureShortcutMock = vi.fn(() => ({ registered: true }))
 const autoOpenLastVaultMock = vi.fn(async () => undefined)
 const closeVaultMock = vi.fn(async () => undefined)
+const onVaultOpenedMock = vi.fn()
 const createMainI18nMock = vi.fn(async () => ({ t: (key: string) => key }))
 const setMainI18nMock = vi.fn()
 const buildAppMenuMock = vi.fn(() => ({ id: 'menu' }))
@@ -124,7 +125,8 @@ vi.mock('./ipc/settings-handlers', () => ({
 vi.mock('./vault', () => ({
   autoOpenLastVault: autoOpenLastVaultMock,
   closeVault: closeVaultMock,
-  getStatus: getVaultStatusMock
+  getStatus: getVaultStatusMock,
+  onVaultOpened: onVaultOpenedMock
 }))
 
 vi.mock('./store', () => ({
