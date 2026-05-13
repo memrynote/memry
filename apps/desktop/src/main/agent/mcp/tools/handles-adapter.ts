@@ -4,16 +4,36 @@ import { searchAll } from '../../../database/queries/search'
 import { listJournalEntriesInRange } from '../../../database/queries/notes'
 import { getInboxProject } from '../../../database/queries/projects'
 import { createDesktopInboxDomain } from '../../../inbox/domain'
-import { readJournalEntry, writeJournalEntry } from '../../../vault/journal'
-import { createNoteCommand, moveNoteCommand, updateNoteCommand } from '../../../notes/domain'
+import { createDesktopInboxCrudHandlers } from '../../../inbox/domain'
+import { deleteJournalEntryFile, readJournalEntry, writeJournalEntry } from '../../../vault/journal'
+import {
+  createNoteCommand,
+  deleteNoteCommand,
+  moveNoteCommand,
+  renameNoteCommand,
+  updateNoteCommand
+} from '../../../notes/domain'
 import { createDesktopTasksDomain } from '../../../tasks/domain'
 import { createTasksPublisher } from '../../../tasks/publisher'
-import { getFolders, getNoteById, listNotes } from '../../../vault/notes'
+import {
+  createFolder,
+  deleteFolder,
+  getFolders,
+  getNoteById,
+  listNotes,
+  renameFolder
+} from '../../../vault/notes'
 import { getConfig } from '../../../vault'
 import { getAllTagsWithCounts } from '../../../tags/store'
 import { generateId } from '../../../lib/id'
+import {
+  syncFolderConfigDelete,
+  syncFolderConfigRename
+} from '../../../notes/folder-config-effects'
+import type { RepeatConfig } from '@memry/domain-tasks'
 import type { DataDb, IndexDb } from '../../../database'
 import { snapshotCurrentNoteFromWindow } from './current-note'
+import { invokeDesktopApiFromWindow } from './desktop-api'
 import type {
   FolderEntry,
   InboxSummary,
@@ -113,6 +133,12 @@ function createTaskDomain(dataDb: DataDb) {
   return createDesktopTasksDomain(dataDb, createTasksPublisher(), generateId)
 }
 
+function assertSuccess(result: { success: boolean; error?: string }, fallback: string): void {
+  if (!result.success) {
+    throw new Error(result.error ?? fallback)
+  }
+}
+
 export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): VaultServiceHandles {
   return {
     notes: {
@@ -158,6 +184,14 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           tags: input.tags
         })
         return { id: note.id }
+      },
+      async rename({ id, title }) {
+        await renameNoteCommand(id, title)
+        return { id }
+      },
+      async delete(id) {
+        await deleteNoteCommand(id)
+        return { id }
       },
       async update(input) {
         const note = await getNoteById(input.id)
@@ -223,6 +257,23 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         }))
 
         return [...folderEntries, ...noteEntries]
+      },
+      async create(folderPath) {
+        await createFolder(internalFolderFromToolPath(folderPath) ?? '')
+        return { path: folderPath }
+      },
+      async rename({ old_path, new_path }) {
+        const oldInternal = internalFolderFromToolPath(old_path) ?? ''
+        const newInternal = internalFolderFromToolPath(new_path) ?? ''
+        await renameFolder(oldInternal, newInternal)
+        syncFolderConfigRename(oldInternal, newInternal)
+        return { path: new_path }
+      },
+      async delete(folderPath) {
+        const internal = internalFolderFromToolPath(folderPath) ?? ''
+        await deleteFolder(internal)
+        syncFolderConfigDelete(internal)
+        return { path: folderPath }
       }
     },
     tasks: {
@@ -230,7 +281,7 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         const domain = createTaskDomain(dataDb)
         const includeCompleted = input.status === 'completed'
         const result = domain.listTasks({
-          projectId: input.project_id,
+          projectId: input.project_id ?? undefined,
           statusId:
             input.status && input.status !== 'completed' && input.status !== 'open'
               ? input.status
@@ -256,6 +307,9 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
             tags: task.tags ?? []
           }))
       },
+      async get(id) {
+        return createTaskDomain(dataDb).getTask(id) ?? null
+      },
       async create(input) {
         const projectId = input.project_id ?? getInboxProject(dataDb)?.id
         if (!projectId) {
@@ -265,10 +319,19 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         const result = await createTaskDomain(dataDb).createTask({
           title: input.title,
           projectId,
-          dueDate: input.due ?? null,
+          statusId: input.status_id ?? null,
+          parentId: input.parent_id ?? null,
+          dueDate: input.due_date ?? input.due ?? null,
+          dueTime: input.due_time ?? null,
+          startDate: input.start_date ?? null,
           priority: input.priority,
-          description: input.notes ?? null,
-          tags: input.tags
+          description: input.description ?? input.notes ?? null,
+          repeatConfig: input.repeat_config as RepeatConfig | null | undefined,
+          repeatFrom: input.repeat_from ?? null,
+          tags: input.tags,
+          linkedNoteIds: input.linked_note_ids,
+          sourceNoteId: input.source_note_id ?? null,
+          position: input.position
         })
 
         if (!result.success || !result.task) {
@@ -290,18 +353,90 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           return
         }
 
+        const dueDate = Object.prototype.hasOwnProperty.call(patch, 'due_date')
+          ? patch.due_date
+          : patch.due
+        const description = Object.prototype.hasOwnProperty.call(patch, 'description')
+          ? patch.description
+          : patch.notes
         const result = await domain.updateTask({
           id,
           title: patch.title,
-          statusId: patch.status,
+          statusId: patch.status_id ?? patch.status,
           projectId: patch.project_id ?? undefined,
-          dueDate: patch.due,
+          parentId: patch.parent_id,
+          dueDate,
+          dueTime: patch.due_time,
+          startDate: patch.start_date,
           priority: patch.priority,
-          description: patch.notes
+          description,
+          repeatConfig: patch.repeat_config as RepeatConfig | null | undefined,
+          repeatFrom: patch.repeat_from,
+          tags: patch.tags,
+          linkedNoteIds: patch.linked_note_ids
         })
         if (!result.success) {
           throw new Error(result.error ?? 'Failed to update task')
         }
+      },
+      async delete(id) {
+        const result = await createTaskDomain(dataDb).deleteTask(id)
+        assertSuccess(result, 'Failed to delete task')
+        return { id }
+      },
+      async complete({ id, completed_at }) {
+        const result = await createTaskDomain(dataDb).completeTask({
+          id,
+          completedAt: completed_at
+        })
+        assertSuccess(result, 'Failed to complete task')
+        return { id }
+      },
+      async uncomplete(id) {
+        const result = await createTaskDomain(dataDb).uncompleteTask(id)
+        assertSuccess(result, 'Failed to reopen task')
+        return { id }
+      },
+      async archive(id) {
+        const result = await createTaskDomain(dataDb).archiveTask(id)
+        assertSuccess(result, 'Failed to archive task')
+        return { id }
+      },
+      async unarchive(id) {
+        const result = await createTaskDomain(dataDb).unarchiveTask(id)
+        assertSuccess(result, 'Failed to unarchive task')
+        return { id }
+      },
+      async move(input) {
+        const result = await createTaskDomain(dataDb).moveTask({
+          taskId: input.task_id,
+          targetProjectId: input.target_project_id,
+          targetStatusId: input.target_status_id,
+          targetParentId: input.target_parent_id,
+          position: input.position
+        })
+        assertSuccess(result, 'Failed to move task')
+        return { id: input.task_id }
+      },
+      async reorder({ task_ids, positions }) {
+        const result = await createTaskDomain(dataDb).reorderTasks(task_ids, positions)
+        assertSuccess(result, 'Failed to reorder tasks')
+        return { ids: task_ids }
+      },
+      async duplicate(id) {
+        const result = await createTaskDomain(dataDb).duplicateTask(id)
+        assertSuccess(result, 'Failed to duplicate task')
+        return { id: result.task?.id ?? id }
+      },
+      async convertToSubtask({ task_id, parent_id }) {
+        const result = await createTaskDomain(dataDb).convertToSubtask(task_id, parent_id)
+        assertSuccess(result, 'Failed to convert task to subtask')
+        return { id: task_id }
+      },
+      async convertToTask(id) {
+        const result = await createTaskDomain(dataDb).convertToTask(id)
+        assertSuccess(result, 'Failed to convert subtask to task')
+        return { id }
       },
       async addTag({ id, tag }) {
         const domain = createTaskDomain(dataDb)
@@ -332,6 +467,71 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           status: project.archivedAt ? 'archived' : 'active',
           task_count: project.taskCount
         }))
+      },
+      async get(id) {
+        return createTaskDomain(dataDb).getProject(id) ?? null
+      },
+      async create(input) {
+        const result = await createTaskDomain(dataDb).createProject(input)
+        assertSuccess(result, 'Failed to create project')
+        return { id: result.project?.id ?? '' }
+      },
+      async update(input) {
+        const result = await createTaskDomain(dataDb).updateProject(input)
+        assertSuccess(result, 'Failed to update project')
+        return { id: input.id }
+      },
+      async delete(id) {
+        const result = await createTaskDomain(dataDb).deleteProject(id)
+        assertSuccess(result, 'Failed to delete project')
+        return { id }
+      },
+      async archive(id) {
+        const result = await createTaskDomain(dataDb).archiveProject(id)
+        assertSuccess(result, 'Failed to archive project')
+        return { id }
+      },
+      async reorder({ project_ids, positions }) {
+        const result = await createTaskDomain(dataDb).reorderProjects(project_ids, positions)
+        assertSuccess(result, 'Failed to reorder projects')
+        return { ids: project_ids }
+      }
+    },
+    statuses: {
+      async list(projectId) {
+        return createTaskDomain(dataDb).listStatuses(projectId)
+      },
+      async create(input) {
+        const result = await createTaskDomain(dataDb).createStatus({
+          projectId: input.project_id,
+          name: input.name,
+          color: input.color,
+          isDone: input.is_done
+        })
+        assertSuccess(result, 'Failed to create status')
+        return { id: result.status?.id ?? '' }
+      },
+      async update(input) {
+        const result = await createTaskDomain(dataDb).updateStatus({
+          id: input.id,
+          name: input.name,
+          color: input.color,
+          position: input.position,
+          isDefault: input.is_default,
+          isDone: input.is_done
+        })
+        assertSuccess(result, 'Failed to update status')
+        return { id: input.id }
+      },
+      async delete(id) {
+        const result = await createTaskDomain(dataDb).deleteStatus(id)
+        assertSuccess(result, 'Failed to delete status')
+        return { id }
+      },
+      async reorder({ status_ids, positions }) {
+        const result = await createTaskDomain(dataDb).reorderStatuses(status_ids, positions)
+        assertSuccess(result, 'Failed to reorder statuses')
+        return { ids: status_ids }
       }
     },
     journal: {
@@ -357,6 +557,19 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
 
         const created = await writeJournalEntry(date, content_markdown)
         return { id: created.id, created: true }
+      },
+      async update({ date, content_markdown, tags, properties }) {
+        const existing = await readJournalEntry(date)
+        const updated = await writeJournalEntry(
+          date,
+          content_markdown ?? existing?.content ?? '',
+          tags ?? existing?.tags,
+          properties ?? existing?.properties
+        )
+        return { id: updated.id }
+      },
+      async delete(date) {
+        return { date, deleted: await deleteJournalEntryFile(date) }
       }
     },
     inbox: {
@@ -377,6 +590,9 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
             captured_at: item.createdAt.getTime()
           }))
       },
+      async get(id) {
+        return createDesktopInboxCrudHandlers().handleGet(id)
+      },
       async add({ source, title, content }) {
         const result = await createDesktopInboxDomain().captureText({
           title,
@@ -388,6 +604,36 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           throw new Error(result.error ?? 'Failed to add inbox item')
         }
         return { id: result.item.id }
+      },
+      async update(input) {
+        const result = await createDesktopInboxCrudHandlers().handleUpdate(input)
+        assertSuccess(result, 'Failed to update inbox item')
+        return { id: input.id }
+      },
+      async archive(id) {
+        const result = await createDesktopInboxCrudHandlers().handleArchive(id)
+        assertSuccess(result, 'Failed to archive inbox item')
+        return { id }
+      },
+      async unarchive(id) {
+        const result = await createDesktopInboxCrudHandlers().handleUnarchive(id)
+        assertSuccess(result, 'Failed to unarchive inbox item')
+        return { id }
+      },
+      async delete(id) {
+        const result = await createDesktopInboxCrudHandlers().handleDeletePermanent(id)
+        assertSuccess(result, 'Failed to delete inbox item')
+        return { id }
+      },
+      async addTag({ id, tag }) {
+        const result = await createDesktopInboxCrudHandlers().handleAddTag(id, tag)
+        assertSuccess(result, 'Failed to add inbox tag')
+        return { id }
+      },
+      async removeTag({ id, tag }) {
+        const result = await createDesktopInboxCrudHandlers().handleRemoveTag(id, tag)
+        assertSuccess(result, 'Failed to remove inbox tag')
+        return { id }
       }
     },
     tags: {
@@ -396,6 +642,14 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           name: tag.name,
           count: tag.count
         }))
+      }
+    },
+    desktop: {
+      async read(input, windowId) {
+        return invokeDesktopApiFromWindow(windowId, input)
+      },
+      async write(input, windowId) {
+        return invokeDesktopApiFromWindow(windowId, input)
       }
     },
     windows: {

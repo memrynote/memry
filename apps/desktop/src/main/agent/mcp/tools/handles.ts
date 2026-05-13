@@ -1,6 +1,11 @@
 // Dependency-injected facade: every tool calls into here, never directly into stores.
 // Tests pass a fake; production wiring constructs from real services in lifecycle.ts.
 
+import type {
+  AgentMcpDesktopReadOperation,
+  AgentMcpDesktopWriteOperation
+} from '@memry/contracts/agent-mcp-channels'
+
 export interface NoteSummary {
   id: string
   title: string
@@ -82,6 +87,8 @@ export interface VaultServiceHandles {
       folder_path?: string
       tags?: string[]
     }): Promise<{ id: string }>
+    rename(input: { id: string; title: string }): Promise<{ id: string }>
+    delete(id: string): Promise<{ id: string }>
     update(input: {
       id: string
       mode: 'append' | 'prepend' | 'replace'
@@ -93,39 +100,132 @@ export interface VaultServiceHandles {
   }
   folders: {
     list(input: { path?: string; id?: string; recursive?: boolean }): Promise<FolderEntry[]>
+    create(path: string): Promise<{ path: string }>
+    rename(input: { old_path: string; new_path: string }): Promise<{ path: string }>
+    delete(path: string): Promise<{ path: string }>
   }
   tasks: {
     list(input: {
       status?: string
-      project_id?: string
+      project_id?: string | null
       due_before?: string
       tag?: string
       limit?: number
     }): Promise<TaskSummary[]>
+    get(id: string): Promise<unknown | null>
     create(input: {
       title: string
-      project_id?: string
-      due?: string
+      project_id?: string | null
+      status_id?: string | null
+      parent_id?: string | null
+      due?: string | null
+      due_date?: string | null
+      due_time?: string | null
+      start_date?: string | null
       priority?: number
       tags?: string[]
-      notes?: string
+      notes?: string | null
+      description?: string | null
+      is_repeating?: boolean
+      repeat_config?: Record<string, unknown> | null
+      repeat_from?: 'due' | 'completion' | null
+      linked_note_ids?: string[]
+      source_note_id?: string | null
+      position?: number
     }): Promise<{ id: string }>
     update(
       id: string,
       patch: {
         title?: string
         status?: string
+        status_id?: string | null
         project_id?: string | null
+        parent_id?: string | null
         due?: string | null
+        due_date?: string | null
+        due_time?: string | null
+        start_date?: string | null
         priority?: number
-        notes?: string
+        notes?: string | null
+        description?: string | null
+        is_repeating?: boolean
+        repeat_config?: Record<string, unknown> | null
+        repeat_from?: 'due' | 'completion' | null
+        tags?: string[]
+        linked_note_ids?: string[]
       }
     ): Promise<void>
+    delete(id: string): Promise<{ id: string }>
+    complete(input: { id: string; completed_at?: string }): Promise<{ id: string }>
+    uncomplete(id: string): Promise<{ id: string }>
+    archive(id: string): Promise<{ id: string }>
+    unarchive(id: string): Promise<{ id: string }>
+    move(input: {
+      task_id: string
+      target_project_id?: string
+      target_status_id?: string | null
+      target_parent_id?: string | null
+      position: number
+    }): Promise<{ id: string }>
+    reorder(input: { task_ids: string[]; positions: number[] }): Promise<{ ids: string[] }>
+    duplicate(id: string): Promise<{ id: string }>
+    convertToSubtask(input: { task_id: string; parent_id: string }): Promise<{ id: string }>
+    convertToTask(id: string): Promise<{ id: string }>
     addTag(input: { id: string; tag: string }): Promise<void>
     removeTag(input: { id: string; tag: string }): Promise<void>
   }
   projects: {
     list(): Promise<ProjectSummary[]>
+    get(id: string): Promise<unknown | null>
+    create(input: {
+      name: string
+      description?: string | null
+      color?: string
+      icon?: string | null
+      statuses?: Array<{
+        id?: string
+        name: string
+        color: string
+        type: 'todo' | 'in_progress' | 'done'
+        order: number
+      }>
+    }): Promise<{ id: string }>
+    update(input: {
+      id: string
+      name?: string
+      description?: string | null
+      color?: string
+      icon?: string | null
+      statuses?: Array<{
+        id?: string
+        name: string
+        color: string
+        type: 'todo' | 'in_progress' | 'done'
+        order: number
+      }>
+    }): Promise<{ id: string }>
+    delete(id: string): Promise<{ id: string }>
+    archive(id: string): Promise<{ id: string }>
+    reorder(input: { project_ids: string[]; positions: number[] }): Promise<{ ids: string[] }>
+  }
+  statuses: {
+    list(projectId: string): Promise<unknown[]>
+    create(input: {
+      project_id: string
+      name: string
+      color?: string
+      is_done?: boolean
+    }): Promise<{ id: string }>
+    update(input: {
+      id: string
+      name?: string
+      color?: string
+      position?: number
+      is_default?: boolean
+      is_done?: boolean
+    }): Promise<{ id: string }>
+    delete(id: string): Promise<{ id: string }>
+    reorder(input: { status_ids: string[]; positions: number[] }): Promise<{ ids: string[] }>
   }
   journal: {
     getByDate(date: string): Promise<JournalEntry | null>
@@ -134,13 +234,37 @@ export interface VaultServiceHandles {
       date: string
       content_markdown: string
     }): Promise<{ id: string; created: boolean }>
+    update(input: {
+      date: string
+      content_markdown?: string
+      tags?: string[]
+      properties?: Record<string, unknown>
+    }): Promise<{ id: string }>
+    delete(date: string): Promise<{ date: string; deleted: boolean }>
   }
   inbox: {
     list(input: { unread_only?: boolean }): Promise<InboxSummary[]>
+    get(id: string): Promise<unknown | null>
     add(input: { source: string; title: string; content: string }): Promise<{ id: string }>
+    update(input: { id: string; title?: string; content?: string }): Promise<{ id: string }>
+    archive(id: string): Promise<{ id: string }>
+    unarchive(id: string): Promise<{ id: string }>
+    delete(id: string): Promise<{ id: string }>
+    addTag(input: { id: string; tag: string }): Promise<{ id: string }>
+    removeTag(input: { id: string; tag: string }): Promise<{ id: string }>
   }
   tags: {
     listAll(): Promise<TagCount[]>
+  }
+  desktop: {
+    read(
+      input: { operation: AgentMcpDesktopReadOperation; args: unknown[] },
+      windowId: string | null
+    ): Promise<unknown>
+    write(
+      input: { operation: AgentMcpDesktopWriteOperation; args: unknown[] },
+      windowId: string | null
+    ): Promise<unknown>
   }
   windows: {
     snapshotCurrentNote(windowId: string): Promise<CurrentNoteSnapshot | null>

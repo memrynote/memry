@@ -22,6 +22,8 @@ function fake(): VaultServiceHandles {
             }
           : null,
       create: async () => ({ id: 'unused' }),
+      rename: async ({ id }) => ({ id }),
+      delete: async (id) => ({ id }),
       update: async () => {},
       addTag: async () => {},
       removeTag: async () => {},
@@ -34,34 +36,74 @@ function fake(): VaultServiceHandles {
               { kind: 'folder', id: 'f1', name: 'Inbox', path: '/Inbox' },
               { kind: 'note', id: 'n1', name: 'Hit', path: '/Inbox/Hit.md' }
             ]
-          : []
+          : [],
+      create: async (path) => ({ path }),
+      rename: async ({ new_path }) => ({ path: new_path }),
+      delete: async (path) => ({ path })
     },
     tasks: {
       list: async () => [
         { id: 't1', title: 'Buy milk', status: 'todo', due: null, project: null, tags: [] }
       ],
+      get: async (id) => (id === 't1' ? { id, title: 'Buy milk' } : null),
       create: async () => ({ id: 'unused' }),
       update: async () => {},
+      delete: async (id) => ({ id }),
+      complete: async ({ id }) => ({ id }),
+      uncomplete: async (id) => ({ id }),
+      archive: async (id) => ({ id }),
+      unarchive: async (id) => ({ id }),
+      move: async ({ task_id }) => ({ id: task_id }),
+      reorder: async ({ task_ids }) => ({ ids: task_ids }),
+      duplicate: async () => ({ id: 'duplicated-task' }),
+      convertToSubtask: async ({ task_id }) => ({ id: task_id }),
+      convertToTask: async (id) => ({ id }),
       addTag: async () => {},
       removeTag: async () => {}
     },
     projects: {
-      list: async () => [{ id: 'p1', name: 'Memry', status: 'active', task_count: 5 }]
+      list: async () => [{ id: 'p1', name: 'Memry', status: 'active', task_count: 5 }],
+      get: async (id) => (id === 'p1' ? { id, name: 'Memry' } : null),
+      create: async () => ({ id: 'unused' }),
+      update: async ({ id }) => ({ id }),
+      delete: async (id) => ({ id }),
+      archive: async (id) => ({ id }),
+      reorder: async ({ project_ids }) => ({ ids: project_ids })
+    },
+    statuses: {
+      list: async (projectId) => [{ id: 's1', projectId, name: 'Todo' }],
+      create: async () => ({ id: 'unused' }),
+      update: async ({ id }) => ({ id }),
+      delete: async (id) => ({ id }),
+      reorder: async ({ status_ids }) => ({ ids: status_ids })
     },
     journal: {
       getByDate: async (date) =>
         date === '2026-05-10' ? { id: 'j1', date, content_markdown: '# Today' } : null,
       listInRange: async () => [{ id: 'j1', date: '2026-05-10', title: 'Today' }],
-      createIfMissing: async () => ({ id: 'unused', created: false })
+      createIfMissing: async () => ({ id: 'unused', created: false }),
+      update: async () => ({ id: 'unused' }),
+      delete: async (date) => ({ date, deleted: true })
     },
     inbox: {
       list: async () => [
         { id: 'i1', source: 'web', title: 'Cool', snippet: '...', captured_at: 0 }
       ],
-      add: async () => ({ id: 'unused' })
+      get: async (id) => (id === 'i1' ? { id, title: 'Cool' } : null),
+      add: async () => ({ id: 'unused' }),
+      update: async ({ id }) => ({ id }),
+      archive: async (id) => ({ id }),
+      unarchive: async (id) => ({ id }),
+      delete: async (id) => ({ id }),
+      addTag: async ({ id }) => ({ id }),
+      removeTag: async ({ id }) => ({ id })
     },
     tags: {
       listAll: async () => [{ name: 'todo', count: 3 }]
+    },
+    desktop: {
+      read: async ({ operation, args }, windowId) => ({ operation, args, windowId }),
+      write: async () => ({ ok: true })
     },
     windows: {
       snapshotCurrentNote: async () => null
@@ -114,11 +156,32 @@ describe('Read tools', () => {
     expect(out).toHaveLength(1)
   })
 
+  it('vault_get_task returns a single task', async () => {
+    const out = await tools
+      .find((t) => t.name === 'vault_get_task')!
+      .handler({ id: 't1' }, { conversationId: null, windowId: null })
+    expect(out).toMatchObject({ id: 't1', title: 'Buy milk' })
+  })
+
   it('vault_list_projects returns rows', async () => {
     const out = (await tools
       .find((t) => t.name === 'vault_list_projects')!
       .handler({}, { conversationId: null, windowId: null })) as unknown[]
     expect(out).toHaveLength(1)
+  })
+
+  it('vault_get_project returns a single project', async () => {
+    const out = await tools
+      .find((t) => t.name === 'vault_get_project')!
+      .handler({ id: 'p1' }, { conversationId: null, windowId: null })
+    expect(out).toMatchObject({ id: 'p1', name: 'Memry' })
+  })
+
+  it('vault_list_statuses returns project statuses', async () => {
+    const out = (await tools
+      .find((t) => t.name === 'vault_list_statuses')!
+      .handler({ project_id: 'p1' }, { conversationId: null, windowId: null })) as unknown[]
+    expect(out).toEqual([{ id: 's1', projectId: 'p1', name: 'Todo' }])
   })
 
   it('vault_get_journal_entry returns null for missing date', async () => {
@@ -155,11 +218,28 @@ describe('Read tools', () => {
     expect(out).toHaveLength(1)
   })
 
+  it('vault_get_inbox_item returns a single inbox item', async () => {
+    const out = await tools
+      .find((t) => t.name === 'vault_get_inbox_item')!
+      .handler({ id: 'i1' }, { conversationId: null, windowId: null })
+    expect(out).toMatchObject({ id: 'i1', title: 'Cool' })
+  })
+
   it('vault_get_tags returns tag counts', async () => {
     const out = (await tools
       .find((t) => t.name === 'vault_get_tags')!
       .handler({}, { conversationId: null, windowId: null })) as unknown[]
     expect(out).toEqual([{ name: 'todo', count: 3 }])
+  })
+
+  it('vault_desktop_read forwards allowlisted desktop read operations', async () => {
+    const out = await tools
+      .find((t) => t.name === 'vault_desktop_read')!
+      .handler(
+        { operation: 'templates.list', args: [] },
+        { conversationId: null, windowId: 'window-1' }
+      )
+    expect(out).toEqual({ operation: 'templates.list', args: [], windowId: 'window-1' })
   })
 
   it('vault_get_current_note returns null when window header missing', async () => {
