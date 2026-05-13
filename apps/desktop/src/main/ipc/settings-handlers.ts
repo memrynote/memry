@@ -52,6 +52,7 @@ import {
   getTerminalCommandStatus,
   installTerminalCommand,
   uninstallTerminalCommand,
+  type TerminalCommandOptions,
   type TerminalCommandStatus as BaseTerminalCommandStatus
 } from '../cli/terminal-command'
 
@@ -227,8 +228,15 @@ function getTerminalCommandVaults(): TerminalCommandVault[] {
   }))
 }
 
+function getTerminalCommandOptions(): TerminalCommandOptions {
+  return {
+    executablePath: process.execPath,
+    appPath: app.isPackaged ? null : app.getAppPath()
+  }
+}
+
 async function getTerminalStatus(): Promise<TerminalCommandStatus> {
-  const status = await getTerminalCommandStatus({ executablePath: process.execPath })
+  const status = await getTerminalCommandStatus(getTerminalCommandOptions())
   const vaults = getTerminalCommandVaults()
   const defaultVaultPath = getDefaultVaultPath() ?? (vaults.length === 1 ? vaults[0].path : null)
 
@@ -478,7 +486,7 @@ export function registerSettingsHandlers(): void {
     SettingsChannels.invoke.INSTALL_TERMINAL_COMMAND,
     async (): Promise<TerminalCommandMutationResult> => {
       try {
-        await installTerminalCommand({ executablePath: process.execPath })
+        await installTerminalCommand(getTerminalCommandOptions())
         return {
           success: true,
           status: await getTerminalStatus()
@@ -497,7 +505,7 @@ export function registerSettingsHandlers(): void {
     SettingsChannels.invoke.UNINSTALL_TERMINAL_COMMAND,
     async (): Promise<TerminalCommandMutationResult> => {
       try {
-        await uninstallTerminalCommand({ executablePath: process.execPath })
+        await uninstallTerminalCommand(getTerminalCommandOptions())
         return {
           success: true,
           status: await getTerminalStatus()

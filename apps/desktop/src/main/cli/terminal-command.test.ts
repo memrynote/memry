@@ -36,6 +36,26 @@ describe('terminal command setup', () => {
     expect(readFileSync(status.shimPath, 'utf8')).toContain(`exec "${executablePath}" --cli "$@"`)
   })
 
+  it('installs a Unix shim with the app path when running from unpackaged Electron', async () => {
+    const root = tempRoot()
+    const binDir = join(root, 'bin')
+    const executablePath = join(root, 'Electron.app', 'Contents', 'MacOS', 'Electron')
+    const appPath = join(root, 'memry', 'apps', 'desktop')
+
+    const status = await installTerminalCommand({
+      platform: 'darwin',
+      homeDir: join(root, 'home'),
+      executablePath,
+      appPath,
+      pathEnv: binDir,
+      preferredBinDirs: [binDir]
+    })
+
+    expect(readFileSync(status.shimPath, 'utf8')).toContain(
+      `exec "${executablePath}" "${appPath}" --cli "$@"`
+    )
+  })
+
   it('refuses to overwrite an unrelated command', async () => {
     const root = tempRoot()
     const binDir = join(root, 'bin')
@@ -84,6 +104,56 @@ describe('terminal command setup', () => {
       inPath: true
     })
     expect(readFileSync(status.shimPath, 'utf8')).toContain(`"${executablePath}" --cli %*`)
+  })
+
+  it('installs a Windows cmd shim with the app path when running from unpackaged Electron', async () => {
+    const root = tempRoot()
+    const windowsApps = join(root, 'WindowsApps')
+    const executablePath = join(root, 'Electron.exe')
+    const appPath = join(root, 'memry', 'apps', 'desktop')
+
+    const status = await installTerminalCommand({
+      platform: 'win32',
+      homeDir: join(root, 'home'),
+      executablePath,
+      appPath,
+      localAppData: root,
+      pathEnv: windowsApps,
+      preferredBinDirs: [windowsApps]
+    })
+
+    expect(readFileSync(status.shimPath, 'utf8')).toContain(
+      `"${executablePath}" "${appPath}" --cli %*`
+    )
+  })
+
+  it('does not report an outdated Memry shim as installed', async () => {
+    const root = tempRoot()
+    const binDir = join(root, 'bin')
+    const executablePath = join(root, 'Electron.app', 'Contents', 'MacOS', 'Electron')
+    const appPath = join(root, 'memry', 'apps', 'desktop')
+
+    const initial = await installTerminalCommand({
+      platform: 'darwin',
+      homeDir: join(root, 'home'),
+      executablePath,
+      pathEnv: binDir,
+      preferredBinDirs: [binDir]
+    })
+
+    expect(
+      await getTerminalCommandStatus({
+        platform: 'darwin',
+        homeDir: join(root, 'home'),
+        executablePath,
+        appPath,
+        pathEnv: binDir,
+        preferredBinDirs: [binDir]
+      })
+    ).toMatchObject({
+      installed: false,
+      shimPath: initial.shimPath
+    })
   })
 
   it('uninstalls only Memry-owned shims', async () => {

@@ -86,6 +86,7 @@ let mainI18n: I18nInstance
 let agentHandle: AgentHandle | null = null
 
 if (headlessCliArgs) {
+  disableConsoleTransport()
   void runHeadlessCli(headlessCliArgs).catch((error) => {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`)
     app.exit(1)

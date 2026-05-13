@@ -29,6 +29,7 @@ export interface TerminalCommandOptions {
   platform?: NodeJS.Platform
   homeDir?: string
   executablePath?: string
+  appPath?: string | null
   localAppData?: string
   pathEnv?: string
   preferredBinDirs?: string[]
@@ -109,6 +110,7 @@ interface RequiredTerminalCommandOptions {
   platform: TerminalCommandPlatform
   homeDir: string
   executablePath: string
+  appPath: string | null
   localAppData: string
   pathEnv: string
   binDirs: string[]
@@ -120,9 +122,10 @@ function normalizeOptions(options: TerminalCommandOptions): RequiredTerminalComm
   const localAppData = options.localAppData ?? defaultLocalAppData(homeDir)
   const pathEnv = options.pathEnv ?? process.env.PATH ?? ''
   const executablePath = options.executablePath ?? process.execPath
+  const appPath = options.appPath ?? null
   const binDirs = options.preferredBinDirs ?? defaultBinDirs(platform, homeDir, localAppData)
 
-  return { platform, homeDir, executablePath, localAppData, pathEnv, binDirs }
+  return { platform, homeDir, executablePath, appPath, localAppData, pathEnv, binDirs }
 }
 
 function commandFilename(platform: TerminalCommandPlatform): string {
@@ -133,15 +136,26 @@ function escapeDoubleQuoted(value: string): string {
   return value.replace(/(["\\$`])/g, '\\$1')
 }
 
-function renderShim(platform: TerminalCommandPlatform, executablePath: string): string {
+function renderShim(
+  platform: TerminalCommandPlatform,
+  executablePath: string,
+  appPath: string | null
+): string {
   if (platform === 'win32') {
-    return ['@echo off', `@rem ${SHIM_MARKER}`, `"${executablePath}" --cli %*`, ''].join('\r\n')
+    const appPathArg = appPath ? ` "${appPath}"` : ''
+    return [
+      '@echo off',
+      `@rem ${SHIM_MARKER}`,
+      `"${executablePath}"${appPathArg} --cli %*`,
+      ''
+    ].join('\r\n')
   }
 
+  const appPathArg = appPath ? ` "${escapeDoubleQuoted(appPath)}"` : ''
   return [
     '#!/bin/sh',
     `# ${SHIM_MARKER}`,
-    `exec "${escapeDoubleQuoted(executablePath)}" --cli "$@"`,
+    `exec "${escapeDoubleQuoted(executablePath)}"${appPathArg} --cli "$@"`,
     ''
   ].join('\n')
 }
@@ -151,16 +165,22 @@ function isMemryShim(path: string): boolean {
   return readFileSync(path, 'utf8').includes(SHIM_MARKER)
 }
 
+function isCurrentMemryShim(path: string, expectedShim: string): boolean {
+  if (!existsSync(path)) return false
+  return readFileSync(path, 'utf8') === expectedShim
+}
+
 async function resolveStatus(
   options: RequiredTerminalCommandOptions
 ): Promise<TerminalCommandStatus> {
   const binDir = await chooseBinDir(options)
   const shimPath = join(binDir, commandFilename(options.platform))
   const inPath = pathContainsDir(options.pathEnv, binDir, options.platform)
+  const expectedShim = renderShim(options.platform, options.executablePath, options.appPath)
 
   return {
     supported: true,
-    installed: isMemryShim(shimPath),
+    installed: isCurrentMemryShim(shimPath, expectedShim),
     command: COMMAND_NAME,
     platform: options.platform,
     shimPath,
@@ -188,7 +208,11 @@ export async function installTerminalCommand(
   }
 
   mkdirSync(status.binDir, { recursive: true })
-  writeFileSync(status.shimPath, renderShim(status.platform, status.targetPath), 'utf8')
+  writeFileSync(
+    status.shimPath,
+    renderShim(status.platform, status.targetPath, resolved.appPath),
+    'utf8'
+  )
   if (status.platform !== 'win32') {
     await access(status.shimPath, constants.R_OK)
     chmodExecutable(status.shimPath)
