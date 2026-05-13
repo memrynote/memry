@@ -10,6 +10,7 @@
 
 import { BrowserWindow } from 'electron'
 import { eq } from 'drizzle-orm'
+import { z } from 'zod'
 
 import { createLogger } from '../lib/logger'
 import { getDatabase, requireDatabase } from '../database'
@@ -17,7 +18,6 @@ import { generateId } from '../lib/id'
 import { inboxItems, inboxItemTags } from '@memry/db-schema/schema/inbox'
 import { InboxChannels } from '@memry/contracts/ipc-channels'
 import {
-  CaptureVoiceSchema,
   type CaptureResponse,
   type InboxItem,
   type InboxItemListItem,
@@ -42,6 +42,15 @@ export interface CaptureVoiceInput {
   tags?: string[]
   source?: 'quick-capture' | 'inline' | 'browser-extension' | 'api' | 'reminder'
 }
+
+const CaptureVoiceStorageSchema = z.object({
+  data: z.instanceof(Buffer),
+  duration: z.number().min(0).max(300),
+  format: z.enum(['webm', 'mp3', 'wav']),
+  transcribe: z.boolean().default(true),
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  source: z.enum(['quick-capture', 'inline', 'browser-extension', 'api', 'reminder']).optional()
+})
 
 // ============================================================================
 // Helpers
@@ -169,7 +178,7 @@ function getAudioMimeType(format: string): string {
 export async function captureVoice(input: CaptureVoiceInput): Promise<CaptureResponse> {
   try {
     // Validate input
-    const parsed = CaptureVoiceSchema.parse(input)
+    const parsed = CaptureVoiceStorageSchema.parse(input)
     const db = requireDatabase()
 
     const id = generateId()
