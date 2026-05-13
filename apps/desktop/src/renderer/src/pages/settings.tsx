@@ -44,12 +44,6 @@ export function SettingsPage() {
   return (
     <div className="flex-1 min-h-0 flex">
       <div className="w-60 shrink-0 pt-5 pb-4 overflow-y-auto min-h-0 bg-sidebar border-e border-border text-xs/4 font-[family-name:var(--font-sans)]">
-        <div className="flex items-center pb-4 px-5">
-          <span className="text-sm/4.5 font-semibold text-foreground tracking-[-0.01em]">
-            {t('page.title')}
-          </span>
-        </div>
-
         <SettingsNavGroup label={t('page.nav.groups.workspace')}>
           <SettingsNavItem
             icon={<User className="w-3.5 h-3.5" />}

@@ -5,6 +5,21 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-05-13 — Agent Chat Right Sidebar Polish
+
+### Changed
+
+- Move Agent Chat history and new-conversation actions into the right-sidebar header, with compact hover states for the provider and history dropdowns.
+- Let the right sidebar open from the tab bar edge, reserve tab bar space while open, and keep the collapse control anchored at the far right.
+- Align right-sidebar background, borders, labels, and Day/Agent switch chrome with the main layout.
+
+---
+## 2026-05-13 — Settings Panel Accent Polish
+
+### Changed
+
+- Use the active settings surface color for bordered settings sections, remove the redundant settings sidebar title, and make orange the default accent preset.
+
 ## 2026-05-07 — Notes and Journal Block Marquee Selection
 
 ### Fixed

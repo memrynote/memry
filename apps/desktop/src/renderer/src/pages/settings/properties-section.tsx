@@ -251,7 +251,7 @@ function PropertyManager() {
         />
       </div>
 
-      <div className="flex flex-col rounded-lg overflow-y-auto max-h-[60vh] border border-border">
+      <div className="flex flex-col rounded-lg overflow-y-auto max-h-[60vh] border border-border bg-surface-active">
         {selectDefs.length === 0 && (
           <p className="text-xs/4 text-muted-foreground py-4 text-center">
             {t('properties.noMatch', { query: search })}

@@ -17,7 +17,7 @@ import type { ConversationStore } from '../../storage/conversation-store'
 import type { MessageStore } from '../../storage/message-store'
 import { AgentRuntime } from '../runtime'
 
-function createRuntime() {
+function createRuntime(toolApprovalMode: 'always_accept' | 'ask' = 'always_accept') {
   const conversations = {
     getById: vi.fn(),
     addToTrustList: vi.fn()
@@ -25,7 +25,7 @@ function createRuntime() {
   const runtime = new AgentRuntime({
     conversations: conversations as unknown as ConversationStore,
     messages: {} as MessageStore,
-    spawn: vi.fn() as never
+    getPreferences: () => ({ toolApprovalMode })
   })
 
   return { runtime, conversations }
@@ -59,8 +59,26 @@ describe('AgentRuntime approval gate', () => {
     ).resolves.toEqual({ approved: false, reason: 'Unknown conversation' })
   })
 
-  it('auto-approves read and trusted create tools', async () => {
+  it('auto-approves write tools by default without queuing an approval', async () => {
     const { runtime, conversations } = createRuntime()
+    conversations.getById.mockReturnValue({ id: 'conversation-1', trustList: [] })
+
+    runtime.install()
+    const gate = installedGate()
+
+    await expect(
+      gate({
+        conversationId: 'conversation-1',
+        toolName: 'vault_update_note',
+        parsedArgs: { id: 'note-1', content_markdown: 'Draft' }
+      })
+    ).resolves.toEqual({ approved: true })
+    expect(mocks.broadcastAgentEvent).not.toHaveBeenCalled()
+    expect(runtime.getPendingApproval('gate-100-i')).toBeNull()
+  })
+
+  it('auto-approves read and trusted create tools in manual mode', async () => {
+    const { runtime, conversations } = createRuntime('ask')
     conversations.getById.mockReturnValue({
       id: 'conversation-1',
       trustList: ['vault_create_task']
@@ -83,7 +101,7 @@ describe('AgentRuntime approval gate', () => {
   })
 
   it('waits for user approval and applies allow-always trust changes', async () => {
-    const { runtime, conversations } = createRuntime()
+    const { runtime, conversations } = createRuntime('ask')
     conversations.getById.mockReturnValue({ id: 'conversation-1', trustList: [] })
 
     runtime.install()
@@ -117,7 +135,7 @@ describe('AgentRuntime approval gate', () => {
   })
 
   it('returns edited args and denial decisions from pending approvals', async () => {
-    const { runtime, conversations } = createRuntime()
+    const { runtime, conversations } = createRuntime('ask')
     conversations.getById.mockReturnValue({ id: 'conversation-1', trustList: [] })
 
     runtime.install()

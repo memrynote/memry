@@ -290,7 +290,7 @@ describe('agentReducer', () => {
           data: {
             tool: 'vault_create_task',
             args: { title: 'Buy milk' },
-            status: 'pending'
+            status: 'approval-requested'
           }
         }
       })
@@ -328,7 +328,123 @@ describe('agentReducer', () => {
       data: {
         tool: 'vault_create_task',
         args: { title: 'Buy milk' },
-        status: 'approved'
+        status: 'approval-responded'
+      }
+    })
+  })
+
+  it('creates an inline tool message for auto-accepted started calls', () => {
+    const state: AgentState = {
+      ...initialAgentState,
+      activeConversationId: conversation.id,
+      conversations: { [conversation.id]: conversation },
+      messagesByConversation: { [conversation.id]: [] }
+    }
+    const event: AgentEvent = {
+      kind: 'tool_call_started',
+      conversationId: conversation.id,
+      toolCallId: 'tool-1',
+      name: 'vault_read_note',
+      args: { id: 'note-1' }
+    }
+
+    const next = agentReducer(state, { type: 'event', event })
+
+    expect(next.messagesByConversation[conversation.id][0]).toEqual(
+      expect.objectContaining({
+        id: 'tool-call-tool-1',
+        role: 'tool_call',
+        toolCallId: 'tool-1',
+        status: 'streaming',
+        content: {
+          role: 'tool_call',
+          data: {
+            tool: 'vault_read_note',
+            args: { id: 'note-1' },
+            status: 'input-available'
+          }
+        }
+      })
+    )
+  })
+
+  it('stores completed and failed tool outputs on the tool message', () => {
+    const started = agentReducer(
+      {
+        ...initialAgentState,
+        activeConversationId: conversation.id,
+        conversations: { [conversation.id]: conversation },
+        messagesByConversation: { [conversation.id]: [] }
+      },
+      {
+        type: 'event',
+        event: {
+          kind: 'tool_call_started',
+          conversationId: conversation.id,
+          toolCallId: 'tool-1',
+          name: 'vault_read_note',
+          args: { id: 'note-1' }
+        }
+      }
+    )
+
+    const completed = agentReducer(started, {
+      type: 'event',
+      event: {
+        kind: 'tool_call_completed',
+        conversationId: conversation.id,
+        toolCallId: 'tool-1',
+        result: { title: 'Planning' }
+      }
+    })
+
+    expect(completed.messagesByConversation[conversation.id][0]?.content).toEqual({
+      role: 'tool_call',
+      data: {
+        tool: 'vault_read_note',
+        args: { id: 'note-1' },
+        status: 'output-available',
+        output: { title: 'Planning' }
+      }
+    })
+
+    const failed = agentReducer(started, {
+      type: 'event',
+      event: {
+        kind: 'tool_call_failed',
+        conversationId: conversation.id,
+        toolCallId: 'tool-1',
+        error: { code: 'PERMISSION_DENIED', message: 'Denied' }
+      }
+    })
+
+    expect(failed.messagesByConversation[conversation.id][0]?.content).toEqual({
+      role: 'tool_call',
+      data: {
+        tool: 'vault_read_note',
+        args: { id: 'note-1' },
+        status: 'output-denied',
+        error: { code: 'PERMISSION_DENIED', message: 'Denied' }
+      }
+    })
+
+    const errored = agentReducer(started, {
+      type: 'event',
+      event: {
+        kind: 'tool_call_failed',
+        conversationId: conversation.id,
+        toolCallId: 'tool-1',
+        error: { code: 'INTERNAL', message: 'Connection timeout' }
+      }
+    })
+
+    expect(errored.messagesByConversation[conversation.id][0]?.content).toEqual({
+      role: 'tool_call',
+      data: {
+        tool: 'vault_read_note',
+        args: { id: 'note-1' },
+        status: 'output-error',
+        error: { code: 'INTERNAL', message: 'Connection timeout' }
       }
     })
   })

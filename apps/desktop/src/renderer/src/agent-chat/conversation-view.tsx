@@ -32,9 +32,6 @@ export function ConversationView({ conversationId }: ConversationViewProps): Rea
     )
   }
 
-  const conversations = Object.values(state.conversations).sort((left, right) => {
-    return right.updatedAt - left.updatedAt
-  })
   const messages = conversationId ? (state.messagesByConversation[conversationId] ?? []) : []
   const inFlight = conversationId ? state.inFlight[conversationId] === true : false
   const currentAgent = agent
@@ -46,7 +43,7 @@ export function ConversationView({ conversationId }: ConversationViewProps): Rea
 
   return (
     <section
-      className="flex h-full min-h-0 flex-col bg-sidebar"
+      className="flex h-full min-h-0 flex-col bg-background"
       aria-label={t('agentChat.title')}
       tabIndex={-1}
       onKeyDown={(event) => {
@@ -55,16 +52,7 @@ export function ConversationView({ conversationId }: ConversationViewProps): Rea
         cancelTurn()
       }}
     >
-      {conversation && (
-        <ConversationHeader
-          conversation={conversation}
-          conversations={conversations}
-          onCreateConversation={async () => {
-            await currentAgent.createConversation()
-          }}
-          onSelectConversation={currentAgent.loadConversation}
-        />
-      )}
+      {conversation && <ConversationHeader conversation={conversation} />}
       <MessageStream messages={messages} />
       <Composer conversationId={conversationId} sourceWindowId={state.sourceWindowId} />
     </section>

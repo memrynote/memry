@@ -35,13 +35,19 @@ import {
   TestConnectionRequestSchema,
   TestConnectionResultSchema,
   CalendarGoogleSettingsSchema,
-  CALENDAR_GOOGLE_SETTINGS_DEFAULTS
+  CALENDAR_GOOGLE_SETTINGS_DEFAULTS,
+  DEFAULT_ACCENT_COLOR
 } from './settings-schemas'
 
 describe('GeneralSettingsSchema', () => {
   it('accepts the shipped default payload', () => {
     const result = GeneralSettingsSchema.safeParse(GENERAL_SETTINGS_DEFAULTS)
     expect(result.success).toBe(true)
+  })
+
+  it('uses the shipped orange accent preset as default', () => {
+    expect(GENERAL_SETTINGS_DEFAULTS.accentColor).toBe(DEFAULT_ACCENT_COLOR)
+    expect(DEFAULT_ACCENT_COLOR).toBe('#f97316')
   })
 
   it('accepts a custom accent color with 6-digit hex', () => {

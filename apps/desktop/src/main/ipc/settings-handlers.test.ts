@@ -7,6 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest'
 import { mockIpcMain, resetIpcMocks, invokeHandler } from '@tests/utils/mock-ipc'
 import { SettingsChannels } from '@memry/contracts/ipc-channels'
+import { GENERAL_SETTINGS_DEFAULTS } from '@memry/contracts/settings-schemas'
 
 const handleCalls: unknown[][] = []
 const removeHandlerCalls: string[] = []
@@ -893,7 +894,7 @@ describe('settings-handlers', () => {
         SettingsChannels.sync.GET_STARTUP_THEME
       )
 
-      expect(result).toEqual({ theme: 'white', accentColor: '#6366f1' })
+      expect(result).toEqual({ theme: 'white', accentColor: GENERAL_SETTINGS_DEFAULTS.accentColor })
     })
 
     it('#given no settings in db #when startup theme requested #then returns defaults', () => {
@@ -904,7 +905,10 @@ describe('settings-handlers', () => {
         SettingsChannels.sync.GET_STARTUP_THEME
       )
 
-      expect(result).toEqual({ theme: 'system', accentColor: '#6366f1' })
+      expect(result).toEqual({
+        theme: 'system',
+        accentColor: GENERAL_SETTINGS_DEFAULTS.accentColor
+      })
     })
   })
 

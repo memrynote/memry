@@ -46,6 +46,15 @@ describe('staged secret scanner', () => {
     assert.equal(findings.length, 0)
   })
 
+  it('does not flag schema validators that contain token-like names', () => {
+    const findings = scanTextForSecrets(
+      'packages/contracts/src/settings-schemas.ts',
+      ['reAuthToken: z.string().min(1)', 'tokenStatus: z.enum(["valid", "invalid"])'].join('\n')
+    )
+
+    assert.equal(findings.length, 0)
+  })
+
   it('does not flag generic secret-shaped assignments in test files', () => {
     const findings = scanTextForSecrets(
       'apps/sync-server/src/routes/auth.test.ts',

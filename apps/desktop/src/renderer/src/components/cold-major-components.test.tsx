@@ -44,6 +44,8 @@ const mocks = vi.hoisted(() => ({
   openTab: vi.fn(),
   activeTab: null as Record<string, unknown> | null,
   dayPanelOpen: false,
+  dayPanelWidth: 320,
+  dayPanelResizing: false,
   toggleDayPanel: vi.fn(),
   tabGroup: null as Record<string, any> | null,
   logger: { error: vi.fn() }
@@ -123,7 +125,12 @@ vi.mock('@/hooks/use-sidebar-navigation', () => ({
 }))
 
 vi.mock('@/contexts/day-panel-context', () => ({
-  useDayPanel: () => ({ isOpen: mocks.dayPanelOpen, toggle: mocks.toggleDayPanel })
+  useDayPanel: () => ({
+    isOpen: mocks.dayPanelOpen,
+    width: mocks.dayPanelWidth,
+    isResizing: mocks.dayPanelResizing,
+    toggle: mocks.toggleDayPanel
+  })
 }))
 
 vi.mock('@/contexts/tabs', () => ({
@@ -646,6 +653,8 @@ beforeEach(() => {
   mocks.openTab.mockClear()
   mocks.activeTab = null
   mocks.dayPanelOpen = false
+  mocks.dayPanelWidth = 320
+  mocks.dayPanelResizing = false
   mocks.tabGroup = {
     id: 'group-1',
     activeTabId: 'tab-2',
@@ -1096,10 +1105,18 @@ describe('cold major renderer components', () => {
     rerender(<TabBarWithDrag groupId="group-1" />)
     expect(screen.getByText('pinned Pinned')).toBeInTheDocument()
     expect(screen.getByText('tab Regular')).toBeInTheDocument()
-    fireEvent.click(screen.getByText('phaseF.componentsTabsTabBarWithDrag.graphG'))
-    expect(mocks.openTab).toHaveBeenCalledWith(expect.objectContaining({ type: 'graph' }))
-    fireEvent.click(screen.getByText('phaseF.componentsTabsTabBarWithDrag.dayPanel'))
+    expect(screen.queryByText('phaseF.componentsTabsTabBarWithDrag.graphG')).not.toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'phaseF.componentsTabsTabBarWithDrag.dayPanel' })
+    )
     expect(mocks.toggleDayPanel).toHaveBeenCalled()
+
+    mocks.dayPanelOpen = true
+    rerender(<TabBarWithDrag groupId="group-1" />)
+    expect(screen.getByRole('tablist')).toHaveStyle({ marginInlineEnd: '320px' })
+    expect(
+      screen.queryByRole('button', { name: 'phaseF.componentsTabsTabBarWithDrag.dayPanel' })
+    ).not.toBeInTheDocument()
 
     mocks.tabGroup = null
     rerender(<TabBarWithDrag groupId="missing" />)

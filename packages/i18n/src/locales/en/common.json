@@ -112,6 +112,7 @@
     "conversationLoading": "Conversation loading...",
     "startTitle": "Start chatting with your vault",
     "newConversation": "New conversation",
+    "history": "Conversation history",
     "stop": "Stop",
     "thinking": "Agent is thinking",
     "binary": {

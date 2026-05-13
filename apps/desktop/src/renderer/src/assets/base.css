@@ -1330,7 +1330,8 @@ del.bn-inline-content {
 :root,
 .white,
 .dark {
-  --tint: var(--user-accent-color, #6366f1);
+  --default-user-accent-color: #f97316;
+  --tint: var(--user-accent-color, var(--default-user-accent-color));
   --tint-foreground: #ffffff;
   --tint-hover: color-mix(in srgb, var(--tint) 85%, black);
   --tint-light: color-mix(in srgb, var(--tint) 15%, transparent);

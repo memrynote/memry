@@ -209,7 +209,7 @@ import {
   NodeMoveUpIcon,
   PanelLeftIcon,
   PencilEdit01Icon,
-  PlusSignIcon,
+  PlusSignIcon as HugePlusSignIcon,
   PreviousIcon,
   Refresh01Icon,
   RotateLeft01Icon,
@@ -546,7 +546,8 @@ export const Computer = createIcon(ComputerIcon)
 export const Brain = createIcon(BrainIcon)
 export const History = createIcon(WorkHistoryIcon)
 export const LogOut = createIcon(Logout01Icon)
-export const Plus = createIcon(PlusSignIcon)
+export const Plus = createIcon(HugePlusSignIcon)
+export const PlusSignIcon = createIcon(HugePlusSignIcon)
 export const Minus = createIcon(MinusSignIcon)
 export const TrendingUp = createIcon(ChartIncreaseIcon)
 export const ZoomIn = createIcon(ZoomInAreaIcon)
