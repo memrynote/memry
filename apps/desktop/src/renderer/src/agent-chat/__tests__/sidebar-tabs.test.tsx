@@ -96,17 +96,25 @@ describe('SidebarTabs', () => {
     const user = userEvent.setup()
     renderTabs({ dayLabel: 'Today' })
 
+    const tabSwitch = screen.getByRole('tablist', { name: 'Right sidebar' })
     const dayTab = screen.getByRole('tab', { name: 'Day' })
     const agentTab = screen.getByRole('tab', { name: 'Agent' })
 
+    expect(tabSwitch).toHaveClass('bg-sidebar-surface')
+    expect(tabSwitch).not.toHaveClass('bg-[#212021]')
     expect(within(dayTab).queryByText('Day')).not.toBeInTheDocument()
     expect(within(agentTab).queryByText('Agent')).not.toBeInTheDocument()
+    expect(dayTab).toHaveClass('bg-background')
+    expect(dayTab).toHaveClass('text-foreground')
+    expect(dayTab).not.toHaveClass('bg-[#303030]')
     expect(screen.getByText('Today')).toBeInTheDocument()
 
     await user.click(agentTab)
 
     expect(screen.queryByText('Agent')).not.toBeInTheDocument()
     expect(within(agentTab).queryByText('Agent')).not.toBeInTheDocument()
+    expect(agentTab).toHaveClass('bg-background')
+    expect(agentTab).toHaveClass('text-foreground')
   })
 
   it('matches the active label typography and vertical rhythm to tab titles', () => {
@@ -175,7 +183,8 @@ describe('SidebarTabs', () => {
 
     const historyTrigger = screen.getByRole('button', { name: 'Conversation history' })
     expect(historyTrigger).toBeInTheDocument()
-    expect(historyTrigger).toHaveClass('hover:bg-[#303030]')
+    expect(historyTrigger).toHaveClass('hover:bg-sidebar-accent')
+    expect(historyTrigger).not.toHaveClass('hover:bg-[#303030]')
 
     fireEvent.pointerDown(historyTrigger)
     expect(screen.queryByRole('menuitem', { name: 'New conversation' })).not.toBeInTheDocument()
