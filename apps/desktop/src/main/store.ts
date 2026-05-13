@@ -176,6 +176,30 @@ export function findVault(vaultPath: string): StoredVaultInfo | undefined {
 }
 
 /**
+ * Get the default vault path used by CLI commands when --vault is omitted.
+ */
+export function getDefaultVaultPath(): string | null {
+  return store.get('vaults').find((vault) => vault.isDefault)?.path ?? null
+}
+
+/**
+ * Mark one known vault as the default used by CLI commands.
+ */
+export function setDefaultVaultPath(vaultPath: string): StoredVaultInfo | null {
+  const vaults = store.get('vaults')
+  const target = vaults.find((vault) => vault.path === vaultPath)
+  if (!target) return null
+
+  const updated = vaults.map((vault) => ({
+    ...vault,
+    isDefault: vault.path === vaultPath
+  }))
+  store.set('vaults', updated)
+
+  return updated.find((vault) => vault.path === vaultPath) ?? null
+}
+
+/**
  * Update the lastOpened timestamp for a vault
  */
 export function touchVault(vaultPath: string): void {

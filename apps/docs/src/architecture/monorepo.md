@@ -77,6 +77,6 @@ Most actions can be cached and parallelized:
 
 - Renderer never imports from `apps/desktop/src/main/*` and vice versa.
 - Both sides import shared types from `@memry/contracts`.
-- `packages/app-core` owns non-UI vault operations for standalone clients. Keep Electron-only concerns in `apps/desktop`; desktop `--cli` mode should call the CLI/app-core path rather than duplicate command logic.
+- `packages/app-core` owns non-UI vault operations for standalone clients. Keep Electron-only concerns in `apps/desktop`; desktop `--cli` mode should call the CLI/app-core path and inject desktop vault selection state rather than duplicate command logic.
 - `packages/db-schema` is consumed by desktop main, app-core, and tests.
 - `apps/sync-server` and `apps/desktop` only share types via `packages/contracts` — never code.

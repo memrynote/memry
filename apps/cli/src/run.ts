@@ -1,8 +1,26 @@
-import { createMemryApp, type MemryApp } from '@memry/app-core'
+import { createMemryApp as defaultCreateMemryApp, type MemryApp } from '@memry/app-core'
 
 export interface CliIo {
   stdout?: (line: string) => void
   stderr?: (line: string) => void
+}
+
+export interface CliKnownVault {
+  path: string
+  name: string
+  isDefault?: boolean
+  lastOpened?: string
+}
+
+export interface CliVaultRegistry {
+  listVaults(): Promise<CliKnownVault[]> | CliKnownVault[]
+  getDefaultVaultPath(): Promise<string | null> | string | null
+  setDefaultVaultPath(reference: string): Promise<CliKnownVault> | CliKnownVault
+}
+
+export interface CliRuntimeDeps {
+  createApp?: typeof defaultCreateMemryApp
+  vaultRegistry?: CliVaultRegistry
 }
 
 interface ParsedCli {
@@ -79,6 +97,40 @@ function parseCli(args: string[]): ParsedCli {
 function print(io: CliIo, json: boolean, value: unknown): void {
   const line = json ? JSON.stringify(value) : formatHuman(value)
   io.stdout?.(line)
+}
+
+async function requireVaultRegistry(
+  registry: CliVaultRegistry | undefined
+): Promise<CliVaultRegistry> {
+  if (!registry) {
+    throw new Error(
+      'No CLI vault registry is available. Pass --vault <path> or run Memry from the desktop app command.'
+    )
+  }
+  return registry
+}
+
+async function listKnownVaults(registry: CliVaultRegistry | undefined): Promise<CliKnownVault[]> {
+  return await (await requireVaultRegistry(registry)).listVaults()
+}
+
+async function resolveDefaultVaultPath(registry: CliVaultRegistry | undefined): Promise<string> {
+  const resolvedRegistry = await requireVaultRegistry(registry)
+  const defaultPath = await resolvedRegistry.getDefaultVaultPath()
+  if (defaultPath) return defaultPath
+
+  const vaults = await resolvedRegistry.listVaults()
+  if (vaults.length === 1) return vaults[0].path
+
+  if (vaults.length > 1) {
+    throw new Error(
+      'Multiple vaults found. Choose one with `memry vault use <vault-name-or-path>` or run with --vault <path>.'
+    )
+  }
+
+  throw new Error(
+    'No default vault configured. Open Memry and choose Settings > Command Line > Default vault, or run with --vault <path>.'
+  )
 }
 
 function formatHuman(value: unknown): string {
@@ -192,7 +244,36 @@ async function runVault(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<vo
       )
       return
     default:
-      throw new Error('Usage: memry --vault <path> vault init|status|config|update-config')
+      throw new Error(
+        'Usage: memry vault list|current|use OR memry [--vault <path>] vault init|status|config|update-config'
+      )
+  }
+}
+
+async function runVaultRegistryCommand(
+  parsed: ParsedCli,
+  io: CliIo,
+  registry: CliVaultRegistry | undefined
+): Promise<boolean> {
+  switch (parsed.subcommand) {
+    case 'list':
+      print(io, parsed.json, await listKnownVaults(registry))
+      return true
+    case 'current': {
+      const path = parsed.vaultPath ?? (await resolveDefaultVaultPath(registry))
+      const vault = (await listKnownVaults(registry)).find((item) => item.path === path)
+      print(io, parsed.json, vault ?? { path })
+      return true
+    }
+    case 'use': {
+      const reference = parsed.positionals[0] ?? parsed.vaultPath
+      if (!reference) throw new Error('Usage: memry vault use <vault-name-or-path>')
+      const vault = await (await requireVaultRegistry(registry)).setDefaultVaultPath(reference)
+      print(io, parsed.json, vault)
+      return true
+    }
+    default:
+      return false
   }
 }
 
@@ -433,7 +514,7 @@ async function runNotes(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<vo
       return
     default:
       throw new Error(
-        'Usage: memry --vault <path> notes create|list|get|exists|preview|resolve|links|update|rename|move|set-local-only|local-only-count|delete|attach|attachments|delete-attachment|import-files|export-html|export-pdf|export-markdown|snapshot|versions|version|restore-version|delete-version'
+        'Usage: memry [--vault <path>] notes create|list|get|exists|preview|resolve|links|update|rename|move|set-local-only|local-only-count|delete|attach|attachments|delete-attachment|import-files|export-html|export-pdf|export-markdown|snapshot|versions|version|restore-version|delete-version'
       )
   }
 }
@@ -467,7 +548,7 @@ async function runFolders(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<
       })
       return
     default:
-      throw new Error('Usage: memry --vault <path> folders list|create|rename|delete')
+      throw new Error('Usage: memry [--vault <path>] folders list|create|rename|delete')
   }
 }
 
@@ -541,7 +622,7 @@ async function runProperties(app: MemryApp, parsed: ParsedCli, io: CliIo): Promi
       return
     default:
       throw new Error(
-        'Usage: memry --vault <path> properties get|set|rename|definitions|define|update-definition|delete-definition'
+        'Usage: memry [--vault <path>] properties get|set|rename|definitions|define|update-definition|delete-definition'
       )
   }
 }
@@ -626,7 +707,7 @@ async function runFolderView(app: MemryApp, parsed: ParsedCli, io: CliIo): Promi
       return
     default:
       throw new Error(
-        'Usage: memry --vault <path> folder-view config|set-config|views|set-view|delete-view|list|properties|suggestions|exists'
+        'Usage: memry [--vault <path>] folder-view config|set-config|views|set-view|delete-view|list|properties|suggestions|exists'
       )
   }
 }
@@ -828,7 +909,7 @@ async function runTasks(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<vo
       return
     default:
       throw new Error(
-        'Usage: memry --vault <path> tasks create|list|get|update|done|reopen|archive|unarchive|move|get-subtasks|get-linked-tasks|today|upcoming|overdue|stats|tags|convert-to-subtask|convert-to-task|duplicate|bulk-done|bulk-archive|bulk-move|bulk-delete|reorder|delete'
+        'Usage: memry [--vault <path>] tasks create|list|get|update|done|reopen|archive|unarchive|move|get-subtasks|get-linked-tasks|today|upcoming|overdue|stats|tags|convert-to-subtask|convert-to-task|duplicate|bulk-done|bulk-archive|bulk-move|bulk-delete|reorder|delete'
       )
   }
 }
@@ -948,7 +1029,7 @@ async function runProjects(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise
       return
     default:
       throw new Error(
-        'Usage: memry --vault <path> projects list|get|create|update|archive|unarchive|delete|reorder|statuses|status-create|status-update|status-delete|status-reorder'
+        'Usage: memry [--vault <path>] projects list|get|create|update|archive|unarchive|delete|reorder|statuses|status-create|status-update|status-delete|status-reorder'
       )
   }
 }
@@ -1168,7 +1249,7 @@ async function runInbox(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<vo
       return
     default:
       throw new Error(
-        'Usage: memry --vault <path> inbox capture|capture-link|capture-file|get|list|tags|stats|patterns|archived|filing-history|stale-threshold|set-stale-threshold|update|add-tag|remove-tag|mark-viewed|convert-note|convert-task|link-note|snooze|unsnooze|snoozed|bulk-tag|bulk-snooze|bulk-archive|archive|unarchive|delete'
+        'Usage: memry [--vault <path>] inbox capture|capture-link|capture-file|get|list|tags|stats|patterns|archived|filing-history|stale-threshold|set-stale-threshold|update|add-tag|remove-tag|mark-viewed|convert-note|convert-task|link-note|snooze|unsnooze|snoozed|bulk-tag|bulk-snooze|bulk-archive|archive|unarchive|delete'
       )
   }
 }
@@ -1249,7 +1330,7 @@ async function runJournal(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<
       return
     default:
       throw new Error(
-        'Usage: memry --vault <path> journal get|write|append|delete|month|heatmap|stats|context|tags|streak'
+        'Usage: memry [--vault <path>] journal get|write|append|delete|month|heatmap|stats|context|tags|streak'
       )
   }
 }
@@ -1311,7 +1392,7 @@ async function runTags(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<voi
       return
     default:
       throw new Error(
-        'Usage: memry --vault <path> tags list|notes|color|rename|remove-from-note|merge|delete'
+        'Usage: memry [--vault <path>] tags list|notes|color|rename|remove-from-note|merge|delete'
       )
   }
 }
@@ -1375,7 +1456,7 @@ async function runSettings(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise
       return
     default:
       throw new Error(
-        'Usage: memry --vault <path> settings list|groups|group|set-group|ai|set-ai|get|set|delete'
+        'Usage: memry [--vault <path>] settings list|groups|group|set-group|ai|set-ai|get|set|delete'
       )
   }
 }
@@ -1392,7 +1473,7 @@ async function runLocale(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<v
       print(io, parsed.json, await app.locale.list())
       return
     default:
-      throw new Error('Usage: memry --vault <path> locale get|set|list')
+      throw new Error('Usage: memry [--vault <path>] locale get|set|list')
   }
 }
 
@@ -1505,7 +1586,7 @@ async function runReminders(app: MemryApp, parsed: ParsedCli, io: CliIo): Promis
       return
     default:
       throw new Error(
-        'Usage: memry --vault <path> reminders create|get|update|list|for-target|due|upcoming|dismiss|snooze|count-pending|bulk-dismiss|delete'
+        'Usage: memry [--vault <path>] reminders create|get|update|list|for-target|due|upcoming|dismiss|snooze|count-pending|bulk-dismiss|delete'
       )
   }
 }
@@ -1566,7 +1647,7 @@ async function runTemplates(app: MemryApp, parsed: ParsedCli, io: CliIo): Promis
       return
     default:
       throw new Error(
-        'Usage: memry --vault <path> templates list|get|create|update|duplicate|delete'
+        'Usage: memry [--vault <path>] templates list|get|create|update|duplicate|delete'
       )
   }
 }
@@ -1675,7 +1756,7 @@ async function runBookmarks(app: MemryApp, parsed: ParsedCli, io: CliIo): Promis
       return
     default:
       throw new Error(
-        'Usage: memry --vault <path> bookmarks list|get|get-by-item|list-by-type|add|toggle|remove|delete|has|reorder|bulk-create|bulk-delete'
+        'Usage: memry [--vault <path>] bookmarks list|get|get-by-item|list-by-type|add|toggle|remove|delete|has|reorder|bulk-create|bulk-delete'
       )
   }
 }
@@ -1727,7 +1808,7 @@ async function runSavedFilters(app: MemryApp, parsed: ParsedCli, io: CliIo): Pro
       return
     default:
       throw new Error(
-        'Usage: memry --vault <path> saved-filters list|get|create|update|reorder|delete'
+        'Usage: memry [--vault <path>] saved-filters list|get|create|update|reorder|delete'
       )
   }
 }
@@ -1837,7 +1918,7 @@ async function runCalendar(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise
         )
         return
       default:
-        throw new Error('Usage: memry --vault <path> calendar external list|get|promote')
+        throw new Error('Usage: memry [--vault <path>] calendar external list|get|promote')
     }
   }
 
@@ -1864,13 +1945,13 @@ async function runCalendar(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise
         print(io, parsed.json, await app.calendar.bindings.get(requireFirst(args, 'binding id')))
         return
       default:
-        throw new Error('Usage: memry --vault <path> calendar bindings list|get')
+        throw new Error('Usage: memry [--vault <path>] calendar bindings list|get')
     }
   }
 
   if (parsed.subcommand !== 'events') {
     throw new Error(
-      'Usage: memry --vault <path> calendar events create|get|list|update|delete OR calendar sources|select-source|provider-status|google-settings|set-default-google-calendar|range|external|bindings'
+      'Usage: memry [--vault <path>] calendar events create|get|list|update|delete OR calendar sources|select-source|provider-status|google-settings|set-default-google-calendar|range|external|bindings'
     )
   }
 
@@ -1933,7 +2014,7 @@ async function runCalendar(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise
       })
       return
     default:
-      throw new Error('Usage: memry --vault <path> calendar events create|get|list|update|delete')
+      throw new Error('Usage: memry [--vault <path>] calendar events create|get|list|update|delete')
   }
 }
 
@@ -1988,7 +2069,7 @@ async function runSync(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<voi
       return
     default:
       throw new Error(
-        'Usage: memry --vault <path> sync status|queue-size|history|devices|storage|quarantine|check-device|pause|resume|settings|update-setting'
+        'Usage: memry [--vault <path>] sync status|queue-size|history|devices|storage|quarantine|check-device|pause|resume|settings|update-setting'
       )
   }
 }
@@ -2039,7 +2120,7 @@ async function runAgent(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<vo
     }
     default:
       throw new Error(
-        'Usage: memry --vault <path> agent backends|models|local-settings|set-local-settings'
+        'Usage: memry [--vault <path>] agent backends|models|local-settings|set-local-settings'
       )
   }
 }
@@ -2060,7 +2141,7 @@ async function runGraph(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<vo
       )
       return
     default:
-      throw new Error('Usage: memry --vault <path> graph data|local')
+      throw new Error('Usage: memry [--vault <path>] graph data|local')
   }
 }
 
@@ -2154,24 +2235,32 @@ async function route(app: MemryApp, parsed: ParsedCli, io: CliIo): Promise<void>
       return runSearch(app, parsed, io)
     default:
       throw new Error(
-        'Usage: memry --vault <path> <vault|notes|folders|properties|folder-view|tasks|projects|inbox|journal|tags|settings|locale|reminders|templates|bookmarks|saved-filters|calendar|sync|agent|graph|search>'
+        'Usage: memry [--vault <path>] <vault|notes|folders|properties|folder-view|tasks|projects|inbox|journal|tags|settings|locale|reminders|templates|bookmarks|saved-filters|calendar|sync|agent|graph|search>'
       )
   }
 }
 
-export async function runCli(args: string[], io: CliIo = {}): Promise<number> {
+export async function runCli(
+  args: string[],
+  io: CliIo = {},
+  deps: CliRuntimeDeps = {}
+): Promise<number> {
   const parsed = parseCli(args)
   const stderr = io.stderr ?? ((line: string) => process.stderr.write(`${line}\n`))
   const stdout = io.stdout ?? ((line: string) => process.stdout.write(`${line}\n`))
 
-  if (!parsed.vaultPath) {
-    stderr('Missing --vault <path>')
-    return 2
-  }
-
   let app: MemryApp | null = null
   try {
-    app = await createMemryApp({ vaultPath: parsed.vaultPath })
+    if (
+      parsed.command === 'vault' &&
+      (await runVaultRegistryCommand(parsed, { stdout, stderr }, deps.vaultRegistry))
+    ) {
+      return 0
+    }
+
+    const vaultPath = parsed.vaultPath ?? (await resolveDefaultVaultPath(deps.vaultRegistry))
+    const createApp = deps.createApp ?? defaultCreateMemryApp
+    app = await createApp({ vaultPath })
     await route(app, parsed, { stdout, stderr })
     return 0
   } catch (error) {

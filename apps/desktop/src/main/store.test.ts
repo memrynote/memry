@@ -15,7 +15,9 @@ import {
   upsertVault,
   removeVault,
   findVault,
-  touchVault
+  touchVault,
+  getDefaultVaultPath,
+  setDefaultVaultPath
 } from './store'
 
 describe('store', () => {
@@ -99,5 +101,30 @@ describe('store', () => {
     touchVault('/vaults/a')
 
     expect(findVault('/vaults/a')?.lastOpened).toBe('2025-02-01T00:00:00.000Z')
+  })
+
+  it('sets exactly one known vault as the CLI default', () => {
+    upsertVault({
+      path: '/vaults/personal',
+      name: 'Personal',
+      noteCount: 1,
+      taskCount: 1,
+      lastOpened: '2025-01-01T00:00:00.000Z',
+      isDefault: true
+    })
+    upsertVault({
+      path: '/vaults/work',
+      name: 'Work',
+      noteCount: 2,
+      taskCount: 2,
+      lastOpened: '2025-01-02T00:00:00.000Z',
+      isDefault: false
+    })
+
+    expect(setDefaultVaultPath('/vaults/work')?.path).toBe('/vaults/work')
+    expect(getDefaultVaultPath()).toBe('/vaults/work')
+    expect(findVault('/vaults/personal')?.isDefault).toBe(false)
+    expect(findVault('/vaults/work')?.isDefault).toBe(true)
+    expect(setDefaultVaultPath('/vaults/missing')).toBeNull()
   })
 })

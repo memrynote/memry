@@ -58,6 +58,12 @@ export interface VoiceTranscriptionOpenAIKeyStatus {
   hasApiKey: boolean
 }
 
+export interface TerminalCommandVault {
+  path: string
+  name: string
+  isDefault: boolean
+}
+
 export interface TerminalCommandStatus {
   supported: boolean
   installed: boolean
@@ -68,6 +74,8 @@ export interface TerminalCommandStatus {
   targetPath: string
   inPath: boolean
   pathHint: string | null
+  defaultVaultPath: string | null
+  vaults: TerminalCommandVault[]
 }
 
 export type TerminalCommandMutationResult =
@@ -304,6 +312,12 @@ export const settingsRpc = defineDomain({
     }),
     uninstallTerminalCommand: defineMethod<() => Promise<TerminalCommandMutationResult>>({
       channel: SettingsChannels.invoke.UNINSTALL_TERMINAL_COMMAND
+    }),
+    setTerminalCommandDefaultVault: defineMethod<
+      (vaultPath: string) => Promise<TerminalCommandMutationResult>
+    >({
+      channel: SettingsChannels.invoke.SET_TERMINAL_COMMAND_DEFAULT_VAULT,
+      params: ['vaultPath']
     })
   },
   events: {

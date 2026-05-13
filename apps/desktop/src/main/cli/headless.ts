@@ -1,5 +1,6 @@
 import { app } from 'electron'
 import { runCli as defaultRunCli } from '@memry/cli'
+import { createDesktopCliVaultRegistry } from './vault-registry'
 
 export function getHeadlessCliArgs(argv: string[]): string[] | null {
   const cliIndex = argv.indexOf('--cli')
@@ -13,8 +14,9 @@ interface HeadlessCliDeps {
 }
 
 export async function runHeadlessCli(args: string[], deps: HeadlessCliDeps = {}): Promise<void> {
-  const runCli = deps.runCli ?? defaultRunCli
   const exit = deps.exit ?? ((code: number) => app.exit(code))
-  const code = await runCli(args)
+  const code = deps.runCli
+    ? await deps.runCli(args)
+    : await defaultRunCli(args, undefined, { vaultRegistry: createDesktopCliVaultRegistry() })
   exit(code)
 }
