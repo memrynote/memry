@@ -26,6 +26,10 @@ Use `--json` when another script should consume the output. Without it, commands
 The desktop app installs a small `memry` launcher into a user-level PATH location. If your
 terminal was already open, reopen it before running the command.
 
+If `memry` opens a generic Electron window or says Electron cannot find an app path, reinstall the
+command from **Settings → Command Line**. Memry treats older generated launchers as stale so the
+settings switch can replace them with the current launcher.
+
 ## Vault
 
 ```bash
