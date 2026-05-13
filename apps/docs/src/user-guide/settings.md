@@ -156,7 +156,7 @@ Light, White, Dark, or System (follow OS).
 
 ### Accent Color
 
-Eight presets — indigo, amber, emerald, red, violet, cyan, pink, orange — plus a custom `#RRGGBB` input.
+Eight presets — indigo, amber, emerald, red, violet, cyan, pink, orange — plus a custom `#RRGGBB` input. Orange is the default accent.
 
 ### Typography
 

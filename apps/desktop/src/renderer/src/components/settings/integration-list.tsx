@@ -59,7 +59,7 @@ export function IntegrationList(): React.JSX.Element {
   const integrations = getAvailableIntegrations()
 
   return (
-    <div className="flex flex-col rounded-lg overflow-clip border border-border">
+    <div className="flex flex-col rounded-lg overflow-clip border border-border bg-surface-active">
       {integrations.map((integration, i) => {
         return (
           <div key={integration.id}>
