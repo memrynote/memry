@@ -82,7 +82,7 @@ export function SidebarTabs({
         <div
           role="tablist"
           aria-label={t('agentChat.sidebar.label')}
-          className="inline-flex h-7 shrink-0 items-center gap-0.5 rounded-md border border-transparent bg-[#212021] p-0.5 hover:border-sidebar-border focus-within:border-sidebar-border"
+          className="inline-flex h-7 shrink-0 items-center gap-0.5 rounded-md border border-transparent bg-sidebar-surface p-0.5 hover:border-sidebar-border focus-within:border-sidebar-border"
         >
           <SidebarTabButton
             active={resolvedActive === 'day'}
@@ -156,7 +156,7 @@ function AgentConversationActions(): React.JSX.Element | null {
               aria-label={newConversationLabel}
               title={newConversationLabel}
               onClick={() => void agent.createConversation()}
-              className="inline-flex size-6 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-[#303030] hover:text-[color-mix(in_srgb,var(--foreground)_35%,white)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="inline-flex size-6 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <PlusSignIcon className="size-3.5" aria-hidden="true" />
             </button>
@@ -192,7 +192,7 @@ function AgentHistoryMenu(): React.JSX.Element | null {
                 type="button"
                 aria-label={historyLabel}
                 title={historyLabel}
-                className="inline-flex size-6 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-[#303030] hover:text-[color-mix(in_srgb,var(--foreground)_35%,white)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:bg-[#303030] data-[state=open]:text-[color-mix(in_srgb,var(--foreground)_35%,white)]"
+                className="inline-flex size-6 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:bg-sidebar-accent data-[state=open]:text-foreground"
               >
                 <History className="size-3.5" aria-hidden="true" />
               </button>
@@ -236,8 +236,8 @@ function SidebarTabButton({
       className={cn(
         'relative inline-flex size-6 items-center justify-center rounded-[5px] transition-colors',
         active
-          ? 'bg-[#303030] text-[color-mix(in_srgb,var(--foreground)_35%,white)] shadow-sm'
-          : 'text-muted-foreground hover:bg-[#303030] hover:text-[color-mix(in_srgb,var(--foreground)_35%,white)]'
+          ? 'bg-background text-foreground shadow-sm'
+          : 'text-muted-foreground hover:bg-sidebar-accent hover:text-foreground'
       )}
     >
       {children}
