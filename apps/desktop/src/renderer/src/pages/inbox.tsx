@@ -201,7 +201,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
         <TriageView onExit={exitTriage} />
       ) : (
         <div className="flex h-full flex-col">
-          <PageToolbar className="px-2 py-1 min-h-[38px]">
+          <PageToolbar className="px-2 py-1 min-h-[38px] border-b-0">
             <InboxSegmentControl value={currentView} onChange={handleViewChange} />
 
             {currentView === 'inbox' && (
@@ -231,10 +231,10 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
             {currentView === 'archived' && (
               <div
                 className={cn(
-                  'ml-auto flex items-center rounded-[5px] py-1 border overflow-hidden outline-none',
+                  'ms-auto flex items-center rounded-[5px] py-1 border overflow-hidden outline-none',
                   'transition-[width] duration-150 ease-out',
                   isArchivedSearchOpen
-                    ? 'w-52 border-transparent pl-2 pr-1.5 gap-1'
+                    ? 'w-52 border-transparent ps-2 pe-1.5 gap-1'
                     : 'w-[30px] border-border text-text-secondary hover:bg-surface-active/50 justify-center cursor-pointer'
                 )}
                 onClick={() => {
@@ -418,7 +418,7 @@ export function InboxPage({ className }: InboxPageProps): React.JSX.Element {
                 selectedTypes={selectedTypes}
                 showSnoozedItems={showSnoozedItems}
                 focusItemId={focusInboxItemId}
-                focusToken={focusToken}
+                {...{ focusToken }}
               />
             )}
             {currentView === 'archived' && (
