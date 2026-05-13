@@ -119,6 +119,8 @@ toast.error(extractErrorMessage(err, 'Could not save note'))
 
 New code must use logical properties (`ms-*`, `pe-*`, `start-*`, `text-start`, `border-s`, `rounded-s-*`) instead of physical ones (`ml-*`, `pr-*`, `left-*`, `text-left`, `border-l`, `rounded-l-*`). The lint config allows physical classes only in pre-existing files.
 
+The staged renderer guard scans whole staged renderer files, not just new hunks. If you touch a file that still has physical direction classes, convert those nearby classes to logical equivalents before committing.
+
 ## Pre-Production Database
 
 Memry is pre-production and the DB schema is **resettable**. There are no backward-compat constraints on schema changes within the desktop app. If a migration is messy, deleting the local vault is a valid recovery.
