@@ -1,11 +1,12 @@
 # Monorepo Layout
 
-Memry is a pnpm + Turborepo monorepo. Three apps, three shared packages, one source of truth for contracts.
+Memry is a pnpm + Turborepo monorepo. Apps live under `apps/`, reusable domain and storage code lives under `packages/`, and contracts remain the source of truth for app boundaries.
 
 ## Apps
 
 | Path               | Purpose                     | Stack                                       |
 | ------------------ | --------------------------- | ------------------------------------------- |
+| `apps/cli`         | Standalone `memry` CLI      | Node 24, TypeScript                         |
 | `apps/desktop`     | Electron desktop app        | Electron 39, React 19, Vite, BlockNote, Yjs |
 | `apps/sync-server` | Cloudflare Workers sync API | Workers + Hono, D1, R2                      |
 | `apps/docs`        | This documentation site     | VitePress 1.6                               |
@@ -14,8 +15,11 @@ Memry is a pnpm + Turborepo monorepo. Three apps, three shared packages, one sou
 
 | Path                 | Purpose                                                                                                          |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `packages/app-core`  | Shared vault-opening and command services used by non-renderer clients such as the CLI.                          |
 | `packages/contracts` | Zod-typed IPC and HTTP API contracts. The single source of truth for renderer↔main and client↔server boundaries. |
 | `packages/db-schema` | Drizzle ORM schemas for the data and index databases plus migration files.                                       |
+| `packages/storage-*` | Shared persistence adapters for local vault files and local data database access.                                |
+| `packages/domain-*`  | UI-agnostic domain command/query logic.                                                                          |
 | `packages/shared`    | Tiny set of shared utilities. Kept intentionally small to avoid coupling.                                        |
 
 ## Shared Assets
@@ -39,11 +43,12 @@ sources instead of keeping app-local copies.
 pnpm dev                # desktop dev (electron-vite)
 pnpm dev:desktop        # desktop dev (alias)
 pnpm dev:sync-server    # cloudflare worker dev
+pnpm test:cli           # app-core + CLI node tests
 
 # Verify
 pnpm lint               # ESLint flat config
-pnpm typecheck          # TypeScript across all packages
-pnpm test               # vitest (desktop + sync-server)
+pnpm typecheck          # TypeScript across apps/packages
+pnpm test               # app-core, CLI, desktop, and sync-server tests
 pnpm test:e2e           # Playwright E2E (Electron)
 pnpm ipc:check          # validate renderer/main contract types
 pnpm ipc:generate       # regenerate IPC invoke map
@@ -72,5 +77,6 @@ Most actions can be cached and parallelized:
 
 - Renderer never imports from `apps/desktop/src/main/*` and vice versa.
 - Both sides import shared types from `@memry/contracts`.
-- `packages/db-schema` is consumed by `apps/desktop/src/main` (data path) and indirectly by tests.
+- `packages/app-core` owns non-UI vault operations for standalone clients. Keep Electron-only concerns in `apps/desktop`.
+- `packages/db-schema` is consumed by desktop main, app-core, and tests.
 - `apps/sync-server` and `apps/desktop` only share types via `packages/contracts` — never code.

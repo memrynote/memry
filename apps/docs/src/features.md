@@ -38,6 +38,12 @@ A global command palette (<kbd>Cmd</kbd>+<kbd>K</kbd>) with scoped filters, tag 
 
 → [Search](/user-guide/search)
 
+## Command Line
+
+A standalone `memry` CLI can initialize and open a vault, create and update notes, manage note attachments and exports, write journal entries, manage tasks/projects, capture inbox items, and search from scripts or a terminal.
+
+→ [Command Line](/user-guide/cli)
+
 ## Workspace Surfaces
 
 - [Tabs & Split View](/user-guide/tabs-split-view)
