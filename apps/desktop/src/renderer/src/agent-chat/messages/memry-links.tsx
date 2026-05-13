@@ -6,7 +6,7 @@ import { useTabActions } from '@/contexts/tabs'
 import { cn } from '@/lib/utils'
 
 const memryLinkClassName =
-  'text-sidebar-terracotta hover:underline hover:decoration-dotted underline-offset-2'
+  'text-[#81B4E5] hover:underline hover:decoration-dotted underline-offset-2'
 
 type OpenableTab = Omit<Tab, 'id' | 'openedAt' | 'lastAccessedAt'>
 
