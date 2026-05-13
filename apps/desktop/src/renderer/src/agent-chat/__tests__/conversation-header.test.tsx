@@ -1,6 +1,5 @@
-import userEvent from '@testing-library/user-event'
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import type { Conversation } from '@memry/contracts/ipc-agent'
 
@@ -40,41 +39,15 @@ const conversations: Conversation[] = [
 ]
 
 describe('ConversationHeader', () => {
-  it('opens the switcher and selects another conversation', async () => {
-    const user = userEvent.setup()
-    const onSelectConversation = vi.fn()
+  it('renders the active conversation title', () => {
+    render(<ConversationHeader conversation={conversations[0]} />)
 
-    render(
-      <ConversationHeader
-        conversation={conversations[0]}
-        conversations={conversations}
-        onCreateConversation={vi.fn()}
-        onSelectConversation={onSelectConversation}
-      />
-    )
+    const title = screen.getByText('Planning')
+    const header = title.closest('header')
 
-    await user.click(screen.getByRole('button', { name: /Planning/ }))
-    await user.click(screen.getByRole('button', { name: 'Inbox cleanup' }))
-
-    expect(onSelectConversation).toHaveBeenCalledWith('conversation-2')
-  })
-
-  it('creates a new conversation from the switcher', async () => {
-    const user = userEvent.setup()
-    const onCreateConversation = vi.fn()
-
-    render(
-      <ConversationHeader
-        conversation={conversations[0]}
-        conversations={conversations}
-        onCreateConversation={onCreateConversation}
-        onSelectConversation={vi.fn()}
-      />
-    )
-
-    await user.click(screen.getByRole('button', { name: /Planning/ }))
-    await user.click(screen.getByRole('button', { name: 'New conversation' }))
-
-    expect(onCreateConversation).toHaveBeenCalledTimes(1)
+    expect(title).toBeInTheDocument()
+    expect(header).toHaveClass('border-t')
+    expect(header).not.toHaveClass('border-b')
+    expect(screen.queryByRole('button', { name: 'Conversation history' })).not.toBeInTheDocument()
   })
 })

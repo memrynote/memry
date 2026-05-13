@@ -101,12 +101,14 @@ describe('Composer', () => {
 
     const providerTrigger = screen.getByRole('button', { name: 'Agent provider: Claude' })
     expect(providerTrigger).not.toHaveClass('border')
-    expect(providerTrigger).toHaveClass('hover:bg-transparent')
-    expect(providerTrigger).toHaveClass('hover:text-foreground')
+    expect(providerTrigger).toHaveClass('hover:bg-accent')
+    expect(providerTrigger).toHaveClass('hover:text-accent-foreground')
+    expect(providerTrigger).toHaveClass('data-[state=open]:bg-accent')
 
     fireEvent.pointerDown(providerTrigger)
 
-    expect(screen.getByRole('menuitem', { name: /claude/i })).toHaveClass('focus:bg-transparent')
+    expect(screen.getByRole('menuitem', { name: /claude/i })).toHaveClass('hover:bg-accent')
+    expect(screen.getByRole('menuitem', { name: /claude/i })).toHaveClass('focus:bg-accent')
     expect(screen.getByRole('menuitem', { name: /codex/i })).not.toHaveAttribute('data-disabled')
     expect(screen.getByRole('menuitem', { name: /local/i })).not.toHaveAttribute('data-disabled')
   })
