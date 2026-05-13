@@ -65,6 +65,7 @@ Generated outputs:
 - `apps/desktop/build/icon.png` — runtime window / Dock icon source.
 - `apps/desktop/build/icon.icns` — macOS packaged app icon.
 - `apps/desktop/build/icon.ico` — Windows packaged app icon.
+- `assets/brand/memry/social/profile-image.png` — square Twitter/X and Reddit profile image.
 
 Regenerate after changing `icon-color.png`:
 
@@ -74,16 +75,18 @@ pnpm --dir apps/desktop generate:icons
 
 ### Platform-ready
 
-| File                 | What it is                     | When to use                                       |
-| -------------------- | ------------------------------ | ------------------------------------------------- |
-| `favicon.ico`        | ICO favicon                    | Drop into website root as `/favicon.ico`.         |
-| `social-icon.png`    | Icon on white background       | Profile picture when a light avatar reads best.   |
-| `inverse-avatar.png` | Icon on brand-color background | Profile picture when a colored avatar reads best. |
+| File                       | What it is                     | When to use                                       |
+| -------------------------- | ------------------------------ | ------------------------------------------------- |
+| `favicon.ico`              | ICO favicon                    | Drop into website root as `/favicon.ico`.         |
+| `social-icon.png`          | Icon on white background       | Profile picture when a light avatar reads best.   |
+| `inverse-avatar.png`       | Icon on brand-color background | Profile picture when a colored avatar reads best. |
+| `social/profile-image.png` | Square image with depth mark   | Generated profile image for Twitter/X and Reddit. |
 
 ### Social assets
 
 - Use `social-icon.png` for light profile/avatar slots.
 - Use `inverse-avatar.png` when a colored avatar reads better.
+- Use `social/profile-image.png` for Twitter/X and Reddit profile images; it keeps the depth-treated mark on a full square background so profile platforms can crop it themselves.
 - Use `social/og-image.svg` as the source for the 1200x630 social preview.
 - Copy the generated `social/og-image.png` to `apps/landing/public/og-image.png` so both
   `og:image` and `twitter:image` resolve to the current brand preview.
