@@ -25,9 +25,7 @@
         "integrations": "Integraatiot",
         "vault": "Holvi",
         "tags": "Tunnisteet",
-        "properties": "Ominaisuudet",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Ominaisuudet"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Huomautuksia",
         "attachments": "Liitteet",
         "crdt": "CRDT",
-        "other": "Muut",
-        "available": "Saatavilla"
+        "other": "Muut"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "Odotetaan hyväksyntää",
       "waitingDescription": "Avaa Memry toisella laitteellasi ja hyväksy linkityspyyntö.",
       "verificationCode": "Vahvistuskoodi",
-      "confirmCode": "Varmista, että tämä vastaa toisen laitteesi koodia",
-      "cancel": "Peruuta"
+      "confirmCode": "Varmista, että tämä vastaa toisen laitteesi koodia"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Palautusavain",
     "description": "Säilytä tämä avain turvallisesti. Se voi palauttaa holvisi, jos menetät pääsyn kaikkiin laitteisiin.",
-    "loading": "Ladataan...",
     "retrieveFailed": "Palautusavaimen nouto epäonnistui",
     "copied": "Palautusavain kopioitiin leikepöydälle",
     "copyFailed": "Kopioiminen leikepöydälle epäonnistui",
     "clickToReveal": "Napsauta paljastaaksesi",
     "hide": "Piilota",
     "reveal": "Paljasta",
-    "copy": "Kopioi",
     "sessionHint": "Tämä avain näytetään kerran istunnon aikana. Sulje tämä valintaikkuna tyhjentääksesi sen muistista."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Google-kalenterin yhdistäminen epäonnistui",
       "refreshFailed": "Google-kalenterin päivittäminen epäonnistui",
       "disconnectFailed": "Google-kalenterin yhteyden katkaiseminen epäonnistui",
-      "selectionFailed": "Kalenterivalinnan päivittäminen epäonnistui",
       "retryFailed": "Kalenterin synkronointia ei voitu yrittää uudelleen"
     },
     "sourcePicker": {

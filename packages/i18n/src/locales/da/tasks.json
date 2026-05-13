@@ -35,38 +35,6 @@
     "delete": "Slet opgave",
     "created": "Oprettet {date}"
   },
-  "project": {
-    "create": "Opret projekt",
-    "edit": "Rediger projekt",
-    "delete": "Slet projekt",
-    "iconAndName": "Ikon og navn",
-    "namePlaceholder": "Projektnavn",
-    "select": "Vælg projekt",
-    "selectIcon": "Vælg ikon",
-    "clickIconToChange": "Klik på ikonet for at ændre",
-    "color": "Farve",
-    "descriptionOptional": "Beskrivelse (valgfrit)",
-    "descriptionPlaceholder": "Kort beskrivelse af dette projekt...",
-    "statuses": "Statusser",
-    "statusesHelp": "Konfigurer arbejdsprocesstadierne for dette projekt.",
-    "createDescription": "Opret et nyt projekt med navn, ikon, farve og arbejdsgangstatus.",
-    "editDescription": "Rediger projektnavn, ikon, farve og arbejdsgangstatus."
-  },
-  "status": {
-    "select": "Vælg status",
-    "todo": "At gøre",
-    "inProgress": "Igangværende",
-    "done": "Færdig"
-  },
-  "priority": {
-    "select": "Vælg prioritet",
-    "none": "Ingen prioritet",
-    "noneShort": "Ingen",
-    "low": "Lav",
-    "medium": "Medium",
-    "high": "Høj",
-    "urgent": "Haster"
-  },
   "filters": {
     "filter": "Filter",
     "emptyTitle": "Ingen opgaver matcher dine filtre",
@@ -113,14 +81,12 @@
     "filterApplied": "Anvendt \"{name}\"",
     "deleted": "Opgave slettet",
     "deletedSeries": "Serie færdig!",
-    "deletedNext": "Næste hændelse",
     "completed": "Opgave afsluttet!",
     "archived": "Opgave arkiveret",
     "undoNotAvailableForDelete": "Fortryd ikke tilgængelig for sletning",
     "alreadyAllComplete": "Alle valgte opgaver er allerede udført",
     "noCompletedSelected": "Ingen udførte opgaver er valgt",
     "completeFailed": "Kunne ikke fuldføre opgaver",
-    "reopenFailed": "Opgaverne kunne ikke genåbnes",
     "deleteFailed": "Kunne ikke slette opgaver",
     "moveFailed": "Kunne ikke flytte opgaver"
   },

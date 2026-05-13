@@ -43,9 +43,7 @@
     "pdfs": "PDF's",
     "social": "Sociaal",
     "reminder": "Herinnering",
-    "reminders": "Herinneringen",
-    "text": "Tekst",
-    "other": "Anders"
+    "reminders": "Herinneringen"
   },
   "empty": {
     "successAria": "Succes, inbox is leeg",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "Geen overeenkomende gearchiveerde items",
     "noItemsYet": "Nog geen artikelen",
     "noItemsFiled": "Er zijn nog geen items ingediend",
-    "noItemTypes": "Er zijn geen itemtypen om weer te geven",
     "noFolders": "Geen mappen gevonden",
-    "noFolderMatch": "Er zijn geen mappen die overeenkomen met '{query}'",
     "noNotes": "Geen notities gevonden",
     "allMatchesLinked": "Alle wedstrijden zijn al gekoppeld"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Transcriptie is mislukt",
     "retryTranscription": "Opnieuw proberen",
     "pageCount": "{count, plural, one {#-pagina} other {#-pagina's}}",
-    "snoozedUntilShort": "gesnoozed tot {date}",
-    "capturedAgo": "{time} vastgelegd"
+    "snoozedUntilShort": "gesnoozed tot {date}"
   },
   "loading": {
     "inbox": "Postvak IN laden...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Snelle acties",
     "archiveItem": "Archiefitem",
-    "archive": "Archief",
-    "snooze": "Snoozen"
+    "archive": "Archief"
   },
   "detail": {
     "ariaLabel": "Artikeldetails",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Zoek naar notities om te linken",
     "linkedNotesAria": "Gekoppelde notities",
     "removeLinkTo": "Verwijder de link naar {title}",
-    "contentEditorAria": "Inhoudseditor",
     "notePlaceholder": "Schrijf uw notitie...",
     "textPlaceholder": "Bewerk uw vastgelegde tekst..."
   },
@@ -263,14 +256,9 @@
     "custom": "Aangepast..."
   },
   "insights": {
-    "loading": "Inzichten laden...",
     "captureActivity": "Activiteit vastleggen",
     "byType": "Op soort",
-    "itemTypes": "Artikeltypen",
-    "itemTypesDescription": "Distributie van inhoudsformaten",
     "recentFilings": "Recente indieningen",
-    "recentlyFiled": "Recent ingediend",
-    "recentlyFiledDescription": "Laatste acties in uw inbox",
     "captured": "Gevangen",
     "capturedThisWeek": "+{count} deze week",
     "processed": "Verwerkt",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {#-opname} other {#-opnamen}}",
     "peak": "Piek: {day} {start}–{end}",
     "convertedToTask": "Omgezet naar taak",
-    "linked": "Gekoppeld",
     "now": "nu",
     "timeAgoMinutes": "{count}m geleden",
     "timeAgoHours": "{count}h geleden",

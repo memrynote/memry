@@ -14,7 +14,6 @@
       "openLinkedFailed": "Nepodarilo sa otvoriť prepojenú položku",
       "localOnly": "Poznámka je nastavená iba lokálne",
       "willSync": "Poznámka sa synchronizuje s cloudom",
-      "saveFailed": "Nepodarilo sa uložiť poznámku",
       "renameFailed": "Nepodarilo sa premenovať poznámku",
       "toggleLocalOnlyFailed": "Nepodarilo sa prepínať na lokálne iba",
       "toggleFullWidthFailed": "Nepodarilo sa prepínať na plnú šírku"
@@ -135,9 +134,6 @@
       "clearSearch": "Vymazať vyhľadávanie"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "Napísať svoju poznámku..."
-  },
   "outline": {
     "title": "Obrys",
     "aria": "Obrys dokumentu",
@@ -149,7 +145,6 @@
     "modified": "Upravené"
   },
   "backlinks": {
-    "title": "Spätné odkazy",
     "sortRecent": "Nedávne",
     "sortAlpha": "A-Z",
     "sortMentions": "Najčastejšie zmienky",

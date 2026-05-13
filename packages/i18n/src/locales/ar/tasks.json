@@ -35,38 +35,6 @@
     "delete": "حذف المهمة",
     "created": "تم إنشاء {date}"
   },
-  "project": {
-    "create": "إنشاء مشروع",
-    "edit": "تحرير المشروع",
-    "delete": "حذف المشروع",
-    "iconAndName": "الرمز والاسم",
-    "namePlaceholder": "اسم المشروع",
-    "select": "حدد المشروع",
-    "selectIcon": "حدد الرمز",
-    "clickIconToChange": "انقر على أيقونة للتغيير",
-    "color": "اللون",
-    "descriptionOptional": "الوصف (اختياري)",
-    "descriptionPlaceholder": "وصف مختصر لهذا المشروع…",
-    "statuses": "الحالات",
-    "statusesHelp": "تكوين مراحل سير العمل لهذا المشروع.",
-    "createDescription": "قم بإنشاء مشروع جديد بالاسم والرمز واللون وحالات سير العمل.",
-    "editDescription": "قم بتحرير اسم المشروع وأيقونته ولونه وحالات سير العمل."
-  },
-  "status": {
-    "select": "اختر الحالة",
-    "todo": "للقيام",
-    "inProgress": "قيد التقدم",
-    "done": "تم"
-  },
-  "priority": {
-    "select": "حدد الأولوية",
-    "none": "لا أولوية",
-    "noneShort": "لا شيء",
-    "low": "منخفض",
-    "medium": "متوسط",
-    "high": "عالية",
-    "urgent": "عاجل"
-  },
   "filters": {
     "filter": "تصفية",
     "emptyTitle": "لا توجد مهام تتطابق مع عوامل التصفية الخاصة بك",
@@ -113,14 +81,12 @@
     "filterApplied": "تم تطبيق \"{name}\"",
     "deleted": "تم حذف المهمة",
     "deletedSeries": "السلسلة كاملة!",
-    "deletedNext": "الحدوث التالي",
     "completed": "اكتملت المهمة!",
     "archived": "تمت أرشفة المهمة",
     "undoNotAvailableForDelete": "التراجع غير متاح للحذف",
     "alreadyAllComplete": "جميع المهام المحددة مكتملة بالفعل",
     "noCompletedSelected": "لم يتم تحديد أي مهام مكتملة",
     "completeFailed": "فشل في إكمال المهام",
-    "reopenFailed": "فشلت إعادة فتح المهام",
     "deleteFailed": "فشل في حذف المهام",
     "moveFailed": "فشل في نقل المهام"
   },

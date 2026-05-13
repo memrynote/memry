@@ -38,8 +38,7 @@
     "openNoteFullPage": "Abrir nota en página completa",
     "closeNoteDrawer": "Cerrar cajón de notas",
     "addBookmark": "Agregar marcador",
-    "removeBookmark": "Quitar marcador",
-    "tryAgain": "Inténtalo de nuevo"
+    "removeBookmark": "Quitar marcador"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "Diario de vuelta",
     "journalNavigation": "Navegación del diario",
     "dateNavigation": "Navegación por fecha del diario",
-    "goToYearView": "Ir a la vista del año",
-    "previousView": "Vista anterior",
-    "nextView": "Siguiente vista"
+    "goToYearView": "Ir a la vista del año"
   },
   "aria": {
     "moreOptions": "Más opciones",
@@ -184,10 +181,8 @@
     "connectionAria": "Conexión a {label}, {scorePercent}% coincide"
   },
   "count": {
-    "item": "artículo",
     "items": "artículos",
     "note": "nota",
-    "notes": "notas",
     "day": "dia",
     "days": "dias",
     "event": "evento",

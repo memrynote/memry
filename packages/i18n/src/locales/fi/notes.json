@@ -14,7 +14,6 @@
       "openLinkedFailed": "Linkitetyn kohteen avaaminen epäonnistui",
       "localOnly": "Huomautus asetettu vain paikalliselle",
       "willSync": "Huomautus synkronoidaan pilveen",
-      "saveFailed": "Muistiinpanon tallentaminen epäonnistui",
       "renameFailed": "Muistiinpanon uudelleennimeäminen epäonnistui",
       "toggleLocalOnlyFailed": "Vain paikallisen vaihtaminen epäonnistui",
       "toggleFullWidthFailed": "Täysleveyden vaihtaminen epäonnistui"
@@ -135,9 +134,6 @@
       "clearSearch": "Tyhjennä haku"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "Kirjoita muistiinpanosi..."
-  },
   "outline": {
     "title": "Outline",
     "aria": "Asiakirjan ääriviivat",
@@ -149,7 +145,6 @@
     "modified": "Muokattu"
   },
   "backlinks": {
-    "title": "Käänteisiä linkkejä",
     "sortRecent": "Viimeaikaiset",
     "sortAlpha": "A-Z",
     "sortMentions": "Useimmat maininnat",

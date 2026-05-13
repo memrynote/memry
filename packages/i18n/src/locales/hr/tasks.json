@@ -35,38 +35,6 @@
     "delete": "Izbriši zadatak",
     "created": "Kreiran {date}"
   },
-  "project": {
-    "create": "Stvori projekt",
-    "edit": "Uredi projekt",
-    "delete": "Izbriši projekt",
-    "iconAndName": "Ikona i naziv",
-    "namePlaceholder": "Naziv projekta",
-    "select": "Odaberite projekt",
-    "selectIcon": "Odaberite ikonu",
-    "clickIconToChange": "Kliknite ikonu za promjenu",
-    "color": "Boja",
-    "descriptionOptional": "Opis (nije obavezno)",
-    "descriptionPlaceholder": "Kratak opis ovog projekta…",
-    "statuses": "Statusi",
-    "statusesHelp": "Konfigurirajte faze tijeka rada za ovaj projekt.",
-    "createDescription": "Stvorite novi projekt s nazivom, ikonom, bojom i statusima tijeka rada.",
-    "editDescription": "Uredite naziv projekta, ikonu, boju i statuse tijeka rada."
-  },
-  "status": {
-    "select": "Odaberite status",
-    "todo": "Učiniti",
-    "inProgress": "U tijeku",
-    "done": "Gotovo"
-  },
-  "priority": {
-    "select": "Odaberite prioritet",
-    "none": "Bez prioriteta",
-    "noneShort": "Nijedan",
-    "low": "Niska",
-    "medium": "srednje",
-    "high": "visoko",
-    "urgent": "Hitno"
-  },
   "filters": {
     "filter": "Filter",
     "emptyTitle": "Nijedan zadatak ne odgovara vašim filtrima",
@@ -113,14 +81,12 @@
     "filterApplied": "Primijenjeno \"{name}\"",
     "deleted": "Zadatak izbrisan",
     "deletedSeries": "Serija završena!",
-    "deletedNext": "Sljedeća pojava",
     "completed": "Zadatak obavljen!",
     "archived": "Zadatak arhiviran",
     "undoNotAvailableForDelete": "Poništavanje nije dostupno za brisanje",
     "alreadyAllComplete": "Svi odabrani zadaci već su dovršeni",
     "noCompletedSelected": "Nema odabranih dovršenih zadataka",
     "completeFailed": "Zadaci nisu uspjeli dovršiti",
-    "reopenFailed": "Ponovno otvaranje zadataka nije uspjelo",
     "deleteFailed": "Brisanje zadataka nije uspjelo",
     "moveFailed": "Premještanje zadataka nije uspjelo"
   },

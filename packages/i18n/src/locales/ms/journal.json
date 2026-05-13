@@ -38,8 +38,7 @@
     "openNoteFullPage": "Buka nota dalam halaman penuh",
     "closeNoteDrawer": "Tutup laci nota",
     "addBookmark": "Tambah penanda halaman",
-    "removeBookmark": "Alih keluar penanda halaman",
-    "tryAgain": "Cuba Lagi"
+    "removeBookmark": "Alih keluar penanda halaman"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "Jurnal kembali",
     "journalNavigation": "Navigasi jurnal",
     "dateNavigation": "Navigasi tarikh jurnal",
-    "goToYearView": "Pergi ke paparan tahun",
-    "previousView": "Pandangan sebelumnya",
-    "nextView": "Paparan seterusnya"
+    "goToYearView": "Pergi ke paparan tahun"
   },
   "aria": {
     "moreOptions": "Lebih banyak pilihan",
@@ -184,10 +181,8 @@
     "connectionAria": "Sambungan ke {label}, {scorePercent}% sepadan"
   },
   "count": {
-    "item": "item",
     "items": "barang",
     "note": "nota",
-    "notes": "nota",
     "day": "hari",
     "days": "hari",
     "event": "peristiwa",

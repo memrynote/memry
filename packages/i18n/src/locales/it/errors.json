@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Qualcosa è andato storto. Per favore riprova.",
     "operationFailed": "Operazione fallita",
-    "unknown": "Si è verificato un errore sconosciuto",
-    "validationFailed": "Convalida non riuscita",
-    "actionFailed": "Azione fallita"
+    "unknown": "Si è verificato un errore sconosciuto"
   },
   "ipc": {
     "noVaultOpen": "Nessun caveau è aperto. Per favore apri prima un caveau."

@@ -3,47 +3,25 @@
     "save": "Spara",
     "cancel": "Avbryt",
     "close": "Stäng",
-    "ok": "OK",
-    "yes": "Ja",
-    "no": "Nej",
     "delete": "Ta bort",
-    "confirm": "Bekräfta",
-    "apply": "Tillämpa",
     "done": "Klart",
-    "discard": "Kassera",
     "dontSave": "Spara inte",
-    "edit": "Redigera",
     "add": "Lägg till",
     "remove": "Ta bort",
     "retry": "Försök igen",
-    "submit": "Skicka",
     "back": "Tillbaka",
-    "next": "Nästa",
     "continue": "Fortsätt",
-    "reset": "Återställ",
     "copy": "Kopiera",
-    "paste": "Klistra in",
-    "create": "Skapa",
-    "open": "Öppna"
+    "create": "Skapa"
   },
   "state": {
     "loading": "Laddar…",
     "saving": "Sparar…",
     "deleting": "Tar bort…",
-    "searching": "Söker…",
-    "error": "Fel",
-    "success": "Framgång"
-  },
-  "empty": {
-    "noResults": "Inga resultat",
-    "noItems": "Inga objekt",
-    "noMatch": "Inga matchningar"
+    "searching": "Söker…"
   },
   "action": {
     "search": "Sök",
-    "edit": "Redigera",
-    "delete": "Ta bort",
-    "close": "Stäng",
     "expand": "Expandera",
     "collapse": "Komprimera",
     "showMore": "+{count, plural, one {# mer} other {# mer}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {# objekt} other {# objekt}}",
     "note": "{count, plural, one {# anteckning} other {# anteckningar}}",
-    "folder": "{count, plural, one {# mapp} other {# mappar}}",
     "task": "{count, plural, one {# uppgift} other {# uppgifter}}",
-    "project": "{count, plural, one {# projekt} other {# projekt}}",
     "itemDelete": "{count, plural, one {Ta bort # objekt} other {Ta bort # objekt}}"
   },
   "toast": {
     "actionFailed": "Åtgärden misslyckades",
     "nothingToUndo": "Inget att ångra",
     "undone": "Ångrad: {description}",
-    "undoFailed": "Misslyckades med att ångra åtgärd",
-    "copied": "Kopierad",
-    "copyFailed": "Misslyckades med att kopiera"
+    "undoFailed": "Misslyckades med att ångra åtgärd"
   },
   "dateRelative": {
     "today": "Idag",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {# dag sedan} other {# dagar sedan}}"
   },
   "recurrence": {
-    "everyDay": "Varje dag",
     "everyNDays": "{count, plural, one {Varje dag} other {Varje # dagar}}",
-    "everyWeek": "Varje vecka",
     "everyNWeeks": "{count, plural, one {Varje vecka} other {Varje # veckor}}",
-    "everyWeekday": "Varje vardag",
     "everyNWeeksOnWeekdays": "{count, plural, one {Varje vardag} other {Varje # veckor på vardagar}}",
-    "everyWeekend": "Varje helg",
     "everyNWeeksOnWeekends": "{count, plural, one {Varje helg} other {Varje # veckor på helger}}",
-    "everyWeekOnDays": "Varje vecka på {days}",
     "everyNWeeksOnDays": "{count, plural, one {Varje vecka på {days}} other {Varje # veckor på {days}}}",
-    "everyMonth": "Varje månad",
     "everyNMonths": "{count, plural, one {Varje månad} other {Varje # månader}}",
-    "everyMonthOnDay": "Varje månad på {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {Varje månad på {day}{suffix}} other {Varje # månader på {day}{suffix}}}",
-    "everyMonthOnWeekDay": "Varje månad på {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Varje månad på {week} {day}} other {Varje # månader på {week} {day}}}",
-    "everyYear": "Varje år",
     "everyNYears": "{count, plural, one {Varje år} other {Varje # år}}",
     "repeats": "Upprepas"
   },
@@ -264,7 +228,6 @@
       "openTabs": "Öppna flikar",
       "scrollTabsLeft": "Skrolla flikar åt vänster",
       "scrollTabsRight": "Skrolla flikar åt höger",
-      "graphG": "Graf (⌘G)",
       "dayPanel": "Dagspanel"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Agent chatt",
+    "loading": "Laddar agentchatt...",
+    "conversationLoading": "Konversationen laddas...",
+    "newConversation": "Ny konversation",
+    "history": "Konversationshistorik",
+    "stop": "Stopp",
+    "thinking": "Agent tänker",
+    "enable": {
+      "title": "Aktivera Memry Agent",
+      "description": "Memry Agent använder din valda lokala agent CLI för att chatta om ditt valv. Claude skickar vändningar till Anthropic; Codex skickar vändningar till OpenAI.",
+      "remote": "Memry krypterar din lokala och synkroniserade chatthistorik, men modellinferens sker med den valda leverantören.",
+      "readTools": "Läsverktyg körs automatiskt.",
+      "writeTools": "Skapa och uppdatera verktyg kräver godkännande.",
+      "diff": "Uppdateringsverktyg visar en skillnad eller förhandsgranskning.",
+      "button": "Aktivera Agent-chatt"
+    },
+    "approval": {
+      "description": "Agenten vill ringa {name} med dessa argument.",
+      "applyOnce": "Applicera en gång",
+      "allowOnce": "Tillåt en gång",
+      "editAndApply": "Redigera och tillämpa",
+      "editAndAllow": "Redigera och tillåt",
+      "allowAlways": "Tillåt alltid",
+      "applyEdits": "Tillämpa redigeringar",
+      "deny": "Förneka",
+      "invalidJson": "Ange giltig JSON innan du tillämpar ändringar."
+    },
+    "diff": {
+      "previewError": "Det gick inte att förhandsgranska anteckningsdiff",
+      "description": "Agenten vill uppdatera {title}. Granska aktuellt och kandidatinnehåll innan du tillämpar det.",
+      "fallbackTitle": "denna anteckning",
+      "current": "Nuvarande",
+      "candidate": "Kandidat",
+      "loading": "Belastning...",
+      "apply": "Tillämpas",
+      "applyEdited": "Använd redigerad"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "Aktuell not",
+      "removeAttachment": "Ta bort {label}",
+      "placeholder": "Fråga Agent",
+      "send": "Skicka",
+      "providerLabel": "Agent-leverantör: {provider}",
+      "modelLabel": "Agent modell: {model}",
+      "settingsLabel": "Agent-inställningar: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "Anpassad modell-ID",
+      "customModelPlaceholder": "Anpassad modell-ID",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "Lokal"
+      },
+      "models": {
+        "default": "Standard"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "Resonemang"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
+          "low": "Låg",
           "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
+          "high": "Hög",
+          "extraHigh": "Extra hög",
+          "extraHighDefault": "Extra hög (standard)",
           "max": "Max"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
+          "low": "Låg",
           "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "mediumDefault": "Medium (standard)",
+          "high": "Hög",
+          "extraHigh": "Extra hög"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "Inga matchningar"
+    },
+    "toolResult": {
+      "label": "Verktygsresultat"
+    },
+    "toolCall": {
+      "editedArgs": "Redigerade argument",
+      "parameters": "Parametrar"
+    },
+    "sidebar": {
+      "label": "Höger sidofält",
+      "day": "Dag",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# väntar på godkännande} other {# väntande godkännanden}}",
+      "inProgress": "Agent tur pågår"
+    },
+    "errors": {
+      "loadConversations": "Det gick inte att läsa in agentkonversationer",
+      "loadConversation": "Det gick inte att ladda agentkonversationen",
+      "createConversation": "Det gick inte att skapa agentkonversation",
+      "busy": "Ett annat fönster är mitt i svängen för den här konversationen. Vänta tills det är klart eller stoppa det därifrån.",
+      "sendTurn": "Kunde inte skicka agentturen",
+      "cancelTurn": "Det gick inte att avbryta agentturen",
+      "submitApproval": "Det gick inte att skicka verktygsgodkännande",
+      "updateTrust": "Det gick inte att uppdatera betrodda verktyg",
+      "saveDisclosure": "Det gick inte att spara upplysningsstatus",
+      "resolveWindow": "Kunde inte lösa agentkällfönstret",
+      "detectCli": "Det gick inte att upptäcka agentens backends",
+      "loadDisclosure": "Det gick inte att ladda upplysningstillståndet"
     }
   }
 }

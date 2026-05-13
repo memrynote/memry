@@ -35,38 +35,6 @@
     "delete": "ลบภารกิจ",
     "created": "สร้างเมื่อ {date}"
   },
-  "project": {
-    "create": "สร้างโครงการ",
-    "edit": "แก้ไขโครงการ",
-    "delete": "ลบโปรเจกต์",
-    "iconAndName": "ไอคอน & ชื่อ",
-    "namePlaceholder": "ชื่อโครงการ",
-    "select": "เลือกโครงการ",
-    "selectIcon": "เลือกไอคอน",
-    "clickIconToChange": "คลิกไอคอนเพื่อเปลี่ยน",
-    "color": "สี",
-    "descriptionOptional": "คำอธิบาย (ไม่บังคับ)",
-    "descriptionPlaceholder": "คำอธิบายสั้น ๆ ของโครงการนี้…",
-    "statuses": "สถานะ",
-    "statusesHelp": "กำหนดขั้นตอนการทำงานสำหรับโครงการนี้",
-    "createDescription": "สร้างโครงการใหม่โดยระบุชื่อไอคอน สี และสถานะการทำงาน",
-    "editDescription": "แก้ไขชื่อโครงการ ไอคอน สี และสถานะการทำงาน"
-  },
-  "status": {
-    "select": "เลือกสถานะ",
-    "todo": "ต้องทำ",
-    "inProgress": "กำลังดำเนินการ",
-    "done": "เสร็จสิ้น"
-  },
-  "priority": {
-    "select": "เลือกความสำคัญ",
-    "none": "ไม่มีความสำคัญ",
-    "noneShort": "ไม่มี",
-    "low": "ต่ำ",
-    "medium": "ปานกลาง",
-    "high": "สูง",
-    "urgent": "ด่วน"
-  },
   "filters": {
     "filter": "  \nกรอง  ",
     "emptyTitle": "ไม่มีงานที่ตรงกับตัวกรองของคุณ",
@@ -113,14 +81,12 @@
     "filterApplied": "นำไปใช้ \"{name}\"",
     "deleted": "ลบภารกิจแล้ว",
     "deletedSeries": "ซีรีส์เสร็จสมบูรณ์!",
-    "deletedNext": "การเกิดเหตุการณ์ครั้งต่อไป",
     "completed": "งานเสร็จสมบูรณ์!",
     "archived": "เก็บงานไว้ในคลัง",
     "undoNotAvailableForDelete": "ไม่สามารถยกเลิกการลบได้",
     "alreadyAllComplete": "งานทั้งหมดที่เลือกเสร็จสมบูรณ์แล้ว",
     "noCompletedSelected": "ไม่มีงานที่เสร็จสมบูรณ์ถูกเลือก",
     "completeFailed": "ไม่สามารถทำงานให้เสร็จสมบูรณ์ได้",
-    "reopenFailed": "ไม่สามารถเปิดงานใหม่ได้",
     "deleteFailed": "ไม่สามารถลบงานได้",
     "moveFailed": "ไม่สามารถย้ายงานได้"
   },

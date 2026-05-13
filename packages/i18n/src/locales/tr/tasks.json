@@ -35,38 +35,6 @@
     "delete": "Görevi sil",
     "created": "Oluşturuldu {date}"
   },
-  "project": {
-    "create": "Proje Oluştur",
-    "edit": "Projeyi Düzenle",
-    "delete": "Projeyi Sil",
-    "iconAndName": "Simge ve Ad",
-    "namePlaceholder": "Proje adı",
-    "select": "Proje seçin",
-    "selectIcon": "Simge seç",
-    "clickIconToChange": "Değiştirmek için simgeye tıklayın",
-    "color": "Renk",
-    "descriptionOptional": "Açıklama (isteğe bağlı)",
-    "descriptionPlaceholder": "Bu projenin kısa açıklaması…",
-    "statuses": "Durumlar",
-    "statusesHelp": "Bu proje için iş akışı aşamalarını yapılandırın.",
-    "createDescription": "Ad, simge, renk ve iş akışı durumlarıyla yeni bir proje oluşturun.",
-    "editDescription": "Proje adını, simgesini, rengini ve iş akışı durumlarını düzenleyin."
-  },
-  "status": {
-    "select": "Durum seç",
-    "todo": "Yapılacaklar",
-    "inProgress": "Devam Ediyor",
-    "done": "Bitti"
-  },
-  "priority": {
-    "select": "Öncelik seçin",
-    "none": "Öncelik Yok",
-    "noneShort": "Yok",
-    "low": "Düşük",
-    "medium": "Orta",
-    "high": "Yüksek",
-    "urgent": "Acil"
-  },
   "filters": {
     "filter": "Filtre",
     "emptyTitle": "Filtrelerinizle eşleşen görev yok",
@@ -113,14 +81,12 @@
     "filterApplied": "Uygulandı\"{name}\"",
     "deleted": "Görev silindi",
     "deletedSeries": "Seri tamamlandı!",
-    "deletedNext": "Sonraki olay",
     "completed": "Görev tamamlandı!",
     "archived": "Görev arşivlendi",
     "undoNotAvailableForDelete": "Geri alma silme işlemi için kullanılamaz",
     "alreadyAllComplete": "Seçilen görevlerin tümü zaten tamamlandı",
     "noCompletedSelected": "Tamamlanmış görev seçilmedi",
     "completeFailed": "Görevler tamamlanamadı",
-    "reopenFailed": "Görevler yeniden açılamadı",
     "deleteFailed": "Görevler silinemedi",
     "moveFailed": "Görevler taşınamadı"
   },

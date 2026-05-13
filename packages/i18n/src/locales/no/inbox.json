@@ -43,9 +43,7 @@
     "pdfs": "PDF-filer",
     "social": "Sosialt",
     "reminder": "Påminnelse",
-    "reminders": "Påminnelser",
-    "text": "Tekst",
-    "other": "Annet"
+    "reminders": "Påminnelser"
   },
   "empty": {
     "successAria": "Vellykket, innboksen er tom",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "Ingen samsvarende arkiverte elementer",
     "noItemsYet": "Ingen varer ennå",
     "noItemsFiled": "Ingen elementer arkivert ennå",
-    "noItemTypes": "Ingen varetyper å vise",
     "noFolders": "Ingen mapper funnet",
-    "noFolderMatch": "Ingen mapper samsvarer med \"{query}\"",
     "noNotes": "Ingen notater funnet",
     "allMatchesLinked": "Alle kampene er allerede koblet"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Transkripsjon mislyktes",
     "retryTranscription": "Prøv på nytt",
     "pageCount": "{count, plural, one {# side} other {# sider}}",
-    "snoozedUntilShort": "slumret til {date}",
-    "capturedAgo": "Fanget {time}"
+    "snoozedUntilShort": "slumret til {date}"
   },
   "loading": {
     "inbox": "Laster inn innboksen ...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Raske handlinger",
     "archiveItem": "Arkivelement",
-    "archive": "Arkiv",
-    "snooze": "Slumre"
+    "archive": "Arkiv"
   },
   "detail": {
     "ariaLabel": "Varedetaljer",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Søk i notater for å koble til",
     "linkedNotesAria": "Koblede notater",
     "removeLinkTo": "Fjern lenken til {title}",
-    "contentEditorAria": "Innholdsredaktør",
     "notePlaceholder": "Skriv notatet ditt...",
     "textPlaceholder": "Rediger teksten du har tatt..."
   },
@@ -263,14 +256,9 @@
     "custom": "Egendefinert..."
   },
   "insights": {
-    "loading": "Laster inn innsikt ...",
     "captureActivity": "Ta opp aktivitet",
     "byType": "Etter type",
-    "itemTypes": "Varetyper",
-    "itemTypesDescription": "Distribusjon av innholdsformater",
     "recentFilings": "Nylige innleveringer",
-    "recentlyFiled": "Nylig arkivert",
-    "recentlyFiledDescription": "Siste handlinger i innboksen din",
     "captured": "Fanget",
     "capturedThisWeek": "+{count} denne uken",
     "processed": "Behandlet",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {#-opptak} other {# fanger opp}}",
     "peak": "Topp: {day} {start}–{end}",
     "convertedToTask": "Konvertert til oppgave",
-    "linked": "Koblet",
     "now": "nå",
     "timeAgoMinutes": "{count}m siden",
     "timeAgoHours": "{count}h siden",

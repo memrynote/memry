@@ -35,38 +35,6 @@
     "delete": "מחק משימה",
     "created": "יצר את {date}"
   },
-  "project": {
-    "create": "צור פרויקט",
-    "edit": "ערוך פרויקט",
-    "delete": "מחק את הפרויקט",
-    "iconAndName": "סמל ושם",
-    "namePlaceholder": "שם הפרויקט",
-    "select": "בחר פרויקט",
-    "selectIcon": "בחר סמל",
-    "clickIconToChange": "לחץ על הסמל כדי לשנות",
-    "color": "צבע",
-    "descriptionOptional": "תיאור (אופציונלי)",
-    "descriptionPlaceholder": "תיאור קצר של פרויקט זה…",
-    "statuses": "סטטוסים",
-    "statusesHelp": "הגדר את שלבי זרימת העבודה עבור פרויקט זה.",
-    "createDescription": "צור פרויקט חדש עם שם, סמל, צבע ומצבי זרימת עבודה.",
-    "editDescription": "ערוך את שם הפרויקט, הסמל, הצבע ומצבי זרימת העבודה."
-  },
-  "status": {
-    "select": "בחר סטטוס",
-    "todo": "לעשות",
-    "inProgress": "בתהליך",
-    "done": "בוצע"
-  },
-  "priority": {
-    "select": "בחר עדיפות",
-    "none": "אין עדיפות",
-    "noneShort": "אין",
-    "low": "נמוך",
-    "medium": "בינוני",
-    "high": "גבוה",
-    "urgent": "דחוף"
-  },
   "filters": {
     "filter": "מסנן",
     "emptyTitle": "אין משימות שתואמות למסננים שלך",
@@ -113,14 +81,12 @@
     "filterApplied": "הוחל \"{name}\"",
     "deleted": "המשימה נמחקה",
     "deletedSeries": "הסדרה הושלמה!",
-    "deletedNext": "ההתרחשות הבאה",
     "completed": "המשימה הושלמה!",
     "archived": "המשימה הועברה לארכיון",
     "undoNotAvailableForDelete": "ביטול אינו זמין למחיקה",
     "alreadyAllComplete": "כל המשימות שנבחרו כבר הושלמו",
     "noCompletedSelected": "לא נבחרו משימות שהושלמו",
     "completeFailed": "נכשל בביצוע המשימות",
-    "reopenFailed": "פתיחת המשימות נכשלה",
     "deleteFailed": "מחיקת המשימות נכשלה",
     "moveFailed": "העברת המשימות נכשלה"
   },

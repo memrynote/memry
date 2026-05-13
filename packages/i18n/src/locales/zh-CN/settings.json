@@ -25,9 +25,7 @@
         "integrations": "集成",
         "vault": "保险库",
         "tags": "标签",
-        "properties": "属性",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "属性"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "笔记",
         "attachments": "附件",
         "crdt": "CRDT",
-        "other": "其他",
-        "available": "可用"
+        "other": "其他"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "等待批准",
       "waitingDescription": "在您的其他设备上打开Memry并批准关联请求。",
       "verificationCode": "验证码",
-      "confirmCode": "确认此码与您其他设备上的代码匹配",
-      "cancel": "取消"
+      "confirmCode": "确认此码与您其他设备上的代码匹配"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "恢复密钥",
     "description": "请安全存储此密钥。如果您失去对所有设备的访问，它可以恢复您的保险库。",
-    "loading": "加载中...",
     "retrieveFailed": "无法检索恢复密钥",
     "copied": "恢复密钥已复制到剪贴板",
     "copyFailed": "复制到剪贴板失败",
     "clickToReveal": "点击以显示",
     "hide": "隐藏",
     "reveal": "显示",
-    "copy": "复制",
     "sessionHint": "该密钥每次会话仅显示一次。关闭此对话框可将其从内存中清除。"
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "连接 Google 日历失败",
       "refreshFailed": "刷新 Google 日历失败",
       "disconnectFailed": "断开 Google 日历失败",
-      "selectionFailed": "更新日历选择失败",
       "retryFailed": "重试日历同步失败"
     },
     "sourcePicker": {

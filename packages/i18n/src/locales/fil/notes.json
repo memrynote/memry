@@ -14,7 +14,6 @@
       "openLinkedFailed": "Nabigong buksan ang naka-link na item",
       "localOnly": "Nakatakda ang tala sa lokal lamang",
       "willSync": "Magsi-sync ang tala sa cloud",
-      "saveFailed": "Nabigong i-save ang tala",
       "renameFailed": "Nabigong palitan ang pangalan ng tala",
       "toggleLocalOnlyFailed": "Nabigong i-toggle ang lokal lamang",
       "toggleFullWidthFailed": "Nabigong i-toggle ang buong lapad"
@@ -135,9 +134,6 @@
       "clearSearch": "I-clear ang paghahanap"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "Isulat ang iyong tala..."
-  },
   "outline": {
     "title": "Balangkas",
     "aria": "Balangkas ng dokumento",
@@ -149,7 +145,6 @@
     "modified": "Binago"
   },
   "backlinks": {
-    "title": "Mga backlink",
     "sortRecent": "Kamakailan",
     "sortAlpha": "A-Z",
     "sortMentions": "Karamihan sa mga pagbanggit",

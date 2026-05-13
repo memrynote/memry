@@ -25,9 +25,7 @@
         "integrations": "Integrationer",
         "vault": "Vault",
         "tags": "Tags",
-        "properties": "Egenskaber",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Egenskaber"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Noter",
         "attachments": "Vedhæftede filer",
         "crdt": "CRDT",
-        "other": "Andet",
-        "available": "Tilgængelig"
+        "other": "Andet"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "Venter på godkendelse",
       "waitingDescription": "Åbn Memry på din anden enhed og godkend linkningsanmodningen.",
       "verificationCode": "Bekræftelseskode",
-      "confirmCode": "Bekræft, at dette stemmer overens med koden på din anden enhed",
-      "cancel": "Annuller"
+      "confirmCode": "Bekræft, at dette stemmer overens med koden på din anden enhed"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Gendannelsesnøgle",
     "description": "Opbevar denne nøgle sikkert. Det kan gendanne din boks, hvis du mister adgang til alle enheder.",
-    "loading": "Indlæser...",
     "retrieveFailed": "Kunne ikke hente gendannelsesnøgle",
     "copied": "Gendannelsesnøgle kopieret til udklipsholder",
     "copyFailed": "Kunne ikke kopiere til udklipsholder",
     "clickToReveal": "Klik for at afsløre",
     "hide": "Skjul",
     "reveal": "Afsløre",
-    "copy": "Kopiér",
     "sessionHint": "Denne nøgle vises én gang pr. session. Luk denne dialogboks for at rydde den fra hukommelsen."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Kunne ikke oprette forbindelse til Google Kalender",
       "refreshFailed": "Kunne ikke opdatere Google Kalender",
       "disconnectFailed": "Google Kalender kunne ikke afbrydes",
-      "selectionFailed": "Kunne ikke opdatere kalendervalget",
       "retryFailed": "Kunne ikke prøve kalendersynkronisering igen"
     },
     "sourcePicker": {

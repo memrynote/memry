@@ -38,8 +38,7 @@
     "openNoteFullPage": "Ανοίξτε τη σημείωση σε πλήρη σελίδα",
     "closeNoteDrawer": "Κλείστε το συρτάρι σημειώσεων",
     "addBookmark": "Προσθήκη σελιδοδείκτη",
-    "removeBookmark": "Αφαίρεση σελιδοδείκτη",
-    "tryAgain": "Δοκιμάστε ξανά"
+    "removeBookmark": "Αφαίρεση σελιδοδείκτη"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "Ημερολόγιο πίσω",
     "journalNavigation": "Πλοήγηση στο περιοδικό",
     "dateNavigation": "Ημερομηνία πλοήγησης",
-    "goToYearView": "Μετάβαση στην προβολή έτους",
-    "previousView": "Προηγούμενη προβολή",
-    "nextView": "Επόμενη προβολή"
+    "goToYearView": "Μετάβαση στην προβολή έτους"
   },
   "aria": {
     "moreOptions": "Περισσότερες επιλογές",
@@ -184,10 +181,8 @@
     "connectionAria": "Σύνδεση με {label}, {scorePercent}% αντιστοίχιση"
   },
   "count": {
-    "item": "αντικείμενο",
     "items": "είδη",
     "note": "σημείωση",
-    "notes": "σημειώσεις",
     "day": "ημέρα",
     "days": "ημέρες",
     "event": "εκδήλωση",

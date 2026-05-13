@@ -25,9 +25,7 @@
         "integrations": "통합",
         "vault": "금고",
         "tags": "태그",
-        "properties": "속성",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "속성"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "메모",
         "attachments": "첨부파일",
         "crdt": "CRDT",
-        "other": "기타",
-        "available": "가능"
+        "other": "기타"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "승인을 기다리는 중",
       "waitingDescription": "다른 장치에서 Memry를 열고 연결 요청을 승인하세요.",
       "verificationCode": "인증코드",
-      "confirmCode": "다른 기기의 코드와 일치하는지 확인하세요.",
-      "cancel": "취소"
+      "confirmCode": "다른 기기의 코드와 일치하는지 확인하세요."
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "복구 키",
     "description": "이 키를 안전하게 보관하세요. 모든 장치에 액세스할 수 없는 경우 볼트를 복원할 수 있습니다.",
-    "loading": "로드 중...",
     "retrieveFailed": "복구 키를 검색하지 못했습니다.",
     "copied": "복구 키가 클립보드에 복사되었습니다.",
     "copyFailed": "클립보드에 복사하지 못했습니다.",
     "clickToReveal": "공개하려면 클릭하세요.",
     "hide": "숨기기",
     "reveal": "공개",
-    "copy": "복사",
     "sessionHint": "이 키는 세션당 한 번 표시됩니다. 메모리에서 삭제하려면 이 대화 상자를 닫으세요."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Google 캘린더를 연결하지 못했습니다.",
       "refreshFailed": "Google 캘린더를 새로고침하지 못했습니다.",
       "disconnectFailed": "Google 캘린더 연결을 해제하지 못했습니다.",
-      "selectionFailed": "캘린더 선택을 업데이트하지 못했습니다.",
       "retryFailed": "캘린더 동기화를 다시 시도하지 못했습니다."
     },
     "sourcePicker": {

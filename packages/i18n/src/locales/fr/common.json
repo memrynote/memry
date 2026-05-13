@@ -3,47 +3,25 @@
     "save": "Enregistrer",
     "cancel": "Annuler",
     "close": "Fermer",
-    "ok": "D'accord",
-    "yes": "Oui",
-    "no": "Non",
     "delete": "Supprimer",
-    "confirm": "Confirmer",
-    "apply": "Postuler",
     "done": "Terminé",
-    "discard": "Jeter",
     "dontSave": "Ne sauvegardez pas",
-    "edit": "Modifier",
     "add": "Ajouter",
     "remove": "Supprimer",
     "retry": "Réessayer",
-    "submit": "Soumettre",
     "back": "Retour",
-    "next": "Suivant",
     "continue": "Continuer",
-    "reset": "Réinitialiser",
     "copy": "Copier",
-    "paste": "Coller",
-    "create": "Créer",
-    "open": "Ouvert"
+    "create": "Créer"
   },
   "state": {
     "loading": "Chargement…",
     "saving": "Sauvegarde…",
     "deleting": "Suppression…",
-    "searching": "Recherche…",
-    "error": "Erreur",
-    "success": "Succès"
-  },
-  "empty": {
-    "noResults": "Aucun résultat",
-    "noItems": "Aucun article",
-    "noMatch": "Aucune correspondance"
+    "searching": "Recherche…"
   },
   "action": {
     "search": "Rechercher",
-    "edit": "Modifier",
-    "delete": "Supprimer",
-    "close": "Fermer",
     "expand": "Développer",
     "collapse": "Réduire",
     "showMore": "+{count, plural, one {# plus} other {# plus}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {# article} other {Articles #}}",
     "note": "{count, plural, one {Remarque #} other {Remarques sur #}}",
-    "folder": "{count, plural, one {Dossier #} other {Dossiers #}}",
     "task": "{count, plural, one {Tâche #} other {Tâches #}}",
-    "project": "{count, plural, one {Projet #} other {Projets #}}",
     "itemDelete": "{count, plural, one {Supprimer l'élément #} other {Supprimer les éléments #}}"
   },
   "toast": {
     "actionFailed": "L'action a échoué",
     "nothingToUndo": "Rien à défaire",
     "undone": "Annulé : {description}",
-    "undoFailed": "Échec de l'annulation de l'action",
-    "copied": "Copié",
-    "copyFailed": "Échec de la copie"
+    "undoFailed": "Échec de l'annulation de l'action"
   },
   "dateRelative": {
     "today": "Aujourd'hui",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {il y a # jour} other {il y a # jours}}"
   },
   "recurrence": {
-    "everyDay": "Chaque jour",
     "everyNDays": "{count, plural, one {Chaque jour} other {Tous les # jours}}",
-    "everyWeek": "Chaque semaine",
     "everyNWeeks": "{count, plural, one {Chaque semaine} other {Toutes les # semaines}}",
-    "everyWeekday": "Chaque jour de la semaine",
     "everyNWeeksOnWeekdays": "{count, plural, one {Chaque jour de la semaine} other {Toutes les # semaines en semaine}}",
-    "everyWeekend": "Chaque week-end",
     "everyNWeeksOnWeekends": "{count, plural, one {Chaque week-end} other {Toutes les # semaines le week-end}}",
-    "everyWeekOnDays": "Chaque semaine sur {days}",
     "everyNWeeksOnDays": "{count, plural, one {Chaque semaine sur {days}} other {Toutes les semaines # sur {days}}}",
-    "everyMonth": "Chaque mois",
     "everyNMonths": "{count, plural, one {Chaque mois} other {Tous les # mois}}",
-    "everyMonthOnDay": "Chaque mois sur le {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {Chaque mois sur le {day}{suffix}} other {Tous les # mois sur le {day}{suffix}}}",
-    "everyMonthOnWeekDay": "Chaque mois sur le {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Chaque mois sur le {week} {day}} other {Tous les # mois sur le {week} {day}}}",
-    "everyYear": "Chaque année",
     "everyNYears": "{count, plural, one {Chaque année} other {Tous les # ans}}",
     "repeats": "Répétitions"
   },
@@ -264,7 +228,6 @@
       "openTabs": "Ouvrir les onglets",
       "scrollTabsLeft": "Faire défiler les onglets vers la gauche",
       "scrollTabsRight": "Faire défiler les onglets vers la droite",
-      "graphG": "Graphique (⌘G)",
       "dayPanel": "Panneau de jour"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Discussion Agent",
+    "loading": "Chargement du chat de l'agent...",
+    "conversationLoading": "Chargement de la conversation...",
+    "newConversation": "Nouvelle conversation",
+    "history": "Historique des conversations",
+    "stop": "Arrêter",
+    "thinking": "Agent réfléchit",
+    "enable": {
+      "title": "Activer Memry Agent",
+      "description": "Memry Agent utilise votre agent local sélectionné CLI pour discuter de votre coffre-fort. Claude envoie des tours à Anthropic; Codex envoie des tours à OpenAI.",
+      "remote": "Memry crypte votre historique de discussion local et synchronisé, mais l'inférence de modèle se produit avec le fournisseur sélectionné.",
+      "readTools": "Les outils de lecture s'exécutent automatiquement.",
+      "writeTools": "Les outils de création et de mise à jour nécessitent une approbation.",
+      "diff": "Les outils de mise à jour affichent une différence ou un aperçu.",
+      "button": "Activer le chat Agent"
+    },
+    "approval": {
+      "description": "L'agent souhaite appeler {name} avec ces arguments.",
+      "applyOnce": "Appliquer une fois",
+      "allowOnce": "Autoriser une fois",
+      "editAndApply": "Modifier et appliquer",
+      "editAndAllow": "Modifier et autoriser",
+      "allowAlways": "Autoriser toujours",
+      "applyEdits": "Appliquer les modifications",
+      "deny": "Refuser",
+      "invalidJson": "Saisissez un JSON valide avant d'appliquer les modifications."
+    },
+    "diff": {
+      "previewError": "Impossible de prévisualiser la différence de note",
+      "description": "L'agent souhaite mettre à jour {title}. Passez en revue le contenu actuel et celui du candidat avant de l'appliquer.",
+      "fallbackTitle": "cette note",
+      "current": "Actuel",
+      "candidate": "Candidat",
+      "loading": "Chargement...",
+      "apply": "Postuler",
+      "applyEdited": "Appliquer modifié"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "Note actuelle",
+      "removeAttachment": "Supprimer {label}",
+      "placeholder": "Demandez à Agent",
+      "send": "Envoyer",
+      "providerLabel": "Fournisseur Agent: {provider}",
+      "modelLabel": "Modèle Agent: {model}",
+      "settingsLabel": "Paramètres Agent: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "ID de modèle personnalisé",
+      "customModelPlaceholder": "ID de modèle personnalisé",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "Locale"
+      },
+      "models": {
+        "default": "Par défaut"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "Raisonnement"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
-          "max": "Max"
+          "low": "Faible",
+          "medium": "Moyen",
+          "high": "Élevé",
+          "extraHigh": "Très élevé",
+          "extraHighDefault": "Très élevé (par défaut)",
+          "max": "Maximum"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "Faible",
+          "medium": "Moyen",
+          "mediumDefault": "Moyen (par défaut)",
+          "high": "Élevé",
+          "extraHigh": "Très élevé"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "Aucune correspondance"
+    },
+    "toolResult": {
+      "label": "Résultat de l'outil"
+    },
+    "toolCall": {
+      "editedArgs": "Arguments modifiés",
+      "parameters": "Paramètres"
+    },
+    "sidebar": {
+      "label": "Barre latérale droite",
+      "day": "Jour",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# en attente d'approbation} other {# approbations en attente}}",
+      "inProgress": "Agent tour en cours"
+    },
+    "errors": {
+      "loadConversations": "Impossible de charger les conversations des agents",
+      "loadConversation": "Impossible de charger la conversation avec l'agent",
+      "createConversation": "Impossible de créer une conversation avec l'agent",
+      "busy": "Une autre fenêtre est à mi-parcours pour cette conversation. Attendez qu'il se termine ou arrêtez-le à partir de là.",
+      "sendTurn": "Impossible d'envoyer le tour de l'agent",
+      "cancelTurn": "Impossible d'annuler le tour de l'agent",
+      "submitApproval": "Impossible de soumettre l'approbation de l'outil",
+      "updateTrust": "Impossible de mettre à jour les outils fiables",
+      "saveDisclosure": "Impossible d'enregistrer l'état de divulgation",
+      "resolveWindow": "Impossible de résoudre la fenêtre source de l'agent",
+      "detectCli": "Impossible de détecter les backends de l'agent",
+      "loadDisclosure": "Impossible de charger l'état de divulgation"
     }
   }
 }

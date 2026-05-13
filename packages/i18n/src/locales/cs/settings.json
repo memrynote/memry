@@ -25,9 +25,7 @@
         "integrations": "Integrace",
         "vault": "Vault",
         "tags": "Tagy",
-        "properties": "Vlastnosti",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Vlastnosti"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Poznámky",
         "attachments": "Přílohy",
         "crdt": "CRDT",
-        "other": "Jiné",
-        "available": "K dispozici"
+        "other": "Jiné"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "Čekání na schválení",
       "waitingDescription": "Otevřete Memry na svém druhém zařízení a schvalte žádost o propojení.",
       "verificationCode": "Ověřovací kód",
-      "confirmCode": "Potvrďte, že se toto shoduje s kódem na vašem druhém zařízení",
-      "cancel": "Zrušit"
+      "confirmCode": "Potvrďte, že se toto shoduje s kódem na vašem druhém zařízení"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Obnovovací klíč",
     "description": "Tento klíč bezpečně uschovejte. Může obnovit váš trezor, pokud ztratíte přístup ke všem zařízením.",
-    "loading": "Načítání...",
     "retrieveFailed": "Nepodařilo se načíst obnovovací klíč",
     "copied": "Obnovovací klíč byl zkopírován do schránky",
     "copyFailed": "Kopírování do schránky se nezdařilo",
     "clickToReveal": "Kliknutím zobrazíte",
     "hide": "Skrýt",
     "reveal": "Odhalit",
-    "copy": "Kopírovat",
     "sessionHint": "Tento klíč se zobrazuje jednou za relaci. Zavřete toto dialogové okno, chcete-li jej vymazat z paměti."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Připojení Kalendáře Google se nezdařilo",
       "refreshFailed": "Obnovení Kalendáře Google se nezdařilo",
       "disconnectFailed": "Kalendář Google se nepodařilo odpojit",
-      "selectionFailed": "Aktualizace výběru kalendáře se nezdařila",
       "retryFailed": "Nepodařilo se opakovat synchronizaci kalendáře"
     },
     "sourcePicker": {

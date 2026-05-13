@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Coś poszło nie tak. Spróbuj ponownie.",
     "operationFailed": "Operacja nie powiodła się",
-    "unknown": "Wystąpił nieznany błąd",
-    "validationFailed": "Walidacja nie powiodła się",
-    "actionFailed": "Akcja nie powiodła się"
+    "unknown": "Wystąpił nieznany błąd"
   },
   "ipc": {
     "noVaultOpen": "Żaden skarbiec nie jest otwarty. Proszę najpierw otworzyć skarbiec."

@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Ada yang tidak beres. Silakan coba lagi.",
     "operationFailed": "Operasi gagal",
-    "unknown": "Terjadi kesalahan yang tidak diketahui",
-    "validationFailed": "Validasi gagal",
-    "actionFailed": "Tindakan gagal"
+    "unknown": "Terjadi kesalahan yang tidak diketahui"
   },
   "ipc": {
     "noVaultOpen": "Tidak ada brankas yang terbuka. Silakan buka brankas terlebih dahulu."

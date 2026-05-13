@@ -38,8 +38,7 @@
     "openNoteFullPage": "Buka catatan dalam halaman penuh",
     "closeNoteDrawer": "Tutup laci catatan",
     "addBookmark": "Tambahkan penanda",
-    "removeBookmark": "Hapus penanda",
-    "tryAgain": "Coba Lagi"
+    "removeBookmark": "Hapus penanda"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "Jurnal kembali",
     "journalNavigation": "Navigasi jurnal",
     "dateNavigation": "Navigasi tanggal jurnal",
-    "goToYearView": "Pergi ke tampilan tahun",
-    "previousView": "Tampilan sebelumnya",
-    "nextView": "Tampilan berikutnya"
+    "goToYearView": "Pergi ke tampilan tahun"
   },
   "aria": {
     "moreOptions": "Opsi lainnya",
@@ -184,10 +181,8 @@
     "connectionAria": "Koneksi ke {label}, {scorePercent}% cocok"
   },
   "count": {
-    "item": "barang",
     "items": "item",
     "note": "catatan",
-    "notes": "catatan",
     "day": "hari",
     "days": "hari",
     "event": "acara",

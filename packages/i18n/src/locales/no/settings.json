@@ -25,9 +25,7 @@
         "integrations": "Integrasjoner",
         "vault": "Hvelv",
         "tags": "Tagger",
-        "properties": "Egenskaper",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "Egenskaper"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "Notater",
         "attachments": "Vedlegg",
         "crdt": "CRDT",
-        "other": "Annet",
-        "available": "Tilgjengelig"
+        "other": "Annet"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "Venter på godkjenning",
       "waitingDescription": "Åpne Memry på den andre enheten din og godkjenn koblingsforespørselen.",
       "verificationCode": "Bekreftelseskode",
-      "confirmCode": "Bekreft at dette samsvarer med koden på den andre enheten",
-      "cancel": "Avbryt"
+      "confirmCode": "Bekreft at dette samsvarer med koden på den andre enheten"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "Gjenopprettingsnøkkel",
     "description": "Oppbevar denne nøkkelen trygt. Den kan gjenopprette hvelvet ditt hvis du mister tilgang til alle enheter.",
-    "loading": "Laster inn...",
     "retrieveFailed": "Kunne ikke hente gjenopprettingsnøkkelen",
     "copied": "Gjenopprettingsnøkkel kopiert til utklippstavlen",
     "copyFailed": "Kunne ikke kopiere til utklippstavlen",
     "clickToReveal": "Klikk for å avsløre",
     "hide": "Skjul",
     "reveal": "Avsløre",
-    "copy": "Kopier",
     "sessionHint": "Denne nøkkelen vises én gang per økt. Lukk denne dialogboksen for å fjerne den fra minnet."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "Kunne ikke koble til Google Kalender",
       "refreshFailed": "Kunne ikke oppdatere Google Kalender",
       "disconnectFailed": "Kunne ikke koble fra Google Kalender",
-      "selectionFailed": "Kunne ikke oppdatere kalendervalget",
       "retryFailed": "Kunne ikke prøve kalendersynkronisering på nytt"
     },
     "sourcePicker": {

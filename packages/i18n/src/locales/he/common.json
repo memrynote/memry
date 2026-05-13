@@ -3,47 +3,25 @@
     "save": "שמור",
     "cancel": "בטל",
     "close": "סגור",
-    "ok": "בסדר",
-    "yes": "כן",
-    "no": "לא",
     "delete": "מחק",
-    "confirm": "אשר",
-    "apply": "החל",
     "done": "בוצע",
-    "discard": "לזרוק",
     "dontSave": "אל תחסוך",
-    "edit": "ערוך",
     "add": "הוסף",
     "remove": "הסר",
     "retry": "נסה שוב",
-    "submit": "שלח",
     "back": "חזרה",
-    "next": "הבא",
     "continue": "המשך",
-    "reset": "אפס",
     "copy": "העתק",
-    "paste": "הדבק",
-    "create": "צור",
-    "open": "פתוח"
+    "create": "צור"
   },
   "state": {
     "loading": "טוען...",
     "saving": "שומר...",
     "deleting": "מוחק...",
-    "searching": "מחפש...",
-    "error": "שגיאה",
-    "success": "הצלחה"
-  },
-  "empty": {
-    "noResults": "אין תוצאות",
-    "noItems": "אין פריטים",
-    "noMatch": "אין התאמות"
+    "searching": "מחפש..."
   },
   "action": {
     "search": "חפש",
-    "edit": "ערוך",
-    "delete": "מחק",
-    "close": "סגור",
     "expand": "הרחב",
     "collapse": "התמוטט",
     "showMore": "+{count, plural, one {# יותר} other {# יותר}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {פריט #} other {פריטי #}}",
     "note": "{count, plural, one {הערה #} other {הערות #}}",
-    "folder": "{count, plural, one {תיקיית #} other {תיקיות #}}",
     "task": "{count, plural, one {משימת #} other {משימות #}}",
-    "project": "{count, plural, one {פרויקט #} other {פרויקטים של #}}",
     "itemDelete": "{count, plural, one {מחק פריט #} other {מחק פריטי #}}"
   },
   "toast": {
     "actionFailed": "הפעולה נכשלה",
     "nothingToUndo": "אין מה לבטל",
     "undone": "ביטול: {description}",
-    "undoFailed": "ביטול הפעולה נכשל",
-    "copied": "הועתק",
-    "copyFailed": "ההעתקה נכשלה"
+    "undoFailed": "ביטול הפעולה נכשל"
   },
   "dateRelative": {
     "today": "היום",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {# לפני יום} other {# לפני ימים}}"
   },
   "recurrence": {
-    "everyDay": "כל יום",
     "everyNDays": "{count, plural, one {כל יום} other {כל # ימים}}",
-    "everyWeek": "כל שבוע",
     "everyNWeeks": "{count, plural, one {כל שבוע} other {כל # שבועות}}",
-    "everyWeekday": "כל יום חול",
     "everyNWeeksOnWeekdays": "{count, plural, one {כל יום חול} other {כל # שבועות בימי חול}}",
-    "everyWeekend": "כל סוף שבוע",
     "everyNWeeksOnWeekends": "{count, plural, one {כל סוף שבוע} other {כל # שבועות בסופי שבוע}}",
-    "everyWeekOnDays": "כל שבוע ב-{days}",
     "everyNWeeksOnDays": "{count, plural, one {כל שבוע ב-{days}} other {כל # שבועות ב-{days}}}",
-    "everyMonth": "כל חודש",
     "everyNMonths": "{count, plural, one {כל חודש} other {כל # חודשים}}",
-    "everyMonthOnDay": "כל חודש ב-{day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {כל חודש ב-{day}{suffix}} other {כל # חודשים ב-{day}{suffix}}}",
-    "everyMonthOnWeekDay": "כל חודש ב-{week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {כל חודש ב-{week} {day}} other {כל # חודשים ב-{week} {day}}}",
-    "everyYear": "כל שנה",
     "everyNYears": "{count, plural, one {כל שנה} other {כל # שנים}}",
     "repeats": "חוזר"
   },
@@ -264,7 +228,6 @@
       "openTabs": "פתח כרטיסיות",
       "scrollTabsLeft": "גלול לשוניות שמאלה",
       "scrollTabsRight": "גלול לשוניות ימינה",
-      "graphG": "גרף (⌘G)",
       "dayPanel": "פאנל יום"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "צ'אט Agent",
+    "loading": "טוען צ'אט סוכן...",
+    "conversationLoading": "טעינת השיחה...",
+    "newConversation": "שיחה חדשה",
+    "history": "היסטוריית שיחות",
+    "stop": "עצור",
+    "thinking": "Agent חושב",
+    "enable": {
+      "title": "הפעל את Memry Agent",
+      "description": "Memry Agent משתמש בסוכן המקומי שבחרת CLI כדי לשוחח על הכספת שלך. Claude שולח תורות ל-Anthropic; Codex שולח תורות ל-OpenAI.",
+      "remote": "Memry מצפין את היסטוריית הצ'אט המקומית והמסונכרנת שלך, אך מסקנות מודל מתרחשות עם הספק הנבחר.",
+      "readTools": "כלי קריאה פועלים באופן אוטומטי.",
+      "writeTools": "יצירה ועדכון של כלים דורשים אישור.",
+      "diff": "כלי עדכון מציגים הבדל או תצוגה מקדימה.",
+      "button": "אפשר צ'אט Agent"
+    },
+    "approval": {
+      "description": "הסוכן רוצה לקרוא ל-{name} עם הטיעונים האלה.",
+      "applyOnce": "הגש פעם אחת",
+      "allowOnce": "אפשר פעם אחת",
+      "editAndApply": "ערוך והחל",
+      "editAndAllow": "ערוך ואפשר",
+      "allowAlways": "אפשר תמיד",
+      "applyEdits": "החל עריכות",
+      "deny": "הכחיש",
+      "invalidJson": "הזן JSON חוקי לפני החלת עריכות."
+    },
+    "diff": {
+      "previewError": "לא ניתן היה להציג תצוגה מקדימה של הבדל הערה",
+      "description": "הסוכן רוצה לעדכן את {title}. סקור את התוכן הנוכחי והמועמד לפני החלתו.",
+      "fallbackTitle": "הערה זו",
+      "current": "נוכחי",
+      "candidate": "מועמד",
+      "loading": "טוען...",
+      "apply": "הגש בקשה",
+      "applyEdited": "החל נערך"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "הערה נוכחית",
+      "removeAttachment": "הסר את {label}",
+      "placeholder": "שאל את Agent",
+      "send": "שלח",
+      "providerLabel": "ספק Agent: {provider}",
+      "modelLabel": "דגם Agent: {model}",
+      "settingsLabel": "הגדרות Agent: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "מזהה דגם מותאם אישית",
+      "customModelPlaceholder": "מזהה דגם מותאם אישית",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "מקומי"
+      },
+      "models": {
+        "default": "ברירת מחדל"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "נימוק"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
-          "max": "Max"
+          "low": "נמוך",
+          "medium": "בינוני",
+          "high": "גבוה",
+          "extraHigh": "גבוה במיוחד",
+          "extraHighDefault": "גבוה במיוחד (ברירת מחדל)",
+          "max": "מקסימום"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "נמוך",
+          "medium": "בינוני",
+          "mediumDefault": "בינוני (ברירת מחדל)",
+          "high": "גבוה",
+          "extraHigh": "גבוה במיוחד"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "אין התאמות"
+    },
+    "toolResult": {
+      "label": "תוצאת הכלי"
+    },
+    "toolCall": {
+      "editedArgs": "ארגומנטים ערוכים",
+      "parameters": "פרמטרים"
+    },
+    "sidebar": {
+      "label": "סרגל צד ימין",
+      "day": "יום",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# ממתין לאישור} other {# אישורים ממתינים}}",
+      "inProgress": "תור Agent מתבצע"
+    },
+    "errors": {
+      "loadConversations": "לא ניתן לטעון שיחות סוכן",
+      "loadConversation": "לא ניתן לטעון את שיחת הסוכן",
+      "createConversation": "לא ניתן ליצור שיחת סוכן",
+      "busy": "חלון נוסף הוא אמצע הפנייה לשיחה זו. המתן עד שזה יסתיים או עצור את זה משם.",
+      "sendTurn": "לא ניתן לשלוח תור לסוכן",
+      "cancelTurn": "לא ניתן לבטל את פניית הסוכן",
+      "submitApproval": "לא ניתן היה לשלוח את אישור הכלי",
+      "updateTrust": "לא ניתן היה לעדכן כלים מהימנים",
+      "saveDisclosure": "לא ניתן לשמור את מצב החשיפה",
+      "resolveWindow": "לא ניתן לפתור את חלון מקור הסוכן",
+      "detectCli": "לא ניתן היה לזהות קצה אחורי של סוכן",
+      "loadDisclosure": "לא ניתן לטעון את מצב הגילוי"
     }
   }
 }

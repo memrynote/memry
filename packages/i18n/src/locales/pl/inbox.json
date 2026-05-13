@@ -43,9 +43,7 @@
     "pdfs": "pliki PDF",
     "social": "Społeczny",
     "reminder": "Przypomnienie",
-    "reminders": "Przypomnienia",
-    "text": "Tekst",
-    "other": "Inne"
+    "reminders": "Przypomnienia"
   },
   "empty": {
     "successAria": "Sukces, skrzynka odbiorcza jest pusta",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "Brak pasujących zarchiwizowanych elementów",
     "noItemsYet": "Nie ma jeszcze żadnych elementów",
     "noItemsFiled": "Nie złożono jeszcze żadnych elementów",
-    "noItemTypes": "Brak typów elementów do wyświetlenia",
     "noFolders": "Nie znaleziono folderów",
-    "noFolderMatch": "Żaden folder nie pasuje do „{query}”",
     "noNotes": "Nie znaleziono żadnych notatek",
     "allMatchesLinked": "Wszystkie mecze są już powiązane"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Transkrypcja nie powiodła się",
     "retryTranscription": "Spróbuj ponownie",
     "pageCount": "{count, plural, one {Strona #} other {Strony #}}",
-    "snoozedUntilShort": "odłożono do {date}",
-    "capturedAgo": "Przechwycono {time}"
+    "snoozedUntilShort": "odłożono do {date}"
   },
   "loading": {
     "inbox": "Ładowanie skrzynki odbiorczej...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Szybkie działania",
     "archiveItem": "Archiwizuj element",
-    "archive": "Archiwum",
-    "snooze": "Odłóż"
+    "archive": "Archiwum"
   },
   "detail": {
     "ariaLabel": "Szczegóły przedmiotu",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Wyszukaj notatki, które chcesz połączyć",
     "linkedNotesAria": "Powiązane notatki",
     "removeLinkTo": "Usuń link do {title}",
-    "contentEditorAria": "Edytor treści",
     "notePlaceholder": "Napisz notatkę...",
     "textPlaceholder": "Edytuj przechwycony tekst..."
   },
@@ -263,14 +256,9 @@
     "custom": "Niestandardowe..."
   },
   "insights": {
-    "loading": "Ładowanie statystyk...",
     "captureActivity": "Przechwytuj aktywność",
     "byType": "Według typu",
-    "itemTypes": "Typy przedmiotów",
-    "itemTypesDescription": "Dystrybucja formatów treści",
     "recentFilings": "Ostatnie zgłoszenia",
-    "recentlyFiled": "Ostatnio złożone",
-    "recentlyFiledDescription": "Najnowsze akcje w Twojej skrzynce odbiorczej",
     "captured": "Schwytany",
     "capturedThisWeek": "+{count} w tym tygodniu",
     "processed": "Przetworzone",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {Przechwytywanie #} other {Przechwytuje #}}",
     "peak": "Szczyt: {day} {start}–{end}",
     "convertedToTask": "Przekształcone w zadanie",
-    "linked": "Połączone",
     "now": "teraz",
     "timeAgoMinutes": "{count}m temu",
     "timeAgoHours": "{count}h temu",

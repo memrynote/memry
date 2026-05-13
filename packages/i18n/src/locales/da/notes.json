@@ -14,7 +14,6 @@
       "openLinkedFailed": "Kunne ikke åbne linket element",
       "localOnly": "Bemærk indstillet til kun lokalt",
       "willSync": "Note vil synkronisere til skyen",
-      "saveFailed": "Noten kunne ikke gemmes",
       "renameFailed": "Noten kunne ikke omdøbes",
       "toggleLocalOnlyFailed": "Kunne ikke skifte lokalt",
       "toggleFullWidthFailed": "Kunne ikke skifte fuld bredde"
@@ -135,9 +134,6 @@
       "clearSearch": "Ryd søgning"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "Skriv din note..."
-  },
   "outline": {
     "title": "Disposition",
     "aria": "Dokumentoversigt",
@@ -149,7 +145,6 @@
     "modified": "Ændret"
   },
   "backlinks": {
-    "title": "Backlinks",
     "sortRecent": "Seneste",
     "sortAlpha": "A-Z",
     "sortMentions": "Flest omtaler",

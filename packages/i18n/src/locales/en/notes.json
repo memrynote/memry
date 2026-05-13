@@ -14,7 +14,6 @@
       "openLinkedFailed": "Failed to open linked item",
       "localOnly": "Note set to local only",
       "willSync": "Note will sync to cloud",
-      "saveFailed": "Failed to save note",
       "renameFailed": "Failed to rename note",
       "toggleLocalOnlyFailed": "Failed to toggle local only",
       "toggleFullWidthFailed": "Failed to toggle full width"
@@ -135,9 +134,6 @@
       "clearSearch": "Clear search"
     }
   },
-  "detail": {
-    "bodyPlaceholder": "Write your note..."
-  },
   "outline": {
     "title": "Outline",
     "aria": "Document outline",
@@ -149,7 +145,6 @@
     "modified": "Modified"
   },
   "backlinks": {
-    "title": "Backlinks",
     "sortRecent": "Recent",
     "sortAlpha": "A-Z",
     "sortMentions": "Most mentions",

@@ -3,47 +3,25 @@
     "save": "Mentés",
     "cancel": "Mégsem",
     "close": "Bezárás",
-    "ok": "OK",
-    "yes": "Igen",
-    "no": "Nem",
     "delete": "Törölje",
-    "confirm": "Erősítse meg",
-    "apply": "Alkalmazni",
     "done": "Kész",
-    "discard": "Eldobni",
     "dontSave": "Ne mentse",
-    "edit": "Szerkesztés",
     "add": "Hozzáadás",
     "remove": "Távolítsa el",
     "retry": "Próbálja újra",
-    "submit": "Beküld",
     "back": "Vissza",
-    "next": "Következő",
     "continue": "Folytatás",
-    "reset": "Reset",
     "copy": "Másolás",
-    "paste": "Beillesztés",
-    "create": "Létrehozása",
-    "open": "Nyissa meg"
+    "create": "Létrehozása"
   },
   "state": {
     "loading": "Betöltés…",
     "saving": "Mentés…",
     "deleting": "Törlés…",
-    "searching": "Keresés…",
-    "error": "Hiba",
-    "success": "Siker"
-  },
-  "empty": {
-    "noResults": "Nincs eredmény",
-    "noItems": "Nincsenek tételek",
-    "noMatch": "Nincs egyezés"
+    "searching": "Keresés…"
   },
   "action": {
     "search": "Keresés",
-    "edit": "Szerkesztés",
-    "delete": "Törölje",
-    "close": "Bezárás",
     "expand": "Bontsa ki",
     "collapse": "Összeomlás",
     "showMore": "+{count, plural, one {# több} other {# több}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {# tétel} other {# tételek}}",
     "note": "{count, plural, one {# megjegyzés} other {# jegyzetek}}",
-    "folder": "{count, plural, one {# mappa} other {# mappák}}",
     "task": "{count, plural, one {# feladat} other {# feladatok}}",
-    "project": "{count, plural, one {# projekt} other {# projektek}}",
     "itemDelete": "{count, plural, one {Törölje az # elemet} other {Törölje az # elemeket}}"
   },
   "toast": {
     "actionFailed": "A művelet nem sikerült",
     "nothingToUndo": "Nincs mit visszavonni",
     "undone": "Visszavonva: {description}",
-    "undoFailed": "A művelet visszavonása nem sikerült",
-    "copied": "Másolva",
-    "copyFailed": "Nem sikerült másolni"
+    "undoFailed": "A művelet visszavonása nem sikerült"
   },
   "dateRelative": {
     "today": "Ma",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {# napja} other {# napja}}"
   },
   "recurrence": {
-    "everyDay": "Minden nap",
     "everyNDays": "{count, plural, one {Minden nap} other {Minden # napon}}",
-    "everyWeek": "Minden héten",
     "everyNWeeks": "{count, plural, one {Minden héten} other {Minden # hetente}}",
-    "everyWeekday": "Minden hétköznap",
     "everyNWeeksOnWeekdays": "{count, plural, one {Minden hétköznap} other {Minden # héten hétköznap}}",
-    "everyWeekend": "Minden hétvégén",
     "everyNWeeksOnWeekends": "{count, plural, one {Minden hétvégén} other {Minden # hét hétvégén}}",
-    "everyWeekOnDays": "Minden héten az {days}-en",
     "everyNWeeksOnDays": "{count, plural, one {Minden héten az {days}-en} other {Minden # hetente az {days} napon}}",
-    "everyMonth": "Minden hónapban",
     "everyNMonths": "{count, plural, one {Minden hónapban} other {Minden # havonta}}",
-    "everyMonthOnDay": "Minden hónapban az {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {Minden hónapban az {day}{suffix}} other {Minden # havonta az {day}{suffix}}}",
-    "everyMonthOnWeekDay": "Minden hónapban az {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Minden hónapban az {week} {day}} other {Minden # havonta az {week} {day}}}",
-    "everyYear": "Minden évben",
     "everyNYears": "{count, plural, one {Minden évben} other {# évente}}",
     "repeats": "Ismétlődik"
   },
@@ -264,7 +228,6 @@
       "openTabs": "Nyissa meg a lapokat",
       "scrollTabsLeft": "Görgesse balra a lapokat",
       "scrollTabsRight": "Görgessen jobbra a lapokon",
-      "graphG": "Grafikon (⌘G)",
       "dayPanel": "Napi panel"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Agent chat",
+    "loading": "Ügynöki csevegés betöltése...",
+    "conversationLoading": "Beszélgetés betöltése...",
+    "newConversation": "Új beszélgetés",
+    "history": "Beszélgetés előzményei",
+    "stop": "Állj",
+    "thinking": "Agent gondolkodik",
+    "enable": {
+      "title": "Az Memry Agent engedélyezése",
+      "description": "Az Memry Agent a kiválasztott CLI helyi ügynököt használja a tárhelyről való csevegéshez. Az Claude fordulatokat küld az Anthropic-nek; Az Codex fordulatokat küld az OpenAI-nek.",
+      "remote": "Az Memry titkosítja a helyi és szinkronizált csevegési előzményeket, de a modellkövetkeztetés a kiválasztott szolgáltatóval történik.",
+      "readTools": "Az olvasóeszközök automatikusan futnak.",
+      "writeTools": "Az eszközök létrehozása és frissítése jóváhagyást igényel.",
+      "diff": "A frissítési eszközök különbséget vagy előnézetet jelenítenek meg.",
+      "button": "Engedélyezze az Agent csevegést"
+    },
+    "approval": {
+      "description": "Az ügynök meg akarja hívni az {name}-t ezekkel az argumentumokkal.",
+      "applyOnce": "Jelentkezzen egyszer",
+      "allowOnce": "Engedélyezze egyszer",
+      "editAndApply": "Szerkessze és alkalmazza",
+      "editAndAllow": "Szerkesztés és engedélyezés",
+      "allowAlways": "Mindig engedélyezze",
+      "applyEdits": "Szerkesztések alkalmazása",
+      "deny": "Elutasítás",
+      "invalidJson": "A szerkesztések alkalmazása előtt írja be az érvényes JSON kódot."
+    },
+    "diff": {
+      "previewError": "Nem sikerült a megjegyzés különbség előnézete",
+      "description": "Az ügynök frissíteni szeretné az {title} fájlt. Alkalmazása előtt tekintse át a jelenlegi és a jelölt tartalmat.",
+      "fallbackTitle": "ezt a megjegyzést",
+      "current": "Aktuális",
+      "candidate": "Jelölt",
+      "loading": "Betöltés...",
+      "apply": "Jelentkezzen",
+      "applyEdited": "Alkalmazás szerkesztve"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "Aktuális megjegyzés",
+      "removeAttachment": "Távolítsa el az {label} elemet",
+      "placeholder": "Kérdezze meg az Agent-t",
+      "send": "Küldés",
+      "providerLabel": "Agent szolgáltató: {provider}",
+      "modelLabel": "Agent modell: {model}",
+      "settingsLabel": "Agent beállítások: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "Egyéni modellazonosító",
+      "customModelPlaceholder": "Egyéni modellazonosító",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "Helyi"
+      },
+      "models": {
+        "default": "Alapértelmezett"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "Indoklás"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
+          "low": "Alacsony",
+          "medium": "Közepes",
+          "high": "Magas",
+          "extraHigh": "Extra magas",
+          "extraHighDefault": "Extra magas (alapértelmezett)",
           "max": "Max"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "Alacsony",
+          "medium": "Közepes",
+          "mediumDefault": "Közepes (alapértelmezett)",
+          "high": "Magas",
+          "extraHigh": "Extra magas"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "Nincs találat"
+    },
+    "toolResult": {
+      "label": "Szerszám eredménye"
+    },
+    "toolCall": {
+      "editedArgs": "Szerkesztett argumentumok",
+      "parameters": "Paraméterek"
+    },
+    "sidebar": {
+      "label": "Jobb oldalsáv",
+      "day": "nap",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# jóváhagyásra vár} other {# jóváhagyás függőben}}",
+      "inProgress": "Agent fordulat folyamatban"
+    },
+    "errors": {
+      "loadConversations": "Nem sikerült betölteni az ügynöki beszélgetéseket",
+      "loadConversation": "Nem sikerült betölteni az ügynöki beszélgetést",
+      "createConversation": "Nem sikerült létrehozni az ügynöki beszélgetést",
+      "busy": "Egy másik ablak a forduló közepén van ennek a beszélgetésnek. Várja meg, amíg befejeződik, vagy innentől állítsa le.",
+      "sendTurn": "Nem sikerült elküldeni az ügynöki kört",
+      "cancelTurn": "Nem sikerült megszakítani az ügynök fordulatát",
+      "submitApproval": "Nem sikerült elküldeni a szerszám jóváhagyását",
+      "updateTrust": "Nem sikerült frissíteni a megbízható eszközöket",
+      "saveDisclosure": "Nem sikerült menteni a közzétételi állapotot",
+      "resolveWindow": "Nem sikerült feloldani az ügynökforrás ablakát",
+      "detectCli": "Nem sikerült észlelni az ügynök hátterét",
+      "loadDisclosure": "Nem sikerült betölteni a közzétételi állapotot"
     }
   }
 }

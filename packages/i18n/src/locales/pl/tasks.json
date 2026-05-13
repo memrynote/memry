@@ -35,38 +35,6 @@
     "delete": "Usuń zadanie",
     "created": "Utworzono {date}"
   },
-  "project": {
-    "create": "Utwórz projekt",
-    "edit": "Edytuj projekt",
-    "delete": "Usuń projekt",
-    "iconAndName": "Ikona i nazwa",
-    "namePlaceholder": "Nazwa projektu",
-    "select": "Wybierz projekt",
-    "selectIcon": "Wybierz ikonę",
-    "clickIconToChange": "Kliknij ikonę, aby zmienić",
-    "color": "Kolor",
-    "descriptionOptional": "Opis (opcjonalnie)",
-    "descriptionPlaceholder": "Krótki opis tego projektu…",
-    "statuses": "Statusy",
-    "statusesHelp": "Skonfiguruj etapy przepływu pracy dla tego projektu.",
-    "createDescription": "Utwórz nowy projekt z nazwą, ikoną, kolorem i statusami przepływu pracy.",
-    "editDescription": "Edytuj nazwę projektu, ikonę, kolor i statusy przepływu pracy."
-  },
-  "status": {
-    "select": "Wybierz stan",
-    "todo": "Do zrobienia",
-    "inProgress": "W toku",
-    "done": "Gotowe"
-  },
-  "priority": {
-    "select": "Wybierz priorytet",
-    "none": "Brak priorytetu",
-    "noneShort": "Żadne",
-    "low": "Niski",
-    "medium": "Średni",
-    "high": "Wysoka",
-    "urgent": "Pilne"
-  },
   "filters": {
     "filter": "Filtruj",
     "emptyTitle": "Żadne zadania nie pasują do wybranych filtrów",
@@ -113,14 +81,12 @@
     "filterApplied": "Zastosowano „{name}”",
     "deleted": "Zadanie usunięte",
     "deletedSeries": "Seria ukończona!",
-    "deletedNext": "Następne wystąpienie",
     "completed": "Zadanie zakończone!",
     "archived": "Zadanie zarchiwizowane",
     "undoNotAvailableForDelete": "Opcja Cofnij nie jest dostępna do usunięcia",
     "alreadyAllComplete": "Wszystkie wybrane zadania są już ukończone",
     "noCompletedSelected": "Nie wybrano ukończonych zadań",
     "completeFailed": "Nie udało się ukończyć zadań",
-    "reopenFailed": "Nie udało się ponownie otworzyć zadań",
     "deleteFailed": "Nie udało się usunąć zadań",
     "moveFailed": "Nie udało się przenieść zadań"
   },

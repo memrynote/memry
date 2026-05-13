@@ -43,9 +43,7 @@
     "pdfs": "PDF",
     "social": "Κοινωνικό",
     "reminder": "Υπενθύμιση",
-    "reminders": "Υπενθυμίσεις",
-    "text": "Κείμενο",
-    "other": "Άλλο"
+    "reminders": "Υπενθυμίσεις"
   },
   "empty": {
     "successAria": "Επιτυχία, τα εισερχόμενα είναι άδεια",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "Δεν υπάρχουν αντιστοιχισμένα αρχειοθετημένα στοιχεία",
     "noItemsYet": "Δεν υπάρχουν ακόμη στοιχεία",
     "noItemsFiled": "Δεν έχουν κατατεθεί ακόμη στοιχεία",
-    "noItemTypes": "Δεν υπάρχουν τύποι στοιχείων για εμφάνιση",
     "noFolders": "Δεν βρέθηκαν φάκελοι",
-    "noFolderMatch": "Δεν υπάρχουν φάκελοι που να αντιστοιχούν στο \"{query}\"",
     "noNotes": "Δεν βρέθηκαν σημειώσεις",
     "allMatchesLinked": "Όλοι οι αγώνες έχουν ήδη συνδεθεί"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Η μεταγραφή απέτυχε",
     "retryTranscription": "Επανάληψη",
     "pageCount": "{count, plural, one {Σελίδα #} other {σελίδες #}}",
-    "snoozedUntilShort": "αναβολή έως το {date}",
-    "capturedAgo": "Καταγράφηκε το {time}"
+    "snoozedUntilShort": "αναβολή έως το {date}"
   },
   "loading": {
     "inbox": "Φόρτωση εισερχομένων...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Γρήγορες ενέργειες",
     "archiveItem": "Αρχειοθέτηση αντικειμένου",
-    "archive": "Αρχείο",
-    "snooze": "Αναβολή"
+    "archive": "Αρχείο"
   },
   "detail": {
     "ariaLabel": "Λεπτομέρειες αντικειμένου",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Αναζήτηση σημειώσεων για σύνδεση",
     "linkedNotesAria": "Συνδεδεμένες σημειώσεις",
     "removeLinkTo": "Κατάργηση συνδέσμου στο {title}",
-    "contentEditorAria": "Επεξεργαστής περιεχομένου",
     "notePlaceholder": "Γράψε το σημείωμά σου...",
     "textPlaceholder": "Επεξεργαστείτε το κείμενο που καταγράψατε..."
   },
@@ -263,14 +256,9 @@
     "custom": "Προσαρμοσμένο..."
   },
   "insights": {
-    "loading": "Φόρτωση πληροφοριών...",
     "captureActivity": "Λήψη δραστηριότητας",
     "byType": "Κατά τύπο",
-    "itemTypes": "Τύποι αντικειμένων",
-    "itemTypesDescription": "Διανομή μορφών περιεχομένου",
     "recentFilings": "Πρόσφατες Καταθέσεις",
-    "recentlyFiled": "Κατατέθηκε πρόσφατα",
-    "recentlyFiledDescription": "Τελευταίες ενέργειες στα εισερχόμενά σας",
     "captured": "συλληφθεί",
     "capturedThisWeek": "+{count} αυτή την εβδομάδα",
     "processed": "Επεξεργασμένο",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {Λήψη #} other {Το # καταγράφει}}",
     "peak": "Κορυφή: {day} {start}–{end}",
     "convertedToTask": "Μετατράπηκε σε εργασία",
-    "linked": "Συνδεδεμένο",
     "now": "τώρα",
     "timeAgoMinutes": "{count}m πριν",
     "timeAgoHours": "{count}h πριν",

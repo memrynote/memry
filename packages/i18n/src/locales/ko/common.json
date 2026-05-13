@@ -3,47 +3,25 @@
     "save": "저장",
     "cancel": "취소",
     "close": "닫기",
-    "ok": "알았어",
-    "yes": "예",
-    "no": "아니요",
     "delete": "삭제",
-    "confirm": "확인",
-    "apply": "적용",
     "done": "완료",
-    "discard": "폐기",
     "dontSave": "저장하지 않음",
-    "edit": "편집",
     "add": "추가",
     "remove": "제거",
     "retry": "재시도",
-    "submit": "제출",
     "back": "뒤로",
-    "next": "다음",
     "continue": "계속",
-    "reset": "재설정",
     "copy": "복사",
-    "paste": "붙여넣기",
-    "create": "만들기",
-    "open": "열기"
+    "create": "만들기"
   },
   "state": {
     "loading": "로드 중…",
     "saving": "저장 중…",
     "deleting": "삭제 중…",
-    "searching": "검색 중…",
-    "error": "오류",
-    "success": "성공"
-  },
-  "empty": {
-    "noResults": "결과 없음",
-    "noItems": "항목 없음",
-    "noMatch": "일치하는 항목 없음"
+    "searching": "검색 중…"
   },
   "action": {
     "search": "검색",
-    "edit": "편집",
-    "delete": "삭제",
-    "close": "닫기",
     "expand": "펼치기",
     "collapse": "접기",
     "showMore": "+{count, plural, one {# 더 보기} other {# 더 보기}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {# 항목} other {# 항목}}",
     "note": "{count, plural, one {# 노트} other {# 노트}}",
-    "folder": "{count, plural, one {# 폴더} other {# 폴더}}",
     "task": "{count, plural, one {# 작업} other {# 작업}}",
-    "project": "{count, plural, one {# 프로젝트} other {# 프로젝트}}",
     "itemDelete": "{count, plural, one {# 항목 삭제} other {# 항목 삭제}}"
   },
   "toast": {
     "actionFailed": "작업 실패",
     "nothingToUndo": "실행취소할 항목이 없습니다.",
     "undone": "실행 취소: {description}",
-    "undoFailed": "작업을 실행취소하지 못했습니다.",
-    "copied": "복사됨",
-    "copyFailed": "복사하지 못했습니다."
+    "undoFailed": "작업을 실행취소하지 못했습니다."
   },
   "dateRelative": {
     "today": "오늘",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {#일 전} other {#일 전}}"
   },
   "recurrence": {
-    "everyDay": "매일",
     "everyNDays": "{count, plural, one {매일} other {#일마다}}",
-    "everyWeek": "매주",
     "everyNWeeks": "{count, plural, one {매주} other {#주마다}}",
-    "everyWeekday": "평일마다",
     "everyNWeeksOnWeekdays": "{count, plural, one {평일마다} other {#주마다 평일}}",
-    "everyWeekend": "주말마다",
     "everyNWeeksOnWeekends": "{count, plural, one {주말마다} other {매주 #주 주말}}",
-    "everyWeekOnDays": "매주 {days}에서",
     "everyNWeeksOnDays": "{count, plural, one {매주 {days}에서} other {{days}에서 #주마다}}",
-    "everyMonth": "매달",
     "everyNMonths": "{count, plural, one {매달} other {#개월마다}}",
-    "everyMonthOnDay": "매달 {day}{suffix}에서",
     "everyNMonthsOnDay": "{count, plural, one {매달 {day}{suffix}에서} other {{day}{suffix}에서 #개월마다}}",
-    "everyMonthOnWeekDay": "매달 {week} {day}에서",
     "everyNMonthsOnWeekDay": "{count, plural, one {매달 {week} {day}에서} other {{week} {day}에서 #개월마다}}",
-    "everyYear": "매년",
     "everyNYears": "{count, plural, one {매년} other {#년마다}}",
     "repeats": "반복"
   },
@@ -264,7 +228,6 @@
       "openTabs": "탭 열기",
       "scrollTabsLeft": "탭을 왼쪽으로 스크롤",
       "scrollTabsRight": "탭을 오른쪽으로 스크롤",
-      "graphG": "그래프(⌘G)",
       "dayPanel": "일 패널"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Agent 채팅",
+    "loading": "상담원 채팅 로드 중...",
+    "conversationLoading": "대화 로드 중...",
+    "newConversation": "새 대화",
+    "history": "대화 기록",
+    "stop": "중지",
+    "thinking": "Agent는 생각 중입니다.",
+    "enable": {
+      "title": "Memry Agent 활성화",
+      "description": "Memry Agent는 선택한 로컬 에이전트 CLI를 사용하여 볼트에 대해 채팅합니다. Claude는 Anthropic로 차례를 보냅니다. Codex는 OpenAI로 차례를 보냅니다.",
+      "remote": "Memry는 로컬 및 동기화된 채팅 기록을 암호화하지만 모델 추론은 선택한 공급자에서 발생합니다.",
+      "readTools": "읽기 도구가 자동으로 실행됩니다.",
+      "writeTools": "도구 생성 및 업데이트에는 승인이 필요합니다.",
+      "diff": "업데이트 도구는 차이점이나 미리보기를 보여줍니다.",
+      "button": "Agent 채팅 활성화"
+    },
+    "approval": {
+      "description": "에이전트는 이러한 인수를 사용하여 {name}를 호출하려고 합니다.",
+      "applyOnce": "한 번만 신청하세요",
+      "allowOnce": "한 번만 허용",
+      "editAndApply": "수정 및 적용",
+      "editAndAllow": "편집 및 허용",
+      "allowAlways": "항상 허용",
+      "applyEdits": "수정사항 적용",
+      "deny": "거부",
+      "invalidJson": "편집 내용을 적용하기 전에 유효한 JSON를 입력하세요."
+    },
+    "diff": {
+      "previewError": "메모 차이점을 미리 볼 수 없습니다.",
+      "description": "에이전트가 {title}를 업데이트하려고 합니다. 적용하기 전에 현재 및 후보 콘텐츠를 검토하세요.",
+      "fallbackTitle": "이 메모",
+      "current": "현재",
+      "candidate": "후보자",
+      "loading": "로드 중...",
+      "apply": "신청",
+      "applyEdited": "적용 수정됨"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "현재 메모",
+      "removeAttachment": "{label} 제거",
+      "placeholder": "Agent에게 물어보세요",
+      "send": "보내기",
+      "providerLabel": "Agent 공급자: {provider}",
+      "modelLabel": "Agent 모델: {model}",
+      "settingsLabel": "Agent 설정: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "맞춤 모델 ID",
+      "customModelPlaceholder": "맞춤 모델 ID",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "로컬"
+      },
+      "models": {
+        "default": "기본값"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "추론"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
-          "max": "Max"
+          "low": "낮음",
+          "medium": "중간",
+          "high": "높음",
+          "extraHigh": "매우 높음",
+          "extraHighDefault": "매우 높음(기본값)",
+          "max": "최대"
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "낮음",
+          "medium": "중간",
+          "mediumDefault": "중간(기본값)",
+          "high": "높음",
+          "extraHigh": "매우 높음"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "일치하는 항목이 없습니다."
+    },
+    "toolResult": {
+      "label": "도구 결과"
+    },
+    "toolCall": {
+      "editedArgs": "편집된 인수",
+      "parameters": "매개변수"
+    },
+    "sidebar": {
+      "label": "오른쪽 사이드바",
+      "day": "일",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# 승인 대기 중} other {# 승인 보류 중}}",
+      "inProgress": "Agent 회전 진행 중"
+    },
+    "errors": {
+      "loadConversations": "상담원 대화를 로드할 수 없습니다.",
+      "loadConversation": "상담원 대화를 로드할 수 없습니다.",
+      "createConversation": "상담원 대화를 만들 수 없습니다.",
+      "busy": "이 대화의 중간에 또 다른 창이 있습니다. 완료될 때까지 기다리거나 거기서 중지하세요.",
+      "sendTurn": "에이전트 차례를 보낼 수 없습니다.",
+      "cancelTurn": "에이전트 차례를 취소할 수 없습니다.",
+      "submitApproval": "도구 승인을 제출할 수 없습니다.",
+      "updateTrust": "신뢰할 수 있는 도구를 업데이트할 수 없습니다.",
+      "saveDisclosure": "공개 상태를 저장할 수 없습니다.",
+      "resolveWindow": "에이전트 소스 창을 확인할 수 없습니다.",
+      "detectCli": "에이전트 백엔드를 감지할 수 없습니다.",
+      "loadDisclosure": "공개 상태를 로드할 수 없습니다."
     }
   }
 }

@@ -38,8 +38,7 @@
     "openNoteFullPage": "Åpne notatet på helsiden",
     "closeNoteDrawer": "Lukk notatskuffen",
     "addBookmark": "Legg til bokmerke",
-    "removeBookmark": "Fjern bokmerket",
-    "tryAgain": "Prøv igjen"
+    "removeBookmark": "Fjern bokmerket"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "Journal tilbake",
     "journalNavigation": "Journalnavigasjon",
     "dateNavigation": "Journaldatonavigering",
-    "goToYearView": "Gå til årsvisning",
-    "previousView": "Forrige visning",
-    "nextView": "Neste visning"
+    "goToYearView": "Gå til årsvisning"
   },
   "aria": {
     "moreOptions": "Flere alternativer",
@@ -184,10 +181,8 @@
     "connectionAria": "Tilkobling til {label}, {scorePercent} % samsvar"
   },
   "count": {
-    "item": "element",
     "items": "gjenstander",
     "note": "merk",
-    "notes": "notater",
     "day": "dag",
     "days": "dager",
     "event": "begivenhet",

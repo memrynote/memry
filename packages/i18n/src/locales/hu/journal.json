@@ -38,8 +38,7 @@
     "openNoteFullPage": "Jegyzet megnyitása teljes oldalon",
     "closeNoteDrawer": "Zárja be a jegyzetfiókot",
     "addBookmark": "Könyvjelző hozzáadása",
-    "removeBookmark": "Könyvjelző eltávolítása",
-    "tryAgain": "Próbáld újra"
+    "removeBookmark": "Könyvjelző eltávolítása"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "Napló vissza",
     "journalNavigation": "Napló navigáció",
     "dateNavigation": "Napló dátum navigáció",
-    "goToYearView": "Ugrás az év nézethez",
-    "previousView": "Előző nézet",
-    "nextView": "Következő nézet"
+    "goToYearView": "Ugrás az év nézethez"
   },
   "aria": {
     "moreOptions": "További lehetőségek",
@@ -184,10 +181,8 @@
     "connectionAria": "Csatlakozás {label}-hez, {scorePercent}%-os egyezés"
   },
   "count": {
-    "item": "tételt",
     "items": "tételeket",
     "note": "megjegyzés",
-    "notes": "jegyzetek",
     "day": "napon",
     "days": "napokon",
     "event": "esemény",

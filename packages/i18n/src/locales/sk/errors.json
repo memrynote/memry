@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Niečo sa pokazilo. Skúste to prosím znova.",
     "operationFailed": "Operácia zlyhala",
-    "unknown": "Vyskytla sa neznáma chyba",
-    "validationFailed": "Overenie zlyhalo",
-    "actionFailed": "Akcia zlyhala"
+    "unknown": "Vyskytla sa neznáma chyba"
   },
   "ipc": {
     "noVaultOpen": "Žiadny trezor nie je otvorený. Najprv otvorte trezor."

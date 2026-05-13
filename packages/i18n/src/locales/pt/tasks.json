@@ -35,38 +35,6 @@
     "delete": "Excluir tarefa",
     "created": "Criado {date}"
   },
-  "project": {
-    "create": "Criar projeto",
-    "edit": "Editar projeto",
-    "delete": "Excluir projeto",
-    "iconAndName": "Ícone e nome",
-    "namePlaceholder": "Nome do projeto",
-    "select": "Selecione o projeto",
-    "selectIcon": "Selecione o ícone",
-    "clickIconToChange": "Clique no ícone para alterar",
-    "color": "Cor",
-    "descriptionOptional": "Descrição (opcional)",
-    "descriptionPlaceholder": "Breve descrição deste projeto…",
-    "statuses": "Status",
-    "statusesHelp": "Configure os estágios do fluxo de trabalho para este projeto.",
-    "createDescription": "Crie um novo projeto com nome, ícone, cor e status de fluxo de trabalho.",
-    "editDescription": "Edite o nome do projeto, o ícone, a cor e os status do fluxo de trabalho."
-  },
-  "status": {
-    "select": "Selecione o status",
-    "todo": "Fazer",
-    "inProgress": "Em andamento",
-    "done": "Concluído"
-  },
-  "priority": {
-    "select": "Selecione prioridade",
-    "none": "Sem prioridade",
-    "noneShort": "Nenhum",
-    "low": "Baixo",
-    "medium": "Médio",
-    "high": "Alto",
-    "urgent": "Urgente"
-  },
   "filters": {
     "filter": "Filtro",
     "emptyTitle": "Nenhuma tarefa corresponde aos seus filtros",
@@ -113,14 +81,12 @@
     "filterApplied": "Aplicado \"{name}\"",
     "deleted": "Tarefa excluída",
     "deletedSeries": "Série completa!",
-    "deletedNext": "Próxima ocorrência",
     "completed": "Tarefa concluída!",
     "archived": "Tarefa arquivada",
     "undoNotAvailableForDelete": "Desfazer não disponível para exclusão",
     "alreadyAllComplete": "Todas as tarefas selecionadas já foram concluídas",
     "noCompletedSelected": "Nenhuma tarefa concluída selecionada",
     "completeFailed": "Falha ao concluir tarefas",
-    "reopenFailed": "Falha ao reabrir tarefas",
     "deleteFailed": "Falha ao excluir tarefas",
     "moveFailed": "Falha ao mover tarefas"
   },

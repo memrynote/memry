@@ -2,9 +2,7 @@
   "generic": {
     "somethingWentWrong": "Bir şeyler ters gitti. Lütfen tekrar deneyin.",
     "operationFailed": "İşlem başarısız oldu",
-    "unknown": "Bilinmeyen bir hata oluştu",
-    "validationFailed": "Doğrulama başarısız oldu",
-    "actionFailed": "İşlem başarısız oldu"
+    "unknown": "Bilinmeyen bir hata oluştu"
   },
   "ipc": {
     "noVaultOpen": "Hiçbir kasa açık değil. Lütfen önce bir kasa açın."

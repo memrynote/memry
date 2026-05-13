@@ -25,9 +25,7 @@
         "integrations": "אינטגרציות",
         "vault": "כספת",
         "tags": "תגים",
-        "properties": "נכסים",
-        "agentMcp": "Agent MCP",
-        "agentProviders": "Agent Providers"
+        "properties": "נכסים"
       }
     }
   },
@@ -426,8 +424,7 @@
         "notes": "הערות",
         "attachments": "קבצים מצורפים",
         "crdt": "CRDT",
-        "other": "אחר",
-        "available": "זמין"
+        "other": "אחר"
       }
     },
     "security": {
@@ -549,8 +546,7 @@
       "waitingTitle": "מחכה לאישור",
       "waitingDescription": "פתח את Memry במכשיר השני שלך ואשר את בקשת הקישור.",
       "verificationCode": "קוד אימות",
-      "confirmCode": "אשר שזה תואם לקוד במכשיר השני שלך",
-      "cancel": "בטל"
+      "confirmCode": "אשר שזה תואם לקוד במכשיר השני שלך"
     }
   },
   "devices": {
@@ -622,14 +618,12 @@
   "recoveryKey": {
     "title": "מפתח שחזור",
     "description": "אחסן מפתח זה בצורה מאובטחת. זה יכול לשחזר את הכספת שלך אם תאבד גישה לכל המכשירים.",
-    "loading": "טוען...",
     "retrieveFailed": "אחזור מפתח השחזור נכשל",
     "copied": "מפתח השחזור הועתק ללוח",
     "copyFailed": "ההעתקה ללוח נכשלה",
     "clickToReveal": "לחץ כדי לחשוף",
     "hide": "הסתר",
     "reveal": "לחשוף",
-    "copy": "העתק",
     "sessionHint": "מפתח זה מוצג פעם אחת בכל הפעלה. סגור דו-שיח זה כדי לנקות אותו מהזיכרון."
   },
   "keyRotation": {
@@ -804,7 +798,6 @@
       "connectFailed": "חיבור יומן Google נכשל",
       "refreshFailed": "רענון יומן Google נכשל",
       "disconnectFailed": "ניתוק יומן Google נכשל",
-      "selectionFailed": "עדכון בחירת היומן נכשל",
       "retryFailed": "נכשל הניסיון לסנכרן לוח שנה"
     },
     "sourcePicker": {

@@ -3,47 +3,25 @@
     "save": "Kaydet",
     "cancel": "İptal",
     "close": "Kapat",
-    "ok": "Tamam",
-    "yes": "Evet",
-    "no": "Hayır",
     "delete": "Sil",
-    "confirm": "Onayla",
-    "apply": "Uygula",
     "done": "Tamam",
-    "discard": "Vazgeç",
     "dontSave": "Kaydetme",
-    "edit": "Düzenle",
     "add": "Ekle",
     "remove": "Kaldır",
     "retry": "Yeniden dene",
-    "submit": "Gönder",
     "back": "Geri",
-    "next": "İleri",
     "continue": "Devam et",
-    "reset": "Sıfırla",
     "copy": "Kopyala",
-    "paste": "Yapıştır",
-    "create": "Oluştur",
-    "open": "Aç"
+    "create": "Oluştur"
   },
   "state": {
     "loading": "Yükleniyor…",
     "saving": "Kaydediliyor…",
     "deleting": "Siliniyor…",
-    "searching": "Aranıyor…",
-    "error": "Hata",
-    "success": "Başarılı"
-  },
-  "empty": {
-    "noResults": "Sonuç bulunamadı",
-    "noItems": "Öğe yok",
-    "noMatch": "Eşleşme bulunamadı"
+    "searching": "Aranıyor…"
   },
   "action": {
     "search": "Ara",
-    "edit": "Düzenle",
-    "delete": "Sil",
-    "close": "Kapat",
     "expand": "Genişlet",
     "collapse": "Daralt",
     "showMore": "+{count, plural, one {# tane daha} other {# tane daha}}",
@@ -65,20 +43,15 @@
     }
   },
   "count": {
-    "item": "{count, plural, one {# öğe} other {# öğe}}",
     "note": "{count, plural, one {# not} other {# not}}",
-    "folder": "{count, plural, one {# klasör} other {# klasör}}",
     "task": "{count, plural, one {# görev} other {# görev}}",
-    "project": "{count, plural, one {# proje} other {# proje}}",
     "itemDelete": "{count, plural, one {# öğeyi sil} other {# öğeyi sil}}"
   },
   "toast": {
     "actionFailed": "İşlem başarısız oldu",
     "nothingToUndo": "Geri alınacak bir şey yok",
     "undone": "Geri alındı: {description}",
-    "undoFailed": "İşlem geri alınamadı",
-    "copied": "Kopyalandı",
-    "copyFailed": "Kopyalanamadı"
+    "undoFailed": "İşlem geri alınamadı"
   },
   "dateRelative": {
     "today": "Bugün",
@@ -86,23 +59,14 @@
     "daysAgo": "{count, plural, one {# gün önce} other {# gün önce}}"
   },
   "recurrence": {
-    "everyDay": "Her gün",
     "everyNDays": "{count, plural, one {Her gün} other {Her # günde bir}}",
-    "everyWeek": "Her hafta",
     "everyNWeeks": "{count, plural, one {Her hafta} other {Her # haftada bir}}",
-    "everyWeekday": "Hafta içi her gün",
     "everyNWeeksOnWeekdays": "{count, plural, one {Her hafta içi} other {Her # haftada bir hafta içi}}",
-    "everyWeekend": "Her hafta sonu",
     "everyNWeeksOnWeekends": "{count, plural, one {Her hafta sonu} other {Her # haftada bir hafta sonu}}",
-    "everyWeekOnDays": "Her hafta {days}",
     "everyNWeeksOnDays": "{count, plural, one {Her hafta {days}} other {# haftada bir {days}}}",
-    "everyMonth": "Her ay",
     "everyNMonths": "{count, plural, one {Her ay} other {Her # ayda bir}}",
-    "everyMonthOnDay": "Her ay {day}{suffix}",
     "everyNMonthsOnDay": "{count, plural, one {Her ay {day}{suffix}} other {Her # ayda bir {day}{suffix}}}",
-    "everyMonthOnWeekDay": "Her ay {week} {day}",
     "everyNMonthsOnWeekDay": "{count, plural, one {Her ay {week} {day}} other {Her # ayda bir {week} {day}}}",
-    "everyYear": "Her yıl",
     "everyNYears": "{count, plural, one {Her yıl} other {Her # yılda bir}}",
     "repeats": "Tekrarlar"
   },
@@ -264,7 +228,6 @@
       "openTabs": "Sekmeleri aç",
       "scrollTabsLeft": "Sekmeleri sola kaydır",
       "scrollTabsRight": "Sekmeleri sağa kaydır",
-      "graphG": "Grafik (⌘G)",
       "dayPanel": "Gün Paneli"
     },
     "componentsTabsTabBarWithOverflow": {
@@ -369,37 +332,115 @@
     }
   },
   "agentChat": {
+    "title": "Agent sohbeti",
+    "loading": "Agent sohbeti yükleniyor...",
+    "conversationLoading": "Konuşma yükleniyor...",
+    "newConversation": "Yeni görüşme",
+    "history": "Konuşma geçmişi",
+    "stop": "Durdur",
+    "thinking": "Agent düşünüyor",
+    "enable": {
+      "title": "Memry Agent'i etkinleştir",
+      "description": "Memry Agent, kasanız hakkında sohbet etmek için seçtiğiniz yerel Agent CLI'ını kullanır. Claude istekleri Anthropic'e; Codex istekleri OpenAI'ye gönderir.",
+      "remote": "Memry, yerel ve senkronize sohbet geçmişinizi şifreler, ancak model çıkarımı seçilen sağlayıcıyla gerçekleşir.",
+      "readTools": "Okuma araçları otomatik olarak çalışır.",
+      "writeTools": "Oluşturma ve güncelleme araçları onay gerektirir.",
+      "diff": "Güncelleme araçları bir fark veya önizleme gösterir.",
+      "button": "Agent sohbetini etkinleştir"
+    },
+    "approval": {
+      "description": "Agent, bu argümanlarla {name}'yi çağırmak istiyor.",
+      "applyOnce": "Bir kez uygula",
+      "allowOnce": "Bir kez izin ver",
+      "editAndApply": "Düzenle ve uygula",
+      "editAndAllow": "Düzenle ve izin ver",
+      "allowAlways": "Her zaman izin ver",
+      "applyEdits": "Düzenlemeleri uygula",
+      "deny": "Reddet",
+      "invalidJson": "Düzenlemeleri uygulamadan önce geçerli JSON girin."
+    },
+    "diff": {
+      "previewError": "Not farkının önizlemesi yapılamadı",
+      "description": "Agent {title}'yi güncellemek istiyor. Uygulamadan önce mevcut ve aday içeriği inceleyin.",
+      "fallbackTitle": "bu not",
+      "current": "Güncel",
+      "candidate": "Aday",
+      "loading": "Yükleniyor...",
+      "apply": "Uygula",
+      "applyEdited": "Düzenlenenleri uygula"
+    },
     "composer": {
-      "providerLabel": "Agent provider: {provider}",
-      "settingsLabel": "Agent settings: {settings}",
+      "currentNote": "Güncel not",
+      "removeAttachment": "{label}'yi kaldır",
+      "placeholder": "Agent'e sorun",
+      "send": "Gönder",
+      "providerLabel": "Agent sağlayıcısı: {provider}",
+      "modelLabel": "Agent modeli: {model}",
+      "settingsLabel": "Agent ayarları: {settings}",
       "settingsSummary": "{reasoning}",
+      "customModelLabel": "Özel model kimliği",
+      "customModelPlaceholder": "Özel model kimliği",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
-        "local": "Local"
+        "local": "Yerel"
+      },
+      "models": {
+        "default": "Varsayılan"
       },
       "settings": {
-        "reasoning": "Reasoning"
+        "reasoning": "Akıl yürütme"
       },
       "claudeSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "high": "High",
-          "extraHigh": "Extra High",
-          "extraHighDefault": "Extra High (default)",
-          "max": "Max"
+          "low": "Düşük",
+          "medium": "Orta",
+          "high": "Yüksek",
+          "extraHigh": "Ekstra Yüksek",
+          "extraHighDefault": "Ekstra Yüksek (varsayılan)",
+          "max": "Maks."
         }
       },
       "codexSettings": {
         "reasoning": {
-          "low": "Low",
-          "medium": "Medium",
-          "mediumDefault": "Medium (default)",
-          "high": "High",
-          "extraHigh": "Extra High"
+          "low": "Düşük",
+          "medium": "Orta",
+          "mediumDefault": "Orta (varsayılan)",
+          "high": "Yüksek",
+          "extraHigh": "Ekstra Yüksek"
         }
       }
+    },
+    "refPicker": {
+      "noMatches": "Eşleşme yok"
+    },
+    "toolResult": {
+      "label": "Araç sonucu"
+    },
+    "toolCall": {
+      "editedArgs": "Düzenlenen argümanlar",
+      "parameters": "Parametreler"
+    },
+    "sidebar": {
+      "label": "Sağ kenar çubuğu",
+      "day": "Gün",
+      "agent": "Agent",
+      "pendingApproval": "{count, plural, one {# onay bekleniyor} other {# bekleyen onaylar}}",
+      "inProgress": "Agent dönüşü devam ediyor"
+    },
+    "errors": {
+      "loadConversations": "Agent konuşmaları yüklenemedi",
+      "loadConversation": "Agent konuşması yüklenemedi",
+      "createConversation": "Agent konuşması oluşturulamadı",
+      "busy": "Bu konuşma için başka bir pencere işlem yapıyor. Bitmesini bekleyin veya oradan durdurun.",
+      "sendTurn": "Agent isteği gönderilemedi",
+      "cancelTurn": "Agent isteği iptal edilemedi",
+      "submitApproval": "Araç onayı gönderilemedi",
+      "updateTrust": "Güvenilir araçlar güncellenemedi",
+      "saveDisclosure": "Açıklama durumu kaydedilemedi",
+      "resolveWindow": "Agent kaynak penceresi çözülemedi",
+      "detectCli": "Agent arka uçları algılanamadı",
+      "loadDisclosure": "Açıklama durumu yüklenemedi"
     }
   }
 }

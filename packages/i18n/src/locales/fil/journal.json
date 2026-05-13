@@ -38,8 +38,7 @@
     "openNoteFullPage": "Buksan ang tala sa buong pahina",
     "closeNoteDrawer": "Isara ang note drawer",
     "addBookmark": "Magdagdag ng bookmark",
-    "removeBookmark": "Alisin ang bookmark",
-    "tryAgain": "Subukan Muli"
+    "removeBookmark": "Alisin ang bookmark"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "Bumalik sa journal",
     "journalNavigation": "Pag-navigate sa journal",
     "dateNavigation": "Pag-navigate sa petsa ng journal",
-    "goToYearView": "Pumunta sa view ng taon",
-    "previousView": "Nakaraang view",
-    "nextView": "Susunod na view"
+    "goToYearView": "Pumunta sa view ng taon"
   },
   "aria": {
     "moreOptions": "Higit pang mga pagpipilian",
@@ -184,10 +181,8 @@
     "connectionAria": "Koneksyon sa {label}, {scorePercent}% na tugma"
   },
   "count": {
-    "item": "aytem",
     "items": "mga bagay",
     "note": "tala",
-    "notes": "mga tala",
     "day": "araw",
     "days": "araw",
     "event": "kaganapan",

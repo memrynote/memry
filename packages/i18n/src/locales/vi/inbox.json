@@ -43,9 +43,7 @@
     "pdfs": "Các tập tin PDF",
     "social": "Mạng xã hội",
     "reminder": "Nhắc nhở",
-    "reminders": "Các nhắc nhở",
-    "text": "Văn bản",
-    "other": "Khác"
+    "reminders": "Các nhắc nhở"
   },
   "empty": {
     "successAria": "Thành công, hộp thư đến trống",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "Không có mục lưu trữ khớp",
     "noItemsYet": "Chưa có mục nào",
     "noItemsFiled": "Chưa có mục nào được lưu",
-    "noItemTypes": "Không có loại mục để hiển thị",
     "noFolders": "Không tìm thấy thư mục nào",
-    "noFolderMatch": "Không có thư mục nào khớp với \"{query}\"",
     "noNotes": "Không tìm thấy ghi chú nào",
     "allMatchesLinked": "Tất cả các kết quả khớp đã được liên kết"
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "Phiên âm thất bại",
     "retryTranscription": "Thử lại",
     "pageCount": "{count, plural, one {Trang #} other {Các trang #}}",
-    "snoozedUntilShort": "Đã hoãn đến {date}",
-    "capturedAgo": "Đã chụp {time}"
+    "snoozedUntilShort": "Đã hoãn đến {date}"
   },
   "loading": {
     "inbox": "Đang tải hộp thư đến...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "Các hành động nhanh",
     "archiveItem": "Lưu trữ mục",
-    "archive": "Lưu trữ",
-    "snooze": "Hoãn"
+    "archive": "Lưu trữ"
   },
   "detail": {
     "ariaLabel": "Chi tiết mục",
@@ -213,7 +207,6 @@
     "searchNotesAria": "Tìm kiếm ghi chú để liên kết",
     "linkedNotesAria": "Ghi chú đã liên kết",
     "removeLinkTo": "Xóa liên kết đến {title}",
-    "contentEditorAria": "Trình chỉnh sửa nội dung",
     "notePlaceholder": "Viết ghi chú của bạn...",
     "textPlaceholder": "Chỉnh sửa văn bản đã ghi..."
   },
@@ -263,14 +256,9 @@
     "custom": "Tùy chỉnh..."
   },
   "insights": {
-    "loading": "Đang tải thông tin chi tiết...",
     "captureActivity": "Hoạt động đã ghi lại",
     "byType": "Theo loại",
-    "itemTypes": "Loại mục",
-    "itemTypesDescription": "Phân phối định dạng nội dung",
     "recentFilings": "Hồ sơ gần đây",
-    "recentlyFiled": "Mới nộp gần đây",
-    "recentlyFiledDescription": "Hành động mới nhất trên hộp thư đến của bạn",
     "captured": "Đã ghi lại",
     "capturedThisWeek": "+{count} tuần này  ",
     "processed": "  \nĐã xử lý  ",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {  \nBản ghi #  } other {  \nCác bản ghi #  }}",
     "peak": "  \nĐỉnh điểm: {day} {start}–{end}  ",
     "convertedToTask": "  \nĐã chuyển thành công việc  ",
-    "linked": "  \nĐã liên kết  ",
     "now": "  \nngay bây giờ  ",
     "timeAgoMinutes": "  \n{count}m trước  ",
     "timeAgoHours": "  \n{count}h trước  ",

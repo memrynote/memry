@@ -35,38 +35,6 @@
     "delete": "Tanggalin ang gawain",
     "created": "Nilikha ang {date}"
   },
-  "project": {
-    "create": "Lumikha ng Proyekto",
-    "edit": "I-edit ang Proyekto",
-    "delete": "Tanggalin ang Proyekto",
-    "iconAndName": "Icon at Pangalan",
-    "namePlaceholder": "Pangalan ng proyekto",
-    "select": "Pumili ng proyekto",
-    "selectIcon": "Piliin ang icon",
-    "clickIconToChange": "I-click ang icon para baguhin",
-    "color": "Kulay",
-    "descriptionOptional": "Paglalarawan (opsyonal)",
-    "descriptionPlaceholder": "Maikling paglalarawan ng proyektong ito…",
-    "statuses": "Mga katayuan",
-    "statusesHelp": "I-configure ang mga yugto ng daloy ng trabaho para sa proyektong ito.",
-    "createDescription": "Gumawa ng bagong proyekto na may pangalan, icon, kulay, at mga katayuan ng daloy ng trabaho.",
-    "editDescription": "I-edit ang pangalan ng proyekto, icon, kulay, at mga katayuan ng daloy ng trabaho."
-  },
-  "status": {
-    "select": "Pumili ng katayuan",
-    "todo": "Gagawin",
-    "inProgress": "Isinasagawa",
-    "done": "Tapos na"
-  },
-  "priority": {
-    "select": "Piliin ang priyoridad",
-    "none": "Walang Priyoridad",
-    "noneShort": "wala",
-    "low": "Mababa",
-    "medium": "Katamtaman",
-    "high": "Mataas",
-    "urgent": "Urgent"
-  },
   "filters": {
     "filter": "Salain",
     "emptyTitle": "Walang mga gawain na tumutugma sa iyong mga filter",
@@ -113,14 +81,12 @@
     "filterApplied": "Inilapat ang \"{name}\"",
     "deleted": "Tinanggal ang gawain",
     "deletedSeries": "Kumpleto na ang serye!",
-    "deletedNext": "Susunod na pangyayari",
     "completed": "Nakumpleto ang gawain!",
     "archived": "Na-archive ang gawain",
     "undoNotAvailableForDelete": "Ang pag-undo ay hindi magagamit para sa pagtanggal",
     "alreadyAllComplete": "Kumpleto na ang lahat ng napiling gawain",
     "noCompletedSelected": "Walang napiling mga natapos na gawain",
     "completeFailed": "Nabigong makumpleto ang mga gawain",
-    "reopenFailed": "Nabigong muling buksan ang mga gawain",
     "deleteFailed": "Nabigong tanggalin ang mga gawain",
     "moveFailed": "Nabigong ilipat ang mga gawain"
   },

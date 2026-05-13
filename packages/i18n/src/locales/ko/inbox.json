@@ -43,9 +43,7 @@
     "pdfs": "PDF",
     "social": "소셜",
     "reminder": "알림",
-    "reminders": "알림",
-    "text": "텍스트",
-    "other": "기타"
+    "reminders": "알림"
   },
   "empty": {
     "successAria": "성공했습니다. 받은편지함이 비어 있습니다.",
@@ -59,9 +57,7 @@
     "archivedNoMatches": "일치하는 보관된 항목이 없습니다.",
     "noItemsYet": "아직 항목이 없습니다",
     "noItemsFiled": "아직 제출된 항목이 없습니다.",
-    "noItemTypes": "표시할 항목 유형이 없습니다.",
     "noFolders": "폴더를 찾을 수 없습니다.",
-    "noFolderMatch": "\"{query}\"와 일치하는 폴더가 없습니다.",
     "noNotes": "메모를 찾을 수 없습니다.",
     "allMatchesLinked": "모든 경기가 이미 연결되었습니다."
   },
@@ -80,8 +76,7 @@
     "transcriptionFailed": "전사 실패",
     "retryTranscription": "재시도",
     "pageCount": "{count, plural, one {# 페이지} other {# 페이지}}",
-    "snoozedUntilShort": "{date}까지 일시 중지됨",
-    "capturedAgo": "캡처된 {time}"
+    "snoozedUntilShort": "{date}까지 일시 중지됨"
   },
   "loading": {
     "inbox": "받은편지함 로드 중...",
@@ -184,8 +179,7 @@
   "quickActions": {
     "groupAria": "빠른 작업",
     "archiveItem": "보관 항목",
-    "archive": "아카이브",
-    "snooze": "스누즈"
+    "archive": "아카이브"
   },
   "detail": {
     "ariaLabel": "품목 세부정보",
@@ -213,7 +207,6 @@
     "searchNotesAria": "연결할 노트 검색",
     "linkedNotesAria": "연결된 노트",
     "removeLinkTo": "{title}에 대한 링크 제거",
-    "contentEditorAria": "콘텐츠 편집자",
     "notePlaceholder": "메모를 작성하세요...",
     "textPlaceholder": "캡처한 텍스트를 편집하세요..."
   },
@@ -263,14 +256,9 @@
     "custom": "맞춤..."
   },
   "insights": {
-    "loading": "통계 로드 중...",
     "captureActivity": "활동 캡처",
     "byType": "유형별",
-    "itemTypes": "품목 유형",
-    "itemTypesDescription": "콘텐츠 형식의 배포",
     "recentFilings": "최근 제출",
-    "recentlyFiled": "최근 출원됨",
-    "recentlyFiledDescription": "받은편지함의 최신 작업",
     "captured": "캡처됨",
     "capturedThisWeek": "이번 주 +{count}",
     "processed": "처리됨",
@@ -283,7 +271,6 @@
     "captures": "{count, plural, one {# 캡처} other {# 캡처}}",
     "peak": "피크: {day} {start}–{end}",
     "convertedToTask": "작업으로 변환됨",
-    "linked": "연결됨",
     "now": "지금",
     "timeAgoMinutes": "{count}분 전",
     "timeAgoHours": "{count}시간 전",

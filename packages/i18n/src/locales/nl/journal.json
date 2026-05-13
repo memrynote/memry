@@ -38,8 +38,7 @@
     "openNoteFullPage": "Open de notitie op de volledige pagina",
     "closeNoteDrawer": "Sluit de notitielade",
     "addBookmark": "Bladwijzer toevoegen",
-    "removeBookmark": "Bladwijzer verwijderen",
-    "tryAgain": "Probeer het opnieuw"
+    "removeBookmark": "Bladwijzer verwijderen"
   },
   "editor": {
     "placeholder": {
@@ -146,9 +145,7 @@
     "journalBack": "Journaal terug",
     "journalNavigation": "Journaalnavigatie",
     "dateNavigation": "Journaaldatumnavigatie",
-    "goToYearView": "Ga naar jaaroverzicht",
-    "previousView": "Vorige weergave",
-    "nextView": "Volgende weergave"
+    "goToYearView": "Ga naar jaaroverzicht"
   },
   "aria": {
     "moreOptions": "Meer opties",
@@ -184,10 +181,8 @@
     "connectionAria": "Verbinding met {label}, {scorePercent}% overeenkomst"
   },
   "count": {
-    "item": "artikel",
     "items": "artikelen",
     "note": "opmerking",
-    "notes": "notities",
     "day": "dag",
     "days": "dagen",
     "event": "evenement",
