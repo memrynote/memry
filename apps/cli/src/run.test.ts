@@ -1,14 +1,18 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
 import fs from 'node:fs/promises'
-import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
 import { runCli } from './run.ts'
 
 async function makeVault() {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'memry-cli-run-'))
+  const root = path.join(process.cwd(), 'test-results', 'memry-cli-run')
+  await fs.mkdir(root, { recursive: true })
+  const vaultPath = path.join(root, `vault-${process.pid}-${randomUUID()}`)
+  await fs.mkdir(vaultPath)
+  return vaultPath
 }
 
 function makeVaultRegistry(vaults: Array<{ path: string; name: string; isDefault?: boolean }>) {

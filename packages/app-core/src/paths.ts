@@ -17,7 +17,14 @@ export const defaultVaultConfig: VaultConfig = {
 }
 
 export function normalizePath(value: string): string {
-  return value.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '')
+  const normalized = value.replaceAll('\\', '/')
+  let start = 0
+  let end = normalized.length
+
+  while (start < end && normalized[start] === '/') start += 1
+  while (end > start && normalized[end - 1] === '/') end -= 1
+
+  return normalized.slice(start, end)
 }
 
 export function safeFilename(value: string): string {
