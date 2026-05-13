@@ -15,8 +15,9 @@ Default. Tasks render as flat or grouped rows with inline editing of:
 - Project
 - Tags
 
-Tasks linked to notes show a compact note indicator at the end of the list row.
-Hover or focus the row to preview the note title, then click the indicator to open the note.
+Tasks linked to notes or filed audio items show a compact related-item indicator at the end of the
+list row. Hover or focus the row to preview the related item title, then click the indicator to open
+the note or file viewer. When a task has multiple related items, the indicator opens a small picker.
 
 Click the row body to open the task detail drawer. Inline status and priority controls open their own pickers without opening the drawer.
 
