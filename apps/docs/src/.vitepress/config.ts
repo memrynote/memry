@@ -6,9 +6,12 @@ export default defineConfig({
   description: 'Documentation for Memry, a private offline-first workspace.',
   cleanUrls: true,
   lastUpdated: true,
-  head: [['meta', { name: 'theme-color', content: '#111827' }]],
+  head: [
+    ['meta', { name: 'theme-color', content: '#111827' }],
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }]
+  ],
   themeConfig: {
-    logo: '/memry-logo.svg',
+    logo: '/favicon.svg',
     siteTitle: 'Memry Docs',
     nav: [
       { text: 'Install', link: '/guide/install' },
