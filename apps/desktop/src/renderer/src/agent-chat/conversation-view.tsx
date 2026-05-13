@@ -4,14 +4,24 @@ import { Composer } from './composer'
 import { ConversationHeader } from './conversation-header'
 import { useAgentOptional } from './agent-context'
 import { MessageStream } from './message-stream'
+import { cn } from '@/lib/utils'
 
 interface ConversationViewProps {
   conversationId: string | null
+  layout?: 'sidebar' | 'workspace'
 }
 
-export function ConversationView({ conversationId }: ConversationViewProps): React.JSX.Element {
+const workspaceOuterClassName =
+  'mx-auto w-full max-w-[64rem] px-8 transition-[max-width] duration-300 ease-in-out lg:px-24'
+const workspaceColumnClassName = 'mx-auto w-full max-w-[640px]'
+
+export function ConversationView({
+  conversationId,
+  layout = 'sidebar'
+}: ConversationViewProps): React.JSX.Element {
   const { t } = useT('common')
   const agent = useAgentOptional()
+  const isWorkspace = layout === 'workspace'
 
   if (!agent) {
     return (
@@ -52,9 +62,32 @@ export function ConversationView({ conversationId }: ConversationViewProps): Rea
         cancelTurn()
       }}
     >
-      {conversation && <ConversationHeader conversation={conversation} />}
-      <MessageStream messages={messages} />
-      <Composer conversationId={conversationId} sourceWindowId={state.sourceWindowId} />
+      {conversation &&
+        (isWorkspace ? (
+          <div className={cn(workspaceOuterClassName, 'shrink-0 pt-6')}>
+            <div className={workspaceColumnClassName}>
+              <ConversationHeader conversation={conversation} />
+            </div>
+          </div>
+        ) : (
+          <ConversationHeader conversation={conversation} />
+        ))}
+      <MessageStream
+        messages={messages}
+        contentClassName={
+          isWorkspace ? cn(workspaceOuterClassName, conversation ? 'py-3' : 'pb-3 pt-6') : undefined
+        }
+        messageListClassName={isWorkspace ? workspaceColumnClassName : undefined}
+      />
+      {isWorkspace ? (
+        <div className={cn(workspaceOuterClassName, 'shrink-0 pb-10')}>
+          <div className={workspaceColumnClassName}>
+            <Composer conversationId={conversationId} sourceWindowId={state.sourceWindowId} />
+          </div>
+        </div>
+      ) : (
+        <Composer conversationId={conversationId} sourceWindowId={state.sourceWindowId} />
+      )}
     </section>
   )
 }
