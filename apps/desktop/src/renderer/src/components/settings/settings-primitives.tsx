@@ -1,4 +1,5 @@
 import { Children, type ReactNode } from 'react'
+import { cn } from '@/lib/utils'
 
 export const ACCENT_SWITCH = 'data-[state=checked]:bg-[var(--tint)]'
 
@@ -54,11 +55,22 @@ interface SettingRowProps {
   label: string
   description?: string
   children: ReactNode
+  className?: string
+  'data-testid'?: string
 }
 
-export function SettingRow({ label, description, children }: SettingRowProps) {
+export function SettingRow({
+  label,
+  description,
+  children,
+  className,
+  'data-testid': testId
+}: SettingRowProps) {
   return (
-    <div className="flex items-center justify-between h-11 py-3 px-4 shrink-0">
+    <div
+      data-testid={testId}
+      className={cn('flex items-center justify-between h-11 py-3 px-4 shrink-0', className)}
+    >
       <div className="flex flex-col gap-px min-w-0">
         <span className="font-medium text-[13px]/4 text-foreground">{label}</span>
         {description && (
@@ -70,9 +82,18 @@ export function SettingRow({ label, description, children }: SettingRowProps) {
   )
 }
 
-export function SettingRowTall({ label, description, children }: SettingRowProps) {
+export function SettingRowTall({
+  label,
+  description,
+  children,
+  className,
+  'data-testid': testId
+}: SettingRowProps) {
   return (
-    <div className="flex flex-col gap-2 min-h-14 py-3 px-4 shrink-0">
+    <div
+      data-testid={testId}
+      className={cn('flex flex-col gap-2 min-h-14 py-3 px-4 shrink-0', className)}
+    >
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-px min-w-0">
           <span className="font-medium text-[13px]/4 text-foreground">{label}</span>

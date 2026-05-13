@@ -52,6 +52,10 @@ describe('voice transcription settings', () => {
 
   it('merges stored settings and checks local-model readiness', async () => {
     mocks.getSetting.mockReturnValue(JSON.stringify({ provider: 'local' }))
+    expect(getVoiceTranscriptionSettings()).toEqual({
+      ...VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS,
+      provider: 'local'
+    })
 
     await expect(getVoiceRecordingReadiness()).resolves.toEqual({
       ready: false,

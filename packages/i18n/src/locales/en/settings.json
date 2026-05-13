@@ -699,6 +699,14 @@
         "local": "Local (default)",
         "openai": "OpenAI (BYOK)"
       },
+      "memoNameMode": "Memo names",
+      "memoNameModeDescription": "How voice memos are named after transcription",
+      "naming": {
+        "transcript": "Transcript title",
+        "timestamp": "Timestamp",
+        "none": "Do not rename"
+      },
+      "namingError": "Failed to update voice memo naming",
       "localModel": "Local Model",
       "localModelDescription": "Whisper Small downloads on demand and stays cached locally",
       "status": {

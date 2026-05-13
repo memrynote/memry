@@ -405,6 +405,7 @@ describe('VoiceTranscriptionSettingsSchema', () => {
   it('accepts the shipped default payload', () => {
     const result = VoiceTranscriptionSettingsSchema.safeParse(VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS)
     expect(result.success).toBe(true)
+    expect(VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS.memoNameMode).toBe('transcript')
   })
 
   it('rejects unsupported provider', () => {
@@ -412,6 +413,17 @@ describe('VoiceTranscriptionSettingsSchema', () => {
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(result.error.issues[0].path).toContain('provider')
+    }
+  })
+
+  it('rejects unsupported voice memo naming modes', () => {
+    const result = VoiceTranscriptionSettingsSchema.safeParse({
+      provider: 'local',
+      memoNameMode: 'random'
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0].path).toContain('memoNameMode')
     }
   })
 })

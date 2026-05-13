@@ -239,7 +239,7 @@ export interface MainIpcInvokeHandlers {
   "settings:getVoiceModelStatus": (...args: []) => Awaited<import("../inbox/voice-model").VoiceModelStatus>
   "settings:getVoiceRecordingReadiness": (...args: []) => Awaited<Promise<import("../inbox/voice-transcription-settings").VoiceRecordingReadiness>>
   "settings:getVoiceTranscriptionOpenAIKeyStatus": (...args: []) => Awaited<Promise<import("./settings-handlers").VoiceTranscriptionOpenAIKeyStatus>>
-  "settings:getVoiceTranscriptionSettings": (...args: []) => Awaited<{ provider: "local" | "openai"; }>
+  "settings:getVoiceTranscriptionSettings": (...args: []) => Awaited<{ provider: "local" | "openai"; memoNameMode: "timestamp" | "none" | "transcript"; }>
   "settings:installTerminalCommand": (...args: []) => Awaited<Promise<import("./settings-handlers").TerminalCommandMutationResult>>
   "settings:loadAIModel": (...args: []) => Awaited<Promise<{ success: false; error: string; } | { success: boolean; message: string; error?: undefined; } | { success: boolean; error: string; message?: undefined; } | { success: boolean; message?: undefined; error?: undefined; }>>
   "settings:registerGlobalCapture": (...args: []) => Awaited<Promise<import("./settings-handlers").GlobalCaptureResult>>
@@ -261,7 +261,7 @@ export interface MainIpcInvokeHandlers {
   "settings:setTaskSettings": (...args: [Partial<{ defaultProjectId: string | null; defaultSortOrder: "priority" | "createdAt" | "dueDate" | "manual"; weekStartDay: "sunday" | "monday"; staleInboxDays: number; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
   "settings:setTerminalCommandDefaultVault": (...args: [string]) => Awaited<Promise<import("./settings-handlers").TerminalCommandMutationResult>>
   "settings:setVoiceTranscriptionOpenAIKey": (...args: [{ apiKey: string; }]) => Awaited<Promise<{ success: boolean; error?: undefined; } | { success: boolean; error: string; }>>
-  "settings:setVoiceTranscriptionSettings": (...args: [Partial<{ provider: "local" | "openai"; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
+  "settings:setVoiceTranscriptionSettings": (...args: [Partial<{ provider: "local" | "openai"; memoNameMode: "timestamp" | "none" | "transcript"; }>]) => Awaited<{ success: boolean; error?: string | undefined; }>
   "settings:uninstallTerminalCommand": (...args: []) => Awaited<Promise<import("./settings-handlers").TerminalCommandMutationResult>>
   "sync:approve-linking": (...args: [{ sessionId: string; }]) => Awaited<Promise<import("../../../../../packages/contracts/src/ipc-devices").ApproveLinkingResult> | { success: false; error: string }>
   "sync:check-device-status": (...args: []) => Awaited<Promise<{ status: string; }>>
