@@ -409,7 +409,15 @@ export const SettingsChannels = {
     /** Trigger manual sync */
     TRIGGER_SYNC: 'settings:triggerSync',
     /** Register (or unregister) the OS-level global capture shortcut */
-    REGISTER_GLOBAL_CAPTURE: 'settings:registerGlobalCapture'
+    REGISTER_GLOBAL_CAPTURE: 'settings:registerGlobalCapture',
+    /** Get status for the terminal `memry` command shim */
+    GET_TERMINAL_COMMAND_STATUS: 'settings:getTerminalCommandStatus',
+    /** Install the terminal `memry` command shim */
+    INSTALL_TERMINAL_COMMAND: 'settings:installTerminalCommand',
+    /** Uninstall the terminal `memry` command shim */
+    UNINSTALL_TERMINAL_COMMAND: 'settings:uninstallTerminalCommand',
+    /** Set the default vault used by terminal `memry` commands */
+    SET_TERMINAL_COMMAND_DEFAULT_VAULT: 'settings:setTerminalCommandDefaultVault'
   },
   sync: {
     /** Get the saved startup theme synchronously for first-paint bootstrap */

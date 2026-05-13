@@ -1,0 +1,212 @@
+import { randomUUID } from 'node:crypto'
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { describe, expect, it } from 'vitest'
+import {
+  getTerminalCommandStatus,
+  installTerminalCommand,
+  uninstallTerminalCommand
+} from './terminal-command'
+
+function tempRoot(): string {
+  const root = join(process.cwd(), 'test-results', 'memry-terminal-command')
+  mkdirSync(root, { recursive: true })
+  const caseDir = join(root, `case-${process.pid}-${randomUUID()}`)
+  mkdirSync(caseDir)
+  return caseDir
+}
+
+describe('terminal command setup', () => {
+  it('installs a Unix shim that launches the packaged app in CLI mode', async () => {
+    const root = tempRoot()
+    const binDir = join(root, 'bin')
+    const executablePath = join(root, 'Memry.app', 'Contents', 'MacOS', 'Memry')
+
+    const status = await installTerminalCommand({
+      platform: 'darwin',
+      homeDir: join(root, 'home'),
+      executablePath,
+      pathEnv: binDir,
+      preferredBinDirs: [binDir]
+    })
+
+    expect(status).toMatchObject({
+      installed: true,
+      platform: 'darwin',
+      command: 'memry',
+      shimPath: join(binDir, 'memry'),
+      inPath: true
+    })
+    expect(readFileSync(status.shimPath, 'utf8')).toContain(`exec "${executablePath}" --cli "$@"`)
+  })
+
+  it('installs a Unix shim with the app path when running from unpackaged Electron', async () => {
+    const root = tempRoot()
+    const binDir = join(root, 'bin')
+    const executablePath = join(root, 'Electron.app', 'Contents', 'MacOS', 'Electron')
+    const appPath = join(root, 'memry', 'apps', 'desktop')
+
+    const status = await installTerminalCommand({
+      platform: 'darwin',
+      homeDir: join(root, 'home'),
+      executablePath,
+      appPath,
+      pathEnv: binDir,
+      preferredBinDirs: [binDir]
+    })
+
+    expect(readFileSync(status.shimPath, 'utf8')).toContain(
+      `exec "${executablePath}" "${appPath}" --cli "$@"`
+    )
+  })
+
+  it('refuses to overwrite an unrelated command', async () => {
+    const root = tempRoot()
+    const binDir = join(root, 'bin')
+    const shimPath = join(binDir, 'memry')
+    chmodSync(root, 0o755)
+
+    await installTerminalCommand({
+      platform: 'linux',
+      homeDir: join(root, 'home'),
+      executablePath: join(root, 'Memry'),
+      pathEnv: binDir,
+      preferredBinDirs: [binDir]
+    })
+    writeFileSync(shimPath, '#!/bin/sh\necho not memry\n')
+
+    await expect(
+      installTerminalCommand({
+        platform: 'linux',
+        homeDir: join(root, 'home'),
+        executablePath: join(root, 'OtherMemry'),
+        pathEnv: binDir,
+        preferredBinDirs: [binDir]
+      })
+    ).rejects.toThrow(/already exists/)
+  })
+
+  it('installs a Windows cmd shim in the user path directory', async () => {
+    const root = tempRoot()
+    const windowsApps = join(root, 'WindowsApps')
+    const executablePath = join(root, 'Memry.exe')
+
+    const status = await installTerminalCommand({
+      platform: 'win32',
+      homeDir: join(root, 'home'),
+      executablePath,
+      localAppData: root,
+      pathEnv: windowsApps,
+      preferredBinDirs: [windowsApps]
+    })
+
+    expect(status).toMatchObject({
+      installed: true,
+      platform: 'win32',
+      command: 'memry',
+      shimPath: join(windowsApps, 'memry.cmd'),
+      inPath: true
+    })
+    expect(readFileSync(status.shimPath, 'utf8')).toContain(`"${executablePath}" --cli %*`)
+  })
+
+  it('installs a Windows cmd shim with the app path when running from unpackaged Electron', async () => {
+    const root = tempRoot()
+    const windowsApps = join(root, 'WindowsApps')
+    const executablePath = join(root, 'Electron.exe')
+    const appPath = join(root, 'memry', 'apps', 'desktop')
+
+    const status = await installTerminalCommand({
+      platform: 'win32',
+      homeDir: join(root, 'home'),
+      executablePath,
+      appPath,
+      localAppData: root,
+      pathEnv: windowsApps,
+      preferredBinDirs: [windowsApps]
+    })
+
+    expect(readFileSync(status.shimPath, 'utf8')).toContain(
+      `"${executablePath}" "${appPath}" --cli %*`
+    )
+  })
+
+  it('does not report an outdated Memry shim as installed', async () => {
+    const root = tempRoot()
+    const binDir = join(root, 'bin')
+    const executablePath = join(root, 'Electron.app', 'Contents', 'MacOS', 'Electron')
+    const appPath = join(root, 'memry', 'apps', 'desktop')
+
+    const initial = await installTerminalCommand({
+      platform: 'darwin',
+      homeDir: join(root, 'home'),
+      executablePath,
+      pathEnv: binDir,
+      preferredBinDirs: [binDir]
+    })
+
+    expect(
+      await getTerminalCommandStatus({
+        platform: 'darwin',
+        homeDir: join(root, 'home'),
+        executablePath,
+        appPath,
+        pathEnv: binDir,
+        preferredBinDirs: [binDir]
+      })
+    ).toMatchObject({
+      installed: false,
+      shimPath: initial.shimPath
+    })
+  })
+
+  it('replaces an outdated Memry-owned shim during install', async () => {
+    const root = tempRoot()
+    const binDir = join(root, 'bin')
+    const executablePath = join(root, 'Electron.app', 'Contents', 'MacOS', 'Electron')
+    const appPath = join(root, 'memry', 'apps', 'desktop')
+
+    const initial = await installTerminalCommand({
+      platform: 'darwin',
+      homeDir: join(root, 'home'),
+      executablePath,
+      pathEnv: binDir,
+      preferredBinDirs: [binDir]
+    })
+
+    const status = await installTerminalCommand({
+      platform: 'darwin',
+      homeDir: join(root, 'home'),
+      executablePath,
+      appPath,
+      pathEnv: binDir,
+      preferredBinDirs: [binDir]
+    })
+
+    expect(status.installed).toBe(true)
+    expect(status.shimPath).toBe(initial.shimPath)
+    expect(readFileSync(status.shimPath, 'utf8')).toContain(
+      `exec "${executablePath}" "${appPath}" --cli "$@"`
+    )
+  })
+
+  it('uninstalls only Memry-owned shims', async () => {
+    const root = tempRoot()
+    const binDir = join(root, 'bin')
+    const options = {
+      platform: 'linux' as const,
+      homeDir: join(root, 'home'),
+      executablePath: join(root, 'Memry'),
+      pathEnv: binDir,
+      preferredBinDirs: [binDir]
+    }
+
+    await installTerminalCommand(options)
+    expect((await getTerminalCommandStatus(options)).installed).toBe(true)
+
+    const status = await uninstallTerminalCommand(options)
+
+    expect(status.installed).toBe(false)
+    expect((await getTerminalCommandStatus(options)).installed).toBe(false)
+  })
+})

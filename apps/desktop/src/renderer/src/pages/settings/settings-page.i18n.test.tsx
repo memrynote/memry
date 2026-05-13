@@ -32,6 +32,9 @@ vi.mock('./properties-section', () => ({
 vi.mock('./shortcuts-section', () => ({
   ShortcutsSettings: () => <div data-testid="shortcuts-panel" />
 }))
+vi.mock('./command-line-section', () => ({
+  CommandLineSettings: () => <div data-testid="command-line-panel" />
+}))
 
 import { SettingsPage } from '../settings'
 
@@ -67,6 +70,7 @@ describe('SettingsPage i18n', () => {
       'Calendar',
       'Appearance',
       'Shortcuts',
+      'Command Line',
       'AI Assistant',
       'Integrations',
       'Vault',
@@ -102,6 +106,7 @@ describe('SettingsPage i18n', () => {
       ['Calendar', 'calendar-panel'],
       ['Appearance', 'appearance-panel'],
       ['Shortcuts', 'shortcuts-panel'],
+      ['Command Line', 'command-line-panel'],
       ['AI Assistant', 'ai-panel'],
       ['Integrations', 'integrations-panel'],
       ['Vault', 'vault-panel'],

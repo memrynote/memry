@@ -40,7 +40,7 @@ import { withErrorHandler } from './validate'
 import { initEmbeddingModel, getModelInfo, isModelLoaded, isModelLoading } from '../lib/embeddings'
 import { rebuildProjections } from '../projections'
 import { writePreferences, PORTABLE_GENERAL_FIELDS } from '../vault/vault-preferences'
-import { getCurrentVaultPath } from '../store'
+import { getCurrentVaultPath, getDefaultVaultPath, getVaults, setDefaultVaultPath } from '../store'
 import { downloadVoiceModel, getVoiceModelStatus } from '../inbox/voice-model'
 import { getVoiceRecordingReadiness } from '../inbox/voice-transcription-settings'
 import {
@@ -48,6 +48,13 @@ import {
   setVoiceTranscriptionOpenAIApiKey
 } from '../inbox/voice-transcription-keychain'
 import { syncSettingsUpdates } from '../settings/runtime-effects'
+import {
+  getTerminalCommandStatus,
+  installTerminalCommand,
+  uninstallTerminalCommand,
+  type TerminalCommandOptions,
+  type TerminalCommandStatus as BaseTerminalCommandStatus
+} from '../cli/terminal-command'
 
 // ============================================================================
 // Settings Keys
@@ -116,6 +123,21 @@ const DEFAULT_AI_SETTINGS: AISettings = {
 export interface VoiceTranscriptionOpenAIKeyStatus {
   hasApiKey: boolean
 }
+
+export interface TerminalCommandVault {
+  path: string
+  name: string
+  isDefault: boolean
+}
+
+export interface TerminalCommandStatus extends BaseTerminalCommandStatus {
+  defaultVaultPath: string | null
+  vaults: TerminalCommandVault[]
+}
+
+export type TerminalCommandMutationResult =
+  | { success: true; status: TerminalCommandStatus }
+  | { success: false; error: string; status?: TerminalCommandStatus }
 
 // ============================================================================
 // Tab Settings Interface
@@ -196,6 +218,41 @@ function getStartupTheme(): { theme: GeneralSettings['theme']; accentColor?: str
     result.accentColor = settings.accentColor
   }
   return result
+}
+
+function getTerminalCommandVaults(): TerminalCommandVault[] {
+  return getVaults().map((vault) => ({
+    path: vault.path,
+    name: vault.name,
+    isDefault: vault.isDefault
+  }))
+}
+
+function getTerminalCommandOptions(): TerminalCommandOptions {
+  return {
+    executablePath: process.execPath,
+    appPath: app.isPackaged ? null : app.getAppPath()
+  }
+}
+
+async function getTerminalStatus(): Promise<TerminalCommandStatus> {
+  const status = await getTerminalCommandStatus(getTerminalCommandOptions())
+  const vaults = getTerminalCommandVaults()
+  const defaultVaultPath = getDefaultVaultPath() ?? (vaults.length === 1 ? vaults[0].path : null)
+
+  return {
+    ...status,
+    defaultVaultPath,
+    vaults
+  }
+}
+
+async function getTerminalStatusSafely(): Promise<TerminalCommandStatus | undefined> {
+  try {
+    return await getTerminalStatus()
+  } catch {
+    return undefined
+  }
 }
 
 /**
@@ -420,6 +477,67 @@ export function registerSettingsHandlers(): void {
       return { success: false, error: message }
     }
   })
+
+  ipcMain.handle(SettingsChannels.invoke.GET_TERMINAL_COMMAND_STATUS, async () => {
+    return getTerminalStatus()
+  })
+
+  ipcMain.handle(
+    SettingsChannels.invoke.INSTALL_TERMINAL_COMMAND,
+    async (): Promise<TerminalCommandMutationResult> => {
+      try {
+        await installTerminalCommand(getTerminalCommandOptions())
+        return {
+          success: true,
+          status: await getTerminalStatus()
+        }
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to install terminal command',
+          status: await getTerminalStatusSafely()
+        }
+      }
+    }
+  )
+
+  ipcMain.handle(
+    SettingsChannels.invoke.UNINSTALL_TERMINAL_COMMAND,
+    async (): Promise<TerminalCommandMutationResult> => {
+      try {
+        await uninstallTerminalCommand(getTerminalCommandOptions())
+        return {
+          success: true,
+          status: await getTerminalStatus()
+        }
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to uninstall terminal command',
+          status: await getTerminalStatusSafely()
+        }
+      }
+    }
+  )
+
+  ipcMain.handle(
+    SettingsChannels.invoke.SET_TERMINAL_COMMAND_DEFAULT_VAULT,
+    async (_event, vaultPath: string): Promise<TerminalCommandMutationResult> => {
+      const vault = setDefaultVaultPath(vaultPath)
+      if (!vault) {
+        return {
+          success: false,
+          error: 'Unknown vault',
+          status: await getTerminalStatusSafely()
+        }
+      }
+
+      return {
+        success: true,
+        status: await getTerminalStatus()
+      }
+    }
+  )
 
   ipcMain.handle(SettingsChannels.invoke.GET_VOICE_RECORDING_READINESS, async () => {
     return getVoiceRecordingReadiness()

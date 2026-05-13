@@ -59,6 +59,12 @@ const getNoteCacheByIdMock = vi.fn(() => null as { path: string; title: string }
 const toAbsolutePathMock = vi.fn((path: string) => path)
 const createSnapshotMock = vi.fn(() => null as unknown)
 const safeReadMock = vi.fn(async () => null as string | null)
+const disableConsoleTransportMock = vi.fn()
+const getHeadlessCliArgsMock = vi.fn((argv: string[]) => {
+  const cliIndex = argv.indexOf('--cli')
+  return cliIndex === -1 ? null : argv.slice(cliIndex + 1)
+})
+const runHeadlessCliMock = vi.fn(async () => undefined)
 const browserWindows: Array<ReturnType<typeof createBrowserWindowMock>> = []
 
 function createBrowserWindowMock() {
@@ -220,6 +226,11 @@ vi.mock('./app-navigation-command', () => ({
   sendAppNavigationSwipeCommand: sendAppNavigationSwipeCommandMock
 }))
 
+vi.mock('./cli/headless', () => ({
+  getHeadlessCliArgs: getHeadlessCliArgsMock,
+  runHeadlessCli: runHeadlessCliMock
+}))
+
 vi.mock('./lib/logger', () => {
   const scopedLogger = {
     debug: vi.fn(),
@@ -230,7 +241,7 @@ vi.mock('./lib/logger', () => {
   return {
     log: { initialize: vi.fn() },
     createLogger: vi.fn(() => scopedLogger),
-    disableConsoleTransport: vi.fn()
+    disableConsoleTransport: disableConsoleTransportMock
   }
 })
 
@@ -318,6 +329,7 @@ vi.mock('electron', () => ({
 }))
 
 const ORIGINAL_ENV = { ...process.env }
+const ORIGINAL_ARGV = [...process.argv]
 
 async function importMainModule() {
   return import('./index')
@@ -356,11 +368,13 @@ describe('main index phase2 exports', () => {
     BrowserWindowMock.getAllWindows.mockImplementation(() => browserWindows)
     BrowserWindowMock.getFocusedWindow.mockImplementation(() => browserWindows[0] ?? null)
     process.env = { ...ORIGINAL_ENV }
+    process.argv = [...ORIGINAL_ARGV]
     isDevMock.dev = false
   })
 
   afterEach(() => {
     process.env = { ...ORIGINAL_ENV }
+    process.argv = [...ORIGINAL_ARGV]
     vi.useRealTimers()
   })
 
@@ -389,6 +403,16 @@ describe('main index phase2 exports', () => {
     expect(module.envConfig.openaiApiKey).toBe('test-key')
     expect(module.envConfig.whisperModel).toBe('whisper-test')
     expect(module.envConfig.embeddingModel).toBe('embed-test')
+  })
+
+  it('suppresses console logging before running headless CLI mode', async () => {
+    process.argv = [ORIGINAL_ARGV[0] ?? 'electron', '/mock/app', '--cli', 'vault', 'list']
+
+    await importMainModule()
+
+    expect(disableConsoleTransportMock).toHaveBeenCalled()
+    expect(runHeadlessCliMock).toHaveBeenCalledWith(['vault', 'list'])
+    expect(requestSingleInstanceLockMock).not.toHaveBeenCalled()
   })
 
   it('applies device-scoped userData and falls back to cwd dotenv when app env fails', async () => {
