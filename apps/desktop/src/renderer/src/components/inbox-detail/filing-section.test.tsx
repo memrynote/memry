@@ -130,6 +130,12 @@ describe('FilingSection', () => {
     expect(await screen.findAllByText('Projects / Memry')).not.toHaveLength(0)
     expect(screen.getByText('Memry research')).toBeInTheDocument()
     expect(screen.getByText('ai tags research,link')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('searchOrCreateFolder')).toHaveClass(
+      'h-5',
+      'border-0',
+      'leading-5',
+      'focus-visible:ring-0'
+    )
 
     await userEvent.click(screen.getByRole('button', { name: 'add tag' }))
     expect(onTagsChange).toHaveBeenCalledWith(['inbox', 'review'])

@@ -14,6 +14,7 @@ import { notesService } from '@/services/notes-service'
 vi.mock('@/services/notes-service', () => ({
   notesService: {
     get: vi.fn().mockResolvedValue(null),
+    getFile: vi.fn().mockResolvedValue(null),
     list: vi.fn().mockResolvedValue({ notes: [] })
   }
 }))
@@ -375,6 +376,14 @@ describe('TaskDetailDrawer — editable properties', () => {
       expect(emoji).toBeInTheDocument()
     })
 
+    it('labels note links as related items', () => {
+      renderWithI18n(<TaskDetailDrawer {...defaultProps} task={createTask()} />)
+
+      expect(screen.getByText('Related')).toBeInTheDocument()
+      expect(screen.getByText('No related items yet')).toBeInTheDocument()
+      expect(screen.queryByText('Linked Notes')).not.toBeInTheDocument()
+    })
+
     it('shows remove button on hover and removes note when clicked', async () => {
       const user = userEvent.setup()
       const onUpdateTask = vi.fn()
@@ -390,7 +399,7 @@ describe('TaskDetailDrawer — editable properties', () => {
 
       await screen.findByText('My Note')
 
-      const removeBtn = screen.getByRole('button', { name: /remove link to/i })
+      const removeBtn = screen.getByRole('button', { name: /remove related item/i })
       await user.click(removeBtn)
 
       expect(onUpdateTask).toHaveBeenCalledWith('task-1', { linkedNoteIds: [] })
@@ -409,7 +418,7 @@ describe('TaskDetailDrawer — editable properties', () => {
         />
       )
 
-      const noteRow = await screen.findByRole('button', { name: /remove link to/i })
+      const noteRow = await screen.findByRole('button', { name: /remove related item/i })
       const row = noteRow.closest('[role="button"]')!
       await user.click(row)
 
@@ -441,9 +450,9 @@ describe('TaskDetailDrawer — editable properties', () => {
       fireEvent.keyDown(screen.getByText('Loading…').closest('[role="button"]')!, { key: 'Enter' })
       expect(onNoteClick).toHaveBeenCalledWith('note-1')
 
-      await user.click(screen.getByRole('button', { name: /link a note/i }))
-      await screen.findByPlaceholderText('Search notes…')
-      await user.type(screen.getByPlaceholderText('Search notes…'), 'third')
+      await user.click(screen.getByRole('button', { name: /add related item/i }))
+      await screen.findByPlaceholderText('Search related…')
+      await user.type(screen.getByPlaceholderText('Search related…'), 'third')
       await user.click(await screen.findByText('Third Note'))
 
       expect(onUpdateTask).toHaveBeenCalledWith('task-1', {
@@ -486,9 +495,9 @@ describe('TaskDetailDrawer — editable properties', () => {
       await user.type(subtaskInput, 'New subtask{enter}')
       expect(onAddSubtask).toHaveBeenCalledWith('task-1', 'New subtask')
 
-      await user.click(screen.getByRole('button', { name: /link a note/i }))
+      await user.click(screen.getByRole('button', { name: /add related item/i }))
       fireEvent.keyDown(document, { key: 'Escape' })
-      expect(screen.queryByPlaceholderText('Search notes…')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('Search related…')).not.toBeInTheDocument()
 
       fireEvent.keyDown(document, { key: 'Escape' })
       expect(onClose).toHaveBeenCalled()

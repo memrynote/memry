@@ -794,6 +794,26 @@ describe('inbox-handlers', () => {
 
       expect(result.success).toBe(true)
     })
+
+    it('should capture voice memo data sent as ArrayBuffer from renderer IPC', async () => {
+      const mockResult = { success: true, item: { id: 'voice1', type: 'voice' } }
+      ;(captureModule.captureVoice as Mock).mockResolvedValue(mockResult)
+
+      const result = await invokeHandler(InboxChannels.invoke.CAPTURE_VOICE, {
+        data: new ArrayBuffer(4),
+        duration: 10,
+        format: 'wav'
+      })
+
+      expect(result.success).toBe(true)
+      expect(captureModule.captureVoice).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.any(Buffer),
+          duration: 10,
+          format: 'wav'
+        })
+      )
+    })
   })
 
   describe('RETRY_TRANSCRIPTION handler', () => {

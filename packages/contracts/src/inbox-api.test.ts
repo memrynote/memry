@@ -289,6 +289,15 @@ describe('CaptureVoiceSchema', () => {
     }
   })
 
+  it('should validate ArrayBuffer data from renderer IPC', () => {
+    const result = CaptureVoiceSchema.safeParse({
+      data: new ArrayBuffer(3),
+      duration: 30,
+      format: 'wav'
+    })
+    expect(result.success).toBe(true)
+  })
+
   it('should validate full input', () => {
     const result = CaptureVoiceSchema.safeParse({
       data: Buffer.from([0x00, 0x01, 0x02]),

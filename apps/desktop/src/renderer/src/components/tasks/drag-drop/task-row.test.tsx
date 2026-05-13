@@ -9,7 +9,8 @@ import type { Project, StatusType, Status } from '@/data/tasks-data'
 
 vi.mock('@/services/notes-service', () => ({
   notesService: {
-    get: vi.fn()
+    get: vi.fn(),
+    getFile: vi.fn()
   }
 }))
 
@@ -79,7 +80,9 @@ const createNote = (overrides: Record<string, unknown> = {}) =>
 
 beforeEach(() => {
   vi.mocked(notesService.get).mockReset()
+  vi.mocked(notesService.getFile).mockReset()
   vi.mocked(notesService.get).mockResolvedValue(null)
+  vi.mocked(notesService.getFile).mockResolvedValue(null)
 })
 
 describe('TaskRow — Linked Notes', () => {
@@ -96,6 +99,83 @@ describe('TaskRow — Linked Notes', () => {
 
     expect(await screen.findByText('Planning Note')).toBeInTheDocument()
     expect(screen.getByText('+1')).toBeInTheDocument()
+  })
+
+  it('opens a note chooser for multiple linked notes', async () => {
+    const user = userEvent.setup()
+    const onClick = vi.fn()
+    const onNoteClick = vi.fn()
+    vi.mocked(notesService.get).mockImplementation(async (noteId) =>
+      createNote({
+        id: noteId,
+        title: noteId === 'note-2' ? 'Design Note' : 'Planning Note'
+      })
+    )
+
+    render(
+      <TaskRow
+        {...defaultProps}
+        task={createTask({ linkedNoteIds: ['note-1', 'note-2'] })}
+        onClick={onClick}
+        onNoteClick={onNoteClick}
+      />
+    )
+
+    await user.click(await screen.findByRole('button', { name: /open related items/i }))
+
+    expect(onNoteClick).not.toHaveBeenCalled()
+    expect(onClick).not.toHaveBeenCalled()
+
+    await user.click(await screen.findByRole('menuitem', { name: 'Design Note' }))
+
+    expect(onNoteClick).toHaveBeenCalledWith('note-2')
+    expect(onClick).not.toHaveBeenCalled()
+  })
+
+  it('shows note emoji icons in the note chooser when present', async () => {
+    const user = userEvent.setup()
+    vi.mocked(notesService.get).mockImplementation(async (noteId) =>
+      createNote({
+        id: noteId,
+        title: noteId === 'note-2' ? 'Design Note' : 'Planning Note',
+        emoji: noteId === 'note-2' ? '🧭' : null
+      })
+    )
+
+    render(
+      <TaskRow
+        {...defaultProps}
+        task={createTask({ linkedNoteIds: ['note-1', 'note-2'] })}
+        onNoteClick={vi.fn()}
+      />
+    )
+
+    await user.click(await screen.findByRole('button', { name: /open related items/i }))
+
+    expect(await screen.findByText('🧭')).toBeInTheDocument()
+  })
+
+  it('keeps the linked-note trigger expanded while the note chooser is open', async () => {
+    const user = userEvent.setup()
+    vi.mocked(notesService.get).mockImplementation(async (noteId) =>
+      createNote({
+        id: noteId,
+        title: noteId === 'note-2' ? 'Design Note' : 'Planning Note'
+      })
+    )
+
+    render(
+      <TaskRow
+        {...defaultProps}
+        task={createTask({ linkedNoteIds: ['note-1', 'note-2'] })}
+        onNoteClick={vi.fn()}
+      />
+    )
+
+    const trigger = await screen.findByRole('button', { name: /open related items/i })
+    await user.click(trigger)
+
+    expect(trigger.className.split(/\s+/)).toContain('max-w-[180px]')
   })
 
   it('falls back to sourceNoteId when linkedNoteIds is empty', async () => {
@@ -128,16 +208,41 @@ describe('TaskRow — Linked Notes', () => {
       />
     )
 
-    await user.click(await screen.findByRole('button', { name: 'Open note Research Note' }))
+    await user.click(await screen.findByRole('button', { name: 'Open Research Note' }))
 
     expect(onNoteClick).toHaveBeenCalledWith('note-1')
     expect(onClick).not.toHaveBeenCalled()
   })
 
+  it('shows related file metadata for audio items', async () => {
+    vi.mocked(notesService.getFile).mockResolvedValueOnce({
+      id: 'voice-1',
+      path: 'notes/Voice Memo.webm',
+      absolutePath: '/vault/notes/Voice Memo.webm',
+      title: 'Voice Memo',
+      fileType: 'audio',
+      mimeType: 'audio/webm',
+      fileSize: 1234,
+      created: new Date(),
+      modified: new Date()
+    })
+
+    render(
+      <TaskRow
+        {...defaultProps}
+        task={createTask({ linkedNoteIds: ['voice-1'] })}
+        onNoteClick={vi.fn()}
+      />
+    )
+
+    expect(await screen.findByText('Voice Memo')).toBeInTheDocument()
+    expect(notesService.get).not.toHaveBeenCalledWith('voice-1')
+  })
+
   it('does not show a linked note affordance without note relationships', () => {
     render(<TaskRow {...defaultProps} onNoteClick={vi.fn()} />)
 
-    expect(screen.queryByRole('button', { name: /open note/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /open/i })).not.toBeInTheDocument()
   })
 })
 

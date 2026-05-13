@@ -114,7 +114,8 @@ const settingsGroupDefaults: Record<SettingsGroupName, Record<string, unknown>> 
     promoteConfirmDismissed: false
   },
   voiceTranscription: {
-    provider: 'local'
+    provider: 'local',
+    memoNameMode: 'transcript'
   },
   journal: {
     defaultTemplate: null,

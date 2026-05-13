@@ -328,7 +328,7 @@ export const FilingSection = ({
                       void handleCreateFolder()
                     }
                   }}
-                  className="h-auto p-0 border-0 bg-transparent text-[13px] leading-4 text-foreground placeholder:text-muted-foreground/30 focus-visible:border-transparent shadow-none"
+                  className="h-5 p-0 border-0 bg-transparent text-[13px] leading-5 text-foreground placeholder:text-muted-foreground/30 focus-visible:border-transparent focus-visible:ring-0 shadow-none"
                   autoFocus
                 />
               </div>

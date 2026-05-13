@@ -10,6 +10,7 @@ import { splitMarkdownByCallouts, serializeCalloutBlock } from './callout-block'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
 import { serializeYoutubeEmbed } from './youtube-embed-block'
 import { serializeTaskBlock } from './task-block/task-block-utils'
+import { parseFileBlockMarker, serializeFileBlock, type FileBlockProps } from './file-block-markers'
 
 export function isEmptyParagraph(block: Block): boolean {
   if (block.type !== 'paragraph') return false
@@ -72,6 +73,11 @@ export async function parseMarkdownPreservingBlanks(
               blocks.push({
                 type: 'youtubeEmbed' as const,
                 props: { videoId: part.videoId, videoUrl: part.url }
+              } as unknown as Block)
+            } else if (part.kind === 'file') {
+              blocks.push({
+                type: 'file' as const,
+                props: part.props
               } as unknown as Block)
             } else {
               const parsed = await editor.tryParseMarkdownToBlocks(part.text)
@@ -145,6 +151,10 @@ export async function serializeBlocksPreservingBlanks(
       flushGap()
       const videoUrl = (block.props as any).videoUrl as string
       segments.push({ type: 'content', text: serializeYoutubeEmbed(videoUrl) })
+    } else if ((block.type as string) === 'file') {
+      await flushContent()
+      flushGap()
+      segments.push({ type: 'content', text: serializeFileBlock(block.props as FileBlockProps) })
     } else if ((block.type as string) === 'callout') {
       await flushContent()
       flushGap()
@@ -174,9 +184,13 @@ export async function serializeBlocksPreservingBlanks(
   return assembleMarkdownWithBlanks(segments)
 }
 
-type EmbedPart = { kind: 'text'; text: string } | { kind: 'embed'; url: string; videoId: string }
+type EmbedPart =
+  | { kind: 'text'; text: string }
+  | { kind: 'embed'; url: string; videoId: string }
+  | { kind: 'file'; props: FileBlockProps }
 
 const EMBED_LINE_REGEX = /^!\[embed\]\(([^)]+)\)$/
+const FILE_BLOCK_LINE_REGEX = /^<!-- file:\{[^}]+\} -->$/
 
 function splitByEmbedMarkers(text: string): EmbedPart[] {
   const lines = text.split('\n')
@@ -190,6 +204,16 @@ function splitByEmbedMarkers(text: string): EmbedPart[] {
   }
 
   for (const line of lines) {
+    const trimmedLine = line.trim()
+    const fileProps = FILE_BLOCK_LINE_REGEX.test(trimmedLine)
+      ? parseFileBlockMarker(trimmedLine)
+      : null
+    if (fileProps) {
+      flushBuffer()
+      parts.push({ kind: 'file', props: fileProps })
+      continue
+    }
+
     const match = line.match(EMBED_LINE_REGEX)
     if (match) {
       const url = match[1]

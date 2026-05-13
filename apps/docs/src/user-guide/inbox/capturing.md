@@ -26,9 +26,12 @@ Multiple files dropped at once create one inbox item per file.
 
 ## Voice Capture
 
-The inbox header has a voice button. Click to start recording, click again to stop. The recording becomes an inbox item under the **voice** content type.
+The inbox header and inline capture input include a voice recorder. Click to start recording, click
+again to stop. The recording becomes an inbox item under the **voice** content type.
 
 If voice transcription is enabled, Memry transcribes the audio in the background — see [Voice Transcription](/user-guide/ai/voice-transcription).
+
+If voice transcription setup is incomplete, Memry takes you to AI settings before recording.
 
 ## Web Clips and Browser Extension
 

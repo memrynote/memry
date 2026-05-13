@@ -1239,6 +1239,44 @@ describe('notes operations', () => {
       await expect(notes.getFileById(markdown.id)).resolves.toBeNull()
     })
 
+    it('returns the filed voice transcript with audio file metadata', async () => {
+      const { insertNoteCache } = await import('@main/database/queries/notes')
+      const { inboxItems } = await import('@memry/db-schema/schema/inbox')
+      const audioPath = path.join(tempVault.notesDir, 'standup.webm')
+      fs.writeFileSync(audioPath, Buffer.from([0x1a, 0x45, 0xdf, 0xa3]))
+      insertNoteCache(testDb.db, {
+        id: 'voice-file-1',
+        path: 'notes/standup.webm',
+        title: 'standup',
+        fileType: 'audio',
+        mimeType: 'audio/webm',
+        fileSize: 4,
+        createdAt: '2026-01-15T12:00:00.000Z',
+        modifiedAt: '2026-01-15T12:00:00.000Z'
+      })
+      dataDb.db
+        .insert(inboxItems)
+        .values({
+          id: 'inbox-voice-1',
+          type: 'voice',
+          title: 'standup',
+          createdAt: '2026-01-15T12:00:00.000Z',
+          modifiedAt: '2026-01-15T12:00:00.000Z',
+          filedAt: '2026-01-15T12:01:00.000Z',
+          filedTo: 'notes/standup.webm',
+          filedAction: 'folder',
+          transcription: 'We covered launch risks and pricing.',
+          transcriptionStatus: 'complete',
+          processingStatus: 'complete'
+        })
+        .run()
+
+      await expect(notes.getFileById('voice-file-1')).resolves.toMatchObject({
+        transcription: 'We covered launch risks and pricing.',
+        transcriptionStatus: 'complete'
+      })
+    })
+
     it('opens and reveals cached files, and rejects missing IDs', async () => {
       const { shell } = await import('electron')
       const created = await notes.createNote({

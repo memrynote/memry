@@ -111,7 +111,11 @@
       "aria": "Note suggestions",
       "loading": "Loading notes...",
       "empty": "No notes found",
-      "create": "Create new note"
+      "create": "Create new note",
+      "embed": "Embed",
+      "wikiLink": "Wiki link",
+      "embedAria": "Embed {title}",
+      "wikiLinkAria": "Wiki link {title}"
     },
     "tags": {
       "aria": "Tag suggestions",

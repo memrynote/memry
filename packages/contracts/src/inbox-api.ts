@@ -389,7 +389,7 @@ export const CaptureImageSchema = z.object({
 })
 
 export const CaptureVoiceSchema = z.object({
-  data: z.instanceof(Buffer),
+  data: binaryDataSchema,
   duration: z.number().min(0).max(300),
   format: z.enum(['webm', 'mp3', 'wav']),
   transcribe: z.boolean().default(true),
