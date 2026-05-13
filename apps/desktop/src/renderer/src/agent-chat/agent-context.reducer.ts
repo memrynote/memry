@@ -30,6 +30,12 @@ export type AgentAction =
       conversation: Conversation | null
       messages: Message[]
     }
+  | {
+      type: 'set_conversation_messages'
+      conversation: Conversation | null
+      messages: Message[]
+    }
+  | { type: 'clear_active_conversation' }
   | { type: 'set_in_flight'; conversationId: string; inFlight: boolean }
   | { type: 'set_error'; error: string | null }
   | { type: 'event'; event: AgentEvent }
@@ -189,6 +195,24 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
           ...state.messagesByConversation,
           [action.conversation.id]: action.messages
         }
+      }
+    case 'set_conversation_messages':
+      if (!action.conversation) return state
+      return {
+        ...state,
+        conversations: {
+          ...state.conversations,
+          [action.conversation.id]: action.conversation
+        },
+        messagesByConversation: {
+          ...state.messagesByConversation,
+          [action.conversation.id]: action.messages
+        }
+      }
+    case 'clear_active_conversation':
+      return {
+        ...state,
+        activeConversationId: null
       }
     case 'set_in_flight':
       return {

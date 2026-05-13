@@ -76,6 +76,7 @@
     "conversationLoading": "Conversation loading...",
     "newConversation": "New conversation",
     "history": "Conversation history",
+    "openInTab": "Open conversation in tab",
     "stop": "Stop",
     "thinking": "Agent is thinking",
     "enable": {

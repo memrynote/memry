@@ -337,6 +337,7 @@
     "conversationLoading": "会話を読み込み中...",
     "newConversation": "新しい会話",
     "history": "会話履歴",
+    "openInTab": "会話をタブで開く",
     "stop": "停止",
     "thinking": "Agent は考えています",
     "enable": {

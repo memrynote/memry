@@ -61,7 +61,8 @@ interface AgentContextValue {
     backend?: AgentBackendId
     backendModel?: string | null
   }) => Promise<Conversation>
-  loadConversation: (id: string) => Promise<void>
+  loadConversation: (id: string, options?: { activate?: boolean }) => Promise<void>
+  clearActiveConversation: () => void
   sendTurn: (input: {
     conversationId: string
     sourceWindowId: string
@@ -126,10 +127,15 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
   }, [t])
 
   const loadConversation = useCallback(
-    async (id: string) => {
+    async (id: string, options?: { activate?: boolean }) => {
       try {
         const { conversation, messages } = await getAgentApi().loadConversation({ id })
-        dispatch({ type: 'set_active_conversation', conversation, messages })
+        dispatch({
+          type:
+            options?.activate === false ? 'set_conversation_messages' : 'set_active_conversation',
+          conversation,
+          messages
+        })
       } catch (error) {
         dispatch({
           type: 'set_error',
@@ -139,6 +145,10 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
     },
     [t]
   )
+
+  const clearActiveConversation = useCallback(() => {
+    dispatch({ type: 'clear_active_conversation' })
+  }, [])
 
   const createConversation = useCallback(
     async (input?: { backend?: AgentBackendId; backendModel?: string | null }) => {
@@ -323,6 +333,7 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
       refreshConversations,
       createConversation,
       loadConversation,
+      clearActiveConversation,
       sendTurn,
       cancelTurn,
       approveTool,
@@ -334,6 +345,7 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
       refreshConversations,
       createConversation,
       loadConversation,
+      clearActiveConversation,
       sendTurn,
       cancelTurn,
       approveTool,

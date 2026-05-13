@@ -337,6 +337,7 @@
     "conversationLoading": "กำลังโหลดการสนทนา...",
     "newConversation": "บทสนทนาใหม่",
     "history": "ประวัติการสนทนา",
+    "openInTab": "เปิดการสนทนาในแท็บ",
     "stop": "หยุด",
     "thinking": "Agent กำลังคิด",
     "enable": {

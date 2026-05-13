@@ -337,6 +337,7 @@
     "conversationLoading": "Keskustelua ladataan...",
     "newConversation": "Uusi keskustelu",
     "history": "Keskusteluhistoria",
+    "openInTab": "Avaa keskustelu välilehdessä",
     "stop": "Pysähdy",
     "thinking": "Agent ajattelee",
     "enable": {

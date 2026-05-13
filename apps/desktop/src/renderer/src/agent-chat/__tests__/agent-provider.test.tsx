@@ -163,6 +163,21 @@ describe('AgentProvider', () => {
     await waitFor(() =>
       expect(result.current.state.messagesByConversation[conversation.id]).toEqual([message])
     )
+    expect(result.current.state.activeConversationId).toBe(conversation.id)
+
+    await act(async () => {
+      await result.current.loadConversation(conversation.id, { activate: false })
+    })
+    await waitFor(() =>
+      expect(result.current.state.messagesByConversation[conversation.id]).toEqual([message])
+    )
+    expect(result.current.state.activeConversationId).toBe(conversation.id)
+
+    await act(async () => {
+      result.current.clearActiveConversation()
+    })
+    expect(result.current.state.activeConversationId).toBeNull()
+    expect(result.current.state.messagesByConversation[conversation.id]).toEqual([message])
 
     await act(async () => {
       await result.current.sendTurn({
