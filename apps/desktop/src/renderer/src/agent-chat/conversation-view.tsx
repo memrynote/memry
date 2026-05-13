@@ -62,21 +62,10 @@ export function ConversationView({
         cancelTurn()
       }}
     >
-      {conversation &&
-        (isWorkspace ? (
-          <div className={cn(workspaceOuterClassName, 'shrink-0 pt-6')}>
-            <div className={workspaceColumnClassName}>
-              <ConversationHeader conversation={conversation} />
-            </div>
-          </div>
-        ) : (
-          <ConversationHeader conversation={conversation} />
-        ))}
+      {conversation && !isWorkspace && <ConversationHeader conversation={conversation} />}
       <MessageStream
         messages={messages}
-        contentClassName={
-          isWorkspace ? cn(workspaceOuterClassName, conversation ? 'py-3' : 'pb-3 pt-6') : undefined
-        }
+        contentClassName={isWorkspace ? cn(workspaceOuterClassName, 'pb-3 pt-6') : undefined}
         messageListClassName={isWorkspace ? workspaceColumnClassName : undefined}
       />
       {isWorkspace ? (

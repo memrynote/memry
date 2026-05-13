@@ -46,12 +46,33 @@ describe('ConversationView', () => {
     expect(messageShell).toHaveClass('max-w-[64rem]', 'px-8', 'lg:px-24')
     expect(messageShell?.firstElementChild).toHaveClass('max-w-[640px]')
 
-    const header = screen.getByTestId('conversation-header')
-    expect(header.parentElement).toHaveClass('max-w-[640px]')
-    expect(header.parentElement?.parentElement).toHaveClass('max-w-[64rem]', 'px-8', 'lg:px-24')
+    expect(screen.queryByTestId('conversation-header')).not.toBeInTheDocument()
 
     const composer = screen.getByTestId('composer')
     expect(composer.parentElement).toHaveClass('max-w-[640px]')
     expect(composer.parentElement?.parentElement).toHaveClass('max-w-[64rem]', 'pb-10')
+  })
+
+  it('keeps the conversation title in the right sidebar layout', () => {
+    mockUseAgentOptional.mockReturnValue({
+      state: {
+        sourceWindowId: 'window-1',
+        conversations: {
+          'conversation-1': {
+            id: 'conversation-1',
+            title: 'Planning'
+          }
+        },
+        messagesByConversation: {
+          'conversation-1': []
+        },
+        inFlight: {}
+      },
+      cancelTurn: vi.fn()
+    })
+
+    render(<ConversationView conversationId="conversation-1" />)
+
+    expect(screen.getByTestId('conversation-header')).toBeInTheDocument()
   })
 })
