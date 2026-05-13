@@ -1,0 +1,10 @@
+{
+  "cleanUrls": true,
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/guide/install",
+      "permanent": false
+    }
+  ]
+}
