@@ -281,6 +281,10 @@ function installWindowApi() {
         apiKeyConfigured: false,
         allowNonLoopback: false
       }),
+      getPreferences: vi.fn().mockResolvedValue({
+        toolApprovalMode: 'always_accept'
+      }),
+      setPreferences: vi.fn(async (input) => input),
       setLocalProviderSettings: vi.fn(async (input) => ({
         preset: input.preset,
         baseUrl: input.baseUrl,
@@ -511,6 +515,14 @@ describe('settings section coverage', () => {
 
     expect(await screen.findByText('agentProviders.header.title')).toBeInTheDocument()
     expect(window.api.agent.getLocalProviderSettings).toHaveBeenCalled()
+    expect(window.api.agent.getPreferences).toHaveBeenCalled()
+
+    fireEvent.click(screen.getByText('agentProviders.approval.ask'))
+    await waitFor(() =>
+      expect(window.api.agent.setPreferences).toHaveBeenCalledWith({
+        toolApprovalMode: 'ask'
+      })
+    )
 
     fireEvent.click(screen.getByText('agentProviders.presets.lmStudio'))
     expect(screen.getByDisplayValue('http://localhost:1234/v1')).toBeInTheDocument()
