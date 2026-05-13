@@ -63,6 +63,8 @@ export interface FileMetadata {
   fileSize: number | null
   created: Date
   modified: Date
+  transcription?: string | null
+  transcriptionStatus?: 'pending' | 'processing' | 'complete' | 'failed' | null
 }
 
 export interface WikiLinkResolution {

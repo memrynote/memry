@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   saveTabState: vi.fn(),
   openTab: vi.fn(),
   notesGet: vi.fn(),
+  notesGetFile: vi.fn(),
   clearFilters: vi.fn(),
   updateFilters: vi.fn(),
   updateSort: vi.fn(),
@@ -135,7 +136,7 @@ vi.mock('@/contexts/tabs', () => ({
 }))
 
 vi.mock('@/services/notes-service', () => ({
-  notesService: { get: mocks.notesGet }
+  notesService: { get: mocks.notesGet, getFile: mocks.notesGetFile }
 }))
 
 vi.mock('@/services/tasks-service', () => ({
@@ -750,6 +751,7 @@ describe('TasksPage', () => {
     mocks.subtaskState.pendingBulkOperationParent = null
     mocks.subtaskState.pendingBulkOperationSubtasks = []
     mocks.notesGet.mockResolvedValue({ id: 'note-1', title: 'Linked Note', emoji: 'x' })
+    mocks.notesGetFile.mockResolvedValue(null)
     mocks.taskReorder.mockResolvedValue(undefined)
   })
 
@@ -958,6 +960,36 @@ describe('TasksPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Delete drawer task' }))
     expect(mocks.deleteTaskWithUndo).toHaveBeenCalledWith('task-1')
+  })
+
+  it('opens related audio items in the file viewer', async () => {
+    const user = userEvent.setup()
+    mocks.notesGetFile.mockResolvedValue({
+      id: 'note-1',
+      path: 'notes/Voice Memo.webm',
+      absolutePath: '/vault/notes/Voice Memo.webm',
+      title: 'Voice Memo',
+      fileType: 'audio',
+      mimeType: 'audio/webm',
+      fileSize: 1234,
+      created: new Date('2026-05-01'),
+      modified: new Date('2026-05-01')
+    })
+
+    renderPage()
+
+    await user.click(screen.getByRole('button', { name: 'Open linked note' }))
+
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'file',
+        title: 'Voice Memo',
+        icon: 'file-audio',
+        path: '/file/note-1',
+        entityId: 'note-1'
+      })
+    )
+    expect(mocks.notesGet).not.toHaveBeenCalledWith('note-1')
   })
 
   it('executes project edit and modal save/delete flows', async () => {

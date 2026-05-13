@@ -12,8 +12,9 @@ import { InteractivePriorityBadge } from '@/components/tasks/interactive-priorit
 import { InteractiveDueDateBadge } from '@/components/tasks/interactive-due-date-badge'
 import { InteractiveProjectBadge } from '@/components/tasks/interactive-project-badge'
 import { StatusIcon } from '@/components/tasks/status-icon'
-import { X, Plus, Trash } from '@/lib/icons'
+import { FileAudio, FileImage, FilePdf, FileVideo, X, Plus, Trash } from '@/lib/icons'
 import { DeleteTaskDialog } from '@/components/tasks/delete-task-dialog'
+import type { FileType } from '@memry/shared/file-types'
 
 // ============================================================================
 // TYPES
@@ -67,8 +68,32 @@ const NoteIcon = ({ color }: { color: string }): React.JSX.Element => (
   </svg>
 )
 
-type LinkedNoteNames = Record<string, { title: string; emoji?: string | null }>
-const EMPTY_NOTE_NAMES: LinkedNoteNames = {}
+const RelatedItemIcon = ({
+  fileType,
+  color
+}: {
+  fileType: FileType
+  color: string
+}): React.JSX.Element => {
+  const className = 'size-3.5 shrink-0 text-text-tertiary'
+
+  switch (fileType) {
+    case 'pdf':
+      return <FilePdf className={className} aria-hidden="true" />
+    case 'image':
+      return <FileImage className={className} aria-hidden="true" />
+    case 'audio':
+      return <FileAudio className={className} aria-hidden="true" />
+    case 'video':
+      return <FileVideo className={className} aria-hidden="true" />
+    case 'markdown':
+      return <NoteIcon color={color} />
+  }
+}
+
+type RelatedItemInfo = { title: string; emoji?: string | null; fileType: FileType }
+type RelatedItemInfoById = Record<string, RelatedItemInfo>
+const EMPTY_RELATED_ITEMS: RelatedItemInfoById = {}
 
 // ============================================================================
 // MAIN COMPONENT
@@ -88,7 +113,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
 }: TaskDetailDrawerProps): React.JSX.Element {
   const { t, i18n } = useT('tasks')
   const { isOpen: isDayPanelOpen, width: dayPanelWidth } = useDayPanel()
-  const [noteNames, setNoteNames] = useState<LinkedNoteNames>({})
+  const [noteNames, setNoteNames] = useState<RelatedItemInfoById>({})
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isAddingSubtask, setIsAddingSubtask] = useState(false)
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
@@ -97,12 +122,12 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
   const [isLinkingNote, setIsLinkingNote] = useState(false)
   const [noteSearchQuery, setNoteSearchQuery] = useState('')
   const [availableNotes, setAvailableNotes] = useState<
-    Array<{ id: string; title: string; emoji?: string | null }>
+    Array<{ id: string; title: string; emoji?: string | null; fileType: FileType }>
   >([])
   const noteSearchInputRef = useRef<HTMLInputElement>(null)
 
   const linkedNoteKey = task?.linkedNoteIds?.join(',') ?? ''
-  const displayedNoteNames = task?.linkedNoteIds?.length ? noteNames : EMPTY_NOTE_NAMES
+  const displayedNoteNames = task?.linkedNoteIds?.length ? noteNames : EMPTY_RELATED_ITEMS
 
   useEffect(() => {
     if (!task?.linkedNoteIds?.length) {
@@ -112,15 +137,25 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
     void Promise.all(
       task.linkedNoteIds.map(async (id) => {
         try {
+          const file = await notesService.getFile(id)
+          if (file) {
+            return [id, { title: file.title, emoji: null, fileType: file.fileType }] as const
+          }
+
           const note = await notesService.get(id)
-          return note ? ([id, { title: note.title, emoji: note.emoji }] as const) : null
+          return note
+            ? ([
+                id,
+                { title: note.title, emoji: note.emoji, fileType: 'markdown' as const }
+              ] as const)
+            : null
         } catch {
           return null
         }
       })
     ).then((results) => {
       if (cancelled) return
-      const names: Record<string, { title: string; emoji?: string | null }> = {}
+      const names: RelatedItemInfoById = {}
       for (const r of results) if (r) names[r[0]] = r[1]
       setNoteNames(names)
     })
@@ -157,7 +192,14 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
     setIsLinkingNote(true)
     requestAnimationFrame(() => noteSearchInputRef.current?.focus())
     void notesService.list({ sortBy: 'modified', sortOrder: 'desc', limit: 50 }).then((res) => {
-      setAvailableNotes(res.notes.map((n) => ({ id: n.id, title: n.title, emoji: n.emoji })))
+      setAvailableNotes(
+        res.notes.map((n) => ({
+          id: n.id,
+          title: n.title,
+          emoji: n.emoji,
+          fileType: (n.fileType ?? 'markdown') as FileType
+        }))
+      )
     })
   }, [])
 
@@ -232,7 +274,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
       aria-label={t('task.details')}
       aria-hidden={!isOpen}
       className={cn(
-        'fixed top-[37px] bottom-0 z-10 border-l bg-surface overflow-hidden',
+        'fixed top-[37px] bottom-0 z-10 border-s bg-surface overflow-hidden',
         'transition-[width,opacity,right] duration-200 ease-out',
         isOpen ? 'w-[380px] opacity-100 border-border' : 'w-0 opacity-0 border-transparent'
       )}
@@ -359,7 +401,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                     key={sub.id}
                     type="button"
                     onClick={() => onToggleComplete?.(sub.id)}
-                    className="flex items-center py-1 gap-2 text-left"
+                    className="flex items-center py-1 gap-2 text-start"
                   >
                     <StatusIcon type={subType} color={subColor} />
                     <span
@@ -421,15 +463,15 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
               onRepeatChange={handleRepeatChange}
             />
 
-            {/* ── Linked Notes ── */}
+            {/* ── Related ── */}
             <div className="flex flex-col py-4 px-5 gap-2 border-b border-border">
               <div className="flex items-center justify-between">
-                <SectionLabel>{t('drawer.linkedNotes')}</SectionLabel>
+                <SectionLabel>{t('drawer.related')}</SectionLabel>
                 <button
                   type="button"
                   onClick={handleStartLinkNote}
                   className="text-text-tertiary hover:text-text-secondary transition-colors"
-                  aria-label={t('drawer.linkNote')}
+                  aria-label={t('drawer.addRelatedItem')}
                 >
                   <Plus size={14} />
                 </button>
@@ -455,7 +497,10 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                         {info.emoji}
                       </span>
                     ) : (
-                      <NoteIcon color={project.color} />
+                      <RelatedItemIcon
+                        fileType={info?.fileType ?? 'markdown'}
+                        color={project.color}
+                      />
                     )}
                     <span className="flex-1 min-w-0 text-[12px] text-text-secondary leading-4 truncate">
                       {info?.title ?? t('drawer.loading')}
@@ -474,8 +519,8 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                         })
                       }}
                       className="shrink-0 rounded-sm p-0.5 text-text-tertiary opacity-0 group-hover:opacity-100 hover:text-text-secondary transition-all"
-                      aria-label={t('drawer.removeLinkTo', {
-                        title: info?.title ?? t('drawer.removeLinkFallback')
+                      aria-label={t('drawer.removeRelatedItem', {
+                        title: info?.title ?? t('drawer.relatedItemFallback')
                       })}
                     >
                       <X size={12} />
@@ -496,7 +541,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                         setNoteSearchQuery('')
                       }
                     }}
-                    placeholder={t('drawer.searchNotes')}
+                    placeholder={t('drawer.searchRelated')}
                     className="text-[12px] leading-4 text-text-primary placeholder:text-text-tertiary bg-foreground/[0.03] rounded-md py-1.5 px-2.5 outline-none border border-border focus:border-ring"
                   />
                   <div className="max-h-[160px] overflow-y-auto scrollbar-thin flex flex-col gap-0.5">
@@ -510,19 +555,23 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                           })
                           setNoteNames((prev) => ({
                             ...prev,
-                            [note.id]: { title: note.title, emoji: note.emoji }
+                            [note.id]: {
+                              title: note.title,
+                              emoji: note.emoji,
+                              fileType: note.fileType
+                            }
                           }))
                           setNoteSearchQuery('')
                           setIsLinkingNote(false)
                         }}
-                        className="flex items-center rounded-md py-1.5 px-2.5 gap-2 text-left hover:bg-foreground/[0.05] transition-colors"
+                        className="flex items-center rounded-md py-1.5 px-2.5 gap-2 text-start hover:bg-foreground/[0.05] transition-colors"
                       >
                         {note.emoji ? (
                           <span className="size-3.5 text-center text-[13px] leading-3.5 shrink-0">
                             {note.emoji}
                           </span>
                         ) : (
-                          <NoteIcon color={project.color} />
+                          <RelatedItemIcon fileType={note.fileType} color={project.color} />
                         )}
                         <span className="text-[12px] text-text-secondary leading-4 truncate">
                           {note.title}
@@ -532,8 +581,8 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
                     {filteredSearchNotes.length === 0 && (
                       <span className="text-[11px] text-text-tertiary leading-3.5 py-1.5 px-2.5">
                         {noteSearchQuery
-                          ? t('drawer.noMatchingNotes')
-                          : t('drawer.noNotesAvailable')}
+                          ? t('drawer.noMatchingRelated')
+                          : t('drawer.noRelatedAvailable')}
                       </span>
                     )}
                   </div>
@@ -541,7 +590,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
               )}
               {task.linkedNoteIds.length === 0 && !isLinkingNote && (
                 <span className="text-[11px] text-text-tertiary leading-3.5">
-                  {t('drawer.noLinkedNotes')}
+                  {t('drawer.noRelatedItems')}
                 </span>
               )}
             </div>

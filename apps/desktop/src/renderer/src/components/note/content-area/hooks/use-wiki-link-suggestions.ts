@@ -14,6 +14,40 @@ type NoteSuggestion = {
   id: string
   title: string
   modified?: Date | string
+  fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
+  mimeType?: string | null
+  fileSize?: number | null
+}
+
+function toMemryFileUrl(absolutePath: string): string {
+  const normalized = absolutePath.replace(/\\/g, '/')
+  return normalized.startsWith('/')
+    ? `memry-file://local${normalized}`
+    : `memry-file://local/${normalized}`
+}
+
+function blockHasContent(block: any): boolean {
+  const content = block?.content
+  if (typeof content === 'string') return content.trim().length > 0
+  if (!Array.isArray(content)) return false
+
+  return content.some((item) => {
+    if (typeof item === 'string') return item.trim().length > 0
+    if (item?.type === 'text') return Boolean((item.text ?? '').trim())
+    return Boolean(item)
+  })
+}
+
+function createAudioFileBlockContent(props: {
+  url: string
+  name: string
+  size: number
+  mimeType: string
+}) {
+  return {
+    type: 'file' as const,
+    props
+  }
 }
 
 export function useWikiLinkSuggestions(editor: any) {
@@ -30,7 +64,10 @@ export function useWikiLinkSuggestions(editor: any) {
           notes: result.notes.map((note) => ({
             id: note.id,
             title: note.title,
-            modified: note.modified
+            modified: note.modified,
+            fileType: note.fileType,
+            mimeType: note.mimeType,
+            fileSize: note.fileSize
           })),
           fetchedAt: now
         }
@@ -52,7 +89,10 @@ export function useWikiLinkSuggestions(editor: any) {
       alias,
       exists: true,
       type: 'note',
-      lastEdited: note.modified instanceof Date ? note.modified.toISOString() : note.modified
+      lastEdited: note.modified instanceof Date ? note.modified.toISOString() : note.modified,
+      ...(note.fileType && note.fileType !== 'markdown' ? { fileType: note.fileType } : {}),
+      ...(note.mimeType ? { mimeType: note.mimeType } : {}),
+      ...(note.fileSize != null ? { fileSize: note.fileSize } : {})
     }))
 
     const hasExactMatch = search
@@ -73,7 +113,7 @@ export function useWikiLinkSuggestions(editor: any) {
     return suggestions
   }, [])
 
-  const handleWikiLinkSelect = useCallback(
+  const insertWikiLink = useCallback(
     (item: WikiLinkSuggestionItem) => {
       if (!item.target) return
       editor.insertInlineContent([createWikiLinkInlineContent(item.target, item.alias ?? '')], {
@@ -82,6 +122,45 @@ export function useWikiLinkSuggestions(editor: any) {
       editor.insertInlineContent([' '], { updateSelection: true })
     },
     [editor]
+  )
+
+  const handleWikiLinkSelect = useCallback(
+    async (item: WikiLinkSuggestionItem) => {
+      if (!item.target) return
+
+      if (item.insertMode === 'embed' && item.fileType === 'audio') {
+        const anchorBlock = editor.getTextCursorPosition?.().block
+
+        try {
+          const file = await notesService.getFile(item.id)
+          if (file?.fileType === 'audio') {
+            const fileBlock = createAudioFileBlockContent({
+              url: toMemryFileUrl(file.absolutePath),
+              name: file.title || item.title,
+              size: file.fileSize ?? item.fileSize ?? 0,
+              mimeType: file.mimeType ?? item.mimeType ?? 'audio/mpeg'
+            })
+            const liveAnchor = anchorBlock?.id
+              ? (editor.getBlock?.(anchorBlock.id) ?? anchorBlock)
+              : anchorBlock
+
+            if (liveAnchor && !blockHasContent(liveAnchor)) {
+              editor.updateBlock(liveAnchor, fileBlock)
+            } else if (liveAnchor) {
+              editor.insertBlocks([fileBlock], liveAnchor, 'after')
+            } else {
+              insertWikiLink(item)
+            }
+            return
+          }
+        } catch (error) {
+          log.error('Failed to embed audio wiki link', error)
+        }
+      }
+
+      insertWikiLink(item)
+    },
+    [editor, insertWikiLink]
   )
 
   return { getWikiLinkItems, handleWikiLinkSelect }

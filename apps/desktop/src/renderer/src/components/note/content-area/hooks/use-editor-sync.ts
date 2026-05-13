@@ -10,7 +10,6 @@ import {
 } from '../wiki-link-utils'
 import { normalizeHashTags, extractInlineTags } from '../hash-tag'
 import { normalizeTaskBlocks } from '../task-block/task-block-utils'
-import { FILE_BLOCK_REGEX, createFileBlockContent, serializeFileBlock } from '../file-block'
 import {
   parseMarkdownPreservingBlanks,
   sanitizeBlockIds,
@@ -162,24 +161,8 @@ export function useEditorSync({
         if (typeof initialContent === 'string' && initialContent.trim()) {
           try {
             let content = initialContent
-            const fileBlocksToInsert: Array<{
-              url: string
-              name: string
-              size: number
-              mimeType: string
-            }> = []
 
             if (contentType === 'markdown') {
-              const matches = content.matchAll(FILE_BLOCK_REGEX)
-              for (const match of matches) {
-                try {
-                  const props = JSON.parse(match[1])
-                  fileBlocksToInsert.push(props)
-                } catch {
-                  // Skip invalid markers
-                }
-              }
-              content = content.replace(FILE_BLOCK_REGEX, '').trim()
               content = normalizeMarkdownHardBreaks(content)
             }
 
@@ -188,11 +171,6 @@ export function useEditorSync({
               blocks = await parseMarkdownPreservingBlanks(editor, content)
             } else {
               blocks = await editor.tryParseHTMLToBlocks(content)
-            }
-
-            if (fileBlocksToInsert.length > 0) {
-              const fileBlocks = fileBlocksToInsert.map((props) => createFileBlockContent(props))
-              blocks = [...blocks, ...fileBlocks]
             }
 
             let normalizedBlocks = normalizeWikiLinks(blocks).blocks
@@ -279,21 +257,10 @@ export function useEditorSync({
       markdownDebounceRef.current = setTimeout(() => {
         void (async () => {
           try {
-            let markdown = await serializeBlocksPreservingBlanks(editor, editor.document as Block[])
-
-            const fileBlocks = (editor.document as Block[]).filter((b) => b.type === 'file')
-            if (fileBlocks.length > 0) {
-              const markers = fileBlocks.map((b) => {
-                const props = b.props as unknown as {
-                  url: string
-                  name: string
-                  size: number
-                  mimeType: string
-                }
-                return serializeFileBlock(props)
-              })
-              markdown = markdown + '\n\n' + markers.join('\n')
-            }
+            const markdown = await serializeBlocksPreservingBlanks(
+              editor,
+              editor.document as Block[]
+            )
 
             onMarkdownChange(markdown)
           } catch (error) {

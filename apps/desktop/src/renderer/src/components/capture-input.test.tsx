@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { forwardRef, useImperativeHandle } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CaptureInput } from './capture-input'
 
@@ -32,7 +32,9 @@ vi.mock('@/contexts/settings-modal-context', () => ({
 }))
 
 vi.mock('@/lib/voice-recording-readiness', () => ({
-  ensureVoiceRecordingReady: (...args: unknown[]) => mocks.ensureReady(...args)
+  ensureVoiceRecordingReady: (...args: unknown[]) => mocks.ensureReady(...args),
+  getVoiceRecordingSettingsTarget: (readiness: { reason?: string }) =>
+    readiness.reason === 'missing-model' ? 'ai:voice-local-model' : 'ai'
 }))
 
 vi.mock('@/lib/voice-memo-audio', () => ({
@@ -44,16 +46,18 @@ vi.mock('./voice-recorder', () => ({
     (
       {
         onRecordingComplete,
-        onCancel
+        onCancel,
+        className
       }: {
         onRecordingComplete: (blob: Blob, duration: number) => void
         onCancel: () => void
+        className?: string
       },
       ref
     ) => {
       useImperativeHandle(ref, () => ({ start: mocks.recorderStart }))
       return (
-        <div>
+        <div data-testid="voice-recorder" className={className}>
           <button
             type="button"
             onClick={() => onRecordingComplete(new Blob(['audio'], { type: 'audio/webm' }), 31)}
@@ -82,6 +86,10 @@ describe('CaptureInput', () => {
       duration: 12,
       format: 'webm'
     })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('captures notes, shows duplicate recovery, and supports force submit', async () => {
@@ -177,6 +185,47 @@ describe('CaptureInput', () => {
     expect(onCaptureError).toHaveBeenCalledWith('Unsupported file type: application/zip')
   })
 
+  it('places voice recording inline on the right side of the input', async () => {
+    const user = userEvent.setup()
+
+    render(<CaptureInput />)
+
+    await user.click(screen.getByRole('button', { name: 'recordVoiceMemo' }))
+
+    const inputShell = screen.getByRole('textbox', { name: 'captureInput' }).parentElement
+    const recorderSlot = screen.getByTestId('voice-recorder').parentElement
+
+    await waitFor(() => {
+      expect(inputShell).toHaveClass('w-[60%]')
+      expect(recorderSlot).toHaveClass('w-[40%]')
+      expect(recorderSlot).toHaveClass('opacity-100')
+      expect(recorderSlot).toHaveClass('translate-x-0')
+    })
+  })
+
+  it('keeps the voice recorder mounted while the stop transition exits', async () => {
+    vi.useFakeTimers()
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+
+    render(<CaptureInput />)
+
+    await user.click(screen.getByRole('button', { name: 'recordVoiceMemo' }))
+    await user.click(screen.getByRole('button', { name: 'cancel voice' }))
+
+    const recorderSlot = screen.getByTestId('voice-recorder').parentElement
+
+    expect(recorderSlot).toHaveClass('w-0')
+    expect(recorderSlot).toHaveClass('opacity-0')
+    expect(recorderSlot).toHaveClass('translate-x-2')
+
+    act(() => {
+      vi.advanceTimersByTime(250)
+    })
+
+    expect(screen.queryByTestId('voice-recorder')).not.toBeInTheDocument()
+    vi.useRealTimers()
+  })
+
   it('checks readiness, starts the recorder, captures prepared audio, and cancels recording', async () => {
     const user = userEvent.setup()
     const onCaptureSuccess = vi.fn()
@@ -202,13 +251,19 @@ describe('CaptureInput', () => {
 
     await user.click(screen.getByRole('button', { name: 'recordVoiceMemo' }))
     await user.click(screen.getByRole('button', { name: 'cancel voice' }))
-    expect(screen.queryByRole('button', { name: 'cancel voice' })).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'cancel voice' })).not.toBeInTheDocument()
+    )
   })
 
   it('opens AI settings instead of recording when voice capture is not ready', async () => {
     const user = userEvent.setup()
-    mocks.ensureReady.mockImplementationOnce(async (openSettings: () => void) => {
-      openSettings()
+    mocks.ensureReady.mockImplementationOnce(async (openSettings: (readiness: unknown) => void) => {
+      openSettings({
+        ready: false,
+        provider: 'local',
+        reason: 'missing-model'
+      })
       return false
     })
 
@@ -216,7 +271,7 @@ describe('CaptureInput', () => {
 
     await user.click(screen.getByRole('button', { name: 'recordVoiceMemo' }))
 
-    expect(mocks.openSettings).toHaveBeenCalledWith('ai')
+    expect(mocks.openSettings).toHaveBeenCalledWith('ai:voice-local-model')
     expect(mocks.recorderStart).not.toHaveBeenCalled()
   })
 })

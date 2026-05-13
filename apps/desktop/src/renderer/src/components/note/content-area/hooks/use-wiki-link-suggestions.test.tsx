@@ -4,6 +4,7 @@ import { useWikiLinkSuggestions } from './use-wiki-link-suggestions'
 
 const mocks = vi.hoisted(() => ({
   listNotes: vi.fn(),
+  getFile: vi.fn(),
   logger: {
     error: vi.fn()
   }
@@ -11,7 +12,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/services/notes-service', () => ({
   notesService: {
-    list: (...args: unknown[]) => mocks.listNotes(...args)
+    list: (...args: unknown[]) => mocks.listNotes(...args),
+    getFile: (...args: unknown[]) => mocks.getFile(...args)
   }
 }))
 
@@ -80,6 +82,70 @@ describe('useWikiLinkSuggestions', () => {
     )
     expect(editor.insertInlineContent).toHaveBeenNthCalledWith(2, [' '], { updateSelection: true })
     expect(editor.insertInlineContent).toHaveBeenCalledTimes(2)
+  })
+
+  it('embeds audio wiki-link suggestions as playable file blocks', async () => {
+    mocks.listNotes.mockResolvedValueOnce({
+      notes: [
+        {
+          id: 'voice-1',
+          title: 'Voice memo',
+          modified: '2026-05-10T11:00:00.000Z',
+          fileType: 'audio',
+          mimeType: 'audio/wav',
+          fileSize: 4096
+        }
+      ]
+    })
+    mocks.getFile.mockResolvedValueOnce({
+      id: 'voice-1',
+      absolutePath: '/Users/kaan/vault/notes/Voice memo.wav',
+      title: 'Voice memo',
+      fileType: 'audio',
+      mimeType: 'audio/wav',
+      fileSize: 4096
+    })
+
+    const currentBlock = { id: 'block-1', type: 'paragraph', content: [] }
+    const editor = {
+      insertInlineContent: vi.fn(),
+      getTextCursorPosition: vi.fn(() => ({ block: currentBlock })),
+      getBlock: vi.fn(() => currentBlock),
+      updateBlock: vi.fn(),
+      insertBlocks: vi.fn()
+    }
+    const { result } = renderHook(() => useWikiLinkSuggestions(editor))
+
+    let suggestions = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+    await act(async () => {
+      suggestions = await result.current.getWikiLinkItems('Voice')
+    })
+
+    expect(suggestions[0]).toMatchObject({
+      id: 'voice-1',
+      title: 'Voice memo',
+      target: 'Voice memo',
+      fileType: 'audio',
+      mimeType: 'audio/wav',
+      fileSize: 4096
+    })
+
+    await act(async () => {
+      await result.current.handleWikiLinkSelect({ ...suggestions[0], insertMode: 'embed' })
+    })
+
+    expect(mocks.getFile).toHaveBeenCalledWith('voice-1')
+    expect(editor.updateBlock).toHaveBeenCalledWith(currentBlock, {
+      type: 'file',
+      props: {
+        url: 'memry-file://local/Users/kaan/vault/notes/Voice memo.wav',
+        name: 'Voice memo',
+        size: 4096,
+        mimeType: 'audio/wav'
+      }
+    })
+    expect(editor.insertInlineContent).not.toHaveBeenCalled()
+    expect(editor.insertBlocks).not.toHaveBeenCalled()
   })
 
   it('refreshes stale cache and falls back to create suggestions on list failures', async () => {

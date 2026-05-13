@@ -5,6 +5,21 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-05-14 — Voice Memos and Related Items
+
+### Added
+
+- Add configurable voice memo naming with transcript, timestamp, or no automatic rename, and file voice attachments using the memo title.
+- Show filed voice memo transcripts in audio previews with a copy action.
+- Embed audio files from `[[` suggestions and show file-aware related items on tasks.
+
+### Changed
+
+- Move voice recording inline in capture surfaces and focus the local model setup row when voice capture is blocked.
+- Rename task note links to related items, with a chooser for tasks that reference multiple items.
+
+---
+
 ## 2026-05-13 — Agent Chat Right Sidebar Polish
 
 ### Changed
@@ -14,6 +29,7 @@ Format: weekly entries grouped by feature area.
 - Align right-sidebar background, borders, labels, and Day/Agent switch chrome with the main layout.
 
 ---
+
 ## 2026-05-13 — Settings Panel Accent Polish
 
 ### Changed

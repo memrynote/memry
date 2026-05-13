@@ -1040,6 +1040,27 @@ div.react-sigma {
   }
 }
 
+.settings-focus-heartbeat {
+  animation: settings-focus-heartbeat 0.85s var(--ease-out) 3;
+  transition:
+    background-color var(--duration-normal) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out);
+}
+
+@keyframes settings-focus-heartbeat {
+  0%,
+  100% {
+    background-color: transparent;
+    box-shadow: inset 0 0 0 1px transparent;
+  }
+
+  18%,
+  48% {
+    background-color: var(--tint-lighter);
+    box-shadow: inset 0 0 0 1px var(--tint-border);
+  }
+}
+
 /* Item removal - compresses height for smooth list reflow */
 @keyframes item-remove {
   0% {
@@ -1232,6 +1253,12 @@ div.react-sigma {
     animation: none;
     opacity: 1;
     transform: none;
+  }
+
+  .settings-focus-heartbeat {
+    animation: none !important;
+    background-color: var(--tint-lighter);
+    box-shadow: inset 0 0 0 1px var(--tint-border);
   }
 
   .quick-actions-reveal {

@@ -47,6 +47,19 @@ describe('AISettings', () => {
     embeddingCallbacks = []
     voiceCallbacks = []
 
+    if (!HTMLElement.prototype.hasPointerCapture) {
+      HTMLElement.prototype.hasPointerCapture = vi.fn(() => false)
+    }
+    if (!HTMLElement.prototype.setPointerCapture) {
+      HTMLElement.prototype.setPointerCapture = vi.fn()
+    }
+    if (!HTMLElement.prototype.releasePointerCapture) {
+      HTMLElement.prototype.releasePointerCapture = vi.fn()
+    }
+    if (!HTMLElement.prototype.scrollIntoView) {
+      HTMLElement.prototype.scrollIntoView = vi.fn()
+    }
+
     api = createMockApi() as SettingsApi
     api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: true })
     api.settings.setAISettings = vi.fn().mockResolvedValue({ success: true })
@@ -146,6 +159,14 @@ describe('AISettings', () => {
     expect(screen.queryByTestId('agent-providers-panel')).not.toBeInTheDocument()
   })
 
+  it('highlights the voice local model row when focused from voice capture', async () => {
+    render(<AISettings focusTarget="voice-local-model" focusRequestId={1} />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('voice-local-model-row')).toHaveClass('settings-focus-heartbeat')
+    )
+  })
+
   it('handles voice OpenAI key saving, model download, and progress events', async () => {
     api.settings.getVoiceTranscriptionSettings = vi.fn().mockResolvedValue({ provider: 'openai' })
     api.settings.getVoiceTranscriptionOpenAIKeyStatus = vi.fn().mockResolvedValue({
@@ -189,6 +210,25 @@ describe('AISettings', () => {
       voiceCallbacks[0]({ phase: 'ready' })
     })
     await waitFor(() => expect(api.settings.getVoiceModelStatus).toHaveBeenCalledTimes(2))
+  })
+
+  it('saves the voice memo naming mode', async () => {
+    api.settings.getVoiceTranscriptionSettings = vi.fn().mockResolvedValue({
+      provider: 'local',
+      memoNameMode: 'timestamp'
+    })
+
+    render(<AISettings />)
+
+    await waitFor(() => expect(screen.getByText('Timestamp')).toBeInTheDocument())
+
+    const selects = screen.getAllByRole('combobox')
+    await userEvent.click(selects[1])
+    await userEvent.click(await screen.findByRole('option', { name: 'Transcript title' }))
+
+    expect(api.settings.setVoiceTranscriptionSettings).toHaveBeenCalledWith({
+      memoNameMode: 'transcript'
+    })
   })
 
   it('surfaces progress and errors from embedding callbacks', async () => {

@@ -1,6 +1,7 @@
 # Attachments
 
-Drop files onto a note to attach them. PDFs preview inline; other types appear as download blocks.
+Drop files onto a note to attach them. PDFs preview inline, audio files render with playback
+controls, and other file types appear as download blocks.
 
 <!-- screenshot: PDF preview block inside a note -->
 
@@ -32,6 +33,11 @@ The preview honors:
 - Zoom (browser zoom or per-block scale)
 - Find-in-page (the embedded viewer's find, not Memry's)
 - Multi-page scrolling
+
+## Audio Attachments
+
+Audio files render as inline audio blocks with playback controls. Filed voice memos keep their
+transcript with the audio file, so opening the file page shows the player and transcript together.
 
 ## Image Attachments
 

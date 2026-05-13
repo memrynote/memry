@@ -117,7 +117,7 @@ function FileInfoBar({ file }: { file: FileMetadata }) {
           className="h-8 w-8 p-0 sm:w-auto sm:px-3"
           title={tPhaseF('phaseF.pagesFile.openInDefaultApp')}
         >
-          <ExternalLink className="h-4 w-4 sm:mr-1" />
+          <ExternalLink className="h-4 w-4 sm:me-1" />
           <span className="hidden sm:inline">{tPhaseF('phaseF.pagesFile.open')}</span>
         </Button>
         <Button
@@ -127,7 +127,7 @@ function FileInfoBar({ file }: { file: FileMetadata }) {
           className="h-8 w-8 p-0 sm:w-auto sm:px-3"
           title={tPhaseF('phaseF.pagesFile.revealInFinder')}
         >
-          <Download className="h-4 w-4 sm:mr-1" />
+          <Download className="h-4 w-4 sm:me-1" />
           <span className="hidden sm:inline">{tPhaseF('phaseF.pagesFile.reveal')}</span>
         </Button>
       </div>
@@ -152,7 +152,14 @@ function FileViewer({ file }: { file: FileMetadata }) {
       return <ImageViewer src={fileUrl} alt={file.title} className="flex-1" />
 
     case 'audio':
-      return <AudioPlayer src={fileUrl} fileName={file.title} className="flex-1" />
+      return (
+        <AudioPlayer
+          src={fileUrl}
+          fileName={file.title}
+          transcription={file.transcription}
+          className="flex-1"
+        />
+      )
 
     case 'video':
       return <VideoPlayer src={fileUrl} className="flex-1" />

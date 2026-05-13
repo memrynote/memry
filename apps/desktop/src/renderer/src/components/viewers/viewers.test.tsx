@@ -13,7 +13,8 @@ const mocks = vi.hoisted(() => {
     customPlayers,
     addCustomPlayer: vi.fn((player: unknown) => customPlayers.push(player)),
     videoError: undefined as undefined | (() => void),
-    logError: vi.fn()
+    logError: vi.fn(),
+    clipboardWrite: vi.fn()
   }
 })
 
@@ -101,6 +102,11 @@ describe('viewer components', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.videoError = undefined
+    mocks.clipboardWrite.mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: mocks.clipboardWrite }
+    })
     Object.defineProperty(HTMLMediaElement.prototype, 'play', {
       value: vi.fn().mockResolvedValue(undefined),
       configurable: true
@@ -147,6 +153,28 @@ describe('viewer components', () => {
     expect(
       screen.getByText('phaseF.componentsViewersAudioPlayer.failedToLoadAudio')
     ).toBeInTheDocument()
+  })
+
+  it('shows an available audio transcription and copies it', async () => {
+    const user = userEvent.setup()
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: mocks.clipboardWrite }
+    })
+
+    render(
+      <AudioPlayer
+        src="memry-file://voice.mp3"
+        fileName="Voice"
+        transcription="We covered launch risks and pricing."
+      />
+    )
+
+    expect(screen.getByText('content.transcription')).toBeInTheDocument()
+    expect(screen.getByText('We covered launch risks and pricing.')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'content.copyTranscription' }))
+    expect(mocks.clipboardWrite).toHaveBeenCalledWith('We covered launch risks and pricing.')
   })
 
   it('zooms, rotates, pans, fits, and errors image previews', async () => {

@@ -295,9 +295,28 @@ describe('Inbox Filing Operations', () => {
       expect(result.success).toBe(true)
       expect(mockCopyFile).toHaveBeenCalledWith(
         '/mock-vault/attachments/inbox/voice-1/memo.m4a',
-        '/mock-vault/notes/audio/memo.m4a'
+        '/mock-vault/notes/audio/Memo.m4a'
       )
       expect(mockUnlink).toHaveBeenCalledWith('/mock-vault/attachments/inbox/voice-1/memo.m4a')
+    })
+
+    it('should file voice attachments with the current inbox title, not the stored random prefix', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'voice-title',
+        type: 'voice',
+        title: 'Roadmap launch notes.'
+      })
+      updateInboxItem(itemId, {
+        attachmentPath: 'attachments/inbox/voice-title/a1b2c3-voice-memo.wav'
+      })
+
+      const result = await fileToFolder(itemId, 'audio')
+
+      expect(result).toEqual({ success: true, filedTo: 'notes/audio/Roadmap launch notes.wav' })
+      expect(mockRename).toHaveBeenCalledWith(
+        '/mock-vault/attachments/inbox/voice-title/a1b2c3-voice-memo.wav',
+        '/mock-vault/notes/audio/Roadmap launch notes.wav'
+      )
     })
 
     it('should fail binary filing when the attachment path is missing', async () => {
@@ -1062,6 +1081,31 @@ describe('Inbox Filing Operations', () => {
       expect(mockUpdateNote.mock.calls[1][0].content).toContain('[[Old]]')
       expect(mockUpdateNote.mock.calls[1][0].content).toContain('[[screenshot]]')
       expect(mockCreateNote).not.toHaveBeenCalled()
+    })
+
+    it('should link voice attachments with the current inbox title', async () => {
+      const itemId = seedInboxItem(testDb.db, {
+        id: 'voice-link-1',
+        type: 'voice',
+        title: 'Roadmap launch notes.'
+      })
+      updateInboxItem(itemId, {
+        attachmentPath: 'attachments/inbox/voice-link-1/a1b2c3-voice-memo.wav'
+      })
+      mockGetNoteById.mockResolvedValueOnce({
+        id: 'note-1',
+        content: '# Note 1',
+        path: 'projects/note1.md'
+      })
+
+      const result = await linkToNotes(itemId, ['note-1'])
+
+      expect(result).toEqual({ success: true, linkedCount: 1 })
+      expect(mockRename).toHaveBeenCalledWith(
+        '/mock-vault/attachments/inbox/voice-link-1/a1b2c3-voice-memo.wav',
+        '/mock-vault/notes/projects/Roadmap launch notes.wav'
+      )
+      expect(mockUpdateNote.mock.calls[0][0].content).toContain('[[Roadmap launch notes]]')
     })
 
     it('should fail binary linking when any target note is missing', async () => {

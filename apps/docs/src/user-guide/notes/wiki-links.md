@@ -10,6 +10,7 @@ Type `[[` and start typing the title. An autocomplete dropdown appears with matc
 
 - **Match found**: press <kbd>Enter</kbd> or click to insert a link to that note.
 - **No match**: pressing <kbd>Enter</kbd> creates a new note with that title and links it.
+- **Audio file found**: pick **Link** for a normal reference or **Embed** for an inline audio block.
 
 The link displays the target's current title, but the underlying reference uses a stable ID — renaming the target doesn't break the link.
 
@@ -62,4 +63,6 @@ If you need to repair broken links, use the inline link menu: it lets you re-tar
 
 ## Power Tip
 
-Wiki link autocomplete also matches on tags. Typing `[[#topic]]` searches notes that carry that tag. (Tags themselves are tracked separately — see [Properties & Tags](/user-guide/notes/properties-tags).)
+Wiki link autocomplete also matches on tags and audio files. Typing `[[#topic]]` searches notes that
+carry that tag. (Tags themselves are tracked separately — see
+[Properties & Tags](/user-guide/notes/properties-tags).)
