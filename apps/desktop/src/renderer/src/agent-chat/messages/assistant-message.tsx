@@ -13,11 +13,11 @@ export function AssistantMessage({ message }: { message: Message }): React.JSX.E
 
   if (message.status === 'streaming' && message.content.data.text.trim().length === 0) {
     return (
-      <AIMessage from="assistant">
+      <AIMessage from="assistant" className="max-w-full">
         <MessageContent
           role="status"
           aria-label={t('agentChat.thinking')}
-          className="min-w-10 rounded-full border border-sidebar-border/70 bg-background/80 px-3 py-2 shadow-sm"
+          className="min-w-10 overflow-visible border-0 bg-transparent px-0 py-0 shadow-none"
         >
           <span className="flex items-center gap-1.5" aria-hidden="true">
             <span className="size-2 animate-pulse rounded-full bg-foreground/60" />
@@ -30,8 +30,8 @@ export function AssistantMessage({ message }: { message: Message }): React.JSX.E
   }
 
   return (
-    <AIMessage from="assistant">
-      <MessageContent className="max-w-[92%] rounded-lg border border-sidebar-border bg-background px-3 py-2">
+    <AIMessage from="assistant" className="max-w-full">
+      <MessageContent className="w-full max-w-none overflow-visible rounded-none border-0 bg-transparent px-0 py-0">
         <MessageResponse>{message.content.data.text}</MessageResponse>
       </MessageContent>
     </AIMessage>
