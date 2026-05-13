@@ -1,5 +1,5 @@
-import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { randomUUID } from 'node:crypto'
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
@@ -9,7 +9,11 @@ import {
 } from './terminal-command'
 
 function tempRoot(): string {
-  return mkdtempSync(join(tmpdir(), 'memry-terminal-command-'))
+  const root = join(process.cwd(), 'test-results', 'memry-terminal-command')
+  mkdirSync(root, { recursive: true })
+  const caseDir = join(root, `case-${process.pid}-${randomUUID()}`)
+  mkdirSync(caseDir)
+  return caseDir
 }
 
 describe('terminal command setup', () => {
@@ -154,6 +158,36 @@ describe('terminal command setup', () => {
       installed: false,
       shimPath: initial.shimPath
     })
+  })
+
+  it('replaces an outdated Memry-owned shim during install', async () => {
+    const root = tempRoot()
+    const binDir = join(root, 'bin')
+    const executablePath = join(root, 'Electron.app', 'Contents', 'MacOS', 'Electron')
+    const appPath = join(root, 'memry', 'apps', 'desktop')
+
+    const initial = await installTerminalCommand({
+      platform: 'darwin',
+      homeDir: join(root, 'home'),
+      executablePath,
+      pathEnv: binDir,
+      preferredBinDirs: [binDir]
+    })
+
+    const status = await installTerminalCommand({
+      platform: 'darwin',
+      homeDir: join(root, 'home'),
+      executablePath,
+      appPath,
+      pathEnv: binDir,
+      preferredBinDirs: [binDir]
+    })
+
+    expect(status.installed).toBe(true)
+    expect(status.shimPath).toBe(initial.shimPath)
+    expect(readFileSync(status.shimPath, 'utf8')).toContain(
+      `exec "${executablePath}" "${appPath}" --cli "$@"`
+    )
   })
 
   it('uninstalls only Memry-owned shims', async () => {

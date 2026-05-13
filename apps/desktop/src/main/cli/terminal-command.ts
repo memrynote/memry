@@ -1,11 +1,16 @@
 import {
-  chmodSync,
+  closeSync,
   constants,
   existsSync,
+  fchmodSync,
+  fstatSync,
+  ftruncateSync,
+  lstatSync,
   mkdirSync,
+  openSync,
   readFileSync,
   rmSync,
-  writeFileSync
+  writeSync
 } from 'node:fs'
 import { access } from 'node:fs/promises'
 import { delimiter, dirname, join } from 'node:path'
@@ -37,6 +42,7 @@ export interface TerminalCommandOptions {
 
 const COMMAND_NAME = 'memry'
 const SHIM_MARKER = 'Memry terminal command shim'
+const SHIM_MODE = 0o755
 
 function resolvePlatform(platform: NodeJS.Platform = process.platform): TerminalCommandPlatform {
   if (platform === 'darwin' || platform === 'linux' || platform === 'win32') return platform
@@ -160,14 +166,84 @@ function renderShim(
   ].join('\n')
 }
 
-function isMemryShim(path: string): boolean {
-  if (!existsSync(path)) return false
-  return readFileSync(path, 'utf8').includes(SHIM_MARKER)
+function isNodeErrorCode(error: unknown, code: string): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as NodeJS.ErrnoException).code === code
+  )
+}
+
+function noFollowFlag(): number {
+  return typeof constants.O_NOFOLLOW === 'number' ? constants.O_NOFOLLOW : 0
+}
+
+function ownedShimError(path: string): Error {
+  return new Error(`${path} already exists and was not created by Memry`)
+}
+
+function readShimFile(path: string): string | null {
+  let fd: number | null = null
+  try {
+    fd = openSync(path, constants.O_RDONLY | noFollowFlag())
+    if (!fstatSync(fd).isFile()) return null
+    return readFileSync(fd, 'utf8')
+  } catch (error) {
+    if (isNodeErrorCode(error, 'ENOENT') || isNodeErrorCode(error, 'ELOOP')) return null
+    throw error
+  } finally {
+    if (fd !== null) closeSync(fd)
+  }
+}
+
+function pathExists(path: string): boolean {
+  try {
+    lstatSync(path)
+    return true
+  } catch (error) {
+    if (isNodeErrorCode(error, 'ENOENT')) return false
+    throw error
+  }
 }
 
 function isCurrentMemryShim(path: string, expectedShim: string): boolean {
-  if (!existsSync(path)) return false
-  return readFileSync(path, 'utf8') === expectedShim
+  return readShimFile(path) === expectedShim
+}
+
+function writeOwnedShim(path: string, content: string, platform: TerminalCommandPlatform): void {
+  let fd: number | null = null
+  try {
+    try {
+      fd = openSync(
+        path,
+        constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | noFollowFlag(),
+        SHIM_MODE
+      )
+    } catch (error) {
+      if (isNodeErrorCode(error, 'ELOOP')) throw ownedShimError(path)
+      if (!isNodeErrorCode(error, 'EEXIST')) throw error
+      fd = openSync(path, constants.O_RDWR | noFollowFlag())
+      if (!fstatSync(fd).isFile()) throw ownedShimError(path)
+      if (!readFileSync(fd, 'utf8').includes(SHIM_MARKER)) throw ownedShimError(path)
+      ftruncateSync(fd, 0)
+    }
+
+    writeSync(fd, content, 0, 'utf8')
+    if (platform !== 'win32') fchmodSync(fd, SHIM_MODE)
+  } finally {
+    if (fd !== null) closeSync(fd)
+  }
+}
+
+function removeOwnedShim(path: string): void {
+  const content = readShimFile(path)
+  if (content === null) {
+    if (pathExists(path)) throw ownedShimError(path)
+    return
+  }
+  if (!content.includes(SHIM_MARKER)) throw ownedShimError(path)
+  rmSync(path)
 }
 
 async function resolveStatus(
@@ -203,20 +279,12 @@ export async function installTerminalCommand(
   const resolved = normalizeOptions(options)
   const status = await resolveStatus(resolved)
 
-  if (existsSync(status.shimPath) && !isMemryShim(status.shimPath)) {
-    throw new Error(`${status.shimPath} already exists and was not created by Memry`)
-  }
-
   mkdirSync(status.binDir, { recursive: true })
-  writeFileSync(
+  writeOwnedShim(
     status.shimPath,
     renderShim(status.platform, status.targetPath, resolved.appPath),
-    'utf8'
+    status.platform
   )
-  if (status.platform !== 'win32') {
-    await access(status.shimPath, constants.R_OK)
-    chmodExecutable(status.shimPath)
-  }
 
   return getTerminalCommandStatus(options)
 }
@@ -225,16 +293,7 @@ export async function uninstallTerminalCommand(
   options: TerminalCommandOptions = {}
 ): Promise<TerminalCommandStatus> {
   const status = await getTerminalCommandStatus(options)
-  if (existsSync(status.shimPath)) {
-    if (!isMemryShim(status.shimPath)) {
-      throw new Error(`${status.shimPath} already exists and was not created by Memry`)
-    }
-    rmSync(status.shimPath)
-  }
+  removeOwnedShim(status.shimPath)
 
   return getTerminalCommandStatus(options)
-}
-
-function chmodExecutable(path: string): void {
-  chmodSync(path, 0o755)
 }

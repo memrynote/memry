@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
 import fs from 'node:fs/promises'
-import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
@@ -10,7 +10,11 @@ import { openDatabases } from './database.ts'
 import { createMemryApp } from './memry-app.ts'
 
 async function makeVault() {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'memry-cli-core-'))
+  const root = path.join(process.cwd(), 'test-results', 'memry-cli-core')
+  await fs.mkdir(root, { recursive: true })
+  const vaultPath = path.join(root, `vault-${process.pid}-${randomUUID()}`)
+  await fs.mkdir(vaultPath)
+  return vaultPath
 }
 
 function seedExternalCalendarEvent(vaultPath: string): void {

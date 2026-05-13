@@ -8,11 +8,11 @@ describe('headless CLI mode', () => {
         '/Applications/Memry.app/Contents/MacOS/Memry',
         '--cli',
         '--vault',
-        '/tmp/vault',
+        '/Users/test/MemryVault',
         'notes',
         'list'
       ])
-    ).toEqual(['--vault', '/tmp/vault', 'notes', 'list'])
+    ).toEqual(['--vault', '/Users/test/MemryVault', 'notes', 'list'])
   })
 
   it('returns null when the app was launched normally', () => {
@@ -23,9 +23,12 @@ describe('headless CLI mode', () => {
     const runCli = vi.fn(async () => 2)
     const exit = vi.fn()
 
-    await runHeadlessCli(['--vault', '/tmp/vault', 'vault', 'status'], { runCli, exit })
+    await runHeadlessCli(['--vault', '/Users/test/MemryVault', 'vault', 'status'], {
+      runCli,
+      exit
+    })
 
-    expect(runCli).toHaveBeenCalledWith(['--vault', '/tmp/vault', 'vault', 'status'])
+    expect(runCli).toHaveBeenCalledWith(['--vault', '/Users/test/MemryVault', 'vault', 'status'])
     expect(exit).toHaveBeenCalledWith(2)
   })
 })
