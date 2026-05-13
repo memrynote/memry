@@ -72,7 +72,7 @@ import { tasksService } from '@/services/tasks-service'
 import type { TaskSelectionType } from '@/App'
 import { createLogger } from '@/lib/logger'
 import { useTabActions, useActiveTab } from '@/contexts/tabs'
-import { notesService } from '@/services/notes-service'
+import { openRelatedVaultItem } from '@/lib/open-related-vault-item'
 
 const log = createLogger('Page:Tasks')
 
@@ -141,19 +141,7 @@ export const TasksPage = ({
 
   const handleNoteClick = useCallback(
     async (noteId: string) => {
-      const note = await notesService.get(noteId)
-      openTab({
-        type: 'note',
-        title: note?.title ?? 'Untitled',
-        icon: 'file-text',
-        emoji: note?.emoji,
-        path: `/notes/${noteId}`,
-        entityId: noteId,
-        isPinned: false,
-        isModified: false,
-        isPreview: true,
-        isDeleted: false
-      })
+      await openRelatedVaultItem(noteId, openTab)
     },
     [openTab]
   )

@@ -37,7 +37,8 @@ vi.mock('@/contexts/dropped-priority-context', () => ({
 
 vi.mock('@/services/notes-service', () => ({
   notesService: {
-    get: vi.fn()
+    get: vi.fn(),
+    getFile: vi.fn()
   }
 }))
 
@@ -105,7 +106,9 @@ describe('SortableParentTaskRow', () => {
     useDroppedPrioritiesMock.mockReset()
     setNodeRef.mockReset()
     vi.mocked(notesService.get).mockReset()
+    vi.mocked(notesService.getFile).mockReset()
     vi.mocked(notesService.get).mockResolvedValue(null)
+    vi.mocked(notesService.getFile).mockResolvedValue(null)
 
     useSortableMock.mockReturnValue({
       attributes: { role: 'button' },
