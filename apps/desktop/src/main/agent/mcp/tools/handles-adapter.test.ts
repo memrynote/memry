@@ -383,6 +383,21 @@ describe('createVaultServiceHandles', () => {
       { kind: 'folder', id: '/work', name: 'work', path: '/work' },
       { kind: 'folder', id: '/personal', name: 'personal', path: '/personal' }
     ])
+
+    await expect(handles.folders.create('/planning')).resolves.toEqual({ path: '/planning' })
+    expect(mocks.createFolder).toHaveBeenCalledWith('planning')
+
+    await expect(
+      handles.folders.rename({ old_path: '/planning', new_path: '/archive/planning' })
+    ).resolves.toEqual({ path: '/archive/planning' })
+    expect(mocks.renameFolder).toHaveBeenCalledWith('planning', 'archive/planning')
+    expect(mocks.syncFolderConfigRename).toHaveBeenCalledWith('planning', 'archive/planning')
+
+    await expect(handles.folders.delete('/archive/planning')).resolves.toEqual({
+      path: '/archive/planning'
+    })
+    expect(mocks.deleteFolder).toHaveBeenCalledWith('archive/planning')
+    expect(mocks.syncFolderConfigDelete).toHaveBeenCalledWith('archive/planning')
   })
 
   it('maps task and project handles through the task domain', async () => {
@@ -543,6 +558,78 @@ describe('createVaultServiceHandles', () => {
       { id: 'project-1', name: 'Active', status: 'active', task_count: 2 },
       { id: 'project-2', name: 'Archived', status: 'archived', task_count: 0 }
     ])
+
+    taskDomain.getTask.mockReturnValueOnce({ id: 'task-1' })
+    await expect(handles.tasks.get('task-1')).resolves.toEqual({ id: 'task-1' })
+    taskDomain.getTask.mockReturnValueOnce(null)
+    await expect(handles.tasks.get('missing')).resolves.toBeNull()
+
+    await expect(handles.tasks.delete('task-1')).resolves.toEqual({ id: 'task-1' })
+    await expect(
+      handles.tasks.complete({ id: 'task-1', completed_at: '2026-05-13T00:00:00Z' })
+    ).resolves.toEqual({ id: 'task-1' })
+    await expect(handles.tasks.uncomplete('task-1')).resolves.toEqual({ id: 'task-1' })
+    await expect(handles.tasks.archive('task-1')).resolves.toEqual({ id: 'task-1' })
+    await expect(handles.tasks.unarchive('task-1')).resolves.toEqual({ id: 'task-1' })
+    await expect(
+      handles.tasks.move({
+        task_id: 'task-1',
+        target_project_id: 'project-2',
+        target_status_id: 'status-1',
+        position: 2
+      })
+    ).resolves.toEqual({ id: 'task-1' })
+    await expect(handles.tasks.reorder({ task_ids: ['task-1'], positions: [0] })).resolves.toEqual({
+      ids: ['task-1']
+    })
+    await expect(handles.tasks.duplicate('task-1')).resolves.toEqual({ id: 'task-copy' })
+    await expect(
+      handles.tasks.convertToSubtask({ task_id: 'task-1', parent_id: 'parent-1' })
+    ).resolves.toEqual({ id: 'task-1' })
+    await expect(handles.tasks.convertToTask('task-1')).resolves.toEqual({ id: 'task-1' })
+
+    expect(taskDomain.completeTask).toHaveBeenLastCalledWith({
+      id: 'task-1',
+      completedAt: '2026-05-13T00:00:00Z'
+    })
+    expect(taskDomain.moveTask).toHaveBeenCalledWith({
+      taskId: 'task-1',
+      targetProjectId: 'project-2',
+      targetStatusId: 'status-1',
+      targetParentId: undefined,
+      position: 2
+    })
+
+    taskDomain.deleteTask.mockResolvedValueOnce({ success: false, error: 'delete failed' })
+    await expect(handles.tasks.delete('task-bad')).rejects.toThrow('delete failed')
+
+    taskDomain.getProject.mockReturnValueOnce({ id: 'project-1' })
+    await expect(handles.projects.get('project-1')).resolves.toEqual({ id: 'project-1' })
+    taskDomain.getProject.mockReturnValueOnce(null)
+    await expect(handles.projects.get('missing')).resolves.toBeNull()
+    await expect(handles.projects.create({ name: 'Project' })).resolves.toEqual({
+      id: 'project-created'
+    })
+    await expect(handles.projects.update({ id: 'project-1', name: 'Next' })).resolves.toEqual({
+      id: 'project-1'
+    })
+    await expect(handles.projects.delete('project-1')).resolves.toEqual({ id: 'project-1' })
+    await expect(handles.projects.archive('project-1')).resolves.toEqual({ id: 'project-1' })
+    await expect(
+      handles.projects.reorder({ project_ids: ['project-1'], positions: [0] })
+    ).resolves.toEqual({ ids: ['project-1'] })
+
+    await expect(handles.statuses.list('project-1')).resolves.toEqual([])
+    await expect(
+      handles.statuses.create({ project_id: 'project-1', name: 'Doing', is_done: true })
+    ).resolves.toEqual({ id: 'status-created' })
+    await expect(handles.statuses.update({ id: 'status-1', name: 'Done' })).resolves.toEqual({
+      id: 'status-1'
+    })
+    await expect(handles.statuses.delete('status-1')).resolves.toEqual({ id: 'status-1' })
+    await expect(
+      handles.statuses.reorder({ status_ids: ['status-1'], positions: [0] })
+    ).resolves.toEqual({ ids: ['status-1'] })
   })
 
   it('maps journal, inbox, tag, and window handles', async () => {
@@ -640,6 +727,25 @@ describe('createVaultServiceHandles', () => {
     await expect(
       handles.inbox.add({ source: 'inline', title: 'Bad', content: 'Body' })
     ).rejects.toThrow('capture failed')
+
+    await expect(handles.inbox.get('inbox-1')).resolves.toBeNull()
+    await expect(handles.inbox.update({ id: 'inbox-1', title: 'Updated' })).resolves.toEqual({
+      id: 'inbox-1'
+    })
+    await expect(handles.inbox.archive('inbox-1')).resolves.toEqual({ id: 'inbox-1' })
+    await expect(handles.inbox.unarchive('inbox-1')).resolves.toEqual({ id: 'inbox-1' })
+    await expect(handles.inbox.delete('inbox-1')).resolves.toEqual({ id: 'inbox-1' })
+    await expect(handles.inbox.addTag({ id: 'inbox-1', tag: 'work' })).resolves.toEqual({
+      id: 'inbox-1'
+    })
+    await expect(handles.inbox.removeTag({ id: 'inbox-1', tag: 'work' })).resolves.toEqual({
+      id: 'inbox-1'
+    })
+
+    mocks.createDesktopInboxCrudHandlers.mockReturnValueOnce({
+      handleUpdate: vi.fn().mockResolvedValue({ success: false, error: 'update failed' })
+    })
+    await expect(handles.inbox.update({ id: 'bad', title: 'Bad' })).rejects.toThrow('update failed')
 
     mocks.getAllTagsWithCounts.mockReturnValue([{ name: 'focus', count: 3 }])
     await expect(handles.tags.listAll()).resolves.toEqual([{ name: 'focus', count: 3 }])

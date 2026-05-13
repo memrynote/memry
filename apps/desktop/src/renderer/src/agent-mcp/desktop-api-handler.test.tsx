@@ -105,6 +105,20 @@ describe('useAgentMcpDesktopApiResponder', () => {
     })
   })
 
+  it('ignores unrelated main invoke channels', async () => {
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
+
+    await onMainInvokeCallback?.({
+      requestId: 'request-ignore',
+      channel: 'other-channel',
+      payload: { operation: 'templates.list', args: [] }
+    })
+
+    expect(templatesList).not.toHaveBeenCalled()
+    expect(respondToMainInvoke).not.toHaveBeenCalled()
+  })
+
   it('returns a desktop API error when an allowlisted operation is unavailable', async () => {
     renderHook(() => useAgentMcpDesktopApiResponder())
     await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
@@ -120,6 +134,28 @@ describe('useAgentMcpDesktopApiResponder', () => {
       error: {
         code: 'DESKTOP_API_ERROR',
         message: 'Desktop API operation is unavailable: bookmarks.list'
+      }
+    })
+    expect(mocks.logError).toHaveBeenCalled()
+  })
+
+  it('returns a desktop API error when an allowlisted operation is not callable', async () => {
+    ;(window.api.templates as Record<string, unknown>).list = []
+
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
+
+    await onMainInvokeCallback?.({
+      requestId: 'request-5',
+      channel: AgentMcpDesktopApiChannel,
+      payload: { operation: 'templates.list', args: [] }
+    })
+
+    expect(respondToMainInvoke).toHaveBeenCalledWith('request-5', {
+      ok: false,
+      error: {
+        code: 'DESKTOP_API_ERROR',
+        message: 'Desktop API operation is not callable: templates.list'
       }
     })
     expect(mocks.logError).toHaveBeenCalled()

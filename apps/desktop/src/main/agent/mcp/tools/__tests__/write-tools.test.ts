@@ -245,7 +245,10 @@ describe('Write tools — P1 deny-by-default', () => {
         add: vi.fn(async () => ({ id: 'inbox-created' })),
         update: vi.fn(async ({ id }) => ({ id })),
         archive: vi.fn(async (id) => ({ id })),
-        delete: vi.fn(async (id) => ({ id }))
+        unarchive: vi.fn(async (id) => ({ id })),
+        delete: vi.fn(async (id) => ({ id })),
+        addTag: vi.fn(async ({ id }) => ({ id })),
+        removeTag: vi.fn(async ({ id }) => ({ id }))
       },
       desktop: {
         ...handles.desktop,
@@ -293,6 +296,18 @@ describe('Write tools — P1 deny-by-default', () => {
     ).resolves.toEqual({
       id: 'inbox-1'
     })
+    await expect(run('vault_unarchive_inbox_item', { id: 'inbox-1' })).resolves.toEqual({
+      id: 'inbox-1'
+    })
+    await expect(run('vault_delete_inbox_item', { id: 'inbox-1' })).resolves.toEqual({
+      id: 'inbox-1'
+    })
+    await expect(run('vault_add_inbox_tag', { id: 'inbox-1', tag: 'work' })).resolves.toEqual({
+      id: 'inbox-1'
+    })
+    await expect(run('vault_remove_inbox_tag', { id: 'inbox-1', tag: 'work' })).resolves.toEqual({
+      id: 'inbox-1'
+    })
     await expect(
       run('vault_update_note', { id: 'note-1', mode: 'append', content_markdown: 'More' })
     ).resolves.toEqual({ id: 'note-1' })
@@ -337,6 +352,10 @@ describe('Write tools — P1 deny-by-default', () => {
       content_markdown: 'Updated'
     })
     expect(localHandles.inbox.update).toHaveBeenCalledWith({ id: 'inbox-1', title: 'Updated' })
+    expect(localHandles.inbox.unarchive).toHaveBeenCalledWith('inbox-1')
+    expect(localHandles.inbox.delete).toHaveBeenCalledWith('inbox-1')
+    expect(localHandles.inbox.addTag).toHaveBeenCalledWith({ id: 'inbox-1', tag: 'work' })
+    expect(localHandles.inbox.removeTag).toHaveBeenCalledWith({ id: 'inbox-1', tag: 'work' })
     expect(localHandles.tasks.update).toHaveBeenCalledWith('task-1', { title: 'Updated' })
     expect(localHandles.tasks.addTag).toHaveBeenCalledWith({
       id: 'task-1',
