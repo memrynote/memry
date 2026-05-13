@@ -442,6 +442,9 @@
       "resolveWindow": "无法解析代理源窗口",
       "detectCli": "无法检测代理后端",
       "loadDisclosure": "无法加载披露状态"
+    },
+    "sources": {
+      "used": "使用了 {count} 个来源"
     }
   }
 }

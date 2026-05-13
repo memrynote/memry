@@ -442,6 +442,9 @@
       "resolveWindow": "Kan agentbronvenster niet oplossen",
       "detectCli": "Kan agent-backends niet detecteren",
       "loadDisclosure": "Kan openbaarmakingsstatus niet laden"
+    },
+    "sources": {
+      "used": "{count, plural, one {# bron gebruikt} other {# bronnen gebruikt}}"
     }
   }
 }

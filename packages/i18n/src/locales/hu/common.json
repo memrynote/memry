@@ -442,6 +442,9 @@
       "resolveWindow": "Nem sikerült feloldani az ügynökforrás ablakát",
       "detectCli": "Nem sikerült észlelni az ügynök hátterét",
       "loadDisclosure": "Nem sikerült betölteni a közzétételi állapotot"
+    },
+    "sources": {
+      "used": "{count, plural, one {# forrás használva} other {# forrás használva}}"
     }
   }
 }

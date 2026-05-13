@@ -442,6 +442,9 @@
       "resolveWindow": "Agent kaynak penceresi çözülemedi",
       "detectCli": "Agent arka uçları algılanamadı",
       "loadDisclosure": "Açıklama durumu yüklenemedi"
+    },
+    "sources": {
+      "used": "{count, plural, one {# kaynak kullanıldı} other {# kaynak kullanıldı}}"
     }
   }
 }

@@ -442,6 +442,9 @@
       "resolveWindow": "Kunne ikke løse agentkildevinduet",
       "detectCli": "Kunne ikke finde agent-backends",
       "loadDisclosure": "Kunne ikke indlæse afsløringstilstand"
+    },
+    "sources": {
+      "used": "{count, plural, one {Brugte # kilde} other {Brugte # kilder}}"
     }
   }
 }

@@ -442,6 +442,9 @@
       "resolveWindow": "Nije moguće riješiti prozor izvora agenta",
       "detectCli": "Nije moguće otkriti pozadinu agenta",
       "loadDisclosure": "Nije moguće učitati stanje otkrivanja"
+    },
+    "sources": {
+      "used": "{count, plural, one {Korišten # izvor} few {Korištena # izvora} other {Korišteno # izvora}}"
     }
   }
 }

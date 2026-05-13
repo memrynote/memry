@@ -442,6 +442,9 @@
       "resolveWindow": "Không thể giải quyết cửa sổ nguồn tác nhân",
       "detectCli": "Không thể phát hiện phần phụ trợ của tác nhân",
       "loadDisclosure": "Không thể tải trạng thái tiết lộ"
+    },
+    "sources": {
+      "used": "Đã dùng {count} nguồn"
     }
   }
 }

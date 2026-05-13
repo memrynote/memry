@@ -442,6 +442,9 @@
       "resolveWindow": "Nie można znaleźć okna źródła agenta",
       "detectCli": "Nie można wykryć zaplecza agenta",
       "loadDisclosure": "Nie można wczytać stanu ujawnienia"
+    },
+    "sources": {
+      "used": "{count, plural, one {Użyto # źródła} few {Użyto # źródeł} other {Użyto # źródeł}}"
     }
   }
 }
