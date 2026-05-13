@@ -14,7 +14,11 @@ const mocks = vi.hoisted(() => ({
     }
   ]),
   getDisclosureState: vi.fn(() => ({ accepted: false })),
-  acceptDisclosure: vi.fn(() => ({ accepted: true }))
+  acceptDisclosure: vi.fn(() => ({ accepted: true })),
+  getAgentPreferences: vi.fn(() => ({ toolApprovalMode: 'always_accept' })),
+  setAgentPreferences: vi.fn((input: { toolApprovalMode?: 'always_accept' | 'ask' }) => ({
+    toolApprovalMode: input.toolApprovalMode ?? 'always_accept'
+  }))
 }))
 
 vi.mock('electron', () => ({
@@ -30,6 +34,10 @@ vi.mock('../agent/runtime/attachment-snapshotter', () => ({
 vi.mock('../agent/runtime/disclosure-state', () => ({
   getDisclosureState: mocks.getDisclosureState,
   acceptDisclosure: mocks.acceptDisclosure
+}))
+vi.mock('../agent/settings', () => ({
+  getAgentPreferences: mocks.getAgentPreferences,
+  setAgentPreferences: mocks.setAgentPreferences
 }))
 
 import { AgentChannels } from '@memry/contracts/ipc-agent'
@@ -193,6 +201,15 @@ describe('agent IPC handlers', () => {
         available: false
       })
     })
+    expect(findHandler(AgentChannels.invoke.GET_PREFERENCES)(null)).toEqual({
+      toolApprovalMode: 'always_accept'
+    })
+    expect(
+      findHandler(AgentChannels.invoke.SET_PREFERENCES)(null, { toolApprovalMode: 'ask' })
+    ).toEqual({
+      toolApprovalMode: 'ask'
+    })
+    expect(mocks.setAgentPreferences).toHaveBeenCalledWith({ toolApprovalMode: 'ask' })
   })
 
   it('returns unified backend statuses keyed by backend id', async () => {
