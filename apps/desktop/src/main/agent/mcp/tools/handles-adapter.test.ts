@@ -5,20 +5,30 @@ const mocks = vi.hoisted(() => ({
   listJournalEntriesInRange: vi.fn(),
   getInboxProject: vi.fn(),
   createDesktopInboxDomain: vi.fn(),
+  createDesktopInboxCrudHandlers: vi.fn(),
+  deleteJournalEntryFile: vi.fn(),
   readJournalEntry: vi.fn(),
   writeJournalEntry: vi.fn(),
   createNoteCommand: vi.fn(),
+  deleteNoteCommand: vi.fn(),
   moveNoteCommand: vi.fn(),
+  renameNoteCommand: vi.fn(),
   updateNoteCommand: vi.fn(),
   createDesktopTasksDomain: vi.fn(),
   createTasksPublisher: vi.fn(),
+  createFolder: vi.fn(),
+  deleteFolder: vi.fn(),
   getFolders: vi.fn(),
   getNoteById: vi.fn(),
   listNotes: vi.fn(),
+  renameFolder: vi.fn(),
+  syncFolderConfigDelete: vi.fn(),
+  syncFolderConfigRename: vi.fn(),
   getConfig: vi.fn(),
   getAllTagsWithCounts: vi.fn(),
   generateId: vi.fn(),
-  snapshotCurrentNoteFromWindow: vi.fn()
+  snapshotCurrentNoteFromWindow: vi.fn(),
+  invokeDesktopApiFromWindow: vi.fn()
 }))
 
 vi.mock('../../../database/queries/search', () => ({
@@ -34,17 +44,21 @@ vi.mock('../../../database/queries/projects', () => ({
 }))
 
 vi.mock('../../../inbox/domain', () => ({
-  createDesktopInboxDomain: mocks.createDesktopInboxDomain
+  createDesktopInboxDomain: mocks.createDesktopInboxDomain,
+  createDesktopInboxCrudHandlers: mocks.createDesktopInboxCrudHandlers
 }))
 
 vi.mock('../../../vault/journal', () => ({
+  deleteJournalEntryFile: mocks.deleteJournalEntryFile,
   readJournalEntry: mocks.readJournalEntry,
   writeJournalEntry: mocks.writeJournalEntry
 }))
 
 vi.mock('../../../notes/domain', () => ({
   createNoteCommand: mocks.createNoteCommand,
+  deleteNoteCommand: mocks.deleteNoteCommand,
   moveNoteCommand: mocks.moveNoteCommand,
+  renameNoteCommand: mocks.renameNoteCommand,
   updateNoteCommand: mocks.updateNoteCommand
 }))
 
@@ -57,9 +71,17 @@ vi.mock('../../../tasks/publisher', () => ({
 }))
 
 vi.mock('../../../vault/notes', () => ({
+  createFolder: mocks.createFolder,
+  deleteFolder: mocks.deleteFolder,
   getFolders: mocks.getFolders,
   getNoteById: mocks.getNoteById,
-  listNotes: mocks.listNotes
+  listNotes: mocks.listNotes,
+  renameFolder: mocks.renameFolder
+}))
+
+vi.mock('../../../notes/folder-config-effects', () => ({
+  syncFolderConfigDelete: mocks.syncFolderConfigDelete,
+  syncFolderConfigRename: mocks.syncFolderConfigRename
 }))
 
 vi.mock('../../../vault', () => ({
@@ -78,6 +100,10 @@ vi.mock('./current-note', () => ({
   snapshotCurrentNoteFromWindow: mocks.snapshotCurrentNoteFromWindow
 }))
 
+vi.mock('./desktop-api', () => ({
+  invokeDesktopApiFromWindow: mocks.invokeDesktopApiFromWindow
+}))
+
 import { createVaultServiceHandles } from './handles-adapter'
 
 const deps = {
@@ -93,7 +119,26 @@ describe('createVaultServiceHandles', () => {
     uncompleteTask: ReturnType<typeof vi.fn>
     updateTask: ReturnType<typeof vi.fn>
     getTask: ReturnType<typeof vi.fn>
+    deleteTask: ReturnType<typeof vi.fn>
+    archiveTask: ReturnType<typeof vi.fn>
+    unarchiveTask: ReturnType<typeof vi.fn>
+    moveTask: ReturnType<typeof vi.fn>
+    reorderTasks: ReturnType<typeof vi.fn>
+    duplicateTask: ReturnType<typeof vi.fn>
+    convertToSubtask: ReturnType<typeof vi.fn>
+    convertToTask: ReturnType<typeof vi.fn>
     listProjects: ReturnType<typeof vi.fn>
+    getProject: ReturnType<typeof vi.fn>
+    createProject: ReturnType<typeof vi.fn>
+    updateProject: ReturnType<typeof vi.fn>
+    deleteProject: ReturnType<typeof vi.fn>
+    archiveProject: ReturnType<typeof vi.fn>
+    reorderProjects: ReturnType<typeof vi.fn>
+    listStatuses: ReturnType<typeof vi.fn>
+    createStatus: ReturnType<typeof vi.fn>
+    updateStatus: ReturnType<typeof vi.fn>
+    deleteStatus: ReturnType<typeof vi.fn>
+    reorderStatuses: ReturnType<typeof vi.fn>
   }
 
   beforeEach(() => {
@@ -106,6 +151,18 @@ describe('createVaultServiceHandles', () => {
     mocks.createTasksPublisher.mockReturnValue({})
     mocks.generateId.mockReturnValue('generated-id')
     mocks.getInboxProject.mockReturnValue({ id: 'inbox-project' })
+    mocks.createDesktopInboxCrudHandlers.mockReturnValue({
+      handleGet: vi.fn().mockResolvedValue(null),
+      handleUpdate: vi.fn().mockResolvedValue({ success: true, item: { id: 'inbox-1' } }),
+      handleArchive: vi.fn().mockResolvedValue({ success: true }),
+      handleAddTag: vi.fn().mockResolvedValue({ success: true }),
+      handleRemoveTag: vi.fn().mockResolvedValue({ success: true }),
+      handleMarkViewed: vi.fn().mockResolvedValue({ success: true }),
+      handleUnarchive: vi.fn().mockResolvedValue({ success: true }),
+      handleDeletePermanent: vi.fn().mockResolvedValue({ success: true }),
+      handleUndoFile: vi.fn().mockResolvedValue({ success: true }),
+      handleUndoArchive: vi.fn().mockResolvedValue({ success: true })
+    })
 
     taskDomain = {
       listTasks: vi.fn().mockReturnValue({ tasks: [] }),
@@ -114,7 +171,28 @@ describe('createVaultServiceHandles', () => {
       uncompleteTask: vi.fn().mockResolvedValue({ success: true }),
       updateTask: vi.fn().mockResolvedValue({ success: true }),
       getTask: vi.fn(),
-      listProjects: vi.fn().mockReturnValue({ projects: [] })
+      deleteTask: vi.fn().mockResolvedValue({ success: true }),
+      archiveTask: vi.fn().mockResolvedValue({ success: true }),
+      unarchiveTask: vi.fn().mockResolvedValue({ success: true }),
+      moveTask: vi.fn().mockResolvedValue({ success: true }),
+      reorderTasks: vi.fn().mockResolvedValue({ success: true }),
+      duplicateTask: vi.fn().mockResolvedValue({ success: true, task: { id: 'task-copy' } }),
+      convertToSubtask: vi.fn().mockResolvedValue({ success: true }),
+      convertToTask: vi.fn().mockResolvedValue({ success: true }),
+      listProjects: vi.fn().mockReturnValue({ projects: [] }),
+      getProject: vi.fn(),
+      createProject: vi
+        .fn()
+        .mockResolvedValue({ success: true, project: { id: 'project-created' } }),
+      updateProject: vi.fn().mockResolvedValue({ success: true, project: { id: 'project-1' } }),
+      deleteProject: vi.fn().mockResolvedValue({ success: true }),
+      archiveProject: vi.fn().mockResolvedValue({ success: true }),
+      reorderProjects: vi.fn().mockResolvedValue({ success: true }),
+      listStatuses: vi.fn().mockReturnValue([]),
+      createStatus: vi.fn().mockResolvedValue({ success: true, status: { id: 'status-created' } }),
+      updateStatus: vi.fn().mockResolvedValue({ success: true, status: { id: 'status-1' } }),
+      deleteStatus: vi.fn().mockResolvedValue({ success: true }),
+      reorderStatuses: vi.fn().mockResolvedValue({ success: true })
     }
     mocks.createDesktopTasksDomain.mockReturnValue(taskDomain)
   })
@@ -568,5 +646,28 @@ describe('createVaultServiceHandles', () => {
 
     mocks.snapshotCurrentNoteFromWindow.mockResolvedValue({ id: 'note-1' })
     await expect(handles.windows.snapshotCurrentNote('window-1')).resolves.toEqual({ id: 'note-1' })
+
+    mocks.invokeDesktopApiFromWindow.mockResolvedValueOnce({ templates: [] })
+    await expect(
+      handles.desktop.read({ operation: 'templates.list', args: [] }, 'window-1')
+    ).resolves.toEqual({
+      templates: []
+    })
+    expect(mocks.invokeDesktopApiFromWindow).toHaveBeenLastCalledWith('window-1', {
+      operation: 'templates.list',
+      args: []
+    })
+
+    mocks.invokeDesktopApiFromWindow.mockResolvedValueOnce({ id: 'template-1' })
+    await expect(
+      handles.desktop.write(
+        { operation: 'templates.create', args: [{ name: 'Template' }] },
+        'window-1'
+      )
+    ).resolves.toEqual({ id: 'template-1' })
+    expect(mocks.invokeDesktopApiFromWindow).toHaveBeenLastCalledWith('window-1', {
+      operation: 'templates.create',
+      args: [{ name: 'Template' }]
+    })
   })
 })
