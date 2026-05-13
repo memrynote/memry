@@ -9,6 +9,9 @@ import {
   AgentEventSchema,
   AgentLocalProviderProbeResultSchema,
   AgentLocalProviderSettingsSchema,
+  AgentPreferencesSchema,
+  AgentPreferencesUpdateSchema,
+  AgentToolApprovalModeSchema,
   ApproveToolRequestSchema,
   BinaryStatusSchema,
   ConversationSchema,
@@ -35,6 +38,8 @@ describe('AgentChannels', () => {
         LIST_BACKEND_MODELS: 'agent:listBackendModels',
         GET_LOCAL_PROVIDER_SETTINGS: 'agent:getLocalProviderSettings',
         SET_LOCAL_PROVIDER_SETTINGS: 'agent:setLocalProviderSettings',
+        GET_PREFERENCES: 'agent:getPreferences',
+        SET_PREFERENCES: 'agent:setPreferences',
         LIST_LOCAL_MODELS: 'agent:listLocalModels',
         TEST_LOCAL_PROVIDER: 'agent:testLocalProvider',
         PROBE_LOCAL_PROVIDER: 'agent:probeLocalProvider',
@@ -235,6 +240,14 @@ describe('agent IPC schemas', () => {
   })
 
   it('validates approval decisions and binary status', () => {
+    expect(AgentToolApprovalModeSchema.safeParse('always_accept').success).toBe(true)
+    expect(AgentToolApprovalModeSchema.safeParse('ask').success).toBe(true)
+    expect(AgentToolApprovalModeSchema.safeParse('prompt').success).toBe(false)
+    expect(AgentPreferencesSchema.safeParse({ toolApprovalMode: 'always_accept' }).success).toBe(
+      true
+    )
+    expect(AgentPreferencesUpdateSchema.parse({})).toEqual({})
+
     expect(
       ApproveToolRequestSchema.safeParse({
         conversationId: 'conversation-1',

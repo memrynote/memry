@@ -24,7 +24,7 @@ Agent Chat can:
 - keep local conversation history in the vault database
 - attach the active note as context for a turn
 - stream assistant text back into the sidebar
-- show tool calls, tool results, and approvals inline in the chat stream
+- show collapsed tool calls, tool results, and optional approvals inline in the chat stream
 - stop an in-flight turn
 - compact older conversation history when a prompt grows too large
 
@@ -109,7 +109,7 @@ Read tools are available to Agent Chat and external MCP clients:
 - `vault_list_inbox_items`
 - `vault_get_tags`
 
-Create and update tools require Agent Chat context and explicit approval:
+Create and update tools require Agent Chat context:
 
 - `vault_create_note`
 - `vault_create_task`
@@ -121,11 +121,15 @@ Create and update tools require Agent Chat context and explicit approval:
 - `vault_remove_tag`
 - `vault_move_to_folder`
 
-When a chat backend requests one of these tools from Agent Chat, Memry pauses the turn and shows an
-inline approval card in the conversation. You can allow the request once, allow create tools always
-for that conversation, deny it, or edit the arguments before allowing. Note updates load a
-before/after diff before the write is applied. Unauthenticated or context-free write requests
-continue to be denied.
+By default, Agent Chat accepts these tool calls automatically. The chat still shows each requested
+tool in a collapsed tool row, including running, completed, error, and denied states, so you can open
+the row to inspect parameters and results.
+
+If you switch tool confirmations to **Ask first** in settings, Memry pauses the turn and shows inline
+approval controls inside the tool row. You can allow the request once, allow create tools always for
+that conversation, deny it, or edit the arguments before allowing. Note updates load a before/after
+diff before the write is applied. Unauthenticated or context-free write requests continue to be
+denied.
 
 ## Current Note
 
@@ -136,8 +140,9 @@ of guessing.
 ## Privacy
 
 The MCP server binds only to localhost. Read tools still expose the content they return to the
-client you configure, so only paste the token into clients you trust on this machine. Write tools are
-only applied after the in-app approval gate resolves for the active Agent Chat conversation.
+client you configure, so only paste the token into clients you trust on this machine. Write tools
+still require an active Agent Chat conversation context, and the in-app tool confirmation setting
+decides whether that conversation pauses for approval or accepts the call automatically.
 
 Provider privacy depends on the selected backend:
 

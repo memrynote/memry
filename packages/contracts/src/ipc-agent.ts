@@ -23,6 +23,8 @@ export const AgentChannels = {
     LIST_BACKEND_MODELS: 'agent:listBackendModels',
     GET_LOCAL_PROVIDER_SETTINGS: 'agent:getLocalProviderSettings',
     SET_LOCAL_PROVIDER_SETTINGS: 'agent:setLocalProviderSettings',
+    GET_PREFERENCES: 'agent:getPreferences',
+    SET_PREFERENCES: 'agent:setPreferences',
     LIST_LOCAL_MODELS: 'agent:listLocalModels',
     TEST_LOCAL_PROVIDER: 'agent:testLocalProvider',
     PROBE_LOCAL_PROVIDER: 'agent:probeLocalProvider',
@@ -113,6 +115,23 @@ export const AgentBackendModelListSchema = z
   .strict()
 export type AgentBackendModelList = z.infer<typeof AgentBackendModelListSchema>
 
+export const AgentToolApprovalModeSchema = z.enum(['always_accept', 'ask'])
+export type AgentToolApprovalMode = z.infer<typeof AgentToolApprovalModeSchema>
+
+export const AgentPreferencesSchema = z
+  .object({
+    toolApprovalMode: AgentToolApprovalModeSchema.default('always_accept')
+  })
+  .strict()
+export type AgentPreferences = z.infer<typeof AgentPreferencesSchema>
+
+export const AgentPreferencesUpdateSchema = z
+  .object({
+    toolApprovalMode: AgentToolApprovalModeSchema.optional()
+  })
+  .strict()
+export type AgentPreferencesUpdate = z.infer<typeof AgentPreferencesUpdateSchema>
+
 export const AgentLocalProviderSettingsSchema = z
   .object({
     preset: AgentLocalProviderPresetSchema,
@@ -187,11 +206,29 @@ export type MessageStatus = z.infer<typeof MessageStatusSchema>
 
 export const UserContentSchema = z.object({ text: z.string() })
 export const AssistantContentSchema = z.object({ text: z.string() })
+export const ToolCallStatusSchema = z.enum([
+  'pending',
+  'approved',
+  'denied',
+  'completed',
+  'failed',
+  'input-streaming',
+  'approval-requested',
+  'approval-responded',
+  'input-available',
+  'output-available',
+  'output-error',
+  'output-denied'
+])
+export type ToolCallStatus = z.infer<typeof ToolCallStatusSchema>
+
 export const ToolCallContentSchema = z.object({
   tool: z.string(),
   args: z.record(z.string(), z.unknown()),
-  status: z.enum(['pending', 'approved', 'denied', 'completed', 'failed']),
-  approvedArgs: z.record(z.string(), z.unknown()).optional()
+  status: ToolCallStatusSchema,
+  approvedArgs: z.record(z.string(), z.unknown()).optional(),
+  output: z.unknown().optional(),
+  error: z.object({ code: z.string(), message: z.string() }).optional()
 })
 export const ToolResultContentSchema = z.object({
   ok: z.boolean(),

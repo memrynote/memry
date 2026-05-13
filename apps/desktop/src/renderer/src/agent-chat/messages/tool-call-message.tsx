@@ -14,7 +14,7 @@ import {
   ConfirmationActions,
   ConfirmationTitle
 } from '@/components/ai-elements/confirmation'
-import { Tool, ToolContent, ToolHeader, ToolInput } from '@/components/ai-elements/tool'
+import { Tool, ToolContent, ToolHeader, ToolInput, ToolOutput } from '@/components/ai-elements/tool'
 import { Textarea } from '@/components/ui/textarea'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useAgentOptional } from '../agent-context'
@@ -201,11 +201,14 @@ export function ToolCallMessage({ message }: { message: Message }): React.JSX.El
     }
   }
 
+  const errorText = message.content.data.error?.message
+
   return (
-    <Tool defaultOpen={message.content.data.status === 'pending'}>
+    <Tool defaultOpen={false}>
       <ToolHeader title={message.content.data.tool} state={message.content.data.status} />
       <ToolContent>
         <ToolInput input={message.content.data.args} label={t('agentChat.toolCall.parameters')} />
+        <ToolOutput errorText={errorText} output={message.content.data.output} />
         {agent && pending?.requiresDiff && (
           <InlineDiffApproval key={pending.toolCallId} agent={agent} pending={pending} />
         )}

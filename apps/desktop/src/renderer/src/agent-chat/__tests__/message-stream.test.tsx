@@ -157,7 +157,7 @@ describe('MessageStream', () => {
     expect(screen.getByRole('status', { name: 'Agent is thinking' })).toBeInTheDocument()
   })
 
-  it('renders tool calls as collapsible tool details', () => {
+  it('renders tool calls as collapsed tool details by default', () => {
     render(
       <MessageStream
         messages={[
@@ -170,7 +170,7 @@ describe('MessageStream', () => {
               data: {
                 tool: 'vault_create_task',
                 args: { title: 'Buy milk' },
-                status: 'pending'
+                status: 'input-available'
               }
             }
           })
@@ -179,7 +179,41 @@ describe('MessageStream', () => {
     )
 
     expect(screen.getByRole('button', { name: /vault_create_task/i })).toBeInTheDocument()
+    expect(screen.queryByText('Parameters')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /vault_create_task/i }))
+
     expect(screen.getByText('Parameters')).toBeInTheDocument()
+  })
+
+  it('renders completed tool output in the same collapsed tool block', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'tool-call-1',
+            role: 'tool_call',
+            toolCallId: 'tool-1',
+            content: {
+              role: 'tool_call',
+              data: {
+                tool: 'vault_read_note',
+                args: { id: 'note-1' },
+                status: 'output-available',
+                output: { title: 'Planning' }
+              }
+            }
+          })
+        ]}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: /vault_read_note/i })).toBeInTheDocument()
+    expect(screen.queryByText('Planning')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /vault_read_note/i }))
+
+    expect(screen.getByText(/Planning/)).toBeInTheDocument()
   })
 
   it('approves pending tool calls inline without a dialog', async () => {
@@ -221,6 +255,7 @@ describe('MessageStream', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
+    fireEvent.click(screen.getByRole('button', { name: /vault_create_task/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Allow once' }))
 
     await waitFor(() => {
@@ -269,6 +304,7 @@ describe('MessageStream', () => {
       />
     )
 
+    fireEvent.click(screen.getByRole('button', { name: /vault_create_task/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Edit and allow' }))
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '{"title":"Edited"}' } })
     fireEvent.click(screen.getByRole('button', { name: 'Apply edits' }))
@@ -329,6 +365,7 @@ describe('MessageStream', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
+    fireEvent.click(screen.getByRole('button', { name: /vault_update_note/i }))
     const candidate = await screen.findByRole('textbox', { name: 'Candidate' })
     fireEvent.change(candidate, { target: { value: 'edited full note' } })
     fireEvent.click(screen.getByRole('button', { name: 'Apply edited' }))
