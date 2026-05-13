@@ -33,6 +33,47 @@ import {
   ACCENT_SWITCH
 } from '@/components/settings/settings-primitives'
 
+const MEMRY_REPOSITORY_URL = 'https://github.com/memrynote/memry'
+const MEMRY_ISSUES_URL =
+  'https://github.com/memrynote/memry/issues?q=sort%3Aupdated-desc+is%3Aissue+is%3Aopen+'
+const MEMRY_ICON_SRC = new URL('../../../../../build/icon.png', import.meta.url).href
+
+function AccountCommunityFooter() {
+  const { t } = useT('settings')
+
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 px-4 pb-2 text-center text-xs/4 text-muted-foreground">
+      <span className="inline-flex items-center gap-1.5">
+        {t('account.community.prompt')}
+        <img
+          src={MEMRY_ICON_SRC}
+          alt=""
+          aria-hidden="true"
+          className="size-4 shrink-0 rounded-[4px]"
+        />
+      </span>
+      <a
+        href={MEMRY_REPOSITORY_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-medium text-[var(--tint)] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        {t('account.community.star')}
+      </a>
+      <span>{t('account.community.and')}</span>
+      <a
+        href={MEMRY_ISSUES_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-medium text-[var(--tint)] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        {t('account.community.feedback')}
+      </a>
+      <span>.</span>
+    </div>
+  )
+}
+
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
@@ -100,10 +141,11 @@ export function AccountSettings() {
 
   if (state.status !== 'authenticated') {
     return (
-      <div className="flex flex-col items-center text-xs/4">
+      <div className="flex min-h-[calc(80vh-3rem)] flex-col items-center justify-between text-xs/4">
         <div className="w-full max-w-sm">
           <SetupWizard />
         </div>
+        <AccountCommunityFooter />
       </div>
     )
   }
@@ -265,6 +307,8 @@ export function AccountSettings() {
           </Button>
         </SettingRow>
       </SettingsGroup>
+
+      <AccountCommunityFooter />
 
       <AlertDialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
         <AlertDialogContent>

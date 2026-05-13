@@ -447,12 +447,23 @@ describe('settings section coverage', () => {
     mocks.authState = { status: 'unauthenticated' }
     rerender(<AccountSettings />)
     expect(screen.getByText('setup wizard')).toBeInTheDocument()
+    expect(screen.getByText('account.community.prompt')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'account.community.star' })).toBeInTheDocument()
 
     mocks.authState = { status: 'authenticated', email: 'kaan@example.com' }
     mocks.syncContext.linkingRequest = { code: '123456' }
     rerender(<AccountSettings />)
     expect(await screen.findByText('kaan@example.com')).toBeInTheDocument()
     expect(screen.getByText(/account.storage.used/)).toBeInTheDocument()
+    expect(screen.getByText('account.community.prompt')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'account.community.star' })).toHaveAttribute(
+      'href',
+      'https://github.com/memrynote/memry'
+    )
+    expect(screen.getByRole('link', { name: 'account.community.feedback' })).toHaveAttribute(
+      'href',
+      'https://github.com/memrynote/memry/issues?q=sort%3Aupdated-desc+is%3Aissue+is%3Aopen+'
+    )
 
     fireEvent.click(screen.getByRole('switch'))
     expect(mocks.syncStatus.pause).toHaveBeenCalled()

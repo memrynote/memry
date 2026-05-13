@@ -37,6 +37,9 @@ A list of devices that have been linked to your account. Rename or revoke from t
 - **Rotate Keys** — re-encrypt the vault key with a new master key and reseal it for each linked device
 - **Sign Out** — clears the session (with a confirmation dialog)
 
+The Account page footer links to the Memry GitHub repository and issue tracker for starring the
+project or sending product feedback.
+
 ---
 
 ## General

@@ -65,6 +65,7 @@ interface AgentHandlerDeps {
     | 'getPendingApproval'
     | 'trackSubprocess'
     | 'untrackSubprocess'
+    | 'trackTurn'
     | 'acquireTurnLock'
     | 'releaseTurnLock'
   >
@@ -175,7 +176,7 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
       broadcastConversation(updated)
     }
 
-    void runTurn(
+    const turn = runTurn(
       {
         conversations: deps.conversations,
         messages: deps.messages,
@@ -208,6 +209,8 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
       .finally(() => {
         deps.runtime.releaseTurnLock(request.conversationId)
       })
+    deps.runtime.trackTurn(request.conversationId, turn)
+    void turn
 
     return { ok: true }
   })

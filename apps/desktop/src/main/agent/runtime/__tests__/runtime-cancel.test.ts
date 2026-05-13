@@ -1,7 +1,11 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const mocks = vi.hoisted(() => ({
+  setWriteGate: vi.fn()
+}))
 
 vi.mock('../../mcp/lifecycle', () => ({
-  setWriteGate: vi.fn()
+  setWriteGate: mocks.setWriteGate
 }))
 
 import type { ConversationStore } from '../../storage/conversation-store'
@@ -17,6 +21,10 @@ function runtime(): AgentRuntime {
 }
 
 describe('AgentRuntime subprocess cancellation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('kills only subprocesses for the cancelled conversation', () => {
     const agentRuntime = runtime()
     const firstKill = vi.fn()
@@ -41,4 +49,39 @@ describe('AgentRuntime subprocess cancellation', () => {
 
     expect(kill).not.toHaveBeenCalled()
   })
+
+  it('kills subprocesses, waits for active turns, and clears the MCP write gate on shutdown', async () => {
+    const agentRuntime = runtime()
+    const kill = vi.fn()
+    const activeTurn = deferred<void>()
+
+    agentRuntime.trackSubprocess('conversation-1', { pid: 1, kill })
+    agentRuntime.trackTurn('conversation-1', activeTurn.promise)
+
+    let shutdownSettled = false
+    const shutdown = agentRuntime.killAll().then(() => {
+      shutdownSettled = true
+    })
+
+    await Promise.resolve()
+
+    expect(kill).toHaveBeenCalledTimes(1)
+    expect(shutdownSettled).toBe(false)
+
+    activeTurn.resolve()
+    await shutdown
+
+    expect(shutdownSettled).toBe(true)
+    expect(mocks.setWriteGate).toHaveBeenLastCalledWith(null)
+  })
 })
+
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}

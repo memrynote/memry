@@ -45,8 +45,6 @@ import {
 } from './sync/certificate-pinning'
 import { getCrdtProvider } from './sync/crdt-provider'
 import { stopSyncRuntime } from './sync/runtime'
-import { startAgentMcpLifecycle, stopAgentMcpLifecycle } from './agent/mcp/lifecycle'
-import { startAgent, type AgentHandle } from './agent/bootstrap'
 import { getNoteCacheById } from '@main/database/queries/notes'
 import { getIndexDatabase } from './database/client'
 import { toAbsolutePath, createSnapshot } from './vault/notes'
@@ -83,7 +81,6 @@ const deepLinkLog = createLogger('DeepLink')
 const headlessCliArgs = getHeadlessCliArgs(process.argv)
 
 let mainI18n: I18nInstance
-let agentHandle: AgentHandle | null = null
 
 if (headlessCliArgs) {
   disableConsoleTransport()
@@ -772,13 +769,6 @@ void app.whenReady().then(async () => {
   void autoOpenLastVault()
     .then(async () => {
       try {
-        await startAgentMcpLifecycle()
-        agentHandle = await startAgent()
-      } catch (error) {
-        mainLog.warn('Agent runtime failed to start:', error)
-      }
-
-      try {
         checkDueItemsOnStartup()
         startSnoozeScheduler()
       } catch (error) {
@@ -1073,14 +1063,6 @@ app.on('before-quit', (event) => {
     .then(() => {
       shutdownLog.info('stopping sync runtime...')
       return stopSyncRuntime()
-    })
-    .then(() => {
-      shutdownLog.info('stopping agent runtime...')
-      return agentHandle?.shutdown()
-    })
-    .then(() => {
-      shutdownLog.info('stopping agent MCP server...')
-      return stopAgentMcpLifecycle()
     })
     .then(() => {
       shutdownLog.info('closing vault and stopping watcher...')

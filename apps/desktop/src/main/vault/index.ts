@@ -58,6 +58,7 @@ import { createEmbeddingProjector } from '../projections/projectors/embedding-pr
 import { createInboxStatsProjector } from '../projections/projectors/inbox-stats-projector'
 import { PropertyDefinitionsService } from './property-definitions'
 import { migrateSettingsToConfig } from './settings-cache'
+import type { AgentHandle } from '../agent/bootstrap'
 
 const logger = createLogger('Vault')
 
@@ -71,6 +72,7 @@ let currentStatus: VaultStatus = {
   indexProgress: 0,
   error: null
 }
+let agentHandle: AgentHandle | null = null
 
 /**
  * Show native folder picker dialog
@@ -293,12 +295,6 @@ async function openVault(vaultPath: string): Promise<void> {
   // Start file watcher for external changes
   await startWatcher(vaultPath)
 
-  updateStatus({
-    isOpen: true,
-    path: vaultPath,
-    error: null
-  })
-
   await startSyncRuntime()
 
   // Start loading embedding model in background (non-blocking)
@@ -308,6 +304,14 @@ async function openVault(vaultPath: string): Promise<void> {
       logger.error('Background embedding model load failed:', err)
     })
   }
+
+  await startVaultAgentServices()
+
+  updateStatus({
+    isOpen: true,
+    path: vaultPath,
+    error: null
+  })
 }
 
 /**
@@ -411,6 +415,8 @@ export async function closeVault(): Promise<void> {
     return
   }
 
+  await stopVaultAgentServices()
+
   // Stop file watcher
   await stopWatcher()
 
@@ -431,6 +437,33 @@ export async function closeVault(): Promise<void> {
     indexProgress: 0,
     error: null
   })
+}
+
+async function startVaultAgentServices(): Promise<void> {
+  try {
+    const [{ startAgentMcpLifecycle }, { startAgent }] = await Promise.all([
+      import('../agent/mcp/lifecycle'),
+      import('../agent/bootstrap')
+    ])
+
+    await startAgentMcpLifecycle()
+    agentHandle = await startAgent()
+  } catch (error) {
+    logger.warn('Agent runtime failed to start:', error)
+    agentHandle = null
+  }
+}
+
+async function stopVaultAgentServices(): Promise<void> {
+  const currentAgentHandle = agentHandle
+  agentHandle = null
+
+  const { stopAgentMcpLifecycle } = await import('../agent/mcp/lifecycle')
+
+  if (currentAgentHandle) {
+    await currentAgentHandle.shutdown()
+  }
+  await stopAgentMcpLifecycle()
 }
 
 /**

@@ -49,7 +49,11 @@ const mocks = vi.hoisted(() => ({
   reconcileProjections: vi.fn(),
   initEmbeddingModel: vi.fn(),
   isModelLoaded: vi.fn(),
-  isModelLoading: vi.fn()
+  isModelLoading: vi.fn(),
+  startAgentMcpLifecycle: vi.fn(),
+  stopAgentMcpLifecycle: vi.fn(),
+  startAgent: vi.fn(),
+  agentShutdown: vi.fn()
 }))
 
 vi.mock('electron', () => ({
@@ -187,6 +191,15 @@ vi.mock('./settings-cache', () => ({
   migrateSettingsToConfig: (...args: unknown[]) => mocks.migrateSettingsToConfig(...args)
 }))
 
+vi.mock('../agent/mcp/lifecycle', () => ({
+  startAgentMcpLifecycle: (...args: unknown[]) => mocks.startAgentMcpLifecycle(...args),
+  stopAgentMcpLifecycle: (...args: unknown[]) => mocks.stopAgentMcpLifecycle(...args)
+}))
+
+vi.mock('../agent/bootstrap', () => ({
+  startAgent: (...args: unknown[]) => mocks.startAgent(...args)
+}))
+
 import {
   autoOpenLastVault,
   closeVault,
@@ -236,6 +249,10 @@ describe('vault lifecycle', () => {
     mocks.initEmbeddingModel.mockResolvedValue(undefined)
     mocks.isModelLoaded.mockReturnValue(false)
     mocks.isModelLoading.mockReturnValue(false)
+    mocks.startAgentMcpLifecycle.mockResolvedValue(undefined)
+    mocks.stopAgentMcpLifecycle.mockResolvedValue(undefined)
+    mocks.agentShutdown.mockResolvedValue(undefined)
+    mocks.startAgent.mockResolvedValue({ shutdown: mocks.agentShutdown })
     delete process.env.TEST_VAULT_PATH
   })
 
@@ -267,6 +284,8 @@ describe('vault lifecycle', () => {
     expect(mocks.startWatcher).toHaveBeenCalledWith('/vault/work')
     expect(mocks.startSyncRuntime).toHaveBeenCalled()
     expect(mocks.initEmbeddingModel).toHaveBeenCalled()
+    expect(mocks.startAgentMcpLifecycle).toHaveBeenCalled()
+    expect(mocks.startAgent).toHaveBeenCalled()
     expect(mocks.currentVaultPath).toBe('/vault/work')
     expect(getStatus()).toEqual(expect.objectContaining({ isOpen: true, path: '/vault/work' }))
     expect(mocks.sent.some((event) => event.channel === 'vault:status-changed')).toBe(true)
@@ -343,6 +362,36 @@ describe('vault lifecycle', () => {
     })
     expect(mocks.closeAllDatabases).toHaveBeenCalled()
     expect(mocks.destroyPropertyDefinitions).toHaveBeenCalled()
+    expect(mocks.agentShutdown).toHaveBeenCalled()
+    expect(mocks.stopAgentMcpLifecycle).toHaveBeenCalled()
+    expect(mocks.agentShutdown.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.closeAllDatabases.mock.invocationCallOrder[0]
+    )
+  })
+
+  it('restarts vault-scoped agent services when switching vaults', async () => {
+    await selectVault({ path: '/vault/one' })
+
+    expect(mocks.startAgentMcpLifecycle).toHaveBeenCalledTimes(1)
+    expect(mocks.startAgent).toHaveBeenCalledTimes(1)
+
+    vi.clearAllMocks()
+    mocks.startAgentMcpLifecycle.mockResolvedValue(undefined)
+    mocks.stopAgentMcpLifecycle.mockResolvedValue(undefined)
+    mocks.agentShutdown.mockResolvedValue(undefined)
+    mocks.startAgent.mockResolvedValue({ shutdown: mocks.agentShutdown })
+
+    await selectVault({ path: '/vault/two' })
+
+    expect(mocks.agentShutdown).toHaveBeenCalledTimes(1)
+    expect(mocks.stopAgentMcpLifecycle).toHaveBeenCalledTimes(1)
+    expect(mocks.closeAllDatabases).toHaveBeenCalledTimes(1)
+    expect(mocks.startAgentMcpLifecycle).toHaveBeenCalledTimes(1)
+    expect(mocks.startAgent).toHaveBeenCalledTimes(1)
+    expect(mocks.agentShutdown.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.closeAllDatabases.mock.invocationCallOrder[0]
+    )
+    expect(mocks.currentVaultPath).toBe('/vault/two')
   })
 
   it('auto-opens the test vault and emits explicit progress/error events', async () => {

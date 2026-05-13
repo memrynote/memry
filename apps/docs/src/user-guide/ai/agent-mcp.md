@@ -2,9 +2,12 @@
 
 Memry can run an in-app Agent Chat backed by a provider-neutral agent backend. Claude CLI is the
 first full backend, local OpenAI-compatible servers can be used for BYO local models, and the Codex
-CLI backend uses the same contract when enabled. The desktop app starts a local MCP endpoint on
-`127.0.0.1` with a random port, then gives the selected backend only the vault tools for the current
-conversation.
+CLI backend uses the same contract when enabled. After a vault opens, the desktop app starts a local
+MCP endpoint on `127.0.0.1` with a random port, then gives the selected backend only the vault tools
+for the current conversation.
+
+The Agent runtime and MCP endpoint are scoped to the open vault. Closing or switching vaults stops
+active turns, clears pending tool approvals, and restarts the Agent services for the next vault.
 
 The same MCP endpoint can also be copied into other desktop AI clients for vault read tools.
 
@@ -13,7 +16,8 @@ endpoint and bearer token.
 
 ## Agent Chat
 
-Open the right sidebar, choose **Agent**, and pick a provider. The Agent header includes a
+Open the right sidebar, choose **Agent**, and pick a provider. The compact Day/Agent switch keeps
+the active view highlighted at the top of the right sidebar. The Agent header includes a
 new-conversation button and a history menu for switching back to recent conversations. For Claude
 CLI, Memry checks that `claude` is available on `PATH`, that it reports version `2.1.0` or newer,
 and that the Agent disclosure has been accepted. For local models, configure a compatible server in
