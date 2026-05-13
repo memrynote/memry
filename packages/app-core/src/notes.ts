@@ -116,10 +116,6 @@ function propertiesFromFrontmatter(frontmatter: Record<string, unknown>): Record
   return { ...(properties as Record<string, unknown>) }
 }
 
-function titleFromPath(relativePath: string): string {
-  return path.basename(relativePath, '.md')
-}
-
 function wikilinks(content: string): string[] {
   const matches = content.matchAll(/\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]/g)
   return [...matches].map((match) => match[1]?.trim()).filter((title): title is string => !!title)

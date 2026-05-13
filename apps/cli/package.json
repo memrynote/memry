@@ -4,6 +4,10 @@
   "private": true,
   "license": "GPL-3.0",
   "type": "module",
+  "exports": {
+    ".": "./src/run.ts"
+  },
+  "types": "./src/run.ts",
   "bin": {
     "memry": "./bin/memry.mjs"
   },

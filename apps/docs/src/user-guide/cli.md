@@ -1,12 +1,19 @@
 # Command Line
 
-The `memry` CLI opens a local vault directly, without requiring the Electron app to be running. Every command takes an explicit vault path:
+The `memry` CLI ships with the desktop app. Enable it from **Settings → Command Line**
+to install the terminal command for your operating system. The generated command launches
+Memry in headless CLI mode and exits without opening the desktop window.
+
+Every command takes an explicit vault path:
 
 ```bash
 memry --vault ~/Memry --json vault status
 ```
 
 Use `--json` when another script should consume the output. Without it, commands print a human-readable representation of the same result.
+
+The desktop app installs a small `memry` launcher into a user-level PATH location. If your
+terminal was already open, reopen it before running the command.
 
 ## Vault
 

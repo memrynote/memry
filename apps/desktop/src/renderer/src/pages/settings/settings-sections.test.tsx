@@ -5,6 +5,7 @@ import { AgentProvidersSection } from './agent-providers-section'
 import { AIInlineSettings } from './ai-inline-section'
 import { AppearanceSettings } from './appearance-section'
 import { CalendarSettingsSection } from './calendar-section'
+import { CommandLineSettings } from './command-line-section'
 import { EditorSettings } from './editor-section'
 import { JournalSettings } from './journal-section'
 import { toast } from 'sonner'
@@ -314,6 +315,48 @@ function installWindowApi() {
         limit: 4096,
         breakdown: { notes: 1024, attachments: 256, crdt: 128, other: 128 }
       })
+    },
+    settings: {
+      ...window.api.settings,
+      getTerminalCommandStatus: vi.fn().mockResolvedValue({
+        supported: true,
+        installed: false,
+        command: 'memry',
+        platform: 'darwin',
+        shimPath: '/Users/kaan/.local/bin/memry',
+        binDir: '/Users/kaan/.local/bin',
+        targetPath: '/Applications/Memry.app/Contents/MacOS/Memry',
+        inPath: true,
+        pathHint: null
+      }),
+      installTerminalCommand: vi.fn().mockResolvedValue({
+        success: true,
+        status: {
+          supported: true,
+          installed: true,
+          command: 'memry',
+          platform: 'darwin',
+          shimPath: '/Users/kaan/.local/bin/memry',
+          binDir: '/Users/kaan/.local/bin',
+          targetPath: '/Applications/Memry.app/Contents/MacOS/Memry',
+          inPath: true,
+          pathHint: null
+        }
+      }),
+      uninstallTerminalCommand: vi.fn().mockResolvedValue({
+        success: true,
+        status: {
+          supported: true,
+          installed: false,
+          command: 'memry',
+          platform: 'darwin',
+          shimPath: '/Users/kaan/.local/bin/memry',
+          binDir: '/Users/kaan/.local/bin',
+          targetPath: '/Applications/Memry.app/Contents/MacOS/Memry',
+          inPath: true,
+          pathHint: null
+        }
+      })
     }
   }
   window.electron = {
@@ -545,5 +588,15 @@ describe('settings section coverage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'agentProviders.actions.probe' }))
     await screen.findByText('agentProviders.status.fullTools')
+  })
+
+  it('installs the terminal command from command line settings', async () => {
+    render(<CommandLineSettings />)
+
+    await screen.findByText('commandLine.command.descriptionNotInstalled')
+    fireEvent.click(screen.getByRole('switch'))
+
+    await waitFor(() => expect(window.api.settings.installTerminalCommand).toHaveBeenCalled())
+    expect(toast.success).toHaveBeenCalledWith('commandLine.status.installedToast')
   })
 })

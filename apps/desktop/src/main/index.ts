@@ -62,6 +62,7 @@ import {
   sendAppNavigationSwipeCommand,
   type AppNavigationSwipeDirection
 } from './app-navigation-command'
+import { getHeadlessCliArgs, runHeadlessCli } from './cli/headless'
 
 if (process.type === 'browser') {
   log.initialize()
@@ -79,9 +80,17 @@ const configLog = createLogger('Config')
 const quickCaptureLog = createLogger('QuickCapture')
 const shutdownLog = createLogger('Shutdown')
 const deepLinkLog = createLogger('DeepLink')
+const headlessCliArgs = getHeadlessCliArgs(process.argv)
 
 let mainI18n: I18nInstance
 let agentHandle: AgentHandle | null = null
+
+if (headlessCliArgs) {
+  void runHeadlessCli(headlessCliArgs).catch((error) => {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`)
+    app.exit(1)
+  })
+}
 
 async function bootI18n(): Promise<I18nInstance> {
   let initialLocale: Locale = FALLBACK_LOCALE
@@ -392,7 +401,7 @@ const allowMultiInstanceForDeviceTests =
 // Windows/Linux: deep links arrive via second-instance event.
 // Device-scoped E2E runs need two Electron instances side by side, so skip the
 // process-wide lock only for that test harness path.
-if (!allowMultiInstanceForDeviceTests) {
+if (!headlessCliArgs && !allowMultiInstanceForDeviceTests) {
   const gotTheLock = app.requestSingleInstanceLock()
   if (!gotTheLock) {
     app.quit()
@@ -410,6 +419,7 @@ if (!allowMultiInstanceForDeviceTests) {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 void app.whenReady().then(async () => {
+  if (headlessCliArgs) return
   // Load React DevTools using new session.extensions API (Electron 38+)
   // Note: Some console errors about "sandboxed_renderer.bundle.js" and "Autofill"
   // are expected and harmless - they're caused by Chrome DevTools internals
@@ -1022,6 +1032,8 @@ async function createCloseSnapshots(): Promise<void> {
 
 // Graceful shutdown: close vault and databases before quitting
 app.on('before-quit', (event) => {
+  if (headlessCliArgs) return
+
   // Prevent duplicate shutdown handling
   if (isShuttingDown) return
   isShuttingDown = true
@@ -1089,6 +1101,8 @@ app.on('before-quit', (event) => {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
+  if (headlessCliArgs) return
+
   if (process.platform !== 'darwin') {
     app.quit()
   }
@@ -1096,6 +1110,8 @@ app.on('window-all-closed', () => {
 
 // Unregister all global shortcuts when the app is about to quit
 app.on('will-quit', () => {
+  if (headlessCliArgs) return
+
   globalShortcut.unregisterAll()
   quickCaptureLog.info('global shortcuts unregistered')
 })

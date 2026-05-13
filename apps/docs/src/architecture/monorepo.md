@@ -4,12 +4,12 @@ Memry is a pnpm + Turborepo monorepo. Apps live under `apps/`, reusable domain a
 
 ## Apps
 
-| Path               | Purpose                     | Stack                                       |
-| ------------------ | --------------------------- | ------------------------------------------- |
-| `apps/cli`         | Standalone `memry` CLI      | Node 24, TypeScript                         |
-| `apps/desktop`     | Electron desktop app        | Electron 39, React 19, Vite, BlockNote, Yjs |
-| `apps/sync-server` | Cloudflare Workers sync API | Workers + Hono, D1, R2                      |
-| `apps/docs`        | This documentation site     | VitePress 1.6                               |
+| Path               | Purpose                                                       | Stack                                       |
+| ------------------ | ------------------------------------------------------------- | ------------------------------------------- |
+| `apps/cli`         | `memry` CLI used by desktop headless mode and standalone runs | Node 24, TypeScript                         |
+| `apps/desktop`     | Electron desktop app                                          | Electron 39, React 19, Vite, BlockNote, Yjs |
+| `apps/sync-server` | Cloudflare Workers sync API                                   | Workers + Hono, D1, R2                      |
+| `apps/docs`        | This documentation site                                       | VitePress 1.6                               |
 
 ## Packages
 
@@ -77,6 +77,6 @@ Most actions can be cached and parallelized:
 
 - Renderer never imports from `apps/desktop/src/main/*` and vice versa.
 - Both sides import shared types from `@memry/contracts`.
-- `packages/app-core` owns non-UI vault operations for standalone clients. Keep Electron-only concerns in `apps/desktop`.
+- `packages/app-core` owns non-UI vault operations for standalone clients. Keep Electron-only concerns in `apps/desktop`; desktop `--cli` mode should call the CLI/app-core path rather than duplicate command logic.
 - `packages/db-schema` is consumed by desktop main, app-core, and tests.
 - `apps/sync-server` and `apps/desktop` only share types via `packages/contracts` — never code.

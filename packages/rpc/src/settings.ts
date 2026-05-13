@@ -58,6 +58,22 @@ export interface VoiceTranscriptionOpenAIKeyStatus {
   hasApiKey: boolean
 }
 
+export interface TerminalCommandStatus {
+  supported: boolean
+  installed: boolean
+  command: 'memry'
+  platform: 'darwin' | 'linux' | 'win32'
+  shimPath: string
+  binDir: string
+  targetPath: string
+  inPath: boolean
+  pathHint: string | null
+}
+
+export type TerminalCommandMutationResult =
+  | { success: true; status: TerminalCommandStatus }
+  | { success: false; error: string; status?: TerminalCommandStatus }
+
 export interface TabSettings {
   previewMode: boolean
   restoreSessionOnStart: boolean
@@ -266,9 +282,7 @@ export const settingsRpc = defineDomain({
     getCalendarSettings: defineMethod<() => Promise<CalendarSettings>>({
       channel: SettingsChannels.invoke.GET_CALENDAR_SETTINGS
     }),
-    setCalendarSettings: defineMethod<
-      (settings: Partial<CalendarSettings>) => SuccessResponse
-    >({
+    setCalendarSettings: defineMethod<(settings: Partial<CalendarSettings>) => SuccessResponse>({
       channel: SettingsChannels.invoke.SET_CALENDAR_SETTINGS,
       params: ['settings']
     }),
@@ -281,6 +295,15 @@ export const settingsRpc = defineDomain({
       }>
     >({
       channel: SettingsChannels.invoke.REGISTER_GLOBAL_CAPTURE
+    }),
+    getTerminalCommandStatus: defineMethod<() => Promise<TerminalCommandStatus>>({
+      channel: SettingsChannels.invoke.GET_TERMINAL_COMMAND_STATUS
+    }),
+    installTerminalCommand: defineMethod<() => Promise<TerminalCommandMutationResult>>({
+      channel: SettingsChannels.invoke.INSTALL_TERMINAL_COMMAND
+    }),
+    uninstallTerminalCommand: defineMethod<() => Promise<TerminalCommandMutationResult>>({
+      channel: SettingsChannels.invoke.UNINSTALL_TERMINAL_COMMAND
     })
   },
   events: {

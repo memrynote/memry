@@ -48,6 +48,12 @@ import {
   setVoiceTranscriptionOpenAIApiKey
 } from '../inbox/voice-transcription-keychain'
 import { syncSettingsUpdates } from '../settings/runtime-effects'
+import {
+  getTerminalCommandStatus,
+  installTerminalCommand,
+  uninstallTerminalCommand,
+  type TerminalCommandStatus
+} from '../cli/terminal-command'
 
 // ============================================================================
 // Settings Keys
@@ -116,6 +122,10 @@ const DEFAULT_AI_SETTINGS: AISettings = {
 export interface VoiceTranscriptionOpenAIKeyStatus {
   hasApiKey: boolean
 }
+
+export type TerminalCommandMutationResult =
+  | { success: true; status: TerminalCommandStatus }
+  | { success: false; error: string; status?: TerminalCommandStatus }
 
 // ============================================================================
 // Tab Settings Interface
@@ -196,6 +206,14 @@ function getStartupTheme(): { theme: GeneralSettings['theme']; accentColor?: str
     result.accentColor = settings.accentColor
   }
   return result
+}
+
+async function getTerminalStatusSafely(): Promise<TerminalCommandStatus | undefined> {
+  try {
+    return await getTerminalCommandStatus({ executablePath: process.execPath })
+  } catch {
+    return undefined
+  }
 }
 
 /**
@@ -420,6 +438,46 @@ export function registerSettingsHandlers(): void {
       return { success: false, error: message }
     }
   })
+
+  ipcMain.handle(SettingsChannels.invoke.GET_TERMINAL_COMMAND_STATUS, async () => {
+    return getTerminalCommandStatus({ executablePath: process.execPath })
+  })
+
+  ipcMain.handle(
+    SettingsChannels.invoke.INSTALL_TERMINAL_COMMAND,
+    async (): Promise<TerminalCommandMutationResult> => {
+      try {
+        return {
+          success: true,
+          status: await installTerminalCommand({ executablePath: process.execPath })
+        }
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to install terminal command',
+          status: await getTerminalStatusSafely()
+        }
+      }
+    }
+  )
+
+  ipcMain.handle(
+    SettingsChannels.invoke.UNINSTALL_TERMINAL_COMMAND,
+    async (): Promise<TerminalCommandMutationResult> => {
+      try {
+        return {
+          success: true,
+          status: await uninstallTerminalCommand({ executablePath: process.execPath })
+        }
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to uninstall terminal command',
+          status: await getTerminalStatusSafely()
+        }
+      }
+    }
+  )
 
   ipcMain.handle(SettingsChannels.invoke.GET_VOICE_RECORDING_READINESS, async () => {
     return getVoiceRecordingReadiness()
