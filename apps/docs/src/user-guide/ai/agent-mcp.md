@@ -16,7 +16,8 @@ endpoint and bearer token.
 
 ## Agent Chat
 
-Open the right sidebar, choose **Agent**, and pick a provider. The Agent header includes a
+Open the right sidebar, choose **Agent**, and pick a provider. The compact Day/Agent switch keeps
+the active view highlighted at the top of the right sidebar. The Agent header includes a
 new-conversation button and a history menu for switching back to recent conversations. For Claude
 CLI, Memry checks that `claude` is available on `PATH`, that it reports version `2.1.0` or newer,
 and that the Agent disclosure has been accepted. For local models, configure a compatible server in
