@@ -8,27 +8,76 @@ const handles: VaultServiceHandles = {
     search: async () => [],
     read: async () => null,
     create: async () => ({ id: 'created-note' }),
+    rename: async ({ id }) => ({ id }),
+    delete: async (id) => ({ id }),
     update: async () => {},
     addTag: async () => {},
     removeTag: async () => {},
     moveToFolder: async () => {}
   },
-  folders: { list: async () => [] },
+  folders: {
+    list: async () => [],
+    create: async (path) => ({ path }),
+    rename: async ({ new_path }) => ({ path: new_path }),
+    delete: async (path) => ({ path })
+  },
   tasks: {
     list: async () => [],
+    get: async () => null,
     create: async () => ({ id: 'created-task' }),
     update: async () => {},
+    delete: async (id) => ({ id }),
+    complete: async ({ id }) => ({ id }),
+    uncomplete: async (id) => ({ id }),
+    archive: async (id) => ({ id }),
+    unarchive: async (id) => ({ id }),
+    move: async ({ task_id }) => ({ id: task_id }),
+    reorder: async ({ task_ids }) => ({ ids: task_ids }),
+    duplicate: async () => ({ id: 'duplicated-task' }),
+    convertToSubtask: async ({ task_id }) => ({ id: task_id }),
+    convertToTask: async (id) => ({ id }),
     addTag: async () => {},
     removeTag: async () => {}
   },
-  projects: { list: async () => [] },
+  projects: {
+    list: async () => [],
+    get: async () => null,
+    create: async () => ({ id: 'created-project' }),
+    update: async ({ id }) => ({ id }),
+    delete: async (id) => ({ id }),
+    archive: async (id) => ({ id }),
+    reorder: async ({ project_ids }) => ({ ids: project_ids })
+  },
+  statuses: {
+    list: async () => [],
+    create: async () => ({ id: 'created-status' }),
+    update: async ({ id }) => ({ id }),
+    delete: async (id) => ({ id }),
+    reorder: async ({ status_ids }) => ({ ids: status_ids })
+  },
   journal: {
     getByDate: async () => null,
     listInRange: async () => [],
-    createIfMissing: async () => ({ id: 'jrnl', created: true })
+    createIfMissing: async () => ({ id: 'jrnl', created: true }),
+    update: async () => ({ id: 'jrnl' }),
+    delete: async (date) => ({ date, deleted: true })
   },
-  inbox: { list: async () => [], add: async () => ({ id: 'inbox' }) },
+  inbox: {
+    list: async () => [],
+    get: async () => null,
+    add: async () => ({ id: 'inbox' }),
+    update: async ({ id }) => ({ id }),
+    archive: async (id) => ({ id }),
+    unarchive: async (id) => ({ id }),
+    delete: async (id) => ({ id }),
+    addTag: async ({ id }) => ({ id }),
+    removeTag: async ({ id }) => ({ id })
+  },
   tags: { listAll: async () => [] },
+  desktop: {
+    read: async () => ({ ok: true }),
+    write: async ({ operation, args }, windowId) => ({ operation, args, windowId })
+  },
   windows: { snapshotCurrentNote: async () => null }
 }
 
@@ -39,7 +88,7 @@ describe('Write tools — P1 deny-by-default', () => {
     tools = buildWriteTools(handles, null)
   })
 
-  it('registers all 9 write tools', () => {
+  it('registers all write tools', () => {
     expect(tools.map((t) => t.name).sort()).toEqual([...WRITE_TOOL_NAMES].sort())
   })
 
@@ -53,14 +102,47 @@ describe('Write tools — P1 deny-by-default', () => {
   it('returns PERMISSION_DENIED for every write tool with valid args and no gate', async () => {
     const valid: Record<string, unknown> = {
       vault_create_note: { title: 't', content_markdown: 'b' },
+      vault_rename_note: { id: 'x', title: 'renamed' },
+      vault_delete_note: { id: 'x' },
+      vault_create_folder: { path: '/Projects' },
+      vault_rename_folder: { old_path: '/Projects', new_path: '/Archive' },
+      vault_delete_folder: { path: '/Archive' },
       vault_create_task: { title: 't' },
+      vault_delete_task: { id: 'x' },
+      vault_complete_task: { id: 'x' },
+      vault_uncomplete_task: { id: 'x' },
+      vault_archive_task: { id: 'x' },
+      vault_unarchive_task: { id: 'x' },
+      vault_move_task: { task_id: 'x', target_project_id: 'p1', position: 1 },
+      vault_reorder_tasks: { task_ids: ['x'], positions: [0] },
+      vault_duplicate_task: { id: 'x' },
+      vault_convert_task_to_subtask: { task_id: 'x', parent_id: 'parent' },
+      vault_convert_subtask_to_task: { id: 'x' },
+      vault_create_project: { name: 'Project' },
+      vault_update_project: { id: 'p1', name: 'Renamed' },
+      vault_delete_project: { id: 'p1' },
+      vault_archive_project: { id: 'p1' },
+      vault_reorder_projects: { project_ids: ['p1'], positions: [0] },
+      vault_create_status: { project_id: 'p1', name: 'Blocked' },
+      vault_update_status: { id: 's1', name: 'Doing' },
+      vault_delete_status: { id: 's1' },
+      vault_reorder_statuses: { status_ids: ['s1'], positions: [0] },
       vault_create_journal_entry: { date: '2026-05-10', content_markdown: 'b' },
+      vault_update_journal_entry: { date: '2026-05-10', content_markdown: 'b' },
+      vault_delete_journal_entry: { date: '2026-05-10' },
       vault_add_to_inbox: { source: 'cli', title: 't', content: 'b' },
+      vault_update_inbox_item: { id: 'i1', title: 'Updated' },
+      vault_archive_inbox_item: { id: 'i1' },
+      vault_unarchive_inbox_item: { id: 'i1' },
+      vault_delete_inbox_item: { id: 'i1' },
+      vault_add_inbox_tag: { id: 'i1', tag: 'work' },
+      vault_remove_inbox_tag: { id: 'i1', tag: 'work' },
       vault_update_note: { id: 'x', mode: 'append', content_markdown: 'b' },
       vault_update_task: { id: 'x', title: 'new' },
       vault_add_tag: { id: 'x', kind: 'note', tag: 'a' },
       vault_remove_tag: { id: 'x', kind: 'note', tag: 'a' },
-      vault_move_to_folder: { id: 'x', folder_path: '/Inbox' }
+      vault_move_to_folder: { id: 'x', folder_path: '/Inbox' },
+      vault_desktop_write: { operation: 'templates.create', args: [{ name: 'Template' }] }
     }
     for (const t of tools) {
       await expect(
@@ -117,25 +199,60 @@ describe('Write tools — P1 deny-by-default', () => {
       ...handles,
       notes: {
         ...handles.notes,
+        rename: vi.fn(async ({ id }) => ({ id })),
+        delete: vi.fn(async (id) => ({ id })),
         update: vi.fn(async () => {}),
         addTag: vi.fn(async () => {}),
         removeTag: vi.fn(async () => {}),
         moveToFolder: vi.fn(async () => {})
       },
+      folders: {
+        ...handles.folders,
+        create: vi.fn(async (path) => ({ path })),
+        rename: vi.fn(async ({ new_path }) => ({ path: new_path })),
+        delete: vi.fn(async (path) => ({ path }))
+      },
       tasks: {
         ...handles.tasks,
         create: vi.fn(async () => ({ id: 'task-created' })),
         update: vi.fn(async () => {}),
+        delete: vi.fn(async (id) => ({ id })),
+        archive: vi.fn(async (id) => ({ id })),
+        move: vi.fn(async ({ task_id }) => ({ id: task_id })),
         addTag: vi.fn(async () => {}),
         removeTag: vi.fn(async () => {})
       },
+      projects: {
+        ...handles.projects,
+        create: vi.fn(async () => ({ id: 'project-created' })),
+        update: vi.fn(async ({ id }) => ({ id })),
+        delete: vi.fn(async (id) => ({ id }))
+      },
+      statuses: {
+        ...handles.statuses,
+        create: vi.fn(async () => ({ id: 'status-created' })),
+        update: vi.fn(async ({ id }) => ({ id })),
+        delete: vi.fn(async (id) => ({ id }))
+      },
       journal: {
         ...handles.journal,
-        createIfMissing: vi.fn(async () => ({ id: 'jrnl', created: true }))
+        createIfMissing: vi.fn(async () => ({ id: 'jrnl', created: true })),
+        update: vi.fn(async () => ({ id: 'jrnl' })),
+        delete: vi.fn(async (date) => ({ date, deleted: true }))
       },
       inbox: {
         ...handles.inbox,
-        add: vi.fn(async () => ({ id: 'inbox-created' }))
+        add: vi.fn(async () => ({ id: 'inbox-created' })),
+        update: vi.fn(async ({ id }) => ({ id })),
+        archive: vi.fn(async (id) => ({ id })),
+        unarchive: vi.fn(async (id) => ({ id })),
+        delete: vi.fn(async (id) => ({ id })),
+        addTag: vi.fn(async ({ id }) => ({ id })),
+        removeTag: vi.fn(async ({ id }) => ({ id }))
+      },
+      desktop: {
+        ...handles.desktop,
+        write: vi.fn(async ({ operation, args }, windowId) => ({ operation, args, windowId }))
       }
     }
     const withGate = buildWriteTools(localHandles, async () => ({ approved: true }))
@@ -153,6 +270,44 @@ describe('Write tools — P1 deny-by-default', () => {
     await expect(
       run('vault_add_to_inbox', { source: 'agent', title: 'Inbox', content: 'Body' })
     ).resolves.toEqual({ id: 'inbox-created' })
+    await expect(run('vault_rename_note', { id: 'note-1', title: 'Renamed' })).resolves.toEqual({
+      id: 'note-1'
+    })
+    await expect(run('vault_delete_note', { id: 'note-1' })).resolves.toEqual({ id: 'note-1' })
+    await expect(run('vault_create_folder', { path: '/Projects' })).resolves.toEqual({
+      path: '/Projects'
+    })
+    await expect(
+      run('vault_create_project', { name: 'Project', color: '#6366f1' })
+    ).resolves.toEqual({ id: 'project-created' })
+    await expect(run('vault_update_project', { id: 'project-1', name: 'Next' })).resolves.toEqual({
+      id: 'project-1'
+    })
+    await expect(
+      run('vault_create_status', { project_id: 'project-1', name: 'Doing' })
+    ).resolves.toEqual({
+      id: 'status-created'
+    })
+    await expect(
+      run('vault_update_journal_entry', { date: '2026-05-10', content_markdown: 'Updated' })
+    ).resolves.toEqual({ id: 'jrnl' })
+    await expect(
+      run('vault_update_inbox_item', { id: 'inbox-1', title: 'Updated' })
+    ).resolves.toEqual({
+      id: 'inbox-1'
+    })
+    await expect(run('vault_unarchive_inbox_item', { id: 'inbox-1' })).resolves.toEqual({
+      id: 'inbox-1'
+    })
+    await expect(run('vault_delete_inbox_item', { id: 'inbox-1' })).resolves.toEqual({
+      id: 'inbox-1'
+    })
+    await expect(run('vault_add_inbox_tag', { id: 'inbox-1', tag: 'work' })).resolves.toEqual({
+      id: 'inbox-1'
+    })
+    await expect(run('vault_remove_inbox_tag', { id: 'inbox-1', tag: 'work' })).resolves.toEqual({
+      id: 'inbox-1'
+    })
     await expect(
       run('vault_update_note', { id: 'note-1', mode: 'append', content_markdown: 'More' })
     ).resolves.toEqual({ id: 'note-1' })
@@ -168,12 +323,39 @@ describe('Write tools — P1 deny-by-default', () => {
     await expect(
       run('vault_move_to_folder', { id: 'note-1', folder_path: '/Projects' })
     ).resolves.toEqual({ id: 'note-1' })
+    await expect(
+      run('vault_desktop_write', { operation: 'templates.create', args: [{ name: 'Template' }] })
+    ).resolves.toEqual({
+      operation: 'templates.create',
+      args: [{ name: 'Template' }],
+      windowId: 'w1'
+    })
 
     expect(localHandles.notes.update).toHaveBeenCalledWith({
       id: 'note-1',
       mode: 'append',
       content_markdown: 'More'
     })
+    expect(localHandles.notes.rename).toHaveBeenCalledWith({ id: 'note-1', title: 'Renamed' })
+    expect(localHandles.notes.delete).toHaveBeenCalledWith('note-1')
+    expect(localHandles.folders.create).toHaveBeenCalledWith('/Projects')
+    expect(localHandles.projects.create).toHaveBeenCalledWith({ name: 'Project', color: '#6366f1' })
+    expect(localHandles.projects.update).toHaveBeenCalledWith({ id: 'project-1', name: 'Next' })
+    expect(localHandles.statuses.create).toHaveBeenCalledWith({
+      project_id: 'project-1',
+      name: 'Doing',
+      color: '#6b7280',
+      is_done: false
+    })
+    expect(localHandles.journal.update).toHaveBeenCalledWith({
+      date: '2026-05-10',
+      content_markdown: 'Updated'
+    })
+    expect(localHandles.inbox.update).toHaveBeenCalledWith({ id: 'inbox-1', title: 'Updated' })
+    expect(localHandles.inbox.unarchive).toHaveBeenCalledWith('inbox-1')
+    expect(localHandles.inbox.delete).toHaveBeenCalledWith('inbox-1')
+    expect(localHandles.inbox.addTag).toHaveBeenCalledWith({ id: 'inbox-1', tag: 'work' })
+    expect(localHandles.inbox.removeTag).toHaveBeenCalledWith({ id: 'inbox-1', tag: 'work' })
     expect(localHandles.tasks.update).toHaveBeenCalledWith('task-1', { title: 'Updated' })
     expect(localHandles.tasks.addTag).toHaveBeenCalledWith({
       id: 'task-1',
@@ -187,6 +369,10 @@ describe('Write tools — P1 deny-by-default', () => {
       id: 'note-1',
       folder_path: '/Projects'
     })
+    expect(localHandles.desktop.write).toHaveBeenCalledWith(
+      { operation: 'templates.create', args: [{ name: 'Template' }] },
+      'w1'
+    )
   })
 
   it('returns PERMISSION_DENIED when the gate denies', async () => {

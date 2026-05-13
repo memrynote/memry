@@ -5,20 +5,30 @@ const mocks = vi.hoisted(() => ({
   listJournalEntriesInRange: vi.fn(),
   getInboxProject: vi.fn(),
   createDesktopInboxDomain: vi.fn(),
+  createDesktopInboxCrudHandlers: vi.fn(),
+  deleteJournalEntryFile: vi.fn(),
   readJournalEntry: vi.fn(),
   writeJournalEntry: vi.fn(),
   createNoteCommand: vi.fn(),
+  deleteNoteCommand: vi.fn(),
   moveNoteCommand: vi.fn(),
+  renameNoteCommand: vi.fn(),
   updateNoteCommand: vi.fn(),
   createDesktopTasksDomain: vi.fn(),
   createTasksPublisher: vi.fn(),
+  createFolder: vi.fn(),
+  deleteFolder: vi.fn(),
   getFolders: vi.fn(),
   getNoteById: vi.fn(),
   listNotes: vi.fn(),
+  renameFolder: vi.fn(),
+  syncFolderConfigDelete: vi.fn(),
+  syncFolderConfigRename: vi.fn(),
   getConfig: vi.fn(),
   getAllTagsWithCounts: vi.fn(),
   generateId: vi.fn(),
-  snapshotCurrentNoteFromWindow: vi.fn()
+  snapshotCurrentNoteFromWindow: vi.fn(),
+  invokeDesktopApiFromWindow: vi.fn()
 }))
 
 vi.mock('../../../database/queries/search', () => ({
@@ -34,17 +44,21 @@ vi.mock('../../../database/queries/projects', () => ({
 }))
 
 vi.mock('../../../inbox/domain', () => ({
-  createDesktopInboxDomain: mocks.createDesktopInboxDomain
+  createDesktopInboxDomain: mocks.createDesktopInboxDomain,
+  createDesktopInboxCrudHandlers: mocks.createDesktopInboxCrudHandlers
 }))
 
 vi.mock('../../../vault/journal', () => ({
+  deleteJournalEntryFile: mocks.deleteJournalEntryFile,
   readJournalEntry: mocks.readJournalEntry,
   writeJournalEntry: mocks.writeJournalEntry
 }))
 
 vi.mock('../../../notes/domain', () => ({
   createNoteCommand: mocks.createNoteCommand,
+  deleteNoteCommand: mocks.deleteNoteCommand,
   moveNoteCommand: mocks.moveNoteCommand,
+  renameNoteCommand: mocks.renameNoteCommand,
   updateNoteCommand: mocks.updateNoteCommand
 }))
 
@@ -57,9 +71,17 @@ vi.mock('../../../tasks/publisher', () => ({
 }))
 
 vi.mock('../../../vault/notes', () => ({
+  createFolder: mocks.createFolder,
+  deleteFolder: mocks.deleteFolder,
   getFolders: mocks.getFolders,
   getNoteById: mocks.getNoteById,
-  listNotes: mocks.listNotes
+  listNotes: mocks.listNotes,
+  renameFolder: mocks.renameFolder
+}))
+
+vi.mock('../../../notes/folder-config-effects', () => ({
+  syncFolderConfigDelete: mocks.syncFolderConfigDelete,
+  syncFolderConfigRename: mocks.syncFolderConfigRename
 }))
 
 vi.mock('../../../vault', () => ({
@@ -78,6 +100,10 @@ vi.mock('./current-note', () => ({
   snapshotCurrentNoteFromWindow: mocks.snapshotCurrentNoteFromWindow
 }))
 
+vi.mock('./desktop-api', () => ({
+  invokeDesktopApiFromWindow: mocks.invokeDesktopApiFromWindow
+}))
+
 import { createVaultServiceHandles } from './handles-adapter'
 
 const deps = {
@@ -93,7 +119,26 @@ describe('createVaultServiceHandles', () => {
     uncompleteTask: ReturnType<typeof vi.fn>
     updateTask: ReturnType<typeof vi.fn>
     getTask: ReturnType<typeof vi.fn>
+    deleteTask: ReturnType<typeof vi.fn>
+    archiveTask: ReturnType<typeof vi.fn>
+    unarchiveTask: ReturnType<typeof vi.fn>
+    moveTask: ReturnType<typeof vi.fn>
+    reorderTasks: ReturnType<typeof vi.fn>
+    duplicateTask: ReturnType<typeof vi.fn>
+    convertToSubtask: ReturnType<typeof vi.fn>
+    convertToTask: ReturnType<typeof vi.fn>
     listProjects: ReturnType<typeof vi.fn>
+    getProject: ReturnType<typeof vi.fn>
+    createProject: ReturnType<typeof vi.fn>
+    updateProject: ReturnType<typeof vi.fn>
+    deleteProject: ReturnType<typeof vi.fn>
+    archiveProject: ReturnType<typeof vi.fn>
+    reorderProjects: ReturnType<typeof vi.fn>
+    listStatuses: ReturnType<typeof vi.fn>
+    createStatus: ReturnType<typeof vi.fn>
+    updateStatus: ReturnType<typeof vi.fn>
+    deleteStatus: ReturnType<typeof vi.fn>
+    reorderStatuses: ReturnType<typeof vi.fn>
   }
 
   beforeEach(() => {
@@ -106,6 +151,18 @@ describe('createVaultServiceHandles', () => {
     mocks.createTasksPublisher.mockReturnValue({})
     mocks.generateId.mockReturnValue('generated-id')
     mocks.getInboxProject.mockReturnValue({ id: 'inbox-project' })
+    mocks.createDesktopInboxCrudHandlers.mockReturnValue({
+      handleGet: vi.fn().mockResolvedValue(null),
+      handleUpdate: vi.fn().mockResolvedValue({ success: true, item: { id: 'inbox-1' } }),
+      handleArchive: vi.fn().mockResolvedValue({ success: true }),
+      handleAddTag: vi.fn().mockResolvedValue({ success: true }),
+      handleRemoveTag: vi.fn().mockResolvedValue({ success: true }),
+      handleMarkViewed: vi.fn().mockResolvedValue({ success: true }),
+      handleUnarchive: vi.fn().mockResolvedValue({ success: true }),
+      handleDeletePermanent: vi.fn().mockResolvedValue({ success: true }),
+      handleUndoFile: vi.fn().mockResolvedValue({ success: true }),
+      handleUndoArchive: vi.fn().mockResolvedValue({ success: true })
+    })
 
     taskDomain = {
       listTasks: vi.fn().mockReturnValue({ tasks: [] }),
@@ -114,7 +171,28 @@ describe('createVaultServiceHandles', () => {
       uncompleteTask: vi.fn().mockResolvedValue({ success: true }),
       updateTask: vi.fn().mockResolvedValue({ success: true }),
       getTask: vi.fn(),
-      listProjects: vi.fn().mockReturnValue({ projects: [] })
+      deleteTask: vi.fn().mockResolvedValue({ success: true }),
+      archiveTask: vi.fn().mockResolvedValue({ success: true }),
+      unarchiveTask: vi.fn().mockResolvedValue({ success: true }),
+      moveTask: vi.fn().mockResolvedValue({ success: true }),
+      reorderTasks: vi.fn().mockResolvedValue({ success: true }),
+      duplicateTask: vi.fn().mockResolvedValue({ success: true, task: { id: 'task-copy' } }),
+      convertToSubtask: vi.fn().mockResolvedValue({ success: true }),
+      convertToTask: vi.fn().mockResolvedValue({ success: true }),
+      listProjects: vi.fn().mockReturnValue({ projects: [] }),
+      getProject: vi.fn(),
+      createProject: vi
+        .fn()
+        .mockResolvedValue({ success: true, project: { id: 'project-created' } }),
+      updateProject: vi.fn().mockResolvedValue({ success: true, project: { id: 'project-1' } }),
+      deleteProject: vi.fn().mockResolvedValue({ success: true }),
+      archiveProject: vi.fn().mockResolvedValue({ success: true }),
+      reorderProjects: vi.fn().mockResolvedValue({ success: true }),
+      listStatuses: vi.fn().mockReturnValue([]),
+      createStatus: vi.fn().mockResolvedValue({ success: true, status: { id: 'status-created' } }),
+      updateStatus: vi.fn().mockResolvedValue({ success: true, status: { id: 'status-1' } }),
+      deleteStatus: vi.fn().mockResolvedValue({ success: true }),
+      reorderStatuses: vi.fn().mockResolvedValue({ success: true })
     }
     mocks.createDesktopTasksDomain.mockReturnValue(taskDomain)
   })
@@ -305,6 +383,21 @@ describe('createVaultServiceHandles', () => {
       { kind: 'folder', id: '/work', name: 'work', path: '/work' },
       { kind: 'folder', id: '/personal', name: 'personal', path: '/personal' }
     ])
+
+    await expect(handles.folders.create('/planning')).resolves.toEqual({ path: '/planning' })
+    expect(mocks.createFolder).toHaveBeenCalledWith('planning')
+
+    await expect(
+      handles.folders.rename({ old_path: '/planning', new_path: '/archive/planning' })
+    ).resolves.toEqual({ path: '/archive/planning' })
+    expect(mocks.renameFolder).toHaveBeenCalledWith('planning', 'archive/planning')
+    expect(mocks.syncFolderConfigRename).toHaveBeenCalledWith('planning', 'archive/planning')
+
+    await expect(handles.folders.delete('/archive/planning')).resolves.toEqual({
+      path: '/archive/planning'
+    })
+    expect(mocks.deleteFolder).toHaveBeenCalledWith('archive/planning')
+    expect(mocks.syncFolderConfigDelete).toHaveBeenCalledWith('archive/planning')
   })
 
   it('maps task and project handles through the task domain', async () => {
@@ -465,6 +558,78 @@ describe('createVaultServiceHandles', () => {
       { id: 'project-1', name: 'Active', status: 'active', task_count: 2 },
       { id: 'project-2', name: 'Archived', status: 'archived', task_count: 0 }
     ])
+
+    taskDomain.getTask.mockReturnValueOnce({ id: 'task-1' })
+    await expect(handles.tasks.get('task-1')).resolves.toEqual({ id: 'task-1' })
+    taskDomain.getTask.mockReturnValueOnce(null)
+    await expect(handles.tasks.get('missing')).resolves.toBeNull()
+
+    await expect(handles.tasks.delete('task-1')).resolves.toEqual({ id: 'task-1' })
+    await expect(
+      handles.tasks.complete({ id: 'task-1', completed_at: '2026-05-13T00:00:00Z' })
+    ).resolves.toEqual({ id: 'task-1' })
+    await expect(handles.tasks.uncomplete('task-1')).resolves.toEqual({ id: 'task-1' })
+    await expect(handles.tasks.archive('task-1')).resolves.toEqual({ id: 'task-1' })
+    await expect(handles.tasks.unarchive('task-1')).resolves.toEqual({ id: 'task-1' })
+    await expect(
+      handles.tasks.move({
+        task_id: 'task-1',
+        target_project_id: 'project-2',
+        target_status_id: 'status-1',
+        position: 2
+      })
+    ).resolves.toEqual({ id: 'task-1' })
+    await expect(handles.tasks.reorder({ task_ids: ['task-1'], positions: [0] })).resolves.toEqual({
+      ids: ['task-1']
+    })
+    await expect(handles.tasks.duplicate('task-1')).resolves.toEqual({ id: 'task-copy' })
+    await expect(
+      handles.tasks.convertToSubtask({ task_id: 'task-1', parent_id: 'parent-1' })
+    ).resolves.toEqual({ id: 'task-1' })
+    await expect(handles.tasks.convertToTask('task-1')).resolves.toEqual({ id: 'task-1' })
+
+    expect(taskDomain.completeTask).toHaveBeenLastCalledWith({
+      id: 'task-1',
+      completedAt: '2026-05-13T00:00:00Z'
+    })
+    expect(taskDomain.moveTask).toHaveBeenCalledWith({
+      taskId: 'task-1',
+      targetProjectId: 'project-2',
+      targetStatusId: 'status-1',
+      targetParentId: undefined,
+      position: 2
+    })
+
+    taskDomain.deleteTask.mockResolvedValueOnce({ success: false, error: 'delete failed' })
+    await expect(handles.tasks.delete('task-bad')).rejects.toThrow('delete failed')
+
+    taskDomain.getProject.mockReturnValueOnce({ id: 'project-1' })
+    await expect(handles.projects.get('project-1')).resolves.toEqual({ id: 'project-1' })
+    taskDomain.getProject.mockReturnValueOnce(null)
+    await expect(handles.projects.get('missing')).resolves.toBeNull()
+    await expect(handles.projects.create({ name: 'Project' })).resolves.toEqual({
+      id: 'project-created'
+    })
+    await expect(handles.projects.update({ id: 'project-1', name: 'Next' })).resolves.toEqual({
+      id: 'project-1'
+    })
+    await expect(handles.projects.delete('project-1')).resolves.toEqual({ id: 'project-1' })
+    await expect(handles.projects.archive('project-1')).resolves.toEqual({ id: 'project-1' })
+    await expect(
+      handles.projects.reorder({ project_ids: ['project-1'], positions: [0] })
+    ).resolves.toEqual({ ids: ['project-1'] })
+
+    await expect(handles.statuses.list('project-1')).resolves.toEqual([])
+    await expect(
+      handles.statuses.create({ project_id: 'project-1', name: 'Doing', is_done: true })
+    ).resolves.toEqual({ id: 'status-created' })
+    await expect(handles.statuses.update({ id: 'status-1', name: 'Done' })).resolves.toEqual({
+      id: 'status-1'
+    })
+    await expect(handles.statuses.delete('status-1')).resolves.toEqual({ id: 'status-1' })
+    await expect(
+      handles.statuses.reorder({ status_ids: ['status-1'], positions: [0] })
+    ).resolves.toEqual({ ids: ['status-1'] })
   })
 
   it('maps journal, inbox, tag, and window handles', async () => {
@@ -563,10 +728,52 @@ describe('createVaultServiceHandles', () => {
       handles.inbox.add({ source: 'inline', title: 'Bad', content: 'Body' })
     ).rejects.toThrow('capture failed')
 
+    await expect(handles.inbox.get('inbox-1')).resolves.toBeNull()
+    await expect(handles.inbox.update({ id: 'inbox-1', title: 'Updated' })).resolves.toEqual({
+      id: 'inbox-1'
+    })
+    await expect(handles.inbox.archive('inbox-1')).resolves.toEqual({ id: 'inbox-1' })
+    await expect(handles.inbox.unarchive('inbox-1')).resolves.toEqual({ id: 'inbox-1' })
+    await expect(handles.inbox.delete('inbox-1')).resolves.toEqual({ id: 'inbox-1' })
+    await expect(handles.inbox.addTag({ id: 'inbox-1', tag: 'work' })).resolves.toEqual({
+      id: 'inbox-1'
+    })
+    await expect(handles.inbox.removeTag({ id: 'inbox-1', tag: 'work' })).resolves.toEqual({
+      id: 'inbox-1'
+    })
+
+    mocks.createDesktopInboxCrudHandlers.mockReturnValueOnce({
+      handleUpdate: vi.fn().mockResolvedValue({ success: false, error: 'update failed' })
+    })
+    await expect(handles.inbox.update({ id: 'bad', title: 'Bad' })).rejects.toThrow('update failed')
+
     mocks.getAllTagsWithCounts.mockReturnValue([{ name: 'focus', count: 3 }])
     await expect(handles.tags.listAll()).resolves.toEqual([{ name: 'focus', count: 3 }])
 
     mocks.snapshotCurrentNoteFromWindow.mockResolvedValue({ id: 'note-1' })
     await expect(handles.windows.snapshotCurrentNote('window-1')).resolves.toEqual({ id: 'note-1' })
+
+    mocks.invokeDesktopApiFromWindow.mockResolvedValueOnce({ templates: [] })
+    await expect(
+      handles.desktop.read({ operation: 'templates.list', args: [] }, 'window-1')
+    ).resolves.toEqual({
+      templates: []
+    })
+    expect(mocks.invokeDesktopApiFromWindow).toHaveBeenLastCalledWith('window-1', {
+      operation: 'templates.list',
+      args: []
+    })
+
+    mocks.invokeDesktopApiFromWindow.mockResolvedValueOnce({ id: 'template-1' })
+    await expect(
+      handles.desktop.write(
+        { operation: 'templates.create', args: [{ name: 'Template' }] },
+        'window-1'
+      )
+    ).resolves.toEqual({ id: 'template-1' })
+    expect(mocks.invokeDesktopApiFromWindow).toHaveBeenLastCalledWith('window-1', {
+      operation: 'templates.create',
+      args: [{ name: 'Template' }]
+    })
   })
 })
