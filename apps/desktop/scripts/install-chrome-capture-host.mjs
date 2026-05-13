@@ -43,10 +43,26 @@ function supportDir(platform = process.platform) {
   return join(process.env.XDG_CONFIG_HOME || join(home, '.config'), 'memry')
 }
 
+function appSupportDir(name, platform = process.platform) {
+  const home = homedir()
+  if (platform === 'darwin') return join(home, 'Library', 'Application Support', name)
+  if (platform === 'win32')
+    return join(process.env.APPDATA || join(home, 'AppData', 'Roaming'), name)
+  return join(process.env.XDG_CONFIG_HOME || join(home, '.config'), name)
+}
+
+function deviceAppSupportName(device) {
+  return `memry-${device}-${device}`
+}
+
+function shellQuote(value) {
+  return `'${String(value).replaceAll("'", "'\\''")}'`
+}
+
 const extensionId = readArg('extension-id')
 if (!extensionId) {
   console.error(
-    'Usage: node apps/desktop/scripts/install-chrome-capture-host.mjs --extension-id <id> [--browser chrome|dia|edge|chromium] [--manifest-dir <dir>]'
+    'Usage: node apps/desktop/scripts/install-chrome-capture-host.mjs --extension-id <id> [--browser chrome|dia|edge|chromium] [--manifest-dir <dir>] [--device <id>|--user-data-dir <dir>|--app-support-name <name>|--capture-dir <dir>]'
   )
   process.exit(1)
 }
@@ -54,6 +70,8 @@ if (!extensionId) {
 const browser = (readArg('browser') || 'chrome').toLowerCase()
 const captureDir = readArg('capture-dir')
 const appSupportName = readArg('app-support-name')
+const device = readArg('device') || process.env.MEMRY_DEVICE
+const userDataDir = readArg('user-data-dir')
 const manifestDirOverride = readArg('manifest-dir')
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const hostScript = resolve(scriptDir, '../native-host/memry-capture-host.mjs')
@@ -63,9 +81,17 @@ const manifestPath = join(
   manifestDirOverride ? resolve(manifestDirOverride) : manifestDir(browser),
   `${HOST_NAME}.json`
 )
+const resolvedCaptureDir = captureDir
+  ? resolve(captureDir)
+  : userDataDir
+    ? join(resolve(userDataDir), 'capture-inbox', 'pending')
+    : appSupportName
+      ? join(appSupportDir(appSupportName), 'capture-inbox', 'pending')
+      : device
+        ? join(appSupportDir(deviceAppSupportName(device)), 'capture-inbox', 'pending')
+        : ''
 const envLines = [
-  captureDir ? `export MEMRY_CAPTURE_DIR="${captureDir.replaceAll('"', '\\"')}"` : '',
-  appSupportName ? `export MEMRY_APP_SUPPORT_NAME="${appSupportName.replaceAll('"', '\\"')}"` : ''
+  resolvedCaptureDir ? `export MEMRY_CAPTURE_DIR=${shellQuote(resolvedCaptureDir)}` : ''
 ]
   .filter(Boolean)
   .join('\n')
@@ -73,7 +99,7 @@ const envLines = [
 await mkdir(wrapperDir, { recursive: true })
 await writeFile(
   wrapperPath,
-  `#!/bin/sh\n${envLines ? `${envLines}\n` : ''}exec "${process.execPath}" "${hostScript}"\n`,
+  `#!/bin/sh\n${envLines ? `${envLines}\n` : ''}exec ${shellQuote(process.execPath)} ${shellQuote(hostScript)}\n`,
   'utf8'
 )
 await chmod(wrapperPath, 0o755)

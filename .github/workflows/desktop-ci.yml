@@ -114,6 +114,9 @@ jobs:
       - name: Run desktop tests with coverage
         run: pnpm --filter @memry/desktop exec vitest run --coverage --config config/vitest.config.ts
 
+      - name: Run desktop Node script tests
+        run: node --test apps/desktop/native-host/*.test.mjs apps/desktop/scripts/*.test.mjs
+
       - name: Upload desktop coverage to Codecov
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: codecov/codecov-action@v5

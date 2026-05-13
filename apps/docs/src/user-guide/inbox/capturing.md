@@ -43,6 +43,12 @@ node apps/desktop/scripts/install-chrome-capture-host.mjs --extension-id <id> --
 node apps/desktop/scripts/install-chrome-capture-host.mjs --extension-id <id> --browser dia
 ```
 
+When running the local desktop app with `pnpm dev`, target the dev userData folder too:
+
+```bash
+node apps/desktop/scripts/install-chrome-capture-host.mjs --extension-id <id> --browser dia --device dev
+```
+
 From the browser you can:
 
 - Right-click highlighted text → **Send quote to Memry**
