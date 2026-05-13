@@ -211,8 +211,23 @@ const AgentMessageContentSchema = z.discriminatedUnion('role', [
     data: z.object({
       tool: z.string(),
       args: z.record(z.string(), z.unknown()),
-      status: z.enum(['pending', 'approved', 'denied', 'completed', 'failed']),
-      approvedArgs: z.record(z.string(), z.unknown()).optional()
+      status: z.enum([
+        'pending',
+        'approved',
+        'denied',
+        'completed',
+        'failed',
+        'input-streaming',
+        'approval-requested',
+        'approval-responded',
+        'input-available',
+        'output-available',
+        'output-error',
+        'output-denied'
+      ]),
+      approvedArgs: z.record(z.string(), z.unknown()).optional(),
+      output: z.unknown().optional(),
+      error: z.object({ code: z.string(), message: z.string() }).optional()
     })
   }),
   z.object({

@@ -29,6 +29,7 @@ import { getPublicStatus } from './mcp/lifecycle'
 import { createVaultServiceHandles } from './mcp/tools/handles-adapter'
 import { ALL_TOOL_NAMES } from './mcp/tools/schemas'
 import { AgentRuntime } from './runtime/runtime'
+import { getAgentPreferences, setAgentPreferences } from './settings'
 import { createConversationStore } from './storage/conversation-store'
 import { createMessageStore } from './storage/message-store'
 import { getOrCreateVaultUuid } from './storage/vault-id'
@@ -189,7 +190,7 @@ export async function startAgent(): Promise<AgentHandle> {
     local: localBackend
   })
 
-  const runtime = new AgentRuntime({ conversations, messages })
+  const runtime = new AgentRuntime({ conversations, messages, getPreferences: getAgentPreferences })
   runtime.install()
 
   registerAgentHandlers({
@@ -224,6 +225,10 @@ export async function startAgent(): Promise<AgentHandle> {
         return testOpenAiCompatibleConnection(settings, fetch, await getLocalProviderApiKey())
       },
       probeTools: () => localBackend.probeCapabilities()
+    },
+    preferences: {
+      get: getAgentPreferences,
+      set: setAgentPreferences
     },
     vaultId
   })

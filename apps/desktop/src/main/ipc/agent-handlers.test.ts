@@ -148,6 +148,10 @@ describe('agent IPC handlers', () => {
         detail: null
       }))
     },
+    preferences: {
+      get: vi.fn(() => ({ toolApprovalMode: 'always_accept' })),
+      set: vi.fn((input) => input)
+    },
     vaultId: 'vault-1'
   } as never
 
@@ -227,6 +231,18 @@ describe('agent IPC handlers', () => {
         { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini' }
       ]
     })
+  })
+
+  it('gets and sets agent preferences', async () => {
+    registerAgentHandlers(deps)
+
+    await expect(findHandler(AgentChannels.invoke.GET_PREFERENCES)(null)).resolves.toEqual({
+      toolApprovalMode: 'always_accept'
+    })
+    await expect(
+      findHandler(AgentChannels.invoke.SET_PREFERENCES)(null, { toolApprovalMode: 'ask' })
+    ).resolves.toEqual({ toolApprovalMode: 'ask' })
+    expect(deps.preferences.set).toHaveBeenCalledWith({ toolApprovalMode: 'ask' })
   })
 
   it('runs a turn with snapshotted attachments', async () => {
