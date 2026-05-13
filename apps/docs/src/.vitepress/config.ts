@@ -140,6 +140,7 @@ function unifiedSidebar() {
           collapsed: true,
           items: [
             { text: 'Settings Reference', link: '/user-guide/settings' },
+            { text: 'CLI Reference', link: '/user-guide/cli-reference' },
             { text: 'Keyboard Shortcuts', link: '/user-guide/keyboard-shortcuts' }
           ]
         }
