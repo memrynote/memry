@@ -22,9 +22,10 @@ new-conversation button, a history menu for switching back to recent conversatio
 button for moving the current conversation into a workspace tab. Popped-out conversations keep the
 generated conversation title as the tab name, use the same centered reading column as notes, and
 leave the right sidebar ready for a new chat. The popped-out tab keeps the scroll bar at the window
-edge while the chat content stays centered. For Claude CLI, Memry checks that `claude` is available
-on `PATH`, that it reports version `2.1.0` or newer, and that the Agent disclosure has been
-accepted. For local models, configure a compatible server in
+edge while the chat content stays centered, and the tab name is the only conversation title shown in
+that workspace view. For Claude CLI, Memry checks that `claude` is available on `PATH`, that it
+reports version `2.1.0` or newer, and that the Agent disclosure has been accepted. For local models,
+configure a compatible server in
 [Settings -> AI Assistant -> Agent Providers](/user-guide/settings#agent-providers) first.
 If the global AI switch is off in [Settings -> AI](/user-guide/settings#ai), the Agent tab and Agent
 MCP current-note bridge are hidden and inactive.
