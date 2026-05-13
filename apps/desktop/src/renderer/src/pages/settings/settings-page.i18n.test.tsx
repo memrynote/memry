@@ -51,7 +51,7 @@ describe('SettingsPage i18n', () => {
       </I18nextProvider>
     )
 
-    expect(screen.getByText('Settings')).toBeInTheDocument()
+    expect(screen.queryByText('Settings')).not.toBeInTheDocument()
 
     for (const label of ['Workspace', 'Preferences', 'Services', 'Data']) {
       expect(screen.getByText(label)).toBeInTheDocument()

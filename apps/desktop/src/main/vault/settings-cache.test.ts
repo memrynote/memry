@@ -93,7 +93,7 @@ describe('populateSettingsCacheFromConfig', () => {
     const generalRaw = getSetting(testDb.db as any, 'general')
     const general = JSON.parse(generalRaw!)
     expect(general.theme).toBe('system')
-    expect(general.accentColor).toBe('#6366f1')
+    expect(general.accentColor).toBe(GENERAL_SETTINGS_DEFAULTS.accentColor)
   })
 
   it('#given existing machine-local settings in SQLite #then preserves them', () => {
