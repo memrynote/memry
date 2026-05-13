@@ -674,6 +674,10 @@ importers:
         version: 1.3.7(prosemirror-model@1.25.4)(prosemirror-state@1.4.4)(prosemirror-view@1.41.6)(y-protocols@1.0.7(yjs@13.6.29))(yjs@13.6.29)
 
   apps/docs:
+    dependencies:
+      '@vercel/analytics':
+        specifier: ^2.0.1
+        version: 2.0.1(vue@3.5.34(typescript@5.9.3))
     devDependencies:
       vitepress:
         specifier: ^1.6.4
@@ -4607,6 +4611,35 @@ packages:
 
   '@upsetjs/venn.js@2.0.0':
     resolution: {integrity: sha512-WbBhLrooyePuQ1VZxrJjtLvTc4NVfpOyKx0sKqioq9bX1C1m7Jgykkn8gLrtwumBioXIqam8DLxp88Adbue6Hw==}
+
+  '@vercel/analytics@2.0.1':
+    resolution: {integrity: sha512-MTQG6V9qQrt1tsDeF+2Uoo5aPjqbVPys1xvnIftXSJYG2SrwXRHnqEvVoYID7BTruDz4lCd2Z7rM1BdkUehk2g==}
+    peerDependencies:
+      '@remix-run/react': ^2
+      '@sveltejs/kit': ^1 || ^2
+      next: '>= 13'
+      nuxt: '>= 3'
+      react: ^18 || ^19 || ^19.0.0-rc
+      svelte: '>= 4'
+      vue: ^3
+      vue-router: ^4
+    peerDependenciesMeta:
+      '@remix-run/react':
+        optional: true
+      '@sveltejs/kit':
+        optional: true
+      next:
+        optional: true
+      nuxt:
+        optional: true
+      react:
+        optional: true
+      svelte:
+        optional: true
+      vue:
+        optional: true
+      vue-router:
+        optional: true
 
   '@vercel/backends@0.2.0':
     resolution: {integrity: sha512-7J0nJCd7h29CXG0jeejS8DnI4qAF96Fo6qibAPG7nbbJ5v0ZpWZhzeL8XwvvT3du6S50bRGcQCPJQNcShw6pEQ==}
@@ -14585,6 +14618,10 @@ snapshots:
     optionalDependencies:
       d3-selection: 3.0.0
       d3-transition: 3.0.1(d3-selection@3.0.0)
+
+  '@vercel/analytics@2.0.1(vue@3.5.34(typescript@5.9.3))':
+    optionalDependencies:
+      vue: 3.5.34(typescript@5.9.3)
 
   '@vercel/backends@0.2.0(@emnapi/core@1.10.0)(@emnapi/runtime@1.8.1)(encoding@0.1.13)(rollup@4.60.1)(typescript@5.9.3)':
     dependencies:

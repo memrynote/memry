@@ -9,6 +9,9 @@
     "build": "vitepress build src",
     "preview": "vitepress preview src"
   },
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
+  },
   "devDependencies": {
     "vitepress": "^1.6.4"
   }

@@ -8,6 +8,7 @@ export default defineConfig({
   lastUpdated: true,
   head: [['meta', { name: 'theme-color', content: '#111827' }]],
   themeConfig: {
+    logo: '/memry-logo.svg',
     siteTitle: 'Memry Docs',
     nav: [
       { text: 'Install', link: '/guide/install' },
