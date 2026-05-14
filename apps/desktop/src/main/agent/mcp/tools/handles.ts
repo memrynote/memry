@@ -11,6 +11,7 @@ export interface NoteSummary {
   title: string
   snippet: string
   folder_path: string | null
+  icon?: string | null
 }
 
 export interface NoteFull {
@@ -20,6 +21,7 @@ export interface NoteFull {
   tags: string[]
   folder_path: string | null
   frontmatter: Record<string, unknown>
+  icon?: string | null
 }
 
 export interface FolderEntry {
@@ -27,6 +29,7 @@ export interface FolderEntry {
   id: string
   name: string
   path: string
+  icon?: string | null
 }
 
 export interface TaskSummary {
@@ -59,6 +62,8 @@ export interface JournalSummary {
 
 export interface InboxSummary {
   id: string
+  type?: string
+  visual_type?: string
   source: string
   title: string
   snippet: string
