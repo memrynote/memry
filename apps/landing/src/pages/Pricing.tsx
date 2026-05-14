@@ -91,10 +91,10 @@ function getCheckoutKey(tier: SyncPlanTier, cadence: PaddleCheckoutCadence) {
 
 function Hero({ cadence, setCadence }: { cadence: Cadence; setCadence: (c: Cadence) => void }) {
   return (
-    <section className="relative overflow-hidden pt-32 pb-16 sm:pt-40 sm:pb-20">
+    <section className="relative overflow-hidden pt-20 pb-8 sm:pt-24 sm:pb-10">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px] bg-[radial-gradient(ellipse_at_top,rgba(255,103,26,0.10),transparent_60%)]"
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[360px] bg-[radial-gradient(ellipse_at_top,rgba(255,103,26,0.10),transparent_60%)]"
       />
       <Container size="md">
         <motion.div
@@ -103,24 +103,18 @@ function Hero({ cadence, setCadence }: { cadence: Cadence; setCadence: (c: Caden
           transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
           className="text-center"
         >
-          <p className="font-mono-accent text-[11px] uppercase tracking-[0.32em] text-terracotta">
-            Pricing &nbsp;·&nbsp; V.1
-          </p>
-          <h1 className="mt-5 font-serif text-5xl font-normal leading-[1.05] text-ink text-balance md:text-7xl">
+          <h1 className="font-serif text-4xl font-normal leading-[1.05] text-ink text-balance md:text-5xl">
             Sync that respects
             <br />
             your <span className="italic text-terracotta">wallet.</span>
           </h1>
-          <p className="mx-auto mt-7 max-w-xl text-lg leading-relaxed text-muted text-balance md:text-xl">
+          <p className="mx-auto mt-5 max-w-lg text-base leading-relaxed text-muted text-balance md:text-lg">
             The local app stays free, forever. Sync is paid — fair, predictable, and end-to-end
             encrypted before a single byte leaves your device.
           </p>
 
-          <div className="mt-10 flex flex-col items-center gap-3">
+          <div className="mt-7 flex justify-center">
             <CadenceToggle cadence={cadence} setCadence={setCadence} />
-            <p className="font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted/70">
-              Switch any time. No tier change fees.
-            </p>
           </div>
         </motion.div>
       </Container>
