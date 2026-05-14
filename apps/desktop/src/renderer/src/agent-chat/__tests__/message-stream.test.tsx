@@ -327,6 +327,33 @@ describe('MessageStream', () => {
     )
   })
 
+  it('does not open workspace tabs for external or malformed Memry links', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'assistant-1',
+            role: 'assistant',
+            content: {
+              role: 'assistant',
+              data: {
+                text: [
+                  '[External](https://example.com)',
+                  '[Malformed](memry://calendar/not-an-event)'
+                ].join(' ')
+              }
+            }
+          })
+        ]}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('link', { name: 'External' }))
+    fireEvent.click(screen.getByRole('link', { name: 'Malformed' }))
+
+    expect(mockOpenTab).not.toHaveBeenCalled()
+  })
+
   it('omits the assistant sources footer when no Memry refs exist', () => {
     render(
       <MessageStream
