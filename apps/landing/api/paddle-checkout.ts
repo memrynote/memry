@@ -1,7 +1,7 @@
 import { Environment, Paddle } from '@paddle/paddle-node-sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { getPaddleCheckoutConfig, parsePaddleCheckoutIntent } from './paddle-checkout-config.ts'
+import { getPaddleCheckoutConfig, parsePaddleCheckoutIntent } from './paddle-checkout-config.js'
 
 function getPaddleEnvironment() {
   return process.env.PADDLE_ENVIRONMENT === 'production'
