@@ -87,7 +87,7 @@ describe('Prompt assembler', () => {
 
     expect(out).toContain('Attached note: My Note (n1)')
     expect(out).toContain('BODY')
-    expect(out).toContain('[truncated; use vault.read_note for full content]')
+    expect(out).toContain('[truncated; use vault_read_note for full content]')
   })
 
   it('renders folder refs as reference-only', () => {
@@ -102,7 +102,7 @@ describe('Prompt assembler', () => {
     const out = assemblePrompt({ history: [], userMessage: 'q', attachments: [attachment] })
 
     expect(out).toContain('Attached folder reference: /Projects')
-    expect(out).toContain('vault.list_folder')
+    expect(out).toContain('vault_list_folder')
   })
 
   it('summarizes tool_call/tool_result pairs in history', () => {
@@ -160,7 +160,8 @@ describe('Prompt assembler', () => {
   it('guards user-curated vocabularies against invented values', () => {
     expect(SYSTEM_PROMPT_HEADER).toContain('vault_list_statuses')
     expect(SYSTEM_PROMPT_HEADER).toContain('vault_get_tags')
-    expect(SYSTEM_PROMPT_HEADER).toContain('Do not invent new statuses or tags')
+    expect(SYSTEM_PROMPT_HEADER).toContain('Do not invent statuses, projects, or folders')
+    expect(SYSTEM_PROMPT_HEADER).toContain('create a new tag only when the user clearly names it')
   })
 
   it('prefers archive over delete for ambiguous cleanup', () => {
@@ -171,6 +172,35 @@ describe('Prompt assembler', () => {
     expect(SYSTEM_PROMPT_HEADER).toContain('vault_add_to_inbox')
     expect(SYSTEM_PROMPT_HEADER).toContain('vault_get_journal_entry')
     expect(SYSTEM_PROMPT_HEADER).toContain('vault_update_task')
+  })
+
+  it('keeps read-tool guidance accurate about approval and provider prompts', () => {
+    expect(SYSTEM_PROMPT_HEADER).toContain('Read tools do not require write approval')
+    expect(SYSTEM_PROMPT_HEADER).toContain(
+      'returned vault content may be included in the provider prompt'
+    )
+  })
+
+  it('separates daily journal and journal range workflows', () => {
+    expect(SYSTEM_PROMPT_HEADER).toContain('For a single day, use vault_get_journal_entry')
+    expect(SYSTEM_PROMPT_HEADER).toContain('For a range like "this week"')
+  })
+
+  it('routes tags by target type and includes inbox triage guidance', () => {
+    expect(SYSTEM_PROMPT_HEADER).toContain('vault_add_inbox_tag')
+    expect(SYSTEM_PROMPT_HEADER).toContain('vault_snooze_inbox_item')
+    expect(SYSTEM_PROMPT_HEADER).toContain('Inbox triage')
+    expect(SYSTEM_PROMPT_HEADER).toContain('convert to task')
+  })
+
+  it('limits broad vault scans and links derived tasks to source items when supported', () => {
+    expect(SYSTEM_PROMPT_HEADER).toContain('Do not scan the whole vault')
+    expect(SYSTEM_PROMPT_HEADER).toContain('link back to the source item')
+  })
+
+  it('only proceeds on harmless defaults for read-only answers', () => {
+    expect(SYSTEM_PROMPT_HEADER).toContain('If a harmless default exists for a read-only answer')
+    expect(SYSTEM_PROMPT_HEADER).toContain('For writes, ask when the default would change')
   })
 
   it('omits the Context section when no context is provided', () => {

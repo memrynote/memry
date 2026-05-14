@@ -67,6 +67,7 @@ const handles: VaultServiceHandles = {
     get: async () => null,
     add: async () => ({ id: 'inbox' }),
     update: async ({ id }) => ({ id }),
+    snooze: async ({ id }) => ({ id }),
     archive: async (id) => ({ id }),
     unarchive: async (id) => ({ id }),
     delete: async (id) => ({ id }),
@@ -132,6 +133,11 @@ describe('Write tools — P1 deny-by-default', () => {
       vault_delete_journal_entry: { date: '2026-05-10' },
       vault_add_to_inbox: { source: 'cli', title: 't', content: 'b' },
       vault_update_inbox_item: { id: 'i1', title: 'Updated' },
+      vault_snooze_inbox_item: {
+        id: 'i1',
+        snooze_until: '2026-05-15T09:00:00.000Z',
+        reason: 'Review later'
+      },
       vault_archive_inbox_item: { id: 'i1' },
       vault_unarchive_inbox_item: { id: 'i1' },
       vault_delete_inbox_item: { id: 'i1' },
@@ -244,6 +250,7 @@ describe('Write tools — P1 deny-by-default', () => {
         ...handles.inbox,
         add: vi.fn(async () => ({ id: 'inbox-created' })),
         update: vi.fn(async ({ id }) => ({ id })),
+        snooze: vi.fn(async ({ id }) => ({ id })),
         archive: vi.fn(async (id) => ({ id })),
         unarchive: vi.fn(async (id) => ({ id })),
         delete: vi.fn(async (id) => ({ id })),
@@ -293,6 +300,15 @@ describe('Write tools — P1 deny-by-default', () => {
     ).resolves.toEqual({ id: 'jrnl' })
     await expect(
       run('vault_update_inbox_item', { id: 'inbox-1', title: 'Updated' })
+    ).resolves.toEqual({
+      id: 'inbox-1'
+    })
+    await expect(
+      run('vault_snooze_inbox_item', {
+        id: 'inbox-1',
+        snooze_until: '2026-05-15T09:00:00.000Z',
+        reason: 'Review tomorrow'
+      })
     ).resolves.toEqual({
       id: 'inbox-1'
     })
@@ -352,6 +368,11 @@ describe('Write tools — P1 deny-by-default', () => {
       content_markdown: 'Updated'
     })
     expect(localHandles.inbox.update).toHaveBeenCalledWith({ id: 'inbox-1', title: 'Updated' })
+    expect(localHandles.inbox.snooze).toHaveBeenCalledWith({
+      id: 'inbox-1',
+      snooze_until: '2026-05-15T09:00:00.000Z',
+      reason: 'Review tomorrow'
+    })
     expect(localHandles.inbox.unarchive).toHaveBeenCalledWith('inbox-1')
     expect(localHandles.inbox.delete).toHaveBeenCalledWith('inbox-1')
     expect(localHandles.inbox.addTag).toHaveBeenCalledWith({ id: 'inbox-1', tag: 'work' })
