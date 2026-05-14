@@ -235,6 +235,98 @@ describe('MessageStream', () => {
     expect(screen.getAllByRole('link', { name: 'Movies' })).toHaveLength(2)
   })
 
+  it('opens non-note Memry links in the matching workspace surface', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'assistant-1',
+            role: 'assistant',
+            content: {
+              role: 'assistant',
+              data: {
+                text: [
+                  '[Task](memry://task/task-1)',
+                  '[Inbox Capture](memry://inbox/inbox-1)',
+                  '[Journal](memry://journal/2026-05-14)',
+                  '[Event](memry://calendar/event/event-1?date=2026-05-14)',
+                  '[Project](memry://project/project-1)',
+                  '[Folder](memry://folder/Research%2FMovies)'
+                ].join(' ')
+              }
+            }
+          })
+        ]}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('link', { name: 'Task' }))
+    fireEvent.click(screen.getByRole('link', { name: 'Inbox Capture' }))
+    fireEvent.click(screen.getByRole('link', { name: 'Journal' }))
+    fireEvent.click(screen.getByRole('link', { name: 'Event' }))
+    fireEvent.click(screen.getByRole('link', { name: 'Project' }))
+    fireEvent.click(screen.getByRole('link', { name: 'Folder' }))
+
+    expect(mockOpenTab).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        type: 'tasks',
+        path: '/tasks',
+        viewState: { openTaskId: 'task-1' }
+      })
+    )
+    expect(mockOpenTab).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        type: 'inbox',
+        path: '/inbox',
+        viewState: expect.objectContaining({
+          focusInboxItemId: 'inbox-1',
+          focusedAt: expect.any(Number)
+        })
+      })
+    )
+    expect(mockOpenTab).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        type: 'journal',
+        path: '/journal/2026-05-14',
+        entityId: '2026-05-14',
+        viewState: { date: '2026-05-14' }
+      })
+    )
+    expect(mockOpenTab).toHaveBeenNthCalledWith(
+      4,
+      expect.objectContaining({
+        type: 'calendar',
+        path: '/calendar',
+        viewState: expect.objectContaining({
+          focusCalendarEventId: 'event-1',
+          focusDate: '2026-05-14',
+          focusedAt: expect.any(Number)
+        })
+      })
+    )
+    expect(mockOpenTab).toHaveBeenNthCalledWith(
+      5,
+      expect.objectContaining({
+        type: 'project',
+        title: 'Project',
+        path: '/project/project-1',
+        entityId: 'project-1'
+      })
+    )
+    expect(mockOpenTab).toHaveBeenNthCalledWith(
+      6,
+      expect.objectContaining({
+        type: 'folder',
+        title: 'Folder',
+        path: '/folder/Research%2FMovies',
+        entityId: 'Research/Movies'
+      })
+    )
+  })
+
   it('omits the assistant sources footer when no Memry refs exist', () => {
     render(
       <MessageStream
