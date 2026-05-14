@@ -9,6 +9,7 @@
 import { describe, it, expect } from 'vitest'
 
 import {
+  AgentMessageSyncPayloadSchema,
   CalendarBindingSyncPayloadSchema,
   CalendarEventSyncPayloadSchema,
   CalendarExternalEventSyncPayloadSchema,
@@ -23,6 +24,39 @@ import {
   TagDefinitionSyncPayloadSchema,
   TaskSyncPayloadSchema
 } from './sync-payloads'
+
+describe('AgentMessageSyncPayloadSchema', () => {
+  it('accepts inbox and calendar event attachments', () => {
+    const result = AgentMessageSyncPayloadSchema.safeParse({
+      conversationId: 'conversation-1',
+      role: 'user',
+      content: { role: 'user', data: { text: 'Summarize these refs' } },
+      attachments: [
+        {
+          kind: 'inbox',
+          refId: 'inbox-1',
+          label: 'Read later',
+          snapshotAt: 100,
+          snapshot: { mode: 'reference_only', id: 'inbox-1' }
+        },
+        {
+          kind: 'calendar_event',
+          refId: 'event-1',
+          label: 'Planning sync',
+          snapshotAt: 100,
+          snapshot: { mode: 'reference_only', id: 'event-1' }
+        }
+      ],
+      toolCallId: null,
+      status: 'completed',
+      createdAt: 100,
+      updatedAt: 100,
+      deletedAt: null
+    })
+
+    expect(result.success).toBe(true)
+  })
+})
 
 describe('TaskSyncPayloadSchema', () => {
   it('accepts empty payload (all optional)', () => {

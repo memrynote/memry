@@ -5,6 +5,18 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-05-14 — Agent Chat Inline Mentions
+
+### Added
+
+- Add inline Agent Chat mention tags for notes, tasks, journals, inbox items, and calendar events, with type-specific icons and muted tag colors.
+
+### Changed
+
+- Keep picked Agent references inside the prompt instead of showing a separate attachment row, and focus the composer after creating a new conversation from the sidebar plus action.
+
+---
+
 ## 2026-05-14 — Voice Memos and Related Items
 
 ### Added
