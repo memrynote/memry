@@ -50,6 +50,7 @@ describe('Vault MCP tool schemas', () => {
       'vault_delete_journal_entry',
       'vault_add_to_inbox',
       'vault_update_inbox_item',
+      'vault_snooze_inbox_item',
       'vault_archive_inbox_item',
       'vault_unarchive_inbox_item',
       'vault_delete_inbox_item',
@@ -89,6 +90,27 @@ describe('Vault MCP tool schemas', () => {
       content_markdown: '...'
     })
     expect(r.success).toBe(false)
+  })
+
+  it('validates inbox snooze input as an ISO datetime', () => {
+    expect(
+      TOOL_SCHEMAS.vault_snooze_inbox_item.input.parse({
+        id: 'inbox-1',
+        snooze_until: '2026-05-15T09:00:00.000Z',
+        reason: 'Review tomorrow'
+      })
+    ).toEqual({
+      id: 'inbox-1',
+      snooze_until: '2026-05-15T09:00:00.000Z',
+      reason: 'Review tomorrow'
+    })
+
+    expect(
+      TOOL_SCHEMAS.vault_snooze_inbox_item.input.safeParse({
+        id: 'inbox-1',
+        snooze_until: '2026-05-15'
+      }).success
+    ).toBe(false)
   })
 
   it('keeps the desktop bridge scoped to allowlisted CRUD operations', () => {

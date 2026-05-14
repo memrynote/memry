@@ -11,7 +11,7 @@ import type { AgentBackend, BackendRunHandle } from '../backends/types'
 import type { AgentBackendRegistry } from '../backends/registry'
 import { broadcastAgentEvent } from './event-bus'
 import { maybeCompact } from './compactor'
-import { assemblePrompt } from './prompt-assembler'
+import { assemblePrompt, type PromptContext } from './prompt-assembler'
 import { COMPACTION_THRESHOLD, estimateTokens } from './token-estimator'
 import { extractAgentSourceRefs } from '../source-refs'
 import type { AgentSourceRef } from '@memry/contracts/ipc-agent'
@@ -70,10 +70,12 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
   let history = deps.messages
     .listByConversation(input.conversationId)
     .filter((message) => message.id !== user.id)
+  const promptContext = buildPromptContext()
   const prompt = assemblePrompt({
     history,
     userMessage: input.text,
-    attachments: input.attachments
+    attachments: input.attachments,
+    context: promptContext
   })
 
   await maybeCompact({
@@ -97,7 +99,8 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
   const compactedPrompt = assemblePrompt({
     history,
     userMessage: input.text,
-    attachments: input.attachments
+    attachments: input.attachments,
+    context: promptContext
   })
 
   const rawSub = await backend.runTurn({
@@ -286,6 +289,13 @@ async function generateTitleWithBackend(
     return sanitizeGeneratedTitle(title || raw)
   } finally {
     await sub.cleanup()
+  }
+}
+
+function buildPromptContext(): PromptContext {
+  return {
+    now: new Date(),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
   }
 }
 

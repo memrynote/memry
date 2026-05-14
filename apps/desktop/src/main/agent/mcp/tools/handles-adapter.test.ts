@@ -699,7 +699,8 @@ describe('createVaultServiceHandles', () => {
           }
         ]
       }),
-      captureText: vi.fn().mockResolvedValue({ success: true, item: { id: 'inbox-created' } })
+      captureText: vi.fn().mockResolvedValue({ success: true, item: { id: 'inbox-created' } }),
+      snooze: vi.fn().mockResolvedValue({ success: true })
     })
     await expect(handles.inbox.list({ unread_only: true })).resolves.toEqual([
       {
@@ -742,6 +743,13 @@ describe('createVaultServiceHandles', () => {
     await expect(handles.inbox.update({ id: 'inbox-1', title: 'Updated' })).resolves.toEqual({
       id: 'inbox-1'
     })
+    await expect(
+      handles.inbox.snooze({
+        id: 'inbox-1',
+        snooze_until: '2026-05-15T09:00:00.000Z',
+        reason: 'Review tomorrow'
+      })
+    ).resolves.toEqual({ id: 'inbox-1' })
     await expect(handles.inbox.archive('inbox-1')).resolves.toEqual({ id: 'inbox-1' })
     await expect(handles.inbox.unarchive('inbox-1')).resolves.toEqual({ id: 'inbox-1' })
     await expect(handles.inbox.delete('inbox-1')).resolves.toEqual({ id: 'inbox-1' })
@@ -756,6 +764,13 @@ describe('createVaultServiceHandles', () => {
       handleUpdate: vi.fn().mockResolvedValue({ success: false, error: 'update failed' })
     })
     await expect(handles.inbox.update({ id: 'bad', title: 'Bad' })).rejects.toThrow('update failed')
+
+    mocks.createDesktopInboxDomain.mockReturnValueOnce({
+      snooze: vi.fn().mockResolvedValue({ success: false, error: 'snooze failed' })
+    })
+    await expect(
+      handles.inbox.snooze({ id: 'bad', snooze_until: '2026-05-15T09:00:00.000Z' })
+    ).rejects.toThrow('snooze failed')
 
     mocks.getAllTagsWithCounts.mockReturnValue([{ name: 'focus', count: 3 }])
     await expect(handles.tags.listAll()).resolves.toEqual([{ name: 'focus', count: 3 }])

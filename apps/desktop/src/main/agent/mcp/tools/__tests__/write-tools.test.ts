@@ -67,6 +67,7 @@ const handles: VaultServiceHandles = {
     get: async () => null,
     add: async () => ({ id: 'inbox' }),
     update: async ({ id }) => ({ id }),
+    snooze: async ({ id }) => ({ id }),
     archive: async (id) => ({ id }),
     unarchive: async (id) => ({ id }),
     delete: async (id) => ({ id }),
@@ -132,6 +133,11 @@ describe('Write tools — P1 deny-by-default', () => {
       vault_delete_journal_entry: { date: '2026-05-10' },
       vault_add_to_inbox: { source: 'cli', title: 't', content: 'b' },
       vault_update_inbox_item: { id: 'i1', title: 'Updated' },
+      vault_snooze_inbox_item: {
+        id: 'i1',
+        snooze_until: '2026-05-15T09:00:00.000Z',
+        reason: 'Review later'
+      },
       vault_archive_inbox_item: { id: 'i1' },
       vault_unarchive_inbox_item: { id: 'i1' },
       vault_delete_inbox_item: { id: 'i1' },
@@ -244,6 +250,7 @@ describe('Write tools — P1 deny-by-default', () => {
         ...handles.inbox,
         add: vi.fn(async () => ({ id: 'inbox-created' })),
         update: vi.fn(async ({ id }) => ({ id })),
+        snooze: vi.fn(async ({ id }) => ({ id })),
         archive: vi.fn(async (id) => ({ id })),
         unarchive: vi.fn(async (id) => ({ id })),
         delete: vi.fn(async (id) => ({ id })),
@@ -278,22 +285,101 @@ describe('Write tools — P1 deny-by-default', () => {
       path: '/Projects'
     })
     await expect(
+      run('vault_rename_folder', { old_path: '/Projects', new_path: '/Archive' })
+    ).resolves.toEqual({
+      path: '/Archive'
+    })
+    await expect(run('vault_delete_folder', { path: '/Archive' })).resolves.toEqual({
+      path: '/Archive'
+    })
+    await expect(run('vault_complete_task', { id: 'task-1' })).resolves.toEqual({
+      id: 'task-1'
+    })
+    await expect(run('vault_uncomplete_task', { id: 'task-1' })).resolves.toEqual({
+      id: 'task-1'
+    })
+    await expect(run('vault_archive_task', { id: 'task-1' })).resolves.toEqual({
+      id: 'task-1'
+    })
+    await expect(run('vault_unarchive_task', { id: 'task-1' })).resolves.toEqual({
+      id: 'task-1'
+    })
+    await expect(
+      run('vault_move_task', { task_id: 'task-1', target_project_id: 'project-1', position: 2 })
+    ).resolves.toEqual({
+      id: 'task-1'
+    })
+    await expect(
+      run('vault_reorder_tasks', { task_ids: ['task-1'], positions: [0] })
+    ).resolves.toEqual({
+      ids: ['task-1']
+    })
+    await expect(run('vault_duplicate_task', { id: 'task-1' })).resolves.toEqual({
+      id: 'duplicated-task'
+    })
+    await expect(
+      run('vault_convert_task_to_subtask', { task_id: 'task-1', parent_id: 'task-parent' })
+    ).resolves.toEqual({
+      id: 'task-1'
+    })
+    await expect(run('vault_convert_subtask_to_task', { id: 'task-1' })).resolves.toEqual({
+      id: 'task-1'
+    })
+    await expect(
       run('vault_create_project', { name: 'Project', color: '#6366f1' })
     ).resolves.toEqual({ id: 'project-created' })
     await expect(run('vault_update_project', { id: 'project-1', name: 'Next' })).resolves.toEqual({
       id: 'project-1'
+    })
+    await expect(run('vault_delete_project', { id: 'project-1' })).resolves.toEqual({
+      id: 'project-1'
+    })
+    await expect(run('vault_archive_project', { id: 'project-1' })).resolves.toEqual({
+      id: 'project-1'
+    })
+    await expect(
+      run('vault_reorder_projects', { project_ids: ['project-1'], positions: [0] })
+    ).resolves.toEqual({
+      ids: ['project-1']
     })
     await expect(
       run('vault_create_status', { project_id: 'project-1', name: 'Doing' })
     ).resolves.toEqual({
       id: 'status-created'
     })
+    await expect(run('vault_update_status', { id: 'status-1', name: 'Review' })).resolves.toEqual({
+      id: 'status-1'
+    })
+    await expect(run('vault_delete_status', { id: 'status-1' })).resolves.toEqual({
+      id: 'status-1'
+    })
+    await expect(
+      run('vault_reorder_statuses', { status_ids: ['status-1'], positions: [0] })
+    ).resolves.toEqual({
+      ids: ['status-1']
+    })
     await expect(
       run('vault_update_journal_entry', { date: '2026-05-10', content_markdown: 'Updated' })
     ).resolves.toEqual({ id: 'jrnl' })
+    await expect(run('vault_delete_journal_entry', { date: '2026-05-10' })).resolves.toEqual({
+      date: '2026-05-10',
+      deleted: true
+    })
     await expect(
       run('vault_update_inbox_item', { id: 'inbox-1', title: 'Updated' })
     ).resolves.toEqual({
+      id: 'inbox-1'
+    })
+    await expect(
+      run('vault_snooze_inbox_item', {
+        id: 'inbox-1',
+        snooze_until: '2026-05-15T09:00:00.000Z',
+        reason: 'Review tomorrow'
+      })
+    ).resolves.toEqual({
+      id: 'inbox-1'
+    })
+    await expect(run('vault_archive_inbox_item', { id: 'inbox-1' })).resolves.toEqual({
       id: 'inbox-1'
     })
     await expect(run('vault_unarchive_inbox_item', { id: 'inbox-1' })).resolves.toEqual({
@@ -318,8 +404,14 @@ describe('Write tools — P1 deny-by-default', () => {
       run('vault_add_tag', { id: 'task-1', kind: 'task', tag: 'work' })
     ).resolves.toEqual({ id: 'task-1' })
     await expect(
+      run('vault_add_tag', { id: 'note-1', kind: 'note', tag: 'work' })
+    ).resolves.toEqual({ id: 'note-1' })
+    await expect(
       run('vault_remove_tag', { id: 'task-1', kind: 'task', tag: 'work' })
     ).resolves.toEqual({ id: 'task-1' })
+    await expect(
+      run('vault_remove_tag', { id: 'note-1', kind: 'note', tag: 'work' })
+    ).resolves.toEqual({ id: 'note-1' })
     await expect(
       run('vault_move_to_folder', { id: 'note-1', folder_path: '/Projects' })
     ).resolves.toEqual({ id: 'note-1' })
@@ -338,20 +430,43 @@ describe('Write tools — P1 deny-by-default', () => {
     })
     expect(localHandles.notes.rename).toHaveBeenCalledWith({ id: 'note-1', title: 'Renamed' })
     expect(localHandles.notes.delete).toHaveBeenCalledWith('note-1')
+    expect(localHandles.notes.addTag).toHaveBeenCalledWith({
+      id: 'note-1',
+      tag: 'work'
+    })
+    expect(localHandles.notes.removeTag).toHaveBeenCalledWith({
+      id: 'note-1',
+      tag: 'work'
+    })
     expect(localHandles.folders.create).toHaveBeenCalledWith('/Projects')
+    expect(localHandles.folders.rename).toHaveBeenCalledWith({
+      old_path: '/Projects',
+      new_path: '/Archive'
+    })
+    expect(localHandles.folders.delete).toHaveBeenCalledWith('/Archive')
     expect(localHandles.projects.create).toHaveBeenCalledWith({ name: 'Project', color: '#6366f1' })
     expect(localHandles.projects.update).toHaveBeenCalledWith({ id: 'project-1', name: 'Next' })
+    expect(localHandles.projects.delete).toHaveBeenCalledWith('project-1')
     expect(localHandles.statuses.create).toHaveBeenCalledWith({
       project_id: 'project-1',
       name: 'Doing',
       color: '#6b7280',
       is_done: false
     })
+    expect(localHandles.statuses.update).toHaveBeenCalledWith({ id: 'status-1', name: 'Review' })
+    expect(localHandles.statuses.delete).toHaveBeenCalledWith('status-1')
     expect(localHandles.journal.update).toHaveBeenCalledWith({
       date: '2026-05-10',
       content_markdown: 'Updated'
     })
+    expect(localHandles.journal.delete).toHaveBeenCalledWith('2026-05-10')
     expect(localHandles.inbox.update).toHaveBeenCalledWith({ id: 'inbox-1', title: 'Updated' })
+    expect(localHandles.inbox.snooze).toHaveBeenCalledWith({
+      id: 'inbox-1',
+      snooze_until: '2026-05-15T09:00:00.000Z',
+      reason: 'Review tomorrow'
+    })
+    expect(localHandles.inbox.archive).toHaveBeenCalledWith('inbox-1')
     expect(localHandles.inbox.unarchive).toHaveBeenCalledWith('inbox-1')
     expect(localHandles.inbox.delete).toHaveBeenCalledWith('inbox-1')
     expect(localHandles.inbox.addTag).toHaveBeenCalledWith({ id: 'inbox-1', tag: 'work' })

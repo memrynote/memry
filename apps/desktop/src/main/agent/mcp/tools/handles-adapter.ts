@@ -657,6 +657,15 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         assertSuccess(result, 'Failed to update inbox item')
         return { id: input.id }
       },
+      async snooze({ id, snooze_until, reason }) {
+        const result = await createDesktopInboxDomain().snooze({
+          itemId: id,
+          snoozeUntil: snooze_until,
+          reason
+        })
+        assertSuccess(result, 'Failed to snooze inbox item')
+        return { id }
+      },
       async archive(id) {
         const result = await createDesktopInboxCrudHandlers().handleArchive(id)
         assertSuccess(result, 'Failed to archive inbox item')
