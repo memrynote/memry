@@ -541,6 +541,7 @@ export const SYNC_PLAN_TIERS: readonly SyncPlanTier[] = [
     ],
     cta: 'Get Pro',
     emphasis: 'recommended',
+    checkoutPlanId: 'plus',
     ribbon: 'Most popular'
   },
   {
@@ -565,6 +566,7 @@ export const SYNC_PLAN_TIERS: readonly SyncPlanTier[] = [
     ],
     cta: 'Become a Believer',
     emphasis: 'founding',
+    checkoutPlanId: 'believer',
     ribbon: 'Founding supporter'
   }
 ] as const
@@ -611,14 +613,7 @@ export const PLAN_LIMIT_MATRIX = {
       believer: '—'
     },
     { feature: 'Lifetime', free: '—', plus: '—', pro: '—', believer: '$500 once' },
-    { feature: 'Credits', free: '—', plus: '—', pro: '—', believer: 'Your name' },
-    {
-      feature: 'Future paid features',
-      plus: 'In tier',
-      free: '—',
-      pro: 'In tier',
-      believer: 'Included forever'
-    }
+    { feature: 'Credits', free: '—', plus: '—', pro: '—', believer: 'Your name' }
   ] as const
 } as const
 
