@@ -11,12 +11,19 @@ import {
   type DeviceRegisterResponse
 } from '@memry/contracts/auth-api'
 
-import { deleteKey, getDevicePublicKey, storeKey } from '../crypto'
+import {
+  bindLocalVaultKeyToMasterKey,
+  deleteKey,
+  getDevicePublicKey,
+  secureCleanup,
+  storeKey
+} from '../crypto'
 import { getDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
 import { deleteFromServer, postToServer } from './http-client'
 import { getSyncEngine, startSyncRuntime } from './runtime'
 import { startGoogleCalendarSyncRunner } from '../calendar/google/sync-service'
+import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 import {
   ACCESS_TOKEN_EXPIRY_SECONDS,
   extractJtiFromToken,
@@ -119,10 +126,14 @@ export const persistKeysAndRegisterDevice = async (
     }
   }
 
+  const db = getDatabase()
+
   try {
     await storeKey(KEYCHAIN_ENTRIES.MASTER_KEY, masterKey)
-  } catch (keychainErr) {
-    logger.error('Failed to store master key in keychain after device registration', keychainErr)
+    const vaultKey = await bindLocalVaultKeyToMasterKey(db, getOrCreateVaultUuid(db), masterKey)
+    secureCleanup(vaultKey)
+  } catch (keyPersistenceErr) {
+    logger.error('Failed to store or bind master key after device registration', keyPersistenceErr)
 
     const accessToken = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN).catch(() => null)
     if (accessToken) {
@@ -130,7 +141,7 @@ export const persistKeysAndRegisterDevice = async (
         await deleteFromServer(`/auth/devices/${deviceResponse.deviceId}`, accessToken)
       } catch (deregErr) {
         logger.error(
-          'Failed to deregister device after keychain write failure — orphaned device on server',
+          'Failed to deregister device after key persistence failure — orphaned device on server',
           deregErr
         )
       }
@@ -145,7 +156,6 @@ export const persistKeysAndRegisterDevice = async (
     )
   }
 
-  const db = getDatabase()
   const pubKey = getDevicePublicKey(signingSecretKey)
   const pubKeyBase64 = sodium.to_base64(pubKey, sodium.base64_variants.ORIGINAL)
 
