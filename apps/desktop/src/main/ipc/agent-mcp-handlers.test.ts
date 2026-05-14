@@ -6,7 +6,7 @@ const lifecycleMock = vi.hoisted(() => ({
   getPublicStatus: vi.fn(() => ({
     url: 'http://127.0.0.1:1234',
     ['token']: 'local-token-placeholder',
-    toolCount: 19
+    toolCount: 20
   })),
   ['rotateToken']: vi.fn()
 }))
@@ -57,7 +57,7 @@ describe('agent MCP IPC handlers', () => {
     expect(findHandler(AgentMcpChannels.invoke.GET_STATUS)()).toEqual({
       url: 'http://127.0.0.1:1234',
       ['token']: 'local-token-placeholder',
-      toolCount: 19
+      toolCount: 20
     })
   })
 
@@ -67,7 +67,7 @@ describe('agent MCP IPC handlers', () => {
     expect(findHandler(AgentMcpChannels.invoke.ROTATE_TOKEN)()).toEqual({
       url: 'http://127.0.0.1:1234',
       ['token']: 'local-token-placeholder',
-      toolCount: 19
+      toolCount: 20
     })
     expect(lifecycleMock.rotateToken).toHaveBeenCalledTimes(1)
   })

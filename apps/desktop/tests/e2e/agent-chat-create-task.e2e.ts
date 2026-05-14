@@ -11,6 +11,12 @@ import {
   type LaunchedElectron
 } from './utils/electron-lifecycle'
 import {
+  approveAgentToolCall,
+  enableManualAgentToolApproval,
+  getAgentComposer,
+  openAgentChat
+} from './utils/agent-chat-helpers'
+import {
   createNote,
   navigateTo,
   waitForAppReady,
@@ -63,19 +69,16 @@ test.describe('Agent chat create-task flow', () => {
     await waitForAppReady(page)
     await waitForVaultReady(page)
     await createNote(page, 'Agent source note', 'Remember to buy milk after work.')
+    await enableManualAgentToolApproval(page)
 
-    await page.getByRole('button', { name: 'Day Panel' }).click()
-    await page.getByRole('tab', { name: 'Agent', exact: true }).click()
-    await page.getByRole('button', { name: 'Enable Agent chat' }).click()
+    await openAgentChat(page)
 
-    const composer = page.locator('textarea[placeholder="Ask Agent"]')
+    const composer = getAgentComposer(page)
     await expect(composer).toBeEnabled()
     await composer.fill('Create a task from the current note')
     await composer.press('Enter')
 
-    const agentChat = page.getByRole('region', { name: 'Agent chat' })
-    await expect(agentChat.getByRole('button', { name: /vault_create_task/i })).toBeVisible()
-    await agentChat.getByRole('button', { name: 'Allow once' }).click()
+    await approveAgentToolCall(page, /vault_create_task.*Awaiting/i)
 
     await expect
       .poll(
@@ -101,6 +104,7 @@ test.describe('Agent chat create-task flow', () => {
     await waitForAppReady(page)
     await waitForVaultReady(page)
     await createNote(page, 'Local agent source note', 'Remember to buy milk after work.')
+    await enableManualAgentToolApproval(page)
     await page.evaluate(
       ({ baseUrl }) =>
         window.api.agent.setLocalProviderSettings({
@@ -112,20 +116,16 @@ test.describe('Agent chat create-task flow', () => {
       { baseUrl: local.baseUrl }
     )
 
-    await page.getByRole('button', { name: 'Day Panel' }).click()
-    await page.getByRole('tab', { name: 'Agent', exact: true }).click()
-    await page.getByRole('button', { name: 'Enable Agent chat' }).click()
+    await openAgentChat(page)
     await page.getByRole('button', { name: /Claude/ }).click()
     await page.getByRole('menuitem', { name: /^Local$/ }).click()
 
-    const composer = page.locator('textarea[placeholder="Ask Agent"]')
+    const composer = getAgentComposer(page)
     await expect(composer).toBeEnabled()
     await composer.fill('Create a task from the current note')
     await composer.press('Enter')
 
-    const agentChat = page.getByRole('region', { name: 'Agent chat' })
-    await expect(agentChat.getByRole('button', { name: /vault_create_task/i })).toBeVisible()
-    await agentChat.getByRole('button', { name: 'Allow once' }).click()
+    await approveAgentToolCall(page, /vault_create_task.*Awaiting/i)
 
     await expect
       .poll(
