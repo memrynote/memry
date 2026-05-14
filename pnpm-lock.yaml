@@ -685,6 +685,12 @@ importers:
 
   apps/landing:
     dependencies:
+      '@paddle/paddle-js':
+        specifier: ^1.6.4
+        version: 1.6.4
+      '@paddle/paddle-node-sdk':
+        specifier: ^3.8.0
+        version: 3.8.0
       '@radix-ui/react-accordion':
         specifier: ^1.2.12
         version: 1.2.12(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -2664,6 +2670,13 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
+
+  '@paddle/paddle-js@1.6.4':
+    resolution: {integrity: sha512-ncfnS6I8mCX6krZ3Sgz2iAYivGmhdI81yt9mT6prtPj4Ipd9J3M12LCJRUFL4FB7BYeeuV04c33RSEnbZUBCaA==}
+
+  '@paddle/paddle-node-sdk@3.8.0':
+    resolution: {integrity: sha512-4RS6AhZisloYaT2jiFgx9hwm22qwLRUx4EgIVb1gS3bS96lhDBQWq8BC1/Zow2i3CuxMkehXQUc3qKSBS77ozA==}
+    engines: {node: '>=20'}
 
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
@@ -12641,6 +12654,10 @@ snapshots:
 
   '@oxc-transform/binding-win32-x64-msvc@0.111.0':
     optional: true
+
+  '@paddle/paddle-js@1.6.4': {}
+
+  '@paddle/paddle-node-sdk@3.8.0': {}
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
