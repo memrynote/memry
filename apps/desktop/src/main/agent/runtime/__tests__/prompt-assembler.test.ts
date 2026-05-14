@@ -134,6 +134,88 @@ describe('Prompt assembler', () => {
     expect(out).toContain('"id":"t1"')
   })
 
+  it('includes Identity, Tool Use, Memry Objects, Workflows, Links, Style, and Ambiguity sections in the system header', () => {
+    expect(SYSTEM_PROMPT_HEADER).toContain('# Identity')
+    expect(SYSTEM_PROMPT_HEADER).toContain('# Tool Use')
+    expect(SYSTEM_PROMPT_HEADER).toContain('# Memry Objects')
+    expect(SYSTEM_PROMPT_HEADER).toContain('# Workflows')
+    expect(SYSTEM_PROMPT_HEADER).toContain('# Links')
+    expect(SYSTEM_PROMPT_HEADER).toContain('# Style')
+    expect(SYSTEM_PROMPT_HEADER).toContain('# Ambiguity')
+  })
+
+  it('preserves write-gate and refusal guidance in the Tool Use section', () => {
+    expect(SYSTEM_PROMPT_HEADER).toContain('write gate')
+    expect(SYSTEM_PROMPT_HEADER).toContain('Refuse')
+  })
+
+  it('routes deictic note references through vault_get_current_note', () => {
+    expect(SYSTEM_PROMPT_HEADER).toContain('vault_get_current_note')
+  })
+
+  it('routes title-ish references through vault_search_notes', () => {
+    expect(SYSTEM_PROMPT_HEADER).toContain('vault_search_notes')
+  })
+
+  it('guards user-curated vocabularies against invented values', () => {
+    expect(SYSTEM_PROMPT_HEADER).toContain('vault_list_statuses')
+    expect(SYSTEM_PROMPT_HEADER).toContain('vault_get_tags')
+    expect(SYSTEM_PROMPT_HEADER).toContain('Do not invent new statuses or tags')
+  })
+
+  it('prefers archive over delete for ambiguous cleanup', () => {
+    expect(SYSTEM_PROMPT_HEADER).toContain('Prefer archive over delete')
+  })
+
+  it('lists capture, journal, and status workflows in the Workflows section', () => {
+    expect(SYSTEM_PROMPT_HEADER).toContain('vault_add_to_inbox')
+    expect(SYSTEM_PROMPT_HEADER).toContain('vault_get_journal_entry')
+    expect(SYSTEM_PROMPT_HEADER).toContain('vault_update_task')
+  })
+
+  it('omits the Context section when no context is provided', () => {
+    const out = assemblePrompt({
+      history: [],
+      userMessage: 'hello',
+      attachments: []
+    })
+
+    expect(out).not.toContain('# Context')
+  })
+
+  it('injects date and timezone into a Context section when context is provided', () => {
+    const out = assemblePrompt({
+      history: [],
+      userMessage: 'hello',
+      attachments: [],
+      context: {
+        now: new Date('2026-05-14T08:30:00Z'),
+        timezone: 'Asia/Istanbul'
+      }
+    })
+
+    expect(out).toContain('# Context')
+    expect(out).toContain('Date: 2026-05-14')
+    expect(out).toContain('Asia/Istanbul')
+  })
+
+  it('places the Context section between the header and the user message', () => {
+    const out = assemblePrompt({
+      history: [],
+      userMessage: 'hello',
+      attachments: [],
+      context: {
+        now: new Date('2026-05-14T08:30:00Z'),
+        timezone: 'Asia/Istanbul'
+      }
+    })
+
+    const contextIndex = out.indexOf('# Context')
+    const userIndex = out.indexOf('User: hello')
+    expect(contextIndex).toBeGreaterThan(0)
+    expect(contextIndex).toBeLessThan(userIndex)
+  })
+
   it('renders the latest compaction summary in place of the summarized prefix', () => {
     const out = assemblePrompt({
       history: [
