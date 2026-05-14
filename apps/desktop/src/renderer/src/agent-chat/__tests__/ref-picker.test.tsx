@@ -133,4 +133,134 @@ describe('RefPicker', () => {
       icon: { kind: 'calendar_event' }
     })
   })
+
+  it('maps task, journal, inbox, and location-matched calendar results to mention items', async () => {
+    mockSearchQuery.mockResolvedValue({
+      groups: [
+        {
+          type: 'task',
+          totalInGroup: 1,
+          results: [
+            {
+              id: 'task-1',
+              type: 'task',
+              title: 'Review Star Wars notes',
+              snippet: '',
+              score: 1,
+              normalizedScore: 1,
+              matchType: 'title',
+              modifiedAt: '2026-05-10T00:00:00.000Z',
+              metadata: {
+                type: 'task',
+                projectId: 'project-1',
+                projectName: 'Inbox',
+                projectColor: '#22c55e',
+                statusId: null,
+                statusName: null,
+                dueDate: null,
+                priority: 0,
+                completedAt: null
+              }
+            }
+          ]
+        },
+        {
+          type: 'journal',
+          totalInGroup: 1,
+          results: [
+            {
+              id: 'journal-1',
+              type: 'journal',
+              title: 'Star Wars journal',
+              snippet: '',
+              score: 1,
+              normalizedScore: 1,
+              matchType: 'title',
+              modifiedAt: '2026-05-10T00:00:00.000Z',
+              metadata: {
+                type: 'journal',
+                date: '2026-05-10',
+                path: '/Journal/2026-05-10',
+                tags: []
+              }
+            }
+          ]
+        },
+        {
+          type: 'inbox',
+          totalInGroup: 1,
+          results: [
+            {
+              id: 'inbox-1',
+              type: 'inbox',
+              title: 'Star Wars trailer',
+              snippet: '',
+              score: 1,
+              normalizedScore: 1,
+              matchType: 'title',
+              modifiedAt: '2026-05-10T00:00:00.000Z',
+              metadata: {
+                type: 'inbox',
+                itemType: 'video',
+                sourceUrl: null,
+                sourceTitle: null,
+                filedAt: null
+              }
+            }
+          ]
+        }
+      ],
+      totalCount: 3,
+      queryTimeMs: 1
+    })
+    mockCalendarListEvents.mockResolvedValue({
+      events: [
+        {
+          id: 'event-location',
+          title: 'Movie planning',
+          description: null,
+          location: 'Star Wars room',
+          startAt: '2026-05-14T20:00:00.000Z',
+          endAt: '2026-05-14T22:00:00.000Z',
+          allDay: false,
+          archivedAt: null,
+          createdAt: '2026-05-10T00:00:00.000Z',
+          updatedAt: '2026-05-10T00:00:00.000Z'
+        }
+      ]
+    })
+    const props = renderRefPicker()
+
+    await screen.findByText('Review Star Wars notes')
+
+    expect(screen.getByText('Star Wars journal')).toBeInTheDocument()
+    expect(screen.getByText('Star Wars trailer')).toBeInTheDocument()
+    expect(screen.getByText('Movie planning')).toBeInTheDocument()
+    expect(props.onItemsChange).toHaveBeenLastCalledWith([
+      {
+        kind: 'task',
+        ref_id: 'task-1',
+        label: 'Review Star Wars notes',
+        icon: { kind: 'task' }
+      },
+      {
+        kind: 'journal',
+        ref_id: 'journal-1',
+        label: 'Star Wars journal',
+        icon: { kind: 'journal' }
+      },
+      {
+        kind: 'inbox',
+        ref_id: 'inbox-1',
+        label: 'Star Wars trailer',
+        icon: { kind: 'inbox', itemType: 'video' }
+      },
+      {
+        kind: 'calendar_event',
+        ref_id: 'event-location',
+        label: 'Movie planning',
+        icon: { kind: 'calendar_event' }
+      }
+    ])
+  })
 })
