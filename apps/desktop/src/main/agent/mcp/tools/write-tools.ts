@@ -450,6 +450,19 @@ export function buildWriteTools(
         return handles.inbox.update(args)
       }
     },
+    vault_snooze_inbox_item: {
+      name: 'vault_snooze_inbox_item',
+      description: TOOL_SCHEMAS.vault_snooze_inbox_item.description,
+      inputSchema: TOOL_SCHEMAS.vault_snooze_inbox_item.input,
+      handler: async (input, ctx) => {
+        const parsed = parse<Parameters<VaultServiceHandles['inbox']['snooze']>[0]>(
+          TOOL_SCHEMAS.vault_snooze_inbox_item.input,
+          input
+        )
+        const args = await approvedArgs(gate, 'vault_snooze_inbox_item', parsed, ctx)
+        return handles.inbox.snooze(args)
+      }
+    },
     vault_archive_inbox_item: {
       name: 'vault_archive_inbox_item',
       description: TOOL_SCHEMAS.vault_archive_inbox_item.description,

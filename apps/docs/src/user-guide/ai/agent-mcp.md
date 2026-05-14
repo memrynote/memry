@@ -174,6 +174,7 @@ approval:
 - `vault_delete_journal_entry`
 - `vault_add_to_inbox`
 - `vault_update_inbox_item`
+- `vault_snooze_inbox_item`
 - `vault_archive_inbox_item`
 - `vault_unarchive_inbox_item`
 - `vault_delete_inbox_item`
