@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Güncel not",
       "removeAttachment": "{label}'yi kaldır",
-      "placeholder": "Agent'e sorun",
+      "placeholder": "Memry’ye her şeyi sorun. Dosyadan bahsetmek için @ kullanın",
       "send": "Gönder",
       "providerLabel": "Agent sağlayıcısı: {provider}",
       "modelLabel": "Agent modeli: {model}",

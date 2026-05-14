@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Aktualna notatka",
       "removeAttachment": "Usuń {label}",
-      "placeholder": "Zapytaj Agent",
+      "placeholder": "Zapytaj Memry o cokolwiek. @, aby wspomnieć plik",
       "send": "Wyślij",
       "providerLabel": "Dostawca Agent: {provider}",
       "modelLabel": "Model Agent: {model}",

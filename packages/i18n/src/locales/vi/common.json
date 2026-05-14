@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Ghi chú hiện tại",
       "removeAttachment": "Xóa {label}",
-      "placeholder": "Hỏi Agent",
+      "placeholder": "Hỏi Memry bất cứ điều gì. @ để nhắc đến tệp",
       "send": "Gửi",
       "providerLabel": "Nhà cung cấp Agent: {provider}",
       "modelLabel": "Model Agent: {model}",
