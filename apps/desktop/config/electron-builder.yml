@@ -44,7 +44,7 @@ linux:
   maintainer: electronjs.org
   category: Utility
 appImage:
-  artifactName: ${productName}-${version}.${ext}
+  artifactName: ${productName}-${version}-${arch}.${ext}
 deb:
   artifactName: ${productName}-${version}-${arch}.${ext}
 npmRebuild: false
