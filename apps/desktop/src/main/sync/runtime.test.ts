@@ -126,6 +126,10 @@ const runtimeMocks = vi.hoisted(() => {
     emitSessionExpired: vi.fn(),
     setOnTokenRefreshed: vi.fn(),
     trackMainEvent: vi.fn(),
+    logDebug: vi.fn(),
+    logInfo: vi.fn(),
+    logWarn: vi.fn(),
+    logError: vi.fn(),
     recoverDirtyItems: vi.fn(),
     createSyncAdapterRegistry: vi.fn((adapters: unknown[]) => adapters),
     createCrdtSyncAdapter: vi.fn((type: string, options: unknown) => ({ type, options })),
@@ -189,6 +193,15 @@ vi.mock('../calendar/google/sync-service', () => ({
 
 vi.mock('../telemetry/track', () => ({
   trackMainEvent: runtimeMocks.trackMainEvent
+}))
+
+vi.mock('../lib/logger', () => ({
+  createLogger: () => ({
+    debug: (...args: unknown[]) => runtimeMocks.logDebug(...args),
+    info: (...args: unknown[]) => runtimeMocks.logInfo(...args),
+    warn: (...args: unknown[]) => runtimeMocks.logWarn(...args),
+    error: (...args: unknown[]) => runtimeMocks.logError(...args)
+  })
 }))
 
 vi.mock('./queue', () => ({ SyncQueueManager: runtimeMocks.SyncQueueManager }))
@@ -369,6 +382,31 @@ describe('sync runtime', () => {
     await expect(runtime.startSyncRuntime()).resolves.toBeNull()
 
     expect(runtimeMocks.getDatabase).not.toHaveBeenCalled()
+    expect(runtime.getSyncEngine()).toBeNull()
+  })
+
+  it('skips startup before queues and CRDT seed when vault key verification fails', async () => {
+    const verificationError = new Error('Current master key does not match this vault')
+    runtimeMocks.getOrInitializeLocalVaultKey.mockRejectedValueOnce(verificationError)
+    const runtime = await loadRuntime()
+
+    try {
+      await expect(runtime.startSyncRuntime()).resolves.toBeNull()
+    } finally {
+      runtimeMocks.getOrInitializeLocalVaultKey.mockReset()
+      runtimeMocks.getOrInitializeLocalVaultKey.mockResolvedValue(new Uint8Array([1, 2, 3]))
+    }
+
+    expect(runtimeMocks.SyncQueueManager.instances).toHaveLength(0)
+    expect(runtimeMocks.CrdtUpdateQueue.instances).toHaveLength(0)
+    expect(runtimeMocks.SyncEngine.instances).toHaveLength(0)
+    expect(runtimeMocks.crdtProvider.init).not.toHaveBeenCalled()
+    expect(runtimeMocks.crdtProvider.seedExistingDocs).not.toHaveBeenCalled()
+    expect(runtimeMocks.recoverDirtyItems).not.toHaveBeenCalled()
+    expect(runtimeMocks.logError).toHaveBeenCalledWith(
+      'Sync runtime unavailable: vault key verification failed',
+      verificationError
+    )
     expect(runtime.getSyncEngine()).toBeNull()
   })
 
