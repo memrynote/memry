@@ -47,6 +47,7 @@ mention instead of plain text. Lists link each returned note, task, inbox item, 
 calendar event, project, or folder that has a navigable reference. Create and update confirmations
 also link the affected item when the tool returns its ID or journal date. The reply footer shows a
 collapsible Sources section only when the assistant message contains those Memry item links.
+Inbox snooze confirmations use the same explicit inbox item reference as other inbox writes.
 
 Memry only links explicit tool-provided references. Plain titles without an ID or date stay as
 normal text. Clickable item mentions use Memry's standard link color, show a dotted underline on
