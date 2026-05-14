@@ -810,6 +810,43 @@ describe('Composer', () => {
     })
   })
 
+  it('removes inline mention tags with Delete as one unit', async () => {
+    mockSearchQuery.mockResolvedValue({
+      groups: [
+        {
+          type: 'note',
+          totalInGroup: 1,
+          results: [
+            {
+              id: 'note-1',
+              type: 'note',
+              title: 'Star Wars Movies',
+              snippet: '',
+              score: 1,
+              normalizedScore: 1,
+              matchType: 'title',
+              modifiedAt: '2026-05-10T00:00:00.000Z',
+              metadata: { type: 'note', path: '/Star Wars Movies', tags: [] }
+            }
+          ]
+        }
+      ],
+      totalCount: 1,
+      queryTimeMs: 1
+    })
+    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+
+    await setPromptText('@star wars')
+    fireEvent.click(await screen.findByRole('option', { name: /star wars movies/i }))
+    const mention = screen.getByTestId('agent-mention-note-note-1')
+    expect(mention).toBeInTheDocument()
+
+    fireEvent.mouseDown(mention)
+    await userEvent.keyboard('{Delete}')
+
+    expect(screen.queryByTestId('agent-mention-note-note-1')).not.toBeInTheDocument()
+  })
+
   it('auto-attaches the current note', async () => {
     mockUseActiveTab.mockReturnValue({
       id: 'tab-1',
