@@ -32,8 +32,19 @@ function getPaddleClient() {
   return paddlePromise
 }
 
-async function readCheckoutResponse(response: Response): Promise<CheckoutResponse> {
-  const data = (await response.json()) as Partial<CheckoutResponse> & { error?: string }
+async function readJsonBody(response: Response) {
+  const contentType = response.headers.get('Content-Type')?.toLowerCase() ?? ''
+  if (!contentType.includes('application/json')) return {}
+
+  try {
+    return (await response.json()) as Partial<CheckoutResponse> & { error?: string }
+  } catch {
+    return {}
+  }
+}
+
+export async function readCheckoutResponse(response: Response): Promise<CheckoutResponse> {
+  const data = await readJsonBody(response)
 
   if (!response.ok) {
     throw new Error(data.error || 'Could not start checkout')

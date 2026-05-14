@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
 
 import { getPaddleCheckoutConfig, parsePaddleCheckoutIntent } from './paddle-checkout-config.ts'
@@ -12,6 +13,13 @@ const env = {
 }
 
 describe('paddle checkout config', () => {
+  it('uses an emitted JavaScript helper import for Vercel functions', () => {
+    const source = readFileSync(new URL('./paddle-checkout.ts', import.meta.url), 'utf8')
+
+    assert.doesNotMatch(source, /from ['"]\.\/paddle-checkout-config\.ts['"]/)
+    assert.match(source, /from ['"]\.\/paddle-checkout-config\.js['"]/)
+  })
+
   it('maps a recurring plan and cadence to the configured Paddle price', () => {
     const intent = parsePaddleCheckoutIntent({ plan: 'plus', cadence: 'annual' })
 
