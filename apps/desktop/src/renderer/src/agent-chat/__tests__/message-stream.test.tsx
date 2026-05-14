@@ -23,6 +23,7 @@ function message(input: {
   id: string
   role: Message['role']
   content: Message['content']
+  attachments?: Message['attachments']
   status?: Message['status']
   toolCallId?: string | null
 }): Message {
@@ -32,7 +33,7 @@ function message(input: {
     role: input.role,
     content: input.content,
     toolCallId: input.toolCallId ?? null,
-    attachments: [],
+    attachments: input.attachments ?? [],
     status: input.status ?? 'completed',
     vectorClock: {},
     createdAt: 100,
@@ -111,6 +112,46 @@ describe('MessageStream', () => {
     expect(screen.getByText('vault_create_task')).toBeInTheDocument()
     expect(screen.getByText('Tool result')).toBeInTheDocument()
     expect(screen.getByText('context_attached')).toBeInTheDocument()
+  })
+
+  it('renders user message attachment labels', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'user-1',
+            role: 'user',
+            content: { role: 'user', data: { text: 'Summarize this' } },
+            attachments: [
+              {
+                kind: 'note',
+                refId: 'note-1',
+                label: 'Planning note',
+                snapshot: { mode: 'reference_only', refId: 'note-1' }
+              }
+            ]
+          })
+        ]}
+      />
+    )
+
+    expect(screen.getByText('Planning note')).toBeInTheDocument()
+  })
+
+  it('ignores non-user content in user message rendering', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'assistant-as-user',
+            role: 'user',
+            content: { role: 'assistant', data: { text: 'Hidden' } }
+          })
+        ]}
+      />
+    )
+
+    expect(screen.queryByText('Hidden')).not.toBeInTheDocument()
   })
 
   it('allows chat text selection', () => {

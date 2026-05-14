@@ -108,6 +108,23 @@ describe('Composer', () => {
     })
   })
 
+  it('submits from pointer down on the send button', async () => {
+    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+
+    await setPromptText('hello')
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Send' }))
+
+    await waitFor(() => {
+      expect(mockSendTurn).toHaveBeenCalledWith({
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'hello',
+        attachments: [],
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh', model: 'opus' }
+      })
+    })
+  })
+
   it('renders the ai-02 prompt surface', () => {
     const { container } = render(
       <Composer conversationId="conversation-1" sourceWindowId="window-1" />
