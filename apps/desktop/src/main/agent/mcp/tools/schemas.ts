@@ -322,6 +322,14 @@ export const TOOL_SCHEMAS = {
     }),
     description: 'Update an inbox item. Requires user approval.'
   },
+  vault_snooze_inbox_item: {
+    input: z.object({
+      id: idSchema,
+      snooze_until: z.string().datetime(),
+      reason: z.string().max(500).optional()
+    }),
+    description: 'Snooze an inbox item until an ISO datetime. Requires user approval.'
+  },
   vault_archive_inbox_item: {
     input: z.object({ id: idSchema }),
     description: 'Archive an inbox item. Requires user approval.'
@@ -432,6 +440,7 @@ export const WRITE_TOOL_NAMES = [
   'vault_delete_journal_entry',
   'vault_add_to_inbox',
   'vault_update_inbox_item',
+  'vault_snooze_inbox_item',
   'vault_archive_inbox_item',
   'vault_unarchive_inbox_item',
   'vault_delete_inbox_item',
@@ -480,6 +489,7 @@ export const UPDATE_TOOL_NAMES = [
   'vault_update_journal_entry',
   'vault_delete_journal_entry',
   'vault_update_inbox_item',
+  'vault_snooze_inbox_item',
   'vault_archive_inbox_item',
   'vault_unarchive_inbox_item',
   'vault_delete_inbox_item',

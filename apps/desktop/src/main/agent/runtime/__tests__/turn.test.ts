@@ -470,6 +470,117 @@ describe('runTurn against a stub backend', () => {
       'title'
     ])
   })
+
+  it('falls back to a deterministic title when title generation exits non-zero', async () => {
+    const messages = createFakeMessageStore()
+    const conversations = createFakeConversationStore()
+    const attachment: MessageAttachment = {
+      kind: 'note',
+      refId: 'note-1',
+      label: 'Inbox Spec',
+      snapshotAt: 0,
+      snapshot: {
+        mode: 'inline_note',
+        title: 'Inbox Spec',
+        contentMarkdown: 'body',
+        truncated: false
+      }
+    }
+    const backend = createFakeBackend({
+      title: [{ kind: 'assistant_delta', text: 'Ignored title' }],
+      titleExitCode: 2,
+      titleStderr: 'title failed\n',
+      turn: [{ kind: 'message_stop' }]
+    })
+
+    await runTurn(
+      {
+        conversations,
+        messages,
+        backends: createFakeRegistry(backend)
+      },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'Plan agent inbox triage snooze flow today',
+        attachments: [attachment],
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'medium' }
+      }
+    )
+
+    expect(backend.generateTitle.mock.calls[0][0].prompt).toContain('Attached references:')
+    expect(backend.generateTitle.mock.calls[0][0].prompt).toContain('- note: Inbox Spec')
+    expect(conversations.update).toHaveBeenCalledWith(
+      'conversation-1',
+      { title: 'Plan agent inbox triage snooze flow' },
+      ['title']
+    )
+  })
+
+  it('falls back to a deterministic title when title generation throws', async () => {
+    const messages = createFakeMessageStore()
+    const conversations = createFakeConversationStore()
+    const backend = createFakeBackend({
+      turn: [{ kind: 'message_stop' }]
+    })
+    backend.generateTitle.mockRejectedValueOnce(new Error('title backend unavailable'))
+
+    await runTurn(
+      {
+        conversations,
+        messages,
+        backends: createFakeRegistry(backend)
+      },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'Draft launch checklist',
+        attachments: [],
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'medium' }
+      }
+    )
+
+    expect(conversations.update).toHaveBeenCalledWith(
+      'conversation-1',
+      { title: 'Draft launch checklist' },
+      ['title']
+    )
+  })
+
+  it('broadcasts failed tool results and ignores unknown backend events', async () => {
+    const messages = createFakeMessageStore()
+    const conversations = createFakeConversationStore({ title: 'Existing conversation' })
+    const backend = createFakeBackend({
+      turn: [
+        { kind: 'tool_result', toolUseId: 'tool-1', ok: false },
+        { kind: 'unknown', raw: { kind: 'custom' } },
+        { kind: 'message_stop' }
+      ]
+    })
+
+    await runTurn(
+      {
+        conversations,
+        messages,
+        backends: createFakeRegistry(backend)
+      },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'hi',
+        attachments: [],
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'low' }
+      }
+    )
+
+    expect(broadcastAgentEvent).toHaveBeenCalledWith({
+      kind: 'tool_call_failed',
+      conversationId: 'conversation-1',
+      toolCallId: 'tool-1',
+      error: { code: 'INTERNAL', message: 'unknown' }
+    })
+    expect(messages.listByConversation('conversation-1')[1].status).toBe('completed')
+  })
 })
 
 function createFakeConversationStore(overrides: Partial<Conversation> = {}): ConversationStore {
@@ -515,6 +626,8 @@ function createFakeBackend(input: {
   summary?: BackendRunHandle['events'] extends AsyncIterable<infer Event> ? Event[] : never
   exitCode?: number
   stderr?: string
+  titleExitCode?: number
+  titleStderr?: string
 }): AgentBackend & {
   runTurn: ReturnType<typeof vi.fn>
   generateTitle: ReturnType<typeof vi.fn>
@@ -526,7 +639,12 @@ function createFakeBackend(input: {
     runTurn: vi.fn(async () =>
       createRunHandle(input.turn ?? [], { exitCode: input.exitCode ?? 0, stderr: input.stderr })
     ),
-    generateTitle: vi.fn(async () => createRunHandle(input.title ?? [])),
+    generateTitle: vi.fn(async () =>
+      createRunHandle(input.title ?? [], {
+        exitCode: input.titleExitCode ?? 0,
+        stderr: input.titleStderr
+      })
+    ),
     summarize: vi.fn(async () => createRunHandle(input.summary ?? [])),
     cancel: vi.fn(),
     getStatus: vi.fn(async () => ({ backend: id, available: true })),

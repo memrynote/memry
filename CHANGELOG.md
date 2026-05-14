@@ -5,6 +5,15 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-05-14 — Agent Chat Inbox Snooze Tool
+
+### Added
+
+- Add an Agent MCP inbox snooze write tool so Agent Chat can defer inbox items with the same approval gate as other inbox mutations.
+
+### Changed
+
+- Make the Agent Chat system prompt use concrete Memry workflows and exact MCP tool names for current notes, folders, tags, journals, inbox triage, and links.
 ## 2026-05-14 — Agent Chat Inline Mentions
 
 ### Added

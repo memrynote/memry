@@ -252,6 +252,7 @@ export interface VaultServiceHandles {
     get(id: string): Promise<unknown | null>
     add(input: { source: string; title: string; content: string }): Promise<{ id: string }>
     update(input: { id: string; title?: string; content?: string }): Promise<{ id: string }>
+    snooze(input: { id: string; snooze_until: string; reason?: string }): Promise<{ id: string }>
     archive(id: string): Promise<{ id: string }>
     unarchive(id: string): Promise<{ id: string }>
     delete(id: string): Promise<{ id: string }>
