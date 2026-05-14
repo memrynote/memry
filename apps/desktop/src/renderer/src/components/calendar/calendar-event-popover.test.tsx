@@ -205,4 +205,105 @@ describe('CalendarEventPopover', () => {
     fireEvent.keyDown(screen.getByPlaceholderText('form.new-event-placeholder'), { key: 'Enter' })
     expect(onSave).not.toHaveBeenCalled()
   })
+
+  it('shows loading calendar defaults and restores timed values from all-day drafts', () => {
+    mocks.googleCalendars = {
+      data: undefined,
+      isLoading: true
+    }
+    const onDraftChange = vi.fn()
+
+    render(
+      <CalendarEventPopover
+        anchorRect={{ x: 0, y: 0, width: 0, height: 0 }}
+        mode="create"
+        draft={{ ...baseDraft, isAllDay: true, startAt: '2026-05-10', endAt: '' }}
+        isSaving
+        onDraftChange={onDraftChange}
+        onSave={vi.fn()}
+        onDismiss={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText('form.use-memry-calendar-default')).toBeInTheDocument()
+    expect(screen.getByText('choose calendar')).toBeDisabled()
+    expect(screen.getByTestId('event-edit-save')).toHaveTextContent('state.saving')
+
+    fireEvent.click(screen.getAllByText('pick date')[0])
+    expect(onDraftChange).toHaveBeenCalledWith({
+      ...baseDraft,
+      isAllDay: true,
+      startAt: '2026-05-12',
+      endAt: ''
+    })
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'time.all-day' }))
+    expect(onDraftChange).toHaveBeenCalledWith({
+      ...baseDraft,
+      isAllDay: false,
+      startAt: '2026-05-10T09:00',
+      endAt: '2026-05-10T10:00'
+    })
+  })
+
+  it('saves with Enter and edits the end date controls', async () => {
+    const onDraftChange = vi.fn()
+    const onSave = vi.fn()
+
+    render(
+      <CalendarEventPopover
+        anchorRect={{ x: 0, y: 0, width: 0, height: 0 }}
+        mode="edit"
+        draft={baseDraft}
+        isSaving={false}
+        onDraftChange={onDraftChange}
+        onSave={onSave}
+        onDismiss={vi.fn()}
+      />
+    )
+
+    fireEvent.keyDown(screen.getByPlaceholderText('form.new-event-placeholder'), { key: 'Enter' })
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
+
+    fireEvent.click(screen.getAllByText('pick date')[1])
+    expect(onDraftChange).toHaveBeenCalledWith({ ...baseDraft, endAt: '2026-05-12T10:00' })
+
+    fireEvent.click(screen.getAllByText('pick time')[1])
+    expect(onDraftChange).toHaveBeenCalledWith({ ...baseDraft, endAt: '2026-05-10T14:30' })
+
+    fireEvent.pointerDown(screen.getByTestId('event-edit-save'), { button: 1 })
+    expect(onSave).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(screen.getByTestId('event-edit-save'))
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2))
+  })
+
+  it('falls back for invalid date values and ignores save attempts while saving', () => {
+    const onDraftChange = vi.fn()
+    const onSave = vi.fn()
+
+    render(
+      <CalendarEventPopover
+        anchorRect={{ x: 0, y: 0, width: 0, height: 0 }}
+        mode="edit"
+        draft={{ ...baseDraft, startAt: '', endAt: 'bad-date' }}
+        isSaving
+        onDraftChange={onDraftChange}
+        onSave={onSave}
+        onDismiss={vi.fn()}
+      />
+    )
+
+    expect(screen.getAllByText('time.pick-a-date')).toHaveLength(2)
+
+    fireEvent.click(screen.getAllByText('pick date')[1])
+    expect(onDraftChange).toHaveBeenCalledWith({
+      ...baseDraft,
+      startAt: '',
+      endAt: '2026-05-12T09:00'
+    })
+
+    fireEvent.keyDown(screen.getByPlaceholderText('form.new-event-placeholder'), { key: 'Enter' })
+    expect(onSave).not.toHaveBeenCalled()
+  })
 })

@@ -150,7 +150,11 @@ export const TOOL_SCHEMAS = {
   },
   vault_desktop_read: {
     input: desktopReadSchema,
-    description: 'Run an allowlisted read-only desktop API operation through the Memry window.'
+    description:
+      'Run an allowlisted read-only desktop API operation through the Memry window. ' +
+      'Calendar examples: calendar.getProviderStatus with args [{"provider":"google"}], ' +
+      'calendar.listEvents with args [{}], calendar.getRange with args ' +
+      '[{"startAt":"2026-05-14T00:00:00.000Z","endAt":"2026-06-15T00:00:00.000Z"}].'
   },
   vault_create_note: {
     input: z.object({

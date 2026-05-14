@@ -100,6 +100,59 @@ describe('useMonthGridMarquee', () => {
     expect(result.current.selection).toBeNull()
   })
 
+  it('ignores non-element targets', () => {
+    const ref = createMockGridRef()
+    const { result } = renderHook(() => useMonthGridMarquee({ gridRef: ref }))
+
+    act(() => {
+      result.current.handlers.onMouseDown({
+        target: null,
+        button: 0,
+        preventDefault: vi.fn()
+      } as unknown as React.MouseEvent)
+      result.current.handlers.onDoubleClick({
+        target: null,
+        button: 0,
+        preventDefault: vi.fn()
+      } as unknown as React.MouseEvent)
+    })
+
+    expect(result.current.selection).toBeNull()
+    expect(result.current.isDragging).toBe(false)
+  })
+
+  it('falls back to an empty anchor rect when the grid or target cell is unavailable', () => {
+    const ref = { current: null } as RefObject<HTMLDivElement | null>
+    const { result, rerender } = renderHook(({ gridRef }) => useMonthGridMarquee({ gridRef }), {
+      initialProps: { gridRef: ref }
+    })
+    const cell = createCell('2026-04-14')
+
+    act(() => {
+      result.current.handlers.onDoubleClick({
+        target: cell,
+        button: 0,
+        preventDefault: vi.fn()
+      } as unknown as React.MouseEvent)
+    })
+
+    expect(result.current.selection?.anchorRect).toEqual({ x: 0, y: 0, width: 0, height: 0 })
+
+    const grid = document.createElement('div')
+    ref.current = grid
+    rerender({ gridRef: ref })
+
+    act(() => {
+      result.current.handlers.onDoubleClick({
+        target: cell,
+        button: 0,
+        preventDefault: vi.fn()
+      } as unknown as React.MouseEvent)
+    })
+
+    expect(result.current.selection?.anchorRect).toEqual({ x: 0, y: 0, width: 0, height: 0 })
+  })
+
   it('starts dragging on mousedown but does not create selection until mousemove', () => {
     const ref = createMockGridRef()
     const { result } = renderHook(() => useMonthGridMarquee({ gridRef: ref }))
@@ -115,6 +168,32 @@ describe('useMonthGridMarquee', () => {
     })
     expect(result.current.isDragging).toBe(true)
     expect(result.current.selection).toBeNull()
+  })
+
+  it('clears click-only drags on mouseup and ignores mousemove without a date target', () => {
+    const ref = createMockGridRef()
+    const { result } = renderHook(() => useMonthGridMarquee({ gridRef: ref }))
+    const cell = createCell('2026-04-10')
+    const emptyTarget = document.createElement('div')
+    ref.current!.append(cell, emptyTarget)
+
+    act(() => {
+      result.current.handlers.onMouseDown({
+        target: cell,
+        button: 0,
+        preventDefault: vi.fn()
+      } as unknown as React.MouseEvent)
+    })
+
+    act(() => {
+      const moveEvent = new MouseEvent('mousemove', { bubbles: true })
+      Object.defineProperty(moveEvent, 'target', { value: emptyTarget })
+      document.dispatchEvent(moveEvent)
+      document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+    })
+
+    expect(result.current.selection).toBeNull()
+    expect(result.current.isDragging).toBe(false)
   })
 
   it('ignores non-left-button mousedown', () => {

@@ -1,81 +1,84 @@
-import { describe, expect, it, vi } from 'vitest'
-import { renderWithProviders, screen, userEvent } from '@tests/utils/render'
+import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
 import { CalendarInboxSnoozePopover } from './calendar-inbox-snooze-popover'
-import type { CalendarProjectionItem } from '@/services/calendar-service'
 
-const baseItem: CalendarProjectionItem = {
-  projectionId: 'inbox_snooze:item-123',
-  sourceType: 'inbox_snooze',
-  sourceId: 'item-123',
-  title: 'Read this article',
-  descriptionPreview: 'A long preview of inbox content.',
-  startAt: '2026-04-30T09:00:00.000Z',
-  endAt: null,
-  isAllDay: false,
-  timezone: 'UTC',
-  visualType: 'snooze',
-  editability: { canMove: false, canResize: false, canEditText: false, canDelete: true },
-  source: {
-    provider: null,
-    calendarSourceId: null,
-    title: 'Memry Inbox',
-    color: null,
-    kind: null,
-    isMemryManaged: true
-  },
-  binding: null,
-  snoozeOffsetMinutes: null
-}
+vi.mock('@memry/i18n/renderer', () => ({
+  useT: () => ({
+    t: (key: string) => key
+  })
+}))
 
-const baseAnchor = { x: 100, y: 100, width: 120, height: 24 }
+vi.mock('@/components/snooze/snooze-picker', () => ({
+  SnoozePicker: ({
+    onSnooze,
+    trigger
+  }: {
+    onSnooze: (snoozeUntil: string) => void
+    trigger: React.ReactNode
+  }) => (
+    <div>
+      {trigger}
+      <button type="button" onClick={() => onSnooze('2026-05-15T09:00:00.000Z')}>
+        pick snooze
+      </button>
+    </div>
+  )
+}))
 
 describe('CalendarInboxSnoozePopover', () => {
-  it('renders the inbox item title and preview', () => {
-    renderWithProviders(
-      <CalendarInboxSnoozePopover
-        item={baseItem}
-        anchorRect={baseAnchor}
-        onOpenInInbox={vi.fn()}
-        onUnsnooze={vi.fn()}
-        onReschedule={vi.fn()}
-        onDismiss={vi.fn()}
-      />
-    )
-    expect(screen.getByText('Read this article')).toBeInTheDocument()
-    expect(screen.getByText(/A long preview/)).toBeInTheDocument()
+  beforeEach(() => {
+    vi.clearAllMocks()
   })
 
-  it('calls onOpenInInbox with the item id when "Open in inbox" is clicked', async () => {
+  it('routes actions and only dismisses for outside interactions', async () => {
     const user = userEvent.setup()
     const onOpenInInbox = vi.fn()
-    renderWithProviders(
-      <CalendarInboxSnoozePopover
-        item={baseItem}
-        anchorRect={baseAnchor}
-        onOpenInInbox={onOpenInInbox}
-        onUnsnooze={vi.fn()}
-        onReschedule={vi.fn()}
-        onDismiss={vi.fn()}
-      />
-    )
-    await user.click(screen.getByRole('button', { name: /open in inbox/i }))
-    expect(onOpenInInbox).toHaveBeenCalledWith('item-123')
-  })
-
-  it('calls onUnsnooze with the item id when "Unsnooze now" is clicked', async () => {
-    const user = userEvent.setup()
     const onUnsnooze = vi.fn()
-    renderWithProviders(
+    const onReschedule = vi.fn()
+    const onDismiss = vi.fn()
+
+    render(
       <CalendarInboxSnoozePopover
-        item={baseItem}
-        anchorRect={baseAnchor}
-        onOpenInInbox={vi.fn()}
+        item={
+          {
+            sourceId: 'inbox-1',
+            title: 'Read launch notes',
+            descriptionPreview: 'Follow up next week'
+          } as never
+        }
+        anchorRect={{ x: 20, y: 30, width: 40, height: 50 }}
+        onOpenInInbox={onOpenInInbox}
         onUnsnooze={onUnsnooze}
-        onReschedule={vi.fn()}
-        onDismiss={vi.fn()}
+        onReschedule={onReschedule}
+        onDismiss={onDismiss}
       />
     )
-    await user.click(screen.getByRole('button', { name: /unsnooze now/i }))
-    expect(onUnsnooze).toHaveBeenCalledWith('item-123')
+
+    expect(screen.getByText('Read launch notes')).toBeInTheDocument()
+    expect(screen.getByText('Follow up next week')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /openInInbox/ }))
+    await user.click(screen.getByRole('button', { name: /unsnoozeNow/ }))
+    await user.click(screen.getByRole('button', { name: 'pick snooze' }))
+    expect(onOpenInInbox).toHaveBeenCalledWith('inbox-1')
+    expect(onUnsnooze).toHaveBeenCalledWith('inbox-1')
+    expect(onReschedule).toHaveBeenCalledWith('inbox-1', '2026-05-15T09:00:00.000Z')
+
+    fireEvent.pointerDown(screen.getByTestId('calendar-inbox-snooze-popover'))
+    expect(onDismiss).not.toHaveBeenCalled()
+
+    const portalTarget = document.createElement('div')
+    portalTarget.setAttribute('role', 'dialog')
+    document.body.appendChild(portalTarget)
+    fireEvent.pointerDown(portalTarget)
+    expect(onDismiss).not.toHaveBeenCalled()
+    portalTarget.remove()
+
+    fireEvent.pointerDown(document)
+    fireEvent.pointerDown(document.body)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onDismiss).toHaveBeenCalledTimes(3)
   })
 })

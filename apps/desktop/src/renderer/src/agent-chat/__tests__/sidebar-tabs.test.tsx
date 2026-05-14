@@ -1,16 +1,25 @@
 import userEvent from '@testing-library/user-event'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { useState } from 'react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import type { Conversation } from '@memry/contracts/ipc-agent'
 
 const mockUseAgentOptional = vi.hoisted(() => vi.fn())
 const mockOpenTab = vi.hoisted(() => vi.fn())
 const mockCloseDayPanel = vi.hoisted(() => vi.fn())
+const readyBackendStatuses = {
+  claude_cli: { backend: 'claude_cli', available: true },
+  codex_cli: { backend: 'codex_cli', available: true },
+  local_openai_compatible: { backend: 'local_openai_compatible', available: true }
+}
 
 vi.mock('../agent-context', () => ({
   useAgentOptional: mockUseAgentOptional
 }))
 
 vi.mock('@/contexts/tabs', () => ({
+  useActiveTab: () => null,
   useTabs: () => ({ openTab: mockOpenTab })
 }))
 
@@ -19,6 +28,7 @@ vi.mock('@/contexts/day-panel-context', () => ({
 }))
 
 import { SidebarTabs } from '../sidebar-tabs'
+import { AgentPane } from '../agent-pane'
 
 function renderTabs(
   props: { dayLabel?: string; agentLabel?: string; defaultTab?: 'day' | 'agent' } = {}
@@ -84,6 +94,24 @@ function mockAgentWithConversations() {
   })
 
   return { createConversation, loadConversation, clearActiveConversation }
+}
+
+function conversation(id: string, title: string, updatedAt: number): Conversation {
+  return {
+    id,
+    vaultId: 'vault-1',
+    title,
+    backend: 'claude_cli',
+    backendModel: null,
+    trustList: [],
+    pinned: false,
+    vectorClock: {},
+    fieldClocks: {},
+    createdAt: updatedAt,
+    updatedAt,
+    deletedAt: null,
+    lastSyncedAt: null
+  }
 }
 
 describe('SidebarTabs', () => {
@@ -207,6 +235,69 @@ describe('SidebarTabs', () => {
     fireEvent.click(historyItem)
 
     expect(loadConversation).toHaveBeenCalledWith('conversation-2')
+  })
+
+  it('focuses the composer after creating a conversation from the plus action', async () => {
+    const user = userEvent.setup()
+    const createConversation = vi.fn()
+    const createdConversation = conversation('conversation-2', 'New conversation', 200)
+
+    function Harness(): React.JSX.Element {
+      const [activeConversationId, setActiveConversationId] = useState<string | null>(
+        'conversation-1'
+      )
+      const conversations =
+        activeConversationId === 'conversation-2'
+          ? {
+              'conversation-1': conversation('conversation-1', 'Planning', 100),
+              'conversation-2': createdConversation
+            }
+          : {
+              'conversation-1': conversation('conversation-1', 'Planning', 100)
+            }
+
+      mockUseAgentOptional.mockReturnValue({
+        state: {
+          backendStatuses: readyBackendStatuses,
+          disclosureAccepted: true,
+          sourceWindowId: 'window-1',
+          activeConversationId,
+          conversations,
+          pendingApprovals: [],
+          messagesByConversation: {},
+          inFlight: {},
+          error: null
+        },
+        createConversation: createConversation.mockImplementation(async () => {
+          setActiveConversationId(createdConversation.id)
+          return createdConversation
+        }),
+        loadConversation: vi.fn(),
+        clearActiveConversation: vi.fn(),
+        acceptDisclosure: vi.fn(),
+        cancelTurn: vi.fn(),
+        sendTurn: vi.fn()
+      })
+
+      return (
+        <SidebarTabs defaultTab="agent">
+          {{
+            day: <div>Day content</div>,
+            agent: <AgentPane />
+          }}
+        </SidebarTabs>
+      )
+    }
+
+    render(<Harness />)
+
+    await user.click(screen.getByRole('button', { name: 'New conversation' }))
+
+    expect(createConversation).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(screen.getByRole('textbox')).toHaveFocus())
+    await user.keyboard('hello')
+
+    expect(screen.getByRole('textbox')).toHaveTextContent('hello')
   })
 
   it('opens the active conversation in a workspace tab and resets the sidebar chat', () => {
