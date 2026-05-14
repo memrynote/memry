@@ -1,11 +1,22 @@
 # CLAUDE.md
 
-Research the codebase before editing. Never change code you haven't read."
+This file backs `AGENTS.md`; `AGENTS.md` is a symlink to `CLAUDE.md`.
+
+Kaan owns this. Start: say hi + one motivating line. Work style: telegraph; noun phrases ok; drop grammar; min tokens.
+
+Research the codebase before editing. Never change code you haven't read.
 
 ## Build & Dev
 
 ```bash
 pnpm dev          # Electron desktop app
+pnpm dev:desktop  # desktop through turbo
+pnpm dev:landing  # landing site
+pnpm dev:sync-server # sync server
+pnpm docs:dev     # docs site
+pnpm --filter @memry/desktop dev:a # desktop profile/device A
+pnpm --filter @memry/desktop dev:b # desktop profile/device B
+pnpm --filter @memry/desktop dev:c # desktop profile/device C
 ```
 
 ## Verify
@@ -14,38 +25,77 @@ pnpm dev          # Electron desktop app
 pnpm lint         # ESLint (flat config)
 pnpm typecheck    # TypeScript across all packages
 pnpm test         # Vitest (desktop + sync-server via turbo)
+pnpm test:desktop # desktop tests only
+pnpm test:sync-server # sync-server tests only
 pnpm test:e2e     # Playwright E2E (Electron)
-pnpm docs:impact  # check whether desktop/sync-server changes need docs
-pnpm docs:ai-update # use Codex CLI to update apps/docs for relevant changes
+pnpm check:architecture # architecture boundary check
+pnpm check:contracts # contract boundary check
+pnpm docs:impact --base origin/main --strict # docs gate for desktop/sync changes
+pnpm docs:build   # VitePress docs build
 pnpm ipc:check    # validate IPC contract types (renderer↔main boundary)
 pnpm ipc:generate # regenerate IPC invoke map from contracts
+git diff --check
 ```
 
+Focused checks:
+
+```bash
+pnpm --filter @memry/desktop typecheck:web
+pnpm --filter @memry/desktop typecheck:node
+pnpm --filter @memry/desktop test:renderer
+pnpm --filter @memry/desktop test:main
+pnpm --filter @memry/desktop i18n:check
+npx -y react-doctor@latest .
+```
+
+Run `pnpm ipc:generate` before `pnpm ipc:check` when editing contracts, preload APIs, main IPC handlers, generated RPC bindings, or Agent Chat provider/IPC channels.
+
+## Docs Automation
+
+- `scripts/docs-impact.mjs` is the docs-routing source of truth.
+- Pre-push is intentionally docs-only for code-relevant changes: branch-name guard, base commit resolution, `pnpm docs:impact --base "$base_commit" --strict`, optional `pnpm docs:ai-update --base "$base_commit"` only when `MEMRY_DOCS_AI_AUTO=1`.
+- Do not re-add local lint/typecheck/test/docs-build to regular pre-push unless Kaan explicitly asks.
+- If docs impact says `missing-docs`, update only real docs under `apps/docs/src/**` or run `pnpm docs:ai-update --base <base_commit>`, then `pnpm docs:impact --base <base_commit> --strict` and `pnpm docs:build`.
+- Use `MEMRY_DOCS_IMPACT_SKIP=1` only when the change is intentionally non-docs and you can explain why.
+
 ## Approach
-- Think before acting. Read existing files before writing code.
+
+- Think before acting. State assumptions; if multiple interpretations exist, surface them.
+- Read existing files before writing code.
 - Be concise in output but thorough in reasoning.
 - Prefer editing over rewriting whole files.
 - Do not re-read files you have already read unless the file may have changed.
 - Test your code before declaring done.
-- Before push, PR, or merge after desktop/sync-server changes, run `pnpm docs:ai-update` or update `apps/docs/src` manually, then run `pnpm docs:impact --strict` and `pnpm docs:build`.
+- Before push, PR, or merge after desktop/sync-server changes, run `pnpm docs:ai-update --base <base_commit>` or update `apps/docs/src` manually, then run `pnpm docs:impact --base <base_commit> --strict` and `pnpm docs:build`.
 - No sycophantic openers or closing fluff.
 - Keep solutions simple and direct. No over-engineering.
 - If unsure: say so. Never guess or invent file paths.
 - User instructions always override this file.
 
 ## Efficiency
+
 - Read before writing. Understand the problem before coding.
 - No redundant file reads. Read each file once.
 - One focused coding pass. Avoid write-delete-rewrite cycles.
 - Test once, fix if needed, verify once. No unnecessary iterations.
 - Budget: 50 tool calls maximum. Work efficiently.
 
+## Git & PR
+
+- Branch names must be code-context names. No `codex/`, `t3code`, `claude/`, `cursor/`, or random names like `fox-inline-go`.
+- If a generated worktree/branch name is random, rename it before pushing.
+- Do not mention Codex, Claude, T3Code, Cursor, or other agent/tool branding in PR descriptions.
+- Draft PR is the safe default when the user asks to create/push a PR and does not specify ready vs draft.
+- For Memry worktrees, prefer repo-local `.worktrees/<name>`: `git worktree add .worktrees/<name> -b <name> origin/main`, then `pnpm install --frozen-lockfile`.
+- Fresh worktrees may spend a long quiet period rebuilding Electron native deps; do not treat that as a hang without evidence.
+
 ## Database
 
 ```bash
-pnpm db:generate  # Drizzle schema → migration SQL
-pnpm db:push      # apply migrations
-pnpm db:studio    # Drizzle Studio GUI
+pnpm --filter @memry/desktop db:generate  # Drizzle schema → migration SQL
+pnpm --filter @memry/desktop db:push      # apply migrations
+pnpm --filter @memry/desktop db:studio:data
+pnpm --filter @memry/desktop db:studio:index
 ```
 
 Dual-database pattern: data DB (notes, tasks, projects) + index DB (search, graph). Both use better-sqlite3 via Drizzle ORM.
@@ -54,9 +104,13 @@ Dual-database pattern: data DB (notes, tasks, projects) + index DB (search, grap
 
 - `apps/desktop` — Electron 39 + React 19 + Vite (main/renderer/preload).
 - `apps/sync-server` — Cloudflare Workers + Hono (D1 + R2)
+- `apps/landing` — landing site
+- `apps/docs` — VitePress docs
 - `packages/contracts` — IPC and API type definitions (Zod validation)
+- `packages/rpc` — RPC contract helpers
 - `packages/db-schema` — Drizzle ORM schemas (data + index)
 - `packages/shared` — Minimal shared utilities
+- `packages/app-core` — App/domain orchestration shared with CLI
 
 ## Code Style
 
@@ -76,14 +130,29 @@ Prettier: single quotes, no semicolons, 100 char width, no trailing commas.
 - **CRDT ownership**: Main process owns Y.Docs; renderer uses IPC provider. Tag updates with `sourceWindowId` to prevent IPC loops.
 - **Sync handler pattern**: Per-type handlers in `src/main/sync/item-handlers/` via strategy pattern. Use `getHandler(type)` registry.
 
+## Agent Chat
+
+- Start from `docs/superpowers/specs/2026-05-10-agent-chat-design.md` before changing Agent Chat architecture.
+- Current direction is MCP-first: one localhost Vault MCP server in the main process, reused by Claude CLI, Codex CLI, and local/OpenAI-compatible backends.
+- External MCP clients are read-only by default. Writes require an active Memry Agent conversation and approval UI.
+- Codex is a first-class backend when Agent Chat provider work comes up; do not detour to OpenAI API unless requested.
+- Provider/model/reasoning changes must persist as conversation settings, not one-shot composer state.
+
+## Native Modules
+
+- Node-side tests or scripts with `better-sqlite3` / `classic-level` / `keytar` load errors: run `pnpm --filter @memry/desktop rebuild:node`.
+- Electron dev/E2E/build native load errors: run `pnpm --filter @memry/desktop rebuild:electron`.
+- Do not use the Node rebuild as proof for Electron runtime, or the Electron rebuild as proof for Node tests.
+
 ## Known Gotchas
 
-- `better-sqlite3` ERR_DLOPEN_FAILED in tests = NODE_MODULE_VERSION mismatch → `pnpm rebuild better-sqlite3`
+- `better-sqlite3` ERR_DLOPEN_FAILED in tests = NODE_MODULE_VERSION mismatch → `pnpm --filter @memry/desktop rebuild:node`
 - Zod v4: `z.record(z.unknown())` throws in safeParse → use `z.record(z.string(), z.unknown())`
 - Pre-existing type errors in test files (websocket.test.ts, folders.test.ts) — ignore during typecheck
 - Lazy URL resolution in http-client (per-call, not module-level) to avoid import-time throws in tests
 - Drizzle: nullable JSON columns need `null` not `undefined` in `.values()` insert
 - **Submit buttons that disable themselves mid-click lose the click.** If `onClick` calls a handler that synchronously sets state which adds `disabled` to the button (e.g. `disabled={isSubmitting}`), the browser suppresses the `click` event at the DOM layer between `pointerdown` and `click`. Fire submit from `onPointerDown` (runs before the re-render applies `disabled`) and keep `onClick` as a keyboard-activation fallback. See `calendar-quick-create-dialog.tsx`.
+- Do not check off phase/checklist work unless the exact verification evidence is green.
 
 ## gstack
 
@@ -97,6 +166,7 @@ Available skills:
 When the user's request matches an available skill, ALWAYS invoke it using the Skill
 tool as your FIRST action. Do NOT answer directly, do NOT use other tools first.
 The skill has specialized workflows that produce better results than ad-hoc answers.
+Mention the skill name and why you are using it.
 
 Key routing rules:
 - Product ideas, "is this worth building", brainstorming → invoke office-hours
@@ -111,3 +181,14 @@ Key routing rules:
 - Architecture review → invoke plan-eng-review
 - Save progress, checkpoint, resume → invoke checkpoint
 - Code quality, health check → invoke health
+
+## Context7
+
+Use `ctx7` for current documentation whenever the user asks about a library, framework, SDK, API, CLI tool, or cloud service.
+
+```bash
+npx ctx7@latest library <Official Name> "<user's question>"
+npx ctx7@latest docs /org/project "<user's question>"
+```
+
+Call `library` first unless the user gives a `/org/project` ID. Do not use ctx7 for refactoring, writing scripts from scratch, debugging business logic, code review, or general programming concepts. Max 3 ctx7 commands per question. If quota fails, tell the user to run `npx ctx7@latest login` or set `CONTEXT7_API_KEY`.
