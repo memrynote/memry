@@ -2,7 +2,11 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
 
-import { getPaddleCheckoutConfig, parsePaddleCheckoutIntent } from './paddle-checkout-config.ts'
+import {
+  getPaddleCheckoutConfig,
+  normalizePaddleApiKey,
+  parsePaddleCheckoutIntent
+} from './paddle-checkout-config.ts'
 
 const env = {
   PADDLE_PRICE_STANDARD_MONTHLY: 'pri_standard_monthly',
@@ -13,6 +17,16 @@ const env = {
 }
 
 describe('paddle checkout config', () => {
+  it('normalizes common Paddle API key paste formats', () => {
+    assert.equal(normalizePaddleApiKey('  "pdl_live_apikey_example"  '), 'pdl_live_apikey_example')
+    assert.equal(normalizePaddleApiKey('Bearer pdl_live_apikey_example'), 'pdl_live_apikey_example')
+    assert.equal(
+      normalizePaddleApiKey('Authorization: Bearer pdl_live_apikey_example'),
+      'pdl_live_apikey_example'
+    )
+    assert.equal(normalizePaddleApiKey(''), undefined)
+  })
+
   it('uses an emitted JavaScript helper import for Vercel functions', () => {
     const source = readFileSync(new URL('./paddle-checkout.ts', import.meta.url), 'utf8')
 
