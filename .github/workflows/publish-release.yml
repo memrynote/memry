@@ -112,10 +112,20 @@ jobs:
             --ignore-tag "${{ steps.draft.outputs.draft_tag }}"
 
   build-macos:
-    name: Build macOS x64 and arm64
+    name: Build macOS ${{ matrix.arch }}
     needs: setup-release
-    runs-on: macos-15-intel
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: macos-15-intel
+            builder_arch_flag: --x64
+          - arch: arm64
+            runner: macos-15
+            builder_arch_flag: --arm64
 
     steps:
       - name: Checkout
@@ -206,8 +216,7 @@ jobs:
           node apps/desktop/scripts/build-packaged-app.js \
             --config config/electron-builder.staged-local-mac.yml \
             --mac \
-            --x64 \
-            --arm64 \
+            ${{ matrix.builder_arch_flag }} \
             --publish never
 
       - name: Check packaged runtime dependencies
@@ -225,16 +234,22 @@ jobs:
             \( -name '*.dmg' -o -name '*.zip' -o -name '*.blockmap' -o -name 'latest-mac.yml' \) \
             -exec cp {} "$asset_dir" \;
 
-          ls -la "$asset_dir"
-
-          if ! ls "$asset_dir"/*-x64.dmg >/dev/null 2>&1; then
-            echo "::error::No macOS x64 DMG artifact was produced."
-            exit 1
+          if [ "${{ matrix.arch }}" != "arm64" ]; then
+            rm -f "$asset_dir/latest-mac.yml"
           fi
 
-          if ! ls "$asset_dir"/*-arm64.dmg >/dev/null 2>&1; then
-            echo "::error::No macOS arm64 DMG artifact was produced."
-            exit 1
+          ls -la "$asset_dir"
+
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            if ! ls "$asset_dir"/*-arm64.dmg >/dev/null 2>&1; then
+              echo "::error::No macOS arm64 DMG artifact was produced."
+              exit 1
+            fi
+          else
+            if ! find "$asset_dir" -maxdepth 1 -type f -name '*.dmg' ! -name '*arm64*' | grep -q .; then
+              echo "::error::No macOS x64 DMG artifact was produced."
+              exit 1
+            fi
           fi
 
           if ! ls "$asset_dir"/*.zip >/dev/null 2>&1; then
@@ -242,7 +257,7 @@ jobs:
             exit 1
           fi
 
-          if [ ! -f "$asset_dir/latest-mac.yml" ]; then
+          if [ "${{ matrix.arch }}" = "arm64" ] && [ ! -f "$asset_dir/latest-mac.yml" ]; then
             echo "::error::latest-mac.yml was not produced."
             exit 1
           fi
@@ -252,7 +267,7 @@ jobs:
       - name: Upload macOS workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: memry-release-macos-${{ needs.setup-release.outputs.app_version }}
+          name: memry-release-macos-${{ matrix.arch }}-${{ needs.setup-release.outputs.app_version }}
           path: ${{ steps.assets.outputs.asset_dir }}/*
           if-no-files-found: error
 
@@ -512,7 +527,11 @@ jobs:
             fi
           }
 
-          require_glob '*-x64.dmg' 'Missing macOS x64 DMG.'
+          if ! compgen -G "$asset_dir/*-x64.dmg" >/dev/null &&
+            ! find "$asset_dir" -maxdepth 1 -type f -name '*.dmg' ! -name '*arm64*' | grep -q .; then
+            echo "::error::Missing macOS x64 DMG."
+            exit 1
+          fi
           require_glob '*-arm64.dmg' 'Missing macOS arm64 DMG.'
           require_glob '*.zip' 'Missing macOS ZIP.'
           require_file 'latest-mac.yml' 'Missing latest-mac.yml.'
@@ -575,7 +594,10 @@ jobs:
             throw new Error('Release was published before asset verification finished')
           }
 
-          hasAsset((name) => name.endsWith('-x64.dmg'), 'Release is missing a macOS x64 DMG asset')
+          hasAsset(
+            (name) => name.endsWith('-x64.dmg') || (name.endsWith('.dmg') && !name.includes('arm64')),
+            'Release is missing a macOS x64 DMG asset'
+          )
           hasAsset((name) => name.endsWith('-arm64.dmg'), 'Release is missing a macOS arm64 DMG asset')
           hasAsset((name) => name.endsWith('.zip'), 'Release is missing a macOS ZIP asset')
           hasAsset((name) => name === 'latest-mac.yml', 'Release is missing latest-mac.yml')

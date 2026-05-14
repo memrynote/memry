@@ -115,7 +115,7 @@ pnpm typecheck:web      # renderer only
 
 ## Native Module Rebuild
 
-`better-sqlite3` is the most common source of test failures. If you see `ERR_DLOPEN_FAILED` or `NODE_MODULE_VERSION` mismatches:
+`better-sqlite3` and `keytar` are the most common source of native runtime failures. If you see `ERR_DLOPEN_FAILED`, `NODE_MODULE_VERSION` mismatches, or a Mach-O architecture error:
 
 | Target             | Fix                                                   |
 | ------------------ | ----------------------------------------------------- |
@@ -128,12 +128,17 @@ Using the Node fix for Electron (or vice versa) leaves the app silently broken â
 
 The packaged smoke check builds the app into `apps/desktop/dist/mac-arm64/Memry.app` from an
 isolated dependency tree, then verifies runtime dependencies resolve from the packaged Resources
-directory:
+directory. It also checks native `.node` binaries for the expected macOS architecture so an arm64
+release cannot ship with x64 `better-sqlite3` or `keytar` binaries:
 
 ```bash
 node apps/desktop/scripts/build-packaged-app.js --dir
 node apps/desktop/scripts/check-packaged-runtime-deps.js
 ```
+
+Release builds create one staged dependency tree per macOS architecture. Build x64 on an Intel
+runner and arm64 on an Apple Silicon runner; do not build `--x64 --arm64` from the same staged
+package, because native modules are rebuilt for one target architecture at a time.
 
 The macOS signing patch in `apps/desktop/scripts/patch-osx-sign-walk.js` walks the packaged app
 serially. Keep that traversal bounded; unbounded parallel file reads can exhaust CI file descriptors
