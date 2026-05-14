@@ -2,9 +2,15 @@ name: Security CI
 
 on:
   pull_request:
+    paths-ignore:
+      - 'apps/docs/**'
+      - 'apps/landing/**'
   push:
     branches:
       - main
+    paths-ignore:
+      - 'apps/docs/**'
+      - 'apps/landing/**'
   schedule:
     - cron: '23 4 * * 1'
   workflow_dispatch:
