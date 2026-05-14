@@ -195,6 +195,12 @@ flows, provider connect/disconnect/refresh actions, app updater actions, externa
 actions, and raw secret writes. Unsupported or unavailable desktop API operations return a structured
 MCP error instead of falling back to an arbitrary desktop call.
 
+Calendar desktop reads accept the same single-object shape as the renderer bridge. For example:
+`calendar.getProviderStatus` with no args or `args: [{}]` checks Google provider status,
+`calendar.listEvents` accepts `args: [{}]`, and `calendar.getRange` accepts either
+`args: ["2026-05-14", "2026-06-14"]` or
+`args: [{"startAt": "2026-05-14T00:00:00.000Z", "endAt": "2026-06-15T00:00:00.000Z"}]`.
+
 By default, Agent Chat accepts these tool calls automatically. The chat still shows each requested
 tool in a collapsed tool row, including running, completed, error, and denied states, so you can open
 the row to inspect parameters and results.
