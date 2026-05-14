@@ -14,7 +14,7 @@ export function RefundPage() {
         <h2>The short version</h2>
         <ul>
           <li>
-            <strong>7-day money-back guarantee</strong> on every Sync plan — Standard, Plus, and
+            <strong>7-day money-back guarantee</strong> on every paid Sync plan — Plus, Pro, and
             Believer.
           </li>
           <li>
@@ -44,9 +44,9 @@ export function RefundPage() {
 
         <h2>2. Believer (lifetime) refunds</h2>
         <p>
-          The Believer tier — a one-time payment for lifetime Sync Plus — is also covered by the
-          7-day guarantee. If you change your mind in the first week, ask for a refund and we will
-          process it the same way as any other plan.
+          The Believer tier — a one-time supporter package — is also covered by the 7-day guarantee.
+          If you change your mind in the first week, ask for a refund and we will process it the
+          same way as any other plan.
         </p>
         <p>
           After day 7, Believer is non-refundable. The whole point of the tier is a long-term bet in

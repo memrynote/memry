@@ -165,31 +165,63 @@ export const PRICING_TIERS = [
     name: 'Free',
     price: '$0',
     period: 'forever',
-    description: 'Perfect for personal use on a single device.',
+    description: 'All local features.',
     features: [
-      'Unlimited notes & tasks',
-      'Journal & Inbox',
+      'Notes, tasks, inbox, and journal',
+      'Local vault on your device',
       'Full-text search',
-      'Local storage',
-      'Markdown export'
+      'Markdown export',
+      'No account required'
     ],
-    cta: 'Get Started',
+    cta: 'Start free',
+    highlighted: false
+  },
+  {
+    name: 'Plus',
+    price: '$5',
+    period: '/month',
+    yearlyPrice: '$4/month billed yearly',
+    description: 'Personal sync for one vault.',
+    features: [
+      'Everything in Free',
+      '1 GB encrypted sync storage',
+      '1 synced vault',
+      '5 MB per file',
+      '30 days of version history'
+    ],
+    cta: 'Join Waitlist',
     highlighted: false
   },
   {
     name: 'Pro',
-    price: '$5',
+    price: '$10',
     period: '/month',
-    yearlyPrice: '$4/month billed yearly',
-    description: 'For power users who need sync and collaboration.',
+    yearlyPrice: '$8/month billed yearly',
+    description: 'More room for heavy sync.',
     features: [
-      'Everything in Free',
-      'Publish notes to web',
-      'Real-time collaboration',
-      'E2EE mobile sync',
-      'Priority support'
+      'Everything in Plus',
+      '10 GB encrypted sync storage',
+      '10 synced vaults',
+      '200 MB per file',
+      '365 days of version history'
     ],
     cta: 'Join Waitlist',
+    highlighted: false
+  },
+  {
+    name: 'Believer',
+    price: '$500',
+    period: 'paid once',
+    description: 'Support Memry.',
+    features: [
+      'Everything in Plus',
+      '50 GB encrypted sync storage',
+      'Unlimited vaults',
+      'Early access to new features',
+      'Your name in the credits',
+      'Help keep Memry independent'
+    ],
+    cta: 'Support Memry',
     highlighted: true
   }
 ] as const
@@ -429,7 +461,8 @@ export const USE_CASES = [
   }
 ] as const
 
-export type SyncPlanId = 'standard' | 'plus' | 'believer'
+export type CheckoutPlanId = 'standard' | 'plus' | 'believer'
+export type SyncPlanId = 'free' | CheckoutPlanId
 
 export type SyncPlanEmphasis = 'standard' | 'recommended' | 'founding'
 
@@ -441,86 +474,92 @@ export type SyncPlanTier = {
   annualPrice: number | null
   annualMonthlyEquivalent: number | null
   lifetimePrice: number | null
-  limits: {
-    vaults: string
-    storage: string
-    fileSize: string
-    history: string
-  }
   features: readonly string[]
   cta: string
   emphasis: SyncPlanEmphasis
+  checkoutPlanId?: CheckoutPlanId
   ribbon?: string
 }
 
 export const SYNC_PLAN_TIERS: readonly SyncPlanTier[] = [
   {
+    id: 'free',
+    name: 'Free',
+    tagline: 'All local features.',
+    monthlyPrice: 0,
+    annualPrice: null,
+    annualMonthlyEquivalent: null,
+    lifetimePrice: null,
+    features: [
+      'Notes, tasks, inbox, and journal',
+      'Local vault on your device',
+      'Full-text search',
+      'Markdown export',
+      'No account required'
+    ],
+    cta: 'Start free',
+    emphasis: 'standard'
+  },
+  {
     id: 'standard',
-    name: 'Sync Standard',
+    name: 'Plus',
     tagline: 'One vault, encrypted, everywhere.',
     monthlyPrice: 5,
     annualPrice: 48,
     annualMonthlyEquivalent: 4,
     lifetimePrice: null,
-    limits: {
-      vaults: '1',
-      storage: '1 GiB',
-      fileSize: '5 MiB',
-      history: '30 d'
-    },
     features: [
+      'Everything in Free',
       'End-to-end encrypted sync',
       'Unlimited devices on one account',
-      'Server never sees plaintext',
+      '1 GB encrypted sync storage',
+      '1 synced vault',
+      '5 MB per file',
       '30 days of version history',
+      'Server never sees plaintext',
       '7-day money-back guarantee'
     ],
-    cta: 'Get Sync Standard',
-    emphasis: 'standard'
+    cta: 'Get Plus',
+    emphasis: 'standard',
+    checkoutPlanId: 'standard'
   },
   {
     id: 'plus',
-    name: 'Sync Plus',
-    tagline: 'Multiple vaults. Big files. Deep history.',
+    name: 'Pro',
+    tagline: 'More room for serious sync.',
     monthlyPrice: 10,
     annualPrice: 96,
     annualMonthlyEquivalent: 8,
     lifetimePrice: null,
-    limits: {
-      vaults: '10',
-      storage: '10 GiB',
-      fileSize: '200 MiB',
-      history: '365 d'
-    },
     features: [
-      'Everything in Sync Standard',
-      'Up to 10 separate vaults',
-      'Large attachments and PDFs',
-      'A full year of version history',
+      'Everything in Plus',
+      '10 GB encrypted sync storage',
+      '10 synced vaults',
+      '200 MB per file',
+      '365 days of version history',
       'Priority support — straight from the founder'
     ],
-    cta: 'Get Sync Plus',
+    cta: 'Get Pro',
     emphasis: 'recommended',
     ribbon: 'Most popular'
   },
   {
     id: 'believer',
     name: 'Believer',
-    tagline: 'Pay once. Sync forever. Every future paid feature included.',
+    tagline: 'Support Memry.',
     monthlyPrice: null,
     annualPrice: null,
     annualMonthlyEquivalent: null,
     lifetimePrice: 500,
-    limits: {
-      vaults: '10',
-      storage: '10 GiB',
-      fileSize: '200 MiB',
-      history: '365 d'
-    },
     features: [
-      'Lifetime Sync Plus — never billed again',
-      'Every future paid feature, included forever',
-      'Recognized as a founding supporter',
+      'Everything in Plus',
+      '50 GB encrypted sync storage',
+      'Unlimited vaults',
+      '200 MB per file',
+      '365 days of version history',
+      'Early access to new features',
+      'Your name in the credits',
+      'Help keep Memry independent',
       'Direct line to the founder',
       'Limited slots'
     ],
@@ -531,25 +570,53 @@ export const SYNC_PLAN_TIERS: readonly SyncPlanTier[] = [
 ] as const
 
 export const PLAN_LIMIT_MATRIX = {
-  headers: ['', 'Sync Standard', 'Sync Plus', 'Believer'] as const,
+  headers: ['', 'Free', 'Plus', 'Pro', 'Believer'] as const,
   rows: [
-    { feature: 'Synced vaults', standard: '1', plus: '10', believer: '10' },
-    { feature: 'Total storage', standard: '1 GiB', plus: '10 GiB', believer: '10 GiB' },
-    { feature: 'Max file size', standard: '5 MiB', plus: '200 MiB', believer: '200 MiB' },
-    { feature: 'Version history', standard: '30 days', plus: '365 days', believer: '365 days' },
     {
-      feature: 'Devices per account',
-      standard: 'Unlimited',
+      feature: 'Local features',
+      free: 'All included',
+      plus: 'All included',
+      pro: 'All included',
+      believer: 'All included'
+    },
+    { feature: 'Synced vaults', free: 'Local only', plus: '1', pro: '10', believer: 'Unlimited' },
+    { feature: 'Sync storage', free: 'Local only', plus: '1 GB', pro: '10 GB', believer: '50 GB' },
+    {
+      feature: 'Max file size',
+      free: 'Local only',
+      plus: '5 MB',
+      pro: '200 MB',
+      believer: '200 MB'
+    },
+    {
+      feature: 'Version history',
+      free: 'Local only',
+      plus: '30 days',
+      pro: '365 days',
+      believer: '365 days'
+    },
+    {
+      feature: 'Devices',
+      free: '1 device',
       plus: 'Unlimited',
+      pro: 'Unlimited',
       believer: 'Unlimited'
     },
-    { feature: 'Monthly billing', standard: '$5', plus: '$10', believer: '—' },
-    { feature: 'Annual billing', standard: '$48 ($4/mo)', plus: '$96 ($8/mo)', believer: '—' },
-    { feature: 'Lifetime', standard: '—', plus: '—', believer: '$500 once' },
+    { feature: 'Monthly billing', free: '$0', plus: '$5', pro: '$10', believer: '—' },
+    {
+      feature: 'Annual billing',
+      free: '—',
+      plus: '$48 ($4/mo)',
+      pro: '$96 ($8/mo)',
+      believer: '—'
+    },
+    { feature: 'Lifetime', free: '—', plus: '—', pro: '—', believer: '$500 once' },
+    { feature: 'Credits', free: '—', plus: '—', pro: '—', believer: 'Your name' },
     {
       feature: 'Future paid features',
-      standard: 'In tier',
       plus: 'In tier',
+      free: '—',
+      pro: 'In tier',
       believer: 'Included forever'
     }
   ] as const
@@ -625,7 +692,7 @@ export const PRICING_FAQ_ITEMS = [
   {
     question: 'What is the Believer tier really?',
     answer:
-      'A bet on us. You pay once, get lifetime Sync Plus, and inherit every paid feature we ship from now until forever. Roughly five years of annual Plus, with no expiry. Slots may be limited later.'
+      'A supporter package. You get everything in Plus, 50 GB of encrypted sync storage, unlimited vaults, early access to new features, your name in the credits, and the satisfaction of helping keep Memry independent.'
   },
   {
     question: 'Can I upgrade or downgrade later?',
