@@ -344,6 +344,7 @@ vi.mock('@/contexts/day-panel-context', () => ({
 }))
 
 vi.mock('@/contexts/tabs', () => ({
+  useActiveTab: () => null,
   useTabActions: () => ({ openTab: mocks.openTab })
 }))
 

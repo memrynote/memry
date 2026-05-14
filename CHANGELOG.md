@@ -5,6 +5,14 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-05-14 — Agent Calendar MCP Reads
+
+### Fixed
+
+- Fix Agent calendar desktop reads so provider status, event lists, and date ranges accept common MCP argument shapes.
+
+---
+
 ## 2026-05-14 — Voice Memos and Related Items
 
 ### Added
