@@ -264,6 +264,70 @@ describe('AgentProvider', () => {
     expect(result.current.state.error).toBe('busy')
   })
 
+  it('surfaces action errors from the agent IPC API', async () => {
+    const { result } = renderHook(() => useAgent(), { wrapper })
+
+    await waitFor(() => expect(result.current.state.sourceWindowId).toBe('window-1'))
+
+    agentApi.listConversations.mockRejectedValueOnce(new Error('list failed'))
+    await act(async () => {
+      await result.current.refreshConversations()
+    })
+    expect(result.current.state.error).toBe('list failed')
+
+    agentApi.loadConversation.mockRejectedValueOnce(new Error('load failed'))
+    await act(async () => {
+      await result.current.loadConversation(conversation.id)
+    })
+    expect(result.current.state.error).toBe('load failed')
+
+    agentApi.createConversation.mockRejectedValueOnce(new Error('create failed'))
+    await act(async () => {
+      await expect(result.current.createConversation()).rejects.toThrow('create failed')
+    })
+    expect(result.current.state.error).toBe('create failed')
+
+    agentApi.cancelTurn.mockRejectedValueOnce(new Error('cancel failed'))
+    await act(async () => {
+      await result.current.cancelTurn(conversation.id)
+    })
+    expect(result.current.state.error).toBe('cancel failed')
+
+    agentApi.approveTool.mockRejectedValueOnce(new Error('approval failed'))
+    await act(async () => {
+      await result.current.approveTool({
+        conversationId: conversation.id,
+        toolCallId: 'tool-1',
+        decision: { kind: 'deny' }
+      })
+    })
+    expect(result.current.state.error).toBe('approval failed')
+
+    agentApi.editTrustList.mockRejectedValueOnce(new Error('trust failed'))
+    await act(async () => {
+      await result.current.editTrustList({
+        conversationId: conversation.id,
+        add: ['vault_create_task']
+      })
+    })
+    expect(result.current.state.error).toBe('trust failed')
+
+    agentApi.acceptDisclosure.mockRejectedValueOnce(new Error('disclosure failed'))
+    await act(async () => {
+      await result.current.acceptDisclosure()
+    })
+    expect(result.current.state.error).toBe('disclosure failed')
+  })
+
+  it('surfaces bootstrap errors from optional startup calls', async () => {
+    agentApi.getDisclosureState.mockRejectedValueOnce(new Error('disclosure load failed'))
+    agentApi.listConversations.mockRejectedValueOnce(new Error('conversation load failed'))
+
+    const { result } = renderHook(() => useAgent(), { wrapper })
+
+    await waitFor(() => expect(result.current.state.error).toBe('conversation load failed'))
+  })
+
   it('requires an AgentProvider', () => {
     expect(() => renderHook(() => useAgent())).toThrow('useAgent must be used within AgentProvider')
   })
