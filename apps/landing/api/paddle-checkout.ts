@@ -1,7 +1,11 @@
 import { Environment, Paddle } from '@paddle/paddle-node-sdk'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
-import { getPaddleCheckoutConfig, parsePaddleCheckoutIntent } from './paddle-checkout-config.js'
+import {
+  getPaddleCheckoutConfig,
+  normalizePaddleApiKey,
+  parsePaddleCheckoutIntent
+} from './paddle-checkout-config.js'
 
 function getPaddleEnvironment() {
   return process.env.PADDLE_ENVIRONMENT === 'production'
@@ -11,10 +15,10 @@ function getPaddleEnvironment() {
 
 function getPaddleApiKey(environment: Environment) {
   if (environment === Environment.production) {
-    return process.env.PADDLE_API_KEY
+    return normalizePaddleApiKey(process.env.PADDLE_API_KEY)
   }
 
-  return process.env.PADDLE_SANDBOX_API_KEY ?? process.env.PADDLE_API_KEY
+  return normalizePaddleApiKey(process.env.PADDLE_SANDBOX_API_KEY ?? process.env.PADDLE_API_KEY)
 }
 
 function getRequestBody(req: VercelRequest): unknown {

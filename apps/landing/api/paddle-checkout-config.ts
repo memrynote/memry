@@ -18,6 +18,17 @@ export type PaddleCheckoutConfig = {
 
 type PaddleEnv = Record<string, string | undefined>
 
+export function normalizePaddleApiKey(apiKey: string | undefined) {
+  const value = apiKey?.trim()
+  if (!value) return undefined
+
+  const unquoted = value.replace(/^(['"])(.*)\1$/, '$2').trim()
+  const authorizationValue = unquoted.match(/^authorization:\s*bearer\s+(.+)$/i)?.[1]
+  const bearerValue = unquoted.match(/^bearer\s+(.+)$/i)?.[1]
+
+  return (authorizationValue ?? bearerValue ?? unquoted).trim() || undefined
+}
+
 const PRICE_ENV_KEYS: Record<PaddleCheckoutPlan, Record<PaddleCheckoutCadence, string | null>> = {
   standard: {
     monthly: 'PADDLE_PRICE_STANDARD_MONTHLY',
