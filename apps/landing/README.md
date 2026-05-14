@@ -33,18 +33,35 @@ Fill in your environment variables:
 | `RESEND_API_KEY`    | Yes      | API key from [Resend](https://resend.com) |
 | `RESEND_SEGMENT_ID` | No       | Segment ID to group waitlist contacts     |
 
+Paddle checkout uses a serverless function so the Paddle API key stays server-side.
+
+| Variable                         | Required | Description                                                                        |
+| -------------------------------- | -------- | ---------------------------------------------------------------------------------- |
+| `PADDLE_ENVIRONMENT`             | Yes      | `sandbox` locally; `production` for live Paddle                                    |
+| `PADDLE_SANDBOX_API_KEY`         | Yes      | Sandbox API key from Paddle developer tools                                        |
+| `PADDLE_API_KEY`                 | No       | Live API key, required when environment is production                              |
+| `PADDLE_PRICE_STANDARD_MONTHLY`  | Yes      | Paddle price ID for Sync Standard monthly                                          |
+| `PADDLE_PRICE_STANDARD_ANNUAL`   | Yes      | Paddle price ID for Sync Standard annual                                           |
+| `PADDLE_PRICE_PLUS_MONTHLY`      | Yes      | Paddle price ID for Sync Plus monthly                                              |
+| `PADDLE_PRICE_PLUS_ANNUAL`       | Yes      | Paddle price ID for Sync Plus annual                                               |
+| `PADDLE_PRICE_BELIEVER_LIFETIME` | Yes      | Paddle price ID for Believer lifetime                                              |
+| `VITE_PADDLE_CLIENT_TOKEN`       | Yes      | Client-side token for Paddle.js overlay checkout                                   |
+| `PADDLE_CHECKOUT_URL`            | No       | Payment-link URL fallback. Required if Paddle Checkout has no Default Payment Link |
+
 ```bash
 pnpm dev:landing         # dev server on :5173
 pnpm build:landing       # type-check + production build
 pnpm --filter @memry/landing preview
 ```
 
-The dev server proxies `/api/waitlist` requests to the Vercel function locally — no separate backend needed.
+The dev server proxies `/api/waitlist` and `/api/paddle-checkout` requests to Vercel
+functions locally — no separate backend needed.
 
 ## Project Structure
 
 ```
 ├── api/
+│   ├── paddle-checkout.ts      # Vercel serverless — Paddle transaction checkout
 │   └── waitlist.ts             # Vercel serverless — Resend waitlist signup
 ├── src/
 │   ├── components/

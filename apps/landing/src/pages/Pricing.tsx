@@ -29,9 +29,14 @@ import {
   type SyncPlanTier,
   type LifecycleTone
 } from '@/lib/constants'
+import { openPaddleCheckout, type PaddleCheckoutCadence } from '@/lib/paddle-checkout'
 import { cn } from '@/lib/utils'
 
 type Cadence = 'monthly' | 'annual'
+type CheckoutState = {
+  pendingKey: string | null
+  error: string | null
+}
 
 const fadeUp = {
   initial: { opacity: 0, y: 20 },
@@ -42,13 +47,30 @@ const fadeUp = {
 
 export function PricingPage() {
   const [cadence, setCadence] = useState<Cadence>('annual')
+  const [checkout, setCheckout] = useState<CheckoutState>({ pendingKey: null, error: null })
+
+  const handleCheckout = async (tier: SyncPlanTier) => {
+    const checkoutCadence = getCheckoutCadence(tier, cadence)
+    const pendingKey = getCheckoutKey(tier, checkoutCadence)
+
+    setCheckout({ pendingKey, error: null })
+    try {
+      await openPaddleCheckout(tier.id, checkoutCadence)
+      setCheckout({ pendingKey: null, error: null })
+    } catch (error) {
+      setCheckout({
+        pendingKey: null,
+        error: error instanceof Error ? error.message : 'Could not start checkout'
+      })
+    }
+  }
 
   return (
     <>
       <PageHead page="pricing" />
       <main>
         <Hero cadence={cadence} setCadence={setCadence} />
-        <TierGrid cadence={cadence} />
+        <TierGrid cadence={cadence} checkout={checkout} onCheckout={handleCheckout} />
         <BelieverNarrative />
         <LifecycleTimeline />
         <LimitMatrix />
@@ -57,6 +79,14 @@ export function PricingPage() {
       </main>
     </>
   )
+}
+
+function getCheckoutCadence(tier: SyncPlanTier, cadence: Cadence): PaddleCheckoutCadence {
+  return tier.id === 'believer' ? 'lifetime' : cadence
+}
+
+function getCheckoutKey(tier: SyncPlanTier, cadence: PaddleCheckoutCadence) {
+  return `${tier.id}:${cadence}`
 }
 
 function Hero({ cadence, setCadence }: { cadence: Cadence; setCadence: (c: Cadence) => void }) {
@@ -145,7 +175,15 @@ function CadenceToggle({
   )
 }
 
-function TierGrid({ cadence }: { cadence: Cadence }) {
+function TierGrid({
+  cadence,
+  checkout,
+  onCheckout
+}: {
+  cadence: Cadence
+  checkout: CheckoutState
+  onCheckout: (tier: SyncPlanTier) => void
+}) {
   return (
     <section className="pb-24">
       <Container size="lg">
@@ -163,10 +201,25 @@ function TierGrid({ cadence }: { cadence: Cadence }) {
               }}
               className="h-full"
             >
-              <TierCard tier={tier} cadence={cadence} />
+              <TierCard
+                tier={tier}
+                cadence={cadence}
+                isPending={
+                  checkout.pendingKey === getCheckoutKey(tier, getCheckoutCadence(tier, cadence))
+                }
+                onCheckout={() => onCheckout(tier)}
+              />
             </motion.div>
           ))}
         </div>
+        {checkout.error && (
+          <p
+            role="alert"
+            className="mx-auto mt-6 max-w-xl rounded-2xl border border-terracotta/25 bg-terracotta/5 px-5 py-3 text-center text-sm text-terracotta"
+          >
+            {checkout.error}
+          </p>
+        )}
         <p className="mt-10 text-center font-mono-accent text-[11px] uppercase tracking-[0.18em] text-muted/70">
           All prices in USD &nbsp;·&nbsp; VAT and sales tax handled at checkout
         </p>
@@ -175,10 +228,20 @@ function TierGrid({ cadence }: { cadence: Cadence }) {
   )
 }
 
-function TierCard({ tier, cadence }: { tier: SyncPlanTier; cadence: Cadence }) {
+function TierCard({
+  tier,
+  cadence,
+  isPending,
+  onCheckout
+}: {
+  tier: SyncPlanTier
+  cadence: Cadence
+  isPending: boolean
+  onCheckout: () => void
+}) {
   const isFounding = tier.emphasis === 'founding'
   const isRecommended = tier.emphasis === 'recommended'
-  const ctaLabel = `${tier.cta} - Coming soon`
+  const ctaLabel = isPending ? 'Opening checkout...' : tier.cta
 
   return (
     <article
@@ -257,7 +320,8 @@ function TierCard({ tier, cadence }: { tier: SyncPlanTier; cadence: Cadence }) {
           <Button
             variant="default"
             size="lg"
-            disabled
+            disabled={isPending}
+            onClick={onCheckout}
             aria-label={ctaLabel}
             className="w-full rounded-full bg-terracotta text-white hover:bg-terracotta-dark"
           >
@@ -267,7 +331,8 @@ function TierCard({ tier, cadence }: { tier: SyncPlanTier; cadence: Cadence }) {
           <Button
             variant="default"
             size="lg"
-            disabled
+            disabled={isPending}
+            onClick={onCheckout}
             aria-label={ctaLabel}
             className="w-full rounded-full"
           >
@@ -277,7 +342,8 @@ function TierCard({ tier, cadence }: { tier: SyncPlanTier; cadence: Cadence }) {
           <Button
             variant="outline"
             size="lg"
-            disabled
+            disabled={isPending}
+            onClick={onCheckout}
             aria-label={ctaLabel}
             className="w-full rounded-full border-ink/15 bg-paper-alt/40 text-ink hover:bg-paper-alt"
           >
