@@ -29,6 +29,7 @@ vi.mock('@/hooks/use-calendar-range', () => ({
 }))
 
 vi.mock('@/contexts/tabs', () => ({
+  useActiveTab: () => null,
   useTabActions: () => ({ openTab: mockOpenTab })
 }))
 
