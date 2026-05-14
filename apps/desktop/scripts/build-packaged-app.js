@@ -11,6 +11,7 @@ const repoRoot = path.resolve(appRoot, '..', '..')
 const appRequire = createRequire(path.join(appRoot, 'package.json'))
 const electronBuilderCli = appRequire.resolve('electron-builder/cli.js')
 const electronVersion = appRequire('electron/package.json').version
+const { resolveTargetArch } = require('./build-packaged-app-utils.cjs')
 const stageRoot =
   process.platform === 'win32' ? path.join(repoRoot, '.memry-desktop-package.tmp') : os.tmpdir()
 fs.mkdirSync(stageRoot, { recursive: true })
@@ -176,6 +177,8 @@ function main() {
     )
   }
 
+  const targetArch = resolveTargetArch(args)
+
   runPnpm(['--filter', '@memry/desktop', 'deploy', '--legacy', '--prod', getPnpmDeployTarget()], {
     cwd: repoRoot,
     env: {
@@ -203,6 +206,8 @@ function main() {
       nativeModules.join(','),
       '--module-dir',
       stageDir,
+      '--arch',
+      targetArch,
       '--version',
       electronVersion
     ],

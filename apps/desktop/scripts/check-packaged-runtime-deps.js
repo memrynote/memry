@@ -5,6 +5,11 @@ const fs = require('node:fs')
 const { createRequire } = require('node:module')
 const os = require('node:os')
 const path = require('node:path')
+const {
+  archListIncludes,
+  findPackagedMacApps,
+  inferExpectedMacArch
+} = require('./check-packaged-runtime-deps-utils.cjs')
 
 const appRoot = path.resolve(__dirname, '..')
 const appRequire = createRequire(path.join(appRoot, 'package.json'))
@@ -14,6 +19,7 @@ const requiredModules = [
   '@tiptap/pm/model',
   '@tiptap/pm/transform',
   'better-sqlite3',
+  'keytar',
   'orderedmap',
   'prosemirror-model',
   'readable-stream',
@@ -21,6 +27,7 @@ const requiredModules = [
   'string_decoder/',
   'y-leveldb'
 ]
+const nativeArchCheckedModules = ['better-sqlite3', 'keytar']
 
 function getElectronExecutable() {
   const electronExecutable = appRequire('electron')
@@ -36,36 +43,44 @@ function fail(message) {
   process.exitCode = 1
 }
 
-function findDefaultAppBundle() {
-  const candidates = [
-    path.join(appRoot, 'dist', `mac-${process.arch}`, `${productName}.app`),
-    path.join(appRoot, 'dist', 'mac-arm64', `${productName}.app`),
-    path.join(appRoot, 'dist', 'mac', `${productName}.app`)
-  ]
-
-  return candidates.find((candidate) => fs.existsSync(candidate))
-}
-
-function resolveResourcesPath(inputPath) {
+function resolveResourcesCheck(inputPath) {
   if (!inputPath) {
-    const appBundle = findDefaultAppBundle()
-    if (!appBundle) {
+    const appBundles = findPackagedMacApps(appRoot, productName)
+    if (appBundles.length === 0) {
       throw new Error('No packaged mac app found under apps/desktop/dist')
     }
 
-    return path.join(appBundle, 'Contents', 'Resources')
+    return appBundles.map((appBundle) => ({
+      resourcesPath: path.join(appBundle, 'Contents', 'Resources'),
+      expectedArch: inferExpectedMacArch(appBundle)
+    }))
   }
 
   const absolutePath = path.resolve(inputPath)
   if (absolutePath.endsWith('.app')) {
-    return path.join(absolutePath, 'Contents', 'Resources')
+    return [
+      {
+        resourcesPath: path.join(absolutePath, 'Contents', 'Resources'),
+        expectedArch: inferExpectedMacArch(absolutePath)
+      }
+    ]
   }
 
   if (path.basename(absolutePath) === 'Resources') {
-    return absolutePath
+    return [
+      {
+        resourcesPath: absolutePath,
+        expectedArch: process.arch
+      }
+    ]
   }
 
-  return path.join(absolutePath, 'Contents', 'Resources')
+  return [
+    {
+      resourcesPath: path.join(absolutePath, 'Contents', 'Resources'),
+      expectedArch: inferExpectedMacArch(absolutePath)
+    }
+  ]
 }
 
 function findPackageRoot(resolvedPath, packageName) {
@@ -136,8 +151,44 @@ console.log(\`Electron native runtime ABI \${process.versions.modules}\`)
   }
 }
 
-function main() {
-  const resourcesPath = resolveResourcesPath(process.argv[2])
+function runLipoArchs(binaryPath) {
+  if (process.platform !== 'darwin') {
+    return []
+  }
+
+  const result = spawnSync('lipo', ['-archs', binaryPath], { encoding: 'utf8' })
+  if (result.status !== 0) {
+    const output = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
+    fail(`Unable to inspect native binary architecture for ${binaryPath}:\n${output}`)
+    return []
+  }
+
+  return result.stdout.trim().split(/\s+/).filter(Boolean)
+}
+
+function assertNativeModuleArch(moduleName, resolvedPath, expectedArch) {
+  const packageRoot = findPackageRoot(resolvedPath, moduleName)
+  const releaseDir = path.join(packageRoot, 'build', 'Release')
+  if (!fs.existsSync(releaseDir)) {
+    return
+  }
+
+  for (const entry of fs.readdirSync(releaseDir)) {
+    if (!entry.endsWith('.node')) {
+      continue
+    }
+
+    const binaryPath = path.join(releaseDir, entry)
+    const archs = runLipoArchs(binaryPath)
+    if (archs.length > 0 && !archListIncludes(archs, expectedArch)) {
+      fail(
+        `Packaged native module "${moduleName}" has wrong architecture for ${expectedArch}: ${binaryPath} (${archs.join(', ')})`
+      )
+    }
+  }
+}
+
+function checkResources(resourcesPath, expectedArch) {
   const appAsarPath = path.join(resourcesPath, 'app.asar')
   const externalNodeModulesPath = path.join(resourcesPath, 'node_modules')
 
@@ -170,6 +221,14 @@ function main() {
     return
   }
 
+  for (const moduleName of nativeArchCheckedModules) {
+    assertNativeModuleArch(moduleName, resolvedModules.get(moduleName), expectedArch)
+  }
+
+  if (process.exitCode) {
+    return
+  }
+
   const betterSqliteRoot = findPackageRoot(resolvedModules.get('better-sqlite3'), 'better-sqlite3')
   const betterSqliteBinary = path.join(betterSqliteRoot, 'build', 'Release', 'better_sqlite3.node')
   if (!fs.existsSync(betterSqliteBinary)) {
@@ -181,10 +240,22 @@ function main() {
     fail(`Packaged external node_modules should not include Electron: ${directElectronPath}`)
   }
 
-  runElectronNativeSmoke(resourcesPath)
+  if (expectedArch === process.arch) {
+    runElectronNativeSmoke(resourcesPath)
+  } else {
+    console.log(
+      `Skipping Electron native smoke for ${resourcesPath}; expected arch ${expectedArch} differs from host ${process.arch}`
+    )
+  }
 
   if (!process.exitCode) {
-    console.log(`Packaged runtime dependencies resolved from ${resourcesPath}`)
+    console.log(`Packaged runtime dependencies resolved from ${resourcesPath} (${expectedArch})`)
+  }
+}
+
+function main() {
+  for (const check of resolveResourcesCheck(process.argv[2])) {
+    checkResources(check.resourcesPath, check.expectedArch)
   }
 }
 
