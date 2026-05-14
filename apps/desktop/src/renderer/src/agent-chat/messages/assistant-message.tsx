@@ -1,5 +1,7 @@
 import type { Message } from '@memry/contracts/ipc-agent'
 import type { AgentSourceRef } from '@memry/contracts/ipc-agent'
+import type { ComponentProps } from 'react'
+import { useMemo } from 'react'
 import { useT } from '@memry/i18n/renderer'
 
 import {
@@ -9,14 +11,37 @@ import {
 } from '@/components/ai-elements/message'
 import { Source, Sources, SourcesContent, SourcesTrigger } from '@/components/ai-elements/sources'
 import { cn } from '@/lib/utils'
-import { MemryLink, memryLinkClassName, useMemryLinkNavigation } from './memry-links'
+import { MemryLink, MemryLinkIcon, memryLinkClassName, useMemryLinkNavigation } from './memry-links'
 
-const markdownComponents = { a: MemryLink }
+type AssistantMessageModel = Message & {
+  content: Extract<Message['content'], { role: 'assistant' }>
+}
 
 export function AssistantMessage({ message }: { message: Message }): React.JSX.Element | null {
-  const { t } = useT('common')
   if (message.content.role !== 'assistant') return null
-  const sources = uniqueSources(message.content.data.sources)
+  return <AssistantMessageContent message={message as AssistantMessageModel} />
+}
+
+function AssistantMessageContent({
+  message
+}: {
+  message: AssistantMessageModel
+}): React.JSX.Element {
+  const { t } = useT('common')
+  const sourceRefs = 'sources' in message.content.data ? message.content.data.sources : undefined
+  const sources = useMemo(() => uniqueSources(sourceRefs), [sourceRefs])
+  const sourceSignature = useMemo(() => signatureForSources(sources), [sources])
+  const markdownComponents = useMemo(() => {
+    const sourceByHref = new Map(sources.map((source) => [source.href, source]))
+    return {
+      a: (props: ComponentProps<'a'>) => (
+        <MemryLink
+          {...props}
+          source={typeof props.href === 'string' ? sourceByHref.get(props.href) : null}
+        />
+      )
+    }
+  }, [sources])
 
   if (message.status === 'streaming' && message.content.data.text.trim().length === 0) {
     return (
@@ -39,7 +64,7 @@ export function AssistantMessage({ message }: { message: Message }): React.JSX.E
   return (
     <AIMessage from="assistant" className="max-w-full">
       <MessageContent className="w-full max-w-none overflow-visible rounded-none border-0 bg-transparent px-3 py-0">
-        <MessageResponse components={markdownComponents}>
+        <MessageResponse key={sourceSignature} components={markdownComponents}>
           {message.content.data.text}
         </MessageResponse>
         {sources.length > 0 && <AssistantSources sources={sources} />}
@@ -73,7 +98,10 @@ function AssistantSources({ sources }: { sources: AgentSourceRef[] }): React.JSX
               navigateMemryLink(source.href, source.title)
             }}
             title={source.title}
-          />
+          >
+            <MemryLinkIcon href={source.href} source={source} />
+            <span className="block font-medium">{source.title}</span>
+          </Source>
         ))}
       </SourcesContent>
     </Sources>
@@ -90,4 +118,13 @@ function uniqueSources(sources: AgentSourceRef[] | undefined): AgentSourceRef[] 
     result.push(source)
   }
   return result
+}
+
+function signatureForSources(sources: AgentSourceRef[]): string {
+  return sources
+    .map(
+      (source) =>
+        `${source.href}:${source.icon ?? ''}:${source.itemType ?? ''}:${source.visualType ?? ''}`
+    )
+    .join('\u0000')
 }
