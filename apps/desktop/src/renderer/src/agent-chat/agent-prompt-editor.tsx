@@ -117,7 +117,7 @@ function mentionAttrs(attachment: MentionAttachment): Record<string, string | nu
   return attrs
 }
 
-function AgentMentionNodeView({ node }: ReactNodeViewProps): React.JSX.Element {
+function AgentMentionNodeView({ editor, getPos, node }: ReactNodeViewProps): React.JSX.Element {
   const kind = attachmentKindFrom(node.attrs.kind)
   const refId = String(node.attrs.refId ?? '')
   const label = String(node.attrs.label ?? '')
@@ -133,6 +133,11 @@ function AgentMentionNodeView({ node }: ReactNodeViewProps): React.JSX.Element {
         'mx-0.5 inline-flex max-w-full items-center gap-1 rounded-full px-1.5 py-0.5 text-[0.9em] font-medium leading-none ring-1',
         mentionColorForKind(kind)
       )}
+      onMouseDown={(event) => {
+        event.preventDefault()
+        const position = getPos()
+        if (typeof position === 'number') editor.commands.setNodeSelection(position)
+      }}
     >
       <MentionIcon icon={icon} className="size-3 text-current" />
       <span className="truncate">@{label}</span>
