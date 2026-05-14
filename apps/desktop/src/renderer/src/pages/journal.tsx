@@ -694,7 +694,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
             onClose={findInPage.close}
           />
 
-          <div className="flex items-center justify-between h-9 py-2 pl-6 pr-3 shrink-0 text-xs/4 [font-synthesis:none]">
+          <div className="flex items-center justify-between h-9 py-2 ps-6 pe-3 shrink-0 text-xs/4 [font-synthesis:none]">
             <JournalBreadcrumb
               viewState={currentViewState}
               isToday={isToday}
@@ -742,6 +742,15 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                   {currentViewState.type === 'day' && (
                     <>
                       <div className="group/metadata flex flex-col pb-[15px]" data-marquee-ignore>
+                        <GhostAffordanceRow
+                          availableTags={availableTags}
+                          recentTags={recentTags}
+                          currentTagIds={journalTags.map((t) => t.id)}
+                          onAddTag={handleAddTag}
+                          onCreateTag={handleCreateTag}
+                          onAddProperty={handleAddPropertyWithExpand}
+                          className="mb-2"
+                        />
                         <JournalDateDisplay viewState={currentViewState} dateParts={dateParts} />
                         <TagsRow
                           tags={journalTags}
@@ -752,6 +761,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                           onRemoveTag={handleRemoveTag}
                           className="mb-0"
                           hideWhenEmpty
+                          hideAddButton
                         />
                         {properties.length > 0 && (
                           <InfoSection
@@ -768,15 +778,6 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
                             hideAddButton
                           />
                         )}
-                        <GhostAffordanceRow
-                          availableTags={availableTags}
-                          recentTags={recentTags}
-                          currentTagIds={journalTags.map((t) => t.id)}
-                          onAddTag={handleAddTag}
-                          onCreateTag={handleCreateTag}
-                          onAddProperty={handleAddPropertyWithExpand}
-                          hasTags={journalTags.length > 0}
-                        />
                       </div>
 
                       <div
