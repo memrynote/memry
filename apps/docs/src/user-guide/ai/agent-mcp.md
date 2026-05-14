@@ -50,8 +50,10 @@ also link the affected item when the tool returns its ID or journal date. The re
 collapsible Sources section only when the assistant message contains those Memry item links.
 
 Memry only links explicit tool-provided references. Plain titles without an ID or date stay as
-normal text. Clickable item mentions use Memry's standard link color and show a dotted underline on
-hover.
+normal text. Clickable item mentions use Memry's standard link color, show a dotted underline on
+hover, and display the matching item icon before the title. Notes use their custom note icon when
+one exists, inbox items use their capture-type icon, and journal, calendar, and task links use the
+same visual language as the main app surfaces.
 
 Press <kbd>Enter</kbd> to send the prompt. Press <kbd>Shift</kbd>+<kbd>Enter</kbd> to insert a
 new line in the prompt box.
@@ -200,6 +202,12 @@ tools. Security-sensitive and system operations stay outside the allowlist, incl
 flows, provider connect/disconnect/refresh actions, app updater actions, external open/reveal
 actions, and raw secret writes. Unsupported or unavailable desktop API operations return a structured
 MCP error instead of falling back to an arbitrary desktop call.
+
+Calendar desktop reads accept the same single-object shape as the renderer bridge. For example:
+`calendar.getProviderStatus` with no args or `args: [{}]` checks Google provider status,
+`calendar.listEvents` accepts `args: [{}]`, and `calendar.getRange` accepts either
+`args: ["2026-05-14", "2026-06-14"]` or
+`args: [{"startAt": "2026-05-14T00:00:00.000Z", "endAt": "2026-06-15T00:00:00.000Z"}]`.
 
 By default, Agent Chat accepts these tool calls automatically. The chat still shows each requested
 tool in a collapsed tool row, including running, completed, error, and denied states, so you can open

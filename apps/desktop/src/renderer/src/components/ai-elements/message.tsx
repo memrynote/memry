@@ -96,7 +96,9 @@ export const MessageResponse = memo(
   ),
   (previousProps, nextProps) =>
     previousProps.children === nextProps.children &&
-    previousProps.isAnimating === nextProps.isAnimating
+    previousProps.isAnimating === nextProps.isAnimating &&
+    previousProps.className === nextProps.className &&
+    previousProps.components === nextProps.components
 )
 
 MessageResponse.displayName = 'MessageResponse'

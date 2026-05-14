@@ -153,7 +153,7 @@ describe('runTurn against a stub backend', () => {
           kind: 'tool_result',
           toolUseId: 'tool-1',
           ok: true,
-          data: [{ id: 'note-1', title: 'Movies', snippet: '', folder_path: null }]
+          data: [{ id: 'note-1', title: 'Movies', snippet: '', folder_path: null, icon: '🎬' }]
         },
         {
           kind: 'assistant_delta',
@@ -183,7 +183,80 @@ describe('runTurn against a stub backend', () => {
       role: 'assistant',
       data: {
         text: 'Found [Movies](memry://note/note-1).',
-        sources: [{ kind: 'note', id: 'note-1', title: 'Movies', href: 'memry://note/note-1' }]
+        sources: [
+          { kind: 'note', id: 'note-1', title: 'Movies', href: 'memry://note/note-1', icon: '🎬' }
+        ]
+      }
+    })
+  })
+
+  it('persists assistant source refs from wrapped MCP tool results', async () => {
+    const messages = createFakeMessageStore()
+    const conversations = createFakeConversationStore({ title: 'Existing conversation' })
+    const toolResult = [
+      {
+        id: 'inbox-1',
+        title: 'Tweet',
+        type: 'social',
+        visual_type: 'twitter',
+        href: 'memry://inbox/inbox-1',
+        source_ref: {
+          kind: 'inbox',
+          id: 'inbox-1',
+          title: 'Tweet',
+          href: 'memry://inbox/inbox-1',
+          itemType: 'social',
+          visualType: 'twitter'
+        }
+      }
+    ]
+    const backend = createFakeBackend({
+      turn: [
+        { kind: 'tool_use', toolUseId: 'tool-1', name: 'vault_list_inbox_items', args: {} },
+        {
+          kind: 'tool_result',
+          toolUseId: 'tool-1',
+          ok: true,
+          data: { content: [{ type: 'text', text: JSON.stringify(toolResult) }] }
+        },
+        {
+          kind: 'assistant_delta',
+          text: 'Found [Tweet](memry://inbox/inbox-1).'
+        },
+        { kind: 'message_stop' }
+      ]
+    })
+
+    await runTurn(
+      {
+        conversations,
+        messages,
+        backends: createFakeRegistry(backend)
+      },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'list inbox',
+        attachments: [],
+        backendOptions: { backend: 'codex_cli', reasoningEffort: 'medium' }
+      }
+    )
+
+    const all = messages.listByConversation('conversation-1')
+    expect(all[1].content).toEqual({
+      role: 'assistant',
+      data: {
+        text: 'Found [Tweet](memry://inbox/inbox-1).',
+        sources: [
+          {
+            kind: 'inbox',
+            id: 'inbox-1',
+            title: 'Tweet',
+            href: 'memry://inbox/inbox-1',
+            itemType: 'social',
+            visualType: 'twitter'
+          }
+        ]
       }
     })
   })

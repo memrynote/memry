@@ -14,6 +14,11 @@ Format: weekly entries grouped by feature area.
 ### Changed
 
 - Keep picked Agent references inside the prompt instead of showing a separate attachment row, and focus the composer after creating a new conversation from the sidebar plus action.
+## 2026-05-14 — Agent Calendar MCP Reads
+
+### Fixed
+
+- Fix Agent calendar desktop reads so provider status, event lists, and date ranges accept common MCP argument shapes.
 
 ---
 

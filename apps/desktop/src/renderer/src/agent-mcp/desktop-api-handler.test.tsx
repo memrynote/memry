@@ -21,6 +21,9 @@ describe('useAgentMcpDesktopApiResponder', () => {
   let respondToMainInvoke: ReturnType<typeof vi.fn>
   let templatesList: ReturnType<typeof vi.fn>
   let templatesCreate: ReturnType<typeof vi.fn>
+  let calendarGetProviderStatus: ReturnType<typeof vi.fn>
+  let calendarGetRange: ReturnType<typeof vi.fn>
+  let calendarListEvents: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
     onMainInvokeCallback = undefined
@@ -30,6 +33,9 @@ describe('useAgentMcpDesktopApiResponder', () => {
       success: true,
       template: { id: 'template-1', name: 'Template' }
     })
+    calendarGetProviderStatus = vi.fn().mockResolvedValue({ connected: true })
+    calendarGetRange = vi.fn().mockResolvedValue({ items: [] })
+    calendarListEvents = vi.fn().mockResolvedValue({ events: [] })
     mocks.logError.mockReset()
     ;(window as Window & { api: unknown }).api = {
       onMainInvoke: vi.fn(
@@ -48,6 +54,11 @@ describe('useAgentMcpDesktopApiResponder', () => {
       templates: {
         list: templatesList,
         create: templatesCreate
+      },
+      calendar: {
+        getProviderStatus: calendarGetProviderStatus,
+        getRange: calendarGetRange,
+        listEvents: calendarListEvents
       }
     }
   })
@@ -93,6 +104,155 @@ describe('useAgentMcpDesktopApiResponder', () => {
         template: { id: 'template-1', name: 'Template' }
       }
     })
+  })
+
+  it('defaults calendar provider status args to google when omitted', async () => {
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
+
+    await onMainInvokeCallback?.({
+      requestId: 'request-calendar-status-default',
+      channel: AgentMcpDesktopApiChannel,
+      payload: { operation: 'calendar.getProviderStatus' }
+    })
+
+    expect(calendarGetProviderStatus).toHaveBeenCalledWith({ provider: 'google' })
+    expect(respondToMainInvoke).toHaveBeenCalledWith('request-calendar-status-default', {
+      ok: true,
+      data: { connected: true }
+    })
+  })
+
+  it('parses stringified empty args for calendar provider status', async () => {
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
+
+    await onMainInvokeCallback?.({
+      requestId: 'request-calendar-status-string',
+      channel: AgentMcpDesktopApiChannel,
+      payload: { operation: 'calendar.getProviderStatus', args: ['{}'] }
+    })
+
+    expect(calendarGetProviderStatus).toHaveBeenCalledWith({ provider: 'google' })
+  })
+
+  it('preserves explicit calendar provider status args', async () => {
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
+
+    await onMainInvokeCallback?.({
+      requestId: 'request-calendar-status-explicit',
+      channel: AgentMcpDesktopApiChannel,
+      payload: {
+        operation: 'calendar.getProviderStatus',
+        args: [{ provider: 'google', accountId: 'account-1' }]
+      }
+    })
+
+    expect(calendarGetProviderStatus).toHaveBeenCalledWith({
+      provider: 'google',
+      accountId: 'account-1'
+    })
+  })
+
+  it('normalizes positional date args for calendar range reads', async () => {
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
+
+    await onMainInvokeCallback?.({
+      requestId: 'request-calendar-range-positional',
+      channel: AgentMcpDesktopApiChannel,
+      payload: { operation: 'calendar.getRange', args: ['2026-05-14', '2026-06-14'] }
+    })
+
+    expect(calendarGetRange).toHaveBeenCalledWith({
+      startAt: localDayIso('2026-05-14'),
+      endAt: localDayIso('2026-06-15')
+    })
+  })
+
+  it('normalizes stringified calendar range objects', async () => {
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
+
+    await onMainInvokeCallback?.({
+      requestId: 'request-calendar-range-string',
+      channel: AgentMcpDesktopApiChannel,
+      payload: {
+        operation: 'calendar.getRange',
+        args: ['{"start":"2026-05-14","end":"2026-06-14"}']
+      }
+    })
+
+    expect(calendarGetRange).toHaveBeenCalledWith({
+      startAt: localDayIso('2026-05-14'),
+      endAt: localDayIso('2026-06-15')
+    })
+  })
+
+  it('preserves calendar range datetime args and include-unselected flag', async () => {
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
+
+    await onMainInvokeCallback?.({
+      requestId: 'request-calendar-range-datetime',
+      channel: AgentMcpDesktopApiChannel,
+      payload: {
+        operation: 'calendar.getRange',
+        args: [
+          {
+            startAt: '2026-05-14T09:00:00.000Z',
+            endAt: '2026-05-14T10:00:00.000Z',
+            includeUnselectedSources: true
+          }
+        ]
+      }
+    })
+
+    expect(calendarGetRange).toHaveBeenCalledWith({
+      startAt: '2026-05-14T09:00:00.000Z',
+      endAt: '2026-05-14T10:00:00.000Z',
+      includeUnselectedSources: true
+    })
+  })
+
+  it('parses stringified empty args for calendar event lists', async () => {
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
+
+    await onMainInvokeCallback?.({
+      requestId: 'request-calendar-list-string',
+      channel: AgentMcpDesktopApiChannel,
+      payload: { operation: 'calendar.listEvents', args: ['{}'] }
+    })
+
+    expect(calendarListEvents).toHaveBeenCalledWith({})
+  })
+
+  it('preserves calendar event list filters', async () => {
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
+
+    await onMainInvokeCallback?.({
+      requestId: 'request-calendar-list-filtered',
+      channel: AgentMcpDesktopApiChannel,
+      payload: { operation: 'calendar.listEvents', args: [{ includeArchived: true }] }
+    })
+
+    expect(calendarListEvents).toHaveBeenCalledWith({ includeArchived: true })
+  })
+
+  it('falls back to empty calendar event list args for malformed string args', async () => {
+    renderHook(() => useAgentMcpDesktopApiResponder())
+    await waitFor(() => expect(window.api.onMainInvoke).toHaveBeenCalled())
+
+    await onMainInvokeCallback?.({
+      requestId: 'request-calendar-list-malformed',
+      channel: AgentMcpDesktopApiChannel,
+      payload: { operation: 'calendar.listEvents', args: ['not-json'] }
+    })
+
+    expect(calendarListEvents).toHaveBeenCalledWith({})
   })
 
   it('rejects operations outside the desktop CRUD allowlist', async () => {
@@ -167,3 +327,8 @@ describe('useAgentMcpDesktopApiResponder', () => {
     expect(mocks.logError).toHaveBeenCalled()
   })
 })
+
+function localDayIso(value: string): string {
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(year, month - 1, day, 0, 0, 0, 0).toISOString()
+}

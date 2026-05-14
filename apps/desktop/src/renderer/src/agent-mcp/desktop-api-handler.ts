@@ -10,6 +10,9 @@ import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
 
 const log = createLogger('AgentMcpDesktopApi')
+const isoDateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/
+
+type JsonRecord = Record<string, unknown>
 
 function resolveDesktopApiOperation(operation: string): (...args: unknown[]) => unknown {
   let target: unknown = window.api
@@ -25,6 +28,86 @@ function resolveDesktopApiOperation(operation: string): (...args: unknown[]) => 
   }
 
   return target as (...args: unknown[]) => unknown
+}
+
+function normalizeDesktopApiArgs(operation: string, args: unknown[]): unknown[] {
+  switch (operation) {
+    case 'calendar.getProviderStatus':
+      return [normalizeCalendarProviderStatusInput(args)]
+    case 'calendar.listEvents':
+      return [normalizeCalendarListEventsInput(args)]
+    case 'calendar.getRange':
+      return [normalizeCalendarRangeInput(args)]
+    default:
+      return args
+  }
+}
+
+function normalizeCalendarProviderStatusInput(args: unknown[]): JsonRecord {
+  const input = objectArg(args[0]) ?? {}
+  const provider = stringValue(input.provider) ?? 'google'
+  const accountId = stringValue(input.accountId)
+  return { provider, ...(accountId ? { accountId } : {}) }
+}
+
+function normalizeCalendarListEventsInput(args: unknown[]): JsonRecord {
+  return objectArg(args[0]) ?? {}
+}
+
+function normalizeCalendarRangeInput(args: unknown[]): JsonRecord {
+  const input =
+    typeof args[0] === 'string' && typeof args[1] === 'string'
+      ? { start: args[0], end: args[1] }
+      : (objectArg(args[0]) ?? {})
+  const start = stringValue(input.startAt, input.start)
+  const end = stringValue(input.endAt, input.end)
+  return {
+    startAt: start ? normalizeCalendarRangeBound(start, 'start') : start,
+    endAt: end ? normalizeCalendarRangeBound(end, 'end') : end,
+    ...(typeof input.includeUnselectedSources === 'boolean'
+      ? { includeUnselectedSources: input.includeUnselectedSources }
+      : {})
+  }
+}
+
+function objectArg(value: unknown): JsonRecord | null {
+  if (typeof value === 'string') {
+    try {
+      return objectArg(JSON.parse(value))
+    } catch {
+      return null
+    }
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  return value as JsonRecord
+}
+
+function stringValue(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim().length > 0) return value
+  }
+  return undefined
+}
+
+function normalizeCalendarRangeBound(value: string, side: 'start' | 'end'): string {
+  if (!isoDateOnlyPattern.test(value)) return value
+  return localDayIso(side === 'end' ? addLocalDays(value, 1) : value)
+}
+
+function localDayIso(value: string): string {
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(year, month - 1, day, 0, 0, 0, 0).toISOString()
+}
+
+function addLocalDays(value: string, amount: number): string {
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(year, month - 1, day, 0, 0, 0, 0)
+  date.setDate(date.getDate() + amount)
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+function pad(value: number): string {
+  return String(value).padStart(2, '0')
 }
 
 export function useAgentMcpDesktopApiResponder({
@@ -48,7 +131,7 @@ export function useAgentMcpDesktopApiResponder({
 
       try {
         const fn = resolveDesktopApiOperation(parsed.data.operation)
-        const data = await fn(...parsed.data.args)
+        const data = await fn(...normalizeDesktopApiArgs(parsed.data.operation, parsed.data.args))
         const response: AgentMcpDesktopApiResponse = { ok: true, data }
         window.api.respondToMainInvoke(requestId, response)
       } catch (error) {
