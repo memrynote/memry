@@ -230,7 +230,10 @@ export const AgentSourceRefSchema = z
     kind: AgentSourceKindSchema,
     id: z.string().min(1),
     title: z.string().min(1),
-    href: z.string().min(1)
+    href: z.string().min(1),
+    icon: z.string().min(1).nullable().optional(),
+    itemType: z.string().min(1).optional(),
+    visualType: z.string().min(1).optional()
   })
   .strict()
 export type AgentSourceRef = z.infer<typeof AgentSourceRefSchema>

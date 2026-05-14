@@ -18,7 +18,8 @@ const {
   mockPromoteExternal,
   mockSnooze,
   mockUnsnooze,
-  mockOpenTab
+  mockOpenTab,
+  mockUseActiveTab
 } = vi.hoisted(() => ({
   mockUseCalendarRange: vi.fn(),
   mockListSources: vi.fn(),
@@ -29,7 +30,8 @@ const {
   mockPromoteExternal: vi.fn(),
   mockSnooze: vi.fn(),
   mockUnsnooze: vi.fn(),
-  mockOpenTab: vi.fn()
+  mockOpenTab: vi.fn(),
+  mockUseActiveTab: vi.fn()
 }))
 
 vi.mock('@/hooks/use-calendar-range', () => ({
@@ -37,7 +39,7 @@ vi.mock('@/hooks/use-calendar-range', () => ({
 }))
 
 vi.mock('@/contexts/tabs', () => ({
-  useActiveTab: () => null,
+  useActiveTab: mockUseActiveTab,
   useTabActions: () => ({ openTab: mockOpenTab })
 }))
 
@@ -99,6 +101,15 @@ function isoAtLocalTime(hour: number, minute = 0, dayOffset = 0): string {
   date.setDate(date.getDate() + dayOffset)
   date.setHours(hour, minute, 0, 0)
   return date.toISOString()
+}
+
+function localDateString(dayOffset = 0): string {
+  const date = new Date(SAMPLE_DAY)
+  date.setDate(date.getDate() + dayOffset)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 const SAMPLE_ITEMS: CalendarProjectionItem[] = [
@@ -258,6 +269,7 @@ describe('CalendarPage', () => {
     mockUnsnooze.mockReset()
     mockListSources.mockReset()
     mockUseCalendarRange.mockReset()
+    mockUseActiveTab.mockReset()
 
     mockDeleteEvent.mockResolvedValue({ success: true })
     mockGetEvent.mockResolvedValue(null)
@@ -278,6 +290,7 @@ describe('CalendarPage', () => {
       isFetching: false,
       error: null
     })
+    mockUseActiveTab.mockReturnValue(null)
   })
 
   it('switches between day, week, month, and year views', async () => {
@@ -377,6 +390,62 @@ describe('CalendarPage', () => {
     await user.click(screen.getByText('Planning block'))
 
     expect(await screen.findByRole('dialog', { name: 'Edit calendar event' })).toBeInTheDocument()
+  })
+
+  it('opens a focused calendar event from active tab view state', async () => {
+    mockUseActiveTab.mockReturnValue({
+      viewState: {
+        focusCalendarEventId: 'event-1',
+        focusDate: localDateString(),
+        focusedAt: 123
+      }
+    })
+
+    renderWithProviders(<CalendarPage />)
+
+    expect(await screen.findByRole('dialog', { name: 'Edit calendar event' })).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Planning block')).toBeInTheDocument()
+  })
+
+  it('saves a newly created all-day event from the editor', async () => {
+    const user = userEvent.setup()
+    mockCreateEvent.mockResolvedValue({ success: true })
+
+    renderWithProviders(<CalendarPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Create event' }))
+    await user.type(await screen.findByPlaceholderText('New Event'), 'Launch day')
+    await user.click(screen.getByRole('checkbox', { name: 'All day' }))
+    fireEvent.pointerDown(screen.getByTestId('event-edit-save'), { button: 0 })
+
+    await waitFor(() => expect(mockCreateEvent).toHaveBeenCalled())
+    expect(mockCreateEvent.mock.lastCall?.[0]).toEqual(
+      expect.objectContaining({
+        title: 'Launch day',
+        isAllDay: true,
+        startAt: expect.any(String),
+        endAt: expect.any(String)
+      })
+    )
+  })
+
+  it('saves edits from the edit popover', async () => {
+    const user = userEvent.setup()
+    mockUpdateEvent.mockResolvedValueOnce({ success: true })
+
+    renderWithProviders(<CalendarPage />)
+
+    await user.click(await screen.findByText('Planning block'))
+    fireEvent.pointerDown(await screen.findByTestId('event-edit-save'), { button: 0 })
+
+    await waitFor(() =>
+      expect(mockUpdateEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'event-1',
+          title: 'Planning block'
+        })
+      )
+    )
   })
 
   it('renders projected task, reminder, and snooze items with distinct styling markers', async () => {

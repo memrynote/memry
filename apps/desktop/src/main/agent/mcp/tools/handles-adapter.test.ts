@@ -209,7 +209,7 @@ describe('createVaultServiceHandles', () => {
               id: 'note-1',
               title: 'Alpha',
               snippet: null,
-              metadata: { type: 'note', path: 'notes/work/alpha.md' }
+              metadata: { type: 'note', path: 'notes/work/alpha.md', emoji: '🎬' }
             },
             {
               id: 'note-2',
@@ -225,7 +225,7 @@ describe('createVaultServiceHandles', () => {
     await expect(
       handles.notes.search({ query: 'alpha', folderId: '/work', limit: 5 })
     ).resolves.toEqual([
-      { id: 'note-1', title: 'Alpha', snippet: '', folder_path: '/work' },
+      { id: 'note-1', title: 'Alpha', snippet: '', folder_path: '/work', icon: '🎬' },
       { id: 'note-2', title: 'Loose', snippet: 'loose snippet', folder_path: null }
     ])
     expect(mocks.searchAll).toHaveBeenCalledWith(
@@ -240,7 +240,8 @@ describe('createVaultServiceHandles', () => {
       content: 'Current',
       tags: ['Team'],
       path: 'notes/work/alpha.md',
-      frontmatter: { owner: 'Kaan' }
+      frontmatter: { owner: 'Kaan' },
+      emoji: '📚'
     })
     await expect(handles.notes.read('note-1')).resolves.toEqual({
       id: 'note-1',
@@ -248,7 +249,8 @@ describe('createVaultServiceHandles', () => {
       content_markdown: 'Current',
       tags: ['Team'],
       folder_path: '/work',
-      frontmatter: { owner: 'Kaan' }
+      frontmatter: { owner: 'Kaan' },
+      icon: '📚'
     })
 
     mocks.createNoteCommand.mockResolvedValue({ id: 'note-created' })
@@ -350,14 +352,14 @@ describe('createVaultServiceHandles', () => {
     ])
     mocks.listNotes.mockReturnValue({
       notes: [
-        { id: 'note-1', title: 'Client', path: 'notes/work/client.md' },
+        { id: 'note-1', title: 'Client', path: 'notes/work/client.md', emoji: '💼' },
         { id: 'note-2', title: 'Deep', path: 'notes/work/client/deep.md' }
       ]
     })
 
     await expect(handles.folders.list({ path: '/work', recursive: false })).resolves.toEqual([
       { kind: 'folder', id: '/work/client', name: 'client', path: '/work/client' },
-      { kind: 'note', id: 'note-1', name: 'Client', path: '/work/client.md' }
+      { kind: 'note', id: 'note-1', name: 'Client', path: '/work/client.md', icon: '💼' }
     ])
     expect(mocks.listNotes).toHaveBeenCalledWith({
       folder: 'notes/work',
@@ -375,7 +377,7 @@ describe('createVaultServiceHandles', () => {
         path: '/work/client/archive'
       },
       { kind: 'folder', id: '/personal', name: 'personal', path: '/personal' },
-      { kind: 'note', id: 'note-1', name: 'Client', path: '/work/client.md' },
+      { kind: 'note', id: 'note-1', name: 'Client', path: '/work/client.md', icon: '💼' },
       { kind: 'note', id: 'note-2', name: 'Deep', path: '/work/client/deep.md' }
     ])
 
@@ -672,21 +674,22 @@ describe('createVaultServiceHandles', () => {
         items: [
           {
             id: 'inbox-1',
-            sourceUrl: 'https://example.com',
+            sourceUrl: 'https://x.com/memry/status/1',
             captureSource: null,
-            type: 'text',
+            type: 'social',
             title: 'Unread',
             content: null,
             transcription: null,
             excerpt: 'Excerpt',
             viewedAt: null,
-            createdAt: new Date('2026-05-12T00:00:00Z')
+            createdAt: new Date('2026-05-12T00:00:00Z'),
+            metadata: { platform: 'twitter' }
           },
           {
             id: 'inbox-2',
             sourceUrl: null,
             captureSource: 'share',
-            type: 'text',
+            type: 'clip',
             title: 'Read',
             content: 'Read body',
             transcription: null,
@@ -701,7 +704,9 @@ describe('createVaultServiceHandles', () => {
     await expect(handles.inbox.list({ unread_only: true })).resolves.toEqual([
       {
         id: 'inbox-1',
-        source: 'https://example.com',
+        type: 'social',
+        visual_type: 'twitter',
+        source: 'https://x.com/memry/status/1',
         title: 'Unread',
         snippet: 'Excerpt',
         captured_at: new Date('2026-05-12T00:00:00Z').getTime()
@@ -709,7 +714,12 @@ describe('createVaultServiceHandles', () => {
     ])
     await expect(handles.inbox.list({ unread_only: false })).resolves.toEqual([
       expect.objectContaining({ id: 'inbox-1', snippet: 'Excerpt' }),
-      expect.objectContaining({ id: 'inbox-2', source: 'share', snippet: 'Read body' })
+      expect.objectContaining({
+        id: 'inbox-2',
+        source: 'share',
+        snippet: 'Read body',
+        visual_type: 'quote'
+      })
     ])
     await expect(
       handles.inbox.add({ source: 'api', title: 'Captured', content: 'Body' })

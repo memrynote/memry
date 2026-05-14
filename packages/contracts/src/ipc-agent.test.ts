@@ -323,7 +323,22 @@ describe('agent IPC schemas', () => {
               kind: 'note',
               id: 'note-1',
               title: 'Movies',
-              href: 'memry://note/note-1'
+              href: 'memry://note/note-1',
+              icon: '🎬'
+            },
+            {
+              kind: 'inbox',
+              id: 'inbox-1',
+              title: 'Inbox PDF',
+              href: 'memry://inbox/inbox-1',
+              itemType: 'pdf'
+            },
+            {
+              kind: 'calendar_event',
+              id: 'event-1',
+              title: 'Planning',
+              href: 'memry://calendar/event/event-1?date=2026-05-13',
+              visualType: 'event'
             }
           ]
         }
