@@ -41,7 +41,16 @@ export type AgentInvokeChannel = (typeof AgentChannels.invoke)[keyof typeof Agen
 export type AgentEventChannel = (typeof AgentChannels.events)[keyof typeof AgentChannels.events]
 
 export const AttachmentInputSchema = z.object({
-  kind: z.enum(['note', 'folder', 'task', 'project', 'journal', 'current_note']),
+  kind: z.enum([
+    'note',
+    'folder',
+    'task',
+    'project',
+    'journal',
+    'current_note',
+    'inbox',
+    'calendar_event'
+  ]),
   ref_id: z.string(),
   label: z.string()
 })
@@ -311,7 +320,16 @@ export const AttachmentSnapshotSchema = z.discriminatedUnion('mode', [
 ])
 
 export const MessageAttachmentSchema = z.object({
-  kind: z.enum(['note', 'folder', 'task', 'project', 'journal', 'current_note']),
+  kind: z.enum([
+    'note',
+    'folder',
+    'task',
+    'project',
+    'journal',
+    'current_note',
+    'inbox',
+    'calendar_event'
+  ]),
   refId: z.string(),
   label: z.string(),
   snapshotAt: z.number(),

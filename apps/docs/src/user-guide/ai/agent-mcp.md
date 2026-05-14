@@ -35,6 +35,7 @@ Agent Chat can:
 
 - keep local conversation history in the vault database
 - attach the active note as context for a turn
+- mention notes, tasks, journals, inbox items, and calendar events inline in a prompt with `@`
 - stream assistant text back into the sidebar
 - link returned or created Memry items directly in assistant replies, with a collapsible Sources
   section for the same items
@@ -56,6 +57,13 @@ same visual language as the main app surfaces.
 
 Press <kbd>Enter</kbd> to send the prompt. Press <kbd>Shift</kbd>+<kbd>Enter</kbd> to insert a
 new line in the prompt box.
+
+Type `@` in the prompt to open the mention picker. Notes, tasks, journals, inbox items, and calendar
+events appear with their item icons, and calendar events are read from the local calendar with
+archived events hidden. Choosing a result replaces the active `@` query with one inline tag, so a
+prompt such as `summarize @Star Wars Movies` keeps the referenced item visibly attached inside the
+prompt. Mention tags submit as readable `@Title` text plus an encrypted structured attachment
+reference.
 
 The prompt box uses the operating-system text editing menu, so Cut, Copy, Paste, Select All, and
 native right-click editing work like other text fields.
