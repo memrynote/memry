@@ -98,7 +98,7 @@ describe('AgentPane', () => {
 
     render(<AgentPane />)
 
-    expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', 'Ask Agent')
+    expect(screen.getByRole('textbox')).toHaveAccessibleName('Ask Agent')
     expect(screen.queryByText('Start chatting with your vault')).not.toBeInTheDocument()
     expect(screen.queryByText(/claude .*detected and ready/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'New conversation' })).not.toBeInTheDocument()
@@ -132,7 +132,7 @@ describe('AgentPane', () => {
 
     render(<AgentPane />)
 
-    expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', 'Ask Agent')
+    expect(screen.getByRole('textbox')).toHaveAccessibleName('Ask Agent')
     expect(screen.queryByText(/claude not found/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'New conversation' })).not.toBeInTheDocument()
   })

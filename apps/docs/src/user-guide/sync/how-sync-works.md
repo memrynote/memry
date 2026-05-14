@@ -83,7 +83,9 @@ The server stores the ciphertext, signatures, and metadata — but cannot decryp
 
 Agent chat follows the same rule: conversation titles, message bodies, and message attachments stay
 encrypted on disk and in sync payloads. Sync only uploads completed agent messages, so a partially
-streaming response remains local until it reaches a terminal status.
+streaming response remains local until it reaches a terminal status. Attachments include structured
+references created by inline Agent mentions, including notes, tasks, journals, inbox items, and
+calendar events.
 
 ## Where the Server Lives
 

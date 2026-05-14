@@ -15,6 +15,7 @@ import {
   ApproveToolRequestSchema,
   BinaryStatusSchema,
   ConversationSchema,
+  MessageAttachmentSchema,
   MessageContentSchema,
   PreviewDiffRequestSchema,
   PreviewDiffResponseSchema,
@@ -135,11 +136,37 @@ describe('agent IPC schemas', () => {
       SendTurnRequestSchema.safeParse({
         conversationId: 'conversation-1',
         sourceWindowId: '1',
+        text: 'Summarize these refs',
+        attachments: [
+          { kind: 'inbox', ref_id: 'inbox-1', label: 'Read later' },
+          { kind: 'calendar_event', ref_id: 'event-1', label: 'Planning sync' }
+        ],
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh' }
+      }).success
+    ).toBe(true)
+    expect(
+      SendTurnRequestSchema.safeParse({
+        conversationId: 'conversation-1',
+        sourceWindowId: '1',
         text: 'Create a task',
         attachments: [],
         backendOptions: { backend: 'claude_cli', claudeEffort: 'ultrathink' }
       }).success
     ).toBe(false)
+  })
+
+  it('validates stored message attachments for inbox and calendar refs', () => {
+    for (const kind of ['inbox', 'calendar_event'] as const) {
+      expect(
+        MessageAttachmentSchema.safeParse({
+          kind,
+          refId: `${kind}-1`,
+          label: 'Mentioned item',
+          snapshotAt: 100,
+          snapshot: { mode: 'reference_only', id: `${kind}-1` }
+        }).success
+      ).toBe(true)
+    }
   })
 
   it('validates conversation backend model metadata', () => {
