@@ -184,18 +184,23 @@ jobs:
           SYNC_SERVER_URL: ${{ secrets.SYNC_SERVER_URL }}
         run: |
           set -euo pipefail
-          while IFS=: read -r env_name secret_name; do
+
+          release_requirements=(
+            'CSC_LINK|MACOS_CERTIFICATE_P12'
+            'CSC_KEY_PASSWORD|MACOS_CERTIFICATE_PASSWORD'
+            'APPLE_ID|APPLE_ID'
+            'APPLE_APP_SPECIFIC_PASSWORD|APPLE_APP_SPECIFIC_PASSWORD'
+            'APPLE_TEAM_ID|APPLE_TEAM_ID'
+          )
+
+          for requirement in "${release_requirements[@]}"; do
+            env_name="${requirement%%|*}"
+            required_name="${requirement#*|}"
             if [ -z "${!env_name:-}" ]; then
-              echo "::error::Missing required release secret: $secret_name"
+              echo "::error::Missing required release secret: $required_name"
               exit 1
             fi
-          done <<'EOF'
-          CSC_LINK:MACOS_CERTIFICATE_P12
-          CSC_KEY_PASSWORD:MACOS_CERTIFICATE_PASSWORD
-          APPLE_ID:APPLE_ID
-          APPLE_APP_SPECIFIC_PASSWORD:APPLE_APP_SPECIFIC_PASSWORD
-          APPLE_TEAM_ID:APPLE_TEAM_ID
-          EOF
+          done
 
           pnpm --filter @memry/desktop build
           node apps/desktop/scripts/build-packaged-app.js \
@@ -526,6 +531,7 @@ jobs:
           set -euo pipefail
           gh release upload "${{ needs.setup-release.outputs.draft_tag }}" \
             "${{ steps.assets.outputs.asset_dir }}"/* \
+            --repo "$GITHUB_REPOSITORY" \
             --clobber
 
       - name: Rename draft to publish-day release
@@ -549,7 +555,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh release view "${{ needs.setup-release.outputs.tag }}" --json tagName,name,isDraft,isPrerelease,assets,url > "$RUNNER_TEMP/release.json"
+          gh release view "${{ needs.setup-release.outputs.tag }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json tagName,name,isDraft,isPrerelease,assets,url \
+            > "$RUNNER_TEMP/release.json"
           node <<'NODE'
           const { readFileSync } = require('node:fs')
 
@@ -595,7 +604,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh release view "${{ needs.setup-release.outputs.tag }}" --json name,isDraft,isPrerelease,assets,url > "$RUNNER_TEMP/published-release.json"
+          gh release view "${{ needs.setup-release.outputs.tag }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json name,isDraft,isPrerelease,assets,url \
+            > "$RUNNER_TEMP/published-release.json"
           node <<'NODE'
           const { readFileSync } = require('node:fs')
 
