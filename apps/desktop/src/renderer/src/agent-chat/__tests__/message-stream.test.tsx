@@ -162,7 +162,8 @@ describe('MessageStream', () => {
                     kind: 'note',
                     id: 'note-1',
                     title: 'Movies',
-                    href: 'memry://note/note-1'
+                    href: 'memry://note/note-1',
+                    icon: '🎬'
                   }
                 ]
               }
@@ -176,6 +177,8 @@ describe('MessageStream', () => {
     expect(link).toHaveAttribute('href', 'memry://note/note-1')
     expect(link).toHaveClass('text-[#81B4E5]')
     expect(link).toHaveClass('hover:decoration-dotted')
+    expect(link).toHaveTextContent('🎬Movies')
+    expect(link.querySelector('[data-agent-link-icon="note-custom"]')).not.toBeNull()
     const sourcesTrigger = screen.getByRole('button', { name: /Used 1 source/i })
     expect(sourcesTrigger).toBeInTheDocument()
 
@@ -192,6 +195,172 @@ describe('MessageStream', () => {
 
     fireEvent.click(sourcesTrigger)
     expect(screen.getAllByRole('link', { name: 'Movies' })).toHaveLength(2)
+    expect(
+      screen
+        .getAllByRole('link', { name: 'Movies' })[1]
+        ?.querySelector('[data-agent-link-icon="note-custom"]')
+    ).not.toBeNull()
+  })
+
+  it('repaints live Memry links when source metadata arrives after the text', () => {
+    const assistantWithoutSources = message({
+      id: 'assistant-1',
+      role: 'assistant',
+      content: {
+        role: 'assistant',
+        data: { text: 'See [Movies](memry://note/note-1).' }
+      }
+    })
+    const assistantWithSources = message({
+      id: 'assistant-1',
+      role: 'assistant',
+      content: {
+        role: 'assistant',
+        data: {
+          text: 'See [Movies](memry://note/note-1).',
+          sources: [
+            {
+              kind: 'note',
+              id: 'note-1',
+              title: 'Movies',
+              href: 'memry://note/note-1',
+              icon: '🎬'
+            }
+          ]
+        }
+      }
+    })
+
+    const { rerender } = render(<MessageStream messages={[assistantWithoutSources]} />)
+
+    expect(
+      screen
+        .getByRole('link', { name: 'Movies' })
+        .querySelector('[data-agent-link-icon="note-default"]')
+    ).not.toBeNull()
+
+    rerender(<MessageStream messages={[assistantWithSources]} />)
+
+    const link = screen.getByRole('link', { name: 'Movies' })
+    expect(link.querySelector('[data-agent-link-icon="note-custom"]')).not.toBeNull()
+    expect(link.querySelector('[data-agent-link-icon="note-default"]')).toBeNull()
+  })
+
+  it('uses the source icon instead of duplicating a provider-emitted note icon label', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'assistant-1',
+            role: 'assistant',
+            content: {
+              role: 'assistant',
+              data: {
+                text: 'See [🎬 Movies](memry://note/note-1).',
+                sources: [
+                  {
+                    kind: 'note',
+                    id: 'note-1',
+                    title: 'Movies',
+                    href: 'memry://note/note-1',
+                    icon: '🎬'
+                  }
+                ]
+              }
+            }
+          })
+        ]}
+      />
+    )
+
+    const link = screen.getByRole('link', { name: 'Movies' })
+    expect(link.querySelector('[data-agent-link-icon="note-custom"]')).not.toBeNull()
+    expect(link.querySelector('[data-agent-link-label]')).toHaveTextContent('Movies')
+  })
+
+  it('renders item-type icons for non-note Memry links', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'assistant-1',
+            role: 'assistant',
+            content: {
+              role: 'assistant',
+              data: {
+                text: [
+                  '[Spec](memry://inbox/inbox-1)',
+                  '[Tweet](memry://inbox/inbox-2)',
+                  '[Quote](memry://inbox/inbox-3)',
+                  '[Today](memry://journal/2026-05-13)',
+                  '[Planning](memry://calendar/event/event-1?date=2026-05-13)'
+                ].join(' '),
+                sources: [
+                  {
+                    kind: 'inbox',
+                    id: 'inbox-1',
+                    title: 'Spec',
+                    href: 'memry://inbox/inbox-1',
+                    itemType: 'pdf'
+                  },
+                  {
+                    kind: 'inbox',
+                    id: 'inbox-2',
+                    title: 'Tweet',
+                    href: 'memry://inbox/inbox-2',
+                    itemType: 'social',
+                    visualType: 'twitter'
+                  },
+                  {
+                    kind: 'inbox',
+                    id: 'inbox-3',
+                    title: 'Quote',
+                    href: 'memry://inbox/inbox-3',
+                    itemType: 'clip',
+                    visualType: 'quote'
+                  },
+                  {
+                    kind: 'journal',
+                    id: '2026-05-13',
+                    title: 'Today',
+                    href: 'memry://journal/2026-05-13'
+                  },
+                  {
+                    kind: 'calendar_event',
+                    id: 'event-1',
+                    title: 'Planning',
+                    href: 'memry://calendar/event/event-1?date=2026-05-13',
+                    visualType: 'event'
+                  }
+                ]
+              }
+            }
+          })
+        ]}
+      />
+    )
+
+    expect(
+      screen.getByRole('link', { name: 'Spec' }).querySelector('[data-agent-link-icon="inbox-pdf"]')
+    ).not.toBeNull()
+    expect(
+      screen
+        .getByRole('link', { name: 'Tweet' })
+        .querySelector('[data-agent-link-icon="inbox-twitter"]')
+    ).not.toBeNull()
+    expect(
+      screen
+        .getByRole('link', { name: 'Quote' })
+        .querySelector('[data-agent-link-icon="inbox-quote"]')
+    ).not.toBeNull()
+    expect(
+      screen.getByRole('link', { name: 'Today' }).querySelector('[data-agent-link-icon="journal"]')
+    ).not.toBeNull()
+    expect(
+      screen
+        .getByRole('link', { name: 'Planning' })
+        .querySelector('[data-agent-link-icon="calendar-event"]')
+    ).not.toBeNull()
   })
 
   it('omits the assistant sources footer when no Memry refs exist', () => {

@@ -1,6 +1,11 @@
 import type { AgentSourceKind, AgentSourceRef } from '@memry/contracts/ipc-agent'
 
 type JsonRecord = Record<string, unknown>
+type SourceRefMeta = {
+  icon?: string | null
+  itemType?: string | null
+  visualType?: string | null
+}
 
 export function extractAgentSourceRefs(
   toolName: string,
@@ -8,19 +13,20 @@ export function extractAgentSourceRefs(
   result: unknown
 ): AgentSourceRef[] {
   const normalizedToolName = normalizeToolName(toolName)
+  const resultPayloads = toolResultPayloads(result)
   const refs: AgentSourceRef[] = []
-  refs.push(...extractExistingRefs(result))
+  for (const payload of resultPayloads) refs.push(...extractExistingRefs(payload))
 
   switch (normalizedToolName) {
     case 'vault_search_notes':
-      refs.push(...refsFromArray(result, noteRefFromRecord))
+      refs.push(...refsFromPayloadArrays(resultPayloads, noteRefFromRecord))
       break
     case 'vault_read_note':
     case 'vault_get_current_note':
-      refs.push(...maybeRef(result, noteRefFromRecord))
+      refs.push(...maybeRefFromPayloads(resultPayloads, noteRefFromRecord))
       break
     case 'vault_list_folder':
-      refs.push(...refsFromArray(result, folderEntryRefFromRecord))
+      refs.push(...refsFromPayloadArrays(resultPayloads, folderEntryRefFromRecord))
       break
     case 'vault_create_note':
     case 'vault_rename_note':
@@ -28,17 +34,17 @@ export function extractAgentSourceRefs(
     case 'vault_add_note_tag':
     case 'vault_remove_note_tag':
     case 'vault_move_to_folder':
-      refs.push(...maybeRefFromResultAndArgs(result, args, 'note'))
+      refs.push(...refsFromPayloadsAndArgs(resultPayloads, args, 'note'))
       break
     case 'vault_create_folder':
     case 'vault_rename_folder':
-      refs.push(...maybeRefFromResultAndArgs(result, args, 'folder'))
+      refs.push(...refsFromPayloadsAndArgs(resultPayloads, args, 'folder'))
       break
     case 'vault_list_tasks':
-      refs.push(...refsFromArray(result, taskRefFromRecord))
+      refs.push(...refsFromPayloadArrays(resultPayloads, taskRefFromRecord))
       break
     case 'vault_get_task':
-      refs.push(...maybeRef(result, taskRefFromRecord))
+      refs.push(...maybeRefFromPayloads(resultPayloads, taskRefFromRecord))
       break
     case 'vault_create_task':
     case 'vault_update_task':
@@ -52,34 +58,34 @@ export function extractAgentSourceRefs(
     case 'vault_convert_subtask_to_task':
     case 'vault_add_task_tag':
     case 'vault_remove_task_tag':
-      refs.push(...maybeRefFromResultAndArgs(result, args, 'task'))
+      refs.push(...refsFromPayloadsAndArgs(resultPayloads, args, 'task'))
       break
     case 'vault_list_projects':
-      refs.push(...refsFromArray(result, projectRefFromRecord))
+      refs.push(...refsFromPayloadArrays(resultPayloads, projectRefFromRecord))
       break
     case 'vault_get_project':
-      refs.push(...maybeRef(result, projectRefFromRecord))
+      refs.push(...maybeRefFromPayloads(resultPayloads, projectRefFromRecord))
       break
     case 'vault_create_project':
     case 'vault_update_project':
     case 'vault_archive_project':
-      refs.push(...maybeRefFromResultAndArgs(result, args, 'project'))
+      refs.push(...refsFromPayloadsAndArgs(resultPayloads, args, 'project'))
       break
     case 'vault_get_journal_entry':
-      refs.push(...maybeRef(result, journalRefFromRecord))
+      refs.push(...maybeRefFromPayloads(resultPayloads, journalRefFromRecord))
       break
     case 'vault_list_journal_entries':
-      refs.push(...refsFromArray(result, journalRefFromRecord))
+      refs.push(...refsFromPayloadArrays(resultPayloads, journalRefFromRecord))
       break
     case 'vault_create_journal_entry':
     case 'vault_update_journal_entry':
-      refs.push(...maybeRefFromResultAndArgs(result, args, 'journal'))
+      refs.push(...refsFromPayloadsAndArgs(resultPayloads, args, 'journal'))
       break
     case 'vault_list_inbox_items':
-      refs.push(...refsFromArray(result, inboxRefFromRecord))
+      refs.push(...refsFromPayloadArrays(resultPayloads, inboxRefFromRecord))
       break
     case 'vault_get_inbox_item':
-      refs.push(...maybeRef(result, inboxRefFromRecord))
+      refs.push(...maybeRefFromPayloads(resultPayloads, inboxRefFromRecord))
       break
     case 'vault_add_to_inbox':
     case 'vault_update_inbox_item':
@@ -87,11 +93,11 @@ export function extractAgentSourceRefs(
     case 'vault_unarchive_inbox_item':
     case 'vault_add_inbox_tag':
     case 'vault_remove_inbox_tag':
-      refs.push(...maybeRefFromResultAndArgs(result, args, 'inbox'))
+      refs.push(...refsFromPayloadsAndArgs(resultPayloads, args, 'inbox'))
       break
     case 'vault_desktop_read':
     case 'vault_desktop_write':
-      refs.push(...desktopOperationRefs(args, result))
+      for (const payload of resultPayloads) refs.push(...desktopOperationRefs(args, payload))
       break
   }
 
@@ -165,6 +171,13 @@ function refsFromArray(
   return value.flatMap((item) => maybeRef(item, factory))
 }
 
+function refsFromPayloadArrays(
+  payloads: unknown[],
+  factory: (record: JsonRecord) => AgentSourceRef | null
+): AgentSourceRef[] {
+  return payloads.flatMap((payload) => refsFromArray(payload, factory))
+}
+
 function maybeRef(
   value: unknown,
   factory: (record: JsonRecord) => AgentSourceRef | null
@@ -172,6 +185,21 @@ function maybeRef(
   if (!isRecord(value)) return []
   const ref = factory(value)
   return ref ? [ref] : []
+}
+
+function maybeRefFromPayloads(
+  payloads: unknown[],
+  factory: (record: JsonRecord) => AgentSourceRef | null
+): AgentSourceRef[] {
+  return payloads.flatMap((payload) => maybeRef(payload, factory))
+}
+
+function refsFromPayloadsAndArgs(
+  payloads: unknown[],
+  args: unknown,
+  kind: AgentSourceKind
+): AgentSourceRef[] {
+  return payloads.flatMap((payload) => maybeRefFromResultAndArgs(payload, args, kind))
 }
 
 function maybeRefFromResultAndArgs(
@@ -212,28 +240,41 @@ function noteRefFromRecord(record: JsonRecord): AgentSourceRef | null {
   const id = firstString(record.id)
   const title = firstString(record.title, record.name)
   if (!id || !title) return null
-  return buildRef('note', id, title)
+  return buildRef('note', id, title, { icon: noteIconFromRecord(record) })
 }
 
 function taskRefFromRecord(record: JsonRecord): AgentSourceRef | null {
   const id = firstString(record.id, record.sourceId)
   const title = firstString(record.title, record.name)
   if (!id || !title) return null
-  return buildRef('task', id, title)
+  return buildRef('task', id, title, { visualType: firstString(record.visualType) })
 }
 
 function inboxRefFromRecord(record: JsonRecord): AgentSourceRef | null {
   const id = firstString(record.id, record.sourceId)
   const title = firstString(record.title, record.name)
   if (!id || !title) return null
-  return buildRef('inbox', id, title)
+  const metadata: JsonRecord = isRecord(record.metadata) ? record.metadata : {}
+  const directType = firstString(record.itemType, record.item_type, metadata.itemType)
+  const recordType = firstString(record.type)
+  const itemType = directType ?? (recordType && recordType !== 'inbox' ? recordType : null)
+  return buildRef('inbox', id, title, {
+    itemType,
+    visualType:
+      firstString(
+        record.visualType,
+        record.visual_type,
+        metadata.visualType,
+        metadata.visual_type
+      ) ?? inboxVisualTypeFromRecord(record, metadata, itemType)
+  })
 }
 
 function projectRefFromRecord(record: JsonRecord): AgentSourceRef | null {
   const id = firstString(record.id)
   const title = firstString(record.name, record.title)
   if (!id || !title) return null
-  return buildRef('project', id, title)
+  return buildRef('project', id, title, { icon: firstString(record.icon) })
 }
 
 function folderEntryRefFromRecord(record: JsonRecord): AgentSourceRef | null {
@@ -287,7 +328,7 @@ function desktopOperationRefs(args: unknown, result: unknown): AgentSourceRef[] 
     const title = firstString(result.title, firstArg.title)
     const startAt = firstString(result.startAt, firstArg.startAt)
     if (!id || !title || !startAt) return []
-    return [buildCalendarEventRef(id, title, dateFromIso(startAt))]
+    return [buildCalendarEventRef(id, title, dateFromIso(startAt), firstString(result.visualType))]
   }
 
   if (operation === 'calendar.promoteExternalEvent' && isRecord(result)) {
@@ -302,7 +343,7 @@ function calendarEventRefFromRecord(record: JsonRecord): AgentSourceRef | null {
   const title = firstString(record.title)
   const startAt = firstString(record.startAt)
   if (!id || !title || !startAt) return null
-  return buildCalendarEventRef(id, title, dateFromIso(startAt))
+  return buildCalendarEventRef(id, title, dateFromIso(startAt), firstString(record.visualType))
 }
 
 function calendarProjectionRefFromRecord(record: JsonRecord): AgentSourceRef | null {
@@ -310,24 +351,36 @@ function calendarProjectionRefFromRecord(record: JsonRecord): AgentSourceRef | n
   const title = firstString(record.title)
   const startAt = firstString(record.startAt)
   if (!id || !title || !startAt) return null
-  return buildCalendarEventRef(id, title, dateFromIso(startAt))
+  return buildCalendarEventRef(id, title, dateFromIso(startAt), firstString(record.visualType))
 }
 
-function buildRef(kind: AgentSourceKind, id: string, title: string): AgentSourceRef {
+function buildRef(
+  kind: AgentSourceKind,
+  id: string,
+  title: string,
+  meta: SourceRefMeta = {}
+): AgentSourceRef {
   return {
     kind,
     id,
     title,
-    href: `memry://${hrefPathForKind(kind, id)}`
+    href: `memry://${hrefPathForKind(kind, id)}`,
+    ...sourceMeta(meta)
   }
 }
 
-function buildCalendarEventRef(id: string, title: string, date: string): AgentSourceRef {
+function buildCalendarEventRef(
+  id: string,
+  title: string,
+  date: string,
+  visualType?: string | null
+): AgentSourceRef {
   return {
     kind: 'calendar_event',
     id,
     title,
-    href: `memry://calendar/event/${encodeURIComponent(id)}?date=${encodeURIComponent(date)}`
+    href: `memry://calendar/event/${encodeURIComponent(id)}?date=${encodeURIComponent(date)}`,
+    ...sourceMeta({ visualType })
   }
 }
 
@@ -366,7 +419,17 @@ function parseSourceRef(value: JsonRecord): AgentSourceRef | null {
   const href = firstString(value.href)
   if (!kind || !id || !title || !href) return null
   if (!isAgentSourceKind(kind)) return null
-  return { kind, id, title, href }
+  return {
+    kind,
+    id,
+    title,
+    href,
+    ...sourceMeta({
+      icon: firstString(value.icon),
+      itemType: firstString(value.itemType),
+      visualType: firstString(value.visualType)
+    })
+  }
 }
 
 function isAgentSourceKind(kind: string): kind is AgentSourceKind {
@@ -401,4 +464,89 @@ function firstString(...values: unknown[]): string | null {
 
 function isRecord(value: unknown): value is JsonRecord {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function noteIconFromRecord(record: JsonRecord): string | null {
+  const metadata: JsonRecord = isRecord(record.metadata) ? record.metadata : {}
+  const frontmatter: JsonRecord = isRecord(record.frontmatter) ? record.frontmatter : {}
+  return firstString(record.icon, record.emoji, metadata.emoji, frontmatter.emoji, frontmatter.icon)
+}
+
+function sourceMeta(
+  meta: SourceRefMeta
+): Partial<Pick<AgentSourceRef, 'icon' | 'itemType' | 'visualType'>> {
+  return {
+    ...(meta.icon ? { icon: meta.icon } : {}),
+    ...(meta.itemType ? { itemType: meta.itemType } : {}),
+    ...(meta.visualType ? { visualType: meta.visualType } : {})
+  }
+}
+
+function toolResultPayloads(result: unknown): unknown[] {
+  const payloads: unknown[] = [result]
+  if (!isRecord(result)) return payloads
+
+  if ('structuredContent' in result) {
+    const structuredContent = result.structuredContent
+    payloads.push(structuredContent)
+    if (isRecord(structuredContent) && 'result' in structuredContent) {
+      payloads.push(structuredContent.result)
+    }
+  }
+
+  const content = result.content
+  if (Array.isArray(content)) {
+    for (const entry of content) {
+      if (!isRecord(entry) || typeof entry.text !== 'string') continue
+      const parsed = parseJson(entry.text)
+      if (parsed !== undefined) payloads.push(parsed)
+    }
+  }
+
+  return payloads
+}
+
+function parseJson(value: string): unknown | undefined {
+  try {
+    return JSON.parse(value)
+  } catch {
+    return undefined
+  }
+}
+
+function inboxVisualTypeFromRecord(
+  record: JsonRecord,
+  metadata: JsonRecord,
+  itemType: string | null
+): string | null {
+  if (itemType === 'clip') return 'quote'
+
+  const platform = firstString(metadata.platform)
+  if (itemType === 'social' && platform === 'twitter') return 'twitter'
+
+  const sourceUrl = firstString(
+    record.sourceUrl,
+    record.source_url,
+    record.source,
+    metadata.postUrl
+  )
+  if ((itemType === 'social' || itemType === 'link') && sourceUrl && isTwitterUrl(sourceUrl)) {
+    return 'twitter'
+  }
+
+  return itemType === 'social' ? 'social' : null
+}
+
+function isTwitterUrl(value: string): boolean {
+  try {
+    const host = new URL(value).hostname.toLowerCase()
+    return (
+      host === 'x.com' ||
+      host.endsWith('.x.com') ||
+      host === 'twitter.com' ||
+      host.endsWith('.twitter.com')
+    )
+  } catch {
+    return false
+  }
 }
