@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "บันทึกปัจจุบัน",
       "removeAttachment": "ลบ {label}",
-      "placeholder": "สอบถาม Agent",
+      "placeholder": "ถาม Memry ได้ทุกเรื่อง @ เพื่อกล่าวถึงไฟล์",
       "send": "ส่ง",
       "providerLabel": "ผู้ให้บริการ Agent: {provider}",
       "modelLabel": "รุ่น Agent: {model}",

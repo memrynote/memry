@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "הערה נוכחית",
       "removeAttachment": "הסר את {label}",
-      "placeholder": "שאל את Agent",
+      "placeholder": "שאלו את Memry כל דבר. @ כדי להזכיר קובץ",
       "send": "שלח",
       "providerLabel": "ספק Agent: {provider}",
       "modelLabel": "דגם Agent: {model}",

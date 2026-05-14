@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Notă curentă",
       "removeAttachment": "Eliminați {label}",
-      "placeholder": "Întrebați Agent",
+      "placeholder": "Întreabă Memry orice. @ pentru a menționa un fișier",
       "send": "Trimite",
       "providerLabel": "Furnizor Agent: {provider}",
       "modelLabel": "Model Agent: {model}",

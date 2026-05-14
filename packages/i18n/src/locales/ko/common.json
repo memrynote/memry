@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "현재 메모",
       "removeAttachment": "{label} 제거",
-      "placeholder": "Agent에게 물어보세요",
+      "placeholder": "Memry에게 무엇이든 물어보세요. @로 파일 멘션",
       "send": "보내기",
       "providerLabel": "Agent 공급자: {provider}",
       "modelLabel": "Agent 모델: {model}",

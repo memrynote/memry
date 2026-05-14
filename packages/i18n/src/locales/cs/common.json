@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Aktuální poznámka",
       "removeAttachment": "Odebrat {label}",
-      "placeholder": "Zeptejte se Agent",
+      "placeholder": "Zeptejte se Memry na cokoli. @ pro zmínku o souboru",
       "send": "Odeslat",
       "providerLabel": "Poskytovatel Agent: {provider}",
       "modelLabel": "Model Agent: {model}",

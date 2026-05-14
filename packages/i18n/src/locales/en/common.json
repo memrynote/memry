@@ -112,7 +112,7 @@
     "composer": {
       "currentNote": "Current note",
       "removeAttachment": "Remove {label}",
-      "placeholder": "Ask Agent",
+      "placeholder": "Ask Memry anything. @ to use mention file",
       "send": "Send",
       "providerLabel": "Agent provider: {provider}",
       "modelLabel": "Agent model: {model}",

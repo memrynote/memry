@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Aktuelle Notiz",
       "removeAttachment": "{label} entfernen",
-      "placeholder": "Fragen Sie Agent",
+      "placeholder": "Fragen Sie Memry alles. @, um eine Datei zu erwähnen",
       "send": "Senden",
       "providerLabel": "Agent Anbieter: {provider}",
       "modelLabel": "Agent Modell: {model}",
