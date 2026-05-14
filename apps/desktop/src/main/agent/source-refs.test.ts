@@ -232,6 +232,192 @@ describe('Agent source refs', () => {
     ])
   })
 
+  it('extracts refs for folder, task, project, journal, and inbox tool variants', () => {
+    expect(
+      extractAgentSourceRefs('vault_list_folder', {}, [
+        { kind: 'folder', path: 'Areas/Work', name: 'Work' },
+        { kind: 'note', id: 'note-1', name: 'Inbox Note', emoji: '📝' },
+        { kind: 'asset', id: 'ignored', name: 'Ignored' }
+      ])
+    ).toEqual([
+      { kind: 'folder', id: 'Areas/Work', title: 'Work', href: 'memry://folder/Areas%2FWork' },
+      {
+        kind: 'note',
+        id: 'note-1',
+        title: 'Inbox Note',
+        href: 'memry://note/note-1',
+        icon: '📝'
+      }
+    ])
+
+    expect(
+      extractAgentSourceRefs(
+        'mcp__memry__vault_get_task',
+        {},
+        {
+          sourceId: 'task-1',
+          name: 'Ship snooze'
+        }
+      )
+    ).toEqual([{ kind: 'task', id: 'task-1', title: 'Ship snooze', href: 'memry://task/task-1' }])
+
+    expect(
+      extractAgentSourceRefs(
+        'vault_create_project',
+        { name: 'Launch', id: 'project-from-args' },
+        {}
+      )
+    ).toEqual([
+      {
+        kind: 'project',
+        id: 'project-from-args',
+        title: 'Launch',
+        href: 'memry://project/project-from-args'
+      }
+    ])
+
+    expect(
+      extractAgentSourceRefs('vault_create_journal_entry', { date: '2026-05-14' }, {})
+    ).toEqual([
+      {
+        kind: 'journal',
+        id: '2026-05-14',
+        title: '2026-05-14',
+        href: 'memry://journal/2026-05-14'
+      }
+    ])
+
+    expect(
+      extractAgentSourceRefs(
+        'vault_snooze_inbox_item',
+        { id: 'inbox-1' },
+        { title: 'Read the spec' }
+      )
+    ).toEqual([
+      { kind: 'inbox', id: 'inbox-1', title: 'Read the spec', href: 'memry://inbox/inbox-1' }
+    ])
+  })
+
+  it('extracts desktop calendar refs for direct event operations', () => {
+    expect(
+      extractAgentSourceRefs(
+        'vault_desktop_read',
+        { operation: 'calendar.listEvents', args: [] },
+        {
+          events: [{ eventId: 'event-1', title: 'Demo', startAt: '2026-05-14T12:30:00.000Z' }]
+        }
+      )
+    ).toEqual([
+      {
+        kind: 'calendar_event',
+        id: 'event-1',
+        title: 'Demo',
+        href: 'memry://calendar/event/event-1?date=2026-05-14'
+      }
+    ])
+
+    expect(
+      extractAgentSourceRefs(
+        'vault_desktop_read',
+        { operation: 'calendar.getEvent', args: [] },
+        { id: 'event-2', title: 'Follow up', startAt: '2026-05-15' }
+      )
+    ).toEqual([
+      {
+        kind: 'calendar_event',
+        id: 'event-2',
+        title: 'Follow up',
+        href: 'memry://calendar/event/event-2?date=2026-05-15'
+      }
+    ])
+
+    expect(
+      extractAgentSourceRefs(
+        'vault_desktop_write',
+        {
+          operation: 'calendar.createEvent',
+          args: [{ id: 'event-from-args', title: 'From args', startAt: '2026-05-16' }]
+        },
+        {}
+      )
+    ).toEqual([
+      {
+        kind: 'calendar_event',
+        id: 'event-from-args',
+        title: 'From args',
+        href: 'memry://calendar/event/event-from-args?date=2026-05-16'
+      }
+    ])
+
+    expect(
+      extractAgentSourceRefs(
+        'vault_desktop_write',
+        { operation: 'calendar.promoteExternalEvent', args: [] },
+        { event: { id: 'event-3', title: 'Promoted', startAt: 'not-a-date' } }
+      )
+    ).toEqual([
+      {
+        kind: 'calendar_event',
+        id: 'event-3',
+        title: 'Promoted',
+        href: 'memry://calendar/event/event-3?date=not-a-date'
+      }
+    ])
+  })
+
+  it('decorates object results, nested collections, and existing refs', () => {
+    const decorated = decorateToolResultWithAgentSources(
+      'vault_get_task',
+      {},
+      {
+        id: 'task-1',
+        title: 'One',
+        items: [{ id: 'task-1', title: 'One' }],
+        events: [{ id: 'task-1', title: 'One' }],
+        event: { id: 'task-1', title: 'One' }
+      }
+    )
+
+    const sourceRef = {
+      kind: 'task',
+      id: 'task-1',
+      title: 'One',
+      href: 'memry://task/task-1'
+    }
+
+    expect(decorated).toEqual({
+      id: 'task-1',
+      title: 'One',
+      href: 'memry://task/task-1',
+      source_ref: sourceRef,
+      items: [{ id: 'task-1', title: 'One', href: 'memry://task/task-1', source_ref: sourceRef }],
+      events: [{ id: 'task-1', title: 'One', href: 'memry://task/task-1', source_ref: sourceRef }],
+      event: { id: 'task-1', title: 'One', href: 'memry://task/task-1', source_ref: sourceRef },
+      sources: [sourceRef]
+    })
+
+    expect(
+      extractAgentSourceRefs('vault_search_notes', {}, [
+        {
+          source_ref: {
+            kind: 'unknown',
+            id: 'ignored',
+            title: 'Ignored',
+            href: 'memry://unknown/ignored'
+          }
+        },
+        {
+          source_ref: {
+            kind: 'folder',
+            id: 'Inbox',
+            title: 'Inbox',
+            href: 'memry://folder/Inbox'
+          }
+        }
+      ])
+    ).toEqual([{ kind: 'folder', id: 'Inbox', title: 'Inbox', href: 'memry://folder/Inbox' }])
+  })
+
   it('decorates MCP tool results with source refs without wrapping arrays', () => {
     const decorated = decorateToolResultWithAgentSources('vault_search_notes', {}, [
       { id: 'note-1', title: 'Movies', snippet: 'A', folder_path: null }

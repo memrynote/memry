@@ -91,6 +91,7 @@ export function extractAgentSourceRefs(
     case 'vault_update_inbox_item':
     case 'vault_archive_inbox_item':
     case 'vault_unarchive_inbox_item':
+    case 'vault_snooze_inbox_item':
     case 'vault_add_inbox_tag':
     case 'vault_remove_inbox_tag':
       refs.push(...refsFromPayloadsAndArgs(resultPayloads, args, 'inbox'))
