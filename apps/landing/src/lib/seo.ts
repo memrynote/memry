@@ -42,7 +42,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   pricing: {
     title: 'Pricing — Memry Sync',
     description:
-      'Local-first stays free, forever. Sync is paid, fair, and end-to-end encrypted. Standard from $4/mo, Plus from $8/mo, or Believer for a one-time $500.',
+      'Local-first stays free, forever. Plus adds 1 GB sync, Pro adds 10 GB and 10 vaults, and Believer supports independent software with 50 GB and unlimited vaults.',
     path: '/pricing'
   },
   terms: {
@@ -83,13 +83,25 @@ export function getJsonLd(): string {
         '@type': 'Offer',
         price: '0',
         priceCurrency: 'USD',
-        description: 'Free tier — unlimited notes, tasks, journal & inbox'
+        description: 'Free tier — notes, tasks, journal, inbox, and local vault'
       },
       {
         '@type': 'Offer',
         price: '5',
         priceCurrency: 'USD',
-        description: 'Pro — sync, collaboration, publishing'
+        description: 'Plus — 1 GB encrypted sync and 1 vault'
+      },
+      {
+        '@type': 'Offer',
+        price: '10',
+        priceCurrency: 'USD',
+        description: 'Pro — 10 GB encrypted sync and 10 vaults'
+      },
+      {
+        '@type': 'Offer',
+        price: '500',
+        priceCurrency: 'USD',
+        description: 'Believer — supporter package with 50 GB and unlimited vaults'
       }
     ],
     author: {

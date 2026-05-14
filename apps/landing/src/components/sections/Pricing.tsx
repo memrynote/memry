@@ -25,11 +25,11 @@ export function Pricing() {
               <span className="absolute -bottom-2 left-1/4 right-1/4 h-px bg-terracotta/30" />
             </h2>
             <p className="text-xl text-dark-muted font-sans max-w-2xl mx-auto leading-relaxed">
-              No hidden fees, no feature gates. Just tools to help you think better.
+              Local features stay free. Sync scales only when you need more room.
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
             {PRICING_TIERS.map((tier, index) => (
               <motion.div
                 key={tier.name}

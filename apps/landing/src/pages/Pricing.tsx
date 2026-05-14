@@ -1,17 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import {
-  Check,
-  ArrowRight,
-  Vault,
-  HardDrive,
-  FileUp,
-  History,
-  Sparkles,
-  ShieldCheck,
-  Heart
-} from 'lucide-react'
+import { Check, ArrowRight, Sparkles, ShieldCheck, Heart } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { PageHead } from '@/components/shared/PageHead'
 import { Button } from '@/components/ui/button'
@@ -26,6 +16,7 @@ import {
   PLAN_LIMIT_MATRIX,
   LIFECYCLE_STAGES,
   PRICING_FAQ_ITEMS,
+  type CheckoutPlanId,
   type SyncPlanTier,
   type LifecycleTone
 } from '@/lib/constants'
@@ -50,12 +41,14 @@ export function PricingPage() {
   const [checkout, setCheckout] = useState<CheckoutState>({ pendingKey: null, error: null })
 
   const handleCheckout = async (tier: SyncPlanTier) => {
+    if (!tier.checkoutPlanId) return
+
     const checkoutCadence = getCheckoutCadence(tier, cadence)
-    const pendingKey = getCheckoutKey(tier, checkoutCadence)
+    const pendingKey = getCheckoutKey(tier.checkoutPlanId, checkoutCadence)
 
     setCheckout({ pendingKey, error: null })
     try {
-      await openPaddleCheckout(tier.id, checkoutCadence)
+      await openPaddleCheckout(tier.checkoutPlanId, checkoutCadence)
       setCheckout({ pendingKey: null, error: null })
     } catch (error) {
       setCheckout({
@@ -85,8 +78,8 @@ function getCheckoutCadence(tier: SyncPlanTier, cadence: Cadence): PaddleCheckou
   return tier.id === 'believer' ? 'lifetime' : cadence
 }
 
-function getCheckoutKey(tier: SyncPlanTier, cadence: PaddleCheckoutCadence) {
-  return `${tier.id}:${cadence}`
+function getCheckoutKey(planId: CheckoutPlanId, cadence: PaddleCheckoutCadence) {
+  return `${planId}:${cadence}`
 }
 
 function Hero({ cadence, setCadence }: { cadence: Cadence; setCadence: (c: Cadence) => void }) {
@@ -181,7 +174,7 @@ function TierGrid({
   return (
     <section className="pb-24">
       <Container size="lg">
-        <div className="grid gap-6 lg:grid-cols-3 lg:items-stretch lg:gap-7">
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4 xl:items-stretch xl:gap-5">
           {SYNC_PLAN_TIERS.map((tier, index) => (
             <motion.div
               key={tier.id}
@@ -199,7 +192,9 @@ function TierGrid({
                 tier={tier}
                 cadence={cadence}
                 isPending={
-                  checkout.pendingKey === getCheckoutKey(tier, getCheckoutCadence(tier, cadence))
+                  !!tier.checkoutPlanId &&
+                  checkout.pendingKey ===
+                    getCheckoutKey(tier.checkoutPlanId, getCheckoutCadence(tier, cadence))
                 }
                 onCheckout={() => onCheckout(tier)}
               />
@@ -235,6 +230,7 @@ function TierCard({
 }) {
   const isFounding = tier.emphasis === 'founding'
   const isRecommended = tier.emphasis === 'recommended'
+  const isCheckoutEnabled = !!tier.checkoutPlanId
   const ctaLabel = isPending ? 'Opening checkout...' : tier.cta
 
   return (
@@ -285,8 +281,6 @@ function TierCard({
         <PriceBlock tier={tier} cadence={cadence} isFounding={isFounding} />
       </div>
 
-      <LimitsGrid tier={tier} isFounding={isFounding} />
-
       <ul className="mt-7 space-y-3">
         {tier.features.map((feature) => (
           <li key={feature} className="flex items-start gap-3 text-sm">
@@ -310,7 +304,16 @@ function TierCard({
       </ul>
 
       <div className="mt-auto pt-8">
-        {isFounding ? (
+        {!isCheckoutEnabled ? (
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-full rounded-full border-ink/15 bg-paper-alt/40 text-ink hover:bg-paper-alt"
+            asChild
+          >
+            <Link to="/#waitlist">{tier.cta}</Link>
+          </Button>
+        ) : isFounding ? (
           <Button
             variant="default"
             size="lg"
@@ -358,6 +361,29 @@ function PriceBlock({
   cadence: Cadence
   isFounding: boolean
 }) {
+  if (tier.id === 'free') {
+    return (
+      <div>
+        <div className="flex items-baseline gap-2">
+          <span
+            className={cn(
+              'font-mono-accent text-5xl font-medium leading-none transition-colors',
+              isFounding ? 'text-ink-inverted' : 'text-ink'
+            )}
+          >
+            $0
+          </span>
+          <span className={cn('font-sans text-sm', isFounding ? 'text-dark-muted' : 'text-muted')}>
+            forever
+          </span>
+        </div>
+        <p className="mt-2 font-mono-accent text-xs uppercase tracking-[0.18em] text-muted/80">
+          No account required
+        </p>
+      </div>
+    )
+  }
+
   if (tier.lifetimePrice !== null) {
     return (
       <div>
@@ -408,48 +434,6 @@ function PriceBlock({
   )
 }
 
-function LimitsGrid({ tier, isFounding }: { tier: SyncPlanTier; isFounding: boolean }) {
-  const cells = [
-    { icon: Vault, label: 'Vaults', value: tier.limits.vaults },
-    { icon: HardDrive, label: 'Storage', value: tier.limits.storage },
-    { icon: FileUp, label: 'Per file', value: tier.limits.fileSize },
-    { icon: History, label: 'History', value: tier.limits.history }
-  ]
-
-  return (
-    <div
-      className={cn(
-        'mt-7 grid grid-cols-4 gap-2 rounded-2xl border p-3',
-        isFounding ? 'border-dark-border/80 bg-dark-surface/60' : 'border-border/60 bg-paper-alt/55'
-      )}
-    >
-      {cells.map(({ icon: Icon, label, value }) => (
-        <div key={label} className="flex flex-col items-center gap-1.5 px-1 py-2 text-center">
-          <Icon
-            className={cn('h-3.5 w-3.5', isFounding ? 'text-terracotta' : 'text-terracotta/80')}
-          />
-          <span
-            className={cn(
-              'font-mono-accent text-base font-medium leading-none',
-              isFounding ? 'text-ink-inverted' : 'text-ink'
-            )}
-          >
-            {value}
-          </span>
-          <span
-            className={cn(
-              'font-mono-accent text-[9px] uppercase tracking-[0.14em]',
-              isFounding ? 'text-dark-muted' : 'text-muted/85'
-            )}
-          >
-            {label}
-          </span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 function BelieverNarrative() {
   return (
     <section className="relative">
@@ -464,11 +448,11 @@ function BelieverNarrative() {
               <h2 className="font-serif text-4xl font-normal leading-tight text-ink-inverted md:text-5xl">
                 Pay <span className="italic text-terracotta">$500 once.</span>
                 <br />
-                Sync forever.
+                Keep Memry independent.
               </h2>
               <p className="text-lg leading-relaxed text-dark-muted">
-                Believers fund the next chapter of Memry. In return, they get every paid feature we
-                ever ship — automatic, no extra invoice — for as long as Memry exists.
+                Believer is a supporter package: everything in Plus, more encrypted storage,
+                unlimited vaults, early access, and a name in the credits.
               </p>
             </motion.div>
 
@@ -484,8 +468,8 @@ function BelieverNarrative() {
               <blockquote className="font-serif text-xl leading-relaxed text-ink-inverted/90 md:text-2xl">
                 <span className="font-serif text-4xl text-terracotta leading-none">“</span>
                 Indie software lives or dies on the people who back it early. Believers aren&apos;t
-                buying a tier — they&apos;re buying a seat at the table while we figure out what the
-                next ten years of memry looks like.
+                just buying storage — they&apos;re helping keep Memry independent while we build the
+                next ten years.
               </blockquote>
               <figcaption className="mt-6 flex items-center gap-3 text-sm font-mono-accent uppercase tracking-[0.18em] text-dark-muted">
                 <span className="h-px w-8 bg-terracotta/60" aria-hidden />
@@ -604,17 +588,17 @@ function LimitMatrix() {
             Compare every limit
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-muted">
-            All four limits — vaults, storage, file size, history — are enforced server-side.
-            Numbers are exact; no asterisks, no fair-use clauses.
+            Local features stay free. Paid sync limits are explicit, enforced server-side, and
+            written plainly before checkout.
           </p>
         </motion.div>
 
         <motion.div
           {...fadeUp}
           transition={{ ...fadeUp.transition, delay: 0.1 }}
-          className="mt-12 overflow-hidden rounded-2xl border border-border/55 bg-white/55 shadow-card"
+          className="mt-12 overflow-x-auto rounded-2xl border border-border/55 bg-white/55 shadow-card"
         >
-          <table className="w-full">
+          <table className="w-full min-w-[820px]">
             <thead>
               <tr className="border-b border-border/60">
                 {PLAN_LIMIT_MATRIX.headers.map((header, i) => (
@@ -622,14 +606,14 @@ function LimitMatrix() {
                     key={header || 'feature'}
                     className={cn(
                       'px-6 py-5 font-mono-accent text-[11px] uppercase tracking-[0.18em]',
-                      i === 0 ? 'text-left text-ink' : 'text-center',
+                      i === 0 ? 'text-start text-ink' : 'text-center',
                       i === 0 && 'min-w-[160px]',
-                      i === 2
+                      i === 3
                         ? 'border-x border-terracotta/25 bg-terracotta/[0.04] text-terracotta'
                         : 'text-muted'
                     )}
                   >
-                    {i === 2 ? (
+                    {i === 3 ? (
                       <span className="inline-flex items-center justify-center gap-2">
                         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-terracotta" />
                         {header}
@@ -649,10 +633,13 @@ function LimitMatrix() {
                 >
                   <td className="px-6 py-4 text-sm font-medium text-ink">{row.feature}</td>
                   <td className="px-6 py-4 text-center font-mono-accent text-sm text-ink/80">
-                    {row.standard}
+                    {row.free}
+                  </td>
+                  <td className="px-6 py-4 text-center font-mono-accent text-sm text-ink/80">
+                    {row.plus}
                   </td>
                   <td className="border-x border-terracotta/15 bg-terracotta/[0.025] px-6 py-4 text-center font-mono-accent text-sm text-ink">
-                    {row.plus}
+                    {row.pro}
                   </td>
                   <td className="px-6 py-4 text-center font-mono-accent text-sm text-ink/80">
                     {row.believer}
