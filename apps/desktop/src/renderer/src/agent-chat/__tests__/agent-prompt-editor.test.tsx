@@ -121,4 +121,25 @@ describe('AgentPromptEditor', () => {
     })
     expect(onMentionQueryChange).toHaveBeenLastCalledWith(null)
   })
+
+  it('selects mention nodes on mouse down and deletes mention atoms with Delete', async () => {
+    const { ref } = renderPromptEditor()
+
+    await typePrompt('@task')
+    insertMention(ref, {
+      kind: 'task',
+      ref_id: 'task-1',
+      label: 'Task Mention',
+      icon: { kind: 'task' }
+    })
+
+    const mention = await screen.findByTestId('agent-mention-task-task-1')
+    fireEvent.mouseDown(mention)
+    fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Delete' })
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('agent-mention-task-task-1')).not.toBeInTheDocument()
+    })
+    expect(ref.current?.getValue().attachments).toEqual([])
+  })
 })
