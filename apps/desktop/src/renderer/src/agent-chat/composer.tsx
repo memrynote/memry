@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 
 import type {
   AgentBackendId,
@@ -22,10 +22,15 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { useActiveTab } from '@/contexts/tabs'
-import { ChatGpt, Check, ChevronDown, Claude, Computer, Send, Square, X } from '@/lib/icons'
+import { ChatGpt, Check, ChevronDown, Claude, Computer, Send, Square } from '@/lib/icons'
+import {
+  AgentPromptEditor,
+  type AgentPromptEditorHandle,
+  type AgentPromptValue
+} from './agent-prompt-editor'
 import { useAgentOptional } from './agent-context'
+import type { MentionAttachment } from './mention-icons'
 import { RefPicker } from './ref-picker'
 
 interface ComposerProps {
@@ -118,18 +123,18 @@ const codexReasoningOptions: Array<ReasoningOption<CodexReasoningEffort>> = [
   }
 ]
 
-function getRefQuery(text: string): string | null {
-  const match = /(?:^|\s)@([^\s@]*)$/.exec(text)
-  return match?.[1] ?? null
-}
-
-function resizePromptTextarea(textarea: HTMLTextAreaElement): void {
-  textarea.style.height = 'auto'
-  textarea.style.height = `${textarea.scrollHeight}px`
-}
-
 function isCliProvider(provider: AgentProvider): provider is AgentCliBackendId {
   return provider === 'claude_cli' || provider === 'codex_cli'
+}
+
+function dedupeAttachments(attachments: AttachmentInput[]): AttachmentInput[] {
+  const seen = new Set<string>()
+  return attachments.filter((attachment) => {
+    const key = `${attachment.kind}:${attachment.ref_id}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 function codexModelVersion(modelId: string): number[] | null {
@@ -178,10 +183,16 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const agent = useAgentOptional()
   const activeTab = useActiveTab()
   const customModelInputId = useId()
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const [text, setText] = useState('')
-  const [attachments, setAttachments] = useState<AttachmentInput[]>([])
+  const promptEditorRef = useRef<AgentPromptEditorHandle>(null)
+  const [promptValue, setPromptValue] = useState<AgentPromptValue>({
+    text: '',
+    attachments: []
+  })
+  const [currentNoteAttachment, setCurrentNoteAttachment] = useState<AttachmentInput | null>(null)
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [pickerItems, setPickerItems] = useState<MentionAttachment[]>([])
+  const [selectedPickerIndex, setSelectedPickerIndex] = useState(-1)
   const [submitting, setSubmitting] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState<AgentProvider>('claude_cli')
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
@@ -196,23 +207,11 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
 
   useEffect(() => {
     if (activeTab?.type !== 'note' || !activeTab.entityId) return
-    setAttachments((current) => {
-      const label = activeTab.title || t('agentChat.composer.currentNote')
-      const currentNote = current.find((attachment) => attachment.kind === 'current_note')
-      if (currentNote) {
-        if (currentNote.label === label) return current
-        return current.map((attachment) =>
-          attachment.kind === 'current_note' ? { ...attachment, label } : attachment
-        )
-      }
-      return [
-        ...current,
-        {
-          kind: 'current_note',
-          ref_id: '__current__',
-          label
-        }
-      ]
+    const label = activeTab.title || t('agentChat.composer.currentNote')
+    setCurrentNoteAttachment({
+      kind: 'current_note',
+      ref_id: '__current__',
+      label
     })
   }, [activeTab?.entityId, activeTab?.title, activeTab?.type, t])
 
@@ -229,13 +228,17 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     }
   }, [agent?.state.conversations, conversationId])
 
+  useEffect(() => {
+    const focusTimer = window.setTimeout(() => {
+      promptEditorRef.current?.focus()
+    }, 0)
+
+    return () => window.clearTimeout(focusTimer)
+  }, [conversationId])
+
   const selectedModelOptions = isCliProvider(selectedProvider)
     ? modelOptions[selectedProvider]
     : null
-
-  useEffect(() => {
-    if (textareaRef.current) resizePromptTextarea(textareaRef.current)
-  }, [text])
 
   const claudeProviderLabel = t('agentChat.composer.providers.claude')
   const codexProviderLabel = t('agentChat.composer.providers.codex')
@@ -249,8 +252,12 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     selectedProvider === 'local_openai_compatible' ||
     backendStatuses?.[selectedProvider]?.available !== false
   const canSend =
-    Boolean(agent) && Boolean(sourceWindowId) && text.trim().length > 0 && !busy && providerReady
-  const pickerQuery = pickerOpen ? (getRefQuery(text) ?? '') : ''
+    Boolean(agent) &&
+    Boolean(sourceWindowId) &&
+    promptValue.text.trim().length > 0 &&
+    !busy &&
+    providerReady
+  const pickerQuery = pickerOpen ? (mentionQuery ?? '') : ''
   const providerLabelById: Record<AgentProvider, string> = {
     claude_cli: claudeProviderLabel,
     codex_cli: codexProviderLabel,
@@ -319,7 +326,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
       setCodexReasoning(value as CodexReasoningEffort)
       return
     }
-    setClaudeReasoning(value as ClaudeEffort)
+    setClaudeReasoning(value)
   }
   const loadModelOptions = async (provider: AgentCliBackendId): Promise<void> => {
     if (modelOptions[provider]) return
@@ -349,11 +356,68 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
       void loadModelOptions(provider)
     }
   }
+  const closePicker = useCallback(() => {
+    setMentionQuery(null)
+    setPickerOpen(false)
+    setPickerItems([])
+    setSelectedPickerIndex(-1)
+  }, [])
+  const pickMention = useCallback((attachment: MentionAttachment): void => {
+    promptEditorRef.current?.insertMention(attachment)
+    setMentionQuery(null)
+    setPickerOpen(false)
+    setPickerItems([])
+    setSelectedPickerIndex(-1)
+  }, [])
+  const handleMentionKeyDown = useCallback(
+    (event: KeyboardEvent): boolean => {
+      if (!pickerOpen) return false
+
+      if (event.key === 'ArrowDown' && pickerItems.length > 0) {
+        event.preventDefault()
+        setSelectedPickerIndex((current) => (current < 0 ? 0 : (current + 1) % pickerItems.length))
+        return true
+      }
+
+      if (event.key === 'ArrowUp' && pickerItems.length > 0) {
+        event.preventDefault()
+        setSelectedPickerIndex((current) =>
+          current < 0
+            ? pickerItems.length - 1
+            : (current - 1 + pickerItems.length) % pickerItems.length
+        )
+        return true
+      }
+
+      if (event.key === 'Enter' && !event.shiftKey && pickerItems.length > 0) {
+        event.preventDefault()
+        const index = selectedPickerIndex >= 0 ? selectedPickerIndex : 0
+        const attachment = pickerItems[index]
+        if (attachment) {
+          pickMention(attachment)
+          return true
+        }
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        closePicker()
+        return true
+      }
+
+      return false
+    },
+    [closePicker, pickMention, pickerItems, pickerOpen, selectedPickerIndex]
+  )
 
   async function submit(): Promise<void> {
-    if (!agent || !sourceWindowId || !text.trim() || busy) return
-    const currentText = text
-    const currentAttachments = attachments
+    const editorValue = promptEditorRef.current?.getValue() ?? promptValue
+    const currentText = editorValue.text.trimEnd()
+    if (!agent || !sourceWindowId || !currentText.trim() || busy) return
+    const currentAttachments = dedupeAttachments([
+      ...editorValue.attachments,
+      ...(currentNoteAttachment ? [currentNoteAttachment] : [])
+    ])
     setSubmitting(true)
     try {
       const targetConversationId =
@@ -371,10 +435,9 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
         backendOptions: backendOptions(),
         attachments: currentAttachments
       })
-      setText('')
-      setAttachments((current) =>
-        current.filter((attachment) => attachment.kind === 'current_note')
-      )
+      promptEditorRef.current?.clear()
+      setPromptValue({ text: '', attachments: [] })
+      closePicker()
     } catch {
       // Agent context owns the user-facing error; leave the draft text in place.
     } finally {
@@ -388,75 +451,49 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     void agent.cancelTurn(conversationId)
   }
 
-  function removeAttachment(refId: string): void {
-    setAttachments((current) => current.filter((attachment) => attachment.ref_id !== refId))
-  }
-
   return (
     <div className="relative p-2">
-      {attachments.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-1">
-          {attachments.map((attachment) => (
-            <span
-              key={`${attachment.kind}-${attachment.ref_id}`}
-              className="inline-flex max-w-full items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs text-accent-foreground"
-            >
-              <span className="truncate">{attachment.label}</span>
-              <button
-                type="button"
-                aria-label={t('agentChat.composer.removeAttachment', { label: attachment.label })}
-                onClick={() => removeAttachment(attachment.ref_id)}
-                className="rounded-full text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-3" aria-hidden="true" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
       {pickerOpen && (
         <RefPicker
           query={pickerQuery}
-          onPick={(attachment) => {
-            setAttachments((current) => {
-              if (
-                current.some(
-                  (existing) =>
-                    existing.kind === attachment.kind && existing.ref_id === attachment.ref_id
-                )
-              ) {
-                return current
-              }
-              return [...current, attachment]
-            })
-            setText((current) => current.replace(/@\S*$/, ''))
-            setPickerOpen(false)
-          }}
-          onClose={() => setPickerOpen(false)}
+          selectedIndex={selectedPickerIndex}
+          onItemsChange={setPickerItems}
+          onPick={pickMention}
+          onSelectedIndexChange={setSelectedPickerIndex}
+          onClose={closePicker}
         />
       )}
       <div className="flex min-h-[120px] cursor-text flex-col rounded-2xl border border-border bg-card shadow-lg">
-        <div className="relative max-h-[258px] flex-1 overflow-y-auto">
-          <Textarea
-            ref={textareaRef}
-            value={text}
-            onChange={(event) => {
-              const nextText = event.target.value
-              setText(nextText)
-              setPickerOpen(getRefQuery(nextText) !== null)
-            }}
-            onInput={(event) => resizePromptTextarea(event.currentTarget)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault()
-                void submit()
-              }
-              if (event.key === 'Escape') setPickerOpen(false)
-            }}
-            rows={1}
+        <div
+          className="relative max-h-[258px] flex-1 overflow-y-auto"
+          onPointerDown={(event) => {
+            if (event.button !== 0) return
+            if (
+              event.target instanceof HTMLElement &&
+              event.target.closest('[contenteditable="true"]')
+            ) {
+              return
+            }
+            event.preventDefault()
+            promptEditorRef.current?.focus()
+          }}
+        >
+          <AgentPromptEditor
+            ref={promptEditorRef}
             disabled={busy || !agent}
             placeholder={t('agentChat.composer.placeholder')}
-            className="!min-h-[48.4px] min-h-[48.4px] resize-none whitespace-pre-wrap break-words border-0 bg-transparent p-3 text-[16px] text-foreground shadow-none outline-none transition-[padding] duration-200 ease-in-out focus-visible:ring-0 focus-visible:ring-offset-0"
+            onEscape={closePicker}
+            onMentionKeyDown={handleMentionKeyDown}
+            onMentionQueryChange={(query) => {
+              setMentionQuery(query)
+              setPickerOpen(query !== null)
+              if (query === null) {
+                setPickerItems([])
+                setSelectedPickerIndex(-1)
+              }
+            }}
+            onSubmit={() => void submit()}
+            onValueChange={setPromptValue}
           />
         </div>
         <div className="flex min-h-[40px] items-center gap-2 p-2 pb-1">

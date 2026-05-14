@@ -282,7 +282,16 @@ const AgentAttachmentSnapshotSchema = z.discriminatedUnion('mode', [
 ])
 
 const AgentMessageAttachmentSchema = z.object({
-  kind: z.enum(['note', 'folder', 'task', 'project', 'journal', 'current_note']),
+  kind: z.enum([
+    'note',
+    'folder',
+    'task',
+    'project',
+    'journal',
+    'current_note',
+    'inbox',
+    'calendar_event'
+  ]),
   refId: z.string(),
   label: z.string(),
   snapshotAt: z.number(),

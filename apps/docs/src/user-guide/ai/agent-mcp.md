@@ -35,6 +35,7 @@ Agent Chat can:
 
 - keep local conversation history in the vault database
 - attach the active note as context for a turn
+- mention notes, tasks, journals, inbox items, and calendar events inline in a prompt with `@`
 - stream assistant text back into the sidebar
 - link returned or created Memry items directly in assistant replies, with a collapsible Sources
   section for the same items
@@ -57,6 +58,13 @@ same visual language as the main app surfaces.
 
 Press <kbd>Enter</kbd> to send the prompt. Press <kbd>Shift</kbd>+<kbd>Enter</kbd> to insert a
 new line in the prompt box.
+
+Type `@` in the prompt to open the mention picker. Notes, tasks, journals, inbox items, and calendar
+events appear with their item icons, and calendar events are read from the local calendar with
+archived events hidden. Choosing a result replaces the active `@` query with one inline tag, so a
+prompt such as `summarize @Star Wars Movies` keeps the referenced item visibly attached inside the
+prompt. Mention tags submit as readable `@Title` text plus an encrypted structured attachment
+reference.
 
 The prompt box uses the operating-system text editing menu, so Cut, Copy, Paste, Select All, and
 native right-click editing work like other text fields.
@@ -196,6 +204,12 @@ tools. Security-sensitive and system operations stay outside the allowlist, incl
 flows, provider connect/disconnect/refresh actions, app updater actions, external open/reveal
 actions, and raw secret writes. Unsupported or unavailable desktop API operations return a structured
 MCP error instead of falling back to an arbitrary desktop call.
+
+Calendar desktop reads accept the same single-object shape as the renderer bridge. For example:
+`calendar.getProviderStatus` with no args or `args: [{}]` checks Google provider status,
+`calendar.listEvents` accepts `args: [{}]`, and `calendar.getRange` accepts either
+`args: ["2026-05-14", "2026-06-14"]` or
+`args: [{"startAt": "2026-05-14T00:00:00.000Z", "endAt": "2026-06-15T00:00:00.000Z"}]`.
 
 By default, Agent Chat accepts these tool calls automatically. The chat still shows each requested
 tool in a collapsed tool row, including running, completed, error, and denied states, so you can open

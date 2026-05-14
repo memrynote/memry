@@ -538,6 +538,63 @@ class MockResizeObserver {
 globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver
 
 // ============================================================================
+// Mock editor geometry APIs
+// ============================================================================
+
+const emptyClientRect = {
+  x: 0,
+  y: 0,
+  width: 0,
+  height: 0,
+  top: 0,
+  right: 0,
+  bottom: 0,
+  left: 0,
+  toJSON: () => ({})
+}
+
+const emptyClientRects = {
+  length: 0,
+  item: () => null,
+  [Symbol.iterator]: function* () {
+    return
+  }
+} as DOMRectList
+
+if (!document.elementFromPoint) {
+  document.elementFromPoint = () => document.body
+}
+
+if (!Range.prototype.getBoundingClientRect) {
+  Range.prototype.getBoundingClientRect = () => emptyClientRect as DOMRect
+}
+
+if (!Range.prototype.getClientRects) {
+  Range.prototype.getClientRects = () => emptyClientRects
+}
+
+if (!HTMLElement.prototype.getBoundingClientRect) {
+  HTMLElement.prototype.getBoundingClientRect = () => emptyClientRect as DOMRect
+}
+
+if (!HTMLElement.prototype.getClientRects) {
+  HTMLElement.prototype.getClientRects = () => emptyClientRects
+}
+
+if (typeof Text !== 'undefined') {
+  const textPrototype = Text.prototype as Text & {
+    getBoundingClientRect?: () => DOMRect
+    getClientRects?: () => DOMRectList
+  }
+  if (!textPrototype.getBoundingClientRect) {
+    textPrototype.getBoundingClientRect = () => emptyClientRect as DOMRect
+  }
+  if (!textPrototype.getClientRects) {
+    textPrototype.getClientRects = () => emptyClientRects
+  }
+}
+
+// ============================================================================
 // Mock IntersectionObserver
 // ============================================================================
 

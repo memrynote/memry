@@ -14,6 +14,20 @@ Format: weekly entries grouped by feature area.
 ### Changed
 
 - Make the Agent Chat system prompt use concrete Memry workflows and exact MCP tool names for current notes, folders, tags, journals, inbox triage, and links.
+## 2026-05-14 — Agent Chat Inline Mentions
+
+### Added
+
+- Add inline Agent Chat mention tags for notes, tasks, journals, inbox items, and calendar events, with type-specific icons and muted tag colors.
+
+### Changed
+
+- Keep picked Agent references inside the prompt instead of showing a separate attachment row, and focus the composer after creating a new conversation from the sidebar plus action.
+## 2026-05-14 — Agent Calendar MCP Reads
+
+### Fixed
+
+- Fix Agent calendar desktop reads so provider status, event lists, and date ranges accept common MCP argument shapes.
 
 ---
 

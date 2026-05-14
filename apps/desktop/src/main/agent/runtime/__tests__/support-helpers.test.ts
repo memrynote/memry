@@ -26,7 +26,9 @@ describe('agent runtime support helpers', () => {
     await expect(
       snapshotAttachments([
         { kind: 'note', ref_id: 'note-1', label: 'Daily note' },
-        { kind: 'folder', ref_id: 'notes/projects', label: 'Projects' }
+        { kind: 'folder', ref_id: 'notes/projects', label: 'Projects' },
+        { kind: 'inbox', ref_id: 'inbox-1', label: 'Read later' },
+        { kind: 'calendar_event', ref_id: 'event-1', label: 'Planning sync' }
       ])
     ).resolves.toEqual([
       {
@@ -42,6 +44,20 @@ describe('agent runtime support helpers', () => {
         label: 'Projects',
         snapshotAt: Date.parse('2026-05-12T12:00:00.000Z'),
         snapshot: { mode: 'reference_only', path: 'notes/projects' }
+      },
+      {
+        kind: 'inbox',
+        refId: 'inbox-1',
+        label: 'Read later',
+        snapshotAt: Date.parse('2026-05-12T12:00:00.000Z'),
+        snapshot: { mode: 'reference_only', id: 'inbox-1' }
+      },
+      {
+        kind: 'calendar_event',
+        refId: 'event-1',
+        label: 'Planning sync',
+        snapshotAt: Date.parse('2026-05-12T12:00:00.000Z'),
+        snapshot: { mode: 'reference_only', id: 'event-1' }
       }
     ])
   })
