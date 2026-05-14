@@ -139,6 +139,9 @@ The macOS signing patch in `apps/desktop/scripts/patch-osx-sign-walk.js` walks t
 serially. Keep that traversal bounded; unbounded parallel file reads can exhaust CI file descriptors
 while scanning large dependency trees.
 
+Linux release artifacts include the target architecture in both `.deb` and `.AppImage` filenames
+so `x64`, `arm64`, and `amd64` builds stay distinguishable in GitHub releases.
+
 ## Coverage Targets
 
 Memry is pre-production, but desktop and sync-server coverage are now ratcheted.
