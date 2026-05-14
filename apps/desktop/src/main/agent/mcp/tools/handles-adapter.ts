@@ -139,6 +139,39 @@ function assertSuccess(result: { success: boolean; error?: string }, fallback: s
   }
 }
 
+function inboxVisualType(item: {
+  type?: string
+  sourceUrl?: string | null
+  metadata?: unknown
+}): string | undefined {
+  if (item.type === 'clip') return 'quote'
+
+  const metadata = item.metadata && typeof item.metadata === 'object' ? item.metadata : null
+  const platform =
+    metadata && 'platform' in metadata && typeof metadata.platform === 'string'
+      ? metadata.platform
+      : null
+
+  if (item.type === 'social' && platform === 'twitter') return 'twitter'
+  if ((item.type === 'social' || item.type === 'link') && item.sourceUrl) {
+    try {
+      const host = new URL(item.sourceUrl).hostname.toLowerCase()
+      if (
+        host === 'x.com' ||
+        host.endsWith('.x.com') ||
+        host === 'twitter.com' ||
+        host.endsWith('.twitter.com')
+      ) {
+        return 'twitter'
+      }
+    } catch {
+      return item.type === 'social' ? 'social' : undefined
+    }
+  }
+
+  return item.type === 'social' ? 'social' : undefined
+}
+
 export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): VaultServiceHandles {
   return {
     notes: {
@@ -160,20 +193,28 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
             id: note.id,
             title: note.title,
             snippet: note.snippet ?? '',
-            folder_path: metadata?.path ? folderPathFromNotePath(metadata.path) : null
+            folder_path: metadata?.path ? folderPathFromNotePath(metadata.path) : null,
+            ...(metadata?.emoji ? { icon: metadata.emoji } : {})
           }
         })
       },
       async read(id) {
         const note = await getNoteById(id)
         if (!note) return null
+        const icon =
+          typeof note.emoji === 'string'
+            ? note.emoji
+            : typeof note.frontmatter.emoji === 'string'
+              ? note.frontmatter.emoji
+              : null
         return {
           id: note.id,
           title: note.title,
           content_markdown: note.content,
           tags: note.tags,
           folder_path: folderPathFromNotePath(note.path),
-          frontmatter: note.frontmatter
+          frontmatter: note.frontmatter,
+          ...(icon ? { icon } : {})
         }
       },
       async create(input) {
@@ -253,7 +294,8 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
           kind: 'note',
           id: note.id,
           name: note.title,
-          path: toolPathFromVaultRelativePath(note.path)
+          path: toolPathFromVaultRelativePath(note.path),
+          ...(note.emoji ? { icon: note.emoji } : {})
         }))
 
         return [...folderEntries, ...noteEntries]
@@ -582,13 +624,18 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         })
         return result.items
           .filter((item) => !unread_only || !item.viewedAt)
-          .map<InboxSummary>((item) => ({
-            id: item.id,
-            source: item.sourceUrl ?? item.captureSource ?? item.type,
-            title: item.title,
-            snippet: item.content ?? item.transcription ?? item.excerpt ?? '',
-            captured_at: item.createdAt.getTime()
-          }))
+          .map<InboxSummary>((item) => {
+            const visualType = inboxVisualType(item)
+            return {
+              id: item.id,
+              type: item.type,
+              ...(visualType ? { visual_type: visualType } : {}),
+              source: item.sourceUrl ?? item.captureSource ?? item.type,
+              title: item.title,
+              snippet: item.content ?? item.transcription ?? item.excerpt ?? '',
+              captured_at: item.createdAt.getTime()
+            }
+          })
       },
       async get(id) {
         return createDesktopInboxCrudHandlers().handleGet(id)
