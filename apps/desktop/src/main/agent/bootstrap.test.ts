@@ -22,7 +22,7 @@ const mocks = vi.hoisted(() => ({
   getPublicStatus: vi.fn(() => ({
     url: 'http://127.0.0.1:54321',
     ['token']: 'local-auth-value',
-    toolCount: 19
+    toolCount: 20
   })),
   detectClaudeBinary: vi.fn(async () => ({
     detected: true,

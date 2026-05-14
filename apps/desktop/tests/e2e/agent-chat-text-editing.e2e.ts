@@ -8,6 +8,7 @@ import {
   launchElectronWithWindow,
   type LaunchedElectron
 } from './utils/electron-lifecycle'
+import { getAgentComposer, openAgentChat } from './utils/agent-chat-helpers'
 import { waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
 
 const modifier = process.platform === 'darwin' ? 'Meta' : 'Control'
@@ -48,18 +49,16 @@ test.describe('Agent chat prompt native text editing', () => {
     await waitForAppReady(page)
     await waitForVaultReady(page)
 
-    await page.getByRole('button', { name: 'Day Panel' }).click()
-    await page.getByRole('tab', { name: 'Agent', exact: true }).click()
-    await page.getByRole('button', { name: 'Enable Agent chat' }).click()
+    await openAgentChat(page)
 
-    const composer = page.locator('textarea[placeholder="Ask Agent"]')
+    const composer = getAgentComposer(page)
     await expect(composer).toBeEnabled()
 
     await composer.fill('first prompt')
     await composer.focus()
     await page.keyboard.press(editShortcut('A'))
     await page.keyboard.type('replacement prompt')
-    await expect(composer).toHaveValue('replacement prompt')
+    await expect(composer).toHaveText('replacement prompt')
 
     await page.keyboard.press(editShortcut('A'))
     await page.keyboard.press(editShortcut('C'))
@@ -68,10 +67,10 @@ test.describe('Agent chat prompt native text editing', () => {
       .toBe('replacement prompt')
 
     await page.keyboard.press(editShortcut('X'))
-    await expect(composer).toHaveValue('')
+    await expect(composer).toHaveText('')
 
     await app.evaluate(({ clipboard }) => clipboard.writeText('pasted prompt'))
     await page.keyboard.press(editShortcut('V'))
-    await expect(composer).toHaveValue('pasted prompt')
+    await expect(composer).toHaveText('pasted prompt')
   })
 })

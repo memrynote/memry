@@ -13,12 +13,12 @@ describe('AgentMcpSection', () => {
       getStatus: vi.fn().mockResolvedValue({
         url: 'http://127.0.0.1:1234',
         ['token']: 'local-token-placeholder',
-        toolCount: 19
+        toolCount: 20
       }),
       ['rotateToken']: vi.fn().mockResolvedValue({
         url: 'http://127.0.0.1:1234',
         ['token']: 'rotated-local-token-placeholder',
-        toolCount: 19
+        toolCount: 20
       })
     }
   })
@@ -33,7 +33,7 @@ describe('AgentMcpSection', () => {
 
     expect(await screen.findByText('http://127.0.0.1:1234')).toBeInTheDocument()
     expect(screen.getByText('local-token-placeholder')).toBeInTheDocument()
-    expect(screen.getByText('19 tools')).toBeInTheDocument()
+    expect(screen.getByText('20 tools')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Copy URL' }))
     expect(writeTextMock).toHaveBeenCalledWith('http://127.0.0.1:1234')

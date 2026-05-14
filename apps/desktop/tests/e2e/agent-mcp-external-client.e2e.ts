@@ -16,12 +16,13 @@ type JsonRpcEnvelope = {
 async function waitForAgentStatus(page: Parameters<typeof waitForAppReady>[0]): Promise<{
   url: string
   bearerValue: string
+  toolCount: number
 }> {
   await expect
     .poll(
       async () => {
         const status = await page.evaluate(() => window.api.agentMcp.getStatus())
-        return Boolean(status.url && status.token && status.toolCount === 19)
+        return Boolean(status.url && status.token && status.toolCount > 0)
       },
       { timeout: 20_000 }
     )
@@ -31,7 +32,7 @@ async function waitForAgentStatus(page: Parameters<typeof waitForAppReady>[0]): 
   if (!status.url || !status.token) {
     throw new Error('Agent MCP status did not include URL and bearer value')
   }
-  return { url: status.url, bearerValue: status.token }
+  return { url: status.url, bearerValue: status.token, toolCount: status.toolCount }
 }
 
 async function postMcp(url: string, bearerValue: string, body: unknown): Promise<Response> {
@@ -65,7 +66,7 @@ test.describe('Agent MCP external client', () => {
     page
   }) => {
     await waitForAppReady(page)
-    const { url, bearerValue } = await waitForAgentStatus(page)
+    const { url, bearerValue, toolCount } = await waitForAgentStatus(page)
 
     const listResponse = await postMcp(url, bearerValue, {
       jsonrpc: '2.0',
@@ -76,8 +77,9 @@ test.describe('Agent MCP external client', () => {
     const listText = await listResponse.text()
     expect(listText).toContain('vault_search_notes')
     expect(listText).toContain('vault_create_note')
+    expect(listText).toContain('vault_snooze_inbox_item')
     const listEvent = findRpcEvent(parseMcpEvents(listText), 1)
-    expect((listEvent?.result as { tools?: unknown[] } | undefined)?.tools).toHaveLength(19)
+    expect((listEvent?.result as { tools?: unknown[] } | undefined)?.tools).toHaveLength(toolCount)
 
     const readResponse = await postMcp(url, bearerValue, {
       jsonrpc: '2.0',
