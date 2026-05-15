@@ -36,20 +36,16 @@ const statusLabels: Record<ToolState, string> = {
 export type ToolProps = ComponentProps<typeof Collapsible>
 
 export function Tool({ className, ...props }: ToolProps): React.JSX.Element {
-  return (
-    <Collapsible className={cn('rounded-md bg-sidebar-accent/40 text-xs', className)} {...props} />
-  )
+  return <Collapsible className={cn('rounded-md text-xs', className)} {...props} />
 }
 
 export type ToolHeaderProps = ComponentProps<typeof CollapsibleTrigger> & {
-  active?: boolean
   state: ToolState
   title?: string
   type?: string
 }
 
 export function ToolHeader({
-  active = false,
   className,
   state,
   title,
@@ -60,21 +56,17 @@ export function ToolHeader({
 
   return (
     <CollapsibleTrigger
-      className={cn('flex w-full items-center gap-2 px-3 py-1.5 text-start', className)}
+      className={cn(
+        'inline-flex max-w-full items-center gap-1.5 py-1 text-start text-muted-foreground hover:text-foreground',
+        className
+      )}
       {...props}
     >
       <span className="flex min-w-0 items-center gap-1.5">
-        <span className="shrink-0 text-muted-foreground" aria-hidden="true">
+        <span className="shrink-0" aria-hidden="true">
           &gt;
         </span>
-        <span
-          className={cn(
-            'truncate font-medium text-foreground',
-            active && 'agent-tool-label-active'
-          )}
-        >
-          {label}
-        </span>
+        <span className="truncate">{label}</span>
         <span className="sr-only">{statusLabels[state]}</span>
       </span>
     </CollapsibleTrigger>
