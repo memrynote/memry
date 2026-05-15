@@ -231,6 +231,7 @@ function TierCard({
   const isFounding = tier.emphasis === 'founding'
   const isRecommended = tier.emphasis === 'recommended'
   const isCheckoutEnabled = !!tier.checkoutPlanId
+  const isCheckoutUnavailable = isCheckoutEnabled
   const ctaLabel = isPending ? 'Opening checkout...' : tier.cta
 
   return (
@@ -304,7 +305,22 @@ function TierCard({
       </ul>
 
       <div className="mt-auto pt-8">
-        {!isCheckoutEnabled ? (
+        {isCheckoutUnavailable ? (
+          <Button
+            variant={isRecommended ? 'default' : 'outline'}
+            size="lg"
+            disabled
+            aria-label={`${tier.cta} coming soon`}
+            className={cn(
+              'w-full rounded-full',
+              isRecommended
+                ? 'bg-terracotta text-white shadow-[0_16px_34px_-14px_rgba(255,103,26,0.75)] ring-2 ring-terracotta/20'
+                : 'border-ink/15 bg-paper-alt/40 text-ink'
+            )}
+          >
+            Coming soon
+          </Button>
+        ) : !isCheckoutEnabled ? (
           <Button
             variant="outline"
             size="lg"
