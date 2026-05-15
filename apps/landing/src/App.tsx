@@ -5,6 +5,7 @@ import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { Home } from '@/pages/Home'
 import { FeaturesPage } from '@/pages/Features'
+import { NotesFeaturePage } from '@/pages/Notes'
 import { UseCasesPage } from '@/pages/UseCases'
 import { SecurityPage } from '@/pages/Security'
 import { PricingPage } from '@/pages/Pricing'
@@ -47,6 +48,7 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/features" element={<FeaturesPage />} />
+          <Route path="/features/notes" element={<NotesFeaturePage />} />
           <Route path="/use-cases" element={<UseCasesPage />} />
           <Route path="/security" element={<SecurityPage />} />
           <Route path="/pricing" element={<PricingPage />} />

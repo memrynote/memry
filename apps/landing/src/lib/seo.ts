@@ -27,6 +27,12 @@ export const PAGE_META: Record<string, PageMeta> = {
       'Inbox, notes, tasks & journal — four pillars of thought in one app. Wiki-links, Kanban, daily journal, AI clustering, all local-first.',
     path: '/features'
   },
+  notes: {
+    title: 'Notes — Memry',
+    description:
+      'A file-first, markdown-native notes app. Wiki-links, backlinks, 8 property types, version history. Plain .md files in a folder you own, local-first.',
+    path: '/features/notes'
+  },
   useCases: {
     title: 'Use Cases — Memry',
     description:
