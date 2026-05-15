@@ -94,15 +94,6 @@ const toolLabels: Record<string, string> = {
   vault_desktop_write: 'Updating app data'
 }
 
-const activeToolStatuses = new Set([
-  'approved',
-  'pending',
-  'input-streaming',
-  'approval-requested',
-  'approval-responded',
-  'input-available'
-])
-
 function formatArgs(args: unknown): string {
   return JSON.stringify(args, null, 2)
 }
@@ -318,11 +309,10 @@ export function ToolCallMessage({ message }: { message: Message }): React.JSX.El
 
   const errorText = message.content.data.error?.message
   const toolLabel = humanizeToolName(message.content.data.tool, message.content.data.args)
-  const toolActive = activeToolStatuses.has(message.content.data.status)
 
   return (
     <Tool defaultOpen={false}>
-      <ToolHeader active={toolActive} title={toolLabel} state={message.content.data.status} />
+      <ToolHeader title={toolLabel} state={message.content.data.status} />
       <ToolContent>
         <ToolText value={message.content.data.tool} />
         <ToolInput input={message.content.data.args} label={t('agentChat.toolCall.parameters')} />

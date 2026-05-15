@@ -256,8 +256,12 @@ describe('MessageStream', () => {
     expect(link).toHaveAttribute('href', 'memry://note/note-1')
     expect(link).toHaveClass('text-[#81B4E5]')
     expect(link).toHaveClass('hover:decoration-dotted')
+    expect(link).toHaveClass('items-center')
+    expect(link).not.toHaveClass('items-baseline')
     expect(link).toHaveTextContent('🎬Movies')
-    expect(link.querySelector('[data-agent-link-icon="note-custom"]')).not.toBeNull()
+    const linkIcon = link.querySelector('[data-agent-link-icon="note-custom"]')
+    expect(linkIcon).not.toBeNull()
+    expect(linkIcon?.classList.contains('align-middle')).toBe(true)
     const sourcesTrigger = screen.getByRole('button', { name: /Used 1 source/i })
     expect(sourcesTrigger).toBeInTheDocument()
 
@@ -657,7 +661,7 @@ describe('MessageStream', () => {
     expect(screen.getByText(/Planning/)).toBeInTheDocument()
   })
 
-  it('humanizes MCP tool names and marks active tool labels for the sweep treatment', () => {
+  it('humanizes MCP tool names without adding active lighting', () => {
     render(
       <MessageStream
         messages={[
@@ -678,7 +682,7 @@ describe('MessageStream', () => {
       />
     )
 
-    expect(screen.getByText('Reading note')).toHaveClass('agent-tool-label-active')
+    expect(screen.getByText('Reading note')).not.toHaveClass('agent-tool-label-active')
     expect(screen.queryByText('mcp__memry__vault_read_note')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /Reading note/i }))
@@ -686,7 +690,7 @@ describe('MessageStream', () => {
     expect(screen.getByText('mcp__memry__vault_read_note')).toBeInTheDocument()
   })
 
-  it('renders MCP tool rows borderless and toggles details from the visible label', () => {
+  it('renders MCP tool rows as subdued plain text and toggles details from the visible label', () => {
     render(
       <MessageStream
         messages={[
@@ -712,6 +716,8 @@ describe('MessageStream', () => {
 
     expect(toolRoot).not.toHaveClass('border')
     expect(toolRoot).not.toHaveClass('border-sidebar-border')
+    expect(toolRoot).not.toHaveClass('bg-sidebar-accent/40')
+    expect(trigger).toHaveClass('text-muted-foreground')
     expect(trigger.querySelector('svg')).not.toBeInTheDocument()
     expect(screen.queryByText('Parameters')).not.toBeInTheDocument()
 

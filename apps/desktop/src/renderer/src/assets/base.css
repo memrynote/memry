@@ -877,23 +877,6 @@ div.react-sigma {
       transform var(--duration-instant) var(--ease-out);
   }
 
-  .agent-tool-label-active {
-    color: transparent;
-    background: linear-gradient(
-      90deg,
-      var(--foreground) 0%,
-      var(--foreground) 35%,
-      color-mix(in srgb, var(--accent-orange) 70%, var(--foreground)) 50%,
-      var(--foreground) 65%,
-      var(--foreground) 100%
-    );
-    background-size: 220% 100%;
-    background-position: 110% 0;
-    -webkit-background-clip: text;
-    background-clip: text;
-    animation: agent-tool-label-sweep 1.45s var(--ease-in-out) infinite;
-  }
-
   .group:hover .quick-actions-reveal,
   .group:focus-within .quick-actions-reveal {
     opacity: 1;
@@ -1170,16 +1153,6 @@ div.react-sigma {
   }
 }
 
-@keyframes agent-tool-label-sweep {
-  0% {
-    background-position: 110% 0;
-  }
-
-  100% {
-    background-position: -110% 0;
-  }
-}
-
 /* Count number pulse */
 @keyframes count-pulse {
   0% {
@@ -1280,11 +1253,6 @@ div.react-sigma {
     animation: none;
     opacity: 1;
     transform: none;
-  }
-
-  .agent-tool-label-active {
-    color: var(--foreground);
-    background: none;
   }
 
   .settings-focus-heartbeat {
