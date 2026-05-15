@@ -125,10 +125,12 @@ function mapLocalDevice(row: LocalDeviceRow) {
 
 let pendingRecoveryPhrase: string | null = null
 
-export function getAndClearPendingRecoveryPhrase(): string | null {
-  const phrase = pendingRecoveryPhrase
+export function getPendingRecoveryPhrase(): string | null {
+  return pendingRecoveryPhrase
+}
+
+export function clearPendingRecoveryPhrase(): void {
   pendingRecoveryPhrase = null
-  return phrase
 }
 
 export async function performFirstDeviceSetup(setupToken: string): Promise<FirstDeviceSetupResult> {
@@ -156,6 +158,7 @@ export async function performFirstDeviceSetup(setupToken: string): Promise<First
     )
 
     pendingRecoveryPhrase = phrase
+    store.set('sync', { ...store.get('sync'), recoveryPhraseConfirmed: false })
     return { deviceId }
   } finally {
     secureCleanup(seed, salt)
@@ -215,7 +218,7 @@ const stopOtpClipboardDetection = (): void => {
 // ============================================================================
 
 export function clearAuthDeviceState(): void {
-  pendingRecoveryPhrase = null
+  clearPendingRecoveryPhrase()
   stopOtpClipboardDetection()
 }
 
@@ -383,10 +386,13 @@ export function registerAuthDeviceHandlers(): void {
   // --- Device Management Handlers ---
 
   ipcMain.handle(SYNC_CHANNELS.GET_DEVICES, async () => {
-    if (!isDatabaseInitialized()) return { devices: [], email: undefined }
+    if (!isDatabaseInitialized()) {
+      return { devices: [], email: undefined, needsRecoveryConfirmation: false }
+    }
     const db = getDatabase()
     const rows = (await db.select().from(syncDevices)) as LocalDeviceRow[]
     const syncData = store.get('sync')
+    const needsRecoveryConfirmation = syncData.recoveryPhraseConfirmed === false
     const currentDeviceId = rows.find((device) => device.isCurrentDevice)?.id
     const accessToken = await getValidAccessToken()
 
@@ -404,7 +410,8 @@ export function registerAuthDeviceHandlers(): void {
               lastSyncAt: toTimestampMs(device.lastSyncAt),
               isCurrentDevice: device.id === currentDeviceId
             })),
-            email: syncData.email
+            email: syncData.email,
+            needsRecoveryConfirmation
           }
         }
 
@@ -415,7 +422,7 @@ export function registerAuthDeviceHandlers(): void {
     }
 
     const devices = rows.map(mapLocalDevice)
-    return { devices, email: syncData.email }
+    return { devices, email: syncData.email, needsRecoveryConfirmation }
   })
 
   registerCommand(

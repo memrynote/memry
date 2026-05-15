@@ -376,6 +376,46 @@ describe('auth-oauth handlers', () => {
       expect(mockActivate).not.toHaveBeenCalled()
     })
 
+    it('keeps generated recovery phrase readable until confirmation', async () => {
+      registerAuthOAuthHandlers()
+      seedOAuthSession('phrase-state', 'http://127.0.0.1:9999/callback')
+      mockPostToServer.mockResolvedValueOnce({
+        success: true,
+        userId: 'user-1',
+        isNewUser: true,
+        needsSetup: true,
+        setupToken: 'setup-token'
+      })
+      mockGenerateRecoveryPhrase.mockResolvedValue({
+        phrase: 'repeatable recovery phrase',
+        seed: new Uint8Array(64)
+      })
+      mockGenerateSalt.mockReturnValue(new Uint8Array(16))
+      mockDeriveMasterKey.mockResolvedValue({
+        masterKey: new Uint8Array(32),
+        kdfSalt: 'salt',
+        keyVerifier: 'verifier'
+      })
+      mockGetOrCreateSigningKeyPair.mockResolvedValue({
+        publicKey: new Uint8Array(32),
+        secretKey: new Uint8Array(64)
+      })
+      mockPersistKeysAndRegisterDevice.mockResolvedValue('dev-1')
+
+      await invokeHandler(SYNC_CHANNELS.SETUP_FIRST_DEVICE, {
+        oauthToken: 'google-code',
+        provider: 'google',
+        state: 'phrase-state'
+      })
+
+      await expect(invokeHandler(SYNC_CHANNELS.GET_RECOVERY_PHRASE)).resolves.toBe(
+        'repeatable recovery phrase'
+      )
+      await expect(invokeHandler(SYNC_CHANNELS.GET_RECOVERY_PHRASE)).resolves.toBe(
+        'repeatable recovery phrase'
+      )
+    })
+
     it('returns structured errors for invalid state and missing setup token', async () => {
       registerAuthOAuthHandlers()
 
@@ -471,6 +511,42 @@ describe('auth-oauth handlers', () => {
 
       // #then
       expect(mockActivate).not.toHaveBeenCalled()
+    })
+
+    it('clears pending recovery phrase after confirmation', async () => {
+      registerAuthOAuthHandlers()
+      seedOAuthSession('confirm-clears-state', 'http://127.0.0.1:9999/callback')
+      mockPostToServer.mockResolvedValueOnce({
+        success: true,
+        userId: 'user-1',
+        isNewUser: true,
+        needsSetup: true,
+        setupToken: 'setup-token'
+      })
+      mockGenerateRecoveryPhrase.mockResolvedValue({
+        phrase: 'phrase cleared after confirmation',
+        seed: new Uint8Array(64)
+      })
+      mockGenerateSalt.mockReturnValue(new Uint8Array(16))
+      mockDeriveMasterKey.mockResolvedValue({
+        masterKey: new Uint8Array(32),
+        kdfSalt: 'salt',
+        keyVerifier: 'verifier'
+      })
+      mockGetOrCreateSigningKeyPair.mockResolvedValue({
+        publicKey: new Uint8Array(32),
+        secretKey: new Uint8Array(64)
+      })
+      mockPersistKeysAndRegisterDevice.mockResolvedValue('dev-1')
+
+      await invokeHandler(SYNC_CHANNELS.SETUP_FIRST_DEVICE, {
+        oauthToken: 'google-code',
+        provider: 'google',
+        state: 'confirm-clears-state'
+      })
+      await invokeHandler(SYNC_CHANNELS.CONFIRM_RECOVERY_PHRASE, { confirmed: true })
+
+      await expect(invokeHandler(SYNC_CHANNELS.GET_RECOVERY_PHRASE)).resolves.toBeNull()
     })
 
     it('starts sync runtime and calendar runner when no engine exists', async () => {
