@@ -92,7 +92,7 @@ describe('SidebarProvider shortcuts', () => {
     fireEvent.mouseMove(document, { clientX: 10 })
 
     expect(screen.getByTestId('sidebar-state')).toHaveTextContent('collapsed')
-    expect(screen.getByTestId('sidebar-width')).toHaveTextContent('244')
+    expect(screen.getByTestId('sidebar-width')).toHaveTextContent('171')
 
     fireEvent.mouseUp(document)
   })

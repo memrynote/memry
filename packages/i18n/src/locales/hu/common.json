@@ -376,18 +376,15 @@
       "placeholder": "Kérdezz bármit a Memry-től. @ fájl megemlítéséhez",
       "send": "Küldés",
       "providerLabel": "Agent szolgáltató: {provider}",
-      "modelLabel": "Agent modell: {model}",
-      "settingsLabel": "Agent beállítások: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "Egyéni modellazonosító",
-      "customModelPlaceholder": "Egyéni modellazonosító",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "Helyi"
       },
       "models": {
-        "default": "Alapértelmezett"
+        "default": "Alapértelmezett",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "Indoklás"
@@ -410,7 +407,23 @@
           "high": "Magas",
           "extraHigh": "Extra magas"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Nincs találat"

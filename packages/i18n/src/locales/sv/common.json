@@ -376,18 +376,15 @@
       "placeholder": "Fråga Memry vad som helst. @ för att nämna en fil",
       "send": "Skicka",
       "providerLabel": "Agent-leverantör: {provider}",
-      "modelLabel": "Agent modell: {model}",
-      "settingsLabel": "Agent-inställningar: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "Anpassad modell-ID",
-      "customModelPlaceholder": "Anpassad modell-ID",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "Lokal"
       },
       "models": {
-        "default": "Standard"
+        "default": "Standard",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "Resonemang"
@@ -410,7 +407,23 @@
           "high": "Hög",
           "extraHigh": "Extra hög"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Inga matchningar"

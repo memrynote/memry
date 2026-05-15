@@ -141,11 +141,11 @@ describe('AISettings', () => {
   it('keeps agent provider and MCP controls collapsed inside AI settings', async () => {
     render(<AISettings />)
 
-    await waitFor(() => expect(screen.getByText('Agent Providers')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Agent Permissions')).toBeInTheDocument())
     expect(screen.queryByTestId('agent-providers-panel')).not.toBeInTheDocument()
     expect(screen.queryByTestId('agent-mcp-panel')).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: /Agent Providers/ }))
+    await userEvent.click(screen.getByRole('button', { name: /Agent Permissions/ }))
     expect(screen.getByTestId('agent-providers-panel')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: /Agent MCP/ }))

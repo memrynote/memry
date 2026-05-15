@@ -5,6 +5,7 @@ import type {
   AgentEvent,
   AgentBackendId,
   AgentBackendOptions,
+  AgentTurnPermissions,
   ApproveToolRequest,
   AttachmentInput,
   BackendStatusesResponse,
@@ -68,6 +69,7 @@ interface AgentContextValue {
     sourceWindowId: string
     text: string
     backendOptions: AgentBackendOptions
+    permissions?: AgentTurnPermissions
     attachments?: AttachmentInput[]
   }) => Promise<void>
   cancelTurn: (conversationId: string) => Promise<void>
@@ -171,6 +173,7 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
       sourceWindowId: string
       text: string
       backendOptions: AgentBackendOptions
+      permissions?: AgentTurnPermissions
       attachments?: AttachmentInput[]
     }) => {
       dispatch({ type: 'set_in_flight', conversationId: input.conversationId, inFlight: true })
@@ -182,6 +185,7 @@ export function AgentProvider({ children }: { children: ReactNode }): React.JSX.
           sourceWindowId: input.sourceWindowId,
           text: input.text,
           backendOptions: input.backendOptions,
+          permissions: input.permissions,
           attachments: input.attachments ?? []
         })
         if (!result.ok) {

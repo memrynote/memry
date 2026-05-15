@@ -1226,18 +1226,27 @@
   },
   "agentProviders": {
     "header": {
-      "title": "Agent Providers",
-      "subtitle": "Configure local OpenAI-compatible models for Agent Chat."
+      "title": "Agent Permissions",
+      "subtitle": "Choose default access, confirmations, and local providers for Agent Chat."
     },
     "groups": {
       "local": "Local OpenAI-compatible provider",
       "actions": "Connection checks"
     },
-    "approval": {
-      "label": "Tool confirmations",
-      "description": "Choose whether write tools run automatically or wait for approval in chat.",
-      "alwaysAccept": "Always accept",
-      "ask": "Ask first"
+    "permissions": {
+      "group": "Agent permissions",
+      "access": {
+        "label": "Default access",
+        "description": "Sets the starting access mode for new Agent turns.",
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "confirm": {
+        "label": "Confirm actions",
+        "description": "Choose whether tool calls run automatically or wait for approval in chat.",
+        "alwaysAllow": "Always allow",
+        "askBeforeChanges": "Ask before changes"
+      }
     },
     "presets": {
       "ollama": "Ollama",

@@ -376,18 +376,15 @@
       "placeholder": "Pregunta cualquier cosa a Memry. @ para mencionar un archivo",
       "send": "Enviar",
       "providerLabel": "Proveedor Agent: {provider}",
-      "modelLabel": "Agent modelo: {model}",
-      "settingsLabel": "Configuración de Agent: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "ID de modelo personalizado",
-      "customModelPlaceholder": "ID de modelo personalizado",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "Locales"
       },
       "models": {
-        "default": "Predeterminado"
+        "default": "Predeterminado",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "Razonamiento"
@@ -410,7 +407,23 @@
           "high": "Alto",
           "extraHigh": "Extra Alto"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "No hay coincidencias"

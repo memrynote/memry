@@ -376,18 +376,15 @@
       "placeholder": "Memry’ye her şeyi sorun. Dosyadan bahsetmek için @ kullanın",
       "send": "Gönder",
       "providerLabel": "Agent sağlayıcısı: {provider}",
-      "modelLabel": "Agent modeli: {model}",
-      "settingsLabel": "Agent ayarları: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "Özel model kimliği",
-      "customModelPlaceholder": "Özel model kimliği",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "Yerel"
       },
       "models": {
-        "default": "Varsayılan"
+        "default": "Varsayılan",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "Akıl yürütme"
@@ -410,7 +407,23 @@
           "high": "Yüksek",
           "extraHigh": "Ekstra Yüksek"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Eşleşme yok"

@@ -91,6 +91,10 @@ describe('Composer', () => {
               { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini' }
             ]
     }))
+    vi.mocked(window.api.agent.getPreferences).mockResolvedValue({
+      accessMode: 'vault_only',
+      toolApprovalMode: 'always_accept'
+    })
   })
 
   it('submits on Enter', async () => {
@@ -153,6 +157,75 @@ describe('Composer', () => {
     expect(screen.getByRole('menuitem', { name: /local/i })).not.toHaveAttribute('data-disabled')
   })
 
+  it('passes selected access mode and web search intent with the prompt', async () => {
+    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+
+    const permissionsTrigger = await screen.findByRole('button', {
+      name: 'Agent permissions: Vault only, web search Off'
+    })
+    expect(permissionsTrigger).toHaveClass('size-8')
+    expect(
+      screen.queryByRole('button', { name: 'Agent access: Vault only' })
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Web search: Off' })).not.toBeInTheDocument()
+
+    fireEvent.pointerDown(permissionsTrigger)
+    expect(screen.getByText('Permissions')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Computer access' }))
+    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Web search' }))
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' })
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', {
+          name: 'Agent permissions: Computer access, web search On'
+        })
+      ).toBeInTheDocument()
+    })
+
+    expect(
+      screen.queryByRole('button', {
+        name: 'Agent permissions: Computer access, web search On'
+      })
+    ).toHaveClass('size-8')
+
+    await setPromptText('check the launch page')
+    await submitPrompt()
+
+    expect(mockSendTurn).toHaveBeenCalledWith({
+      conversationId: 'conversation-1',
+      sourceWindowId: 'window-1',
+      text: 'check the launch page',
+      attachments: [],
+      backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh', model: 'opus' },
+      permissions: { accessMode: 'computer_access', webSearchEnabled: true }
+    })
+  })
+
+  it('combines model and reasoning controls into one compact menu', async () => {
+    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
+
+    const modelSettingsTrigger = await screen.findByRole('button', {
+      name: 'Agent model settings: Opus, Extra High'
+    })
+    expect(modelSettingsTrigger).toHaveClass('max-w-36')
+    expect(screen.queryByRole('button', { name: 'Agent model: Opus' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Agent settings: Extra High' })
+    ).not.toBeInTheDocument()
+
+    fireEvent.pointerDown(modelSettingsTrigger)
+
+    expect(screen.getByRole('menu')).toHaveClass('floating-content-motion')
+    expect(screen.getByText('Model')).toBeInTheDocument()
+    expect(await screen.findByRole('menuitem', { name: 'Sonnet' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Custom model ID')).not.toBeInTheDocument()
+    expect(screen.getByText('Reasoning')).toBeInTheDocument()
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Extra High (default)' })).toHaveAttribute(
+      'aria-checked',
+      'true'
+    )
+  })
+
   it('disables unavailable CLI providers from the backend status map', () => {
     mockUseAgentOptional.mockReturnValue({
       state: {
@@ -183,12 +256,13 @@ describe('Composer', () => {
     render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
 
     const settingsTrigger = screen.getByRole('button', {
-      name: 'Agent settings: Extra High'
+      name: 'Agent model settings: Opus, Extra High'
     })
     expect(settingsTrigger).toHaveClass('rounded-full')
 
     fireEvent.pointerDown(settingsTrigger)
 
+    expect(screen.getByText('Model')).toBeInTheDocument()
     expect(screen.getByText('Reasoning')).toBeInTheDocument()
     expect(screen.getByRole('menuitemcheckbox', { name: 'Extra High (default)' })).toHaveAttribute(
       'aria-checked',
@@ -201,7 +275,7 @@ describe('Composer', () => {
 
     expect(
       screen.getByRole('button', {
-        name: 'Agent settings: Low'
+        name: 'Agent model settings: Opus, Low'
       })
     ).toBeInTheDocument()
   })
@@ -209,7 +283,9 @@ describe('Composer', () => {
   it('passes the selected Claude effort with the prompt', async () => {
     render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent settings: Extra High' }))
+    fireEvent.pointerDown(
+      screen.getByRole('button', { name: 'Agent model settings: Opus, Extra High' })
+    )
     fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Low' }))
 
     await setPromptText('quick answer')
@@ -227,7 +303,9 @@ describe('Composer', () => {
   it('passes the selected Claude model with the prompt', async () => {
     render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
 
-    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Agent model: Opus' }))
+    fireEvent.pointerDown(
+      await screen.findByRole('button', { name: 'Agent model settings: Opus, Extra High' })
+    )
     expect(screen.queryByRole('menuitem', { name: 'Default' })).not.toBeInTheDocument()
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Sonnet' }))
 
@@ -266,10 +344,10 @@ describe('Composer', () => {
 
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent provider: Claude' }))
     fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
-    await screen.findByRole('button', { name: 'Agent model: GPT-5.5' })
+    await screen.findByRole('button', { name: 'Agent model settings: GPT-5.5, Medium' })
 
     const settingsTrigger = screen.getByRole('button', {
-      name: 'Agent settings: Medium'
+      name: 'Agent model settings: GPT-5.5, Medium'
     })
     expect(settingsTrigger).toHaveClass('rounded-full')
 
@@ -291,7 +369,9 @@ describe('Composer', () => {
 
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent provider: Claude' }))
     fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent settings: Medium' }))
+    fireEvent.pointerDown(
+      screen.getByRole('button', { name: 'Agent model settings: GPT-5.5, Medium' })
+    )
     fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'High' }))
 
     await setPromptText('create a task')
@@ -311,7 +391,9 @@ describe('Composer', () => {
 
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent provider: Claude' }))
     fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
-    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Agent model: GPT-5.5' }))
+    fireEvent.pointerDown(
+      await screen.findByRole('button', { name: 'Agent model settings: GPT-5.5, Medium' })
+    )
     expect(screen.queryByRole('menuitem', { name: 'Default' })).not.toBeInTheDocument()
     fireEvent.click(await screen.findByRole('menuitem', { name: 'GPT-5.4' }))
 
@@ -349,7 +431,9 @@ describe('Composer', () => {
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Agent provider: Claude' }))
     fireEvent.click(screen.getByRole('menuitem', { name: /codex/i }))
 
-    expect(await screen.findByRole('button', { name: 'Agent model: GPT-5.6' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: 'Agent model settings: GPT-5.6, Medium' })
+    ).toBeInTheDocument()
 
     await setPromptText('create a task')
     await submitPrompt()
@@ -360,31 +444,6 @@ describe('Composer', () => {
       text: 'create a task',
       attachments: [],
       backendOptions: { backend: 'codex_cli', reasoningEffort: 'medium', model: 'gpt-5.6' }
-    })
-  })
-
-  it('allows a custom Claude model id', async () => {
-    render(<Composer conversationId="conversation-1" sourceWindowId="window-1" />)
-
-    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Agent model: Opus' }))
-    fireEvent.change(screen.getByLabelText('Custom model ID'), {
-      target: { value: 'claude-sonnet-4-6' }
-    })
-    fireEvent.keyDown(screen.getByLabelText('Custom model ID'), { key: 'Enter' })
-
-    await setPromptText('custom model')
-    await submitPrompt()
-
-    expect(mockSendTurn).toHaveBeenCalledWith({
-      conversationId: 'conversation-1',
-      sourceWindowId: 'window-1',
-      text: 'custom model',
-      attachments: [],
-      backendOptions: {
-        backend: 'claude_cli',
-        claudeEffort: 'xhigh',
-        model: 'claude-sonnet-4-6'
-      }
     })
   })
 
@@ -412,7 +471,9 @@ describe('Composer', () => {
   it('creates a new conversation with selected backend model metadata', async () => {
     render(<Composer conversationId={null} sourceWindowId="window-1" />)
 
-    fireEvent.pointerDown(await screen.findByRole('button', { name: 'Agent model: Opus' }))
+    fireEvent.pointerDown(
+      await screen.findByRole('button', { name: 'Agent model settings: Opus, Extra High' })
+    )
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Sonnet' }))
 
     await setPromptText('draft a plan')

@@ -376,18 +376,15 @@
       "placeholder": "ถาม Memry ได้ทุกเรื่อง @ เพื่อกล่าวถึงไฟล์",
       "send": "ส่ง",
       "providerLabel": "ผู้ให้บริการ Agent: {provider}",
-      "modelLabel": "รุ่น Agent: {model}",
-      "settingsLabel": "การตั้งค่า Agent: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "รหัสโมเดลที่กำหนดเอง",
-      "customModelPlaceholder": "รหัสโมเดลที่กำหนดเอง",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "ท้องถิ่น"
       },
       "models": {
-        "default": "ค่าเริ่มต้น"
+        "default": "ค่าเริ่มต้น",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "การใช้เหตุผล"
@@ -410,7 +407,23 @@
           "high": "สูง",
           "extraHigh": "สูงพิเศษ"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "ไม่มีการแข่งขัน"

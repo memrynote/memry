@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type {
+  AgentAccessMode,
   AgentLocalProviderPreset,
   AgentLocalProviderProbeResult,
   AgentLocalProviderSettings,
@@ -109,6 +110,12 @@ export function AgentProvidersSection({
     setPreferences(saved)
   }, [])
 
+  const changeAccessMode = useCallback(async (accessMode: AgentAccessMode) => {
+    setPreferences((current) => (current ? { ...current, accessMode } : current))
+    const saved = await window.api.agent.setPreferences({ accessMode })
+    setPreferences(saved)
+  }, [])
+
   const loadModels = useCallback(async () => {
     setBusy('models')
     try {
@@ -149,10 +156,31 @@ export function AgentProvidersSection({
         />
       )}
 
-      <SettingsGroup label={t('agentProviders.groups.local')}>
+      <SettingsGroup label={t('agentProviders.permissions.group')}>
         <SettingRow
-          label={t('agentProviders.approval.label')}
-          description={t('agentProviders.approval.description')}
+          label={t('agentProviders.permissions.access.label')}
+          description={t('agentProviders.permissions.access.description')}
+        >
+          <Select
+            value={preferences.accessMode}
+            onValueChange={(value) => void changeAccessMode(value as AgentAccessMode)}
+          >
+            <SelectTrigger className="h-8 w-44 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="vault_only">
+                {t('agentProviders.permissions.access.vaultOnly')}
+              </SelectItem>
+              <SelectItem value="computer_access">
+                {t('agentProviders.permissions.access.computerAccess')}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </SettingRow>
+        <SettingRow
+          label={t('agentProviders.permissions.confirm.label')}
+          description={t('agentProviders.permissions.confirm.description')}
         >
           <Select
             value={preferences.toolApprovalMode}
@@ -163,12 +191,17 @@ export function AgentProvidersSection({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="always_accept">
-                {t('agentProviders.approval.alwaysAccept')}
+                {t('agentProviders.permissions.confirm.alwaysAllow')}
               </SelectItem>
-              <SelectItem value="ask">{t('agentProviders.approval.ask')}</SelectItem>
+              <SelectItem value="ask">
+                {t('agentProviders.permissions.confirm.askBeforeChanges')}
+              </SelectItem>
             </SelectContent>
           </Select>
         </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup label={t('agentProviders.groups.local')}>
         <SettingRow label={t('agentProviders.fields.preset.label')}>
           <Select
             value={settings.preset}

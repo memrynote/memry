@@ -6,6 +6,63 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@keyframes floating-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes floating-content-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(3px) scale(0.99);
+  }
+}
+
+.floating-content-motion {
+  transform-origin: var(
+    --radix-dropdown-menu-content-transform-origin,
+    var(
+      --radix-popover-content-transform-origin,
+      var(
+        --radix-select-content-transform-origin,
+        var(
+          --radix-context-menu-content-transform-origin,
+          var(--radix-hover-card-content-transform-origin, top center)
+        )
+      )
+    )
+  );
+  will-change: opacity, transform;
+}
+
+.floating-content-motion[data-state='open'] {
+  animation: floating-content-in 160ms var(--ease-out) both;
+}
+
+.floating-content-motion[data-state='closed'] {
+  animation: floating-content-out 90ms var(--ease-in) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-content-motion[data-state='open'],
+  .floating-content-motion[data-state='closed'] {
+    animation: none;
+    transform: none;
+  }
+}
+
 /* ===== BLOCKNOTE EDITOR CUSTOMIZATION ===== */
 /* Override BlockNote's CSS variables + defaults to match app theme.
    Uses CSS inheritance (not a wildcard * rule) so Shiki inline token styles still work. */
