@@ -23,20 +23,37 @@ describe('agent preferences', () => {
     storeState.agent = {}
   })
 
-  it('defaults tool approval to always accept', () => {
-    expect(getAgentPreferences()).toEqual({ toolApprovalMode: 'always_accept' })
+  it('defaults agent permissions to vault access with automatic confirmations', () => {
+    expect(getAgentPreferences()).toEqual({
+      accessMode: 'vault_only',
+      toolApprovalMode: 'always_accept'
+    })
   })
 
   it('persists manual tool approval mode', () => {
     expect(setAgentPreferences({ toolApprovalMode: 'ask' })).toEqual({
+      accessMode: 'vault_only',
       toolApprovalMode: 'ask'
     })
-    expect(getAgentPreferences()).toEqual({ toolApprovalMode: 'ask' })
+    expect(getAgentPreferences()).toEqual({
+      accessMode: 'vault_only',
+      toolApprovalMode: 'ask'
+    })
+  })
+
+  it('persists default access mode', () => {
+    expect(setAgentPreferences({ accessMode: 'computer_access' })).toEqual({
+      accessMode: 'computer_access',
+      toolApprovalMode: 'always_accept'
+    })
   })
 
   it('keeps the current preference when an empty update is saved', () => {
     setAgentPreferences({ toolApprovalMode: 'ask' })
 
-    expect(setAgentPreferences({})).toEqual({ toolApprovalMode: 'ask' })
+    expect(setAgentPreferences({})).toEqual({
+      accessMode: 'vault_only',
+      toolApprovalMode: 'ask'
+    })
   })
 })

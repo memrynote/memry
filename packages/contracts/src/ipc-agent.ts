@@ -70,6 +70,17 @@ export type AgentCliBackendId = z.infer<typeof AgentCliBackendIdSchema>
 export const CodexReasoningEffortSchema = z.enum(['low', 'medium', 'high', 'xhigh'])
 export type CodexReasoningEffort = z.infer<typeof CodexReasoningEffortSchema>
 
+export const AgentAccessModeSchema = z.enum(['vault_only', 'computer_access'])
+export type AgentAccessMode = z.infer<typeof AgentAccessModeSchema>
+
+export const AgentTurnPermissionsSchema = z
+  .object({
+    accessMode: AgentAccessModeSchema.default('vault_only'),
+    webSearchEnabled: z.boolean().default(false)
+  })
+  .strict()
+export type AgentTurnPermissions = z.infer<typeof AgentTurnPermissionsSchema>
+
 export const AgentLocalProviderPresetSchema = z.enum(['ollama', 'lm_studio', 'llama_cpp', 'custom'])
 export type AgentLocalProviderPreset = z.infer<typeof AgentLocalProviderPresetSchema>
 
@@ -129,6 +140,7 @@ export type AgentToolApprovalMode = z.infer<typeof AgentToolApprovalModeSchema>
 
 export const AgentPreferencesSchema = z
   .object({
+    accessMode: AgentAccessModeSchema.default('vault_only'),
     toolApprovalMode: AgentToolApprovalModeSchema.default('always_accept')
   })
   .strict()
@@ -136,6 +148,7 @@ export type AgentPreferences = z.infer<typeof AgentPreferencesSchema>
 
 export const AgentPreferencesUpdateSchema = z
   .object({
+    accessMode: AgentAccessModeSchema.optional(),
     toolApprovalMode: AgentToolApprovalModeSchema.optional()
   })
   .strict()
@@ -402,7 +415,8 @@ export const SendTurnRequestSchema = z.object({
   sourceWindowId: z.string(),
   text: z.string(),
   attachments: z.array(AttachmentInputSchema),
-  backendOptions: AgentBackendOptionsSchema
+  backendOptions: AgentBackendOptionsSchema,
+  permissions: AgentTurnPermissionsSchema.optional()
 })
 export type SendTurnRequest = z.infer<typeof SendTurnRequestSchema>
 

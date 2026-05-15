@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  AgentAccessModeSchema,
   AgentBackendIdSchema,
   AgentBackendModelListSchema,
   BackendStatusesResponseSchema,
@@ -155,6 +156,23 @@ describe('agent IPC schemas', () => {
     ).toBe(false)
   })
 
+  it('validates per-turn agent permissions', () => {
+    expect(AgentAccessModeSchema.safeParse('vault_only').success).toBe(true)
+    expect(AgentAccessModeSchema.safeParse('computer_access').success).toBe(true)
+    expect(AgentAccessModeSchema.safeParse('vault_web').success).toBe(false)
+
+    expect(
+      SendTurnRequestSchema.safeParse({
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'search this',
+        attachments: [],
+        backendOptions: { backend: 'claude_cli', claudeEffort: 'xhigh' },
+        permissions: { accessMode: 'vault_only', webSearchEnabled: true }
+      }).success
+    ).toBe(true)
+  })
+
   it('validates stored message attachments for inbox and calendar refs', () => {
     for (const kind of ['inbox', 'calendar_event'] as const) {
       expect(
@@ -271,9 +289,12 @@ describe('agent IPC schemas', () => {
     expect(AgentToolApprovalModeSchema.safeParse('always_accept').success).toBe(true)
     expect(AgentToolApprovalModeSchema.safeParse('ask').success).toBe(true)
     expect(AgentToolApprovalModeSchema.safeParse('prompt').success).toBe(false)
-    expect(AgentPreferencesSchema.safeParse({ toolApprovalMode: 'always_accept' }).success).toBe(
-      true
-    )
+    expect(
+      AgentPreferencesSchema.safeParse({
+        accessMode: 'vault_only',
+        toolApprovalMode: 'always_accept'
+      }).success
+    ).toBe(true)
     expect(AgentPreferencesUpdateSchema.parse({})).toEqual({})
 
     expect(

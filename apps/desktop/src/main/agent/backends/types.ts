@@ -3,6 +3,7 @@ import type {
   AgentBackendOptions,
   AgentBackendStatus,
   AgentLocalProviderProbeResult,
+  AgentTurnPermissions,
   ClaudeEffort,
   CodexReasoningEffort
 } from '@memry/contracts/ipc-agent'
@@ -23,6 +24,7 @@ export interface AgentBackendRunInput {
   conversationId: string
   windowId: string
   options: AgentBackendOptions
+  permissions?: AgentTurnPermissions
   purpose?: 'turn' | 'summary' | 'title'
 }
 
@@ -42,6 +44,7 @@ export interface ClaudeCliSpawnInput {
   windowId: string
   effort: ClaudeEffort
   model?: string
+  permissions?: AgentTurnPermissions
   purpose?: 'turn' | 'summary' | 'title'
 }
 
@@ -51,6 +54,7 @@ export interface CodexCliSpawnInput {
   windowId: string
   reasoningEffort: CodexReasoningEffort
   model?: string
+  permissions?: AgentTurnPermissions
   purpose?: 'turn' | 'summary' | 'title'
 }
 
