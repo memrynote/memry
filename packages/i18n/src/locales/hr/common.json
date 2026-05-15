@@ -376,18 +376,15 @@
       "placeholder": "Pitajte Memry bilo što. @ za spominjanje datoteke",
       "send": "Pošalji",
       "providerLabel": "Agent pružatelj: {provider}",
-      "modelLabel": "Model Agent: {model}",
-      "settingsLabel": "Agent postavke: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "ID prilagođenog modela",
-      "customModelPlaceholder": "ID prilagođenog modela",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "Lokalno"
       },
       "models": {
-        "default": "Zadano"
+        "default": "Zadano",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "Obrazloženje"
@@ -410,7 +407,23 @@
           "high": "Visoko",
           "extraHigh": "Ekstra visoko"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Nema podudaranja"

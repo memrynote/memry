@@ -376,18 +376,15 @@
       "placeholder": "Ρωτήστε το Memry οτιδήποτε. @ για αναφορά αρχείου",
       "send": "Αποστολή",
       "providerLabel": "Agent πάροχος: {provider}",
-      "modelLabel": "Agent μοντέλο: {model}",
-      "settingsLabel": "Ρυθμίσεις Agent: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "Αναγνωριστικό προσαρμοσμένου μοντέλου",
-      "customModelPlaceholder": "Αναγνωριστικό προσαρμοσμένου μοντέλου",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "Τοπικό"
       },
       "models": {
-        "default": "Προεπιλογή"
+        "default": "Προεπιλογή",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "Συλλογισμός"
@@ -410,7 +407,23 @@
           "high": "Ψηλά",
           "extraHigh": "Πολύ υψηλό"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Δεν υπάρχουν αντιστοιχίες"

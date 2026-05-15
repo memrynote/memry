@@ -376,18 +376,15 @@
       "placeholder": "向 Memry 詢問任何事。@ 可提及檔案",
       "send": "傳送",
       "providerLabel": "Agent 提供者：{provider}",
-      "modelLabel": "Agent 型號：{model}",
-      "settingsLabel": "Agent 設定：{settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "自訂模型 ID",
-      "customModelPlaceholder": "自訂模型 ID",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "本地"
       },
       "models": {
-        "default": "預設"
+        "default": "預設",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "推理"
@@ -410,7 +407,23 @@
           "high": "高",
           "extraHigh": "超高"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "沒有符合項"

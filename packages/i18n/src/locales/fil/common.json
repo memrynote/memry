@@ -376,18 +376,15 @@
       "placeholder": "Tanungin ang Memry ng kahit ano. @ para banggitin ang file",
       "send": "Ipadala",
       "providerLabel": "Tagapagbigay ng Agent: {provider}",
-      "modelLabel": "Agent modelo: {model}",
-      "settingsLabel": "Mga setting ng Agent: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "Custom na ID ng modelo",
-      "customModelPlaceholder": "Custom na ID ng modelo",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "Lokal"
       },
       "models": {
-        "default": "Paunang setting"
+        "default": "Paunang setting",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "Pangangatwiran"
@@ -410,7 +407,23 @@
           "high": "Mataas",
           "extraHigh": "Napakataas"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Walang tugma"

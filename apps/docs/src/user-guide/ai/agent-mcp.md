@@ -12,7 +12,9 @@ active turns, clears pending tool approvals, and restarts the Agent services for
 The same MCP endpoint can also be copied into other desktop AI clients for vault read tools.
 
 Open [Settings -> AI Assistant -> Agent MCP](/user-guide/settings#agent-mcp) to copy the current
-endpoint and bearer token.
+endpoint and bearer token. Open
+[Settings -> AI Assistant -> Agent Permissions](/user-guide/settings#agent-permissions) to set the
+default Agent Chat access mode and action-confirmation behavior.
 
 ## Agent Chat
 
@@ -27,7 +29,7 @@ that workspace view. Assistant responses render as full-width text in both the s
 tabs instead of bordered bubbles, with text aligned to the prompt input. For Claude CLI, Memry checks
 that `claude` is available on `PATH`, that it reports version `2.1.0` or newer, and that the Agent
 disclosure has been accepted. For local models, configure a compatible server in
-[Settings -> AI Assistant -> Agent Providers](/user-guide/settings#agent-providers) first.
+[Settings -> AI Assistant -> Agent Permissions](/user-guide/settings#agent-permissions) first.
 If the global AI switch is off in [Settings -> AI](/user-guide/settings#ai), the Agent tab and Agent
 MCP current-note bridge are hidden and inactive.
 
@@ -76,7 +78,13 @@ exposing Memry MCP tools.
 The prompt bar shows the selected agent provider. The provider is pinned per conversation; changing
 it after messages exist updates the conversation and records the switch in the chat history. Claude
 and Codex expose prompt-time reasoning effort settings, with provider-specific settings shown only
-for the active provider.
+for the active provider. The same compact prompt bar has a per-turn permissions menu. It starts from
+your default Agent Permissions setting, then lets you send a single turn as **Vault only** or
+**Computer access**, and optionally allow web search for that turn.
+
+**Vault only** keeps the CLI backend constrained to Memry vault tools. **Computer access** gives the
+backend broader local CLI access for that turn. Web search is passed through only when the selected
+backend supports it.
 
 Claude and Codex conversations also have a per-conversation model selector. Memry starts Claude on
 `opus` and Codex on the highest suggested GPT version, then passes the selected model through to the
@@ -157,8 +165,8 @@ Read tools are available to Agent Chat and external MCP clients:
 - `vault_get_tags`
 - `vault_desktop_read`
 
-Create, update, delete, archive, move, and reorder tools require Agent Chat context and explicit
-approval:
+Create, update, delete, archive, move, and reorder tools require Agent Chat context. They can be
+auto-accepted or shown for inline approval depending on the Agent Permissions setting:
 
 - `vault_create_note`
 - `vault_rename_note`

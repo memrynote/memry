@@ -437,6 +437,14 @@ const createMockApi = () => ({
       apiKeyConfigured: false,
       allowNonLoopback: false
     }),
+    getPreferences: vi.fn().mockResolvedValue({
+      accessMode: 'vault_only',
+      toolApprovalMode: 'always_accept'
+    }),
+    setPreferences: vi.fn().mockImplementation(async (input) => ({
+      accessMode: input?.accessMode ?? 'vault_only',
+      toolApprovalMode: input?.toolApprovalMode ?? 'always_accept'
+    })),
     listLocalModels: vi.fn().mockResolvedValue({ models: [] }),
     testLocalProvider: vi.fn().mockResolvedValue({
       connected: false,

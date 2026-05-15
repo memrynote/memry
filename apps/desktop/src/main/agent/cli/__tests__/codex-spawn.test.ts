@@ -59,6 +59,41 @@ describe('spawnCodexTurn', () => {
     expect(options.env.MEMRY_AGENT_WINDOW).toBe('window-1')
   })
 
+  it('passes native web search without opening the filesystem sandbox', async () => {
+    const fakeProc = makeFakeProc()
+    vi.mocked(spawn).mockReturnValue(fakeProc)
+
+    await spawnCodexTurn({
+      binaryPath: '/opt/homebrew/bin/codex',
+      prompt: 'search for this',
+      reasoningEffort: 'medium',
+      permissions: { accessMode: 'vault_only', webSearchEnabled: true }
+    })
+
+    const args = vi.mocked(spawn).mock.calls[0][1] as string[]
+    expect(args).toContain('--search')
+    expect(args).toContain('--disable')
+    expect(args).toContain('shell_tool')
+    expect(args[args.indexOf('--sandbox') + 1]).toBe('read-only')
+  })
+
+  it('uses danger-full-access and native tools when computer access is requested', async () => {
+    const fakeProc = makeFakeProc()
+    vi.mocked(spawn).mockReturnValue(fakeProc)
+
+    await spawnCodexTurn({
+      binaryPath: '/opt/homebrew/bin/codex',
+      prompt: 'inspect files',
+      reasoningEffort: 'medium',
+      permissions: { accessMode: 'computer_access', webSearchEnabled: false }
+    })
+
+    const args = vi.mocked(spawn).mock.calls[0][1] as string[]
+    expect(args).not.toContain('shell_tool')
+    expect(args).not.toContain('apply_patch_freeform')
+    expect(args[args.indexOf('--sandbox') + 1]).toBe('danger-full-access')
+  })
+
   it('passes the prompt as the final exec argument', async () => {
     const fakeProc = makeFakeProc()
     vi.mocked(spawn).mockReturnValue(fakeProc)

@@ -718,7 +718,7 @@ describe('MessageStream', () => {
     expect(toolRoot).not.toHaveClass('border-sidebar-border')
     expect(toolRoot).not.toHaveClass('bg-sidebar-accent/40')
     expect(trigger).toHaveClass('text-muted-foreground')
-    expect(trigger.querySelector('svg')).not.toBeInTheDocument()
+    expect(trigger.querySelector('svg')).toBeInTheDocument()
     expect(screen.queryByText('Parameters')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('Creating note'))

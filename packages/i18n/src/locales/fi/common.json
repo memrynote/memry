@@ -376,18 +376,15 @@
       "placeholder": "Kysy Memryltä mitä tahansa. @ tiedoston mainitsemiseen",
       "send": "Lähetä",
       "providerLabel": "Agent -toimittaja: {provider}",
-      "modelLabel": "Agent malli: {model}",
-      "settingsLabel": "Agent-asetukset: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "Mukautetun mallin tunnus",
-      "customModelPlaceholder": "Mukautetun mallin tunnus",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "Paikallinen"
       },
       "models": {
-        "default": "Oletus"
+        "default": "Oletus",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "Päättely"
@@ -410,7 +407,23 @@
           "high": "Korkea",
           "extraHigh": "Erittäin korkea"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Ei osumia"

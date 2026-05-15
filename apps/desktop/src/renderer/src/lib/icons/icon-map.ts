@@ -2,6 +2,7 @@ import {
   // Direct matches
   AlertCircleIcon,
   AlignLeftIcon,
+  AiWebBrowsingIcon,
   Archive03Icon,
   ArchiveIcon,
   ArrowDown01Icon,
@@ -540,6 +541,7 @@ export const Paperclip = createIcon(Attachment01Icon)
 export const Smile = createIcon(SmileIcon)
 export const Sparkles = createIcon(SparklesIcon)
 export const Bot = createIcon(BotIcon)
+export const AiWebBrowsing = createIcon(AiWebBrowsingIcon)
 export const Claude = createIcon(ClaudeIcon)
 export const ChatGpt = createIcon(ChatGptIcon)
 export const Computer = createIcon(ComputerIcon)

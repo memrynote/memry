@@ -124,6 +124,9 @@ describe('TasksTabBar', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /writing/i }))
 
+    expect(document.body.querySelector('[data-state="open"][data-side]')).toHaveClass(
+      'floating-content-motion'
+    )
     expect(screen.getAllByText('All projects').length).toBeGreaterThan(0)
     expect(screen.getByText('Work')).toBeInTheDocument()
     expect(screen.queryByText('Archive')).not.toBeInTheDocument()

@@ -376,18 +376,15 @@
       "placeholder": "Memry에게 무엇이든 물어보세요. @로 파일 멘션",
       "send": "보내기",
       "providerLabel": "Agent 공급자: {provider}",
-      "modelLabel": "Agent 모델: {model}",
-      "settingsLabel": "Agent 설정: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "맞춤 모델 ID",
-      "customModelPlaceholder": "맞춤 모델 ID",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "로컬"
       },
       "models": {
-        "default": "기본값"
+        "default": "기본값",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "추론"
@@ -410,7 +407,23 @@
           "high": "높음",
           "extraHigh": "매우 높음"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "일치하는 항목이 없습니다."

@@ -27,6 +27,7 @@ export interface SyncStoreData {
 
 export interface AgentStoreData {
   disclosureAccepted?: boolean
+  accessMode?: 'vault_only' | 'computer_access'
   toolApprovalMode?: 'always_accept' | 'ask'
   localProvider?: {
     preset?: 'ollama' | 'lm_studio' | 'llama_cpp' | 'custom'

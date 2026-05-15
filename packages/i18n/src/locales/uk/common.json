@@ -376,18 +376,15 @@
       "placeholder": "Запитайте Memry про що завгодно. @, щоб згадати файл",
       "send": "Надіслати",
       "providerLabel": "Постачальник Agent: {provider}",
-      "modelLabel": "Модель Agent: {model}",
-      "settingsLabel": "Налаштування Agent: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "Спеціальний ідентифікатор моделі",
-      "customModelPlaceholder": "Спеціальний ідентифікатор моделі",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "Місцевий"
       },
       "models": {
-        "default": "За замовчуванням"
+        "default": "За замовчуванням",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "Міркування"
@@ -410,7 +407,23 @@
           "high": "Високий",
           "extraHigh": "Надвисокий"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Немає збігів"
