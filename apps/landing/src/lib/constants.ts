@@ -1,4 +1,13 @@
 import {
+  AiBrain03Icon,
+  Book02Icon,
+  Calendar01Icon,
+  CheckmarkCircle04Icon,
+  InboxIcon,
+  NoteIcon
+} from '@hugeicons/core-free-icons'
+import type { IconSvgElement } from '@hugeicons/react'
+import {
   Inbox,
   BookOpen,
   FileText,
@@ -13,19 +22,123 @@ import {
   Sparkles,
   Brain,
   PenLine,
-  Rocket
+  Rocket,
+  Globe,
+  Monitor,
+  Smartphone,
+  Terminal,
+  type LucideIcon
 } from 'lucide-react'
 
 export const GITHUB_URL = 'https://github.com/memrynote/memry'
+export const GITHUB_RELEASES_URL = `${GITHUB_URL}/releases`
+export const GITHUB_STARS = 18
 export const REDDIT_URL = 'https://www.reddit.com/r/MemryNote/'
 export const DOCS_URL = 'https://docs.memrynote.com'
 export const TWITTER_DEV_URL = 'https://x.com/h4yfans'
+export const CHANGELOG_URL = GITHUB_RELEASES_URL
 
 export const NAV_LINKS = [
   { label: 'Use Cases', href: '/use-cases' },
   { label: 'Pricing', href: '/pricing' },
-  { label: 'Security', href: '/security' },
-  { label: 'Docs', href: DOCS_URL }
+  { label: 'Security', href: '/security' }
+] as const
+
+type LandingDropdownItemBase = {
+  label: string
+  description: string
+  href: string
+  disabled?: boolean
+}
+
+export type LandingDropdownItem =
+  | (LandingDropdownItemBase & {
+      icon: LucideIcon
+      iconType?: undefined
+    })
+  | (LandingDropdownItemBase & {
+      icon: IconSvgElement
+      iconType: 'hugeicon'
+    })
+
+export const FEATURE_NAV_ITEMS: readonly LandingDropdownItem[] = [
+  {
+    label: 'Inbox',
+    description: 'Capture links, files, voice',
+    href: '/features',
+    icon: InboxIcon,
+    iconType: 'hugeicon'
+  },
+  {
+    label: 'Journal',
+    description: 'Daily writing with context',
+    href: '/features',
+    icon: Book02Icon,
+    iconType: 'hugeicon'
+  },
+  {
+    label: 'Notes',
+    description: 'Markdown, backlinks, properties',
+    href: '/features/notes',
+    icon: NoteIcon,
+    iconType: 'hugeicon'
+  },
+  {
+    label: 'Tasks',
+    description: 'Projects, kanban, recurring work',
+    href: '/features',
+    icon: CheckmarkCircle04Icon,
+    iconType: 'hugeicon'
+  },
+  {
+    label: 'Calendar',
+    description: 'Schedule, deadlines, day view',
+    href: '/features',
+    icon: Calendar01Icon,
+    iconType: 'hugeicon'
+  },
+  {
+    label: 'AI Agent',
+    description: 'Chat with your local vault',
+    href: '/features',
+    icon: AiBrain03Icon,
+    iconType: 'hugeicon'
+  }
+] as const
+
+export const DOWNLOAD_NAV_ITEMS: readonly LandingDropdownItem[] = [
+  {
+    label: 'Web Clipper',
+    description: 'Save pages into Memry',
+    href: '#',
+    icon: Globe,
+    disabled: true
+  },
+  {
+    label: 'Memry for Mobile',
+    description: 'iOS and Android apps',
+    href: '#',
+    icon: Smartphone,
+    disabled: true
+  },
+  {
+    label: 'Memry for Desktop',
+    description: 'macOS, Windows, and Linux',
+    href: GITHUB_RELEASES_URL,
+    icon: Monitor
+  },
+  {
+    label: 'Memry CLI',
+    description: 'Terminal workflows',
+    href: '#',
+    icon: Terminal,
+    disabled: true
+  }
+] as const
+
+export const DIRECT_NAV_LINKS = [
+  { label: 'Changelog', href: CHANGELOG_URL },
+  { label: 'Pricing', href: '/pricing' }
 ] as const
 
 export const FOOTER_LINKS = {
@@ -35,6 +148,7 @@ export const FOOTER_LINKS = {
     { label: 'Security', href: '/security' }
   ],
   resources: [
+    { label: 'Docs', href: DOCS_URL },
     { label: 'Terms of Service', href: '/terms' },
     { label: 'Privacy Policy', href: '/privacy' },
     { label: 'Refund Policy', href: '/refund' }
@@ -571,49 +685,190 @@ export const SYNC_PLAN_TIERS: readonly SyncPlanTier[] = [
   }
 ] as const
 
-export const PLAN_LIMIT_MATRIX = {
-  headers: ['', 'Free', 'Plus', 'Pro', 'Believer'] as const,
-  rows: [
+export type PlanComparisonValue = string | boolean
+
+export const PLAN_COMPARISON_MATRIX = {
+  plans: ['free', 'standard', 'plus', 'believer'] as const,
+  sections: [
     {
-      feature: 'Local features',
-      free: 'All included',
-      plus: 'All included',
-      pro: 'All included',
-      believer: 'All included'
+      title: 'Core features',
+      rows: [
+        {
+          feature: 'Create notes, tasks, save links & files',
+          free: true,
+          standard: true,
+          plus: true,
+          believer: true
+        },
+        {
+          feature: 'Local-first desktop app',
+          free: true,
+          standard: true,
+          plus: true,
+          believer: true
+        },
+        {
+          feature: 'Full-text search',
+          free: true,
+          standard: true,
+          plus: true,
+          believer: true
+        },
+        {
+          feature: 'Sync across your devices',
+          free: false,
+          standard: true,
+          plus: true,
+          believer: true
+        },
+        {
+          feature: 'Cloud backup & end-to-end encryption',
+          free: false,
+          standard: true,
+          plus: true,
+          believer: true
+        },
+        {
+          feature: 'Version history',
+          free: false,
+          standard: '30 days',
+          plus: '365 days',
+          believer: '365 days'
+        }
+      ]
     },
-    { feature: 'Synced vaults', free: 'Local only', plus: '1', pro: '10', believer: 'Unlimited' },
-    { feature: 'Sync storage', free: 'Local only', plus: '1 GB', pro: '10 GB', believer: '50 GB' },
     {
-      feature: 'Max file size',
-      free: 'Local only',
-      plus: '5 MB',
-      pro: '200 MB',
-      believer: '200 MB'
+      title: 'Storage & uploads',
+      rows: [
+        {
+          feature: 'Encrypted sync storage',
+          free: 'Local only',
+          standard: '1 GB',
+          plus: '10 GB',
+          believer: '50 GB'
+        },
+        {
+          feature: 'File upload limit',
+          free: 'Local only',
+          standard: '5 MB',
+          plus: '200 MB',
+          believer: '200 MB'
+        },
+        {
+          feature: 'Synced vaults',
+          free: 'Local only',
+          standard: '1',
+          plus: '10',
+          believer: 'Unlimited'
+        },
+        {
+          feature: 'Devices',
+          free: '1 device',
+          standard: 'Unlimited',
+          plus: 'Unlimited',
+          believer: 'Unlimited'
+        }
+      ]
     },
     {
-      feature: 'Version history',
-      free: 'Local only',
-      plus: '30 days',
-      pro: '365 days',
-      believer: '365 days'
+      title: 'AI features',
+      rows: [
+        {
+          feature: 'AI assistant',
+          free: 'Coming soon',
+          standard: 'Coming soon',
+          plus: 'Coming soon',
+          believer: 'Early access'
+        },
+        {
+          feature: 'AI search',
+          free: 'Coming soon',
+          standard: 'Coming soon',
+          plus: 'Coming soon',
+          believer: 'Early access'
+        },
+        {
+          feature: 'AI suggestions',
+          free: 'Coming soon',
+          standard: 'Coming soon',
+          plus: 'Coming soon',
+          believer: 'Early access'
+        },
+        {
+          feature: 'Latest AI models',
+          free: false,
+          standard: false,
+          plus: 'Planned',
+          believer: 'Early access'
+        }
+      ]
     },
     {
-      feature: 'Devices',
-      free: '1 device',
-      plus: 'Unlimited',
-      pro: 'Unlimited',
-      believer: 'Unlimited'
+      title: 'Sharing & security',
+      rows: [
+        {
+          feature: 'Markdown export',
+          free: true,
+          standard: true,
+          plus: true,
+          believer: true
+        },
+        {
+          feature: 'Server never sees plaintext',
+          free: 'Local only',
+          standard: true,
+          plus: true,
+          believer: true
+        },
+        {
+          feature: 'Publishing',
+          free: 'Planned',
+          standard: 'Planned',
+          plus: 'Planned',
+          believer: 'Early access'
+        },
+        {
+          feature: 'Collaboration',
+          free: 'Planned',
+          standard: 'Planned',
+          plus: 'Planned',
+          believer: 'Early access'
+        }
+      ]
     },
-    { feature: 'Monthly billing', free: '$0', plus: '$5', pro: '$10', believer: '—' },
     {
-      feature: 'Annual billing',
-      free: '—',
-      plus: '$48 ($4/mo)',
-      pro: '$96 ($8/mo)',
-      believer: '—'
-    },
-    { feature: 'Lifetime', free: '—', plus: '—', pro: '—', believer: '$500 once' },
-    { feature: 'Credits', free: '—', plus: '—', pro: '—', believer: 'Your name' }
+      title: 'Extras',
+      rows: [
+        {
+          feature: 'Priority support',
+          free: false,
+          standard: false,
+          plus: true,
+          believer: true
+        },
+        {
+          feature: 'Priority access to new features',
+          free: false,
+          standard: false,
+          plus: false,
+          believer: true
+        },
+        {
+          feature: 'Name in the credits',
+          free: false,
+          standard: false,
+          plus: false,
+          believer: true
+        },
+        {
+          feature: 'Support independent software',
+          free: true,
+          standard: true,
+          plus: true,
+          believer: true
+        }
+      ]
+    }
   ] as const
 } as const
 

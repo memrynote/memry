@@ -2,6 +2,7 @@
 
 @theme {
   --font-sans: 'Satoshi', system-ui, sans-serif;
+  --font-geist: 'Geist', system-ui, sans-serif;
   --font-serif: 'Instrument Serif', serif;
   --font-mono: 'JetBrains Mono', monospace;
 

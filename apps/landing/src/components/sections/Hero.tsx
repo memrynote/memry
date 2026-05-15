@@ -3,7 +3,7 @@ import { motion, useInView } from 'framer-motion'
 import { Container } from '@/components/layout/Container'
 import { WaitlistForm } from '@/components/shared/WaitlistForm'
 
-const BENEFITS = ['Open source', 'Own your data', 'End-to-end encrypted']
+const BENEFITS = ['Open source', 'Own your data', 'No account required', 'End-to-end encrypted']
 
 const SUBTITLE_DELAY = 0.5
 const FORM_DELAY = 0.7
