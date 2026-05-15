@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   getDatabase: vi.fn(() => ({ db: true })),
@@ -58,6 +58,34 @@ const mocks = vi.hoisted(() => ({
     },
     cleanup: vi.fn()
   })),
+  getLocalProviderSettings: vi.fn(async () => ({
+    preset: 'ollama',
+    baseUrl: 'http://localhost:11434/v1',
+    model: '',
+    apiKeyConfigured: false,
+    allowNonLoopback: false
+  })),
+  setLocalProviderSettings: vi.fn(),
+  getLocalProviderApiKey: vi.fn(async () => null),
+  listOpenAiCompatibleModels: vi.fn(async () => ['llama3.2']),
+  testOpenAiCompatibleConnection: vi.fn(async () => ({
+    connected: true,
+    modelAvailable: true,
+    streamingSupported: true,
+    toolCallingSupported: false,
+    toolContinuationSupported: false,
+    toolsEnabled: false,
+    detail: null
+  })),
+  localProbeCapabilities: vi.fn(async () => ({
+    connected: true,
+    modelAvailable: true,
+    streamingSupported: true,
+    toolCallingSupported: false,
+    toolContinuationSupported: false,
+    toolsEnabled: false,
+    detail: null
+  })),
   runtimeInstall: vi.fn(),
   runtimeKillAll: vi.fn(async () => {})
 }))
@@ -88,6 +116,22 @@ vi.mock('./cli/claude-binary', () => ({ detectClaudeBinary: mocks.detectClaudeBi
 vi.mock('./cli/codex-binary', () => ({ detectCodexBinary: mocks.detectCodexBinary }))
 vi.mock('./cli/spawn', () => ({ spawnClaudeTurn: mocks.spawnClaudeTurn }))
 vi.mock('./cli/codex-spawn', () => ({ spawnCodexTurn: mocks.spawnCodexTurn }))
+vi.mock('./backends/local-provider-settings', () => ({
+  getLocalProviderSettings: mocks.getLocalProviderSettings,
+  setLocalProviderSettings: mocks.setLocalProviderSettings
+}))
+vi.mock('./backends/local-provider-keychain', () => ({
+  getLocalProviderApiKey: mocks.getLocalProviderApiKey
+}))
+vi.mock('./backends/local-openai-compatible-backend', () => ({
+  listOpenAiCompatibleModels: mocks.listOpenAiCompatibleModels,
+  testOpenAiCompatibleConnection: mocks.testOpenAiCompatibleConnection,
+  LocalOpenAICompatibleBackend: vi.fn().mockImplementation(function LocalOpenAICompatibleBackend() {
+    return {
+      probeCapabilities: mocks.localProbeCapabilities
+    }
+  })
+}))
 vi.mock('./runtime/runtime', () => ({
   AgentRuntime: vi.fn().mockImplementation(function AgentRuntime() {
     return {
@@ -100,6 +144,10 @@ vi.mock('./runtime/runtime', () => ({
 import { startAgent } from './bootstrap'
 
 describe('startAgent', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('registers unavailable IPC handlers when the local vault key cannot be created', async () => {
     mocks.getOrInitializeLocalVaultKey.mockRejectedValueOnce(new Error('keychain locked'))
 
@@ -153,14 +201,51 @@ describe('startAgent', () => {
     expect(mocks.spawnClaudeTurn).toHaveBeenCalledWith(
       expect.objectContaining({
         binaryPath: 'claude',
-        mcpServerUrl: 'http://127.0.0.1:54321',
-        authorizationValue: 'local-auth-value',
-        conversationId: 'conversation-1',
-        windowId: 'window-1',
+        mcp: {
+          serverUrl: 'http://127.0.0.1:54321',
+          authorizationValue: 'local-auth-value',
+          conversationId: 'conversation-1',
+          windowId: 'window-1',
+          allowedTools: expect.stringContaining('mcp__memry__')
+        },
         effort: 'low',
         model: 'sonnet',
         prompt: 'hello'
       })
+    )
+  })
+
+  it('adapts Claude subprocess spawn with native MCP only for normal turns', async () => {
+    await startAgent()
+    const deps = mocks.registerAgentHandlers.mock.calls[0][0]
+
+    await deps.backends.get('claude_cli').runTurn({
+      prompt: 'hello',
+      conversationId: 'conversation-1',
+      windowId: 'window-1',
+      options: { backend: 'claude_cli', claudeEffort: 'low' }
+    })
+    await deps.backends.get('claude_cli').generateTitle({
+      prompt: 'title',
+      conversationId: 'conversation-1',
+      windowId: 'window-1',
+      options: { backend: 'claude_cli', claudeEffort: 'low' }
+    })
+
+    expect(mocks.spawnClaudeTurn).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        mcp: expect.objectContaining({
+          serverUrl: 'http://127.0.0.1:54321',
+          authorizationValue: 'local-auth-value',
+          conversationId: 'conversation-1',
+          windowId: 'window-1'
+        })
+      })
+    )
+    expect(mocks.spawnClaudeTurn).toHaveBeenNthCalledWith(
+      2,
+      expect.not.objectContaining({ mcp: expect.anything() })
     )
   })
 
@@ -217,6 +302,14 @@ describe('startAgent', () => {
       current: 'old',
       candidate: 'old\n\nnew'
     })
+  })
+
+  it('returns an empty local model list when the provider is not listening', async () => {
+    mocks.listOpenAiCompatibleModels.mockRejectedValueOnce(new TypeError('fetch failed'))
+    await startAgent()
+    const deps = mocks.registerAgentHandlers.mock.calls[0][0]
+
+    await expect(deps.localProvider.listModels()).resolves.toEqual({ models: [] })
   })
 
   it('kills runtime and unregisters handlers on shutdown', async () => {
