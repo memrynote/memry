@@ -439,6 +439,7 @@ describe('auth-device handlers', () => {
       // #given
       registerAuthDeviceHandlers()
       mockRetrieveToken.mockResolvedValue('setup-token')
+      mockStoreGet.mockReturnValue({ email: 'user@example.com' })
       mockGenerateRecoveryPhrase.mockResolvedValue({
         phrase: 'recovery phrase',
         seed: new Uint8Array(64).fill(1)
@@ -460,6 +461,10 @@ describe('auth-device handlers', () => {
 
       // #then
       expect(result).toEqual({ success: true, deviceId: 'dev-1' })
+      expect(mockStoreSet).toHaveBeenCalledWith('sync', {
+        email: 'user@example.com',
+        recoveryPhraseConfirmed: false
+      })
     })
   })
 
@@ -627,7 +632,8 @@ describe('auth-device handlers', () => {
 
       await expect(invokeHandler(SYNC_CHANNELS.GET_DEVICES)).resolves.toEqual({
         devices: [],
-        email: undefined
+        email: undefined,
+        needsRecoveryConfirmation: false
       })
     })
 
@@ -656,6 +662,7 @@ describe('auth-device handlers', () => {
 
       await expect(invokeHandler(SYNC_CHANNELS.GET_DEVICES)).resolves.toEqual({
         email: 'user@example.com',
+        needsRecoveryConfirmation: false,
         devices: [
           {
             id: 'dev-1',
@@ -674,6 +681,31 @@ describe('auth-device handlers', () => {
             isCurrentDevice: false
           }
         ]
+      })
+    })
+
+    it('reports pending recovery confirmation from local sync state', async () => {
+      registerAuthDeviceHandlers()
+      mockGetValidAccessToken.mockResolvedValue(null)
+      mockStoreGet.mockReturnValueOnce({
+        email: 'user@example.com',
+        recoveryPhraseConfirmed: false
+      })
+      mockSelectRows = [
+        {
+          id: 'dev-1',
+          name: 'Kaan MBP',
+          platform: 'macos',
+          linkedAt: new Date('2026-05-01T10:00:00.000Z'),
+          lastSyncAt: null,
+          isCurrentDevice: true
+        }
+      ]
+
+      await expect(invokeHandler(SYNC_CHANNELS.GET_DEVICES)).resolves.toMatchObject({
+        email: 'user@example.com',
+        needsRecoveryConfirmation: true,
+        devices: [{ id: 'dev-1', isCurrentDevice: true }]
       })
     })
 
@@ -711,6 +743,7 @@ describe('auth-device handlers', () => {
 
       await expect(invokeHandler(SYNC_CHANNELS.GET_DEVICES)).resolves.toEqual({
         email: 'user@example.com',
+        needsRecoveryConfirmation: false,
         devices: [
           {
             id: 'dev-1',

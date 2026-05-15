@@ -1451,6 +1451,7 @@ interface SyncDevicesClientAPI {
       linkedAt: number
     }>
     email?: string
+    needsRecoveryConfirmation: boolean
   }>
   removeDevice: (input: { deviceId: string }) => Promise<{
     success: boolean
