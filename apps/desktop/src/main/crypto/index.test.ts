@@ -48,6 +48,7 @@ const expectedFunctions = [
   'retrieveKey',
   'storeKey',
   // vault key state
+  'bindLocalVaultToMasterKey',
   'computeVaultKeyVerifier',
   'getOrInitializeLocalVaultKey',
   'storeVaultKeyVerifier',

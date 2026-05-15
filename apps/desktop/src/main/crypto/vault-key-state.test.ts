@@ -11,6 +11,7 @@ import { KEYCHAIN_ENTRIES, KEY_DERIVATION_CONTEXTS } from '@memry/contracts/cryp
 import { deriveKey } from './keys'
 import {
   VAULT_KEY_VERIFIER_SETTING,
+  bindLocalVaultToMasterKey,
   computeVaultKeyVerifier,
   getOrInitializeLocalVaultKey
 } from './vault-key-state'
@@ -170,5 +171,63 @@ describe('vault key state', () => {
     await expect(getOrInitializeLocalVaultKey(db, 'vault-1')).rejects.toThrow(
       'Current master key does not match this vault'
     )
+  })
+
+  it('rebinds the verifier to a new account master key and clears old encrypted agent data', async () => {
+    const db = freshDb()
+    const localMaster = new Uint8Array(32).fill(0x11)
+    const accountMaster = new Uint8Array(32).fill(0x22)
+    const localVaultKey = await deriveKey(localMaster, KEY_DERIVATION_CONTEXTS.VAULT_KEY, 32)
+    const accountVaultKey = await deriveKey(accountMaster, KEY_DERIVATION_CONTEXTS.VAULT_KEY, 32)
+
+    db.insert(schema.settings)
+      .values({
+        key: VAULT_KEY_VERIFIER_SETTING,
+        value: computeVaultKeyVerifier(localVaultKey, 'vault-1')
+      })
+      .run()
+    db.insert(schema.agentConversations)
+      .values({
+        id: 'conversation-1',
+        vaultId: 'vault-1',
+        titleCiphertext: '{"version":1,"nonce":"x","ciphertext":"y"}',
+        backend: 'claude_cli',
+        backendModel: null,
+        trustList: [],
+        pinned: false,
+        vectorClock: {},
+        fieldClocks: {},
+        createdAt: 1,
+        updatedAt: 1,
+        deletedAt: null,
+        lastSyncedAt: null
+      })
+      .run()
+    db.insert(schema.agentMessages)
+      .values({
+        id: 'message-1',
+        conversationId: 'conversation-1',
+        role: 'assistant',
+        contentCiphertext: '{"version":1,"nonce":"x","ciphertext":"y"}',
+        attachmentsCiphertext: '{"version":1,"nonce":"x","ciphertext":"y"}',
+        toolCallId: null,
+        status: 'complete',
+        vectorClock: {},
+        createdAt: 1,
+        updatedAt: 1,
+        deletedAt: null
+      })
+      .run()
+
+    await bindLocalVaultToMasterKey(db, 'vault-1', accountMaster)
+
+    const verifier = db
+      .select({ value: schema.settings.value })
+      .from(schema.settings)
+      .where(eq(schema.settings.key, VAULT_KEY_VERIFIER_SETTING))
+      .get()
+    expect(verifier?.value).toBe(computeVaultKeyVerifier(accountVaultKey, 'vault-1'))
+    expect(db.select().from(schema.agentConversations).all()).toEqual([])
+    expect(db.select().from(schema.agentMessages).all()).toEqual([])
   })
 })

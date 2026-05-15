@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   scheduleTokenRefresh: vi.fn(),
   extractJtiFromToken: vi.fn(),
   getDatabase: vi.fn(),
+  getOrCreateVaultUuid: vi.fn(() => 'vault-1'),
   getSyncEngine: vi.fn(),
   startSyncRuntime: vi.fn(),
   startGoogleCalendarSyncRunner: vi.fn(),
@@ -27,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   logError: vi.fn(),
   toBase64: vi.fn(),
   sign: vi.fn(),
+  bindLocalVaultToMasterKey: vi.fn(),
   dbDelete: vi.fn(),
   dbWhere: vi.fn(),
   dbRun: vi.fn(),
@@ -67,11 +69,16 @@ vi.mock('@memry/contracts/auth-api', () => ({
 vi.mock('../crypto', () => ({
   storeKey: (...args: unknown[]) => mocks.storeKey(...args),
   deleteKey: (...args: unknown[]) => mocks.deleteKey(...args),
-  getDevicePublicKey: (...args: unknown[]) => mocks.getDevicePublicKey(...args)
+  getDevicePublicKey: (...args: unknown[]) => mocks.getDevicePublicKey(...args),
+  bindLocalVaultToMasterKey: (...args: unknown[]) => mocks.bindLocalVaultToMasterKey(...args)
 }))
 
 vi.mock('../database/client', () => ({
   getDatabase: (...args: unknown[]) => mocks.getDatabase(...args)
+}))
+
+vi.mock('../agent/storage/vault-id', () => ({
+  getOrCreateVaultUuid: (...args: unknown[]) => mocks.getOrCreateVaultUuid(...args)
 }))
 
 vi.mock('./http-client', () => ({
@@ -143,6 +150,7 @@ describe('device registration', () => {
     mocks.storeToken.mockResolvedValue(undefined)
     mocks.deleteKey.mockResolvedValue(undefined)
     mocks.deleteFromServer.mockResolvedValue({})
+    mocks.bindLocalVaultToMasterKey.mockResolvedValue(undefined)
   })
 
   it('registers a device, stores tokens and keys, seeds the local device row, and activates sync', async () => {
@@ -180,6 +188,11 @@ describe('device registration', () => {
       'access'
     )
     expect(mocks.storeKey).toHaveBeenCalledWith(keychainEntries.MASTER_KEY, new Uint8Array([5]))
+    expect(mocks.bindLocalVaultToMasterKey).toHaveBeenCalledWith(
+      mocks.getDatabase.mock.results[0].value,
+      'vault-1',
+      new Uint8Array([5])
+    )
     expect(mocks.dbInsert).toHaveBeenCalled()
     expect(mocks.activate).toHaveBeenCalled()
     expect(mocks.startGoogleCalendarSyncRunner).toHaveBeenCalled()
