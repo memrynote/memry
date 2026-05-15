@@ -120,10 +120,13 @@ export const persistKeysAndRegisterDevice = async (
     }
   }
 
+  const db = getDatabase()
+
   try {
     await storeKey(KEYCHAIN_ENTRIES.MASTER_KEY, masterKey)
-  } catch (keychainErr) {
-    logger.error('Failed to store master key in keychain after device registration', keychainErr)
+    await bindLocalVaultToMasterKey(db, getOrCreateVaultUuid(db), masterKey)
+  } catch (keyPersistenceErr) {
+    logger.error('Failed to store or bind master key after device registration', keyPersistenceErr)
 
     const accessToken = await retrieveToken(KEYCHAIN_ENTRIES.ACCESS_TOKEN).catch(() => null)
     if (accessToken) {
@@ -131,7 +134,7 @@ export const persistKeysAndRegisterDevice = async (
         await deleteFromServer(`/auth/devices/${deviceResponse.deviceId}`, accessToken)
       } catch (deregErr) {
         logger.error(
-          'Failed to deregister device after keychain write failure — orphaned device on server',
+          'Failed to deregister device after key persistence failure — orphaned device on server',
           deregErr
         )
       }
@@ -145,9 +148,6 @@ export const persistKeysAndRegisterDevice = async (
       'Failed to save encryption key securely. Device registration has been rolled back. Please try again.'
     )
   }
-
-  const db = getDatabase()
-  await bindLocalVaultToMasterKey(db, getOrCreateVaultUuid(db), masterKey)
 
   const pubKey = getDevicePublicKey(signingSecretKey)
   const pubKeyBase64 = sodium.to_base64(pubKey, sodium.base64_variants.ORIGINAL)

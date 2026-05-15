@@ -134,6 +134,7 @@ describe('device registration', () => {
     vi.clearAllMocks()
     setupDb()
     mocks.getDevicePublicKey.mockReturnValue(new Uint8Array([1, 2, 3]))
+    mocks.getOrCreateVaultUuid.mockReturnValue('vault-1')
     mocks.toBase64.mockImplementation((bytes: Uint8Array) => `b64-${Array.from(bytes).join('-')}`)
     mocks.sign.mockReturnValue(new Uint8Array([9, 8, 7]))
     mocks.extractJtiFromToken.mockReturnValue('setup-jti')
@@ -234,6 +235,31 @@ describe('device registration', () => {
       )
     ).rejects.toThrow('Failed to save encryption key securely')
 
+    expect(mocks.deleteFromServer).toHaveBeenCalledWith('/auth/devices/device-1', 'access')
+    expect(mocks.deleteKey).toHaveBeenCalledWith(keychainEntries.ACCESS_TOKEN)
+    expect(mocks.deleteKey).toHaveBeenCalledWith(keychainEntries.REFRESH_TOKEN)
+    expect(mocks.deleteKey).toHaveBeenCalledWith(keychainEntries.DEVICE_SIGNING_KEY)
+    expect(mocks.activate).not.toHaveBeenCalled()
+    expect(mocks.startSyncRuntime).not.toHaveBeenCalled()
+  })
+
+  it('deregisters the device and clears tokens when local vault verifier binding fails', async () => {
+    mocks.bindLocalVaultToMasterKey.mockRejectedValueOnce(new Error('stale verifier'))
+    const { persistKeysAndRegisterDevice } = await importModule()
+
+    await expect(
+      persistKeysAndRegisterDevice(
+        new Uint8Array([5]),
+        new Uint8Array([6]),
+        'setup-token',
+        'salt',
+        'verifier',
+        true,
+        true
+      )
+    ).rejects.toThrow('Failed to save encryption key securely')
+
+    expect(mocks.storeKey).toHaveBeenCalledWith(keychainEntries.MASTER_KEY, new Uint8Array([5]))
     expect(mocks.deleteFromServer).toHaveBeenCalledWith('/auth/devices/device-1', 'access')
     expect(mocks.deleteKey).toHaveBeenCalledWith(keychainEntries.ACCESS_TOKEN)
     expect(mocks.deleteKey).toHaveBeenCalledWith(keychainEntries.REFRESH_TOKEN)
