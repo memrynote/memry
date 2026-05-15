@@ -482,6 +482,20 @@ describe('settings section coverage', () => {
     expect(toast.success).toHaveBeenCalledWith('account.toasts.deviceLinked')
   })
 
+  it('renders setup while recovery confirmation is still pending', () => {
+    mocks.authState = {
+      status: 'authenticating',
+      email: 'kaan@example.com',
+      needsRecoverySetup: true,
+      wizardStep: 'recovery-display'
+    }
+
+    render(<AccountSettings />)
+
+    expect(screen.getByText('setup wizard')).toBeInTheDocument()
+    expect(screen.queryByText('kaan@example.com')).not.toBeInTheDocument()
+  })
+
   it('signs out authenticated accounts and reports failures', async () => {
     mocks.logout.mockRejectedValueOnce(new Error('nope')).mockResolvedValueOnce(undefined)
     render(<AccountSettings />)

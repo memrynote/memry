@@ -19,7 +19,11 @@ import { teardownSession } from '../sync/session-teardown'
 import { refreshAccessToken, storeToken } from '../sync/token-manager'
 import { createLogger } from '../lib/logger'
 import { registerCommand } from './lib/register-command'
-import { getAndClearPendingRecoveryPhrase, performFirstDeviceSetup } from './auth-device-handlers'
+import {
+  clearPendingRecoveryPhrase,
+  getPendingRecoveryPhrase,
+  performFirstDeviceSetup
+} from './auth-device-handlers'
 
 const logger = createLogger('IPC:Sync:OAuth')
 
@@ -258,6 +262,7 @@ export function registerAuthOAuthHandlers(): void {
     async (input) => {
       if (input.confirmed) {
         store.set('sync', { ...store.get('sync'), recoveryPhraseConfirmed: true })
+        clearPendingRecoveryPhrase()
         const engine = getSyncEngine()
         if (engine) {
           void engine.activate()
@@ -274,7 +279,7 @@ export function registerAuthOAuthHandlers(): void {
   )
 
   ipcMain.handle(SYNC_CHANNELS.GET_RECOVERY_PHRASE, () => {
-    return getAndClearPendingRecoveryPhrase()
+    return getPendingRecoveryPhrase()
   })
 
   // --- Logout (clears all local auth state) ---

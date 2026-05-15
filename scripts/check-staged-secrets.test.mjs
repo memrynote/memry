@@ -55,6 +55,15 @@ describe('staged secret scanner', () => {
     assert.equal(findings.length, 0)
   })
 
+  it('does not flag source token fields assigned from local identifiers', () => {
+    const findings = scanTextForSecrets(
+      'apps/desktop/src/renderer/src/contexts/auth-context.tsx',
+      ['oauthToken: code,', 'apiKey: savedSettings.apiKey'].join('\n')
+    )
+
+    assert.equal(findings.length, 0)
+  })
+
   it('does not flag generic secret-shaped assignments in test files', () => {
     const findings = scanTextForSecrets(
       'apps/sync-server/src/routes/auth.test.ts',

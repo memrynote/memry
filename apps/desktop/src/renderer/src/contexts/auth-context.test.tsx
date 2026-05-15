@@ -182,6 +182,23 @@ describe('AuthProvider', () => {
     expect(result.current.state.deviceId).toBe('linked-final')
   })
 
+  it('keeps existing devices in recovery setup when recovery confirmation is pending', async () => {
+    serviceMocks.deviceService.getDevices.mockResolvedValue({
+      email: 'kaan@example.com',
+      needsRecoveryConfirmation: true,
+      devices: [{ id: 'current-device', isCurrentDevice: true }]
+    })
+
+    const { result } = renderHook(() => useAuth(), { wrapper })
+
+    await waitFor(() => expect(result.current.state.status).toBe('authenticating'))
+    expect(result.current.state.deviceId).toBe('current-device')
+    expect(result.current.state.email).toBe('kaan@example.com')
+    expect(result.current.state.needsRecoverySetup).toBe(true)
+    expect(result.current.state.wizardStep).toBe('recovery-display')
+    expect(serviceMocks.authService.refreshToken).not.toHaveBeenCalled()
+  })
+
   it('supports OAuth callback state checks and wizard state helpers', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper })
     await waitFor(() => expect(result.current.state.status).toBe('unauthenticated'))

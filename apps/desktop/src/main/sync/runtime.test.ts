@@ -115,6 +115,7 @@ const runtimeMocks = vi.hoisted(() => {
     getValidAccessToken: vi.fn(),
     refreshAccessToken: vi.fn(),
     retrieveKey: vi.fn(),
+    storeGet: vi.fn(),
     getOrInitializeLocalVaultKey: vi.fn(),
     getOrCreateVaultUuid: vi.fn(() => 'vault-1'),
     deriveDevicePublicKey: vi.fn(),
@@ -181,6 +182,12 @@ vi.mock('../crypto', () => ({
   getOrInitializeLocalVaultKey: runtimeMocks.getOrInitializeLocalVaultKey,
   retrieveKey: runtimeMocks.retrieveKey,
   secureCleanup: runtimeMocks.secureCleanup
+}))
+
+vi.mock('../store', () => ({
+  store: {
+    get: runtimeMocks.storeGet
+  }
 }))
 
 vi.mock('../agent/storage/vault-id', () => ({
@@ -360,6 +367,7 @@ describe('sync runtime', () => {
     runtimeMocks.getDatabase.mockReturnValue(runtimeMocks.db.db)
     runtimeMocks.getIndexDatabase.mockReturnValue(createIndexDb())
     runtimeMocks.retrieveToken.mockResolvedValue('refresh-token')
+    runtimeMocks.storeGet.mockReturnValue({})
     runtimeMocks.getValidAccessToken.mockResolvedValue('access-token')
     runtimeMocks.getOrInitializeLocalVaultKey.mockResolvedValue(new Uint8Array([1, 2, 3]))
     runtimeMocks.retrieveKey.mockResolvedValue(new Uint8Array([4, 5, 6]))
@@ -407,6 +415,16 @@ describe('sync runtime', () => {
       'Sync runtime unavailable: vault key verification failed',
       verificationError
     )
+    expect(runtime.getSyncEngine()).toBeNull()
+  })
+
+  it('skips startup when recovery phrase confirmation is still pending', async () => {
+    runtimeMocks.storeGet.mockReturnValue({ recoveryPhraseConfirmed: false })
+    const runtime = await loadRuntime()
+
+    await expect(runtime.startSyncRuntime()).resolves.toBeNull()
+
+    expect(runtimeMocks.getDatabase).not.toHaveBeenCalled()
     expect(runtime.getSyncEngine()).toBeNull()
   })
 
