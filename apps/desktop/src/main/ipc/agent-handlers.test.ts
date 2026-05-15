@@ -15,10 +15,19 @@ const mocks = vi.hoisted(() => ({
   ]),
   getDisclosureState: vi.fn(() => ({ accepted: false })),
   acceptDisclosure: vi.fn(() => ({ accepted: true })),
-  getAgentPreferences: vi.fn(() => ({ toolApprovalMode: 'always_accept' })),
-  setAgentPreferences: vi.fn((input: { toolApprovalMode?: 'always_accept' | 'ask' }) => ({
-    toolApprovalMode: input.toolApprovalMode ?? 'always_accept'
-  }))
+  getAgentPreferences: vi.fn(() => ({
+    accessMode: 'vault_only',
+    toolApprovalMode: 'always_accept'
+  })),
+  setAgentPreferences: vi.fn(
+    (input: {
+      accessMode?: 'vault_only' | 'computer_access'
+      toolApprovalMode?: 'always_accept' | 'ask'
+    }) => ({
+      accessMode: input.accessMode ?? 'vault_only',
+      toolApprovalMode: input.toolApprovalMode ?? 'always_accept'
+    })
+  )
 }))
 
 vi.mock('electron', () => ({
@@ -158,8 +167,12 @@ describe('agent IPC handlers', () => {
       }))
     },
     preferences: {
-      get: vi.fn(() => ({ toolApprovalMode: 'always_accept' })),
-      set: vi.fn((input) => input)
+      get: vi.fn(() => ({ accessMode: 'vault_only', toolApprovalMode: 'always_accept' })),
+      set: vi.fn((input) => ({
+        accessMode: 'vault_only',
+        toolApprovalMode: 'always_accept',
+        ...input
+      }))
     },
     vaultId: 'vault-1'
   } as never
@@ -203,11 +216,13 @@ describe('agent IPC handlers', () => {
       })
     })
     expect(findHandler(AgentChannels.invoke.GET_PREFERENCES)(null)).toEqual({
+      accessMode: 'vault_only',
       toolApprovalMode: 'always_accept'
     })
     expect(
       findHandler(AgentChannels.invoke.SET_PREFERENCES)(null, { toolApprovalMode: 'ask' })
     ).toEqual({
+      accessMode: 'vault_only',
       toolApprovalMode: 'ask'
     })
     expect(mocks.setAgentPreferences).toHaveBeenCalledWith({ toolApprovalMode: 'ask' })
@@ -255,11 +270,12 @@ describe('agent IPC handlers', () => {
     registerAgentHandlers(deps)
 
     await expect(findHandler(AgentChannels.invoke.GET_PREFERENCES)(null)).resolves.toEqual({
+      accessMode: 'vault_only',
       toolApprovalMode: 'always_accept'
     })
     await expect(
       findHandler(AgentChannels.invoke.SET_PREFERENCES)(null, { toolApprovalMode: 'ask' })
-    ).resolves.toEqual({ toolApprovalMode: 'ask' })
+    ).resolves.toEqual({ accessMode: 'vault_only', toolApprovalMode: 'ask' })
     expect(deps.preferences.set).toHaveBeenCalledWith({ toolApprovalMode: 'ask' })
   })
 

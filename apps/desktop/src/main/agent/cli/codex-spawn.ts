@@ -3,17 +3,22 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-import type { CodexReasoningEffort } from '@memry/contracts/ipc-agent'
+import type { AgentTurnPermissions, CodexReasoningEffort } from '@memry/contracts/ipc-agent'
 
 import { createLogger } from '../../lib/logger'
 
 const logger = createLogger('AgentCli:CodexSpawn')
+const DEFAULT_TURN_PERMISSIONS: AgentTurnPermissions = {
+  accessMode: 'vault_only',
+  webSearchEnabled: false
+}
 
 export interface CodexSpawnOptions {
   binaryPath: string
   prompt: string
   reasoningEffort: CodexReasoningEffort
   model?: string
+  permissions?: AgentTurnPermissions
   mcp?: {
     serverUrl: string
     authorizationValue: string
@@ -30,17 +35,19 @@ export interface CodexSubprocess {
 
 export async function spawnCodexTurn(opts: CodexSpawnOptions): Promise<CodexSubprocess> {
   const dir = await mkdtemp(path.join(tmpdir(), 'memry-codex-'))
-  const args = [
-    '--ask-for-approval',
-    'never',
-    '--disable',
-    'shell_tool',
-    '--disable',
-    'apply_patch_freeform',
+  const permissions = opts.permissions ?? DEFAULT_TURN_PERMISSIONS
+  const args = ['--ask-for-approval', 'never']
+  if (permissions.webSearchEnabled) {
+    args.push('--search')
+  }
+  if (permissions.accessMode === 'vault_only') {
+    args.push('--disable', 'shell_tool', '--disable', 'apply_patch_freeform')
+  }
+  args.push(
     'exec',
     '--json',
     '--sandbox',
-    'read-only',
+    permissions.accessMode === 'computer_access' ? 'danger-full-access' : 'read-only',
     '--ephemeral',
     '--ignore-user-config',
     '--ignore-rules',
@@ -49,7 +56,7 @@ export async function spawnCodexTurn(opts: CodexSpawnOptions): Promise<CodexSubp
     dir,
     '-c',
     `model_reasoning_effort="${opts.reasoningEffort}"`
-  ]
+  )
   if (opts.model) {
     args.push('--model', opts.model)
   }

@@ -376,18 +376,15 @@
       "placeholder": "Zeptejte se Memry na cokoli. @ pro zmínku o souboru",
       "send": "Odeslat",
       "providerLabel": "Poskytovatel Agent: {provider}",
-      "modelLabel": "Model Agent: {model}",
-      "settingsLabel": "Nastavení Agent: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "ID vlastního modelu",
-      "customModelPlaceholder": "ID vlastního modelu",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "Místní"
       },
       "models": {
-        "default": "Výchozí"
+        "default": "Výchozí",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "Zdůvodnění"
@@ -410,7 +407,23 @@
           "high": "Vysoká",
           "extraHigh": "Extra vysoká"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Žádné shody"

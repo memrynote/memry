@@ -218,18 +218,23 @@ Inline editor AI menu (grammar, tone, length, custom prompt).
 - **Base URL** — defaults to `http://localhost:11434/v1` for Ollama
 - **Test Connection** — verifies URL + key
 
-### Agent Providers
+### Agent Permissions
 
-Agent Chat backend settings are now collapsed inside the AI Assistant page. These are machine-local
-and are not synced between devices.
+Agent Chat backend and permission settings are now collapsed inside the AI Assistant page. These are
+machine-local and are not synced between devices.
 
+- **Default Access** — starts each new Agent turn in **Vault only** or **Computer access**
+- **Confirm Actions** — always accept Agent Chat tool calls by default, or require inline approval first
 - **Preset** — Ollama, LM Studio, llama.cpp, or Custom
 - **Base URL** — OpenAI-compatible endpoint, such as `http://localhost:11434/v1`
 - **Model** — choose from `/v1/models` when available or type a model manually
-- **Tool Confirmations** — always accept Agent Chat tool calls by default, or require inline approval first
 - **API Key** — optional, stored in the OS keychain
 - **Test Connection** — checks the endpoint and selected model
 - **Probe Tools** — verifies tool-call emission and tool-result continuation before vault tools are enabled
+
+The Agent Chat prompt bar can override access for one turn and can enable web search when the active
+backend supports it. Vault-only turns keep the CLI backend constrained to Memry tools; computer
+access turns grant broader local CLI access for that turn.
 
 Loopback endpoints are treated as local. Custom non-loopback endpoints require an explicit
 not-fully-local acknowledgement because prompts and tool results are sent to that server.

@@ -79,6 +79,59 @@ describe('spawnClaudeTurn', () => {
     expect(args).not.toContain('--model')
   })
 
+  it('keeps vault access scoped while enabling web tools when requested', async () => {
+    const fakeProc = makeFakeProc()
+    vi.mocked(spawn).mockReturnValue(fakeProc)
+
+    await spawnClaudeTurn({
+      binaryPath: '/usr/local/bin/claude',
+      mcp: {
+        serverUrl: 'http://127.0.0.1:54321',
+        authorizationValue: 'test-auth-value',
+        conversationId: 'c',
+        windowId: 'w',
+        allowedTools: 'mcp__memry__vault_read_note'
+      },
+      effort: 'low',
+      permissions: { accessMode: 'vault_only', webSearchEnabled: true },
+      prompt: 'p'
+    })
+
+    const args = vi.mocked(spawn).mock.calls[0][1] as string[]
+    expect(args[args.indexOf('--tools') + 1]).toBe('WebSearch,WebFetch')
+    expect(args[args.indexOf('--allowed-tools') + 1]).toBe(
+      'mcp__memry__vault_read_note,WebSearch,WebFetch'
+    )
+    expect(args).not.toContain('--permission-mode')
+  })
+
+  it('enables default Claude tools without allowlisting when computer access is requested', async () => {
+    const fakeProc = makeFakeProc()
+    vi.mocked(spawn).mockReturnValue(fakeProc)
+
+    await spawnClaudeTurn({
+      binaryPath: '/usr/local/bin/claude',
+      mcp: {
+        serverUrl: 'http://127.0.0.1:54321',
+        authorizationValue: 'test-auth-value',
+        conversationId: 'c',
+        windowId: 'w',
+        allowedTools: 'mcp__memry__vault_read_note'
+      },
+      effort: 'low',
+      permissions: { accessMode: 'computer_access', webSearchEnabled: false },
+      prompt: 'p'
+    })
+
+    const args = vi.mocked(spawn).mock.calls[0][1] as string[]
+    expect(args[args.indexOf('--tools') + 1]).toBe('default')
+    expect(args).toContain('--add-dir')
+    expect(args[args.indexOf('--add-dir') + 1]).toBe('/')
+    expect(args).toContain('--permission-mode')
+    expect(args[args.indexOf('--permission-mode') + 1]).toBe('dontAsk')
+    expect(args).not.toContain('--allowed-tools')
+  })
+
   it('passes an explicit Claude model when selected', async () => {
     const fakeProc = makeFakeProc()
     vi.mocked(spawn).mockReturnValue(fakeProc)

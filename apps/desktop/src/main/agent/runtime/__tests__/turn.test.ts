@@ -67,6 +67,42 @@ describe('runTurn against a stub backend', () => {
     )
   })
 
+  it('passes active permissions to the backend run policy and prompt', async () => {
+    const messages = createFakeMessageStore()
+    const conversations = createFakeConversationStore({ title: 'Existing conversation' })
+    const backend = createFakeBackend({
+      turn: [{ kind: 'message_stop' }]
+    })
+
+    await runTurn(
+      {
+        conversations,
+        messages,
+        backends: createFakeRegistry(backend)
+      },
+      {
+        conversationId: 'conversation-1',
+        sourceWindowId: 'window-1',
+        text: 'search then inspect files',
+        attachments: [],
+        backendOptions: { backend: 'codex_cli', reasoningEffort: 'medium' },
+        permissions: { accessMode: 'computer_access', webSearchEnabled: true }
+      }
+    )
+
+    expect(backend.runTurn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        permissions: { accessMode: 'computer_access', webSearchEnabled: true },
+        prompt: expect.stringContaining('# Active Permissions')
+      })
+    )
+    expect(backend.runTurn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: expect.stringContaining('Computer access requested for this turn.')
+      })
+    )
+  })
+
   it('marks the assistant message as errored when the subprocess exits non-zero', async () => {
     const messages = createFakeMessageStore()
     const conversations = createFakeConversationStore({ title: 'Existing conversation' })

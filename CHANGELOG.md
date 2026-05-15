@@ -5,6 +5,16 @@ Format: weekly entries grouped by feature area.
 
 ---
 
+## 2026-05-15 — Agent Chat Turn Permissions
+
+### Added
+
+- Add per-turn Agent Chat access controls for vault-only mode, computer access, and web search.
+
+### Changed
+
+- Move Agent permissions into Settings and tighten the composer controls for model, reasoning, and permissions.
+
 ## 2026-05-14 — Agent Chat Inbox Snooze Tool
 
 ### Added
@@ -14,6 +24,7 @@ Format: weekly entries grouped by feature area.
 ### Changed
 
 - Make the Agent Chat system prompt use concrete Memry workflows and exact MCP tool names for current notes, folders, tags, journals, inbox triage, and links.
+
 ## 2026-05-14 — Agent Chat Inline Mentions
 
 ### Added
@@ -23,6 +34,7 @@ Format: weekly entries grouped by feature area.
 ### Changed
 
 - Keep picked Agent references inside the prompt instead of showing a separate attachment row, and focus the composer after creating a new conversation from the sidebar plus action.
+
 ## 2026-05-14 — Agent Calendar MCP Reads
 
 ### Fixed

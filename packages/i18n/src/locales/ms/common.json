@@ -376,18 +376,15 @@
       "placeholder": "Tanya Memry apa-apa sahaja. @ untuk menyebut fail",
       "send": "Hantar",
       "providerLabel": "Pembekal Agent: {provider}",
-      "modelLabel": "Model Agent: {model}",
-      "settingsLabel": "Tetapan Agent: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "ID model tersuai",
-      "customModelPlaceholder": "ID model tersuai",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "Setempat"
       },
       "models": {
-        "default": "Lalai"
+        "default": "Lalai",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "Penaakulan"
@@ -410,7 +407,23 @@
           "high": "Tinggi",
           "extraHigh": "Lebih Tinggi"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Tiada padanan"

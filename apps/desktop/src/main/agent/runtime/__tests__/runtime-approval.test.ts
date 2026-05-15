@@ -25,7 +25,7 @@ function createRuntime(toolApprovalMode: 'always_accept' | 'ask' = 'always_accep
   const runtime = new AgentRuntime({
     conversations: conversations as unknown as ConversationStore,
     messages: {} as MessageStore,
-    getPreferences: () => ({ toolApprovalMode })
+    getPreferences: () => ({ accessMode: 'vault_only', toolApprovalMode })
   })
 
   return { runtime, conversations }

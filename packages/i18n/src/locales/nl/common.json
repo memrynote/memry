@@ -376,18 +376,15 @@
       "placeholder": "Vraag Memry alles. @ om een bestand te vermelden",
       "send": "Verzenden",
       "providerLabel": "Agent-aanbieder: {provider}",
-      "modelLabel": "Agent-model: {model}",
-      "settingsLabel": "Agent-instellingen: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "Aangepaste model-ID",
-      "customModelPlaceholder": "Aangepaste model-ID",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "Lokaal"
       },
       "models": {
-        "default": "Standaard"
+        "default": "Standaard",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "Redenering"
@@ -410,7 +407,23 @@
           "high": "Hoog",
           "extraHigh": "Extra hoog"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Geen overeenkomsten"

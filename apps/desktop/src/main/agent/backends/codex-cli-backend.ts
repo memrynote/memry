@@ -54,6 +54,7 @@ export class CodexCliBackend implements AgentBackend {
       windowId: input.windowId,
       reasoningEffort,
       model,
+      ...(input.permissions ? { permissions: input.permissions } : {}),
       purpose
     })
 

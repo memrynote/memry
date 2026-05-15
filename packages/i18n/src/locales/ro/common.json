@@ -376,18 +376,15 @@
       "placeholder": "Întreabă Memry orice. @ pentru a menționa un fișier",
       "send": "Trimite",
       "providerLabel": "Furnizor Agent: {provider}",
-      "modelLabel": "Model Agent: {model}",
-      "settingsLabel": "Setări Agent: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "ID model personalizat",
-      "customModelPlaceholder": "ID model personalizat",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "Local"
       },
       "models": {
-        "default": "Implicit"
+        "default": "Implicit",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "Raționament"
@@ -410,7 +407,23 @@
           "high": "Mare",
           "extraHigh": "Extra mare"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Nicio potrivire"

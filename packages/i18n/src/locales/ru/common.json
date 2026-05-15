@@ -376,18 +376,15 @@
       "placeholder": "Спросите Memry о чем угодно. @, чтобы упомянуть файл",
       "send": "Отправить",
       "providerLabel": "Поставщик Agent: {provider}",
-      "modelLabel": "Модель Agent: {model}",
-      "settingsLabel": "Настройки Agent: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "Идентификатор пользовательской модели",
-      "customModelPlaceholder": "Идентификатор пользовательской модели",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "Местный"
       },
       "models": {
-        "default": "По умолчанию"
+        "default": "По умолчанию",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "Рассуждение"
@@ -410,7 +407,23 @@
           "high": "Высокий",
           "extraHigh": "Очень высокий"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Нет совпадений"

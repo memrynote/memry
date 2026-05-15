@@ -3,11 +3,16 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-import type { ClaudeEffort } from '@memry/contracts/ipc-agent'
+import type { AgentTurnPermissions, ClaudeEffort } from '@memry/contracts/ipc-agent'
 
 import { createLogger } from '../../lib/logger'
 
 const logger = createLogger('AgentCli:Spawn')
+const DEFAULT_TURN_PERMISSIONS: AgentTurnPermissions = {
+  accessMode: 'vault_only',
+  webSearchEnabled: false
+}
+const CLAUDE_WEB_TOOLS = ['WebSearch', 'WebFetch']
 
 export interface SpawnOptions {
   binaryPath: string
@@ -20,6 +25,7 @@ export interface SpawnOptions {
   }
   effort: ClaudeEffort
   model?: string
+  permissions?: AgentTurnPermissions
   prompt: string
 }
 
@@ -32,6 +38,13 @@ export interface ClaudeSubprocess {
 export async function spawnClaudeTurn(opts: SpawnOptions): Promise<ClaudeSubprocess> {
   const dir = await mkdtemp(path.join(tmpdir(), 'memry-claude-'))
   const configPath = path.join(dir, 'mcp-config.json')
+  const permissions = opts.permissions ?? DEFAULT_TURN_PERMISSIONS
+  const builtInTools =
+    permissions.accessMode === 'computer_access'
+      ? 'default'
+      : permissions.webSearchEnabled
+        ? CLAUDE_WEB_TOOLS.join(',')
+        : ''
 
   const args = [
     '-p',
@@ -43,10 +56,13 @@ export async function spawnClaudeTurn(opts: SpawnOptions): Promise<ClaudeSubproc
     '--verbose',
     '--no-session-persistence',
     '--tools',
-    '',
+    builtInTools,
     '--effort',
     opts.effort
   ]
+  if (permissions.accessMode === 'computer_access') {
+    args.splice(args.indexOf('--effort'), 0, '--add-dir', '/', '--permission-mode', 'dontAsk')
+  }
   if (opts.mcp) {
     const config = {
       mcpServers: {
@@ -64,7 +80,13 @@ export async function spawnClaudeTurn(opts: SpawnOptions): Promise<ClaudeSubproc
 
     await writeFile(configPath, JSON.stringify(config))
     args.splice(7, 0, '--mcp-config', configPath, '--strict-mcp-config')
-    args.splice(args.indexOf('--effort'), 0, '--allowed-tools', opts.mcp.allowedTools)
+    if (permissions.accessMode !== 'computer_access') {
+      const allowedTools = [
+        opts.mcp.allowedTools,
+        ...(permissions.webSearchEnabled ? CLAUDE_WEB_TOOLS : [])
+      ].join(',')
+      args.splice(args.indexOf('--effort'), 0, '--allowed-tools', allowedTools)
+    }
   }
   if (opts.model) {
     args.push('--model', opts.model)
