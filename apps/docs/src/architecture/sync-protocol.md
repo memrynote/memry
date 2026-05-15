@@ -68,6 +68,12 @@ terminal status.
 
 `server_cursor_sequence` tracks per-device pull progress. Pull is incremental: fetch everything strictly after the cursor, advance, repeat.
 
+## Manifest Integrity
+
+Desktop periodically compares `/sync/manifest` with local syncable records. Notes and journals are
+matched from canonical `note_metadata` first, with the rebuildable index cache as a fallback, so a
+freshly pushed note is not treated as server-only while indexing catches up.
+
 ## Tombstones
 
 Deletions include `deleted_at` inside the **Ed25519-signed** payload — preventing a hostile server from forging deletions.

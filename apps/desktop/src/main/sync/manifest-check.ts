@@ -1,6 +1,7 @@
-import { and, eq, isNotNull, isNull } from 'drizzle-orm'
+import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import type * as schema from '@memry/db-schema/data-schema'
+import { noteMetadata } from '@memry/db-schema/data-schema'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { projects } from '@memry/db-schema/schema/projects'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
@@ -114,25 +115,31 @@ interface LocalSyncableItem {
 
 function getLocalSyncableItems(db: DrizzleDb): LocalSyncableItem[] {
   const items: LocalSyncableItem[] = []
+  const localIds = new Set<string>()
+  const addLocalItem = (item: LocalSyncableItem) => {
+    if (localIds.has(item.id)) return
+    localIds.add(item.id)
+    items.push(item)
+  }
 
   const syncedTasks = db.select().from(tasks).where(isNotNull(tasks.clock)).all()
   for (const t of syncedTasks) {
-    items.push({ id: t.id, type: 'task', payload: JSON.stringify(t) })
+    addLocalItem({ id: t.id, type: 'task', payload: JSON.stringify(t) })
   }
 
   const syncedProjects = db.select().from(projects).where(isNotNull(projects.clock)).all()
   for (const p of syncedProjects) {
-    items.push({ id: p.id, type: 'project', payload: JSON.stringify(p) })
+    addLocalItem({ id: p.id, type: 'project', payload: JSON.stringify(p) })
   }
 
   const syncedInbox = db.select().from(inboxItems).where(isNotNull(inboxItems.clock)).all()
   for (const i of syncedInbox) {
-    items.push({ id: i.id, type: 'inbox', payload: JSON.stringify(i) })
+    addLocalItem({ id: i.id, type: 'inbox', payload: JSON.stringify(i) })
   }
 
   const syncedFilters = db.select().from(savedFilters).where(isNotNull(savedFilters.clock)).all()
   for (const f of syncedFilters) {
-    items.push({ id: f.id, type: 'filter', payload: JSON.stringify(f) })
+    addLocalItem({ id: f.id, type: 'filter', payload: JSON.stringify(f) })
   }
 
   const syncedTagDefs = db
@@ -141,12 +148,25 @@ function getLocalSyncableItems(db: DrizzleDb): LocalSyncableItem[] {
     .where(isNotNull(tagDefinitions.clock))
     .all()
   for (const td of syncedTagDefs) {
-    items.push({ id: td.name, type: 'tag_definition', payload: JSON.stringify(td) })
+    addLocalItem({ id: td.name, type: 'tag_definition', payload: JSON.stringify(td) })
   }
 
   const syncedSettings = db.select().from(settings).where(eq(settings.key, 'synced_settings')).get()
   if (syncedSettings) {
-    items.push({ id: 'synced_settings', type: 'settings', payload: JSON.stringify(syncedSettings) })
+    addLocalItem({
+      id: 'synced_settings',
+      type: 'settings',
+      payload: JSON.stringify(syncedSettings)
+    })
+  }
+
+  const syncedNoteMetadata = db
+    .select({ id: noteMetadata.id, journalDate: noteMetadata.journalDate })
+    .from(noteMetadata)
+    .where(and(isNotNull(noteMetadata.clock), sql`${noteMetadata.localOnly} IS NOT 1`))
+    .all()
+  for (const n of syncedNoteMetadata) {
+    addLocalItem({ id: n.id, type: n.journalDate ? 'journal' : 'note', payload: '' })
   }
 
   const indexDb = getIndexDatabase()
@@ -157,7 +177,7 @@ function getLocalSyncableItems(db: DrizzleDb): LocalSyncableItem[] {
     .where(and(isNotNull(noteCache.clock), isNull(noteCache.date)))
     .all()
   for (const n of syncedNotes) {
-    items.push({ id: n.id, type: 'note', payload: '' })
+    addLocalItem({ id: n.id, type: 'note', payload: '' })
   }
 
   const syncedJournals = indexDb
@@ -166,7 +186,7 @@ function getLocalSyncableItems(db: DrizzleDb): LocalSyncableItem[] {
     .where(and(isNotNull(noteCache.clock), isNotNull(noteCache.date)))
     .all()
   for (const j of syncedJournals) {
-    items.push({ id: j.id, type: 'journal', payload: '' })
+    addLocalItem({ id: j.id, type: 'journal', payload: '' })
   }
 
   return items
