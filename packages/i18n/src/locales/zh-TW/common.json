@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "目前註釋",
       "removeAttachment": "刪除 {label}",
-      "placeholder": "詢問Agent",
+      "placeholder": "向 Memry 詢問任何事。@ 可提及檔案",
       "send": "傳送",
       "providerLabel": "Agent 提供者：{provider}",
       "modelLabel": "Agent 型號：{model}",

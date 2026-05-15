@@ -11,7 +11,7 @@ export function ToolResultMessage({ message }: { message: Message }): React.JSX.
   const { data } = message.content
 
   return (
-    <Tool defaultOpen={false} className="bg-background">
+    <Tool defaultOpen={false}>
       <ToolHeader
         title={t('agentChat.toolResult.label')}
         state={data.ok ? 'completed' : 'failed'}

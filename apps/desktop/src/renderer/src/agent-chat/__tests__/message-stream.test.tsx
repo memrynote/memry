@@ -109,7 +109,7 @@ describe('MessageStream', () => {
 
     expect(screen.getByText('Create a task')).toBeInTheDocument()
     expect(screen.getByText('I can do that.')).toBeInTheDocument()
-    expect(screen.getByText('vault_create_task')).toBeInTheDocument()
+    expect(screen.getByText('Creating task')).toBeInTheDocument()
     expect(screen.getByText('Tool result')).toBeInTheDocument()
     expect(screen.getByText('context_attached')).toBeInTheDocument()
   })
@@ -136,6 +136,44 @@ describe('MessageStream', () => {
     )
 
     expect(screen.getByText('Planning note')).toBeInTheDocument()
+  })
+
+  it('renders inline user mention refs as clickable tags', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'user-1',
+            role: 'user',
+            content: { role: 'user', data: { text: '@Vim Motions what is about?' } },
+            attachments: [
+              {
+                kind: 'note',
+                refId: 'note-vim',
+                label: 'Vim Motions',
+                snapshotAt: 100,
+                snapshot: { mode: 'reference_only', id: 'note-vim' }
+              }
+            ]
+          })
+        ]}
+      />
+    )
+
+    const mention = screen.getByRole('link', { name: '@Vim Motions' })
+    expect(mention).toHaveClass('rounded-full')
+    expect(mention.getAttribute('href')).toBe('memry://note/note-vim')
+
+    fireEvent.click(mention)
+
+    expect(mockOpenTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'note',
+        title: 'Vim Motions',
+        path: '/note/note-vim',
+        entityId: 'note-vim'
+      })
+    )
   })
 
   it('ignores non-user content in user message rendering', () => {
@@ -218,8 +256,12 @@ describe('MessageStream', () => {
     expect(link).toHaveAttribute('href', 'memry://note/note-1')
     expect(link).toHaveClass('text-[#81B4E5]')
     expect(link).toHaveClass('hover:decoration-dotted')
+    expect(link).toHaveClass('items-center')
+    expect(link).not.toHaveClass('items-baseline')
     expect(link).toHaveTextContent('🎬Movies')
-    expect(link.querySelector('[data-agent-link-icon="note-custom"]')).not.toBeNull()
+    const linkIcon = link.querySelector('[data-agent-link-icon="note-custom"]')
+    expect(linkIcon).not.toBeNull()
+    expect(linkIcon?.classList.contains('align-middle')).toBe(true)
     const sourcesTrigger = screen.getByRole('button', { name: /Used 1 source/i })
     expect(sourcesTrigger).toBeInTheDocument()
 
@@ -577,12 +619,14 @@ describe('MessageStream', () => {
       />
     )
 
-    expect(screen.getByRole('button', { name: /vault_create_task/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Creating task/i })).toBeInTheDocument()
+    expect(screen.queryByText('vault_create_task')).not.toBeInTheDocument()
     expect(screen.queryByText('Parameters')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /vault_create_task/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Creating task/i }))
 
     expect(screen.getByText('Parameters')).toBeInTheDocument()
+    expect(screen.getByText('vault_create_task')).toBeInTheDocument()
   })
 
   it('renders completed tool output in the same collapsed tool block', () => {
@@ -607,12 +651,83 @@ describe('MessageStream', () => {
       />
     )
 
-    expect(screen.getByRole('button', { name: /vault_read_note/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Reading note/i })).toBeInTheDocument()
+    expect(screen.queryByText('vault_read_note')).not.toBeInTheDocument()
     expect(screen.queryByText('Planning')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /vault_read_note/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Reading note/i }))
 
+    expect(screen.getByText('vault_read_note')).toBeInTheDocument()
     expect(screen.getByText(/Planning/)).toBeInTheDocument()
+  })
+
+  it('humanizes MCP tool names without adding active lighting', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'tool-call-1',
+            role: 'tool_call',
+            toolCallId: 'tool-1',
+            content: {
+              role: 'tool_call',
+              data: {
+                tool: 'mcp__memry__vault_read_note',
+                args: { id: 'note-1' },
+                status: 'input-available'
+              }
+            }
+          })
+        ]}
+      />
+    )
+
+    expect(screen.getByText('Reading note')).not.toHaveClass('agent-tool-label-active')
+    expect(screen.queryByText('mcp__memry__vault_read_note')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /Reading note/i }))
+
+    expect(screen.getByText('mcp__memry__vault_read_note')).toBeInTheDocument()
+  })
+
+  it('renders MCP tool rows as subdued plain text and toggles details from the visible label', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'tool-call-1',
+            role: 'tool_call',
+            toolCallId: 'tool-1',
+            content: {
+              role: 'tool_call',
+              data: {
+                tool: 'mcp__memry__vault_create_note',
+                args: { title: 'Draft' },
+                status: 'input-available'
+              }
+            }
+          })
+        ]}
+      />
+    )
+
+    const trigger = screen.getByRole('button', { name: /Creating note/i })
+    const toolRoot = trigger.parentElement as HTMLElement
+
+    expect(toolRoot).not.toHaveClass('border')
+    expect(toolRoot).not.toHaveClass('border-sidebar-border')
+    expect(toolRoot).not.toHaveClass('bg-sidebar-accent/40')
+    expect(trigger).toHaveClass('text-muted-foreground')
+    expect(trigger.querySelector('svg')).not.toBeInTheDocument()
+    expect(screen.queryByText('Parameters')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Creating note'))
+
+    expect(screen.getByText('Parameters')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Creating note'))
+
+    expect(screen.queryByText('Parameters')).not.toBeInTheDocument()
   })
 
   it('approves pending tool calls inline without a dialog', async () => {
@@ -654,7 +769,7 @@ describe('MessageStream', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /vault_create_task/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Creating task/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Allow once' }))
 
     await waitFor(() => {
@@ -703,7 +818,7 @@ describe('MessageStream', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /vault_create_task/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Creating task/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Edit and allow' }))
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '{"title":"Edited"}' } })
     fireEvent.click(screen.getByRole('button', { name: 'Apply edits' }))
@@ -764,7 +879,7 @@ describe('MessageStream', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /vault_update_note/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Updating note/i }))
     const candidate = await screen.findByRole('textbox', { name: 'Candidate' })
     fireEvent.change(candidate, { target: { value: 'edited full note' } })
     fireEvent.click(screen.getByRole('button', { name: 'Apply edited' }))

@@ -315,12 +315,12 @@ function TierCard({
           </Button>
         ) : isFounding ? (
           <Button
-            variant="default"
+            variant="outline"
             size="lg"
             disabled={isPending}
             onClick={onCheckout}
             aria-label={ctaLabel}
-            className="w-full rounded-full bg-terracotta text-white hover:bg-terracotta-dark"
+            className="w-full rounded-full border-ink/15 bg-paper-alt/40 text-ink hover:bg-paper-alt"
           >
             {ctaLabel}
           </Button>
@@ -331,7 +331,7 @@ function TierCard({
             disabled={isPending}
             onClick={onCheckout}
             aria-label={ctaLabel}
-            className="w-full rounded-full"
+            className="w-full rounded-full bg-terracotta text-white shadow-[0_16px_34px_-14px_rgba(255,103,26,0.75)] ring-2 ring-terracotta/20 hover:bg-terracotta-dark hover:shadow-[0_18px_38px_-14px_rgba(255,103,26,0.9)]"
           >
             {ctaLabel}
           </Button>

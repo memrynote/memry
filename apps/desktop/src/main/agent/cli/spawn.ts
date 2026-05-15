@@ -11,11 +11,13 @@ const logger = createLogger('AgentCli:Spawn')
 
 export interface SpawnOptions {
   binaryPath: string
-  mcpServerUrl: string
-  authorizationValue: string
-  conversationId: string
-  windowId: string
-  allowedTools: string
+  mcp?: {
+    serverUrl: string
+    authorizationValue: string
+    conversationId: string
+    windowId: string
+    allowedTools: string
+  }
   effort: ClaudeEffort
   model?: string
   prompt: string
@@ -30,21 +32,6 @@ export interface ClaudeSubprocess {
 export async function spawnClaudeTurn(opts: SpawnOptions): Promise<ClaudeSubprocess> {
   const dir = await mkdtemp(path.join(tmpdir(), 'memry-claude-'))
   const configPath = path.join(dir, 'mcp-config.json')
-  const config = {
-    mcpServers: {
-      memry: {
-        type: 'http',
-        url: `${opts.mcpServerUrl}/mcp`,
-        headers: {
-          Authorization: `Bearer ${opts.authorizationValue}`,
-          'X-Memry-Conversation': opts.conversationId,
-          'X-Memry-Window': opts.windowId
-        }
-      }
-    }
-  }
-
-  await writeFile(configPath, JSON.stringify(config))
 
   const args = [
     '-p',
@@ -54,22 +41,38 @@ export async function spawnClaudeTurn(opts: SpawnOptions): Promise<ClaudeSubproc
     'stream-json',
     '--include-partial-messages',
     '--verbose',
-    '--mcp-config',
-    configPath,
-    '--strict-mcp-config',
     '--no-session-persistence',
     '--tools',
     '',
-    '--allowed-tools',
-    opts.allowedTools,
     '--effort',
     opts.effort
   ]
+  if (opts.mcp) {
+    const config = {
+      mcpServers: {
+        memry: {
+          type: 'http',
+          url: `${opts.mcp.serverUrl}/mcp`,
+          headers: {
+            Authorization: `Bearer ${opts.mcp.authorizationValue}`,
+            'X-Memry-Conversation': opts.mcp.conversationId,
+            'X-Memry-Window': opts.mcp.windowId
+          }
+        }
+      }
+    }
+
+    await writeFile(configPath, JSON.stringify(config))
+    args.splice(7, 0, '--mcp-config', configPath, '--strict-mcp-config')
+    args.splice(args.indexOf('--effort'), 0, '--allowed-tools', opts.mcp.allowedTools)
+  }
   if (opts.model) {
     args.push('--model', opts.model)
   }
 
-  logger.info(`Spawning claude with strict MCP config`)
+  logger.info(
+    opts.mcp ? 'Spawning claude with strict MCP config' : 'Spawning claude without MCP config'
+  )
   const proc = spawn(opts.binaryPath, args, {
     cwd: dir,
     env: { ...process.env }

@@ -13,6 +13,7 @@ import {
   Menu,
   MenuItem
 } from 'electron'
+import { createHash } from 'node:crypto'
 import { join, resolve, normalize } from 'path'
 import { homedir } from 'node:os'
 import { existsSync, readdirSync, statSync, createReadStream } from 'node:fs'
@@ -66,8 +67,23 @@ if (process.type === 'browser') {
   log.initialize()
 }
 
-const deviceId = process.env.MEMRY_DEVICE
+function resolveDeviceId(): string | undefined {
+  const deviceId = process.env.MEMRY_DEVICE
+  if (deviceId !== 'dev' || app.isPackaged) {
+    return deviceId
+  }
+
+  // Plain pnpm dev runs in every worktree; scope its persisted state by checkout path.
+  const worktreeHash = createHash('sha256')
+    .update(normalize(app.getAppPath()))
+    .digest('hex')
+    .slice(0, 8)
+  return `dev-${worktreeHash}`
+}
+
+const deviceId = resolveDeviceId()
 if (deviceId) {
+  process.env.MEMRY_DEVICE = deviceId
   app.name = `memry-${deviceId}`
   const deviceUserData = `${app.getPath('userData')}-${deviceId}`
   app.setPath('userData', deviceUserData)
