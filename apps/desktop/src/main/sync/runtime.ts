@@ -94,6 +94,7 @@ let runtime: SyncRuntimeState | null = null
 let startPromise: Promise<SyncEngine | null> | null = null
 let seedAbortController: AbortController | null = null
 let seedPromise: Promise<void> | null = null
+let vaultKeyFailureLogged = false
 
 function resetSyncServiceSingletons(): void {
   resetTaskSyncService()
@@ -118,6 +119,18 @@ function getCurrentDeviceId(db: DataDb): string | null {
     .where(eq(syncDevices.isCurrentDevice, true))
     .get()
   return device?.id ?? null
+}
+
+async function getOptionalRuntimeVaultKey(db: DataDb, context: string): Promise<Uint8Array | null> {
+  try {
+    return await getVerifiedVaultKey(db)
+  } catch (error) {
+    if (!vaultKeyFailureLogged) {
+      vaultKeyFailureLogged = true
+      log.warn('Vault key unavailable for sync operation', { context, error })
+    }
+    return null
+  }
 }
 
 export function getSyncEngine(): SyncEngine | null {
@@ -176,6 +189,17 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
     try {
       const db = getDatabase()
+      let startupVaultKey: Uint8Array | null = null
+      try {
+        startupVaultKey = await getVerifiedVaultKey(db)
+        vaultKeyFailureLogged = false
+      } catch (error) {
+        log.error('Sync runtime unavailable: vault key verification failed', error)
+        return null
+      } finally {
+        if (startupVaultKey) secureCleanup(startupVaultKey)
+      }
+
       const queue = new SyncQueueManager(db)
       type RuntimeSyncDb = SyncEngineDeps['db'] & Parameters<typeof initTaskSyncService>[0]['db']
       const runtimeSyncDb = db as unknown as RuntimeSyncDb
@@ -295,9 +319,13 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const crdtQueue = new CrdtUpdateQueue()
       crdtQueue.start(async (noteId, updates) => {
         const token = await getValidAccessToken()
-        const vaultKey = await getVerifiedVaultKey(db).catch(() => null)
+        const vaultKey = await getOptionalRuntimeVaultKey(db, 'crdt update batch')
         const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
-        if (!token || !vaultKey || !signingSecretKey) return
+        if (!token || !vaultKey || !signingSecretKey) {
+          if (vaultKey) secureCleanup(vaultKey)
+          if (signingSecretKey) secureCleanup(signingSecretKey)
+          return
+        }
 
         try {
           const b64Updates = updates.map((raw) => {
@@ -347,7 +375,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
 
       const snapshotPushFn = async (noteId: string, state: Uint8Array): Promise<void> => {
         const token = await getValidAccessToken()
-        const vaultKey = await getVerifiedVaultKey(db).catch(() => null)
+        const vaultKey = await getOptionalRuntimeVaultKey(db, 'crdt snapshot push')
         const signingSecretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
         if (!token || !vaultKey || !signingSecretKey) {
           log.warn('Missing credentials for CRDT snapshot push', {
@@ -427,7 +455,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         ws,
         db: runtimeSyncDb,
         getAccessToken: () => getValidAccessToken(),
-        getVaultKey: () => getVerifiedVaultKey(db).catch(() => null),
+        getVaultKey: () => getOptionalRuntimeVaultKey(db, 'sync engine'),
         getSigningKeys: async () => {
           const secretKey = await retrieveKey(KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY)
           if (!secretKey) return null

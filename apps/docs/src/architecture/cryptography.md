@@ -32,6 +32,10 @@ Local-only development vaults can create a device master key without sign-in. Me
 non-secret verifier in the local settings table so the SQLite vault stays bound to the keychain
 master key that produced it. If that verifier exists and the keychain key is missing or produces a
 different vault key, encrypted surfaces fail closed instead of silently creating a replacement key.
+First-device setup and recovery relinking rebind this local verifier immediately after the new
+master key is saved, before sync activation. If the verifier cannot be checked at startup, the sync
+runtime stays offline instead of starting queues, CRDT seeding, or snapshot uploads with missing
+vault-key credentials.
 When a local-only vault later signs up as the first sync device, device registration stores the
 account master key and rebinds this verifier before the sync runtime activates. That keeps notes
 created before sign-in on the same encrypted sync path instead of leaving the push queue without a
