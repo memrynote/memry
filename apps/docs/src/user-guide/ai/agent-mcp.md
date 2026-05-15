@@ -221,8 +221,8 @@ Calendar desktop reads accept the same single-object shape as the renderer bridg
 
 By default, Agent Chat accepts these tool calls automatically. The chat still shows each requested
 tool in a compact collapsed row with a readable label such as `Reading note` or `Creating task`.
-Running and waiting tools animate the label while the turn continues. Open the row to inspect the
-raw MCP tool name, parameters, and results.
+Running and waiting tools animate the label while the turn continues. Click the row label to open
+or close the borderless details area with the raw MCP tool name, parameters, and results.
 
 If you switch tool confirmations to **Ask first** in settings, Memry pauses the turn and shows inline
 approval controls inside the tool row. You can allow the request once, allow create tools always for
