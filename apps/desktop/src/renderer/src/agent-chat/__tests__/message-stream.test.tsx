@@ -109,7 +109,7 @@ describe('MessageStream', () => {
 
     expect(screen.getByText('Create a task')).toBeInTheDocument()
     expect(screen.getByText('I can do that.')).toBeInTheDocument()
-    expect(screen.getByText('vault_create_task')).toBeInTheDocument()
+    expect(screen.getByText('Creating task')).toBeInTheDocument()
     expect(screen.getByText('Tool result')).toBeInTheDocument()
     expect(screen.getByText('context_attached')).toBeInTheDocument()
   })
@@ -577,12 +577,14 @@ describe('MessageStream', () => {
       />
     )
 
-    expect(screen.getByRole('button', { name: /vault_create_task/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Creating task/i })).toBeInTheDocument()
+    expect(screen.queryByText('vault_create_task')).not.toBeInTheDocument()
     expect(screen.queryByText('Parameters')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /vault_create_task/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Creating task/i }))
 
     expect(screen.getByText('Parameters')).toBeInTheDocument()
+    expect(screen.getByText('vault_create_task')).toBeInTheDocument()
   })
 
   it('renders completed tool output in the same collapsed tool block', () => {
@@ -607,12 +609,43 @@ describe('MessageStream', () => {
       />
     )
 
-    expect(screen.getByRole('button', { name: /vault_read_note/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Reading note/i })).toBeInTheDocument()
+    expect(screen.queryByText('vault_read_note')).not.toBeInTheDocument()
     expect(screen.queryByText('Planning')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /vault_read_note/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Reading note/i }))
 
+    expect(screen.getByText('vault_read_note')).toBeInTheDocument()
     expect(screen.getByText(/Planning/)).toBeInTheDocument()
+  })
+
+  it('humanizes MCP tool names and marks active tool labels for the sweep treatment', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'tool-call-1',
+            role: 'tool_call',
+            toolCallId: 'tool-1',
+            content: {
+              role: 'tool_call',
+              data: {
+                tool: 'mcp__memry__vault_read_note',
+                args: { id: 'note-1' },
+                status: 'input-available'
+              }
+            }
+          })
+        ]}
+      />
+    )
+
+    expect(screen.getByText('Reading note')).toHaveClass('agent-tool-label-active')
+    expect(screen.queryByText('mcp__memry__vault_read_note')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /Reading note/i }))
+
+    expect(screen.getByText('mcp__memry__vault_read_note')).toBeInTheDocument()
   })
 
   it('approves pending tool calls inline without a dialog', async () => {
@@ -654,7 +687,7 @@ describe('MessageStream', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /vault_create_task/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Creating task/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Allow once' }))
 
     await waitFor(() => {
@@ -703,7 +736,7 @@ describe('MessageStream', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /vault_create_task/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Creating task/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Edit and allow' }))
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '{"title":"Edited"}' } })
     fireEvent.click(screen.getByRole('button', { name: 'Apply edits' }))
@@ -764,7 +797,7 @@ describe('MessageStream', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /vault_update_note/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Updating note/i }))
     const candidate = await screen.findByRole('textbox', { name: 'Candidate' })
     fireEvent.change(candidate, { target: { value: 'edited full note' } })
     fireEvent.click(screen.getByRole('button', { name: 'Apply edited' }))

@@ -212,8 +212,9 @@ Calendar desktop reads accept the same single-object shape as the renderer bridg
 `args: [{"startAt": "2026-05-14T00:00:00.000Z", "endAt": "2026-06-15T00:00:00.000Z"}]`.
 
 By default, Agent Chat accepts these tool calls automatically. The chat still shows each requested
-tool in a collapsed tool row, including running, completed, error, and denied states, so you can open
-the row to inspect parameters and results.
+tool in a compact collapsed row with a readable label such as `Reading note` or `Creating task`.
+Running and waiting tools animate the label while the turn continues. Open the row to inspect the
+raw MCP tool name, parameters, and results.
 
 If you switch tool confirmations to **Ask first** in settings, Memry pauses the turn and shows inline
 approval controls inside the tool row. You can allow the request once, allow create tools always for
