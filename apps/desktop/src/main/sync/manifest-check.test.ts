@@ -12,6 +12,7 @@ import { inboxItems } from '@memry/db-schema/schema/inbox'
 import { settings } from '@memry/db-schema/schema/settings'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
+import { noteMetadata } from '@memry/db-schema/data-schema'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import { SyncQueueManager } from './queue'
 
@@ -252,6 +253,43 @@ describe('checkManifestIntegrity', () => {
           clock,
           createdAt: new Date().toISOString(),
           modifiedAt: new Date().toISOString()
+        })
+        .run()
+
+      vi.spyOn(await import('./http-client'), 'getFromServer').mockResolvedValue({
+        items: [{ id: 'note-1', type: 'note', version: 1, modifiedAt: 1000, size: 50 }],
+        serverTime: Math.floor(Date.now() / 1000)
+      })
+
+      const { checkManifestIntegrity } = await import('./manifest-check')
+
+      // #when
+      const result = await checkManifestIntegrity({
+        db: asSyncDb(testDb.db),
+        queue,
+        getAccessToken: async () => 'test-token',
+        isOnline: () => true
+      })
+
+      // #then
+      expect(result.rePullNeeded).toBe(false)
+      expect(result.serverOnlyCount).toBe(0)
+    })
+  })
+
+  describe('#given note with clock only in data db #when check runs', () => {
+    it('#then recognizes note as local and does not trigger re-pull', async () => {
+      // #given
+      const clock: VectorClock = { 'device-A': 1 }
+      testDb.db
+        .insert(noteMetadata)
+        .values({
+          id: 'note-1',
+          path: 'notes/test.md',
+          title: 'Test Note',
+          clock,
+          createdAt: '2026-05-15T08:00:00.000Z',
+          modifiedAt: '2026-05-15T08:01:00.000Z'
         })
         .run()
 
