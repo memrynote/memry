@@ -66,6 +66,25 @@ describe('CodexCliBackend', () => {
     expect(spawn).toHaveBeenNthCalledWith(2, expect.objectContaining({ purpose: 'summary' }))
   })
 
+  it('forwards turn permissions to the Codex subprocess adapter', async () => {
+    const spawn = vi.fn(async () => createHandle(''))
+    const backend = new CodexCliBackend({ spawn })
+
+    await backend.runTurn({
+      prompt: 'User: inspect',
+      conversationId: 'conversation-1',
+      windowId: 'window-1',
+      options: { backend: 'codex_cli', reasoningEffort: 'medium' },
+      permissions: { accessMode: 'computer_access', webSearchEnabled: true }
+    })
+
+    expect(spawn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        permissions: { accessMode: 'computer_access', webSearchEnabled: true }
+      })
+    )
+  })
+
   it('reports Codex CLI availability through the unified backend status shape', async () => {
     const backend = new CodexCliBackend({ spawn: vi.fn() })
 

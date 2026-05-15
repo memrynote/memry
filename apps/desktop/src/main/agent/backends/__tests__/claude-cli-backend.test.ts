@@ -105,6 +105,25 @@ describe('ClaudeCliBackend', () => {
     )
   })
 
+  it('forwards turn permissions to the Claude subprocess adapter', async () => {
+    const spawn = vi.fn(async () => createHandle(''))
+    const backend = new ClaudeCliBackend({ spawn })
+
+    await backend.runTurn({
+      prompt: 'User: inspect',
+      conversationId: 'conversation-1',
+      windowId: 'window-1',
+      options: { backend: 'claude_cli', claudeEffort: 'low' },
+      permissions: { accessMode: 'computer_access', webSearchEnabled: true }
+    })
+
+    expect(spawn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        permissions: { accessMode: 'computer_access', webSearchEnabled: true }
+      })
+    )
+  })
+
   it('reports Claude CLI availability through the unified backend status shape', async () => {
     const backend = new ClaudeCliBackend({ spawn: vi.fn() })
 

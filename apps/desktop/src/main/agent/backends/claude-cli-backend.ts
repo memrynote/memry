@@ -56,6 +56,7 @@ export class ClaudeCliBackend implements AgentBackend {
       windowId: input.windowId,
       effort,
       model,
+      ...(input.permissions ? { permissions: input.permissions } : {}),
       purpose
     })
 
