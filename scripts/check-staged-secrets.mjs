@@ -88,6 +88,7 @@ function isSourceCodeReferenceValue(filePath, value) {
 
   return (
     isTypeScriptTypeValue(normalized) ||
+    /^[A-Za-z_$][\w$]*$/.test(normalized) ||
     /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+$/.test(normalized) ||
     isChainedCodeCallValue(normalized) ||
     /^[A-Za-z_$][\w$]*(?:\[[^\]]+\])+$/.test(normalized) ||
