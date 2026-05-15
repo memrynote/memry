@@ -14,6 +14,8 @@ If today's entry doesn't exist yet, it's created on first focus, seeded by your 
 
 The same BlockNote editor is used for journal entries — slash commands, markdown shortcuts, wiki links, attachments, AI inline. Anything you can do in a note works here too.
 
+Use **Add property** or **Add tag** above the date heading to organize a daily entry before writing.
+
 ## Full-Width Mode
 
 A toggle in the journal header widens the writing column. Useful on big monitors when the default narrow column feels cramped.
@@ -38,12 +40,12 @@ Toggle from [Settings → Journal](/user-guide/settings#journal).
 
 ## Navigating Days
 
-| How | Action |
-| --- | --- |
-| Header arrows | Previous / next day |
-| Date breadcrumb | Click for the date picker |
+| How                                | Action                        |
+| ---------------------------------- | ----------------------------- |
+| Header arrows                      | Previous / next day           |
+| Date breadcrumb                    | Click for the date picker     |
 | [Day Panel](/user-guide/day-panel) | Calendar grid; click any date |
-| Calendar nav | Day / month / year views |
+| Calendar nav                       | Day / month / year views      |
 
 See [Calendar Navigation](/user-guide/journal/calendar-navigation) for the larger views.
 

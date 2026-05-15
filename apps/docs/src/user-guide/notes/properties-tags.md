@@ -4,9 +4,11 @@ Add structured metadata to notes with custom **properties** and free-form **tags
 
 <!-- screenshot: properties panel and tags row at the top of a note -->
 
+Use **Add property** or **Add tag** above the note title to attach metadata before you start writing.
+
 ## Tags Row
 
-A row at the top of every note for free-form labels.
+A row under the title shows the note's free-form labels.
 
 - Click the tag area to add a tag
 - Comma or space confirms
@@ -24,15 +26,15 @@ A collapsible section under the title for **structured** metadata. Properties ar
 
 ### Property Types
 
-| Type | Use for | Example |
-| --- | --- | --- |
-| Text | Free-form short strings | "Author" |
-| Number | Numeric values | "Pages" |
-| Date | Dates and date ranges | "Started", "Due" |
-| Select | One value from a defined set | "Status: Draft / Live" |
-| Multi-select | Many values from a defined set | "Topics: Coding, Health" |
-| Checkbox | Boolean | "Archived" |
-| Status | Workflow stage with color | "Todo / In progress / Done" |
+| Type         | Use for                        | Example                     |
+| ------------ | ------------------------------ | --------------------------- |
+| Text         | Free-form short strings        | "Author"                    |
+| Number       | Numeric values                 | "Pages"                     |
+| Date         | Dates and date ranges          | "Started", "Due"            |
+| Select       | One value from a defined set   | "Status: Draft / Live"      |
+| Multi-select | Many values from a defined set | "Topics: Coding, Health"    |
+| Checkbox     | Boolean                        | "Archived"                  |
+| Status       | Workflow stage with color      | "Todo / In progress / Done" |
 
 ### Defining Properties
 
@@ -46,12 +48,12 @@ In the property panel, click **Add property** and pick from the list. Set the va
 
 ## Tags vs Properties — When to Use Which
 
-| Need | Use |
-| --- | --- |
-| Quick free-form labels you don't pre-define | Tags |
-| A controlled vocabulary across many notes | Multi-select property |
-| A single workflow state per note | Status property |
-| A date or numeric value | Typed property |
+| Need                                        | Use                   |
+| ------------------------------------------- | --------------------- |
+| Quick free-form labels you don't pre-define | Tags                  |
+| A controlled vocabulary across many notes   | Multi-select property |
+| A single workflow state per note            | Status property       |
+| A date or numeric value                     | Typed property        |
 
 Tags are zero-cost and discoverable. Properties are structured and great for filtering [Folder View](/user-guide/folder-view).
 
