@@ -20,11 +20,11 @@ The vault is a folder Memry owns on disk. It holds your encrypted SQLite databas
 
 You're asked where to put the vault. Defaults:
 
-| Platform | Default path |
-| --- | --- |
-| macOS | `~/Library/Application Support/Memry/Vault/` |
-| Windows | `%APPDATA%/Memry/Vault/` |
-| Linux | `~/.config/Memry/vault/` |
+| Platform | Default path                                 |
+| -------- | -------------------------------------------- |
+| macOS    | `~/Library/Application Support/Memry/Vault/` |
+| Windows  | `%APPDATA%/Memry/Vault/`                     |
+| Linux    | `~/.config/Memry/vault/`                     |
 
 Pick a different path if you want to:
 
@@ -68,6 +68,8 @@ Save it somewhere durable:
 **Do not** screenshot it on a synced phone, email it, or paste it in a notes app.
 
 After showing the phrase, Memry asks you to **re-enter** a few specific words to confirm you've saved it. This step exists to prevent accidental loss.
+
+If you close Settings during this confirmation step, signup stays incomplete. Reopen [Settings → Account](/user-guide/settings#account) to resume recovery confirmation before sync starts.
 
 ## Email & OTP (Optional, for Sync)
 
