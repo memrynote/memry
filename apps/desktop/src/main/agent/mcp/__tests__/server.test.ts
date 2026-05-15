@@ -91,6 +91,50 @@ describe('Agent MCP server tool round-trip', () => {
     }
   })
 
+  it('serves overlapping MCP tool calls without sharing a connected transport', async () => {
+    let releaseFirst!: () => void
+    let resolveFirstStarted!: () => void
+    const firstStarted = new Promise<void>((resolve) => {
+      resolveFirstStarted = resolve
+    })
+    const firstCanFinish = new Promise<void>((resolve) => {
+      releaseFirst = resolve
+    })
+    const handle = await startAgentMcpServer({
+      toolRegistrations: [
+        {
+          name: 'slow_echo_tool',
+          description: 'echo input after an optional delay',
+          inputSchema: z.object({ msg: z.string() }),
+          handler: async (input) => {
+            const msg = (input as { msg: string }).msg
+            if (msg === 'first') {
+              resolveFirstStarted()
+              await firstCanFinish
+            }
+            return { echoed: msg }
+          }
+        }
+      ]
+    })
+
+    try {
+      const first = callTool(handle, 'slow_echo_tool', { msg: 'first' })
+      await firstStarted
+      const second = callTool(handle, 'slow_echo_tool', { msg: 'second' })
+      await new Promise((resolve) => setTimeout(resolve, 25))
+      releaseFirst()
+
+      const [firstResponse, secondResponse] = await Promise.all([first, second])
+      expect(firstResponse.status).toBe(200)
+      expect(secondResponse.status).toBe(200)
+      expect(await firstResponse.text()).toContain('"echoed":"first"')
+      expect(await secondResponse.text()).toContain('"echoed":"second"')
+    } finally {
+      await handle.stop()
+    }
+  })
+
   it('decorates Memry tool results with source refs for MCP clients', async () => {
     const handle = await startAgentMcpServer({
       toolRegistrations: [
@@ -171,3 +215,24 @@ describe('Agent MCP server tool round-trip', () => {
     }
   })
 })
+
+function callTool(
+  handle: AgentMcpServerHandle,
+  name: string,
+  args: Record<string, unknown>
+): Promise<Response> {
+  return fetch(`${handle.url}/mcp`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${handle.token}`,
+      'content-type': 'application/json',
+      accept: 'application/json, text/event-stream'
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: crypto.randomUUID(),
+      method: 'tools/call',
+      params: { name, arguments: args }
+    })
+  })
+}

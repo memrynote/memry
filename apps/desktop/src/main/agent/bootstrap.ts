@@ -88,18 +88,24 @@ export async function startAgent(): Promise<AgentHandle> {
       throw new Error(binary.installHint ?? 'Claude CLI unavailable')
     }
 
-    const status = getPublicStatus()
-    if (!status.url || !status['token']) {
+    const status = purpose === 'turn' ? getPublicStatus() : null
+    if (purpose === 'turn' && (!status?.url || !status['token'])) {
       throw new Error('Agent MCP server not running')
     }
 
     const sub = await spawnClaudeTurn({
       binaryPath: 'claude',
-      mcpServerUrl: status.url,
-      authorizationValue: status['token'],
-      conversationId,
-      windowId,
-      allowedTools: purpose === 'turn' ? ALLOWED_AGENT_TOOLS : '',
+      ...(status?.url && status['token']
+        ? {
+            mcp: {
+              serverUrl: status.url,
+              authorizationValue: status['token'],
+              conversationId,
+              windowId,
+              allowedTools: ALLOWED_AGENT_TOOLS
+            }
+          }
+        : {}),
       effort,
       model,
       prompt
@@ -212,12 +218,19 @@ export async function startAgent(): Promise<AgentHandle> {
       setSettings: setLocalProviderSettings,
       listModels: async () => {
         const settings = await getLocalProviderSettings()
-        return {
-          models: await listOpenAiCompatibleModels(
-            settings.baseUrl,
-            fetch,
-            await getLocalProviderApiKey()
+        try {
+          return {
+            models: await listOpenAiCompatibleModels(
+              settings.baseUrl,
+              fetch,
+              await getLocalProviderApiKey()
+            )
+          }
+        } catch (error) {
+          logger.warn(
+            `Local provider model listing failed: ${extractErrorMessage(error, 'unknown')}`
           )
+          return { models: [] }
         }
       },
       testConnection: async () => {
