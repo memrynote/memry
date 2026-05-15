@@ -1,6 +1,6 @@
 import http from 'node:http'
 
-import { McpServer, type RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import type { ZodTypeAny } from 'zod'
 
@@ -36,35 +36,38 @@ export interface AgentMcpServerHandle {
 export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpServerHandle> {
   const session = createMcpSession()
   const tools = new Map<string, ToolRegistration>()
-  const registeredTools = new Map<string, RegisteredTool>()
-  const mcp = new McpServer({ name: 'memry-vault', version: '1.0.0' })
 
   function bindTool(reg: ToolRegistration): void {
-    registeredTools.get(reg.name)?.remove()
-    const registered = mcp.registerTool(
-      reg.name,
-      { description: reg.description, inputSchema: reg.inputSchema },
-      async (input, extra) => {
-        const reqHeaders = extra.requestInfo?.headers ?? {}
-        const ctx = session.contextFromHeaders(reqHeaders)
-        try {
-          const result = await reg.handler(input, ctx)
-          const decorated = decorateToolResultWithAgentSources(reg.name, input, result)
-          return {
-            content: [{ type: 'text', text: JSON.stringify(decorated) }],
-            structuredContent: toStructuredContent(decorated)
-          }
-        } catch (err) {
-          logger.error(`Tool ${reg.name} failed`, err)
-          return toMcpToolErrorContent(err)
-        }
-      }
-    )
     tools.set(reg.name, reg)
-    registeredTools.set(reg.name, registered)
   }
 
   for (const reg of opts.toolRegistrations) bindTool(reg)
+
+  function createMcpServer(): McpServer {
+    const mcp = new McpServer({ name: 'memry-vault', version: '1.0.0' })
+    for (const reg of tools.values()) {
+      mcp.registerTool(
+        reg.name,
+        { description: reg.description, inputSchema: reg.inputSchema },
+        async (input, extra) => {
+          const reqHeaders = extra.requestInfo?.headers ?? {}
+          const ctx = session.contextFromHeaders(reqHeaders)
+          try {
+            const result = await reg.handler(input, ctx)
+            const decorated = decorateToolResultWithAgentSources(reg.name, input, result)
+            return {
+              content: [{ type: 'text', text: JSON.stringify(decorated) }],
+              structuredContent: toStructuredContent(decorated)
+            }
+          } catch (err) {
+            logger.error(`Tool ${reg.name} failed`, err)
+            return toMcpToolErrorContent(err)
+          }
+        }
+      )
+    }
+    return mcp
+  }
 
   const server = http.createServer((req, res) => {
     void handleRequest(req, res)
@@ -87,6 +90,7 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
 
     if (req.method === 'POST' && req.url === '/mcp') {
       const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
+      const mcp = createMcpServer()
       try {
         await mcp.connect(transport)
         const body = await readJson(req)
@@ -98,7 +102,7 @@ export async function startAgentMcpServer(opts: StartOptions): Promise<AgentMcpS
           res.end(JSON.stringify({ error: 'internal' }))
         }
       } finally {
-        await transport.close()
+        await mcp.close()
       }
       return
     }
