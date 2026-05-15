@@ -11,12 +11,13 @@ import {
   type DeviceRegisterResponse
 } from '@memry/contracts/auth-api'
 
-import { deleteKey, getDevicePublicKey, storeKey } from '../crypto'
+import { bindLocalVaultToMasterKey, deleteKey, getDevicePublicKey, storeKey } from '../crypto'
 import { getDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
 import { deleteFromServer, postToServer } from './http-client'
 import { getSyncEngine, startSyncRuntime } from './runtime'
 import { startGoogleCalendarSyncRunner } from '../calendar/google/sync-service'
+import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 import {
   ACCESS_TOKEN_EXPIRY_SECONDS,
   extractJtiFromToken,
@@ -146,6 +147,8 @@ export const persistKeysAndRegisterDevice = async (
   }
 
   const db = getDatabase()
+  await bindLocalVaultToMasterKey(db, getOrCreateVaultUuid(db), masterKey)
+
   const pubKey = getDevicePublicKey(signingSecretKey)
   const pubKeyBase64 = sodium.to_base64(pubKey, sodium.base64_variants.ORIGINAL)
 
