@@ -278,7 +278,7 @@ describe('GraphCanvas', () => {
         type: 'note',
         title: 'Alpha',
         entityId: 'note-a',
-        isPreview: true
+        isPreview: false
       })
     )
 

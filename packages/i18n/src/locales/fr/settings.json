@@ -90,10 +90,6 @@
       "error": "Échec de la mise à jour du format de l'heure"
     },
     "tabs": {
-      "previewMode": {
-        "label": "Mode Aperçu",
-        "description": "Un simple clic ouvre l'aperçu, un double-clic reste ouvert"
-      },
       "restoreSession": {
         "label": "Restaurer la session au démarrage",
         "description": "Rouvrez les onglets de votre dernière session"

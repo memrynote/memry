@@ -35,17 +35,9 @@ Pin a tab to keep it at the front of the bar. Pinned tabs:
 
 Useful for: today's journal, your "now" note, the shared project.
 
-## Preview Mode
+## Opening Items
 
-Single-clicking certain things (a sidebar item, a search result) opens a **preview tab** rendered in italics. The preview tab is **reused** for the next preview — clicking another search result replaces it.
-
-Promote a preview to a permanent tab by:
-
-- Editing the content
-- Double-clicking the tab
-- Right-click → "Keep tab"
-
-Toggle preview mode in [Settings → General → Tab Behavior](/user-guide/settings#general).
+Single-clicking a note, view, search result, or sidebar item opens a permanent tab. If that item is already open, Memry focuses the existing tab instead of creating another copy.
 
 ## Mouse Navigation
 

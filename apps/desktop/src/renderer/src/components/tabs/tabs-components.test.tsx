@@ -12,7 +12,6 @@ import { notesService } from '@/services/notes-service'
 const tabsApi = {
   setActiveTab: vi.fn(),
   closeTab: vi.fn(),
-  promotePreviewTab: vi.fn(),
   openTab: vi.fn(),
   dispatch: vi.fn(),
   state: {
@@ -28,8 +27,7 @@ const tabsApi = {
 }
 
 const settings = {
-  tabCloseButton: 'active',
-  previewMode: true
+  tabCloseButton: 'active'
 }
 
 vi.mock('@memry/i18n/renderer', () => ({
@@ -140,8 +138,8 @@ describe('tabs components coverage', () => {
     expect(container.querySelector('svg')).toBeInTheDocument()
   })
 
-  it('activates, closes, and promotes regular tabs', () => {
-    const tab = makeTab({ isModified: true, isPreview: true })
+  it('activates and closes regular tabs', () => {
+    const tab = makeTab({ isModified: true, isPreview: false })
     render(<RegularTab tab={tab} groupId="group-1" isActive />)
 
     fireEvent.click(screen.getByRole('tab', { name: /Daily Note/ }))
@@ -150,7 +148,6 @@ describe('tabs components coverage', () => {
     fireEvent.mouseDown(screen.getByRole('tab', { name: /Daily Note/ }), { button: 1 })
 
     expect(tabsApi.setActiveTab).toHaveBeenCalledWith('tab-1', 'group-1')
-    expect(tabsApi.promotePreviewTab).toHaveBeenCalledWith('tab-1', 'group-1')
     expect(tabsApi.closeTab).toHaveBeenCalledWith('tab-1', 'group-1')
   })
 
@@ -173,7 +170,7 @@ describe('tabs components coverage', () => {
   })
 
   it('covers accessible tab keyboard and close controls', () => {
-    const tab = makeTab({ isModified: true, isPreview: true })
+    const tab = makeTab({ isModified: true, isPreview: false })
     const { rerender } = render(
       <AccessibleTab tab={tab} groupId="group-1" index={0} totalTabs={2} isActive isFocused />
     )

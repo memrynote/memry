@@ -51,7 +51,7 @@ const makeState = (layout: SplitLayout): TabSystemState => ({
   },
   layout,
   activeGroupId: 'g1',
-  settings: { previewMode: false, restoreSessionOnStart: true, tabCloseButton: 'hover' }
+  settings: { restoreSessionOnStart: true, tabCloseButton: 'hover' }
 })
 
 describe('SplitLayoutRenderer day panel spacing', () => {

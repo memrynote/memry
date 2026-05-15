@@ -14,10 +14,6 @@ import {
   tabVariantsReduced
 } from './animations'
 
-vi.mock('@/contexts/tabs', () => ({
-  useTabSettings: () => ({ previewMode: true })
-}))
-
 vi.mock('./tab-icon', () => ({
   TabIcon: ({ type }: { type: string }) => <span data-testid="tab-icon">{type}</span>
 }))
@@ -29,7 +25,7 @@ describe('tabs small components', () => {
     title: 'Draft',
     icon: 'file',
     emoji: null,
-    isPreview: true,
+    isPreview: false,
     isModified: true
   } as any
 

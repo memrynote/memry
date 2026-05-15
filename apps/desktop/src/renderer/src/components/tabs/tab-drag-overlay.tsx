@@ -4,7 +4,6 @@
  */
 
 import type { Tab } from '@/contexts/tabs/types'
-import { useTabSettings } from '@/contexts/tabs'
 import { TabIcon } from './tab-icon'
 import { cn } from '@/lib/utils'
 
@@ -18,8 +17,6 @@ interface TabDragOverlayProps {
  * Browser-style with elevated appearance
  */
 export const TabDragOverlay = ({ tab }: TabDragOverlayProps): React.JSX.Element => {
-  const settings = useTabSettings()
-
   return (
     <div
       className={cn(
@@ -39,13 +36,7 @@ export const TabDragOverlay = ({ tab }: TabDragOverlayProps): React.JSX.Element 
         className="w-4 h-4 flex-shrink-0 text-sidebar-terracotta"
       />
 
-      <span
-        className={cn(
-          'flex-1 truncate text-[13px] font-normal',
-          'text-sidebar-terracotta',
-          tab.isPreview && settings.previewMode && 'italic'
-        )}
-      >
+      <span className={cn('flex-1 truncate text-[13px] font-normal', 'text-sidebar-terracotta')}>
         {tab.title}
       </span>
 

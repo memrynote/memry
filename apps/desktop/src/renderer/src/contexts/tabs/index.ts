@@ -25,7 +25,6 @@ export {
   findExistingTab,
   findTabByEntityId,
   findTabById,
-  findPreviewTab,
   getTabIcon,
   getDefaultPath,
   createDefaultTab,

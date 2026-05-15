@@ -6,7 +6,7 @@
 import { useRef, useEffect } from 'react'
 import { X } from '@/lib/icons'
 import type { Tab } from '@/contexts/tabs/types'
-import { useTabs, useTabSettings } from '@/contexts/tabs'
+import { useTabs } from '@/contexts/tabs'
 import { TabIcon } from './tab-icon'
 import { cn } from '@/lib/utils'
 import { useT } from '@memry/i18n/renderer'
@@ -42,7 +42,6 @@ export const AccessibleTab = ({
 }: AccessibleTabProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('common')
   const { setActiveTab, closeTab } = useTabs()
-  const settings = useTabSettings()
   const tabRef = useRef<HTMLButtonElement>(null)
 
   // Focus when marked as focused (keyboard navigation)
@@ -75,7 +74,6 @@ export const AccessibleTab = ({
 
     if (tab.isPinned) parts.push('pinned')
     if (tab.isModified) parts.push('unsaved changes')
-    if (tab.isPreview) parts.push('preview')
 
     parts.push(`tab ${index + 1} of ${totalTabs}`)
 
@@ -127,13 +125,6 @@ export const AccessibleTab = ({
       {/* Modified indicator */}
       {tab.isModified && (
         <span className="w-2 h-2 rounded-full bg-tint flex-shrink-0" aria-hidden="true" />
-      )}
-
-      {/* Preview indicator - only show when preview mode is enabled */}
-      {tab.isPreview && !tab.isModified && settings.previewMode && (
-        <span className="text-xs text-gray-400 italic" aria-hidden="true">
-          {tPhaseF('phaseF.componentsTabsAccessibleTab.preview')}
-        </span>
       )}
 
       {/* Close button */}

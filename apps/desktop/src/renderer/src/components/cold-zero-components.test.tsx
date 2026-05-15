@@ -100,7 +100,7 @@ vi.mock('@/contexts/tabs', () => ({
             activeTabId: 'tab-1',
             tabs: [
               createTab({ id: 'tab-1', title: 'Pinned', isPinned: true, isModified: true }),
-              createTab({ id: 'tab-2', title: 'Regular', isPreview: true }),
+              createTab({ id: 'tab-2', title: 'Regular', isPreview: false }),
               createTab({ id: 'tab-3', title: 'Other' })
             ]
           },
@@ -116,7 +116,6 @@ vi.mock('@/contexts/tabs', () => ({
       closeOtherTabs: mocks.closeOtherTabs,
       closeTabsToRight: mocks.closeTabsToRight,
       closeAllTabs: mocks.closeAllTabs,
-      promotePreviewTab: vi.fn(),
       dispatch: mocks.dispatch
     }
   },
@@ -144,13 +143,13 @@ vi.mock('@/contexts/tabs', () => ({
         groupId === 'group-1'
           ? [
               createTab({ id: 'tab-1', title: 'Pinned', isPinned: true, isModified: true }),
-              createTab({ id: 'tab-2', title: 'Regular', isPreview: true }),
+              createTab({ id: 'tab-2', title: 'Regular', isPreview: false }),
               createTab({ id: 'tab-3', title: 'Other' })
             ]
           : []
     }
   },
-  useTabSettings: () => ({ tabCloseButton: 'always', previewMode: true })
+  useTabSettings: () => ({ tabCloseButton: 'always' })
 }))
 
 vi.mock('./tabs/new-tab-menu', () => ({

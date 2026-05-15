@@ -533,18 +533,16 @@ describe('settings-handlers', () => {
     expect(reindexResult).toEqual({ success: true, computed: 1, skipped: 0 })
     ;(settingsQueries.getSetting as Mock).mockReturnValue(null)
     const tabSettings = await invokeHandler(SettingsChannels.invoke.GET_TAB_SETTINGS)
-    expect(tabSettings).toEqual(
-      expect.objectContaining({ previewMode: false, restoreSessionOnStart: true })
-    )
+    expect(tabSettings).toEqual(expect.objectContaining({ restoreSessionOnStart: true }))
 
     const updateTabs = await invokeHandler(SettingsChannels.invoke.SET_TAB_SETTINGS, {
-      previewMode: true,
+      restoreSessionOnStart: false,
       tabCloseButton: 'always'
     })
     expect(updateTabs).toEqual({ success: true })
     expect(mockSend).toHaveBeenCalledWith(SettingsChannels.events.CHANGED, {
       key: 'tabs',
-      value: { previewMode: true, tabCloseButton: 'always' }
+      value: { restoreSessionOnStart: false, tabCloseButton: 'always' }
     })
   })
 
@@ -561,7 +559,7 @@ describe('settings-handlers', () => {
     expect(setResult).toEqual({ success: false, error: 'No vault open' })
 
     const tabResult = await invokeHandler(SettingsChannels.invoke.SET_TAB_SETTINGS, {
-      previewMode: true
+      restoreSessionOnStart: true
     })
     expect(tabResult).toEqual({ success: false, error: 'No vault open' })
   })

@@ -44,7 +44,6 @@ const baseState = (overrides: Partial<TabSystemState> = {}): TabSystemState => (
   },
   activeGroupId: 'g1',
   settings: {
-    previewMode: false,
     restoreSessionOnStart: true,
     tabCloseButton: 'hover'
   },
@@ -74,7 +73,7 @@ describe('tabCrudReducer', () => {
     vi.unstubAllGlobals()
   })
 
-  it('opens tabs through replace, singleton, entity, preview, insertion, and background paths', () => {
+  it('opens tabs through replace, singleton, entity, insertion, and background paths', () => {
     const state = baseState()
 
     expect(
@@ -207,37 +206,6 @@ describe('tabCrudReducer', () => {
     expect(crossEntity.activeGroupId).toBe('g1')
     expect(crossEntity.tabGroups.g1.activeTabId).toBe('note-a')
 
-    const previewState = baseState({
-      settings: { ...state.settings, previewMode: true },
-      tabGroups: {
-        g1: group('g1', [tab('preview', 'note', { isPreview: true, entityId: 'old' })]),
-        g2: state.tabGroups.g2
-      }
-    })
-    const previewReplaced = tabCrudReducer(
-      previewState,
-      openAction({
-        background: true,
-        tab: {
-          type: 'note',
-          title: 'Preview',
-          icon: 'file',
-          path: '/note/new',
-          entityId: 'new',
-          isPinned: false,
-          isModified: false,
-          isPreview: true,
-          isDeleted: false
-        }
-      })
-    )
-    expect(previewReplaced.tabGroups.g1.tabs[0]).toMatchObject({
-      id: 'generated-2',
-      entityId: 'new',
-      isPreview: true
-    })
-    expect(previewReplaced.tabGroups.g1.activeTabId).toBe('preview')
-
     const inserted = tabCrudReducer(
       state,
       openAction({
@@ -257,11 +225,44 @@ describe('tabCrudReducer', () => {
     )
     expect(inserted.tabGroups.g1.tabs.map((t) => t.id)).toEqual([
       'pin',
-      'generated-3',
+      'generated-2',
       'note-a',
       'tasks'
     ])
-    expect(inserted.tabGroups.g1.activeTabId).toBe('generated-3')
+    expect(inserted.tabGroups.g1.activeTabId).toBe('generated-2')
+  })
+
+  it('normalizes preview opens into permanent tabs without replacing legacy preview tabs', () => {
+    const state = baseState({
+      tabGroups: {
+        g1: group('g1', [tab('preview', 'note', { isPreview: true, entityId: 'old' })]),
+        g2: baseState().tabGroups.g2
+      }
+    })
+
+    const next = tabCrudReducer(
+      state,
+      openAction({
+        tab: {
+          type: 'note',
+          title: 'New note',
+          icon: 'file',
+          path: '/note/new',
+          entityId: 'new',
+          isPinned: false,
+          isModified: false,
+          isPreview: true,
+          isDeleted: false
+        }
+      })
+    )
+
+    expect(next.tabGroups.g1.tabs.map((t) => t.id)).toEqual(['preview', 'generated-1'])
+    expect(next.tabGroups.g1.tabs[1]).toMatchObject({
+      entityId: 'new',
+      isPreview: false
+    })
+    expect(next.tabGroups.g1.activeTabId).toBe('generated-1')
   })
 
   it('closes tabs, preserves pinned tabs, and resets single empty groups', () => {

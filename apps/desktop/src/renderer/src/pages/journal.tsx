@@ -529,7 +529,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
               entityId: resolution.id,
               isPinned: false,
               isModified: false,
-              isPreview: true,
+              isPreview: false,
               isDeleted: false
             })
             break
@@ -636,7 +636,7 @@ export function JournalPage({ className }: JournalPageProps): React.JSX.Element 
           entityId: backlinkNoteId,
           isPinned: false,
           isModified: false,
-          isPreview: true,
+          isPreview: false,
           isDeleted: false
         })
       }

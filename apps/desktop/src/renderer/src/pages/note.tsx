@@ -760,7 +760,7 @@ export function NotePage({ noteId }: NotePageProps) {
               entityId: resolution.id,
               isPinned: false,
               isModified: false,
-              isPreview: true,
+              isPreview: false,
               isDeleted: false
             })
             break
@@ -780,7 +780,7 @@ export function NotePage({ noteId }: NotePageProps) {
               entityId: result.note.id,
               isPinned: false,
               isModified: false,
-              isPreview: true,
+              isPreview: false,
               isDeleted: false
             })
             break
@@ -818,7 +818,7 @@ export function NotePage({ noteId }: NotePageProps) {
         entityId: backlinkNoteId,
         isPinned: false,
         isModified: false,
-        isPreview: true,
+        isPreview: false,
         isDeleted: false,
         ...(viewState && { viewState })
       })

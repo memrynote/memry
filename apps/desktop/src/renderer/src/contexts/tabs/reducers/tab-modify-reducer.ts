@@ -3,13 +3,7 @@ import type { TabAction, TabSystemState } from '../types'
 type ModifyAction = Extract<
   TabAction,
   {
-    type:
-      | 'PIN_TAB'
-      | 'UNPIN_TAB'
-      | 'SET_TAB_MODIFIED'
-      | 'SET_TAB_DELETED'
-      | 'UPDATE_TAB_TITLE'
-      | 'PROMOTE_PREVIEW_TAB'
+    type: 'PIN_TAB' | 'UNPIN_TAB' | 'SET_TAB_MODIFIED' | 'SET_TAB_DELETED' | 'UPDATE_TAB_TITLE'
   }
 >
 
@@ -109,23 +103,6 @@ export function tabModifyReducer(state: TabSystemState, action: ModifyAction): T
           [groupId]: {
             ...group,
             tabs: group.tabs.map((t) => (t.id === tabId ? { ...t, title } : t))
-          }
-        }
-      }
-    }
-
-    case 'PROMOTE_PREVIEW_TAB': {
-      const { tabId, groupId } = action.payload
-      const group = state.tabGroups[groupId]
-      if (!group) return state
-
-      return {
-        ...state,
-        tabGroups: {
-          ...state.tabGroups,
-          [groupId]: {
-            ...group,
-            tabs: group.tabs.map((t) => (t.id === tabId ? { ...t, isPreview: false } : t))
           }
         }
       }

@@ -147,8 +147,6 @@ export type SplitLayout =
  * User preferences for tab behavior
  */
 export interface TabSettings {
-  /** Single-click opens preview, double-click opens permanent */
-  previewMode: boolean
   /** Restore tabs from last session on app start */
   restoreSessionOnStart: boolean
   /** When to show close button: always, on hover, or only on active tab */
@@ -234,7 +232,6 @@ export type TabAction =
   | { type: 'SET_TAB_MODIFIED'; payload: { tabId: string; groupId: string; isModified: boolean } }
   | { type: 'SET_TAB_DELETED'; payload: { tabId: string; groupId: string; isDeleted: boolean } }
   | { type: 'UPDATE_TAB_TITLE'; payload: { tabId: string; groupId: string; title: string } }
-  | { type: 'PROMOTE_PREVIEW_TAB'; payload: { tabId: string; groupId: string } }
 
   // Tab reordering
   | {

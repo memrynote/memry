@@ -90,10 +90,6 @@
       "error": "Nu s-a putut actualiza formatul orei"
     },
     "tabs": {
-      "previewMode": {
-        "label": "Modul de previzualizare",
-        "description": "Un singur clic deschide previzualizarea, dublu clic rămâne deschis"
-      },
       "restoreSession": {
         "label": "Restaurați sesiunea la pornire",
         "description": "Redeschideți filele din ultima dvs. sesiune"

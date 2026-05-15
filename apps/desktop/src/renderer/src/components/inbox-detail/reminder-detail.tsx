@@ -114,7 +114,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
           entityId: metadata.targetId,
           isPinned: false,
           isModified: false,
-          isPreview: true,
+          isPreview: false,
           isDeleted: false,
           viewState:
             metadata.targetType === 'highlight'
@@ -167,7 +167,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
         <span className="text-[var(--accent-orange)] font-medium text-xs">
           {t('reminder.triggered')}
         </span>
-        <span className="ml-auto text-text-tertiary text-[11px]">
+        <span className="ms-auto text-text-tertiary text-[11px]">
           {formatTriggerDate(metadata.remindAt)}
         </span>
       </div>
@@ -191,7 +191,7 @@ export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element
           type="button"
           onClick={handleNavigateToSource}
           className={cn(
-            'flex items-center rounded-lg py-2.5 px-3 gap-2.5 w-full text-left',
+            'flex items-center rounded-lg py-2.5 px-3 gap-2.5 w-full text-start',
             'bg-muted/30 border border-border',
             'hover:bg-muted/50 transition-colors cursor-pointer'
           )}
