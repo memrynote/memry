@@ -138,6 +138,44 @@ describe('MessageStream', () => {
     expect(screen.getByText('Planning note')).toBeInTheDocument()
   })
 
+  it('renders inline user mention refs as clickable tags', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'user-1',
+            role: 'user',
+            content: { role: 'user', data: { text: '@Vim Motions what is about?' } },
+            attachments: [
+              {
+                kind: 'note',
+                refId: 'note-vim',
+                label: 'Vim Motions',
+                snapshotAt: 100,
+                snapshot: { mode: 'reference_only', id: 'note-vim' }
+              }
+            ]
+          })
+        ]}
+      />
+    )
+
+    const mention = screen.getByRole('link', { name: '@Vim Motions' })
+    expect(mention).toHaveClass('rounded-full')
+    expect(mention.getAttribute('href')).toBe('memry://note/note-vim')
+
+    fireEvent.click(mention)
+
+    expect(mockOpenTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'note',
+        title: 'Vim Motions',
+        path: '/note/note-vim',
+        entityId: 'note-vim'
+      })
+    )
+  })
+
   it('ignores non-user content in user message rendering', () => {
     render(
       <MessageStream
