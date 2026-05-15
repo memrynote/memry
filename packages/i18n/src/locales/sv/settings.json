@@ -90,10 +90,6 @@
       "error": "Misslyckades med att uppdatera tidsformat"
     },
     "tabs": {
-      "previewMode": {
-        "label": "Förhandsgranskningsläge",
-        "description": "Enkelklick öppnar förhandsgranskning, dubbelklick håller den öppen"
-      },
       "restoreSession": {
         "label": "Återställ session vid start",
         "description": "Öppna flikar från din senaste session"

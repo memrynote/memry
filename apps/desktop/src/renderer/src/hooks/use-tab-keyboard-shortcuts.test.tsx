@@ -38,7 +38,7 @@ const makeState = (): TabSystemState => {
     tabGroups: { [group.id]: group },
     layout: { type: 'leaf', tabGroupId: group.id },
     activeGroupId: group.id,
-    settings: { previewMode: false, restoreSessionOnStart: true, tabCloseButton: 'hover' }
+    settings: { restoreSessionOnStart: true, tabCloseButton: 'hover' }
   }
 }
 

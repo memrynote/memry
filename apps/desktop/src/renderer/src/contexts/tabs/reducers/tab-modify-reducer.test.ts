@@ -35,7 +35,6 @@ const stateWith = (tabs: Tab[]): TabSystemState => ({
   layout: { type: 'leaf', tabGroupId: 'group-a' },
   activeGroupId: 'group-a',
   settings: {
-    previewMode: false,
     restoreSessionOnStart: true,
     tabCloseButton: 'hover'
   }
@@ -97,7 +96,7 @@ describe('tabModifyReducer', () => {
     expect(result.tabGroups['group-a'].tabs[1].isPinned).toBe(false)
   })
 
-  it('updates modified, deleted, title, and preview flags without disturbing other tabs', () => {
+  it('updates modified, deleted, and title flags without disturbing other tabs', () => {
     let state = stateWith([tab({ id: 'target' }), tab({ id: 'other', title: 'Other' })])
 
     state = tabModifyReducer(state, {
@@ -112,31 +111,12 @@ describe('tabModifyReducer', () => {
       type: 'UPDATE_TAB_TITLE',
       payload: { groupId: 'group-a', tabId: 'target', title: 'Renamed' }
     })
-    state = tabModifyReducer(
-      {
-        ...state,
-        tabGroups: {
-          ...state.tabGroups,
-          'group-a': {
-            ...state.tabGroups['group-a'],
-            tabs: state.tabGroups['group-a'].tabs.map((entry) =>
-              entry.id === 'target' ? { ...entry, isPreview: true } : entry
-            )
-          }
-        }
-      },
-      {
-        type: 'PROMOTE_PREVIEW_TAB',
-        payload: { groupId: 'group-a', tabId: 'target' }
-      }
-    )
 
     expect(state.tabGroups['group-a'].tabs[0]).toEqual(
       expect.objectContaining({
         title: 'Renamed',
         isModified: true,
-        isDeleted: true,
-        isPreview: false
+        isDeleted: true
       })
     )
     expect(state.tabGroups['group-a'].tabs[1]).toEqual(expect.objectContaining({ title: 'Other' }))

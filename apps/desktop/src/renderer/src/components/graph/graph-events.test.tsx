@@ -76,7 +76,7 @@ describe('GraphEvents', () => {
       entityId: 'note-1',
       isPinned: false,
       isModified: false,
-      isPreview: true,
+      isPreview: false,
       isDeleted: false
     })
 

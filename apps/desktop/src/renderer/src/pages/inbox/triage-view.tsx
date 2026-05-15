@@ -153,7 +153,7 @@ export function TriageView({ onExit }: TriageViewProps): React.JSX.Element | nul
           entityId: meta.targetId,
           isPinned: false,
           isModified: false,
-          isPreview: true,
+          isPreview: false,
           isDeleted: false,
           viewState:
             meta.targetType === 'highlight'
@@ -265,7 +265,7 @@ export function TriageView({ onExit }: TriageViewProps): React.JSX.Element | nul
                     disabled={!canFile}
                     className="flex-1 border-0 bg-tint text-tint-foreground hover:bg-tint-hover"
                   >
-                    <Check className="mr-1.5 size-4" aria-hidden="true" />
+                    <Check className="me-1.5 size-4" aria-hidden="true" />
                     {t('triage.action.file')}
                   </Button>
                   <Button

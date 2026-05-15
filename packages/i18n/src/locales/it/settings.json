@@ -90,10 +90,6 @@
       "error": "Impossibile aggiornare il formato dell'ora"
     },
     "tabs": {
-      "previewMode": {
-        "label": "Modalità di anteprima",
-        "description": "Un singolo clic apre l'anteprima, un doppio clic la mantiene aperta"
-      },
       "restoreSession": {
         "label": "Ripristina sessione all'avvio",
         "description": "Riapri le schede della tua ultima sessione"

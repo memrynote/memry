@@ -1188,8 +1188,6 @@ export interface FolderViewClientAPI {
 
 // Tab Settings types
 export interface TabSettings {
-  /** Single-click opens preview, double-click opens permanent */
-  previewMode: boolean
   /** Restore tabs from last session on app start */
   restoreSessionOnStart: boolean
   /** When to show close button: always, on hover, or only on active tab */

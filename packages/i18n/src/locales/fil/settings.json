@@ -90,10 +90,6 @@
       "error": "Nabigong i-update ang format ng oras"
     },
     "tabs": {
-      "previewMode": {
-        "label": "Preview Mode",
-        "description": "Ang isang pag-click ay nagbubukas ng preview, ang pag-double click ay nananatiling bukas"
-      },
       "restoreSession": {
         "label": "I-restore ang Session sa Start",
         "description": "Muling buksan ang mga tab mula sa iyong huling session"

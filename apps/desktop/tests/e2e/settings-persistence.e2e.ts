@@ -30,7 +30,6 @@ test.describe('Settings persistence E2E', () => {
           staleInboxDays: 9
         }),
         api.settings.setTabSettings({
-          previewMode: false,
           restoreSessionOnStart: true,
           tabCloseButton: 'always'
         }),
@@ -95,7 +94,6 @@ test.describe('Settings persistence E2E', () => {
       staleInboxDays: 9
     })
     expect(settings.tabs).toMatchObject({
-      previewMode: false,
       restoreSessionOnStart: true,
       tabCloseButton: 'always'
     })

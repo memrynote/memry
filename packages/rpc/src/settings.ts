@@ -83,7 +83,6 @@ export type TerminalCommandMutationResult =
   | { success: false; error: string; status?: TerminalCommandStatus }
 
 export interface TabSettings {
-  previewMode: boolean
   restoreSessionOnStart: boolean
   tabCloseButton: 'always' | 'hover' | 'active'
 }

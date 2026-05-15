@@ -249,7 +249,7 @@ describe('note and sidebar cold surfaces', () => {
         title: 'Projects',
         path: '/folder/Projects',
         entityId: 'Projects',
-        isPreview: true
+        isPreview: false
       })
     )
 

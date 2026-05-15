@@ -90,7 +90,7 @@ function openNodeInTab(
     entityId: node,
     isPinned: false,
     isModified: false,
-    isPreview: true,
+    isPreview: false,
     isDeleted: false
   })
 }

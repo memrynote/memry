@@ -90,10 +90,6 @@
       "error": "Kan de tijdnotatie niet updaten"
     },
     "tabs": {
-      "previewMode": {
-        "label": "Voorbeeldmodus",
-        "description": "Eén klik opent het voorbeeld, dubbelklikken blijft open"
-      },
       "restoreSession": {
         "label": "Herstel sessie bij starten",
         "description": "Open tabbladen van uw laatste sessie opnieuw"

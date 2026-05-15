@@ -90,10 +90,6 @@
       "error": "Kunne ikke opdatere tidsformatet"
     },
     "tabs": {
-      "previewMode": {
-        "label": "Forhåndsvisningstilstand",
-        "description": "Enkeltklik åbner forhåndsvisning, dobbeltklik holder åbent"
-      },
       "restoreSession": {
         "label": "Gendan session ved start",
         "description": "Genåbn faner fra din sidste session"

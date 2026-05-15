@@ -52,10 +52,7 @@ interface TabContextType {
   /**
    * Open a tab from sidebar item
    */
-  openFromSidebar: (
-    item: SidebarItem,
-    options?: Omit<OpenTabOptions, 'forceNew'> & { isPreview?: boolean }
-  ) => void
+  openFromSidebar: (item: SidebarItem, options?: Omit<OpenTabOptions, 'forceNew'>) => void
 
   /**
    * Close a tab
@@ -156,11 +153,6 @@ interface TabContextType {
    * Update a tab's title by entity ID (searches all groups)
    */
   updateTabTitleByEntityId: (entityId: string, title: string) => void
-
-  /**
-   * Promote a preview tab to permanent
-   */
-  promotePreviewTab: (tabId: string, groupId?: string) => void
 
   /**
    * Reorder tabs within a group
@@ -335,11 +327,8 @@ export const TabProvider = ({
   )
 
   const openFromSidebar = useCallback(
-    (
-      item: SidebarItem,
-      options: Omit<OpenTabOptions, 'forceNew'> & { isPreview?: boolean } = {}
-    ) => {
-      const tab = createTabFromSidebarItem(item, options.isPreview ?? false)
+    (item: SidebarItem, options: Omit<OpenTabOptions, 'forceNew'> = {}) => {
+      const tab = createTabFromSidebarItem(item, false)
       dispatch({
         type: 'OPEN_TAB',
         payload: {
@@ -515,14 +504,6 @@ export const TabProvider = ({
     }
   }, [])
 
-  const promotePreviewTab = useCallback((tabId: string, groupId?: string) => {
-    const actualGroupId = groupId ?? activeGroupIdRef.current
-    dispatch({
-      type: 'PROMOTE_PREVIEW_TAB',
-      payload: { tabId, groupId: actualGroupId }
-    })
-  }, [])
-
   const reorderTabs = useCallback((fromIndex: number, toIndex: number, groupId?: string) => {
     const actualGroupId = groupId ?? activeGroupIdRef.current
     dispatch({
@@ -670,7 +651,6 @@ export const TabProvider = ({
       setTabDeleted,
       updateTabTitle,
       updateTabTitleByEntityId,
-      promotePreviewTab,
       reorderTabs,
       moveTabToGroup,
       saveTabState,
@@ -711,7 +691,6 @@ export const TabProvider = ({
       setTabDeleted,
       updateTabTitle,
       updateTabTitleByEntityId,
-      promotePreviewTab,
       reorderTabs,
       moveTabToGroup,
       saveTabState,
@@ -854,7 +833,6 @@ export const useTabActions = () => {
     setTabDeleted,
     updateTabTitle,
     updateTabTitleByEntityId,
-    promotePreviewTab,
     reorderTabs,
     moveTabToGroup,
     saveTabState,
@@ -888,7 +866,6 @@ export const useTabActions = () => {
       setTabDeleted,
       updateTabTitle,
       updateTabTitleByEntityId,
-      promotePreviewTab,
       reorderTabs,
       moveTabToGroup,
       saveTabState,
@@ -919,7 +896,6 @@ export const useTabActions = () => {
       setTabDeleted,
       updateTabTitle,
       updateTabTitleByEntityId,
-      promotePreviewTab,
       reorderTabs,
       moveTabToGroup,
       saveTabState,

@@ -315,7 +315,7 @@ function FolderRow({
           {/* Drop indicator - before */}
           {isDropTarget && dropPosition === 'before' && (
             <div
-              className="absolute left-2 right-2 -top-0.5 h-0.5 rounded-full bg-primary"
+              className="absolute start-2 end-2 -top-0.5 h-0.5 rounded-full bg-primary"
               aria-hidden="true"
             />
           )}
@@ -323,7 +323,7 @@ function FolderRow({
           {/* Drop indicator - after */}
           {isDropTarget && dropPosition === 'after' && (
             <div
-              className="absolute left-2 right-2 -bottom-0.5 h-0.5 rounded-full bg-primary"
+              className="absolute start-2 end-2 -bottom-0.5 h-0.5 rounded-full bg-primary"
               aria-hidden="true"
             />
           )}
@@ -378,7 +378,7 @@ function FolderRow({
               className="text-destructive focus:text-destructive"
               onClick={onBulkDelete}
             >
-              <Trash2 className="mr-2 h-4 w-4" />
+              <Trash2 className="me-2 h-4 w-4" />
               {t('tree.actions.deleteSelectedItems', { count: selectedCount })}
             </ContextMenuItem>
           </>
@@ -386,46 +386,46 @@ function FolderRow({
           // Single item actions
           <>
             <ContextMenuItem onClick={() => onCreateNote?.(item.folder.path)}>
-              <FilePlus className="mr-2 h-4 w-4" />
+              <FilePlus className="me-2 h-4 w-4" />
               {t('tree.actions.newNote')}
             </ContextMenuItem>
             <ContextMenuItem onClick={() => onCreateFolder?.(item.folder.path)}>
-              <FolderPlus className="mr-2 h-4 w-4" />
+              <FolderPlus className="me-2 h-4 w-4" />
               {t('tree.actions.newFolder')}
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onSetFolderTemplate?.(item.folder.path)}>
-              <LayoutTemplate className="mr-2 h-4 w-4" />
+              <LayoutTemplate className="me-2 h-4 w-4" />
               {t('tree.actions.setDefaultTemplate')}
               {folderTemplateName && (
-                <span className="ml-1 text-muted-foreground">({folderTemplateName})</span>
+                <span className="ms-1 text-muted-foreground">({folderTemplateName})</span>
               )}
             </ContextMenuItem>
             <ContextMenuItem onClick={() => onClearFolderTemplate?.(item.folder.path)}>
-              <X className="mr-2 h-4 w-4" />
+              <X className="me-2 h-4 w-4" />
               {t('tree.actions.clearDefaultTemplate')}
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onIconPickerOpenChange?.(item.folder.path)}>
-              <Smile className="mr-2 h-4 w-4" />
+              <Smile className="me-2 h-4 w-4" />
               {t('tree.actions.setIcon')}
             </ContextMenuItem>
             {item.folder.icon && (
               <ContextMenuItem onClick={() => onSetFolderIcon?.(item.folder.path, null)}>
-                <X className="mr-2 h-4 w-4" />
+                <X className="me-2 h-4 w-4" />
                 {t('tree.actions.removeIcon')}
               </ContextMenuItem>
             )}
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onRenameFolder?.(item.folder.path)}>
-              <Pencil className="mr-2 h-4 w-4" />
+              <Pencil className="me-2 h-4 w-4" />
               {t('tree.actions.rename')}
             </ContextMenuItem>
             <ContextMenuItem
               className="text-destructive focus:text-destructive"
               onClick={() => onDeleteFolder?.(item.folder.path)}
             >
-              <Trash2 className="mr-2 h-4 w-4" />
+              <Trash2 className="me-2 h-4 w-4" />
               {tCommon('button.delete')}
             </ContextMenuItem>
           </>
@@ -551,7 +551,7 @@ function NoteRow({
           {/* Drop indicator - before */}
           {isDropTarget && dropPosition === 'before' && (
             <div
-              className="absolute left-2 right-2 -top-0.5 h-0.5 rounded-full bg-primary"
+              className="absolute start-2 end-2 -top-0.5 h-0.5 rounded-full bg-primary"
               aria-hidden="true"
             />
           )}
@@ -559,7 +559,7 @@ function NoteRow({
           {/* Drop indicator - after */}
           {isDropTarget && dropPosition === 'after' && (
             <div
-              className="absolute left-2 right-2 -bottom-0.5 h-0.5 rounded-full bg-primary"
+              className="absolute start-2 end-2 -bottom-0.5 h-0.5 rounded-full bg-primary"
               aria-hidden="true"
             />
           )}
@@ -588,7 +588,7 @@ function NoteRow({
               className="text-destructive focus:text-destructive"
               onClick={onBulkDelete}
             >
-              <Trash2 className="mr-2 h-4 w-4" />
+              <Trash2 className="me-2 h-4 w-4" />
               {t('tree.actions.deleteSelectedItems', { count: selectedCount })}
             </ContextMenuItem>
           </>
@@ -596,16 +596,16 @@ function NoteRow({
           // Single item actions
           <>
             <ContextMenuItem onClick={() => onRenameNote?.(item.note)}>
-              <Pencil className="mr-2 h-4 w-4" />
+              <Pencil className="me-2 h-4 w-4" />
               {t('tree.actions.rename')}
             </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={() => onOpenExternal?.(item.note)}>
-              <ExternalLink className="mr-2 h-4 w-4" />
+              <ExternalLink className="me-2 h-4 w-4" />
               {t('tree.actions.openExternal')}
             </ContextMenuItem>
             <ContextMenuItem onClick={() => onRevealInFinder?.(item.note)}>
-              <FolderOpen className="mr-2 h-4 w-4" />
+              <FolderOpen className="me-2 h-4 w-4" />
               {t('tree.actions.revealInFinder')}
             </ContextMenuItem>
             <ContextMenuSeparator />
@@ -613,7 +613,7 @@ function NoteRow({
               className="text-destructive focus:text-destructive"
               onClick={() => onDeleteNote?.(item.note)}
             >
-              <Trash2 className="mr-2 h-4 w-4" />
+              <Trash2 className="me-2 h-4 w-4" />
               {tCommon('button.delete')}
             </ContextMenuItem>
           </>
@@ -815,7 +815,7 @@ export function VirtualizedNotesTree({
               entityId: note.id,
               isPinned: false,
               isModified: false,
-              isPreview: true,
+              isPreview: false,
               isDeleted: false
             })
           }
@@ -825,7 +825,7 @@ export function VirtualizedNotesTree({
     [selectedIds, onSelectionChange, flatItems, noteMap, openTab, anchorId]
   )
 
-  // Handle note double-click (open in non-preview mode)
+  // Handle note double-click
   const handleNoteDoubleClick = useCallback(
     (note: NoteListItem) => {
       const fileType = (note.fileType ?? 'markdown') as FileType
@@ -859,7 +859,7 @@ export function VirtualizedNotesTree({
         entityId: folderPath,
         isPinned: false,
         isModified: false,
-        isPreview: true,
+        isPreview: false,
         isDeleted: false
       })
     },

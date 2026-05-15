@@ -90,10 +90,6 @@
       "error": "更新时间格式失败"
     },
     "tabs": {
-      "previewMode": {
-        "label": "预览模式",
-        "description": "单击打开预览，双击保持打开"
-      },
       "restoreSession": {
         "label": "启动时恢复会话",
         "description": "重新打开上次会话中的标签页"

@@ -77,7 +77,6 @@ describe('GeneralSettings i18n', () => {
     })
     api.settings.setGeneralSettings = vi.fn().mockResolvedValue({ success: true })
     api.settings.getTabSettings = vi.fn().mockResolvedValue({
-      previewMode: true,
       restoreSessionOnStart: true,
       tabCloseButton: 'hover'
     })
@@ -172,22 +171,17 @@ describe('GeneralSettings i18n', () => {
 
     await user.click(switches[1])
     await waitFor(() =>
-      expect(api.settings.setTabSettings).toHaveBeenCalledWith({ previewMode: false })
-    )
-
-    await user.click(switches[2])
-    await waitFor(() =>
       expect(api.settings.setTabSettings).toHaveBeenCalledWith({ restoreSessionOnStart: false })
     )
 
-    await user.click(switches[3])
+    await user.click(switches[2])
     await waitFor(() =>
       expect(api.settings.setGeneralSettings).toHaveBeenCalledWith({
         createInSelectedFolder: false
       })
     )
 
-    await user.click(switches[4])
+    await user.click(switches[3])
     await waitFor(() => expect(api.telemetry.setEnabled).toHaveBeenCalledWith(false))
 
     const selects = screen.getAllByRole('combobox')

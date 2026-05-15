@@ -90,10 +90,6 @@
       "error": "Nie udało się zaktualizować formatu godziny"
     },
     "tabs": {
-      "previewMode": {
-        "label": "Tryb podglądu",
-        "description": "Pojedyncze kliknięcie otwiera podgląd, podwójne kliknięcie utrzymuje otwarte"
-      },
       "restoreSession": {
         "label": "Przywróć sesję przy uruchomieniu",
         "description": "Otwórz ponownie karty z ostatniej sesji"

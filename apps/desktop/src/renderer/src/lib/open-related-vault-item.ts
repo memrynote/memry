@@ -32,7 +32,7 @@ export async function openRelatedVaultItem(itemId: string, openTab: OpenTab): Pr
     entityId: itemId,
     isPinned: false,
     isModified: false,
-    isPreview: true,
+    isPreview: false,
     isDeleted: false
   })
 }

@@ -49,7 +49,7 @@ const makeState = (groups: TabGroup[], layout?: SplitLayout): TabSystemState => 
     tabGroups,
     layout: layout ?? { type: 'leaf', tabGroupId: groups[0].id },
     activeGroupId: groups[0].id,
-    settings: { previewMode: false, restoreSessionOnStart: true, tabCloseButton: 'hover' }
+    settings: { restoreSessionOnStart: true, tabCloseButton: 'hover' }
   }
 }
 

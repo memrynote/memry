@@ -155,7 +155,7 @@ describe('VirtualizedNotesTree', () => {
     localStorage.setItem('sidebar-tree-expanded', JSON.stringify(['folder-Work']))
   })
 
-  it('renders expanded folders, selects notes, and opens preview/non-preview tabs', async () => {
+  it('renders expanded folders, selects notes, and opens permanent tabs', async () => {
     const user = userEvent.setup()
     const props = renderTree()
 
@@ -168,7 +168,7 @@ describe('VirtualizedNotesTree', () => {
     expect(mocks.openTab).toHaveBeenLastCalledWith(
       expect.objectContaining({
         entityId: 'note-work',
-        isPreview: true,
+        isPreview: false,
         type: 'note'
       })
     )
@@ -186,7 +186,7 @@ describe('VirtualizedNotesTree', () => {
     expect(mocks.openTab).toHaveBeenLastCalledWith(
       expect.objectContaining({
         entityId: 'note-root',
-        isPreview: true,
+        isPreview: false,
         type: 'file'
       })
     )
