@@ -1,9 +1,8 @@
-import type { ComponentProps, ReactNode } from 'react'
+import type { ComponentProps } from 'react'
 import { isValidElement } from 'react'
 
-import { Badge } from '@/components/ui/badge'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { CheckCircle, ChevronDown, Clock, Terminal, XCircle } from '@/lib/icons'
+import { ChevronDown } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 export type ToolState =
@@ -35,21 +34,6 @@ const statusLabels: Record<ToolState, string> = {
   pending: 'Pending'
 }
 
-const statusIcons: Record<ToolState, ReactNode> = {
-  approved: <Clock className="size-3" aria-hidden="true" />,
-  'approval-requested': <Clock className="size-3" aria-hidden="true" />,
-  'approval-responded': <Clock className="size-3" aria-hidden="true" />,
-  completed: <CheckCircle className="size-3" aria-hidden="true" />,
-  denied: <XCircle className="size-3" aria-hidden="true" />,
-  failed: <XCircle className="size-3" aria-hidden="true" />,
-  'input-available': <Clock className="size-3" aria-hidden="true" />,
-  'input-streaming': <Clock className="size-3" aria-hidden="true" />,
-  'output-available': <CheckCircle className="size-3" aria-hidden="true" />,
-  'output-denied': <XCircle className="size-3" aria-hidden="true" />,
-  'output-error': <XCircle className="size-3" aria-hidden="true" />,
-  pending: <Clock className="size-3" aria-hidden="true" />
-}
-
 export type ToolProps = ComponentProps<typeof Collapsible>
 
 export function Tool({ className, ...props }: ToolProps): React.JSX.Element {
@@ -65,12 +49,14 @@ export function Tool({ className, ...props }: ToolProps): React.JSX.Element {
 }
 
 export type ToolHeaderProps = ComponentProps<typeof CollapsibleTrigger> & {
+  active?: boolean
   state: ToolState
   title?: string
   type?: string
 }
 
 export function ToolHeader({
+  active = false,
   className,
   state,
   title,
@@ -81,23 +67,30 @@ export function ToolHeader({
 
   return (
     <CollapsibleTrigger
-      className={cn('flex w-full items-center justify-between gap-2 p-3 text-start', className)}
+      className={cn(
+        'flex w-full items-center justify-between gap-2 px-3 py-1.5 text-start',
+        className
+      )}
       {...props}
     >
-      <span className="flex min-w-0 items-center gap-2">
-        <Terminal className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <span className="truncate font-medium text-foreground">{label}</span>
+      <span className="flex min-w-0 items-center gap-1.5">
+        <span className="shrink-0 text-muted-foreground" aria-hidden="true">
+          &gt;
+        </span>
+        <span
+          className={cn(
+            'truncate font-medium text-foreground',
+            active && 'agent-tool-label-active'
+          )}
+        >
+          {label}
+        </span>
+        <span className="sr-only">{statusLabels[state]}</span>
       </span>
-      <span className="flex shrink-0 items-center gap-2">
-        <Badge variant="secondary" className="gap-1">
-          {statusIcons[state]}
-          {statusLabels[state]}
-        </Badge>
-        <ChevronDown
-          className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180"
-          aria-hidden="true"
-        />
-      </span>
+      <ChevronDown
+        className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180"
+        aria-hidden="true"
+      />
     </CollapsibleTrigger>
   )
 }
@@ -111,6 +104,22 @@ export function ToolContent({ className, ...props }: ToolContentProps): React.JS
 export type ToolInputProps = ComponentProps<'div'> & {
   input: unknown
   label?: string
+}
+
+export type ToolTextProps = ComponentProps<'div'> & {
+  label?: string
+  value: string
+}
+
+export function ToolText({ className, label, value, ...props }: ToolTextProps): React.JSX.Element {
+  return (
+    <div className={cn('space-y-2 overflow-hidden', className)} {...props}>
+      <h4 className="font-medium text-muted-foreground text-xs uppercase">{label ?? 'Tool'}</h4>
+      <pre className="max-h-36 overflow-auto rounded-md bg-background p-2 text-muted-foreground">
+        {value}
+      </pre>
+    </div>
+  )
 }
 
 export function ToolInput({
