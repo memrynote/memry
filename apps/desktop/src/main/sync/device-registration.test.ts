@@ -11,9 +11,7 @@ const keychainEntries = {
 const mocks = vi.hoisted(() => ({
   storeKey: vi.fn(),
   deleteKey: vi.fn(),
-  bindLocalVaultKeyToMasterKey: vi.fn(),
   getDevicePublicKey: vi.fn(),
-  secureCleanup: vi.fn(),
   postToServer: vi.fn(),
   deleteFromServer: vi.fn(),
   retrieveToken: vi.fn(),
@@ -21,7 +19,7 @@ const mocks = vi.hoisted(() => ({
   scheduleTokenRefresh: vi.fn(),
   extractJtiFromToken: vi.fn(),
   getDatabase: vi.fn(),
-  getOrCreateVaultUuid: vi.fn(),
+  getOrCreateVaultUuid: vi.fn(() => 'vault-1'),
   getSyncEngine: vi.fn(),
   startSyncRuntime: vi.fn(),
   startGoogleCalendarSyncRunner: vi.fn(),
@@ -30,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   logError: vi.fn(),
   toBase64: vi.fn(),
   sign: vi.fn(),
+  bindLocalVaultToMasterKey: vi.fn(),
   dbDelete: vi.fn(),
   dbWhere: vi.fn(),
   dbRun: vi.fn(),
@@ -70,9 +69,8 @@ vi.mock('@memry/contracts/auth-api', () => ({
 vi.mock('../crypto', () => ({
   storeKey: (...args: unknown[]) => mocks.storeKey(...args),
   deleteKey: (...args: unknown[]) => mocks.deleteKey(...args),
-  bindLocalVaultKeyToMasterKey: (...args: unknown[]) => mocks.bindLocalVaultKeyToMasterKey(...args),
   getDevicePublicKey: (...args: unknown[]) => mocks.getDevicePublicKey(...args),
-  secureCleanup: (...args: unknown[]) => mocks.secureCleanup(...args)
+  bindLocalVaultToMasterKey: (...args: unknown[]) => mocks.bindLocalVaultToMasterKey(...args)
 }))
 
 vi.mock('../database/client', () => ({
@@ -136,7 +134,6 @@ describe('device registration', () => {
     vi.clearAllMocks()
     setupDb()
     mocks.getDevicePublicKey.mockReturnValue(new Uint8Array([1, 2, 3]))
-    mocks.bindLocalVaultKeyToMasterKey.mockResolvedValue(new Uint8Array([8, 9]))
     mocks.getOrCreateVaultUuid.mockReturnValue('vault-1')
     mocks.toBase64.mockImplementation((bytes: Uint8Array) => `b64-${Array.from(bytes).join('-')}`)
     mocks.sign.mockReturnValue(new Uint8Array([9, 8, 7]))
@@ -154,6 +151,7 @@ describe('device registration', () => {
     mocks.storeToken.mockResolvedValue(undefined)
     mocks.deleteKey.mockResolvedValue(undefined)
     mocks.deleteFromServer.mockResolvedValue({})
+    mocks.bindLocalVaultToMasterKey.mockResolvedValue(undefined)
   })
 
   it('registers a device, stores tokens and keys, seeds the local device row, and activates sync', async () => {
@@ -191,13 +189,11 @@ describe('device registration', () => {
       'access'
     )
     expect(mocks.storeKey).toHaveBeenCalledWith(keychainEntries.MASTER_KEY, new Uint8Array([5]))
-    expect(mocks.getOrCreateVaultUuid).toHaveBeenCalled()
-    expect(mocks.bindLocalVaultKeyToMasterKey).toHaveBeenCalledWith(
-      expect.any(Object),
+    expect(mocks.bindLocalVaultToMasterKey).toHaveBeenCalledWith(
+      mocks.getDatabase.mock.results[0].value,
       'vault-1',
       new Uint8Array([5])
     )
-    expect(mocks.secureCleanup).toHaveBeenCalledWith(new Uint8Array([8, 9]))
     expect(mocks.dbInsert).toHaveBeenCalled()
     expect(mocks.activate).toHaveBeenCalled()
     expect(mocks.startGoogleCalendarSyncRunner).toHaveBeenCalled()
@@ -248,7 +244,7 @@ describe('device registration', () => {
   })
 
   it('deregisters the device and clears tokens when local vault verifier binding fails', async () => {
-    mocks.bindLocalVaultKeyToMasterKey.mockRejectedValueOnce(new Error('stale verifier'))
+    mocks.bindLocalVaultToMasterKey.mockRejectedValueOnce(new Error('stale verifier'))
     const { persistKeysAndRegisterDevice } = await importModule()
 
     await expect(

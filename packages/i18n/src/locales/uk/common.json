@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Актуальна примітка",
       "removeAttachment": "Видалити {label}",
-      "placeholder": "Запитайте Agent",
+      "placeholder": "Запитайте Memry про що завгодно. @, щоб згадати файл",
       "send": "Надіслати",
       "providerLabel": "Постачальник Agent: {provider}",
       "modelLabel": "Модель Agent: {model}",

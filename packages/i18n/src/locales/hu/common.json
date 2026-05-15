@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Aktuális megjegyzés",
       "removeAttachment": "Távolítsa el az {label} elemet",
-      "placeholder": "Kérdezze meg az Agent-t",
+      "placeholder": "Kérdezz bármit a Memry-től. @ fájl megemlítéséhez",
       "send": "Küldés",
       "providerLabel": "Agent szolgáltató: {provider}",
       "modelLabel": "Agent modell: {model}",

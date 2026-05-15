@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Huidige opmerking",
       "removeAttachment": "{label} verwijderen",
-      "placeholder": "Vraag Agent",
+      "placeholder": "Vraag Memry alles. @ om een bestand te vermelden",
       "send": "Verzenden",
       "providerLabel": "Agent-aanbieder: {provider}",
       "modelLabel": "Agent-model: {model}",

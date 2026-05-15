@@ -69,7 +69,7 @@ export function MemryLink({
     <a
       className={cn(
         isMemryLink && memryLinkClassName,
-        isMemryLink && 'inline-flex items-baseline gap-1',
+        isMemryLink && 'inline-flex items-center gap-1 align-baseline leading-[inherit]',
         className
       )}
       href={href}
@@ -211,7 +211,7 @@ export function MemryLinkIcon({
   return (
     <span
       aria-hidden="true"
-      className="inline-flex shrink-0 items-center justify-center align-[-0.125em]"
+      className="inline-flex shrink-0 items-center justify-center self-center align-middle"
       data-agent-link-icon={resolved.label}
     >
       {resolved.kind === 'note' ? (

@@ -11,13 +11,7 @@ import {
   type DeviceRegisterResponse
 } from '@memry/contracts/auth-api'
 
-import {
-  bindLocalVaultKeyToMasterKey,
-  deleteKey,
-  getDevicePublicKey,
-  secureCleanup,
-  storeKey
-} from '../crypto'
+import { bindLocalVaultToMasterKey, deleteKey, getDevicePublicKey, storeKey } from '../crypto'
 import { getDatabase } from '../database/client'
 import { createLogger } from '../lib/logger'
 import { deleteFromServer, postToServer } from './http-client'
@@ -130,8 +124,7 @@ export const persistKeysAndRegisterDevice = async (
 
   try {
     await storeKey(KEYCHAIN_ENTRIES.MASTER_KEY, masterKey)
-    const vaultKey = await bindLocalVaultKeyToMasterKey(db, getOrCreateVaultUuid(db), masterKey)
-    secureCleanup(vaultKey)
+    await bindLocalVaultToMasterKey(db, getOrCreateVaultUuid(db), masterKey)
   } catch (keyPersistenceErr) {
     logger.error('Failed to store or bind master key after device registration', keyPersistenceErr)
 

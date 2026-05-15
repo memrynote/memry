@@ -89,6 +89,10 @@ model can emit tool calls and continue after a tool result, Memry enables the fu
 the probe fails, local chat can still answer from attached context, but vault tool calls stay
 disabled.
 
+If the configured local provider is not running, the model picker returns no discovered models
+instead of treating the settings page as an Agent runtime error. Start the provider, then load models
+or test the connection again.
+
 When no conversation is selected yet, the prompt box stays available. Sending the first prompt
 creates a new Agent Chat conversation, attaches the active note when one is open, and streams the
 reply into the sidebar.
@@ -124,6 +128,10 @@ Authorization: Bearer <token>
 
 The token is generated in memory for the current app launch. It is not saved to disk, changes when
 Memry restarts, and can be rotated manually from settings. Missing or stale tokens receive `401`.
+
+The localhost MCP endpoint can serve overlapping Agent Chat turns and external read requests. Memry
+keeps the URL/token stable for the app session, but handles each MCP request with an isolated
+transport so one client connection does not block another.
 
 Client-specific config keys vary. Use the copied URL as the MCP server URL and the copied token as a
 Bearer authorization header. Plain external clients can use read tools, but they do not get the
@@ -212,8 +220,9 @@ Calendar desktop reads accept the same single-object shape as the renderer bridg
 `args: [{"startAt": "2026-05-14T00:00:00.000Z", "endAt": "2026-06-15T00:00:00.000Z"}]`.
 
 By default, Agent Chat accepts these tool calls automatically. The chat still shows each requested
-tool in a collapsed tool row, including running, completed, error, and denied states, so you can open
-the row to inspect parameters and results.
+tool as compact, subdued text with a readable label such as `Reading note` or `Creating task`.
+Click the label to open or close the details area with the raw MCP tool name, parameters, and
+results.
 
 If you switch tool confirmations to **Ask first** in settings, Memry pauses the turn and shows inline
 approval controls inside the tool row. You can allow the request once, allow create tools always for

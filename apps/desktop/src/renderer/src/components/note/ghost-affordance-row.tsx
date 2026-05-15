@@ -14,8 +14,8 @@ export interface GhostAffordanceRowProps {
   onAddTag: (tagId: string) => void
   onCreateTag: (name: string, color: string) => void
   onAddProperty: (property: NewProperty) => void
-  hasTags?: boolean
   disabled?: boolean
+  className?: string
 }
 
 export const GhostAffordanceRow = memo(function GhostAffordanceRow({
@@ -25,8 +25,8 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
   onAddTag,
   onCreateTag,
   onAddProperty,
-  hasTags = false,
-  disabled = false
+  disabled = false,
+  className
 }: GhostAffordanceRowProps) {
   const { t } = useT('notes')
   const [isTagPopupOpen, setIsTagPopupOpen] = useState(false)
@@ -45,7 +45,8 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
               'opacity-0 pointer-events-none',
               'group-hover/metadata:opacity-100 group-hover/metadata:pointer-events-auto',
               'group-focus-within/metadata:opacity-100 group-focus-within/metadata:pointer-events-auto'
-            ]
+            ],
+        className
       )}
     >
       <AddPropertyPopup
@@ -72,35 +73,33 @@ export const GhostAffordanceRow = memo(function GhostAffordanceRow({
         </button>
       </AddPropertyPopup>
 
-      {!hasTags && (
-        <TagInputPopup
-          availableTags={availableTags}
-          recentTags={recentTags}
-          currentTagIds={currentTagIds}
-          onAddTag={onAddTag}
-          onCreateTag={onCreateTag}
-          open={isTagPopupOpen}
-          onOpenChange={setIsTagPopupOpen}
+      <TagInputPopup
+        availableTags={availableTags}
+        recentTags={recentTags}
+        currentTagIds={currentTagIds}
+        onAddTag={onAddTag}
+        onCreateTag={onCreateTag}
+        open={isTagPopupOpen}
+        onOpenChange={setIsTagPopupOpen}
+        disabled={disabled}
+      >
+        <button
+          type="button"
           disabled={disabled}
+          className={cn(
+            'flex items-center gap-1.5',
+            'rounded-md px-2 py-1',
+            'border border-dashed border-border',
+            'text-[12px] text-text-tertiary',
+            'transition-colors duration-150',
+            'hover:border-muted-foreground hover:text-muted-foreground',
+            'disabled:pointer-events-none disabled:opacity-50'
+          )}
         >
-          <button
-            type="button"
-            disabled={disabled}
-            className={cn(
-              'flex items-center gap-1.5',
-              'rounded-md px-2 py-1',
-              'border border-dashed border-border',
-              'text-[12px] text-text-tertiary',
-              'transition-colors duration-150',
-              'hover:border-muted-foreground hover:text-muted-foreground',
-              'disabled:pointer-events-none disabled:opacity-50'
-            )}
-          >
-            <Plus className="h-3 w-3" strokeWidth={2} />
-            {t('tagsRow.add')}
-          </button>
-        </TagInputPopup>
-      )}
+          <Plus className="h-3 w-3" strokeWidth={2} />
+          {t('tagsRow.add')}
+        </button>
+      </TagInputPopup>
     </div>
   )
 })

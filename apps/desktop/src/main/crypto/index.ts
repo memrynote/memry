@@ -46,7 +46,7 @@ export { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
 export { deleteKey, retrieveKey, storeKey } from './keychain'
 
 export {
-  bindLocalVaultKeyToMasterKey,
+  bindLocalVaultToMasterKey,
   computeVaultKeyVerifier,
   getOrInitializeLocalVaultKey,
   storeVaultKeyVerifier

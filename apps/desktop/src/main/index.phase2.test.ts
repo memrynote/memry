@@ -426,6 +426,19 @@ describe('main index phase2 exports', () => {
     expect(dotenvConfigMock).toHaveBeenCalledWith({ quiet: true })
   })
 
+  it('scopes the default dev profile by worktree path', async () => {
+    process.env.MEMRY_DEVICE = 'dev'
+
+    await importMainModule()
+
+    expect(process.env.MEMRY_DEVICE).toMatch(/^dev-[a-f0-9]{8}$/)
+    expect(process.env.MEMRY_DEVICE).not.toBe('dev')
+    expect(setPathMock).toHaveBeenCalledWith(
+      'userData',
+      `/mock/userData-${process.env.MEMRY_DEVICE}`
+    )
+  })
+
   it('skips the single-instance lock for multi-device test launches', async () => {
     process.env.NODE_ENV = 'test'
     process.env.MEMRY_DEVICE = 'A'

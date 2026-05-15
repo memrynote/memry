@@ -28,24 +28,24 @@ export function storeVaultKeyVerifier(db: DataDb, vaultId: string, vaultKey: Uin
   setVaultKeyVerifier(db, computeVaultKeyVerifier(vaultKey, vaultId))
 }
 
-export async function bindLocalVaultKeyToMasterKey(
+export async function bindLocalVaultToMasterKey(
   db: DataDb,
   vaultId: string,
   masterKey: Uint8Array
-): Promise<Uint8Array> {
+): Promise<void> {
   await sodium.ready
 
   const vaultKey = await deriveKey(masterKey, KEY_DERIVATION_CONTEXTS.VAULT_KEY, 32)
   lockKeyMaterial(vaultKey)
-
-  let keepVaultKey = false
   try {
+    const current = getVaultKeyVerifier(db)
+    const next = computeVaultKeyVerifier(vaultKey, vaultId)
+    if (current === next) return
+
     resetLegacyUnboundAgentData(db, vaultId)
-    setVaultKeyVerifier(db, computeVaultKeyVerifier(vaultKey, vaultId))
-    keepVaultKey = true
-    return vaultKey
+    setVaultKeyVerifier(db, next)
   } finally {
-    if (!keepVaultKey) secureCleanup(vaultKey)
+    secureCleanup(vaultKey)
   }
 }
 
