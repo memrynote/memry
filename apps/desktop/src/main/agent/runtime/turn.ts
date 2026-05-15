@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import type { AgentBackendOptions } from '@memry/contracts/ipc-agent'
+import type { AgentBackendOptions, AgentTurnPermissions } from '@memry/contracts/ipc-agent'
 
 import { createLogger } from '../../lib/logger'
 import type { BackendEvent } from '../cli/types'
@@ -26,12 +26,17 @@ export interface TurnDeps {
 }
 
 const DEFAULT_CONVERSATION_TITLE = 'New conversation'
+const DEFAULT_TURN_PERMISSIONS: AgentTurnPermissions = {
+  accessMode: 'vault_only',
+  webSearchEnabled: false
+}
 
 export interface RunTurnInput {
   conversationId: string
   sourceWindowId: string
   text: string
   backendOptions: AgentBackendOptions
+  permissions?: AgentTurnPermissions
   attachments: MessageAttachment[]
 }
 
@@ -40,6 +45,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
   const existingMessages = deps.messages.listByConversation(input.conversationId)
   const existingConversation = deps.conversations.getById(input.conversationId)
   const backend = deps.backends.get(input.backendOptions.backend)
+  const permissions = input.permissions ?? DEFAULT_TURN_PERMISSIONS
   const shouldGenerateTitle =
     existingConversation?.title.trim() === DEFAULT_CONVERSATION_TITLE &&
     !existingMessages.some((message) => message.role === 'user')
@@ -75,6 +81,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     history,
     userMessage: input.text,
     attachments: input.attachments,
+    permissions,
     context: promptContext
   })
 
@@ -100,6 +107,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     history,
     userMessage: input.text,
     attachments: input.attachments,
+    permissions,
     context: promptContext
   })
 
@@ -108,6 +116,7 @@ export async function runTurn(deps: TurnDeps, input: RunTurnInput): Promise<{ tu
     conversationId: input.conversationId,
     windowId: input.sourceWindowId,
     options: input.backendOptions,
+    permissions,
     purpose: 'turn'
   })
   const sub = deps.trackRunHandle?.(input.conversationId, rawSub) ?? rawSub

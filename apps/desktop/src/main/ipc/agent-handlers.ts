@@ -200,6 +200,7 @@ export function registerAgentHandlers(deps: AgentHandlerDeps): void {
         sourceWindowId: request.sourceWindowId,
         text: request.text,
         backendOptions: request.backendOptions,
+        permissions: request.permissions,
         attachments
       }
     )

@@ -1,3 +1,5 @@
+import type { AgentTurnPermissions } from '@memry/contracts/ipc-agent'
+
 import type { Message, MessageAttachment } from '../storage/types'
 
 export const SYSTEM_PROMPT_HEADER = [
@@ -17,7 +19,7 @@ export const SYSTEM_PROMPT_HEADER = [
   '- Do not scan the whole vault unless the user asks for broad analysis. Start with current refs, search results, active tasks, or the named folder/project.',
   '- If a tool errors, surface the error plainly. Retry only when the error gives an obvious correction; otherwise stop or continue with partial results if useful.',
   '- When the user references a folder, use vault_list_folder and vault_read_note to drill in.',
-  "- Stay inside this user's vault. Refuse requests to access other users, network resources, system files, secrets, or non-allowlisted desktop operations.",
+  "- Stay inside this user's vault by default. Refuse requests to access other users, system files, secrets, or non-allowlisted desktop operations. Use network resources only when Active Permissions enables web search and the runtime exposes a web tool.",
   '',
   '# Memry Objects',
   '- Use notes for durable knowledge.',
@@ -62,6 +64,7 @@ export interface AssembleInput {
   history: Message[]
   userMessage: string
   attachments: MessageAttachment[]
+  permissions?: AgentTurnPermissions
   context?: PromptContext
 }
 
@@ -70,6 +73,10 @@ export function assemblePrompt(input: AssembleInput): string {
 
   if (input.context) {
     lines.push(...renderContext(input.context), '')
+  }
+
+  if (input.permissions) {
+    lines.push(...renderPermissions(input.permissions), '')
   }
 
   if (input.attachments.length > 0) {
@@ -90,6 +97,23 @@ export function assemblePrompt(input: AssembleInput): string {
 
   lines.push(`User: ${input.userMessage}`)
   return lines.join('\n')
+}
+
+function renderPermissions(permissions: AgentTurnPermissions): string[] {
+  const access =
+    permissions.accessMode === 'computer_access'
+      ? 'Computer access requested for this turn.'
+      : 'Vault-only access for this turn.'
+  const web = permissions.webSearchEnabled
+    ? 'Web search requested for this turn.'
+    : 'Web search is off for this turn.'
+
+  return [
+    '# Active Permissions',
+    access,
+    web,
+    'Use only tools exposed by this runtime. If a requested capability is not available, say so instead of pretending it ran.'
+  ]
 }
 
 function renderContext(context: PromptContext): string[] {

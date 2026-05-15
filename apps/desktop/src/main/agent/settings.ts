@@ -8,6 +8,7 @@ import {
 import { store } from '../store'
 
 const DEFAULT_AGENT_PREFERENCES: AgentPreferences = {
+  accessMode: 'vault_only',
   toolApprovalMode: 'always_accept'
 }
 
@@ -15,6 +16,7 @@ export function getAgentPreferences(): AgentPreferences {
   const agent = store.get('agent')
   return AgentPreferencesSchema.parse({
     ...DEFAULT_AGENT_PREFERENCES,
+    accessMode: agent.accessMode,
     toolApprovalMode: agent.toolApprovalMode
   })
 }
