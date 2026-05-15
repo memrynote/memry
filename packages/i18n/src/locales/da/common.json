@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Aktuel note",
       "removeAttachment": "Fjern {label}",
-      "placeholder": "Spørg Agent",
+      "placeholder": "Spørg Memry om hvad som helst. @ for at nævne en fil",
       "send": "Sende",
       "providerLabel": "Agent udbyder: {provider}",
       "modelLabel": "Agentmodel: {model}",

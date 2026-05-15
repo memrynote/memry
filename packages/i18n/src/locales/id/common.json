@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Catatan terkini",
       "removeAttachment": "Hapus {label}",
-      "placeholder": "Tanyakan Agent",
+      "placeholder": "Tanyakan apa saja kepada Memry. @ untuk menyebut file",
       "send": "Kirim",
       "providerLabel": "Penyedia Agent: {provider}",
       "modelLabel": "Model Agent: {model}",

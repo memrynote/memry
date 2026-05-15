@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Kasalukuyang tala",
       "removeAttachment": "Alisin ang {label}",
-      "placeholder": "Tanungin ang Agent",
+      "placeholder": "Tanungin ang Memry ng kahit ano. @ para banggitin ang file",
       "send": "Ipadala",
       "providerLabel": "Tagapagbigay ng Agent: {provider}",
       "modelLabel": "Agent modelo: {model}",

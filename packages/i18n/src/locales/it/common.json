@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Nota corrente",
       "removeAttachment": "Rimuovi {label}",
-      "placeholder": "Chiedi a Agent",
+      "placeholder": "Chiedi qualsiasi cosa a Memry. @ per menzionare un file",
       "send": "Invia",
       "providerLabel": "Fornitore Agent: {provider}",
       "modelLabel": "Modello Agent: {model}",
