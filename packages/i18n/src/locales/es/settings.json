@@ -90,10 +90,6 @@
       "error": "No se pudo actualizar el formato de hora"
     },
     "tabs": {
-      "previewMode": {
-        "label": "Modo de vista previa",
-        "description": "Un solo clic abre la vista previa, un doble clic la mantiene abierta"
-      },
       "restoreSession": {
         "label": "Restaurar sesión al iniciar",
         "description": "Vuelva a abrir pestañas de su última sesión"

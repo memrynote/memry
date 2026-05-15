@@ -271,7 +271,7 @@ memry settings groups
 memry settings group general
 memry settings set-group general '{"theme":"dark","language":"tr"}'
 memry settings set-group journal '{"defaultTemplate":"Daily Review","showSchedule":false}'
-memry settings set-group tabs '{"previewMode":true,"tabCloseButton":"active"}'
+memry settings set-group tabs '{"restoreSessionOnStart":false,"tabCloseButton":"active"}'
 memry settings set-group noteEditor '{"toolbarMode":"sticky"}'
 memry settings group voiceTranscription
 memry settings set-group voiceTranscription '{"provider":"openai"}'

@@ -94,7 +94,7 @@ vi.mock('@/contexts/tabs', () => ({
     setActiveTab: mocks.setActiveTab,
     splitView: mocks.splitView
   }),
-  useTabSettings: () => ({ previewMode: true }),
+  useTabSettings: () => ({ restoreSessionOnStart: true, tabCloseButton: 'hover' }),
   useTabs: () => ({
     state: {
       activeGroupId: 'group-1',
@@ -237,19 +237,24 @@ describe('more major hooks coverage', () => {
     result.current.openSidebarItem(noteItem)
     expect(mocks.setActiveTab).toHaveBeenCalledWith('tab-note', 'group-1')
 
-    result.current.openSidebarItem(noteItem, { isPreview: false })
-    expect(mocks.tabsDispatch).toHaveBeenCalledWith({
-      type: 'PROMOTE_PREVIEW_TAB',
-      payload: { tabId: 'tab-note', groupId: 'group-1' }
-    })
+    expect(mocks.tabsDispatch).not.toHaveBeenCalled()
 
     result.current.openSidebarItem(
       { type: 'note', title: 'B', path: '/notes/b.md', entityId: 'note-b' } as never,
-      { inNewTab: true, inBackground: true }
+      {}
     )
     expect(mocks.openTab).toHaveBeenCalledWith(
       expect.objectContaining({ entityId: 'note-b', isPreview: false }),
-      { background: true, replaceActive: false }
+      { background: undefined }
+    )
+
+    result.current.openSidebarItem(
+      { type: 'note', title: 'C', path: '/notes/c.md', entityId: 'note-c' } as never,
+      { inNewTab: true, inBackground: true }
+    )
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ entityId: 'note-c', isPreview: false }),
+      { background: true }
     )
 
     result.current.openSidebarItem(

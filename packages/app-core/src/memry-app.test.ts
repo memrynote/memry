@@ -637,7 +637,6 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
     }
   )
   assert.deepEqual(await app.settings.setGroup('tabs', { tabCloseButton: 'always' }), {
-    previewMode: false,
     restoreSessionOnStart: true,
     tabCloseButton: 'always'
   })

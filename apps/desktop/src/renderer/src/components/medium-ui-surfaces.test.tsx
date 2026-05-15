@@ -38,8 +38,7 @@ const sidebarNavigation = vi.hoisted(() => ({
   openAsPin: vi.fn(),
   copyItemLink: vi.fn(),
   isOpenInTab: vi.fn(() => false),
-  isActiveItem: vi.fn(() => false),
-  settings: { previewMode: false }
+  isActiveItem: vi.fn(() => false)
 }))
 
 const notesServiceMock = vi.hoisted(() => ({
@@ -132,7 +131,6 @@ beforeEach(() => {
   sidebarNavigation.copyItemLink.mockReset()
   sidebarNavigation.isOpenInTab.mockReset().mockReturnValue(false)
   sidebarNavigation.isActiveItem.mockReset().mockReturnValue(false)
-  sidebarNavigation.settings.previewMode = false
   notesServiceMock.openExternal.mockReset().mockResolvedValue(undefined)
   notesServiceMock.revealInFinder.mockReset().mockResolvedValue(undefined)
   toastMock.error.mockReset()
@@ -414,7 +412,6 @@ describe('medium UI coverage surfaces', () => {
       count: 4
     }
 
-    sidebarNavigation.settings.previewMode = true
     sidebarNavigation.isOpenInTab.mockReturnValue(true)
     sidebarNavigation.isActiveItem.mockReturnValue(false)
 
@@ -427,16 +424,13 @@ describe('medium UI coverage surfaces', () => {
 
     expect(sidebarNavigation.openSidebarItem).toHaveBeenNthCalledWith(1, item, {
       inNewTab: false,
-      inBackground: false,
-      isPreview: true
+      inBackground: false
     })
     expect(sidebarNavigation.openSidebarItem).toHaveBeenNthCalledWith(2, item, {
       inNewTab: true,
       inBackground: true
     })
-    expect(sidebarNavigation.openSidebarItem).toHaveBeenNthCalledWith(3, item, {
-      isPreview: false
-    })
+    expect(sidebarNavigation.openSidebarItem).toHaveBeenCalledTimes(2)
 
     await user.click(screen.getByText('phaseF.componentsSidebarSidebarItemContextMenu.open'))
     await user.click(screen.getByText('Open in New Tab'))

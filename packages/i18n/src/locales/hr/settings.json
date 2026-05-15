@@ -90,10 +90,6 @@
       "error": "Ažuriranje formata vremena nije uspjelo"
     },
     "tabs": {
-      "previewMode": {
-        "label": "Način pregleda",
-        "description": "Jednim klikom otvara se pregled, dvostrukim klikom ostaje otvoren"
-      },
       "restoreSession": {
         "label": "Vrati sesiju na početak",
         "description": "Ponovno otvorite kartice iz vaše posljednje sesije"

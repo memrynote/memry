@@ -90,10 +90,6 @@
       "error": "Gagal mengemas kini format masa"
     },
     "tabs": {
-      "previewMode": {
-        "label": "Mod Pratonton",
-        "description": "Klik sekali membuka pratonton, klik dua kali terus terbuka"
-      },
       "restoreSession": {
         "label": "Pulihkan Sesi pada Mula",
         "description": "Buka semula tab daripada sesi terakhir anda"

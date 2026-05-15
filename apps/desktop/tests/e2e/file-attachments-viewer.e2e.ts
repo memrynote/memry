@@ -139,7 +139,6 @@ test.describe('File attachments and viewer E2E', () => {
               layout: { type: 'leaf', tabGroupId: 'g1' },
               activeGroupId: 'g1',
               settings: {
-                previewMode: false,
                 restoreSessionOnStart: true,
                 tabCloseButton: 'hover'
               },

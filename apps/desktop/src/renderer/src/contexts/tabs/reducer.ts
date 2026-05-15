@@ -32,7 +32,6 @@ export function tabReducer(state: TabSystemState, action: TabAction): TabSystemS
     case 'SET_TAB_MODIFIED':
     case 'SET_TAB_DELETED':
     case 'UPDATE_TAB_TITLE':
-    case 'PROMOTE_PREVIEW_TAB':
       return tabModifyReducer(state, action)
 
     case 'REORDER_TABS':

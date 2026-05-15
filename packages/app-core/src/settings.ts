@@ -52,7 +52,6 @@ const settingsKeys = {
   journalShowTasks: 'journal.showTasks',
   journalShowAiConnections: 'journal.showAIConnections',
   journalShowStatsFooter: 'journal.showStatsFooter',
-  tabPreviewMode: 'tabs.previewMode',
   tabRestoreSessionOnStart: 'tabs.restoreSessionOnStart',
   tabCloseButton: 'tabs.tabCloseButton',
   noteEditorToolbarMode: 'noteEditor.toolbarMode'
@@ -125,7 +124,6 @@ const settingsGroupDefaults: Record<SettingsGroupName, Record<string, unknown>> 
     showStatsFooter: false
   },
   tabs: {
-    previewMode: false,
     restoreSessionOnStart: true,
     tabCloseButton: 'hover'
   },
@@ -230,11 +228,8 @@ export function createSettingsService(dataDb: DataDb): SettingsService {
           showStatsFooter: readRawSetting(dataDb, settingsKeys.journalShowStatsFooter) === 'true'
         }
       case 'tabs': {
-        const previewMode = readRawSetting(dataDb, settingsKeys.tabPreviewMode)
         const restoreSessionOnStart = readRawSetting(dataDb, settingsKeys.tabRestoreSessionOnStart)
         return {
-          previewMode:
-            previewMode !== null ? previewMode === 'true' : settingsGroupDefaults.tabs.previewMode,
           restoreSessionOnStart:
             restoreSessionOnStart !== null
               ? restoreSessionOnStart === 'true'
@@ -305,13 +300,6 @@ export function createSettingsService(dataDb: DataDb): SettingsService {
         }
         return true
       case 'tabs':
-        if (typeof updates.previewMode === 'boolean') {
-          writeRawSetting(
-            dataDb,
-            settingsKeys.tabPreviewMode,
-            updates.previewMode ? 'true' : 'false'
-          )
-        }
         if (typeof updates.restoreSessionOnStart === 'boolean') {
           writeRawSetting(
             dataDb,

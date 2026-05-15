@@ -46,7 +46,6 @@ const makeState = (groups: TabGroup[], activeGroupId = groups[0].id): TabSystemS
   layout: { type: 'leaf', tabGroupId: activeGroupId },
   activeGroupId,
   settings: {
-    previewMode: false,
     restoreSessionOnStart: true,
     tabCloseButton: 'hover'
   }
@@ -122,13 +121,11 @@ describe('TabProvider context', () => {
     })
 
     const rendered = captureContext(undefined, {
-      previewMode: true,
       restoreSessionOnStart: false,
       tabCloseButton: 'always'
     })
 
     expect(rendered.ctx.state.settings).toMatchObject({
-      previewMode: true,
       restoreSessionOnStart: false,
       tabCloseButton: 'always'
     })
@@ -182,7 +179,6 @@ describe('TabProvider context', () => {
       rendered.ctx.setTabModified('beta', true)
       rendered.ctx.setTabDeleted('beta', true)
       rendered.ctx.updateTabTitle('beta', 'Beta Updated')
-      rendered.ctx.promotePreviewTab('beta')
       rendered.ctx.saveTabState('beta', { scrollPosition: 42, viewState: { mode: 'preview' } })
     })
 
@@ -247,7 +243,7 @@ describe('TabProvider context', () => {
     }
 
     act(() => {
-      rendered.ctx.openFromSidebar(sidebarItem, { isPreview: true, position: 1 })
+      rendered.ctx.openFromSidebar(sidebarItem, { position: 1 })
       rendered.ctx.reorderTabs(0, 2)
       rendered.ctx.splitView('horizontal')
     })

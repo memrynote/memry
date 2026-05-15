@@ -144,7 +144,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
             entityId: item.id,
             isPinned: false,
             isModified: false,
-            isPreview: true,
+            isPreview: false,
             isDeleted: false
           })
           break
@@ -158,7 +158,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
             entityId: item.id,
             isPinned: false,
             isModified: false,
-            isPreview: true,
+            isPreview: false,
             isDeleted: false
           })
           break
@@ -329,7 +329,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
               ))}
 
             {hasQuery && hasResults && (
-              <div className="px-3 py-2 text-xs text-text-tertiary text-right tabular-nums border-t border-border mt-1">
+              <div className="px-3 py-2 text-xs text-text-tertiary text-end tabular-nums border-t border-border mt-1">
                 {totalCount} {tPhaseF('phaseF.componentsSearchCommandPalette.result')}
                 {totalCount !== 1 ? 's' : ''}
               </div>

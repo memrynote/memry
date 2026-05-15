@@ -23,8 +23,6 @@ interface UseTabPreferencesReturn {
   error: string | null
   /** Update tab settings (persists to database) */
   updateSettings: (updates: Partial<TabSettings>) => Promise<boolean>
-  /** Set preview mode (convenience method) */
-  setPreviewMode: (enabled: boolean) => Promise<boolean>
   /** Set restore session on start */
   setRestoreSessionOnStart: (enabled: boolean) => Promise<boolean>
   /** Set tab close button behavior */
@@ -36,13 +34,10 @@ interface UseTabPreferencesReturn {
  *
  * @example
  * ```tsx
- * const { settings, setPreviewMode, updateSettings } = useTabPreferences()
- *
- * // Toggle preview mode
- * await setPreviewMode(true)
+ * const { settings, updateSettings } = useTabPreferences()
  *
  * // Update multiple settings
- * await updateSettings({ previewMode: true, restoreSessionOnStart: true })
+ * await updateSettings({ restoreSessionOnStart: true })
  * ```
  */
 export function useTabPreferences(): UseTabPreferencesReturn {
@@ -126,13 +121,6 @@ export function useTabPreferences(): UseTabPreferencesReturn {
   }, [])
 
   // Convenience methods
-  const setPreviewMode = useCallback(
-    async (enabled: boolean): Promise<boolean> => {
-      return updateSettings({ previewMode: enabled })
-    },
-    [updateSettings]
-  )
-
   const setRestoreSessionOnStart = useCallback(
     async (enabled: boolean): Promise<boolean> => {
       return updateSettings({ restoreSessionOnStart: enabled })
@@ -152,7 +140,6 @@ export function useTabPreferences(): UseTabPreferencesReturn {
     isLoading,
     error,
     updateSettings,
-    setPreviewMode,
     setRestoreSessionOnStart,
     setTabCloseButton
   }

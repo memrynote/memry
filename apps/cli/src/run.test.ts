@@ -2034,7 +2034,7 @@ test('runs core commands against a vault and prints JSON output', async () => {
       'settings',
       'set-group',
       'tabs',
-      '{"previewMode":true,"tabCloseButton":"active"}'
+      '{"restoreSessionOnStart":false,"tabCloseButton":"active"}'
     ],
     {
       stdout: (line) => stdout.push(line),
@@ -2043,10 +2043,10 @@ test('runs core commands against a vault and prints JSON output', async () => {
   )
   assert.equal(tabSettingsCode, 0)
   const tabSettings = JSON.parse(stdout.at(-1) ?? '{}') as {
-    previewMode?: boolean
+    restoreSessionOnStart?: boolean
     tabCloseButton?: string
   }
-  assert.equal(tabSettings.previewMode, true)
+  assert.equal(tabSettings.restoreSessionOnStart, false)
   assert.equal(tabSettings.tabCloseButton, 'active')
 
   const noteEditorSettingsCode = await runCli(

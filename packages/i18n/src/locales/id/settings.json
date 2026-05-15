@@ -90,10 +90,6 @@
       "error": "Gagal memperbarui format waktu"
     },
     "tabs": {
-      "previewMode": {
-        "label": "Mode Pratinjau",
-        "description": "Klik sekali membuka pratinjau, klik dua kali tetap terbuka"
-      },
       "restoreSession": {
         "label": "Pulihkan Sesi saat Mulai",
         "description": "Buka kembali tab dari sesi terakhir Anda"

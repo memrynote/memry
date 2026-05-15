@@ -50,7 +50,7 @@ export function NoteBreadcrumb({ notePath, noteTitle }: NoteBreadcrumbProps) {
         entityId: folderPath,
         isPinned: false,
         isModified: false,
-        isPreview: true,
+        isPreview: false,
         isDeleted: false
       })
     },
