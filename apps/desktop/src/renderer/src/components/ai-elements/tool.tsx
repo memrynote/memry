@@ -2,7 +2,6 @@ import type { ComponentProps } from 'react'
 import { isValidElement } from 'react'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { ChevronDown } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 export type ToolState =
@@ -38,13 +37,7 @@ export type ToolProps = ComponentProps<typeof Collapsible>
 
 export function Tool({ className, ...props }: ToolProps): React.JSX.Element {
   return (
-    <Collapsible
-      className={cn(
-        'group rounded-md border border-sidebar-border bg-sidebar-accent/40 text-xs',
-        className
-      )}
-      {...props}
-    />
+    <Collapsible className={cn('rounded-md bg-sidebar-accent/40 text-xs', className)} {...props} />
   )
 }
 
@@ -67,10 +60,7 @@ export function ToolHeader({
 
   return (
     <CollapsibleTrigger
-      className={cn(
-        'flex w-full items-center justify-between gap-2 px-3 py-1.5 text-start',
-        className
-      )}
+      className={cn('flex w-full items-center gap-2 px-3 py-1.5 text-start', className)}
       {...props}
     >
       <span className="flex min-w-0 items-center gap-1.5">
@@ -87,10 +77,6 @@ export function ToolHeader({
         </span>
         <span className="sr-only">{statusLabels[state]}</span>
       </span>
-      <ChevronDown
-        className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180"
-        aria-hidden="true"
-      />
     </CollapsibleTrigger>
   )
 }
