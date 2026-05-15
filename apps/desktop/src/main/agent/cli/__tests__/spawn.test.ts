@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('node:fs/promises', () => ({
   mkdtemp: vi.fn(async () => '/tmp/fake-dir'),
@@ -13,17 +13,23 @@ import { writeFile } from 'node:fs/promises'
 import { spawnClaudeTurn } from '../spawn'
 
 describe('spawnClaudeTurn', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('writes mcp-config.json with bearer + conversation/window headers', async () => {
     const fakeProc = makeFakeProc()
     vi.mocked(spawn).mockReturnValue(fakeProc)
 
     await spawnClaudeTurn({
       binaryPath: '/usr/local/bin/claude',
-      mcpServerUrl: 'http://127.0.0.1:54321',
-      authorizationValue: 'test-auth-value',
-      conversationId: 'conv-1',
-      windowId: 'win-1',
-      allowedTools: 'mcp__memry__vault_read_note',
+      mcp: {
+        serverUrl: 'http://127.0.0.1:54321',
+        authorizationValue: 'test-auth-value',
+        conversationId: 'conv-1',
+        windowId: 'win-1',
+        allowedTools: 'mcp__memry__vault_read_note'
+      },
       effort: 'xhigh',
       prompt: 'hello'
     })
@@ -42,11 +48,13 @@ describe('spawnClaudeTurn', () => {
 
     await spawnClaudeTurn({
       binaryPath: '/usr/local/bin/claude',
-      mcpServerUrl: 'http://127.0.0.1:54321',
-      authorizationValue: 'test-auth-value',
-      conversationId: 'c',
-      windowId: 'w',
-      allowedTools: 'mcp__memry__vault_read_note',
+      mcp: {
+        serverUrl: 'http://127.0.0.1:54321',
+        authorizationValue: 'test-auth-value',
+        conversationId: 'c',
+        windowId: 'w',
+        allowedTools: 'mcp__memry__vault_read_note'
+      },
       effort: 'low',
       prompt: 'p'
     })
@@ -77,11 +85,13 @@ describe('spawnClaudeTurn', () => {
 
     await spawnClaudeTurn({
       binaryPath: '/usr/local/bin/claude',
-      mcpServerUrl: 'http://127.0.0.1:54321',
-      authorizationValue: 'test-auth-value',
-      conversationId: 'c',
-      windowId: 'w',
-      allowedTools: 'a',
+      mcp: {
+        serverUrl: 'http://127.0.0.1:54321',
+        authorizationValue: 'test-auth-value',
+        conversationId: 'c',
+        windowId: 'w',
+        allowedTools: 'a'
+      },
       effort: 'xhigh',
       model: 'opus',
       prompt: 'p'
@@ -98,17 +108,36 @@ describe('spawnClaudeTurn', () => {
 
     await spawnClaudeTurn({
       binaryPath: '/usr/local/bin/claude',
-      mcpServerUrl: 'http://127.0.0.1:54321',
-      authorizationValue: 'test-auth-value',
-      conversationId: 'c',
-      windowId: 'w',
-      allowedTools: 'a',
+      mcp: {
+        serverUrl: 'http://127.0.0.1:54321',
+        authorizationValue: 'test-auth-value',
+        conversationId: 'c',
+        windowId: 'w',
+        allowedTools: 'a'
+      },
       effort: 'xhigh',
       prompt: 'PROMPT BODY'
     })
 
     expect(fakeProc.stdin.write).toHaveBeenCalledWith('PROMPT BODY')
     expect(fakeProc.stdin.end).toHaveBeenCalled()
+  })
+
+  it('does not write MCP config or pass MCP flags for tool-free runs', async () => {
+    const fakeProc = makeFakeProc()
+    vi.mocked(spawn).mockReturnValue(fakeProc)
+
+    await spawnClaudeTurn({
+      binaryPath: '/usr/local/bin/claude',
+      effort: 'xhigh',
+      prompt: 'title only'
+    })
+
+    const args = vi.mocked(spawn).mock.calls[0][1] as string[]
+    expect(writeFile).not.toHaveBeenCalled()
+    expect(args).not.toContain('--mcp-config')
+    expect(args).not.toContain('--strict-mcp-config')
+    expect(args).not.toContain('--allowed-tools')
   })
 })
 
