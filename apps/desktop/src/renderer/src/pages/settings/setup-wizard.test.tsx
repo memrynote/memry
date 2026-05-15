@@ -296,6 +296,23 @@ describe('SetupWizard', () => {
     expect(auth.setWizardStep).toHaveBeenCalledWith('recovery-display')
   })
 
+  it('refetches the pending recovery phrase after the wizard remounts', async () => {
+    mockAuth({ wizardStep: 'recovery-display' })
+    const getRecoveryPhrase = vi.fn().mockResolvedValue('alpha beta gamma')
+    ;(window as Window & { api: unknown }).api = {
+      syncSetup: { getRecoveryPhrase }
+    }
+
+    const { unmount } = render(<SetupWizard />)
+    expect(await screen.findByText('display:alpha beta gamma')).toBeInTheDocument()
+
+    unmount()
+    render(<SetupWizard />)
+
+    expect(await screen.findByText('display:alpha beta gamma')).toBeInTheDocument()
+    expect(getRecoveryPhrase).toHaveBeenCalledTimes(2)
+  })
+
   it('routes linking choice, scan, pending, and recovery input callbacks', async () => {
     const user = userEvent.setup()
     const auth = mockAuth({ wizardStep: 'linking-choice' })

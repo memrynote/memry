@@ -89,6 +89,7 @@ export interface SyncDevice {
 export interface GetDevicesResult {
   devices: SyncDevice[]
   email?: string
+  needsRecoveryConfirmation: boolean
 }
 
 export interface RemoveDeviceInput {

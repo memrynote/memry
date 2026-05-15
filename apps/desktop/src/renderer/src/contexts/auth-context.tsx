@@ -63,6 +63,7 @@ export interface VerifyOtpResult {
 type AuthAction =
   | { type: 'CHECK_START' }
   | { type: 'CHECK_AUTHENTICATED'; deviceId: string; email?: string }
+  | { type: 'CHECK_RECOVERY_PENDING'; deviceId: string; email?: string }
   | { type: 'CHECK_UNAUTHENTICATED' }
   | { type: 'OTP_REQUESTED'; email: string }
   | {
@@ -112,6 +113,16 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         email: action.email ?? state.email,
         error: null,
         ...WIZARD_IDLE_FIELDS
+      }
+    case 'CHECK_RECOVERY_PENDING':
+      return {
+        ...state,
+        status: 'authenticating',
+        deviceId: action.deviceId,
+        email: action.email ?? state.email,
+        needsRecoverySetup: true,
+        wizardStep: 'recovery-display',
+        error: null
       }
     case 'CHECK_UNAUTHENTICATED':
       return { ...state, status: 'unauthenticated', wizardStep: 'sign-in', error: null }
@@ -248,9 +259,18 @@ export const AuthProvider = ({ children }: AuthProviderProps): React.JSX.Element
         const result = await deviceService.getDevices()
         if (result.devices.length > 0) {
           const current = result.devices.find((d) => d.isCurrentDevice)
+          const deviceId = current?.id ?? result.devices[0].id
+          if (result.needsRecoveryConfirmation) {
+            dispatch({
+              type: 'CHECK_RECOVERY_PENDING',
+              deviceId,
+              email: result.email
+            })
+            return
+          }
           dispatch({
             type: 'CHECK_AUTHENTICATED',
-            deviceId: current?.id ?? result.devices[0].id,
+            deviceId,
             email: result.email
           })
           const refreshResult = await authService.refreshToken()

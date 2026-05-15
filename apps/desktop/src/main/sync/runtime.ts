@@ -60,6 +60,7 @@ import {
 } from './token-manager'
 import { SyncWorkerBridge } from './worker-bridge'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
+import { store } from '../store'
 
 const log = createLogger('SyncRuntime')
 
@@ -181,6 +182,11 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
   const hasRefreshToken = await retrieveToken(KEYCHAIN_ENTRIES.REFRESH_TOKEN)
   if (!hasRefreshToken) {
     log.debug('Sync runtime skipped: no user session')
+    return null
+  }
+
+  if (store.get('sync').recoveryPhraseConfirmed === false) {
+    log.debug('Sync runtime skipped: recovery phrase confirmation pending')
     return null
   }
 
