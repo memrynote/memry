@@ -2,6 +2,7 @@ import type { ComponentProps } from 'react'
 import { isValidElement } from 'react'
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { ChevronRight } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 
 export type ToolState =
@@ -63,9 +64,7 @@ export function ToolHeader({
       {...props}
     >
       <span className="flex min-w-0 items-center gap-1.5">
-        <span className="shrink-0" aria-hidden="true">
-          &gt;
-        </span>
+        <ChevronRight className="size-3 shrink-0" aria-hidden="true" />
         <span className="truncate">{label}</span>
         <span className="sr-only">{statusLabels[state]}</span>
       </span>

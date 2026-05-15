@@ -376,18 +376,15 @@
       "placeholder": "Spør Memry om hva som helst. @ for å nevne en fil",
       "send": "Sende",
       "providerLabel": "Agent-leverandør: {provider}",
-      "modelLabel": "Agent modell: {model}",
-      "settingsLabel": "Agent-innstillinger: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "Egendefinert modell-ID",
-      "customModelPlaceholder": "Egendefinert modell-ID",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "Lokalt"
       },
       "models": {
-        "default": "Standard"
+        "default": "Standard",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "Begrunnelse"
@@ -410,7 +407,23 @@
           "high": "Høy",
           "extraHigh": "Ekstra høy"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Ingen treff"

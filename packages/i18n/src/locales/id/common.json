@@ -376,18 +376,15 @@
       "placeholder": "Tanyakan apa saja kepada Memry. @ untuk menyebut file",
       "send": "Kirim",
       "providerLabel": "Penyedia Agent: {provider}",
-      "modelLabel": "Model Agent: {model}",
-      "settingsLabel": "Pengaturan Agent: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "ID model khusus",
-      "customModelPlaceholder": "ID model khusus",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "Lokal"
       },
       "models": {
-        "default": "Bawaan"
+        "default": "Bawaan",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "Penalaran"
@@ -410,7 +407,23 @@
           "high": "Tinggi",
           "extraHigh": "Ekstra Tinggi"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Tidak ada kecocokan"

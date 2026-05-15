@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import type {
+  AgentAccessMode,
   AgentBackendId,
   AgentBackendModelList,
   AgentCliBackendId,
@@ -18,12 +19,22 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { useActiveTab } from '@/contexts/tabs'
-import { ChatGpt, Check, ChevronDown, Claude, Computer, Send, Square } from '@/lib/icons'
+import {
+  AiWebBrowsing,
+  ChatGpt,
+  Check,
+  ChevronDown,
+  Claude,
+  Computer,
+  Send,
+  Shield,
+  Square
+} from '@/lib/icons'
 import {
   AgentPromptEditor,
   type AgentPromptEditorHandle,
@@ -42,6 +53,7 @@ type AgentProvider = 'claude_cli' | 'codex_cli' | 'local_openai_compatible'
 
 const DEFAULT_CLAUDE_MODEL = 'opus'
 const DEFAULT_CODEX_REASONING: CodexReasoningEffort = 'medium'
+const DEFAULT_ACCESS_MODE: AgentAccessMode = 'vault_only'
 
 const DEFAULT_SELECTED_MODELS: Record<AgentCliBackendId, string | null> = {
   claude_cli: DEFAULT_CLAUDE_MODEL,
@@ -182,7 +194,6 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const { t } = useT('common')
   const agent = useAgentOptional()
   const activeTab = useActiveTab()
-  const customModelInputId = useId()
   const promptEditorRef = useRef<AgentPromptEditorHandle>(null)
   const [promptValue, setPromptValue] = useState<AgentPromptValue>({
     text: '',
@@ -195,15 +206,30 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const [selectedPickerIndex, setSelectedPickerIndex] = useState(-1)
   const [submitting, setSubmitting] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState<AgentProvider>('claude_cli')
+  const [accessMode, setAccessMode] = useState<AgentAccessMode>(DEFAULT_ACCESS_MODE)
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false)
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
   const [selectedModels, setSelectedModels] =
     useState<Record<AgentCliBackendId, string | null>>(DEFAULT_SELECTED_MODELS)
   const [modelOptions, setModelOptions] =
     useState<Record<AgentCliBackendId, AgentBackendModelList | null>>(EMPTY_MODEL_OPTIONS)
-  const [customModelDraft, setCustomModelDraft] = useState('')
   const [claudeReasoning, setClaudeReasoning] = useState<ClaudeEffort>(DEFAULT_CLAUDE_EFFORT)
   const [codexReasoning, setCodexReasoning] =
     useState<CodexReasoningEffort>(DEFAULT_CODEX_REASONING)
+
+  useEffect(() => {
+    let cancelled = false
+    void window.api.agent
+      .getPreferences()
+      .then((preferences) => {
+        if (cancelled) return
+        setAccessMode(preferences.accessMode)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (activeTab?.type !== 'note' || !activeTab.entityId) return
@@ -264,6 +290,19 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
     local_openai_compatible: localProviderLabel
   }
   const selectedProviderLabel = providerLabelById[selectedProvider]
+  const accessLabelById: Record<AgentAccessMode, string> = {
+    vault_only: t('agentChat.composer.access.vaultOnly'),
+    computer_access: t('agentChat.composer.access.computerAccess')
+  }
+  const selectedAccessLabel = accessLabelById[accessMode]
+  const selectedWebSearchLabel = webSearchEnabled
+    ? t('agentChat.composer.webSearch.on')
+    : t('agentChat.composer.webSearch.off')
+  const permissionsAriaLabel = t('agentChat.composer.permissionsLabel', {
+    access: selectedAccessLabel,
+    webSearch: selectedWebSearchLabel
+  })
+  const permissionsActive = accessMode !== DEFAULT_ACCESS_MODE || webSearchEnabled
   const selectedBackendModel = isCliProvider(selectedProvider)
     ? (selectedModels[selectedProvider] ??
       defaultModelForProvider(selectedProvider, selectedModelOptions))
@@ -293,6 +332,11 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
   const settingsSummary = t('agentChat.composer.settingsSummary', {
     reasoning: t(selectedReasoning.summaryKey)
   })
+  const modelSettingsSummary = `${selectedModelLabel} · ${settingsSummary}`
+  const modelSettingsAriaLabel = t('agentChat.composer.modelSettingsLabel', {
+    model: selectedModelLabel,
+    settings: settingsSummary
+  })
   const backendOptions = (): AgentBackendOptions => {
     if (selectedProvider === 'local_openai_compatible') {
       return { backend: 'local_openai_compatible', toolsEnabled: true }
@@ -310,16 +354,13 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
       ...(selectedBackendModel ? { model: selectedBackendModel } : {})
     }
   }
+  const turnPermissions = () =>
+    accessMode !== DEFAULT_ACCESS_MODE || webSearchEnabled
+      ? { accessMode, webSearchEnabled }
+      : undefined
   const selectModel = (model: string | null): void => {
     if (!isCliProvider(selectedProvider)) return
     setSelectedModels((current) => ({ ...current, [selectedProvider]: model }))
-  }
-  const applyCustomModel = (): void => {
-    const model = customModelDraft.trim()
-    if (!model) return
-    selectModel(model)
-    setCustomModelDraft('')
-    setModelMenuOpen(false)
   }
   const selectReasoning = (value: ClaudeEffort | CodexReasoningEffort): void => {
     if (selectedProvider === 'codex_cli') {
@@ -433,6 +474,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
         sourceWindowId,
         text: currentText,
         backendOptions: backendOptions(),
+        permissions: turnPermissions(),
         attachments: currentAttachments
       })
       promptEditorRef.current?.clear()
@@ -546,21 +588,96 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label={permissionsAriaLabel}
+                className={[
+                  'relative inline-flex size-8 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:bg-accent data-[state=open]:text-accent-foreground',
+                  permissionsActive
+                    ? 'bg-accent text-accent-foreground hover:bg-accent/90'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+                ].join(' ')}
+              >
+                {accessMode === 'computer_access' ? (
+                  <Computer className="size-4" aria-hidden="true" />
+                ) : (
+                  <Shield className="size-4" aria-hidden="true" />
+                )}
+                {webSearchEnabled && (
+                  <span className="absolute -end-0.5 -top-0.5 inline-flex size-3 items-center justify-center rounded-full bg-background text-foreground ring-1 ring-border">
+                    <AiWebBrowsing className="size-2" aria-hidden="true" />
+                  </span>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-52 border-border/60 p-1.5">
+              <DropdownMenuLabel className="px-2 py-1 text-xs font-medium">
+                {t('agentChat.composer.permissions.label')}
+              </DropdownMenuLabel>
+              <DropdownMenuLabel className="px-2 pb-1 pt-2 text-[11px] font-medium uppercase text-muted-foreground">
+                {t('agentChat.composer.permissions.access')}
+              </DropdownMenuLabel>
+              <DropdownMenuItem
+                onSelect={(event) => {
+                  event.preventDefault()
+                  setAccessMode('vault_only')
+                }}
+                className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+              >
+                <Shield className="size-4 text-muted-foreground" aria-hidden="true" />
+                <span>{t('agentChat.composer.access.vaultOnly')}</span>
+                {accessMode === 'vault_only' && (
+                  <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={(event) => {
+                  event.preventDefault()
+                  setAccessMode('computer_access')
+                }}
+                className="text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+              >
+                <Computer className="size-4 text-muted-foreground" aria-hidden="true" />
+                <span>{t('agentChat.composer.access.computerAccess')}</span>
+                {accessMode === 'computer_access' && (
+                  <Check className="ms-auto size-3 text-muted-foreground" aria-hidden="true" />
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="px-2 pb-1 pt-2 text-[11px] font-medium uppercase text-muted-foreground">
+                {t('agentChat.composer.permissions.tools')}
+              </DropdownMenuLabel>
+              <DropdownMenuCheckboxItem
+                checked={webSearchEnabled}
+                onCheckedChange={(checked) => setWebSearchEnabled(checked === true)}
+                onSelect={(event) => event.preventDefault()}
+                className="text-xs focus:bg-accent focus:text-accent-foreground"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <AiWebBrowsing className="size-4 text-muted-foreground" aria-hidden="true" />
+                  <span>{t('agentChat.composer.webSearch.label')}</span>
+                </span>
+              </DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {isCliProvider(selectedProvider) && (
             <DropdownMenu open={modelMenuOpen} onOpenChange={handleModelMenuOpenChange}>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  aria-label={t('agentChat.composer.modelLabel', {
-                    model: selectedModelLabel
-                  })}
-                  className="inline-flex h-8 max-w-28 items-center gap-1 rounded-full bg-muted px-2 text-xs text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  aria-label={modelSettingsAriaLabel}
+                  className="inline-flex h-8 max-w-36 items-center gap-1 rounded-full bg-muted px-2 text-xs text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
-                  <span className="truncate">{selectedModelLabel}</span>
+                  <span className="truncate">{modelSettingsSummary}</span>
                   <ChevronDown className="size-3 shrink-0" aria-hidden="true" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="min-w-52 border-border/60 p-1.5">
+                <DropdownMenuLabel className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                  {t('agentChat.composer.models.label')}
+                </DropdownMenuLabel>
                 {(selectedModelOptions?.models ?? []).map((model) => (
                   <DropdownMenuItem
                     key={model.id}
@@ -573,46 +690,7 @@ export function Composer({ conversationId, sourceWindowId }: ComposerProps): Rea
                     )}
                   </DropdownMenuItem>
                 ))}
-                <div
-                  className="mt-1 border-t border-border/60 pt-1"
-                  onKeyDown={(event) => event.stopPropagation()}
-                  onPointerDown={(event) => event.stopPropagation()}
-                >
-                  <label htmlFor={customModelInputId} className="sr-only">
-                    {t('agentChat.composer.customModelLabel')}
-                  </label>
-                  <Input
-                    id={customModelInputId}
-                    value={customModelDraft}
-                    onChange={(event) => setCustomModelDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        event.preventDefault()
-                        applyCustomModel()
-                      }
-                    }}
-                    placeholder={t('agentChat.composer.customModelPlaceholder')}
-                    className="h-8 text-xs"
-                  />
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-          {isCliProvider(selectedProvider) && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  aria-label={t('agentChat.composer.settingsLabel', {
-                    settings: settingsSummary
-                  })}
-                  className="inline-flex h-8 min-w-0 items-center gap-1 rounded-full bg-muted px-2 text-xs text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  <span className="truncate">{settingsSummary}</span>
-                  <ChevronDown className="size-3 shrink-0" aria-hidden="true" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="min-w-44 border-border/60 p-1.5">
+                <DropdownMenuSeparator />
                 <DropdownMenuLabel className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
                   {t('agentChat.composer.settings.reasoning')}
                 </DropdownMenuLabel>

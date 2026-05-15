@@ -376,18 +376,15 @@
       "placeholder": "Zapytaj Memry o cokolwiek. @, aby wspomnieć plik",
       "send": "Wyślij",
       "providerLabel": "Dostawca Agent: {provider}",
-      "modelLabel": "Model Agent: {model}",
-      "settingsLabel": "Ustawienia Agent: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "Niestandardowy identyfikator modelu",
-      "customModelPlaceholder": "Niestandardowy identyfikator modelu",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "Lokalnie"
       },
       "models": {
-        "default": "Domyślne"
+        "default": "Domyślne",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "Rozumowanie"
@@ -410,7 +407,23 @@
           "high": "Wysoki",
           "extraHigh": "Bardzo wysoka"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "Brak dopasowań"

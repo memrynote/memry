@@ -376,18 +376,15 @@
       "placeholder": "Memryに何でも聞いてください。@でファイルをメンション",
       "send": "送信",
       "providerLabel": "Agent プロバイダ: {provider}",
-      "modelLabel": "Agent モデル: {model}",
-      "settingsLabel": "Agent 設定: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "カスタムモデル ID",
-      "customModelPlaceholder": "カスタムモデル ID",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "ローカル"
       },
       "models": {
-        "default": "デフォルト"
+        "default": "デフォルト",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "推論"
@@ -410,7 +407,23 @@
           "high": "高",
           "extraHigh": "エクストラハイ"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "一致しません"

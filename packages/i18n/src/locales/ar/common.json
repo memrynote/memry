@@ -376,18 +376,15 @@
       "placeholder": "اسأل Memry أي شيء. @ لذكر ملف",
       "send": "أرسل",
       "providerLabel": "مزود Agent: {provider}",
-      "modelLabel": "موديل Agent: {model}",
-      "settingsLabel": "إعدادات Agent: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "معرف النموذج المخصص",
-      "customModelPlaceholder": "معرف النموذج المخصص",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "محلي"
       },
       "models": {
-        "default": "الافتراضي"
+        "default": "الافتراضي",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "الاستدلال"
@@ -410,7 +407,23 @@
           "high": "عالية",
           "extraHigh": "ارتفاع إضافي"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "لا توجد تطابقات"

@@ -376,18 +376,15 @@
       "placeholder": "שאלו את Memry כל דבר. @ כדי להזכיר קובץ",
       "send": "שלח",
       "providerLabel": "ספק Agent: {provider}",
-      "modelLabel": "דגם Agent: {model}",
-      "settingsLabel": "הגדרות Agent: {settings}",
       "settingsSummary": "{reasoning}",
-      "customModelLabel": "מזהה דגם מותאם אישית",
-      "customModelPlaceholder": "מזהה דגם מותאם אישית",
       "providers": {
         "claude": "Claude",
         "codex": "Codex",
         "local": "מקומי"
       },
       "models": {
-        "default": "ברירת מחדל"
+        "default": "ברירת מחדל",
+        "label": "Model"
       },
       "settings": {
         "reasoning": "נימוק"
@@ -410,7 +407,23 @@
           "high": "גבוה",
           "extraHigh": "גבוה במיוחד"
         }
-      }
+      },
+      "access": {
+        "vaultOnly": "Vault only",
+        "computerAccess": "Computer access"
+      },
+      "webSearch": {
+        "on": "On",
+        "off": "Off",
+        "label": "Web search"
+      },
+      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
+      "permissions": {
+        "label": "Permissions",
+        "access": "Access",
+        "tools": "Tools"
+      },
+      "modelSettingsLabel": "Agent model settings: {model}, {settings}"
     },
     "refPicker": {
       "noMatches": "אין התאמות"

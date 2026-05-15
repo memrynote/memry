@@ -272,6 +272,10 @@ vi.mock('@/components/settings/recovery-key-dialog', () => ({
 }))
 
 function installWindowApi() {
+  const agentPreferences = {
+    accessMode: 'vault_only',
+    toolApprovalMode: 'always_accept'
+  }
   window.api = {
     ...window.api,
     agent: {
@@ -282,10 +286,8 @@ function installWindowApi() {
         apiKeyConfigured: false,
         allowNonLoopback: false
       }),
-      getPreferences: vi.fn().mockResolvedValue({
-        toolApprovalMode: 'always_accept'
-      }),
-      setPreferences: vi.fn(async (input) => input),
+      getPreferences: vi.fn().mockResolvedValue(agentPreferences),
+      setPreferences: vi.fn(async (input) => ({ ...agentPreferences, ...input })),
       setLocalProviderSettings: vi.fn(async (input) => ({
         preset: input.preset,
         baseUrl: input.baseUrl,
@@ -605,7 +607,16 @@ describe('settings section coverage', () => {
     expect(window.api.agent.getLocalProviderSettings).toHaveBeenCalled()
     expect(window.api.agent.getPreferences).toHaveBeenCalled()
 
-    fireEvent.click(screen.getByText('agentProviders.approval.ask'))
+    expect(await screen.findByText('agentProviders.permissions.group')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('agentProviders.permissions.access.computerAccess'))
+    await waitFor(() =>
+      expect(window.api.agent.setPreferences).toHaveBeenCalledWith({
+        accessMode: 'computer_access'
+      })
+    )
+
+    fireEvent.click(screen.getByText('agentProviders.permissions.confirm.askBeforeChanges'))
     await waitFor(() =>
       expect(window.api.agent.setPreferences).toHaveBeenCalledWith({
         toolApprovalMode: 'ask'
