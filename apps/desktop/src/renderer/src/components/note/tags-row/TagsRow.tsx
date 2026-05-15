@@ -16,6 +16,7 @@ export interface TagsRowProps {
   disabled?: boolean
   className?: string
   hideWhenEmpty?: boolean
+  hideAddButton?: boolean
 }
 
 export const TagsRow = memo(function TagsRow({
@@ -28,7 +29,8 @@ export const TagsRow = memo(function TagsRow({
   onTagClick,
   disabled = false,
   className,
-  hideWhenEmpty = false
+  hideWhenEmpty = false,
+  hideAddButton = false
 }: TagsRowProps) {
   const { t } = useT('notes')
   const currentTagIds = tags.map((t) => t.id)
@@ -51,16 +53,18 @@ export const TagsRow = memo(function TagsRow({
         />
       ))}
 
-      <TagInputPopup
-        availableTags={availableTags}
-        recentTags={recentTags}
-        currentTagIds={currentTagIds}
-        onAddTag={onAddTag}
-        onCreateTag={onCreateTag}
-        disabled={disabled}
-      >
-        <AddTagButton disabled={disabled} />
-      </TagInputPopup>
+      {!hideAddButton && (
+        <TagInputPopup
+          availableTags={availableTags}
+          recentTags={recentTags}
+          currentTagIds={currentTagIds}
+          onAddTag={onAddTag}
+          onCreateTag={onCreateTag}
+          disabled={disabled}
+        >
+          <AddTagButton disabled={disabled} />
+        </TagInputPopup>
+      )}
 
       {tags.length === 0 && !hideWhenEmpty && (
         <span className="text-[13px] text-stone-400">{t('tagsRow.empty')}</span>
