@@ -90,10 +90,6 @@
       "error": "Nem sikerült frissíteni az időformátumot"
     },
     "tabs": {
-      "previewMode": {
-        "label": "Előnézet mód",
-        "description": "Egyetlen kattintással megnyitja az előnézetet, dupla kattintással pedig nyitva marad"
-      },
       "restoreSession": {
         "label": "Munkamenet visszaállítása a kezdéskor",
         "description": "Nyissa meg újra a legutóbbi munkamenet lapjait"

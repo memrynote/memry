@@ -198,7 +198,7 @@ describe('TriageView', () => {
       expect.objectContaining({
         type: 'note',
         entityId: 'note-1',
-        isPreview: true
+        isPreview: false
       })
     )
 

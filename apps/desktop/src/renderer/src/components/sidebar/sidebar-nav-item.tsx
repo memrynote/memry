@@ -36,7 +36,7 @@ export const SidebarNavItem = ({
   onDelete,
   className
 }: SidebarNavItemProps): React.JSX.Element => {
-  const { openSidebarItem, isOpenInTab, isActiveItem, settings } = useSidebarNavigation()
+  const { openSidebarItem, isOpenInTab, isActiveItem } = useSidebarNavigation()
 
   // Check if this item is open in any tab
   const isOpenTab = useMemo(() => isOpenInTab(item), [isOpenInTab, item])
@@ -53,12 +53,9 @@ export const SidebarNavItem = ({
       const inNewTab = e.metaKey || e.ctrlKey
       const inBackground = e.shiftKey && inNewTab
 
-      // Single click with preview mode = preview tab (unless modifier)
-      const isPreview = settings.previewMode && !inNewTab
-
-      openSidebarItem(item, { inNewTab, inBackground, isPreview })
+      openSidebarItem(item, { inNewTab, inBackground })
     },
-    [openSidebarItem, item, settings.previewMode]
+    [openSidebarItem, item]
   )
 
   // Handle middle click
@@ -73,22 +70,12 @@ export const SidebarNavItem = ({
     [openSidebarItem, item]
   )
 
-  // Handle double click - always permanent tab
-  const handleDoubleClick = useCallback(
-    (e: React.MouseEvent): void => {
-      e.preventDefault()
-      openSidebarItem(item, { isPreview: false })
-    },
-    [openSidebarItem, item]
-  )
-
   return (
     <SidebarItemContextMenu item={item} onEdit={onEdit} onDelete={onDelete}>
       <button
         type="button"
         onClick={handleClick}
         onMouseDown={handleMouseDown}
-        onDoubleClick={handleDoubleClick}
         className={cn(
           // Base styles
           'group relative w-full flex items-center gap-2 py-1.5 rounded-md text-sm',
@@ -110,7 +97,7 @@ export const SidebarNavItem = ({
         data-item-type={item.type}
       >
         {/* Active indicator bar */}
-        {isActive && <div className="absolute left-0 top-1 bottom-1 w-0.5 rounded-r bg-tint" />}
+        {isActive && <div className="absolute start-0 top-1 bottom-1 w-0.5 rounded-e bg-tint" />}
 
         {/* Color dot for projects */}
         {item.color && (
@@ -130,7 +117,7 @@ export const SidebarNavItem = ({
         )}
 
         {/* Title */}
-        <span className="sidebar-label-fade flex-1 text-left">{item.title}</span>
+        <span className="sidebar-label-fade flex-1 text-start">{item.title}</span>
 
         {/* Count badge */}
         {item.count !== undefined && item.count > 0 && (

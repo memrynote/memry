@@ -376,7 +376,7 @@ export function InboxListView({
             entityId: metadata.targetId,
             isPinned: false,
             isModified: false,
-            isPreview: true,
+            isPreview: false,
             isDeleted: false,
             viewState:
               metadata.targetType === 'highlight'

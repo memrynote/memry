@@ -33,7 +33,7 @@ const RegularTabComponent = ({
   className
 }: RegularTabProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('common')
-  const { setActiveTab, closeTab, promotePreviewTab } = useTabs()
+  const { setActiveTab, closeTab } = useTabs()
   const settings = useTabSettings()
   const [isHovered, setIsHovered] = useState(false)
 
@@ -67,13 +67,6 @@ const RegularTabComponent = ({
     [closeTab, tab.id, groupId]
   )
 
-  const handleDoubleClick = useCallback((): void => {
-    // Double-click promotes preview tab to permanent
-    if (tab.isPreview) {
-      promotePreviewTab(tab.id, groupId)
-    }
-  }, [promotePreviewTab, tab.id, tab.isPreview, groupId])
-
   const handleMouseEnter = useCallback(() => setIsHovered(true), [])
   const handleMouseLeave = useCallback(() => setIsHovered(false), [])
 
@@ -83,7 +76,7 @@ const RegularTabComponent = ({
         'group relative flex items-center gap-2 h-9 pt-0.5 px-4 cursor-pointer',
         'min-w-[100px] max-w-[180px]',
         'select-none',
-        'border-r border-r-border/40',
+        'border-e border-e-border/40',
         'border-b-2',
         'transition-colors duration-150 ease-out',
 
@@ -91,12 +84,10 @@ const RegularTabComponent = ({
           ? ['bg-background', 'border-b-sidebar-terracotta']
           : ['bg-transparent', 'border-b-transparent', 'hover:bg-foreground/[0.03]'],
 
-        tab.isPreview && settings.previewMode && 'italic',
         className
       )}
       onClick={handleClick}
       onMouseDown={handleMouseDown}
-      onDoubleClick={handleDoubleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       role="tab"
@@ -124,7 +115,6 @@ const RegularTabComponent = ({
           isActive
             ? 'text-foreground font-medium'
             : 'text-text-tertiary font-normal group-hover:text-text-secondary',
-          tab.isPreview && settings.previewMode && 'italic',
           tab.isDeleted && 'line-through opacity-50'
         )}
       >
@@ -150,7 +140,7 @@ const RegularTabComponent = ({
             type="button"
             onClick={handleClose}
             className={cn(
-              'w-5 h-5 -mr-0.5 rounded-md flex items-center justify-center',
+              'w-5 h-5 -me-0.5 rounded-md flex items-center justify-center',
               'hover:bg-surface-active/70',
               'active:bg-surface-active',
               'transition-all duration-100',

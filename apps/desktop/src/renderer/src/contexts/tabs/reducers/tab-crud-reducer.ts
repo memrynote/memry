@@ -78,6 +78,7 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
           if (!activeTab.isPinned) {
             const newTab: Tab = {
               ...tab,
+              isPreview: false,
               id: generateId(),
               openedAt: Date.now(),
               lastAccessedAt: Date.now()
@@ -113,6 +114,7 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
               t.id === existingInGroup.id
                 ? {
                     ...t,
+                    isPreview: false,
                     lastAccessedAt: Date.now(),
                     ...(tab.viewState && { viewState: { ...t.viewState, ...tab.viewState } })
                   }
@@ -140,7 +142,7 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
         if (existing) {
           const existingGroup = state.tabGroups[existing.groupId]
           const updatedTabs = existingGroup.tabs.map((t) =>
-            t.id === existing.tab.id ? { ...t, lastAccessedAt: Date.now() } : t
+            t.id === existing.tab.id ? { ...t, isPreview: false, lastAccessedAt: Date.now() } : t
           )
           const groupAfter = background
             ? { ...existingGroup, tabs: updatedTabs }
@@ -161,6 +163,7 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
             t.id === existingInGroup.id
               ? {
                   ...t,
+                  isPreview: false,
                   lastAccessedAt: Date.now(),
                   ...(tab.viewState && {
                     viewState: { ...t.viewState, ...tab.viewState }
@@ -188,6 +191,7 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
               t.id === existingElsewhere.tab.id
                 ? {
                     ...t,
+                    isPreview: false,
                     lastAccessedAt: Date.now(),
                     ...(tab.viewState && {
                       viewState: { ...t.viewState, ...tab.viewState }
@@ -207,36 +211,9 @@ export function tabCrudReducer(state: TabSystemState, action: CrudAction): TabSy
         }
       }
 
-      // Handle preview mode
-      if (state.settings.previewMode && tab.isPreview) {
-        const previewTabIndex = targetGroup.tabs.findIndex((t) => t.isPreview)
-        if (previewTabIndex !== -1) {
-          const previewTab = targetGroup.tabs[previewTabIndex]
-          const newTab: Tab = {
-            ...tab,
-            id: generateId(),
-            openedAt: Date.now(),
-            lastAccessedAt: Date.now()
-          }
-          const newTabs = [...targetGroup.tabs]
-          newTabs[previewTabIndex] = newTab
-
-          const pruned = pruneHistory(targetGroup, new Set([previewTab.id]))
-          const nextActiveId = background ? pruned.activeTabId : newTab.id
-          const groupAfter =
-            background || pruned.activeTabId === nextActiveId
-              ? { ...pruned, tabs: newTabs, activeTabId: nextActiveId }
-              : { ...recordActivation(pruned, nextActiveId), tabs: newTabs }
-          return {
-            ...state,
-            tabGroups: { ...state.tabGroups, [groupId]: groupAfter },
-            activeGroupId: background ? state.activeGroupId : groupId
-          }
-        }
-      }
-
       const newTab: Tab = {
         ...tab,
+        isPreview: false,
         id: generateId(),
         openedAt: Date.now(),
         lastAccessedAt: Date.now()

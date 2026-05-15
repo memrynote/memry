@@ -151,7 +151,7 @@ export function CalendarTaskPopover({
           entityId: note.id,
           isPinned: false,
           isModified: false,
-          isPreview: true,
+          isPreview: false,
           isDeleted: false
         })
         onDismiss()

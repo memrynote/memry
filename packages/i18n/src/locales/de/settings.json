@@ -90,10 +90,6 @@
       "error": "Zeitformat konnte nicht aktualisiert werden"
     },
     "tabs": {
-      "previewMode": {
-        "label": "Vorschaumodus",
-        "description": "Einzelklick öffnet Vorschau, Doppelklick bleibt geöffnet"
-      },
       "restoreSession": {
         "label": "Sitzung beim Start wiederherstellen",
         "description": "Öffnen Sie die Tabs Ihrer letzten Sitzung erneut"

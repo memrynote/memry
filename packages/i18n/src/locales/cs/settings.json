@@ -90,10 +90,6 @@
       "error": "Aktualizace formátu času se nezdařila"
     },
     "tabs": {
-      "previewMode": {
-        "label": "Režim náhledu",
-        "description": "Jedno kliknutí otevře náhled, dvojité kliknutí zůstane otevřené"
-      },
       "restoreSession": {
         "label": "Obnovit relaci na začátku",
         "description": "Znovu otevřete karty z poslední relace"

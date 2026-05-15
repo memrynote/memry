@@ -67,18 +67,6 @@ export function GeneralSettings() {
     [t, updateGeneralSettings]
   )
 
-  const handlePreviewModeChange = useCallback(
-    async (enabled: boolean) => {
-      const success = await updateTabSettings({ previewMode: enabled })
-      if (success) {
-        updateContextSettings({ previewMode: enabled })
-      } else {
-        toast.error(t('general.tabs.error'))
-      }
-    },
-    [t, updateTabSettings, updateContextSettings]
-  )
-
   const handleRestoreSessionChange = useCallback(
     async (enabled: boolean) => {
       const success = await updateTabSettings({ restoreSessionOnStart: enabled })
@@ -283,17 +271,6 @@ export function GeneralSettings() {
       </SettingsGroup>
 
       <SettingsGroup label={t('general.groups.tabBehavior')}>
-        <SettingRow
-          label={t('general.tabs.previewMode.label')}
-          description={t('general.tabs.previewMode.description')}
-        >
-          <Switch
-            checked={tabSettings.previewMode}
-            onCheckedChange={(...args) => void handlePreviewModeChange(...args)}
-            className={ACCENT_SWITCH}
-          />
-        </SettingRow>
-
         <SettingRow
           label={t('general.tabs.restoreSession.label')}
           description={t('general.tabs.restoreSession.description')}

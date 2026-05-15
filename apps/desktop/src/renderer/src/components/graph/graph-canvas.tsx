@@ -319,7 +319,7 @@ function ContextMenuWithTabAction({
         entityId: nodeId,
         isPinned: false,
         isModified: false,
-        isPreview: true,
+        isPreview: false,
         isDeleted: false
       })
     },

@@ -90,10 +90,6 @@
       "error": "Saat biçimi güncellenemedi"
     },
     "tabs": {
-      "previewMode": {
-        "label": "Önizleme Modu",
-        "description": "Tek tıklama önizlemeyi açar, çift tıklama açık kalır"
-      },
       "restoreSession": {
         "label": "Başlangıçta Oturumu Geri Yükle",
         "description": "Son oturumunuzdaki sekmeleri yeniden açın"

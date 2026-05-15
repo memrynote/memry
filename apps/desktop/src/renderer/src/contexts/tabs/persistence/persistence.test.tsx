@@ -94,7 +94,6 @@ const state = (overrides: Partial<TabSystemState> = {}): TabSystemState =>
     layout: { type: 'leaf', tabGroupId: 'group-1' },
     settings: {
       restoreSessionOnStart: true,
-      previewMode: true,
       tabCloseButton: 'active',
       maxTabs: 20,
       showTabNumbers: false,

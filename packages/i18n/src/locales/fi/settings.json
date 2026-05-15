@@ -90,10 +90,6 @@
       "error": "Aikamuodon päivittäminen epäonnistui"
     },
     "tabs": {
-      "previewMode": {
-        "label": "Esikatselutila",
-        "description": "Yksi napsautus avaa esikatselun, kaksoisnapsautus pitää auki"
-      },
       "restoreSession": {
         "label": "Palauta istunto käynnistyksen yhteydessä",
         "description": "Avaa edellisen istunnon välilehdet uudelleen"

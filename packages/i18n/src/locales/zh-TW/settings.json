@@ -90,10 +90,6 @@
       "error": "更新時間格式失敗"
     },
     "tabs": {
-      "previewMode": {
-        "label": "預覽模式",
-        "description": "單擊打開預覽，雙擊保持打開"
-      },
       "restoreSession": {
         "label": "啟動時還原工作階段",
         "description": "重新打開上次會話中的標籤頁"

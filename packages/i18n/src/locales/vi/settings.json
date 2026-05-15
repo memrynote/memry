@@ -90,10 +90,6 @@
       "error": "Cập nhật định dạng thời gian thất bại"
     },
     "tabs": {
-      "previewMode": {
-        "label": "Chế độ Xem trước",
-        "description": "Nhấp đơn để mở xem trước, nhấp đôi để giữ mở"
-      },
       "restoreSession": {
         "label": "Khôi phục Phiên làm việc khi Khởi động",
         "description": "Mở lại các tab từ phiên làm việc trước của bạn"

@@ -90,10 +90,6 @@
       "error": "Nepodarilo sa aktualizovať formát času"
     },
     "tabs": {
-      "previewMode": {
-        "label": "Režim náhľadu",
-        "description": "Jednoklik otvorí náhľad, dvojklik ponechá otvorené"
-      },
       "restoreSession": {
         "label": "Obnoviť reláciu pri spustení",
         "description": "Znovu otvoriť záložky z poslednej relácie"

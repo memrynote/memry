@@ -288,7 +288,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
       entityId: fullPath,
       isPinned: false,
       isModified: false,
-      isPreview: true,
+      isPreview: false,
       isDeleted: false
     })
   }
@@ -451,7 +451,7 @@ export function FolderViewPage({ folderPath }: FolderViewPageProps): React.JSX.E
         entityId: parentFolder,
         isPinned: false,
         isModified: false,
-        isPreview: true,
+        isPreview: false,
         isDeleted: false
       })
     }

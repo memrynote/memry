@@ -91,10 +91,6 @@
       "error": "Failed to update time format"
     },
     "tabs": {
-      "previewMode": {
-        "label": "Preview Mode",
-        "description": "Single-click opens preview, double-click keeps open"
-      },
       "restoreSession": {
         "label": "Restore Session on Start",
         "description": "Reopen tabs from your last session"

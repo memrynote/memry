@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useRef, useEffect } from 'react'
-import { useTabs, useTabActions, useTabSettings } from '@/contexts/tabs'
+import { useTabs, useTabActions } from '@/contexts/tabs'
 import {
   findExistingTab,
   findTabByEntityId,
@@ -33,8 +33,6 @@ export interface OpenSidebarItemOptions {
   inBackground?: boolean
   /** Open in split view */
   toTheSide?: boolean
-  /** Override preview mode */
-  isPreview?: boolean
 }
 
 /**
@@ -123,10 +121,9 @@ export const isItemActiveTab = (state: TabSystemState, item: SidebarItem): boole
  */
 export const useSidebarNavigation = () => {
   // PERFORMANCE: useTabActions returns stable references - doesn't trigger re-renders
-  const { openTab, setActiveTab, splitView, dispatch } = useTabActions()
+  const { openTab, setActiveTab, splitView } = useTabActions()
   // We still need state for finding existing tabs, but access it via ref
   const { state } = useTabs()
-  const settings = useTabSettings()
   // PERFORMANCE: Optimized active item checking - stable callback reference
   const isActiveItem = useIsItemActive()
 
@@ -141,38 +138,20 @@ export const useSidebarNavigation = () => {
    */
   const openSidebarItem = useCallback(
     (item: SidebarItem, options: OpenSidebarItemOptions = {}) => {
-      const { inNewTab, inBackground, toTheSide, isPreview } = options
+      const { inBackground, toTheSide } = options
       const currentState = stateRef.current
-      const currentSettings = settings
-
-      // Determine if we should use preview mode
-      const shouldBePreview = isPreview ?? (currentSettings.previewMode && !inNewTab)
-
-      // Determine if should open in new tab or replace current
-      // Default behavior: replace current tab
-      // New tab only when: Cmd/Ctrl+Click (inNewTab=true), right-click "Open in New Tab", or toTheSide
-      const shouldOpenNewTab = inNewTab ?? false
-      const shouldReplaceActive = !shouldOpenNewTab && !toTheSide
 
       // Check for existing tab
       const existingTab = findExistingTabForItem(currentState, item)
 
-      if (existingTab && !shouldOpenNewTab && !toTheSide) {
+      if (existingTab && !toTheSide) {
         // Focus existing tab
         setActiveTab(existingTab.tab.id, existingTab.groupId)
-
-        // If it was a preview and we double-clicked, promote it
-        if (existingTab.tab.isPreview && !shouldBePreview) {
-          dispatch({
-            type: 'PROMOTE_PREVIEW_TAB',
-            payload: { tabId: existingTab.tab.id, groupId: existingTab.groupId }
-          })
-        }
         return
       }
 
       // Create tab data from sidebar item
-      const tabData = createTabFromSidebarItem(item, shouldBePreview)
+      const tabData = createTabFromSidebarItem(item, false)
 
       if (toTheSide) {
         // Create split and open in new pane
@@ -184,11 +163,10 @@ export const useSidebarNavigation = () => {
           openTab(tabData, { background: inBackground })
         }, 0)
       } else {
-        // Open tab - replace current tab unless explicitly opening new tab
-        openTab(tabData, { background: inBackground, replaceActive: shouldReplaceActive })
+        openTab(tabData, { background: inBackground })
       }
     },
-    [openTab, setActiveTab, splitView, dispatch, settings]
+    [openTab, setActiveTab, splitView]
   )
 
   /**
@@ -225,8 +203,7 @@ export const useSidebarNavigation = () => {
     openAsPin,
     copyItemLink,
     isOpenInTab,
-    isActiveItem, // From useIsItemActive - stable reference
-    settings
+    isActiveItem // From useIsItemActive - stable reference
   }
 }
 

@@ -69,13 +69,6 @@ export const findTabById = (state: TabSystemState, tabId: string): FoundTab | nu
   return null
 }
 
-/**
- * Find preview tab in a group
- */
-export const findPreviewTab = (group: TabGroup): Tab | null => {
-  return group.tabs.find((t) => t.isPreview) || null
-}
-
 // =============================================================================
 // TAB ICON MAPPING
 // =============================================================================
@@ -277,7 +270,6 @@ export const getInsertIndexAfterPinned = (tabs: Tab[]): number => {
  * Default tab settings
  */
 export const DEFAULT_TAB_SETTINGS: TabSettings = {
-  previewMode: false,
   restoreSessionOnStart: true,
   tabCloseButton: 'hover'
 }

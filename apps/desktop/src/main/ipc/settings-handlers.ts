@@ -79,7 +79,6 @@ const SETTINGS_KEYS = {
   JOURNAL_SHOW_STATS_FOOTER: 'journal.showStatsFooter',
   AI_ENABLED: 'ai.enabled',
   // Tab settings
-  TAB_PREVIEW_MODE: 'tabs.previewMode',
   TAB_RESTORE_SESSION: 'tabs.restoreSessionOnStart',
   TAB_CLOSE_BUTTON: 'tabs.tabCloseButton',
   // Note editor settings
@@ -144,8 +143,6 @@ export type TerminalCommandMutationResult =
 // ============================================================================
 
 export interface TabSettings {
-  /** Single-click opens preview, double-click opens permanent */
-  previewMode: boolean
   /** Restore tabs from last session on app start */
   restoreSessionOnStart: boolean
   /** When to show close button: always, on hover, or only on active tab */
@@ -154,7 +151,6 @@ export interface TabSettings {
 
 /** Default tab settings values */
 const DEFAULT_TAB_SETTINGS: TabSettings = {
-  previewMode: false,
   restoreSessionOnStart: true,
   tabCloseButton: 'hover'
 }
@@ -627,13 +623,10 @@ export function registerSettingsHandlers(): void {
       return DEFAULT_TAB_SETTINGS
     }
 
-    const previewModeStr = getSetting(db, SETTINGS_KEYS.TAB_PREVIEW_MODE)
     const restoreSessionStr = getSetting(db, SETTINGS_KEYS.TAB_RESTORE_SESSION)
     const closeButtonStr = getSetting(db, SETTINGS_KEYS.TAB_CLOSE_BUTTON)
 
     return {
-      previewMode:
-        previewModeStr !== null ? previewModeStr === 'true' : DEFAULT_TAB_SETTINGS.previewMode,
       restoreSessionOnStart:
         restoreSessionStr !== null
           ? restoreSessionStr === 'true'
@@ -652,9 +645,6 @@ export function registerSettingsHandlers(): void {
         return { success: false, error: 'No vault open' }
       }
 
-      if (settings.previewMode !== undefined) {
-        setSetting(db, SETTINGS_KEYS.TAB_PREVIEW_MODE, settings.previewMode ? 'true' : 'false')
-      }
       if (settings.restoreSessionOnStart !== undefined) {
         setSetting(
           db,

@@ -90,10 +90,6 @@
       "error": "Falha ao atualizar o formato da hora"
     },
     "tabs": {
-      "previewMode": {
-        "label": "Modo de visualização",
-        "description": "Um clique abre a visualização, um clique duplo mantém aberto"
-      },
       "restoreSession": {
         "label": "Restaurar sessão no início",
         "description": "Reabrir guias da sua última sessão"

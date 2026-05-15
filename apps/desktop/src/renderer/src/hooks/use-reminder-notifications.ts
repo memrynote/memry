@@ -58,7 +58,7 @@ export function useReminderNotifications(): void {
             entityId: reminder.targetId,
             isPinned: false,
             isModified: false,
-            isPreview: true,
+            isPreview: false,
             isDeleted: false
           })
           break

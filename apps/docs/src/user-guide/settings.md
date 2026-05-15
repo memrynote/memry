@@ -59,7 +59,6 @@ Shows the installed version. If a newer version is available, a button lets you 
 
 ### Tab Behavior
 
-- **Preview Mode** — open single-clicked items in a reused preview tab
 - **Restore Session** — reopen the previous session's tabs on launch
 - **Tab Close Button** — always visible, hover only, or active tab only
 
