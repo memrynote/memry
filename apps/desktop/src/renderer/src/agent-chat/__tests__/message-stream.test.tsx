@@ -686,6 +686,44 @@ describe('MessageStream', () => {
     expect(screen.getByText('mcp__memry__vault_read_note')).toBeInTheDocument()
   })
 
+  it('renders MCP tool rows borderless and toggles details from the visible label', () => {
+    render(
+      <MessageStream
+        messages={[
+          message({
+            id: 'tool-call-1',
+            role: 'tool_call',
+            toolCallId: 'tool-1',
+            content: {
+              role: 'tool_call',
+              data: {
+                tool: 'mcp__memry__vault_create_note',
+                args: { title: 'Draft' },
+                status: 'input-available'
+              }
+            }
+          })
+        ]}
+      />
+    )
+
+    const trigger = screen.getByRole('button', { name: /Creating note/i })
+    const toolRoot = trigger.parentElement as HTMLElement
+
+    expect(toolRoot).not.toHaveClass('border')
+    expect(toolRoot).not.toHaveClass('border-sidebar-border')
+    expect(trigger.querySelector('svg')).not.toBeInTheDocument()
+    expect(screen.queryByText('Parameters')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Creating note'))
+
+    expect(screen.getByText('Parameters')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Creating note'))
+
+    expect(screen.queryByText('Parameters')).not.toBeInTheDocument()
+  })
+
   it('approves pending tool calls inline without a dialog', async () => {
     mockUseAgentOptional.mockReturnValue({
       state: {
