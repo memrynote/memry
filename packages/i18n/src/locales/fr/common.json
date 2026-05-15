@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Note actuelle",
       "removeAttachment": "Supprimer {label}",
-      "placeholder": "Demandez à Agent",
+      "placeholder": "Demandez n’importe quoi à Memry. @ pour mentionner un fichier",
       "send": "Envoyer",
       "providerLabel": "Fournisseur Agent: {provider}",
       "modelLabel": "Modèle Agent: {model}",

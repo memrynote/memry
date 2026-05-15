@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Nykyinen huomautus",
       "removeAttachment": "Poista {label}",
-      "placeholder": "Kysy Agent",
+      "placeholder": "Kysy Memryltä mitä tahansa. @ tiedoston mainitsemiseen",
       "send": "Lähetä",
       "providerLabel": "Agent -toimittaja: {provider}",
       "modelLabel": "Agent malli: {model}",

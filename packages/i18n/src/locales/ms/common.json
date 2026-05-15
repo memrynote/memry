@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Nota semasa",
       "removeAttachment": "Alih keluar {label}",
-      "placeholder": "Tanya Agent",
+      "placeholder": "Tanya Memry apa-apa sahaja. @ untuk menyebut fail",
       "send": "Hantar",
       "providerLabel": "Pembekal Agent: {provider}",
       "modelLabel": "Model Agent: {model}",

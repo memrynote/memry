@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Aktuell not",
       "removeAttachment": "Ta bort {label}",
-      "placeholder": "Fråga Agent",
+      "placeholder": "Fråga Memry vad som helst. @ för att nämna en fil",
       "send": "Skicka",
       "providerLabel": "Agent-leverantör: {provider}",
       "modelLabel": "Agent modell: {model}",

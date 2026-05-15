@@ -4,10 +4,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
-import {
-  AgentPromptEditor,
-  type AgentPromptEditorHandle
-} from '../agent-prompt-editor'
+import { AgentPromptEditor, type AgentPromptEditorHandle } from '../agent-prompt-editor'
 import type { MentionAttachment } from '../mention-icons'
 
 function renderPromptEditor() {
@@ -22,7 +19,7 @@ function renderPromptEditor() {
     <AgentPromptEditor
       ref={ref}
       disabled={false}
-      placeholder="Ask Agent"
+      placeholder="Ask Memry anything. @ to use mention file"
       onEscape={onEscape}
       onMentionKeyDown={onMentionKeyDown}
       onMentionQueryChange={onMentionQueryChange}

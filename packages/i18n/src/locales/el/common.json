@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Τρέχουσα σημείωση",
       "removeAttachment": "Κατάργηση {label}",
-      "placeholder": "Ρωτήστε το Agent",
+      "placeholder": "Ρωτήστε το Memry οτιδήποτε. @ για αναφορά αρχείου",
       "send": "Αποστολή",
       "providerLabel": "Agent πάροχος: {provider}",
       "modelLabel": "Agent μοντέλο: {model}",

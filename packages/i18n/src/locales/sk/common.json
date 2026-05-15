@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Aktuálna poznámka",
       "removeAttachment": "Odstrániť {label}",
-      "placeholder": "Opýtajte sa Agent",
+      "placeholder": "Opýtajte sa Memry na čokoľvek. @ na zmienku o súbore",
       "send": "Odoslať",
       "providerLabel": "Poskytovateľ Agent: {provider}",
       "modelLabel": "Model Agent: {model}",
