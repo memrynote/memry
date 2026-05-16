@@ -18,6 +18,7 @@ const MODEL_NAME = 'Whisper Small'
 const REQUEST_TIMEOUT_MS = 5 * 60_000
 const START_TIMEOUT_MS = 10_000
 const SHUTDOWN_TIMEOUT_MS = 3_000
+const IDLE_SHUTDOWN_MS = 30_000
 
 export interface VoiceModelStatus {
   name: string
@@ -60,6 +61,7 @@ class VoiceModelBridge {
   private loading = false
   private error: string | null = null
   private shuttingDown = false
+  private idleShutdownTimer: ReturnType<typeof setTimeout> | null = null
 
   get isLoaded(): boolean {
     return this.loaded
@@ -113,6 +115,8 @@ class VoiceModelBridge {
   }
 
   async stop(): Promise<void> {
+    this.clearIdleShutdown()
+
     if (!this.process) {
       this.readyPromise = null
       return
@@ -144,6 +148,7 @@ class VoiceModelBridge {
 
   reset(): void {
     this.shuttingDown = true
+    this.clearIdleShutdown()
     this.process?.kill()
     this.process = null
     this.readyPromise = null
@@ -155,6 +160,8 @@ class VoiceModelBridge {
   }
 
   private async start(): Promise<void> {
+    this.clearIdleShutdown()
+
     if (this.process) {
       await this.readyPromise
       return
@@ -258,10 +265,12 @@ class VoiceModelBridge {
         if (message.type === 'error') {
           this.error = message.error
           this.loading = false
+          this.scheduleIdleShutdown()
           pending.reject(new Error(message.error))
           return
         }
 
+        this.scheduleIdleShutdown()
         pending.resolve(message)
       }
     })
@@ -308,9 +317,12 @@ class VoiceModelBridge {
       return Promise.reject(new Error('Voice transcription utility is not running'))
     }
 
+    this.clearIdleShutdown()
+
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pendingRequests.delete(message.requestId)
+        this.scheduleIdleShutdown()
         reject(new Error(`Voice transcription request timed out: ${message.type}`))
       }, REQUEST_TIMEOUT_MS)
 
@@ -325,6 +337,7 @@ class VoiceModelBridge {
   }
 
   private failProcess(error: Error): void {
+    this.clearIdleShutdown()
     if (this.process) {
       this.process = null
     }
@@ -341,6 +354,36 @@ class VoiceModelBridge {
       pending.reject(error)
       this.pendingRequests.delete(requestId)
     }
+  }
+
+  private scheduleIdleShutdown(): void {
+    this.clearIdleShutdown()
+
+    if (!this.process || this.pendingRequests.size > 0 || this.shuttingDown) {
+      return
+    }
+
+    this.idleShutdownTimer = setTimeout(() => {
+      this.idleShutdownTimer = null
+      if (!this.process || this.pendingRequests.size > 0 || this.shuttingDown) {
+        return
+      }
+
+      void this.stop().catch((error) => {
+        logger.warn('Voice transcription utility idle shutdown failed', {
+          error: error instanceof Error ? error.message : String(error)
+        })
+      })
+    }, IDLE_SHUTDOWN_MS)
+  }
+
+  private clearIdleShutdown(): void {
+    if (!this.idleShutdownTimer) {
+      return
+    }
+
+    clearTimeout(this.idleShutdownTimer)
+    this.idleShutdownTimer = null
   }
 }
 
