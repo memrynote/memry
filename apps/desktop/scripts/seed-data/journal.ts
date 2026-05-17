@@ -1,5 +1,6 @@
 import { generateJournalId } from '../../src/main/lib/id'
 import type { NoteFile } from '../seed-vault/file-writer'
+import { seedDateOnly, seedTodayISO } from './date'
 
 interface JournalSpec {
   date: string
@@ -7,6 +8,8 @@ interface JournalSpec {
   tags: string[]
   body: string
 }
+
+const TODAY_DATE = seedDateOnly(0)
 
 const ENTRIES: JournalSpec[] = [
   {
@@ -235,18 +238,30 @@ More [[Sapiens]]. Chapter on agriculture. The wheat take feels stretched but in 
 Best day this week. The morning routine — see [[Morning Routine]] — is *paying for itself.* Two months in.`
   },
   {
-    date: '2026-05-08',
-    mood: 5,
-    tags: ['daily', 'fitness', 'flow'],
-    body: `Friday. Sunday weigh-in expected to land us under 82 kg if the trajectory holds.
+    date: TODAY_DATE,
+    mood: 4,
+    tags: ['daily', 'reflection'],
+    body: `A quiet day with enough space to notice what helped.
 
-Reread part of [[On Reading]] this morning. Forgot how good the *empathy as flight simulator* line was.
+## Schedule
 
-Looking forward to a quiet weekend.`
+- 09:00 Morning walk and coffee
+- 12:30 Lunch prep from [[Food Diary]]
+- 18:30 Dinner with Mina
+- 21:00 Plan the Lisbon weekend in [[Lisbon Notes]]
+
+## Tasks
+
+- [ ] Buy flowers on the way home
+- [ ] Reply to Mina about dinner
+- [ ] Add two restaurant ideas to [[Lisbon Notes]]
+- [ ] Finish the book chapter before bed
+
+Small win: took a longer walk after lunch and came back with a clearer head.`
   }
 ]
 
-const TODAY_ISO = new Date('2026-05-08T12:00:00.000Z').toISOString()
+const TODAY_ISO = seedTodayISO
 
 const dateToCreatedISO = (date: string): string => {
   const d = new Date(date + 'T08:30:00.000Z')
