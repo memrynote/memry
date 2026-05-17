@@ -190,6 +190,76 @@ describe('voice model', () => {
     await expect(transcribePromise).resolves.toBe('voice memo')
   })
 
+  it('shuts down the utility process after transcription stays idle', async () => {
+    vi.useFakeTimers()
+    const transcribePromise = transcribeWithLocalModel(Buffer.from('audio'))
+
+    mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+    await vi.waitFor(() => {
+      expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(1)
+    })
+
+    const requestMessage = mockUtilityProcessInstance.postMessage.mock.calls[0]?.[0] as {
+      requestId: string
+    }
+    mockUtilityProcessInstance.simulateMessage({
+      type: 'transcribe-result',
+      requestId: requestMessage.requestId,
+      transcription: 'voice memo'
+    })
+
+    await expect(transcribePromise).resolves.toBe('voice memo')
+    expect(mockUtilityProcessInstance.postMessage).not.toHaveBeenCalledWith({ type: 'shutdown' })
+
+    await vi.advanceTimersByTimeAsync(30_000)
+
+    expect(mockUtilityProcessInstance.postMessage).toHaveBeenLastCalledWith({ type: 'shutdown' })
+  })
+
+  it('keeps the utility process alive when another transcription starts before idle shutdown', async () => {
+    vi.useFakeTimers()
+    const firstTranscribe = transcribeWithLocalModel(Buffer.from('first'))
+
+    mockUtilityProcessInstance.simulateMessage({ type: 'ready' })
+    await vi.waitFor(() => {
+      expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(1)
+    })
+
+    const firstRequest = mockUtilityProcessInstance.postMessage.mock.calls[0]?.[0] as {
+      requestId: string
+    }
+    mockUtilityProcessInstance.simulateMessage({
+      type: 'transcribe-result',
+      requestId: firstRequest.requestId,
+      transcription: 'first memo'
+    })
+
+    await expect(firstTranscribe).resolves.toBe('first memo')
+    await vi.advanceTimersByTimeAsync(20_000)
+
+    const secondTranscribe = transcribeWithLocalModel(Buffer.from('second'))
+    await vi.waitFor(() => {
+      expect(mockUtilityProcessInstance.postMessage).toHaveBeenCalledTimes(2)
+    })
+
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(mockUtilityProcessInstance.postMessage).not.toHaveBeenCalledWith({ type: 'shutdown' })
+
+    const secondRequest = mockUtilityProcessInstance.postMessage.mock.calls[1]?.[0] as {
+      requestId: string
+    }
+    mockUtilityProcessInstance.simulateMessage({
+      type: 'transcribe-result',
+      requestId: secondRequest.requestId,
+      transcription: 'second memo'
+    })
+
+    await expect(secondTranscribe).resolves.toBe('second memo')
+    await vi.advanceTimersByTimeAsync(30_000)
+
+    expect(mockUtilityProcessInstance.postMessage).toHaveBeenLastCalledWith({ type: 'shutdown' })
+  })
+
   it('returns false for worker errors and unexpected download responses', async () => {
     const failedDownload = downloadVoiceModel()
 
