@@ -2,6 +2,7 @@ import { VideoScene } from './VideoScene'
 import type { SceneProps } from '../types'
 
 export function TasksScene({
+  clipId,
   playing,
   muted,
   onMutedChange,
@@ -10,6 +11,7 @@ export function TasksScene({
 }: SceneProps) {
   return (
     <VideoScene
+      clipId={clipId}
       src="/demos/TaskVoice.mp4"
       playing={playing}
       muted={muted}

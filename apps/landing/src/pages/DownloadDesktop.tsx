@@ -39,6 +39,7 @@ import {
 import { GITHUB_RELEASES_URL, GITHUB_URL } from '@/lib/constants'
 import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
 import { cn } from '@/lib/utils'
+import { trackLandingEvent } from '@/lib/analytics'
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const
 
@@ -75,6 +76,10 @@ const getServerOS = (): DetectedOS => null
 
 function useDetectedOS(): DetectedOS {
   return useSyncExternalStore(subscribeOS, detectOS, getServerOS)
+}
+
+function downloadTarget(label: string) {
+  return `download:${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
 }
 
 export function DownloadDesktopPage() {
@@ -142,7 +147,12 @@ function DesktopHero({ detected }: { detected: DetectedOS }) {
 
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button size="lg" className="rounded-full px-7" asChild>
-              <a href={GITHUB_RELEASES_URL} target="_blank" rel="noreferrer">
+              <a
+                href={GITHUB_RELEASES_URL}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => trackLandingEvent('landing_download_click', downloadTarget(label))}
+              >
                 <Download className="h-4 w-4" />
                 {detected ? `Download for ${label}` : 'Download Memry'}
               </a>
@@ -153,7 +163,12 @@ function DesktopHero({ detected }: { detected: DetectedOS }) {
               className="rounded-full px-6 text-ink hover:bg-paper-alt"
               asChild
             >
-              <a href={GITHUB_URL} target="_blank" rel="noreferrer">
+              <a
+                href={GITHUB_URL}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => trackLandingEvent('landing_external_click', 'download:github')}
+              >
                 <Github className="h-4 w-4" />
                 View on GitHub
               </a>
@@ -484,7 +499,14 @@ function PlatformCard({ platform, highlighted }: { platform: PlatformInfo; highl
           )}
           asChild
         >
-          <a href={GITHUB_RELEASES_URL} target="_blank" rel="noreferrer">
+          <a
+            href={GITHUB_RELEASES_URL}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() =>
+              trackLandingEvent('landing_download_click', downloadTarget(platform.label))
+            }
+          >
             <Download className="h-4 w-4" />
             Download for {platform.label}
           </a>
@@ -835,7 +857,14 @@ function ReleaseChannel() {
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Button variant="default" className="rounded-full px-5" asChild>
-                <a href={GITHUB_RELEASES_URL} target="_blank" rel="noreferrer">
+                <a
+                  href={GITHUB_RELEASES_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() =>
+                    trackLandingEvent('landing_download_click', 'download:latest-release')
+                  }
+                >
                   Latest release
                   <ExternalLink className="h-4 w-4" />
                 </a>
@@ -845,7 +874,14 @@ function ReleaseChannel() {
                 className="rounded-full px-5 text-ink hover:bg-paper-alt"
                 asChild
               >
-                <a href={GITHUB_URL} target="_blank" rel="noreferrer">
+                <a
+                  href={GITHUB_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() =>
+                    trackLandingEvent('landing_external_click', 'download:source-github')
+                  }
+                >
                   Source on GitHub
                   <Github className="h-4 w-4" />
                 </a>
@@ -958,7 +994,17 @@ function DownloadFinalCta({ detected }: { detected: DetectedOS }) {
 
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button size="lg" className="rounded-full px-8" asChild>
-              <a href={GITHUB_RELEASES_URL} target="_blank" rel="noreferrer">
+              <a
+                href={GITHUB_RELEASES_URL}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() =>
+                  trackLandingEvent(
+                    'landing_download_click',
+                    detected ? downloadTarget(label) : 'download:memry'
+                  )
+                }
+              >
                 <Download className="h-4 w-4" />
                 {detected ? `Download for ${label}` : 'Download Memry'}
               </a>
@@ -969,7 +1015,10 @@ function DownloadFinalCta({ detected }: { detected: DetectedOS }) {
               className="rounded-full px-8 text-ink hover:bg-paper-alt"
               asChild
             >
-              <Link to="/security">
+              <Link
+                to="/security"
+                onClick={() => trackLandingEvent('landing_nav_click', 'download:security')}
+              >
                 Security architecture
                 <ArrowRight className="h-4 w-4" />
               </Link>
