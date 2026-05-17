@@ -37,7 +37,10 @@ export default defineConfig({
           name: 'main',
           root: appRoot,
           environment: 'node',
-          include: ['src/main/**/*.{test,spec}.{ts,tsx}'],
+          include: [
+            'src/main/**/*.{test,spec}.{ts,tsx}',
+            'scripts/seed-data/**/*.{test,spec}.{ts,tsx}'
+          ],
           setupFiles: ['tests/setup.ts'],
           testTimeout: 30000,
           hookTimeout: 30000,

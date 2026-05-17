@@ -685,6 +685,12 @@ importers:
 
   apps/landing:
     dependencies:
+      '@hugeicons/core-free-icons':
+        specifier: ^4.0.0
+        version: 4.0.0
+      '@hugeicons/react':
+        specifier: ^1.1.6
+        version: 1.1.6(react@19.2.4)
       '@paddle/paddle-js':
         specifier: ^1.6.4
         version: 1.6.4
@@ -706,6 +712,9 @@ importers:
       framer-motion:
         specifier: ^12.24.7
         version: 12.34.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      lenis:
+        specifier: ^1.3.23
+        version: 1.3.23(react@19.2.4)(vue@3.5.34(typescript@5.9.3))
       lucide-react:
         specifier: ^0.562.0
         version: 0.562.0(react@19.2.4)
@@ -7609,6 +7618,20 @@ packages:
 
   lazy-val@1.0.5:
     resolution: {integrity: sha512-0/BnGCCfyUMkBpeDgWihanIAF9JmZhHBgUhEqzvf+adhNGLoP6TaiI5oF8oyb3I45P+PcnrqihSf01M0l0G5+Q==}
+
+  lenis@1.3.23:
+    resolution: {integrity: sha512-YxYq3TJqj9sJNv0V9SkyQHejt14xwyIwgDaaMK89Uf9SxQfIszu+gTQSSphh6BWlLTNVKvvXAGkg+Zf+oFIevg==}
+    peerDependencies:
+      '@nuxt/kit': '>=3.0.0'
+      react: '>=17.0.0'
+      vue: '>=3.0.0'
+    peerDependenciesMeta:
+      '@nuxt/kit':
+        optional: true
+      react:
+        optional: true
+      vue:
+        optional: true
 
   level-read-stream@2.0.0:
     resolution: {integrity: sha512-9TQl3pThIoFMrA2PWwoM1D/fkQgy/ynmA4vmg+EA3oxOxp+DlIKJT5glvGg37m9HL7/MKZTWn2iYfM4kYOy1Ig==}
@@ -18262,6 +18285,11 @@ snapshots:
   layout-base@2.0.1: {}
 
   lazy-val@1.0.5: {}
+
+  lenis@1.3.23(react@19.2.4)(vue@3.5.34(typescript@5.9.3)):
+    optionalDependencies:
+      react: 19.2.4
+      vue: 3.5.34(typescript@5.9.3)
 
   level-read-stream@2.0.0(abstract-level@3.1.1):
     dependencies:

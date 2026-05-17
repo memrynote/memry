@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 
 interface SectionHeadingProps {
@@ -6,23 +7,30 @@ interface SectionHeadingProps {
   subtitle?: string
   align?: 'left' | 'center'
   className?: string
+  titleClassName?: string
 }
 
 export function SectionHeading({
   title,
   subtitle,
   align = 'center',
-  className
+  className,
+  titleClassName
 }: SectionHeadingProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={BLUR_REVEAL_INITIAL}
+      whileInView={BLUR_REVEAL_ANIMATE}
       viewport={{ once: true, margin: '-100px' }}
-      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+      transition={BLUR_REVEAL_TRANSITION}
       className={cn('mb-16', align === 'center' && 'text-center', className)}
     >
-      <h2 className="font-serif text-4xl md:text-5xl font-normal text-ink mb-6 relative inline-block">
+      <h2
+        className={cn(
+          'font-serif text-4xl md:text-5xl text-ink mb-6 relative inline-block',
+          titleClassName ?? 'font-normal'
+        )}
+      >
         {title}
         <span className="absolute -bottom-2 left-1/4 right-1/4 h-px bg-terracotta/30" />
       </h2>

@@ -276,11 +276,11 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
       className={cn(
         'fixed top-[37px] bottom-0 z-10 border-s bg-surface overflow-hidden',
         'transition-[width,opacity,right] duration-200 ease-out',
-        isOpen ? 'w-[380px] opacity-100 border-border' : 'w-0 opacity-0 border-transparent'
+        isOpen ? 'w-[266px] opacity-100 border-border' : 'w-0 opacity-0 border-transparent'
       )}
       style={{ right: isDayPanelOpen ? `${dayPanelWidth}px` : 0 }}
     >
-      <div className="w-[380px] h-full flex flex-col overflow-y-auto scrollbar-thin [font-synthesis:none] text-[12px] leading-4">
+      <div className="w-[266px] h-full flex flex-col overflow-y-auto scrollbar-thin [font-synthesis:none] text-[12px] leading-4">
         {task && project && (
           <>
             {/* ── Header: editable title + close ── */}

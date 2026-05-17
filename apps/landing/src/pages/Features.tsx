@@ -51,6 +51,7 @@ import { Container } from '@/components/layout/Container'
 import { SectionHeading } from '@/components/shared/SectionHeading'
 import { WaitlistForm } from '@/components/shared/WaitlistForm'
 import { PageHead } from '@/components/shared/PageHead'
+import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
 
 interface FeatureItem {
   icon: LucideIcon
@@ -561,9 +562,9 @@ function SupportingBlock({ category }: { category: SupportCategory }) {
 function PillarNav() {
   return (
     <motion.nav
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.3, duration: 0.5, ease: EASE_OUT_EXPO }}
+      initial={BLUR_REVEAL_INITIAL}
+      animate={BLUR_REVEAL_ANIMATE}
+      transition={BLUR_REVEAL_TRANSITION}
       className="flex flex-wrap justify-center gap-3"
     >
       {PILLARS.map((p) => {

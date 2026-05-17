@@ -1,5 +1,6 @@
 import { motion, type MotionValue, useTransform } from 'framer-motion'
 import { Inbox, BookOpen, FileText, CheckSquare } from 'lucide-react'
+import type { MouseEvent } from 'react'
 import { CLIPS, type TabId } from './types'
 
 const TAB_ICONS: Record<TabId, typeof Inbox> = {
@@ -13,6 +14,7 @@ interface DemoTabsProps {
   activeIndex: number
   progress: MotionValue<number>
   onTabClick: (index: number) => void
+  onActiveTabSeek: (progress: number) => void
 }
 
 function TabFill({ progress }: { progress: MotionValue<number> }) {
@@ -26,7 +28,18 @@ function TabFill({ progress }: { progress: MotionValue<number> }) {
   )
 }
 
-export function DemoTabs({ activeIndex, progress, onTabClick }: DemoTabsProps) {
+export function DemoTabs({ activeIndex, progress, onTabClick, onActiveTabSeek }: DemoTabsProps) {
+  const handleTabClick = (event: MouseEvent<HTMLButtonElement>, index: number, active: boolean) => {
+    if (!active) {
+      onTabClick(index)
+      return
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect()
+    const nextProgress = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1)
+    onActiveTabSeek(nextProgress)
+  }
+
   return (
     <div className="flex gap-1 p-1 bg-paper-alt rounded-xl border border-border/50">
       {CLIPS.map((clip, index) => {
@@ -37,7 +50,7 @@ export function DemoTabs({ activeIndex, progress, onTabClick }: DemoTabsProps) {
         return (
           <button
             key={clip.id}
-            onClick={() => onTabClick(index)}
+            onClick={(event) => handleTabClick(event, index, isActive)}
             className="relative flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-mono-accent transition-colors cursor-pointer hover:bg-terracotta/[0.06]"
           >
             {isActive && <TabFill progress={progress} />}

@@ -4,6 +4,7 @@ import { Container } from '@/components/layout/Container'
 import { WaitlistForm } from '@/components/shared/WaitlistForm'
 import { PageHead } from '@/components/shared/PageHead'
 import { USE_CASES } from '@/lib/constants'
+import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 
 const TICKER_LABELS = [
@@ -168,9 +169,9 @@ export function UseCasesPage() {
 
         <Container className="relative z-10">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+            initial={BLUR_REVEAL_INITIAL}
+            animate={BLUR_REVEAL_ANIMATE}
+            transition={BLUR_REVEAL_TRANSITION}
             className="max-w-3xl"
           >
             <p className="font-mono text-sm tracking-widest uppercase text-terracotta mb-6">

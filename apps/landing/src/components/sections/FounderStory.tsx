@@ -14,7 +14,7 @@ export function FounderStory() {
           className="relative"
         >
           <div
-            className="relative bg-[#faf6ed] ruled-paper rounded-xl p-8 md:p-10 border border-border/40 shadow-card"
+            className="relative bg-paper-alt ruled-paper rounded-xl p-8 md:p-10 border border-border/40 shadow-card"
             style={{ transform: 'rotate(-0.5deg)' }}
           >
             <svg

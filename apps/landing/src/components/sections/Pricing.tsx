@@ -4,6 +4,7 @@ import { Container } from '@/components/layout/Container'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { PRICING_TIERS } from '@/lib/constants'
+import { scrollToLandingTarget } from '@/lib/smooth-scroll'
 import { cn } from '@/lib/utils'
 
 export function Pricing() {
@@ -97,9 +98,8 @@ export function Pricing() {
                       <button
                         className="w-full font-medium py-2 px-4 rounded-md border border-dark-border text-ink-inverted hover:bg-dark-border transition-colors"
                         onClick={() => {
-                          document
-                            .getElementById('waitlist')
-                            ?.scrollIntoView({ behavior: 'smooth' })
+                          const waitlist = document.getElementById('waitlist')
+                          if (waitlist) scrollToLandingTarget(waitlist)
                         }}
                       >
                         {tier.cta}

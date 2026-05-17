@@ -7,20 +7,14 @@ import type {
   SeedTaskNote,
   SeedTaskTag
 } from '../seed-vault/db-writer'
-
-const TODAY = new Date('2026-05-08T12:00:00.000Z')
+import { seedDateOnly, seedISOAt } from './date'
 
 const dateOffset = (days: number): string => {
-  const d = new Date(TODAY)
-  d.setUTCDate(d.getUTCDate() + days)
-  return d.toISOString().slice(0, 10)
+  return seedDateOnly(days)
 }
 
 const datetimeOffset = (days: number, hours = 12): string => {
-  const d = new Date(TODAY)
-  d.setUTCDate(d.getUTCDate() + days)
-  d.setUTCHours(hours, 0, 0, 0)
-  return d.toISOString()
+  return seedISOAt(days, hours)
 }
 
 // ============================================================================
@@ -29,6 +23,7 @@ const datetimeOffset = (days: number, hours = 12): string => {
 
 export const PROJECT_IDS = {
   inbox: generateId(),
+  istanbulWeekend: generateId(),
   memry: generateId(),
   reading: generateId(),
   fitness: generateId(),
@@ -39,6 +34,11 @@ export const PROJECT_IDS = {
 const STATUS_IDS = {
   // Inbox
   inboxTodo: generateId(),
+  // Istanbul Weekend
+  istanbulPlan: generateId(),
+  istanbulBooked: generateId(),
+  istanbulToday: generateId(),
+  istanbulDone: generateId(),
   // Memry
   memryBacklog: generateId(),
   memryDoing: generateId(),
@@ -82,6 +82,14 @@ export const PROJECTS: SeedProject[] = [
     description: 'Ship Memry v0.1 to ~50 friends + IndieHackers.',
     color: '#6366f1',
     icon: '🚀',
+    position: 2
+  },
+  {
+    id: PROJECT_IDS.istanbulWeekend,
+    name: 'Istanbul Weekend',
+    description: 'Plan a three-day Istanbul weekend with bookings, packing, food, and memories.',
+    color: '#0ea5e9',
+    icon: '🌉',
     position: 1
   },
   {
@@ -90,7 +98,7 @@ export const PROJECTS: SeedProject[] = [
     description: '2026 reading queue and finished list.',
     color: '#f59e0b',
     icon: '📚',
-    position: 2
+    position: 3
   },
   {
     id: PROJECT_IDS.fitness,
@@ -98,7 +106,7 @@ export const PROJECTS: SeedProject[] = [
     description: 'Cut, train, sleep, repeat.',
     color: '#10b981',
     icon: '💪',
-    position: 3
+    position: 4
   },
   {
     id: PROJECT_IDS.tokyo,
@@ -106,7 +114,7 @@ export const PROJECTS: SeedProject[] = [
     description: 'April 2026 Tokyo trip — past, mostly closed out.',
     color: '#ec4899',
     icon: '🗼',
-    position: 4
+    position: 5
   },
   {
     id: PROJECT_IDS.side,
@@ -114,7 +122,7 @@ export const PROJECTS: SeedProject[] = [
     description: 'Personal experiments, half-baked, sometimes shipped.',
     color: '#8b5cf6',
     icon: '✨',
-    position: 5
+    position: 6
   }
 ]
 
@@ -131,6 +139,37 @@ export const STATUSES: SeedStatus[] = [
     color: '#6b7280',
     position: 0,
     isDefault: true
+  },
+  // Istanbul Weekend
+  {
+    id: STATUS_IDS.istanbulPlan,
+    projectId: PROJECT_IDS.istanbulWeekend,
+    name: 'Plan',
+    color: '#94a3b8',
+    position: 0,
+    isDefault: true
+  },
+  {
+    id: STATUS_IDS.istanbulBooked,
+    projectId: PROJECT_IDS.istanbulWeekend,
+    name: 'Booked',
+    color: '#0ea5e9',
+    position: 1
+  },
+  {
+    id: STATUS_IDS.istanbulToday,
+    projectId: PROJECT_IDS.istanbulWeekend,
+    name: 'Today',
+    color: '#f59e0b',
+    position: 2
+  },
+  {
+    id: STATUS_IDS.istanbulDone,
+    projectId: PROJECT_IDS.istanbulWeekend,
+    name: 'Done',
+    color: '#10b981',
+    position: 3,
+    isDone: true
   },
   // Memry
   {
@@ -333,6 +372,120 @@ const TASK_BUILDERS: TaskBuilder[] = [
     priority: 3,
     dueDate: dateOffset(-3), // overdue
     tags: ['admin']
+  },
+
+  // ========================================================================
+  // Istanbul Weekend
+  // ========================================================================
+  {
+    key: 'istanbul-plan-weekend',
+    projectId: PROJECT_IDS.istanbulWeekend,
+    statusId: STATUS_IDS.istanbulToday,
+    title: 'Plan Istanbul weekend',
+    description: 'Keep the trip simple: ferry, food, one museum, and room to wander.',
+    priority: 3,
+    dueDate: dateOffset(0),
+    dueTime: '20:00',
+    sourceNoteId: NOTE_IDS.travelIstanbul,
+    tags: ['travel', 'istanbul', 'planning'],
+    noteRefs: [NOTE_IDS.travelIstanbul]
+  },
+  {
+    key: 'istanbul-ferry-plan',
+    projectId: PROJECT_IDS.istanbulWeekend,
+    statusId: STATUS_IDS.istanbulBooked,
+    title: 'Confirm Bosphorus ferry plan',
+    description: 'Check Şehir Hatları times and save the evening route.',
+    priority: 2,
+    dueDate: dateOffset(0),
+    dueTime: '09:30',
+    parentKey: 'istanbul-plan-weekend',
+    sourceNoteId: NOTE_IDS.travelIstanbul,
+    tags: ['travel', 'istanbul', 'ferry'],
+    noteRefs: [NOTE_IDS.travelIstanbul]
+  },
+  {
+    key: 'istanbul-dinner',
+    projectId: PROJECT_IDS.istanbulWeekend,
+    statusId: STATUS_IDS.istanbulToday,
+    title: 'Pick Kadıköy dinner spot',
+    description: 'Choose one easy place and add it to the food notes.',
+    priority: 2,
+    dueDate: dateOffset(0),
+    dueTime: '18:00',
+    parentKey: 'istanbul-plan-weekend',
+    sourceNoteId: NOTE_IDS.weightFoodDiary,
+    tags: ['travel', 'istanbul', 'food'],
+    noteRefs: [NOTE_IDS.travelIstanbul, NOTE_IDS.weightFoodDiary]
+  },
+  {
+    key: 'istanbul-pack',
+    projectId: PROJECT_IDS.istanbulWeekend,
+    statusId: STATUS_IDS.istanbulPlan,
+    title: 'Pack light layers and charger pouch',
+    priority: 1,
+    dueDate: dateOffset(1),
+    parentKey: 'istanbul-plan-weekend',
+    sourceNoteId: NOTE_IDS.travelPackingList,
+    tags: ['travel', 'packing'],
+    noteRefs: [NOTE_IDS.travelIstanbul, NOTE_IDS.travelPackingList]
+  },
+  {
+    key: 'istanbul-hotel-address',
+    projectId: PROJECT_IDS.istanbulWeekend,
+    statusId: STATUS_IDS.istanbulDone,
+    title: 'Save hotel address screenshot offline',
+    priority: 1,
+    completedAt: datetimeOffset(-1, 21),
+    tags: ['travel', 'istanbul'],
+    noteRefs: [NOTE_IDS.travelIstanbul]
+  },
+  {
+    key: 'istanbul-airport-transfer',
+    projectId: PROJECT_IDS.istanbulWeekend,
+    statusId: STATUS_IDS.istanbulBooked,
+    title: 'Book airport transfer',
+    description: 'Late arrival, keep the first night friction-free.',
+    priority: 2,
+    startDate: dateOffset(0),
+    dueDate: dateOffset(1),
+    dueTime: '11:00',
+    tags: ['travel', 'istanbul', 'logistics']
+  },
+  {
+    key: 'istanbul-weather-ferry',
+    projectId: PROJECT_IDS.istanbulWeekend,
+    statusId: STATUS_IDS.istanbulToday,
+    title: 'Check weather and ferry times',
+    description: 'Morning check until the trip starts.',
+    priority: 1,
+    dueDate: dateOffset(0),
+    dueTime: '08:30',
+    repeatConfig: { freq: 'daily', until: dateOffset(2) },
+    repeatFrom: 'due',
+    tags: ['travel', 'istanbul', 'recurring'],
+    noteRefs: [NOTE_IDS.travelIstanbul]
+  },
+  {
+    key: 'istanbul-share-itinerary',
+    projectId: PROJECT_IDS.istanbulWeekend,
+    statusId: STATUS_IDS.istanbulToday,
+    title: 'Share itinerary with Mina',
+    priority: 1,
+    dueDate: dateOffset(0),
+    dueTime: '19:00',
+    tags: ['travel', 'friends']
+  },
+  {
+    key: 'istanbul-cistern-ticket',
+    projectId: PROJECT_IDS.istanbulWeekend,
+    statusId: STATUS_IDS.istanbulPlan,
+    title: 'Add Basilica Cistern tickets to wallet',
+    priority: 2,
+    dueDate: dateOffset(2),
+    sourceNoteId: NOTE_IDS.travelIstanbul,
+    tags: ['travel', 'istanbul', 'museum'],
+    noteRefs: [NOTE_IDS.travelIstanbul]
   },
 
   // ========================================================================
