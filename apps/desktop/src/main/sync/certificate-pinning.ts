@@ -9,7 +9,7 @@ import {
   hasPlaceholderHashes
 } from './certificate-pins'
 
-export { hasPlaceholderHashes } from './certificate-pins'
+export { getPinnedCertificateHashesForHostname, hasPlaceholderHashes } from './certificate-pins'
 
 const log = createLogger('CertPin')
 
