@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: 'Satoshi', system-ui, sans-serif;
   --font-geist: 'Geist', system-ui, sans-serif;
@@ -48,6 +50,34 @@
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* Dark theme — matches Memry desktop app charcoal palette. Brand terracotta is preserved. */
+.dark {
+  --color-ink: #bcbab6;
+  --color-ink-inverted: #1f2937;
+  --color-paper: #181919;
+  --color-paper-alt: #222222;
+  --color-paper-deep: #2a2a2a;
+  --color-muted: #ada9a3;
+  --color-border: #2e2e2e;
+  --color-card: #222222;
+
+  --color-background: var(--color-paper);
+  --color-foreground: var(--color-ink);
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-card: 0 4px 12px -2px rgb(0 0 0 / 0.4);
+  --shadow-elevated: 0 12px 24px -4px rgb(0 0 0 / 0.55);
+}
+
+html {
+  background-color: var(--color-paper);
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: var(--color-paper);
@@ -57,6 +87,13 @@ body {
   background-size: 200px 200px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition:
+    background-color 0.25s var(--ease-out-expo),
+    color 0.25s var(--ease-out-expo);
+}
+
+.dark body {
+  background-blend-mode: overlay;
 }
 
 h1,

@@ -47,7 +47,7 @@ export function MockupFrame({
     <>
       <motion.div
         className={cn(
-          'relative rounded-xl overflow-hidden bg-white shadow-card border border-border/60',
+          'relative rounded-xl overflow-hidden bg-card shadow-card border border-border/60',
           isClickable && 'cursor-zoom-in',
           className
         )}
@@ -73,7 +73,7 @@ export function MockupFrame({
           </div>
         </div>
 
-        <div className="relative bg-white group">
+        <div className="relative bg-card group">
           {imageSrc ? (
             <img src={imageSrc} alt={imageAlt} className="w-full h-auto block" />
           ) : children ? (

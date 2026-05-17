@@ -43,7 +43,7 @@ export function Comparison() {
           subtitle="We built Memry to be the PKM we wished existed."
         />
 
-        <div className="overflow-x-auto rounded-xl border border-border/50 bg-white/50 shadow-sm">
+        <div className="overflow-x-auto rounded-xl border border-border/50 bg-card/50 shadow-sm">
           <table className="w-full">
             <thead>
               <tr className="border-b border-border/60">
