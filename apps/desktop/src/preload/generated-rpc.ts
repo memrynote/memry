@@ -4,6 +4,39 @@ export type { GeneratedRpcApi } from '@memry/rpc'
 import type { GeneratedRpcApi } from '@memry/rpc'
 import type { MainIpcInvokeArgs, MainIpcInvokeChannel, MainIpcInvokeResult } from '../main/ipc/generated-ipc-invoke-map'
 
+const eventChannels = {
+  "onNoteCreated": "notes:created",
+  "onNoteUpdated": "notes:updated",
+  "onNoteDeleted": "notes:deleted",
+  "onNoteRenamed": "notes:renamed",
+  "onNoteMoved": "notes:moved",
+  "onNoteExternalChange": "notes:external-change",
+  "onTagsChanged": "notes:tags-changed",
+  "onFolderConfigUpdated": "notes:folder-config-updated",
+  "onTaskCreated": "tasks:created",
+  "onTaskUpdated": "tasks:updated",
+  "onTaskDeleted": "tasks:deleted",
+  "onTaskCompleted": "tasks:completed",
+  "onTaskMoved": "tasks:moved",
+  "onProjectCreated": "tasks:project-created",
+  "onProjectUpdated": "tasks:project-updated",
+  "onProjectDeleted": "tasks:project-deleted",
+  "onInboxCaptured": "inbox:captured",
+  "onInboxUpdated": "inbox:updated",
+  "onInboxArchived": "inbox:archived",
+  "onInboxFiled": "inbox:filed",
+  "onInboxSnoozed": "inbox:snoozed",
+  "onInboxSnoozeDue": "inbox:snooze-due",
+  "onInboxTranscriptionComplete": "inbox:transcription-complete",
+  "onInboxMetadataComplete": "inbox:metadata-complete",
+  "onInboxProcessingError": "inbox:processing-error",
+  "onSettingsChanged": "settings:changed",
+  "onEmbeddingProgress": "settings:embeddingProgress",
+  "onVoiceModelProgress": "settings:voiceModelProgress",
+  "onSettingsOpenRequested": "settings:openSection",
+  "onCalendarChanged": "calendar:changed"
+} as const
+
 export interface GeneratedRpcDeps {
   invoke<C extends MainIpcInvokeChannel>(
     this: void,
@@ -19,7 +52,7 @@ export function createGeneratedRpcApi({
   invokeSync,
   subscribe
 }: GeneratedRpcDeps): GeneratedRpcApi {
-  return {
+  const api = {
     "notes": {
       "create": ((input) => invoke("notes:create", input)) as GeneratedRpcApi["notes"]["create"],
       "get": ((id) => invoke("notes:get", id)) as GeneratedRpcApi["notes"]["get"],
@@ -250,35 +283,13 @@ export function createGeneratedRpcApi({
       "getSettings": (() => invoke("telemetry:getSettings")) as GeneratedRpcApi["telemetry"]["getSettings"],
       "setEnabled": ((enabled) => invoke("telemetry:setEnabled", enabled)) as GeneratedRpcApi["telemetry"]["setEnabled"],
     },
-    "onNoteCreated": ((callback) => subscribe("notes:created", callback)) as GeneratedRpcApi["onNoteCreated"],
-    "onNoteUpdated": ((callback) => subscribe("notes:updated", callback)) as GeneratedRpcApi["onNoteUpdated"],
-    "onNoteDeleted": ((callback) => subscribe("notes:deleted", callback)) as GeneratedRpcApi["onNoteDeleted"],
-    "onNoteRenamed": ((callback) => subscribe("notes:renamed", callback)) as GeneratedRpcApi["onNoteRenamed"],
-    "onNoteMoved": ((callback) => subscribe("notes:moved", callback)) as GeneratedRpcApi["onNoteMoved"],
-    "onNoteExternalChange": ((callback) => subscribe("notes:external-change", callback)) as GeneratedRpcApi["onNoteExternalChange"],
-    "onTagsChanged": ((callback) => subscribe("notes:tags-changed", callback)) as GeneratedRpcApi["onTagsChanged"],
-    "onFolderConfigUpdated": ((callback) => subscribe("notes:folder-config-updated", callback)) as GeneratedRpcApi["onFolderConfigUpdated"],
-    "onTaskCreated": ((callback) => subscribe("tasks:created", callback)) as GeneratedRpcApi["onTaskCreated"],
-    "onTaskUpdated": ((callback) => subscribe("tasks:updated", callback)) as GeneratedRpcApi["onTaskUpdated"],
-    "onTaskDeleted": ((callback) => subscribe("tasks:deleted", callback)) as GeneratedRpcApi["onTaskDeleted"],
-    "onTaskCompleted": ((callback) => subscribe("tasks:completed", callback)) as GeneratedRpcApi["onTaskCompleted"],
-    "onTaskMoved": ((callback) => subscribe("tasks:moved", callback)) as GeneratedRpcApi["onTaskMoved"],
-    "onProjectCreated": ((callback) => subscribe("tasks:project-created", callback)) as GeneratedRpcApi["onProjectCreated"],
-    "onProjectUpdated": ((callback) => subscribe("tasks:project-updated", callback)) as GeneratedRpcApi["onProjectUpdated"],
-    "onProjectDeleted": ((callback) => subscribe("tasks:project-deleted", callback)) as GeneratedRpcApi["onProjectDeleted"],
-    "onInboxCaptured": ((callback) => subscribe("inbox:captured", callback)) as GeneratedRpcApi["onInboxCaptured"],
-    "onInboxUpdated": ((callback) => subscribe("inbox:updated", callback)) as GeneratedRpcApi["onInboxUpdated"],
-    "onInboxArchived": ((callback) => subscribe("inbox:archived", callback)) as GeneratedRpcApi["onInboxArchived"],
-    "onInboxFiled": ((callback) => subscribe("inbox:filed", callback)) as GeneratedRpcApi["onInboxFiled"],
-    "onInboxSnoozed": ((callback) => subscribe("inbox:snoozed", callback)) as GeneratedRpcApi["onInboxSnoozed"],
-    "onInboxSnoozeDue": ((callback) => subscribe("inbox:snooze-due", callback)) as GeneratedRpcApi["onInboxSnoozeDue"],
-    "onInboxTranscriptionComplete": ((callback) => subscribe("inbox:transcription-complete", callback)) as GeneratedRpcApi["onInboxTranscriptionComplete"],
-    "onInboxMetadataComplete": ((callback) => subscribe("inbox:metadata-complete", callback)) as GeneratedRpcApi["onInboxMetadataComplete"],
-    "onInboxProcessingError": ((callback) => subscribe("inbox:processing-error", callback)) as GeneratedRpcApi["onInboxProcessingError"],
-    "onSettingsChanged": ((callback) => subscribe("settings:changed", callback)) as GeneratedRpcApi["onSettingsChanged"],
-    "onEmbeddingProgress": ((callback) => subscribe("settings:embeddingProgress", callback)) as GeneratedRpcApi["onEmbeddingProgress"],
-    "onVoiceModelProgress": ((callback) => subscribe("settings:voiceModelProgress", callback)) as GeneratedRpcApi["onVoiceModelProgress"],
-    "onSettingsOpenRequested": ((callback) => subscribe("settings:openSection", callback)) as GeneratedRpcApi["onSettingsOpenRequested"],
-    "onCalendarChanged": ((callback) => subscribe("calendar:changed", callback)) as GeneratedRpcApi["onCalendarChanged"],
   }
+
+  for (const [eventName, channel] of Object.entries(eventChannels)) {
+    ;(api as Record<string, unknown>)[eventName] = ((
+      callback: (payload: unknown) => void
+    ) => subscribe(channel, callback))
+  }
+
+  return api as GeneratedRpcApi
 }
