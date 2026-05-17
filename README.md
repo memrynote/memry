@@ -1,232 +1,151 @@
 <div align="center">
 
-<img src="assets/hero-dark.jpg" width="720" alt="Memry — Your thoughts, beautifully organized" />
+<img src="apps/landing/public/favicon.svg" width="96" alt="Memry logo" />
 
 # Memry
 
-**Your thoughts. Your devices. Your control.**
+**Your second brain — offline-first, end-to-end encrypted, agent-native.**
 
-A private, offline-first workspace for notes, journals, and tasks — with real-time sync that never sees your data.
+Notes, tasks, projects, journal, calendar, and an AI agent that actually has context on your work. All on your machine. None of it on someone else's server.
 
-![Status](https://img.shields.io/badge/status-in%20development-orange?style=for-the-badge)
-[![Reddit](https://img.shields.io/badge/Reddit-r%2FMemryNote-FF4500?style=for-the-badge&logo=reddit&logoColor=white)](https://www.reddit.com/r/MemryNote/)
+[![Release](https://img.shields.io/github/v/release/memrynote/memry?include_prereleases&sort=semver)](https://github.com/memrynote/memry/releases)
+[![CI](https://github.com/memrynote/memry/actions/workflows/ci.yml/badge.svg)](https://github.com/memrynote/memry/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/memrynote/memry/branch/main/graph/badge.svg)](https://codecov.io/gh/memrynote/memry)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Standard Readme](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg)](https://github.com/RichardLitt/standard-readme)
+[![Electron](https://img.shields.io/badge/built%20with-Electron-47848F.svg)](https://www.electronjs.org/)
+[![React 19](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
 
-> **Not yet released.** Memry is under active development and hasn't shipped a public version yet. Star the repo or watch for updates — downloads will be available once we reach a stable release.
-
-</div>
-
----
-
-Most note apps ask you to trust them with your thoughts. Memry doesn't.
-
-Everything you write is **encrypted on your device** before it ever leaves. Not even we can read it. Your notes sync across all your devices in real-time — but the servers only ever see encrypted noise.
-
-No cloud lock-in. No subscription walls for basic features. No "oops, we got breached" emails. Just a fast, beautiful app that works whether you're online or off.
-
----
-
-## What you get
-
-<table>
-<tr>
-<td width="50%">
-
-### Write freely
-
-A distraction-free editor that stays out of your way. Rich text, markdown, wiki-style `[[links]]` between notes — connect ideas naturally.
-
-</td>
-<td width="50%">
-
-### Think in connections
-
-Every `[[link]]` creates a two-way connection. See what links back to any note. Watch your personal knowledge graph grow without effort.
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-### Journal daily
-
-A dedicated space for daily reflection. Calendar view with activity streaks so you can see your consistency at a glance. Just open the app and start writing.
-
-</td>
-<td width="50%">
-
-### Track what matters
-
-Tasks and projects live alongside your notes — not in a separate app. Priorities, due dates, drag-and-drop. Simple enough for groceries, structured enough for goals.
-
-</td>
-</tr>
-</table>
-
----
-
-## Sync without compromise
-
-<div align="center">
-
-</div>
-
-Most apps make you choose: **privacy** or **sync**. Memry gives you both.
-
-|                    | Memry                                                           | Typical note apps                           |
-| ------------------ | --------------------------------------------------------------- | ------------------------------------------- |
-| **Encryption**     | End-to-end. We literally can't read your notes.                 | "Encrypted at rest" (they hold the keys)    |
-| **Offline**        | Full functionality. No internet needed.                         | Degraded or broken without connection       |
-| **Conflicts**      | Smart merge — edits from multiple devices combine automatically | Last save wins (your edits disappear)       |
-| **Data ownership** | SQLite on your machine. Export anytime.                         | Proprietary format on someone else's server |
-
-<details>
-<summary><strong>How does the sync actually work?</strong></summary>
-
-<br>
-
-When you edit a note on one device, Memry:
-
-1. **Encrypts** the change locally using military-grade cryptography (XChaCha20-Poly1305 + Ed25519 signatures)
-2. **Sends** the encrypted blob to the sync server — which stores it without being able to decrypt it
-3. **Delivers** it to your other devices, where it's decrypted locally
-4. **Merges** intelligently using CRDTs (Conflict-free Replicated Data Types) — the same tech behind Google Docs' real-time collaboration, but without Google seeing your data
-
-Edit the same paragraph on your phone and laptop at the same time? Memry merges both edits. No conflicts. No data loss.
-
-</details>
-
----
-
-## Built for speed
-
-Memry runs natively on your machine. Not a browser tab pretending to be an app.
-
-- **Instant startup** — your notes are already there, in a local database
-- **Works offline** — airplane mode? No Wi-Fi? No problem
-- **Tabs, split panes, keyboard shortcuts** — built for how you actually work
-- **Dark & light themes** — easy on the eyes, day or night
-
-<div align="center">
-
-<!-- TODO: Replace with speed/feature demo GIF or video -->
-<!-- Recommended: 700x420 GIF showing tab switching, split pane, dark/light toggle -->
+[Website](https://memrynote.com) · [Docs](https://docs.memrynote.com) · [Download](https://memrynote.com/download/desktop)
 
 </div>
 
 ---
 
-## Privacy is not a feature. It's the architecture.
+Hi — I'm **[Kaan](https://x.com/h4yfans)**, the developer behind Memry. For years I bounced between four apps just to get through the day — inbox in one, calendar in another, notes somewhere else, tasks in a fourth — and with ADHD that constant jumping around drained me before I'd even started working. I wanted one calm place that held all of it: inbox, notes, daily journal, tasks, projects, calendar, and an AI agent that actually knows what I'm working on. And because not everyone needs every piece, every feature is a toggle — don't use a calendar? Turn it off. Not into AI? Turn that off too. Memry is the app I wish I'd had years ago, so I shipped it myself.
 
-<div align="center">
+> _Screenshot: Memry's main workspace — notes, sidebar, agent chat side-by-side._
+>
+> `<!-- TODO: drop screenshot here -->`
 
-```
- ┌──────────────┐          ┌──────────────┐          ┌──────────────┐
- │   Device A   │          │    Server    │          │   Device B   │
- │              │          │              │          │              │
- │  Your notes  │──────▶   │  ████████░░  │  ──────▶ │  Your notes  │
- │  (readable)  │ encrypt  │  (garbage)   │ decrypt  │  (readable)  │
- └──────────────┘          └──────────────┘          └──────────────┘
-                                  │
-                                  ▼
-                           Can't read it.
-                          Can't sell it.
-                         Can't hand it over.
-```
+## Table of Contents
 
-</div>
+- [Why Memry](#why-memry)
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [Install](#install)
+- [Build from Source](#build-from-source)
+- [Roadmap](#roadmap)
+- [Community](#community)
+- [License](#license)
 
-Your encryption keys never leave your devices. The sync server is designed to be **zero-knowledge** — it helps your devices find each other, but it has no idea what you're writing.
+## Why Memry
 
-Even if someone broke into the server, they'd get nothing but encrypted noise.
+Most note apps want to be a SaaS. Your knowledge ends up on their servers, hostage to their pricing tiers, their outages, and their AI training data pipelines.
 
----
+Memry is the opposite bet:
 
-<div align="center">
+- **Local-first.** Your vault lives on disk. Works offline. Always.
+- **End-to-end encrypted sync.** XChaCha20-Poly1305 + Ed25519 + Argon2id. The server stores ciphertext blobs it can't read.
+- **Agent-native.** Bring your own model — Claude CLI, Codex CLI, local LLMs, or OpenAI-compatible endpoints. The agent gets read/write access to your vault through a localhost MCP server.
+- **One app, six surfaces.** Notes, tasks, projects, daily journal, calendar, inbox — instead of stitching seven tools together.
 
-## Get started
+Built for people who want Obsidian's local-first ethos, Notion's range, and an AI that actually knows what they're working on.
 
-Memry is not yet available for download. We're actively building toward a first release.
+## Features
 
-**Star this repo** to get notified when downloads go live.
+### Notes
 
-When it ships, setup will be simple: **link your devices with a QR code. That's it.** No account creation, no email verification, no password to forget.
+Block-based editor. Markdown round-trip. Backlinks. Tags. Wiki-style search. Files on disk, not in a database you can't migrate out of.
 
-`[ device linking flow — 500×300 ]`
+### Tasks & Projects
 
-</div>
+Real task management — due dates, priorities, projects, recurrence — without a separate app. Field-level CRDT merge means edits on two devices don't blow each other away.
 
----
+### Daily Journal
 
-<div align="center">
+One file per day. Templates. Frontmatter. Quick capture. The kind of journal you'll actually keep, because it's three keystrokes to open.
 
-### Memry is for people who think best when they're not worried about who's watching.
+### Calendar
 
-**[Download Memry](#download)** · [Roadmap](#roadmap) · [Community](#community)
+Time-block your tasks. See your day at a glance. Drag to reschedule.
 
-</div>
+### Inbox
 
----
+Capture first, organize later. Email-yourself-a-note, but to your own vault.
 
-<details>
-<summary><strong>Roadmap</strong></summary>
+### AI Agent
 
-<br>
+Talk to your vault. The agent can read, draft, refactor, and link notes across the whole workspace. Approval UI for writes. Switch providers per conversation. Reasoning level and model are conversation settings, not buried in preferences.
 
-We're building in the open. Here's what's coming:
+### Sync
 
-- [ ] Mobile apps (iOS & Android)
-- [ ] Browser extension for quick capture
-- [ ] AI-powered search across your notes (runs locally, of course)
-- [ ] Shared vaults for teams
-- [ ] Plugin system
-- [ ] Self-hosted sync server option
+Optional, end-to-end encrypted, running on Cloudflare Workers + R2. Multi-device. Conflict resolution via CRDTs for notes/journals and per-field vector clocks for tasks/projects. The server is a ciphertext relay — sign out and your data is unreadable to anyone but you.
 
-Want to shape what comes next? [Join the conversation →](#community)
+## Screenshots
 
-</details>
+> _Screenshot: Notes view with backlinks panel._
+>
+> `<!-- TODO: notes-view.png -->`
 
-<details>
-<summary><strong>For developers</strong></summary>
+> _Screenshot: Tasks board with calendar peek._
+>
+> `<!-- TODO: tasks-board.png -->`
 
-<br>
+> _Screenshot: Daily journal with templates._
+>
+> `<!-- TODO: journal.png -->`
 
-Memry is built with:
+> _Screenshot: AI Agent chat with vault context and approval UI._
+>
+> `<!-- TODO: agent-chat.png -->`
 
-- **Electron** + **React** + **TypeScript** desktop app
-- **Yjs** CRDTs for conflict-free real-time collaboration
-- **libsodium/RustCrypto** for cryptographic operations
-- **SQLite** (via better-sqlite3 + Drizzle ORM) for local storage
-- **Cloudflare Workers** + **D1** + **R2** for the sync backend
-- **BlockNote** for the rich text editor
+> _Screenshot: Calendar view with task time-blocking._
+>
+> `<!-- TODO: calendar.png -->`
+
+## Install
+
+### Download
+
+Grab the latest desktop build for your platform:
+
+- **macOS** (Apple Silicon + Intel) → [memrynote.com/download/desktop](https://memrynote.com/download/desktop)
+- **Windows** → [memrynote.com/download/desktop](https://memrynote.com/download/desktop)
+- **Linux** (AppImage, deb) → [memrynote.com/download/desktop](https://memrynote.com/download/desktop)
+
+No signup. No telemetry-on-by-default. Open the app, pick a vault folder, start writing.
+
+### Build from Source
+
+Requires Node 20+ and pnpm 9+.
 
 ```bash
-# Clone and use the pinned Node version from .nvmrc (24.x)
 git clone https://github.com/memrynote/memry.git
 cd memry
-nvm use
 pnpm install
-
-# Run the desktop app
-pnpm dev:desktop
-
-# Run the sync server
-pnpm dev:sync-server
-
-# Run the marketing site
-pnpm dev:landing
-
-# Common workspace checks
-pnpm typecheck
-pnpm test
+pnpm dev
 ```
 
-</details>
+That's it. The Electron app launches with hot reload.
 
----
+For the landing site, docs, or sync server, see [CLAUDE.md](CLAUDE.md).
 
-## License
+## Roadmap
 
-Memry is licensed under the [GNU General Public License v3.0](LICENSE).
+- Mobile (iOS / Android) with full E2E sync parity
+- Plugin API
+- Public vault sharing (encrypted, view-only)
+- More agent backends (Ollama, llama.cpp, Mistral)
+
+## Community
+
+- **Twitter / X**: [@memrynote](https://twitter.com/memrynote)
+- **Discord**: [discord.gg/memry](https://discord.gg/memry)
+- **GitHub Issues**: bugs, feature requests, weird ideas
+- **Email**: hi@memrynote.com
+
+If you ship a workflow you love, tell us. If something is broken, tell us louder.
 
 ---
 
@@ -237,5 +156,11 @@ Memry is licensed under the [GNU General Public License v3.0](LICENSE).
 ---
 
 <div align="center">
-<sub>Made with care for people who value their privacy.</sub>
+<sub>Private by design, open at heart.</sub>
 </div>
+
+## License
+
+MIT © Memry contributors
+
+See [LICENSE](LICENSE) for the legal text.
