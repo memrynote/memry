@@ -49,6 +49,14 @@ All XChaCha20 operations use 24-byte random nonces from `sodium.randombytes_buf(
 
 All authentication-sensitive comparisons use `sodium.memcmp` (T029c) to avoid timing leaks.
 
+## Certificate Pinning
+
+Packaged desktop builds pin sync TLS certificates by hostname. The default production sync host and
+staging sync host each resolve to their own SPKI hash set, and hosts without configured pins are
+allowed through the Electron verifier instead of being compared against an unrelated environment's
+pins. Development builds keep pinning disabled so local sync servers and test certificates remain
+usable.
+
 ## Tombstone Signing
 
 The `deleted_at` field is included in the Ed25519-signed payload metadata. A hostile server cannot forge a deletion because it would lack the signing key.
