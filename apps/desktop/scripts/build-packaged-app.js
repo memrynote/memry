@@ -21,6 +21,7 @@ const defaultConfigPath = 'config/electron-builder.staged.yml'
 const nativeModules = ['better-sqlite3', 'classic-level', 'keytar']
 const generateIconsScript = path.join(appRoot, 'scripts', 'generate-icons.mjs')
 const osxSignWalkPatchScript = path.join(appRoot, 'scripts', 'patch-osx-sign-walk.js')
+const electronBuilderUlimitScript = path.join(appRoot, 'scripts', 'run-with-builder-ulimit.sh')
 
 function removePath(targetPath) {
   const stat = fs.lstatSync(targetPath, { throwIfNoEntry: false })
@@ -36,10 +37,6 @@ function removePath(targetPath) {
   fs.rmSync(targetPath, { force: true, recursive: true })
 }
 
-function run(command, args, options = {}) {
-  execFileSync(command, args, { stdio: 'inherit', ...options })
-}
-
 function getPnpmDeployTarget() {
   if (process.platform === 'win32') {
     return path.relative(repoRoot, stageDir)
@@ -50,11 +47,15 @@ function getPnpmDeployTarget() {
 
 function runPnpm(args, options = {}) {
   if (process.platform !== 'win32') {
-    run('pnpm', args, options)
+    execFileSync('pnpm', args, { stdio: 'inherit', shell: false, ...options })
     return
   }
 
-  run('cmd.exe', ['/d', '/c', 'pnpm.cmd', ...args], options)
+  execFileSync('cmd.exe', ['/d', '/c', 'pnpm.cmd', ...args], {
+    stdio: 'inherit',
+    shell: false,
+    ...options
+  })
 }
 
 function parseElectronBuilderArgs(argv) {
@@ -133,14 +134,20 @@ function relativizeInternalSymlinks(rootPath) {
 }
 
 function ensureBuildResources() {
-  run(process.execPath, [generateIconsScript], {
+  execFileSync(process.execPath, [generateIconsScript], {
+    stdio: 'inherit',
+    shell: false,
     cwd: appRoot
   })
 }
 
 function runElectronBuilder(args, options = {}) {
   if (process.platform !== 'darwin') {
-    run(process.execPath, [electronBuilderCli, ...args], options)
+    execFileSync(process.execPath, [electronBuilderCli, ...args], {
+      stdio: 'inherit',
+      shell: false,
+      ...options
+    })
     return
   }
 
@@ -148,18 +155,13 @@ function runElectronBuilder(args, options = {}) {
     .filter(Boolean)
     .join(' ')
 
-  run(
+  execFileSync(
     '/bin/bash',
-    [
-      '-lc',
-      'ulimit -n 65536 2>/dev/null || ulimit -n 10240 2>/dev/null || true; exec "$@"',
-      'electron-builder',
-      process.execPath,
-      electronBuilderCli,
-      ...args
-    ],
+    [electronBuilderUlimitScript, process.execPath, electronBuilderCli, ...args],
     {
       ...options,
+      stdio: 'inherit',
+      shell: false,
       env: {
         ...options.env,
         NODE_OPTIONS: nodeOptions

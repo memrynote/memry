@@ -7,7 +7,7 @@
  * Always wipes and re-seeds.
  */
 
-import { existsSync, writeFileSync } from 'fs'
+import { writeFileSync } from 'fs'
 import { resolve } from 'path'
 import { homedir } from 'os'
 
@@ -104,20 +104,25 @@ const PROPERTY_DEFS = [
 
 function writeMinimalConfig(vaultPath: string): void {
   const configPath = resolve(vaultPath, '.memry', 'config.json')
-  if (existsSync(configPath)) return
-  writeFileSync(
-    configPath,
-    JSON.stringify(
-      {
-        version: 1,
-        title: 'memrynote Demo Vault',
-        excludePatterns: ['.git', 'node_modules', '.DS_Store']
-      },
-      null,
-      2
-    ),
-    'utf8'
-  )
+  try {
+    writeFileSync(
+      configPath,
+      JSON.stringify(
+        {
+          version: 1,
+          title: 'memrynote Demo Vault',
+          excludePatterns: ['.git', 'node_modules', '.DS_Store']
+        },
+        null,
+        2
+      ),
+      { encoding: 'utf8', flag: 'wx' }
+    )
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+      throw error
+    }
+  }
 }
 
 function main(): void {

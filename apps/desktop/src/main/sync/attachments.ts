@@ -1,5 +1,5 @@
 import { createReadStream } from 'node:fs'
-import { stat, writeFile, rename } from 'node:fs/promises'
+import { stat, open, rename } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
 import path from 'node:path'
 import sodium from 'libsodium-wrappers-sumo'
@@ -794,11 +794,18 @@ export class AttachmentSyncService {
     const tempPath = path.join(dir, `.${randomBytes(6).toString('hex')}.tmp`)
 
     await ensureDirectory(dir)
-    await writeFile(tempPath, data)
 
+    let handle: Awaited<ReturnType<typeof open>> | null = null
     try {
+      handle = await open(tempPath, 'wx', 0o600)
+      await handle.writeFile(data)
+      await handle.close()
+      handle = null
       await rename(tempPath, filePath)
     } catch {
+      if (handle) {
+        await handle.close().catch(() => {})
+      }
       try {
         await secureDeleteFile(tempPath)
       } catch {

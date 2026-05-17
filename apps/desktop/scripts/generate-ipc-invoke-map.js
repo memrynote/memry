@@ -4,6 +4,7 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const { randomBytes } = require('node:crypto')
 const { createRequire } = require('node:module')
 
 const REPO_ROOT = path.resolve(__dirname, '..')
@@ -15,6 +16,40 @@ const workspaceRequire = createRequire(path.join(WORKSPACE_ROOT, 'package.json')
 
 function normalizeGeneratedText(text) {
   return text.replace(/\r\n?/g, '\n')
+}
+
+function writeFileAtomically(filePath, content) {
+  const tempPath = path.join(
+    path.dirname(filePath),
+    `.${path.basename(filePath)}.${randomBytes(6).toString('hex')}.tmp`
+  )
+  const fd = fs.openSync(tempPath, 'wx', 0o600)
+
+  try {
+    fs.writeFileSync(fd, content, 'utf8')
+    fs.closeSync(fd)
+    fs.renameSync(tempPath, filePath)
+  } catch (error) {
+    try {
+      fs.closeSync(fd)
+    } catch {
+      // already closed
+    }
+    fs.rmSync(tempPath, { force: true })
+    throw error
+  }
+}
+
+function readExistingFile(filePath) {
+  try {
+    return fs.readFileSync(filePath, 'utf8')
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return ''
+    }
+
+    throw error
+  }
 }
 
 function loadTypeScript() {
@@ -269,7 +304,7 @@ function main() {
   const entries = collectEntries(program)
   const output = generateFileContent(entries)
 
-  const current = fs.existsSync(OUTPUT_PATH) ? fs.readFileSync(OUTPUT_PATH, 'utf8') : ''
+  const current = readExistingFile(OUTPUT_PATH)
 
   if (CHECK_MODE) {
     if (normalizeGeneratedText(current) !== normalizeGeneratedText(output)) {
@@ -280,7 +315,7 @@ function main() {
     return
   }
 
-  fs.writeFileSync(OUTPUT_PATH, output, 'utf8')
+  writeFileAtomically(OUTPUT_PATH, output)
   console.log(`Wrote ${path.relative(REPO_ROOT, OUTPUT_PATH)}`)
 }
 

@@ -199,11 +199,6 @@ vi.mock('./quick-capture-image-preview', () => ({
   )
 }))
 
-vi.mock('./social-card', () => ({
-  detectPlatformFromUrl: (url: string) => (url.includes('x.com') ? 'twitter' : 'web'),
-  extractHandleFromUrl: () => '@kaan'
-}))
-
 describe('QuickCapture', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -470,7 +465,7 @@ describe('QuickCapture', () => {
     fireEvent.change(screen.getByLabelText('quick input'), {
       target: { value: 'https://x.com/kaan' }
     })
-    expect(screen.getByTestId('detected-type')).toHaveTextContent('social')
+    await waitFor(() => expect(screen.getByTestId('detected-type')).toHaveTextContent('social'))
     expect(screen.getByTestId('file-social')).toHaveTextContent('@kaan')
 
     await act(async () => {

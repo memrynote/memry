@@ -84,7 +84,7 @@ describe('folder-view property cells', () => {
     expect(screen.getByText('+1')).toBeInTheDocument()
 
     rerender(<PropertyCell value="https://example.com/docs" type="url" />)
-    expect(screen.getByRole('link', { name: /example.com/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /^example\.com\/docs$/ })).toHaveAttribute(
       'href',
       'https://example.com/docs'
     )

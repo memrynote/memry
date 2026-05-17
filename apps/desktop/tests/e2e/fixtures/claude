@@ -10,12 +10,38 @@ function emit(event) {
   process.stdout.write(`${JSON.stringify(event)}\n`)
 }
 
+function getLoopbackUrl(value) {
+  const url = new URL(value)
+  const hostname = url.hostname.toLowerCase()
+  const isLoopback =
+    hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '[::1]'
+
+  if ((url.protocol !== 'http:' && url.protocol !== 'https:') || !isLoopback) {
+    throw new Error('MCP fixture only connects to a local Memry server')
+  }
+
+  return url
+}
+
+function getMemryAgentToken(headers) {
+  const token = headers?.['x-memry-agent-token']
+  if (typeof token !== 'string') {
+    throw new Error('missing x-memry-agent-token')
+  }
+
+  return token
+}
+
 function readMcpConfig() {
   const index = process.argv.indexOf('--mcp-config')
   if (index === -1 || !process.argv[index + 1]) {
     throw new Error('missing --mcp-config')
   }
-  return JSON.parse(fs.readFileSync(process.argv[index + 1], 'utf8')).mcpServers.memry
+  const server = JSON.parse(fs.readFileSync(process.argv[index + 1], 'utf8')).mcpServers.memry
+  return {
+    url: getLoopbackUrl(server.url),
+    agentHeader: getMemryAgentToken(server.headers)
+  }
 }
 
 async function callCreateTask() {
@@ -23,7 +49,7 @@ async function callCreateTask() {
   const response = await fetch(server.url, {
     method: 'POST',
     headers: {
-      ...server.headers,
+      'x-memry-agent-token': server.agentHeader,
       accept: 'application/json, text/event-stream',
       'content-type': 'application/json'
     },

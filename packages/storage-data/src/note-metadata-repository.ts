@@ -21,6 +21,21 @@ export interface ListCanonicalNoteMetadataOptions {
   offset?: number
 }
 
+function trimPathSlashes(value: string): string {
+  let start = 0
+  let end = value.length
+
+  while (start < end && value[start] === '/') {
+    start += 1
+  }
+
+  while (end > start && value[end - 1] === '/') {
+    end -= 1
+  }
+
+  return value.slice(start, end)
+}
+
 export function upsertNoteMetadata(db: NoteMetadataDb, metadata: NewNoteMetadata): NoteMetadata {
   return db
     .insert(noteMetadata)
@@ -105,7 +120,7 @@ export function listNoteMetadata(
   }
 
   if (folder) {
-    const normalized = folder.replace(/^\/+|\/+$/g, '')
+    const normalized = trimPathSlashes(folder)
     if (normalized.length > 0) {
       conditions.push(like(noteMetadata.path, `notes/${normalized}/%`))
     }
