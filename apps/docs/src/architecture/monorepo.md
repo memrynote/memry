@@ -1,6 +1,6 @@
 # Monorepo Layout
 
-Memry is a pnpm + Turborepo monorepo. Apps live under `apps/`, reusable domain and storage code lives under `packages/`, and contracts remain the source of truth for app boundaries.
+memrynote is a pnpm + Turborepo monorepo. Apps live under `apps/`, reusable domain and storage code lives under `packages/`, and contracts remain the source of truth for app boundaries.
 
 ## Apps
 

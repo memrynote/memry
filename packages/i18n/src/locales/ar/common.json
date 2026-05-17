@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "تخطي الصعود",
-      "welcomeToMemry": "مرحبًا بك في Memry",
+      "welcomeToMemry": "مرحبًا بك في memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "قاعدة المعرفة الشخصية الخاصة بك. لنأخذ دقيقتين للبدء.",
       "getStarted": "ابدأ ",
       "createYourFirstNote": "قم بإنشاء ملاحظتك الأولى",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "اسحب لتغيير الحجم · انقر نقرًا مزدوجًا لإعادة التعيين"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "مرحبًا بك في Memry",
+      "welcomeToMemry": "مرحبًا بك في memrynote",
       "yourPersonalKnowledgeManagementSystem": "نظام إدارة المعرفة الشخصية الخاص بك.",
       "selectAFolderToStoreYourNotesAndTasks": "حدد مجلدًا لتخزين ملاحظاتك ومهامك.",
       "opening": "الافتتاح...",
@@ -341,9 +341,9 @@
     "stop": "توقف",
     "thinking": "Agent يفكر",
     "enable": {
-      "title": "قم بتمكين Memry Agent",
-      "description": "يستخدم Memry Agent الوكيل المحلي الذي حددته CLI للدردشة حول خزنتك. يرسل Claude المنعطفات إلى Anthropic؛ يرسل Codex المنعطفات إلى OpenAI.",
-      "remote": "يقوم Memry بتشفير سجل الدردشة المحلي والمتزامن، لكن استنتاج النموذج يحدث مع الموفر المحدد.",
+      "title": "قم بتمكين memrynote Agent",
+      "description": "يستخدم memrynote Agent الوكيل المحلي الذي حددته CLI للدردشة حول خزنتك. يرسل Claude المنعطفات إلى Anthropic؛ يرسل Codex المنعطفات إلى OpenAI.",
+      "remote": "يقوم memrynote بتشفير سجل الدردشة المحلي والمتزامن، لكن استنتاج النموذج يحدث مع الموفر المحدد.",
       "readTools": "تعمل أدوات القراءة تلقائيًا.",
       "writeTools": "يتطلب إنشاء الأدوات وتحديثها الموافقة.",
       "diff": "تعرض أدوات التحديث الفرق أو المعاينة.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "المذكرة الحالية",
       "removeAttachment": "قم بإزالة {label}",
-      "placeholder": "اسأل Memry أي شيء. @ لذكر ملف",
+      "placeholder": "اسأل memrynote أي شيء. @ لذكر ملف",
       "send": "أرسل",
       "providerLabel": "مزود Agent: {provider}",
       "settingsSummary": "{reasoning}",

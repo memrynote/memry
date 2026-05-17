@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "ข้ามขั้นตอนเริ่มต้น",
-      "welcomeToMemry": "ยินดีต้อนรับสู่ Memry",
+      "welcomeToMemry": "ยินดีต้อนรับสู่ memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "ฐานความรู้ส่วนตัวของคุณ มาลองใช้เวลา 2 นาทีในการเริ่มต้นกันเถอะ",
       "getStarted": "เริ่มต้น",
       "createYourFirstNote": "สร้างบันทึกแรกของคุณ",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "ลากเพื่อปรับขนาด · ดับเบิลคลิกเพื่อตั้งค่าใหม่"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "ยินดีต้อนรับสู่ Memry",
+      "welcomeToMemry": "ยินดีต้อนรับสู่ memrynote",
       "yourPersonalKnowledgeManagementSystem": "ระบบจัดการความรู้ส่วนบุคคลของคุณ",
       "selectAFolderToStoreYourNotesAndTasks": "เลือกโฟลเดอร์เพื่อจัดเก็บบันทึกและงานของคุณ",
       "opening": "กำลังเปิด...",
@@ -341,9 +341,9 @@
     "stop": "หยุด",
     "thinking": "Agent กำลังคิด",
     "enable": {
-      "title": "เปิดใช้งาน Memry Agent",
-      "description": "Memry Agent ใช้ตัวแทนท้องถิ่นที่คุณเลือก CLI เพื่อสนทนาเกี่ยวกับห้องนิรภัยของคุณ Claude ส่งเทิร์นไปที่ Anthropic; Codex ส่งเทิร์นไปที่ OpenAI",
-      "remote": "Memry เข้ารหัสประวัติการแชทในเครื่องและที่ซิงค์ของคุณ แต่การอนุมานโมเดลจะเกิดขึ้นกับผู้ให้บริการที่เลือก",
+      "title": "เปิดใช้งาน memrynote Agent",
+      "description": "memrynote Agent ใช้ตัวแทนท้องถิ่นที่คุณเลือก CLI เพื่อสนทนาเกี่ยวกับห้องนิรภัยของคุณ Claude ส่งเทิร์นไปที่ Anthropic; Codex ส่งเทิร์นไปที่ OpenAI",
+      "remote": "memrynote เข้ารหัสประวัติการแชทในเครื่องและที่ซิงค์ของคุณ แต่การอนุมานโมเดลจะเกิดขึ้นกับผู้ให้บริการที่เลือก",
       "readTools": "เครื่องมืออ่านทำงานโดยอัตโนมัติ",
       "writeTools": "การสร้างและอัปเดตเครื่องมือต้องได้รับการอนุมัติ",
       "diff": "เครื่องมืออัปเดตแสดงความแตกต่างหรือแสดงตัวอย่าง",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "บันทึกปัจจุบัน",
       "removeAttachment": "ลบ {label}",
-      "placeholder": "ถาม Memry ได้ทุกเรื่อง @ เพื่อกล่าวถึงไฟล์",
+      "placeholder": "ถาม memrynote ได้ทุกเรื่อง @ เพื่อกล่าวถึงไฟล์",
       "send": "ส่ง",
       "providerLabel": "ผู้ให้บริการ Agent: {provider}",
       "settingsSummary": "{reasoning}",

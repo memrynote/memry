@@ -1,12 +1,12 @@
 # Daily Entries
 
-A dated note per day. Memry creates one on demand and remembers where you left off.
+A dated note per day. memrynote creates one on demand and remembers where you left off.
 
 <!-- screenshot: journal day view with full-width writing -->
 
 ## Opening Today
 
-Open Journal from the sidebar, or use <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>E</kbd> if you've remapped it that way. By default Memry opens **today's** entry.
+Open Journal from the sidebar, or use <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>E</kbd> if you've remapped it that way. By default memrynote opens **today's** entry.
 
 If today's entry doesn't exist yet, it's created on first focus, seeded by your [default journal template](/user-guide/journal/templates-settings).
 
@@ -55,10 +55,10 @@ You can wiki-link to other journal entries: `[[2026-05-07]]` resolves to that da
 
 ## What If I Skip a Day?
 
-Nothing. Memry doesn't pad missing days with empty entries. Calendar heatmaps show genuine activity, not noise.
+Nothing. memrynote doesn't pad missing days with empty entries. Calendar heatmaps show genuine activity, not noise.
 
 ## Sync
 
 Journal entries sync as Yjs CRDTs (same as notes). Two devices writing on the same date during a flight merge cleanly when they reconnect.
 
-If two devices create same-date entries with **different IDs** (rare, but possible during long offline stretches), Memry keeps both and renames one to disambiguate. See [CRDT & Notes Sync](/architecture/crdt) for the underlying behavior.
+If two devices create same-date entries with **different IDs** (rare, but possible during long offline stretches), memrynote keeps both and renames one to disambiguate. See [CRDT & Notes Sync](/architecture/crdt) for the underlying behavior.

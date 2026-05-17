@@ -19,13 +19,13 @@
     "exportCancelled": "내보내기가 취소되었습니다.",
     "update": {
       "availableTitle": "업데이트 가능",
-      "availableMessage": "Memry {version}를 사용할 수 있습니다.",
+      "availableMessage": "memrynote {version}를 사용할 수 있습니다.",
       "availableDetailFallback": "지금 업데이트를 다운로드하시겠습니까?",
       "buttonDownload": "다운로드",
       "buttonLater": "나중에",
       "readyTitle": "업데이트 준비됨",
-      "readyMessage": "Memry {version}가 다운로드되었습니다.",
-      "readyDetailFallback": "Memry를 다시 시작하여 업데이트 설치를 완료하세요.",
+      "readyMessage": "memrynote {version}가 다운로드되었습니다.",
+      "readyDetailFallback": "memrynote를 다시 시작하여 업데이트 설치를 완료하세요.",
       "buttonRestartNow": "지금 다시 시작",
       "releaseNotesLabel": "릴리스 노트:"
     }

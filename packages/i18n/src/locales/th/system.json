@@ -19,13 +19,13 @@
     "exportCancelled": "การส่งออกถูกยกเลิก",
     "update": {
       "availableTitle": "มีการอัปเดตใหม่",
-      "availableMessage": "Memry {version} พร้อมใช้งาน",
+      "availableMessage": "memrynote {version} พร้อมใช้งาน",
       "availableDetailFallback": "ดาวน์โหลดการอัปเดตตอนนี้หรือไม่?",
       "buttonDownload": "ดาวน์โหลด",
       "buttonLater": "ภายหลัง",
       "readyTitle": "พร้อมอัปเดต",
-      "readyMessage": "Memry {version} ถูกดาวน์โหลดแล้ว",
-      "readyDetailFallback": "เริ่มต้น Memry ใหม่เพื่อเสร็จสิ้นการติดตั้งการอัปเดต",
+      "readyMessage": "memrynote {version} ถูกดาวน์โหลดแล้ว",
+      "readyDetailFallback": "เริ่มต้น memrynote ใหม่เพื่อเสร็จสิ้นการติดตั้งการอัปเดต",
       "buttonRestartNow": "เริ่มต้นทันที",
       "releaseNotesLabel": "บันทึกประจำรุ่น:"
     }

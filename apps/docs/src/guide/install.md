@@ -1,6 +1,6 @@
-# Install Memry
+# Install memrynote
 
-Memry is not publicly released yet. Download links and packaged installers will be added
+memrynote is not publicly released yet. Download links and packaged installers will be added
 here once the first stable release is available.
 
 ## Current Status

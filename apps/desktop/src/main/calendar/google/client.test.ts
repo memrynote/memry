@@ -226,7 +226,7 @@ describe('google calendar client — push channels (Task 7)', () => {
           timezone: 'UTC',
           recurrence: null,
           recurringEventId: 'google-series-annual',
-          // Memry normalises all-day originalStartTime to a midnight UTC ISO
+          // memrynote normalises all-day originalStartTime to a midnight UTC ISO
           // on the read side — the write path must re-extract the date.
           originalStartTime: '2026-05-10T00:00:00.000Z'
         }

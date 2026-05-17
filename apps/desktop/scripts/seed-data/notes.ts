@@ -294,7 +294,7 @@ Chapter 9. Cognitive revolution → agricultural revolution → unification of h
 
 ## What I'm thinking about
 
-- Money, religion, and limited liability companies are all *fictions we agree on*. Memry sync is a fiction we agree on, too.
+- Money, religion, and limited liability companies are all *fictions we agree on*. memrynote sync is a fiction we agree on, too.
 - Wheat domesticated humans, not the other way around.
 
 ## Open questions
@@ -949,11 +949,11 @@ Compares to [[2026 Cut]] start.
     customProps: { mood: 5 },
     daysAgoCreated: -700,
     daysAgoModified: -7,
-    body: `## Why I'm building [[Memry Launch|Memry]]
+    body: `## Why I'm building [[memrynote Launch|memrynote]]
 
 I lost five years of journal entries to a SaaS that pivoted, then sunset their consumer product. Two months notice and a CSV that didn't include any of the formatting.
 
-I'm building Memry so my **future self** can read my **current self** without asking permission from a vendor.
+I'm building memrynote so my **future self** can read my **current self** without asking permission from a vendor.
 
 Local first. End-to-end encrypted. Open file format. Sync optional.
 
@@ -1004,7 +1004,7 @@ I'd rather read [[Atomic Habits]] (one good idea, executed well) than another *7
     daysAgoModified: -125,
     body: `## What I shipped
 
-- Memry MVP, sync v1
+- memrynote MVP, sync v1
 - 12kg lost (and kept off through holidays)
 - Trip to [[Tokyo Trip]] — first long flight since 2019
 
@@ -1021,7 +1021,7 @@ I'd rather read [[Atomic Habits]] (one good idea, executed well) than another *7
 
 ## 2026 themes
 
-- *Ship Memry to friends*
+- *Ship memrynote to friends*
 - *Lose the last 6kg*
 - *Write more in public*
 
@@ -1042,7 +1042,7 @@ I'd rather read [[Atomic Habits]] (one good idea, executed well) than another *7
 - 05:45 — Up, water, no phone
 - 06:00 — 20 min journal — see today's entry
 - 06:30 — Coffee + read 30 min
-- 07:00 — Write (Memry, blog, journal)
+- 07:00 — Write (memrynote, blog, journal)
 - 08:00 — Shower, breakfast, day starts
 
 ## Rules
@@ -1095,7 +1095,7 @@ Inspired by [[Deep Work]]. Codified after [[Atomic Habits]].
     daysAgoModified: -45,
     body: `## What I'm afraid of, in 2026
 
-- Building Memry "wrong" — the wrong abstractions, the wrong scope
+- Building memrynote "wrong" — the wrong abstractions, the wrong scope
 - Going public before it's ready
 - Going public after it's *too* ready (waited too long)
 
@@ -1163,8 +1163,8 @@ If a relationship is important, it should show up *in the calendar*, not just in
   // ============================================================================
   {
     id: NOTE_IDS.projMemryLaunch,
-    relativePath: 'notes/projects/Memry Launch.md',
-    title: 'Memry Launch',
+    relativePath: 'notes/projects/memrynote Launch.md',
+    title: 'memrynote Launch',
     emoji: '🚀',
     tags: ['projects/memry', 'projects/active'],
     customProps: {
@@ -1202,15 +1202,15 @@ Aim for 2026-07-01. Soft launch to ~50 friends + IndieHackers.
 
 ## Linked tasks
 
-Tasks tagged \`#projects/memry\` show up under "Memry Launch" project — these are the granular execution items.
+Tasks tagged \`#projects/memry\` show up under "memrynote Launch" project — these are the granular execution items.
 
 #projects/memry #active
 `
   },
   {
     id: NOTE_IDS.projMemryArchitecture,
-    relativePath: 'notes/projects/Memry Architecture.md',
-    title: 'Memry Architecture',
+    relativePath: 'notes/projects/memrynote Architecture.md',
+    title: 'memrynote Architecture',
     emoji: '🏛️',
     tags: ['projects/memry', 'architecture'],
     customProps: {
@@ -1239,8 +1239,8 @@ Local-first means *all* data is on disk. Browser sandbox is a non-starter.
   },
   {
     id: NOTE_IDS.projMemryRoadmap,
-    relativePath: 'notes/projects/Memry Roadmap.md',
-    title: 'Memry Roadmap',
+    relativePath: 'notes/projects/memrynote Roadmap.md',
+    title: 'memrynote Roadmap',
     emoji: '🗺️',
     tags: ['projects/memry', 'planning'],
     customProps: {
@@ -1253,7 +1253,7 @@ Local-first means *all* data is on disk. Browser sandbox is a non-starter.
     daysAgoModified: -7,
     body: `## Q2 2026
 
-- v0.1 launch — see [[Memry Launch]]
+- v0.1 launch — see [[memrynote Launch]]
 - Mobile read-only
 - iCal sync polish
 
@@ -1273,8 +1273,8 @@ Local-first means *all* data is on disk. Browser sandbox is a non-starter.
   },
   {
     id: NOTE_IDS.projMemryGTM,
-    relativePath: 'notes/projects/Memry GTM.md',
-    title: 'Memry GTM',
+    relativePath: 'notes/projects/memrynote GTM.md',
+    title: 'memrynote GTM',
     emoji: '📣',
     tags: ['projects/memry', 'gtm'],
     customProps: {
@@ -1455,7 +1455,7 @@ Linked: [[Year in Review 2025]] (the *abandoned-at-60%* problem).
 1. The cloud is a great default — most of the time
 2. The four times it isn't (vendor death, churn, latency, jurisdiction)
 3. What "local-first" actually means (Kleppmann, 2019)
-4. Memry as a worked example
+4. memrynote as a worked example
 5. The trade-offs nobody likes to talk about
 
 ## Submitted to
@@ -1506,7 +1506,7 @@ const asNoteId = (s: string): NoteId => s as NoteId
 
 Because the moment I do, I've thrown away the only reason to write TypeScript. Use \`unknown\` and refine.
 
-Linked: [[Drizzle ORM]] for type inference details, [[Memry Architecture]] for the IPC boundary.
+Linked: [[Drizzle ORM]] for type inference details, [[memrynote Architecture]] for the IPC boundary.
 
 #tech/typescript #reference
 `
@@ -1801,7 +1801,7 @@ Until the branch lands. After that, it's history.
     customProps: { language: 'rust', level: 'beginner', status: 'active' },
     daysAgoCreated: -75,
     daysAgoModified: -10,
-    body: `Picking it up for fun and possible Memry-CLI tooling.
+    body: `Picking it up for fun and possible memrynote-CLI tooling.
 
 \`\`\`rust
 fn main() {

@@ -50,7 +50,7 @@
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Dark theme — matches Memry desktop app charcoal palette. Brand terracotta is preserved. */
+/* Dark theme — matches memrynote desktop app charcoal palette. Brand terracotta is preserved. */
 .dark {
   --color-ink: #bcbab6;
   --color-ink-inverted: #1f2937;

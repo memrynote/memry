@@ -18,7 +18,7 @@ const INTEGRATIONS = [
     id: 'google-calendar',
     i18nKey: 'googleCalendar',
     name: 'Google Calendar',
-    description: 'Two-way sync for Memry events, tasks, reminders, and imported calendars',
+    description: 'Two-way sync for memrynote events, tasks, reminders, and imported calendars',
     icon: Calendar,
     authFlow: 'oauth2',
     comingSoon: false

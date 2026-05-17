@@ -61,7 +61,7 @@
     "deviceRevoked": "Perangkat ini telah dihapus dari akun Anda.",
     "rateLimited": "Terlalu banyak permintaan. Sinkronisasi akan segera dilanjutkan.",
     "cryptoFailure": "Gagal mengenkripsi atau mendekripsi data sinkronisasi. Coba keluar lalu masuk kembali.",
-    "versionIncompatible": "Versi Memry ini tidak lagi didukung. Harap perbarui.",
+    "versionIncompatible": "Versi memrynote ini tidak lagi didukung. Harap perbarui.",
     "storageQuotaExceeded": "Penyimpanan sinkronisasi Anda penuh. Kosongkan ruang atau tingkatkan paket Anda.",
     "certificatePinFailed": "Koneksi aman gagal. Periksa koneksi jaringan Anda.",
     "unknown": "Terjadi kesalahan sinkronisasi yang tidak terduga. Akan mencoba lagi secara otomatis.",

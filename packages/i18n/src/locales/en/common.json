@@ -80,9 +80,9 @@
     "stop": "Stop",
     "thinking": "Agent is thinking",
     "enable": {
-      "title": "Enable Memry Agent",
-      "description": "Memry Agent uses your selected local agent CLI to chat about your vault. Claude sends turns to Anthropic; Codex sends turns to OpenAI.",
-      "remote": "Memry encrypts your local and synced chat history, but model inference happens with the selected provider.",
+      "title": "Enable memrynote Agent",
+      "description": "memrynote Agent uses your selected local agent CLI to chat about your vault. Claude sends turns to Anthropic; Codex sends turns to OpenAI.",
+      "remote": "memrynote encrypts your local and synced chat history, but model inference happens with the selected provider.",
       "readTools": "Read tools run automatically.",
       "writeTools": "Create and update tools require approval.",
       "diff": "Update tools show a diff or preview.",
@@ -112,7 +112,7 @@
     "composer": {
       "currentNote": "Current note",
       "removeAttachment": "Remove {label}",
-      "placeholder": "Ask Memry anything. @ to use mention file",
+      "placeholder": "Ask memrynote anything. @ to use mention file",
       "send": "Send",
       "providerLabel": "Agent provider: {provider}",
       "settingsSummary": "{reasoning}",
@@ -223,7 +223,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Skip onboarding",
-      "welcomeToMemry": "Welcome to Memry",
+      "welcomeToMemry": "Welcome to memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Your personal knowledge base. Let's take 2 minutes to get you started.",
       "getStarted": "Get started ",
       "createYourFirstNote": "Create your first note",
@@ -418,7 +418,7 @@
       "dragToResizeDoubleClickToReset": "Drag to resize · Double-click to reset"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Welcome to Memry",
+      "welcomeToMemry": "Welcome to memrynote",
       "yourPersonalKnowledgeManagementSystem": "Your personal knowledge management system.",
       "selectAFolderToStoreYourNotesAndTasks": "Select a folder to store your notes and tasks.",
       "opening": "Opening...",

@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "跳過入門",
-      "welcomeToMemry": "歡迎使用 Memry",
+      "welcomeToMemry": "歡迎使用 memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "你的個人知識庫。花兩分鐘開始使用。",
       "getStarted": "開始使用",
       "createYourFirstNote": "建立你的第一則筆記",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "拖曳以調整大小·雙擊重置"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "歡迎使用 Memry",
+      "welcomeToMemry": "歡迎使用 memrynote",
       "yourPersonalKnowledgeManagementSystem": "你的個人知識管理系統。",
       "selectAFolderToStoreYourNotesAndTasks": "選擇資料夾以儲存你的筆記和任務。",
       "opening": "正在開啟...",
@@ -341,9 +341,9 @@
     "stop": "停止",
     "thinking": "Agent 正在思考",
     "enable": {
-      "title": "啟用 Memry Agent",
-      "description": "Memry Agent 使用您選擇的本機代理 CLI 來討論您的保管庫。 Claude 輪流傳送到 Anthropic； Codex 輪流傳送到 OpenAI。",
-      "remote": "Memry 會加密您的本地和同步的聊天歷史記錄，但模型推斷會在選定的提供者中進行。",
+      "title": "啟用 memrynote Agent",
+      "description": "memrynote Agent 使用您選擇的本機代理 CLI 來討論您的保管庫。 Claude 輪流傳送到 Anthropic； Codex 輪流傳送到 OpenAI。",
+      "remote": "memrynote 會加密您的本地和同步的聊天歷史記錄，但模型推斷會在選定的提供者中進行。",
       "readTools": "讀取工具自動運作。",
       "writeTools": "建立和更新工具需要批准。",
       "diff": "更新工具顯示差異或預覽。",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "目前註釋",
       "removeAttachment": "刪除 {label}",
-      "placeholder": "向 Memry 詢問任何事。@ 可提及檔案",
+      "placeholder": "向 memrynote 詢問任何事。@ 可提及檔案",
       "send": "傳送",
       "providerLabel": "Agent 提供者：{provider}",
       "settingsSummary": "{reasoning}",

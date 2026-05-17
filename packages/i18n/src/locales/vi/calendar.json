@@ -16,7 +16,7 @@
   "filter": {
     "filter-calendars": "Lọc lịch",
     "sources": "Nguồn",
-    "memry-items": "Memry mục",
+    "memry-items": "memrynote mục",
     "imported-calendars": "Lịch đã nhập",
     "event-types": "Loại sự kiện",
     "google-calendars": "Lịch Google",
@@ -60,27 +60,27 @@
     "target-calendar": "Lịch đích",
     "use-default-calendar": "Sử dụng lịch mặc định",
     "use-default-calendar-with-name": "Sử dụng mặc định ({calendar})",
-    "use-memry-calendar-default": "Sử dụng lịch Memry (mặc định)",
+    "use-memry-calendar-default": "Sử dụng lịch memrynote (mặc định)",
     "primary-suffix": "chính"
   },
   "delete-dialog": {
     "title": "Xóa sự kiện?",
     "local-description": "\"{title}\" sẽ bị xóa vĩnh viễn. Hành động này không thể hồi phục.",
-    "google-bound-description": "\"{title}\" sẽ bị xóa khỏi Memry và Google Calendar. Hành động này không thể hoàn tác.",
+    "google-bound-description": "\"{title}\" sẽ bị xóa khỏi memrynote và Google Calendar. Hành động này không thể hoàn tác.",
     "context-menu-delete-label": "Xóa sự kiện"
   },
   "promote-dialog": {
     "aria": "Chỉnh sửa sự kiện trên lịch ngoài",
-    "title": "Chỉnh sửa sự kiện này trong Memry?",
-    "body": "Chỉnh sửa sự kiện này sẽ tạo một bản sao liên kết trong Memry để các thay đổi đồng bộ hai chiều. Tiếp tục?",
+    "title": "Chỉnh sửa sự kiện này trong memrynote?",
+    "body": "Chỉnh sửa sự kiện này sẽ tạo một bản sao liên kết trong memrynote để các thay đổi đồng bộ hai chiều. Tiếp tục?",
     "do-not-ask-again": "Không hỏi lại",
-    "confirm-label": "Chỉnh sửa trong Memry"
+    "confirm-label": "Chỉnh sửa trong memrynote"
   },
   "onboarding-dialog": {
     "aria": "Chọn lịch Google mặc định của bạn",
-    "title": "Sự kiện Memry mới nên đi vào lịch nào?",
-    "body": "Chọn lịch Google mà Memry nên sử dụng mặc định. Bạn vẫn có thể ghi đè cho từng sự kiện.",
-    "default-calendar-label": "Sử dụng lịch do Memry quản lý",
+    "title": "Sự kiện memrynote mới nên đi vào lịch nào?",
+    "body": "Chọn lịch Google mà memrynote nên sử dụng mặc định. Bạn vẫn có thể ghi đè cho từng sự kiện.",
+    "default-calendar-label": "Sử dụng lịch do memrynote quản lý",
     "skip": "Bỏ qua",
     "use-this-calendar": "Sử dụng lịch này"
   },

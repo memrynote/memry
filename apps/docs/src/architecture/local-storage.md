@@ -1,6 +1,6 @@
 # Local Storage (Dual SQLite)
 
-Memry stores all workspace data locally in two SQLite databases via better-sqlite3 and Drizzle ORM.
+memrynote stores all workspace data locally in two SQLite databases via better-sqlite3 and Drizzle ORM.
 
 ## Why Two Databases
 

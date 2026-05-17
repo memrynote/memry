@@ -138,7 +138,7 @@ function DesktopHero({ detected }: { detected: DetectedOS }) {
             Download · Desktop
           </span>
           <h1 className="mt-4 font-serif text-4xl font-normal leading-[1.05] text-ink text-balance md:text-6xl">
-            Memry for <span className="italic text-terracotta">Desktop.</span>
+            memrynote for <span className="italic text-terracotta">Desktop.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted md:text-lg">
             A local-first PKM that lives on your machine. Free forever for the local app. macOS,
@@ -154,7 +154,7 @@ function DesktopHero({ detected }: { detected: DetectedOS }) {
                 onClick={() => trackLandingEvent('landing_download_click', downloadTarget(label))}
               >
                 <Download className="h-4 w-4" />
-                {detected ? `Download for ${label}` : 'Download Memry'}
+                {detected ? `Download for ${label}` : 'Download memrynote'}
               </a>
             </Button>
             <Button
@@ -651,7 +651,7 @@ const WORKS_WITH = [
   },
   {
     icon: Shield,
-    title: 'Memry Sync (optional)',
+    title: 'memrynote Sync (optional)',
     body: 'Turn on E2E-encrypted sync between your own devices when you want it. Pay nothing for the local app.'
   }
 ] as const
@@ -727,7 +727,7 @@ function SystemRequirements() {
             Modest needs.
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-muted">
-            Memry runs on machines you already own. Built on Electron, sized like a small app.
+            memrynote runs on machines you already own. Built on Electron, sized like a small app.
           </p>
         </motion.div>
 
@@ -791,7 +791,7 @@ const INSTALL_STEPS = [
   {
     number: '03',
     title: 'Pick a vault',
-    body: 'Create a new folder or point Memry at an existing markdown folder (Obsidian vaults work directly).'
+    body: 'Create a new folder or point memrynote at an existing markdown folder (Obsidian vaults work directly).'
   }
 ] as const
 
@@ -911,15 +911,15 @@ const DOWNLOAD_FAQ = [
   {
     question: 'Is the desktop app free?',
     answer:
-      'Yes. The local app is free forever: notes, tasks, journal, inbox, full-text search, markdown export, no account required. Memry Sync between your devices is the paid layer.'
+      'Yes. The local app is free forever: notes, tasks, journal, inbox, full-text search, markdown export, no account required. memrynote Sync between your devices is the paid layer.'
   },
   {
-    question: 'Is Memry native or Electron?',
+    question: 'Is memrynote native or Electron?',
     answer:
       'Electron 39 + React 19. We made the trade-off explicit: cross-platform from day one with one codebase, at the cost of some memory. The vault itself is plain markdown, so the runtime layer never owns your data.'
   },
   {
-    question: 'How do I update Memry?',
+    question: 'How do I update memrynote?',
     answer:
       'New versions land on GitHub Releases. Download the latest installer and run it. Your vault folder is untouched between updates.'
   },
@@ -1006,7 +1006,7 @@ function DownloadFinalCta({ detected }: { detected: DetectedOS }) {
                 }
               >
                 <Download className="h-4 w-4" />
-                {detected ? `Download for ${label}` : 'Download Memry'}
+                {detected ? `Download for ${label}` : 'Download memrynote'}
               </a>
             </Button>
             <Button

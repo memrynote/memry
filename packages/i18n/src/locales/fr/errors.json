@@ -61,7 +61,7 @@
     "deviceRevoked": "Cet appareil a été supprimé de votre compte.",
     "rateLimited": "Trop de demandes. La synchronisation reprendra sous peu.",
     "cryptoFailure": "Échec du chiffrement ou du déchiffrement des données de synchronisation. Essayez de vous déconnecter, puis de vous reconnecter.",
-    "versionIncompatible": "Cette version de Memry n'est plus prise en charge. Veuillez mettre à jour.",
+    "versionIncompatible": "Cette version de memrynote n'est plus prise en charge. Veuillez mettre à jour.",
     "storageQuotaExceeded": "Votre stockage de synchronisation est plein. Libérez de l'espace ou mettez à niveau votre forfait.",
     "certificatePinFailed": "La connexion sécurisée a échoué. Vérifiez votre connexion réseau.",
     "unknown": "Une erreur de synchronisation inattendue s'est produite. Réessayera automatiquement.",

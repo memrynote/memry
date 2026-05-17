@@ -347,7 +347,7 @@ export function Header() {
             <div className="leading-none">
               <span className="flex items-center gap-2">
                 <span className="block font-geist text-2xl font-medium tracking-tight text-ink transition-colors group-hover:text-terracotta">
-                  memry
+                  memrynote
                 </span>
                 <span className="rounded-full bg-terracotta/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-terracotta">
                   Preview

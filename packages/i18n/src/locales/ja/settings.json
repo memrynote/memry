@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "ログイン時に起動",
-        "description": "ログイン時にMemryを起動します",
+        "description": "ログイン時にmemrynoteを起動します",
         "error": "起動時の更新開始に失敗しました"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "インストールされているバージョン {version}",
       "availableVersion": "利用可能なバージョン {version}",
       "unsupported": "パッケージ化されたビルドは、GitHub リリースからアップデートを確認、ダウンロード、インストールできます",
-      "available": "Memry {version} はダウンロードできます",
+      "available": "memrynote {version} はダウンロードできます",
       "downloadingLatest": "最新リリースのダウンロード",
       "downloadingLatestPercent": "最新リリース ({percent}%) をダウンロードしています",
-      "downloaded": "Memry {version} をインストールする準備ができました",
+      "downloaded": "memrynote {version} をインストールする準備ができました",
       "upToDate": "このインストールは最新の公開リリースに含まれています",
       "checking": "GitHub リリースで新しいバージョンを確認する",
       "idle": "新しいリリースを確認し、アプリを終了せずにインストールします",
       "unsupportedToast": "自動更新はパッケージ化されたリリースでのみ利用可能です",
-      "upToDateToast": "Memry {version} は最新です",
+      "upToDateToast": "memrynote {version} は最新です",
       "actionFailed": "更新アクションが失敗しました",
       "actions": {
         "checking": "確認中...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "デバイスが正常にリンクされました",
       "goBack": "戻る",
       "waitingTitle": "承認待ち",
-      "waitingDescription": "他のデバイスで Memry を開き、リンク要求を承認します。",
+      "waitingDescription": "他のデバイスで memrynote を開き、リンク要求を承認します。",
       "verificationCode": "認証コード",
       "confirmCode": "これが他のデバイスのコードと一致することを確認します"
     }
@@ -778,7 +778,7 @@
     "connect": "接続する",
     "googleCalendar": {
       "name": "Googleカレンダー",
-      "description": "Memry イベントとインポートされた Google カレンダーの双方向同期。",
+      "description": "memrynote イベントとインポートされた Google カレンダーの双方向同期。",
       "statuses": {
         "connected": "接続済み",
         "notConnected": "接続されていません",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "Googleカレンダー",
-        "description": "Memry イベント、タスク、リマインダー、インポートされたカレンダーの双方向同期"
+        "description": "memrynote イベント、タスク、リマインダー、インポートされたカレンダーの双方向同期"
       },
       "appleCalendar": {
         "name": "アップルカレンダー",
@@ -963,7 +963,7 @@
       "description": "どこからでもメモを取り込む",
       "permissionNeeded": "許可が必要です",
       "active": "アクティブ",
-      "permissionHint": "グローバル ショートカットにはアクセシビリティ権限が必要です。 [システム設定] → [プライバシー] → [アクセシビリティ] に移動し、Memry を有効にします。"
+      "permissionHint": "グローバル ショートカットにはアクセシビリティ権限が必要です。 [システム設定] → [プライバシー] → [アクセシビリティ] に移動し、memrynote を有効にします。"
     },
     "toasts": {
       "saveGlobalFailed": "グローバル キャプチャ ショートカットの保存に失敗しました",

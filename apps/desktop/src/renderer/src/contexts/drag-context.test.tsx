@@ -348,9 +348,9 @@ describe('dragAnnouncements', () => {
     ).toContain('Over date:')
     expect(
       dragAnnouncements.onDragOver({
-        over: { data: { current: { type: 'project', project: { name: 'Memry' } } } }
+        over: { data: { current: { type: 'project', project: { name: 'memrynote' } } } }
       } as any)
-    ).toBe('Over project: Memry. Release to move.')
+    ).toBe('Over project: memrynote. Release to move.')
     expect(
       dragAnnouncements.onDragOver({ over: { data: { current: { type: 'trash' } } } } as any)
     ).toBe('Over trash. Release to delete.')

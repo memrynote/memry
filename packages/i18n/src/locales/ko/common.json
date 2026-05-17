@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "온보딩 건너뛰기",
-      "welcomeToMemry": "Memry에 오신 것을 환영합니다",
+      "welcomeToMemry": "memrynote에 오신 것을 환영합니다",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "귀하의 개인 지식 기반. 2분만 투자해 시작해 보세요.",
       "getStarted": "시작하기 ",
       "createYourFirstNote": "첫 번째 메모 만들기",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "크기를 조정하려면 드래그하세요. 재설정하려면 두 번 클릭하세요."
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Memry에 오신 것을 환영합니다",
+      "welcomeToMemry": "memrynote에 오신 것을 환영합니다",
       "yourPersonalKnowledgeManagementSystem": "귀하의 개인 지식 관리 시스템.",
       "selectAFolderToStoreYourNotesAndTasks": "메모와 작업을 저장할 폴더를 선택하세요.",
       "opening": "여는 중...",
@@ -341,9 +341,9 @@
     "stop": "중지",
     "thinking": "Agent는 생각 중입니다.",
     "enable": {
-      "title": "Memry Agent 활성화",
-      "description": "Memry Agent는 선택한 로컬 에이전트 CLI를 사용하여 볼트에 대해 채팅합니다. Claude는 Anthropic로 차례를 보냅니다. Codex는 OpenAI로 차례를 보냅니다.",
-      "remote": "Memry는 로컬 및 동기화된 채팅 기록을 암호화하지만 모델 추론은 선택한 공급자에서 발생합니다.",
+      "title": "memrynote Agent 활성화",
+      "description": "memrynote Agent는 선택한 로컬 에이전트 CLI를 사용하여 볼트에 대해 채팅합니다. Claude는 Anthropic로 차례를 보냅니다. Codex는 OpenAI로 차례를 보냅니다.",
+      "remote": "memrynote는 로컬 및 동기화된 채팅 기록을 암호화하지만 모델 추론은 선택한 공급자에서 발생합니다.",
       "readTools": "읽기 도구가 자동으로 실행됩니다.",
       "writeTools": "도구 생성 및 업데이트에는 승인이 필요합니다.",
       "diff": "업데이트 도구는 차이점이나 미리보기를 보여줍니다.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "현재 메모",
       "removeAttachment": "{label} 제거",
-      "placeholder": "Memry에게 무엇이든 물어보세요. @로 파일 멘션",
+      "placeholder": "memrynote에게 무엇이든 물어보세요. @로 파일 멘션",
       "send": "보내기",
       "providerLabel": "Agent 공급자: {provider}",
       "settingsSummary": "{reasoning}",

@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "Khởi động cùng đăng nhập",
-        "description": "Bắt đầu Memry khi bạn đăng nhập",
+        "description": "Bắt đầu memrynote khi bạn đăng nhập",
         "error": "Không thể cập nhật khởi động cùng hệ thống"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "Phiên bản đã cài đặt {version}",
       "availableVersion": "Phiên bản có sẵn {version}",
       "unsupported": "Các bản đóng gói có thể kiểm tra, tải xuống và cài đặt cập nhật từ GitHub Releases",
-      "available": "Memry {version} có sẵn để tải xuống",
+      "available": "memrynote {version} có sẵn để tải xuống",
       "downloadingLatest": "Đang tải xuống bản phát hành mới nhất",
       "downloadingLatestPercent": "Đang tải xuống bản phát hành mới nhất ({percent}%)",
-      "downloaded": "Memry {version} đã sẵn sàng để cài đặt",
+      "downloaded": "memrynote {version} đã sẵn sàng để cài đặt",
       "upToDate": "Cài đặt này đang ở phiên bản phát hành mới nhất",
       "checking": "Đang kiểm tra GitHub Releases để tìm phiên bản mới hơn",
       "idle": "Kiểm tra các phiên bản mới và cài đặt chúng mà không cần rời khỏi ứng dụng",
       "unsupportedToast": "Tự động cập nhật chỉ có trong các phiên bản đóng gói",
-      "upToDateToast": "Memry {version} đã được cập nhật",
+      "upToDateToast": "memrynote {version} đã được cập nhật",
       "actionFailed": "Thao tác cập nhật thất bại",
       "actions": {
         "checking": "Đang kiểm tra...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "Thiết bị đã liên kết thành công",
       "goBack": "Quay lại",
       "waitingTitle": "Đang chờ phê duyệt",
-      "waitingDescription": "Mở Memry trên thiết bị khác của bạn và phê duyệt yêu cầu liên kết.",
+      "waitingDescription": "Mở memrynote trên thiết bị khác của bạn và phê duyệt yêu cầu liên kết.",
       "verificationCode": "Mã xác minh",
       "confirmCode": "Xác nhận điều này khớp với mã trên thiết bị khác của bạn"
     }
@@ -778,7 +778,7 @@
     "connect": "Kết nối",
     "googleCalendar": {
       "name": "Google Calendar",
-      "description": "Đồng bộ hai chiều cho các sự kiện Memry và các lịch Google được nhập.",
+      "description": "Đồng bộ hai chiều cho các sự kiện memrynote và các lịch Google được nhập.",
       "statuses": {
         "connected": "Đã kết nối",
         "notConnected": "Chưa kết nối",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "Google Calendar",
-        "description": "Đồng bộ hai chiều cho các sự kiện, nhiệm vụ, nhắc nhở và lịch đã nhập của Memry"
+        "description": "Đồng bộ hai chiều cho các sự kiện, nhiệm vụ, nhắc nhở và lịch đã nhập của memrynote"
       },
       "appleCalendar": {
         "name": "Apple Calendar",
@@ -963,7 +963,7 @@
       "description": "Chụp một ghi chú từ bất kỳ đâu",
       "permissionNeeded": "Cần quyền",
       "active": "Đang hoạt động",
-      "permissionHint": "Phím tắt toàn cầu yêu cầu quyền Truy cập. Đi tới Cài đặt Hệ thống → Quyền riêng tư → Truy cập và bật Memry."
+      "permissionHint": "Phím tắt toàn cầu yêu cầu quyền Truy cập. Đi tới Cài đặt Hệ thống → Quyền riêng tư → Truy cập và bật memrynote."
     },
     "toasts": {
       "saveGlobalFailed": "Không thể lưu phím tắt chụp toàn cầu",

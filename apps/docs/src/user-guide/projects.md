@@ -15,7 +15,7 @@ The **+** affordance in the sidebar Projects section opens a creation dialog:
 - **Name** — display title
 - **Color** — accent for the sidebar entry and project header
 - **Icon** — emoji or icon set choice
-- **Initial statuses** — Memry pre-fills `Todo / In Progress / Done`; you can edit before creating
+- **Initial statuses** — memrynote pre-fills `Todo / In Progress / Done`; you can edit before creating
 
 ## Statuses
 
@@ -25,7 +25,7 @@ Each project owns its own ordered list of statuses. A status has:
 - **Type** — `todo`, `in-progress`, `done`, or `custom` (used for grouping and progress)
 - **Color** — used in chips, kanban columns, and progress bars
 
-Status types matter for cross-project views: "All Tasks → kanban grouped by status" maps `Memry's status type`, not raw status names.
+Status types matter for cross-project views: "All Tasks → kanban grouped by status" maps `memrynote's status type`, not raw status names.
 
 ### Editing Statuses
 
@@ -35,7 +35,7 @@ Open the project header menu and choose **Edit statuses**. From there you can:
 - Rename / recolor
 - Change type (e.g. promote a custom status to `done` so it counts in progress bars)
 - Reorder by drag
-- Delete (with a confirmation; Memry asks where to move tasks currently in that status)
+- Delete (with a confirmation; memrynote asks where to move tasks currently in that status)
 
 ## Task Counts
 
@@ -53,7 +53,7 @@ Each project has its own:
 - Kanban view (columns = the project's statuses)
 - Tabs for `All`, `Today`, `Completed` scoped to that project
 
-Memry remembers per-project view preferences.
+memrynote remembers per-project view preferences.
 
 ## Deleting a Project
 

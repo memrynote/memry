@@ -310,7 +310,7 @@ function buildPromptContext(): PromptContext {
 
 function assembleTitlePrompt(text: string, attachments: MessageAttachment[]): string {
   const lines = [
-    'Generate a short title for this Memry Agent Chat conversation.',
+    'Generate a short title for this memrynote Agent Chat conversation.',
     'Rules:',
     '- Use 2 to 6 words.',
     '- Preserve the user language.',

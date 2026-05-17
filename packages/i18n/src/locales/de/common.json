@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Onboarding überspringen",
-      "welcomeToMemry": "Willkommen bei Memry",
+      "welcomeToMemry": "Willkommen bei memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Ihre persönliche Wissensdatenbank. Nehmen wir uns 2 Minuten Zeit, um Ihnen den Einstieg zu erleichtern.",
       "getStarted": "Fangen Sie an ",
       "createYourFirstNote": "Erstellen Sie Ihre erste Notiz",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Zum Ändern der Größe ziehen · Zum Zurücksetzen doppelklicken"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Willkommen bei Memry",
+      "welcomeToMemry": "Willkommen bei memrynote",
       "yourPersonalKnowledgeManagementSystem": "Ihr persönliches Wissensmanagementsystem.",
       "selectAFolderToStoreYourNotesAndTasks": "Wählen Sie einen Ordner zum Speichern Ihrer Notizen und Aufgaben.",
       "opening": "Eröffnung...",
@@ -341,9 +341,9 @@
     "stop": "Stopp",
     "thinking": "Agent denkt nach",
     "enable": {
-      "title": "Aktivieren Sie Memry Agent",
-      "description": "Memry Agent nutzt Ihren ausgewählten lokalen Agenten CLI, um über Ihren Tresor zu chatten. Claude sendet Turns an Anthropic; Codex sendet Turns an OpenAI.",
-      "remote": "Memry verschlüsselt Ihren lokalen und synchronisierten Chat-Verlauf, die Modellinferenz erfolgt jedoch mit dem ausgewählten Anbieter.",
+      "title": "Aktivieren Sie memrynote Agent",
+      "description": "memrynote Agent nutzt Ihren ausgewählten lokalen Agenten CLI, um über Ihren Tresor zu chatten. Claude sendet Turns an Anthropic; Codex sendet Turns an OpenAI.",
+      "remote": "memrynote verschlüsselt Ihren lokalen und synchronisierten Chat-Verlauf, die Modellinferenz erfolgt jedoch mit dem ausgewählten Anbieter.",
       "readTools": "Lesetools werden automatisch ausgeführt.",
       "writeTools": "Das Erstellen und Aktualisieren von Tools erfordert eine Genehmigung.",
       "diff": "Update-Tools zeigen einen Unterschied oder eine Vorschau an.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Aktuelle Notiz",
       "removeAttachment": "{label} entfernen",
-      "placeholder": "Fragen Sie Memry alles. @, um eine Datei zu erwähnen",
+      "placeholder": "Fragen Sie memrynote alles. @, um eine Datei zu erwähnen",
       "send": "Senden",
       "providerLabel": "Agent Anbieter: {provider}",
       "settingsSummary": "{reasoning}",

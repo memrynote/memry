@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "เปิดตัวเมื่อเข้าสู่ระบบ",
-        "description": "เริ่ม Memry เมื่อคุณเข้าสู่ระบบ",
+        "description": "เริ่ม memrynote เมื่อคุณเข้าสู่ระบบ",
         "error": "ไม่สามารถอัปเดตการเริ่มต้นตอนบูตได้"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "เวอร์ชันที่ติดตั้ง {version}",
       "availableVersion": "เวอร์ชันที่มีอยู่ {version}",
       "unsupported": "แพ็คเกจที่สร้างแล้วสามารถตรวจสอบ ดาวน์โหลด และติดตั้งการอัปเดตจาก GitHub Releases",
-      "available": "Memry {version} พร้อมให้ดาวน์โหลด",
+      "available": "memrynote {version} พร้อมให้ดาวน์โหลด",
       "downloadingLatest": "กำลังดาวน์โหลดเวอร์ชันล่าสุด",
       "downloadingLatestPercent": "กำลังดาวน์โหลดเวอร์ชันล่าสุด ({percent}%)",
-      "downloaded": "Memry {version} พร้อมติดตั้ง",
+      "downloaded": "memrynote {version} พร้อมติดตั้ง",
       "upToDate": "การติดตั้งนี้อยู่ในเวอร์ชันที่เผยแพร่ล่าสุด",
       "checking": "กำลังตรวจสอบ GitHub Releases สำหรับเวอร์ชันใหม่กว่า",
       "idle": "ตรวจสอบการอัปเดตใหม่และติดตั้งโดยไม่ต้องออกจากแอป",
       "unsupportedToast": "การอัปเดตอัตโนมั available ในเวอร์ชันที่แพ็คเกจแล้วเท่านั้น",
-      "upToDateToast": "Memry {version} เป็นเวอร์ชันล่าสุดแล้ว",
+      "upToDateToast": "memrynote {version} เป็นเวอร์ชันล่าสุดแล้ว",
       "actionFailed": "การดำเนินการอัปเดตล้มเหลว",
       "actions": {
         "checking": "กำลังตรวจสอบ...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "อุปกรณ์ถูกเชื่อมต่อเรียบร้อยแล้ว",
       "goBack": "กลับ",
       "waitingTitle": "รอการอนุมัติ",
-      "waitingDescription": "เปิด Memry บนอุปกรณ์อื่นของคุณและอนุมัติคำขอการเชื่อมโยง",
+      "waitingDescription": "เปิด memrynote บนอุปกรณ์อื่นของคุณและอนุมัติคำขอการเชื่อมโยง",
       "verificationCode": "รหัสยืนยัน",
       "confirmCode": "ยืนยันว่านี่ตรงกับรหัสบนอุปกรณ์อื่นของคุณ"
     }
@@ -778,7 +778,7 @@
     "connect": "เชื่อมต่อ",
     "googleCalendar": {
       "name": "Google ปฏิทิน",
-      "description": "ซิงก์สองทางสำหรับกิจกรรม Memry และปฏิทินของ Google ที่นำเข้า",
+      "description": "ซิงก์สองทางสำหรับกิจกรรม memrynote และปฏิทินของ Google ที่นำเข้า",
       "statuses": {
         "connected": "เชื่อมต่อแล้ว",
         "notConnected": "ยังไม่ได้เชื่อมต่อ",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "Google ปฏิทิน",
-        "description": "ซิงค์สองทางสำหรับกิจกรรม งาน เตือนความจำ และปฏิทินที่นำเข้า Memry"
+        "description": "ซิงค์สองทางสำหรับกิจกรรม งาน เตือนความจำ และปฏิทินที่นำเข้า memrynote"
       },
       "appleCalendar": {
         "name": "Apple Calendar",
@@ -963,7 +963,7 @@
       "description": "จับบันทึกจากทุกที่",
       "permissionNeeded": "ต้องการสิทธิ์",
       "active": "กำลังใช้งาน",
-      "permissionHint": "ทางลัดทั่วโลกต้องการสิทธิ์การเข้าถึง ไปที่การตั้งค่าระบบ → ความเป็นส่วนตัว → การเข้าถึง และเปิดใช้งาน Memry"
+      "permissionHint": "ทางลัดทั่วโลกต้องการสิทธิ์การเข้าถึง ไปที่การตั้งค่าระบบ → ความเป็นส่วนตัว → การเข้าถึง และเปิดใช้งาน memrynote"
     },
     "toasts": {
       "saveGlobalFailed": "ไม่สามารถบันทึกทางลัดการจับภาพทั่วโลกได้",

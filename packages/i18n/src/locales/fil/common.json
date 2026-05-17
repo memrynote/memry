@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Laktawan ang onboarding",
-      "welcomeToMemry": "Maligayang pagdating sa Memry",
+      "welcomeToMemry": "Maligayang pagdating sa memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Ang iyong personal na base ng kaalaman. Maglaan tayo ng 2 minuto para makapagsimula ka.",
       "getStarted": "Magsimula ",
       "createYourFirstNote": "Lumikha ng iyong unang tala",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "I-drag upang baguhin ang laki · I-double click upang i-reset"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Maligayang pagdating sa Memry",
+      "welcomeToMemry": "Maligayang pagdating sa memrynote",
       "yourPersonalKnowledgeManagementSystem": "Ang iyong sistema ng pamamahala ng personal na kaalaman.",
       "selectAFolderToStoreYourNotesAndTasks": "Pumili ng folder upang iimbak ang iyong mga tala at gawain.",
       "opening": "Binubuksan...",
@@ -341,9 +341,9 @@
     "stop": "Tumigil ka",
     "thinking": "Agent ay nag-iisip",
     "enable": {
-      "title": "Paganahin ang Memry Agent",
-      "description": "Ginagamit ng Memry Agent ang iyong napiling lokal na ahente na CLI upang makipag-chat tungkol sa iyong vault. Ang Claude ay nagpapadala ng mga turn sa Anthropic; Ang Codex ay nagpapadala ng mga turn sa OpenAI.",
-      "remote": "Ine-encrypt ng Memry ang iyong lokal at naka-sync na kasaysayan ng chat, ngunit nangyayari ang hinuha ng modelo sa napiling provider.",
+      "title": "Paganahin ang memrynote Agent",
+      "description": "Ginagamit ng memrynote Agent ang iyong napiling lokal na ahente na CLI upang makipag-chat tungkol sa iyong vault. Ang Claude ay nagpapadala ng mga turn sa Anthropic; Ang Codex ay nagpapadala ng mga turn sa OpenAI.",
+      "remote": "Ine-encrypt ng memrynote ang iyong lokal at naka-sync na kasaysayan ng chat, ngunit nangyayari ang hinuha ng modelo sa napiling provider.",
       "readTools": "Awtomatikong tumatakbo ang mga tool sa pagbabasa.",
       "writeTools": "Ang paggawa at pag-update ng mga tool ay nangangailangan ng pag-apruba.",
       "diff": "Ang mga tool sa pag-update ay nagpapakita ng pagkakaiba o preview.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Kasalukuyang tala",
       "removeAttachment": "Alisin ang {label}",
-      "placeholder": "Tanungin ang Memry ng kahit ano. @ para banggitin ang file",
+      "placeholder": "Tanungin ang memrynote ng kahit ano. @ para banggitin ang file",
       "send": "Ipadala",
       "providerLabel": "Tagapagbigay ng Agent: {provider}",
       "settingsSummary": "{reasoning}",

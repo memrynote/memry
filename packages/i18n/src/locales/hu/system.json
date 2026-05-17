@@ -19,13 +19,13 @@
     "exportCancelled": "Exportálás megszakítva",
     "update": {
       "availableTitle": "Frissítés elérhető",
-      "availableMessage": "Memry Az {version} elérhető.",
+      "availableMessage": "memrynote Az {version} elérhető.",
       "availableDetailFallback": "Töltse le most a frissítést?",
       "buttonDownload": "Letöltés",
       "buttonLater": "Később",
       "readyTitle": "Frissítés kész",
-      "readyMessage": "Memry Az {version} letöltve.",
-      "readyDetailFallback": "A frissítés telepítésének befejezéséhez indítsa újra az Memry programot.",
+      "readyMessage": "memrynote Az {version} letöltve.",
+      "readyDetailFallback": "A frissítés telepítésének befejezéséhez indítsa újra az memrynote programot.",
       "buttonRestartNow": "Indítsa újra most",
       "releaseNotesLabel": "Kiadási megjegyzések:"
     }

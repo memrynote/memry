@@ -61,7 +61,7 @@
     "deviceRevoked": "Acest dispozitiv a fost eliminat din contul dvs.",
     "rateLimited": "Prea multe cereri. Sincronizarea va fi reluată în curând.",
     "cryptoFailure": "Nu s-au criptat sau decriptat datele de sincronizare. Încercați să vă deconectați și să vă reconectați.",
-    "versionIncompatible": "Această versiune de Memry nu mai este acceptată. Vă rugăm să actualizați.",
+    "versionIncompatible": "Această versiune de memrynote nu mai este acceptată. Vă rugăm să actualizați.",
     "storageQuotaExceeded": "Spațiul de stocare de sincronizare este plin. Eliberați spațiu sau actualizați-vă planul.",
     "certificatePinFailed": "Conexiunea securizată a eșuat. Verificați conexiunea la rețea.",
     "unknown": "A apărut o eroare de sincronizare neașteptată. Se va reîncerca automat.",

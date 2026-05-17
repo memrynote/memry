@@ -19,13 +19,13 @@
     "exportCancelled": "Esportazione annullata",
     "update": {
       "availableTitle": "Aggiornamento disponibile",
-      "availableMessage": "Memry {version} è disponibile.",
+      "availableMessage": "memrynote {version} è disponibile.",
       "availableDetailFallback": "Scaricare l'aggiornamento adesso?",
       "buttonDownload": "Scarica",
       "buttonLater": "Più tardi",
       "readyTitle": "Aggiornamento pronto",
-      "readyMessage": "Memry {version} è stato scaricato.",
-      "readyDetailFallback": "Riavvia Memry per completare l'installazione dell'aggiornamento.",
+      "readyMessage": "memrynote {version} è stato scaricato.",
+      "readyDetailFallback": "Riavvia memrynote per completare l'installazione dell'aggiornamento.",
       "buttonRestartNow": "Ricomincia adesso",
       "releaseNotesLabel": "Note sulla versione:"
     }

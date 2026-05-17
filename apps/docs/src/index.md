@@ -1,5 +1,5 @@
 ---
-title: Memry Docs
+title: memrynote Docs
 description: Redirecting to the install guide.
 head:
   - - meta

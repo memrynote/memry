@@ -31,7 +31,7 @@ async function gateOrDeny(gate: WriteToolGate | null, ctx: GateContext): Promise
   if (!gate) {
     throw new AgentToolError(
       'PERMISSION_DENIED',
-      'Write tools require an active Memry Agent conversation with an approval gate.'
+      'Write tools require an active memrynote Agent conversation with an approval gate.'
     )
   }
   if (!ctx.conversationId) {

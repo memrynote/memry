@@ -1,4 +1,4 @@
-# A Tour of Memry
+# A Tour of memrynote
 
 A 60-second lap through the parts of the app you'll use most.
 
@@ -79,16 +79,16 @@ Tasks live alongside notes. Two views — **list** and **kanban**. Group tasks u
 
 ## Keyboard-First
 
-Memry is keyboard-friendly. The full shortcut list is at [Keyboard Shortcuts](/user-guide/keyboard-shortcuts). Highlights:
+memrynote is keyboard-friendly. The full shortcut list is at [Keyboard Shortcuts](/user-guide/keyboard-shortcuts). Highlights:
 
-| Shortcut | Action |
-| --- | --- |
-| <kbd>⌘</kbd>+<kbd>N</kbd> | New note |
-| <kbd>⌘</kbd>+<kbd>F</kbd> | Search / command palette |
-| <kbd>⌘</kbd>+<kbd>,</kbd> | Settings |
-| <kbd>⌘</kbd>+<kbd>B</kbd> | Toggle sidebar |
-| <kbd>⌘</kbd>+<kbd>\\</kbd> | Split right |
-| <kbd>F</kbd> | Hint mode (numeric badges on every clickable thing) |
+| Shortcut                   | Action                                              |
+| -------------------------- | --------------------------------------------------- |
+| <kbd>⌘</kbd>+<kbd>N</kbd>  | New note                                            |
+| <kbd>⌘</kbd>+<kbd>F</kbd>  | Search / command palette                            |
+| <kbd>⌘</kbd>+<kbd>,</kbd>  | Settings                                            |
+| <kbd>⌘</kbd>+<kbd>B</kbd>  | Toggle sidebar                                      |
+| <kbd>⌘</kbd>+<kbd>\\</kbd> | Split right                                         |
+| <kbd>F</kbd>               | Hint mode (numeric badges on every clickable thing) |
 
 Open the in-app shortcuts dialog with <kbd>⌘</kbd>+<kbd>/</kbd> for the live list.
 

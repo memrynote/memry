@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "Lancer à la connexion",
-        "description": "Démarrez Memry lorsque vous vous connectez",
+        "description": "Démarrez memrynote lorsque vous vous connectez",
         "error": "Échec de la mise à jour au démarrage"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "Version installée {version}",
       "availableVersion": "Version disponible {version}",
       "unsupported": "Les versions packagées peuvent vérifier, télécharger et installer les mises à jour à partir des versions GitHub",
-      "available": "Memry {version} est disponible au téléchargement",
+      "available": "memrynote {version} est disponible au téléchargement",
       "downloadingLatest": "Téléchargement de la dernière version",
       "downloadingLatestPercent": "Téléchargement de la dernière version ({percent}%)",
-      "downloaded": "Memry {version} est prêt à être installé",
+      "downloaded": "memrynote {version} est prêt à être installé",
       "upToDate": "Cette installation concerne la dernière version publiée",
       "checking": "Vérification des versions de GitHub pour une version plus récente",
       "idle": "Recherchez les nouvelles versions et installez-les sans quitter l'application",
       "unsupportedToast": "Les mises à jour automatiques sont disponibles uniquement dans les versions packagées",
-      "upToDateToast": "Memry {version} est à jour",
+      "upToDateToast": "memrynote {version} est à jour",
       "actionFailed": "L'action de mise à jour a échoué",
       "actions": {
         "checking": "Vérification...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "Appareil lié avec succès",
       "goBack": "Retourner",
       "waitingTitle": "En attente d'approbation",
-      "waitingDescription": "Ouvrez Memry sur votre autre appareil et approuvez la demande d'association.",
+      "waitingDescription": "Ouvrez memrynote sur votre autre appareil et approuvez la demande d'association.",
       "verificationCode": "Code de vérification",
       "confirmCode": "Confirmez que cela correspond au code sur votre autre appareil"
     }
@@ -778,7 +778,7 @@
     "connect": "Se connecter",
     "googleCalendar": {
       "name": "Google Agenda",
-      "description": "Synchronisation bidirectionnelle pour les événements Memry et les calendriers Google importés.",
+      "description": "Synchronisation bidirectionnelle pour les événements memrynote et les calendriers Google importés.",
       "statuses": {
         "connected": "Connecté",
         "notConnected": "Non connecté",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "Google Agenda",
-        "description": "Synchronisation bidirectionnelle pour les événements, tâches, rappels et calendriers importés Memry"
+        "description": "Synchronisation bidirectionnelle pour les événements, tâches, rappels et calendriers importés memrynote"
       },
       "appleCalendar": {
         "name": "Calendrier Apple",
@@ -963,7 +963,7 @@
       "description": "Capturez une note de n'importe où",
       "permissionNeeded": "Autorisation requise",
       "active": "Actif",
-      "permissionHint": "Les raccourcis globaux nécessitent une autorisation d’accessibilité. Accédez à Paramètres système → Confidentialité → Accessibilité et activez Memry."
+      "permissionHint": "Les raccourcis globaux nécessitent une autorisation d’accessibilité. Accédez à Paramètres système → Confidentialité → Accessibilité et activez memrynote."
     },
     "toasts": {
       "saveGlobalFailed": "Échec de l'enregistrement du raccourci de capture globale",

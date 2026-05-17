@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Spring onboarding over",
-      "welcomeToMemry": "Velkommen til Memry",
+      "welcomeToMemry": "Velkommen til memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Din personlige vidensbase. Lad os bruge 2 minutter på at komme i gang.",
       "getStarted": "Kom godt i gang ",
       "createYourFirstNote": "Opret din første note",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Træk for at ændre størrelse · Dobbeltklik for at nulstille"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Velkommen til Memry",
+      "welcomeToMemry": "Velkommen til memrynote",
       "yourPersonalKnowledgeManagementSystem": "Dit personlige videnstyringssystem.",
       "selectAFolderToStoreYourNotesAndTasks": "Vælg en mappe til at gemme dine noter og opgaver.",
       "opening": "Åbner...",
@@ -341,9 +341,9 @@
     "stop": "Stop",
     "thinking": "Agent tænker",
     "enable": {
-      "title": "Aktiver Memry Agent",
-      "description": "Memry Agent bruger din valgte lokale agent CLI til at chatte om din boks. Claude sender tur til Anthropic; Codex sender vendinger til OpenAI.",
-      "remote": "Memry krypterer din lokale og synkroniserede chathistorik, men modelinferens sker med den valgte udbyder.",
+      "title": "Aktiver memrynote Agent",
+      "description": "memrynote Agent bruger din valgte lokale agent CLI til at chatte om din boks. Claude sender tur til Anthropic; Codex sender vendinger til OpenAI.",
+      "remote": "memrynote krypterer din lokale og synkroniserede chathistorik, men modelinferens sker med den valgte udbyder.",
       "readTools": "Læseværktøjer kører automatisk.",
       "writeTools": "Opret og opdater værktøjer kræver godkendelse.",
       "diff": "Opdateringsværktøjer viser en forskel eller forhåndsvisning.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Aktuel note",
       "removeAttachment": "Fjern {label}",
-      "placeholder": "Spørg Memry om hvad som helst. @ for at nævne en fil",
+      "placeholder": "Spørg memrynote om hvad som helst. @ for at nævne en fil",
       "send": "Sende",
       "providerLabel": "Agent udbyder: {provider}",
       "settingsSummary": "{reasoning}",

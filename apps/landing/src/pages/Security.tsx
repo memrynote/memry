@@ -101,7 +101,7 @@ const SECURITY_SECTIONS: SecuritySection[] = [
     icon: Github,
     title: 'Open source',
     description:
-      'Memry will be fully open source. Audit the code, verify our claims, build on top of it.',
+      'memrynote will be fully open source. Audit the code, verify our claims, build on top of it.',
     details: [
       'Repository coming soon at github.com/memrynote/memry',
       'AGPL-3.0 license',
@@ -173,8 +173,8 @@ export function SecurityPage() {
               <span className="text-terracotta">Period.</span>
             </h1>
             <p className="text-xl text-muted font-sans max-w-2xl mx-auto leading-relaxed">
-              Memry is local-first, end-to-end encrypted, and open source. We built it for people
-              who take ownership of their data seriously.
+              memrynote is local-first, end-to-end encrypted, and open source. We built it for
+              people who take ownership of their data seriously.
             </p>
           </motion.div>
         </Container>

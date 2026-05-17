@@ -384,7 +384,7 @@ export function renderNoteAsHtml(note: NoteExportData, options: RenderOptions = 
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="generator" content="Memry">
+  <meta name="generator" content="memrynote">
   <title>${escapeHtml(note.title)}</title>
   <style>${getEmbeddedStyles()}</style>
 </head>

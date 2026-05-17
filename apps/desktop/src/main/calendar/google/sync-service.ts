@@ -134,8 +134,8 @@ async function ensureMemryCalendarSource(
 
   const discovered = await client.listCalendars()
   const remote =
-    discovered.find((calendar) => calendar.title === 'Memry') ??
-    (await client.createCalendar({ title: 'Memry', timezone: LOCAL_TIMEZONE }))
+    discovered.find((calendar) => calendar.title === 'memrynote') ??
+    (await client.createCalendar({ title: 'memrynote', timezone: LOCAL_TIMEZONE }))
 
   const localId = `google-calendar:${remote.id}`
   const now = getNow()
@@ -188,7 +188,7 @@ function getMemryManagedGoogleSource(
  * inbound sync (isSelected=true). Called from the push resolver whenever we
  * route an event to a calendar that the user picked directly or set as their
  * default — without this, `syncGoogleCalendarNow` never polls that calendar
- * and two-way sync silently breaks for everything outside the Memry-managed
+ * and two-way sync silently breaks for everything outside the memrynote-managed
  * calendar (Codex M2 review finding 2).
  */
 export async function ensureGoogleCalendarSourceSelected(
@@ -345,7 +345,7 @@ async function resolveTargetCalendarId(
 
   // Per-event override from the renderer calendar picker. Register the
   // calendar as a selected source so the inbound poll covers it; without
-  // this, two-way sync silently breaks for anything outside the Memry
+  // this, two-way sync silently breaks for anything outside the memrynote
   // calendar (Codex M2 review finding 2).
   const eventTarget = getEventTargetCalendarId(db, target)
   if (eventTarget) {
@@ -360,7 +360,7 @@ async function resolveTargetCalendarId(
     return defaultTargetCalendarId
   }
 
-  // Final fallback: the auto-created Memry calendar (per the routed account).
+  // Final fallback: the auto-created memrynote calendar (per the routed account).
   const memrySource =
     getMemryManagedGoogleSource(db, accountId) ??
     (await ensureMemryCalendarSource(db, client, accountId))

@@ -19,13 +19,13 @@ The new device never sees your passphrase. The existing device never exposes the
 
 1. Open [Settings → Account](/user-guide/settings#account) → **Devices**
 2. Choose **Link a device**
-3. Memry shows a **QR code** and a short **linking code** (6 digits or letters)
+3. memrynote shows a **QR code** and a short **linking code** (6 digits or letters)
 4. Keep this screen open
 
 ## On the New Device
 
 1. Sign in to the same email
-2. Memry asks how to set up: **Link to an existing vault** vs **Create a new vault**
+2. memrynote asks how to set up: **Link to an existing vault** vs **Create a new vault**
 3. Choose **Link**
 4. Either:
    - **Scan the QR code** with your camera (if available)
@@ -63,7 +63,7 @@ Settings → Account → Devices shows every linked device:
 - Platform
 - Public key fingerprint
 
-When signed in, Memry refreshes this list from the sync server so newly linked or revoked
+When signed in, memrynote refreshes this list from the sync server so newly linked or revoked
 devices appear without waiting for another sync item to pull their keys. If the server is
 unreachable, the local cached device list remains available.
 

@@ -19,13 +19,13 @@
     "exportCancelled": "Экспорт отменен",
     "update": {
       "availableTitle": "Доступно обновление",
-      "availableMessage": "Memry Доступен {version}.",
+      "availableMessage": "memrynote Доступен {version}.",
       "availableDetailFallback": "Загрузить обновление сейчас?",
       "buttonDownload": "Скачать",
       "buttonLater": "Позже",
       "readyTitle": "Обновление готово",
-      "readyMessage": "Memry {version} загружен.",
-      "readyDetailFallback": "Перезапустите Memry, чтобы завершить установку обновления.",
+      "readyMessage": "memrynote {version} загружен.",
+      "readyDetailFallback": "Перезапустите memrynote, чтобы завершить установку обновления.",
       "buttonRestartNow": "Перезагрузить сейчас",
       "releaseNotesLabel": "Примечания к выпуску:"
     }

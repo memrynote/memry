@@ -8,7 +8,7 @@ export function PrivacyPage() {
       <LegalLayout
         eyebrow="Legal · Privacy"
         title="Privacy Policy"
-        intro="Memry is built on a simple promise: your notes belong to you, and we cannot read them."
+        intro="memrynote is built on a simple promise: your notes belong to you, and we cannot read them."
         lastUpdated="May 9, 2026"
       >
         <h2>Summary in 30 seconds</h2>
@@ -30,16 +30,16 @@ export function PrivacyPage() {
 
         <h2>1. What this policy covers</h2>
         <p>
-          This policy describes how Memry handles personal data in the desktop app, the marketing
-          website, and the optional Sync service. It applies to everyone who uses Memry, regardless
-          of country.
+          This policy describes how memrynote handles personal data in the desktop app, the
+          marketing website, and the optional Sync service. It applies to everyone who uses
+          memrynote, regardless of country.
         </p>
 
         <h2>2. The local app keeps your content on your device</h2>
         <p>
-          The Memry desktop application runs entirely on your computer. Your notes, tasks, journal,
-          and files are stored as plain Markdown files in a vault folder you choose. None of that
-          content is sent to us, period.
+          The memrynote desktop application runs entirely on your computer. Your notes, tasks,
+          journal, and files are stored as plain Markdown files in a vault folder you choose. None
+          of that content is sent to us, period.
         </p>
         <p>
           Optional update checks contact our update server, which sees only your IP address and app
@@ -48,10 +48,10 @@ export function PrivacyPage() {
 
         <h2>3. Optional anonymous usage metrics</h2>
         <p>
-          Memry includes an optional, anonymous telemetry stream so we can understand which features
-          get used, where the app crashes, and where it slows down. You can turn it off at any time
-          in <strong>Settings → Privacy → Share Anonymous Usage Metrics</strong>. It is on by
-          default in production builds and off in development builds.
+          memrynote includes an optional, anonymous telemetry stream so we can understand which
+          features get used, where the app crashes, and where it slows down. You can turn it off at
+          any time in <strong>Settings → Privacy → Share Anonymous Usage Metrics</strong>. It is on
+          by default in production builds and off in development builds.
         </p>
         <p>
           Each event is one row from a fixed list — for example <em>app_started</em>,{' '}
@@ -112,7 +112,7 @@ export function PrivacyPage() {
 
         <h2>5. What the website collects</h2>
         <p>
-          Memrynote.com uses minimal, privacy-respecting analytics to understand how people find the
+          memrynote.com uses minimal, privacy-respecting analytics to understand how people find the
           site and which pages are useful. We do not use third-party advertising trackers and do not
           sell visitor data.
         </p>
@@ -142,8 +142,8 @@ export function PrivacyPage() {
 
         <h2>7. Encryption details</h2>
         <p>
-          Memry uses end-to-end encryption based on the libsodium primitives: XChaCha20-Poly1305 for
-          content, Ed25519 for signatures, and Argon2id for password-based key derivation. Your
+          memrynote uses end-to-end encryption based on the libsodium primitives: XChaCha20-Poly1305
+          for content, Ed25519 for signatures, and Argon2id for password-based key derivation. Your
           master key is derived from your password on your device and is never sent to us.
         </p>
         <p>
@@ -154,8 +154,8 @@ export function PrivacyPage() {
 
         <h2>8. Sub-processors</h2>
         <p>
-          We use a small set of third-party services to operate Memry. Each is contractually bound
-          to handle your data only for the purpose listed:
+          We use a small set of third-party services to operate memrynote. Each is contractually
+          bound to handle your data only for the purpose listed:
         </p>
         <ul>
           <li>
@@ -177,7 +177,7 @@ export function PrivacyPage() {
 
         <h2>9. International transfers</h2>
         <p>
-          Memry is a small indie operation. Our infrastructure is global by default — encrypted
+          memrynote is a small indie operation. Our infrastructure is global by default — encrypted
           blobs may be served from data centers near you for performance. Where personal data
           crosses borders, we rely on standard contractual clauses with our sub-processors.
         </p>
@@ -230,7 +230,7 @@ export function PrivacyPage() {
 
         <h2>12. Children</h2>
         <p>
-          Memry is not designed for children under 13 (or under 16 in jurisdictions that require
+          memrynote is not designed for children under 13 (or under 16 in jurisdictions that require
           it). We do not knowingly collect data from children. If you believe a child has signed up,
           email <a href="mailto:privacy@memrynote.com">privacy@memrynote.com</a> and we will delete
           the account.

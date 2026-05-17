@@ -26,7 +26,7 @@ export function FinalCTA() {
             Join the waitlist
           </h2>
           <p className="text-xl text-dark-muted font-sans mb-12 max-w-lg mx-auto leading-relaxed">
-            Be the first to know when Memry is ready.
+            Be the first to know when memrynote is ready.
           </p>
 
           <div className="conic-border rounded-xl overflow-hidden bg-dark-surface max-w-md mx-auto">

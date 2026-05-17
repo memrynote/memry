@@ -180,7 +180,7 @@ function noFollowFlag(): number {
 }
 
 function ownedShimError(path: string): Error {
-  return new Error(`${path} already exists and was not created by Memry`)
+  return new Error(`${path} already exists and was not created by memrynote`)
 }
 
 function readShimFile(path: string): string | null {

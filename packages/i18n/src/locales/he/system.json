@@ -19,13 +19,13 @@
     "exportCancelled": "הייצוא בוטל",
     "update": {
       "availableTitle": "עדכון זמין",
-      "availableMessage": "Memry {version} זמין.",
+      "availableMessage": "memrynote {version} זמין.",
       "availableDetailFallback": "להוריד את העדכון עכשיו?",
       "buttonDownload": "הורד",
       "buttonLater": "מאוחר יותר",
       "readyTitle": "עדכון מוכן",
-      "readyMessage": "Memry {version} הורד.",
-      "readyDetailFallback": "הפעל מחדש את Memry כדי לסיים את התקנת העדכון.",
+      "readyMessage": "memrynote {version} הורד.",
+      "readyDetailFallback": "הפעל מחדש את memrynote כדי לסיים את התקנת העדכון.",
       "buttonRestartNow": "הפעל מחדש עכשיו",
       "releaseNotesLabel": "הערות שחרור:"
     }

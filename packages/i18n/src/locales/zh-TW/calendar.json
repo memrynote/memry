@@ -16,7 +16,7 @@
   "filter": {
     "filter-calendars": "篩選行事曆",
     "sources": "來源",
-    "memry-items": "Memry 項目(複數)",
+    "memry-items": "memrynote 項目(複數)",
     "imported-calendars": "匯入的行事曆",
     "event-types": "事件類型",
     "google-calendars": "Google 行事曆",
@@ -60,27 +60,27 @@
     "target-calendar": "目標日曆",
     "use-default-calendar": "使用預設日曆",
     "use-default-calendar-with-name": "使用預設 ({calendar})",
-    "use-memry-calendar-default": "使用 Memry 日曆（預設）",
+    "use-memry-calendar-default": "使用 memrynote 日曆（預設）",
     "primary-suffix": "主要"
   },
   "delete-dialog": {
     "title": "刪除活動？",
     "local-description": "\"{title}\" 將被永久刪除。此操作無法復原。",
-    "google-bound-description": "\"{title}\" 將從 Memry 和 Google 日曆中移除。此操作無法撤銷。  ",
+    "google-bound-description": "\"{title}\" 將從 memrynote 和 Google 日曆中移除。此操作無法撤銷。  ",
     "context-menu-delete-label": "  \n刪除事件  "
   },
   "promote-dialog": {
     "aria": "  \n編輯外部日曆事件  ",
-    "title": "  \n要在 Memry 中編輯此事件嗎？  ",
-    "body": "  \n編輯此事件將在 Memry 中創建一個連結副本，使更改雙向同步。要繼續嗎？  ",
+    "title": "  \n要在 memrynote 中編輯此事件嗎？  ",
+    "body": "  \n編輯此事件將在 memrynote 中創建一個連結副本，使更改雙向同步。要繼續嗎？  ",
     "do-not-ask-again": "  \n不要再詢問  ",
-    "confirm-label": "  \n在 Memry 中編輯  "
+    "confirm-label": "  \n在 memrynote 中編輯  "
   },
   "onboarding-dialog": {
     "aria": "  \n選擇您的預設 Google 日曆  ",
-    "title": "  \n新建立的 Memry 事件應該使用哪個日曆？  ",
-    "body": "  \n選擇 Memry 預設使用的 Google 日曆。您仍然可以在每個事件中覆蓋此設定。  ",
-    "default-calendar-label": "使用由 Memry 管理的日曆",
+    "title": "  \n新建立的 memrynote 事件應該使用哪個日曆？  ",
+    "body": "  \n選擇 memrynote 預設使用的 Google 日曆。您仍然可以在每個事件中覆蓋此設定。  ",
+    "default-calendar-label": "使用由 memrynote 管理的日曆",
     "skip": "跳過",
     "use-this-calendar": "  \n使用此日曆  "
   },

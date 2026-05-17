@@ -61,7 +61,7 @@
     "deviceRevoked": "Inalis ang device na ito sa iyong account.",
     "rateLimited": "Masyadong maraming kahilingan. Magpapatuloy ang pag-sync sa ilang sandali.",
     "cryptoFailure": "Nabigong i-encrypt o i-decrypt ang data ng pag-sync. Subukang mag-sign out at bumalik.",
-    "versionIncompatible": "Ang bersyon na ito ng Memry ay hindi na suportado. Mangyaring mag-update.",
+    "versionIncompatible": "Ang bersyon na ito ng memrynote ay hindi na suportado. Mangyaring mag-update.",
     "storageQuotaExceeded": "Puno na ang iyong storage sa pag-sync. Magbakante ng espasyo o i-upgrade ang iyong plano.",
     "certificatePinFailed": "Nabigo ang secure na koneksyon. Suriin ang iyong koneksyon sa network.",
     "unknown": "May naganap na hindi inaasahang error sa pag-sync. Awtomatikong susubukan muli.",

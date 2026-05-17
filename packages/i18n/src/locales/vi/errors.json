@@ -61,7 +61,7 @@
     "deviceRevoked": "Thiết bị này đã bị xóa khỏi tài khoản của bạn.",
     "rateLimited": "Quá nhiều yêu cầu. Việc đồng bộ sẽ tiếp tục sau vài lúc.",
     "cryptoFailure": "Không thể mã hóa hoặc giải mã dữ liệu đồng bộ. Thử đăng xuất và đăng nhập lại.",
-    "versionIncompatible": "Phiên bản Memry này không còn được hỗ trợ. Vui lòng cập nhật.",
+    "versionIncompatible": "Phiên bản memrynote này không còn được hỗ trợ. Vui lòng cập nhật.",
     "storageQuotaExceeded": "Bộ nhớ đồng bộ của bạn đã đầy. Giải phóng không gian hoặc nâng cấp gói.",
     "certificatePinFailed": "Kết nối bảo mật thất bại. Kiểm tra kết nối mạng của bạn.",
     "unknown": "Đã xảy ra lỗi đồng bộ không mong muốn. Sẽ thử lại tự động.",

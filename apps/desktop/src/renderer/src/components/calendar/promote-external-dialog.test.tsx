@@ -6,16 +6,16 @@ describe('PromoteExternalDialog (M2)', () => {
   it('#given open #when rendered #then shows the explanatory copy and primary button', () => {
     render(<PromoteExternalDialog open onOpenChange={vi.fn()} onConfirm={vi.fn()} />)
     expect(
-      screen.getByText(/Editing this event will create a linked copy in Memry/)
+      screen.getByText(/Editing this event will create a linked copy in memrynote/)
     ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Edit in Memry' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit in memrynote' })).toBeInTheDocument()
   })
 
   it('#given user clicks confirm without ticking checkbox #when invoked #then onConfirm receives dontAskAgain=false', () => {
     const onConfirm = vi.fn()
     render(<PromoteExternalDialog open onOpenChange={vi.fn()} onConfirm={onConfirm} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit in Memry' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit in memrynote' }))
     expect(onConfirm).toHaveBeenCalledWith(false)
   })
 
@@ -24,7 +24,7 @@ describe('PromoteExternalDialog (M2)', () => {
     render(<PromoteExternalDialog open onOpenChange={vi.fn()} onConfirm={onConfirm} />)
 
     fireEvent.click(screen.getByLabelText("Don't ask again"))
-    fireEvent.click(screen.getByRole('button', { name: 'Edit in Memry' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit in memrynote' }))
     expect(onConfirm).toHaveBeenCalledWith(true)
   })
 

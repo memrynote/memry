@@ -60,7 +60,7 @@ Internal tabs are not filters in the saveable sense — they're shortcuts for th
 
 ## Switching
 
-Use the view toggle in the tasks toolbar. Memry remembers the last-used view per scope (per project, all-tasks, etc.).
+Use the view toggle in the tasks toolbar. memrynote remembers the last-used view per scope (per project, all-tasks, etc.).
 
 ## Project View vs All Tasks
 

@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "Spustiť pri prihlásení",
-        "description": "Spustiť Memry po prihlásení",
+        "description": "Spustiť memrynote po prihlásení",
         "error": "Nepodarilo sa aktualizovať spustenie pri štarte"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "Inštalovaná verzia {version}",
       "availableVersion": "Dostupná verzia {version}",
       "unsupported": "Zabalené zostavy môžu kontrolovať, sťahovať a inštalovať aktualizácie z GitHub Releases",
-      "available": "Memry {version} je dostupný na stiahnutie",
+      "available": "memrynote {version} je dostupný na stiahnutie",
       "downloadingLatest": "Sťahovanie najnovšieho vydania",
       "downloadingLatestPercent": "Sťahovanie najnovšieho vydania ({percent}%)",
-      "downloaded": "Memry {version} je pripravený na inštaláciu",
+      "downloaded": "memrynote {version} je pripravený na inštaláciu",
       "upToDate": "Táto inštalácia je na najnovšom publikovanom vydaní",
       "checking": "Kontrola GitHub Releases pre novšiu verziu",
       "idle": "Skontrolujte nové vydania a nainštalujte ich bez opustenia aplikácie",
       "unsupportedToast": "Automatické aktualizácie sú dostupné iba v balíkových vydaniach",
-      "upToDateToast": "Memry {version} je aktuálny",
+      "upToDateToast": "memrynote {version} je aktuálny",
       "actionFailed": "Akcia aktualizácie zlyhala",
       "actions": {
         "checking": "Kontrola...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "Zariadenie bolo úspešne prepojené",
       "goBack": "Späť",
       "waitingTitle": "Čaká sa na schválenie",
-      "waitingDescription": "Otvorte Memry na vašom inom zariadení a schváľte žiadosť o prepojenie.",
+      "waitingDescription": "Otvorte memrynote na vašom inom zariadení a schváľte žiadosť o prepojenie.",
       "verificationCode": "Overovací kód",
       "confirmCode": "Potvrďte, že sa zhoduje s kódom na vašom inom zariadení"
     }
@@ -778,7 +778,7 @@
     "connect": "Pripojiť",
     "googleCalendar": {
       "name": "Google Kalendár",
-      "description": "Obojsmerná synchronizácia udalostí Memry a importovaných Google kalendárov.",
+      "description": "Obojsmerná synchronizácia udalostí memrynote a importovaných Google kalendárov.",
       "statuses": {
         "connected": "Pripojené",
         "notConnected": "Nie je pripojené",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "Google Kalendár",
-        "description": "Dvojcestná synchronizácia udalostí, úloh, pripomienok a importovaných kalendárov Memry"
+        "description": "Dvojcestná synchronizácia udalostí, úloh, pripomienok a importovaných kalendárov memrynote"
       },
       "appleCalendar": {
         "name": "Apple Kalendár",
@@ -963,7 +963,7 @@
       "description": "Zachytiť poznámku odkiaľkoľvek",
       "permissionNeeded": "Potrebné povolenie",
       "active": "Aktívne",
-      "permissionHint": "Globálne skratky vyžadujú povolenie prístupnosti. Prejdite do Systémových nastavení → Ochrana súkromia → Prístupnosť a povolte Memry."
+      "permissionHint": "Globálne skratky vyžadujú povolenie prístupnosti. Prejdite do Systémových nastavení → Ochrana súkromia → Prístupnosť a povolte memrynote."
     },
     "toasts": {
       "saveGlobalFailed": "Nepodarilo sa uložiť globálnu skratku zachytenia",

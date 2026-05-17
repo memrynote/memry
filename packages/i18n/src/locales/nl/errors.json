@@ -61,7 +61,7 @@
     "deviceRevoked": "Dit apparaat is uit uw account verwijderd.",
     "rateLimited": "Te veel verzoeken. Het synchroniseren wordt binnenkort hervat.",
     "cryptoFailure": "Kan de synchronisatiegegevens niet coderen of decoderen. Probeer uit en weer in te loggen.",
-    "versionIncompatible": "Deze versie van Memry wordt niet langer ondersteund. Update alstublieft.",
+    "versionIncompatible": "Deze versie van memrynote wordt niet langer ondersteund. Update alstublieft.",
     "storageQuotaExceeded": "Uw synchronisatieopslag is vol. Maak ruimte vrij of upgrade uw abonnement.",
     "certificatePinFailed": "Beveiligde verbinding mislukt. Controleer uw netwerkverbinding.",
     "unknown": "Er is een onverwachte synchronisatiefout opgetreden. Zal het automatisch opnieuw proberen.",

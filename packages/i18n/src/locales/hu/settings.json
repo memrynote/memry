@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "Indítsa el a Bejelentkezésnél",
-        "description": "Indítsa el az Memry programot, amikor bejelentkezik",
+        "description": "Indítsa el az memrynote programot, amikor bejelentkezik",
         "error": "Nem sikerült frissíteni a rendszerindításkor"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "Telepített verzió: {version}",
       "availableVersion": "Elérhető verzió: {version}",
       "unsupported": "A csomagolt buildek ellenőrizhetik, letölthetik és telepíthetik a GitHub-kiadásokból származó frissítéseket",
-      "available": "Memry Az {version} letölthető",
+      "available": "memrynote Az {version} letölthető",
       "downloadingLatest": "A legújabb kiadás letöltése",
       "downloadingLatestPercent": "A legújabb kiadás letöltése ({percent}%)",
-      "downloaded": "Memry Az {version} telepítésre kész",
+      "downloaded": "memrynote Az {version} telepítésre kész",
       "upToDate": "Ez a telepítés a legújabb közzétett kiadáson található",
       "checking": "A GitHub-kiadások újabb verziójának ellenőrzése",
       "idle": "Keressen új kiadásokat, és telepítse azokat az alkalmazás elhagyása nélkül",
       "unsupportedToast": "Az automatikus frissítések csak csomagolt kiadásokban érhetők el",
-      "upToDateToast": "Memry Az {version} naprakész",
+      "upToDateToast": "memrynote Az {version} naprakész",
       "actionFailed": "A frissítési művelet nem sikerült",
       "actions": {
         "checking": "Ellenőrzés...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "Az eszköz sikeresen összekapcsolva",
       "goBack": "Menj vissza",
       "waitingTitle": "Jóváhagyásra vár",
-      "waitingDescription": "Nyissa meg az Memry alkalmazást másik eszközén, és hagyja jóvá az összekapcsolási kérelmet.",
+      "waitingDescription": "Nyissa meg az memrynote alkalmazást másik eszközén, és hagyja jóvá az összekapcsolási kérelmet.",
       "verificationCode": "Ellenőrző kód",
       "confirmCode": "Győződjön meg arról, hogy ez megegyezik a másik eszközén lévő kóddal"
     }
@@ -778,7 +778,7 @@
     "connect": "Csatlakozás",
     "googleCalendar": {
       "name": "Google Naptár",
-      "description": "Kétirányú szinkronizálás az Memry eseményekhez és az importált Google naptárokhoz.",
+      "description": "Kétirányú szinkronizálás az memrynote eseményekhez és az importált Google naptárokhoz.",
       "statuses": {
         "connected": "Csatlakozva",
         "notConnected": "Nincs csatlakoztatva",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "Google Naptár",
-        "description": "Kétirányú szinkronizálás az Memry eseményekhez, feladatokhoz, emlékeztetőkhöz és importált naptárokhoz"
+        "description": "Kétirányú szinkronizálás az memrynote eseményekhez, feladatokhoz, emlékeztetőkhöz és importált naptárokhoz"
       },
       "appleCalendar": {
         "name": "Apple naptár",
@@ -963,7 +963,7 @@
       "description": "Jegyzet rögzítése bárhonnan",
       "permissionNeeded": "Engedély szükséges",
       "active": "Aktív",
-      "permissionHint": "A globális parancsikonokhoz kisegítő lehetőségekre van szükség. Lépjen a Rendszerbeállítások → Adatvédelem → Kisegítő lehetőségek menüpontra, és engedélyezze az Memry-et."
+      "permissionHint": "A globális parancsikonokhoz kisegítő lehetőségekre van szükség. Lépjen a Rendszerbeállítások → Adatvédelem → Kisegítő lehetőségek menüpontra, és engedélyezze az memrynote-et."
     },
     "toasts": {
       "saveGlobalFailed": "Nem sikerült menteni a globális rögzítési parancsikont",

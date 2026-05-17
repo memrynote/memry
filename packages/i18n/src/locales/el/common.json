@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Παράλειψη ενσωμάτωσης",
-      "welcomeToMemry": "Καλώς ήρθατε στο Memry",
+      "welcomeToMemry": "Καλώς ήρθατε στο memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Η προσωπική σας βάση γνώσεων. Ας αφιερώσουμε 2 λεπτά για να ξεκινήσετε.",
       "getStarted": "Ξεκινήστε ",
       "createYourFirstNote": "Δημιουργήστε την πρώτη σας σημείωση",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Σύρετε για αλλαγή μεγέθους · Κάντε διπλό κλικ για επαναφορά"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Καλώς ήρθατε στο Memry",
+      "welcomeToMemry": "Καλώς ήρθατε στο memrynote",
       "yourPersonalKnowledgeManagementSystem": "Το προσωπικό σας σύστημα διαχείρισης γνώσεων.",
       "selectAFolderToStoreYourNotesAndTasks": "Επιλέξτε ένα φάκελο για να αποθηκεύσετε τις σημειώσεις και τις εργασίες σας.",
       "opening": "Άνοιγμα...",
@@ -341,9 +341,9 @@
     "stop": "Σταματήστε",
     "thinking": "Το Agent σκέφτεται",
     "enable": {
-      "title": "Ενεργοποίηση Memry Agent",
-      "description": "Το Memry Agent χρησιμοποιεί τον επιλεγμένο τοπικό σας αντιπρόσωπο CLI για να συνομιλήσει σχετικά με το θησαυροφυλάκιό σας. Το Claude στέλνει στροφές στο Anthropic. Το Codex στέλνει στροφές στο OpenAI.",
-      "remote": "Το Memry κρυπτογραφεί το τοπικό και το συγχρονισμένο ιστορικό συνομιλιών σας, αλλά το συμπέρασμα μοντέλου γίνεται με τον επιλεγμένο πάροχο.",
+      "title": "Ενεργοποίηση memrynote Agent",
+      "description": "Το memrynote Agent χρησιμοποιεί τον επιλεγμένο τοπικό σας αντιπρόσωπο CLI για να συνομιλήσει σχετικά με το θησαυροφυλάκιό σας. Το Claude στέλνει στροφές στο Anthropic. Το Codex στέλνει στροφές στο OpenAI.",
+      "remote": "Το memrynote κρυπτογραφεί το τοπικό και το συγχρονισμένο ιστορικό συνομιλιών σας, αλλά το συμπέρασμα μοντέλου γίνεται με τον επιλεγμένο πάροχο.",
       "readTools": "Τα εργαλεία ανάγνωσης εκτελούνται αυτόματα.",
       "writeTools": "Τα εργαλεία δημιουργίας και ενημέρωσης απαιτούν έγκριση.",
       "diff": "Τα εργαλεία ενημέρωσης εμφανίζουν διαφορά ή προεπισκόπηση.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Τρέχουσα σημείωση",
       "removeAttachment": "Κατάργηση {label}",
-      "placeholder": "Ρωτήστε το Memry οτιδήποτε. @ για αναφορά αρχείου",
+      "placeholder": "Ρωτήστε το memrynote οτιδήποτε. @ για αναφορά αρχείου",
       "send": "Αποστολή",
       "providerLabel": "Agent πάροχος: {provider}",
       "settingsSummary": "{reasoning}",

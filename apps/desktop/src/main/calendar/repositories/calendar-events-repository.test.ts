@@ -61,7 +61,7 @@ describe('calendarEvents.targetCalendarId (M2)', () => {
   })
 
   it('updates targetCalendarId when upsertCalendarEvent re-targets an existing row', () => {
-    // #given — event initially targets the Memry-managed calendar
+    // #given — event initially targets the memrynote-managed calendar
     upsertCalendarEvent(dataDb, {
       id: 'event-retarget',
       title: 'Retargetable event',
@@ -211,7 +211,7 @@ describe('calendar storage foundation', () => {
     dbResult.close()
   })
 
-  it('stores, updates, and archives clocked Memry calendar events', () => {
+  it('stores, updates, and archives clocked memrynote calendar events', () => {
     expect(() =>
       db.run(sql`
         INSERT INTO calendar_events (
@@ -453,7 +453,7 @@ describe('calendar storage foundation', () => {
     })
   })
 
-  it('stores sync bindings for Memry events, tasks, reminders, and inbox snoozes', () => {
+  it('stores sync bindings for memrynote events, tasks, reminders, and inbox snoozes', () => {
     const bindingRows = [
       ['binding-event-1', 'event', 'event-1', 'google', 'memry-calendar', 'remote-event-1'],
       ['binding-task-1', 'task', 'task-1', 'google', 'memry-calendar', 'remote-task-1'],

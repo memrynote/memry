@@ -61,7 +61,7 @@
     "deviceRevoked": "Ezt az eszközt eltávolítottuk a fiókjából.",
     "rateLimited": "Túl sok kérés. A szinkronizálás hamarosan folytatódik.",
     "cryptoFailure": "Nem sikerült titkosítani vagy visszafejteni a szinkronizálási adatokat. Próbáljon meg kijelentkezni, majd újra bejelentkezni.",
-    "versionIncompatible": "Az Memry ezen verziója már nem támogatott. Kérjük, frissítse.",
+    "versionIncompatible": "Az memrynote ezen verziója már nem támogatott. Kérjük, frissítse.",
     "storageQuotaExceeded": "A szinkronizálási tárhely megtelt. Szabadítson fel helyet, vagy frissítse tervét.",
     "certificatePinFailed": "A biztonságos kapcsolat nem sikerült. Ellenőrizze a hálózati kapcsolatot.",
     "unknown": "Váratlan szinkronizálási hiba történt. Automatikusan újra próbálkozik.",

@@ -132,7 +132,7 @@ describe('createGooglePushRuntime (Task 11 — lifecycle wiring)', () => {
       })
     })
 
-    it('skips Memry-managed sources (we never webhook our own calendar)', async () => {
+    it('skips memrynote-managed sources (we never webhook our own calendar)', async () => {
       // #given
       const manager = buildManagerMock()
       const runtime = createGooglePushRuntime(manager)

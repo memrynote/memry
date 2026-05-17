@@ -13,7 +13,7 @@ const baseProps = {
     projectId: 'p1',
     priority: 0 as 0 | 1 | 2 | 3 | 4
   },
-  projectName: 'Memry',
+  projectName: 'memrynote',
   projectColor: '#6366F1',
   tags: [] as Tag[],
   repeatSummary: null,
@@ -26,7 +26,7 @@ describe('CalendarTaskPopoverMeta', () => {
   it('renders due row + project always', () => {
     render(<CalendarTaskPopoverMeta {...baseProps} />)
     expect(screen.getByText(/Tomorrow/)).toBeInTheDocument()
-    expect(screen.getByText('Memry')).toBeInTheDocument()
+    expect(screen.getByText('memrynote')).toBeInTheDocument()
   })
 
   it('hides recurrence when no summary', () => {
@@ -100,7 +100,7 @@ describe('CalendarTaskPopoverMeta', () => {
     expect(screen.getByTestId('project-color-swatch')).toHaveStyle({
       backgroundColor: '#6366F1'
     })
-    expect(screen.getByText('Memry')).toHaveStyle({ color: '#6366F1' })
+    expect(screen.getByText('memrynote')).toHaveStyle({ color: '#6366F1' })
   })
 
   it('invokes onTagClick with the clicked tag', async () => {

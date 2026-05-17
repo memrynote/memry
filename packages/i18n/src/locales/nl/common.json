@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Onboarding overslaan",
-      "welcomeToMemry": "Welkom bij Memry",
+      "welcomeToMemry": "Welkom bij memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Jouw persoonlijke kennisbank. Laten we twee minuten de tijd nemen om u op weg te helpen.",
       "getStarted": "Ga aan de slag ",
       "createYourFirstNote": "Maak uw eerste notitie",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Sleep om het formaat te wijzigen · Dubbelklik om te resetten"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Welkom bij Memry",
+      "welcomeToMemry": "Welkom bij memrynote",
       "yourPersonalKnowledgeManagementSystem": "Uw persoonlijke kennismanagementsysteem.",
       "selectAFolderToStoreYourNotesAndTasks": "Selecteer een map om uw notities en taken op te slaan.",
       "opening": "Openen...",
@@ -341,9 +341,9 @@
     "stop": "Stoppen",
     "thinking": "Agent denkt na",
     "enable": {
-      "title": "Schakel Memry Agent in",
-      "description": "Memry Agent gebruikt uw geselecteerde lokale agent CLI om over uw kluis te chatten. Claude stuurt beurten naar Anthropic; Codex stuurt beurten naar OpenAI.",
-      "remote": "Memry codeert uw lokale en gesynchroniseerde chatgeschiedenis, maar modelinferentie vindt plaats bij de geselecteerde provider.",
+      "title": "Schakel memrynote Agent in",
+      "description": "memrynote Agent gebruikt uw geselecteerde lokale agent CLI om over uw kluis te chatten. Claude stuurt beurten naar Anthropic; Codex stuurt beurten naar OpenAI.",
+      "remote": "memrynote codeert uw lokale en gesynchroniseerde chatgeschiedenis, maar modelinferentie vindt plaats bij de geselecteerde provider.",
       "readTools": "Leestools worden automatisch uitgevoerd.",
       "writeTools": "Voor het maken en bijwerken van tools is goedkeuring vereist.",
       "diff": "Updatetools tonen een verschil of voorbeeld.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Huidige opmerking",
       "removeAttachment": "{label} verwijderen",
-      "placeholder": "Vraag Memry alles. @ om een bestand te vermelden",
+      "placeholder": "Vraag memrynote alles. @ om een bestand te vermelden",
       "send": "Verzenden",
       "providerLabel": "Agent-aanbieder: {provider}",
       "settingsSummary": "{reasoning}",

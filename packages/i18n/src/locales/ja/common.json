@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "オンボーディングをスキップ",
-      "welcomeToMemry": "Memry へようこそ",
+      "welcomeToMemry": "memrynote へようこそ",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "あなた個人の知識ベース。始めましょう。2 分ほどかかります。",
       "getStarted": "始めましょう ",
       "createYourFirstNote": "最初のメモを作成する",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "ドラッグしてサイズを変更します。ダブルクリックしてリセットします。"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Memry へようこそ",
+      "welcomeToMemry": "memrynote へようこそ",
       "yourPersonalKnowledgeManagementSystem": "個人のナレッジ マネジメント システム。",
       "selectAFolderToStoreYourNotesAndTasks": "メモとタスクを保存するフォルダーを選択します。",
       "opening": "オープニング...",
@@ -341,9 +341,9 @@
     "stop": "停止",
     "thinking": "Agent は考えています",
     "enable": {
-      "title": "Memry Agent を有効にする",
-      "description": "Memry Agent は、選択したローカル エージェント CLI を使用して、ボールトについてチャットします。 Claude は Anthropic にターンを送信します。 Codex は OpenAI にターンを送ります。",
-      "remote": "Memry はローカルおよび同期されたチャット履歴を暗号化しますが、モデル推論は選択したプロバイダーで行われます。",
+      "title": "memrynote Agent を有効にする",
+      "description": "memrynote Agent は、選択したローカル エージェント CLI を使用して、ボールトについてチャットします。 Claude は Anthropic にターンを送信します。 Codex は OpenAI にターンを送ります。",
+      "remote": "memrynote はローカルおよび同期されたチャット履歴を暗号化しますが、モデル推論は選択したプロバイダーで行われます。",
       "readTools": "読み取りツールは自動的に実行されます。",
       "writeTools": "ツールの作成および更新には承認が必要です。",
       "diff": "更新ツールには差分またはプレビューが表示されます。",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "現在のメモ",
       "removeAttachment": "{label} を削除します",
-      "placeholder": "Memryに何でも聞いてください。@でファイルをメンション",
+      "placeholder": "memrynoteに何でも聞いてください。@でファイルをメンション",
       "send": "送信",
       "providerLabel": "Agent プロバイダ: {provider}",
       "settingsSummary": "{reasoning}",

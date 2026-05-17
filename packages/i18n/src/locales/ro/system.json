@@ -19,13 +19,13 @@
     "exportCancelled": "Export anulat",
     "update": {
       "availableTitle": "Actualizare disponibilă",
-      "availableMessage": "Memry {version} este disponibil.",
+      "availableMessage": "memrynote {version} este disponibil.",
       "availableDetailFallback": "Descărcați actualizarea acum?",
       "buttonDownload": "Descărcați",
       "buttonLater": "mai târziu",
       "readyTitle": "Actualizare gata",
-      "readyMessage": "Memry {version} a fost descărcat.",
-      "readyDetailFallback": "Reporniți Memry pentru a finaliza instalarea actualizării.",
+      "readyMessage": "memrynote {version} a fost descărcat.",
+      "readyDetailFallback": "Reporniți memrynote pentru a finaliza instalarea actualizării.",
       "buttonRestartNow": "Reporniți acum",
       "releaseNotesLabel": "Note de lansare:"
     }

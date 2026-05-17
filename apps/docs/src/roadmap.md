@@ -1,6 +1,6 @@
 # Roadmap
 
-Memry is moving toward a first public release. This page tracks direction, not a release
+memrynote is moving toward a first public release. This page tracks direction, not a release
 promise.
 
 ## Near Term

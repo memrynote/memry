@@ -86,7 +86,7 @@ const createTask = (overrides: Partial<Task> = {}): Task => ({
 })
 
 describe('KanbanCardContent', () => {
-  const project = createProject({ name: 'Memry' })
+  const project = createProject({ name: 'memrynote' })
 
   beforeEach(() => {
     mocks.dragState.lastDroppedId = null
@@ -103,7 +103,7 @@ describe('KanbanCardContent', () => {
       render(<KanbanCardContent task={task} project={project} allTasks={[task]} />)
 
       // #then
-      expect(screen.getByText('Memry')).toBeInTheDocument()
+      expect(screen.getByText('memrynote')).toBeInTheDocument()
     })
 
     it('hides project badge when showProjectBadge is false', () => {
@@ -121,7 +121,7 @@ describe('KanbanCardContent', () => {
       )
 
       // #then
-      expect(screen.queryByText('Memry')).not.toBeInTheDocument()
+      expect(screen.queryByText('memrynote')).not.toBeInTheDocument()
     })
 
     it('shows project badge when showProjectBadge is true', () => {
@@ -139,7 +139,7 @@ describe('KanbanCardContent', () => {
       )
 
       // #then
-      expect(screen.getByText('Memry')).toBeInTheDocument()
+      expect(screen.getByText('memrynote')).toBeInTheDocument()
     })
   })
 

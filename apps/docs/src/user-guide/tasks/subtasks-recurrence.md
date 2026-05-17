@@ -10,11 +10,11 @@ Tasks can have multiple levels of subtasks. Each parent shows a progress bar and
 
 ### Adding Subtasks
 
-| How | Where |
-| --- | --- |
-| Inline **+** on a parent row | List or kanban view |
-| Indent during quick-add | Quick-add input |
-| Drag a task onto a parent | List or kanban (re-parent) |
+| How                          | Where                      |
+| ---------------------------- | -------------------------- |
+| Inline **+** on a parent row | List or kanban view        |
+| Indent during quick-add      | Quick-add input            |
+| Drag a task onto a parent    | List or kanban (re-parent) |
 
 ### Drag-Drop Re-Parenting
 
@@ -34,7 +34,7 @@ They don't inherit anything from the parent. This is intentional — many real w
 
 ### Completion Rules
 
-Marking a parent done **does not** auto-complete subtasks. You decide; Memry doesn't.
+Marking a parent done **does not** auto-complete subtasks. You decide; memrynote doesn't.
 
 If you want strict cascade behavior, use bulk-complete from [Bulk Actions](/user-guide/tasks/bulk-actions).
 
@@ -53,7 +53,7 @@ Set a `repeat count` to cap the number of occurrences (e.g. "weekly for 6 weeks"
 
 ### How Completion Works
 
-When you mark a recurring task done, Memry generates the **next occurrence** based on the rule and the current date.
+When you mark a recurring task done, memrynote generates the **next occurrence** based on the rule and the current date.
 
 The completed instance moves to the Completed view; the next instance appears in the active list.
 
