@@ -233,8 +233,11 @@ export function RoadmapPage() {
             className="space-y-10"
           >
             {LAUNCHED_GROUPS.map((group) => (
-              <div key={group.period}>
-                <h3 className="font-mono-accent text-xs uppercase tracking-[0.18em] text-muted mb-3">
+              <div
+                key={group.period}
+                className="grid grid-cols-1 gap-3 md:grid-cols-[140px_1fr] md:gap-10"
+              >
+                <h3 className="font-mono-accent text-xs uppercase tracking-[0.18em] text-muted md:pt-5">
                   {group.period}
                 </h3>
                 <ul className="border-t border-border/60">
