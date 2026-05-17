@@ -33,6 +33,42 @@ export const PAGE_META: Record<string, PageMeta> = {
       'A file-first, markdown-native notes app. Wiki-links, backlinks, 8 property types, version history. Plain .md files in a folder you own, local-first.',
     path: '/features/notes'
   },
+  inbox: {
+    title: 'Inbox — Memry',
+    description:
+      'A contemplative space for processing what comes in. Quick capture, voice memos, web clips, PDF extraction, and AI-powered filing — all on your device.',
+    path: '/features/inbox'
+  },
+  journal: {
+    title: 'Journal — Memry',
+    description:
+      'A reflective daily writing ritual. Day context sidebar, activity heatmap, time-based greetings, monthly stats, and templates. Reflect. Daily.',
+    path: '/features/journal'
+  },
+  tasks: {
+    title: 'Tasks — Memry',
+    description:
+      'A multi-dimensional task system. Projects, custom statuses, subtasks, recurring schedules, Kanban / Calendar / List views, smart filters. From thought to done.',
+    path: '/features/tasks'
+  },
+  calendar: {
+    title: 'Calendar — Memry',
+    description:
+      'The calendar view that knows about your tasks, deadlines, and journal entries. Drag-drop rescheduling, due and start dates, day overviews — all from your local vault.',
+    path: '/features/calendar'
+  },
+  aiAgent: {
+    title: 'AI Agent — Memry (Coming soon)',
+    description:
+      'Chat with your second brain. Local-first, BYOK, MCP-native. Approval-gated writes, conversation-level provider settings, your vault never leaves your device with local models.',
+    path: '/features/ai-agent'
+  },
+  downloadDesktop: {
+    title: 'Download Memry for Desktop — macOS, Windows, Linux',
+    description:
+      'Download Memry — a local-first PKM for macOS, Windows, and Linux. Plain Markdown vault, end-to-end encrypted sync, open source. Free forever for the local app.',
+    path: '/download/desktop'
+  },
   useCases: {
     title: 'Use Cases — Memry',
     description:

@@ -65,14 +65,14 @@ export const FEATURE_NAV_ITEMS: readonly LandingDropdownItem[] = [
   {
     label: 'Inbox',
     description: 'Capture links, files, voice',
-    href: '/features',
+    href: '/features/inbox',
     icon: InboxIcon,
     iconType: 'hugeicon'
   },
   {
     label: 'Journal',
     description: 'Daily writing with context',
-    href: '/features',
+    href: '/features/journal',
     icon: Book02Icon,
     iconType: 'hugeicon'
   },
@@ -86,21 +86,21 @@ export const FEATURE_NAV_ITEMS: readonly LandingDropdownItem[] = [
   {
     label: 'Tasks',
     description: 'Projects, kanban, recurring work',
-    href: '/features',
+    href: '/features/tasks',
     icon: CheckmarkCircle04Icon,
     iconType: 'hugeicon'
   },
   {
     label: 'Calendar',
     description: 'Schedule, deadlines, day view',
-    href: '/features',
+    href: '/features/calendar',
     icon: Calendar01Icon,
     iconType: 'hugeicon'
   },
   {
     label: 'AI Agent',
     description: 'Chat with your local vault',
-    href: '/features',
+    href: '/features/ai-agent',
     icon: AiBrain03Icon,
     iconType: 'hugeicon'
   }
@@ -124,7 +124,7 @@ export const DOWNLOAD_NAV_ITEMS: readonly LandingDropdownItem[] = [
   {
     label: 'Memry for Desktop',
     description: 'macOS, Windows, and Linux',
-    href: GITHUB_RELEASES_URL,
+    href: '/download/desktop',
     icon: Monitor
   },
   {
@@ -188,7 +188,7 @@ export const FEATURES = [
     description:
       'A space for processing incoming information. Local AI clustering detects related items and suggests bulk actions — nothing leaves your device.',
     highlights: ['AI-powered clustering', 'Quick capture', 'Snooze & file', 'Bulk actions'],
-    screenshot: '/placeholders/feature-inbox.png'
+    screenshot: '/screenshots/inbox.png'
   },
   {
     id: 'journal',
@@ -198,7 +198,7 @@ export const FEATURES = [
     description:
       'A premium, reflective daily writing experience. Large writing area with dramatic date displays, time-based greetings, and day context showing your schedule and tasks.',
     highlights: ['Day context sidebar', 'Time-based greetings', 'Templates', 'Beautiful writing'],
-    screenshot: '/placeholders/feature-journal.png'
+    screenshot: '/screenshots/journal.png'
   },
   {
     id: 'notes',
@@ -208,7 +208,7 @@ export const FEATURES = [
     description:
       'A file-first, markdown-based knowledge base with rich-text capabilities. Wiki-links connect your thoughts, and backlinks show you where ideas are referenced.',
     highlights: ['[[Wiki links]]', 'Backlinks', '8 property types', 'Version history'],
-    screenshot: '/placeholders/feature-notes.png'
+    screenshot: '/screenshots/notes.png'
   },
   {
     id: 'tasks',
@@ -218,7 +218,17 @@ export const FEATURES = [
     description:
       'A multi-dimensional task management system. Toggle between List, Kanban, and Calendar views. Organize tasks into projects with custom statuses and recurring schedules.',
     highlights: ['Kanban/Calendar/List', 'Subtasks', 'Recurring tasks', 'Smart filters'],
-    screenshot: '/placeholders/feature-tasks.png'
+    screenshot: '/screenshots/tasks.png'
+  },
+  {
+    id: 'calendar',
+    icon: Calendar,
+    title: 'Calendar',
+    tagline: 'Your time, all in one place.',
+    description:
+      'The calendar that knows about your tasks, deadlines, and journal entries. Drag to reschedule, plot anything by date, and see your week in one glance.',
+    highlights: ['Week view', 'Day overview', 'Drag to reschedule', 'Start + due dates'],
+    screenshot: '/screenshots/calendar.png'
   }
 ] as const
 
@@ -968,7 +978,7 @@ export const FLOW_STEPS = [
     title: 'Inbox',
     tagline: 'Capture first, organize later.',
     competitorLabel: 'Only in',
-    competitors: [{ name: 'MemryNote', logo: '/competitors/memry.png' }]
+    competitors: [{ name: 'Memry', logo: '/favicon.svg' }]
   },
   {
     id: 'journal',
