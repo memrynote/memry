@@ -121,6 +121,18 @@ New code must use logical properties (`ms-*`, `pe-*`, `start-*`, `text-start`, `
 
 The staged renderer guard scans whole staged renderer files, not just new hunks. If you touch a file that still has physical direction classes, convert those nearby classes to logical equivalents before committing.
 
+## Security Scan Patterns
+
+GitHub code scanning and the local staged-secret hook are intentionally conservative. When fixing or adding security-sensitive code:
+
+- Compare URL hosts through `new URL(...).hostname` or a DOM anchor fallback, not `string.includes()`.
+- Write generated files and vault payloads through exclusive temporary files plus `rename`, not predictable temp paths.
+- Use `mkdtemp` for tests that need temporary directories.
+- Keep log output sanitized. Do not print signing paths, API responses with headers, or raw error objects that may include request data.
+- Invoke package-manager CLIs through a resolved Node/Corepack entry point instead of relying on `PATH`.
+- For generated TypeScript, prefer data tables plus runtime assembly over interpolating dynamic keys into code snippets.
+- In fixtures, avoid object fields named `token`, `secret`, or `apiKey` when the value is runtime data. Use a neutral field name and keep the real header name only at the request boundary.
+
 ## Pre-Production Database
 
 memrynote is pre-production and the DB schema is **resettable**. There are no backward-compat constraints on schema changes within the desktop app. If a migration is messy, deleting the local vault is a valid recovery.

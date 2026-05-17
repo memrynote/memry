@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { writeFile, mkdir, rm } from 'node:fs/promises'
+import { writeFile, mkdtemp, rm } from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
 import sodium from 'libsodium-wrappers-sumo'
@@ -61,8 +61,7 @@ function createTestDeps(fetchFn: ReturnType<typeof vi.fn>): AttachmentSyncDeps {
 
 beforeEach(async () => {
   await sodium.ready
-  tmpDir = path.join(os.tmpdir(), `memry-attach-test-${Date.now()}`)
-  await mkdir(tmpDir, { recursive: true })
+  tmpDir = await mkdtemp(path.join(os.tmpdir(), 'memry-attach-test-'))
 })
 
 afterEach(async () => {

@@ -1,5 +1,46 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 
+function hasControlWhitespace(value: string): boolean {
+  for (const char of value) {
+    if (char <= ' ' || char === '\u007f') {
+      return true
+    }
+  }
+
+  return false
+}
+
+function isValidEmail(email: string): boolean {
+  if (email.length > 254 || hasControlWhitespace(email)) {
+    return false
+  }
+
+  const atIndex = email.indexOf('@')
+  if (atIndex <= 0 || atIndex !== email.lastIndexOf('@') || atIndex === email.length - 1) {
+    return false
+  }
+
+  const domain = email.slice(atIndex + 1)
+  if (!domain.includes('.') || domain.startsWith('.') || domain.endsWith('.')) {
+    return false
+  }
+
+  return domain.split('.').every((part) => part.length > 0 && part.length <= 63)
+}
+
+function sanitizeLogValue(value: unknown): string {
+  const text = value instanceof Error ? value.message : String(value)
+  return text.split('\r').join(' ').split('\n').join(' ')
+}
+
+function getResendErrorMessage(data: unknown): string {
+  if (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string') {
+    return data.message
+  }
+
+  return 'Failed to add contact'
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -7,12 +48,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const RESEND_API_KEY = process.env.RESEND_API_KEY
   const RESEND_SEGMENT_ID = process.env.RESEND_SEGMENT_ID
-
-  console.log(
-    '[waitlist] RESEND_API_KEY:',
-    RESEND_API_KEY ? `${RESEND_API_KEY.slice(0, 6)}...` : 'MISSING'
-  )
-  console.log('[waitlist] RESEND_SEGMENT_ID:', RESEND_SEGMENT_ID || 'not set')
 
   if (!RESEND_API_KEY) {
     console.error('[waitlist] RESEND_API_KEY is not configured')
@@ -25,8 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Email is required' })
   }
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(email)) {
+  if (!isValidEmail(email)) {
     return res.status(400).json({ error: 'Invalid email format' })
   }
 
@@ -45,9 +79,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const contactData = await contactRes.json()
 
     if (!contactRes.ok) {
-      console.error('Resend API error:', contactData)
+      console.error(
+        '[waitlist] Resend API error:',
+        sanitizeLogValue(getResendErrorMessage(contactData))
+      )
       return res.status(contactRes.status).json({
-        error: contactData.message || 'Failed to add contact'
+        error: getResendErrorMessage(contactData)
       })
     }
 
@@ -64,7 +101,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       id: contactData.id
     })
   } catch (error) {
-    console.error('Waitlist error:', error)
+    console.error('[waitlist] request failed:', sanitizeLogValue(error))
     return res.status(500).json({ error: 'Internal server error' })
   }
 }

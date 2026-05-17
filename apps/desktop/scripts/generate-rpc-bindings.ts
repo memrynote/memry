@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { rpcDomains } from '../../../packages/rpc/src/index.ts'
@@ -10,6 +11,57 @@ const CHECK_MODE = process.argv.includes('--check')
 
 function normalizeGeneratedText(text: string) {
   return text.replace(/\r\n?/g, '\n')
+}
+
+function renderPropertyKey(name: string) {
+  return JSON.stringify(name)
+}
+
+function collectEventChannels() {
+  const eventChannels: Record<string, string> = {}
+
+  for (const domain of rpcDomains) {
+    for (const [eventName, spec] of Object.entries(domain.events)) {
+      eventChannels[eventName] = spec.channel
+    }
+  }
+
+  return eventChannels
+}
+
+function writeFileAtomically(filePath: string, content: string) {
+  const dir = path.dirname(filePath)
+  const tempPath = path.join(
+    dir,
+    `.${path.basename(filePath)}.${randomBytes(6).toString('hex')}.tmp`
+  )
+  const fd = fs.openSync(tempPath, 'wx', 0o600)
+
+  try {
+    fs.writeFileSync(fd, content, 'utf8')
+    fs.closeSync(fd)
+    fs.renameSync(tempPath, filePath)
+  } catch (error) {
+    try {
+      fs.closeSync(fd)
+    } catch {
+      // already closed
+    }
+    fs.rmSync(tempPath, { force: true })
+    throw error
+  }
+}
+
+function readExistingFile(filePath: string): string {
+  try {
+    return fs.readFileSync(filePath, 'utf8')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return ''
+    }
+
+    throw error
+  }
 }
 
 function renderMethod(
@@ -26,11 +78,7 @@ function renderMethod(
       ? `(() => invokeSync(${JSON.stringify(spec.channel)}))`
       : `((${params}) => invoke(${JSON.stringify(spec.channel)}${argsSuffix}))`
 
-  return `      ${methodName}: ${runner} as GeneratedRpcApi[${JSON.stringify(domainName)}][${JSON.stringify(methodName)}],`
-}
-
-function renderEvent(eventName: string, spec: (typeof rpcDomains)[number]['events'][string]) {
-  return `    ${eventName}: ((callback) => subscribe(${JSON.stringify(spec.channel)}, callback)) as GeneratedRpcApi[${JSON.stringify(eventName)}],`
+  return `      ${renderPropertyKey(methodName)}: ${runner} as GeneratedRpcApi[${JSON.stringify(domainName)}][${JSON.stringify(methodName)}],`
 }
 
 function generateOutput() {
@@ -40,6 +88,8 @@ function generateOutput() {
     "export type { GeneratedRpcApi } from '@memry/rpc'",
     "import type { GeneratedRpcApi } from '@memry/rpc'",
     "import type { MainIpcInvokeArgs, MainIpcInvokeChannel, MainIpcInvokeResult } from '../main/ipc/generated-ipc-invoke-map'",
+    '',
+    `const eventChannels = ${JSON.stringify(collectEventChannels(), null, 2)} as const`,
     '',
     'export interface GeneratedRpcDeps {',
     '  invoke<C extends MainIpcInvokeChannel>(',
@@ -56,24 +106,26 @@ function generateOutput() {
     '  invokeSync,',
     '  subscribe',
     '}: GeneratedRpcDeps): GeneratedRpcApi {',
-    '  return {'
+    '  const api = {'
   ]
 
   for (const domain of rpcDomains) {
-    lines.push(`    ${domain.name}: {`)
+    lines.push(`    ${renderPropertyKey(domain.name)}: {`)
     for (const [methodName, spec] of Object.entries(domain.methods)) {
       lines.push(renderMethod(domain.name, methodName, spec))
     }
     lines.push('    },')
   }
 
-  for (const domain of rpcDomains) {
-    for (const [eventName, spec] of Object.entries(domain.events)) {
-      lines.push(renderEvent(eventName, spec))
-    }
-  }
-
   lines.push('  }')
+  lines.push('')
+  lines.push('  for (const [eventName, channel] of Object.entries(eventChannels)) {')
+  lines.push('    ;(api as Record<string, unknown>)[eventName] = ((')
+  lines.push('      callback: (payload: unknown) => void')
+  lines.push('    ) => subscribe(channel, callback))')
+  lines.push('  }')
+  lines.push('')
+  lines.push('  return api as GeneratedRpcApi')
   lines.push('}')
   lines.push('')
 
@@ -82,7 +134,7 @@ function generateOutput() {
 
 function main() {
   const output = generateOutput()
-  const current = fs.existsSync(OUTPUT_PATH) ? fs.readFileSync(OUTPUT_PATH, 'utf8') : ''
+  const current = readExistingFile(OUTPUT_PATH)
 
   if (CHECK_MODE) {
     if (normalizeGeneratedText(current) !== normalizeGeneratedText(output)) {
@@ -96,7 +148,7 @@ function main() {
     return
   }
 
-  fs.writeFileSync(OUTPUT_PATH, output, 'utf8')
+  writeFileAtomically(OUTPUT_PATH, output)
   console.log(`Wrote ${path.relative(REPO_ROOT, OUTPUT_PATH)}`)
 }
 
