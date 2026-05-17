@@ -7,13 +7,15 @@ interface SectionHeadingProps {
   subtitle?: string
   align?: 'left' | 'center'
   className?: string
+  titleClassName?: string
 }
 
 export function SectionHeading({
   title,
   subtitle,
   align = 'center',
-  className
+  className,
+  titleClassName
 }: SectionHeadingProps) {
   return (
     <motion.div
@@ -23,7 +25,12 @@ export function SectionHeading({
       transition={BLUR_REVEAL_TRANSITION}
       className={cn('mb-16', align === 'center' && 'text-center', className)}
     >
-      <h2 className="font-serif text-4xl md:text-5xl font-normal text-ink mb-6 relative inline-block">
+      <h2
+        className={cn(
+          'font-serif text-4xl md:text-5xl text-ink mb-6 relative inline-block',
+          titleClassName ?? 'font-normal'
+        )}
+      >
         {title}
         <span className="absolute -bottom-2 left-1/4 right-1/4 h-px bg-terracotta/30" />
       </h2>

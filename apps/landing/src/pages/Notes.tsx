@@ -150,10 +150,10 @@ function NotesHero() {
 function HeroEditorMock() {
   return (
     <FeatureHeroScreenshot
-      src="/screenshots/notes.png"
+      screenshot="notes"
       alt="Memry notes page showing an Istanbul travel note with properties, tasks, and the AI agent panel"
-      width={1688}
-      height={1038}
+      width={1648}
+      height={1020}
     />
   )
 }

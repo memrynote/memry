@@ -5,7 +5,7 @@
 @theme {
   --font-sans: 'Satoshi', system-ui, sans-serif;
   --font-geist: 'Geist', system-ui, sans-serif;
-  --font-serif: 'Instrument Serif', serif;
+  --font-serif: 'Inter', 'Inter Placeholder', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
   --color-primary: #ff671a;
@@ -104,6 +104,12 @@ h5,
 h6 {
   font-family: var(--font-serif);
   font-weight: 400;
+  font-style: normal;
+  line-height: 1.3;
+}
+
+.section-heading-medium {
+  font-weight: 500;
 }
 
 .reveal-1 {
@@ -183,6 +189,45 @@ h6 {
   font-family: var(--font-serif);
 }
 
+.hero-fora-title {
+  max-width: 500px;
+  font-family: var(--font-serif);
+  font-size: 36px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 46.8px;
+  letter-spacing: -1.44px;
+  text-align: center;
+}
+
+.hero-fora-copy {
+  max-width: 420px;
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 21px;
+  letter-spacing: -0.28px;
+  text-align: center;
+}
+
+@media (min-width: 1024px) {
+  .hero-fora-title {
+    max-width: 620px;
+    font-size: 40px;
+    line-height: 52px;
+    letter-spacing: -1.6px;
+  }
+}
+
+@media (min-width: 1400px) {
+  .hero-fora-title {
+    font-size: 56px;
+    line-height: 72.8px;
+    letter-spacing: -2.24px;
+  }
+}
+
 .font-mono-accent {
   font-family: var(--font-mono);
   letter-spacing: -0.02em;
@@ -195,6 +240,8 @@ h6 {
 
 /* Dark zone for cinematic sections */
 .zone-dark {
+  --color-ink-inverted: #f5f0ea;
+  --color-dark-muted: #b8ada5;
   background-color: var(--color-dark);
   color: var(--color-ink-inverted);
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");

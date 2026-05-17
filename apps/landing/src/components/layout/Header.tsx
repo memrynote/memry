@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Menu, X, ArrowUpRight, ChevronDown, type LucideIcon } from 'lucide-react'
 import { HugeiconsIcon } from '@hugeicons/react'
@@ -44,7 +44,7 @@ function formatStarCount(count: number) {
 
 function NavLink({ href, label }: { href: string; label: string }) {
   const className =
-    'rounded-full px-4 py-2 text-sm font-medium text-muted transition-colors hover:bg-card hover:text-ink'
+    'rounded-full px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-ink'
 
   return isExternalHref(href) ? (
     <a href={href} className={className}>
@@ -98,7 +98,7 @@ function DropdownTrigger({ label, icon: Icon }: { label: string; icon?: LucideIc
   return (
     <button
       type="button"
-      className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium text-muted transition-colors group-hover:bg-card group-hover:text-ink"
+      className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-muted transition-colors group-hover:text-ink"
       aria-haspopup="true"
     >
       {Icon ? <Icon className="h-3.5 w-3.5" aria-hidden /> : null}
@@ -262,9 +262,22 @@ function MobileDropdownSection({
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [headerScrolled, setHeaderScrolled] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
   const scrollToSection = useScrollToSection()
+  const showHeaderSurface = headerScrolled || mobileMenuOpen
+
+  useEffect(() => {
+    const updateHeaderSurface = () => {
+      setHeaderScrolled(window.scrollY > 12)
+    }
+
+    updateHeaderSurface()
+    window.addEventListener('scroll', updateHeaderSurface, { passive: true })
+
+    return () => window.removeEventListener('scroll', updateHeaderSurface)
+  }, [])
 
   const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (location.pathname !== '/') {
@@ -281,9 +294,14 @@ export function Header() {
   }
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-6">
-      <Container size="full">
-        <nav className="mx-auto flex max-w-6xl items-center justify-between rounded-[28px] border border-white/70 bg-paper/60 px-4 py-2 shadow-[0_4px_30px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-2xl backdrop-saturate-150 dark:border-white/8 dark:bg-paper/55 dark:shadow-[0_4px_30px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.04)] sm:px-5">
+    <header
+      className={cn(
+        'fixed inset-x-0 top-0 z-50 px-3 pt-4 transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:z-0 before:h-24 before:bg-gradient-to-b before:from-paper/92 before:via-paper/62 before:to-paper/0 before:transition-opacity before:duration-300 dark:before:from-paper/92 dark:before:via-paper/62 dark:before:to-paper/0 sm:px-6',
+        showHeaderSurface ? 'before:opacity-100' : 'before:opacity-0'
+      )}
+    >
+      <Container size="full" className="relative z-10">
+        <nav className="mx-auto flex max-w-6xl items-center justify-between px-1 py-2 sm:px-0">
           <Link to="/" className="flex items-center gap-1.5 group" onClick={handleLogoClick}>
             <span className="flex h-7 w-7 items-center justify-center">
               <img src="/favicon.svg" alt="" className="w-5 h-5" />
@@ -300,7 +318,7 @@ export function Header() {
             </div>
           </Link>
 
-          <div className="hidden lg:flex items-center gap-2 rounded-full border border-border/70 bg-card/55 p-1.5">
+          <div className="hidden items-center gap-1.5 lg:flex">
             <DesktopDropdown label="Features" items={FEATURE_NAV_ITEMS} />
             <DesktopDropdown label="Download" items={DOWNLOAD_NAV_ITEMS} columns={1} />
             {DIRECT_NAV_LINKS.map((link) => (
@@ -339,7 +357,7 @@ export function Header() {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="md:hidden px-3 pt-3 sm:px-6"
+            className="relative z-10 px-3 pt-3 md:hidden sm:px-6"
           >
             <Container size="full">
               <div className="mx-auto flex max-w-6xl flex-col gap-4 rounded-[28px] border border-white/70 bg-paper/90 p-5 shadow-[var(--shadow-float)] backdrop-blur-xl dark:border-white/10">

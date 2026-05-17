@@ -146,10 +146,10 @@ function JournalHero() {
 function HeroJournalMock() {
   return (
     <FeatureHeroScreenshot
-      src="/screenshots/journal.png"
+      screenshot="journal"
       alt="Memry journal page showing the daily entry, day context, calendar, and tasks"
-      width={1432}
-      height={900}
+      width={1608}
+      height={944}
     />
   )
 }

@@ -152,10 +152,10 @@ function InboxHero() {
 function HeroInboxMock() {
   return (
     <FeatureHeroScreenshot
-      src="/screenshots/inbox.png"
+      screenshot="inbox"
       alt="Memry inbox page showing captured notes, source metadata, and the processing queue"
-      width={1432}
-      height={900}
+      width={1608}
+      height={944}
     />
   )
 }

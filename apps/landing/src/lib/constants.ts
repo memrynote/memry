@@ -188,7 +188,7 @@ export const FEATURES = [
     description:
       'A space for processing incoming information. Local AI clustering detects related items and suggests bulk actions — nothing leaves your device.',
     highlights: ['AI-powered clustering', 'Quick capture', 'Snooze & file', 'Bulk actions'],
-    screenshot: '/screenshots/inbox.png'
+    screenshot: 'inbox'
   },
   {
     id: 'journal',
@@ -198,7 +198,7 @@ export const FEATURES = [
     description:
       'A premium, reflective daily writing experience. Large writing area with dramatic date displays, time-based greetings, and day context showing your schedule and tasks.',
     highlights: ['Day context sidebar', 'Time-based greetings', 'Templates', 'Beautiful writing'],
-    screenshot: '/screenshots/journal.png'
+    screenshot: 'journal'
   },
   {
     id: 'notes',
@@ -208,7 +208,7 @@ export const FEATURES = [
     description:
       'A file-first, markdown-based knowledge base with rich-text capabilities. Wiki-links connect your thoughts, and backlinks show you where ideas are referenced.',
     highlights: ['[[Wiki links]]', 'Backlinks', '8 property types', 'Version history'],
-    screenshot: '/screenshots/notes.png'
+    screenshot: 'notes'
   },
   {
     id: 'tasks',
@@ -218,7 +218,7 @@ export const FEATURES = [
     description:
       'A multi-dimensional task management system. Toggle between List, Kanban, and Calendar views. Organize tasks into projects with custom statuses and recurring schedules.',
     highlights: ['Kanban/Calendar/List', 'Subtasks', 'Recurring tasks', 'Smart filters'],
-    screenshot: '/screenshots/tasks.png'
+    screenshot: 'tasks'
   },
   {
     id: 'calendar',
@@ -228,7 +228,7 @@ export const FEATURES = [
     description:
       'The calendar that knows about your tasks, deadlines, and journal entries. Drag to reschedule, plot anything by date, and see your week in one glance.',
     highlights: ['Week view', 'Day overview', 'Drag to reschedule', 'Start + due dates'],
-    screenshot: '/screenshots/calendar.png'
+    screenshot: 'calendar'
   }
 ] as const
 
