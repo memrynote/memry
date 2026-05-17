@@ -3,14 +3,16 @@ import { motion } from 'framer-motion'
 import { Home } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { Button } from '@/components/ui/button'
+import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
 
 export function NotFound() {
   return (
     <main className="pt-24">
       <Container>
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={BLUR_REVEAL_INITIAL}
+          animate={BLUR_REVEAL_ANIMATE}
+          transition={BLUR_REVEAL_TRANSITION}
           className="min-h-[60vh] flex flex-col items-center justify-center text-center"
         >
           <span className="text-8xl mb-6">🤔</span>

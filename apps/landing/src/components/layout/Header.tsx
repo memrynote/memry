@@ -5,16 +5,17 @@ import { HugeiconsIcon } from '@hugeicons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Container } from './Container'
+import { ThemeToggle } from './ThemeToggle'
 import {
   DIRECT_NAV_LINKS,
   DOWNLOAD_NAV_ITEMS,
   FEATURE_NAV_ITEMS,
   GITHUB_STARS,
   GITHUB_URL,
-  REDDIT_URL,
   type LandingDropdownItem
 } from '@/lib/constants'
 import { cn } from '@/lib/utils'
+import { scrollToLandingTarget } from '@/lib/smooth-scroll'
 
 function useScrollToSection() {
   const navigate = useNavigate()
@@ -26,7 +27,7 @@ function useScrollToSection() {
     const element = document.getElementById(id)
 
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      scrollToLandingTarget(element)
     } else if (location.pathname !== '/') {
       navigate('/' + href)
     }
@@ -43,7 +44,7 @@ function formatStarCount(count: number) {
 
 function NavLink({ href, label }: { href: string; label: string }) {
   const className =
-    'rounded-full px-4 py-2 text-sm font-medium text-muted transition-colors hover:bg-white hover:text-ink'
+    'rounded-full px-4 py-2 text-sm font-medium text-muted transition-colors hover:bg-card hover:text-ink'
 
   return isExternalHref(href) ? (
     <a href={href} className={className}>
@@ -68,7 +69,7 @@ function GitHubStarWidget({
   return (
     <a
       className={cn(
-        'github-star-widget inline-flex items-center rounded-lg border border-border/70 bg-white/65 font-semibold text-ink shadow-[0_1px_0_rgba(255,255,255,0.7)] transition-colors hover:border-ink/15 hover:bg-white',
+        'github-star-widget inline-flex items-center rounded-lg border border-border/70 bg-card/65 font-semibold text-ink shadow-[0_1px_0_rgba(255,255,255,0.7)] transition-colors hover:border-ink/15 hover:bg-card dark:border-white/10 dark:shadow-none',
         compact ? 'gap-2 px-3 py-2 text-sm' : 'h-9 gap-2 px-3 text-sm'
       )}
       href={GITHUB_URL}
@@ -97,7 +98,7 @@ function DropdownTrigger({ label, icon: Icon }: { label: string; icon?: LucideIc
   return (
     <button
       type="button"
-      className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium text-muted transition-colors group-hover:bg-white group-hover:text-ink"
+      className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium text-muted transition-colors group-hover:bg-card group-hover:text-ink"
       aria-haspopup="true"
     >
       {Icon ? <Icon className="h-3.5 w-3.5" aria-hidden /> : null}
@@ -124,7 +125,7 @@ function DropdownItem({ item }: { item: LandingDropdownItem }) {
     'flex min-h-[68px] items-start gap-4 rounded-2xl px-4 py-3 text-start transition-colors',
     item.disabled
       ? 'cursor-not-allowed opacity-50'
-      : 'hover:bg-paper-alt focus-visible:bg-paper-alt focus-visible:outline-none'
+      : 'hover:bg-paper-alt focus-visible:bg-paper-alt focus-visible:outline-none dark:hover:bg-paper-deep dark:focus-visible:bg-paper-deep'
   )
 
   const content = (
@@ -178,7 +179,7 @@ function DesktopDropdown({
       <div className="invisible absolute left-1/2 top-full z-50 mt-3 -translate-x-1/2 opacity-0 transition-all duration-150 group-hover:visible group-hover:opacity-100">
         <div
           className={cn(
-            'rounded-[22px] border border-white/70 bg-paper/95 p-3 shadow-[0_26px_80px_-28px_rgba(31,41,55,0.28),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-xl',
+            'rounded-[22px] border border-white/70 bg-paper/95 p-3 shadow-[0_26px_80px_-28px_rgba(31,41,55,0.28),inset_0_1px_0_rgba(255,255,255,0.7)] backdrop-blur-xl dark:border-white/10 dark:bg-paper/90 dark:shadow-[0_26px_80px_-28px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.04)]',
             columns === 2 ? 'w-[574px]' : 'w-[320px]'
           )}
         >
@@ -203,7 +204,7 @@ function MobileDropdownSection({
   onNavigate: () => void
 }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-white/65 p-3">
+    <div className="rounded-2xl border border-border/60 bg-card/65 p-3">
       <p className="px-2 pb-2 font-mono-accent text-[10px] uppercase tracking-[0.18em] text-muted">
         {title}
       </p>
@@ -261,13 +262,29 @@ function MobileDropdownSection({
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const location = useLocation()
+  const navigate = useNavigate()
   const scrollToSection = useScrollToSection()
+
+  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (location.pathname !== '/') {
+      setMobileMenuOpen(false)
+      return
+    }
+
+    e.preventDefault()
+    if (location.hash) {
+      navigate('/')
+    }
+    scrollToLandingTarget('top', { offset: 0 })
+    setMobileMenuOpen(false)
+  }
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-6">
       <Container size="full">
-        <nav className="mx-auto flex max-w-6xl items-center justify-between rounded-[28px] border border-white/70 bg-paper/60 px-4 py-2 shadow-[0_4px_30px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-2xl backdrop-saturate-150 sm:px-5">
-          <Link to="/" className="flex items-center gap-1.5 group">
+        <nav className="mx-auto flex max-w-6xl items-center justify-between rounded-[28px] border border-white/70 bg-paper/60 px-4 py-2 shadow-[0_4px_30px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-2xl backdrop-saturate-150 dark:border-white/8 dark:bg-paper/55 dark:shadow-[0_4px_30px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.04)] sm:px-5">
+          <Link to="/" className="flex items-center gap-1.5 group" onClick={handleLogoClick}>
             <span className="flex h-7 w-7 items-center justify-center">
               <img src="/favicon.svg" alt="" className="w-5 h-5" />
             </span>
@@ -283,7 +300,7 @@ export function Header() {
             </div>
           </Link>
 
-          <div className="hidden lg:flex items-center gap-2 rounded-full border border-border/70 bg-white/55 p-1.5">
+          <div className="hidden lg:flex items-center gap-2 rounded-full border border-border/70 bg-card/55 p-1.5">
             <DesktopDropdown label="Features" items={FEATURE_NAV_ITEMS} />
             <DesktopDropdown label="Download" items={DOWNLOAD_NAV_ITEMS} columns={1} />
             {DIRECT_NAV_LINKS.map((link) => (
@@ -292,34 +309,27 @@ export function Header() {
           </div>
 
           <div className="hidden md:flex items-center gap-3">
-            <a
-              href={REDDIT_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-white/55 text-muted transition-colors hover:text-ink"
-              aria-label="Join r/MemryNote"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M20 9.7a2.2 2.2 0 0 0-3.7-1.6A10.7 10.7 0 0 0 10.4 6l1-4.7 3.3.7a1.6 1.6 0 1 0 .2-.8l-3.6-.8a.4.4 0 0 0-.5.3l-1.1 5.2A10.8 10.8 0 0 0 3.7 8a2.2 2.2 0 0 0-3.6 2.5 4.3 4.3 0 0 0 0 .7c0 3.6 4.2 6.5 9.4 6.5s9.3-2.9 9.3-6.5a3 3 0 0 0 0-.7 2.2 2.2 0 0 0 1.2-1.8zM5.5 11.6a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8zm8.1 4.7a5.9 5.9 0 0 1-3.6 1 5.9 5.9 0 0 1-3.6-1 .4.4 0 0 1 .5-.6 5.2 5.2 0 0 0 3.1.8 5.2 5.2 0 0 0 3.1-.8.4.4 0 0 1 .5.6zm-.3-1.9a1.4 1.4 0 1 1 0-2.8 1.4 1.4 0 0 1 0 2.8z" />
-              </svg>
-            </a>
+            <ThemeToggle />
             <GitHubStarWidget />
             <Button variant="default" size="sm" className="rounded-full px-6" asChild>
               <a href="#waitlist" onClick={(e) => scrollToSection(e, '#waitlist')}>
-                Join waitlist
+                Join
                 <ArrowUpRight className="w-4 h-4" />
               </a>
             </Button>
           </div>
 
-          <button
-            type="button"
-            className="md:hidden rounded-full border border-border/70 bg-white/60 p-3 text-ink transition-colors hover:text-terracotta"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+          <div className="md:hidden flex items-center gap-2">
+            <ThemeToggle />
+            <button
+              type="button"
+              className="rounded-full border border-border/70 bg-card/60 p-3 text-ink transition-colors hover:text-terracotta"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
         </nav>
       </Container>
 
@@ -332,7 +342,7 @@ export function Header() {
             className="md:hidden px-3 pt-3 sm:px-6"
           >
             <Container size="full">
-              <div className="mx-auto flex max-w-6xl flex-col gap-4 rounded-[28px] border border-white/70 bg-paper/90 p-5 shadow-[var(--shadow-float)] backdrop-blur-xl">
+              <div className="mx-auto flex max-w-6xl flex-col gap-4 rounded-[28px] border border-white/70 bg-paper/90 p-5 shadow-[var(--shadow-float)] backdrop-blur-xl dark:border-white/10">
                 <MobileDropdownSection
                   title="Features"
                   items={FEATURE_NAV_ITEMS}
@@ -349,7 +359,7 @@ export function Header() {
                       key={link.href}
                       href={link.href}
                       onClick={() => setMobileMenuOpen(false)}
-                      className="rounded-2xl border border-border/60 bg-white/65 px-4 py-3 text-xl font-serif font-medium text-ink transition-colors hover:text-terracotta"
+                      className="rounded-2xl border border-border/60 bg-card/65 px-4 py-3 text-xl font-serif font-medium text-ink transition-colors hover:text-terracotta"
                     >
                       {link.label}
                     </a>
@@ -358,28 +368,14 @@ export function Header() {
                       key={link.href}
                       to={link.href}
                       onClick={() => setMobileMenuOpen(false)}
-                      className="rounded-2xl border border-border/60 bg-white/65 px-4 py-3 text-xl font-serif font-medium text-ink transition-colors hover:text-terracotta"
+                      className="rounded-2xl border border-border/60 bg-card/65 px-4 py-3 text-xl font-serif font-medium text-ink transition-colors hover:text-terracotta"
                     >
                       {link.label}
                     </Link>
                   )
                 )}
-                <a
-                  href={REDDIT_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between rounded-2xl border border-border/60 bg-white/65 px-4 py-3 text-lg font-medium text-muted transition-colors hover:text-ink"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <span className="flex items-center gap-2">
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm6.066 13.71c.147.422.22.864.22 1.317 0 2.78-3.2 5.027-7.153 5.027S4 17.807 4 15.027c0-.453.073-.895.22-1.317a1.607 1.607 0 0 1-.634-1.283 1.625 1.625 0 0 1 2.768-1.152 8.07 8.07 0 0 1 4.358-1.378l.82-3.862a.342.342 0 0 1 .406-.265l2.73.577a1.14 1.14 0 1 1-.13.614l-2.44-.516-.738 3.47a8.026 8.026 0 0 1 4.296 1.368 1.625 1.625 0 0 1 2.768 1.152c0 .503-.228.953-.586 1.252h.018zM9.066 14.5c-.9 0-1.627.727-1.627 1.624s.727 1.625 1.627 1.625c.9 0 1.627-.728 1.627-1.625 0-.897-.727-1.625-1.627-1.625zm5.868 0c-.9 0-1.627.727-1.627 1.624s.727 1.625 1.627 1.625c.9 0 1.627-.728 1.627-1.625 0-.897-.728-1.625-1.627-1.625zm-4.797 4.337a.19.19 0 0 1 .265-.027c.774.594 1.853.867 2.864.773a3.705 3.705 0 0 0 2.864-.773.19.19 0 0 1 .238.293c-.9.74-2.088 1.09-3.102 1.09-1.015 0-2.202-.35-3.102-1.09a.19.19 0 0 1-.027-.266z" />
-                    </svg>
-                    Reddit
-                  </span>
-                  <ArrowUpRight className="w-4 h-4" />
-                </a>
                 <GitHubStarWidget compact onClick={() => setMobileMenuOpen(false)} />
+                <ThemeToggle variant="inline" />
                 <Button variant="default" className="mt-2 w-full rounded-full" asChild>
                   <a
                     href="#waitlist"
@@ -388,7 +384,7 @@ export function Header() {
                       setMobileMenuOpen(false)
                     }}
                   >
-                    Join Waitlist
+                    Join
                   </a>
                 </Button>
               </div>

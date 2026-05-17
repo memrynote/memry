@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { Container } from '@/components/layout/Container'
+import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
 
 interface LegalLayoutProps {
   eyebrow: string
@@ -9,8 +10,6 @@ interface LegalLayoutProps {
   lastUpdated: string
   children: ReactNode
 }
-
-const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const
 
 export function LegalLayout({ eyebrow, title, intro, lastUpdated, children }: LegalLayoutProps) {
   return (
@@ -22,9 +21,9 @@ export function LegalLayout({ eyebrow, title, intro, lastUpdated, children }: Le
         />
         <Container size="sm">
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: EASE_OUT_EXPO }}
+            initial={BLUR_REVEAL_INITIAL}
+            animate={BLUR_REVEAL_ANIMATE}
+            transition={BLUR_REVEAL_TRANSITION}
             className="text-center"
           >
             <p className="font-mono-accent text-[11px] uppercase tracking-[0.32em] text-terracotta">
@@ -46,9 +45,9 @@ export function LegalLayout({ eyebrow, title, intro, lastUpdated, children }: Le
       <section className="pb-28">
         <Container size="sm">
           <motion.article
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.1, ease: EASE_OUT_EXPO }}
+            initial={BLUR_REVEAL_INITIAL}
+            animate={BLUR_REVEAL_ANIMATE}
+            transition={BLUR_REVEAL_TRANSITION}
             className="legal-prose"
           >
             {children}

@@ -4,6 +4,23 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      ;(function () {
+        try {
+          var stored = localStorage.getItem('memry-landing-theme')
+          var theme =
+            stored === 'light' || stored === 'dark'
+              ? stored
+              : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+          var root = document.documentElement
+          if (theme === 'dark') root.classList.add('dark')
+          root.dataset.theme = theme
+        } catch (e) {}
+      })()
+    </script>
 
     <title>Memry — Notes, tasks & journal in one local-first app</title>
     <meta
@@ -58,6 +75,7 @@
       rel="stylesheet"
     />
   </head>
+
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
