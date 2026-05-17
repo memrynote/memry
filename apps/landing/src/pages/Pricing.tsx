@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Check, ArrowRight, Sparkles, ShieldCheck, Heart } from 'lucide-react'
@@ -13,15 +13,17 @@ import {
 } from '@/components/ui/accordion'
 import {
   SYNC_PLAN_TIERS,
-  PLAN_LIMIT_MATRIX,
+  PLAN_COMPARISON_MATRIX,
   LIFECYCLE_STAGES,
   PRICING_FAQ_ITEMS,
   type CheckoutPlanId,
+  type PlanComparisonValue,
   type SyncPlanTier,
   type LifecycleTone
 } from '@/lib/constants'
 import { openPaddleCheckout, type PaddleCheckoutCadence } from '@/lib/paddle-checkout'
 import { cn } from '@/lib/utils'
+import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
 
 type Cadence = 'monthly' | 'annual'
 type CheckoutState = {
@@ -64,9 +66,9 @@ export function PricingPage() {
       <main>
         <Hero cadence={cadence} setCadence={setCadence} />
         <TierGrid cadence={cadence} checkout={checkout} onCheckout={handleCheckout} />
+        <LimitMatrix cadence={cadence} checkout={checkout} onCheckout={handleCheckout} />
         <BelieverNarrative />
         <LifecycleTimeline />
-        <LimitMatrix />
         <PricingFaq />
         <FinalCta />
       </main>
@@ -84,16 +86,16 @@ function getCheckoutKey(planId: CheckoutPlanId, cadence: PaddleCheckoutCadence) 
 
 function Hero({ cadence, setCadence }: { cadence: Cadence; setCadence: (c: Cadence) => void }) {
   return (
-    <section className="relative overflow-hidden pt-20 pb-8 sm:pt-24 sm:pb-10">
+    <section className="relative overflow-hidden pt-32 pb-8 sm:pb-10 md:pt-40">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[360px] bg-[radial-gradient(ellipse_at_top,rgba(255,103,26,0.10),transparent_60%)]"
       />
       <Container size="md">
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+          initial={BLUR_REVEAL_INITIAL}
+          animate={BLUR_REVEAL_ANIMATE}
+          transition={BLUR_REVEAL_TRANSITION}
           className="text-center"
         >
           <h1 className="font-serif text-4xl font-normal leading-[1.05] text-ink text-balance md:text-5xl">
@@ -126,7 +128,7 @@ function CadenceToggle({
     <div
       role="tablist"
       aria-label="Billing cadence"
-      className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-white/65 p-1 shadow-[0_2px_18px_rgba(26,26,26,0.04)] backdrop-blur"
+      className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-card/65 p-1 shadow-[0_2px_18px_rgba(26,26,26,0.04)] backdrop-blur dark:shadow-none"
     >
       {(['monthly', 'annual'] as Cadence[]).map((option) => {
         const active = cadence === option
@@ -174,18 +176,28 @@ function TierGrid({
   return (
     <section className="pb-24">
       <Container size="lg">
+        <motion.div
+          initial={BLUR_REVEAL_INITIAL}
+          whileInView={BLUR_REVEAL_ANIMATE}
+          viewport={{ once: true, margin: '-80px' }}
+          transition={BLUR_REVEAL_TRANSITION}
+          className="mb-10 text-center"
+        >
+          <span className="font-mono-accent text-[11px] uppercase tracking-[0.28em] text-muted">
+            Plans
+          </span>
+          <h2 className="mt-3 font-serif text-4xl font-normal leading-tight text-ink md:text-5xl">
+            Choose your Memry plan
+          </h2>
+        </motion.div>
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4 xl:items-stretch xl:gap-5">
-          {SYNC_PLAN_TIERS.map((tier, index) => (
+          {SYNC_PLAN_TIERS.map((tier) => (
             <motion.div
               key={tier.id}
-              initial={{ opacity: 0, y: 28 }}
-              whileInView={{ opacity: 1, y: 0 }}
+              initial={BLUR_REVEAL_INITIAL}
+              whileInView={BLUR_REVEAL_ANIMATE}
               viewport={{ once: true, margin: '-80px' }}
-              transition={{
-                duration: 0.7,
-                delay: index * 0.08,
-                ease: [0.16, 1, 0.3, 1]
-              }}
+              transition={BLUR_REVEAL_TRANSITION}
               className="h-full"
             >
               <TierCard
@@ -592,7 +604,23 @@ function LifecycleTimeline() {
   )
 }
 
-function LimitMatrix() {
+function LimitMatrix({
+  cadence,
+  checkout,
+  onCheckout
+}: {
+  cadence: Cadence
+  checkout: CheckoutState
+  onCheckout: (tier: SyncPlanTier) => void
+}) {
+  const plans = PLAN_COMPARISON_MATRIX.plans.map((planId) => {
+    const tier = SYNC_PLAN_TIERS.find((item) => item.id === planId)
+    if (!tier) {
+      throw new Error(`Missing pricing tier for comparison table: ${planId}`)
+    }
+    return { planId, tier }
+  })
+
   return (
     <section className="py-24 md:py-28">
       <Container size="md">
@@ -601,66 +629,114 @@ function LimitMatrix() {
             The full picture
           </span>
           <h2 className="mt-3 font-serif text-4xl font-normal leading-tight text-ink md:text-5xl">
-            Compare every limit
+            Compare plans
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-muted">
-            Local features stay free. Paid sync limits are explicit, enforced server-side, and
-            written plainly before checkout.
+            Local features stay free. Paid sync, storage, AI access, and supporter extras are split
+            out plainly before checkout.
           </p>
         </motion.div>
 
         <motion.div
           {...fadeUp}
           transition={{ ...fadeUp.transition, delay: 0.1 }}
-          className="mt-12 overflow-x-auto rounded-2xl border border-border/55 bg-white/55 shadow-card"
+          className="mt-12 overflow-x-auto rounded-2xl border border-border/55 bg-card/55 shadow-card"
         >
-          <table className="w-full min-w-[820px]">
+          <table className="w-full min-w-[940px]">
             <thead>
               <tr className="border-b border-border/60">
-                {PLAN_LIMIT_MATRIX.headers.map((header, i) => (
-                  <th
-                    key={header || 'feature'}
-                    className={cn(
-                      'px-6 py-5 font-mono-accent text-[11px] uppercase tracking-[0.18em]',
-                      i === 0 ? 'text-start text-ink' : 'text-center',
-                      i === 0 && 'min-w-[160px]',
-                      i === 3
-                        ? 'border-x border-terracotta/25 bg-terracotta/[0.04] text-terracotta'
-                        : 'text-muted'
-                    )}
-                  >
-                    {i === 3 ? (
-                      <span className="inline-flex items-center justify-center gap-2">
-                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-terracotta" />
-                        {header}
-                      </span>
-                    ) : (
-                      header
-                    )}
-                  </th>
-                ))}
+                <th className="min-w-[240px] px-6 py-5 text-start font-mono-accent text-[11px] uppercase tracking-[0.18em] text-ink">
+                  Compare plans
+                </th>
+                {plans.map(({ tier }) => {
+                  const isRecommended = tier.emphasis === 'recommended'
+                  const isFounding = tier.emphasis === 'founding'
+                  const isPending =
+                    !!tier.checkoutPlanId &&
+                    checkout.pendingKey ===
+                      getCheckoutKey(tier.checkoutPlanId, getCheckoutCadence(tier, cadence))
+
+                  return (
+                    <th
+                      key={tier.id}
+                      className={cn(
+                        'min-w-[170px] px-5 py-5 text-center align-top',
+                        isRecommended
+                          ? 'border-x border-terracotta/25 bg-terracotta/[0.04] text-terracotta'
+                          : 'text-muted',
+                        isFounding && 'bg-ink/[0.03]'
+                      )}
+                    >
+                      <div className="flex min-h-[112px] flex-col items-center justify-between gap-3">
+                        <div>
+                          <span className="font-serif text-2xl font-normal normal-case tracking-normal text-ink">
+                            {tier.name}
+                          </span>
+                          {isRecommended && (
+                            <span className="mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-terracotta/10 px-2.5 py-1 font-mono-accent text-[10px] uppercase tracking-[0.18em] text-terracotta">
+                              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-terracotta" />
+                              Popular
+                            </span>
+                          )}
+                        </div>
+                        {!tier.checkoutPlanId ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 rounded-full px-3 text-xs"
+                            asChild
+                          >
+                            <Link to="/#waitlist">Get started</Link>
+                          </Button>
+                        ) : (
+                          <Button
+                            variant={isRecommended ? 'default' : 'outline'}
+                            size="sm"
+                            disabled={isPending}
+                            onClick={() => onCheckout(tier)}
+                            className="h-8 rounded-full px-3 text-xs"
+                          >
+                            {isPending ? 'Opening...' : 'Get started'}
+                          </Button>
+                        )}
+                      </div>
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
             <tbody>
-              {PLAN_LIMIT_MATRIX.rows.map((row) => (
-                <tr
-                  key={row.feature}
-                  className="border-b border-border/40 last:border-0 transition-colors hover:bg-paper-alt/40"
-                >
-                  <td className="px-6 py-4 text-sm font-medium text-ink">{row.feature}</td>
-                  <td className="px-6 py-4 text-center font-mono-accent text-sm text-ink/80">
-                    {row.free}
-                  </td>
-                  <td className="px-6 py-4 text-center font-mono-accent text-sm text-ink/80">
-                    {row.plus}
-                  </td>
-                  <td className="border-x border-terracotta/15 bg-terracotta/[0.025] px-6 py-4 text-center font-mono-accent text-sm text-ink">
-                    {row.pro}
-                  </td>
-                  <td className="px-6 py-4 text-center font-mono-accent text-sm text-ink/80">
-                    {row.believer}
-                  </td>
-                </tr>
+              {PLAN_COMPARISON_MATRIX.sections.map((section) => (
+                <Fragment key={section.title}>
+                  <tr key={`${section.title}-heading`}>
+                    <th
+                      colSpan={plans.length + 1}
+                      className="bg-paper-alt/70 px-6 py-4 text-start font-mono-accent text-[11px] uppercase tracking-[0.2em] text-terracotta"
+                    >
+                      {section.title}
+                    </th>
+                  </tr>
+                  {section.rows.map((row) => (
+                    <tr
+                      key={row.feature}
+                      className="border-b border-border/40 last:border-0 transition-colors hover:bg-paper-alt/40"
+                    >
+                      <td className="px-6 py-4 text-sm font-medium text-ink">{row.feature}</td>
+                      {plans.map(({ planId, tier }) => (
+                        <td
+                          key={tier.id}
+                          className={cn(
+                            'px-5 py-4 text-center font-mono-accent text-sm text-ink/80',
+                            tier.emphasis === 'recommended' &&
+                              'border-x border-terracotta/15 bg-terracotta/[0.025] text-ink'
+                          )}
+                        >
+                          <ComparisonValue value={row[planId]} />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </Fragment>
               ))}
             </tbody>
           </table>
@@ -668,6 +744,22 @@ function LimitMatrix() {
       </Container>
     </section>
   )
+}
+
+function ComparisonValue({ value }: { value: PlanComparisonValue }) {
+  if (value === true) {
+    return (
+      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-sage/10 text-sage">
+        <Check className="h-3.5 w-3.5" strokeWidth={3} aria-label="Included" />
+      </span>
+    )
+  }
+
+  if (value === false) {
+    return <span className="text-muted/45">—</span>
+  }
+
+  return <span>{value}</span>
 }
 
 function PricingFaq() {
