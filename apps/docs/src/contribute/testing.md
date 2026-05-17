@@ -29,6 +29,21 @@ pnpm --filter @memry/desktop test -- --watch
 
 Test files live next to the code they cover (`foo.ts` + `foo.test.ts`).
 
+### Seed Vault Fixtures
+
+Desktop seed-vault data lives under `apps/desktop/scripts/seed-data/` and is covered by
+the desktop main Vitest project. Keep demo dates relative through the shared seed date helper so
+the generated vault stays current on the day a developer runs it. The seed set should read like a
+real personal vault: linked notes, inbox captures, calendar items, and tasks should point at each
+other instead of standing alone.
+
+When changing seed data, run the relevant seed-data test file or the desktop main test project:
+
+```bash
+pnpm --filter @memry/desktop test:main -- scripts/seed-data
+pnpm --filter @memry/desktop seed:vault
+```
+
 ### Key Rules
 
 - Real SQLite (not mocked) for database tests — uses an in-memory DB per test.
