@@ -5,11 +5,16 @@ import { MockupFrame } from '@/components/shared/MockupFrame'
 import { DemoTabs } from '@/components/demo/DemoTabs'
 import { DemoScene } from '@/components/demo/DemoScene'
 import { useShowcaseTimer } from '@/components/demo/hooks/useShowcaseTimer'
-import { CLIPS, type SeekRequest } from '@/components/demo/types'
+import { CLIPS, type SeekRequest, type TabId } from '@/components/demo/types'
 import { FLOW_STEPS } from '@/lib/constants'
 import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
+import { trackLandingEvent, type LandingEventName } from '@/lib/analytics'
 
 const INTERACTIVE_STEPS = FLOW_STEPS.filter((s) => CLIPS.some((c) => c.id === s.id))
+
+function demoTarget(clipId: TabId) {
+  return `demo:${clipId}`
+}
 
 function CompetitorBar({ activeIndex }: { activeIndex: number }) {
   const step = INTERACTIVE_STEPS[activeIndex]
@@ -54,11 +59,21 @@ export function FlowShowcase() {
   const [videoDuration, setVideoDuration] = useState<number | null>(null)
   const [seekRequest, setSeekRequest] = useState<SeekRequest | null>(null)
 
+  const handleProgressMilestone = useCallback((clipId: TabId, milestone: 25 | 50 | 75) => {
+    trackLandingEvent(`landing_demo_progress_${milestone}` as LandingEventName, demoTarget(clipId))
+  }, [])
+
+  const handleClipComplete = useCallback((clipId: TabId) => {
+    trackLandingEvent('landing_demo_complete', demoTarget(clipId))
+  }, [])
+
   const { progress, goTo, seekTo } = useShowcaseTimer(
     activeIndex,
     setActiveIndex,
     paused || !started,
-    videoDuration
+    videoDuration,
+    handleClipComplete,
+    handleProgressMilestone
   )
 
   const restartActiveVideo = useCallback(() => {
@@ -69,21 +84,26 @@ export function FlowShowcase() {
   }, [])
 
   const handleStart = useCallback(() => {
+    trackLandingEvent('landing_demo_start', demoTarget(CLIPS[activeIndex].id))
     setStarted(true)
     setPaused(false)
     seekTo(0)
     restartActiveVideo()
-  }, [restartActiveVideo, seekTo])
+  }, [activeIndex, restartActiveVideo, seekTo])
 
   const handleStepClick = useCallback(
     (index: number) => {
+      trackLandingEvent('landing_demo_tab_click', demoTarget(CLIPS[index].id))
+      if (!started) {
+        trackLandingEvent('landing_demo_start', demoTarget(CLIPS[index].id))
+      }
       setVideoDuration(null)
       goTo(index)
       restartActiveVideo()
       setStarted(true)
       setPaused(false)
     },
-    [goTo, restartActiveVideo]
+    [goTo, restartActiveVideo, started]
   )
 
   const handleToggle = useCallback(() => {
@@ -92,8 +112,12 @@ export function FlowShowcase() {
       return
     }
 
+    trackLandingEvent(
+      paused ? 'landing_demo_resume' : 'landing_demo_pause',
+      demoTarget(CLIPS[activeIndex].id)
+    )
     setPaused((p) => !p)
-  }, [handleStart, started])
+  }, [activeIndex, handleStart, paused, started])
 
   const handleDurationDetected = useCallback((ms: number) => {
     setVideoDuration(ms)
@@ -106,13 +130,15 @@ export function FlowShowcase() {
         return
       }
 
+      const eventName = nextProgress < progress.get() ? 'landing_demo_rewind' : 'landing_demo_seek'
+      trackLandingEvent(eventName, demoTarget(CLIPS[activeIndex].id))
       seekTo(nextProgress)
       setSeekRequest((current) => ({
         progress: nextProgress,
         requestId: (current?.requestId ?? 0) + 1
       }))
     },
-    [handleStart, seekTo, started]
+    [activeIndex, handleStart, progress, seekTo, started]
   )
 
   return (

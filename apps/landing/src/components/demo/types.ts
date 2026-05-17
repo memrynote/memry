@@ -7,6 +7,7 @@ export interface ClipConfig {
 }
 
 export interface SceneProps {
+  clipId: TabId
   playing: boolean
   muted: boolean
   onMutedChange: (muted: boolean) => void

@@ -2,12 +2,14 @@ import { useRef, useEffect, useState, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { Maximize2, Minimize2, Volume2, VolumeX } from 'lucide-react'
 import type { SceneProps } from '../types'
+import { trackLandingEvent } from '@/lib/analytics'
 
 interface VideoSceneProps extends SceneProps {
   src: string
 }
 
 export function VideoScene({
+  clipId,
   src,
   playing,
   muted,
@@ -100,6 +102,7 @@ export function VideoScene({
 
   const handleMuteToggle = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation()
+    trackLandingEvent(muted ? 'landing_demo_unmute' : 'landing_demo_mute', `demo:${clipId}`)
     onMutedChange(!muted)
   }
 
@@ -109,6 +112,7 @@ export function VideoScene({
       closeExpanded()
       return
     }
+    trackLandingEvent('landing_demo_expand', `demo:${clipId}`)
     setExpanded(true)
   }
 
