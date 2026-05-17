@@ -1,13 +1,9 @@
 import { generateNoteId } from '../../src/main/lib/id'
 import type { NoteFile } from '../seed-vault/file-writer'
-
-const TODAY = new Date('2026-05-08T12:00:00.000Z')
+import { seedPastISOAt, seedTodayISO } from './date'
 
 const dayOffset = (days: number, hour = 12): string => {
-  const d = new Date(TODAY)
-  d.setUTCDate(d.getUTCDate() + days)
-  d.setUTCHours(hour, 30, 0, 0)
-  return d.toISOString()
+  return seedPastISOAt(days, hour, 30)
 }
 
 export const NOTE_IDS = {
@@ -82,6 +78,7 @@ export const NOTE_IDS = {
   // Travel
   travelTokyoTrip: generateNoteId(),
   travelKyotoDayTrip: generateNoteId(),
+  travelIstanbul: generateNoteId(),
   travelLisbonNotes: generateNoteId(),
   travelIcelandRingRoad: generateNoteId(),
   travelPackingList: generateNoteId(),
@@ -468,7 +465,13 @@ Frankl's central claim: *meaning* — not pleasure, not even purpose — is what
     emoji: '🪐',
     tags: ['movies/sci-fi', 'denis-villeneuve', 'rewatch'],
     aliases: ['Dune Part One'],
-    customProps: { year: 2021, director: 'Denis Villeneuve', genre: 'sci-fi', status: 'watched', rating: 5 },
+    customProps: {
+      year: 2021,
+      director: 'Denis Villeneuve',
+      genre: 'sci-fi',
+      status: 'watched',
+      rating: 5
+    },
     daysAgoCreated: -120,
     daysAgoModified: -8,
     body: `## The adaptation that finally landed
@@ -496,7 +499,13 @@ The Salusa Secundus scene needs ten more seconds. Hardly a crime.
     title: 'Interstellar',
     emoji: '🌌',
     tags: ['movies/sci-fi', 'christopher-nolan', 'rewatch'],
-    customProps: { year: 2014, director: 'Christopher Nolan', genre: 'sci-fi', status: 'watched', rating: 5 },
+    customProps: {
+      year: 2014,
+      director: 'Christopher Nolan',
+      genre: 'sci-fi',
+      status: 'watched',
+      rating: 5
+    },
     daysAgoCreated: -280,
     daysAgoModified: -40,
     body: `## Nolan's most emotional film
@@ -518,7 +527,13 @@ Plot-mechanically nonsense. Emotionally undefeated. I will fight on this.
     title: 'The Matrix',
     emoji: '💊',
     tags: ['movies/sci-fi', 'wachowski', 'classic'],
-    customProps: { year: 1999, director: 'Wachowski Sisters', genre: 'sci-fi', status: 'watched', rating: 5 },
+    customProps: {
+      year: 1999,
+      director: 'Wachowski Sisters',
+      genre: 'sci-fi',
+      status: 'watched',
+      rating: 5
+    },
     daysAgoCreated: -500,
     daysAgoModified: -200,
     body: `Still holds up. The bullet-time was the marketing; the philosophy was the staying power.
@@ -557,7 +572,13 @@ Multiverse-as-feeling instead of multiverse-as-plot. Michelle Yeoh as the laundr
     emoji: '⚔️',
     tags: ['movies/sci-fi', 'star-wars', 'classic'],
     aliases: ['A New Hope', 'Star Wars (1977)'],
-    customProps: { year: 1977, director: 'George Lucas', genre: 'sci-fi', status: 'watched', rating: 4 },
+    customProps: {
+      year: 1977,
+      director: 'George Lucas',
+      genre: 'sci-fi',
+      status: 'watched',
+      rating: 4
+    },
     daysAgoCreated: -650,
     daysAgoModified: -300,
     body: `Hero's journey, as catalogued by Joseph Campbell, with laser swords. Still works.
@@ -571,7 +592,13 @@ Multiverse-as-feeling instead of multiverse-as-plot. Michelle Yeoh as the laundr
     title: 'Arrival',
     emoji: '🛸',
     tags: ['movies/sci-fi', 'denis-villeneuve', 'thoughtful'],
-    customProps: { year: 2016, director: 'Denis Villeneuve', genre: 'sci-fi', status: 'watched', rating: 5 },
+    customProps: {
+      year: 2016,
+      director: 'Denis Villeneuve',
+      genre: 'sci-fi',
+      status: 'watched',
+      rating: 5
+    },
     daysAgoCreated: -370,
     daysAgoModified: -120,
     body: `Sapir-Whorf as a love letter. Best contact-with-aliens movie since 2001. Pair with [[Dune (2021)]] — same director, same ear for silence.
@@ -585,7 +612,13 @@ Multiverse-as-feeling instead of multiverse-as-plot. Michelle Yeoh as the laundr
     title: 'The Martian (Film)',
     emoji: '🥔',
     tags: ['movies/sci-fi', 'ridley-scott'],
-    customProps: { year: 2015, director: 'Ridley Scott', genre: 'sci-fi', status: 'watched', rating: 4 },
+    customProps: {
+      year: 2015,
+      director: 'Ridley Scott',
+      genre: 'sci-fi',
+      status: 'watched',
+      rating: 4
+    },
     daysAgoCreated: -240,
     daysAgoModified: -150,
     body: `Cleaner than [[The Martian|the book]] but loses the chemistry monologues. Watney is still Watney.
@@ -599,7 +632,13 @@ Multiverse-as-feeling instead of multiverse-as-plot. Michelle Yeoh as the laundr
     title: 'Parasite',
     emoji: '🪳',
     tags: ['movies/drama', 'bong-joon-ho', 'foreign'],
-    customProps: { year: 2019, director: 'Bong Joon-ho', genre: 'thriller', status: 'watched', rating: 5 },
+    customProps: {
+      year: 2019,
+      director: 'Bong Joon-ho',
+      genre: 'thriller',
+      status: 'watched',
+      rating: 5
+    },
     daysAgoCreated: -310,
     daysAgoModified: -100,
     body: `Class warfare as black comedy as horror. The pivot at the basement reveal is the best plot turn of the decade.
@@ -613,7 +652,13 @@ Multiverse-as-feeling instead of multiverse-as-plot. Michelle Yeoh as the laundr
     title: 'Spirited Away',
     emoji: '🐉',
     tags: ['movies/animation', 'studio-ghibli'],
-    customProps: { year: 2001, director: 'Hayao Miyazaki', genre: 'animation', status: 'watched', rating: 5 },
+    customProps: {
+      year: 2001,
+      director: 'Hayao Miyazaki',
+      genre: 'animation',
+      status: 'watched',
+      rating: 5
+    },
     daysAgoCreated: -380,
     daysAgoModified: -200,
     body: `Watching it after [[Tokyo Trip]] hit different — the bathhouse aesthetic isn't a fantasy, it's a memory.
@@ -658,7 +703,13 @@ Multiverse-as-feeling instead of multiverse-as-plot. Michelle Yeoh as the laundr
     title: 'Blade Runner 2049',
     emoji: '🌆',
     tags: ['movies/sci-fi', 'denis-villeneuve'],
-    customProps: { year: 2017, director: 'Denis Villeneuve', genre: 'sci-fi', status: 'watched', rating: 5 },
+    customProps: {
+      year: 2017,
+      director: 'Denis Villeneuve',
+      genre: 'sci-fi',
+      status: 'watched',
+      rating: 5
+    },
     daysAgoCreated: -290,
     daysAgoModified: -120,
     body: `Slow. Achingly beautiful. The yellow-fog Las Vegas sequence is one of the most committed visuals in the medium.
@@ -672,7 +723,13 @@ Multiverse-as-feeling instead of multiverse-as-plot. Michelle Yeoh as the laundr
     title: 'Goodfellas',
     emoji: '🍝',
     tags: ['movies/crime', 'scorsese'],
-    customProps: { year: 1990, director: 'Martin Scorsese', genre: 'crime', status: 'watched', rating: 5 },
+    customProps: {
+      year: 1990,
+      director: 'Martin Scorsese',
+      genre: 'crime',
+      status: 'watched',
+      rating: 5
+    },
     daysAgoCreated: -460,
     daysAgoModified: -260,
     body: `The Copacabana tracking shot does in three minutes what most films can't do in three hours.
@@ -1785,6 +1842,57 @@ docker system prune -af --volumes
   // TRAVEL
   // ============================================================================
   {
+    id: NOTE_IDS.travelIstanbul,
+    relativePath: 'notes/travel/Istanbul.md',
+    title: 'Istanbul',
+    emoji: '🌉',
+    tags: ['travel', 'istanbul', 'planning'],
+    aliases: ['Istanbul weekend', 'Istanbul city guide'],
+    customProps: {
+      location: 'Istanbul, Turkey',
+      startDate: '2026-05-23',
+      endDate: '2026-05-25',
+      status: 'planning'
+    },
+    daysAgoCreated: -3,
+    daysAgoModified: 0,
+    body: `![Bosphorus ferry at sunset](https://images.unsplash.com/photo-1524231757912-21f4fe3a7200?auto=format&fit=crop&w=1400&q=80)
+
+> [!info] Keep the first morning slow
+> Ferry, simit, coffee, then one neighborhood at a time.
+
+## Plan
+
+| Day | Area | Anchor |
+|-----|------|--------|
+| Saturday | Karaköy + Galata | Coffee, galleries, sunset walk |
+| Sunday | Kadıköy | Market breakfast, ferry back at golden hour |
+| Monday | Sultanahmet | Hagia Sophia early, Basilica Cistern after lunch |
+
+## Shortlist
+
+- Çiya Sofrası for lunch
+- Arter if it rains
+- Moda Sahili for a long walk
+- Turkish coffee near Galata before sunset
+
+## Before we go
+
+- [x] Save ferry times: https://sehirhatlari.istanbul
+- [ ] Pack light layers from [[Packing List]]
+- [ ] Add one easy dinner to [[Food Diary]]
+- [ ] Screenshot the hotel address for offline use
+
+## Links
+
+- Journal: [[2026-05-17]]
+- Travel checklist: [[Packing List]]
+- Food notes: [[Food Diary]]
+
+#travel #istanbul #planning
+`
+  },
+  {
     id: NOTE_IDS.travelTokyoTrip,
     relativePath: 'notes/travel/Tokyo Trip.md',
     title: 'Tokyo Trip',
@@ -2061,7 +2169,7 @@ Pair with [[Kitchen Confidential]] for the *travel-as-eating* mindset.
   }
 ]
 
-const TODAY_ISO = TODAY.toISOString()
+const TODAY_ISO = seedTodayISO
 
 export const NOTES: NoteFile[] = SPECS.map((spec) => {
   const created = dayOffset(spec.daysAgoCreated)

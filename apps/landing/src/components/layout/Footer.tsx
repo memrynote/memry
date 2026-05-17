@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Container } from './Container'
 import { FOOTER_LINKS, TWITTER_DEV_URL } from '@/lib/constants'
@@ -5,6 +6,24 @@ import { FOOTER_LINKS, TWITTER_DEV_URL } from '@/lib/constants'
 function footerHref(href: string, pathname: string): string {
   if (href.startsWith('#') && pathname !== '/') return '/' + href
   return href
+}
+
+function FooterLink({ href, children }: { href: string; children: ReactNode }) {
+  const className = 'text-sm text-muted hover:text-terracotta transition-colors font-medium'
+
+  if (href.startsWith('http')) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+        {children}
+      </a>
+    )
+  }
+
+  return (
+    <Link to={href} className={className}>
+      {children}
+    </Link>
+  )
 }
 
 export function Footer() {
@@ -47,12 +66,7 @@ export function Footer() {
             <ul className="space-y-4">
               {FOOTER_LINKS.resources.map((link) => (
                 <li key={link.label}>
-                  <Link
-                    to={link.href}
-                    className="text-sm text-muted hover:text-terracotta transition-colors font-medium"
-                  >
-                    {link.label}
-                  </Link>
+                  <FooterLink href={link.href}>{link.label}</FooterLink>
                 </li>
               ))}
             </ul>

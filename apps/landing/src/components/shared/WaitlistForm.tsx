@@ -90,7 +90,7 @@ export function WaitlistForm({ variant = 'hero', className }: WaitlistFormProps)
           required
           disabled={status === 'loading'}
           className={cn(
-            'w-full bg-white/50 backdrop-blur-sm focus:bg-white',
+            'w-full bg-card/50 backdrop-blur-sm focus:bg-card',
             variant === 'hero' && 'h-12 text-base shadow-sm',
             variant === 'centered' && 'h-12 text-base',
             status === 'error' && 'border-red-500 focus:ring-red-500'

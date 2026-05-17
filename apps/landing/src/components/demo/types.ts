@@ -8,7 +8,15 @@ export interface ClipConfig {
 
 export interface SceneProps {
   playing: boolean
+  muted: boolean
+  onMutedChange: (muted: boolean) => void
   onDurationDetected?: (ms: number) => void
+  seekRequest?: SeekRequest | null
+}
+
+export interface SeekRequest {
+  progress: number
+  requestId: number
 }
 
 export const CLIPS: ClipConfig[] = [

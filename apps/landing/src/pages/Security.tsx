@@ -14,6 +14,7 @@ import {
   QrCode
 } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
+import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
 import type { LucideIcon } from 'lucide-react'
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const
@@ -157,9 +158,9 @@ export function SecurityPage() {
       <section className="py-20">
         <Container size="md">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: EASE_OUT_EXPO }}
+            initial={BLUR_REVEAL_INITIAL}
+            animate={BLUR_REVEAL_ANIMATE}
+            transition={BLUR_REVEAL_TRANSITION}
             className="text-center mb-8"
           >
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-sage/30 bg-sage/5 text-sage text-sm font-medium mb-8">

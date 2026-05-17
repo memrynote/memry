@@ -149,7 +149,7 @@ export function SavingsCalculator() {
             })}
           </div>
 
-          <div className="bg-white/50 rounded-2xl border border-border shadow-sm overflow-hidden">
+          <div className="bg-card/50 rounded-2xl border border-border shadow-sm overflow-hidden">
             <div className="p-6 md:p-8">
               <div className="grid grid-cols-1 md:grid-cols-[1fr,auto,1fr] gap-6 items-center">
                 <AnimatePresence mode="wait">

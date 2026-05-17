@@ -39,7 +39,7 @@ function StepCard({ step, index }: { step: (typeof WORKFLOW_STEPS)[number]; inde
 
       <div className="relative mb-5">
         <div className="absolute -inset-3 bg-terracotta/8 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-        <div className="relative w-16 h-16 rounded-2xl bg-white border border-border flex items-center justify-center shadow-sm group-hover:border-terracotta/30 transition-colors">
+        <div className="relative w-16 h-16 rounded-2xl bg-card border border-border flex items-center justify-center shadow-sm group-hover:border-terracotta/30 transition-colors">
           <Icon className="w-7 h-7 text-terracotta" strokeWidth={1.5} />
         </div>
       </div>

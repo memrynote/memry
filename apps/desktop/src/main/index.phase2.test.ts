@@ -36,6 +36,7 @@ const triggerGoogleCalendarSyncNowMock = vi.fn()
 const computeSpkiHashFromPemMock = vi.fn(() => 'hash')
 const isPinningDisabledMock = vi.fn(() => true)
 const getPinnedCertificateHashesMock = vi.fn(() => [] as string[])
+const getPinnedCertificateHashesForHostnameMock = vi.fn(() => [] as string[])
 const initializeUpdaterMock = vi.fn()
 const sendAppNavigationCommandMock = vi.fn()
 const sendAppNavigationKeyboardCommandMock = vi.fn(() => false)
@@ -188,7 +189,8 @@ vi.mock('./calendar/google/sync-service', () => ({
 vi.mock('./sync/certificate-pinning', () => ({
   computeSpkiHashFromPem: computeSpkiHashFromPemMock,
   isPinningDisabled: isPinningDisabledMock,
-  getPinnedCertificateHashes: getPinnedCertificateHashesMock
+  getPinnedCertificateHashes: getPinnedCertificateHashesMock,
+  getPinnedCertificateHashesForHostname: getPinnedCertificateHashesForHostnameMock
 }))
 
 vi.mock('./sync/crdt-provider', () => ({
@@ -355,6 +357,7 @@ describe('main index phase2 exports', () => {
     readPreferencesMock.mockReturnValue({ language: 'en' })
     isPinningDisabledMock.mockReturnValue(true)
     getPinnedCertificateHashesMock.mockReturnValue([])
+    getPinnedCertificateHashesForHostnameMock.mockReturnValue([])
     computeSpkiHashFromPemMock.mockReturnValue('hash')
     getOpenNoteIdsMock.mockReturnValue([])
     getProviderDocMock.mockReturnValue(undefined)
@@ -660,6 +663,7 @@ describe('main index phase2 exports', () => {
     whenReadyMock.mockResolvedValue(undefined)
     isPinningDisabledMock.mockReturnValue(false)
     getPinnedCertificateHashesMock.mockReturnValue(['hash'])
+    getPinnedCertificateHashesForHostnameMock.mockReturnValue(['hash'])
 
     await importMainModule()
     await flushReadyWork()
@@ -685,6 +689,29 @@ describe('main index phase2 exports', () => {
 
     verify({ certificate: { data: 'pem' }, hostname: 'api.memrynote.com' }, callback)
     expect(callback).toHaveBeenLastCalledWith(0)
+  })
+
+  it('lets unpinned external hosts use normal TLS in packaged builds', async () => {
+    whenReadyMock.mockResolvedValue(undefined)
+    isPinningDisabledMock.mockReturnValue(false)
+    getPinnedCertificateHashesMock.mockReturnValue(['hash'])
+    getPinnedCertificateHashesForHostnameMock.mockImplementation((hostname: string) =>
+      hostname === 'sync.memrynote.com' ? ['hash'] : []
+    )
+
+    await importMainModule()
+    await flushReadyWork()
+
+    const verify = setCertificateVerifyProcMock.mock.calls[0][0] as (
+      request: { certificate: { data?: string }; hostname: string },
+      callback: (result: number) => void
+    ) => void
+
+    const callback = vi.fn()
+    verify({ certificate: {}, hostname: 'react-tweet.vercel.app' }, callback)
+
+    expect(callback).toHaveBeenCalledWith(0)
+    expect(computeSpkiHashFromPemMock).not.toHaveBeenCalled()
   })
 
   it('leaves certificate verification unset when pinning has no pins', async () => {

@@ -6,18 +6,18 @@ Built with React 19, TypeScript, Tailwind CSS 4, and Framer Motion. Deployed on 
 
 ## Tech Stack
 
-| Layer     | Tool                                      |
-| --------- | ----------------------------------------- |
-| Framework | React 19 + React Router 7                 |
-| Language  | TypeScript 5.9                            |
-| Build     | Vite 7                                    |
-| Styling   | Tailwind CSS 4                            |
-| Animation | Framer Motion 12                          |
-| Icons     | Lucide React                              |
-| UI        | Radix UI primitives                       |
-| API       | Vercel Serverless Functions               |
-| Email     | Resend                                    |
-| Fonts     | Satoshi, Instrument Serif, JetBrains Mono |
+| Layer     | Tool                           |
+| --------- | ------------------------------ |
+| Framework | React 19 + React Router 7      |
+| Language  | TypeScript 5.9                 |
+| Build     | Vite 7                         |
+| Styling   | Tailwind CSS 4                 |
+| Animation | Framer Motion 12               |
+| Icons     | Lucide React                   |
+| UI        | Radix UI primitives            |
+| API       | Vercel Serverless Functions    |
+| Email     | Resend                         |
+| Fonts     | Satoshi, Inter, JetBrains Mono |
 
 ## Getting Started
 
@@ -92,15 +92,15 @@ set the Vercel project Root Directory to `apps/landing` so Vercel reads this pac
 
 ## Design Tokens
 
-| Token        | Value            | Usage                                            |
-| ------------ | ---------------- | ------------------------------------------------ |
-| Background   | `#fffcf7`        | Warm paper base                                  |
-| Accent       | `#FF671A`        | Generated brand orange — CTAs, highlights        |
-| Hover accent | `#B33C00`        | Generated dark orange — pressed and hover states |
-| Success      | `#5b7f6a`        | Sage — confirmation states                       |
-| Heading font | Instrument Serif | Display typography                               |
-| Body font    | Satoshi          | Interface text                                   |
-| Mono font    | JetBrains Mono   | Data, labels, code                               |
+| Token        | Value          | Usage                                            |
+| ------------ | -------------- | ------------------------------------------------ |
+| Background   | `#fffcf7`      | Warm paper base                                  |
+| Accent       | `#FF671A`      | Generated brand orange — CTAs, highlights        |
+| Hover accent | `#B33C00`      | Generated dark orange — pressed and hover states |
+| Success      | `#5b7f6a`      | Sage — confirmation states                       |
+| Heading font | Inter          | Display typography                               |
+| Body font    | Satoshi        | Interface text                                   |
+| Mono font    | JetBrains Mono | Data, labels, code                               |
 
 ## License
 
