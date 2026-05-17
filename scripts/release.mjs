@@ -152,6 +152,9 @@ function printPlan({ draft, dryRun, preview }) {
   console.log(`  Final tag: ${preview.tag}`)
   console.log(`  App version: ${preview.appVersion}`)
   console.log(`  Release name: ${preview.releaseName}`)
+  console.log(
+    `  Reddit: ${dryRun ? 'skipped for dry run' : 'run pnpm release:reddit after publish'}`
+  )
   console.log('')
 }
 

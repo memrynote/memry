@@ -89,6 +89,10 @@ The `/ship` and `/merge` skills wrap the standard PR + CI + merge flow:
 - `/ship` — push, open PR, wait for CI, present a summary
 - `/merge` — final landing pass: atomic commits, verify, push, wait for CI green, merge to `main`
 
+Desktop releases use `pnpm release -- --humanize`. After the GitHub release is published, run
+`pnpm release:reddit -- --tag <tag>` to print a copy/paste-ready Reddit title and body for
+`r/MemryNote`.
+
 ## Don'ts
 
 - Use `--no-verify` only for urgent bypasses after focused checks pass
