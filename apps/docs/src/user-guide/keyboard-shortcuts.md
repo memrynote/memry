@@ -100,4 +100,4 @@ Hint mode overlays numeric badges on interactive elements so you can act without
 
 Open [Settings → Keyboard Shortcuts](/user-guide/settings#keyboard-shortcuts), find a row, and click to capture a new binding. Conflicts are flagged inline. **Reset All** restores defaults; it's only visible if you've made changes.
 
-You can also set a **Global Capture** hotkey there to bring Memry to focus from any app (macOS requires Accessibility permission).
+You can also set a **Global Capture** hotkey there to bring memrynote to focus from any app (macOS requires Accessibility permission).

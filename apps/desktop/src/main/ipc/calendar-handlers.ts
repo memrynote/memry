@@ -752,7 +752,7 @@ export function registerCalendarHandlers(): void {
           return {
             success: false,
             status: await buildProviderStatus(db, input.provider),
-            error: 'Sign in to Memry before refreshing Google Calendar'
+            error: 'Sign in to memrynote before refreshing Google Calendar'
           }
         }
 

@@ -187,7 +187,7 @@ function HeroWeekMock() {
   return (
     <FeatureHeroScreenshot
       screenshot="calendar"
-      alt="Memry calendar page showing the weekly calendar, scheduled tasks, and day sidebar"
+      alt="memrynote calendar page showing the weekly calendar, scheduled tasks, and day sidebar"
       width={1608}
       height={944}
     />
@@ -475,8 +475,8 @@ type TodayBlock = {
 
 const MORNING: TodayBlock[] = [
   { time: '07:30', label: 'Morning pages', tag: 'Journal', tone: 'amber' },
-  { time: '09:00', label: 'Standup', tag: 'Memry', tone: 'sage', done: true },
-  { time: '10:00', label: 'Spec · agent chat permissions', tag: 'Memry', tone: 'terracotta' }
+  { time: '09:00', label: 'Standup', tag: 'memrynote', tone: 'sage', done: true },
+  { time: '10:00', label: 'Spec · agent chat permissions', tag: 'memrynote', tone: 'terracotta' }
 ]
 
 const AFTERNOON: TodayBlock[] = [
@@ -486,7 +486,7 @@ const AFTERNOON: TodayBlock[] = [
 ]
 
 const EVENING: TodayBlock[] = [
-  { time: '18:30', label: 'Ship beta cut', tag: 'Memry · P0', tone: 'terracotta' },
+  { time: '18:30', label: 'Ship beta cut', tag: 'memrynote · P0', tone: 'terracotta' },
   { time: '20:00', label: 'Reading · zettelkasten', tone: 'amber' }
 ]
 
@@ -652,8 +652,8 @@ function RecurringCard() {
       </div>
       <h3 className="mt-4 font-serif text-xl text-ink">Plots every cycle.</h3>
       <p className="mt-2 text-sm leading-relaxed text-muted">
-        Daily, weekly, monthly, yearly. Memry plots each occurrence on the calendar so the future is
-        never empty.
+        Daily, weekly, monthly, yearly. memrynote plots each occurrence on the calendar so the
+        future is never empty.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         {['daily', 'weekly · Mon', 'every 2 weeks', 'monthly · 1st', 'yearly'].map((r) => (
@@ -683,8 +683,8 @@ function PlanningShowcase() {
               Not just deadlines.
             </h2>
             <p className="mt-5 max-w-md text-lg leading-relaxed text-muted">
-              A deadline alone hides the work. Add a start date and Memry plots the whole span on
-              your calendar. You see the runway, not just the finish line.
+              A deadline alone hides the work. Add a start date and memrynote plots the whole span
+              on your calendar. You see the runway, not just the finish line.
             </p>
             <div className="mt-7 flex flex-wrap gap-2">
               {[
@@ -850,7 +850,7 @@ function WorksWithRest() {
         <motion.div {...fadeUp} className="mx-auto max-w-2xl text-center">
           <Eyebrow>One workspace</Eyebrow>
           <h2 className="mt-3 font-serif text-3xl font-normal leading-tight text-ink md:text-5xl">
-            Works with the rest of Memry.
+            Works with the rest of memrynote.
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-muted">
             Calendar isn’t a separate app. It’s a view on the same vault. Tasks, journal, inbox, all
@@ -1034,9 +1034,9 @@ function MoreCalendarFeatures() {
 
 const CALENDAR_FAQ = [
   {
-    question: 'Does Memry sync with Google or Apple Calendar?',
+    question: 'Does memrynote sync with Google or Apple Calendar?',
     answer:
-      'Not yet. External calendar sync (Google + Apple) is on the roadmap under our Expansion phase. Today, Memry’s calendar shows tasks, deadlines, and journal entries from your own vault. Not external meetings.'
+      'Not yet. External calendar sync (Google + Apple) is on the roadmap under our Expansion phase. Today, memrynote’s calendar shows tasks, deadlines, and journal entries from your own vault. Not external meetings.'
   },
   {
     question: 'Can I block time on the calendar?',
@@ -1056,7 +1056,7 @@ const CALENDAR_FAQ = [
   {
     question: 'What’s the difference between start and due dates?',
     answer:
-      'A due date is the deadline. A start date is when work begins. Set both and Memry plots a multi-day bar across your week so you see the whole runway, not just the finish line.'
+      'A due date is the deadline. A start date is when work begins. Set both and memrynote plots a multi-day bar across your week so you see the whole runway, not just the finish line.'
   }
 ]
 

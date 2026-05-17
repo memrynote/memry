@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "跳过入门",
-      "welcomeToMemry": "欢迎使用 Memry",
+      "welcomeToMemry": "欢迎使用 memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "您的个人知识库。让我们花 2 分钟帮您快速入门。",
       "getStarted": "开始使用",
       "createYourFirstNote": "创建您的第一条笔记",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "拖动以调整大小 · 双击重置"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "欢迎使用 Memry",
+      "welcomeToMemry": "欢迎使用 memrynote",
       "yourPersonalKnowledgeManagementSystem": "您的个人知识管理系统。",
       "selectAFolderToStoreYourNotesAndTasks": "选择一个文件夹来存储您的笔记和任务。",
       "opening": "正在打开...",
@@ -341,9 +341,9 @@
     "stop": "停止",
     "thinking": "Agent 正在思考",
     "enable": {
-      "title": "启用 Memry Agent",
-      "description": "Memry Agent 使用您选择的本地代理 CLI 来讨论您的保管库。 Claude 轮流发送到 Anthropic； Codex 轮流发送到 OpenAI。",
-      "remote": "Memry 会加密您的本地和同步的聊天历史记录，但模型推断会在选定的提供程序中进行。",
+      "title": "启用 memrynote Agent",
+      "description": "memrynote Agent 使用您选择的本地代理 CLI 来讨论您的保管库。 Claude 轮流发送到 Anthropic； Codex 轮流发送到 OpenAI。",
+      "remote": "memrynote 会加密您的本地和同步的聊天历史记录，但模型推断会在选定的提供程序中进行。",
       "readTools": "读取工具自动运行。",
       "writeTools": "创建和更新工具需要批准。",
       "diff": "更新工具显示差异或预览。",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "当前注释",
       "removeAttachment": "删除 {label}",
-      "placeholder": "向 Memry 询问任何事。@ 可提及文件",
+      "placeholder": "向 memrynote 询问任何事。@ 可提及文件",
       "send": "发送",
       "providerLabel": "Agent 提供商：{provider}",
       "settingsSummary": "{reasoning}",

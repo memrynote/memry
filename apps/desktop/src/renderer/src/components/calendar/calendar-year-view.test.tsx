@@ -40,7 +40,7 @@ const eventItem: CalendarProjectionItem = {
   source: {
     provider: null,
     calendarSourceId: null,
-    title: 'Memry',
+    title: 'memrynote',
     color: '#2563eb',
     kind: null,
     isMemryManaged: true

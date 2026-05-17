@@ -16,7 +16,7 @@
   "filter": {
     "filter-calendars": "กรองปฏิทิน",
     "sources": "แหล่งที่มา",
-    "memry-items": "Memry รายการ",
+    "memry-items": "memrynote รายการ",
     "imported-calendars": "ปฏิทินที่นำเข้า",
     "event-types": "ประเภทกิจกรรม",
     "google-calendars": "ปฏิทิน Google",
@@ -60,27 +60,27 @@
     "target-calendar": "ปฏิทินเป้าหมาย",
     "use-default-calendar": "ใช้ปฏิทินเริ่มต้น",
     "use-default-calendar-with-name": "ใช้ค่าเริ่มต้น ({calendar})",
-    "use-memry-calendar-default": "ใช้ปฏิทิน Memry (ค่าเริ่มต้น)",
+    "use-memry-calendar-default": "ใช้ปฏิทิน memrynote (ค่าเริ่มต้น)",
     "primary-suffix": "หลัก"
   },
   "delete-dialog": {
     "title": "ลบกิจกรรม?",
     "local-description": "\"{title}\" จะถูกลบอย่างถาวร การกระทำนี้ไม่สามารถย้อนกลับได้",
-    "google-bound-description": "\"{title}\" จะถูกลบออกจาก Memry และ Google Calendar การดำเนินการนี้ไม่สามารถย้อนกลับได้  ",
+    "google-bound-description": "\"{title}\" จะถูกลบออกจาก memrynote และ Google Calendar การดำเนินการนี้ไม่สามารถย้อนกลับได้  ",
     "context-menu-delete-label": "  \nลบกิจกรรม  "
   },
   "promote-dialog": {
     "aria": "  \nแก้ไขกิจกรรมในปฏิทินภายนอก  ",
-    "title": "  \nแก้ไขกิจกรรมนี้ใน Memry?  ",
-    "body": "  \nการแก้ไขกิจกรรมนี้จะสร้างสำเนาที่เชื่อมโยงใน Memry เพื่อให้การเปลี่ยนแปลงซิงค์ทั้งสองทาง ดำเนินการต่อหรือไม่?  ",
+    "title": "  \nแก้ไขกิจกรรมนี้ใน memrynote?  ",
+    "body": "  \nการแก้ไขกิจกรรมนี้จะสร้างสำเนาที่เชื่อมโยงใน memrynote เพื่อให้การเปลี่ยนแปลงซิงค์ทั้งสองทาง ดำเนินการต่อหรือไม่?  ",
     "do-not-ask-again": "  \nไม่ต้องถามอีก  ",
-    "confirm-label": "  \nแก้ไขใน Memry  "
+    "confirm-label": "  \nแก้ไขใน memrynote  "
   },
   "onboarding-dialog": {
     "aria": "  \nเลือกปฏิทิน Google เริ่มต้นของคุณ  ",
-    "title": "  \nกิจกรรม Memry ใหม่ควรไปที่ปฏิทินใด?  ",
-    "body": "  \nเลือกปฏิทิน Google ที่ Memry ควรใช้เป็นค่าเริ่มต้น คุณยังสามารถแก้ไขตามแต่ละเหตุการณ์ได้  ",
-    "default-calendar-label": "ใช้ปฏิทินที่จัดการโดย Memry",
+    "title": "  \nกิจกรรม memrynote ใหม่ควรไปที่ปฏิทินใด?  ",
+    "body": "  \nเลือกปฏิทิน Google ที่ memrynote ควรใช้เป็นค่าเริ่มต้น คุณยังสามารถแก้ไขตามแต่ละเหตุการณ์ได้  ",
+    "default-calendar-label": "ใช้ปฏิทินที่จัดการโดย memrynote",
     "skip": "ข้าม",
     "use-this-calendar": "  \nใช้ปฏิทินนี้  "
   },

@@ -47,7 +47,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "Launch at Login",
-        "description": "Start Memry when you log in",
+        "description": "Start memrynote when you log in",
         "error": "Failed to update start on boot"
       }
     },
@@ -56,15 +56,15 @@
       "installedVersion": "Installed version {version}",
       "availableVersion": "Available version {version}",
       "unsupported": "Packaged builds can check, download, and install updates from GitHub Releases",
-      "available": "Memry {version} is available to download",
+      "available": "memrynote {version} is available to download",
       "downloadingLatest": "Downloading the latest release",
       "downloadingLatestPercent": "Downloading the latest release ({percent}%)",
-      "downloaded": "Memry {version} is ready to install",
+      "downloaded": "memrynote {version} is ready to install",
       "upToDate": "This installation is on the latest published release",
       "checking": "Checking GitHub Releases for a newer version",
       "idle": "Check for new releases and install them without leaving the app",
       "unsupportedToast": "Auto-updates are available in packaged releases only",
-      "upToDateToast": "Memry {version} is up to date",
+      "upToDateToast": "memrynote {version} is up to date",
       "actionFailed": "Update action failed",
       "actions": {
         "checking": "Checking...",
@@ -442,7 +442,7 @@
       }
     },
     "community": {
-      "prompt": "Love Memry?",
+      "prompt": "Love memrynote?",
       "star": "Star us on GitHub",
       "and": "and",
       "feedback": "share feedback"
@@ -547,7 +547,7 @@
       "pendingSuccess": "Device linked successfully",
       "goBack": "Go back",
       "waitingTitle": "Waiting for approval",
-      "waitingDescription": "Open Memry on your other device and approve the linking request.",
+      "waitingDescription": "Open memrynote on your other device and approve the linking request.",
       "verificationCode": "Verification code",
       "confirmCode": "Confirm this matches the code on your other device"
     }
@@ -793,7 +793,7 @@
     "connect": "Connect",
     "googleCalendar": {
       "name": "Google Calendar",
-      "description": "Two-way sync for Memry events and imported Google calendars.",
+      "description": "Two-way sync for memrynote events and imported Google calendars.",
       "statuses": {
         "connected": "Connected",
         "notConnected": "Not Connected",
@@ -825,7 +825,7 @@
     "registry": {
       "googleCalendar": {
         "name": "Google Calendar",
-        "description": "Two-way sync for Memry events, tasks, reminders, and imported calendars"
+        "description": "Two-way sync for memrynote events, tasks, reminders, and imported calendars"
       },
       "appleCalendar": {
         "name": "Apple Calendar",
@@ -1010,7 +1010,7 @@
       "description": "Capture a note from anywhere",
       "permissionNeeded": "Permission needed",
       "active": "Active",
-      "permissionHint": "Global shortcuts require Accessibility permission. Go to System Settings → Privacy → Accessibility and enable Memry."
+      "permissionHint": "Global shortcuts require Accessibility permission. Go to System Settings → Privacy → Accessibility and enable memrynote."
     },
     "toasts": {
       "saveGlobalFailed": "Failed to save global capture shortcut",

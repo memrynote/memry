@@ -16,7 +16,7 @@
   "filter": {
     "filter-calendars": "Filtrovat kalendáře",
     "sources": "Zdroje",
-    "memry-items": "položky Memry",
+    "memry-items": "položky memrynote",
     "imported-calendars": "Importované kalendáře",
     "event-types": "Typy událostí",
     "google-calendars": "Kalendáře Google",
@@ -60,27 +60,27 @@
     "target-calendar": "Cílový kalendář",
     "use-default-calendar": "Použít výchozí kalendář",
     "use-default-calendar-with-name": "Použít výchozí ({calendar})",
-    "use-memry-calendar-default": "Použít kalendář Memry (výchozí)",
+    "use-memry-calendar-default": "Použít kalendář memrynote (výchozí)",
     "primary-suffix": "primární"
   },
   "delete-dialog": {
     "title": "Smazat událost?",
     "local-description": "„{title}“ bude trvale smazáno. Tuto akci nelze vrátit zpět.",
-    "google-bound-description": "„{title}“ bude odstraněn z Memry a Kalendáře Google. Tuto akci nelze vrátit zpět.",
+    "google-bound-description": "„{title}“ bude odstraněn z memrynote a Kalendáře Google. Tuto akci nelze vrátit zpět.",
     "context-menu-delete-label": "Smazat událost"
   },
   "promote-dialog": {
     "aria": "Upravit událost externího kalendáře",
-    "title": "Upravit tuto událost v Memry?",
-    "body": "Úpravou této události se vytvoří propojená kopie v Memry, takže změny budou synchronizovány oběma způsoby. Pokračovat?",
+    "title": "Upravit tuto událost v memrynote?",
+    "body": "Úpravou této události se vytvoří propojená kopie v memrynote, takže změny budou synchronizovány oběma způsoby. Pokračovat?",
     "do-not-ask-again": "Už se neptejte",
-    "confirm-label": "Upravit v Memry"
+    "confirm-label": "Upravit v memrynote"
   },
   "onboarding-dialog": {
     "aria": "Vyberte svůj výchozí kalendář Google",
-    "title": "Do kterého kalendáře by měly jít nové události Memry?",
-    "body": "Vyberte kalendář Google, který má Memry používat jako výchozí. Stále jej můžete přepsat pro každou událost.",
-    "default-calendar-label": "Použijte kalendář spravovaný Memry",
+    "title": "Do kterého kalendáře by měly jít nové události memrynote?",
+    "body": "Vyberte kalendář Google, který má memrynote používat jako výchozí. Stále jej můžete přepsat pro každou událost.",
+    "default-calendar-label": "Použijte kalendář spravovaný memrynote",
     "skip": "Přeskočit",
     "use-this-calendar": "Použijte tento kalendář"
   },

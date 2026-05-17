@@ -19,13 +19,13 @@
     "exportCancelled": "Vienti peruttu",
     "update": {
       "availableTitle": "Päivitys saatavilla",
-      "availableMessage": "Memry {version} on saatavilla.",
+      "availableMessage": "memrynote {version} on saatavilla.",
       "availableDetailFallback": "Lataa päivitys nyt?",
       "buttonDownload": "Lataa",
       "buttonLater": "Myöhemmin",
       "readyTitle": "Päivitys valmis",
-      "readyMessage": "Memry {version} on ladattu.",
-      "readyDetailFallback": "Viimeistele päivityksen asennus käynnistämällä Memry uudelleen.",
+      "readyMessage": "memrynote {version} on ladattu.",
+      "readyDetailFallback": "Viimeistele päivityksen asennus käynnistämällä memrynote uudelleen.",
       "buttonRestartNow": "Käynnistä nyt uudelleen",
       "releaseNotesLabel": "Julkaisutiedot:"
     }

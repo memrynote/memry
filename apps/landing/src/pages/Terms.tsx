@@ -8,24 +8,24 @@ export function TermsPage() {
       <LegalLayout
         eyebrow="Legal · Terms"
         title="Terms of Service"
-        intro="The agreement between you and Memry when you use our local app and Sync service."
+        intro="The agreement between you and memrynote when you use our local app and Sync service."
         lastUpdated="May 9, 2026"
       >
         <h2>1. Who we are</h2>
         <p>
-          Memry (&ldquo;Memry,&rdquo; &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;) is
-          an indie productivity app made up of a free local-first desktop application and an
-          optional paid Sync service. By downloading the desktop app or signing up for Sync, you
-          agree to these Terms of Service.
+          memrynote (&ldquo;memrynote,&rdquo; &ldquo;we,&rdquo; &ldquo;us,&rdquo; or
+          &ldquo;our&rdquo;) is an indie productivity app made up of a free local-first desktop
+          application and an optional paid Sync service. By downloading the desktop app or signing
+          up for Sync, you agree to these Terms of Service.
         </p>
         <p>
           If you do not agree, do not use the service. These Terms form a binding contract between
-          you and the operators of Memry.
+          you and the operators of memrynote.
         </p>
 
         <h2>2. The local app</h2>
         <p>
-          The Memry desktop app is free to download and use, with no account required. Your data
+          The memrynote desktop app is free to download and use, with no account required. Your data
           stays on your device as plain Markdown files in a vault folder you choose. We do not
           monitor, collect, or transmit the contents of your vault.
         </p>
@@ -75,7 +75,7 @@ export function TermsPage() {
         </p>
 
         <h2>5. Acceptable use</h2>
-        <p>You agree not to use Memry to:</p>
+        <p>You agree not to use memrynote to:</p>
         <ul>
           <li>Store, distribute, or sync content that is illegal where you live.</li>
           <li>
@@ -146,28 +146,29 @@ export function TermsPage() {
 
         <h2>10. Service changes and termination</h2>
         <p>
-          Memry is pre-1.0 and evolving quickly. We may add, change, or remove features as the
+          memrynote is pre-1.0 and evolving quickly. We may add, change, or remove features as the
           product matures. Material removals to paid features will be announced at least 30 days in
           advance, and you are welcome to a pro-rated refund of unused time if a removal materially
           changes your plan.
         </p>
         <p>
-          You may stop using Memry at any time. We may terminate or suspend access if you violate
-          these Terms. If we shut Sync down entirely we will give at least 90 days&apos; notice and
-          provide a path to download your encrypted blobs.
+          You may stop using memrynote at any time. We may terminate or suspend access if you
+          violate these Terms. If we shut Sync down entirely we will give at least 90 days&apos;
+          notice and provide a path to download your encrypted blobs.
         </p>
 
         <h2>11. Intellectual property</h2>
         <p>
-          You own everything you put into Memry. We claim no rights over your notes, journal, tasks,
-          or files. The Memry name, branding, and the source code of the proprietary parts of the
-          service remain ours; open-source components are licensed under their respective licenses.
+          You own everything you put into memrynote. We claim no rights over your notes, journal,
+          tasks, or files. The memrynote name, branding, and the source code of the proprietary
+          parts of the service remain ours; open-source components are licensed under their
+          respective licenses.
         </p>
 
         <h2>12. Disclaimers</h2>
         <p>
-          Memry and Sync are provided &ldquo;as is&rdquo; without warranty of any kind. We do our
-          best to keep your encrypted data safe and accessible, but we cannot guarantee
+          memrynote and Sync are provided &ldquo;as is&rdquo; without warranty of any kind. We do
+          our best to keep your encrypted data safe and accessible, but we cannot guarantee
           uninterrupted service, perfect data integrity, or recovery from every failure mode. You
           are responsible for keeping your own backups of vaults that matter to you.
         </p>
@@ -175,16 +176,16 @@ export function TermsPage() {
         <h2>13. Limitation of liability</h2>
         <p>
           To the maximum extent permitted by law, our aggregate liability for any claim arising from
-          your use of Memry is limited to the amount you paid us in the 12 months before the claim,
-          or USD $100 if you are a free user. We are not liable for indirect, consequential, or
-          incidental damages.
+          your use of memrynote is limited to the amount you paid us in the 12 months before the
+          claim, or USD $100 if you are a free user. We are not liable for indirect, consequential,
+          or incidental damages.
         </p>
 
         <h2>14. Changes to these Terms</h2>
         <p>
           We may update these Terms when the product changes or the law requires it. Material
           changes will be announced in the app and on this page at least 14 days before they take
-          effect. Continuing to use Memry after that date counts as acceptance.
+          effect. Continuing to use memrynote after that date counts as acceptance.
         </p>
 
         <h2>15. Contact</h2>

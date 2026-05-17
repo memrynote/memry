@@ -20,7 +20,7 @@ describe('terminal command setup', () => {
   it('installs a Unix shim that launches the packaged app in CLI mode', async () => {
     const root = tempRoot()
     const binDir = join(root, 'bin')
-    const executablePath = join(root, 'Memry.app', 'Contents', 'MacOS', 'Memry')
+    const executablePath = join(root, 'Memrynote.app', 'Contents', 'MacOS', 'Memrynote')
 
     const status = await installTerminalCommand({
       platform: 'darwin',
@@ -69,7 +69,7 @@ describe('terminal command setup', () => {
     await installTerminalCommand({
       platform: 'linux',
       homeDir: join(root, 'home'),
-      executablePath: join(root, 'Memry'),
+      executablePath: join(root, 'Memrynote'),
       pathEnv: binDir,
       preferredBinDirs: [binDir]
     })
@@ -89,7 +89,7 @@ describe('terminal command setup', () => {
   it('installs a Windows cmd shim in the user path directory', async () => {
     const root = tempRoot()
     const windowsApps = join(root, 'WindowsApps')
-    const executablePath = join(root, 'Memry.exe')
+    const executablePath = join(root, 'Memrynote.exe')
 
     const status = await installTerminalCommand({
       platform: 'win32',
@@ -196,7 +196,7 @@ describe('terminal command setup', () => {
     const options = {
       platform: 'linux' as const,
       homeDir: join(root, 'home'),
-      executablePath: join(root, 'Memry'),
+      executablePath: join(root, 'Memrynote'),
       pathEnv: binDir,
       preferredBinDirs: [binDir]
     }

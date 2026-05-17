@@ -61,7 +61,7 @@
     "deviceRevoked": "Bu cihaz hesabınızdan kaldırıldı.",
     "rateLimited": "Çok fazla istek var. Senkronizasyon kısa süre içinde devam edecek.",
     "cryptoFailure": "Senkronizasyon verileri şifrelenemedi veya şifreleri çözülemedi. Oturumu kapatıp tekrar açmayı deneyin.",
-    "versionIncompatible": "Memry'in bu sürümü artık desteklenmiyor. Lütfen güncelleyin.",
+    "versionIncompatible": "memrynote'in bu sürümü artık desteklenmiyor. Lütfen güncelleyin.",
     "storageQuotaExceeded": "Senkronizasyon depolama alanınız dolu. Yer açın veya planınızı yükseltin.",
     "certificatePinFailed": "Güvenli bağlantı başarısız oldu. Ağ bağlantınızı kontrol edin.",
     "unknown": "Beklenmeyen bir senkronizasyon hatası oluştu. Otomatik olarak yeniden deneyecektir.",

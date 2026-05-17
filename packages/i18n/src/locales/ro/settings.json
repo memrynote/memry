@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "Lansați la Logare",
-        "description": "Porniți Memry când vă conectați",
+        "description": "Porniți memrynote când vă conectați",
         "error": "Nu s-a putut actualiza pornirea la pornire"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "Versiunea instalată {version}",
       "availableVersion": "Versiunea disponibilă {version}",
       "unsupported": "Compilările împachetate pot verifica, descărca și instala actualizări din versiunile GitHub",
-      "available": "Memry {version} este disponibil pentru descărcare",
+      "available": "memrynote {version} este disponibil pentru descărcare",
       "downloadingLatest": "Se descarcă cea mai recentă versiune",
       "downloadingLatestPercent": "Se descarcă cea mai recentă versiune ({percent}%)",
-      "downloaded": "Memry {version} este gata de instalare",
+      "downloaded": "memrynote {version} este gata de instalare",
       "upToDate": "Această instalare se află pe cea mai recentă versiune publicată",
       "checking": "Verificarea versiunilor GitHub pentru o versiune mai nouă",
       "idle": "Verificați noi versiuni și instalați-le fără a părăsi aplicația",
       "unsupportedToast": "Actualizările automate sunt disponibile numai în versiunile pachetate",
-      "upToDateToast": "Memry {version} este actualizat",
+      "upToDateToast": "memrynote {version} este actualizat",
       "actionFailed": "Acțiunea de actualizare a eșuat",
       "actions": {
         "checking": "Se verifică...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "Dispozitivul a fost conectat cu succes",
       "goBack": "Du-te înapoi",
       "waitingTitle": "În așteptarea aprobării",
-      "waitingDescription": "Deschideți Memry pe celălalt dispozitiv și aprobați solicitarea de conectare.",
+      "waitingDescription": "Deschideți memrynote pe celălalt dispozitiv și aprobați solicitarea de conectare.",
       "verificationCode": "Cod de verificare",
       "confirmCode": "Confirmați că acesta se potrivește cu codul de pe celălalt dispozitiv"
     }
@@ -778,7 +778,7 @@
     "connect": "Conectați-vă",
     "googleCalendar": {
       "name": "Google Calendar",
-      "description": "Sincronizare bidirecțională pentru evenimentele Memry și calendarele Google importate.",
+      "description": "Sincronizare bidirecțională pentru evenimentele memrynote și calendarele Google importate.",
       "statuses": {
         "connected": "Conectat",
         "notConnected": "Nu este conectat",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "Google Calendar",
-        "description": "Sincronizare bidirecțională pentru evenimente, sarcini, mementouri și calendare importate Memry"
+        "description": "Sincronizare bidirecțională pentru evenimente, sarcini, mementouri și calendare importate memrynote"
       },
       "appleCalendar": {
         "name": "Calendar Apple",
@@ -963,7 +963,7 @@
       "description": "Capturați o notă de oriunde",
       "permissionNeeded": "Este nevoie de permisiunea",
       "active": "Activ",
-      "permissionHint": "Comenzile rapide globale necesită permisiunea de accesibilitate. Accesați Setări sistem → Confidențialitate → Accesibilitate și activați Memry."
+      "permissionHint": "Comenzile rapide globale necesită permisiunea de accesibilitate. Accesați Setări sistem → Confidențialitate → Accesibilitate și activați memrynote."
     },
     "toasts": {
       "saveGlobalFailed": "Nu s-a salvat comanda rapidă de captură globală",

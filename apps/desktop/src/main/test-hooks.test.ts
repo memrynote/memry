@@ -280,7 +280,7 @@ describe('main test hooks', () => {
       taskTitle: 'Task',
       reminderTitle: 'Reminder',
       snoozeTitle: 'Snoozed',
-      overlapMemryTitle: 'Memry overlap'
+      overlapMemryTitle: 'memrynote overlap'
     })
 
     expect(dbGetMock).toHaveBeenCalled()
@@ -377,7 +377,7 @@ describe('main test hooks', () => {
     })
   })
 
-  it('exercises Memry write-back and translation hooks', async () => {
+  it('exercises memrynote write-back and translation hooks', async () => {
     process.env.NODE_ENV = 'test'
     const { registerTestHooks } = await importHooks()
 

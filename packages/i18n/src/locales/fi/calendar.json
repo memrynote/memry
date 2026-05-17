@@ -16,7 +16,7 @@
   "filter": {
     "filter-calendars": "Suodata kalentereita",
     "sources": "Lähteet",
-    "memry-items": "Memry tuotteet",
+    "memry-items": "memrynote tuotteet",
     "imported-calendars": "Tuodut kalenterit",
     "event-types": "Tapahtumatyypit",
     "google-calendars": "Google kalenterit",
@@ -60,27 +60,27 @@
     "target-calendar": "Kohdekalenteri",
     "use-default-calendar": "Käytä oletuskalenteria",
     "use-default-calendar-with-name": "Käytä oletusarvoa ({calendar})",
-    "use-memry-calendar-default": "Käytä Memry-kalenteria (oletus)",
+    "use-memry-calendar-default": "Käytä memrynote-kalenteria (oletus)",
     "primary-suffix": "ensisijainen"
   },
   "delete-dialog": {
     "title": "Poistetaanko tapahtuma?",
     "local-description": "\"{title}\" poistetaan pysyvästi. Tätä toimintoa ei voi kumota.",
-    "google-bound-description": "\"{title}\" poistetaan Memry:stä ja Google-kalenterista. Tätä toimintoa ei voi kumota.",
+    "google-bound-description": "\"{title}\" poistetaan memrynote:stä ja Google-kalenterista. Tätä toimintoa ei voi kumota.",
     "context-menu-delete-label": "Poista tapahtuma"
   },
   "promote-dialog": {
     "aria": "Muokkaa ulkoista kalenteritapahtumaa",
-    "title": "Muokkaa tätä tapahtumaa Memry:ssä?",
-    "body": "Tämän tapahtuman muokkaaminen luo linkitetyn kopion Memry:ssä, joten muutokset synkronoidaan molempiin suuntiin. Jatketaanko?",
+    "title": "Muokkaa tätä tapahtumaa memrynote:ssä?",
+    "body": "Tämän tapahtuman muokkaaminen luo linkitetyn kopion memrynote:ssä, joten muutokset synkronoidaan molempiin suuntiin. Jatketaanko?",
     "do-not-ask-again": "Älä kysy uudelleen",
-    "confirm-label": "Muokkaa Memry:ssä"
+    "confirm-label": "Muokkaa memrynote:ssä"
   },
   "onboarding-dialog": {
     "aria": "Valitse oletusarvoinen Google-kalenteri",
-    "title": "Mihin kalenteriin uusien Memry-tapahtumien pitäisi mennä?",
-    "body": "Valitse Google-kalenteri, jota Memry tulee käyttää oletuksena. Voit silti ohittaa sen tapahtumakohtaisesti.",
-    "default-calendar-label": "Käytä Memry-hallittua kalenteria",
+    "title": "Mihin kalenteriin uusien memrynote-tapahtumien pitäisi mennä?",
+    "body": "Valitse Google-kalenteri, jota memrynote tulee käyttää oletuksena. Voit silti ohittaa sen tapahtumakohtaisesti.",
+    "default-calendar-label": "Käytä memrynote-hallittua kalenteria",
     "skip": "Ohita",
     "use-this-calendar": "Käytä tätä kalenteria"
   },

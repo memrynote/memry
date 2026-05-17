@@ -9,14 +9,14 @@ The inbox is a capture surface for things you want to process later: links, file
 A capture input at the top of the inbox view accepts:
 
 - Free-text notes
-- Pasted URLs (Memry fetches the title and a snippet)
+- Pasted URLs (memrynote fetches the title and a snippet)
 - Pasted file paths
 
 Press <kbd>Enter</kbd> to add. The new item lands at the top of the list as **pending**.
 
 ## Drag and Drop
 
-Drop files from your OS file manager onto the inbox window. Memry:
+Drop files from your OS file manager onto the inbox window. memrynote:
 
 - Copies the file into the vault
 - Detects type (image, PDF, video, etc.)
@@ -29,9 +29,9 @@ Multiple files dropped at once create one inbox item per file.
 The inbox header and inline capture input include a voice recorder. Click to start recording, click
 again to stop. The recording becomes an inbox item under the **voice** content type.
 
-If voice transcription is enabled, Memry transcribes the audio in the background — see [Voice Transcription](/user-guide/ai/voice-transcription).
+If voice transcription is enabled, memrynote transcribes the audio in the background — see [Voice Transcription](/user-guide/ai/voice-transcription).
 
-If voice transcription setup is incomplete, Memry takes you to AI settings before recording.
+If voice transcription setup is incomplete, memrynote takes you to AI settings before recording.
 
 ## Web Clips and Browser Extension
 
@@ -52,7 +52,7 @@ If you've connected social capture (e.g. saving tweets), those land in inbox und
 
 Captured items default to **pending**. They stay in the active inbox list until you triage them — see [Triage Mode](/user-guide/inbox/triage).
 
-## Capture from Inside Memry
+## Capture from Inside memrynote
 
 You can also create inbox items from elsewhere in the app:
 

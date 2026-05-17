@@ -48,11 +48,11 @@ The [Day Panel](/user-guide/day-panel) on the right has its own monthly grid. Cl
 
 ## Streak
 
-If you write something every day, the year view shows the streak count. Memry doesn't gamify streaks beyond displaying them — there are no notifications, badges, or pressure.
+If you write something every day, the year view shows the streak count. memrynote doesn't gamify streaks beyond displaying them — there are no notifications, badges, or pressure.
 
 ## Gaps
 
-Empty days are visualized but not editable as "no entry". Just open the day; if it's empty, Memry creates a fresh entry seeded with your default template the moment you focus the editor.
+Empty days are visualized but not editable as "no entry". Just open the day; if it's empty, memrynote creates a fresh entry seeded with your default template the moment you focus the editor.
 
 ## Sync
 

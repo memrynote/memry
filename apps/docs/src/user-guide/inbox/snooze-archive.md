@@ -32,7 +32,7 @@ A separate view tab lists currently snoozed items and reminder rows generated fr
 
 ### When the Wake Fires
 
-When wake fires, the item appears at the top of the active inbox. If Memry isn't running, the item appears next time the app opens.
+When wake fires, the item appears at the top of the active inbox. If memrynote isn't running, the item appears next time the app opens.
 
 ## Archive
 
@@ -58,11 +58,11 @@ Archived view → row context menu → **Move to inbox** brings the item back as
 
 ## Snooze vs Archive
 
-| Use snooze when | Use archive when |
-| --- | --- |
-| You want the item to **come back** later | You're **done** with the item |
-| The work isn't relevant right now | The work is complete or no longer relevant |
-| You'll need a reminder | You only need it findable later |
+| Use snooze when                          | Use archive when                           |
+| ---------------------------------------- | ------------------------------------------ |
+| You want the item to **come back** later | You're **done** with the item              |
+| The work isn't relevant right now        | The work is complete or no longer relevant |
+| You'll need a reminder                   | You only need it findable later            |
 
 ## Cross-Cutting
 

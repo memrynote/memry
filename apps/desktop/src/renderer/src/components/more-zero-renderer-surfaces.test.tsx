@@ -238,12 +238,12 @@ describe('more zero-covered renderer surfaces', () => {
     render(
       <TeamSwitcher
         teams={[
-          { name: 'Memry', logo: Logo },
+          { name: 'memrynote', logo: Logo },
           { name: 'Personal', logo: Logo }
         ]}
       />
     )
-    expect(screen.getAllByText('Memry')[0]).toBeInTheDocument()
+    expect(screen.getAllByText('memrynote')[0]).toBeInTheDocument()
     fireEvent.click(screen.getByText('Personal'))
     expect(screen.getAllByText('Personal')[0]).toBeInTheDocument()
     fireEvent.click(screen.getByText('switch'))

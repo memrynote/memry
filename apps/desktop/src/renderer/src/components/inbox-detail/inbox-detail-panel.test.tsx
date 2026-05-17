@@ -10,7 +10,7 @@ const updateMutate = vi.fn()
 const isInputFocusedMock = vi.fn()
 let querySuggestions = [
   {
-    destination: { type: 'folder', path: 'Projects/Memry' },
+    destination: { type: 'folder', path: 'Projects/memrynote' },
     confidence: 0.9,
     suggestedTags: ['suggested']
   }
@@ -186,7 +186,7 @@ describe('InboxDetailPanel', () => {
     isInputFocusedMock.mockReturnValue(false)
     querySuggestions = [
       {
-        destination: { type: 'folder', path: 'Projects/Memry' },
+        destination: { type: 'folder', path: 'Projects/memrynote' },
         confidence: 0.9,
         suggestedTags: ['suggested']
       }
@@ -218,7 +218,7 @@ describe('InboxDetailPanel', () => {
     expect((window as any).api.inbox.trackSuggestion).toHaveBeenCalledWith({
       itemId: 'inbox-1',
       itemType: 'note',
-      suggestedTo: 'Projects/Memry',
+      suggestedTo: 'Projects/memrynote',
       actualTo: 'Projects',
       confidence: 0.9,
       suggestedTags: ['suggested'],
@@ -235,7 +235,7 @@ describe('InboxDetailPanel', () => {
     fireEvent.keyDown(document, { key: 'Enter', ctrlKey: true })
 
     await waitFor(() =>
-      expect(props.onFile).toHaveBeenCalledWith('inbox-1', 'Projects/Memry', [], [])
+      expect(props.onFile).toHaveBeenCalledWith('inbox-1', 'Projects/memrynote', [], [])
     )
 
     fireEvent.keyDown(document, { key: 'Escape' })

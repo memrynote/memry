@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "登入時啟動",
-        "description": "登入時啟動 Memry",
+        "description": "登入時啟動 memrynote",
         "error": "啟動時更新失敗"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "已安裝版本 {version}",
       "availableVersion": "可用版本 {version}",
       "unsupported": "封裝版本可以從 GitHub Releases 檢查、下載與安裝更新",
-      "available": "Memry {version} 可供下載",
+      "available": "memrynote {version} 可供下載",
       "downloadingLatest": "正在下載最新版本",
       "downloadingLatestPercent": "正在下載最新版本 ({percent}%)",
-      "downloaded": "Memry {version} 已準備好安裝",
+      "downloaded": "memrynote {version} 已準備好安裝",
       "upToDate": "此安裝已是最新發布版本",
       "checking": "正在檢查 GitHub Releases 是否有更新版本",
       "idle": "檢查新版本並在應用程式內安裝",
       "unsupportedToast": "自動更新僅適用於封裝版本",
-      "upToDateToast": "Memry {version} 已是最新",
+      "upToDateToast": "memrynote {version} 已是最新",
       "actionFailed": "更新操作失敗",
       "actions": {
         "checking": "檢查中...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "裝置已成功連結",
       "goBack": "返回",
       "waitingTitle": "等待批准",
-      "waitingDescription": "在您的其他裝置打開 Memry 並批准連結請求。",
+      "waitingDescription": "在您的其他裝置打開 memrynote 並批准連結請求。",
       "verificationCode": "驗證碼",
       "confirmCode": "確認此與您其他裝置上的代碼相符"
     }
@@ -778,7 +778,7 @@
     "connect": "連接",
     "googleCalendar": {
       "name": "Google 日曆",
-      "description": "對 Memry 事件和匯入的 Google 日曆進行雙向同步。",
+      "description": "對 memrynote 事件和匯入的 Google 日曆進行雙向同步。",
       "statuses": {
         "connected": "已連線",
         "notConnected": "未連線",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "Google 日曆",
-        "description": "Memry 事件、任務、提醒事項及已匯入行事曆的雙向同步"
+        "description": "memrynote 事件、任務、提醒事項及已匯入行事曆的雙向同步"
       },
       "appleCalendar": {
         "name": "Apple 行事曆",
@@ -963,7 +963,7 @@
       "description": "從任何地方截取筆記",
       "permissionNeeded": "需要權限",
       "active": "啟用中",
-      "permissionHint": "全域快捷鍵需要輔助功能權限。前往系統設定 → 隱私 → 輔助功能並啟用 Memry。"
+      "permissionHint": "全域快捷鍵需要輔助功能權限。前往系統設定 → 隱私 → 輔助功能並啟用 memrynote。"
     },
     "toasts": {
       "saveGlobalFailed": "無法保存全域截取快捷鍵",

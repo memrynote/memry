@@ -8,23 +8,23 @@ Day, week, month, and year views over events and date-bound tasks.
 
 Switch between Day, Week, Month, and Year from the calendar toolbar.
 
-| View | Best for |
-| --- | --- |
-| Day | Hour-by-hour detail; appointments back-to-back |
-| Week | Default; one screen of context |
-| Month | Bird's-eye plan |
-| Year | Capacity / planning view |
+| View  | Best for                                       |
+| ----- | ---------------------------------------------- |
+| Day   | Hour-by-hour detail; appointments back-to-back |
+| Week  | Default; one screen of context                 |
+| Month | Bird's-eye plan                                |
+| Year  | Capacity / planning view                       |
 
 The current view persists per tab.
 
 ## What Shows Up
 
-| Source | How it appears |
-| --- | --- |
-| Calendar events created in Memry | Inline events on the day grid |
-| Tasks with due dates | Task chips on the day they're due |
-| External calendar events (if integrated) | Translucent events with a source badge |
-| Journal entries | A small badge / dot on dates with entries |
+| Source                                   | How it appears                            |
+| ---------------------------------------- | ----------------------------------------- |
+| Calendar events created in memrynote     | Inline events on the day grid             |
+| Tasks with due dates                     | Task chips on the day they're due         |
+| External calendar events (if integrated) | Translucent events with a source badge    |
+| Journal entries                          | A small badge / dot on dates with entries |
 
 ## Quick Create
 

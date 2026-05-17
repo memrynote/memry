@@ -56,7 +56,7 @@ const item = (
   source: {
     provider: null,
     calendarSourceId: null,
-    title: 'Memry',
+    title: 'memrynote',
     color: null,
     kind: null,
     isMemryManaged: true
@@ -385,7 +385,7 @@ beforeEach(() => {
   mocks.anchorDate = '2026-05-10'
   mocks.calendarSources = [source('google-work', 'Work'), source('google-home', 'Home')]
   mocks.calendarItems = [
-    item('event', 'event-1', 'Memry event'),
+    item('event', 'event-1', 'memrynote event'),
     item('task', 'task-1', 'Task due'),
     item('inbox_snooze', 'snooze-1', 'Inbox snooze'),
     item('external_event', 'external-1', 'External meeting', {
@@ -461,7 +461,7 @@ describe('CalendarPage callback coverage', () => {
     fireEvent.click(screen.getByText('toggle imported'))
 
     fireEvent.click(screen.getByText('toggle memry'))
-    expect(screen.getByTestId('calendar-items')).not.toHaveTextContent('Memry event')
+    expect(screen.getByTestId('calendar-items')).not.toHaveTextContent('memrynote event')
     fireEvent.click(screen.getByText('toggle memry'))
 
     fireEvent.click(screen.getByText('toggle task visual'))
@@ -567,7 +567,7 @@ describe('CalendarPage callback coverage', () => {
 
     fireEvent.click(screen.getByText('delete event'))
     fireEvent.click(await screen.findByText('cancel delete'))
-    expect(screen.queryByText('delete:Memry event')).not.toBeInTheDocument()
+    expect(screen.queryByText('delete:memrynote event')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('delete event'))
     fireEvent.click(await screen.findByText('confirm delete'))

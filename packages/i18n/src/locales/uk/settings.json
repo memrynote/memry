@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "Запуск при вході",
-        "description": "Запуск Memry під час входу",
+        "description": "Запуск memrynote під час входу",
         "error": "Не вдалося оновити запуск при завантаженні"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "Встановлена версія {version}",
       "availableVersion": "Доступна версія {version}",
       "unsupported": "Паковані збірки можуть перевіряти, завантажувати та встановлювати оновлення з GitHub Releases",
-      "available": "Memry {version} доступний для завантаження",
+      "available": "memrynote {version} доступний для завантаження",
       "downloadingLatest": "Завантаження останнього релізу",
       "downloadingLatestPercent": "Завантаження останнього релізу ({percent}%)",
-      "downloaded": "Memry {version} готовий до встановлення",
+      "downloaded": "memrynote {version} готовий до встановлення",
       "upToDate": "Ця установка відповідає останньому опублікованому релізу",
       "checking": "Перевірка GitHub Releases на наявність нової версії",
       "idle": "Перевіряйте наявність нових версій і встановлюйте їх, не виходячи з додатка",
       "unsupportedToast": "Автооновлення доступне лише у пакетних версіях",
-      "upToDateToast": "Memry {version} актуальний",
+      "upToDateToast": "memrynote {version} актуальний",
       "actionFailed": "Не вдалося виконати оновлення",
       "actions": {
         "checking": "Перевірка...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "Пристрій успішно підключено",
       "goBack": "Повернутися назад",
       "waitingTitle": "Очікування підтвердження",
-      "waitingDescription": "Відкрийте Memry на вашому іншому пристрої та підтвердіть запит на зв'язування.",
+      "waitingDescription": "Відкрийте memrynote на вашому іншому пристрої та підтвердіть запит на зв'язування.",
       "verificationCode": "Код підтвердження",
       "confirmCode": "Підтвердіть, що це збігається з кодом на вашому іншому пристрої"
     }
@@ -778,7 +778,7 @@
     "connect": "Підключити",
     "googleCalendar": {
       "name": "Google Календар",
-      "description": "Двозначна синхронізація для подій Memry та імпортованих календарів Google.",
+      "description": "Двозначна синхронізація для подій memrynote та імпортованих календарів Google.",
       "statuses": {
         "connected": "Підключено",
         "notConnected": "Не підключено",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "Google Календар",
-        "description": "Двостороння синхронізація для Memry подій, завдань, нагадувань і імпортованих календарів"
+        "description": "Двостороння синхронізація для memrynote подій, завдань, нагадувань і імпортованих календарів"
       },
       "appleCalendar": {
         "name": "Apple Calendar",
@@ -963,7 +963,7 @@
       "description": "Захопити нотатку з будь-якого місця",
       "permissionNeeded": "Потрібен дозвіл",
       "active": "Активно",
-      "permissionHint": "Глобальні ярлики вимагають доступу до функцій доступності. Перейдіть до Системних налаштувань → Конфіденційність → Доступність і ввімкніть Memry."
+      "permissionHint": "Глобальні ярлики вимагають доступу до функцій доступності. Перейдіть до Системних налаштувань → Конфіденційність → Доступність і ввімкніть memrynote."
     },
     "toasts": {
       "saveGlobalFailed": "Не вдалося зберегти глобальний ярлик захоплення",

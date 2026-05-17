@@ -25,7 +25,7 @@ describe('journal seed data', () => {
       'CRDT',
       'IPC',
       'PR',
-      'Memry',
+      'memrynote',
       'Drizzle',
       'field_clocks',
       'sync edge case',

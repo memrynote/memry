@@ -25,25 +25,25 @@ Each card shows:
 
 ## Actions
 
-| Action | Result |
-| --- | --- |
-| **Archive** | Done; file the item and move on. The item is searchable but out of the active inbox. |
-| **Snooze** | Defer until later. Item disappears from inbox until wake time. See [Snooze & Archive](/user-guide/inbox/snooze-archive). |
-| **Quick file** | Move into a folder, project, or tag without converting. |
-| **Convert to Note** | Create a note seeded with the item's content. The original is archived with a back-reference. |
-| **Convert to Task** | Create a task in the current default project. |
-| **Open** | Open the source URL in your browser. |
-| **Delete** | Discard. (Confirms first.) |
+| Action              | Result                                                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **Archive**         | Done; file the item and move on. The item is searchable but out of the active inbox.                                     |
+| **Snooze**          | Defer until later. Item disappears from inbox until wake time. See [Snooze & Archive](/user-guide/inbox/snooze-archive). |
+| **Quick file**      | Move into a folder, project, or tag without converting.                                                                  |
+| **Convert to Note** | Create a note seeded with the item's content. The original is archived with a back-reference.                            |
+| **Convert to Task** | Create a task in the current default project.                                                                            |
+| **Open**            | Open the source URL in your browser.                                                                                     |
+| **Delete**          | Discard. (Confirms first.)                                                                                               |
 
 ## Keyboard Shortcuts
 
 When the inbox or a triage card has focus:
 
-| Action | Shortcut |
-| --- | --- |
-| Refresh | <kbd>R</kbd> |
-| Open source URL | <kbd>O</kbd> |
-| Archive | <kbd>Delete</kbd> or <kbd>Backspace</kbd> |
+| Action          | Shortcut                                  |
+| --------------- | ----------------------------------------- |
+| Refresh         | <kbd>R</kbd>                              |
+| Open source URL | <kbd>O</kbd>                              |
+| Archive         | <kbd>Delete</kbd> or <kbd>Backspace</kbd> |
 
 Cards stack — finishing one slides the next in.
 
@@ -62,7 +62,7 @@ Working through a long backlog? Use only the keyboard. Each card has the same se
 
 ## What Triage Doesn't Do
 
-Triage doesn't auto-decide. The choice is always yours. Memry doesn't apply ML to guess what you want — partly to keep behavior predictable, partly to keep content out of any provider's training pipeline.
+Triage doesn't auto-decide. The choice is always yours. memrynote doesn't apply ML to guess what you want — partly to keep behavior predictable, partly to keep content out of any provider's training pipeline.
 
 ## See Also
 

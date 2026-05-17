@@ -109,26 +109,26 @@ export const FEATURE_NAV_ITEMS: readonly LandingDropdownItem[] = [
 export const DOWNLOAD_NAV_ITEMS: readonly LandingDropdownItem[] = [
   {
     label: 'Web Clipper',
-    description: 'Save pages into Memry',
+    description: 'Save pages into memrynote',
     href: '#',
     icon: Globe,
     disabled: true
   },
   {
-    label: 'Memry for Mobile',
+    label: 'memrynote for Mobile',
     description: 'iOS and Android apps',
     href: '#',
     icon: Smartphone,
     disabled: true
   },
   {
-    label: 'Memry for Desktop',
+    label: 'memrynote for Desktop',
     description: 'macOS, Windows, and Linux',
     href: '/download/desktop',
     icon: Monitor
   },
   {
-    label: 'Memry CLI',
+    label: 'memrynote CLI',
     description: 'Terminal workflows',
     href: '#',
     icon: Terminal,
@@ -233,7 +233,7 @@ export const FEATURES = [
 ] as const
 
 export const COMPARISON_DATA = {
-  headers: ['', 'Memry', 'Notion', 'Obsidian', 'Logseq'],
+  headers: ['', 'memrynote', 'Notion', 'Obsidian', 'Logseq'],
   rows: [
     { feature: 'Local-first', memry: true, notion: false, obsidian: true, logseq: true },
     {
@@ -336,25 +336,25 @@ export const PRICING_TIERS = [
     name: 'Believer',
     price: '$500',
     period: 'paid once',
-    description: 'Support Memry.',
+    description: 'Support memrynote.',
     features: [
       'Everything in Plus',
       '50 GB encrypted sync storage',
       'Unlimited vaults',
       'Early access to new features',
       'Your name in the credits',
-      'Help keep Memry independent'
+      'Help keep memrynote independent'
     ],
-    cta: 'Support Memry',
+    cta: 'Support memrynote',
     highlighted: true
   }
 ] as const
 
 export const FAQ_ITEMS = [
   {
-    question: 'Is Memry free?',
+    question: 'Is memrynote free?',
     answer:
-      'Memry offers a generous free tier for personal use on desktop. Core features like notes, tasks, journal, and inbox are completely free with no limits. Pro features like publishing to web, real-time collaboration, and mobile sync require a subscription.'
+      'memrynote offers a generous free tier for personal use on desktop. Core features like notes, tasks, journal, and inbox are completely free with no limits. Pro features like publishing to web, real-time collaboration, and mobile sync require a subscription.'
   },
   {
     question: 'Where is my data stored?',
@@ -369,7 +369,7 @@ export const FAQ_ITEMS = [
   {
     question: 'Can I sync between devices?',
     answer:
-      "Absolutely! Since your vault is just a folder, you can use any sync service you prefer — Memry Sync, iCloud, Dropbox, Google Drive, Syncthing, or even Git. We don't lock you into our own sync solution."
+      "Absolutely! Since your vault is just a folder, you can use any sync service you prefer — memrynote Sync, iCloud, Dropbox, Google Drive, Syncthing, or even Git. We don't lock you into our own sync solution."
   },
   {
     question: 'Is there a mobile app?',
@@ -377,7 +377,7 @@ export const FAQ_ITEMS = [
       'Desktop first (macOS, Windows, Linux) to nail the experience. Mobile apps for iOS and Android are targeting late 2026. In the meantime, your vault folder syncs with any cloud service you already use.'
   },
   {
-    question: 'What file format does Memry use?',
+    question: 'What file format does memrynote use?',
     answer:
       'Standard Markdown with YAML frontmatter for properties. Your notes are 100% portable and can be read by any Markdown-compatible app like Obsidian, iA Writer, or even VS Code.'
   },
@@ -387,7 +387,7 @@ export const FAQ_ITEMS = [
       'Yes! We will support importing from Obsidian (direct vault), Notion (export), Roam Research, and plain Markdown folders. Your existing knowledge base can move with you.'
   },
   {
-    question: 'When will Memry launch?',
+    question: 'When will memrynote launch?',
     answer:
       'Early access opens late Q3 2026, with a full public release targeting late 2026. Waitlist members get first access and can help shape the product before launch.'
   }
@@ -449,7 +449,7 @@ export const USE_CASES = [
     title: 'Knowledge Workers',
     painQuote: 'My notes are in one app, tasks in another, and nothing connects.',
     description:
-      'Stop context-switching between Notion, Todoist, and a journal app. Memry connects your research, tasks, and daily reflections in one local-first workspace — with wiki-links that actually build a knowledge graph.',
+      'Stop context-switching between Notion, Todoist, and a journal app. memrynote connects your research, tasks, and daily reflections in one local-first workspace — with wiki-links that actually build a knowledge graph.',
     features: [
       'AI-powered inbox clustering',
       '[[Wiki links]] & backlinks',
@@ -671,7 +671,7 @@ export const SYNC_PLAN_TIERS: readonly SyncPlanTier[] = [
   {
     id: 'believer',
     name: 'Believer',
-    tagline: 'Support Memry.',
+    tagline: 'Support memrynote.',
     monthlyPrice: null,
     annualPrice: null,
     annualMonthlyEquivalent: null,
@@ -684,7 +684,7 @@ export const SYNC_PLAN_TIERS: readonly SyncPlanTier[] = [
       '365 days of version history',
       'Early access to new features',
       'Your name in the credits',
-      'Help keep Memry independent',
+      'Help keep memrynote independent',
       'Direct line to the founder',
       'Limited slots'
     ],
@@ -952,7 +952,7 @@ export const PRICING_FAQ_ITEMS = [
   {
     question: 'What is the Believer tier really?',
     answer:
-      'A supporter package. You get everything in Plus, 50 GB of encrypted sync storage, unlimited vaults, early access to new features, your name in the credits, and the satisfaction of helping keep Memry independent.'
+      'A supporter package. You get everything in Plus, 50 GB of encrypted sync storage, unlimited vaults, early access to new features, your name in the credits, and the satisfaction of helping keep memrynote independent.'
   },
   {
     question: 'Can I upgrade or downgrade later?',
@@ -978,7 +978,7 @@ export const FLOW_STEPS = [
     title: 'Inbox',
     tagline: 'Capture first, organize later.',
     competitorLabel: 'Only in',
-    competitors: [{ name: 'Memry', logo: '/favicon.svg' }]
+    competitors: [{ name: 'memrynote', logo: '/favicon.svg' }]
   },
   {
     id: 'journal',

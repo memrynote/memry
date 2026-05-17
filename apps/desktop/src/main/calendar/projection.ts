@@ -166,7 +166,7 @@ function loadMemryEvents(db: DataDb, input: GetCalendarRangeInput): CalendarProj
     timezone: row.timezone,
     visualType: 'event',
     editability,
-    source: nativeSource('Memry'),
+    source: nativeSource('memrynote'),
     binding: bindings.get(row.id) ?? null,
     snoozeOffsetMinutes: null
   }))
@@ -219,7 +219,7 @@ function loadTaskItems(db: DataDb, input: GetCalendarRangeInput): CalendarProjec
       timezone: LOCAL_TIMEZONE,
       visualType: 'task',
       editability,
-      source: nativeSource('Memry Tasks'),
+      source: nativeSource('memrynote Tasks'),
       binding: bindings.get(row.id) ?? null,
       snoozeOffsetMinutes: null
     }
@@ -282,7 +282,7 @@ function loadReminderItems(db: DataDb, input: GetCalendarRangeInput): CalendarPr
       timezone: LOCAL_TIMEZONE,
       visualType: 'reminder',
       editability,
-      source: nativeSource('Memry Reminders'),
+      source: nativeSource('memrynote Reminders'),
       binding: bindings.get(row.id) ?? null,
       snoozeOffsetMinutes
     }
@@ -330,7 +330,7 @@ function loadInboxSnoozeItems(db: DataDb, input: GetCalendarRangeInput): Calenda
     timezone: LOCAL_TIMEZONE,
     visualType: 'snooze',
     editability,
-    source: nativeSource('Memry Inbox'),
+    source: nativeSource('memrynote Inbox'),
     binding: bindings.get(row.id) ?? null,
     snoozeOffsetMinutes: null
   }))

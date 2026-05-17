@@ -16,7 +16,7 @@
   "filter": {
     "filter-calendars": "筛选日历",
     "sources": "来源",
-    "memry-items": "Memry 项目",
+    "memry-items": "memrynote 项目",
     "imported-calendars": "已导入的日历",
     "event-types": "事件类型",
     "google-calendars": "谷歌日历",
@@ -60,27 +60,27 @@
     "target-calendar": "目标日历",
     "use-default-calendar": "使用默认日历",
     "use-default-calendar-with-name": "使用默认 ({calendar})",
-    "use-memry-calendar-default": "使用 Memry 日历（默认）",
+    "use-memry-calendar-default": "使用 memrynote 日历（默认）",
     "primary-suffix": "主要"
   },
   "delete-dialog": {
     "title": "删除事件？",
     "local-description": "“{title}”将被永久删除。此操作无法撤销。",
-    "google-bound-description": "\"{title}\" 将从 Memry 和 Google 日历中移除。此操作无法撤销。  ",
+    "google-bound-description": "\"{title}\" 将从 memrynote 和 Google 日历中移除。此操作无法撤销。  ",
     "context-menu-delete-label": "  \n删除事件  "
   },
   "promote-dialog": {
     "aria": "  \n编辑外部日历事件  ",
-    "title": "  \n在 Memry 中编辑此事件？  ",
-    "body": "  \n编辑此事件将会在 Memry 中创建一个关联副本，使更改双向同步。继续吗？  ",
+    "title": "  \n在 memrynote 中编辑此事件？  ",
+    "body": "  \n编辑此事件将会在 memrynote 中创建一个关联副本，使更改双向同步。继续吗？  ",
     "do-not-ask-again": "  \n不再提示  ",
-    "confirm-label": "  \n在 Memry 中编辑  "
+    "confirm-label": "  \n在 memrynote 中编辑  "
   },
   "onboarding-dialog": {
     "aria": "  \n选择默认 Google 日历  ",
-    "title": "  \n新 Memry 事件应放入哪个日历？  ",
-    "body": "  \n选择 Memry 默认使用的 Google 日历。你仍可以在每个事件中覆盖此设置。  ",
-    "default-calendar-label": "使用 Memry 管理的日历",
+    "title": "  \n新 memrynote 事件应放入哪个日历？  ",
+    "body": "  \n选择 memrynote 默认使用的 Google 日历。你仍可以在每个事件中覆盖此设置。  ",
+    "default-calendar-label": "使用 memrynote 管理的日历",
     "skip": "跳过",
     "use-this-calendar": "  \n使用此日历  "
   },

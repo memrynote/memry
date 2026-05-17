@@ -61,7 +61,7 @@
     "deviceRevoked": "此设备已从您的帐户中移除。",
     "rateLimited": "请求过多。同步将很快恢复。",
     "cryptoFailure": "加密或解密同步数据失败。请尝试退出后重新登录。",
-    "versionIncompatible": "此版本的 Memry 不再受支持。请更新。",
+    "versionIncompatible": "此版本的 memrynote 不再受支持。请更新。",
     "storageQuotaExceeded": "您的同步存储已满。请释放空间或升级您的计划。",
     "certificatePinFailed": "安全连接失败。请检查您的网络连接。",
     "unknown": "发生意外的同步错误。将自动重试。",

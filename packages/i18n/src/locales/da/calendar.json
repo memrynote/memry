@@ -16,7 +16,7 @@
   "filter": {
     "filter-calendars": "Filtrer kalendere",
     "sources": "Kilder",
-    "memry-items": "Memry varer",
+    "memry-items": "memrynote varer",
     "imported-calendars": "Importerede kalendere",
     "event-types": "Begivenhedstyper",
     "google-calendars": "Google kalendere",
@@ -60,27 +60,27 @@
     "target-calendar": "Målkalender",
     "use-default-calendar": "Brug standardkalender",
     "use-default-calendar-with-name": "Brug standard ({calendar})",
-    "use-memry-calendar-default": "Brug Memry-kalender (standard)",
+    "use-memry-calendar-default": "Brug memrynote-kalender (standard)",
     "primary-suffix": "primære"
   },
   "delete-dialog": {
     "title": "Vil du slette begivenheden?",
     "local-description": "\"{title}\" slettes permanent. Denne handling kan ikke fortrydes.",
-    "google-bound-description": "\"{title}\" vil blive fjernet fra Memry og Google Kalender. Denne handling kan ikke fortrydes.",
+    "google-bound-description": "\"{title}\" vil blive fjernet fra memrynote og Google Kalender. Denne handling kan ikke fortrydes.",
     "context-menu-delete-label": "Slet begivenhed"
   },
   "promote-dialog": {
     "aria": "Rediger ekstern kalenderbegivenhed",
-    "title": "Vil du redigere denne begivenhed i Memry?",
-    "body": "Redigering af denne begivenhed vil oprette en linket kopi i Memry, så ændringer synkroniseres begge veje. Vil du fortsætte?",
+    "title": "Vil du redigere denne begivenhed i memrynote?",
+    "body": "Redigering af denne begivenhed vil oprette en linket kopi i memrynote, så ændringer synkroniseres begge veje. Vil du fortsætte?",
     "do-not-ask-again": "Spørg ikke igen",
-    "confirm-label": "Rediger i Memry"
+    "confirm-label": "Rediger i memrynote"
   },
   "onboarding-dialog": {
     "aria": "Vælg din standard Google-kalender",
-    "title": "Hvilken kalender skal nye Memry-begivenheder gå til?",
-    "body": "Vælg den Google-kalender Memry skal bruge som standard. Du kan stadig tilsidesætte det pr. begivenhed.",
-    "default-calendar-label": "Brug den Memry-administrerede kalender",
+    "title": "Hvilken kalender skal nye memrynote-begivenheder gå til?",
+    "body": "Vælg den Google-kalender memrynote skal bruge som standard. Du kan stadig tilsidesætte det pr. begivenhed.",
+    "default-calendar-label": "Brug den memrynote-administrerede kalender",
     "skip": "Spring over",
     "use-this-calendar": "Brug denne kalender"
   },

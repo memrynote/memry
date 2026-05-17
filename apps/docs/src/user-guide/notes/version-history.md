@@ -10,7 +10,7 @@ From the note menu, choose **Version history**. A side panel opens with a timeli
 
 ## What's Captured
 
-A version is a point-in-time snapshot of the note. Memry creates a version:
+A version is a point-in-time snapshot of the note. memrynote creates a version:
 
 - On significant pauses in editing (debounced)
 - Before major automated actions (e.g. template apply)
@@ -40,7 +40,7 @@ Toggle a diff view to compare the selected version against the current. Adds, de
 
 ## Retention
 
-Memry keeps a rolling history of recent saves locally. Older versions are pruned automatically to keep storage bounded. The retention window favors a dense recent history (last day) and thinning older points (last week, last month).
+memrynote keeps a rolling history of recent saves locally. Older versions are pruned automatically to keep storage bounded. The retention window favors a dense recent history (last day) and thinning older points (last week, last month).
 
 ## Per-Device Retention
 

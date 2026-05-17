@@ -84,13 +84,13 @@ describe('FilingSection', () => {
   it('loads folders and AI suggestions, then drives folder, tag, and note-link changes', async () => {
     const api = getMockApi() as any
     api.notes.getFolders.mockResolvedValue([
-      { path: 'Projects/Memry', icon: 'M' },
+      { path: 'Projects/memrynote', icon: 'M' },
       { path: 'Archive' }
     ])
     api.inbox.getSuggestions.mockResolvedValue({
       suggestions: [
         {
-          destination: { type: 'folder', path: 'Projects/Memry' },
+          destination: { type: 'folder', path: 'Projects/memrynote' },
           confidence: 0.91,
           reason: 'similar captures',
           suggestedTags: ['research']
@@ -100,7 +100,7 @@ describe('FilingSection', () => {
           confidence: 0.73,
           reason: 'related note',
           suggestedTags: ['link'],
-          suggestedNote: { id: 'note-1', title: 'Memry research', emoji: 'R' }
+          suggestedNote: { id: 'note-1', title: 'memrynote research', emoji: 'R' }
         }
       ]
     })
@@ -123,12 +123,12 @@ describe('FilingSection', () => {
 
     await waitFor(() =>
       expect(onFolderSelect).toHaveBeenCalledWith(
-        expect.objectContaining({ path: 'Projects/Memry', aiConfidence: 0.91 })
+        expect.objectContaining({ path: 'Projects/memrynote', aiConfidence: 0.91 })
       )
     )
 
-    expect(await screen.findAllByText('Projects / Memry')).not.toHaveLength(0)
-    expect(screen.getByText('Memry research')).toBeInTheDocument()
+    expect(await screen.findAllByText('Projects / memrynote')).not.toHaveLength(0)
+    expect(screen.getByText('memrynote research')).toBeInTheDocument()
     expect(screen.getByText('ai tags research,link')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('searchOrCreateFolder')).toHaveClass(
       'h-5',
@@ -140,9 +140,9 @@ describe('FilingSection', () => {
     await userEvent.click(screen.getByRole('button', { name: 'add tag' }))
     expect(onTagsChange).toHaveBeenCalledWith(['inbox', 'review'])
 
-    await userEvent.click(screen.getByRole('button', { name: /Memry research/ }))
+    await userEvent.click(screen.getByRole('button', { name: /memrynote research/ }))
     expect(onLinkedNotesChange).toHaveBeenCalledWith([
-      { id: 'note-1', title: 'Memry research', type: 'note' }
+      { id: 'note-1', title: 'memrynote research', type: 'note' }
     ])
 
     await userEvent.clear(screen.getByPlaceholderText('searchOrCreateFolder'))
@@ -159,7 +159,7 @@ describe('FilingSection', () => {
     const api = getMockApi() as any
     api.settings.getAISettings.mockResolvedValue({ enabled: false })
     api.notes.getFolders.mockResolvedValue([
-      { path: 'Projects/Memry', icon: 'M' },
+      { path: 'Projects/memrynote', icon: 'M' },
       { path: 'Archive' }
     ])
     api.inbox.getSuggestions.mockResolvedValue({
@@ -169,7 +169,7 @@ describe('FilingSection', () => {
           confidence: 0.73,
           reason: 'related note',
           suggestedTags: ['link'],
-          suggestedNote: { id: 'note-1', title: 'Memry research', emoji: 'R' }
+          suggestedNote: { id: 'note-1', title: 'memrynote research', emoji: 'R' }
         }
       ]
     })
@@ -188,10 +188,10 @@ describe('FilingSection', () => {
       </AISettingsProvider>
     )
 
-    expect(await screen.findAllByText('Projects / Memry')).not.toHaveLength(0)
+    expect(await screen.findAllByText('Projects / memrynote')).not.toHaveLength(0)
     expect(api.inbox.getSuggestions).not.toHaveBeenCalled()
     expect(screen.queryByText(/ai tags/i)).not.toBeInTheDocument()
-    expect(screen.queryByText('Memry research')).not.toBeInTheDocument()
+    expect(screen.queryByText('memrynote research')).not.toBeInTheDocument()
   })
 
   it('keeps filing state scoped to the active item session', () => {

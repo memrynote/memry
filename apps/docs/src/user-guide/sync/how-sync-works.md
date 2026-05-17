@@ -1,6 +1,6 @@
 # How Sync Works
 
-Memry sync is **end-to-end encrypted**. The server stores ciphertext and never sees note content.
+memrynote sync is **end-to-end encrypted**. The server stores ciphertext and never sees note content.
 
 <!-- screenshot: sync status indicator in the app chrome -->
 

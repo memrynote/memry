@@ -7,7 +7,7 @@ Transform selected text in the editor without leaving it.
 ## Opening the Menu
 
 Select text in any note or journal entry. The formatting toolbar shows an **AI** affordance — click it (or press the AI shortcut) to open the prompt menu.
-If the global **Settings -> AI -> Enable** switch is off, Memry hides the inline AI menu and slash
+If the global **Settings -> AI -> Enable** switch is off, memrynote hides the inline AI menu and slash
 menu AI commands entirely.
 
 ## Built-in Actions
@@ -58,7 +58,7 @@ See [Provider Setup](/user-guide/ai/provider-setup) for configuring each.
 
 Requests go to whichever provider you chose. With **Ollama**, your text never leaves your machine. With **OpenAI** or **Anthropic**, the request goes to their API — review their data policies before sending sensitive content.
 
-Memry never proxies these requests through the sync server. The connection is direct from your device to the provider.
+memrynote never proxies these requests through the sync server. The connection is direct from your device to the provider.
 
 ## When the Menu Doesn't Appear
 

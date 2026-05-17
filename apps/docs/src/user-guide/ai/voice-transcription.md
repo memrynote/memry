@@ -15,7 +15,7 @@ Pick a backend in [Settings → AI → Voice Transcription](/user-guide/settings
 
 ## Local Whisper
 
-Memry uses Whisper Small as the default local model — a balance of accuracy and speed.
+memrynote uses Whisper Small as the default local model — a balance of accuracy and speed.
 
 ### Setup
 
@@ -26,7 +26,7 @@ Memry uses Whisper Small as the default local model — a balance of accuracy an
 Model files are stored locally in the app data directory. Disk usage is shown next to each option.
 
 Local transcription starts a native helper process while Whisper runs. After a transcription request
-finishes and no new voice work starts, Memry shuts that helper down after a short idle period so the
+finishes and no new voice work starts, memrynote shuts that helper down after a short idle period so the
 model can release memory.
 
 ### Languages
@@ -65,7 +65,7 @@ Transcribed items appear in the inbox under the **voice** content type filter. T
 When a transcribed voice memo is filed into a note, task, or project, the audio attachment keeps its
 transcript with the file so the player and transcript stay together.
 
-If voice setup is incomplete, Memry opens AI settings instead of starting a recording.
+If voice setup is incomplete, memrynote opens AI settings instead of starting a recording.
 
 ## What's Sent Where
 
@@ -74,11 +74,11 @@ If voice setup is incomplete, Memry opens AI settings instead of starting a reco
 | Local Whisper  | Nothing                                     |
 | OpenAI Whisper | Audio file → OpenAI API; transcript returns |
 
-Memry does not forward audio through the sync server.
+memrynote does not forward audio through the sync server.
 
 ## Transcription Quality
 
-For clear speech in supported languages, Whisper produces near-broadcast quality transcripts. Background noise, multiple speakers, and technical jargon hurt accuracy. Editing the resulting text is normal — Memry treats the transcript as a starting point.
+For clear speech in supported languages, Whisper produces near-broadcast quality transcripts. Background noise, multiple speakers, and technical jargon hurt accuracy. Editing the resulting text is normal — memrynote treats the transcript as a starting point.
 
 ## Disabling
 

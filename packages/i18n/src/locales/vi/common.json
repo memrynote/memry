@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Bỏ qua hướng dẫn",
-      "welcomeToMemry": "Chào mừng đến với Memry",
+      "welcomeToMemry": "Chào mừng đến với memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Cơ sở tri thức cá nhân của bạn. Hãy dành 2 phút để bắt đầu.",
       "getStarted": "Bắt đầu",
       "createYourFirstNote": "Tạo ghi chú đầu tiên của bạn",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Kéo để thay đổi kích thước · Nhấp đúp để đặt lại"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Chào mừng đến với Memry",
+      "welcomeToMemry": "Chào mừng đến với memrynote",
       "yourPersonalKnowledgeManagementSystem": "Hệ thống quản lý kiến thức cá nhân của bạn.",
       "selectAFolderToStoreYourNotesAndTasks": "Chọn một thư mục để lưu ghi chú và nhiệm vụ của bạn.",
       "opening": "Đang mở...",
@@ -341,9 +341,9 @@
     "stop": "Dừng lại",
     "thinking": "Agent đang suy nghĩ",
     "enable": {
-      "title": "Kích hoạt Memry Agent",
-      "description": "Memry Agent sử dụng đại lý địa phương CLI mà bạn đã chọn để trò chuyện về kho tiền của bạn. Claude gửi lượt tới Anthropic; Codex gửi lần lượt tới OpenAI.",
-      "remote": "Memry mã hóa lịch sử trò chuyện cục bộ và được đồng bộ hóa của bạn, nhưng suy luận mô hình sẽ xảy ra với nhà cung cấp đã chọn.",
+      "title": "Kích hoạt memrynote Agent",
+      "description": "memrynote Agent sử dụng đại lý địa phương CLI mà bạn đã chọn để trò chuyện về kho tiền của bạn. Claude gửi lượt tới Anthropic; Codex gửi lần lượt tới OpenAI.",
+      "remote": "memrynote mã hóa lịch sử trò chuyện cục bộ và được đồng bộ hóa của bạn, nhưng suy luận mô hình sẽ xảy ra với nhà cung cấp đã chọn.",
       "readTools": "Công cụ đọc chạy tự động.",
       "writeTools": "Tạo và cập nhật các công cụ cần được phê duyệt.",
       "diff": "Công cụ cập nhật hiển thị phần khác biệt hoặc bản xem trước.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Ghi chú hiện tại",
       "removeAttachment": "Xóa {label}",
-      "placeholder": "Hỏi Memry bất cứ điều gì. @ để nhắc đến tệp",
+      "placeholder": "Hỏi memrynote bất cứ điều gì. @ để nhắc đến tệp",
       "send": "Gửi",
       "providerLabel": "Nhà cung cấp Agent: {provider}",
       "settingsSummary": "{reasoning}",

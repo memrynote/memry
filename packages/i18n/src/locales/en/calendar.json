@@ -16,7 +16,7 @@
   "filter": {
     "filter-calendars": "Filter calendars",
     "sources": "Sources",
-    "memry-items": "Memry items",
+    "memry-items": "memrynote items",
     "imported-calendars": "Imported calendars",
     "event-types": "Event types",
     "google-calendars": "Google calendars",
@@ -60,27 +60,27 @@
     "target-calendar": "Target calendar",
     "use-default-calendar": "Use default calendar",
     "use-default-calendar-with-name": "Use default ({calendar})",
-    "use-memry-calendar-default": "Use Memry calendar (default)",
+    "use-memry-calendar-default": "Use memrynote calendar (default)",
     "primary-suffix": "primary"
   },
   "delete-dialog": {
     "title": "Delete event?",
     "local-description": "\"{title}\" will be permanently deleted. This action cannot be undone.",
-    "google-bound-description": "\"{title}\" will be removed from Memry and Google Calendar. This action cannot be undone.",
+    "google-bound-description": "\"{title}\" will be removed from memrynote and Google Calendar. This action cannot be undone.",
     "context-menu-delete-label": "Delete event"
   },
   "promote-dialog": {
     "aria": "Edit external calendar event",
-    "title": "Edit this event in Memry?",
-    "body": "Editing this event will create a linked copy in Memry so changes sync both ways. Continue?",
+    "title": "Edit this event in memrynote?",
+    "body": "Editing this event will create a linked copy in memrynote so changes sync both ways. Continue?",
     "do-not-ask-again": "Don't ask again",
-    "confirm-label": "Edit in Memry"
+    "confirm-label": "Edit in memrynote"
   },
   "onboarding-dialog": {
     "aria": "Pick your default Google calendar",
-    "title": "Which calendar should new Memry events go to?",
-    "body": "Pick the Google calendar Memry should use by default. You can still override it per event.",
-    "default-calendar-label": "Use the Memry-managed calendar",
+    "title": "Which calendar should new memrynote events go to?",
+    "body": "Pick the Google calendar memrynote should use by default. You can still override it per event.",
+    "default-calendar-label": "Use the memrynote-managed calendar",
     "skip": "Skip",
     "use-this-calendar": "Use this calendar"
   },

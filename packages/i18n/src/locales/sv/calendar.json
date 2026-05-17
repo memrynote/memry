@@ -16,7 +16,7 @@
   "filter": {
     "filter-calendars": "Filtrera kalendrar",
     "sources": "Källor",
-    "memry-items": "Memry objekt",
+    "memry-items": "memrynote objekt",
     "imported-calendars": "Importerade kalendrar",
     "event-types": "Händelsetyper",
     "google-calendars": "Google-kalendrar",
@@ -60,27 +60,27 @@
     "target-calendar": "Målkalender",
     "use-default-calendar": "Använd standardkalender",
     "use-default-calendar-with-name": "Använd standard ({calendar})",
-    "use-memry-calendar-default": "Använd Memry kalender (standard)",
+    "use-memry-calendar-default": "Använd memrynote kalender (standard)",
     "primary-suffix": "primär"
   },
   "delete-dialog": {
     "title": "Ta bort händelse?",
     "local-description": "\"{title}\" kommer att tas bort permanent. Denna åtgärd kan inte ångras.",
-    "google-bound-description": "\"{title}\" kommer att tas bort från Memry och Google Kalender. Denna åtgärd kan inte ångras.",
+    "google-bound-description": "\"{title}\" kommer att tas bort från memrynote och Google Kalender. Denna åtgärd kan inte ångras.",
     "context-menu-delete-label": "Ta bort händelse"
   },
   "promote-dialog": {
     "aria": "Redigera extern kalenderhändelse",
-    "title": "Redigera denna händelse i Memry?",
-    "body": "Att redigera denna händelse skapar en länkad kopia i Memry så att ändringar synkroniseras åt båda hållen. Fortsätta?",
+    "title": "Redigera denna händelse i memrynote?",
+    "body": "Att redigera denna händelse skapar en länkad kopia i memrynote så att ändringar synkroniseras åt båda hållen. Fortsätta?",
     "do-not-ask-again": "Fråga inte igen",
-    "confirm-label": "Redigera i Memry"
+    "confirm-label": "Redigera i memrynote"
   },
   "onboarding-dialog": {
     "aria": "Välj din standard Google-kalender",
-    "title": "Vilken kalender ska nya Memry-händelser gå till?",
-    "body": "Välj den Google-kalender som Memry ska använda som standard. Du kan fortfarande åsidosätta detta per händelse.",
-    "default-calendar-label": "Använd Memry-hanterad kalender",
+    "title": "Vilken kalender ska nya memrynote-händelser gå till?",
+    "body": "Välj den Google-kalender som memrynote ska använda som standard. Du kan fortfarande åsidosätta detta per händelse.",
+    "default-calendar-label": "Använd memrynote-hanterad kalender",
     "skip": "Hoppa över",
     "use-this-calendar": "Använd denna kalender"
   },

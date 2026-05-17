@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Passer l'intégration",
-      "welcomeToMemry": "Bienvenue sur Memry",
+      "welcomeToMemry": "Bienvenue sur memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Votre base de connaissances personnelle. Prenons 2 minutes pour commencer.",
       "getStarted": "Commencez ",
       "createYourFirstNote": "Créez votre première note",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Faites glisser pour redimensionner · Double-cliquez pour réinitialiser"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Bienvenue sur Memry",
+      "welcomeToMemry": "Bienvenue sur memrynote",
       "yourPersonalKnowledgeManagementSystem": "Votre système de gestion des connaissances personnelles.",
       "selectAFolderToStoreYourNotesAndTasks": "Sélectionnez un dossier pour stocker vos notes et tâches.",
       "opening": "Ouverture...",
@@ -341,9 +341,9 @@
     "stop": "Arrêter",
     "thinking": "Agent réfléchit",
     "enable": {
-      "title": "Activer Memry Agent",
-      "description": "Memry Agent utilise votre agent local sélectionné CLI pour discuter de votre coffre-fort. Claude envoie des tours à Anthropic; Codex envoie des tours à OpenAI.",
-      "remote": "Memry crypte votre historique de discussion local et synchronisé, mais l'inférence de modèle se produit avec le fournisseur sélectionné.",
+      "title": "Activer memrynote Agent",
+      "description": "memrynote Agent utilise votre agent local sélectionné CLI pour discuter de votre coffre-fort. Claude envoie des tours à Anthropic; Codex envoie des tours à OpenAI.",
+      "remote": "memrynote crypte votre historique de discussion local et synchronisé, mais l'inférence de modèle se produit avec le fournisseur sélectionné.",
       "readTools": "Les outils de lecture s'exécutent automatiquement.",
       "writeTools": "Les outils de création et de mise à jour nécessitent une approbation.",
       "diff": "Les outils de mise à jour affichent une différence ou un aperçu.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Note actuelle",
       "removeAttachment": "Supprimer {label}",
-      "placeholder": "Demandez n’importe quoi à Memry. @ pour mentionner un fichier",
+      "placeholder": "Demandez n’importe quoi à memrynote. @ pour mentionner un fichier",
       "send": "Envoyer",
       "providerLabel": "Fournisseur Agent: {provider}",
       "settingsSummary": "{reasoning}",

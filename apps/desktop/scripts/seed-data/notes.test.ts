@@ -28,7 +28,7 @@ describe('notes seed data', () => {
       'CRDT',
       'IPC',
       'PR',
-      'Memry',
+      'memrynote',
       'Drizzle',
       'seed data',
       'renderer',

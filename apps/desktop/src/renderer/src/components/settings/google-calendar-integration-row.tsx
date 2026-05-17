@@ -59,7 +59,7 @@ export function GoogleCalendarIntegrationRow(): React.JSX.Element {
     onSuccess: async () => {
       await invalidateGoogleCalendarQueries(queryClient)
       // Surface onboarding the first time the user connects so they pick
-      // their default target before anything lands in "Memry" by accident.
+      // their default target before anything lands in "memrynote" by accident.
       const settings = await window.api.settings.getCalendarGoogleSettings()
       if (!settings.onboardingCompleted) {
         setShowOnboarding(true)

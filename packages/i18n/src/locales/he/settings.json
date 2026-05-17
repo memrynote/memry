@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "השקה בכניסה",
-        "description": "הפעל את Memry כאשר אתה מתחבר",
+        "description": "הפעל את memrynote כאשר אתה מתחבר",
         "error": "עדכון ההתחלה באתחול נכשל"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "גרסה מותקנת {version}",
       "availableVersion": "גרסה זמינה {version}",
       "unsupported": "בנייה ארוזה יכולה לבדוק, להוריד ולהתקין עדכונים מ-GitHub מהדורות",
-      "available": "Memry {version} זמין להורדה",
+      "available": "memrynote {version} זמין להורדה",
       "downloadingLatest": "מוריד את המהדורה האחרונה",
       "downloadingLatestPercent": "הורדת המהדורה האחרונה ({percent}%)",
-      "downloaded": "Memry {version} מוכן להתקנה",
+      "downloaded": "memrynote {version} מוכן להתקנה",
       "upToDate": "התקנה זו נמצאת במהדורה האחרונה שפורסמה",
       "checking": "בדיקת מהדורות GitHub עבור גרסה חדשה יותר",
       "idle": "בדוק אם יש מהדורות חדשות והתקן אותן מבלי לצאת מהאפליקציה",
       "unsupportedToast": "עדכונים אוטומטיים זמינים במהדורות ארוזות בלבד",
-      "upToDateToast": "Memry {version} מעודכן",
+      "upToDateToast": "memrynote {version} מעודכן",
       "actionFailed": "פעולת העדכון נכשלה",
       "actions": {
         "checking": "בודק...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "המכשיר קושר בהצלחה",
       "goBack": "תחזור אחורה",
       "waitingTitle": "מחכה לאישור",
-      "waitingDescription": "פתח את Memry במכשיר השני שלך ואשר את בקשת הקישור.",
+      "waitingDescription": "פתח את memrynote במכשיר השני שלך ואשר את בקשת הקישור.",
       "verificationCode": "קוד אימות",
       "confirmCode": "אשר שזה תואם לקוד במכשיר השני שלך"
     }
@@ -778,7 +778,7 @@
     "connect": "התחבר",
     "googleCalendar": {
       "name": "יומן גוגל",
-      "description": "סנכרון דו-כיווני עבור אירועי Memry ויומנים מיובאים של Google.",
+      "description": "סנכרון דו-כיווני עבור אירועי memrynote ויומנים מיובאים של Google.",
       "statuses": {
         "connected": "מחובר",
         "notConnected": "לא מחובר",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "יומן גוגל",
-        "description": "סנכרון דו-כיווני עבור אירועים, משימות, תזכורות ולוחות שנה מיובאים של Memry"
+        "description": "סנכרון דו-כיווני עבור אירועים, משימות, תזכורות ולוחות שנה מיובאים של memrynote"
       },
       "appleCalendar": {
         "name": "לוח שנה של אפל",
@@ -963,7 +963,7 @@
       "description": "צלם הערה מכל מקום",
       "permissionNeeded": "צריך רשות",
       "active": "פעיל",
-      "permissionHint": "קיצורי דרך גלובליים דורשים הרשאת נגישות. עבור אל הגדרות מערכת ← פרטיות ← נגישות והפעל את Memry."
+      "permissionHint": "קיצורי דרך גלובליים דורשים הרשאת נגישות. עבור אל הגדרות מערכת ← פרטיות ← נגישות והפעל את memrynote."
     },
     "toasts": {
       "saveGlobalFailed": "שמירת קיצור הדרך לצילום גלובלי נכשלה",

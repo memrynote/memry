@@ -32,7 +32,7 @@ describe('inbox seed data', () => {
       'Local-First',
       'programming book',
       'build pipeline',
-      'Memry export',
+      'memrynote export',
       'tech/'
     ]) {
       expect(activeText).not.toContain(technicalTerm)

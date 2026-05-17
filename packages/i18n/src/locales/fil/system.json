@@ -19,13 +19,13 @@
     "exportCancelled": "Kinansela ang pag-export",
     "update": {
       "availableTitle": "Available ang update",
-      "availableMessage": "Available ang Memry {version}.",
+      "availableMessage": "Available ang memrynote {version}.",
       "availableDetailFallback": "I-download ang update ngayon?",
       "buttonDownload": "I-download",
       "buttonLater": "Mamaya",
       "readyTitle": "Handa na ang update",
-      "readyMessage": "Na-download na ang Memry {version}.",
-      "readyDetailFallback": "I-restart ang Memry para tapusin ang pag-install ng update.",
+      "readyMessage": "Na-download na ang memrynote {version}.",
+      "readyDetailFallback": "I-restart ang memrynote para tapusin ang pag-install ng update.",
       "buttonRestartNow": "I-restart ngayon",
       "releaseNotesLabel": "Mga tala sa paglabas:"
     }

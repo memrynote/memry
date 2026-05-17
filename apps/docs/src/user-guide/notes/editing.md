@@ -1,17 +1,17 @@
 # Creating & Editing Notes
 
-Memry's editor is built on **BlockNote** — a block-based rich text editor with full markdown support. Every paragraph, heading, list item, code block, and image is a block you can drag, duplicate, or delete.
+memrynote's editor is built on **BlockNote** — a block-based rich text editor with full markdown support. Every paragraph, heading, list item, code block, and image is a block you can drag, duplicate, or delete.
 
 <!-- screenshot: note editor with the slash menu open -->
 
 ## Creating a Note
 
-| How | What you get |
-| --- | --- |
-| <kbd>⌘</kbd>+<kbd>N</kbd> | Untitled note in the current folder |
-| Sidebar **+** affordance | Same, scoped to the section you click |
+| How                                      | What you get                          |
+| ---------------------------------------- | ------------------------------------- |
+| <kbd>⌘</kbd>+<kbd>N</kbd>                | Untitled note in the current folder   |
+| Sidebar **+** affordance                 | Same, scoped to the section you click |
 | From a [Template](/user-guide/templates) | New note seeded with template content |
-| `[[New title]]` in another note | Linked note created on first save |
+| `[[New title]]` in another note          | Linked note created on first save     |
 
 The new note opens in a tab. The title field has focus.
 
@@ -37,24 +37,24 @@ Type `/` anywhere in the editor to insert a block. Filter by typing — `/h2` ju
 
 Common markdown shortcuts work inline:
 
-| Type | Becomes |
-| --- | --- |
-| `# ` | Heading 1 |
-| `## ` | Heading 2 |
-| `- ` | Bullet list |
-| `1. ` | Numbered list |
-| `[ ] ` | Check list |
-| `> ` | Quote |
-| `**bold**` | **bold** |
-| `*italic*` | *italic* |
-| `` `code` `` | `code` |
-| ` ``` ` | Code block |
+| Type         | Becomes       |
+| ------------ | ------------- |
+| `# `         | Heading 1     |
+| `## `        | Heading 2     |
+| `- `         | Bullet list   |
+| `1. `        | Numbered list |
+| `[ ] `       | Check list    |
+| `> `         | Quote         |
+| `**bold**`   | **bold**      |
+| `*italic*`   | _italic_      |
+| `` `code` `` | `code`        |
+| ` ``` `      | Code block    |
 
 ## Title
 
 The title is editable inline at the top of the editor. Renames are live — the title updates in tabs, the sidebar, search, and any inbound wiki links.
 
-If you leave the title empty, Memry generates a fallback ("Untitled" or the first heading).
+If you leave the title empty, memrynote generates a fallback ("Untitled" or the first heading).
 
 ## Drag-and-Drop Blocks
 

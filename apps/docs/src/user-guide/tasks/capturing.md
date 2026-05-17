@@ -13,22 +13,22 @@ Every task list has a quick-add input at the top.
 
 The new task is created in the current view's scope:
 
-| Where you quick-add | Goes to |
-| --- | --- |
-| All Tasks | No project, status defaults to your `Default Sort Order` setting |
-| Today | Today as due date |
-| Inside a project | That project, with the project's first status |
-| Inside a status column (kanban) | That column |
+| Where you quick-add             | Goes to                                                          |
+| ------------------------------- | ---------------------------------------------------------------- |
+| All Tasks                       | No project, status defaults to your `Default Sort Order` setting |
+| Today                           | Today as due date                                                |
+| Inside a project                | That project, with the project's first status                    |
+| Inside a status column (kanban) | That column                                                      |
 
 ## Natural Language Dates
 
 Phrases parse into due dates as you type:
 
-| You type | Memry sets |
-| --- | --- |
-| `Buy bread tomorrow` | Due tomorrow |
-| `Email Dana next Friday` | Due next Friday |
-| `Pay rent in 3 days` | Due 3 days from now |
+| You type                      | memrynote sets          |
+| ----------------------------- | ----------------------- |
+| `Buy bread tomorrow`          | Due tomorrow            |
+| `Email Dana next Friday`      | Due next Friday         |
+| `Pay rent in 3 days`          | Due 3 days from now     |
 | `Quarterly review next month` | Due first of next month |
 
 The parsed date appears as a chip you can adjust or remove before saving. If you don't want date parsing on a particular task, prefix or quote the text.

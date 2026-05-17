@@ -1,6 +1,6 @@
 # Agent Chat & MCP Server
 
-Memry can run an in-app Agent Chat backed by a provider-neutral agent backend. Claude CLI is the
+memrynote can run an in-app Agent Chat backed by a provider-neutral agent backend. Claude CLI is the
 first full backend, local OpenAI-compatible servers can be used for BYO local models, and the Codex
 CLI backend uses the same contract when enabled. After a vault opens, the desktop app starts a local
 MCP endpoint on `127.0.0.1` with a random port, then gives the selected backend only the vault tools
@@ -26,7 +26,7 @@ generated conversation title as the tab name, use the same centered reading colu
 leave the right sidebar ready for a new chat. The popped-out tab keeps the scroll bar at the window
 edge while the chat content stays centered, and the tab name is the only conversation title shown in
 that workspace view. Assistant responses render as full-width text in both the sidebar and popped-out
-tabs instead of bordered bubbles, with text aligned to the prompt input. For Claude CLI, Memry checks
+tabs instead of bordered bubbles, with text aligned to the prompt input. For Claude CLI, memrynote checks
 that `claude` is available on `PATH`, that it reports version `2.1.0` or newer, and that the Agent
 disclosure has been accepted. For local models, configure a compatible server in
 [Settings -> AI Assistant -> Agent Permissions](/user-guide/settings#agent-permissions) first.
@@ -39,21 +39,21 @@ Agent Chat can:
 - attach the active note as context for a turn
 - mention notes, tasks, journals, inbox items, and calendar events inline in a prompt with `@`
 - stream assistant text back into the sidebar
-- link returned or created Memry items directly in assistant replies, with a collapsible Sources
+- link returned or created memrynote items directly in assistant replies, with a collapsible Sources
   section for the same items
 - show collapsed tool calls, tool results, and optional approvals inline in the chat stream
 - stop an in-flight turn
 - compact older conversation history when a prompt grows too large
 
-When a tool result includes a real Memry reference, Agent Chat renders that item as a clickable
+When a tool result includes a real memrynote reference, Agent Chat renders that item as a clickable
 mention instead of plain text. Lists link each returned note, task, inbox item, journal entry,
 calendar event, project, or folder that has a navigable reference. Create and update confirmations
 also link the affected item when the tool returns its ID or journal date. The reply footer shows a
-collapsible Sources section only when the assistant message contains those Memry item links.
+collapsible Sources section only when the assistant message contains those memrynote item links.
 Inbox snooze confirmations use the same explicit inbox item reference as other inbox writes.
 
-Memry only links explicit tool-provided references. Plain titles without an ID or date stay as
-normal text. Clickable item mentions use Memry's standard link color, show a dotted underline on
+memrynote only links explicit tool-provided references. Plain titles without an ID or date stay as
+normal text. Clickable item mentions use memrynote's standard link color, show a dotted underline on
 hover, and display the matching item icon before the title. Notes use their custom note icon when
 one exists, inbox items use their capture-type icon, and journal, calendar, and task links use the
 same visual language as the main app surfaces.
@@ -73,7 +73,7 @@ native right-click editing work like other text fields.
 
 Stop requests are scoped to the active conversation across Claude, Codex, and local providers.
 Automatic title generation and conversation summaries run through the selected backend without
-exposing Memry MCP tools.
+exposing memrynote MCP tools.
 
 The prompt bar shows the selected agent provider. The provider is pinned per conversation; changing
 it after messages exist updates the conversation and records the switch in the chat history. Claude
@@ -82,18 +82,18 @@ for the active provider. The same compact prompt bar has a per-turn permissions 
 your default Agent Permissions setting, then lets you send a single turn as **Vault only** or
 **Computer access**, and optionally allow web search for that turn.
 
-**Vault only** keeps the CLI backend constrained to Memry vault tools. **Computer access** gives the
+**Vault only** keeps the CLI backend constrained to memrynote vault tools. **Computer access** gives the
 backend broader local CLI access for that turn. Web search is passed through only when the selected
 backend supports it.
 
-Claude and Codex conversations also have a per-conversation model selector. Memry starts Claude on
+Claude and Codex conversations also have a per-conversation model selector. memrynote starts Claude on
 `opus` and Codex on the highest suggested GPT version, then passes the selected model through to the
 CLI for each turn. The built-in model list is only a shortcut for common CLI aliases; type a custom
 model ID when you want to pin another CLI-supported model.
 
-Local model support uses OpenAI-compatible HTTP APIs. Memry ships presets for Ollama, LM Studio, and
+Local model support uses OpenAI-compatible HTTP APIs. memrynote ships presets for Ollama, LM Studio, and
 llama.cpp server, plus a Custom endpoint. Local tool access is gated by a capability probe. If the
-model can emit tool calls and continue after a tool result, Memry enables the full vault tool set. If
+model can emit tool calls and continue after a tool result, memrynote enables the full vault tool set. If
 the probe fails, local chat can still answer from attached context, but vault tool calls stay
 disabled.
 
@@ -106,16 +106,16 @@ creates a new Agent Chat conversation, attaches the active note when one is open
 reply into the sidebar.
 
 New conversations start with a temporary title. When you send the first prompt, the selected chat
-backend also generates a short conversation title. Memry stores that title on the encrypted
+backend also generates a short conversation title. memrynote stores that title on the encrypted
 conversation row and refreshes the sidebar title without giving the title-generation subprocess
-access to Memry MCP tools.
+access to memrynote MCP tools.
 
 Conversation rows, message bodies, and message attachments are encrypted at rest before they are
 written to SQLite. Free accounts keep agent chat history local-only. Paid accounts can sync finalized
-conversations and terminal messages through Memry Sync; in-progress streaming messages are not
+conversations and terminal messages through memrynote Sync; in-progress streaming messages are not
 enqueued until the turn finishes.
 
-If Memry cannot verify the local vault key for the current database, Agent Chat stays unavailable
+If memrynote cannot verify the local vault key for the current database, Agent Chat stays unavailable
 instead of opening unreadable conversation history. A fresh local vault can initialize a new local key
 without sign-in; an existing vault with a mismatched or missing keychain key must be recovered through
 the normal vault recovery flow.
@@ -135,9 +135,9 @@ Authorization: Bearer <token>
 ```
 
 The token is generated in memory for the current app launch. It is not saved to disk, changes when
-Memry restarts, and can be rotated manually from settings. Missing or stale tokens receive `401`.
+memrynote restarts, and can be rotated manually from settings. Missing or stale tokens receive `401`.
 
-The localhost MCP endpoint can serve overlapping Agent Chat turns and external read requests. Memry
+The localhost MCP endpoint can serve overlapping Agent Chat turns and external read requests. memrynote
 keeps the URL/token stable for the app session, but handles each MCP request with an isolated
 transport so one client connection does not block another.
 
@@ -232,7 +232,7 @@ tool as compact, subdued text with a readable label such as `Reading note` or `C
 Click the label to open or close the details area with the raw MCP tool name, parameters, and
 results.
 
-If you switch tool confirmations to **Ask first** in settings, Memry pauses the turn and shows inline
+If you switch tool confirmations to **Ask first** in settings, memrynote pauses the turn and shows inline
 approval controls inside the tool row. You can allow the request once, allow create tools always for
 that conversation, deny it, or edit the arguments before allowing. Note updates load a before/after
 diff before the write is applied. Unauthenticated or context-free write requests continue to be
@@ -240,7 +240,7 @@ denied.
 
 ## Current Note
 
-`vault_get_current_note` can snapshot the active note when the request is associated with a Memry
+`vault_get_current_note` can snapshot the active note when the request is associated with a memrynote
 window. Plain external clients do not have that window context, so the tool returns `null` instead
 of guessing.
 
@@ -255,6 +255,6 @@ Provider privacy depends on the selected backend:
 
 - Claude and Codex providers may send prompts, attachments, and tool results through that provider.
 - Local loopback providers keep model prompts on this machine, except for the actual tool effects
-  Memry applies inside the vault after approval.
+  memrynote applies inside the vault after approval.
 - Custom non-loopback endpoints send data to the configured endpoint and must be explicitly enabled
   with the not-fully-local warning.

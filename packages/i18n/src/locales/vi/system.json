@@ -19,13 +19,13 @@
     "exportCancelled": "Việc xuất bị hủy",
     "update": {
       "availableTitle": "Có bản cập nhật mới",
-      "availableMessage": "Memry {version} có sẵn.",
+      "availableMessage": "memrynote {version} có sẵn.",
       "availableDetailFallback": "Tải bản cập nhật ngay bây giờ?",
       "buttonDownload": "  \nTải xuống  ",
       "buttonLater": "Sau",
       "readyTitle": "Cập nhật sẵn sàng",
-      "readyMessage": "Memry {version} đã được tải xuống.",
-      "readyDetailFallback": "Khởi động lại Memry để hoàn tất cài đặt cập nhật.",
+      "readyMessage": "memrynote {version} đã được tải xuống.",
+      "readyDetailFallback": "Khởi động lại memrynote để hoàn tất cài đặt cập nhật.",
       "buttonRestartNow": "Khởi động lại ngay bây giờ",
       "releaseNotesLabel": "Ghi chú phát hành:"
     }

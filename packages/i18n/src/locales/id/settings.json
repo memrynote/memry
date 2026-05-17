@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "Luncurkan saat Login",
-        "description": "Mulai Memry saat Anda masuk",
+        "description": "Mulai memrynote saat Anda masuk",
         "error": "Gagal memperbarui awal saat boot"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "Versi terinstal {version}",
       "availableVersion": "Tersedia versi {version}",
       "unsupported": "Build terpaket dapat memeriksa, mengunduh, dan menginstal pembaruan dari Rilis GitHub",
-      "available": "Memry {version} tersedia untuk diunduh",
+      "available": "memrynote {version} tersedia untuk diunduh",
       "downloadingLatest": "Mengunduh rilis terbaru",
       "downloadingLatestPercent": "Mengunduh rilis terbaru ({percent}%)",
-      "downloaded": "Memry {version} siap dipasang",
+      "downloaded": "memrynote {version} siap dipasang",
       "upToDate": "Instalasi ini ada pada rilis terbaru yang diterbitkan",
       "checking": "Memeriksa Rilis GitHub untuk versi yang lebih baru",
       "idle": "Periksa rilis baru dan instal tanpa meninggalkan aplikasi",
       "unsupportedToast": "Pembaruan otomatis hanya tersedia dalam rilis paket",
-      "upToDateToast": "Memry {version} adalah yang terbaru",
+      "upToDateToast": "memrynote {version} adalah yang terbaru",
       "actionFailed": "Tindakan pembaruan gagal",
       "actions": {
         "checking": "Memeriksa...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "Perangkat berhasil ditautkan",
       "goBack": "Kembali",
       "waitingTitle": "Menunggu persetujuan",
-      "waitingDescription": "Buka Memry di perangkat Anda yang lain dan setujui permintaan penautan.",
+      "waitingDescription": "Buka memrynote di perangkat Anda yang lain dan setujui permintaan penautan.",
       "verificationCode": "Kode verifikasi",
       "confirmCode": "Konfirmasikan ini cocok dengan kode di perangkat Anda yang lain"
     }
@@ -778,7 +778,7 @@
     "connect": "Hubungkan",
     "googleCalendar": {
       "name": "Google Kalender",
-      "description": "Sinkronisasi dua arah untuk acara Memry dan kalender Google yang diimpor.",
+      "description": "Sinkronisasi dua arah untuk acara memrynote dan kalender Google yang diimpor.",
       "statuses": {
         "connected": "Terhubung",
         "notConnected": "Tidak Terhubung",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "Google Kalender",
-        "description": "Sinkronisasi dua arah untuk acara Memry, tugas, pengingat, dan kalender yang diimpor"
+        "description": "Sinkronisasi dua arah untuk acara memrynote, tugas, pengingat, dan kalender yang diimpor"
       },
       "appleCalendar": {
         "name": "Kalender Apple",
@@ -963,7 +963,7 @@
       "description": "Ambil catatan dari mana saja",
       "permissionNeeded": "Diperlukan izin",
       "active": "Aktif",
-      "permissionHint": "Pintasan global memerlukan izin Aksesibilitas. Buka Pengaturan Sistem → Privasi → Aksesibilitas dan aktifkan Memry."
+      "permissionHint": "Pintasan global memerlukan izin Aksesibilitas. Buka Pengaturan Sistem → Privasi → Aksesibilitas dan aktifkan memrynote."
     },
     "toasts": {
       "saveGlobalFailed": "Gagal menyimpan pintasan pengambilan global",

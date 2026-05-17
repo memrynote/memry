@@ -31,7 +31,7 @@ export const CALENDAR_SOURCES: SeedCalendarSource[] = [
     provider: 'memry',
     kind: 'calendar',
     remoteId: 'local-default',
-    title: 'Memry Local',
+    title: 'memrynote Local',
     color: '#6366f1',
     isPrimary: true,
     isSelected: true,
@@ -279,8 +279,8 @@ export const CALENDAR_EVENTS: SeedCalendarEvent[] = [
   // ========================================================================
   {
     id: generateId(),
-    title: '🧠 Deep work — Memry',
-    description: 'No notifications. See [[Memry Launch]].',
+    title: '🧠 Deep work — memrynote',
+    description: 'No notifications. See [[memrynote Launch]].',
     startAt: isoDateAt(0, 6),
     endAt: isoDateAt(0, 9),
     timezone: 'America/Los_Angeles',
@@ -296,7 +296,7 @@ export const CALENDAR_EVENTS: SeedCalendarEvent[] = [
   },
   {
     id: generateId(),
-    title: '🧠 Deep work — Memry',
+    title: '🧠 Deep work — memrynote',
     startAt: isoDateAt(2, 6),
     endAt: isoDateAt(2, 9),
     timezone: 'America/Los_Angeles',
@@ -450,7 +450,7 @@ export const CALENDAR_EVENTS: SeedCalendarEvent[] = [
   {
     id: generateId(),
     title: 'Inbox snooze ship review',
-    description: 'PR landed. See [[Memry Launch]].',
+    description: 'PR landed. See [[memrynote Launch]].',
     startAt: isoDateAt(-12, 11),
     endAt: isoDateAt(-12, 12),
     timezone: 'America/Los_Angeles',

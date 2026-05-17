@@ -125,7 +125,7 @@ describe('spawnCodexTurn', () => {
     expect(args).toContain('gpt-5.5')
   })
 
-  it('omits MCP config and Memry env vars for title and summary prompts', async () => {
+  it('omits MCP config and memrynote env vars for title and summary prompts', async () => {
     const fakeProc = makeFakeProc()
     vi.mocked(spawn).mockReturnValue(fakeProc)
 

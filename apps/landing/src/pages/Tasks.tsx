@@ -147,7 +147,7 @@ function HeroKanbanMock() {
   return (
     <FeatureHeroScreenshot
       screenshot="tasks"
-      alt="Memry tasks page showing grouped priorities, a selected task, and the task detail drawer"
+      alt="memrynote tasks page showing grouped priorities, a selected task, and the task detail drawer"
       width={1608}
       height={944}
     />
@@ -642,8 +642,8 @@ function QuickAddShowcase() {
               <span className="italic text-terracotta">in one keystroke.</span>
             </h2>
             <p className="mt-5 max-w-md text-lg leading-relaxed text-muted">
-              Hit the shortcut. Type the task. Memry parses dates, priority, project, and tags from
-              plain English. No forms. No tabbing through fields.
+              Hit the shortcut. Type the task. memrynote parses dates, priority, project, and tags
+              from plain English. No forms. No tabbing through fields.
             </p>
             <div className="mt-7 flex flex-wrap gap-2">
               {QUICK_ADD_CHIPS.map((chip) => (
@@ -817,7 +817,7 @@ const INTEGRATIONS = [
   {
     icon: Calendar,
     title: 'On Calendar',
-    body: 'Tasks plot by due date inside Memry. Drag to reschedule across the week.'
+    body: 'Tasks plot by due date inside memrynote. Drag to reschedule across the week.'
   }
 ] as const
 
@@ -828,7 +828,7 @@ function WorksWithRest() {
         <motion.div {...fadeUp} className="mx-auto max-w-2xl text-center">
           <Eyebrow>One workspace</Eyebrow>
           <h2 className="mt-3 font-serif text-3xl font-normal leading-tight text-ink md:text-5xl">
-            Works with the rest of Memry.
+            Works with the rest of memrynote.
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-muted">
             Tasks live next to your notes and journal. Same vault, same shortcuts, same backlinks.

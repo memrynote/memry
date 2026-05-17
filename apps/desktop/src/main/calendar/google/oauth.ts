@@ -173,14 +173,14 @@ function consumeSession(state: string): GoogleOAuthSession {
 
 function getSuccessHtml(): string {
   return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Memry</title></head>
-<body><h1>Google Calendar connected</h1><p>You can close this window and return to Memry.</p></body></html>`
+<html><head><meta charset="utf-8"><title>memrynote</title></head>
+<body><h1>Google Calendar connected</h1><p>You can close this window and return to memrynote.</p></body></html>`
 }
 
 function getErrorHtml(): string {
   return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Memry</title></head>
-<body><h1>Google Calendar connection failed</h1><p>You can close this window and return to Memry.</p></body></html>`
+<html><head><meta charset="utf-8"><title>memrynote</title></head>
+<body><h1>Google Calendar connection failed</h1><p>You can close this window and return to memrynote.</p></body></html>`
 }
 
 async function startLoopbackServer(): Promise<{ server: http.Server; port: number }> {

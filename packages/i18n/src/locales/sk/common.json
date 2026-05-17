@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Preskočiť úvod",
-      "welcomeToMemry": "Vitajte v Memry",
+      "welcomeToMemry": "Vitajte v memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Vaša osobná databáza poznatkov. Poďme si vziať 2 minúty, aby sme vás uviedli do chodu.",
       "getStarted": "Začať",
       "createYourFirstNote": "Vytvorte svoju prvú poznámku",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Potiahnutím zmeniť veľkosť · Dvojklikom obnoviť"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Vitajte v Memry",
+      "welcomeToMemry": "Vitajte v memrynote",
       "yourPersonalKnowledgeManagementSystem": "Váš osobný systém správy znalostí.",
       "selectAFolderToStoreYourNotesAndTasks": "Vyberte priečinok pre uloženie poznámok a úloh.",
       "opening": "Otváranie...",
@@ -341,9 +341,9 @@
     "stop": "Stop",
     "thinking": "Agent premýšľa",
     "enable": {
-      "title": "Povoliť Memry Agent",
-      "description": "Memry Agent používa vášho vybratého miestneho agenta CLI na rozhovor o vašom trezore. Claude posiela obraty na Anthropic; Codex posiela obraty na OpenAI.",
-      "remote": "Memry šifruje vašu miestnu a synchronizovanú históriu rozhovorov, ale odvodenie modelu sa deje s vybraným poskytovateľom.",
+      "title": "Povoliť memrynote Agent",
+      "description": "memrynote Agent používa vášho vybratého miestneho agenta CLI na rozhovor o vašom trezore. Claude posiela obraty na Anthropic; Codex posiela obraty na OpenAI.",
+      "remote": "memrynote šifruje vašu miestnu a synchronizovanú históriu rozhovorov, ale odvodenie modelu sa deje s vybraným poskytovateľom.",
       "readTools": "Nástroje na čítanie sa spúšťajú automaticky.",
       "writeTools": "Nástroje na vytváranie a aktualizáciu vyžadujú schválenie.",
       "diff": "Aktualizačné nástroje zobrazujú rozdiel alebo náhľad.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Aktuálna poznámka",
       "removeAttachment": "Odstrániť {label}",
-      "placeholder": "Opýtajte sa Memry na čokoľvek. @ na zmienku o súbore",
+      "placeholder": "Opýtajte sa memrynote na čokoľvek. @ na zmienku o súbore",
       "send": "Odoslať",
       "providerLabel": "Poskytovateľ Agent: {provider}",
       "settingsSummary": "{reasoning}",

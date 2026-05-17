@@ -147,7 +147,7 @@ function HeroJournalMock() {
   return (
     <FeatureHeroScreenshot
       screenshot="journal"
-      alt="Memry journal page showing the daily entry, day context, calendar, and tasks"
+      alt="memrynote journal page showing the daily entry, day context, calendar, and tasks"
       width={1608}
       height={944}
     />
@@ -461,7 +461,7 @@ function DayContextSidebarMock() {
                 <Calendar className="h-3 w-3" strokeWidth={2} />
               </span>
               <div>
-                <p className="text-ink/90">Deep work — Memry</p>
+                <p className="text-ink/90">Deep work — memrynote</p>
                 <p className="font-mono-accent text-[11px] text-muted">10:00 — 12:30</p>
               </div>
             </li>
@@ -702,7 +702,7 @@ const STRUCTURE_CARDS = [
   {
     icon: MessageSquare,
     title: 'Highlight reminders',
-    body: 'Mark a passage. Memry surfaces it back to you when the time is right.'
+    body: 'Mark a passage. memrynote surfaces it back to you when the time is right.'
   },
   {
     icon: Clock,
@@ -777,7 +777,7 @@ function WorksWithRest() {
         <motion.div {...fadeUp} className="mx-auto max-w-2xl text-center">
           <Eyebrow>One workspace</Eyebrow>
           <h2 className="mt-3 font-serif text-3xl font-normal leading-tight text-ink md:text-5xl">
-            Works with the rest of Memry.
+            Works with the rest of memrynote.
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-muted">
             The journal isn&apos;t a separate app. It reads from your inbox, your calendar, your
@@ -876,7 +876,7 @@ const MORE_FEATURES = [
   {
     icon: MessageSquare,
     title: 'Highlight callbacks',
-    body: 'Mark a sentence. Memry brings it back to you.'
+    body: 'Mark a sentence. memrynote brings it back to you.'
   },
   {
     icon: Layers,

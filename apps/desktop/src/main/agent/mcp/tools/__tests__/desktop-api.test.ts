@@ -29,7 +29,7 @@ describe('invokeDesktopApiFromWindow', () => {
     expect(BrowserWindow.fromId).not.toHaveBeenCalled()
   })
 
-  it('requires an existing Memry window', async () => {
+  it('requires an existing memrynote window', async () => {
     vi.mocked(BrowserWindow.fromId).mockReturnValue(null)
 
     await expect(

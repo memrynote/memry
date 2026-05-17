@@ -1,6 +1,6 @@
 # Common Gotchas
 
-Issues you'll hit while working on Memry, and the canonical fixes.
+Issues you'll hit while working on memrynote, and the canonical fixes.
 
 ## better-sqlite3 NODE_MODULE_VERSION Mismatch
 
@@ -13,7 +13,7 @@ Two fix paths depending on the target:
 | **Node tests**         | `pnpm rebuild better-sqlite3` (or `bash apps/desktop/scripts/ensure-native.sh node`) |
 | **Electron app / E2E** | `bash apps/desktop/scripts/ensure-native.sh electron` (or `pnpm rebuild:electron`)   |
 
-> Using the Node fix for Electron leaves `autoOpenLastVault` silently failing with `ERR_DLOPEN_FAILED`. The app falls through to the "Welcome to Memry" screen and every E2E test times out on `.bn-container` not visible.
+> Using the Node fix for Electron leaves `autoOpenLastVault` silently failing with `ERR_DLOPEN_FAILED`. The app falls through to the "Welcome to memrynote" screen and every E2E test times out on `.bn-container` not visible.
 
 ## Zod v4
 
@@ -123,4 +123,4 @@ The staged renderer guard scans whole staged renderer files, not just new hunks.
 
 ## Pre-Production Database
 
-Memry is pre-production and the DB schema is **resettable**. There are no backward-compat constraints on schema changes within the desktop app. If a migration is messy, deleting the local vault is a valid recovery.
+memrynote is pre-production and the DB schema is **resettable**. There are no backward-compat constraints on schema changes within the desktop app. If a migration is messy, deleting the local vault is a valid recovery.

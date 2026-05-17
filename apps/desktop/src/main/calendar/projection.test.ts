@@ -38,7 +38,7 @@ describe('getCalendarRangeProjection', () => {
     }
   }
 
-  it('returns Memry events, task due items, reminders, snoozes, and selected external events in one range query', () => {
+  it('returns memrynote events, task due items, reminders, snoozes, and selected external events in one range query', () => {
     const range = getLocalDayRange({ year: 2026, monthIndex: 3, day: 14 })
 
     db.run(sql`
