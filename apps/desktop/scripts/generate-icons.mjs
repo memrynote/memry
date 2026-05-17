@@ -9,7 +9,11 @@ const BUILD_DIR = join(__dirname, '..', 'build')
 const BRAND_DIR = join(__dirname, '..', '..', '..', 'assets', 'brand', 'memry')
 const SOURCE_ICON_PATH = join(BRAND_DIR, 'icon-color.png')
 const PROFILE_IMAGE_PATH = join(BRAND_DIR, 'social', 'profile-image.png')
+const PROFILE_SQUARE_PATH = join(BRAND_DIR, 'social', 'profile-square.png')
+const PROFILE_RECTANGLE_PATH = join(BRAND_DIR, 'social', 'profile-rectangle.png')
 const CANVAS_SIZE = 1024
+const PROFILE_RECTANGLE_WIDTH = 1500
+const PROFILE_RECTANGLE_HEIGHT = 500
 const TILE_INSET = 64
 const TILE_SIZE = CANVAS_SIZE - TILE_INSET * 2
 const TILE_RADIUS = 210
@@ -73,38 +77,56 @@ function renderIconSvg() {
 }
 
 function renderProfileImageSvg() {
+  return renderSocialProfileSvg({
+    width: CANVAS_SIZE,
+    height: CANVAS_SIZE,
+    logoSize: LOGO_SIZE
+  })
+}
+
+function renderProfileRectangleSvg() {
+  return renderSocialProfileSvg({
+    width: PROFILE_RECTANGLE_WIDTH,
+    height: PROFILE_RECTANGLE_HEIGHT,
+    logoSize: 300
+  })
+}
+
+function renderSocialProfileSvg({ width, height, logoSize }) {
   const sourceIcon = getImageDataUri(SOURCE_ICON_PATH)
+  const logoInsetX = Math.round((width - logoSize) / 2)
+  const logoInsetY = Math.round((height - logoSize) / 2)
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="${CANVAS_SIZE}" height="${CANVAS_SIZE}" viewBox="0 0 ${CANVAS_SIZE} ${CANVAS_SIZE}" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="512" y1="0" x2="512" y2="${CANVAS_SIZE}" gradientUnits="userSpaceOnUse">
+    <linearGradient id="bg" x1="${width / 2}" y1="0" x2="${width / 2}" y2="${height}" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#fffdf8"/>
       <stop offset="1" stop-color="#f2eee6"/>
     </linearGradient>
-    <filter id="logoDepth" x="${LOGO_INSET - 96}" y="${LOGO_INSET - 96}" width="${LOGO_SIZE + 192}" height="${LOGO_SIZE + 192}" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+    <filter id="logoDepth" x="${logoInsetX - 96}" y="${logoInsetY - 96}" width="${logoSize + 192}" height="${logoSize + 192}" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
       <feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#8f2f05" flood-opacity="0.26"/>
       <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.18"/>
     </filter>
-    <linearGradient id="logoHighlight" x1="${LOGO_INSET}" y1="${LOGO_INSET}" x2="${LOGO_INSET}" y2="${LOGO_INSET + LOGO_SIZE}" gradientUnits="userSpaceOnUse">
+    <linearGradient id="logoHighlight" x1="${logoInsetX}" y1="${logoInsetY}" x2="${logoInsetX}" y2="${logoInsetY + logoSize}" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#ffffff" stop-opacity="0.34"/>
       <stop offset="0.42" stop-color="#ffffff" stop-opacity="0.08"/>
       <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
-    <linearGradient id="logoShade" x1="${LOGO_INSET}" y1="${LOGO_INSET}" x2="${LOGO_INSET}" y2="${LOGO_INSET + LOGO_SIZE}" gradientUnits="userSpaceOnUse">
+    <linearGradient id="logoShade" x1="${logoInsetX}" y1="${logoInsetY}" x2="${logoInsetX}" y2="${logoInsetY + logoSize}" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#000000" stop-opacity="0"/>
       <stop offset="0.58" stop-color="#5b1700" stop-opacity="0.05"/>
       <stop offset="1" stop-color="#5b1700" stop-opacity="0.20"/>
     </linearGradient>
-    <mask id="logoMask" maskUnits="userSpaceOnUse" x="${LOGO_INSET}" y="${LOGO_INSET}" width="${LOGO_SIZE}" height="${LOGO_SIZE}" mask-type="alpha">
-      <image href="${sourceIcon}" x="${LOGO_INSET}" y="${LOGO_INSET}" width="${LOGO_SIZE}" height="${LOGO_SIZE}" preserveAspectRatio="xMidYMid meet"/>
+    <mask id="logoMask" maskUnits="userSpaceOnUse" x="${logoInsetX}" y="${logoInsetY}" width="${logoSize}" height="${logoSize}" mask-type="alpha">
+      <image href="${sourceIcon}" x="${logoInsetX}" y="${logoInsetY}" width="${logoSize}" height="${logoSize}" preserveAspectRatio="xMidYMid meet"/>
     </mask>
   </defs>
-  <rect width="${CANVAS_SIZE}" height="${CANVAS_SIZE}" fill="url(#bg)"/>
+  <rect width="${width}" height="${height}" fill="url(#bg)"/>
   <g filter="url(#logoDepth)">
-    <image href="${sourceIcon}" x="${LOGO_INSET}" y="${LOGO_INSET}" width="${LOGO_SIZE}" height="${LOGO_SIZE}" preserveAspectRatio="xMidYMid meet"/>
-    <rect x="${LOGO_INSET}" y="${LOGO_INSET}" width="${LOGO_SIZE}" height="${LOGO_SIZE}" fill="url(#logoHighlight)" mask="url(#logoMask)"/>
-    <rect x="${LOGO_INSET}" y="${LOGO_INSET}" width="${LOGO_SIZE}" height="${LOGO_SIZE}" fill="url(#logoShade)" mask="url(#logoMask)"/>
+    <image href="${sourceIcon}" x="${logoInsetX}" y="${logoInsetY}" width="${logoSize}" height="${logoSize}" preserveAspectRatio="xMidYMid meet"/>
+    <rect x="${logoInsetX}" y="${logoInsetY}" width="${logoSize}" height="${logoSize}" fill="url(#logoHighlight)" mask="url(#logoMask)"/>
+    <rect x="${logoInsetX}" y="${logoInsetY}" width="${logoSize}" height="${logoSize}" fill="url(#logoShade)" mask="url(#logoMask)"/>
   </g>
 </svg>`
 }
@@ -201,13 +223,28 @@ async function generateProfileImage() {
   mkdirSync(dirname(PROFILE_IMAGE_PATH), { recursive: true })
   const buf = await sharp(Buffer.from(renderProfileImageSvg())).png().toBuffer()
   writeFileSync(PROFILE_IMAGE_PATH, buf)
+  writeFileSync(PROFILE_SQUARE_PATH, buf)
   console.log('  assets/brand/memry/social/profile-image.png')
+  console.log('  assets/brand/memry/social/profile-square.png')
+}
+
+async function generateProfileRectangle() {
+  mkdirSync(dirname(PROFILE_RECTANGLE_PATH), { recursive: true })
+  const buf = await sharp(Buffer.from(renderProfileRectangleSvg())).png().toBuffer()
+  writeFileSync(PROFILE_RECTANGLE_PATH, buf)
+  console.log('  assets/brand/memry/social/profile-rectangle.png')
 }
 
 async function main() {
   mkdirSync(BUILD_DIR, { recursive: true })
   console.log('Generating app icons...')
-  await Promise.all([generateIcns(), generateIco(), generatePng(), generateProfileImage()])
+  await Promise.all([
+    generateIcns(),
+    generateIco(),
+    generatePng(),
+    generateProfileImage(),
+    generateProfileRectangle()
+  ])
   console.log('Done.')
 }
 
