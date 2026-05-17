@@ -87,6 +87,12 @@ export const PAGE_META: Record<string, PageMeta> = {
       'Local-first stays free, forever. Plus adds 1 GB sync, Pro adds 10 GB and 10 vaults, and Believer supports independent software with 50 GB and unlimited vaults.',
     path: '/pricing'
   },
+  roadmap: {
+    title: 'Roadmap — Memry',
+    description:
+      'What is shipping now, what is planned next, and what we have already launched. We update this page as we ship.',
+    path: '/roadmap'
+  },
   terms: {
     title: 'Terms of Service — memrynote',
     description:
