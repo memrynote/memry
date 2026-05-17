@@ -48,6 +48,7 @@ function CompetitorBar({ activeIndex }: { activeIndex: number }) {
 
 export function FlowShowcase() {
   const [activeIndex, setActiveIndex] = useState(0)
+  const [started, setStarted] = useState(false)
   const [paused, setPaused] = useState(false)
   const [muted, setMuted] = useState(true)
   const [videoDuration, setVideoDuration] = useState<number | null>(null)
@@ -56,22 +57,43 @@ export function FlowShowcase() {
   const { progress, goTo, seekTo } = useShowcaseTimer(
     activeIndex,
     setActiveIndex,
-    paused,
+    paused || !started,
     videoDuration
   )
+
+  const restartActiveVideo = useCallback(() => {
+    setSeekRequest((current) => ({
+      progress: 0,
+      requestId: (current?.requestId ?? 0) + 1
+    }))
+  }, [])
+
+  const handleStart = useCallback(() => {
+    setStarted(true)
+    setPaused(false)
+    seekTo(0)
+    restartActiveVideo()
+  }, [restartActiveVideo, seekTo])
 
   const handleStepClick = useCallback(
     (index: number) => {
       setVideoDuration(null)
       goTo(index)
+      restartActiveVideo()
+      setStarted(true)
       setPaused(false)
     },
-    [goTo]
+    [goTo, restartActiveVideo]
   )
 
   const handleToggle = useCallback(() => {
+    if (!started) {
+      handleStart()
+      return
+    }
+
     setPaused((p) => !p)
-  }, [])
+  }, [handleStart, started])
 
   const handleDurationDetected = useCallback((ms: number) => {
     setVideoDuration(ms)
@@ -79,13 +101,18 @@ export function FlowShowcase() {
 
   const handleActiveTabSeek = useCallback(
     (nextProgress: number) => {
+      if (!started) {
+        handleStart()
+        return
+      }
+
       seekTo(nextProgress)
       setSeekRequest((current) => ({
         progress: nextProgress,
         requestId: (current?.requestId ?? 0) + 1
       }))
     },
-    [seekTo]
+    [handleStart, seekTo, started]
   )
 
   return (
@@ -109,11 +136,13 @@ export function FlowShowcase() {
               </div>
               <DemoScene
                 activeIndex={activeIndex}
-                playing={!paused}
+                playing={started ? !paused : true}
                 muted={muted}
                 onToggle={handleToggle}
+                onStart={handleStart}
                 onMutedChange={setMuted}
                 onDurationDetected={handleDurationDetected}
+                previewing={!started}
                 seekRequest={seekRequest}
               />
             </div>

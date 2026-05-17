@@ -146,10 +146,10 @@ function TasksHero() {
 function HeroKanbanMock() {
   return (
     <FeatureHeroScreenshot
-      src="/screenshots/tasks.png"
+      screenshot="tasks"
       alt="Memry tasks page showing grouped priorities, a selected task, and the task detail drawer"
-      width={1576}
-      height={986}
+      width={1608}
+      height={944}
     />
   )
 }

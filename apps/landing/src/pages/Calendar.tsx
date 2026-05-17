@@ -186,10 +186,10 @@ function CalendarHero() {
 function HeroWeekMock() {
   return (
     <FeatureHeroScreenshot
-      src="/screenshots/calendar.png"
+      screenshot="calendar"
       alt="Memry calendar page showing the weekly calendar, scheduled tasks, and day sidebar"
-      width={1732}
-      height={1004}
+      width={1608}
+      height={944}
     />
   )
 }

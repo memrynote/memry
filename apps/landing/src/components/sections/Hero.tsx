@@ -14,13 +14,14 @@ export function Hero() {
     <section ref={sectionRef} id="hero" className="pt-32 pb-8 md:pt-40 overflow-hidden">
       <Container>
         <div className="flex flex-col items-center">
-          <div className="text-center">
+          <div className="flex flex-col items-center text-center">
             <motion.div
+              className="flex flex-col items-center gap-4"
               initial={BLUR_REVEAL_INITIAL}
               animate={isInView ? BLUR_REVEAL_ANIMATE : undefined}
               transition={BLUR_REVEAL_TRANSITION}
             >
-              <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl font-normal text-ink leading-[1.08] tracking-tight md:whitespace-nowrap">
+              <h1 className="hero-fora-title mx-auto text-ink text-balance">
                 Your thoughts,{' '}
                 <span className="relative inline-block">
                   <span className="relative z-10 text-terracotta italic">
@@ -47,19 +48,14 @@ export function Hero() {
                   </svg>
                 </span>
               </h1>
+
+              <p className="hero-fora-copy mx-auto text-muted">
+                One app for inbox, notes, tasks & journal — private by design, open at heart.
+              </p>
             </motion.div>
 
-            <motion.p
-              className="text-base md:text-lg text-muted font-sans max-w-md mx-auto mt-5 mb-8 leading-relaxed"
-              initial={BLUR_REVEAL_INITIAL}
-              animate={isInView ? BLUR_REVEAL_ANIMATE : undefined}
-              transition={BLUR_REVEAL_TRANSITION}
-            >
-              One app for inbox, notes, tasks & journal — private by design, open at heart.
-            </motion.p>
-
             <motion.div
-              className="max-w-md mx-auto mb-8"
+              className="mx-auto mt-8 mb-8 max-w-md"
               id="waitlist"
               initial={BLUR_REVEAL_INITIAL}
               animate={isInView ? BLUR_REVEAL_ANIMATE : undefined}
