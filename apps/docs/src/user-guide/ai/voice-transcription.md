@@ -25,6 +25,10 @@ Memry uses Whisper Small as the default local model — a balance of accuracy an
 
 Model files are stored locally in the app data directory. Disk usage is shown next to each option.
 
+Local transcription starts a native helper process while Whisper runs. After a transcription request
+finishes and no new voice work starts, Memry shuts that helper down after a short idle period so the
+model can release memory.
+
 ### Languages
 
 Whisper Small handles dozens of languages well. For unusual languages, larger Whisper models tend to do better — see the open-source Whisper docs for tradeoffs.
