@@ -177,7 +177,7 @@ This note was created externally for reindex testing.
       // The actual behavior depends on how errors are surfaced in UI
 
       const invalidPath = '/nonexistent/path/to/vault'
-      expect(fs.existsSync(invalidPath)).toBe(false)
+      expect(() => fs.accessSync(invalidPath)).toThrow()
     })
 
     test('should detect corrupted vault configuration', async ({ testVaultPath }) => {
@@ -186,8 +186,10 @@ This note was created externally for reindex testing.
 
       // Backup existing config
       let originalConfig: string | undefined
-      if (fs.existsSync(configPath)) {
+      try {
         originalConfig = fs.readFileSync(configPath, 'utf-8')
+      } catch {
+        originalConfig = undefined
       }
 
       try {
@@ -198,8 +200,10 @@ This note was created externally for reindex testing.
         expect(true).toBe(true)
       } finally {
         // Restore original config
-        if (originalConfig) {
+        if (originalConfig !== undefined) {
           fs.writeFileSync(configPath, originalConfig)
+        } else {
+          fs.rmSync(configPath, { force: true })
         }
       }
     })

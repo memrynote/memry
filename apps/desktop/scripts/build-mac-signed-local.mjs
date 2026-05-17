@@ -72,7 +72,7 @@ const cscLinkLooksLikeUrl = /^[a-zA-Z][a-zA-Z\d+.-]*:/.test(cscLink)
 if (!cscLinkLooksLikeUrl) {
   const certificatePath = isAbsolute(cscLink) ? cscLink : join(appRoot, cscLink)
   if (!existsSync(certificatePath)) {
-    console.error(`CSC_LINK certificate file does not exist: ${certificatePath}`)
+    console.error('CSC_LINK certificate file does not exist')
     process.exit(1)
   }
 }
