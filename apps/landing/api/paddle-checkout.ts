@@ -51,8 +51,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let checkoutConfig
   try {
     checkoutConfig = getPaddleCheckoutConfig(intent, process.env)
-  } catch (error) {
-    console.error('[paddle-checkout]', error)
+  } catch {
+    console.error('[paddle-checkout] checkout config unavailable')
     return res.status(500).json({ error: 'Paddle price is not configured' })
   }
 
@@ -73,8 +73,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       plan: intent.plan,
       cadence: intent.cadence
     })
-  } catch (error) {
-    console.error('[paddle-checkout] transaction creation failed', error)
+  } catch {
+    console.error('[paddle-checkout] transaction creation failed')
     return res.status(502).json({ error: 'Could not start checkout' })
   }
 }

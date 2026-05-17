@@ -428,7 +428,8 @@ export async function connectGoogleCalendar(): Promise<GoogleCalendarConnection>
   })
 
   const grantedScopes = tokenResponse.scope.split(' ').filter(Boolean)
-  const hasCalendarScope = grantedScopes.includes(GOOGLE_CALENDAR_SCOPE)
+  const grantedScopeSet = new Set(grantedScopes)
+  const hasCalendarScope = grantedScopeSet.has(GOOGLE_CALENDAR_SCOPE)
   log.info('Google token granted', {
     scopes: grantedScopes,
     hasCalendarScope,

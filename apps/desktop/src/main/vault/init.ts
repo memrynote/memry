@@ -89,22 +89,25 @@ export function hasWritePermission(dirPath: string): boolean {
 export function initVault(vaultPath: string): void {
   // Create .memry directory
   const memryDir = getMemryDir(vaultPath)
-  if (!fs.existsSync(memryDir)) {
-    fs.mkdirSync(memryDir, { recursive: true })
-  }
+  fs.mkdirSync(memryDir, { recursive: true })
 
   // Create default config if it doesn't exist
   const configPath = getConfigPath(vaultPath)
-  if (!fs.existsSync(configPath)) {
-    fs.writeFileSync(configPath, JSON.stringify(DEFAULT_CONFIG, null, 2), 'utf-8')
+  try {
+    fs.writeFileSync(configPath, JSON.stringify(DEFAULT_CONFIG, null, 2), {
+      encoding: 'utf-8',
+      flag: 'wx'
+    })
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+      throw error
+    }
   }
 
   // Create default vault folders
   for (const folder of VAULT_FOLDERS) {
     const folderPath = path.join(vaultPath, folder)
-    if (!fs.existsSync(folderPath)) {
-      fs.mkdirSync(folderPath, { recursive: true })
-    }
+    fs.mkdirSync(folderPath, { recursive: true })
   }
 }
 
@@ -113,10 +116,6 @@ export function initVault(vaultPath: string): void {
  */
 export function readVaultConfig(vaultPath: string): typeof DEFAULT_CONFIG {
   const configPath = getConfigPath(vaultPath)
-
-  if (!fs.existsSync(configPath)) {
-    return DEFAULT_CONFIG
-  }
 
   try {
     const content = fs.readFileSync(configPath, 'utf-8')

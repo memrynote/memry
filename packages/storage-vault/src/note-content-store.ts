@@ -1,5 +1,6 @@
 import fs from 'fs/promises'
 import path from 'path'
+import { randomBytes } from 'node:crypto'
 
 export interface VaultStoreLayout {
   rootPath: string
@@ -35,9 +36,25 @@ export function createNoteContentStore(layout: VaultStoreLayout): NoteContentSto
     async write(relativePath, content) {
       const absolutePath = resolve(relativePath)
       await fs.mkdir(path.dirname(absolutePath), { recursive: true })
-      const tempPath = `${absolutePath}.tmp`
-      await fs.writeFile(tempPath, content, 'utf-8')
-      await fs.rename(tempPath, absolutePath)
+      const tempPath = path.join(
+        path.dirname(absolutePath),
+        `.${path.basename(absolutePath)}.${randomBytes(6).toString('hex')}.tmp`
+      )
+      let handle: Awaited<ReturnType<typeof fs.open>> | null = null
+
+      try {
+        handle = await fs.open(tempPath, 'wx', 0o600)
+        await handle.writeFile(content, 'utf-8')
+        await handle.close()
+        handle = null
+        await fs.rename(tempPath, absolutePath)
+      } catch (error) {
+        if (handle) {
+          await handle.close().catch(() => {})
+        }
+        await fs.rm(tempPath, { force: true }).catch(() => {})
+        throw error
+      }
     },
     async remove(relativePath) {
       try {

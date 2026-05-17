@@ -45,14 +45,24 @@ async function findTasksByTitles(page: Page, titles: string[]): Promise<TaskRow[
 
 function readNoteFiles(vaultPath: string): { name: string; content: string; mtime: number }[] {
   const notesDir = path.join(vaultPath, 'notes')
-  if (!fs.existsSync(notesDir)) return []
-  return fs
-    .readdirSync(notesDir)
+  let entries: string[]
+  try {
+    entries = fs.readdirSync(notesDir)
+  } catch {
+    return []
+  }
+
+  return entries
     .filter((f) => f.endsWith('.md'))
     .map((name) => {
       const full = path.join(notesDir, name)
-      const stat = fs.statSync(full)
-      return { name, content: fs.readFileSync(full, 'utf8'), mtime: stat.mtimeMs }
+      const fd = fs.openSync(full, 'r')
+      try {
+        const stat = fs.fstatSync(fd)
+        return { name, content: fs.readFileSync(fd, 'utf8'), mtime: stat.mtimeMs }
+      } finally {
+        fs.closeSync(fd)
+      }
     })
     .sort((a, b) => b.mtime - a.mtime)
 }

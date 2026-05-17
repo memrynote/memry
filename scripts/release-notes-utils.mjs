@@ -2,6 +2,28 @@ export const HUMANIZED_RELEASE_MARKER = 'memry-humanized-release-notes'
 
 const requiredHumanizedSections = ['New Features', 'Bug Fixes', 'Documentation', 'Chores']
 
+function stripHtmlComments(text) {
+  let output = ''
+  let offset = 0
+
+  while (offset < text.length) {
+    const start = text.indexOf('<!--', offset)
+    if (start === -1) {
+      output += text.slice(offset)
+      break
+    }
+
+    output += text.slice(offset, start)
+    const end = text.indexOf('-->', start + 4)
+    if (end === -1) {
+      break
+    }
+    offset = end + 3
+  }
+
+  return output
+}
+
 export function extractPullRequestNumbers(body = '') {
   const seen = new Set()
   const numbers = []
@@ -26,7 +48,7 @@ export function extractReleaseNote(body = '') {
     return null
   }
 
-  const note = match[1].replace(/<!--[\s\S]*?-->/g, '').trim()
+  const note = stripHtmlComments(match[1]).trim()
   if (!note || /^(none|n\/a|na|no release note)$/i.test(note)) {
     return null
   }

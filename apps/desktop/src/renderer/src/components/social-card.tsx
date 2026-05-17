@@ -47,11 +47,47 @@ interface SocialPreviewProps {
 
 type SocialPlatform = 'twitter' | 'other'
 
-function detectPlatformFromUrl(url: string | null): SocialPlatform {
-  if (!url) return 'other'
+function getHostname(url: string | null): string | null {
+  if (!url) return null
 
-  const lowerUrl = url.toLowerCase()
-  if (lowerUrl.includes('twitter.com') || lowerUrl.includes('x.com')) return 'twitter'
+  try {
+    return new URL(url).hostname.toLowerCase() || null
+  } catch {
+    if (typeof document === 'undefined') return null
+
+    const anchor = document.createElement('a')
+    anchor.href = url
+    return anchor.hostname.toLowerCase() || null
+  }
+}
+
+function getPathname(url: string | null): string {
+  if (!url) return ''
+
+  try {
+    return new URL(url).pathname
+  } catch {
+    if (typeof document === 'undefined') return ''
+
+    const anchor = document.createElement('a')
+    anchor.href = url
+    return anchor.pathname
+  }
+}
+
+function isTwitterHostname(hostname: string | null): boolean {
+  if (!hostname) return false
+
+  return (
+    hostname === 'twitter.com' ||
+    hostname.endsWith('.twitter.com') ||
+    hostname === 'x.com' ||
+    hostname.endsWith('.x.com')
+  )
+}
+
+function detectPlatformFromUrl(url: string | null): SocialPlatform {
+  if (isTwitterHostname(getHostname(url))) return 'twitter'
 
   return 'other'
 }
@@ -62,18 +98,11 @@ function detectPlatformFromUrl(url: string | null): SocialPlatform {
 function extractHandleFromUrl(url: string | null): string {
   if (!url) return ''
 
-  try {
-    const urlObj = new URL(url)
-    const pathParts = urlObj.pathname.split('/').filter(Boolean)
+  const hostname = getHostname(url)
+  if (!isTwitterHostname(hostname)) return ''
 
-    if (url.includes('twitter.com') || url.includes('x.com')) {
-      return pathParts[0] ? `@${pathParts[0]}` : ''
-    }
-
-    return ''
-  } catch {
-    return ''
-  }
+  const pathParts = getPathname(url).split('/').filter(Boolean)
+  return pathParts[0] ? `@${pathParts[0]}` : ''
 }
 
 // ============================================================================
@@ -290,7 +319,7 @@ const SocialCardList = ({
         {/* Platform badge */}
         <div
           className={cn(
-            'absolute -bottom-1 -right-1 size-4 rounded-full bg-[var(--background)] flex items-center justify-center',
+            'absolute -bottom-1 -end-1 size-4 rounded-full bg-[var(--background)] flex items-center justify-center',
             'ring-2 ring-[var(--background)]'
           )}
         >

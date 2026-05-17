@@ -93,7 +93,14 @@ vi.mock('./social', () => ({
     }
   },
   extractSocialPost: (...args: unknown[]) => mockExtractSocialPost(...args),
-  isSocialPost: (url: string) => url.includes('x.com')
+  isSocialPost: (url: string) => {
+    try {
+      const hostname = new URL(url).hostname.toLowerCase()
+      return hostname === 'x.com' || hostname.endsWith('.x.com')
+    } catch {
+      return false
+    }
+  }
 }))
 
 vi.mock('./stats', () => ({
