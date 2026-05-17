@@ -81,6 +81,7 @@ const LAUNCHED_GROUPS: LaunchedGroup[] = [
         title: 'Voice memos with transcription and related items',
         caption: 'Inline recorder, transcript previews, and audio-aware mention picker.'
       },
+      { title: 'Memry CLI' },
       { title: 'Landing demo refresh, founder story, and event analytics' }
     ]
   },
@@ -121,7 +122,47 @@ const LAUNCHED_GROUPS: LaunchedGroup[] = [
       },
       { title: 'CRDT sync for notes and journals (Yjs)' },
       { title: 'Field-level vector clocks for tasks and projects' },
-      { title: 'Memry CLI' }
+      { title: 'Sync E2EE rollout: Phases 1 through 15' }
+    ]
+  },
+  {
+    period: 'January 2026',
+    items: [
+      { title: 'Folder view with table layout, columns, filters, and formulas' },
+      { title: 'Advanced search with operators and filters' },
+      { title: 'Reminders for notes, journals, and highlights' },
+      { title: 'Templates with folder defaults and version history' },
+      { title: 'AI filing suggestions with feedback tracking' },
+      { title: 'Local embedding vector search via sqlite-vec' },
+      { title: 'Property drag-and-drop, renaming, and unified API' },
+      { title: 'Test infrastructure: Vitest and Playwright with seeded fixtures' },
+      { title: 'Sync E2EE architecture and specification' }
+    ]
+  },
+  {
+    period: 'December 2025',
+    items: [
+      { title: 'Initial app scaffold and sidebar navigation' },
+      {
+        title: 'Task system v1',
+        caption:
+          'List, Kanban, subtasks, due dates, priorities, recurring rules, drag-and-drop, and bulk actions.'
+      },
+      { title: 'Split-view tab system with drag-and-drop between panes' },
+      {
+        title: 'Rich-text note editor',
+        caption:
+          'Slash commands, callouts, wiki-links, tags, properties, attachments, and version history.'
+      },
+      {
+        title: 'Journal v1',
+        caption: 'Day cards, calendar heatmap, focus mode, and AI suggestions.'
+      },
+      {
+        title: 'Inbox capture: text, URLs, images, and voice',
+        caption: 'Quick-capture window with a global shortcut.'
+      },
+      { title: 'Vault management and full-text search (Drizzle + SQLite + FTS5)' }
     ]
   }
 ]
