@@ -150,7 +150,7 @@ export function FlowShowcase() {
           animate={BLUR_REVEAL_ANIMATE}
           transition={BLUR_REVEAL_TRANSITION}
         >
-          <MockupFrame>
+          <MockupFrame caption="Full app walkthrough — click the bar to jump">
             <div className="flex flex-col">
               <div className="px-3 py-2 border-b border-border/30">
                 <DemoTabs

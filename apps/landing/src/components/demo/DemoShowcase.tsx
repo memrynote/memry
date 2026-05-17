@@ -70,7 +70,7 @@ export function DemoShowcase() {
   )
 
   return (
-    <MockupFrame>
+    <MockupFrame caption="Full app walkthrough — click the bar to jump">
       <div className="flex flex-col">
         <div className="px-3 py-2 border-b border-border/30">
           <DemoTabs
