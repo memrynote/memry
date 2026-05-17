@@ -51,7 +51,8 @@ export function DemoTabs({ activeIndex, progress, onTabClick, onActiveTabSeek }:
           <button
             key={clip.id}
             onClick={(event) => handleTabClick(event, index, isActive)}
-            className="relative flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-mono-accent transition-colors cursor-pointer hover:bg-terracotta/[0.06]"
+            className={`relative flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-mono-accent transition-colors hover:bg-terracotta/[0.06] ${isActive ? 'cursor-ew-resize' : 'cursor-pointer'}`}
+            title={isActive ? 'Click anywhere on the bar to jump' : undefined}
           >
             {isActive && <TabFill progress={progress} />}
             {isCompleted && <div className="absolute inset-0 bg-terracotta/10 rounded-lg" />}

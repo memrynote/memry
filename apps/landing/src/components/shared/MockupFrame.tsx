@@ -8,13 +8,15 @@ interface MockupFrameProps {
   imageSrc?: string
   imageAlt?: string
   className?: string
+  caption?: ReactNode
 }
 
 export function MockupFrame({
   children,
   imageSrc,
   imageAlt = 'App screenshot',
-  className
+  className,
+  caption
 }: MockupFrameProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const isClickable = !!imageSrc
@@ -65,12 +67,15 @@ export function MockupFrame({
         }
         aria-label={isClickable ? `View ${imageAlt} full size` : undefined}
       >
-        <div className="flex items-center gap-2 px-4 py-3 bg-paper-alt border-b border-border/50">
+        <div className="flex items-center gap-3 px-4 py-3 bg-paper-alt border-b border-border/50">
           <div className="flex gap-2 opacity-60 hover:opacity-100 transition-opacity">
             <div className="w-3 h-3 rounded-full bg-[#FF5F57] shadow-inner" />
             <div className="w-3 h-3 rounded-full bg-[#FFBD2E] shadow-inner" />
             <div className="w-3 h-3 rounded-full bg-[#28CA41] shadow-inner" />
           </div>
+          {caption && (
+            <div className="ms-auto text-xs text-muted/70 font-mono-accent truncate">{caption}</div>
+          )}
         </div>
 
         <div className="relative bg-card group">
