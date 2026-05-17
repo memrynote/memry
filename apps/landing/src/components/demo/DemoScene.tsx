@@ -68,6 +68,7 @@ export function DemoScene({
             style={{ pointerEvents: isActive ? 'auto' : 'none' }}
           >
             <Scene
+              clipId={clip.id}
               playing={isActive && playing}
               muted={muted}
               onMutedChange={onMutedChange}

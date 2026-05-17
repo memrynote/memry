@@ -16,6 +16,7 @@ import {
 } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { scrollToLandingTarget } from '@/lib/smooth-scroll'
+import { trackLandingEvent, type LandingEventName } from '@/lib/analytics'
 
 function useScrollToSection() {
   const navigate = useNavigate()
@@ -42,16 +43,33 @@ function formatStarCount(count: number) {
   return new Intl.NumberFormat('en-US').format(count)
 }
 
+function analyticsTarget(scope: string, label: string) {
+  return `${scope}:${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+}
+
+function dropdownEvent(label: string): LandingEventName {
+  return label === 'Download' ? 'landing_download_click' : 'landing_nav_click'
+}
+
 function NavLink({ href, label }: { href: string; label: string }) {
   const className =
     'rounded-full px-3 py-2 text-sm font-medium text-muted transition-colors hover:text-ink'
+  const eventName = isExternalHref(href) ? 'landing_external_click' : 'landing_nav_click'
 
   return isExternalHref(href) ? (
-    <a href={href} className={className}>
+    <a
+      href={href}
+      className={className}
+      onClick={() => trackLandingEvent(eventName, analyticsTarget('nav', label))}
+    >
       {label}
     </a>
   ) : (
-    <Link to={href} className={className}>
+    <Link
+      to={href}
+      className={className}
+      onClick={() => trackLandingEvent(eventName, analyticsTarget('nav', label))}
+    >
       {label}
     </Link>
   )
@@ -75,7 +93,10 @@ function GitHubStarWidget({
       href={GITHUB_URL}
       target="_blank"
       rel="noreferrer"
-      onClick={onClick}
+      onClick={() => {
+        trackLandingEvent('landing_external_click', 'external:github')
+        onClick?.()
+      }}
       aria-label={`${formattedStars} GitHub stars`}
     >
       <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" aria-hidden>
@@ -120,7 +141,13 @@ function DropdownIcon({ item, className }: { item: LandingDropdownItem; classNam
   return <Icon className={className} strokeWidth={2.4} aria-hidden />
 }
 
-function DropdownItem({ item }: { item: LandingDropdownItem }) {
+function DropdownItem({
+  item,
+  eventName
+}: {
+  item: LandingDropdownItem
+  eventName: LandingEventName
+}) {
   const className = cn(
     'flex min-h-[68px] items-start gap-4 rounded-2xl px-4 py-3 text-start transition-colors',
     item.disabled
@@ -146,17 +173,18 @@ function DropdownItem({ item }: { item: LandingDropdownItem }) {
       </span>
     </>
   )
+  const handleClick = () => trackLandingEvent(eventName, analyticsTarget('dropdown', item.label))
 
   return item.disabled ? (
     <button type="button" className={className} aria-disabled="true" tabIndex={-1}>
       {content}
     </button>
   ) : isExternalHref(item.href) ? (
-    <a href={item.href} className={className}>
+    <a href={item.href} className={className} onClick={handleClick}>
       {content}
     </a>
   ) : (
-    <Link to={item.href} className={className}>
+    <Link to={item.href} className={className} onClick={handleClick}>
       {content}
     </Link>
   )
@@ -173,6 +201,8 @@ function DesktopDropdown({
   icon?: LucideIcon
   columns?: 1 | 2
 }) {
+  const eventName = dropdownEvent(label)
+
   return (
     <div className="group relative">
       <DropdownTrigger label={label} icon={icon} />
@@ -185,7 +215,7 @@ function DesktopDropdown({
         >
           <div className={cn('grid gap-2', columns === 2 ? 'grid-cols-2' : 'grid-cols-1')}>
             {items.map((item) => (
-              <DropdownItem key={item.label} item={item} />
+              <DropdownItem key={item.label} item={item} eventName={eventName} />
             ))}
           </div>
         </div>
@@ -203,6 +233,8 @@ function MobileDropdownSection({
   items: readonly LandingDropdownItem[]
   onNavigate: () => void
 }) {
+  const eventName = dropdownEvent(title)
+
   return (
     <div className="rounded-2xl border border-border/60 bg-card/65 p-3">
       <p className="px-2 pb-2 font-mono-accent text-[10px] uppercase tracking-[0.18em] text-muted">
@@ -234,6 +266,10 @@ function MobileDropdownSection({
             'flex items-center gap-3 rounded-xl px-2 py-2 text-start transition-colors',
             item.disabled ? 'cursor-not-allowed opacity-50' : 'hover:bg-paper-alt'
           )
+          const handleClick = () => {
+            trackLandingEvent(eventName, analyticsTarget('mobile-dropdown', item.label))
+            onNavigate()
+          }
 
           return item.disabled ? (
             <button
@@ -246,11 +282,11 @@ function MobileDropdownSection({
               {content}
             </button>
           ) : isExternalHref(item.href) ? (
-            <a key={item.label} href={item.href} className={className} onClick={onNavigate}>
+            <a key={item.label} href={item.href} className={className} onClick={handleClick}>
               {content}
             </a>
           ) : (
-            <Link key={item.label} to={item.href} className={className} onClick={onNavigate}>
+            <Link key={item.label} to={item.href} className={className} onClick={handleClick}>
               {content}
             </Link>
           )
@@ -280,6 +316,8 @@ export function Header() {
   }, [])
 
   const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    trackLandingEvent('landing_nav_click', 'nav:logo')
+
     if (location.pathname !== '/') {
       setMobileMenuOpen(false)
       return
@@ -330,7 +368,13 @@ export function Header() {
             <ThemeToggle />
             <GitHubStarWidget />
             <Button variant="default" size="sm" className="rounded-full px-6" asChild>
-              <a href="#waitlist" onClick={(e) => scrollToSection(e, '#waitlist')}>
+              <a
+                href="#waitlist"
+                onClick={(e) => {
+                  trackLandingEvent('landing_nav_click', 'nav:join')
+                  scrollToSection(e, '#waitlist')
+                }}
+              >
                 Join
                 <ArrowUpRight className="w-4 h-4" />
               </a>
@@ -376,7 +420,13 @@ export function Header() {
                     <a
                       key={link.href}
                       href={link.href}
-                      onClick={() => setMobileMenuOpen(false)}
+                      onClick={() => {
+                        trackLandingEvent(
+                          'landing_external_click',
+                          analyticsTarget('mobile-nav', link.label)
+                        )
+                        setMobileMenuOpen(false)
+                      }}
                       className="rounded-2xl border border-border/60 bg-card/65 px-4 py-3 text-xl font-serif font-medium text-ink transition-colors hover:text-terracotta"
                     >
                       {link.label}
@@ -385,7 +435,13 @@ export function Header() {
                     <Link
                       key={link.href}
                       to={link.href}
-                      onClick={() => setMobileMenuOpen(false)}
+                      onClick={() => {
+                        trackLandingEvent(
+                          'landing_nav_click',
+                          analyticsTarget('mobile-nav', link.label)
+                        )
+                        setMobileMenuOpen(false)
+                      }}
                       className="rounded-2xl border border-border/60 bg-card/65 px-4 py-3 text-xl font-serif font-medium text-ink transition-colors hover:text-terracotta"
                     >
                       {link.label}
@@ -398,6 +454,7 @@ export function Header() {
                   <a
                     href="#waitlist"
                     onClick={(e) => {
+                      trackLandingEvent('landing_nav_click', 'mobile-nav:join')
                       scrollToSection(e, '#waitlist')
                       setMobileMenuOpen(false)
                     }}
