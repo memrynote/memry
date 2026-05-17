@@ -57,5 +57,15 @@ export function useShowcaseTimer(
     [progress, setActiveIndex]
   )
 
-  return { progress, goTo }
+  const seekTo = useCallback(
+    (nextProgress: number) => {
+      const clampedProgress = Math.min(Math.max(nextProgress, 0), 1)
+      progress.set(clampedProgress)
+      pausedAtRef.current = clampedProgress
+      startTimeRef.current = paused ? null : performance.now() - clampedProgress * duration
+    },
+    [duration, paused, progress]
+  )
+
+  return { progress, goTo, seekTo }
 }

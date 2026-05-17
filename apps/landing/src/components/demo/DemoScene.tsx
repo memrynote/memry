@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { CLIPS } from './types'
+import { CLIPS, type SeekRequest } from './types'
 import { InboxScene } from './scenes/InboxScene'
 import { JournalScene } from './scenes/JournalScene'
 import { NotesScene } from './scenes/NotesScene'
@@ -15,11 +15,22 @@ const SCENE_MAP = {
 interface DemoSceneProps {
   activeIndex: number
   playing: boolean
+  muted: boolean
   onToggle: () => void
+  onMutedChange: (muted: boolean) => void
   onDurationDetected: (ms: number) => void
+  seekRequest: SeekRequest | null
 }
 
-export function DemoScene({ activeIndex, playing, onToggle, onDurationDetected }: DemoSceneProps) {
+export function DemoScene({
+  activeIndex,
+  playing,
+  muted,
+  onToggle,
+  onMutedChange,
+  onDurationDetected,
+  seekRequest
+}: DemoSceneProps) {
   return (
     <div
       className="relative bg-paper-deep rounded-b-xl overflow-hidden select-none aspect-video"
@@ -38,7 +49,10 @@ export function DemoScene({ activeIndex, playing, onToggle, onDurationDetected }
           >
             <Scene
               playing={isActive && playing}
+              muted={muted}
+              onMutedChange={onMutedChange}
               onDurationDetected={isActive ? onDurationDetected : undefined}
+              seekRequest={isActive ? seekRequest : null}
             />
           </motion.div>
         )
