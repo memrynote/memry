@@ -129,6 +129,8 @@ GitHub code scanning and the local staged-secret hook are intentionally conserva
 - Write generated files and vault payloads through exclusive temporary files plus `rename`, not predictable temp paths.
 - Use `mkdtemp` for tests that need temporary directories.
 - Keep log output sanitized. Do not print signing paths, API responses with headers, or raw error objects that may include request data.
+- Invoke package-manager CLIs through a resolved Node/Corepack entry point instead of relying on `PATH`.
+- For generated TypeScript, prefer data tables plus runtime assembly over interpolating dynamic keys into code snippets.
 - In fixtures, avoid object fields named `token`, `secret`, or `apiKey` when the value is runtime data. Use a neutral field name and keep the real header name only at the request boundary.
 
 ## Pre-Production Database
