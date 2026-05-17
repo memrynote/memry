@@ -399,44 +399,39 @@ export const ROADMAP_DATA = {
   phases: [
     {
       status: 'done' as const,
-      title: 'Core Foundation',
+      title: 'Available now',
+      caption: 'The local-first desktop workspace is already usable across the core flows.',
       items: [
-        'Notes with Markdown & wiki-links',
-        'Backlinks & bidirectional linking',
-        'Full-text search',
-        'Tasks with projects & custom statuses',
-        'Kanban & Calendar views',
-        'Subtasks & recurring tasks',
-        'Daily journal with templates',
-        'Quick capture inbox',
-        'File attachments & version history',
-        '8 property types for metadata',
-        'Database view'
+        'Local vault with Markdown notes, backlinks, and global search',
+        'Inbox capture for text, URLs, images, and voice',
+        'Tasks, projects, subtasks, recurring rules, and multiple views',
+        'Daily journal with templates and day context',
+        'End-to-end encrypted sync for notes and journals',
+        'Calendar week view, snoozed inbox items, and reminders',
+        'Voice memos with transcription and related items',
+        'Agent Chat mentions, per-turn permissions, and Memry CLI'
       ]
     },
     {
       status: 'in-progress' as const,
-      title: 'Polish & AI',
+      title: 'Building now',
+      caption: 'The next work is focused on better capture, migration, and agent reliability.',
       items: [
-        'Canvas graph',
-        'AI-powered inbox clustering (local model)',
-        'Smart task suggestions',
-        'Performance optimization',
-        'Keyboard shortcuts refinement',
-        'Accessibility improvements'
+        'Web clipper for pages, highlights, and snippets',
+        'Importers for Obsidian, Notion, Roam, and Markdown folders',
+        'AI Agent public release polish: provider settings, streaming, approvals'
       ]
     },
     {
       status: 'planned' as const,
-      title: 'Expansion',
+      title: 'Planned next',
+      caption: 'Direction, not a release promise. These unlock more ways to use your vault.',
       items: [
-        'Mobile app — iOS & Android (targeting late 2026)',
-        'Graph view for note connections',
-        'CLI, MCP & API',
-        'Google & Apple Calendar integration',
-        'Multi-vault support',
-        'Notion, Todoist & Readwise integration',
-        'Templates marketplace'
+        'Mobile apps for iOS and Android (targeting late 2026)',
+        'Public and shared vaults',
+        'Plugin API for custom tools and views',
+        'Templates marketplace',
+        'Self-hosted encrypted sync server'
       ]
     }
   ]
