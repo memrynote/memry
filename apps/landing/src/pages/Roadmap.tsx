@@ -1,9 +1,8 @@
 import { motion } from 'framer-motion'
-import { ArrowUpRight, Map } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { PageHead } from '@/components/shared/PageHead'
-import { CHANGELOG_URL, GITHUB_URL } from '@/lib/constants'
-import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
+import { GITHUB_URL } from '@/lib/constants'
 
 const EASE_OUT_EXPO = [0.16, 1, 0.3, 1] as const
 
@@ -177,63 +176,51 @@ const TOTAL_LAUNCHED = LAUNCHED_GROUPS.reduce((sum, group) => sum + group.items.
 
 export function RoadmapPage() {
   return (
-    <main className="pt-24">
+    <main className="pt-32 pb-24 md:pt-40">
       <PageHead page="roadmap" />
-
-      <section className="py-20">
-        <Container size="md">
-          <motion.div
-            initial={BLUR_REVEAL_INITIAL}
-            animate={BLUR_REVEAL_ANIMATE}
-            transition={BLUR_REVEAL_TRANSITION}
-            className="text-center"
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-terracotta/30 bg-terracotta/5 text-terracotta text-sm font-medium mb-8">
-              <Map className="w-4 h-4" />
-              Roadmap
-            </div>
-            <h1 className="font-serif text-5xl md:text-6xl lg:text-7xl text-ink mb-6 leading-[1.1]">
-              What we&apos;re building,
-              <br />
-              <span className="text-terracotta">in the open.</span>
-            </h1>
-            <p className="text-xl text-muted font-sans max-w-2xl mx-auto leading-relaxed mb-6">
-              What is shipping now, what is planned next, and what we have already launched. This
-              page updates as we ship.
-            </p>
+      <Container size="md">
+        <section className="border-b border-border pb-12">
+          <p className="font-mono-accent text-xs uppercase tracking-[0.18em] text-terracotta">
+            Building in public
+          </p>
+          <h1 className="mt-4 font-serif text-5xl leading-[1.05] text-ink md:text-6xl">Roadmap</h1>
+          <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted">
+            What is available, what is active, and what is planned next. This is direction, not a
+            release promise.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3 text-sm">
             <a
-              href={CHANGELOG_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-ink/80 hover:text-terracotta transition-colors"
+              href={`${GITHUB_URL}/releases`}
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 font-medium text-ink transition-colors hover:border-terracotta/30 hover:text-terracotta"
             >
-              See full changelog
-              <ArrowUpRight className="w-3.5 h-3.5" />
+              Changelog
+              <ArrowRight className="h-4 w-4" aria-hidden />
             </a>
-          </motion.div>
-        </Container>
-      </section>
+            <a
+              href={`${GITHUB_URL}/issues`}
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 font-medium text-ink transition-colors hover:border-terracotta/30 hover:text-terracotta"
+            >
+              Request a feature
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </a>
+          </div>
+        </section>
 
-      <section className="py-12">
-        <Container size="md">
+        <section className="border-b border-border py-12">
           <div className="mb-6">
             <StatusPill label="Active" tone="sage" count={ACTIVE_ITEMS.length} />
           </div>
           <RoadmapList items={ACTIVE_ITEMS} />
-        </Container>
-      </section>
+        </section>
 
-      <section className="py-12 bg-paper-alt">
-        <Container size="md">
+        <section className="border-b border-border py-12">
           <div className="mb-6">
             <StatusPill label="Planned" tone="terracotta" count={PLANNED_ITEMS.length} />
           </div>
           <RoadmapList items={PLANNED_ITEMS} />
-        </Container>
-      </section>
+        </section>
 
-      <section className="py-12">
-        <Container size="md">
+        <section className="pt-12">
           <div className="mb-6">
             <StatusPill label="Launched" tone="muted" count={TOTAL_LAUNCHED} />
           </div>
@@ -258,34 +245,8 @@ export function RoadmapPage() {
               </div>
             ))}
           </motion.div>
-        </Container>
-      </section>
-
-      <section className="py-24">
-        <Container size="sm">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, ease: EASE_OUT_EXPO }}
-            className="text-center"
-          >
-            <h2 className="font-serif text-3xl text-ink mb-4">Have an idea?</h2>
-            <p className="text-lg text-muted mb-8 max-w-lg mx-auto leading-relaxed">
-              Open an issue on GitHub or send us a note — we read everything.
-            </p>
-            <a
-              href={`${GITHUB_URL}/issues`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-ink text-paper font-medium text-sm hover:bg-ink/90 transition-colors"
-            >
-              Open an issue
-              <ArrowUpRight className="w-4 h-4" />
-            </a>
-          </motion.div>
-        </Container>
-      </section>
+        </section>
+      </Container>
     </main>
   )
 }
