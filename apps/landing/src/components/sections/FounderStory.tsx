@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { Container } from '@/components/layout/Container'
 import { GITHUB_URL, TWITTER_DEV_URL } from '@/lib/constants'
+import { trackLandingEvent } from '@/lib/analytics'
 
 export function FounderStory() {
   return (
@@ -71,6 +72,7 @@ export function FounderStory() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm font-medium text-terracotta hover:underline"
+                    onClick={() => trackLandingEvent('landing_external_click', 'founder:twitter')}
                   >
                     Follow @h4yfans for updates →
                   </a>
@@ -79,6 +81,7 @@ export function FounderStory() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm text-muted hover:text-ink transition-colors"
+                    onClick={() => trackLandingEvent('landing_external_click', 'founder:github')}
                   >
                     GitHub
                   </a>

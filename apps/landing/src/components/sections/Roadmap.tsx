@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { Check } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { GITHUB_URL, ROADMAP_DATA, TWITTER_DEV_URL } from '@/lib/constants'
+import { trackLandingEvent } from '@/lib/analytics'
 
 const STATUS_CONFIG = {
   done: {
@@ -165,6 +166,7 @@ export function Roadmap() {
             target="_blank"
             rel="noopener noreferrer"
             className="text-terracotta hover:underline font-medium"
+            onClick={() => trackLandingEvent('landing_external_click', 'roadmap:github-issues')}
           >
             Request a feature →
           </a>
@@ -174,6 +176,7 @@ export function Roadmap() {
             target="_blank"
             rel="noopener noreferrer"
             className="text-terracotta hover:underline font-medium"
+            onClick={() => trackLandingEvent('landing_external_click', 'roadmap:twitter')}
           >
             Follow @h4yfans for updates →
           </a>

@@ -4,6 +4,7 @@ import { ArrowRight, Check, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { trackLandingEvent } from '@/lib/analytics'
 
 interface WaitlistFormProps {
   variant?: 'hero' | 'inline' | 'centered'
@@ -19,6 +20,7 @@ export function WaitlistForm({ variant = 'hero', className }: WaitlistFormProps)
     e.preventDefault()
     if (!email || status === 'loading') return
 
+    trackLandingEvent('landing_waitlist_submit', `waitlist:${variant}`)
     setStatus('loading')
     setErrorMessage('')
 
@@ -34,13 +36,16 @@ export function WaitlistForm({ variant = 'hero', className }: WaitlistFormProps)
       const data = await response.json()
 
       if (response.ok && data.success) {
+        trackLandingEvent('landing_waitlist_success', `waitlist:${variant}`)
         setStatus('success')
         setEmail('')
       } else {
+        trackLandingEvent('landing_waitlist_error', `waitlist:${variant}`)
         setErrorMessage(data.error || 'Something went wrong')
         setStatus('error')
       }
     } catch {
+      trackLandingEvent('landing_waitlist_error', `waitlist:${variant}`)
       setErrorMessage('Network error. Please try again.')
       setStatus('error')
     }

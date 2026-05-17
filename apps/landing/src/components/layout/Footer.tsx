@@ -2,10 +2,17 @@ import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Container } from './Container'
 import { FOOTER_LINKS, TWITTER_DEV_URL } from '@/lib/constants'
+import { trackLandingEvent } from '@/lib/analytics'
 
 function footerHref(href: string, pathname: string): string {
   if (href.startsWith('#') && pathname !== '/') return '/' + href
   return href
+}
+
+function footerTarget(label: ReactNode) {
+  return `footer:${String(label)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')}`
 }
 
 function FooterLink({ href, children }: { href: string; children: ReactNode }) {
@@ -13,14 +20,24 @@ function FooterLink({ href, children }: { href: string; children: ReactNode }) {
 
   if (href.startsWith('http')) {
     return (
-      <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+        onClick={() => trackLandingEvent('landing_external_click', footerTarget(children))}
+      >
         {children}
       </a>
     )
   }
 
   return (
-    <Link to={href} className={className}>
+    <Link
+      to={href}
+      className={className}
+      onClick={() => trackLandingEvent('landing_nav_click', footerTarget(children))}
+    >
       {children}
     </Link>
   )
@@ -35,7 +52,11 @@ export function Footer() {
       <Container>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-10 mb-16">
           <div className="col-span-2 md:col-span-2 pe-8">
-            <Link to="/" className="inline-block mb-6 group">
+            <Link
+              to="/"
+              className="inline-block mb-6 group"
+              onClick={() => trackLandingEvent('landing_nav_click', 'footer:logo')}
+            >
               <span className="font-serif text-3xl font-medium text-ink group-hover:text-terracotta transition-colors">
                 memry
               </span>
@@ -53,6 +74,7 @@ export function Footer() {
                   <Link
                     to={footerHref(link.href, pathname)}
                     className="text-sm text-muted hover:text-terracotta transition-colors font-medium"
+                    onClick={() => trackLandingEvent('landing_nav_click', footerTarget(link.label))}
                   >
                     {link.label}
                   </Link>
@@ -82,6 +104,9 @@ export function Footer() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm text-muted hover:text-terracotta transition-colors font-medium"
+                    onClick={() =>
+                      trackLandingEvent('landing_external_click', footerTarget(link.label))
+                    }
                   >
                     {link.label}
                   </a>
@@ -102,6 +127,7 @@ export function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               className="text-terracotta hover:underline"
+              onClick={() => trackLandingEvent('landing_external_click', 'footer:founder-twitter')}
             >
               @h4yfans
             </a>

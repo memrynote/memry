@@ -24,6 +24,7 @@ import {
 import { openPaddleCheckout, type PaddleCheckoutCadence } from '@/lib/paddle-checkout'
 import { cn } from '@/lib/utils'
 import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
+import { trackLandingEvent } from '@/lib/analytics'
 
 type Cadence = 'monthly' | 'annual'
 type CheckoutState = {
@@ -48,6 +49,7 @@ export function PricingPage() {
     const checkoutCadence = getCheckoutCadence(tier, cadence)
     const pendingKey = getCheckoutKey(tier.checkoutPlanId, checkoutCadence)
 
+    trackLandingEvent('landing_pricing_cta_click', pricingTarget(tier.id, checkoutCadence))
     setCheckout({ pendingKey, error: null })
     try {
       await openPaddleCheckout(tier.checkoutPlanId, checkoutCadence)
@@ -82,6 +84,10 @@ function getCheckoutCadence(tier: SyncPlanTier, cadence: Cadence): PaddleCheckou
 
 function getCheckoutKey(planId: CheckoutPlanId, cadence: PaddleCheckoutCadence) {
   return `${planId}:${cadence}`
+}
+
+function pricingTarget(tierId: string, cadence: string) {
+  return `pricing:${tierId}:${cadence}`
 }
 
 function Hero({ cadence, setCadence }: { cadence: Cadence; setCadence: (c: Cadence) => void }) {
@@ -138,7 +144,10 @@ function CadenceToggle({
             type="button"
             role="tab"
             aria-selected={active}
-            onClick={() => setCadence(option)}
+            onClick={() => {
+              trackLandingEvent('landing_pricing_cadence_change', `pricing-cadence:${option}`)
+              setCadence(option)
+            }}
             className={cn(
               'relative inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-all duration-300',
               active
@@ -339,7 +348,14 @@ function TierCard({
             className="w-full rounded-full border-ink/15 bg-paper-alt/40 text-ink hover:bg-paper-alt"
             asChild
           >
-            <Link to="/#waitlist">{tier.cta}</Link>
+            <Link
+              to="/#waitlist"
+              onClick={() =>
+                trackLandingEvent('landing_pricing_cta_click', pricingTarget(tier.id, cadence))
+              }
+            >
+              {tier.cta}
+            </Link>
           </Button>
         ) : isFounding ? (
           <Button
@@ -686,7 +702,17 @@ function LimitMatrix({
                             className="h-8 rounded-full px-3 text-xs"
                             asChild
                           >
-                            <Link to="/#waitlist">Get started</Link>
+                            <Link
+                              to="/#waitlist"
+                              onClick={() =>
+                                trackLandingEvent(
+                                  'landing_pricing_cta_click',
+                                  pricingTarget(tier.id, cadence)
+                                )
+                              }
+                            >
+                              Get started
+                            </Link>
                           </Button>
                         ) : (
                           <Button

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { HelmetProvider } from 'react-helmet-async'
+import { Analytics } from '@vercel/analytics/react'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { SmoothScroll } from '@/components/layout/SmoothScroll'
@@ -21,6 +22,14 @@ import { PrivacyPage } from '@/pages/Privacy'
 import { RefundPage } from '@/pages/Refund'
 import { NotFound } from '@/pages/NotFound'
 import { scrollToLandingTarget } from '@/lib/smooth-scroll'
+import { trackLandingEvent, type LandingEventName } from '@/lib/analytics'
+
+const SCROLL_DEPTH_EVENTS: readonly { depth: number; event: LandingEventName }[] = [
+  { depth: 25, event: 'landing_scroll_25' },
+  { depth: 50, event: 'landing_scroll_50' },
+  { depth: 75, event: 'landing_scroll_75' },
+  { depth: 100, event: 'landing_scroll_100' }
+]
 
 function ScrollToHash() {
   const { pathname, hash } = useLocation()
@@ -47,11 +56,52 @@ function ScrollToHash() {
   return null
 }
 
+function ScrollDepthAnalytics() {
+  const { pathname } = useLocation()
+  const firedDepthsRef = useRef<Set<number>>(new Set())
+
+  useEffect(() => {
+    firedDepthsRef.current = new Set()
+    let frame = 0
+
+    const measure = () => {
+      frame = 0
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight
+      const depth = maxScroll <= 0 ? 100 : Math.min((window.scrollY / maxScroll) * 100, 100)
+
+      for (const { depth: threshold, event } of SCROLL_DEPTH_EVENTS) {
+        if (depth >= threshold && !firedDepthsRef.current.has(threshold)) {
+          firedDepthsRef.current.add(threshold)
+          trackLandingEvent(event, `scroll:${threshold}`)
+        }
+      }
+    }
+
+    const scheduleMeasure = () => {
+      if (frame) return
+      frame = window.requestAnimationFrame(measure)
+    }
+
+    measure()
+    window.addEventListener('scroll', scheduleMeasure, { passive: true })
+    window.addEventListener('resize', scheduleMeasure)
+
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', scheduleMeasure)
+      window.removeEventListener('resize', scheduleMeasure)
+    }
+  }, [pathname])
+
+  return null
+}
+
 function AppContent() {
   return (
     <div className="min-h-screen flex flex-col">
       <SmoothScroll />
       <ScrollToHash />
+      <ScrollDepthAnalytics />
       <Header />
       <main className="flex-1">
         <Routes>
@@ -83,6 +133,7 @@ export default function App() {
     <HelmetProvider>
       <BrowserRouter>
         <AppContent />
+        <Analytics />
       </BrowserRouter>
     </HelmetProvider>
   )
