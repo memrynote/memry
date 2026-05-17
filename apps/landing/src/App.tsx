@@ -17,6 +17,7 @@ import { DownloadDesktopPage } from '@/pages/DownloadDesktop'
 import { UseCasesPage } from '@/pages/UseCases'
 import { SecurityPage } from '@/pages/Security'
 import { PricingPage } from '@/pages/Pricing'
+import { RoadmapPage } from '@/pages/Roadmap'
 import { TermsPage } from '@/pages/Terms'
 import { PrivacyPage } from '@/pages/Privacy'
 import { RefundPage } from '@/pages/Refund'
@@ -117,6 +118,7 @@ function AppContent() {
           <Route path="/use-cases" element={<UseCasesPage />} />
           <Route path="/security" element={<SecurityPage />} />
           <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/roadmap" element={<RoadmapPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/refund" element={<RefundPage />} />
