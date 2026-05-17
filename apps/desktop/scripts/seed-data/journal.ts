@@ -20,7 +20,7 @@ const ENTRIES: JournalSpec[] = [
 
 Coffee was good. Slept poorly. Lifted anyway.
 
-- Wrote 600 words on [[Memry Launch]] post
+- Wrote 600 words on [[memrynote Launch]] post
 - Fixed a sync edge case in CRDT push order
 - Walked 8k steps`
   },
@@ -36,7 +36,7 @@ Started reading [[Sapiens]]. Slow start, characteristically Harari.`
     date: '2026-04-11',
     mood: 5,
     tags: ['daily', 'flow'],
-    body: `Best day of the month. 06:00–10:00 in the cave on the [[Memry Architecture]] doc. No notifications, no Slack.
+    body: `Best day of the month. 06:00–10:00 in the cave on the [[memrynote Architecture]] doc. No notifications, no Slack.
 
 Lifted heavy in the afternoon. Squat PR (140kg × 5).
 
@@ -128,7 +128,7 @@ Updated [[Cutting Log]].`
     date: '2026-04-23',
     mood: 4,
     tags: ['daily', 'work'],
-    body: `Back in the swing. [[Memry Launch]] is now my main thread. Next 8 weeks are about *finishing*, not adding.
+    body: `Back in the swing. [[memrynote Launch]] is now my main thread. Next 8 weeks are about *finishing*, not adding.
 
 Said no to a side project today. Felt good.`
   },
@@ -184,7 +184,7 @@ Lifted. Felt strong. 3rd lift week of the [[2026 Cut]] and lifts haven't dropped
     date: '2026-04-30',
     mood: 4,
     tags: ['daily', 'reflection'],
-    body: `End of April. Net: solid. Tokyo, the cut, Memry doc landed. Three good things.
+    body: `End of April. Net: solid. Tokyo, the cut, memrynote doc landed. Three good things.
 
 Three improvements: write more in public, sleep on schedule, *do not check phone before 09:00*.`
   },
@@ -219,7 +219,7 @@ Long walk with my partner in the afternoon. Talked about [[Iceland Ring Road]] p
     tags: ['daily', 'work'],
     body: `Finished the inbox suggestions UI. The little "AI suggests filing here" pill is *cute*. Hard not to smile when you see it work.
 
-Linked tasks under [[Memry Launch]] are all moving.`
+Linked tasks under [[memrynote Launch]] are all moving.`
   },
   {
     date: '2026-05-06',

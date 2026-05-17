@@ -153,7 +153,7 @@ function HeroInboxMock() {
   return (
     <FeatureHeroScreenshot
       screenshot="inbox"
-      alt="Memry inbox page showing captured notes, source metadata, and the processing queue"
+      alt="memrynote inbox page showing captured notes, source metadata, and the processing queue"
       width={1608}
       height={944}
     />
@@ -169,12 +169,12 @@ const ANCHOR_CARDS = [
   {
     icon: Mic,
     title: 'Voice & audio',
-    body: 'Record a thought and Memry transcribes it automatically. Audio file stays beside the text.'
+    body: 'Record a thought and memrynote transcribes it automatically. Audio file stays beside the text.'
   },
   {
     icon: Scissors,
     title: 'Web & PDF clips',
-    body: 'Drag a PDF or paste a URL. Memry pulls title, hero image, OCR text, and source link.'
+    body: 'Drag a PDF or paste a URL. memrynote pulls title, hero image, OCR text, and source link.'
   },
   {
     icon: Brain,
@@ -331,7 +331,7 @@ function ClipperMock() {
     <SurfaceCard
       label="Link & PDF capture"
       title="Drop a link. Get the page."
-      body="Paste a URL or drop a PDF. Memry extracts title, description, hero image, favicon, and OCR'd body."
+      body="Paste a URL or drop a PDF. memrynote extracts title, description, hero image, favicon, and OCR'd body."
     >
       <div className="space-y-3">
         <div className="overflow-hidden rounded-xl border border-border/60 bg-paper">
@@ -367,7 +367,7 @@ function DropZoneMock() {
     <SurfaceCard
       label="Drag & drop"
       title="Anything from Finder."
-      body="Files, screenshots, recordings. Drop them on the Memry icon or into the Inbox window."
+      body="Files, screenshots, recordings. Drop them on the memrynote icon or into the Inbox window."
     >
       <div className="rounded-xl border-2 border-dashed border-terracotta/35 bg-terracotta/5 px-4 py-7 text-center">
         <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-terracotta/12 text-terracotta">
@@ -402,8 +402,8 @@ function AICluster() {
             <span className="italic text-terracotta">Local model, on your device.</span>
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-muted">
-            Memry groups related captures, suggests tags, and offers a snooze when you need quiet.
-            Every model runs locally. Nothing leaves your laptop.
+            memrynote groups related captures, suggests tags, and offers a snooze when you need
+            quiet. Every model runs locally. Nothing leaves your laptop.
           </p>
         </motion.div>
 
@@ -436,7 +436,7 @@ function ClusterPanelMock() {
     {
       title: 'PKM tools',
       count: 4,
-      preview: 'Logseq vs Memry · Obsidian dataview · Heptabase canvas...',
+      preview: 'Logseq vs memrynote · Obsidian dataview · Heptabase canvas...',
       tone: 'amber' as const
     }
   ]
@@ -457,8 +457,8 @@ function ClusterPanelMock() {
         12 captures. <span className="italic text-terracotta">3 themes.</span>
       </h3>
       <p className="mt-3 max-w-md text-sm leading-relaxed text-muted">
-        Memry reads titles and content, then proposes groupings. File the whole cluster at once or
-        break it apart. Local-first by design — see the AI roadmap for the full model story.
+        memrynote reads titles and content, then proposes groupings. File the whole cluster at once
+        or break it apart. Local-first by design — see the AI roadmap for the full model story.
       </p>
 
       <ul className="mt-7 space-y-3">
@@ -517,7 +517,7 @@ function TagSuggestionsMock() {
       <Eyebrow>Tag suggestions</Eyebrow>
       <h3 className="mt-3 font-serif text-2xl text-ink">Tags before you file.</h3>
       <p className="mt-2 text-sm leading-relaxed text-muted">
-        Memry proposes tags based on content. Accept with a tap, or type your own.
+        memrynote proposes tags based on content. Accept with a tap, or type your own.
       </p>
       <div className="mt-5 flex flex-wrap gap-2">
         {tags.map((tag) => (
@@ -699,7 +699,7 @@ const STRUCTURE_CARDS = [
   {
     icon: Tags,
     title: 'Tag suggestions',
-    body: 'Memry proposes tags from content. Confirm, swap, or write your own before filing.'
+    body: 'memrynote proposes tags from content. Confirm, swap, or write your own before filing.'
   },
   {
     icon: Layers,
@@ -784,7 +784,7 @@ function WorksWithRest() {
         <motion.div {...fadeUp} className="mx-auto max-w-2xl text-center">
           <Eyebrow>One workspace</Eyebrow>
           <h2 className="mt-3 font-serif text-3xl font-normal leading-tight text-ink md:text-5xl">
-            Works with the rest of Memry.
+            Works with the rest of memrynote.
           </h2>
           <p className="mt-5 text-lg leading-relaxed text-muted">
             Inbox is the funnel. Notes, Calendar, and Journal are where things land — same vault,
@@ -954,22 +954,22 @@ const INBOX_FAQ = [
   {
     question: 'Where do captured items live?',
     answer:
-      'In your vault, on your device. Each capture is a record in the local Memry database with the original file alongside it. Sync between your own devices is end-to-end encrypted. Nothing is ever uploaded to a third-party service for processing.'
+      'In your vault, on your device. Each capture is a record in the local memrynote database with the original file alongside it. Sync between your own devices is end-to-end encrypted. Nothing is ever uploaded to a third-party service for processing.'
   },
   {
     question: 'How does voice transcription work?',
     answer:
-      'Record a memo and Memry produces an editable transcript automatically. The audio file is preserved as an attachment so you can re-listen at any time. The full local-model speech pipeline is on the AI roadmap.'
+      'Record a memo and memrynote produces an editable transcript automatically. The audio file is preserved as an attachment so you can re-listen at any time. The full local-model speech pipeline is on the AI roadmap.'
   },
   {
     question: 'Is filing private? Does any data leave my machine?',
     answer:
-      'Your captures live in your vault on your device. Sync between your own devices is end-to-end encrypted. Memry is local-first by design, and the AI Agent roadmap is built around BYOK and local models — see the AI Agent page for the architectural plan.'
+      'Your captures live in your vault on your device. Sync between your own devices is end-to-end encrypted. memrynote is local-first by design, and the AI Agent roadmap is built around BYOK and local models — see the AI Agent page for the architectural plan.'
   },
   {
     question: 'Can I import existing items into Inbox?',
     answer:
-      'Yes. Drag a folder of PDFs, images, or markdown files onto the Inbox window and they become inbox items with metadata preserved. You can also paste URLs in bulk and Memry will extract each page.'
+      'Yes. Drag a folder of PDFs, images, or markdown files onto the Inbox window and they become inbox items with metadata preserved. You can also paste URLs in bulk and memrynote will extract each page.'
   },
   {
     question: 'What happens to snoozed items?',

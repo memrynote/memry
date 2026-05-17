@@ -8,11 +8,11 @@ describe('FounderStory section', () => {
   it('uses the founder photo instead of the placeholder initial avatar', () => {
     assert.match(source, /from '..\/..\/assets\/kaan-founder\.webp'/)
     assert.doesNotMatch(source, /from '..\/..\/..\/kaan\.jpg'/)
-    assert.match(source, /alt="Kaan, founder of Memry"/)
+    assert.match(source, /alt="Kaan, founder of memrynote"/)
     assert.match(source, /Yep, that's me\. Duck on shoulder\./)
     assert.match(source, /aspect-\[3\/4\]/)
     assert.match(source, /object-cover/)
-    assert.match(source, /Hi, I'm Kaan, the developer behind Memry/)
+    assert.match(source, /Hi, I'm Kaan, the developer behind memrynote/)
     assert.match(source, /local-first, privacy by design/)
     assert.match(source, /no plugin maze and no cloud lock-in/)
     assert.match(source, /Follow me on 𝕏/)

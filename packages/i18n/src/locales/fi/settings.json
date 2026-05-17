@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "Käynnistä kirjautumalla",
-        "description": "Käynnistä Memry, kun kirjaudut sisään",
+        "description": "Käynnistä memrynote, kun kirjaudut sisään",
         "error": "Päivityksen käynnistys käynnistyksen yhteydessä epäonnistui"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "Asennettu versio {version}",
       "availableVersion": "Saatavilla oleva versio {version}",
       "unsupported": "Pakatut koontiversiot voivat tarkistaa, ladata ja asentaa päivityksiä GitHub-julkaisuista",
-      "available": "Memry {version} on ladattavissa",
+      "available": "memrynote {version} on ladattavissa",
       "downloadingLatest": "Ladataan uusinta julkaisua",
       "downloadingLatestPercent": "Ladataan uusinta julkaisua ({percent}%)",
-      "downloaded": "Memry {version} on valmis asennettavaksi",
+      "downloaded": "memrynote {version} on valmis asennettavaksi",
       "upToDate": "Tämä asennus on viimeisimmässä julkaistussa julkaisussa",
       "checking": "Tarkistetaan GitHub-julkaisuista uudempaa versiota",
       "idle": "Tarkista uudet julkaisut ja asenna ne poistumatta sovelluksesta",
       "unsupportedToast": "Automaattiset päivitykset ovat saatavilla vain paketoiduissa julkaisuissa",
-      "upToDateToast": "Memry {version} on ajan tasalla",
+      "upToDateToast": "memrynote {version} on ajan tasalla",
       "actionFailed": "Päivitys epäonnistui",
       "actions": {
         "checking": "Tarkistetaan...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "Laitteen linkitys onnistui",
       "goBack": "Mene takaisin",
       "waitingTitle": "Odotetaan hyväksyntää",
-      "waitingDescription": "Avaa Memry toisella laitteellasi ja hyväksy linkityspyyntö.",
+      "waitingDescription": "Avaa memrynote toisella laitteellasi ja hyväksy linkityspyyntö.",
       "verificationCode": "Vahvistuskoodi",
       "confirmCode": "Varmista, että tämä vastaa toisen laitteesi koodia"
     }
@@ -778,7 +778,7 @@
     "connect": "Yhdistä",
     "googleCalendar": {
       "name": "Google-kalenteri",
-      "description": "Kaksisuuntainen synkronointi Memry-tapahtumille ja tuotuille Google-kalentereille.",
+      "description": "Kaksisuuntainen synkronointi memrynote-tapahtumille ja tuotuille Google-kalentereille.",
       "statuses": {
         "connected": "Yhdistetty",
         "notConnected": "Ei yhdistetty",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "Google-kalenteri",
-        "description": "Kaksisuuntainen synkronointi Memry-tapahtumille, tehtäville, muistutuksille ja tuoduille kalentereille"
+        "description": "Kaksisuuntainen synkronointi memrynote-tapahtumille, tehtäville, muistutuksille ja tuoduille kalentereille"
       },
       "appleCalendar": {
         "name": "Applen kalenteri",
@@ -963,7 +963,7 @@
       "description": "Tallenna muistiinpano mistä tahansa",
       "permissionNeeded": "Lupa tarvitaan",
       "active": "Aktiivinen",
-      "permissionHint": "Yleiset pikakuvakkeet vaativat esteettömyysluvan. Siirry kohtaan Järjestelmäasetukset → Tietosuoja → Esteettömyys ja ota Memry käyttöön."
+      "permissionHint": "Yleiset pikakuvakkeet vaativat esteettömyysluvan. Siirry kohtaan Järjestelmäasetukset → Tietosuoja → Esteettömyys ja ota memrynote käyttöön."
     },
     "toasts": {
       "saveGlobalFailed": "Yleisen kaappauksen pikakuvakkeen tallentaminen epäonnistui",

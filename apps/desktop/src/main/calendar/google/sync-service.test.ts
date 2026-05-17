@@ -95,7 +95,7 @@ describe('google calendar sync service', () => {
         kind: 'calendar',
         accountId: 'test-account@example.com',
         remoteId: 'remote-memry-calendar',
-        title: 'Memry',
+        title: 'memrynote',
         timezone: 'UTC',
         color: '#0f9d58',
         isPrimary: false,
@@ -112,7 +112,7 @@ describe('google calendar sync service', () => {
       .run()
   }
 
-  it('pushes Memry events, tasks, reminders, and snoozes into Google and persists synced bindings', async () => {
+  it('pushes memrynote events, tasks, reminders, and snoozes into Google and persists synced bindings', async () => {
     seedGoogleCalendarSource()
 
     db.insert(calendarEvents)
@@ -266,7 +266,7 @@ describe('google calendar sync service', () => {
     ])
   })
 
-  it('writes Google edits back into native Memry records', async () => {
+  it('writes Google edits back into native memrynote records', async () => {
     db.insert(calendarEvents)
       .values({
         id: 'event-1',
@@ -607,7 +607,7 @@ describe('google calendar sync service', () => {
       listCalendars: vi.fn(async () => []),
       createCalendar: vi.fn(async () => ({
         id: 'remote-created',
-        title: 'Memry',
+        title: 'memrynote',
         timezone: 'UTC',
         color: null,
         isPrimary: false
@@ -1133,7 +1133,7 @@ describe('google calendar sync service', () => {
 
   describe('pushSourceToGoogleCalendar — M3 etag + field-clock conflict resolution', () => {
     it('on 412 Precondition Failed, pulls latest, merges fields, retries with fresh etag', async () => {
-      // #given a bound Memry event with stale binding etag and field clocks favoring local
+      // #given a bound memrynote event with stale binding etag and field clocks favoring local
       seedGoogleCalendarSource({
         id: 'google-calendar:user-cal',
         remoteId: 'remote-user-cal',
@@ -1275,7 +1275,7 @@ describe('google calendar sync service', () => {
     })
 
     it('after 3 consecutive 412s, marks the binding as conflict and stops retrying', async () => {
-      // #given a bound Memry event whose remote keeps changing between attempts
+      // #given a bound memrynote event whose remote keeps changing between attempts
       seedGoogleCalendarSource({
         id: 'google-calendar:user-cal-2',
         remoteId: 'remote-user-cal-2',
@@ -1522,7 +1522,7 @@ describe('google calendar sync service', () => {
         listCalendars: vi.fn(async () => [
           {
             id: 'alice-memry',
-            title: 'Memry',
+            title: 'memrynote',
             timezone: 'UTC',
             color: null,
             isPrimary: false
@@ -1535,7 +1535,7 @@ describe('google calendar sync service', () => {
         listCalendars: vi.fn(async () => [
           {
             id: 'bob-memry',
-            title: 'Memry',
+            title: 'memrynote',
             timezone: 'UTC',
             color: null,
             isPrimary: false
@@ -1605,7 +1605,7 @@ describe('google calendar sync service', () => {
         listCalendars: vi.fn(async () => [
           {
             id: 'alice-memry',
-            title: 'Memry',
+            title: 'memrynote',
             timezone: 'UTC',
             color: null,
             isPrimary: false
@@ -1618,7 +1618,7 @@ describe('google calendar sync service', () => {
         listCalendars: vi.fn(async () => [
           {
             id: 'bob-memry',
-            title: 'Memry',
+            title: 'memrynote',
             timezone: 'UTC',
             color: null,
             isPrimary: false
@@ -1651,7 +1651,7 @@ describe('google calendar sync service', () => {
       )
     })
 
-    it('skips all Google API calls when Memry user is not signed in', async () => {
+    it('skips all Google API calls when memrynote user is not signed in', async () => {
       vi.mocked(isMemryUserSignedIn).mockResolvedValue(false)
       const client = buildClient()
 
@@ -1724,7 +1724,7 @@ describe('google calendar sync service', () => {
         listCalendars: vi.fn(async () => []),
         createCalendar: vi.fn(async () => ({
           id: 'created-memry-cal',
-          title: 'Memry',
+          title: 'memrynote',
           timezone: 'UTC',
           color: null,
           isPrimary: false
@@ -1768,7 +1768,7 @@ describe('google calendar sync service', () => {
         .run()
     }
 
-    it('#given an event with targetCalendarId #when pushed #then writes to that Google calendar (skipping Memry auto-create)', async () => {
+    it('#given an event with targetCalendarId #when pushed #then writes to that Google calendar (skipping memrynote auto-create)', async () => {
       insertEvent({ id: 'event-direct', targetCalendarId: 'work@group.calendar.google.com' })
       const client = buildPushClient()
 
@@ -1786,7 +1786,7 @@ describe('google calendar sync service', () => {
       )
       // listCalendars IS invoked to register Work as a selected source
       // so subsequent inbound polls cover it (review fix). createCalendar
-      // must stay skipped because this is not the Memry auto-create path.
+      // must stay skipped because this is not the memrynote auto-create path.
       expect(client.createCalendar).not.toHaveBeenCalled()
     })
 
@@ -1807,12 +1807,12 @@ describe('google calendar sync service', () => {
         })
       )
       // createCalendar still skipped — we're using the user's default,
-      // not the Memry auto-create fallback. listCalendars may be called
+      // not the memrynote auto-create fallback. listCalendars may be called
       // once to register the default as a selected source.
       expect(client.createCalendar).not.toHaveBeenCalled()
     })
 
-    it('#given neither event target nor settings default #when pushed #then falls back to Memry-managed calendar', async () => {
+    it('#given neither event target nor settings default #when pushed #then falls back to memrynote-managed calendar', async () => {
       seedGoogleCalendarSource()
       insertEvent({ id: 'event-memry-fallback', targetCalendarId: null })
       const client = buildPushClient()
@@ -1836,7 +1836,7 @@ describe('google calendar sync service', () => {
         id: 'event-rebound',
         targetCalendarId: 'work@group.calendar.google.com'
       })
-      // Pre-existing binding points at the Memry calendar
+      // Pre-existing binding points at the memrynote calendar
       db.insert(calendarBindings)
         .values({
           id: 'binding-rebound',

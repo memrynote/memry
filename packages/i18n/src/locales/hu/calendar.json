@@ -16,7 +16,7 @@
   "filter": {
     "filter-calendars": "Naptárak szűrése",
     "sources": "Források",
-    "memry-items": "Memry tételek",
+    "memry-items": "memrynote tételek",
     "imported-calendars": "Importált naptárak",
     "event-types": "Eseménytípusok",
     "google-calendars": "Google naptárak",
@@ -60,27 +60,27 @@
     "target-calendar": "Célnaptár",
     "use-default-calendar": "Az alapértelmezett naptár használata",
     "use-default-calendar-with-name": "Alapértelmezés használata ({calendar})",
-    "use-memry-calendar-default": "Memry naptár használata (alapértelmezett)",
+    "use-memry-calendar-default": "memrynote naptár használata (alapértelmezett)",
     "primary-suffix": "elsődleges"
   },
   "delete-dialog": {
     "title": "Törli az eseményt?",
     "local-description": "Az \"{title}\" véglegesen törlődik. Ez a művelet nem vonható vissza.",
-    "google-bound-description": "Az „{title}” el lesz távolítva az Memry-ből és a Google Naptárból. Ez a művelet nem vonható vissza.",
+    "google-bound-description": "Az „{title}” el lesz távolítva az memrynote-ből és a Google Naptárból. Ez a művelet nem vonható vissza.",
     "context-menu-delete-label": "Esemény törlése"
   },
   "promote-dialog": {
     "aria": "Külső naptáresemény szerkesztése",
-    "title": "Szerkeszti ezt az eseményt az Memry fájlban?",
-    "body": "Az esemény szerkesztésével egy csatolt másolat jön létre az Memry fájlban, így a változások mindkét irányban szinkronizálódnak. Folytatja?",
+    "title": "Szerkeszti ezt az eseményt az memrynote fájlban?",
+    "body": "Az esemény szerkesztésével egy csatolt másolat jön létre az memrynote fájlban, így a változások mindkét irányban szinkronizálódnak. Folytatja?",
     "do-not-ask-again": "Ne kérdezd újra",
-    "confirm-label": "Szerkesztés az Memry-ben"
+    "confirm-label": "Szerkesztés az memrynote-ben"
   },
   "onboarding-dialog": {
     "aria": "Válassza ki alapértelmezett Google-naptárát",
-    "title": "Melyik naptárba kerüljenek az új Memry események?",
-    "body": "Válassza ki azt a Google naptárt, amelyet az Memry alapértelmezés szerint használnia kell. Eseményenként továbbra is felülbírálhatja.",
-    "default-calendar-label": "Használja az Memry által kezelt naptárat",
+    "title": "Melyik naptárba kerüljenek az új memrynote események?",
+    "body": "Válassza ki azt a Google naptárt, amelyet az memrynote alapértelmezés szerint használnia kell. Eseményenként továbbra is felülbírálhatja.",
+    "default-calendar-label": "Használja az memrynote által kezelt naptárat",
     "skip": "Kihagyás",
     "use-this-calendar": "Használja ezt a naptárat"
   },

@@ -16,7 +16,7 @@
   "filter": {
     "filter-calendars": "Filtrovať kalendáre",
     "sources": "Zdroj",
-    "memry-items": "Memry položky",
+    "memry-items": "memrynote položky",
     "imported-calendars": "Importované kalendáre",
     "event-types": "Typy udalostí",
     "google-calendars": "Google kalendáre",
@@ -60,27 +60,27 @@
     "target-calendar": "Cieľový kalendár",
     "use-default-calendar": "Použiť predvolený kalendár",
     "use-default-calendar-with-name": "Použiť predvolený ({calendar})",
-    "use-memry-calendar-default": "Použiť kalendár Memry (predvolené)",
+    "use-memry-calendar-default": "Použiť kalendár memrynote (predvolené)",
     "primary-suffix": "primárny"
   },
   "delete-dialog": {
     "title": "Odstrániť udalosť?",
     "local-description": "\"{title}\" bude trvalo odstránený. Túto akciu nie je možné vrátiť späť.",
-    "google-bound-description": "\"{title}\" bude odstránený z Memry a Google Kalendára. Túto akciu nie je možné vrátiť späť.  ",
+    "google-bound-description": "\"{title}\" bude odstránený z memrynote a Google Kalendára. Túto akciu nie je možné vrátiť späť.  ",
     "context-menu-delete-label": "  \nOdstrániť udalosť  "
   },
   "promote-dialog": {
     "aria": "  \nUpraviť udalosť v externom kalendári  ",
-    "title": "  \nUpraviť túto udalosť v Memry?  ",
-    "body": "  \nÚpravou tejto udalosti sa vytvorí prepojená kópia v Memry, takže zmeny sa synchronizujú obojstranne. Pokračovať?  ",
+    "title": "  \nUpraviť túto udalosť v memrynote?  ",
+    "body": "  \nÚpravou tejto udalosti sa vytvorí prepojená kópia v memrynote, takže zmeny sa synchronizujú obojstranne. Pokračovať?  ",
     "do-not-ask-again": "  \nNepýtať sa znova  ",
-    "confirm-label": "  \nUpraviť v Memry  "
+    "confirm-label": "  \nUpraviť v memrynote  "
   },
   "onboarding-dialog": {
     "aria": "  \nVyberte svoj predvolený Google kalendár  ",
-    "title": "  \nDo ktorého kalendára by mali ísť nové udalosti Memry?  ",
-    "body": "  \nVyberte Google kalendár, ktorý má Memry používať ako predvolený. Stále ho môžete pre každý udalosť meniť.  ",
-    "default-calendar-label": "Použiť kalendár spravovaný Memry",
+    "title": "  \nDo ktorého kalendára by mali ísť nové udalosti memrynote?  ",
+    "body": "  \nVyberte Google kalendár, ktorý má memrynote používať ako predvolený. Stále ho môžete pre každý udalosť meniť.  ",
+    "default-calendar-label": "Použiť kalendár spravovaný memrynote",
     "skip": "Preskočiť",
     "use-this-calendar": "  \nPoužiť tento kalendár  "
   },

@@ -16,7 +16,7 @@
   "filter": {
     "filter-calendars": "Filtrar calendários",
     "sources": "Fontes",
-    "memry-items": "Itens Memry",
+    "memry-items": "Itens memrynote",
     "imported-calendars": "Calendários importados",
     "event-types": "Tipos de eventos",
     "google-calendars": "Calendários do Google",
@@ -60,27 +60,27 @@
     "target-calendar": "Calendário de destino",
     "use-default-calendar": "Usar calendário padrão",
     "use-default-calendar-with-name": "Usar padrão ({calendar})",
-    "use-memry-calendar-default": "Usar calendário Memry (padrão)",
+    "use-memry-calendar-default": "Usar calendário memrynote (padrão)",
     "primary-suffix": "primário"
   },
   "delete-dialog": {
     "title": "Excluir evento?",
     "local-description": "\"{title}\" será excluído permanentemente. Esta ação não pode ser desfeita.",
-    "google-bound-description": "\"{title}\" será removido do Memry e do Google Agenda. Esta ação não pode ser desfeita.",
+    "google-bound-description": "\"{title}\" será removido do memrynote e do Google Agenda. Esta ação não pode ser desfeita.",
     "context-menu-delete-label": "Excluir evento"
   },
   "promote-dialog": {
     "aria": "Editar evento de calendário externo",
-    "title": "Editar este evento em Memry?",
-    "body": "A edição deste evento criará uma cópia vinculada em Memry para que as alterações sejam sincronizadas nos dois sentidos. Continuar?",
+    "title": "Editar este evento em memrynote?",
+    "body": "A edição deste evento criará uma cópia vinculada em memrynote para que as alterações sejam sincronizadas nos dois sentidos. Continuar?",
     "do-not-ask-again": "Não pergunte novamente",
-    "confirm-label": "Editar em Memry"
+    "confirm-label": "Editar em memrynote"
   },
   "onboarding-dialog": {
     "aria": "Escolha sua agenda padrão do Google",
-    "title": "Para qual calendário os novos eventos Memry devem ir?",
-    "body": "Escolha o calendário do Google que Memry deve usar por padrão. Você ainda pode substituí-lo por evento.",
-    "default-calendar-label": "Use o calendário gerenciado por Memry",
+    "title": "Para qual calendário os novos eventos memrynote devem ir?",
+    "body": "Escolha o calendário do Google que memrynote deve usar por padrão. Você ainda pode substituí-lo por evento.",
+    "default-calendar-label": "Use o calendário gerenciado por memrynote",
     "skip": "Pular",
     "use-this-calendar": "Use este calendário"
   },

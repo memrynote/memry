@@ -11,7 +11,7 @@ A list of words generated at vault creation. It's the **only way** to decrypt yo
 - Forget your passphrase
 - Lose every device that has the vault key sealed for it
 
-Memry **never stores** the recovery phrase in the cloud. It exists only where you save it.
+memrynote **never stores** the recovery phrase in the cloud. It exists only where you save it.
 
 ## Where to Save It
 
@@ -37,7 +37,7 @@ The display screen has a 60-second auto-clear so you don't accidentally leave it
 
 If you lose every device:
 
-1. Install Memry on a fresh device
+1. Install memrynote on a fresh device
 2. Choose **Restore from recovery phrase** during setup
 3. Enter the words in order
 4. Set a new passphrase (the recovery phrase + new passphrase regenerates the wrapping key)
@@ -51,13 +51,13 @@ The **rotation wizard** generates a new vault key, re-encrypts all payloads unde
 
 ### When to Rotate
 
-| Situation | Rotate? |
-| --- | --- |
-| Lost or stolen device that wasn't revoked yet | Yes — immediately |
-| Recovery phrase exposed | Yes |
-| Major OS or backup compromise | Yes |
-| Suspect API key leak | No (rotate the API key, not the vault key) |
-| Routine maintenance | Optional; rotation is safe but takes time |
+| Situation                                     | Rotate?                                    |
+| --------------------------------------------- | ------------------------------------------ |
+| Lost or stolen device that wasn't revoked yet | Yes — immediately                          |
+| Recovery phrase exposed                       | Yes                                        |
+| Major OS or backup compromise                 | Yes                                        |
+| Suspect API key leak                          | No (rotate the API key, not the vault key) |
+| Routine maintenance                           | Optional; rotation is safe but takes time  |
 
 ### Running Rotation
 
@@ -79,12 +79,12 @@ For large vaults, rotation can take a while. It's safe to interrupt — the wiza
 
 ## Recovery Phrase vs Passphrase
 
-| | Recovery phrase | Passphrase |
-| --- | --- | --- |
-| What it does | Re-derives the wrapping key | Daily sign-in |
-| When you use it | After losing access | Every sign-in |
-| How often it changes | Almost never | Whenever you want |
-| Where it lives | Off-device, manual | In your head |
+|                      | Recovery phrase             | Passphrase        |
+| -------------------- | --------------------------- | ----------------- |
+| What it does         | Re-derives the wrapping key | Daily sign-in     |
+| When you use it      | After losing access         | Every sign-in     |
+| How often it changes | Almost never                | Whenever you want |
+| Where it lives       | Off-device, manual          | In your head      |
 
 Changing your passphrase doesn't invalidate the recovery phrase or the vault key — it only re-encrypts the wrapping key against the new passphrase.
 

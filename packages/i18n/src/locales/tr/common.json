@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "İlk katılımı atla",
-      "welcomeToMemry": "Memry'e hoş geldiniz",
+      "welcomeToMemry": "memrynote'e hoş geldiniz",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Kişisel bilgi tabanınız. Başlamak için 2 dakikanızı ayıralım.",
       "getStarted": "Başlayın ",
       "createYourFirstNote": "İlk notunuzu oluşturun",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Yeniden boyutlandırmak için sürükleyin · Sıfırlamak için çift tıklayın"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Memry'e hoş geldiniz",
+      "welcomeToMemry": "memrynote'e hoş geldiniz",
       "yourPersonalKnowledgeManagementSystem": "Kişisel bilgi yönetim sisteminiz.",
       "selectAFolderToStoreYourNotesAndTasks": "Notlarınızı ve görevlerinizi saklamak için bir klasör seçin.",
       "opening": "Açılıyor...",
@@ -341,9 +341,9 @@
     "stop": "Durdur",
     "thinking": "Agent düşünüyor",
     "enable": {
-      "title": "Memry Agent'i etkinleştir",
-      "description": "Memry Agent, kasanız hakkında sohbet etmek için seçtiğiniz yerel Agent CLI'ını kullanır. Claude istekleri Anthropic'e; Codex istekleri OpenAI'ye gönderir.",
-      "remote": "Memry, yerel ve senkronize sohbet geçmişinizi şifreler, ancak model çıkarımı seçilen sağlayıcıyla gerçekleşir.",
+      "title": "memrynote Agent'i etkinleştir",
+      "description": "memrynote Agent, kasanız hakkında sohbet etmek için seçtiğiniz yerel Agent CLI'ını kullanır. Claude istekleri Anthropic'e; Codex istekleri OpenAI'ye gönderir.",
+      "remote": "memrynote, yerel ve senkronize sohbet geçmişinizi şifreler, ancak model çıkarımı seçilen sağlayıcıyla gerçekleşir.",
       "readTools": "Okuma araçları otomatik olarak çalışır.",
       "writeTools": "Oluşturma ve güncelleme araçları onay gerektirir.",
       "diff": "Güncelleme araçları bir fark veya önizleme gösterir.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Güncel not",
       "removeAttachment": "{label}'yi kaldır",
-      "placeholder": "Memry’ye her şeyi sorun. Dosyadan bahsetmek için @ kullanın",
+      "placeholder": "memrynote’ye her şeyi sorun. Dosyadan bahsetmek için @ kullanın",
       "send": "Gönder",
       "providerLabel": "Agent sağlayıcısı: {provider}",
       "settingsSummary": "{reasoning}",

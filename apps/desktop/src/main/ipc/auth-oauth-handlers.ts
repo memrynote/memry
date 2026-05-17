@@ -73,13 +73,13 @@ const shutdownLoopbackServer = (): void => {
 }
 
 const SUCCESS_HTML = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Memry</title>
+<html><head><meta charset="utf-8"><title>memrynote</title>
 <style>body{font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#111;color:#eee}
 .c{text-align:center}h1{font-size:1.5rem;margin-bottom:.5rem}p{color:#999}</style></head>
-<body><div class="c"><h1>Signed in</h1><p>You can close this tab and return to Memry.</p></div></body></html>`
+<body><div class="c"><h1>Signed in</h1><p>You can close this tab and return to memrynote.</p></div></body></html>`
 
 const ERROR_HTML = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Memry</title>
+<html><head><meta charset="utf-8"><title>memrynote</title>
 <style>body{font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#111;color:#eee}
 .c{text-align:center}h1{font-size:1.5rem;margin-bottom:.5rem}p{color:#999}</style></head>
 <body><div class="c"><h1>Authentication failed</h1><p>Authentication was cancelled. You can close this window.</p></div></body></html>`

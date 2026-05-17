@@ -61,7 +61,7 @@
     "deviceRevoked": "Denne enhed er blevet fjernet fra din konto.",
     "rateLimited": "For mange anmodninger. Synkronisering genoptages snart.",
     "cryptoFailure": "Kunne ikke kryptere eller dekryptere synkroniseringsdata. Prøv at logge ud og ind igen.",
-    "versionIncompatible": "Denne version af Memry understøttes ikke længere. Opdater venligst.",
+    "versionIncompatible": "Denne version af memrynote understøttes ikke længere. Opdater venligst.",
     "storageQuotaExceeded": "Dit synkroniseringslager er fuldt. Frigør plads eller opgrader din plan.",
     "certificatePinFailed": "Sikker forbindelse mislykkedes. Tjek din netværksforbindelse.",
     "unknown": "Der opstod en uventet synkroniseringsfejl. Vil prøve igen automatisk.",

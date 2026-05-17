@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Pular integração",
-      "welcomeToMemry": "Bem-vindo ao Memry",
+      "welcomeToMemry": "Bem-vindo ao memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Sua base de conhecimento pessoal. Vamos reservar 2 minutos para você começar.",
       "getStarted": "Comece ",
       "createYourFirstNote": "Crie sua primeira nota",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Arraste para redimensionar · Clique duas vezes para redefinir"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Bem-vindo ao Memry",
+      "welcomeToMemry": "Bem-vindo ao memrynote",
       "yourPersonalKnowledgeManagementSystem": "Seu sistema de gerenciamento de conhecimento pessoal.",
       "selectAFolderToStoreYourNotesAndTasks": "Selecione uma pasta para armazenar suas anotações e tarefas.",
       "opening": "Abrindo...",
@@ -341,9 +341,9 @@
     "stop": "Parar",
     "thinking": "Agent está pensando",
     "enable": {
-      "title": "Habilitar Memry Agent",
-      "description": "Memry Agent usa seu agente local selecionado CLI para conversar sobre seu cofre. Claude envia turnos para Anthropic; Codex envia turnos para OpenAI.",
-      "remote": "Memry criptografa seu histórico de bate-papo local e sincronizado, mas a inferência do modelo ocorre com o provedor selecionado.",
+      "title": "Habilitar memrynote Agent",
+      "description": "memrynote Agent usa seu agente local selecionado CLI para conversar sobre seu cofre. Claude envia turnos para Anthropic; Codex envia turnos para OpenAI.",
+      "remote": "memrynote criptografa seu histórico de bate-papo local e sincronizado, mas a inferência do modelo ocorre com o provedor selecionado.",
       "readTools": "As ferramentas de leitura são executadas automaticamente.",
       "writeTools": "As ferramentas de criação e atualização requerem aprovação.",
       "diff": "As ferramentas de atualização mostram uma comparação ou visualização.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Nota atual",
       "removeAttachment": "Remover {label}",
-      "placeholder": "Pergunte qualquer coisa ao Memry. @ para mencionar um arquivo",
+      "placeholder": "Pergunte qualquer coisa ao memrynote. @ para mencionar um arquivo",
       "send": "Enviar",
       "providerLabel": "Provedor Agent: {provider}",
       "settingsSummary": "{reasoning}",

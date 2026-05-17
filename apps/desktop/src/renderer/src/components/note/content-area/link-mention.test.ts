@@ -18,7 +18,7 @@ describe('LinkMention inline content', () => {
       createLinkMentionContent(
         'https://memry.test/page',
         'memry.test',
-        'Memry',
+        'memrynote',
         'https://memry.test/favicon.ico'
       )
     ).toEqual({
@@ -26,7 +26,7 @@ describe('LinkMention inline content', () => {
       props: {
         url: 'https://memry.test/page',
         domain: 'memry.test',
-        title: 'Memry',
+        title: 'memrynote',
         favicon: 'https://memry.test/favicon.ico'
       }
     })
@@ -37,7 +37,7 @@ describe('LinkMention inline content', () => {
       props: {
         url: 'https://memry.test/page',
         domain: 'memry.test',
-        title: 'Memry Page',
+        title: 'memrynote Page',
         favicon: 'https://memry.test/favicon.ico'
       }
     })
@@ -46,8 +46,8 @@ describe('LinkMention inline content', () => {
     expect(render.dom).toHaveAttribute('target', '_blank')
     expect(render.dom).toHaveAttribute('rel', 'noopener noreferrer')
     expect(render.dom).toHaveAttribute('data-link-mention', '')
-    expect(render.dom).toHaveAttribute('data-title', 'Memry Page')
-    expect(render.dom.textContent).toBe('memry.test · Memry Page')
+    expect(render.dom).toHaveAttribute('data-title', 'memrynote Page')
+    expect(render.dom.textContent).toBe('memry.test · memrynote Page')
 
     const image = render.dom.querySelector('img') as HTMLImageElement
     expect(image).toHaveAttribute('src', 'https://memry.test/favicon.ico')
@@ -71,12 +71,12 @@ describe('LinkMention inline content', () => {
     dataElement.setAttribute('data-link-mention', '')
     dataElement.setAttribute('data-url', 'https://memry.test/page')
     dataElement.setAttribute('data-domain', 'memry.test')
-    dataElement.setAttribute('data-title', 'Memry Page')
+    dataElement.setAttribute('data-title', 'memrynote Page')
     dataElement.setAttribute('data-favicon', 'https://memry.test/favicon.ico')
     expect((LinkMention as any).implementation.parse(dataElement)).toEqual({
       url: 'https://memry.test/page',
       domain: 'memry.test',
-      title: 'Memry Page',
+      title: 'memrynote Page',
       favicon: 'https://memry.test/favicon.ico'
     })
 
@@ -112,11 +112,11 @@ describe('LinkMention inline content', () => {
 
   it('serializes to external HTML with title and url fallback text', () => {
     const withTitle = (LinkMention as any).implementation.toExternalHTML({
-      props: { url: 'https://memry.test/page', domain: 'memry.test', title: 'Memry Page' }
+      props: { url: 'https://memry.test/page', domain: 'memry.test', title: 'memrynote Page' }
     })
     expect(withTitle.dom).toHaveAttribute('href', 'https://memry.test/page')
     expect(withTitle.dom).toHaveAttribute('title', 'mention')
-    expect(withTitle.dom.textContent).toBe('memry.test · Memry Page')
+    expect(withTitle.dom.textContent).toBe('memry.test · memrynote Page')
 
     const withoutTitle = (LinkMention as any).implementation.toExternalHTML({
       props: { url: 'https://memry.test/page', domain: '', title: '' }

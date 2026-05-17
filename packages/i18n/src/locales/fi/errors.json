@@ -61,7 +61,7 @@
     "deviceRevoked": "Tämä laite on poistettu tililtäsi.",
     "rateLimited": "Liikaa pyyntöjä. Synkronointia jatketaan pian.",
     "cryptoFailure": "Synkronointitietojen salaus tai salauksen purkaminen epäonnistui. Yritä kirjautua ulos ja takaisin sisään.",
-    "versionIncompatible": "Tätä Memry-versiota ei enää tueta. Päivitä.",
+    "versionIncompatible": "Tätä memrynote-versiota ei enää tueta. Päivitä.",
     "storageQuotaExceeded": "Synkronointimuistisi on täynnä. Vapauta tilaa tai päivitä suunnitelmasi.",
     "certificatePinFailed": "Suojattu yhteys epäonnistui. Tarkista verkkoyhteytesi.",
     "unknown": "Tapahtui odottamaton synkronointivirhe. Yritetään automaattisesti uudelleen.",

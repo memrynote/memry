@@ -19,7 +19,7 @@ function renderPromptEditor() {
     <AgentPromptEditor
       ref={ref}
       disabled={false}
-      placeholder="Ask Memry anything. @ to use mention file"
+      placeholder="Ask memrynote anything. @ to use mention file"
       onEscape={onEscape}
       onMentionKeyDown={onMentionKeyDown}
       onMentionQueryChange={onMentionQueryChange}

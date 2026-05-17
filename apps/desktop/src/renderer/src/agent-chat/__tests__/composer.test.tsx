@@ -409,7 +409,7 @@ describe('Composer', () => {
     })
   })
 
-  it('uses the highest suggested Codex model as the Memry default', async () => {
+  it('uses the highest suggested Codex model as the memrynote default', async () => {
     vi.mocked(window.api.agent.listBackendModels).mockImplementation(async ({ backend }) => ({
       backend,
       supportsCustomModel: true,

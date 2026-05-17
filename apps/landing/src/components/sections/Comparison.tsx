@@ -39,8 +39,8 @@ export function Comparison() {
     <section className="py-24 zone-transition">
       <Container size="md">
         <SectionHeading
-          title="How Memry compares"
-          subtitle="We built Memry to be the PKM we wished existed."
+          title="How memrynote compares"
+          subtitle="We built memrynote to be the PKM we wished existed."
         />
 
         <div className="overflow-x-auto rounded-xl border border-border/50 bg-card/50 shadow-sm">

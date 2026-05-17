@@ -135,7 +135,7 @@ describe('Agent MCP server tool round-trip', () => {
     }
   })
 
-  it('decorates Memry tool results with source refs for MCP clients', async () => {
+  it('decorates memrynote tool results with source refs for MCP clients', async () => {
     const handle = await startAgentMcpServer({
       toolRegistrations: [
         {

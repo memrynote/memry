@@ -13,7 +13,7 @@ const {
 
 const appRoot = path.resolve(__dirname, '..')
 const appRequire = createRequire(path.join(appRoot, 'package.json'))
-const productName = 'Memry'
+const productName = 'Memrynote'
 const requiredModules = [
   '@tiptap/core',
   '@tiptap/pm/model',

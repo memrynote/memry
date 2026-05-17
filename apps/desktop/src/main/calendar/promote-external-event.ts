@@ -124,7 +124,7 @@ export function promoteExternalEvent(
   emitCalendarChanged({ entityType: 'calendar_event', id: eventId })
   emitCalendarProjectionChanged(`event:${eventId}`)
 
-  log.info('Promoted external Google event to Memry event', {
+  log.info('Promoted external Google event to memrynote event', {
     externalEventId: input.externalEventId,
     eventId,
     remoteCalendarId,

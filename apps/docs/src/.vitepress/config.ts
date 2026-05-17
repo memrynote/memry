@@ -2,8 +2,8 @@ import { defineConfig } from 'vitepress'
 
 export default defineConfig({
   lang: 'en-US',
-  title: 'Memry Docs',
-  description: 'Documentation for Memry, a private offline-first workspace.',
+  title: 'memrynote Docs',
+  description: 'Documentation for memrynote, a private offline-first workspace.',
   cleanUrls: true,
   lastUpdated: true,
   head: [
@@ -12,7 +12,7 @@ export default defineConfig({
   ],
   themeConfig: {
     logo: '/favicon.svg',
-    siteTitle: 'Memry Docs',
+    siteTitle: 'memrynote Docs',
     nav: [
       { text: 'Install', link: '/guide/install' },
       { text: 'User Guide', link: '/user-guide/notes/editing' },
@@ -31,7 +31,7 @@ export default defineConfig({
     },
     footer: {
       message: 'Released under the GNU GPL v3.0.',
-      copyright: 'Copyright © 2026-present Memry'
+      copyright: 'Copyright © 2026-present memrynote'
     },
     outline: {
       level: [2, 3]
@@ -45,9 +45,9 @@ function unifiedSidebar() {
       text: 'Start Here',
       collapsed: false,
       items: [
-        { text: 'Install Memry', link: '/guide/install' },
+        { text: 'Install memrynote', link: '/guide/install' },
         { text: 'First Run & Vault Setup', link: '/guide/first-run' },
-        { text: 'A Tour of Memry', link: '/guide/tour' }
+        { text: 'A Tour of memrynote', link: '/guide/tour' }
       ]
     },
     {

@@ -61,7 +61,7 @@
     "deviceRevoked": "Dieses Gerät wurde aus Ihrem Konto entfernt.",
     "rateLimited": "Zu viele Anfragen. Die Synchronisierung wird in Kürze fortgesetzt.",
     "cryptoFailure": "Synchronisierungsdaten konnten nicht ver- oder entschlüsselt werden. Versuchen Sie, sich abzumelden und wieder anzumelden.",
-    "versionIncompatible": "Diese Version von Memry wird nicht mehr unterstützt. Bitte aktualisieren.",
+    "versionIncompatible": "Diese Version von memrynote wird nicht mehr unterstützt. Bitte aktualisieren.",
     "storageQuotaExceeded": "Ihr Synchronisierungsspeicher ist voll. Geben Sie Speicherplatz frei oder aktualisieren Sie Ihren Plan.",
     "certificatePinFailed": "Die sichere Verbindung ist fehlgeschlagen. Überprüfen Sie Ihre Netzwerkverbindung.",
     "unknown": "Es ist ein unerwarteter Synchronisierungsfehler aufgetreten. Wird automatisch erneut versucht.",

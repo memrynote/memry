@@ -46,7 +46,7 @@ describe('MoveToFolderDialog', () => {
     vi.clearAllMocks()
     vi.mocked(notesService.getFolders).mockResolvedValue([
       { path: 'Archive', icon: null },
-      { path: 'Projects/Memry', icon: null },
+      { path: 'Projects/memrynote', icon: null },
       { path: 'Writing', icon: null }
     ] as any)
     vi.mocked(notesService.createFolder).mockResolvedValue({ success: true } as any)
@@ -54,7 +54,7 @@ describe('MoveToFolderDialog', () => {
     api.folderView = {
       getFolderSuggestions: vi.fn().mockResolvedValue({
         suggestions: [
-          { path: 'Projects/Memry', confidence: 0.92, reason: 'similar note' },
+          { path: 'Projects/memrynote', confidence: 0.92, reason: 'similar note' },
           { path: 'Archive', confidence: 0.75, reason: 'current folder skipped' }
         ]
       })
@@ -78,13 +78,13 @@ describe('MoveToFolderDialog', () => {
     )
 
     expect(screen.getByRole('heading', { name: 'Move "Launch plan"' })).toBeInTheDocument()
-    expect(await screen.findByText('Projects/Memry')).toBeInTheDocument()
+    expect(await screen.findByText('Projects/memrynote')).toBeInTheDocument()
     expect(screen.getAllByText('bestMatch')).not.toHaveLength(0)
     expect(screen.getByRole('button', { name: /Writing/ })).toBeDisabled()
 
-    await user.click(screen.getByRole('button', { name: /Projects\/Memry/ }))
+    await user.click(screen.getByRole('button', { name: /Projects\/memrynote/ }))
 
-    expect(onMove).toHaveBeenCalledWith('Projects/Memry')
+    expect(onMove).toHaveBeenCalledWith('Projects/memrynote')
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
@@ -154,12 +154,12 @@ describe('MoveToFolderDialog', () => {
       />
     )
 
-    await screen.findByText('Projects/Memry')
+    await screen.findByText('Projects/memrynote')
     await user.keyboard('1')
-    expect(onMove).toHaveBeenCalledWith('Projects/Memry')
+    expect(onMove).toHaveBeenCalledWith('Projects/memrynote')
 
     onMove.mockClear()
     await user.click(screen.getByRole('button', { name: 'Move' }))
-    expect(onMove).toHaveBeenCalledWith('Projects/Memry')
+    expect(onMove).toHaveBeenCalledWith('Projects/memrynote')
   })
 })

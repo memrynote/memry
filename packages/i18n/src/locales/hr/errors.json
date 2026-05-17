@@ -61,7 +61,7 @@
     "deviceRevoked": "Ovaj je uređaj uklonjen s vašeg računa.",
     "rateLimited": "Previše zahtjeva. Sinkronizacija će se uskoro nastaviti.",
     "cryptoFailure": "Šifriranje ili dešifriranje sinkroniziranih podataka nije uspjelo. Pokušajte se odjaviti i ponovno prijaviti.",
-    "versionIncompatible": "Ova verzija Memry više nije podržana. Molimo ažurirajte.",
+    "versionIncompatible": "Ova verzija memrynote više nije podržana. Molimo ažurirajte.",
     "storageQuotaExceeded": "Vaša pohrana za sinkronizaciju je puna. Oslobodite prostor ili nadogradite svoj plan.",
     "certificatePinFailed": "Sigurna veza nije uspjela. Provjerite mrežnu vezu.",
     "unknown": "Došlo je do neočekivane pogreške sinkronizacije. Pokušat će se automatski.",

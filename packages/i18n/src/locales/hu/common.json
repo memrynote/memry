@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Kihagyja a beszállást",
-      "welcomeToMemry": "Üdvözli az Memry",
+      "welcomeToMemry": "Üdvözli az memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Az Ön személyes tudásbázisa. Szánjunk rá 2 percet az induláshoz.",
       "getStarted": "Kezdje el ",
       "createYourFirstNote": "Készítse el első jegyzetét",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Húzza az átméretezéshez · Kattintson duplán a visszaállításhoz"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Üdvözli az Memry",
+      "welcomeToMemry": "Üdvözli az memrynote",
       "yourPersonalKnowledgeManagementSystem": "Az Ön személyes tudásmenedzsment rendszere.",
       "selectAFolderToStoreYourNotesAndTasks": "Válasszon mappát a jegyzetek és feladatok tárolására.",
       "opening": "Megnyitás...",
@@ -341,9 +341,9 @@
     "stop": "Állj",
     "thinking": "Agent gondolkodik",
     "enable": {
-      "title": "Az Memry Agent engedélyezése",
-      "description": "Az Memry Agent a kiválasztott CLI helyi ügynököt használja a tárhelyről való csevegéshez. Az Claude fordulatokat küld az Anthropic-nek; Az Codex fordulatokat küld az OpenAI-nek.",
-      "remote": "Az Memry titkosítja a helyi és szinkronizált csevegési előzményeket, de a modellkövetkeztetés a kiválasztott szolgáltatóval történik.",
+      "title": "Az memrynote Agent engedélyezése",
+      "description": "Az memrynote Agent a kiválasztott CLI helyi ügynököt használja a tárhelyről való csevegéshez. Az Claude fordulatokat küld az Anthropic-nek; Az Codex fordulatokat küld az OpenAI-nek.",
+      "remote": "Az memrynote titkosítja a helyi és szinkronizált csevegési előzményeket, de a modellkövetkeztetés a kiválasztott szolgáltatóval történik.",
       "readTools": "Az olvasóeszközök automatikusan futnak.",
       "writeTools": "Az eszközök létrehozása és frissítése jóváhagyást igényel.",
       "diff": "A frissítési eszközök különbséget vagy előnézetet jelenítenek meg.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Aktuális megjegyzés",
       "removeAttachment": "Távolítsa el az {label} elemet",
-      "placeholder": "Kérdezz bármit a Memry-től. @ fájl megemlítéséhez",
+      "placeholder": "Kérdezz bármit a memrynote-től. @ fájl megemlítéséhez",
       "send": "Küldés",
       "providerLabel": "Agent szolgáltató: {provider}",
       "settingsSummary": "{reasoning}",

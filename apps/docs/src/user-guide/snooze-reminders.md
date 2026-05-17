@@ -24,11 +24,11 @@ The custom dialog lets you pick any future date and time. Past times are rejecte
 
 ### Where Snooze Is Available
 
-| Surface | Snooze |
-| --- | --- |
-| Inbox item | ✓ (item leaves inbox until wake) |
-| Task | ✓ (task hidden in default views; visible in "Snoozed" view) |
-| Note reminder | ✓ (toast deferred) |
+| Surface       | Snooze                                                      |
+| ------------- | ----------------------------------------------------------- |
+| Inbox item    | ✓ (item leaves inbox until wake)                            |
+| Task          | ✓ (task hidden in default views; visible in "Snoozed" view) |
+| Note reminder | ✓ (toast deferred)                                          |
 
 ### Countdown Display
 
@@ -44,16 +44,16 @@ Reminders fire as **in-app toasts** at a specified date and time.
 
 ### Setting a Reminder
 
-| Where | How |
-| --- | --- |
+| Where     | How                            |
+| --------- | ------------------------------ |
 | On a note | Note toolbar → reminder picker |
-| On a task | Task detail → reminder picker |
+| On a task | Task detail → reminder picker  |
 
 The picker offers relative options ("in 1 hour", "tomorrow morning") plus a full date/time picker.
 
 ### When the Reminder Fires
 
-Memry shows a toast with:
+memrynote shows a toast with:
 
 - Title and snippet
 - Action buttons (snooze 5 min, snooze 10 min, custom snooze, open, dismiss)
@@ -64,15 +64,15 @@ Items with upcoming reminders show a small bell badge in the sidebar / tab bar /
 
 ### App Closed When Reminder Fires?
 
-The toast appears when Memry next opens. Reminders aren't OS-level notifications (yet — see [Roadmap](/roadmap)).
+The toast appears when memrynote next opens. Reminders aren't OS-level notifications (yet — see [Roadmap](/roadmap)).
 
 ## Snooze vs Reminder
 
-| Use snooze when | Use a reminder when |
-| --- | --- |
+| Use snooze when                                | Use a reminder when                     |
+| ---------------------------------------------- | --------------------------------------- |
 | You want the item to **disappear** until later | You want a **nudge** at a specific time |
-| You're processing an inbox | You're scheduling future attention |
-| The item shouldn't clutter today's view | The item should still be findable |
+| You're processing an inbox                     | You're scheduling future attention      |
+| The item shouldn't clutter today's view        | The item should still be findable       |
 
 ## See Also
 

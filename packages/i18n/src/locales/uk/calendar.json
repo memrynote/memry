@@ -16,7 +16,7 @@
   "filter": {
     "filter-calendars": "Фільтрувати календарі",
     "sources": "Джерела",
-    "memry-items": "Memry елементи",
+    "memry-items": "memrynote елементи",
     "imported-calendars": "Імпортовані календарі",
     "event-types": "Типи подій",
     "google-calendars": "Календарі Google",
@@ -60,27 +60,27 @@
     "target-calendar": "Цільовий календар",
     "use-default-calendar": "Використовувати календар за замовчуванням",
     "use-default-calendar-with-name": "Використовувати за замовчуванням ({calendar})",
-    "use-memry-calendar-default": "Використовувати календар Memry (за замовчуванням)",
+    "use-memry-calendar-default": "Використовувати календар memrynote (за замовчуванням)",
     "primary-suffix": "основний"
   },
   "delete-dialog": {
     "title": "Видалити подію?",
     "local-description": "\"{title}\" буде видалено назавжди. Цю дію неможливо скасувати.",
-    "google-bound-description": "\"{title}\" буде видалено з Memry та Google Календаря. Цю дію неможливо скасувати.",
+    "google-bound-description": "\"{title}\" буде видалено з memrynote та Google Календаря. Цю дію неможливо скасувати.",
     "context-menu-delete-label": "Видалити подію"
   },
   "promote-dialog": {
     "aria": "Редагувати подію зовнішнього календаря",
-    "title": "Редагувати цю подію в Memry?",
-    "body": "Редагування цієї події створить пов'язану копію в Memry, щоб зміни синхронізувалися в обох напрямах. Продовжити?",
+    "title": "Редагувати цю подію в memrynote?",
+    "body": "Редагування цієї події створить пов'язану копію в memrynote, щоб зміни синхронізувалися в обох напрямах. Продовжити?",
     "do-not-ask-again": "Більше не питати",
-    "confirm-label": "Редагувати в Memry"
+    "confirm-label": "Редагувати в memrynote"
   },
   "onboarding-dialog": {
     "aria": "Виберіть свій календар Google за замовчуванням",
-    "title": "У який календар повинні потрапляти нові події Memry?",
-    "body": "Виберіть календар Google, який Memry буде використовувати за замовчуванням. Ви все ще можете змінювати його для кожної події.",
-    "default-calendar-label": "Використовувати календар, керований Memry",
+    "title": "У який календар повинні потрапляти нові події memrynote?",
+    "body": "Виберіть календар Google, який memrynote буде використовувати за замовчуванням. Ви все ще можете змінювати його для кожної події.",
+    "default-calendar-label": "Використовувати календар, керований memrynote",
     "skip": "Пропустити",
     "use-this-calendar": "Використовувати цей календар"
   },

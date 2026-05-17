@@ -19,13 +19,13 @@
     "exportCancelled": "Η εξαγωγή ακυρώθηκε",
     "update": {
       "availableTitle": "Διαθέσιμη ενημέρωση",
-      "availableMessage": "Memry Το {version} είναι διαθέσιμο.",
+      "availableMessage": "memrynote Το {version} είναι διαθέσιμο.",
       "availableDetailFallback": "Λήψη της ενημέρωσης τώρα;",
       "buttonDownload": "Λήψη",
       "buttonLater": "Αργότερα",
       "readyTitle": "Έτοιμη η ενημέρωση",
-      "readyMessage": "Έγινε λήψη του Memry Το {version}.",
-      "readyDetailFallback": "Επανεκκινήστε το Memry για να ολοκληρώσετε την εγκατάσταση της ενημέρωσης.",
+      "readyMessage": "Έγινε λήψη του memrynote Το {version}.",
+      "readyDetailFallback": "Επανεκκινήστε το memrynote για να ολοκληρώσετε την εγκατάσταση της ενημέρωσης.",
       "buttonRestartNow": "Κάντε επανεκκίνηση τώρα",
       "releaseNotesLabel": "Σημειώσεις έκδοσης:"
     }

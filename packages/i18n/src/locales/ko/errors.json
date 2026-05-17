@@ -61,7 +61,7 @@
     "deviceRevoked": "이 기기가 귀하의 계정에서 제거되었습니다.",
     "rateLimited": "요청이 너무 많습니다. 동기화가 곧 재개됩니다.",
     "cryptoFailure": "동기화 데이터를 암호화하거나 해독하지 못했습니다. 로그아웃했다가 다시 로그인해 보세요.",
-    "versionIncompatible": "이 Memry 버전은 더 이상 지원되지 않습니다. 업데이트하세요.",
+    "versionIncompatible": "이 memrynote 버전은 더 이상 지원되지 않습니다. 업데이트하세요.",
     "storageQuotaExceeded": "동기화 저장용량이 가득 찼습니다. 여유 공간을 확보하거나 요금제를 업그레이드하세요.",
     "certificatePinFailed": "보안 연결에 실패했습니다. 네트워크 연결을 확인하세요.",
     "unknown": "예상치 못한 동기화 오류가 발생했습니다. 자동으로 다시 시도합니다.",

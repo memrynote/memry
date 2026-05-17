@@ -19,13 +19,13 @@
     "exportCancelled": "Eksporten ble avbrutt",
     "update": {
       "availableTitle": "Oppdatering tilgjengelig",
-      "availableMessage": "Memry {version} er tilgjengelig.",
+      "availableMessage": "memrynote {version} er tilgjengelig.",
       "availableDetailFallback": "Laste ned oppdateringen nå?",
       "buttonDownload": "Last ned",
       "buttonLater": "Senere",
       "readyTitle": "Oppdatering klar",
-      "readyMessage": "Memry {version} er lastet ned.",
-      "readyDetailFallback": "Start Memry på nytt for å fullføre installasjonen av oppdateringen.",
+      "readyMessage": "memrynote {version} er lastet ned.",
+      "readyDetailFallback": "Start memrynote på nytt for å fullføre installasjonen av oppdateringen.",
       "buttonRestartNow": "Start på nytt nå",
       "releaseNotesLabel": "Utgivelsesnotater:"
     }

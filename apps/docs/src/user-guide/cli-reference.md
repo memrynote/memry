@@ -1537,7 +1537,7 @@ Returns events from all selected sources in a window.
 
 ### external promote
 
-Promotes an external event to a managed Memry event.
+Promotes an external event to a managed memrynote event.
 
 | Positional   | Description        |
 | ------------ | ------------------ |
@@ -1764,4 +1764,4 @@ The most common error messages are:
 - `Invalid number: <value>` or `Invalid boolean: --<flag>` — a flag failed to parse.
 - `Pass --yes to delete a <thing>` — a destructive command needs the safety flag.
 - `Multiple vaults found. Choose one with memry vault use ... or run with --vault <path>.`
-- `No default vault configured. Open Memry and choose Settings > Command Line > Default vault, or run with --vault <path>.`
+- `No default vault configured. Open memrynote and choose Settings > Command Line > Default vault, or run with --vault <path>.`

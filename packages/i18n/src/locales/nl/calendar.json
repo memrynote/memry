@@ -16,7 +16,7 @@
   "filter": {
     "filter-calendars": "Kalenders filteren",
     "sources": "Bronnen",
-    "memry-items": "Memry-artikelen",
+    "memry-items": "memrynote-artikelen",
     "imported-calendars": "Geïmporteerde kalenders",
     "event-types": "Soorten evenementen",
     "google-calendars": "Google-agenda's",
@@ -60,27 +60,27 @@
     "target-calendar": "Doelkalender",
     "use-default-calendar": "Gebruik standaardkalender",
     "use-default-calendar-with-name": "Standaard gebruiken ({calendar})",
-    "use-memry-calendar-default": "Gebruik Memry-agenda (standaard)",
+    "use-memry-calendar-default": "Gebruik memrynote-agenda (standaard)",
     "primary-suffix": "primair"
   },
   "delete-dialog": {
     "title": "Evenement verwijderen?",
     "local-description": "\"{title}\" wordt permanent verwijderd. Deze actie kan niet ongedaan worden gemaakt.",
-    "google-bound-description": "\"{title}\" wordt verwijderd uit Memry en Google Agenda. Deze actie kan niet ongedaan worden gemaakt.",
+    "google-bound-description": "\"{title}\" wordt verwijderd uit memrynote en Google Agenda. Deze actie kan niet ongedaan worden gemaakt.",
     "context-menu-delete-label": "Evenement verwijderen"
   },
   "promote-dialog": {
     "aria": "Externe agendagebeurtenis bewerken",
-    "title": "Deze gebeurtenis bewerken in Memry?",
-    "body": "Als u deze gebeurtenis bewerkt, wordt er een gekoppelde kopie gemaakt in Memry, zodat wijzigingen in beide richtingen worden gesynchroniseerd. Doorgaan?",
+    "title": "Deze gebeurtenis bewerken in memrynote?",
+    "body": "Als u deze gebeurtenis bewerkt, wordt er een gekoppelde kopie gemaakt in memrynote, zodat wijzigingen in beide richtingen worden gesynchroniseerd. Doorgaan?",
     "do-not-ask-again": "Vraag het niet opnieuw",
-    "confirm-label": "Bewerken in Memry"
+    "confirm-label": "Bewerken in memrynote"
   },
   "onboarding-dialog": {
     "aria": "Kies uw standaard Google-agenda",
-    "title": "Naar welke kalender moeten nieuwe Memry-evenementen gaan?",
-    "body": "Kies de Google-agenda die Memry standaard moet gebruiken. Je kunt het nog steeds per gebeurtenis overschrijven.",
-    "default-calendar-label": "Gebruik de door Memry beheerde agenda",
+    "title": "Naar welke kalender moeten nieuwe memrynote-evenementen gaan?",
+    "body": "Kies de Google-agenda die memrynote standaard moet gebruiken. Je kunt het nog steeds per gebeurtenis overschrijven.",
+    "default-calendar-label": "Gebruik de door memrynote beheerde agenda",
     "skip": "Overslaan",
     "use-this-calendar": "Gebruik deze kalender"
   },

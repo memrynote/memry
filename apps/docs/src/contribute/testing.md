@@ -141,7 +141,7 @@ Using the Node fix for Electron (or vice versa) leaves the app silently broken â
 
 ## Packaged Runtime Smoke
 
-The packaged smoke check builds the app into `apps/desktop/dist/mac-arm64/Memry.app` from an
+The packaged smoke check builds the app into `apps/desktop/dist/mac-arm64/Memrynote.app` from an
 isolated dependency tree, then verifies runtime dependencies resolve from the packaged Resources
 directory. It also checks native `.node` binaries for the expected macOS architecture so an arm64
 release cannot ship with x64 `better-sqlite3` or `keytar` binaries:
@@ -164,7 +164,7 @@ so `x64`, `arm64`, and `amd64` builds stay distinguishable in GitHub releases.
 
 ## Coverage Targets
 
-Memry is pre-production, but desktop and sync-server coverage are now ratcheted.
+memrynote is pre-production, but desktop and sync-server coverage are now ratcheted.
 Keep new coverage feature-scoped and avoid catch-all test files.
 
 - **Desktop** â€” configured in `apps/desktop/config/vitest.config.ts`; current floor is

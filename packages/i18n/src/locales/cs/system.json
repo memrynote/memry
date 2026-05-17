@@ -19,13 +19,13 @@
     "exportCancelled": "Export zrušen",
     "update": {
       "availableTitle": "Aktualizace k dispozici",
-      "availableMessage": "Memry {version} je k dispozici.",
+      "availableMessage": "memrynote {version} je k dispozici.",
       "availableDetailFallback": "Stáhnout aktualizaci nyní?",
       "buttonDownload": "Stáhnout",
       "buttonLater": "Později",
       "readyTitle": "Aktualizace připravena",
-      "readyMessage": "Memry {version} byl stažen.",
-      "readyDetailFallback": "Pro dokončení instalace aktualizace restartujte Memry.",
+      "readyMessage": "memrynote {version} byl stažen.",
+      "readyDetailFallback": "Pro dokončení instalace aktualizace restartujte memrynote.",
       "buttonRestartNow": "Restartujte nyní",
       "releaseNotesLabel": "Poznámky k vydání:"
     }

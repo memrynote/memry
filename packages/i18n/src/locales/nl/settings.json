@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "Start bij Inloggen",
-        "description": "Start Memry wanneer u inlogt",
+        "description": "Start memrynote wanneer u inlogt",
         "error": "Kan het starten bij het opstarten niet updaten"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "Geïnstalleerde versie {version}",
       "availableVersion": "Beschikbare versie {version}",
       "unsupported": "Verpakte builds kunnen updates van GitHub-releases controleren, downloaden en installeren",
-      "available": "Memry {version} kan worden gedownload",
+      "available": "memrynote {version} kan worden gedownload",
       "downloadingLatest": "De nieuwste versie downloaden",
       "downloadingLatestPercent": "De nieuwste release downloaden ({percent}%)",
-      "downloaded": "Memry {version} is klaar om te installeren",
+      "downloaded": "memrynote {version} is klaar om te installeren",
       "upToDate": "Deze installatie is gebaseerd op de laatst gepubliceerde release",
       "checking": "GitHub-releases controleren op een nieuwere versie",
       "idle": "Controleer op nieuwe releases en installeer deze zonder de app te verlaten",
       "unsupportedToast": "Automatische updates zijn alleen beschikbaar in verpakte releases",
-      "upToDateToast": "Memry {version} is up-to-date",
+      "upToDateToast": "memrynote {version} is up-to-date",
       "actionFailed": "Updateactie mislukt",
       "actions": {
         "checking": "Controleren...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "Apparaat succesvol gekoppeld",
       "goBack": "Ga terug",
       "waitingTitle": "Wachten op goedkeuring",
-      "waitingDescription": "Open Memry op uw andere apparaat en keur het koppelingsverzoek goed.",
+      "waitingDescription": "Open memrynote op uw andere apparaat en keur het koppelingsverzoek goed.",
       "verificationCode": "Verificatiecode",
       "confirmCode": "Controleer of dit overeenkomt met de code op uw andere apparaat"
     }
@@ -778,7 +778,7 @@
     "connect": "Verbinden",
     "googleCalendar": {
       "name": "Google Agenda",
-      "description": "Tweerichtingssynchronisatie voor Memry-evenementen en geïmporteerde Google-agenda's.",
+      "description": "Tweerichtingssynchronisatie voor memrynote-evenementen en geïmporteerde Google-agenda's.",
       "statuses": {
         "connected": "Verbonden",
         "notConnected": "Niet verbonden",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "Google Agenda",
-        "description": "Tweerichtingssynchronisatie voor Memry-evenementen, taken, herinneringen en geïmporteerde agenda's"
+        "description": "Tweerichtingssynchronisatie voor memrynote-evenementen, taken, herinneringen en geïmporteerde agenda's"
       },
       "appleCalendar": {
         "name": "Apple-agenda",
@@ -963,7 +963,7 @@
       "description": "Leg overal een notitie vast",
       "permissionNeeded": "Toestemming nodig",
       "active": "Actief",
-      "permissionHint": "Voor globale snelkoppelingen is toegankelijkheidstoestemming vereist. Ga naar Systeeminstellingen → Privacy → Toegankelijkheid en schakel Memry in."
+      "permissionHint": "Voor globale snelkoppelingen is toegankelijkheidstoestemming vereist. Ga naar Systeeminstellingen → Privacy → Toegankelijkheid en schakel memrynote in."
     },
     "toasts": {
       "saveGlobalFailed": "Kan de globale snelkoppeling voor vastleggen niet opslaan",

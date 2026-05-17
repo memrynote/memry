@@ -22,14 +22,14 @@ Best when you want privacy, no metering, and don't mind running an extra backgro
 
 1. Install [Ollama](https://ollama.com/) on your system.
 2. Pull a model: `ollama pull llama3.2` (or any chat model you prefer).
-3. In Memry, set **Provider: Ollama**.
+3. In memrynote, set **Provider: Ollama**.
 4. **Base URL**: defaults to `http://localhost:11434/v1` — adjust if Ollama runs on a different port or remote machine.
 5. **Model**: pick from the dropdown (presets) or type a model name you've pulled locally.
 6. Click **Test Connection**.
 
 ### Notes
 
-- Ollama exposes an OpenAI-compatible API at `/v1`, which Memry uses.
+- Ollama exposes an OpenAI-compatible API at `/v1`, which memrynote uses.
 - No API key required for default local Ollama.
 - Token costs: zero, but RAM usage scales with model size.
 
@@ -46,7 +46,7 @@ Best when you want privacy, no metering, and don't mind running an extra backgro
 ### Notes
 
 - Keys are stored locally in the vault (encrypted at rest).
-- Keys are never sent to the Memry sync server.
+- Keys are never sent to the memrynote sync server.
 - Each AI call hits OpenAI directly from your device.
 
 ## Anthropic
@@ -77,7 +77,7 @@ A status indicator (green / yellow / red) shows the most recent test result.
 
 You can change provider at any time. Memory of past prompts is local — switching doesn't carry conversation state.
 
-Memry keeps one local inline-AI bridge running for the active provider settings. Re-opening the editor or another window reuses that bridge when settings are unchanged; changing provider, model, base URL, or API key restarts it with the new configuration.
+memrynote keeps one local inline-AI bridge running for the active provider settings. Re-opening the editor or another window reuses that bridge when settings are unchanged; changing provider, model, base URL, or API key restarts it with the new configuration.
 
 ## Where Keys Live
 
@@ -85,7 +85,7 @@ API keys are stored **locally**, in the vault, encrypted with the vault key. The
 
 - Never leave the device unencrypted
 - Never appear in sync items
-- Are accessible to Memry's main process only (renderer reads via IPC)
+- Are accessible to memrynote's main process only (renderer reads via IPC)
 
 Rotating a key in the provider's dashboard requires updating it here too.
 

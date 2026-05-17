@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "Spusťte při přihlášení",
-        "description": "Když se přihlásíte, spusťte Memry",
+        "description": "Když se přihlásíte, spusťte memrynote",
         "error": "Aktualizace startu při spouštění se nezdařila"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "Instalovaná verze {version}",
       "availableVersion": "Dostupná verze {version}",
       "unsupported": "Zabalené sestavení mohou kontrolovat, stahovat a instalovat aktualizace z GitHub Releases",
-      "available": "Memry {version} je k dispozici ke stažení",
+      "available": "memrynote {version} je k dispozici ke stažení",
       "downloadingLatest": "Stahování nejnovější verze",
       "downloadingLatestPercent": "Stahování nejnovější verze ({percent}%)",
-      "downloaded": "Memry {version} je připraven k instalaci",
+      "downloaded": "memrynote {version} je připraven k instalaci",
       "upToDate": "Tato instalace je na nejnovější publikované verzi",
       "checking": "Kontrola vydání GitHubu pro novější verzi",
       "idle": "Vyhledejte nová vydání a nainstalujte je, aniž byste opustili aplikaci",
       "unsupportedToast": "Automatické aktualizace jsou k dispozici pouze v balených verzích",
-      "upToDateToast": "Memry {version} je aktuální",
+      "upToDateToast": "memrynote {version} je aktuální",
       "actionFailed": "Akce aktualizace se nezdařila",
       "actions": {
         "checking": "Kontrola...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "Zařízení bylo úspěšně připojeno",
       "goBack": "Vraťte se",
       "waitingTitle": "Čekání na schválení",
-      "waitingDescription": "Otevřete Memry na svém druhém zařízení a schvalte žádost o propojení.",
+      "waitingDescription": "Otevřete memrynote na svém druhém zařízení a schvalte žádost o propojení.",
       "verificationCode": "Ověřovací kód",
       "confirmCode": "Potvrďte, že se toto shoduje s kódem na vašem druhém zařízení"
     }
@@ -778,7 +778,7 @@
     "connect": "Připojte se",
     "googleCalendar": {
       "name": "Kalendář Google",
-      "description": "Obousměrná synchronizace pro události Memry a importované kalendáře Google.",
+      "description": "Obousměrná synchronizace pro události memrynote a importované kalendáře Google.",
       "statuses": {
         "connected": "Připojeno",
         "notConnected": "Nepřipojeno",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "Kalendář Google",
-        "description": "Obousměrná synchronizace pro události, úkoly, připomenutí a importované kalendáře Memry"
+        "description": "Obousměrná synchronizace pro události, úkoly, připomenutí a importované kalendáře memrynote"
       },
       "appleCalendar": {
         "name": "Kalendář Apple",
@@ -963,7 +963,7 @@
       "description": "Zachyťte poznámku odkudkoli",
       "permissionNeeded": "Je potřeba povolení",
       "active": "Aktivní",
-      "permissionHint": "Globální zkratky vyžadují oprávnění pro usnadnění. Přejděte do Nastavení systému → Soukromí → Usnadnění a povolte Memry."
+      "permissionHint": "Globální zkratky vyžadují oprávnění pro usnadnění. Přejděte do Nastavení systému → Soukromí → Usnadnění a povolte memrynote."
     },
     "toasts": {
       "saveGlobalFailed": "Zástupce globálního zachycení se nepodařilo uložit",

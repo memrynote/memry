@@ -16,7 +16,7 @@
   "filter": {
     "filter-calendars": "Filtrați calendarele",
     "sources": "Surse",
-    "memry-items": "articole Memry",
+    "memry-items": "articole memrynote",
     "imported-calendars": "Calendare importate",
     "event-types": "Tipuri de evenimente",
     "google-calendars": "Calendare Google",
@@ -60,27 +60,27 @@
     "target-calendar": "Calendar țintă",
     "use-default-calendar": "Utilizați calendarul implicit",
     "use-default-calendar-with-name": "Utilizați implicit ({calendar})",
-    "use-memry-calendar-default": "Utilizați calendarul Memry (implicit)",
+    "use-memry-calendar-default": "Utilizați calendarul memrynote (implicit)",
     "primary-suffix": "primar"
   },
   "delete-dialog": {
     "title": "Ștergeți evenimentul?",
     "local-description": "„{title}” va fi șters definitiv. Această acțiune nu poate fi anulată.",
-    "google-bound-description": "„{title}” va fi eliminat din Memry și Google Calendar. Această acțiune nu poate fi anulată.",
+    "google-bound-description": "„{title}” va fi eliminat din memrynote și Google Calendar. Această acțiune nu poate fi anulată.",
     "context-menu-delete-label": "Șterge evenimentul"
   },
   "promote-dialog": {
     "aria": "Editați evenimentul din calendar extern",
-    "title": "Editați acest eveniment în Memry?",
-    "body": "Editarea acestui eveniment va crea o copie legată în Memry, astfel încât modificările se sincronizează în ambele sensuri. Continuați?",
+    "title": "Editați acest eveniment în memrynote?",
+    "body": "Editarea acestui eveniment va crea o copie legată în memrynote, astfel încât modificările se sincronizează în ambele sensuri. Continuați?",
     "do-not-ask-again": "Nu mai întreba",
-    "confirm-label": "Editați în Memry"
+    "confirm-label": "Editați în memrynote"
   },
   "onboarding-dialog": {
     "aria": "Alegeți calendarul dvs. implicit Google",
-    "title": "La ce calendar ar trebui să meargă noile evenimente Memry?",
-    "body": "Alegeți calendarul Google pe care Memry ar trebui să îl folosească în mod implicit. Îl puteți anula în continuare pentru fiecare eveniment.",
-    "default-calendar-label": "Utilizați calendarul gestionat de Memry",
+    "title": "La ce calendar ar trebui să meargă noile evenimente memrynote?",
+    "body": "Alegeți calendarul Google pe care memrynote ar trebui să îl folosească în mod implicit. Îl puteți anula în continuare pentru fiecare eveniment.",
+    "default-calendar-label": "Utilizați calendarul gestionat de memrynote",
     "skip": "Sari peste",
     "use-this-calendar": "Utilizați acest calendar"
   },

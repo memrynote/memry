@@ -144,7 +144,7 @@ const CONNECTED_SOURCES: CalendarSourceRecord[] = [
     kind: 'calendar',
     accountId: 'google-account-1',
     remoteId: 'memry',
-    title: 'Memry',
+    title: 'memrynote',
     timezone: 'Europe/Istanbul',
     color: '#5E6AD2',
     isPrimary: false,
@@ -247,7 +247,7 @@ describe('Google Calendar integration row', () => {
     expect(mockConnectGoogleCalendarProvider).toHaveBeenCalledTimes(1)
   })
 
-  it('shows connection status, source toggles, the Memry calendar, and disconnect controls', async () => {
+  it('shows connection status, source toggles, the memrynote calendar, and disconnect controls', async () => {
     const user = userEvent.setup()
 
     mockGetGoogleCalendarStatus.mockResolvedValue(CONNECTED_STATUS)
@@ -288,7 +288,7 @@ describe('Google Calendar integration row', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole('heading', { name: /Which calendar should new Memry events go to/i })
+        screen.getByRole('heading', { name: /Which calendar should new memrynote events go to/i })
       ).toBeInTheDocument()
     })
   })
@@ -390,7 +390,7 @@ describe('Google Calendar integration row', () => {
     // Wait for the connected row to render, then confirm no dialog appeared
     await waitFor(() => expect(screen.getByText('Connected')).toBeInTheDocument())
     expect(
-      screen.queryByRole('heading', { name: /Which calendar should new Memry events go to/i })
+      screen.queryByRole('heading', { name: /Which calendar should new memrynote events go to/i })
     ).not.toBeInTheDocument()
   })
 })

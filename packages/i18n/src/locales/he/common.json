@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "דלג על העלייה למטוס",
-      "welcomeToMemry": "ברוכים הבאים ל-Memry",
+      "welcomeToMemry": "ברוכים הבאים ל-memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "מאגר הידע האישי שלך. בואו ניקח 2 דקות כדי להתחיל.",
       "getStarted": "התחל ",
       "createYourFirstNote": "צור את ההערה הראשונה שלך",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "גרור כדי לשנות את הגודל · לחץ פעמיים כדי לאפס"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "ברוכים הבאים ל-Memry",
+      "welcomeToMemry": "ברוכים הבאים ל-memrynote",
       "yourPersonalKnowledgeManagementSystem": "מערכת ניהול הידע האישי שלך.",
       "selectAFolderToStoreYourNotesAndTasks": "בחר תיקיה לאחסון ההערות והמשימות שלך.",
       "opening": "פותח...",
@@ -341,9 +341,9 @@
     "stop": "עצור",
     "thinking": "Agent חושב",
     "enable": {
-      "title": "הפעל את Memry Agent",
-      "description": "Memry Agent משתמש בסוכן המקומי שבחרת CLI כדי לשוחח על הכספת שלך. Claude שולח תורות ל-Anthropic; Codex שולח תורות ל-OpenAI.",
-      "remote": "Memry מצפין את היסטוריית הצ'אט המקומית והמסונכרנת שלך, אך מסקנות מודל מתרחשות עם הספק הנבחר.",
+      "title": "הפעל את memrynote Agent",
+      "description": "memrynote Agent משתמש בסוכן המקומי שבחרת CLI כדי לשוחח על הכספת שלך. Claude שולח תורות ל-Anthropic; Codex שולח תורות ל-OpenAI.",
+      "remote": "memrynote מצפין את היסטוריית הצ'אט המקומית והמסונכרנת שלך, אך מסקנות מודל מתרחשות עם הספק הנבחר.",
       "readTools": "כלי קריאה פועלים באופן אוטומטי.",
       "writeTools": "יצירה ועדכון של כלים דורשים אישור.",
       "diff": "כלי עדכון מציגים הבדל או תצוגה מקדימה.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "הערה נוכחית",
       "removeAttachment": "הסר את {label}",
-      "placeholder": "שאלו את Memry כל דבר. @ כדי להזכיר קובץ",
+      "placeholder": "שאלו את memrynote כל דבר. @ כדי להזכיר קובץ",
       "send": "שלח",
       "providerLabel": "ספק Agent: {provider}",
       "settingsSummary": "{reasoning}",

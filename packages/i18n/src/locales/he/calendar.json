@@ -16,7 +16,7 @@
   "filter": {
     "filter-calendars": "סינון לוחות שנה",
     "sources": "מקורות",
-    "memry-items": "פריטי Memry",
+    "memry-items": "פריטי memrynote",
     "imported-calendars": "לוחות שנה מיובאים",
     "event-types": "סוגי אירועים",
     "google-calendars": "לוחות שנה של גוגל",
@@ -60,27 +60,27 @@
     "target-calendar": "לוח שנה יעד",
     "use-default-calendar": "השתמש ביומן ברירת המחדל",
     "use-default-calendar-with-name": "השתמש ברירת מחדל ({calendar})",
-    "use-memry-calendar-default": "השתמש ביומן Memry (ברירת מחדל)",
+    "use-memry-calendar-default": "השתמש ביומן memrynote (ברירת מחדל)",
     "primary-suffix": "ראשוני"
   },
   "delete-dialog": {
     "title": "למחוק את האירוע?",
     "local-description": "\"{title}\" יימחק לצמיתות. לא ניתן לבטל פעולה זו.",
-    "google-bound-description": "\"{title}\" יוסר מ-Memry ומיומן Google. לא ניתן לבטל פעולה זו.",
+    "google-bound-description": "\"{title}\" יוסר מ-memrynote ומיומן Google. לא ניתן לבטל פעולה זו.",
     "context-menu-delete-label": "מחק את האירוע"
   },
   "promote-dialog": {
     "aria": "ערוך אירוע יומן חיצוני",
-    "title": "לערוך את האירוע הזה ב-Memry?",
-    "body": "עריכת אירוע זה תיצור עותק מקושר ב-Memry כך שהשינויים יסונכרנו לשני הכיוונים. להמשיך?",
+    "title": "לערוך את האירוע הזה ב-memrynote?",
+    "body": "עריכת אירוע זה תיצור עותק מקושר ב-memrynote כך שהשינויים יסונכרנו לשני הכיוונים. להמשיך?",
     "do-not-ask-again": "אל תשאל שוב",
-    "confirm-label": "ערוך ב-Memry"
+    "confirm-label": "ערוך ב-memrynote"
   },
   "onboarding-dialog": {
     "aria": "בחר את יומן ברירת המחדל שלך ב-Google",
-    "title": "לאיזה לוח שנה כדאי ללכת לאירועי Memry?",
-    "body": "בחר את לוח השנה של Google שבו Memry צריך להשתמש כברירת מחדל. אתה עדיין יכול לעקוף אותו לכל אירוע.",
-    "default-calendar-label": "השתמש בלוח השנה המנוהל על ידי Memry",
+    "title": "לאיזה לוח שנה כדאי ללכת לאירועי memrynote?",
+    "body": "בחר את לוח השנה של Google שבו memrynote צריך להשתמש כברירת מחדל. אתה עדיין יכול לעקוף אותו לכל אירוע.",
+    "default-calendar-label": "השתמש בלוח השנה המנוהל על ידי memrynote",
     "skip": "דלג",
     "use-this-calendar": "השתמש בלוח השנה הזה"
   },

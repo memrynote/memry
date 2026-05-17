@@ -105,7 +105,7 @@ export function SavingsCalculator() {
             <span className="absolute -bottom-2 left-1/4 right-1/4 h-px bg-terracotta/30" />
           </h2>
           <p className="text-xl text-muted font-sans max-w-2xl mx-auto leading-relaxed">
-            Pick the setup closest to yours. See what Memry saves you.
+            Pick the setup closest to yours. See what memrynote saves you.
           </p>
         </motion.div>
 
@@ -198,7 +198,7 @@ export function SavingsCalculator() {
 
                 <div className="text-center md:text-left">
                   <p className="text-xs font-medium text-muted uppercase tracking-wider mb-3">
-                    With Memry
+                    With memrynote
                   </p>
                   <motion.div
                     className="py-4 px-5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/30"
@@ -248,7 +248,7 @@ export function SavingsCalculator() {
                 </div>
                 <Button size="lg" asChild>
                   <a href="#waitlist">
-                    Start saving with Memry
+                    Start saving with memrynote
                     <span className="ml-2">→</span>
                   </a>
                 </Button>

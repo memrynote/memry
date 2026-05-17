@@ -19,13 +19,13 @@
     "exportCancelled": "エクスポートがキャンセルされました",
     "update": {
       "availableTitle": "利用可能なアップデート",
-      "availableMessage": "Memry {version}が利用可能です。",
+      "availableMessage": "memrynote {version}が利用可能です。",
       "availableDetailFallback": "今すぐアップデートをダウンロードしますか?",
       "buttonDownload": "ダウンロード",
       "buttonLater": "後で",
       "readyTitle": "アップデートの準備ができました",
-      "readyMessage": "Memry {version} がダウンロードされました。",
-      "readyDetailFallback": "Memry を再起動して、アップデートのインストールを完了します。",
+      "readyMessage": "memrynote {version} がダウンロードされました。",
+      "readyDetailFallback": "memrynote を再起動して、アップデートのインストールを完了します。",
       "buttonRestartNow": "今すぐ再起動してください",
       "releaseNotesLabel": "リリースノート:"
     }

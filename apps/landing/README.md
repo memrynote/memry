@@ -1,6 +1,6 @@
 # memrynote.com
 
-Marketing site for **Memry** — a local-first personal knowledge management app that combines notes, tasks, daily journal, and inbox into one distraction-free experience.
+Marketing site for **memrynote** — a local-first personal knowledge management app that combines notes, tasks, daily journal, and inbox into one distraction-free experience.
 
 Built with React 19, TypeScript, Tailwind CSS 4, and Framer Motion. Deployed on Vercel.
 

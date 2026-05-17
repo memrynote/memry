@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Pomiń wdrażanie",
-      "welcomeToMemry": "Witamy w Memry",
+      "welcomeToMemry": "Witamy w memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Twoja osobista baza wiedzy. Na początek poświęćmy 2 minuty.",
       "getStarted": "Zacznij ",
       "createYourFirstNote": "Utwórz swoją pierwszą notatkę",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Przeciągnij, aby zmienić rozmiar · Kliknij dwukrotnie, aby zresetować"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Witamy w Memry",
+      "welcomeToMemry": "Witamy w memrynote",
       "yourPersonalKnowledgeManagementSystem": "Twój osobisty system zarządzania wiedzą.",
       "selectAFolderToStoreYourNotesAndTasks": "Wybierz folder do przechowywania notatek i zadań.",
       "opening": "Otwieranie...",
@@ -341,9 +341,9 @@
     "stop": "Zatrzymaj się",
     "thinking": "Agent myśli",
     "enable": {
-      "title": "Włącz Memry Agent",
-      "description": "Memry Agent używa wybranego lokalnego agenta CLI do rozmów na temat Twojego skarbca. Claude wysyła zwroty do Anthropic; Codex wysyła zwroty do OpenAI.",
-      "remote": "Memry szyfruje lokalną i zsynchronizowaną historię czatów, ale wnioskowanie o modelu odbywa się w przypadku wybranego dostawcy.",
+      "title": "Włącz memrynote Agent",
+      "description": "memrynote Agent używa wybranego lokalnego agenta CLI do rozmów na temat Twojego skarbca. Claude wysyła zwroty do Anthropic; Codex wysyła zwroty do OpenAI.",
+      "remote": "memrynote szyfruje lokalną i zsynchronizowaną historię czatów, ale wnioskowanie o modelu odbywa się w przypadku wybranego dostawcy.",
       "readTools": "Narzędzia do odczytu działają automatycznie.",
       "writeTools": "Narzędzia do tworzenia i aktualizowania wymagają zatwierdzenia.",
       "diff": "Narzędzia aktualizacji pokazują różnicę lub podgląd.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Aktualna notatka",
       "removeAttachment": "Usuń {label}",
-      "placeholder": "Zapytaj Memry o cokolwiek. @, aby wspomnieć plik",
+      "placeholder": "Zapytaj memrynote o cokolwiek. @, aby wspomnieć plik",
       "send": "Wyślij",
       "providerLabel": "Dostawca Agent: {provider}",
       "settingsSummary": "{reasoning}",

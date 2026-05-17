@@ -34,8 +34,8 @@ export function RefundPage() {
         <h2>1. The 7-day guarantee</h2>
         <p>
           Every paid plan comes with a 7-day money-back guarantee, counted from the moment you first
-          complete a paid checkout. If Memry isn&apos;t for you in that window, ask for a refund and
-          we will issue it without questions.
+          complete a paid checkout. If memrynote isn&apos;t for you in that window, ask for a refund
+          and we will issue it without questions.
         </p>
         <p>
           The guarantee covers your first paid period only. Renewals (the second month, the second

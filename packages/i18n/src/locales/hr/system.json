@@ -19,13 +19,13 @@
     "exportCancelled": "Izvoz otkazan",
     "update": {
       "availableTitle": "Ažuriranje dostupno",
-      "availableMessage": "Memry {version} je dostupan.",
+      "availableMessage": "memrynote {version} je dostupan.",
       "availableDetailFallback": "Želite li sada preuzeti ažuriranje?",
       "buttonDownload": "preuzimanje",
       "buttonLater": "kasnije",
       "readyTitle": "Ažuriranje spremno",
-      "readyMessage": "Memry {version} je preuzet.",
-      "readyDetailFallback": "Ponovno pokrenite Memry kako biste dovršili instalaciju ažuriranja.",
+      "readyMessage": "memrynote {version} je preuzet.",
+      "readyDetailFallback": "Ponovno pokrenite memrynote kako biste dovršili instalaciju ažuriranja.",
       "buttonRestartNow": "Ponovno pokrenite sada",
       "releaseNotesLabel": "Napomene o izdanju:"
     }

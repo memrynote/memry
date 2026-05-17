@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Přeskočit registraci",
-      "welcomeToMemry": "Vítejte v Memry",
+      "welcomeToMemry": "Vítejte v memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Vaše osobní znalostní báze. Udělejte si 2 minuty, abyste mohli začít.",
       "getStarted": "Začněte ",
       "createYourFirstNote": "Vytvořte svou první poznámku",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Přetažením změníte velikost · Dvojitým kliknutím obnovíte"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Vítejte v Memry",
+      "welcomeToMemry": "Vítejte v memrynote",
       "yourPersonalKnowledgeManagementSystem": "Váš systém řízení osobních znalostí.",
       "selectAFolderToStoreYourNotesAndTasks": "Vyberte složku pro ukládání poznámek a úkolů.",
       "opening": "Otevírání...",
@@ -341,9 +341,9 @@
     "stop": "Zastávka",
     "thinking": "Agent přemýšlí",
     "enable": {
-      "title": "Povolit Memry Agent",
-      "description": "Memry Agent používá vašeho vybraného místního agenta CLI k chatování o vašem trezoru. Claude posílá obraty na Anthropic; Codex posílá obraty na OpenAI.",
-      "remote": "Memry šifruje vaši místní a synchronizovanou historii chatu, ale odvození modelu se děje s vybraným poskytovatelem.",
+      "title": "Povolit memrynote Agent",
+      "description": "memrynote Agent používá vašeho vybraného místního agenta CLI k chatování o vašem trezoru. Claude posílá obraty na Anthropic; Codex posílá obraty na OpenAI.",
+      "remote": "memrynote šifruje vaši místní a synchronizovanou historii chatu, ale odvození modelu se děje s vybraným poskytovatelem.",
       "readTools": "Nástroje pro čtení se spouštějí automaticky.",
       "writeTools": "Nástroje pro vytváření a aktualizaci vyžadují schválení.",
       "diff": "Aktualizační nástroje zobrazují rozdíl nebo náhled.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Aktuální poznámka",
       "removeAttachment": "Odebrat {label}",
-      "placeholder": "Zeptejte se Memry na cokoli. @ pro zmínku o souboru",
+      "placeholder": "Zeptejte se memrynote na cokoli. @ pro zmínku o souboru",
       "send": "Odeslat",
       "providerLabel": "Poskytovatel Agent: {provider}",
       "settingsSummary": "{reasoning}",

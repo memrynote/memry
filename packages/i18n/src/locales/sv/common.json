@@ -94,7 +94,7 @@
     },
     "componentsFirstRunOnboarding": {
       "skipOnboarding": "Hoppa över introduktion",
-      "welcomeToMemry": "Välkommen till Memry",
+      "welcomeToMemry": "Välkommen till memrynote",
       "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Din personliga kunskapsbas. Låt oss ta 2 minuter för att komma igång.",
       "getStarted": "Kom igång",
       "createYourFirstNote": "Skapa din första anteckning",
@@ -289,7 +289,7 @@
       "dragToResizeDoubleClickToReset": "Dra för att ändra storlek · Dubbelklicka för att återställa"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Välkommen till Memry",
+      "welcomeToMemry": "Välkommen till memrynote",
       "yourPersonalKnowledgeManagementSystem": "Ditt personliga kunskapshanteringssystem.",
       "selectAFolderToStoreYourNotesAndTasks": "Välj en mapp för att lagra dina anteckningar och uppgifter.",
       "opening": "Öppnar...",
@@ -341,9 +341,9 @@
     "stop": "Stopp",
     "thinking": "Agent tänker",
     "enable": {
-      "title": "Aktivera Memry Agent",
-      "description": "Memry Agent använder din valda lokala agent CLI för att chatta om ditt valv. Claude skickar vändningar till Anthropic; Codex skickar vändningar till OpenAI.",
-      "remote": "Memry krypterar din lokala och synkroniserade chatthistorik, men modellinferens sker med den valda leverantören.",
+      "title": "Aktivera memrynote Agent",
+      "description": "memrynote Agent använder din valda lokala agent CLI för att chatta om ditt valv. Claude skickar vändningar till Anthropic; Codex skickar vändningar till OpenAI.",
+      "remote": "memrynote krypterar din lokala och synkroniserade chatthistorik, men modellinferens sker med den valda leverantören.",
       "readTools": "Läsverktyg körs automatiskt.",
       "writeTools": "Skapa och uppdatera verktyg kräver godkännande.",
       "diff": "Uppdateringsverktyg visar en skillnad eller förhandsgranskning.",
@@ -373,7 +373,7 @@
     "composer": {
       "currentNote": "Aktuell not",
       "removeAttachment": "Ta bort {label}",
-      "placeholder": "Fråga Memry vad som helst. @ för att nämna en fil",
+      "placeholder": "Fråga memrynote vad som helst. @ för att nämna en fil",
       "send": "Skicka",
       "providerLabel": "Agent-leverantör: {provider}",
       "settingsSummary": "{reasoning}",

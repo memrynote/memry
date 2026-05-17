@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "Ilunsad sa Login",
-        "description": "Simulan ang Memry kapag nag-log in ka",
+        "description": "Simulan ang memrynote kapag nag-log in ka",
         "error": "Nabigong i-update ang simula sa boot"
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "Naka-install na bersyon {version}",
       "availableVersion": "Magagamit na bersyon {version}",
       "unsupported": "Maaaring suriin, i-download, at i-install ng mga naka-package na build ang mga update mula sa Mga Paglabas ng GitHub",
-      "available": "Memry {version} ay magagamit upang i-download",
+      "available": "memrynote {version} ay magagamit upang i-download",
       "downloadingLatest": "Dina-download ang pinakabagong release",
       "downloadingLatestPercent": "Dina-download ang pinakabagong release ({percent}%)",
-      "downloaded": "Memry {version} ay handa nang i-install",
+      "downloaded": "memrynote {version} ay handa nang i-install",
       "upToDate": "Ang pag-install na ito ay nasa pinakabagong nai-publish na release",
       "checking": "Sinusuri ang Mga Paglabas ng GitHub para sa isang mas bagong bersyon",
       "idle": "Tingnan kung may mga bagong release at i-install ang mga ito nang hindi umaalis sa app",
       "unsupportedToast": "Available lang ang mga auto-update sa mga naka-package na release",
-      "upToDateToast": "Napapanahon ang Memry {version}",
+      "upToDateToast": "Napapanahon ang memrynote {version}",
       "actionFailed": "Nabigo ang pagkilos sa pag-update",
       "actions": {
         "checking": "Sinusuri...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "Matagumpay na na-link ang device",
       "goBack": "Bumalik ka",
       "waitingTitle": "Naghihintay ng pag-apruba",
-      "waitingDescription": "Buksan ang Memry sa iyong iba pang device at aprubahan ang kahilingan sa pag-link.",
+      "waitingDescription": "Buksan ang memrynote sa iyong iba pang device at aprubahan ang kahilingan sa pag-link.",
       "verificationCode": "Verification code",
       "confirmCode": "Kumpirmahin na tumutugma ito sa code sa iyong iba pang device"
     }
@@ -778,7 +778,7 @@
     "connect": "Kumonekta",
     "googleCalendar": {
       "name": "Google Calendar",
-      "description": "Two-way na pag-sync para sa Memry na mga kaganapan at na-import na mga kalendaryo ng Google.",
+      "description": "Two-way na pag-sync para sa memrynote na mga kaganapan at na-import na mga kalendaryo ng Google.",
       "statuses": {
         "connected": "Nakakonekta",
         "notConnected": "Hindi Konektado",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "Google Calendar",
-        "description": "Two-way na pag-sync para sa Memry na mga kaganapan, gawain, paalala, at na-import na mga kalendaryo"
+        "description": "Two-way na pag-sync para sa memrynote na mga kaganapan, gawain, paalala, at na-import na mga kalendaryo"
       },
       "appleCalendar": {
         "name": "Apple Calendar",
@@ -963,7 +963,7 @@
       "description": "Kumuha ng tala mula sa kahit saan",
       "permissionNeeded": "Kailangan ng pahintulot",
       "active": "Aktibo",
-      "permissionHint": "Ang mga pandaigdigang shortcut ay nangangailangan ng pahintulot sa Accessibility. Pumunta sa Mga Setting ng System → Privacy → Accessibility at paganahin ang Memry."
+      "permissionHint": "Ang mga pandaigdigang shortcut ay nangangailangan ng pahintulot sa Accessibility. Pumunta sa Mga Setting ng System → Privacy → Accessibility at paganahin ang memrynote."
     },
     "toasts": {
       "saveGlobalFailed": "Nabigong i-save ang global capture shortcut",

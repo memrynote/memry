@@ -224,7 +224,7 @@ describe('medium gap renderer surfaces', () => {
   })
 
   it('matches hash tags and completes typed tags through the plugin append transaction', () => {
-    expect(matchHashTagBeforeCursor('Ship #Memry-Launch ')).toBe('memry-launch')
+    expect(matchHashTagBeforeCursor('Ship #memrynote-Launch ')).toBe('memrynote-launch')
     expect(matchHashTagBeforeCursor('Ship #broken/ ')).toBeNull()
 
     const plugin = createHashTagSpacePlugin((tag) => `color:${tag}`)
@@ -249,9 +249,9 @@ describe('medium gap renderer surfaces', () => {
         $from: {
           parent: {
             type: { spec: {} },
-            textBetween: () => 'Ship #Memry '
+            textBetween: () => 'Ship #memrynote '
           },
-          parentOffset: 'Ship #Memry '.length,
+          parentOffset: 'Ship #memrynote '.length,
           start: () => 10
         }
       },
@@ -274,10 +274,10 @@ describe('medium gap renderer surfaces', () => {
 
     expect(result).toBe(tr)
     expect(state.schema.nodes.hashTag.create).toHaveBeenCalledWith({
-      tag: 'memry',
-      color: 'color:memry'
+      tag: 'memrynote',
+      color: 'color:memrynote'
     })
-    expect(tr.replaceWith).toHaveBeenCalledWith(15, 22, expect.anything())
+    expect(tr.replaceWith).toHaveBeenCalledWith(15, 26, expect.anything())
     expect(tr.setMeta).toHaveBeenCalled()
 
     const codeState = {

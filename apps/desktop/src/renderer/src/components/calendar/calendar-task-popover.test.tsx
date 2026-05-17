@@ -35,7 +35,7 @@ vi.mock('@/hooks/use-subtasks', () => ({
   useSubtasks: () => ({ data: mockSubtasks, isLoading: false })
 }))
 vi.mock('@/hooks/use-project', () => ({
-  useProject: () => ({ data: { id: 'p1', name: 'Memry' } })
+  useProject: () => ({ data: { id: 'p1', name: 'memrynote' } })
 }))
 vi.mock('@/hooks/use-notes-query', () => ({
   useNoteTagsQuery: () => ({ tags: [{ tag: 'focus', color: 'rose' }] })
@@ -45,7 +45,7 @@ vi.mock('@/contexts/tasks', () => ({
     projects: [
       {
         id: 'p1',
-        name: 'Memry',
+        name: 'memrynote',
         statuses: [
           { id: 'p-todo', name: 'To Do', color: '#6b7280', type: 'todo', order: 0 },
           {

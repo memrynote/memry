@@ -46,7 +46,7 @@
     "startup": {
       "launchAtLogin": {
         "label": "로그인 시 실행",
-        "description": "로그인할 때 Memry를 시작하세요.",
+        "description": "로그인할 때 memrynote를 시작하세요.",
         "error": "부팅 시 시작을 업데이트하지 못했습니다."
       }
     },
@@ -55,15 +55,15 @@
       "installedVersion": "설치된 버전 {version}",
       "availableVersion": "사용 가능한 버전 {version}",
       "unsupported": "패키지된 빌드는 GitHub 릴리스에서 업데이트를 확인, 다운로드 및 설치할 수 있습니다.",
-      "available": "Memry {version}를 다운로드할 수 있습니다.",
+      "available": "memrynote {version}를 다운로드할 수 있습니다.",
       "downloadingLatest": "최신 릴리스 다운로드",
       "downloadingLatestPercent": "최신 릴리스({percent}%) 다운로드 중",
-      "downloaded": "Memry {version}를 설치할 준비가 되었습니다.",
+      "downloaded": "memrynote {version}를 설치할 준비가 되었습니다.",
       "upToDate": "이 설치는 최신 게시된 릴리스에 있습니다.",
       "checking": "최신 버전에 대한 GitHub 릴리스 확인",
       "idle": "새 릴리스를 확인하고 앱을 종료하지 않고 설치하세요.",
       "unsupportedToast": "자동 업데이트는 패키지 릴리스에서만 사용할 수 있습니다.",
-      "upToDateToast": "Memry {version}가 최신 상태입니다.",
+      "upToDateToast": "memrynote {version}가 최신 상태입니다.",
       "actionFailed": "업데이트 작업 실패",
       "actions": {
         "checking": "확인 중...",
@@ -540,7 +540,7 @@
       "pendingSuccess": "기기가 연결되었습니다.",
       "goBack": "돌아가기",
       "waitingTitle": "승인을 기다리는 중",
-      "waitingDescription": "다른 장치에서 Memry를 열고 연결 요청을 승인하세요.",
+      "waitingDescription": "다른 장치에서 memrynote를 열고 연결 요청을 승인하세요.",
       "verificationCode": "인증코드",
       "confirmCode": "다른 기기의 코드와 일치하는지 확인하세요."
     }
@@ -778,7 +778,7 @@
     "connect": "연결하다",
     "googleCalendar": {
       "name": "구글캘린더",
-      "description": "Memry 이벤트 및 가져온 Google 캘린더에 대한 양방향 동기화.",
+      "description": "memrynote 이벤트 및 가져온 Google 캘린더에 대한 양방향 동기화.",
       "statuses": {
         "connected": "연결됨",
         "notConnected": "연결되지 않음",
@@ -810,7 +810,7 @@
     "registry": {
       "googleCalendar": {
         "name": "구글캘린더",
-        "description": "Memry 이벤트, 작업, 미리 알림 및 가져온 캘린더에 대한 양방향 동기화"
+        "description": "memrynote 이벤트, 작업, 미리 알림 및 가져온 캘린더에 대한 양방향 동기화"
       },
       "appleCalendar": {
         "name": "애플 캘린더",
@@ -963,7 +963,7 @@
       "description": "어디서나 메모를 캡처하세요",
       "permissionNeeded": "권한이 필요합니다",
       "active": "활성",
-      "permissionHint": "전역 바로가기를 사용하려면 접근성 권한이 필요합니다. 시스템 설정 → 개인정보 → 접근성으로 이동하여 Memry를 활성화하세요."
+      "permissionHint": "전역 바로가기를 사용하려면 접근성 권한이 필요합니다. 시스템 설정 → 개인정보 → 접근성으로 이동하여 memrynote를 활성화하세요."
     },
     "toasts": {
       "saveGlobalFailed": "전역 캡처 바로가기를 저장하지 못했습니다.",

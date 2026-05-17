@@ -36,7 +36,7 @@ export function FounderStory() {
                 >
                   <img
                     src={kaanPhoto}
-                    alt="Kaan, founder of Memry"
+                    alt="Kaan, founder of memrynote"
                     className="aspect-[3/4] w-full object-cover"
                     loading="lazy"
                   />
@@ -48,7 +48,7 @@ export function FounderStory() {
 
               <div className="space-y-4 md:pr-6 lg:pr-12">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h3 className="font-serif text-2xl text-ink">Why I'm building Memry</h3>
+                  <h3 className="font-serif text-2xl text-ink">Why I'm building memrynote</h3>
                   <span className="text-xs font-mono-accent uppercase tracking-wider text-terracotta bg-terracotta/10 px-2 py-0.5 rounded">
                     Solo dev
                   </span>
@@ -59,7 +59,7 @@ export function FounderStory() {
                   style={{ fontSize: '17px', lineHeight: '1.8' }}
                 >
                   <p>
-                    Hi, I'm Kaan, the developer behind Memry. I started building this because I
+                    Hi, I'm Kaan, the developer behind memrynote. I started building this because I
                     wanted a workspace that feels less like managing software and more like
                     continuing a thought.
                   </p>
@@ -68,8 +68,8 @@ export function FounderStory() {
                     no plugin maze and no cloud lock-in.
                   </p>
                   <p className="text-ink font-medium">
-                    Memry is an indie project built with care, not a VC-funded race to monetize your
-                    data.
+                    memrynote is an indie project built with care, not a VC-funded race to monetize
+                    your data.
                   </p>
                 </div>
 

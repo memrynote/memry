@@ -5,7 +5,7 @@ describe('headless CLI mode', () => {
   it('extracts the arguments after --cli', () => {
     expect(
       getHeadlessCliArgs([
-        '/Applications/Memry.app/Contents/MacOS/Memry',
+        '/Applications/Memrynote.app/Contents/MacOS/Memrynote',
         '--cli',
         '--vault',
         '/Users/test/MemryVault',
@@ -16,7 +16,7 @@ describe('headless CLI mode', () => {
   })
 
   it('returns null when the app was launched normally', () => {
-    expect(getHeadlessCliArgs(['/Applications/Memry.app/Contents/MacOS/Memry'])).toBeNull()
+    expect(getHeadlessCliArgs(['/Applications/Memrynote.app/Contents/MacOS/Memrynote'])).toBeNull()
   })
 
   it('runs the CLI and exits with its status code', async () => {

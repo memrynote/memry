@@ -1,5 +1,5 @@
 appId: com.memrynote.memry
-productName: Memry
+productName: Memrynote
 directories:
   buildResources: build
 files:
@@ -22,7 +22,7 @@ asarUnpack:
   - resources/**
 afterPack: scripts/prune-packaged-app.mjs
 win:
-  executableName: Memry
+  executableName: Memrynote
 nsis:
   artifactName: ${productName}-${version}-setup.${ext}
   shortcutName: ${productName}

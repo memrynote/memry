@@ -8,14 +8,14 @@ Reusable starting content for notes and journal entries.
 
 Open from the sidebar (or via [Settings → Templates](/user-guide/settings#templates)). The gallery groups:
 
-- **Built-in** — Memry-provided, locked
+- **Built-in** — memrynote-provided, locked
 - **My Templates** — your custom templates
 
 Each template shows an icon, name, short description, and a usage count.
 
 ## Built-in Templates
 
-Memry ships with starter templates for common patterns:
+memrynote ships with starter templates for common patterns:
 
 - Daily Reflection
 - Weekly Review

@@ -61,7 +61,7 @@
     "deviceRevoked": "Denna enhet har tagits bort från ditt konto.",
     "rateLimited": "För många förfrågningar. Synkronisering kommer att återupptas snart.",
     "cryptoFailure": "Misslyckades med att kryptera eller dekryptera synkroniseringsdata. Försök logga ut och in igen.",
-    "versionIncompatible": "Denna version av Memry stöds inte längre. Uppdatera den.",
+    "versionIncompatible": "Denna version av memrynote stöds inte längre. Uppdatera den.",
     "storageQuotaExceeded": "Ditt synkroniseringslagringsutrymme är fullt. Frigör utrymme eller uppgradera din plan.",
     "certificatePinFailed": "Säker anslutning misslyckades. Kontrollera din nätverksanslutning.",
     "unknown": "Ett oväntat synkroniseringsfel uppstod. Försöker igen automatiskt.",

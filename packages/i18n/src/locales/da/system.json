@@ -19,13 +19,13 @@
     "exportCancelled": "Eksporten blev annulleret",
     "update": {
       "availableTitle": "Opdatering tilgængelig",
-      "availableMessage": "Memry {version} er tilgængelig.",
+      "availableMessage": "memrynote {version} er tilgængelig.",
       "availableDetailFallback": "Vil du downloade opdateringen nu?",
       "buttonDownload": "Download",
       "buttonLater": "Senere",
       "readyTitle": "Opdatering klar",
-      "readyMessage": "Memry {version} er blevet downloadet.",
-      "readyDetailFallback": "Genstart Memry for at afslutte installationen af opdateringen.",
+      "readyMessage": "memrynote {version} er blevet downloadet.",
+      "readyDetailFallback": "Genstart memrynote for at afslutte installationen af opdateringen.",
       "buttonRestartNow": "Genstart nu",
       "releaseNotesLabel": "Udgivelsesbemærkninger:"
     }

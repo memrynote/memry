@@ -19,11 +19,11 @@ log.error('pull failed', err)
 
 ### Log Locations
 
-| Platform | Path |
-| --- | --- |
-| macOS | `~/Library/Logs/Memry/` |
-| Windows | `%USERPROFILE%/AppData/Roaming/Memry/logs/` |
-| Linux | `~/.config/Memry/logs/` |
+| Platform | Path                                            |
+| -------- | ----------------------------------------------- |
+| macOS    | `~/Library/Logs/memrynote/`                     |
+| Windows  | `%USERPROFILE%/AppData/Roaming/memrynote/logs/` |
+| Linux    | `~/.config/memrynote/logs/`                     |
 
 ## Telemetry
 
@@ -68,12 +68,12 @@ The `void` makes the call non-blocking and unfailable from the UI's point of vie
 
 ## Event Categories
 
-| Category | Examples |
-| --- | --- |
-| Surface views | `page_viewed` per tab type |
-| Lifecycle | `onboarding_started`, `onboarding_completed` |
-| Sync health | `sync_push_succeeded`, `sync_pull_failed` (counts only) |
-| Auth | `signin_started`, `signin_succeeded` |
+| Category      | Examples                                                |
+| ------------- | ------------------------------------------------------- |
+| Surface views | `page_viewed` per tab type                              |
+| Lifecycle     | `onboarding_started`, `onboarding_completed`            |
+| Sync health   | `sync_push_succeeded`, `sync_pull_failed` (counts only) |
+| Auth          | `signin_started`, `signin_succeeded`                    |
 
 ## Crash Reporting
 

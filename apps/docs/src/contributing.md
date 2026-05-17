@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping build Memry. Keep changes small, focused, and easy to review.
+Thanks for helping build memrynote. Keep changes small, focused, and easy to review.
 
 ## Setup
 

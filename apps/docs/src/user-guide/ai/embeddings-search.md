@@ -6,7 +6,7 @@ Run a local embedding model so search ranks by meaning, not just keywords.
 
 ## What This Powers
 
-When embeddings are loaded, Memry can rank notes by **semantic similarity** to your query — not just keyword overlap. This affects:
+When embeddings are loaded, memrynote can rank notes by **semantic similarity** to your query — not just keyword overlap. This affects:
 
 - The [search palette](/user-guide/search) (semantic boost on top of keyword match)
 - **AI Connections** in the [Journal](/user-guide/journal/daily-entries) sidebar
@@ -47,7 +47,7 @@ Rebuild the index after:
 - Restoring a vault from backup
 - A migration that touched note storage
 
-Reindexing is incremental — Memry skips notes whose content hash hasn't changed.
+Reindexing is incremental — memrynote skips notes whose content hash hasn't changed.
 
 ## Privacy
 

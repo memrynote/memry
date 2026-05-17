@@ -110,7 +110,7 @@ function writeMinimalConfig(vaultPath: string): void {
     JSON.stringify(
       {
         version: 1,
-        title: 'Memry Demo Vault',
+        title: 'memrynote Demo Vault',
         excludePatterns: ['.git', 'node_modules', '.DS_Store']
       },
       null,
@@ -188,7 +188,7 @@ function main(): void {
   )
   console.log(`Vault path: ${vaultPath}`)
   console.log('')
-  console.log('Open Memry → Switch Vault → choose this path to view.')
+  console.log('Open memrynote → Switch Vault → choose this path to view.')
 }
 
 main()
