@@ -5,8 +5,9 @@ import { MockupFrame } from '@/components/shared/MockupFrame'
 import { DemoTabs } from '@/components/demo/DemoTabs'
 import { DemoScene } from '@/components/demo/DemoScene'
 import { useShowcaseTimer } from '@/components/demo/hooks/useShowcaseTimer'
-import { CLIPS } from '@/components/demo/types'
+import { CLIPS, type SeekRequest } from '@/components/demo/types'
 import { FLOW_STEPS } from '@/lib/constants'
+import { BLUR_REVEAL_ANIMATE, BLUR_REVEAL_INITIAL, BLUR_REVEAL_TRANSITION } from '@/lib/motion'
 
 const INTERACTIVE_STEPS = FLOW_STEPS.filter((s) => CLIPS.some((c) => c.id === s.id))
 
@@ -48,9 +49,16 @@ function CompetitorBar({ activeIndex }: { activeIndex: number }) {
 export function FlowShowcase() {
   const [activeIndex, setActiveIndex] = useState(0)
   const [paused, setPaused] = useState(false)
+  const [muted, setMuted] = useState(true)
   const [videoDuration, setVideoDuration] = useState<number | null>(null)
+  const [seekRequest, setSeekRequest] = useState<SeekRequest | null>(null)
 
-  const { progress, goTo } = useShowcaseTimer(activeIndex, setActiveIndex, paused, videoDuration)
+  const { progress, goTo, seekTo } = useShowcaseTimer(
+    activeIndex,
+    setActiveIndex,
+    paused,
+    videoDuration
+  )
 
   const handleStepClick = useCallback(
     (index: number) => {
@@ -69,10 +77,26 @@ export function FlowShowcase() {
     setVideoDuration(ms)
   }, [])
 
+  const handleActiveTabSeek = useCallback(
+    (nextProgress: number) => {
+      seekTo(nextProgress)
+      setSeekRequest((current) => ({
+        progress: nextProgress,
+        requestId: (current?.requestId ?? 0) + 1
+      }))
+    },
+    [seekTo]
+  )
+
   return (
     <section>
       <Container>
-        <div className="max-w-4xl mx-auto">
+        <motion.div
+          className="max-w-4xl mx-auto"
+          initial={BLUR_REVEAL_INITIAL}
+          animate={BLUR_REVEAL_ANIMATE}
+          transition={BLUR_REVEAL_TRANSITION}
+        >
           <MockupFrame>
             <div className="flex flex-col">
               <div className="px-3 py-2 border-b border-border/30">
@@ -80,13 +104,17 @@ export function FlowShowcase() {
                   activeIndex={activeIndex}
                   progress={progress}
                   onTabClick={handleStepClick}
+                  onActiveTabSeek={handleActiveTabSeek}
                 />
               </div>
               <DemoScene
                 activeIndex={activeIndex}
                 playing={!paused}
+                muted={muted}
                 onToggle={handleToggle}
+                onMutedChange={setMuted}
                 onDurationDetected={handleDurationDetected}
+                seekRequest={seekRequest}
               />
             </div>
           </MockupFrame>
@@ -94,7 +122,7 @@ export function FlowShowcase() {
           <div className="mt-3">
             <CompetitorBar activeIndex={activeIndex} />
           </div>
-        </div>
+        </motion.div>
       </Container>
     </section>
   )
