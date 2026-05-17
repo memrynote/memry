@@ -2,11 +2,12 @@ import { motion } from 'framer-motion'
 import { Container } from '@/components/layout/Container'
 import { GITHUB_URL, TWITTER_DEV_URL } from '@/lib/constants'
 import { trackLandingEvent } from '@/lib/analytics'
+import kaanPhoto from '../../assets/kaan-founder.webp'
 
 export function FounderStory() {
   return (
     <section className="py-24 border-t border-border/40">
-      <Container size="sm">
+      <Container size="md">
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
@@ -27,18 +28,26 @@ export function FounderStory() {
               <path d="M0,12 Q25,0 50,8 T100,6 T150,10 T200,4 T250,8 T300,6 T350,10 T400,4 T450,8 T500,6 T550,10 T600,4 T650,8 T700,6 T750,10 T800,4 T850,8 T900,6 T950,10 T1000,4 L1000,12 Z" />
             </svg>
 
-            <div className="flex flex-col md:flex-row items-start gap-8">
-              <div className="shrink-0">
+            <div className="flex flex-col md:flex-row items-start gap-8 lg:gap-10">
+              <div className="w-full max-w-xs shrink-0 md:w-52 md:max-w-none lg:w-60">
                 <div
-                  className="w-20 h-20 rounded-2xl bg-terracotta/10 border-2 border-dashed border-terracotta/30 flex items-center justify-center"
-                  style={{ transform: 'rotate(3deg)' }}
+                  className="overflow-hidden rounded-lg border border-border/70 bg-paper shadow-sm"
+                  style={{ transform: 'rotate(1.5deg)' }}
                 >
-                  <span className="font-serif text-3xl text-terracotta">K</span>
+                  <img
+                    src={kaanPhoto}
+                    alt="Kaan, founder of Memry"
+                    className="aspect-[3/4] w-full object-cover"
+                    loading="lazy"
+                  />
                 </div>
+                <p className="mt-3 px-2 text-center text-xs leading-relaxed text-muted/80 font-mono-accent">
+                  Yep, that's me. Duck on shoulder.
+                </p>
               </div>
 
-              <div className="space-y-4 pr-16">
-                <div className="flex items-center gap-3">
+              <div className="space-y-4 md:pr-6 lg:pr-12">
+                <div className="flex flex-wrap items-center gap-3">
                   <h3 className="font-serif text-2xl text-ink">Why I'm building Memry</h3>
                   <span className="text-xs font-mono-accent uppercase tracking-wider text-terracotta bg-terracotta/10 px-2 py-0.5 rounded">
                     Solo dev
@@ -50,15 +59,13 @@ export function FounderStory() {
                   style={{ fontSize: '17px', lineHeight: '1.8' }}
                 >
                   <p>
-                    I've tried every PKM tool out there. Notion was powerful but slow and
-                    cloud-dependent. Obsidian was fast but needed 20 plugins to feel complete.
-                    Logseq was interesting but lacked a proper task system. None of them felt like{' '}
-                    <em>one</em> tool.
+                    Hi, I'm Kaan, the developer behind Memry. I started building this because I
+                    wanted a workspace that feels less like managing software and more like
+                    continuing a thought.
                   </p>
                   <p>
-                    So I'm building the app I wished existed — where notes, tasks, journal, and
-                    inbox live together natively. Local-first, so it's instant. Markdown files, so
-                    your data is truly yours. No plugin maze, no cloud lock-in.
+                    So I'm building the app I wished existed: local-first, privacy by design, with
+                    no plugin maze and no cloud lock-in.
                   </p>
                   <p className="text-ink font-medium">
                     Memry is an indie project built with care, not a VC-funded race to monetize your
@@ -74,7 +81,7 @@ export function FounderStory() {
                     className="text-sm font-medium text-terracotta hover:underline"
                     onClick={() => trackLandingEvent('landing_external_click', 'founder:twitter')}
                   >
-                    Follow @h4yfans for updates →
+                    Follow me on 𝕏
                   </a>
                   <a
                     href={GITHUB_URL}
