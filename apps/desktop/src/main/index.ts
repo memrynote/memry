@@ -42,7 +42,8 @@ import { registerTestHooks } from './test-hooks'
 import {
   computeSpkiHashFromPem,
   isPinningDisabled,
-  getPinnedCertificateHashes
+  getPinnedCertificateHashes,
+  getPinnedCertificateHashesForHostname
 } from './sync/certificate-pinning'
 import { getCrdtProvider } from './sync/crdt-provider'
 import { stopSyncRuntime } from './sync/runtime'
@@ -275,6 +276,12 @@ function configureCertificatePinning(): void {
   }
 
   session.defaultSession.setCertificateVerifyProc((request, callback) => {
+    const pinsForHostname = [...getPinnedCertificateHashesForHostname(request.hostname)]
+    if (pinsForHostname.length === 0) {
+      callback(0)
+      return
+    }
+
     const cert = request.certificate
     if (!cert.data) {
       certPinLog.error('Certificate missing PEM data', { hostname: request.hostname })
@@ -284,7 +291,7 @@ function configureCertificatePinning(): void {
 
     try {
       const spkiHash = computeSpkiHashFromPem(cert.data)
-      if (!pins.some((pin) => pin === spkiHash)) {
+      if (!pinsForHostname.some((pin) => pin === spkiHash)) {
         certPinLog.error('Session certificate pin mismatch', {
           hostname: request.hostname,
           hash: spkiHash
