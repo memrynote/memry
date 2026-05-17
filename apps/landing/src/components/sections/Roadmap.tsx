@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
-import { Check } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ArrowRight, Check } from 'lucide-react'
 import { Container } from '@/components/layout/Container'
 import { GITHUB_URL, ROADMAP_DATA, TWITTER_DEV_URL } from '@/lib/constants'
 import { trackLandingEvent } from '@/lib/analytics'
@@ -9,28 +10,26 @@ const STATUS_CONFIG = {
     node: 'bg-sage border-sage',
     badge: 'text-sage bg-sage/10',
     label: 'Shipped',
+    countLabel: 'available',
     dot: 'bg-sage'
   },
   'in-progress': {
     node: 'bg-terracotta border-terracotta',
     badge: 'text-terracotta bg-terracotta/10',
     label: 'Building now',
+    countLabel: 'active',
     dot: 'bg-terracotta'
   },
   planned: {
     node: 'border-muted/40 border-dashed bg-paper',
     badge: 'text-muted bg-muted/10',
     label: 'Up next',
+    countLabel: 'planned',
     dot: 'bg-muted/30'
   }
 } as const
 
 export function Roadmap() {
-  const totalItems = ROADMAP_DATA.phases.reduce((sum, p) => sum + p.items.length, 0)
-  const shippedItems = ROADMAP_DATA.phases
-    .filter((p) => p.status === 'done')
-    .reduce((sum, p) => sum + p.items.length, 0)
-
   return (
     <section id="roadmap" className="py-24 border-t border-border/40">
       <Container size="md">
@@ -39,34 +38,42 @@ export function Roadmap() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="mb-16"
+          className="mb-14"
         >
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
+          <div className="grid gap-8 lg:grid-cols-[1fr_minmax(280px,360px)] lg:items-end">
             <div>
-              <h2 className="font-serif text-4xl md:text-5xl text-ink">Building in public</h2>
-              <p className="text-muted mt-2">
-                {ROADMAP_DATA.earlyAccess}. Transparent about every step.
+              <p className="font-mono-accent text-xs uppercase tracking-[0.18em] text-terracotta">
+                Roadmap snapshot
+              </p>
+              <h2 className="mt-3 font-serif text-4xl text-ink md:text-5xl">Building in public</h2>
+              <p className="mt-3 max-w-2xl text-lg leading-relaxed text-muted">
+                {ROADMAP_DATA.earlyAccess}. Here is what already works, what is active now, and what
+                is planned next.
               </p>
             </div>
-            <span className="font-mono-accent text-xs text-muted tracking-wider uppercase whitespace-nowrap">
-              {shippedItems}/{totalItems} features shipped
-            </span>
-          </div>
 
-          <div className="h-1 bg-border/30 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-sage to-sage/70"
-              initial={{ width: 0 }}
-              whileInView={{ width: `${(shippedItems / totalItems) * 100}%` }}
-              viewport={{ once: true }}
-              transition={{ duration: 1.2, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            />
+            <div className="grid grid-cols-3 overflow-hidden rounded-lg border border-border/60 bg-border/60 text-center">
+              {ROADMAP_DATA.phases.map((phase) => {
+                const config = STATUS_CONFIG[phase.status]
+
+                return (
+                  <div key={phase.status} className="bg-paper px-3 py-4">
+                    <span className="block font-serif text-3xl leading-none text-ink">
+                      {phase.items.length}
+                    </span>
+                    <span className="mt-2 block font-mono-accent text-[10px] uppercase tracking-[0.16em] text-muted">
+                      {config.countLabel}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </motion.div>
 
         <div className="relative">
           <div
-            className="absolute left-[11px] top-3 bottom-3 w-px"
+            className="absolute start-[11px] top-3 bottom-3 w-px"
             style={{
               background:
                 'linear-gradient(to bottom, var(--color-sage), var(--color-terracotta) 50%, var(--color-border) 100%)',
@@ -112,6 +119,9 @@ export function Roadmap() {
                         {config.label}
                       </span>
                     </div>
+                    <p className="mb-4 max-w-2xl text-sm leading-relaxed text-muted">
+                      {phase.caption}
+                    </p>
 
                     <div className="grid sm:grid-cols-2 gap-x-8 gap-y-1.5">
                       {phase.items.map((item) => (
@@ -138,20 +148,22 @@ export function Roadmap() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-50px' }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="mt-14 flex items-start gap-4 rounded-xl border border-terracotta/20 bg-terracotta/5 p-5"
+          className="mt-14 rounded-lg border border-border/70 bg-paper-alt p-5 md:flex md:items-center md:justify-between md:gap-6"
         >
-          <span className="text-2xl shrink-0" role="img" aria-label="mobile phone">
-            {'\u{1F4F1}'}
-          </span>
           <div>
-            <p className="text-ink font-medium text-sm">
-              Mobile apps &mdash; iOS & Android targeting late 2026
-            </p>
+            <p className="text-ink font-medium text-sm">Want the full roadmap?</p>
             <p className="text-muted text-sm mt-1">
-              memrynote Sync is built in. You can also use any cloud folder you prefer (iCloud,
-              Dropbox, Google Drive, Syncthing).
+              Active work, planned bets, and launched history live on the dedicated roadmap page.
             </p>
           </div>
+          <Link
+            to="/roadmap"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg border border-terracotta/25 px-4 py-2 text-sm font-medium text-terracotta transition-colors hover:border-terracotta/40 hover:bg-terracotta/10 md:mt-0"
+            onClick={() => trackLandingEvent('landing_nav_click', 'roadmap:full-roadmap')}
+          >
+            View full roadmap
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </Link>
         </motion.div>
 
         <motion.div
@@ -165,20 +177,22 @@ export function Roadmap() {
             href={`${GITHUB_URL}/issues`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-terracotta hover:underline font-medium"
+            className="inline-flex items-center gap-1.5 text-terracotta hover:underline font-medium"
             onClick={() => trackLandingEvent('landing_external_click', 'roadmap:github-issues')}
           >
-            Request a feature →
+            Request a feature
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
           </a>
           <span className="text-border hidden sm:inline">|</span>
           <a
             href={TWITTER_DEV_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-terracotta hover:underline font-medium"
+            className="inline-flex items-center gap-1.5 text-terracotta hover:underline font-medium"
             onClick={() => trackLandingEvent('landing_external_click', 'roadmap:twitter')}
           >
-            Follow @h4yfans for updates →
+            Follow @h4yfans for updates
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
           </a>
         </motion.div>
       </Container>
