@@ -207,17 +207,21 @@ export function RoadmapPage() {
         </section>
 
         <section className="border-b border-border py-12">
-          <div className="mb-6">
-            <StatusPill label="Active" tone="sage" count={ACTIVE_ITEMS.length} />
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[140px_1fr] md:gap-10">
+            <div className="md:pt-5">
+              <StatusPill label="Active" tone="sage" count={ACTIVE_ITEMS.length} />
+            </div>
+            <RoadmapList items={ACTIVE_ITEMS} />
           </div>
-          <RoadmapList items={ACTIVE_ITEMS} />
         </section>
 
         <section className="border-b border-border py-12">
-          <div className="mb-6">
-            <StatusPill label="Planned" tone="terracotta" count={PLANNED_ITEMS.length} />
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[140px_1fr] md:gap-10">
+            <div className="md:pt-5">
+              <StatusPill label="Planned" tone="terracotta" count={PLANNED_ITEMS.length} />
+            </div>
+            <RoadmapList items={PLANNED_ITEMS} />
           </div>
-          <RoadmapList items={PLANNED_ITEMS} />
         </section>
 
         <section className="pt-12">
