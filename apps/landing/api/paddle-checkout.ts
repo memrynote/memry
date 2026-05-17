@@ -31,11 +31,6 @@ function getRequestBody(req: VercelRequest): unknown {
   }
 }
 
-function sanitizeLogError(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error)
-  return message.split('\r').join(' ').split('\n').join(' ')
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -56,8 +51,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let checkoutConfig
   try {
     checkoutConfig = getPaddleCheckoutConfig(intent, process.env)
-  } catch (error) {
-    console.error('[paddle-checkout]', sanitizeLogError(error))
+  } catch {
+    console.error('[paddle-checkout] checkout config unavailable')
     return res.status(500).json({ error: 'Paddle price is not configured' })
   }
 
@@ -78,8 +73,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       plan: intent.plan,
       cadence: intent.cadence
     })
-  } catch (error) {
-    console.error('[paddle-checkout] transaction creation failed', sanitizeLogError(error))
+  } catch {
+    console.error('[paddle-checkout] transaction creation failed')
     return res.status(502).json({ error: 'Could not start checkout' })
   }
 }

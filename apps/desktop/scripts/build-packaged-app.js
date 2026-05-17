@@ -22,6 +22,29 @@ const nativeModules = ['better-sqlite3', 'classic-level', 'keytar']
 const generateIconsScript = path.join(appRoot, 'scripts', 'generate-icons.mjs')
 const osxSignWalkPatchScript = path.join(appRoot, 'scripts', 'patch-osx-sign-walk.js')
 const electronBuilderUlimitScript = path.join(appRoot, 'scripts', 'run-with-builder-ulimit.sh')
+const pnpmCli = resolveBundledPnpmCli()
+
+function resolveBundledPnpmCli() {
+  const nodeBinDir = path.dirname(process.execPath)
+  const candidates =
+    process.platform === 'win32'
+      ? [
+          path.join(nodeBinDir, 'node_modules', 'corepack', 'dist', 'pnpm.js'),
+          path.resolve(nodeBinDir, '..', 'node_modules', 'corepack', 'dist', 'pnpm.js')
+        ]
+      : [
+          path.resolve(nodeBinDir, '..', 'lib', 'node_modules', 'corepack', 'dist', 'pnpm.js'),
+          path.join(nodeBinDir, 'pnpm')
+        ]
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate
+    }
+  }
+
+  throw new Error('Unable to resolve the Corepack pnpm CLI next to the active Node runtime')
+}
 
 function removePath(targetPath) {
   const stat = fs.lstatSync(targetPath, { throwIfNoEntry: false })
@@ -46,16 +69,7 @@ function getPnpmDeployTarget() {
 }
 
 function runPnpm(args, options = {}) {
-  if (process.platform !== 'win32') {
-    execFileSync('pnpm', args, { stdio: 'inherit', shell: false, ...options })
-    return
-  }
-
-  execFileSync('cmd.exe', ['/d', '/c', 'pnpm.cmd', ...args], {
-    stdio: 'inherit',
-    shell: false,
-    ...options
-  })
+  execFileSync(process.execPath, [pnpmCli, ...args], { stdio: 'inherit', shell: false, ...options })
 }
 
 function parseElectronBuilderArgs(argv) {
